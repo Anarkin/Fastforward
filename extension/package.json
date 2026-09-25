@@ -1,0 +1,55 @@
+{
+  "name": "fastforward",
+  "displayName": "Fastforward",
+  "description": "Git workflows for VS Code",
+  "version": "0.0.1",
+  "publisher": "anarkin",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Anarkin/Fastforward.git"
+  },
+  "engines": {
+    "vscode": "^1.130.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "fastforward.helloWorld",
+        "title": "Hello World",
+        "category": "Fastforward"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "package": "npm run check-types && node esbuild.mjs --production",
+    "check-types": "tsc --noEmit",
+    "compile-tests": "tsc -p . --outDir out",
+    "pretest": "npm run build && npm run compile-tests",
+    "test": "vscode-test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "copy-root-files": "node -e \"for (const f of ['README.md', 'LICENSE']) require('fs').copyFileSync('../' + f, f)\"",
+    "vsce:package": "npm run copy-root-files && vsce package",
+    "vsce:publish": "npm run copy-root-files && vsce publish",
+    "verify": "npm run format:check && npm run check-types && npm test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^24.19.0",
+    "@types/vscode": "^1.125.0",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^4.0.0",
+    "esbuild": "^0.28.2",
+    "prettier": "^3.9.9",
+    "typescript": "^7.0.2"
+  }
+}

@@ -1,0 +1,9 @@
+node_modules/
+dist/
+out/
+.vscode-test/
+*.vsix
+
+# Copied from the repo root at packaging time
+extension/README.md
+extension/LICENSE

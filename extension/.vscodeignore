@@ -1,0 +1,11 @@
+src/**
+out/**
+node_modules/**
+.vscode-test/**
+.vscode-test.mjs
+esbuild.mjs
+tsconfig.json
+**/*.map
+**/*.ts
+.prettierrc.json
+.prettierignore
