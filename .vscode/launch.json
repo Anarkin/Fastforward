@@ -5,7 +5,10 @@
       "name": "Run Extension",
       "type": "extensionHost",
       "request": "launch",
-      "args": ["--extensionDevelopmentPath=${workspaceFolder}/extension"],
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/extension",
+        "--disable-extensions"
+      ],
       "outFiles": ["${workspaceFolder}/extension/dist/**/*.js"],
       "preLaunchTask": "build"
     }
