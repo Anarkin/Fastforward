@@ -7,3 +7,6 @@ out/
 # Copied from the repo root at packaging time
 extension/README.md
 extension/LICENSE
+
+# Personal Claude Code settings
+.claude/settings.local.json
