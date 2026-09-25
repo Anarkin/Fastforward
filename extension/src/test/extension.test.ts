@@ -1,9 +1,12 @@
 import * as assert from 'node:assert';
 import * as vscode from 'vscode';
+import { withMessageStub } from './stub';
 
 suite('Extension', () => {
   suiteSetup(async () => {
-    await vscode.extensions.getExtension('anarkin.fastforward')?.activate();
+    const extension = vscode.extensions.getExtension('anarkin.fastforward');
+    assert.ok(extension, 'extension anarkin.fastforward not found');
+    await extension.activate();
   });
 
   test('registers the hello world command', async () => {
@@ -12,6 +15,9 @@ suite('Extension', () => {
   });
 
   test('runs the hello world command', async () => {
-    await vscode.commands.executeCommand('fastforward.helloWorld');
+    await withMessageStub('showInformationMessage', async (messages) => {
+      await vscode.commands.executeCommand('fastforward.helloWorld');
+      assert.deepStrictEqual(messages, ['Hello from Fastforward']);
+    });
   });
 });
