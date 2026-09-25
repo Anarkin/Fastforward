@@ -33,13 +33,14 @@
     "check-types": "tsc --noEmit",
     "compile-tests": "tsc -p . --outDir out",
     "pretest": "npm run build && npm run compile-tests",
-    "test": "vscode-test",
+    "test": "vscode-test --coverage",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "copy-root-files": "node -e \"for (const f of ['README.md', 'LICENSE']) require('fs').copyFileSync('../' + f, f)\"",
     "vsce:package": "npm run copy-root-files && vsce package",
     "vsce:publish": "npm run copy-root-files && vsce publish",
-    "verify": "npm run format:check && npm run check-types && npm test"
+    "verify": "npm run format:check && npm run lint && npm run check-types && npm test",
+    "lint": "oxlint --type-aware --deny-warnings"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
@@ -49,6 +50,8 @@
     "@vscode/test-electron": "^3.1.0",
     "@vscode/vsce": "^4.0.0",
     "esbuild": "^0.28.2",
+    "oxlint": "^1.85.0",
+    "oxlint-tsgolint": "^7.0.2003",
     "prettier": "^3.9.9",
     "typescript": "^7.0.2"
   }

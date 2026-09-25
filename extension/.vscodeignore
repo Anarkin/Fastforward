@@ -9,3 +9,5 @@ tsconfig.json
 **/*.ts
 .prettierrc.json
 .prettierignore
+.oxlintrc.json
+coverage/**
