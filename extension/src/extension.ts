@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { watchDevReload } from './devReload';
 import { registerCommand } from './registerCommand';
-import { FastforwardView, toggleViewCommand } from './view';
+import { FastforwardView, showViewCommand, toggleViewCommand } from './view';
 
 export function activate(context: vscode.ExtensionContext): void {
   const log = vscode.window.createOutputChannel('Fastforward', { log: true });
@@ -13,14 +13,15 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(view);
   context.subscriptions.push(
     registerCommand(log, toggleViewCommand, () => view.toggle()),
+    registerCommand(log, showViewCommand, () => view.show()),
   );
 
   const statusBarItem = vscode.window.createStatusBarItem(
     vscode.StatusBarAlignment.Left,
   );
-  statusBarItem.text = '$(fast-forward) Fastforward';
-  statusBarItem.tooltip = 'Toggle the Fastforward view';
-  statusBarItem.command = toggleViewCommand;
+  statusBarItem.text = '⏩ Fastforward';
+  statusBarItem.tooltip = 'Show the Fastforward view';
+  statusBarItem.command = showViewCommand;
   statusBarItem.show();
   context.subscriptions.push(statusBarItem);
 }

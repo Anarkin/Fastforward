@@ -25,7 +25,7 @@
         "command": "fastforward.toggleView",
         "title": "Toggle View",
         "category": "Fastforward",
-        "icon": "$(fast-forward)"
+        "icon": "$(run-all)"
       }
     ],
     "keybindings": [
@@ -33,6 +33,18 @@
         "command": "fastforward.toggleView",
         "key": "ctrl+alt+f",
         "mac": "cmd+alt+f"
+      }
+    ],
+    "customEditors": [
+      {
+        "viewType": "fastforward.view",
+        "displayName": "Fastforward",
+        "selector": [
+          {
+            "filenamePattern": "⏩ Fastforward"
+          }
+        ],
+        "priority": "option"
       }
     ]
   },

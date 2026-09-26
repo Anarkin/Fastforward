@@ -1,19 +1,33 @@
 import * as vscode from 'vscode';
 
 export const toggleViewCommand = 'fastforward.toggleView';
+export const showViewCommand = 'fastforward.showView';
 const viewType = 'fastforward.view';
+const viewUri = vscode.Uri.from({
+  scheme: 'fastforward',
+  path: '/⏩ Fastforward',
+});
 
-export class FastforwardView implements vscode.Disposable {
-  private panel: vscode.WebviewPanel | undefined;
+// The view is a custom editor, because _workbench.openWith is the only way for
+// an extension to open an editor in the modal editor part (group -4)
+const modalEditorGroup = -4;
 
-  constructor(private readonly log: vscode.LogOutputChannel) {}
+export class FastforwardView
+  implements vscode.CustomReadonlyEditorProvider, vscode.Disposable
+{
+  private readonly registration: vscode.Disposable;
 
-  // panel.active lags behind right after reveal or hide, the tab groups don't
+  constructor(private readonly log: vscode.LogOutputChannel) {
+    this.registration = vscode.window.registerCustomEditorProvider(
+      viewType,
+      this,
+    );
+  }
+
   get isShown(): boolean {
     const input = vscode.window.tabGroups.activeTabGroup.activeTab?.input;
     return (
-      input instanceof vscode.TabInputWebview &&
-      input.viewType.endsWith(viewType)
+      input instanceof vscode.TabInputCustom && input.viewType === viewType
     );
   }
 
@@ -21,42 +35,38 @@ export class FastforwardView implements vscode.Disposable {
     if (this.isShown) {
       await this.hide();
     } else {
-      this.show();
+      await this.show();
     }
   }
 
-  show(): void {
-    if (this.panel) {
-      this.panel.reveal(vscode.ViewColumn.Active);
-    } else {
-      this.panel = this.createPanel();
-    }
+  async show(): Promise<void> {
+    await vscode.commands.executeCommand(
+      '_workbench.openWith',
+      viewUri,
+      viewType,
+      [modalEditorGroup, { pinned: true }],
+    );
     this.log.info('View shown');
   }
 
   async hide(): Promise<void> {
-    await vscode.commands.executeCommand(
-      'workbench.action.openPreviousRecentlyUsedEditorInGroup',
-    );
+    await vscode.commands.executeCommand('workbench.action.closeModalEditor');
     this.log.info('View hidden');
   }
 
-  dispose(): void {
-    this.panel?.dispose();
+  openCustomDocument(uri: vscode.Uri): vscode.CustomDocument {
+    return { uri, dispose: () => {} };
   }
 
-  private createPanel(): vscode.WebviewPanel {
-    const panel = vscode.window.createWebviewPanel(
-      viewType,
-      'Fastforward',
-      vscode.ViewColumn.Active,
-      { retainContextWhenHidden: true },
-    );
+  resolveCustomEditor(
+    _document: vscode.CustomDocument,
+    panel: vscode.WebviewPanel,
+  ): void {
     panel.webview.html = html(panel.webview);
-    panel.onDidDispose(() => {
-      this.panel = undefined;
-    });
-    return panel;
+  }
+
+  dispose(): void {
+    this.registration.dispose();
   }
 }
 
@@ -77,7 +87,6 @@ function html(webview: vscode.Webview): string {
   </style>
 </head>
 <body>
-  <h1>Fastforward</h1>
 </body>
 </html>`;
 }
