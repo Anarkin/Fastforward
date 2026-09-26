@@ -294,7 +294,6 @@ body {
 }
 
 .commit.working-tree.empty {
-  cursor: default;
   color: var(--vscode-descriptionForeground);
 }
 
@@ -494,4 +493,60 @@ body {
 .error {
   padding: 8px;
   color: var(--vscode-errorForeground);
+}
+
+/* The commit list scrolls itself, and positions only the visible rows */
+.list {
+  height: 100%;
+  overflow: auto;
+}
+
+.list-spacer {
+  position: relative;
+  width: 100%;
+}
+
+.list-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+
+.commit.loading {
+  cursor: default;
+  color: var(--vscode-descriptionForeground);
+}
+
+/* Fixed, so a scroll position maps to a commit; see commitRowHeight */
+.list-row {
+  height: 50px;
+}
+
+.list-row > .commit {
+  box-sizing: border-box;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* A commit that is still loading */
+.commit.placeholder {
+  cursor: default;
+}
+
+.bar {
+  display: block;
+  height: 0.7em;
+  margin: 0.25em 0;
+  border-radius: 3px;
+  background: var(--vscode-descriptionForeground);
+  opacity: 0.15;
+}
+
+.subject-bar {
+  width: 70%;
+}
+
+.author-bar {
+  width: 35%;
 }

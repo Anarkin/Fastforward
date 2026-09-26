@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   workingTreeHash,
   type CommitInfo,
@@ -8,6 +9,7 @@ import {
   type ToExtension,
   type ToWebview,
 } from '../protocol';
+import { CommitHistory, commitPageSize } from './commitHistory';
 import { parsePatch, type DiffFile } from './diff';
 
 interface Props {
@@ -25,7 +27,12 @@ export function App({ post }: Props) {
   const activeTabRef = useRef<string>(undefined);
   const [repository, setRepository] = useState<Repository>();
   const [ref, setRef] = useState<string>();
-  const [commits, setCommits] = useState<readonly CommitInfo[]>([]);
+  // Filled in place as pages arrive; the version re-renders the list
+  const [history, setHistory] = useState<CommitHistory>();
+  const historyRef = useRef<CommitHistory>(undefined);
+  const [historyVersion, setHistoryVersion] = useState(0);
+  // Position to scroll to when a history arrives, to show the selected commit
+  const [scrollTarget, setScrollTarget] = useState<number>();
   // Number of uncommitted files, undefined until the extension reports it
   const [workingTree, setWorkingTree] = useState<number>();
   const [hash, setHash] = useState<string>();
@@ -49,10 +56,23 @@ export function App({ post }: Props) {
         case 'repository':
           setRepository(message);
           break;
-        case 'commits':
+        case 'commits': {
+          const next = new CommitHistory(message.ref, message.total);
+          next.add(0, message.commits);
+          historyRef.current = next;
           setRef(message.ref);
-          setCommits(message.commits);
+          setHistory(next);
+          setScrollTarget(message.selectedIndex);
           break;
+        }
+        case 'commitPage': {
+          const current = historyRef.current;
+          if (current && current.ref === message.ref) {
+            current.add(message.start, message.commits);
+            setHistoryVersion((version) => version + 1);
+          }
+          break;
+        }
         case 'workingTree':
           setWorkingTree(message.files);
           break;
@@ -79,7 +99,9 @@ export function App({ post }: Props) {
   function clear() {
     setRepository(undefined);
     setRef(undefined);
-    setCommits([]);
+    historyRef.current = undefined;
+    setHistory(undefined);
+    setScrollTarget(undefined);
     setWorkingTree(undefined);
     setHash(undefined);
     setFiles([]);
@@ -93,6 +115,12 @@ export function App({ post }: Props) {
     [post],
   );
 
+  const loadCommits = useCallback(
+    (start: number) =>
+      post({ type: 'loadCommits', start, count: commitPageSize }),
+    [post],
+  );
+
   const refsByCommit = useMemo(() => {
     const map = new Map<string, RefInfo[]>();
     for (const info of repository?.refs ?? []) {
@@ -101,18 +129,24 @@ export function App({ post }: Props) {
     return map;
   }, [repository]);
 
-  const commit = commits.find((c) => c.hash === hash);
+  const commit = history?.find(hash);
 
   const selectRef = (name: string | undefined) => {
     setRef(name);
     post({ type: 'selectRef', ref: name });
   };
-  const selectCommit = (next: string) => {
-    setHash(next);
+  // Selecting the selected commit again, or "No changes", clears the selection
+  const selectCommit = (next: string | undefined, index: number) => {
+    const target = next === hash ? undefined : next;
+    setHash(target);
     setFiles([]);
     setPath(undefined);
     setPatch('');
-    post({ type: 'selectCommit', hash: next });
+    post({
+      type: 'selectCommit',
+      hash: target,
+      index: target === undefined ? undefined : index,
+    });
   };
   const selectFile = (next: string | undefined) => {
     if (!hash) {
@@ -145,7 +179,10 @@ export function App({ post }: Props) {
             onSelect={selectRef}
           />
           <Commits
-            commits={commits}
+            history={history}
+            version={historyVersion}
+            scrollTarget={scrollTarget}
+            onLoad={loadCommits}
             workingTree={workingTree}
             refsByCommit={refsByCommit}
             selected={hash}
@@ -519,87 +556,187 @@ function RefBadges({ refs }: { refs: readonly RefInfo[] }) {
   );
 }
 
+// Every row has this height, so any scroll position maps to a commit without
+// measuring; matches .list-row in style.css
+const commitRowHeight = 50;
+// Pages are asked for once scrolling pauses this long, so dragging the
+// scrollbar across years doesn't load every page in between
+const loadDelay = 80;
+
+// Only the rows on screen are rendered, and the list has the height of the
+// whole history from the start, so the scrollbar never changes
 function Commits({
-  commits,
+  history,
+  version,
+  scrollTarget,
+  onLoad,
   workingTree,
   refsByCommit,
   selected,
   onSelect,
 }: {
-  commits: readonly CommitInfo[];
+  history: CommitHistory | undefined;
+  // Changes when pages arrive, as the history is filled in place
+  version: number;
+  scrollTarget: number | undefined;
+  onLoad: (start: number) => void;
   workingTree: number | undefined;
   refsByCommit: Map<string, RefInfo[]>;
   selected: string | undefined;
-  onSelect: (hash: string) => void;
+  onSelect: (hash: string | undefined, index: number) => void;
 }) {
+  const list = useRef<HTMLDivElement>(null);
+  const hasWorkingTree = workingTree !== undefined;
+  const offset = hasWorkingTree ? 1 : 0;
+  const count = offset + (history?.total ?? 0);
+
+  const virtualizer = useVirtualizer({
+    count,
+    getScrollElement: () => list.current,
+    estimateSize: () => commitRowHeight,
+    overscan: 10,
+  });
+  const rows = virtualizer.getVirtualItems();
+  const first = Math.max(0, (rows[0]?.index ?? 0) - offset);
+  const last = Math.max(0, (rows.at(-1)?.index ?? 0) - offset);
+
+  useEffect(() => {
+    if (!history) {
+      return undefined;
+    }
+    const timer = setTimeout(() => {
+      for (const start of history.takeMissingPages(first, last)) {
+        onLoad(start);
+      }
+    }, loadDelay);
+    return () => clearTimeout(timer);
+  }, [history, first, last, onLoad]);
+
+  // A new history scrolls to the selected commit, which may be years back
+  useEffect(() => {
+    if (history && scrollTarget !== undefined) {
+      virtualizer.scrollToIndex(offset + scrollTarget, { align: 'center' });
+    }
+  }, [history, scrollTarget, offset, virtualizer]);
+
+  const selectedPosition =
+    selected === workingTreeHash
+      ? -1
+      : selected === undefined
+        ? undefined
+        : history?.positionOf(selected);
+
   const onKeyDown = (event: React.KeyboardEvent) => {
     const step =
       event.key === 'ArrowDown' ? 1 : event.key === 'ArrowUp' ? -1 : 0;
-    if (!step) {
+    if (!step || !history) {
       return;
     }
     event.preventDefault();
-    const hashes = [
-      ...(workingTree ? [workingTreeHash] : []),
-      ...commits.map((c) => c.hash),
-    ];
-    const index = hashes.indexOf(selected ?? '');
-    const next = hashes[Math.max(0, Math.min(hashes.length - 1, index + step))];
-    if (next) {
-      onSelect(next);
+    const top = workingTree ? -1 : 0;
+    const position = Math.max(
+      top,
+      Math.min(history.total - 1, (selectedPosition ?? top - 1) + step),
+    );
+    // At either end, where selecting again would clear the selection
+    if (position === selectedPosition) {
+      return;
     }
-  };
-  const scrollIfSelected = (hash: string) => (element: HTMLElement | null) => {
-    if (element && hash === selected) {
-      element.scrollIntoView({ block: 'nearest' });
+    if (position === -1) {
+      onSelect(workingTreeHash, -1);
+    } else {
+      // Rows that haven't loaded yet can't be selected
+      const commit = history.at(position);
+      if (!commit) {
+        return;
+      }
+      onSelect(commit.hash, position);
     }
+    virtualizer.scrollToIndex(offset + position, { align: 'auto' });
   };
+
+  const renderRow = (index: number) => {
+    if (hasWorkingTree && index === 0) {
+      return (
+        <div
+          className={`commit working-tree ${workingTree === 0 ? 'empty' : ''} ${selected === workingTreeHash ? 'selected' : ''}`}
+          onClick={() =>
+            onSelect(workingTree > 0 ? workingTreeHash : undefined, -1)
+          }
+        >
+          <div className="commit-line">
+            <span className="subject">
+              {workingTree > 0 ? 'Uncommitted changes' : 'No changes'}
+            </span>
+            {workingTree > 0 && <span className="count">{workingTree}</span>}
+          </div>
+          <div className="commit-line secondary">
+            <span className="author">
+              {workingTree > 0
+                ? 'Staged, unstaged and untracked files'
+                : 'The working tree is clean'}
+            </span>
+          </div>
+        </div>
+      );
+    }
+    const position = index - offset;
+    const commit = history?.at(position);
+    if (!commit) {
+      return (
+        <div className="commit placeholder">
+          <div className="commit-line">
+            <span className="bar subject-bar" />
+          </div>
+          <div className="commit-line secondary">
+            <span className="bar author-bar" />
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div
+        className={`commit ${commit.hash === selected ? 'selected' : ''}`}
+        onClick={() => onSelect(commit.hash, position)}
+      >
+        <div className="commit-line">
+          <span className="subject">{commit.subject}</span>
+          {commit.files > 0 && <span className="count">{commit.files}</span>}
+        </div>
+        <div className="commit-line secondary">
+          <span className="author">{commit.authorName}</span>
+          <span className="refs">
+            <RefBadges refs={refsByCommit.get(commit.hash) ?? []} />
+          </span>
+          <span className="date">{formatDate(commit.authorDate)}</span>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <Column title="Commits">
-      <div className="list" tabIndex={0} onKeyDown={onKeyDown}>
-        {workingTree !== undefined && (
-          <div
-            className={`commit working-tree ${workingTree === 0 ? 'empty' : ''} ${selected === workingTreeHash ? 'selected' : ''}`}
-            onClick={() => workingTree > 0 && onSelect(workingTreeHash)}
-            ref={scrollIfSelected(workingTreeHash)}
-          >
-            <div className="commit-line">
-              <span className="subject">
-                {workingTree > 0 ? 'Uncommitted changes' : 'No changes'}
-              </span>
-              {workingTree > 0 && <span className="count">{workingTree}</span>}
+      <div
+        className="list"
+        ref={list}
+        tabIndex={0}
+        onKeyDown={onKeyDown}
+        data-version={version}
+      >
+        <div
+          className="list-spacer"
+          style={{ height: virtualizer.getTotalSize() }}
+        >
+          {rows.map((row) => (
+            <div
+              key={row.key}
+              className="list-row"
+              style={{ transform: `translateY(${row.start}px)` }}
+            >
+              {renderRow(row.index)}
             </div>
-            <div className="commit-line secondary">
-              <span className="author">
-                {workingTree > 0
-                  ? 'Staged, unstaged and untracked files'
-                  : 'The working tree is clean'}
-              </span>
-            </div>
-          </div>
-        )}
-        {commits.map((commit) => (
-          <div
-            key={commit.hash}
-            className={`commit ${commit.hash === selected ? 'selected' : ''}`}
-            onClick={() => onSelect(commit.hash)}
-            ref={scrollIfSelected(commit.hash)}
-          >
-            <div className="commit-line">
-              <span className="subject">{commit.subject}</span>
-              {commit.files > 0 && (
-                <span className="count">{commit.files}</span>
-              )}
-            </div>
-            <div className="commit-line secondary">
-              <span className="author">{commit.authorName}</span>
-              <span className="refs">
-                <RefBadges refs={refsByCommit.get(commit.hash) ?? []} />
-              </span>
-              <span className="date">{formatDate(commit.authorDate)}</span>
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </Column>
   );

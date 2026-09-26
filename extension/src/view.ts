@@ -4,6 +4,7 @@ import * as vscode from 'vscode';
 import type { API, Repository } from './git/git';
 import { getGitApi, listRefs, pickRepository } from './git/repository';
 import {
+  countCommits,
   logCommits,
   showFiles,
   showPatch,
@@ -29,6 +30,10 @@ const viewUri = vscode.Uri.from({ scheme: 'fastforward', path: '/view' });
 // an extension to open an editor in the modal editor part (group -4)
 const modalEditorGroup = -4;
 
+// The first page of commits, sent with the history's size; the webview asks
+// for the rest as they scroll into view
+const firstPageSize = 100;
+
 // Repository roots of the open tabs, kept per workspace
 const tabsKey = 'tabs';
 const activeTabKey = 'activeTab';
@@ -41,7 +46,10 @@ const maxRecent = 20;
 interface TabState {
   ref: string | undefined;
   hash: string | undefined;
+  // Position of the selected commit in the history
+  index: number | undefined;
   path: string | undefined;
+  // The commits loaded so far, to check selections against
   commits: Map<string, CommitInfo>;
   // The last message of each type sent for this tab, replayed when the tab
   // or the modal opens again so it shows up instantly, before the refresh
@@ -236,13 +244,23 @@ export class FastforwardView
       return;
     }
     switch (message.type) {
+      case 'loadCommits':
+        await this.sendCommitPage(context, message.start, message.count);
+        break;
       case 'selectRef':
         context.tab.ref = message.ref;
+        context.tab.index = undefined;
         await this.sendCommits(context);
         break;
       case 'selectCommit':
         context.tab.hash = message.hash;
+        context.tab.index = message.index;
         context.tab.path = undefined;
+        // Nothing selected shows no files or diff when the view reopens
+        if (!message.hash) {
+          context.tab.shown.delete('files');
+          context.tab.shown.delete('diff');
+        }
         await this.sendCommit(context);
         break;
       case 'selectFile':
@@ -334,8 +352,14 @@ export class FastforwardView
     await this.setTabs(this.tabs, active);
     this.postTabs(session);
     if (active) {
-      for (const message of this.tabState(active).shown.values()) {
-        session.post(message);
+      const tab = this.tabState(active);
+      for (const message of tab.shown.values()) {
+        // Scrolls to the commit selected since the list was sent
+        session.post(
+          message.type === 'commits'
+            ? { ...message, selectedIndex: tab.index }
+            : message,
+        );
       }
     }
     session.watcher?.dispose();
@@ -375,6 +399,7 @@ export class FastforwardView
       tab = {
         ref: undefined,
         hash: undefined,
+        index: undefined,
         path: undefined,
         commits: new Map(),
         shown: new Map(),
@@ -411,7 +436,10 @@ export class FastforwardView
       root,
       tab,
       post: (message) => {
-        tab.shown.set(message.type, message);
+        // Pages aren't replayed; the webview asks for the ones on screen
+        if (message.type !== 'commitPage') {
+          tab.shown.set(message.type, message);
+        }
         if (this.activeTab === root) {
           session.post(message);
         }
@@ -450,11 +478,44 @@ export class FastforwardView
 
   private async sendCommits(context: Context): Promise<void> {
     const { ref } = context.tab;
-    const commits = await logCommits(context.git.git.path, context.root, ref);
+    const gitPath = context.git.git.path;
+    const [total, commits] = await Promise.all([
+      countCommits(gitPath, context.root, ref),
+      logCommits(gitPath, context.root, ref, 0, firstPageSize),
+    ]);
     context.tab.commits = new Map(
       commits.map((commit) => [commit.hash, commit]),
     );
-    context.post({ type: 'commits', ref, commits });
+    context.post({
+      type: 'commits',
+      ref,
+      total,
+      commits,
+      selectedIndex: context.tab.index,
+    });
+  }
+
+  private async sendCommitPage(
+    context: Context,
+    start: number,
+    count: number,
+  ): Promise<void> {
+    const { ref } = context.tab;
+    const commits = await logCommits(
+      context.git.git.path,
+      context.root,
+      ref,
+      start,
+      count,
+    );
+    // The ref changed while this page loaded
+    if (context.tab.ref !== ref) {
+      return;
+    }
+    for (const commit of commits) {
+      context.tab.commits.set(commit.hash, commit);
+    }
+    context.post({ type: 'commitPage', ref, start, commits });
   }
 
   private async sendCommit(context: Context): Promise<void> {

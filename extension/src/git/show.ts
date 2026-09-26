@@ -64,7 +64,20 @@ export function showPatch(
   ]);
 }
 
-const maxCommits = 300;
+// Took 133 ms for 166k commits
+export async function countCommits(
+  gitPath: string,
+  cwd: string,
+  ref: string | undefined,
+): Promise<number> {
+  const output = await runGit(gitPath, cwd, [
+    'rev-list',
+    '--count',
+    ref ?? 'HEAD',
+    '--',
+  ]);
+  return Number(output.trim());
+}
 
 // The Git extension API only counts a commit's files with --shortstat, which
 // diffs the contents of every file and took 8 s for 300 commits in a large
@@ -73,10 +86,13 @@ export async function logCommits(
   gitPath: string,
   cwd: string,
   ref: string | undefined,
+  skip: number,
+  count: number,
 ): Promise<CommitInfo[]> {
   const output = await runGit(gitPath, cwd, [
     'log',
-    `-n${maxCommits}`,
+    `--skip=${skip}`,
+    `-n${count}`,
     '--raw',
     '-z',
     '--no-renames',

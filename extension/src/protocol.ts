@@ -51,7 +51,19 @@ export type ToExtension =
       readonly message: string;
     }
   | { readonly type: 'selectRef'; readonly ref: string | undefined }
-  | { readonly type: 'selectCommit'; readonly hash: string }
+  // Asks for the commits at positions start..start+count of the history
+  | {
+      readonly type: 'loadCommits';
+      readonly start: number;
+      readonly count: number;
+    }
+  | {
+      readonly type: 'selectCommit';
+      // Undefined clears the selection
+      readonly hash: string | undefined;
+      // Position in the history, to scroll back to it when the view reopens
+      readonly index: number | undefined;
+    }
   | {
       readonly type: 'selectFile';
       readonly hash: string;
@@ -69,9 +81,21 @@ export type ToWebview =
       readonly head: string | undefined;
       readonly refs: readonly RefInfo[];
     }
+  // Starts a new history: its size, so the list has its full height at once,
+  // and the first page of commits
   | {
       readonly type: 'commits';
       readonly ref: string | undefined;
+      readonly total: number;
+      readonly commits: readonly CommitInfo[];
+      // Position of the selected commit, to scroll to
+      readonly selectedIndex: number | undefined;
+    }
+  // Commits at positions start.. of the history, answering loadCommits
+  | {
+      readonly type: 'commitPage';
+      readonly ref: string | undefined;
+      readonly start: number;
       readonly commits: readonly CommitInfo[];
     }
   | { readonly type: 'workingTree'; readonly files: number }
