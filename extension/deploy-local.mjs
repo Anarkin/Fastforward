@@ -19,7 +19,12 @@ if (!fs.existsSync(target)) {
   process.exit(1);
 }
 
-for (const file of ['package.json', 'dist/extension.js']) {
+for (const file of [
+  'package.json',
+  'dist/extension.js',
+  'dist/webview.js',
+  'dist/webview.css',
+]) {
   fs.copyFileSync(file, path.join(target, file));
 }
 fs.writeFileSync(path.join(target, '.dev-reload'), new Date().toISOString());

@@ -3,3 +3,4 @@ out/
 .vscode-test/
 package-lock.json
 coverage/
+src/git/git.d.ts

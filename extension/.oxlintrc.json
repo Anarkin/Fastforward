@@ -8,7 +8,8 @@
   "rules": {
     "typescript/no-floating-promises": "error",
     "typescript/no-misused-promises": "error",
-    "typescript/await-thenable": "error"
+    "typescript/await-thenable": "error",
+    "unicorn/require-post-message-target-origin": "off"
   },
-  "ignorePatterns": ["dist", "out", ".vscode-test"]
+  "ignorePatterns": ["dist", "out", ".vscode-test", "src/git/git.d.ts"]
 }

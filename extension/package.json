@@ -79,6 +79,8 @@
   "devDependencies": {
     "@types/mocha": "^10.0.10",
     "@types/node": "^24.19.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "@types/vscode": "^1.125.0",
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^3.1.0",
@@ -87,6 +89,11 @@
     "oxlint": "^1.85.0",
     "oxlint-tsgolint": "^7.0.2003",
     "prettier": "^3.9.9",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
     "typescript": "^7.0.2"
-  }
+  },
+  "extensionDependencies": [
+    "vscode.git"
+  ]
 }
