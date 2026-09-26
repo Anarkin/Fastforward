@@ -206,25 +206,20 @@ export function LocationsPopup({
               )
             </header>
             <div className="locations-list">
-              {group.kind === 'branch' && !query && (
-                <HeadRow
-                  repository={repository}
-                  selected={selected}
-                  onJump={jump}
-                />
-              )}
               {query ? (
                 <SearchResults
                   group={group}
                   query={query}
                   active={column === active.column ? activeRef : undefined}
                   selected={selected}
+                  head={repository?.head}
                   onJump={jump}
                 />
               ) : (
                 <RefTree
                   refs={refs.filter((ref) => ref.kind === group.kind)}
                   selected={selected}
+                  head={repository?.head}
                   onSelect={jump}
                 />
               )}
@@ -236,31 +231,12 @@ export function LocationsPopup({
   );
 }
 
-function HeadRow({
-  repository,
-  selected,
-  onJump,
-}: {
-  repository: Repository | undefined;
-  selected: string | undefined;
-  onJump: (commit: string) => void;
-}) {
-  const headCommit = repository?.headCommit;
-  return (
-    <div
-      className={`row head ${headCommit !== undefined && headCommit === selected ? 'selected' : ''}`}
-      onClick={() => headCommit && onJump(headCommit)}
-    >
-      HEAD{repository?.head ? ` (${repository.head})` : ''}
-    </div>
-  );
-}
-
 function SearchResults({
   group,
   query,
   active,
   selected,
+  head,
   onJump,
 }: {
   group: SearchGroup;
@@ -268,6 +244,8 @@ function SearchResults({
   // The result Enter jumps to, when it is in this column
   active: RefInfo | undefined;
   selected: string | undefined;
+  // The checked-out branch, marked like its bubble
+  head: string | undefined;
   onJump: (commit: string) => void;
 }) {
   const openMenu = useContext(OpenContextMenu);
@@ -279,7 +257,7 @@ function SearchResults({
       {group.refs.map((ref) => (
         <div
           key={ref.name}
-          className={`row result ${ref === active ? 'active' : ''} ${ref.commit === selected ? 'selected' : ''}`}
+          className={`row result ${ref === active ? 'active' : ''} ${ref.commit === selected ? 'selected' : ''} ${ref.kind === 'branch' && ref.name === head ? 'checked-out' : ''}`}
           title={ref.name}
           ref={(element) => {
             if (element && ref === active) {
@@ -334,10 +312,13 @@ function buildTree(refs: readonly RefInfo[]): TreeNode {
 function RefTree({
   refs,
   selected,
+  head,
   onSelect,
 }: {
   refs: readonly RefInfo[];
   selected: string | undefined;
+  // The checked-out branch, marked like its bubble
+  head: string | undefined;
   onSelect: (commit: string) => void;
 }) {
   const tree = useMemo(() => buildTree(refs), [refs]);
@@ -349,6 +330,7 @@ function RefTree({
       node={tree}
       depth={0}
       selected={selected}
+      head={head}
       onSelect={onSelect}
     />
   );
@@ -359,11 +341,14 @@ function TreeChildren({
   node,
   depth,
   selected,
+  head,
   onSelect,
 }: {
   node: TreeNode;
   depth: number;
   selected: string | undefined;
+  // The checked-out branch, marked like its bubble
+  head: string | undefined;
   onSelect: (commit: string) => void;
 }) {
   const openMenu = useContext(OpenContextMenu);
@@ -381,6 +366,7 @@ function TreeChildren({
             node={child}
             depth={depth}
             selected={selected}
+            head={head}
             onSelect={onSelect}
             // A column's only top folder, usually origin, starts open
             initiallyOpen={depth === 0 && children.length === 1}
@@ -388,7 +374,7 @@ function TreeChildren({
         ) : (
           <div
             key={child.name}
-            className={`row tree-row leaf ${child.ref && child.ref.commit === selected ? 'selected' : ''}`}
+            className={`row tree-row leaf ${child.ref && child.ref.commit === selected ? 'selected' : ''} ${child.ref?.kind === 'branch' && child.ref.name === head ? 'checked-out' : ''}`}
             // Past the twisty space, so leaves line up with sibling folders
             style={{ paddingLeft: treeIndent(depth) + twistyWidth }}
             title={child.ref?.name}
@@ -414,12 +400,15 @@ function TreeFolder({
   node,
   depth,
   selected,
+  head,
   onSelect,
   initiallyOpen,
 }: {
   node: TreeNode;
   depth: number;
   selected: string | undefined;
+  // The checked-out branch, marked like its bubble
+  head: string | undefined;
   onSelect: (commit: string) => void;
   initiallyOpen: boolean;
 }) {
@@ -440,6 +429,7 @@ function TreeFolder({
           node={node}
           depth={depth + 1}
           selected={selected}
+          head={head}
           onSelect={onSelect}
         />
       )}

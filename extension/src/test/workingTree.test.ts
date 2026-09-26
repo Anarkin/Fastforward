@@ -12,7 +12,9 @@ import {
   workingTreePatch,
 } from '../git/show';
 
-suite('Uncommitted changes', () => {
+suite('Uncommitted changes', function () {
+  // git in temp repositories can take seconds on a busy machine
+  this.timeout(20_000);
   let gitPath: string;
   let cwd: string;
 
@@ -69,7 +71,9 @@ suite('Uncommitted changes', () => {
   });
 });
 
-suite('Repository files', () => {
+suite('Repository files', function () {
+  // git in temp repositories can take seconds on a busy machine
+  this.timeout(20_000);
   let gitPath: string;
   let cwd: string;
 

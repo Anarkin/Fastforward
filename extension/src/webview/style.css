@@ -895,3 +895,9 @@ body.resizing {
     var(--vscode-panel-border)
   );
 }
+
+/* The checked-out branch in the Locations popup, colored like its bubble */
+.locations-list .row.checked-out {
+  color: var(--vscode-tab-activeForeground);
+  background: var(--vscode-tab-activeBackground);
+}
