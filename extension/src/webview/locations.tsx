@@ -51,6 +51,23 @@ export function searchRefs(
   });
 }
 
+// A ref's name as a bubble in its kind's color, like everywhere else
+function RefLabel({
+  kind,
+  checkedOut,
+  children,
+}: {
+  kind: RefKind;
+  checkedOut: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <span className={`badge ${kind} ${checkedOut ? 'checked-out' : ''}`}>
+      {children}
+    </span>
+  );
+}
+
 // The name with the part matching the query highlighted
 function Highlight({ text, query }: { text: string; query: string }) {
   const start = text.toLowerCase().indexOf(query.toLowerCase());
@@ -257,7 +274,7 @@ function SearchResults({
       {group.refs.map((ref) => (
         <div
           key={ref.name}
-          className={`row result ${ref === active ? 'active' : ''} ${ref.commit === selected ? 'selected' : ''} ${ref.kind === 'branch' && ref.name === head ? 'checked-out' : ''}`}
+          className={`row result ${ref === active ? 'active' : ''} ${ref.commit === selected ? 'selected' : ''}`}
           title={ref.name}
           ref={(element) => {
             if (element && ref === active) {
@@ -272,7 +289,12 @@ function SearchResults({
             })
           }
         >
-          <Highlight text={ref.name} query={query} />
+          <RefLabel
+            kind={ref.kind}
+            checkedOut={ref.kind === 'branch' && ref.name === head}
+          >
+            <Highlight text={ref.name} query={query} />
+          </RefLabel>
         </div>
       ))}
       {group.more > 0 && (
@@ -374,7 +396,7 @@ function TreeChildren({
         ) : (
           <div
             key={child.name}
-            className={`row tree-row leaf ${child.ref && child.ref.commit === selected ? 'selected' : ''} ${child.ref?.kind === 'branch' && child.ref.name === head ? 'checked-out' : ''}`}
+            className={`row tree-row leaf ${child.ref && child.ref.commit === selected ? 'selected' : ''}`}
             // Past the twisty space, so leaves line up with sibling folders
             style={{ paddingLeft: treeIndent(depth) + twistyWidth }}
             title={child.ref?.name}
@@ -388,7 +410,18 @@ function TreeChildren({
             }
           >
             <IndentGuides depth={depth} />
-            {child.name}
+            {child.ref ? (
+              <RefLabel
+                kind={child.ref.kind}
+                checkedOut={
+                  child.ref.kind === 'branch' && child.ref.name === head
+                }
+              >
+                {child.name}
+              </RefLabel>
+            ) : (
+              child.name
+            )}
           </div>
         ),
       )}

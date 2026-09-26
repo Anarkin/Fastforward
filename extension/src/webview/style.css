@@ -408,6 +408,17 @@ body.resizing {
   background: var(--vscode-button-background);
 }
 
+/* A lighter shade of the local branches' blue, so origin/main pairs with main
+   but reads as the remote one */
+.badge.remote {
+  color: var(--vscode-foreground);
+  background: color-mix(
+    in srgb,
+    var(--vscode-button-background) 25%,
+    var(--vscode-editor-background)
+  );
+}
+
 .badge.tag {
   color: var(--vscode-editor-background);
   background: var(--vscode-charts-yellow);
@@ -896,8 +907,21 @@ body.resizing {
   );
 }
 
-/* The checked-out branch in the Locations popup, colored like its bubble */
-.locations-list .row.checked-out {
-  color: var(--vscode-tab-activeForeground);
-  background: var(--vscode-tab-activeBackground);
+/* Refs in the Locations popup are bubbles, as everywhere else; long names
+   end in an ellipsis */
+.locations-list .badge {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+
+.locations-list .badge .match {
+  color: inherit;
+  background: color-mix(
+    in srgb,
+    var(--vscode-editor-background) 45%,
+    transparent
+  );
+  border-radius: 2px;
 }

@@ -369,6 +369,7 @@ export function App({ post }: Props) {
             />
             {tabs.length > 0 && (
               <BubbleBar
+                root={activeTab}
                 repository={repository}
                 selected={hash}
                 vips={vips}
@@ -735,19 +736,27 @@ function RefBubble({
 // remote and tag in a popup, then the repository's VIPs, sorted; clicking one
 // jumps to it
 function BubbleBar({
+  root,
   repository,
   selected,
   vips,
   onJump,
 }: {
+  // The active tab's repository, whose search text the popup shows
+  root: string | undefined;
   repository: Repository | undefined;
   selected: string | undefined;
   vips: readonly VipRef[];
   onJump: (commit: string) => void;
 }) {
   const [locationsOpen, setLocationsOpen] = useState(false);
-  // Kept while the popup is closed, and while switching tabs
-  const [locationsQuery, setLocationsQuery] = useState('');
+  // The search text of each repository, kept while the popup is closed
+  const [queries, setQueries] = useState<ReadonlyMap<string, string>>(
+    new Map(),
+  );
+  const locationsQuery = (root && queries.get(root)) ?? '';
+  const setLocationsQuery = (query: string) =>
+    root && setQueries((all) => new Map(all).set(root, query));
   const button = useRef<HTMLButtonElement>(null);
   const closeLocations = useCallback(() => setLocationsOpen(false), []);
   const refs = repository?.refs ?? [];
