@@ -26,7 +26,8 @@ body {
   flex: none;
   display: flex;
   align-items: stretch;
-  padding: 4px 4px 0;
+  /* No right padding: the settings button ends the strip */
+  padding: 4px 0 0 4px;
   background: var(--vscode-editorGroupHeader-tabsBackground);
 }
 
@@ -46,11 +47,11 @@ body {
   flex: none;
   display: flex;
   align-items: center;
-  padding: 0 0 2px 4px;
+  padding: 0 2px 2px 4px;
 }
 
 .settings-button {
-  width: 24px;
+  width: 20px;
   height: 24px;
   padding: 0;
   font: inherit;
@@ -270,18 +271,37 @@ body.resizing {
   font-weight: 600;
 }
 
+/* Matches twistyWidth in App.tsx */
 .twisty {
   display: inline-block;
-  width: 12px;
+  width: 10px;
   color: var(--vscode-descriptionForeground);
+}
+
+.tree-row {
+  position: relative;
+}
+
+/* A vertical line under an ancestor's twisty, joining up across rows */
+.indent-guide {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(
+    --vscode-tree-inactiveIndentGuidesStroke,
+    var(--vscode-tree-indentGuidesStroke)
+  );
 }
 
 .list {
   outline: none;
 }
 
+/* Exact heights, adding up to commitRowHeight: 5 + 20 + 2 + 18 + 4 + 1 border,
+   plus bubbleLineHeight per ref */
 .commit {
-  padding: 5px 8px;
+  padding: 5px 8px 4px;
   cursor: pointer;
   border-bottom: 1px solid var(--vscode-panel-border);
 }
@@ -291,9 +311,11 @@ body.resizing {
   align-items: center;
   gap: 6px;
   min-width: 0;
+  height: 20px;
 }
 
 .commit-line.secondary {
+  height: 18px;
   margin-top: 2px;
   font-size: 0.9em;
   color: var(--vscode-descriptionForeground);
@@ -332,17 +354,23 @@ body.resizing {
   flex: none;
 }
 
+/* Neutral gray in any theme, so file counts don't look like refs */
 .count {
   flex: none;
   padding: 0 5px;
   font-size: 0.85em;
   border-radius: 3px;
-  background: var(--vscode-badge-background);
-  color: var(--vscode-badge-foreground);
+  color: var(--vscode-foreground);
+  background: color-mix(in srgb, var(--vscode-foreground) 12%, transparent);
 }
 
+/* The same size everywhere: in commit rows and in the Diff summary */
 .badge {
-  padding: 0 5px;
+  display: inline-block;
+  box-sizing: border-box;
+  height: 16px;
+  line-height: 16px;
+  padding: 0 6px;
   font-size: 0.85em;
   font-style: normal;
   white-space: nowrap;
@@ -420,6 +448,7 @@ body.resizing {
 .summary dd {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 4px;
   margin: 0;
 }
@@ -541,9 +570,20 @@ body.resizing {
   color: var(--vscode-descriptionForeground);
 }
 
-/* Fixed, so a scroll position maps to a commit; see commitRowHeight */
-.list-row {
-  height: 50px;
+/* A row's height is set from its ref count; see commitRowHeight */
+
+/* A ref of the commit on its own line, below the author and date; see
+   bubbleLineHeight */
+.bubble-line {
+  display: flex;
+  height: 20px;
+  align-items: center;
+  min-width: 0;
+}
+
+.bubble-line .badge {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .list-row > .commit {

@@ -72,7 +72,7 @@ export function App({ post }: Props) {
           setRepository(message);
           break;
         case 'commits': {
-          const next = new CommitHistory(message.total);
+          const next = new CommitHistory(message.total, message.decorations);
           next.add(0, message.commits);
           historyRef.current = next;
           setHistory(next);
@@ -529,10 +529,11 @@ function TreeFolder({
   return (
     <>
       <div
-        className={`row folder ${group ? 'group' : ''}`}
-        style={{ paddingLeft: 8 + depth * 14 }}
+        className={`row tree-row folder ${group ? 'group' : ''}`}
+        style={{ paddingLeft: treeIndent(depth) }}
         onClick={() => setOpen(!open)}
       >
+        <IndentGuides depth={depth} />
         <span className="twisty">{open ? '▾' : '▸'}</span>
         {label}
       </div>
@@ -551,15 +552,40 @@ function TreeFolder({
           ) : (
             <div
               key={child.name}
-              className={`row leaf ${child.ref && child.ref.commit === selected ? 'selected' : ''}`}
-              style={{ paddingLeft: 8 + (depth + 1) * 14 + 12 }}
+              className={`row tree-row leaf ${child.ref && child.ref.commit === selected ? 'selected' : ''}`}
+              // Past the twisty space, so leaves line up with sibling folders
+              style={{ paddingLeft: treeIndent(depth + 1) + twistyWidth }}
               title={child.ref?.name}
               onClick={() => child.ref && onSelect(child.ref.commit)}
             >
+              <IndentGuides depth={depth + 1} />
               {child.name}
             </div>
           ),
         )}
+    </>
+  );
+}
+
+// Like VS Code's trees: a level is indented by its parent's twisty, and a
+// guide runs down from each ancestor's twisty
+const treePadding = 8;
+const twistyWidth = 10;
+
+function treeIndent(depth: number): number {
+  return treePadding + depth * twistyWidth;
+}
+
+function IndentGuides({ depth }: { depth: number }) {
+  return (
+    <>
+      {Array.from({ length: depth }, (_, level) => (
+        <span
+          key={level}
+          className="indent-guide"
+          style={{ left: treeIndent(level) + twistyWidth / 2 }}
+        />
+      ))}
     </>
   );
 }
@@ -593,9 +619,11 @@ function RefBadges({ refs }: { refs: readonly RefInfo[] }) {
   );
 }
 
-// Every row has this height, so any scroll position maps to a commit without
-// measuring; matches .list-row in style.css
+// A row is this high, plus a line per ref pointing at its commit; the ref
+// counts arrive with the history, so every row's height, and so the scroll
+// position of every commit, is known without loading or measuring it
 const commitRowHeight = 50;
+const bubbleLineHeight = 20;
 // Pages are asked for once scrolling pauses this long, so dragging the
 // scrollbar across years doesn't load every page in between
 const loadDelay = 80;
@@ -627,12 +655,22 @@ function Commits({
   const offset = hasWorkingTree ? 1 : 0;
   const count = offset + (history?.total ?? 0);
 
+  const rowHeight = useCallback(
+    (index: number) =>
+      index < offset
+        ? commitRowHeight
+        : commitRowHeight +
+          (history?.refCountAt(index - offset) ?? 0) * bubbleLineHeight,
+    [history, offset],
+  );
   const virtualizer = useVirtualizer({
     count,
     getScrollElement: () => list.current,
-    estimateSize: () => commitRowHeight,
+    estimateSize: rowHeight,
     overscan: 10,
   });
+  // The virtualizer keeps the heights it computed; a new history has new ones
+  useEffect(() => virtualizer.measure(), [virtualizer, rowHeight]);
   const rows = virtualizer.getVirtualItems();
   const first = Math.max(0, (rows[0]?.index ?? 0) - offset);
   const last = Math.max(0, (rows.at(-1)?.index ?? 0) - offset);
@@ -750,11 +788,15 @@ function Commits({
         </div>
         <div className="commit-line secondary">
           <span className="author">{commit.authorName}</span>
-          <span className="refs">
-            <RefBadges refs={refsByCommit.get(commit.hash) ?? []} />
-          </span>
           <span className="date">{formatDate(commit.authorDate)}</span>
         </div>
+        {(refsByCommit.get(commit.hash) ?? []).map((ref) => (
+          <div key={`${ref.kind}:${ref.name}`} className="bubble-line">
+            <span className={`badge ${ref.kind}`} title={ref.name}>
+              {ref.name}
+            </span>
+          </div>
+        ))}
       </div>
     );
   };
@@ -776,7 +818,10 @@ function Commits({
             <div
               key={row.key}
               className="list-row"
-              style={{ transform: `translateY(${row.start}px)` }}
+              style={{
+                height: row.size,
+                transform: `translateY(${row.start}px)`,
+              }}
             >
               {renderRow(row.index)}
             </div>

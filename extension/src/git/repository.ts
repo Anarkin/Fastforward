@@ -30,6 +30,11 @@ export async function listRefs(repository: Repository): Promise<RefInfo[]> {
       return [];
     }
     const type: number = ref.type;
+    // origin/HEAD only says which branch is the remote's default, and would
+    // crowd the commit it points to next to that branch
+    if (type === refTypeRemoteHead && ref.name.endsWith('/HEAD')) {
+      return [];
+    }
     const kind =
       type === refTypeHead
         ? 'branch'

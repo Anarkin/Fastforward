@@ -498,7 +498,10 @@ export class FastforwardView
 
   private async sendCommits(context: Context): Promise<void> {
     const gitPath = context.git.git.path;
-    const history = await listHistory(gitPath, context.root);
+    const [history, refs] = await Promise.all([
+      listHistory(gitPath, context.root),
+      listRefs(context.repository),
+    ]);
     const commits = await logCommits(
       gitPath,
       context.root,
@@ -510,9 +513,17 @@ export class FastforwardView
     // The selected commit may have moved, or be gone after a rebase
     tab.index =
       tab.hash === undefined ? undefined : tab.positions.get(tab.hash);
+    const refCounts = new Map<number, number>();
+    for (const ref of refs) {
+      const position = tab.positions.get(ref.commit);
+      if (position !== undefined) {
+        refCounts.set(position, (refCounts.get(position) ?? 0) + 1);
+      }
+    }
     context.post({
       type: 'commits',
       total: history.length,
+      decorations: [...refCounts],
       commits,
       selectedIndex: tab.index,
     });

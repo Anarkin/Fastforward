@@ -10,8 +10,20 @@ export class CommitHistory {
   private readonly rows = new Map<number, CommitInfo>();
   private readonly positions = new Map<string, number>();
   private readonly requested = new Set<number>();
+  private readonly refCounts: ReadonlyMap<number, number>;
 
-  constructor(readonly total: number) {}
+  constructor(
+    readonly total: number,
+    decorations: readonly (readonly [number, number])[] = [],
+  ) {
+    this.refCounts = new Map(decorations);
+  }
+
+  // How many refs point at the commit at this position, known before the
+  // commit itself is loaded
+  refCountAt(position: number): number {
+    return this.refCounts.get(position) ?? 0;
+  }
 
   at(position: number): CommitInfo | undefined {
     return this.rows.get(position);

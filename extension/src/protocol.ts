@@ -96,6 +96,9 @@ export type ToWebview =
   | {
       readonly type: 'commits';
       readonly total: number;
+      // [position, number of refs] for every commit that has refs, so the
+      // height of each row is known before its commit is loaded
+      readonly decorations: readonly (readonly [number, number])[];
       readonly commits: readonly CommitInfo[];
       // Position of the selected commit, to scroll to
       readonly selectedIndex: number | undefined;

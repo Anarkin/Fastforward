@@ -22,11 +22,9 @@ suite('Git repository', () => {
   test('lists refs including the current branch', async () => {
     const head = repository.state.HEAD?.name;
     assert.ok(head, 'no HEAD branch');
-    assert.ok(
-      (await listRefs(repository)).some(
-        (ref) => ref.kind === 'branch' && ref.name === head,
-      ),
-    );
+    const refs = await listRefs(repository);
+    assert.ok(refs.some((ref) => ref.kind === 'branch' && ref.name === head));
+    assert.ok(!refs.some((ref) => ref.name.endsWith('/HEAD')));
   });
 
   test('lists the history, its commits, their files and patches', async () => {

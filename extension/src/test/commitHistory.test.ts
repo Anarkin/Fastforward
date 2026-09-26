@@ -35,3 +35,15 @@ suite('CommitHistory', () => {
     assert.deepStrictEqual(history.takeMissingPages(0, 249), []);
   });
 });
+
+suite('CommitHistory ref counts', () => {
+  test('knows how many refs each position has before loading it', () => {
+    const history = new CommitHistory(100, [
+      [0, 2],
+      [42, 1],
+    ]);
+    assert.strictEqual(history.refCountAt(0), 2);
+    assert.strictEqual(history.refCountAt(42), 1);
+    assert.strictEqual(history.refCountAt(7), 0);
+  });
+});
