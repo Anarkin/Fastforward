@@ -6,6 +6,7 @@ import { IndentGuides, treeIndent, twistyWidth } from './tree';
 export interface Repository {
   head: string | undefined;
   headCommit: string | undefined;
+  headUpstream: string | undefined;
   refs: readonly RefInfo[];
 }
 

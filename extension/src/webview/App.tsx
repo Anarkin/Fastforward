@@ -1,4 +1,5 @@
 import {
+  createContext,
   useCallback,
   useContext,
   useEffect,
@@ -33,7 +34,7 @@ import {
 import { FileTree, foldersOf } from './fileTree';
 import { GraphCell, graphWidth, rowLanes } from './graph';
 import { LocationsPopup, type Repository } from './locations';
-import { compareVips } from './vips';
+import { shownVips } from './vips';
 
 interface Props {
   post: (message: ToExtension) => void;
@@ -324,84 +325,92 @@ export function App({ post }: Props) {
 
   return (
     <OpenContextMenu.Provider value={openMenu}>
-      <div className="app">
-        <TabBar
-          tabs={tabs}
-          active={activeTab}
-          onSelect={(root) => post({ type: 'selectTab', root })}
-          onClose={(root) => post({ type: 'closeTab', root })}
-          onAdd={() => post({ type: 'addTab' })}
-          onSort={() => post({ type: 'sortTabs' })}
-          onLog={log}
-        />
-        {tabs.length > 0 && (
-          <BubbleBar
-            repository={repository}
-            selected={hash}
-            vips={vips}
-            onJump={jump}
-          />
-        )}
-        {menu && <ContextMenu menu={menu} onClose={closeMenu} />}
-        {tabs.length === 0 ? (
-          <div className="empty-state">
-            No repository is open. Use + to open one.
-          </div>
-        ) : (
-          <ColumnResizingProvider value={columns.resizing}>
-            <div
-              className="columns"
-              ref={columns.container}
-              style={{ gridTemplateColumns: columns.template }}
-            >
-              <Commits
-                history={history}
-                version={historyVersion}
-                scrollTarget={scrollTarget}
-                onScrolled={onScrolled}
-                onLoad={loadCommits}
-                workingTree={workingTree}
-                refsByCommit={refsByCommit}
+      <CheckedOutBranch.Provider value={repository?.head}>
+        <DetachedHead.Provider
+          value={
+            repository && !repository.head ? repository.headCommit : undefined
+          }
+        >
+          <div className="app">
+            <TabBar
+              tabs={tabs}
+              active={activeTab}
+              onSelect={(root) => post({ type: 'selectTab', root })}
+              onClose={(root) => post({ type: 'closeTab', root })}
+              onAdd={() => post({ type: 'addTab' })}
+              onSort={() => post({ type: 'sortTabs' })}
+              onLog={log}
+            />
+            {tabs.length > 0 && (
+              <BubbleBar
+                repository={repository}
                 selected={hash}
-                onSelect={selectCommit}
-                onToggleMerge={(merge) =>
-                  post({ type: 'toggleMerge', hash: merge })
-                }
-                collapseMerges={collapseMerges}
-                onCollapseMerges={(collapse) => {
-                  setCollapseMerges(collapse);
-                  post({ type: 'setCollapseMerges', collapse });
-                }}
+                vips={vips}
+                onJump={jump}
               />
-              <Files
-                mode={filesMode}
-                onMode={changeFilesMode}
-                files={files}
-                tree={
-                  hash !== undefined && tree?.hash === hash
-                    ? tree.paths
-                    : undefined
-                }
-                openFolders={openFolders}
-                onToggleFolder={toggleFolder}
-                selected={path}
-                onSelect={selectFile}
-              />
-              <Diff
-                workingTree={hash === workingTreeHash}
-                commit={commit}
-                refs={commit ? (refsByCommit.get(commit.hash) ?? []) : []}
-                files={files}
-                patch={patch}
-                fileContent={
-                  fileContent?.path === path ? fileContent : undefined
-                }
-                error={error}
-              />
-            </div>
-          </ColumnResizingProvider>
-        )}
-      </div>
+            )}
+            {menu && <ContextMenu menu={menu} onClose={closeMenu} />}
+            {tabs.length === 0 ? (
+              <div className="empty-state">
+                No repository is open. Use + to open one.
+              </div>
+            ) : (
+              <ColumnResizingProvider value={columns.resizing}>
+                <div
+                  className="columns"
+                  ref={columns.container}
+                  style={{ gridTemplateColumns: columns.template }}
+                >
+                  <Commits
+                    history={history}
+                    version={historyVersion}
+                    scrollTarget={scrollTarget}
+                    onScrolled={onScrolled}
+                    onLoad={loadCommits}
+                    workingTree={workingTree}
+                    refsByCommit={refsByCommit}
+                    selected={hash}
+                    onSelect={selectCommit}
+                    onToggleMerge={(merge) =>
+                      post({ type: 'toggleMerge', hash: merge })
+                    }
+                    collapseMerges={collapseMerges}
+                    onCollapseMerges={(collapse) => {
+                      setCollapseMerges(collapse);
+                      post({ type: 'setCollapseMerges', collapse });
+                    }}
+                  />
+                  <Files
+                    mode={filesMode}
+                    onMode={changeFilesMode}
+                    files={files}
+                    tree={
+                      hash !== undefined && tree?.hash === hash
+                        ? tree.paths
+                        : undefined
+                    }
+                    openFolders={openFolders}
+                    onToggleFolder={toggleFolder}
+                    selected={path}
+                    onSelect={selectFile}
+                  />
+                  <Diff
+                    workingTree={hash === workingTreeHash}
+                    commit={commit}
+                    refs={commit ? (refsByCommit.get(commit.hash) ?? []) : []}
+                    files={files}
+                    patch={patch}
+                    fileContent={
+                      fileContent?.path === path ? fileContent : undefined
+                    }
+                    error={error}
+                  />
+                </div>
+              </ColumnResizingProvider>
+            )}
+          </div>
+        </DetachedHead.Provider>
+      </CheckedOutBranch.Provider>
     </OpenContextMenu.Provider>
   );
 }
@@ -636,6 +645,31 @@ function RefBadges({ refs }: { refs: readonly RefInfo[] }) {
   );
 }
 
+// The name of the branch HEAD is on, whose bubbles stand out everywhere
+const CheckedOutBranch = createContext<string | undefined>(undefined);
+// The commit HEAD points at when no branch is checked out
+const DetachedHead = createContext<string | undefined>(undefined);
+
+// A detached HEAD, as a bubble with the commit's short hash, in the colors of
+// the checked-out branch
+function HeadBubble({
+  commit,
+  onClick,
+}: {
+  commit: string;
+  onClick?: () => void;
+}) {
+  return (
+    <span
+      className={`badge head checked-out ${onClick ? 'clickable' : ''}`}
+      title={`HEAD is detached at ${commit}`}
+      onClick={onClick}
+    >
+      HEAD {commit.slice(0, 7)}
+    </span>
+  );
+}
+
 // A branch, remote or tag bubble, with its menu on right-click
 function RefBubble({
   info,
@@ -651,10 +685,18 @@ function RefBubble({
     kind: 'ref',
     ref: { kind: info.kind, name: info.name },
   });
+  const checkedOut =
+    info.kind === 'branch' && info.name === useContext(CheckedOutBranch);
   return (
     <span
-      className={`badge ${info.kind} ${missing ? 'missing' : ''} ${onClick ? 'clickable' : ''}`}
-      title={missing ? `${info.name} doesn't exist anymore` : info.name}
+      className={`badge ${info.kind} ${checkedOut ? 'checked-out' : ''} ${missing ? 'missing' : ''} ${onClick ? 'clickable' : ''}`}
+      title={
+        missing
+          ? `${info.name} doesn't exist anymore`
+          : checkedOut
+            ? `${info.name}, checked out`
+            : info.name
+      }
       onClick={onClick}
       {...menu}
     >
@@ -683,6 +725,7 @@ function BubbleBar({
   const button = useRef<HTMLButtonElement>(null);
   const closeLocations = useCallback(() => setLocationsOpen(false), []);
   const refs = repository?.refs ?? [];
+  const detached = useContext(DetachedHead);
   return (
     <div className="bubble-bar">
       <button
@@ -704,17 +747,22 @@ function BubbleBar({
           onQuery={setLocationsQuery}
         />
       )}
-      {vips.toSorted(compareVips).map((vip) => {
-        const ref = refs.find((r) => sameRef(r, vip));
-        return (
-          <RefBubble
-            key={`${vip.kind}:${vip.name}`}
-            info={vip}
-            missing={!ref}
-            onClick={ref && (() => onJump(ref.commit))}
-          />
-        );
-      })}
+      {detached && (
+        <HeadBubble commit={detached} onClick={() => onJump(detached)} />
+      )}
+      {shownVips(vips, refs, repository?.head, repository?.headUpstream).map(
+        (vip) => {
+          const ref = refs.find((r) => sameRef(r, vip));
+          return (
+            <RefBubble
+              key={`${vip.kind}:${vip.name}`}
+              info={vip}
+              missing={!ref}
+              onClick={ref && (() => onJump(ref.commit))}
+            />
+          );
+        },
+      )}
     </div>
   );
 }
@@ -761,6 +809,7 @@ function Commits({
 }) {
   const list = useRef<HTMLDivElement>(null);
   const openMenu = useContext(OpenContextMenu);
+  const detached = useContext(DetachedHead);
   const hasWorkingTree = workingTree !== undefined;
   const offset = hasWorkingTree ? 1 : 0;
   const count = offset + (history?.total ?? 0);
@@ -968,6 +1017,11 @@ function Commits({
           <span className="author">{commit.authorName}</span>
           <span className="date">{formatDate(commit.authorDate)}</span>
         </div>
+        {detached === commit.hash && (
+          <div className="bubble-line">
+            <HeadBubble commit={commit.hash} />
+          </div>
+        )}
         {(refsByCommit.get(commit.hash) ?? []).map((ref) => (
           <div key={`${ref.kind}:${ref.name}`} className="bubble-line">
             <RefBubble info={ref} />
@@ -1126,6 +1180,7 @@ function Diff({
   error: string | undefined;
 }) {
   const diffFiles = useMemo(() => parsePatch(patch), [patch]);
+  const detached = useContext(DetachedHead);
   const stats = useMemo(() => {
     const byPath = new Map(files.map((file) => [file.path, file]));
     const total = files.reduce(
@@ -1170,10 +1225,13 @@ function Diff({
             <dd className="mono">
               {commit.parents.map((p) => p.slice(0, 7)).join(', ')}
             </dd>
-            {refs.length > 0 && (
+            {(refs.length > 0 || detached === commit.hash) && (
               <>
                 <dt>Refs</dt>
                 <dd>
+                  {detached === commit.hash && (
+                    <HeadBubble commit={commit.hash} />
+                  )}
                   <RefBadges refs={refs} />
                 </dd>
               </>

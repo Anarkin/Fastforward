@@ -840,3 +840,16 @@ body.resizing {
 .locations-column .row.result {
   padding-left: 8px;
 }
+
+/* The branch HEAD is on, in the theme's active tab colors wherever its bubble
+   appears */
+.badge.branch.checked-out {
+  color: var(--vscode-tab-activeForeground);
+  background: var(--vscode-tab-activeBackground);
+}
+
+/* A detached HEAD's bubble, in the checked-out branch's colors */
+.badge.head.checked-out {
+  color: var(--vscode-tab-activeForeground);
+  background: var(--vscode-tab-activeBackground);
+}

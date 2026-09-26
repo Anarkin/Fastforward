@@ -512,6 +512,9 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     if (!context) {
       return;
     }
+    this.log.info(
+      `Tab ${context.root} uses the repository at ${context.repository.rootUri.fsPath}, HEAD ${context.repository.state.HEAD?.name ?? '(detached)'} ${context.repository.state.HEAD?.commit ?? ''}`,
+    );
     this.watch(context, session);
     await this.addRecent(context.root);
     await this.addDefaultVips(context);
@@ -527,6 +530,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       type: 'repository',
       head: context.repository.state.HEAD?.name,
       headCommit: context.repository.state.HEAD?.commit,
+      headUpstream: upstreamOf(context.repository),
       refs: await listRefs(context.repository),
     });
   }
@@ -692,7 +696,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     tab.fullHistory = fullHistory;
     tab.heads = headsOf(fullHistory);
     tab.fingerprint = fingerprint(context.repository.state.HEAD, refs);
-    tab.refCounts = countRefs(refs);
+    tab.refCounts = countRefs(refs, context.repository.state.HEAD);
     await this.sendShownHistory(context, undefined, keepPlace);
   }
 
@@ -854,6 +858,12 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         : await showPatch(gitPath, context.root, hash, file);
     context.post({ type: 'diff', hash, path: file, patch });
   }
+}
+
+// The remote branch the checked-out branch tracks, like origin/main
+function upstreamOf(repository: Repository): string | undefined {
+  const upstream = repository.state.HEAD?.upstream;
+  return upstream && `${upstream.remote}/${upstream.name}`;
 }
 
 function html(webview: vscode.Webview, dist: vscode.Uri): string {

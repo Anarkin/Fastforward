@@ -1,6 +1,12 @@
 import * as assert from 'node:assert';
 import type { RefInfo } from '../protocol';
-import { countRefs, decorations, defaultVips, fingerprint } from '../refs';
+import {
+  countRefs,
+  decorations,
+  defaultVips,
+  detachedHead,
+  fingerprint,
+} from '../refs';
 
 const refs: RefInfo[] = [
   { kind: 'branch', name: 'main', commit: 'a' },
@@ -94,5 +100,21 @@ suite('default VIPs', () => {
       ),
       [{ kind: 'remote', name: 'origin/main' }],
     );
+  });
+});
+
+suite('detached HEAD', () => {
+  test('counts as a bubble on its commit', () => {
+    const counts = countRefs(refs, { name: undefined, commit: 'c' });
+    assert.strictEqual(counts.get('c'), 2);
+    assert.strictEqual(detachedHead({ name: undefined, commit: 'c' }), 'c');
+  });
+
+  test('is nothing while a branch is checked out', () => {
+    assert.strictEqual(
+      countRefs(refs, { name: 'main', commit: 'a' }).get('a'),
+      2,
+    );
+    assert.strictEqual(detachedHead({ name: 'main', commit: 'a' }), undefined);
   });
 });

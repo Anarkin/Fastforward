@@ -17,13 +17,29 @@ export function fingerprint(
   ].join('\n');
 }
 
-// How many refs point at each commit
-export function countRefs(refs: readonly RefInfo[]): Map<string, number> {
+// How many bubbles each commit has: its refs, and a detached HEAD, which is
+// shown as a bubble of its own
+export function countRefs(
+  refs: readonly RefInfo[],
+  head?: Head,
+): Map<string, number> {
   const counts = new Map<string, number>();
+  const add = (commit: string) =>
+    counts.set(commit, (counts.get(commit) ?? 0) + 1);
   for (const ref of refs) {
-    counts.set(ref.commit, (counts.get(ref.commit) ?? 0) + 1);
+    add(ref.commit);
+  }
+  const detached = detachedHead(head);
+  if (detached) {
+    add(detached);
   }
   return counts;
+}
+
+// The commit HEAD points at when no branch is checked out, as after checking
+// out a commit, a tag or a remote branch, or during a rebase
+export function detachedHead(head: Head | undefined): string | undefined {
+  return head && !head.name ? head.commit : undefined;
 }
 
 // [position, number of refs] for every shown commit that refs point at, which

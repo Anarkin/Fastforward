@@ -141,6 +141,8 @@ export type ToWebview =
       // The current branch's name, and the commit HEAD points to
       readonly head: string | undefined;
       readonly headCommit: string | undefined;
+      // The remote branch the checked-out branch tracks, like origin/main
+      readonly headUpstream: string | undefined;
       readonly refs: readonly RefInfo[];
     }
   // Starts a new history of every branch, remote and tag: its size, so the

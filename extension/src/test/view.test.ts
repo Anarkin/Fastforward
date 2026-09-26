@@ -203,6 +203,28 @@ suite('View', function () {
     assert.ok(page.last('repository'));
   });
 
+  test('shows a detached HEAD as a bubble on its commit', async () => {
+    const b = await repository.hash('main~1');
+    await repository.git('checkout', '--detach', b);
+    try {
+      // The Git extension notices the checkout before a real change event
+      const git = await getGitApi();
+      await git.getRepository(vscode.Uri.file(repository.root))?.status();
+      page.clear();
+      await connection.refresh();
+      const info = page.last('repository');
+      assert.strictEqual(info?.head, undefined);
+      assert.strictEqual(info?.headCommit, b);
+      // b, second in the list, has no refs, so its bubble is HEAD's
+      assert.deepStrictEqual(
+        page.last('commits')?.decorations.find(([index]) => index === 1),
+        [1, 1],
+      );
+    } finally {
+      await repository.git('checkout', 'main');
+    }
+  });
+
   test('reloads when a branch is created', async () => {
     await connection.refresh();
     page.clear();
