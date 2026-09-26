@@ -41,10 +41,19 @@
         "displayName": "Fastforward",
         "selector": [
           {
-            "filenamePattern": "⏩ Fastforward"
+            "filenamePattern": "view"
           }
         ],
         "priority": "option"
+      }
+    ],
+    "resourceLabelFormatters": [
+      {
+        "scheme": "fastforward",
+        "formatting": {
+          "label": "${authority}",
+          "separator": "/"
+        }
       }
     ]
   },

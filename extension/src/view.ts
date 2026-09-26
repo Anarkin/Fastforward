@@ -3,10 +3,10 @@ import * as vscode from 'vscode';
 export const toggleViewCommand = 'fastforward.toggleView';
 export const showViewCommand = 'fastforward.showView';
 const viewType = 'fastforward.view';
-const viewUri = vscode.Uri.from({
-  scheme: 'fastforward',
-  path: '/⏩ Fastforward',
-});
+const viewTitle = '⏩ Fastforward';
+// resourceLabelFormatters in package.json blanks the label of this URI, so the
+// modal doesn't show its path next to the title
+const viewUri = vscode.Uri.from({ scheme: 'fastforward', path: '/view' });
 
 // The view is a custom editor, because _workbench.openWith is the only way for
 // an extension to open an editor in the modal editor part (group -4)
@@ -62,6 +62,7 @@ export class FastforwardView
     _document: vscode.CustomDocument,
     panel: vscode.WebviewPanel,
   ): void {
+    panel.title = viewTitle;
     panel.webview.html = html(panel.webview);
   }
 
