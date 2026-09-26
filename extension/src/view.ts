@@ -4,6 +4,12 @@ import * as vscode from 'vscode';
 import type { API, Repository } from './git/git';
 import { Graph } from './git/graph';
 import {
+  countRefs,
+  decorations as refDecorations,
+  defaultVips,
+  fingerprint,
+} from './refs';
+import {
   headsOf,
   mergesHiding,
   showHistory,
@@ -12,18 +18,28 @@ import {
 import { getGitApi, listRefs, pickRepository } from './git/repository';
 import {
   listHistory,
+  listTree,
   logCommits,
+  readFile,
+  remoteDefaultBranches,
   showFiles,
   showPatch,
   workingTreeFiles,
   workingTreePatch,
   type HistoryEntry,
 } from './git/show';
-import { workingTreeHash, type ToExtension, type ToWebview } from './protocol';
+import {
+  workingTreeHash,
+  type FileChange,
+  type FilesMode,
+  type ToExtension,
+  type ToWebview,
+  type VipRef,
+} from './protocol';
 
 export const toggleViewCommand = 'fastforward.toggleView';
 export const showViewCommand = 'fastforward.showView';
-const viewType = 'fastforward.view';
+export const viewType = 'fastforward.view';
 const viewTitle = '⏩ Fastforward';
 // resourceLabelFormatters in package.json blanks the label of this URI, so the
 // modal doesn't show its path next to the title
@@ -49,6 +65,11 @@ const columnWidthsKey = 'columnWidths';
 // Whether merge commits start collapsed, like Sublime Merge's setting; per
 // user and synced
 const collapseMergesKey = 'collapseMerges';
+// What the Files column lists, per user and synced
+const filesModeKey = 'filesMode';
+// VIP refs by repository root, per user; not synced, as roots are paths on
+// this machine
+const vipsKey = 'vips';
 
 // Kept in the extension, because the webview is recreated every time the modal
 // opens
@@ -57,10 +78,19 @@ interface TabState {
   // Position of the selected commit in the history
   index: number | undefined;
   path: string | undefined;
+  // The files the selected commit changed; others picked in the Files view
+  // are shown whole instead of as a diff
+  changedPaths: Set<string>;
   // Every commit of every branch, remote and tag, newest first
   fullHistory: readonly HistoryEntry[];
   // Its commits that nothing is built on yet
   heads: Set<string>;
+  // HEAD and every ref when the history loaded; the history is reloaded when
+  // they change
+  fingerprint: string;
+  // The commit at the top of the list and how far it is scrolled into it,
+  // which a reload keeps in place
+  anchor: { hash: string; offset: number } | undefined;
   // The commits refs point at, which are always shown, and how many refs
   // point at each
   refCounts: Map<string, number>;
@@ -78,6 +108,15 @@ interface TabState {
 }
 
 // One per open webview
+// One page's link to the view: its messages go in, answers go to its post
+export interface Connection {
+  // Resolves once the message is handled, with all answers posted
+  receive(message: ToExtension): Promise<void>;
+  // What a change in the repository does, without waiting for one
+  refresh(): Promise<void>;
+  dispose(): void;
+}
+
 interface Session {
   readonly post: (message: ToWebview) => void;
   watcher: vscode.Disposable | undefined;
@@ -92,10 +131,7 @@ interface Context {
   readonly post: (message: ToWebview) => void;
 }
 
-export class FastforwardView
-  implements vscode.CustomReadonlyEditorProvider, vscode.Disposable
-{
-  private readonly registration: vscode.Disposable;
+export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
   private readonly tabStates = new Map<string, TabState>();
 
   constructor(
@@ -104,11 +140,11 @@ export class FastforwardView
     private readonly workspaceState: vscode.Memento,
     private readonly globalState: vscode.ExtensionContext['globalState'],
   ) {
-    this.registration = vscode.window.registerCustomEditorProvider(
-      viewType,
-      this,
-    );
-    globalState.setKeysForSync([columnWidthsKey, collapseMergesKey]);
+    globalState.setKeysForSync([
+      columnWidthsKey,
+      collapseMergesKey,
+      filesModeKey,
+    ]);
   }
 
   get isShown(): boolean {
@@ -153,18 +189,39 @@ export class FastforwardView
     panel.title = viewTitle;
     panel.webview.options = { enableScripts: true, localResourceRoots: [dist] };
     panel.webview.html = html(panel.webview, dist);
-    const session: Session = {
-      post: (message) => void panel.webview.postMessage(message),
-      watcher: undefined,
-    };
-    panel.webview.onDidReceiveMessage((message: ToExtension) =>
-      this.run(message.type, session, () => this.handle(message, session)),
+    // Git results can arrive after the modal closed; they are dropped then,
+    // as posting to a disposed webview throws
+    let disposed = false;
+    const connection = this.connect((message) => {
+      if (!disposed) {
+        void panel.webview.postMessage(message);
+      }
+    });
+    panel.webview.onDidReceiveMessage(
+      (message: ToExtension) => void connection.receive(message),
     );
-    panel.onDidDispose(() => session.watcher?.dispose());
+    panel.onDidDispose(() => {
+      disposed = true;
+      connection.dispose();
+    });
   }
 
-  dispose(): void {
-    this.registration.dispose();
+  // Handles one page's messages, answering through post; the webview uses it,
+  // and so do tests, without a webview
+  connect(post: (message: ToWebview) => void): Connection {
+    const session: Session = { post, watcher: undefined };
+    return {
+      receive: (message) =>
+        this.run(message.type, session, () => this.handle(message, session)),
+      refresh: () =>
+        this.run('refresh', session, async () => {
+          const context = await this.context(await getGitApi(), session);
+          if (context) {
+            await this.refresh(context);
+          }
+        }),
+      dispose: () => session.watcher?.dispose(),
+    };
   }
 
   private get tabs(): string[] {
@@ -219,6 +276,7 @@ export class FastforwardView
           type: 'layout',
           columnWidths: this.globalState.get<number[]>(columnWidthsKey),
           collapseMerges: this.globalState.get(collapseMergesKey, true),
+          filesMode: this.globalState.get<FilesMode>(filesModeKey, 'changes'),
         });
         await this.addWorkspaceTab(git);
         await this.openTab(git, session, this.activeTab);
@@ -267,6 +325,16 @@ export class FastforwardView
       case 'setColumnWidths':
         await this.globalState.update(columnWidthsKey, message.widths);
         return;
+      case 'setFilesMode':
+        await this.globalState.update(filesModeKey, message.mode);
+        return;
+      case 'setVips': {
+        const root = this.activeTab;
+        if (root) {
+          await this.setVips(root, message.vips);
+        }
+        return;
+      }
     }
 
     const context = await this.context(git, session);
@@ -285,6 +353,12 @@ export class FastforwardView
         await this.sendShownHistory(context, message.hash);
         break;
       }
+      case 'scrolled':
+        context.tab.anchor = { hash: message.hash, offset: message.offset };
+        break;
+      case 'loadTree':
+        await this.sendTree(context, message.hash);
+        break;
       case 'setCollapseMerges':
         await this.globalState.update(collapseMergesKey, message.collapse);
         // The setting applies to every merge again
@@ -427,7 +501,7 @@ export class FastforwardView
         // Scrolls to the commit selected since the list was sent
         session.post(
           message.type === 'commits'
-            ? { ...message, selectedIndex: tab.index }
+            ? { ...message, selectedIndex: tab.index, anchor: undefined }
             : message,
         );
       }
@@ -440,6 +514,7 @@ export class FastforwardView
     }
     this.watch(context, session);
     await this.addRecent(context.root);
+    await this.addDefaultVips(context);
     await Promise.all([
       this.sendCommits(context).then(() => this.sendCommit(context)),
       this.sendWorkingTree(context),
@@ -457,11 +532,46 @@ export class FastforwardView
   }
 
   private postTabs(session: Session): void {
+    const active = this.activeTab;
     session.post({
       type: 'tabs',
       tabs: this.tabs.map((tab) => ({ root: tab, name: path.basename(tab) })),
-      active: this.activeTab,
+      active,
     });
+    session.post({
+      type: 'vips',
+      vips: active ? (this.vipsOf(active) ?? []) : [],
+    });
+  }
+
+  // Undefined for a repository that never had VIPs saved
+  private vipsOf(root: string): readonly VipRef[] | undefined {
+    return this.globalState.get<Record<string, VipRef[]>>(vipsKey, {})[root];
+  }
+
+  // The first time a repository opens, its main branch becomes a VIP: the
+  // remote's default branch, or else a local main, master or trunk, with the
+  // local and remote branch of the same name; removing them later sticks, as
+  // the repository has a saved list from then on
+  private async addDefaultVips(context: Context): Promise<void> {
+    if (this.vipsOf(context.root) !== undefined) {
+      return;
+    }
+    const [refs, defaults] = await Promise.all([
+      listRefs(context.repository),
+      remoteDefaultBranches(context.git.git.path, context.root),
+    ]);
+    const vips = defaultVips(refs, defaults);
+    await this.setVips(context.root, vips);
+    context.post({ type: 'vips', vips });
+  }
+
+  private async setVips(root: string, vips: readonly VipRef[]): Promise<void> {
+    const all = this.globalState.get<Record<string, readonly VipRef[]>>(
+      vipsKey,
+      {},
+    );
+    await this.globalState.update(vipsKey, { ...all, [root]: vips });
   }
 
   private tabState(root: string): TabState {
@@ -471,8 +581,11 @@ export class FastforwardView
         hash: undefined,
         index: undefined,
         path: undefined,
+        changedPaths: new Set(),
         fullHistory: [],
         heads: new Set(),
+        fingerprint: '',
+        anchor: undefined,
         refCounts: new Map(),
         toggledMerges: new Set(),
         history: [],
@@ -529,13 +642,7 @@ export class FastforwardView
     const subscription = context.repository.state.onDidChange(() => {
       clearTimeout(timer);
       timer = setTimeout(
-        () =>
-          void this.run('refresh', session, async () => {
-            await this.sendWorkingTree(context);
-            if (context.tab.hash === workingTreeHash) {
-              await this.sendCommit(context);
-            }
-          }),
+        () => void this.run('refresh', session, () => this.refresh(context)),
         300,
       );
     });
@@ -547,12 +654,36 @@ export class FastforwardView
     };
   }
 
+  // After a change in the repository: the uncommitted changes always, and the
+  // history when a commit, checkout, fetch or branch change moved HEAD or a
+  // ref, keeping the list's place
+  private async refresh(context: Context): Promise<void> {
+    await this.sendWorkingTree(context);
+    if (context.tab.hash === workingTreeHash) {
+      await this.sendCommit(context);
+    }
+    const refs = await listRefs(context.repository);
+    if (
+      fingerprint(context.repository.state.HEAD, refs) !==
+      context.tab.fingerprint
+    ) {
+      this.log.info('Refs changed, reloading the history');
+      await Promise.all([
+        this.sendRepository(context),
+        this.sendCommits(context, true),
+      ]);
+    }
+  }
+
   private async sendWorkingTree(context: Context): Promise<void> {
     const files = await workingTreeFiles(context.git.git.path, context.root);
     context.post({ type: 'workingTree', files: files.length });
   }
 
-  private async sendCommits(context: Context): Promise<void> {
+  private async sendCommits(
+    context: Context,
+    keepPlace = false,
+  ): Promise<void> {
     const [fullHistory, refs] = await Promise.all([
       listHistory(context.git.git.path, context.root),
       listRefs(context.repository),
@@ -560,11 +691,9 @@ export class FastforwardView
     const { tab } = context;
     tab.fullHistory = fullHistory;
     tab.heads = headsOf(fullHistory);
-    tab.refCounts = new Map();
-    for (const ref of refs) {
-      tab.refCounts.set(ref.commit, (tab.refCounts.get(ref.commit) ?? 0) + 1);
-    }
-    await this.sendShownHistory(context, undefined);
+    tab.fingerprint = fingerprint(context.repository.state.HEAD, refs);
+    tab.refCounts = countRefs(refs);
+    await this.sendShownHistory(context, undefined, keepPlace);
   }
 
   // Expands these merges, whatever the setting says, and sends the list
@@ -590,10 +719,12 @@ export class FastforwardView
 
   // Works out which commits are shown with the merges collapsed or expanded,
   // lays out their graph, and sends the list; scrollTo is a commit to keep in
-  // view, the selected one by default
+  // view, the selected one by default, and keepPlace keeps the commit at the
+  // top of the list where it is instead, for reloads the user didn't ask for
   private async sendShownHistory(
     context: Context,
     scrollTo: string | undefined,
+    keepPlace = false,
   ): Promise<void> {
     const { tab } = context;
     const started = performance.now();
@@ -619,27 +750,36 @@ export class FastforwardView
     // The selected commit may have moved, or be hidden in a collapsed merge
     tab.index =
       tab.hash === undefined ? undefined : tab.positions.get(tab.hash);
-    const decorations: [number, number][] = [];
-    for (const [commit, count] of tab.refCounts) {
-      const position = tab.positions.get(commit);
-      if (position !== undefined) {
-        decorations.push([position, count]);
-      }
-    }
+    const decorations = refDecorations(tab.refCounts, tab.positions);
+    // The page the list shows first: the top, or around the commit that stays
+    // in place, so the list doesn't flash placeholders there
+    const anchorIndex =
+      keepPlace && tab.anchor ? tab.positions.get(tab.anchor.hash) : undefined;
+    const start =
+      anchorIndex === undefined
+        ? 0
+        : anchorIndex - (anchorIndex % firstPageSize);
     const commits = await logCommits(
       context.git.git.path,
       context.root,
-      history.slice(0, firstPageSize).map((entry) => entry.hash),
+      history
+        .slice(start, start + 2 * firstPageSize)
+        .map((entry) => entry.hash),
     );
     context.post({
       type: 'commits',
       total: history.length,
       decorations,
       graphWidth: tab.graph.width,
+      start,
       commits,
-      graph: tab.graph.rows(0, commits.length),
+      graph: tab.graph.rows(start, commits.length),
       selectedIndex:
         scrollTo === undefined ? tab.index : tab.positions.get(scrollTo),
+      anchor:
+        anchorIndex === undefined || !tab.anchor
+          ? undefined
+          : { index: anchorIndex, offset: tab.anchor.offset },
     });
   }
 
@@ -672,21 +812,42 @@ export class FastforwardView
       return;
     }
     const gitPath = context.git.git.path;
+    let files: FileChange[];
     if (hash === workingTreeHash) {
-      const files = await workingTreeFiles(gitPath, context.root);
-      context.post({ type: 'files', hash, files });
+      files = await workingTreeFiles(gitPath, context.root);
     } else if (context.tab.positions.has(hash)) {
-      const files = await showFiles(gitPath, context.root, hash);
-      context.post({ type: 'files', hash, files });
+      files = await showFiles(gitPath, context.root, hash);
     } else {
       return;
     }
+    context.tab.changedPaths = new Set(files.map((file) => file.path));
+    context.post({ type: 'files', hash, files });
     await this.sendDiff(context, hash);
+  }
+
+  private async sendTree(context: Context, hash: string): Promise<void> {
+    const paths = await listTree(
+      context.git.git.path,
+      context.root,
+      hash === workingTreeHash ? undefined : hash,
+    );
+    context.post({ type: 'tree', hash, paths });
   }
 
   private async sendDiff(context: Context, hash: string): Promise<void> {
     const { path: file } = context.tab;
     const gitPath = context.git.git.path;
+    // A file the commit didn't change, picked in the Files view, has no diff
+    if (file !== undefined && !context.tab.changedPaths.has(file)) {
+      const { content, binary } = await readFile(
+        gitPath,
+        context.root,
+        hash === workingTreeHash ? undefined : hash,
+        file,
+      );
+      context.post({ type: 'fileContent', hash, path: file, content, binary });
+      return;
+    }
     const patch =
       hash === workingTreeHash
         ? await workingTreePatch(gitPath, context.root, file)

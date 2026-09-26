@@ -1,18 +1,39 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   workingTreeHash,
   type CommitInfo,
   type FileChange,
+  type FilesMode,
   type RefInfo,
   type TabInfo,
   type ToExtension,
   type ToWebview,
+  type VipRef,
 } from '../protocol';
 import { CommitHistory, commitPageSize } from './commitHistory';
 import { ColumnResizingProvider, Resizer, useColumnWidths } from './columns';
 import { parsePatch, type DiffFile } from './diff';
+import {
+  ContextMenu,
+  OpenContextMenu,
+  sameRef,
+  useContextMenu,
+  type ContextMenuItem,
+  type MenuTarget,
+  type OpenMenu,
+} from './contextMenu';
+import { FileTree, foldersOf } from './fileTree';
 import { GraphCell, graphWidth, rowLanes } from './graph';
+import { IndentGuides, treeIndent, twistyWidth } from './tree';
+import { compareVips } from './vips';
 
 interface Props {
   post: (message: ToExtension) => void;
@@ -28,6 +49,8 @@ interface Repository {
 // the same position
 interface ScrollTarget {
   readonly index: number;
+  // Pixels scrolled into that row, to put it exactly where it was
+  readonly offset?: number;
 }
 
 export function App({ post }: Props) {
@@ -49,6 +72,26 @@ export function App({ post }: Props) {
   const [error, setError] = useState<string>();
   // Sublime Merge's setting, on by default
   const [collapseMerges, setCollapseMerges] = useState(true);
+  const [filesMode, setFilesMode] = useState<FilesMode>('changes');
+  // Every file of the repository at the selected commit, for the Files view
+  const [tree, setTree] = useState<{
+    hash: string;
+    paths: readonly string[];
+  }>();
+  // Open folders of the Files view, kept while moving between commits
+  const [openFolders, setOpenFolders] = useState<ReadonlySet<string>>(
+    new Set(),
+  );
+  // A file the commit didn't change, shown whole in the Diff column
+  const [fileContent, setFileContent] = useState<{
+    path: string;
+    content: string;
+    binary: boolean;
+  }>();
+  // Refs pinned to the VIP row, saved per repository
+  const [vips, setVips] = useState<readonly VipRef[]>([]);
+  const [menu, setMenu] = useState<OpenMenu>();
+  const closeMenu = useCallback(() => setMenu(undefined), []);
   const saveColumnWidths = useCallback(
     (widths: readonly number[]) => post({ type: 'setColumnWidths', widths }),
     [post],
@@ -63,6 +106,7 @@ export function App({ post }: Props) {
         case 'layout':
           loadColumnWidths(message.columnWidths);
           setCollapseMerges(message.collapseMerges);
+          setFilesMode(message.filesMode);
           break;
         case 'tabs':
           if (activeTabRef.current !== message.active) {
@@ -81,13 +125,16 @@ export function App({ post }: Props) {
             message.decorations,
             message.graphWidth,
           );
-          next.add(0, message.commits, message.graph);
+          next.add(message.start, message.commits, message.graph);
           historyRef.current = next;
           setHistory(next);
+          // A reload keeps the list where it was; otherwise it shows the
+          // selected commit
           setScrollTarget(
-            message.selectedIndex === undefined
-              ? undefined
-              : { index: message.selectedIndex },
+            message.anchor ??
+              (message.selectedIndex === undefined
+                ? undefined
+                : { index: message.selectedIndex }),
           );
           break;
         }
@@ -114,6 +161,19 @@ export function App({ post }: Props) {
           setHash(message.hash);
           setPath(message.path);
           setPatch(message.patch);
+          setFileContent(undefined);
+          break;
+        case 'fileContent':
+          setHash(message.hash);
+          setPath(message.path);
+          setPatch('');
+          setFileContent(message);
+          break;
+        case 'tree':
+          setTree(message);
+          break;
+        case 'vips':
+          setVips(message.vips);
           break;
         case 'error':
           setError(message.message);
@@ -145,10 +205,17 @@ export function App({ post }: Props) {
     setFiles([]);
     setPath(undefined);
     setPatch('');
+    setFileContent(undefined);
   }
 
   const log = useCallback(
     (message: string) => post({ type: 'log', level: 'info', message }),
+    [post],
+  );
+
+  const onScrolled = useCallback(
+    (top: string, offset: number) =>
+      post({ type: 'scrolled', hash: top, offset }),
     [post],
   );
 
@@ -192,64 +259,156 @@ export function App({ post }: Props) {
     post({ type: 'selectFile', hash, path: next });
   };
 
+  // The Files view needs every file of the repository at the selected commit
+  useEffect(() => {
+    if (filesMode === 'files' && hash && tree?.hash !== hash) {
+      post({ type: 'loadTree', hash });
+    }
+  }, [filesMode, hash, tree, post]);
+
+  // The selected file's folders open, so it is visible in the Files view
+  useEffect(() => {
+    if (filesMode !== 'files' || path === undefined) {
+      return;
+    }
+    const folders = foldersOf(path);
+    setOpenFolders((open) =>
+      folders.every((folder) => open.has(folder))
+        ? open
+        : new Set([...open, ...folders]),
+    );
+  }, [filesMode, path]);
+
+  const toggleFolder = (folder: string) =>
+    setOpenFolders((open) => {
+      const next = new Set(open);
+      if (!next.delete(folder)) {
+        next.add(folder);
+      }
+      return next;
+    });
+
+  const changeFilesMode = (mode: FilesMode) => {
+    setFilesMode(mode);
+    post({ type: 'setFilesMode', mode });
+  };
+
+  const changeVips = (next: readonly VipRef[]) => {
+    setVips(next);
+    post({ type: 'setVips', vips: next });
+  };
+
+  // The items of the menu for what was right-clicked; commits have none yet
+  const menuItems = (target: MenuTarget): ContextMenuItem[] => {
+    if (target.kind !== 'ref') {
+      return [];
+    }
+    const isVip = vips.some((vip) => sameRef(vip, target.ref));
+    return [
+      isVip
+        ? {
+            label: 'Remove from VIP',
+            onClick: () =>
+              changeVips(vips.filter((vip) => !sameRef(vip, target.ref))),
+          }
+        : {
+            label: 'Add VIP',
+            onClick: () => changeVips([...vips, target.ref]),
+          },
+    ];
+  };
+
+  const openMenu = (event: React.MouseEvent, target: MenuTarget) => {
+    // Only the innermost target, like a bubble inside a commit row
+    event.stopPropagation();
+    const items = menuItems(target);
+    if (items.length > 0) {
+      event.preventDefault();
+      setMenu({ x: event.clientX, y: event.clientY, items });
+    }
+  };
+
   return (
-    <div className="app">
-      <TabBar
-        tabs={tabs}
-        active={activeTab}
-        onSelect={(root) => post({ type: 'selectTab', root })}
-        onClose={(root) => post({ type: 'closeTab', root })}
-        onAdd={() => post({ type: 'addTab' })}
-        onSort={() => post({ type: 'sortTabs' })}
-        onLog={log}
-      />
-      {tabs.length === 0 ? (
-        <div className="empty-state">
-          No repository is open. Use + to open one.
-        </div>
-      ) : (
-        <ColumnResizingProvider value={columns.resizing}>
-          <div
-            className="columns"
-            ref={columns.container}
-            style={{ gridTemplateColumns: columns.template }}
-          >
-            <Locations
-              repository={repository}
-              selected={hash}
-              onSelect={jump}
-            />
-            <Commits
-              history={history}
-              version={historyVersion}
-              scrollTarget={scrollTarget}
-              onLoad={loadCommits}
-              workingTree={workingTree}
-              refsByCommit={refsByCommit}
-              selected={hash}
-              onSelect={selectCommit}
-              onToggleMerge={(merge) =>
-                post({ type: 'toggleMerge', hash: merge })
-              }
-              collapseMerges={collapseMerges}
-              onCollapseMerges={(collapse) => {
-                setCollapseMerges(collapse);
-                post({ type: 'setCollapseMerges', collapse });
-              }}
-            />
-            <Files files={files} selected={path} onSelect={selectFile} />
-            <Diff
-              workingTree={hash === workingTreeHash}
-              commit={commit}
-              refs={commit ? (refsByCommit.get(commit.hash) ?? []) : []}
-              files={files}
-              patch={patch}
-              error={error}
-            />
+    <OpenContextMenu.Provider value={openMenu}>
+      <div className="app">
+        <TabBar
+          tabs={tabs}
+          active={activeTab}
+          onSelect={(root) => post({ type: 'selectTab', root })}
+          onClose={(root) => post({ type: 'closeTab', root })}
+          onAdd={() => post({ type: 'addTab' })}
+          onSort={() => post({ type: 'sortTabs' })}
+          onLog={log}
+        />
+        {tabs.length > 0 && (
+          <VipBar vips={vips} refs={repository?.refs ?? []} onJump={jump} />
+        )}
+        {menu && <ContextMenu menu={menu} onClose={closeMenu} />}
+        {tabs.length === 0 ? (
+          <div className="empty-state">
+            No repository is open. Use + to open one.
           </div>
-        </ColumnResizingProvider>
-      )}
-    </div>
+        ) : (
+          <ColumnResizingProvider value={columns.resizing}>
+            <div
+              className="columns"
+              ref={columns.container}
+              style={{ gridTemplateColumns: columns.template }}
+            >
+              <Locations
+                repository={repository}
+                selected={hash}
+                onSelect={jump}
+              />
+              <Commits
+                history={history}
+                version={historyVersion}
+                scrollTarget={scrollTarget}
+                onScrolled={onScrolled}
+                onLoad={loadCommits}
+                workingTree={workingTree}
+                refsByCommit={refsByCommit}
+                selected={hash}
+                onSelect={selectCommit}
+                onToggleMerge={(merge) =>
+                  post({ type: 'toggleMerge', hash: merge })
+                }
+                collapseMerges={collapseMerges}
+                onCollapseMerges={(collapse) => {
+                  setCollapseMerges(collapse);
+                  post({ type: 'setCollapseMerges', collapse });
+                }}
+              />
+              <Files
+                mode={filesMode}
+                onMode={changeFilesMode}
+                files={files}
+                tree={
+                  hash !== undefined && tree?.hash === hash
+                    ? tree.paths
+                    : undefined
+                }
+                openFolders={openFolders}
+                onToggleFolder={toggleFolder}
+                selected={path}
+                onSelect={selectFile}
+              />
+              <Diff
+                workingTree={hash === workingTreeHash}
+                commit={commit}
+                refs={commit ? (refsByCommit.get(commit.hash) ?? []) : []}
+                files={files}
+                patch={patch}
+                fileContent={
+                  fileContent?.path === path ? fileContent : undefined
+                }
+                error={error}
+              />
+            </div>
+          </ColumnResizingProvider>
+        )}
+      </div>
+    </OpenContextMenu.Provider>
   );
 }
 
@@ -439,7 +598,7 @@ function Column({
   actions,
   children,
 }: {
-  title: string;
+  title: React.ReactNode;
   index?: number;
   actions?: React.ReactNode;
   children: React.ReactNode;
@@ -571,6 +730,7 @@ function TreeFolder({
   group?: boolean;
 }) {
   const [open, setOpen] = useState(initiallyOpen);
+  const openMenu = useContext(OpenContextMenu);
   const children = [...node.children.values()].toSorted(
     (a, b) =>
       Number(b.children.size > 0) - Number(a.children.size > 0) ||
@@ -607,35 +767,19 @@ function TreeFolder({
               style={{ paddingLeft: treeIndent(depth + 1) + twistyWidth }}
               title={child.ref?.name}
               onClick={() => child.ref && onSelect(child.ref.commit)}
+              onContextMenu={(event) =>
+                child.ref &&
+                openMenu(event, {
+                  kind: 'ref',
+                  ref: { kind: child.ref.kind, name: child.ref.name },
+                })
+              }
             >
               <IndentGuides depth={depth + 1} />
               {child.name}
             </div>
           ),
         )}
-    </>
-  );
-}
-
-// Like VS Code's trees: a level is indented by its parent's twisty, and a
-// guide runs down from each ancestor's twisty
-const treePadding = 8;
-const twistyWidth = 10;
-
-function treeIndent(depth: number): number {
-  return treePadding + depth * twistyWidth;
-}
-
-function IndentGuides({ depth }: { depth: number }) {
-  return (
-    <>
-      {Array.from({ length: depth }, (_, level) => (
-        <span
-          key={level}
-          className="indent-guide"
-          style={{ left: treeIndent(level) + twistyWidth / 2 }}
-        />
-      ))}
     </>
   );
 }
@@ -661,11 +805,66 @@ function RefBadges({ refs }: { refs: readonly RefInfo[] }) {
   return (
     <>
       {refs.map((r) => (
-        <span key={`${r.kind}:${r.name}`} className={`badge ${r.kind}`}>
-          {r.name}
-        </span>
+        <RefBubble key={`${r.kind}:${r.name}`} info={r} />
       ))}
     </>
+  );
+}
+
+// A branch, remote or tag bubble, with its menu on right-click
+function RefBubble({
+  info,
+  missing = false,
+  onClick,
+}: {
+  info: VipRef;
+  // A VIP whose ref doesn't exist anymore
+  missing?: boolean;
+  onClick?: () => void;
+}) {
+  const menu = useContextMenu({
+    kind: 'ref',
+    ref: { kind: info.kind, name: info.name },
+  });
+  return (
+    <span
+      className={`badge ${info.kind} ${missing ? 'missing' : ''} ${onClick ? 'clickable' : ''}`}
+      title={missing ? `${info.name} doesn't exist anymore` : info.name}
+      onClick={onClick}
+      {...menu}
+    >
+      {info.name}
+    </span>
+  );
+}
+
+// The VIPs of the repository, under the tabs, sorted; clicking one jumps to it
+function VipBar({
+  vips,
+  refs,
+  onJump,
+}: {
+  vips: readonly VipRef[];
+  refs: readonly RefInfo[];
+  onJump: (commit: string) => void;
+}) {
+  if (vips.length === 0) {
+    return null;
+  }
+  return (
+    <div className="vip-bar">
+      {vips.toSorted(compareVips).map((vip) => {
+        const ref = refs.find((r) => sameRef(r, vip));
+        return (
+          <RefBubble
+            key={`${vip.kind}:${vip.name}`}
+            info={vip}
+            missing={!ref}
+            onClick={ref && (() => onJump(ref.commit))}
+          />
+        );
+      })}
+    </div>
   );
 }
 
@@ -684,6 +883,7 @@ function Commits({
   history,
   version,
   scrollTarget,
+  onScrolled,
   onLoad,
   workingTree,
   refsByCommit,
@@ -696,7 +896,9 @@ function Commits({
   history: CommitHistory | undefined;
   // Changes when pages arrive, as the history is filled in place
   version: number;
-  scrollTarget: { readonly index: number } | undefined;
+  scrollTarget: ScrollTarget | undefined;
+  // The commit at the top of the list once scrolling stops
+  onScrolled: (hash: string, offset: number) => void;
   onLoad: (start: number) => void;
   workingTree: number | undefined;
   refsByCommit: Map<string, RefInfo[]>;
@@ -707,6 +909,7 @@ function Commits({
   onCollapseMerges: (collapse: boolean) => void;
 }) {
   const list = useRef<HTMLDivElement>(null);
+  const openMenu = useContext(OpenContextMenu);
   const hasWorkingTree = workingTree !== undefined;
   const offset = hasWorkingTree ? 1 : 0;
   const count = offset + (history?.total ?? 0);
@@ -747,16 +950,52 @@ function Commits({
   // back; a commit that is already on screen stays where it is
   const scrollIndex = scrollTarget && offset + scrollTarget.index;
   useEffect(() => {
-    if (history && scrollIndex !== undefined) {
-      const onScreen = virtualizer
-        .getVirtualItems()
-        .some((row) => row.index === scrollIndex);
-      virtualizer.scrollToIndex(scrollIndex, {
-        align: onScreen ? 'auto' : 'center',
-      });
+    if (!history || scrollIndex === undefined) {
+      return;
     }
+    // A reload puts the commit that was at the top back at the top
+    const rowOffset = scrollTarget?.offset;
+    if (rowOffset !== undefined) {
+      const [start] = virtualizer.getOffsetForIndex(scrollIndex, 'start') ?? [];
+      if (start !== undefined) {
+        virtualizer.scrollToOffset(start + rowOffset);
+      }
+      return;
+    }
+    const onScreen = virtualizer
+      .getVirtualItems()
+      .some((row) => row.index === scrollIndex);
+    virtualizer.scrollToIndex(scrollIndex, {
+      align: onScreen ? 'auto' : 'center',
+    });
     // scrollTarget is new for every jump, even to the same commit
   }, [history, scrollTarget, scrollIndex, virtualizer]);
+
+  // Tells the extension which commit is at the top once scrolling stops, so a
+  // reload can keep it there
+  useEffect(() => {
+    const element = list.current;
+    if (!element) {
+      return undefined;
+    }
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const onScroll = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        const top = element.scrollTop;
+        const row = virtualizer.getVirtualItems().find((r) => r.end > top);
+        const commit = row && history?.at(row.index - offset);
+        if (row && commit) {
+          onScrolled(commit.hash, top - row.start);
+        }
+      }, 150);
+    };
+    element.addEventListener('scroll', onScroll);
+    return () => {
+      clearTimeout(timer);
+      element.removeEventListener('scroll', onScroll);
+    };
+  }, [history, offset, onScrolled, virtualizer]);
 
   const selectedPosition =
     selected === workingTreeHash
@@ -865,6 +1104,10 @@ function Commits({
         className={`commit ${commit.hash === selected ? 'selected' : ''}`}
         style={{ paddingLeft: indent(index) }}
         onClick={() => onSelect(commit.hash, position)}
+        // No items yet; bubbles in the row open their own menu first
+        onContextMenu={(event) =>
+          openMenu(event, { kind: 'commit', hash: commit.hash })
+        }
       >
         <div className="commit-line">
           <span className="subject">{commit.subject}</span>
@@ -876,9 +1119,7 @@ function Commits({
         </div>
         {(refsByCommit.get(commit.hash) ?? []).map((ref) => (
           <div key={`${ref.kind}:${ref.name}`} className="bubble-line">
-            <span className={`badge ${ref.kind}`} title={ref.name}>
-              {ref.name}
-            </span>
+            <RefBubble info={ref} />
           </div>
         ))}
       </div>
@@ -932,17 +1173,64 @@ function Commits({
   );
 }
 
+// The selected commit's changes, or every file of the repository at it
 function Files({
+  mode,
+  onMode,
   files,
+  tree,
+  openFolders,
+  onToggleFolder,
   selected,
   onSelect,
 }: {
+  mode: FilesMode;
+  onMode: (mode: FilesMode) => void;
   files: readonly FileChange[];
+  // Undefined while it loads
+  tree: readonly string[] | undefined;
+  openFolders: ReadonlySet<string>;
+  onToggleFolder: (folder: string) => void;
   selected: string | undefined;
   onSelect: (path: string | undefined) => void;
 }) {
+  const changes = useMemo(
+    () => new Map(files.map((file) => [file.path, file])),
+    [files],
+  );
+  const title = (
+    <div className="switch" role="tablist">
+      {(['changes', 'files'] as const).map((option) => (
+        <button
+          key={option}
+          role="tab"
+          aria-selected={mode === option}
+          className={`switch-option ${mode === option ? 'active' : ''}`}
+          onClick={() => onMode(option)}
+        >
+          {option === 'changes' ? 'Changes' : 'Files'}
+        </button>
+      ))}
+    </div>
+  );
+  if (mode === 'files') {
+    return (
+      <Column title={title} index={2}>
+        {tree && (
+          <FileTree
+            paths={tree}
+            changes={changes}
+            selected={selected}
+            expanded={openFolders}
+            onToggle={onToggleFolder}
+            onSelect={onSelect}
+          />
+        )}
+      </Column>
+    );
+  }
   return (
-    <Column title="Files" index={2}>
+    <Column title={title} index={2}>
       {files.length > 0 && (
         <div
           className={`row group ${selected === undefined ? 'selected' : ''}`}
@@ -974,6 +1262,7 @@ function Diff({
   refs,
   files,
   patch,
+  fileContent,
   error,
 }: {
   workingTree: boolean;
@@ -981,6 +1270,8 @@ function Diff({
   refs: readonly RefInfo[];
   files: readonly FileChange[];
   patch: string;
+  // A file the commit didn't change, shown whole instead of a diff
+  fileContent: { path: string; content: string; binary: boolean } | undefined;
   error: string | undefined;
 }) {
   const diffFiles = useMemo(() => parsePatch(patch), [patch]);
@@ -1046,6 +1337,7 @@ function Diff({
           <pre className="message">{commit.message}</pre>
         </div>
       )}
+      {fileContent && <FileView file={fileContent} />}
       {diffFiles.map((file) => (
         <FileDiff
           key={file.path}
@@ -1054,6 +1346,40 @@ function Diff({
         />
       ))}
     </Column>
+  );
+}
+
+// A whole file with line numbers, for a file the commit didn't change
+function FileView({
+  file,
+}: {
+  file: { path: string; content: string; binary: boolean };
+}) {
+  const lines = useMemo(
+    () => file.content.replace(/\n$/, '').split('\n'),
+    [file.content],
+  );
+  return (
+    <div className="file-diff">
+      <div className="file-header">
+        <span className="path">{file.path}</span>
+        <span className="unchanged">Unchanged in this commit</span>
+      </div>
+      {file.binary ? (
+        <div className="binary">Binary or very large file</div>
+      ) : (
+        <table className="hunk">
+          <tbody>
+            {lines.map((line, index) => (
+              <tr key={index}>
+                <td className="number">{index + 1}</td>
+                <td className="code">{line}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
   );
 }
 

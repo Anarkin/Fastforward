@@ -5,10 +5,20 @@ export const workingTreeHash = 'working-tree';
 
 export type RefKind = 'branch' | 'remote' | 'tag';
 
+// What the Files column lists: the selected commit's changes, or every file
+// of the repository at it
+export type FilesMode = 'changes' | 'files';
+
 export interface RefInfo {
   readonly kind: RefKind;
   readonly name: string;
   readonly commit: string;
+}
+
+// A ref the user pinned to the VIP row; by name, as its commit moves
+export interface VipRef {
+  readonly kind: RefKind;
+  readonly name: string;
 }
 
 export interface CommitInfo {
@@ -71,6 +81,12 @@ export type ToExtension =
   | { readonly type: 'toggleMerge'; readonly hash: string }
   // Whether merge commits start collapsed, saved per user
   | { readonly type: 'setCollapseMerges'; readonly collapse: boolean }
+  // Whether the Files column lists the changes or the whole repository
+  | { readonly type: 'setFilesMode'; readonly mode: FilesMode }
+  // The VIPs of the active tab's repository, saved per repository and user
+  | { readonly type: 'setVips'; readonly vips: readonly VipRef[] }
+  // Asks for every file of the repository at a commit
+  | { readonly type: 'loadTree'; readonly hash: string }
   // Written to the Fastforward log, so webview problems show up there too
   | {
       readonly type: 'log';
@@ -84,6 +100,13 @@ export type ToExtension =
       readonly type: 'loadCommits';
       readonly start: number;
       readonly count: number;
+    }
+  // The commit at the top of the list once scrolling stops, and how far the
+  // list is scrolled into it
+  | {
+      readonly type: 'scrolled';
+      readonly hash: string;
+      readonly offset: number;
     }
   | {
       readonly type: 'selectCommit';
@@ -104,7 +127,10 @@ export type ToWebview =
       readonly type: 'layout';
       readonly columnWidths: readonly number[] | undefined;
       readonly collapseMerges: boolean;
+      readonly filesMode: FilesMode;
     }
+  // The VIPs of the active tab's repository
+  | { readonly type: 'vips'; readonly vips: readonly VipRef[] }
   | {
       readonly type: 'tabs';
       readonly tabs: readonly TabInfo[];
@@ -127,11 +153,16 @@ export type ToWebview =
       readonly decorations: readonly (readonly [number, number])[];
       // The most lanes any row of the graph uses
       readonly graphWidth: number;
+      // The commits the list shows first, from position start, and their graph
+      readonly start: number;
       readonly commits: readonly CommitInfo[];
-      // The graph of each of the commits
       readonly graph: readonly GraphRow[];
       // Position of the selected commit, to scroll to
       readonly selectedIndex: number | undefined;
+      // After a reload the user didn't ask for: the commit that was at the top
+      // of the list, and how far into it, so the list stays where it was
+      readonly anchor:
+        { readonly index: number; readonly offset: number } | undefined;
     }
   // Commits at positions start.. of the history, answering loadCommits
   | {
@@ -153,5 +184,19 @@ export type ToWebview =
       readonly hash: string;
       readonly path: string | undefined;
       readonly patch: string;
+    }
+  // Every file of the repository at a commit, answering loadTree
+  | {
+      readonly type: 'tree';
+      readonly hash: string;
+      readonly paths: readonly string[];
+    }
+  // A file the commit didn't change, shown whole instead of a diff
+  | {
+      readonly type: 'fileContent';
+      readonly hash: string;
+      readonly path: string;
+      readonly content: string;
+      readonly binary: boolean;
     }
   | { readonly type: 'error'; readonly message: string };

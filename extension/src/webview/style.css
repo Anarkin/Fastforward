@@ -654,3 +654,65 @@ body.resizing {
 }
 
 /* The row's text starts after its lanes; the indent is set on each row */
+
+/* Changes | Files in the Files column's title, like a segmented button */
+.switch {
+  display: inline-flex;
+  padding: 1px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--vscode-foreground) 10%, transparent);
+}
+
+.switch-option {
+  padding: 1px 10px;
+  font: inherit;
+  color: var(--vscode-descriptionForeground);
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-radius: 3px;
+}
+
+.switch-option.active {
+  color: var(--vscode-foreground);
+  background: var(--vscode-editor-background);
+  box-shadow: 0 1px 2px var(--vscode-widget-shadow);
+}
+
+/* In the Files view, folders with changes in them and changed files stand out */
+.tree-row.folder.changed,
+.tree-row.file.changed {
+  color: var(--vscode-gitDecoration-modifiedResourceForeground);
+}
+
+.file-header .unchanged {
+  flex: none;
+  color: var(--vscode-descriptionForeground);
+}
+
+/* The VIPs under the tabs, wrapping onto more lines when they don't fit */
+.vip-bar {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.badge.clickable {
+  cursor: pointer;
+}
+
+/* A VIP whose ref doesn't exist anymore, until it is removed */
+.badge.missing {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+
+/* At the pointer, instead of under a button */
+.menu.context-menu {
+  position: fixed;
+  right: auto;
+  z-index: 20;
+}

@@ -1,7 +1,12 @@
 import * as vscode from 'vscode';
 import { watchDevReload } from './devReload';
 import { registerCommand } from './registerCommand';
-import { FastforwardView, showViewCommand, toggleViewCommand } from './view';
+import {
+  FastforwardView,
+  showViewCommand,
+  toggleViewCommand,
+  viewType,
+} from './view';
 
 export function activate(context: vscode.ExtensionContext): void {
   const log = vscode.window.createOutputChannel('Fastforward', { log: true });
@@ -15,7 +20,9 @@ export function activate(context: vscode.ExtensionContext): void {
     context.workspaceState,
     context.globalState,
   );
-  context.subscriptions.push(view);
+  context.subscriptions.push(
+    vscode.window.registerCustomEditorProvider(viewType, view),
+  );
   context.subscriptions.push(
     registerCommand(log, toggleViewCommand, () => view.toggle()),
     registerCommand(log, showViewCommand, () => view.show()),

@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import * as vscode from 'vscode';
 import type { API, Repository } from '../git/git';
 import { getGitApi, listRefs } from '../git/repository';
 import { listHistory, logCommits, showFiles, showPatch } from '../git/show';
@@ -11,11 +12,16 @@ suite('Git repository', () => {
   suiteSetup(async function () {
     this.timeout(20_000);
     git = await getGitApi();
-    for (let i = 0; i < 100 && git.repositories.length === 0; i++) {
+    // The workspace's repository; other tests open temp repositories too
+    const folder = vscode.workspace.workspaceFolders?.[0]?.uri;
+    assert.ok(folder, 'no workspace folder');
+    let found = git.getRepository(folder);
+    for (let i = 0; i < 100 && !found; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
+      found = git.getRepository(folder);
     }
-    assert.ok(git.repositories[0], 'repository not found');
-    repository = git.repositories[0];
+    assert.ok(found, 'repository not found');
+    repository = found;
     await repository.status();
   });
 

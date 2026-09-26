@@ -1,4 +1,6 @@
 import { execFile } from 'node:child_process';
+import * as fs from 'node:fs/promises';
+import { join } from 'node:path';
 import type { CommitInfo, FileChange } from '../protocol';
 
 // Commit files and patches come from git show, because the Git extension API
@@ -159,6 +161,81 @@ export function parseLog(output: string): CommitInfo[] {
           .length,
       };
     });
+}
+
+// The branch each remote considers its main one, like origin/main, which git
+// records as refs/remotes/<remote>/HEAD when cloning
+export async function remoteDefaultBranches(
+  gitPath: string,
+  cwd: string,
+): Promise<string[]> {
+  const output = await runGit(gitPath, cwd, [
+    'for-each-ref',
+    '--format=%(symref)',
+    'refs/remotes/*/HEAD',
+  ]);
+  return output
+    .split('\n')
+    .filter((line) => line.startsWith('refs/remotes/'))
+    .map((line) => line.slice('refs/remotes/'.length));
+}
+
+// Every file of the repository at a commit, or in the working tree including
+// untracked files; took 97 ms and 372 ms for 19k files
+export async function listTree(
+  gitPath: string,
+  cwd: string,
+  hash: string | undefined,
+): Promise<string[]> {
+  const output = await runGit(
+    gitPath,
+    cwd,
+    hash === undefined
+      ? ['ls-files', '-z', '--cached', '--others', '--exclude-standard']
+      : ['ls-tree', '-r', '-z', '--name-only', hash],
+  );
+  return [...new Set(splitNul(output).filter(Boolean))];
+}
+
+// Files over this size, or with a NUL byte near the start, are shown as
+// binary instead of their content
+const maxFileSize = 2 * 1024 * 1024;
+const binaryProbe = 8000;
+
+export interface FileContent {
+  readonly content: string;
+  readonly binary: boolean;
+}
+
+function toContent(buffer: Buffer): FileContent {
+  if (
+    buffer.length > maxFileSize ||
+    buffer.subarray(0, binaryProbe).includes(0)
+  ) {
+    return { content: '', binary: true };
+  }
+  return { content: buffer.toString('utf8'), binary: false };
+}
+
+// A file's content at a commit, or in the working tree
+export async function readFile(
+  gitPath: string,
+  cwd: string,
+  hash: string | undefined,
+  path: string,
+): Promise<FileContent> {
+  if (hash === undefined) {
+    return toContent(await fs.readFile(join(cwd, path)));
+  }
+  const output = await new Promise<Buffer>((resolve, reject) => {
+    execFile(
+      gitPath,
+      ['show', `${hash}:${path}`],
+      { cwd, maxBuffer: 256 * 1024 * 1024, encoding: 'buffer' },
+      (error, stdout) => (error ? reject(error) : resolve(stdout)),
+    );
+  });
+  return toContent(output);
 }
 
 // Uncommitted changes are the working tree and index against HEAD, plus
