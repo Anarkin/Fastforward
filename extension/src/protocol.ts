@@ -44,13 +44,16 @@ export type ToExtension =
   | { readonly type: 'addTab' }
   | { readonly type: 'closeTab'; readonly root: string }
   | { readonly type: 'sortTabs' }
+  // The widths of the Locations, Commits and Files columns, saved per user
+  | { readonly type: 'setColumnWidths'; readonly widths: readonly number[] }
   // Written to the Fastforward log, so webview problems show up there too
   | {
       readonly type: 'log';
       readonly level: 'info' | 'error';
       readonly message: string;
     }
-  | { readonly type: 'selectRef'; readonly ref: string | undefined }
+  // Selects a commit that may not be loaded yet, such as a branch's tip
+  | { readonly type: 'jump'; readonly hash: string }
   // Asks for the commits at positions start..start+count of the history
   | {
       readonly type: 'loadCommits';
@@ -71,6 +74,11 @@ export type ToExtension =
     };
 
 export type ToWebview =
+  // Undefined widths use the defaults
+  | {
+      readonly type: 'layout';
+      readonly columnWidths: readonly number[] | undefined;
+    }
   | {
       readonly type: 'tabs';
       readonly tabs: readonly TabInfo[];
@@ -78,14 +86,15 @@ export type ToWebview =
     }
   | {
       readonly type: 'repository';
+      // The current branch's name, and the commit HEAD points to
       readonly head: string | undefined;
+      readonly headCommit: string | undefined;
       readonly refs: readonly RefInfo[];
     }
-  // Starts a new history: its size, so the list has its full height at once,
-  // and the first page of commits
+  // Starts a new history of every branch, remote and tag: its size, so the
+  // list has its full height at once, and the first page of commits
   | {
       readonly type: 'commits';
-      readonly ref: string | undefined;
       readonly total: number;
       readonly commits: readonly CommitInfo[];
       // Position of the selected commit, to scroll to
@@ -94,10 +103,11 @@ export type ToWebview =
   // Commits at positions start.. of the history, answering loadCommits
   | {
       readonly type: 'commitPage';
-      readonly ref: string | undefined;
       readonly start: number;
       readonly commits: readonly CommitInfo[];
     }
+  // Scrolls to a commit and selects it, answering jump
+  | { readonly type: 'reveal'; readonly hash: string; readonly index: number }
   | { readonly type: 'workingTree'; readonly files: number }
   | {
       readonly type: 'files';

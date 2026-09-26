@@ -4,19 +4,15 @@ import * as vscode from 'vscode';
 import type { API, Repository } from './git/git';
 import { getGitApi, listRefs, pickRepository } from './git/repository';
 import {
-  countCommits,
+  listHistory,
   logCommits,
   showFiles,
   showPatch,
   workingTreeFiles,
   workingTreePatch,
+  type HistoryEntry,
 } from './git/show';
-import {
-  workingTreeHash,
-  type CommitInfo,
-  type ToExtension,
-  type ToWebview,
-} from './protocol';
+import { workingTreeHash, type ToExtension, type ToWebview } from './protocol';
 
 export const toggleViewCommand = 'fastforward.toggleView';
 export const showViewCommand = 'fastforward.showView';
@@ -40,17 +36,21 @@ const activeTabKey = 'activeTab';
 // Repository roots opened in any workspace, most recent first, offered by +
 const recentKey = 'recentRepositories';
 const maxRecent = 20;
+// Column widths, per user and synced across machines, as they are a personal
+// preference rather than something about a workspace
+const columnWidthsKey = 'columnWidths';
 
 // Kept in the extension, because the webview is recreated every time the modal
 // opens
 interface TabState {
-  ref: string | undefined;
   hash: string | undefined;
   // Position of the selected commit in the history
   index: number | undefined;
   path: string | undefined;
-  // The commits loaded so far, to check selections against
-  commits: Map<string, CommitInfo>;
+  // Every commit of every branch, remote and tag, newest first, and each
+  // commit's position in it; pages and jumps are looked up here
+  history: readonly HistoryEntry[];
+  positions: Map<string, number>;
   // The last message of each type sent for this tab, replayed when the tab
   // or the modal opens again so it shows up instantly, before the refresh
   shown: Map<ToWebview['type'], ToWebview>;
@@ -81,12 +81,13 @@ export class FastforwardView
     private readonly log: vscode.LogOutputChannel,
     private readonly extensionUri: vscode.Uri,
     private readonly workspaceState: vscode.Memento,
-    private readonly globalState: vscode.Memento,
+    private readonly globalState: vscode.ExtensionContext['globalState'],
   ) {
     this.registration = vscode.window.registerCustomEditorProvider(
       viewType,
       this,
     );
+    globalState.setKeysForSync([columnWidthsKey]);
   }
 
   get isShown(): boolean {
@@ -193,6 +194,10 @@ export class FastforwardView
     const git = await getGitApi();
     switch (message.type) {
       case 'ready':
+        session.post({
+          type: 'layout',
+          columnWidths: this.globalState.get<number[]>(columnWidthsKey),
+        });
         await this.addWorkspaceTab(git);
         await this.openTab(git, session, this.activeTab);
         return;
@@ -237,6 +242,9 @@ export class FastforwardView
       case 'log':
         this.log[message.level](`Webview: ${message.message}`);
         return;
+      case 'setColumnWidths':
+        await this.globalState.update(columnWidthsKey, message.widths);
+        return;
     }
 
     const context = await this.context(git, session);
@@ -247,11 +255,22 @@ export class FastforwardView
       case 'loadCommits':
         await this.sendCommitPage(context, message.start, message.count);
         break;
-      case 'selectRef':
-        context.tab.ref = message.ref;
-        context.tab.index = undefined;
-        await this.sendCommits(context);
+      case 'jump': {
+        const index = context.tab.positions.get(message.hash);
+        if (index === undefined) {
+          context.post({
+            type: 'error',
+            message: `${message.hash} is not in the history`,
+          });
+          break;
+        }
+        context.tab.hash = message.hash;
+        context.tab.index = index;
+        context.tab.path = undefined;
+        context.post({ type: 'reveal', hash: message.hash, index });
+        await this.sendCommit(context);
         break;
+      }
       case 'selectCommit':
         context.tab.hash = message.hash;
         context.tab.index = message.index;
@@ -381,6 +400,7 @@ export class FastforwardView
     context.post({
       type: 'repository',
       head: context.repository.state.HEAD?.name,
+      headCommit: context.repository.state.HEAD?.commit,
       refs: await listRefs(context.repository),
     });
   }
@@ -397,11 +417,11 @@ export class FastforwardView
     let tab = this.tabStates.get(root);
     if (!tab) {
       tab = {
-        ref: undefined,
         hash: undefined,
         index: undefined,
         path: undefined,
-        commits: new Map(),
+        history: [],
+        positions: new Map(),
         shown: new Map(),
       };
       this.tabStates.set(root, tab);
@@ -477,21 +497,24 @@ export class FastforwardView
   }
 
   private async sendCommits(context: Context): Promise<void> {
-    const { ref } = context.tab;
     const gitPath = context.git.git.path;
-    const [total, commits] = await Promise.all([
-      countCommits(gitPath, context.root, ref),
-      logCommits(gitPath, context.root, ref, 0, firstPageSize),
-    ]);
-    context.tab.commits = new Map(
-      commits.map((commit) => [commit.hash, commit]),
+    const history = await listHistory(gitPath, context.root);
+    const commits = await logCommits(
+      gitPath,
+      context.root,
+      history.slice(0, firstPageSize).map((entry) => entry.hash),
     );
+    const { tab } = context;
+    tab.history = history;
+    tab.positions = new Map(history.map((entry, index) => [entry.hash, index]));
+    // The selected commit may have moved, or be gone after a rebase
+    tab.index =
+      tab.hash === undefined ? undefined : tab.positions.get(tab.hash);
     context.post({
       type: 'commits',
-      ref,
-      total,
+      total: history.length,
       commits,
-      selectedIndex: context.tab.index,
+      selectedIndex: tab.index,
     });
   }
 
@@ -500,22 +523,17 @@ export class FastforwardView
     start: number,
     count: number,
   ): Promise<void> {
-    const { ref } = context.tab;
+    const { history } = context.tab;
     const commits = await logCommits(
       context.git.git.path,
       context.root,
-      ref,
-      start,
-      count,
+      history.slice(start, start + count).map((entry) => entry.hash),
     );
-    // The ref changed while this page loaded
-    if (context.tab.ref !== ref) {
+    // The history was reloaded while this page loaded
+    if (context.tab.history !== history) {
       return;
     }
-    for (const commit of commits) {
-      context.tab.commits.set(commit.hash, commit);
-    }
-    context.post({ type: 'commitPage', ref, start, commits });
+    context.post({ type: 'commitPage', start, commits });
   }
 
   private async sendCommit(context: Context): Promise<void> {
@@ -527,7 +545,7 @@ export class FastforwardView
     if (hash === workingTreeHash) {
       const files = await workingTreeFiles(gitPath, context.root);
       context.post({ type: 'files', hash, files });
-    } else if (context.tab.commits.has(hash)) {
+    } else if (context.tab.positions.has(hash)) {
       const files = await showFiles(gitPath, context.root, hash);
       context.post({ type: 'files', hash, files });
     } else {

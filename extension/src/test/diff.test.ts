@@ -1,5 +1,10 @@
 import * as assert from 'node:assert';
-import { parseLog, parseNameStatus, parseNumstat } from '../git/show';
+import {
+  parseHistory,
+  parseLog,
+  parseNameStatus,
+  parseNumstat,
+} from '../git/show';
 import { parsePatch } from '../webview/diff';
 
 suite('parsePatch', () => {
@@ -123,6 +128,15 @@ suite('git log parser', () => {
         authorDate: 1_600_000_000_000,
         files: 0,
       },
+    ]);
+  });
+});
+
+suite('git rev-list parser', () => {
+  test('parses hashes and parents', () => {
+    assert.deepStrictEqual(parseHistory('aaa bbb ccc\nbbb\n'), [
+      { hash: 'aaa', parents: ['bbb', 'ccc'] },
+      { hash: 'bbb', parents: [] },
     ]);
   });
 });

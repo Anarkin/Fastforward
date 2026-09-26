@@ -10,6 +10,7 @@ import {
   type ToWebview,
 } from '../protocol';
 import { CommitHistory, commitPageSize } from './commitHistory';
+import { ColumnResizingProvider, Resizer, useColumnWidths } from './columns';
 import { parsePatch, type DiffFile } from './diff';
 
 interface Props {
@@ -18,7 +19,14 @@ interface Props {
 
 interface Repository {
   head: string | undefined;
+  headCommit: string | undefined;
   refs: readonly RefInfo[];
+}
+
+// A position to scroll the commit list to; a new object scrolls again even to
+// the same position
+interface ScrollTarget {
+  readonly index: number;
 }
 
 export function App({ post }: Props) {
@@ -26,13 +34,11 @@ export function App({ post }: Props) {
   const [activeTab, setActiveTab] = useState<string>();
   const activeTabRef = useRef<string>(undefined);
   const [repository, setRepository] = useState<Repository>();
-  const [ref, setRef] = useState<string>();
   // Filled in place as pages arrive; the version re-renders the list
   const [history, setHistory] = useState<CommitHistory>();
   const historyRef = useRef<CommitHistory>(undefined);
   const [historyVersion, setHistoryVersion] = useState(0);
-  // Position to scroll to when a history arrives, to show the selected commit
-  const [scrollTarget, setScrollTarget] = useState<number>();
+  const [scrollTarget, setScrollTarget] = useState<ScrollTarget>();
   // Number of uncommitted files, undefined until the extension reports it
   const [workingTree, setWorkingTree] = useState<number>();
   const [hash, setHash] = useState<string>();
@@ -40,11 +46,20 @@ export function App({ post }: Props) {
   const [path, setPath] = useState<string>();
   const [patch, setPatch] = useState('');
   const [error, setError] = useState<string>();
+  const saveColumnWidths = useCallback(
+    (widths: readonly number[]) => post({ type: 'setColumnWidths', widths }),
+    [post],
+  );
+  const columns = useColumnWidths(saveColumnWidths);
+  const loadColumnWidths = columns.load;
 
   useEffect(() => {
     const onMessage = (event: MessageEvent<ToWebview>) => {
       const message = event.data;
       switch (message.type) {
+        case 'layout':
+          loadColumnWidths(message.columnWidths);
+          break;
         case 'tabs':
           if (activeTabRef.current !== message.active) {
             clear();
@@ -57,22 +72,25 @@ export function App({ post }: Props) {
           setRepository(message);
           break;
         case 'commits': {
-          const next = new CommitHistory(message.ref, message.total);
+          const next = new CommitHistory(message.total);
           next.add(0, message.commits);
           historyRef.current = next;
-          setRef(message.ref);
           setHistory(next);
-          setScrollTarget(message.selectedIndex);
+          setScrollTarget(
+            message.selectedIndex === undefined
+              ? undefined
+              : { index: message.selectedIndex },
+          );
           break;
         }
-        case 'commitPage': {
-          const current = historyRef.current;
-          if (current && current.ref === message.ref) {
-            current.add(message.start, message.commits);
-            setHistoryVersion((version) => version + 1);
-          }
+        case 'commitPage':
+          historyRef.current?.add(message.start, message.commits);
+          setHistoryVersion((version) => version + 1);
           break;
-        }
+        case 'reveal':
+          showCommit(message.hash);
+          setScrollTarget({ index: message.index });
+          break;
         case 'workingTree':
           setWorkingTree(message.files);
           break;
@@ -93,12 +111,11 @@ export function App({ post }: Props) {
     window.addEventListener('message', onMessage);
     post({ type: 'ready' });
     return () => window.removeEventListener('message', onMessage);
-  }, [post]);
+  }, [post, loadColumnWidths]);
 
   // Forgets everything shown for the previous tab
   function clear() {
     setRepository(undefined);
-    setRef(undefined);
     historyRef.current = undefined;
     setHistory(undefined);
     setScrollTarget(undefined);
@@ -108,6 +125,14 @@ export function App({ post }: Props) {
     setPath(undefined);
     setPatch('');
     setError(undefined);
+  }
+
+  // Shows a commit as selected while its files and diff load
+  function showCommit(next: string | undefined) {
+    setHash(next);
+    setFiles([]);
+    setPath(undefined);
+    setPatch('');
   }
 
   const log = useCallback(
@@ -131,22 +156,21 @@ export function App({ post }: Props) {
 
   const commit = history?.find(hash);
 
-  const selectRef = (name: string | undefined) => {
-    setRef(name);
-    post({ type: 'selectRef', ref: name });
-  };
   // Selecting the selected commit again, or "No changes", clears the selection
   const selectCommit = (next: string | undefined, index: number) => {
     const target = next === hash ? undefined : next;
-    setHash(target);
-    setFiles([]);
-    setPath(undefined);
-    setPatch('');
+    showCommit(target);
     post({
       type: 'selectCommit',
       hash: target,
       index: target === undefined ? undefined : index,
     });
+  };
+  // Scrolls to a location's commit, which the extension finds in the history
+  const jump = (target: string | undefined) => {
+    if (target) {
+      post({ type: 'jump', hash: target });
+    }
   };
   const selectFile = (next: string | undefined) => {
     if (!hash) {
@@ -172,32 +196,38 @@ export function App({ post }: Props) {
           No repository is open. Use + to open one.
         </div>
       ) : (
-        <div className="columns">
-          <Locations
-            repository={repository}
-            selected={ref}
-            onSelect={selectRef}
-          />
-          <Commits
-            history={history}
-            version={historyVersion}
-            scrollTarget={scrollTarget}
-            onLoad={loadCommits}
-            workingTree={workingTree}
-            refsByCommit={refsByCommit}
-            selected={hash}
-            onSelect={selectCommit}
-          />
-          <Files files={files} selected={path} onSelect={selectFile} />
-          <Diff
-            workingTree={hash === workingTreeHash}
-            commit={commit}
-            refs={commit ? (refsByCommit.get(commit.hash) ?? []) : []}
-            files={files}
-            patch={patch}
-            error={error}
-          />
-        </div>
+        <ColumnResizingProvider value={columns.resizing}>
+          <div
+            className="columns"
+            ref={columns.container}
+            style={{ gridTemplateColumns: columns.template }}
+          >
+            <Locations
+              repository={repository}
+              selected={hash}
+              onSelect={jump}
+            />
+            <Commits
+              history={history}
+              version={historyVersion}
+              scrollTarget={scrollTarget}
+              onLoad={loadCommits}
+              workingTree={workingTree}
+              refsByCommit={refsByCommit}
+              selected={hash}
+              onSelect={selectCommit}
+            />
+            <Files files={files} selected={path} onSelect={selectFile} />
+            <Diff
+              workingTree={hash === workingTreeHash}
+              commit={commit}
+              refs={commit ? (refsByCommit.get(commit.hash) ?? []) : []}
+              files={files}
+              patch={patch}
+              error={error}
+            />
+          </div>
+        </ColumnResizingProvider>
       )}
     </div>
   );
@@ -357,57 +387,64 @@ function Menu({
   );
 }
 
+// Columns with an index have a resizer on their right edge
 function Column({
   title,
+  index,
   children,
 }: {
   title: string;
+  index?: number;
   children: React.ReactNode;
 }) {
   return (
     <section className="column">
       <header className="column-title">{title}</header>
       <div className="column-body">{children}</div>
+      {index !== undefined && <Resizer index={index} />}
     </section>
   );
 }
 
+// Clicking a location jumps to its commit in the list; the locations pointing
+// at the selected commit are highlighted
 function Locations({
   repository,
   selected,
   onSelect,
 }: {
   repository: Repository | undefined;
+  // The selected commit
   selected: string | undefined;
-  onSelect: (ref: string | undefined) => void;
+  onSelect: (commit: string | undefined) => void;
 }) {
   const refs = repository?.refs ?? [];
-  const byKind = (kind: RefInfo['kind']) =>
-    refs.filter((r) => r.kind === kind).map((r) => r.name);
+  const byKind = (kind: RefInfo['kind']) => refs.filter((r) => r.kind === kind);
+  const headCommit = repository?.headCommit;
   return (
-    <Column title="Locations">
+    <Column title="Locations" index={0}>
       <div
-        className={`row head ${selected === undefined ? 'selected' : ''}`}
-        onClick={() => onSelect(undefined)}
+        className={`row head ${headCommit !== undefined && headCommit === selected ? 'selected' : ''}`}
+        onClick={() => onSelect(headCommit)}
       >
         HEAD{repository?.head ? ` (${repository.head})` : ''}
       </div>
       <RefGroup
         title="Branches"
-        names={byKind('branch')}
+        refs={byKind('branch')}
         selected={selected}
         onSelect={onSelect}
         open
       />
       <RefGroup
         title="Remotes"
-        names={byKind('remote')}
+        refs={byKind('remote')}
         selected={selected}
         onSelect={onSelect}
       />
       <RefGroup
         title="Tags"
-        names={byKind('tag')}
+        refs={byKind('tag')}
         selected={selected}
         onSelect={onSelect}
       />
@@ -417,16 +454,16 @@ function Locations({
 
 interface TreeNode {
   name: string;
-  ref: string | undefined;
+  ref: RefInfo | undefined;
   children: Map<string, TreeNode>;
 }
 
 // Branch names like feat/foo are shown as folders, like Fork does
-function buildTree(names: readonly string[]): TreeNode {
+function buildTree(refs: readonly RefInfo[]): TreeNode {
   const root: TreeNode = { name: '', ref: undefined, children: new Map() };
-  for (const name of names) {
+  for (const ref of refs) {
     let node = root;
-    for (const part of name.split('/')) {
+    for (const part of ref.name.split('/')) {
       let child = node.children.get(part);
       if (!child) {
         child = { name: part, ref: undefined, children: new Map() };
@@ -434,28 +471,28 @@ function buildTree(names: readonly string[]): TreeNode {
       }
       node = child;
     }
-    node.ref = name;
+    node.ref = ref;
   }
   return root;
 }
 
 function RefGroup({
   title,
-  names,
+  refs,
   selected,
   onSelect,
   open = false,
 }: {
   title: string;
-  names: readonly string[];
+  refs: readonly RefInfo[];
   selected: string | undefined;
-  onSelect: (ref: string) => void;
+  onSelect: (commit: string) => void;
   open?: boolean;
 }) {
-  const tree = useMemo(() => buildTree(names), [names]);
+  const tree = useMemo(() => buildTree(refs), [refs]);
   return (
     <TreeFolder
-      label={`${title.toUpperCase()} (${names.length})`}
+      label={`${title.toUpperCase()} (${refs.length})`}
       node={tree}
       depth={0}
       selected={selected}
@@ -479,7 +516,7 @@ function TreeFolder({
   node: TreeNode;
   depth: number;
   selected: string | undefined;
-  onSelect: (ref: string) => void;
+  onSelect: (commit: string) => void;
   initiallyOpen: boolean;
   group?: boolean;
 }) {
@@ -514,10 +551,10 @@ function TreeFolder({
           ) : (
             <div
               key={child.name}
-              className={`row leaf ${child.ref === selected ? 'selected' : ''}`}
+              className={`row leaf ${child.ref && child.ref.commit === selected ? 'selected' : ''}`}
               style={{ paddingLeft: 8 + (depth + 1) * 14 + 12 }}
-              title={child.ref}
-              onClick={() => child.ref && onSelect(child.ref)}
+              title={child.ref?.name}
+              onClick={() => child.ref && onSelect(child.ref.commit)}
             >
               {child.name}
             </div>
@@ -578,7 +615,7 @@ function Commits({
   history: CommitHistory | undefined;
   // Changes when pages arrive, as the history is filled in place
   version: number;
-  scrollTarget: number | undefined;
+  scrollTarget: { readonly index: number } | undefined;
   onLoad: (start: number) => void;
   workingTree: number | undefined;
   refsByCommit: Map<string, RefInfo[]>;
@@ -612,12 +649,20 @@ function Commits({
     return () => clearTimeout(timer);
   }, [history, first, last, onLoad]);
 
-  // A new history scrolls to the selected commit, which may be years back
+  // Scrolls to the selected commit or a location's commit, which may be years
+  // back; a commit that is already on screen stays where it is
+  const scrollIndex = scrollTarget && offset + scrollTarget.index;
   useEffect(() => {
-    if (history && scrollTarget !== undefined) {
-      virtualizer.scrollToIndex(offset + scrollTarget, { align: 'center' });
+    if (history && scrollIndex !== undefined) {
+      const onScreen = virtualizer
+        .getVirtualItems()
+        .some((row) => row.index === scrollIndex);
+      virtualizer.scrollToIndex(scrollIndex, {
+        align: onScreen ? 'auto' : 'center',
+      });
     }
-  }, [history, scrollTarget, offset, virtualizer]);
+    // scrollTarget is new for every jump, even to the same commit
+  }, [history, scrollTarget, scrollIndex, virtualizer]);
 
   const selectedPosition =
     selected === workingTreeHash
@@ -715,7 +760,7 @@ function Commits({
   };
 
   return (
-    <Column title="Commits">
+    <Column title="Commits" index={1}>
       <div
         className="list"
         ref={list}
@@ -752,7 +797,7 @@ function Files({
   onSelect: (path: string | undefined) => void;
 }) {
   return (
-    <Column title="Files">
+    <Column title="Files" index={2}>
       {files.length > 0 && (
         <div
           className={`row group ${selected === undefined ? 'selected' : ''}`}

@@ -3,18 +3,15 @@ import type { CommitInfo } from '../protocol';
 // The size of the pages the webview asks the extension for
 export const commitPageSize = 100;
 
-// A sparse view of a ref's history: its size is known up front, so the list
-// has its full height at once, and commits are filled in page by page as they
+// A sparse view of the history: its size is known up front, so the list has
+// its full height at once, and commits are filled in page by page as they
 // scroll into view
 export class CommitHistory {
   private readonly rows = new Map<number, CommitInfo>();
   private readonly positions = new Map<string, number>();
   private readonly requested = new Set<number>();
 
-  constructor(
-    readonly ref: string | undefined,
-    readonly total: number,
-  ) {}
+  constructor(readonly total: number) {}
 
   at(position: number): CommitInfo | undefined {
     return this.rows.get(position);

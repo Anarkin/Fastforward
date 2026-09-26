@@ -190,17 +190,40 @@ body {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 240px minmax(300px, 1.2fr) minmax(220px, 0.8fr) 2fr;
+  /* The column widths come from useColumnWidths */
   /* One row, capped at the available height so the columns scroll */
   grid-template-rows: minmax(0, 1fr);
 }
 
 .column {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
   border-right: 1px solid var(--vscode-panel-border);
+}
+
+/* A handle over the column's right border, highlighted like VS Code's sashes */
+.resizer {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  bottom: 0;
+  z-index: 5;
+  width: 6px;
+  cursor: col-resize;
+}
+
+.resizer:hover,
+body.resizing .resizer:active {
+  background: var(--vscode-sash-hoverBorder, var(--vscode-focusBorder));
+}
+
+/* While dragging, the cursor stays and text isn't selected */
+body.resizing {
+  cursor: col-resize;
+  user-select: none;
 }
 
 .column:last-child {

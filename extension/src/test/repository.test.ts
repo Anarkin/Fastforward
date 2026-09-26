@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import type { API, Repository } from '../git/git';
 import { getGitApi, listRefs } from '../git/repository';
-import { countCommits, logCommits, showFiles, showPatch } from '../git/show';
+import { listHistory, logCommits, showFiles, showPatch } from '../git/show';
 
 // .vscode-test.mjs opens this repository as the workspace
 suite('Git repository', () => {
@@ -29,35 +29,24 @@ suite('Git repository', () => {
     );
   });
 
-  test('lists commits, their files and patches', async () => {
-    const commits = await logCommits(
-      git.git.path,
-      repository.rootUri.fsPath,
-      undefined,
-      0,
-      100_000,
-    );
-    assert.ok(commits.every((commit) => commit.hash.length === 40));
-
-    assert.strictEqual(
-      await countCommits(git.git.path, repository.rootUri.fsPath, undefined),
-      commits.length,
-    );
-
-    // Pages continue where the previous one ended
-    const [second] = await logCommits(
-      git.git.path,
-      repository.rootUri.fsPath,
-      undefined,
-      1,
-      1,
-    );
-    assert.strictEqual(second?.hash, commits[1]?.hash);
-    // The oldest commit is the root, or the shallow clone boundary in CI;
-    // either way git show lists all its files as added
-    const root = commits.at(-1);
-    assert.ok(root);
+  test('lists the history, its commits, their files and patches', async () => {
     const cwd = repository.rootUri.fsPath;
+    const history = await listHistory(git.git.path, cwd);
+    assert.ok(history.length > 0);
+    assert.ok(history.every((entry) => entry.hash.length === 40));
+
+    // Commits come back in the order of the hashes asked for
+    const hashes = history.slice(0, 3).map((entry) => entry.hash);
+    const commits = await logCommits(git.git.path, cwd, hashes.toReversed());
+    assert.deepStrictEqual(
+      commits.map((commit) => commit.hash),
+      hashes.toReversed(),
+    );
+
+    // A root commit, or the shallow clone boundary in CI, has no parents;
+    // either way git show lists all its files as added
+    const root = history.find((entry) => entry.parents.length === 0);
+    assert.ok(root);
     const files = await showFiles(git.git.path, cwd, root.hash);
     assert.ok(files.length > 0);
     assert.ok(files.every((file) => file.status === 'A'));

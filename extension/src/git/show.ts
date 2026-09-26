@@ -6,15 +6,21 @@ import type { CommitInfo, FileChange } from '../protocol';
 
 const showArgs = ['show', '--diff-merges=first-parent', '--format=', '-M'];
 
-// git diff --no-index exits with 1 when the files differ
+interface RunOptions {
+  // git diff --no-index exits with 1 when the files differ
+  readonly okExitCodes?: readonly number[];
+  // Written to the command's stdin
+  readonly input?: string;
+}
+
 export function runGit(
   gitPath: string,
   cwd: string,
   args: readonly string[],
-  okExitCodes: readonly number[] = [0],
+  { okExitCodes = [0], input }: RunOptions = {},
 ): Promise<string> {
   return new Promise((resolve, reject) => {
-    execFile(
+    const child = execFile(
       gitPath,
       args,
       { cwd, maxBuffer: 256 * 1024 * 1024, encoding: 'utf8' },
@@ -30,6 +36,7 @@ export function runGit(
         }
       },
     );
+    child.stdin?.end(input);
   });
 }
 
@@ -64,43 +71,69 @@ export function showPatch(
   ]);
 }
 
-// Took 133 ms for 166k commits
-export async function countCommits(
-  gitPath: string,
-  cwd: string,
-  ref: string | undefined,
-): Promise<number> {
-  const output = await runGit(gitPath, cwd, [
-    'rev-list',
-    '--count',
-    ref ?? 'HEAD',
-    '--',
-  ]);
-  return Number(output.trim());
+export interface HistoryEntry {
+  readonly hash: string;
+  readonly parents: readonly string[];
 }
 
-// The Git extension API only counts a commit's files with --shortstat, which
-// diffs the contents of every file and took 8 s for 300 commits in a large
-// repository; --raw only compares trees and took 90 ms
+// Every commit reachable from HEAD, the branches, the remotes and the tags,
+// newest first; took 474 ms for 190k commits
+export async function listHistory(
+  gitPath: string,
+  cwd: string,
+): Promise<HistoryEntry[]> {
+  const output = await runGit(gitPath, cwd, [
+    'rev-list',
+    '--date-order',
+    '--parents',
+    'HEAD',
+    '--branches',
+    '--remotes',
+    '--tags',
+    '--',
+  ]);
+  return parseHistory(output);
+}
+
+// One "<hash> <parent>..." line per commit
+export function parseHistory(output: string): HistoryEntry[] {
+  return output
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => {
+      const [hash, ...parents] = line.split(' ');
+      return { hash, parents };
+    });
+}
+
+// The commits with these hashes, in this order; the Git extension API only
+// counts a commit's files with --shortstat, which diffs the contents of every
+// file and took 8 s for 300 commits in a large repository, while --raw only
+// compares trees and takes about 100 ms for 100 commits
 export async function logCommits(
   gitPath: string,
   cwd: string,
-  ref: string | undefined,
-  skip: number,
-  count: number,
+  hashes: readonly string[],
 ): Promise<CommitInfo[]> {
-  const output = await runGit(gitPath, cwd, [
-    'log',
-    `--skip=${skip}`,
-    `-n${count}`,
-    '--raw',
-    '-z',
-    '--no-renames',
-    '--diff-merges=first-parent',
-    '--format=%x1e%H%x00%P%x00%aN%x00%aE%x00%at%x00%B',
-    ref ?? 'HEAD',
-    '--',
-  ]);
+  if (hashes.length === 0) {
+    return [];
+  }
+  const output = await runGit(
+    gitPath,
+    cwd,
+    [
+      'log',
+      '--stdin',
+      '--no-walk=unsorted',
+      '--raw',
+      '-z',
+      '--no-renames',
+      '--diff-merges=first-parent',
+      '--format=%x1e%H%x00%P%x00%aN%x00%aE%x00%at%x00%B',
+      '--',
+    ],
+    { input: `${hashes.join('\n')}\n` },
+  );
   return parseLog(output);
 }
 
@@ -175,12 +208,9 @@ export async function workingTreePatch(
 ): Promise<string> {
   const untracked = await listUntracked(gitPath, cwd);
   const untrackedPatch = (file: string) =>
-    runGit(
-      gitPath,
-      cwd,
-      ['diff', '--no-index', '--', '/dev/null', file],
-      [0, 1],
-    );
+    runGit(gitPath, cwd, ['diff', '--no-index', '--', '/dev/null', file], {
+      okExitCodes: [0, 1],
+    });
   if (path && untracked.includes(path)) {
     return untrackedPatch(path);
   }

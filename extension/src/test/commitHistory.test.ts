@@ -17,7 +17,7 @@ function commit(hash: string): CommitInfo {
 
 suite('CommitHistory', () => {
   test('places pages at their positions', () => {
-    const history = new CommitHistory(undefined, 1000);
+    const history = new CommitHistory(1000);
     history.add(300, [commit('a'), commit('b')]);
     assert.strictEqual(history.at(301)?.hash, 'b');
     assert.strictEqual(history.positionOf('a'), 300);
@@ -26,7 +26,7 @@ suite('CommitHistory', () => {
   });
 
   test('asks for each missing page once', () => {
-    const history = new CommitHistory(undefined, 250);
+    const history = new CommitHistory(250);
     history.add(0, [commit('a')]);
     assert.deepStrictEqual(history.takeMissingPages(50, 400), [
       commitPageSize,
