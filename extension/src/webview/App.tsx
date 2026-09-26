@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   workingTreeHash,
   type CommitInfo,
   type FileChange,
   type RefInfo,
+  type TabInfo,
   type ToExtension,
   type ToWebview,
 } from '../protocol';
@@ -14,12 +15,14 @@ interface Props {
 }
 
 interface Repository {
-  name: string;
   head: string | undefined;
   refs: readonly RefInfo[];
 }
 
 export function App({ post }: Props) {
+  const [tabs, setTabs] = useState<readonly TabInfo[]>([]);
+  const [activeTab, setActiveTab] = useState<string>();
+  const activeTabRef = useRef<string>(undefined);
   const [repository, setRepository] = useState<Repository>();
   const [ref, setRef] = useState<string>();
   const [commits, setCommits] = useState<readonly CommitInfo[]>([]);
@@ -35,6 +38,14 @@ export function App({ post }: Props) {
     const onMessage = (event: MessageEvent<ToWebview>) => {
       const message = event.data;
       switch (message.type) {
+        case 'tabs':
+          if (activeTabRef.current !== message.active) {
+            clear();
+          }
+          activeTabRef.current = message.active;
+          setTabs(message.tabs);
+          setActiveTab(message.active);
+          break;
         case 'repository':
           setRepository(message);
           break;
@@ -63,6 +74,19 @@ export function App({ post }: Props) {
     post({ type: 'ready' });
     return () => window.removeEventListener('message', onMessage);
   }, [post]);
+
+  // Forgets everything shown for the previous tab
+  function clear() {
+    setRepository(undefined);
+    setRef(undefined);
+    setCommits([]);
+    setWorkingTree(undefined);
+    setHash(undefined);
+    setFiles([]);
+    setPath(undefined);
+    setPatch('');
+    setError(undefined);
+  }
 
   const refsByCommit = useMemo(() => {
     const map = new Map<string, RefInfo[]>();
@@ -94,25 +118,87 @@ export function App({ post }: Props) {
   };
 
   return (
-    <div className="columns">
-      <Locations repository={repository} selected={ref} onSelect={selectRef} />
-      <Commits
-        commits={commits}
-        workingTree={workingTree}
-        refsByCommit={refsByCommit}
-        selected={hash}
-        onSelect={selectCommit}
+    <div className="app">
+      <TabBar
+        tabs={tabs}
+        active={activeTab}
+        onSelect={(root) => post({ type: 'selectTab', root })}
+        onClose={(root) => post({ type: 'closeTab', root })}
+        onAdd={() => post({ type: 'addTab' })}
       />
-      <Files files={files} selected={path} onSelect={selectFile} />
-      <Diff
-        workingTree={hash === workingTreeHash}
-        commit={commit}
-        refs={commit ? (refsByCommit.get(commit.hash) ?? []) : []}
-        files={files}
-        patch={patch}
-        error={error}
-      />
+      {tabs.length === 0 ? (
+        <div className="empty-state">
+          No repository is open. Use + to open one.
+        </div>
+      ) : (
+        <div className="columns">
+          <Locations
+            repository={repository}
+            selected={ref}
+            onSelect={selectRef}
+          />
+          <Commits
+            commits={commits}
+            workingTree={workingTree}
+            refsByCommit={refsByCommit}
+            selected={hash}
+            onSelect={selectCommit}
+          />
+          <Files files={files} selected={path} onSelect={selectFile} />
+          <Diff
+            workingTree={hash === workingTreeHash}
+            commit={commit}
+            refs={commit ? (refsByCommit.get(commit.hash) ?? []) : []}
+            files={files}
+            patch={patch}
+            error={error}
+          />
+        </div>
+      )}
     </div>
+  );
+}
+
+function TabBar({
+  tabs,
+  active,
+  onSelect,
+  onClose,
+  onAdd,
+}: {
+  tabs: readonly TabInfo[];
+  active: string | undefined;
+  onSelect: (root: string) => void;
+  onClose: (root: string) => void;
+  onAdd: () => void;
+}) {
+  return (
+    <nav className="tabs">
+      {tabs.map((tab) => (
+        <div
+          key={tab.root}
+          className={`tab ${tab.root === active ? 'active' : ''}`}
+          title={tab.root}
+          onClick={() => onSelect(tab.root)}
+          onAuxClick={(event) => event.button === 1 && onClose(tab.root)}
+        >
+          <span className="tab-name">{tab.name}</span>
+          <button
+            className="tab-close"
+            title="Close"
+            onClick={(event) => {
+              event.stopPropagation();
+              onClose(tab.root);
+            }}
+          >
+            ×
+          </button>
+        </div>
+      ))}
+      <button className="tab-add" title="Open a repository" onClick={onAdd}>
+        +
+      </button>
+    </nav>
   );
 }
 

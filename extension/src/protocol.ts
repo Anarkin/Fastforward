@@ -32,8 +32,17 @@ export interface FileChange {
   readonly deletions: number;
 }
 
+export interface TabInfo {
+  // The repository root, which also identifies the tab
+  readonly root: string;
+  readonly name: string;
+}
+
 export type ToExtension =
   | { readonly type: 'ready' }
+  | { readonly type: 'selectTab'; readonly root: string }
+  | { readonly type: 'addTab' }
+  | { readonly type: 'closeTab'; readonly root: string }
   | { readonly type: 'selectRef'; readonly ref: string | undefined }
   | { readonly type: 'selectCommit'; readonly hash: string }
   | {
@@ -44,8 +53,12 @@ export type ToExtension =
 
 export type ToWebview =
   | {
+      readonly type: 'tabs';
+      readonly tabs: readonly TabInfo[];
+      readonly active: string | undefined;
+    }
+  | {
       readonly type: 'repository';
-      readonly name: string;
       readonly head: string | undefined;
       readonly refs: readonly RefInfo[];
     }

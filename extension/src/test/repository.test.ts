@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import type { API, Repository } from '../git/git';
-import { getGitApi, listCommits, listRefs } from '../git/repository';
-import { showFiles, showPatch } from '../git/show';
+import { getGitApi, listRefs } from '../git/repository';
+import { logCommits, showFiles, showPatch } from '../git/show';
 
 // .vscode-test.mjs opens this repository as the workspace
 suite('Git repository', () => {
@@ -30,7 +30,12 @@ suite('Git repository', () => {
   });
 
   test('lists commits, their files and patches', async () => {
-    const commits = await listCommits(repository, undefined);
+    const commits = await logCommits(
+      git.git.path,
+      repository.rootUri.fsPath,
+      undefined,
+    );
+    assert.ok(commits.every((commit) => commit.hash.length === 40));
     // The oldest commit is the root, or the shallow clone boundary in CI;
     // either way git show lists all its files as added
     const root = commits.at(-1);

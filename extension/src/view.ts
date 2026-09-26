@@ -1,14 +1,10 @@
 import { randomBytes } from 'node:crypto';
+import * as path from 'node:path';
 import * as vscode from 'vscode';
 import type { API, Repository } from './git/git';
+import { getGitApi, listRefs, pickRepository } from './git/repository';
 import {
-  getGitApi,
-  listCommits,
-  listRefs,
-  pickRepository,
-  repositoryName,
-} from './git/repository';
-import {
+  logCommits,
   showFiles,
   showPatch,
   workingTreeFiles,
@@ -33,12 +29,23 @@ const viewUri = vscode.Uri.from({ scheme: 'fastforward', path: '/view' });
 // an extension to open an editor in the modal editor part (group -4)
 const modalEditorGroup = -4;
 
+// Repository roots of the open tabs, kept per workspace
+const tabsKey = 'tabs';
+const activeTabKey = 'activeTab';
+// Repository roots opened in any workspace, most recent first, offered by +
+const recentKey = 'recentRepositories';
+const maxRecent = 20;
+
 // Kept in the extension, because the webview is recreated every time the modal
 // opens
-interface Selection {
+interface TabState {
   ref: string | undefined;
   hash: string | undefined;
   path: string | undefined;
+  commits: Map<string, CommitInfo>;
+  // The last message of each type sent for this tab, replayed when the tab
+  // or the modal opens again so it shows up instantly, before the refresh
+  shown: Map<ToWebview['type'], ToWebview>;
 }
 
 // One per open webview
@@ -50,6 +57,9 @@ interface Session {
 interface Context {
   readonly git: API;
   readonly repository: Repository;
+  readonly root: string;
+  readonly tab: TabState;
+  // Drops messages once the user switched to another tab
   readonly post: (message: ToWebview) => void;
 }
 
@@ -57,16 +67,13 @@ export class FastforwardView
   implements vscode.CustomReadonlyEditorProvider, vscode.Disposable
 {
   private readonly registration: vscode.Disposable;
-  private readonly selection: Selection = {
-    ref: undefined,
-    hash: undefined,
-    path: undefined,
-  };
-  private commits = new Map<string, CommitInfo>();
+  private readonly tabStates = new Map<string, TabState>();
 
   constructor(
     private readonly log: vscode.LogOutputChannel,
     private readonly extensionUri: vscode.Uri,
+    private readonly workspaceState: vscode.Memento,
+    private readonly globalState: vscode.Memento,
   ) {
     this.registration = vscode.window.registerCustomEditorProvider(
       viewType,
@@ -130,6 +137,35 @@ export class FastforwardView
     this.registration.dispose();
   }
 
+  private get tabs(): string[] {
+    return this.workspaceState.get<string[]>(tabsKey, []);
+  }
+
+  private get activeTab(): string | undefined {
+    return this.workspaceState.get<string>(activeTabKey);
+  }
+
+  private async setTabs(tabs: string[], active: string | undefined) {
+    await this.workspaceState.update(tabsKey, tabs);
+    await this.workspaceState.update(activeTabKey, active);
+  }
+
+  private get recent(): string[] {
+    return this.globalState.get<string[]>(recentKey, []);
+  }
+
+  private async addRecent(root: string): Promise<void> {
+    const recent = [root, ...this.recent.filter((r) => r !== root)];
+    await this.globalState.update(recentKey, recent.slice(0, maxRecent));
+  }
+
+  private async removeRecent(root: string): Promise<void> {
+    await this.globalState.update(
+      recentKey,
+      this.recent.filter((r) => r !== root),
+    );
+  }
+
   private async run(
     name: string,
     session: Session,
@@ -147,46 +183,227 @@ export class FastforwardView
 
   private async handle(message: ToExtension, session: Session): Promise<void> {
     const git = await getGitApi();
-    const repository = pickRepository(git);
-    if (!repository) {
-      session.post({ type: 'error', message: 'No git repository is open' });
-      return;
-    }
-    const context: Context = { git, repository, post: session.post };
     switch (message.type) {
       case 'ready':
-        this.watch(context, session);
-        session.post({
-          type: 'repository',
-          name: repositoryName(repository),
-          head: repository.state.HEAD?.name,
-          refs: await listRefs(repository),
-        });
-        await Promise.all([
-          this.sendWorkingTree(context),
-          this.sendCommits(context),
-        ]);
-        await this.sendCommit(context);
-        break;
+        await this.addWorkspaceTab(git);
+        await this.openTab(git, session, this.activeTab);
+        return;
+      case 'selectTab':
+        await this.openTab(git, session, message.root);
+        return;
+      case 'addTab': {
+        const roots = await this.pickRepositories(git);
+        for (const root of roots) {
+          await this.addRecent(root);
+        }
+        const added = roots.filter((root) => !this.tabs.includes(root));
+        await this.setTabs([...this.tabs, ...new Set(added)], this.activeTab);
+        const last = roots.at(-1);
+        if (last) {
+          await this.openTab(git, session, last);
+        }
+        return;
+      }
+      case 'closeTab': {
+        const index = this.tabs.indexOf(message.root);
+        const tabs = this.tabs.filter((tab) => tab !== message.root);
+        this.tabStates.delete(message.root);
+        const active =
+          this.activeTab === message.root
+            ? tabs[Math.min(index, tabs.length - 1)]
+            : this.activeTab;
+        await this.setTabs(tabs, active);
+        await this.openTab(git, session, active);
+        return;
+      }
+    }
+
+    const context = await this.context(git, session);
+    if (!context) {
+      return;
+    }
+    switch (message.type) {
       case 'selectRef':
-        this.selection.ref = message.ref;
+        context.tab.ref = message.ref;
         await this.sendCommits(context);
         break;
       case 'selectCommit':
-        this.selection.hash = message.hash;
-        this.selection.path = undefined;
+        context.tab.hash = message.hash;
+        context.tab.path = undefined;
         await this.sendCommit(context);
         break;
       case 'selectFile':
-        this.selection.path = message.path;
+        context.tab.path = message.path;
         await this.sendDiff(context, message.hash);
         break;
     }
   }
 
+  // The first tab is the repository open in VS Code
+  private async addWorkspaceTab(git: API): Promise<void> {
+    const root = pickRepository(git)?.rootUri.fsPath;
+    if (root && !this.tabs.includes(root)) {
+      await this.setTabs([root, ...this.tabs], this.activeTab ?? root);
+    }
+  }
+
+  // Offers recent repositories first, and the folder picker as the last item
+  private async pickRepositories(git: API): Promise<string[]> {
+    const recent = this.recent.filter((root) => !this.tabs.includes(root));
+    if (recent.length > 0) {
+      const browse: vscode.QuickPickItem = {
+        label: '$(folder-opened) Browse...',
+        alwaysShow: true,
+      };
+      const picked = await vscode.window.showQuickPick(
+        [
+          ...recent.map((root) => ({
+            label: path.basename(root),
+            description: root,
+          })),
+          { label: '', kind: vscode.QuickPickItemKind.Separator },
+          browse,
+        ],
+        {
+          placeHolder: 'Open a repository in a new tab',
+          matchOnDescription: true,
+        },
+      );
+      if (!picked) {
+        return [];
+      }
+      if (picked !== browse && picked.description) {
+        const root = await this.checkRepository(
+          git,
+          vscode.Uri.file(picked.description),
+        );
+        return root ? [root] : [];
+      }
+    }
+    return this.browseRepositories(git);
+  }
+
+  private async browseRepositories(git: API): Promise<string[]> {
+    const folders =
+      (await vscode.window.showOpenDialog({
+        canSelectFolders: true,
+        canSelectFiles: false,
+        canSelectMany: true,
+        openLabel: 'Open Repositories',
+      })) ?? [];
+    const roots = await Promise.all(
+      folders.map((folder) => this.checkRepository(git, folder)),
+    );
+    return roots.filter((root) => root !== undefined);
+  }
+
+  private async checkRepository(
+    git: API,
+    folder: vscode.Uri,
+  ): Promise<string | undefined> {
+    const root = await git.getRepositoryRoot(folder);
+    if (!root) {
+      await this.removeRecent(folder.fsPath);
+      void vscode.window.showErrorMessage(
+        `Fastforward: ${folder.fsPath} is not in a git repository`,
+      );
+      return undefined;
+    }
+    return root.fsPath;
+  }
+
+  private async openTab(
+    git: API,
+    session: Session,
+    root: string | undefined,
+  ): Promise<void> {
+    const active = root && this.tabs.includes(root) ? root : this.tabs[0];
+    await this.setTabs(this.tabs, active);
+    session.post({
+      type: 'tabs',
+      tabs: this.tabs.map((tab) => ({ root: tab, name: path.basename(tab) })),
+      active,
+    });
+    if (active) {
+      for (const message of this.tabState(active).shown.values()) {
+        session.post(message);
+      }
+    }
+    session.watcher?.dispose();
+    session.watcher = undefined;
+    const context = await this.context(git, session);
+    if (!context) {
+      return;
+    }
+    this.watch(context, session);
+    await this.addRecent(context.root);
+    await Promise.all([
+      this.sendCommits(context).then(() => this.sendCommit(context)),
+      this.sendWorkingTree(context),
+      this.sendRepository(context),
+    ]);
+  }
+
+  private async sendRepository(context: Context): Promise<void> {
+    context.post({
+      type: 'repository',
+      head: context.repository.state.HEAD?.name,
+      refs: await listRefs(context.repository),
+    });
+  }
+
+  private tabState(root: string): TabState {
+    let tab = this.tabStates.get(root);
+    if (!tab) {
+      tab = {
+        ref: undefined,
+        hash: undefined,
+        path: undefined,
+        commits: new Map(),
+        shown: new Map(),
+      };
+      this.tabStates.set(root, tab);
+    }
+    return tab;
+  }
+
+  private async context(
+    git: API,
+    session: Session,
+  ): Promise<Context | undefined> {
+    const root = this.activeTab;
+    if (!root) {
+      return undefined;
+    }
+    // Repositories outside the workspace have to be opened first, which also
+    // shows them in the Source Control view
+    const uri = vscode.Uri.file(root);
+    const repository =
+      git.getRepository(uri) ?? (await git.openRepository(uri));
+    if (!repository) {
+      session.post({
+        type: 'error',
+        message: `${root} is not a git repository`,
+      });
+      return undefined;
+    }
+    const tab = this.tabState(root);
+    return {
+      git,
+      repository,
+      root,
+      tab,
+      post: (message) => {
+        tab.shown.set(message.type, message);
+        if (this.activeTab === root) {
+          session.post(message);
+        }
+      },
+    };
+  }
+
   // Keeps the uncommitted changes row up to date while the view is open
   private watch(context: Context, session: Session): void {
-    session.watcher?.dispose();
     let timer: NodeJS.Timeout | undefined;
     const subscription = context.repository.state.onDidChange(() => {
       clearTimeout(timer);
@@ -194,7 +411,7 @@ export class FastforwardView
         () =>
           void this.run('refresh', session, async () => {
             await this.sendWorkingTree(context);
-            if (this.selection.hash === workingTreeHash) {
+            if (context.tab.hash === workingTreeHash) {
               await this.sendCommit(context);
             }
           }),
@@ -210,32 +427,30 @@ export class FastforwardView
   }
 
   private async sendWorkingTree(context: Context): Promise<void> {
-    const files = await workingTreeFiles(
-      context.git.git.path,
-      context.repository.rootUri.fsPath,
-    );
+    const files = await workingTreeFiles(context.git.git.path, context.root);
     context.post({ type: 'workingTree', files: files.length });
   }
 
   private async sendCommits(context: Context): Promise<void> {
-    const { ref } = this.selection;
-    const commits = await listCommits(context.repository, ref);
-    this.commits = new Map(commits.map((commit) => [commit.hash, commit]));
+    const { ref } = context.tab;
+    const commits = await logCommits(context.git.git.path, context.root, ref);
+    context.tab.commits = new Map(
+      commits.map((commit) => [commit.hash, commit]),
+    );
     context.post({ type: 'commits', ref, commits });
   }
 
   private async sendCommit(context: Context): Promise<void> {
-    const { hash } = this.selection;
+    const { hash } = context.tab;
     if (!hash) {
       return;
     }
     const gitPath = context.git.git.path;
-    const cwd = context.repository.rootUri.fsPath;
     if (hash === workingTreeHash) {
-      const files = await workingTreeFiles(gitPath, cwd);
+      const files = await workingTreeFiles(gitPath, context.root);
       context.post({ type: 'files', hash, files });
-    } else if (this.commits.has(hash)) {
-      const files = await showFiles(gitPath, cwd, hash);
+    } else if (context.tab.commits.has(hash)) {
+      const files = await showFiles(gitPath, context.root, hash);
       context.post({ type: 'files', hash, files });
     } else {
       return;
@@ -244,14 +459,13 @@ export class FastforwardView
   }
 
   private async sendDiff(context: Context, hash: string): Promise<void> {
-    const { path } = this.selection;
+    const { path: file } = context.tab;
     const gitPath = context.git.git.path;
-    const cwd = context.repository.rootUri.fsPath;
     const patch =
       hash === workingTreeHash
-        ? await workingTreePatch(gitPath, cwd, path)
-        : await showPatch(gitPath, cwd, hash, path);
-    context.post({ type: 'diff', hash, path, patch });
+        ? await workingTreePatch(gitPath, context.root, file)
+        : await showPatch(gitPath, context.root, hash, file);
+    context.post({ type: 'diff', hash, path: file, patch });
   }
 }
 

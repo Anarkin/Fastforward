@@ -9,7 +9,12 @@ export function activate(context: vscode.ExtensionContext): void {
   log.info(`Activated ${context.extension.id}`);
   watchDevReload(context, log);
 
-  const view = new FastforwardView(log, context.extensionUri);
+  const view = new FastforwardView(
+    log,
+    context.extensionUri,
+    context.workspaceState,
+    context.globalState,
+  );
   context.subscriptions.push(view);
   context.subscriptions.push(
     registerCommand(log, toggleViewCommand, () => view.toggle()),

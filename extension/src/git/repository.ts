@@ -1,6 +1,5 @@
-import * as path from 'node:path';
 import * as vscode from 'vscode';
-import type { CommitInfo, RefInfo } from '../protocol';
+import type { RefInfo } from '../protocol';
 import type { API, GitExtension, Repository } from './git';
 
 // git.d.ts declares RefType as a const enum, which esbuild can't inline from a
@@ -24,10 +23,6 @@ export function pickRepository(git: API): Repository | undefined {
   return (active && git.getRepository(active)) ?? git.repositories[0];
 }
 
-export function repositoryName(repository: Repository): string {
-  return path.basename(repository.rootUri.fsPath);
-}
-
 export async function listRefs(repository: Repository): Promise<RefInfo[]> {
   const refs = await repository.getRefs({});
   return refs.flatMap((ref): RefInfo[] => {
@@ -43,25 +38,4 @@ export async function listRefs(repository: Repository): Promise<RefInfo[]> {
           : 'tag';
     return [{ kind, name: ref.name, commit: ref.commit }];
   });
-}
-
-export async function listCommits(
-  repository: Repository,
-  ref: string | undefined,
-): Promise<CommitInfo[]> {
-  const commits = await repository.log({
-    maxEntries: 300,
-    shortStats: true,
-    refNames: ref ? [ref] : undefined,
-  });
-  return commits.map((commit) => ({
-    hash: commit.hash,
-    subject: commit.message.split('\n', 1)[0],
-    message: commit.message,
-    parents: commit.parents,
-    authorName: commit.authorName ?? '',
-    authorEmail: commit.authorEmail ?? '',
-    authorDate: commit.authorDate?.getTime() ?? 0,
-    files: commit.shortStat?.files ?? 0,
-  }));
 }

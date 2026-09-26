@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import type { FileChange } from '../protocol';
+import type { CommitInfo, FileChange } from '../protocol';
 
 // Commit files and patches come from git show, because the Git extension API
 // only diffs ranges (a...b), which fails for root commits
@@ -62,6 +62,54 @@ export function showPatch(
     hash,
     ...(path ? ['--', path] : []),
   ]);
+}
+
+const maxCommits = 300;
+
+// The Git extension API only counts a commit's files with --shortstat, which
+// diffs the contents of every file and took 8 s for 300 commits in a large
+// repository; --raw only compares trees and took 90 ms
+export async function logCommits(
+  gitPath: string,
+  cwd: string,
+  ref: string | undefined,
+): Promise<CommitInfo[]> {
+  const output = await runGit(gitPath, cwd, [
+    'log',
+    `-n${maxCommits}`,
+    '--raw',
+    '-z',
+    '--no-renames',
+    '--diff-merges=first-parent',
+    '--format=%x1e%H%x00%P%x00%aN%x00%aE%x00%at%x00%B',
+    ref ?? 'HEAD',
+    '--',
+  ]);
+  return parseLog(output);
+}
+
+// Each commit starts with \x1e, then hash, parents, author, email, time and
+// message separated by NULs, then a ":<modes> <status>" and a path per file
+export function parseLog(output: string): CommitInfo[] {
+  return output
+    .split('\x1e')
+    .slice(1)
+    .map((record) => {
+      const [hash, parents, authorName, authorEmail, time, body, ...files] =
+        splitNul(record);
+      const message = body.trimEnd();
+      return {
+        hash,
+        subject: message.split('\n', 1)[0],
+        message,
+        parents: parents ? parents.split(' ') : [],
+        authorName,
+        authorEmail,
+        authorDate: Number(time) * 1000,
+        files: files.filter((token) => token.trimStart().startsWith(':'))
+          .length,
+      };
+    });
 }
 
 // Uncommitted changes are the working tree and index against HEAD, plus
