@@ -691,13 +691,96 @@ body.resizing {
 }
 
 /* The VIPs under the tabs, wrapping onto more lines when they don't fit */
-.vip-bar {
+.bubble-bar {
+  position: relative;
   flex: none;
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 4px;
   padding: 6px 8px;
   border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.locations-button {
+  height: 20px;
+  padding: 0 8px;
+  margin-right: 4px;
+  font: inherit;
+  color: var(--vscode-foreground);
+  cursor: pointer;
+  background: color-mix(in srgb, var(--vscode-foreground) 10%, transparent);
+  border: none;
+  border-radius: 4px;
+}
+
+.locations-button:hover,
+.locations-button.open {
+  background: color-mix(in srgb, var(--vscode-foreground) 18%, transparent);
+}
+
+/* Every branch, remote and tag, over the columns under the button */
+.locations-popup {
+  position: absolute;
+  top: calc(100% - 2px);
+  left: 8px;
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  width: 360px;
+  max-height: 65vh;
+  color: var(--vscode-foreground);
+  background: var(
+    --vscode-editorWidget-background,
+    var(--vscode-editor-background)
+  );
+  border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
+  border-radius: 6px;
+  box-shadow: 0 4px 16px var(--vscode-widget-shadow);
+}
+
+.locations-search {
+  flex: none;
+  margin: 6px;
+  padding: 4px 6px;
+  font: inherit;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, transparent);
+  border-radius: 4px;
+  outline: none;
+}
+
+.locations-search:focus {
+  border-color: var(--vscode-focusBorder);
+}
+
+.locations-list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding-bottom: 4px;
+}
+
+.locations-list .row.result {
+  padding-left: 18px;
+}
+
+/* The result Enter jumps to */
+.locations-list .row.result.active {
+  color: var(--vscode-list-activeSelectionForeground);
+  background: var(--vscode-list-activeSelectionBackground);
+}
+
+.locations-list .match {
+  color: inherit;
+  background: var(--vscode-editor-findMatchHighlightBackground);
+  border-radius: 2px;
+}
+
+.locations-empty {
+  padding: 6px 12px;
+  color: var(--vscode-descriptionForeground);
 }
 
 .badge.clickable {
@@ -715,4 +798,45 @@ body.resizing {
   position: fixed;
   right: auto;
   z-index: 20;
+}
+
+/* One column per kind of ref, each scrolling on its own */
+.locations-popup {
+  width: min(900px, 85vw);
+}
+
+.locations-columns {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid var(--vscode-panel-border);
+}
+
+.locations-column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid var(--vscode-panel-border);
+}
+
+.locations-column:last-child {
+  border-right: none;
+}
+
+.locations-heading {
+  flex: none;
+  padding: 4px 8px;
+  font-weight: 600;
+  color: var(--vscode-descriptionForeground);
+}
+
+.locations-column .row {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.locations-column .row.result {
+  padding-left: 8px;
 }

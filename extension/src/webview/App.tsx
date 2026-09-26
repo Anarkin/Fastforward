@@ -32,17 +32,11 @@ import {
 } from './contextMenu';
 import { FileTree, foldersOf } from './fileTree';
 import { GraphCell, graphWidth, rowLanes } from './graph';
-import { IndentGuides, treeIndent, twistyWidth } from './tree';
+import { LocationsPopup, type Repository } from './locations';
 import { compareVips } from './vips';
 
 interface Props {
   post: (message: ToExtension) => void;
-}
-
-interface Repository {
-  head: string | undefined;
-  headCommit: string | undefined;
-  refs: readonly RefInfo[];
 }
 
 // A position to scroll the commit list to; a new object scrolls again even to
@@ -341,7 +335,12 @@ export function App({ post }: Props) {
           onLog={log}
         />
         {tabs.length > 0 && (
-          <VipBar vips={vips} refs={repository?.refs ?? []} onJump={jump} />
+          <BubbleBar
+            repository={repository}
+            selected={hash}
+            vips={vips}
+            onJump={jump}
+          />
         )}
         {menu && <ContextMenu menu={menu} onClose={closeMenu} />}
         {tabs.length === 0 ? (
@@ -355,11 +354,6 @@ export function App({ post }: Props) {
               ref={columns.container}
               style={{ gridTemplateColumns: columns.template }}
             >
-              <Locations
-                repository={repository}
-                selected={hash}
-                onSelect={jump}
-              />
               <Commits
                 history={history}
                 version={historyVersion}
@@ -615,175 +609,6 @@ function Column({
   );
 }
 
-// Clicking a location jumps to its commit in the list; the locations pointing
-// at the selected commit are highlighted
-function Locations({
-  repository,
-  selected,
-  onSelect,
-}: {
-  repository: Repository | undefined;
-  // The selected commit
-  selected: string | undefined;
-  onSelect: (commit: string | undefined) => void;
-}) {
-  const refs = repository?.refs ?? [];
-  const byKind = (kind: RefInfo['kind']) => refs.filter((r) => r.kind === kind);
-  const headCommit = repository?.headCommit;
-  return (
-    <Column title="Locations" index={0}>
-      <div
-        className={`row head ${headCommit !== undefined && headCommit === selected ? 'selected' : ''}`}
-        onClick={() => onSelect(headCommit)}
-      >
-        HEAD{repository?.head ? ` (${repository.head})` : ''}
-      </div>
-      <RefGroup
-        title="Branches"
-        refs={byKind('branch')}
-        selected={selected}
-        onSelect={onSelect}
-        open
-      />
-      <RefGroup
-        title="Remotes"
-        refs={byKind('remote')}
-        selected={selected}
-        onSelect={onSelect}
-      />
-      <RefGroup
-        title="Tags"
-        refs={byKind('tag')}
-        selected={selected}
-        onSelect={onSelect}
-      />
-    </Column>
-  );
-}
-
-interface TreeNode {
-  name: string;
-  ref: RefInfo | undefined;
-  children: Map<string, TreeNode>;
-}
-
-// Branch names like feat/foo are shown as folders, like Fork does
-function buildTree(refs: readonly RefInfo[]): TreeNode {
-  const root: TreeNode = { name: '', ref: undefined, children: new Map() };
-  for (const ref of refs) {
-    let node = root;
-    for (const part of ref.name.split('/')) {
-      let child = node.children.get(part);
-      if (!child) {
-        child = { name: part, ref: undefined, children: new Map() };
-        node.children.set(part, child);
-      }
-      node = child;
-    }
-    node.ref = ref;
-  }
-  return root;
-}
-
-function RefGroup({
-  title,
-  refs,
-  selected,
-  onSelect,
-  open = false,
-}: {
-  title: string;
-  refs: readonly RefInfo[];
-  selected: string | undefined;
-  onSelect: (commit: string) => void;
-  open?: boolean;
-}) {
-  const tree = useMemo(() => buildTree(refs), [refs]);
-  return (
-    <TreeFolder
-      label={`${title.toUpperCase()} (${refs.length})`}
-      node={tree}
-      depth={0}
-      selected={selected}
-      onSelect={onSelect}
-      initiallyOpen={open}
-      group
-    />
-  );
-}
-
-function TreeFolder({
-  label,
-  node,
-  depth,
-  selected,
-  onSelect,
-  initiallyOpen,
-  group = false,
-}: {
-  label: string;
-  node: TreeNode;
-  depth: number;
-  selected: string | undefined;
-  onSelect: (commit: string) => void;
-  initiallyOpen: boolean;
-  group?: boolean;
-}) {
-  const [open, setOpen] = useState(initiallyOpen);
-  const openMenu = useContext(OpenContextMenu);
-  const children = [...node.children.values()].toSorted(
-    (a, b) =>
-      Number(b.children.size > 0) - Number(a.children.size > 0) ||
-      a.name.localeCompare(b.name),
-  );
-  return (
-    <>
-      <div
-        className={`row tree-row folder ${group ? 'group' : ''}`}
-        style={{ paddingLeft: treeIndent(depth) }}
-        onClick={() => setOpen(!open)}
-      >
-        <IndentGuides depth={depth} />
-        <span className="twisty">{open ? '▾' : '▸'}</span>
-        {label}
-      </div>
-      {open &&
-        children.map((child) =>
-          child.children.size > 0 ? (
-            <TreeFolder
-              key={child.name}
-              label={child.name}
-              node={child}
-              depth={depth + 1}
-              selected={selected}
-              onSelect={onSelect}
-              initiallyOpen={false}
-            />
-          ) : (
-            <div
-              key={child.name}
-              className={`row tree-row leaf ${child.ref && child.ref.commit === selected ? 'selected' : ''}`}
-              // Past the twisty space, so leaves line up with sibling folders
-              style={{ paddingLeft: treeIndent(depth + 1) + twistyWidth }}
-              title={child.ref?.name}
-              onClick={() => child.ref && onSelect(child.ref.commit)}
-              onContextMenu={(event) =>
-                child.ref &&
-                openMenu(event, {
-                  kind: 'ref',
-                  ref: { kind: child.ref.kind, name: child.ref.name },
-                })
-              }
-            >
-              <IndentGuides depth={depth + 1} />
-              {child.name}
-            </div>
-          ),
-        )}
-    </>
-  );
-}
-
 function formatDate(time: number): string {
   const date = new Date(time);
   const days = (Date.now() - time) / 86_400_000;
@@ -838,21 +663,47 @@ function RefBubble({
   );
 }
 
-// The VIPs of the repository, under the tabs, sorted; clicking one jumps to it
-function VipBar({
+// The row under the tabs: the Locations button, which opens every branch,
+// remote and tag in a popup, then the repository's VIPs, sorted; clicking one
+// jumps to it
+function BubbleBar({
+  repository,
+  selected,
   vips,
-  refs,
   onJump,
 }: {
+  repository: Repository | undefined;
+  selected: string | undefined;
   vips: readonly VipRef[];
-  refs: readonly RefInfo[];
   onJump: (commit: string) => void;
 }) {
-  if (vips.length === 0) {
-    return null;
-  }
+  const [locationsOpen, setLocationsOpen] = useState(false);
+  // Kept while the popup is closed, and while switching tabs
+  const [locationsQuery, setLocationsQuery] = useState('');
+  const button = useRef<HTMLButtonElement>(null);
+  const closeLocations = useCallback(() => setLocationsOpen(false), []);
+  const refs = repository?.refs ?? [];
   return (
-    <div className="vip-bar">
+    <div className="bubble-bar">
+      <button
+        ref={button}
+        className={`locations-button ${locationsOpen ? 'open' : ''}`}
+        title="Branches, remotes and tags"
+        onClick={() => setLocationsOpen(!locationsOpen)}
+      >
+        ⎇ Locations ▾
+      </button>
+      {locationsOpen && (
+        <LocationsPopup
+          repository={repository}
+          selected={selected}
+          anchor={button}
+          onJump={onJump}
+          onClose={closeLocations}
+          query={locationsQuery}
+          onQuery={setLocationsQuery}
+        />
+      )}
       {vips.toSorted(compareVips).map((vip) => {
         const ref = refs.find((r) => sameRef(r, vip));
         return (
@@ -1129,7 +980,7 @@ function Commits({
   return (
     <Column
       title="Commits"
-      index={1}
+      index={0}
       actions={
         <MenuButton
           title="Commit list settings"
@@ -1215,7 +1066,7 @@ function Files({
   );
   if (mode === 'files') {
     return (
-      <Column title={title} index={2}>
+      <Column title={title} index={1}>
         {tree && (
           <FileTree
             paths={tree}
@@ -1230,7 +1081,7 @@ function Files({
     );
   }
   return (
-    <Column title={title} index={2}>
+    <Column title={title} index={1}>
       {files.length > 0 && (
         <div
           className={`row group ${selected === undefined ? 'selected' : ''}`}

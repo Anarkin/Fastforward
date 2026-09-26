@@ -7,8 +7,8 @@ import {
   useState,
 } from 'react';
 
-// Widths of the Locations, Commits and Files columns; Diff takes the rest
-export const defaultColumnWidths: readonly number[] = [240, 420, 300];
+// Widths of the Commits and Files columns; Diff takes the rest
+export const defaultColumnWidths: readonly number[] = [460, 300];
 const minColumnWidth = 120;
 const minLastColumnWidth = 240;
 
