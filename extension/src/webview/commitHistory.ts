@@ -1,4 +1,4 @@
-import type { CommitInfo } from '../protocol';
+import type { CommitInfo, GraphRow } from '../protocol';
 
 // The size of the pages the webview asks the extension for
 export const commitPageSize = 100;
@@ -8,6 +8,7 @@ export const commitPageSize = 100;
 // scroll into view
 export class CommitHistory {
   private readonly rows = new Map<number, CommitInfo>();
+  private readonly graph = new Map<number, GraphRow>();
   private readonly positions = new Map<string, number>();
   private readonly requested = new Set<number>();
   private readonly refCounts: ReadonlyMap<number, number>;
@@ -15,6 +16,8 @@ export class CommitHistory {
   constructor(
     readonly total: number,
     decorations: readonly (readonly [number, number])[] = [],
+    // The most lanes any row of the graph uses
+    readonly graphWidth = 0,
   ) {
     this.refCounts = new Map(decorations);
   }
@@ -38,12 +41,21 @@ export class CommitHistory {
     return position === undefined ? undefined : this.rows.get(position);
   }
 
-  add(start: number, commits: readonly CommitInfo[]): void {
+  graphAt(position: number): GraphRow | undefined {
+    return this.graph.get(position);
+  }
+
+  add(
+    start: number,
+    commits: readonly CommitInfo[],
+    graph: readonly GraphRow[] = [],
+  ): void {
     this.requested.add(start - (start % commitPageSize));
     commits.forEach((commit, offset) => {
       this.rows.set(start + offset, commit);
       this.positions.set(commit.hash, start + offset);
     });
+    graph.forEach((row, offset) => this.graph.set(start + offset, row));
   }
 
   // The starts of the pages covering first..last that haven't been asked for

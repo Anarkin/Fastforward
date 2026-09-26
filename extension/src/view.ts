@@ -2,6 +2,13 @@ import { randomBytes } from 'node:crypto';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import type { API, Repository } from './git/git';
+import { Graph } from './git/graph';
+import {
+  headsOf,
+  mergesHiding,
+  showHistory,
+  type ShownEntry,
+} from './git/merges';
 import { getGitApi, listRefs, pickRepository } from './git/repository';
 import {
   listHistory,
@@ -39,6 +46,9 @@ const maxRecent = 20;
 // Column widths, per user and synced across machines, as they are a personal
 // preference rather than something about a workspace
 const columnWidthsKey = 'columnWidths';
+// Whether merge commits start collapsed, like Sublime Merge's setting; per
+// user and synced
+const collapseMergesKey = 'collapseMerges';
 
 // Kept in the extension, because the webview is recreated every time the modal
 // opens
@@ -47,10 +57,21 @@ interface TabState {
   // Position of the selected commit in the history
   index: number | undefined;
   path: string | undefined;
-  // Every commit of every branch, remote and tag, newest first, and each
-  // commit's position in it; pages and jumps are looked up here
-  history: readonly HistoryEntry[];
+  // Every commit of every branch, remote and tag, newest first
+  fullHistory: readonly HistoryEntry[];
+  // Its commits that nothing is built on yet
+  heads: Set<string>;
+  // The commits refs point at, which are always shown, and how many refs
+  // point at each
+  refCounts: Map<string, number>;
+  // Merges the user expanded or collapsed, unlike the setting says
+  toggledMerges: Set<string>;
+  // The commits shown, with merges collapsed or expanded, and each commit's
+  // position in it; pages and jumps are looked up here
+  history: readonly ShownEntry[];
   positions: Map<string, number>;
+  // The lanes of the history, laid out when it loads
+  graph: Graph;
   // The last message of each type sent for this tab, replayed when the tab
   // or the modal opens again so it shows up instantly, before the refresh
   shown: Map<ToWebview['type'], ToWebview>;
@@ -87,7 +108,7 @@ export class FastforwardView
       viewType,
       this,
     );
-    globalState.setKeysForSync([columnWidthsKey]);
+    globalState.setKeysForSync([columnWidthsKey, collapseMergesKey]);
   }
 
   get isShown(): boolean {
@@ -197,6 +218,7 @@ export class FastforwardView
         session.post({
           type: 'layout',
           columnWidths: this.globalState.get<number[]>(columnWidthsKey),
+          collapseMerges: this.globalState.get(collapseMergesKey, true),
         });
         await this.addWorkspaceTab(git);
         await this.openTab(git, session, this.activeTab);
@@ -255,7 +277,36 @@ export class FastforwardView
       case 'loadCommits':
         await this.sendCommitPage(context, message.start, message.count);
         break;
+      case 'toggleMerge': {
+        const toggled = context.tab.toggledMerges;
+        if (!toggled.delete(message.hash)) {
+          toggled.add(message.hash);
+        }
+        await this.sendShownHistory(context, message.hash);
+        break;
+      }
+      case 'setCollapseMerges':
+        await this.globalState.update(collapseMergesKey, message.collapse);
+        // The setting applies to every merge again
+        for (const tab of this.tabStates.values()) {
+          tab.toggledMerges.clear();
+        }
+        await this.sendShownHistory(context, undefined);
+        break;
       case 'jump': {
+        // A commit hidden in collapsed merges, like a merged branch's tip,
+        // is shown by expanding them
+        if (!context.tab.positions.has(message.hash)) {
+          await this.expandMerges(
+            context,
+            mergesHiding(
+              context.tab.fullHistory,
+              new Set(context.tab.positions.keys()),
+              message.hash,
+            ),
+            message.hash,
+          );
+        }
         const index = context.tab.positions.get(message.hash);
         if (index === undefined) {
           context.post({
@@ -420,8 +471,13 @@ export class FastforwardView
         hash: undefined,
         index: undefined,
         path: undefined,
+        fullHistory: [],
+        heads: new Set(),
+        refCounts: new Map(),
+        toggledMerges: new Set(),
         history: [],
         positions: new Map(),
+        graph: new Graph([]),
         shown: new Map(),
       };
       this.tabStates.set(root, tab);
@@ -497,35 +553,93 @@ export class FastforwardView
   }
 
   private async sendCommits(context: Context): Promise<void> {
-    const gitPath = context.git.git.path;
-    const [history, refs] = await Promise.all([
-      listHistory(gitPath, context.root),
+    const [fullHistory, refs] = await Promise.all([
+      listHistory(context.git.git.path, context.root),
       listRefs(context.repository),
     ]);
+    const { tab } = context;
+    tab.fullHistory = fullHistory;
+    tab.heads = headsOf(fullHistory);
+    tab.refCounts = new Map();
+    for (const ref of refs) {
+      tab.refCounts.set(ref.commit, (tab.refCounts.get(ref.commit) ?? 0) + 1);
+    }
+    await this.sendShownHistory(context, undefined);
+  }
+
+  // Expands these merges, whatever the setting says, and sends the list
+  private async expandMerges(
+    context: Context,
+    merges: readonly string[],
+    scrollTo: string,
+  ): Promise<void> {
+    if (merges.length === 0) {
+      return;
+    }
+    const collapse = this.globalState.get(collapseMergesKey, true);
+    for (const merge of merges) {
+      // Toggled merges are the ones that differ from the setting
+      if (collapse) {
+        context.tab.toggledMerges.add(merge);
+      } else {
+        context.tab.toggledMerges.delete(merge);
+      }
+    }
+    await this.sendShownHistory(context, scrollTo);
+  }
+
+  // Works out which commits are shown with the merges collapsed or expanded,
+  // lays out their graph, and sends the list; scrollTo is a commit to keep in
+  // view, the selected one by default
+  private async sendShownHistory(
+    context: Context,
+    scrollTo: string | undefined,
+  ): Promise<void> {
+    const { tab } = context;
+    const started = performance.now();
+    const collapse = this.globalState.get(collapseMergesKey, true);
+    // Tips of branches that aren't merged, like Sublime Merge; merged branches
+    // stay inside their collapsed merge even when a ref still points at them
+    const tips = new Set(tab.heads);
+    const head = context.repository.state.HEAD?.commit;
+    if (head) {
+      tips.add(head);
+    }
+    const history = showHistory(
+      tab.fullHistory,
+      tips,
+      (hash) => collapse === tab.toggledMerges.has(hash),
+    );
+    tab.history = history;
+    tab.positions = new Map(history.map((entry, index) => [entry.hash, index]));
+    tab.graph = new Graph(history);
+    this.log.info(
+      `Graph of ${history.length} of ${tab.fullHistory.length} commits laid out in ${Math.round(performance.now() - started)} ms, ${tab.graph.width} lanes wide`,
+    );
+    // The selected commit may have moved, or be hidden in a collapsed merge
+    tab.index =
+      tab.hash === undefined ? undefined : tab.positions.get(tab.hash);
+    const decorations: [number, number][] = [];
+    for (const [commit, count] of tab.refCounts) {
+      const position = tab.positions.get(commit);
+      if (position !== undefined) {
+        decorations.push([position, count]);
+      }
+    }
     const commits = await logCommits(
-      gitPath,
+      context.git.git.path,
       context.root,
       history.slice(0, firstPageSize).map((entry) => entry.hash),
     );
-    const { tab } = context;
-    tab.history = history;
-    tab.positions = new Map(history.map((entry, index) => [entry.hash, index]));
-    // The selected commit may have moved, or be gone after a rebase
-    tab.index =
-      tab.hash === undefined ? undefined : tab.positions.get(tab.hash);
-    const refCounts = new Map<number, number>();
-    for (const ref of refs) {
-      const position = tab.positions.get(ref.commit);
-      if (position !== undefined) {
-        refCounts.set(position, (refCounts.get(position) ?? 0) + 1);
-      }
-    }
     context.post({
       type: 'commits',
       total: history.length,
-      decorations: [...refCounts],
+      decorations,
+      graphWidth: tab.graph.width,
       commits,
-      selectedIndex: tab.index,
+      graph: tab.graph.rows(0, commits.length),
+      selectedIndex:
+        scrollTo === undefined ? tab.index : tab.positions.get(scrollTo),
     });
   }
 
@@ -534,7 +648,7 @@ export class FastforwardView
     start: number,
     count: number,
   ): Promise<void> {
-    const { history } = context.tab;
+    const { history, graph } = context.tab;
     const commits = await logCommits(
       context.git.git.path,
       context.root,
@@ -544,7 +658,12 @@ export class FastforwardView
     if (context.tab.history !== history) {
       return;
     }
-    context.post({ type: 'commitPage', start, commits });
+    context.post({
+      type: 'commitPage',
+      start,
+      commits,
+      graph: graph.rows(start, commits.length),
+    });
   }
 
   private async sendCommit(context: Context): Promise<void> {

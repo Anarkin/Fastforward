@@ -12,6 +12,7 @@ import {
 import { CommitHistory, commitPageSize } from './commitHistory';
 import { ColumnResizingProvider, Resizer, useColumnWidths } from './columns';
 import { parsePatch, type DiffFile } from './diff';
+import { GraphCell, graphWidth, rowLanes } from './graph';
 
 interface Props {
   post: (message: ToExtension) => void;
@@ -46,6 +47,8 @@ export function App({ post }: Props) {
   const [path, setPath] = useState<string>();
   const [patch, setPatch] = useState('');
   const [error, setError] = useState<string>();
+  // Sublime Merge's setting, on by default
+  const [collapseMerges, setCollapseMerges] = useState(true);
   const saveColumnWidths = useCallback(
     (widths: readonly number[]) => post({ type: 'setColumnWidths', widths }),
     [post],
@@ -59,6 +62,7 @@ export function App({ post }: Props) {
       switch (message.type) {
         case 'layout':
           loadColumnWidths(message.columnWidths);
+          setCollapseMerges(message.collapseMerges);
           break;
         case 'tabs':
           if (activeTabRef.current !== message.active) {
@@ -72,8 +76,12 @@ export function App({ post }: Props) {
           setRepository(message);
           break;
         case 'commits': {
-          const next = new CommitHistory(message.total, message.decorations);
-          next.add(0, message.commits);
+          const next = new CommitHistory(
+            message.total,
+            message.decorations,
+            message.graphWidth,
+          );
+          next.add(0, message.commits, message.graph);
           historyRef.current = next;
           setHistory(next);
           setScrollTarget(
@@ -84,7 +92,11 @@ export function App({ post }: Props) {
           break;
         }
         case 'commitPage':
-          historyRef.current?.add(message.start, message.commits);
+          historyRef.current?.add(
+            message.start,
+            message.commits,
+            message.graph,
+          );
           setHistoryVersion((version) => version + 1);
           break;
         case 'reveal':
@@ -216,6 +228,14 @@ export function App({ post }: Props) {
               refsByCommit={refsByCommit}
               selected={hash}
               onSelect={selectCommit}
+              onToggleMerge={(merge) =>
+                post({ type: 'toggleMerge', hash: merge })
+              }
+              collapseMerges={collapseMerges}
+              onCollapseMerges={(collapse) => {
+                setCollapseMerges(collapse);
+                post({ type: 'setCollapseMerges', collapse });
+              }}
             />
             <Files files={files} selected={path} onSelect={selectFile} />
             <Diff
@@ -306,7 +326,10 @@ function TabBar({
           +
         </button>
       </div>
-      <SettingsMenu onSort={onSort} />
+      <MenuButton
+        title="Settings"
+        items={[{ label: 'Sort A-Z', onClick: onSort }]}
+      />
     </nav>
   );
 }
@@ -315,33 +338,54 @@ function elementWidth(element: Element | null): number {
   return element ? Math.round(element.getBoundingClientRect().width) : 0;
 }
 
-function SettingsMenu({ onSort }: { onSort: () => void }) {
+interface MenuItem {
+  readonly label: string;
+  // Shows a check mark when set, for items that switch something on and off
+  readonly checked?: boolean;
+  readonly onClick: () => void;
+}
+
+// A gear that opens a dropdown menu
+function MenuButton({
+  title,
+  items,
+}: {
+  title: string;
+  items: readonly MenuItem[];
+}) {
   const [open, setOpen] = useState(false);
   const container = useRef<HTMLDivElement>(null);
-
-  const choose = (action: () => void) => () => {
-    setOpen(false);
-    action();
-  };
 
   return (
     <div className="settings" ref={container}>
       <button
         className={`settings-button ${open ? 'open' : ''}`}
-        title="Settings"
+        title={title}
         onClick={() => setOpen(!open)}
       >
         ⚙
       </button>
       {open && (
         <Menu container={container} onClose={() => setOpen(false)}>
-          <button
-            className="menu-item"
-            role="menuitem"
-            onClick={choose(onSort)}
-          >
-            Sort A-Z
-          </button>
+          {items.map((item) => (
+            <button
+              key={item.label}
+              className="menu-item"
+              role={
+                item.checked === undefined ? 'menuitem' : 'menuitemcheckbox'
+              }
+              aria-checked={item.checked}
+              onClick={() => {
+                setOpen(false);
+                item.onClick();
+              }}
+            >
+              {item.checked !== undefined && (
+                <span className="menu-check">{item.checked ? '✓' : ''}</span>
+              )}
+              {item.label}
+            </button>
+          ))}
         </Menu>
       )}
     </div>
@@ -387,19 +431,25 @@ function Menu({
   );
 }
 
-// Columns with an index have a resizer on their right edge
+// Columns with an index have a resizer on their right edge; actions sit on the
+// right of the title
 function Column({
   title,
   index,
+  actions,
   children,
 }: {
   title: string;
   index?: number;
+  actions?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <section className="column">
-      <header className="column-title">{title}</header>
+      <header className="column-title">
+        {title}
+        {actions && <div className="column-actions">{actions}</div>}
+      </header>
       <div className="column-body">{children}</div>
       {index !== undefined && <Resizer index={index} />}
     </section>
@@ -639,6 +689,9 @@ function Commits({
   refsByCommit,
   selected,
   onSelect,
+  onToggleMerge,
+  collapseMerges,
+  onCollapseMerges,
 }: {
   history: CommitHistory | undefined;
   // Changes when pages arrive, as the history is filled in place
@@ -649,6 +702,9 @@ function Commits({
   refsByCommit: Map<string, RefInfo[]>;
   selected: string | undefined;
   onSelect: (hash: string | undefined, index: number) => void;
+  onToggleMerge: (hash: string) => void;
+  collapseMerges: boolean;
+  onCollapseMerges: (collapse: boolean) => void;
 }) {
   const list = useRef<HTMLDivElement>(null);
   const hasWorkingTree = workingTree !== undefined;
@@ -738,10 +794,34 @@ function Commits({
     virtualizer.scrollToIndex(offset + position, { align: 'auto' });
   };
 
+  const renderGraph = (index: number, height: number) => {
+    const graphRow = history?.graphAt(index - offset);
+    return (
+      graphRow && (
+        <GraphCell
+          row={graphRow}
+          height={height}
+          onToggleMerge={() => {
+            const commit = history?.at(index - offset);
+            if (commit) {
+              onToggleMerge(commit.hash);
+            }
+          }}
+        />
+      )
+    );
+  };
+
+  // Each row's text starts right after the lanes it draws in; the working tree
+  // row lines up with the first commit
+  const indent = (index: number) =>
+    graphWidth(rowLanes(history?.graphAt(Math.max(0, index - offset)))) + 8;
+
   const renderRow = (index: number) => {
     if (hasWorkingTree && index === 0) {
       return (
         <div
+          style={{ paddingLeft: indent(index) }}
           className={`commit working-tree ${workingTree === 0 ? 'empty' : ''} ${selected === workingTreeHash ? 'selected' : ''}`}
           onClick={() =>
             onSelect(workingTree > 0 ? workingTreeHash : undefined, -1)
@@ -767,7 +847,10 @@ function Commits({
     const commit = history?.at(position);
     if (!commit) {
       return (
-        <div className="commit placeholder">
+        <div
+          className="commit placeholder"
+          style={{ paddingLeft: indent(index) }}
+        >
           <div className="commit-line">
             <span className="bar subject-bar" />
           </div>
@@ -780,6 +863,7 @@ function Commits({
     return (
       <div
         className={`commit ${commit.hash === selected ? 'selected' : ''}`}
+        style={{ paddingLeft: indent(index) }}
         onClick={() => onSelect(commit.hash, position)}
       >
         <div className="commit-line">
@@ -802,7 +886,22 @@ function Commits({
   };
 
   return (
-    <Column title="Commits" index={1}>
+    <Column
+      title="Commits"
+      index={1}
+      actions={
+        <MenuButton
+          title="Commit list settings"
+          items={[
+            {
+              label: 'Collapse merge commits',
+              checked: collapseMerges,
+              onClick: () => onCollapseMerges(!collapseMerges),
+            },
+          ]}
+        />
+      }
+    >
       <div
         className="list"
         ref={list}
@@ -823,6 +922,7 @@ function Commits({
                 transform: `translateY(${row.start}px)`,
               }}
             >
+              {renderGraph(row.index, row.size)}
               {renderRow(row.index)}
             </div>
           ))}

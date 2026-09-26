@@ -23,6 +23,27 @@ export interface CommitInfo {
   readonly files: number;
 }
 
+// A line of the commit graph within one row, between lanes; the top half runs
+// from the row above into the commit's dot, the bottom half from the dot to
+// the row below
+export interface GraphLine {
+  readonly from: number;
+  readonly to: number;
+  readonly color: number;
+  readonly bottom: boolean;
+}
+
+// The commit graph within one row: the lane of the commit's dot, and the lines
+export interface GraphRow {
+  readonly lane: number;
+  readonly color: number;
+  readonly lines: readonly GraphLine[];
+  // Set on merge commits; clicking their dot collapses or expands them
+  readonly merge?: 'collapsed' | 'expanded';
+  // How many commits a collapsed merge hides
+  readonly hidden?: number;
+}
+
 export interface FileChange {
   readonly path: string;
   readonly oldPath: string | undefined;
@@ -46,6 +67,10 @@ export type ToExtension =
   | { readonly type: 'sortTabs' }
   // The widths of the Locations, Commits and Files columns, saved per user
   | { readonly type: 'setColumnWidths'; readonly widths: readonly number[] }
+  // Collapses or expands one merge commit, unlike the setting
+  | { readonly type: 'toggleMerge'; readonly hash: string }
+  // Whether merge commits start collapsed, saved per user
+  | { readonly type: 'setCollapseMerges'; readonly collapse: boolean }
   // Written to the Fastforward log, so webview problems show up there too
   | {
       readonly type: 'log';
@@ -78,6 +103,7 @@ export type ToWebview =
   | {
       readonly type: 'layout';
       readonly columnWidths: readonly number[] | undefined;
+      readonly collapseMerges: boolean;
     }
   | {
       readonly type: 'tabs';
@@ -99,7 +125,11 @@ export type ToWebview =
       // [position, number of refs] for every commit that has refs, so the
       // height of each row is known before its commit is loaded
       readonly decorations: readonly (readonly [number, number])[];
+      // The most lanes any row of the graph uses
+      readonly graphWidth: number;
       readonly commits: readonly CommitInfo[];
+      // The graph of each of the commits
+      readonly graph: readonly GraphRow[];
       // Position of the selected commit, to scroll to
       readonly selectedIndex: number | undefined;
     }
@@ -108,6 +138,7 @@ export type ToWebview =
       readonly type: 'commitPage';
       readonly start: number;
       readonly commits: readonly CommitInfo[];
+      readonly graph: readonly GraphRow[];
     }
   // Scrolls to a commit and selects it, answering jump
   | { readonly type: 'reveal'; readonly hash: string; readonly index: number }

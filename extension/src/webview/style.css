@@ -75,6 +75,7 @@ body {
   right: 0;
   z-index: 10;
   min-width: 160px;
+  width: max-content;
   padding: 4px;
   color: var(--vscode-menu-foreground);
   background: var(--vscode-menu-background);
@@ -83,9 +84,11 @@ body {
   box-shadow: 0 2px 8px var(--vscode-widget-shadow);
 }
 
+/* The menu is as wide as its longest item, which stays on one line */
 .menu-item {
   display: block;
   width: 100%;
+  white-space: nowrap;
   padding: 4px 10px;
   font: inherit;
   text-align: left;
@@ -232,11 +235,32 @@ body.resizing {
 }
 
 .column-title {
+  position: relative;
   flex: none;
   padding: 6px 8px;
   text-align: center;
   color: var(--vscode-descriptionForeground);
   border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+/* On the right of the centered title */
+.column-actions {
+  position: absolute;
+  top: 0;
+  right: 4px;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  text-align: left;
+}
+
+.column-actions .settings {
+  padding: 0;
+}
+
+.menu-check {
+  display: inline-block;
+  width: 1.2em;
 }
 
 .column-body {
@@ -613,3 +637,20 @@ body.resizing {
 .author-bar {
   width: 35%;
 }
+
+/* The commit graph on the left of each row, under the commit's text */
+.graph {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+/* Merge dots take clicks, although the rest of the graph lets them through to
+   the row */
+.merge-dot {
+  pointer-events: all;
+  cursor: pointer;
+}
+
+/* The row's text starts after its lanes; the indent is set on each row */
