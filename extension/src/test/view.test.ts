@@ -139,6 +139,22 @@ suite('View', function () {
 
   teardown(() => connection.dispose());
 
+  test('starts at the checked-out commit the first time a tab opens', async () => {
+    const head = await repository.hash('HEAD');
+    assert.strictEqual(page.last('reveal')?.hash, head);
+    assert.strictEqual(page.last('files')?.hash, head);
+
+    // Opening it again keeps the place, here nothing selected
+    await connection.receive({
+      type: 'selectCommit',
+      hash: undefined,
+      index: undefined,
+    });
+    page.clear();
+    await connection.receive({ type: 'ready' });
+    assert.strictEqual(page.last('reveal'), undefined);
+  });
+
   test('shows the history with merges collapsed', async () => {
     const commits = page.last('commits');
     assert.ok(commits);
@@ -222,6 +238,54 @@ suite('View', function () {
       );
     } finally {
       await repository.git('checkout', 'main');
+    }
+  });
+
+  test('checks out a branch and a commit', async () => {
+    try {
+      await connection.receive({
+        type: 'checkout',
+        target: { kind: 'branch', name: 'feature' },
+      });
+      assert.strictEqual(page.last('repository')?.head, 'feature');
+      // It jumps to what it checked out
+      assert.strictEqual(
+        page.last('reveal')?.hash,
+        await repository.hash('feature'),
+      );
+
+      const a = await repository.hash('main~1~1');
+      await connection.receive({
+        type: 'checkout',
+        target: { kind: 'commit', hash: a },
+      });
+      const info = page.last('repository');
+      assert.strictEqual(info?.head, undefined);
+      assert.strictEqual(info?.headCommit, a);
+    } finally {
+      await repository.git('checkout', 'main');
+    }
+  });
+
+  test('checks out a remote branch as a new branch that tracks it', async () => {
+    await repository.git('remote', 'add', 'origin', repository.root);
+    await repository.git('update-ref', 'refs/remotes/origin/topic', 'main~1');
+    try {
+      await connection.receive({
+        type: 'checkout',
+        target: { kind: 'remote', name: 'origin/topic' },
+      });
+      assert.strictEqual(page.last('repository')?.head, 'topic');
+      assert.strictEqual(
+        (
+          await repository.git('rev-parse', '--abbrev-ref', 'topic@{upstream}')
+        ).trim(),
+        'origin/topic',
+      );
+    } finally {
+      await repository.git('checkout', 'main');
+      await repository.git('branch', '-D', 'topic');
+      await repository.git('remote', 'remove', 'origin');
     }
   });
 

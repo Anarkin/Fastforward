@@ -14,10 +14,16 @@ export type MenuTarget =
   | { readonly kind: 'ref'; readonly ref: VipRef }
   | { readonly kind: 'commit'; readonly hash: string };
 
-export interface ContextMenuItem {
-  readonly label: string;
-  readonly onClick: () => void;
-}
+// An item runs onClick, or opens its submenu to the side; a separator is a line
+export type ContextMenuItem =
+  | {
+      readonly label: string;
+      readonly onClick?: () => void;
+      readonly submenu?: readonly ContextMenuItem[];
+      // Shown greyed out, like what is checked out already
+      readonly disabled?: boolean;
+    }
+  | { readonly separator: true };
 
 export interface OpenMenu {
   readonly x: number;
@@ -89,19 +95,83 @@ export function ContextMenu({
       style={position}
       onContextMenu={(event) => event.preventDefault()}
     >
-      {menu.items.map((item) => (
-        <button
-          key={item.label}
-          className="menu-item"
-          role="menuitem"
-          onClick={() => {
-            onClose();
-            item.onClick();
-          }}
-        >
-          {item.label}
-        </button>
-      ))}
+      <MenuItems items={menu.items} onClose={onClose} />
+    </div>
+  );
+}
+
+// The items of a menu or submenu; a submenu opens while its item is hovered
+function MenuItems({
+  items,
+  onClose,
+}: {
+  items: readonly ContextMenuItem[];
+  onClose: () => void;
+}) {
+  const [openSubmenu, setOpenSubmenu] = useState<number>();
+  return (
+    <>
+      {items.map((item, index) =>
+        'separator' in item ? (
+          <div key={`separator-${index}`} className="menu-separator" />
+        ) : (
+          <div
+            key={item.label}
+            className="menu-entry"
+            onMouseEnter={() =>
+              setOpenSubmenu(item.submenu ? index : undefined)
+            }
+          >
+            <button
+              className={`menu-item ${item.submenu ? 'has-submenu' : ''}`}
+              role="menuitem"
+              aria-haspopup={item.submenu ? 'menu' : undefined}
+              disabled={item.disabled}
+              onClick={() => {
+                if (item.submenu) {
+                  setOpenSubmenu(index);
+                } else {
+                  onClose();
+                  item.onClick?.();
+                }
+              }}
+            >
+              {item.label}
+              {item.submenu && <span className="submenu-arrow">▸</span>}
+            </button>
+            {item.submenu && openSubmenu === index && (
+              <Submenu items={item.submenu} onClose={onClose} />
+            )}
+          </div>
+        ),
+      )}
+    </>
+  );
+}
+
+// Next to its item, on the left instead when there's no room on the right
+function Submenu({
+  items,
+  onClose,
+}: {
+  items: readonly ContextMenuItem[];
+  onClose: () => void;
+}) {
+  const element = useRef<HTMLDivElement>(null);
+  const [flipped, setFlipped] = useState(false);
+  useLayoutEffect(() => {
+    const box = element.current?.getBoundingClientRect();
+    if (box && box.right > window.innerWidth) {
+      setFlipped(true);
+    }
+  }, []);
+  return (
+    <div
+      ref={element}
+      className={`menu submenu ${flipped ? 'flipped' : ''}`}
+      role="menu"
+    >
+      <MenuItems items={items} onClose={onClose} />
     </div>
   );
 }

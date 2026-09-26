@@ -22,6 +22,7 @@ import {
   logCommits,
   readFile,
   remoteDefaultBranches,
+  runGit,
   showFiles,
   showPatch,
   workingTreeFiles,
@@ -30,6 +31,7 @@ import {
 } from './git/show';
 import {
   workingTreeHash,
+  type CheckoutTarget,
   type FileChange,
   type FilesMode,
   type ToExtension,
@@ -91,6 +93,8 @@ interface TabState {
   // The commit at the top of the list and how far it is scrolled into it,
   // which a reload keeps in place
   anchor: { hash: string; offset: number } | undefined;
+  // Whether the tab was opened in this session, which starts it at HEAD
+  opened: boolean;
   // The commits refs point at, which are always shown, and how many refs
   // point at each
   refCounts: Map<string, number>;
@@ -353,6 +357,9 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         await this.sendShownHistory(context, message.hash);
         break;
       }
+      case 'checkout':
+        await this.checkout(context, message.target);
+        break;
       case 'scrolled':
         context.tab.anchor = { hash: message.hash, offset: message.offset };
         break;
@@ -367,35 +374,9 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         }
         await this.sendShownHistory(context, undefined);
         break;
-      case 'jump': {
-        // A commit hidden in collapsed merges, like a merged branch's tip,
-        // is shown by expanding them
-        if (!context.tab.positions.has(message.hash)) {
-          await this.expandMerges(
-            context,
-            mergesHiding(
-              context.tab.fullHistory,
-              new Set(context.tab.positions.keys()),
-              message.hash,
-            ),
-            message.hash,
-          );
-        }
-        const index = context.tab.positions.get(message.hash);
-        if (index === undefined) {
-          context.post({
-            type: 'error',
-            message: `${message.hash} is not in the history`,
-          });
-          break;
-        }
-        context.tab.hash = message.hash;
-        context.tab.index = index;
-        context.tab.path = undefined;
-        context.post({ type: 'reveal', hash: message.hash, index });
-        await this.sendCommit(context);
+      case 'jump':
+        await this.showCommit(context, message.hash);
         break;
-      }
       case 'selectCommit':
         context.tab.hash = message.hash;
         context.tab.index = message.index;
@@ -518,8 +499,14 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     this.watch(context, session);
     await this.addRecent(context.root);
     await this.addDefaultVips(context);
+    // The first time a tab opens it starts at what is checked out; later, it
+    // is where it was left
+    const firstOpen = !context.tab.opened;
+    context.tab.opened = true;
     await Promise.all([
-      this.sendCommits(context).then(() => this.sendCommit(context)),
+      this.sendCommits(context).then(() =>
+        firstOpen ? this.showHead(context) : this.sendCommit(context),
+      ),
       this.sendWorkingTree(context),
       this.sendRepository(context),
     ]);
@@ -590,6 +577,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         heads: new Set(),
         fingerprint: '',
         anchor: undefined,
+        opened: false,
         refCounts: new Map(),
         toggledMerges: new Set(),
         history: [],
@@ -629,8 +617,9 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       root,
       tab,
       post: (message) => {
-        // Pages aren't replayed; the webview asks for the ones on screen
-        if (message.type !== 'commitPage') {
+        // Pages aren't replayed, as the webview asks for the ones on screen,
+        // and neither are jumps, which happen once
+        if (message.type !== 'commitPage' && message.type !== 'reveal') {
           tab.shown.set(message.type, message);
         }
         if (this.activeTab === root) {
@@ -656,6 +645,81 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         subscription.dispose();
       },
     };
+  }
+
+  // Checks out a branch, a remote branch, a tag or a commit; git refuses when
+  // uncommitted changes would be overwritten, which is shown as a notification
+  private async checkout(
+    context: Context,
+    target: CheckoutTarget,
+  ): Promise<void> {
+    const { repository } = context;
+    const label = target.kind === 'commit' ? target.hash : target.name;
+    try {
+      if (target.kind === 'remote') {
+        const local = target.name.slice(target.name.indexOf('/') + 1);
+        const refs = await listRefs(repository);
+        if (refs.some((ref) => ref.kind === 'branch' && ref.name === local)) {
+          await repository.checkout(local);
+        } else {
+          await repository.createBranch(local, true, target.name);
+          await repository.setBranchUpstream(local, target.name);
+        }
+      } else {
+        await repository.checkout(
+          target.kind === 'commit' ? target.hash : target.name,
+        );
+      }
+      this.log.info(`Checked out ${target.kind} ${label}`);
+    } catch (error) {
+      const details = gitErrorText(error);
+      this.log.error(`Checking out ${target.kind} ${label} failed`);
+      this.log.error(details);
+      void vscode.window.showErrorMessage(
+        `Fastforward: couldn't check out ${label}. ${details}`,
+      );
+      return;
+    }
+    // Shows the new checkout right away, without waiting for the Git
+    // extension to notice it, and jumps there
+    await repository.status();
+    await this.refresh(context);
+    await this.showHead(context);
+  }
+
+  // Selects a commit and scrolls the list to it, expanding the collapsed
+  // merges that hide it, like a merged branch's tip
+  private async showCommit(context: Context, hash: string): Promise<void> {
+    if (!context.tab.positions.has(hash)) {
+      await this.expandMerges(
+        context,
+        mergesHiding(
+          context.tab.fullHistory,
+          new Set(context.tab.positions.keys()),
+          hash,
+        ),
+        hash,
+      );
+    }
+    const index = context.tab.positions.get(hash);
+    if (index === undefined) {
+      context.post({ type: 'error', message: `${hash} is not in the history` });
+      return;
+    }
+    context.tab.hash = hash;
+    context.tab.index = index;
+    context.tab.path = undefined;
+    context.post({ type: 'reveal', hash, index });
+    await this.sendCommit(context);
+  }
+
+  // Selects what is checked out; asks git, as the Git extension may not have
+  // read a repository it just opened yet
+  private async showHead(context: Context): Promise<void> {
+    const head = (
+      await runGit(context.git.git.path, context.root, ['rev-parse', 'HEAD'])
+    ).trim();
+    await this.showCommit(context, head);
   }
 
   // After a change in the repository: the uncommitted changes always, and the
@@ -858,6 +922,18 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         : await showPatch(gitPath, context.root, hash, file);
     context.post({ type: 'diff', hash, path: file, patch });
   }
+}
+
+// What git said about a failure: the Git extension's errors keep git's output
+// in stderr, and their message is only "Failed to execute git"
+function gitErrorText(error: unknown): string {
+  if (typeof error === 'object' && error !== null && 'stderr' in error) {
+    const { stderr } = error;
+    if (typeof stderr === 'string' && stderr.trim()) {
+      return stderr.trim();
+    }
+  }
+  return error instanceof Error ? error.message : String(error);
 }
 
 // The remote branch the checked-out branch tracks, like origin/main

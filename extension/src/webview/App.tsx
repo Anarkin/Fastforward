@@ -11,6 +11,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   workingTreeHash,
   type CommitInfo,
+  type CheckoutTarget,
   type FileChange,
   type FilesMode,
   type RefInfo,
@@ -35,6 +36,7 @@ import { FileTree, foldersOf } from './fileTree';
 import { GraphCell, graphWidth, rowLanes } from './graph';
 import { LocationsPopup, type Repository } from './locations';
 import { shownVips } from './vips';
+import { checkoutOptions, checkoutRef } from './checkout';
 
 interface Props {
   post: (message: ToExtension) => void;
@@ -294,12 +296,36 @@ export function App({ post }: Props) {
   };
 
   // The items of the menu for what was right-clicked; commits have none yet
+  const checkout = (target: CheckoutTarget) =>
+    post({ type: 'checkout', target });
+
   const menuItems = (target: MenuTarget): ContextMenuItem[] => {
-    if (target.kind !== 'ref') {
-      return [];
+    const refs = repository?.refs ?? [];
+    const head = repository?.head;
+    if (target.kind === 'commit') {
+      const detached = repository && !head ? repository.headCommit : undefined;
+      return [
+        {
+          label: 'Checkout',
+          submenu: checkoutOptions(target.hash, refs, head, detached).map(
+            (option) => ({
+              label: option.label,
+              disabled: option.disabled,
+              onClick: () => checkout(option.target),
+            }),
+          ),
+        },
+      ];
     }
     const isVip = vips.some((vip) => sameRef(vip, target.ref));
+    const option = checkoutRef(target.ref, refs, head);
     return [
+      {
+        label: 'Checkout',
+        disabled: option.disabled,
+        onClick: () => checkout(option.target),
+      },
+      { separator: true },
       isVip
         ? {
             label: 'Remove from VIP',

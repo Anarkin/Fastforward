@@ -15,6 +15,13 @@ export interface RefInfo {
   readonly commit: string;
 }
 
+// What to check out: a branch switches to it, a remote branch switches to the
+// local branch of the same name, creating one that tracks it if needed, and a
+// tag or a commit detaches HEAD there
+export type CheckoutTarget =
+  | { readonly kind: RefKind; readonly name: string }
+  | { readonly kind: 'commit'; readonly hash: string };
+
 // A ref the user pinned to the VIP row; by name, as its commit moves
 export interface VipRef {
   readonly kind: RefKind;
@@ -95,6 +102,7 @@ export type ToExtension =
     }
   // Selects a commit that may not be loaded yet, such as a branch's tip
   | { readonly type: 'jump'; readonly hash: string }
+  | { readonly type: 'checkout'; readonly target: CheckoutTarget }
   // Asks for the commits at positions start..start+count of the history
   | {
       readonly type: 'loadCommits';

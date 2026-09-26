@@ -853,3 +853,45 @@ body.resizing {
   color: var(--vscode-tab-activeForeground);
   background: var(--vscode-tab-activeBackground);
 }
+
+/* Submenus open to the side of their item */
+.menu-entry {
+  position: relative;
+}
+
+.menu-item.has-submenu {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.submenu-arrow {
+  margin-left: auto;
+  color: var(--vscode-descriptionForeground);
+}
+
+.menu.submenu {
+  top: -5px;
+  left: 100%;
+  right: auto;
+}
+
+.menu.submenu.flipped {
+  left: auto;
+  right: 100%;
+}
+
+.menu-item:disabled {
+  cursor: default;
+  opacity: 0.5;
+  background: none;
+}
+
+.menu-separator {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(
+    --vscode-menu-separatorBackground,
+    var(--vscode-panel-border)
+  );
+}
