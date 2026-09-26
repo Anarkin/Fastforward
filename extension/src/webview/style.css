@@ -103,8 +103,8 @@ body {
 .tab {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 6px 5px 12px;
+  gap: 4px;
+  padding: 5px 4px 5px 12px;
   white-space: nowrap;
   cursor: pointer;
   color: var(--vscode-tab-inactiveForeground);
@@ -144,7 +144,17 @@ body {
   border-radius: 3px;
 }
 
+/* A small square at the tab's right edge, like VS Code's close button */
 .tab-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  line-height: 1;
+  border-radius: 4px;
   opacity: 0.6;
 }
 
