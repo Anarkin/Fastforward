@@ -15,13 +15,24 @@
   "categories": [
     "Other"
   ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "fastforward.helloWorld",
-        "title": "Hello World",
-        "category": "Fastforward"
+        "command": "fastforward.toggleView",
+        "title": "Toggle View",
+        "category": "Fastforward",
+        "icon": "$(fast-forward)"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "fastforward.toggleView",
+        "key": "ctrl+alt+f",
+        "mac": "cmd+alt+f"
       }
     ]
   },
