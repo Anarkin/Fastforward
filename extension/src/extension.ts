@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { watchDevReload } from './devReload';
 import { registerCommand } from './registerCommand';
 import { FastforwardView, toggleViewCommand } from './view';
 
@@ -6,6 +7,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const log = vscode.window.createOutputChannel('Fastforward', { log: true });
   context.subscriptions.push(log);
   log.info(`Activated ${context.extension.id}`);
+  watchDevReload(context, log);
 
   const view = new FastforwardView(log);
   context.subscriptions.push(view);

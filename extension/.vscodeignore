@@ -4,6 +4,7 @@ node_modules/**
 .vscode-test/**
 .vscode-test.mjs
 esbuild.mjs
+deploy-local.mjs
 tsconfig.json
 **/*.map
 **/*.ts

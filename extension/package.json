@@ -50,6 +50,7 @@
     "copy-root-files": "node -e \"for (const f of ['README.md', 'LICENSE']) require('fs').copyFileSync('../' + f, f)\"",
     "vsce:package": "npm run copy-root-files && vsce package",
     "vsce:publish": "npm run copy-root-files && vsce publish",
+    "deploy-local": "npm run package && node deploy-local.mjs",
     "install-local": "npm run vsce:package -- --out fastforward.vsix && code --install-extension fastforward.vsix --force",
     "verify": "npm run format:check && npm run lint && npm run check-types && npm test",
     "lint": "oxlint --type-aware --deny-warnings"
