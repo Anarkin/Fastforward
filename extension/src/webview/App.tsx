@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   workingTreeHash,
   type CommitInfo,
@@ -88,6 +88,11 @@ export function App({ post }: Props) {
     setError(undefined);
   }
 
+  const log = useCallback(
+    (message: string) => post({ type: 'log', level: 'info', message }),
+    [post],
+  );
+
   const refsByCommit = useMemo(() => {
     const map = new Map<string, RefInfo[]>();
     for (const info of repository?.refs ?? []) {
@@ -125,6 +130,8 @@ export function App({ post }: Props) {
         onSelect={(root) => post({ type: 'selectTab', root })}
         onClose={(root) => post({ type: 'closeTab', root })}
         onAdd={() => post({ type: 'addTab' })}
+        onSort={() => post({ type: 'sortTabs' })}
+        onLog={log}
       />
       {tabs.length === 0 ? (
         <div className="empty-state">
@@ -165,40 +172,151 @@ function TabBar({
   onSelect,
   onClose,
   onAdd,
+  onSort,
+  onLog,
 }: {
   tabs: readonly TabInfo[];
   active: string | undefined;
   onSelect: (root: string) => void;
   onClose: (root: string) => void;
   onAdd: () => void;
+  onSort: () => void;
+  onLog: (message: string) => void;
 }) {
+  const bar = useRef<HTMLElement>(null);
+  const list = useRef<HTMLDivElement>(null);
+
+  // Reports the layout once, to find where space around the page comes from
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      onLog(
+        `layout: window ${window.innerWidth}x${window.innerHeight}, ` +
+          `dpr ${window.devicePixelRatio}, ` +
+          `body ${elementWidth(document.body)}, ` +
+          `tab bar ${elementWidth(bar.current)}, ` +
+          `tab list ${elementWidth(list.current)}`,
+      );
+    });
+  }, [onLog]);
+
+  // The wheel scrolls the tabs sideways, because their scrollbar is hidden
+  const onWheel = (event: React.WheelEvent) => {
+    if (list.current && event.deltaY !== 0) {
+      list.current.scrollLeft += event.deltaY;
+    }
+  };
+
   return (
-    <nav className="tabs">
-      {tabs.map((tab) => (
-        <div
-          key={tab.root}
-          className={`tab ${tab.root === active ? 'active' : ''}`}
-          title={tab.root}
-          onClick={() => onSelect(tab.root)}
-          onAuxClick={(event) => event.button === 1 && onClose(tab.root)}
-        >
-          <span className="tab-name">{tab.name}</span>
-          <button
-            className="tab-close"
-            title="Close"
-            onClick={(event) => {
-              event.stopPropagation();
-              onClose(tab.root);
-            }}
+    <nav className="tabs" ref={bar}>
+      <div className="tab-list" ref={list} onWheel={onWheel}>
+        {tabs.map((tab) => (
+          <div
+            key={tab.root}
+            className={`tab ${tab.root === active ? 'active' : ''}`}
+            title={tab.root}
+            onClick={() => onSelect(tab.root)}
+            // Stops the browser's middle-button autoscroll, which would
+            // otherwise swallow the middle click once the tabs overflow
+            onMouseDown={(event) =>
+              event.button === 1 && event.preventDefault()
+            }
+            onAuxClick={(event) => event.button === 1 && onClose(tab.root)}
           >
-            ×
-          </button>
-        </div>
-      ))}
-      <button className="tab-add" title="Open a repository" onClick={onAdd}>
-        +
-      </button>
+            <span className="tab-name">{tab.name}</span>
+            <button
+              className="tab-close"
+              title="Close"
+              onClick={(event) => {
+                event.stopPropagation();
+                onClose(tab.root);
+              }}
+            >
+              ×
+            </button>
+          </div>
+        ))}
+        <button className="tab-add" title="Open a repository" onClick={onAdd}>
+          +
+        </button>
+      </div>
+      <SettingsMenu onSort={onSort} />
     </nav>
+  );
+}
+
+function elementWidth(element: Element | null): number {
+  return element ? Math.round(element.getBoundingClientRect().width) : 0;
+}
+
+function SettingsMenu({ onSort }: { onSort: () => void }) {
+  const [open, setOpen] = useState(false);
+  const container = useRef<HTMLDivElement>(null);
+
+  const choose = (action: () => void) => () => {
+    setOpen(false);
+    action();
+  };
+
+  return (
+    <div className="settings" ref={container}>
+      <button
+        className={`settings-button ${open ? 'open' : ''}`}
+        title="Settings"
+        onClick={() => setOpen(!open)}
+      >
+        ⚙
+      </button>
+      {open && (
+        <Menu container={container} onClose={() => setOpen(false)}>
+          <button
+            className="menu-item"
+            role="menuitem"
+            onClick={choose(onSort)}
+          >
+            Sort A-Z
+          </button>
+        </Menu>
+      )}
+    </div>
+  );
+}
+
+// Closes on a click outside the container or on Escape
+function Menu({
+  container,
+  onClose,
+  children,
+}: {
+  container: React.RefObject<HTMLElement | null>;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  useEffect(() => {
+    const onPointerDown = (event: PointerEvent) => {
+      if (
+        !(event.target instanceof Node) ||
+        !container.current?.contains(event.target)
+      ) {
+        onClose();
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [container, onClose]);
+
+  return (
+    <div className="menu" role="menu">
+      {children}
+    </div>
   );
 }
 

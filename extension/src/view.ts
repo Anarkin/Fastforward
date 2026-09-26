@@ -216,6 +216,19 @@ export class FastforwardView
         await this.openTab(git, session, active);
         return;
       }
+      case 'sortTabs': {
+        const tabs = this.tabs.toSorted((a, b) =>
+          path.basename(a).localeCompare(path.basename(b), undefined, {
+            sensitivity: 'base',
+          }),
+        );
+        await this.setTabs(tabs, this.activeTab);
+        this.postTabs(session);
+        return;
+      }
+      case 'log':
+        this.log[message.level](`Webview: ${message.message}`);
+        return;
     }
 
     const context = await this.context(git, session);
@@ -319,11 +332,7 @@ export class FastforwardView
   ): Promise<void> {
     const active = root && this.tabs.includes(root) ? root : this.tabs[0];
     await this.setTabs(this.tabs, active);
-    session.post({
-      type: 'tabs',
-      tabs: this.tabs.map((tab) => ({ root: tab, name: path.basename(tab) })),
-      active,
-    });
+    this.postTabs(session);
     if (active) {
       for (const message of this.tabState(active).shown.values()) {
         session.post(message);
@@ -349,6 +358,14 @@ export class FastforwardView
       type: 'repository',
       head: context.repository.state.HEAD?.name,
       refs: await listRefs(context.repository),
+    });
+  }
+
+  private postTabs(session: Session): void {
+    session.post({
+      type: 'tabs',
+      tabs: this.tabs.map((tab) => ({ root: tab, name: path.basename(tab) })),
+      active: this.activeTab,
     });
   }
 

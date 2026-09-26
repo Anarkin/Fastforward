@@ -8,9 +8,20 @@ declare function acquireVsCodeApi(): {
 };
 
 const vscode = acquireVsCodeApi();
+const post = (message: ToExtension) => vscode.postMessage(message);
+
+window.addEventListener('error', (event) =>
+  post({
+    type: 'log',
+    level: 'error',
+    message: String(event.error ?? event.message),
+  }),
+);
+window.addEventListener('unhandledrejection', (event) =>
+  post({ type: 'log', level: 'error', message: String(event.reason) }),
+);
+
 const root = document.getElementById('root');
 if (root) {
-  createRoot(root).render(
-    <App post={(message) => vscode.postMessage(message)} />,
-  );
+  createRoot(root).render(<App post={post} />);
 }

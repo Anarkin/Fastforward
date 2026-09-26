@@ -20,37 +20,117 @@ body {
   height: 100%;
 }
 
-/* On rounded workbenches VS Code rounds the webview's corners by 8px, outside
-   the page, so the tabs have no fill of their own that the corners could clip;
-   the active tab is marked with a line instead */
+/* Like VS Code's editor tabs: the active tab has the panels' background and
+   runs into them, the others sit on the tab strip */
 .tabs {
   flex: none;
   display: flex;
   align-items: stretch;
+  padding: 4px 4px 0;
+  background: var(--vscode-editorGroupHeader-tabsBackground);
+}
+
+/* Scrolls sideways with the wheel; the scrollbar would take up space */
+.tab-list {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
   overflow-x: auto;
-  background: var(--vscode-editor-background);
-  border-bottom: 1px solid var(--vscode-panel-border);
+  scrollbar-width: none;
+}
+
+.settings {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  padding: 0 0 2px 4px;
+}
+
+.settings-button {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  font: inherit;
+  font-size: 1.1em;
+  line-height: 1;
+  color: var(--vscode-foreground);
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-radius: 4px;
+}
+
+.settings-button:hover,
+.settings-button.open {
+  background: var(--vscode-toolbar-hoverBackground);
+}
+
+.menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 10;
+  min-width: 160px;
+  padding: 4px;
+  color: var(--vscode-menu-foreground);
+  background: var(--vscode-menu-background);
+  border: 1px solid var(--vscode-menu-border, var(--vscode-widget-border));
+  border-radius: 6px;
+  box-shadow: 0 2px 8px var(--vscode-widget-shadow);
+}
+
+.menu-item {
+  display: block;
+  width: 100%;
+  padding: 4px 10px;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-radius: 4px;
+}
+
+.menu-item:hover {
+  color: var(--vscode-menu-selectionForeground);
+  background: var(--vscode-menu-selectionBackground);
 }
 
 .tab {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 8px 4px 12px;
+  padding: 5px 6px 5px 12px;
   white-space: nowrap;
   cursor: pointer;
   color: var(--vscode-tab-inactiveForeground);
-  border-bottom: 2px solid transparent;
-  border-right: 1px solid var(--vscode-panel-border);
+  background: transparent;
+  border-radius: 6px 6px 0 0;
 }
 
-.tab:hover {
-  color: var(--vscode-tab-activeForeground);
+/* The same color VS Code's modern UI uses for hovered editor tabs */
+.tab:not(.active):hover {
+  background: var(
+    --vscode-modernEditorTab-hoverBackground,
+    color-mix(
+      in srgb,
+      var(--vscode-foreground) 6%,
+      var(--vscode-editorGroupHeader-tabsBackground)
+    )
+  );
 }
 
 .tab.active {
   color: var(--vscode-tab-activeForeground);
-  border-bottom-color: var(--vscode-focusBorder);
+  background: var(--vscode-editor-background);
+}
+
+.tab:not(.active):not(:hover) .tab-close {
+  visibility: hidden;
 }
 
 .tab-close,
@@ -74,10 +154,21 @@ body {
   background: var(--vscode-toolbar-hoverBackground);
 }
 
+/* The strip aligns tabs to its bottom edge; the button is centered in the
+   space above it instead */
 .tab-add {
-  padding: 0 10px;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin: 0 0 2px 4px;
+  padding: 0;
   font-size: 1.2em;
+  line-height: 1;
   color: var(--vscode-foreground);
+  border-radius: 4px;
 }
 
 .empty-state {

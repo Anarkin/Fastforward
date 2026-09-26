@@ -43,6 +43,13 @@ export type ToExtension =
   | { readonly type: 'selectTab'; readonly root: string }
   | { readonly type: 'addTab' }
   | { readonly type: 'closeTab'; readonly root: string }
+  | { readonly type: 'sortTabs' }
+  // Written to the Fastforward log, so webview problems show up there too
+  | {
+      readonly type: 'log';
+      readonly level: 'info' | 'error';
+      readonly message: string;
+    }
   | { readonly type: 'selectRef'; readonly ref: string | undefined }
   | { readonly type: 'selectCommit'; readonly hash: string }
   | {
