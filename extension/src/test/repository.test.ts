@@ -1,61 +1,110 @@
 import * as assert from 'node:assert';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import * as vscode from 'vscode';
 import type { API, Repository } from '../git/git';
 import { getGitApi, listRefs } from '../git/repository';
-import { listHistory, logCommits, showFiles, showPatch } from '../git/show';
+import {
+  listHistory,
+  logCommits,
+  runGit,
+  showFiles,
+  showPatch,
+} from '../git/show';
 
-// .vscode-test.mjs opens this repository as the workspace
-suite('Git repository', () => {
+// A temp repository with three commits on main, the last renaming a file, so
+// the tests don't depend on what this repository has checked out
+suite('Git repository', function () {
+  // git in temp repositories can take seconds on a busy machine
+  this.timeout(20_000);
   let git: API;
   let repository: Repository;
+  let cwd: string;
 
-  suiteSetup(async function () {
-    this.timeout(20_000);
+  suiteSetup(async () => {
     git = await getGitApi();
-    // The workspace's repository; other tests open temp repositories too
-    const folder = vscode.workspace.workspaceFolders?.[0]?.uri;
-    assert.ok(folder, 'no workspace folder');
-    let found = git.getRepository(folder);
-    for (let i = 0; i < 100 && !found; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      found = git.getRepository(folder);
-    }
-    assert.ok(found, 'repository not found');
-    repository = found;
+    cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'fastforward-repository-'));
+    const run = (...args: string[]) =>
+      runGit(git.git.path, cwd, [
+        '-c',
+        'user.name=Test',
+        '-c',
+        'user.email=test@example.com',
+        ...args,
+      ]);
+    await run('init', '-b', 'main');
+    fs.writeFileSync(path.join(cwd, 'first.txt'), 'one\n');
+    await run('add', '.');
+    await run('commit', '-m', 'first');
+    fs.writeFileSync(path.join(cwd, 'second.txt'), 'two\n');
+    await run('add', '.');
+    await run('commit', '-m', 'second');
+    await run('mv', 'second.txt', 'renamed.txt');
+    await run('commit', '-m', 'rename');
+    const opened = await git.openRepository(vscode.Uri.file(cwd));
+    assert.ok(opened, 'repository not opened');
+    repository = opened;
     await repository.status();
   });
 
+  // Best effort, because git's read-only object files can't always be removed
+  // on Windows, and it's only a temp folder
+  suiteTeardown(() => {
+    try {
+      fs.rmSync(cwd, { recursive: true, force: true });
+    } catch {
+      // Left for the OS to clean up
+    }
+  });
+
   test('lists refs including the current branch', async () => {
-    const head = repository.state.HEAD?.name;
-    assert.ok(head, 'no HEAD branch');
     const refs = await listRefs(repository);
-    assert.ok(refs.some((ref) => ref.kind === 'branch' && ref.name === head));
+    assert.ok(refs.some((ref) => ref.kind === 'branch' && ref.name === 'main'));
     assert.ok(!refs.some((ref) => ref.name.endsWith('/HEAD')));
   });
 
   test('lists the history, its commits, their files and patches', async () => {
-    const cwd = repository.rootUri.fsPath;
     const history = await listHistory(git.git.path, cwd);
-    assert.ok(history.length > 0);
+    assert.strictEqual(history.length, 3);
     assert.ok(history.every((entry) => entry.hash.length === 40));
 
     // Commits come back in the order of the hashes asked for
-    const hashes = history.slice(0, 3).map((entry) => entry.hash);
+    const hashes = history.map((entry) => entry.hash);
     const commits = await logCommits(git.git.path, cwd, hashes.toReversed());
     assert.deepStrictEqual(
-      commits.map((commit) => commit.hash),
-      hashes.toReversed(),
+      commits.map((commit) => commit.subject),
+      ['first', 'second', 'rename'],
     );
 
-    // A root commit, or the shallow clone boundary in CI, has no parents;
-    // either way git show lists all its files as added
+    // The root commit has no parents, and git show lists its files as added
     const root = history.find((entry) => entry.parents.length === 0);
     assert.ok(root);
     const files = await showFiles(git.git.path, cwd, root.hash);
-    assert.ok(files.length > 0);
-    assert.ok(files.every((file) => file.status === 'A'));
+    assert.deepStrictEqual(
+      files.map((file) => [file.status, file.path]),
+      [['A', 'first.txt']],
+    );
 
-    const patch = await showPatch(git.git.path, cwd, root.hash, files[0].path);
-    assert.ok(patch.includes(`b/${files[0].path}`));
+    const patch = await showPatch(git.git.path, cwd, root.hash, 'first.txt');
+    assert.ok(patch.includes('b/first.txt'));
+  });
+
+  test('diffs a renamed file as a rename', async () => {
+    const [rename] = await listHistory(git.git.path, cwd);
+    const files = await showFiles(git.git.path, cwd, rename.hash);
+    assert.deepStrictEqual(
+      files.map((file) => [file.status, file.oldPath, file.path]),
+      [['R', 'second.txt', 'renamed.txt']],
+    );
+    const patch = await showPatch(
+      git.git.path,
+      cwd,
+      rename.hash,
+      'renamed.txt',
+      'second.txt',
+    );
+    assert.ok(patch.includes('rename from second.txt'), patch);
+    assert.ok(!patch.includes('new file mode'), patch);
   });
 });

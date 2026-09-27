@@ -3,6 +3,17 @@ import type { RefInfo, VipRef } from './protocol';
 interface Head {
   readonly name?: string;
   readonly commit?: string;
+  readonly type?: number;
+}
+
+// RefType.Tag, which is a const enum in the Git extension's declaration file,
+// so its value is repeated here
+const refTypeTag = 2;
+
+// The branch HEAD is on; a HEAD detached at a tag is named after the tag by
+// the Git extension, but no branch is checked out then
+export function checkedOutBranch(head: Head | undefined): string | undefined {
+  return head?.type === refTypeTag ? undefined : head?.name;
 }
 
 // HEAD and where every ref points, to tell whether the history changed; the
@@ -39,7 +50,7 @@ export function countRefs(
 // The commit HEAD points at when no branch is checked out, as after checking
 // out a commit, a tag or a remote branch, or during a rebase
 export function detachedHead(head: Head | undefined): string | undefined {
-  return head && !head.name ? head.commit : undefined;
+  return head && !checkedOutBranch(head) ? head.commit : undefined;
 }
 
 // [position, number of refs] for every shown commit that refs point at, which

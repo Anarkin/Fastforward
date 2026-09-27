@@ -155,6 +155,74 @@ suite('View', function () {
     assert.strictEqual(page.last('reveal'), undefined);
   });
 
+  test('shows the last selected commit when answers come out of order', async () => {
+    const [a, b] = await Promise.all([
+      repository.hash('main~1'),
+      repository.hash('main~2'),
+    ]);
+    // Both run at once, so either can finish first
+    await Promise.all([
+      connection.receive({ type: 'selectCommit', hash: a, index: 1 }),
+      connection.receive({ type: 'selectCommit', hash: b, index: 2 }),
+    ]);
+    assert.strictEqual(page.last('files')?.hash, b);
+    assert.strictEqual(page.last('diff')?.hash, b);
+  });
+
+  test('checks out a tag, not a branch of the same name', async () => {
+    const a = await repository.hash('main~2');
+    await repository.git('tag', 'same', a);
+    await repository.git('branch', 'same', 'main');
+    try {
+      await connection.receive({
+        type: 'checkout',
+        target: { kind: 'tag', name: 'same' },
+      });
+      const info = page.last('repository');
+      assert.strictEqual(info?.head, undefined);
+      assert.strictEqual(info?.headCommit, a);
+    } finally {
+      await repository.git('checkout', 'main');
+      await repository.git('tag', '-d', 'same');
+      await repository.git('branch', '-D', 'same');
+    }
+  });
+
+  test('uses a repository cloned inside another, not the outer one', async () => {
+    const gitPath = (await getGitApi()).git.path;
+    const nested = path.join(repository.root, 'nested');
+    fs.mkdirSync(nested);
+    const git = (...args: string[]) =>
+      runGit(gitPath, nested, [
+        '-c',
+        'user.name=Test',
+        '-c',
+        'user.email=test@example.com',
+        ...args,
+      ]);
+    await git('init', '-b', 'inner');
+    await git('commit', '--allow-empty', '-m', 'inner');
+    const inner = (await git('rev-parse', 'HEAD')).trim();
+    const workspaceState = new FakeMemento();
+    await workspaceState.update('tabs', [nested]);
+    await workspaceState.update('activeTab', nested);
+    const nestedPage = new FakePage();
+    const nestedConnection = new FastforwardView(
+      log,
+      vscode.Uri.file(__dirname),
+      workspaceState,
+      new FakeMemento(),
+    ).connect((message) => nestedPage.messages.push(message));
+    try {
+      await nestedConnection.receive({ type: 'ready' });
+      const info = nestedPage.last('repository');
+      assert.strictEqual(info?.head, 'inner');
+      assert.strictEqual(info?.headCommit, inner);
+    } finally {
+      nestedConnection.dispose();
+    }
+  });
+
   test('shows the history with merges collapsed', async () => {
     const commits = page.last('commits');
     assert.ok(commits);

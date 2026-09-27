@@ -4,6 +4,7 @@ import {
   countRefs,
   decorations,
   defaultVips,
+  checkedOutBranch,
   detachedHead,
   fingerprint,
 } from '../refs';
@@ -116,5 +117,12 @@ suite('detached HEAD', () => {
       2,
     );
     assert.strictEqual(detachedHead({ name: 'main', commit: 'a' }), undefined);
+  });
+
+  test('is at a tag the Git extension names HEAD after', () => {
+    // RefType.Tag
+    const head = { name: 'v1', commit: 'c', type: 2 };
+    assert.strictEqual(checkedOutBranch(head), undefined);
+    assert.strictEqual(detachedHead(head), 'c');
   });
 });

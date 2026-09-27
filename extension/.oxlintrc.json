@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["typescript", "unicorn", "oxc"],
+  "plugins": ["typescript", "unicorn", "oxc", "react"],
   "categories": {
     "correctness": "error",
     "suspicious": "error"
@@ -9,7 +9,12 @@
     "typescript/no-floating-promises": "error",
     "typescript/no-misused-promises": "error",
     "typescript/await-thenable": "error",
-    "unicorn/require-post-message-target-origin": "off"
+    "unicorn/require-post-message-target-origin": "off",
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "error",
+    "react/react-in-jsx-scope": "off",
+    "react/incompatible-library": "off",
+    "react/set-state-in-effect": "off"
   },
   "ignorePatterns": ["dist", "out", ".vscode-test", "src/git/git.d.ts"]
 }

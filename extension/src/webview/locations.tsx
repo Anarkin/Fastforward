@@ -125,7 +125,7 @@ export function LocationsPopup({
   const input = useRef<HTMLInputElement>(null);
   // A kept search is selected, so typing starts a new one
   useEffect(() => input.current?.select(), []);
-  const refs = repository?.refs ?? [];
+  const refs = useMemo(() => repository?.refs ?? [], [repository]);
   const search = useMemo(() => searchRefs(refs, query), [refs, query]);
   const [active, setActive] = useState<Active>(() => firstMatch(search));
   const activeRef = search[active.column]?.refs[active.index];

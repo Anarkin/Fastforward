@@ -8,6 +8,12 @@ import type { CommitInfo, FileChange } from '../protocol';
 
 const showArgs = ['show', '--diff-merges=first-parent', '--format=', '-M'];
 
+// Reading commands skip git's optional locks, so a refresh running while the
+// user commits elsewhere doesn't hold index.lock and make that commit fail
+function env(): NodeJS.ProcessEnv {
+  return { ...process.env, GIT_OPTIONAL_LOCKS: '0' };
+}
+
 interface RunOptions {
   // git diff --no-index exits with 1 when the files differ
   readonly okExitCodes?: readonly number[];
@@ -25,7 +31,7 @@ export function runGit(
     const child = execFile(
       gitPath,
       args,
-      { cwd, maxBuffer: 256 * 1024 * 1024, encoding: 'utf8' },
+      { cwd, env: env(), maxBuffer: 256 * 1024 * 1024, encoding: 'utf8' },
       (error, stdout, stderr) => {
         if (error && !okExitCodes.includes(Number(error.code))) {
           reject(
@@ -59,17 +65,27 @@ export async function showFiles(
   return withStats(parseNameStatus(nameStatus), parseNumstat(numstat));
 }
 
+// A renamed file is limited to both its paths, as git only detects the
+// rename when it sees both
+function pathspecs(path: string | undefined, oldPath?: string): string[] {
+  if (path === undefined) {
+    return [];
+  }
+  return oldPath ? ['--', oldPath, path] : ['--', path];
+}
+
 export function showPatch(
   gitPath: string,
   cwd: string,
   hash: string,
   path: string | undefined,
+  oldPath?: string,
 ): Promise<string> {
   return runGit(gitPath, cwd, [
     ...showArgs,
     '--patch',
     hash,
-    ...(path ? ['--', path] : []),
+    ...pathspecs(path, oldPath),
   ]);
 }
 
@@ -255,7 +271,7 @@ export async function readFile(
     execFile(
       gitPath,
       ['show', `${hash}:${path}`],
-      { cwd, maxBuffer: 256 * 1024 * 1024, encoding: 'buffer' },
+      { cwd, env: env(), maxBuffer: 256 * 1024 * 1024, encoding: 'buffer' },
       (error, stdout) => (error ? reject(error) : resolve(stdout)),
     );
   });
@@ -306,6 +322,7 @@ export async function workingTreePatch(
   gitPath: string,
   cwd: string,
   path: string | undefined,
+  oldPath?: string,
 ): Promise<string> {
   const untracked = await listUntracked(gitPath, cwd);
   const untrackedPatch = (file: string) =>
@@ -317,7 +334,7 @@ export async function workingTreePatch(
   }
   const tracked = await runGit(gitPath, cwd, [
     ...workingTreeArgs,
-    ...(path ? ['--', path] : []),
+    ...pathspecs(path, oldPath),
   ]);
   if (path) {
     return tracked;

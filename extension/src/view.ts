@@ -4,6 +4,7 @@ import * as vscode from 'vscode';
 import type { API, Repository } from './git/git';
 import { Graph } from './git/graph';
 import {
+  checkedOutBranch,
   countRefs,
   decorations as refDecorations,
   defaultVips,
@@ -87,7 +88,7 @@ interface TabState {
   path: string | undefined;
   // The files the selected commit changed; others picked in the Files view
   // are shown whole instead of as a diff
-  changedPaths: Set<string>;
+  changedFiles: Map<string, FileChange>;
   // Every commit of every branch, remote and tag, newest first
   fullHistory: readonly HistoryEntry[];
   // Its commits that nothing is built on yet
@@ -510,7 +511,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       return;
     }
     this.log.info(
-      `Tab ${context.root} uses the repository at ${context.repository.rootUri.fsPath}, HEAD ${context.repository.state.HEAD?.name ?? '(detached)'} ${context.repository.state.HEAD?.commit ?? ''}`,
+      `Tab ${context.root} uses the repository at ${context.repository.rootUri.fsPath}, HEAD ${checkedOutBranch(context.repository.state.HEAD) ?? '(detached)'} ${context.repository.state.HEAD?.commit ?? ''}`,
     );
     this.watch(context, session);
     await this.addRecent(context.root);
@@ -535,7 +536,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     ]);
     context.post({
       type: 'repository',
-      head: context.repository.state.HEAD?.name,
+      head: checkedOutBranch(context.repository.state.HEAD),
       headCommit: context.repository.state.HEAD?.commit,
       headUpstream: upstreamOf(context.repository),
       ...counts,
@@ -593,7 +594,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         hash: undefined,
         index: undefined,
         path: undefined,
-        changedPaths: new Set(),
+        changedFiles: new Map(),
         fullHistory: [],
         heads: new Set(),
         fingerprint: '',
@@ -619,11 +620,17 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     if (!root) {
       return undefined;
     }
-    // Repositories outside the workspace have to be opened first, which also
-    // shows them in the Source Control view
+    // The repository at the tab's folder; getRepository would give the outer
+    // repository for one cloned inside another, and checkout, pull and push
+    // would then act on that; repositories outside the workspace have to be
+    // opened first, which also shows them in the Source Control view
     const uri = vscode.Uri.file(root);
     const repository =
-      git.getRepository(uri) ?? (await git.openRepository(uri));
+      git.repositories.find(
+        (candidate) => path.relative(candidate.rootUri.fsPath, root) === '',
+      ) ??
+      (await git.openRepository(uri)) ??
+      git.getRepository(uri);
     if (!repository) {
       session.post({
         type: 'error',
@@ -639,8 +646,12 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       tab,
       post: (message) => {
         // Pages aren't replayed, as the webview asks for the ones on screen,
-        // and neither are jumps, which happen once
-        if (message.type !== 'commitPage' && message.type !== 'reveal') {
+        // and neither are jumps and errors, which happen once
+        if (
+          message.type !== 'commitPage' &&
+          message.type !== 'reveal' &&
+          message.type !== 'error'
+        ) {
           tab.shown.set(message.type, message);
         }
         if (this.activeTab === root) {
@@ -692,7 +703,11 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         }
       } else {
         await repository.checkout(
-          target.kind === 'commit' ? target.hash : target.name,
+          target.kind === 'commit'
+            ? target.hash
+            : target.kind === 'tag'
+              ? `refs/tags/${target.name}`
+              : target.name,
         );
       }
       this.log.info(`Checked out ${target.kind} ${label}`);
@@ -826,6 +841,10 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     await this.sendWorkingTree(context);
     if (context.tab.hash === workingTreeHash) {
       await this.sendCommit(context);
+      const tree = context.tab.shown.get('tree');
+      if (tree?.type === 'tree' && tree.hash === workingTreeHash) {
+        await this.sendTree(context, workingTreeHash);
+      }
     }
     const refs = await listRefs(context.repository);
     if (
@@ -986,7 +1005,11 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     } else {
       return;
     }
-    context.tab.changedPaths = new Set(files.map((file) => file.path));
+    // Another commit was selected while git ran
+    if (context.tab.hash !== hash) {
+      return;
+    }
+    context.tab.changedFiles = new Map(files.map((file) => [file.path, file]));
     context.post({ type: 'files', hash, files });
     await this.sendDiff(context, hash);
   }
@@ -1003,22 +1026,36 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
   private async sendDiff(context: Context, hash: string): Promise<void> {
     const { path: file } = context.tab;
     const gitPath = context.git.git.path;
+    // Another commit or file was selected while git ran
+    const stale = () => context.tab.hash !== hash || context.tab.path !== file;
+    const change =
+      file === undefined ? undefined : context.tab.changedFiles.get(file);
     // A file the commit didn't change, picked in the Files view, has no diff
-    if (file !== undefined && !context.tab.changedPaths.has(file)) {
+    if (file !== undefined && !change) {
       const { content, binary } = await readFile(
         gitPath,
         context.root,
         hash === workingTreeHash ? undefined : hash,
         file,
       );
-      context.post({ type: 'fileContent', hash, path: file, content, binary });
+      if (!stale()) {
+        context.post({
+          type: 'fileContent',
+          hash,
+          path: file,
+          content,
+          binary,
+        });
+      }
       return;
     }
     const patch =
       hash === workingTreeHash
-        ? await workingTreePatch(gitPath, context.root, file)
-        : await showPatch(gitPath, context.root, hash, file);
-    context.post({ type: 'diff', hash, path: file, patch });
+        ? await workingTreePatch(gitPath, context.root, file, change?.oldPath)
+        : await showPatch(gitPath, context.root, hash, file, change?.oldPath);
+    if (!stale()) {
+      context.post({ type: 'diff', hash, path: file, patch });
+    }
   }
 }
 

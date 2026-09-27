@@ -213,6 +213,9 @@ export function App({ post }: Props) {
     setFiles([]);
     setPath(undefined);
     setPatch('');
+    setFileContent(undefined);
+    setTree(undefined);
+    setSyncing(undefined);
     setError(undefined);
   }
 
@@ -223,6 +226,7 @@ export function App({ post }: Props) {
     setPath(undefined);
     setPatch('');
     setFileContent(undefined);
+    setError(undefined);
   }
 
   const log = useCallback(
@@ -785,8 +789,8 @@ function RefBubble({
     kind: 'ref',
     ref: { kind: info.kind, name: info.name },
   });
-  const checkedOut =
-    info.kind === 'branch' && info.name === useContext(CheckedOutBranch);
+  const checkedOutBranch = useContext(CheckedOutBranch);
+  const checkedOut = info.kind === 'branch' && info.name === checkedOutBranch;
   return (
     <span
       className={`badge ${info.kind} ${checkedOut ? 'checked-out' : ''} ${missing ? 'missing' : ''} ${onClick ? 'clickable' : ''}`}
