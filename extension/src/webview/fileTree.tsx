@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import type { FileChange } from '../protocol';
 import { IndentGuides, treeIndent, twistyWidth } from './tree';
 
-interface FolderNode {
+export interface FolderNode {
   readonly name: string;
   readonly path: string;
   readonly folders: Map<string, FolderNode>;

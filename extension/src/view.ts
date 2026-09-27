@@ -35,6 +35,7 @@ import {
   type CheckoutTarget,
   type SyncAction,
   type FileChange,
+  type ChangesView,
   type FilesMode,
   type ToExtension,
   type ToWebview,
@@ -71,6 +72,8 @@ const columnWidthsKey = 'columnWidths';
 const collapseMergesKey = 'collapseMerges';
 // What the Files column lists, per user and synced
 const filesModeKey = 'filesMode';
+// Whether the Changes tab is a list or a tree, per user and synced
+const changesViewKey = 'changesView';
 // VIP refs by repository root, per user; not synced, as roots are paths on
 // this machine
 const vipsKey = 'vips';
@@ -150,6 +153,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       columnWidthsKey,
       collapseMergesKey,
       filesModeKey,
+      changesViewKey,
     ]);
   }
 
@@ -283,6 +287,10 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
           columnWidths: this.globalState.get<number[]>(columnWidthsKey),
           collapseMerges: this.globalState.get(collapseMergesKey, true),
           filesMode: this.globalState.get<FilesMode>(filesModeKey, 'changes'),
+          changesView: this.globalState.get<ChangesView>(
+            changesViewKey,
+            'list',
+          ),
         });
         await this.addWorkspaceTab(git);
         await this.openTab(git, session, this.activeTab);
@@ -333,6 +341,9 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         return;
       case 'setFilesMode':
         await this.globalState.update(filesModeKey, message.mode);
+        return;
+      case 'setChangesView':
+        await this.globalState.update(changesViewKey, message.view);
         return;
       case 'setVips': {
         const root = this.activeTab;

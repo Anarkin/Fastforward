@@ -11,6 +11,9 @@ export type SyncAction = 'pull' | 'push';
 // of the repository at it
 export type FilesMode = 'changes' | 'files';
 
+// How the Changes tab shows the changed files
+export type ChangesView = 'list' | 'tree';
+
 export interface RefInfo {
   readonly kind: RefKind;
   readonly name: string;
@@ -92,6 +95,8 @@ export type ToExtension =
   | { readonly type: 'setCollapseMerges'; readonly collapse: boolean }
   // Whether the Files column lists the changes or the whole repository
   | { readonly type: 'setFilesMode'; readonly mode: FilesMode }
+  // Whether the Changes tab is a list or a tree, saved per user
+  | { readonly type: 'setChangesView'; readonly view: ChangesView }
   // The VIPs of the active tab's repository, saved per repository and user
   | { readonly type: 'setVips'; readonly vips: readonly VipRef[] }
   // Asks for every file of the repository at a commit
@@ -140,6 +145,7 @@ export type ToWebview =
       readonly columnWidths: readonly number[] | undefined;
       readonly collapseMerges: boolean;
       readonly filesMode: FilesMode;
+      readonly changesView: ChangesView;
     }
   // The VIPs of the active tab's repository
   | { readonly type: 'vips'; readonly vips: readonly VipRef[] }

@@ -11,6 +11,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   workingTreeHash,
   type CommitInfo,
+  type ChangesView,
   type CheckoutTarget,
   type FileChange,
   type FilesMode,
@@ -34,6 +35,7 @@ import {
   type MenuTarget,
   type OpenMenu,
 } from './contextMenu';
+import { ChangesTree } from './changesTree';
 import { FileTree, foldersOf } from './fileTree';
 import { GraphCell, graphWidth, rowLanes } from './graph';
 import { LocationsPopup, type Repository } from './locations';
@@ -72,6 +74,11 @@ export function App({ post }: Props) {
   // Sublime Merge's setting, on by default
   const [collapseMerges, setCollapseMerges] = useState(true);
   const [filesMode, setFilesMode] = useState<FilesMode>('changes');
+  const [changesView, setChangesView] = useState<ChangesView>('list');
+  // Closed folders of the Changes tree, which start open
+  const [closedFolders, setClosedFolders] = useState<ReadonlySet<string>>(
+    new Set(),
+  );
   // Every file of the repository at the selected commit, for the Files view
   const [tree, setTree] = useState<{
     hash: string;
@@ -108,6 +115,7 @@ export function App({ post }: Props) {
           loadColumnWidths(message.columnWidths);
           setCollapseMerges(message.collapseMerges);
           setFilesMode(message.filesMode);
+          setChangesView(message.changesView);
           break;
         case 'tabs':
           if (activeTabRef.current !== message.active) {
@@ -283,18 +291,25 @@ export function App({ post }: Props) {
     );
   }, [filesMode, path]);
 
-  const toggleFolder = (folder: string) =>
-    setOpenFolders((open) => {
-      const next = new Set(open);
+  const toggleIn = (set: typeof setOpenFolders) => (folder: string) =>
+    set((folders) => {
+      const next = new Set(folders);
       if (!next.delete(folder)) {
         next.add(folder);
       }
       return next;
     });
+  const toggleFolder = toggleIn(setOpenFolders);
+  const toggleClosedFolder = toggleIn(setClosedFolders);
 
   const changeFilesMode = (mode: FilesMode) => {
     setFilesMode(mode);
     post({ type: 'setFilesMode', mode });
+  };
+
+  const changeChangesView = (view: ChangesView) => {
+    setChangesView(view);
+    post({ type: 'setChangesView', view });
   };
 
   const changeVips = (next: readonly VipRef[]) => {
@@ -419,6 +434,10 @@ export function App({ post }: Props) {
                   <Files
                     mode={filesMode}
                     onMode={changeFilesMode}
+                    changesView={changesView}
+                    onChangesView={changeChangesView}
+                    closedFolders={closedFolders}
+                    onToggleClosedFolder={toggleClosedFolder}
                     files={files}
                     tree={
                       hash !== undefined && tree?.hash === hash
@@ -540,6 +559,8 @@ interface MenuItem {
   readonly label: string;
   // Shows a check mark when set, for items that switch something on and off
   readonly checked?: boolean;
+  // The checked item is the one picked of several, rather than switched on
+  readonly radio?: boolean;
   readonly onClick: () => void;
 }
 
@@ -570,7 +591,11 @@ function MenuButton({
               key={item.label}
               className="menu-item"
               role={
-                item.checked === undefined ? 'menuitem' : 'menuitemcheckbox'
+                item.checked === undefined
+                  ? 'menuitem'
+                  : item.radio
+                    ? 'menuitemradio'
+                    : 'menuitemcheckbox'
               }
               aria-checked={item.checked}
               onClick={() => {
@@ -1196,6 +1221,10 @@ function Commits({
 function Files({
   mode,
   onMode,
+  changesView,
+  onChangesView,
+  closedFolders,
+  onToggleClosedFolder,
   files,
   tree,
   openFolders,
@@ -1205,6 +1234,11 @@ function Files({
 }: {
   mode: FilesMode;
   onMode: (mode: FilesMode) => void;
+  changesView: ChangesView;
+  onChangesView: (view: ChangesView) => void;
+  // Of the Changes tree
+  closedFolders: ReadonlySet<string>;
+  onToggleClosedFolder: (folder: string) => void;
   files: readonly FileChange[];
   // Undefined while it loads
   tree: readonly string[] | undefined;
@@ -1248,8 +1282,20 @@ function Files({
       </Column>
     );
   }
+  // The Files tab has no settings, so it has no button
+  const settings = (
+    <MenuButton
+      title="Changes settings"
+      items={(['list', 'tree'] as const).map((view) => ({
+        label: view === 'list' ? 'View as List' : 'View as Tree',
+        checked: changesView === view,
+        radio: true,
+        onClick: () => onChangesView(view),
+      }))}
+    />
+  );
   return (
-    <Column title={title} index={1}>
+    <Column title={title} index={1} actions={settings}>
       {files.length > 0 && (
         <div
           className={`row group ${selected === undefined ? 'selected' : ''}`}
@@ -1258,19 +1304,31 @@ function Files({
           CHANGES ({files.length})
         </div>
       )}
-      {files.map((file) => (
-        <div
-          key={file.path}
-          className={`row file ${file.path === selected ? 'selected' : ''}`}
-          title={file.oldPath ? `${file.oldPath} → ${file.path}` : file.path}
-          onClick={() =>
-            onSelect(file.path === selected ? undefined : file.path)
-          }
-        >
-          <span className={`status status-${file.status}`}>{file.status}</span>
-          <span className="path">{file.path}</span>
-        </div>
-      ))}
+      {changesView === 'tree' ? (
+        <ChangesTree
+          files={files}
+          closed={closedFolders}
+          onToggle={onToggleClosedFolder}
+          selected={selected}
+          onSelect={onSelect}
+        />
+      ) : (
+        files.map((file) => (
+          <div
+            key={file.path}
+            className={`row file ${file.path === selected ? 'selected' : ''}`}
+            title={file.oldPath ? `${file.oldPath} → ${file.path}` : file.path}
+            onClick={() =>
+              onSelect(file.path === selected ? undefined : file.path)
+            }
+          >
+            <span className={`status status-${file.status}`}>
+              {file.status}
+            </span>
+            <span className="path">{file.path}</span>
+          </div>
+        ))
+      )}
     </Column>
   );
 }
