@@ -1010,3 +1010,139 @@ body.resizing {
     0 2px 8px rgba(0, 0, 0, 0.16),
     0 0 0 1px var(--vscode-widget-shadow, transparent);
 }
+
+/* The Diff column draws only the rows on screen; every row but the summary has
+   a fixed height, see rowHeights in diffView.tsx */
+.diff-view {
+  position: relative;
+  height: 100%;
+}
+
+.diff-list {
+  height: 100%;
+  overflow: auto;
+}
+
+.diff-spacer {
+  position: relative;
+  min-width: 100%;
+}
+
+/* As wide as the longest line on screen, so long lines scroll sideways */
+.diff-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  min-width: 100%;
+  width: max-content;
+}
+
+.diff-row.file,
+.diff-row.binary {
+  height: 28px;
+}
+
+.diff-row.large {
+  height: 36px;
+}
+
+.diff-row.hunk {
+  height: 24px;
+}
+
+.diff-row.line,
+.diff-row.wholeLine {
+  height: 20px;
+}
+
+.diff-row .file-header {
+  position: static;
+  box-sizing: border-box;
+  height: 28px;
+  align-items: center;
+}
+
+.diff-row .hunk-header {
+  box-sizing: border-box;
+  height: 24px;
+  padding: 4px 8px;
+  color: var(--vscode-descriptionForeground);
+  background: var(--vscode-editorWidget-background);
+  font-family: var(--vscode-editor-font-family);
+  font-size: var(--vscode-editor-font-size);
+}
+
+.diff-line {
+  display: flex;
+  height: 20px;
+  line-height: 20px;
+  font-family: var(--vscode-editor-font-family);
+  font-size: var(--vscode-editor-font-size);
+}
+
+.diff-line .number {
+  flex: none;
+  box-sizing: border-box;
+  width: 56px;
+  padding: 0 6px;
+  text-align: right;
+  user-select: none;
+  color: var(--vscode-editorLineNumber-foreground);
+}
+
+.diff-line .code {
+  flex: 1;
+  padding: 0 6px;
+  white-space: pre;
+}
+
+.diff-line.added {
+  background: var(
+    --vscode-diffEditor-insertedLineBackground,
+    rgba(155, 185, 85, 0.2)
+  );
+}
+
+.diff-line.removed {
+  background: var(
+    --vscode-diffEditor-removedLineBackground,
+    rgba(255, 0, 0, 0.2)
+  );
+}
+
+/* The file being scrolled through, on top of the list */
+.diff-stuck-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 10px;
+  z-index: 5;
+}
+
+.diff-stuck-header .file-header {
+  position: static;
+  box-sizing: border-box;
+  height: 28px;
+  align-items: center;
+}
+
+/* A file too large to draw right away */
+.large-diff {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-sizing: border-box;
+  height: 36px;
+  padding: 0 12px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.large-diff button {
+  padding: 2px 10px;
+  font: inherit;
+  color: var(--vscode-button-foreground);
+  cursor: pointer;
+  background: var(--vscode-button-background);
+  border: none;
+  border-radius: 3px;
+}

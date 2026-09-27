@@ -23,7 +23,8 @@ import {
 } from '../protocol';
 import { CommitHistory, commitPageSize } from './commitHistory';
 import { ColumnResizingProvider, Resizer, useColumnWidths } from './columns';
-import { parsePatch, type DiffFile } from './diff';
+import { parsePatch } from './diff';
+import { DiffView } from './diffView';
 import {
   ContextMenu,
   OpenContextMenu,
@@ -1306,8 +1307,8 @@ function Diff({
     return { byPath, total };
   }, [files]);
 
-  return (
-    <Column title="Diff">
+  const summary = (
+    <>
       {error && <div className="error">{error}</div>}
       {workingTree && (
         <div className="summary">
@@ -1359,90 +1360,17 @@ function Diff({
           <pre className="message">{commit.message}</pre>
         </div>
       )}
-      {fileContent && <FileView file={fileContent} />}
-      {diffFiles.map((file) => (
-        <FileDiff
-          key={file.path}
-          file={file}
-          change={stats.byPath.get(file.path)}
-        />
-      ))}
+    </>
+  );
+
+  return (
+    <Column title="Diff">
+      <DiffView
+        summary={summary}
+        files={diffFiles}
+        changes={stats.byPath}
+        whole={fileContent}
+      />
     </Column>
-  );
-}
-
-// A whole file with line numbers, for a file the commit didn't change
-function FileView({
-  file,
-}: {
-  file: { path: string; content: string; binary: boolean };
-}) {
-  const lines = useMemo(
-    () => file.content.replace(/\n$/, '').split('\n'),
-    [file.content],
-  );
-  return (
-    <div className="file-diff">
-      <div className="file-header">
-        <span className="path">{file.path}</span>
-        <span className="unchanged">Unchanged in this commit</span>
-      </div>
-      {file.binary ? (
-        <div className="binary">Binary or very large file</div>
-      ) : (
-        <table className="hunk">
-          <tbody>
-            {lines.map((line, index) => (
-              <tr key={index}>
-                <td className="number">{index + 1}</td>
-                <td className="code">{line}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </div>
-  );
-}
-
-function FileDiff({
-  file,
-  change,
-}: {
-  file: DiffFile;
-  change: FileChange | undefined;
-}) {
-  const [open, setOpen] = useState(true);
-  return (
-    <div className="file-diff">
-      <div className="file-header" onClick={() => setOpen(!open)}>
-        <span className="twisty">{open ? '▾' : '▸'}</span>
-        <span className="path">{file.path}</span>
-        {change && (
-          <>
-            <span className="deletions">-{change.deletions}</span>
-            <span className="insertions">+{change.insertions}</span>
-          </>
-        )}
-      </div>
-      {open && file.binary && <div className="binary">Binary file</div>}
-      {open &&
-        file.hunks.map((hunk, index) => (
-          <table key={index} className="hunk">
-            <tbody>
-              <tr className="hunk-header">
-                <td colSpan={3}>{hunk.header}</td>
-              </tr>
-              {hunk.lines.map((line, lineIndex) => (
-                <tr key={lineIndex} className={line.kind}>
-                  <td className="number">{line.oldNumber}</td>
-                  <td className="number">{line.newNumber}</td>
-                  <td className="code">{line.text}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ))}
-    </div>
   );
 }
