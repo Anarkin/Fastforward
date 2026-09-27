@@ -137,6 +137,7 @@ export function App({ post }: Props) {
             message.total,
             message.decorations,
             message.graphWidth,
+            message.workingTreeGraph,
           );
           next.add(message.start, message.commits, message.graph);
           historyRef.current = next;
@@ -1167,8 +1168,13 @@ function Commits({
     virtualizer.scrollToIndex(offset + position, { align: 'auto' });
   };
 
+  const graphOf = (index: number) =>
+    hasWorkingTree && index === 0
+      ? history?.workingTreeGraph
+      : history?.graphAt(index - offset);
+
   const renderGraph = (index: number, height: number) => {
-    const graphRow = history?.graphAt(index - offset);
+    const graphRow = graphOf(index);
     return (
       graphRow && (
         <GraphCell
@@ -1185,10 +1191,8 @@ function Commits({
     );
   };
 
-  // Each row's text starts right after the lanes it draws in; the working tree
-  // row lines up with the first commit
-  const indent = (index: number) =>
-    graphWidth(rowLanes(history?.graphAt(Math.max(0, index - offset)))) + 8;
+  // Each row's text starts right after the lanes it draws in
+  const indent = (index: number) => graphWidth(rowLanes(graphOf(index))) + 8;
 
   const renderRow = (index: number) => {
     if (hasWorkingTree && index === 0) {
@@ -1346,17 +1350,6 @@ function Files({
     () => new Map(files.map((file) => [file.path, file])),
     [files],
   );
-  const total = useMemo(
-    () =>
-      files.reduce(
-        (sum, file) => ({
-          deletions: sum.deletions + file.deletions,
-          insertions: sum.insertions + file.insertions,
-        }),
-        { deletions: 0, insertions: 0 },
-      ),
-    [files],
-  );
   const title = (
     <div className="switch" role="tablist">
       {(['changes', 'files'] as const).map((option) => (
@@ -1408,7 +1401,6 @@ function Files({
           onClick={() => onSelect(undefined)}
         >
           <span className="path">CHANGES ({files.length})</span>
-          <LineCounts {...total} />
         </div>
       )}
       {changesView === 'tree' ? (

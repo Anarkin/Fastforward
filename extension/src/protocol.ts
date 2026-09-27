@@ -61,6 +61,8 @@ export interface GraphLine {
   readonly to: number;
   readonly color: number;
   readonly bottom: boolean;
+  // Drawn dotted, from the working tree down to the commit it is based on
+  readonly dashed?: boolean;
 }
 
 // The commit graph within one row: the lane of the commit's dot, and the lines
@@ -72,6 +74,8 @@ export interface GraphRow {
   readonly merge?: 'collapsed' | 'expanded';
   // How many commits a collapsed merge hides
   readonly hidden?: number;
+  // The working tree's row, whose dot is a square
+  readonly workingTree?: boolean;
 }
 
 export interface FileChange {
@@ -191,6 +195,8 @@ export type ToWebview =
       readonly start: number;
       readonly commits: readonly CommitInfo[];
       readonly graph: readonly GraphRow[];
+      // The graph of the working tree's row, above the commits
+      readonly workingTreeGraph: GraphRow;
       // Position of the selected commit, to scroll to
       readonly selectedIndex: number | undefined;
       // After a reload the user didn't ask for: the commit that was at the top

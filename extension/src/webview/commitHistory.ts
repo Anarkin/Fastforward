@@ -18,6 +18,8 @@ export class CommitHistory {
     decorations: readonly (readonly [number, number])[] = [],
     // The most lanes any row of the graph uses
     readonly graphWidth = 0,
+    // The graph of the working tree's row, above the commits
+    readonly workingTreeGraph?: GraphRow,
   ) {
     this.refCounts = new Map(decorations);
   }

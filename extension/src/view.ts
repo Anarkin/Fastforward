@@ -860,7 +860,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     );
     tab.history = history;
     tab.positions = new Map(history.map((entry, index) => [entry.hash, index]));
-    tab.graph = new Graph(history);
+    tab.graph = new Graph(history, { head });
     this.log.info(
       `Graph of ${history.length} of ${tab.fullHistory.length} commits laid out in ${Math.round(performance.now() - started)} ms, ${tab.graph.width} lanes wide`,
     );
@@ -891,6 +891,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       start,
       commits,
       graph: tab.graph.rows(start, commits.length),
+      workingTreeGraph: tab.graph.workingTreeRow,
       selectedIndex:
         scrollTo === undefined ? tab.index : tab.positions.get(scrollTo),
       anchor:

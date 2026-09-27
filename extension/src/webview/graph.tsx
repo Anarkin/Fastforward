@@ -72,10 +72,22 @@ export function GraphCell({
           d={path(line, height)}
           stroke={color(line.color)}
           strokeWidth={2}
+          strokeDasharray={line.dashed ? '2 3' : undefined}
           fill="none"
         />
       ))}
-      {row.merge ? (
+      {row.workingTree ? (
+        // A square, like Sublime Merge's working tree
+        <rect
+          x={x(row.lane) - dotRadius}
+          y={dotY - dotRadius}
+          width={2 * dotRadius}
+          height={2 * dotRadius}
+          fill={color(row.color)}
+          stroke="var(--vscode-editor-background)"
+          strokeWidth={1.5}
+        />
+      ) : row.merge ? (
         // A ring, like Sublime Merge's merge commits; clicking it collapses or
         // expands what the merge brought in
         <g

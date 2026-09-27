@@ -2,10 +2,14 @@ import * as assert from 'node:assert';
 import { Graph } from '../git/graph';
 import type { GraphRow } from '../protocol';
 
-// "from>to" for top lines and "from>to." for bottom lines, sorted
+// "from>to" for top lines and "from>to." for bottom lines, with a ~ when
+// dotted, sorted
 function describe(row: GraphRow): string {
   const lines = row.lines
-    .map((line) => `${line.from}>${line.to}${line.bottom ? '.' : ''}`)
+    .map(
+      (line) =>
+        `${line.from}>${line.to}${line.bottom ? '.' : ''}${line.dashed ? '~' : ''}`,
+    )
     .toSorted()
     .join(' ');
   return `${row.lane}: ${lines}`;
@@ -67,9 +71,30 @@ suite('Graph', () => {
             ? [`c${index + 1}`, `c${index + 3}`]
             : [`c${index + 1}`],
     }));
-    const full = new Graph(history, 1000).rows(0, 50);
-    const paged = new Graph(history, 7);
+    const full = new Graph(history, { checkpointEvery: 1000 }).rows(0, 50);
+    const paged = new Graph(history, { checkpointEvery: 7 });
     assert.deepStrictEqual(paged.rows(0, 50), full);
     assert.deepStrictEqual(paged.rows(23, 10), full.slice(23, 33));
+  });
+
+  test('leads the working tree to HEAD, moving what is built on it aside', () => {
+    const graph = new Graph(
+      [
+        { hash: 'b', parents: ['a'] },
+        { hash: 'a', parents: [] },
+      ],
+      { head: 'a' },
+    );
+    assert.strictEqual(describe(graph.workingTreeRow), '0: 0>0.~');
+    assert.deepStrictEqual(graph.rows(0, 2).map(describe), [
+      '1: 0>0.~ 0>0~ 1>1.',
+      '0: 0>0~ 1>0',
+    ]);
+  });
+
+  test('leaves the working tree alone when HEAD is not shown', () => {
+    const graph = new Graph([{ hash: 'a', parents: [] }], { head: 'x' });
+    assert.strictEqual(describe(graph.workingTreeRow), '0: ');
+    assert.deepStrictEqual(graph.rows(0, 1).map(describe), ['0: ']);
   });
 });
