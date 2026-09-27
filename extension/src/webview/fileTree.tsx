@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { FileChange } from '../protocol';
+import { LineCounts } from './lineCounts';
 import { IndentGuides, treeIndent, twistyWidth } from './tree';
 
 export interface FolderNode {
@@ -119,6 +120,12 @@ export function FileTree({
             </span>
           )}
           <span className="path">{file.name}</span>
+          {change && (
+            <LineCounts
+              deletions={change.deletions}
+              insertions={change.insertions}
+            />
+          )}
         </div>
       );
     }),

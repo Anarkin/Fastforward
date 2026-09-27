@@ -1147,3 +1147,29 @@ body.resizing {
   border: none;
   border-radius: 3px;
 }
+
+/* Rows with line counts, which sit on the right; the name gives way first */
+.row.counted {
+  display: flex;
+  gap: 6px;
+}
+
+.row .path {
+  min-width: 0;
+}
+
+.line-counts {
+  flex: none;
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+  font-weight: normal;
+}
+
+/* Folders of the Changes tree stay in the background, so the files and their
+   counts stand out */
+.row.folder.counted .twisty,
+.row.folder.counted .path,
+.row.folder .line-counts {
+  opacity: 0.45;
+}

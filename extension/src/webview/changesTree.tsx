@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import type { FileChange } from '../protocol';
 import { buildFileTree, type FolderNode } from './fileTree';
+import { LineCounts } from './lineCounts';
 import { IndentGuides, treeIndent, twistyWidth } from './tree';
 
 export type ChangesTreeRow =
@@ -11,6 +12,9 @@ export type ChangesTreeRow =
       readonly path: string;
       readonly depth: number;
       readonly open: boolean;
+      // Summed over the files in it, at any depth
+      readonly deletions: number;
+      readonly insertions: number;
     }
   | {
       readonly kind: 'file';
@@ -40,6 +44,21 @@ export function changesTreeRows(
 ): ChangesTreeRow[] {
   const changes = new Map(files.map((file) => [file.path, file]));
   const rows: ChangesTreeRow[] = [];
+  const sum = (node: FolderNode): { deletions: number; insertions: number } =>
+    [...node.folders.values()].map(sum).reduce(
+      (total, counts) => ({
+        deletions: total.deletions + counts.deletions,
+        insertions: total.insertions + counts.insertions,
+      }),
+      node.files.reduce(
+        (total, file) => ({
+          deletions: total.deletions + (changes.get(file.path)?.deletions ?? 0),
+          insertions:
+            total.insertions + (changes.get(file.path)?.insertions ?? 0),
+        }),
+        { deletions: 0, insertions: 0 },
+      ),
+    );
   const add = (node: FolderNode, depth: number) => {
     for (const child of [...node.folders.values()]
       .map(compact)
@@ -51,6 +70,7 @@ export function changesTreeRows(
         path: child.path,
         depth,
         open,
+        ...sum(child),
       });
       if (open) {
         add(child, depth + 1);
@@ -89,14 +109,15 @@ export function ChangesTree({
         row.kind === 'folder' ? (
           <div
             key={`folder:${row.path}`}
-            className="row tree-row folder"
+            className="row tree-row folder counted"
             style={{ paddingLeft: treeIndent(row.depth) }}
             title={row.path}
             onClick={() => onToggle(row.path)}
           >
             <IndentGuides depth={row.depth} />
             <span className="twisty">{row.open ? '▾' : '▸'}</span>
-            {row.name}
+            <span className="path">{row.name}</span>
+            <LineCounts deletions={row.deletions} insertions={row.insertions} />
           </div>
         ) : (
           <div
@@ -120,6 +141,10 @@ export function ChangesTree({
               {row.change.status}
             </span>
             <span className="path">{row.name}</span>
+            <LineCounts
+              deletions={row.change.deletions}
+              insertions={row.change.insertions}
+            />
           </div>
         ),
       )}

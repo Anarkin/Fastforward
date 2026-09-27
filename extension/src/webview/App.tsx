@@ -25,6 +25,7 @@ import {
 import { CommitHistory, commitPageSize } from './commitHistory';
 import { ColumnResizingProvider, Resizer, useColumnWidths } from './columns';
 import { parsePatch } from './diff';
+import { LineCounts } from './lineCounts';
 import { DiffView } from './diffView';
 import {
   ContextMenu,
@@ -452,7 +453,6 @@ export function App({ post }: Props) {
                   <Diff
                     workingTree={hash === workingTreeHash}
                     commit={commit}
-                    refs={commit ? (refsByCommit.get(commit.hash) ?? []) : []}
                     files={files}
                     patch={patch}
                     fileContent={
@@ -694,16 +694,6 @@ function formatDate(time: number): string {
     month: 'short',
     day: 'numeric',
   });
-}
-
-function RefBadges({ refs }: { refs: readonly RefInfo[] }) {
-  return (
-    <>
-      {refs.map((r) => (
-        <RefBubble key={`${r.kind}:${r.name}`} info={r} />
-      ))}
-    </>
-  );
 }
 
 // The name of the branch HEAD is on, whose bubbles stand out everywhere
@@ -1251,6 +1241,17 @@ function Files({
     () => new Map(files.map((file) => [file.path, file])),
     [files],
   );
+  const total = useMemo(
+    () =>
+      files.reduce(
+        (sum, file) => ({
+          deletions: sum.deletions + file.deletions,
+          insertions: sum.insertions + file.insertions,
+        }),
+        { deletions: 0, insertions: 0 },
+      ),
+    [files],
+  );
   const title = (
     <div className="switch" role="tablist">
       {(['changes', 'files'] as const).map((option) => (
@@ -1298,10 +1299,11 @@ function Files({
     <Column title={title} index={1} actions={settings}>
       {files.length > 0 && (
         <div
-          className={`row group ${selected === undefined ? 'selected' : ''}`}
+          className={`row group counted ${selected === undefined ? 'selected' : ''}`}
           onClick={() => onSelect(undefined)}
         >
-          CHANGES ({files.length})
+          <span className="path">CHANGES ({files.length})</span>
+          <LineCounts {...total} />
         </div>
       )}
       {changesView === 'tree' ? (
@@ -1326,6 +1328,10 @@ function Files({
               {file.status}
             </span>
             <span className="path">{file.path}</span>
+            <LineCounts
+              deletions={file.deletions}
+              insertions={file.insertions}
+            />
           </div>
         ))
       )}
@@ -1336,7 +1342,6 @@ function Files({
 function Diff({
   workingTree,
   commit,
-  refs,
   files,
   patch,
   fileContent,
@@ -1344,7 +1349,6 @@ function Diff({
 }: {
   workingTree: boolean;
   commit: CommitInfo | undefined;
-  refs: readonly RefInfo[];
   files: readonly FileChange[];
   patch: string;
   // A file the commit didn't change, shown whole instead of a diff
@@ -1352,18 +1356,10 @@ function Diff({
   error: string | undefined;
 }) {
   const diffFiles = useMemo(() => parsePatch(patch), [patch]);
-  const detached = useContext(DetachedHead);
-  const stats = useMemo(() => {
-    const byPath = new Map(files.map((file) => [file.path, file]));
-    const total = files.reduce(
-      (sum, file) => ({
-        insertions: sum.insertions + file.insertions,
-        deletions: sum.deletions + file.deletions,
-      }),
-      { insertions: 0, deletions: 0 },
-    );
-    return { byPath, total };
-  }, [files]);
+  const changes = useMemo(
+    () => new Map(files.map((file) => [file.path, file])),
+    [files],
+  );
 
   const summary = (
     <>
@@ -1373,12 +1369,6 @@ function Diff({
           <dl>
             <dt>Changes</dt>
             <dd>Uncommitted changes against HEAD</dd>
-            <dt>Stats</dt>
-            <dd>
-              {files.length} files changed{' '}
-              <span className="deletions">-{stats.total.deletions}</span>{' '}
-              <span className="insertions">+{stats.total.insertions}</span>
-            </dd>
           </dl>
         </div>
       )}
@@ -1393,27 +1383,6 @@ function Diff({
             </dd>
             <dt>Date</dt>
             <dd>{new Date(commit.authorDate).toLocaleString()}</dd>
-            <dt>Parents</dt>
-            <dd className="mono">
-              {commit.parents.map((p) => p.slice(0, 7)).join(', ')}
-            </dd>
-            {(refs.length > 0 || detached === commit.hash) && (
-              <>
-                <dt>Refs</dt>
-                <dd>
-                  {detached === commit.hash && (
-                    <HeadBubble commit={commit.hash} />
-                  )}
-                  <RefBadges refs={refs} />
-                </dd>
-              </>
-            )}
-            <dt>Stats</dt>
-            <dd>
-              {files.length} files changed{' '}
-              <span className="deletions">-{stats.total.deletions}</span>{' '}
-              <span className="insertions">+{stats.total.insertions}</span>
-            </dd>
           </dl>
           <pre className="message">{commit.message}</pre>
         </div>
@@ -1426,7 +1395,7 @@ function Diff({
       <DiffView
         summary={summary}
         files={diffFiles}
-        changes={stats.byPath}
+        changes={changes}
         whole={fileContent}
       />
     </Column>
