@@ -367,7 +367,15 @@ export function App({ post }: Props) {
         commitVipItem(target.hash),
       ];
     }
-    const option = checkoutRef(target.ref, refs, head);
+    const { ref } = target;
+    const detached = repository && !head ? repository.headCommit : undefined;
+    const option =
+      ref.kind === 'commit'
+        ? {
+            target: { kind: 'commit' as const, hash: ref.name },
+            disabled: ref.name === detached,
+          }
+        : checkoutRef(ref, refs, head);
     return [
       {
         label: 'Checkout',
@@ -738,7 +746,7 @@ function HeadBubble({
   );
 }
 
-// A commit pinned to the VIP row, with the commit's menu on right-click
+// A commit pinned to the VIP row, with the same menu as the other bubbles
 function CommitBubble({
   hash,
   onClick,
@@ -746,7 +754,10 @@ function CommitBubble({
   hash: string;
   onClick: () => void;
 }) {
-  const menu = useContextMenu({ kind: 'commit', hash });
+  const menu = useContextMenu({
+    kind: 'ref',
+    ref: { kind: 'commit', name: hash },
+  });
   return (
     <span
       className="badge commit clickable"

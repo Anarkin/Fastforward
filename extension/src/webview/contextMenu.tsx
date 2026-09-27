@@ -6,12 +6,13 @@ import {
   useRef,
   useState,
 } from 'react';
-import type { Vip, VipRef } from '../protocol';
+import type { Vip } from '../protocol';
 
 // What was right-clicked; the menu's items depend on it, and more kinds, like
 // a commit row, get their own items
 export type MenuTarget =
-  | { readonly kind: 'ref'; readonly ref: VipRef }
+  // A bubble: a ref, or a commit pinned to the VIP row
+  | { readonly kind: 'ref'; readonly ref: Vip }
   | { readonly kind: 'commit'; readonly hash: string };
 
 // An item runs onClick, or opens its submenu to the side; a separator is a line
