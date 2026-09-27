@@ -20,11 +20,13 @@ import {
   type TabInfo,
   type ToExtension,
   type ToWebview,
+  type Vip,
   type VipRef,
 } from '../protocol';
 import { CommitHistory, commitPageSize } from './commitHistory';
 import { ColumnResizingProvider, Resizer, useColumnWidths } from './columns';
 import { parsePatch } from './diff';
+import { changeTitle, statusClass } from './fileStatus';
 import { LineCounts } from './lineCounts';
 import { DiffView } from './diffView';
 import {
@@ -96,7 +98,7 @@ export function App({ post }: Props) {
     binary: boolean;
   }>();
   // Refs pinned to the VIP row, saved per repository
-  const [vips, setVips] = useState<readonly VipRef[]>([]);
+  const [vips, setVips] = useState<readonly Vip[]>([]);
   // A pull or push that is running
   const [syncing, setSyncing] = useState<SyncAction>();
   const [menu, setMenu] = useState<OpenMenu>();
@@ -313,12 +315,21 @@ export function App({ post }: Props) {
     post({ type: 'setChangesView', view });
   };
 
-  const changeVips = (next: readonly VipRef[]) => {
+  const changeVips = (next: readonly Vip[]) => {
     setVips(next);
     post({ type: 'setVips', vips: next });
   };
 
-  // The items of the menu for what was right-clicked; commits have none yet
+  const vipItem = (vip: Vip): ContextMenuItem =>
+    vips.some((other) => sameRef(other, vip))
+      ? {
+          label: 'Remove from VIP',
+          onClick: () =>
+            changeVips(vips.filter((other) => !sameRef(other, vip))),
+        }
+      : { label: 'Add VIP', onClick: () => changeVips([...vips, vip]) };
+
+  // The items of the menu for what was right-clicked
   const checkout = (target: CheckoutTarget) =>
     post({ type: 'checkout', target });
 
@@ -338,9 +349,10 @@ export function App({ post }: Props) {
             }),
           ),
         },
+        { separator: true },
+        vipItem({ kind: 'commit', name: target.hash }),
       ];
     }
-    const isVip = vips.some((vip) => sameRef(vip, target.ref));
     const option = checkoutRef(target.ref, refs, head);
     return [
       {
@@ -349,16 +361,7 @@ export function App({ post }: Props) {
         onClick: () => checkout(option.target),
       },
       { separator: true },
-      isVip
-        ? {
-            label: 'Remove from VIP',
-            onClick: () =>
-              changeVips(vips.filter((vip) => !sameRef(vip, target.ref))),
-          }
-        : {
-            label: 'Add VIP',
-            onClick: () => changeVips([...vips, target.ref]),
-          },
+      vipItem(target.ref),
     ];
   };
 
@@ -721,6 +724,27 @@ function HeadBubble({
   );
 }
 
+// A commit pinned to the VIP row, with the commit's menu on right-click
+function CommitBubble({
+  hash,
+  onClick,
+}: {
+  hash: string;
+  onClick: () => void;
+}) {
+  const menu = useContextMenu({ kind: 'commit', hash });
+  return (
+    <span
+      className="badge commit clickable"
+      title={`Commit ${hash}`}
+      onClick={onClick}
+      {...menu}
+    >
+      {hash.slice(0, 7)}
+    </span>
+  );
+}
+
 // A branch, remote or tag bubble, with its menu on right-click
 function RefBubble({
   info,
@@ -772,7 +796,7 @@ function BubbleBar({
   root: string | undefined;
   repository: Repository | undefined;
   selected: string | undefined;
-  vips: readonly VipRef[];
+  vips: readonly Vip[];
   onJump: (commit: string) => void;
   // The pull or push that is running
   syncing: SyncAction | undefined;
@@ -790,8 +814,23 @@ function BubbleBar({
   const closeLocations = useCallback(() => setLocationsOpen(false), []);
   const refs = repository?.refs ?? [];
   const detached = useContext(DetachedHead);
-  const row = bubbleRow(vips, refs, repository?.head, repository?.headUpstream);
-  const bubble = (vip: VipRef) => {
+  const row = bubbleRow(
+    vips,
+    refs,
+    repository?.head,
+    repository?.headUpstream,
+    detached,
+  );
+  const bubble = (vip: Vip) => {
+    if (vip.kind === 'commit') {
+      return (
+        <CommitBubble
+          key={`commit:${vip.name}`}
+          hash={vip.name}
+          onClick={() => onJump(vip.name)}
+        />
+      );
+    }
     const ref = refs.find((r) => sameRef(r, vip));
     return (
       <RefBubble
@@ -1319,15 +1358,12 @@ function Files({
           <div
             key={file.path}
             className={`row file ${file.path === selected ? 'selected' : ''}`}
-            title={file.oldPath ? `${file.oldPath} → ${file.path}` : file.path}
+            title={changeTitle(file)}
             onClick={() =>
               onSelect(file.path === selected ? undefined : file.path)
             }
           >
-            <span className={`status status-${file.status}`}>
-              {file.status}
-            </span>
-            <span className="path">{file.path}</span>
+            <span className={statusClass(file)}>{file.path}</span>
             <LineCounts
               deletions={file.deletions}
               insertions={file.insertions}

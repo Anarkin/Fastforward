@@ -1,8 +1,8 @@
 import * as assert from 'node:assert';
-import type { RefInfo, VipRef } from '../protocol';
+import type { RefInfo, Vip, VipRef } from '../protocol';
 import { bubbleRow, compareVips } from '../webview/vips';
 
-const names = (vips: VipRef[]) => vips.map((vip) => vip.name);
+const names = (vips: Vip[]) => vips.map((vip) => vip.name);
 
 suite('VIP order', () => {
   test('puts remote branches next to the local ones of the same name', () => {
@@ -63,5 +63,20 @@ suite('Bubbles row', () => {
     const detached = bubbleRow([main], refs, undefined, undefined);
     assert.strictEqual(detached.branch, undefined);
     assert.deepStrictEqual(names(detached.others), ['main']);
+  });
+
+  test('puts commits after the refs, leaving out the detached HEAD', () => {
+    const first: Vip = { kind: 'commit', name: 'c1' };
+    const second: Vip = { kind: 'commit', name: 'b2' };
+    const row = bubbleRow([second, v1, first, main], refs, 'main', undefined);
+    assert.deepStrictEqual(names(row.others), ['v1', 'b2', 'c1']);
+    const detached = bubbleRow(
+      [second, first],
+      refs,
+      undefined,
+      undefined,
+      'c1',
+    );
+    assert.deepStrictEqual(names(detached.others), ['b2']);
   });
 });

@@ -21,8 +21,20 @@ suite('Diff rows', () => {
     assert.deepStrictEqual(kinds(diffRows(files, new Map(), undefined)), [
       'summary',
       'file',
-      'hunk',
       'line',
+      'line',
+    ]);
+  });
+
+  test('divides the changed parts of a file', () => {
+    const files = parsePatch(
+      [patch('a.ts', 1), '@@ -10,0 +11,1 @@ function f()', '+line'].join('\n'),
+    );
+    assert.deepStrictEqual(kinds(diffRows(files, new Map(), undefined)), [
+      'summary',
+      'file',
+      'line',
+      'hunk',
       'line',
     ]);
   });
@@ -33,7 +45,7 @@ suite('Diff rows', () => {
     assert.deepStrictEqual(kinds(collapsed), ['summary', 'file', 'large']);
 
     const opened = diffRows(files, new Map([['graph.json', true]]), undefined);
-    assert.strictEqual(opened.length, 3 + collapseThreshold + 1);
+    assert.strictEqual(opened.length, 2 + collapseThreshold + 1);
   });
 
   test('closes a small file when asked', () => {

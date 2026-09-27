@@ -1,5 +1,6 @@
 // A file's or a group of files' removed and added lines, on the right of its
-// row; nothing for files without lines, like binary ones
+// row; a side without lines is left out, so an added file shows only +N, and
+// a file without any, like a binary one, shows nothing
 export function LineCounts({
   deletions,
   insertions,
@@ -12,8 +13,8 @@ export function LineCounts({
   }
   return (
     <span className="line-counts">
-      <span className="deletions">-{deletions}</span>
-      <span className="insertions">+{insertions}</span>
+      {deletions > 0 && <span className="deletions">-{deletions}</span>}
+      {insertions > 0 && <span className="insertions">+{insertions}</span>}
     </span>
   );
 }

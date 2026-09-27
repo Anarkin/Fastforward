@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { FileChange } from '../protocol';
+import { changeTitle, statusClass } from './fileStatus';
 import { buildFileTree, type FolderNode } from './fileTree';
 import { LineCounts } from './lineCounts';
 import { IndentGuides, treeIndent, twistyWidth } from './tree';
@@ -125,11 +126,7 @@ export function ChangesTree({
             className={`row tree-row file ${row.change.path === selected ? 'selected' : ''}`}
             // Past the twisty space, so files line up with sibling folders
             style={{ paddingLeft: treeIndent(row.depth) + twistyWidth }}
-            title={
-              row.change.oldPath
-                ? `${row.change.oldPath} → ${row.change.path}`
-                : row.change.path
-            }
+            title={changeTitle(row.change)}
             onClick={() =>
               onSelect(
                 row.change.path === selected ? undefined : row.change.path,
@@ -137,10 +134,7 @@ export function ChangesTree({
             }
           >
             <IndentGuides depth={row.depth} />
-            <span className={`status status-${row.change.status}`}>
-              {row.change.status}
-            </span>
-            <span className="path">{row.name}</span>
+            <span className={statusClass(row.change)}>{row.name}</span>
             <LineCounts
               deletions={row.change.deletions}
               insertions={row.change.insertions}

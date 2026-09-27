@@ -33,6 +33,14 @@ export interface VipRef {
   readonly name: string;
 }
 
+// A commit the user pinned to the VIP row, by its full hash
+export interface VipCommit {
+  readonly kind: 'commit';
+  readonly name: string;
+}
+
+export type Vip = VipRef | VipCommit;
+
 export interface CommitInfo {
   readonly hash: string;
   readonly subject: string;
@@ -98,7 +106,7 @@ export type ToExtension =
   // Whether the Changes tab is a list or a tree, saved per user
   | { readonly type: 'setChangesView'; readonly view: ChangesView }
   // The VIPs of the active tab's repository, saved per repository and user
-  | { readonly type: 'setVips'; readonly vips: readonly VipRef[] }
+  | { readonly type: 'setVips'; readonly vips: readonly Vip[] }
   // Asks for every file of the repository at a commit
   | { readonly type: 'loadTree'; readonly hash: string }
   // Written to the Fastforward log, so webview problems show up there too
@@ -148,7 +156,7 @@ export type ToWebview =
       readonly changesView: ChangesView;
     }
   // The VIPs of the active tab's repository
-  | { readonly type: 'vips'; readonly vips: readonly VipRef[] }
+  | { readonly type: 'vips'; readonly vips: readonly Vip[] }
   // A pull or push that is running, or undefined once it's done
   | { readonly type: 'syncing'; readonly action: SyncAction | undefined }
   | {

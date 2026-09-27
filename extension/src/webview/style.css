@@ -434,13 +434,6 @@ body.resizing {
   text-overflow: ellipsis;
 }
 
-.status {
-  flex: none;
-  width: 1em;
-  font-weight: 600;
-  text-align: center;
-}
-
 .status-A {
   color: var(--vscode-gitDecoration-addedResourceForeground);
 }
@@ -456,6 +449,7 @@ body.resizing {
 
 .status-D {
   color: var(--vscode-gitDecoration-deletedResourceForeground);
+  text-decoration: line-through;
 }
 
 .status-R,
@@ -533,48 +527,6 @@ body.resizing {
 .binary {
   padding: 8px;
   color: var(--vscode-descriptionForeground);
-}
-
-.hunk {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.hunk td {
-  padding: 0 6px;
-  white-space: pre;
-  line-height: 1.5;
-}
-
-.hunk-header td {
-  padding: 4px 8px;
-  color: var(--vscode-descriptionForeground);
-  background: var(--vscode-editorWidget-background);
-}
-
-.hunk .number {
-  width: 1%;
-  text-align: right;
-  user-select: none;
-  color: var(--vscode-editorLineNumber-foreground);
-}
-
-.hunk .code {
-  width: 98%;
-}
-
-.hunk .added {
-  background: var(
-    --vscode-diffEditor-insertedLineBackground,
-    rgba(155, 185, 85, 0.2)
-  );
-}
-
-.hunk .removed {
-  background: var(
-    --vscode-diffEditor-removedLineBackground,
-    rgba(255, 0, 0, 0.2)
-  );
 }
 
 .error {
@@ -690,9 +642,8 @@ body.resizing {
   box-shadow: 0 1px 2px var(--vscode-widget-shadow);
 }
 
-/* In the Files view, folders with changes in them and changed files stand out */
-.tree-row.folder.changed,
-.tree-row.file.changed {
+/* In the Files view, folders with changes in them stand out */
+.tree-row.folder.changed {
   color: var(--vscode-gitDecoration-modifiedResourceForeground);
 }
 
@@ -932,7 +883,6 @@ body.resizing {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  margin-right: 10px;
 }
 
 .sync-button {
@@ -1048,7 +998,7 @@ body.resizing {
 }
 
 .diff-row.hunk {
-  height: 24px;
+  height: 12px;
 }
 
 .diff-row.line,
@@ -1063,14 +1013,13 @@ body.resizing {
   align-items: center;
 }
 
-.diff-row .hunk-header {
+/* Lines were skipped here, between two changed parts of a file */
+.hunk-divider {
   box-sizing: border-box;
-  height: 24px;
-  padding: 4px 8px;
-  color: var(--vscode-descriptionForeground);
+  height: 12px;
   background: var(--vscode-editorWidget-background);
-  font-family: var(--vscode-editor-font-family);
-  font-size: var(--vscode-editor-font-size);
+  border-top: 1px solid var(--vscode-panel-border);
+  border-bottom: 1px solid var(--vscode-panel-border);
 }
 
 .diff-line {
@@ -1172,4 +1121,12 @@ body.resizing {
 .row.folder.counted .path,
 .row.folder .line-counts {
   opacity: 0.45;
+}
+
+/* A commit pinned to the VIP row, neutral next to the refs' colors */
+.badge.commit {
+  font-family: var(--vscode-editor-font-family);
+  color: var(--vscode-foreground);
+  background: var(--vscode-editorWidget-background);
+  border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
 }

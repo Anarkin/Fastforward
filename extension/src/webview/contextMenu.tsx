@@ -6,7 +6,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import type { VipRef } from '../protocol';
+import type { Vip, VipRef } from '../protocol';
 
 // What was right-clicked; the menu's items depend on it, and more kinds, like
 // a commit row, get their own items
@@ -191,6 +191,6 @@ export function useContextMenu(target: MenuTarget) {
   };
 }
 
-export function sameRef(a: VipRef, b: VipRef): boolean {
+export function sameRef(a: Vip, b: Vip): boolean {
   return a.kind === b.kind && a.name === b.name;
 }

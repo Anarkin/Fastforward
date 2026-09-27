@@ -39,7 +39,7 @@ import {
   type FilesMode,
   type ToExtension,
   type ToWebview,
-  type VipRef,
+  type Vip,
 } from './protocol';
 
 export const toggleViewCommand = 'fastforward.toggleView';
@@ -557,8 +557,8 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
   }
 
   // Undefined for a repository that never had VIPs saved
-  private vipsOf(root: string): readonly VipRef[] | undefined {
-    return this.globalState.get<Record<string, VipRef[]>>(vipsKey, {})[root];
+  private vipsOf(root: string): readonly Vip[] | undefined {
+    return this.globalState.get<Record<string, Vip[]>>(vipsKey, {})[root];
   }
 
   // The first time a repository opens, its main branch becomes a VIP: the
@@ -578,8 +578,8 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     context.post({ type: 'vips', vips });
   }
 
-  private async setVips(root: string, vips: readonly VipRef[]): Promise<void> {
-    const all = this.globalState.get<Record<string, readonly VipRef[]>>(
+  private async setVips(root: string, vips: readonly Vip[]): Promise<void> {
+    const all = this.globalState.get<Record<string, readonly Vip[]>>(
       vipsKey,
       {},
     );

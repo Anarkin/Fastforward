@@ -27,7 +27,9 @@ export type DiffRow =
     }
   | { readonly kind: 'large'; readonly file: number; readonly lines: number }
   | { readonly kind: 'binary'; readonly file: number }
-  | { readonly kind: 'hunk'; readonly file: number; readonly header: string }
+  // Between two changed parts of a file; git's hunk header isn't shown, as
+  // the function name it guesses is often an unrelated line, like in Markdown
+  | { readonly kind: 'hunk'; readonly file: number }
   | { readonly kind: 'line'; readonly file: number; readonly line: DiffLine }
   | {
       readonly kind: 'wholeLine';
@@ -41,7 +43,7 @@ const rowHeights: Record<Exclude<DiffRow['kind'], 'summary'>, number> = {
   file: 28,
   large: 36,
   binary: 28,
-  hunk: 24,
+  hunk: 12,
   line: 20,
   wholeLine: 20,
 };
@@ -95,8 +97,10 @@ export function diffRows(
     if (file.binary) {
       rows.push({ kind: 'binary', file: index });
     }
-    for (const hunk of file.hunks) {
-      rows.push({ kind: 'hunk', file: index, header: hunk.header });
+    for (const [number, hunk] of file.hunks.entries()) {
+      if (number > 0) {
+        rows.push({ kind: 'hunk', file: index });
+      }
       for (const line of hunk.lines) {
         rows.push({ kind: 'line', file: index, line });
       }
@@ -192,7 +196,7 @@ export function DiffView({
           </div>
         );
       case 'hunk':
-        return <div className="hunk-header">{row.header}</div>;
+        return <div className="hunk-divider" />;
       case 'line':
         return (
           <div className={`diff-line ${row.line.kind}`}>
