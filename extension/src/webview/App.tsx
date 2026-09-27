@@ -15,6 +15,7 @@ import {
   type FileChange,
   type FilesMode,
   type RefInfo,
+  type SyncAction,
   type TabInfo,
   type ToExtension,
   type ToWebview,
@@ -35,7 +36,7 @@ import {
 import { FileTree, foldersOf } from './fileTree';
 import { GraphCell, graphWidth, rowLanes } from './graph';
 import { LocationsPopup, type Repository } from './locations';
-import { shownVips } from './vips';
+import { bubbleRow } from './vips';
 import { checkoutOptions, checkoutRef } from './checkout';
 
 interface Props {
@@ -87,6 +88,8 @@ export function App({ post }: Props) {
   }>();
   // Refs pinned to the VIP row, saved per repository
   const [vips, setVips] = useState<readonly VipRef[]>([]);
+  // A pull or push that is running
+  const [syncing, setSyncing] = useState<SyncAction>();
   const [menu, setMenu] = useState<OpenMenu>();
   const closeMenu = useCallback(() => setMenu(undefined), []);
   const saveColumnWidths = useCallback(
@@ -171,6 +174,9 @@ export function App({ post }: Props) {
           break;
         case 'vips':
           setVips(message.vips);
+          break;
+        case 'syncing':
+          setSyncing(message.action);
           break;
         case 'error':
           setError(message.message);
@@ -374,6 +380,8 @@ export function App({ post }: Props) {
                 selected={hash}
                 vips={vips}
                 onJump={jump}
+                syncing={syncing}
+                onSync={(action) => post({ type: 'sync', action })}
               />
             )}
             {menu && <ContextMenu menu={menu} onClose={closeMenu} />}
@@ -740,6 +748,8 @@ function BubbleBar({
   repository,
   selected,
   vips,
+  syncing,
+  onSync,
   onJump,
 }: {
   // The active tab's repository, whose search text the popup shows
@@ -748,6 +758,9 @@ function BubbleBar({
   selected: string | undefined;
   vips: readonly VipRef[];
   onJump: (commit: string) => void;
+  // The pull or push that is running
+  syncing: SyncAction | undefined;
+  onSync: (action: SyncAction) => void;
 }) {
   const [locationsOpen, setLocationsOpen] = useState(false);
   // The search text of each repository, kept while the popup is closed
@@ -761,6 +774,18 @@ function BubbleBar({
   const closeLocations = useCallback(() => setLocationsOpen(false), []);
   const refs = repository?.refs ?? [];
   const detached = useContext(DetachedHead);
+  const row = bubbleRow(vips, refs, repository?.head, repository?.headUpstream);
+  const bubble = (vip: VipRef) => {
+    const ref = refs.find((r) => sameRef(r, vip));
+    return (
+      <RefBubble
+        key={`${vip.kind}:${vip.name}`}
+        info={vip}
+        missing={!ref}
+        onClick={ref && (() => onJump(ref.commit))}
+      />
+    );
+  };
   return (
     <div className="bubble-bar">
       <button
@@ -785,20 +810,73 @@ function BubbleBar({
       {detached && (
         <HeadBubble commit={detached} onClick={() => onJump(detached)} />
       )}
-      {shownVips(vips, refs, repository?.head, repository?.headUpstream).map(
-        (vip) => {
-          const ref = refs.find((r) => sameRef(r, vip));
-          return (
-            <RefBubble
-              key={`${vip.kind}:${vip.name}`}
-              info={vip}
-              missing={!ref}
-              onClick={ref && (() => onJump(ref.commit))}
-            />
-          );
-        },
+      {row.branch && (
+        <div className="checked-out-pair">
+          {bubble(row.branch)}
+          {row.upstream && (
+            <>
+              <SyncButton
+                action="pull"
+                count={repository?.behind ?? 0}
+                upstream={row.upstream.name}
+                syncing={syncing}
+                onSync={onSync}
+              />
+              <SyncButton
+                action="push"
+                count={repository?.ahead ?? 0}
+                upstream={row.upstream.name}
+                syncing={syncing}
+                onSync={onSync}
+              />
+              {bubble(row.upstream)}
+            </>
+          )}
+        </div>
       )}
+      {row.others.map(bubble)}
     </div>
+  );
+}
+
+// Pulls the commits the upstream has, or pushes the ones the branch has, with
+// how many there are; only there when there are some, or while it runs, when
+// it spins
+function SyncButton({
+  action,
+  count,
+  upstream,
+  syncing,
+  onSync,
+}: {
+  action: SyncAction;
+  count: number;
+  upstream: string;
+  syncing: SyncAction | undefined;
+  onSync: (action: SyncAction) => void;
+}) {
+  if (count === 0 && syncing !== action) {
+    return null;
+  }
+  const commits = `${count} ${count === 1 ? 'commit' : 'commits'}`;
+  const title =
+    action === 'pull'
+      ? count
+        ? `Pull ${commits} from ${upstream}`
+        : `Nothing to pull from ${upstream}, as of the last fetch`
+      : count
+        ? `Push ${commits} to ${upstream}`
+        : `Nothing to push to ${upstream}`;
+  return (
+    <button
+      className={`sync-button ${syncing === action ? 'running' : ''}`}
+      title={title}
+      disabled={count === 0 || syncing !== undefined}
+      onClick={() => onSync(action)}
+    >
+      <span className="sync-arrow">{action === 'pull' ? '←' : '→'}</span>
+      {count > 0 && count}
+    </button>
   );
 }
 

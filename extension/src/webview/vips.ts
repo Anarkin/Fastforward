@@ -25,38 +25,41 @@ export function compareVips(a: VipRef, b: VipRef): number {
   );
 }
 
-// The VIPs as shown: the saved ones, plus the checked-out branch and its remote
-// while it is checked out, which aren't saved; the remote is the branch it
-// tracks, or else a remote branch of the same name
-export function shownVips(
+// The bubbles row: the checked-out branch and the branch it tracks as a pair
+// on the left, with pull and push between them, then the other VIPs, sorted;
+// the pair shows whether or not its refs are VIPs, and only once
+export interface BubbleRow {
+  readonly branch: VipRef | undefined;
+  readonly upstream: VipRef | undefined;
+  readonly others: VipRef[];
+}
+
+export function bubbleRow(
   vips: readonly VipRef[],
   refs: readonly RefInfo[],
   head: string | undefined,
   headUpstream: string | undefined,
-): VipRef[] {
-  const shown = [...vips];
-  const add = (vip: VipRef) => {
-    const exists = refs.some(
-      (ref) => ref.kind === vip.kind && ref.name === vip.name,
-    );
-    const listed = shown.some(
-      (other) => other.kind === vip.kind && other.name === vip.name,
-    );
-    if (exists && !listed) {
-      shown.push(vip);
-    }
+): BubbleRow {
+  const exists = (vip: VipRef) =>
+    refs.some((ref) => ref.kind === vip.kind && ref.name === vip.name);
+  const branch: VipRef | undefined = head
+    ? { kind: 'branch', name: head }
+    : undefined;
+  const upstream: VipRef | undefined =
+    branch && headUpstream ? { kind: 'remote', name: headUpstream } : undefined;
+  const pair = [branch, upstream].filter(
+    (vip): vip is VipRef => vip !== undefined && exists(vip),
+  );
+  return {
+    branch: branch && exists(branch) ? branch : undefined,
+    upstream: upstream && exists(upstream) ? upstream : undefined,
+    others: vips
+      .filter(
+        (vip) =>
+          !pair.some(
+            (other) => other.kind === vip.kind && other.name === vip.name,
+          ),
+      )
+      .toSorted(compareVips),
   };
-  if (head) {
-    add({ kind: 'branch', name: head });
-    if (headUpstream) {
-      add({ kind: 'remote', name: headUpstream });
-    } else {
-      for (const ref of refs) {
-        if (ref.kind === 'remote' && withoutRemote(ref.name) === head) {
-          add({ kind: 'remote', name: ref.name });
-        }
-      }
-    }
-  }
-  return shown.toSorted(compareVips);
 }

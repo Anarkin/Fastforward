@@ -163,6 +163,28 @@ export function parseLog(output: string): CommitInfo[] {
     });
 }
 
+// Commits the checked-out branch has that its upstream doesn't, and the other
+// way round; asked from git, as the Git extension's counts can lag behind a
+// change; nothing without an upstream or a branch
+export async function aheadBehind(
+  gitPath: string,
+  cwd: string,
+): Promise<{ ahead: number; behind: number }> {
+  try {
+    const output = await runGit(gitPath, cwd, [
+      'rev-list',
+      '--left-right',
+      '--count',
+      'HEAD...@{upstream}',
+      '--',
+    ]);
+    const [ahead, behind] = output.trim().split(/\s+/).map(Number);
+    return { ahead: ahead || 0, behind: behind || 0 };
+  } catch {
+    return { ahead: 0, behind: 0 };
+  }
+}
+
 // The branch each remote considers its main one, like origin/main, which git
 // records as refs/remotes/<remote>/HEAD when cloning
 export async function remoteDefaultBranches(

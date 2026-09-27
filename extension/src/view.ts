@@ -17,6 +17,7 @@ import {
 } from './git/merges';
 import { getGitApi, listRefs, pickRepository } from './git/repository';
 import {
+  aheadBehind,
   listHistory,
   listTree,
   logCommits,
@@ -32,6 +33,7 @@ import {
 import {
   workingTreeHash,
   type CheckoutTarget,
+  type SyncAction,
   type FileChange,
   type FilesMode,
   type ToExtension,
@@ -360,6 +362,9 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       case 'checkout':
         await this.checkout(context, message.target);
         break;
+      case 'sync':
+        await this.sync(context, message.action);
+        break;
       case 'scrolled':
         context.tab.anchor = { hash: message.hash, offset: message.offset };
         break;
@@ -513,12 +518,17 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
   }
 
   private async sendRepository(context: Context): Promise<void> {
+    const [refs, counts] = await Promise.all([
+      listRefs(context.repository),
+      aheadBehind(context.git.git.path, context.root),
+    ]);
     context.post({
       type: 'repository',
       head: context.repository.state.HEAD?.name,
       headCommit: context.repository.state.HEAD?.commit,
       headUpstream: upstreamOf(context.repository),
-      refs: await listRefs(context.repository),
+      ...counts,
+      refs,
     });
   }
 
@@ -685,6 +695,34 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     await repository.status();
     await this.refresh(context);
     await this.showHead(context);
+  }
+
+  // Pulls the checked-out branch from its upstream, or pushes it there, as
+  // VS Code's own Pull and Push do, with its credentials and settings
+  private async sync(context: Context, action: SyncAction): Promise<void> {
+    const { repository } = context;
+    context.post({ type: 'syncing', action });
+    try {
+      if (action === 'pull') {
+        await repository.pull();
+      } else {
+        await repository.push();
+      }
+      this.log.info(
+        `${action === 'pull' ? 'Pulled' : 'Pushed'} ${repository.state.HEAD?.name ?? ''}`,
+      );
+    } catch (error) {
+      const details = gitErrorText(error);
+      this.log.error(`${action} failed`);
+      this.log.error(details);
+      void vscode.window.showErrorMessage(
+        `Fastforward: couldn't ${action}. ${details}`,
+      );
+    } finally {
+      context.post({ type: 'syncing', action: undefined });
+    }
+    await repository.status();
+    await this.refresh(context);
   }
 
   // Selects a commit and scrolls the list to it, expanding the collapsed

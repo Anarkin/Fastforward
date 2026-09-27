@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import type { RefInfo, VipRef } from '../protocol';
-import { compareVips, shownVips } from '../webview/vips';
+import { bubbleRow, compareVips } from '../webview/vips';
 
 const names = (vips: VipRef[]) => vips.map((vip) => vip.name);
 
@@ -28,38 +28,40 @@ suite('VIP order', () => {
   });
 });
 
-suite('VIPs shown', () => {
+suite('Bubbles row', () => {
   const refs: RefInfo[] = [
     { kind: 'branch', name: 'main', commit: 'a' },
     { kind: 'remote', name: 'origin/main', commit: 'a' },
     { kind: 'branch', name: 'feature', commit: 'b' },
-    { kind: 'remote', name: 'origin/feature', commit: 'b' },
     { kind: 'remote', name: 'fork/feature-work', commit: 'b' },
+    { kind: 'tag', name: 'v1', commit: 'a' },
   ];
   const main: VipRef = { kind: 'branch', name: 'main' };
+  const v1: VipRef = { kind: 'tag', name: 'v1' };
 
-  test('adds the checked-out branch and the branch it tracks', () => {
-    assert.deepStrictEqual(
-      names(shownVips([main], refs, 'feature', 'fork/feature-work')),
-      ['feature', 'fork/feature-work', 'main'],
-    );
+  test('pairs the checked-out branch with the branch it tracks', () => {
+    const row = bubbleRow([main, v1], refs, 'feature', 'fork/feature-work');
+    assert.deepStrictEqual(row.branch, { kind: 'branch', name: 'feature' });
+    assert.deepStrictEqual(row.upstream, {
+      kind: 'remote',
+      name: 'fork/feature-work',
+    });
+    assert.deepStrictEqual(names(row.others), ['main', 'v1']);
   });
 
-  test('falls back to a remote branch of the same name', () => {
-    assert.deepStrictEqual(
-      names(shownVips([main], refs, 'feature', undefined)),
-      ['feature', 'origin/feature', 'main'],
-    );
+  test('shows a VIP that is in the pair only once', () => {
+    const row = bubbleRow([main, v1], refs, 'main', 'origin/main');
+    assert.deepStrictEqual(row.branch, main);
+    assert.deepStrictEqual(names(row.others), ['v1']);
   });
 
-  test("doesn't repeat VIPs, or add refs that don't exist", () => {
-    assert.deepStrictEqual(
-      names(shownVips([main], refs, 'main', 'origin/gone')),
-      ['main'],
+  test('pairs nothing without an upstream, or with a detached HEAD', () => {
+    assert.strictEqual(
+      bubbleRow([], refs, 'feature', undefined).upstream,
+      undefined,
     );
-    assert.deepStrictEqual(
-      names(shownVips([main], refs, undefined, undefined)),
-      ['main'],
-    );
+    const detached = bubbleRow([main], refs, undefined, undefined);
+    assert.strictEqual(detached.branch, undefined);
+    assert.deepStrictEqual(names(detached.others), ['main']);
   });
 });

@@ -925,3 +925,88 @@ body.resizing {
   );
   border-radius: 2px;
 }
+
+/* The checked-out branch and its upstream, with pull and push between them */
+.checked-out-pair {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-right: 10px;
+}
+
+.sync-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 16px;
+  padding: 0 5px;
+  font: inherit;
+  font-size: 0.85em;
+  color: var(--vscode-foreground);
+  cursor: pointer;
+  background: color-mix(in srgb, var(--vscode-foreground) 10%, transparent);
+  border: none;
+  border-radius: 8px;
+}
+
+.sync-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--vscode-foreground) 20%, transparent);
+}
+
+.sync-button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+/* Spins while the pull or push runs */
+.sync-button.running {
+  opacity: 1;
+}
+
+.sync-button.running .sync-arrow {
+  animation: sync-spin 1s linear infinite;
+}
+
+@keyframes sync-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.sync-arrow {
+  display: inline-block;
+}
+
+/* Folder rows stick to the top while their contents scroll by, stacked by
+   depth; every tree row is the same height, see stickyRowHeight */
+.locations-list .tree-row {
+  box-sizing: border-box;
+  height: 24px;
+  display: flex;
+  align-items: center;
+}
+
+.locations-list .tree-row.sticky {
+  position: sticky;
+  background: var(
+    --vscode-editorWidget-background,
+    var(--vscode-editor-background)
+  );
+}
+
+.locations-list .tree-row.sticky:hover {
+  background: color-mix(
+    in srgb,
+    var(--vscode-list-hoverBackground) 100%,
+    var(--vscode-editorWidget-background, var(--vscode-editor-background))
+  );
+}
+
+/* A clear edge against the columns underneath, also in light themes whose
+   widget shadow is faint */
+.locations-popup {
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.22),
+    0 2px 8px rgba(0, 0, 0, 0.16),
+    0 0 0 1px var(--vscode-widget-shadow, transparent);
+}

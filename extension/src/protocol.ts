@@ -5,6 +5,8 @@ export const workingTreeHash = 'working-tree';
 
 export type RefKind = 'branch' | 'remote' | 'tag';
 
+export type SyncAction = 'pull' | 'push';
+
 // What the Files column lists: the selected commit's changes, or every file
 // of the repository at it
 export type FilesMode = 'changes' | 'files';
@@ -103,6 +105,8 @@ export type ToExtension =
   // Selects a commit that may not be loaded yet, such as a branch's tip
   | { readonly type: 'jump'; readonly hash: string }
   | { readonly type: 'checkout'; readonly target: CheckoutTarget }
+  // Pulls the checked-out branch from its upstream, or pushes it there
+  | { readonly type: 'sync'; readonly action: SyncAction }
   // Asks for the commits at positions start..start+count of the history
   | {
       readonly type: 'loadCommits';
@@ -139,6 +143,8 @@ export type ToWebview =
     }
   // The VIPs of the active tab's repository
   | { readonly type: 'vips'; readonly vips: readonly VipRef[] }
+  // A pull or push that is running, or undefined once it's done
+  | { readonly type: 'syncing'; readonly action: SyncAction | undefined }
   | {
       readonly type: 'tabs';
       readonly tabs: readonly TabInfo[];
@@ -151,6 +157,10 @@ export type ToWebview =
       readonly headCommit: string | undefined;
       // The remote branch the checked-out branch tracks, like origin/main
       readonly headUpstream: string | undefined;
+      // Commits the checked-out branch has that its upstream doesn't, and the
+      // other way round, as of the last fetch
+      readonly ahead: number;
+      readonly behind: number;
       readonly refs: readonly RefInfo[];
     }
   // Starts a new history of every branch, remote and tag: its size, so the

@@ -7,6 +7,8 @@ export interface Repository {
   head: string | undefined;
   headCommit: string | undefined;
   headUpstream: string | undefined;
+  ahead: number;
+  behind: number;
   refs: readonly RefInfo[];
 }
 
@@ -446,11 +448,17 @@ function TreeFolder({
   initiallyOpen: boolean;
 }) {
   const [open, setOpen] = useState(initiallyOpen);
+  // The folder's row sticks to the top, under its parents' rows, while its
+  // contents scroll by; the group ends where it has to let go
   return (
-    <>
+    <div className="tree-group">
       <div
-        className="row tree-row folder"
-        style={{ paddingLeft: treeIndent(depth) }}
+        className="row tree-row folder sticky"
+        style={{
+          paddingLeft: treeIndent(depth),
+          top: depth * stickyRowHeight,
+          zIndex: 100 - depth,
+        }}
         onClick={() => setOpen(!open)}
       >
         <IndentGuides depth={depth} />
@@ -466,6 +474,10 @@ function TreeFolder({
           onSelect={onSelect}
         />
       )}
-    </>
+    </div>
   );
 }
+
+// The height of every row in the popup's trees, so stuck folder rows stack
+// exactly; matches .locations-list .tree-row in style.css
+const stickyRowHeight = 24;

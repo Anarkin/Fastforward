@@ -299,3 +299,86 @@ suite('View', function () {
     await repository.git('branch', '-D', 'created');
   });
 });
+
+suite('Pull and push', function () {
+  this.timeout(30_000);
+
+  let repository: Awaited<ReturnType<typeof createRepository>>;
+  let remote: string;
+  let page: FakePage;
+  let connection: Connection;
+
+  const log = vscode.window.createOutputChannel('Fastforward sync test', {
+    log: true,
+  });
+
+  // The temp repository, with a bare one next to it as origin, which main
+  // tracks
+  suiteSetup(async () => {
+    repository = await createRepository();
+    remote = fs.mkdtempSync(path.join(os.tmpdir(), 'fastforward-remote-'));
+    const gitPath = (await getGitApi()).git.path;
+    await runGit(gitPath, remote, ['init', '--bare', '-b', 'main']);
+    await repository.git('remote', 'add', 'origin', remote);
+    await repository.git('push', '-u', 'origin', 'main');
+
+    const workspaceState = new FakeMemento();
+    await workspaceState.update('tabs', [repository.root]);
+    await workspaceState.update('activeTab', repository.root);
+    const view = new FastforwardView(
+      log,
+      vscode.Uri.file(__dirname),
+      workspaceState,
+      new FakeMemento(),
+    );
+    page = new FakePage();
+    connection = view.connect((message) => page.messages.push(message));
+    await connection.receive({ type: 'ready' });
+  });
+
+  suiteTeardown(() => {
+    connection.dispose();
+    log.dispose();
+    for (const folder of [repository.root, remote]) {
+      try {
+        fs.rmSync(folder, { recursive: true, force: true });
+      } catch {
+        // Left for the OS to clean up
+      }
+    }
+  });
+
+  // The Git extension reads the counts from git status
+  async function refresh(): Promise<void> {
+    const git = await getGitApi();
+    await git.getRepository(vscode.Uri.file(repository.root))?.status();
+    await connection.refresh();
+  }
+
+  test("pushes the commits the upstream doesn't have", async () => {
+    await repository.commit('local');
+    await refresh();
+    const before = page.last('repository');
+    assert.strictEqual(before?.headUpstream, 'origin/main');
+    assert.deepStrictEqual([before.ahead, before.behind], [1, 0]);
+
+    await connection.receive({ type: 'sync', action: 'push' });
+    const pushed = (
+      await runGit((await getGitApi()).git.path, remote, ['rev-parse', 'main'])
+    ).trim();
+    assert.strictEqual(pushed, await repository.hash('main'));
+    assert.strictEqual(page.last('repository')?.ahead, 0);
+    assert.strictEqual(page.last('syncing')?.action, undefined);
+  });
+
+  test('pulls the commits the upstream has', async () => {
+    const latest = await repository.hash('main');
+    await repository.git('reset', '--hard', 'main~1');
+    await refresh();
+    assert.strictEqual(page.last('repository')?.behind, 1);
+
+    await connection.receive({ type: 'sync', action: 'pull' });
+    assert.strictEqual(await repository.hash('main'), latest);
+    assert.strictEqual(page.last('repository')?.behind, 0);
+  });
+});
