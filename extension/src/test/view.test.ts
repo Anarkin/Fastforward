@@ -289,6 +289,27 @@ suite('View', function () {
     }
   });
 
+  test('fast-forwards the local branch of a remote branch that is ahead', async () => {
+    await repository.git('remote', 'add', 'origin', repository.root);
+    await repository.git('branch', 'behind', 'main~1');
+    await repository.git('update-ref', 'refs/remotes/origin/behind', 'main');
+    try {
+      await connection.receive({
+        type: 'checkout',
+        target: { kind: 'remote', name: 'origin/behind' },
+      });
+      assert.strictEqual(page.last('repository')?.head, 'behind');
+      assert.strictEqual(
+        (await repository.git('rev-parse', 'behind')).trim(),
+        (await repository.git('rev-parse', 'main')).trim(),
+      );
+    } finally {
+      await repository.git('checkout', 'main');
+      await repository.git('branch', '-D', 'behind');
+      await repository.git('remote', 'remove', 'origin');
+    }
+  });
+
   test('reloads when a branch is created', async () => {
     await connection.refresh();
     page.clear();

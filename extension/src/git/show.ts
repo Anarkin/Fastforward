@@ -164,18 +164,20 @@ export function parseLog(output: string): CommitInfo[] {
 }
 
 // Commits the checked-out branch has that its upstream doesn't, and the other
-// way round; asked from git, as the Git extension's counts can lag behind a
-// change; nothing without an upstream or a branch
+// way round, or of any two refs; asked from git, as the Git extension's counts
+// can lag behind a change; nothing without an upstream or a branch
 export async function aheadBehind(
   gitPath: string,
   cwd: string,
+  ref = 'HEAD',
+  upstream = '@{upstream}',
 ): Promise<{ ahead: number; behind: number }> {
   try {
     const output = await runGit(gitPath, cwd, [
       'rev-list',
       '--left-right',
       '--count',
-      'HEAD...@{upstream}',
+      `${ref}...${upstream}`,
       '--',
     ]);
     const [ahead, behind] = output.trim().split(/\s+/).map(Number);

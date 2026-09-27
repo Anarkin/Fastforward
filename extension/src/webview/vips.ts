@@ -47,7 +47,7 @@ export function vipOptions(
       .toSorted(compareVips)
       .map((vip) => ({ label: vip.name, vip })),
     {
-      label: `Commit ${hash.slice(0, 7)}`,
+      label: hash.slice(0, 7),
       vip: { kind: 'commit', name: hash },
     },
   ];

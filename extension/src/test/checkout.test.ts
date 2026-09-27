@@ -11,19 +11,22 @@ const refs: RefInfo[] = [
   { kind: 'remote', name: 'origin/fix', commit: 'aaaaaaaa' },
 ];
 
+const remote = (name: string) => ({ kind: 'remote' as const, name });
+
 const labels = (options: ReturnType<typeof checkoutOptions>) =>
   options.map((option) => [option.label, option.disabled]);
 
 suite('Checkout options', () => {
-  test('lists branches, remotes without a local branch here, tags and the commit', () => {
+  test('lists branches, remotes, tags and the commit', () => {
     assert.deepStrictEqual(
       labels(checkoutOptions('aaaaaaaa', refs, 'main', undefined)),
       [
-        ['main (checked out)', true],
-        ['origin/feature (new branch feature)', false],
-        ['origin/fix (switches to fix)', false],
+        ['main', true],
+        ['origin/feature', false],
+        ['origin/fix', false],
+        ['origin/main', true],
         ['v1', false],
-        ['Commit aaaaaaa', false],
+        ['aaaaaaa', false],
       ],
     );
   });
@@ -31,7 +34,18 @@ suite('Checkout options', () => {
   test('offers just the commit when no refs point at it', () => {
     assert.deepStrictEqual(
       labels(checkoutOptions('cccccccc', refs, 'main', 'cccccccc')),
-      [['Commit ccccccc (checked out)', true]],
+      [['ccccccc', true]],
+    );
+  });
+
+  test('offers a remote branch whose checked-out local branch is elsewhere', () => {
+    assert.strictEqual(
+      checkoutRef(remote('origin/fix'), refs, 'fix').disabled,
+      false,
+    );
+    assert.strictEqual(
+      checkoutRef(remote('origin/main'), refs, 'main').disabled,
+      true,
     );
   });
 

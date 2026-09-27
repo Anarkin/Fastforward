@@ -112,7 +112,7 @@ suite('VIP options', () => {
     ];
     assert.deepStrictEqual(
       vipOptions('abcdef123', refs).map((option) => option.label),
-      ['feature', 'origin/feature', 'v2', 'Commit abcdef1'],
+      ['feature', 'origin/feature', 'v2', 'abcdef1'],
     );
   });
 });

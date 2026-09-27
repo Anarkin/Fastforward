@@ -15,7 +15,8 @@ const byName = (a: RefInfo, b: RefInfo) => a.name.localeCompare(b.name);
 
 // Checking out a ref: a branch switches to it, a remote branch to the local
 // branch of the same name, which is created to track it when there is none,
-// and a tag detaches HEAD; labels say where a remote branch leads
+// and a tag detaches HEAD; labels are just the names, and what is checked
+// out is greyed out
 export function checkoutRef(
   ref: VipRef,
   refs: readonly RefInfo[],
@@ -25,7 +26,7 @@ export function checkoutRef(
   if (ref.kind === 'branch') {
     const checkedOut = ref.name === head;
     return {
-      label: checkedOut ? `${ref.name} (checked out)` : ref.name,
+      label: ref.name,
       target,
       disabled: checkedOut,
     };
@@ -34,21 +35,23 @@ export function checkoutRef(
     return { label: ref.name, target, disabled: false };
   }
   const local = withoutRemote(ref.name);
-  const exists = refs.some(
+  const localRef = refs.find(
     (other) => other.kind === 'branch' && other.name === local,
   );
+  const remoteRef = refs.find(
+    (other) => other.kind === 'remote' && other.name === ref.name,
+  );
+  const same = localRef?.commit === remoteRef?.commit;
   return {
-    label: exists
-      ? `${ref.name} (switches to ${local})`
-      : `${ref.name} (new branch ${local})`,
+    label: ref.name,
     target,
-    disabled: local === head,
+    // Only when it would change nothing
+    disabled: local === head && same,
   };
 }
 
 // Everything that can be checked out at a commit: its local branches, its
-// remote branches without a local branch here, its tags, then the commit
-// itself
+// remote branches, its tags, then the commit itself
 export function checkoutOptions(
   hash: string,
   refs: readonly RefInfo[],
@@ -58,17 +61,13 @@ export function checkoutOptions(
   const here = refs.filter((ref) => ref.commit === hash);
   const kind = (k: RefInfo['kind']) =>
     here.filter((ref) => ref.kind === k).toSorted(byName);
-  const localHere = new Set(kind('branch').map((ref) => ref.name));
   const checkedOut = detachedHead === hash;
   return [
     ...kind('branch').map((ref) => checkoutRef(ref, refs, head)),
-    // A local branch at this commit already stands for its remote
-    ...kind('remote')
-      .filter((ref) => !localHere.has(withoutRemote(ref.name)))
-      .map((ref) => checkoutRef(ref, refs, head)),
+    ...kind('remote').map((ref) => checkoutRef(ref, refs, head)),
     ...kind('tag').map((ref) => checkoutRef(ref, refs, head)),
     {
-      label: `Commit ${hash.slice(0, 7)}${checkedOut ? ' (checked out)' : ''}`,
+      label: hash.slice(0, 7),
       target: { kind: 'commit', hash },
       disabled: checkedOut,
     },

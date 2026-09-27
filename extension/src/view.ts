@@ -669,7 +669,10 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
   }
 
   // Checks out a branch, a remote branch, a tag or a commit; git refuses when
-  // uncommitted changes would be overwritten, which is shown as a notification
+  // uncommitted changes would be overwritten, which is shown as a notification;
+  // a remote branch switches to its local branch, which is created when there
+  // is none, or else fast-forwarded when it is behind, so it ends up where the
+  // remote branch is, as if it were checked out itself
   private async checkout(
     context: Context,
     target: CheckoutTarget,
@@ -682,6 +685,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         const refs = await listRefs(repository);
         if (refs.some((ref) => ref.kind === 'branch' && ref.name === local)) {
           await repository.checkout(local);
+          await this.catchUp(context, local, target.name);
         } else {
           await repository.createBranch(local, true, target.name);
           await repository.setBranchUpstream(local, target.name);
@@ -706,6 +710,50 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     await repository.status();
     await this.refresh(context);
     await this.showHead(context);
+  }
+
+  // Fast-forwards the checked-out local branch to the remote branch when it is
+  // behind; with commits of its own it stays, as combining them is a decision
+  // for a pull, and the user is told when both sides have commits
+  private async catchUp(
+    context: Context,
+    local: string,
+    remote: string,
+  ): Promise<void> {
+    const gitPath = context.git.git.path;
+    const { ahead, behind } = await aheadBehind(
+      gitPath,
+      context.root,
+      `refs/heads/${local}`,
+      `refs/remotes/${remote}`,
+    );
+    if (behind === 0) {
+      return;
+    }
+    if (ahead > 0) {
+      this.log.info(
+        `${local} and ${remote} have diverged, not fast-forwarding`,
+      );
+      void vscode.window.showInformationMessage(
+        `Fastforward: switched to ${local}, which has diverged from ${remote}; pull to combine them.`,
+      );
+      return;
+    }
+    try {
+      await runGit(gitPath, context.root, [
+        'merge',
+        '--ff-only',
+        `refs/remotes/${remote}`,
+      ]);
+      this.log.info(`Fast-forwarded ${local} to ${remote}`);
+    } catch (error) {
+      const details = gitErrorText(error);
+      this.log.error(`Fast-forwarding ${local} to ${remote} failed`);
+      this.log.error(details);
+      void vscode.window.showErrorMessage(
+        `Fastforward: switched to ${local}, but couldn't fast-forward it to ${remote}. ${details}`,
+      );
+    }
   }
 
   // Pulls the checked-out branch from its upstream, or pushes it there, as
