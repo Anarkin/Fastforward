@@ -1,5 +1,6 @@
 import {
   createContext,
+  Fragment,
   useCallback,
   useContext,
   useEffect,
@@ -42,7 +43,7 @@ import { ChangesTree } from './changesTree';
 import { FileTree, foldersOf } from './fileTree';
 import { GraphCell, graphWidth, rowLanes } from './graph';
 import { LocationsPopup, type Repository } from './locations';
-import { bubbleRow, vipOptions } from './vips';
+import { type BubbleRow, bubbleRow, vipOptions } from './vips';
 import { checkoutOptions, checkoutRef } from './checkout';
 
 interface Props {
@@ -853,6 +854,18 @@ function BubbleBar({
       />
     );
   };
+  const checkedOut = (
+    <CheckedOut
+      detached={detached}
+      row={row}
+      bubble={bubble}
+      behind={repository?.behind ?? 0}
+      ahead={repository?.ahead ?? 0}
+      syncing={syncing}
+      onSync={onSync}
+      onJump={onJump}
+    />
+  );
   return (
     <div className="bubble-bar">
       <button
@@ -874,6 +887,48 @@ function BubbleBar({
           onQuery={setLocationsQuery}
         />
       )}
+      {row.vips.map((vip) =>
+        (vip.kind === 'commit' && vip.name === detached) ||
+        (row.branch && sameRef(vip, row.branch)) ? (
+          <Fragment key="checked-out">{checkedOut}</Fragment>
+        ) : (
+          bubble(vip)
+        ),
+      )}
+      {!row.checkedOutIsVip && (detached || row.branch) && (
+        <>
+          {row.vips.length > 0 && <span className="bubble-separator" />}
+          <span className="bubble-label">Checked out</span>
+          {checkedOut}
+        </>
+      )}
+    </div>
+  );
+}
+
+// What is checked out: a detached HEAD, or the checked-out branch and the
+// branch it tracks, with pull and push between them
+function CheckedOut({
+  detached,
+  row,
+  bubble,
+  behind,
+  ahead,
+  syncing,
+  onSync,
+  onJump,
+}: {
+  detached: string | undefined;
+  row: BubbleRow;
+  bubble: (vip: Vip) => React.ReactNode;
+  behind: number;
+  ahead: number;
+  syncing: SyncAction | undefined;
+  onSync: (action: SyncAction) => void;
+  onJump: (commit: string) => void;
+}) {
+  return (
+    <>
       {detached && (
         <HeadBubble commit={detached} onClick={() => onJump(detached)} />
       )}
@@ -884,14 +939,14 @@ function BubbleBar({
             <>
               <SyncButton
                 action="pull"
-                count={repository?.behind ?? 0}
+                count={behind}
                 upstream={row.upstream.name}
                 syncing={syncing}
                 onSync={onSync}
               />
               <SyncButton
                 action="push"
-                count={repository?.ahead ?? 0}
+                count={ahead}
                 upstream={row.upstream.name}
                 syncing={syncing}
                 onSync={onSync}
@@ -901,8 +956,7 @@ function BubbleBar({
           )}
         </div>
       )}
-      {row.others.map(bubble)}
-    </div>
+    </>
   );
 }
 

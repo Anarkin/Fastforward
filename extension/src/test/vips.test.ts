@@ -46,13 +46,14 @@ suite('Bubbles row', () => {
       kind: 'remote',
       name: 'fork/feature-work',
     });
-    assert.deepStrictEqual(names(row.others), ['main', 'v1']);
+    assert.deepStrictEqual(names(row.vips), ['main', 'v1']);
   });
 
-  test('shows a VIP that is in the pair only once', () => {
-    const row = bubbleRow([main, v1], refs, 'main', 'origin/main');
+  test('keeps a checked-out VIP in its place, without its upstream', () => {
+    const origin: VipRef = { kind: 'remote', name: 'origin/main' };
+    const row = bubbleRow([v1, origin, main], refs, 'main', 'origin/main');
     assert.deepStrictEqual(row.branch, main);
-    assert.deepStrictEqual(names(row.others), ['v1']);
+    assert.deepStrictEqual(names(row.vips), ['main', 'v1']);
   });
 
   test('pairs nothing without an upstream, or with a detached HEAD', () => {
@@ -62,14 +63,34 @@ suite('Bubbles row', () => {
     );
     const detached = bubbleRow([main], refs, undefined, undefined);
     assert.strictEqual(detached.branch, undefined);
-    assert.deepStrictEqual(names(detached.others), ['main']);
+    assert.deepStrictEqual(names(detached.vips), ['main']);
   });
 
-  test('puts commits after the refs, leaving out the detached HEAD', () => {
+  test('knows whether what is checked out is a VIP', () => {
+    assert.strictEqual(
+      bubbleRow([v1], refs, 'main', 'origin/main').checkedOutIsVip,
+      false,
+    );
+    assert.strictEqual(
+      bubbleRow([main], refs, 'main', 'origin/main').checkedOutIsVip,
+      true,
+    );
+    const commit: Vip = { kind: 'commit', name: 'c1' };
+    assert.strictEqual(
+      bubbleRow([commit], refs, undefined, undefined, 'c1').checkedOutIsVip,
+      true,
+    );
+    assert.strictEqual(
+      bubbleRow([main], refs, undefined, undefined, 'c2').checkedOutIsVip,
+      false,
+    );
+  });
+
+  test('puts commits after the refs', () => {
     const first: Vip = { kind: 'commit', name: 'c1' };
     const second: Vip = { kind: 'commit', name: 'b2' };
     const row = bubbleRow([second, v1, first, main], refs, 'main', undefined);
-    assert.deepStrictEqual(names(row.others), ['v1', 'b2', 'c1']);
+    assert.deepStrictEqual(names(row.vips), ['main', 'v1', 'b2', 'c1']);
     const detached = bubbleRow(
       [second, first],
       refs,
@@ -77,7 +98,7 @@ suite('Bubbles row', () => {
       undefined,
       'c1',
     );
-    assert.deepStrictEqual(names(detached.others), ['b2']);
+    assert.deepStrictEqual(names(detached.vips), ['b2', 'c1']);
   });
 });
 

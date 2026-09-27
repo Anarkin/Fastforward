@@ -234,10 +234,17 @@ body.resizing {
   border-right: none;
 }
 
+/* One height for every column, whether its title is text or the Changes |
+   Files switch, which is taller */
 .column-title {
   position: relative;
   flex: none;
-  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 34px;
+  padding: 0 8px;
   text-align: center;
   color: var(--vscode-descriptionForeground);
   border-bottom: 1px solid var(--vscode-panel-border);
@@ -937,20 +944,25 @@ body.resizing {
   align-items: center;
 }
 
+/* Above the rows scrolling under it, which are positioned too and come later,
+   so would be drawn on top */
 .locations-list .tree-row.sticky {
   position: sticky;
+  z-index: 1;
   background: var(
     --vscode-editorWidget-background,
     var(--vscode-editor-background)
   );
 }
 
+/* The hover color is see-through, so it goes over the solid background */
 .locations-list .tree-row.sticky:hover {
-  background: color-mix(
-    in srgb,
-    var(--vscode-list-hoverBackground) 100%,
-    var(--vscode-editorWidget-background, var(--vscode-editor-background))
-  );
+  background:
+    linear-gradient(
+      var(--vscode-list-hoverBackground),
+      var(--vscode-list-hoverBackground)
+    ),
+    var(--vscode-editorWidget-background, var(--vscode-editor-background));
 }
 
 /* A clear edge against the columns underneath, also in light themes whose
@@ -1128,4 +1140,17 @@ body.resizing {
   color: var(--vscode-foreground);
   background: var(--vscode-editorWidget-background);
   border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
+}
+
+/* Sets what is checked out apart from the VIPs, when it isn't one of them */
+.bubble-separator {
+  align-self: stretch;
+  width: 1px;
+  margin: 2px 4px;
+  background: var(--vscode-panel-border);
+}
+
+.bubble-label {
+  font-size: 0.85em;
+  color: var(--vscode-descriptionForeground);
 }

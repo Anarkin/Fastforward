@@ -53,15 +53,21 @@ export function vipOptions(
   ];
 }
 
-// The bubbles row: the checked-out branch and the branch it tracks as a pair
-// on the left, with pull and push between them, then the other VIPs, sorted;
-// the pair shows whether or not its refs are VIPs, and only once, like a
-// detached HEAD, which has its own bubble
+// The bubbles row: the VIPs, sorted, and the checked-out branch and the
+// branch it tracks as a pair, with pull and push between them; a checked-out
+// VIP stays in its place, as a pair or as the detached HEAD's bubble, so the
+// row doesn't shift when checking out, and anything else checked out follows
+// the VIPs, set apart, as it is only there while checked out
 export interface BubbleRow {
   readonly branch: VipRef | undefined;
   readonly upstream: VipRef | undefined;
-  readonly others: Vip[];
+  // Including a checked-out VIP, whose place the pair or HEAD bubble takes;
+  // the upstream is left out, as it shows in the pair
+  readonly vips: Vip[];
+  readonly checkedOutIsVip: boolean;
 }
+
+const same = (a: Vip, b: Vip) => a.kind === b.kind && a.name === b.name;
 
 export function bubbleRow(
   vips: readonly Vip[],
@@ -72,25 +78,23 @@ export function bubbleRow(
 ): BubbleRow {
   const exists = (vip: VipRef) =>
     refs.some((ref) => ref.kind === vip.kind && ref.name === vip.name);
-  const branch: VipRef | undefined = head
-    ? { kind: 'branch', name: head }
-    : undefined;
+  const isVip = (vip: Vip) => vips.some((other) => same(other, vip));
+  const branch: VipRef | undefined =
+    head && exists({ kind: 'branch', name: head })
+      ? { kind: 'branch', name: head }
+      : undefined;
   const upstream: VipRef | undefined =
-    branch && headUpstream ? { kind: 'remote', name: headUpstream } : undefined;
-  const pair = [branch, upstream].filter(
-    (vip): vip is VipRef => vip !== undefined && exists(vip),
-  );
+    branch && headUpstream && exists({ kind: 'remote', name: headUpstream })
+      ? { kind: 'remote', name: headUpstream }
+      : undefined;
   return {
-    branch: branch && exists(branch) ? branch : undefined,
-    upstream: upstream && exists(upstream) ? upstream : undefined,
-    others: vips
-      .filter((vip) => !(vip.kind === 'commit' && vip.name === detached))
-      .filter(
-        (vip) =>
-          !pair.some(
-            (other) => other.kind === vip.kind && other.name === vip.name,
-          ),
-      )
+    branch,
+    upstream,
+    vips: vips
+      .filter((vip) => !(upstream && same(vip, upstream)))
       .toSorted(compareVips),
+    checkedOutIsVip: detached
+      ? isVip({ kind: 'commit', name: detached })
+      : branch !== undefined && isVip(branch),
   };
 }
