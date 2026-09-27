@@ -739,7 +739,8 @@ body.resizing {
   display: flex;
   flex-direction: column;
   width: 360px;
-  max-height: 65vh;
+  /* Always this tall, so it doesn't change size with the number of refs */
+  height: 65vh;
   color: var(--vscode-foreground);
   background: var(
     --vscode-editorWidget-background,
