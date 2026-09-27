@@ -29,6 +29,30 @@ export function compareVips(a: Vip, b: Vip): number {
   );
 }
 
+// What of a commit can be a VIP: its refs, in the order of the VIP row, then
+// the commit itself
+export interface VipOption {
+  readonly label: string;
+  readonly vip: Vip;
+}
+
+export function vipOptions(
+  hash: string,
+  refs: readonly RefInfo[],
+): VipOption[] {
+  return [
+    ...refs
+      .filter((ref) => ref.commit === hash)
+      .map((ref): Vip => ({ kind: ref.kind, name: ref.name }))
+      .toSorted(compareVips)
+      .map((vip) => ({ label: vip.name, vip })),
+    {
+      label: `Commit ${hash.slice(0, 7)}`,
+      vip: { kind: 'commit', name: hash },
+    },
+  ];
+}
+
 // The bubbles row: the checked-out branch and the branch it tracks as a pair
 // on the left, with pull and push between them, then the other VIPs, sorted;
 // the pair shows whether or not its refs are VIPs, and only once, like a

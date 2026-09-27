@@ -22,6 +22,8 @@ export type ContextMenuItem =
       readonly submenu?: readonly ContextMenuItem[];
       // Shown greyed out, like what is checked out already
       readonly disabled?: boolean;
+      // Shows a check mark when set, for items that switch something on and off
+      readonly checked?: boolean;
     }
   | { readonly separator: true };
 
@@ -124,7 +126,10 @@ function MenuItems({
           >
             <button
               className={`menu-item ${item.submenu ? 'has-submenu' : ''}`}
-              role="menuitem"
+              role={
+                item.checked === undefined ? 'menuitem' : 'menuitemcheckbox'
+              }
+              aria-checked={item.checked}
               aria-haspopup={item.submenu ? 'menu' : undefined}
               disabled={item.disabled}
               onClick={() => {
@@ -136,6 +141,9 @@ function MenuItems({
                 }
               }}
             >
+              {item.checked !== undefined && (
+                <span className="menu-check">{item.checked ? '✓' : ''}</span>
+              )}
               {item.label}
               {item.submenu && <span className="submenu-arrow">▸</span>}
             </button>

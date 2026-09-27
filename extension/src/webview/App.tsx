@@ -42,7 +42,7 @@ import { ChangesTree } from './changesTree';
 import { FileTree, foldersOf } from './fileTree';
 import { GraphCell, graphWidth, rowLanes } from './graph';
 import { LocationsPopup, type Repository } from './locations';
-import { bubbleRow } from './vips';
+import { bubbleRow, vipOptions } from './vips';
 import { checkoutOptions, checkoutRef } from './checkout';
 
 interface Props {
@@ -320,14 +320,26 @@ export function App({ post }: Props) {
     post({ type: 'setVips', vips: next });
   };
 
-  const vipItem = (vip: Vip): ContextMenuItem =>
-    vips.some((other) => sameRef(other, vip))
-      ? {
-          label: 'Remove from VIP',
-          onClick: () =>
-            changeVips(vips.filter((other) => !sameRef(other, vip))),
-        }
-      : { label: 'Add VIP', onClick: () => changeVips([...vips, vip]) };
+  const isVip = (vip: Vip) => vips.some((other) => sameRef(other, vip));
+  const toggleVip = (vip: Vip) =>
+    changeVips(
+      isVip(vip)
+        ? vips.filter((other) => !sameRef(other, vip))
+        : [...vips, vip],
+    );
+  const vipItem = (vip: Vip): ContextMenuItem => ({
+    label: isVip(vip) ? 'Remove from VIP' : 'Add VIP',
+    onClick: () => toggleVip(vip),
+  });
+  // A commit's refs and the commit itself, each checked when it is a VIP
+  const commitVipItem = (commitHash: string): ContextMenuItem => ({
+    label: 'VIP',
+    submenu: vipOptions(commitHash, repository?.refs ?? []).map((option) => ({
+      label: option.label,
+      checked: isVip(option.vip),
+      onClick: () => toggleVip(option.vip),
+    })),
+  });
 
   // The items of the menu for what was right-clicked
   const checkout = (target: CheckoutTarget) =>
@@ -350,7 +362,7 @@ export function App({ post }: Props) {
           ),
         },
         { separator: true },
-        vipItem({ kind: 'commit', name: target.hash }),
+        commitVipItem(target.hash),
       ];
     }
     const option = checkoutRef(target.ref, refs, head);

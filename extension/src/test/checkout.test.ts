@@ -22,8 +22,8 @@ suite('Checkout options', () => {
         ['main (checked out)', true],
         ['origin/feature (new branch feature)', false],
         ['origin/fix (switches to fix)', false],
-        ['v1 (detached HEAD)', false],
-        ['Commit aaaaaaa (detached HEAD)', false],
+        ['v1', false],
+        ['Commit aaaaaaa', false],
       ],
     );
   });

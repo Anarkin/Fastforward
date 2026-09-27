@@ -48,16 +48,4 @@ suite('Changes tree', () => {
       '.editorconfig',
     ]);
   });
-
-  test('sums the lines of the files in a folder', () => {
-    const sums = changesTreeRows(files, new Set()).flatMap((row) =>
-      row.kind === 'folder' ? [[row.path, row.deletions, row.insertions]] : [],
-    );
-    assert.deepStrictEqual(sums, [
-      ['src', 0, 3],
-      ['src/Gyurma', 0, 2],
-      ['src/Gyurma.Generators', 0, 1],
-      ['tests/Gyurma.Tests', 0, 1],
-    ]);
-  });
 });

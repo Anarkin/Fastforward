@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import type { RefInfo, Vip, VipRef } from '../protocol';
-import { bubbleRow, compareVips } from '../webview/vips';
+import { bubbleRow, compareVips, vipOptions } from '../webview/vips';
 
 const names = (vips: Vip[]) => vips.map((vip) => vip.name);
 
@@ -78,5 +78,20 @@ suite('Bubbles row', () => {
       'c1',
     );
     assert.deepStrictEqual(names(detached.others), ['b2']);
+  });
+});
+
+suite('VIP options', () => {
+  test("lists a commit's refs in VIP order, then the commit", () => {
+    const refs: RefInfo[] = [
+      { kind: 'tag', name: 'v2', commit: 'abcdef123' },
+      { kind: 'remote', name: 'origin/feature', commit: 'abcdef123' },
+      { kind: 'branch', name: 'other', commit: 'fedcba' },
+      { kind: 'branch', name: 'feature', commit: 'abcdef123' },
+    ];
+    assert.deepStrictEqual(
+      vipOptions('abcdef123', refs).map((option) => option.label),
+      ['feature', 'origin/feature', 'v2', 'Commit abcdef1'],
+    );
   });
 });

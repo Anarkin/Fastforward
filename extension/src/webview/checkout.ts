@@ -15,7 +15,7 @@ const byName = (a: RefInfo, b: RefInfo) => a.name.localeCompare(b.name);
 
 // Checking out a ref: a branch switches to it, a remote branch to the local
 // branch of the same name, which is created to track it when there is none,
-// and a tag detaches HEAD; labels say where each one leads
+// and a tag detaches HEAD; labels say where a remote branch leads
 export function checkoutRef(
   ref: VipRef,
   refs: readonly RefInfo[],
@@ -31,7 +31,7 @@ export function checkoutRef(
     };
   }
   if (ref.kind === 'tag') {
-    return { label: `${ref.name} (detached HEAD)`, target, disabled: false };
+    return { label: ref.name, target, disabled: false };
   }
   const local = withoutRemote(ref.name);
   const exists = refs.some(
@@ -68,7 +68,7 @@ export function checkoutOptions(
       .map((ref) => checkoutRef(ref, refs, head)),
     ...kind('tag').map((ref) => checkoutRef(ref, refs, head)),
     {
-      label: `Commit ${hash.slice(0, 7)} (${checkedOut ? 'checked out' : 'detached HEAD'})`,
+      label: `Commit ${hash.slice(0, 7)}${checkedOut ? ' (checked out)' : ''}`,
       target: { kind: 'commit', hash },
       disabled: checkedOut,
     },

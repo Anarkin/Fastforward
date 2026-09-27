@@ -1118,8 +1118,7 @@ body.resizing {
 /* Folders of the Changes tree stay in the background, so the files and their
    counts stand out */
 .row.folder.counted .twisty,
-.row.folder.counted .path,
-.row.folder .line-counts {
+.row.folder.counted .path {
   opacity: 0.45;
 }
 

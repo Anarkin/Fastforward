@@ -2,6 +2,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FileChange } from '../protocol';
 import type { DiffFile, DiffLine } from './diff';
+import { LineCounts } from './lineCounts';
 
 // Files with more changed lines than this start collapsed, as drawing them is
 // slow and reading them rarely useful, like a generated graph.json
@@ -164,10 +165,10 @@ export function DiffView({
           <span className="unchanged">Unchanged in this commit</span>
         ) : (
           change && (
-            <>
-              <span className="deletions">-{change.deletions}</span>
-              <span className="insertions">+{change.insertions}</span>
-            </>
+            <LineCounts
+              deletions={change.deletions}
+              insertions={change.insertions}
+            />
           )
         )}
       </div>
