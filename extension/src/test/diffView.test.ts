@@ -1,8 +1,8 @@
 import * as assert from 'node:assert';
-import { parsePatch } from '../webview/diff';
+import { parseFilePatch, parsePatch } from '../webview/diff';
 import { collapseThreshold } from '../protocol';
 import { withLargeFiles } from '../webview/diffColumn';
-import { diffRows } from '../webview/diffView';
+import { diffRows, largeFilesToLoad, rowHeight } from '../webview/diffView';
 import { fileChange } from './fixtures';
 
 function patch(path: string, added: number): string {
@@ -94,7 +94,9 @@ suite('Large files in a commit diff', () => {
     const loaded = withLargeFiles(
       parsed,
       files,
-      new Map([['large.json', patch('large.json', 3)]]),
+      new Map([
+        ['large.json', parseFilePatch('large.json', patch('large.json', 3))],
+      ]),
     );
     assert.strictEqual(loaded[1].placeholder, undefined);
     assert.strictEqual(loaded[1].hunks[0].lines.length, 3);
@@ -107,6 +109,102 @@ suite('Large files in a commit diff', () => {
         (file) => file.path,
       ),
       ['extra.ts'],
+    );
+  });
+});
+
+// A large file the commit's diff left out, until it is fetched
+const placeholder = (path: string) => ({
+  path,
+  binary: false,
+  hunks: [],
+  placeholder: { lines: collapseThreshold + 1 },
+});
+
+suite('Large files fetched', () => {
+  test('fetches an opened large file once, not again as others come', () => {
+    const requested = new Set<string>();
+    const open = new Map([
+      ['a.json', true],
+      ['b.json', true],
+    ]);
+    const files = [placeholder('a.json'), placeholder('b.json')];
+    assert.deepStrictEqual(largeFilesToLoad(files, open, requested), [
+      'a.json',
+      'b.json',
+    ]);
+    const aLoaded = [
+      parseFilePatch('a.json', patch('a.json', 1)),
+      placeholder('b.json'),
+    ];
+    assert.deepStrictEqual(largeFilesToLoad(aLoaded, open, requested), []);
+  });
+
+  test('fetches it again once it is a placeholder again, or reopened', () => {
+    const requested = new Set<string>();
+    const open = new Map([['a.json', true]]);
+    largeFilesToLoad([placeholder('a.json')], open, requested);
+    const loaded = [parseFilePatch('a.json', patch('a.json', 1))];
+    largeFilesToLoad(loaded, open, requested);
+    // The diff was fetched again, after a save
+    assert.deepStrictEqual(
+      largeFilesToLoad([placeholder('a.json')], open, requested),
+      ['a.json'],
+    );
+
+    const closed = new Map([['a.json', false]]);
+    assert.deepStrictEqual(
+      largeFilesToLoad([placeholder('a.json')], closed, requested),
+      [],
+    );
+    assert.deepStrictEqual(
+      largeFilesToLoad([placeholder('a.json')], open, requested),
+      ['a.json'],
+    );
+  });
+
+  test('takes a file git found no change in as loaded, without lines', () => {
+    const empty = parseFilePatch('a.json', '');
+    assert.deepStrictEqual(empty, { path: 'a.json', binary: false, hunks: [] });
+    assert.deepStrictEqual(
+      largeFilesToLoad([empty], new Map([['a.json', true]]), new Set()),
+      [],
+    );
+  });
+});
+
+suite('Diff row heights', () => {
+  test('gives every row but the summary and placeholders a fixed height', () => {
+    const rows = diffRows(
+      parsePatch(
+        [
+          'diff --git a/a.png b/a.png',
+          'Binary files a/a.png and b/a.png differ',
+          patch('a.ts', 1),
+          '@@ -10,0 +11,1 @@',
+          '+line',
+        ].join('\n'),
+      ),
+      new Map(),
+      undefined,
+    );
+    assert.deepStrictEqual(
+      rows.map((row) => [row.kind, rowHeight(row)]),
+      [
+        ['summary', undefined],
+        ['file', 28],
+        // As tall as a file header, not more for the padding of its message
+        ['binary', 28],
+        ['file', 28],
+        ['line', 20],
+        ['hunk', 12],
+        ['line', 20],
+      ],
+    );
+    const loading = diffRows([], new Map(), undefined, true);
+    assert.deepStrictEqual(
+      loading.map((row) => rowHeight(row)),
+      [undefined, undefined],
     );
   });
 });

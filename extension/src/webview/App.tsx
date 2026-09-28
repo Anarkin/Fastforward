@@ -68,7 +68,7 @@ export function App({ post }: Props) {
     path,
     patch,
     fileContent,
-    filePatches,
+    largeFiles,
     tree,
     fetching,
     back,
@@ -479,7 +479,7 @@ export function App({ post }: Props) {
                     selection={`${hash ?? ''}:${path ?? ''}`}
                     path={path}
                     loading={patchLoading || opening}
-                    filePatches={filePatches}
+                    largeFiles={largeFiles}
                     onLoadFile={loadFileDiff}
                     files={files}
                     patch={patch}

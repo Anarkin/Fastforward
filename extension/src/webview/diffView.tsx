@@ -38,17 +38,49 @@ export type DiffRow =
       readonly text: string;
     };
 
-// The heights of the rows, fixed so the list knows where everything is
-// without measuring it; the summary is measured, as it has the message
-const rowHeights: Record<Exclude<DiffRow['kind'], 'summary'>, number> = {
+type MeasuredKind = 'summary' | 'skeleton' | 'skeletonLines';
+
+// The heights of the rows, set on them, so the list knows where everything
+// is without measuring it; the style sheet takes the file header's and the
+// line's from here too
+const rowHeights: Record<Exclude<DiffRow['kind'], MeasuredKind>, number> = {
   file: 28,
   large: 36,
   binary: 28,
-  skeleton: 240,
-  skeletonLines: 100,
   hunk: 12,
   line: 20,
   wholeLine: 20,
+};
+
+// What the rows of other heights are guessed at until they are measured: an
+// error, or placeholders that look like the files they stand in for
+const measuredEstimates: Record<MeasuredKind, number> = {
+  summary: 200,
+  skeleton: 240,
+  skeletonLines: 100,
+};
+
+function isMeasured(kind: DiffRow['kind']): kind is MeasuredKind {
+  return kind in measuredEstimates;
+}
+
+// A row's fixed height, or undefined when it is measured
+export function rowHeight(row: DiffRow): number | undefined {
+  const kind = row.kind;
+  return isMeasured(kind) ? undefined : rowHeights[kind];
+}
+
+declare module 'react' {
+  interface CSSProperties {
+    readonly '--diff-file-height'?: string;
+    readonly '--diff-line-height'?: string;
+  }
+}
+
+// Set on the list, for the style sheet
+const heightVariables: React.CSSProperties = {
+  '--diff-file-height': `${rowHeights.file}px`,
+  '--diff-line-height': `${rowHeights.line}px`,
 };
 
 function changedLines(file: DiffFile): number {
@@ -124,6 +156,26 @@ export function diffRows(
   return rows;
 }
 
+// The large files to fetch: those opened while still placeholders, each once
+// until it loads or is closed; one that loaded is fetched again when it is a
+// placeholder again, as the diff was fetched again after a save
+export function largeFilesToLoad(
+  files: readonly DiffFile[],
+  toggled: ReadonlyMap<string, boolean>,
+  requested: Set<string>,
+): string[] {
+  const load: string[] = [];
+  for (const file of files) {
+    if (!file.placeholder || toggled.get(file.path) !== true) {
+      requested.delete(file.path);
+    } else if (!requested.has(file.path)) {
+      requested.add(file.path);
+      load.push(file.path);
+    }
+  }
+  return load;
+}
+
 // The Diff column's contents: the summary, then the files' diffs, or a whole
 // file; only the rows on screen are drawn, so a diff of any size opens fast;
 // keyed by the selection, so another commit or file starts at the top with
@@ -161,22 +213,24 @@ export function DiffView({
     count: rows.length,
     getScrollElement: () => list.current,
     estimateSize: (index) => {
-      const row = rows[index];
-      return row.kind === 'summary' ? 200 : rowHeights[row.kind];
+      const kind = rows[index].kind;
+      return isMeasured(kind) ? measuredEstimates[kind] : rowHeights[kind];
     },
+    // By kind too, so a row of fixed height doesn't take the measured height
+    // of a placeholder that was in its place
+    getItemKey: (index) => `${index}:${rows[index].kind}`,
     overscan: 30,
   });
 
   const toggle = (path: string, open: boolean) =>
     setToggled((all) => new Map(all).set(path, !open));
 
-  // Large files left out of the diff are fetched once opened, also again when
-  // the diff was fetched again, like after a save
+  // Large files left out of the diff are fetched once opened, not again as
+  // each of them comes
+  const requested = useRef(new Set<string>());
   useEffect(() => {
-    for (const file of files) {
-      if (file.placeholder && toggled.get(file.path)) {
-        onLoad(file.path);
-      }
+    for (const path of largeFilesToLoad(files, toggled, requested.current)) {
+      onLoad(path);
     }
   }, [files, toggled, onLoad]);
 
@@ -220,7 +274,7 @@ export function DiffView({
       }
       case 'binary':
         return (
-          <div className="binary">
+          <div className="binary-file">
             {whole ? 'Binary or very large file' : 'Binary file'}
           </div>
         );
@@ -274,24 +328,28 @@ export function DiffView({
     !(topRow?.kind === 'file' && top !== undefined && top.start >= scrollTop);
 
   return (
-    <div className="diff-view">
+    <div className="diff-view" style={heightVariables}>
       {showStuck && <div className="diff-stuck-header">{header(stuck)}</div>}
       <div className="diff-list" ref={list}>
         <div
           className="diff-spacer"
           style={{ height: virtualizer.getTotalSize() }}
         >
-          {items.map((item) => (
-            <div
-              key={item.key}
-              className={`diff-row ${rows[item.index].kind}`}
-              data-index={item.index}
-              ref={virtualizer.measureElement}
-              style={{ transform: `translateY(${item.start}px)` }}
-            >
-              {renderRow(rows[item.index])}
-            </div>
-          ))}
+          {items.map((item) => {
+            const row = rows[item.index];
+            const height = rowHeight(row);
+            return (
+              <div
+                key={item.key}
+                className="diff-row"
+                data-index={item.index}
+                ref={height === undefined ? virtualizer.measureElement : null}
+                style={{ height, transform: `translateY(${item.start}px)` }}
+              >
+                {renderRow(row)}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

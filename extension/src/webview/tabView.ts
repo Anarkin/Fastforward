@@ -5,6 +5,7 @@ import type {
   ToWebview,
 } from '../protocol';
 import { CommitHistory } from './commitHistory';
+import { parseFilePatch, type DiffFile } from './diff';
 import type { WholeFile } from './diffView';
 import type { Repository } from './locations';
 
@@ -42,9 +43,9 @@ export interface TabView {
   readonly patch: string;
   // A file the commit didn't change, shown whole in the Diff column
   readonly fileContent: WholeFile | undefined;
-  // Diffs of the large files the commit's diff left out, by path, fetched
-  // when opened
-  readonly filePatches: ReadonlyMap<string, string>;
+  // The large files the commit's diff left out, by path, fetched when opened
+  // and parsed once as they come
+  readonly largeFiles: ReadonlyMap<string, DiffFile>;
   // Every file of the repository at the selected commit, for the Files view
   readonly tree: { hash: string; paths: readonly string[] } | undefined;
   // Whether a fetch is running
@@ -71,7 +72,7 @@ export const emptyTabView: TabView = {
   path: undefined,
   patch: '',
   fileContent: undefined,
-  filePatches: new Map(),
+  largeFiles: new Map(),
   tree: undefined,
   fetching: false,
   back: [],
@@ -100,7 +101,7 @@ function selected(state: TabView, hash: string | undefined): TabView {
     path: undefined,
     patch: '',
     fileContent: undefined,
-    filePatches: new Map(),
+    largeFiles: new Map(),
     error: undefined,
   };
 }
@@ -197,15 +198,15 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
         patchLoading: false,
         fileContent: undefined,
         // Fetched again for the new diff when still open
-        filePatches: new Map(),
+        largeFiles: new Map(),
       };
     case 'fileDiff':
       return action.hash === state.hash
         ? {
             ...state,
-            filePatches: new Map(state.filePatches).set(
+            largeFiles: new Map(state.largeFiles).set(
               action.path,
-              action.patch,
+              parseFilePatch(action.path, action.patch),
             ),
           }
         : state;

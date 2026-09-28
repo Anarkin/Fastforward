@@ -82,6 +82,73 @@ export function ContextMenu({
   );
 }
 
+export interface DismissOptions {
+  readonly onScroll?: boolean;
+  // Elements matching this selector, like the right-click menu a popup
+  // opens, take clicks without closing it
+  readonly ignore?: string;
+}
+
+// The open menus and popups, the last opened on top; Escape closes only the
+// top one, so a right-click menu over the search closes without the search
+const layers: object[] = [];
+
+// By their properties rather than their classes, which there are none of
+// outside a page
+function isNode(target: EventTarget | null): target is Node {
+  return target !== null && 'nodeType' in target;
+}
+
+function isElement(target: EventTarget | null): target is Element {
+  return isNode(target) && 'closest' in target;
+}
+
+// Listens on the window for what closes a menu; returns what stops listening
+export function listenForDismiss(
+  target: EventTarget,
+  element: { readonly current: Pick<Node, 'contains'> | null },
+  onClose: () => void,
+  { onScroll = false, ignore }: DismissOptions = {},
+): () => void {
+  const layer = {};
+  layers.push(layer);
+  const onPointerDown = (event: Event) => {
+    const clicked = event.target;
+    const inside =
+      (isNode(clicked) && element.current?.contains(clicked)) ||
+      (ignore !== undefined &&
+        isElement(clicked) &&
+        clicked.closest(ignore) !== null);
+    if (!inside) {
+      onClose();
+    }
+  };
+  // Before the page passes the key on to VS Code, which would close the
+  // whole view on Escape
+  const onKeyDown = (event: Event) => {
+    if ('key' in event && event.key === 'Escape' && layers.at(-1) === layer) {
+      event.stopPropagation();
+      onClose();
+    }
+  };
+  target.addEventListener('pointerdown', onPointerDown, true);
+  target.addEventListener('keydown', onKeyDown, true);
+  target.addEventListener('blur', onClose);
+  if (onScroll) {
+    target.addEventListener('wheel', onClose, true);
+  }
+  return () => {
+    const index = layers.indexOf(layer);
+    if (index !== -1) {
+      layers.splice(index, 1);
+    }
+    target.removeEventListener('pointerdown', onPointerDown, true);
+    target.removeEventListener('keydown', onKeyDown, true);
+    target.removeEventListener('blur', onClose);
+    target.removeEventListener('wheel', onClose, true);
+  };
+}
+
 // Closes a menu on a click outside the element, Escape, the window losing
 // focus, and scrolling when asked
 export function useDismiss(
@@ -89,42 +156,16 @@ export function useDismiss(
   onClose: () => void,
   {
     onScroll = false,
+    ignore,
     enabled = true,
-  }: { onScroll?: boolean; enabled?: boolean } = {},
+  }: DismissOptions & { readonly enabled?: boolean } = {},
 ): void {
   useEffect(() => {
     if (!enabled) {
       return () => {};
     }
-    const onPointerDown = (event: PointerEvent) => {
-      if (
-        !(event.target instanceof Node) ||
-        !element.current?.contains(event.target)
-      ) {
-        onClose();
-      }
-    };
-    // Before the page passes the key on to VS Code, which would close the
-    // whole view on Escape
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.stopPropagation();
-        onClose();
-      }
-    };
-    window.addEventListener('pointerdown', onPointerDown, true);
-    window.addEventListener('keydown', onKeyDown, true);
-    window.addEventListener('blur', onClose);
-    if (onScroll) {
-      window.addEventListener('wheel', onClose, true);
-    }
-    return () => {
-      window.removeEventListener('pointerdown', onPointerDown, true);
-      window.removeEventListener('keydown', onKeyDown, true);
-      window.removeEventListener('blur', onClose);
-      window.removeEventListener('wheel', onClose, true);
-    };
-  }, [element, onClose, onScroll, enabled]);
+    return listenForDismiss(window, element, onClose, { onScroll, ignore });
+  }, [element, onClose, onScroll, ignore, enabled]);
 }
 
 // The items of a menu or submenu; a submenu opens while its item is hovered
@@ -139,11 +180,13 @@ export function MenuItems({
   return (
     <>
       {items.map((item, index) =>
+        // By place, like the open submenu, as labels can repeat, like a
+        // branch and a tag of the same name
         'separator' in item ? (
-          <div key={`separator-${index}`} className="menu-separator" />
+          <div key={index} className="menu-separator" />
         ) : (
           <div
-            key={item.label}
+            key={index}
             className="menu-entry"
             onMouseEnter={() =>
               setOpenSubmenu(item.submenu ? index : undefined)

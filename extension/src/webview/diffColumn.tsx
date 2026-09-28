@@ -9,7 +9,7 @@ import { DiffView } from './diffView';
 export function withLargeFiles(
   parsed: readonly DiffFile[],
   files: readonly FileChange[],
-  filePatches: ReadonlyMap<string, string>,
+  largeFiles: ReadonlyMap<string, DiffFile>,
 ): DiffFile[] {
   const byPath = new Map(parsed.map((file) => [file.path, file]));
   const result: DiffFile[] = [];
@@ -19,10 +19,8 @@ export function withLargeFiles(
       result.push(file);
       byPath.delete(change.path);
     } else if (isLargeChange(change)) {
-      const loaded = filePatches.get(change.path);
-      const [loadedFile] = loaded === undefined ? [] : parsePatch(loaded);
       result.push(
-        loadedFile ?? {
+        largeFiles.get(change.path) ?? {
           path: change.path,
           binary: false,
           hunks: [],
@@ -40,7 +38,7 @@ export function Diff({
   loading,
   files,
   patch,
-  filePatches,
+  largeFiles,
   onLoadFile,
   fileContent,
   error,
@@ -52,19 +50,20 @@ export function Diff({
   loading: boolean;
   files: readonly FileChange[];
   patch: string;
-  filePatches: ReadonlyMap<string, string>;
+  largeFiles: ReadonlyMap<string, DiffFile>;
   onLoadFile: (path: string) => void;
   // A file the commit didn't change, shown whole instead of a diff
   fileContent: { path: string; content: string; binary: boolean } | undefined;
   error: string | undefined;
 }) {
-  const diffFiles = useMemo(() => {
-    const parsed = parsePatch(patch);
-    // One selected file is the whole diff
-    return path === undefined
-      ? withLargeFiles(parsed, files, filePatches)
-      : parsed;
-  }, [patch, path, files, filePatches]);
+  // Parsed apart from the large files, which come one by one
+  const parsed = useMemo(() => parsePatch(patch), [patch]);
+  const diffFiles = useMemo(
+    () =>
+      // One selected file is the whole diff
+      path === undefined ? withLargeFiles(parsed, files, largeFiles) : parsed,
+    [parsed, path, files, largeFiles],
+  );
   const changes = useMemo(
     () => new Map(files.map((file) => [file.path, file])),
     [files],

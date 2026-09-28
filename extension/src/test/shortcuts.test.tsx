@@ -7,17 +7,22 @@ import { definitions } from './fixtures';
 const press = (
   key: string,
   extra: Partial<Parameters<typeof shortcutOf>[0]> = {},
+  mac = false,
 ) =>
-  shortcutOf({
-    key,
-    ctrlKey: false,
-    altKey: false,
-    metaKey: false,
-    repeat: false,
-    defaultPrevented: false,
-    target: null,
-    ...extra,
-  })?.id;
+  shortcutOf(
+    {
+      key,
+      ctrlKey: false,
+      shiftKey: false,
+      altKey: false,
+      metaKey: false,
+      repeat: false,
+      defaultPrevented: false,
+      target: null,
+      ...extra,
+    },
+    mac,
+  )?.id;
 
 // What a key press's target is to the shortcuts, without a page to make one
 function element(tagName: string, isContentEditable = false): EventTarget {
@@ -37,7 +42,19 @@ suite('Keyboard shortcuts', () => {
     assert.strictEqual(press('i'), 'i');
     assert.strictEqual(press('x'), undefined);
     // Shift makes it another key
-    assert.strictEqual(press('C'), undefined);
+    assert.strictEqual(press('C', { shiftKey: true }), undefined);
+  });
+
+  test('matches a letter with Caps Lock on', () => {
+    assert.strictEqual(press('C'), 'c');
+    assert.strictEqual(press('L', { ctrlKey: true }), 'ctrl+l');
+  });
+
+  test('takes Cmd for Ctrl on macOS, and leaves it to VS Code elsewhere', () => {
+    assert.strictEqual(press('l', { metaKey: true }, true), 'ctrl+l');
+    assert.strictEqual(press('l', { ctrlKey: true }, true), 'ctrl+l');
+    assert.strictEqual(press('c', { metaKey: true }, true), undefined);
+    assert.strictEqual(press('l', { metaKey: true }), undefined);
   });
 
   test("leaves VS Code's keys, repeats and handled keys alone", () => {

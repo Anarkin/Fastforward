@@ -101,6 +101,12 @@ function headerPath(rest: string): string {
   return split === -1 ? rest : rest.slice(split + 3);
 }
 
+// The diff of one file, fetched on its own; without changes when git found
+// none, rather than missing, so it doesn't stay a placeholder
+export function parseFilePatch(path: string, patch: string): DiffFile {
+  return parsePatch(patch)[0] ?? { path, binary: false, hunks: [] };
+}
+
 export function parsePatch(patch: string): DiffFile[] {
   const files: ParsedFile[] = [];
   let file: ParsedFile | undefined;

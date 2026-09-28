@@ -77,6 +77,19 @@ export function NavBar({
   );
 }
 
+// What a click on a back or forward button does: nothing when a hold opened
+// its history, which the click ends; closing the history while it is open,
+// as it stays open on clicks on the button; otherwise going a step
+export function historyButtonClick(
+  held: boolean,
+  open: boolean,
+): 'none' | 'close' | 'step' {
+  if (held) {
+    return 'none';
+  }
+  return open ? 'close' : 'step';
+}
+
 // Click to go a step, hold or right-click to pick one from the history
 function HistoryButton({
   direction,
@@ -90,9 +103,14 @@ function HistoryButton({
   const [open, setOpen] = useState(false);
   const container = useRef<HTMLDivElement>(null);
   const hold = useRef<ReturnType<typeof setTimeout>>(undefined);
-  // The hold opened the history, so letting go doesn't also go a step
+  // The hold opened the history, so letting go doesn't also go a step; until
+  // the click that ends it, or the history closing when the pointer was let
+  // go elsewhere, so that a later click, or Enter, isn't taken for it
   const held = useRef(false);
-  const close = useCallback(() => setOpen(false), []);
+  const close = useCallback(() => {
+    held.current = false;
+    setOpen(false);
+  }, []);
   const label = direction === 'back' ? 'Back' : 'Forward';
 
   return (
@@ -112,7 +130,11 @@ function HistoryButton({
         onPointerUp={() => clearTimeout(hold.current)}
         onPointerLeave={() => clearTimeout(hold.current)}
         onClick={() => {
-          if (!held.current) {
+          const click = historyButtonClick(held.current, open);
+          held.current = false;
+          if (click === 'close') {
+            close();
+          } else if (click === 'step') {
             onNavigate(direction, 1);
           }
         }}
@@ -183,20 +205,36 @@ export interface Address {
 const peekDelay = 300;
 const unpeekDelay = 200;
 
-export type PeekMode = 'closed' | 'peek' | 'open';
+// A peek comes from the pointer resting on something, and a pinned one from
+// the keyboard, which the pointer leaving doesn't close
+export type PeekMode = 'closed' | 'peek' | 'pinned' | 'open';
 
-// What the pointer resting on something, or leaving it, and the keyboard's
-// toggle lead to; the pointer's get there after a delay
+function isPeek(mode: PeekMode): boolean {
+  return mode === 'peek' || mode === 'pinned';
+}
+
+// What the pointer resting on something, or leaving it, the keyboard's toggle
+// and a change in what there is to peek at lead to; the pointer's get there
+// after a delay
 export function nextPeekMode(
   mode: PeekMode,
-  action: 'rest' | 'leave' | 'toggle',
+  action: 'rest' | 'leave' | 'toggle' | 'update',
   canPeek: boolean,
 ): PeekMode {
-  if (mode === 'peek' && action !== 'rest') {
-    return 'closed';
+  // What it peeked at went away, like the commit; the peek closes rather than
+  // staying unseen, taking the next Escape, or coming back with the next one
+  if (!canPeek) {
+    return isPeek(mode) ? 'closed' : mode;
   }
-  if (mode === 'closed' && canPeek && action !== 'leave') {
-    return 'peek';
+  switch (action) {
+    case 'rest':
+      return mode === 'closed' ? 'peek' : mode;
+    case 'leave':
+      return mode === 'peek' ? 'closed' : mode;
+    case 'toggle':
+      return isPeek(mode) ? 'closed' : mode === 'closed' ? 'pinned' : mode;
+    case 'update':
+      return mode;
   }
   return mode;
 }
@@ -205,6 +243,10 @@ export function nextPeekMode(
 // the pointer is on it or on the peek; a click opens it to stay until closed
 function usePeek(canPeek: boolean) {
   const [mode, setMode] = useState<PeekMode>('closed');
+  const updated = nextPeekMode(mode, 'update', canPeek);
+  if (updated !== mode) {
+    setMode(updated);
+  }
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => {
     const current = timer;
@@ -297,8 +339,17 @@ function AddressBar({
   const { mode, startPeek, endPeek, togglePeek, open, close } = usePeek(
     address.commit !== undefined,
   );
+  // Each Ctrl+L opens the search anew, selecting its text, also when it is
+  // open already but a click in it took the focus away
+  const [searches, setSearches] = useState(0);
   // Ctrl+L like Chrome's
-  useShortcuts({ 'ctrl+l': open, i: togglePeek });
+  useShortcuts({
+    'ctrl+l': () => {
+      open();
+      setSearches((count) => count + 1);
+    },
+    i: togglePeek,
+  });
   // The search text of each repository, kept while the popup is closed
   const [queries, setQueries] = useState<ReadonlyMap<string, string>>(
     new Map(),
@@ -307,8 +358,8 @@ function AddressBar({
   const setQuery = (next: string) =>
     root && setQueries((all) => new Map(all).set(root, next));
   const container = useRef<HTMLDivElement>(null);
-  // A peek from the keyboard goes with Escape or a click elsewhere
-  useDismiss(container, close, { enabled: mode === 'peek' });
+  // A peek goes with Escape or a click elsewhere
+  useDismiss(container, close, { enabled: isPeek(mode) });
 
   return (
     <div
@@ -331,11 +382,12 @@ function AddressBar({
           {address.subject ?? 'Search branches, remotes and tags'}
         </span>
       </button>
-      {mode === 'peek' && address.commit && (
+      {isPeek(mode) && address.commit && (
         <MessagePeek commit={address.commit} onOpen={open} />
       )}
       {mode === 'open' && (
         <LocationsPopup
+          key={searches}
           repository={repository}
           selected={selected}
           anchor={container}

@@ -516,8 +516,12 @@ body.resizing {
   white-space: nowrap;
 }
 
-.binary {
-  padding: 8px;
+.binary-file {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: 100%;
+  padding: 0 8px;
   color: var(--vscode-descriptionForeground);
 }
 
@@ -928,8 +932,9 @@ body.resizing {
     0 0 0 1px var(--vscode-widget-shadow, transparent);
 }
 
-/* The Diff column draws only the rows on screen; every row but the summary has
-   a fixed height, see rowHeights in diffView.tsx */
+/* The Diff column draws only the rows on screen; most rows have a fixed
+   height, which they are given from rowHeights in diffView.tsx, and so are
+   --diff-file-height and --diff-line-height */
 .diff-view {
   position: relative;
   height: 100%;
@@ -954,35 +959,17 @@ body.resizing {
   width: max-content;
 }
 
-.diff-row.file,
-.diff-row.binary {
-  height: 28px;
-}
-
-.diff-row.large {
-  height: 36px;
-}
-
-.diff-row.hunk {
-  height: 12px;
-}
-
-.diff-row.line,
-.diff-row.wholeLine {
-  height: 20px;
-}
-
 .diff-row .file-header {
   position: static;
   box-sizing: border-box;
-  height: 28px;
+  height: var(--diff-file-height);
   align-items: center;
 }
 
 /* Lines were skipped here, between two changed parts of a file */
 .hunk-divider {
   box-sizing: border-box;
-  height: 12px;
+  height: 100%;
   background: var(--vscode-editorWidget-background);
   border-top: 1px solid var(--vscode-panel-border);
   border-bottom: 1px solid var(--vscode-panel-border);
@@ -990,8 +977,8 @@ body.resizing {
 
 .diff-line {
   display: flex;
-  height: 20px;
-  line-height: 20px;
+  height: var(--diff-line-height);
+  line-height: var(--diff-line-height);
   font-family: var(--vscode-editor-font-family);
   font-size: var(--vscode-editor-font-size);
 }
@@ -1038,7 +1025,7 @@ body.resizing {
 .diff-stuck-header .file-header {
   position: static;
   box-sizing: border-box;
-  height: 28px;
+  height: var(--diff-file-height);
   align-items: center;
 }
 
@@ -1048,7 +1035,7 @@ body.resizing {
   align-items: center;
   gap: 10px;
   box-sizing: border-box;
-  height: 36px;
+  height: 100%;
   padding: 0 12px;
   color: var(--vscode-descriptionForeground);
 }

@@ -1,9 +1,15 @@
 import * as assert from 'node:assert';
+import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { changesTreeElements, changesTreeRows } from '../webview/changesTree';
 import { MenuItems } from '../webview/contextMenu';
 import { LocationsPopup } from '../webview/locations';
-import { MessagePeek, NavBar, nextPeekMode } from '../webview/navBar';
+import {
+  historyButtonClick,
+  MessagePeek,
+  NavBar,
+  nextPeekMode,
+} from '../webview/navBar';
 import { parsePatch } from '../webview/diff';
 import { diffRows } from '../webview/diffView';
 import { changeTitle, statusClass } from '../webview/fileStatus';
@@ -231,10 +237,35 @@ suite('Peek', () => {
   });
 
   test('toggles a peek from the keyboard, but not what a click opened', () => {
-    assert.strictEqual(nextPeekMode('closed', 'toggle', true), 'peek');
+    assert.strictEqual(nextPeekMode('closed', 'toggle', true), 'pinned');
     assert.strictEqual(nextPeekMode('closed', 'toggle', false), 'closed');
+    assert.strictEqual(nextPeekMode('pinned', 'toggle', true), 'closed');
     assert.strictEqual(nextPeekMode('peek', 'toggle', true), 'closed');
     assert.strictEqual(nextPeekMode('open', 'toggle', true), 'open');
+  });
+
+  test('keeps a peek from the keyboard when the pointer leaves', () => {
+    assert.strictEqual(nextPeekMode('pinned', 'leave', true), 'pinned');
+    assert.strictEqual(nextPeekMode('pinned', 'rest', true), 'pinned');
+  });
+
+  test('closes a peek when what it peeks at goes away', () => {
+    assert.strictEqual(nextPeekMode('peek', 'update', false), 'closed');
+    assert.strictEqual(nextPeekMode('pinned', 'update', false), 'closed');
+    assert.strictEqual(nextPeekMode('pinned', 'update', true), 'pinned');
+    // The search doesn't need the commit
+    assert.strictEqual(nextPeekMode('open', 'update', false), 'open');
+  });
+});
+
+suite('History buttons', () => {
+  test('go a step on a click, but not on the one ending a hold', () => {
+    assert.strictEqual(historyButtonClick(false, false), 'step');
+    assert.strictEqual(historyButtonClick(true, true), 'none');
+  });
+
+  test('close their open history on a click instead of going a step', () => {
+    assert.strictEqual(historyButtonClick(false, true), 'close');
   });
 });
 
@@ -290,6 +321,26 @@ suite('Hash suggestion', () => {
 });
 
 suite('Menu items', () => {
+  test('keys items apart that have the same label', () => {
+    let items: React.ReactNode;
+    // Called inside a component, as it keeps which submenu is open
+    function Probe() {
+      items = MenuItems({
+        items: [
+          { label: 'v1', onClick: noop },
+          { separator: true },
+          { label: 'v1', onClick: noop },
+        ],
+        onClose: noop,
+      });
+      return null;
+    }
+    renderToStaticMarkup(<Probe />);
+    assert.ok(isValidElement<{ children: React.ReactElement[] }>(items));
+    const keys = items.props.children.map((item) => item.key);
+    assert.strictEqual(new Set(keys).size, 3);
+  });
+
   test('marks the picked one of several, and switches with a check', () => {
     const html = renderToStaticMarkup(
       <MenuItems

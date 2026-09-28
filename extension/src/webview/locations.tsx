@@ -7,7 +7,7 @@ import {
   useState,
 } from 'react';
 import type { HashLookup, RefInfo, RefKind } from '../protocol';
-import { OpenContextMenu } from './contextMenu';
+import { OpenContextMenu, useDismiss } from './contextMenu';
 import { IndentGuides, treeIndent, twistyWidth } from './tree';
 
 export interface Repository {
@@ -236,23 +236,9 @@ export function LocationsPopup({
     }
   };
 
-  // Closes on a click outside, but not on the button, which toggles it, or on
-  // its own right-click menu
-  useEffect(() => {
-    const onPointerDown = (event: PointerEvent) => {
-      const target = event.target;
-      if (
-        target instanceof Element &&
-        !popup.current?.contains(target) &&
-        !anchor.current?.contains(target) &&
-        !target.closest('.context-menu')
-      ) {
-        onClose();
-      }
-    };
-    window.addEventListener('pointerdown', onPointerDown, true);
-    return () => window.removeEventListener('pointerdown', onPointerDown, true);
-  }, [anchor, onClose]);
+  // Closes on a click outside, Escape or the window losing focus, but not on
+  // a click on the address bar, which holds it, or in its own right-click menu
+  useDismiss(anchor, onClose, { ignore: '.context-menu' });
 
   // Up and down within a column, left and right to the nearest match of the
   // next column that has any
@@ -285,13 +271,7 @@ export function LocationsPopup({
       ArrowLeft: [-1, 0],
       ArrowRight: [1, 0],
     };
-    if (event.key === 'Escape') {
-      // Only the popup closes, not the whole view, which VS Code would do
-      // with the key
-      event.preventDefault();
-      event.stopPropagation();
-      onClose();
-    } else if (query && event.key in moves) {
+    if (query && event.key in moves) {
       // Left and right move the caret in the search box unless it's empty
       event.preventDefault();
       const [columns, rows] = moves[event.key];
