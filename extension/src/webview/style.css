@@ -8,6 +8,11 @@ body,
 }
 
 body {
+  /* The active tab's and the rows under it, the address bar's and the
+     bookmarks', which read as one toolbar; the panels' background, but a
+     shade toward the text would set them apart, e.g.
+     color-mix(in srgb, var(--vscode-foreground) 4%, var(--vscode-editor-background)) */
+  --toolbar-background: var(--vscode-editor-background);
   /* The address popup's, the tab row's color, which rows over its lists
      need too */
   --popup-background: var(
@@ -136,7 +141,7 @@ body {
 
 .tab.active {
   color: var(--vscode-tab-activeForeground);
-  background: var(--vscode-editor-background);
+  background: var(--toolbar-background);
 }
 
 .tab:not(.active):not(:hover) .tab-close {
@@ -637,6 +642,7 @@ body.resizing {
 /* The bookmarks under the tabs, wrapping onto more lines when they don't fit */
 .bubble-bar {
   position: relative;
+  background: var(--toolbar-background);
   flex: none;
   display: flex;
   flex-wrap: wrap;
@@ -1180,6 +1186,7 @@ body.vscode-high-contrast-light .menu {
 /* The toolbar over the bubbles: back, forward and fetch, then the address */
 .nav-bar {
   flex: none;
+  background: var(--toolbar-background);
   display: flex;
   align-items: center;
   gap: 2px;
