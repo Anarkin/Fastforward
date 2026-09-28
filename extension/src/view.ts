@@ -661,6 +661,11 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       });
       return undefined;
     }
+    // A repository the Git extension just opened may not have read its state
+    // yet, which would show no branch checked out
+    if (!repository.state.HEAD) {
+      await repository.status();
+    }
     const tab = this.tabState(root);
     return {
       git,
@@ -1062,15 +1067,18 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       return;
     }
     context.tab.changedFiles = new Map(files.map((file) => [file.path, file]));
+    // A refresh doesn't send what the page shows already; a selection always
+    // sends, as the page cleared its files and diff when it asked
+    const refreshing = workingTreeFilesKnown !== undefined;
     const shownFiles = context.tab.shown.get('files');
-    if (!(
+    const unchanged =
       shownFiles?.type === 'files' &&
       shownFiles.hash === hash &&
-      JSON.stringify(shownFiles.files) === JSON.stringify(files)
-    )) {
+      JSON.stringify(shownFiles.files) === JSON.stringify(files);
+    if (!(refreshing && unchanged)) {
       context.post({ type: 'files', hash, files });
     }
-    await this.sendDiff(context, hash);
+    await this.sendDiff(context, hash, refreshing);
   }
 
   // The diff of one large file the commit's diff left out
@@ -1099,7 +1107,11 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     context.post({ type: 'tree', hash, paths });
   }
 
-  private async sendDiff(context: Context, hash: string): Promise<void> {
+  private async sendDiff(
+    context: Context,
+    hash: string,
+    refreshing = false,
+  ): Promise<void> {
     const { path: file } = context.tab;
     const gitPath = context.git.git.path;
     // Another commit or file was selected while git ran
@@ -1143,6 +1155,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         : await showPatch(gitPath, context.root, hash, scope);
     const shownDiff = context.tab.shown.get('diff');
     const unchanged =
+      refreshing &&
       shownDiff?.type === 'diff' &&
       shownDiff.hash === hash &&
       shownDiff.path === file &&
