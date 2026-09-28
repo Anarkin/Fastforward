@@ -554,16 +554,19 @@ body.resizing {
 
 /* A row's height is set from its ref count; see commitRowHeight */
 
-/* A ref of the commit on its own line, below the author and date; see
-   bubbleLineHeight */
+/* The commit's refs below the author and date, wrapping onto more lines as
+   needed, each line as tall as bubbleLineHeight: a bubble and the gap */
 .bubble-line {
   display: flex;
-  height: 20px;
+  flex-wrap: wrap;
   align-items: center;
+  gap: 4px;
   min-width: 0;
+  padding: 2px 0;
 }
 
 .bubble-line .badge {
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
 }

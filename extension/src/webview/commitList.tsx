@@ -78,13 +78,17 @@ export function Commits({
   const skeleton = useSkeleton(opening);
   const count = offset + (history?.total ?? (skeleton ? openingRows : 0));
 
+  // A commit's bubbles wrap onto as many lines as the column's width needs,
+  // so a row with bubbles is measured once drawn, from one line to start with
+  const hasBubbles = useCallback(
+    (index: number) =>
+      index >= offset && (history?.refCountAt(index - offset) ?? 0) > 0,
+    [history, offset],
+  );
   const rowHeight = useCallback(
     (index: number) =>
-      index < offset
-        ? commitRowHeight
-        : commitRowHeight +
-          (history?.refCountAt(index - offset) ?? 0) * bubbleLineHeight,
-    [history, offset],
+      hasBubbles(index) ? commitRowHeight + bubbleLineHeight : commitRowHeight,
+    [hasBubbles],
   );
   const virtualizer = useVirtualizer({
     count,
@@ -292,16 +296,14 @@ export function Commits({
           <span className="author">{commit.authorName}</span>
           <span className="date">{formatDateTime(commit.authorDate)}</span>
         </div>
-        {detached === commit.hash && (
+        {hasBubbles(index) && (
           <div className="bubble-line">
-            <HeadBubble commit={commit.hash} />
+            {detached === commit.hash && <HeadBubble commit={commit.hash} />}
+            {(refsByCommit.get(commit.hash) ?? []).map((ref) => (
+              <RefBubble key={`${ref.kind}:${ref.name}`} info={ref} />
+            ))}
           </div>
         )}
-        {(refsByCommit.get(commit.hash) ?? []).map((ref) => (
-          <div key={`${ref.kind}:${ref.name}`} className="bubble-line">
-            <RefBubble info={ref} />
-          </div>
-        ))}
       </div>
     );
   };
@@ -338,8 +340,12 @@ export function Commits({
             <div
               key={row.key}
               className="list-row"
+              data-index={row.index}
+              ref={
+                hasBubbles(row.index) ? virtualizer.measureElement : undefined
+              }
               style={{
-                height: row.size,
+                height: hasBubbles(row.index) ? undefined : row.size,
                 transform: `translateY(${row.start}px)`,
               }}
             >
