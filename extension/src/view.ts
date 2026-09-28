@@ -70,12 +70,12 @@ const modalEditorGroup = -4;
 interface Tab extends TabState {
   // Loading in the background, before the tab is opened
   preloading: Promise<void> | undefined;
-  // The load or refresh that is running, and whether another change came in
-  // during it, which runs a refresh once more instead of in parallel, with
-  // the context of the last one asked for, whose page may be a newer one
+  // The load or refresh that is running, and the pages that asked for another
+  // during it, by the context each asked with; one more refresh runs after it
+  // instead of in parallel, for all of them, as a watcher of an older page
+  // can ask after a newer page did, and neither may miss the changes
   refreshing: Promise<void> | undefined;
-  refreshAgain: boolean;
-  refreshContext: Context | undefined;
+  refreshAgain: Map<Session | undefined, Context>;
 }
 
 // One page's link to the view: its messages go in, answers go to its post
@@ -97,9 +97,28 @@ interface Session {
 
 interface Context extends RepositoryAt {
   readonly tab: Tab;
+  // The page the messages go to, none while preloading
+  readonly session: Session | undefined;
   // Drops messages once the user switched to another tab, and all of them
   // while preloading
   readonly post: (message: ToWebview) => void;
+}
+
+// One context for the pages of a tab that each asked with their own, whose
+// messages go to all of them
+function toAll(contexts: readonly Context[]): Context | undefined {
+  const [first] = contexts;
+  if (!first || contexts.length === 1) {
+    return first;
+  }
+  return {
+    ...first,
+    post: (message) => {
+      for (const context of contexts) {
+        context.post(message);
+      }
+    },
+  };
 }
 
 export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
@@ -580,8 +599,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         ...newTabState(),
         preloading: undefined,
         refreshing: undefined,
-        refreshAgain: false,
-        refreshContext: undefined,
+        refreshAgain: new Map(),
       };
       this.tabStates.set(root, tab);
     }
@@ -631,6 +649,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       repository,
       root,
       tab,
+      session: live ? session : undefined,
       post: (message) => {
         keep(tab.shown, message);
         if (live && this.storage.activeTab === root) {
@@ -806,10 +825,9 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     load?: (context: Context) => Promise<void>,
   ): Promise<void> {
     const { tab } = context;
-    tab.refreshContext = context;
     if (tab.refreshing) {
       if (!load) {
-        tab.refreshAgain = true;
+        tab.refreshAgain.set(context.session, context);
         return tab.refreshing;
       }
       // A load isn't a refresh to fold into the running one, so it waits
@@ -819,15 +837,18 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     }
     tab.refreshing = (async () => {
       try {
-        let next = load ?? ((latest: Context) => this.refreshOnce(latest));
-        do {
-          tab.refreshAgain = false;
-          await next(tab.refreshContext ?? context);
-          next = (latest) => this.refreshOnce(latest);
-        } while (tab.refreshAgain);
+        await (load ? load(context) : this.refreshOnce(context));
+        for (;;) {
+          const again = toAll([...tab.refreshAgain.values()]);
+          if (!again) {
+            break;
+          }
+          tab.refreshAgain.clear();
+          await this.refreshOnce(again);
+        }
       } finally {
         tab.refreshing = undefined;
-        tab.refreshContext = undefined;
+        tab.refreshAgain.clear();
       }
     })();
     return tab.refreshing;

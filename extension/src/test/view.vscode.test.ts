@@ -563,7 +563,13 @@ suite('View', function () {
         newer.messages.push(message),
       );
       try {
-        await Promise.all([connection.refresh(), newerConnection.refresh()]);
+        // The older page asks again after the newer one, as its watcher does
+        // when a change comes in then
+        await Promise.all([
+          connection.refresh(),
+          newerConnection.refresh(),
+          connection.refresh(),
+        ]);
         assert.ok(newer.last('workingTree'));
       } finally {
         newerConnection.dispose();
