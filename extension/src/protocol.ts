@@ -111,6 +111,9 @@ export type ToExtension =
   | { readonly type: 'addTab' }
   | { readonly type: 'closeTab'; readonly root: string }
   | { readonly type: 'sortTabs' }
+  // The pointer rests on a tab, which is loaded in the background so it opens
+  // as fast as one that was open before
+  | { readonly type: 'preloadTab'; readonly root: string }
   // The widths of the Commits and Files columns, saved per user
   | { readonly type: 'setColumnWidths'; readonly widths: readonly number[] }
   // Collapses or expands one merge commit, unlike the setting

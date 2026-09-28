@@ -34,6 +34,13 @@ import { Files } from './filesColumn';
 import { foldersOf } from './fileTree';
 import { sameRef } from '../refNames';
 import { TabBar } from './tabBar';
+import {
+  foldersOfTab,
+  openFolders,
+  toggleFolder,
+  type FoldersByTab,
+  type TabFolders,
+} from './tabFolders';
 import { emptyTabView, reduceTabView } from './tabView';
 import { vipOptions } from './vips';
 
@@ -67,13 +74,12 @@ export function App({ post }: Props) {
   const [collapseMerges, setCollapseMerges] = useState(true);
   const [filesMode, setFilesMode] = useState<FilesMode>('changes');
   const [changesView, setChangesView] = useState<ChangesView>('list');
-  // Closed folders of the Changes tree, which start open
-  const [closedFolders, setClosedFolders] = useState<ReadonlySet<string>>(
-    new Set(),
-  );
-  // Open folders of the Files view, kept while moving between commits
-  const [openFolders, setOpenFolders] = useState<ReadonlySet<string>>(
-    new Set(),
+  // Open and closed folders of each tab, kept while moving between commits
+  // and tabs
+  const [folders, setFolders] = useState<FoldersByTab>(new Map());
+  const { open: openedFolders, closed: closedFolders } = foldersOfTab(
+    folders,
+    activeTab,
   );
   // Refs pinned to the VIP row, saved per repository
   const [vips, setVips] = useState<readonly Vip[]>([]);
@@ -200,24 +206,13 @@ export function App({ post }: Props) {
     if (filesMode !== 'files' || path === undefined) {
       return;
     }
-    const folders = foldersOf(path);
-    setOpenFolders((open) =>
-      folders.every((folder) => open.has(folder))
-        ? open
-        : new Set([...open, ...folders]),
-    );
-  }, [filesMode, path]);
+    setFolders((all) => openFolders(all, activeTab, foldersOf(path)));
+  }, [filesMode, path, activeTab]);
 
-  const toggleIn = (set: typeof setOpenFolders) => (folder: string) =>
-    set((folders) => {
-      const next = new Set(folders);
-      if (!next.delete(folder)) {
-        next.add(folder);
-      }
-      return next;
-    });
-  const toggleFolder = toggleIn(setOpenFolders);
-  const toggleClosedFolder = toggleIn(setClosedFolders);
+  const toggleFolderOf = (kind: keyof TabFolders) => (folder: string) =>
+    setFolders((all) => toggleFolder(all, activeTab, kind, folder));
+  const toggleOpenFolder = toggleFolderOf('open');
+  const toggleClosedFolder = toggleFolderOf('closed');
 
   const changeFilesMode = (mode: FilesMode) => {
     setFilesMode(mode);
@@ -322,6 +317,7 @@ export function App({ post }: Props) {
               tabs={tabs}
               active={activeTab}
               onSelect={(root) => post({ type: 'selectTab', root })}
+              onPreload={(root) => post({ type: 'preloadTab', root })}
               onClose={(root) => post({ type: 'closeTab', root })}
               onAdd={() => post({ type: 'addTab' })}
               onSort={() => post({ type: 'sortTabs' })}
@@ -384,8 +380,8 @@ export function App({ post }: Props) {
                         ? tree.paths
                         : undefined
                     }
-                    openFolders={openFolders}
-                    onToggleFolder={toggleFolder}
+                    openFolders={openedFolders}
+                    onToggleFolder={toggleOpenFolder}
                     selected={path}
                     onSelect={selectFile}
                   />

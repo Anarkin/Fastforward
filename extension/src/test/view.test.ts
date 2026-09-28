@@ -94,6 +94,11 @@ async function createRepository(): Promise<{
   };
 }
 
+// How many histories the view sent, replayed ones included
+function commitsSent(messages: readonly ToWebview[]): number {
+  return messages.filter((message) => message.type === 'commits').length;
+}
+
 suite('View', function () {
   this.timeout(30_000);
 
@@ -318,6 +323,179 @@ suite('View', function () {
       assert.ok(fileDiff?.patch.includes('+line 1999'));
     } finally {
       largeConnection.dispose();
+    }
+  });
+
+  // A view with the temp repository and a second one as tabs, to switch
+  // between them
+  async function twoTabs(): Promise<{
+    page: FakePage;
+    connection: Connection;
+    globalState: FakeMemento;
+    other: string;
+  }> {
+    const other = path.join(repository.root, `other-${Date.now()}`);
+    fs.mkdirSync(other);
+    const gitPath = (await getGitApi()).git.path;
+    await runGit(gitPath, other, ['init', '-b', 'main']);
+    await runGit(gitPath, other, [
+      '-c',
+      'user.name=Test',
+      '-c',
+      'user.email=test@example.com',
+      'commit',
+      '--allow-empty',
+      '-m',
+      'other',
+    ]);
+    const workspaceState = new FakeMemento();
+    await workspaceState.update('tabs', [repository.root, other]);
+    await workspaceState.update('activeTab', repository.root);
+    const twoGlobalState = new FakeMemento();
+    const twoPage = new FakePage();
+    const twoConnection = new FastforwardView(
+      log,
+      vscode.Uri.file(__dirname),
+      workspaceState,
+      twoGlobalState,
+    ).connect((message) => twoPage.messages.push(message));
+    await twoConnection.receive({ type: 'ready' });
+    return {
+      page: twoPage,
+      connection: twoConnection,
+      globalState: twoGlobalState,
+      other,
+    };
+  }
+
+  test('comes back to a tab as it was, without reloading its history', async () => {
+    const tabs = await twoTabs();
+    try {
+      // Scrolled into the second row, 7 pixels into it
+      const b = await repository.hash('main~1');
+      await tabs.connection.receive({ type: 'scrolled', hash: b, offset: 7 });
+      await tabs.connection.receive({ type: 'selectTab', root: tabs.other });
+      tabs.page.clear();
+      await tabs.connection.receive({
+        type: 'selectTab',
+        root: repository.root,
+      });
+      // Only the replayed list, which is scrolled where it was
+      assert.strictEqual(commitsSent(tabs.page.messages), 1);
+      assert.deepStrictEqual(tabs.page.last('commits')?.anchor, {
+        index: 1,
+        offset: 7,
+      });
+      assert.ok(tabs.page.last('workingTree'));
+    } finally {
+      tabs.connection.dispose();
+    }
+  });
+
+  test('reloads the history of a tab whose refs moved while away', async () => {
+    const tabs = await twoTabs();
+    try {
+      await tabs.connection.receive({ type: 'selectTab', root: tabs.other });
+      await repository.git('branch', 'moved-away', 'main~1');
+      tabs.page.clear();
+      await tabs.connection.receive({
+        type: 'selectTab',
+        root: repository.root,
+      });
+      // The replayed list, then the reloaded one
+      assert.strictEqual(commitsSent(tabs.page.messages), 2);
+      const refs = tabs.page.last('repository')?.refs.map((ref) => ref.name);
+      assert.ok(refs?.includes('moved-away'));
+    } finally {
+      tabs.connection.dispose();
+      await repository.git('branch', '-D', 'moved-away');
+    }
+  });
+
+  test('reloads other tabs for a changed merge setting when they come back', async () => {
+    const tabs = await twoTabs();
+    try {
+      await tabs.connection.receive({ type: 'selectTab', root: tabs.other });
+      await tabs.connection.receive({
+        type: 'setCollapseMerges',
+        collapse: false,
+      });
+      tabs.page.clear();
+      await tabs.connection.receive({
+        type: 'selectTab',
+        root: repository.root,
+      });
+      // The feature commits, which the merge hid, are shown now
+      assert.strictEqual(tabs.page.last('commits')?.total, 5);
+    } finally {
+      tabs.connection.dispose();
+    }
+  });
+
+  test('preloads a tab in the background, which then opens as it was left', async () => {
+    const tabs = await twoTabs();
+    try {
+      const head = (
+        await runGit((await getGitApi()).git.path, tabs.other, [
+          'rev-parse',
+          'HEAD',
+        ])
+      ).trim();
+      tabs.page.clear();
+      await tabs.connection.receive({ type: 'preloadTab', root: tabs.other });
+      // Nothing of it shows while another tab is open
+      assert.deepStrictEqual(tabs.page.messages, []);
+      await tabs.connection.receive({ type: 'selectTab', root: tabs.other });
+      // Only the preloaded list, at what is checked out
+      assert.strictEqual(commitsSent(tabs.page.messages), 1);
+      assert.strictEqual(tabs.page.last('files')?.hash, head);
+      assert.strictEqual(tabs.page.last('commits')?.total, 1);
+    } finally {
+      tabs.connection.dispose();
+    }
+  });
+
+  test('preloads nothing for the shown tab, or one opened before', async () => {
+    const tabs = await twoTabs();
+    try {
+      tabs.page.clear();
+      await tabs.connection.receive({
+        type: 'preloadTab',
+        root: repository.root,
+      });
+      await tabs.connection.receive({ type: 'selectTab', root: tabs.other });
+      await tabs.connection.receive({
+        type: 'selectTab',
+        root: repository.root,
+      });
+      tabs.page.clear();
+      await tabs.connection.receive({ type: 'preloadTab', root: tabs.other });
+      assert.deepStrictEqual(tabs.page.messages, []);
+    } finally {
+      tabs.connection.dispose();
+    }
+  });
+
+  test('opens a tab that is preloading once it has loaded', async () => {
+    const tabs = await twoTabs();
+    try {
+      const head = (
+        await runGit((await getGitApi()).git.path, tabs.other, [
+          'rev-parse',
+          'HEAD',
+        ])
+      ).trim();
+      tabs.page.clear();
+      // Clicked while it still loads
+      await Promise.all([
+        tabs.connection.receive({ type: 'preloadTab', root: tabs.other }),
+        tabs.connection.receive({ type: 'selectTab', root: tabs.other }),
+      ]);
+      assert.strictEqual(tabs.page.last('files')?.hash, head);
+      assert.strictEqual(tabs.page.last('commits')?.total, 1);
+      assert.strictEqual(tabs.page.last('error'), undefined);
+    } finally {
+      tabs.connection.dispose();
     }
   });
 

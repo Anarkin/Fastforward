@@ -104,6 +104,8 @@ interface TabState {
   anchor: { hash: string; offset: number } | undefined;
   // Whether the tab was opened in this session, which starts it at HEAD
   opened: boolean;
+  // Loading in the background, before the tab is opened
+  preloading: Promise<void> | undefined;
   // The commits refs point at, which are always shown, and how many refs
   // point at each
   refCounts: Map<string, number>;
@@ -337,6 +339,9 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         await this.openTab(git, session, active);
         return;
       }
+      case 'preloadTab':
+        await this.preloadTab(git, session, message.root);
+        return;
       case 'sortTabs': {
         const tabs = this.tabs.toSorted((a, b) =>
           path.basename(a).localeCompare(path.basename(b), undefined, {
@@ -401,6 +406,8 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         // The setting applies to every merge again
         for (const tab of this.tabStates.values()) {
           tab.toggledMerges.clear();
+          // Reloaded with the setting when it's shown again
+          tab.fingerprint = '';
         }
         await this.sendShownHistory(context, undefined);
         break;
@@ -511,11 +518,24 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     this.postTabs(session);
     if (active) {
       const tab = this.tabState(active);
+      await tab.preloading;
+      // The list comes back where it was scrolled to, or else at the commit
+      // selected since it was sent
+      const anchorIndex =
+        tab.anchor === undefined
+          ? undefined
+          : tab.positions.get(tab.anchor.hash);
       for (const message of tab.shown.values()) {
-        // Scrolls to the commit selected since the list was sent
         session.post(
           message.type === 'commits'
-            ? { ...message, selectedIndex: tab.index, anchor: undefined }
+            ? {
+                ...message,
+                selectedIndex: tab.index,
+                anchor:
+                  tab.anchor === undefined || anchorIndex === undefined
+                    ? undefined
+                    : { index: anchorIndex, offset: tab.anchor.offset },
+              }
             : message,
         );
       }
@@ -538,6 +558,14 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     // is where it was left
     const firstOpen = !context.tab.opened;
     context.tab.opened = true;
+    // Coming back, the page shows the tab as it was left, and only what
+    // changed since is sent, like after a change in the repository, instead
+    // of reloading a history that took half a second for 190k commits
+    if (!firstOpen && context.tab.shown.has('commits')) {
+      this.log.info(`Tab ${context.root} is shown as it was left`);
+      await this.refresh(context);
+      return;
+    }
     await Promise.all([
       this.sendCommits(context).then(() =>
         firstOpen ? this.showHead(context) : this.sendCommit(context),
@@ -545,6 +573,48 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       this.sendWorkingTree(context),
       this.sendRepository(context),
     ]);
+  }
+
+  // Loads a tab the way it first opens, at what is checked out, without
+  // showing it; opening it then only checks what changed since, like coming
+  // back to it; a tab that is open, or was, needs nothing
+  private async preloadTab(
+    git: API,
+    session: Session,
+    root: string,
+  ): Promise<void> {
+    if (!this.tabs.includes(root) || root === this.activeTab) {
+      return;
+    }
+    const tab = this.tabState(root);
+    if (tab.opened || tab.preloading) {
+      return;
+    }
+    tab.preloading = (async () => {
+      try {
+        const context = await this.context(git, session, root);
+        if (!context || tab.opened) {
+          return;
+        }
+        this.log.info(`Preloading tab ${root}`);
+        tab.opened = true;
+        await this.addDefaultVips(context);
+        await Promise.all([
+          this.sendCommits(context).then(() => this.showHead(context)),
+          this.sendWorkingTree(context),
+          this.sendRepository(context),
+        ]);
+      } catch (error) {
+        // Opening the tab loads it the usual way then
+        tab.opened = false;
+        tab.shown.clear();
+        this.log.error(`Preloading tab ${root} failed`);
+        this.log.error(error instanceof Error ? error : String(error));
+      } finally {
+        tab.preloading = undefined;
+      }
+    })();
+    await tab.preloading;
   }
 
   private async sendRepository(
@@ -628,6 +698,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         graph: new Graph([]),
         shown: new Map(),
         refreshing: undefined,
+        preloading: undefined,
         refreshAgain: false,
       };
       this.tabStates.set(root, tab);
@@ -638,8 +709,8 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
   private async context(
     git: API,
     session: Session,
+    root = this.activeTab,
   ): Promise<Context | undefined> {
-    const root = this.activeTab;
     if (!root) {
       return undefined;
     }
@@ -655,10 +726,13 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       (await git.openRepository(uri)) ??
       git.getRepository(uri);
     if (!repository) {
-      session.post({
-        type: 'error',
-        message: `${root} is not a git repository`,
-      });
+      // Only the tab that is shown says so
+      if (this.activeTab === root) {
+        session.post({
+          type: 'error',
+          message: `${root} is not a git repository`,
+        });
+      }
       return undefined;
     }
     // A repository the Git extension just opened may not have read its state
