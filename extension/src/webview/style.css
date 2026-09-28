@@ -436,13 +436,9 @@ body.resizing {
   background: var(--vscode-badge-background);
 }
 
-.badge.branch {
-  color: var(--vscode-button-foreground);
-  background: var(--vscode-button-background);
-}
-
-/* A lighter shade of the local branches' blue, so origin/main pairs with main
-   but reads as the remote one */
+/* Local and remote branches alike, a light shade of the theme's blue, so the
+   refs take few colors; the name tells them apart */
+.badge.branch,
 .badge.remote {
   color: var(--vscode-foreground);
   background: color-mix(
