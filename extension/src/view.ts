@@ -250,8 +250,9 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     };
   }
 
+  // Once each, as tabs saved before could have a folder twice
   private get tabs(): string[] {
-    return this.workspaceState.get<string[]>(tabsKey, []);
+    return uniqueRoots(this.workspaceState.get<string[]>(tabsKey, []));
   }
 
   private get activeTab(): string | undefined {
@@ -259,7 +260,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
   }
 
   private async setTabs(tabs: string[], active: string | undefined) {
-    await this.workspaceState.update(tabsKey, tabs);
+    await this.workspaceState.update(tabsKey, uniqueRoots(tabs));
     await this.workspaceState.update(activeTabKey, active);
   }
 
@@ -268,14 +269,14 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
   }
 
   private async addRecent(root: string): Promise<void> {
-    const recent = [root, ...this.recent.filter((r) => r !== root)];
+    const recent = [root, ...this.recent.filter((r) => !sameRoot(r, root))];
     await this.globalState.update(recentKey, recent.slice(0, maxRecent));
   }
 
   private async removeRecent(root: string): Promise<void> {
     await this.globalState.update(
       recentKey,
-      this.recent.filter((r) => r !== root),
+      this.recent.filter((r) => !sameRoot(r, root)),
     );
   }
 
@@ -319,7 +320,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         for (const root of roots) {
           await this.addRecent(root);
         }
-        const added = roots.filter((root) => !this.tabs.includes(root));
+        const added = roots.filter((root) => !this.hasTab(root));
         await this.setTabs([...this.tabs, ...new Set(added)], this.activeTab);
         const last = roots.at(-1);
         if (last) {
@@ -328,11 +329,11 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         return;
       }
       case 'closeTab': {
-        const index = this.tabs.indexOf(message.root);
-        const tabs = this.tabs.filter((tab) => tab !== message.root);
+        const index = this.tabs.findIndex((tab) => sameRoot(tab, message.root));
+        const tabs = this.tabs.filter((tab) => !sameRoot(tab, message.root));
         this.tabStates.delete(message.root);
         const active =
-          this.activeTab === message.root
+          this.activeTab !== undefined && sameRoot(this.activeTab, message.root)
             ? tabs[Math.min(index, tabs.length - 1)]
             : this.activeTab;
         await this.setTabs(tabs, active);
@@ -438,14 +439,18 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
   // The first tab is the repository open in VS Code
   private async addWorkspaceTab(git: API): Promise<void> {
     const root = pickRepository(git)?.rootUri.fsPath;
-    if (root && !this.tabs.includes(root)) {
+    if (root && !this.hasTab(root)) {
       await this.setTabs([root, ...this.tabs], this.activeTab ?? root);
     }
   }
 
+  private hasTab(root: string): boolean {
+    return this.tabs.some((tab) => sameRoot(tab, root));
+  }
+
   // Offers recent repositories first, and the folder picker as the last item
   private async pickRepositories(git: API): Promise<string[]> {
-    const recent = this.recent.filter((root) => !this.tabs.includes(root));
+    const recent = this.recent.filter((root) => !this.hasTab(root));
     if (recent.length > 0) {
       const browse: vscode.QuickPickItem = {
         label: '$(folder-opened) Browse...',
@@ -513,7 +518,8 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     session: Session,
     root: string | undefined,
   ): Promise<void> {
-    const active = root && this.tabs.includes(root) ? root : this.tabs[0];
+    const active =
+      (root && this.tabs.find((tab) => sameRoot(tab, root))) ?? this.tabs[0];
     await this.setTabs(this.tabs, active);
     this.postTabs(session);
     if (active) {
@@ -1238,6 +1244,19 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       context.post({ type: 'diff', hash, path: file, patch });
     }
   }
+}
+
+// The same folder, also spelled differently, like VS Code's "c:" drive letter
+// next to the "C:" of a picked folder on Windows
+function sameRoot(a: string, b: string): boolean {
+  return path.relative(a, b) === '';
+}
+
+function uniqueRoots(roots: readonly string[]): string[] {
+  return roots.filter(
+    (root, index) =>
+      roots.findIndex((other) => sameRoot(other, root)) === index,
+  );
 }
 
 // What git said about a failure: the Git extension's errors keep git's output

@@ -7,6 +7,7 @@ import { getGitApi } from '../git/repository';
 import { runGit } from '../git/show';
 import { workingTreeHash, type ToWebview, type VipRef } from '../protocol';
 import { FastforwardView, type Connection } from '../view';
+import { withMessageStub } from './stub';
 
 // Storage like the extension's, kept in memory
 class FakeMemento implements vscode.Memento {
@@ -92,6 +93,21 @@ async function createRepository(): Promise<{
     hash: async (ref) => (await git('rev-parse', ref)).trim(),
     commit,
   };
+}
+
+// Waits for something the Git extension does in its own time
+async function waitFor(
+  condition: () => boolean,
+  what: string,
+  timeout = 15_000,
+): Promise<void> {
+  const until = Date.now() + timeout;
+  while (!condition()) {
+    if (Date.now() > until) {
+      throw new Error(`Timed out waiting for ${what}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
 }
 
 // How many histories the view sent, replayed ones included
@@ -326,6 +342,15 @@ suite('View', function () {
     }
   });
 
+  // The Git extension reads changes earlier tests made in its own time; once
+  // it has, a refresh brings the view up to date, so neither lands in the
+  // middle of a test
+  async function settle(view: Connection): Promise<void> {
+    const git = await getGitApi();
+    await git.getRepository(vscode.Uri.file(repository.root))?.status();
+    await view.refresh();
+  }
+
   // A view with the temp repository and a second one as tabs, to switch
   // between them
   async function twoTabs(): Promise<{
@@ -360,6 +385,7 @@ suite('View', function () {
       twoGlobalState,
     ).connect((message) => twoPage.messages.push(message));
     await twoConnection.receive({ type: 'ready' });
+    await settle(twoConnection);
     return {
       page: twoPage,
       connection: twoConnection,
@@ -375,6 +401,11 @@ suite('View', function () {
       const b = await repository.hash('main~1');
       await tabs.connection.receive({ type: 'scrolled', hash: b, offset: 7 });
       await tabs.connection.receive({ type: 'selectTab', root: tabs.other });
+      await (
+        await getGitApi()
+      )
+        .getRepository(vscode.Uri.file(repository.root))
+        ?.status();
       tabs.page.clear();
       await tabs.connection.receive({
         type: 'selectTab',
@@ -444,7 +475,14 @@ suite('View', function () {
       tabs.page.clear();
       await tabs.connection.receive({ type: 'preloadTab', root: tabs.other });
       // Nothing of it shows while another tab is open
-      assert.deepStrictEqual(tabs.page.messages, []);
+      assert.ok(
+        !tabs.page.messages.some(
+          (message) =>
+            (message.type === 'files' && message.hash === head) ||
+            (message.type === 'commits' && message.total === 1),
+        ),
+      );
+      tabs.page.clear();
       await tabs.connection.receive({ type: 'selectTab', root: tabs.other });
       // Only the preloaded list, at what is checked out
       assert.strictEqual(commitsSent(tabs.page.messages), 1);
@@ -470,7 +508,8 @@ suite('View', function () {
       });
       tabs.page.clear();
       await tabs.connection.receive({ type: 'preloadTab', root: tabs.other });
-      assert.deepStrictEqual(tabs.page.messages, []);
+      assert.strictEqual(commitsSent(tabs.page.messages), 0);
+      assert.strictEqual(tabs.page.last('files'), undefined);
     } finally {
       tabs.connection.dispose();
     }
@@ -496,6 +535,220 @@ suite('View', function () {
       assert.strictEqual(tabs.page.last('error'), undefined);
     } finally {
       tabs.connection.dispose();
+    }
+  });
+
+  // A view with these tabs, the first one open
+  async function viewOf(tabs: string[]): Promise<{
+    page: FakePage;
+    connection: Connection;
+  }> {
+    const workspaceState = new FakeMemento();
+    await workspaceState.update('tabs', tabs);
+    await workspaceState.update('activeTab', tabs[0]);
+    const ownPage = new FakePage();
+    const ownConnection = new FastforwardView(
+      log,
+      vscode.Uri.file(__dirname),
+      workspaceState,
+      new FakeMemento(),
+    ).connect((message) => ownPage.messages.push(message));
+    await ownConnection.receive({ type: 'ready' });
+    return { page: ownPage, connection: ownConnection };
+  }
+
+  test('loads pages of the history as the list asks for them', async () => {
+    await connection.receive({ type: 'loadCommits', start: 1, count: 2 });
+    const page2 = page.last('commitPage');
+    assert.strictEqual(page2?.start, 1);
+    assert.deepStrictEqual(
+      page2.commits.map((commit) => commit.subject),
+      ['b', 'a'],
+    );
+    assert.strictEqual(page2.graph.length, 2);
+  });
+
+  test('lists every file of a commit and of the working tree', async () => {
+    const file = path.join(repository.root, 'tree-file.txt');
+    fs.writeFileSync(file, 'tree\n');
+    try {
+      await connection.receive({ type: 'loadTree', hash: workingTreeHash });
+      assert.ok(page.last('tree')?.paths.includes('tree-file.txt'));
+      const head = await repository.hash('HEAD');
+      await connection.receive({ type: 'loadTree', hash: head });
+      const tree = page.last('tree');
+      assert.strictEqual(tree?.hash, head);
+      assert.ok(!tree.paths.includes('tree-file.txt'));
+    } finally {
+      fs.rmSync(file);
+    }
+  });
+
+  test('shows a file the commit did not change whole', async () => {
+    const gitPath = (await getGitApi()).git.path;
+    const root = path.join(repository.root, 'whole');
+    fs.mkdirSync(root);
+    const git = (...args: string[]) =>
+      runGit(gitPath, root, [
+        '-c',
+        'user.name=Test',
+        '-c',
+        'user.email=test@example.com',
+        ...args,
+      ]);
+    await git('init', '-b', 'main');
+    fs.writeFileSync(path.join(root, 'kept.txt'), 'kept\n');
+    await git('add', '.');
+    await git('commit', '-m', 'kept');
+    fs.writeFileSync(path.join(root, 'changed.txt'), 'changed\n');
+    await git('add', '.');
+    await git('commit', '-m', 'changed');
+    const head = (await git('rev-parse', 'HEAD')).trim();
+    const view = await viewOf([root]);
+    try {
+      await view.connection.receive({
+        type: 'selectFile',
+        hash: head,
+        path: 'kept.txt',
+      });
+      const content = view.page.last('fileContent');
+      assert.strictEqual(content?.path, 'kept.txt');
+      assert.strictEqual(content.content, 'kept\n');
+      assert.strictEqual(content.binary, false);
+    } finally {
+      view.connection.dispose();
+    }
+  });
+
+  test('keeps a folder spelled two ways as one tab', async function () {
+    // Drive letters and paths are case-insensitive only on Windows
+    if (process.platform !== 'win32') {
+      this.skip();
+    }
+    const other = repository.root.replace(/^[a-z]/i, (drive) =>
+      drive === drive.toUpperCase() ? drive.toLowerCase() : drive.toUpperCase(),
+    );
+    const view = await viewOf([repository.root, other]);
+    try {
+      // The workspace's repository may be a tab too
+      const roots = view.page.last('tabs')?.tabs.map((tab) => tab.root) ?? [];
+      assert.deepStrictEqual(
+        roots.filter((root) => root.toLowerCase() === other.toLowerCase()),
+        [repository.root],
+      );
+    } finally {
+      view.connection.dispose();
+    }
+  });
+
+  test('sorts tabs by name and closes one', async () => {
+    const tabs = await twoTabs();
+    try {
+      await tabs.connection.receive({ type: 'sortTabs' });
+      const names = tabs.page.last('tabs')?.tabs.map((tab) => tab.name) ?? [];
+      assert.deepStrictEqual(
+        names,
+        names.toSorted((a, b) =>
+          a.localeCompare(b, undefined, { sensitivity: 'base' }),
+        ),
+      );
+      await tabs.connection.receive({ type: 'closeTab', root: tabs.other });
+      const left = tabs.page.last('tabs');
+      const roots = left?.tabs.map((tab) => tab.root.toLowerCase()) ?? [];
+      assert.ok(roots.includes(repository.root.toLowerCase()));
+      assert.ok(!roots.includes(tabs.other.toLowerCase()));
+      assert.strictEqual(left?.active, repository.root);
+    } finally {
+      tabs.connection.dispose();
+    }
+  });
+
+  test('saves the layout and sends it when the page loads', async () => {
+    await connection.receive({ type: 'setColumnWidths', widths: [400, 250] });
+    await connection.receive({ type: 'setFilesMode', mode: 'files' });
+    await connection.receive({ type: 'setChangesView', view: 'tree' });
+    await connection.receive({ type: 'ready' });
+    const layout = page.last('layout');
+    assert.deepStrictEqual(layout?.columnWidths, [400, 250]);
+    assert.strictEqual(layout.filesMode, 'files');
+    assert.strictEqual(layout.changesView, 'tree');
+  });
+
+  test('reports a checkout git refuses', async () => {
+    await withMessageStub('showErrorMessage', async (messages) => {
+      await connection.receive({
+        type: 'checkout',
+        target: { kind: 'branch', name: 'no-such-branch' },
+      });
+      assert.strictEqual(messages.length, 1);
+      assert.match(messages[0], /couldn't check out no-such-branch/);
+    });
+  });
+
+  test('reports a pull without an upstream', async () => {
+    await withMessageStub('showErrorMessage', async (messages) => {
+      await connection.receive({ type: 'sync', action: 'pull' });
+      assert.strictEqual(messages.length, 1);
+      assert.match(messages[0], /couldn't pull/);
+      assert.strictEqual(page.last('syncing')?.action, undefined);
+    });
+  });
+
+  test('says when a remote branch has diverged from its local one', async () => {
+    await repository.git('remote', 'add', 'origin', repository.root);
+    await repository.git('checkout', '-b', 'apart', 'main~1');
+    await repository.commit('apart only');
+    await repository.git('checkout', 'main');
+    await repository.git('update-ref', 'refs/remotes/origin/apart', 'main');
+    try {
+      await withMessageStub('showInformationMessage', async (messages) => {
+        await connection.receive({
+          type: 'checkout',
+          target: { kind: 'remote', name: 'origin/apart' },
+        });
+        assert.strictEqual(page.last('repository')?.head, 'apart');
+        assert.strictEqual(messages.length, 1);
+        assert.match(
+          messages[0],
+          /apart, which has diverged from origin\/apart/,
+        );
+      });
+    } finally {
+      await repository.git('checkout', 'main');
+      await repository.git('branch', '-D', 'apart');
+      await repository.git('remote', 'remove', 'origin');
+    }
+  });
+
+  test('reports a jump to a commit outside the history', async () => {
+    const missing = 'f'.repeat(40);
+    await connection.receive({ type: 'jump', hash: missing });
+    assert.match(page.last('error')?.message ?? '', /is not in the history/);
+  });
+
+  test('says nothing of a tab that fails to preload until it is opened', async () => {
+    const notRepository = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'fastforward-plain-'),
+    );
+    const view = await viewOf([repository.root, notRepository]);
+    try {
+      view.page.clear();
+      await view.connection.receive({
+        type: 'preloadTab',
+        root: notRepository,
+      });
+      assert.strictEqual(view.page.last('error'), undefined);
+      await view.connection.receive({
+        type: 'selectTab',
+        root: notRepository,
+      });
+      assert.match(
+        view.page.last('error')?.message ?? '',
+        /is not a git repository/,
+      );
+    } finally {
+      view.connection.dispose();
+      fs.rmSync(notRepository, { recursive: true, force: true });
     }
   });
 
@@ -544,9 +797,8 @@ suite('View', function () {
   });
 
   test('reloads when a ref moves, keeping the top commit in place', async () => {
-    // The Git extension may still be catching up with the new repository, so
-    // a first refresh settles what the history was built from
-    await connection.refresh();
+    // The Git extension may still be catching up with earlier changes
+    await settle(connection);
     const b = await repository.hash('main~1');
     await connection.receive({ type: 'scrolled', hash: b, offset: 7 });
 
@@ -719,6 +971,47 @@ suite('Pull and push', function () {
     await git.getRepository(vscode.Uri.file(repository.root))?.status();
     await connection.refresh();
   }
+
+  test('updates by itself when a fetch brings new commits', async () => {
+    const gitPath = (await getGitApi()).git.path;
+    const elsewhere = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'fastforward-clone-'),
+    );
+    try {
+      await runGit(gitPath, elsewhere, ['clone', remote, '.']);
+      await runGit(gitPath, elsewhere, [
+        '-c',
+        'user.name=Test',
+        '-c',
+        'user.email=test@example.com',
+        'commit',
+        '--allow-empty',
+        '-m',
+        'from elsewhere',
+      ]);
+      await runGit(gitPath, elsewhere, ['push', 'origin', 'main']);
+      page.clear();
+      // Like VS Code's autofetch, without asking the view to refresh
+      const git = await getGitApi();
+      await git.getRepository(vscode.Uri.file(repository.root))?.fetch();
+      // The refs and the reloaded history come in side by side
+      await waitFor(
+        () =>
+          page.last('repository')?.behind === 1 &&
+          page.last('commits') !== undefined,
+        'the fetched commit and the reloaded history',
+      );
+    } finally {
+      // Back to the same place for the next tests
+      await repository.git('pull', '--ff-only');
+      await refresh();
+      try {
+        fs.rmSync(elsewhere, { recursive: true, force: true });
+      } catch {
+        // Left for the OS to clean up
+      }
+    }
+  });
 
   test("pushes the commits the upstream doesn't have", async () => {
     await repository.commit('local');
