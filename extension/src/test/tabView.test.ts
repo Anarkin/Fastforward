@@ -20,6 +20,7 @@ const commit = (hash: string): CommitInfo => ({
 function busyTab(): TabView {
   let view = reduceTabView(emptyTabView, {
     type: 'commits',
+    generation: 1,
     total: 2,
     decorations: [],
     graphWidth: 1,
@@ -102,6 +103,7 @@ suite('Tab view', () => {
     const before = busyTab();
     const after = reduceTabView(before, {
       type: 'commitPage',
+      generation: 1,
       start: 1,
       commits: [commit('b')],
       graph: [],
@@ -112,9 +114,76 @@ suite('Tab view', () => {
     assert.strictEqual(after, before);
     const selected = reduceTabView(
       reduceTabView(after, { type: 'showCommit', hash: 'c' }),
-      { type: 'commitPage', start: 2, commits: [commit('c')], graph: [] },
+      {
+        type: 'commitPage',
+        generation: 1,
+        start: 2,
+        commits: [commit('c')],
+        graph: [],
+      },
     );
     assert.strictEqual(selected.historyVersion, before.historyVersion + 1);
+  });
+
+  test('drops a page of the history before', () => {
+    const before = busyTab();
+    const after = reduceTabView(before, {
+      type: 'commitPage',
+      generation: 0,
+      start: 1,
+      commits: [commit('b')],
+      graph: [],
+    });
+    assert.strictEqual(after, before);
+    assert.strictEqual(after.history?.at(1), undefined);
+  });
+
+  test('ignores late answers about the commit or file selected before', () => {
+    const moved = reduceTabView(busyTab(), { type: 'showCommit', hash: 'b' });
+    const late = [
+      { type: 'files', hash: 'a', files: [] },
+      { type: 'diff', hash: 'a', path: undefined, patch: 'a' },
+      {
+        type: 'fileContent',
+        hash: 'a',
+        path: 'x.ts',
+        content: 'a',
+        binary: false,
+      },
+    ] as const;
+    for (const answer of late) {
+      assert.strictEqual(reduceTabView(moved, answer), moved);
+    }
+    // Another file of the same commit
+    const file = reduceTabView(moved, { type: 'showFile', path: 'y.ts' });
+    assert.strictEqual(
+      reduceTabView(file, {
+        type: 'diff',
+        hash: 'b',
+        path: undefined,
+        patch: 'b',
+      }),
+      file,
+    );
+    assert.strictEqual(
+      reduceTabView(file, { type: 'diff', hash: 'b', path: 'y.ts', patch: 'y' })
+        .patch,
+      'y',
+    );
+    // Nothing selected stays so
+    const none = reduceTabView(moved, { type: 'showCommit', hash: undefined });
+    assert.strictEqual(reduceTabView(none, late[0]), none);
+  });
+
+  test('shows what the extension says is selected after another tab opens', () => {
+    const cleared = reduceTabView(busyTab(), { type: 'clear' });
+    const view = reduceTabView(
+      reduceTabView(cleared, { type: 'files', hash: 'a', files: [] }),
+      { type: 'diff', hash: 'a', path: 'x.ts', patch: 'x' },
+    );
+    assert.strictEqual(view.hash, 'a');
+    assert.strictEqual(view.path, 'x.ts');
+    assert.strictEqual(view.patch, 'x');
   });
 
   test('shows a whole file instead of a diff, and the other way round', () => {

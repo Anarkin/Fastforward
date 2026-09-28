@@ -41,6 +41,10 @@ export function isLargeChange(file: {
 // How the Changes tab shows the changed files
 export type ChangesView = 'list' | 'tree';
 
+// The size of the pages of commits the webview asks for; a new history comes
+// with its first two
+export const commitPageSize = 100;
+
 export interface RefInfo {
   readonly kind: RefKind;
   readonly name: string;
@@ -184,6 +188,8 @@ export type TabMessage =
   // Asks for the commits at positions start..start+count of the history
   | {
       readonly type: 'loadCommits';
+      // The history's generation, as another may have replaced it since
+      readonly generation: number;
       readonly start: number;
       readonly count: number;
     }
@@ -258,6 +264,9 @@ export type ToWebview =
   // list has its full height at once, and the first page of commits
   | {
       readonly type: 'commits';
+      // Tells this history's pages from those of the one before, whose
+      // answers can still be on their way
+      readonly generation: number;
       readonly total: number;
       // [position, number of refs] for every commit that has refs, so the
       // height of each row is known before its commit is loaded
@@ -277,9 +286,11 @@ export type ToWebview =
       readonly anchor:
         { readonly index: number; readonly offset: number } | undefined;
     }
-  // Commits at positions start.. of the history, answering loadCommits
+  // Commits at positions start.. of the history, answering loadCommits; none
+  // when they couldn't be loaded, so the list asks for them again
   | {
       readonly type: 'commitPage';
+      readonly generation: number;
       readonly start: number;
       readonly commits: readonly CommitInfo[];
       readonly graph: readonly GraphRow[];

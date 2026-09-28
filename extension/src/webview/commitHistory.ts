@@ -1,7 +1,4 @@
-import type { CommitInfo, GraphRow } from '../protocol';
-
-// The size of the pages the webview asks the extension for
-export const commitPageSize = 100;
+import { commitPageSize, type CommitInfo, type GraphRow } from '../protocol';
 
 // A sparse view of the history: its size is known up front, so the list has
 // its full height at once, and commits are filled in page by page as they
@@ -24,6 +21,9 @@ export class CommitHistory {
     readonly graphWidth = 0,
     // The graph of the working tree's row, above the commits
     readonly workingTreeGraph?: GraphRow,
+    // Which of the extension's histories this is, which its pages are asked
+    // for and answered with
+    readonly generation = 0,
   ) {
     this.refCounts = new Map(decorations);
   }
@@ -63,7 +63,14 @@ export class CommitHistory {
     commits: readonly CommitInfo[],
     graph: readonly GraphRow[] = [],
   ): void {
-    this.requested.add(start - (start % commitPageSize));
+    // Every page it covers, as a new history comes with two
+    for (
+      let page = start - (start % commitPageSize);
+      page < start + commits.length;
+      page += commitPageSize
+    ) {
+      this.requested.add(page);
+    }
     commits.forEach((commit, offset) => {
       this.rows.set(start + offset, commit);
       this.positions.set(commit.hash, start + offset);
@@ -76,6 +83,11 @@ export class CommitHistory {
         listener();
       }
     });
+  }
+
+  // A page that couldn't be loaded, asked for again when the list next scrolls
+  release(start: number): void {
+    this.requested.delete(start);
   }
 
   // The starts of the pages covering first..last that haven't been asked for

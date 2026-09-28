@@ -35,6 +35,7 @@ import {
   type HistoryEntry,
 } from './git/show';
 import {
+  commitPageSize,
   isLargeChange,
   workingTreeHash,
   type CheckoutTarget,
@@ -60,10 +61,6 @@ const viewUri = vscode.Uri.from({ scheme: 'fastforward', path: '/view' });
 // The view is a custom editor, because _workbench.openWith is the only way for
 // an extension to open an editor in the modal editor part (group -4)
 const modalEditorGroup = -4;
-
-// The first page of commits, sent with the history's size; the webview asks
-// for the rest as they scroll into view
-const firstPageSize = 100;
 
 // Repository roots of the open tabs, kept per workspace
 const tabsKey = 'tabs';
@@ -120,13 +117,21 @@ interface TabState {
   // position in it; pages and jumps are looked up here
   history: readonly ShownEntry[];
   positions: Map<string, number>;
+  // Counts the histories shown, so a page asked of one isn't answered from
+  // the next, and a list that took longer to send than a newer one is dropped
+  generation: number;
   // The lanes of the history, laid out when it loads
   graph: Graph;
+  // The merge setting changed while the tab was in the background, which
+  // shows its history again when it comes back, without reloading it
+  shownStale: boolean;
   shown: Shown;
-  // The refresh that is running, and whether another change came in during
-  // it, which runs it once more instead of in parallel
+  // The load or refresh that is running, and whether another change came in
+  // during it, which runs a refresh once more instead of in parallel, with
+  // the context of the last one asked for, whose page may be a newer one
   refreshing: Promise<void> | undefined;
   refreshAgain: boolean;
+  refreshContext: Context | undefined;
 }
 
 type Message<T extends ToWebview['type']> = Extract<ToWebview, { type: T }>;
@@ -393,6 +398,20 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       case 'setChangesView':
         await this.globalState.update(changesViewKey, message.view);
         return;
+      case 'setCollapseMerges': {
+        await this.globalState.update(collapseMergesKey, message.collapse);
+        // The setting applies to every merge again; the tabs in the
+        // background show it when they come back
+        for (const tab of this.tabStates.values()) {
+          tab.toggledMerges.clear();
+          tab.shownStale = true;
+        }
+        const context = await this.context(git, session);
+        if (context) {
+          await this.sendShownHistory(context, undefined);
+        }
+        return;
+      }
       case 'setBookmarks':
         await this.setBookmarks(message.root, message.bookmarks);
         return;
@@ -415,7 +434,12 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     }
     switch (message.type) {
       case 'loadCommits':
-        await this.sendCommitPage(context, message.start, message.count);
+        await this.sendCommitPage(
+          context,
+          message.generation,
+          message.start,
+          message.count,
+        );
         break;
       case 'toggleMerge': {
         const toggled = context.tab.toggledMerges;
@@ -433,16 +457,6 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         break;
       case 'loadTree':
         await this.sendTree(context, message.hash);
-        break;
-      case 'setCollapseMerges':
-        await this.globalState.update(collapseMergesKey, message.collapse);
-        // The setting applies to every merge again
-        for (const tab of this.tabStates.values()) {
-          tab.toggledMerges.clear();
-          // Reloaded with the setting when it's shown again
-          tab.fingerprint = '';
-        }
-        await this.sendShownHistory(context, undefined);
         break;
       case 'jump': {
         // A hash typed in the address bar can be short
@@ -613,9 +627,15 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       return;
     }
     await Promise.all([
-      this.sendCommits(context).then(() =>
-        firstOpen ? this.showHead(context) : this.sendCommit(context),
-      ),
+      // In the place of a refresh, as the watcher's first refresh can come
+      // while the history loads, which would load it a second time at once
+      this.refresh(context, async (latest) => {
+        // Unless a refresh that ran first loaded it already
+        if (latest.tab.fingerprint === '') {
+          await this.sendCommits(latest);
+        }
+        await (firstOpen ? this.showHead(latest) : this.sendCommit(latest));
+      }),
       this.sendWorkingTree(context),
       this.sendRepository(context),
     ]);
@@ -748,12 +768,15 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         toggledMerges: new Set(),
         history: [],
         positions: new Map(),
+        generation: 0,
         graph: new Graph([]),
+        shownStale: false,
         shown: {},
         refreshing: undefined,
         preloading: undefined,
         navigation: noNavigation,
         refreshAgain: false,
+        refreshContext: undefined,
       };
       this.tabStates.set(root, tab);
     }
@@ -1096,21 +1119,36 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
 
   // After a change in the repository: the uncommitted changes always, and the
   // history when a commit, checkout, fetch or branch change moved HEAD or a
-  // ref, keeping the list's place
-  private refresh(context: Context): Promise<void> {
+  // ref, keeping the list's place; one at a time per tab, as two history
+  // loads at once could let the older one win: a change during one refreshes
+  // once more after it, and a tab's first load, given as load, waits its turn
+  private refresh(
+    context: Context,
+    load?: (context: Context) => Promise<void>,
+  ): Promise<void> {
     const { tab } = context;
+    tab.refreshContext = context;
     if (tab.refreshing) {
-      tab.refreshAgain = true;
-      return tab.refreshing;
+      if (!load) {
+        tab.refreshAgain = true;
+        return tab.refreshing;
+      }
+      // A load isn't a refresh to fold into the running one, so it waits
+      return tab.refreshing
+        .catch(() => undefined)
+        .then(() => this.refresh(context, load));
     }
     tab.refreshing = (async () => {
       try {
+        let next = load ?? ((latest: Context) => this.refreshOnce(latest));
         do {
           tab.refreshAgain = false;
-          await this.refreshOnce(context);
+          await next(tab.refreshContext ?? context);
+          next = (latest) => this.refreshOnce(latest);
         } while (tab.refreshAgain);
       } finally {
         tab.refreshing = undefined;
+        tab.refreshContext = undefined;
       }
     })();
     return tab.refreshing;
@@ -1135,6 +1173,8 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         this.sendRepository(context, refs),
         this.sendCommits(context, true, refs),
       ]);
+    } else if (context.tab.shownStale) {
+      await this.sendShownHistory(context, undefined, true);
     }
   }
 
@@ -1207,7 +1247,9 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     );
     tab.history = history;
     tab.positions = new Map(history.map((entry, index) => [entry.hash, index]));
+    const generation = ++tab.generation;
     tab.graph = new Graph(history, { head });
+    tab.shownStale = false;
     this.log.info(
       `Graph of ${history.length} of ${tab.fullHistory.length} commits laid out in ${Math.round(performance.now() - started)} ms, ${tab.graph.width} lanes wide`,
     );
@@ -1221,16 +1263,21 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     const start =
       anchor === undefined || anchor.index < 0
         ? 0
-        : anchor.index - (anchor.index % firstPageSize);
+        : anchor.index - (anchor.index % commitPageSize);
     const commits = await logCommits(
       context.git.git.path,
       context.root,
       history
-        .slice(start, start + 2 * firstPageSize)
+        .slice(start, start + 2 * commitPageSize)
         .map((entry) => entry.hash),
     );
+    // A newer list was worked out while git ran
+    if (tab.generation !== generation) {
+      return;
+    }
     context.post({
       type: 'commits',
+      generation,
       total: history.length,
       decorations,
       graphWidth: tab.graph.width,
@@ -1246,21 +1293,42 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
 
   private async sendCommitPage(
     context: Context,
+    generation: number,
     start: number,
     count: number,
   ): Promise<void> {
-    const { history, graph } = context.tab;
+    const { tab } = context;
+    // Asked of a history shown before, which the page replaces soon, or was
+    // reloaded while this page loaded
+    const replaced = () => tab.generation !== generation;
+    if (replaced()) {
+      return;
+    }
+    const { history, graph } = tab;
     const commits = await logCommits(
       context.git.git.path,
       context.root,
       history.slice(start, start + count).map((entry) => entry.hash),
-    );
-    // The history was reloaded while this page loaded
-    if (context.tab.history !== history) {
+    ).catch((error: unknown) => {
+      // No commits, so the list asks for them again instead of showing
+      // placeholders for good
+      if (!replaced()) {
+        context.post({
+          type: 'commitPage',
+          generation,
+          start,
+          commits: [],
+          graph: [],
+        });
+      }
+      throw error;
+    });
+    if (replaced()) {
       return;
     }
     context.post({
       type: 'commitPage',
+      generation,
       start,
       commits,
       graph: graph.rows(start, commits.length),
@@ -1284,6 +1352,9 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     } else if (context.tab.positions.has(hash)) {
       files = await showFiles(gitPath, context.root, hash);
     } else {
+      // Picked in a list the history has replaced since; the error ends the
+      // placeholders the page shows while it waits for the files and diff
+      context.post({ type: 'error', message: `${hash} is not in the history` });
       return;
     }
     // Another commit was selected while git ran

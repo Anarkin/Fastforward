@@ -120,6 +120,7 @@ suite('View', function () {
 
   let repository: Awaited<ReturnType<typeof createRepository>>;
   let globalState: FakeMemento;
+  let fastforward: FastforwardView;
   let page: FakePage;
   let connection: Connection;
 
@@ -147,14 +148,14 @@ suite('View', function () {
     await workspaceState.update('tabs', [repository.root]);
     await workspaceState.update('activeTab', repository.root);
     globalState = new FakeMemento();
-    const view = new FastforwardView(
+    fastforward = new FastforwardView(
       log,
       vscode.Uri.file(__dirname),
       workspaceState,
       globalState,
     );
     page = new FakePage();
-    connection = view.connect((message) => page.messages.push(message));
+    connection = fastforward.connect((message) => page.messages.push(message));
     await connection.receive({ type: 'ready' });
   });
 
@@ -661,39 +662,147 @@ suite('View', function () {
     }
   });
 
-  // A view with these tabs, the first one open
-  async function viewOf(tabs: string[]): Promise<{
+  // A view with these tabs, the first one open unless the page isn't ready
+  async function viewOf(
+    tabs: string[],
+    ready = true,
+  ): Promise<{
     page: FakePage;
     connection: Connection;
+    globalState: FakeMemento;
   }> {
     const workspaceState = new FakeMemento();
     await workspaceState.update('tabs', tabs);
     await workspaceState.update('activeTab', tabs[0]);
     const ownPage = new FakePage();
+    const ownGlobalState = new FakeMemento();
     const ownConnection = new FastforwardView(
       log,
       vscode.Uri.file(__dirname),
       workspaceState,
-      new FakeMemento(),
+      ownGlobalState,
     ).connect((message) => ownPage.messages.push(message));
-    await ownConnection.receive({ type: 'ready' });
-    return { page: ownPage, connection: ownConnection };
+    if (ready) {
+      await ownConnection.receive({ type: 'ready' });
+    }
+    return {
+      page: ownPage,
+      connection: ownConnection,
+      globalState: ownGlobalState,
+    };
   }
 
   test('loads pages of the history as the list asks for them', async () => {
+    const generation = page.last('commits')?.generation ?? -1;
     await connection.receive({
       type: 'loadCommits',
       root: repository.root,
+      generation,
       start: 1,
       count: 2,
     });
     const page2 = page.last('commitPage');
     assert.strictEqual(page2?.start, 1);
+    assert.strictEqual(page2.generation, generation);
     assert.deepStrictEqual(
       page2.commits.map((commit) => commit.subject),
       ['b', 'a'],
     );
     assert.strictEqual(page2.graph.length, 2);
+
+    // Asked of the history before, which the page replaces with this one
+    await connection.receive({
+      type: 'loadCommits',
+      root: repository.root,
+      generation: generation - 1,
+      start: 1,
+      count: 2,
+    });
+    assert.strictEqual(page.last('commitPage'), page2);
+  });
+
+  test('sends only the newest list when the history is worked out twice at once', async () => {
+    const merge = await repository.hash('main');
+    page.clear();
+    await Promise.all([
+      connection.receive({
+        type: 'toggleMerge',
+        root: repository.root,
+        hash: merge,
+      }),
+      connection.receive({
+        type: 'toggleMerge',
+        root: repository.root,
+        hash: merge,
+      }),
+    ]);
+    assert.strictEqual(commitsSent(page.messages), 1);
+    // Expanded and collapsed again
+    assert.strictEqual(page.last('commits')?.total, 3);
+  });
+
+  test('loads the history once when a change comes in while a tab first opens', async () => {
+    const own = await viewOf([repository.root], false);
+    try {
+      await Promise.all([
+        own.connection.receive({ type: 'ready' }),
+        own.connection.refresh(),
+      ]);
+      assert.strictEqual(commitsSent(own.page.messages), 1);
+      assert.strictEqual(
+        own.page.last('reveal')?.hash,
+        await repository.hash('HEAD'),
+      );
+    } finally {
+      own.connection.dispose();
+    }
+  });
+
+  test('refreshes once more for a page that asks while a refresh runs', async () => {
+    await settle(connection);
+    const newer = new FakePage();
+    const newerConnection = fastforward.connect((message) =>
+      newer.messages.push(message),
+    );
+    try {
+      await Promise.all([connection.refresh(), newerConnection.refresh()]);
+      assert.ok(newer.last('workingTree'));
+    } finally {
+      newerConnection.dispose();
+    }
+  });
+
+  test('applies the merge setting to the history shown, without reloading it', async () => {
+    await settle(connection);
+    await connection.receive({ type: 'setCollapseMerges', collapse: false });
+    assert.strictEqual(page.last('commits')?.total, 5);
+    page.clear();
+    await connection.refresh();
+    assert.strictEqual(page.last('commits'), undefined, 'reloaded');
+  });
+
+  test('saves the merge setting with no tab open', async () => {
+    const own = await viewOf([], false);
+    try {
+      await own.connection.receive({
+        type: 'setCollapseMerges',
+        collapse: false,
+      });
+      assert.strictEqual(own.globalState.get('collapseMerges'), false);
+    } finally {
+      own.connection.dispose();
+    }
+  });
+
+  test('says so when a commit picked is no longer in the history', async () => {
+    // Inside the collapsed merge, as in a list from before it collapsed
+    const tip = await repository.hash('feature');
+    await connection.receive({
+      type: 'selectCommit',
+      root: repository.root,
+      hash: tip,
+    });
+    assert.match(page.last('error')?.message ?? '', /not in the history/);
   });
 
   test('lists every file of a commit and of the working tree', async () => {

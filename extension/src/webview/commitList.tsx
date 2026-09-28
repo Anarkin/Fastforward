@@ -54,7 +54,7 @@ export function Commits({
   scrollTarget: ScrollTarget | undefined;
   // The commit at the top of the list once scrolling stops
   onScrolled: (hash: string, offset: number) => void;
-  onLoad: (start: number) => void;
+  onLoad: (start: number, generation: number) => void;
   workingTree: number | undefined;
   refsByCommit: Map<string, RefInfo[]>;
   selected: string | undefined;
@@ -108,7 +108,7 @@ export function Commits({
     }
     const timer = setTimeout(() => {
       for (const start of history.takeMissingPages(first, last)) {
-        onLoad(start);
+        onLoad(start, history.generation);
       }
     }, loadDelay);
     return () => clearTimeout(timer);

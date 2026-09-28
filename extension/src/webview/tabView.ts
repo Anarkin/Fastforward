@@ -30,6 +30,11 @@ export interface TabView {
   // Number of uncommitted files, undefined until the extension reports it
   readonly workingTree: number | undefined;
   readonly hash: string | undefined;
+  // Whether hash and path are what was last selected, by the user or the
+  // extension, so only answers about them are shown, not a late one about
+  // the selection before; after another tab opens, the answers say what it
+  // shows
+  readonly selectionKnown: boolean;
   readonly files: readonly FileChange[];
   // Asked for and not answered yet, which shows placeholders
   readonly filesLoading: boolean;
@@ -60,6 +65,7 @@ export const emptyTabView: TabView = {
   scrollTarget: undefined,
   workingTree: undefined,
   hash: undefined,
+  selectionKnown: false,
   files: [],
   filesLoading: false,
   patchLoading: false,
@@ -88,6 +94,7 @@ function selected(state: TabView, hash: string | undefined): TabView {
   return {
     ...state,
     hash,
+    selectionKnown: true,
     files: [],
     filesLoading: hash !== undefined,
     patchLoading: hash !== undefined,
@@ -97,6 +104,16 @@ function selected(state: TabView, hash: string | undefined): TabView {
     filePatches: new Map(),
     error: undefined,
   };
+}
+
+// An answer about a commit or file selected before the one now, which was on
+// its way when the user moved on, as during fast arrow-key movement
+function isLate(
+  state: TabView,
+  hash: string,
+  path: string | undefined,
+): boolean {
+  return state.selectionKnown && (hash !== state.hash || path !== state.path);
 }
 
 // The next view after a message from the extension or a selection; messages
@@ -111,6 +128,7 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
       return {
         ...state,
         path: action.path,
+        selectionKnown: true,
         patchLoading: state.hash !== undefined,
       };
     case 'repository':
@@ -121,6 +139,7 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
         action.decorations,
         action.graphWidth,
         action.workingTreeGraph,
+        action.generation,
       );
       history.add(action.start, action.commits, action.graph);
       return {
@@ -136,9 +155,17 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
       };
     }
     case 'commitPage':
+      // A page of the history before, which the new one asks for again
+      if (action.generation !== state.history?.generation) {
+        return state;
+      }
+      if (action.commits.length === 0) {
+        state.history.release(action.start);
+        return state;
+      }
       // The history is filled in place, which is safe to repeat, as a page
       // always lands at the same positions
-      state.history?.add(action.start, action.commits, action.graph);
+      state.history.add(action.start, action.commits, action.graph);
       return action.commits.some((commit) => commit.hash === state.hash)
         ? { ...state, historyVersion: state.historyVersion + 1 }
         : state;
@@ -150,6 +177,9 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
     case 'workingTree':
       return { ...state, workingTree: action.files };
     case 'files':
+      if (isLate(state, action.hash, state.path)) {
+        return state;
+      }
       return {
         ...state,
         hash: action.hash,
@@ -157,6 +187,9 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
         filesLoading: false,
       };
     case 'diff':
+      if (isLate(state, action.hash, action.path)) {
+        return state;
+      }
       return {
         ...state,
         hash: action.hash,
@@ -178,6 +211,9 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
           }
         : state;
     case 'fileContent':
+      if (isLate(state, action.hash, action.path)) {
+        return state;
+      }
       return {
         ...state,
         hash: action.hash,

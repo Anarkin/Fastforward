@@ -7,6 +7,7 @@ import {
   useState,
 } from 'react';
 import {
+  commitPageSize,
   workingTreeHash,
   type ChangesView,
   type CheckoutTarget,
@@ -21,7 +22,6 @@ import {
 import { CheckedOutBranch, DetachedHead, BubbleBar } from './bubbles';
 import { checkoutOptions, checkoutRef } from './checkout';
 import { ColumnResizingProvider, useColumnWidths } from './columns';
-import { commitPageSize } from './commitHistory';
 import { Commits } from './commitList';
 import { useShortcuts } from './shortcuts';
 import {
@@ -169,8 +169,13 @@ export function App({ post }: Props) {
   );
 
   const loadCommits = useCallback(
-    (start: number) =>
-      postTab({ type: 'loadCommits', start, count: commitPageSize }),
+    (start: number, generation: number) =>
+      postTab({
+        type: 'loadCommits',
+        generation,
+        start,
+        count: commitPageSize,
+      }),
     [postTab],
   );
 

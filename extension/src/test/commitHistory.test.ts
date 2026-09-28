@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
-import type { CommitInfo } from '../protocol';
-import { CommitHistory, commitPageSize } from '../webview/commitHistory';
+import { commitPageSize, type CommitInfo } from '../protocol';
+import { CommitHistory } from '../webview/commitHistory';
 
 function commit(hash: string): CommitInfo {
   return {
@@ -36,6 +36,27 @@ suite('CommitHistory', () => {
       2 * commitPageSize,
     ]);
     assert.deepStrictEqual(history.takeMissingPages(0, 249), []);
+  });
+
+  test('counts both pages a new history comes with as loaded', () => {
+    const history = new CommitHistory(1000);
+    history.add(
+      0,
+      Array.from({ length: 2 * commitPageSize }, (_, index) =>
+        commit(String(index)),
+      ),
+    );
+    assert.deepStrictEqual(
+      history.takeMissingPages(0, 3 * commitPageSize - 1),
+      [2 * commitPageSize],
+    );
+  });
+
+  test('asks again for a page that could not be loaded', () => {
+    const history = new CommitHistory(250);
+    assert.deepStrictEqual(history.takeMissingPages(100, 199), [100]);
+    history.release(100);
+    assert.deepStrictEqual(history.takeMissingPages(100, 199), [100]);
   });
 });
 
