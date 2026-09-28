@@ -1,7 +1,9 @@
 import * as assert from 'node:assert';
 import { parsePatch } from '../webview/diff';
 import { collapseThreshold } from '../protocol';
+import { withLargeFiles } from '../webview/diffColumn';
 import { diffRows } from '../webview/diffView';
+import { fileChange } from './fixtures';
 
 function patch(path: string, added: number): string {
   return [
@@ -67,5 +69,44 @@ suite('Diff rows', () => {
       'wholeLine',
       'wholeLine',
     ]);
+  });
+});
+
+suite('Large files in a commit diff', () => {
+  const large = fileChange('large.json', {
+    insertions: collapseThreshold,
+    deletions: 1,
+  });
+
+  test('puts a large file the diff left out in its place, until it loads', () => {
+    const files = [fileChange('a.ts'), large, fileChange('b.ts')];
+    const parsed = parsePatch(`${patch('b.ts', 1)}\n${patch('a.ts', 1)}`);
+    const placeholder = withLargeFiles(parsed, files, new Map());
+    assert.deepStrictEqual(
+      placeholder.map((file) => [file.path, file.placeholder]),
+      [
+        ['a.ts', undefined],
+        ['large.json', { lines: collapseThreshold + 1 }],
+        ['b.ts', undefined],
+      ],
+    );
+
+    const loaded = withLargeFiles(
+      parsed,
+      files,
+      new Map([['large.json', patch('large.json', 3)]]),
+    );
+    assert.strictEqual(loaded[1].placeholder, undefined);
+    assert.strictEqual(loaded[1].hunks[0].lines.length, 3);
+  });
+
+  test('keeps files the list lacks, and leaves out small ones the diff lacks', () => {
+    const parsed = parsePatch(patch('extra.ts', 1));
+    assert.deepStrictEqual(
+      withLargeFiles(parsed, [fileChange('a.ts')], new Map()).map(
+        (file) => file.path,
+      ),
+      ['extra.ts'],
+    );
   });
 });

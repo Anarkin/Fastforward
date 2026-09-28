@@ -1,6 +1,5 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
-import * as os from 'node:os';
 import * as path from 'node:path';
 import { getGitApi } from '../git/repository';
 import {
@@ -9,32 +8,32 @@ import {
   listTree,
   readFile,
   remoteDefaultBranches,
-  runGit,
   workingTreeFiles,
   workingTreePatch,
 } from '../git/show';
+import {
+  removeFolder,
+  tempFolder,
+  tempRepository,
+  type TempRepository,
+} from './repositories';
 
 suite('A repository without commits', function () {
+  // git in temp repositories can take seconds on a busy machine
   this.timeout(20_000);
   let gitPath: string;
   let cwd: string;
 
   suiteSetup(async () => {
     gitPath = (await getGitApi()).git.path;
-    cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'fastforward-empty-'));
-    await runGit(gitPath, cwd, ['init']);
+    const repository = await tempRepository(tempFolder('empty'));
+    cwd = repository.root;
     fs.writeFileSync(path.join(cwd, 'staged.txt'), 'one\n');
-    await runGit(gitPath, cwd, ['add', 'staged.txt']);
+    await repository.git('add', 'staged.txt');
     fs.writeFileSync(path.join(cwd, 'untracked.txt'), 'new\n');
   });
 
-  suiteTeardown(() => {
-    try {
-      fs.rmSync(cwd, { recursive: true, force: true });
-    } catch {
-      // Left for the OS to clean up
-    }
-  });
+  suiteTeardown(() => removeFolder(cwd));
 
   test('has no HEAD and an empty history', async () => {
     assert.strictEqual(await headCommit(gitPath, cwd), undefined);
@@ -65,37 +64,17 @@ suite('Uncommitted changes', function () {
 
   suiteSetup(async () => {
     gitPath = (await getGitApi()).git.path;
-    cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'fastforward-'));
-    const git = (...args: string[]) =>
-      runGit(gitPath, cwd, [
-        '-c',
-        'user.name=Test',
-        '-c',
-        'user.email=test@example.com',
-        ...args,
-      ]);
-    await git('init');
-    fs.writeFileSync(path.join(cwd, 'tracked.txt'), 'one\n');
-    await git('add', '.');
-    await git('commit', '-m', 'initial');
+    const repository = await tempRepository(tempFolder('changes'));
+    cwd = repository.root;
+    await repository.commit('initial', { 'tracked.txt': 'one\n' });
     fs.writeFileSync(path.join(cwd, 'tracked.txt'), 'two\n');
     fs.writeFileSync(path.join(cwd, 'untracked.txt'), 'new\n');
     // A repository inside this one, which git lists as its folder
-    const nested = path.join(cwd, 'nested');
-    fs.mkdirSync(nested);
-    await runGit(gitPath, nested, ['init']);
-    fs.writeFileSync(path.join(nested, 'inner.txt'), 'inner\n');
+    const nested = await tempRepository(path.join(cwd, 'nested'));
+    fs.writeFileSync(path.join(nested.root, 'inner.txt'), 'inner\n');
   });
 
-  // Best effort, because git's read-only object files can't always be removed
-  // on Windows, and it's only a temp folder
-  suiteTeardown(() => {
-    try {
-      fs.rmSync(cwd, { recursive: true, force: true });
-    } catch {
-      // Left for the OS to clean up
-    }
-  });
+  suiteTeardown(() => removeFolder(cwd));
 
   test('lists modified and untracked files', async () => {
     const { files } = await workingTreeFiles(gitPath, cwd);
@@ -149,35 +128,19 @@ suite('Repository files', function () {
   // git in temp repositories can take seconds on a busy machine
   this.timeout(20_000);
   let gitPath: string;
+  let repository: TempRepository;
   let cwd: string;
 
   suiteSetup(async () => {
     gitPath = (await getGitApi()).git.path;
-    cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'fastforward-'));
-    const git = (...args: string[]) =>
-      runGit(gitPath, cwd, [
-        '-c',
-        'user.name=Test',
-        '-c',
-        'user.email=test@example.com',
-        ...args,
-      ]);
-    await git('init');
-    fs.mkdirSync(path.join(cwd, 'src'));
-    fs.writeFileSync(path.join(cwd, 'src', 'tracked.txt'), 'one\n');
-    await git('add', '.');
-    await git('commit', '-m', 'initial');
+    repository = await tempRepository(tempFolder('files'));
+    cwd = repository.root;
+    await repository.commit('initial', { 'src/tracked.txt': 'one\n' });
     fs.writeFileSync(path.join(cwd, 'src', 'tracked.txt'), 'two\n');
     fs.writeFileSync(path.join(cwd, 'untracked.txt'), 'new\n');
   });
 
-  suiteTeardown(() => {
-    try {
-      fs.rmSync(cwd, { recursive: true, force: true });
-    } catch {
-      // Left for the OS to clean up
-    }
-  });
+  suiteTeardown(() => removeFolder(cwd));
 
   test('lists the files at a commit and in the working tree', async () => {
     assert.deepStrictEqual(await listTree(gitPath, cwd, 'HEAD'), [
@@ -191,19 +154,20 @@ suite('Repository files', function () {
 
   test("reads a remote's default branch", async () => {
     assert.deepStrictEqual(await remoteDefaultBranches(gitPath, cwd), []);
-    await runGit(gitPath, cwd, [
-      'update-ref',
-      'refs/remotes/origin/main',
-      'HEAD',
-    ]);
-    await runGit(gitPath, cwd, [
-      'symbolic-ref',
-      'refs/remotes/origin/HEAD',
-      'refs/remotes/origin/main',
-    ]);
-    assert.deepStrictEqual(await remoteDefaultBranches(gitPath, cwd), [
-      'origin/main',
-    ]);
+    await repository.git('update-ref', 'refs/remotes/origin/main', 'HEAD');
+    try {
+      await repository.git(
+        'symbolic-ref',
+        'refs/remotes/origin/HEAD',
+        'refs/remotes/origin/main',
+      );
+      assert.deepStrictEqual(await remoteDefaultBranches(gitPath, cwd), [
+        'origin/main',
+      ]);
+    } finally {
+      await repository.git('update-ref', '-d', 'refs/remotes/origin/main');
+      await repository.git('symbolic-ref', '-d', 'refs/remotes/origin/HEAD');
+    }
   });
 
   test('reads a file at a commit and in the working tree', async () => {
@@ -223,37 +187,21 @@ suite('Large files and submodules', function () {
 
   suiteSetup(async () => {
     gitPath = (await getGitApi()).git.path;
-    cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'fastforward-'));
-    const git = (dir: string, ...args: string[]) =>
-      runGit(gitPath, dir, [
-        '-c',
-        'user.name=Test',
-        '-c',
-        'user.email=test@example.com',
-        ...args,
-      ]);
-    await git(cwd, 'init');
+    const repository = await tempRepository(tempFolder('large'));
+    cwd = repository.root;
+    // A repository added inside this one is recorded as a submodule is, by
+    // its commit
+    const sub = await tempRepository(path.join(cwd, 'sub'));
+    await sub.commit('inner');
+    [inner] = await sub.resolve('HEAD');
     // Over the size shown as text, without a NUL byte that would make it
     // binary anyway
     fs.writeFileSync(path.join(cwd, 'large.txt'), 'x'.repeat(3 * 1024 * 1024));
-    // A repository added inside this one is recorded as a submodule is, by
-    // its commit
-    const sub = path.join(cwd, 'sub');
-    fs.mkdirSync(sub);
-    await git(sub, 'init');
-    await git(sub, 'commit', '--allow-empty', '-m', 'inner');
-    inner = (await git(sub, 'rev-parse', 'HEAD')).trim();
-    await git(cwd, 'add', '.');
-    await git(cwd, 'commit', '-m', 'initial');
+    await repository.git('add', '.');
+    await repository.git('commit', '-m', 'initial');
   });
 
-  suiteTeardown(() => {
-    try {
-      fs.rmSync(cwd, { recursive: true, force: true });
-    } catch {
-      // Left for the OS to clean up
-    }
-  });
+  suiteTeardown(() => removeFolder(cwd));
 
   test('shows a file too large to show as binary', async () => {
     const binary = { content: '', binary: true };

@@ -1,27 +1,12 @@
 import * as assert from 'node:assert';
-import { commitPageSize, type CommitInfo } from '../protocol';
+import { commitPageSize } from '../protocol';
 import { CommitHistory } from '../webview/commitHistory';
-
-function commit(hash: string): CommitInfo {
-  return {
-    hash,
-    subject: hash,
-    message: hash,
-    parents: [],
-    authorName: '',
-    authorEmail: '',
-    authorDate: 0,
-    committerName: '',
-    committerEmail: '',
-    commitDate: 0,
-    files: 0,
-  };
-}
+import { commitInfo } from './fixtures';
 
 suite('CommitHistory', () => {
   test('places pages at their positions', () => {
     const history = new CommitHistory(1000);
-    history.add(300, [commit('a'), commit('b')]);
+    history.add(300, [commitInfo('a'), commitInfo('b')]);
     assert.strictEqual(history.at(301)?.hash, 'b');
     assert.strictEqual(history.positionOf('a'), 300);
     assert.strictEqual(history.find('b')?.hash, 'b');
@@ -30,7 +15,7 @@ suite('CommitHistory', () => {
 
   test('asks for each missing page once', () => {
     const history = new CommitHistory(250);
-    history.add(0, [commit('a')]);
+    history.add(0, [commitInfo('a')]);
     assert.deepStrictEqual(history.takeMissingPages(50, 400), [
       commitPageSize,
       2 * commitPageSize,
@@ -43,7 +28,7 @@ suite('CommitHistory', () => {
     history.add(
       0,
       Array.from({ length: 2 * commitPageSize }, (_, index) =>
-        commit(String(index)),
+        commitInfo(String(index)),
       ),
     );
     assert.deepStrictEqual(

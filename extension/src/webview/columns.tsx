@@ -29,6 +29,30 @@ export function templateOf(
   return `${widths.map((width, i) => `${hidden[i] ? 0 : width}px`).join(' ')} minmax(${minLastColumnWidth}px, 1fr)`;
 }
 
+// The saved widths, or the defaults for none or ones saved for other columns
+export function widthsToLoad(
+  saved: readonly number[] | undefined,
+): readonly number[] {
+  return saved?.length === defaultColumnWidths.length
+    ? saved
+    : defaultColumnWidths;
+}
+
+// The widest a column can be dragged to in a view this wide, so the last
+// column keeps at least its minimum width; hidden columns take no room
+export function maxWidth(
+  widths: readonly number[],
+  hidden: readonly boolean[],
+  index: number,
+  viewWidth: number,
+): number {
+  const others = widths.reduce(
+    (sum, width, i) => (i === index || hidden[i] ? sum : sum + width),
+    0,
+  );
+  return Math.max(minColumnWidth, viewWidth - others - minLastColumnWidth);
+}
+
 // Column widths that the resizers change; save is called when a drag ends
 export function useColumnWidths(
   save: (widths: readonly number[]) => void,
@@ -44,12 +68,7 @@ export function useColumnWidths(
   }, []);
 
   const load = useCallback(
-    (saved: readonly number[] | undefined) =>
-      update(
-        saved?.length === defaultColumnWidths.length
-          ? saved
-          : defaultColumnWidths,
-      ),
+    (saved: readonly number[] | undefined) => update(widthsToLoad(saved)),
     [update],
   );
 
@@ -59,16 +78,11 @@ export function useColumnWidths(
         event.preventDefault();
         const startX = event.clientX;
         const startWidths = current.current;
-        // The last column keeps at least its minimum width
-        const others = startWidths.reduce(
-          (sum, width, i) => (i === index || hidden[i] ? sum : sum + width),
-          0,
-        );
-        const max = Math.max(
-          minColumnWidth,
-          (container.current?.clientWidth ?? Infinity) -
-            others -
-            minLastColumnWidth,
+        const max = maxWidth(
+          startWidths,
+          hidden,
+          index,
+          container.current?.clientWidth ?? Infinity,
         );
         const onMove = (move: PointerEvent) => {
           const width = Math.round(

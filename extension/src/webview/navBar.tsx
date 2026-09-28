@@ -183,7 +183,23 @@ export interface Address {
 const peekDelay = 300;
 const unpeekDelay = 200;
 
-type PeekMode = 'closed' | 'peek' | 'open';
+export type PeekMode = 'closed' | 'peek' | 'open';
+
+// What the pointer resting on something, or leaving it, and the keyboard's
+// toggle lead to; the pointer's get there after a delay
+export function nextPeekMode(
+  mode: PeekMode,
+  action: 'rest' | 'leave' | 'toggle',
+  canPeek: boolean,
+): PeekMode {
+  if (mode === 'peek' && action !== 'rest') {
+    return 'closed';
+  }
+  if (mode === 'closed' && canPeek && action !== 'leave') {
+    return 'peek';
+  }
+  return mode;
+}
 
 // Resting the pointer on something peeks at what it opens, which stays while
 // the pointer is on it or on the peek; a click opens it to stay until closed
@@ -202,26 +218,24 @@ function usePeek(canPeek: boolean) {
     mode,
     startPeek: () => {
       clearTimeout(timer.current);
-      if (mode === 'closed' && canPeek) {
-        timer.current = setTimeout(() => setMode('peek'), peekDelay);
+      const next = nextPeekMode(mode, 'rest', canPeek);
+      if (next !== mode) {
+        timer.current = setTimeout(() => setMode(next), peekDelay);
       }
     },
     // A moment's grace, so a wobbly move from the button into the peek
     // keeps it
     endPeek: () => {
       clearTimeout(timer.current);
-      if (mode === 'peek') {
-        timer.current = setTimeout(() => setMode('closed'), unpeekDelay);
+      const next = nextPeekMode(mode, 'leave', canPeek);
+      if (next !== mode) {
+        timer.current = setTimeout(() => setMode(next), unpeekDelay);
       }
     },
     // From the keyboard, staying until toggled again or dismissed
     togglePeek: () => {
       clearTimeout(timer.current);
-      if (mode === 'peek') {
-        setMode('closed');
-      } else if (mode === 'closed' && canPeek) {
-        setMode('peek');
-      }
+      setMode(nextPeekMode(mode, 'toggle', canPeek));
     },
     open: () => {
       clearTimeout(timer.current);

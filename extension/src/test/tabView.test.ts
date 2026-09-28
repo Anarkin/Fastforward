@@ -1,20 +1,6 @@
 import * as assert from 'node:assert';
-import type { CommitInfo } from '../protocol';
 import { emptyTabView, reduceTabView, type TabView } from '../webview/tabView';
-
-const commit = (hash: string): CommitInfo => ({
-  hash,
-  subject: hash,
-  message: hash,
-  parents: [],
-  authorName: 'Test',
-  authorEmail: 'test@example.com',
-  authorDate: 0,
-  committerName: 'Test',
-  committerEmail: 'test@example.com',
-  commitDate: 0,
-  files: 1,
-});
+import { commitInfo } from './fixtures';
 
 // A tab with a history, a selected commit and file, and an error
 function busyTab(): TabView {
@@ -25,7 +11,7 @@ function busyTab(): TabView {
     decorations: [],
     graphWidth: 1,
     start: 0,
-    commits: [commit('a')],
+    commits: [commitInfo('a')],
     graph: [],
     workingTreeGraph: { lane: 0, color: 0, lines: [] },
     selectedIndex: 0,
@@ -105,7 +91,7 @@ suite('Tab view', () => {
       type: 'commitPage',
       generation: 1,
       start: 1,
-      commits: [commit('b')],
+      commits: [commitInfo('b')],
       graph: [],
     });
     assert.strictEqual(after.history?.at(1)?.hash, 'b');
@@ -118,7 +104,7 @@ suite('Tab view', () => {
         type: 'commitPage',
         generation: 1,
         start: 2,
-        commits: [commit('c')],
+        commits: [commitInfo('c')],
         graph: [],
       },
     );
@@ -131,7 +117,7 @@ suite('Tab view', () => {
       type: 'commitPage',
       generation: 0,
       start: 1,
-      commits: [commit('b')],
+      commits: [commitInfo('b')],
       graph: [],
     });
     assert.strictEqual(after, before);

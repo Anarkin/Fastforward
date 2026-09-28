@@ -6,7 +6,7 @@ import { DiffView } from './diffView';
 
 // The files of a commit's diff in the commit's order, with its large files,
 // which the diff leaves out, as placeholders until they are fetched
-function withLargeFiles(
+export function withLargeFiles(
   parsed: readonly DiffFile[],
   files: readonly FileChange[],
   filePatches: ReadonlyMap<string, string>,

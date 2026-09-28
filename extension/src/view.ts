@@ -64,8 +64,8 @@ const viewUri = vscode.Uri.from({ scheme: 'fastforward', path: '/view' });
 const modalEditorGroup = -4;
 
 // Repository roots of the open tabs, kept per workspace
-const tabsKey = 'tabs';
-const activeTabKey = 'activeTab';
+export const tabsKey = 'tabs';
+export const activeTabKey = 'activeTab';
 // Repository roots opened in any workspace, most recent first, offered by +
 const recentKey = 'recentRepositories';
 const maxRecent = 20;
@@ -74,14 +74,14 @@ const maxRecent = 20;
 const columnWidthsKey = 'columnWidths';
 // Whether merge commits start collapsed, like Sublime Merge's setting; per
 // user and synced
-const collapseMergesKey = 'collapseMerges';
+export const collapseMergesKey = 'collapseMerges';
 // What the Files column lists, per user and synced
 const filesModeKey = 'filesMode';
 // Whether the Changes tab is a list or a tree, per user and synced
 const changesViewKey = 'changesView';
 // Bookmarked refs by repository root, per user; not synced, as roots are
 // paths on this machine; named vips, as bookmarks were called at first
-const bookmarksKey = 'vips';
+export const bookmarksKey = 'vips';
 
 // Kept in the extension, because the webview is recreated every time the modal
 // opens

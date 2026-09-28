@@ -13,5 +13,5 @@
 
 - When debugging a reported problem, read the newest `Fastforward.log` under `%APPDATA%\Code\logs\*\window*\exthost\anarkin.fastforward\`
 - After changing extension code and passing `npm run verify:fast`, run `npm run deploy-local` in `extension/` so the installed extension reloads; when `package.json` changed, run `npm run install-local` instead and ask the user to restart the extension host
-- `npm run verify:fast` leaves out the tests that need VS Code and git repositories; run the full `npm run verify` before committing, and after changing code those tests cover: the Git access, the view and the extension
+- `npm run verify:fast` leaves out the tests that need VS Code and git repositories, which are named `*.vscode.test.ts`; run the full `npm run verify` before committing, and after changing code those tests cover: the Git access, the view and the extension
 - Cover every fix with a test that fails without it; when the bug itself can't be tested, as with layout in a real browser, move the logic behind the fix into code that can be, and test that

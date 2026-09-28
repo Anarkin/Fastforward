@@ -1,8 +1,8 @@
 import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { templateOf } from '../webview/columns';
 import { ShortcutsPanel } from '../webview/navBar';
-import { shortcutOf } from '../webview/shortcuts';
+import { shortcutOf, shortcuts } from '../webview/shortcuts';
+import { definitions } from './fixtures';
 
 const press = (
   key: string,
@@ -71,21 +71,13 @@ suite('Keyboard shortcuts', () => {
         ?
       </ShortcutsPanel>,
     );
-    assert.match(
-      html,
-      /<dt><kbd>C<\/kbd><\/dt><dd>Show or hide the commit list<\/dd>/,
-    );
-    assert.match(html, /<dt><kbd>Ctrl<\/kbd>\+<kbd>L<\/kbd><\/dt><dd>Search/);
-  });
-
-  test('gives a hidden column no width, keeping the others', () => {
-    assert.strictEqual(
-      templateOf([460, 300], [true, false]),
-      '0px 300px minmax(240px, 1fr)',
-    );
-    assert.strictEqual(
-      templateOf([460, 300], [false, false]),
-      '460px 300px minmax(240px, 1fr)',
+    assert.deepStrictEqual(
+      definitions(html),
+      shortcuts.map((shortcut) => [
+        `${'ctrl' in shortcut ? 'Ctrl+' : ''}${shortcut.key.toUpperCase()}`,
+        shortcut.description,
+        '',
+      ]),
     );
   });
 });

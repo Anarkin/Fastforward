@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { workingTreeHash, type CommitInfo } from '../protocol';
+import { workingTreeHash } from '../protocol';
 import { CommitHistory } from '../webview/commitHistory';
 import {
   bubbleLineHeight,
@@ -9,22 +9,7 @@ import {
   estimatedRowHeight,
   rowKeyOf,
 } from '../webview/commitList';
-
-function commit(hash: string): CommitInfo {
-  return {
-    hash,
-    subject: hash,
-    message: hash,
-    parents: [],
-    authorName: '',
-    authorEmail: '',
-    authorDate: 0,
-    committerName: '',
-    committerEmail: '',
-    commitDate: 0,
-    files: 0,
-  };
-}
+import { commitInfo } from './fixtures';
 
 suite('Commit list rows', () => {
   test('starts a row with bubbles at one line of them', () => {
@@ -45,7 +30,7 @@ suite('Commit list rows', () => {
 
   test('keys a row by its commit, so it keeps its height as the list changes', () => {
     const history = new CommitHistory(3);
-    history.add(0, [commit('a'), commit('b')]);
+    history.add(0, [commitInfo('a'), commitInfo('b')]);
     assert.strictEqual(rowKeyOf(history, 1, 0), workingTreeHash);
     assert.strictEqual(rowKeyOf(history, 1, 2), 'b');
     // The same commit one row higher without the working tree's row

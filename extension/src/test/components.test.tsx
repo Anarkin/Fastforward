@@ -1,32 +1,36 @@
 import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
-import type { FileChange } from '../protocol';
 import { changesTreeElements, changesTreeRows } from '../webview/changesTree';
 import { MenuItems } from '../webview/contextMenu';
 import { LocationsPopup } from '../webview/locations';
-import { MessagePeek, NavBar } from '../webview/navBar';
+import { MessagePeek, NavBar, nextPeekMode } from '../webview/navBar';
 import { parsePatch } from '../webview/diff';
 import { diffRows } from '../webview/diffView';
 import { changeTitle, statusClass } from '../webview/fileStatus';
 import { LineCounts } from '../webview/lineCounts';
 import { SkeletonRows } from '../webview/skeleton';
+import {
+  cardCommit,
+  classesOf,
+  definitions,
+  fileChange as change,
+  tagsWith,
+} from './fixtures';
 
 // The webview's components, rendered to HTML without a browser, as mocha runs
-// in the extension host
-
-const change = (path: string, extra: Partial<FileChange> = {}): FileChange => ({
-  path,
-  oldPath: undefined,
-  status: 'M',
-  insertions: 1,
-  deletions: 2,
-  ...extra,
-});
+// in node or the extension host, which have no DOM
 
 const noop = () => {};
 
 const kinds = (rows: ReturnType<typeof diffRows>) =>
   rows.map((row) => row.kind);
+
+// The one opening tag with these classes and this text, like a title
+function tagWith(html: string, text: string, ...classes: string[]): string {
+  const found = tagsWith(html, ...classes).filter((tag) => tag.includes(text));
+  assert.strictEqual(found.length, 1, `${classes.join(' ')} with ${text}`);
+  return found[0];
+}
 
 suite('File status', () => {
   test('names the status and both paths of a rename in the tooltip', () => {
@@ -68,15 +72,10 @@ suite('Changes tree rows', () => {
         })}
       </>,
     );
-    assert.match(html, /class="row tree-row folder counted"[^>]*title="src"/);
-    assert.match(
-      html,
-      /class="row tree-row file selected"[^>]*title="Modified: src\/b.ts"/,
-    );
-    assert.match(
-      html,
-      /class="row tree-row file "[^>]*title="Modified: src\/a.ts"/,
-    );
+    tagWith(html, 'title="src"', 'row', 'tree-row', 'folder', 'counted');
+    tagWith(html, 'title="Modified: src/b.ts"', 'row', 'file', 'selected');
+    const a = tagWith(html, 'title="Modified: src/a.ts"', 'row', 'file');
+    assert.ok(!classesOf(a).has('selected'));
   });
 });
 
@@ -100,6 +99,12 @@ const bar = (props: Partial<Parameters<typeof NavBar>[0]>) =>
     />,
   );
 
+// The address bar's peek at this commit
+const peek = (commit: Parameters<typeof cardCommit>[0]) =>
+  renderToStaticMarkup(
+    <MessagePeek commit={cardCommit(commit)} onOpen={noop} />,
+  );
+
 suite('Navigation bar', () => {
   test('greys out back and forward without steps', () => {
     const html = bar({
@@ -118,129 +123,118 @@ suite('Navigation bar', () => {
       },
     });
     // One line of text, so both share a baseline
+    assert.strictEqual(tagsWith(html, 'address-text').length, 1);
     assert.match(
       html,
-      /<span class="address-text "><span class="address-hash">d1f0050<\/span>chore: trim verification<\/span>/,
+      /class="address-hash">d1f0050<\/span>chore: trim verification<\/span>/,
     );
   });
 
   test('peeks at the description and details, the bar keeping its text', () => {
     const hash = 'd1f0050454a27f025c6820fc4a42b101a7fa356a';
-    const html = renderToStaticMarkup(
-      <MessagePeek
-        commit={{
-          hash,
-          message: 'the subject\n\nthe body\nmore',
-          author: 'Jozsef Simon',
-          email: 'jozsef@example.com',
-          date: new Date(2022, 11, 14, 16, 12).getTime(),
-          committer: 'Jozsef Simon',
-          committerEmail: 'jozsef@example.com',
-          committed: new Date(2022, 11, 14, 16, 12, 30).getTime(),
-          refs: [],
-          detachedHead: false,
-        }}
-        onOpen={noop}
-      />,
-    );
-    assert.match(html, /class="locations-popup peek"/);
-    assert.match(
-      html,
-      /<span class="address-hash">d1f0050<\/span>the subject<\/span>/,
-    );
+    const html = peek({
+      hash,
+      message: 'the subject\n\nthe body\nmore',
+      author: 'Jozsef Simon',
+      email: 'jozsef@example.com',
+      date: new Date(2022, 11, 14, 16, 12).getTime(),
+      committer: 'Jozsef Simon',
+      committerEmail: 'jozsef@example.com',
+      committed: new Date(2022, 11, 14, 16, 12, 30).getTime(),
+    });
+    assert.strictEqual(tagsWith(html, 'locations-popup', 'peek').length, 1);
+    assert.match(html, /class="address-hash">d1f0050<\/span>the subject</);
     // The blank line after the subject goes, the body stays as written
-    assert.match(html, /<pre class="commit-card-body">the body\nmore<\/pre>/);
-    assert.match(
-      html,
-      new RegExp(
-        `<dt>Commit</dt><dd class="commit-card-hash">${hash}</dd><dt>Author</dt><dd>Jozsef Simon &lt;jozsef@example.com&gt;</dd><dt>Committer</dt><dd class="same">same</dd><dt>Authored</dt><dd>2022-12-14 16:12</dd><dt>Committed</dt><dd class="same">same</dd></dl>`,
-      ),
-    );
+    assert.match(html, /class="commit-card-body">the body\nmore<\/pre>/);
+    assert.deepStrictEqual(definitions(html), [
+      ['Commit', hash, 'commit-card-hash'],
+      ['Author', 'Jozsef Simon <jozsef@example.com>', ''],
+      ['Committer', 'same', 'same'],
+      ['Authored', '2022-12-14 16:12', ''],
+      ['Committed', 'same', 'same'],
+    ]);
     assert.doesNotMatch(html, /<input/);
   });
 
   test('peeks at the details of a commit without a description', () => {
-    const html = renderToStaticMarkup(
-      <MessagePeek
-        commit={{
-          hash: 'a'.repeat(40),
-          message: 'only',
-          author: 'A',
-          email: 'a@example.com',
-          date: 0,
-          committer: 'A',
-          committerEmail: 'a@example.com',
-          committed: 0,
-          refs: [],
-          detachedHead: false,
-        }}
-        onOpen={noop}
-      />,
-    );
+    const html = peek({ message: 'only' });
     // No frame to couple with the subject, only the room it would take
-    assert.match(html, /class="commit-card-frame empty"/);
-    assert.doesNotMatch(html, /commit-card-body/);
-    assert.match(html, /<dt>Author<\/dt><dd>A &lt;a@example.com&gt;<\/dd>/);
+    assert.strictEqual(tagsWith(html, 'commit-card-frame', 'empty').length, 1);
+    assert.strictEqual(tagsWith(html, 'commit-card-body').length, 0);
+    assert.deepStrictEqual(definitions(html)[1], [
+      'Author',
+      'A <a@example.com>',
+      '',
+    ]);
   });
 
   test('shows the committer and when committed where they differ', () => {
-    const html = renderToStaticMarkup(
-      <MessagePeek
-        commit={{
-          hash: 'a'.repeat(40),
-          message: 'rebased',
-          author: 'Ann',
-          email: 'ann@example.com',
-          date: new Date(2022, 11, 14, 16, 12).getTime(),
-          committer: 'Bob',
-          committerEmail: 'bob@example.com',
-          committed: new Date(2022, 11, 20, 9, 5).getTime(),
-          refs: [],
-          detachedHead: false,
-        }}
-        onOpen={noop}
-      />,
-    );
-    assert.match(
-      html,
-      /<dt>Author<\/dt><dd>Ann &lt;ann@example.com&gt;<\/dd><dt>Committer<\/dt><dd>Bob &lt;bob@example.com&gt;<\/dd><dt>Authored<\/dt><dd>2022-12-14 16:12<\/dd><dt>Committed<\/dt><dd>2022-12-20 09:05<\/dd><\/dl>/,
-    );
+    const html = peek({
+      message: 'rebased',
+      author: 'Ann',
+      email: 'ann@example.com',
+      date: new Date(2022, 11, 14, 16, 12).getTime(),
+      committer: 'Bob',
+      committerEmail: 'bob@example.com',
+      committed: new Date(2022, 11, 20, 9, 5).getTime(),
+    });
+    assert.deepStrictEqual(definitions(html).slice(1), [
+      ['Author', 'Ann <ann@example.com>', ''],
+      ['Committer', 'Bob <bob@example.com>', ''],
+      ['Authored', '2022-12-14 16:12', ''],
+      ['Committed', '2022-12-20 09:05', ''],
+    ]);
   });
 
   test("lists the commit's bubbles one to a row, without labels", () => {
     const hash = 'a'.repeat(40);
-    const html = renderToStaticMarkup(
-      <MessagePeek
-        commit={{
-          hash,
-          message: 'tagged',
-          author: 'Ann',
-          email: 'ann@example.com',
-          date: 0,
-          committer: 'Ann',
-          committerEmail: 'ann@example.com',
-          committed: 0,
-          refs: [
-            { kind: 'branch', name: 'main', commit: hash },
-            { kind: 'tag', name: 'v1.0', commit: hash },
-          ],
-          detachedHead: true,
-        }}
-        onOpen={noop}
-      />,
-    );
-    assert.match(
-      html,
-      /<dt class="first-bubble"><\/dt><dd class="first-bubble"><span class="badge head[^"]*"[^>]*>HEAD aaaaaaa<\/span><\/dd><dt><\/dt><dd><span class="badge branch [^"]*"[^>]*>main<\/span><\/dd><dt><\/dt><dd><span class="badge tag [^"]*"[^>]*>v1.0<\/span><\/dd><\/dl>/,
-    );
+    const html = peek({
+      hash,
+      message: 'tagged',
+      refs: [
+        { kind: 'branch', name: 'main', commit: hash },
+        { kind: 'tag', name: 'v1.0', commit: hash },
+      ],
+      detachedHead: true,
+    });
+    assert.deepStrictEqual(definitions(html).slice(-3), [
+      ['', 'HEAD aaaaaaa', 'first-bubble'],
+      ['', 'main', ''],
+      ['', 'v1.0', ''],
+    ]);
+    tagWith(html, '', 'badge', 'head');
+    tagWith(html, '', 'badge', 'branch');
+    tagWith(html, '', 'badge', 'tag');
   });
 
   test('spins the fetch button while fetching', () => {
-    assert.match(
+    const spinning = tagWith(
       bar({ fetching: true }),
-      /class="nav-button running"[^>]*disabled=""/,
+      'title="Fetch',
+      'nav-button',
+      'running',
     );
-    assert.match(bar({}), /class="nav-button "[^>]*title="Fetch/);
+    assert.match(spinning, /disabled=""/);
+    const idle = tagWith(bar({}), 'title="Fetch', 'nav-button');
+    assert.ok(!classesOf(idle).has('running'));
+  });
+});
+
+suite('Peek', () => {
+  test('peeks when the pointer rests, and closes a peek when it leaves', () => {
+    assert.strictEqual(nextPeekMode('closed', 'rest', true), 'peek');
+    assert.strictEqual(nextPeekMode('closed', 'rest', false), 'closed');
+    assert.strictEqual(nextPeekMode('peek', 'leave', true), 'closed');
+    // What a click opened stays open
+    assert.strictEqual(nextPeekMode('open', 'rest', true), 'open');
+    assert.strictEqual(nextPeekMode('open', 'leave', true), 'open');
+  });
+
+  test('toggles a peek from the keyboard, but not what a click opened', () => {
+    assert.strictEqual(nextPeekMode('closed', 'toggle', true), 'peek');
+    assert.strictEqual(nextPeekMode('closed', 'toggle', false), 'closed');
+    assert.strictEqual(nextPeekMode('peek', 'toggle', true), 'closed');
+    assert.strictEqual(nextPeekMode('open', 'toggle', true), 'open');
   });
 });
 
@@ -270,7 +264,10 @@ suite('Hash suggestion', () => {
       query: 'abcd',
       result: { kind: 'found', hash, subject: 'the subject' },
     });
-    assert.match(html, /class="row hash-suggestion active"/);
+    assert.strictEqual(
+      tagsWith(html, 'row', 'hash-suggestion', 'active').length,
+      1,
+    );
     assert.match(html, /Go to commit.*abcd000.*the subject/);
   });
 
@@ -307,7 +304,7 @@ suite('Menu items', () => {
     );
     assert.match(html, /role="menuitemradio" aria-checked="true"/);
     assert.match(html, /role="menuitemcheckbox" aria-checked="false"/);
-    assert.match(html, /class="menu-separator"/);
+    assert.strictEqual(tagsWith(html, 'menu-separator').length, 1);
     assert.match(html, /role="menuitem"[^>]*disabled=""/);
   });
 });
@@ -317,10 +314,7 @@ suite('Placeholders', () => {
     const html = renderToStaticMarkup(
       <SkeletonRows count={3} className="diff-line" />,
     );
-    assert.strictEqual(
-      html.match(/class="diff-line skeleton-row"/g)?.length,
-      3,
-    );
+    assert.strictEqual(tagsWith(html, 'diff-line', 'skeleton-row').length, 3);
     assert.match(html, /aria-busy="true"/);
   });
 

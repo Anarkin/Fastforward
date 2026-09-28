@@ -1,14 +1,6 @@
 import * as assert from 'node:assert';
-import type { FileChange } from '../protocol';
 import { changesTreeRows } from '../webview/changesTree';
-
-const change = (path: string): FileChange => ({
-  path,
-  oldPath: undefined,
-  status: 'M',
-  insertions: 1,
-  deletions: 0,
-});
+import { fileChange } from './fixtures';
 
 const files = [
   '.editorconfig',
@@ -16,7 +8,7 @@ const files = [
   'src/Gyurma.Generators/GyurmaGenerator.cs',
   'src/Gyurma/VoidMethodSetup.cs',
   'tests/Gyurma.Tests/SignatureTests.cs',
-].map(change);
+].map((path) => fileChange(path));
 
 const lines = (rows: ReturnType<typeof changesTreeRows>) =>
   rows.map((row) =>
