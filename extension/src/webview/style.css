@@ -13,6 +13,13 @@ body {
      shade toward the text would set them apart, e.g.
      color-mix(in srgb, var(--vscode-foreground) 4%, var(--vscode-editor-background)) */
   --toolbar-background: var(--vscode-editor-background);
+  /* A shade toward the text, for what is picked: the address bar at rest,
+     and the selected commit and file, so they read as the same thing */
+  --shade-background: color-mix(
+    in srgb,
+    var(--vscode-foreground) 7%,
+    var(--toolbar-background)
+  );
   /* The address popup's, the tab row's color, which rows over its lists
      need too */
   --popup-background: var(
@@ -210,6 +217,13 @@ body {
   grid-template-rows: minmax(0, 1fr);
 }
 
+/* Hidden by C, with no width, keeping its scroll position; see templateOf */
+.columns.commits-hidden > .column:first-child {
+  visibility: hidden;
+  overflow: hidden;
+  border-right: none;
+}
+
 .column {
   position: relative;
   display: flex;
@@ -301,8 +315,8 @@ body.resizing {
 
 .row.selected,
 .commit.selected {
-  color: var(--vscode-list-activeSelectionForeground);
-  background: var(--vscode-list-activeSelectionBackground);
+  color: var(--vscode-foreground);
+  background: var(--shade-background);
 }
 
 .row.group {
@@ -1275,11 +1289,7 @@ body.vscode-high-contrast-light .menu {
   cursor: text;
   /* Like Chrome's: a shade darker than the toolbar at rest, as the search box
      it opens into when the pointer is on it, like the peek's */
-  background: color-mix(
-    in srgb,
-    var(--vscode-foreground) 7%,
-    var(--toolbar-background)
-  );
+  background: var(--shade-background);
   border: 1px solid transparent;
   border-radius: 14px;
 }
@@ -1446,11 +1456,95 @@ body.vscode-high-contrast-light .menu {
 
 /* As much room right of the address bar as the buttons take on its left,
    so it sits in the middle: three buttons and the gaps and margin around
-   them, less the gap before this */
-.nav-bar::after {
-  content: '';
+   them, less the gap before this; the ? is as far from the bar as the
+   buttons on the left are */
+.nav-end {
   flex: none;
+  display: flex;
   width: calc(3 * 26px + 3 * 2px + 6px - 2px);
+}
+
+.shortcuts {
+  position: relative;
+  margin-left: 4px;
+}
+
+/* Over the ?, taking it in, like the address bar's popup: the ? in its top
+   right corner where it was, the card growing down and left from it; its
+   edge a shadow, so a border's width doesn't move the ? off its place */
+.shortcuts-panel {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  z-index: 15;
+  width: 320px;
+  padding: 6px 6px 14px;
+  color: var(--vscode-foreground);
+  background: var(--popup-background);
+  /* Around the ?'s circle: its radius and the gap to it */
+  border-radius: 19px;
+  box-shadow:
+    inset 0 0 0 1px
+      var(--vscode-widget-border, var(--vscode-panel-border, transparent)),
+    0 12px 32px rgba(0, 0, 0, 0.22),
+    0 2px 8px rgba(0, 0, 0, 0.16),
+    0 0 0 1px var(--vscode-widget-shadow, transparent);
+}
+
+.shortcuts-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.shortcuts-title {
+  padding-left: 10px;
+  font-weight: 600;
+}
+
+.shortcuts-list {
+  padding: 0 10px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  /* The key's letter on the line of its description */
+  align-items: baseline;
+  gap: 8px 12px;
+  margin: 0;
+}
+
+.shortcuts-list dd {
+  margin: 0;
+}
+
+/* A key cap in VS Code's colors for them, its letter in the middle: as much
+   room above it as the thicker bottom edge takes below; on the line of the
+   text, where VS Code's own style for webviews would move it to the middle,
+   with a shadow that would thicken its bottom edge more */
+.shortcuts-list kbd {
+  display: inline-block;
+  min-width: 12px;
+  padding: 1px 6px 0;
+  font: inherit;
+  text-align: center;
+  vertical-align: baseline;
+  color: var(--vscode-keybindingLabel-foreground, inherit);
+  background: var(
+    --vscode-keybindingLabel-background,
+    var(--vscode-input-background)
+  );
+  border: 1px solid
+    var(
+      --vscode-keybindingLabel-border,
+      var(--vscode-widget-border, var(--vscode-panel-border))
+    );
+  border-bottom: 2px solid
+    var(
+      --vscode-keybindingLabel-bottomBorder,
+      var(--vscode-widget-border, var(--vscode-panel-border))
+    );
+  border-radius: 4px;
+  box-shadow: none;
 }
 
 /* The commit a typed hash is, on top of the search, like Chrome's first

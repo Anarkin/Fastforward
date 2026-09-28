@@ -20,12 +20,20 @@ interface Resizing {
 const ColumnResizing = createContext<Resizing | undefined>(undefined);
 export const ColumnResizingProvider = ColumnResizing.Provider;
 
-function templateOf(widths: readonly number[]): string {
-  return `${widths.map((width) => `${width}px`).join(' ')} minmax(${minLastColumnWidth}px, 1fr)`;
+// A hidden column is there with no width, so it keeps its scroll position
+// and whatever else it holds for when it shows again
+export function templateOf(
+  widths: readonly number[],
+  hidden: readonly boolean[],
+): string {
+  return `${widths.map((width, i) => `${hidden[i] ? 0 : width}px`).join(' ')} minmax(${minLastColumnWidth}px, 1fr)`;
 }
 
 // Column widths that the resizers change; save is called when a drag ends
-export function useColumnWidths(save: (widths: readonly number[]) => void) {
+export function useColumnWidths(
+  save: (widths: readonly number[]) => void,
+  hidden: readonly boolean[],
+) {
   const [widths, setWidths] = useState<readonly number[]>(defaultColumnWidths);
   const current = useRef(widths);
   const container = useRef<HTMLDivElement>(null);
@@ -53,7 +61,7 @@ export function useColumnWidths(save: (widths: readonly number[]) => void) {
         const startWidths = current.current;
         // The last column keeps at least its minimum width
         const others = startWidths.reduce(
-          (sum, width, i) => (i === index ? sum : sum + width),
+          (sum, width, i) => (i === index || hidden[i] ? sum : sum + width),
           0,
         );
         const max = Math.max(
@@ -80,6 +88,7 @@ export function useColumnWidths(save: (widths: readonly number[]) => void) {
           if (container.current) {
             container.current.style.gridTemplateColumns = templateOf(
               current.current,
+              hidden,
             );
           }
         };
@@ -102,10 +111,10 @@ export function useColumnWidths(save: (widths: readonly number[]) => void) {
         save(next);
       },
     }),
-    [save, update],
+    [save, update, hidden],
   );
 
-  return { container, template: templateOf(widths), load, resizing };
+  return { container, template: templateOf(widths, hidden), load, resizing };
 }
 
 // The handle on a column's right edge; double-click resets the width

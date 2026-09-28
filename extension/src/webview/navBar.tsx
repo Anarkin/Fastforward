@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import type { HashLookup, NavigationEntry } from '../protocol';
 import { CommitDetails, type CardCommit } from './commitCard';
 import { useDismiss } from './contextMenu';
-import { BackIcon, ForwardIcon, RefreshIcon } from './icons';
+import { BackIcon, ForwardIcon, HelpIcon, RefreshIcon } from './icons';
 import { LocationsPopup, usePopupHeight, type Repository } from './locations';
+import { shortcuts } from './shortcuts';
 
 // Holding a back or forward button this long opens its history, like a
 // browser's
@@ -69,6 +70,9 @@ export function NavBar({
         onLookupHash={onLookupHash}
         onJump={onJump}
       />
+      <div className="nav-end">
+        <ShortcutsHelp />
+      </div>
     </div>
   );
 }
@@ -170,7 +174,6 @@ export interface Address {
   readonly hash: string | undefined;
   // One line, for the bar
   readonly subject: string | undefined;
-  // The whole message, for the popup
   // For the card in the peek and popup
   readonly commit: CardCommit | undefined;
 }
@@ -179,6 +182,45 @@ export interface Address {
 // over it on the way elsewhere doesn't, and how long the peek stays after
 const peekDelay = 300;
 const unpeekDelay = 200;
+
+type PeekMode = 'closed' | 'peek' | 'open';
+
+// Resting the pointer on something peeks at what it opens, which stays while
+// the pointer is on it or on the peek; a click opens it to stay until closed
+function usePeek(canPeek: boolean) {
+  const [mode, setMode] = useState<PeekMode>('closed');
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => {
+    const current = timer;
+    return () => clearTimeout(current.current);
+  }, []);
+  const close = useCallback(() => {
+    clearTimeout(timer.current);
+    setMode('closed');
+  }, []);
+  return {
+    mode,
+    startPeek: () => {
+      clearTimeout(timer.current);
+      if (mode === 'closed' && canPeek) {
+        timer.current = setTimeout(() => setMode('peek'), peekDelay);
+      }
+    },
+    // A moment's grace, so a wobbly move from the button into the peek
+    // keeps it
+    endPeek: () => {
+      clearTimeout(timer.current);
+      if (mode === 'peek') {
+        timer.current = setTimeout(() => setMode('closed'), unpeekDelay);
+      }
+    },
+    open: () => {
+      clearTimeout(timer.current);
+      setMode('open');
+    },
+    close,
+  };
+}
 
 // The top of the search popup in its place, the bar's text staying in its
 // box, and the commit's details under it; it doesn't take the keyboard, and
@@ -228,30 +270,10 @@ function AddressBar({
   onJump: (commit: string) => void;
 }) {
   // Resting the pointer on the bar peeks at the whole commit message; a
-  // click opens the search, which stays until closed
-  const [mode, setMode] = useState<'closed' | 'peek' | 'open'>('closed');
-  const peekTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const startPeek = () => {
-    clearTimeout(peekTimer.current);
-    if (mode === 'closed' && address.commit) {
-      peekTimer.current = setTimeout(() => setMode('peek'), peekDelay);
-    }
-  };
-  // A moment's grace, so a wobbly move from the bar into the peek keeps it
-  const endPeek = () => {
-    clearTimeout(peekTimer.current);
-    if (mode === 'peek') {
-      peekTimer.current = setTimeout(() => setMode('closed'), unpeekDelay);
-    }
-  };
-  useEffect(() => {
-    const timer = peekTimer;
-    return () => clearTimeout(timer.current);
-  }, [peekTimer]);
-  const open = () => {
-    clearTimeout(peekTimer.current);
-    setMode('open');
-  };
+  // click opens the search
+  const { mode, startPeek, endPeek, open, close } = usePeek(
+    address.commit !== undefined,
+  );
   // The search text of each repository, kept while the popup is closed
   const [queries, setQueries] = useState<ReadonlyMap<string, string>>(
     new Map(),
@@ -260,7 +282,6 @@ function AddressBar({
   const setQuery = (next: string) =>
     root && setQueries((all) => new Map(all).set(root, next));
   const container = useRef<HTMLDivElement>(null);
-  const close = useCallback(() => setMode('closed'), []);
 
   return (
     <div
@@ -299,6 +320,71 @@ function AddressBar({
           onQuery={setQuery}
         />
       )}
+    </div>
+  );
+}
+
+// A ? at the right of the address bar: resting the pointer on it peeks at
+// the keyboard shortcuts, and a click keeps them open until closed; they
+// open from the ?, which stays in its place in their top right corner, as
+// the address bar's popup opens from the bar
+function ShortcutsHelp() {
+  const { mode, startPeek, endPeek, open, close } = usePeek(true);
+  const container = useRef<HTMLDivElement>(null);
+  const button = (
+    <button
+      className="nav-button"
+      aria-label="Keyboard shortcuts"
+      aria-expanded={mode !== 'closed'}
+      onClick={mode === 'open' ? close : open}
+    >
+      <HelpIcon />
+    </button>
+  );
+  return (
+    <div
+      className="shortcuts"
+      ref={container}
+      onPointerEnter={startPeek}
+      onPointerLeave={endPeek}
+    >
+      {button}
+      {mode !== 'closed' && (
+        <ShortcutsPanel container={container} onClose={close}>
+          {button}
+        </ShortcutsPanel>
+      )}
+    </div>
+  );
+}
+
+export function ShortcutsPanel({
+  container,
+  onClose,
+  children,
+}: {
+  container: React.RefObject<HTMLElement | null>;
+  onClose: () => void;
+  // The ?, in its place
+  children: React.ReactNode;
+}) {
+  useDismiss(container, onClose);
+  return (
+    <div className="shortcuts-panel">
+      <div className="shortcuts-header">
+        <div className="shortcuts-title">Keyboard shortcuts</div>
+        {children}
+      </div>
+      <dl className="shortcuts-list">
+        {shortcuts.map((shortcut) => (
+          <Fragment key={shortcut.key}>
+            <dt>
+              <kbd>{shortcut.key.toUpperCase()}</kbd>
+            </dt>
+            <dd>{shortcut.description}</dd>
+          </Fragment>
+        ))}
+      </dl>
     </div>
   );
 }

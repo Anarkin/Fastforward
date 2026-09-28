@@ -22,6 +22,7 @@ import { checkoutOptions, checkoutRef } from './checkout';
 import { ColumnResizingProvider, useColumnWidths } from './columns';
 import { commitPageSize } from './commitHistory';
 import { Commits } from './commitList';
+import { useShortcuts } from './shortcuts';
 import {
   ContextMenu,
   OpenContextMenu,
@@ -93,12 +94,16 @@ export function App({ post }: Props) {
     (widths: readonly number[]) => post({ type: 'setColumnWidths', widths }),
     [post],
   );
+  // The commit list, which C hides for more room for the files and the diff
+  const [commitsShown, setCommitsShown] = useState(true);
+  useShortcuts({ c: () => setCommitsShown((shown) => !shown) });
+  const hiddenColumns = useMemo(() => [!commitsShown, false], [commitsShown]);
   const {
     container: columnsContainer,
     template: columnsTemplate,
     load: loadColumnWidths,
     resizing,
-  } = useColumnWidths(saveColumnWidths);
+  } = useColumnWidths(saveColumnWidths, hiddenColumns);
 
   useEffect(() => {
     const onMessage = (event: MessageEvent<ToWebview>) => {
@@ -409,7 +414,7 @@ export function App({ post }: Props) {
             ) : (
               <ColumnResizingProvider value={resizing}>
                 <div
-                  className="columns"
+                  className={`columns ${commitsShown ? '' : 'commits-hidden'}`}
                   ref={columnsContainer}
                   style={{ gridTemplateColumns: columnsTemplate }}
                 >

@@ -45,12 +45,23 @@ export function ForwardIcon() {
   );
 }
 
-// A circle, open at the top right, where its arrowhead turns it clockwise
+// A question mark in a circle
+export function HelpIcon() {
+  return (
+    <Icon>
+      <circle cx="8" cy="8" r="6.2" />
+      <path d="M6.3 6.4a1.75 1.75 0 1 1 2.5 1.6c-.5.25-.8.6-.8 1.15v.35M8 11.3v.05" />
+    </Icon>
+  );
+}
+
+// A circle, open at the top right, running into the corner of the arrowhead
+// that turns it clockwise
 export function RefreshIcon() {
   return (
     <Icon>
-      <path d="M13 8a5 5 0 1 1-1.46-3.54" />
-      <path d="M12 2v3h-3" />
+      <path d="M13 8a5 5 0 1 1-5-5c1.33 0 2.6.53 3.54 1.46L13 6" />
+      <path d="M13 3v3h-3" />
     </Icon>
   );
 }
