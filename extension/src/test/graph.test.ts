@@ -74,6 +74,13 @@ suite('Graph', () => {
     const full = new Graph(history, { checkpointEvery: 1000 }).rows(0, 50);
     const paged = new Graph(history, { checkpointEvery: 7 });
     assert.deepStrictEqual(paged.rows(0, 50), full);
+    // As wide as the widest row, found without drawing the rows' lines
+    const widest = Math.max(
+      ...full.map((row) =>
+        Math.max(row.lane + 1, ...row.lines.map((line) => line.to + 1)),
+      ),
+    );
+    assert.strictEqual(paged.width, widest);
     assert.deepStrictEqual(paged.rows(23, 10), full.slice(23, 33));
   });
 

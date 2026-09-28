@@ -1,12 +1,8 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { FileChange } from '../protocol';
+import { collapseThreshold, type FileChange } from '../protocol';
 import type { DiffFile, DiffLine } from './diff';
 import { LineCounts } from './lineCounts';
-
-// Files with more changed lines than this start collapsed, as drawing them is
-// slow and reading them rarely useful, like a generated graph.json
-export const collapseThreshold = 1500;
 
 // A file shown whole, as the commit didn't change it
 export interface WholeFile {
@@ -50,6 +46,9 @@ const rowHeights: Record<Exclude<DiffRow['kind'], 'summary'>, number> = {
 };
 
 function changedLines(file: DiffFile): number {
+  if (file.placeholder) {
+    return file.placeholder.lines;
+  }
   return file.hunks.reduce(
     (sum, hunk) =>
       sum + hunk.lines.filter((line) => line.kind !== 'context').length,
@@ -111,18 +110,24 @@ export function diffRows(
 }
 
 // The Diff column's contents: the summary, then the files' diffs, or a whole
-// file; only the rows on screen are drawn, so a diff of any size opens fast
+// file; only the rows on screen are drawn, so a diff of any size opens fast;
+// keyed by the selection, so another commit or file starts at the top with
+// its files as they come, while a changed diff of the same one, like after a
+// save, keeps its place
 export function DiffView({
   summary,
   files,
   changes,
   whole,
+  onLoad,
 }: {
   summary: React.ReactNode;
   files: readonly DiffFile[];
   // Insertion and deletion counts by path
   changes: ReadonlyMap<string, FileChange>;
   whole: WholeFile | undefined;
+  // Fetches the diff of a large file left out of the commit's diff
+  onLoad: (path: string) => void;
 }) {
   const list = useRef<HTMLDivElement>(null);
   const [toggled, setToggled] = useState<ReadonlyMap<string, boolean>>(
@@ -143,14 +148,18 @@ export function DiffView({
     overscan: 30,
   });
 
-  // A new diff starts at the top, with its files as they come
-  useEffect(() => {
-    setToggled(new Map());
-    virtualizer.scrollToOffset(0);
-  }, [files, whole, virtualizer]);
-
   const toggle = (path: string, open: boolean) =>
     setToggled((all) => new Map(all).set(path, !open));
+
+  // Large files left out of the diff are fetched once opened, also again when
+  // the diff was fetched again, like after a save
+  useEffect(() => {
+    for (const file of files) {
+      if (file.placeholder && toggled.get(file.path)) {
+        onLoad(file.path);
+      }
+    }
+  }, [files, toggled, onLoad]);
 
   const header = (row: Extract<DiffRow, { kind: 'file' }>) => {
     const change = changes.get(row.path);

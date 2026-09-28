@@ -11,6 +11,18 @@ export type SyncAction = 'pull' | 'push';
 // of the repository at it
 export type FilesMode = 'changes' | 'files';
 
+// Files with more changed lines than this start collapsed in the Diff column,
+// and the diff of a whole commit leaves them out until one is opened, as they
+// are slow to fetch, send and draw, and rarely read, like a generated file
+export const collapseThreshold = 1500;
+
+export function isLargeChange(file: {
+  readonly insertions: number;
+  readonly deletions: number;
+}): boolean {
+  return file.insertions + file.deletions > collapseThreshold;
+}
+
 // How the Changes tab shows the changed files
 export type ChangesView = 'list' | 'tree';
 
@@ -113,6 +125,12 @@ export type ToExtension =
   | { readonly type: 'setVips'; readonly vips: readonly Vip[] }
   // Asks for every file of the repository at a commit
   | { readonly type: 'loadTree'; readonly hash: string }
+  // Asks for the diff of a large file left out of the commit's diff
+  | {
+      readonly type: 'loadFileDiff';
+      readonly hash: string;
+      readonly path: string;
+    }
   // Written to the Fastforward log, so webview problems show up there too
   | {
       readonly type: 'log';
@@ -223,6 +241,13 @@ export type ToWebview =
       readonly type: 'diff';
       readonly hash: string;
       readonly path: string | undefined;
+      readonly patch: string;
+    }
+  // The diff of one large file, answering loadFileDiff
+  | {
+      readonly type: 'fileDiff';
+      readonly hash: string;
+      readonly path: string;
       readonly patch: string;
     }
   // Every file of the repository at a commit, answering loadTree

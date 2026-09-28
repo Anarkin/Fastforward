@@ -1,4 +1,5 @@
 import type { RefInfo, Vip, VipRef } from '../protocol';
+import { sameRef, withoutRemote } from '../refNames';
 
 // A-Z, with a remote branch next to the local one of the same name: origin/main
 // sorts as main, after main itself, and a tag of the same name after both;
@@ -8,10 +9,6 @@ const kindOrder: Record<VipRef['kind'], number> = {
   remote: 1,
   tag: 2,
 };
-
-function withoutRemote(name: string): string {
-  return name.slice(name.indexOf('/') + 1);
-}
 
 function sortName(vip: VipRef): string {
   return vip.kind === 'remote' ? withoutRemote(vip.name) : vip.name;
@@ -67,8 +64,6 @@ export interface BubbleRow {
   readonly checkedOutIsVip: boolean;
 }
 
-const same = (a: Vip, b: Vip) => a.kind === b.kind && a.name === b.name;
-
 export function bubbleRow(
   vips: readonly Vip[],
   refs: readonly RefInfo[],
@@ -78,7 +73,7 @@ export function bubbleRow(
 ): BubbleRow {
   const exists = (vip: VipRef) =>
     refs.some((ref) => ref.kind === vip.kind && ref.name === vip.name);
-  const isVip = (vip: Vip) => vips.some((other) => same(other, vip));
+  const isVip = (vip: Vip) => vips.some((other) => sameRef(other, vip));
   const branch: VipRef | undefined =
     head && exists({ kind: 'branch', name: head })
       ? { kind: 'branch', name: head }
@@ -91,7 +86,7 @@ export function bubbleRow(
     branch,
     upstream,
     vips: vips
-      .filter((vip) => !(upstream && same(vip, upstream)))
+      .filter((vip) => !(upstream && sameRef(vip, upstream)))
       .toSorted(compareVips),
     checkedOutIsVip: detached
       ? isVip({ kind: 'commit', name: detached })

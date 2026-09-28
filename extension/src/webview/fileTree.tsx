@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import type { FileChange } from '../protocol';
 import { changeTitle, statusClass } from './fileStatus';
 import { LineCounts } from './lineCounts';
+import { VirtualRows } from './virtualRows';
 import { IndentGuides, treeIndent, twistyWidth } from './tree';
 
 export interface FolderNode {
@@ -78,7 +79,10 @@ export function FileTree({
 }) {
   const tree = useMemo(() => buildFileTree(paths, changes), [paths, changes]);
 
-  const renderFolder = (node: FolderNode, depth: number): React.ReactNode[] => [
+  const renderFolder = (
+    node: FolderNode,
+    depth: number,
+  ): React.ReactElement[] => [
     ...[...node.folders.values()].toSorted(byName).flatMap((child) => {
       const open = expanded.has(child.path);
       return [
@@ -105,11 +109,6 @@ export function FileTree({
           // Past the twisty space, so files line up with sibling folders
           style={{ paddingLeft: treeIndent(depth) + twistyWidth }}
           title={change ? changeTitle(change) : file.path}
-          ref={(element) => {
-            if (element && file.path === selected) {
-              element.scrollIntoView({ block: 'nearest' });
-            }
-          }}
           onClick={() =>
             onSelect(file.path === selected ? undefined : file.path)
           }
@@ -129,5 +128,10 @@ export function FileTree({
     }),
   ];
 
-  return <>{renderFolder(tree, 0)}</>;
+  return (
+    <VirtualRows
+      rows={renderFolder(tree, 0)}
+      selectedKey={selected === undefined ? undefined : `file:${selected}`}
+    />
+  );
 }

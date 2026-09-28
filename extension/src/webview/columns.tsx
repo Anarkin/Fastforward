@@ -20,6 +20,10 @@ interface Resizing {
 const ColumnResizing = createContext<Resizing | undefined>(undefined);
 export const ColumnResizingProvider = ColumnResizing.Provider;
 
+function templateOf(widths: readonly number[]): string {
+  return `${widths.map((width) => `${width}px`).join(' ')} minmax(${minLastColumnWidth}px, 1fr)`;
+}
+
 // Column widths that the resizers change; save is called when a drag ends
 export function useColumnWidths(save: (widths: readonly number[]) => void) {
   const [widths, setWidths] = useState<readonly number[]>(defaultColumnWidths);
@@ -68,12 +72,22 @@ export function useColumnWidths(save: (widths: readonly number[]) => void) {
               ),
             ),
           );
-          update(startWidths.map((w, i) => (i === index ? width : w)));
+          // Straight on the grid while dragging, so the columns' contents
+          // don't re-render on every move, only once it ends
+          current.current = startWidths.map((w, i) =>
+            i === index ? width : w,
+          );
+          if (container.current) {
+            container.current.style.gridTemplateColumns = templateOf(
+              current.current,
+            );
+          }
         };
         const onUp = () => {
           window.removeEventListener('pointermove', onMove);
           window.removeEventListener('pointerup', onUp);
           document.body.classList.remove('resizing');
+          update(current.current);
           save(current.current);
         };
         window.addEventListener('pointermove', onMove);
@@ -91,9 +105,7 @@ export function useColumnWidths(save: (widths: readonly number[]) => void) {
     [save, update],
   );
 
-  const template = `${widths.map((width) => `${width}px`).join(' ')} minmax(${minLastColumnWidth}px, 1fr)`;
-
-  return { container, template, load, resizing };
+  return { container, template: templateOf(widths), load, resizing };
 }
 
 // The handle on a column's right edge; double-click resets the width

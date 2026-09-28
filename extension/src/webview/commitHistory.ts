@@ -12,6 +12,10 @@ export class CommitHistory {
   private readonly positions = new Map<string, number>();
   private readonly requested = new Set<number>();
   private readonly refCounts: ReadonlyMap<number, number>;
+  // The commit list re-renders itself as pages arrive, without the rest of
+  // the page, through useSyncExternalStore
+  private readonly listeners = new Set<() => void>();
+  private version = 0;
 
   constructor(
     readonly total: number,
@@ -47,6 +51,13 @@ export class CommitHistory {
     return this.graph.get(position);
   }
 
+  readonly subscribe = (listener: () => void): (() => void) => {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  };
+
+  readonly getVersion = (): number => this.version;
+
   add(
     start: number,
     commits: readonly CommitInfo[],
@@ -58,6 +69,13 @@ export class CommitHistory {
       this.positions.set(commit.hash, start + offset);
     });
     graph.forEach((row, offset) => this.graph.set(start + offset, row));
+    this.version++;
+    // Not while React renders, as pages are added in a reducer
+    queueMicrotask(() => {
+      for (const listener of this.listeners) {
+        listener();
+      }
+    });
   }
 
   // The starts of the pages covering first..last that haven't been asked for

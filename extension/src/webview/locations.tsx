@@ -129,6 +129,15 @@ export function LocationsPopup({
   const search = useMemo(() => searchRefs(refs, query), [refs, query]);
   const [active, setActive] = useState<Active>(() => firstMatch(search));
   const activeRef = search[active.column]?.refs[active.index];
+  // The active result stays in view as the arrow keys move it, but the list
+  // doesn't jump back to it while scrolled by hand
+  useEffect(() => {
+    if (activeRef) {
+      popup.current
+        ?.querySelector('.row.result.active')
+        ?.scrollIntoView({ block: 'nearest' });
+    }
+  }, [activeRef]);
 
   const jump = (commit: string | undefined) => {
     if (commit) {
@@ -278,11 +287,6 @@ function SearchResults({
           key={ref.name}
           className={`row result ${ref === active ? 'active' : ''} ${ref.commit === selected ? 'selected' : ''}`}
           title={ref.name}
-          ref={(element) => {
-            if (element && ref === active) {
-              element.scrollIntoView({ block: 'nearest' });
-            }
-          }}
           onClick={() => onJump(ref.commit)}
           onContextMenu={(event) =>
             openMenu(event, {

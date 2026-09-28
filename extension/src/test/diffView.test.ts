@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import { parsePatch } from '../webview/diff';
-import { collapseThreshold, diffRows } from '../webview/diffView';
+import { collapseThreshold } from '../protocol';
+import { diffRows } from '../webview/diffView';
 
 function patch(path: string, added: number): string {
   return [

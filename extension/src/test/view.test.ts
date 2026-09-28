@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { getGitApi } from '../git/repository';
 import { runGit } from '../git/show';
-import type { ToWebview, VipRef } from '../protocol';
+import { workingTreeHash, type ToWebview, type VipRef } from '../protocol';
 import { FastforwardView, type Connection } from '../view';
 
 // Storage like the extension's, kept in memory
@@ -220,6 +220,104 @@ suite('View', function () {
       assert.strictEqual(info?.headCommit, inner);
     } finally {
       nestedConnection.dispose();
+    }
+  });
+
+  test('opens a repository without commits', async () => {
+    const gitPath = (await getGitApi()).git.path;
+    // Inside the suite's temp folder, which is removed at the end, as the Git
+    // extension keeps reading a repository it opened
+    const empty = path.join(repository.root, 'empty');
+    fs.mkdirSync(empty);
+    await runGit(gitPath, empty, ['init']);
+    fs.writeFileSync(path.join(empty, 'new.txt'), 'new\n');
+    const workspaceState = new FakeMemento();
+    await workspaceState.update('tabs', [empty]);
+    await workspaceState.update('activeTab', empty);
+    const emptyPage = new FakePage();
+    const emptyConnection = new FastforwardView(
+      log,
+      vscode.Uri.file(__dirname),
+      workspaceState,
+      new FakeMemento(),
+    ).connect((message) => emptyPage.messages.push(message));
+    try {
+      await emptyConnection.receive({ type: 'ready' });
+      assert.strictEqual(emptyPage.last('error'), undefined);
+      assert.strictEqual(emptyPage.last('commits')?.total, 0);
+      assert.strictEqual(emptyPage.last('workingTree')?.files, 1);
+    } finally {
+      emptyConnection.dispose();
+    }
+  });
+
+  test('refreshes once at a time, without sending an unchanged diff', async () => {
+    fs.writeFileSync(path.join(repository.root, 'draft.txt'), 'draft\n');
+    try {
+      await connection.receive({
+        type: 'selectCommit',
+        hash: workingTreeHash,
+        index: -1,
+      });
+      assert.ok(page.last('diff')?.patch.includes('+draft'));
+      page.clear();
+      // Overlapping refreshes of an unchanged working tree
+      await Promise.all([connection.refresh(), connection.refresh()]);
+      assert.ok(page.last('workingTree'));
+      assert.strictEqual(page.last('files'), undefined);
+      assert.strictEqual(page.last('diff'), undefined);
+      assert.strictEqual(page.last('error'), undefined);
+    } finally {
+      fs.rmSync(path.join(repository.root, 'draft.txt'));
+    }
+  });
+
+  test('leaves large files out of a commit diff until one is asked for', async () => {
+    const gitPath = (await getGitApi()).git.path;
+    // A repository of its own, so the other tests' history stays the same
+    const root = path.join(repository.root, 'large');
+    fs.mkdirSync(root);
+    const git = (...args: string[]) =>
+      runGit(gitPath, root, [
+        '-c',
+        'user.name=Test',
+        '-c',
+        'user.email=test@example.com',
+        ...args,
+      ]);
+    await git('init', '-b', 'main');
+    const lines = Array.from({ length: 2000 }, (_, index) => `line ${index}`);
+    fs.writeFileSync(path.join(root, 'large.txt'), lines.join('\n'));
+    fs.writeFileSync(path.join(root, 'small.txt'), 'small\n');
+    await git('add', '.');
+    await git('commit', '-m', 'large');
+    const hash = (await git('rev-parse', 'HEAD')).trim();
+    const workspaceState = new FakeMemento();
+    await workspaceState.update('tabs', [root]);
+    await workspaceState.update('activeTab', root);
+    const largePage = new FakePage();
+    const largeConnection = new FastforwardView(
+      log,
+      vscode.Uri.file(__dirname),
+      workspaceState,
+      new FakeMemento(),
+    ).connect((message) => largePage.messages.push(message));
+    try {
+      // Opening the tab selects HEAD, the commit
+      await largeConnection.receive({ type: 'ready' });
+      const patch = largePage.last('diff')?.patch ?? '';
+      assert.ok(patch.includes('b/small.txt'), patch);
+      assert.ok(!patch.includes('large.txt'), patch);
+      await largeConnection.receive({
+        type: 'loadFileDiff',
+        hash,
+        path: 'large.txt',
+      });
+      const fileDiff = largePage.last('fileDiff');
+      assert.strictEqual(fileDiff?.path, 'large.txt');
+      assert.ok(fileDiff?.patch.includes('+line 1999'));
+    } finally {
+      largeConnection.dispose();
     }
   });
 

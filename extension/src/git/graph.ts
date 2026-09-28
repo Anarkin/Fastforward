@@ -9,6 +9,8 @@ interface Lanes {
   // Lanes from the working tree to HEAD, which are drawn dotted
   readonly dashed: boolean[];
   nextColor: number;
+  // The most lanes in use at once so far
+  widest: number;
 }
 
 function copy(lanes: Lanes): Lanes {
@@ -17,6 +19,7 @@ function copy(lanes: Lanes): Lanes {
     colors: [...lanes.colors],
     dashed: [...lanes.dashed],
     nextColor: lanes.nextColor,
+    widest: lanes.widest,
   };
 }
 
@@ -36,16 +39,21 @@ function allocate(lanes: Lanes, hash: string): number {
   return lane;
 }
 
-// Lays out one commit, updating the lanes to what the rows below see
-function step(lanes: Lanes, entry: ShownEntry): GraphRow {
+// Lays out one commit, updating the lanes to what the rows below see; the
+// first pass over the whole history only needs the lanes, not the lines, which
+// cost most of the time with a hundred lanes
+function step(lanes: Lanes, entry: ShownEntry, drawLines = true): GraphRow {
   const lines: GraphLine[] = [];
   const before = [...lanes.hashes];
-  const line = (from: number, to: number, color: number, bottom: boolean) =>
-    lines.push(
-      lanes.dashed[from]
-        ? { from, to, color, bottom, dashed: true }
-        : { from, to, color, bottom },
-    );
+  const line = (from: number, to: number, color: number, bottom: boolean) => {
+    if (drawLines) {
+      lines.push(
+        lanes.dashed[from]
+          ? { from, to, color, bottom, dashed: true }
+          : { from, to, color, bottom },
+      );
+    }
+  };
 
   // The commit takes the first lane waiting for it; a branch tip that nothing
   // is waiting for starts a new lane
@@ -88,6 +96,10 @@ function step(lanes: Lanes, entry: ShownEntry): GraphRow {
     }
   });
 
+  // Every lane in use here has a line, so the graph is as wide as the most
+  // lanes any row had
+  lanes.widest = Math.max(lanes.widest, before.length, lanes.hashes.length);
+
   // Empty lanes on the right are dropped, so the graph narrows again
   while (
     lanes.hashes.length > 0 &&
@@ -127,19 +139,21 @@ export class Graph {
       ...history,
     ];
     this.checkpointEvery = checkpointEvery;
-    const lanes: Lanes = { hashes: [], colors: [], dashed: [], nextColor: 0 };
-    let width = 0;
-    let workingTreeRow: GraphRow | undefined;
+    const lanes: Lanes = {
+      hashes: [],
+      colors: [],
+      dashed: [],
+      nextColor: 0,
+      widest: 0,
+    };
     this.entries.forEach((entry, index) => {
       if (index % checkpointEvery === 0) {
         this.checkpoints.push(copy(lanes));
       }
-      const row = step(lanes, entry);
-      workingTreeRow ??= row;
-      width = Math.max(width, row.lane + 1, ...row.lines.map((l) => l.to + 1));
+      step(lanes, entry, false);
     });
-    this.width = width;
-    this.workingTreeRow = workingTreeRow ?? { lane: 0, color: 0, lines: [] };
+    this.width = lanes.widest;
+    this.workingTreeRow = step(copy(this.checkpoints[0]), this.entries[0]);
   }
 
   // The rows of the commits at positions start.., which come after the

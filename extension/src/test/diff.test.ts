@@ -5,7 +5,7 @@ import {
   parseNameStatus,
   parseNumstat,
 } from '../git/show';
-import { parsePatch } from '../webview/diff';
+import { parsePatch, unquotePath } from '../webview/diff';
 
 suite('parsePatch', () => {
   test('numbers context, removed and added lines', () => {
@@ -40,6 +40,48 @@ suite('parsePatch', () => {
         ['context', 12, 12, 'keep'],
       ],
     );
+  });
+
+  test('takes paths with " b/" in them from the diff exactly', () => {
+    const paths = parsePatch(
+      [
+        'diff --git a/x b/y.txt b/x b/y.txt',
+        '--- a/x b/y.txt\t',
+        '+++ b/x b/y.txt\t',
+        '@@ -1 +1 @@',
+        '-a',
+        '+b',
+        'diff --git a/docs/a b/old.md b/docs/a b/new.md',
+        'similarity index 90%',
+        'rename from docs/a b/old.md',
+        'rename to docs/a b/new.md',
+        'diff --git a/gone.txt b/gone.txt',
+        'deleted file mode 100644',
+        '--- a/gone.txt',
+        '+++ /dev/null',
+        '@@ -1 +0,0 @@',
+        '-bye',
+      ].join('\n'),
+    ).map((file) => file.path);
+    assert.deepStrictEqual(paths, ['x b/y.txt', 'docs/a b/new.md', 'gone.txt']);
+  });
+
+  test('unquotes paths git quotes', () => {
+    assert.strictEqual(unquotePath('"back\\\\slash"'), 'back\\slash');
+    assert.strictEqual(unquotePath('"a\\tb"'), 'a\tb');
+    assert.strictEqual(unquotePath('"\\303\\251t\\303\\251.md"'), 'été.md');
+    assert.strictEqual(unquotePath('plain.md'), 'plain.md');
+    const [file] = parsePatch(
+      [
+        'diff --git "a/say \\"hi\\".md" "b/say \\"hi\\".md"',
+        '--- "a/say \\"hi\\".md"',
+        '+++ "b/say \\"hi\\".md"',
+        '@@ -1 +1 @@',
+        '-a',
+        '+b',
+      ].join('\n'),
+    );
+    assert.strictEqual(file.path, 'say "hi".md');
   });
 
   test('marks binary files and splits multiple files', () => {

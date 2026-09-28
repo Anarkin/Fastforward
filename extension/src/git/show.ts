@@ -6,12 +6,46 @@ import type { CommitInfo, FileChange } from '../protocol';
 // Commit files and patches come from git show, because the Git extension API
 // only diffs ranges (a...b), which fails for root commits
 
-const showArgs = ['show', '--diff-merges=first-parent', '--format=', '-M'];
+// Diffs in the format the parsers expect, whatever the user's config says:
+// no colors, external diff tools or text conversion, and a/ and b/ prefixes
+const diffArgs = [
+  '--no-color',
+  '--no-ext-diff',
+  '--no-textconv',
+  '--src-prefix=a/',
+  '--dst-prefix=b/',
+];
+
+const showArgs = [
+  'show',
+  '--diff-merges=first-parent',
+  '--format=',
+  '-M',
+  ...diffArgs,
+];
+
+// Settings of the user's config that would change the output: quoted
+// non-ASCII paths, colors, signatures in the log, and empty context lines
+const configArgs = [
+  '-c',
+  'core.quotePath=false',
+  '-c',
+  'color.ui=false',
+  '-c',
+  'log.showSignature=false',
+  '-c',
+  'diff.suppressBlankEmpty=false',
+];
 
 // Reading commands skip git's optional locks, so a refresh running while the
-// user commits elsewhere doesn't hold index.lock and make that commit fail
-function env(): NodeJS.ProcessEnv {
-  return { ...process.env, GIT_OPTIONAL_LOCKS: '0' };
+// user commits elsewhere doesn't hold index.lock and make that commit fail;
+// paths are taken literally, so a file named "*.md" isn't a pattern
+function env(pathspecMagic = false): NodeJS.ProcessEnv {
+  return {
+    ...process.env,
+    GIT_OPTIONAL_LOCKS: '0',
+    GIT_LITERAL_PATHSPECS: pathspecMagic ? '0' : '1',
+  };
 }
 
 interface RunOptions {
@@ -19,19 +53,26 @@ interface RunOptions {
   readonly okExitCodes?: readonly number[];
   // Written to the command's stdin
   readonly input?: string;
+  // Allows pathspec magic like :(exclude), with paths marked literal
+  readonly pathspecMagic?: boolean;
 }
 
 export function runGit(
   gitPath: string,
   cwd: string,
   args: readonly string[],
-  { okExitCodes = [0], input }: RunOptions = {},
+  { okExitCodes = [0], input, pathspecMagic }: RunOptions = {},
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const child = execFile(
       gitPath,
-      args,
-      { cwd, env: env(), maxBuffer: 256 * 1024 * 1024, encoding: 'utf8' },
+      [...configArgs, ...args],
+      {
+        cwd,
+        env: env(pathspecMagic),
+        maxBuffer: 256 * 1024 * 1024,
+        encoding: 'utf8',
+      },
       (error, stdout, stderr) => {
         if (error && !okExitCodes.includes(Number(error.code))) {
           reject(
@@ -65,28 +106,51 @@ export async function showFiles(
   return withStats(parseNameStatus(nameStatus), parseNumstat(numstat));
 }
 
-// A renamed file is limited to both its paths, as git only detects the
-// rename when it sees both
-function pathspecs(path: string | undefined, oldPath?: string): string[] {
-  if (path === undefined) {
-    return [];
+// What part of a diff to fetch: one file, limited to both its paths when it
+// was renamed, as git only detects the rename when it sees both, or every
+// file except some
+export interface PatchScope {
+  readonly path?: string;
+  readonly oldPath?: string;
+  readonly exclude?: readonly string[];
+}
+
+function pathspecs({ path, oldPath, exclude = [] }: PatchScope): string[] {
+  if (path !== undefined) {
+    return oldPath ? ['--', oldPath, path] : ['--', path];
   }
-  return oldPath ? ['--', oldPath, path] : ['--', path];
+  return exclude.length > 0
+    ? ['--', '.', ...exclude.map((file) => `:(exclude,literal)${file}`)]
+    : [];
 }
 
 export function showPatch(
   gitPath: string,
   cwd: string,
   hash: string,
-  path: string | undefined,
-  oldPath?: string,
+  scope: PatchScope = {},
 ): Promise<string> {
-  return runGit(gitPath, cwd, [
-    ...showArgs,
-    '--patch',
-    hash,
-    ...pathspecs(path, oldPath),
-  ]);
+  return runGit(
+    gitPath,
+    cwd,
+    [...showArgs, '--patch', hash, ...pathspecs(scope)],
+    { pathspecMagic: (scope.exclude?.length ?? 0) > 0 },
+  );
+}
+
+// The commit HEAD is at, or nothing in a repository without commits yet, or
+// on a new branch without any
+export async function headCommit(
+  gitPath: string,
+  cwd: string,
+): Promise<string | undefined> {
+  const output = await runGit(
+    gitPath,
+    cwd,
+    ['rev-parse', '--verify', '--quiet', 'HEAD'],
+    { okExitCodes: [0, 1] },
+  );
+  return output.trim() || undefined;
 }
 
 export interface HistoryEntry {
@@ -100,11 +164,12 @@ export async function listHistory(
   gitPath: string,
   cwd: string,
 ): Promise<HistoryEntry[]> {
+  const head = await headCommit(gitPath, cwd);
   const output = await runGit(gitPath, cwd, [
     'rev-list',
     '--date-order',
     '--parents',
-    'HEAD',
+    ...(head ? ['HEAD'] : []),
     '--branches',
     '--remotes',
     '--tags',
@@ -270,7 +335,7 @@ export async function readFile(
   const output = await new Promise<Buffer>((resolve, reject) => {
     execFile(
       gitPath,
-      ['show', `${hash}:${path}`],
+      [...configArgs, 'show', `${hash}:${path}`],
       { cwd, env: env(), maxBuffer: 256 * 1024 * 1024, encoding: 'buffer' },
       (error, stdout) => (error ? reject(error) : resolve(stdout)),
     );
@@ -278,9 +343,21 @@ export async function readFile(
   return toContent(output);
 }
 
-// Uncommitted changes are the working tree and index against HEAD, plus
-// untracked files
-const workingTreeArgs = ['diff', 'HEAD', '-M'];
+// Uncommitted changes are the working tree and index against HEAD, or against
+// nothing before the first commit, plus untracked files
+async function workingTreeArgs(
+  gitPath: string,
+  cwd: string,
+): Promise<string[]> {
+  const base =
+    (await headCommit(gitPath, cwd)) ??
+    (
+      await runGit(gitPath, cwd, ['hash-object', '-t', 'tree', '--stdin'], {
+        input: '',
+      })
+    ).trim();
+  return ['diff', base, '-M', ...diffArgs];
+}
 
 async function listUntracked(gitPath: string, cwd: string): Promise<string[]> {
   const output = await runGit(gitPath, cwd, [
@@ -296,9 +373,10 @@ export async function workingTreeFiles(
   gitPath: string,
   cwd: string,
 ): Promise<FileChange[]> {
+  const diff = await workingTreeArgs(gitPath, cwd);
   const [nameStatus, numstat, untracked] = await Promise.all([
-    runGit(gitPath, cwd, [...workingTreeArgs, '--name-status', '-z']),
-    runGit(gitPath, cwd, [...workingTreeArgs, '--numstat', '-z']),
+    runGit(gitPath, cwd, [...diff, '--name-status', '-z']),
+    runGit(gitPath, cwd, [...diff, '--numstat', '-z']),
     listUntracked(gitPath, cwd),
   ]);
   return [
@@ -321,28 +399,40 @@ const maxUntrackedPatches = 50;
 export async function workingTreePatch(
   gitPath: string,
   cwd: string,
-  path: string | undefined,
-  oldPath?: string,
+  scope: PatchScope = {},
 ): Promise<string> {
+  const { path } = scope;
   const untracked = await listUntracked(gitPath, cwd);
   const untrackedPatch = (file: string) =>
-    runGit(gitPath, cwd, ['diff', '--no-index', '--', '/dev/null', file], {
-      okExitCodes: [0, 1],
-    });
+    runGit(
+      gitPath,
+      cwd,
+      ['diff', '--no-index', ...diffArgs, '--', '/dev/null', file],
+      { okExitCodes: [0, 1] },
+    );
   if (path && untracked.includes(path)) {
     return untrackedPatch(path);
   }
-  const tracked = await runGit(gitPath, cwd, [
-    ...workingTreeArgs,
-    ...pathspecs(path, oldPath),
-  ]);
+  const tracked = await runGit(
+    gitPath,
+    cwd,
+    [...(await workingTreeArgs(gitPath, cwd)), ...pathspecs(scope)],
+    { pathspecMagic: (scope.exclude?.length ?? 0) > 0 },
+  );
   if (path) {
     return tracked;
   }
-  const patches = await Promise.all(
+  // An untracked file that can't be read, like one being written, is left
+  // out instead of failing the whole diff
+  const patches = await Promise.allSettled(
     untracked.slice(0, maxUntrackedPatches).map(untrackedPatch),
   );
-  return [tracked, ...patches].join('');
+  return [
+    tracked,
+    ...patches.map((patch) =>
+      patch.status === 'fulfilled' ? patch.value : '',
+    ),
+  ].join('');
 }
 
 type NameStatus = Omit<FileChange, 'insertions' | 'deletions'>;

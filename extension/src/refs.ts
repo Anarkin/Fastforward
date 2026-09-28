@@ -1,4 +1,5 @@
 import type { RefInfo, VipRef } from './protocol';
+import { withoutRemote } from './refNames';
 
 interface Head {
   readonly name?: string;
@@ -67,11 +68,6 @@ export function decorations(
     }
   }
   return result;
-}
-
-// origin/main is main
-function withoutRemote(name: string): string {
-  return name.slice(name.indexOf('/') + 1);
 }
 
 // The VIPs a repository starts with: its main branch, the remote's default

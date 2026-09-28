@@ -1154,3 +1154,54 @@ body.resizing {
   font-size: 0.85em;
   color: var(--vscode-descriptionForeground);
 }
+
+/* Lists that mount only the rows on screen, like the Files column's */
+.virtual-rows {
+  height: 100%;
+  overflow: auto;
+}
+
+.virtual-spacer {
+  position: relative;
+  width: 100%;
+}
+
+.virtual-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+
+/* High Contrast themes have no selection or hover backgrounds, and draw
+   outlines instead, like VS Code's own lists and menus */
+body.vscode-high-contrast .row:hover,
+body.vscode-high-contrast .commit:hover,
+body.vscode-high-contrast .menu-item:hover:not(:disabled),
+body.vscode-high-contrast .settings-button:hover,
+body.vscode-high-contrast .tab:not(.active):hover,
+body.vscode-high-contrast-light .row:hover,
+body.vscode-high-contrast-light .commit:hover,
+body.vscode-high-contrast-light .menu-item:hover:not(:disabled),
+body.vscode-high-contrast-light .settings-button:hover,
+body.vscode-high-contrast-light .tab:not(.active):hover {
+  outline: 1px dashed var(--vscode-contrastActiveBorder);
+  outline-offset: -1px;
+}
+
+body.vscode-high-contrast .row.selected,
+body.vscode-high-contrast .commit.selected,
+body.vscode-high-contrast .locations-list .row.result.active,
+body.vscode-high-contrast .settings-button.open,
+body.vscode-high-contrast-light .row.selected,
+body.vscode-high-contrast-light .commit.selected,
+body.vscode-high-contrast-light .locations-list .row.result.active,
+body.vscode-high-contrast-light .settings-button.open {
+  outline: 1px solid var(--vscode-contrastActiveBorder);
+  outline-offset: -1px;
+}
+
+body.vscode-high-contrast .menu,
+body.vscode-high-contrast-light .menu {
+  border: 1px solid var(--vscode-contrastBorder);
+}

@@ -1,14 +1,11 @@
 import type { CheckoutTarget, RefInfo, VipRef } from '../protocol';
+import { withoutRemote } from '../refNames';
 
 export interface CheckoutOption {
   readonly label: string;
   readonly target: CheckoutTarget;
   // What is checked out already
   readonly disabled: boolean;
-}
-
-function withoutRemote(name: string): string {
-  return name.slice(name.indexOf('/') + 1);
 }
 
 const byName = (a: RefInfo, b: RefInfo) => a.name.localeCompare(b.name);

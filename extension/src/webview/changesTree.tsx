@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import type { FileChange } from '../protocol';
 import { changeTitle, statusClass } from './fileStatus';
 import { buildFileTree, type FolderNode } from './fileTree';
@@ -69,59 +68,50 @@ export function changesTreeRows(
   return rows;
 }
 
-// The Changes tab viewed as a tree, to see which parts of the repository a
-// change touches
-export function ChangesTree({
-  files,
-  closed,
+// The rows of the Changes tab viewed as a tree, to see which parts of the
+// repository a change touches
+export function changesTreeElements({
+  rows,
   onToggle,
   selected,
   onSelect,
 }: {
-  files: readonly FileChange[];
-  closed: ReadonlySet<string>;
+  rows: readonly ChangesTreeRow[];
   onToggle: (folder: string) => void;
   selected: string | undefined;
   onSelect: (path: string | undefined) => void;
-}) {
-  const rows = useMemo(() => changesTreeRows(files, closed), [files, closed]);
-  return (
-    <>
-      {rows.map((row) =>
-        row.kind === 'folder' ? (
-          <div
-            key={`folder:${row.path}`}
-            className="row tree-row folder counted"
-            style={{ paddingLeft: treeIndent(row.depth) }}
-            title={row.path}
-            onClick={() => onToggle(row.path)}
-          >
-            <IndentGuides depth={row.depth} />
-            <span className="twisty">{row.open ? '▾' : '▸'}</span>
-            <span className="path">{row.name}</span>
-          </div>
-        ) : (
-          <div
-            key={`file:${row.change.path}`}
-            className={`row tree-row file ${row.change.path === selected ? 'selected' : ''}`}
-            // Past the twisty space, so files line up with sibling folders
-            style={{ paddingLeft: treeIndent(row.depth) + twistyWidth }}
-            title={changeTitle(row.change)}
-            onClick={() =>
-              onSelect(
-                row.change.path === selected ? undefined : row.change.path,
-              )
-            }
-          >
-            <IndentGuides depth={row.depth} />
-            <span className={statusClass(row.change)}>{row.name}</span>
-            <LineCounts
-              deletions={row.change.deletions}
-              insertions={row.change.insertions}
-            />
-          </div>
-        ),
-      )}
-    </>
+}): React.ReactElement[] {
+  return rows.map((row) =>
+    row.kind === 'folder' ? (
+      <div
+        key={`folder:${row.path}`}
+        className="row tree-row folder counted"
+        style={{ paddingLeft: treeIndent(row.depth) }}
+        title={row.path}
+        onClick={() => onToggle(row.path)}
+      >
+        <IndentGuides depth={row.depth} />
+        <span className="twisty">{row.open ? '▾' : '▸'}</span>
+        <span className="path">{row.name}</span>
+      </div>
+    ) : (
+      <div
+        key={`file:${row.change.path}`}
+        className={`row tree-row file ${row.change.path === selected ? 'selected' : ''}`}
+        // Past the twisty space, so files line up with sibling folders
+        style={{ paddingLeft: treeIndent(row.depth) + twistyWidth }}
+        title={changeTitle(row.change)}
+        onClick={() =>
+          onSelect(row.change.path === selected ? undefined : row.change.path)
+        }
+      >
+        <IndentGuides depth={row.depth} />
+        <span className={statusClass(row.change)}>{row.name}</span>
+        <LineCounts
+          deletions={row.change.deletions}
+          insertions={row.change.insertions}
+        />
+      </div>
+    ),
   );
 }

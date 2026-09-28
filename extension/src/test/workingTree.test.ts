@@ -4,6 +4,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { getGitApi } from '../git/repository';
 import {
+  headCommit,
+  listHistory,
   listTree,
   readFile,
   remoteDefaultBranches,
@@ -11,6 +13,47 @@ import {
   workingTreeFiles,
   workingTreePatch,
 } from '../git/show';
+
+suite('A repository without commits', function () {
+  this.timeout(20_000);
+  let gitPath: string;
+  let cwd: string;
+
+  suiteSetup(async () => {
+    gitPath = (await getGitApi()).git.path;
+    cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'fastforward-empty-'));
+    await runGit(gitPath, cwd, ['init']);
+    fs.writeFileSync(path.join(cwd, 'staged.txt'), 'one\n');
+    await runGit(gitPath, cwd, ['add', 'staged.txt']);
+    fs.writeFileSync(path.join(cwd, 'untracked.txt'), 'new\n');
+  });
+
+  suiteTeardown(() => {
+    try {
+      fs.rmSync(cwd, { recursive: true, force: true });
+    } catch {
+      // Left for the OS to clean up
+    }
+  });
+
+  test('has no HEAD and an empty history', async () => {
+    assert.strictEqual(await headCommit(gitPath, cwd), undefined);
+    assert.deepStrictEqual(await listHistory(gitPath, cwd), []);
+  });
+
+  test('lists staged files as added, and untracked ones', async () => {
+    const files = await workingTreeFiles(gitPath, cwd);
+    assert.deepStrictEqual(
+      files.map((file) => [file.status, file.path]),
+      [
+        ['A', 'staged.txt'],
+        ['U', 'untracked.txt'],
+      ],
+    );
+    const patch = await workingTreePatch(gitPath, cwd, { path: 'staged.txt' });
+    assert.ok(patch.includes('+one'), patch);
+  });
+});
 
 suite('Uncommitted changes', function () {
   // git in temp repositories can take seconds on a busy machine
@@ -59,13 +102,15 @@ suite('Uncommitted changes', function () {
   });
 
   test('includes untracked files in the full patch', async () => {
-    const patch = await workingTreePatch(gitPath, cwd, undefined);
+    const patch = await workingTreePatch(gitPath, cwd);
     assert.ok(patch.includes('+two'));
     assert.ok(patch.includes('+new'));
   });
 
   test('narrows the patch to one untracked file', async () => {
-    const patch = await workingTreePatch(gitPath, cwd, 'untracked.txt');
+    const patch = await workingTreePatch(gitPath, cwd, {
+      path: 'untracked.txt',
+    });
     assert.ok(patch.includes('+new'));
     assert.ok(!patch.includes('+two'));
   });

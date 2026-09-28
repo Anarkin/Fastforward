@@ -25,6 +25,8 @@ export type ContextMenuItem =
       readonly disabled?: boolean;
       // Shows a check mark when set, for items that switch something on and off
       readonly checked?: boolean;
+      // The checked item is the one picked of several, rather than switched on
+      readonly radio?: boolean;
     }
   | { readonly separator: true };
 
@@ -64,6 +66,29 @@ export function ContextMenu({
     });
   }, [menu]);
 
+  // At the pointer, it would be left behind by scrolling
+  useDismiss(element, onClose, { onScroll: true });
+
+  return (
+    <div
+      ref={element}
+      className="menu context-menu"
+      role="menu"
+      style={position}
+      onContextMenu={(event) => event.preventDefault()}
+    >
+      <MenuItems items={menu.items} onClose={onClose} />
+    </div>
+  );
+}
+
+// Closes a menu on a click outside the element, Escape, the window losing
+// focus, and scrolling when asked
+export function useDismiss(
+  element: React.RefObject<HTMLElement | null>,
+  onClose: () => void,
+  { onScroll = false }: { onScroll?: boolean } = {},
+): void {
   useEffect(() => {
     const onPointerDown = (event: PointerEvent) => {
       if (
@@ -80,31 +105,21 @@ export function ContextMenu({
     };
     window.addEventListener('pointerdown', onPointerDown, true);
     window.addEventListener('keydown', onKeyDown);
-    window.addEventListener('wheel', onClose, true);
     window.addEventListener('blur', onClose);
+    if (onScroll) {
+      window.addEventListener('wheel', onClose, true);
+    }
     return () => {
       window.removeEventListener('pointerdown', onPointerDown, true);
       window.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('wheel', onClose, true);
       window.removeEventListener('blur', onClose);
+      window.removeEventListener('wheel', onClose, true);
     };
-  }, [onClose]);
-
-  return (
-    <div
-      ref={element}
-      className="menu context-menu"
-      role="menu"
-      style={position}
-      onContextMenu={(event) => event.preventDefault()}
-    >
-      <MenuItems items={menu.items} onClose={onClose} />
-    </div>
-  );
+  }, [element, onClose, onScroll]);
 }
 
 // The items of a menu or submenu; a submenu opens while its item is hovered
-function MenuItems({
+export function MenuItems({
   items,
   onClose,
 }: {
@@ -128,7 +143,11 @@ function MenuItems({
             <button
               className={`menu-item ${item.submenu ? 'has-submenu' : ''}`}
               role={
-                item.checked === undefined ? 'menuitem' : 'menuitemcheckbox'
+                item.checked === undefined
+                  ? 'menuitem'
+                  : item.radio
+                    ? 'menuitemradio'
+                    : 'menuitemcheckbox'
               }
               aria-checked={item.checked}
               aria-haspopup={item.submenu ? 'menu' : undefined}
@@ -198,8 +217,4 @@ export function useContextMenu(target: MenuTarget) {
   return {
     onContextMenu: (event: React.MouseEvent) => open(event, target),
   };
-}
-
-export function sameRef(a: Vip, b: Vip): boolean {
-  return a.kind === b.kind && a.name === b.name;
 }

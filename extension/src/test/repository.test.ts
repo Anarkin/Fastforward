@@ -86,7 +86,9 @@ suite('Git repository', function () {
       [['A', 'first.txt']],
     );
 
-    const patch = await showPatch(git.git.path, cwd, root.hash, 'first.txt');
+    const patch = await showPatch(git.git.path, cwd, root.hash, {
+      path: 'first.txt',
+    });
     assert.ok(patch.includes('b/first.txt'));
   });
 
@@ -97,13 +99,10 @@ suite('Git repository', function () {
       files.map((file) => [file.status, file.oldPath, file.path]),
       [['R', 'second.txt', 'renamed.txt']],
     );
-    const patch = await showPatch(
-      git.git.path,
-      cwd,
-      rename.hash,
-      'renamed.txt',
-      'second.txt',
-    );
+    const patch = await showPatch(git.git.path, cwd, rename.hash, {
+      path: 'renamed.txt',
+      oldPath: 'second.txt',
+    });
     assert.ok(patch.includes('rename from second.txt'), patch);
     assert.ok(!patch.includes('new file mode'), patch);
   });
