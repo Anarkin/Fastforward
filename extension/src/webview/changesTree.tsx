@@ -1,8 +1,6 @@
-import type { FileChange } from '../protocol';
-import { changeTitle, statusClass } from './fileStatus';
+import type { FileChange } from '../shared/protocol';
 import { buildFileTree, type FolderNode } from './fileTree';
-import { LineCounts } from './lineCounts';
-import { IndentGuides, treeIndent, twistyWidth } from './tree';
+import { byName, FileRow, FolderRow } from './tree';
 
 export type ChangesTreeRow =
   | {
@@ -19,9 +17,6 @@ export type ChangesTreeRow =
       readonly change: FileChange;
       readonly depth: number;
     };
-
-const byName = (a: { name: string }, b: { name: string }) =>
-  a.name.localeCompare(b.name);
 
 // Merges a folder that has nothing but one folder in it with that folder, so
 // a deep path doesn't become a staircase of rows
@@ -83,35 +78,26 @@ export function changesTreeElements({
 }): React.ReactElement[] {
   return rows.map((row) =>
     row.kind === 'folder' ? (
-      <div
+      <FolderRow
         key={`folder:${row.path}`}
-        className="row tree-row folder counted"
-        style={{ paddingLeft: treeIndent(row.depth) }}
-        title={row.path}
-        onClick={() => onToggle(row.path)}
+        path={row.path}
+        depth={row.depth}
+        open={row.open}
+        className="counted"
+        onToggle={onToggle}
       >
-        <IndentGuides depth={row.depth} />
-        <span className="twisty">{row.open ? '▾' : '▸'}</span>
         <span className="path">{row.name}</span>
-      </div>
+      </FolderRow>
     ) : (
-      <div
+      <FileRow
         key={`file:${row.change.path}`}
-        className={`row tree-row file ${row.change.path === selected ? 'selected' : ''}`}
-        // Past the twisty space, so files line up with sibling folders
-        style={{ paddingLeft: treeIndent(row.depth) + twistyWidth }}
-        title={changeTitle(row.change)}
-        onClick={() =>
-          onSelect(row.change.path === selected ? undefined : row.change.path)
-        }
-      >
-        <IndentGuides depth={row.depth} />
-        <span className={statusClass(row.change)}>{row.name}</span>
-        <LineCounts
-          deletions={row.change.deletions}
-          insertions={row.change.insertions}
-        />
-      </div>
+        path={row.change.path}
+        name={row.name}
+        depth={row.depth}
+        change={row.change}
+        selected={selected}
+        onSelect={onSelect}
+      />
     ),
   );
 }

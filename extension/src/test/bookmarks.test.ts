@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import type { RefInfo, Bookmark, BookmarkRef } from '../protocol';
+import type { RefInfo, Bookmark, BookmarkRef } from '../shared/protocol';
 import {
   bubbleRow,
   compareBookmarks,

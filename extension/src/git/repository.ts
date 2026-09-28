@@ -1,11 +1,7 @@
 import * as vscode from 'vscode';
-import type { RefInfo } from '../protocol';
+import type { RefInfo } from '../shared/protocol';
 import type { API, GitExtension, Repository } from './git';
-
-// git.d.ts declares RefType as a const enum, which esbuild can't inline from a
-// declaration file, so the values are repeated here
-const refTypeHead = 0;
-const refTypeRemoteHead = 1;
+import { RefType } from './refType';
 
 export async function getGitApi(): Promise<API> {
   const extension = vscode.extensions.getExtension<GitExtension>('vscode.git');
@@ -32,13 +28,13 @@ export async function listRefs(repository: Repository): Promise<RefInfo[]> {
     const type: number = ref.type;
     // origin/HEAD only says which branch is the remote's default, and would
     // crowd the commit it points to next to that branch
-    if (type === refTypeRemoteHead && ref.name.endsWith('/HEAD')) {
+    if (type === RefType.RemoteHead && ref.name.endsWith('/HEAD')) {
       return [];
     }
     const kind =
-      type === refTypeHead
+      type === RefType.Head
         ? 'branch'
-        : type === refTypeRemoteHead
+        : type === RefType.RemoteHead
           ? 'remote'
           : 'tag';
     return [{ kind, name: ref.name, commit: ref.commit }];

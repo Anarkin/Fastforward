@@ -2,15 +2,10 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { getGitApi } from '../git/repository';
-import {
-  headCommit,
-  listHistory,
-  listTree,
-  readFile,
-  remoteDefaultBranches,
-  workingTreeFiles,
-  workingTreePatch,
-} from '../git/show';
+import { remoteDefaultBranches } from '../git/branches';
+import { listTree, readFile } from '../git/files';
+import { headCommit, listHistory } from '../git/history';
+import { workingTreeFiles, workingTreePatch } from '../git/workingTree';
 import {
   removeFolder,
   tempFolder,

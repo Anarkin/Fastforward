@@ -5,7 +5,8 @@ node_modules/**
 .vscode-test.mjs
 esbuild.mjs
 deploy-local.mjs
-tsconfig.json
+tsconfig*.json
+knip.json
 **/*.map
 **/*.ts
 .prettierrc.json

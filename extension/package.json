@@ -62,7 +62,7 @@
     "build": "node esbuild.mjs",
     "watch": "node esbuild.mjs --watch",
     "package": "npm run check-types && node esbuild.mjs --production",
-    "check-types": "tsc --noEmit",
+    "check-types": "tsc --noEmit && tsc -p tsconfig.extension.json && tsc -p tsconfig.webview.json",
     "compile-tests": "node -e \"require('fs').rmSync('out', { recursive: true, force: true })\" && tsc -p . --outDir out",
     "pretest": "npm run build && npm run compile-tests",
     "test": "vscode-test --coverage",
@@ -74,9 +74,10 @@
     "vsce:publish": "npm run copy-root-files && vsce publish",
     "deploy-local": "npm run package && node deploy-local.mjs",
     "install-local": "npm run vsce:package -- --out fastforward.vsix && code --install-extension fastforward.vsix --force && node deploy-local.mjs",
-    "verify": "npm run format:check && npm run lint && npm run check-types && npm test",
-    "verify:fast": "npm run format:check && npm run lint && npm run check-types && npm run compile-tests && npm run test:unit",
-    "lint": "oxlint --type-aware --deny-warnings"
+    "verify": "npm run format:check && npm run lint && npm run knip && npm run check-types && npm test",
+    "verify:fast": "npm run format:check && npm run lint && npm run knip && npm run check-types && npm run compile-tests && npm run test:unit",
+    "lint": "oxlint --type-aware --deny-warnings",
+    "knip": "knip"
   },
   "devDependencies": {
     "@tanstack/react-virtual": "^3.14.13",
@@ -89,6 +90,7 @@
     "@vscode/test-electron": "^3.1.0",
     "@vscode/vsce": "^4.0.0",
     "esbuild": "^0.28.2",
+    "knip": "^6.38.0",
     "mocha": "^11.8.0",
     "oxlint": "^1.85.0",
     "oxlint-tsgolint": "^7.0.2003",

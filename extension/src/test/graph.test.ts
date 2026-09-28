@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
-import { Graph } from '../git/graph';
-import type { GraphRow } from '../protocol';
+import { Graph } from '../history/graph';
+import type { GraphRow } from '../shared/protocol';
 
 // "from>to" for top lines and "from>to." for bottom lines, with a ~ when
 // dotted, sorted

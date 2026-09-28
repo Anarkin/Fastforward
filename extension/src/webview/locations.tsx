@@ -6,16 +6,16 @@ import {
   useRef,
   useState,
 } from 'react';
-import type { HashLookup, RefInfo, RefKind } from '../protocol';
+import { isHashPrefix, shortHash } from '../shared/hashes';
+import type {
+  HashLookup,
+  RefInfo,
+  RefKind,
+  RepositoryState,
+} from '../shared/protocol';
+import { CheckedOutBranch } from './bubbles';
 import { OpenContextMenu, useDismiss } from './contextMenu';
 import { IndentGuides, treeIndent, twistyWidth } from './tree';
-
-export interface Repository {
-  head: string | undefined;
-  headCommit: string | undefined;
-  headUpstream: string | undefined;
-  refs: readonly RefInfo[];
-}
 
 const groups: readonly { kind: RefKind; title: string }[] = [
   { kind: 'branch', title: 'Branches' },
@@ -58,16 +58,18 @@ export function searchRefs(
   });
 }
 
-// A ref's name as a bubble in its kind's color, like everywhere else
+// A ref's name as a bubble in its kind's color, like everywhere else, and the
+// checked-out branch marked like its bubble
 function RefLabel({
-  kind,
-  checkedOut,
+  info,
   children,
 }: {
-  kind: RefKind;
-  checkedOut: boolean;
+  info: RefInfo;
   children: React.ReactNode;
 }) {
+  const { kind } = info;
+  const checkedOutBranch = useContext(CheckedOutBranch);
+  const checkedOut = kind === 'branch' && info.name === checkedOutBranch;
   return (
     <span className={`badge ${kind} ${checkedOut ? 'checked-out' : ''}`}>
       {children}
@@ -109,7 +111,7 @@ const hashLookupDelay = 150;
 // The typed text when it could be a hash, which git needs four characters of
 function hashQuery(query: string): string | undefined {
   const trimmed = query.trim().toLowerCase();
-  return /^[0-9a-f]{4,40}$/.test(trimmed) ? trimmed : undefined;
+  return isHashPrefix(trimmed) ? trimmed : undefined;
 }
 
 // The commit a typed hash is, or why there is none
@@ -130,7 +132,7 @@ function HashSuggestion({
         onClick={() => onJump(found.hash)}
       >
         Go to commit{' '}
-        <span className="history-hash">{found.hash.slice(0, 7)}</span>
+        <span className="history-hash">{shortHash(found.hash)}</span>
         {found.subject}
       </div>
     );
@@ -196,7 +198,7 @@ export function LocationsPopup({
   query,
   onQuery,
 }: {
-  repository: Repository | undefined;
+  repository: RepositoryState | undefined;
   // The selected commit; locations pointing at it are highlighted
   selected: string | undefined;
   // What opened it, where clicks don't close it
@@ -217,6 +219,17 @@ export function LocationsPopup({
   useEffect(() => input.current?.select(), []);
   const refs = useMemo(() => repository?.refs ?? [], [repository]);
   const search = useMemo(() => searchRefs(refs, query), [refs, query]);
+  // Each column's refs, once, so its tree is built only when they change
+  const byKind = useMemo(
+    () =>
+      new Map(
+        groups.map((group) => [
+          group.kind,
+          refs.filter((ref) => ref.kind === group.kind),
+        ]),
+      ),
+    [refs],
+  );
   const [active, setActive] = useState<Active>(() => firstMatch(search));
   const activeRef = search[active.column]?.refs[active.index];
   // A hash being typed is looked up once typing stops for a moment, and
@@ -321,7 +334,7 @@ export function LocationsPopup({
               {group.title.toUpperCase()} (
               {query
                 ? group.refs.length + group.more
-                : refs.filter((ref) => ref.kind === group.kind).length}
+                : (byKind.get(group.kind) ?? []).length}
               )
             </header>
             <div className="locations-list">
@@ -331,14 +344,12 @@ export function LocationsPopup({
                   query={query}
                   active={column === active.column ? activeRef : undefined}
                   selected={selected}
-                  head={repository?.head}
                   onJump={jump}
                 />
               ) : (
                 <RefTree
-                  refs={refs.filter((ref) => ref.kind === group.kind)}
+                  refs={byKind.get(group.kind) ?? []}
                   selected={selected}
-                  head={repository?.head}
                   onSelect={jump}
                 />
               )}
@@ -355,7 +366,6 @@ function SearchResults({
   query,
   active,
   selected,
-  head,
   onJump,
 }: {
   group: SearchGroup;
@@ -363,8 +373,6 @@ function SearchResults({
   // The result Enter jumps to, when it is in this column
   active: RefInfo | undefined;
   selected: string | undefined;
-  // The checked-out branch, marked like its bubble
-  head: string | undefined;
   onJump: (commit: string) => void;
 }) {
   const openMenu = useContext(OpenContextMenu);
@@ -386,10 +394,7 @@ function SearchResults({
             })
           }
         >
-          <RefLabel
-            kind={ref.kind}
-            checkedOut={ref.kind === 'branch' && ref.name === head}
-          >
+          <RefLabel info={ref}>
             <Highlight text={ref.name} query={query} />
           </RefLabel>
         </div>
@@ -431,13 +436,10 @@ function buildTree(refs: readonly RefInfo[]): TreeNode {
 function RefTree({
   refs,
   selected,
-  head,
   onSelect,
 }: {
   refs: readonly RefInfo[];
   selected: string | undefined;
-  // The checked-out branch, marked like its bubble
-  head: string | undefined;
   onSelect: (commit: string) => void;
 }) {
   const tree = useMemo(() => buildTree(refs), [refs]);
@@ -449,7 +451,6 @@ function RefTree({
       node={tree}
       depth={0}
       selected={selected}
-      head={head}
       onSelect={onSelect}
     />
   );
@@ -460,14 +461,11 @@ function TreeChildren({
   node,
   depth,
   selected,
-  head,
   onSelect,
 }: {
   node: TreeNode;
   depth: number;
   selected: string | undefined;
-  // The checked-out branch, marked like its bubble
-  head: string | undefined;
   onSelect: (commit: string) => void;
 }) {
   const openMenu = useContext(OpenContextMenu);
@@ -485,7 +483,6 @@ function TreeChildren({
             node={child}
             depth={depth}
             selected={selected}
-            head={head}
             onSelect={onSelect}
             // A column's only top folder, usually origin, starts open
             initiallyOpen={depth === 0 && children.length === 1}
@@ -508,14 +505,7 @@ function TreeChildren({
           >
             <IndentGuides depth={depth} />
             {child.ref ? (
-              <RefLabel
-                kind={child.ref.kind}
-                checkedOut={
-                  child.ref.kind === 'branch' && child.ref.name === head
-                }
-              >
-                {child.name}
-              </RefLabel>
+              <RefLabel info={child.ref}>{child.name}</RefLabel>
             ) : (
               child.name
             )}
@@ -530,15 +520,12 @@ function TreeFolder({
   node,
   depth,
   selected,
-  head,
   onSelect,
   initiallyOpen,
 }: {
   node: TreeNode;
   depth: number;
   selected: string | undefined;
-  // The checked-out branch, marked like its bubble
-  head: string | undefined;
   onSelect: (commit: string) => void;
   initiallyOpen: boolean;
 }) {
@@ -565,7 +552,6 @@ function TreeFolder({
           node={node}
           depth={depth + 1}
           selected={selected}
-          head={head}
           onSelect={onSelect}
         />
       )}

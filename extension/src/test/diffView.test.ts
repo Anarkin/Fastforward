@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { parseFilePatch, parsePatch } from '../webview/diff';
-import { collapseThreshold } from '../protocol';
+import { collapseThreshold } from '../shared/protocol';
 import { withLargeFiles } from '../webview/diffColumn';
 import { diffRows, largeFilesToLoad, rowHeight } from '../webview/diffView';
 import { fileChange } from './fixtures';
@@ -22,7 +22,7 @@ suite('Diff rows', () => {
   test('lays out a small file whole', () => {
     const files = parsePatch(patch('a.ts', 2));
     assert.deepStrictEqual(kinds(diffRows(files, new Map(), undefined)), [
-      'summary',
+      'error',
       'file',
       'line',
       'line',
@@ -34,7 +34,7 @@ suite('Diff rows', () => {
       [patch('a.ts', 1), '@@ -10,0 +11,1 @@ function f()', '+line'].join('\n'),
     );
     assert.deepStrictEqual(kinds(diffRows(files, new Map(), undefined)), [
-      'summary',
+      'error',
       'file',
       'line',
       'hunk',
@@ -45,7 +45,7 @@ suite('Diff rows', () => {
   test('collapses a large file, and opens it when asked', () => {
     const files = parsePatch(patch('graph.json', collapseThreshold + 1));
     const collapsed = diffRows(files, new Map(), undefined);
-    assert.deepStrictEqual(kinds(collapsed), ['summary', 'file', 'large']);
+    assert.deepStrictEqual(kinds(collapsed), ['error', 'file', 'large']);
 
     const opened = diffRows(files, new Map([['graph.json', true]]), undefined);
     assert.strictEqual(opened.length, 2 + collapseThreshold + 1);
@@ -54,7 +54,7 @@ suite('Diff rows', () => {
   test('closes a small file when asked', () => {
     const files = parsePatch(patch('a.ts', 2));
     const rows = diffRows(files, new Map([['a.ts', false]]), undefined);
-    assert.deepStrictEqual(kinds(rows), ['summary', 'file']);
+    assert.deepStrictEqual(kinds(rows), ['error', 'file']);
   });
 
   test('lays out a whole file line by line', () => {
@@ -64,7 +64,7 @@ suite('Diff rows', () => {
       binary: false,
     });
     assert.deepStrictEqual(kinds(rows), [
-      'summary',
+      'error',
       'file',
       'wholeLine',
       'wholeLine',
@@ -174,7 +174,7 @@ suite('Large files fetched', () => {
 });
 
 suite('Diff row heights', () => {
-  test('gives every row but the summary and placeholders a fixed height', () => {
+  test('gives every row but the error and placeholders a fixed height', () => {
     const rows = diffRows(
       parsePatch(
         [
@@ -191,7 +191,7 @@ suite('Diff row heights', () => {
     assert.deepStrictEqual(
       rows.map((row) => [row.kind, rowHeight(row)]),
       [
-        ['summary', undefined],
+        ['error', undefined],
         ['file', 28],
         // As tall as a file header, not more for the padding of its message
         ['binary', 28],

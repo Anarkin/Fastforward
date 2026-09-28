@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import type { RefInfo } from '../protocol';
+import type { RefInfo } from '../shared/protocol';
 import { searchRefs } from '../webview/locations';
 
 const refs: RefInfo[] = [

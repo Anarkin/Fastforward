@@ -1,9 +1,7 @@
 import { useMemo } from 'react';
-import type { FileChange } from '../protocol';
-import { changeTitle, statusClass } from './fileStatus';
-import { LineCounts } from './lineCounts';
+import type { FileChange } from '../shared/protocol';
 import { VirtualRows } from './virtualRows';
-import { IndentGuides, treeIndent, twistyWidth } from './tree';
+import { byName, FileRow, FolderRow } from './tree';
 
 export interface FolderNode {
   readonly name: string;
@@ -57,9 +55,6 @@ export function foldersOf(path: string): string[] {
   return parts.slice(0, -1).map((_, i) => parts.slice(0, i + 1).join('/'));
 }
 
-const byName = (a: { name: string }, b: { name: string }) =>
-  a.name.localeCompare(b.name);
-
 // The whole repository at the selected commit, like the Explorer, with the
 // commit's changes marked
 export function FileTree({
@@ -86,46 +81,32 @@ export function FileTree({
     ...[...node.folders.values()].toSorted(byName).flatMap((child) => {
       const open = expanded.has(child.path);
       return [
-        <div
+        <FolderRow
           key={`folder:${child.path}`}
-          className={`row tree-row folder ${child.changed ? 'changed' : ''}`}
-          style={{ paddingLeft: treeIndent(depth) }}
-          title={child.path}
-          onClick={() => onToggle(child.path)}
+          path={child.path}
+          depth={depth}
+          open={open}
+          className={child.changed ? 'changed' : ''}
+          onToggle={onToggle}
         >
-          <IndentGuides depth={depth} />
-          <span className="twisty">{open ? '▾' : '▸'}</span>
           {child.name}
-        </div>,
+        </FolderRow>,
         ...(open ? renderFolder(child, depth + 1) : []),
       ];
     }),
-    ...node.files.toSorted(byName).map((file) => {
-      const change = changes.get(file.path);
-      return (
-        <div
+    ...node.files
+      .toSorted(byName)
+      .map((file) => (
+        <FileRow
           key={`file:${file.path}`}
-          className={`row tree-row file ${file.path === selected ? 'selected' : ''}`}
-          // Past the twisty space, so files line up with sibling folders
-          style={{ paddingLeft: treeIndent(depth) + twistyWidth }}
-          title={change ? changeTitle(change) : file.path}
-          onClick={() =>
-            onSelect(file.path === selected ? undefined : file.path)
-          }
-        >
-          <IndentGuides depth={depth} />
-          <span className={change ? statusClass(change) : 'path'}>
-            {file.name}
-          </span>
-          {change && (
-            <LineCounts
-              deletions={change.deletions}
-              insertions={change.insertions}
-            />
-          )}
-        </div>
-      );
-    }),
+          path={file.path}
+          name={file.name}
+          depth={depth}
+          change={changes.get(file.path)}
+          selected={selected}
+          onSelect={onSelect}
+        />
+      )),
   ];
 
   return (

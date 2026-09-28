@@ -1,4 +1,4 @@
-import type { FileChange } from '../protocol';
+import type { FileChange } from '../shared/protocol';
 
 // Changed files show their status by the color of their name, the way VS
 // Code's Explorer does, and in words in their tooltip

@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 
-export const devReloadMarker = '.dev-reload';
+const devReloadMarker = '.dev-reload';
 
 // npm run deploy-local touches the marker in the installed extension after
 // copying a new build, and this restarts the extension host to load it; only

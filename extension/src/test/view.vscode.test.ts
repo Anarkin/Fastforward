@@ -3,15 +3,18 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { getGitApi } from '../git/repository';
-import { workingTreeHash, type ToWebview, type BookmarkRef } from '../protocol';
+import {
+  workingTreeHash,
+  type ToWebview,
+  type BookmarkRef,
+} from '../shared/protocol';
 import {
   activeTabKey,
   bookmarksKey,
   collapseMergesKey,
-  FastforwardView,
   tabsKey,
-  type Connection,
-} from '../view';
+} from '../storage';
+import { FastforwardView, type Connection } from '../view';
 import { waitFor } from './fixtures';
 import {
   removeFolder,

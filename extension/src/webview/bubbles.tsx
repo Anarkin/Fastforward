@@ -1,8 +1,12 @@
 import { createContext, Fragment, useContext } from 'react';
-import { type Bookmark, type BookmarkRef } from '../protocol';
-import { sameRef } from '../refNames';
+import { shortHash } from '../shared/hashes';
+import {
+  type Bookmark,
+  type BookmarkRef,
+  type RepositoryState,
+} from '../shared/protocol';
+import { sameRef } from '../shared/refNames';
 import { useContextMenu } from './contextMenu';
-import { type Repository } from './locations';
 import { SkeletonBubbles, useSkeleton } from './skeleton';
 import { type BubbleRow, bubbleRow } from './bookmarks';
 
@@ -26,13 +30,13 @@ export function HeadBubble({
       title={`HEAD is detached at ${commit}`}
       onClick={onClick}
     >
-      HEAD {commit.slice(0, 7)}
+      HEAD {shortHash(commit)}
     </span>
   );
 }
 
 // A commit pinned to the bookmarks row, with the same menu as the other bubbles
-export function CommitBubble({
+function CommitBubble({
   hash,
   onClick,
 }: {
@@ -50,7 +54,7 @@ export function CommitBubble({
       onClick={onClick}
       {...menu}
     >
-      {hash.slice(0, 7)}
+      {shortHash(hash)}
     </span>
   );
 }
@@ -100,7 +104,7 @@ export function BubbleBar({
 }: {
   // The active tab, whose refs may still be loading
   root: string | undefined;
-  repository: Repository | undefined;
+  repository: RepositoryState | undefined;
   bookmarks: readonly Bookmark[];
   onJump: (commit: string) => void;
 }) {
@@ -161,7 +165,7 @@ export function BubbleBar({
 
 // What is checked out: a detached HEAD, or the checked-out branch and the
 // branch it tracks
-export function CheckedOut({
+function CheckedOut({
   detached,
   row,
   bubble,

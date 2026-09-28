@@ -1,4 +1,4 @@
-import type { HistoryEntry } from './show';
+import type { HistoryEntry } from '../git/history';
 
 // A commit in the history as shown, which can leave out what collapsed merges
 // brought in
@@ -25,17 +25,10 @@ export function headsOf(history: readonly HistoryEntry[]): Set<string> {
 // merge through a parent other than its first is a merge that hides it
 export function mergesHiding(
   history: readonly HistoryEntry[],
-  shown: ReadonlySet<string>,
+  shown: { has(hash: string): boolean },
   target: string,
 ): string[] {
-  const children = new Map<string, string[]>();
-  const firstParents = new Map<string, string | undefined>();
-  for (const entry of history) {
-    firstParents.set(entry.hash, entry.parents[0]);
-    for (const parent of entry.parents) {
-      children.set(parent, [...(children.get(parent) ?? []), entry.hash]);
-    }
-  }
+  const { children, firstParents } = linksOf(history);
   // Breadth first, so the nearest shown commit is found
   const cameFrom = new Map<string, string>();
   const queue = [target];
@@ -64,6 +57,39 @@ export function mergesHiding(
     }
   }
   return [];
+}
+
+interface Links {
+  readonly children: ReadonlyMap<string, readonly string[]>;
+  readonly firstParents: ReadonlyMap<string, string | undefined>;
+}
+
+// Worked out once per history rather than on every jump to a hidden commit,
+// as it walks the whole history
+const links = new WeakMap<readonly HistoryEntry[], Links>();
+
+// Each commit's children and first parent
+function linksOf(history: readonly HistoryEntry[]): Links {
+  const known = links.get(history);
+  if (known) {
+    return known;
+  }
+  const children = new Map<string, string[]>();
+  const firstParents = new Map<string, string | undefined>();
+  for (const entry of history) {
+    firstParents.set(entry.hash, entry.parents[0]);
+    for (const parent of entry.parents) {
+      const siblings = children.get(parent);
+      if (siblings) {
+        siblings.push(entry.hash);
+      } else {
+        children.set(parent, [entry.hash]);
+      }
+    }
+  }
+  const result = { children, firstParents };
+  links.set(history, result);
+  return result;
 }
 
 // The history with merges collapsed like Sublime Merge does: a commit is shown

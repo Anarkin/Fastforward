@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import { headsOf, mergesHiding, showHistory } from '../git/merges';
+import { headsOf, mergesHiding, showHistory } from '../history/merges';
 
 // m merges b2 into a; b1 and b2 are only reachable through the merge
 const history = [

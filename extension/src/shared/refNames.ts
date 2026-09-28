@@ -11,3 +11,8 @@ export function withoutRemote(name: string): string {
 export function sameRef(a: Bookmark, b: Bookmark): boolean {
   return a.kind === b.kind && a.name === b.name;
 }
+
+// Whether the list has this branch, remote, tag or pinned commit
+export function hasRef(refs: readonly Bookmark[], ref: Bookmark): boolean {
+  return refs.some((other) => sameRef(other, ref));
+}

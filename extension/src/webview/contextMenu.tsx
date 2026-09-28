@@ -6,7 +6,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import type { Bookmark } from '../protocol';
+import type { Bookmark } from '../shared/protocol';
 
 // What was right-clicked; the menu's items depend on it, and more kinds, like
 // a commit row, get their own items

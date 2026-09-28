@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { isLargeChange, type FileChange } from '../protocol';
+import { isLargeChange, type FileChange } from '../shared/protocol';
 import { Column } from './column';
 import { parsePatch, type DiffFile } from './diff';
 import { DiffView } from './diffView';
@@ -71,13 +71,13 @@ export function Diff({
 
   // Only the files' diffs; the commit's message is in the address bar, and
   // its author and date in the commit list; an error goes on top
-  const summary = error && <div className="error">{error}</div>;
+  const errorRow = error && <div className="error">{error}</div>;
 
   return (
     <Column title="Diff">
       <DiffView
         key={selection}
-        summary={summary}
+        error={errorRow}
         files={diffFiles}
         changes={changes}
         whole={fileContent}

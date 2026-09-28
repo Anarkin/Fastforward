@@ -62,7 +62,7 @@ export interface BookmarkRef {
 }
 
 // A commit the user pinned to the bookmarks row, by its full hash
-export interface BookmarkCommit {
+interface BookmarkCommit {
   readonly kind: 'commit';
   readonly name: string;
 }
@@ -126,6 +126,19 @@ export interface TabInfo {
   readonly name: string;
 }
 
+// What is checked out, and every branch, remote and tag
+export interface RepositoryState {
+  // The current branch's name, and the commit HEAD points to
+  readonly head: string | undefined;
+  readonly headCommit: string | undefined;
+  // The remote branch the checked-out branch tracks, like origin/main
+  readonly headUpstream: string | undefined;
+  readonly refs: readonly RefInfo[];
+}
+
+// Back or forward in a tab's history
+export type Direction = 'back' | 'forward';
+
 export type ToExtension =
   | { readonly type: 'ready' }
   | { readonly type: 'selectTab'; readonly root: string }
@@ -179,7 +192,7 @@ export type TabMessage =
   // Back or forward in the tab's history, several steps from its dropdown
   | {
       readonly type: 'navigate';
-      readonly direction: 'back' | 'forward';
+      readonly direction: Direction;
       readonly steps: number;
     }
   // Asks for the commits at positions start..start+count of the history
@@ -244,15 +257,7 @@ export type ToWebview =
       readonly tabs: readonly TabInfo[];
       readonly active: string | undefined;
     }
-  | {
-      readonly type: 'repository';
-      // The current branch's name, and the commit HEAD points to
-      readonly head: string | undefined;
-      readonly headCommit: string | undefined;
-      // The remote branch the checked-out branch tracks, like origin/main
-      readonly headUpstream: string | undefined;
-      readonly refs: readonly RefInfo[];
-    }
+  | ({ readonly type: 'repository' } & RepositoryState)
   // Starts a new history of every branch, remote and tag: its size, so the
   // list has its full height at once, and the first page of commits
   | {

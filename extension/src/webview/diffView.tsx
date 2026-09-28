@@ -1,6 +1,6 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { collapseThreshold, type FileChange } from '../protocol';
+import { collapseThreshold, type FileChange } from '../shared/protocol';
 import type { DiffFile, DiffLine } from './diff';
 import { LineCounts } from './lineCounts';
 import { SkeletonRows, useSkeleton } from './skeleton';
@@ -15,7 +15,8 @@ export interface WholeFile {
 // The diff as one list of rows, which is drawn only where it is on screen;
 // every row belongs to a file, whose header stays on top while it scrolls
 export type DiffRow =
-  | { readonly kind: 'summary' }
+  // The error, if any, on top
+  | { readonly kind: 'error' }
   | {
       readonly kind: 'file';
       readonly file: number;
@@ -38,7 +39,7 @@ export type DiffRow =
       readonly text: string;
     };
 
-type MeasuredKind = 'summary' | 'skeleton' | 'skeletonLines';
+type MeasuredKind = 'error' | 'skeleton' | 'skeletonLines';
 
 // The heights of the rows, set on them, so the list knows where everything
 // is without measuring it; the style sheet takes the file header's and the
@@ -55,7 +56,7 @@ const rowHeights: Record<Exclude<DiffRow['kind'], MeasuredKind>, number> = {
 // What the rows of other heights are guessed at until they are measured: an
 // error, or placeholders that look like the files they stand in for
 const measuredEstimates: Record<MeasuredKind, number> = {
-  summary: 200,
+  error: 200,
   skeleton: 240,
   skeletonLines: 100,
 };
@@ -102,7 +103,7 @@ export function diffRows(
   whole: WholeFile | undefined,
   loading = false,
 ): DiffRow[] {
-  const rows: DiffRow[] = [{ kind: 'summary' }];
+  const rows: DiffRow[] = [{ kind: 'error' }];
   if (loading && files.length === 0 && !whole) {
     rows.push({ kind: 'skeleton' });
     return rows;
@@ -176,20 +177,20 @@ export function largeFilesToLoad(
   return load;
 }
 
-// The Diff column's contents: the summary, then the files' diffs, or a whole
-// file; only the rows on screen are drawn, so a diff of any size opens fast;
-// keyed by the selection, so another commit or file starts at the top with
-// its files as they come, while a changed diff of the same one, like after a
-// save, keeps its place
+// The Diff column's contents: the error, if any, then the files' diffs, or a
+// whole file; only the rows on screen are drawn, so a diff of any size opens
+// fast; keyed by the selection, so another commit or file starts at the top
+// with its files as they come, while a changed diff of the same one, like
+// after a save, keeps its place
 export function DiffView({
-  summary,
+  error,
   files,
   changes,
   whole,
   loading,
   onLoad,
 }: {
-  summary: React.ReactNode;
+  error: React.ReactNode;
   files: readonly DiffFile[];
   // Insertion and deletion counts by path
   changes: ReadonlyMap<string, FileChange>;
@@ -259,8 +260,8 @@ export function DiffView({
 
   const renderRow = (row: DiffRow) => {
     switch (row.kind) {
-      case 'summary':
-        return summary;
+      case 'error':
+        return error;
       case 'file':
         return header(row);
       case 'large': {

@@ -1,4 +1,4 @@
-import type { GraphLine, GraphRow } from '../protocol';
+import type { GraphLine, GraphRow } from '../shared/protocol';
 import type { ShownEntry } from './merges';
 
 // The lanes between two rows: the commit each lane is waiting for, which is a

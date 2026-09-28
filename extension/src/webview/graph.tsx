@@ -1,9 +1,9 @@
-import type { GraphLine, GraphRow } from '../protocol';
+import type { GraphLine, GraphRow } from '../shared/protocol';
 
-export const laneWidth = 12;
+const laneWidth = 12;
 // Lanes past this are drawn at the last one, so the graph doesn't push the
 // commit text away; large repositories can have a hundred lanes at once
-export const maxLanes = 12;
+const maxLanes = 12;
 // Level with the middle of the subject line
 const dotY = 15;
 const dotRadius = 4;
@@ -53,6 +53,28 @@ function path(line: GraphLine, height: number): string {
     : `M ${from} ${dotY} C ${from} ${dotY + turn / 2} ${to} ${dotY + turn / 2} ${to} ${dotY + turn} V ${height}`;
 }
 
+// The lines as drawn, once each: lanes past maxLanes are drawn at the last
+// one, where many lines can land on the same path
+function drawnLines(
+  lines: readonly GraphLine[],
+  height: number,
+): { key: string; d: string; stroke: string; dashed: boolean }[] {
+  const drawn = new Map<
+    string,
+    { key: string; d: string; stroke: string; dashed: boolean }
+  >();
+  for (const line of lines) {
+    const d = path(line, height);
+    const stroke = color(line.color);
+    const dashed = line.dashed ?? false;
+    const key = `${d} ${stroke} ${dashed}`;
+    // In the place of its last copy, which was painted over the others
+    drawn.delete(key);
+    drawn.set(key, { key, d, stroke, dashed });
+  }
+  return [...drawn.values()];
+}
+
 // The graph within one commit row, as tall as the row, so its lines join the
 // rows above and below
 export function GraphCell({
@@ -66,11 +88,11 @@ export function GraphCell({
 }) {
   return (
     <svg className="graph" width={graphWidth(rowLanes(row))} height={height}>
-      {row.lines.map((line, index) => (
+      {drawnLines(row.lines, height).map((line) => (
         <path
-          key={index}
-          d={path(line, height)}
-          stroke={color(line.color)}
+          key={line.key}
+          d={line.d}
+          stroke={line.stroke}
           strokeWidth={2}
           strokeDasharray={line.dashed ? '2 3' : undefined}
           fill="none"

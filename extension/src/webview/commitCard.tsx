@@ -1,28 +1,31 @@
 import { Fragment } from 'react';
-import type { RefInfo } from '../protocol';
+import { shortHash } from '../shared/hashes';
+import type { CommitInfo, RefInfo } from '../shared/protocol';
 import { HeadBubble, RefBubble } from './bubbles';
 import { formatDateTime } from './dates';
 
 // The selected commit, for the address bar's peek
-export interface CardCommit {
-  readonly hash: string;
-  readonly message: string;
-  readonly author: string;
-  readonly email: string;
-  // Milliseconds since the epoch
-  readonly date: number;
-  readonly committer: string;
-  readonly committerEmail: string;
-  readonly committed: number;
+export type CardCommit = Pick<
+  CommitInfo,
+  | 'hash'
+  | 'subject'
+  | 'message'
+  | 'authorName'
+  | 'authorEmail'
+  | 'authorDate'
+  | 'committerName'
+  | 'committerEmail'
+  | 'commitDate'
+> & {
   // Its branches, remotes and tags, as the commit list shows them
   readonly refs: readonly RefInfo[];
   // Whether HEAD is detached at it
   readonly detachedHead: boolean;
-}
+};
 
 // What a commit message says after its subject, without the blank line git
 // puts between them
-export function commitBody(message: string): string {
+function commitBody(message: string): string {
   return message.split('\n').slice(1).join('\n').replace(/^\n+/, '');
 }
 
@@ -56,8 +59,8 @@ function LaterRow({
 export function CommitDetails({ commit }: { commit: CardCommit }) {
   const body = commitBody(commit.message);
   const sameCommitter =
-    commit.committer === commit.author &&
-    commit.committerEmail === commit.email;
+    commit.committerName === commit.authorName &&
+    commit.committerEmail === commit.authorEmail;
   // As shown, to the minute, so seconds apart don't read as the same twice
   // Under the table, one to a row, where the values are
   const bubbles = [
@@ -70,11 +73,11 @@ export function CommitDetails({ commit }: { commit: CardCommit }) {
     })),
   ];
   const sameDate =
-    formatDateTime(commit.committed) === formatDateTime(commit.date);
+    formatDateTime(commit.commitDate) === formatDateTime(commit.authorDate);
   return (
     <div className="commit-card">
       <span className="address-hash commit-card-indent" aria-hidden="true">
-        {commit.hash.slice(0, 7)}
+        {shortHash(commit.hash)}
       </span>
       <div className="commit-card-text">
         {body ? (
@@ -90,15 +93,15 @@ export function CommitDetails({ commit }: { commit: CardCommit }) {
         <dd className="commit-card-hash">{commit.hash}</dd>
         <dt>Author</dt>
         <dd>
-          {commit.author} &lt;{commit.email}&gt;
+          {commit.authorName} &lt;{commit.authorEmail}&gt;
         </dd>
         <LaterRow label="Committer" same={sameCommitter}>
-          {commit.committer} &lt;{commit.committerEmail}&gt;
+          {commit.committerName} &lt;{commit.committerEmail}&gt;
         </LaterRow>
         <dt>Authored</dt>
-        <dd>{formatDateTime(commit.date)}</dd>
+        <dd>{formatDateTime(commit.authorDate)}</dd>
         <LaterRow label="Committed" same={sameDate}>
-          {formatDateTime(commit.committed)}
+          {formatDateTime(commit.commitDate)}
         </LaterRow>
         {bubbles.map((bubble, i) => (
           <Fragment key={bubble.key}>

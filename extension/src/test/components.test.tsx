@@ -140,13 +140,14 @@ suite('Navigation bar', () => {
     const hash = 'd1f0050454a27f025c6820fc4a42b101a7fa356a';
     const html = peek({
       hash,
+      subject: 'the subject',
       message: 'the subject\n\nthe body\nmore',
-      author: 'Jozsef Simon',
-      email: 'jozsef@example.com',
-      date: new Date(2022, 11, 14, 16, 12).getTime(),
-      committer: 'Jozsef Simon',
+      authorName: 'Jozsef Simon',
+      authorEmail: 'jozsef@example.com',
+      authorDate: new Date(2022, 11, 14, 16, 12).getTime(),
+      committerName: 'Jozsef Simon',
       committerEmail: 'jozsef@example.com',
-      committed: new Date(2022, 11, 14, 16, 12, 30).getTime(),
+      commitDate: new Date(2022, 11, 14, 16, 12, 30).getTime(),
     });
     assert.strictEqual(tagsWith(html, 'locations-popup', 'peek').length, 1);
     assert.match(html, /class="address-hash">d1f0050<\/span>the subject</);
@@ -177,12 +178,12 @@ suite('Navigation bar', () => {
   test('shows the committer and when committed where they differ', () => {
     const html = peek({
       message: 'rebased',
-      author: 'Ann',
-      email: 'ann@example.com',
-      date: new Date(2022, 11, 14, 16, 12).getTime(),
-      committer: 'Bob',
+      authorName: 'Ann',
+      authorEmail: 'ann@example.com',
+      authorDate: new Date(2022, 11, 14, 16, 12).getTime(),
+      committerName: 'Bob',
       committerEmail: 'bob@example.com',
-      committed: new Date(2022, 11, 20, 9, 5).getTime(),
+      commitDate: new Date(2022, 11, 20, 9, 5).getTime(),
     });
     assert.deepStrictEqual(definitions(html).slice(1), [
       ['Author', 'Ann <ann@example.com>', ''],
@@ -371,7 +372,7 @@ suite('Placeholders', () => {
 
   test('stand in for a diff that loads, and a large file being fetched', () => {
     assert.deepStrictEqual(kinds(diffRows([], new Map(), undefined, true)), [
-      'summary',
+      'error',
       'skeleton',
     ]);
     const large = {
@@ -382,13 +383,13 @@ suite('Placeholders', () => {
     };
     // Collapsed with its size, then placeholders once opened until it loads
     assert.deepStrictEqual(kinds(diffRows([large], new Map(), undefined)), [
-      'summary',
+      'error',
       'file',
       'large',
     ]);
     assert.deepStrictEqual(
       kinds(diffRows([large], new Map([['graph.json', true]]), undefined)),
-      ['summary', 'file', 'skeletonLines'],
+      ['error', 'file', 'skeletonLines'],
     );
   });
 
@@ -397,7 +398,7 @@ suite('Placeholders', () => {
       kinds(
         diffRows([], new Map(), { path: 'a.png', content: '', binary: true }),
       ),
-      ['summary', 'file', 'binary'],
+      ['error', 'file', 'binary'],
     );
     const [binary] = parsePatch(
       [
@@ -407,7 +408,7 @@ suite('Placeholders', () => {
       ].join('\n'),
     );
     assert.deepStrictEqual(kinds(diffRows([binary], new Map(), undefined)), [
-      'summary',
+      'error',
       'file',
       'binary',
     ]);

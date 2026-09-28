@@ -1,5 +1,9 @@
 import { useMemo } from 'react';
-import { type ChangesView, type FileChange, type FilesMode } from '../protocol';
+import {
+  type ChangesView,
+  type FileChange,
+  type FilesMode,
+} from '../shared/protocol';
 import { changesTreeElements, changesTreeRows } from './changesTree';
 import { Column } from './column';
 import { changeTitle, statusClass } from './fileStatus';

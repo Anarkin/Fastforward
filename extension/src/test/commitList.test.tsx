@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { workingTreeHash } from '../protocol';
+import { workingTreeHash } from '../shared/protocol';
 import { CommitHistory } from '../webview/commitHistory';
 import {
   bubbleLineHeight,

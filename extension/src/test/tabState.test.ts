@@ -1,0 +1,65 @@
+import * as assert from 'node:assert';
+import {
+  firstPage,
+  keep,
+  layOutHistory,
+  loadHistory,
+  newTabState,
+  replayOf,
+} from '../tabState';
+
+suite('Tab state', () => {
+  // c merges b into a
+  const history = [
+    { hash: 'c', parents: ['a', 'b'] },
+    { hash: 'b', parents: ['a'] },
+    { hash: 'a', parents: [] },
+  ];
+
+  test('lays out the history with merges collapsed, keeping the selection', () => {
+    const tab = newTabState();
+    loadHistory(tab, history, { name: 'main', commit: 'c' }, []);
+    tab.hash = 'a';
+    const generation = layOutHistory(tab, true, 'c');
+    assert.deepStrictEqual(
+      tab.history.map((entry) => entry.hash),
+      ['c', 'a'],
+    );
+    assert.strictEqual(tab.index, 1);
+    assert.strictEqual(layOutHistory(tab, false, 'c'), generation + 1);
+    assert.strictEqual(tab.index, 2);
+  });
+
+  test('starts the first page at the commit that keeps its place', () => {
+    const tab = newTabState();
+    loadHistory(tab, history, undefined, []);
+    layOutHistory(tab, false, undefined);
+    tab.anchor = { hash: 'b', offset: 5 };
+    assert.deepStrictEqual(firstPage(tab, true), {
+      start: 0,
+      anchor: { index: 1, offset: 5 },
+    });
+    assert.deepStrictEqual(firstPage(tab, false), {
+      start: 0,
+      anchor: undefined,
+    });
+  });
+
+  test('replays the files before the diff or whole file that came last', () => {
+    const tab = newTabState();
+    keep(tab.shown, { type: 'diff', hash: 'a', path: 'x', patch: '' });
+    keep(tab.shown, { type: 'files', hash: 'a', files: [] });
+    keep(tab.shown, {
+      type: 'fileContent',
+      hash: 'a',
+      path: 'y',
+      content: '',
+      binary: false,
+    });
+    keep(tab.shown, { type: 'error', message: 'once' });
+    assert.deepStrictEqual(
+      replayOf(tab).map((message) => message.type),
+      ['files', 'fileContent'],
+    );
+  });
+});

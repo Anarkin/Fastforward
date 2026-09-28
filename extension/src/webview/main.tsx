@@ -1,5 +1,5 @@
 import { createRoot } from 'react-dom/client';
-import type { ToExtension } from '../protocol';
+import type { ToExtension } from '../shared/protocol';
 import { App } from './App';
 import './style.css';
 

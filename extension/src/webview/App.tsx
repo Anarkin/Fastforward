@@ -10,6 +10,7 @@ import {
   commitPageSize,
   workingTreeHash,
   type ChangesView,
+  type Direction,
   type CheckoutTarget,
   type FilesMode,
   type RefInfo,
@@ -18,10 +19,11 @@ import {
   type ToExtension,
   type ToWebview,
   type Bookmark,
-} from '../protocol';
+} from '../shared/protocol';
 import { CheckedOutBranch, DetachedHead, BubbleBar } from './bubbles';
 import { checkoutOptions, checkoutRef } from './checkout';
 import { ColumnResizingProvider, useColumnWidths } from './columns';
+import type { CardCommit } from './commitCard';
 import { Commits } from './commitList';
 import { useShortcuts } from './shortcuts';
 import {
@@ -34,8 +36,8 @@ import {
 import { Diff } from './diffColumn';
 import { Files } from './filesColumn';
 import { foldersOf } from './fileTree';
-import { sameRef } from '../refNames';
-import { NavBar, type Direction } from './navBar';
+import { hasRef, sameRef } from '../shared/refNames';
+import { NavBar } from './navBar';
 import { TabBar } from './tabBar';
 import {
   foldersOfTab,
@@ -95,7 +97,8 @@ export function App({ post }: Props) {
     (widths: readonly number[]) => post({ type: 'setColumnWidths', widths }),
     [post],
   );
-  // The commit list, which C hides for more room for the files and the diff
+  // The commit list, which C hides for more room for the files and the diff;
+  // not saved, so it is back whenever the view opens
   const [commitsShown, setCommitsShown] = useState(true);
   useShortcuts({ c: () => setCommitsShown((shown) => !shown) });
   const hiddenColumns = useMemo(() => [!commitsShown, false], [commitsShown]);
@@ -188,6 +191,18 @@ export function App({ post }: Props) {
   }, [repository]);
 
   const commit = history?.find(hash);
+  // The commit HEAD points at when no branch is checked out
+  const detached =
+    repository && !repository.head ? repository.headCommit : undefined;
+  // The selected commit, for the address bar's peek
+  const card: CardCommit | undefined =
+    hash === workingTreeHash || !commit
+      ? undefined
+      : {
+          ...commit,
+          refs: refsByCommit.get(commit.hash) ?? [],
+          detachedHead: detached === commit.hash,
+        };
   // A tab whose history hasn't arrived yet, which every column shows
   // placeholders for, as it selects what is checked out once it has
   const opening = activeTab !== undefined && history === undefined && !error;
@@ -244,12 +259,20 @@ export function App({ post }: Props) {
     postTab({ type: 'selectFile', hash, path: next });
   };
 
-  // The Files view needs every file of the repository at the selected commit
+  // The Files view needs every file of the repository at the selected commit;
+  // asked once per tab and commit, not again when a tree of another commit
+  // arrives while this one is on its way
+  const requestedTree = useRef<string>(undefined);
   useEffect(() => {
-    if (filesMode === 'files' && hash && tree?.hash !== hash) {
+    if (filesMode !== 'files' || !hash || tree?.hash === hash) {
+      return;
+    }
+    const request = JSON.stringify([activeTab, hash]);
+    if (requestedTree.current !== request) {
+      requestedTree.current = request;
       postTab({ type: 'loadTree', hash });
     }
-  }, [filesMode, hash, tree, postTab]);
+  }, [filesMode, hash, tree, activeTab, postTab]);
 
   // The selected file's folders open, so it is visible in the Files view
   useEffect(() => {
@@ -279,8 +302,7 @@ export function App({ post }: Props) {
     postTab({ type: 'setBookmarks', bookmarks: next });
   };
 
-  const isBookmark = (bookmark: Bookmark) =>
-    bookmarks.some((other) => sameRef(other, bookmark));
+  const isBookmark = (bookmark: Bookmark) => hasRef(bookmarks, bookmark);
   const toggleBookmark = (bookmark: Bookmark) =>
     changeBookmarks(
       isBookmark(bookmark)
@@ -311,7 +333,6 @@ export function App({ post }: Props) {
     const refs = repository?.refs ?? [];
     const head = repository?.head;
     if (target.kind === 'commit') {
-      const detached = repository && !head ? repository.headCommit : undefined;
       return [
         {
           label: 'Checkout',
@@ -328,7 +349,6 @@ export function App({ post }: Props) {
       ];
     }
     const { ref } = target;
-    const detached = repository && !head ? repository.headCommit : undefined;
     const option =
       ref.kind === 'commit'
         ? {
@@ -360,11 +380,7 @@ export function App({ post }: Props) {
   return (
     <OpenContextMenu.Provider value={openMenu}>
       <CheckedOutBranch.Provider value={repository?.head}>
-        <DetachedHead.Provider
-          value={
-            repository && !repository.head ? repository.headCommit : undefined
-          }
-        >
+        <DetachedHead.Provider value={detached}>
           <div className="app">
             <TabBar
               tabs={tabs}
@@ -390,24 +406,7 @@ export function App({ post }: Props) {
                     hash === workingTreeHash
                       ? 'Uncommitted changes'
                       : commit?.subject,
-                  commit:
-                    hash === workingTreeHash || !commit
-                      ? undefined
-                      : {
-                          hash: commit.hash,
-                          message: commit.message,
-                          author: commit.authorName,
-                          email: commit.authorEmail,
-                          date: commit.authorDate,
-                          committer: commit.committerName,
-                          committerEmail: commit.committerEmail,
-                          committed: commit.commitDate,
-                          refs: refsByCommit.get(commit.hash) ?? [],
-                          detachedHead:
-                            repository !== undefined &&
-                            !repository.head &&
-                            repository.headCommit === commit.hash,
-                        },
+                  commit: card,
                 }}
                 repository={repository}
                 selected={hash}

@@ -1,16 +1,20 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
-import type { HashLookup, NavigationEntry } from '../protocol';
+import { shortHash } from '../shared/hashes';
+import type {
+  Direction,
+  HashLookup,
+  NavigationEntry,
+  RepositoryState,
+} from '../shared/protocol';
 import { CommitDetails, type CardCommit } from './commitCard';
 import { useDismiss } from './contextMenu';
 import { BackIcon, ForwardIcon, HelpIcon, RefreshIcon } from './icons';
-import { LocationsPopup, usePopupHeight, type Repository } from './locations';
+import { LocationsPopup, usePopupHeight } from './locations';
 import { shortcuts, useShortcuts } from './shortcuts';
 
 // Holding a back or forward button this long opens its history, like a
 // browser's
 const holdDelay = 400;
-
-export type Direction = 'back' | 'forward';
 
 // The toolbar above the bubbles: back, forward and fetch, then the address
 // bar, which says where the tab is and searches every branch, remote and tag
@@ -39,7 +43,7 @@ export function NavBar({
   fetching: boolean;
   onFetch: () => void;
   address: Address;
-  repository: Repository | undefined;
+  repository: RepositoryState | undefined;
   selected: string | undefined;
   onJump: (commit: string) => void;
 }) {
@@ -183,7 +187,7 @@ function HistoryMenu({
           title={entry.hash}
           onClick={() => onPick(index + 1)}
         >
-          <span className="history-hash">{entry.hash.slice(0, 7)}</span>
+          <span className="history-hash">{shortHash(entry.hash)}</span>
           {entry.subject ?? ''}
         </button>
       ))}
@@ -298,7 +302,6 @@ export function MessagePeek({
   commit: CardCommit;
   onOpen: () => void;
 }) {
-  const [subject] = commit.message.split('\n');
   // As far down as the search goes, but only as tall as the details need
   const popup = useRef<HTMLDivElement>(null);
   const maxHeight = usePopupHeight(popup);
@@ -306,8 +309,8 @@ export function MessagePeek({
     <div className="locations-popup peek" ref={popup} style={{ maxHeight }}>
       <div className="locations-search peek-search" onClick={onOpen}>
         <span className="address-text">
-          <span className="address-hash">{commit.hash.slice(0, 7)}</span>
-          {subject}
+          <span className="address-hash">{shortHash(commit.hash)}</span>
+          {commit.subject}
         </span>
       </div>
       <CommitDetails commit={commit} />
@@ -330,7 +333,7 @@ function AddressBar({
   address: Address;
   hashLookup: { query: string; result: HashLookup } | undefined;
   onLookupHash: (query: string) => void;
-  repository: Repository | undefined;
+  repository: RepositoryState | undefined;
   selected: string | undefined;
   onJump: (commit: string) => void;
 }) {
@@ -377,7 +380,7 @@ function AddressBar({
             although their fonts differ */}
         <span className={`address-text ${address.subject ? '' : 'empty'}`}>
           {address.hash && (
-            <span className="address-hash">{address.hash.slice(0, 7)}</span>
+            <span className="address-hash">{shortHash(address.hash)}</span>
           )}
           {address.subject ?? 'Search branches, remotes and tags'}
         </span>

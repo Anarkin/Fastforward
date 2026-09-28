@@ -98,17 +98,15 @@ suite('Tab view', () => {
     assert.strictEqual(after.history?.getVersion(), 2);
     // Only the commit list follows a page without the selected commit
     assert.strictEqual(after, before);
-    const selected = reduceTabView(
-      reduceTabView(after, { type: 'showCommit', hash: 'c' }),
-      {
-        type: 'commitPage',
-        generation: 1,
-        start: 2,
-        commits: [commitInfo('c')],
-        graph: [],
-      },
-    );
-    assert.strictEqual(selected.historyVersion, before.historyVersion + 1);
+    const shown = reduceTabView(after, { type: 'showCommit', hash: 'c' });
+    const selected = reduceTabView(shown, {
+      type: 'commitPage',
+      generation: 1,
+      start: 2,
+      commits: [commitInfo('c')],
+      graph: [],
+    });
+    assert.notStrictEqual(selected, shown);
   });
 
   test('drops a page of the history before', () => {

@@ -1,0 +1,11 @@
+{
+  // The extension's code alone, without the DOM, which it doesn't have
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2024"],
+    "types": ["node", "vscode"],
+    "noEmit": true
+  },
+  "include": ["src"],
+  "exclude": ["src/webview", "src/test"]
+}

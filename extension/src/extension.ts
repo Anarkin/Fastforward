@@ -5,6 +5,7 @@ import {
   FastforwardView,
   showViewCommand,
   toggleViewCommand,
+  viewTitle,
   viewType,
 } from './view';
 
@@ -31,7 +32,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const statusBarItem = vscode.window.createStatusBarItem(
     vscode.StatusBarAlignment.Left,
   );
-  statusBarItem.text = '⏩ Fastforward';
+  statusBarItem.text = viewTitle;
   statusBarItem.tooltip = 'Show the Fastforward view';
   statusBarItem.command = showViewCommand;
   statusBarItem.show();

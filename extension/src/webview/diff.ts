@@ -1,7 +1,7 @@
 // Parses the unified diff that git produces into files, hunks and numbered
 // lines
 
-export type LineKind = 'context' | 'added' | 'removed';
+type LineKind = 'context' | 'added' | 'removed';
 
 export interface DiffLine {
   readonly kind: LineKind;
@@ -10,7 +10,7 @@ export interface DiffLine {
   readonly text: string;
 }
 
-export interface DiffHunk {
+interface DiffHunk {
   readonly header: string;
   readonly lines: DiffLine[];
 }

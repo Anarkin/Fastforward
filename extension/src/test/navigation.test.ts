@@ -1,5 +1,10 @@
 import * as assert from 'node:assert';
-import { noNavigation, step, visit, type Navigation } from '../navigation';
+import {
+  noNavigation,
+  step,
+  visit,
+  type Navigation,
+} from '../history/navigation';
 
 const all = () => true;
 

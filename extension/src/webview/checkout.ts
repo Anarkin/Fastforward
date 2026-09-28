@@ -1,5 +1,6 @@
-import type { CheckoutTarget, RefInfo, BookmarkRef } from '../protocol';
-import { withoutRemote } from '../refNames';
+import { shortHash } from '../shared/hashes';
+import type { CheckoutTarget, RefInfo, BookmarkRef } from '../shared/protocol';
+import { withoutRemote } from '../shared/refNames';
 
 export interface CheckoutOption {
   readonly label: string;
@@ -64,7 +65,7 @@ export function checkoutOptions(
     ...kind('remote').map((ref) => checkoutRef(ref, refs, head)),
     ...kind('tag').map((ref) => checkoutRef(ref, refs, head)),
     {
-      label: hash.slice(0, 7),
+      label: shortHash(hash),
       target: { kind: 'commit', hash },
       disabled: checkedOut,
     },

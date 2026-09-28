@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
-import { parseChanges, parseHistory, parseLog } from '../git/show';
+import { parseChanges } from '../git/diff';
+import { parseHistory, parseLog } from '../git/history';
 import { parsePatch, unquotePath } from '../webview/diff';
 
 suite('parsePatch', () => {

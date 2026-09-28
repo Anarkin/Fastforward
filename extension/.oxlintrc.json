@@ -16,5 +16,61 @@
     "react/incompatible-library": "off",
     "react/set-state-in-effect": "off"
   },
+  "overrides": [
+    {
+      "files": ["src/webview/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              { "name": "vscode", "message": "The webview has no VS Code API" }
+            ],
+            "patterns": [
+              {
+                "group": ["../*", "!../shared/*"],
+                "message": "The webview imports only its own code and shared/"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/shared/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              { "name": "vscode", "message": "shared/ runs in the webview too" }
+            ],
+            "patterns": [
+              {
+                "group": ["../*", "node:*"],
+                "message": "shared/ runs in both, so it imports only shared/"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/*.ts", "src/git/**", "src/history/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/webview/*", "./webview/*"],
+                "message": "The extension doesn't import the webview's code"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
   "ignorePatterns": ["dist", "out", ".vscode-test", "src/git/git.d.ts"]
 }

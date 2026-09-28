@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import { commitPageSize } from '../protocol';
+import { commitPageSize } from '../shared/protocol';
 import { CommitHistory } from '../webview/commitHistory';
 import { commitInfo } from './fixtures';
 

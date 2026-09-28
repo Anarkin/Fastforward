@@ -1,3 +1,5 @@
+import type { Direction } from '../shared/protocol';
+
 // A tab's history of the commits it showed, like a browser's back and forward;
 // in both lists the last one is the nearest
 export interface Navigation {
@@ -35,7 +37,7 @@ export function visit(
 export function step(
   navigation: Navigation,
   current: string | undefined,
-  direction: 'back' | 'forward',
+  direction: Direction,
   steps: number,
   exists: (hash: string) => boolean,
 ): { navigation: Navigation; target: string } | undefined {

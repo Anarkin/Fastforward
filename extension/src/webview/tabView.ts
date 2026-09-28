@@ -2,12 +2,12 @@ import type {
   FileChange,
   HashLookup,
   NavigationEntry,
+  RepositoryState,
   ToWebview,
-} from '../protocol';
+} from '../shared/protocol';
 import { CommitHistory } from './commitHistory';
 import { parseFilePatch, type DiffFile } from './diff';
 import type { WholeFile } from './diffView';
-import type { Repository } from './locations';
 
 // A position to scroll the commit list to; a new object scrolls again even to
 // the same position
@@ -20,12 +20,11 @@ export interface ScrollTarget {
 // Everything the page shows for the active tab, in one object, so switching
 // tabs starts over from emptyTabView instead of resetting field by field
 export interface TabView {
-  readonly repository: Repository | undefined;
+  readonly repository: RepositoryState | undefined;
   // Filled in place as pages arrive, which the commit list follows by itself;
-  // the version changes when the selected commit's page arrives, whose
-  // details the Diff column shows
+  // the view is a new object when the selected commit's page arrives, so the
+  // page shows its details
   readonly history: CommitHistory | undefined;
-  readonly historyVersion: number;
   readonly scrollTarget: ScrollTarget | undefined;
   // Number of uncommitted files, undefined until the extension reports it
   readonly workingTree: number | undefined;
@@ -61,7 +60,6 @@ export interface TabView {
 export const emptyTabView: TabView = {
   repository: undefined,
   history: undefined,
-  historyVersion: 0,
   scrollTarget: undefined,
   workingTree: undefined,
   hash: undefined,
@@ -167,7 +165,7 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
       // always lands at the same positions
       state.history.add(action.start, action.commits, action.graph);
       return action.commits.some((commit) => commit.hash === state.hash)
-        ? { ...state, historyVersion: state.historyVersion + 1 }
+        ? { ...state }
         : state;
     case 'reveal':
       return {
@@ -175,7 +173,9 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
         scrollTarget: { index: action.index },
       };
     case 'workingTree':
-      return { ...state, workingTree: action.files };
+      return action.files === state.workingTree
+        ? state
+        : { ...state, workingTree: action.files };
     case 'files':
       if (isLate(state, action.hash, state.path)) {
         return state;

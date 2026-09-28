@@ -1,5 +1,6 @@
-import type { RefInfo, Bookmark, BookmarkRef } from '../protocol';
-import { sameRef, withoutRemote } from '../refNames';
+import { shortHash } from '../shared/hashes';
+import type { RefInfo, Bookmark, BookmarkRef } from '../shared/protocol';
+import { hasRef, sameRef, withoutRemote } from '../shared/refNames';
 
 // A-Z, with a remote branch next to the local one of the same name: origin/main
 // sorts as main, after main itself, and a tag of the same name after both;
@@ -46,7 +47,7 @@ export function bookmarkOptions(
       .toSorted(compareBookmarks)
       .map((bookmark) => ({ label: bookmark.name, bookmark })),
     {
-      label: hash.slice(0, 7),
+      label: shortHash(hash),
       bookmark: { kind: 'commit', name: hash },
     },
   ];
@@ -73,18 +74,14 @@ export function bubbleRow(
   headUpstream: string | undefined,
   detached?: string,
 ): BubbleRow {
-  const exists = (bookmark: BookmarkRef) =>
-    refs.some(
-      (ref) => ref.kind === bookmark.kind && ref.name === bookmark.name,
-    );
-  const isBookmark = (bookmark: Bookmark) =>
-    bookmarks.some((other) => sameRef(other, bookmark));
   const branch: BookmarkRef | undefined =
-    head && exists({ kind: 'branch', name: head })
+    head && hasRef(refs, { kind: 'branch', name: head })
       ? { kind: 'branch', name: head }
       : undefined;
   const upstream: BookmarkRef | undefined =
-    branch && headUpstream && exists({ kind: 'remote', name: headUpstream })
+    branch &&
+    headUpstream &&
+    hasRef(refs, { kind: 'remote', name: headUpstream })
       ? { kind: 'remote', name: headUpstream }
       : undefined;
   return {
@@ -94,7 +91,7 @@ export function bubbleRow(
       .filter((bookmark) => !(upstream && sameRef(bookmark, upstream)))
       .toSorted(compareBookmarks),
     checkedOutIsBookmark: detached
-      ? isBookmark({ kind: 'commit', name: detached })
-      : branch !== undefined && isBookmark(branch),
+      ? hasRef(bookmarks, { kind: 'commit', name: detached })
+      : branch !== undefined && hasRef(bookmarks, branch),
   };
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { type TabInfo } from '../protocol';
+import { type TabInfo } from '../shared/protocol';
 import { CloseIcon } from './icons';
 import { MenuButton } from './menu';
 
@@ -90,6 +90,6 @@ export function TabBar({
   );
 }
 
-export function elementWidth(element: Element | null): number {
+function elementWidth(element: Element | null): number {
   return element ? Math.round(element.getBoundingClientRect().width) : 0;
 }

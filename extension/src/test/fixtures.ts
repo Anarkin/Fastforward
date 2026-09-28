@@ -1,4 +1,4 @@
-import type { CommitInfo, FileChange } from '../protocol';
+import type { CommitInfo, FileChange } from '../shared/protocol';
 import type { CardCommit } from '../webview/commitCard';
 
 // What the tests build their data from, and read markup with; without
@@ -40,13 +40,14 @@ export const fileChange = (
 // them at the same time
 export const cardCommit = (extra: Partial<CardCommit> = {}): CardCommit => ({
   hash: 'a'.repeat(40),
+  subject: 'only',
   message: 'only',
-  author: 'A',
-  email: 'a@example.com',
-  date: 0,
-  committer: 'A',
+  authorName: 'A',
+  authorEmail: 'a@example.com',
+  authorDate: 0,
+  committerName: 'A',
   committerEmail: 'a@example.com',
-  committed: 0,
+  commitDate: 0,
   refs: [],
   detachedHead: false,
   ...extra,

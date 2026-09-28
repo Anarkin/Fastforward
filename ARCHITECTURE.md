@@ -1,5 +1,12 @@
 # ARCHITECTURE
 
+## Layout
+
+- `extension/src/shared/` is the only code both sides use: the extension imports nothing from `webview/`, and the webview nothing but `shared/`; the lint rules in `.oxlintrc.json` and the `tsconfig.extension.json` and `tsconfig.webview.json` checks enforce it
+- `view.ts` coordinates the view: it saves through `storage.ts`, changes the repository through `operations.ts`, and runs git through `git/`
+- `tabState.ts`, `refs.ts` and `history/` work out what a tab shows without git or VS Code, so the unit tests run them outside VS Code
+- `git/` runs the git CLI, apart from `repository.ts`, which uses the Git extension API
+
 ## Decisions
 
 ### Tooling

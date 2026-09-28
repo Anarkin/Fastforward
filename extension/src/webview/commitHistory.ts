@@ -1,4 +1,8 @@
-import { commitPageSize, type CommitInfo, type GraphRow } from '../protocol';
+import {
+  commitPageSize,
+  type CommitInfo,
+  type GraphRow,
+} from '../shared/protocol';
 
 // A sparse view of the history: its size is known up front, so the list has
 // its full height at once, and commits are filled in page by page as they

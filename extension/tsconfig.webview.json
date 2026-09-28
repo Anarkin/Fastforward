@@ -1,0 +1,9 @@
+{
+  // The webview's code alone, without Node or VS Code, which it doesn't have
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": [],
+    "noEmit": true
+  },
+  "include": ["src/webview", "src/shared"]
+}

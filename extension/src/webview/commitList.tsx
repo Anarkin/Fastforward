@@ -6,7 +6,7 @@ import {
   useSyncExternalStore,
 } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { workingTreeHash, type RefInfo } from '../protocol';
+import { workingTreeHash, type RefInfo } from '../shared/protocol';
 import { DetachedHead, HeadBubble, RefBubble } from './bubbles';
 import { Column } from './column';
 import { CommitHistory } from './commitHistory';
@@ -24,7 +24,9 @@ export const commitRowHeight = 50;
 export const bubbleLineHeight = 20;
 // Pages are asked for once scrolling pauses this long, so dragging the
 // scrollbar across years doesn't load every page in between
-export const loadDelay = 80;
+const loadDelay = 80;
+// The top commit is reported once scrolling pauses this long
+const scrolledDelay = 150;
 
 // Only the rows on screen are rendered, and the list has the height of the
 // whole history from the start, so the scrollbar never changes
@@ -210,7 +212,7 @@ export function Commits({
           // Within the working tree's row, which is above every commit
           onScrolled(workingTreeHash, 0);
         }
-      }, 150);
+      }, scrolledDelay);
     };
     element.addEventListener('scroll', onScroll);
     return () => {

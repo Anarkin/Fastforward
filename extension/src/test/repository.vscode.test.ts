@@ -2,14 +2,13 @@ import * as assert from 'node:assert';
 import * as vscode from 'vscode';
 import type { Repository } from '../git/git';
 import { getGitApi, listRefs } from '../git/repository';
+import { showFiles, showPatch } from '../git/diff';
 import {
   commitsStartingWith,
   findCommit,
   listHistory,
   logCommits,
-  showFiles,
-  showPatch,
-} from '../git/show';
+} from '../git/history';
 import {
   removeFolder,
   tempFolder,
