@@ -8,6 +8,9 @@ body,
 }
 
 body {
+  /* How faint what stays in the background is: the Changes tree's folders,
+     and each commit's author and date */
+  --muted-opacity: 0.45;
   /* The active tab's and the rows under it, the address bar's and the
      bookmarks', which read as one toolbar; the panels' background, but a
      shade toward the text would set them apart, e.g.
@@ -374,11 +377,7 @@ body.resizing {
   height: 18px;
   margin-top: 2px;
   font-size: 0.9em;
-  color: var(--vscode-descriptionForeground);
-}
-
-.commit.selected .commit-line.secondary {
-  color: inherit;
+  opacity: var(--muted-opacity);
 }
 
 .subject,
@@ -388,10 +387,6 @@ body.resizing {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-}
-
-.author {
-  font-style: italic;
 }
 
 .commit.working-tree.empty {
@@ -1098,7 +1093,7 @@ body.resizing {
    counts stand out */
 .row.folder.counted .twisty,
 .row.folder.counted .path {
-  opacity: 0.45;
+  opacity: var(--muted-opacity);
 }
 
 /* A commit pinned to the bookmarks row, neutral next to the refs' colors */
