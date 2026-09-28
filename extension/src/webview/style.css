@@ -29,6 +29,22 @@ body {
     --vscode-editorGroupHeader-tabsBackground,
     var(--vscode-editorWidget-background, var(--vscode-editor-background))
   );
+  /* The edge of what floats over the columns; not every theme defines a
+     widget border */
+  --widget-border: var(
+    --vscode-widget-border,
+    var(--vscode-panel-border, transparent)
+  );
+  /* The popups' edge and shadow: the edge is an inset shadow instead of a
+     border, which Chromium draws a whole number of device pixels wide, less
+     than 1px at scales like 125%, and so would move what the popup takes in
+     off its place, by a pixel in some places; the shadows are dark in any
+     theme, for a clear edge against the columns also in light themes, whose
+     widget shadow is faint */
+  --popup-shadow:
+    inset 0 0 0 1px var(--widget-border), 0 12px 32px rgba(0, 0, 0, 0.22),
+    0 2px 8px rgba(0, 0, 0, 0.16),
+    0 0 0 1px var(--vscode-widget-shadow, transparent);
   color: var(--vscode-foreground);
   background: var(--vscode-editor-background);
   font-family: var(--vscode-font-family);
@@ -100,7 +116,7 @@ body {
   padding: 4px;
   color: var(--vscode-menu-foreground);
   background: var(--vscode-menu-background);
-  border: 1px solid var(--vscode-menu-border, var(--vscode-widget-border));
+  border: 1px solid var(--vscode-menu-border, var(--widget-border));
   border-radius: 6px;
   box-shadow: 0 2px 8px var(--vscode-widget-shadow);
 }
@@ -120,7 +136,9 @@ body {
   border-radius: 4px;
 }
 
-.menu-item:hover {
+/* Not a disabled item, whose text would take the selection's color without
+   its background, and vanish in themes like Light Modern */
+.menu-item:hover:not(:disabled) {
   color: var(--vscode-menu-selectionForeground);
   background: var(--vscode-menu-selectionBackground);
 }
@@ -160,26 +178,24 @@ body {
 
 .tab-close,
 .tab-add {
-  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
   font: inherit;
+  line-height: 1;
   color: inherit;
   cursor: pointer;
   background: none;
   border: none;
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
 /* A small square at the tab's right edge, like VS Code's close button */
 .tab-close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   flex: none;
   width: 20px;
   height: 20px;
-  padding: 0;
-  line-height: 1;
-  border-radius: 4px;
   opacity: 0.6;
 }
 
@@ -193,17 +209,11 @@ body {
    space above it instead */
 .tab-add {
   align-self: center;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 24px;
   height: 24px;
   margin: 0 0 2px 4px;
-  padding: 0;
   font-size: 1.2em;
-  line-height: 1;
   color: var(--vscode-foreground);
-  border-radius: 4px;
 }
 
 .empty-state {
@@ -326,10 +336,6 @@ body.resizing {
   font-weight: 600;
 }
 
-.row.head {
-  font-weight: 600;
-}
-
 /* Matches twistyWidth in App.tsx */
 .twisty {
   display: inline-block;
@@ -351,10 +357,6 @@ body.resizing {
     --vscode-tree-inactiveIndentGuidesStroke,
     var(--vscode-tree-indentGuidesStroke)
   );
-}
-
-.list {
-  outline: none;
 }
 
 /* Exact heights, adding up to commitRowHeight: 5 + 20 + 2 + 18 + 4 + 1 border,
@@ -453,11 +455,6 @@ body.resizing {
   background: var(--vscode-charts-yellow);
 }
 
-.row.file {
-  display: flex;
-  gap: 6px;
-}
-
 .row.file .path {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -494,10 +491,13 @@ body.resizing {
   color: var(--vscode-gitDecoration-deletedResourceForeground);
 }
 
+/* A row of the Diff column, or on top of it for the file being scrolled
+   through */
 .file-header {
-  position: sticky;
-  top: 0;
   display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: var(--diff-file-height);
   gap: 8px;
   padding: 4px 8px;
   cursor: pointer;
@@ -534,6 +534,14 @@ body.resizing {
 .list {
   height: 100%;
   overflow: auto;
+  outline: none;
+}
+
+/* It takes the keys, so reached by the keyboard it shows it has them, like
+   VS Code's lists */
+.list:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
 }
 
 .list-spacer {
@@ -546,11 +554,6 @@ body.resizing {
   top: 0;
   left: 0;
   width: 100%;
-}
-
-.commit.loading {
-  cursor: default;
-  color: var(--vscode-descriptionForeground);
 }
 
 /* A row's height is set from its ref count; see commitRowHeight */
@@ -659,7 +662,6 @@ body.resizing {
 
 /* The bookmarks under the tabs, wrapping onto more lines when they don't fit */
 .bubble-bar {
-  position: relative;
   background: var(--toolbar-background);
   flex: none;
   display: flex;
@@ -670,52 +672,36 @@ body.resizing {
   border-bottom: 1px solid var(--vscode-panel-border);
 }
 
-.locations-button {
-  height: 20px;
-  padding: 0 8px;
-  margin-right: 4px;
-  font: inherit;
-  color: var(--vscode-foreground);
-  cursor: pointer;
-  background: color-mix(in srgb, var(--vscode-foreground) 10%, transparent);
-  border: none;
-  border-radius: 4px;
-}
-
-.locations-button:hover,
-.locations-button.open {
-  background: color-mix(in srgb, var(--vscode-foreground) 18%, transparent);
-}
-
-/* Every branch, remote and tag, over the columns under the button */
+/* Every branch, remote and tag, and the peek at the selected commit, over
+   the address bar, taking it in, like Chrome's suggestions: the search sits
+   where the bar was, and the popup grows down from it, as tall as
+   usePopupHeight lets it be, in the tab row's color */
 .locations-popup {
   position: absolute;
-  top: calc(100% - 2px);
-  left: 8px;
+  top: calc(-1 * var(--search-gap));
+  left: calc(-1 * var(--search-gap));
+  right: calc(-1 * var(--search-gap));
   z-index: 15;
   display: flex;
   flex-direction: column;
-  width: 360px;
-  /* Always this tall, so it doesn't change size with the number of refs */
-  height: 65vh;
   color: var(--vscode-foreground);
-  /* The tab row's color, as it opens from the toolbar under it */
   background: var(--popup-background);
-  border: 1px solid
-    var(--vscode-widget-border, var(--vscode-panel-border, transparent));
-  border-radius: 6px;
-  box-shadow: 0 4px 16px var(--vscode-widget-shadow);
+  /* Around the search box's corners: its radius and the gap to it */
+  border-radius: calc(var(--search-height) / 2 + var(--search-gap));
+  box-shadow: var(--popup-shadow);
 }
 
 .locations-search {
   flex: none;
-  margin: 6px;
-  padding: 4px 6px;
+  box-sizing: border-box;
+  height: var(--search-height);
+  margin: var(--search-gap);
+  padding: 0 12px;
   font: inherit;
   color: var(--vscode-input-foreground);
   background: var(--vscode-input-background);
   border: 1px solid var(--vscode-input-border, transparent);
-  border-radius: 4px;
+  border-radius: calc(var(--search-height) / 2);
   outline: none;
 }
 
@@ -730,19 +716,20 @@ body.resizing {
   padding-bottom: 4px;
 }
 
-.locations-list .row.result {
-  padding-left: 18px;
-}
-
 /* The result Enter jumps to */
 .locations-list .row.result.active {
   color: var(--vscode-list-activeSelectionForeground);
   background: var(--vscode-list-activeSelectionBackground);
 }
 
+/* The part of a ref's name matching the search, lighter in its bubble */
 .locations-list .match {
   color: inherit;
-  background: var(--vscode-editor-findMatchHighlightBackground);
+  background: color-mix(
+    in srgb,
+    var(--vscode-editor-background) 45%,
+    transparent
+  );
   border-radius: 2px;
 }
 
@@ -769,10 +756,6 @@ body.resizing {
 }
 
 /* One column per kind of ref, each scrolling on its own */
-.locations-popup {
-  width: min(900px, 85vw);
-}
-
 .locations-columns {
   flex: 1;
   min-height: 0;
@@ -800,24 +783,13 @@ body.resizing {
   color: var(--vscode-descriptionForeground);
 }
 
-.locations-column .row {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .locations-column .row.result {
   padding-left: 8px;
 }
 
-/* The branch HEAD is on, in the theme's active tab colors wherever its bubble
-   appears */
-.badge.branch.checked-out {
-  color: var(--vscode-tab-activeForeground);
-  background: var(--vscode-tab-activeBackground);
-}
-
-/* A detached HEAD's bubble, in the checked-out branch's colors */
-.badge.head.checked-out {
+/* The branch HEAD is on, or a detached HEAD, in the theme's active tab
+   colors wherever its bubble appears */
+.badge.checked-out {
   color: var(--vscode-tab-activeForeground);
   background: var(--vscode-tab-activeBackground);
 }
@@ -852,7 +824,6 @@ body.resizing {
 .menu-item:disabled {
   cursor: default;
   opacity: 0.5;
-  background: none;
 }
 
 .menu-separator {
@@ -871,16 +842,6 @@ body.resizing {
   overflow: hidden;
   text-overflow: ellipsis;
   vertical-align: middle;
-}
-
-.locations-list .badge .match {
-  color: inherit;
-  background: color-mix(
-    in srgb,
-    var(--vscode-editor-background) 45%,
-    transparent
-  );
-  border-radius: 2px;
 }
 
 /* The checked-out branch and its upstream */
@@ -923,15 +884,6 @@ body.resizing {
     var(--popup-background);
 }
 
-/* A clear edge against the columns underneath, also in light themes whose
-   widget shadow is faint */
-.locations-popup {
-  box-shadow:
-    0 12px 32px rgba(0, 0, 0, 0.22),
-    0 2px 8px rgba(0, 0, 0, 0.16),
-    0 0 0 1px var(--vscode-widget-shadow, transparent);
-}
-
 /* The Diff column draws only the rows on screen; most rows have a fixed
    height, which they are given from rowHeights in diffView.tsx, and so are
    --diff-file-height and --diff-line-height */
@@ -957,13 +909,6 @@ body.resizing {
   left: 0;
   min-width: 100%;
   width: max-content;
-}
-
-.diff-row .file-header {
-  position: static;
-  box-sizing: border-box;
-  height: var(--diff-file-height);
-  align-items: center;
 }
 
 /* Lines were skipped here, between two changed parts of a file */
@@ -1022,13 +967,6 @@ body.resizing {
   z-index: 5;
 }
 
-.diff-stuck-header .file-header {
-  position: static;
-  box-sizing: border-box;
-  height: var(--diff-file-height);
-  align-items: center;
-}
-
 /* A file too large to draw right away */
 .large-diff {
   display: flex;
@@ -1050,7 +988,9 @@ body.resizing {
   border-radius: 3px;
 }
 
-/* Rows with line counts, which sit on the right; the name gives way first */
+/* File rows, and rows with line counts, which sit on the right; the name
+   gives way first */
+.row.file,
 .row.counted {
   display: flex;
   gap: 6px;
@@ -1079,8 +1019,7 @@ body.resizing {
 .badge.commit {
   color: var(--vscode-foreground);
   background: var(--vscode-editorWidget-background);
-  border: 1px solid
-    var(--vscode-widget-border, var(--vscode-panel-border, transparent));
+  border: 1px solid var(--widget-border);
 }
 
 /* Sets what is checked out apart from the bookmarks, when it isn't one of them */
@@ -1116,34 +1055,42 @@ body.resizing {
 
 /* High Contrast themes have no selection or hover backgrounds, and draw
    outlines instead, like VS Code's own lists and menus */
-body.vscode-high-contrast .row:hover,
-body.vscode-high-contrast .commit:hover,
-body.vscode-high-contrast .menu-item:hover:not(:disabled),
-body.vscode-high-contrast .settings-button:hover,
-body.vscode-high-contrast .tab:not(.active):hover,
-body.vscode-high-contrast-light .row:hover,
-body.vscode-high-contrast-light .commit:hover,
-body.vscode-high-contrast-light .menu-item:hover:not(:disabled),
-body.vscode-high-contrast-light .settings-button:hover,
-body.vscode-high-contrast-light .tab:not(.active):hover {
+:is(.vscode-high-contrast, .vscode-high-contrast-light) {
+  /* What floats over the columns has the theme's contrast border */
+  --widget-border: var(
+    --vscode-contrastBorder,
+    var(--vscode-widget-border, var(--vscode-panel-border, transparent))
+  );
+}
+
+:is(.vscode-high-contrast, .vscode-high-contrast-light) .row:hover,
+:is(.vscode-high-contrast, .vscode-high-contrast-light) .commit:hover,
+:is(.vscode-high-contrast, .vscode-high-contrast-light)
+  .menu-item:hover:not(:disabled),
+:is(.vscode-high-contrast, .vscode-high-contrast-light) .settings-button:hover,
+:is(.vscode-high-contrast, .vscode-high-contrast-light) .tab:not(.active):hover,
+:is(.vscode-high-contrast, .vscode-high-contrast-light) .tab-close:hover,
+:is(.vscode-high-contrast, .vscode-high-contrast-light) .tab-add:hover,
+:is(.vscode-high-contrast, .vscode-high-contrast-light)
+  .nav-button:hover:not(:disabled),
+:is(.vscode-high-contrast, .vscode-high-contrast-light) .address-bar:hover {
   outline: 1px dashed var(--vscode-contrastActiveBorder);
   outline-offset: -1px;
 }
 
-body.vscode-high-contrast .row.selected,
-body.vscode-high-contrast .commit.selected,
-body.vscode-high-contrast .locations-list .row.result.active,
-body.vscode-high-contrast .settings-button.open,
-body.vscode-high-contrast-light .row.selected,
-body.vscode-high-contrast-light .commit.selected,
-body.vscode-high-contrast-light .locations-list .row.result.active,
-body.vscode-high-contrast-light .settings-button.open {
+:is(.vscode-high-contrast, .vscode-high-contrast-light) .row.selected,
+:is(.vscode-high-contrast, .vscode-high-contrast-light) .commit.selected,
+:is(.vscode-high-contrast, .vscode-high-contrast-light)
+  .locations-list
+  .row.result.active,
+:is(.vscode-high-contrast, .vscode-high-contrast-light) .hash-suggestion.active,
+:is(.vscode-high-contrast, .vscode-high-contrast-light) .settings-button.open,
+:is(.vscode-high-contrast, .vscode-high-contrast-light) .switch-option.active {
   outline: 1px solid var(--vscode-contrastActiveBorder);
   outline-offset: -1px;
 }
 
-body.vscode-high-contrast .menu,
-body.vscode-high-contrast-light .menu {
+:is(.vscode-high-contrast, .vscode-high-contrast-light) .menu {
   border: 1px solid var(--vscode-contrastBorder);
 }
 
@@ -1254,8 +1201,11 @@ body.vscode-high-contrast-light .menu {
   color: var(--vscode-descriptionForeground);
 }
 
-/* Where the tab is, like a browser's address bar */
+/* Where the tab is, like a browser's address bar; the search box opens in
+   the bar's place, as tall and round, with a gap around it */
 .address {
+  --search-height: 28px;
+  --search-gap: 6px;
   position: relative;
   flex: 1;
   min-width: 0;
@@ -1268,7 +1218,7 @@ body.vscode-high-contrast-light .menu {
   gap: 8px;
   box-sizing: border-box;
   width: 100%;
-  height: 28px;
+  height: var(--search-height);
   padding: 0 12px;
   font: inherit;
   text-align: left;
@@ -1278,7 +1228,7 @@ body.vscode-high-contrast-light .menu {
      it opens into when the pointer is on it, like the peek's */
   background: var(--shade-background);
   border: 1px solid transparent;
-  border-radius: 14px;
+  border-radius: calc(var(--search-height) / 2);
 }
 
 .address-bar:hover {
@@ -1303,48 +1253,18 @@ body.vscode-high-contrast-light .menu {
   color: var(--vscode-input-placeholderForeground);
 }
 
-/* Over the bar, taking it in, like Chrome's suggestions: the search sits
-   where the bar was, and the popup grows down from it */
-.address .locations-popup {
-  top: -6px;
-  left: -6px;
-  right: -6px;
-  width: auto;
-  /* Around the search box's corners: its radius and the gap to it */
-  border-radius: 20px;
-}
-
-/* Its edge is a shadow instead of a border, which Chromium draws a whole
-   number of device pixels wide, less than 1px at scales like 125%, and so
-   would move the search box off the bar, by a pixel in some places */
-.address .locations-popup {
-  border: none;
-  box-shadow:
-    inset 0 0 0 1px
-      var(--vscode-widget-border, var(--vscode-panel-border, transparent)),
-    0 12px 32px rgba(0, 0, 0, 0.22),
-    0 2px 8px rgba(0, 0, 0, 0.16),
-    0 0 0 1px var(--vscode-widget-shadow, transparent);
-}
-
-.address .locations-search {
-  box-sizing: border-box;
-  height: 28px;
-  margin: 6px;
-  padding: 0 12px;
-  border-radius: 14px;
-}
-
 /* The selected commit's description, as one thing */
 /* Lined up with the subject in the search box above: the same margin,
    border and padding, then the hash's room */
 /* Starts at the top of the search box, behind it, so the description's
    frame reaches up to the box; its content starts under the box: the box's
-   height, the gap under it, and 6 pixels more */
+   height, the gap under it, and 5 pixels more (--card-top) */
 .commit-card {
+  --card-top: calc(var(--search-height) + var(--search-gap) + 5px);
   flex: none;
   display: flex;
-  margin: -34px 6px 8px;
+  margin: calc(-1 * (var(--search-height) + var(--search-gap)))
+    var(--search-gap) 8px;
   padding: 0 13px;
 }
 
@@ -1364,7 +1284,7 @@ body.vscode-high-contrast-light .menu {
   align-self: flex-start;
   column-gap: 12px;
   margin: 0;
-  padding: 39px 0 6px 16px;
+  padding: var(--card-top) 0 6px 16px;
   overflow-wrap: anywhere;
 }
 
@@ -1403,7 +1323,7 @@ body.vscode-high-contrast-light .menu {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 39px 8px 6px 0;
+  padding: var(--card-top) 8px 6px 0;
 }
 
 /* A quote bar left of the subject and the description, from inside the
@@ -1475,12 +1395,7 @@ body.vscode-high-contrast-light .menu {
   background: var(--popup-background);
   /* Around the ?'s circle: its radius and the gap to it */
   border-radius: 19px;
-  box-shadow:
-    inset 0 0 0 1px
-      var(--vscode-widget-border, var(--vscode-panel-border, transparent)),
-    0 12px 32px rgba(0, 0, 0, 0.22),
-    0 2px 8px rgba(0, 0, 0, 0.16),
-    0 0 0 1px var(--vscode-widget-shadow, transparent);
+  box-shadow: var(--popup-shadow);
 }
 
 .shortcuts-header {
@@ -1525,16 +1440,9 @@ body.vscode-high-contrast-light .menu {
     --vscode-keybindingLabel-background,
     var(--vscode-input-background)
   );
-  border: 1px solid
-    var(
-      --vscode-keybindingLabel-border,
-      var(--vscode-widget-border, var(--vscode-panel-border))
-    );
+  border: 1px solid var(--vscode-keybindingLabel-border, var(--widget-border));
   border-bottom: 2px solid
-    var(
-      --vscode-keybindingLabel-bottomBorder,
-      var(--vscode-widget-border, var(--vscode-panel-border))
-    );
+    var(--vscode-keybindingLabel-bottomBorder, var(--widget-border));
   border-radius: 4px;
   box-shadow: none;
 }
@@ -1568,32 +1476,22 @@ body.vscode-high-contrast-light .menu {
   background: none;
 }
 
-/* A peek at the whole commit message while the pointer rests on the address
-   bar: the top of the search popup, as tall as the message needs, down to
+/* A peek at the commit's details while the pointer rests on the address
+   bar: the top of the search popup, as tall as the details need, down to
    where the search goes (see usePopupHeight) */
-.address .locations-popup.peek {
-  height: auto;
+.locations-popup.peek {
   overflow: hidden;
 }
 
-/* Only the box opens the search; the details are for reading and copying */
-.peek .peek-search {
-  cursor: text;
-}
-
-.peek .commit-card {
-  user-select: text;
-}
-
-/* Over the frame of the description below; its text centered like the
+/* Only the box opens the search; the details are for reading and copying.
+   Over the frame of the description below; its text centered like the
    address bar's under it, so it doesn't move */
 .peek .peek-search {
   position: relative;
   z-index: 1;
   display: flex;
   align-items: center;
-  padding-top: 0;
-  padding-bottom: 0;
+  cursor: text;
 }
 
 /* As tall as the popup lets it be; a long description scrolls, under the
@@ -1601,4 +1499,5 @@ body.vscode-high-contrast-light .menu {
 .peek .commit-card {
   min-height: 0;
   flex: 0 1 auto;
+  user-select: text;
 }

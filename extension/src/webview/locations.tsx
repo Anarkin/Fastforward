@@ -147,8 +147,16 @@ function HashSuggestion({
 }
 
 // The space the popup leaves under it, as much as the address bar leaves on
-// its right; see .nav-bar::after
-const popupBottomGap = 3 * 26 + 3 * 2 + 6;
+// its right: .nav-end and the nav bar's gap before it
+function popupBottomGap(popup: HTMLElement): number {
+  const bar = popup.closest('.nav-bar');
+  const end = bar?.querySelector('.nav-end');
+  if (!bar || !end) {
+    return 0;
+  }
+  const gap = parseFloat(getComputedStyle(bar).columnGap) || 0;
+  return end.getBoundingClientRect().width + gap;
+}
 
 // How tall a popup over the address bar can be: down to the same distance
 // from the bottom as the bar keeps from the right, whatever the window's size
@@ -158,9 +166,12 @@ export function usePopupHeight(
   const [height, setHeight] = useState<number>();
   useLayoutEffect(() => {
     const fit = () => {
-      const top = popup.current?.getBoundingClientRect().top;
-      if (top !== undefined) {
-        setHeight(Math.max(200, window.innerHeight - top - popupBottomGap));
+      const element = popup.current;
+      if (element) {
+        const top = element.getBoundingClientRect().top;
+        setHeight(
+          Math.max(200, window.innerHeight - top - popupBottomGap(element)),
+        );
       }
     };
     fit();
