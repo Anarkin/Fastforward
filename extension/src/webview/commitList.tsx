@@ -13,6 +13,7 @@ import { CommitHistory } from './commitHistory';
 import { OpenContextMenu } from './contextMenu';
 import { GraphCell, graphWidth, rowLanes } from './graph';
 import { MenuButton } from './menu';
+import { useSkeleton } from './skeleton';
 import type { ScrollTarget } from './tabView';
 
 export function formatDate(time: number): string {
@@ -46,8 +47,12 @@ export const loadDelay = 80;
 const noHistory = () => () => {};
 const noVersion = () => 0;
 
+// Enough placeholder rows to fill the list while a tab opens
+const openingRows = 20;
+
 export function Commits({
   history,
+  opening,
   scrollTarget,
   onScrolled,
   onLoad,
@@ -60,6 +65,8 @@ export function Commits({
   onCollapseMerges,
 }: {
   history: CommitHistory | undefined;
+  // The tab's history hasn't arrived yet
+  opening: boolean;
   scrollTarget: ScrollTarget | undefined;
   // The commit at the top of the list once scrolling stops
   onScrolled: (hash: string, offset: number) => void;
@@ -82,7 +89,9 @@ export function Commits({
   const detached = useContext(DetachedHead);
   const hasWorkingTree = workingTree !== undefined;
   const offset = hasWorkingTree ? 1 : 0;
-  const count = offset + (history?.total ?? 0);
+  // A tab that is opening shows placeholder rows until its history arrives
+  const skeleton = useSkeleton(opening);
+  const count = offset + (history?.total ?? (skeleton ? openingRows : 0));
 
   const rowHeight = useCallback(
     (index: number) =>

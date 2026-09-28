@@ -151,6 +151,9 @@ export function App({ post }: Props) {
   }, [repository]);
 
   const commit = history?.find(hash);
+  // A tab whose history hasn't arrived yet, which every column shows
+  // placeholders for, as it selects what is checked out once it has
+  const opening = activeTab !== undefined && history === undefined && !error;
 
   // Selecting the selected commit again, or "No changes", clears the selection
   const selectCommit = (next: string | undefined, index: number) => {
@@ -349,6 +352,7 @@ export function App({ post }: Props) {
                 >
                   <Commits
                     history={history}
+                    opening={opening}
                     scrollTarget={scrollTarget}
                     onScrolled={onScrolled}
                     onLoad={loadCommits}
@@ -373,7 +377,7 @@ export function App({ post }: Props) {
                     closedFolders={closedFolders}
                     onToggleClosedFolder={toggleClosedFolder}
                     files={files}
-                    loading={filesLoading}
+                    loading={filesLoading || opening}
                     treeLoading={hash !== undefined && tree?.hash !== hash}
                     tree={
                       hash !== undefined && tree?.hash === hash
@@ -388,7 +392,7 @@ export function App({ post }: Props) {
                   <Diff
                     selection={`${hash ?? ''}:${path ?? ''}`}
                     path={path}
-                    loading={patchLoading}
+                    loading={patchLoading || opening}
                     filePatches={filePatches}
                     onLoadFile={loadFileDiff}
                     workingTree={hash === workingTreeHash}
