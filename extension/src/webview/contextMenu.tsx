@@ -98,20 +98,23 @@ export function useDismiss(
         onClose();
       }
     };
+    // Before the page passes the key on to VS Code, which would close the
+    // whole view on Escape
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        event.stopPropagation();
         onClose();
       }
     };
     window.addEventListener('pointerdown', onPointerDown, true);
-    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keydown', onKeyDown, true);
     window.addEventListener('blur', onClose);
     if (onScroll) {
       window.addEventListener('wheel', onClose, true);
     }
     return () => {
       window.removeEventListener('pointerdown', onPointerDown, true);
-      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keydown', onKeyDown, true);
       window.removeEventListener('blur', onClose);
       window.removeEventListener('wheel', onClose, true);
     };

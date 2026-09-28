@@ -1,5 +1,12 @@
-import { useContext, useEffect, useMemo, useRef, useState } from 'react';
-import type { RefInfo, RefKind } from '../protocol';
+import {
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import type { HashLookup, RefInfo, RefKind } from '../protocol';
 import { OpenContextMenu } from './contextMenu';
 import { IndentGuides, treeIndent, twistyWidth } from './tree';
 
@@ -98,13 +105,64 @@ function firstMatch(search: readonly SearchGroup[]): Active {
   return { column: Math.max(0, column), index: 0 };
 }
 
-// Every branch, remote and tag in a popup under the Locations button, a
-// column each: a search box, then the trees, or the matches while searching;
-// picking one jumps to its commit and closes the popup
+// How long typing rests before a hash is looked up
+const hashLookupDelay = 150;
+
+// The typed text when it could be a hash, which git needs four characters of
+function hashQuery(query: string): string | undefined {
+  const trimmed = query.trim().toLowerCase();
+  return /^[0-9a-f]{4,40}$/.test(trimmed) ? trimmed : undefined;
+}
+
+// The commit a typed hash is, or why there is none
+function HashSuggestion({
+  hash,
+  found,
+  onJump,
+}: {
+  hash: string;
+  found: HashLookup | undefined;
+  onJump: (commit: string) => void;
+}) {
+  if (found?.kind === 'found') {
+    return (
+      <div
+        className="row hash-suggestion active"
+        title={found.hash}
+        onClick={() => onJump(found.hash)}
+      >
+        Go to commit{' '}
+        <span className="history-hash">{found.hash.slice(0, 7)}</span>
+        {found.subject}
+      </div>
+    );
+  }
+  return (
+    <div className="row hash-suggestion empty">
+      {found === undefined
+        ? `Looking for commit ${hash}…`
+        : found.kind === 'none'
+          ? `No commit starts with ${hash}`
+          : `${found.count} commits start with ${hash}, type more`}
+    </div>
+  );
+}
+
+// The space the popup leaves under it, as much as the address bar leaves on
+// its right; see .nav-bar::after
+const popupBottomGap = 3 * 26 + 3 * 2 + 6;
+
+// Every branch, remote and tag in a popup over the address bar, a column
+// each: the search in the bar's place, the selected commit's whole message,
+// then the trees, or the matches while searching; picking one jumps to its
+// commit and closes the popup, and so does Enter on a hash
 export function LocationsPopup({
   repository,
   selected,
   anchor,
+  message,
+  lookup,
+  onLookup,
   onJump,
   onClose,
   query,
@@ -113,8 +171,13 @@ export function LocationsPopup({
   repository: Repository | undefined;
   // The selected commit; locations pointing at it are highlighted
   selected: string | undefined;
-  // The button that opened it, which toggles it instead of closing it here
+  // What opened it, where clicks don't close it
   anchor: React.RefObject<HTMLElement | null>;
+  // The selected commit's whole message
+  message: string | undefined;
+  // Which commit a typed hash is, once looked up
+  lookup: { query: string; result: HashLookup } | undefined;
+  onLookup: (query: string) => void;
   onJump: (commit: string) => void;
   onClose: () => void;
   // Kept by the caller, so the search is still there when the popup reopens
@@ -122,13 +185,43 @@ export function LocationsPopup({
   onQuery: (query: string) => void;
 }) {
   const popup = useRef<HTMLDivElement>(null);
+  const [height, setHeight] = useState<number>();
+  // Down to the same distance from the bottom as the address bar keeps from
+  // the right, whatever the window's size
+  useLayoutEffect(() => {
+    const fit = () => {
+      const top = popup.current?.getBoundingClientRect().top;
+      if (top !== undefined) {
+        setHeight(Math.max(200, window.innerHeight - top - popupBottomGap));
+      }
+    };
+    fit();
+    window.addEventListener('resize', fit);
+    return () => window.removeEventListener('resize', fit);
+  }, []);
   const input = useRef<HTMLInputElement>(null);
   // A kept search is selected, so typing starts a new one
   useEffect(() => input.current?.select(), []);
   const refs = useMemo(() => repository?.refs ?? [], [repository]);
   const search = useMemo(() => searchRefs(refs, query), [refs, query]);
   const [active, setActive] = useState<Active>(() => firstMatch(search));
+  // The message makes room for the results once typing starts, and comes
+  // back when the search is emptied; a search kept from before doesn't count,
+  // so it shows each time the popup opens
+  const [typed, setTyped] = useState(false);
+  const showMessage = !typed || query.trim() === '';
   const activeRef = search[active.column]?.refs[active.index];
+  // A hash being typed is looked up once typing stops for a moment, and
+  // shown on top like Chrome's first suggestion
+  const hash = hashQuery(query);
+  useEffect(() => {
+    if (!hash) {
+      return undefined;
+    }
+    const timer = setTimeout(() => onLookup(hash), hashLookupDelay);
+    return () => clearTimeout(timer);
+  }, [hash, onLookup]);
+  const found = hash && lookup?.query === hash ? lookup.result : undefined;
   // The active result stays in view as the arrow keys move it, but the list
   // doesn't jump back to it while scrolled by hand
   useEffect(() => {
@@ -196,7 +289,10 @@ export function LocationsPopup({
       ArrowRight: [1, 0],
     };
     if (event.key === 'Escape') {
+      // Only the popup closes, not the whole view, which VS Code would do
+      // with the key
       event.preventDefault();
+      event.stopPropagation();
       onClose();
     } else if (query && event.key in moves) {
       // Left and right move the caret in the search box unless it's empty
@@ -205,24 +301,35 @@ export function LocationsPopup({
       move(columns, rows);
     } else if (event.key === 'Enter') {
       event.preventDefault();
-      jump(activeRef?.commit);
+      // The commit a typed hash is, before the names it may also match
+      jump(found?.kind === 'found' ? found.hash : activeRef?.commit);
     }
   };
 
   return (
-    <div className="locations-popup" ref={popup} onKeyDown={onKeyDown}>
+    <div
+      className="locations-popup"
+      ref={popup}
+      style={{ height }}
+      onKeyDown={onKeyDown}
+    >
       <input
         className="locations-search"
-        placeholder="Search branches, remotes and tags"
+        placeholder="Search branches, remotes and tags, or enter a hash"
         ref={input}
         autoFocus
         value={query}
         onChange={(event) => {
           const next = event.target.value;
+          setTyped(true);
           onQuery(next);
           setActive(firstMatch(searchRefs(refs, next)));
         }}
       />
+      {hash && <HashSuggestion hash={hash} found={found} onJump={jump} />}
+      {message && showMessage && (
+        <pre className="locations-message">{message}</pre>
+      )}
       <div className="locations-columns">
         {search.map((group, column) => (
           <section key={group.kind} className="locations-column">

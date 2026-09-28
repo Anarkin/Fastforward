@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { isLargeChange, type CommitInfo, type FileChange } from '../protocol';
+import { isLargeChange, type FileChange } from '../protocol';
 import { Column } from './column';
 import { parsePatch, type DiffFile } from './diff';
 import { DiffView } from './diffView';
@@ -38,8 +38,6 @@ export function Diff({
   selection,
   path,
   loading,
-  workingTree,
-  commit,
   files,
   patch,
   filePatches,
@@ -52,8 +50,6 @@ export function Diff({
   path: string | undefined;
   // The diff is on the way
   loading: boolean;
-  workingTree: boolean;
-  commit: CommitInfo | undefined;
   files: readonly FileChange[];
   patch: string;
   filePatches: ReadonlyMap<string, string>;
@@ -74,34 +70,9 @@ export function Diff({
     [files],
   );
 
-  const summary = (
-    <>
-      {error && <div className="error">{error}</div>}
-      {workingTree && (
-        <div className="summary">
-          <dl>
-            <dt>Changes</dt>
-            <dd>Uncommitted changes against HEAD</dd>
-          </dl>
-        </div>
-      )}
-      {commit && (
-        <div className="summary">
-          <dl>
-            <dt>Commit</dt>
-            <dd className="mono">{commit.hash}</dd>
-            <dt>Author</dt>
-            <dd>
-              {commit.authorName} &lt;{commit.authorEmail}&gt;
-            </dd>
-            <dt>Date</dt>
-            <dd>{new Date(commit.authorDate).toLocaleString()}</dd>
-          </dl>
-          <pre className="message">{commit.message}</pre>
-        </div>
-      )}
-    </>
-  );
+  // Only the files' diffs; the commit's message is in the address bar, and
+  // its author and date in the commit list; an error goes on top
+  const summary = error && <div className="error">{error}</div>;
 
   return (
     <Column title="Diff">

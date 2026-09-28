@@ -74,7 +74,12 @@ export function Commits({
   workingTree: number | undefined;
   refsByCommit: Map<string, RefInfo[]>;
   selected: string | undefined;
-  onSelect: (hash: string | undefined, index: number) => void;
+  // Replace is set for the arrow keys, which add no step to the history
+  onSelect: (
+    hash: string | undefined,
+    index: number,
+    replace?: boolean,
+  ) => void;
   onToggleMerge: (hash: string) => void;
   collapseMerges: boolean;
   onCollapseMerges: (collapse: boolean) => void;
@@ -200,14 +205,14 @@ export function Commits({
       return;
     }
     if (position === -1) {
-      onSelect(workingTreeHash, -1);
+      onSelect(workingTreeHash, -1, true);
     } else {
       // Rows that haven't loaded yet can't be selected
       const commit = history.at(position);
       if (!commit) {
         return;
       }
-      onSelect(commit.hash, position);
+      onSelect(commit.hash, position, true);
     }
     virtualizer.scrollToIndex(offset + position, { align: 'auto' });
   };

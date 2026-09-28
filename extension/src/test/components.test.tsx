@@ -3,6 +3,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import type { FileChange } from '../protocol';
 import { changesTreeElements, changesTreeRows } from '../webview/changesTree';
 import { MenuItems } from '../webview/contextMenu';
+import { LocationsPopup } from '../webview/locations';
+import { NavBar } from '../webview/navBar';
 import { parsePatch } from '../webview/diff';
 import { diffRows } from '../webview/diffView';
 import { changeTitle, statusClass } from '../webview/fileStatus';
@@ -75,6 +77,108 @@ suite('Changes tree rows', () => {
       html,
       /class="row tree-row file "[^>]*title="Modified: src\/a.ts"/,
     );
+  });
+});
+
+// The navigation bar with nothing to show, and these props
+const bar = (props: Partial<Parameters<typeof NavBar>[0]>) =>
+  renderToStaticMarkup(
+    <NavBar
+      root="/repo"
+      back={[]}
+      forward={[]}
+      onNavigate={noop}
+      fetching={false}
+      onFetch={noop}
+      address={{ hash: undefined, subject: undefined, message: undefined }}
+      repository={undefined}
+      selected={undefined}
+      hashLookup={undefined}
+      onLookupHash={noop}
+      onJump={noop}
+      {...props}
+    />,
+  );
+
+suite('Navigation bar', () => {
+  test('greys out back and forward without steps', () => {
+    const html = bar({
+      back: [{ hash: 'a'.repeat(40), subject: 'a' }],
+    });
+    assert.match(html, /title="Back[^"]*"(?![^>]*disabled)/);
+    assert.match(html, /title="Forward[^"]*" disabled=""/);
+  });
+
+  test('shows the selected commit like an address', () => {
+    const html = bar({
+      address: {
+        hash: 'd1f0050454a27f025c6820fc4a42b101a7fa356a',
+        subject: 'chore: trim verification',
+        message: 'chore: trim verification\n\nwith a body',
+      },
+    });
+    assert.match(html, /<span class="address-hash">d1f0050<\/span>/);
+    assert.match(
+      html,
+      /<span class="address-text ">chore: trim verification<\/span>/,
+    );
+  });
+
+  test('spins the fetch button while fetching', () => {
+    assert.match(
+      bar({ fetching: true }),
+      /class="nav-button running"[^>]*disabled=""/,
+    );
+    assert.match(bar({}), /class="nav-button "[^>]*title="Fetch/);
+  });
+});
+
+// The address bar's popup with this search, and what it looked up
+const popup = (
+  query: string,
+  result?: Parameters<typeof LocationsPopup>[0]['lookup'],
+) =>
+  renderToStaticMarkup(
+    <LocationsPopup
+      repository={undefined}
+      selected={undefined}
+      anchor={{ current: null }}
+      message={undefined}
+      lookup={result}
+      onLookup={noop}
+      onJump={noop}
+      onClose={noop}
+      query={query}
+      onQuery={noop}
+    />,
+  );
+
+suite('Hash suggestion', () => {
+  const hash = 'abcd'.padEnd(40, '0');
+  test('offers the commit a typed hash is, like a first suggestion', () => {
+    const html = popup('ABCD', {
+      query: 'abcd',
+      result: { kind: 'found', hash, subject: 'the subject' },
+    });
+    assert.match(html, /class="row hash-suggestion active"/);
+    assert.match(html, /Go to commit.*abcd000.*the subject/);
+  });
+
+  test('says when no commit or several start with it', () => {
+    assert.match(
+      popup('abcd', { query: 'abcd', result: { kind: 'none' } }),
+      /No commit starts with abcd/,
+    );
+    assert.match(
+      popup('abcd', { query: 'abcd', result: { kind: 'ambiguous', count: 3 } }),
+      /3 commits start with abcd, type more/,
+    );
+    assert.match(popup('abcd'), /Looking for commit abcd/);
+  });
+
+  test('offers nothing for what is no hash, or too short', () => {
+    assert.doesNotMatch(popup('abc'), /hash-suggestion/);
+    assert.doesNotMatch(popup('feature'), /hash-suggestion/);
   });
 });
 

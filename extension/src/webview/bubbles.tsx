@@ -1,15 +1,8 @@
-import {
-  createContext,
-  Fragment,
-  useCallback,
-  useContext,
-  useRef,
-  useState,
-} from 'react';
+import { createContext, Fragment, useContext } from 'react';
 import { type SyncAction, type Vip, type VipRef } from '../protocol';
 import { sameRef } from '../refNames';
 import { useContextMenu } from './contextMenu';
-import { LocationsPopup, type Repository } from './locations';
+import { type Repository } from './locations';
 import { SkeletonBubbles, useSkeleton } from './skeleton';
 import { type BubbleRow, bubbleRow } from './vips';
 
@@ -97,38 +90,25 @@ export function RefBubble({
   );
 }
 
-// The row under the tabs: the Locations button, which opens every branch,
-// remote and tag in a popup, then the repository's VIPs, sorted; clicking one
-// jumps to it
+// The row under the address bar: the repository's VIPs, sorted, and what is
+// checked out; clicking one jumps to it
 export function BubbleBar({
   root,
   repository,
-  selected,
   vips,
   syncing,
   onSync,
   onJump,
 }: {
-  // The active tab's repository, whose search text the popup shows
+  // The active tab, whose refs may still be loading
   root: string | undefined;
   repository: Repository | undefined;
-  selected: string | undefined;
   vips: readonly Vip[];
   onJump: (commit: string) => void;
   // The pull or push that is running
   syncing: SyncAction | undefined;
   onSync: (action: SyncAction) => void;
 }) {
-  const [locationsOpen, setLocationsOpen] = useState(false);
-  // The search text of each repository, kept while the popup is closed
-  const [queries, setQueries] = useState<ReadonlyMap<string, string>>(
-    new Map(),
-  );
-  const locationsQuery = (root && queries.get(root)) ?? '';
-  const setLocationsQuery = (query: string) =>
-    root && setQueries((all) => new Map(all).set(root, query));
-  const button = useRef<HTMLButtonElement>(null);
-  const closeLocations = useCallback(() => setLocationsOpen(false), []);
   const refs = repository?.refs ?? [];
   const detached = useContext(DetachedHead);
   const row = bubbleRow(
@@ -173,25 +153,6 @@ export function BubbleBar({
   );
   return (
     <div className="bubble-bar">
-      <button
-        ref={button}
-        className={`locations-button ${locationsOpen ? 'open' : ''}`}
-        title="Branches, remotes and tags"
-        onClick={() => setLocationsOpen(!locationsOpen)}
-      >
-        ⎇ Locations ▾
-      </button>
-      {locationsOpen && (
-        <LocationsPopup
-          repository={repository}
-          selected={selected}
-          anchor={button}
-          onJump={onJump}
-          onClose={closeLocations}
-          query={locationsQuery}
-          onQuery={setLocationsQuery}
-        />
-      )}
       {skeleton && <SkeletonBubbles count={3} />}
       {row.vips.map((vip) =>
         (vip.kind === 'commit' && vip.name === detached) ||

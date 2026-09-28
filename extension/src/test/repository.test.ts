@@ -6,6 +6,7 @@ import * as vscode from 'vscode';
 import type { API, Repository } from '../git/git';
 import { getGitApi, listRefs } from '../git/repository';
 import {
+  commitsStartingWith,
   listHistory,
   logCommits,
   runGit,
@@ -90,6 +91,27 @@ suite('Git repository', function () {
       path: 'first.txt',
     });
     assert.ok(patch.includes('b/first.txt'));
+  });
+
+  test('finds the commits a hash starts with', async () => {
+    const [rename] = await listHistory(git.git.path, cwd);
+    assert.deepStrictEqual(
+      await commitsStartingWith(git.git.path, cwd, rename.hash.slice(0, 7)),
+      [rename.hash],
+    );
+    assert.deepStrictEqual(
+      await commitsStartingWith(git.git.path, cwd, 'ffffff0'),
+      [],
+    );
+    // Git needs four characters, and only hex ones make a hash
+    assert.deepStrictEqual(
+      await commitsStartingWith(git.git.path, cwd, rename.hash.slice(0, 3)),
+      [],
+    );
+    assert.deepStrictEqual(
+      await commitsStartingWith(git.git.path, cwd, 'main'),
+      [],
+    );
   });
 
   test('diffs a renamed file as a rename', async () => {

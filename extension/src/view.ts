@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import type { API, Repository } from './git/git';
 import { Graph } from './git/graph';
+import { noNavigation, step, visit, type Navigation } from './navigation';
 import {
   checkedOutBranch,
   countRefs,
@@ -19,6 +20,7 @@ import {
 import { getGitApi, listRefs, pickRepository } from './git/repository';
 import {
   aheadBehind,
+  commitsStartingWith,
   headCommit,
   listHistory,
   listTree,
@@ -38,6 +40,7 @@ import {
   type CheckoutTarget,
   type SyncAction,
   type FileChange,
+  type HashLookup,
   type RefInfo,
   type ChangesView,
   type FilesMode,
@@ -106,6 +109,8 @@ interface TabState {
   opened: boolean;
   // Loading in the background, before the tab is opened
   preloading: Promise<void> | undefined;
+  // The commits shown before and after, for back and forward
+  navigation: Navigation;
   // The commits refs point at, which are always shown, and how many refs
   // point at each
   refCounts: Map<string, number>;
@@ -412,10 +417,31 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         }
         await this.sendShownHistory(context, undefined);
         break;
-      case 'jump':
-        await this.showCommit(context, message.hash);
+      case 'jump': {
+        // A hash typed in the address bar can be short
+        const hash = /^[0-9a-f]{40}$/.test(message.hash)
+          ? message.hash
+          : await commitOf(context, message.hash);
+        if (hash) {
+          await this.showCommit(context, hash);
+        } else {
+          context.post({
+            type: 'error',
+            message: `No commit ${message.hash}`,
+          });
+        }
+        break;
+      }
+      case 'navigate':
+        await this.navigate(context, message.direction, message.steps);
+        break;
+      case 'lookupHash':
+        await this.lookupHash(context, message.query);
         break;
       case 'selectCommit':
+        if (message.hash) {
+          this.visit(context, message.hash, message.replace);
+        }
         context.tab.hash = message.hash;
         context.tab.index = message.index;
         context.tab.path = undefined;
@@ -705,6 +731,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         shown: new Map(),
         refreshing: undefined,
         preloading: undefined,
+        navigation: noNavigation,
         refreshAgain: false,
       };
       this.tabStates.set(root, tab);
@@ -759,7 +786,8 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
           message.type !== 'commitPage' &&
           message.type !== 'reveal' &&
           message.type !== 'error' &&
-          message.type !== 'fileDiff'
+          message.type !== 'fileDiff' &&
+          message.type !== 'hashLookup'
         ) {
           tab.shown.set(message.type, message);
         }
@@ -889,11 +917,15 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     try {
       if (action === 'pull') {
         await repository.pull();
-      } else {
+      } else if (action === 'push') {
         await repository.push();
+      } else {
+        await repository.fetch({ all: true, prune: true });
       }
       this.log.info(
-        `${action === 'pull' ? 'Pulled' : 'Pushed'} ${repository.state.HEAD?.name ?? ''}`,
+        action === 'fetch'
+          ? 'Fetched every remote'
+          : `${action === 'pull' ? 'Pulled' : 'Pushed'} ${repository.state.HEAD?.name ?? ''}`,
       );
     } catch (error) {
       const details = gitErrorText(error);
@@ -911,7 +943,107 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
 
   // Selects a commit and scrolls the list to it, expanding the collapsed
   // merges that hide it, like a merged branch's tip
-  private async showCommit(context: Context, hash: string): Promise<void> {
+  // Records a step in the tab's history, from the commit shown now
+  private visit(context: Context, hash: string, replace = false): void {
+    const { tab } = context;
+    const next = visit(tab.navigation, tab.hash, hash, replace);
+    if (next !== tab.navigation) {
+      tab.navigation = next;
+      void this.sendNavigation(context).catch((error: unknown) =>
+        this.log.error(error instanceof Error ? error : String(error)),
+      );
+    }
+  }
+
+  // The history's nearest steps both ways, with their subjects, for the
+  // buttons and their dropdowns
+  private async sendNavigation(context: Context): Promise<void> {
+    const { navigation } = context.tab;
+    const back = navigation.back.toReversed().slice(0, navigationShown);
+    const forward = navigation.forward.toReversed().slice(0, navigationShown);
+    const commits = await logCommits(
+      context.git.git.path,
+      context.root,
+      [...new Set([...back, ...forward])].filter(
+        (hash) => hash !== workingTreeHash,
+      ),
+    );
+    // Another step was taken while git ran
+    if (context.tab.navigation !== navigation) {
+      return;
+    }
+    const subjects = new Map(
+      commits.map((commit) => [commit.hash, commit.subject]),
+    );
+    const entry = (hash: string) => ({
+      hash,
+      subject:
+        hash === workingTreeHash ? 'Uncommitted changes' : subjects.get(hash),
+    });
+    context.post({
+      type: 'navigation',
+      back: back.map(entry),
+      forward: forward.map(entry),
+    });
+  }
+
+  // Says which commit a typed hash is, for the address bar's suggestion
+  private async lookupHash(context: Context, query: string): Promise<void> {
+    const gitPath = context.git.git.path;
+    const hashes = await commitsStartingWith(gitPath, context.root, query);
+    let result: HashLookup;
+    if (hashes.length === 1) {
+      const [commit] = await logCommits(gitPath, context.root, hashes);
+      result = {
+        kind: 'found',
+        hash: hashes[0],
+        subject: commit?.subject ?? '',
+      };
+    } else {
+      result =
+        hashes.length === 0
+          ? { kind: 'none' }
+          : { kind: 'ambiguous', count: hashes.length };
+    }
+    context.post({ type: 'hashLookup', query, result });
+  }
+
+  // Back or forward in the tab's history, to a commit that is still there
+  private async navigate(
+    context: Context,
+    direction: 'back' | 'forward',
+    steps: number,
+  ): Promise<void> {
+    const { tab } = context;
+    const known = new Set(tab.fullHistory.map((entry) => entry.hash));
+    const result = step(
+      tab.navigation,
+      tab.hash,
+      direction,
+      steps,
+      (hash) => hash === workingTreeHash || known.has(hash),
+    );
+    if (!result) {
+      return;
+    }
+    tab.navigation = result.navigation;
+    if (result.target === workingTreeHash) {
+      tab.hash = workingTreeHash;
+      tab.index = -1;
+      tab.path = undefined;
+      context.post({ type: 'reveal', hash: workingTreeHash, index: -1 });
+      await this.sendCommit(context);
+    } else {
+      await this.showCommit(context, result.target, false);
+    }
+    await this.sendNavigation(context);
+  }
+
+  private async showCommit(
+    context: Context,
+    hash: string,
+    record = true,
+  ): Promise<void> {
     if (!context.tab.positions.has(hash)) {
       await this.expandMerges(
         context,
@@ -927,6 +1059,9 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     if (index === undefined) {
       context.post({ type: 'error', message: `${hash} is not in the history` });
       return;
+    }
+    if (record) {
+      this.visit(context, hash);
     }
     context.tab.hash = hash;
     context.tab.index = index;
@@ -1257,6 +1392,26 @@ function uniqueRoots(roots: readonly string[]): string[] {
     (root, index) =>
       roots.findIndex((other) => sameRoot(other, root)) === index,
   );
+}
+
+// The steps each way the history's dropdowns list
+const navigationShown = 20;
+
+// The full hash of a commit given by a short one, if there is one
+async function commitOf(
+  context: Context,
+  prefix: string,
+): Promise<string | undefined> {
+  if (!/^[0-9a-f]{4,40}$/i.test(prefix)) {
+    return undefined;
+  }
+  const output = await runGit(
+    context.git.git.path,
+    context.root,
+    ['rev-parse', '--verify', '--quiet', `${prefix}^{commit}`],
+    { okExitCodes: [0, 1, 128] },
+  );
+  return output.trim() || undefined;
 }
 
 // What git said about a failure: the Git extension's errors keep git's output

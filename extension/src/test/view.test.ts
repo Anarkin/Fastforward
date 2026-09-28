@@ -700,13 +700,18 @@ suite('View', function () {
     await repository.commit('apart only');
     await repository.git('checkout', 'main');
     await repository.git('update-ref', 'refs/remotes/origin/apart', 'main');
+    await settle(connection);
     try {
       await withMessageStub('showInformationMessage', async (messages) => {
         await connection.receive({
           type: 'checkout',
           target: { kind: 'remote', name: 'origin/apart' },
         });
-        assert.strictEqual(page.last('repository')?.head, 'apart');
+        // The Git extension may report the new branch a moment later
+        await waitFor(
+          () => page.last('repository')?.head === 'apart',
+          'the checked-out branch',
+        );
         assert.strictEqual(messages.length, 1);
         assert.match(
           messages[0],
@@ -750,6 +755,85 @@ suite('View', function () {
       view.connection.dispose();
       fs.rmSync(notRepository, { recursive: true, force: true });
     }
+  });
+
+  test('goes back and forward through the commits shown', async () => {
+    const [merge, b, a] = await Promise.all([
+      repository.hash('main'),
+      repository.hash('main~1'),
+      repository.hash('main~2'),
+    ]);
+    // Opening the tab showed the merge, at HEAD
+    await connection.receive({ type: 'selectCommit', hash: b, index: 1 });
+    await connection.receive({ type: 'selectCommit', hash: a, index: 2 });
+    await waitFor(
+      () => page.last('navigation')?.back.length === 2,
+      'the history of two steps',
+    );
+    assert.deepStrictEqual(
+      page.last('navigation')?.back.map((entry) => entry.subject),
+      ['b', 'merge feature'],
+    );
+
+    await connection.receive({ type: 'navigate', direction: 'back', steps: 1 });
+    assert.strictEqual(page.last('reveal')?.hash, b);
+    assert.strictEqual(page.last('files')?.hash, b);
+    assert.deepStrictEqual(
+      page.last('navigation')?.forward.map((entry) => entry.hash),
+      [a],
+    );
+
+    await connection.receive({ type: 'navigate', direction: 'back', steps: 1 });
+    assert.strictEqual(page.last('reveal')?.hash, merge);
+    await connection.receive({
+      type: 'navigate',
+      direction: 'forward',
+      steps: 2,
+    });
+    assert.strictEqual(page.last('reveal')?.hash, a);
+    assert.strictEqual(page.last('navigation')?.forward.length, 0);
+  });
+
+  test('adds no step for moving through the list with the arrow keys', async () => {
+    const [b, a] = await Promise.all([
+      repository.hash('main~1'),
+      repository.hash('main~2'),
+    ]);
+    page.clear();
+    await connection.receive({
+      type: 'selectCommit',
+      hash: b,
+      index: 1,
+      replace: true,
+    });
+    await connection.receive({
+      type: 'selectCommit',
+      hash: a,
+      index: 2,
+      replace: true,
+    });
+    assert.strictEqual(page.last('navigation'), undefined);
+    assert.strictEqual(page.last('files')?.hash, a);
+  });
+
+  test('looks up a hash typed in the address bar', async () => {
+    const b = await repository.hash('main~1');
+    await connection.receive({ type: 'lookupHash', query: b.slice(0, 6) });
+    assert.deepStrictEqual(page.last('hashLookup'), {
+      type: 'hashLookup',
+      query: b.slice(0, 6),
+      result: { kind: 'found', hash: b, subject: 'b' },
+    });
+    await connection.receive({ type: 'lookupHash', query: 'ffffff0' });
+    assert.deepStrictEqual(page.last('hashLookup')?.result, { kind: 'none' });
+  });
+
+  test('jumps to a commit by a short hash', async () => {
+    const b = await repository.hash('main~1');
+    await connection.receive({ type: 'jump', hash: b.slice(0, 7) });
+    assert.strictEqual(page.last('reveal')?.hash, b);
+    await connection.receive({ type: 'jump', hash: 'abcdef0' });
+    assert.match(page.last('error')?.message ?? '', /No commit abcdef0/);
   });
 
   test('shows the history with merges collapsed', async () => {
@@ -1011,6 +1095,29 @@ suite('Pull and push', function () {
         // Left for the OS to clean up
       }
     }
+  });
+
+  test('fetches every remote, dropping branches deleted there', async () => {
+    const gitPath = (await getGitApi()).git.path;
+    await runGit(gitPath, remote, ['branch', 'short-lived', 'main']);
+    await connection.receive({ type: 'sync', action: 'fetch' });
+    await waitFor(
+      () =>
+        page
+          .last('repository')
+          ?.refs.some((ref) => ref.name === 'origin/short-lived') === true,
+      'the fetched branch',
+    );
+    await runGit(gitPath, remote, ['branch', '-D', 'short-lived']);
+    await connection.receive({ type: 'sync', action: 'fetch' });
+    await waitFor(
+      () =>
+        page
+          .last('repository')
+          ?.refs.every((ref) => ref.name !== 'origin/short-lived') === true,
+      'the deleted branch to go',
+    );
+    assert.strictEqual(page.last('syncing')?.action, undefined);
   });
 
   test("pushes the commits the upstream doesn't have", async () => {

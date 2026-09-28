@@ -5,7 +5,22 @@ export const workingTreeHash = 'working-tree';
 
 export type RefKind = 'branch' | 'remote' | 'tag';
 
-export type SyncAction = 'pull' | 'push';
+// Fetch updates every remote branch and drops the deleted ones
+export type SyncAction = 'pull' | 'push' | 'fetch';
+
+// What a hash typed in the address bar is: one commit, none, or too short
+// to tell which of several
+export type HashLookup =
+  | { readonly kind: 'found'; readonly hash: string; readonly subject: string }
+  | { readonly kind: 'none' }
+  | { readonly kind: 'ambiguous'; readonly count: number };
+
+// A commit in a tab's back or forward history
+export interface NavigationEntry {
+  readonly hash: string;
+  // Undefined for a commit that isn't loaded
+  readonly subject: string | undefined;
+}
 
 // What the Files column lists: the selected commit's changes, or every file
 // of the repository at it
@@ -145,6 +160,14 @@ export type ToExtension =
   | { readonly type: 'checkout'; readonly target: CheckoutTarget }
   // Pulls the checked-out branch from its upstream, or pushes it there
   | { readonly type: 'sync'; readonly action: SyncAction }
+  // Looks up a hash typed in the address bar, while typing
+  | { readonly type: 'lookupHash'; readonly query: string }
+  // Back or forward in the tab's history, several steps from its dropdown
+  | {
+      readonly type: 'navigate';
+      readonly direction: 'back' | 'forward';
+      readonly steps: number;
+    }
   // Asks for the commits at positions start..start+count of the history
   | {
       readonly type: 'loadCommits';
@@ -164,6 +187,9 @@ export type ToExtension =
       readonly hash: string | undefined;
       // Position in the history, to scroll back to it when the view reopens
       readonly index: number | undefined;
+      // Moving through the list with the arrow keys, which adds no step to
+      // the back history
+      readonly replace?: boolean;
     }
   | {
       readonly type: 'selectFile';
@@ -184,6 +210,18 @@ export type ToWebview =
   | { readonly type: 'vips'; readonly vips: readonly Vip[] }
   // A pull or push that is running, or undefined once it's done
   | { readonly type: 'syncing'; readonly action: SyncAction | undefined }
+  // Answers lookupHash
+  | {
+      readonly type: 'hashLookup';
+      readonly query: string;
+      readonly result: HashLookup;
+    }
+  // The tab's history, nearest first both ways
+  | {
+      readonly type: 'navigation';
+      readonly back: readonly NavigationEntry[];
+      readonly forward: readonly NavigationEntry[];
+    }
   | {
       readonly type: 'tabs';
       readonly tabs: readonly TabInfo[];

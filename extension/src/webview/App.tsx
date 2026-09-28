@@ -33,6 +33,7 @@ import { Diff } from './diffColumn';
 import { Files } from './filesColumn';
 import { foldersOf } from './fileTree';
 import { sameRef } from '../refNames';
+import { NavBar, type Direction } from './navBar';
 import { TabBar } from './tabBar';
 import {
   foldersOfTab,
@@ -68,6 +69,9 @@ export function App({ post }: Props) {
     filePatches,
     tree,
     syncing,
+    back,
+    forward,
+    hashLookup,
     error,
   } = tab;
   // Sublime Merge's setting, on by default
@@ -162,15 +166,43 @@ export function App({ post }: Props) {
   const opening = activeTab !== undefined && history === undefined && !error;
 
   // Selecting the selected commit again, or "No changes", clears the selection
-  const selectCommit = (next: string | undefined, index: number) => {
+  const selectCommit = (
+    next: string | undefined,
+    index: number,
+    replace = false,
+  ) => {
     const target = next === hash ? undefined : next;
     showCommit(target);
     post({
       type: 'selectCommit',
       hash: target,
       index: target === undefined ? undefined : index,
+      replace,
     });
   };
+  const lookupHash = useCallback(
+    (query: string) => post({ type: 'lookupHash', query }),
+    [post],
+  );
+  const navigate = useCallback(
+    (direction: Direction, steps: number) =>
+      post({ type: 'navigate', direction, steps }),
+    [post],
+  );
+
+  // The mouse's back and forward buttons, like in a browser
+  useEffect(() => {
+    const buttons: Record<number, Direction> = { 3: 'back', 4: 'forward' };
+    const onMouseUp = (event: MouseEvent) => {
+      const direction = buttons[event.button];
+      if (direction) {
+        event.preventDefault();
+        navigate(direction, 1);
+      }
+    };
+    window.addEventListener('mouseup', onMouseUp);
+    return () => window.removeEventListener('mouseup', onMouseUp);
+  }, [navigate]);
   // Scrolls to a location's commit, which the extension finds in the history
   const jump = (target: string | undefined) => {
     if (target) {
@@ -324,10 +356,33 @@ export function App({ post }: Props) {
               onLog={log}
             />
             {tabs.length > 0 && (
+              <NavBar
+                root={activeTab}
+                back={back}
+                forward={forward}
+                onNavigate={navigate}
+                fetching={syncing === 'fetch'}
+                onFetch={() => post({ type: 'sync', action: 'fetch' })}
+                address={{
+                  hash: hash === workingTreeHash ? undefined : hash,
+                  subject:
+                    hash === workingTreeHash
+                      ? 'Uncommitted changes'
+                      : commit?.subject,
+                  message:
+                    hash === workingTreeHash ? undefined : commit?.message,
+                }}
+                repository={repository}
+                selected={hash}
+                hashLookup={hashLookup}
+                onLookupHash={lookupHash}
+                onJump={jump}
+              />
+            )}
+            {tabs.length > 0 && (
               <BubbleBar
                 root={activeTab}
                 repository={repository}
-                selected={hash}
                 vips={vips}
                 onJump={jump}
                 syncing={syncing}
@@ -391,8 +446,6 @@ export function App({ post }: Props) {
                     loading={patchLoading || opening}
                     filePatches={filePatches}
                     onLoadFile={loadFileDiff}
-                    workingTree={hash === workingTreeHash}
-                    commit={commit}
                     files={files}
                     patch={patch}
                     fileContent={

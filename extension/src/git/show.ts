@@ -153,6 +153,39 @@ export async function headCommit(
   return output.trim() || undefined;
 }
 
+// The commits whose hash starts with these characters; git needs four at
+// least, and lists other objects with them too
+export async function commitsStartingWith(
+  gitPath: string,
+  cwd: string,
+  prefix: string,
+): Promise<string[]> {
+  if (!/^[0-9a-f]{4,40}$/i.test(prefix)) {
+    return [];
+  }
+  const objects = (
+    await runGit(gitPath, cwd, [
+      'rev-parse',
+      `--disambiguate=${prefix.toLowerCase()}`,
+    ])
+  )
+    .split('\n')
+    .filter(Boolean);
+  if (objects.length === 0) {
+    return [];
+  }
+  const types = await runGit(
+    gitPath,
+    cwd,
+    ['cat-file', '--batch-check=%(objectname) %(objecttype)'],
+    { input: `${objects.join('\n')}\n` },
+  );
+  return types
+    .split('\n')
+    .filter((line) => line.endsWith(' commit'))
+    .map((line) => line.slice(0, line.indexOf(' ')));
+}
+
 export interface HistoryEntry {
   readonly hash: string;
   readonly parents: readonly string[];
