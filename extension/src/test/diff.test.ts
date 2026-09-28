@@ -1,10 +1,5 @@
 import * as assert from 'node:assert';
-import {
-  parseHistory,
-  parseLog,
-  parseNameStatus,
-  parseNumstat,
-} from '../git/show';
+import { parseChanges, parseHistory, parseLog } from '../git/show';
 import { parsePatch, unquotePath } from '../webview/diff';
 
 suite('parsePatch', () => {
@@ -104,36 +99,64 @@ suite('parsePatch', () => {
   });
 });
 
-suite('git show parsers', () => {
-  test('parses name-status with renames', () => {
-    assert.deepStrictEqual(
-      parseNameStatus('M\0a.ts\0R087\0old.ts\0new.ts\0A\0b.ts\0'),
-      [
-        { status: 'M', oldPath: undefined, path: 'a.ts' },
-        { status: 'R', oldPath: 'old.ts', path: 'new.ts' },
-        { status: 'A', oldPath: undefined, path: 'b.ts' },
-      ],
-    );
-  });
+// A --raw line of a file with this status
+function raw(status: string): string {
+  return `:100644 100644 1111111 2222222 ${status}`;
+}
 
-  test('parses numstat with renames and binary files', () => {
+suite('git show parsers', () => {
+  test('parses raw and numstat output with renames and binary files', () => {
     assert.deepStrictEqual(
+      parseChanges(
+        [
+          raw('M'),
+          'a.ts',
+          raw('R087'),
+          'old.ts',
+          'new.ts',
+          raw('A'),
+          // A path that looks like a raw line or a numstat one is still a path
+          ':b.ts',
+          raw('A'),
+          '1\t1\timg.png',
+          '1\t2\ta.ts',
+          '3\t0\t',
+          'old.ts',
+          'new.ts',
+          '1\t0\t:b.ts',
+          '-\t-\t1\t1\timg.png',
+          '',
+        ].join('\0'),
+      ),
       [
-        ...parseNumstat(
-          [
-            '1\t2\ta.ts',
-            '3\t0\t',
-            'old.ts',
-            'new.ts',
-            '-\t-\timg.png',
-            '',
-          ].join('\0'),
-        ),
-      ],
-      [
-        ['a.ts', { insertions: 1, deletions: 2 }],
-        ['new.ts', { insertions: 3, deletions: 0 }],
-        ['img.png', { insertions: 0, deletions: 0 }],
+        {
+          status: 'M',
+          oldPath: undefined,
+          path: 'a.ts',
+          insertions: 1,
+          deletions: 2,
+        },
+        {
+          status: 'R',
+          oldPath: 'old.ts',
+          path: 'new.ts',
+          insertions: 3,
+          deletions: 0,
+        },
+        {
+          status: 'A',
+          oldPath: undefined,
+          path: ':b.ts',
+          insertions: 1,
+          deletions: 0,
+        },
+        {
+          status: 'A',
+          oldPath: undefined,
+          path: '1\t1\timg.png',
+          insertions: 0,
+          deletions: 0,
+        },
       ],
     );
   });

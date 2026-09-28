@@ -14,8 +14,6 @@ export interface Repository {
   head: string | undefined;
   headCommit: string | undefined;
   headUpstream: string | undefined;
-  ahead: number;
-  behind: number;
   refs: readonly RefInfo[];
 }
 

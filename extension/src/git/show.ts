@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import * as fs from 'node:fs/promises';
 import { join } from 'node:path';
-import type { CommitInfo, FileChange } from '../protocol';
+import type { CommitInfo, FileChange, HashLookup } from '../protocol';
 
 // Commit files and patches come from git show, because the Git extension API
 // only diffs ranges (a...b), which fails for root commits
@@ -57,12 +57,25 @@ interface RunOptions {
   readonly pathspecMagic?: boolean;
 }
 
-export function runGit(
+// The most output a command may have, like the history of a huge repository
+const maxOutput = 256 * 1024 * 1024;
+
+export async function runGit(
+  gitPath: string,
+  cwd: string,
+  args: readonly string[],
+  options: RunOptions = {},
+): Promise<string> {
+  return (await runGitBytes(gitPath, cwd, args, options)).toString('utf8');
+}
+
+// The output as it is, for file contents, which may not be text
+function runGitBytes(
   gitPath: string,
   cwd: string,
   args: readonly string[],
   { okExitCodes = [0], input, pathspecMagic }: RunOptions = {},
-): Promise<string> {
+): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const child = execFile(
       gitPath,
@@ -70,14 +83,14 @@ export function runGit(
       {
         cwd,
         env: env(pathspecMagic),
-        maxBuffer: 256 * 1024 * 1024,
-        encoding: 'utf8',
+        maxBuffer: maxOutput,
+        encoding: 'buffer',
       },
       (error, stdout, stderr) => {
         if (error && !okExitCodes.includes(Number(error.code))) {
           reject(
             new Error(
-              `git ${args.join(' ')} failed: ${stderr || error.message}`,
+              `git ${args.join(' ')} failed: ${stderr.toString('utf8') || error.message}`,
             ),
           );
         } else {
@@ -99,11 +112,9 @@ export async function showFiles(
   cwd: string,
   hash: string,
 ): Promise<FileChange[]> {
-  const [nameStatus, numstat] = await Promise.all([
-    runGit(gitPath, cwd, [...showArgs, '--name-status', '-z', hash]),
-    runGit(gitPath, cwd, [...showArgs, '--numstat', '-z', hash]),
-  ]);
-  return withStats(parseNameStatus(nameStatus), parseNumstat(numstat));
+  return parseChanges(
+    await runGit(gitPath, cwd, [...showArgs, ...changesArgs, hash]),
+  );
 }
 
 // What part of a diff to fetch: one file, limited to both its paths when it
@@ -186,23 +197,65 @@ export async function commitsStartingWith(
     .map((line) => line.slice(0, line.indexOf(' ')));
 }
 
+// Which commit a typed hash is, with its subject; reading the object it names
+// answers at once when it is the only one starting so, as it usually is, and
+// the candidates are listed only when there are several, or when git read the
+// hash as the name of a ref
+export async function findCommit(
+  gitPath: string,
+  cwd: string,
+  prefix: string,
+): Promise<HashLookup> {
+  if (!/^[0-9a-f]{4,40}$/i.test(prefix)) {
+    return { kind: 'none' };
+  }
+  const hex = prefix.toLowerCase();
+  const output = await runGit(gitPath, cwd, ['cat-file', '--batch'], {
+    input: `${hex}\n`,
+  });
+  // "<hash> <type> <size>\n<object>", or "<name> missing" or "ambiguous"
+  const newline = output.indexOf('\n');
+  const [hash, type] = output.slice(0, newline).split(' ');
+  if (type === 'missing') {
+    return { kind: 'none' };
+  }
+  if (type !== 'ambiguous' && hash.startsWith(hex)) {
+    if (type !== 'commit') {
+      return { kind: 'none' };
+    }
+    // The message follows the headers after an empty line
+    const object = output.slice(newline + 1);
+    const message = object.slice(object.indexOf('\n\n') + 2);
+    return { kind: 'found', hash, subject: message.split('\n', 1)[0] };
+  }
+  const hashes = await commitsStartingWith(gitPath, cwd, hex);
+  if (hashes.length === 1) {
+    const [commit] = await logCommits(gitPath, cwd, hashes);
+    return { kind: 'found', hash: hashes[0], subject: commit?.subject ?? '' };
+  }
+  return hashes.length === 0
+    ? { kind: 'none' }
+    : { kind: 'ambiguous', count: hashes.length };
+}
+
 export interface HistoryEntry {
   readonly hash: string;
   readonly parents: readonly string[];
 }
 
 // Every commit reachable from HEAD, the branches, the remotes and the tags,
-// newest first; took 474 ms for 190k commits
+// newest first; took 474 ms for 190k commits; HEAD is skipped before the
+// first commit, when it points at a branch that doesn't exist yet
 export async function listHistory(
   gitPath: string,
   cwd: string,
 ): Promise<HistoryEntry[]> {
-  const head = await headCommit(gitPath, cwd);
   const output = await runGit(gitPath, cwd, [
     'rev-list',
     '--date-order',
     '--parents',
-    ...(head ? ['HEAD'] : []),
+    '--ignore-missing',
+    'HEAD',
     '--branches',
     '--remotes',
     '--tags',
@@ -359,17 +412,24 @@ export interface FileContent {
   readonly binary: boolean;
 }
 
+const binaryContent: FileContent = { content: '', binary: true };
+
 function toContent(buffer: Buffer): FileContent {
-  if (
-    buffer.length > maxFileSize ||
-    buffer.subarray(0, binaryProbe).includes(0)
-  ) {
-    return { content: '', binary: true };
-  }
-  return { content: buffer.toString('utf8'), binary: false };
+  return buffer.subarray(0, binaryProbe).includes(0)
+    ? binaryContent
+    : { content: buffer.toString('utf8'), binary: false };
 }
 
-// A file's content at a commit, or in the working tree
+// A submodule is shown as git diffs it, by the commit it is at
+function submoduleContent(hash: string | undefined): FileContent {
+  return {
+    content: hash ? `Subproject commit ${hash}\n` : '',
+    binary: false,
+  };
+}
+
+// A file's content at a commit, or in the working tree; its size is looked at
+// first, so a huge file isn't read only to be shown as binary
 export async function readFile(
   gitPath: string,
   cwd: string,
@@ -377,25 +437,59 @@ export async function readFile(
   path: string,
 ): Promise<FileContent> {
   if (hash === undefined) {
-    return toContent(await fs.readFile(join(cwd, path)));
+    const file = join(cwd, path);
+    const stats = await fs.stat(file);
+    if (stats.isDirectory()) {
+      // A submodule, or a repository inside this one; not one that isn't
+      // checked out, as git would then find the outer repository
+      const checkedOut = await fs.stat(join(file, '.git')).then(
+        () => true,
+        () => false,
+      );
+      return submoduleContent(
+        checkedOut ? await headCommit(gitPath, file) : undefined,
+      );
+    }
+    return stats.size > maxFileSize
+      ? binaryContent
+      : toContent(await fs.readFile(file));
   }
-  const output = await new Promise<Buffer>((resolve, reject) => {
-    execFile(
-      gitPath,
-      [...configArgs, 'show', `${hash}:${path}`],
-      { cwd, env: env(), maxBuffer: 256 * 1024 * 1024, encoding: 'buffer' },
-      (error, stdout) => (error ? reject(error) : resolve(stdout)),
-    );
-  });
-  return toContent(output);
+  // "<mode> <type> <object> <size>\t<path>", with a size only for files
+  const entry = await runGit(gitPath, cwd, [
+    'ls-tree',
+    '-z',
+    '--long',
+    hash,
+    '--',
+    path,
+  ]);
+  const [mode, type, object, size] = entry
+    .slice(0, entry.indexOf('\t'))
+    .split(/ +/);
+  if (!mode) {
+    throw new Error(`${path} is not in ${hash}`);
+  }
+  if (type === 'commit') {
+    return submoduleContent(object);
+  }
+  return Number(size) > maxFileSize
+    ? binaryContent
+    : toContent(await runGitBytes(gitPath, cwd, ['cat-file', 'blob', object]));
 }
 
-// Uncommitted changes are the working tree and index against HEAD, or against
-// nothing before the first commit, plus untracked files
-async function workingTreeArgs(
+// The uncommitted changes, and what they were diffed against, so their patch
+// is of the same changes: HEAD, or nothing before the first commit
+export interface WorkingTree {
+  readonly base: string;
+  readonly files: readonly FileChange[];
+}
+
+// Uncommitted changes are the working tree and index against the base, plus
+// untracked files
+export async function workingTreeFiles(
   gitPath: string,
   cwd: string,
-): Promise<string[]> {
+): Promise<WorkingTree> {
   const base =
     (await headCommit(gitPath, cwd)) ??
     (
@@ -403,122 +497,125 @@ async function workingTreeArgs(
         input: '',
       })
     ).trim();
+  const [changes, untracked] = await Promise.all([
+    runGit(gitPath, cwd, [...workingTreeDiff(base), ...changesArgs]),
+    runGit(gitPath, cwd, ['ls-files', '--others', '--exclude-standard', '-z']),
+  ]);
+  return {
+    base,
+    files: [
+      ...parseChanges(changes),
+      ...splitNul(untracked)
+        .filter(Boolean)
+        .map((path) => ({
+          path,
+          oldPath: undefined,
+          status: 'U' as const,
+          insertions: 0,
+          deletions: 0,
+        })),
+    ],
+  };
+}
+
+function workingTreeDiff(base: string): string[] {
   return ['diff', base, '-M', ...diffArgs];
 }
 
-async function listUntracked(gitPath: string, cwd: string): Promise<string[]> {
-  const output = await runGit(gitPath, cwd, [
-    'ls-files',
-    '--others',
-    '--exclude-standard',
-    '-z',
-  ]);
-  return splitNul(output).filter(Boolean);
-}
-
-export async function workingTreeFiles(
-  gitPath: string,
-  cwd: string,
-): Promise<FileChange[]> {
-  const diff = await workingTreeArgs(gitPath, cwd);
-  const [nameStatus, numstat, untracked] = await Promise.all([
-    runGit(gitPath, cwd, [...diff, '--name-status', '-z']),
-    runGit(gitPath, cwd, [...diff, '--numstat', '-z']),
-    listUntracked(gitPath, cwd),
-  ]);
-  return [
-    ...withStats(parseNameStatus(nameStatus), parseNumstat(numstat)),
-    ...untracked.map((path) => ({
-      path,
-      oldPath: undefined,
-      status: 'U' as const,
-      insertions: 0,
-      deletions: 0,
-    })),
-  ];
-}
-
 // Untracked files get their patch from diffing them against /dev/null, which
-// git supports on Windows too; at most this many are included in the full
-// patch, to keep huge untracked folders from flooding the view
+// git supports on Windows too, one process per file on every refresh; at most
+// this many are included in the full patch, to keep huge untracked folders
+// from flooding the view and spawning git for each of their files
 const maxUntrackedPatches = 50;
 
 export async function workingTreePatch(
   gitPath: string,
   cwd: string,
+  { base, files }: WorkingTree,
   scope: PatchScope = {},
 ): Promise<string> {
-  const { path } = scope;
-  const untracked = await listUntracked(gitPath, cwd);
+  // A repository inside this one is listed as its folder, "nested/", which
+  // has no patch
   const untrackedPatch = (file: string) =>
-    runGit(
-      gitPath,
-      cwd,
-      ['diff', '--no-index', ...diffArgs, '--', '/dev/null', file],
-      { okExitCodes: [0, 1] },
-    );
-  if (path && untracked.includes(path)) {
+    file.endsWith('/')
+      ? Promise.resolve('')
+      : runGit(
+          gitPath,
+          cwd,
+          ['diff', '--no-index', ...diffArgs, '--', '/dev/null', file],
+          { okExitCodes: [0, 1] },
+        );
+  const { path } = scope;
+  const untracked = files
+    .filter((file) => file.status === 'U')
+    .map((file) => file.path);
+  if (path !== undefined && untracked.includes(path)) {
     return untrackedPatch(path);
   }
-  const tracked = await runGit(
+  const tracked = runGit(
     gitPath,
     cwd,
-    [...(await workingTreeArgs(gitPath, cwd)), ...pathspecs(scope)],
+    [...workingTreeDiff(base), ...pathspecs(scope)],
     { pathspecMagic: (scope.exclude?.length ?? 0) > 0 },
   );
-  if (path) {
+  if (path !== undefined) {
     return tracked;
   }
   // An untracked file that can't be read, like one being written, is left
   // out instead of failing the whole diff
-  const patches = await Promise.allSettled(
-    untracked.slice(0, maxUntrackedPatches).map(untrackedPatch),
-  );
-  return [
+  const [trackedPatch, untrackedPatches] = await Promise.all([
     tracked,
-    ...patches.map((patch) =>
+    Promise.allSettled(
+      untracked.slice(0, maxUntrackedPatches).map(untrackedPatch),
+    ),
+  ]);
+  return [
+    trackedPatch,
+    ...untrackedPatches.map((patch) =>
       patch.status === 'fulfilled' ? patch.value : '',
     ),
   ].join('');
 }
 
-type NameStatus = Omit<FileChange, 'insertions' | 'deletions'>;
-type Stats = Map<string, { insertions: number; deletions: number }>;
-
-function withStats(files: NameStatus[], stats: Stats): FileChange[] {
-  return files.map((file) => ({
-    ...file,
-    ...(stats.get(file.path) ?? { insertions: 0, deletions: 0 }),
-  }));
-}
+// Each changed file's status and paths, and its changed lines, in one diff
+const changesArgs = ['--raw', '--numstat', '-z'];
 
 const simpleStatuses = ['A', 'M', 'D', 'T'] as const;
 
-// "M\0path\0R100\0old\0new\0"
-export function parseNameStatus(output: string): NameStatus[] {
+// The --raw lines first, ":<modes> <objects> M\0path\0", or
+// ":<modes> <objects> R100\0old\0new\0" for renames and copies, then the
+// --numstat ones, "ins\tdel\tpath\0", or "ins\tdel\t\0old\0new\0" for
+// renames, with "-" for binary files
+export function parseChanges(output: string): FileChange[] {
   const tokens = splitNul(output);
-  const files: NameStatus[] = [];
-  for (let i = 0; i + 1 < tokens.length;) {
-    const code = tokens[i][0];
-    if (code === 'R' || code === 'C') {
-      files.push({ status: code, oldPath: tokens[i + 1], path: tokens[i + 2] });
-      i += 3;
-    } else {
-      const status = simpleStatuses.find((known) => known === code) ?? '?';
-      files.push({ status, oldPath: undefined, path: tokens[i + 1] });
-      i += 2;
-    }
-  }
-  return files;
-}
-
-// "ins\tdel\tpath\0", or "ins\tdel\t\0old\0new\0" for renames, with "-" for
-// binary files
-export function parseNumstat(output: string): Stats {
-  const tokens = splitNul(output);
-  const stats: Stats = new Map();
+  const files: FileChange[] = [];
+  const stats = new Map<string, { insertions: number; deletions: number }>();
   for (let i = 0; i < tokens.length; i++) {
-    const match = /^(-|\d+)\t(-|\d+)\t(.*)$/.exec(tokens[i]);
+    const token = tokens[i];
+    if (token.startsWith(':')) {
+      const code = token.slice(token.lastIndexOf(' ') + 1)[0];
+      if (code === 'R' || code === 'C') {
+        files.push({
+          status: code,
+          oldPath: tokens[i + 1],
+          path: tokens[i + 2],
+          insertions: 0,
+          deletions: 0,
+        });
+        i += 2;
+      } else {
+        files.push({
+          status: simpleStatuses.find((known) => known === code) ?? '?',
+          oldPath: undefined,
+          path: tokens[i + 1],
+          insertions: 0,
+          deletions: 0,
+        });
+        i += 1;
+      }
+      continue;
+    }
+    const match = /^(-|\d+)\t(-|\d+)\t(.*)$/.exec(token);
     if (!match) {
       continue;
     }
@@ -532,5 +629,5 @@ export function parseNumstat(output: string): Stats {
       deletions: Number(match[2]) || 0,
     });
   }
-  return stats;
+  return files.map((file) => ({ ...file, ...stats.get(file.path) }));
 }

@@ -318,6 +318,62 @@ suite('View', function () {
     }
   });
 
+  test('sends no unchanged Files tree or whole file on a refresh', async () => {
+    const gitPath = (await getGitApi()).git.path;
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fastforward-files-'));
+    await runGit(gitPath, root, ['init', '-b', 'main']);
+    fs.writeFileSync(path.join(root, 'kept.txt'), 'kept\n');
+    await runGit(gitPath, root, ['add', '.']);
+    await runGit(gitPath, root, [
+      '-c',
+      'user.name=Test',
+      '-c',
+      'user.email=test@example.com',
+      'commit',
+      '-m',
+      'kept',
+    ]);
+    fs.writeFileSync(path.join(root, 'draft.txt'), 'draft\n');
+    const view = await viewOf([root]);
+    try {
+      await view.connection.receive({
+        type: 'selectCommit',
+        root,
+        hash: workingTreeHash,
+      });
+      await view.connection.receive({
+        type: 'loadTree',
+        root,
+        hash: workingTreeHash,
+      });
+      // A file that isn't among the changes is shown whole
+      await view.connection.receive({
+        type: 'selectFile',
+        root,
+        hash: workingTreeHash,
+        path: 'kept.txt',
+      });
+      assert.strictEqual(view.page.last('fileContent')?.content, 'kept\n');
+      view.page.clear();
+      await view.connection.refresh();
+      assert.ok(view.page.last('workingTree'));
+      assert.strictEqual(view.page.last('tree'), undefined);
+      assert.strictEqual(view.page.last('fileContent'), undefined);
+
+      // A new file changes the tree
+      fs.writeFileSync(path.join(root, 'new.txt'), 'new\n');
+      await view.connection.refresh();
+      assert.ok(view.page.last('tree')?.paths.includes('new.txt'));
+    } finally {
+      view.connection.dispose();
+      try {
+        fs.rmSync(root, { recursive: true, force: true });
+      } catch {
+        // Left for the OS to clean up
+      }
+    }
+  });
+
   test('leaves large files out of a commit diff until one is asked for', async () => {
     const gitPath = (await getGitApi()).git.path;
     // A repository of its own, so the other tests' history stays the same
@@ -1084,6 +1140,54 @@ suite('View', function () {
     assert.strictEqual(page.last('navigation')?.forward.length, 0);
   });
 
+  test('leaves steps to commits that are gone out of the history', async () => {
+    const [merge, b] = await Promise.all([
+      repository.hash('main'),
+      repository.hash('main~1'),
+    ]);
+    const gone = (
+      await repository.git(
+        'commit-tree',
+        'main^{tree}',
+        '-p',
+        'main',
+        '-m',
+        'gone',
+      )
+    ).trim();
+    await repository.git('update-ref', 'refs/heads/gone', gone);
+    try {
+      await connection.refresh();
+      // Opening the tab showed the merge, at HEAD
+      for (const hash of [gone, b]) {
+        await connection.receive({
+          type: 'selectCommit',
+          root: repository.root,
+          hash,
+        });
+      }
+      await waitFor(
+        () => page.last('navigation')?.back.length === 2,
+        'the history of two steps',
+      );
+    } finally {
+      await repository.git('update-ref', '-d', 'refs/heads/gone');
+    }
+    await connection.refresh();
+    assert.deepStrictEqual(
+      page.last('navigation')?.back.map((entry) => entry.hash),
+      [merge],
+    );
+    // The first entry of the dropdown is the first step that is still there
+    await connection.receive({
+      type: 'navigate',
+      root: repository.root,
+      direction: 'back',
+      steps: 1,
+    });
+    assert.strictEqual(page.last('reveal')?.hash, merge);
+  });
+
   test('adds no step for moving through the list with the arrow keys', async () => {
     const [b, a] = await Promise.all([
       repository.hash('main~1'),
@@ -1421,6 +1525,9 @@ suite('Pull and push', function () {
         'from elsewhere',
       ]);
       await runGit(gitPath, elsewhere, ['push', 'origin', 'main']);
+      const fetched = (
+        await runGit(gitPath, elsewhere, ['rev-parse', 'HEAD'])
+      ).trim();
       page.clear();
       // Like VS Code's autofetch, without asking the view to refresh
       const git = await getGitApi();
@@ -1428,8 +1535,11 @@ suite('Pull and push', function () {
       // The refs and the reloaded history come in side by side
       await waitFor(
         () =>
-          page.last('repository')?.behind === 1 &&
-          page.last('commits') !== undefined,
+          page
+            .last('repository')
+            ?.refs.some(
+              (ref) => ref.name === 'origin/main' && ref.commit === fetched,
+            ) === true && page.last('commits') !== undefined,
         'the fetched commit and the reloaded history',
       );
     } finally {
@@ -1480,7 +1590,7 @@ suite('Pull and push', function () {
     await refresh();
     const before = page.last('repository');
     assert.strictEqual(before?.headUpstream, 'origin/main');
-    assert.deepStrictEqual([before.ahead, before.behind], [1, 0]);
+    assert.strictEqual(before.headCommit, await repository.hash('main'));
 
     await connection.receive({
       type: 'sync',
@@ -1491,7 +1601,13 @@ suite('Pull and push', function () {
       await runGit((await getGitApi()).git.path, remote, ['rev-parse', 'main'])
     ).trim();
     assert.strictEqual(pushed, await repository.hash('main'));
-    assert.strictEqual(page.last('repository')?.ahead, 0);
+    assert.ok(
+      page
+        .last('repository')
+        ?.refs.some(
+          (ref) => ref.name === 'origin/main' && ref.commit === pushed,
+        ),
+    );
     assert.strictEqual(page.last('syncing')?.action, undefined);
   });
 
@@ -1499,7 +1615,7 @@ suite('Pull and push', function () {
     const latest = await repository.hash('main');
     await repository.git('reset', '--hard', 'main~1');
     await refresh();
-    assert.strictEqual(page.last('repository')?.behind, 1);
+    assert.notStrictEqual(page.last('repository')?.headCommit, latest);
 
     await connection.receive({
       type: 'sync',
@@ -1507,6 +1623,6 @@ suite('Pull and push', function () {
       action: 'pull',
     });
     assert.strictEqual(await repository.hash('main'), latest);
-    assert.strictEqual(page.last('repository')?.behind, 0);
+    assert.strictEqual(page.last('repository')?.headCommit, latest);
   });
 });

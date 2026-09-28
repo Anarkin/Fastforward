@@ -7,6 +7,7 @@ import type { API, Repository } from '../git/git';
 import { getGitApi, listRefs } from '../git/repository';
 import {
   commitsStartingWith,
+  findCommit,
   listHistory,
   logCommits,
   runGit,
@@ -112,6 +113,35 @@ suite('Git repository', function () {
       await commitsStartingWith(git.git.path, cwd, 'main'),
       [],
     );
+  });
+
+  test('says which commit a typed hash is', async () => {
+    const [rename] = await listHistory(git.git.path, cwd);
+    assert.deepStrictEqual(
+      await findCommit(git.git.path, cwd, rename.hash.slice(0, 7)),
+      { kind: 'found', hash: rename.hash, subject: 'rename' },
+    );
+    assert.deepStrictEqual(await findCommit(git.git.path, cwd, 'ffffff0'), {
+      kind: 'none',
+    });
+    // A file's object isn't a commit
+    const blob = (
+      await runGit(git.git.path, cwd, ['rev-parse', 'HEAD:first.txt'])
+    ).trim();
+    assert.deepStrictEqual(
+      await findCommit(git.git.path, cwd, blob.slice(0, 7)),
+      { kind: 'none' },
+    );
+    // Nor is a branch whose name looks like a hash, which git would read
+    // first
+    await runGit(git.git.path, cwd, ['branch', 'fade', 'HEAD']);
+    try {
+      assert.deepStrictEqual(await findCommit(git.git.path, cwd, 'fade'), {
+        kind: 'none',
+      });
+    } finally {
+      await runGit(git.git.path, cwd, ['branch', '-D', 'fade']);
+    }
   });
 
   test('diffs a renamed file as a rename', async () => {

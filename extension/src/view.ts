@@ -20,7 +20,7 @@ import {
 import { getGitApi, listRefs, pickRepository } from './git/repository';
 import {
   aheadBehind,
-  commitsStartingWith,
+  findCommit,
   headCommit,
   listHistory,
   listTree,
@@ -33,15 +33,17 @@ import {
   workingTreeFiles,
   workingTreePatch,
   type HistoryEntry,
+  type PatchScope,
+  type WorkingTree,
 } from './git/show';
 import {
   commitPageSize,
   isLargeChange,
   workingTreeHash,
   type CheckoutTarget,
+  type CommitInfo,
   type SyncAction,
   type FileChange,
-  type HashLookup,
   type RefInfo,
   type ChangesView,
   type FilesMode,
@@ -92,8 +94,16 @@ interface TabState {
   // The files the selected commit changed; others picked in the Files view
   // are shown whole instead of as a diff
   changedFiles: Map<string, FileChange>;
-  // Every commit of every branch, remote and tag, newest first
+  // The uncommitted changes those files are, when they are selected, whose
+  // diff is taken against the same base and untracked files
+  workingTree: WorkingTree | undefined;
+  // Every commit of every branch, remote and tag, newest first, and their
+  // hashes, to tell whether one is still there
   fullHistory: readonly HistoryEntry[];
+  inHistory: Set<string>;
+  // The subjects of the commits sent, which the back and forward dropdowns
+  // list without asking git again
+  subjects: Map<string, string>;
   // Its commits that nothing is built on yet
   heads: Set<string>;
   // HEAD and every ref when the history loaded; the history is reloaded when
@@ -613,7 +623,6 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     );
     this.watch(context, session);
     await this.addRecent(context.root);
-    await this.addDefaultBookmarks(context);
     // The first time a tab opens it starts at what is checked out; later, it
     // is where it was left
     const firstOpen = !context.tab.opened;
@@ -623,21 +632,31 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     // of reloading a history that took half a second for 190k commits
     if (!firstOpen && context.tab.shown.commits) {
       this.log.info(`Tab ${context.root} is shown as it was left`);
+      await this.addDefaultBookmarks(context);
       await this.refresh(context);
       return;
     }
+    await this.loadTab(context, firstOpen);
+  }
+
+  // Loads a tab's bookmarks, history, uncommitted changes and refs, listing
+  // the refs once for all of them, and selects what is checked out, or else
+  // the commit selected before
+  private async loadTab(context: Context, atHead: boolean): Promise<void> {
+    const refs = listRefs(context.repository);
     await Promise.all([
+      this.addDefaultBookmarks(context, refs),
       // In the place of a refresh, as the watcher's first refresh can come
       // while the history loads, which would load it a second time at once
       this.refresh(context, async (latest) => {
         // Unless a refresh that ran first loaded it already
         if (latest.tab.fingerprint === '') {
-          await this.sendCommits(latest);
+          await this.sendCommits(latest, refs);
         }
-        await (firstOpen ? this.showHead(latest) : this.sendCommit(latest));
+        await (atHead ? this.showHead(latest) : this.sendCommit(latest));
       }),
       this.sendWorkingTree(context),
-      this.sendRepository(context),
+      this.sendRepository(context, refs),
     ]);
   }
 
@@ -666,12 +685,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         }
         this.log.info(`Preloading tab ${root}`);
         tab.opened = true;
-        await this.addDefaultBookmarks(context);
-        await Promise.all([
-          this.sendCommits(context).then(() => this.showHead(context)),
-          this.sendWorkingTree(context),
-          this.sendRepository(context),
-        ]);
+        await this.loadTab(context, true);
       } catch (error) {
         // Opening the tab loads it the usual way then
         tab.opened = false;
@@ -687,19 +701,16 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
 
   private async sendRepository(
     context: Context,
-    knownRefs?: readonly RefInfo[],
+    refs: Promise<readonly RefInfo[]>,
   ): Promise<void> {
-    const [refs, counts] = await Promise.all([
-      knownRefs ?? listRefs(context.repository),
-      aheadBehind(context.git.git.path, context.root),
-    ]);
+    const listed = await refs;
+    const { HEAD } = context.repository.state;
     context.post({
       type: 'repository',
-      head: checkedOutBranch(context.repository.state.HEAD),
-      headCommit: context.repository.state.HEAD?.commit,
+      head: checkedOutBranch(HEAD),
+      headCommit: HEAD?.commit,
       headUpstream: upstreamOf(context.repository),
-      ...counts,
-      refs,
+      refs: listed,
     });
   }
 
@@ -727,15 +738,18 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
   // remote's default branch, or else a local main, master or trunk, with the
   // local and remote branch of the same name; removing them later sticks, as
   // the repository has a saved list from then on
-  private async addDefaultBookmarks(context: Context): Promise<void> {
+  private async addDefaultBookmarks(
+    context: Context,
+    refs?: Promise<readonly RefInfo[]>,
+  ): Promise<void> {
     if (this.bookmarksOf(context.root) !== undefined) {
       return;
     }
-    const [refs, defaults] = await Promise.all([
-      listRefs(context.repository),
+    const [listed, defaults] = await Promise.all([
+      refs ?? listRefs(context.repository),
       remoteDefaultBranches(context.git.git.path, context.root),
     ]);
-    const bookmarks = defaultBookmarks(refs, defaults);
+    const bookmarks = defaultBookmarks(listed, defaults);
     await this.setBookmarks(context.root, bookmarks);
     context.post({ type: 'bookmarks', bookmarks });
   }
@@ -759,7 +773,10 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         index: undefined,
         path: undefined,
         changedFiles: new Map(),
+        workingTree: undefined,
         fullHistory: [],
+        inHistory: new Set(),
+        subjects: new Map(),
         heads: new Set(),
         fingerprint: '',
         anchor: undefined,
@@ -993,29 +1010,37 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
   }
 
   // The history's nearest steps both ways, with their subjects, for the
-  // buttons and their dropdowns
+  // buttons and their dropdowns; only the steps whose commit is still there,
+  // which are the ones navigate counts, so a picked step is the one it goes to
   private async sendNavigation(context: Context): Promise<void> {
-    const { navigation } = context.tab;
-    const back = navigation.back.toReversed().slice(0, navigationShown);
-    const forward = navigation.forward.toReversed().slice(0, navigationShown);
-    const commits = await logCommits(
-      context.git.git.path,
-      context.root,
-      [...new Set([...back, ...forward])].filter(
-        (hash) => hash !== workingTreeHash,
-      ),
+    const { tab } = context;
+    const { navigation } = tab;
+    const exists = stillThere(tab);
+    const nearest = (steps: readonly string[]) =>
+      steps.filter(exists).toReversed().slice(0, navigationShown);
+    const back = nearest(navigation.back);
+    const forward = nearest(navigation.forward);
+    // Commits the page never loaded, like one left by a jump before its page
+    // came, are the only ones git is asked about
+    const unknown = [...new Set([...back, ...forward])].filter(
+      (hash) => hash !== workingTreeHash && !tab.subjects.has(hash),
     );
-    // Another step was taken while git ran
-    if (context.tab.navigation !== navigation) {
-      return;
+    if (unknown.length > 0) {
+      keepSubjects(
+        tab,
+        await logCommits(context.git.git.path, context.root, unknown),
+      );
+      // Another step was taken while git ran
+      if (tab.navigation !== navigation) {
+        return;
+      }
     }
-    const subjects = new Map(
-      commits.map((commit) => [commit.hash, commit.subject]),
-    );
     const entry = (hash: string) => ({
       hash,
       subject:
-        hash === workingTreeHash ? 'Uncommitted changes' : subjects.get(hash),
+        hash === workingTreeHash
+          ? 'Uncommitted changes'
+          : tab.subjects.get(hash),
     });
     context.post({
       type: 'navigation',
@@ -1026,22 +1051,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
 
   // Says which commit a typed hash is, for the address bar's suggestion
   private async lookupHash(context: Context, query: string): Promise<void> {
-    const gitPath = context.git.git.path;
-    const hashes = await commitsStartingWith(gitPath, context.root, query);
-    let result: HashLookup;
-    if (hashes.length === 1) {
-      const [commit] = await logCommits(gitPath, context.root, hashes);
-      result = {
-        kind: 'found',
-        hash: hashes[0],
-        subject: commit?.subject ?? '',
-      };
-    } else {
-      result =
-        hashes.length === 0
-          ? { kind: 'none' }
-          : { kind: 'ambiguous', count: hashes.length };
-    }
+    const result = await findCommit(context.git.git.path, context.root, query);
     context.post({ type: 'hashLookup', query, result });
   }
 
@@ -1052,13 +1062,12 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     steps: number,
   ): Promise<void> {
     const { tab } = context;
-    const known = new Set(tab.fullHistory.map((entry) => entry.hash));
     const result = step(
       tab.navigation,
       tab.hash,
       direction,
       steps,
-      (hash) => hash === workingTreeHash || known.has(hash),
+      stillThere(tab),
     );
     if (!result) {
       return;
@@ -1154,50 +1163,71 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     return tab.refreshing;
   }
 
+  // The uncommitted changes and the history side by side, as neither waits
+  // for the other
   private async refreshOnce(context: Context): Promise<void> {
-    const files = await workingTreeFiles(context.git.git.path, context.root);
-    context.post({ type: 'workingTree', files: files.length });
-    if (context.tab.hash === workingTreeHash) {
-      await this.sendCommit(context, files);
-      if (context.tab.shown.tree?.hash === workingTreeHash) {
-        await this.sendTree(context, workingTreeHash);
-      }
-    }
+    await Promise.all([
+      this.sendWorkingTree(context).then(async (workingTree) => {
+        if (context.tab.hash === workingTreeHash) {
+          await this.sendCommit(context, workingTree);
+          if (context.tab.shown.tree?.hash === workingTreeHash) {
+            await this.sendTree(context, workingTreeHash, true);
+          }
+        }
+      }),
+      this.refreshHistory(context),
+    ]);
+  }
+
+  // Reloads the history when HEAD or a ref moved
+  private async refreshHistory(context: Context): Promise<void> {
     const refs = await listRefs(context.repository);
     if (
       fingerprint(context.repository.state.HEAD, refs) !==
       context.tab.fingerprint
     ) {
       this.log.info('Refs changed, reloading the history');
+      const known = Promise.resolve(refs);
       await Promise.all([
-        this.sendRepository(context, refs),
-        this.sendCommits(context, true, refs),
+        this.sendRepository(context, known),
+        this.sendCommits(context, known, true),
       ]);
     } else if (context.tab.shownStale) {
       await this.sendShownHistory(context, undefined, true);
     }
   }
 
-  private async sendWorkingTree(context: Context): Promise<void> {
-    const files = await workingTreeFiles(context.git.git.path, context.root);
-    context.post({ type: 'workingTree', files: files.length });
+  private async sendWorkingTree(context: Context): Promise<WorkingTree> {
+    const workingTree = await workingTreeFiles(
+      context.git.git.path,
+      context.root,
+    );
+    context.post({ type: 'workingTree', files: workingTree.files.length });
+    return workingTree;
   }
 
   private async sendCommits(
     context: Context,
+    refs: Promise<readonly RefInfo[]>,
     keepPlace = false,
-    knownRefs?: readonly RefInfo[],
   ): Promise<void> {
-    const [fullHistory, refs] = await Promise.all([
+    const [fullHistory, listed] = await Promise.all([
       listHistory(context.git.git.path, context.root),
-      knownRefs ?? listRefs(context.repository),
+      refs,
     ]);
     const { tab } = context;
     tab.fullHistory = fullHistory;
+    tab.inHistory = new Set(fullHistory.map((entry) => entry.hash));
     tab.heads = headsOf(fullHistory);
-    tab.fingerprint = fingerprint(context.repository.state.HEAD, refs);
-    tab.refCounts = countRefs(refs, context.repository.state.HEAD);
+    tab.fingerprint = fingerprint(context.repository.state.HEAD, listed);
+    tab.refCounts = countRefs(listed, context.repository.state.HEAD);
     await this.sendShownHistory(context, undefined, keepPlace);
+    // Steps whose commit the reload dropped, like after a rebase, leave the
+    // dropdowns, and the buttons when none is left
+    const { back, forward } = tab.navigation;
+    if (back.length + forward.length > 0) {
+      await this.sendNavigation(context);
+    }
   }
 
   // Expands these merges, whatever the setting says, and sends the list
@@ -1271,6 +1301,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         .slice(start, start + 2 * commitPageSize)
         .map((entry) => entry.hash),
     );
+    keepSubjects(tab, commits);
     // A newer list was worked out while git ran
     if (tab.generation !== generation) {
       return;
@@ -1323,6 +1354,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       }
       throw error;
     });
+    keepSubjects(tab, commits);
     if (replaced()) {
       return;
     }
@@ -1337,18 +1369,19 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
 
   private async sendCommit(
     context: Context,
-    workingTreeFilesKnown?: FileChange[],
+    knownWorkingTree?: WorkingTree,
   ): Promise<void> {
     const { hash } = context.tab;
     if (!hash) {
       return;
     }
     const gitPath = context.git.git.path;
-    let files: FileChange[];
+    let files: readonly FileChange[];
+    let workingTree: WorkingTree | undefined;
     if (hash === workingTreeHash) {
-      files =
-        workingTreeFilesKnown ??
-        (await workingTreeFiles(gitPath, context.root));
+      workingTree =
+        knownWorkingTree ?? (await workingTreeFiles(gitPath, context.root));
+      files = workingTree.files;
     } else if (context.tab.positions.has(hash)) {
       files = await showFiles(gitPath, context.root, hash);
     } else {
@@ -1362,9 +1395,12 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       return;
     }
     context.tab.changedFiles = new Map(files.map((file) => [file.path, file]));
+    if (workingTree) {
+      context.tab.workingTree = workingTree;
+    }
     // A refresh doesn't send what the page shows already; a selection always
     // sends, as the page cleared its files and diff when it asked
-    const refreshing = workingTreeFilesKnown !== undefined;
+    const refreshing = knownWorkingTree !== undefined;
     const shownFiles = context.tab.shown.files;
     const unchanged =
       shownFiles?.hash === hash &&
@@ -1382,23 +1418,52 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     file: string,
   ): Promise<void> {
     const change = context.tab.changedFiles.get(file);
-    const scope = { path: file, oldPath: change?.oldPath };
-    const patch =
-      hash === workingTreeHash
-        ? await workingTreePatch(context.git.git.path, context.root, scope)
-        : await showPatch(context.git.git.path, context.root, hash, scope);
+    const patch = await this.patchOf(context, hash, {
+      path: file,
+      oldPath: change?.oldPath,
+    });
     if (context.tab.hash === hash) {
       context.post({ type: 'fileDiff', hash, path: file, patch });
     }
   }
 
-  private async sendTree(context: Context, hash: string): Promise<void> {
+  // A commit's patch, or that of the uncommitted changes whose files were
+  // sent last
+  private async patchOf(
+    context: Context,
+    hash: string,
+    scope: PatchScope,
+  ): Promise<string> {
+    const gitPath = context.git.git.path;
+    if (hash !== workingTreeHash) {
+      return showPatch(gitPath, context.root, hash, scope);
+    }
+    const workingTree =
+      context.tab.workingTree ??
+      (await workingTreeFiles(gitPath, context.root));
+    return workingTreePatch(gitPath, context.root, workingTree, scope);
+  }
+
+  // A refresh doesn't send the files the page lists already
+  private async sendTree(
+    context: Context,
+    hash: string,
+    refreshing = false,
+  ): Promise<void> {
     const paths = await listTree(
       context.git.git.path,
       context.root,
       hash === workingTreeHash ? undefined : hash,
     );
-    context.post({ type: 'tree', hash, paths });
+    const shown = context.tab.shown.tree;
+    const unchanged =
+      refreshing &&
+      shown?.hash === hash &&
+      shown.paths.length === paths.length &&
+      shown.paths.every((file, index) => file === paths[index]);
+    if (!unchanged) {
+      context.post({ type: 'tree', hash, paths });
+    }
   }
 
   private async sendDiff(
@@ -1407,7 +1472,6 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     refreshing = false,
   ): Promise<void> {
     const { path: file } = context.tab;
-    const gitPath = context.git.git.path;
     // Another commit or file was selected while git ran
     const stale = () => context.tab.hash !== hash || context.tab.path !== file;
     const change =
@@ -1415,12 +1479,20 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     // A file the commit didn't change, picked in the Files view, has no diff
     if (file !== undefined && !change) {
       const { content, binary } = await readFile(
-        gitPath,
+        context.git.git.path,
         context.root,
         hash === workingTreeHash ? undefined : hash,
         file,
       );
-      if (!stale()) {
+      const shownDiff = context.tab.shown.diff;
+      const unchanged =
+        refreshing &&
+        shownDiff?.type === 'fileContent' &&
+        shownDiff.hash === hash &&
+        shownDiff.path === file &&
+        shownDiff.content === content &&
+        shownDiff.binary === binary;
+      if (!stale() && !unchanged) {
         context.post({
           type: 'fileContent',
           hash,
@@ -1443,10 +1515,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
               ),
           }
         : { path: file, oldPath: change?.oldPath };
-    const patch =
-      hash === workingTreeHash
-        ? await workingTreePatch(gitPath, context.root, scope)
-        : await showPatch(gitPath, context.root, hash, scope);
+    const patch = await this.patchOf(context, hash, scope);
     const shownDiff = context.tab.shown.diff;
     const unchanged =
       refreshing &&
@@ -1542,6 +1611,19 @@ function replayOf(tab: TabState): ToWebview[] {
     shown.diff,
     shown.tree,
   ].filter((message) => message !== undefined);
+}
+
+// Whether a step of the back and forward history can still be gone to: the
+// uncommitted changes always can, a commit while the history has it
+function stillThere(tab: TabState): (hash: string) => boolean {
+  return (hash) => hash === workingTreeHash || tab.inHistory.has(hash);
+}
+
+// Remembers the subjects of commits sent to the page
+function keepSubjects(tab: TabState, commits: readonly CommitInfo[]): void {
+  for (const commit of commits) {
+    tab.subjects.set(commit.hash, commit.subject);
+  }
 }
 
 // Where a commit is in the list; the working tree's row is above the first
