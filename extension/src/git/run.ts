@@ -13,8 +13,8 @@ const configArgs = [
   'diff.suppressBlankEmpty=false',
 ];
 
-// Reading commands skip git's optional locks, so a refresh running while the
-// user commits elsewhere doesn't hold index.lock and make that commit fail;
+// Commands skip git's optional locks, so a refresh running while the user
+// commits elsewhere doesn't hold index.lock and make that commit fail;
 // paths are taken literally, so a file named "*.md" isn't a pattern
 function env(pathspecMagic = false): NodeJS.ProcessEnv {
   return {
@@ -25,7 +25,8 @@ function env(pathspecMagic = false): NodeJS.ProcessEnv {
 }
 
 interface RunOptions {
-  // git diff --no-index exits with 1 when the files differ
+  // Exit codes that aren't failures, like git diff --no-index's 1 when the
+  // files differ
   readonly okExitCodes?: readonly number[];
   // Written to the command's stdin
   readonly input?: string;

@@ -69,8 +69,7 @@ export function Diff({
     [files],
   );
 
-  // Only the files' diffs; the commit's message is in the address bar, and
-  // its author and date in the commit list; an error goes on top
+  // An error goes above the diff
   const errorRow = error && <div className="error">{error}</div>;
 
   return (

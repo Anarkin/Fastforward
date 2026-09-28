@@ -29,13 +29,13 @@ export function compareBookmarks(a: Bookmark, b: Bookmark): number {
   );
 }
 
-// What of a commit can be a bookmark: its refs, in the order of the
-// bookmarks row, then the commit itself
 export interface BookmarkOption {
   readonly label: string;
   readonly bookmark: Bookmark;
 }
 
+// What of a commit can be a bookmark: its refs, in the order of the
+// bookmarks row, then the commit itself
 export function bookmarkOptions(
   hash: string,
   refs: readonly RefInfo[],

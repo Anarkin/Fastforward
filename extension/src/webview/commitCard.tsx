@@ -49,19 +49,16 @@ function LaterRow({
 }
 
 // Under the address bar's subject: the description on the left, starting
-// where the subject does, as an invisible copy of the hash takes the hash's
-// room; a frame around it reaches up behind the bar, so the subject and the
-// description read as one; on the right, a table of the full hash, the
-// author, the committer, when it was authored and when committed, in the
-// order they happen, each row always in its place, so it is where it was on
-// the last commit; the committer and when committed differ from the author
-// and when authored after a rebase, a cherry-pick or a merge on GitHub
+// where the subject does, as an invisible copy of the hash takes its room, in
+// a frame that reaches up behind the bar, so the two read as one; on the
+// right, a table of the full hash, the author, the committer and both dates,
+// in the order they happen, each row always in its place, so it is where it
+// was on the last commit
 export function CommitDetails({ commit }: { commit: CardCommit }) {
   const body = commitBody(commit.message);
   const sameCommitter =
     commit.committerName === commit.authorName &&
     commit.committerEmail === commit.authorEmail;
-  // As shown, to the minute, so seconds apart don't read as the same twice
   // Under the table, one to a row, where the values are
   const bubbles = [
     ...(commit.detachedHead
@@ -72,6 +69,7 @@ export function CommitDetails({ commit }: { commit: CardCommit }) {
       element: <RefBubble info={ref} />,
     })),
   ];
+  // As shown, to the minute, so seconds apart don't read as the same twice
   const sameDate =
     formatDateTime(commit.commitDate) === formatDateTime(commit.authorDate);
   return (

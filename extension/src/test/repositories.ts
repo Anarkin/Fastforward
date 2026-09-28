@@ -37,8 +37,8 @@ export function removeFolder(folder: string): void {
   }
 }
 
-// A repository at this folder, made if missing; a bare one is a remote to
-// push to
+// A repository at this folder, made if missing; a bare one stands in for a
+// remote
 export async function tempRepository(
   root: string,
   { branch = 'main', bare = false } = {},

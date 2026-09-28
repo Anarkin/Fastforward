@@ -50,7 +50,8 @@ export interface TabState {
   // The commit at the top of the list and how far it is scrolled into it,
   // which a reload keeps in place
   anchor: { hash: string; offset: number } | undefined;
-  // Whether the tab was opened in this session, which starts it at HEAD
+  // Whether the tab was loaded in this session, opened or preloaded; the
+  // first load starts it at HEAD
   opened: boolean;
   // The commits shown before and after, for back and forward
   navigation: Navigation;
@@ -79,8 +80,8 @@ type Message<T extends ToWebview['type']> = Extract<ToWebview, { type: T }>;
 // What a tab shows, from the last messages sent for it, which are replayed
 // when the tab or the modal opens again so it shows up instantly, before the
 // refresh; only these, as the others either happen once, like jumps and
-// errors, are answers the page asks for again, like pages of commits, or are
-// saved elsewhere, like the bookmarks
+// errors, are answers the page asks for again, like pages of commits, large
+// files' diffs and hash lookups, or are saved elsewhere, like the bookmarks
 interface Shown {
   repository?: Message<'repository'>;
   fetching?: Message<'fetching'>;

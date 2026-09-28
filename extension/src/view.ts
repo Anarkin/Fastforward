@@ -373,7 +373,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         await this.sendTree(context, message.hash);
         break;
       case 'jump': {
-        // A hash typed in the address bar can be short
+        // The page sends full hashes, but a short one is looked up too
         const hash = /^[0-9a-f]{40}$/.test(message.hash)
           ? message.hash
           : await commitOf(context.gitPath, context.root, message.hash);
@@ -659,7 +659,8 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     };
   }
 
-  // Keeps the uncommitted changes row up to date while the view is open
+  // Refreshes the tab after a change in the repository while the page shows
+  // it, once the changes stop for a moment
   private watch(context: Context, session: Session): void {
     session.watcher?.dispose();
     let timer: NodeJS.Timeout | undefined;
@@ -870,7 +871,8 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     ]);
   }
 
-  // Reloads the history when HEAD or a ref moved
+  // Reloads the history when HEAD or a ref moved, or shows it again when the
+  // merge setting changed while the tab was in the background
   private async refreshHistory(context: Context): Promise<void> {
     const refs = await listRefs(context.repository);
     if (

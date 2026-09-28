@@ -89,7 +89,7 @@ export function App({ post }: Props) {
     folders,
     activeTab,
   );
-  // Refs pinned to the bookmarks row, saved per repository
+  // Refs and commits pinned to the bookmarks row, saved per repository
   const [bookmarks, setBookmarks] = useState<readonly Bookmark[]>([]);
   const [menu, setMenu] = useState<OpenMenu>();
   const closeMenu = useCallback(() => setMenu(undefined), []);
@@ -325,10 +325,10 @@ export function App({ post }: Props) {
     ),
   });
 
-  // The items of the menu for what was right-clicked
   const checkout = (target: CheckoutTarget) =>
     postTab({ type: 'checkout', target });
 
+  // The items of the menu for what was right-clicked
   const menuItems = (target: MenuTarget): ContextMenuItem[] => {
     const refs = repository?.refs ?? [];
     const head = repository?.head;

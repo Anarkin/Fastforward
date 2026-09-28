@@ -200,7 +200,7 @@ export interface Address {
   readonly hash: string | undefined;
   // One line, for the bar
   readonly subject: string | undefined;
-  // For the card in the peek and popup
+  // For the details in the peek
   readonly commit: CardCommit | undefined;
 }
 
@@ -337,8 +337,8 @@ function AddressBar({
   selected: string | undefined;
   onJump: (commit: string) => void;
 }) {
-  // Resting the pointer on the bar peeks at the whole commit message; a
-  // click opens the search
+  // Resting the pointer on the bar peeks at the commit's details; a click
+  // opens the search
   const { mode, startPeek, endPeek, togglePeek, open, close } = usePeek(
     address.commit !== undefined,
   );

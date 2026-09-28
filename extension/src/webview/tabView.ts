@@ -23,7 +23,7 @@ export interface TabView {
   readonly repository: RepositoryState | undefined;
   // Filled in place as pages arrive, which the commit list follows by itself;
   // the view is a new object when the selected commit's page arrives, so the
-  // page shows its details
+  // address bar shows it
   readonly history: CommitHistory | undefined;
   readonly scrollTarget: ScrollTarget | undefined;
   // Number of uncommitted files, undefined until the extension reports it

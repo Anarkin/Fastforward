@@ -17,9 +17,8 @@ import { MenuButton } from './menu';
 import { useSkeleton } from './skeleton';
 import type { ScrollTarget } from './tabView';
 
-// A row is this high, plus a line per ref pointing at its commit; the ref
-// counts arrive with the history, so every row's height, and so the scroll
-// position of every commit, is known without loading or measuring it
+// A row is this high, and a line of bubbles higher when refs point at its
+// commit
 export const commitRowHeight = 50;
 export const bubbleLineHeight = 20;
 // Pages are asked for once scrolling pauses this long, so dragging the
@@ -28,8 +27,7 @@ const loadDelay = 80;
 // The top commit is reported once scrolling pauses this long
 const scrolledDelay = 150;
 
-// Only the rows on screen are rendered, and the list has the height of the
-// whole history from the start, so the scrollbar never changes
+// For useSyncExternalStore before a history arrives
 const noHistory = () => () => {};
 const noVersion = () => 0;
 
@@ -137,6 +135,8 @@ export function Commits({
     (index: number) => rowKeyOf(history, offset, index),
     [history, offset],
   );
+  // Only the rows on screen are rendered, and the list has the height of the
+  // whole history from the start
   const virtualizer = useVirtualizer({
     count,
     getScrollElement: () => list.current,
@@ -331,7 +331,7 @@ export function Commits({
         className={`commit ${commit.hash === selected ? 'selected' : ''}`}
         style={{ paddingLeft: indent(index) }}
         onClick={() => onSelect(commit.hash)}
-        // No items yet; bubbles in the row open their own menu first
+        // Bubbles in the row open their own menu first
         onContextMenu={(event) =>
           openMenu(event, { kind: 'commit', hash: commit.hash })
         }

@@ -1,9 +1,6 @@
 import type { FileChange } from '../shared/protocol';
 import { runGit, splitNul } from './run';
 
-// Commit files and patches come from git show, because the Git extension API
-// only diffs ranges (a...b), which fails for root commits
-
 // Diffs in the format the parsers expect, whatever the user's config says:
 // no colors, external diff tools or text conversion, and a/ and b/ prefixes
 export const diffArgs = [

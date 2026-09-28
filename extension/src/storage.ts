@@ -23,8 +23,9 @@ export const collapseMergesKey = 'collapseMerges';
 const filesModeKey = 'filesMode';
 // Whether the Changes tab is a list or a tree, per user and synced
 const changesViewKey = 'changesView';
-// Bookmarked refs by repository root, per user; not synced, as roots are
-// paths on this machine; named vips, as bookmarks were called at first
+// Bookmarked refs and commits by repository root, per user; not synced, as
+// roots are paths on this machine; named vips, as bookmarks were called at
+// first
 export const bookmarksKey = 'vips';
 
 // What the view saves: the tabs per workspace, and the rest per user

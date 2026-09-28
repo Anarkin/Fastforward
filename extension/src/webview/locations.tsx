@@ -184,9 +184,9 @@ export function usePopupHeight(
 }
 
 // Every branch, remote and tag in a popup over the address bar, a column
-// each: the search in the bar's place, the selected commit's whole message,
-// then the trees, or the matches while searching; picking one jumps to its
-// commit and closes the popup, and so does Enter on a hash
+// each: the search in the bar's place, the commit a typed hash is, then the
+// trees, or the matches while searching; picking one jumps to its commit and
+// closes the popup, and so does Enter on a hash
 export function LocationsPopup({
   repository,
   selected,
@@ -296,7 +296,7 @@ export function LocationsPopup({
       ArrowRight: [1, 0],
     };
     if (query && event.key in moves) {
-      // Left and right move the caret in the search box unless it's empty
+      // While searching, the arrows move through the matches, not the caret
       event.preventDefault();
       const [columns, rows] = moves[event.key];
       move(columns, rows);

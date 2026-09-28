@@ -12,9 +12,7 @@ body {
      and each commit's author and date */
   --muted-opacity: 0.45;
   /* The active tab's and the rows under it, the address bar's and the
-     bookmarks', which read as one toolbar; the panels' background, but a
-     shade toward the text would set them apart, e.g.
-     color-mix(in srgb, var(--vscode-foreground) 4%, var(--vscode-editor-background)) */
+     bookmarks', which read as one toolbar: the panels' background */
   --toolbar-background: var(--vscode-editor-background);
   /* A shade toward the text, for what is picked: the address bar at rest,
      and the selected commit and file, so they read as the same thing */
@@ -225,8 +223,8 @@ body {
   flex: 1;
   min-height: 0;
   display: grid;
-  /* The column widths come from useColumnWidths */
-  /* One row, capped at the available height so the columns scroll */
+  /* The column widths come from useColumnWidths; one row, capped at the
+     available height so the columns scroll */
   grid-template-rows: minmax(0, 1fr);
 }
 
@@ -336,7 +334,7 @@ body.resizing {
   font-weight: 600;
 }
 
-/* Matches twistyWidth in App.tsx */
+/* Matches twistyWidth in tree.tsx */
 .twisty {
   display: inline-block;
   width: 10px;
@@ -360,7 +358,7 @@ body.resizing {
 }
 
 /* Exact heights, adding up to commitRowHeight: 5 + 20 + 2 + 18 + 4 + 1 border,
-   plus bubbleLineHeight per ref */
+   and the bubbles' lines below */
 .commit {
   padding: 5px 8px 4px;
   cursor: pointer;
@@ -423,7 +421,7 @@ body.resizing {
   background: color-mix(in srgb, var(--vscode-foreground) 12%, transparent);
 }
 
-/* The same size everywhere: in commit rows and in the Diff summary */
+/* The same size everywhere bubbles are */
 .badge {
   display: inline-block;
   box-sizing: border-box;
@@ -556,8 +554,6 @@ body.resizing {
   width: 100%;
 }
 
-/* A row's height is set from its ref count; see commitRowHeight */
-
 /* The commit's refs below the author and date, wrapping onto more lines as
    needed, each line as tall as bubbleLineHeight: a bubble and the gap */
 .bubble-line {
@@ -618,10 +614,8 @@ body.resizing {
   cursor: pointer;
 }
 
-/* The row's text starts after its lanes; the indent is set on each row */
-
-/* Changes | Files in the Files column's title, like a segmented button */
-/* Whole pixels high, 24 with its padding, so it centers in the 34 pixel
+/* Changes | Files in the Files column's title, like a segmented button;
+   whole pixels high, 24 with its padding, so it centers in the 34 pixel
    column title without a blurred half-pixel edge */
 .switch {
   display: inline-flex;
@@ -1224,8 +1218,8 @@ body.resizing {
   text-align: left;
   color: var(--vscode-input-foreground);
   cursor: text;
-  /* Like Chrome's: a shade darker than the toolbar at rest, as the search box
-     it opens into when the pointer is on it, like the peek's */
+  /* Like Chrome's: a shade apart from the toolbar at rest, and like the
+     search box it opens into while the pointer is on it */
   background: var(--shade-background);
   border: 1px solid transparent;
   border-radius: calc(var(--search-height) / 2);
@@ -1253,12 +1247,11 @@ body.resizing {
   color: var(--vscode-input-placeholderForeground);
 }
 
-/* The selected commit's description, as one thing */
-/* Lined up with the subject in the search box above: the same margin,
-   border and padding, then the hash's room */
-/* Starts at the top of the search box, behind it, so the description's
-   frame reaches up to the box; its content starts under the box: the box's
-   height, the gap under it, and 5 pixels more (--card-top) */
+/* The peek's details, lined up with the subject in its search box: the same
+   margin, border and padding, then the hash's room; they start at the top of
+   the box, behind it, so the description's frame reaches up to it, and their
+   content under it: the box's height, the gap under it, and 5 pixels more
+   (--card-top) */
 .commit-card {
   --card-top: calc(var(--search-height) + var(--search-gap) + 5px);
   flex: none;
@@ -1273,8 +1266,8 @@ body.resizing {
   visibility: hidden;
 }
 
-/* The full hash, the author and the date, right of the description, as a
-   table with their names on the left */
+/* The full hash, the author, the committer, the dates and the bubbles, right
+   of the description, as a table with their names on the left */
 .commit-card-info {
   flex: 1 1 0;
   min-width: 0;
@@ -1361,7 +1354,7 @@ body.resizing {
   overflow: auto;
 }
 
-/* The bubbles have their own row now */
+/* With no bookmarks and nothing checked out, the row takes no room */
 .bubble-bar:empty {
   display: none;
 }

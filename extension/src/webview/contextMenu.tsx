@@ -8,8 +8,7 @@ import {
 } from 'react';
 import type { Bookmark } from '../shared/protocol';
 
-// What was right-clicked; the menu's items depend on it, and more kinds, like
-// a commit row, get their own items
+// What was right-clicked, which the menu's items depend on
 export type MenuTarget =
   // A bubble: a ref, or a commit pinned to the bookmarks row
   | { readonly kind: 'ref'; readonly ref: Bookmark }
@@ -149,8 +148,8 @@ export function listenForDismiss(
   };
 }
 
-// Closes a menu on a click outside the element, Escape, the window losing
-// focus, and scrolling when asked
+// Closes a menu or popup on a click outside the element, Escape, the window
+// losing focus, and scrolling when asked
 export function useDismiss(
   element: React.RefObject<HTMLElement | null>,
   onClose: () => void,

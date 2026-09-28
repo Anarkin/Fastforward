@@ -267,7 +267,7 @@ export type ToWebview =
       readonly generation: number;
       readonly total: number;
       // [position, number of refs] for every commit that has refs, so the
-      // height of each row is known before its commit is loaded
+      // height of each row can be estimated before its commit is loaded
       readonly decorations: readonly (readonly [number, number])[];
       // The most lanes any row of the graph uses
       readonly graphWidth: number;
@@ -293,7 +293,8 @@ export type ToWebview =
       readonly commits: readonly CommitInfo[];
       readonly graph: readonly GraphRow[];
     }
-  // Scrolls to a commit and selects it, answering jump
+  // Scrolls to a commit and selects it: a jump's, a step back or forward, or
+  // what is checked out when the tab first opens or after a checkout
   | { readonly type: 'reveal'; readonly hash: string; readonly index: number }
   | { readonly type: 'workingTree'; readonly files: number }
   | {
