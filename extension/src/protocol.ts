@@ -54,19 +54,19 @@ export type CheckoutTarget =
   | { readonly kind: RefKind; readonly name: string }
   | { readonly kind: 'commit'; readonly hash: string };
 
-// A ref the user pinned to the VIP row; by name, as its commit moves
-export interface VipRef {
+// A ref the user pinned to the bookmarks row; by name, as its commit moves
+export interface BookmarkRef {
   readonly kind: RefKind;
   readonly name: string;
 }
 
-// A commit the user pinned to the VIP row, by its full hash
-export interface VipCommit {
+// A commit the user pinned to the bookmarks row, by its full hash
+export interface BookmarkCommit {
   readonly kind: 'commit';
   readonly name: string;
 }
 
-export type Vip = VipRef | VipCommit;
+export type Bookmark = BookmarkRef | BookmarkCommit;
 
 export interface CommitInfo {
   readonly hash: string;
@@ -139,8 +139,8 @@ export type ToExtension =
   | { readonly type: 'setFilesMode'; readonly mode: FilesMode }
   // Whether the Changes tab is a list or a tree, saved per user
   | { readonly type: 'setChangesView'; readonly view: ChangesView }
-  // The VIPs of the active tab's repository, saved per repository and user
-  | { readonly type: 'setVips'; readonly vips: readonly Vip[] }
+  // The bookmarks of the active tab's repository, saved per repository and user
+  | { readonly type: 'setBookmarks'; readonly bookmarks: readonly Bookmark[] }
   // Asks for every file of the repository at a commit
   | { readonly type: 'loadTree'; readonly hash: string }
   // Asks for the diff of a large file left out of the commit's diff
@@ -206,8 +206,8 @@ export type ToWebview =
       readonly filesMode: FilesMode;
       readonly changesView: ChangesView;
     }
-  // The VIPs of the active tab's repository
-  | { readonly type: 'vips'; readonly vips: readonly Vip[] }
+  // The bookmarks of the active tab's repository
+  | { readonly type: 'bookmarks'; readonly bookmarks: readonly Bookmark[] }
   // A pull or push that is running, or undefined once it's done
   | { readonly type: 'syncing'; readonly action: SyncAction | undefined }
   // Answers lookupHash

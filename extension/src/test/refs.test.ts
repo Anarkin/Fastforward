@@ -3,7 +3,7 @@ import type { RefInfo } from '../protocol';
 import {
   countRefs,
   decorations,
-  defaultVips,
+  defaultBookmarks,
   checkedOutBranch,
   detachedHead,
   fingerprint,
@@ -67,9 +67,9 @@ suite('ref counts', () => {
   });
 });
 
-suite('default VIPs', () => {
+suite('Default bookmarks', () => {
   test("picks the remote's default branch, local and remote", () => {
-    assert.deepStrictEqual(defaultVips(refs, ['origin/main']), [
+    assert.deepStrictEqual(defaultBookmarks(refs, ['origin/main']), [
       { kind: 'branch', name: 'main' },
       { kind: 'remote', name: 'origin/main' },
       { kind: 'remote', name: 'upstream/main' },
@@ -81,21 +81,21 @@ suite('default VIPs', () => {
       { kind: 'branch', name: 'develop', commit: 'a' },
       { kind: 'branch', name: 'master', commit: 'b' },
     ];
-    assert.deepStrictEqual(defaultVips(local, []), [
+    assert.deepStrictEqual(defaultBookmarks(local, []), [
       { kind: 'branch', name: 'master' },
     ]);
   });
 
   test('picks nothing without a main branch', () => {
     assert.deepStrictEqual(
-      defaultVips([{ kind: 'branch', name: 'develop', commit: 'a' }], []),
+      defaultBookmarks([{ kind: 'branch', name: 'develop', commit: 'a' }], []),
       [],
     );
   });
 
   test('leaves out the local branch when only the remote one exists', () => {
     assert.deepStrictEqual(
-      defaultVips(
+      defaultBookmarks(
         [{ kind: 'remote', name: 'origin/main', commit: 'a' }],
         ['origin/main'],
       ),

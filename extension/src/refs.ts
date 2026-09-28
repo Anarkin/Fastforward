@@ -1,4 +1,4 @@
-import type { RefInfo, VipRef } from './protocol';
+import type { RefInfo, BookmarkRef } from './protocol';
 import { withoutRemote } from './refNames';
 
 interface Head {
@@ -70,15 +70,17 @@ export function decorations(
   return result;
 }
 
-// The VIPs a repository starts with: its main branch, the remote's default
+// The bookmarks a repository starts with: its main branch, the remote's default
 // like origin/main, or else a local main, master or trunk, as the local branch
 // and every remote branch of the same name that exist
-export function defaultVips(
+export function defaultBookmarks(
   refs: readonly RefInfo[],
   remoteDefaults: readonly string[],
-): VipRef[] {
-  const exists = (vip: VipRef) =>
-    refs.some((ref) => ref.kind === vip.kind && ref.name === vip.name);
+): BookmarkRef[] {
+  const exists = (bookmark: BookmarkRef) =>
+    refs.some(
+      (ref) => ref.kind === bookmark.kind && ref.name === bookmark.name,
+    );
   const [main] = remoteDefaults.length
     ? remoteDefaults.map(withoutRemote)
     : ['main', 'master', 'trunk'].filter((name) =>
@@ -87,7 +89,7 @@ export function defaultVips(
   if (main === undefined) {
     return [];
   }
-  const candidates: VipRef[] = [
+  const candidates: BookmarkRef[] = [
     { kind: 'branch', name: main },
     ...refs
       .filter(

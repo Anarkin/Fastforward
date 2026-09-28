@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { getGitApi } from '../git/repository';
 import { runGit } from '../git/show';
-import { workingTreeHash, type ToWebview, type VipRef } from '../protocol';
+import { workingTreeHash, type ToWebview, type BookmarkRef } from '../protocol';
 import { FastforwardView, type Connection } from '../view';
 import { withMessageStub } from './stub';
 
@@ -853,12 +853,12 @@ suite('View', function () {
     assert.deepStrictEqual(refs?.toSorted(), ['feature', 'main']);
   });
 
-  test('makes the main branch a VIP once, then keeps the saved VIPs', async () => {
-    const main: VipRef = { kind: 'branch', name: 'main' };
-    assert.deepStrictEqual(page.last('vips')?.vips, [main]);
+  test('makes the main branch a bookmark once, then keeps the saved bookmarks', async () => {
+    const main: BookmarkRef = { kind: 'branch', name: 'main' };
+    assert.deepStrictEqual(page.last('bookmarks')?.bookmarks, [main]);
 
-    await connection.receive({ type: 'setVips', vips: [] });
-    const saved = globalState.get<Record<string, VipRef[]>>('vips', {});
+    await connection.receive({ type: 'setBookmarks', bookmarks: [] });
+    const saved = globalState.get<Record<string, BookmarkRef[]>>('vips', {});
     assert.deepStrictEqual(saved[repository.root], []);
   });
 

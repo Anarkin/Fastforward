@@ -8,7 +8,7 @@ import {
   checkedOutBranch,
   countRefs,
   decorations as refDecorations,
-  defaultVips,
+  defaultBookmarks,
   fingerprint,
 } from './refs';
 import {
@@ -46,7 +46,7 @@ import {
   type FilesMode,
   type ToExtension,
   type ToWebview,
-  type Vip,
+  type Bookmark,
 } from './protocol';
 
 export const toggleViewCommand = 'fastforward.toggleView';
@@ -81,9 +81,9 @@ const collapseMergesKey = 'collapseMerges';
 const filesModeKey = 'filesMode';
 // Whether the Changes tab is a list or a tree, per user and synced
 const changesViewKey = 'changesView';
-// VIP refs by repository root, per user; not synced, as roots are paths on
-// this machine
-const vipsKey = 'vips';
+// Bookmarked refs by repository root, per user; not synced, as roots are
+// paths on this machine; named vips, as bookmarks were called at first
+const bookmarksKey = 'vips';
 
 // Kept in the extension, because the webview is recreated every time the modal
 // opens
@@ -370,10 +370,10 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       case 'setChangesView':
         await this.globalState.update(changesViewKey, message.view);
         return;
-      case 'setVips': {
+      case 'setBookmarks': {
         const root = this.activeTab;
         if (root) {
-          await this.setVips(root, message.vips);
+          await this.setBookmarks(root, message.bookmarks);
         }
         return;
       }
@@ -585,7 +585,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     );
     this.watch(context, session);
     await this.addRecent(context.root);
-    await this.addDefaultVips(context);
+    await this.addDefaultBookmarks(context);
     // The first time a tab opens it starts at what is checked out; later, it
     // is where it was left
     const firstOpen = !context.tab.opened;
@@ -630,7 +630,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         }
         this.log.info(`Preloading tab ${root}`);
         tab.opened = true;
-        await this.addDefaultVips(context);
+        await this.addDefaultBookmarks(context);
         await Promise.all([
           this.sendCommits(context).then(() => this.showHead(context)),
           this.sendWorkingTree(context),
@@ -675,39 +675,44 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       active,
     });
     session.post({
-      type: 'vips',
-      vips: active ? (this.vipsOf(active) ?? []) : [],
+      type: 'bookmarks',
+      bookmarks: active ? (this.bookmarksOf(active) ?? []) : [],
     });
   }
 
-  // Undefined for a repository that never had VIPs saved
-  private vipsOf(root: string): readonly Vip[] | undefined {
-    return this.globalState.get<Record<string, Vip[]>>(vipsKey, {})[root];
+  // Undefined for a repository that never had bookmarks saved
+  private bookmarksOf(root: string): readonly Bookmark[] | undefined {
+    return this.globalState.get<Record<string, Bookmark[]>>(bookmarksKey, {})[
+      root
+    ];
   }
 
-  // The first time a repository opens, its main branch becomes a VIP: the
+  // The first time a repository opens, its main branch becomes a bookmark: the
   // remote's default branch, or else a local main, master or trunk, with the
   // local and remote branch of the same name; removing them later sticks, as
   // the repository has a saved list from then on
-  private async addDefaultVips(context: Context): Promise<void> {
-    if (this.vipsOf(context.root) !== undefined) {
+  private async addDefaultBookmarks(context: Context): Promise<void> {
+    if (this.bookmarksOf(context.root) !== undefined) {
       return;
     }
     const [refs, defaults] = await Promise.all([
       listRefs(context.repository),
       remoteDefaultBranches(context.git.git.path, context.root),
     ]);
-    const vips = defaultVips(refs, defaults);
-    await this.setVips(context.root, vips);
-    context.post({ type: 'vips', vips });
+    const bookmarks = defaultBookmarks(refs, defaults);
+    await this.setBookmarks(context.root, bookmarks);
+    context.post({ type: 'bookmarks', bookmarks });
   }
 
-  private async setVips(root: string, vips: readonly Vip[]): Promise<void> {
-    const all = this.globalState.get<Record<string, readonly Vip[]>>(
-      vipsKey,
+  private async setBookmarks(
+    root: string,
+    bookmarks: readonly Bookmark[],
+  ): Promise<void> {
+    const all = this.globalState.get<Record<string, readonly Bookmark[]>>(
+      bookmarksKey,
       {},
     );
-    await this.globalState.update(vipsKey, { ...all, [root]: vips });
+    await this.globalState.update(bookmarksKey, { ...all, [root]: bookmarks });
   }
 
   private tabState(root: string): TabState {

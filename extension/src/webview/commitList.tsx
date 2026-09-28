@@ -12,26 +12,10 @@ import { Column } from './column';
 import { CommitHistory } from './commitHistory';
 import { OpenContextMenu } from './contextMenu';
 import { GraphCell, graphWidth, rowLanes } from './graph';
+import { formatDateTime } from './dates';
 import { MenuButton } from './menu';
 import { useSkeleton } from './skeleton';
 import type { ScrollTarget } from './tabView';
-
-export function formatDate(time: number): string {
-  const date = new Date(time);
-  const days = (Date.now() - time) / 86_400_000;
-  const clock = date.toLocaleTimeString(undefined, {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-  if (days < 6) {
-    return `${date.toLocaleDateString(undefined, { weekday: 'short' })}, ${clock}`;
-  }
-  return date.toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
-}
 
 // A row is this high, plus a line per ref pointing at its commit; the ref
 // counts arrive with the history, so every row's height, and so the scroll
@@ -302,7 +286,7 @@ export function Commits({
         </div>
         <div className="commit-line secondary">
           <span className="author">{commit.authorName}</span>
-          <span className="date">{formatDate(commit.authorDate)}</span>
+          <span className="date">{formatDateTime(commit.authorDate)}</span>
         </div>
         {detached === commit.hash && (
           <div className="bubble-line">

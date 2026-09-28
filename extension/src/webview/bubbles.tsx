@@ -1,10 +1,10 @@
 import { createContext, Fragment, useContext } from 'react';
-import { type SyncAction, type Vip, type VipRef } from '../protocol';
+import { type Bookmark, type BookmarkRef } from '../protocol';
 import { sameRef } from '../refNames';
 import { useContextMenu } from './contextMenu';
 import { type Repository } from './locations';
 import { SkeletonBubbles, useSkeleton } from './skeleton';
-import { type BubbleRow, bubbleRow } from './vips';
+import { type BubbleRow, bubbleRow } from './bookmarks';
 
 // The name of the branch HEAD is on, whose bubbles stand out everywhere
 export const CheckedOutBranch = createContext<string | undefined>(undefined);
@@ -31,7 +31,7 @@ export function HeadBubble({
   );
 }
 
-// A commit pinned to the VIP row, with the same menu as the other bubbles
+// A commit pinned to the bookmarks row, with the same menu as the other bubbles
 export function CommitBubble({
   hash,
   onClick,
@@ -61,8 +61,8 @@ export function RefBubble({
   missing = false,
   onClick,
 }: {
-  info: VipRef;
-  // A VIP whose ref doesn't exist anymore
+  info: BookmarkRef;
+  // A bookmark whose ref doesn't exist anymore
   missing?: boolean;
   onClick?: () => void;
 }) {
@@ -90,49 +90,44 @@ export function RefBubble({
   );
 }
 
-// The row under the address bar: the repository's VIPs, sorted, and what is
-// checked out; clicking one jumps to it
+// The row under the address bar: the repository's bookmarks, sorted, and
+// what is checked out; clicking one jumps to it
 export function BubbleBar({
   root,
   repository,
-  vips,
-  syncing,
-  onSync,
+  bookmarks,
   onJump,
 }: {
   // The active tab, whose refs may still be loading
   root: string | undefined;
   repository: Repository | undefined;
-  vips: readonly Vip[];
+  bookmarks: readonly Bookmark[];
   onJump: (commit: string) => void;
-  // The pull or push that is running
-  syncing: SyncAction | undefined;
-  onSync: (action: SyncAction) => void;
 }) {
   const refs = repository?.refs ?? [];
   const detached = useContext(DetachedHead);
   const row = bubbleRow(
-    vips,
+    bookmarks,
     refs,
     repository?.head,
     repository?.headUpstream,
     detached,
   );
-  const bubble = (vip: Vip) => {
-    if (vip.kind === 'commit') {
+  const bubble = (bookmark: Bookmark) => {
+    if (bookmark.kind === 'commit') {
       return (
         <CommitBubble
-          key={`commit:${vip.name}`}
-          hash={vip.name}
-          onClick={() => onJump(vip.name)}
+          key={`commit:${bookmark.name}`}
+          hash={bookmark.name}
+          onClick={() => onJump(bookmark.name)}
         />
       );
     }
-    const ref = refs.find((r) => sameRef(r, vip));
+    const ref = refs.find((r) => sameRef(r, bookmark));
     return (
       <RefBubble
-        key={`${vip.kind}:${vip.name}`}
-        info={vip}
+        key={`${bookmark.kind}:${bookmark.name}`}
+        info={bookmark}
         missing={!ref}
         onClick={ref && (() => onJump(ref.commit))}
       />
@@ -140,31 +135,22 @@ export function BubbleBar({
   };
   const skeleton = useSkeleton(root !== undefined && repository === undefined);
   const checkedOut = (
-    <CheckedOut
-      detached={detached}
-      row={row}
-      bubble={bubble}
-      behind={repository?.behind ?? 0}
-      ahead={repository?.ahead ?? 0}
-      syncing={syncing}
-      onSync={onSync}
-      onJump={onJump}
-    />
+    <CheckedOut detached={detached} row={row} bubble={bubble} onJump={onJump} />
   );
   return (
     <div className="bubble-bar">
       {skeleton && <SkeletonBubbles count={3} />}
-      {row.vips.map((vip) =>
-        (vip.kind === 'commit' && vip.name === detached) ||
-        (row.branch && sameRef(vip, row.branch)) ? (
+      {row.bookmarks.map((bookmark) =>
+        (bookmark.kind === 'commit' && bookmark.name === detached) ||
+        (row.branch && sameRef(bookmark, row.branch)) ? (
           <Fragment key="checked-out">{checkedOut}</Fragment>
         ) : (
-          bubble(vip)
+          bubble(bookmark)
         ),
       )}
-      {!row.checkedOutIsVip && (detached || row.branch) && (
+      {!row.checkedOutIsBookmark && (detached || row.branch) && (
         <>
-          {row.vips.length > 0 && <span className="bubble-separator" />}
+          {row.bookmarks.length > 0 && <span className="bubble-separator" />}
           <span className="bubble-label">Checked out</span>
           {checkedOut}
         </>
@@ -174,24 +160,16 @@ export function BubbleBar({
 }
 
 // What is checked out: a detached HEAD, or the checked-out branch and the
-// branch it tracks, with pull and push between them
+// branch it tracks
 export function CheckedOut({
   detached,
   row,
   bubble,
-  behind,
-  ahead,
-  syncing,
-  onSync,
   onJump,
 }: {
   detached: string | undefined;
   row: BubbleRow;
-  bubble: (vip: Vip) => React.ReactNode;
-  behind: number;
-  ahead: number;
-  syncing: SyncAction | undefined;
-  onSync: (action: SyncAction) => void;
+  bubble: (bookmark: Bookmark) => React.ReactNode;
   onJump: (commit: string) => void;
 }) {
   return (
@@ -202,68 +180,9 @@ export function CheckedOut({
       {row.branch && (
         <div className="checked-out-pair">
           {bubble(row.branch)}
-          {row.upstream && (
-            <>
-              <SyncButton
-                action="pull"
-                count={behind}
-                upstream={row.upstream.name}
-                syncing={syncing}
-                onSync={onSync}
-              />
-              <SyncButton
-                action="push"
-                count={ahead}
-                upstream={row.upstream.name}
-                syncing={syncing}
-                onSync={onSync}
-              />
-              {bubble(row.upstream)}
-            </>
-          )}
+          {row.upstream && bubble(row.upstream)}
         </div>
       )}
     </>
-  );
-}
-
-// Pulls the commits the upstream has, or pushes the ones the branch has, with
-// how many there are; only there when there are some, or while it runs, when
-// it spins
-export function SyncButton({
-  action,
-  count,
-  upstream,
-  syncing,
-  onSync,
-}: {
-  action: SyncAction;
-  count: number;
-  upstream: string;
-  syncing: SyncAction | undefined;
-  onSync: (action: SyncAction) => void;
-}) {
-  if (count === 0 && syncing !== action) {
-    return null;
-  }
-  const commits = `${count} ${count === 1 ? 'commit' : 'commits'}`;
-  const title =
-    action === 'pull'
-      ? count
-        ? `Pull ${commits} from ${upstream}`
-        : `Nothing to pull from ${upstream}, as of the last fetch`
-      : count
-        ? `Push ${commits} to ${upstream}`
-        : `Nothing to push to ${upstream}`;
-  return (
-    <button
-      className={`sync-button ${syncing === action ? 'running' : ''}`}
-      title={title}
-      disabled={count === 0 || syncing !== undefined}
-      onClick={() => onSync(action)}
-    >
-      <span className="sync-arrow">{action === 'pull' ? '←' : '→'}</span>
-      {count > 0 && count}
-    </button>
   );
 }

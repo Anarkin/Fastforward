@@ -1,4 +1,4 @@
-import type { CheckoutTarget, RefInfo, VipRef } from '../protocol';
+import type { CheckoutTarget, RefInfo, BookmarkRef } from '../protocol';
 import { withoutRemote } from '../refNames';
 
 export interface CheckoutOption {
@@ -15,7 +15,7 @@ const byName = (a: RefInfo, b: RefInfo) => a.name.localeCompare(b.name);
 // and a tag detaches HEAD; labels are just the names, and what is checked
 // out is greyed out
 export function checkoutRef(
-  ref: VipRef,
+  ref: BookmarkRef,
   refs: readonly RefInfo[],
   head: string | undefined,
 ): CheckoutOption {

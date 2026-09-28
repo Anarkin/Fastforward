@@ -628,7 +628,7 @@ body.resizing {
   color: var(--vscode-descriptionForeground);
 }
 
-/* The VIPs under the tabs, wrapping onto more lines when they don't fit */
+/* The bookmarks under the tabs, wrapping onto more lines when they don't fit */
 .bubble-bar {
   position: relative;
   flex: none;
@@ -726,7 +726,7 @@ body.resizing {
   cursor: pointer;
 }
 
-/* A VIP whose ref doesn't exist anymore, until it is removed */
+/* A bookmark whose ref doesn't exist anymore, until it is removed */
 .badge.missing {
   opacity: 0.5;
   text-decoration: line-through;
@@ -859,39 +859,6 @@ body.resizing {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-}
-
-.sync-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  height: 16px;
-  padding: 0 5px;
-  font: inherit;
-  font-size: 0.85em;
-  color: var(--vscode-foreground);
-  cursor: pointer;
-  background: color-mix(in srgb, var(--vscode-foreground) 10%, transparent);
-  border: none;
-  border-radius: 8px;
-}
-
-.sync-button:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--vscode-foreground) 20%, transparent);
-}
-
-.sync-button:disabled {
-  cursor: default;
-  opacity: 0.45;
-}
-
-/* Spins while the pull or push runs */
-.sync-button.running {
-  opacity: 1;
-}
-
-.sync-button.running .sync-arrow {
-  animation: sync-spin 1s linear infinite;
 }
 
 @keyframes sync-spin {
@@ -1103,15 +1070,14 @@ body.resizing {
   opacity: 0.45;
 }
 
-/* A commit pinned to the VIP row, neutral next to the refs' colors */
+/* A commit pinned to the bookmarks row, neutral next to the refs' colors */
 .badge.commit {
-  font-family: var(--vscode-editor-font-family);
   color: var(--vscode-foreground);
   background: var(--vscode-editorWidget-background);
   border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
 }
 
-/* Sets what is checked out apart from the VIPs, when it isn't one of them */
+/* Sets what is checked out apart from the bookmarks, when it isn't one of them */
 .bubble-separator {
   align-self: stretch;
   width: 1px;
@@ -1266,7 +1232,6 @@ body.vscode-high-contrast-light .menu {
 
 .history-hash {
   margin-right: 8px;
-  font-family: var(--vscode-editor-font-family);
   color: var(--vscode-descriptionForeground);
 }
 
@@ -1300,12 +1265,12 @@ body.vscode-high-contrast-light .menu {
 }
 
 .address-hash {
-  flex: none;
-  font-family: var(--vscode-editor-font-family);
+  margin-right: 8px;
   color: var(--vscode-descriptionForeground);
 }
 
 .address-text {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1333,15 +1298,54 @@ body.vscode-high-contrast-light .menu {
   border-radius: 14px;
 }
 
-/* The selected commit's whole message, under the search */
-.locations-message {
+/* The selected commit's description, as one thing */
+/* Lined up with the subject in the search box above: the same margin,
+   border and padding, then the hash's room */
+/* Starts 4 pixels above the search box, behind it, so the description's
+   frame shows above the box; its content starts under the box: the box's
+   margin and height, the gap under it, and 6 pixels more */
+.commit-card {
   flex: none;
-  max-height: 25%;
-  margin: 0 12px 8px;
-  overflow: auto;
+  display: flex;
+  align-items: flex-start;
+  margin: -37px 5px 8px;
+  padding: 0 13px;
+}
+
+.commit-card-indent {
+  flex: none;
+  visibility: hidden;
+}
+
+/* The full hash, the author and the date, right of the description */
+.commit-card-info {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 43px 0 6px 16px;
+  overflow-wrap: anywhere;
+}
+
+/* The description's frame, from the top of the details, above and behind
+   the search box, so the subject in the box and the description share it;
+   its border and padding hang left of the text, which stays under the
+   subject */
+.commit-card-frame {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0 0 0 -9px;
+  padding: 42px 8px 6px;
+  border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
+  border-radius: 8px;
+}
+
+.commit-card-frame.empty {
+  visibility: hidden;
+}
+
+.commit-card-body {
+  margin: 0;
   font: inherit;
   white-space: pre-wrap;
-  color: var(--vscode-descriptionForeground);
 }
 
 /* The bubbles have their own row now */
@@ -1385,4 +1389,38 @@ body.vscode-high-contrast-light .menu {
 
 .hash-suggestion.empty:hover {
   background: none;
+}
+
+/* A peek at the whole commit message while the pointer rests on the address
+   bar: the top of the search popup, as tall as the message needs */
+.address .locations-popup.peek {
+  height: auto;
+  max-height: 60vh;
+  overflow: hidden;
+}
+
+/* Only the box opens the search; the details are for reading and copying */
+.peek .peek-search {
+  cursor: text;
+}
+
+.peek .commit-card {
+  user-select: text;
+}
+
+/* Over the frame of the description below; its text a little lower than
+   centering puts it, where the address bar under it has its text */
+.peek .peek-search {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  padding-top: 1px;
+}
+
+/* A long description scrolls, under the search box */
+.peek .commit-card {
+  min-height: 0;
+  flex: 0 1 auto;
+  overflow: auto;
 }

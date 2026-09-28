@@ -1,4 +1,4 @@
-import type { Vip } from './protocol';
+import type { Bookmark } from './protocol';
 
 // Helpers for ref names, shared by the extension and the webview
 
@@ -8,6 +8,6 @@ export function withoutRemote(name: string): string {
 }
 
 // The same branch, remote, tag or pinned commit
-export function sameRef(a: Vip, b: Vip): boolean {
+export function sameRef(a: Bookmark, b: Bookmark): boolean {
   return a.kind === b.kind && a.name === b.name;
 }

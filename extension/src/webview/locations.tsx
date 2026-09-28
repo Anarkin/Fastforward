@@ -160,7 +160,6 @@ export function LocationsPopup({
   repository,
   selected,
   anchor,
-  message,
   lookup,
   onLookup,
   onJump,
@@ -173,8 +172,6 @@ export function LocationsPopup({
   selected: string | undefined;
   // What opened it, where clicks don't close it
   anchor: React.RefObject<HTMLElement | null>;
-  // The selected commit's whole message
-  message: string | undefined;
   // Which commit a typed hash is, once looked up
   lookup: { query: string; result: HashLookup } | undefined;
   onLookup: (query: string) => void;
@@ -205,11 +202,6 @@ export function LocationsPopup({
   const refs = useMemo(() => repository?.refs ?? [], [repository]);
   const search = useMemo(() => searchRefs(refs, query), [refs, query]);
   const [active, setActive] = useState<Active>(() => firstMatch(search));
-  // The message makes room for the results once typing starts, and comes
-  // back when the search is emptied; a search kept from before doesn't count,
-  // so it shows each time the popup opens
-  const [typed, setTyped] = useState(false);
-  const showMessage = !typed || query.trim() === '';
   const activeRef = search[active.column]?.refs[active.index];
   // A hash being typed is looked up once typing stops for a moment, and
   // shown on top like Chrome's first suggestion
@@ -232,9 +224,9 @@ export function LocationsPopup({
     }
   }, [activeRef]);
 
-  const jump = (commit: string | undefined) => {
-    if (commit) {
-      onJump(commit);
+  const jump = (target: string | undefined) => {
+    if (target) {
+      onJump(target);
       onClose();
     }
   };
@@ -321,15 +313,11 @@ export function LocationsPopup({
         value={query}
         onChange={(event) => {
           const next = event.target.value;
-          setTyped(true);
           onQuery(next);
           setActive(firstMatch(searchRefs(refs, next)));
         }}
       />
       {hash && <HashSuggestion hash={hash} found={found} onJump={jump} />}
-      {message && showMessage && (
-        <pre className="locations-message">{message}</pre>
-      )}
       <div className="locations-columns">
         {search.map((group, column) => (
           <section key={group.kind} className="locations-column">

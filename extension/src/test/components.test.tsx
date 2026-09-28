@@ -4,7 +4,7 @@ import type { FileChange } from '../protocol';
 import { changesTreeElements, changesTreeRows } from '../webview/changesTree';
 import { MenuItems } from '../webview/contextMenu';
 import { LocationsPopup } from '../webview/locations';
-import { NavBar } from '../webview/navBar';
+import { MessagePeek, NavBar } from '../webview/navBar';
 import { parsePatch } from '../webview/diff';
 import { diffRows } from '../webview/diffView';
 import { changeTitle, statusClass } from '../webview/fileStatus';
@@ -90,7 +90,7 @@ const bar = (props: Partial<Parameters<typeof NavBar>[0]>) =>
       onNavigate={noop}
       fetching={false}
       onFetch={noop}
-      address={{ hash: undefined, subject: undefined, message: undefined }}
+      address={{ hash: undefined, subject: undefined, commit: undefined }}
       repository={undefined}
       selected={undefined}
       hashLookup={undefined}
@@ -114,14 +114,63 @@ suite('Navigation bar', () => {
       address: {
         hash: 'd1f0050454a27f025c6820fc4a42b101a7fa356a',
         subject: 'chore: trim verification',
-        message: 'chore: trim verification\n\nwith a body',
+        commit: undefined,
       },
     });
-    assert.match(html, /<span class="address-hash">d1f0050<\/span>/);
+    // One line of text, so both share a baseline
     assert.match(
       html,
-      /<span class="address-text ">chore: trim verification<\/span>/,
+      /<span class="address-text "><span class="address-hash">d1f0050<\/span>chore: trim verification<\/span>/,
     );
+  });
+
+  test('peeks at the description and details, the bar keeping its text', () => {
+    const hash = 'd1f0050454a27f025c6820fc4a42b101a7fa356a';
+    const html = renderToStaticMarkup(
+      <MessagePeek
+        commit={{
+          hash,
+          message: 'the subject\n\nthe body\nmore',
+          author: 'Jozsef Simon',
+          email: 'jozsef@example.com',
+          date: new Date(2022, 11, 14, 16, 12).getTime(),
+        }}
+        onOpen={noop}
+      />,
+    );
+    assert.match(html, /class="locations-popup peek"/);
+    assert.match(
+      html,
+      /<span class="address-hash">d1f0050<\/span>the subject<\/span>/,
+    );
+    // The blank line after the subject goes, the body stays as written
+    assert.match(html, /<pre class="commit-card-body">the body\nmore<\/pre>/);
+    assert.match(
+      html,
+      new RegExp(
+        `<div class="commit-card-hash">${hash}</div><div>Jozsef Simon &lt;jozsef@example.com&gt;</div><div>2022-12-14 16:12</div>`,
+      ),
+    );
+    assert.doesNotMatch(html, /<input/);
+  });
+
+  test('peeks at the details of a commit without a description', () => {
+    const html = renderToStaticMarkup(
+      <MessagePeek
+        commit={{
+          hash: 'a'.repeat(40),
+          message: 'only',
+          author: 'A',
+          email: 'a@example.com',
+          date: 0,
+        }}
+        onOpen={noop}
+      />,
+    );
+    // No frame to couple with the subject, only the room it would take
+    assert.match(html, /class="commit-card-frame empty"/);
+    assert.doesNotMatch(html, /commit-card-body/);
+    assert.match(html, /<div>A &lt;a@example.com&gt;<\/div>/);
   });
 
   test('spins the fetch button while fetching', () => {
@@ -143,7 +192,6 @@ const popup = (
       repository={undefined}
       selected={undefined}
       anchor={{ current: null }}
-      message={undefined}
       lookup={result}
       onLookup={noop}
       onJump={noop}

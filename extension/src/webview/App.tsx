@@ -15,7 +15,7 @@ import {
   type TabInfo,
   type ToExtension,
   type ToWebview,
-  type Vip,
+  type Bookmark,
 } from '../protocol';
 import { CheckedOutBranch, DetachedHead, BubbleBar } from './bubbles';
 import { checkoutOptions, checkoutRef } from './checkout';
@@ -43,7 +43,7 @@ import {
   type TabFolders,
 } from './tabFolders';
 import { emptyTabView, reduceTabView } from './tabView';
-import { vipOptions } from './vips';
+import { bookmarkOptions } from './bookmarks';
 
 interface Props {
   post: (message: ToExtension) => void;
@@ -85,8 +85,8 @@ export function App({ post }: Props) {
     folders,
     activeTab,
   );
-  // Refs pinned to the VIP row, saved per repository
-  const [vips, setVips] = useState<readonly Vip[]>([]);
+  // Refs pinned to the bookmarks row, saved per repository
+  const [bookmarks, setBookmarks] = useState<readonly Bookmark[]>([]);
   const [menu, setMenu] = useState<OpenMenu>();
   const closeMenu = useCallback(() => setMenu(undefined), []);
   const saveColumnWidths = useCallback(
@@ -119,8 +119,8 @@ export function App({ post }: Props) {
           setTabs(message.tabs);
           setActiveTab(message.active);
           break;
-        case 'vips':
-          setVips(message.vips);
+        case 'bookmarks':
+          setBookmarks(message.bookmarks);
           break;
         default:
           dispatch(message);
@@ -256,30 +256,33 @@ export function App({ post }: Props) {
     post({ type: 'setChangesView', view });
   };
 
-  const changeVips = (next: readonly Vip[]) => {
-    setVips(next);
-    post({ type: 'setVips', vips: next });
+  const changeBookmarks = (next: readonly Bookmark[]) => {
+    setBookmarks(next);
+    post({ type: 'setBookmarks', bookmarks: next });
   };
 
-  const isVip = (vip: Vip) => vips.some((other) => sameRef(other, vip));
-  const toggleVip = (vip: Vip) =>
-    changeVips(
-      isVip(vip)
-        ? vips.filter((other) => !sameRef(other, vip))
-        : [...vips, vip],
+  const isBookmark = (bookmark: Bookmark) =>
+    bookmarks.some((other) => sameRef(other, bookmark));
+  const toggleBookmark = (bookmark: Bookmark) =>
+    changeBookmarks(
+      isBookmark(bookmark)
+        ? bookmarks.filter((other) => !sameRef(other, bookmark))
+        : [...bookmarks, bookmark],
     );
-  const vipItem = (vip: Vip): ContextMenuItem => ({
-    label: isVip(vip) ? 'Remove from VIP' : 'Add VIP',
-    onClick: () => toggleVip(vip),
+  const bookmarkItem = (bookmark: Bookmark): ContextMenuItem => ({
+    label: isBookmark(bookmark) ? 'Remove bookmark' : 'Add bookmark',
+    onClick: () => toggleBookmark(bookmark),
   });
-  // A commit's refs and the commit itself, each checked when it is a VIP
-  const commitVipItem = (commitHash: string): ContextMenuItem => ({
-    label: 'VIP',
-    submenu: vipOptions(commitHash, repository?.refs ?? []).map((option) => ({
-      label: option.label,
-      checked: isVip(option.vip),
-      onClick: () => toggleVip(option.vip),
-    })),
+  // A commit's refs and the commit itself, each checked when it is a bookmark
+  const commitBookmarkItem = (commitHash: string): ContextMenuItem => ({
+    label: 'Bookmark',
+    submenu: bookmarkOptions(commitHash, repository?.refs ?? []).map(
+      (option) => ({
+        label: option.label,
+        checked: isBookmark(option.bookmark),
+        onClick: () => toggleBookmark(option.bookmark),
+      }),
+    ),
   });
 
   // The items of the menu for what was right-clicked
@@ -303,7 +306,7 @@ export function App({ post }: Props) {
           ),
         },
         { separator: true },
-        commitVipItem(target.hash),
+        commitBookmarkItem(target.hash),
       ];
     }
     const { ref } = target;
@@ -322,7 +325,7 @@ export function App({ post }: Props) {
         onClick: () => checkout(option.target),
       },
       { separator: true },
-      vipItem(target.ref),
+      bookmarkItem(target.ref),
     ];
   };
 
@@ -369,8 +372,16 @@ export function App({ post }: Props) {
                     hash === workingTreeHash
                       ? 'Uncommitted changes'
                       : commit?.subject,
-                  message:
-                    hash === workingTreeHash ? undefined : commit?.message,
+                  commit:
+                    hash === workingTreeHash || !commit
+                      ? undefined
+                      : {
+                          hash: commit.hash,
+                          message: commit.message,
+                          author: commit.authorName,
+                          email: commit.authorEmail,
+                          date: commit.authorDate,
+                        },
                 }}
                 repository={repository}
                 selected={hash}
@@ -383,10 +394,8 @@ export function App({ post }: Props) {
               <BubbleBar
                 root={activeTab}
                 repository={repository}
-                vips={vips}
+                bookmarks={bookmarks}
                 onJump={jump}
-                syncing={syncing}
-                onSync={(action) => post({ type: 'sync', action })}
               />
             )}
             {menu && <ContextMenu menu={menu} onClose={closeMenu} />}

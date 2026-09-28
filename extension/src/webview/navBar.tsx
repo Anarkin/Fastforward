@@ -1,5 +1,6 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { HashLookup, NavigationEntry } from '../protocol';
+import { CommitDetails, type CardCommit } from './commitCard';
 import { useDismiss } from './contextMenu';
 import { LocationsPopup, type Repository } from './locations';
 
@@ -167,7 +168,38 @@ export interface Address {
   // One line, for the bar
   readonly subject: string | undefined;
   // The whole message, for the popup
-  readonly message: string | undefined;
+  // For the card in the peek and popup
+  readonly commit: CardCommit | undefined;
+}
+
+// How long the pointer rests on the address bar before it peeks, so passing
+// over it on the way elsewhere doesn't, and how long the peek stays after
+const peekDelay = 300;
+const unpeekDelay = 200;
+
+// The top of the search popup in its place, the bar's text staying in its
+// box, and the commit's details under it; it doesn't take the keyboard, and
+// a click in the box opens the search, which doesn't show them, while the
+// details can be selected and copied
+export function MessagePeek({
+  commit,
+  onOpen,
+}: {
+  commit: CardCommit;
+  onOpen: () => void;
+}) {
+  const [subject] = commit.message.split('\n');
+  return (
+    <div className="locations-popup peek">
+      <div className="locations-search peek-search" onClick={onOpen}>
+        <span className="address-text">
+          <span className="address-hash">{commit.hash.slice(0, 7)}</span>
+          {subject}
+        </span>
+      </div>
+      <CommitDetails commit={commit} />
+    </div>
+  );
 }
 
 // Shows the selected commit like a browser shows its page's address; a click
@@ -189,7 +221,31 @@ function AddressBar({
   selected: string | undefined;
   onJump: (commit: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  // Resting the pointer on the bar peeks at the whole commit message; a
+  // click opens the search, which stays until closed
+  const [mode, setMode] = useState<'closed' | 'peek' | 'open'>('closed');
+  const peekTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const startPeek = () => {
+    clearTimeout(peekTimer.current);
+    if (mode === 'closed' && address.commit) {
+      peekTimer.current = setTimeout(() => setMode('peek'), peekDelay);
+    }
+  };
+  // A moment's grace, so a wobbly move from the bar into the peek keeps it
+  const endPeek = () => {
+    clearTimeout(peekTimer.current);
+    if (mode === 'peek') {
+      peekTimer.current = setTimeout(() => setMode('closed'), unpeekDelay);
+    }
+  };
+  useEffect(() => {
+    const timer = peekTimer;
+    return () => clearTimeout(timer.current);
+  }, [peekTimer]);
+  const open = () => {
+    clearTimeout(peekTimer.current);
+    setMode('open');
+  };
   // The search text of each repository, kept while the popup is closed
   const [queries, setQueries] = useState<ReadonlyMap<string, string>>(
     new Map(),
@@ -198,28 +254,37 @@ function AddressBar({
   const setQuery = (next: string) =>
     root && setQueries((all) => new Map(all).set(root, next));
   const container = useRef<HTMLDivElement>(null);
-  const close = useCallback(() => setOpen(false), []);
+  const close = useCallback(() => setMode('closed'), []);
 
   return (
-    <div className="address" ref={container}>
+    <div
+      className="address"
+      ref={container}
+      onPointerEnter={startPeek}
+      onPointerLeave={endPeek}
+    >
       <button
         className="address-bar"
-        title={address.message ?? 'Search branches, remotes and tags'}
-        onClick={() => setOpen(true)}
+        title={address.commit ? undefined : 'Search branches, remotes and tags'}
+        onClick={open}
       >
-        {address.hash && (
-          <span className="address-hash">{address.hash.slice(0, 7)}</span>
-        )}
+        {/* One line of text, so the hash and the subject share a baseline
+            although their fonts differ */}
         <span className={`address-text ${address.subject ? '' : 'empty'}`}>
+          {address.hash && (
+            <span className="address-hash">{address.hash.slice(0, 7)}</span>
+          )}
           {address.subject ?? 'Search branches, remotes and tags'}
         </span>
       </button>
-      {open && (
+      {mode === 'peek' && address.commit && (
+        <MessagePeek commit={address.commit} onOpen={open} />
+      )}
+      {mode === 'open' && (
         <LocationsPopup
           repository={repository}
           selected={selected}
           anchor={container}
-          message={address.message}
           lookup={hashLookup}
           onLookup={onLookupHash}
           onJump={onJump}
