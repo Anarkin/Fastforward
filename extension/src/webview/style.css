@@ -673,7 +673,8 @@ body.resizing {
     --vscode-editorWidget-background,
     var(--vscode-editor-background)
   );
-  border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
+  border: 1px solid
+    var(--vscode-widget-border, var(--vscode-panel-border, transparent));
   border-radius: 6px;
   box-shadow: 0 4px 16px var(--vscode-widget-shadow);
 }
@@ -1074,7 +1075,8 @@ body.resizing {
 .badge.commit {
   color: var(--vscode-foreground);
   background: var(--vscode-editorWidget-background);
-  border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
+  border: 1px solid
+    var(--vscode-widget-border, var(--vscode-panel-border, transparent));
 }
 
 /* Sets what is checked out apart from the bookmarks, when it isn't one of them */
@@ -1291,10 +1293,23 @@ body.vscode-high-contrast-light .menu {
   border-radius: 12px;
 }
 
+/* Its edge is a shadow instead of a border, which Chromium draws a whole
+   number of device pixels wide, less than 1px at scales like 125%, and so
+   would move the search box off the bar, by a pixel in some places */
+.address .locations-popup {
+  border: none;
+  box-shadow:
+    inset 0 0 0 1px
+      var(--vscode-widget-border, var(--vscode-panel-border, transparent)),
+    0 12px 32px rgba(0, 0, 0, 0.22),
+    0 2px 8px rgba(0, 0, 0, 0.16),
+    0 0 0 1px var(--vscode-widget-shadow, transparent);
+}
+
 .address .locations-search {
   box-sizing: border-box;
   height: 28px;
-  margin: 5px;
+  margin: 6px;
   padding: 0 12px;
   border-radius: 14px;
 }
@@ -1309,7 +1324,7 @@ body.vscode-high-contrast-light .menu {
   flex: none;
   display: flex;
   align-items: flex-start;
-  margin: -33px 5px 8px;
+  margin: -34px 6px 8px;
   padding: 0 13px;
 }
 
@@ -1381,7 +1396,7 @@ body.vscode-high-contrast-light .menu {
    suggestion */
 .hash-suggestion {
   flex: none;
-  margin: 0 5px 6px;
+  margin: 0 6px 6px;
   padding: 4px 12px;
   border-radius: 6px;
   cursor: pointer;
@@ -1423,14 +1438,15 @@ body.vscode-high-contrast-light .menu {
   user-select: text;
 }
 
-/* Over the frame of the description below; its text a little lower than
-   centering puts it, where the address bar under it has its text */
+/* Over the frame of the description below; its text centered like the
+   address bar's under it, so it doesn't move */
 .peek .peek-search {
   position: relative;
   z-index: 1;
   display: flex;
   align-items: center;
-  padding-top: 1px;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 /* A long description scrolls, under the search box */
