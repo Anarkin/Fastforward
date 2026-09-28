@@ -140,7 +140,8 @@ export function Commits({
   }, [history, scrollTarget, scrollIndex, virtualizer]);
 
   // Tells the extension which commit is at the top once scrolling stops, so a
-  // reload can keep it there
+  // reload can keep it there; all the way up counts as the top of the list,
+  // which a reload keeps, with its new commits
   useEffect(() => {
     const element = list.current;
     if (!element) {
@@ -151,10 +152,17 @@ export function Commits({
       clearTimeout(timer);
       timer = setTimeout(() => {
         const top = element.scrollTop;
+        if (top === 0) {
+          onScrolled(workingTreeHash, 0);
+          return;
+        }
         const row = virtualizer.getVirtualItems().find((r) => r.end > top);
         const commit = row && history?.at(row.index - offset);
         if (row && commit) {
           onScrolled(commit.hash, top - row.start);
+        } else if (row && row.index < offset) {
+          // Within the working tree's row, which is above every commit
+          onScrolled(workingTreeHash, 0);
         }
       }, 150);
     };

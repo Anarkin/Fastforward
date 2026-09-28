@@ -178,6 +178,7 @@ export type ToExtension =
   // list is scrolled into it
   | {
       readonly type: 'scrolled';
+      // The working tree's hash for the top of the list
       readonly hash: string;
       readonly offset: number;
     }

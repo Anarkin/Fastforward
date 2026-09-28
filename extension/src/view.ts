@@ -553,21 +553,11 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       await tab.preloading;
       // The list comes back where it was scrolled to, or else at the commit
       // selected since it was sent
-      const anchorIndex =
-        tab.anchor === undefined
-          ? undefined
-          : tab.positions.get(tab.anchor.hash);
+      const anchor = anchorOf(tab);
       for (const message of tab.shown.values()) {
         session.post(
           message.type === 'commits'
-            ? {
-                ...message,
-                selectedIndex: tab.index,
-                anchor:
-                  tab.anchor === undefined || anchorIndex === undefined
-                    ? undefined
-                    : { index: anchorIndex, offset: tab.anchor.offset },
-              }
+            ? { ...message, selectedIndex: tab.index, anchor }
             : message,
         );
       }
@@ -1209,12 +1199,11 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     const decorations = refDecorations(tab.refCounts, tab.positions);
     // The page the list shows first: the top, or around the commit that stays
     // in place, so the list doesn't flash placeholders there
-    const anchorIndex =
-      keepPlace && tab.anchor ? tab.positions.get(tab.anchor.hash) : undefined;
+    const anchor = keepPlace ? anchorOf(tab) : undefined;
     const start =
-      anchorIndex === undefined
+      anchor === undefined || anchor.index < 0
         ? 0
-        : anchorIndex - (anchorIndex % firstPageSize);
+        : anchor.index - (anchor.index % firstPageSize);
     const commits = await logCommits(
       context.git.git.path,
       context.root,
@@ -1233,10 +1222,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       workingTreeGraph: tab.graph.workingTreeRow,
       selectedIndex:
         scrollTo === undefined ? tab.index : tab.positions.get(scrollTo),
-      anchor:
-        anchorIndex === undefined || !tab.anchor
-          ? undefined
-          : { index: anchorIndex, offset: tab.anchor.offset },
+      anchor,
     });
   }
 
@@ -1397,6 +1383,22 @@ function uniqueRoots(roots: readonly string[]): string[] {
     (root, index) =>
       roots.findIndex((other) => sameRoot(other, root)) === index,
   );
+}
+
+// Where the list keeps its place: the commit that was at its top, or the
+// very top, above the working tree's row, when it was scrolled all the way
+// up, where new commits show up; nothing for a commit no longer shown
+function anchorOf(
+  tab: TabState,
+): { index: number; offset: number } | undefined {
+  if (!tab.anchor) {
+    return undefined;
+  }
+  if (tab.anchor.hash === workingTreeHash) {
+    return { index: -1, offset: 0 };
+  }
+  const index = tab.positions.get(tab.anchor.hash);
+  return index === undefined ? undefined : { index, offset: tab.anchor.offset };
 }
 
 // The steps each way the history's dropdowns list

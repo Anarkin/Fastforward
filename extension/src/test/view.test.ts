@@ -899,6 +899,21 @@ suite('View', function () {
     assert.ok(page.last('repository'));
   });
 
+  test('stays at the top of the list when new commits come in', async () => {
+    await settle(connection);
+    await connection.receive({
+      type: 'scrolled',
+      hash: workingTreeHash,
+      offset: 0,
+    });
+    page.clear();
+    await repository.commit('on top');
+    await connection.refresh();
+    const commits = page.last('commits');
+    assert.strictEqual(commits?.commits[0]?.subject, 'on top');
+    assert.deepStrictEqual(commits.anchor, { index: -1, offset: 0 });
+  });
+
   test('shows a detached HEAD as a bubble on its commit', async () => {
     const b = await repository.hash('main~1');
     await repository.git('checkout', '--detach', b);

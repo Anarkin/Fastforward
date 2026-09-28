@@ -1301,14 +1301,14 @@ body.vscode-high-contrast-light .menu {
 /* The selected commit's description, as one thing */
 /* Lined up with the subject in the search box above: the same margin,
    border and padding, then the hash's room */
-/* Starts 4 pixels above the search box, behind it, so the description's
-   frame shows above the box; its content starts under the box: the box's
-   margin and height, the gap under it, and 6 pixels more */
+/* Starts at the top of the search box, behind it, so the description's
+   frame reaches up to the box; its content starts under the box: the box's
+   height, the gap under it, and 6 pixels more */
 .commit-card {
   flex: none;
   display: flex;
   align-items: flex-start;
-  margin: -37px 5px 8px;
+  margin: -33px 5px 8px;
   padding: 0 13px;
 }
 
@@ -1321,21 +1321,16 @@ body.vscode-high-contrast-light .menu {
 .commit-card-info {
   flex: 1 1 0;
   min-width: 0;
-  padding: 43px 0 6px 16px;
+  padding: 39px 0 6px 16px;
   overflow-wrap: anywhere;
 }
 
-/* The description's frame, from the top of the details, above and behind
-   the search box, so the subject in the box and the description share it;
-   its border and padding hang left of the text, which stays under the
-   subject */
+/* The description, under the subject, below the search box the details
+   start behind */
 .commit-card-frame {
   flex: 1 1 0;
   min-width: 0;
-  margin: 0 0 0 -9px;
-  padding: 42px 8px 6px;
-  border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
-  border-radius: 8px;
+  padding: 39px 8px 6px 0;
 }
 
 .commit-card-frame.empty {
