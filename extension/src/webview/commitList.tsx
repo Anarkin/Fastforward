@@ -34,6 +34,55 @@ const noVersion = () => 0;
 // Enough placeholder rows to fill the list while a tab opens
 const openingRows = 20;
 
+// A commit's bubbles wrap onto as many lines as the column's width needs, so
+// its row is measured once drawn, from one line of them to start with; the
+// rows are keyed by commit, so a row keeps its height when the list changes,
+// and is measured again whenever it changes size, as when a checkout adds a
+// bubble; the working tree's row comes first when there is one
+export function estimatedRowHeight(
+  history: CommitHistory | undefined,
+  offset: number,
+  index: number,
+): number {
+  return index >= offset && (history?.refCountAt(index - offset) ?? 0) > 0
+    ? commitRowHeight + bubbleLineHeight
+    : commitRowHeight;
+}
+
+// A commit not loaded yet is keyed by its position until it is
+export function rowKeyOf(
+  history: CommitHistory | undefined,
+  offset: number,
+  index: number,
+): string {
+  return index < offset
+    ? workingTreeHash
+    : (history?.at(index - offset)?.hash ?? `position ${index}`);
+}
+
+// The detached HEAD and the refs of a commit, on one line that wraps
+export function CommitBubbles({
+  hash,
+  refs,
+  detached,
+}: {
+  hash: string;
+  refs: readonly RefInfo[];
+  detached: boolean;
+}) {
+  if (!detached && refs.length === 0) {
+    return null;
+  }
+  return (
+    <div className="bubble-line">
+      {detached && <HeadBubble commit={hash} />}
+      {refs.map((ref) => (
+        <RefBubble key={`${ref.kind}:${ref.name}`} info={ref} />
+      ))}
+    </div>
+  );
+}
+
 export function Commits({
   history,
   opening,
@@ -78,26 +127,23 @@ export function Commits({
   const skeleton = useSkeleton(opening);
   const count = offset + (history?.total ?? (skeleton ? openingRows : 0));
 
-  // A commit's bubbles wrap onto as many lines as the column's width needs,
-  // so a row with bubbles is measured once drawn, from one line to start with
-  const hasBubbles = useCallback(
-    (index: number) =>
-      index >= offset && (history?.refCountAt(index - offset) ?? 0) > 0,
+  const rowHeight = useCallback(
+    (index: number) => estimatedRowHeight(history, offset, index),
     [history, offset],
   );
-  const rowHeight = useCallback(
-    (index: number) =>
-      hasBubbles(index) ? commitRowHeight + bubbleLineHeight : commitRowHeight,
-    [hasBubbles],
+  const rowKey = useCallback(
+    (index: number) => rowKeyOf(history, offset, index),
+    [history, offset],
   );
   const virtualizer = useVirtualizer({
     count,
     getScrollElement: () => list.current,
     estimateSize: rowHeight,
+    getItemKey: rowKey,
     overscan: 10,
   });
-  // The virtualizer keeps the heights it computed; a new history has new ones
-  useEffect(() => virtualizer.measure(), [virtualizer, rowHeight]);
+  const loaded = (index: number) =>
+    index < offset || history?.at(index - offset) !== undefined;
   const rows = virtualizer.getVirtualItems();
   const first = Math.max(0, (rows[0]?.index ?? 0) - offset);
   const last = Math.max(0, (rows.at(-1)?.index ?? 0) - offset);
@@ -296,14 +342,11 @@ export function Commits({
           <span className="author">{commit.authorName}</span>
           <span className="date">{formatDateTime(commit.authorDate)}</span>
         </div>
-        {hasBubbles(index) && (
-          <div className="bubble-line">
-            {detached === commit.hash && <HeadBubble commit={commit.hash} />}
-            {(refsByCommit.get(commit.hash) ?? []).map((ref) => (
-              <RefBubble key={`${ref.kind}:${ref.name}`} info={ref} />
-            ))}
-          </div>
-        )}
+        <CommitBubbles
+          hash={commit.hash}
+          refs={refsByCommit.get(commit.hash) ?? []}
+          detached={detached === commit.hash}
+        />
       </div>
     );
   };
@@ -341,11 +384,11 @@ export function Commits({
               key={row.key}
               className="list-row"
               data-index={row.index}
-              ref={
-                hasBubbles(row.index) ? virtualizer.measureElement : undefined
-              }
+              // A commit not loaded yet keeps the height it is estimated at,
+              // so the list doesn't move when it loads
+              ref={loaded(row.index) ? virtualizer.measureElement : undefined}
               style={{
-                height: hasBubbles(row.index) ? undefined : row.size,
+                height: loaded(row.index) ? undefined : row.size,
                 transform: `translateY(${row.start}px)`,
               }}
             >
