@@ -1003,19 +1003,6 @@ suite('View', function () {
     });
   });
 
-  test('reports a pull without an upstream', async () => {
-    await withMessageStub('showErrorMessage', async (messages) => {
-      await connection.receive({
-        type: 'sync',
-        root: repository.root,
-        action: 'pull',
-      });
-      assert.strictEqual(messages.length, 1);
-      assert.match(messages[0], /couldn't pull/);
-      assert.strictEqual(page.last('syncing')?.action, undefined);
-    });
-  });
-
   test('says when a remote branch has diverged from its local one', async () => {
     await repository.git('remote', 'add', 'origin', repository.root);
     await repository.git('checkout', '-b', 'apart', 'main~1');
@@ -1452,7 +1439,7 @@ suite('View', function () {
   });
 });
 
-suite('Pull and push', function () {
+suite('Fetch', function () {
   this.timeout(30_000);
 
   let repository: Awaited<ReturnType<typeof createRepository>>;
@@ -1460,7 +1447,7 @@ suite('Pull and push', function () {
   let page: FakePage;
   let connection: Connection;
 
-  const log = vscode.window.createOutputChannel('Fastforward sync test', {
+  const log = vscode.window.createOutputChannel('Fastforward fetch test', {
     log: true,
   });
 
@@ -1500,7 +1487,7 @@ suite('Pull and push', function () {
     }
   });
 
-  // The Git extension reads the counts from git status
+  // The Git extension reads the checked-out branch from git status
   async function refresh(): Promise<void> {
     const git = await getGitApi();
     await git.getRepository(vscode.Uri.file(repository.root))?.status();
@@ -1557,11 +1544,7 @@ suite('Pull and push', function () {
   test('fetches every remote, dropping branches deleted there', async () => {
     const gitPath = (await getGitApi()).git.path;
     await runGit(gitPath, remote, ['branch', 'short-lived', 'main']);
-    await connection.receive({
-      type: 'sync',
-      root: repository.root,
-      action: 'fetch',
-    });
+    await connection.receive({ type: 'fetch', root: repository.root });
     await waitFor(
       () =>
         page
@@ -1570,11 +1553,7 @@ suite('Pull and push', function () {
       'the fetched branch',
     );
     await runGit(gitPath, remote, ['branch', '-D', 'short-lived']);
-    await connection.receive({
-      type: 'sync',
-      root: repository.root,
-      action: 'fetch',
-    });
+    await connection.receive({ type: 'fetch', root: repository.root });
     await waitFor(
       () =>
         page
@@ -1582,47 +1561,13 @@ suite('Pull and push', function () {
           ?.refs.every((ref) => ref.name !== 'origin/short-lived') === true,
       'the deleted branch to go',
     );
-    assert.strictEqual(page.last('syncing')?.action, undefined);
+    assert.strictEqual(page.last('fetching')?.running, false);
   });
 
-  test("pushes the commits the upstream doesn't have", async () => {
-    await repository.commit('local');
+  test("tells the checked-out branch's upstream", async () => {
     await refresh();
-    const before = page.last('repository');
-    assert.strictEqual(before?.headUpstream, 'origin/main');
-    assert.strictEqual(before.headCommit, await repository.hash('main'));
-
-    await connection.receive({
-      type: 'sync',
-      root: repository.root,
-      action: 'push',
-    });
-    const pushed = (
-      await runGit((await getGitApi()).git.path, remote, ['rev-parse', 'main'])
-    ).trim();
-    assert.strictEqual(pushed, await repository.hash('main'));
-    assert.ok(
-      page
-        .last('repository')
-        ?.refs.some(
-          (ref) => ref.name === 'origin/main' && ref.commit === pushed,
-        ),
-    );
-    assert.strictEqual(page.last('syncing')?.action, undefined);
-  });
-
-  test('pulls the commits the upstream has', async () => {
-    const latest = await repository.hash('main');
-    await repository.git('reset', '--hard', 'main~1');
-    await refresh();
-    assert.notStrictEqual(page.last('repository')?.headCommit, latest);
-
-    await connection.receive({
-      type: 'sync',
-      root: repository.root,
-      action: 'pull',
-    });
-    assert.strictEqual(await repository.hash('main'), latest);
-    assert.strictEqual(page.last('repository')?.headCommit, latest);
+    const shown = page.last('repository');
+    assert.strictEqual(shown?.headUpstream, 'origin/main');
+    assert.strictEqual(shown.headCommit, await repository.hash('main'));
   });
 });

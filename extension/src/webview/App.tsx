@@ -70,7 +70,7 @@ export function App({ post }: Props) {
     fileContent,
     filePatches,
     tree,
-    syncing,
+    fetching,
     back,
     forward,
     hashLookup,
@@ -382,8 +382,8 @@ export function App({ post }: Props) {
                 back={back}
                 forward={forward}
                 onNavigate={navigate}
-                fetching={syncing === 'fetch'}
-                onFetch={() => postTab({ type: 'sync', action: 'fetch' })}
+                fetching={fetching}
+                onFetch={() => postTab({ type: 'fetch' })}
                 address={{
                   hash: hash === workingTreeHash ? undefined : hash,
                   subject:

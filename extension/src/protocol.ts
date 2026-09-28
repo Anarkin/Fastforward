@@ -5,9 +5,6 @@ export const workingTreeHash = 'working-tree';
 
 export type RefKind = 'branch' | 'remote' | 'tag';
 
-// Fetch updates every remote branch and drops the deleted ones
-export type SyncAction = 'pull' | 'push' | 'fetch';
-
 // What a hash typed in the address bar is: one commit, none, or too short
 // to tell which of several
 export type HashLookup =
@@ -175,8 +172,8 @@ export type TabMessage =
   // Selects a commit that may not be loaded yet, such as a branch's tip
   | { readonly type: 'jump'; readonly hash: string }
   | { readonly type: 'checkout'; readonly target: CheckoutTarget }
-  // Pulls the checked-out branch from its upstream, or pushes it there
-  | { readonly type: 'sync'; readonly action: SyncAction }
+  // Fetches every remote, dropping the branches deleted there
+  | { readonly type: 'fetch' }
   // Looks up a hash typed in the address bar, while typing
   | { readonly type: 'lookupHash'; readonly query: string }
   // Back or forward in the tab's history, several steps from its dropdown
@@ -228,8 +225,8 @@ export type ToWebview =
     }
   // The bookmarks of the active tab's repository
   | { readonly type: 'bookmarks'; readonly bookmarks: readonly Bookmark[] }
-  // A pull or push that is running, or undefined once it's done
-  | { readonly type: 'syncing'; readonly action: SyncAction | undefined }
+  // Whether a fetch is running
+  | { readonly type: 'fetching'; readonly running: boolean }
   // Answers lookupHash
   | {
       readonly type: 'hashLookup';

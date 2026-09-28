@@ -50,7 +50,7 @@ function busyTab(): TabView {
     path: 'x.ts',
     patch: 'patch',
   });
-  view = reduceTabView(view, { type: 'syncing', action: 'pull' });
+  view = reduceTabView(view, { type: 'fetching', running: true });
   return reduceTabView(view, { type: 'error', message: 'failed' });
 }
 
@@ -96,7 +96,7 @@ suite('Tab view', () => {
     assert.strictEqual(view.patch, '');
     assert.strictEqual(view.error, undefined);
     // What isn't about the selection stays
-    assert.strictEqual(view.syncing, 'pull');
+    assert.strictEqual(view.fetching, true);
   });
 
   test('fills in pages of the history, re-rendering for the selected commit', () => {

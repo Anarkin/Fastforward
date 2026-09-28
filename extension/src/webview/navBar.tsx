@@ -57,7 +57,7 @@ export function NavBar({
         disabled={fetching}
         onClick={onFetch}
       >
-        <span className="sync-arrow">
+        <span className="fetch-arrow">
           <RefreshIcon />
         </span>
       </button>

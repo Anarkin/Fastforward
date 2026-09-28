@@ -2,7 +2,6 @@ import type {
   FileChange,
   HashLookup,
   NavigationEntry,
-  SyncAction,
   ToWebview,
 } from '../protocol';
 import { CommitHistory } from './commitHistory';
@@ -48,8 +47,8 @@ export interface TabView {
   readonly filePatches: ReadonlyMap<string, string>;
   // Every file of the repository at the selected commit, for the Files view
   readonly tree: { hash: string; paths: readonly string[] } | undefined;
-  // A pull, push or fetch that is running
-  readonly syncing: SyncAction | undefined;
+  // Whether a fetch is running
+  readonly fetching: boolean;
   // The commits back and forward, nearest first
   readonly back: readonly NavigationEntry[];
   readonly forward: readonly NavigationEntry[];
@@ -74,7 +73,7 @@ export const emptyTabView: TabView = {
   fileContent: undefined,
   filePatches: new Map(),
   tree: undefined,
-  syncing: undefined,
+  fetching: false,
   back: [],
   forward: [],
   hashLookup: undefined,
@@ -224,8 +223,8 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
       };
     case 'tree':
       return { ...state, tree: action };
-    case 'syncing':
-      return { ...state, syncing: action.action };
+    case 'fetching':
+      return { ...state, fetching: action.running };
     case 'navigation':
       return { ...state, back: action.back, forward: action.forward };
     case 'hashLookup':

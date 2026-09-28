@@ -879,21 +879,11 @@ body.resizing {
   border-radius: 2px;
 }
 
-/* The checked-out branch and its upstream, with pull and push between them */
+/* The checked-out branch and its upstream */
 .checked-out-pair {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-}
-
-@keyframes sync-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.sync-arrow {
-  display: flex;
 }
 
 /* See icons.tsx */
@@ -1238,13 +1228,23 @@ body.vscode-high-contrast-light .menu {
   opacity: 0.35;
 }
 
-/* Spins while the fetch runs, like the pull and push buttons */
+/* Spins while the fetch runs */
 .nav-button.running {
   opacity: 1;
 }
 
-.nav-button.running .sync-arrow {
-  animation: sync-spin 1s linear infinite;
+.fetch-arrow {
+  display: flex;
+}
+
+@keyframes fetch-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.nav-button.running .fetch-arrow {
+  animation: fetch-spin 1s linear infinite;
 }
 
 .history-button {

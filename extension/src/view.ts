@@ -42,7 +42,6 @@ import {
   workingTreeHash,
   type CheckoutTarget,
   type CommitInfo,
-  type SyncAction,
   type FileChange,
   type RefInfo,
   type ChangesView,
@@ -153,7 +152,7 @@ type Message<T extends ToWebview['type']> = Extract<ToWebview, { type: T }>;
 // saved elsewhere, like the bookmarks
 interface Shown {
   repository?: Message<'repository'>;
-  syncing?: Message<'syncing'>;
+  fetching?: Message<'fetching'>;
   navigation?: Message<'navigation'>;
   commits?: Message<'commits'>;
   workingTree?: Message<'workingTree'>;
@@ -462,8 +461,8 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       case 'checkout':
         await this.checkout(context, message.target);
         break;
-      case 'sync':
-        await this.sync(context, message.action);
+      case 'fetch':
+        await this.fetch(context);
         break;
       case 'loadTree':
         await this.sendTree(context, message.hash);
@@ -812,8 +811,8 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       return undefined;
     }
     // The repository at the tab's folder; getRepository would give the outer
-    // repository for one cloned inside another, and checkout, pull and push
-    // would then act on that; repositories outside the workspace have to be
+    // repository for one cloned inside another, and checkout and fetch would
+    // then act on that; repositories outside the workspace have to be
     // opened first, which also shows them in the Source Control view
     const uri = vscode.Uri.file(root);
     const repository =
@@ -963,33 +962,23 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     }
   }
 
-  // Pulls the checked-out branch from its upstream, or pushes it there, as
-  // VS Code's own Pull and Push do, with its credentials and settings
-  private async sync(context: Context, action: SyncAction): Promise<void> {
+  // Fetches every remote, dropping the branches deleted there, as VS Code's
+  // own Fetch does, with its credentials and settings
+  private async fetch(context: Context): Promise<void> {
     const { repository } = context;
-    context.post({ type: 'syncing', action });
+    context.post({ type: 'fetching', running: true });
     try {
-      if (action === 'pull') {
-        await repository.pull();
-      } else if (action === 'push') {
-        await repository.push();
-      } else {
-        await repository.fetch({ all: true, prune: true });
-      }
-      this.log.info(
-        action === 'fetch'
-          ? 'Fetched every remote'
-          : `${action === 'pull' ? 'Pulled' : 'Pushed'} ${repository.state.HEAD?.name ?? ''}`,
-      );
+      await repository.fetch({ all: true, prune: true });
+      this.log.info('Fetched every remote');
     } catch (error) {
       const details = gitErrorText(error);
-      this.log.error(`${action} failed`);
+      this.log.error('fetch failed');
       this.log.error(details);
       void vscode.window.showErrorMessage(
-        `Fastforward: couldn't ${action}. ${details}`,
+        `Fastforward: couldn't fetch. ${details}`,
       );
     } finally {
-      context.post({ type: 'syncing', action: undefined });
+      context.post({ type: 'fetching', running: false });
     }
     await repository.status();
     await this.refresh(context);
@@ -1564,8 +1553,8 @@ function keep(shown: Shown, message: ToWebview): void {
     case 'repository':
       shown.repository = message;
       break;
-    case 'syncing':
-      shown.syncing = message;
+    case 'fetching':
+      shown.fetching = message;
       break;
     case 'navigation':
       shown.navigation = message;
@@ -1597,7 +1586,7 @@ function replayOf(tab: TabState): ToWebview[] {
   const { shown } = tab;
   return [
     shown.repository,
-    shown.syncing,
+    shown.fetching,
     shown.navigation,
     // The list comes back where it was scrolled to, or else at the commit
     // selected since it was sent
