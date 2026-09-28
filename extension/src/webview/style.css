@@ -879,7 +879,13 @@ body.resizing {
 }
 
 .sync-arrow {
-  display: inline-block;
+  display: flex;
+}
+
+/* See icons.tsx */
+.icon {
+  display: block;
+  flex: none;
 }
 
 /* Folder rows stick to the top while their contents scroll by, stacked by
@@ -1195,11 +1201,13 @@ body.vscode-high-contrast-light .menu {
 
 .nav-button {
   flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 26px;
   height: 26px;
   padding: 0;
   font: inherit;
-  font-size: 1.1em;
   color: var(--vscode-foreground);
   cursor: pointer;
   background: none;
@@ -1265,13 +1273,20 @@ body.vscode-high-contrast-light .menu {
   text-align: left;
   color: var(--vscode-input-foreground);
   cursor: text;
-  background: var(--vscode-input-background);
-  border: 1px solid var(--vscode-input-border, transparent);
+  /* Like Chrome's: a shade darker than the toolbar at rest, as the search box
+     it opens into when the pointer is on it, like the peek's */
+  background: color-mix(
+    in srgb,
+    var(--vscode-foreground) 7%,
+    var(--toolbar-background)
+  );
+  border: 1px solid transparent;
   border-radius: 14px;
 }
 
 .address-bar:hover {
-  border-color: var(--vscode-focusBorder);
+  background: var(--vscode-input-background);
+  border-color: var(--vscode-input-border, transparent);
 }
 
 /* Room for the peek's quote bar between the hash and the subject */
@@ -1362,6 +1377,10 @@ body.vscode-high-contrast-light .menu {
 
 .commit-card-info dd {
   margin: 0;
+}
+
+.commit-card-info dd.same {
+  color: var(--vscode-descriptionForeground);
 }
 
 /* The description's column, as tall as the details, so a long description

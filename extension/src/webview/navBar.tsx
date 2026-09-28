@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { HashLookup, NavigationEntry } from '../protocol';
 import { CommitDetails, type CardCommit } from './commitCard';
 import { useDismiss } from './contextMenu';
+import { BackIcon, ForwardIcon, RefreshIcon } from './icons';
 import { LocationsPopup, usePopupHeight, type Repository } from './locations';
 
 // Holding a back or forward button this long opens its history, like a
@@ -55,7 +56,9 @@ export function NavBar({
         disabled={fetching}
         onClick={onFetch}
       >
-        <span className="sync-arrow">⟳</span>
+        <span className="sync-arrow">
+          <RefreshIcon />
+        </span>
       </button>
       <AddressBar
         root={root}
@@ -114,7 +117,7 @@ function HistoryButton({
           setOpen(true);
         }}
       >
-        {direction === 'back' ? '←' : '→'}
+        {direction === 'back' ? <BackIcon /> : <ForwardIcon />}
       </button>
       {open && entries.length > 0 && (
         <HistoryMenu

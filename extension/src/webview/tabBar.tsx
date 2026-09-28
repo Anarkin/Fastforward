@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { type TabInfo } from '../protocol';
+import { CloseIcon } from './icons';
 import { MenuButton } from './menu';
 
 export function TabBar({
@@ -73,7 +74,7 @@ export function TabBar({
                 onClose(tab.root);
               }}
             >
-              ×
+              <CloseIcon />
             </button>
           </div>
         ))}

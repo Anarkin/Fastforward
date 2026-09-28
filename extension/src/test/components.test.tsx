@@ -151,7 +151,7 @@ suite('Navigation bar', () => {
     assert.match(
       html,
       new RegExp(
-        `<dt>Commit</dt><dd class="commit-card-hash">${hash}</dd><dt>Author</dt><dd>Jozsef Simon &lt;jozsef@example.com&gt;</dd><dt>Date</dt><dd>2022-12-14 16:12</dd></dl>`,
+        `<dt>Commit</dt><dd class="commit-card-hash">${hash}</dd><dt>Author</dt><dd>Jozsef Simon &lt;jozsef@example.com&gt;</dd><dt>Committer</dt><dd class="same">same</dd><dt>Authored</dt><dd>2022-12-14 16:12</dd><dt>Committed</dt><dd class="same">same</dd></dl>`,
       ),
     );
     assert.doesNotMatch(html, /<input/);
@@ -176,10 +176,10 @@ suite('Navigation bar', () => {
     // No frame to couple with the subject, only the room it would take
     assert.match(html, /class="commit-card-frame empty"/);
     assert.doesNotMatch(html, /commit-card-body/);
-    assert.match(html, /<dd>A &lt;a@example.com&gt;<\/dd>/);
+    assert.match(html, /<dt>Author<\/dt><dd>A &lt;a@example.com&gt;<\/dd>/);
   });
 
-  test('shows the committer and when where they differ from the author', () => {
+  test('shows the committer and when committed where they differ', () => {
     const html = renderToStaticMarkup(
       <MessagePeek
         commit={{
@@ -197,7 +197,7 @@ suite('Navigation bar', () => {
     );
     assert.match(
       html,
-      /<dt>Authored<\/dt><dd>2022-12-14 16:12<\/dd><dt>Committer<\/dt><dd>Bob &lt;bob@example.com&gt;<\/dd><dt>Committed<\/dt><dd>2022-12-20 09:05<\/dd><\/dl>/,
+      /<dt>Author<\/dt><dd>Ann &lt;ann@example.com&gt;<\/dd><dt>Committer<\/dt><dd>Bob &lt;bob@example.com&gt;<\/dd><dt>Authored<\/dt><dd>2022-12-14 16:12<\/dd><dt>Committed<\/dt><dd>2022-12-20 09:05<\/dd><\/dl>/,
     );
   });
 
