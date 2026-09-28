@@ -10,6 +10,9 @@ const commit = (hash: string): CommitInfo => ({
   authorName: 'Test',
   authorEmail: 'test@example.com',
   authorDate: 0,
+  committerName: 'Test',
+  committerEmail: 'test@example.com',
+  commitDate: 0,
   files: 1,
 });
 

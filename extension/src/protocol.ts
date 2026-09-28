@@ -77,6 +77,11 @@ export interface CommitInfo {
   readonly authorEmail: string;
   // Milliseconds since the epoch, because Dates don't survive postMessage
   readonly authorDate: number;
+  // Who made this commit and when, which a rebase, a cherry-pick or a merge
+  // on GitHub changes but leaves the author
+  readonly committerName: string;
+  readonly committerEmail: string;
+  readonly commitDate: number;
   readonly files: number;
 }
 

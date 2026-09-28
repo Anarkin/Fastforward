@@ -134,6 +134,9 @@ suite('Navigation bar', () => {
           author: 'Jozsef Simon',
           email: 'jozsef@example.com',
           date: new Date(2022, 11, 14, 16, 12).getTime(),
+          committer: 'Jozsef Simon',
+          committerEmail: 'jozsef@example.com',
+          committed: new Date(2022, 11, 14, 16, 12, 30).getTime(),
         }}
         onOpen={noop}
       />,
@@ -148,7 +151,7 @@ suite('Navigation bar', () => {
     assert.match(
       html,
       new RegExp(
-        `<div class="commit-card-hash">${hash}</div><div>Jozsef Simon &lt;jozsef@example.com&gt;</div><div>2022-12-14 16:12</div>`,
+        `<dt>Commit</dt><dd class="commit-card-hash">${hash}</dd><dt>Author</dt><dd>Jozsef Simon &lt;jozsef@example.com&gt;</dd><dt>Date</dt><dd>2022-12-14 16:12</dd></dl>`,
       ),
     );
     assert.doesNotMatch(html, /<input/);
@@ -163,6 +166,9 @@ suite('Navigation bar', () => {
           author: 'A',
           email: 'a@example.com',
           date: 0,
+          committer: 'A',
+          committerEmail: 'a@example.com',
+          committed: 0,
         }}
         onOpen={noop}
       />,
@@ -170,7 +176,29 @@ suite('Navigation bar', () => {
     // No frame to couple with the subject, only the room it would take
     assert.match(html, /class="commit-card-frame empty"/);
     assert.doesNotMatch(html, /commit-card-body/);
-    assert.match(html, /<div>A &lt;a@example.com&gt;<\/div>/);
+    assert.match(html, /<dd>A &lt;a@example.com&gt;<\/dd>/);
+  });
+
+  test('shows the committer and when where they differ from the author', () => {
+    const html = renderToStaticMarkup(
+      <MessagePeek
+        commit={{
+          hash: 'a'.repeat(40),
+          message: 'rebased',
+          author: 'Ann',
+          email: 'ann@example.com',
+          date: new Date(2022, 11, 14, 16, 12).getTime(),
+          committer: 'Bob',
+          committerEmail: 'bob@example.com',
+          committed: new Date(2022, 11, 20, 9, 5).getTime(),
+        }}
+        onOpen={noop}
+      />,
+    );
+    assert.match(
+      html,
+      /<dt>Authored<\/dt><dd>2022-12-14 16:12<\/dd><dt>Committer<\/dt><dd>Bob &lt;bob@example.com&gt;<\/dd><dt>Committed<\/dt><dd>2022-12-20 09:05<\/dd><\/dl>/,
+    );
   });
 
   test('spins the fetch button while fetching', () => {

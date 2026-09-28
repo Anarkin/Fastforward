@@ -381,6 +381,9 @@ export function App({ post }: Props) {
                           author: commit.authorName,
                           email: commit.authorEmail,
                           date: commit.authorDate,
+                          committer: commit.committerName,
+                          committerEmail: commit.committerEmail,
+                          committed: commit.commitDate,
                         },
                 }}
                 repository={repository}

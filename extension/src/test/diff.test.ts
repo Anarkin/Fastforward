@@ -143,10 +143,12 @@ suite('git log parser', () => {
   test('parses commits and counts their files', () => {
     const output = [
       '\x1eaaa\0p1 p2\0Ann\0ann@example.com\0',
-      '1700000000\0Subject\n\nBody\n\0',
+      '1700000000\0Carl\0carl@example.com\0',
+      '1700000100\0Subject\n\nBody\n\0',
       '\n:100644 100644 1111111 2222222 M\0a.ts\0',
       ':000000 100644 0000000 3333333 A\0b.ts\0',
       '\x1ebbb\0\0Bob\0bob@example.com\0',
+      '1600000000\0Bob\0bob@example.com\0',
       '1600000000\0Root\n\0',
     ].join('');
     assert.deepStrictEqual(parseLog(output), [
@@ -158,6 +160,9 @@ suite('git log parser', () => {
         authorName: 'Ann',
         authorEmail: 'ann@example.com',
         authorDate: 1_700_000_000_000,
+        committerName: 'Carl',
+        committerEmail: 'carl@example.com',
+        commitDate: 1_700_000_100_000,
         files: 2,
       },
       {
@@ -168,6 +173,9 @@ suite('git log parser', () => {
         authorName: 'Bob',
         authorEmail: 'bob@example.com',
         authorDate: 1_600_000_000_000,
+        committerName: 'Bob',
+        committerEmail: 'bob@example.com',
+        commitDate: 1_600_000_000_000,
         files: 0,
       },
     ]);

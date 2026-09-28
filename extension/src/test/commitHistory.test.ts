@@ -11,6 +11,9 @@ function commit(hash: string): CommitInfo {
     authorName: '',
     authorEmail: '',
     authorDate: 0,
+    committerName: '',
+    committerEmail: '',
+    commitDate: 0,
     files: 0,
   };
 }

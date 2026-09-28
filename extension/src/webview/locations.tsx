@@ -152,6 +152,26 @@ function HashSuggestion({
 // its right; see .nav-bar::after
 const popupBottomGap = 3 * 26 + 3 * 2 + 6;
 
+// How tall a popup over the address bar can be: down to the same distance
+// from the bottom as the bar keeps from the right, whatever the window's size
+export function usePopupHeight(
+  popup: React.RefObject<HTMLElement | null>,
+): number | undefined {
+  const [height, setHeight] = useState<number>();
+  useLayoutEffect(() => {
+    const fit = () => {
+      const top = popup.current?.getBoundingClientRect().top;
+      if (top !== undefined) {
+        setHeight(Math.max(200, window.innerHeight - top - popupBottomGap));
+      }
+    };
+    fit();
+    window.addEventListener('resize', fit);
+    return () => window.removeEventListener('resize', fit);
+  }, [popup]);
+  return height;
+}
+
 // Every branch, remote and tag in a popup over the address bar, a column
 // each: the search in the bar's place, the selected commit's whole message,
 // then the trees, or the matches while searching; picking one jumps to its
@@ -182,20 +202,7 @@ export function LocationsPopup({
   onQuery: (query: string) => void;
 }) {
   const popup = useRef<HTMLDivElement>(null);
-  const [height, setHeight] = useState<number>();
-  // Down to the same distance from the bottom as the address bar keeps from
-  // the right, whatever the window's size
-  useLayoutEffect(() => {
-    const fit = () => {
-      const top = popup.current?.getBoundingClientRect().top;
-      if (top !== undefined) {
-        setHeight(Math.max(200, window.innerHeight - top - popupBottomGap));
-      }
-    };
-    fit();
-    window.addEventListener('resize', fit);
-    return () => window.removeEventListener('resize', fit);
-  }, []);
+  const height = usePopupHeight(popup);
   const input = useRef<HTMLInputElement>(null);
   // A kept search is selected, so typing starts a new one
   useEffect(() => input.current?.select(), []);

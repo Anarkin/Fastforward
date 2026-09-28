@@ -245,7 +245,7 @@ export async function logCommits(
       '-z',
       '--no-renames',
       '--diff-merges=first-parent',
-      '--format=%x1e%H%x00%P%x00%aN%x00%aE%x00%at%x00%B',
+      '--format=%x1e%H%x00%P%x00%aN%x00%aE%x00%at%x00%cN%x00%cE%x00%ct%x00%B',
       '--',
     ],
     { input: `${hashes.join('\n')}\n` },
@@ -253,15 +253,26 @@ export async function logCommits(
   return parseLog(output);
 }
 
-// Each commit starts with \x1e, then hash, parents, author, email, time and
-// message separated by NULs, then a ":<modes> <status>" and a path per file
+// Each commit starts with \x1e, then hash, parents, author, email, time, the
+// same of the committer and message separated by NULs, then a
+// ":<modes> <status>" and a path per file
 export function parseLog(output: string): CommitInfo[] {
   return output
     .split('\x1e')
     .slice(1)
     .map((record) => {
-      const [hash, parents, authorName, authorEmail, time, body, ...files] =
-        splitNul(record);
+      const [
+        hash,
+        parents,
+        authorName,
+        authorEmail,
+        time,
+        committerName,
+        committerEmail,
+        commitTime,
+        body,
+        ...files
+      ] = splitNul(record);
       const message = body.trimEnd();
       return {
         hash,
@@ -271,6 +282,9 @@ export function parseLog(output: string): CommitInfo[] {
         authorName,
         authorEmail,
         authorDate: Number(time) * 1000,
+        committerName,
+        committerEmail,
+        commitDate: Number(commitTime) * 1000,
         files: files.filter((token) => token.trimStart().startsWith(':'))
           .length,
       };

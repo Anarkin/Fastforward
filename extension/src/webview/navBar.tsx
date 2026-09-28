@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { HashLookup, NavigationEntry } from '../protocol';
 import { CommitDetails, type CardCommit } from './commitCard';
 import { useDismiss } from './contextMenu';
-import { LocationsPopup, type Repository } from './locations';
+import { LocationsPopup, usePopupHeight, type Repository } from './locations';
 
 // Holding a back or forward button this long opens its history, like a
 // browser's
@@ -189,8 +189,11 @@ export function MessagePeek({
   onOpen: () => void;
 }) {
   const [subject] = commit.message.split('\n');
+  // As far down as the search goes, but only as tall as the details need
+  const popup = useRef<HTMLDivElement>(null);
+  const maxHeight = usePopupHeight(popup);
   return (
-    <div className="locations-popup peek">
+    <div className="locations-popup peek" ref={popup} style={{ maxHeight }}>
       <div className="locations-search peek-search" onClick={onOpen}>
         <span className="address-text">
           <span className="address-hash">{commit.hash.slice(0, 7)}</span>
