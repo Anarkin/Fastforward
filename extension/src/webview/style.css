@@ -393,6 +393,12 @@ body.resizing {
   color: var(--vscode-descriptionForeground);
 }
 
+/* Uncommitted changes in the color of the changed files they are, as the
+   row isn't a commit */
+.commit.working-tree:not(.empty) .subject {
+  color: var(--vscode-gitDecoration-modifiedResourceForeground);
+}
+
 .refs {
   display: flex;
   gap: 4px;
