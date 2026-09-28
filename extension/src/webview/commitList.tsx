@@ -59,11 +59,7 @@ export function Commits({
   refsByCommit: Map<string, RefInfo[]>;
   selected: string | undefined;
   // Replace is set for the arrow keys, which add no step to the history
-  onSelect: (
-    hash: string | undefined,
-    index: number,
-    replace?: boolean,
-  ) => void;
+  onSelect: (hash: string | undefined, replace?: boolean) => void;
   onToggleMerge: (hash: string) => void;
   collapseMerges: boolean;
   onCollapseMerges: (collapse: boolean) => void;
@@ -197,14 +193,14 @@ export function Commits({
       return;
     }
     if (position === -1) {
-      onSelect(workingTreeHash, -1, true);
+      onSelect(workingTreeHash, true);
     } else {
       // Rows that haven't loaded yet can't be selected
       const commit = history.at(position);
       if (!commit) {
         return;
       }
-      onSelect(commit.hash, position, true);
+      onSelect(commit.hash, true);
     }
     virtualizer.scrollToIndex(offset + position, { align: 'auto' });
   };
@@ -242,7 +238,7 @@ export function Commits({
           style={{ paddingLeft: indent(index) }}
           className={`commit working-tree ${workingTree === 0 ? 'empty' : ''} ${selected === workingTreeHash ? 'selected' : ''}`}
           onClick={() =>
-            onSelect(workingTree > 0 ? workingTreeHash : undefined, -1)
+            onSelect(workingTree > 0 ? workingTreeHash : undefined)
           }
         >
           <div className="commit-line">
@@ -282,7 +278,7 @@ export function Commits({
       <div
         className={`commit ${commit.hash === selected ? 'selected' : ''}`}
         style={{ paddingLeft: indent(index) }}
-        onClick={() => onSelect(commit.hash, position)}
+        onClick={() => onSelect(commit.hash)}
         // No items yet; bubbles in the row open their own menu first
         onContextMenu={(event) =>
           openMenu(event, { kind: 'commit', hash: commit.hash })

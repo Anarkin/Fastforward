@@ -136,15 +136,29 @@ export type ToExtension =
   | { readonly type: 'preloadTab'; readonly root: string }
   // The widths of the Commits and Files columns, saved per user
   | { readonly type: 'setColumnWidths'; readonly widths: readonly number[] }
-  // Collapses or expands one merge commit, unlike the setting
-  | { readonly type: 'toggleMerge'; readonly hash: string }
   // Whether merge commits start collapsed, saved per user
   | { readonly type: 'setCollapseMerges'; readonly collapse: boolean }
   // Whether the Files column lists the changes or the whole repository
   | { readonly type: 'setFilesMode'; readonly mode: FilesMode }
   // Whether the Changes tab is a list or a tree, saved per user
   | { readonly type: 'setChangesView'; readonly view: ChangesView }
-  // The bookmarks of the active tab's repository, saved per repository and user
+  // Written to the Fastforward log, so webview problems show up there too
+  | {
+      readonly type: 'log';
+      readonly level: 'info' | 'error';
+      readonly message: string;
+    }
+  | (TabMessage & {
+      // The tab the page showed when it sent the message
+      readonly root: string;
+    });
+
+// Messages about the tab the page shows, which say which tab that is, as one
+// can arrive after the user switched to another, like the scroll position a
+// moment after scrolling stops; the extension drops those that need the tab
+// to be shown, and saves the rest for their tab
+export type TabMessage =
+  // The bookmarks of the tab's repository, saved per repository and user
   | { readonly type: 'setBookmarks'; readonly bookmarks: readonly Bookmark[] }
   // Asks for every file of the repository at a commit
   | { readonly type: 'loadTree'; readonly hash: string }
@@ -153,12 +167,6 @@ export type ToExtension =
       readonly type: 'loadFileDiff';
       readonly hash: string;
       readonly path: string;
-    }
-  // Written to the Fastforward log, so webview problems show up there too
-  | {
-      readonly type: 'log';
-      readonly level: 'info' | 'error';
-      readonly message: string;
     }
   // Selects a commit that may not be loaded yet, such as a branch's tip
   | { readonly type: 'jump'; readonly hash: string }
@@ -187,12 +195,12 @@ export type ToExtension =
       readonly hash: string;
       readonly offset: number;
     }
+  // Collapses or expands one merge commit, unlike the setting
+  | { readonly type: 'toggleMerge'; readonly hash: string }
   | {
       readonly type: 'selectCommit';
       // Undefined clears the selection
       readonly hash: string | undefined;
-      // Position in the history, to scroll back to it when the view reopens
-      readonly index: number | undefined;
       // Moving through the list with the arrow keys, which adds no step to
       // the back history
       readonly replace?: boolean;

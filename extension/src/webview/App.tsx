@@ -13,6 +13,7 @@ import {
   type FilesMode,
   type RefInfo,
   type TabInfo,
+  type TabMessage,
   type ToExtension,
   type ToWebview,
   type Bookmark,
@@ -149,16 +150,28 @@ export function App({ post }: Props) {
     [post],
   );
 
+  // Messages about the tab say which one it is, as the extension may have
+  // opened another by the time it handles them
+  const postTab = useCallback(
+    (message: TabMessage) => {
+      const root = activeTabRef.current;
+      if (root !== undefined) {
+        post({ ...message, root });
+      }
+    },
+    [post],
+  );
+
   const onScrolled = useCallback(
     (top: string, offset: number) =>
-      post({ type: 'scrolled', hash: top, offset }),
-    [post],
+      postTab({ type: 'scrolled', hash: top, offset }),
+    [postTab],
   );
 
   const loadCommits = useCallback(
     (start: number) =>
-      post({ type: 'loadCommits', start, count: commitPageSize }),
-    [post],
+      postTab({ type: 'loadCommits', start, count: commitPageSize }),
+    [postTab],
   );
 
   const refsByCommit = useMemo(() => {
@@ -175,28 +188,19 @@ export function App({ post }: Props) {
   const opening = activeTab !== undefined && history === undefined && !error;
 
   // Selecting the selected commit again, or "No changes", clears the selection
-  const selectCommit = (
-    next: string | undefined,
-    index: number,
-    replace = false,
-  ) => {
+  const selectCommit = (next: string | undefined, replace = false) => {
     const target = next === hash ? undefined : next;
     showCommit(target);
-    post({
-      type: 'selectCommit',
-      hash: target,
-      index: target === undefined ? undefined : index,
-      replace,
-    });
+    postTab({ type: 'selectCommit', hash: target, replace });
   };
   const lookupHash = useCallback(
-    (query: string) => post({ type: 'lookupHash', query }),
-    [post],
+    (query: string) => postTab({ type: 'lookupHash', query }),
+    [postTab],
   );
   const navigate = useCallback(
     (direction: Direction, steps: number) =>
-      post({ type: 'navigate', direction, steps }),
-    [post],
+      postTab({ type: 'navigate', direction, steps }),
+    [postTab],
   );
 
   // The mouse's back and forward buttons, like in a browser
@@ -215,16 +219,16 @@ export function App({ post }: Props) {
   // Scrolls to a location's commit, which the extension finds in the history
   const jump = (target: string | undefined) => {
     if (target) {
-      post({ type: 'jump', hash: target });
+      postTab({ type: 'jump', hash: target });
     }
   };
   const loadFileDiff = useCallback(
     (file: string) => {
       if (hash) {
-        post({ type: 'loadFileDiff', hash, path: file });
+        postTab({ type: 'loadFileDiff', hash, path: file });
       }
     },
-    [hash, post],
+    [hash, postTab],
   );
 
   const selectFile = (next: string | undefined) => {
@@ -232,15 +236,15 @@ export function App({ post }: Props) {
       return;
     }
     dispatch({ type: 'showFile', path: next });
-    post({ type: 'selectFile', hash, path: next });
+    postTab({ type: 'selectFile', hash, path: next });
   };
 
   // The Files view needs every file of the repository at the selected commit
   useEffect(() => {
     if (filesMode === 'files' && hash && tree?.hash !== hash) {
-      post({ type: 'loadTree', hash });
+      postTab({ type: 'loadTree', hash });
     }
-  }, [filesMode, hash, tree, post]);
+  }, [filesMode, hash, tree, postTab]);
 
   // The selected file's folders open, so it is visible in the Files view
   useEffect(() => {
@@ -267,7 +271,7 @@ export function App({ post }: Props) {
 
   const changeBookmarks = (next: readonly Bookmark[]) => {
     setBookmarks(next);
-    post({ type: 'setBookmarks', bookmarks: next });
+    postTab({ type: 'setBookmarks', bookmarks: next });
   };
 
   const isBookmark = (bookmark: Bookmark) =>
@@ -296,7 +300,7 @@ export function App({ post }: Props) {
 
   // The items of the menu for what was right-clicked
   const checkout = (target: CheckoutTarget) =>
-    post({ type: 'checkout', target });
+    postTab({ type: 'checkout', target });
 
   const menuItems = (target: MenuTarget): ContextMenuItem[] => {
     const refs = repository?.refs ?? [];
@@ -374,7 +378,7 @@ export function App({ post }: Props) {
                 forward={forward}
                 onNavigate={navigate}
                 fetching={syncing === 'fetch'}
-                onFetch={() => post({ type: 'sync', action: 'fetch' })}
+                onFetch={() => postTab({ type: 'sync', action: 'fetch' })}
                 address={{
                   hash: hash === workingTreeHash ? undefined : hash,
                   subject:
@@ -438,7 +442,7 @@ export function App({ post }: Props) {
                     selected={hash}
                     onSelect={selectCommit}
                     onToggleMerge={(merge) =>
-                      post({ type: 'toggleMerge', hash: merge })
+                      postTab({ type: 'toggleMerge', hash: merge })
                     }
                     collapseMerges={collapseMerges}
                     onCollapseMerges={(collapse) => {

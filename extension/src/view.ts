@@ -122,13 +122,30 @@ interface TabState {
   positions: Map<string, number>;
   // The lanes of the history, laid out when it loads
   graph: Graph;
-  // The last message of each type sent for this tab, replayed when the tab
-  // or the modal opens again so it shows up instantly, before the refresh
-  shown: Map<ToWebview['type'], ToWebview>;
+  shown: Shown;
   // The refresh that is running, and whether another change came in during
   // it, which runs it once more instead of in parallel
   refreshing: Promise<void> | undefined;
   refreshAgain: boolean;
+}
+
+type Message<T extends ToWebview['type']> = Extract<ToWebview, { type: T }>;
+
+// What a tab shows, from the last messages sent for it, which are replayed
+// when the tab or the modal opens again so it shows up instantly, before the
+// refresh; only these, as the others either happen once, like jumps and
+// errors, are answers the page asks for again, like pages of commits, or are
+// saved elsewhere, like the bookmarks
+interface Shown {
+  repository?: Message<'repository'>;
+  syncing?: Message<'syncing'>;
+  navigation?: Message<'navigation'>;
+  commits?: Message<'commits'>;
+  workingTree?: Message<'workingTree'>;
+  files?: Message<'files'>;
+  // The Diff column shows a diff or a whole file, whichever came last
+  diff?: Message<'diff'> | Message<'fileContent'>;
+  tree?: Message<'tree'>;
 }
 
 // One per open webview
@@ -153,7 +170,8 @@ interface Context {
   readonly repository: Repository;
   readonly root: string;
   readonly tab: TabState;
-  // Drops messages once the user switched to another tab
+  // Drops messages once the user switched to another tab, and all of them
+  // while preloading
   readonly post: (message: ToWebview) => void;
 }
 
@@ -264,6 +282,11 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     return this.workspaceState.get<string>(activeTabKey);
   }
 
+  private isActive(root: string): boolean {
+    const active = this.activeTab;
+    return active !== undefined && sameRoot(active, root);
+  }
+
   private async setTabs(tabs: string[], active: string | undefined) {
     await this.workspaceState.update(tabsKey, uniqueRoots(tabs));
     await this.workspaceState.update(activeTabKey, active);
@@ -370,15 +393,22 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       case 'setChangesView':
         await this.globalState.update(changesViewKey, message.view);
         return;
-      case 'setBookmarks': {
-        const root = this.activeTab;
-        if (root) {
-          await this.setBookmarks(root, message.bookmarks);
+      case 'setBookmarks':
+        await this.setBookmarks(message.root, message.bookmarks);
+        return;
+      case 'scrolled': {
+        const tab = this.tabStates.get(message.root);
+        if (tab) {
+          tab.anchor = { hash: message.hash, offset: message.offset };
         }
         return;
       }
     }
 
+    // About a tab the user has left since
+    if ('root' in message && !this.isActive(message.root)) {
+      return;
+    }
     const context = await this.context(git, session);
     if (!context) {
       return;
@@ -400,9 +430,6 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         break;
       case 'sync':
         await this.sync(context, message.action);
-        break;
-      case 'scrolled':
-        context.tab.anchor = { hash: message.hash, offset: message.offset };
         break;
       case 'loadTree':
         await this.sendTree(context, message.hash);
@@ -443,12 +470,12 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
           this.visit(context, message.hash, message.replace);
         }
         context.tab.hash = message.hash;
-        context.tab.index = message.index;
+        context.tab.index = positionOf(context.tab, message.hash);
         context.tab.path = undefined;
         // Nothing selected shows no files or diff when the view reopens
         if (!message.hash) {
-          context.tab.shown.delete('files');
-          context.tab.shown.delete('diff');
+          context.tab.shown.files = undefined;
+          context.tab.shown.diff = undefined;
         }
         await this.sendCommit(context);
         break;
@@ -551,15 +578,12 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     if (active) {
       const tab = this.tabState(active);
       await tab.preloading;
-      // The list comes back where it was scrolled to, or else at the commit
-      // selected since it was sent
-      const anchor = anchorOf(tab);
-      for (const message of tab.shown.values()) {
-        session.post(
-          message.type === 'commits'
-            ? { ...message, selectedIndex: tab.index, anchor }
-            : message,
-        );
+      // Another tab was opened while this one preloaded
+      if (this.activeTab !== active) {
+        return;
+      }
+      for (const message of replayOf(tab)) {
+        session.post(message);
       }
     }
     session.watcher?.dispose();
@@ -583,7 +607,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     // Coming back, the page shows the tab as it was left, and only what
     // changed since is sent, like after a change in the repository, instead
     // of reloading a history that took half a second for 190k commits
-    if (!firstOpen && context.tab.shown.has('commits')) {
+    if (!firstOpen && context.tab.shown.commits) {
       this.log.info(`Tab ${context.root} is shown as it was left`);
       await this.refresh(context);
       return;
@@ -614,7 +638,9 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     }
     tab.preloading = (async () => {
       try {
-        const context = await this.context(git, session, root);
+        // Its messages are only kept for opening it, even if it is opened
+        // meanwhile, which waits for this and then shows them once
+        const context = await this.context(git, session, root, false);
         if (!context || tab.opened) {
           return;
         }
@@ -629,7 +655,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       } catch (error) {
         // Opening the tab loads it the usual way then
         tab.opened = false;
-        tab.shown.clear();
+        tab.shown = {};
         this.log.error(`Preloading tab ${root} failed`);
         this.log.error(error instanceof Error ? error : String(error));
       } finally {
@@ -723,7 +749,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         history: [],
         positions: new Map(),
         graph: new Graph([]),
-        shown: new Map(),
+        shown: {},
         refreshing: undefined,
         preloading: undefined,
         navigation: noNavigation,
@@ -738,6 +764,9 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     git: API,
     session: Session,
     root = this.activeTab,
+    // Whether messages go to the page while the tab is shown, or are only
+    // kept for replaying
+    live = true,
   ): Promise<Context | undefined> {
     if (!root) {
       return undefined;
@@ -755,7 +784,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       git.getRepository(uri);
     if (!repository) {
       // Only the tab that is shown says so
-      if (this.activeTab === root) {
+      if (live && this.activeTab === root) {
         session.post({
           type: 'error',
           message: `${root} is not a git repository`,
@@ -775,18 +804,8 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       root,
       tab,
       post: (message) => {
-        // Pages aren't replayed, as the webview asks for the ones on screen,
-        // and neither are jumps and errors, which happen once
-        if (
-          message.type !== 'commitPage' &&
-          message.type !== 'reveal' &&
-          message.type !== 'error' &&
-          message.type !== 'fileDiff' &&
-          message.type !== 'hashLookup'
-        ) {
-          tab.shown.set(message.type, message);
-        }
-        if (this.activeTab === root) {
+        keep(tab.shown, message);
+        if (live && this.activeTab === root) {
           session.post(message);
         }
       },
@@ -1102,8 +1121,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     context.post({ type: 'workingTree', files: files.length });
     if (context.tab.hash === workingTreeHash) {
       await this.sendCommit(context, files);
-      const tree = context.tab.shown.get('tree');
-      if (tree?.type === 'tree' && tree.hash === workingTreeHash) {
+      if (context.tab.shown.tree?.hash === workingTreeHash) {
         await this.sendTree(context, workingTreeHash);
       }
     }
@@ -1276,10 +1294,9 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     // A refresh doesn't send what the page shows already; a selection always
     // sends, as the page cleared its files and diff when it asked
     const refreshing = workingTreeFilesKnown !== undefined;
-    const shownFiles = context.tab.shown.get('files');
+    const shownFiles = context.tab.shown.files;
     const unchanged =
-      shownFiles?.type === 'files' &&
-      shownFiles.hash === hash &&
+      shownFiles?.hash === hash &&
       JSON.stringify(shownFiles.files) === JSON.stringify(files);
     if (!(refreshing && unchanged)) {
       context.post({ type: 'files', hash, files });
@@ -1359,7 +1376,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       hash === workingTreeHash
         ? await workingTreePatch(gitPath, context.root, scope)
         : await showPatch(gitPath, context.root, hash, scope);
-    const shownDiff = context.tab.shown.get('diff');
+    const shownDiff = context.tab.shown.diff;
     const unchanged =
       refreshing &&
       shownDiff?.type === 'diff' &&
@@ -1399,6 +1416,72 @@ function anchorOf(
   }
   const index = tab.positions.get(tab.anchor.hash);
   return index === undefined ? undefined : { index, offset: tab.anchor.offset };
+}
+
+// Keeps a message the tab replays, in place of the one before it
+function keep(shown: Shown, message: ToWebview): void {
+  switch (message.type) {
+    case 'repository':
+      shown.repository = message;
+      break;
+    case 'syncing':
+      shown.syncing = message;
+      break;
+    case 'navigation':
+      shown.navigation = message;
+      break;
+    case 'commits':
+      shown.commits = message;
+      break;
+    case 'workingTree':
+      shown.workingTree = message;
+      break;
+    case 'files':
+      shown.files = message;
+      break;
+    case 'diff':
+    case 'fileContent':
+      shown.diff = message;
+      break;
+    case 'tree':
+      shown.tree = message;
+      break;
+    default:
+      break;
+  }
+}
+
+// What the page is sent when the tab opens again, with the files before the
+// diff, as when a commit is selected
+function replayOf(tab: TabState): ToWebview[] {
+  const { shown } = tab;
+  return [
+    shown.repository,
+    shown.syncing,
+    shown.navigation,
+    // The list comes back where it was scrolled to, or else at the commit
+    // selected since it was sent
+    shown.commits && {
+      ...shown.commits,
+      selectedIndex: tab.index,
+      anchor: anchorOf(tab),
+    },
+    shown.workingTree,
+    shown.files,
+    shown.diff,
+    shown.tree,
+  ].filter((message) => message !== undefined);
+}
+
+// Where a commit is in the list; the working tree's row is above the first
+function positionOf(
+  tab: TabState,
+  hash: string | undefined,
+): number | undefined {
+  if (hash === workingTreeHash) {
+    return -1;
+  }
+  return hash === undefined ? undefined : tab.positions.get(hash);
 }
 
 // The steps each way the history's dropdowns list
