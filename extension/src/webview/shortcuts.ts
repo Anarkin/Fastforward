@@ -2,19 +2,34 @@ import { useEffect, useEffectEvent } from 'react';
 
 // The keys the view answers to, as the shortcuts panel lists them
 export interface Shortcut {
+  readonly id: string;
   // KeyboardEvent.key, so a lowercase letter is without Shift
   readonly key: string;
+  // With Ctrl held; these work while typing in a field too, as Chrome's do
+  readonly ctrl?: boolean;
   readonly description: string;
 }
 
 export const shortcuts = [
-  { key: 'c', description: 'Show or hide the commit list' },
+  { id: 'c', key: 'c', description: 'Show or hide the commit list' },
+  {
+    id: 'i',
+    key: 'i',
+    description: 'Peek at the whole message and details of the commit',
+  },
+  {
+    id: 'ctrl+l',
+    key: 'l',
+    ctrl: true,
+    description: 'Search branches, remotes and tags, or enter a hash',
+  },
 ] as const satisfies readonly Shortcut[];
 
-export type ShortcutKey = (typeof shortcuts)[number]['key'];
+export type ShortcutId = (typeof shortcuts)[number]['id'];
 
-// The shortcut a key press is, if any: not while typing in a field, not with
-// Ctrl, Alt or Cmd, which are VS Code's, and once per press, not repeating
+// The shortcut a key press is, if any: once per press, not repeating, with
+// no other modifiers than its own, which leaves the rest to VS Code, and a
+// key without Ctrl not while typing in a field
 export function shortcutOf(event: {
   readonly key: string;
   readonly ctrlKey: boolean;
@@ -24,17 +39,15 @@ export function shortcutOf(event: {
   readonly defaultPrevented: boolean;
   readonly target: EventTarget | null;
 }): (typeof shortcuts)[number] | undefined {
-  if (
-    event.ctrlKey ||
-    event.altKey ||
-    event.metaKey ||
-    event.repeat ||
-    event.defaultPrevented ||
-    typing(event.target)
-  ) {
+  if (event.altKey || event.metaKey || event.repeat || event.defaultPrevented) {
     return undefined;
   }
-  return shortcuts.find((shortcut) => shortcut.key === event.key);
+  return shortcuts.find(
+    (shortcut: Shortcut) =>
+      shortcut.key === event.key &&
+      (shortcut.ctrl ?? false) === event.ctrlKey &&
+      (event.ctrlKey || !typing(event.target)),
+  );
 }
 
 // By its tag rather than its class, which there is none of outside a page
@@ -51,15 +64,17 @@ function typing(target: EventTarget | null): boolean {
   );
 }
 
-// Runs the action of each shortcut pressed
+// Runs the action of each of these shortcuts pressed; the parts of the view
+// take the shortcuts that are about them
 export function useShortcuts(
-  actions: Readonly<Record<ShortcutKey, () => void>>,
+  actions: Readonly<Partial<Record<ShortcutId, () => void>>>,
 ): void {
   const onKeyDown = useEffectEvent((event: KeyboardEvent) => {
     const shortcut = shortcutOf(event);
-    if (shortcut) {
+    const action = shortcut && actions[shortcut.id];
+    if (action) {
       event.preventDefault();
-      actions[shortcut.key]();
+      action();
     }
   });
   useEffect(() => {

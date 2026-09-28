@@ -1,3 +1,6 @@
+import { Fragment } from 'react';
+import type { RefInfo } from '../protocol';
+import { HeadBubble, RefBubble } from './bubbles';
 import { formatDateTime } from './dates';
 
 // The selected commit, for the address bar's peek
@@ -11,6 +14,10 @@ export interface CardCommit {
   readonly committer: string;
   readonly committerEmail: string;
   readonly committed: number;
+  // Its branches, remotes and tags, as the commit list shows them
+  readonly refs: readonly RefInfo[];
+  // Whether HEAD is detached at it
+  readonly detachedHead: boolean;
 }
 
 // What a commit message says after its subject, without the blank line git
@@ -52,6 +59,16 @@ export function CommitDetails({ commit }: { commit: CardCommit }) {
     commit.committer === commit.author &&
     commit.committerEmail === commit.email;
   // As shown, to the minute, so seconds apart don't read as the same twice
+  // Under the table, one to a row, where the values are
+  const bubbles = [
+    ...(commit.detachedHead
+      ? [{ key: 'HEAD', element: <HeadBubble commit={commit.hash} /> }]
+      : []),
+    ...commit.refs.map((ref) => ({
+      key: `${ref.kind}:${ref.name}`,
+      element: <RefBubble info={ref} />,
+    })),
+  ];
   const sameDate =
     formatDateTime(commit.committed) === formatDateTime(commit.date);
   return (
@@ -83,6 +100,14 @@ export function CommitDetails({ commit }: { commit: CardCommit }) {
         <LaterRow label="Committed" same={sameDate}>
           {formatDateTime(commit.committed)}
         </LaterRow>
+        {bubbles.map((bubble, i) => (
+          <Fragment key={bubble.key}>
+            <dt className={i === 0 ? 'first-bubble' : undefined} />
+            <dd className={i === 0 ? 'first-bubble' : undefined}>
+              {bubble.element}
+            </dd>
+          </Fragment>
+        ))}
       </dl>
     </div>
   );

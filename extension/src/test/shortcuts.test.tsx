@@ -17,7 +17,7 @@ const press = (
     defaultPrevented: false,
     target: null,
     ...extra,
-  })?.key;
+  })?.id;
 
 // What a key press's target is to the shortcuts, without a page to make one
 function element(tagName: string, isContentEditable = false): EventTarget {
@@ -34,6 +34,7 @@ function element(tagName: string, isContentEditable = false): EventTarget {
 suite('Keyboard shortcuts', () => {
   test('matches a key pressed on its own', () => {
     assert.strictEqual(press('c'), 'c');
+    assert.strictEqual(press('i'), 'i');
     assert.strictEqual(press('x'), undefined);
     // Shift makes it another key
     assert.strictEqual(press('C'), undefined);
@@ -41,6 +42,7 @@ suite('Keyboard shortcuts', () => {
 
   test("leaves VS Code's keys, repeats and handled keys alone", () => {
     assert.strictEqual(press('c', { ctrlKey: true }), undefined);
+    assert.strictEqual(press('l', { ctrlKey: true, altKey: true }), undefined);
     assert.strictEqual(press('c', { altKey: true }), undefined);
     assert.strictEqual(press('c', { metaKey: true }), undefined);
     assert.strictEqual(press('c', { repeat: true }), undefined);
@@ -54,6 +56,15 @@ suite('Keyboard shortcuts', () => {
     assert.strictEqual(press('c', { target: element('BUTTON') }), 'c');
   });
 
+  test('takes Ctrl shortcuts only with Ctrl, also while typing', () => {
+    assert.strictEqual(press('l', { ctrlKey: true }), 'ctrl+l');
+    assert.strictEqual(press('l'), undefined);
+    assert.strictEqual(
+      press('l', { ctrlKey: true, target: element('INPUT') }),
+      'ctrl+l',
+    );
+  });
+
   test('lists every shortcut in the panel', () => {
     const html = renderToStaticMarkup(
       <ShortcutsPanel container={{ current: null }} onClose={() => {}}>
@@ -64,6 +75,7 @@ suite('Keyboard shortcuts', () => {
       html,
       /<dt><kbd>C<\/kbd><\/dt><dd>Show or hide the commit list<\/dd>/,
     );
+    assert.match(html, /<dt><kbd>Ctrl<\/kbd>\+<kbd>L<\/kbd><\/dt><dd>Search/);
   });
 
   test('gives a hidden column no width, keeping the others', () => {

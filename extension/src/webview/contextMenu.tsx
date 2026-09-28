@@ -87,9 +87,15 @@ export function ContextMenu({
 export function useDismiss(
   element: React.RefObject<HTMLElement | null>,
   onClose: () => void,
-  { onScroll = false }: { onScroll?: boolean } = {},
+  {
+    onScroll = false,
+    enabled = true,
+  }: { onScroll?: boolean; enabled?: boolean } = {},
 ): void {
   useEffect(() => {
+    if (!enabled) {
+      return () => {};
+    }
     const onPointerDown = (event: PointerEvent) => {
       if (
         !(event.target instanceof Node) ||
@@ -118,7 +124,7 @@ export function useDismiss(
       window.removeEventListener('blur', onClose);
       window.removeEventListener('wheel', onClose, true);
     };
-  }, [element, onClose, onScroll]);
+  }, [element, onClose, onScroll, enabled]);
 }
 
 // The items of a menu or submenu; a submenu opens while its item is hovered

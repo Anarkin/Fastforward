@@ -133,6 +133,10 @@ export function App({ post }: Props) {
     };
     window.addEventListener('message', onMessage);
     post({ type: 'ready' });
+    // The modal focuses the webview before the page has loaded, so the page
+    // takes the focus itself, for the keyboard shortcuts to work without a
+    // click first
+    window.focus();
     return () => window.removeEventListener('message', onMessage);
   }, [post, loadColumnWidths]);
 
@@ -389,6 +393,11 @@ export function App({ post }: Props) {
                           committer: commit.committerName,
                           committerEmail: commit.committerEmail,
                           committed: commit.commitDate,
+                          refs: refsByCommit.get(commit.hash) ?? [],
+                          detachedHead:
+                            repository !== undefined &&
+                            !repository.head &&
+                            repository.headCommit === commit.hash,
                         },
                 }}
                 repository={repository}

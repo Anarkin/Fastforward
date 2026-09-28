@@ -4,7 +4,7 @@ import { CommitDetails, type CardCommit } from './commitCard';
 import { useDismiss } from './contextMenu';
 import { BackIcon, ForwardIcon, HelpIcon, RefreshIcon } from './icons';
 import { LocationsPopup, usePopupHeight, type Repository } from './locations';
-import { shortcuts } from './shortcuts';
+import { shortcuts, useShortcuts } from './shortcuts';
 
 // Holding a back or forward button this long opens its history, like a
 // browser's
@@ -214,6 +214,15 @@ function usePeek(canPeek: boolean) {
         timer.current = setTimeout(() => setMode('closed'), unpeekDelay);
       }
     },
+    // From the keyboard, staying until toggled again or dismissed
+    togglePeek: () => {
+      clearTimeout(timer.current);
+      if (mode === 'peek') {
+        setMode('closed');
+      } else if (mode === 'closed' && canPeek) {
+        setMode('peek');
+      }
+    },
     open: () => {
       clearTimeout(timer.current);
       setMode('open');
@@ -271,9 +280,11 @@ function AddressBar({
 }) {
   // Resting the pointer on the bar peeks at the whole commit message; a
   // click opens the search
-  const { mode, startPeek, endPeek, open, close } = usePeek(
+  const { mode, startPeek, endPeek, togglePeek, open, close } = usePeek(
     address.commit !== undefined,
   );
+  // Ctrl+L like Chrome's
+  useShortcuts({ 'ctrl+l': open, i: togglePeek });
   // The search text of each repository, kept while the popup is closed
   const [queries, setQueries] = useState<ReadonlyMap<string, string>>(
     new Map(),
@@ -282,6 +293,8 @@ function AddressBar({
   const setQuery = (next: string) =>
     root && setQueries((all) => new Map(all).set(root, next));
   const container = useRef<HTMLDivElement>(null);
+  // A peek from the keyboard goes with Escape or a click elsewhere
+  useDismiss(container, close, { enabled: mode === 'peek' });
 
   return (
     <div
@@ -377,8 +390,13 @@ export function ShortcutsPanel({
       </div>
       <dl className="shortcuts-list">
         {shortcuts.map((shortcut) => (
-          <Fragment key={shortcut.key}>
+          <Fragment key={shortcut.id}>
             <dt>
+              {'ctrl' in shortcut && (
+                <>
+                  <kbd>Ctrl</kbd>+
+                </>
+              )}
               <kbd>{shortcut.key.toUpperCase()}</kbd>
             </dt>
             <dd>{shortcut.description}</dd>

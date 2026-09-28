@@ -137,6 +137,8 @@ suite('Navigation bar', () => {
           committer: 'Jozsef Simon',
           committerEmail: 'jozsef@example.com',
           committed: new Date(2022, 11, 14, 16, 12, 30).getTime(),
+          refs: [],
+          detachedHead: false,
         }}
         onOpen={noop}
       />,
@@ -169,6 +171,8 @@ suite('Navigation bar', () => {
           committer: 'A',
           committerEmail: 'a@example.com',
           committed: 0,
+          refs: [],
+          detachedHead: false,
         }}
         onOpen={noop}
       />,
@@ -191,6 +195,8 @@ suite('Navigation bar', () => {
           committer: 'Bob',
           committerEmail: 'bob@example.com',
           committed: new Date(2022, 11, 20, 9, 5).getTime(),
+          refs: [],
+          detachedHead: false,
         }}
         onOpen={noop}
       />,
@@ -198,6 +204,34 @@ suite('Navigation bar', () => {
     assert.match(
       html,
       /<dt>Author<\/dt><dd>Ann &lt;ann@example.com&gt;<\/dd><dt>Committer<\/dt><dd>Bob &lt;bob@example.com&gt;<\/dd><dt>Authored<\/dt><dd>2022-12-14 16:12<\/dd><dt>Committed<\/dt><dd>2022-12-20 09:05<\/dd><\/dl>/,
+    );
+  });
+
+  test("lists the commit's bubbles one to a row, without labels", () => {
+    const hash = 'a'.repeat(40);
+    const html = renderToStaticMarkup(
+      <MessagePeek
+        commit={{
+          hash,
+          message: 'tagged',
+          author: 'Ann',
+          email: 'ann@example.com',
+          date: 0,
+          committer: 'Ann',
+          committerEmail: 'ann@example.com',
+          committed: 0,
+          refs: [
+            { kind: 'branch', name: 'main', commit: hash },
+            { kind: 'tag', name: 'v1.0', commit: hash },
+          ],
+          detachedHead: true,
+        }}
+        onOpen={noop}
+      />,
+    );
+    assert.match(
+      html,
+      /<dt class="first-bubble"><\/dt><dd class="first-bubble"><span class="badge head[^"]*"[^>]*>HEAD aaaaaaa<\/span><\/dd><dt><\/dt><dd><span class="badge branch [^"]*"[^>]*>main<\/span><\/dd><dt><\/dt><dd><span class="badge tag [^"]*"[^>]*>v1.0<\/span><\/dd><\/dl>/,
     );
   });
 

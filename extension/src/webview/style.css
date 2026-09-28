@@ -1389,6 +1389,11 @@ body.vscode-high-contrast-light .menu {
   margin: 0;
 }
 
+/* The bubbles, a little apart from the rows above */
+.commit-card-info .first-bubble {
+  margin-top: 6px;
+}
+
 .commit-card-info dd.same {
   color: var(--vscode-descriptionForeground);
 }
