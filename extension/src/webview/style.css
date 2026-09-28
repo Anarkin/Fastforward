@@ -1264,8 +1264,9 @@ body.vscode-high-contrast-light .menu {
   border-color: var(--vscode-focusBorder);
 }
 
+/* Room for the peek's quote bar between the hash and the subject */
 .address-hash {
-  margin-right: 8px;
+  margin-right: 18px;
   color: var(--vscode-descriptionForeground);
 }
 
@@ -1328,9 +1329,28 @@ body.vscode-high-contrast-light .menu {
 /* The description, under the subject, below the search box the details
    start behind */
 .commit-card-frame {
+  position: relative;
   flex: 1 1 0;
   min-width: 0;
   padding: 39px 8px 6px 0;
+}
+
+/* A quote bar left of the subject and the description, from inside the
+   search box, which starts at the top of the details, over its edge and down
+   the description, tying the two together */
+.commit-card-frame::before {
+  content: '';
+  position: absolute;
+  top: 7px;
+  bottom: 6px;
+  left: -10px;
+  z-index: 2;
+  width: 3px;
+  background: var(
+    --vscode-textBlockQuote-border,
+    var(--vscode-widget-border, var(--vscode-panel-border))
+  );
+  border-radius: 2px;
 }
 
 .commit-card-frame.empty {
