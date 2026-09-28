@@ -10,6 +10,7 @@ import { type SyncAction, type Vip, type VipRef } from '../protocol';
 import { sameRef } from '../refNames';
 import { useContextMenu } from './contextMenu';
 import { LocationsPopup, type Repository } from './locations';
+import { SkeletonBubbles, useSkeleton } from './skeleton';
 import { type BubbleRow, bubbleRow } from './vips';
 
 // The name of the branch HEAD is on, whose bubbles stand out everywhere
@@ -157,6 +158,7 @@ export function BubbleBar({
       />
     );
   };
+  const skeleton = useSkeleton(root !== undefined && repository === undefined);
   const checkedOut = (
     <CheckedOut
       detached={detached}
@@ -190,6 +192,7 @@ export function BubbleBar({
           onQuery={setLocationsQuery}
         />
       )}
+      {skeleton && <SkeletonBubbles count={3} />}
       {row.vips.map((vip) =>
         (vip.kind === 'commit' && vip.name === detached) ||
         (row.branch && sameRef(vip, row.branch)) ? (

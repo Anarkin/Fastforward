@@ -6,6 +6,7 @@ import { changeTitle, statusClass } from './fileStatus';
 import { FileTree } from './fileTree';
 import { LineCounts } from './lineCounts';
 import { MenuButton } from './menu';
+import { SkeletonRows, useSkeleton } from './skeleton';
 import { VirtualRows } from './virtualRows';
 
 // The selected commit's changes, or every file of the repository at it
@@ -17,6 +18,8 @@ export function Files({
   closedFolders,
   onToggleClosedFolder,
   files,
+  loading,
+  treeLoading,
   tree,
   openFolders,
   onToggleFolder,
@@ -31,6 +34,10 @@ export function Files({
   closedFolders: ReadonlySet<string>;
   onToggleClosedFolder: (folder: string) => void;
   files: readonly FileChange[];
+  // The selected commit's files are on the way
+  loading: boolean;
+  // Every file of the repository at the selected commit is on the way
+  treeLoading: boolean;
   // Undefined while it loads
   tree: readonly string[] | undefined;
   openFolders: ReadonlySet<string>;
@@ -38,6 +45,7 @@ export function Files({
   selected: string | undefined;
   onSelect: (path: string | undefined) => void;
 }) {
+  const skeleton = useSkeleton(mode === 'files' ? treeLoading : loading);
   const treeRows = useMemo(
     () => changesTreeRows(files, closedFolders),
     [files, closedFolders],
@@ -64,6 +72,7 @@ export function Files({
   if (mode === 'files') {
     return (
       <Column title={title} index={1}>
+        {skeleton && <SkeletonRows count={12} indent />}
         {tree && (
           <FileTree
             paths={tree}
@@ -124,6 +133,7 @@ export function Files({
         ));
   return (
     <Column title={title} index={1} actions={settings}>
+      {loading && skeleton && <SkeletonRows count={6} />}
       <VirtualRows
         rows={files.length > 0 ? [header, ...fileRows] : []}
         selectedKey={selected === undefined ? undefined : `file:${selected}`}

@@ -25,6 +25,9 @@ export interface TabView {
   readonly workingTree: number | undefined;
   readonly hash: string | undefined;
   readonly files: readonly FileChange[];
+  // Asked for and not answered yet, which shows placeholders
+  readonly filesLoading: boolean;
+  readonly patchLoading: boolean;
   readonly path: string | undefined;
   readonly patch: string;
   // A file the commit didn't change, shown whole in the Diff column
@@ -47,6 +50,8 @@ export const emptyTabView: TabView = {
   workingTree: undefined,
   hash: undefined,
   files: [],
+  filesLoading: false,
+  patchLoading: false,
   path: undefined,
   patch: '',
   fileContent: undefined,
@@ -70,6 +75,8 @@ function selected(state: TabView, hash: string | undefined): TabView {
     ...state,
     hash,
     files: [],
+    filesLoading: hash !== undefined,
+    patchLoading: hash !== undefined,
     path: undefined,
     patch: '',
     fileContent: undefined,
@@ -87,7 +94,11 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
     case 'showCommit':
       return selected(state, action.hash);
     case 'showFile':
-      return { ...state, path: action.path };
+      return {
+        ...state,
+        path: action.path,
+        patchLoading: state.hash !== undefined,
+      };
     case 'repository':
       return { ...state, repository: action };
     case 'commits': {
@@ -125,13 +136,19 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
     case 'workingTree':
       return { ...state, workingTree: action.files };
     case 'files':
-      return { ...state, hash: action.hash, files: action.files };
+      return {
+        ...state,
+        hash: action.hash,
+        files: action.files,
+        filesLoading: false,
+      };
     case 'diff':
       return {
         ...state,
         hash: action.hash,
         path: action.path,
         patch: action.patch,
+        patchLoading: false,
         fileContent: undefined,
         // Fetched again for the new diff when still open
         filePatches: new Map(),
@@ -152,6 +169,7 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
         hash: action.hash,
         path: action.path,
         patch: '',
+        patchLoading: false,
         fileContent: action,
       };
     case 'tree':
@@ -159,7 +177,12 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
     case 'syncing':
       return { ...state, syncing: action.action };
     case 'error':
-      return { ...state, error: action.message };
+      return {
+        ...state,
+        error: action.message,
+        filesLoading: false,
+        patchLoading: false,
+      };
     default:
       return state;
   }

@@ -53,6 +53,8 @@ export function App({ post }: Props) {
     workingTree,
     hash,
     files,
+    filesLoading,
+    patchLoading,
     path,
     patch,
     fileContent,
@@ -371,6 +373,8 @@ export function App({ post }: Props) {
                     closedFolders={closedFolders}
                     onToggleClosedFolder={toggleClosedFolder}
                     files={files}
+                    loading={filesLoading}
+                    treeLoading={hash !== undefined && tree?.hash !== hash}
                     tree={
                       hash !== undefined && tree?.hash === hash
                         ? tree.paths
@@ -384,6 +388,7 @@ export function App({ post }: Props) {
                   <Diff
                     selection={`${hash ?? ''}:${path ?? ''}`}
                     path={path}
+                    loading={patchLoading}
                     filePatches={filePatches}
                     onLoadFile={loadFileDiff}
                     workingTree={hash === workingTreeHash}

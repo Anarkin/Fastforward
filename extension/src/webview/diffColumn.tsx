@@ -37,6 +37,7 @@ function withLargeFiles(
 export function Diff({
   selection,
   path,
+  loading,
   workingTree,
   commit,
   files,
@@ -49,6 +50,8 @@ export function Diff({
   // The selected commit and file, which the diff starts over for
   selection: string;
   path: string | undefined;
+  // The diff is on the way
+  loading: boolean;
   workingTree: boolean;
   commit: CommitInfo | undefined;
   files: readonly FileChange[];
@@ -108,6 +111,7 @@ export function Diff({
         files={diffFiles}
         changes={changes}
         whole={fileContent}
+        loading={loading}
         onLoad={onLoadFile}
       />
     </Column>

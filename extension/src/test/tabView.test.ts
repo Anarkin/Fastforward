@@ -64,6 +64,26 @@ suite('Tab view', () => {
     assert.strictEqual(view.history?.at(0)?.hash, 'a');
   });
 
+  test('loads a selected commit, apart from having no files', () => {
+    const loading = reduceTabView(busyTab(), { type: 'showCommit', hash: 'b' });
+    assert.ok(loading.filesLoading && loading.patchLoading);
+    const empty = reduceTabView(loading, {
+      type: 'files',
+      hash: 'b',
+      files: [],
+    });
+    assert.ok(!empty.filesLoading && empty.patchLoading);
+    const done = reduceTabView(empty, {
+      type: 'diff',
+      hash: 'b',
+      path: undefined,
+      patch: '',
+    });
+    assert.ok(!done.patchLoading);
+    const none = reduceTabView(done, { type: 'showCommit', hash: undefined });
+    assert.ok(!none.filesLoading && !none.patchLoading);
+  });
+
   test('clears the previous commit and error when selecting another', () => {
     const view = reduceTabView(busyTab(), { type: 'showCommit', hash: 'b' });
     assert.strictEqual(view.hash, 'b');

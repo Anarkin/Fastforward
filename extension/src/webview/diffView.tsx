@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { collapseThreshold, type FileChange } from '../protocol';
 import type { DiffFile, DiffLine } from './diff';
 import { LineCounts } from './lineCounts';
+import { SkeletonRows, useSkeleton } from './skeleton';
 
 // A file shown whole, as the commit didn't change it
 export interface WholeFile {
@@ -24,6 +25,9 @@ export type DiffRow =
     }
   | { readonly kind: 'large'; readonly file: number; readonly lines: number }
   | { readonly kind: 'binary'; readonly file: number }
+  // Placeholders while the diff, or a large file's, is on the way
+  | { readonly kind: 'skeleton' }
+  | { readonly kind: 'skeletonLines'; readonly file: number }
   // Between two changed parts of a file; git's hunk header isn't shown, as
   // the function name it guesses is often an unrelated line, like in Markdown
   | { readonly kind: 'hunk'; readonly file: number }
@@ -40,6 +44,8 @@ const rowHeights: Record<Exclude<DiffRow['kind'], 'summary'>, number> = {
   file: 28,
   large: 36,
   binary: 28,
+  skeleton: 240,
+  skeletonLines: 100,
   hunk: 12,
   line: 20,
   wholeLine: 20,
@@ -62,8 +68,13 @@ export function diffRows(
   files: readonly DiffFile[],
   toggled: ReadonlyMap<string, boolean>,
   whole: WholeFile | undefined,
+  loading = false,
 ): DiffRow[] {
   const rows: DiffRow[] = [{ kind: 'summary' }];
+  if (loading && files.length === 0 && !whole) {
+    rows.push({ kind: 'skeleton' });
+    return rows;
+  }
   if (whole) {
     rows.push({
       kind: 'file',
@@ -94,6 +105,10 @@ export function diffRows(
       }
       return;
     }
+    if (file.placeholder) {
+      rows.push({ kind: 'skeletonLines', file: index });
+      return;
+    }
     if (file.binary) {
       rows.push({ kind: 'binary', file: index });
     }
@@ -119,6 +134,7 @@ export function DiffView({
   files,
   changes,
   whole,
+  loading,
   onLoad,
 }: {
   summary: React.ReactNode;
@@ -126,6 +142,8 @@ export function DiffView({
   // Insertion and deletion counts by path
   changes: ReadonlyMap<string, FileChange>;
   whole: WholeFile | undefined;
+  // The diff is on the way
+  loading: boolean;
   // Fetches the diff of a large file left out of the commit's diff
   onLoad: (path: string) => void;
 }) {
@@ -133,9 +151,10 @@ export function DiffView({
   const [toggled, setToggled] = useState<ReadonlyMap<string, boolean>>(
     new Map(),
   );
+  const skeleton = useSkeleton(loading);
   const rows = useMemo(
-    () => diffRows(files, toggled, whole),
-    [files, toggled, whole],
+    () => diffRows(files, toggled, whole, skeleton),
+    [files, toggled, whole, skeleton],
   );
 
   const virtualizer = useVirtualizer({
@@ -205,6 +224,17 @@ export function DiffView({
             {whole ? 'Binary or very large file' : 'Binary file'}
           </div>
         );
+      case 'skeleton':
+        return (
+          <div className="diff-skeleton">
+            <div className="file-header">
+              <span className="bar" style={{ width: '40%' }} />
+            </div>
+            <SkeletonRows count={9} className="diff-line" />
+          </div>
+        );
+      case 'skeletonLines':
+        return <SkeletonRows count={4} className="diff-line" />;
       case 'hunk':
         return <div className="hunk-divider" />;
       case 'line':

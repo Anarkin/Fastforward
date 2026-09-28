@@ -1205,3 +1205,36 @@ body.vscode-high-contrast .menu,
 body.vscode-high-contrast-light .menu {
   border: 1px solid var(--vscode-contrastBorder);
 }
+
+/* Placeholders in the shape of what is loading, like the commit list's */
+.skeleton-row {
+  cursor: default;
+}
+
+.skeleton-row:hover {
+  background: none;
+}
+
+.skeleton-row .bar {
+  margin: 0.35em 0;
+}
+
+.diff-line.skeleton-row {
+  padding-left: 118px;
+}
+
+.diff-skeleton .file-header {
+  cursor: default;
+}
+
+.diff-skeleton .file-header .bar {
+  margin: 0.2em 0;
+}
+
+.skeleton-bubble {
+  display: inline-block;
+  height: 16px;
+  border-radius: 3px;
+  background: var(--vscode-descriptionForeground);
+  opacity: 0.15;
+}
