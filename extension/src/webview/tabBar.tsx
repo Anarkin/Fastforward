@@ -2,9 +2,6 @@ import { useEffect, useRef } from 'react';
 import { type TabInfo } from '../protocol';
 import { MenuButton } from './menu';
 
-// How long the pointer rests on a tab before it starts loading
-const preloadDelay = 100;
-
 export function TabBar({
   tabs,
   active,
@@ -18,7 +15,7 @@ export function TabBar({
   tabs: readonly TabInfo[];
   active: string | undefined;
   onSelect: (root: string) => void;
-  // The pointer rests on a tab
+  // The pointer is on a tab
   onPreload: (root: string) => void;
   onClose: (root: string) => void;
   onAdd: () => void;
@@ -27,22 +24,6 @@ export function TabBar({
 }) {
   const bar = useRef<HTMLElement>(null);
   const list = useRef<HTMLDivElement>(null);
-  const hover = useRef<ReturnType<typeof setTimeout>>(undefined);
-
-  // A tab the pointer rests on starts loading, so it's ready when clicked;
-  // sweeping over the tabs doesn't load them all
-  const startPreload = (root: string) => {
-    clearTimeout(hover.current);
-    if (root !== active) {
-      hover.current = setTimeout(() => onPreload(root), preloadDelay);
-    }
-  };
-  const stopPreload = () => clearTimeout(hover.current);
-  // Nothing loads for a tab bar that is gone
-  useEffect(() => {
-    const timer = hover;
-    return () => clearTimeout(timer.current);
-  }, [hover]);
 
   // Reports the layout once, to find where space around the page comes from
   useEffect(() => {
@@ -73,8 +54,9 @@ export function TabBar({
             className={`tab ${tab.root === active ? 'active' : ''}`}
             title={tab.root}
             onClick={() => onSelect(tab.root)}
-            onPointerEnter={() => startPreload(tab.root)}
-            onPointerLeave={stopPreload}
+            // Starts loading a tab the pointer is on, so it's ready when
+            // clicked; each tab loads once
+            onPointerEnter={() => tab.root !== active && onPreload(tab.root)}
             // Stops the browser's middle-button autoscroll, which would
             // otherwise swallow the middle click once the tabs overflow
             onMouseDown={(event) =>
