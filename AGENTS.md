@@ -4,6 +4,7 @@
 
 ### Docs
 
+- The user mainly maintains the `.md` files in the repository root: fixing what the code made stale or making small additions is fine, but suggest anything bigger, like new sections or rewrites, and ask before making it
 - Use only headings and simple bullet points in `.md` files; ask before using anything more complex
 - Only record things in `ARCHITECTURE.md` that are not clear from the code
 - All `.md` file names are uppercase
