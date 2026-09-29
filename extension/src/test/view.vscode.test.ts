@@ -672,8 +672,12 @@ suite('View', function () {
       const opened = git.getRepository(vscode.Uri.file(repository.root));
       assert.ok(opened);
       const held = gate();
-      const fetch: unknown = Reflect.get(opened, 'fetch');
-      Reflect.set(opened, 'fetch', () => held.opened);
+      // On the prototype, as the Git extension may hand the view another
+      // object for the same repository
+      const prototype: unknown = Object.getPrototypeOf(opened);
+      assert.ok(typeof prototype === 'object' && prototype !== null);
+      const fetch: unknown = Reflect.get(prototype, 'fetch');
+      Reflect.set(prototype, 'fetch', () => held.opened);
       try {
         const fetching = connection.receive({
           type: 'fetch',
@@ -697,7 +701,7 @@ suite('View', function () {
           reopened.connection.dispose();
         }
       } finally {
-        Reflect.set(opened, 'fetch', fetch);
+        Reflect.set(prototype, 'fetch', fetch);
       }
     });
 
@@ -1279,19 +1283,20 @@ suite('View', function () {
       await zeta.commit('zeta');
       // Out of order, with other open
       const own = await openView(log, [other, zeta.root, repository.root]);
+      // Without the tab of the repository open in VS Code, which the view
+      // adds first when the Git extension has opened it
+      const ours = new Set(['main', 'other', 'Zeta']);
+      const names = () =>
+        (own.page.last('tabs')?.tabs ?? [])
+          .map((tab) => tab.name)
+          .filter((name) => ours.has(name));
       try {
         await own.connection.receive({ type: 'sortTabs' });
-        assert.deepStrictEqual(
-          own.page.last('tabs')?.tabs.map((tab) => tab.name),
-          ['main', 'other', 'Zeta'],
-        );
+        assert.deepStrictEqual(names(), ['main', 'other', 'Zeta']);
         // The tab after it opens in its place
         await own.connection.receive({ type: 'closeTab', root: other });
         const left = own.page.last('tabs');
-        assert.deepStrictEqual(
-          left?.tabs.map((tab) => tab.name),
-          ['main', 'Zeta'],
-        );
+        assert.deepStrictEqual(names(), ['main', 'Zeta']);
         assert.strictEqual(left?.active, zeta.root);
       } finally {
         own.connection.dispose();
