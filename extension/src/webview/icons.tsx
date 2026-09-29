@@ -59,6 +59,17 @@ export function RefreshIcon() {
   );
 }
 
+export function SoloIcon() {
+  return (
+    <Icon>
+      <path d="M6 1.5v1.3M6 6.2v3.6M6 13.2v1.3" />
+      <circle cx="6" cy="4.5" r="1.7" />
+      <circle cx="6" cy="11.5" r="1.7" />
+      <path d="M6 8.3c3 0 5-1.5 5-4.5V2" opacity="0.35" />
+    </Icon>
+  );
+}
+
 export function MoreIcon() {
   return (
     <Icon>

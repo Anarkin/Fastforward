@@ -13,6 +13,7 @@ const recentKey = 'recentRepositories';
 const maxRecent = 20;
 const columnWidthsKey = 'columnWidths';
 export const collapseMergesKey = 'collapseMerges';
+export const soloKey = 'solo';
 const filesModeKey = 'filesMode';
 const changesViewKey = 'changesView';
 export const bookmarksKey = 'vips';
@@ -25,6 +26,7 @@ export class Storage {
     globalState.setKeysForSync([
       columnWidthsKey,
       collapseMergesKey,
+      soloKey,
       filesModeKey,
       changesViewKey,
     ]);
@@ -85,6 +87,7 @@ export class Storage {
       type: 'layout',
       columnWidths: this.globalState.get<number[]>(columnWidthsKey),
       collapseMerges: this.collapseMerges,
+      solo: this.solo,
       filesMode: this.globalState.get<FilesMode>(filesModeKey, 'changes'),
       changesView: this.globalState.get<ChangesView>(changesViewKey, 'tree'),
     };
@@ -100,6 +103,14 @@ export class Storage {
 
   async setCollapseMerges(collapse: boolean): Promise<void> {
     await this.globalState.update(collapseMergesKey, collapse);
+  }
+
+  get solo(): boolean {
+    return this.globalState.get(soloKey, false);
+  }
+
+  async setSolo(solo: boolean): Promise<void> {
+    await this.globalState.update(soloKey, solo);
   }
 
   async setFilesMode(mode: FilesMode): Promise<void> {

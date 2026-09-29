@@ -78,6 +78,7 @@ export function App({ post }: Props) {
     error,
   } = tab;
   const [collapseMerges, setCollapseMerges] = useState(true);
+  const [solo, setSolo] = useState(false);
   const [filesMode, setFilesMode] = useState<FilesMode>('changes');
   const [changesView, setChangesView] = useState<ChangesView>('tree');
   const [folders, setFolders] = useState<FoldersByTab>(new Map());
@@ -109,6 +110,7 @@ export function App({ post }: Props) {
         case 'layout':
           loadColumnWidths(message.columnWidths);
           setCollapseMerges(message.collapseMerges);
+          setSolo(message.solo);
           setFilesMode(message.filesMode);
           setChangesView(message.changesView);
           break;
@@ -383,6 +385,11 @@ export function App({ post }: Props) {
                     onCollapseMerges={(collapse) => {
                       setCollapseMerges(collapse);
                       post({ type: 'setCollapseMerges', collapse });
+                    }}
+                    solo={solo}
+                    onSolo={(next) => {
+                      setSolo(next);
+                      post({ type: 'setSolo', solo: next });
                     }}
                     navigation={
                       <NavButtons

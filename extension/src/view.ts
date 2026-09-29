@@ -302,6 +302,19 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         }
         return;
       }
+      case 'setSolo': {
+        await storage.setSolo(message.solo);
+        for (const tab of this.tabStates.values()) {
+          tab.fingerprint = '';
+        }
+        const context = await this.context(git, session);
+        if (context) {
+          await this.refresh(context, (latest) =>
+            this.sendCommits(latest, listRefs(latest.repository), true),
+          );
+        }
+        return;
+      }
       case 'setBookmarks':
         await storage.setBookmarks(message.root, message.bookmarks);
         return;
@@ -859,7 +872,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     keepPlace = false,
   ): Promise<void> {
     const [fullHistory, listed] = await Promise.all([
-      listHistory(context.gitPath, context.root),
+      listHistory(context.gitPath, context.root, this.storage.solo),
       refs,
     ]);
     const { tab } = context;

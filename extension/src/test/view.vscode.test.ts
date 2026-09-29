@@ -12,6 +12,7 @@ import {
   activeTabKey,
   bookmarksKey,
   collapseMergesKey,
+  soloKey,
   tabsKey,
 } from '../storage';
 import { FastforwardView, type Connection } from '../view';
@@ -917,6 +918,27 @@ suite('View', function () {
       page.clear();
       await connection.refresh();
       assert.strictEqual(page.last('commits'), undefined, 'reloaded');
+    });
+
+    test('shows only the history of the checked-out commit when solo, and every branch again after', async () => {
+      await settle(repository.root, connection);
+      const [tree] = await repository.resolve('HEAD^{tree}');
+      const side = (
+        await repository.git('commit-tree', tree, '-p', fixture.a, '-m', 'side')
+      ).trim();
+      await repository.git('branch', 'side', side);
+      try {
+        await connection.refresh();
+        assert.strictEqual(page.last('commits')?.total, 4);
+        await connection.receive({ type: 'setSolo', solo: true });
+        assert.strictEqual(page.last('commits')?.total, 3);
+        assert.strictEqual(globalState.get(soloKey), true);
+        await connection.receive({ type: 'setSolo', solo: false });
+        assert.strictEqual(page.last('commits')?.total, 4);
+      } finally {
+        await globalState.update(soloKey, false);
+        await repository.git('branch', '-D', 'side');
+      }
     });
 
     test('saves the layout and sends it when the page loads', async () => {

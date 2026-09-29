@@ -310,16 +310,15 @@ export function AddressBar({
   selected: string | undefined;
   onJump: (commit: string) => void;
 }) {
-  const { mode, startPeek, endPeek, togglePeek, open, close } = usePeek(
+  const { mode, startPeek, endPeek, open, close } = usePeek(
     address.commit !== undefined,
   );
   const [searches, setSearches] = useState(0);
   useShortcuts({
-    'ctrl+l': () => {
+    s: () => {
       open();
       setSearches((count) => count + 1);
     },
-    i: togglePeek,
   });
   const [queries, setQueries] = useState<ReadonlyMap<string, string>>(
     new Map(),
@@ -421,11 +420,6 @@ export function ShortcutsPanel({
         {shortcuts.map((shortcut) => (
           <Fragment key={shortcut.id}>
             <dt>
-              {'ctrl' in shortcut && (
-                <>
-                  <kbd>Ctrl</kbd>+
-                </>
-              )}
               <kbd>{shortcut.key.toUpperCase()}</kbd>
             </dt>
             <dd>{shortcut.description}</dd>

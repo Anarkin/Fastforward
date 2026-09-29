@@ -105,6 +105,7 @@ export interface HistoryEntry {
 export async function listHistory(
   gitPath: string,
   cwd: string,
+  solo = false,
 ): Promise<HistoryEntry[]> {
   const output = await runGit(gitPath, cwd, [
     'rev-list',
@@ -112,9 +113,7 @@ export async function listHistory(
     '--parents',
     '--ignore-missing',
     'HEAD',
-    '--branches',
-    '--remotes',
-    '--tags',
+    ...(solo ? [] : ['--branches', '--remotes', '--tags']),
     '--',
   ]);
   return parseHistory(output);

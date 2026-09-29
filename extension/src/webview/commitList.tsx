@@ -16,6 +16,7 @@ import { formatDateTime } from './dates';
 import { MenuButton } from './menu';
 import { useSkeleton } from './skeleton';
 import type { ScrollTarget } from './tabView';
+import { SoloIcon } from './icons';
 
 export const commitRowHeight = 50;
 export const bubbleLineHeight = 20;
@@ -139,6 +140,8 @@ export function Commits({
   onToggleMerge,
   collapseMerges,
   onCollapseMerges,
+  solo,
+  onSolo,
   navigation,
   search,
 }: {
@@ -154,6 +157,8 @@ export function Commits({
   onToggleMerge: (hash: string) => void;
   collapseMerges: boolean;
   onCollapseMerges: (collapse: boolean) => void;
+  solo: boolean;
+  onSolo: (solo: boolean) => void;
   navigation?: React.ReactNode;
   search?: React.ReactNode;
 }) {
@@ -383,16 +388,26 @@ export function Commits({
       index={0}
       start={navigation}
       actions={
-        <MenuButton
-          title="Commit list settings"
-          items={[
-            {
-              label: 'Collapse merge commits',
-              checked: collapseMerges,
-              onClick: () => onCollapseMerges(!collapseMerges),
-            },
-          ]}
-        />
+        <>
+          <button
+            className={`nav-button toggle ${solo ? 'active' : ''}`}
+            title="Solo: show only the history of the checked-out commit"
+            aria-pressed={solo}
+            onClick={() => onSolo(!solo)}
+          >
+            <SoloIcon />
+          </button>
+          <MenuButton
+            title="Commit list settings"
+            items={[
+              {
+                label: 'Collapse merge commits',
+                checked: collapseMerges,
+                onClick: () => onCollapseMerges(!collapseMerges),
+              },
+            ]}
+          />
+        </>
       }
     >
       <div

@@ -112,6 +112,7 @@ export type ToExtension =
   | { readonly type: 'preloadTab'; readonly root: string }
   | { readonly type: 'setColumnWidths'; readonly widths: readonly number[] }
   | { readonly type: 'setCollapseMerges'; readonly collapse: boolean }
+  | { readonly type: 'setSolo'; readonly solo: boolean }
   | { readonly type: 'setFilesMode'; readonly mode: FilesMode }
   | { readonly type: 'setChangesView'; readonly view: ChangesView }
   | {
@@ -169,6 +170,7 @@ export type ToWebview =
       readonly type: 'layout';
       readonly columnWidths: readonly number[] | undefined;
       readonly collapseMerges: boolean;
+      readonly solo: boolean;
       readonly filesMode: FilesMode;
       readonly changesView: ChangesView;
     }

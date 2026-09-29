@@ -49,6 +49,23 @@ suite('Git repository', function () {
     assert.ok(!refs.some((ref) => ref.name.endsWith('/HEAD')));
   });
 
+  test('lists only the history of HEAD when solo, not a branch off it', async () => {
+    const [first, tree] = await temp.resolve('HEAD~2', 'HEAD^{tree}');
+    const side = (
+      await temp.git('commit-tree', tree, '-p', first, '-m', 'side')
+    ).trim();
+    await temp.git('branch', 'side', side);
+    try {
+      const all = await listHistory(gitPath, cwd);
+      const solo = await listHistory(gitPath, cwd, true);
+      assert.ok(all.some((entry) => entry.hash === side));
+      assert.strictEqual(solo.length, 3);
+      assert.ok(!solo.some((entry) => entry.hash === side));
+    } finally {
+      await temp.git('branch', '-D', 'side');
+    }
+  });
+
   test('lists the history, its commits, their files and patches', async () => {
     const history = await listHistory(gitPath, cwd);
     assert.strictEqual(history.length, 3);
