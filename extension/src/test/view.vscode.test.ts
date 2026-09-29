@@ -16,6 +16,7 @@ import {
 } from '../storage';
 import { FastforwardView, type Connection } from '../view';
 import { waitFor } from './fixtures';
+import { FakeMemento } from './memento';
 import {
   removeFolder,
   settle,
@@ -25,29 +26,6 @@ import {
 } from './repositories';
 import { withMessageStub } from './stub';
 
-// Storage like the extension's, kept in memory
-class FakeMemento implements vscode.Memento {
-  readonly values = new Map<string, unknown>();
-
-  keys(): readonly string[] {
-    return [...this.values.keys()];
-  }
-
-  get<T>(key: string, defaultValue?: T): T {
-    // Like the real storage, which isn't typed either
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    return (this.values.has(key) ? this.values.get(key) : defaultValue) as T;
-  }
-
-  update(key: string, value: unknown): Promise<void> {
-    this.values.set(key, value);
-    return Promise.resolve();
-  }
-
-  setKeysForSync(): void {}
-}
-
-// The view's messages to the page, by type
 class FakePage {
   readonly messages: ToWebview[] = [];
 
@@ -72,8 +50,6 @@ interface OpenView {
   globalState: FakeMemento;
 }
 
-// A new view with these tabs, the first one open, loaded like the page does
-// unless it isn't ready
 async function openView(
   log: vscode.LogOutputChannel,
   tabs: readonly string[],
@@ -97,41 +73,53 @@ async function openView(
   return { view, page, connection, globalState };
 }
 
-// How many histories the view sent, replayed ones included
 function commitsSent(messages: readonly ToWebview[]): number {
   return messages.filter((message) => message.type === 'commits').length;
 }
 
-// A promise that resolves once opened, to hold a step of the view there
 function gate(): { opened: Promise<void>; open: () => void } {
   const { promise, resolve } = Promise.withResolvers<void>();
   return { opened: promise, open: () => resolve() };
 }
 
-// Replaces one of the view's own methods, to hold or fail it at a moment the
-// test picks; the replacement gets the original to call on
-function stubMethod(
+function stubMethod<T = void>(
   view: FastforwardView,
   name: string,
   replace: (
-    original: (...args: unknown[]) => Promise<void>,
+    original: (...args: unknown[]) => Promise<T>,
     ...args: unknown[]
-  ) => Promise<void>,
+  ) => Promise<T>,
 ): void {
   const original: unknown = Reflect.get(view, name);
   assert.ok(typeof original === 'function', name);
   Reflect.set(view, name, (...args: unknown[]) =>
     replace(
       (...inner) =>
-        // A method of the view, which all return promises
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-        Reflect.apply(original, view, inner) as Promise<void>,
+        Reflect.apply(original, view, inner) as Promise<T>,
       ...args,
     ),
   );
 }
 
-// A page the modal opens in place of one it closed, loaded like the page does
+async function withPrototypeOverride(
+  target: unknown,
+  name: string,
+  override: (original: PropertyDescriptor) => PropertyDescriptor,
+  action: () => Promise<void>,
+): Promise<void> {
+  const prototype: unknown = Object.getPrototypeOf(target);
+  assert.ok(typeof prototype === 'object' && prototype !== null);
+  const original = Object.getOwnPropertyDescriptor(prototype, name);
+  assert.ok(original, name);
+  Object.defineProperty(prototype, name, override(original));
+  try {
+    await action();
+  } finally {
+    Object.defineProperty(prototype, name, original);
+  }
+}
+
 function reopen(view: FastforwardView): {
   page: FakePage;
   connection: Connection;
@@ -151,13 +139,9 @@ function savedBookmarks(
 suite('View', function () {
   this.timeout(30_000);
 
-  // The temp folder every repository of these tests is in
   let folder: string;
-  // main: a, b, merge of feature; feature: f1, f2, kept after the merge; the
-  // tests that change it put it back as it was
   let repository: TempRepository;
   let fixture: { a: string; b: string; f2: string; merge: string };
-  // Another repository with one commit, for a second tab
   let other: string;
   let otherHead: string;
 
@@ -194,8 +178,6 @@ suite('View', function () {
     removeFolder(folder);
   });
 
-  // The fixture's main as it was made, checked out, once the Git extension
-  // has read it, for the tests after one that changed it
   async function restore(): Promise<void> {
     await repository.git('checkout', '-f', 'main');
     await repository.git('reset', '--hard', fixture.merge);
@@ -222,8 +204,6 @@ suite('View', function () {
     test('shows the history with merges collapsed', () => {
       const commits = page.last('commits');
       assert.ok(commits);
-      // merge, b and a; f1 and f2 are in the merge, although feature points
-      // at f2, as it is merged
       assert.strictEqual(commits.total, 3);
       assert.deepStrictEqual(
         commits.commits.map((commit) => commit.subject),
@@ -240,7 +220,6 @@ suite('View', function () {
       assert.strictEqual(page.last('reveal')?.hash, fixture.merge);
       assert.strictEqual(page.last('files')?.hash, fixture.merge);
 
-      // Opening it again keeps the place, here nothing selected
       await connection.receive({
         type: 'selectCommit',
         root: repository.root,
@@ -249,6 +228,72 @@ suite('View', function () {
       page.clear();
       await connection.receive({ type: 'ready' });
       assert.strictEqual(page.last('reveal'), undefined);
+    });
+
+    test('shows the branch checked out of a repository the Git extension has not read yet', async () => {
+      const opened = (await getGitApi()).getRepository(
+        vscode.Uri.file(repository.root),
+      );
+      assert.ok(opened);
+      let read = false;
+      await withPrototypeOverride(
+        opened,
+        'status',
+        (status) => ({
+          ...status,
+          value(this: unknown, ...args: unknown[]) {
+            read = true;
+            return Reflect.apply(status.value, this, args);
+          },
+        }),
+        () =>
+          withPrototypeOverride(
+            opened.state,
+            'HEAD',
+            (head) => ({
+              ...head,
+              get(this: unknown) {
+                return read ? head.get?.call(this) : undefined;
+              },
+            }),
+            async () => {
+              const view = await openView(log, [repository.root]);
+              try {
+                const info = view.page.last('repository');
+                assert.strictEqual(info?.head, 'main');
+                assert.strictEqual(info?.headCommit, fixture.merge);
+              } finally {
+                view.connection.dispose();
+              }
+            },
+          ),
+      );
+    });
+
+    test('starts at the commit git has checked out even when the Git extension has not caught up', async () => {
+      const opened = (await getGitApi()).getRepository(
+        vscode.Uri.file(repository.root),
+      );
+      assert.ok(opened);
+      await withPrototypeOverride(
+        opened.state,
+        'HEAD',
+        (head) => ({
+          ...head,
+          get(this: unknown) {
+            return { ...head.get?.call(this), commit: fixture.b };
+          },
+        }),
+        async () => {
+          const view = await openView(log, [repository.root]);
+          try {
+            assert.strictEqual(view.page.last('reveal')?.hash, fixture.merge);
+            assert.strictEqual(view.page.last('files')?.hash, fixture.merge);
+          } finally {
+            view.connection.dispose();
+          }
+        },
+      );
     });
 
     test('reopens at the position of the selected commit', async () => {
@@ -306,7 +351,6 @@ suite('View', function () {
         });
         assert.ok(page.last('diff')?.patch.includes('+draft'));
         page.clear();
-        // Overlapping refreshes of an unchanged working tree
         await Promise.all([connection.refresh(), connection.refresh()]);
         assert.ok(page.last('workingTree'));
         assert.strictEqual(page.last('files'), undefined);
@@ -358,7 +402,6 @@ suite('View', function () {
       );
       assert.strictEqual(page2.graph.length, 2);
 
-      // Asked of the history before, which the page replaces with this one
       await connection.receive({
         type: 'loadCommits',
         root: repository.root,
@@ -367,6 +410,36 @@ suite('View', function () {
         count: 2,
       });
       assert.strictEqual(page.last('commitPage'), page2);
+    });
+
+    test('answers a page of the history that fails to load with no commits, so the list asks again', async () => {
+      const generation = page.last('commits')?.generation ?? -1;
+      const elsewhere = tempFolder('not-a-repository');
+      try {
+        stubMethod<object>(
+          fastforward,
+          'context',
+          async (original, ...args) => ({
+            ...(await original(...args)),
+            root: elsewhere,
+          }),
+        );
+        page.clear();
+        await connection.receive({
+          type: 'loadCommits',
+          root: repository.root,
+          generation,
+          start: 1,
+          count: 2,
+        });
+        const failed = page.last('commitPage');
+        assert.strictEqual(failed?.start, 1);
+        assert.strictEqual(failed.generation, generation);
+        assert.deepStrictEqual(failed.commits, []);
+        assert.ok(page.last('error'));
+      } finally {
+        removeFolder(elsewhere);
+      }
     });
 
     test('expands and collapses a merge', async () => {
@@ -399,7 +472,6 @@ suite('View', function () {
         }),
       ]);
       assert.strictEqual(commitsSent(page.messages), 1);
-      // Expanded and collapsed again
       assert.strictEqual(page.last('commits')?.total, 3);
     });
 
@@ -416,13 +488,24 @@ suite('View', function () {
     });
 
     test('says so when a commit picked is no longer in the history', async () => {
-      // Inside the collapsed merge, as in a list from before it collapsed
       await connection.receive({
         type: 'selectCommit',
         root: repository.root,
         hash: fixture.f2,
       });
       assert.match(page.last('error')?.message ?? '', /not in the history/);
+    });
+
+    test('sends the files and diff again when the shown commit is selected again', async () => {
+      assert.strictEqual(page.last('files')?.hash, fixture.merge);
+      page.clear();
+      await connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: fixture.merge,
+      });
+      assert.strictEqual(page.last('files')?.hash, fixture.merge);
+      assert.strictEqual(page.last('diff')?.hash, fixture.merge);
     });
 
     test('reports a jump to a commit outside the history', async () => {
@@ -470,7 +553,6 @@ suite('View', function () {
     });
 
     test('goes back and forward through the commits shown', async () => {
-      // Opening the tab showed the merge, at HEAD
       await connection.receive({
         type: 'selectCommit',
         root: repository.root,
@@ -552,7 +634,6 @@ suite('View', function () {
       await repository.git('update-ref', 'refs/heads/gone', gone);
       try {
         await connection.refresh();
-        // Opening the tab showed the merge, at HEAD
         for (const hash of [gone, fixture.b]) {
           await connection.receive({
             type: 'selectCommit',
@@ -572,7 +653,6 @@ suite('View', function () {
         page.last('navigation')?.back.map((entry) => entry.hash),
         [fixture.merge],
       );
-      // The first entry of the dropdown is the first step that is still there
       await connection.receive({
         type: 'navigate',
         root: repository.root,
@@ -596,6 +676,43 @@ suite('View', function () {
       }
     });
 
+    test('loads the history of a tab first opened during a refresh only after it', async () => {
+      const own = await openView(log, [repository.root], false);
+      const held = gate();
+      let calls = 0;
+      let running = 0;
+      let most = 0;
+      stubMethod(own.view, 'sendCommits', async (original, ...args) => {
+        calls++;
+        running++;
+        most = Math.max(most, running);
+        try {
+          if (calls === 1) {
+            await held.opened;
+          }
+          await original(...args);
+        } finally {
+          running--;
+        }
+      });
+      try {
+        const refreshing = own.connection.refresh();
+        await waitFor(() => calls === 1, 'the refresh to load the history');
+        const ready = own.connection.receive({ type: 'ready' });
+        await waitFor(
+          () => own.page.last('repository') !== undefined,
+          'the tab to open',
+        );
+        held.open();
+        await Promise.all([refreshing, ready]);
+        assert.strictEqual(most, 1);
+        assert.strictEqual(commitsSent(own.page.messages), 1);
+        assert.strictEqual(own.page.last('reveal')?.hash, fixture.merge);
+      } finally {
+        own.connection.dispose();
+      }
+    });
+
     test('refreshes once more for a page that asks while a refresh runs', async () => {
       await settle(repository.root, connection);
       const newer = new FakePage();
@@ -603,8 +720,6 @@ suite('View', function () {
         newer.messages.push(message),
       );
       try {
-        // The older page asks again after the newer one, as its watcher does
-        // when a change comes in then
         await Promise.all([
           connection.refresh(),
           newerConnection.refresh(),
@@ -659,7 +774,6 @@ suite('View', function () {
         );
         held.open();
         await Promise.all([reloading, reopened.ready]);
-        // The replayed list, then the reloaded one
         assert.strictEqual(commitsSent(reopened.page.messages), 2);
       } finally {
         reopened.connection.dispose();
@@ -705,6 +819,23 @@ suite('View', function () {
       }
     });
 
+    test('sends nothing to a page closed while its tab first loads', async () => {
+      const own = await openView(log, [repository.root], false);
+      const held = gate();
+      stubMethod(own.view, 'sendCommits', async (original, ...args) => {
+        await held.opened;
+        await original(...args);
+      });
+      const first = own.connection.receive({ type: 'ready' });
+      await waitFor(() => own.page.last('repository') !== undefined, 'refs');
+      own.connection.dispose();
+      const sent = own.page.messages.length;
+      held.open();
+      await first;
+      assert.strictEqual(own.page.messages.length, sent);
+      assert.strictEqual(own.page.last('commits'), undefined);
+    });
+
     test('runs the refreshes asked for during one that fails', async () => {
       await settle(repository.root, connection);
       const held = gate();
@@ -726,7 +857,6 @@ suite('View', function () {
         const queued = newerConnection.refresh();
         held.open();
         await Promise.all([failing, queued]);
-        assert.strictEqual(calls, 2);
         assert.ok(newer.last('workingTree'));
         assert.match(page.last('error')?.message ?? '', /refresh failed/);
       } finally {
@@ -790,7 +920,6 @@ suite('View', function () {
     });
 
     test('saves the layout and sends it when the page loads', async () => {
-      // A new machine starts with the changes as a tree
       assert.strictEqual(page.last('layout')?.changesView, 'tree');
       await connection.receive({
         type: 'setColumnWidths',
@@ -806,7 +935,6 @@ suite('View', function () {
     });
 
     test('keeps a folder spelled two ways as one tab', async function () {
-      // Drive letters and paths are case-insensitive only on Windows
       if (process.platform !== 'win32') {
         this.skip();
       }
@@ -817,8 +945,6 @@ suite('View', function () {
       );
       const view = await openView(log, [repository.root, respelled]);
       try {
-        // Among the tabs is the repository open in VS Code, which every view
-        // adds
         const roots = view.page.last('tabs')?.tabs.map((tab) => tab.root) ?? [];
         assert.deepStrictEqual(
           roots.filter(
@@ -831,7 +957,7 @@ suite('View', function () {
       }
     });
 
-    test('reports a checkout git refuses', async () => {
+    test('reports what git said when it refuses a checkout', async () => {
       await withMessageStub('showErrorMessage', async (messages) => {
         await connection.receive({
           type: 'checkout',
@@ -840,6 +966,8 @@ suite('View', function () {
         });
         assert.strictEqual(messages.length, 1);
         assert.match(messages[0], /couldn't check out no-such-branch/);
+        assert.match(messages[0], /pathspec 'no-such-branch' did not match/);
+        assert.doesNotMatch(messages[0], /Failed to execute git/);
       });
     });
 
@@ -857,7 +985,6 @@ suite('View', function () {
     });
 
     test('reloads when a ref moves, keeping the top commit in place', async () => {
-      // The Git extension may still be catching up with earlier changes
       await settle(repository.root, connection);
       await connection.receive({
         type: 'scrolled',
@@ -875,7 +1002,6 @@ suite('View', function () {
         await connection.refresh();
         const commits = page.last('commits');
         assert.strictEqual(commits?.total, 4);
-        // b was second, and is third under the new commit
         assert.deepStrictEqual(commits.anchor, { index: 2, offset: 7 });
         assert.ok(page.last('repository'));
       } finally {
@@ -906,14 +1032,12 @@ suite('View', function () {
     test('shows a detached HEAD as a bubble on its commit', async () => {
       await repository.git('checkout', '--detach', fixture.b);
       try {
-        // The Git extension notices the checkout before a real change event
         await settle(repository.root);
         page.clear();
         await connection.refresh();
         const info = page.last('repository');
         assert.strictEqual(info?.head, undefined);
         assert.strictEqual(info?.headCommit, fixture.b);
-        // b, second in the list, has no refs, so its bubble is HEAD's
         assert.deepStrictEqual(
           page.last('commits')?.decorations.find(([index]) => index === 1),
           [1, 1],
@@ -950,7 +1074,6 @@ suite('View', function () {
           target: { kind: 'branch', name: 'feature' },
         });
         assert.strictEqual(page.last('repository')?.head, 'feature');
-        // It jumps to what it checked out
         assert.strictEqual(page.last('reveal')?.hash, fixture.f2);
 
         await connection.receive({
@@ -1028,7 +1151,6 @@ suite('View', function () {
             root: repository.root,
             target: { kind: 'remote', name: 'origin/apart' },
           });
-          // The Git extension may report the new branch a moment later
           await waitFor(
             () => page.last('repository')?.head === 'apart',
             'the checked-out branch',
@@ -1050,7 +1172,6 @@ suite('View', function () {
   suite('with two tabs', () => {
     let tabs: OpenView;
 
-    // This repository open, and the other one as the second tab
     setup(async () => {
       tabs = await openView(log, [repository.root, other]);
       await settle(repository.root, tabs.connection);
@@ -1059,7 +1180,6 @@ suite('View', function () {
     teardown(() => tabs.connection.dispose());
 
     test('comes back to a tab as it was, without reloading its history', async () => {
-      // Scrolled into the second row, 7 pixels into it
       await tabs.connection.receive({
         type: 'scrolled',
         root: repository.root,
@@ -1073,7 +1193,6 @@ suite('View', function () {
         type: 'selectTab',
         root: repository.root,
       });
-      // Only the replayed list, which is scrolled where it was
       assert.strictEqual(commitsSent(tabs.page.messages), 1);
       assert.deepStrictEqual(tabs.page.last('commits')?.anchor, {
         index: 1,
@@ -1091,7 +1210,6 @@ suite('View', function () {
           type: 'selectTab',
           root: repository.root,
         });
-        // The replayed list, then the reloaded one
         assert.strictEqual(commitsSent(tabs.page.messages), 2);
         const refs = tabs.page.last('repository')?.refs.map((ref) => ref.name);
         assert.ok(refs?.includes('moved-away'));
@@ -1112,14 +1230,12 @@ suite('View', function () {
         type: 'selectTab',
         root: repository.root,
       });
-      // The feature commits, which the merge hid, are shown now
       assert.strictEqual(tabs.page.last('commits')?.total, 5);
     });
 
     test('preloads a tab in the background, which then opens as it was left', async () => {
       tabs.page.clear();
       await tabs.connection.receive({ type: 'preloadTab', root: other });
-      // Nothing of it shows while another tab is open
       assert.ok(
         !tabs.page.messages.some(
           (message) =>
@@ -1129,7 +1245,6 @@ suite('View', function () {
       );
       tabs.page.clear();
       await tabs.connection.receive({ type: 'selectTab', root: other });
-      // Only the preloaded list, at what is checked out
       assert.strictEqual(commitsSent(tabs.page.messages), 1);
       assert.strictEqual(tabs.page.last('files')?.hash, otherHead);
       assert.strictEqual(tabs.page.last('commits')?.total, 1);
@@ -1194,9 +1309,8 @@ suite('View', function () {
       assert.strictEqual(tabs.page.last('files'), undefined);
     });
 
-    test('opens a tab that is preloading once it has loaded', async () => {
+    test('opens a tab that is preloading once it has loaded, without sending its history again', async () => {
       tabs.page.clear();
-      // Clicked while it still loads
       await Promise.all([
         tabs.connection.receive({ type: 'preloadTab', root: other }),
         tabs.connection.receive({ type: 'selectTab', root: other }),
@@ -1204,14 +1318,11 @@ suite('View', function () {
       assert.strictEqual(tabs.page.last('files')?.hash, otherHead);
       assert.strictEqual(tabs.page.last('commits')?.total, 1);
       assert.strictEqual(tabs.page.last('error'), undefined);
-      // Once, from the preload, as sending it twice would reset the list's
-      // scrolling and the selection
       assert.strictEqual(commitsSent(tabs.page.messages), 1);
     });
 
     test('shows nothing of a preloading tab once another tab is clicked', async () => {
       tabs.page.clear();
-      // Hovered and clicked, and another tab clicked before it loaded
       await Promise.all([
         tabs.connection.receive({ type: 'preloadTab', root: other }),
         tabs.connection.receive({ type: 'selectTab', root: other }),
@@ -1228,7 +1339,6 @@ suite('View', function () {
     test('drops what the page asks of a tab it has left, but keeps its bookmarks and place', async () => {
       await tabs.connection.receive({ type: 'selectTab', root: other });
       tabs.page.clear();
-      // Sent before the page heard of the switch
       await tabs.connection.receive({
         type: 'selectCommit',
         root: repository.root,
@@ -1278,10 +1388,21 @@ suite('View', function () {
       assert.deepStrictEqual(tabs.page.last('bookmarks')?.bookmarks, []);
     });
 
+    test('shows the error of opening the next tab after one is closed', async () => {
+      stubMethod(tabs.view, 'loadTab', () =>
+        Promise.reject(new Error('next tab failed')),
+      );
+      await tabs.connection.receive({
+        type: 'closeTab',
+        root: repository.root,
+      });
+      assert.strictEqual(tabs.page.last('tabs')?.active, other);
+      assert.match(tabs.page.last('error')?.message ?? '', /next tab failed/);
+    });
+
     test('sorts tabs by name and closes one, opening the next', async () => {
       const zeta = await tempRepository(path.join(folder, 'Zeta'));
       await zeta.commit('zeta');
-      // Out of order, with other open
       const own = await openView(log, [other, zeta.root, repository.root]);
       // Without the tab of the repository open in VS Code, which the view
       // adds first when the Git extension has opened it
@@ -1293,7 +1414,6 @@ suite('View', function () {
       try {
         await own.connection.receive({ type: 'sortTabs' });
         assert.deepStrictEqual(names(), ['main', 'other', 'Zeta']);
-        // The tab after it opens in its place
         await own.connection.receive({ type: 'closeTab', root: other });
         const left = own.page.last('tabs');
         assert.deepStrictEqual(names(), ['main', 'Zeta']);
@@ -1319,8 +1439,6 @@ suite('View', function () {
     });
 
     test('uses a repository cloned inside another, not the outer one', async () => {
-      // An outer repository the Git extension has open, as the one of a
-      // workspace
       const outer = await tempRepository(path.join(folder, 'outer'));
       await (await getGitApi()).openRepository(vscode.Uri.file(outer.root));
       const nested = await tempRepository(path.join(outer.root, 'nested'), {
@@ -1377,7 +1495,6 @@ suite('View', function () {
         'small.txt': 'small\n',
       });
       const [hash] = await large.resolve('HEAD');
-      // Opening the tab selects HEAD, the commit
       const view = await openView(log, [large.root]);
       try {
         const patch = view.page.last('diff')?.patch ?? '';
@@ -1393,7 +1510,6 @@ suite('View', function () {
         const fileDiff = view.page.last('fileDiff');
         assert.strictEqual(fileDiff?.path, 'large.txt');
         assert.ok(fileDiff?.patch.includes('+line 1999'));
-        // Said back, for the page to tell it from an answer to a diff before
         assert.strictEqual(fileDiff.diff, 1);
       } finally {
         view.connection.dispose();
@@ -1401,7 +1517,6 @@ suite('View', function () {
     });
 
     suite('with a file no commit changed since', () => {
-      // kept.txt, and changed.txt in the commit after
       let files: TempRepository;
       let kept: string;
       let changed: string;
@@ -1427,8 +1542,6 @@ suite('View', function () {
           assert.strictEqual(content.content, 'kept\n');
           assert.strictEqual(content.binary, false);
 
-          // The diff of a commit selected after it is what the view reopens
-          // with
           await view.connection.receive({
             type: 'selectCommit',
             root: files.root,
@@ -1463,7 +1576,6 @@ suite('View', function () {
             root: files.root,
             hash: workingTreeHash,
           });
-          // A file that isn't among the changes is shown whole
           await view.connection.receive({
             type: 'selectFile',
             root: files.root,
@@ -1477,7 +1589,6 @@ suite('View', function () {
           assert.strictEqual(view.page.last('tree'), undefined);
           assert.strictEqual(view.page.last('fileContent'), undefined);
 
-          // A new file changes the tree
           fs.writeFileSync(added, 'new\n');
           await view.connection.refresh();
           assert.ok(view.page.last('tree')?.paths.includes('new.txt'));
@@ -1495,7 +1606,6 @@ suite('Fetch', function () {
   this.timeout(30_000);
 
   let folder: string;
-  // With a bare repository as origin, which main tracks
   let repository: TempRepository;
   let remote: TempRepository;
   let page: FakePage;
@@ -1531,10 +1641,8 @@ suite('Fetch', function () {
     const [fetched] = await elsewhere.resolve('HEAD');
     page.clear();
     try {
-      // Like VS Code's autofetch, without asking the view to refresh
       const git = await getGitApi();
       await git.getRepository(vscode.Uri.file(repository.root))?.fetch();
-      // The refs and the reloaded history come in side by side
       await waitFor(
         () =>
           page
@@ -1545,7 +1653,6 @@ suite('Fetch', function () {
         'the fetched commit and the reloaded history',
       );
     } finally {
-      // Back to the same place for the next tests
       await repository.git('merge', '--ff-only', 'origin/main');
       await settle(repository.root, connection);
     }

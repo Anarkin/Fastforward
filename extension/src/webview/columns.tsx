@@ -7,7 +7,6 @@ import {
   useState,
 } from 'react';
 
-// Widths of the Commits and Files columns; Diff takes the rest
 export const defaultColumnWidths: readonly number[] = [460, 300];
 const minColumnWidth = 120;
 const minLastColumnWidth = 240;
@@ -20,8 +19,6 @@ interface Resizing {
 const ColumnResizing = createContext<Resizing | undefined>(undefined);
 export const ColumnResizingProvider = ColumnResizing.Provider;
 
-// A hidden column is there with no width, so it keeps its scroll position
-// and whatever else it holds for when it shows again
 export function templateOf(
   widths: readonly number[],
   hidden: readonly boolean[],
@@ -29,7 +26,6 @@ export function templateOf(
   return `${widths.map((width, i) => `${hidden[i] ? 0 : width}px`).join(' ')} minmax(${minLastColumnWidth}px, 1fr)`;
 }
 
-// The saved widths, or the defaults for none or ones saved for other columns
 export function widthsToLoad(
   saved: readonly number[] | undefined,
 ): readonly number[] {
@@ -38,8 +34,6 @@ export function widthsToLoad(
     : defaultColumnWidths;
 }
 
-// The widest a column can be dragged to in a view this wide, so the last
-// column keeps at least its minimum width; hidden columns take no room
 export function maxWidth(
   widths: readonly number[],
   hidden: readonly boolean[],
@@ -53,7 +47,6 @@ export function maxWidth(
   return Math.max(minColumnWidth, viewWidth - others - minLastColumnWidth);
 }
 
-// Column widths that the resizers change; save is called when a drag ends
 export function useColumnWidths(
   save: (widths: readonly number[]) => void,
   hidden: readonly boolean[],
@@ -131,7 +124,6 @@ export function useColumnWidths(
   return { container, template: templateOf(widths, hidden), load, resizing };
 }
 
-// The handle on a column's right edge; double-click resets the width
 export function Resizer({ index }: { index: number }) {
   const resizing = useContext(ColumnResizing);
   if (!resizing) {

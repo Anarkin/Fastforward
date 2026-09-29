@@ -3,8 +3,6 @@ import { join } from 'node:path';
 import { headCommit } from './history';
 import { runGit, runGitBytes, splitNul } from './run';
 
-// Every file of the repository at a commit, or in the working tree including
-// untracked files; took 97 ms and 372 ms for 19k files
 export async function listTree(
   gitPath: string,
   cwd: string,
@@ -20,8 +18,6 @@ export async function listTree(
   return [...new Set(splitNul(output).filter(Boolean))];
 }
 
-// Files over this size, or with a NUL byte near the start, are shown as
-// binary instead of their content
 const maxFileSize = 2 * 1024 * 1024;
 const binaryProbe = 8000;
 
@@ -38,7 +34,6 @@ function toContent(buffer: Buffer): FileContent {
     : { content: buffer.toString('utf8'), binary: false };
 }
 
-// A submodule is shown as git diffs it, by the commit it is at
 function submoduleContent(hash: string | undefined): FileContent {
   return {
     content: hash ? `Subproject commit ${hash}\n` : '',
@@ -46,8 +41,6 @@ function submoduleContent(hash: string | undefined): FileContent {
   };
 }
 
-// A file's content at a commit, or in the working tree; its size is looked at
-// first, so a huge file isn't read only to be shown as binary
 export async function readFile(
   gitPath: string,
   cwd: string,
@@ -66,11 +59,9 @@ export async function readFile(
       }
       throw error;
     });
-    // Deleted since it was listed, or left out of a sparse checkout
     if (!stats) {
       return { content: '', binary: false };
     }
-    // As git stores it, by its target, not the file it points to
     if (stats.isSymbolicLink()) {
       const target = await fs.readlink(file);
       return {
@@ -80,8 +71,6 @@ export async function readFile(
       };
     }
     if (stats.isDirectory()) {
-      // A submodule, or a repository inside this one; not one that isn't
-      // checked out, as git would then find the outer repository
       const checkedOut = await fs.stat(join(file, '.git')).then(
         () => true,
         () => false,
@@ -94,7 +83,6 @@ export async function readFile(
       ? binaryContent
       : toContent(await fs.readFile(file));
   }
-  // "<mode> <type> <object> <size>\t<path>", with a size only for files
   const entry = await runGit(gitPath, cwd, [
     'ls-tree',
     '-z',

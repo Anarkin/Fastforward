@@ -2,8 +2,6 @@ import * as assert from 'node:assert';
 import { Graph } from '../history/graph';
 import type { GraphRow } from '../shared/protocol';
 
-// "from>to" for top lines and "from>to." for bottom lines, with a ~ when
-// dotted, sorted
 function describe(row: GraphRow): string {
   const lines = row.lines
     .map(
@@ -31,7 +29,6 @@ suite('Graph', () => {
   });
 
   test('opens a lane for a merged branch and joins it at the fork', () => {
-    // m merges b into a; both a and b branched off from c
     const graph = new Graph([
       { hash: 'm', parents: ['a', 'b'] },
       { hash: 'a', parents: ['c'] },
@@ -63,7 +60,6 @@ suite('Graph', () => {
   test('computes any page the same as a full walk', () => {
     const history = Array.from({ length: 50 }, (_, index) => ({
       hash: `c${index}`,
-      // Every fifth commit merges one a few rows further down
       parents:
         index === 49
           ? []
@@ -74,7 +70,6 @@ suite('Graph', () => {
     const full = new Graph(history, { checkpointEvery: 1000 }).rows(0, 50);
     const paged = new Graph(history, { checkpointEvery: 7 });
     assert.deepStrictEqual(paged.rows(0, 50), full);
-    // As wide as the widest row, found without drawing the rows' lines
     const widest = Math.max(
       ...full.map((row) =>
         Math.max(row.lane + 1, ...row.lines.map((line) => line.to + 1)),

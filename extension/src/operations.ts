@@ -5,21 +5,12 @@ import { listRefs } from './git/repository';
 import type { CheckoutTarget } from './shared/protocol';
 import { withoutRemote } from './shared/refNames';
 
-// What changes the repository: checking out and fetching; git's refusals are
-// shown as notifications, and written to the log
-
-// A tab's repository, and the git that runs in it
 export interface RepositoryAt {
   readonly gitPath: string;
   readonly repository: Repository;
   readonly root: string;
 }
 
-// Checks out a branch, a remote branch, a tag or a commit; git refuses when
-// uncommitted changes would be overwritten, which is shown as a notification;
-// a remote branch switches to its local branch, which is created when there
-// is none, or else fast-forwarded when it is behind, so it ends up where the
-// remote branch is, as if it were checked out itself; whether it switched
 export async function checkout(
   log: vscode.LogOutputChannel,
   at: RepositoryAt,
@@ -60,9 +51,6 @@ export async function checkout(
   }
 }
 
-// Fast-forwards the checked-out local branch to the remote branch when it is
-// behind; with commits of its own it stays, as combining them is a decision
-// for a pull, and the user is told when both sides have commits
 async function catchUp(
   log: vscode.LogOutputChannel,
   { gitPath, root }: RepositoryAt,
@@ -98,8 +86,6 @@ async function catchUp(
   }
 }
 
-// Fetches every remote, dropping the branches deleted there, as VS Code's
-// own Fetch does, with its credentials and settings
 export async function fetchAll(
   log: vscode.LogOutputChannel,
   repository: Repository,
@@ -117,8 +103,6 @@ export async function fetchAll(
   }
 }
 
-// What git said about a failure: the Git extension's errors keep git's output
-// in stderr, and their message is only "Failed to execute git"
 function gitErrorText(error: unknown): string {
   if (typeof error === 'object' && error !== null && 'stderr' in error) {
     const { stderr } = error;

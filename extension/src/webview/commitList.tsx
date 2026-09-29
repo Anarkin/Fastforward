@@ -17,28 +17,16 @@ import { MenuButton } from './menu';
 import { useSkeleton } from './skeleton';
 import type { ScrollTarget } from './tabView';
 
-// A row is this high, and a line of bubbles higher when refs point at its
-// commit
 export const commitRowHeight = 50;
 export const bubbleLineHeight = 20;
-// Pages are asked for once scrolling pauses this long, so dragging the
-// scrollbar across years doesn't load every page in between
 const loadDelay = 80;
-// The top commit is reported once scrolling pauses this long
 const scrolledDelay = 150;
 
-// For useSyncExternalStore before a history arrives
 const noHistory = () => () => {};
 const noVersion = () => 0;
 
-// Enough placeholder rows to fill the list while a tab opens
 const openingRows = 20;
 
-// A commit's bubbles wrap onto as many lines as the column's width needs, so
-// its row is measured once drawn, from one line of them to start with; the
-// rows are keyed by commit, so a row keeps its height when the list changes,
-// and is measured again whenever it changes size, as when a checkout adds a
-// bubble; the working tree's row comes first when there is one
 export function estimatedRowHeight(
   history: CommitHistory | undefined,
   offset: number,
@@ -49,7 +37,6 @@ export function estimatedRowHeight(
     : commitRowHeight;
 }
 
-// A commit not loaded yet is keyed by its position until it is
 export function rowKeyOf(
   history: CommitHistory | undefined,
   offset: number,
@@ -60,10 +47,17 @@ export function rowKeyOf(
     : (history?.at(index - offset)?.hash ?? `position ${index}`);
 }
 
-// The row at the top of the list: the commit and how far it is scrolled into,
-// or the working tree's row, which all the way up counts as, as a reload keeps
-// the top of the list with its new commits; undefined while the commit isn't
-// loaded
+export function fixedRowHeight(
+  history: CommitHistory | undefined,
+  offset: number,
+  index: number,
+  estimated: number,
+): number | undefined {
+  return index < offset || history?.at(index - offset) !== undefined
+    ? undefined
+    : estimated;
+}
+
 export function listTop(
   rows: readonly { index: number; start: number; end: number }[],
   scrollTop: number,
@@ -78,21 +72,15 @@ export function listTop(
     return undefined;
   }
   if (row.index < offset) {
-    // Within the working tree's row, which is above every commit
     return { hash: workingTreeHash, offset: 0 };
   }
   const commit = history?.at(row.index - offset);
   return commit && { hash: commit.hash, offset: scrollTop - row.start };
 }
 
-// The position an arrow key moves the selection to, -1 being the working
-// tree's row; undefined at either end, where selecting again would clear the
-// selection, and while it isn't known where the selected commit is, rather
-// than starting over from the top
 export function arrowKeyPosition(
   history: CommitHistory,
   selected: string | undefined,
-  // The working tree's row can be selected, having changes
   workingTree: boolean,
   step: number,
 ): number | undefined {
@@ -101,7 +89,6 @@ export function arrowKeyPosition(
   if (selected === workingTreeHash) {
     from = -1;
   } else if (selected !== undefined) {
-    // A reload that kept the list in place may not have loaded its page
     const hint = history.selectedIndex;
     from =
       history.positionOf(selected) ??
@@ -117,7 +104,6 @@ export function arrowKeyPosition(
   return position === from ? undefined : position;
 }
 
-// The detached HEAD and the refs of a commit, on one line that wraps
 export function CommitBubbles({
   hash,
   refs,
@@ -155,22 +141,18 @@ export function Commits({
   onCollapseMerges,
 }: {
   history: CommitHistory | undefined;
-  // The tab's history hasn't arrived yet
   opening: boolean;
   scrollTarget: ScrollTarget | undefined;
-  // The commit at the top of the list once scrolling stops
   onScrolled: (hash: string, offset: number) => void;
   onLoad: (start: number, generation: number) => void;
   workingTree: number | undefined;
   refsByCommit: Map<string, RefInfo[]>;
   selected: string | undefined;
-  // Replace is set for the arrow keys, which add no step to the history
   onSelect: (hash: string | undefined, replace?: boolean) => void;
   onToggleMerge: (hash: string) => void;
   collapseMerges: boolean;
   onCollapseMerges: (collapse: boolean) => void;
 }) {
-  // Changes when pages arrive, as the history is filled in place
   const version = useSyncExternalStore(
     history?.subscribe ?? noHistory,
     history?.getVersion ?? noVersion,
@@ -180,7 +162,6 @@ export function Commits({
   const detached = useContext(DetachedHead);
   const hasWorkingTree = workingTree !== undefined;
   const offset = hasWorkingTree ? 1 : 0;
-  // A tab that is opening shows placeholder rows until its history arrives
   const skeleton = useSkeleton(opening);
   const count = offset + (history?.total ?? (skeleton ? openingRows : 0));
 
@@ -192,8 +173,6 @@ export function Commits({
     (index: number) => rowKeyOf(history, offset, index),
     [history, offset],
   );
-  // Only the rows on screen are rendered, and the list has the height of the
-  // whole history from the start
   const virtualizer = useVirtualizer({
     count,
     getScrollElement: () => list.current,
@@ -201,8 +180,6 @@ export function Commits({
     getItemKey: rowKey,
     overscan: 10,
   });
-  const loaded = (index: number) =>
-    index < offset || history?.at(index - offset) !== undefined;
   const rows = virtualizer.getVirtualItems();
   const first = Math.max(0, (rows[0]?.index ?? 0) - offset);
   const last = Math.max(0, (rows.at(-1)?.index ?? 0) - offset);
@@ -219,14 +196,11 @@ export function Commits({
     return () => clearTimeout(timer);
   }, [history, first, last, onLoad]);
 
-  // Scrolls to the selected commit or a location's commit, which may be years
-  // back; a commit that is already on screen stays where it is
   const scrollIndex = scrollTarget && offset + scrollTarget.index;
   useEffect(() => {
     if (!history || scrollIndex === undefined) {
       return;
     }
-    // A reload puts the commit that was at the top back at the top
     const rowOffset = scrollTarget?.offset;
     if (rowOffset !== undefined) {
       const [start] = virtualizer.getOffsetForIndex(scrollIndex, 'start') ?? [];
@@ -241,12 +215,8 @@ export function Commits({
     virtualizer.scrollToIndex(scrollIndex, {
       align: onScreen ? 'auto' : 'center',
     });
-    // scrollTarget is new for every jump, even to the same commit
   }, [history, scrollTarget, scrollIndex, virtualizer]);
 
-  // Tells the extension which commit is at the top once scrolling stops, so a
-  // reload can keep it there; when it stopped on a commit not loaded yet, as
-  // after dragging the scrollbar far, once that loads
   const topUnreported = useRef(false);
   const reportTop = useCallback(() => {
     const element = list.current;
@@ -269,7 +239,6 @@ export function Commits({
     if (!element) {
       return undefined;
     }
-    // A new history is put where the extension says
     topUnreported.current = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const onScroll = () => {
@@ -302,8 +271,6 @@ export function Commits({
     if (position === -1) {
       onSelect(workingTreeHash, true);
     } else {
-      // A row that hasn't loaded yet can't be selected, but is scrolled to,
-      // which loads it
       const commit = history.at(position);
       if (commit) {
         onSelect(commit.hash, true);
@@ -335,7 +302,6 @@ export function Commits({
     );
   };
 
-  // Each row's text starts right after the lanes it draws in
   const indent = (index: number) => graphWidth(rowLanes(graphOf(index))) + 8;
 
   const renderRow = (index: number) => {
@@ -386,7 +352,6 @@ export function Commits({
         className={`commit ${commit.hash === selected ? 'selected' : ''}`}
         style={{ paddingLeft: indent(index) }}
         onClick={() => onSelect(commit.hash)}
-        // Bubbles in the row open their own menu first
         onContextMenu={(event) =>
           openMenu(event, { kind: 'commit', hash: commit.hash })
         }
@@ -436,23 +401,26 @@ export function Commits({
           className="list-spacer"
           style={{ height: virtualizer.getTotalSize() }}
         >
-          {rows.map((row) => (
-            <div
-              key={row.key}
-              className="list-row"
-              data-index={row.index}
-              // A commit not loaded yet keeps the height it is estimated at,
-              // so the list doesn't move when it loads
-              ref={loaded(row.index) ? virtualizer.measureElement : undefined}
-              style={{
-                height: loaded(row.index) ? undefined : row.size,
-                transform: `translateY(${row.start}px)`,
-              }}
-            >
-              {renderGraph(row.index, row.size)}
-              {renderRow(row.index)}
-            </div>
-          ))}
+          {rows.map((row) => {
+            const height = fixedRowHeight(history, offset, row.index, row.size);
+            return (
+              <div
+                key={row.key}
+                className="list-row"
+                data-index={row.index}
+                ref={
+                  height === undefined ? virtualizer.measureElement : undefined
+                }
+                style={{
+                  height,
+                  transform: `translateY(${row.start}px)`,
+                }}
+              >
+                {renderGraph(row.index, row.size)}
+                {renderRow(row.index)}
+              </div>
+            );
+          })}
         </div>
       </div>
     </Column>

@@ -1,5 +1,4 @@
 {
-  // The extension's code alone, without the DOM, which it doesn't have
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "lib": ["ES2024"],

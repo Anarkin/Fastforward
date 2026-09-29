@@ -8,14 +8,10 @@ export interface Head {
   readonly type?: number;
 }
 
-// The branch HEAD is on; a HEAD detached at a tag is named after the tag by
-// the Git extension, but no branch is checked out then
 export function checkedOutBranch(head: Head | undefined): string | undefined {
   return head?.type === RefType.Tag ? undefined : head?.name;
 }
 
-// HEAD and where every ref points, to tell whether the history changed; the
-// order of the refs doesn't matter
 export function fingerprint(
   head: Head | undefined,
   refs: readonly RefInfo[],
@@ -26,8 +22,6 @@ export function fingerprint(
   ].join('\n');
 }
 
-// How many bubbles each commit has: its refs, and a detached HEAD, which is
-// shown as a bubble of its own
 export function countRefs(
   refs: readonly RefInfo[],
   head?: Head,
@@ -45,14 +39,10 @@ export function countRefs(
   return counts;
 }
 
-// The commit HEAD points at when no branch is checked out, as after checking
-// out a commit, a tag or a remote branch, or during a rebase
 export function detachedHead(head: Head | undefined): string | undefined {
   return head && !checkedOutBranch(head) ? head.commit : undefined;
 }
 
-// [position, number of refs] for every shown commit that refs point at, which
-// the list sizes its rows from
 export function decorations(
   refCounts: ReadonlyMap<string, number>,
   positions: ReadonlyMap<string, number>,
@@ -67,9 +57,6 @@ export function decorations(
   return result;
 }
 
-// The bookmarks a repository starts with: its main branch, the remote's default
-// like origin/main, or else a local main, master or trunk, as the local branch
-// and every remote branch of the same name that exist
 export function defaultBookmarks(
   refs: readonly RefInfo[],
   remoteDefaults: readonly string[],

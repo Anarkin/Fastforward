@@ -2,6 +2,11 @@ import * as assert from 'node:assert';
 import * as vscode from 'vscode';
 import { waitFor } from './fixtures';
 
+interface LabelFormatter {
+  scheme: string;
+  formatting: { label: string };
+}
+
 function activeTabIsView(): boolean {
   const input = vscode.window.tabGroups.activeTabGroup.activeTab?.input;
   return (
@@ -10,7 +15,6 @@ function activeTabIsView(): boolean {
   );
 }
 
-// Tab changes reach the extension host asynchronously
 async function runUntilShown(command: string, shown: boolean): Promise<void> {
   await vscode.commands.executeCommand(command);
   await waitFor(
@@ -27,7 +31,6 @@ suite('Extension', () => {
     await extension.activate();
   });
 
-  // Each test starts with no editors, the view included
   teardown(() =>
     vscode.commands.executeCommand('workbench.action.closeAllEditors'),
   );
@@ -54,5 +57,22 @@ suite('Extension', () => {
     await runUntilShown('fastforward.showView', true);
     await vscode.commands.executeCommand('fastforward.showView');
     assert.ok(activeTabIsView(), 'view hidden by the second show');
+  });
+
+  test('shows the view with no path next to its title', async () => {
+    await runUntilShown('fastforward.showView', true);
+    const input = vscode.window.tabGroups.activeTabGroup.activeTab?.input;
+    assert.ok(input instanceof vscode.TabInputCustom);
+    const formatters: readonly LabelFormatter[] | undefined =
+      vscode.extensions.getExtension('anarkin.fastforward')?.packageJSON
+        .contributes.resourceLabelFormatters;
+    const formatter = formatters?.find(
+      (candidate) => candidate.scheme === input.uri.scheme,
+    );
+    assert.ok(formatter, `no label formatter for ${input.uri.scheme}`);
+    assert.strictEqual(
+      formatter.formatting.label.replace('${authority}', input.uri.authority),
+      '',
+    );
   });
 });

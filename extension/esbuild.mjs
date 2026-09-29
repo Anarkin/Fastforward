@@ -20,7 +20,6 @@ const contexts = await Promise.all([
     outfile: 'dist/extension.js',
     external: ['vscode'],
   }),
-  // The view's page; esbuild writes its imported CSS to dist/webview.css
   esbuild.context({
     ...shared,
     entryPoints: ['src/webview/main.tsx'],

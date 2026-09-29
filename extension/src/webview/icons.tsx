@@ -1,7 +1,3 @@
-// Line icons for the tab bar and the toolbar, drawn thin on a 16 pixel grid
-// like VS Code's and Chrome's, where text glyphs render heavy and at the
-// font's whim; they take the button's text color
-
 function Icon({ children }: { children: React.ReactNode }) {
   return (
     <svg
@@ -45,7 +41,6 @@ export function ForwardIcon() {
   );
 }
 
-// A question mark in a circle
 export function HelpIcon() {
   return (
     <Icon>
@@ -55,8 +50,6 @@ export function HelpIcon() {
   );
 }
 
-// A circle, open at the top right, running into the corner of the arrowhead
-// that turns it clockwise
 export function RefreshIcon() {
   return (
     <Icon>

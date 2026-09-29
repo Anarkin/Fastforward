@@ -4,9 +4,6 @@ import * as vscode from 'vscode';
 
 const devReloadMarker = '.dev-reload';
 
-// npm run deploy-local touches the marker in the installed extension after
-// copying a new build, and this restarts the extension host to load it; only
-// local installs have the marker, so a published one never watches itself
 export function watchDevReload(
   context: vscode.ExtensionContext,
   log: vscode.LogOutputChannel,
@@ -30,7 +27,6 @@ export function watchDevReload(
       );
     }, 200);
   });
-  // Losing the watch only stops the reloads
   watcher.on('error', (error) => {
     log.error('Watching for new builds failed');
     log.error(error);

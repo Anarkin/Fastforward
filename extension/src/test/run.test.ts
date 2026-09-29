@@ -5,7 +5,6 @@ suite('Running git', () => {
   test('takes only the exit codes asked for as success', () => {
     assert.ok(exitedWith({ code: 1 }, [0, 1]));
     assert.ok(!exitedWith({ code: 128 }, [0, 1]));
-    // Node's own errors, like output over maxBuffer
     assert.ok(!exitedWith({ code: 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER' }, [0]));
   });
 

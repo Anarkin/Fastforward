@@ -12,12 +12,8 @@ import { BackIcon, ForwardIcon, HelpIcon, RefreshIcon } from './icons';
 import { LocationsPopup, usePopupHeight } from './locations';
 import { shortcuts, useShortcuts } from './shortcuts';
 
-// Holding a back or forward button this long opens its history, like a
-// browser's
 const holdDelay = 400;
 
-// The toolbar above the bubbles: back, forward and fetch, then the address
-// bar, which says where the tab is and searches every branch, remote and tag
 export function NavBar({
   root,
   back,
@@ -32,11 +28,9 @@ export function NavBar({
   onLookupHash,
   onJump,
 }: {
-  // The active tab, whose search text the address bar keeps
   root: string | undefined;
   hashLookup: { query: string; result: HashLookup } | undefined;
   onLookupHash: (query: string) => void;
-  // Nearest first
   back: readonly NavigationEntry[];
   forward: readonly NavigationEntry[];
   onNavigate: (direction: Direction, steps: number) => void;
@@ -81,9 +75,6 @@ export function NavBar({
   );
 }
 
-// What a click on a back or forward button does: nothing when a hold opened
-// its history, which the click ends; closing the history while it is open,
-// as it stays open on clicks on the button; otherwise going a step
 export function historyButtonClick(
   held: boolean,
   open: boolean,
@@ -94,7 +85,6 @@ export function historyButtonClick(
   return open ? 'close' : 'step';
 }
 
-// Click to go a step, hold or right-click to pick one from the history
 function HistoryButton({
   direction,
   entries,
@@ -107,9 +97,6 @@ function HistoryButton({
   const [open, setOpen] = useState(false);
   const container = useRef<HTMLDivElement>(null);
   const hold = useRef<ReturnType<typeof setTimeout>>(undefined);
-  // The hold opened the history, so letting go doesn't also go a step; until
-  // the click that ends it, or the history closing when the pointer was let
-  // go elsewhere, so that a later click, or Enter, isn't taken for it
   const held = useRef(false);
   const close = useCallback(() => {
     held.current = false;
@@ -164,7 +151,7 @@ function HistoryButton({
   );
 }
 
-function HistoryMenu({
+export function HistoryMenu({
   container,
   entries,
   onPick,
@@ -180,7 +167,6 @@ function HistoryMenu({
     <div className="menu history-menu" role="menu">
       {entries.map((entry, index) => (
         <button
-          // The same commit can be in the history twice
           key={index}
           className="menu-item history-item"
           role="menuitem"
@@ -195,38 +181,26 @@ function HistoryMenu({
   );
 }
 
-// What the address bar shows about the selected commit
 export interface Address {
   readonly hash: string | undefined;
-  // One line, for the bar
   readonly subject: string | undefined;
-  // For the details in the peek
   readonly commit: CardCommit | undefined;
 }
 
-// How long the pointer rests on the address bar before it peeks, so passing
-// over it on the way elsewhere doesn't, and how long the peek stays after
 const peekDelay = 300;
 const unpeekDelay = 200;
 
-// A peek comes from the pointer resting on something, and a pinned one from
-// the keyboard, which the pointer leaving doesn't close
 export type PeekMode = 'closed' | 'peek' | 'pinned' | 'open';
 
 function isPeek(mode: PeekMode): boolean {
   return mode === 'peek' || mode === 'pinned';
 }
 
-// What the pointer resting on something, or leaving it, the keyboard's toggle
-// and a change in what there is to peek at lead to; the pointer's get there
-// after a delay
 export function nextPeekMode(
   mode: PeekMode,
   action: 'rest' | 'leave' | 'toggle' | 'update',
   canPeek: boolean,
 ): PeekMode {
-  // What it peeked at went away, like the commit; the peek closes rather than
-  // staying unseen, taking the next Escape, or coming back with the next one
   if (!canPeek) {
     return isPeek(mode) ? 'closed' : mode;
   }
@@ -243,8 +217,6 @@ export function nextPeekMode(
   return mode;
 }
 
-// Resting the pointer on something peeks at what it opens, which stays while
-// the pointer is on it or on the peek; a click opens it to stay until closed
 function usePeek(canPeek: boolean) {
   const [mode, setMode] = useState<PeekMode>('closed');
   const updated = nextPeekMode(mode, 'update', canPeek);
@@ -269,8 +241,6 @@ function usePeek(canPeek: boolean) {
         timer.current = setTimeout(() => setMode(next), peekDelay);
       }
     },
-    // A moment's grace, so a wobbly move from the button into the peek
-    // keeps it
     endPeek: () => {
       clearTimeout(timer.current);
       const next = nextPeekMode(mode, 'leave', canPeek);
@@ -278,7 +248,6 @@ function usePeek(canPeek: boolean) {
         timer.current = setTimeout(() => setMode(next), unpeekDelay);
       }
     },
-    // From the keyboard, staying until toggled again or dismissed
     togglePeek: () => {
       clearTimeout(timer.current);
       setMode(nextPeekMode(mode, 'toggle', canPeek));
@@ -291,10 +260,6 @@ function usePeek(canPeek: boolean) {
   };
 }
 
-// The top of the search popup in its place, the bar's text staying in its
-// box, and the commit's details under it; it doesn't take the keyboard, and
-// a click in the box opens the search, which doesn't show them, while the
-// details can be selected and copied
 export function MessagePeek({
   commit,
   onOpen,
@@ -302,7 +267,6 @@ export function MessagePeek({
   commit: CardCommit;
   onOpen: () => void;
 }) {
-  // As far down as the search goes, but only as tall as the details need
   const popup = useRef<HTMLDivElement>(null);
   const maxHeight = usePopupHeight(popup);
   return (
@@ -318,8 +282,6 @@ export function MessagePeek({
   );
 }
 
-// Shows the selected commit like a browser shows its page's address; a click
-// opens the search over it, as Chrome's address bar opens its suggestions
 function AddressBar({
   root,
   address,
@@ -337,15 +299,10 @@ function AddressBar({
   selected: string | undefined;
   onJump: (commit: string) => void;
 }) {
-  // Resting the pointer on the bar peeks at the commit's details; a click
-  // opens the search
   const { mode, startPeek, endPeek, togglePeek, open, close } = usePeek(
     address.commit !== undefined,
   );
-  // Each Ctrl+L opens the search anew, selecting its text, also when it is
-  // open already but a click in it took the focus away
   const [searches, setSearches] = useState(0);
-  // Ctrl+L like Chrome's
   useShortcuts({
     'ctrl+l': () => {
       open();
@@ -353,7 +310,6 @@ function AddressBar({
     },
     i: togglePeek,
   });
-  // The search text of each repository, kept while the popup is closed
   const [queries, setQueries] = useState<ReadonlyMap<string, string>>(
     new Map(),
   );
@@ -361,7 +317,6 @@ function AddressBar({
   const setQuery = (next: string) =>
     root && setQueries((all) => new Map(all).set(root, next));
   const container = useRef<HTMLDivElement>(null);
-  // A peek goes with Escape or a click elsewhere
   useDismiss(container, close, { enabled: isPeek(mode) });
 
   return (
@@ -376,8 +331,6 @@ function AddressBar({
         title={address.commit ? undefined : 'Search branches, remotes and tags'}
         onClick={open}
       >
-        {/* One line of text, so the hash and the subject share a baseline
-            although their fonts differ */}
         <span className={`address-text ${address.subject ? '' : 'empty'}`}>
           {address.hash && (
             <span className="address-hash">{shortHash(address.hash)}</span>
@@ -406,10 +359,6 @@ function AddressBar({
   );
 }
 
-// A ? at the right of the address bar: resting the pointer on it peeks at
-// the keyboard shortcuts, and a click keeps them open until closed; they
-// open from the ?, which stays in its place in their top right corner, as
-// the address bar's popup opens from the bar
 function ShortcutsHelp() {
   const { mode, startPeek, endPeek, open, close } = usePeek(true);
   const container = useRef<HTMLDivElement>(null);
@@ -447,7 +396,6 @@ export function ShortcutsPanel({
 }: {
   container: React.RefObject<HTMLElement | null>;
   onClose: () => void;
-  // The ?, in its place
   children: React.ReactNode;
 }) {
   useDismiss(container, onClose);

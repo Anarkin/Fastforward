@@ -13,6 +13,16 @@ suite('CommitHistory', () => {
     assert.strictEqual(history.at(0), undefined);
   });
 
+  test('tells its listeners about a page only after adding it, not during the reducer that adds it', async () => {
+    const history = new CommitHistory(1000);
+    let told = 0;
+    history.subscribe(() => told++);
+    history.add(0, [commitInfo('a')]);
+    assert.strictEqual(told, 0);
+    await Promise.resolve();
+    assert.strictEqual(told, 1);
+  });
+
   test('asks for each missing page once', () => {
     const history = new CommitHistory(250);
     history.add(0, [commitInfo('a')]);

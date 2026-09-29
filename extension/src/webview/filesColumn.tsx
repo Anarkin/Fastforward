@@ -13,7 +13,6 @@ import { MenuButton } from './menu';
 import { SkeletonRows, useSkeleton } from './skeleton';
 import { VirtualRows } from './virtualRows';
 
-// The selected commit's changes, or every file of the repository at it
 export function Files({
   mode,
   onMode,
@@ -34,15 +33,11 @@ export function Files({
   onMode: (mode: FilesMode) => void;
   changesView: ChangesView;
   onChangesView: (view: ChangesView) => void;
-  // Of the Changes tree
   closedFolders: ReadonlySet<string>;
   onToggleClosedFolder: (folder: string) => void;
   files: readonly FileChange[];
-  // The selected commit's files are on the way
   loading: boolean;
-  // Every file of the repository at the selected commit is on the way
   treeLoading: boolean;
-  // Undefined while it loads
   tree: readonly string[] | undefined;
   openFolders: ReadonlySet<string>;
   onToggleFolder: (folder: string) => void;
@@ -90,7 +85,6 @@ export function Files({
       </Column>
     );
   }
-  // The Files tab has no settings, so it has no button
   const settings = (
     <MenuButton
       title="Changes settings"

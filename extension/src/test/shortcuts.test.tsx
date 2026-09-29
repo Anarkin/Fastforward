@@ -24,7 +24,6 @@ const press = (
     mac,
   )?.id;
 
-// What a key press's target is to the shortcuts, without a page to make one
 function element(tagName: string, isContentEditable = false): EventTarget {
   const target = {
     tagName,
@@ -41,7 +40,6 @@ suite('Keyboard shortcuts', () => {
     assert.strictEqual(press('c'), 'c');
     assert.strictEqual(press('i'), 'i');
     assert.strictEqual(press('x'), undefined);
-    // Shift makes it another key
     assert.strictEqual(press('C', { shiftKey: true }), undefined);
   });
 

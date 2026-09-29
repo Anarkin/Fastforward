@@ -15,7 +15,6 @@ import {
 } from './repositories';
 
 suite('A repository without commits', function () {
-  // git in temp repositories can take seconds on a busy machine
   this.timeout(20_000);
   let gitPath: string;
   let cwd: string;
@@ -53,7 +52,6 @@ suite('A repository without commits', function () {
 });
 
 suite('Uncommitted changes', function () {
-  // git in temp repositories can take seconds on a busy machine
   this.timeout(20_000);
   let gitPath: string;
   let cwd: string;
@@ -65,7 +63,6 @@ suite('Uncommitted changes', function () {
     await repository.commit('initial', { 'tracked.txt': 'one\n' });
     fs.writeFileSync(path.join(cwd, 'tracked.txt'), 'two\n');
     fs.writeFileSync(path.join(cwd, 'untracked.txt'), 'new\n');
-    // A repository inside this one, which git lists as its folder
     const nested = await tempRepository(path.join(cwd, 'nested'));
     fs.writeFileSync(path.join(nested.root, 'inner.txt'), 'inner\n');
   });
@@ -146,7 +143,6 @@ suite('Uncommitted changes', function () {
 });
 
 suite('Repository files', function () {
-  // git in temp repositories can take seconds on a busy machine
   this.timeout(20_000);
   let gitPath: string;
   let repository: TempRepository;
@@ -228,7 +224,6 @@ suite('Repository files', function () {
 });
 
 suite('Large files and submodules', function () {
-  // git in temp repositories can take seconds on a busy machine
   this.timeout(20_000);
   let gitPath: string;
   let cwd: string;
@@ -240,13 +235,9 @@ suite('Large files and submodules', function () {
     gitPath = (await getGitApi()).git.path;
     repository = await tempRepository(tempFolder('large'));
     cwd = repository.root;
-    // A repository added inside this one is recorded as a submodule is, by
-    // its commit
     sub = await tempRepository(path.join(cwd, 'sub'));
     await sub.commit('inner');
     [inner] = await sub.resolve('HEAD');
-    // Over the size shown as text, without a NUL byte that would make it
-    // binary anyway
     fs.writeFileSync(path.join(cwd, 'large.txt'), 'x'.repeat(3 * 1024 * 1024));
     await repository.git('add', '.');
     await repository.git('commit', '-m', 'initial');
@@ -279,6 +270,18 @@ suite('Large files and submodules', function () {
       await readFile(gitPath, cwd, undefined, 'sub'),
       submodule,
     );
+  });
+
+  test('shows a submodule that is not checked out as empty', async () => {
+    fs.mkdirSync(path.join(cwd, 'unchecked'));
+    try {
+      assert.deepStrictEqual(
+        await readFile(gitPath, cwd, undefined, 'unchecked'),
+        { content: '', binary: false },
+      );
+    } finally {
+      fs.rmSync(path.join(cwd, 'unchecked'), { recursive: true });
+    }
   });
 
   test('diffs a submodule by its commits, whatever the config says', async () => {

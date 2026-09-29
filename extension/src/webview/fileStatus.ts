@@ -1,7 +1,5 @@
 import type { FileChange } from '../shared/protocol';
 
-// Changed files show their status by the color of their name, the way VS
-// Code's Explorer does, and in words in their tooltip
 const statusNames: Record<FileChange['status'], string> = {
   A: 'Added',
   M: 'Modified',

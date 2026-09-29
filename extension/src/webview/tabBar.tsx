@@ -16,7 +16,6 @@ export function TabBar({
   tabs: readonly TabInfo[];
   active: string | undefined;
   onSelect: (root: string) => void;
-  // The pointer is on a tab
   onPreload: (root: string) => void;
   onClose: (root: string) => void;
   onAdd: () => void;
@@ -26,7 +25,6 @@ export function TabBar({
   const bar = useRef<HTMLElement>(null);
   const list = useRef<HTMLDivElement>(null);
 
-  // Reports the layout once, to find where space around the page comes from
   useEffect(() => {
     requestAnimationFrame(() => {
       onLog(
@@ -39,7 +37,6 @@ export function TabBar({
     });
   }, [onLog]);
 
-  // The wheel scrolls the tabs sideways, because their scrollbar is hidden
   const onWheel = (event: React.WheelEvent) => {
     if (list.current && event.deltaY !== 0) {
       list.current.scrollLeft += event.deltaY;
@@ -55,11 +52,7 @@ export function TabBar({
             className={`tab ${tab.root === active ? 'active' : ''}`}
             title={tab.root}
             onClick={() => onSelect(tab.root)}
-            // Starts loading a tab the pointer is on, so it's ready when
-            // clicked; each tab loads once
             onPointerEnter={() => tab.root !== active && onPreload(tab.root)}
-            // Stops the browser's middle-button autoscroll, which would
-            // otherwise swallow the middle click once the tabs overflow
             onMouseDown={(event) =>
               event.button === 1 && event.preventDefault()
             }

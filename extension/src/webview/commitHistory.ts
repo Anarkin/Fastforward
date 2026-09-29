@@ -4,37 +4,25 @@ import {
   type GraphRow,
 } from '../shared/protocol';
 
-// A sparse view of the history: its size is known up front, so the list has
-// its full height at once, and commits are filled in page by page as they
-// scroll into view
 export class CommitHistory {
   private readonly rows = new Map<number, CommitInfo>();
   private readonly graph = new Map<number, GraphRow>();
   private readonly positions = new Map<string, number>();
   private readonly requested = new Set<number>();
   private readonly refCounts: ReadonlyMap<number, number>;
-  // The commit list re-renders itself as pages arrive, without the rest of
-  // the page, through useSyncExternalStore
   private readonly listeners = new Set<() => void>();
   private version = 0;
 
   constructor(
     readonly total: number,
     decorations: readonly (readonly [number, number])[] = [],
-    // The graph of the working tree's row, above the commits
     readonly workingTreeGraph?: GraphRow,
-    // Which of the extension's histories this is, which its pages are asked
-    // for and answered with
     readonly generation = 0,
-    // Where the extension said the selected commit is, whose page a reload
-    // that keeps the list in place may not load
     readonly selectedIndex?: number,
   ) {
     this.refCounts = new Map(decorations);
   }
 
-  // How many refs point at the commit at this position, known before the
-  // commit itself is loaded
   refCountAt(position: number): number {
     return this.refCounts.get(position) ?? 0;
   }
@@ -52,7 +40,6 @@ export class CommitHistory {
     return position === undefined ? undefined : this.rows.get(position);
   }
 
-  // A commit the extension says is at this position, before its page loads
   locate(hash: string, position: number): void {
     this.positions.set(hash, position);
   }
@@ -73,7 +60,6 @@ export class CommitHistory {
     commits: readonly CommitInfo[],
     graph: readonly GraphRow[] = [],
   ): void {
-    // Every page it covers, as a new history comes with two
     for (
       let page = start - (start % commitPageSize);
       page < start + commits.length;
@@ -87,7 +73,6 @@ export class CommitHistory {
     });
     graph.forEach((row, offset) => this.graph.set(start + offset, row));
     this.version++;
-    // Not while React renders, as pages are added in a reducer
     queueMicrotask(() => {
       for (const listener of this.listeners) {
         listener();
@@ -95,13 +80,10 @@ export class CommitHistory {
     });
   }
 
-  // A page that couldn't be loaded, asked for again when the list next scrolls
   release(start: number): void {
     this.requested.delete(start);
   }
 
-  // The starts of the pages covering first..last that haven't been asked for
-  // yet, which are then counted as asked for
   takeMissingPages(first: number, last: number): number[] {
     const pages: number[] = [];
     const end = Math.min(last, this.total - 1);

@@ -1,7 +1,5 @@
 import { Resizer } from './columns';
 
-// Columns with an index have a resizer on their right edge; actions sit on the
-// right of the title
 export function Column({
   title,
   index,

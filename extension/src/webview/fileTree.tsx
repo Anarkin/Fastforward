@@ -8,7 +8,6 @@ export interface FolderNode {
   readonly path: string;
   readonly folders: Map<string, FolderNode>;
   readonly files: { name: string; path: string }[];
-  // Whether a file in it, at any depth, is one the commit changed
   changed: boolean;
 }
 
@@ -16,8 +15,6 @@ function folder(name: string, path: string): FolderNode {
   return { name, path, folders: new Map(), files: [], changed: false };
 }
 
-// The folders and the name of a path; an untracked nested repository, which
-// git lists with a slash at the end, is named with it, as in the list
 function pathParts(path: string): string[] {
   const parts = path.replace(/\/$/, '').split('/');
   if (path.endsWith('/')) {
@@ -26,8 +23,6 @@ function pathParts(path: string): string[] {
   return parts;
 }
 
-// Every file of the repository as folders, including the files the commit
-// deleted, which aren't in the repository at it anymore
 export function buildFileTree(
   paths: readonly string[],
   changes: ReadonlyMap<string, FileChange>,
@@ -59,14 +54,11 @@ export function buildFileTree(
   return root;
 }
 
-// The folders a path is in, to open them so it is visible
 export function foldersOf(path: string): string[] {
   const parts = pathParts(path);
   return parts.slice(0, -1).map((_, i) => parts.slice(0, i + 1).join('/'));
 }
 
-// The whole repository at the selected commit, like the Explorer, with the
-// commit's changes marked
 export function FileTree({
   paths,
   changes,

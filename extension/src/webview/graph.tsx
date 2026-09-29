@@ -1,16 +1,11 @@
 import type { GraphLine, GraphRow } from '../shared/protocol';
 
 const laneWidth = 12;
-// Lanes past this are drawn at the last one, so the graph doesn't push the
-// commit text away; large repositories can have a hundred lanes at once
 const maxLanes = 12;
-// Level with the middle of the subject line
 const dotY = 15;
 const dotRadius = 4;
-// How far below the dot a line to another lane has curved into it
 const turn = 20;
 
-// Theme colors, so the lanes fit light and dark themes
 const colors = [
   'var(--vscode-charts-blue)',
   'var(--vscode-charts-green)',
@@ -22,8 +17,6 @@ const colors = [
   'var(--vscode-terminal-ansiMagenta)',
 ];
 
-// Room on both sides of the lanes, so the largest ring, which reaches past
-// half a lane with its stroke, isn't cut off at the edges
 const margin = 3;
 
 export function graphWidth(lanes: number): number {
@@ -42,19 +35,15 @@ function path(line: GraphLine, height: number): string {
   const from = x(line.from);
   const to = x(line.to);
   if (!line.bottom) {
-    // From the row above into the dot
     return from === to
       ? `M ${from} 0 V ${dotY}`
       : `M ${from} 0 C ${from} ${dotY / 2} ${to} ${dotY / 2} ${to} ${dotY}`;
   }
-  // From the dot to the row below, curving right away on tall rows
   return from === to
     ? `M ${from} ${dotY} V ${height}`
     : `M ${from} ${dotY} C ${from} ${dotY + turn / 2} ${to} ${dotY + turn / 2} ${to} ${dotY + turn} V ${height}`;
 }
 
-// The lines as drawn, once each: lanes past maxLanes are drawn at the last
-// one, where many lines can land on the same path
 function drawnLines(
   lines: readonly GraphLine[],
   height: number,
@@ -68,15 +57,12 @@ function drawnLines(
     const stroke = color(line.color);
     const dashed = line.dashed ?? false;
     const key = `${d} ${stroke} ${dashed}`;
-    // In the place of its last copy, which was painted over the others
     drawn.delete(key);
     drawn.set(key, { key, d, stroke, dashed });
   }
   return [...drawn.values()];
 }
 
-// The graph within one commit row, as tall as the row, so its lines join the
-// rows above and below
 export function GraphCell({
   row,
   height,
@@ -99,7 +85,6 @@ export function GraphCell({
         />
       ))}
       {row.workingTree ? (
-        // A square, like Sublime Merge's working tree
         <rect
           x={x(row.lane) - dotRadius}
           y={dotY - dotRadius}
@@ -110,8 +95,6 @@ export function GraphCell({
           strokeWidth={1.5}
         />
       ) : row.merge ? (
-        // A ring, like Sublime Merge's merge commits; clicking it collapses or
-        // expands what the merge brought in
         <g
           className="merge-dot"
           onClick={(event) => {
@@ -157,8 +140,6 @@ export function GraphCell({
   );
 }
 
-// A collapsed merge's ring grows with the commits it hides, in steps, up to
-// the width of a lane
 const ringSteps: readonly (readonly [number, number])[] = [
   [50, 6],
   [10, 5.5],
@@ -184,8 +165,6 @@ function mergeTitle(row: GraphRow): string {
     : 'Expand merge';
 }
 
-// The lanes a row draws in, so its text can start right after them, like
-// Sublime Merge does, instead of after the widest point of the whole graph
 export function rowLanes(row: GraphRow | undefined): number {
   if (!row) {
     return 1;

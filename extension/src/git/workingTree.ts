@@ -11,22 +11,13 @@ import {
 import { headCommit } from './history';
 import { runGit, splitNul } from './run';
 
-// The uncommitted changes, and what they were diffed against, so their patch
-// is of the same changes: HEAD, or nothing before the first commit
 export interface WorkingTree {
   readonly base: string;
   readonly files: readonly FileChange[];
 }
 
-// Untracked files get their patch from diffing them against /dev/null, which
-// git supports on Windows too, one process per file on every refresh; at most
-// this many are included in the full patch, to keep huge untracked folders
-// from flooding the view and spawning git for each of their files
 const maxUntrackedPatches = 50;
 
-// The lines of an untracked file, which git would count as added, read in
-// chunks rather than whole, as it may be huge; none for a binary file, as in
-// git's --numstat, or one that can't be read, like one being written
 async function addedLines(file: string): Promise<number> {
   let lines = 0;
   let last = 0x0a;
@@ -52,13 +43,9 @@ async function addedLines(file: string): Promise<number> {
   } catch {
     return 0;
   }
-  // A last line without a newline counts too
   return last === 0x0a ? lines : lines + 1;
 }
 
-// Uncommitted changes are the working tree and index against the base, plus
-// untracked files, with the lines of those the full patch includes, so a
-// large one is left out of it like a large tracked change
 export async function workingTreeFiles(
   gitPath: string,
   cwd: string,
@@ -81,7 +68,6 @@ export async function workingTreeFiles(
         path,
         oldPath: undefined,
         status: 'U' as const,
-        // A repository inside this one is listed as its folder, "nested/"
         insertions:
           index < maxUntrackedPatches && !path.endsWith('/')
             ? await addedLines(join(cwd, path))
@@ -102,8 +88,6 @@ export async function workingTreePatch(
   { base, files }: WorkingTree,
   scope: PatchScope = {},
 ): Promise<string> {
-  // A repository inside this one is listed as its folder, "nested/", which
-  // has no patch
   const untrackedPatch = (file: string) =>
     file.endsWith('/')
       ? Promise.resolve('')

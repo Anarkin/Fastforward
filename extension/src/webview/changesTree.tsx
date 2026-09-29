@@ -5,7 +5,6 @@ import { byName, FileRow, FolderRow } from './tree';
 export type ChangesTreeRow =
   | {
       readonly kind: 'folder';
-      // Folders with a single folder in them are one row, like "src/app"
       readonly name: string;
       readonly path: string;
       readonly depth: number;
@@ -18,8 +17,6 @@ export type ChangesTreeRow =
       readonly depth: number;
     };
 
-// Merges a folder that has nothing but one folder in it with that folder, so
-// a deep path doesn't become a staircase of rows
 function compact(node: FolderNode): FolderNode {
   let merged = node;
   while (merged.files.length === 0 && merged.folders.size === 1) {
@@ -29,7 +26,6 @@ function compact(node: FolderNode): FolderNode {
   return merged;
 }
 
-// The changed files as folders, which are open unless closed, folders first
 export function changesTreeRows(
   files: readonly FileChange[],
   closed: ReadonlySet<string>,
@@ -63,8 +59,6 @@ export function changesTreeRows(
   return rows;
 }
 
-// The rows of the Changes tab viewed as a tree, to see which parts of the
-// repository a change touches
 export function changesTreeElements({
   rows,
   onToggle,

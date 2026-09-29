@@ -1,17 +1,19 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useEffectEvent, useRef } from 'react';
 
-// Rows are about this tall; each is measured once drawn
 const estimatedRowHeight = 24;
 
-// A scrolling list that mounts only the rows on screen, so a commit with
-// thousands of files, or a big repository's tree, stays fast; it scrolls to
-// the selected row when the selection changes, not when rows open or close
+export function scrollTarget(
+  selectedKey: string | undefined,
+  rowCount: number,
+): string | undefined {
+  return rowCount > 0 ? selectedKey : undefined;
+}
+
 export function VirtualRows({
   rows,
   selectedKey,
 }: {
-  // Keyed, so each row keeps its identity while the list changes
   rows: readonly React.ReactElement[];
   selectedKey: string | undefined;
 }) {
@@ -30,13 +32,12 @@ export function VirtualRows({
       virtualizer.scrollToIndex(index, { align: 'auto' });
     }
   });
-  // Also once the rows arrive, as a tree loads after its file was selected
-  const hasRows = rows.length > 0;
+  const target = scrollTarget(selectedKey, rows.length);
   useEffect(() => {
-    if (selectedKey !== undefined && hasRows) {
+    if (target !== undefined) {
       scrollToSelected();
     }
-  }, [selectedKey, hasRows]);
+  }, [target]);
 
   return (
     <div className="virtual-rows" ref={list}>

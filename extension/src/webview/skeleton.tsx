@@ -1,10 +1,7 @@
 import { useEffect, useState } from 'react';
 
-// Most answers come within this, and a placeholder that flashes up for a
-// moment is worse than none
 const skeletonDelay = 150;
 
-// Whether something has been loading long enough to show placeholders for
 export function useSkeleton(loading: boolean): boolean {
   const [shown, setShown] = useState(false);
   useEffect(() => {
@@ -18,11 +15,8 @@ export function useSkeleton(loading: boolean): boolean {
   return loading && shown;
 }
 
-// Widths that look like text of different lengths, the same every time
 const widths = ['62%', '45%', '78%', '53%', '70%', '38%', '66%', '49%'];
 
-// Grey bars in the shape of the rows that are loading, like the commit list's
-// placeholders
 export function SkeletonRows({
   count,
   className = 'row',
@@ -30,7 +24,6 @@ export function SkeletonRows({
 }: {
   count: number;
   className?: string;
-  // Stepped in and out, like a tree
   indent?: boolean;
 }) {
   return (
@@ -51,7 +44,6 @@ export function SkeletonRows({
   );
 }
 
-// Bubble-shaped bars, for the refs that are loading
 export function SkeletonBubbles({ count }: { count: number }) {
   return (
     <>

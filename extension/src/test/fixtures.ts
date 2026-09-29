@@ -1,10 +1,6 @@
 import type { CommitInfo, FileChange } from '../shared/protocol';
 import type { CardCommit } from '../webview/commitCard';
 
-// What the tests build their data from, and read markup with; without
-// vscode, so the unit tests can use it outside VS Code
-
-// A commit whose subject and message are its hash
 export const commitInfo = (
   hash: string,
   extra: Partial<CommitInfo> = {},
@@ -23,7 +19,6 @@ export const commitInfo = (
   ...extra,
 });
 
-// A modified file with one line added and two removed
 export const fileChange = (
   path: string,
   extra: Partial<FileChange> = {},
@@ -36,8 +31,6 @@ export const fileChange = (
   ...extra,
 });
 
-// A commit as the address bar's peek shows it, by one author, committed by
-// them at the same time
 export const cardCommit = (extra: Partial<CardCommit> = {}): CardCommit => ({
   hash: 'a'.repeat(40),
   subject: 'only',
@@ -53,8 +46,6 @@ export const cardCommit = (extra: Partial<CardCommit> = {}): CardCommit => ({
   ...extra,
 });
 
-// The opening tags in the markup that have all these classes, whatever their
-// order and whatever other classes they have
 export function tagsWith(html: string, ...classes: string[]): string[] {
   return [...html.matchAll(/<[a-z][^>]*>/g)]
     .map(([tag]) => tag)
@@ -64,14 +55,11 @@ export function tagsWith(html: string, ...classes: string[]): string[] {
     });
 }
 
-// The classes of an opening tag
 export function classesOf(tag: string): Set<string> {
   const [, names = ''] = /\sclass="([^"]*)"/.exec(tag) ?? [];
   return new Set(names.split(/\s+/).filter(Boolean));
 }
 
-// The terms of each <dl> in the markup with their descriptions, as text, and
-// the classes of the description
 export function definitions(html: string): [string, string, string][] {
   return [...html.matchAll(/<dt[^>]*>(.*?)<\/dt>(<dd[^>]*>)(.*?)<\/dd>/gs)].map(
     ([, term, dd, description]) => [
@@ -82,7 +70,6 @@ export function definitions(html: string): [string, string, string][] {
   );
 }
 
-// Markup as the text it shows
 function textOf(html: string): string {
   return html
     .replaceAll(/<[^>]*>/g, '')
@@ -93,8 +80,6 @@ function textOf(html: string): string {
     .replaceAll('&amp;', '&');
 }
 
-// Waits for something that happens in its own time, like the Git extension
-// reading a change
 export async function waitFor(
   condition: () => boolean,
   what: string,

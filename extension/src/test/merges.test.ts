@@ -1,7 +1,6 @@
 import * as assert from 'node:assert';
 import { headsOf, mergesHiding, showHistory } from '../history/merges';
 
-// m merges b2 into a; b1 and b2 are only reachable through the merge
 const history = [
   { hash: 'm', parents: ['a', 'b2'] },
   { hash: 'b2', parents: ['b1'] },
@@ -14,7 +13,6 @@ suite('showHistory', () => {
   test('hides what a collapsed merge brought in', () => {
     const shown = showHistory(history, new Set(['m']), () => false);
     assert.deepStrictEqual(shown, [
-      // b2 and b1 are hidden in it
       { hash: 'm', parents: ['a'], merge: 'collapsed', hidden: 2 },
       { hash: 'a', parents: ['c'] },
       { hash: 'c', parents: [] },
@@ -42,7 +40,6 @@ suite('showHistory', () => {
 
 suite('headsOf', () => {
   test('finds unmerged tips, not the tips of merged branches', () => {
-    // u is an unmerged branch off c; b2 was merged by m, so it has a child
     const heads = headsOf([{ hash: 'u', parents: ['c'] }, ...history]);
     assert.deepStrictEqual([...heads].toSorted(), ['m', 'u']);
   });
@@ -60,7 +57,6 @@ suite('mergesHiding', () => {
   });
 
   test('finds nested merges on the way', () => {
-    // n merges m's branch in; m in turn merged b2
     const nested = [
       { hash: 'n', parents: ['x', 'm'] },
       { hash: 'x', parents: ['c'] },

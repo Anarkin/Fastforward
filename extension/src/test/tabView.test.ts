@@ -7,7 +7,6 @@ import {
 } from '../webview/tabView';
 import { commitInfo } from './fixtures';
 
-// A tab with a history, a selected commit and file, and an error
 function busyTab(): TabView {
   let view = reduceTabView(emptyTabView, {
     type: 'commits',
@@ -85,7 +84,6 @@ suite('Tab view', () => {
     assert.strictEqual(view.path, undefined);
     assert.strictEqual(view.patch, '');
     assert.strictEqual(view.error, undefined);
-    // What isn't about the selection stays
     assert.strictEqual(view.fetching, true);
   });
 
@@ -100,7 +98,6 @@ suite('Tab view', () => {
     });
     assert.strictEqual(after.history?.at(1)?.hash, 'b');
     assert.strictEqual(after.history?.getVersion(), 2);
-    // Only the commit list follows a page without the selected commit
     assert.strictEqual(after, before);
     const shown = reduceTabView(after, { type: 'showCommit', hash: 'c' });
     const selected = reduceTabView(shown, {
@@ -111,6 +108,22 @@ suite('Tab view', () => {
       graph: [],
     });
     assert.notStrictEqual(selected, shown);
+  });
+
+  test('scrolls again to a commit revealed twice at the same position', () => {
+    const first = reduceTabView(busyTab(), {
+      type: 'reveal',
+      hash: 'a',
+      index: 0,
+    });
+    const second = reduceTabView(first, {
+      type: 'reveal',
+      hash: 'a',
+      index: 0,
+    });
+    assert.deepStrictEqual(first.scrollTarget, { index: 0 });
+    assert.deepStrictEqual(second.scrollTarget, { index: 0 });
+    assert.notStrictEqual(second.scrollTarget, first.scrollTarget);
   });
 
   test('drops a page of the history before', () => {
@@ -142,7 +155,6 @@ suite('Tab view', () => {
     for (const answer of late) {
       assert.strictEqual(reduceTabView(moved, answer), moved);
     }
-    // Another file of the same commit
     const file = reduceTabView(moved, { type: 'showFile', path: 'y.ts' });
     assert.strictEqual(
       reduceTabView(file, {
@@ -158,7 +170,6 @@ suite('Tab view', () => {
         .patch,
       'y',
     );
-    // Nothing selected stays so
     const none = reduceTabView(moved, { type: 'showCommit', hash: undefined });
     assert.strictEqual(reduceTabView(none, late[0]), none);
   });
@@ -204,7 +215,6 @@ suite('Tab view', () => {
     assert.strictEqual(again.diffs, view.diffs + 1);
     assert.deepStrictEqual(again.largeFiles, new Map());
 
-    // The answer to the diff before, which git answered last, is dropped
     const answer = (diff: number) =>
       reduceTabView(again, {
         type: 'fileDiff',
@@ -222,13 +232,10 @@ suite('Tab view', () => {
     assert.strictEqual(treeToLoad(view), 'a');
     const asked = reduceTabView(view, { type: 'requestTree', hash: 'a' });
     assert.strictEqual(treeToLoad(asked), undefined);
-    // The tree of the commit before, arriving while this one is on its way
     const late = reduceTabView(asked, { type: 'tree', hash: 'b', paths: [] });
     assert.strictEqual(treeToLoad(late), undefined);
     const loaded = reduceTabView(asked, { type: 'tree', hash: 'a', paths: [] });
     assert.strictEqual(treeToLoad(loaded), undefined);
-    // Closed and opened again at the same commit, which the extension
-    // replays no tree for
     const reopened = reduceTabView(reduceTabView(asked, { type: 'clear' }), {
       type: 'showCommit',
       hash: 'a',

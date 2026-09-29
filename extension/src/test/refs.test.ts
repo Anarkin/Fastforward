@@ -55,7 +55,6 @@ suite('ref counts', () => {
         ['c', 1],
       ],
     );
-    // c isn't shown, so it has no row to size
     const positions = new Map([
       ['a', 0],
       ['b', 5],
@@ -120,7 +119,6 @@ suite('detached HEAD', () => {
   });
 
   test('is at a tag the Git extension names HEAD after', () => {
-    // RefType.Tag
     const head = { name: 'v1', commit: 'c', type: 2 };
     assert.strictEqual(checkedOutBranch(head), undefined);
     assert.strictEqual(detachedHead(head), 'c');

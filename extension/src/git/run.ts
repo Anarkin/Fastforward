@@ -1,9 +1,5 @@
 import { execFile } from 'node:child_process';
 
-// Settings of the user's config that would change the output: quoted
-// non-ASCII paths, colors, signatures in the log, empty context lines, root
-// commits without their files, submodules diffed as logs, and messages in
-// another encoding than UTF-8
 const configArgs = [
   '-c',
   'core.quotePath=false',
@@ -22,8 +18,7 @@ const configArgs = [
 ];
 
 // Commands skip git's optional locks, so a refresh running while the user
-// commits elsewhere doesn't hold index.lock and make that commit fail;
-// paths are taken literally, so a file named "*.md" isn't a pattern
+// commits elsewhere doesn't hold index.lock and make that commit fail
 function env(pathspecMagic = false): NodeJS.ProcessEnv {
   return {
     ...process.env,
@@ -33,16 +28,11 @@ function env(pathspecMagic = false): NodeJS.ProcessEnv {
 }
 
 interface RunOptions {
-  // Exit codes that aren't failures, like git diff --no-index's 1 when the
-  // files differ
   readonly okExitCodes?: readonly number[];
-  // Written to the command's stdin
   readonly input?: string;
-  // Allows pathspec magic like :(exclude), with paths marked literal
   readonly pathspecMagic?: boolean;
 }
 
-// The most output a command may have, like the history of a huge repository
 const maxOutput = 256 * 1024 * 1024;
 
 export async function runGit(
@@ -54,7 +44,6 @@ export async function runGit(
   return (await runGitBytes(gitPath, cwd, args, options)).toString('utf8');
 }
 
-// The output as it is, for file contents, which may not be text
 export function runGitBytes(
   gitPath: string,
   cwd: string,
@@ -87,8 +76,6 @@ export function runGitBytes(
   });
 }
 
-// Whether git exited by itself with one of these codes; one killed by a
-// signal has no code, and its output may be cut short
 export function exitedWith(
   error: { readonly code?: number | string | null },
   okExitCodes: readonly number[],
@@ -96,7 +83,6 @@ export function exitedWith(
   return typeof error.code === 'number' && okExitCodes.includes(error.code);
 }
 
-// Output of git commands run with -z
 export function splitNul(output: string): string[] {
   return output.split('\0');
 }

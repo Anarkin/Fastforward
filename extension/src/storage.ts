@@ -7,28 +7,16 @@ import type {
   ToWebview,
 } from './shared/protocol';
 
-// Repository roots of the open tabs, kept per workspace
 export const tabsKey = 'tabs';
 export const activeTabKey = 'activeTab';
-// Repository roots opened in any workspace, most recent first, offered by +
 const recentKey = 'recentRepositories';
 const maxRecent = 20;
-// Column widths, per user and synced across machines, as they are a personal
-// preference rather than something about a workspace
 const columnWidthsKey = 'columnWidths';
-// Whether merge commits start collapsed, like Sublime Merge's setting; per
-// user and synced
 export const collapseMergesKey = 'collapseMerges';
-// What the Files column lists, per user and synced
 const filesModeKey = 'filesMode';
-// Whether the Changes tab is a list or a tree, per user and synced
 const changesViewKey = 'changesView';
-// Bookmarked refs and commits by repository root, per user; not synced, as
-// roots are paths on this machine; named vips, as bookmarks were called at
-// first
 export const bookmarksKey = 'vips';
 
-// What the view saves: the tabs per workspace, and the rest per user
 export class Storage {
   constructor(
     private readonly workspaceState: vscode.Memento,
@@ -42,7 +30,6 @@ export class Storage {
     ]);
   }
 
-  // Once each, as tabs saved before could have a folder twice
   get tabs(): string[] {
     return uniqueRoots(this.workspaceState.get<string[]>(tabsKey, []));
   }
@@ -76,7 +63,6 @@ export class Storage {
     );
   }
 
-  // Undefined for a repository that never had bookmarks saved
   bookmarksOf(root: string): readonly Bookmark[] | undefined {
     return this.globalState.get<Record<string, Bookmark[]>>(bookmarksKey, {})[
       root
@@ -125,8 +111,6 @@ export class Storage {
   }
 }
 
-// The same folder, also spelled differently, like VS Code's "c:" drive letter
-// next to the "C:" of a picked folder on Windows
 export function sameRoot(a: string, b: string): boolean {
   return path.relative(a, b) === '';
 }

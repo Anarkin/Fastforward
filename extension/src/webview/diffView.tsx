@@ -5,17 +5,13 @@ import type { DiffFile, DiffLine } from './diff';
 import { LineCounts } from './lineCounts';
 import { SkeletonRows, useSkeleton } from './skeleton';
 
-// A file shown whole, as the commit didn't change it
 export interface WholeFile {
   readonly path: string;
   readonly content: string;
   readonly binary: boolean;
 }
 
-// The diff as one list of rows, which is drawn only where it is on screen;
-// every row belongs to a file, whose header stays on top while it scrolls
 export type DiffRow =
-  // The error, if any, on top
   | { readonly kind: 'error' }
   | {
       readonly kind: 'file';
@@ -26,11 +22,8 @@ export type DiffRow =
     }
   | { readonly kind: 'large'; readonly file: number; readonly lines: number }
   | { readonly kind: 'binary'; readonly file: number }
-  // Placeholders while the diff, or a large file's, is on the way
   | { readonly kind: 'skeleton' }
   | { readonly kind: 'skeletonLines'; readonly file: number }
-  // Between two changed parts of a file; git's hunk header isn't shown, as
-  // the function name it guesses is often an unrelated line, like in Markdown
   | { readonly kind: 'hunk'; readonly file: number }
   | { readonly kind: 'line'; readonly file: number; readonly line: DiffLine }
   | {
@@ -41,9 +34,6 @@ export type DiffRow =
 
 type MeasuredKind = 'error' | 'skeleton' | 'skeletonLines';
 
-// The heights of the rows, set on them, so the list knows where everything
-// is without measuring it; the style sheet takes the file header's and the
-// line's from here too
 const rowHeights: Record<Exclude<DiffRow['kind'], MeasuredKind>, number> = {
   file: 28,
   large: 36,
@@ -53,8 +43,6 @@ const rowHeights: Record<Exclude<DiffRow['kind'], MeasuredKind>, number> = {
   wholeLine: 20,
 };
 
-// What the rows of other heights are guessed at until they are measured: an
-// error, or placeholders that look like the files they stand in for
 const measuredEstimates: Record<MeasuredKind, number> = {
   error: 200,
   skeleton: 240,
@@ -65,7 +53,10 @@ function isMeasured(kind: DiffRow['kind']): kind is MeasuredKind {
   return kind in measuredEstimates;
 }
 
-// A row's fixed height, or undefined when it is measured
+export function diffRowKey(row: DiffRow, index: number): string {
+  return `${index}:${row.kind}`;
+}
+
 export function rowHeight(row: DiffRow): number | undefined {
   const kind = row.kind;
   return isMeasured(kind) ? undefined : rowHeights[kind];
@@ -78,7 +69,6 @@ declare module 'react' {
   }
 }
 
-// Set on the list, for the style sheet
 const heightVariables: React.CSSProperties = {
   '--diff-file-height': `${rowHeights.file}px`,
   '--diff-line-height': `${rowHeights.line}px`,
@@ -95,8 +85,6 @@ function changedLines(file: DiffFile): number {
   );
 }
 
-// The rows of a diff, or of a whole file; a file is open as the user toggled
-// it, or else when it isn't too large
 export function diffRows(
   files: readonly DiffFile[],
   toggled: ReadonlyMap<string, boolean>,
@@ -157,10 +145,6 @@ export function diffRows(
   return rows;
 }
 
-// The large files to fetch: those opened while still placeholders, each once
-// per diff until it loads or is closed; requested says which diff each was
-// asked for with, as a new diff, like after a save, drops the large files and
-// fetches them again, even one whose answer to the diff before is on its way
 export function largeFilesToLoad(
   files: readonly DiffFile[],
   toggled: ReadonlyMap<string, boolean>,
@@ -179,11 +163,6 @@ export function largeFilesToLoad(
   return load;
 }
 
-// The Diff column's contents: the error, if any, then the files' diffs, or a
-// whole file; only the rows on screen are drawn, so a diff of any size opens
-// fast; keyed by the selection, so another commit or file starts at the top
-// with its files as they come, while a changed diff of the same one, like
-// after a save, keeps its place
 export function DiffView({
   error,
   files,
@@ -195,15 +174,10 @@ export function DiffView({
 }: {
   error: React.ReactNode;
   files: readonly DiffFile[];
-  // Insertion and deletion counts by path
   changes: ReadonlyMap<string, FileChange>;
   whole: WholeFile | undefined;
-  // The diff is on the way
   loading: boolean;
-  // Which diff of the selection this is, which the large files are fetched
-  // for again when it changes
   diff: number;
-  // Fetches the diff of a large file left out of the commit's diff
   onLoad: (path: string) => void;
 }) {
   const list = useRef<HTMLDivElement>(null);
@@ -223,17 +197,13 @@ export function DiffView({
       const kind = rows[index].kind;
       return isMeasured(kind) ? measuredEstimates[kind] : rowHeights[kind];
     },
-    // By kind too, so a row of fixed height doesn't take the measured height
-    // of a placeholder that was in its place
-    getItemKey: (index) => `${index}:${rows[index].kind}`,
+    getItemKey: (index) => diffRowKey(rows[index], index),
     overscan: 30,
   });
 
   const toggle = (path: string, open: boolean) =>
     setToggled((all) => new Map(all).set(path, !open));
 
-  // Large files left out of the diff are fetched once opened, not again as
-  // each of them comes
   const requested = useRef(new Map<string, number>());
   useEffect(() => {
     for (const path of largeFilesToLoad(
@@ -322,7 +292,6 @@ export function DiffView({
     return null;
   };
 
-  // The header of the file being scrolled through stays on top
   const items = virtualizer.getVirtualItems();
   const scrollTop = virtualizer.scrollOffset ?? 0;
   const top = items.find((item) => item.end > scrollTop);

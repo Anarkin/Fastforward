@@ -8,7 +8,6 @@ import {
 
 const all = () => true;
 
-// A, B, C shown in turn, D showing now
 function history(): Navigation {
   let navigation = noNavigation;
   let current: string | undefined;
@@ -39,7 +38,6 @@ suite('Navigation', () => {
   test('goes several steps at once, keeping the ones in between', () => {
     const back = step(history(), 'D', 'back', 2, all);
     assert.strictEqual(back?.target, 'B');
-    // C is the nearest step forward from B
     assert.deepStrictEqual(back.navigation, {
       back: ['A'],
       forward: ['D', 'C'],
@@ -71,11 +69,9 @@ suite('Navigation', () => {
   });
 
   test('skips steps to the commit shown, or to the same commit twice', () => {
-    // A, then B, then back to A with the arrow keys, which adds no step
     const replaced = visit(visit(noNavigation, undefined, 'A'), 'A', 'B');
     const atA = visit(replaced, 'B', 'A', true);
     assert.strictEqual(step(atA, 'A', 'back', 1, all), undefined);
-    // A, X, A, B, and X gone since
     const twice = { back: ['A', 'X', 'A'], forward: [] };
     const back = step(twice, 'B', 'back', 1, (hash) => hash !== 'X');
     assert.strictEqual(back?.target, 'A');

@@ -2,7 +2,12 @@ import * as assert from 'node:assert';
 import { parseFilePatch, parsePatch, type DiffFile } from '../webview/diff';
 import { collapseThreshold } from '../shared/protocol';
 import { withLargeFiles } from '../webview/diffColumn';
-import { diffRows, largeFilesToLoad, rowHeight } from '../webview/diffView';
+import {
+  diffRowKey,
+  diffRows,
+  largeFilesToLoad,
+  rowHeight,
+} from '../webview/diffView';
 import { fileChange } from './fixtures';
 
 function patch(path: string, added: number): string {
@@ -18,7 +23,6 @@ function patch(path: string, added: number): string {
 const kinds = (rows: ReturnType<typeof diffRows>) =>
   rows.map((row) => row.kind);
 
-// Each file's path and the text of its lines
 const lines = (files: readonly DiffFile[]) =>
   files.map((file) => [
     file.path,
@@ -36,17 +40,19 @@ suite('Diff rows', () => {
     ]);
   });
 
-  test('divides the changed parts of a file', () => {
+  test('divides the changed parts of a file with a plain line, leaving out the function git guesses they are in', () => {
     const files = parsePatch(
       [patch('a.ts', 1), '@@ -10,0 +11,1 @@ function f()', '+line'].join('\n'),
     );
-    assert.deepStrictEqual(kinds(diffRows(files, new Map(), undefined)), [
+    const rows = diffRows(files, new Map(), undefined);
+    assert.deepStrictEqual(kinds(rows), [
       'error',
       'file',
       'line',
       'hunk',
       'line',
     ]);
+    assert.deepStrictEqual(rows[3], { kind: 'hunk', file: 0 });
   });
 
   test('collapses a large file, and opens it when asked', () => {
@@ -110,7 +116,6 @@ suite('Large files in a commit diff', () => {
   });
 
   test('keeps both halves of a file that changed type', () => {
-    // A file replaced by a symlink, which git diffs as deleted and added
     const typeChange = [
       'diff --git a/f b/f',
       'deleted file mode 100644',
@@ -149,7 +154,6 @@ suite('Large files in a commit diff', () => {
   });
 });
 
-// A large file the commit's diff left out, until it is fetched
 const placeholder = (path: string) => ({
   path,
   binary: false,
@@ -182,7 +186,6 @@ suite('Large files fetched', () => {
     largeFilesToLoad([placeholder('a.json')], open, 0, requested);
     const loaded = [parseFilePatch('a.json', patch('a.json', 1))];
     largeFilesToLoad(loaded, open, 0, requested);
-    // The diff was fetched again, after a save
     assert.deepStrictEqual(
       largeFilesToLoad([placeholder('a.json')], open, 0, requested),
       ['a.json'],
@@ -203,8 +206,6 @@ suite('Large files fetched', () => {
     const requested = new Map<string, number>();
     const open = new Map([['a.json', true]]);
     largeFilesToLoad([placeholder('a.json')], open, 0, requested);
-    // A save changed the diff while a.json was on its way, whose answer may
-    // be from before the save
     assert.deepStrictEqual(
       largeFilesToLoad([placeholder('a.json')], open, 1, requested),
       ['a.json'],
@@ -245,7 +246,6 @@ suite('Diff row heights', () => {
       [
         ['error', undefined],
         ['file', 28],
-        // As tall as a file header, not more for the padding of its message
         ['binary', 28],
         ['file', 28],
         ['line', 20],
@@ -258,5 +258,13 @@ suite('Diff row heights', () => {
       loading.map((row) => rowHeight(row)),
       [undefined, undefined],
     );
+  });
+
+  test("keys a row by its kind too, so a row of fixed height doesn't take the measured height of a placeholder that was in its place", () => {
+    const loading = diffRows([], new Map(), undefined, true);
+    const loaded = diffRows(parsePatch(patch('a.ts', 1)), new Map(), undefined);
+    assert.strictEqual(rowHeight(loading[1]), undefined);
+    assert.notStrictEqual(rowHeight(loaded[1]), undefined);
+    assert.notStrictEqual(diffRowKey(loading[1], 1), diffRowKey(loaded[1], 1));
   });
 });

@@ -16,17 +16,13 @@ import {
   type TempRepository,
 } from './repositories';
 
-// A temp repository with three commits on main, the last renaming a file, so
-// the tests don't depend on what this repository has checked out
 suite('Git repository', function () {
-  // git in temp repositories can take seconds on a busy machine
   this.timeout(20_000);
   let gitPath: string;
   let temp: TempRepository;
   let cwd: string;
   let repository: Repository;
   let rename: string;
-  // The object of first.txt
   let blob: string;
 
   suiteSetup(async () => {
@@ -58,7 +54,6 @@ suite('Git repository', function () {
     assert.strictEqual(history.length, 3);
     assert.ok(history.every((entry) => entry.hash.length === 40));
 
-    // Commits come back in the order of the hashes asked for
     const hashes = history.map((entry) => entry.hash);
     const commits = await logCommits(gitPath, cwd, hashes.toReversed());
     assert.deepStrictEqual(
@@ -66,7 +61,6 @@ suite('Git repository', function () {
       ['first', 'second', 'rename'],
     );
 
-    // The root commit has no parents, and git show lists its files as added
     const root = history.find((entry) => entry.parents.length === 0);
     assert.ok(root);
     const files = await showFiles(gitPath, cwd, root.hash);
@@ -90,7 +84,6 @@ suite('Git repository', function () {
       await commitsStartingWith(gitPath, cwd, 'ffffff0'),
       [],
     );
-    // Git needs four characters, and only hex ones make a hash
     assert.deepStrictEqual(
       await commitsStartingWith(gitPath, cwd, rename.slice(0, 3)),
       [],
@@ -107,12 +100,9 @@ suite('Git repository', function () {
     assert.deepStrictEqual(await findCommit(gitPath, cwd, 'ffffff0'), {
       kind: 'none',
     });
-    // A file's object isn't a commit
     assert.deepStrictEqual(await findCommit(gitPath, cwd, blob.slice(0, 7)), {
       kind: 'none',
     });
-    // Nor is a branch whose name looks like a hash, which git would read
-    // first
     await temp.git('branch', 'fade', 'HEAD');
     try {
       assert.deepStrictEqual(await findCommit(gitPath, cwd, 'fade'), {
@@ -134,7 +124,6 @@ suite('Git repository', function () {
       );
       const [commit] = await logCommits(gitPath, cwd, [root]);
       assert.strictEqual(commit.files, 1);
-      // Git would write the author's name in Latin-1
       await temp.git(
         '-c',
         'user.name=Ádám',
@@ -151,6 +140,36 @@ suite('Git repository', function () {
     } finally {
       await temp.git('config', '--unset', 'log.showRoot');
       await temp.git('config', '--unset', 'i18n.logOutputEncoding');
+    }
+  });
+
+  test('reads non-ASCII paths and blank context lines the same whatever the config says', async () => {
+    await temp.git('config', 'core.quotePath', 'true');
+    await temp.git('config', 'diff.suppressBlankEmpty', 'true');
+    try {
+      await temp.commit('add été', { 'été.txt': 'a\n\nb\n' });
+      await temp.commit('change été', { 'été.txt': 'a\n\nc\n' });
+      const [head] = await temp.resolve('HEAD');
+      const patch = await showPatch(gitPath, cwd, head, { path: 'été.txt' });
+      assert.ok(patch.includes('b/été.txt'), patch);
+      assert.ok(patch.includes('\n \n'), patch);
+    } finally {
+      await temp.git('reset', '--hard', rename);
+      await temp.git('config', '--unset', 'core.quotePath');
+      await temp.git('config', '--unset', 'diff.suppressBlankEmpty');
+    }
+  });
+
+  test('takes a path like [ab].md literally, not as a pattern', async () => {
+    try {
+      await temp.commit('add', { 'a.md': '1\n', '[ab].md': '1\n' });
+      await temp.commit('change', { 'a.md': '2\n', '[ab].md': '2\n' });
+      const [head] = await temp.resolve('HEAD');
+      const patch = await showPatch(gitPath, cwd, head, { path: '[ab].md' });
+      assert.ok(patch.includes('b/[ab].md'), patch);
+      assert.ok(!patch.includes('b/a.md'), patch);
+    } finally {
+      await temp.git('reset', '--hard', rename);
     }
   });
 

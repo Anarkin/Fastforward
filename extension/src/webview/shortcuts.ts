@@ -1,12 +1,8 @@
 import { useEffect, useEffectEvent } from 'react';
 
-// The keys the view answers to, as the shortcuts panel lists them
 export interface Shortcut {
   readonly id: string;
-  // KeyboardEvent.key in lowercase, without Shift
   readonly key: string;
-  // With Ctrl held, or Cmd on macOS; these work while typing in a field too,
-  // as Chrome's do
   readonly ctrl?: boolean;
   readonly description: string;
 }
@@ -31,10 +27,6 @@ export type ShortcutId = (typeof shortcuts)[number]['id'];
 const macOS =
   typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac');
 
-// The shortcut a key press is, if any: once per press, not repeating, with
-// no other modifiers than its own, which leaves the rest to VS Code, and a
-// key without Ctrl not while typing in a field; the key is compared in
-// lowercase, as Caps Lock makes a letter uppercase without Shift
 export function shortcutOf(
   event: {
     readonly key: string;
@@ -57,7 +49,6 @@ export function shortcutOf(
   ) {
     return undefined;
   }
-  // Cmd on macOS, where Ctrl+L is also taken as it is elsewhere
   const ctrl = event.ctrlKey || event.metaKey;
   return shortcuts.find(
     (shortcut: Shortcut) =>
@@ -67,7 +58,6 @@ export function shortcutOf(
   );
 }
 
-// By its tag rather than its class, which there is none of outside a page
 const fields = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
 
 function isElement(target: EventTarget | null): target is HTMLElement {
@@ -81,8 +71,6 @@ function typing(target: EventTarget | null): boolean {
   );
 }
 
-// Runs the action of each of these shortcuts pressed; the parts of the view
-// take the shortcuts that are about them
 export function useShortcuts(
   actions: Readonly<Partial<Record<ShortcutId, () => void>>>,
 ): void {

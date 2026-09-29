@@ -1,7 +1,5 @@
 import type { Direction } from '../shared/protocol';
 
-// A tab's history of the commits it showed, like a browser's back and forward;
-// in both lists the last one is the nearest
 export interface Navigation {
   readonly back: readonly string[];
   readonly forward: readonly string[];
@@ -9,12 +7,8 @@ export interface Navigation {
 
 export const noNavigation: Navigation = { back: [], forward: [] };
 
-// Older steps are forgotten, like a browser does eventually
 const maxSteps = 100;
 
-// Going from one commit to another, which the back button returns from; a
-// replaced step, like moving through the list with the arrow keys, doesn't
-// add one; either way the steps forward are gone, as in a browser
 export function visit(
   navigation: Navigation,
   from: string | undefined,
@@ -32,9 +26,6 @@ export function visit(
   return { back: [...navigation.back, from].slice(-maxSteps), forward: [] };
 }
 
-// The steps that go somewhere: not those whose commit is gone, like after a
-// rebase, nor one to the commit shown, or to the same commit as the step
-// after it, as dropping steps or replacing one with the arrow keys can leave
 export function reachable(
   steps: readonly string[],
   current: string | undefined,
@@ -47,8 +38,6 @@ export function reachable(
   );
 }
 
-// Steps back or forward, several at once from the history's dropdown; steps
-// that go nowhere are skipped and forgotten
 export function step(
   navigation: Navigation,
   current: string | undefined,
@@ -63,8 +52,6 @@ export function step(
   if (count === 0) {
     return undefined;
   }
-  // The steps passed, farthest first; the others go to the other side,
-  // nearest last
   const passed = from.slice(-count);
   const [target] = passed;
   const rest = from.slice(0, -count);

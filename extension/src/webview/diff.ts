@@ -1,6 +1,3 @@
-// Parses the unified diff that git produces into files, hunks and numbered
-// lines
-
 type LineKind = 'context' | 'added' | 'removed';
 
 export interface DiffLine {
@@ -19,19 +16,14 @@ export interface DiffFile {
   readonly path: string;
   readonly binary: boolean;
   readonly hunks: DiffHunk[];
-  // A large file the commit's diff left out, fetched when it's opened, with
-  // its number of changed lines
   readonly placeholder?: { readonly lines: number };
 }
 
 interface ParsedFile {
-  // The "diff --git" line
   header: string;
   path: string;
   binary: boolean;
   hunks: DiffHunk[];
-  // The path on the "--- a/" line, for deleted files, whose "+++" line is
-  // /dev/null
   oldPath?: string;
 }
 
@@ -49,8 +41,6 @@ const escapes: Record<string, number> = {
   '\\': 92,
 };
 
-// Git quotes a path with special characters like C does: "a\tb", with bytes
-// of other characters as octal escapes when core.quotePath is on
 export function unquotePath(path: string): string {
   if (!path.startsWith('"') || !path.endsWith('"')) {
     return path;
@@ -75,16 +65,11 @@ export function unquotePath(path: string): string {
   return new TextDecoder().decode(new Uint8Array(bytes));
 }
 
-// A path from a "--- a/path" or "+++ b/path" line; git ends the line with a
-// tab when the path has a space
 function prefixedPath(rest: string, prefix: string): string | undefined {
   const path = unquotePath(rest.replace(/\t$/, ''));
   return path.startsWith(prefix) ? path.slice(prefix.length) : undefined;
 }
 
-// The new path from "diff --git a/<old> b/<new>", which is ambiguous when a
-// path contains " b/"; unchanged paths are the common case and are split
-// exactly, and the "+++" or "rename to" lines below correct the others
 function headerPath(rest: string): string {
   const quoted = / "b\/((?:[^"\\]|\\.)*)"$/.exec(rest);
   if (quoted) {
@@ -103,8 +88,6 @@ function headerPath(rest: string): string {
   return split === -1 ? rest : rest.slice(split + 3);
 }
 
-// The diff of one file, fetched on its own; without changes when git found
-// none, rather than missing, so it doesn't stay a placeholder
 export function parseFilePatch(path: string, patch: string): DiffFile {
   return parsePatch(patch)[0] ?? { path, binary: false, hunks: [] };
 }
@@ -119,8 +102,6 @@ export function parsePatch(patch: string): DiffFile[] {
   for (const line of patch.split('\n')) {
     if (line.startsWith('diff --git ')) {
       hunk = undefined;
-      // A file that changed type, like to a symlink, is deleted and added
-      // under the same header, which are one file with both halves
       if (file?.header === line) {
         continue;
       }
@@ -144,8 +125,6 @@ export function parsePatch(patch: string): DiffFile[] {
       file.hunks.push(hunk);
       continue;
     }
-    // The lines between "diff --git" and the first hunk say more reliably
-    // what the paths are
     if (!hunk) {
       if (line.startsWith('Binary files ')) {
         file.binary = true;

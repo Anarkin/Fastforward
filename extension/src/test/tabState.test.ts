@@ -10,7 +10,6 @@ import {
 } from '../tabState';
 
 suite('Tab state', () => {
-  // c merges b into a
   const history = [
     { hash: 'c', parents: ['a', 'b'] },
     { hash: 'b', parents: ['a'] },
@@ -29,6 +28,23 @@ suite('Tab state', () => {
     assert.strictEqual(tab.index, 1);
     assert.strictEqual(layOutHistory(tab, false, 'c'), generation + 1);
     assert.strictEqual(tab.index, 2);
+  });
+
+  test('keeps a merged branch in its collapsed merge though a ref points at it, unless HEAD is there', () => {
+    const tab = newTabState();
+    loadHistory(tab, history, { name: 'main', commit: 'c' }, [
+      { kind: 'branch', name: 'feature', commit: 'b' },
+    ]);
+    layOutHistory(tab, true, 'c');
+    assert.deepStrictEqual(
+      tab.history.map((entry) => entry.hash),
+      ['c', 'a'],
+    );
+    layOutHistory(tab, true, 'b');
+    assert.deepStrictEqual(
+      tab.history.map((entry) => entry.hash),
+      ['c', 'b', 'a'],
+    );
   });
 
   test('starts the first page at the commit that keeps its place', () => {

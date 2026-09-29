@@ -1,6 +1,8 @@
 import * as assert from 'node:assert';
+import { readFileSync } from 'node:fs';
+import * as path from 'node:path';
 import type { RefInfo } from '../shared/protocol';
-import { enterTarget, searchRefs } from '../webview/locations';
+import { enterTarget, searchRefs, stickyRowHeight } from '../webview/locations';
 
 const refs: RefInfo[] = [
   { kind: 'remote', name: 'origin/feat/EPMAISA-798-drop', commit: 'a' },
@@ -32,7 +34,6 @@ suite('Locations search', () => {
 
   test('draws at most the limit per group and counts the rest', () => {
     const [branches, remotes] = searchRefs(refs, 'o', 1);
-    // feat/epmaisa-798-drop matches among the branches, both remotes match
     assert.deepStrictEqual([branches.refs.length, branches.more], [1, 0]);
     assert.deepStrictEqual([remotes.refs.length, remotes.more], [1, 1]);
   });
@@ -61,5 +62,18 @@ suite('Locations search', () => {
 
   test('does nothing on Enter without a search, which highlights no match', () => {
     assert.strictEqual(enterTarget('', undefined, refs[3]), undefined);
+  });
+});
+
+suite('Locations popup', () => {
+  test("stacks stuck folders at the height the stylesheet gives the popup's tree rows", () => {
+    const css = readFileSync(
+      path.join(__dirname, '../../src/webview/style.css'),
+      'utf8',
+    );
+    const match =
+      /^\.locations-list \.tree-row \{[^}]*?\sheight: (\d+)px/m.exec(css);
+    assert.ok(match);
+    assert.strictEqual(Number(match[1]), stickyRowHeight);
   });
 });

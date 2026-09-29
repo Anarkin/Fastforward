@@ -10,13 +10,9 @@ import { useContextMenu } from './contextMenu';
 import { SkeletonBubbles, useSkeleton } from './skeleton';
 import { type BubbleRow, bubbleRow } from './bookmarks';
 
-// The name of the branch HEAD is on, whose bubbles stand out everywhere
 export const CheckedOutBranch = createContext<string | undefined>(undefined);
-// The commit HEAD points at when no branch is checked out
 export const DetachedHead = createContext<string | undefined>(undefined);
 
-// A detached HEAD, as a bubble with the commit's short hash, in the colors of
-// the checked-out branch
 export function HeadBubble({
   commit,
   onClick,
@@ -35,7 +31,6 @@ export function HeadBubble({
   );
 }
 
-// A commit pinned to the bookmarks row, with the same menu as the other bubbles
 function CommitBubble({
   hash,
   onClick,
@@ -59,14 +54,12 @@ function CommitBubble({
   );
 }
 
-// A branch, remote or tag bubble, with its menu on right-click
 export function RefBubble({
   info,
   missing = false,
   onClick,
 }: {
   info: BookmarkRef;
-  // A bookmark whose ref doesn't exist anymore
   missing?: boolean;
   onClick?: () => void;
 }) {
@@ -94,15 +87,12 @@ export function RefBubble({
   );
 }
 
-// The row under the address bar: the repository's bookmarks, sorted, and
-// what is checked out; clicking one jumps to it
 export function BubbleBar({
   root,
   repository,
   bookmarks,
   onJump,
 }: {
-  // The active tab, whose refs may still be loading
   root: string | undefined;
   repository: RepositoryState | undefined;
   bookmarks: readonly Bookmark[];
@@ -163,8 +153,6 @@ export function BubbleBar({
   );
 }
 
-// What is checked out: a detached HEAD, or the checked-out branch and the
-// branch it tracks
 function CheckedOut({
   detached,
   row,

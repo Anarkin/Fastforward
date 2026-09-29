@@ -3,8 +3,6 @@ import * as vscode from 'vscode';
 import type { API } from './git/git';
 import type { Storage } from './storage';
 
-// The repositories + opens: recent ones not open in a tab first, and the
-// folder picker as the last item
 export async function pickRepositories(
   git: API,
   storage: Storage,
@@ -61,8 +59,6 @@ async function browseRepositories(
   return roots.filter((root) => root !== undefined);
 }
 
-// The root of the repository a folder is in; a recent folder that isn't one
-// anymore is forgotten
 async function checkRepository(
   git: API,
   storage: Storage,

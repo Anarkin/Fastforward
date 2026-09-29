@@ -23,20 +23,15 @@ const groups: readonly { kind: RefKind; title: string }[] = [
   { kind: 'tag', title: 'Tags' },
 ];
 
-// At most this many matches are drawn per column, so a short search in a
-// repository with thousands of branches stays instant
 const maxResults = 200;
 
 export interface SearchGroup {
   readonly kind: RefKind;
   readonly title: string;
   readonly refs: readonly RefInfo[];
-  // Matches beyond the limit, which aren't drawn
   readonly more: number;
 }
 
-// The refs whose name contains the query, ignoring case, in a group per kind;
-// every group is returned, as each has its own column
 export function searchRefs(
   refs: readonly RefInfo[],
   query: string,
@@ -58,8 +53,6 @@ export function searchRefs(
   });
 }
 
-// A ref's name as a bubble in its kind's color, like everywhere else, and the
-// checked-out branch marked like its bubble
 function RefLabel({
   info,
   children,
@@ -77,7 +70,6 @@ function RefLabel({
   );
 }
 
-// The name with the part matching the query highlighted
 function Highlight({ text, query }: { text: string; query: string }) {
   const start = text.toLowerCase().indexOf(query.toLowerCase());
   if (!query || start === -1) {
@@ -93,31 +85,23 @@ function Highlight({ text, query }: { text: string; query: string }) {
   );
 }
 
-// The result Enter jumps to: a column, and a match in it
 interface Active {
   readonly column: number;
   readonly index: number;
 }
 
-// The first match of the first column that has any
 function firstMatch(search: readonly SearchGroup[]): Active {
   const column = search.findIndex((group) => group.refs.length > 0);
   return { column: Math.max(0, column), index: 0 };
 }
 
-// How long typing rests before a hash is looked up
 const hashLookupDelay = 150;
 
-// The typed text when it could be a hash, which git needs four characters of
 function hashQuery(query: string): string | undefined {
   const trimmed = query.trim().toLowerCase();
   return isHashPrefix(trimmed) ? trimmed : undefined;
 }
 
-// The commit Enter jumps to: the one a typed hash is, before the names it may
-// also match, or the highlighted match; a hash not looked up yet goes as
-// typed, as the extension looks it up too; nothing without a search, which
-// highlights no match
 export function enterTarget(
   query: string,
   found: HashLookup | undefined,
@@ -133,7 +117,6 @@ export function enterTarget(
   return query ? active?.commit : undefined;
 }
 
-// The commit a typed hash is, or why there is none
 function HashSuggestion({
   hash,
   found,
@@ -167,8 +150,6 @@ function HashSuggestion({
   );
 }
 
-// The space the popup leaves under it, as much as the address bar leaves on
-// its right: .nav-end and the nav bar's gap before it
 function popupBottomGap(popup: HTMLElement): number {
   const bar = popup.closest('.nav-bar');
   const end = bar?.querySelector('.nav-end');
@@ -179,8 +160,6 @@ function popupBottomGap(popup: HTMLElement): number {
   return end.getBoundingClientRect().width + gap;
 }
 
-// How tall a popup over the address bar can be: down to the same distance
-// from the bottom as the bar keeps from the right, whatever the window's size
 export function usePopupHeight(
   popup: React.RefObject<HTMLElement | null>,
 ): number | undefined {
@@ -202,10 +181,6 @@ export function usePopupHeight(
   return height;
 }
 
-// Every branch, remote and tag in a popup over the address bar, a column
-// each: the search in the bar's place, the commit a typed hash is, then the
-// trees, or the matches while searching; picking one jumps to its commit and
-// closes the popup, and so does Enter on a hash
 export function LocationsPopup({
   repository,
   selected,
@@ -218,27 +193,21 @@ export function LocationsPopup({
   onQuery,
 }: {
   repository: RepositoryState | undefined;
-  // The selected commit; locations pointing at it are highlighted
   selected: string | undefined;
-  // What opened it, where clicks don't close it
   anchor: React.RefObject<HTMLElement | null>;
-  // Which commit a typed hash is, once looked up
   lookup: { query: string; result: HashLookup } | undefined;
   onLookup: (query: string) => void;
   onJump: (commit: string) => void;
   onClose: () => void;
-  // Kept by the caller, so the search is still there when the popup reopens
   query: string;
   onQuery: (query: string) => void;
 }) {
   const popup = useRef<HTMLDivElement>(null);
   const height = usePopupHeight(popup);
   const input = useRef<HTMLInputElement>(null);
-  // A kept search is selected, so typing starts a new one
   useEffect(() => input.current?.select(), []);
   const refs = useMemo(() => repository?.refs ?? [], [repository]);
   const search = useMemo(() => searchRefs(refs, query), [refs, query]);
-  // Each column's refs, once, so its tree is built only when they change
   const byKind = useMemo(
     () =>
       new Map(
@@ -251,8 +220,6 @@ export function LocationsPopup({
   );
   const [active, setActive] = useState<Active>(() => firstMatch(search));
   const activeRef = search[active.column]?.refs[active.index];
-  // A hash being typed is looked up once typing stops for a moment, and
-  // shown on top like Chrome's first suggestion
   const hash = hashQuery(query);
   useEffect(() => {
     if (!hash) {
@@ -262,8 +229,6 @@ export function LocationsPopup({
     return () => clearTimeout(timer);
   }, [hash, onLookup]);
   const found = hash && lookup?.query === hash ? lookup.result : undefined;
-  // The active result stays in view as the arrow keys move it, but the list
-  // doesn't jump back to it while scrolled by hand
   useEffect(() => {
     if (activeRef) {
       popup.current
@@ -279,12 +244,8 @@ export function LocationsPopup({
     }
   };
 
-  // Closes on a click outside, Escape or the window losing focus, but not on
-  // a click on the address bar, which holds it, or in its own right-click menu
   useDismiss(anchor, onClose, { ignore: '.context-menu' });
 
-  // Up and down within a column, left and right to the nearest match of the
-  // next column that has any
   const move = (columns: number, rows: number) => {
     if (rows !== 0) {
       const count = search[active.column]?.refs.length ?? 0;
@@ -315,7 +276,6 @@ export function LocationsPopup({
       ArrowRight: [1, 0],
     };
     if (query && event.key in moves) {
-      // While searching, the arrows move through the matches, not the caret
       event.preventDefault();
       const [columns, rows] = moves[event.key];
       move(columns, rows);
@@ -388,7 +348,6 @@ function SearchResults({
 }: {
   group: SearchGroup;
   query: string;
-  // The result Enter jumps to, when it is in this column
   active: RefInfo | undefined;
   selected: string | undefined;
   onJump: (commit: string) => void;
@@ -432,7 +391,6 @@ interface TreeNode {
   children: Map<string, TreeNode>;
 }
 
-// Branch names like feat/foo are shown as folders, like Fork does
 function buildTree(refs: readonly RefInfo[]): TreeNode {
   const root: TreeNode = { name: '', ref: undefined, children: new Map() };
   for (const ref of refs) {
@@ -450,7 +408,6 @@ function buildTree(refs: readonly RefInfo[]): TreeNode {
   return root;
 }
 
-// The refs of one column as folders; the column's heading stands for the root
 function RefTree({
   refs,
   selected,
@@ -474,7 +431,6 @@ function RefTree({
   );
 }
 
-// Folders first, then refs, each A-Z
 function TreeChildren({
   node,
   depth,
@@ -502,14 +458,12 @@ function TreeChildren({
             depth={depth}
             selected={selected}
             onSelect={onSelect}
-            // A column's only top folder, usually origin, starts open
             initiallyOpen={depth === 0 && children.length === 1}
           />
         ) : (
           <div
             key={child.name}
             className={`row tree-row leaf ${child.ref && child.ref.commit === selected ? 'selected' : ''}`}
-            // Past the twisty space, so leaves line up with sibling folders
             style={{ paddingLeft: treeIndent(depth) + twistyWidth }}
             title={child.ref?.name}
             onClick={() => child.ref && onSelect(child.ref.commit)}
@@ -548,8 +502,6 @@ function TreeFolder({
   initiallyOpen: boolean;
 }) {
   const [open, setOpen] = useState(initiallyOpen);
-  // The folder's row sticks to the top, under its parents' rows, while its
-  // contents scroll by; the group ends where it has to let go
   return (
     <div className="tree-group">
       <div
@@ -577,6 +529,4 @@ function TreeFolder({
   );
 }
 
-// The height of every row in the popup's trees, so stuck folder rows stack
-// exactly; matches .locations-list .tree-row in style.css
-const stickyRowHeight = 24;
+export const stickyRowHeight = 24;

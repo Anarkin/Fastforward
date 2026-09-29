@@ -1,20 +1,16 @@
 import * as assert from 'node:assert';
 import { listenForDismiss } from '../webview/contextMenu';
 
-// Menus and popups closing, with an event target standing in for the window
-
 function keyDown(key: string): Event {
   return Object.assign(new Event('keydown', { cancelable: true }), { key });
 }
 
-// A press on what is under the pointer
 function pointerDown(target: object | null): Event {
   const event = new Event('pointerdown');
   Object.defineProperty(event, 'target', { value: target });
   return event;
 }
 
-// An element, for what is under the pointer
 function element(className: string) {
   const node = {
     nodeType: 1,
@@ -25,7 +21,6 @@ function element(className: string) {
   return node;
 }
 
-// Opens a menu on the window, counting how often it is closed
 function open(
   window: EventTarget,
   options: Parameters<typeof listenForDismiss>[3] = {},

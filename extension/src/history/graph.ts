@@ -1,15 +1,11 @@
 import type { GraphLine, GraphRow } from '../shared/protocol';
 import type { ShownEntry } from './merges';
 
-// The lanes between two rows: the commit each lane is waiting for, which is a
-// parent of a commit above, and the lane's color
 interface Lanes {
   readonly hashes: (string | undefined)[];
   readonly colors: number[];
-  // Lanes from the working tree to HEAD, which are drawn dotted
   readonly dashed: boolean[];
   nextColor: number;
-  // The most lanes in use at once so far
   widest: number;
 }
 
@@ -23,11 +19,8 @@ function copy(lanes: Lanes): Lanes {
   };
 }
 
-// The working tree's row, above every commit, like Sublime Merge's; its lane
-// leads to HEAD, so branches built on HEAD move aside
 const workingTree = '';
 
-// A free lane for a new line: the first empty one, or a new one on the right
 function allocate(lanes: Lanes, hash: string): number {
   let lane = lanes.hashes.indexOf(undefined);
   if (lane === -1) {
@@ -39,9 +32,6 @@ function allocate(lanes: Lanes, hash: string): number {
   return lane;
 }
 
-// Lays out one commit, updating the lanes to what the rows below see; the
-// first pass over the whole history only needs the lanes, not the lines, which
-// cost most of the time with a hundred lanes
 function step(lanes: Lanes, entry: ShownEntry, drawLines = true): GraphRow {
   const lines: GraphLine[] = [];
   const before = [...lanes.hashes];
@@ -55,15 +45,12 @@ function step(lanes: Lanes, entry: ShownEntry, drawLines = true): GraphRow {
     }
   };
 
-  // The commit takes the first lane waiting for it; a branch tip that nothing
-  // is waiting for starts a new lane
   let lane = before.indexOf(entry.hash);
   if (lane === -1) {
     lane = allocate(lanes, entry.hash);
   }
   const color = lanes.colors[lane];
 
-  // Above the commit: its lanes run into it, the others pass by
   before.forEach((hash, from) => {
     if (hash === entry.hash) {
       line(from, lane, lanes.colors[from], false);
@@ -75,12 +62,9 @@ function step(lanes: Lanes, entry: ShownEntry, drawLines = true): GraphRow {
     }
   });
 
-  // Below the commit: its first parent continues in its lane, other parents
-  // join the lanes waiting for them or start new ones
   const [first, ...others] = entry.parents;
   lanes.hashes[lane] = first;
   lanes.dashed[lane] = entry.hash === workingTree;
-  // Lanes that start at this commit's merge line, not above it
   const started = new Set<number>();
   for (const parent of others) {
     let to = lanes.hashes.indexOf(parent);
@@ -96,11 +80,8 @@ function step(lanes: Lanes, entry: ShownEntry, drawLines = true): GraphRow {
     }
   });
 
-  // Every lane in use here has a line, so the graph is as wide as the most
-  // lanes any row had
   lanes.widest = Math.max(lanes.widest, before.length, lanes.hashes.length);
 
-  // Empty lanes on the right are dropped, so the graph narrows again
   while (
     lanes.hashes.length > 0 &&
     lanes.hashes[lanes.hashes.length - 1] === undefined
@@ -114,14 +95,10 @@ function step(lanes: Lanes, entry: ShownEntry, drawLines = true): GraphRow {
     : { lane, color, lines, merge: entry.merge, hidden: entry.hidden };
 }
 
-// Lays out the graph of a history once, keeping the lanes every so many rows,
-// so the rows of any page can be recomputed quickly without keeping them all;
-// the working tree's row comes first, based on HEAD when it is shown
 export class Graph {
   private readonly checkpoints: Lanes[] = [];
   private readonly entries: readonly ShownEntry[];
   private readonly checkpointEvery: number;
-  // The most lanes any row uses, for the width of the graph
   readonly width: number;
   readonly workingTreeRow: GraphRow;
 
@@ -156,8 +133,6 @@ export class Graph {
     this.workingTreeRow = step(copy(this.checkpoints[0]), this.entries[0]);
   }
 
-  // The rows of the commits at positions start.., which come after the
-  // working tree's
   rows(start: number, count: number): GraphRow[] {
     const first = start + 1;
     const checkpoint = Math.floor(first / this.checkpointEvery);

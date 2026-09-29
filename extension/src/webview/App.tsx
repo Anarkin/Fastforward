@@ -79,18 +79,14 @@ export function App({ post }: Props) {
     hashLookup,
     error,
   } = tab;
-  // Sublime Merge's setting, on by default
   const [collapseMerges, setCollapseMerges] = useState(true);
   const [filesMode, setFilesMode] = useState<FilesMode>('changes');
   const [changesView, setChangesView] = useState<ChangesView>('tree');
-  // Open and closed folders of each tab, kept while moving between commits
-  // and tabs
   const [folders, setFolders] = useState<FoldersByTab>(new Map());
   const { open: openedFolders, closed: closedFolders } = foldersOfTab(
     folders,
     activeTab,
   );
-  // Refs and commits pinned to the bookmarks row, saved per repository
   const [bookmarks, setBookmarks] = useState<readonly Bookmark[]>([]);
   const [menu, setMenu] = useState<OpenMenu>();
   const closeMenu = useCallback(() => setMenu(undefined), []);
@@ -98,8 +94,6 @@ export function App({ post }: Props) {
     (widths: readonly number[]) => post({ type: 'setColumnWidths', widths }),
     [post],
   );
-  // The commit list, which C hides for more room for the files and the diff;
-  // not saved, so it is back whenever the view opens
   const [commitsShown, setCommitsShown] = useState(true);
   useShortcuts({ c: () => setCommitsShown((shown) => !shown) });
   const hiddenColumns = useMemo(() => [!commitsShown, false], [commitsShown]);
@@ -121,7 +115,6 @@ export function App({ post }: Props) {
           setChangesView(message.changesView);
           break;
         case 'tabs':
-          // Everything shown for the previous tab is forgotten
           if (activeTabRef.current !== message.active) {
             dispatch({ type: 'clear' });
           }
@@ -145,7 +138,6 @@ export function App({ post }: Props) {
     return () => window.removeEventListener('message', onMessage);
   }, [post, loadColumnWidths]);
 
-  // Shows a commit as selected while its files and diff load
   const showCommit = (next: string | undefined) =>
     dispatch({ type: 'showCommit', hash: next });
 
@@ -154,8 +146,6 @@ export function App({ post }: Props) {
     [post],
   );
 
-  // Messages about the tab say which one it is, as the extension may have
-  // opened another by the time it handles them
   const postTab = useCallback(
     (message: TabMessage) => {
       const root = activeTabRef.current;
@@ -192,10 +182,8 @@ export function App({ post }: Props) {
   }, [repository]);
 
   const commit = history?.find(hash);
-  // The commit HEAD points at when no branch is checked out
   const detached =
     repository && !repository.head ? repository.headCommit : undefined;
-  // The selected commit, for the address bar's peek
   const card: CardCommit | undefined =
     hash === workingTreeHash || !commit
       ? undefined
@@ -204,11 +192,8 @@ export function App({ post }: Props) {
           refs: refsByCommit.get(commit.hash) ?? [],
           detachedHead: detached === commit.hash,
         };
-  // A tab whose history hasn't arrived yet, which every column shows
-  // placeholders for, as it selects what is checked out once it has
   const opening = activeTab !== undefined && history === undefined && !error;
 
-  // Selecting the selected commit again, or "No changes", clears the selection
   const selectCommit = (next: string | undefined, replace = false) => {
     const target = next === hash ? undefined : next;
     showCommit(target);
@@ -224,7 +209,6 @@ export function App({ post }: Props) {
     [postTab],
   );
 
-  // The mouse's back and forward buttons, like in a browser
   useEffect(() => {
     const buttons: Record<number, Direction> = { 3: 'back', 4: 'forward' };
     const onMouseUp = (event: MouseEvent) => {
@@ -237,7 +221,6 @@ export function App({ post }: Props) {
     window.addEventListener('mouseup', onMouseUp);
     return () => window.removeEventListener('mouseup', onMouseUp);
   }, [navigate]);
-  // Scrolls to a location's commit, which the extension finds in the history
   const jump = (target: string | undefined) => {
     if (target) {
       postTab({ type: 'jump', hash: target });
@@ -260,7 +243,6 @@ export function App({ post }: Props) {
     postTab({ type: 'selectFile', hash, path: next });
   };
 
-  // The Files view needs every file of the repository at the selected commit
   const treeNeeded = filesMode === 'files' ? treeToLoad(tab) : undefined;
   useEffect(() => {
     if (treeNeeded) {
@@ -269,7 +251,6 @@ export function App({ post }: Props) {
     }
   }, [treeNeeded, postTab]);
 
-  // The selected file's folders open, so it is visible in the Files view
   useEffect(() => {
     if (filesMode !== 'files' || path === undefined) {
       return;
@@ -308,7 +289,6 @@ export function App({ post }: Props) {
     label: isBookmark(bookmark) ? 'Remove bookmark' : 'Add bookmark',
     onClick: () => toggleBookmark(bookmark),
   });
-  // A commit's refs and the commit itself, each checked when it is a bookmark
   const commitBookmarkItem = (commitHash: string): ContextMenuItem => ({
     label: 'Bookmark',
     submenu: bookmarkOptions(commitHash, repository?.refs ?? []).map(
@@ -323,7 +303,6 @@ export function App({ post }: Props) {
   const checkout = (target: CheckoutTarget) =>
     postTab({ type: 'checkout', target });
 
-  // The items of the menu for what was right-clicked
   const menuItems = (target: MenuTarget): ContextMenuItem[] => {
     const refs = repository?.refs ?? [];
     const head = repository?.head;
@@ -363,7 +342,6 @@ export function App({ post }: Props) {
   };
 
   const openMenu = (event: React.MouseEvent, target: MenuTarget) => {
-    // Only the innermost target, like a bubble inside a commit row
     event.stopPropagation();
     const items = menuItems(target);
     if (items.length > 0) {

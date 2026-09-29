@@ -6,6 +6,7 @@ import { MenuItems } from '../webview/contextMenu';
 import { LocationsPopup } from '../webview/locations';
 import {
   historyButtonClick,
+  HistoryMenu,
   MessagePeek,
   NavBar,
   nextPeekMode,
@@ -15,6 +16,8 @@ import { diffRows } from '../webview/diffView';
 import { changeTitle, statusClass } from '../webview/fileStatus';
 import { LineCounts } from '../webview/lineCounts';
 import { SkeletonRows } from '../webview/skeleton';
+import { TabBar } from '../webview/tabBar';
+import { GraphCell } from '../webview/graph';
 import {
   cardCommit,
   classesOf,
@@ -23,15 +26,11 @@ import {
   tagsWith,
 } from './fixtures';
 
-// The webview's components, rendered to HTML without a browser, as mocha runs
-// in node or the extension host, which have no DOM
-
 const noop = () => {};
 
 const kinds = (rows: ReturnType<typeof diffRows>) =>
   rows.map((row) => row.kind);
 
-// The one opening tag with these classes and this text, like a title
 function tagWith(html: string, text: string, ...classes: string[]): string {
   const found = tagsWith(html, ...classes).filter((tag) => tag.includes(text));
   assert.strictEqual(found.length, 1, `${classes.join(' ')} with ${text}`);
@@ -85,7 +84,6 @@ suite('Changes tree rows', () => {
   });
 });
 
-// The navigation bar with nothing to show, and these props
 const bar = (props: Partial<Parameters<typeof NavBar>[0]>) =>
   renderToStaticMarkup(
     <NavBar
@@ -105,7 +103,6 @@ const bar = (props: Partial<Parameters<typeof NavBar>[0]>) =>
     />,
   );
 
-// The address bar's peek at this commit
 const peek = (commit: Parameters<typeof cardCommit>[0]) =>
   renderToStaticMarkup(
     <MessagePeek commit={cardCommit(commit)} onOpen={noop} />,
@@ -120,7 +117,7 @@ suite('Navigation bar', () => {
     assert.match(html, /title="Forward[^"]*" disabled=""/);
   });
 
-  test('shows the selected commit like an address', () => {
+  test('shows the selected commit like an address, hash and subject on one line of text', () => {
     const html = bar({
       address: {
         hash: 'd1f0050454a27f025c6820fc4a42b101a7fa356a',
@@ -128,7 +125,6 @@ suite('Navigation bar', () => {
         commit: undefined,
       },
     });
-    // One line of text, so both share a baseline
     assert.strictEqual(tagsWith(html, 'address-text').length, 1);
     assert.match(
       html,
@@ -151,7 +147,6 @@ suite('Navigation bar', () => {
     });
     assert.strictEqual(tagsWith(html, 'locations-popup', 'peek').length, 1);
     assert.match(html, /class="address-hash">d1f0050<\/span>the subject</);
-    // The blank line after the subject goes, the body stays as written
     assert.match(html, /class="commit-card-body">the body\nmore<\/pre>/);
     assert.deepStrictEqual(definitions(html), [
       ['Commit', hash, 'commit-card-hash'],
@@ -165,7 +160,6 @@ suite('Navigation bar', () => {
 
   test('peeks at the details of a commit without a description', () => {
     const html = peek({ message: 'only' });
-    // No frame to couple with the subject, only the room it would take
     assert.strictEqual(tagsWith(html, 'commit-card-frame', 'empty').length, 1);
     assert.strictEqual(tagsWith(html, 'commit-card-body').length, 0);
     assert.deepStrictEqual(definitions(html)[1], [
@@ -232,7 +226,6 @@ suite('Peek', () => {
     assert.strictEqual(nextPeekMode('closed', 'rest', true), 'peek');
     assert.strictEqual(nextPeekMode('closed', 'rest', false), 'closed');
     assert.strictEqual(nextPeekMode('peek', 'leave', true), 'closed');
-    // What a click opened stays open
     assert.strictEqual(nextPeekMode('open', 'rest', true), 'open');
     assert.strictEqual(nextPeekMode('open', 'leave', true), 'open');
   });
@@ -254,7 +247,6 @@ suite('Peek', () => {
     assert.strictEqual(nextPeekMode('peek', 'update', false), 'closed');
     assert.strictEqual(nextPeekMode('pinned', 'update', false), 'closed');
     assert.strictEqual(nextPeekMode('pinned', 'update', true), 'pinned');
-    // The search doesn't need the commit
     assert.strictEqual(nextPeekMode('open', 'update', false), 'open');
   });
 });
@@ -268,9 +260,30 @@ suite('History buttons', () => {
   test('close their open history on a click instead of going a step', () => {
     assert.strictEqual(historyButtonClick(false, true), 'close');
   });
+
+  test('keys history entries apart that are the same commit', () => {
+    const a = 'a'.repeat(40);
+    let menu: React.ReactNode;
+    function Probe() {
+      menu = HistoryMenu({
+        container: { current: null },
+        entries: [
+          { hash: a, subject: 'a' },
+          { hash: 'b'.repeat(40), subject: 'b' },
+          { hash: a, subject: 'a' },
+        ],
+        onPick: noop,
+        onClose: noop,
+      });
+      return null;
+    }
+    renderToStaticMarkup(<Probe />);
+    assert.ok(isValidElement<{ children: React.ReactElement[] }>(menu));
+    const keys = menu.props.children.map((entry) => entry.key);
+    assert.strictEqual(new Set(keys).size, 3);
+  });
 });
 
-// The address bar's popup with this search, and what it looked up
 const popup = (
   query: string,
   result?: Parameters<typeof LocationsPopup>[0]['lookup'],
@@ -324,7 +337,6 @@ suite('Hash suggestion', () => {
 suite('Menu items', () => {
   test('keys items apart that have the same label', () => {
     let items: React.ReactNode;
-    // Called inside a component, as it keeps which submenu is open
     function Probe() {
       items = MenuItems({
         items: [
@@ -361,6 +373,48 @@ suite('Menu items', () => {
   });
 });
 
+suite('Tab bar', () => {
+  test('stops the middle button from autoscrolling, so a middle click closes the tab', () => {
+    const closed: string[] = [];
+    let nav: React.ReactNode;
+    function Probe() {
+      nav = TabBar({
+        tabs: [{ root: '/repo', name: 'repo' }],
+        active: '/repo',
+        onSelect: noop,
+        onPreload: noop,
+        onClose: (root) => closed.push(root),
+        onAdd: noop,
+        onSort: noop,
+        onLog: noop,
+      });
+      return null;
+    }
+    renderToStaticMarkup(<Probe />);
+    assert.ok(isValidElement<{ children: React.ReactElement[] }>(nav));
+    const list = nav.props.children[0];
+    assert.ok(isValidElement<{ children: React.ReactElement[][] }>(list));
+    const tab = list.props.children[0][0];
+    assert.ok(
+      isValidElement<{
+        onMouseDown: (event: {
+          button: number;
+          preventDefault: () => void;
+        }) => void;
+        onAuxClick: (event: { button: number }) => void;
+      }>(tab),
+    );
+    let prevented = 0;
+    const preventDefault = () => prevented++;
+    tab.props.onMouseDown({ button: 0, preventDefault });
+    assert.strictEqual(prevented, 0);
+    tab.props.onMouseDown({ button: 1, preventDefault });
+    assert.strictEqual(prevented, 1);
+    tab.props.onAuxClick({ button: 1 });
+    assert.deepStrictEqual(closed, ['/repo']);
+  });
+});
+
 suite('Placeholders', () => {
   test('draws grey bars in rows of the given kind', () => {
     const html = renderToStaticMarkup(
@@ -381,7 +435,6 @@ suite('Placeholders', () => {
       hunks: [],
       placeholder: { lines: 5000 },
     };
-    // Collapsed with its size, then placeholders once opened until it loads
     assert.deepStrictEqual(kinds(diffRows([large], new Map(), undefined)), [
       'error',
       'file',
@@ -412,5 +465,25 @@ suite('Placeholders', () => {
       'file',
       'binary',
     ]);
+  });
+});
+
+suite('Graph cell', () => {
+  test('draws a line repeated in a row once, over the lines its last copy was over', () => {
+    const a = { from: 0, to: 0, color: 0, bottom: false };
+    const b = { from: 1, to: 1, color: 1, bottom: false };
+    const html = renderToStaticMarkup(
+      <GraphCell
+        row={{ lane: 0, color: 0, lines: [a, b, a] }}
+        height={30}
+        onToggleMerge={noop}
+      />,
+    );
+    assert.deepStrictEqual(
+      [...html.matchAll(/<path[^>]*stroke="([^"]*)"/g)].map(
+        (match) => match[1],
+      ),
+      ['var(--vscode-charts-green)', 'var(--vscode-charts-blue)'],
+    );
   });
 });

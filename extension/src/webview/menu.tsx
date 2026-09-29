@@ -1,7 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { MenuItems, useDismiss, type ContextMenuItem } from './contextMenu';
 
-// A gear that opens a dropdown menu, with the same items as a context menu
 export function MenuButton({
   title,
   items,
@@ -27,8 +26,6 @@ export function MenuButton({
   );
 }
 
-// Under the gear, closing like a context menu; clicks on the gear itself are
-// inside the container, so they toggle it instead
 function Dropdown({
   container,
   items,

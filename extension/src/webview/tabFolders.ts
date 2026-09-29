@@ -1,10 +1,5 @@
-// The folders a tab has open in the Files view and closed in the Changes tree,
-// kept per tab, so another repository doesn't open or close the same paths
-
 export interface TabFolders {
-  // Open folders of the Files view, which start closed
   readonly open: ReadonlySet<string>;
-  // Closed folders of the Changes tree, which start open
   readonly closed: ReadonlySet<string>;
 }
 
@@ -19,7 +14,6 @@ export function foldersOfTab(
   return (tab !== undefined && all.get(tab)) || noFolders;
 }
 
-// Opens a folder that is closed, or closes one that is open
 export function toggleFolder(
   all: FoldersByTab,
   tab: string | undefined,
@@ -37,8 +31,6 @@ export function toggleFolder(
   return new Map(all).set(tab, { ...folders, [kind]: next });
 }
 
-// Opens these folders in the Files view, like the ones a selected file is in;
-// the same map when they are open already, so nothing re-renders
 export function openFolders(
   all: FoldersByTab,
   tab: string | undefined,

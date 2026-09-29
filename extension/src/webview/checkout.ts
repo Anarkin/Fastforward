@@ -5,23 +5,17 @@ import { hasRef, withoutRemote } from '../shared/refNames';
 export interface CheckoutOption {
   readonly label: string;
   readonly target: CheckoutTarget;
-  // What is checked out already, or doesn't exist anymore
   readonly disabled: boolean;
 }
 
 const byName = (a: RefInfo, b: RefInfo) => a.name.localeCompare(b.name);
 
-// Checking out a ref: a branch switches to it, a remote branch to the local
-// branch of the same name, which is created to track it when there is none,
-// and a tag detaches HEAD; labels are just the names, and what is checked
-// out or gone is greyed out
 export function checkoutRef(
   ref: BookmarkRef,
   refs: readonly RefInfo[],
   head: string | undefined,
 ): CheckoutOption {
   const target = { kind: ref.kind, name: ref.name };
-  // A bookmark of a ref that was deleted since
   if (!hasRef(refs, ref)) {
     return { label: ref.name, target, disabled: true };
   }
@@ -47,13 +41,10 @@ export function checkoutRef(
   return {
     label: ref.name,
     target,
-    // Only when it would change nothing
     disabled: local === head && same,
   };
 }
 
-// Everything that can be checked out at a commit: its local branches, its
-// remote branches, its tags, then the commit itself
 export function checkoutOptions(
   hash: string,
   refs: readonly RefInfo[],

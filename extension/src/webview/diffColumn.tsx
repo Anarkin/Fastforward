@@ -4,8 +4,6 @@ import { Column } from './column';
 import { parsePatch, type DiffFile } from './diff';
 import { DiffView } from './diffView';
 
-// The files of a commit's diff in the commit's order, with its large files,
-// which the diff leaves out, as placeholders until they are fetched
 export function withLargeFiles(
   parsed: readonly DiffFile[],
   files: readonly FileChange[],
@@ -44,26 +42,20 @@ export function Diff({
   fileContent,
   error,
 }: {
-  // The selected commit and file, which the diff starts over for
   selection: string;
   path: string | undefined;
-  // The diff is on the way
   loading: boolean;
   files: readonly FileChange[];
   patch: string;
-  // How many diffs have arrived, as the large files are fetched for each
   diffs: number;
   largeFiles: ReadonlyMap<string, DiffFile>;
   onLoadFile: (path: string) => void;
-  // A file the commit didn't change, shown whole instead of a diff
   fileContent: { path: string; content: string; binary: boolean } | undefined;
   error: string | undefined;
 }) {
-  // Parsed apart from the large files, which come one by one
   const parsed = useMemo(() => parsePatch(patch), [patch]);
   const diffFiles = useMemo(
     () =>
-      // One selected file is the whole diff
       path === undefined ? withLargeFiles(parsed, files, largeFiles) : parsed,
     [parsed, path, files, largeFiles],
   );
@@ -72,7 +64,6 @@ export function Diff({
     [files],
   );
 
-  // An error goes above the diff
   const errorRow = error && <div className="error">{error}</div>;
 
   return (

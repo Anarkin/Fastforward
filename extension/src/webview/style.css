@@ -8,27 +8,17 @@ body,
 }
 
 body {
-  /* How faint what stays in the background is: the Changes tree's folders,
-     and each commit's author and date */
   --muted-opacity: 0.45;
-  /* The active tab's and the rows under it, the address bar's and the
-     bookmarks', which read as one toolbar: the panels' background */
   --toolbar-background: var(--vscode-editor-background);
-  /* A shade toward the text, for what is picked: the address bar at rest,
-     and the selected commit and file, so they read as the same thing */
   --shade-background: color-mix(
     in srgb,
     var(--vscode-foreground) 7%,
     var(--toolbar-background)
   );
-  /* The address popup's, the tab row's color, which rows over its lists
-     need too */
   --popup-background: var(
     --vscode-editorGroupHeader-tabsBackground,
     var(--vscode-editorWidget-background, var(--vscode-editor-background))
   );
-  /* The edge of what floats over the columns; not every theme defines a
-     widget border */
   --widget-border: var(
     --vscode-widget-border,
     var(--vscode-panel-border, transparent)
@@ -55,18 +45,14 @@ body {
   height: 100%;
 }
 
-/* Like VS Code's editor tabs: the active tab has the panels' background and
-   runs into them, the others sit on the tab strip */
 .tabs {
   flex: none;
   display: flex;
   align-items: stretch;
-  /* No right padding: the settings button ends the strip */
   padding: 4px 0 0 4px;
   background: var(--vscode-editorGroupHeader-tabsBackground);
 }
 
-/* Scrolls sideways with the wheel; the scrollbar would take up space */
 .tab-list {
   flex: 1;
   min-width: 0;
@@ -119,7 +105,6 @@ body {
   box-shadow: 0 2px 8px var(--vscode-widget-shadow);
 }
 
-/* The menu is as wide as its longest item, which stays on one line */
 .menu-item {
   display: block;
   width: 100%;
@@ -153,7 +138,6 @@ body {
   border-radius: 6px 6px 0 0;
 }
 
-/* The same color VS Code's modern UI uses for hovered editor tabs */
 .tab:not(.active):hover {
   background: var(
     --vscode-modernEditorTab-hoverBackground,
@@ -189,7 +173,6 @@ body {
   border-radius: 4px;
 }
 
-/* A small square at the tab's right edge, like VS Code's close button */
 .tab-close {
   flex: none;
   width: 20px;
@@ -203,8 +186,6 @@ body {
   background: var(--vscode-toolbar-hoverBackground);
 }
 
-/* The strip aligns tabs to its bottom edge; the button is centered in the
-   space above it instead */
 .tab-add {
   align-self: center;
   width: 24px;
@@ -223,12 +204,9 @@ body {
   flex: 1;
   min-height: 0;
   display: grid;
-  /* The column widths come from useColumnWidths; one row, capped at the
-     available height so the columns scroll */
   grid-template-rows: minmax(0, 1fr);
 }
 
-/* Hidden by C, with no width, keeping its scroll position; see templateOf */
 .columns.commits-hidden > .column:first-child {
   visibility: hidden;
   overflow: hidden;
@@ -244,7 +222,6 @@ body {
   border-right: 1px solid var(--vscode-panel-border);
 }
 
-/* A handle over the column's right border, highlighted like VS Code's sashes */
 .resizer {
   position: absolute;
   top: 0;
@@ -260,7 +237,6 @@ body.resizing .resizer:active {
   background: var(--vscode-sash-hoverBorder, var(--vscode-focusBorder));
 }
 
-/* While dragging, the cursor stays and text isn't selected */
 body.resizing {
   cursor: col-resize;
   user-select: none;
@@ -270,8 +246,6 @@ body.resizing {
   border-right: none;
 }
 
-/* One height for every column, whether its title is text or the Changes |
-   Files switch, which is taller */
 .column-title {
   position: relative;
   flex: none;
@@ -286,7 +260,6 @@ body.resizing {
   border-bottom: 1px solid var(--vscode-panel-border);
 }
 
-/* On the right of the centered title */
 .column-actions {
   position: absolute;
   top: 0;
@@ -334,7 +307,6 @@ body.resizing {
   font-weight: 600;
 }
 
-/* Matches twistyWidth in tree.tsx */
 .twisty {
   display: inline-block;
   width: 10px;
@@ -345,7 +317,6 @@ body.resizing {
   position: relative;
 }
 
-/* A vertical line under an ancestor's twisty, joining up across rows */
 .indent-guide {
   position: absolute;
   top: 0;
@@ -393,8 +364,6 @@ body.resizing {
   color: var(--vscode-descriptionForeground);
 }
 
-/* Uncommitted changes in the color of the changed files they are, as the
-   row isn't a commit */
 .commit.working-tree:not(.empty) .subject {
   color: var(--vscode-gitDecoration-modifiedResourceForeground);
 }
@@ -411,7 +380,6 @@ body.resizing {
   flex: none;
 }
 
-/* Neutral gray in any theme, so file counts don't look like refs */
 .count {
   flex: none;
   padding: 0 5px;
@@ -421,7 +389,6 @@ body.resizing {
   background: color-mix(in srgb, var(--vscode-foreground) 12%, transparent);
 }
 
-/* The same size everywhere bubbles are */
 .badge {
   display: inline-block;
   box-sizing: border-box;
@@ -436,8 +403,6 @@ body.resizing {
   background: var(--vscode-badge-background);
 }
 
-/* Local and remote branches alike, a light shade of the theme's blue, so the
-   refs take few colors; the name tells them apart */
 .badge.branch,
 .badge.remote {
   color: var(--vscode-foreground);
@@ -489,8 +454,6 @@ body.resizing {
   color: var(--vscode-gitDecoration-deletedResourceForeground);
 }
 
-/* A row of the Diff column, or on top of it for the file being scrolled
-   through */
 .file-header {
   display: flex;
   align-items: center;
@@ -528,15 +491,12 @@ body.resizing {
   color: var(--vscode-errorForeground);
 }
 
-/* The commit list scrolls itself, and positions only the visible rows */
 .list {
   height: 100%;
   overflow: auto;
   outline: none;
 }
 
-/* It takes the keys, so reached by the keyboard it shows it has them, like
-   VS Code's lists */
 .list:focus-visible {
   outline: 1px solid var(--vscode-focusBorder);
   outline-offset: -1px;
@@ -554,8 +514,6 @@ body.resizing {
   width: 100%;
 }
 
-/* The commit's refs below the author and date, wrapping onto more lines as
-   needed, each line as tall as bubbleLineHeight: a bubble and the gap */
 .bubble-line {
   display: flex;
   flex-wrap: wrap;
@@ -577,7 +535,6 @@ body.resizing {
   overflow: hidden;
 }
 
-/* A commit that is still loading */
 .commit.placeholder {
   cursor: default;
 }
@@ -599,7 +556,6 @@ body.resizing {
   width: 35%;
 }
 
-/* The commit graph on the left of each row, under the commit's text */
 .graph {
   position: absolute;
   top: 0;
@@ -607,8 +563,6 @@ body.resizing {
   pointer-events: none;
 }
 
-/* Merge dots take clicks, although the rest of the graph lets them through to
-   the row */
 .merge-dot {
   pointer-events: all;
   cursor: pointer;
@@ -644,7 +598,6 @@ body.resizing {
   box-shadow: 0 1px 2px var(--vscode-widget-shadow);
 }
 
-/* In the Files view, folders with changes in them stand out */
 .tree-row.folder.changed {
   color: var(--vscode-gitDecoration-modifiedResourceForeground);
 }
@@ -654,7 +607,6 @@ body.resizing {
   color: var(--vscode-descriptionForeground);
 }
 
-/* The bookmarks under the tabs, wrapping onto more lines when they don't fit */
 .bubble-bar {
   background: var(--toolbar-background);
   flex: none;
@@ -666,10 +618,6 @@ body.resizing {
   border-bottom: 1px solid var(--vscode-panel-border);
 }
 
-/* Every branch, remote and tag, and the peek at the selected commit, over
-   the address bar, taking it in, like Chrome's suggestions: the search sits
-   where the bar was, and the popup grows down from it, as tall as
-   usePopupHeight lets it be, in the tab row's color */
 .locations-popup {
   position: absolute;
   top: calc(-1 * var(--search-gap));
@@ -680,7 +628,6 @@ body.resizing {
   flex-direction: column;
   color: var(--vscode-foreground);
   background: var(--popup-background);
-  /* Around the search box's corners: its radius and the gap to it */
   border-radius: calc(var(--search-height) / 2 + var(--search-gap));
   box-shadow: var(--popup-shadow);
 }
@@ -710,13 +657,11 @@ body.resizing {
   padding-bottom: 4px;
 }
 
-/* The result Enter jumps to */
 .locations-list .row.result.active {
   color: var(--vscode-list-activeSelectionForeground);
   background: var(--vscode-list-activeSelectionBackground);
 }
 
-/* The part of a ref's name matching the search, lighter in its bubble */
 .locations-list .match {
   color: inherit;
   background: color-mix(
@@ -736,20 +681,17 @@ body.resizing {
   cursor: pointer;
 }
 
-/* A bookmark whose ref doesn't exist anymore, until it is removed */
 .badge.missing {
   opacity: 0.5;
   text-decoration: line-through;
 }
 
-/* At the pointer, instead of under a button */
 .menu.context-menu {
   position: fixed;
   right: auto;
   z-index: 20;
 }
 
-/* One column per kind of ref, each scrolling on its own */
 .locations-columns {
   flex: 1;
   min-height: 0;
@@ -781,14 +723,11 @@ body.resizing {
   padding-left: 8px;
 }
 
-/* The branch HEAD is on, or a detached HEAD, in the theme's active tab
-   colors wherever its bubble appears */
 .badge.checked-out {
   color: var(--vscode-tab-activeForeground);
   background: var(--vscode-tab-activeBackground);
 }
 
-/* Submenus open to the side of their item */
 .menu-entry {
   position: relative;
 }
@@ -829,8 +768,6 @@ body.resizing {
   );
 }
 
-/* Refs in the Locations popup are bubbles, as everywhere else; long names
-   end in an ellipsis */
 .locations-list .badge {
   max-width: 100%;
   overflow: hidden;
@@ -838,21 +775,17 @@ body.resizing {
   vertical-align: middle;
 }
 
-/* The checked-out branch and its upstream */
 .checked-out-pair {
   display: inline-flex;
   align-items: center;
   gap: 3px;
 }
 
-/* See icons.tsx */
 .icon {
   display: block;
   flex: none;
 }
 
-/* Folder rows stick to the top while their contents scroll by, stacked by
-   depth; every tree row is the same height, see stickyRowHeight */
 .locations-list .tree-row {
   box-sizing: border-box;
   height: 24px;
@@ -878,9 +811,6 @@ body.resizing {
     var(--popup-background);
 }
 
-/* The Diff column draws only the rows on screen; most rows have a fixed
-   height, which they are given from rowHeights in diffView.tsx, and so are
-   --diff-file-height and --diff-line-height */
 .diff-view {
   position: relative;
   height: 100%;
@@ -896,7 +826,6 @@ body.resizing {
   min-width: 100%;
 }
 
-/* As wide as the longest line on screen, so long lines scroll sideways */
 .diff-row {
   position: absolute;
   top: 0;
@@ -905,7 +834,6 @@ body.resizing {
   width: max-content;
 }
 
-/* Lines were skipped here, between two changed parts of a file */
 .hunk-divider {
   box-sizing: border-box;
   height: 100%;
@@ -952,7 +880,6 @@ body.resizing {
   );
 }
 
-/* The file being scrolled through, on top of the list */
 .diff-stuck-header {
   position: absolute;
   top: 0;
@@ -961,7 +888,6 @@ body.resizing {
   z-index: 5;
 }
 
-/* A file too large to draw right away */
 .large-diff {
   display: flex;
   align-items: center;
@@ -982,8 +908,6 @@ body.resizing {
   border-radius: 3px;
 }
 
-/* File rows, and rows with line counts, which sit on the right; the name
-   gives way first */
 .row.file,
 .row.counted {
   display: flex;
@@ -1002,21 +926,17 @@ body.resizing {
   font-weight: normal;
 }
 
-/* Folders of the Changes tree stay in the background, so the files and their
-   counts stand out */
 .row.folder.counted .twisty,
 .row.folder.counted .path {
   opacity: var(--muted-opacity);
 }
 
-/* A commit pinned to the bookmarks row, neutral next to the refs' colors */
 .badge.commit {
   color: var(--vscode-foreground);
   background: var(--vscode-editorWidget-background);
   border: 1px solid var(--widget-border);
 }
 
-/* Sets what is checked out apart from the bookmarks, when it isn't one of them */
 .bubble-separator {
   align-self: stretch;
   width: 1px;
@@ -1029,7 +949,6 @@ body.resizing {
   color: var(--vscode-descriptionForeground);
 }
 
-/* Lists that mount only the rows on screen, like the Files column's */
 .virtual-rows {
   height: 100%;
   overflow: auto;
@@ -1047,10 +966,7 @@ body.resizing {
   width: 100%;
 }
 
-/* High Contrast themes have no selection or hover backgrounds, and draw
-   outlines instead, like VS Code's own lists and menus */
 :is(.vscode-high-contrast, .vscode-high-contrast-light) {
-  /* What floats over the columns has the theme's contrast border */
   --widget-border: var(
     --vscode-contrastBorder,
     var(--vscode-widget-border, var(--vscode-panel-border, transparent))
@@ -1088,7 +1004,6 @@ body.resizing {
   border: 1px solid var(--vscode-contrastBorder);
 }
 
-/* Placeholders in the shape of what is loading, like the commit list's */
 .skeleton-row {
   cursor: default;
 }
@@ -1121,7 +1036,6 @@ body.resizing {
   opacity: 0.15;
 }
 
-/* The toolbar over the bubbles: back, forward and fetch, then the address */
 .nav-bar {
   flex: none;
   background: var(--toolbar-background);
@@ -1156,7 +1070,6 @@ body.resizing {
   opacity: 0.35;
 }
 
-/* Spins while the fetch runs */
 .nav-button.running {
   opacity: 1;
 }
@@ -1195,8 +1108,6 @@ body.resizing {
   color: var(--vscode-descriptionForeground);
 }
 
-/* Where the tab is, like a browser's address bar; the search box opens in
-   the bar's place, as tall and round, with a gap around it */
 .address {
   --search-height: 28px;
   --search-gap: 6px;
@@ -1218,8 +1129,6 @@ body.resizing {
   text-align: left;
   color: var(--vscode-input-foreground);
   cursor: text;
-  /* Like Chrome's: a shade apart from the toolbar at rest, and like the
-     search box it opens into while the pointer is on it */
   background: var(--shade-background);
   border: 1px solid transparent;
   border-radius: calc(var(--search-height) / 2);
@@ -1230,7 +1139,6 @@ body.resizing {
   border-color: var(--vscode-input-border, transparent);
 }
 
-/* Room for the peek's quote bar between the hash and the subject */
 .address-hash {
   margin-right: 18px;
   color: var(--vscode-descriptionForeground);
@@ -1247,11 +1155,6 @@ body.resizing {
   color: var(--vscode-input-placeholderForeground);
 }
 
-/* The peek's details, lined up with the subject in its search box: the same
-   margin, border and padding, then the hash's room; they start at the top of
-   the box, behind it, so the description's frame reaches up to it, and their
-   content under it: the box's height, the gap under it, and 5 pixels more
-   (--card-top) */
 .commit-card {
   --card-top: calc(var(--search-height) + var(--search-gap) + 5px);
   flex: none;
@@ -1266,8 +1169,6 @@ body.resizing {
   visibility: hidden;
 }
 
-/* The full hash, the author, the committer, the dates and the bubbles, right
-   of the description, as a table with their names on the left */
 .commit-card-info {
   flex: 1 1 0;
   min-width: 0;
@@ -1289,7 +1190,6 @@ body.resizing {
   margin: 0;
 }
 
-/* The bubbles, a little apart from the rows above */
 .commit-card-info .first-bubble {
   margin-top: 6px;
 }
@@ -1298,8 +1198,6 @@ body.resizing {
   color: var(--vscode-descriptionForeground);
 }
 
-/* The description's column, as tall as the details, so a long description
-   scrolls in it while the table beside it stays */
 .commit-card-text {
   flex: 1 1 0;
   min-width: 0;
@@ -1308,8 +1206,6 @@ body.resizing {
   flex-direction: column;
 }
 
-/* The description, under the subject, below the search box the details
-   start behind; only as tall as the description, up to its column's height */
 .commit-card-frame {
   position: relative;
   flex: 0 1 auto;
@@ -1319,9 +1215,6 @@ body.resizing {
   padding: var(--card-top) 8px 6px 0;
 }
 
-/* A quote bar left of the subject and the description, from inside the
-   search box, which starts at the top of the details, over its edge and down
-   the description, tying the two together */
 .commit-card-frame::before {
   content: '';
   position: absolute;
@@ -1330,7 +1223,6 @@ body.resizing {
   left: -10px;
   z-index: 2;
   width: 3px;
-  /* The title bar's color, like the modal's header above it */
   background: var(
     --vscode-titleBar-activeBackground,
     var(
@@ -1349,12 +1241,10 @@ body.resizing {
   margin: 0;
   font: inherit;
   white-space: pre-wrap;
-  /* A long description scrolls here, beside the table */
   min-height: 0;
   overflow: auto;
 }
 
-/* With no bookmarks and nothing checked out, the row takes no room */
 .bubble-bar:empty {
   display: none;
 }
@@ -1374,9 +1264,6 @@ body.resizing {
   margin-left: 4px;
 }
 
-/* Over the ?, taking it in, like the address bar's popup: the ? in its top
-   right corner where it was, the card growing down and left from it; its
-   edge a shadow, so a border's width doesn't move the ? off its place */
 .shortcuts-panel {
   position: absolute;
   top: -6px;
@@ -1386,7 +1273,6 @@ body.resizing {
   padding: 6px 6px 14px;
   color: var(--vscode-foreground);
   background: var(--popup-background);
-  /* Around the ?'s circle: its radius and the gap to it */
   border-radius: 19px;
   box-shadow: var(--popup-shadow);
 }
@@ -1407,7 +1293,6 @@ body.resizing {
   padding: 0 10px;
   display: grid;
   grid-template-columns: auto 1fr;
-  /* The key's letter on the line of its description */
   align-items: baseline;
   gap: 8px 12px;
   margin: 0;
@@ -1440,8 +1325,6 @@ body.resizing {
   box-shadow: none;
 }
 
-/* The commit a typed hash is, on top of the search, like Chrome's first
-   suggestion */
 .hash-suggestion {
   flex: none;
   margin: 0 6px 6px;
@@ -1469,16 +1352,10 @@ body.resizing {
   background: none;
 }
 
-/* A peek at the commit's details while the pointer rests on the address
-   bar: the top of the search popup, as tall as the details need, down to
-   where the search goes (see usePopupHeight) */
 .locations-popup.peek {
   overflow: hidden;
 }
 
-/* Only the box opens the search; the details are for reading and copying.
-   Over the frame of the description below; its text centered like the
-   address bar's under it, so it doesn't move */
 .peek .peek-search {
   position: relative;
   z-index: 1;
@@ -1487,8 +1364,6 @@ body.resizing {
   cursor: text;
 }
 
-/* As tall as the popup lets it be; a long description scrolls, under the
-   search box */
 .peek .commit-card {
   min-height: 0;
   flex: 0 1 auto;

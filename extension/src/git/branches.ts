@@ -1,8 +1,5 @@
 import { runGit } from './run';
 
-// Commits the checked-out branch has that its upstream doesn't, and the other
-// way round, or of any two refs; asked from git, as the Git extension's counts
-// can lag behind a change; nothing without an upstream or a branch
 export async function aheadBehind(
   gitPath: string,
   cwd: string,
@@ -24,8 +21,6 @@ export async function aheadBehind(
   }
 }
 
-// Moves the checked-out branch up to a ref it is behind, and refuses when the
-// branch has commits of its own
 export async function fastForward(
   gitPath: string,
   cwd: string,
@@ -34,8 +29,6 @@ export async function fastForward(
   await runGit(gitPath, cwd, ['merge', '--ff-only', ref]);
 }
 
-// The branch each remote considers its main one, like origin/main, which git
-// records as refs/remotes/<remote>/HEAD when cloning
 export async function remoteDefaultBranches(
   gitPath: string,
   cwd: string,

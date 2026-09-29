@@ -57,9 +57,16 @@ suite('parsePatch', () => {
         '+++ /dev/null',
         '@@ -1 +0,0 @@',
         '-bye',
+        'diff --git a/x b/y.png b/x b/y.png',
+        'Binary files a/x b/y.png and b/x b/y.png differ',
       ].join('\n'),
     ).map((file) => file.path);
-    assert.deepStrictEqual(paths, ['x b/y.txt', 'docs/a b/new.md', 'gone.txt']);
+    assert.deepStrictEqual(paths, [
+      'x b/y.txt',
+      'docs/a b/new.md',
+      'gone.txt',
+      'x b/y.png',
+    ]);
   });
 
   test('unquotes paths git quotes', () => {
@@ -100,7 +107,6 @@ suite('parsePatch', () => {
   });
 });
 
-// A --raw line of a file with this status
 function raw(status: string): string {
   return `:100644 100644 1111111 2222222 ${status}`;
 }
@@ -116,7 +122,6 @@ suite('git show parsers', () => {
           'old.ts',
           'new.ts',
           raw('A'),
-          // A path that looks like a raw line or a numstat one is still a path
           ':b.ts',
           raw('A'),
           '1\t1\timg.png',

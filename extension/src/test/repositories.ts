@@ -6,17 +6,10 @@ import * as vscode from 'vscode';
 import { getGitApi } from '../git/repository';
 import type { Connection } from '../view';
 
-// Temp repositories for the tests that run git, made with the git the Git
-// extension uses
-
 export interface TempRepository {
   readonly root: string;
-  // Each command a minute after the one before, so commits made one after
-  // another are in a fixed order, and have the same hashes every run
   git(...args: string[]): Promise<string>;
-  // With these files written and added, or else empty
   commit(message: string, files?: Record<string, string>): Promise<void>;
-  // The commits of these revisions, from one git process
   resolve(...revisions: string[]): Promise<string[]>;
 }
 
@@ -32,13 +25,9 @@ export function tempFolder(name: string): string {
 export function removeFolder(folder: string): void {
   try {
     fs.rmSync(folder, { recursive: true, force: true });
-  } catch {
-    // Left for the OS to clean up
-  }
+  } catch {}
 }
 
-// A repository at this folder, made if missing; a bare one stands in for a
-// remote
 export async function tempRepository(
   root: string,
   { branch = 'main', bare = false } = {},
@@ -54,7 +43,6 @@ export async function tempRepository(
         ['-c', 'user.name=Test', '-c', 'user.email=test@example.com', ...args],
         {
           cwd: root,
-          // For this command only, as the view under test runs git too
           env: {
             ...process.env,
             GIT_AUTHOR_DATE: date,
@@ -92,8 +80,6 @@ export async function tempRepository(
   };
 }
 
-// The Git extension reads changes in its own time; once it has, a refresh
-// brings the view up to date, so neither lands in the middle of a test
 export async function settle(
   root: string,
   connection?: Connection,

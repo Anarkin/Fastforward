@@ -1,16 +1,10 @@
 import type { HistoryEntry } from '../git/history';
 
-// A commit in the history as shown, which can leave out what collapsed merges
-// brought in
 export interface ShownEntry extends HistoryEntry {
-  // Set on merge commits; collapsed ones hide commits of the merged branch
   readonly merge?: 'collapsed' | 'expanded';
-  // How many commits a collapsed merge hides
   readonly hidden?: number;
 }
 
-// The commits nothing is built on yet: the tips of branches that aren't merged
-// anywhere; a merged branch's tip has the merge as its child
 export function headsOf(history: readonly HistoryEntry[]): Set<string> {
   const parents = new Set(history.flatMap((entry) => entry.parents));
   return new Set(
@@ -20,16 +14,12 @@ export function headsOf(history: readonly HistoryEntry[]): Set<string> {
   );
 }
 
-// The merges to expand so that a hidden commit is shown: walking up from the
-// commit through its children to the nearest shown commit, every step into a
-// merge through a parent other than its first is a merge that hides it
 export function mergesHiding(
   history: readonly HistoryEntry[],
   shown: { has(hash: string): boolean },
   target: string,
 ): string[] {
   const { children, firstParents } = linksOf(history);
-  // Breadth first, so the nearest shown commit is found
   const cameFrom = new Map<string, string>();
   const queue = [target];
   for (let next = queue.shift(); next !== undefined; next = queue.shift()) {
@@ -64,11 +54,8 @@ interface Links {
   readonly firstParents: ReadonlyMap<string, string | undefined>;
 }
 
-// Worked out once per history rather than on every jump to a hidden commit,
-// as it walks the whole history
 const links = new WeakMap<readonly HistoryEntry[], Links>();
 
-// Each commit's children and first parent
 function linksOf(history: readonly HistoryEntry[]): Links {
   const known = links.get(history);
   if (known) {
@@ -92,10 +79,6 @@ function linksOf(history: readonly HistoryEntry[]): Links {
   return result;
 }
 
-// The history with merges collapsed like Sublime Merge does: a commit is shown
-// if it is one of the tips, or the first parent of a shown commit, or any
-// parent of a shown merge that is expanded; the history is newest first, so
-// children come before their parents and one pass finds them all
 export function showHistory(
   history: readonly HistoryEntry[],
   tips: ReadonlySet<string>,
@@ -119,7 +102,6 @@ export function showHistory(
     if (!shown.has(entry.hash)) {
       return [];
     }
-    // Lines only go to parents that are shown
     const parents = entry.parents.filter((parent) => shown.has(parent));
     if (entry.parents.length < 2) {
       return [{ hash: entry.hash, parents }];
@@ -135,8 +117,6 @@ export function showHistory(
   });
 }
 
-// How many hidden commits each shown merge brought in; a hidden commit counts
-// for the newest merge that reaches it, so every one is visited only once
 function countHidden(
   history: readonly HistoryEntry[],
   shown: ReadonlySet<string>,

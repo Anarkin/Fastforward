@@ -8,6 +8,7 @@ import {
   commitRowHeight,
   CommitBubbles,
   estimatedRowHeight,
+  fixedRowHeight,
   listTop,
   rowKeyOf,
 } from '../webview/commitList';
@@ -15,14 +16,12 @@ import { commitInfo } from './fixtures';
 
 suite('Commit list rows', () => {
   test('starts a row with bubbles at one line of them', () => {
-    // Refs point at the second commit
     const history = new CommitHistory(3, [[1, 2]]);
     assert.strictEqual(estimatedRowHeight(history, 0, 0), commitRowHeight);
     assert.strictEqual(
       estimatedRowHeight(history, 0, 1),
       commitRowHeight + bubbleLineHeight,
     );
-    // Below the working tree's row, which has no bubbles
     assert.strictEqual(estimatedRowHeight(history, 1, 0), commitRowHeight);
     assert.strictEqual(
       estimatedRowHeight(history, 1, 2),
@@ -35,10 +34,17 @@ suite('Commit list rows', () => {
     history.add(0, [commitInfo('a'), commitInfo('b')]);
     assert.strictEqual(rowKeyOf(history, 1, 0), workingTreeHash);
     assert.strictEqual(rowKeyOf(history, 1, 2), 'b');
-    // The same commit one row higher without the working tree's row
     assert.strictEqual(rowKeyOf(history, 0, 1), 'b');
-    // Not loaded yet
     assert.strictEqual(rowKeyOf(history, 0, 2), 'position 2');
+  });
+
+  test("keeps a commit not loaded yet at the height it is estimated at, so the list doesn't move when it loads", () => {
+    const history = new CommitHistory(3);
+    history.add(0, [commitInfo('a')]);
+    assert.strictEqual(fixedRowHeight(history, 1, 0, 30), undefined);
+    assert.strictEqual(fixedRowHeight(history, 1, 1, 30), undefined);
+    assert.strictEqual(fixedRowHeight(history, 1, 2, 30), 30);
+    assert.strictEqual(fixedRowHeight(undefined, 0, 0, 30), 30);
   });
 
   test("puts a commit's bubbles on one line that wraps", () => {
@@ -70,7 +76,6 @@ suite('Commit list rows', () => {
 });
 
 suite('Commit list top', () => {
-  // The working tree's row, then two commits
   const rows = [0, 1, 2].map((index) => ({
     index,
     start: index * commitRowHeight,
@@ -108,13 +113,11 @@ suite('Commit list arrow keys', () => {
       undefined,
     );
     assert.strictEqual(arrowKeyPosition(history, 'a', false, -1), undefined);
-    // Nothing selected starts at the top
     assert.strictEqual(arrowKeyPosition(history, undefined, true, 1), -1);
     assert.strictEqual(arrowKeyPosition(history, undefined, false, 1), 0);
   });
 
   test('step from where the extension said the selected commit is, before it loads', () => {
-    // A reload that kept the list scrolled far from the selected commit
     const history = new CommitHistory(1000, [], undefined, 1, 5);
     history.add(900, [commitInfo('x')]);
     assert.strictEqual(arrowKeyPosition(history, 'c', true, 1), 6);
@@ -125,7 +128,6 @@ suite('Commit list arrow keys', () => {
     const history = new CommitHistory(1000);
     history.add(900, [commitInfo('x')]);
     assert.strictEqual(arrowKeyPosition(history, 'c', true, 1), undefined);
-    // Its page loaded, with another commit where it was said to be
     const moved = new CommitHistory(1000, [], undefined, 1, 0);
     moved.add(0, [commitInfo('d')]);
     assert.strictEqual(arrowKeyPosition(moved, 'c', true, 1), undefined);

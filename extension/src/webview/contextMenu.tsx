@@ -8,23 +8,17 @@ import {
 } from 'react';
 import type { Bookmark } from '../shared/protocol';
 
-// What was right-clicked, which the menu's items depend on
 export type MenuTarget =
-  // A bubble: a ref, or a commit pinned to the bookmarks row
   | { readonly kind: 'ref'; readonly ref: Bookmark }
   | { readonly kind: 'commit'; readonly hash: string };
 
-// An item runs onClick, or opens its submenu to the side; a separator is a line
 export type ContextMenuItem =
   | {
       readonly label: string;
       readonly onClick?: () => void;
       readonly submenu?: readonly ContextMenuItem[];
-      // Shown greyed out, like what is checked out already
       readonly disabled?: boolean;
-      // Shows a check mark when set, for items that switch something on and off
       readonly checked?: boolean;
-      // The checked item is the one picked of several, rather than switched on
       readonly radio?: boolean;
     }
   | { readonly separator: true };
@@ -35,8 +29,6 @@ export interface OpenMenu {
   readonly items: readonly ContextMenuItem[];
 }
 
-// A menu at the pointer; it stays inside the page, and closes on a click
-// outside, Escape, scrolling or the window losing focus
 export function ContextMenu({
   menu,
   onClose,
@@ -47,7 +39,6 @@ export function ContextMenu({
   const element = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ left: menu.x, top: menu.y });
 
-  // Flips to the other side of the pointer where it would overflow
   useLayoutEffect(() => {
     const box = element.current?.getBoundingClientRect();
     if (!box) {
@@ -65,7 +56,6 @@ export function ContextMenu({
     });
   }, [menu]);
 
-  // At the pointer, it would be left behind by scrolling
   useDismiss(element, onClose, { onScroll: true });
 
   return (
@@ -83,17 +73,11 @@ export function ContextMenu({
 
 export interface DismissOptions {
   readonly onScroll?: boolean;
-  // Elements matching this selector, like the right-click menu a popup
-  // opens, take clicks without closing it
   readonly ignore?: string;
 }
 
-// The open menus and popups, the last opened on top; Escape closes only the
-// top one, so a right-click menu over the search closes without the search
 const layers: object[] = [];
 
-// By their properties rather than their classes, which there are none of
-// outside a page
 function isNode(target: EventTarget | null): target is Node {
   return target !== null && 'nodeType' in target;
 }
@@ -102,7 +86,6 @@ function isElement(target: EventTarget | null): target is Element {
   return isNode(target) && 'closest' in target;
 }
 
-// Listens on the window for what closes a menu; returns what stops listening
 export function listenForDismiss(
   target: EventTarget,
   element: { readonly current: Pick<Node, 'contains'> | null },
@@ -122,8 +105,6 @@ export function listenForDismiss(
       onClose();
     }
   };
-  // Before the page passes the key on to VS Code, which would close the
-  // whole view on Escape
   const onKeyDown = (event: Event) => {
     if ('key' in event && event.key === 'Escape' && layers.at(-1) === layer) {
       event.stopPropagation();
@@ -148,8 +129,6 @@ export function listenForDismiss(
   };
 }
 
-// Closes a menu or popup on a click outside the element, Escape, the window
-// losing focus, and scrolling when asked
 export function useDismiss(
   element: React.RefObject<HTMLElement | null>,
   onClose: () => void,
@@ -167,7 +146,6 @@ export function useDismiss(
   }, [element, onClose, onScroll, ignore, enabled]);
 }
 
-// The items of a menu or submenu; a submenu opens while its item is hovered
 export function MenuItems({
   items,
   onClose,
@@ -179,8 +157,6 @@ export function MenuItems({
   return (
     <>
       {items.map((item, index) =>
-        // By place, like the open submenu, as labels can repeat, like a
-        // branch and a tag of the same name
         'separator' in item ? (
           <div key={index} className="menu-separator" />
         ) : (
@@ -228,7 +204,6 @@ export function MenuItems({
   );
 }
 
-// Next to its item, on the left instead when there's no room on the right
 function Submenu({
   items,
   onClose,
@@ -255,14 +230,10 @@ function Submenu({
   );
 }
 
-// Opens the menu for what was right-clicked; any element can reach it without
-// the handler being passed down through every component
 export const OpenContextMenu = createContext<
   (event: React.MouseEvent, target: MenuTarget) => void
 >(() => {});
 
-// The props that open the menu for a target on right-click; a bubble inside a
-// commit row handles it first, so the row's menu doesn't open instead
 export function useContextMenu(target: MenuTarget) {
   const open = useContext(OpenContextMenu);
   return {

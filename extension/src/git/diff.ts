@@ -1,8 +1,6 @@
 import type { FileChange } from '../shared/protocol';
 import { runGit, splitNul } from './run';
 
-// Diffs in the format the parsers expect, whatever the user's config says:
-// no colors, external diff tools or text conversion, and a/ and b/ prefixes
 export const diffArgs = [
   '--no-color',
   '--no-ext-diff',
@@ -19,7 +17,6 @@ const showArgs = [
   ...diffArgs,
 ];
 
-// Each changed file's status and paths, and its changed lines, in one diff
 export const changesArgs = ['--raw', '--numstat', '-z'];
 
 export async function showFiles(
@@ -32,9 +29,6 @@ export async function showFiles(
   );
 }
 
-// What part of a diff to fetch: one file, limited to both its paths when it
-// was renamed, as git only detects the rename when it sees both, or every
-// file except some
 export interface PatchScope {
   readonly path?: string;
   readonly oldPath?: string;
@@ -70,10 +64,6 @@ export function showPatch(
 
 const simpleStatuses = ['A', 'M', 'D', 'T'] as const;
 
-// The --raw lines first, ":<modes> <objects> M\0path\0", or
-// ":<modes> <objects> R100\0old\0new\0" for renames and copies, then the
-// --numstat ones, "ins\tdel\tpath\0", or "ins\tdel\t\0old\0new\0" for
-// renames, with "-" for binary files
 export function parseChanges(output: string): FileChange[] {
   const tokens = splitNul(output);
   const files: FileChange[] = [];
@@ -103,7 +93,6 @@ export function parseChanges(output: string): FileChange[] {
       }
       continue;
     }
-    // With s, as a path may have a newline in it
     const match = /^(-|\d+)\t(-|\d+)\t(.*)$/s.exec(token);
     if (!match) {
       continue;
