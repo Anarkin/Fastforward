@@ -32,5 +32,7 @@ suite('file tree', () => {
   test('lists the folders a path is in', () => {
     assert.deepStrictEqual(foldersOf('src/lib/b.ts'), ['src', 'src/lib']);
     assert.deepStrictEqual(foldersOf('README.md'), []);
+    // An untracked nested repository
+    assert.deepStrictEqual(foldersOf('vendor/lib/'), ['vendor']);
   });
 });

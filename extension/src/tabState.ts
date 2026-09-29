@@ -7,7 +7,7 @@ import {
   showHistory,
   type ShownEntry,
 } from './history/merges';
-import { noNavigation, type Navigation } from './history/navigation';
+import { noNavigation, reachable, type Navigation } from './history/navigation';
 import { countRefs, decorations, fingerprint, type Head } from './refs';
 import {
   commitPageSize,
@@ -192,7 +192,6 @@ export function commitsMessage(
     generation: tab.generation,
     total: tab.history.length,
     decorations: decorations(tab.refCounts, tab.positions),
-    graphWidth: tab.graph.width,
     start,
     commits,
     graph: tab.graph.rows(start, commits.length),
@@ -311,13 +310,16 @@ export function stillThere(tab: TabState): (hash: string) => boolean {
 // The history's nearest steps both ways, for the buttons and their
 // dropdowns; only the steps whose commit is still there, which are the ones
 // navigate counts, so a picked step is the one it goes to
-export function nearestSteps(tab: TabState): {
+export function nearestSteps(
+  tab: TabState,
+  current = tab.hash,
+): {
   back: string[];
   forward: string[];
 } {
   const exists = stillThere(tab);
   const nearest = (steps: readonly string[]) =>
-    steps.filter(exists).toReversed().slice(0, navigationShown);
+    reachable(steps, current, exists).toReversed().slice(0, navigationShown);
   return {
     back: nearest(tab.navigation.back),
     forward: nearest(tab.navigation.forward),

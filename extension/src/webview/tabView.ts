@@ -40,6 +40,9 @@ export interface TabView {
   readonly patchLoading: boolean;
   readonly path: string | undefined;
   readonly patch: string;
+  // How many diffs have arrived, as the large files are fetched again for
+  // each, even one whose answer to the diff before is on its way
+  readonly diffs: number;
   // A file the commit didn't change, shown whole in the Diff column
   readonly fileContent: WholeFile | undefined;
   // The large files the commit's diff left out, by path, fetched when opened
@@ -47,6 +50,10 @@ export interface TabView {
   readonly largeFiles: ReadonlyMap<string, DiffFile>;
   // Every file of the repository at the selected commit, for the Files view
   readonly tree: { hash: string; paths: readonly string[] } | undefined;
+  // The commit whose tree was last asked for, asked once, not again when a
+  // tree of another commit arrives while this one is on its way; forgotten
+  // when another tab opens, as the extension forgets the tree of a closed tab
+  readonly treeRequested: string | undefined;
   // Whether a fetch is running
   readonly fetching: boolean;
   // The commits back and forward, nearest first
@@ -69,9 +76,11 @@ export const emptyTabView: TabView = {
   patchLoading: false,
   path: undefined,
   patch: '',
+  diffs: 0,
   fileContent: undefined,
   largeFiles: new Map(),
   tree: undefined,
+  treeRequested: undefined,
   fetching: false,
   back: [],
   forward: [],
@@ -85,7 +94,9 @@ export type TabAction =
   | { readonly type: 'clear' }
   // The user selected a commit or a file, shown while its answer loads
   | { readonly type: 'showCommit'; readonly hash: string | undefined }
-  | { readonly type: 'showFile'; readonly path: string | undefined };
+  | { readonly type: 'showFile'; readonly path: string | undefined }
+  // The page asked for the tree of a commit
+  | { readonly type: 'requestTree'; readonly hash: string };
 
 // A commit as selected, with nothing of the previous one left
 function selected(state: TabView, hash: string | undefined): TabView {
@@ -135,9 +146,9 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
       const history = new CommitHistory(
         action.total,
         action.decorations,
-        action.graphWidth,
         action.workingTreeGraph,
         action.generation,
+        action.selectedIndex,
       );
       history.add(action.start, action.commits, action.graph);
       return {
@@ -168,6 +179,8 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
         ? { ...state }
         : state;
     case 'reveal':
+      // Known where it is before its page loads, for the arrow keys
+      state.history?.locate(action.hash, action.index);
       return {
         ...selected(state, action.hash),
         scrollTarget: { index: action.index },
@@ -195,13 +208,14 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
         hash: action.hash,
         path: action.path,
         patch: action.patch,
+        diffs: state.diffs + 1,
         patchLoading: false,
         fileContent: undefined,
         // Fetched again for the new diff when still open
         largeFiles: new Map(),
       };
     case 'fileDiff':
-      return action.hash === state.hash
+      return action.hash === state.hash && action.diff === state.diffs
         ? {
             ...state,
             largeFiles: new Map(state.largeFiles).set(
@@ -224,6 +238,8 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
       };
     case 'tree':
       return { ...state, tree: action };
+    case 'requestTree':
+      return { ...state, treeRequested: action.hash };
     case 'fetching':
       return { ...state, fetching: action.running };
     case 'navigation':
@@ -240,4 +256,12 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
     default:
       return state;
   }
+}
+
+// The commit whose tree the Files view needs and has not asked for yet
+export function treeToLoad(state: TabView): string | undefined {
+  const { hash, tree, treeRequested } = state;
+  return hash && tree?.hash !== hash && treeRequested !== hash
+    ? hash
+    : undefined;
 }

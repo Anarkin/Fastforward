@@ -1,11 +1,11 @@
 import { shortHash } from '../shared/hashes';
 import type { CheckoutTarget, RefInfo, BookmarkRef } from '../shared/protocol';
-import { withoutRemote } from '../shared/refNames';
+import { hasRef, withoutRemote } from '../shared/refNames';
 
 export interface CheckoutOption {
   readonly label: string;
   readonly target: CheckoutTarget;
-  // What is checked out already
+  // What is checked out already, or doesn't exist anymore
   readonly disabled: boolean;
 }
 
@@ -14,13 +14,17 @@ const byName = (a: RefInfo, b: RefInfo) => a.name.localeCompare(b.name);
 // Checking out a ref: a branch switches to it, a remote branch to the local
 // branch of the same name, which is created to track it when there is none,
 // and a tag detaches HEAD; labels are just the names, and what is checked
-// out is greyed out
+// out or gone is greyed out
 export function checkoutRef(
   ref: BookmarkRef,
   refs: readonly RefInfo[],
   head: string | undefined,
 ): CheckoutOption {
   const target = { kind: ref.kind, name: ref.name };
+  // A bookmark of a ref that was deleted since
+  if (!hasRef(refs, ref)) {
+    return { label: ref.name, target, disabled: true };
+  }
   if (ref.kind === 'branch') {
     const checkedOut = ref.name === head;
     return {

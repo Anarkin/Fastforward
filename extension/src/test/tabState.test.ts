@@ -4,6 +4,7 @@ import {
   keep,
   layOutHistory,
   loadHistory,
+  nearestSteps,
   newTabState,
   replayOf,
 } from '../tabState';
@@ -61,5 +62,13 @@ suite('Tab state', () => {
       replayOf(tab).map((message) => message.type),
       ['files', 'fileContent'],
     );
+  });
+
+  test('lists no step to the commit shown in the dropdowns', () => {
+    const tab = newTabState();
+    loadHistory(tab, history, undefined, []);
+    tab.hash = 'a';
+    tab.navigation = { back: ['b', 'a'], forward: [] };
+    assert.deepStrictEqual(nearestSteps(tab), { back: ['b'], forward: [] });
   });
 });

@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import { parseFilePatch, parsePatch } from '../webview/diff';
+import { parseFilePatch, parsePatch, type DiffFile } from '../webview/diff';
 import { collapseThreshold } from '../shared/protocol';
 import { withLargeFiles } from '../webview/diffColumn';
 import { diffRows, largeFilesToLoad, rowHeight } from '../webview/diffView';
@@ -17,6 +17,13 @@ function patch(path: string, added: number): string {
 
 const kinds = (rows: ReturnType<typeof diffRows>) =>
   rows.map((row) => row.kind);
+
+// Each file's path and the text of its lines
+const lines = (files: readonly DiffFile[]) =>
+  files.map((file) => [
+    file.path,
+    file.hunks.flatMap((hunk) => hunk.lines.map((line) => line.text)),
+  ]);
 
 suite('Diff rows', () => {
   test('lays out a small file whole', () => {
@@ -102,6 +109,35 @@ suite('Large files in a commit diff', () => {
     assert.strictEqual(loaded[1].hunks[0].lines.length, 3);
   });
 
+  test('keeps both halves of a file that changed type', () => {
+    // A file replaced by a symlink, which git diffs as deleted and added
+    const typeChange = [
+      'diff --git a/f b/f',
+      'deleted file mode 100644',
+      'index ce01362..0000000',
+      '--- a/f',
+      '+++ /dev/null',
+      '@@ -1 +0,0 @@',
+      '-hello',
+      'diff --git a/f b/f',
+      'new file mode 120000',
+      'index 0000000..eb4e8a8',
+      '--- /dev/null',
+      '+++ b/f',
+      '@@ -0,0 +1 @@',
+      '+target',
+      '\\ No newline at end of file',
+    ].join('\n');
+    const both = [['f', ['hello', 'target']]];
+    const parsed = parsePatch(typeChange);
+    assert.deepStrictEqual(lines(parsed), both);
+    assert.deepStrictEqual(
+      lines(withLargeFiles(parsed, [fileChange('f')], new Map())),
+      both,
+    );
+    assert.deepStrictEqual(lines([parseFilePatch('f', typeChange)]), both);
+  });
+
   test('keeps files the list lacks, and leaves out small ones the diff lacks', () => {
     const parsed = parsePatch(patch('extra.ts', 1));
     assert.deepStrictEqual(
@@ -123,13 +159,13 @@ const placeholder = (path: string) => ({
 
 suite('Large files fetched', () => {
   test('fetches an opened large file once, not again as others come', () => {
-    const requested = new Set<string>();
+    const requested = new Map<string, number>();
     const open = new Map([
       ['a.json', true],
       ['b.json', true],
     ]);
     const files = [placeholder('a.json'), placeholder('b.json')];
-    assert.deepStrictEqual(largeFilesToLoad(files, open, requested), [
+    assert.deepStrictEqual(largeFilesToLoad(files, open, 0, requested), [
       'a.json',
       'b.json',
     ]);
@@ -137,29 +173,45 @@ suite('Large files fetched', () => {
       parseFilePatch('a.json', patch('a.json', 1)),
       placeholder('b.json'),
     ];
-    assert.deepStrictEqual(largeFilesToLoad(aLoaded, open, requested), []);
+    assert.deepStrictEqual(largeFilesToLoad(aLoaded, open, 0, requested), []);
   });
 
   test('fetches it again once it is a placeholder again, or reopened', () => {
-    const requested = new Set<string>();
+    const requested = new Map<string, number>();
     const open = new Map([['a.json', true]]);
-    largeFilesToLoad([placeholder('a.json')], open, requested);
+    largeFilesToLoad([placeholder('a.json')], open, 0, requested);
     const loaded = [parseFilePatch('a.json', patch('a.json', 1))];
-    largeFilesToLoad(loaded, open, requested);
+    largeFilesToLoad(loaded, open, 0, requested);
     // The diff was fetched again, after a save
     assert.deepStrictEqual(
-      largeFilesToLoad([placeholder('a.json')], open, requested),
+      largeFilesToLoad([placeholder('a.json')], open, 0, requested),
       ['a.json'],
     );
 
     const closed = new Map([['a.json', false]]);
     assert.deepStrictEqual(
-      largeFilesToLoad([placeholder('a.json')], closed, requested),
+      largeFilesToLoad([placeholder('a.json')], closed, 0, requested),
       [],
     );
     assert.deepStrictEqual(
-      largeFilesToLoad([placeholder('a.json')], open, requested),
+      largeFilesToLoad([placeholder('a.json')], open, 0, requested),
       ['a.json'],
+    );
+  });
+
+  test('fetches it again for a new diff that came before it loaded', () => {
+    const requested = new Map<string, number>();
+    const open = new Map([['a.json', true]]);
+    largeFilesToLoad([placeholder('a.json')], open, 0, requested);
+    // A save changed the diff while a.json was on its way, whose answer may
+    // be from before the save
+    assert.deepStrictEqual(
+      largeFilesToLoad([placeholder('a.json')], open, 1, requested),
+      ['a.json'],
+    );
+    assert.deepStrictEqual(
+      largeFilesToLoad([placeholder('a.json')], open, 1, requested),
+      [],
     );
   });
 
@@ -167,7 +219,7 @@ suite('Large files fetched', () => {
     const empty = parseFilePatch('a.json', '');
     assert.deepStrictEqual(empty, { path: 'a.json', binary: false, hunks: [] });
     assert.deepStrictEqual(
-      largeFilesToLoad([empty], new Map([['a.json', true]]), new Set()),
+      largeFilesToLoad([empty], new Map([['a.json', true]]), 0, new Map()),
       [],
     );
   });

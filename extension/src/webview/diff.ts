@@ -25,6 +25,8 @@ export interface DiffFile {
 }
 
 interface ParsedFile {
+  // The "diff --git" line
+  header: string;
   path: string;
   binary: boolean;
   hunks: DiffHunk[];
@@ -116,13 +118,19 @@ export function parsePatch(patch: string): DiffFile[] {
 
   for (const line of patch.split('\n')) {
     if (line.startsWith('diff --git ')) {
+      hunk = undefined;
+      // A file that changed type, like to a symlink, is deleted and added
+      // under the same header, which are one file with both halves
+      if (file?.header === line) {
+        continue;
+      }
       file = {
+        header: line,
         path: headerPath(line.slice('diff --git '.length)),
         binary: false,
         hunks: [],
       };
       files.push(file);
-      hunk = undefined;
       continue;
     }
     if (!file) {

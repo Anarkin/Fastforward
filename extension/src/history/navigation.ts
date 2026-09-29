@@ -32,8 +32,23 @@ export function visit(
   return { back: [...navigation.back, from].slice(-maxSteps), forward: [] };
 }
 
+// The steps that go somewhere: not those whose commit is gone, like after a
+// rebase, nor one to the commit shown, or to the same commit as the step
+// after it, as dropping steps or replacing one with the arrow keys can leave
+export function reachable(
+  steps: readonly string[],
+  current: string | undefined,
+  exists: (hash: string) => boolean,
+): string[] {
+  const kept = steps.filter(exists);
+  return kept.filter(
+    (hash, index) =>
+      hash !== (index === kept.length - 1 ? current : kept[index + 1]),
+  );
+}
+
 // Steps back or forward, several at once from the history's dropdown; steps
-// whose commit is gone, like after a rebase, are skipped and forgotten
+// that go nowhere are skipped and forgotten
 export function step(
   navigation: Navigation,
   current: string | undefined,
@@ -41,8 +56,8 @@ export function step(
   steps: number,
   exists: (hash: string) => boolean,
 ): { navigation: Navigation; target: string } | undefined {
-  const back = navigation.back.filter(exists);
-  const forward = navigation.forward.filter(exists);
+  const back = reachable(navigation.back, current, exists);
+  const forward = reachable(navigation.forward, current, exists);
   const [from, to] = direction === 'back' ? [back, forward] : [forward, back];
   const count = Math.min(Math.max(1, steps), from.length);
   if (count === 0) {

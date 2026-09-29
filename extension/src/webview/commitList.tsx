@@ -60,6 +60,63 @@ export function rowKeyOf(
     : (history?.at(index - offset)?.hash ?? `position ${index}`);
 }
 
+// The row at the top of the list: the commit and how far it is scrolled into,
+// or the working tree's row, which all the way up counts as, as a reload keeps
+// the top of the list with its new commits; undefined while the commit isn't
+// loaded
+export function listTop(
+  rows: readonly { index: number; start: number; end: number }[],
+  scrollTop: number,
+  history: CommitHistory | undefined,
+  offset: number,
+): { hash: string; offset: number } | undefined {
+  if (scrollTop === 0) {
+    return { hash: workingTreeHash, offset: 0 };
+  }
+  const row = rows.find((r) => r.end > scrollTop);
+  if (!row) {
+    return undefined;
+  }
+  if (row.index < offset) {
+    // Within the working tree's row, which is above every commit
+    return { hash: workingTreeHash, offset: 0 };
+  }
+  const commit = history?.at(row.index - offset);
+  return commit && { hash: commit.hash, offset: scrollTop - row.start };
+}
+
+// The position an arrow key moves the selection to, -1 being the working
+// tree's row; undefined at either end, where selecting again would clear the
+// selection, and while it isn't known where the selected commit is, rather
+// than starting over from the top
+export function arrowKeyPosition(
+  history: CommitHistory,
+  selected: string | undefined,
+  // The working tree's row can be selected, having changes
+  workingTree: boolean,
+  step: number,
+): number | undefined {
+  const top = workingTree ? -1 : 0;
+  let from: number | undefined;
+  if (selected === workingTreeHash) {
+    from = -1;
+  } else if (selected !== undefined) {
+    // A reload that kept the list in place may not have loaded its page
+    const hint = history.selectedIndex;
+    from =
+      history.positionOf(selected) ??
+      (hint !== undefined && history.at(hint) === undefined ? hint : undefined);
+    if (from === undefined) {
+      return undefined;
+    }
+  }
+  const position = Math.max(
+    top,
+    Math.min(history.total - 1, (from ?? top - 1) + step),
+  );
+  return position === from ? undefined : position;
+}
+
 // The detached HEAD and the refs of a commit, on one line that wraps
 export function CommitBubbles({
   hash,
@@ -188,45 +245,48 @@ export function Commits({
   }, [history, scrollTarget, scrollIndex, virtualizer]);
 
   // Tells the extension which commit is at the top once scrolling stops, so a
-  // reload can keep it there; all the way up counts as the top of the list,
-  // which a reload keeps, with its new commits
+  // reload can keep it there; when it stopped on a commit not loaded yet, as
+  // after dragging the scrollbar far, once that loads
+  const topUnreported = useRef(false);
+  const reportTop = useCallback(() => {
+    const element = list.current;
+    if (!element) {
+      return;
+    }
+    const top = listTop(
+      virtualizer.getVirtualItems(),
+      element.scrollTop,
+      history,
+      offset,
+    );
+    topUnreported.current = top === undefined;
+    if (top) {
+      onScrolled(top.hash, top.offset);
+    }
+  }, [history, offset, onScrolled, virtualizer]);
   useEffect(() => {
     const element = list.current;
     if (!element) {
       return undefined;
     }
+    // A new history is put where the extension says
+    topUnreported.current = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const onScroll = () => {
       clearTimeout(timer);
-      timer = setTimeout(() => {
-        const top = element.scrollTop;
-        if (top === 0) {
-          onScrolled(workingTreeHash, 0);
-          return;
-        }
-        const row = virtualizer.getVirtualItems().find((r) => r.end > top);
-        const commit = row && history?.at(row.index - offset);
-        if (row && commit) {
-          onScrolled(commit.hash, top - row.start);
-        } else if (row && row.index < offset) {
-          // Within the working tree's row, which is above every commit
-          onScrolled(workingTreeHash, 0);
-        }
-      }, scrolledDelay);
+      timer = setTimeout(reportTop, scrolledDelay);
     };
     element.addEventListener('scroll', onScroll);
     return () => {
       clearTimeout(timer);
       element.removeEventListener('scroll', onScroll);
     };
-  }, [history, offset, onScrolled, virtualizer]);
-
-  const selectedPosition =
-    selected === workingTreeHash
-      ? -1
-      : selected === undefined
-        ? undefined
-        : history?.positionOf(selected);
+  }, [reportTop]);
+  useEffect(() => {
+    if (topUnreported.current) {
+      reportTop();
+    }
+  }, [version, reportTop]);
 
   const onKeyDown = (event: React.KeyboardEvent) => {
     const step =
@@ -235,24 +295,19 @@ export function Commits({
       return;
     }
     event.preventDefault();
-    const top = workingTree ? -1 : 0;
-    const position = Math.max(
-      top,
-      Math.min(history.total - 1, (selectedPosition ?? top - 1) + step),
-    );
-    // At either end, where selecting again would clear the selection
-    if (position === selectedPosition) {
+    const position = arrowKeyPosition(history, selected, !!workingTree, step);
+    if (position === undefined) {
       return;
     }
     if (position === -1) {
       onSelect(workingTreeHash, true);
     } else {
-      // Rows that haven't loaded yet can't be selected
+      // A row that hasn't loaded yet can't be selected, but is scrolled to,
+      // which loads it
       const commit = history.at(position);
-      if (!commit) {
-        return;
+      if (commit) {
+        onSelect(commit.hash, true);
       }
-      onSelect(commit.hash, true);
     }
     virtualizer.scrollToIndex(offset + position, { align: 'auto' });
   };

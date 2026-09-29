@@ -124,6 +124,10 @@ function toAll(contexts: readonly Context[]): Context | undefined {
 export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
   private readonly tabStates = new Map<string, Tab>();
   private readonly storage: Storage;
+  // The page that opened a tab last; what is still loading for a page closed
+  // since, like the modal reopened during a load, a refresh or a fetch, goes
+  // to it, as it was shown only what had come by then
+  private page: Session | undefined;
 
   constructor(
     private readonly log: vscode.LogOutputChannel,
@@ -200,7 +204,16 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     };
     return {
       receive: (message) =>
-        this.run(message.type, session, () => this.handle(message, session)),
+        this.run(
+          message.type,
+          session,
+          () => this.handle(message, session),
+          // A closed tab is never shown again, and what fails then is
+          // opening the next one
+          'root' in message && message.type !== 'closeTab'
+            ? message.root
+            : undefined,
+        ),
       refresh: () =>
         this.run('refresh', session, async () => {
           const context = await this.context(await getGitApi(), session);
@@ -221,10 +234,13 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     return active !== undefined && sameRoot(active, root);
   }
 
+  // The page is told of a failure only while it shows the tab it is about,
+  // as the error would show on another tab, or with no tab, all of them
   private async run(
     name: string,
     session: Session,
     action: () => Promise<void>,
+    root?: string,
   ): Promise<void> {
     try {
       await action();
@@ -232,7 +248,9 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       const text = error instanceof Error ? error.message : String(error);
       this.log.error(`${name} failed`);
       this.log.error(error instanceof Error ? error : text);
-      session.post({ type: 'error', message: text });
+      if (root === undefined || this.isActive(root)) {
+        session.post({ type: 'error', message: text });
+      }
     }
   }
 
@@ -370,7 +388,9 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         await this.fetch(context);
         break;
       case 'loadTree':
-        await this.sendTree(context, message.hash);
+        if (this.known(context, message.hash)) {
+          await this.sendTree(context, message.hash);
+        }
         break;
       case 'jump': {
         // The page sends full hashes, but a short one is looked up too
@@ -408,16 +428,36 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         await this.sendCommit(context);
         break;
       case 'selectFile':
-        context.tab.path = message.path;
-        await this.sendDiff(context, message.hash);
+        if (this.known(context, message.hash)) {
+          context.tab.path = message.path;
+          await this.sendDiff(context, message.hash);
+        }
         break;
       case 'loadFileDiff':
-        await this.sendFileDiff(context, message.hash, message.path);
+        if (this.known(context, message.hash)) {
+          await this.sendFileDiff(
+            context,
+            message.hash,
+            message.path,
+            message.diff,
+          );
+        }
         break;
       default:
         // Saved by handle
         break;
     }
+  }
+
+  // Whether a hash the page sent is the uncommitted changes or a commit of the
+  // history, before it goes to git, which would take one like "--output=x"
+  // as an option; the page is told otherwise, which ends its placeholders
+  private known(context: Context, hash: string): boolean {
+    if (stillThere(context.tab)(hash)) {
+      return true;
+    }
+    context.post({ type: 'error', message: `${hash} is not in the history` });
+    return false;
   }
 
   // The first tab is the repository open in VS Code
@@ -450,6 +490,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       for (const message of replayOf(tab)) {
         session.post(message);
       }
+      this.page = session;
     }
     session.watcher?.dispose();
     session.watcher = undefined;
@@ -489,7 +530,9 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
   // the commit selected before
   private async loadTab(context: Context, atHead: boolean): Promise<void> {
     const refs = listRefs(context.repository);
-    await Promise.all([
+    // All of it ends before a failure is told, so a failed preload starts
+    // over from nothing, not from parts that came after it was reset
+    await allSettled([
       this.addDefaultBookmarks(context, refs),
       // In the place of a refresh, as the watcher's first refresh can come
       // while the history loads, which would load it a second time at once
@@ -532,9 +575,9 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         tab.opened = true;
         await this.loadTab(context, true);
       } catch (error) {
-        // Opening the tab loads it the usual way then
-        tab.opened = false;
-        tab.shown = {};
+        // Opening the tab loads it the usual way then, with nothing of it
+        // known, like the history, which it would otherwise take as loaded
+        Object.assign(tab, newTabState());
         this.log.error(`Preloading tab ${root} failed`);
         this.log.error(error instanceof Error ? error : String(error));
       } finally {
@@ -653,7 +696,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       post: (message) => {
         keep(tab.shown, message);
         if (live && this.storage.activeTab === root) {
-          session.post(message);
+          (session.disposed ? this.page : session)?.post(message);
         }
       },
     };
@@ -667,7 +710,13 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     const subscription = context.repository.state.onDidChange(() => {
       clearTimeout(timer);
       timer = setTimeout(
-        () => void this.run('refresh', session, () => this.refresh(context)),
+        () =>
+          void this.run(
+            'refresh',
+            session,
+            () => this.refresh(context),
+            context.root,
+          ),
         300,
       );
     });
@@ -710,18 +759,22 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     const next = visit(tab.navigation, tab.hash, hash, replace);
     if (next !== tab.navigation) {
       tab.navigation = next;
-      void this.sendNavigation(context).catch((error: unknown) =>
+      void this.sendNavigation(context, hash).catch((error: unknown) =>
         this.log.error(error instanceof Error ? error : String(error)),
       );
     }
   }
 
   // The history's nearest steps both ways, with their subjects, for the
-  // buttons and their dropdowns
-  private async sendNavigation(context: Context): Promise<void> {
+  // buttons and their dropdowns, from the commit shown, or the one a visit
+  // is about to show
+  private async sendNavigation(
+    context: Context,
+    current = context.tab.hash,
+  ): Promise<void> {
     const { tab } = context;
     const { navigation } = tab;
-    const { back, forward } = nearestSteps(tab);
+    const { back, forward } = nearestSteps(tab, current);
     // Commits the page never loaded, like one left by a jump before its page
     // came, are the only ones git is asked about
     const unknown = [...new Set([...back, ...forward])].filter(
@@ -837,19 +890,33 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         .then(() => this.refresh(context, load));
     }
     tab.refreshing = (async () => {
+      // A failure doesn't drop the refreshes asked for during it, which
+      // may well work, as the change they come for may have fixed it; it is
+      // told once they ran
+      let failure: { error: unknown } | undefined;
+      const attempt = async (run: () => Promise<void>) => {
+        try {
+          await run();
+        } catch (error) {
+          failure ??= { error };
+        }
+      };
       try {
-        await (load ? load(context) : this.refreshOnce(context));
+        await attempt(() => (load ? load(context) : this.refreshOnce(context)));
         for (;;) {
           const again = toAll([...tab.refreshAgain.values()]);
           if (!again) {
             break;
           }
           tab.refreshAgain.clear();
-          await this.refreshOnce(again);
+          await attempt(() => this.refreshOnce(again));
         }
       } finally {
         tab.refreshing = undefined;
         tab.refreshAgain.clear();
+      }
+      if (failure) {
+        throw failure.error;
       }
     })();
     return tab.refreshing;
@@ -1045,6 +1112,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     context: Context,
     hash: string,
     file: string,
+    diff: number,
   ): Promise<void> {
     const change = context.tab.changedFiles.get(file);
     const patch = await this.patchOf(context, hash, {
@@ -1052,7 +1120,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       oldPath: change?.oldPath,
     });
     if (context.tab.hash === hash) {
-      context.post({ type: 'fileDiff', hash, path: file, patch });
+      context.post({ type: 'fileDiff', hash, path: file, patch, diff });
     }
   }
 
@@ -1154,6 +1222,18 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     if (!stale() && !unchanged) {
       context.post({ type: 'diff', hash, path: file, patch });
     }
+  }
+}
+
+// Waits for all of these, then fails with the first failure, if any
+async function allSettled(
+  promises: readonly Promise<unknown>[],
+): Promise<void> {
+  const failed = (await Promise.allSettled(promises)).find(
+    (result) => result.status === 'rejected',
+  );
+  if (failed) {
+    throw failed.reason;
   }
 }
 

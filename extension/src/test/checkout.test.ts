@@ -61,4 +61,14 @@ suite('Checkout options', () => {
     });
     assert.strictEqual(option.disabled, false);
   });
+
+  test("greys out a bookmarked ref that doesn't exist anymore", () => {
+    for (const ref of [
+      { kind: 'branch' as const, name: 'deleted' },
+      remote('origin/deleted'),
+      { kind: 'tag' as const, name: 'v0' },
+    ]) {
+      assert.strictEqual(checkoutRef(ref, refs, 'main').disabled, true);
+    }
+  });
 });

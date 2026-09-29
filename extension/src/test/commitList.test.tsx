@@ -3,10 +3,12 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { workingTreeHash } from '../shared/protocol';
 import { CommitHistory } from '../webview/commitHistory';
 import {
+  arrowKeyPosition,
   bubbleLineHeight,
   commitRowHeight,
   CommitBubbles,
   estimatedRowHeight,
+  listTop,
   rowKeyOf,
 } from '../webview/commitList';
 import { commitInfo } from './fixtures';
@@ -64,5 +66,74 @@ suite('Commit list rows', () => {
       ),
       '',
     );
+  });
+});
+
+suite('Commit list top', () => {
+  // The working tree's row, then two commits
+  const rows = [0, 1, 2].map((index) => ({
+    index,
+    start: index * commitRowHeight,
+    end: (index + 1) * commitRowHeight,
+  }));
+
+  test('is the commit scrolled into, once it is loaded', () => {
+    const history = new CommitHistory(2);
+    const scrollTop = commitRowHeight + 10;
+    assert.strictEqual(listTop(rows, scrollTop, history, 1), undefined);
+    history.add(0, [commitInfo('a'), commitInfo('b')]);
+    assert.deepStrictEqual(listTop(rows, scrollTop, history, 1), {
+      hash: 'a',
+      offset: 10,
+    });
+  });
+
+  test('is the working tree all the way up and within its row', () => {
+    const history = new CommitHistory(2);
+    const top = { hash: workingTreeHash, offset: 0 };
+    assert.deepStrictEqual(listTop(rows, 0, history, 1), top);
+    assert.deepStrictEqual(listTop(rows, 10, history, 1), top);
+  });
+});
+
+suite('Commit list arrow keys', () => {
+  test('step from the selected row, and stop at either end', () => {
+    const history = new CommitHistory(2);
+    history.add(0, [commitInfo('a'), commitInfo('b')]);
+    assert.strictEqual(arrowKeyPosition(history, 'a', true, 1), 1);
+    assert.strictEqual(arrowKeyPosition(history, 'a', true, -1), -1);
+    assert.strictEqual(arrowKeyPosition(history, 'b', true, 1), undefined);
+    assert.strictEqual(
+      arrowKeyPosition(history, workingTreeHash, true, -1),
+      undefined,
+    );
+    assert.strictEqual(arrowKeyPosition(history, 'a', false, -1), undefined);
+    // Nothing selected starts at the top
+    assert.strictEqual(arrowKeyPosition(history, undefined, true, 1), -1);
+    assert.strictEqual(arrowKeyPosition(history, undefined, false, 1), 0);
+  });
+
+  test('step from where the extension said the selected commit is, before it loads', () => {
+    // A reload that kept the list scrolled far from the selected commit
+    const history = new CommitHistory(1000, [], undefined, 1, 5);
+    history.add(900, [commitInfo('x')]);
+    assert.strictEqual(arrowKeyPosition(history, 'c', true, 1), 6);
+    assert.strictEqual(arrowKeyPosition(history, 'c', true, -1), 4);
+  });
+
+  test("don't start over from the top without knowing where the selected commit is", () => {
+    const history = new CommitHistory(1000);
+    history.add(900, [commitInfo('x')]);
+    assert.strictEqual(arrowKeyPosition(history, 'c', true, 1), undefined);
+    // Its page loaded, with another commit where it was said to be
+    const moved = new CommitHistory(1000, [], undefined, 1, 0);
+    moved.add(0, [commitInfo('d')]);
+    assert.strictEqual(arrowKeyPosition(moved, 'c', true, 1), undefined);
+  });
+
+  test('step from a revealed commit before its page loads', () => {
+    const history = new CommitHistory(1000);
+    history.locate('c', 500);
+    assert.strictEqual(arrowKeyPosition(history, 'c', true, 1), 501);
   });
 });

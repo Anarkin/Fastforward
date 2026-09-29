@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import type { RefInfo } from '../shared/protocol';
-import { searchRefs } from '../webview/locations';
+import { enterTarget, searchRefs } from '../webview/locations';
 
 const refs: RefInfo[] = [
   { kind: 'remote', name: 'origin/feat/EPMAISA-798-drop', commit: 'a' },
@@ -35,5 +35,31 @@ suite('Locations search', () => {
     // feat/epmaisa-798-drop matches among the branches, both remotes match
     assert.deepStrictEqual([branches.refs.length, branches.more], [1, 0]);
     assert.deepStrictEqual([remotes.refs.length, remotes.more], [1, 1]);
+  });
+
+  test('jumps on Enter to a typed commit, then to the highlighted match', () => {
+    const branch = refs[3];
+    const commit = 'b'.repeat(40);
+    assert.strictEqual(
+      enterTarget(
+        'ab12',
+        { kind: 'found', hash: commit, subject: 's' },
+        branch,
+      ),
+      commit,
+    );
+    assert.strictEqual(
+      enterTarget('ab12', { kind: 'none' }, branch),
+      branch.commit,
+    );
+    assert.strictEqual(enterTarget('feat', undefined, branch), branch.commit);
+  });
+
+  test('jumps on Enter to a hash not looked up yet as typed', () => {
+    assert.strictEqual(enterTarget('A1B2c3d4', undefined, refs[3]), 'a1b2c3d4');
+  });
+
+  test('does nothing on Enter without a search, which highlights no match', () => {
+    assert.strictEqual(enterTarget('', undefined, refs[3]), undefined);
   });
 });

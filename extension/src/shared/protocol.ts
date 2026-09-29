@@ -181,6 +181,10 @@ export type TabMessage =
       readonly type: 'loadFileDiff';
       readonly hash: string;
       readonly path: string;
+      // Which of the diffs the page was sent it is for, said back with the
+      // answer, so one for a diff before, which git may answer last, is
+      // dropped
+      readonly diff: number;
     }
   // Selects a commit that may not be loaded yet, such as a branch's tip
   | { readonly type: 'jump'; readonly hash: string }
@@ -269,8 +273,6 @@ export type ToWebview =
       // [position, number of refs] for every commit that has refs, so the
       // height of each row can be estimated before its commit is loaded
       readonly decorations: readonly (readonly [number, number])[];
-      // The most lanes any row of the graph uses
-      readonly graphWidth: number;
       // The commits the list shows first, from position start, and their graph
       readonly start: number;
       readonly commits: readonly CommitInfo[];
@@ -314,6 +316,7 @@ export type ToWebview =
       readonly hash: string;
       readonly path: string;
       readonly patch: string;
+      readonly diff: number;
     }
   // Every file of the repository at a commit, answering loadTree
   | {

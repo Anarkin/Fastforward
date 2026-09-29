@@ -70,6 +70,18 @@ suite('Navigation', () => {
     assert.deepStrictEqual(back.navigation, { back: ['A'], forward: ['D'] });
   });
 
+  test('skips steps to the commit shown, or to the same commit twice', () => {
+    // A, then B, then back to A with the arrow keys, which adds no step
+    const replaced = visit(visit(noNavigation, undefined, 'A'), 'A', 'B');
+    const atA = visit(replaced, 'B', 'A', true);
+    assert.strictEqual(step(atA, 'A', 'back', 1, all), undefined);
+    // A, X, A, B, and X gone since
+    const twice = { back: ['A', 'X', 'A'], forward: [] };
+    const back = step(twice, 'B', 'back', 1, (hash) => hash !== 'X');
+    assert.strictEqual(back?.target, 'A');
+    assert.deepStrictEqual(back.navigation, { back: [], forward: ['B'] });
+  });
+
   test('goes nowhere without steps', () => {
     assert.strictEqual(step(noNavigation, 'A', 'back', 1, all), undefined);
     assert.strictEqual(step(history(), 'D', 'forward', 1, all), undefined);

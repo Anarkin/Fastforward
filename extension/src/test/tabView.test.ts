@@ -1,5 +1,10 @@
 import * as assert from 'node:assert';
-import { emptyTabView, reduceTabView, type TabView } from '../webview/tabView';
+import {
+  emptyTabView,
+  reduceTabView,
+  treeToLoad,
+  type TabView,
+} from '../webview/tabView';
 import { commitInfo } from './fixtures';
 
 // A tab with a history, a selected commit and file, and an error
@@ -9,7 +14,6 @@ function busyTab(): TabView {
     generation: 1,
     total: 2,
     decorations: [],
-    graphWidth: 1,
     start: 0,
     commits: [commitInfo('a')],
     graph: [],
@@ -187,5 +191,48 @@ suite('Tab view', () => {
       patch: 'patch',
     });
     assert.strictEqual(diff.fileContent, undefined);
+  });
+
+  test('counts the diffs, which the large files are fetched again for', () => {
+    const view = busyTab();
+    const again = reduceTabView(view, {
+      type: 'diff',
+      hash: 'a',
+      path: 'x.ts',
+      patch: 'saved',
+    });
+    assert.strictEqual(again.diffs, view.diffs + 1);
+    assert.deepStrictEqual(again.largeFiles, new Map());
+
+    // The answer to the diff before, which git answered last, is dropped
+    const answer = (diff: number) =>
+      reduceTabView(again, {
+        type: 'fileDiff',
+        hash: 'a',
+        path: 'x.ts',
+        patch: '',
+        diff,
+      });
+    assert.strictEqual(answer(view.diffs), again);
+    assert.ok(answer(again.diffs).largeFiles.has('x.ts'));
+  });
+
+  test("asks for a commit's tree once, and again after the tab reopens", () => {
+    const view = reduceTabView(emptyTabView, { type: 'showCommit', hash: 'a' });
+    assert.strictEqual(treeToLoad(view), 'a');
+    const asked = reduceTabView(view, { type: 'requestTree', hash: 'a' });
+    assert.strictEqual(treeToLoad(asked), undefined);
+    // The tree of the commit before, arriving while this one is on its way
+    const late = reduceTabView(asked, { type: 'tree', hash: 'b', paths: [] });
+    assert.strictEqual(treeToLoad(late), undefined);
+    const loaded = reduceTabView(asked, { type: 'tree', hash: 'a', paths: [] });
+    assert.strictEqual(treeToLoad(loaded), undefined);
+    // Closed and opened again at the same commit, which the extension
+    // replays no tree for
+    const reopened = reduceTabView(reduceTabView(asked, { type: 'clear' }), {
+      type: 'showCommit',
+      hash: 'a',
+    });
+    assert.strictEqual(treeToLoad(reopened), 'a');
   });
 });

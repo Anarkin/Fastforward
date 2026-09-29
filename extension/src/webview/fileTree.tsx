@@ -16,6 +16,16 @@ function folder(name: string, path: string): FolderNode {
   return { name, path, folders: new Map(), files: [], changed: false };
 }
 
+// The folders and the name of a path; an untracked nested repository, which
+// git lists with a slash at the end, is named with it, as in the list
+function pathParts(path: string): string[] {
+  const parts = path.replace(/\/$/, '').split('/');
+  if (path.endsWith('/')) {
+    parts.push(`${parts.pop()}/`);
+  }
+  return parts;
+}
+
 // Every file of the repository as folders, including the files the commit
 // deleted, which aren't in the repository at it anymore
 export function buildFileTree(
@@ -28,7 +38,7 @@ export function buildFileTree(
     all.add(change.path);
   }
   for (const path of all) {
-    const parts = path.split('/');
+    const parts = pathParts(path);
     const name = parts.pop() ?? path;
     const changed = changes.has(path);
     let node = root;
@@ -51,7 +61,7 @@ export function buildFileTree(
 
 // The folders a path is in, to open them so it is visible
 export function foldersOf(path: string): string[] {
-  const parts = path.split('/');
+  const parts = pathParts(path);
   return parts.slice(0, -1).map((_, i) => parts.slice(0, i + 1).join('/'));
 }
 

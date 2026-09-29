@@ -102,6 +102,46 @@ function commitsSent(messages: readonly ToWebview[]): number {
   return messages.filter((message) => message.type === 'commits').length;
 }
 
+// A promise that resolves once opened, to hold a step of the view there
+function gate(): { opened: Promise<void>; open: () => void } {
+  const { promise, resolve } = Promise.withResolvers<void>();
+  return { opened: promise, open: () => resolve() };
+}
+
+// Replaces one of the view's own methods, to hold or fail it at a moment the
+// test picks; the replacement gets the original to call on
+function stubMethod(
+  view: FastforwardView,
+  name: string,
+  replace: (
+    original: (...args: unknown[]) => Promise<void>,
+    ...args: unknown[]
+  ) => Promise<void>,
+): void {
+  const original: unknown = Reflect.get(view, name);
+  assert.ok(typeof original === 'function', name);
+  Reflect.set(view, name, (...args: unknown[]) =>
+    replace(
+      (...inner) =>
+        // A method of the view, which all return promises
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+        Reflect.apply(original, view, inner) as Promise<void>,
+      ...args,
+    ),
+  );
+}
+
+// A page the modal opens in place of one it closed, loaded like the page does
+function reopen(view: FastforwardView): {
+  page: FakePage;
+  connection: Connection;
+  ready: Promise<void>;
+} {
+  const page = new FakePage();
+  const connection = view.connect((message) => page.messages.push(message));
+  return { page, connection, ready: connection.receive({ type: 'ready' }) };
+}
+
 function savedBookmarks(
   globalState: FakeMemento,
 ): Record<string, BookmarkRef[]> {
@@ -576,6 +616,166 @@ suite('View', function () {
       }
     });
 
+    test('sends the history to a page opened again while the tab first loads', async () => {
+      const own = await openView(log, [repository.root], false);
+      const held = gate();
+      stubMethod(own.view, 'sendCommits', async (original, ...args) => {
+        await held.opened;
+        await original(...args);
+      });
+      const first = own.connection.receive({ type: 'ready' });
+      await waitFor(() => own.page.last('repository') !== undefined, 'refs');
+      own.connection.dispose();
+      const reopened = reopen(own.view);
+      try {
+        await waitFor(
+          () => reopened.page.last('repository') !== undefined,
+          'the replayed refs',
+        );
+        held.open();
+        await Promise.all([first, reopened.ready]);
+        assert.strictEqual(reopened.page.last('commits')?.total, 3);
+        assert.strictEqual(reopened.page.last('error'), undefined);
+      } finally {
+        reopened.connection.dispose();
+      }
+    });
+
+    test('sends a history reloaded while the page was opened again', async () => {
+      await settle(repository.root, connection);
+      const held = gate();
+      stubMethod(fastforward, 'sendCommits', async (original, ...args) => {
+        await held.opened;
+        await original(...args);
+      });
+      await repository.git('branch', 'while-closed', fixture.b);
+      const reloading = connection.refresh();
+      connection.dispose();
+      const reopened = reopen(fastforward);
+      try {
+        await waitFor(
+          () => reopened.page.last('commits') !== undefined,
+          'the replayed history',
+        );
+        held.open();
+        await Promise.all([reloading, reopened.ready]);
+        // The replayed list, then the reloaded one
+        assert.strictEqual(commitsSent(reopened.page.messages), 2);
+      } finally {
+        reopened.connection.dispose();
+        await repository.git('branch', '-D', 'while-closed');
+      }
+    });
+
+    test('ends the fetch on a page opened again while it ran', async () => {
+      const git = await getGitApi();
+      const opened = git.getRepository(vscode.Uri.file(repository.root));
+      assert.ok(opened);
+      const held = gate();
+      const fetch: unknown = Reflect.get(opened, 'fetch');
+      Reflect.set(opened, 'fetch', () => held.opened);
+      try {
+        const fetching = connection.receive({
+          type: 'fetch',
+          root: repository.root,
+        });
+        await waitFor(
+          () => page.last('fetching')?.running === true,
+          'the fetch to start',
+        );
+        connection.dispose();
+        const reopened = reopen(fastforward);
+        try {
+          await waitFor(
+            () => reopened.page.last('fetching')?.running === true,
+            'the replayed fetch',
+          );
+          held.open();
+          await Promise.all([fetching, reopened.ready]);
+          assert.strictEqual(reopened.page.last('fetching')?.running, false);
+        } finally {
+          reopened.connection.dispose();
+        }
+      } finally {
+        Reflect.set(opened, 'fetch', fetch);
+      }
+    });
+
+    test('runs the refreshes asked for during one that fails', async () => {
+      await settle(repository.root, connection);
+      const held = gate();
+      let calls = 0;
+      stubMethod(fastforward, 'refreshOnce', async (original, ...args) => {
+        calls++;
+        if (calls === 1) {
+          await held.opened;
+          throw new Error('refresh failed');
+        }
+        await original(...args);
+      });
+      const newer = new FakePage();
+      const newerConnection = fastforward.connect((message) =>
+        newer.messages.push(message),
+      );
+      try {
+        const failing = connection.refresh();
+        const queued = newerConnection.refresh();
+        held.open();
+        await Promise.all([failing, queued]);
+        assert.strictEqual(calls, 2);
+        assert.ok(newer.last('workingTree'));
+        assert.match(page.last('error')?.message ?? '', /refresh failed/);
+      } finally {
+        newerConnection.dispose();
+      }
+    });
+
+    test('takes only hashes of the history from the page', async () => {
+      const written = path.join(folder, 'written.txt');
+      const hash = `--output=${written}`;
+      for (const message of [
+        {
+          type: 'loadFileDiff',
+          root: repository.root,
+          hash,
+          path: 'a',
+          diff: 1,
+        },
+        { type: 'selectFile', root: repository.root, hash, path: 'a' },
+        { type: 'loadTree', root: repository.root, hash },
+      ] as const) {
+        page.clear();
+        await connection.receive(message);
+        assert.match(page.last('error')?.message ?? '', /not in the history/);
+      }
+      assert.ok(!fs.existsSync(written));
+    });
+
+    test('shows a selected uncommitted file deleted since, without failing the refresh', async () => {
+      const added = path.join(repository.root, 'added.txt');
+      fs.writeFileSync(added, 'added\n');
+      try {
+        await connection.receive({
+          type: 'selectCommit',
+          root: repository.root,
+          hash: workingTreeHash,
+        });
+        await connection.receive({
+          type: 'selectFile',
+          root: repository.root,
+          hash: workingTreeHash,
+          path: 'added.txt',
+        });
+        fs.rmSync(added);
+        page.clear();
+        await connection.refresh();
+        assert.strictEqual(page.last('error'), undefined);
+        assert.strictEqual(page.last('fileContent')?.content, '');
+      } finally {
+        fs.rmSync(added, { force: true });
+      }
+    });
+
     test('applies the merge setting to the history shown, without reloading it', async () => {
       await settle(repository.root, connection);
       await connection.receive({ type: 'setCollapseMerges', collapse: false });
@@ -929,6 +1129,48 @@ suite('View', function () {
       assert.strictEqual(tabs.page.last('commits')?.total, 1);
     });
 
+    test('opens a tab whose preload failed with its history', async () => {
+      let failed = false;
+      stubMethod(tabs.view, 'sendWorkingTree', async (original, ...args) => {
+        const [context] = args;
+        if (
+          !failed &&
+          typeof context === 'object' &&
+          context !== null &&
+          'root' in context &&
+          context.root === other
+        ) {
+          failed = true;
+          throw new Error('working tree failed');
+        }
+        await original(...args);
+      });
+      await tabs.connection.receive({ type: 'preloadTab', root: other });
+      assert.ok(failed);
+      tabs.page.clear();
+      await tabs.connection.receive({ type: 'selectTab', root: other });
+      assert.strictEqual(tabs.page.last('commits')?.total, 1);
+      assert.strictEqual(tabs.page.last('files')?.hash, otherHead);
+    });
+
+    test("shows no error of a tab's request that failed after it was left", async () => {
+      const held = gate();
+      stubMethod(tabs.view, 'sendTree', async () => {
+        await held.opened;
+        throw new Error('tree failed');
+      });
+      const loading = tabs.connection.receive({
+        type: 'loadTree',
+        root: repository.root,
+        hash: fixture.merge,
+      });
+      await tabs.connection.receive({ type: 'selectTab', root: other });
+      tabs.page.clear();
+      held.open();
+      await loading;
+      assert.strictEqual(tabs.page.last('error'), undefined);
+    });
+
     test('preloads nothing for the shown tab, or one opened before', async () => {
       tabs.page.clear();
       await tabs.connection.receive({
@@ -1030,21 +1272,28 @@ suite('View', function () {
       assert.deepStrictEqual(tabs.page.last('bookmarks')?.bookmarks, []);
     });
 
-    test('sorts tabs by name and closes one', async () => {
-      await tabs.connection.receive({ type: 'sortTabs' });
-      const names = tabs.page.last('tabs')?.tabs.map((tab) => tab.name) ?? [];
-      assert.deepStrictEqual(
-        names,
-        names.toSorted((a, b) =>
-          a.localeCompare(b, undefined, { sensitivity: 'base' }),
-        ),
-      );
-      await tabs.connection.receive({ type: 'closeTab', root: other });
-      const left = tabs.page.last('tabs');
-      const roots = left?.tabs.map((tab) => tab.root.toLowerCase()) ?? [];
-      assert.ok(roots.includes(repository.root.toLowerCase()));
-      assert.ok(!roots.includes(other.toLowerCase()));
-      assert.strictEqual(left?.active, repository.root);
+    test('sorts tabs by name and closes one, opening the next', async () => {
+      const zeta = await tempRepository(path.join(folder, 'Zeta'));
+      await zeta.commit('zeta');
+      // Out of order, with other open
+      const own = await openView(log, [other, zeta.root, repository.root]);
+      try {
+        await own.connection.receive({ type: 'sortTabs' });
+        assert.deepStrictEqual(
+          own.page.last('tabs')?.tabs.map((tab) => tab.name),
+          ['main', 'other', 'Zeta'],
+        );
+        // The tab after it opens in its place
+        await own.connection.receive({ type: 'closeTab', root: other });
+        const left = own.page.last('tabs');
+        assert.deepStrictEqual(
+          left?.tabs.map((tab) => tab.name),
+          ['main', 'Zeta'],
+        );
+        assert.strictEqual(left?.active, zeta.root);
+      } finally {
+        own.connection.dispose();
+      }
     });
   });
 
@@ -1132,10 +1381,13 @@ suite('View', function () {
           root: large.root,
           hash,
           path: 'large.txt',
+          diff: 1,
         });
         const fileDiff = view.page.last('fileDiff');
         assert.strictEqual(fileDiff?.path, 'large.txt');
         assert.ok(fileDiff?.patch.includes('+line 1999'));
+        // Said back, for the page to tell it from an answer to a diff before
+        assert.strictEqual(fileDiff.diff, 1);
       } finally {
         view.connection.dispose();
       }

@@ -114,6 +114,25 @@ function hashQuery(query: string): string | undefined {
   return isHashPrefix(trimmed) ? trimmed : undefined;
 }
 
+// The commit Enter jumps to: the one a typed hash is, before the names it may
+// also match, or the highlighted match; a hash not looked up yet goes as
+// typed, as the extension looks it up too; nothing without a search, which
+// highlights no match
+export function enterTarget(
+  query: string,
+  found: HashLookup | undefined,
+  active: RefInfo | undefined,
+): string | undefined {
+  const hash = hashQuery(query);
+  if (found?.kind === 'found') {
+    return found.hash;
+  }
+  if (hash && found === undefined) {
+    return hash;
+  }
+  return query ? active?.commit : undefined;
+}
+
 // The commit a typed hash is, or why there is none
 function HashSuggestion({
   hash,
@@ -302,8 +321,7 @@ export function LocationsPopup({
       move(columns, rows);
     } else if (event.key === 'Enter') {
       event.preventDefault();
-      // The commit a typed hash is, before the names it may also match
-      jump(found?.kind === 'found' ? found.hash : activeRef?.commit);
+      jump(enterTarget(query, found, activeRef));
     }
   };
 

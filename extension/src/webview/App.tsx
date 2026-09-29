@@ -46,7 +46,7 @@ import {
   type FoldersByTab,
   type TabFolders,
 } from './tabFolders';
-import { emptyTabView, reduceTabView } from './tabView';
+import { emptyTabView, reduceTabView, treeToLoad } from './tabView';
 import { bookmarkOptions } from './bookmarks';
 
 interface Props {
@@ -69,6 +69,7 @@ export function App({ post }: Props) {
     patchLoading,
     path,
     patch,
+    diffs,
     fileContent,
     largeFiles,
     tree,
@@ -245,10 +246,10 @@ export function App({ post }: Props) {
   const loadFileDiff = useCallback(
     (file: string) => {
       if (hash) {
-        postTab({ type: 'loadFileDiff', hash, path: file });
+        postTab({ type: 'loadFileDiff', hash, path: file, diff: diffs });
       }
     },
-    [hash, postTab],
+    [hash, diffs, postTab],
   );
 
   const selectFile = (next: string | undefined) => {
@@ -259,20 +260,14 @@ export function App({ post }: Props) {
     postTab({ type: 'selectFile', hash, path: next });
   };
 
-  // The Files view needs every file of the repository at the selected commit;
-  // asked once per tab and commit, not again when a tree of another commit
-  // arrives while this one is on its way
-  const requestedTree = useRef<string>(undefined);
+  // The Files view needs every file of the repository at the selected commit
+  const treeNeeded = filesMode === 'files' ? treeToLoad(tab) : undefined;
   useEffect(() => {
-    if (filesMode !== 'files' || !hash || tree?.hash === hash) {
-      return;
+    if (treeNeeded) {
+      dispatch({ type: 'requestTree', hash: treeNeeded });
+      postTab({ type: 'loadTree', hash: treeNeeded });
     }
-    const request = JSON.stringify([activeTab, hash]);
-    if (requestedTree.current !== request) {
-      requestedTree.current = request;
-      postTab({ type: 'loadTree', hash });
-    }
-  }, [filesMode, hash, tree, activeTab, postTab]);
+  }, [treeNeeded, postTab]);
 
   // The selected file's folders open, so it is visible in the Files view
   useEffect(() => {
@@ -482,6 +477,7 @@ export function App({ post }: Props) {
                     onLoadFile={loadFileDiff}
                     files={files}
                     patch={patch}
+                    diffs={diffs}
                     fileContent={
                       fileContent?.path === path ? fileContent : undefined
                     }

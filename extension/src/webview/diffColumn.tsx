@@ -38,6 +38,7 @@ export function Diff({
   loading,
   files,
   patch,
+  diffs,
   largeFiles,
   onLoadFile,
   fileContent,
@@ -50,6 +51,8 @@ export function Diff({
   loading: boolean;
   files: readonly FileChange[];
   patch: string;
+  // How many diffs have arrived, as the large files are fetched for each
+  diffs: number;
   largeFiles: ReadonlyMap<string, DiffFile>;
   onLoadFile: (path: string) => void;
   // A file the commit didn't change, shown whole instead of a diff
@@ -81,6 +84,7 @@ export function Diff({
         changes={changes}
         whole={fileContent}
         loading={loading}
+        diff={diffs}
         onLoad={onLoadFile}
       />
     </Column>

@@ -32,6 +32,14 @@ suite('Changes tree', () => {
     ]);
   });
 
+  test('lists an untracked nested repository by its name', () => {
+    const nested = [fileChange('vendor/lib/', { status: 'U' })];
+    assert.deepStrictEqual(lines(changesTreeRows(nested, new Set())), [
+      '▾ vendor',
+      '  lib/',
+    ]);
+  });
+
   test('hides what is in a closed folder', () => {
     const rows = changesTreeRows(files, new Set(['src', 'tests/Gyurma.Tests']));
     assert.deepStrictEqual(lines(rows), [

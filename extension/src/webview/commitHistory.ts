@@ -21,13 +21,14 @@ export class CommitHistory {
   constructor(
     readonly total: number,
     decorations: readonly (readonly [number, number])[] = [],
-    // The most lanes any row of the graph uses
-    readonly graphWidth = 0,
     // The graph of the working tree's row, above the commits
     readonly workingTreeGraph?: GraphRow,
     // Which of the extension's histories this is, which its pages are asked
     // for and answered with
     readonly generation = 0,
+    // Where the extension said the selected commit is, whose page a reload
+    // that keeps the list in place may not load
+    readonly selectedIndex?: number,
   ) {
     this.refCounts = new Map(decorations);
   }
@@ -49,6 +50,11 @@ export class CommitHistory {
   find(hash: string | undefined): CommitInfo | undefined {
     const position = hash === undefined ? undefined : this.positions.get(hash);
     return position === undefined ? undefined : this.rows.get(position);
+  }
+
+  // A commit the extension says is at this position, before its page loads
+  locate(hash: string, position: number): void {
+    this.positions.set(hash, position);
   }
 
   graphAt(position: number): GraphRow | undefined {

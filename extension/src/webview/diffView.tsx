@@ -158,19 +158,21 @@ export function diffRows(
 }
 
 // The large files to fetch: those opened while still placeholders, each once
-// until it loads or is closed; one that loaded is fetched again when it is a
-// placeholder again, as the diff was fetched again after a save
+// per diff until it loads or is closed; requested says which diff each was
+// asked for with, as a new diff, like after a save, drops the large files and
+// fetches them again, even one whose answer to the diff before is on its way
 export function largeFilesToLoad(
   files: readonly DiffFile[],
   toggled: ReadonlyMap<string, boolean>,
-  requested: Set<string>,
+  diff: number,
+  requested: Map<string, number>,
 ): string[] {
   const load: string[] = [];
   for (const file of files) {
     if (!file.placeholder || toggled.get(file.path) !== true) {
       requested.delete(file.path);
-    } else if (!requested.has(file.path)) {
-      requested.add(file.path);
+    } else if (requested.get(file.path) !== diff) {
+      requested.set(file.path, diff);
       load.push(file.path);
     }
   }
@@ -188,6 +190,7 @@ export function DiffView({
   changes,
   whole,
   loading,
+  diff,
   onLoad,
 }: {
   error: React.ReactNode;
@@ -197,6 +200,9 @@ export function DiffView({
   whole: WholeFile | undefined;
   // The diff is on the way
   loading: boolean;
+  // Which diff of the selection this is, which the large files are fetched
+  // for again when it changes
+  diff: number;
   // Fetches the diff of a large file left out of the commit's diff
   onLoad: (path: string) => void;
 }) {
@@ -228,12 +234,17 @@ export function DiffView({
 
   // Large files left out of the diff are fetched once opened, not again as
   // each of them comes
-  const requested = useRef(new Set<string>());
+  const requested = useRef(new Map<string, number>());
   useEffect(() => {
-    for (const path of largeFilesToLoad(files, toggled, requested.current)) {
+    for (const path of largeFilesToLoad(
+      files,
+      toggled,
+      diff,
+      requested.current,
+    )) {
       onLoad(path);
     }
-  }, [files, toggled, onLoad]);
+  }, [files, toggled, diff, onLoad]);
 
   const header = (row: Extract<DiffRow, { kind: 'file' }>) => {
     const change = changes.get(row.path);
