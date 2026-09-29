@@ -123,6 +123,37 @@ suite('Git repository', function () {
     }
   });
 
+  test("reads the same whatever the repository's config says", async () => {
+    await temp.git('config', 'log.showRoot', 'false');
+    await temp.git('config', 'i18n.logOutputEncoding', 'ISO-8859-1');
+    try {
+      const [root] = await temp.resolve('HEAD~2');
+      assert.deepStrictEqual(
+        (await showFiles(gitPath, cwd, root)).map((file) => file.path),
+        ['first.txt'],
+      );
+      const [commit] = await logCommits(gitPath, cwd, [root]);
+      assert.strictEqual(commit.files, 1);
+      // Git would write the author's name in Latin-1
+      await temp.git(
+        '-c',
+        'user.name=Ádám',
+        'commit',
+        '--allow-empty',
+        '-m',
+        'é',
+      );
+      const [head] = await temp.resolve('HEAD');
+      const [accented] = await logCommits(gitPath, cwd, [head]);
+      assert.strictEqual(accented.authorName, 'Ádám');
+      assert.strictEqual(accented.subject, 'é');
+      await temp.git('reset', '--hard', 'HEAD~1');
+    } finally {
+      await temp.git('config', '--unset', 'log.showRoot');
+      await temp.git('config', '--unset', 'i18n.logOutputEncoding');
+    }
+  });
+
   test('diffs a renamed file as a rename', async () => {
     const files = await showFiles(gitPath, cwd, rename);
     assert.deepStrictEqual(

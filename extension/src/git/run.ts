@@ -1,7 +1,9 @@
 import { execFile } from 'node:child_process';
 
 // Settings of the user's config that would change the output: quoted
-// non-ASCII paths, colors, signatures in the log, and empty context lines
+// non-ASCII paths, colors, signatures in the log, empty context lines, root
+// commits without their files, submodules diffed as logs, and messages in
+// another encoding than UTF-8
 const configArgs = [
   '-c',
   'core.quotePath=false',
@@ -11,6 +13,12 @@ const configArgs = [
   'log.showSignature=false',
   '-c',
   'diff.suppressBlankEmpty=false',
+  '-c',
+  'log.showRoot=true',
+  '-c',
+  'diff.submodule=short',
+  '-c',
+  'i18n.logOutputEncoding=UTF-8',
 ];
 
 // Commands skip git's optional locks, so a refresh running while the user
@@ -64,7 +72,7 @@ export function runGitBytes(
         encoding: 'buffer',
       },
       (error, stdout, stderr) => {
-        if (error && !okExitCodes.includes(Number(error.code))) {
+        if (error && !exitedWith(error, okExitCodes)) {
           reject(
             new Error(
               `git ${args.join(' ')} failed: ${stderr.toString('utf8') || error.message}`,
@@ -77,6 +85,15 @@ export function runGitBytes(
     );
     child.stdin?.end(input);
   });
+}
+
+// Whether git exited by itself with one of these codes; one killed by a
+// signal has no code, and its output may be cut short
+export function exitedWith(
+  error: { readonly code?: number | string | null },
+  okExitCodes: readonly number[],
+): boolean {
+  return typeof error.code === 'number' && okExitCodes.includes(error.code);
 }
 
 // Output of git commands run with -z

@@ -103,7 +103,8 @@ export function parseChanges(output: string): FileChange[] {
       }
       continue;
     }
-    const match = /^(-|\d+)\t(-|\d+)\t(.*)$/.exec(token);
+    // With s, as a path may have a newline in it
+    const match = /^(-|\d+)\t(-|\d+)\t(.*)$/s.exec(token);
     if (!match) {
       continue;
     }

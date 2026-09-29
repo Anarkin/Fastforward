@@ -56,7 +56,29 @@ export async function readFile(
 ): Promise<FileContent> {
   if (hash === undefined) {
     const file = join(cwd, path);
-    const stats = await fs.stat(file);
+    const stats = await fs.lstat(file).catch((error: unknown) => {
+      if (
+        error instanceof Error &&
+        'code' in error &&
+        error.code === 'ENOENT'
+      ) {
+        return undefined;
+      }
+      throw error;
+    });
+    // Deleted since it was listed, or left out of a sparse checkout
+    if (!stats) {
+      return { content: '', binary: false };
+    }
+    // As git stores it, by its target, not the file it points to
+    if (stats.isSymbolicLink()) {
+      const target = await fs.readlink(file);
+      return {
+        content:
+          process.platform === 'win32' ? target.replaceAll('\\', '/') : target,
+        binary: false,
+      };
+    }
     if (stats.isDirectory()) {
       // A submodule, or a repository inside this one; not one that isn't
       // checked out, as git would then find the outer repository

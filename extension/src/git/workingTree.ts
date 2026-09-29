@@ -1,3 +1,5 @@
+import { createReadStream } from 'node:fs';
+import { join } from 'node:path';
 import type { FileChange } from '../shared/protocol';
 import {
   changesArgs,
@@ -16,8 +18,47 @@ export interface WorkingTree {
   readonly files: readonly FileChange[];
 }
 
+// Untracked files get their patch from diffing them against /dev/null, which
+// git supports on Windows too, one process per file on every refresh; at most
+// this many are included in the full patch, to keep huge untracked folders
+// from flooding the view and spawning git for each of their files
+const maxUntrackedPatches = 50;
+
+// The lines of an untracked file, which git would count as added, read in
+// chunks rather than whole, as it may be huge; none for a binary file, as in
+// git's --numstat, or one that can't be read, like one being written
+async function addedLines(file: string): Promise<number> {
+  let lines = 0;
+  let last = 0x0a;
+  let first = true;
+  try {
+    for await (const chunk of createReadStream(file)) {
+      if (!(chunk instanceof Buffer)) {
+        continue;
+      }
+      if (first && chunk.subarray(0, 8000).includes(0)) {
+        return 0;
+      }
+      first = false;
+      for (
+        let i = chunk.indexOf(0x0a);
+        i !== -1;
+        i = chunk.indexOf(0x0a, i + 1)
+      ) {
+        lines++;
+      }
+      last = chunk.at(-1) ?? last;
+    }
+  } catch {
+    return 0;
+  }
+  // A last line without a newline counts too
+  return last === 0x0a ? lines : lines + 1;
+}
+
 // Uncommitted changes are the working tree and index against the base, plus
-// untracked files
+// untracked files, with the lines of those the full patch includes, so a
+// large one is left out of it like a large tracked change
 export async function workingTreeFiles(
   gitPath: string,
   cwd: string,
@@ -33,32 +74,27 @@ export async function workingTreeFiles(
     runGit(gitPath, cwd, [...workingTreeDiff(base), ...changesArgs]),
     runGit(gitPath, cwd, ['ls-files', '--others', '--exclude-standard', '-z']),
   ]);
-  return {
-    base,
-    files: [
-      ...parseChanges(changes),
-      ...splitNul(untracked)
-        .filter(Boolean)
-        .map((path) => ({
-          path,
-          oldPath: undefined,
-          status: 'U' as const,
-          insertions: 0,
-          deletions: 0,
-        })),
-    ],
-  };
+  const untrackedFiles = await Promise.all(
+    splitNul(untracked)
+      .filter(Boolean)
+      .map(async (path, index) => ({
+        path,
+        oldPath: undefined,
+        status: 'U' as const,
+        // A repository inside this one is listed as its folder, "nested/"
+        insertions:
+          index < maxUntrackedPatches && !path.endsWith('/')
+            ? await addedLines(join(cwd, path))
+            : 0,
+        deletions: 0,
+      })),
+  );
+  return { base, files: [...parseChanges(changes), ...untrackedFiles] };
 }
 
 function workingTreeDiff(base: string): string[] {
   return ['diff', base, '-M', ...diffArgs];
 }
-
-// Untracked files get their patch from diffing them against /dev/null, which
-// git supports on Windows too, one process per file on every refresh; at most
-// this many are included in the full patch, to keep huge untracked folders
-// from flooding the view and spawning git for each of their files
-const maxUntrackedPatches = 50;
 
 export async function workingTreePatch(
   gitPath: string,
@@ -94,11 +130,16 @@ export async function workingTreePatch(
     return tracked;
   }
   // An untracked file that can't be read, like one being written, is left
-  // out instead of failing the whole diff
+  // out instead of failing the whole diff, and so is a large one, until it
+  // is asked for alone
+  const excluded = new Set(scope.exclude);
   const [trackedPatch, untrackedPatches] = await Promise.all([
     tracked,
     Promise.allSettled(
-      untracked.slice(0, maxUntrackedPatches).map(untrackedPatch),
+      untracked
+        .slice(0, maxUntrackedPatches)
+        .filter((file) => !excluded.has(file))
+        .map(untrackedPatch),
     ),
   ]);
   return [

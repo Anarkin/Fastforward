@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { getGitApi } from '../git/repository';
 import { remoteDefaultBranches } from '../git/branches';
+import { showPatch } from '../git/diff';
 import { listTree, readFile } from '../git/files';
 import { headCommit, listHistory } from '../git/history';
 import { workingTreeFiles, workingTreePatch } from '../git/workingTree';
@@ -107,6 +108,31 @@ suite('Uncommitted changes', function () {
     assert.strictEqual(nested, '');
   });
 
+  test('counts the lines of untracked files, and leaves large ones out when asked', async () => {
+    const large = path.join(cwd, 'large.txt');
+    fs.writeFileSync(large, 'line\n'.repeat(2000));
+    try {
+      const workingTree = await workingTreeFiles(gitPath, cwd);
+      const counts = workingTree.files.map((file) => [
+        file.path,
+        file.insertions,
+      ]);
+      assert.deepStrictEqual(counts, [
+        ['tracked.txt', 1],
+        ['large.txt', 2000],
+        ['nested/', 0],
+        ['untracked.txt', 1],
+      ]);
+      const patch = await workingTreePatch(gitPath, cwd, workingTree, {
+        exclude: ['large.txt'],
+      });
+      assert.ok(patch.includes('+new'), patch);
+      assert.ok(!patch.includes('+line'), patch);
+    } finally {
+      fs.rmSync(large);
+    }
+  });
+
   test('diffs the untracked files the list had, not ones found since', async () => {
     const workingTree = await workingTreeFiles(gitPath, cwd);
     const listed = {
@@ -171,6 +197,34 @@ suite('Repository files', function () {
     const current = await readFile(gitPath, cwd, undefined, 'src/tracked.txt');
     assert.strictEqual(current.content, 'two\n');
   });
+
+  test('reads a file deleted since it was listed as empty', async () => {
+    assert.deepStrictEqual(
+      await readFile(gitPath, cwd, undefined, 'gone.txt'),
+      {
+        content: '',
+        binary: false,
+      },
+    );
+  });
+
+  test('reads a symlink in the working tree by its target, as git does', async function () {
+    const link = path.join(cwd, 'link');
+    try {
+      fs.symlinkSync('src/tracked.txt', link);
+    } catch {
+      // Windows allows symlinks only in developer mode or as an admin
+      this.skip();
+    }
+    try {
+      assert.deepStrictEqual(await readFile(gitPath, cwd, undefined, 'link'), {
+        content: 'src/tracked.txt',
+        binary: false,
+      });
+    } finally {
+      fs.rmSync(link);
+    }
+  });
 });
 
 suite('Large files and submodules', function () {
@@ -179,14 +233,16 @@ suite('Large files and submodules', function () {
   let gitPath: string;
   let cwd: string;
   let inner: string;
+  let repository: TempRepository;
+  let sub: TempRepository;
 
   suiteSetup(async () => {
     gitPath = (await getGitApi()).git.path;
-    const repository = await tempRepository(tempFolder('large'));
+    repository = await tempRepository(tempFolder('large'));
     cwd = repository.root;
     // A repository added inside this one is recorded as a submodule is, by
     // its commit
-    const sub = await tempRepository(path.join(cwd, 'sub'));
+    sub = await tempRepository(path.join(cwd, 'sub'));
     await sub.commit('inner');
     [inner] = await sub.resolve('HEAD');
     // Over the size shown as text, without a NUL byte that would make it
@@ -223,5 +279,14 @@ suite('Large files and submodules', function () {
       await readFile(gitPath, cwd, undefined, 'sub'),
       submodule,
     );
+  });
+
+  test('diffs a submodule by its commits, whatever the config says', async () => {
+    await sub.commit('moved');
+    await repository.git('add', 'sub');
+    await repository.git('commit', '-m', 'move sub');
+    await repository.git('config', 'diff.submodule', 'log');
+    const patch = await showPatch(gitPath, cwd, 'HEAD', { path: 'sub' });
+    assert.ok(patch.includes(`-Subproject commit ${inner}`), patch);
   });
 });

@@ -68,10 +68,11 @@ export async function commitsStartingWith(
     .map((line) => line.slice(0, line.indexOf(' ')));
 }
 
-// Which commit a typed hash is, with its subject; reading the object it names
-// answers at once when it is the only one starting so, as it usually is, and
-// the candidates are listed only when there are several, or when git read the
-// hash as the name of a ref
+// Which commit a typed hash is, with its subject; the type of the object it
+// names answers at once when it is the only one starting so, as it usually
+// is, and only a commit is read, not a blob that may be huge; the candidates
+// are listed only when there are several, or when git read the hash as the
+// name of a ref
 export async function findCommit(
   gitPath: string,
   cwd: string,
@@ -81,12 +82,11 @@ export async function findCommit(
     return { kind: 'none' };
   }
   const hex = prefix.toLowerCase();
-  const output = await runGit(gitPath, cwd, ['cat-file', '--batch'], {
+  const output = await runGit(gitPath, cwd, ['cat-file', '--batch-check'], {
     input: `${hex}\n`,
   });
-  // "<hash> <type> <size>\n<object>", or "<name> missing" or "ambiguous"
-  const newline = output.indexOf('\n');
-  const [hash, type] = output.slice(0, newline).split(' ');
+  // "<hash> <type> <size>", or "<name> missing" or "ambiguous"
+  const [hash, type] = output.trim().split(' ');
   if (type === 'missing') {
     return { kind: 'none' };
   }
@@ -95,7 +95,7 @@ export async function findCommit(
       return { kind: 'none' };
     }
     // The message follows the headers after an empty line
-    const object = output.slice(newline + 1);
+    const object = await runGit(gitPath, cwd, ['cat-file', 'commit', hash]);
     const message = object.slice(object.indexOf('\n\n') + 2);
     return { kind: 'found', hash, subject: message.split('\n', 1)[0] };
   }
@@ -179,38 +179,48 @@ export async function logCommits(
 
 // Each commit starts with \x1e, then hash, parents, author, email, time, the
 // same of the committer and message separated by NULs, then a
-// ":<modes> <status>" and a path per file
+// ":<modes> <status>" and a path per file; read field by field, as a message
+// may have a \x1e in it, and a path may start with ":" or \x1e
 export function parseLog(output: string): CommitInfo[] {
-  return output
-    .split('\x1e')
-    .slice(1)
-    .map((record) => {
-      const [
-        hash,
-        parents,
-        authorName,
-        authorEmail,
-        time,
-        committerName,
-        committerEmail,
-        commitTime,
-        body,
-        ...files
-      ] = splitNul(record);
-      const message = body.trimEnd();
-      return {
-        hash,
-        subject: message.split('\n', 1)[0],
-        message,
-        parents: parents ? parents.split(' ') : [],
-        authorName,
-        authorEmail,
-        authorDate: Number(time) * 1000,
-        committerName,
-        committerEmail,
-        commitDate: Number(commitTime) * 1000,
-        files: files.filter((token) => token.trimStart().startsWith(':'))
-          .length,
-      };
+  const tokens = splitNul(output);
+  const commits: CommitInfo[] = [];
+  let i = 0;
+  while (i < tokens.length) {
+    if (!tokens[i].startsWith('\x1e')) {
+      i++;
+      continue;
+    }
+    const [
+      hash,
+      parents,
+      authorName,
+      authorEmail,
+      time,
+      committerName,
+      committerEmail,
+      commitTime,
+      body = '',
+    ] = tokens.slice(i, i + 9);
+    i += 9;
+    let files = 0;
+    while (i < tokens.length && tokens[i].trimStart().startsWith(':')) {
+      files++;
+      i += 2;
+    }
+    const message = body.trimEnd();
+    commits.push({
+      hash: hash.slice(1),
+      subject: message.split('\n', 1)[0],
+      message,
+      parents: parents ? parents.split(' ') : [],
+      authorName,
+      authorEmail,
+      authorDate: Number(time) * 1000,
+      committerName,
+      committerEmail,
+      commitDate: Number(commitTime) * 1000,
+      files,
     });
+  }
+  return commits;
 }

@@ -120,7 +120,10 @@ suite('git show parsers', () => {
           ':b.ts',
           raw('A'),
           '1\t1\timg.png',
+          raw('A'),
+          'two\nlines',
           '1\t2\ta.ts',
+          '5\t0\ttwo\nlines',
           '3\t0\t',
           'old.ts',
           'new.ts',
@@ -156,6 +159,13 @@ suite('git show parsers', () => {
           oldPath: undefined,
           path: '1\t1\timg.png',
           insertions: 0,
+          deletions: 0,
+        },
+        {
+          status: 'A',
+          oldPath: undefined,
+          path: 'two\nlines',
+          insertions: 5,
           deletions: 0,
         },
       ],
@@ -203,6 +213,31 @@ suite('git log parser', () => {
         files: 0,
       },
     ]);
+  });
+
+  test('reads a message with \\x1e in it, and paths that look like fields', () => {
+    const output = [
+      '\x1eaaa\0\0Ann\0ann@example.com\0',
+      '1700000000\0Ann\0ann@example.com\0',
+      '1700000000\0Subject\n\n\x1ebbb\n\0',
+      '\n:000000 100644 0000000 1111111 A\0:memo.txt\0',
+      ':000000 100644 0000000 2222222 A\0\x1eodd.txt\0',
+      '\x1eccc\0aaa\0Bob\0bob@example.com\0',
+      '1700000100\0Bob\0bob@example.com\0',
+      '1700000100\0Next\n\0',
+    ].join('');
+    assert.deepStrictEqual(
+      parseLog(output).map(({ hash, message, parents, files }) => ({
+        hash,
+        message,
+        parents,
+        files,
+      })),
+      [
+        { hash: 'aaa', message: 'Subject\n\n\x1ebbb', parents: [], files: 2 },
+        { hash: 'ccc', message: 'Next', parents: ['aaa'], files: 0 },
+      ],
+    );
   });
 });
 
