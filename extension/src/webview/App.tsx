@@ -82,7 +82,7 @@ export function App({ post }: Props) {
   // Sublime Merge's setting, on by default
   const [collapseMerges, setCollapseMerges] = useState(true);
   const [filesMode, setFilesMode] = useState<FilesMode>('changes');
-  const [changesView, setChangesView] = useState<ChangesView>('list');
+  const [changesView, setChangesView] = useState<ChangesView>('tree');
   // Open and closed folders of each tab, kept while moving between commits
   // and tabs
   const [folders, setFolders] = useState<FoldersByTab>(new Map());

@@ -100,7 +100,7 @@ export class Storage {
       columnWidths: this.globalState.get<number[]>(columnWidthsKey),
       collapseMerges: this.collapseMerges,
       filesMode: this.globalState.get<FilesMode>(filesModeKey, 'changes'),
-      changesView: this.globalState.get<ChangesView>(changesViewKey, 'list'),
+      changesView: this.globalState.get<ChangesView>(changesViewKey, 'tree'),
     };
   }
 
