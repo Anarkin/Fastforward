@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { shortHash } from '../shared/hashes';
 import type {
+  Bookmark,
   Direction,
   HashLookup,
   NavigationEntry,
@@ -14,35 +15,21 @@ import { shortcuts, useShortcuts } from './shortcuts';
 
 const holdDelay = 400;
 
-export function NavBar({
-  root,
+export function NavButtons({
   back,
   forward,
   onNavigate,
   fetching,
   onFetch,
-  address,
-  repository,
-  selected,
-  hashLookup,
-  onLookupHash,
-  onJump,
 }: {
-  root: string | undefined;
-  hashLookup: { query: string; result: HashLookup } | undefined;
-  onLookupHash: (query: string) => void;
   back: readonly NavigationEntry[];
   forward: readonly NavigationEntry[];
   onNavigate: (direction: Direction, steps: number) => void;
   fetching: boolean;
   onFetch: () => void;
-  address: Address;
-  repository: RepositoryState | undefined;
-  selected: string | undefined;
-  onJump: (commit: string) => void;
 }) {
   return (
-    <div className="nav-bar">
+    <div className="nav-buttons">
       <HistoryButton direction="back" entries={back} onNavigate={onNavigate} />
       <HistoryButton
         direction="forward"
@@ -59,6 +46,29 @@ export function NavBar({
           <RefreshIcon />
         </span>
       </button>
+    </div>
+  );
+}
+
+export function NavBar({
+  root,
+  address,
+  repository,
+  selected,
+  hashLookup,
+  onLookupHash,
+  onJump,
+}: {
+  root: string | undefined;
+  hashLookup: { query: string; result: HashLookup } | undefined;
+  onLookupHash: (query: string) => void;
+  address: Address;
+  repository: RepositoryState | undefined;
+  selected: string | undefined;
+  onJump: (commit: string) => void;
+}) {
+  return (
+    <div className="nav-bar">
       <AddressBar
         root={root}
         address={address}
@@ -68,9 +78,6 @@ export function NavBar({
         onLookupHash={onLookupHash}
         onJump={onJump}
       />
-      <div className="nav-end">
-        <ShortcutsHelp />
-      </div>
     </div>
   );
 }
@@ -282,7 +289,7 @@ export function MessagePeek({
   );
 }
 
-function AddressBar({
+export function AddressBar({
   root,
   address,
   repository,
@@ -290,9 +297,13 @@ function AddressBar({
   hashLookup,
   onLookupHash,
   onJump,
+  placeholder = 'Search branches, remotes and tags',
+  bookmarks = [],
 }: {
   root: string | undefined;
   address: Address;
+  placeholder?: string;
+  bookmarks?: readonly Bookmark[];
   hashLookup: { query: string; result: HashLookup } | undefined;
   onLookupHash: (query: string) => void;
   repository: RepositoryState | undefined;
@@ -335,7 +346,7 @@ function AddressBar({
           {address.hash && (
             <span className="address-hash">{shortHash(address.hash)}</span>
           )}
-          {address.subject ?? 'Search branches, remotes and tags'}
+          {address.subject ?? placeholder}
         </span>
       </button>
       {isPeek(mode) && address.commit && (
@@ -353,13 +364,14 @@ function AddressBar({
           onClose={close}
           query={query}
           onQuery={setQuery}
+          bookmarks={bookmarks}
         />
       )}
     </div>
   );
 }
 
-function ShortcutsHelp() {
+export function ShortcutsHelp() {
   const { mode, startPeek, endPeek, open, close } = usePeek(true);
   const container = useRef<HTMLDivElement>(null);
   const button = (

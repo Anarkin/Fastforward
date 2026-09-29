@@ -43,17 +43,3 @@ export function SkeletonRows({
     </div>
   );
 }
-
-export function SkeletonBubbles({ count }: { count: number }) {
-  return (
-    <>
-      {Array.from({ length: count }, (_, index) => (
-        <span
-          key={index}
-          className="skeleton-bubble"
-          style={{ width: 44 + (index % 3) * 18 }}
-        />
-      ))}
-    </>
-  );
-}

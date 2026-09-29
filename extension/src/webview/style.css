@@ -10,6 +10,9 @@ body,
 body {
   --muted-opacity: 0.45;
   --toolbar-background: var(--vscode-editor-background);
+  --gutter: var(--vscode-editorGroupHeader-tabsBackground);
+  --gutter-width: 4px;
+  --card-radius: 6px;
   --shade-background: color-mix(
     in srgb,
     var(--vscode-foreground) 7%,
@@ -49,7 +52,7 @@ body {
   flex: none;
   display: flex;
   align-items: stretch;
-  padding: 4px 0 0 4px;
+  padding: 4px 0 var(--gutter-width) 4px;
   background: var(--vscode-editorGroupHeader-tabsBackground);
 }
 
@@ -71,21 +74,6 @@ body {
   padding: 0 2px 2px 4px;
 }
 
-.settings-button {
-  width: 20px;
-  height: 24px;
-  padding: 0;
-  font: inherit;
-  font-size: 1.1em;
-  line-height: 1;
-  color: var(--vscode-foreground);
-  cursor: pointer;
-  background: none;
-  border: none;
-  border-radius: 4px;
-}
-
-.settings-button:hover,
 .settings-button.open {
   background: var(--vscode-toolbar-hoverBackground);
 }
@@ -135,7 +123,7 @@ body {
   cursor: pointer;
   color: var(--vscode-tab-inactiveForeground);
   background: transparent;
-  border-radius: 6px 6px 0 0;
+  border-radius: var(--card-radius);
 }
 
 .tab:not(.active):hover {
@@ -205,12 +193,20 @@ body {
   min-height: 0;
   display: grid;
   grid-template-rows: minmax(0, 1fr);
+  gap: var(--gutter-width);
+  padding: 0 var(--gutter-width) var(--gutter-width);
+  background: var(--gutter);
+}
+
+.columns > .column {
+  background: var(--vscode-editor-background);
+  border-radius: var(--card-radius);
 }
 
 .columns.commits-hidden > .column:first-child {
   visibility: hidden;
   overflow: hidden;
-  border-right: none;
+  margin-right: calc(-1 * var(--gutter-width));
 }
 
 .column {
@@ -219,13 +215,12 @@ body {
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  border-right: 1px solid var(--vscode-panel-border);
 }
 
 .resizer {
   position: absolute;
   top: 0;
-  right: -3px;
+  right: calc(-3px - var(--gutter-width) / 2);
   bottom: 0;
   z-index: 5;
   width: 6px;
@@ -242,10 +237,6 @@ body.resizing {
   user-select: none;
 }
 
-.column:last-child {
-  border-right: none;
-}
-
 .column-title {
   position: relative;
   flex: none;
@@ -258,6 +249,43 @@ body.resizing {
   text-align: center;
   color: var(--vscode-descriptionForeground);
   border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.column-title:has(.column-start) {
+  padding-left: calc(4px + 3 * 26px + 2 * 2px + 8px);
+  padding-right: 34px;
+}
+
+.column-title .address {
+  position: static;
+  flex: 0 1 140px;
+  margin: 0;
+}
+
+.column-title .locations-popup {
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100vh;
+  text-align: left;
+  --popup-background: var(--vscode-editor-background);
+  border-radius: var(--card-radius);
+  box-shadow: none;
+}
+
+.column-start {
+  position: absolute;
+  top: 0;
+  left: 4px;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+}
+
+.nav-buttons {
+  display: flex;
+  align-items: center;
+  gap: 2px;
 }
 
 .column-actions {
@@ -282,6 +310,7 @@ body.resizing {
 .column-body {
   flex: 1;
   overflow: auto;
+  border-radius: 0 0 var(--card-radius) var(--card-radius);
 }
 
 .row {
@@ -322,10 +351,7 @@ body.resizing {
   top: 0;
   bottom: 0;
   width: 1px;
-  background: var(
-    --vscode-tree-inactiveIndentGuidesStroke,
-    var(--vscode-tree-indentGuidesStroke)
-  );
+  background: transparent;
 }
 
 /* Exact heights, adding up to commitRowHeight: 5 + 20 + 2 + 18 + 4 + 1 border,
@@ -569,15 +595,15 @@ body.resizing {
 }
 
 /* Changes | Files in the Files column's title, like a segmented button;
-   whole pixels high, 24 with its padding, so it centers in the 34 pixel
+   whole pixels high, 26 with its padding, so it centers in the 34 pixel
    column title without a blurred half-pixel edge */
 .switch {
   display: inline-flex;
   box-sizing: border-box;
-  height: 24px;
-  padding: 1px;
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--vscode-foreground) 10%, transparent);
+  height: 26px;
+  padding: 2px;
+  border-radius: var(--card-radius);
+  background: var(--gutter);
 }
 
 .switch-option {
@@ -589,7 +615,7 @@ body.resizing {
   cursor: pointer;
   background: none;
   border: none;
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
 .switch-option.active {
@@ -605,17 +631,6 @@ body.resizing {
 .file-header .unchanged {
   flex: none;
   color: var(--vscode-descriptionForeground);
-}
-
-.bubble-bar {
-  background: var(--toolbar-background);
-  flex: none;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 8px;
-  border-bottom: 1px solid var(--vscode-panel-border);
 }
 
 .locations-popup {
@@ -651,9 +666,6 @@ body.resizing {
 }
 
 .locations-list {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
   padding-bottom: 4px;
 }
 
@@ -673,7 +685,7 @@ body.resizing {
 }
 
 .locations-empty {
-  padding: 6px 12px;
+  padding: 4px 8px;
   color: var(--vscode-descriptionForeground);
 }
 
@@ -692,34 +704,39 @@ body.resizing {
   z-index: 20;
 }
 
-.locations-columns {
+.locations-groups {
   flex: 1;
   min-height: 0;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  overflow: auto;
   border-top: 1px solid var(--vscode-panel-border);
 }
 
-.locations-column {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  min-height: 0;
-  border-right: 1px solid var(--vscode-panel-border);
-}
-
-.locations-column:last-child {
-  border-right: none;
+.locations-group + .locations-group {
+  border-top: 1px solid var(--vscode-panel-border);
 }
 
 .locations-heading {
-  flex: none;
-  padding: 4px 8px;
-  font-weight: 600;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 12px 8px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--vscode-descriptionForeground);
 }
 
-.locations-column .row.result {
+.locations-group:first-child .locations-heading {
+  padding-top: 8px;
+}
+
+.locations-count {
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.locations-group .row.result {
   padding-left: 8px;
 }
 
@@ -775,18 +792,12 @@ body.resizing {
   vertical-align: middle;
 }
 
-.checked-out-pair {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-}
-
 .icon {
   display: block;
   flex: none;
 }
 
-.locations-list .tree-row {
+.locations-list .row {
   box-sizing: border-box;
   height: 24px;
   display: flex;
@@ -937,18 +948,6 @@ body.resizing {
   border: 1px solid var(--widget-border);
 }
 
-.bubble-separator {
-  align-self: stretch;
-  width: 1px;
-  margin: 2px 4px;
-  background: var(--vscode-panel-border);
-}
-
-.bubble-label {
-  font-size: 0.85em;
-  color: var(--vscode-descriptionForeground);
-}
-
 .virtual-rows {
   height: 100%;
   overflow: auto;
@@ -977,7 +976,6 @@ body.resizing {
 :is(.vscode-high-contrast, .vscode-high-contrast-light) .commit:hover,
 :is(.vscode-high-contrast, .vscode-high-contrast-light)
   .menu-item:hover:not(:disabled),
-:is(.vscode-high-contrast, .vscode-high-contrast-light) .settings-button:hover,
 :is(.vscode-high-contrast, .vscode-high-contrast-light) .tab:not(.active):hover,
 :is(.vscode-high-contrast, .vscode-high-contrast-light) .tab-close:hover,
 :is(.vscode-high-contrast, .vscode-high-contrast-light) .tab-add:hover,
@@ -1028,21 +1026,13 @@ body.resizing {
   margin: 0.2em 0;
 }
 
-.skeleton-bubble {
-  display: inline-block;
-  height: 16px;
-  border-radius: 3px;
-  background: var(--vscode-descriptionForeground);
-  opacity: 0.15;
-}
-
 .nav-bar {
   flex: none;
   background: var(--toolbar-background);
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 6px 8px 0;
+  padding: 6px 8px;
 }
 
 .nav-button {
@@ -1245,23 +1235,12 @@ body.resizing {
   overflow: auto;
 }
 
-.bubble-bar:empty {
-  display: none;
-}
-
-/* As much room right of the address bar as the buttons take on its left,
-   so it sits in the middle: three buttons and the gaps and margin around
-   them, less the gap before this; the ? is as far from the bar as the
-   buttons on the left are */
-.nav-end {
-  flex: none;
-  display: flex;
-  width: calc(3 * 26px + 3 * 2px + 6px - 2px);
-}
-
 .shortcuts {
   position: relative;
-  margin-left: 4px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  margin: 0 6px 2px 0;
 }
 
 .shortcuts-panel {

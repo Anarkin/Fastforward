@@ -83,3 +83,29 @@ export function bubbleRow(
       : branch !== undefined && hasRef(bookmarks, branch),
   };
 }
+
+export interface PinnedRefs {
+  readonly checkedOut: readonly Bookmark[];
+  readonly bookmarks: readonly Bookmark[];
+}
+
+export function pinnedRefs(
+  bookmarks: readonly Bookmark[],
+  refs: readonly RefInfo[],
+  head: string | undefined,
+  headUpstream: string | undefined,
+  detached: string | undefined,
+  query: string,
+): PinnedRefs {
+  const row = bubbleRow(bookmarks, refs, head, headUpstream, detached);
+  const needle = query.toLowerCase();
+  const matches = (bookmark: Bookmark) =>
+    bookmark.name.toLowerCase().includes(needle);
+  const checkedOut: Bookmark[] = detached
+    ? [{ kind: 'commit', name: detached }]
+    : [row.branch, row.upstream].filter((ref) => ref !== undefined);
+  return {
+    checkedOut: checkedOut.filter(matches),
+    bookmarks: bookmarks.toSorted(compareBookmarks).filter(matches),
+  };
+}

@@ -58,3 +58,15 @@ export function RefreshIcon() {
     </Icon>
   );
 }
+
+export function MoreIcon() {
+  return (
+    <Icon>
+      <g fill="currentColor" stroke="none">
+        <circle cx="8" cy="3.5" r="1.25" />
+        <circle cx="8" cy="8" r="1.25" />
+        <circle cx="8" cy="12.5" r="1.25" />
+      </g>
+    </Icon>
+  );
+}

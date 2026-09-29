@@ -4,6 +4,7 @@ import {
   bubbleRow,
   compareBookmarks,
   bookmarkOptions,
+  pinnedRefs,
 } from '../webview/bookmarks';
 
 const names = (bookmarks: Bookmark[]) =>
@@ -120,5 +121,54 @@ suite('Bookmark options', () => {
       bookmarkOptions('abcdef123', refs).map((option) => option.label),
       ['feature', 'origin/feature', 'v2', 'abcdef1'],
     );
+  });
+});
+
+suite('Pinned refs of the search', () => {
+  const refs: RefInfo[] = [
+    { kind: 'branch', name: 'main', commit: 'a' },
+    { kind: 'remote', name: 'origin/main', commit: 'a' },
+    { kind: 'tag', name: 'v1', commit: 'b' },
+  ];
+  const bookmarks: Bookmark[] = [
+    { kind: 'tag', name: 'v1' },
+    { kind: 'commit', name: 'c1' },
+    { kind: 'branch', name: 'main' },
+  ];
+
+  test('lists the checked-out branch with its upstream, and every bookmark in order', () => {
+    const pinned = pinnedRefs(
+      bookmarks,
+      refs,
+      'main',
+      'origin/main',
+      undefined,
+      '',
+    );
+    assert.deepStrictEqual(names([...pinned.checkedOut]), [
+      'main',
+      'origin/main',
+    ]);
+    assert.deepStrictEqual(names([...pinned.bookmarks]), ['main', 'v1', 'c1']);
+  });
+
+  test('lists a detached HEAD as the commit checked out', () => {
+    assert.deepStrictEqual(
+      pinnedRefs(bookmarks, refs, undefined, undefined, 'c9', '').checkedOut,
+      [{ kind: 'commit', name: 'c9' }],
+    );
+  });
+
+  test('keeps only what matches the search, ignoring case', () => {
+    const pinned = pinnedRefs(
+      bookmarks,
+      refs,
+      'main',
+      'origin/main',
+      undefined,
+      'ORIGIN',
+    );
+    assert.deepStrictEqual(names([...pinned.checkedOut]), ['origin/main']);
+    assert.deepStrictEqual(pinned.bookmarks, []);
   });
 });

@@ -139,6 +139,8 @@ export function Commits({
   onToggleMerge,
   collapseMerges,
   onCollapseMerges,
+  navigation,
+  search,
 }: {
   history: CommitHistory | undefined;
   opening: boolean;
@@ -152,6 +154,8 @@ export function Commits({
   onToggleMerge: (hash: string) => void;
   collapseMerges: boolean;
   onCollapseMerges: (collapse: boolean) => void;
+  navigation?: React.ReactNode;
+  search?: React.ReactNode;
 }) {
   const version = useSyncExternalStore(
     history?.subscribe ?? noHistory,
@@ -375,8 +379,9 @@ export function Commits({
 
   return (
     <Column
-      title="Commits"
+      title={search}
       index={0}
+      start={navigation}
       actions={
         <MenuButton
           title="Commit list settings"

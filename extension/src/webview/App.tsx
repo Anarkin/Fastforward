@@ -8,7 +8,6 @@ import {
 } from 'react';
 import {
   commitPageSize,
-  workingTreeHash,
   type ChangesView,
   type Direction,
   type CheckoutTarget,
@@ -20,10 +19,9 @@ import {
   type ToWebview,
   type Bookmark,
 } from '../shared/protocol';
-import { CheckedOutBranch, DetachedHead, BubbleBar } from './bubbles';
+import { CheckedOutBranch, DetachedHead } from './bubbles';
 import { checkoutOptions, checkoutRef } from './checkout';
 import { ColumnResizingProvider, useColumnWidths } from './columns';
-import type { CardCommit } from './commitCard';
 import { Commits } from './commitList';
 import { useShortcuts } from './shortcuts';
 import {
@@ -37,7 +35,7 @@ import { Diff } from './diffColumn';
 import { Files } from './filesColumn';
 import { foldersOf } from './fileTree';
 import { hasRef, sameRef } from '../shared/refNames';
-import { NavBar } from './navBar';
+import { AddressBar, NavButtons } from './navBar';
 import { TabBar } from './tabBar';
 import {
   foldersOfTab,
@@ -181,17 +179,8 @@ export function App({ post }: Props) {
     return map;
   }, [repository]);
 
-  const commit = history?.find(hash);
   const detached =
     repository && !repository.head ? repository.headCommit : undefined;
-  const card: CardCommit | undefined =
-    hash === workingTreeHash || !commit
-      ? undefined
-      : {
-          ...commit,
-          refs: refsByCommit.get(commit.hash) ?? [],
-          detachedHead: detached === commit.hash,
-        };
   const opening = activeTab !== undefined && history === undefined && !error;
 
   const selectCommit = (next: string | undefined, replace = false) => {
@@ -365,37 +354,6 @@ export function App({ post }: Props) {
               onSort={() => post({ type: 'sortTabs' })}
               onLog={log}
             />
-            {tabs.length > 0 && (
-              <NavBar
-                root={activeTab}
-                back={back}
-                forward={forward}
-                onNavigate={navigate}
-                fetching={fetching}
-                onFetch={() => postTab({ type: 'fetch' })}
-                address={{
-                  hash: hash === workingTreeHash ? undefined : hash,
-                  subject:
-                    hash === workingTreeHash
-                      ? 'Uncommitted changes'
-                      : commit?.subject,
-                  commit: card,
-                }}
-                repository={repository}
-                selected={hash}
-                hashLookup={hashLookup}
-                onLookupHash={lookupHash}
-                onJump={jump}
-              />
-            )}
-            {tabs.length > 0 && (
-              <BubbleBar
-                root={activeTab}
-                repository={repository}
-                bookmarks={bookmarks}
-                onJump={jump}
-              />
-            )}
             {menu && <ContextMenu menu={menu} onClose={closeMenu} />}
             {tabs.length === 0 ? (
               <div className="empty-state">
@@ -426,6 +384,32 @@ export function App({ post }: Props) {
                       setCollapseMerges(collapse);
                       post({ type: 'setCollapseMerges', collapse });
                     }}
+                    navigation={
+                      <NavButtons
+                        back={back}
+                        forward={forward}
+                        onNavigate={navigate}
+                        fetching={fetching}
+                        onFetch={() => postTab({ type: 'fetch' })}
+                      />
+                    }
+                    search={
+                      <AddressBar
+                        root={activeTab}
+                        address={{
+                          hash: undefined,
+                          subject: undefined,
+                          commit: undefined,
+                        }}
+                        placeholder="Search…"
+                        bookmarks={bookmarks}
+                        repository={repository}
+                        selected={hash}
+                        hashLookup={hashLookup}
+                        onLookupHash={lookupHash}
+                        onJump={jump}
+                      />
+                    }
                   />
                   <Files
                     mode={filesMode}

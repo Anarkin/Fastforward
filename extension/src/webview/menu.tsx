@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { MenuItems, useDismiss, type ContextMenuItem } from './contextMenu';
+import { MoreIcon } from './icons';
 
 export function MenuButton({
   title,
@@ -15,11 +16,11 @@ export function MenuButton({
   return (
     <div className="settings" ref={container}>
       <button
-        className={`settings-button ${open ? 'open' : ''}`}
+        className={`nav-button settings-button ${open ? 'open' : ''}`}
         title={title}
         onClick={() => setOpen(!open)}
       >
-        ⚙
+        <MoreIcon />
       </button>
       {open && <Dropdown container={container} items={items} onClose={close} />}
     </div>

@@ -8,18 +8,27 @@ import {
 } from 'react';
 import { isHashPrefix, shortHash } from '../shared/hashes';
 import type {
+  Bookmark,
   HashLookup,
   RefInfo,
   RefKind,
   RepositoryState,
 } from '../shared/protocol';
-import { CheckedOutBranch } from './bubbles';
+import { sameRef } from '../shared/refNames';
+import { pinnedRefs } from './bookmarks';
+import {
+  CheckedOutBranch,
+  CommitBubble,
+  DetachedHead,
+  HeadBubble,
+  RefBubble,
+} from './bubbles';
 import { OpenContextMenu, useDismiss } from './contextMenu';
 import { IndentGuides, treeIndent, twistyWidth } from './tree';
 
 const groups: readonly { kind: RefKind; title: string }[] = [
-  { kind: 'branch', title: 'Branches' },
-  { kind: 'remote', title: 'Remotes' },
+  { kind: 'branch', title: 'Local branches' },
+  { kind: 'remote', title: 'Remote branches' },
   { kind: 'tag', title: 'Tags' },
 ];
 
@@ -85,7 +94,7 @@ function Highlight({ text, query }: { text: string; query: string }) {
   );
 }
 
-interface Active {
+export interface Active {
   readonly column: number;
   readonly index: number;
 }
@@ -93,6 +102,28 @@ interface Active {
 function firstMatch(search: readonly SearchGroup[]): Active {
   const column = search.findIndex((group) => group.refs.length > 0);
   return { column: Math.max(0, column), index: 0 };
+}
+
+export function nextActive(
+  search: readonly SearchGroup[],
+  active: Active,
+  step: 1 | -1,
+): Active {
+  const index = active.index + step;
+  if (index >= 0 && index < (search[active.column]?.refs.length ?? 0)) {
+    return { column: active.column, index };
+  }
+  for (
+    let column = active.column + step;
+    column >= 0 && column < search.length;
+    column += step
+  ) {
+    const count = search[column].refs.length;
+    if (count > 0) {
+      return { column, index: step > 0 ? 0 : count - 1 };
+    }
+  }
+  return active;
 }
 
 const hashLookupDelay = 150;
@@ -152,12 +183,10 @@ function HashSuggestion({
 
 function popupBottomGap(popup: HTMLElement): number {
   const bar = popup.closest('.nav-bar');
-  const end = bar?.querySelector('.nav-end');
-  if (!bar || !end) {
-    return 0;
-  }
-  const gap = parseFloat(getComputedStyle(bar).columnGap) || 0;
-  return end.getBoundingClientRect().width + gap;
+  return bar
+    ? parseFloat(getComputedStyle(bar).paddingRight) || 0
+    : parseFloat(getComputedStyle(popup).getPropertyValue('--gutter-width')) ||
+        0;
 }
 
 export function usePopupHeight(
@@ -191,7 +220,9 @@ export function LocationsPopup({
   onClose,
   query,
   onQuery,
+  bookmarks,
 }: {
+  bookmarks: readonly Bookmark[];
   repository: RepositoryState | undefined;
   selected: string | undefined;
   anchor: React.RefObject<HTMLElement | null>;
@@ -208,6 +239,15 @@ export function LocationsPopup({
   useEffect(() => input.current?.select(), []);
   const refs = useMemo(() => repository?.refs ?? [], [repository]);
   const search = useMemo(() => searchRefs(refs, query), [refs, query]);
+  const detached = useContext(DetachedHead);
+  const pinned = pinnedRefs(
+    bookmarks,
+    refs,
+    repository?.head,
+    repository?.headUpstream,
+    detached,
+    query,
+  );
   const byKind = useMemo(
     () =>
       new Map(
@@ -246,39 +286,11 @@ export function LocationsPopup({
 
   useDismiss(anchor, onClose, { ignore: '.context-menu' });
 
-  const move = (columns: number, rows: number) => {
-    if (rows !== 0) {
-      const count = search[active.column]?.refs.length ?? 0;
-      setActive({
-        column: active.column,
-        index: Math.max(0, Math.min(count - 1, active.index + rows)),
-      });
-      return;
-    }
-    for (
-      let column = active.column + columns;
-      column >= 0 && column < search.length;
-      column += columns
-    ) {
-      const count = search[column].refs.length;
-      if (count > 0) {
-        setActive({ column, index: Math.min(active.index, count - 1) });
-        return;
-      }
-    }
-  };
-
   const onKeyDown = (event: React.KeyboardEvent) => {
-    const moves: Record<string, [number, number]> = {
-      ArrowDown: [0, 1],
-      ArrowUp: [0, -1],
-      ArrowLeft: [-1, 0],
-      ArrowRight: [1, 0],
-    };
-    if (query && event.key in moves) {
+    const steps: Record<string, 1 | -1> = { ArrowDown: 1, ArrowUp: -1 };
+    if (query && event.key in steps) {
       event.preventDefault();
-      const [columns, rows] = moves[event.key];
-      move(columns, rows);
+      setActive(nextActive(search, active, steps[event.key]));
     } else if (event.key === 'Enter') {
       event.preventDefault();
       jump(enterTarget(query, found, activeRef));
@@ -294,7 +306,7 @@ export function LocationsPopup({
     >
       <input
         className="locations-search"
-        placeholder="Search branches, remotes and tags, or enter a hash"
+        placeholder="Search…"
         ref={input}
         autoFocus
         value={query}
@@ -305,16 +317,31 @@ export function LocationsPopup({
         }}
       />
       {hash && <HashSuggestion hash={hash} found={found} onJump={jump} />}
-      <div className="locations-columns">
+      <div className="locations-groups">
+        <PinnedSection
+          title="Checked out"
+          items={pinned.checkedOut}
+          refs={refs}
+          selected={undefined}
+          onJump={jump}
+        />
+        <PinnedSection
+          title="Bookmarks"
+          items={pinned.bookmarks}
+          refs={refs}
+          selected={selected}
+          onJump={jump}
+        />
         {search.map((group, column) => (
-          <section key={group.kind} className="locations-column">
-            <header className="locations-heading">
-              {group.title.toUpperCase()} (
-              {query
-                ? group.refs.length + group.more
-                : (byKind.get(group.kind) ?? []).length}
-              )
-            </header>
+          <section key={group.kind} className="locations-group">
+            <GroupHeading
+              title={group.title}
+              count={
+                query
+                  ? group.refs.length + group.more
+                  : (byKind.get(group.kind) ?? []).length
+              }
+            />
             <div className="locations-list">
               {query ? (
                 <SearchResults
@@ -336,6 +363,62 @@ export function LocationsPopup({
         ))}
       </div>
     </div>
+  );
+}
+
+function GroupHeading({ title, count }: { title: string; count: number }) {
+  return (
+    <header className="locations-heading">
+      {title}
+      <span className="locations-count">{count}</span>
+    </header>
+  );
+}
+
+function PinnedSection({
+  title,
+  items,
+  refs,
+  selected,
+  onJump,
+}: {
+  title: string;
+  items: readonly Bookmark[];
+  refs: readonly RefInfo[];
+  selected: string | undefined;
+  onJump: (commit: string) => void;
+}) {
+  const detached = useContext(DetachedHead);
+  if (items.length === 0) {
+    return null;
+  }
+  return (
+    <section className="locations-group">
+      <GroupHeading title={title} count={items.length} />
+      <div className="locations-list">
+        {items.map((item) => {
+          const commit =
+            item.kind === 'commit'
+              ? item.name
+              : refs.find((ref) => sameRef(ref, item))?.commit;
+          return (
+            <div
+              key={`${item.kind}:${item.name}`}
+              className={`row result pinned ${commit !== undefined && commit === selected ? 'selected' : ''}`}
+              onClick={() => commit && onJump(commit)}
+            >
+              {item.kind !== 'commit' ? (
+                <RefBubble info={item} missing={commit === undefined} />
+              ) : item.name === detached ? (
+                <HeadBubble commit={item.name} />
+              ) : (
+                <CommitBubble hash={item.name} />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -448,6 +531,7 @@ function TreeChildren({
       Number(b.children.size > 0) - Number(a.children.size > 0) ||
       a.name.localeCompare(b.name),
   );
+  const withFolders = children.some((child) => child.children.size > 0);
   return (
     <>
       {children.map((child) =>
@@ -464,7 +548,7 @@ function TreeChildren({
           <div
             key={child.name}
             className={`row tree-row leaf ${child.ref && child.ref.commit === selected ? 'selected' : ''}`}
-            style={{ paddingLeft: treeIndent(depth) + twistyWidth }}
+            style={{ paddingLeft: leafIndent(depth, withFolders) }}
             title={child.ref?.name}
             onClick={() => child.ref && onSelect(child.ref.commit)}
             onContextMenu={(event) =>
@@ -530,3 +614,7 @@ function TreeFolder({
 }
 
 export const stickyRowHeight = 24;
+
+export function leafIndent(depth: number, withFolders: boolean): number {
+  return treeIndent(depth) + (withFolders ? twistyWidth : 0);
+}

@@ -9,6 +9,7 @@ import {
   HistoryMenu,
   MessagePeek,
   NavBar,
+  NavButtons,
   nextPeekMode,
 } from '../webview/navBar';
 import { parsePatch } from '../webview/diff';
@@ -88,17 +89,24 @@ const bar = (props: Partial<Parameters<typeof NavBar>[0]>) =>
   renderToStaticMarkup(
     <NavBar
       root="/repo"
-      back={[]}
-      forward={[]}
-      onNavigate={noop}
-      fetching={false}
-      onFetch={noop}
       address={{ hash: undefined, subject: undefined, commit: undefined }}
       repository={undefined}
       selected={undefined}
       hashLookup={undefined}
       onLookupHash={noop}
       onJump={noop}
+      {...props}
+    />,
+  );
+
+const buttons = (props: Partial<Parameters<typeof NavButtons>[0]>) =>
+  renderToStaticMarkup(
+    <NavButtons
+      back={[]}
+      forward={[]}
+      onNavigate={noop}
+      fetching={false}
+      onFetch={noop}
       {...props}
     />,
   );
@@ -110,7 +118,7 @@ const peek = (commit: Parameters<typeof cardCommit>[0]) =>
 
 suite('Navigation bar', () => {
   test('greys out back and forward without steps', () => {
-    const html = bar({
+    const html = buttons({
       back: [{ hash: 'a'.repeat(40), subject: 'a' }],
     });
     assert.match(html, /title="Back[^"]*"(?![^>]*disabled)/);
@@ -210,13 +218,13 @@ suite('Navigation bar', () => {
 
   test('spins the fetch button while fetching', () => {
     const spinning = tagWith(
-      bar({ fetching: true }),
+      buttons({ fetching: true }),
       'title="Fetch',
       'nav-button',
       'running',
     );
     assert.match(spinning, /disabled=""/);
-    const idle = tagWith(bar({}), 'title="Fetch', 'nav-button');
+    const idle = tagWith(buttons({}), 'title="Fetch', 'nav-button');
     assert.ok(!classesOf(idle).has('running'));
   });
 });
@@ -290,6 +298,7 @@ const popup = (
 ) =>
   renderToStaticMarkup(
     <LocationsPopup
+      bookmarks={[]}
       repository={undefined}
       selected={undefined}
       anchor={{ current: null }}
