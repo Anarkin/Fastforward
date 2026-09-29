@@ -4,6 +4,10 @@
 
 - Use Conventional Commits
 
+## Code Comments
+
+- No code comments unless the _why_ is genuinely non-obvious. Never restate the code, narrate your changes, or leave commented-out code. If a comment would describe expected behavior, express it as a test instead. Keep comments to an absolute minimum.
+
 ## Local Development and Debugging
 
 - Run `npm install` in `extension/`
