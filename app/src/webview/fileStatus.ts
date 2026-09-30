@@ -11,12 +11,12 @@ const statusNames: Record<FileChange['status'], string> = {
   '?': 'Changed',
 };
 
-export function statusClass(change: FileChange): string {
-  return `path status-${change.status}`;
-}
-
-export function changesClass(change: FileChange): string {
-  return change.status === 'D' ? 'path status-D' : 'path';
+export function changeClass(change: FileChange | undefined): string {
+  return change === undefined
+    ? 'path unchanged'
+    : change.status === 'D'
+      ? 'path deleted'
+      : 'path';
 }
 
 export function changeTitle(change: FileChange): string {

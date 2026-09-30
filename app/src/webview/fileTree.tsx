@@ -132,10 +132,10 @@ export function FileTree({
             title={row.path}
             depth={row.depth}
             open={row.open}
-            className={row.changed ? 'changed' : ''}
+            className={row.changed ? '' : 'dimmed'}
             onToggle={onToggle}
           >
-            {row.name}
+            <span className="path">{row.name}</span>
           </FolderRow>
         ) : (
           <FileRow

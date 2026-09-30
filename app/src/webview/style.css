@@ -560,27 +560,15 @@ body.resizing {
   );
 }
 
-.status-A {
-  color: var(--color-added);
-}
-
-.status-M,
-.status-T {
-  color: var(--color-modified);
-}
-
-.status-U {
-  color: var(--color-untracked);
-}
-
-.status-D {
+.row .path.deleted {
   color: var(--color-deleted);
   text-decoration: line-through;
 }
 
-.status-R,
-.status-C {
-  color: var(--color-renamed);
+.row .path.unchanged,
+.row.folder.dimmed .twisty,
+.row.folder.dimmed .path {
+  opacity: var(--muted-opacity);
 }
 
 .insertions {
@@ -724,10 +712,6 @@ body.resizing {
   border-radius: 4px;
   background: var(--color-background);
   box-shadow: 0 1px 2px var(--color-widget-shadow);
-}
-
-.tree-row.folder.changed {
-  color: var(--color-modified);
 }
 
 .file-header .unchanged {

@@ -41,6 +41,14 @@ suite('Theme', () => {
     );
   });
 
+  test('defines no color the view no longer uses', () => {
+    const used = uses();
+    assert.deepStrictEqual(
+      colors(light).filter((name) => !used.has(name)),
+      [],
+    );
+  });
+
   test('gives every light color a dark one, and no dark color without a light one', () => {
     assert.deepStrictEqual(colors(dark), colors(light));
   });

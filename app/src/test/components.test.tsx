@@ -22,7 +22,7 @@ import {
   NavButtons,
 } from '../webview/navBar';
 import { holdsDismissLayer, nextPeekMode } from '../webview/shortcutsHelp';
-import { changeTitle, statusClass } from '../webview/fileStatus';
+import { changeClass, changeTitle } from '../webview/fileStatus';
 import { Column } from '../webview/column';
 import { Files } from '../webview/filesColumn';
 import { FileTree } from '../webview/fileTree';
@@ -62,7 +62,12 @@ suite('File status', () => {
       changeTitle(change('gone.ts', { status: 'D' })),
       'Deleted: gone.ts',
     );
-    assert.strictEqual(statusClass(change('a.ts')), 'path status-M');
+    assert.strictEqual(changeClass(change('a.ts')), 'path');
+    assert.strictEqual(
+      changeClass(change('a.ts', { status: 'D' })),
+      'path deleted',
+    );
+    assert.strictEqual(changeClass(undefined), 'path unchanged');
   });
 });
 
@@ -222,13 +227,12 @@ suite('Files column', () => {
   });
 });
 
-function inChanges(status: FileChange['status']): string {
+function changedRow(status: FileChange['status']): string {
   return renderToStaticMarkup(
     <FileRow
       path="a.ts"
       name="a.ts"
       change={change('a.ts', { status })}
-      inChanges
       selected={undefined}
       onSelect={noop}
     />,
@@ -257,33 +261,19 @@ suite('File rows', () => {
     assert.ok(!row.includes('padding-left'));
   });
 
-  test('shows a change plainly in the Changes view, only a deleted file marked, without line counts', () => {
+  test('shows a change plainly, marking only a deleted file, without line counts', () => {
     for (const status of ['A', 'M', 'R', 'U'] as const) {
       assert.match(
-        inChanges(status),
+        changedRow(status),
         /<span class="path">a\.ts<\/span>/,
         status,
       );
-      assert.deepStrictEqual(tagsWith(inChanges(status), 'line-counts'), []);
+      assert.deepStrictEqual(tagsWith(changedRow(status), 'line-counts'), []);
     }
-    assert.match(inChanges('D'), /<span class="path status-D">a\.ts<\/span>/);
+    assert.match(changedRow('D'), /<span class="path deleted">a\.ts<\/span>/);
   });
 
-  test('colors a change and counts its lines in the Files view', () => {
-    const html = renderToStaticMarkup(
-      <FileRow
-        path="a.ts"
-        name="a.ts"
-        change={change('a.ts')}
-        selected={undefined}
-        onSelect={noop}
-      />,
-    );
-    assert.match(html, /<span class="path status-M">a\.ts<\/span>/);
-    assert.strictEqual(tagsWith(html, 'line-counts').length, 1);
-  });
-
-  test('names an unchanged file by its path, without line counts', () => {
+  test('dims an unchanged file', () => {
     const html = renderToStaticMarkup(
       <FileRow
         path="src/a.ts"
@@ -295,14 +285,13 @@ suite('File rows', () => {
       />,
     );
     tagWith(html, 'title="src/a.ts"', 'row', 'tree-row', 'file');
-    tagWith(html, '', 'path');
-    assert.deepStrictEqual(tagsWith(html, 'line-counts'), []);
+    tagWith(html, '', 'path', 'unchanged');
   });
 
-  test('names a folder of the file tree by its full path', () => {
+  test('names a folder of the file tree by its full path, dimmed unless a change is in it', () => {
     const element = renderedBy(FileTree, {
-      paths: ['src/lib/a.ts'],
-      changes: new Map(),
+      paths: ['src/lib/a.ts', 'docs/b.md'],
+      changes: new Map([['src/lib/a.ts', change('src/lib/a.ts')]]),
       selected: undefined,
       expanded: new Set(['src']),
       onToggle: noop,
@@ -310,8 +299,17 @@ suite('File rows', () => {
     });
     assert.ok(isValidElement<{ rows: React.ReactElement[] }>(element));
     const html = renderToStaticMarkup(<>{element.props.rows}</>);
-    tagWith(html, 'title="src"', 'row', 'tree-row', 'folder');
-    tagWith(html, 'title="src/lib"', 'row', 'tree-row', 'folder');
+    for (const title of ['src', 'src/lib']) {
+      const row = tagWith(
+        html,
+        `title="${title}"`,
+        'row',
+        'tree-row',
+        'folder',
+      );
+      assert.ok(!classesOf(row).has('dimmed'), title);
+    }
+    tagWith(html, 'title="docs"', 'row', 'tree-row', 'folder', 'dimmed');
   });
 });
 
