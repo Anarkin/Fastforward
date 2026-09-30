@@ -62,6 +62,20 @@ suite('Diff rows', () => {
 
     const opened = diffRows(files, new Map([['graph.json', true]]), undefined);
     assert.strictEqual(opened.length, 2 + collapseThreshold + 1);
+
+    const closed = diffRows(files, new Map([['graph.json', false]]), undefined);
+    assert.deepStrictEqual(kinds(closed), ['error', 'file']);
+  });
+
+  test('counts only changed lines toward collapsing a file', () => {
+    const files = parsePatch(
+      [patch('a.ts', collapseThreshold), ' one', ' two', ' three'].join('\n'),
+    );
+    assert.deepStrictEqual(kinds(diffRows(files, new Map(), undefined)), [
+      'error',
+      'file',
+      ...Array<string>(collapseThreshold + 3).fill('line'),
+    ]);
   });
 
   test('closes a small file when asked', () => {
@@ -82,6 +96,12 @@ suite('Diff rows', () => {
       'wholeLine',
       'wholeLine',
     ]);
+    const unterminated = diffRows([], new Map(), {
+      path: 'README.md',
+      content: 'one\ntwo',
+      binary: false,
+    });
+    assert.deepStrictEqual(kinds(unterminated), kinds(rows));
   });
 });
 

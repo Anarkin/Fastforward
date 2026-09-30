@@ -14,7 +14,15 @@ suite('file tree', () => {
     );
     const src = tree.folders.get('src');
     assert.ok(src?.changed);
+    assert.deepStrictEqual(
+      src.files.map((file) => file.path),
+      ['src/a.ts'],
+    );
     assert.ok(src.folders.get('lib')?.changed);
+    assert.deepStrictEqual(
+      src.folders.get('lib')?.files.map((file) => file.path),
+      ['src/lib/b.ts'],
+    );
     assert.ok(!tree.folders.get('docs')?.changed);
   });
 

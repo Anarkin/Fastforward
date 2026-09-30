@@ -1,6 +1,4 @@
 import * as assert from 'node:assert';
-import { readFileSync } from 'node:fs';
-import * as path from 'node:path';
 import type { RefInfo } from '../shared/protocol';
 import {
   enterTarget,
@@ -10,6 +8,7 @@ import {
   stickyRowHeight,
 } from '../webview/locations';
 import { treeIndent, twistyWidth } from '../webview/tree';
+import { stylesheetPx } from './fixtures';
 
 const refs: RefInfo[] = [
   { kind: 'remote', name: 'origin/feat/EPMAISA-798-drop', commit: 'a' },
@@ -109,15 +108,10 @@ suite('Locations search', () => {
 
 suite('Locations popup', () => {
   test("stacks stuck folders at the height the stylesheet gives the popup's rows", () => {
-    const css = readFileSync(
-      path.join(__dirname, '../../src/webview/style.css'),
-      'utf8',
+    assert.strictEqual(
+      stylesheetPx(/^\.locations-list \.row \{[^}]*?\sheight: (\d+)px/m),
+      stickyRowHeight,
     );
-    const match = /^\.locations-list \.row \{[^}]*?\sheight: (\d+)px/m.exec(
-      css,
-    );
-    assert.ok(match);
-    assert.strictEqual(Number(match[1]), stickyRowHeight);
   });
 
   test('lines a ref up with the heading, leaving room for a twisty only beside a folder', () => {
