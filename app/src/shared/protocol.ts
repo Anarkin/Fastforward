@@ -114,6 +114,8 @@ export type ToHost =
   | { readonly type: 'selectTab'; readonly root: string }
   | { readonly type: 'openRepository'; readonly root: string }
   | { readonly type: 'browseRepositories' }
+  | { readonly type: 'openSettings' }
+  | { readonly type: 'openDefaultSettings' }
   | { readonly type: 'closeTab'; readonly root: string }
   | { readonly type: 'sortTabs' }
   | { readonly type: 'preloadTab'; readonly root: string }

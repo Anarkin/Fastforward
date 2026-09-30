@@ -23,6 +23,7 @@ import {
 } from '../webview/navBar';
 import { holdsDismissLayer, nextPeekMode } from '../webview/shortcutsHelp';
 import { changeClass, changeTitle } from '../webview/fileStatus';
+import type { ContextMenuItem } from '../webview/contextMenu';
 import { DiffOptions } from '../webview/diffColumn';
 import { Files } from '../webview/filesColumn';
 import { SkeletonRows } from '../webview/skeleton';
@@ -841,6 +842,36 @@ suite('Menu items', () => {
 });
 
 suite('Tab bar', () => {
+  test('offers sorting the tabs and opening the settings files in its menu', () => {
+    const picked: string[] = [];
+    const nav = renderedBy(TabBar, {
+      tabs: [],
+      active: undefined,
+      onSelect: noop,
+      onPreload: noop,
+      onClose: noop,
+      onAdd: noop,
+      onSort: () => picked.push('sort'),
+      onOpenSettings: () => picked.push('settings'),
+      onOpenDefaultSettings: () => picked.push('defaults'),
+      onLog: noop,
+    });
+    assert.ok(isValidElement<{ children: React.ReactElement[] }>(nav));
+    const menu = nav.props.children[1];
+    assert.ok(isValidElement<{ items: readonly ContextMenuItem[] }>(menu));
+    const items = menu.props.items.flatMap((item) =>
+      'separator' in item ? [] : [item],
+    );
+    assert.deepStrictEqual(
+      items.map((item) => item.label),
+      ['Sort A-Z', 'Open Settings File', 'Open Default Settings'],
+    );
+    for (const item of items) {
+      item.onClick?.();
+    }
+    assert.deepStrictEqual(picked, ['sort', 'settings', 'defaults']);
+  });
+
   test('stops the middle button from autoscrolling, so a middle click closes the tab', () => {
     const closed: string[] = [];
     const nav = renderedBy(TabBar, {
@@ -851,6 +882,8 @@ suite('Tab bar', () => {
       onClose: (root) => closed.push(root),
       onAdd: noop,
       onSort: noop,
+      onOpenSettings: noop,
+      onOpenDefaultSettings: noop,
       onLog: noop,
     });
     assert.ok(isValidElement<{ children: React.ReactElement[] }>(nav));
@@ -890,6 +923,8 @@ suite('Tab bar', () => {
       onClose: (root) => closed.push(root),
       onAdd: noop,
       onSort: noop,
+      onOpenSettings: noop,
+      onOpenDefaultSettings: noop,
       onLog: noop,
     });
     assert.ok(isValidElement<{ children: React.ReactElement[] }>(nav));

@@ -392,6 +392,10 @@ export function App({ post, listen }: Props) {
               onClose={(root) => post({ type: 'closeTab', root })}
               onAdd={openRepository}
               onSort={() => post({ type: 'sortTabs' })}
+              onOpenSettings={() => post({ type: 'openSettings' })}
+              onOpenDefaultSettings={() =>
+                post({ type: 'openDefaultSettings' })
+              }
               onLog={log}
             />
             {menu && <ContextMenu menu={menu} onClose={closeMenu} />}

@@ -125,6 +125,41 @@ suite('App', function () {
     );
   });
 
+  test('applies settings edited by hand while it runs, and says what is wrong with them', async () => {
+    const file = path.join(profile, 'settings.user.json');
+    const accent = () =>
+      page.evaluate(() =>
+        getComputedStyle(document.documentElement)
+          .getPropertyValue('--color-accent')
+          .trim(),
+      );
+    fs.writeFileSync(
+      file,
+      JSON.stringify({
+        showAllFiles: true,
+        colors: { light: { accent: '#123456' }, dark: { accent: '#123456' } },
+      }),
+    );
+    await page.waitForFunction(
+      () =>
+        getComputedStyle(document.documentElement)
+          .getPropertyValue('--color-accent')
+          .trim() === '#123456',
+    );
+    assert.strictEqual(await accent(), '#123456');
+    fs.writeFileSync(file, '{ "showAllFiles": tru');
+    await page
+      .locator('.notice.error', { hasText: 'not valid JSON' })
+      .waitFor();
+    fs.writeFileSync(file, JSON.stringify({ showAllFiles: true }));
+    await page.waitForFunction(
+      () =>
+        getComputedStyle(document.documentElement)
+          .getPropertyValue('--color-accent')
+          .trim() !== '#123456',
+    );
+  });
+
   test('refreshes by itself when the working tree changes', async () => {
     fs.writeFileSync(path.join(repository.root, 'new.txt'), 'new\n');
     await page

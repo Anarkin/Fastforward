@@ -71,6 +71,9 @@ interface Tab extends TabState {
 
 export interface Host {
   chooseFolders(): Promise<readonly string[]>;
+  openSettings(): Promise<void>;
+  openDefaultSettings(): Promise<void>;
+  settingsProblems(): readonly string[];
 }
 
 export interface Connection {
@@ -116,6 +119,13 @@ export class FastforwardView {
     private readonly storage: Storage,
     private readonly host: Host,
   ) {}
+
+  reloadSettings(): void {
+    for (const tab of this.tabStates.values()) {
+      forgetHistory(tab);
+      tab.opened = false;
+    }
+  }
 
   connect(post: (message: ToWebview) => void): Connection {
     const session: Session = {
@@ -180,7 +190,20 @@ export class FastforwardView {
     switch (message.type) {
       case 'ready':
         session.post(storage.layout);
+        for (const problem of this.host.settingsProblems()) {
+          session.post({
+            type: 'notice',
+            level: 'error',
+            message: `Settings: ${problem}`,
+          });
+        }
         await this.openTab(session, storage.activeTab);
+        return;
+      case 'openSettings':
+        await this.host.openSettings();
+        return;
+      case 'openDefaultSettings':
+        await this.host.openDefaultSettings();
         return;
       case 'selectTab':
         await this.openTab(session, message.root);

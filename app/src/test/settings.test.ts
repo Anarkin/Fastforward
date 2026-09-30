@@ -124,11 +124,15 @@ suite('User settings file', () => {
     assert.strictEqual(fs.readFileSync(file, 'utf8'), '{ "solo": tru');
   });
 
-  test('reads the file again once it changes', () => {
+  test('reads the file again once it changes, telling a change from its own saves', async () => {
     const user = new UserSettings(defaults, file);
+    await user.set('collapseMerges', false);
+    assert.strictEqual(user.reload(), false);
     fs.writeFileSync(file, JSON.stringify({ solo: true }));
-    user.reload();
+    assert.strictEqual(user.reload(), true);
     assert.strictEqual(user.settings.solo, true);
+    assert.strictEqual(user.settings.collapseMerges, true);
+    assert.strictEqual(user.reload(), false);
   });
 });
 
