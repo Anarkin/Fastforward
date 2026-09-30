@@ -12,15 +12,37 @@ suite('Storage', () => {
     assert.deepStrictEqual(storage.bookmarksOf('/r'), bookmarks);
   });
 
-  test('does not sync bookmarks, whose roots are paths on this machine', async () => {
+  test('syncs the layout, but not bookmarks or recent repositories, whose roots are paths on this machine', async () => {
     const globalState = new FakeMemento();
     const storage = new Storage(new FakeMemento(), globalState);
     await storage.setBookmarks('/r', [{ kind: 'branch', name: 'main' }]);
-    assert.ok(globalState.synced.length > 0);
+    await storage.addRecent('/r');
     assert.deepStrictEqual(
       globalState.keys().filter((key) => globalState.synced.includes(key)),
       [],
     );
+    assert.deepStrictEqual(
+      new Set(globalState.synced),
+      new Set([
+        'columnWidths',
+        'collapseMerges',
+        'solo',
+        'filesMode',
+        'changesView',
+      ]),
+    );
+  });
+
+  test('lays out a new view with merges collapsed and the changes as a tree', () => {
+    const storage = new Storage(new FakeMemento(), new FakeMemento());
+    assert.deepStrictEqual(storage.layout, {
+      type: 'layout',
+      columnWidths: undefined,
+      collapseMerges: true,
+      solo: false,
+      filesMode: 'changes',
+      changesView: 'tree',
+    });
   });
 
   test('reads a folder saved twice in the tabs as one tab', async () => {

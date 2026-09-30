@@ -90,6 +90,34 @@ suite('Default bookmarks', () => {
     ]);
   });
 
+  test('prefers main to master in the fallback', () => {
+    const local: RefInfo[] = [
+      { kind: 'branch', name: 'master', commit: 'a' },
+      { kind: 'branch', name: 'main', commit: 'b' },
+    ];
+    assert.deepStrictEqual(defaultBookmarks(local, []), [
+      { kind: 'branch', name: 'main' },
+    ]);
+  });
+
+  test('adds the remote branches of the fallback', () => {
+    const local: RefInfo[] = [
+      { kind: 'branch', name: 'master', commit: 'a' },
+      { kind: 'remote', name: 'origin/master', commit: 'a' },
+    ];
+    assert.deepStrictEqual(defaultBookmarks(local, []), [
+      { kind: 'branch', name: 'master' },
+      { kind: 'remote', name: 'origin/master' },
+    ]);
+  });
+
+  test("picks only the first remote's default branch", () => {
+    assert.deepStrictEqual(
+      defaultBookmarks(refs, ['origin/main', 'upstream/develop']),
+      defaultBookmarks(refs, ['origin/main']),
+    );
+  });
+
   test('picks nothing without a main branch', () => {
     assert.deepStrictEqual(
       defaultBookmarks([{ kind: 'branch', name: 'develop', commit: 'a' }], []),

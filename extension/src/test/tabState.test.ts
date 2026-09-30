@@ -179,4 +179,17 @@ suite('Tab state', () => {
     tab.navigation = { back: ['b', 'a'], forward: [] };
     assert.deepStrictEqual(nearestSteps(tab), { back: ['b'], forward: [] });
   });
+
+  test('lists the 20 nearest steps in the dropdowns, nearest first', () => {
+    const tab = laidOut();
+    tab.hash = 'h24';
+    tab.navigation = {
+      back: Array.from({ length: 24 }, (_, i) => `h${i}`),
+      forward: [],
+    };
+    assert.deepStrictEqual(
+      nearestSteps(tab).back,
+      Array.from({ length: 20 }, (_, i) => `h${23 - i}`),
+    );
+  });
 });
