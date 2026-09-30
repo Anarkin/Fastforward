@@ -802,7 +802,6 @@ body.resizing {
   background: var(--popup-background);
 }
 
-/* The hover color is see-through, so it goes over the solid background */
 .locations-list .tree-row.sticky:hover {
   background:
     linear-gradient(
