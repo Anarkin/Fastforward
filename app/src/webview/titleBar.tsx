@@ -11,7 +11,7 @@ function Dot({ cx, color }: { cx: number; color: string }) {
       cx={cx}
       cy="316"
       r="22"
-      fill="var(--color-tab-bar-background)"
+      fill="var(--color-background)"
       stroke={color}
       strokeWidth="14"
     />
