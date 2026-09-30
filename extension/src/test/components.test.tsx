@@ -7,6 +7,7 @@ import { leafIndent, LocationsPopup } from '../webview/locations';
 import {
   historyButtonClick,
   HistoryMenu,
+  historyMenuOpen,
   holdsDismissLayer,
   NavButtons,
   nextPeekMode,
@@ -161,6 +162,33 @@ suite('History buttons', () => {
 
   test('close their open history on a click instead of going a step', () => {
     assert.strictEqual(historyButtonClick(false, true), 'close');
+  });
+
+  test('close their history once it has no entries, so it stays closed when entries return', () => {
+    assert.strictEqual(historyMenuOpen(true, 0), false);
+    assert.strictEqual(historyMenuOpen(true, 2), true);
+    assert.strictEqual(historyMenuOpen(false, 2), false);
+  });
+
+  test('go as many steps as the picked entry is from the current one', () => {
+    const picked: number[] = [];
+    const menu = renderedBy(HistoryMenu, {
+      container: { current: null },
+      entries: ['a', 'b', 'c'].map((hash) => ({
+        hash: hash.repeat(40),
+        subject: hash,
+      })),
+      onPick: (steps) => picked.push(steps),
+      onClose: noop,
+    });
+    assert.ok(
+      isValidElement<{
+        children: React.ReactElement<{ onClick: () => void }>[];
+      }>(menu),
+    );
+    menu.props.children[0].props.onClick();
+    menu.props.children[2].props.onClick();
+    assert.deepStrictEqual(picked, [1, 3]);
   });
 
   test('keys history entries apart that are the same commit', () => {
