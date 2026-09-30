@@ -82,8 +82,8 @@ function changesRows(
   let column: React.ReactNode;
   function Probe() {
     column = Files({
-      mode: 'changes',
-      onMode: noop,
+      showAll: false,
+      onShowAll: noop,
       closedFolders: new Set(),
       onToggleClosedFolder: noop,
       files,
@@ -194,13 +194,13 @@ suite('Diff options', () => {
 
 suite('Files column', () => {
   test('titles itself Files, showing all files only while its toggle is on', () => {
-    for (const mode of ['changes', 'files'] as const) {
-      const picked: string[] = [];
+    for (const showAll of [false, true]) {
+      const picked: boolean[] = [];
       let column: React.ReactNode;
       function Probe() {
         column = Files({
-          mode,
-          onMode: (next) => picked.push(next),
+          showAll,
+          onShowAll: (next) => picked.push(next),
           closedFolders: new Set(),
           onToggleClosedFolder: noop,
           files: [],
@@ -225,17 +225,14 @@ suite('Files column', () => {
         'nav-button',
         'toggle',
       );
-      assert.strictEqual(
-        toggle.includes('aria-pressed="true"'),
-        mode === 'files',
-      );
+      assert.strictEqual(toggle.includes('aria-pressed="true"'), showAll);
       assert.ok(
         isValidElement<{
           children: React.ReactElement<{ onClick: () => void }>;
         }>(column.props.start),
       );
       column.props.start.props.children.props.onClick();
-      assert.deepStrictEqual(picked, [mode === 'files' ? 'changes' : 'files']);
+      assert.deepStrictEqual(picked, [!showAll]);
     }
   });
 

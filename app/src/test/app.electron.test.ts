@@ -80,17 +80,36 @@ suite('App', function () {
     await page
       .locator('.row.file .path.unchanged', { hasText: 'kept.txt' })
       .waitFor();
+    const userSettings = path.join(profile, 'settings.user.json');
     await waitFor(() => {
-      const settings: unknown = JSON.parse(
-        fs.readFileSync(path.join(profile, 'settings.json'), 'utf8'),
-      );
-      return (
-        typeof settings === 'object' &&
-        settings !== null &&
-        'filesMode' in settings &&
-        settings.filesMode === 'files'
-      );
+      try {
+        const settings: unknown = JSON.parse(
+          fs.readFileSync(userSettings, 'utf8'),
+        );
+        return (
+          typeof settings === 'object' &&
+          settings !== null &&
+          'showAllFiles' in settings &&
+          settings.showAllFiles === true
+        );
+      } catch {
+        return false;
+      }
     }, 'the setting to be saved');
+  });
+
+  test('moved the old settings file into the state, keeping it aside', () => {
+    assert.ok(fs.existsSync(path.join(profile, 'settings.old.json')));
+    assert.ok(!fs.existsSync(path.join(profile, 'settings.json')));
+    const state: unknown = JSON.parse(
+      fs.readFileSync(path.join(profile, 'state.json'), 'utf8'),
+    );
+    assert.deepStrictEqual(
+      typeof state === 'object' && state !== null && 'tabs' in state
+        ? state.tabs
+        : undefined,
+      [repository.root],
+    );
   });
 
   test('refreshes by itself when the working tree changes', async () => {

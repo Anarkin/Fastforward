@@ -18,6 +18,7 @@ import { findGit, minimumGitVersion } from '../git/locate';
 import { fileLog, type Log } from '../log';
 import { titleBarHeight } from '../shared/titleBar';
 import type { ToHost, ToWebview } from '../shared/protocol';
+import { migrateProfile, readDefaults, UserSettings } from '../settings';
 import { JsonFileStore, Storage } from '../storage';
 import { FastforwardView, type Connection } from '../view';
 import { appFile, appOrigin, appScheme, visibleBounds } from './files';
@@ -83,12 +84,23 @@ async function start(): Promise<void> {
       : new Response('Not found', { status: 404 });
   });
 
-  const store = new JsonFileStore(
-    path.join(app.getPath('userData'), 'settings.json'),
+  const profile = app.getPath('userData');
+  const defaults = readDefaults(path.join(dist, 'settings.json'));
+  if (migrateProfile(profile, defaults)) {
+    log.info('Moved the settings into settings.user.json and state.json');
+  }
+  const userSettings = new UserSettings(
+    defaults,
+    path.join(profile, 'settings.user.json'),
   );
+  for (const problem of userSettings.problems) {
+    log.warn(problem);
+  }
+  const state = new JsonFileStore(path.join(profile, 'state.json'));
   setMenu();
-  const window = createWindow(store);
-  const view = new FastforwardView(log, git.path, new Storage(store), {
+  const window = createWindow(state);
+  const storage = new Storage(userSettings, state);
+  const view = new FastforwardView(log, git.path, storage, {
     chooseFolders: async () => {
       const chosen = await dialog.showOpenDialog(window, {
         title: 'Open Repositories',
@@ -138,7 +150,9 @@ async function start(): Promise<void> {
     window.focus();
   });
   app.on('window-all-closed', () => {
-    void store.saved().finally(() => app.quit());
+    void Promise.all([state.saved(), userSettings.saved()]).finally(() =>
+      app.quit(),
+    );
   });
   if (development && process.env.FASTFORWARD_DEV) {
     reloadOnRebuild(window);

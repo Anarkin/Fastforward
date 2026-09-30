@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { readDefaults, type Settings } from '../settings';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createElement } from 'react';
@@ -104,4 +105,8 @@ export function renderedBy<P>(
   }
   renderToStaticMarkup(createElement(Probe));
   return rendered;
+}
+
+export function defaultSettings(): Settings {
+  return readDefaults(join(__dirname, '../../src/settings.json'));
 }

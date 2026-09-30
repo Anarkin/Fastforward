@@ -7,7 +7,6 @@ import {
   useState,
 } from 'react';
 
-export const defaultColumnWidths: readonly number[] = [460, 300];
 const minColumnWidth = 120;
 const minLastColumnWidth = 240;
 
@@ -38,11 +37,10 @@ export function templateOf(
 }
 
 export function widthsToLoad(
-  saved: readonly number[] | undefined,
+  saved: readonly number[],
+  defaults: readonly number[],
 ): readonly number[] {
-  return saved?.length === defaultColumnWidths.length
-    ? saved
-    : defaultColumnWidths;
+  return saved.length === defaults.length ? saved : defaults;
 }
 
 export function maxWidth(
@@ -70,10 +68,12 @@ export function draggedWidths(
   return start.map((w, i) => (i === index ? width : w));
 }
 
-export function resetWidth(widths: readonly number[], index: number): number[] {
-  return widths.map((width, i) =>
-    i === index ? defaultColumnWidths[i] : width,
-  );
+export function resetWidth(
+  widths: readonly number[],
+  index: number,
+  defaults: readonly number[],
+): number[] {
+  return widths.map((width, i) => (i === index ? defaults[i] : width));
 }
 
 interface DragTarget<E> {
@@ -108,8 +108,9 @@ export function useColumnWidths(
   save: (widths: readonly number[]) => void,
   hidden: readonly boolean[],
 ) {
-  const [widths, setWidths] = useState<readonly number[]>(defaultColumnWidths);
+  const [widths, setWidths] = useState<readonly number[]>([]);
   const current = useRef(widths);
+  const defaults = useRef<readonly number[]>([]);
   const container = useRef<HTMLDivElement>(null);
 
   const update = useCallback((next: readonly number[]) => {
@@ -118,7 +119,10 @@ export function useColumnWidths(
   }, []);
 
   const load = useCallback(
-    (saved: readonly number[] | undefined) => update(widthsToLoad(saved)),
+    (saved: readonly number[], fallback: readonly number[]) => {
+      defaults.current = fallback;
+      update(widthsToLoad(saved, fallback));
+    },
     [update],
   );
 
@@ -159,7 +163,7 @@ export function useColumnWidths(
         document.body.classList.add('resizing');
       },
       reset: (index) => {
-        const next = resetWidth(current.current, index);
+        const next = resetWidth(current.current, index, defaults.current);
         update(next);
         save(next);
       },
