@@ -37,6 +37,7 @@ function busyTab(): TabView {
     patch: 'patch',
   });
   view = reduceTabView(view, { type: 'fetching', running: true });
+  view = reduceTabView(view, { type: 'applyingSolo', running: true });
   return reduceTabView(view, { type: 'error', message: 'failed' });
 }
 

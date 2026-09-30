@@ -86,6 +86,7 @@ export function App({ post, listen }: Props) {
     fileContent,
     largeFiles,
     fetching,
+    applyingSolo,
     back,
     forward,
     hashLookup,
@@ -99,7 +100,6 @@ export function App({ post, listen }: Props) {
     defaultLayout.collapseMerges,
   );
   const [solo, setSolo] = useState(false);
-  const [applyingSolo, setApplyingSolo] = useState(false);
   const [filesMode, setFilesMode] = useState<FilesMode>(
     defaultLayout.filesMode,
   );
@@ -140,9 +140,6 @@ export function App({ post, listen }: Props) {
           break;
         case 'solo':
           setSolo(message.solo);
-          break;
-        case 'applyingSolo':
-          setApplyingSolo(message.running);
           break;
         case 'tabs':
           activeTabRef.current = message.active;

@@ -52,6 +52,7 @@ export interface TabState {
 interface Shown {
   repository?: ToWebviewOf<'repository'>;
   fetching?: ToWebviewOf<'fetching'>;
+  applyingSolo?: ToWebviewOf<'applyingSolo'>;
   navigation?: ToWebviewOf<'navigation'>;
   commits?: ToWebviewOf<'commits'>;
   workingTree?: ToWebviewOf<'workingTree'>;
@@ -216,6 +217,9 @@ export function keep(shown: Shown, message: ToWebview): void {
     case 'fetching':
       shown.fetching = message;
       break;
+    case 'applyingSolo':
+      shown.applyingSolo = message;
+      break;
     case 'navigation':
       shown.navigation = message;
       break;
@@ -243,6 +247,7 @@ export function replayOf(tab: TabState): ToWebview[] {
   return [
     shown.repository,
     shown.fetching,
+    shown.applyingSolo,
     shown.navigation,
     shown.commits && {
       ...shown.commits,
