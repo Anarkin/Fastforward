@@ -29,7 +29,6 @@
       "accent-foreground": "#ffffff",
 
       "toolbar-hover-background": "#0000001f",
-      "list-hover-background": "#00000014",
       "input-option-active-background": "#d6d6d6",
 
       "input-background": "#ffffff",
@@ -74,7 +73,6 @@
       "accent-foreground": "#ffffff",
 
       "toolbar-hover-background": "#5a5d5e50",
-      "list-hover-background": "#ffffff14",
       "input-option-active-background": "#313233",
 
       "input-background": "#191a1b",
