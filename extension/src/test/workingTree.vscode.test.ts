@@ -1,7 +1,6 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { getGitApi } from '../git/repository';
 import { aheadBehind, remoteDefaultBranches } from '../git/branches';
 import { showPatch } from '../git/diff';
 import { listTree, readFile } from '../git/files';
@@ -20,8 +19,8 @@ suite('A repository without commits', function () {
   let cwd: string;
 
   suiteSetup(async () => {
-    gitPath = (await getGitApi()).git.path;
     const repository = await tempRepository(tempFolder('empty'));
+    gitPath = repository.gitPath;
     cwd = repository.root;
     fs.writeFileSync(path.join(cwd, 'staged.txt'), 'one\n');
     await repository.git('add', 'staged.txt');
@@ -57,8 +56,8 @@ suite('Uncommitted changes', function () {
   let cwd: string;
 
   suiteSetup(async () => {
-    gitPath = (await getGitApi()).git.path;
     const repository = await tempRepository(tempFolder('changes'));
+    gitPath = repository.gitPath;
     cwd = repository.root;
     await repository.commit('initial', { 'tracked.txt': 'one\n' });
     fs.writeFileSync(path.join(cwd, 'tracked.txt'), 'two\n');
@@ -218,8 +217,8 @@ suite('Repository files', function () {
   let cwd: string;
 
   suiteSetup(async () => {
-    gitPath = (await getGitApi()).git.path;
     repository = await tempRepository(tempFolder('files'));
+    gitPath = repository.gitPath;
     cwd = repository.root;
     await repository.commit('initial', { 'src/tracked.txt': 'one\n' });
     fs.writeFileSync(path.join(cwd, 'src', 'tracked.txt'), 'two\n');
@@ -407,8 +406,8 @@ suite('Large files and submodules', function () {
   let sub: TempRepository;
 
   suiteSetup(async () => {
-    gitPath = (await getGitApi()).git.path;
     repository = await tempRepository(tempFolder('large'));
+    gitPath = repository.gitPath;
     cwd = repository.root;
     sub = await tempRepository(path.join(cwd, 'sub'));
     await sub.commit('inner');

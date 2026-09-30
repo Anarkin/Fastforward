@@ -44,7 +44,7 @@ suite('Navigation', () => {
     });
     const forward = step(back.navigation, 'B', 'forward', 2, all);
     assert.strictEqual(forward?.target, 'D');
-    assert.deepStrictEqual(forward.navigation.back, ['A', 'B', 'C']);
+    assert.deepStrictEqual(forward.navigation, history());
   });
 
   test('forgets the steps forward on a new visit', () => {

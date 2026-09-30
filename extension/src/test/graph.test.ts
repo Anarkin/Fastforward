@@ -13,6 +13,12 @@ function describe(row: GraphRow): string {
   return `${row.lane}: ${lines}`;
 }
 
+function colors(row: GraphRow): string[] {
+  return row.lines
+    .map((line) => `${line.from}>${line.to}:${line.color}`)
+    .toSorted();
+}
+
 suite('Graph', () => {
   test('keeps a straight history in one lane', () => {
     const graph = new Graph([
@@ -42,6 +48,21 @@ suite('Graph', () => {
       '1: 0>0 0>0. 1>1 1>1.',
       '0: 0>0 1>0',
     ]);
+  });
+
+  test("keeps each lane's color, and draws a branch joining at the fork in its own color", () => {
+    const rows = new Graph([
+      { hash: 'm', parents: ['a', 'b'] },
+      { hash: 'a', parents: ['c'] },
+      { hash: 'b', parents: ['c'] },
+      { hash: 'c', parents: [] },
+    ]).rows(0, 4);
+    assert.deepStrictEqual(
+      rows.map((row) => row.color),
+      [1, 1, 2, 1],
+    );
+    assert.deepStrictEqual(colors(rows[0]), ['0>0:1', '0>1:2']);
+    assert.deepStrictEqual(colors(rows[3]), ['0>0:1', '1>0:2']);
   });
 
   test('starts a lane for a branch tip nothing is waiting for', () => {

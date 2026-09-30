@@ -30,8 +30,8 @@ suite('Git repository', function () {
 
   suiteSetup(async () => {
     const git = await getGitApi();
-    gitPath = git.git.path;
     temp = await tempRepository(tempFolder('repository'));
+    gitPath = temp.gitPath;
     cwd = temp.root;
     await temp.commit('first', { 'first.txt': 'one\n' });
     await temp.commit('second', { 'second.txt': 'two\n' });
@@ -46,10 +46,27 @@ suite('Git repository', function () {
 
   suiteTeardown(() => removeFolder(cwd));
 
-  test('lists refs including the current branch', async () => {
-    const refs = await listRefs(repository);
-    assert.ok(refs.some((ref) => ref.kind === 'branch' && ref.name === 'main'));
-    assert.ok(!refs.some((ref) => ref.name.endsWith('/HEAD')));
+  test("lists branches, remote branches and tags, but not a remote's HEAD", async () => {
+    await temp.git('update-ref', 'refs/remotes/origin/main', 'HEAD');
+    await temp.git(
+      'symbolic-ref',
+      'refs/remotes/origin/HEAD',
+      'refs/remotes/origin/main',
+    );
+    await temp.git('tag', 'v1');
+    await repository.status();
+    try {
+      const refs = await listRefs(repository);
+      assert.deepStrictEqual(
+        refs.map(({ kind, name }) => `${kind} ${name}`).toSorted(),
+        ['branch main', 'remote origin/main', 'tag v1'],
+      );
+    } finally {
+      await temp.git('symbolic-ref', '-d', 'refs/remotes/origin/HEAD');
+      await temp.git('update-ref', '-d', 'refs/remotes/origin/main');
+      await temp.git('tag', '-d', 'v1');
+      await repository.status();
+    }
   });
 
   test('lists only the history of HEAD when solo, not a branch off it', async () => {
@@ -233,8 +250,8 @@ suite('Git repository', function () {
       const [accented] = await logCommits(gitPath, cwd, [head]);
       assert.strictEqual(accented.authorName, 'Ádám');
       assert.strictEqual(accented.subject, 'é');
-      await temp.git('reset', '--hard', 'HEAD~1');
     } finally {
+      await temp.git('reset', '--hard', rename);
       await temp.git('config', '--unset', 'log.showRoot');
       await temp.git('config', '--unset', 'i18n.logOutputEncoding');
     }
