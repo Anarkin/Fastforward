@@ -16,6 +16,7 @@ import type {
 } from '../shared/protocol';
 import { sameRef } from '../shared/refNames';
 import { pinnedRefs } from './bookmarks';
+import { byName } from './byName';
 import { BackIcon } from './icons';
 import {
   CheckedOutBranch,
@@ -54,7 +55,7 @@ export function searchRefs(
         (ref) =>
           ref.kind === group.kind && ref.name.toLowerCase().includes(needle),
       )
-      .toSorted((a, b) => a.name.localeCompare(b.name));
+      .toSorted(byName);
     return {
       ...group,
       refs: matches.slice(0, limit),
@@ -534,8 +535,7 @@ function TreeChildren({
   const openMenu = useContext(OpenContextMenu);
   const children = [...node.children.values()].toSorted(
     (a, b) =>
-      Number(b.children.size > 0) - Number(a.children.size > 0) ||
-      a.name.localeCompare(b.name),
+      Number(b.children.size > 0) - Number(a.children.size > 0) || byName(a, b),
   );
   const withFolders = children.some((child) => child.children.size > 0);
   return (

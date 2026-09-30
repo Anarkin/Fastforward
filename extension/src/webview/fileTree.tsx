@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import type { FileChange } from '../shared/protocol';
+import { byName } from './byName';
 import { VirtualRows } from './virtualRows';
-import { byName, FileRow, FolderRow } from './tree';
+import { FileRow, fileRowKey, FolderRow } from './tree';
 
 export interface FolderNode {
   readonly name: string;
@@ -34,10 +35,10 @@ export function buildFileTree(
   }
   for (const path of all) {
     const parts = pathParts(path);
-    const name = parts.pop() ?? path;
+    const name = parts[parts.length - 1];
     const changed = changes.has(path);
     let node = root;
-    for (const part of parts) {
+    for (const part of parts.slice(0, -1)) {
       const childPath = node.path ? `${node.path}/${part}` : part;
       let child = node.folders.get(part);
       if (!child) {
@@ -59,6 +60,50 @@ export function foldersOf(path: string): string[] {
   return parts.slice(0, -1).map((_, i) => parts.slice(0, i + 1).join('/'));
 }
 
+export type FileTreeRow =
+  | {
+      readonly kind: 'folder';
+      readonly name: string;
+      readonly path: string;
+      readonly depth: number;
+      readonly open: boolean;
+      readonly changed: boolean;
+    }
+  | {
+      readonly kind: 'file';
+      readonly name: string;
+      readonly path: string;
+      readonly depth: number;
+    };
+
+export function fileTreeRows(
+  tree: FolderNode,
+  expanded: ReadonlySet<string>,
+): FileTreeRow[] {
+  const rows: FileTreeRow[] = [];
+  const add = (node: FolderNode, depth: number) => {
+    for (const child of [...node.folders.values()].toSorted(byName)) {
+      const open = expanded.has(child.path);
+      rows.push({
+        kind: 'folder',
+        name: child.name,
+        path: child.path,
+        depth,
+        open,
+        changed: child.changed,
+      });
+      if (open) {
+        add(child, depth + 1);
+      }
+    }
+    for (const file of node.files.toSorted(byName)) {
+      rows.push({ kind: 'file', name: file.name, path: file.path, depth });
+    }
+  };
+  add(tree, 0);
+  return rows;
+}
+
 export function FileTree({
   paths,
   changes,
@@ -75,46 +120,35 @@ export function FileTree({
   onSelect: (path: string | undefined) => void;
 }) {
   const tree = useMemo(() => buildFileTree(paths, changes), [paths, changes]);
-
-  const renderFolder = (
-    node: FolderNode,
-    depth: number,
-  ): React.ReactElement[] => [
-    ...[...node.folders.values()].toSorted(byName).flatMap((child) => {
-      const open = expanded.has(child.path);
-      return [
-        <FolderRow
-          key={`folder:${child.path}`}
-          path={child.path}
-          depth={depth}
-          open={open}
-          className={child.changed ? 'changed' : ''}
-          onToggle={onToggle}
-        >
-          {child.name}
-        </FolderRow>,
-        ...(open ? renderFolder(child, depth + 1) : []),
-      ];
-    }),
-    ...node.files
-      .toSorted(byName)
-      .map((file) => (
-        <FileRow
-          key={`file:${file.path}`}
-          path={file.path}
-          name={file.name}
-          depth={depth}
-          change={changes.get(file.path)}
-          selected={selected}
-          onSelect={onSelect}
-        />
-      )),
-  ];
+  const rows = useMemo(() => fileTreeRows(tree, expanded), [tree, expanded]);
 
   return (
     <VirtualRows
-      rows={renderFolder(tree, 0)}
-      selectedKey={selected === undefined ? undefined : `file:${selected}`}
+      rows={rows.map((row) =>
+        row.kind === 'folder' ? (
+          <FolderRow
+            key={`folder:${row.path}`}
+            path={row.path}
+            depth={row.depth}
+            open={row.open}
+            className={row.changed ? 'changed' : ''}
+            onToggle={onToggle}
+          >
+            {row.name}
+          </FolderRow>
+        ) : (
+          <FileRow
+            key={fileRowKey(row.path)}
+            path={row.path}
+            name={row.name}
+            depth={row.depth}
+            change={changes.get(row.path)}
+            selected={selected}
+            onSelect={onSelect}
+          />
+        ),
+      )}
+      selectedKey={selected === undefined ? undefined : fileRowKey(selected)}
     />
   );
 }

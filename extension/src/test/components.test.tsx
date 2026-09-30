@@ -19,6 +19,7 @@ import { Files } from '../webview/filesColumn';
 import { LineCounts } from '../webview/lineCounts';
 import { SkeletonRows } from '../webview/skeleton';
 import { TabBar } from '../webview/tabBar';
+import { FileRow } from '../webview/tree';
 import { GraphCell } from '../webview/graph';
 import {
   cardCommit,
@@ -108,6 +109,14 @@ function changesRows(
   return list.props;
 }
 
+function clickFile(row: React.ReactElement) {
+  assert.strictEqual(row.type, FileRow);
+  assert.ok(isValidElement<Parameters<typeof FileRow>[0]>(row));
+  const drawn = FileRow(row.props);
+  assert.ok(isValidElement<RowProps>(drawn));
+  drawn.props.onClick();
+}
+
 suite('Files column', () => {
   test('shows no rows without changes, not even their header', () => {
     assert.deepStrictEqual(changesRows([], undefined, noop).rows, []);
@@ -125,8 +134,8 @@ suite('Files column', () => {
       rows.map((row) => row.key),
       ['changes', 'file:a.ts', 'file:b.ts'],
     );
-    rows[1].props.onClick();
-    rows[2].props.onClick();
+    clickFile(rows[1]);
+    clickFile(rows[2]);
     assert.deepStrictEqual(picked, [undefined, 'b.ts']);
   });
 
@@ -140,6 +149,45 @@ suite('Files column', () => {
     assert.deepStrictEqual(picked, [undefined]);
     const [unmarked] = changesRows([change('a.ts')], 'a.ts', noop).rows;
     assert.doesNotMatch(unmarked.props.className, /\bselected\b/);
+  });
+});
+
+suite('File rows', () => {
+  test('draws a row outside a tree without its indent', () => {
+    const html = renderToStaticMarkup(
+      <FileRow
+        path="src/a.ts"
+        name="src/a.ts"
+        change={change('src/a.ts')}
+        selected="src/a.ts"
+        onSelect={noop}
+      />,
+    );
+    const row = tagWith(
+      html,
+      'title="Modified: src/a.ts"',
+      'row',
+      'file',
+      'selected',
+    );
+    assert.ok(!classesOf(row).has('tree-row'));
+    assert.ok(!row.includes('padding-left'));
+  });
+
+  test('names an unchanged file by its path, without line counts', () => {
+    const html = renderToStaticMarkup(
+      <FileRow
+        path="src/a.ts"
+        name="a.ts"
+        depth={1}
+        change={undefined}
+        selected={undefined}
+        onSelect={noop}
+      />,
+    );
+    tagWith(html, 'title="src/a.ts"', 'row', 'tree-row', 'file');
+    tagWith(html, '', 'path');
+    assert.deepStrictEqual(tagsWith(html, 'line-counts'), []);
   });
 });
 

@@ -1,14 +1,13 @@
 import { shortHash } from '../shared/hashes';
 import type { CheckoutTarget, RefInfo, BookmarkRef } from '../shared/protocol';
 import { hasRef, withoutRemote } from '../shared/refNames';
+import { byName } from './byName';
 
 export interface CheckoutOption {
   readonly label: string;
   readonly target: CheckoutTarget;
   readonly disabled: boolean;
 }
-
-const byName = (a: RefInfo, b: RefInfo) => a.name.localeCompare(b.name);
 
 export function checkoutRef(
   ref: BookmarkRef,

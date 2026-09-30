@@ -266,12 +266,7 @@ export function DiffView({
         {whole ? (
           <span className="unchanged">Unchanged in this commit</span>
         ) : (
-          change && (
-            <LineCounts
-              deletions={change.deletions}
-              insertions={change.insertions}
-            />
-          )
+          change && <LineCounts {...change} />
         )}
       </div>
     );

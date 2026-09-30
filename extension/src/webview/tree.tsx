@@ -23,8 +23,7 @@ export function IndentGuides({ depth }: { depth: number }) {
   );
 }
 
-export const byName = (a: { name: string }, b: { name: string }) =>
-  a.name.localeCompare(b.name);
+export const fileRowKey = (path: string) => `file:${path}`;
 
 export function FolderRow({
   path,
@@ -65,26 +64,25 @@ export function FileRow({
 }: {
   path: string;
   name: string;
-  depth: number;
+  depth?: number;
   change: FileChange | undefined;
   selected: string | undefined;
   onSelect: (path: string | undefined) => void;
 }) {
   return (
     <div
-      className={`row tree-row file ${path === selected ? 'selected' : ''}`}
-      style={{ paddingLeft: treeIndent(depth) + twistyWidth }}
+      className={`row ${depth === undefined ? '' : 'tree-row'} file ${path === selected ? 'selected' : ''}`}
+      style={
+        depth === undefined
+          ? undefined
+          : { paddingLeft: treeIndent(depth) + twistyWidth }
+      }
       title={change ? changeTitle(change) : path}
       onClick={() => onSelect(path === selected ? undefined : path)}
     >
-      <IndentGuides depth={depth} />
+      {depth !== undefined && <IndentGuides depth={depth} />}
       <span className={change ? statusClass(change) : 'path'}>{name}</span>
-      {change && (
-        <LineCounts
-          deletions={change.deletions}
-          insertions={change.insertions}
-        />
-      )}
+      {change && <LineCounts {...change} />}
     </div>
   );
 }

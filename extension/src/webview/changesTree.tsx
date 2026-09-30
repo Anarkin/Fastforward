@@ -1,6 +1,7 @@
 import type { FileChange } from '../shared/protocol';
 import { buildFileTree, type FolderNode } from './fileTree';
-import { byName, FileRow, FolderRow } from './tree';
+import { byName } from './byName';
+import { FileRow, fileRowKey, FolderRow } from './tree';
 
 export type ChangesTreeRow =
   | {
@@ -84,7 +85,7 @@ export function changesTreeElements({
       </FolderRow>
     ) : (
       <FileRow
-        key={`file:${row.change.path}`}
+        key={fileRowKey(row.change.path)}
         path={row.change.path}
         name={row.name}
         depth={row.depth}
