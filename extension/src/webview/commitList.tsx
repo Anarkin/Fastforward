@@ -84,7 +84,7 @@ export function listTop(
 export function arrowKeyPosition(
   history: CommitHistory,
   selected: string | undefined,
-  workingTree: number | undefined,
+  workingTree: boolean,
   step: number,
 ): number | undefined {
   const top = workingTree ? -1 : 0;
@@ -339,7 +339,7 @@ export function Commits({
       return;
     }
     event.preventDefault();
-    const position = arrowKeyPosition(history, selected, workingTree, step);
+    const position = arrowKeyPosition(history, selected, !!workingTree, step);
     if (position === undefined) {
       return;
     }

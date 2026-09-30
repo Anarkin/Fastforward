@@ -176,43 +176,38 @@ suite('Commit list arrow keys', () => {
   test('step from the selected row, and stop at either end', () => {
     const history = new CommitHistory(2);
     history.add(0, [commitInfo('a'), commitInfo('b')]);
-    assert.strictEqual(arrowKeyPosition(history, 'a', 1, 1), 1);
-    assert.strictEqual(arrowKeyPosition(history, 'a', 1, -1), -1);
-    assert.strictEqual(arrowKeyPosition(history, 'b', 1, 1), undefined);
+    assert.strictEqual(arrowKeyPosition(history, 'a', true, 1), 1);
+    assert.strictEqual(arrowKeyPosition(history, 'a', true, -1), -1);
+    assert.strictEqual(arrowKeyPosition(history, 'b', true, 1), undefined);
     assert.strictEqual(
-      arrowKeyPosition(history, workingTreeHash, 1, -1),
+      arrowKeyPosition(history, workingTreeHash, true, -1),
       undefined,
     );
-    assert.strictEqual(
-      arrowKeyPosition(history, 'a', undefined, -1),
-      undefined,
-    );
-    assert.strictEqual(arrowKeyPosition(history, undefined, 1, 1), -1);
-    assert.strictEqual(arrowKeyPosition(history, undefined, undefined, 1), 0);
-    assert.strictEqual(arrowKeyPosition(history, workingTreeHash, 1, 1), 0);
-    assert.strictEqual(arrowKeyPosition(history, undefined, 0, 1), 0);
-    assert.strictEqual(arrowKeyPosition(history, 'a', 0, -1), undefined);
+    assert.strictEqual(arrowKeyPosition(history, 'a', false, -1), undefined);
+    assert.strictEqual(arrowKeyPosition(history, undefined, true, 1), -1);
+    assert.strictEqual(arrowKeyPosition(history, undefined, false, 1), 0);
+    assert.strictEqual(arrowKeyPosition(history, workingTreeHash, true, 1), 0);
   });
 
   test('step from where the extension said the selected commit is, before it loads', () => {
     const history = new CommitHistory(1000, [], undefined, 1, 5);
     history.add(900, [commitInfo('x')]);
-    assert.strictEqual(arrowKeyPosition(history, 'c', 1, 1), 6);
-    assert.strictEqual(arrowKeyPosition(history, 'c', 1, -1), 4);
+    assert.strictEqual(arrowKeyPosition(history, 'c', true, 1), 6);
+    assert.strictEqual(arrowKeyPosition(history, 'c', true, -1), 4);
   });
 
   test("don't start over from the top without knowing where the selected commit is", () => {
     const history = new CommitHistory(1000);
     history.add(900, [commitInfo('x')]);
-    assert.strictEqual(arrowKeyPosition(history, 'c', 1, 1), undefined);
+    assert.strictEqual(arrowKeyPosition(history, 'c', true, 1), undefined);
     const moved = new CommitHistory(1000, [], undefined, 1, 0);
     moved.add(0, [commitInfo('d')]);
-    assert.strictEqual(arrowKeyPosition(moved, 'c', 1, 1), undefined);
+    assert.strictEqual(arrowKeyPosition(moved, 'c', true, 1), undefined);
   });
 
   test('step from a revealed commit before its page loads', () => {
     const history = new CommitHistory(1000);
     history.locate('c', 500);
-    assert.strictEqual(arrowKeyPosition(history, 'c', 1, 1), 501);
+    assert.strictEqual(arrowKeyPosition(history, 'c', true, 1), 501);
   });
 });
