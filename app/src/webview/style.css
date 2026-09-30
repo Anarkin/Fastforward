@@ -12,7 +12,7 @@ body {
   --toolbar-background: var(--color-background);
   --gutter: var(--color-tab-bar-background);
   --gutter-width: 4px;
-  --scrollbar-size: 40px;
+  --scrollbar-size: 25px;
   --card-radius: 6px;
   --shade-background: color-mix(
     in srgb,
