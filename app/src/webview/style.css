@@ -19,6 +19,21 @@ body {
     var(--color-focus) 18%,
     var(--color-panel-background)
   );
+  --scrollbar-background: color-mix(
+    in srgb,
+    var(--color-scrollbar) 75%,
+    transparent
+  );
+  --scrollbar-hover-background: color-mix(
+    in srgb,
+    var(--color-scrollbar) 82%,
+    transparent
+  );
+  --scrollbar-active-background: color-mix(
+    in srgb,
+    var(--color-scrollbar) 88%,
+    transparent
+  );
   --hover-background: color-mix(in srgb, var(--color-focus) 8%, transparent);
   --toggle-on-background: color-mix(
     in srgb,
@@ -66,7 +81,7 @@ body {
   box-sizing: border-box;
   border: 2px solid transparent;
   border-radius: 1px;
-  background: var(--color-scrollbar) padding-box;
+  background: var(--scrollbar-background) padding-box;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s;
@@ -78,11 +93,11 @@ body {
 }
 
 .overlay-scrollbar:hover {
-  background-color: var(--color-scrollbar-hover);
+  background-color: var(--scrollbar-hover-background);
 }
 
 .overlay-scrollbar.dragging {
-  background-color: var(--color-scrollbar-active);
+  background-color: var(--scrollbar-active-background);
 }
 
 .app {
@@ -926,7 +941,7 @@ body.resizing {
   min-height: 8px;
   border: 2px solid transparent;
   border-radius: 1px;
-  background: var(--color-scrollbar) padding-box;
+  background: var(--scrollbar-background) padding-box;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s;
@@ -937,11 +952,11 @@ body.resizing {
 }
 
 .diff-minimap:hover .minimap-viewport {
-  background-color: var(--color-scrollbar-hover);
+  background-color: var(--scrollbar-hover-background);
 }
 
 .diff-minimap.dragging .minimap-viewport {
-  background-color: var(--color-scrollbar-active);
+  background-color: var(--scrollbar-active-background);
 }
 
 .diff-line.added {

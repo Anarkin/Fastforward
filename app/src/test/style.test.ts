@@ -138,6 +138,53 @@ suite('Style', () => {
     );
   });
 
+  test('draws the scrollbars and the minimap viewport in the one scrollbar color, less see-through when hovered and more when dragged', () => {
+    const body = (/\nbody \{([^}]*)\}/.exec(css)?.[1] ?? '').replace(
+      /\s+/g,
+      ' ',
+    );
+    for (const [name, percent] of <[string, number][]>[
+      ['scrollbar-background', 75],
+      ['scrollbar-hover-background', 82],
+      ['scrollbar-active-background', 88],
+    ]) {
+      assert.ok(
+        body.includes(
+          `--${name}: color-mix( in srgb, var(--color-scrollbar) ${percent}%, transparent );`,
+        ),
+        name,
+      );
+    }
+    for (const [selector, background] of [
+      [
+        '.overlay-scrollbar',
+        'background: var(--scrollbar-background) padding-box;',
+      ],
+      [
+        '.overlay-scrollbar:hover',
+        'background-color: var(--scrollbar-hover-background);',
+      ],
+      [
+        '.overlay-scrollbar.dragging',
+        'background-color: var(--scrollbar-active-background);',
+      ],
+      [
+        '.minimap-viewport',
+        'background: var(--scrollbar-background) padding-box;',
+      ],
+      [
+        '.diff-minimap:hover .minimap-viewport',
+        'background-color: var(--scrollbar-hover-background);',
+      ],
+      [
+        '.diff-minimap.dragging .minimap-viewport',
+        'background-color: var(--scrollbar-active-background);',
+      ],
+    ]) {
+      assert.ok(declarationsOf(selector).includes(background), selector);
+    }
+  });
+
   test('tints a selected row, the active search result and the active hash suggestion alike, with the focus color', () => {
     const body = (/\nbody \{([^}]*)\}/.exec(css)?.[1] ?? '').replace(
       /\s+/g,
