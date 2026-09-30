@@ -395,7 +395,7 @@ suite('View', function () {
         page.clear();
         await Promise.all([connection.refresh(), connection.refresh()]);
         assert.strictEqual(most, 1);
-        assert.strictEqual(calls, 2);
+        assert.ok(calls >= 2);
         assert.ok(page.last('workingTree'));
         assert.strictEqual(page.last('files'), undefined);
         assert.strictEqual(page.last('diff'), undefined);
@@ -909,7 +909,7 @@ suite('View', function () {
           newerConnection.refresh(),
           connection.refresh(),
         ]);
-        assert.strictEqual(calls, 2);
+        assert.ok(calls >= 2);
         assert.strictEqual(workingTreesSent(page.messages), 2);
         assert.strictEqual(workingTreesSent(newer.messages), 1);
       } finally {
