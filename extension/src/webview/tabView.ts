@@ -1,6 +1,6 @@
 import type {
   FileChange,
-  HashLookup,
+  HashLookupState,
   NavigationEntry,
   RepositoryState,
   ToWebview,
@@ -34,7 +34,7 @@ export interface TabView {
   readonly fetching: boolean;
   readonly back: readonly NavigationEntry[];
   readonly forward: readonly NavigationEntry[];
-  readonly hashLookup: { query: string; result: HashLookup } | undefined;
+  readonly hashLookup: HashLookupState | undefined;
   readonly error: string | undefined;
 }
 

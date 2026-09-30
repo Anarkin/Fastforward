@@ -1,6 +1,6 @@
 import { shortHash } from '../shared/hashes';
 import type { RefInfo, Bookmark, BookmarkRef } from '../shared/protocol';
-import { hasRef, sameRef, withoutRemote } from '../shared/refNames';
+import { hasRef, refOf, sameRef, withoutRemote } from '../shared/refNames';
 
 const kindOrder: Record<BookmarkRef['kind'], number> = {
   branch: 0,
@@ -38,7 +38,7 @@ export function bookmarkOptions(
   return [
     ...refs
       .filter((ref) => ref.commit === hash)
-      .map((ref): Bookmark => ({ kind: ref.kind, name: ref.name }))
+      .map((ref): Bookmark => refOf(ref))
       .toSorted(compareBookmarks)
       .map((bookmark) => ({ label: bookmark.name, bookmark })),
     {

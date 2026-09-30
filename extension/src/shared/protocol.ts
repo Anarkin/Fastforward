@@ -7,6 +7,16 @@ export type HashLookup =
   | { readonly kind: 'none' }
   | { readonly kind: 'ambiguous'; readonly count: number };
 
+export interface HashLookupState {
+  readonly query: string;
+  readonly result: HashLookup;
+}
+
+export interface ScrollAnchor {
+  readonly index: number;
+  readonly offset: number;
+}
+
 export interface NavigationEntry {
   readonly hash: string;
   readonly subject: string | undefined;
@@ -202,8 +212,7 @@ export type ToWebview =
       readonly graph: readonly GraphRow[];
       readonly workingTreeGraph: GraphRow;
       readonly selectedIndex: number | undefined;
-      readonly anchor:
-        { readonly index: number; readonly offset: number } | undefined;
+      readonly anchor: ScrollAnchor | undefined;
     }
   | {
       readonly type: 'commitPage';

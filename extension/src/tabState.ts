@@ -16,6 +16,7 @@ import {
   type FileChange,
   type NavigationEntry,
   type RefInfo,
+  type ScrollAnchor,
   type ToWebview,
 } from './shared/protocol';
 
@@ -122,7 +123,7 @@ export function layOutHistory(
 export function firstPage(
   tab: TabState,
   keepPlace: boolean,
-): { start: number; anchor: { index: number; offset: number } | undefined } {
+): { start: number; anchor: ScrollAnchor | undefined } {
   const anchor = keepPlace ? anchorOf(tab) : undefined;
   const start =
     anchor === undefined || anchor.index < 0
@@ -177,9 +178,7 @@ export function select(tab: TabState, hash: string, index: number): void {
   tab.path = undefined;
 }
 
-function anchorOf(
-  tab: TabState,
-): { index: number; offset: number } | undefined {
+function anchorOf(tab: TabState): ScrollAnchor | undefined {
   if (!tab.anchor) {
     return undefined;
   }

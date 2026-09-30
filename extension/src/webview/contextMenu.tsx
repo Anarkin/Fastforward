@@ -7,6 +7,7 @@ import {
   useState,
 } from 'react';
 import type { Bookmark, BookmarkRef } from '../shared/protocol';
+import { refOf } from '../shared/refNames';
 
 export type MenuTarget =
   | { readonly kind: 'ref'; readonly ref: Bookmark }
@@ -14,7 +15,7 @@ export type MenuTarget =
 
 export const refMenuTarget = (ref: BookmarkRef): MenuTarget => ({
   kind: 'ref',
-  ref: { kind: ref.kind, name: ref.name },
+  ref: refOf(ref),
 });
 
 export type ContextMenuItem =

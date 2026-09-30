@@ -3,7 +3,7 @@ import { shortHash } from '../shared/hashes';
 import type {
   Bookmark,
   Direction,
-  HashLookup,
+  HashLookupState,
   NavigationEntry,
   RepositoryState,
 } from '../shared/protocol';
@@ -60,7 +60,7 @@ export function NavBar({
   onJump,
 }: {
   root: string | undefined;
-  hashLookup: { query: string; result: HashLookup } | undefined;
+  hashLookup: HashLookupState | undefined;
   onLookupHash: (query: string) => void;
   address: Address;
   repository: RepositoryState | undefined;
@@ -308,7 +308,7 @@ export function AddressBar({
   address: Address;
   placeholder?: string;
   bookmarks?: readonly Bookmark[];
-  hashLookup: { query: string; result: HashLookup } | undefined;
+  hashLookup: HashLookupState | undefined;
   onLookupHash: (query: string) => void;
   repository: RepositoryState | undefined;
   selected: string | undefined;
