@@ -1,4 +1,5 @@
 import { createReadStream } from 'node:fs';
+import { lstat } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { FileChange } from '../shared/protocol';
 import {
@@ -8,6 +9,7 @@ import {
   pathspecs,
   type PatchScope,
 } from './diff';
+import { isBinary, maxFileSize } from './files';
 import { headCommit } from './history';
 import { runGit, splitNul } from './run';
 
@@ -23,11 +25,18 @@ async function addedLines(file: string): Promise<number> {
   let last = 0x0a;
   let first = true;
   try {
+    const stats = await lstat(file);
+    if (stats.isSymbolicLink()) {
+      return 1;
+    }
+    if (!stats.isFile() || stats.size > maxFileSize) {
+      return 0;
+    }
     for await (const chunk of createReadStream(file)) {
       if (!(chunk instanceof Buffer)) {
         continue;
       }
-      if (first && chunk.subarray(0, 8000).includes(0)) {
+      if (first && isBinary(chunk)) {
         return 0;
       }
       first = false;
@@ -104,18 +113,16 @@ export async function workingTreePatch(
   if (path !== undefined && untracked.includes(path)) {
     return untrackedPatch(path);
   }
+  const spec = pathspecs(scope);
   const tracked = runGit(
     gitPath,
     cwd,
-    [...workingTreeDiff(base), ...pathspecs(scope)],
-    { pathspecMagic: (scope.exclude?.length ?? 0) > 0 },
+    [...workingTreeDiff(base), ...spec.args],
+    { pathspecMagic: spec.magic },
   );
   if (path !== undefined) {
     return tracked;
   }
-  // An untracked file that can't be read, like one being written, is left
-  // out instead of failing the whole diff, and so is a large one, until it
-  // is asked for alone
   const excluded = new Set(scope.exclude);
   const [trackedPatch, untrackedPatches] = await Promise.all([
     tracked,

@@ -1,4 +1,7 @@
 import * as assert from 'node:assert';
+import { createHash } from 'node:crypto';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import * as vscode from 'vscode';
 import type { Repository } from '../git/git';
 import { getGitApi, listRefs } from '../git/repository';
@@ -27,8 +30,8 @@ suite('Git repository', function () {
 
   suiteSetup(async () => {
     const git = await getGitApi();
-    gitPath = git.git.path;
     temp = await tempRepository(tempFolder('repository'));
+    gitPath = temp.gitPath;
     cwd = temp.root;
     await temp.commit('first', { 'first.txt': 'one\n' });
     await temp.commit('second', { 'second.txt': 'two\n' });
@@ -43,10 +46,27 @@ suite('Git repository', function () {
 
   suiteTeardown(() => removeFolder(cwd));
 
-  test('lists refs including the current branch', async () => {
-    const refs = await listRefs(repository);
-    assert.ok(refs.some((ref) => ref.kind === 'branch' && ref.name === 'main'));
-    assert.ok(!refs.some((ref) => ref.name.endsWith('/HEAD')));
+  test("lists branches, remote branches and tags, but not a remote's HEAD", async () => {
+    await temp.git('update-ref', 'refs/remotes/origin/main', 'HEAD');
+    await temp.git(
+      'symbolic-ref',
+      'refs/remotes/origin/HEAD',
+      'refs/remotes/origin/main',
+    );
+    await temp.git('tag', 'v1');
+    await repository.status();
+    try {
+      const refs = await listRefs(repository);
+      assert.deepStrictEqual(
+        refs.map(({ kind, name }) => `${kind} ${name}`).toSorted(),
+        ['branch main', 'remote origin/main', 'tag v1'],
+      );
+    } finally {
+      await temp.git('symbolic-ref', '-d', 'refs/remotes/origin/HEAD');
+      await temp.git('update-ref', '-d', 'refs/remotes/origin/main');
+      await temp.git('tag', '-d', 'v1');
+      await repository.status();
+    }
   });
 
   test('lists only the history of HEAD when solo, not a branch off it', async () => {
@@ -114,6 +134,10 @@ suite('Git repository', function () {
       hash: rename,
       subject: 'rename',
     });
+    assert.deepStrictEqual(
+      await findCommit(gitPath, cwd, rename.slice(0, 7).toUpperCase()),
+      { kind: 'found', hash: rename, subject: 'rename' },
+    );
     assert.deepStrictEqual(await findCommit(gitPath, cwd, 'ffffff0'), {
       kind: 'none',
     });
@@ -127,6 +151,79 @@ suite('Git repository', function () {
       });
     } finally {
       await temp.git('branch', '-D', 'fade');
+    }
+  });
+
+  test('reads the subject of a typed commit in its own encoding', async () => {
+    const folder = tempFolder('message');
+    try {
+      const message = path.join(folder, 'message.txt');
+      fs.writeFileSync(message, Buffer.from('caf\xe9\n', 'latin1'));
+      const hash = (
+        await temp.git(
+          '-c',
+          'i18n.commitEncoding=ISO-8859-1',
+          'commit-tree',
+          'HEAD^{tree}',
+          '-F',
+          message,
+        )
+      ).trim();
+      assert.deepStrictEqual(
+        await findCommit(gitPath, cwd, hash.slice(0, 12)),
+        { kind: 'found', hash, subject: 'café' },
+      );
+    } finally {
+      removeFolder(folder);
+    }
+  });
+
+  test('finds the one commit among other objects sharing its prefix, or says how many share it', async () => {
+    const prefix = rename.slice(0, 4);
+    const withPrefix = (type: string, content: (i: number) => string) => {
+      for (let i = 0; ; i++) {
+        const text = content(i);
+        const header = `${type} ${Buffer.byteLength(text)}\0`;
+        const sha1 = createHash('sha1')
+          .update(header + text)
+          .digest('hex');
+        if (sha1.startsWith(prefix)) {
+          return text;
+        }
+      }
+    };
+    const folder = tempFolder('objects');
+    try {
+      const write = async (type: string, text: string) => {
+        const file = path.join(folder, type);
+        fs.writeFileSync(file, text);
+        await temp.git('hash-object', '-t', type, '-w', file);
+      };
+      await write(
+        'blob',
+        withPrefix('blob', (i) => `${i}\n`),
+      );
+      assert.deepStrictEqual(await findCommit(gitPath, cwd, prefix), {
+        kind: 'found',
+        hash: rename,
+        subject: 'rename',
+      });
+      const [tree] = await temp.resolve('HEAD^{tree}');
+      const person = 'Test <test@example.com> 0 +0000';
+      await write(
+        'commit',
+        withPrefix(
+          'commit',
+          (i) =>
+            `tree ${tree}\nauthor ${person}\ncommitter ${person}\n\n${i}\n`,
+        ),
+      );
+      assert.deepStrictEqual(await findCommit(gitPath, cwd, prefix), {
+        kind: 'ambiguous',
+        count: 2,
+      });
+    } finally {
+      removeFolder(folder);
     }
   });
 
@@ -153,8 +250,8 @@ suite('Git repository', function () {
       const [accented] = await logCommits(gitPath, cwd, [head]);
       assert.strictEqual(accented.authorName, 'Ádám');
       assert.strictEqual(accented.subject, 'é');
-      await temp.git('reset', '--hard', 'HEAD~1');
     } finally {
+      await temp.git('reset', '--hard', rename);
       await temp.git('config', '--unset', 'log.showRoot');
       await temp.git('config', '--unset', 'i18n.logOutputEncoding');
     }
@@ -185,8 +282,38 @@ suite('Git repository', function () {
       const patch = await showPatch(gitPath, cwd, head, { path: '[ab].md' });
       assert.ok(patch.includes('b/[ab].md'), patch);
       assert.ok(!patch.includes('b/a.md'), patch);
+      const excluded = await showPatch(gitPath, cwd, head, {
+        exclude: ['[ab].md'],
+      });
+      assert.ok(excluded.includes('b/a.md'), excluded);
+      assert.ok(!excluded.includes('b/[ab].md'), excluded);
     } finally {
       await temp.git('reset', '--hard', rename);
+    }
+  });
+
+  test('diffs a merge against its first parent', async () => {
+    try {
+      await temp.git('checkout', '-b', 'side');
+      await temp.commit('side', { 'x.txt': 'x\n' });
+      await temp.git('checkout', 'main');
+      await temp.git('merge', '--no-ff', 'side', '-m', 'merge');
+      const [merge] = await temp.resolve('HEAD');
+      assert.deepStrictEqual(
+        (await showFiles(gitPath, cwd, merge)).map((file) => [
+          file.status,
+          file.path,
+        ]),
+        [['A', 'x.txt']],
+      );
+      const [commit] = await logCommits(gitPath, cwd, [merge]);
+      assert.strictEqual(commit.files, 1);
+      const patch = await showPatch(gitPath, cwd, merge);
+      assert.ok(patch.includes('b/x.txt'), patch);
+    } finally {
+      await temp.git('checkout', '-f', 'main');
+      await temp.git('reset', '--hard', rename);
+      await temp.git('branch', '-D', 'side');
     }
   });
 
@@ -202,5 +329,7 @@ suite('Git repository', function () {
     });
     assert.ok(patch.includes('rename from second.txt'), patch);
     assert.ok(!patch.includes('new file mode'), patch);
+    const [commit] = await logCommits(gitPath, cwd, [rename]);
+    assert.strictEqual(commit.files, files.length);
   });
 });

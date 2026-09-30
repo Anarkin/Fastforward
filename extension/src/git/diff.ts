@@ -35,17 +35,26 @@ export interface PatchScope {
   readonly exclude?: readonly string[];
 }
 
-export function pathspecs({
-  path,
-  oldPath,
-  exclude = [],
-}: PatchScope): string[] {
+export function pathspecs({ path, oldPath, exclude = [] }: PatchScope): {
+  args: string[];
+  magic: boolean;
+} {
   if (path !== undefined) {
-    return oldPath ? ['--', oldPath, path] : ['--', path];
+    return {
+      args: oldPath ? ['--', oldPath, path] : ['--', path],
+      magic: false,
+    };
   }
   return exclude.length > 0
-    ? ['--', '.', ...exclude.map((file) => `:(exclude,literal)${file}`)]
-    : [];
+    ? {
+        args: [
+          '--',
+          '.',
+          ...exclude.map((file) => `:(exclude,literal)${file}`),
+        ],
+        magic: true,
+      }
+    : { args: [], magic: false };
 }
 
 export function showPatch(
@@ -54,12 +63,10 @@ export function showPatch(
   hash: string,
   scope: PatchScope = {},
 ): Promise<string> {
-  return runGit(
-    gitPath,
-    cwd,
-    [...showArgs, '--patch', hash, ...pathspecs(scope)],
-    { pathspecMagic: (scope.exclude?.length ?? 0) > 0 },
-  );
+  const spec = pathspecs(scope);
+  return runGit(gitPath, cwd, [...showArgs, '--patch', hash, ...spec.args], {
+    pathspecMagic: spec.magic,
+  });
 }
 
 const simpleStatuses = ['A', 'M', 'D', 'T'] as const;

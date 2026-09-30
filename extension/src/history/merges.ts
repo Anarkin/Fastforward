@@ -52,6 +52,7 @@ export function mergesHiding(
 interface Links {
   readonly children: ReadonlyMap<string, readonly string[]>;
   readonly firstParents: ReadonlyMap<string, string | undefined>;
+  readonly parents: ReadonlyMap<string, readonly string[]>;
 }
 
 const links = new WeakMap<readonly HistoryEntry[], Links>();
@@ -63,8 +64,10 @@ function linksOf(history: readonly HistoryEntry[]): Links {
   }
   const children = new Map<string, string[]>();
   const firstParents = new Map<string, string | undefined>();
+  const parents = new Map<string, readonly string[]>();
   for (const entry of history) {
     firstParents.set(entry.hash, entry.parents[0]);
+    parents.set(entry.hash, entry.parents);
     for (const parent of entry.parents) {
       const siblings = children.get(parent);
       if (siblings) {
@@ -74,7 +77,7 @@ function linksOf(history: readonly HistoryEntry[]): Links {
       }
     }
   }
-  const result = { children, firstParents };
+  const result = { children, firstParents, parents };
   links.set(history, result);
   return result;
 }
@@ -121,12 +124,11 @@ function countHidden(
   history: readonly HistoryEntry[],
   shown: ReadonlySet<string>,
 ): Map<string, number> {
-  const parentsOf = new Map(
-    history.map((entry) => [entry.hash, entry.parents]),
-  );
+  const { parents } = linksOf(history);
   const counted = new Set<string>();
   const counts = new Map<string, number>();
-  for (const entry of history) {
+  for (let index = history.length - 1; index >= 0; index--) {
+    const entry = history[index];
     if (!shown.has(entry.hash) || entry.parents.length < 2) {
       continue;
     }
@@ -138,7 +140,7 @@ function countHidden(
       }
       counted.add(next);
       count++;
-      stack.push(...(parentsOf.get(next) ?? []));
+      stack.push(...(parents.get(next) ?? []));
     }
     if (count > 0) {
       counts.set(entry.hash, count);

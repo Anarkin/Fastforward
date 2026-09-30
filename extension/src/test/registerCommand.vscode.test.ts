@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 import { registerCommand } from '../registerCommand';
 import { recordingLog, withMessageStub } from './stub';
 
-suite('registerCommand', () => {
+suite('Registered commands', () => {
   const channel = vscode.window.createOutputChannel('Fastforward Test', {
     log: true,
   });

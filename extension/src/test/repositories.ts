@@ -8,6 +8,7 @@ import type { Connection } from '../view';
 
 export interface TempRepository {
   readonly root: string;
+  readonly gitPath: string;
   git(...args: string[]): Promise<string>;
   commit(message: string, files?: Record<string, string>): Promise<void>;
   resolve(...revisions: string[]): Promise<string[]>;
@@ -62,6 +63,7 @@ export async function tempRepository(
   await git('init', '-b', branch, ...(bare ? ['--bare'] : []));
   return {
     root,
+    gitPath,
     git,
     commit: async (message, files = {}) => {
       for (const [file, content] of Object.entries(files)) {

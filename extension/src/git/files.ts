@@ -18,7 +18,7 @@ export async function listTree(
   return [...new Set(splitNul(output).filter(Boolean))];
 }
 
-const maxFileSize = 2 * 1024 * 1024;
+export const maxFileSize = 2 * 1024 * 1024;
 const binaryProbe = 8000;
 
 interface FileContent {
@@ -28,8 +28,12 @@ interface FileContent {
 
 const binaryContent: FileContent = { content: '', binary: true };
 
+export function isBinary(buffer: Buffer): boolean {
+  return buffer.subarray(0, binaryProbe).includes(0);
+}
+
 function toContent(buffer: Buffer): FileContent {
-  return buffer.subarray(0, binaryProbe).includes(0)
+  return isBinary(buffer)
     ? binaryContent
     : { content: buffer.toString('utf8'), binary: false };
 }
@@ -53,7 +57,7 @@ export async function readFile(
       if (
         error instanceof Error &&
         'code' in error &&
-        error.code === 'ENOENT'
+        (error.code === 'ENOENT' || error.code === 'ENOTDIR')
       ) {
         return undefined;
       }
