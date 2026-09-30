@@ -59,7 +59,7 @@ export function historyButtonClick(
   return open ? 'close' : 'step';
 }
 
-export function historyMenuOpen(open: boolean, entries: number): boolean {
+export function nextHistoryOpen(open: boolean, entries: number): boolean {
   return open && entries > 0;
 }
 
@@ -73,9 +73,9 @@ function HistoryButton({
   onNavigate: (direction: Direction, steps: number) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const menuOpen = historyMenuOpen(open, entries.length);
-  if (menuOpen !== open) {
-    setOpen(menuOpen);
+  const next = nextHistoryOpen(open, entries.length);
+  if (next !== open) {
+    setOpen(next);
   }
   const container = useRef<HTMLDivElement>(null);
   const hold = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -118,7 +118,7 @@ function HistoryButton({
       >
         {direction === 'back' ? <BackIcon /> : <ForwardIcon />}
       </button>
-      {open && (
+      {next && (
         <HistoryMenu
           container={container}
           entries={entries}
