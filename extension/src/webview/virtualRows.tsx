@@ -1,7 +1,8 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { useEffect, useEffectEvent, useRef } from 'react';
+import { useCallback, useEffect, useEffectEvent, useRef } from 'react';
 
 const estimatedRowHeight = 24;
+const estimateSize = () => estimatedRowHeight;
 
 export function scrollTarget(
   selectedKey: string | undefined,
@@ -18,11 +19,15 @@ export function VirtualRows({
   selectedKey: string | undefined;
 }) {
   const list = useRef<HTMLDivElement>(null);
+  const itemKey = useCallback(
+    (index: number) => rows[index].key ?? index,
+    [rows],
+  );
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => list.current,
-    estimateSize: () => estimatedRowHeight,
-    getItemKey: (index) => rows[index].key ?? index,
+    estimateSize,
+    getItemKey: itemKey,
     overscan: 20,
   });
 
