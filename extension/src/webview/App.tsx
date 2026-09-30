@@ -8,6 +8,7 @@ import {
 } from 'react';
 import {
   commitPageSize,
+  defaultLayout,
   type ChangesView,
   type Direction,
   type CheckoutTarget,
@@ -77,10 +78,16 @@ export function App({ post }: Props) {
     hashLookup,
     error,
   } = tab;
-  const [collapseMerges, setCollapseMerges] = useState(true);
-  const [solo, setSolo] = useState(false);
-  const [filesMode, setFilesMode] = useState<FilesMode>('changes');
-  const [changesView, setChangesView] = useState<ChangesView>('tree');
+  const [collapseMerges, setCollapseMerges] = useState(
+    defaultLayout.collapseMerges,
+  );
+  const [solo, setSolo] = useState(defaultLayout.solo);
+  const [filesMode, setFilesMode] = useState<FilesMode>(
+    defaultLayout.filesMode,
+  );
+  const [changesView, setChangesView] = useState<ChangesView>(
+    defaultLayout.changesView,
+  );
   const [folders, setFolders] = useState<FoldersByTab>(new Map());
   const { open: openedFolders, closed: closedFolders } = foldersOfTab(
     folders,
