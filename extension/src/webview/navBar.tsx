@@ -7,10 +7,9 @@ import type {
   NavigationEntry,
   RepositoryState,
 } from '../shared/protocol';
-import { CommitDetails, type CardCommit } from './commitCard';
 import { useDismiss } from './contextMenu';
 import { BackIcon, ForwardIcon, HelpIcon, RefreshIcon } from './icons';
-import { LocationsPopup, usePopupHeight } from './locations';
+import { LocationsPopup } from './locations';
 import { shortcuts, useShortcuts } from './shortcuts';
 
 const holdDelay = 400;
@@ -46,38 +45,6 @@ export function NavButtons({
           <RefreshIcon />
         </span>
       </button>
-    </div>
-  );
-}
-
-export function NavBar({
-  root,
-  address,
-  repository,
-  selected,
-  hashLookup,
-  onLookupHash,
-  onJump,
-}: {
-  root: string | undefined;
-  hashLookup: HashLookupState | undefined;
-  onLookupHash: (query: string) => void;
-  address: Address;
-  repository: RepositoryState | undefined;
-  selected: string | undefined;
-  onJump: (commit: string) => void;
-}) {
-  return (
-    <div className="nav-bar">
-      <AddressBar
-        root={root}
-        address={address}
-        repository={repository}
-        selected={selected}
-        hashLookup={hashLookup}
-        onLookupHash={onLookupHash}
-        onJump={onJump}
-      />
     </div>
   );
 }
@@ -181,27 +148,17 @@ export function HistoryMenu({
           onClick={() => onPick(index + 1)}
         >
           <span className="history-hash">{shortHash(entry.hash)}</span>
-          {entry.subject ?? ''}
+          {entry.subject}
         </button>
       ))}
     </div>
   );
 }
 
-export interface Address {
-  readonly hash: string | undefined;
-  readonly subject: string | undefined;
-  readonly commit: CardCommit | undefined;
-}
-
 const peekDelay = 300;
 const unpeekDelay = 200;
 
-export type PeekMode = 'closed' | 'peek' | 'pinned' | 'open';
-
-function isPeek(mode: PeekMode): boolean {
-  return mode === 'peek' || mode === 'pinned';
-}
+export type PeekMode = 'closed' | 'peek' | 'open';
 
 export function holdsDismissLayer(mode: PeekMode): boolean {
   return mode === 'open';
@@ -209,19 +166,17 @@ export function holdsDismissLayer(mode: PeekMode): boolean {
 
 export function nextPeekMode(
   mode: PeekMode,
-  action: 'rest' | 'leave' | 'toggle' | 'update',
+  action: 'rest' | 'leave' | 'update',
   canPeek: boolean,
 ): PeekMode {
   if (!canPeek) {
-    return isPeek(mode) ? 'closed' : mode;
+    return mode === 'peek' ? 'closed' : mode;
   }
   switch (action) {
     case 'rest':
       return mode === 'closed' ? 'peek' : mode;
     case 'leave':
       return mode === 'peek' ? 'closed' : mode;
-    case 'toggle':
-      return isPeek(mode) ? 'closed' : mode === 'closed' ? 'pinned' : mode;
     case 'update':
       return mode;
   }
@@ -259,10 +214,6 @@ function usePeek(canPeek: boolean) {
         timer.current = setTimeout(() => setMode(next), unpeekDelay);
       }
     },
-    togglePeek: () => {
-      clearTimeout(timer.current);
-      setMode(nextPeekMode(mode, 'toggle', canPeek));
-    },
     open: () => {
       clearTimeout(timer.current);
       setMode('open');
@@ -271,31 +222,8 @@ function usePeek(canPeek: boolean) {
   };
 }
 
-export function MessagePeek({
-  commit,
-  onOpen,
-}: {
-  commit: CardCommit;
-  onOpen: () => void;
-}) {
-  const popup = useRef<HTMLDivElement>(null);
-  const maxHeight = usePopupHeight(popup);
-  return (
-    <div className="locations-popup peek" ref={popup} style={{ maxHeight }}>
-      <div className="locations-search peek-search" onClick={onOpen}>
-        <span className="address-text">
-          <span className="address-hash">{shortHash(commit.hash)}</span>
-          {commit.subject}
-        </span>
-      </div>
-      <CommitDetails commit={commit} />
-    </div>
-  );
-}
-
 export function AddressBar({
   root,
-  address,
   repository,
   selected,
   hashLookup,
@@ -305,7 +233,6 @@ export function AddressBar({
   bookmarks = [],
 }: {
   root: string | undefined;
-  address: Address;
   placeholder?: string;
   bookmarks?: readonly Bookmark[];
   hashLookup: HashLookupState | undefined;
@@ -314,13 +241,11 @@ export function AddressBar({
   selected: string | undefined;
   onJump: (commit: string) => void;
 }) {
-  const { mode, startPeek, endPeek, open, close } = usePeek(
-    address.commit !== undefined,
-  );
+  const [open, setOpen] = useState(false);
   const [searches, setSearches] = useState(0);
   useShortcuts({
     s: () => {
-      open();
+      setOpen(true);
       setSearches((count) => count + 1);
     },
   });
@@ -331,31 +256,17 @@ export function AddressBar({
   const setQuery = (next: string) =>
     root && setQueries((all) => new Map(all).set(root, next));
   const container = useRef<HTMLDivElement>(null);
-  useDismiss(container, close, { enabled: isPeek(mode) });
 
   return (
-    <div
-      className="address"
-      ref={container}
-      onPointerEnter={startPeek}
-      onPointerLeave={endPeek}
-    >
+    <div className="address" ref={container}>
       <button
         className="address-bar"
-        title={address.commit ? undefined : 'Search branches, remotes and tags'}
-        onClick={open}
+        title="Search branches, remotes and tags"
+        onClick={() => setOpen(true)}
       >
-        <span className={`address-text ${address.subject ? '' : 'empty'}`}>
-          {address.hash && (
-            <span className="address-hash">{shortHash(address.hash)}</span>
-          )}
-          {address.subject ?? placeholder}
-        </span>
+        <span className="address-text empty">{placeholder}</span>
       </button>
-      {isPeek(mode) && address.commit && (
-        <MessagePeek commit={address.commit} onOpen={open} />
-      )}
-      {mode === 'open' && (
+      {open && (
         <LocationsPopup
           key={searches}
           repository={repository}
@@ -364,7 +275,7 @@ export function AddressBar({
           lookup={hashLookup}
           onLookup={onLookupHash}
           onJump={onJump}
-          onClose={close}
+          onClose={() => setOpen(false)}
           query={query}
           onQuery={setQuery}
           bookmarks={bookmarks}

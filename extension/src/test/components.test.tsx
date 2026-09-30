@@ -8,8 +8,6 @@ import {
   historyButtonClick,
   HistoryMenu,
   holdsDismissLayer,
-  MessagePeek,
-  NavBar,
   NavButtons,
   nextPeekMode,
 } from '../webview/navBar';
@@ -18,13 +16,7 @@ import { LineCounts } from '../webview/lineCounts';
 import { SkeletonRows } from '../webview/skeleton';
 import { TabBar } from '../webview/tabBar';
 import { GraphCell } from '../webview/graph';
-import {
-  cardCommit,
-  classesOf,
-  definitions,
-  fileChange as change,
-  tagsWith,
-} from './fixtures';
+import { classesOf, fileChange as change, tagsWith } from './fixtures';
 import type { RefInfo, RepositoryState } from '../shared/protocol';
 
 const noop = () => {};
@@ -106,20 +98,6 @@ suite('Changes tree rows', () => {
   });
 });
 
-const bar = (props: Partial<Parameters<typeof NavBar>[0]>) =>
-  renderToStaticMarkup(
-    <NavBar
-      root="/repo"
-      address={{ hash: undefined, subject: undefined, commit: undefined }}
-      repository={undefined}
-      selected={undefined}
-      hashLookup={undefined}
-      onLookupHash={noop}
-      onJump={noop}
-      {...props}
-    />,
-  );
-
 const buttons = (props: Partial<Parameters<typeof NavButtons>[0]>) =>
   renderToStaticMarkup(
     <NavButtons
@@ -132,11 +110,6 @@ const buttons = (props: Partial<Parameters<typeof NavButtons>[0]>) =>
     />,
   );
 
-const peek = (commit: Parameters<typeof cardCommit>[0]) =>
-  renderToStaticMarkup(
-    <MessagePeek commit={cardCommit(commit)} onOpen={noop} />,
-  );
-
 suite('Navigation bar', () => {
   test('greys out back and forward without steps', () => {
     const html = buttons({
@@ -144,97 +117,6 @@ suite('Navigation bar', () => {
     });
     assert.match(html, /title="Back[^"]*"(?![^>]*disabled)/);
     assert.match(html, /title="Forward[^"]*" disabled=""/);
-  });
-
-  test('shows the selected commit like an address, hash and subject on one line of text', () => {
-    const html = bar({
-      address: {
-        hash: 'd1f0050454a27f025c6820fc4a42b101a7fa356a',
-        subject: 'chore: trim verification',
-        commit: undefined,
-      },
-    });
-    assert.strictEqual(tagsWith(html, 'address-text').length, 1);
-    assert.match(
-      html,
-      /class="address-hash">d1f0050<\/span>chore: trim verification<\/span>/,
-    );
-  });
-
-  test('peeks at the description and details, the bar keeping its text', () => {
-    const hash = 'd1f0050454a27f025c6820fc4a42b101a7fa356a';
-    const html = peek({
-      hash,
-      subject: 'the subject',
-      message: 'the subject\n\nthe body\nmore',
-      authorName: 'Jozsef Simon',
-      authorEmail: 'jozsef@example.com',
-      authorDate: new Date(2022, 11, 14, 16, 12).getTime(),
-      committerName: 'Jozsef Simon',
-      committerEmail: 'jozsef@example.com',
-      commitDate: new Date(2022, 11, 14, 16, 12, 30).getTime(),
-    });
-    assert.strictEqual(tagsWith(html, 'locations-popup', 'peek').length, 1);
-    assert.match(html, /class="address-hash">d1f0050<\/span>the subject</);
-    assert.match(html, /class="commit-card-body">the body\nmore<\/pre>/);
-    assert.deepStrictEqual(definitions(html), [
-      ['Commit', hash, 'commit-card-hash'],
-      ['Author', 'Jozsef Simon <jozsef@example.com>', ''],
-      ['Committer', 'same', 'same'],
-      ['Authored', '2022-12-14 16:12', ''],
-      ['Committed', 'same', 'same'],
-    ]);
-    assert.doesNotMatch(html, /<input/);
-  });
-
-  test('peeks at the details of a commit without a description', () => {
-    const html = peek({ message: 'only' });
-    assert.strictEqual(tagsWith(html, 'commit-card-frame', 'empty').length, 1);
-    assert.strictEqual(tagsWith(html, 'commit-card-body').length, 0);
-    assert.deepStrictEqual(definitions(html)[1], [
-      'Author',
-      'A <a@example.com>',
-      '',
-    ]);
-  });
-
-  test('shows the committer and when committed where they differ', () => {
-    const html = peek({
-      message: 'rebased',
-      authorName: 'Ann',
-      authorEmail: 'ann@example.com',
-      authorDate: new Date(2022, 11, 14, 16, 12).getTime(),
-      committerName: 'Bob',
-      committerEmail: 'bob@example.com',
-      commitDate: new Date(2022, 11, 20, 9, 5).getTime(),
-    });
-    assert.deepStrictEqual(definitions(html).slice(1), [
-      ['Author', 'Ann <ann@example.com>', ''],
-      ['Committer', 'Bob <bob@example.com>', ''],
-      ['Authored', '2022-12-14 16:12', ''],
-      ['Committed', '2022-12-20 09:05', ''],
-    ]);
-  });
-
-  test("lists the commit's bubbles one to a row, without labels", () => {
-    const hash = 'a'.repeat(40);
-    const html = peek({
-      hash,
-      message: 'tagged',
-      refs: [
-        { kind: 'branch', name: 'main', commit: hash },
-        { kind: 'tag', name: 'v1.0', commit: hash },
-      ],
-      detachedHead: true,
-    });
-    assert.deepStrictEqual(definitions(html).slice(-3), [
-      ['', 'HEAD aaaaaaa', 'first-bubble'],
-      ['', 'main', ''],
-      ['', 'v1.0', ''],
-    ]);
-    tagWith(html, '', 'badge', 'head');
-    tagWith(html, '', 'badge', 'branch');
-    tagWith(html, '', 'badge', 'tag');
   });
 
   test('spins the fetch button while fetching', () => {
@@ -259,23 +141,9 @@ suite('Peek', () => {
     assert.strictEqual(nextPeekMode('open', 'leave', true), 'open');
   });
 
-  test('toggles a peek from the keyboard, but not what a click opened', () => {
-    assert.strictEqual(nextPeekMode('closed', 'toggle', true), 'pinned');
-    assert.strictEqual(nextPeekMode('closed', 'toggle', false), 'closed');
-    assert.strictEqual(nextPeekMode('pinned', 'toggle', true), 'closed');
-    assert.strictEqual(nextPeekMode('peek', 'toggle', true), 'closed');
-    assert.strictEqual(nextPeekMode('open', 'toggle', true), 'open');
-  });
-
-  test('keeps a peek from the keyboard when the pointer leaves', () => {
-    assert.strictEqual(nextPeekMode('pinned', 'leave', true), 'pinned');
-    assert.strictEqual(nextPeekMode('pinned', 'rest', true), 'pinned');
-  });
-
   test('closes a peek when what it peeks at goes away', () => {
     assert.strictEqual(nextPeekMode('peek', 'update', false), 'closed');
-    assert.strictEqual(nextPeekMode('pinned', 'update', false), 'closed');
-    assert.strictEqual(nextPeekMode('pinned', 'update', true), 'pinned');
+    assert.strictEqual(nextPeekMode('peek', 'update', true), 'peek');
     assert.strictEqual(nextPeekMode('open', 'update', false), 'open');
   });
 
