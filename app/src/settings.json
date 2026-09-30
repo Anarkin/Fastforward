@@ -28,9 +28,13 @@
       "focus-foreground": "#ffffff",
       "focus-hover": "8%",
       "focus-selected": "18%",
-      "focus-bubble": "25%",
-      "focus-bubble-hover": "40%",
-      "focus-darken": "15%",
+
+      "bubble": "#0069cc",
+      "bubble-rest": "25%",
+      "bubble-hover": "40%",
+      "bubble-checked-out": "#0069cc",
+      "bubble-checked-out-foreground": "#ffffff",
+      "bubble-checked-out-darken": "15%",
 
       "scrollbar": "#646464",
       "scrollbar-rest": "75%",
@@ -65,9 +69,13 @@
       "focus-foreground": "#ffffff",
       "focus-hover": "20%",
       "focus-selected": "35%",
-      "focus-bubble": "35%",
-      "focus-bubble-hover": "60%",
-      "focus-darken": "15%",
+
+      "bubble": "#3994bcb3",
+      "bubble-rest": "35%",
+      "bubble-hover": "60%",
+      "bubble-checked-out": "#3994bcb3",
+      "bubble-checked-out-foreground": "#ffffff",
+      "bubble-checked-out-darken": "15%",
 
       "scrollbar": "#7a7b7c",
       "scrollbar-rest": "75%",

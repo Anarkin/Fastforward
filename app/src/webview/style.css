@@ -554,7 +554,7 @@ body.resizing {
   color: var(--color-foreground);
   background: color-mix(
     in srgb,
-    var(--color-focus) var(--color-focus-bubble),
+    var(--color-bubble) var(--color-bubble-rest),
     var(--color-panel-background)
   );
   border-radius: 3px;
@@ -566,7 +566,7 @@ body.resizing {
 .locations-list .row.active .badge {
   background: color-mix(
     in srgb,
-    var(--color-focus) var(--color-focus-bubble-hover),
+    var(--color-bubble) var(--color-bubble-hover),
     var(--color-panel-background)
   );
 }
@@ -575,22 +575,25 @@ body.resizing {
 .badge.checked-out.has-menu:hover,
 .locations-list .row:hover .badge.checked-out,
 .locations-list .row.active .badge.checked-out {
-  color: var(--color-focus-foreground);
+  color: var(--color-bubble-checked-out-foreground);
   background:
-    linear-gradient(var(--color-focus), var(--color-focus)),
+    linear-gradient(
+      var(--color-bubble-checked-out),
+      var(--color-bubble-checked-out)
+    ),
     var(--color-panel-background);
 }
 
 .badge.checked-out.has-menu:hover,
 .locations-list .row:hover .badge.checked-out,
 .locations-list .row.active .badge.checked-out {
-  --deepened-focus: color-mix(
+  --deepened-checked-out: color-mix(
     in srgb,
-    var(--color-focus),
-    black var(--color-focus-darken)
+    var(--color-bubble-checked-out),
+    black var(--color-bubble-checked-out-darken)
   );
   background:
-    linear-gradient(var(--deepened-focus), var(--deepened-focus)),
+    linear-gradient(var(--deepened-checked-out), var(--deepened-checked-out)),
     var(--color-panel-background);
 }
 
