@@ -13,6 +13,7 @@ import {
   screen,
   shell,
 } from 'electron';
+import { autoUpdater } from 'electron-updater';
 import { findGit, minimumGitVersion } from '../git/locate';
 import { fileLog, type Log } from '../log';
 import type { ToHost, ToWebview } from '../shared/protocol';
@@ -127,6 +128,24 @@ async function start(): Promise<void> {
     reloadOnRebuild(window);
   }
   await window.loadURL(`${appOrigin}/index.html`);
+  checkForUpdates(log);
+}
+
+// Squirrel.Mac only installs signed updates, and the macOS app isn't signed
+function checkForUpdates(log: Log): void {
+  if (development || process.platform === 'darwin') {
+    return;
+  }
+  autoUpdater.logger = {
+    info: (message: unknown) => log.info(`Updater: ${String(message)}`),
+    warn: (message: unknown) => log.warn(`Updater: ${String(message)}`),
+    error: (message: unknown) => log.error(`Updater: ${String(message)}`),
+    debug: () => {},
+  };
+  autoUpdater.checkForUpdatesAndNotify().catch((error: unknown) => {
+    log.error('Checking for updates failed');
+    log.error(error instanceof Error ? error : String(error));
+  });
 }
 
 function createWindow(store: JsonFileStore): BrowserWindow {
