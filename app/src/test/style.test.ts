@@ -171,7 +171,7 @@ suite('Style', () => {
   test('spaces the mode switch and its pill with transparent borders, which Chromium snaps evenly on both sides at any scale', () => {
     const track = declarationsOf('.switch');
     assert.match(
-      declarationsOf('.column-footer'),
+      declarationsOf('.column-title'),
       /height: var\(--title-height\);/,
     );
     assert.match(track, /height: 100%;/);

@@ -23,7 +23,6 @@ import {
 } from '../webview/navBar';
 import { holdsDismissLayer, nextPeekMode } from '../webview/shortcutsHelp';
 import { changeClass, changeTitle } from '../webview/fileStatus';
-import { Column } from '../webview/column';
 import { Files } from '../webview/filesColumn';
 import { FileTree } from '../webview/fileTree';
 import { LineCounts } from '../webview/lineCounts';
@@ -146,7 +145,7 @@ function clickFile(row: React.ReactElement) {
 }
 
 suite('Files column', () => {
-  test('names the mode in its title and switches it at the bottom', () => {
+  test('switches the mode in its title', () => {
     for (const mode of ['changes', 'files'] as const) {
       let column: React.ReactNode;
       function Probe() {
@@ -169,24 +168,21 @@ suite('Files column', () => {
         return null;
       }
       renderToStaticMarkup(<Probe />);
-      assert.ok(
-        isValidElement<{ title: string; footer: React.ReactElement }>(column),
-      );
-      assert.strictEqual(
-        column.props.title,
-        mode === 'changes' ? 'Changes' : 'Files',
-      );
-      const html = renderToStaticMarkup(column.props.footer);
+      assert.ok(isValidElement<{ title: React.ReactElement }>(column));
+      const html = renderToStaticMarkup(column.props.title);
       assert.match(html, /^<div class="switch" role="tablist">/);
-      tagWith(html, 'aria-selected="true"', 'switch-option', 'active');
+      const active = tagWith(
+        html,
+        'aria-selected="true"',
+        'switch-option',
+        'active',
+      );
+      assert.ok(
+        html
+          .slice(html.indexOf(active))
+          .startsWith(`${active}${mode === 'changes' ? 'Changes' : 'Files'}`),
+      );
     }
-  });
-
-  test('draws a footer below its body', () => {
-    assert.strictEqual(
-      renderToStaticMarkup(<Column footer={<b />}>body</Column>),
-      '<section class="column"><header class="column-title"></header><div class="column-body">body</div><footer class="column-footer"><b></b></footer></section>',
-    );
   });
 
   test('shows no rows without changes, not even their header', () => {
