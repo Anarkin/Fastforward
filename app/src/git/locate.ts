@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-export const minimumGitVersion = [2, 31] as const;
+export const minimumGitVersion = [2, 52] as const;
 
 interface FoundGit {
   readonly path: string;
