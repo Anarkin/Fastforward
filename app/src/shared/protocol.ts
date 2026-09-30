@@ -29,12 +29,10 @@ export type ChangesView = 'list' | 'tree';
 
 export const defaultLayout: {
   readonly collapseMerges: boolean;
-  readonly solo: boolean;
   readonly filesMode: FilesMode;
   readonly changesView: ChangesView;
 } = {
   collapseMerges: true,
-  solo: false,
   filesMode: 'changes',
   changesView: 'tree',
 };
@@ -135,7 +133,6 @@ export type ToHost =
   | { readonly type: 'preloadTab'; readonly root: string }
   | { readonly type: 'setColumnWidths'; readonly widths: readonly number[] }
   | { readonly type: 'setCollapseMerges'; readonly collapse: boolean }
-  | { readonly type: 'setSolo'; readonly solo: boolean }
   | { readonly type: 'setFilesMode'; readonly mode: FilesMode }
   | { readonly type: 'setChangesView'; readonly view: ChangesView }
   | {
@@ -149,6 +146,7 @@ export type ToHost =
 
 export type TabMessage =
   | { readonly type: 'setBookmarks'; readonly bookmarks: readonly Bookmark[] }
+  | { readonly type: 'setSolo'; readonly solo: boolean }
   | { readonly type: 'loadTree'; readonly hash: string }
   | {
       readonly type: 'loadFileDiff';
@@ -192,11 +190,11 @@ export type ToWebview =
       readonly type: 'layout';
       readonly columnWidths: readonly number[] | undefined;
       readonly collapseMerges: boolean;
-      readonly solo: boolean;
       readonly filesMode: FilesMode;
       readonly changesView: ChangesView;
     }
   | { readonly type: 'bookmarks'; readonly bookmarks: readonly Bookmark[] }
+  | { readonly type: 'solo'; readonly solo: boolean }
   | { readonly type: 'fetching'; readonly running: boolean }
   | { readonly type: 'applyingSolo'; readonly running: boolean }
   | {

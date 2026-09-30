@@ -1135,7 +1135,11 @@ suite('View', function () {
         await connection.refresh();
         assert.strictEqual(page.last('commits')?.total, 4);
         page.clear();
-        await connection.receive({ type: 'setSolo', solo: true });
+        await connection.receive({
+          type: 'setSolo',
+          root: repository.root,
+          solo: true,
+        });
         assert.strictEqual(page.last('commits')?.total, 3);
         const applying = page.messages.flatMap((message) =>
           message.type === 'applyingSolo' ? [message.running] : [],
@@ -1147,11 +1151,15 @@ suite('View', function () {
               (message) => message.type === 'applyingSolo',
             ),
         );
-        assert.strictEqual(store.get(soloKey), true);
-        await connection.receive({ type: 'setSolo', solo: false });
+        assert.deepStrictEqual(store.get(soloKey), [repository.root]);
+        await connection.receive({
+          type: 'setSolo',
+          root: repository.root,
+          solo: false,
+        });
         assert.strictEqual(page.last('commits')?.total, 4);
       } finally {
-        await store.update(soloKey, false);
+        await store.update(soloKey, []);
         await repository.git('branch', '-D', 'side');
       }
     });
@@ -1582,7 +1590,7 @@ suite('View', function () {
       assert.strictEqual(tabs.page.last('commits')?.total, 5);
     });
 
-    test('reloads other tabs for a changed solo setting when they come back', async () => {
+    test('keeps solo to the repository it was turned on for', async () => {
       const [tree] = await repository.resolve('HEAD^{tree}');
       const side = (
         await repository.git('commit-tree', tree, '-p', fixture.a, '-m', 'side')
@@ -1592,14 +1600,30 @@ suite('View', function () {
         await tabs.connection.refresh();
         assert.strictEqual(tabs.page.last('commits')?.total, 4);
         await tabs.connection.receive({ type: 'selectTab', root: other });
-        await tabs.connection.receive({ type: 'setSolo', solo: true });
+        await tabs.connection.receive({
+          type: 'setSolo',
+          root: other,
+          solo: true,
+        });
+        assert.strictEqual(tabs.page.last('solo')?.solo, true);
         tabs.page.clear();
         await tabs.connection.receive({
           type: 'selectTab',
           root: repository.root,
         });
+        assert.strictEqual(tabs.page.last('solo')?.solo, false);
+        assert.strictEqual(tabs.page.last('commits')?.total, 4);
+        await tabs.connection.receive({
+          type: 'setSolo',
+          root: repository.root,
+          solo: true,
+        });
         assert.strictEqual(tabs.page.last('commits')?.total, 3);
+        tabs.page.clear();
+        await tabs.connection.receive({ type: 'selectTab', root: other });
+        assert.strictEqual(tabs.page.last('solo')?.solo, true);
       } finally {
+        await tabs.store.update(soloKey, []);
         await repository.git('branch', '-D', 'side');
       }
     });

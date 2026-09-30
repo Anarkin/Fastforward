@@ -20,7 +20,6 @@ suite('Storage', () => {
       type: 'layout',
       columnWidths: undefined,
       collapseMerges: true,
-      solo: false,
       filesMode: 'changes',
       changesView: 'tree',
     });
@@ -52,6 +51,20 @@ suite('Storage', () => {
     await storage.setBookmarks(root + path.sep, dev);
     assert.deepStrictEqual(Object.keys(store.get<object>('vips', {})), [root]);
     assert.deepStrictEqual(storage.bookmarksOf(root), dev);
+  });
+
+  test('turns solo on and off for one repository, whatever the spelling of its folder', async () => {
+    const storage = new Storage(new FakeStore());
+    const [r1, r2] = [path.resolve('r1'), path.resolve('r2')];
+    assert.strictEqual(storage.soloOf(r1), false);
+    await storage.setSolo(r1, true);
+    assert.strictEqual(storage.soloOf(r1 + path.sep), true);
+    assert.strictEqual(storage.soloOf(r2), false);
+    await storage.setSolo(r1 + path.sep, true);
+    await storage.setSolo(r2, true);
+    await storage.setSolo(r1, false);
+    assert.strictEqual(storage.soloOf(r1), false);
+    assert.strictEqual(storage.soloOf(r2), true);
   });
 
   test('keeps the 20 newest recent repositories, newest first', async () => {

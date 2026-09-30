@@ -94,7 +94,7 @@ export function App({ post, listen }: Props) {
   const [collapseMerges, setCollapseMerges] = useState(
     defaultLayout.collapseMerges,
   );
-  const [solo, setSolo] = useState(defaultLayout.solo);
+  const [solo, setSolo] = useState(false);
   const [applyingSolo, setApplyingSolo] = useState(false);
   const [filesMode, setFilesMode] = useState<FilesMode>(
     defaultLayout.filesMode,
@@ -130,9 +130,11 @@ export function App({ post, listen }: Props) {
         case 'layout':
           loadColumnWidths(message.columnWidths);
           setCollapseMerges(message.collapseMerges);
-          setSolo(message.solo);
           setFilesMode(message.filesMode);
           setChangesView(message.changesView);
+          break;
+        case 'solo':
+          setSolo(message.solo);
           break;
         case 'applyingSolo':
           setApplyingSolo(message.running);
@@ -290,7 +292,7 @@ export function App({ post, listen }: Props) {
 
   const changeSolo = (next: boolean) => {
     setSolo(next);
-    post({ type: 'setSolo', solo: next });
+    postTab({ type: 'setSolo', solo: next });
   };
 
   const changeBookmarks = (next: readonly Bookmark[]) => {

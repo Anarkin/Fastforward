@@ -14,7 +14,7 @@ export const recentKey = 'recentRepositories';
 const maxRecent = 20;
 const columnWidthsKey = 'columnWidths';
 export const collapseMergesKey = 'collapseMerges';
-export const soloKey = 'solo';
+export const soloKey = 'soloRepositories';
 const filesModeKey = 'filesMode';
 const changesViewKey = 'changesView';
 export const bookmarksKey = 'vips';
@@ -148,7 +148,6 @@ export class Storage {
       type: 'layout',
       columnWidths: this.store.get<number[]>(columnWidthsKey),
       collapseMerges: this.collapseMerges,
-      solo: this.solo,
       filesMode: this.store.get<FilesMode>(
         filesModeKey,
         defaultLayout.filesMode,
@@ -172,12 +171,17 @@ export class Storage {
     await this.store.update(collapseMergesKey, collapse);
   }
 
-  get solo(): boolean {
-    return this.store.get(soloKey, defaultLayout.solo);
+  soloOf(root: string): boolean {
+    return this.soloRoots.some((solo) => sameRoot(solo, root));
   }
 
-  async setSolo(solo: boolean): Promise<void> {
-    await this.store.update(soloKey, solo);
+  async setSolo(root: string, solo: boolean): Promise<void> {
+    const others = this.soloRoots.filter((other) => !sameRoot(other, root));
+    await this.store.update(soloKey, solo ? [...others, root] : others);
+  }
+
+  private get soloRoots(): string[] {
+    return this.store.get<string[]>(soloKey, []);
   }
 
   async setFilesMode(mode: FilesMode): Promise<void> {
