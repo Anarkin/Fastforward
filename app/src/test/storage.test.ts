@@ -20,6 +20,7 @@ suite('Storage', () => {
       type: 'layout',
       columnWidths: undefined,
       collapseMerges: true,
+      entireFilePinned: false,
       filesMode: 'changes',
       changesView: 'tree',
     });

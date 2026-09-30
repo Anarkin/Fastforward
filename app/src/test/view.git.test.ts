@@ -13,6 +13,7 @@ import {
   activeTabKey,
   bookmarksKey,
   collapseMergesKey,
+  entireFilePinnedKey,
   recentKey,
   sameRoot,
   soloKey,
@@ -179,6 +180,13 @@ function reopen(view: FastforwardView): {
 
 function savedBookmarks(store: FakeStore): Record<string, BookmarkRef[]> {
   return store.get<Record<string, BookmarkRef[]>>(bookmarksKey, {});
+}
+
+function fortyLines(changed: number): string {
+  const lines = Array.from({ length: 40 }, (_, i) =>
+    i === changed ? 'changed' : `line ${i + 1}`,
+  );
+  return `${lines.join('\n')}\n`;
 }
 
 suite('View', function () {
@@ -1830,6 +1838,67 @@ suite('View', function () {
   });
 
   suite('of other repositories', () => {
+    test('shows a file entire until it is left, or always when pinned', async () => {
+      const long = await tempRepository(path.join(folder, 'long'));
+      await long.commit('first', {
+        'a.txt': fortyLines(-1),
+        'b.txt': fortyLines(-1),
+      });
+      await long.commit('second', {
+        'a.txt': fortyLines(19),
+        'b.txt': fortyLines(19),
+      });
+      const [second] = await long.resolve('HEAD');
+      await withView(log, [long.root, other], async (view) => {
+        const select = (file: string | undefined) =>
+          view.connection.receive({
+            type: 'selectFile',
+            root: long.root,
+            hash: second,
+            path: file,
+          });
+        const entire = () =>
+          /^ line 1$/m.test(view.page.last('diff')?.patch ?? '');
+        await view.connection.receive({
+          type: 'selectCommit',
+          root: long.root,
+          hash: second,
+        });
+        await select('a.txt');
+        assert.strictEqual(entire(), false);
+        await view.connection.receive({
+          type: 'showEntireFile',
+          root: long.root,
+          entire: true,
+        });
+        assert.strictEqual(entire(), true);
+        await select('b.txt');
+        assert.strictEqual(entire(), false);
+        await select('a.txt');
+        assert.strictEqual(entire(), false);
+
+        await view.connection.receive({ type: 'pinEntireFile', pinned: true });
+        assert.strictEqual(entire(), true);
+        await select('b.txt');
+        assert.strictEqual(entire(), true);
+        assert.strictEqual(view.store.get(entireFilePinnedKey), true);
+        await view.connection.receive({ type: 'ready' });
+        assert.strictEqual(view.page.last('layout')?.entireFilePinned, true);
+        await view.connection.receive({ type: 'pinEntireFile', pinned: false });
+        assert.strictEqual(entire(), false);
+
+        await select('a.txt');
+        await view.connection.receive({
+          type: 'showEntireFile',
+          root: long.root,
+          entire: true,
+        });
+        await view.connection.receive({ type: 'selectTab', root: other });
+        await view.connection.receive({ type: 'selectTab', root: long.root });
+        assert.strictEqual(entire(), false);
+      });
+    });
+
     test('saves the merge setting with no tab open', async () => {
       await withView(
         log,

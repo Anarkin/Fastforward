@@ -34,7 +34,7 @@ import {
   type MenuTarget,
   type OpenMenu,
 } from './contextMenu';
-import { Diff } from './diffColumn';
+import { Diff, EntireFileButtons } from './diffColumn';
 import { Files } from './filesColumn';
 import { foldersOf } from './fileTree';
 import { hasRef } from '../shared/refNames';
@@ -91,6 +91,10 @@ export function App({ post, listen }: Props) {
     hashLookup,
     error,
   } = tab;
+  const [entireFilePinned, setEntireFilePinned] = useState(
+    defaultLayout.entireFilePinned,
+  );
+  const [entireFileOf, setEntireFileOf] = useState<string>();
   const [collapseMerges, setCollapseMerges] = useState(
     defaultLayout.collapseMerges,
   );
@@ -130,6 +134,7 @@ export function App({ post, listen }: Props) {
         case 'layout':
           loadColumnWidths(message.columnWidths);
           setCollapseMerges(message.collapseMerges);
+          setEntireFilePinned(message.entireFilePinned);
           setFilesMode(message.filesMode);
           setChangesView(message.changesView);
           break;
@@ -283,6 +288,16 @@ export function App({ post, listen }: Props) {
   const changeChangesView = (view: ChangesView) => {
     setChangesView(view);
     post({ type: 'setChangesView', view });
+  };
+
+  const shownFile = `${activeTab ?? ''}:${hash ?? ''}:${path ?? ''}`;
+  const showEntireFile = (entire: boolean) => {
+    setEntireFileOf(entire ? shownFile : undefined);
+    postTab({ type: 'showEntireFile', entire });
+  };
+  const pinEntireFile = (pinned: boolean) => {
+    setEntireFilePinned(pinned);
+    post({ type: 'pinEntireFile', pinned });
   };
 
   const changeCollapseMerges = (collapse: boolean) => {
@@ -471,6 +486,15 @@ export function App({ post, listen }: Props) {
                     diffs={diffs}
                     fileContent={fileContent}
                     error={error}
+                    entireFile={
+                      <EntireFileButtons
+                        entire={entireFileOf === shownFile}
+                        pinned={entireFilePinned}
+                        canShow={path !== undefined}
+                        onEntire={showEntireFile}
+                        onPin={pinEntireFile}
+                      />
+                    }
                   />
                 </div>
               </ColumnResizingProvider>

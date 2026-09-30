@@ -241,6 +241,14 @@ export class FastforwardView {
         }
         return;
       }
+      case 'pinEntireFile': {
+        await storage.setEntireFilePinned(message.pinned);
+        const context = await this.context(session);
+        if (context?.tab.hash !== undefined && context.tab.path !== undefined) {
+          await this.sendDiff(context, context.tab.hash);
+        }
+        return;
+      }
       case 'setSolo': {
         session.post({ type: 'applyingSolo', running: true });
         try {
@@ -358,10 +366,21 @@ export class FastforwardView {
         break;
       case 'selectFile':
         if (this.isSelected(context, message.hash)) {
+          if (context.tab.path !== message.path) {
+            context.tab.entireFile = false;
+          }
           context.tab.path = message.path;
           await this.sendDiff(context, message.hash);
         }
         break;
+      case 'showEntireFile': {
+        const { hash, path: file } = context.tab;
+        context.tab.entireFile = message.entire;
+        if (hash !== undefined && file !== undefined) {
+          await this.sendDiff(context, hash);
+        }
+        break;
+      }
       case 'loadFileDiff':
         if (this.isSelected(context, message.hash)) {
           await this.sendFileDiff(
@@ -456,6 +475,13 @@ export class FastforwardView {
     );
     await this.watch(context, session);
     await this.storage.addRecent(context.root);
+    if (context.tab.entireFile) {
+      context.tab.entireFile = false;
+      const { hash, path: file } = context.tab;
+      if (hash !== undefined && file !== undefined) {
+        await this.sendDiff(context, hash);
+      }
+    }
     const firstOpen = !context.tab.opened;
     context.tab.opened = true;
     if (!firstOpen && context.tab.shown.commits) {
@@ -1087,7 +1113,11 @@ export class FastforwardView {
                 large.oldPath ? [large.oldPath, large.path] : [large.path],
               ),
           }
-        : { path: file, oldPath: change?.oldPath };
+        : {
+            path: file,
+            oldPath: change?.oldPath,
+            entireFile: context.tab.entireFile || this.storage.entireFilePinned,
+          };
     const patch = await this.patchOf(context, hash, scope);
     const shownDiff = context.tab.shown.diff;
     const unchanged =

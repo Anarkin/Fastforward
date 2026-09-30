@@ -81,3 +81,20 @@ export function MoreIcon() {
     </Icon>
   );
 }
+
+export function EntireFileIcon() {
+  return (
+    <Icon>
+      <path d="M8 1.5v4.5M6 3.5l2-2 2 2M8 14.5V10M6 12.5l2 2 2-2" />
+      <path d="M3 8h10" opacity="0.5" />
+    </Icon>
+  );
+}
+
+export function PinIcon() {
+  return (
+    <Icon>
+      <path d="M5.5 2h5M6.5 2v4L4 8.5h8L9.5 6V2M8 8.5v5.5" />
+    </Icon>
+  );
+}
