@@ -12,6 +12,7 @@ body {
   --toolbar-background: var(--color-background);
   --gutter: var(--color-tab-bar-background);
   --gutter-width: 4px;
+  --scrollbar-size: 40px;
   --card-radius: 6px;
   --shade-background: color-mix(
     in srgb,
@@ -39,24 +40,33 @@ body {
 }
 
 ::-webkit-scrollbar {
-  width: 40px;
-  height: 40px;
+  width: 0;
+  height: 0;
 }
 
-::-webkit-scrollbar-corner {
-  background: transparent;
+.overlay-scrollbar {
+  position: fixed;
+  z-index: 30;
+  box-sizing: border-box;
+  border: 2px solid transparent;
+  border-radius: calc(var(--scrollbar-size) / 2);
+  background: var(--color-scrollbar) padding-box;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
 }
 
-::-webkit-scrollbar-thumb {
-  background: var(--color-scrollbar);
+.overlay-scrollbar.shown {
+  opacity: 1;
+  pointer-events: auto;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-scrollbar-hover);
+.overlay-scrollbar:hover {
+  background-color: var(--color-scrollbar-hover);
 }
 
-::-webkit-scrollbar-thumb:active {
-  background: var(--color-scrollbar-active);
+.overlay-scrollbar.dragging {
+  background-color: var(--color-scrollbar-active);
 }
 
 .app {
