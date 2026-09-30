@@ -13,6 +13,8 @@ import {
   activeTabKey,
   bookmarksKey,
   collapseMergesKey,
+  recentKey,
+  sameRoot,
   soloKey,
   tabsKey,
 } from '../storage';
@@ -27,7 +29,7 @@ import {
   tempRepository,
   type TempRepository,
 } from './repositories';
-import { withMessageStub } from './stub';
+import { recordingLog, withMessageStub } from './stub';
 
 class FakePage {
   readonly messages: ToWebview[] = [];
@@ -499,6 +501,17 @@ suite('View', function () {
         hash: fixture.merge,
       });
       assert.strictEqual(page.last('commits')?.total, 3);
+    });
+
+    test('forgets merges toggled by hand when the merge setting changes', async () => {
+      await connection.receive({
+        type: 'toggleMerge',
+        root: repository.root,
+        hash: fixture.merge,
+      });
+      assert.strictEqual(page.last('commits')?.total, 5);
+      await connection.receive({ type: 'setCollapseMerges', collapse: false });
+      assert.strictEqual(page.last('commits')?.total, 5);
     });
 
     test('sends only the newest list when the history is worked out twice at once', async () => {
@@ -1370,6 +1383,28 @@ suite('View', function () {
       assert.strictEqual(tabs.page.last('commits')?.total, 5);
     });
 
+    test('reloads other tabs for a changed solo setting when they come back', async () => {
+      const [tree] = await repository.resolve('HEAD^{tree}');
+      const side = (
+        await repository.git('commit-tree', tree, '-p', fixture.a, '-m', 'side')
+      ).trim();
+      await repository.git('branch', 'side', side);
+      try {
+        await settle(repository.root, tabs.connection);
+        assert.strictEqual(tabs.page.last('commits')?.total, 4);
+        await tabs.connection.receive({ type: 'selectTab', root: other });
+        await tabs.connection.receive({ type: 'setSolo', solo: true });
+        tabs.page.clear();
+        await tabs.connection.receive({
+          type: 'selectTab',
+          root: repository.root,
+        });
+        assert.strictEqual(tabs.page.last('commits')?.total, 3);
+      } finally {
+        await repository.git('branch', '-D', 'side');
+      }
+    });
+
     test('preloads a tab in the background, which then opens as it was left', async () => {
       tabs.page.clear();
       await tabs.connection.receive({ type: 'preloadTab', root: other });
@@ -1537,6 +1572,19 @@ suite('View', function () {
       assert.match(tabs.page.last('error')?.message ?? '', /next tab failed/);
     });
 
+    test('keeps the shown tab when another one closes', async () => {
+      await tabs.connection.receive({ type: 'closeTab', root: other });
+      const left = tabs.page.last('tabs');
+      assert.strictEqual(left?.active, repository.root);
+      assert.ok(!left.tabs.some((tab) => sameRoot(tab.root, other)));
+    });
+
+    test('opens the tab before the shown one when that closes last in the list', async () => {
+      await tabs.connection.receive({ type: 'selectTab', root: other });
+      await tabs.connection.receive({ type: 'closeTab', root: other });
+      assert.strictEqual(tabs.page.last('tabs')?.active, repository.root);
+    });
+
     test('sorts tabs by name and closes one, opening the next', async () => {
       const zeta = await tempRepository(path.join(folder, 'Zeta'));
       await zeta.commit('zeta');
@@ -1572,6 +1620,66 @@ suite('View', function () {
         },
         false,
       );
+    });
+
+    test('opens the repositories picked in new tabs, showing the last one', async () => {
+      const third = await tempRepository(path.join(folder, 'third'));
+      await third.commit('third');
+      const recording = recordingLog(log);
+      const original = vscode.window.showOpenDialog;
+      Reflect.set(vscode.window, 'showOpenDialog', () =>
+        Promise.resolve(
+          [third.root, third.root, other].map((root) => vscode.Uri.file(root)),
+        ),
+      );
+      try {
+        await withView(recording.log, [repository.root], async (view) => {
+          await view.connection.receive({ type: 'addTab' });
+          const ours = new Set(['main', 'third', 'other']);
+          const shown = view.page.last('tabs');
+          assert.deepStrictEqual(
+            shown?.tabs
+              .map((tab) => tab.name)
+              .filter((name) => ours.has(name))
+              .toSorted(),
+            ['main', 'other', 'third'],
+          );
+          assert.ok(shown.active && sameRoot(shown.active, other));
+          assert.strictEqual(view.page.last('files')?.hash, otherHead);
+          const recent = view.globalState.get<string[]>(recentKey, []);
+          for (const root of [third.root, other]) {
+            assert.ok(
+              recent.some((saved) => sameRoot(saved, root)),
+              root,
+            );
+          }
+          await view.connection.receive({
+            type: 'log',
+            level: 'info',
+            message: 'from the page',
+          });
+          assert.ok(
+            recording.info.some(([text]) => text === 'Webview: from the page'),
+          );
+        });
+      } finally {
+        Reflect.set(vscode.window, 'showOpenDialog', original);
+      }
+    });
+
+    test('closes the only tab, leaving none shown', async () => {
+      await withView(log, [repository.root], async (view) => {
+        for (const tab of view.page.last('tabs')?.tabs ?? []) {
+          await view.connection.receive({ type: 'closeTab', root: tab.root });
+        }
+        assert.deepStrictEqual(view.page.last('tabs'), {
+          type: 'tabs',
+          tabs: [],
+          active: undefined,
+        });
+        assert.deepStrictEqual(view.page.last('bookmarks')?.bookmarks, []);
+        assert.strictEqual(view.page.last('error'), undefined);
+      });
     });
 
     test('uses a repository cloned inside another, not the outer one', async () => {
@@ -1637,6 +1745,41 @@ suite('View', function () {
         assert.strictEqual(fileDiff?.path, 'large.txt');
         assert.ok(fileDiff?.patch.includes('+line 1999'));
         assert.strictEqual(fileDiff.diff, 1);
+      });
+    });
+
+    test('shows the diff of one file the commit changed, following a rename', async () => {
+      const renamed = await tempRepository(path.join(folder, 'renamed'));
+      const lines = Array.from({ length: 20 }, (_, index) => `line ${index}`);
+      await renamed.commit('old', {
+        'old.txt': lines.join('\n'),
+        'other.txt': 'one\n',
+      });
+      await renamed.git('mv', 'old.txt', 'new.txt');
+      fs.writeFileSync(path.join(renamed.root, 'other.txt'), 'two\n');
+      await renamed.git('commit', '-am', 'rename');
+      const [hash] = await renamed.resolve('HEAD');
+      await withView(log, [renamed.root], async (view) => {
+        await view.connection.receive({
+          type: 'selectFile',
+          root: renamed.root,
+          hash,
+          path: 'new.txt',
+        });
+        const diff = view.page.last('diff');
+        assert.strictEqual(diff?.path, 'new.txt');
+        assert.ok(diff.patch.includes('rename from old.txt'), diff.patch);
+        assert.ok(!diff.patch.includes('other.txt'), diff.patch);
+        await view.connection.receive({
+          type: 'loadFileDiff',
+          root: renamed.root,
+          hash,
+          path: 'new.txt',
+          diff: 1,
+        });
+        assert.ok(
+          view.page.last('fileDiff')?.patch.includes('rename from old.txt'),
+        );
       });
     });
 

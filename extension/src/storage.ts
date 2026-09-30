@@ -9,7 +9,7 @@ import type {
 
 export const tabsKey = 'tabs';
 export const activeTabKey = 'activeTab';
-const recentKey = 'recentRepositories';
+export const recentKey = 'recentRepositories';
 const maxRecent = 20;
 const columnWidthsKey = 'columnWidths';
 export const collapseMergesKey = 'collapseMerges';
