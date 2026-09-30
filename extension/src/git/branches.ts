@@ -3,8 +3,8 @@ import { runGit } from './run';
 export async function aheadBehind(
   gitPath: string,
   cwd: string,
-  ref = 'HEAD',
-  upstream = '@{upstream}',
+  ref: string,
+  upstream: string,
 ): Promise<{ ahead: number; behind: number }> {
   try {
     const output = await runGit(gitPath, cwd, [

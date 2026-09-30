@@ -104,11 +104,14 @@ export async function workingTreePatch(
   if (path !== undefined && untracked.includes(path)) {
     return untrackedPatch(path);
   }
+  const spec = pathspecs(scope);
   const tracked = runGit(
     gitPath,
     cwd,
-    [...workingTreeDiff(base), ...pathspecs(scope)],
-    { pathspecMagic: (scope.exclude?.length ?? 0) > 0 },
+    [...workingTreeDiff(base), ...spec.args],
+    {
+      pathspecMagic: spec.magic,
+    },
   );
   if (path !== undefined) {
     return tracked;

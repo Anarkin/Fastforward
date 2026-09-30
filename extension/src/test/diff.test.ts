@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import { parseChanges } from '../git/diff';
+import { parseChanges, pathspecs } from '../git/diff';
 import { parseHistory, parseLog } from '../git/history';
 import { parsePatch, unquotePath } from '../webview/diff';
 
@@ -107,6 +107,28 @@ suite('parsePatch', () => {
   });
 });
 
+suite('pathspecs', () => {
+  test('narrows to a path, or excludes files literally with pathspec magic', () => {
+    assert.deepStrictEqual(pathspecs({}), { args: [], magic: false });
+    assert.deepStrictEqual(pathspecs({ path: 'a' }), {
+      args: ['--', 'a'],
+      magic: false,
+    });
+    assert.deepStrictEqual(pathspecs({ path: 'b', oldPath: 'a' }), {
+      args: ['--', 'a', 'b'],
+      magic: false,
+    });
+    assert.deepStrictEqual(pathspecs({ path: 'a*b', exclude: ['x'] }), {
+      args: ['--', 'a*b'],
+      magic: false,
+    });
+    assert.deepStrictEqual(pathspecs({ exclude: ['[ab].md'] }), {
+      args: ['--', '.', ':(exclude,literal)[ab].md'],
+      magic: true,
+    });
+  });
+});
+
 function raw(status: string): string {
   return `:100644 100644 1111111 2222222 ${status}`;
 }
@@ -172,6 +194,59 @@ suite('git show parsers', () => {
           path: 'two\nlines',
           insertions: 5,
           deletions: 0,
+        },
+      ],
+    );
+  });
+
+  test('parses copies, type changes and unknown statuses', () => {
+    assert.deepStrictEqual(
+      parseChanges(
+        [
+          raw('C075'),
+          'src.ts',
+          'copy.ts',
+          raw('T'),
+          'link',
+          raw('U'),
+          'odd',
+          raw('M'),
+          'after.ts',
+          '2\t0\t',
+          'src.ts',
+          'copy.ts',
+          '1\t1\tafter.ts',
+          '',
+        ].join('\0'),
+      ),
+      [
+        {
+          status: 'C',
+          oldPath: 'src.ts',
+          path: 'copy.ts',
+          insertions: 2,
+          deletions: 0,
+        },
+        {
+          status: 'T',
+          oldPath: undefined,
+          path: 'link',
+          insertions: 0,
+          deletions: 0,
+        },
+        {
+          status: '?',
+          oldPath: undefined,
+          path: 'odd',
+          insertions: 0,
+          deletions: 0,
+        },
+        {
+          status: 'M',
+          oldPath: undefined,
+          path: 'after.ts',
+          insertions: 1,
+          deletions: 1,
         },
       ],
     );
