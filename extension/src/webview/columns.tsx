@@ -47,6 +47,52 @@ export function maxWidth(
   return Math.max(minColumnWidth, viewWidth - others - minLastColumnWidth);
 }
 
+export function draggedWidths(
+  start: readonly number[],
+  index: number,
+  delta: number,
+  max: number,
+): number[] {
+  const width = Math.round(
+    Math.min(max, Math.max(minColumnWidth, start[index] + delta)),
+  );
+  return start.map((w, i) => (i === index ? width : w));
+}
+
+export function resetWidth(widths: readonly number[], index: number): number[] {
+  return widths.map((width, i) =>
+    i === index ? defaultColumnWidths[i] : width,
+  );
+}
+
+interface DragTarget<E> {
+  addEventListener(type: string, listener: (event: E) => void): void;
+  removeEventListener(type: string, listener: (event: E) => void): void;
+}
+
+export function followDrag<E extends { readonly buttons: number }>(
+  target: DragTarget<E>,
+  onMove: (event: E) => void,
+  onEnd: () => void,
+): void {
+  const move = (event: E) => {
+    if (event.buttons === 0) {
+      end();
+    } else {
+      onMove(event);
+    }
+  };
+  const end = () => {
+    target.removeEventListener('pointermove', move);
+    target.removeEventListener('pointerup', end);
+    target.removeEventListener('pointercancel', end);
+    onEnd();
+  };
+  target.addEventListener('pointermove', move);
+  target.addEventListener('pointerup', end);
+  target.addEventListener('pointercancel', end);
+}
+
 export function useColumnWidths(
   save: (widths: readonly number[]) => void,
   hidden: readonly boolean[],
@@ -69,6 +115,7 @@ export function useColumnWidths(
     () => ({
       start: (index, event) => {
         event.preventDefault();
+        event.currentTarget.setPointerCapture(event.pointerId);
         const startX = event.clientX;
         const startWidths = current.current;
         const max = maxWidth(
@@ -78,19 +125,13 @@ export function useColumnWidths(
           container.current?.clientWidth ?? Infinity,
         );
         const onMove = (move: PointerEvent) => {
-          const width = Math.round(
-            Math.min(
-              max,
-              Math.max(
-                minColumnWidth,
-                startWidths[index] + move.clientX - startX,
-              ),
-            ),
-          );
           // Straight on the grid while dragging, so the columns' contents
           // don't re-render on every move, only once it ends
-          current.current = startWidths.map((w, i) =>
-            i === index ? width : w,
+          current.current = draggedWidths(
+            startWidths,
+            index,
+            move.clientX - startX,
+            max,
           );
           if (container.current) {
             container.current.style.gridTemplateColumns = templateOf(
@@ -99,21 +140,15 @@ export function useColumnWidths(
             );
           }
         };
-        const onUp = () => {
-          window.removeEventListener('pointermove', onMove);
-          window.removeEventListener('pointerup', onUp);
+        followDrag(window, onMove, () => {
           document.body.classList.remove('resizing');
           update(current.current);
           save(current.current);
-        };
-        window.addEventListener('pointermove', onMove);
-        window.addEventListener('pointerup', onUp);
+        });
         document.body.classList.add('resizing');
       },
       reset: (index) => {
-        const next = current.current.map((width, i) =>
-          i === index ? defaultColumnWidths[i] : width,
-        );
+        const next = resetWidth(current.current, index);
         update(next);
         save(next);
       },

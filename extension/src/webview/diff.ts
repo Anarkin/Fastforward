@@ -8,7 +8,6 @@ export interface DiffLine {
 }
 
 interface DiffHunk {
-  readonly header: string;
   readonly lines: DiffLine[];
 }
 
@@ -26,7 +25,7 @@ interface ParsedFile {
   hunks: DiffHunk[];
 }
 
-const hunkHeader = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@ ?(.*)$/;
+const hunkHeader = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/;
 
 const escapes: Record<string, number> = {
   a: 7,
@@ -46,7 +45,7 @@ export function unquotePath(path: string): string {
   }
   const bytes: number[] = [];
   const encoder = new TextEncoder();
-  const inner = path.slice(1, -1);
+  const inner = Array.from(path.slice(1, -1));
   for (let i = 0; i < inner.length; i++) {
     const char = inner[i];
     if (char !== '\\') {
@@ -55,7 +54,7 @@ export function unquotePath(path: string): string {
     }
     const next = inner[++i];
     if (/[0-7]/.test(next)) {
-      bytes.push(Number.parseInt(inner.slice(i, i + 3), 8));
+      bytes.push(Number.parseInt(inner.slice(i, i + 3).join(''), 8));
       i += 2;
     } else {
       bytes.push(escapes[next] ?? next.charCodeAt(0));
@@ -120,7 +119,7 @@ export function parsePatch(patch: string): DiffFile[] {
     if (header) {
       oldNumber = Number(header[1]);
       newNumber = Number(header[2]);
-      hunk = { header: header[3], lines: [] };
+      hunk = { lines: [] };
       file.hunks.push(hunk);
       continue;
     }

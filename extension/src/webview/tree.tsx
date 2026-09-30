@@ -9,6 +9,8 @@ export function treeIndent(depth: number): number {
   return treePadding + depth * twistyWidth;
 }
 
+export const fileRowKey = (path: string) => `file:${path}`;
+
 export function FolderRow({
   path,
   depth,
@@ -47,15 +49,19 @@ export function FileRow({
 }: {
   path: string;
   name: string;
-  depth: number;
+  depth?: number;
   change: FileChange | undefined;
   selected: string | undefined;
   onSelect: (path: string | undefined) => void;
 }) {
   return (
     <div
-      className={`row tree-row file ${path === selected ? 'selected' : ''}`}
-      style={{ paddingLeft: treeIndent(depth) + twistyWidth }}
+      className={`row ${depth === undefined ? '' : 'tree-row'} file ${path === selected ? 'selected' : ''}`}
+      style={
+        depth === undefined
+          ? undefined
+          : { paddingLeft: treeIndent(depth) + twistyWidth }
+      }
       title={change ? changeTitle(change) : path}
       onClick={() => onSelect(path === selected ? undefined : path)}
     >
