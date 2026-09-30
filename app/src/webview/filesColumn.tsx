@@ -62,7 +62,7 @@ export function Files({
           className={`switch-option ${mode === option ? 'active' : ''}`}
           onClick={() => onMode(option)}
         >
-          {option === 'changes' ? 'Changes' : 'Files'}
+          {option === 'changes' ? 'Changes' : 'All Files'}
         </button>
       ))}
     </div>
