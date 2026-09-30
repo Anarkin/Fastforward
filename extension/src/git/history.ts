@@ -1,5 +1,6 @@
 import { isHashPrefix } from '../shared/hashes';
 import type { CommitInfo, HashLookup } from '../shared/protocol';
+import { rawStatus } from './diff';
 import { runGit, splitNul } from './run';
 
 export async function headCommit(
@@ -159,9 +160,9 @@ export function parseLog(output: string): CommitInfo[] {
     i += 9;
     let files = 0;
     while (i < tokens.length && tokens[i].trimStart().startsWith(':')) {
-      const status = tokens[i].trim().split(' ')[4] ?? '';
+      const code = rawStatus(tokens[i]);
       files++;
-      i += /^[RC]/.test(status) ? 3 : 2;
+      i += code === 'R' || code === 'C' ? 3 : 2;
     }
     const message = body.replaceAll('\r\n', '\n').trimEnd();
     commits.push({
