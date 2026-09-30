@@ -8,10 +8,9 @@ import {
   historyButtonClick,
   HistoryMenu,
   historyMenuOpen,
-  holdsDismissLayer,
   NavButtons,
-  nextPeekMode,
 } from '../webview/navBar';
+import { holdsDismissLayer, nextPeekMode } from '../webview/shortcutsHelp';
 import { changeTitle, statusClass } from '../webview/fileStatus';
 import { LineCounts } from '../webview/lineCounts';
 import { SkeletonRows } from '../webview/skeleton';
@@ -135,17 +134,10 @@ suite('Navigation bar', () => {
 
 suite('Peek', () => {
   test('peeks when the pointer rests, and closes a peek when it leaves', () => {
-    assert.strictEqual(nextPeekMode('closed', 'rest', true), 'peek');
-    assert.strictEqual(nextPeekMode('closed', 'rest', false), 'closed');
-    assert.strictEqual(nextPeekMode('peek', 'leave', true), 'closed');
-    assert.strictEqual(nextPeekMode('open', 'rest', true), 'open');
-    assert.strictEqual(nextPeekMode('open', 'leave', true), 'open');
-  });
-
-  test('closes a peek when what it peeks at goes away', () => {
-    assert.strictEqual(nextPeekMode('peek', 'update', false), 'closed');
-    assert.strictEqual(nextPeekMode('peek', 'update', true), 'peek');
-    assert.strictEqual(nextPeekMode('open', 'update', false), 'open');
+    assert.strictEqual(nextPeekMode('closed', 'rest'), 'peek');
+    assert.strictEqual(nextPeekMode('peek', 'leave'), 'closed');
+    assert.strictEqual(nextPeekMode('open', 'rest'), 'open');
+    assert.strictEqual(nextPeekMode('open', 'leave'), 'open');
   });
 
   test('leaves Escape to what is open when only peeking', () => {

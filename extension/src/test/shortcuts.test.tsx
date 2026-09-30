@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { ShortcutsPanel } from '../webview/navBar';
+import { ShortcutsPanel } from '../webview/shortcutsHelp';
 import { shortcutOf, shortcuts } from '../webview/shortcuts';
 import { definitions } from './fixtures';
 
