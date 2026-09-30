@@ -580,7 +580,10 @@ body.resizing {
 .badge.checked-out.has-menu:hover,
 .locations-list .row:hover .badge.checked-out,
 .locations-list .row.active .badge.checked-out {
-  filter: brightness(1.15);
+  --deepened-focus: color-mix(in srgb, var(--color-focus) 85%, black);
+  background:
+    linear-gradient(var(--deepened-focus), var(--deepened-focus)),
+    var(--color-panel-background);
 }
 
 .row .path.deleted {
