@@ -10,7 +10,7 @@ import {
 import { noNavigation, reachable, type Navigation } from './history/navigation';
 import { countRefs, decorations, fingerprint, type Head } from './refs';
 import {
-  commitPageSize,
+  pageStart,
   workingTreeHash,
   type CommitInfo,
   type FileChange,
@@ -125,9 +125,7 @@ export function firstPage(
 ): { start: number; anchor: { index: number; offset: number } | undefined } {
   const anchor = keepPlace ? anchorOf(tab) : undefined;
   const start =
-    anchor === undefined || anchor.index < 0
-      ? 0
-      : anchor.index - (anchor.index % commitPageSize);
+    anchor === undefined || anchor.index < 0 ? 0 : pageStart(anchor.index);
   return { start, anchor };
 }
 

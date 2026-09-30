@@ -39,6 +39,10 @@ export const defaultLayout: {
 
 export const commitPageSize = 100;
 
+export function pageStart(index: number): number {
+  return index - (index % commitPageSize);
+}
+
 export interface RefInfo {
   readonly kind: RefKind;
   readonly name: string;
