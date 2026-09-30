@@ -112,9 +112,18 @@ suite('Default bookmarks', () => {
   });
 
   test("picks only the first remote's default branch", () => {
+    const withDevelop: RefInfo[] = [
+      ...refs,
+      { kind: 'branch', name: 'develop', commit: 'd' },
+      { kind: 'remote', name: 'upstream/develop', commit: 'd' },
+    ];
     assert.deepStrictEqual(
-      defaultBookmarks(refs, ['origin/main', 'upstream/develop']),
-      defaultBookmarks(refs, ['origin/main']),
+      defaultBookmarks(withDevelop, ['origin/main', 'upstream/develop']),
+      [
+        { kind: 'branch', name: 'main' },
+        { kind: 'remote', name: 'origin/main' },
+        { kind: 'remote', name: 'upstream/main' },
+      ],
     );
   });
 
