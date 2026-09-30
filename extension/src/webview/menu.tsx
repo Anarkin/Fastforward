@@ -14,9 +14,9 @@ export function MenuButton({
   const close = useCallback(() => setOpen(false), []);
 
   return (
-    <div className="settings" ref={container}>
+    <div className="menu-button" ref={container}>
       <button
-        className={`nav-button settings-button ${open ? 'open' : ''}`}
+        className={`nav-button menu-button-trigger ${open ? 'open' : ''}`}
         title={title}
         onClick={() => setOpen(!open)}
       >
