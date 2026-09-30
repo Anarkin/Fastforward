@@ -245,7 +245,7 @@ body {
   flex: none;
   width: 20px;
   height: 20px;
-  opacity: 0.6;
+  opacity: var(--muted-opacity);
 }
 
 .tab-close:hover,
@@ -314,7 +314,7 @@ body {
   background: none;
   border: none;
   border-radius: 4px;
-  opacity: 0.6;
+  opacity: var(--muted-opacity);
 }
 
 .notice-close:hover {
@@ -777,7 +777,7 @@ body.resizing {
 }
 
 .badge.missing {
-  opacity: 0.5;
+  opacity: var(--muted-opacity);
   text-decoration: line-through;
 }
 
@@ -845,7 +845,7 @@ body.resizing {
 }
 
 .menu-item:disabled {
-  opacity: 0.5;
+  opacity: var(--muted-opacity);
 }
 
 .menu-separator {
@@ -1113,7 +1113,7 @@ body.resizing {
 }
 
 .nav-button:disabled {
-  opacity: 0.35;
+  opacity: var(--muted-opacity);
 }
 
 .nav-button.running {
@@ -1211,7 +1211,7 @@ body.resizing {
 
 .hash-suggestion.active .history-hash {
   color: inherit;
-  opacity: 0.8;
+  opacity: var(--muted-opacity);
 }
 
 .hash-suggestion.empty {
