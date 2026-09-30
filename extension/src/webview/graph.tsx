@@ -69,7 +69,7 @@ export function GraphCell({
   onToggleMerge: () => void;
 }) {
   const cx = x(row.lane);
-  const fill = color(row.color);
+  const laneColor = color(row.color);
   return (
     <svg className="graph" width={graphWidth(rowLanes(row))} height={height}>
       {drawnLines(row.lines, height).map((line) => (
@@ -88,7 +88,7 @@ export function GraphCell({
           y={dotY - dotRadius}
           width={2 * dotRadius}
           height={2 * dotRadius}
-          fill={fill}
+          fill={laneColor}
           stroke="var(--vscode-editor-background)"
           strokeWidth={1.5}
         />
@@ -107,11 +107,11 @@ export function GraphCell({
             cy={dotY}
             r={ringRadius(row)}
             fill="var(--vscode-editor-background)"
-            stroke={fill}
+            stroke={laneColor}
             strokeWidth={2}
           />
           {row.merge === 'expanded' && (
-            <circle cx={cx} cy={dotY} r={1.5} fill={fill} />
+            <circle cx={cx} cy={dotY} r={1.5} fill={laneColor} />
           )}
         </g>
       ) : (
@@ -119,7 +119,7 @@ export function GraphCell({
           cx={cx}
           cy={dotY}
           r={dotRadius}
-          fill={fill}
+          fill={laneColor}
           stroke="var(--vscode-editor-background)"
           strokeWidth={1.5}
         />
