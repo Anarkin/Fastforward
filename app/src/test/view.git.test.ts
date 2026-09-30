@@ -615,6 +615,29 @@ suite('View', function () {
       });
     });
 
+    test('searches commits by text, dropping a search a newer one replaces', async () => {
+      page.clear();
+      await Promise.all([
+        connection.receive({
+          type: 'searchCommits',
+          root: repository.root,
+          query: 'nothing like it',
+        }),
+        connection.receive({
+          type: 'searchCommits',
+          root: repository.root,
+          query: 'test',
+        }),
+      ]);
+      const search = page.last('commitSearch');
+      assert.strictEqual(search?.query, 'test');
+      assert.ok(search.result.commits.length > 0);
+      assert.ok(
+        search.result.commits.every(({ fields }) => fields.includes('author')),
+      );
+      assert.strictEqual(page.last('error'), undefined);
+    });
+
     test('jumps to a commit by a short hash', async () => {
       await connection.receive({
         type: 'jump',

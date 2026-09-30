@@ -33,6 +33,7 @@ export interface TabView {
   readonly back: readonly NavigationEntry[];
   readonly forward: readonly NavigationEntry[];
   readonly hashLookup: ToWebviewOf<'hashLookup'> | undefined;
+  readonly commitSearch: ToWebviewOf<'commitSearch'> | undefined;
   readonly error: string | undefined;
 }
 
@@ -59,6 +60,7 @@ export const emptyTabView: TabView = {
   back: [],
   forward: [],
   hashLookup: undefined,
+  commitSearch: undefined,
   error: undefined,
 };
 
@@ -211,6 +213,8 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
       return { ...state, back: action.back, forward: action.forward };
     case 'hashLookup':
       return { ...state, hashLookup: action };
+    case 'commitSearch':
+      return { ...state, commitSearch: action };
     case 'error':
       return {
         ...state,

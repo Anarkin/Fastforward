@@ -8,6 +8,7 @@ import {
   commitsStartingWith,
   findCommit,
   findCommits,
+  searchCommits,
   listHistory,
   logCommits,
 } from '../git/history';
@@ -368,5 +369,88 @@ suite('Git repository', function () {
     assert.ok(!patch.includes('new file mode'), patch);
     const [commit] = await logCommits(gitPath, cwd, [rename]);
     assert.strictEqual(commit.files, files.length);
+  });
+});
+
+suite('Commit search', function () {
+  this.timeout(60000);
+  let search: TempRepository;
+  let gitPath: string;
+
+  suiteSetup(async () => {
+    search = await tempRepository(tempFolder('search'));
+    gitPath = search.gitPath;
+    await search.git(
+      'commit',
+      '--allow-empty',
+      '-m',
+      'first',
+      '--author',
+      'Ada Lovelace <lovelace@example.com>',
+    );
+    await search.git(
+      'commit',
+      '--allow-empty',
+      '-m',
+      'second',
+      '-m',
+      'Mentions ada in the description',
+    );
+    await search.git(
+      '-c',
+      'user.name=Ada Byron',
+      '-c',
+      'user.email=byron@example.com',
+      'commit',
+      '--allow-empty',
+      '-m',
+      'third',
+      '--author',
+      'Test <test@example.com>',
+    );
+    await search.commit('unrelated');
+  });
+
+  suiteTeardown(() => removeFolder(search.root));
+
+  test('finds commits by author, committer or message, ignoring case, newest first, saying which matched', async () => {
+    const found = await searchCommits(gitPath, search.root, 'ADA', false);
+    assert.deepStrictEqual(
+      found.commits.map(({ commit, fields }) => [commit.subject, fields]),
+      [
+        ['third', ['committer']],
+        ['second', ['message']],
+        ['first', ['author']],
+      ],
+    );
+    assert.strictEqual(found.capped, false);
+  });
+
+  test('takes the text literally, and stops at the limit, saying there may be more', async () => {
+    assert.deepStrictEqual(
+      (await searchCommits(gitPath, search.root, 'a.a', false)).commits,
+      [],
+    );
+    const limited = await searchCommits(
+      gitPath,
+      search.root,
+      'ada',
+      false,
+      undefined,
+      2,
+    );
+    assert.deepStrictEqual(
+      limited.commits.map(({ commit }) => commit.subject),
+      ['third', 'second'],
+    );
+    assert.strictEqual(limited.capped, true);
+  });
+
+  test('stops when cancelled', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    await assert.rejects(
+      searchCommits(gitPath, search.root, 'ada', false, controller.signal),
+    );
   });
 });

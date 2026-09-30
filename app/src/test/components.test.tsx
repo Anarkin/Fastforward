@@ -474,10 +474,16 @@ suite('Navigation bar', () => {
         repository={undefined}
         hashLookup={undefined}
         onLookupHash={noop}
+        commitSearch={undefined}
+        onSearchCommits={noop}
         onJump={noop}
       />,
     );
-    tagWith(html, 'title="Search branches', 'address-bar');
+    tagWith(
+      html,
+      'title="Search branches, remotes, tags and commits"',
+      'address-bar',
+    );
     assert.match(html, /class="address-text empty">Search…<\/span>/);
   });
 
@@ -619,6 +625,8 @@ const popup = (
       anchor={{ current: null }}
       lookup={result}
       onLookup={noop}
+      commitSearch={undefined}
+      onSearchCommits={noop}
       onJump={noop}
       onClose={noop}
       query={query}
@@ -639,6 +647,16 @@ const found = (
       commitInfo(hash, { subject: `subject ${hash.at(-1) ?? ''}` }),
     ),
     more,
+  },
+});
+
+const searched = (
+  query: string,
+): Partial<Parameters<typeof LocationsPopup>[0]> => ({
+  commitSearch: {
+    type: 'commitSearch',
+    query,
+    result: { commits: [], capped: false },
   },
 });
 
@@ -667,7 +685,10 @@ suite('Commit results', () => {
   });
 
   test('says when no commit starts with it, or that it is still looking', () => {
-    assert.match(popup('abcd', found([])), /No commit starts with abcd/);
+    assert.match(
+      popup('abcd', found([]), searched('abcd')),
+      /No commit starts with abcd/,
+    );
     assert.match(popup('abcd'), /Looking for commit abcd/);
   });
 
@@ -677,9 +698,64 @@ suite('Commit results', () => {
     assert.strictEqual(tagsWith(html, 'commit').length, 0);
   });
 
+  test('lists the commits whose author, committer or message matches after those a typed hash may be, marking the match', () => {
+    const byText = (query: string, capped = false) => ({
+      commitSearch: {
+        type: 'commitSearch' as const,
+        query,
+        result: {
+          commits: [
+            {
+              commit: commitInfo(first, { subject: 'subject 0' }),
+              fields: ['message' as const],
+            },
+            {
+              commit: commitInfo('e'.repeat(40), {
+                subject: 'Fix the abcd parser',
+                authorName: 'Abcd Author',
+              }),
+              fields: ['author' as const, 'message' as const],
+            },
+          ],
+          capped,
+        },
+      },
+    });
+    const html = popup('abcd', found([first]), byText('abcd'));
+    assert.deepStrictEqual(counts(html), [2]);
+    assert.match(html, /subject 0<\/span><\/div>/);
+    assert.match(
+      html,
+      /Fix the <mark class="match">abcd<\/mark> parser<\/span><\/div>/,
+    );
+    assert.match(html, /<mark class="match">Abcd<\/mark> Author/);
+    assert.doesNotMatch(html, /Searching commits/);
+    assert.match(
+      popup('abcd', found([first]), byText('abcd', true)),
+      /More commits match; type more to narrow it down/,
+    );
+  });
+
+  test('searches commits by text from three characters, saying so until the results come, and only then that nothing matches', () => {
+    assert.match(popup('parser'), /Searching commits…/);
+    assert.doesNotMatch(popup('parser'), /No matches/);
+    const none = popup('parser', undefined, {
+      commitSearch: {
+        type: 'commitSearch',
+        query: 'parser',
+        result: { commits: [], capped: false },
+      },
+    });
+    assert.doesNotMatch(none, /Searching commits/);
+    assert.match(none, /No matches/);
+    assert.doesNotMatch(popup('pa'), /Searching commits/);
+    assert.match(popup('pa'), /No matches/);
+  });
+
   test('offers nothing for what is no hash, or too short', () => {
-    assert.doesNotMatch(popup('abc'), /hash-suggestion|Commits/);
-    assert.doesNotMatch(popup('feature'), /hash-suggestion|Commits/);
+    assert.doesNotMatch(popup('ab'), /hash-suggestion|Commits/);
+    assert.doesNotMatch(popup('abc'), /Looking for commit|Commits/);
+    assert.doesNotMatch(popup('feature'), /Looking for commit|Commits/);
   });
 });
 
@@ -711,6 +787,8 @@ suite('Search', () => {
       anchor: { current: null },
       lookup: undefined,
       onLookup: noop,
+      commitSearch: undefined,
+      onSearchCommits: noop,
       onJump: noop,
       onClose: () => closed++,
       query: '',
@@ -776,7 +854,10 @@ suite('Search', () => {
   });
 
   test('says there are no matches once, when nothing matches', () => {
-    const html = popup('nothing like it', undefined, { repository: refs });
+    const html = popup('nothing like it', undefined, {
+      repository: refs,
+      ...searched('nothing like it'),
+    });
     assert.deepStrictEqual(counts(html), []);
     assert.strictEqual(
       html.match(/<div class="locations-empty">No matches<\/div>/g)?.length,

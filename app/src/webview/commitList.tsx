@@ -21,6 +21,7 @@ import { GraphCell, graphWidth, rowLanes } from './graph';
 import { formatDateTime } from './dates';
 import { MenuButton } from './menu';
 import { useSkeleton } from './skeleton';
+import { Highlight } from './highlight';
 import { SoloIcon } from './icons';
 
 export const commitRowHeight = 50;
@@ -553,6 +554,7 @@ export function CommitRow({
   detached,
   indent,
   onSelect,
+  highlight = '',
 }: {
   commit: CommitInfo;
   selected: string | undefined;
@@ -561,6 +563,7 @@ export function CommitRow({
   detached: boolean;
   indent: number;
   onSelect: (hash: string) => void;
+  highlight?: string;
 }) {
   const openMenu = useContext(OpenContextMenu);
   return (
@@ -573,10 +576,14 @@ export function CommitRow({
       }
     >
       <div className="commit-line">
-        <span className="subject">{commit.subject}</span>
+        <span className="subject">
+          <Highlight text={commit.subject} query={highlight} />
+        </span>
       </div>
       <div className="commit-line secondary">
-        <span className="author">{commit.authorName}</span>
+        <span className="author">
+          <Highlight text={commit.authorName} query={highlight} />
+        </span>
         <span className="date">{formatDateTime(commit.commitDate)}</span>
       </div>
       <CommitBubbles hash={commit.hash} refs={refs} detached={detached} />

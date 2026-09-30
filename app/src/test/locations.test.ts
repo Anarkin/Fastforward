@@ -4,6 +4,7 @@ import {
   buildTree,
   currentActive,
   enterTarget,
+  foundCommits,
   itemKey,
   leafIndent,
   nextActive,
@@ -80,6 +81,23 @@ suite('Locations search', () => {
       ['Remote branches', []],
       ['Tags', []],
     ]);
+  });
+
+  test('puts the commits a typed hash may be before those found by text, each once', () => {
+    const found = foundCommits(
+      [commitInfo('a1')],
+      [
+        { commit: commitInfo('a1'), fields: ['message'] },
+        { commit: commitInfo('b2'), fields: ['author', 'committer'] },
+      ],
+    );
+    assert.deepStrictEqual(
+      found.map(({ commit, by }) => [commit.hash, by]),
+      [
+        ['a1', ['hash']],
+        ['b2', ['author', 'committer']],
+      ],
+    );
   });
 
   test('lists the found commits first, then the matching refs group after group', () => {

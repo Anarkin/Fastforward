@@ -9,7 +9,9 @@ import {
 import { isHashPrefix } from '../shared/hashes';
 import type {
   Bookmark,
+  CommitField,
   CommitInfo,
+  CommitMatch,
   CommitResults,
   RefInfo,
   RefKind,
@@ -29,6 +31,7 @@ import {
 } from './bubbles';
 import { OpenContextMenu, refMenuTarget, useDismiss } from './contextMenu';
 import { CommitRow } from './commitList';
+import { Highlight } from './highlight';
 import { FolderRow, treeIndent, twistyWidth } from './tree';
 
 const groups: readonly { kind: RefKind; title: string }[] = [
@@ -86,21 +89,6 @@ function RefLabel({
   );
 }
 
-function Highlight({ text, query }: { text: string; query: string }) {
-  const start = text.toLowerCase().indexOf(query.toLowerCase());
-  if (!query || start === -1) {
-    return <>{text}</>;
-  }
-  const end = start + query.length;
-  return (
-    <>
-      {text.slice(0, start)}
-      <mark className="match">{text.slice(start, end)}</mark>
-      {text.slice(end)}
-    </>
-  );
-}
-
 export type ResultItem =
   | { readonly kind: 'commit'; readonly commit: CommitInfo }
   | { readonly kind: 'ref'; readonly ref: RefInfo };
@@ -152,7 +140,39 @@ export function nextActive(
 
 const hashLookupDelay = 150;
 
+const commitSearchDelay = 250;
+
+const minSearchLength = 3;
+
 const commitIndent = 8;
+
+type FoundBy = 'hash' | CommitField;
+
+export interface FoundCommit {
+  readonly commit: CommitInfo;
+  readonly by: readonly FoundBy[];
+}
+
+export function foundCommits(
+  byHash: readonly CommitInfo[],
+  byText: readonly CommitMatch[],
+): FoundCommit[] {
+  const hashes = new Set(byHash.map((commit) => commit.hash));
+  return [
+    ...byHash.map((commit): FoundCommit => ({ commit, by: ['hash'] })),
+    ...byText
+      .filter((match) => !hashes.has(match.commit.hash))
+      .map((match): FoundCommit => ({
+        commit: match.commit,
+        by: match.fields,
+      })),
+  ];
+}
+
+function textQuery(query: string): string | undefined {
+  const trimmed = query.trim();
+  return trimmed.length >= minSearchLength ? trimmed : undefined;
+}
 
 function hashQuery(query: string): string | undefined {
   const trimmed = query.trim().toLowerCase();
@@ -176,34 +196,45 @@ export function enterTarget(
 
 function CommitResultsSection({
   hash,
+  lookingUp,
+  searching,
   found,
+  hashMore,
+  capped,
+  query,
   active,
   refs,
   headCommit,
   onJump,
 }: {
-  hash: string;
-  found: CommitResults | undefined;
+  hash: string | undefined;
+  lookingUp: boolean;
+  searching: boolean;
+  found: readonly FoundCommit[];
+  hashMore: number;
+  capped: boolean;
+  query: string;
   active: string | undefined;
   refs: readonly RefInfo[];
   headCommit: string | undefined;
   onJump: (commit: string) => void;
 }) {
   const detached = useContext(DetachedHead);
-  if (found === undefined || found.commits.length === 0) {
-    return (
-      <div className="row hash-suggestion empty">
-        {found === undefined
-          ? `Looking for commit ${hash}…`
-          : `No commit starts with ${hash}`}
-      </div>
-    );
+  if (found.length === 0) {
+    const status = lookingUp
+      ? `Looking for commit ${hash}…`
+      : searching
+        ? 'Searching commits…'
+        : hash && `No commit starts with ${hash}`;
+    return status ? (
+      <div className="row hash-suggestion empty">{status}</div>
+    ) : null;
   }
   return (
     <section className="locations-group">
-      <GroupHeading title="Commits" count={found.commits.length + found.more} />
+      <GroupHeading title="Commits" count={found.length + hashMore} />
       <div className="locations-list">
-        {found.commits.map((commit) => (
+        {found.map(({ commit }) => (
           <CommitRow
             key={commit.hash}
             commit={commit}
@@ -213,12 +244,22 @@ function CommitResultsSection({
             detached={detached === commit.hash}
             indent={commitIndent}
             onSelect={onJump}
+            highlight={query}
           />
         ))}
-        {found.more > 0 && (
+        {(lookingUp || searching) && (
+          <div className="locations-empty">Searching commits…</div>
+        )}
+        {hashMore > 0 ? (
           <div className="locations-empty">
-            {found.more} more; type more to narrow it down
+            {hashMore} more; type more to narrow it down
           </div>
+        ) : (
+          capped && (
+            <div className="locations-empty">
+              More commits match; type more to narrow it down
+            </div>
+          )
         )}
       </div>
     </section>
@@ -257,6 +298,8 @@ export function LocationsPopup({
   anchor,
   lookup,
   onLookup,
+  commitSearch,
+  onSearchCommits,
   onJump,
   onClose,
   query,
@@ -268,6 +311,8 @@ export function LocationsPopup({
   anchor: React.RefObject<HTMLElement | null>;
   lookup: ToWebviewOf<'hashLookup'> | undefined;
   onLookup: (query: string) => void;
+  commitSearch: ToWebviewOf<'commitSearch'> | undefined;
+  onSearchCommits: (query: string) => void;
   onJump: (commit: string) => void;
   onClose: () => void;
   query: string;
@@ -281,10 +326,6 @@ export function LocationsPopup({
   const search = useMemo(() => searchRefs(refs, query), [refs, query]);
   const detached = useContext(DetachedHead);
   const pinned = pinnedRefs(bookmarks, refs, repository?.head, detached, query);
-  const nothingFound =
-    pinned.checkedOut.length === 0 &&
-    pinned.bookmarks.length === 0 &&
-    search.every((group) => group.refs.length === 0);
   const byKind = useMemo(
     () =>
       new Map(
@@ -304,9 +345,36 @@ export function LocationsPopup({
     return () => clearTimeout(timer);
   }, [hash, onLookup]);
   const found = hash && lookup?.query === hash ? lookup.result : undefined;
+  const text = textQuery(query);
+  useEffect(() => {
+    if (!text) {
+      return undefined;
+    }
+    const timer = setTimeout(() => onSearchCommits(text), commitSearchDelay);
+    return () => clearTimeout(timer);
+  }, [text, onSearchCommits]);
+  const textFound =
+    text && commitSearch?.query === text ? commitSearch.result : undefined;
+  const commits = useMemo(
+    () => foundCommits(found?.commits ?? [], textFound?.commits ?? []),
+    [found, textFound],
+  );
+  const lookingUp = hash !== undefined && found === undefined;
+  const searching = text !== undefined && textFound === undefined;
+  const nothingFound =
+    commits.length === 0 &&
+    !lookingUp &&
+    !searching &&
+    pinned.checkedOut.length === 0 &&
+    pinned.bookmarks.length === 0 &&
+    search.every((group) => group.refs.length === 0);
   const items = useMemo(
-    () => resultItems(found?.commits ?? [], search),
-    [found, search],
+    () =>
+      resultItems(
+        commits.map(({ commit }) => commit),
+        search,
+      ),
+    [commits, search],
   );
   const [highlight, setHighlight] = useState<Highlighted>();
   const active = currentActive(items, query, highlight);
@@ -364,10 +432,15 @@ export function LocationsPopup({
         />
       </div>
       <div className="locations-groups">
-        {hash && (
+        {(hash || text) && (
           <CommitResultsSection
             hash={hash}
-            found={found}
+            lookingUp={lookingUp}
+            searching={searching}
+            found={commits}
+            hashMore={found?.more ?? 0}
+            capped={textFound?.capped ?? false}
+            query={query.trim()}
             active={
               activeItem?.kind === 'commit' ? activeItem.commit.hash : undefined
             }

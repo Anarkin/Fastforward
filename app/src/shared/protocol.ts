@@ -14,6 +14,18 @@ export interface CommitResults {
   readonly more: number;
 }
 
+export type CommitField = 'author' | 'committer' | 'message';
+
+export interface CommitMatch {
+  readonly commit: CommitInfo;
+  readonly fields: readonly CommitField[];
+}
+
+export interface CommitSearch {
+  readonly commits: readonly CommitMatch[];
+  readonly capped: boolean;
+}
+
 export interface NavigationEntry {
   readonly hash: string;
   readonly subject: string | undefined;
@@ -153,6 +165,7 @@ export type TabMessage =
   | { readonly type: 'checkout'; readonly target: CheckoutTarget }
   | { readonly type: 'fetch' }
   | { readonly type: 'lookupHash'; readonly query: string }
+  | { readonly type: 'searchCommits'; readonly query: string }
   | {
       readonly type: 'navigate';
       readonly direction: Direction;
@@ -198,6 +211,11 @@ export type ToWebview =
       readonly type: 'hashLookup';
       readonly query: string;
       readonly result: CommitResults;
+    }
+  | {
+      readonly type: 'commitSearch';
+      readonly query: string;
+      readonly result: CommitSearch;
     }
   | {
       readonly type: 'navigation';
