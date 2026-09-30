@@ -529,18 +529,6 @@ body.resizing {
   outline-offset: -1px;
 }
 
-.list-spacer {
-  position: relative;
-  width: 100%;
-}
-
-.list-row {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-}
-
 .bubble-line {
   display: flex;
   flex-wrap: wrap;
@@ -556,7 +544,7 @@ body.resizing {
   text-overflow: ellipsis;
 }
 
-.list-row > .commit {
+.virtual-row > .commit {
   box-sizing: border-box;
   height: 100%;
   overflow: hidden;

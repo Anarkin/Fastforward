@@ -1,7 +1,7 @@
 import { Fragment } from 'react';
 import { shortHash } from '../shared/hashes';
 import type { CommitInfo, RefInfo } from '../shared/protocol';
-import { HeadBubble, RefBubble } from './bubbles';
+import { commitBubbles } from './bubbles';
 import { formatDateTime } from './dates';
 
 export type CardCommit = Pick<
@@ -46,15 +46,7 @@ export function CommitDetails({ commit }: { commit: CardCommit }) {
   const sameCommitter =
     commit.committerName === commit.authorName &&
     commit.committerEmail === commit.authorEmail;
-  const bubbles = [
-    ...(commit.detachedHead
-      ? [{ key: 'HEAD', element: <HeadBubble hash={commit.hash} /> }]
-      : []),
-    ...commit.refs.map((ref) => ({
-      key: `${ref.kind}:${ref.name}`,
-      element: <RefBubble info={ref} />,
-    })),
-  ];
+  const bubbles = commitBubbles(commit.hash, commit.refs, commit.detachedHead);
   const authored = formatDateTime(commit.authorDate);
   const committed = formatDateTime(commit.commitDate);
   return (

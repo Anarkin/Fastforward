@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { workingTreeHash } from '../shared/protocol';
 import { CommitHistory } from '../webview/commitHistory';
@@ -11,6 +12,7 @@ import {
   fixedRowHeight,
   listTop,
   rowKeyOf,
+  WorkingTreeRow,
 } from '../webview/commitList';
 import { commitInfo } from './fixtures';
 
@@ -65,6 +67,15 @@ suite('Commit list rows', () => {
     );
   });
 
+  test('marks a detached HEAD on a commit without refs', () => {
+    assert.match(
+      renderToStaticMarkup(
+        <CommitBubbles hash={'a'.repeat(40)} refs={[]} detached />,
+      ),
+      /^<div class="bubble-line"><span class="badge head[^>]*>HEAD aaaaaaa<\/span><\/div>$/,
+    );
+  });
+
   test('draws no bubble line for a commit without refs', () => {
     assert.strictEqual(
       renderToStaticMarkup(
@@ -72,6 +83,42 @@ suite('Commit list rows', () => {
       ),
       '',
     );
+  });
+});
+
+const noop = () => {};
+
+function clickedHash(count: number): string | undefined {
+  let selected: string | undefined = 'none';
+  const row = WorkingTreeRow({
+    count,
+    selected: false,
+    indent: 26,
+    onSelect: (hash) => (selected = hash),
+  });
+  assert.ok(isValidElement<{ onClick: () => void }>(row));
+  row.props.onClick();
+  return selected;
+}
+
+suite('Commit list working tree row', () => {
+  test('shows a clean working tree, which clicking does not select', () => {
+    const html = renderToStaticMarkup(
+      <WorkingTreeRow count={0} selected={false} indent={26} onSelect={noop} />,
+    );
+    assert.match(html, /^<div [^>]*class="commit working-tree empty /);
+    assert.match(html, />No changes</);
+    assert.match(html, />The working tree is clean</);
+    assert.strictEqual(clickedHash(0), undefined);
+  });
+
+  test('shows how many files changed, and clicking selects them', () => {
+    const html = renderToStaticMarkup(
+      <WorkingTreeRow count={3} selected={false} indent={26} onSelect={noop} />,
+    );
+    assert.doesNotMatch(html, /empty/);
+    assert.match(html, /<span class="count">3<\/span>/);
+    assert.strictEqual(clickedHash(3), workingTreeHash);
   });
 });
 
@@ -122,37 +169,43 @@ suite('Commit list arrow keys', () => {
   test('step from the selected row, and stop at either end', () => {
     const history = new CommitHistory(2);
     history.add(0, [commitInfo('a'), commitInfo('b')]);
-    assert.strictEqual(arrowKeyPosition(history, 'a', true, 1), 1);
-    assert.strictEqual(arrowKeyPosition(history, 'a', true, -1), -1);
-    assert.strictEqual(arrowKeyPosition(history, 'b', true, 1), undefined);
+    assert.strictEqual(arrowKeyPosition(history, 'a', 1, 1), 1);
+    assert.strictEqual(arrowKeyPosition(history, 'a', 1, -1), -1);
+    assert.strictEqual(arrowKeyPosition(history, 'b', 1, 1), undefined);
     assert.strictEqual(
-      arrowKeyPosition(history, workingTreeHash, true, -1),
+      arrowKeyPosition(history, workingTreeHash, 1, -1),
       undefined,
     );
-    assert.strictEqual(arrowKeyPosition(history, 'a', false, -1), undefined);
-    assert.strictEqual(arrowKeyPosition(history, undefined, true, 1), -1);
-    assert.strictEqual(arrowKeyPosition(history, undefined, false, 1), 0);
+    assert.strictEqual(
+      arrowKeyPosition(history, 'a', undefined, -1),
+      undefined,
+    );
+    assert.strictEqual(arrowKeyPosition(history, undefined, 1, 1), -1);
+    assert.strictEqual(arrowKeyPosition(history, undefined, undefined, 1), 0);
+    assert.strictEqual(arrowKeyPosition(history, workingTreeHash, 1, 1), 0);
+    assert.strictEqual(arrowKeyPosition(history, undefined, 0, 1), 0);
+    assert.strictEqual(arrowKeyPosition(history, 'a', 0, -1), undefined);
   });
 
   test('step from where the extension said the selected commit is, before it loads', () => {
     const history = new CommitHistory(1000, [], undefined, 1, 5);
     history.add(900, [commitInfo('x')]);
-    assert.strictEqual(arrowKeyPosition(history, 'c', true, 1), 6);
-    assert.strictEqual(arrowKeyPosition(history, 'c', true, -1), 4);
+    assert.strictEqual(arrowKeyPosition(history, 'c', 1, 1), 6);
+    assert.strictEqual(arrowKeyPosition(history, 'c', 1, -1), 4);
   });
 
   test("don't start over from the top without knowing where the selected commit is", () => {
     const history = new CommitHistory(1000);
     history.add(900, [commitInfo('x')]);
-    assert.strictEqual(arrowKeyPosition(history, 'c', true, 1), undefined);
+    assert.strictEqual(arrowKeyPosition(history, 'c', 1, 1), undefined);
     const moved = new CommitHistory(1000, [], undefined, 1, 0);
     moved.add(0, [commitInfo('d')]);
-    assert.strictEqual(arrowKeyPosition(moved, 'c', true, 1), undefined);
+    assert.strictEqual(arrowKeyPosition(moved, 'c', 1, 1), undefined);
   });
 
   test('step from a revealed commit before its page loads', () => {
     const history = new CommitHistory(1000);
     history.locate('c', 500);
-    assert.strictEqual(arrowKeyPosition(history, 'c', true, 1), 501);
+    assert.strictEqual(arrowKeyPosition(history, 'c', 1, 1), 501);
   });
 });

@@ -1,4 +1,5 @@
 import {
+  Fragment,
   useCallback,
   useContext,
   useEffect,
@@ -7,7 +8,7 @@ import {
 } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { workingTreeHash, type RefInfo } from '../shared/protocol';
-import { DetachedHead, HeadBubble, RefBubble } from './bubbles';
+import { commitBubbles, DetachedHead } from './bubbles';
 import { Column } from './column';
 import { CommitHistory } from './commitHistory';
 import { OpenContextMenu } from './contextMenu';
@@ -82,7 +83,7 @@ export function listTop(
 export function arrowKeyPosition(
   history: CommitHistory,
   selected: string | undefined,
-  workingTree: boolean,
+  workingTree: number | undefined,
   step: number,
 ): number | undefined {
   const top = workingTree ? -1 : 0;
@@ -114,15 +115,50 @@ export function CommitBubbles({
   refs: readonly RefInfo[];
   detached: boolean;
 }) {
-  if (!detached && refs.length === 0) {
+  const bubbles = commitBubbles(hash, refs, detached);
+  if (bubbles.length === 0) {
     return null;
   }
   return (
     <div className="bubble-line">
-      {detached && <HeadBubble hash={hash} />}
-      {refs.map((ref) => (
-        <RefBubble key={`${ref.kind}:${ref.name}`} info={ref} />
+      {bubbles.map((bubble) => (
+        <Fragment key={bubble.key}>{bubble.element}</Fragment>
       ))}
+    </div>
+  );
+}
+
+export function WorkingTreeRow({
+  count,
+  selected,
+  indent,
+  onSelect,
+}: {
+  count: number;
+  selected: boolean;
+  indent: number;
+  onSelect: (hash: string | undefined) => void;
+}) {
+  const dirty = count > 0;
+  return (
+    <div
+      style={{ paddingLeft: indent }}
+      className={`commit working-tree ${dirty ? '' : 'empty'} ${selected ? 'selected' : ''}`}
+      onClick={() => onSelect(dirty ? workingTreeHash : undefined)}
+    >
+      <div className="commit-line">
+        <span className="subject">
+          {dirty ? 'Uncommitted changes' : 'No changes'}
+        </span>
+        {dirty && <span className="count">{count}</span>}
+      </div>
+      <div className="commit-line secondary">
+        <span className="author">
+          {dirty
+            ? 'Staged, unstaged and untracked files'
+            : 'The working tree is clean'}
+        </span>
+      </div>
     </div>
   );
 }
@@ -151,7 +187,7 @@ export function Commits({
   onScrolled: (hash: string, offset: number) => void;
   onLoad: (start: number, generation: number) => void;
   workingTree: number | undefined;
-  refsByCommit: Map<string, RefInfo[]>;
+  refsByCommit: ReadonlyMap<string, readonly RefInfo[]>;
   selected: string | undefined;
   onSelect: (hash: string | undefined, replace?: boolean) => void;
   onToggleMerge: (hash: string) => void;
@@ -273,7 +309,7 @@ export function Commits({
       return;
     }
     event.preventDefault();
-    const position = arrowKeyPosition(history, selected, !!workingTree, step);
+    const position = arrowKeyPosition(history, selected, workingTree, step);
     if (position === undefined) {
       return;
     }
@@ -316,27 +352,12 @@ export function Commits({
   const renderRow = (index: number) => {
     if (hasWorkingTree && index === 0) {
       return (
-        <div
-          style={{ paddingLeft: indent(index) }}
-          className={`commit working-tree ${workingTree === 0 ? 'empty' : ''} ${selected === workingTreeHash ? 'selected' : ''}`}
-          onClick={() =>
-            onSelect(workingTree > 0 ? workingTreeHash : undefined)
-          }
-        >
-          <div className="commit-line">
-            <span className="subject">
-              {workingTree > 0 ? 'Uncommitted changes' : 'No changes'}
-            </span>
-            {workingTree > 0 && <span className="count">{workingTree}</span>}
-          </div>
-          <div className="commit-line secondary">
-            <span className="author">
-              {workingTree > 0
-                ? 'Staged, unstaged and untracked files'
-                : 'The working tree is clean'}
-            </span>
-          </div>
-        </div>
+        <WorkingTreeRow
+          count={workingTree}
+          selected={selected === workingTreeHash}
+          indent={indent(index)}
+          onSelect={onSelect}
+        />
       );
     }
     const position = index - offset;
@@ -418,7 +439,7 @@ export function Commits({
         data-version={version}
       >
         <div
-          className="list-spacer"
+          className="virtual-spacer"
           style={{ height: virtualizer.getTotalSize() }}
         >
           {rows.map((row) => {
@@ -426,7 +447,7 @@ export function Commits({
             return (
               <div
                 key={row.key}
-                className="list-row"
+                className="virtual-row"
                 data-index={row.index}
                 ref={
                   height === undefined ? virtualizer.measureElement : undefined
