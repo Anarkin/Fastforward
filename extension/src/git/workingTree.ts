@@ -1,7 +1,7 @@
 import { createReadStream } from 'node:fs';
 import { lstat } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { FileChange } from '../shared/protocol';
+import { collapseThreshold, type FileChange } from '../shared/protocol';
 import {
   changesArgs,
   diffArgs,
@@ -29,7 +29,7 @@ async function addedLines(file: string): Promise<number> {
     if (stats.isSymbolicLink()) {
       return 1;
     }
-    if (!stats.isFile() || stats.size > maxFileSize) {
+    if (!stats.isFile()) {
       return 0;
     }
     for await (const chunk of createReadStream(file)) {
@@ -38,6 +38,9 @@ async function addedLines(file: string): Promise<number> {
       }
       if (first && isBinary(chunk)) {
         return 0;
+      }
+      if (stats.size > maxFileSize) {
+        return collapseThreshold + 1;
       }
       first = false;
       for (

@@ -6,6 +6,7 @@ import { showPatch } from '../git/diff';
 import { listTree, readFile } from '../git/files';
 import { headCommit, listHistory } from '../git/history';
 import { workingTreeFiles, workingTreePatch } from '../git/workingTree';
+import { isLargeChange } from '../shared/protocol';
 import {
   removeFolder,
   tempFolder,
@@ -146,12 +147,11 @@ suite('Uncommitted changes', function () {
     }
   });
 
-  test('counts a last line without a newline, and no lines of binary, empty or huge untracked files', async () => {
+  test('counts a last line without a newline, and no lines of binary or empty untracked files', async () => {
     const files: Record<string, string | Buffer> = {
       'partial.txt': 'a\nb',
       'binary.dat': Buffer.from([0, 1, 2]),
       'empty.txt': '',
-      'huge.txt': 'x\n'.repeat(1024 * 1024 + 1),
     };
     for (const [file, content] of Object.entries(files)) {
       fs.writeFileSync(path.join(cwd, file), content);
@@ -162,8 +162,30 @@ suite('Uncommitted changes', function () {
         Object.keys(files).map(
           (file) => changes.find((change) => change.path === file)?.insertions,
         ),
-        [2, 0, 0, 0],
+        [2, 0, 0],
       );
+    } finally {
+      for (const file of Object.keys(files)) {
+        fs.rmSync(path.join(cwd, file));
+      }
+    }
+  });
+
+  test('counts a huge untracked text file as a large change, and a huge binary one as no lines', async () => {
+    const files: Record<string, string | Buffer> = {
+      'huge.txt': 'x\n'.repeat(1024 * 1024 + 1),
+      'huge.dat': Buffer.alloc(3 * 1024 * 1024),
+    };
+    for (const [file, content] of Object.entries(files)) {
+      fs.writeFileSync(path.join(cwd, file), content);
+    }
+    try {
+      const { files: changes } = await workingTreeFiles(gitPath, cwd);
+      const [text, binary] = ['huge.txt', 'huge.dat'].map((file) =>
+        changes.find((change) => change.path === file),
+      );
+      assert.ok(text && isLargeChange(text));
+      assert.strictEqual(binary?.insertions, 0);
     } finally {
       for (const file of Object.keys(files)) {
         fs.rmSync(path.join(cwd, file));
