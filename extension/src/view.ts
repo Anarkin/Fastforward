@@ -6,13 +6,7 @@ import { showFiles, showPatch, type PatchScope } from './git/diff';
 import { gitErrorText } from './git/errorText';
 import { listTree, readFile } from './git/files';
 import type { API, Repository } from './git/git';
-import {
-  commitOf,
-  findCommit,
-  headCommit,
-  listHistory,
-  logCommits,
-} from './git/history';
+import { findCommit, headCommit, listHistory, logCommits } from './git/history';
 import { getGitApi, listRefs, pickRepository } from './git/repository';
 import {
   workingTreeFiles,
@@ -23,6 +17,7 @@ import { step, visit } from './history/navigation';
 import { checkout, fetchAll, type RepositoryAt } from './operations';
 import { checkedOutBranch, defaultBookmarks, fingerprint } from './refs';
 import { pickRepositories } from './repositoryPicker';
+import { isFullHash } from './shared/hashes';
 import {
   commitPageSize,
   isLargeChange,
@@ -371,15 +366,24 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         }
         break;
       case 'jump': {
-        const hash = /^[0-9a-f]{40}$/.test(message.hash)
-          ? message.hash
-          : await commitOf(context.gitPath, context.root, message.hash);
-        if (hash) {
-          await this.showCommit(context, hash);
+        if (isFullHash(message.hash)) {
+          await this.showCommit(context, message.hash.toLowerCase());
+          break;
+        }
+        const found = await findCommit(
+          context.gitPath,
+          context.root,
+          message.hash,
+        );
+        if (found.kind === 'found') {
+          await this.showCommit(context, found.hash);
         } else {
           context.post({
             type: 'error',
-            message: `No commit ${message.hash}`,
+            message:
+              found.kind === 'ambiguous'
+                ? `${found.count} commits start with ${message.hash}`
+                : `No commit ${message.hash}`,
           });
         }
         break;
@@ -404,13 +408,13 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         await this.sendCommit(context);
         break;
       case 'selectFile':
-        if (this.known(context, message.hash)) {
+        if (this.shown(context, message.hash)) {
           context.tab.path = message.path;
           await this.sendDiff(context, message.hash);
         }
         break;
       case 'loadFileDiff':
-        if (this.known(context, message.hash)) {
+        if (this.shown(context, message.hash)) {
           await this.sendFileDiff(
             context,
             message.hash,
@@ -430,6 +434,10 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     }
     context.post({ type: 'error', message: `${hash} is not in the history` });
     return false;
+  }
+
+  private shown(context: Context, hash: string): boolean {
+    return this.known(context, hash) && hash === context.tab.hash;
   }
 
   private async addWorkspaceTab(git: API): Promise<void> {

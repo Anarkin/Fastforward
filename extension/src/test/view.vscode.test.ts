@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
@@ -595,6 +596,39 @@ suite('View', function () {
       assert.match(page.last('error')?.message ?? '', /No commit abcdef0/);
     });
 
+    test('says how many commits a short hash it jumps to could be', async () => {
+      const [tree] = await repository.resolve('HEAD^{tree}');
+      const byPrefix = new Map<string, string>();
+      let prefix: string | undefined;
+      for (let n = 0; prefix === undefined; n++) {
+        const content = `tree ${tree}\nauthor T <t@example.com> 0 +0000\ncommitter T <t@example.com> 0 +0000\n\nprobe ${n}\n`;
+        const start = createHash('sha1')
+          .update(`commit ${Buffer.byteLength(content)}\0${content}`)
+          .digest('hex')
+          .slice(0, 4);
+        const earlier = byPrefix.get(start);
+        if (earlier === undefined) {
+          byPrefix.set(start, content);
+          continue;
+        }
+        prefix = start;
+        for (const [index, probe] of [earlier, content].entries()) {
+          const file = path.join(folder, `probe-${index}`);
+          fs.writeFileSync(file, probe);
+          await repository.git('hash-object', '-t', 'commit', '-w', file);
+        }
+      }
+      await connection.receive({
+        type: 'jump',
+        root: repository.root,
+        hash: prefix,
+      });
+      assert.match(
+        page.last('error')?.message ?? '',
+        /^\d+ commits start with /,
+      );
+    });
+
     test('goes back and forward through the commits shown', async () => {
       await connection.receive({
         type: 'selectCommit',
@@ -929,6 +963,29 @@ suite('View', function () {
         assert.match(page.last('error')?.message ?? '', /not in the history/);
       }
       assert.ok(!fs.existsSync(written));
+    });
+
+    test('ignores a file picked on a commit no longer selected', async () => {
+      await connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: fixture.a,
+      });
+      await connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: workingTreeHash,
+      });
+      await connection.receive({
+        type: 'selectFile',
+        root: repository.root,
+        hash: fixture.a,
+        path: 'a',
+      });
+      page.clear();
+      await connection.refresh();
+      assert.strictEqual(page.last('fileContent'), undefined);
+      assert.strictEqual(page.last('diff')?.path, undefined);
     });
 
     test('shows a selected uncommitted file deleted since, without failing the refresh', async () => {
