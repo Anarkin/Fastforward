@@ -12,8 +12,6 @@ body {
   --toolbar-background: var(--color-background);
   --gutter: var(--color-tab-bar-background);
   --gutter-width: 4px;
-  --scrollbar-size: 25px;
-  --minimap-width: 40px;
   --title-bar-inset: 16px;
   --card-radius: 6px;
   --shade-background: color-mix(

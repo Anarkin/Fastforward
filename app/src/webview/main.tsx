@@ -3,7 +3,6 @@ import type { ToHost, ToWebview } from '../shared/protocol';
 import { App } from './App';
 import { errorText } from './errors';
 import { installOverlayScrollbars } from './overlayScrollbars';
-import './theme.css';
 import './style.css';
 
 declare global {

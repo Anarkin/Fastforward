@@ -8,6 +8,20 @@ export interface Settings {
   readonly ignoreWhitespace: boolean;
   readonly solo: boolean;
   readonly columnWidths: readonly number[];
+  readonly fonts: {
+    readonly family: string;
+    readonly size: string;
+    readonly monospaceFamily: string;
+    readonly monospaceSize: string;
+  };
+  readonly sizes: {
+    readonly scrollbar: string;
+    readonly minimap: string;
+  };
+  readonly colors: {
+    readonly light: Readonly<Record<string, string>>;
+    readonly dark: Readonly<Record<string, string>>;
+  };
 }
 
 type Json = Record<string, unknown>;
