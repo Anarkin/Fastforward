@@ -270,9 +270,23 @@ suite('Style', () => {
     );
   });
 
+  test('draws the button that shows a large diff, and the edge of a notice, in the solid focus color', () => {
+    const button = declarationsOf('.large-diff button');
+    assert.ok(button.includes('color: var(--color-focus-foreground);'));
+    assert.match(
+      button,
+      /background:\s*linear-gradient\(var\(--color-focus\), var\(--color-focus\)\),\s*var\(--color-panel-background\);/,
+    );
+    assert.ok(
+      declarationsOf('.notice').includes(
+        'border-left: 3px solid var(--color-focus);',
+      ),
+    );
+  });
+
   test('fills the checked-out bubble with the solid focus color, even under the pointer, where it brightens instead', () => {
     const checkedOut = declarationsOf('.badge.checked-out');
-    assert.ok(checkedOut.includes('color: var(--color-accent-foreground);'));
+    assert.ok(checkedOut.includes('color: var(--color-focus-foreground);'));
     assert.match(
       checkedOut,
       /background:\s*linear-gradient\(var\(--color-focus\), var\(--color-focus\)\),\s*var\(--color-panel-background\);/,
@@ -305,7 +319,7 @@ suite('Style', () => {
     assert.match(resizer, /background-clip: content-box;/);
     assert.match(
       declarationsOf('.resizer:hover'),
-      /background-color: var\(--color-accent\);/,
+      /background-color: var\(--color-focus\);/,
     );
   });
 

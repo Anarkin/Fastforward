@@ -24,9 +24,7 @@
       "panel-background": "#ffffff",
       "border": "#f0f1f2",
       "focus": "#0069cc",
-
-      "accent": "#0069cc",
-      "accent-foreground": "#ffffff",
+      "focus-foreground": "#ffffff",
 
       "scrollbar": "#646464",
 
@@ -50,9 +48,7 @@
       "panel-background": "#121314",
       "border": "#2a2b2c",
       "focus": "#3994bcb3",
-
-      "accent": "#297aa0",
-      "accent-foreground": "#ffffff",
+      "focus-foreground": "#ffffff",
 
       "scrollbar": "#7a7b7c",
 

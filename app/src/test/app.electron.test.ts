@@ -62,15 +62,12 @@ suite('App', function () {
 
   test('colors the page from the settings', async () => {
     const { colors } = defaultSettings();
-    const accent = await page.evaluate(() =>
+    const focus = await page.evaluate(() =>
       getComputedStyle(document.documentElement)
-        .getPropertyValue('--color-accent')
+        .getPropertyValue('--color-focus')
         .trim(),
     );
-    assert.ok(
-      [colors.light.accent, colors.dark.accent].includes(accent),
-      accent,
-    );
+    assert.ok([colors.light.focus, colors.dark.focus].includes(focus), focus);
   });
 
   test('lists the history and shows a commit entire, with its change', async () => {
@@ -127,26 +124,26 @@ suite('App', function () {
 
   test('applies settings edited by hand while it runs, and says what is wrong with them', async () => {
     const file = path.join(profile, 'settings.user.json');
-    const accent = () =>
+    const focus = () =>
       page.evaluate(() =>
         getComputedStyle(document.documentElement)
-          .getPropertyValue('--color-accent')
+          .getPropertyValue('--color-focus')
           .trim(),
       );
     fs.writeFileSync(
       file,
       JSON.stringify({
         showAllFiles: true,
-        colors: { light: { accent: '#123456' }, dark: { accent: '#123456' } },
+        colors: { light: { focus: '#123456' }, dark: { focus: '#123456' } },
       }),
     );
     await page.waitForFunction(
       () =>
         getComputedStyle(document.documentElement)
-          .getPropertyValue('--color-accent')
+          .getPropertyValue('--color-focus')
           .trim() === '#123456',
     );
-    assert.strictEqual(await accent(), '#123456');
+    assert.strictEqual(await focus(), '#123456');
     fs.writeFileSync(file, '{ "showAllFiles": tru');
     await page
       .locator('.notice.error', { hasText: 'not valid JSON' })
@@ -155,7 +152,7 @@ suite('App', function () {
     await page.waitForFunction(
       () =>
         getComputedStyle(document.documentElement)
-          .getPropertyValue('--color-accent')
+          .getPropertyValue('--color-focus')
           .trim() !== '#123456',
     );
   });
