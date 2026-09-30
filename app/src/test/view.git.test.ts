@@ -1173,18 +1173,15 @@ suite('View', function () {
     });
 
     test('saves the layout and sends it when the page loads', async () => {
-      assert.strictEqual(page.last('layout')?.changesView, 'tree');
       await connection.receive({
         type: 'setColumnWidths',
         widths: [400, 250],
       });
       await connection.receive({ type: 'setFilesMode', mode: 'files' });
-      await connection.receive({ type: 'setChangesView', view: 'list' });
       await connection.receive({ type: 'ready' });
       const layout = page.last('layout');
       assert.deepStrictEqual(layout?.columnWidths, [400, 250]);
       assert.strictEqual(layout.filesMode, 'files');
-      assert.strictEqual(layout.changesView, 'list');
     });
 
     test('keeps a folder spelled two ways as one tab', async function () {

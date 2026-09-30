@@ -25,7 +25,6 @@ import { holdsDismissLayer, nextPeekMode } from '../webview/shortcutsHelp';
 import { changeClass, changeTitle } from '../webview/fileStatus';
 import { EntireFileButtons } from '../webview/diffColumn';
 import { Files } from '../webview/filesColumn';
-import { FileTree } from '../webview/fileTree';
 import { SkeletonRows } from '../webview/skeleton';
 import { TabBar } from '../webview/tabBar';
 import { GraphCell, graphWidth, rowLanes } from '../webview/graph';
@@ -85,13 +84,10 @@ function changesRows(
     column = Files({
       mode: 'changes',
       onMode: noop,
-      changesView: 'list',
-      onChangesView: noop,
       closedFolders: new Set(),
       onToggleClosedFolder: noop,
       files,
       loading: false,
-      treeLoading: false,
       tree: undefined,
       openFolders: new Set(),
       onToggleFolder: noop,
@@ -163,20 +159,18 @@ suite('Entire file buttons', () => {
 });
 
 suite('Files column', () => {
-  test('switches the mode in its title', () => {
+  test('titles itself Files, showing all files only while its toggle is on', () => {
     for (const mode of ['changes', 'files'] as const) {
+      const picked: string[] = [];
       let column: React.ReactNode;
       function Probe() {
         column = Files({
           mode,
-          onMode: noop,
-          changesView: 'list',
-          onChangesView: noop,
+          onMode: (next) => picked.push(next),
           closedFolders: new Set(),
           onToggleClosedFolder: noop,
           files: [],
           loading: false,
-          treeLoading: false,
           tree: undefined,
           openFolders: new Set(),
           onToggleFolder: noop,
@@ -186,22 +180,28 @@ suite('Files column', () => {
         return null;
       }
       renderToStaticMarkup(<Probe />);
-      assert.ok(isValidElement<{ title: React.ReactElement }>(column));
-      const html = renderToStaticMarkup(column.props.title);
-      assert.match(html, /^<div class="switch" role="tablist">/);
-      const active = tagWith(
+      assert.ok(
+        isValidElement<{ title: string; start: React.ReactElement }>(column),
+      );
+      assert.strictEqual(column.props.title, 'Files');
+      const html = renderToStaticMarkup(column.props.start);
+      const toggle = tagWith(
         html,
-        'aria-selected="true"',
-        'switch-option',
-        'active',
+        'title="Show All Files"',
+        'nav-button',
+        'toggle',
+      );
+      assert.strictEqual(
+        toggle.includes('aria-pressed="true"'),
+        mode === 'files',
       );
       assert.ok(
-        html
-          .slice(html.indexOf(active))
-          .startsWith(
-            `${active}${mode === 'changes' ? 'Changes' : 'All Files'}`,
-          ),
+        isValidElement<{
+          children: React.ReactElement<{ onClick: () => void }>;
+        }>(column.props.start),
       );
+      column.props.start.props.children.props.onClick();
+      assert.deepStrictEqual(picked, [mode === 'files' ? 'changes' : 'files']);
     }
   });
 
@@ -302,30 +302,6 @@ suite('File rows', () => {
     tagWith(html, 'title="src/a.ts"', 'row', 'tree-row', 'file');
     tagWith(html, '', 'path', 'unchanged');
   });
-
-  test('names a folder of the file tree by its full path, dimmed unless a change is in it', () => {
-    const element = renderedBy(FileTree, {
-      paths: ['src/lib/a.ts', 'docs/b.md'],
-      changes: new Map([['src/lib/a.ts', change('src/lib/a.ts')]]),
-      selected: undefined,
-      expanded: new Set(['src']),
-      onToggle: noop,
-      onSelect: noop,
-    });
-    assert.ok(isValidElement<{ rows: React.ReactElement[] }>(element));
-    const html = renderToStaticMarkup(<>{element.props.rows}</>);
-    for (const title of ['src', 'src/lib']) {
-      const row = tagWith(
-        html,
-        `title="${title}"`,
-        'row',
-        'tree-row',
-        'folder',
-      );
-      assert.ok(!classesOf(row).has('dimmed'), title);
-    }
-    tagWith(html, 'title="docs"', 'row', 'tree-row', 'folder', 'dimmed');
-  });
 });
 
 suite('Changes tree rows', () => {
@@ -335,16 +311,50 @@ suite('Changes tree rows', () => {
       <>
         {changesTreeElements({
           rows: changesTreeRows(files, new Set()),
+          showsAll: false,
           onToggle: noop,
           selected: 'src/b.ts',
           onSelect: noop,
         })}
       </>,
     );
-    tagWith(html, 'title="src"', 'row', 'tree-row', 'folder', 'counted');
+    tagWith(html, 'title="src"', 'row', 'tree-row', 'folder', 'dimmed');
     tagWith(html, 'title="Modified: src/b.ts"', 'row', 'file', 'selected');
     const a = tagWith(html, 'title="Modified: src/a.ts"', 'row', 'file');
     assert.ok(!classesOf(a).has('selected'));
+  });
+
+  test('showing all files, dims the folders and files without changes, and toggles each kind of folder its own way', () => {
+    const toggled: string[] = [];
+    const elements = changesTreeElements({
+      rows: changesTreeRows(
+        [change('src/lib/a.ts')],
+        new Set(),
+        ['src/lib/a.ts', 'src/b.ts', 'docs/c.md'],
+        new Set(['docs']),
+      ),
+      showsAll: true,
+      onToggle: (folder, changed) => toggled.push(`${folder} ${changed}`),
+      selected: undefined,
+      onSelect: noop,
+    });
+    const html = renderToStaticMarkup(<>{elements}</>);
+    for (const title of ['src', 'src/lib']) {
+      const row = tagWith(html, `title="${title}"`, 'row', 'folder');
+      assert.ok(!classesOf(row).has('dimmed'), title);
+    }
+    tagWith(html, 'title="docs"', 'row', 'folder', 'dimmed');
+    assert.strictEqual(tagsWith(html, 'path', 'unchanged').length, 2);
+    for (const element of elements) {
+      if (
+        isValidElement<{ onToggle?: (folder: string) => void; path: string }>(
+          element,
+        )
+      ) {
+        element.props.onToggle?.(element.props.path);
+      }
+    }
+    assert.deepStrictEqual(toggled, ['docs false', 'src true', 'src/lib true']);
   });
 });
 

@@ -25,18 +25,14 @@ export function isLargeChange(file: {
   return file.insertions + file.deletions > collapseThreshold;
 }
 
-export type ChangesView = 'list' | 'tree';
-
 export const defaultLayout: {
   readonly collapseMerges: boolean;
   readonly entireFilePinned: boolean;
   readonly filesMode: FilesMode;
-  readonly changesView: ChangesView;
 } = {
   collapseMerges: true,
   entireFilePinned: false,
   filesMode: 'changes',
-  changesView: 'tree',
 };
 
 export const commitPageSize = 100;
@@ -137,7 +133,6 @@ export type ToHost =
   | { readonly type: 'setCollapseMerges'; readonly collapse: boolean }
   | { readonly type: 'pinEntireFile'; readonly pinned: boolean }
   | { readonly type: 'setFilesMode'; readonly mode: FilesMode }
-  | { readonly type: 'setChangesView'; readonly view: ChangesView }
   | {
       readonly type: 'log';
       readonly level: 'info' | 'error';
@@ -196,7 +191,6 @@ export type ToWebview =
       readonly collapseMerges: boolean;
       readonly entireFilePinned: boolean;
       readonly filesMode: FilesMode;
-      readonly changesView: ChangesView;
     }
   | { readonly type: 'bookmarks'; readonly bookmarks: readonly Bookmark[] }
   | { readonly type: 'solo'; readonly solo: boolean }

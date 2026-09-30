@@ -3,7 +3,6 @@ import * as path from 'node:path';
 import {
   defaultLayout,
   type Bookmark,
-  type ChangesView,
   type FilesMode,
   type ToWebviewOf,
 } from './shared/protocol';
@@ -17,7 +16,6 @@ export const collapseMergesKey = 'collapseMerges';
 export const entireFilePinnedKey = 'entireFilePinned';
 export const soloKey = 'soloRepositories';
 const filesModeKey = 'filesMode';
-const changesViewKey = 'changesView';
 export const bookmarksKey = 'vips';
 
 export interface Store {
@@ -154,10 +152,6 @@ export class Storage {
         filesModeKey,
         defaultLayout.filesMode,
       ),
-      changesView: this.store.get<ChangesView>(
-        changesViewKey,
-        defaultLayout.changesView,
-      ),
     };
   }
 
@@ -196,10 +190,6 @@ export class Storage {
 
   async setFilesMode(mode: FilesMode): Promise<void> {
     await this.store.update(filesModeKey, mode);
-  }
-
-  async setChangesView(view: ChangesView): Promise<void> {
-    await this.store.update(changesViewKey, view);
   }
 }
 

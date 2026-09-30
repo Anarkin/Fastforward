@@ -377,6 +377,11 @@ body.resizing {
   padding-right: calc(4px + 2 * 26px + 2px + 8px);
 }
 
+.column-title:has(.all-files) {
+  padding-left: calc(4px + 26px + 8px);
+  padding-right: calc(4px + 26px + 8px);
+}
+
 .column-title:has(.entire-file) {
   padding-left: calc(4px + 2 * 26px + 2px + 8px);
   padding-right: calc(4px + 2 * 26px + 2px + 8px);
@@ -557,7 +562,6 @@ body.resizing {
 }
 
 .row .path.deleted {
-  color: var(--color-deleted);
   text-decoration: line-through;
 }
 
@@ -662,44 +666,6 @@ body.resizing {
 .merge-dot {
   pointer-events: all;
   cursor: pointer;
-}
-
-.switch {
-  display: inline-flex;
-  box-sizing: border-box;
-  height: 100%;
-  border: 3.5px solid transparent;
-  border-radius: calc(var(--card-radius) + 3.5px);
-  background: var(--gutter);
-  background-clip: padding-box;
-}
-
-.switch-option {
-  position: relative;
-  z-index: 0;
-  box-sizing: border-box;
-  height: 100%;
-  padding: 0 8px;
-  font: inherit;
-  color: var(--color-muted-foreground);
-  cursor: pointer;
-  background: none;
-  border: 2px solid transparent;
-  border-radius: 6px;
-}
-
-.switch-option.active {
-  color: var(--color-foreground);
-}
-
-.switch-option.active::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border-radius: 4px;
-  background: var(--color-background);
-  box-shadow: 0 1px 2px var(--color-widget-shadow);
 }
 
 .file-header .unchanged {
@@ -1030,11 +996,6 @@ body.resizing {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.row.folder.counted .twisty,
-.row.folder.counted .path {
-  opacity: var(--muted-opacity);
 }
 
 .badge.hash {

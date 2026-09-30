@@ -8,7 +8,6 @@ import {
 } from 'react';
 import {
   defaultLayout,
-  type ChangesView,
   type Direction,
   type CheckoutTarget,
   type FilesMode,
@@ -42,12 +41,13 @@ import { AddressBar, NavButtons } from './navBar';
 import { TabBar } from './tabBar';
 import { TitleBar, windowTitle } from './titleBar';
 import {
-  foldersOfTab,
+  noFolders,
   openFolders,
+  shownFolders,
   toggleFolder,
-  type FoldersByTab,
-  type TabFolders,
-} from './tabFolders';
+  type Folders,
+  type ViewFolders,
+} from './viewFolders';
 import { emptyTabView, reduceTabView, treeOf, treeToLoad } from './tabView';
 import { bookmarkOptions, toggleBookmark } from './bookmarks';
 import { addNotice, Notices, type Notice } from './notices';
@@ -103,13 +103,11 @@ export function App({ post, listen }: Props) {
   const [filesMode, setFilesMode] = useState<FilesMode>(
     defaultLayout.filesMode,
   );
-  const [changesView, setChangesView] = useState<ChangesView>(
-    defaultLayout.changesView,
-  );
-  const [folders, setFolders] = useState<FoldersByTab>(new Map());
-  const { open: openedFolders, closed: closedFolders } = foldersOfTab(
+  const [folders, setFolders] = useState<ViewFolders>(noFolders);
+  const folderView = JSON.stringify([activeTab, hash]);
+  const { open: openedFolders, closed: closedFolders } = shownFolders(
     folders,
-    activeTab,
+    folderView,
   );
   const [bookmarks, setBookmarks] = useState<readonly Bookmark[]>([]);
   const [menu, setMenu] = useState<OpenMenu>();
@@ -136,7 +134,6 @@ export function App({ post, listen }: Props) {
           setCollapseMerges(message.collapseMerges);
           setEntireFilePinned(message.entireFilePinned);
           setFilesMode(message.filesMode);
-          setChangesView(message.changesView);
           break;
         case 'solo':
           setSolo(message.solo);
@@ -269,22 +266,17 @@ export function App({ post, listen }: Props) {
     if (filesMode !== 'files' || path === undefined) {
       return;
     }
-    setFolders((all) => openFolders(all, activeTab, foldersOf(path)));
-  }, [filesMode, path, activeTab]);
+    setFolders((all) => openFolders(all, folderView, foldersOf(path)));
+  }, [filesMode, path, folderView]);
 
-  const toggleFolderOf = (kind: keyof TabFolders) => (folder: string) =>
-    setFolders((all) => toggleFolder(all, activeTab, kind, folder));
+  const toggleFolderOf = (kind: keyof Folders) => (folder: string) =>
+    setFolders((all) => toggleFolder(all, folderView, kind, folder));
   const toggleOpenFolder = toggleFolderOf('open');
   const toggleClosedFolder = toggleFolderOf('closed');
 
   const changeFilesMode = (mode: FilesMode) => {
     setFilesMode(mode);
     post({ type: 'setFilesMode', mode });
-  };
-
-  const changeChangesView = (view: ChangesView) => {
-    setChangesView(view);
-    post({ type: 'setChangesView', view });
   };
 
   const shownFile = `${activeTab ?? ''}:${hash ?? ''}:${path ?? ''}`;
@@ -459,13 +451,10 @@ export function App({ post, listen }: Props) {
                   <Files
                     mode={filesMode}
                     onMode={changeFilesMode}
-                    changesView={changesView}
-                    onChangesView={changeChangesView}
                     closedFolders={closedFolders}
                     onToggleClosedFolder={toggleClosedFolder}
                     files={files}
                     loading={filesLoading || opening}
-                    treeLoading={hash !== undefined && commitTree === undefined}
                     tree={commitTree}
                     openFolders={openedFolders}
                     onToggleFolder={toggleOpenFolder}
