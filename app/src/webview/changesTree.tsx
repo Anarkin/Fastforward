@@ -10,11 +10,13 @@ export type ChangesTreeRow =
       readonly path: string;
       readonly depth: number;
       readonly open: boolean;
+      readonly changed: boolean;
     }
   | {
       readonly kind: 'file';
       readonly name: string;
-      readonly change: FileChange;
+      readonly path: string;
+      readonly change: FileChange | undefined;
       readonly depth: number;
     };
 
@@ -30,6 +32,8 @@ function compact(node: FolderNode): FolderNode {
 export function changesTreeRows(
   files: readonly FileChange[],
   closed: ReadonlySet<string>,
+  unchanged: readonly string[] = [],
+  opened: ReadonlySet<string> = new Set(),
 ): ChangesTreeRow[] {
   const changes = new Map(files.map((file) => [file.path, file]));
   const rows: ChangesTreeRow[] = [];
@@ -37,37 +41,45 @@ export function changesTreeRows(
     for (const child of [...node.folders.values()]
       .map(compact)
       .toSorted(byName)) {
-      const open = !closed.has(child.path);
+      const open = child.changed
+        ? !closed.has(child.path)
+        : opened.has(child.path);
       rows.push({
         kind: 'folder',
         name: child.name,
         path: child.path,
         depth,
         open,
+        changed: child.changed,
       });
       if (open) {
         add(child, depth + 1);
       }
     }
     for (const file of node.files.toSorted(byName)) {
-      const change = changes.get(file.path);
-      if (change) {
-        rows.push({ kind: 'file', name: file.name, change, depth });
-      }
+      rows.push({
+        kind: 'file',
+        name: file.name,
+        path: file.path,
+        change: changes.get(file.path),
+        depth,
+      });
     }
   };
-  add(buildFileTree([], changes), 0);
+  add(buildFileTree(unchanged, changes), 0);
   return rows;
 }
 
 export function changesTreeElements({
   rows,
+  showsAll,
   onToggle,
   selected,
   onSelect,
 }: {
   rows: readonly ChangesTreeRow[];
-  onToggle: (folder: string) => void;
+  showsAll: boolean;
+  onToggle: (folder: string, changed: boolean) => void;
   selected: string | undefined;
   onSelect: (path: string | undefined) => void;
 }): React.ReactElement[] {
@@ -79,15 +91,15 @@ export function changesTreeElements({
         title={row.path}
         depth={row.depth}
         open={row.open}
-        className="counted"
-        onToggle={onToggle}
+        className={showsAll && row.changed ? 'counted' : 'counted dimmed'}
+        onToggle={(folder) => onToggle(folder, row.changed)}
       >
         <span className="path">{row.name}</span>
       </FolderRow>
     ) : (
       <FileRow
-        key={fileRowKey(row.change.path)}
-        path={row.change.path}
+        key={fileRowKey(row.path)}
+        path={row.path}
         name={row.name}
         depth={row.depth}
         change={row.change}

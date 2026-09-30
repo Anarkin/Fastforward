@@ -226,9 +226,6 @@ export class FastforwardView {
       case 'setFilesMode':
         await storage.setFilesMode(message.mode);
         return;
-      case 'setChangesView':
-        await storage.setChangesView(message.view);
-        return;
       case 'setCollapseMerges': {
         await storage.setCollapseMerges(message.collapse);
         for (const tab of this.tabStates.values()) {

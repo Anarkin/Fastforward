@@ -82,6 +82,17 @@ export function MoreIcon() {
   );
 }
 
+export function AllFilesIcon() {
+  return (
+    <Icon>
+      <path d="M3 2.5v9.5h4M3 7.5h4" />
+      <rect x="7.5" y="5.5" width="5.5" height="4" rx="0.8" />
+      <rect x="7.5" y="10" width="5.5" height="4" rx="0.8" />
+      <rect x="1.5" y="1" width="5.5" height="3" rx="0.8" />
+    </Icon>
+  );
+}
+
 export function EntireFileIcon() {
   return (
     <Icon>

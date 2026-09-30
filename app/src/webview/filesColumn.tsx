@@ -1,27 +1,19 @@
 import { useMemo } from 'react';
-import {
-  type ChangesView,
-  type FileChange,
-  type FilesMode,
-} from '../shared/protocol';
+import { type FileChange, type FilesMode } from '../shared/protocol';
 import { changesTreeElements, changesTreeRows } from './changesTree';
 import { Column } from './column';
-import { FileTree } from './fileTree';
-import { MenuButton } from './menu';
+import { AllFilesIcon } from './icons';
 import { SkeletonRows, useSkeleton } from './skeleton';
-import { FileRow, fileRowKey } from './tree';
+import { fileRowKey } from './tree';
 import { VirtualRows } from './virtualRows';
 
 export function Files({
   mode,
   onMode,
-  changesView,
-  onChangesView,
   closedFolders,
   onToggleClosedFolder,
   files,
   loading,
-  treeLoading,
   tree,
   openFolders,
   onToggleFolder,
@@ -30,70 +22,34 @@ export function Files({
 }: {
   mode: FilesMode;
   onMode: (mode: FilesMode) => void;
-  changesView: ChangesView;
-  onChangesView: (view: ChangesView) => void;
   closedFolders: ReadonlySet<string>;
   onToggleClosedFolder: (folder: string) => void;
   files: readonly FileChange[];
   loading: boolean;
-  treeLoading: boolean;
   tree: readonly string[] | undefined;
   openFolders: ReadonlySet<string>;
   onToggleFolder: (folder: string) => void;
   selected: string | undefined;
   onSelect: (path: string | undefined) => void;
 }) {
-  const skeleton = useSkeleton(mode === 'files' ? treeLoading : loading);
+  const skeleton = useSkeleton(loading);
+  const showsAll = mode === 'files';
+  const unchanged = showsAll ? tree : undefined;
   const treeRows = useMemo(
-    () => changesTreeRows(files, closedFolders),
-    [files, closedFolders],
+    () => changesTreeRows(files, closedFolders, unchanged, openFolders),
+    [files, closedFolders, unchanged, openFolders],
   );
-  const changes = useMemo(
-    () => new Map(files.map((file) => [file.path, file])),
-    [files],
-  );
-  const modeSwitch = (
-    <div className="switch" role="tablist">
-      {(['changes', 'files'] as const).map((option) => (
-        <button
-          key={option}
-          role="tab"
-          aria-selected={mode === option}
-          className={`switch-option ${mode === option ? 'active' : ''}`}
-          onClick={() => onMode(option)}
-        >
-          {option === 'changes' ? 'Changes' : 'All Files'}
-        </button>
-      ))}
+  const start = (
+    <div className="nav-buttons all-files">
+      <button
+        className={`nav-button toggle ${showsAll ? 'active' : ''}`}
+        title="Show All Files"
+        aria-pressed={showsAll}
+        onClick={() => onMode(showsAll ? 'changes' : 'files')}
+      >
+        <AllFilesIcon />
+      </button>
     </div>
-  );
-  if (mode === 'files') {
-    return (
-      <Column title={modeSwitch} index={1}>
-        {skeleton && <SkeletonRows count={12} indent />}
-        {tree && (
-          <FileTree
-            paths={tree}
-            changes={changes}
-            selected={selected}
-            expanded={openFolders}
-            onToggle={onToggleFolder}
-            onSelect={onSelect}
-          />
-        )}
-      </Column>
-    );
-  }
-  const settings = (
-    <MenuButton
-      title="Changes settings"
-      items={(['list', 'tree'] as const).map((view) => ({
-        label: view === 'list' ? 'View as List' : 'View as Tree',
-        checked: changesView === view,
-        radio: true,
-        onClick: () => onChangesView(view),
-      }))}
-    />
   );
   const header = (
     <div
@@ -104,29 +60,19 @@ export function Files({
       <span className="path">All Changes</span>
     </div>
   );
-  const fileRows =
-    changesView === 'tree'
-      ? changesTreeElements({
-          rows: treeRows,
-          onToggle: onToggleClosedFolder,
-          selected,
-          onSelect,
-        })
-      : files.map((file) => (
-          <FileRow
-            key={fileRowKey(file.path)}
-            path={file.path}
-            name={file.path}
-            change={file}
-            selected={selected}
-            onSelect={onSelect}
-          />
-        ));
+  const fileRows = changesTreeElements({
+    rows: treeRows,
+    showsAll,
+    onToggle: (folder, changed) =>
+      changed ? onToggleClosedFolder(folder) : onToggleFolder(folder),
+    selected,
+    onSelect,
+  });
   return (
-    <Column title={modeSwitch} index={1} actions={settings}>
+    <Column title="Files" index={1} start={start}>
       {skeleton && <SkeletonRows count={6} />}
       <VirtualRows
-        rows={files.length > 0 ? [header, ...fileRows] : []}
+        rows={files.length > 0 ? [header, ...fileRows] : fileRows}
         selectedKey={selected === undefined ? undefined : fileRowKey(selected)}
       />
     </Column>

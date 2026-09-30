@@ -22,7 +22,6 @@ suite('Storage', () => {
       collapseMerges: true,
       entireFilePinned: false,
       filesMode: 'changes',
-      changesView: 'tree',
     });
   });
 
