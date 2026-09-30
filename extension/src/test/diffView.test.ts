@@ -5,9 +5,9 @@ import { withLargeFiles } from '../webview/diffColumn';
 import {
   diffRowKey,
   diffRows,
-  fileHeaderIndex,
   largeFilesToLoad,
   rowHeight,
+  scrollOnToggle,
   stuckHeader,
   type DiffRow,
 } from '../webview/diffView';
@@ -194,10 +194,13 @@ suite('Stuck file header', () => {
     );
   });
 
-  test('finds a header in the same place once its file is closed', () => {
+  test('scrolls to the header of a file closed from its stuck header, and nowhere otherwise', () => {
     const closed = diffRows(files, new Map([['b.ts', false]]), undefined);
-    assert.strictEqual(fileHeaderIndex(rows, 1), 5);
-    assert.strictEqual(fileHeaderIndex(closed, 1), 5);
+    const closedHeader = closed[5];
+    const openHeader = rows[5];
+    assert.ok(closedHeader.kind === 'file' && openHeader.kind === 'file');
+    assert.strictEqual(scrollOnToggle(closed, closedHeader, true), 5);
+    assert.strictEqual(scrollOnToggle(rows, openHeader, false), undefined);
   });
 
   test('stands in for a diff that loads, and a large file being fetched', () => {
