@@ -267,6 +267,10 @@ export function LocationsPopup({
   const search = useMemo(() => searchRefs(refs, query), [refs, query]);
   const detached = useContext(DetachedHead);
   const pinned = pinnedRefs(bookmarks, refs, repository?.head, detached, query);
+  const nothingFound =
+    pinned.checkedOut.length === 0 &&
+    pinned.bookmarks.length === 0 &&
+    search.every((group) => group.refs.length === 0);
   const byKind = useMemo(
     () =>
       new Map(
@@ -355,30 +359,38 @@ export function LocationsPopup({
           refs={refs}
           onJump={jump}
         />
-        {search.map((group, column) => (
-          <section key={group.kind} className="locations-group">
-            <GroupHeading
-              title={group.title}
-              count={
-                query
-                  ? group.refs.length + group.more
-                  : (byKind.get(group.kind) ?? []).length
-              }
-            />
-            <div className="locations-list">
-              {query ? (
-                <SearchResults
-                  group={group}
-                  query={query}
-                  active={column === active.column ? activeRef : undefined}
-                  onJump={jump}
-                />
-              ) : (
-                <RefTree refs={byKind.get(group.kind) ?? []} onSelect={jump} />
-              )}
-            </div>
-          </section>
-        ))}
+        {query && !hash && nothingFound && (
+          <div className="locations-empty">No matches</div>
+        )}
+        {search.map((group, column) =>
+          query && group.refs.length === 0 ? null : (
+            <section key={group.kind} className="locations-group">
+              <GroupHeading
+                title={group.title}
+                count={
+                  query
+                    ? group.refs.length + group.more
+                    : (byKind.get(group.kind) ?? []).length
+                }
+              />
+              <div className="locations-list">
+                {query ? (
+                  <SearchResults
+                    group={group}
+                    query={query}
+                    active={column === active.column ? activeRef : undefined}
+                    onJump={jump}
+                  />
+                ) : (
+                  <RefTree
+                    refs={byKind.get(group.kind) ?? []}
+                    onSelect={jump}
+                  />
+                )}
+              </div>
+            </section>
+          ),
+        )}
       </div>
     </div>
   );
@@ -448,9 +460,6 @@ function SearchResults({
   onJump: (commit: string) => void;
 }) {
   const openMenu = useContext(OpenContextMenu);
-  if (group.refs.length === 0) {
-    return <div className="locations-empty">No matches</div>;
-  }
   return (
     <>
       {group.refs.map((ref) => (
