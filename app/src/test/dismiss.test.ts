@@ -61,12 +61,13 @@ suite('Dismissing menus and popups', () => {
     }
   });
 
-  test('closes on a click outside, but not in what it ignores', () => {
+  test('closes on a click outside, but not in what it ignores or on a scrollbar', () => {
     const window = new EventTarget();
     const { menu, stop } = open(window, { ignore: '.context-menu' });
     try {
       window.dispatchEvent(pointerDown(menu.element));
       window.dispatchEvent(pointerDown(element('context-menu')));
+      window.dispatchEvent(pointerDown(element('overlay-scrollbar')));
       assert.strictEqual(menu.closed, 0);
       window.dispatchEvent(pointerDown(element('elsewhere')));
       assert.strictEqual(menu.closed, 1);

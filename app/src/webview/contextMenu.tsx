@@ -8,6 +8,7 @@ import {
 } from 'react';
 import type { Bookmark, BookmarkRef } from '../shared/protocol';
 import { refOf } from '../shared/refNames';
+import { overlayScrollbarClass } from './overlayScrollbars';
 
 export type MenuTarget =
   | { readonly kind: 'ref'; readonly ref: Bookmark }
@@ -110,6 +111,8 @@ export function listenForDismiss(
     const clicked = event.target;
     const inside =
       (isNode(clicked) && element.current?.contains(clicked)) ||
+      (isElement(clicked) &&
+        clicked.closest(`.${overlayScrollbarClass}`) !== null) ||
       (ignore !== undefined &&
         isElement(clicked) &&
         clicked.closest(ignore) !== null);
