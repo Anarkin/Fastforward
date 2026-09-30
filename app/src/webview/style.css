@@ -557,7 +557,9 @@ body.resizing {
   box-shadow: inset 0 0 0 1px var(--color-panel-background);
 }
 
-.badge.has-menu:hover {
+.badge.has-menu:hover,
+.locations-list .row:hover .badge,
+.locations-list .row.active .badge {
   background: color-mix(
     in srgb,
     var(--color-focus) 40%,
@@ -566,14 +568,18 @@ body.resizing {
 }
 
 .badge.checked-out,
-.badge.checked-out.has-menu:hover {
+.badge.checked-out.has-menu:hover,
+.locations-list .row:hover .badge.checked-out,
+.locations-list .row.active .badge.checked-out {
   color: var(--color-focus-foreground);
   background:
     linear-gradient(var(--color-focus), var(--color-focus)),
     var(--color-panel-background);
 }
 
-.badge.checked-out.has-menu:hover {
+.badge.checked-out.has-menu:hover,
+.locations-list .row:hover .badge.checked-out,
+.locations-list .row.active .badge.checked-out {
   filter: brightness(1.15);
 }
 
