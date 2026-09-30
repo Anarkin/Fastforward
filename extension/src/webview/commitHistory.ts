@@ -1,5 +1,6 @@
 import {
   commitPageSize,
+  pageStart,
   type CommitInfo,
   type GraphRow,
 } from '../shared/protocol';
@@ -35,11 +36,6 @@ export class CommitHistory {
     return this.positions.get(hash);
   }
 
-  find(hash: string | undefined): CommitInfo | undefined {
-    const position = hash === undefined ? undefined : this.positions.get(hash);
-    return position === undefined ? undefined : this.rows.get(position);
-  }
-
   locate(hash: string, position: number): void {
     this.positions.set(hash, position);
   }
@@ -61,7 +57,7 @@ export class CommitHistory {
     graph: readonly GraphRow[] = [],
   ): void {
     for (
-      let page = start - (start % commitPageSize);
+      let page = pageStart(start);
       page < start + commits.length;
       page += commitPageSize
     ) {
@@ -88,7 +84,7 @@ export class CommitHistory {
     const pages: number[] = [];
     const end = Math.min(last, this.total - 1);
     for (
-      let start = Math.max(0, first - (first % commitPageSize));
+      let start = Math.max(0, pageStart(first));
       start <= end;
       start += commitPageSize
     ) {

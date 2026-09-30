@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ShortcutsPanel } from '../webview/navBar';
-import { shortcutOf, shortcuts } from '../webview/shortcuts';
+import { handleShortcut, shortcutOf, shortcuts } from '../webview/shortcuts';
 import { definitions } from './fixtures';
 
 const press = (
@@ -10,6 +10,7 @@ const press = (
 ) =>
   shortcutOf({
     key,
+    code: '',
     ctrlKey: false,
     shiftKey: false,
     altKey: false,
@@ -18,7 +19,7 @@ const press = (
     defaultPrevented: false,
     target: null,
     ...extra,
-  })?.id;
+  })?.key;
 
 function element(tagName: string, isContentEditable = false): EventTarget {
   const target = {
@@ -36,7 +37,6 @@ suite('Keyboard shortcuts', () => {
     assert.strictEqual(press('c'), 'c');
     assert.strictEqual(press('s'), 's');
     assert.strictEqual(press('x'), undefined);
-    assert.strictEqual(press('C', { shiftKey: true }), undefined);
   });
 
   test('matches a letter with Caps Lock on', () => {
@@ -44,11 +44,43 @@ suite('Keyboard shortcuts', () => {
     assert.strictEqual(press('S'), 's');
   });
 
+  test('matches the physical key on a non-Latin layout', () => {
+    assert.strictEqual(press('с', { code: 'KeyC' }), 'c');
+    assert.strictEqual(press('ы', { code: 'KeyS' }), 's');
+    assert.strictEqual(press('j', { code: 'KeyC' }), undefined);
+  });
+
+  test('leaves a shortcut it has no action for to the other handlers', () => {
+    let called = 0;
+    let prevented = 0;
+    const handle = (key: string) =>
+      handleShortcut(
+        {
+          key,
+          code: '',
+          ctrlKey: false,
+          shiftKey: false,
+          altKey: false,
+          metaKey: false,
+          repeat: false,
+          defaultPrevented: false,
+          target: null,
+          preventDefault: () => prevented++,
+        },
+        { c: () => called++ },
+      );
+    handle('s');
+    assert.deepStrictEqual([called, prevented], [0, 0]);
+    handle('c');
+    assert.deepStrictEqual([called, prevented], [1, 1]);
+  });
+
   test("leaves VS Code's keys, repeats and handled keys alone", () => {
     assert.strictEqual(press('c', { ctrlKey: true }), undefined);
     assert.strictEqual(press('s', { ctrlKey: true }), undefined);
     assert.strictEqual(press('c', { altKey: true }), undefined);
     assert.strictEqual(press('c', { metaKey: true }), undefined);
+    assert.strictEqual(press('c', { shiftKey: true }), undefined);
     assert.strictEqual(press('c', { repeat: true }), undefined);
     assert.strictEqual(press('c', { defaultPrevented: true }), undefined);
   });
@@ -56,6 +88,7 @@ suite('Keyboard shortcuts', () => {
   test('leaves keys typed into a field to the field', () => {
     assert.strictEqual(press('c', { target: element('INPUT') }), undefined);
     assert.strictEqual(press('c', { target: element('TEXTAREA') }), undefined);
+    assert.strictEqual(press('c', { target: element('SELECT') }), undefined);
     assert.strictEqual(press('c', { target: element('DIV', true) }), undefined);
     assert.strictEqual(press('c', { target: element('BUTTON') }), 'c');
   });

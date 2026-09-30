@@ -1,16 +1,17 @@
 import type {
   FileChange,
-  HashLookup,
   NavigationEntry,
   RepositoryState,
   ScrollTarget,
   ToWebview,
+  ToWebviewOf,
 } from '../shared/protocol';
 import { CommitHistory } from './commitHistory';
 import { parseFilePatch, type DiffFile } from './diff';
 import type { WholeFile } from './diffView';
 
 export interface TabView {
+  readonly root: string | undefined;
   readonly repository: RepositoryState | undefined;
   readonly history: CommitHistory | undefined;
   readonly scrollTarget: ScrollTarget | undefined;
@@ -25,16 +26,17 @@ export interface TabView {
   readonly diffs: number;
   readonly fileContent: WholeFile | undefined;
   readonly largeFiles: ReadonlyMap<string, DiffFile>;
-  readonly tree: { hash: string; paths: readonly string[] } | undefined;
+  readonly tree: ToWebviewOf<'tree'> | undefined;
   readonly treeRequested: string | undefined;
   readonly fetching: boolean;
   readonly back: readonly NavigationEntry[];
   readonly forward: readonly NavigationEntry[];
-  readonly hashLookup: { query: string; result: HashLookup } | undefined;
+  readonly hashLookup: ToWebviewOf<'hashLookup'> | undefined;
   readonly error: string | undefined;
 }
 
 export const emptyTabView: TabView = {
+  root: undefined,
   repository: undefined,
   history: undefined,
   scrollTarget: undefined,
@@ -60,7 +62,6 @@ export const emptyTabView: TabView = {
 
 export type TabAction =
   | ToWebview
-  | { readonly type: 'clear' }
   | { readonly type: 'showCommit'; readonly hash: string | undefined }
   | { readonly type: 'showFile'; readonly path: string | undefined }
   | { readonly type: 'requestTree'; readonly hash: string };
@@ -91,8 +92,10 @@ function isLate(
 
 export function reduceTabView(state: TabView, action: TabAction): TabView {
   switch (action.type) {
-    case 'clear':
-      return emptyTabView;
+    case 'tabs':
+      return action.active === state.root
+        ? state
+        : { ...emptyTabView, root: action.active };
     case 'showCommit':
       return selected(state, action.hash);
     case 'showFile':
@@ -101,6 +104,8 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
         path: action.path,
         selectionKnown: true,
         patchLoading: state.hash !== undefined,
+        fileContent: undefined,
+        error: undefined,
       };
     case 'repository':
       return { ...state, repository: action };
@@ -188,7 +193,9 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
         fileContent: action,
       };
     case 'tree':
-      return { ...state, tree: action };
+      return isLate(state, action.hash, state.path)
+        ? state
+        : { ...state, tree: action };
     case 'requestTree':
       return { ...state, treeRequested: action.hash };
     case 'fetching':
@@ -214,4 +221,9 @@ export function treeToLoad(state: TabView): string | undefined {
   return hash && tree?.hash !== hash && treeRequested !== hash
     ? hash
     : undefined;
+}
+
+export function treeOf(state: TabView): readonly string[] | undefined {
+  const { hash, tree } = state;
+  return hash !== undefined && tree?.hash === hash ? tree.paths : undefined;
 }

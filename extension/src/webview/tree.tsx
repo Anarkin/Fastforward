@@ -9,9 +9,6 @@ export function treeIndent(depth: number): number {
   return treePadding + depth * twistyWidth;
 }
 
-export const byName = (a: { name: string }, b: { name: string }) =>
-  a.name.localeCompare(b.name);
-
 export function FolderRow({
   path,
   depth,

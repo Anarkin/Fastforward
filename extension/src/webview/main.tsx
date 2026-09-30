@@ -1,6 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import type { ToExtension } from '../shared/protocol';
 import { App } from './App';
+import { errorText } from './errors';
 import './style.css';
 
 declare function acquireVsCodeApi(): {
@@ -14,11 +15,11 @@ window.addEventListener('error', (event) =>
   post({
     type: 'log',
     level: 'error',
-    message: String(event.error ?? event.message),
+    message: errorText(event.error ?? event.message),
   }),
 );
 window.addEventListener('unhandledrejection', (event) =>
-  post({ type: 'log', level: 'error', message: String(event.reason) }),
+  post({ type: 'log', level: 'error', message: errorText(event.reason) }),
 );
 
 const root = document.getElementById('root');

@@ -7,11 +7,11 @@ import {
   useState,
 } from 'react';
 import {
+  defaultLayout,
   type ChangesView,
   type Direction,
   type CheckoutTarget,
   type FilesMode,
-  type RefInfo,
   type TabInfo,
   type TabMessage,
   type ToExtension,
@@ -19,7 +19,7 @@ import {
   type Bookmark,
 } from '../shared/protocol';
 import { CheckedOutBranch, DetachedHead } from './bubbles';
-import { checkoutOptions, checkoutRef } from './checkout';
+import { checkoutCommit, checkoutOptions, checkoutRef } from './checkout';
 import { ColumnResizingProvider, useColumnWidths } from './columns';
 import { Commits } from './commitList';
 import { useShortcuts } from './shortcuts';
@@ -33,7 +33,7 @@ import {
 import { Diff } from './diffColumn';
 import { Files } from './filesColumn';
 import { foldersOf } from './fileTree';
-import { hasRef, sameRef } from '../shared/refNames';
+import { hasRef } from '../shared/refNames';
 import { AddressBar, NavButtons } from './navBar';
 import { TabBar } from './tabBar';
 import {
@@ -43,8 +43,8 @@ import {
   type FoldersByTab,
   type TabFolders,
 } from './tabFolders';
-import { emptyTabView, reduceTabView, treeToLoad } from './tabView';
-import { bookmarkOptions } from './bookmarks';
+import { emptyTabView, reduceTabView, treeOf, treeToLoad } from './tabView';
+import { bookmarkOptions, toggleBookmark } from './bookmarks';
 
 interface Props {
   post: (message: ToExtension) => void;
@@ -52,10 +52,10 @@ interface Props {
 
 export function App({ post }: Props) {
   const [tabs, setTabs] = useState<readonly TabInfo[]>([]);
-  const [activeTab, setActiveTab] = useState<string>();
   const activeTabRef = useRef<string>(undefined);
   const [tab, dispatch] = useReducer(reduceTabView, emptyTabView);
   const {
+    root: activeTab,
     repository,
     history,
     scrollTarget,
@@ -69,17 +69,22 @@ export function App({ post }: Props) {
     diffs,
     fileContent,
     largeFiles,
-    tree,
     fetching,
     back,
     forward,
     hashLookup,
     error,
   } = tab;
-  const [collapseMerges, setCollapseMerges] = useState(true);
-  const [solo, setSolo] = useState(false);
-  const [filesMode, setFilesMode] = useState<FilesMode>('changes');
-  const [changesView, setChangesView] = useState<ChangesView>('tree');
+  const [collapseMerges, setCollapseMerges] = useState(
+    defaultLayout.collapseMerges,
+  );
+  const [solo, setSolo] = useState(defaultLayout.solo);
+  const [filesMode, setFilesMode] = useState<FilesMode>(
+    defaultLayout.filesMode,
+  );
+  const [changesView, setChangesView] = useState<ChangesView>(
+    defaultLayout.changesView,
+  );
   const [folders, setFolders] = useState<FoldersByTab>(new Map());
   const { open: openedFolders, closed: closedFolders } = foldersOfTab(
     folders,
@@ -114,12 +119,9 @@ export function App({ post }: Props) {
           setChangesView(message.changesView);
           break;
         case 'tabs':
-          if (activeTabRef.current !== message.active) {
-            dispatch({ type: 'clear' });
-          }
           activeTabRef.current = message.active;
           setTabs(message.tabs);
-          setActiveTab(message.active);
+          dispatch(message);
           break;
         case 'bookmarks':
           setBookmarks(message.bookmarks);
@@ -136,9 +138,6 @@ export function App({ post }: Props) {
     window.focus();
     return () => window.removeEventListener('message', onMessage);
   }, [post, loadColumnWidths]);
-
-  const showCommit = (next: string | undefined) =>
-    dispatch({ type: 'showCommit', hash: next });
 
   const log = useCallback(
     (message: string) => post({ type: 'log', level: 'info', message }),
@@ -167,13 +166,11 @@ export function App({ post }: Props) {
     [postTab],
   );
 
-  const refsByCommit = useMemo(() => {
-    const map = new Map<string, RefInfo[]>();
-    for (const info of repository?.refs ?? []) {
-      map.set(info.commit, [...(map.get(info.commit) ?? []), info]);
-    }
-    return map;
-  }, [repository]);
+  const refs = repository?.refs ?? [];
+  const refsByCommit = useMemo(
+    () => Map.groupBy(repository?.refs ?? [], (info) => info.commit),
+    [repository],
+  );
 
   const detached =
     repository && !repository.head ? repository.headCommit : undefined;
@@ -181,7 +178,7 @@ export function App({ post }: Props) {
 
   const selectCommit = (next: string | undefined, replace = false) => {
     const target = next === hash ? undefined : next;
-    showCommit(target);
+    dispatch({ type: 'showCommit', hash: target });
     postTab({ type: 'selectCommit', hash: target, replace });
   };
   const lookupHash = useCallback(
@@ -228,6 +225,7 @@ export function App({ post }: Props) {
     postTab({ type: 'selectFile', hash, path: next });
   };
 
+  const commitTree = treeOf(tab);
   const treeNeeded = filesMode === 'files' ? treeToLoad(tab) : undefined;
   useEffect(() => {
     if (treeNeeded) {
@@ -258,38 +256,41 @@ export function App({ post }: Props) {
     post({ type: 'setChangesView', view });
   };
 
+  const changeCollapseMerges = (collapse: boolean) => {
+    setCollapseMerges(collapse);
+    post({ type: 'setCollapseMerges', collapse });
+  };
+
+  const changeSolo = (next: boolean) => {
+    setSolo(next);
+    post({ type: 'setSolo', solo: next });
+  };
+
   const changeBookmarks = (next: readonly Bookmark[]) => {
     setBookmarks(next);
     postTab({ type: 'setBookmarks', bookmarks: next });
   };
 
   const isBookmark = (bookmark: Bookmark) => hasRef(bookmarks, bookmark);
-  const toggleBookmark = (bookmark: Bookmark) =>
-    changeBookmarks(
-      isBookmark(bookmark)
-        ? bookmarks.filter((other) => !sameRef(other, bookmark))
-        : [...bookmarks, bookmark],
-    );
+  const toggle = (bookmark: Bookmark) =>
+    changeBookmarks(toggleBookmark(bookmarks, bookmark));
   const bookmarkItem = (bookmark: Bookmark): ContextMenuItem => ({
     label: isBookmark(bookmark) ? 'Remove bookmark' : 'Add bookmark',
-    onClick: () => toggleBookmark(bookmark),
+    onClick: () => toggle(bookmark),
   });
   const commitBookmarkItem = (commitHash: string): ContextMenuItem => ({
     label: 'Bookmark',
-    submenu: bookmarkOptions(commitHash, repository?.refs ?? []).map(
-      (option) => ({
-        label: option.label,
-        checked: isBookmark(option.bookmark),
-        onClick: () => toggleBookmark(option.bookmark),
-      }),
-    ),
+    submenu: bookmarkOptions(commitHash, refs).map((option) => ({
+      label: option.label,
+      checked: isBookmark(option.bookmark),
+      onClick: () => toggle(option.bookmark),
+    })),
   });
 
   const checkout = (target: CheckoutTarget) =>
     postTab({ type: 'checkout', target });
 
   const menuItems = (target: MenuTarget): ContextMenuItem[] => {
-    const refs = repository?.refs ?? [];
     const head = repository?.head;
     if (target.kind === 'commit') {
       return [
@@ -310,10 +311,7 @@ export function App({ post }: Props) {
     const { ref } = target;
     const option =
       ref.kind === 'commit'
-        ? {
-            target: { kind: 'commit' as const, hash: ref.name },
-            disabled: ref.name === detached,
-          }
+        ? checkoutCommit(ref.name, detached)
         : checkoutRef(ref, refs, head);
     return [
       {
@@ -328,11 +326,8 @@ export function App({ post }: Props) {
 
   const openMenu = (event: React.MouseEvent, target: MenuTarget) => {
     event.stopPropagation();
-    const items = menuItems(target);
-    if (items.length > 0) {
-      event.preventDefault();
-      setMenu({ x: event.clientX, y: event.clientY, items });
-    }
+    event.preventDefault();
+    setMenu({ x: event.clientX, y: event.clientY, items: menuItems(target) });
   };
 
   return (
@@ -376,15 +371,9 @@ export function App({ post }: Props) {
                       postTab({ type: 'toggleMerge', hash: merge })
                     }
                     collapseMerges={collapseMerges}
-                    onCollapseMerges={(collapse) => {
-                      setCollapseMerges(collapse);
-                      post({ type: 'setCollapseMerges', collapse });
-                    }}
+                    onCollapseMerges={changeCollapseMerges}
                     solo={solo}
-                    onSolo={(next) => {
-                      setSolo(next);
-                      post({ type: 'setSolo', solo: next });
-                    }}
+                    onSolo={changeSolo}
                     navigation={
                       <NavButtons
                         back={back}
@@ -397,7 +386,6 @@ export function App({ post }: Props) {
                     search={
                       <AddressBar
                         root={activeTab}
-                        placeholder="Search…"
                         bookmarks={bookmarks}
                         repository={repository}
                         selected={hash}
@@ -416,12 +404,8 @@ export function App({ post }: Props) {
                     onToggleClosedFolder={toggleClosedFolder}
                     files={files}
                     loading={filesLoading || opening}
-                    treeLoading={hash !== undefined && tree?.hash !== hash}
-                    tree={
-                      hash !== undefined && tree?.hash === hash
-                        ? tree.paths
-                        : undefined
-                    }
+                    treeLoading={hash !== undefined && commitTree === undefined}
+                    tree={commitTree}
                     openFolders={openedFolders}
                     onToggleFolder={toggleOpenFolder}
                     selected={path}
@@ -436,9 +420,7 @@ export function App({ post }: Props) {
                     files={files}
                     patch={patch}
                     diffs={diffs}
-                    fileContent={
-                      fileContent?.path === path ? fileContent : undefined
-                    }
+                    fileContent={fileContent}
                     error={error}
                   />
                 </div>

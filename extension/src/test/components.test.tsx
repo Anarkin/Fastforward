@@ -113,7 +113,7 @@ suite('Navigation bar', () => {
     const html = renderToStaticMarkup(
       <AddressBar
         root="/repo"
-        placeholder="Search…"
+        bookmarks={[]}
         repository={undefined}
         selected={undefined}
         hashLookup={undefined}
@@ -215,6 +215,7 @@ suite('Hash suggestion', () => {
   const hash = 'abcd'.padEnd(40, '0');
   test('offers the commit a typed hash is, like a first suggestion', () => {
     const html = popup('ABCD', {
+      type: 'hashLookup',
       query: 'abcd',
       result: { kind: 'found', hash, subject: 'the subject' },
     });
@@ -227,11 +228,19 @@ suite('Hash suggestion', () => {
 
   test('says when no commit or several start with it', () => {
     assert.match(
-      popup('abcd', { query: 'abcd', result: { kind: 'none' } }),
+      popup('abcd', {
+        type: 'hashLookup',
+        query: 'abcd',
+        result: { kind: 'none' },
+      }),
       /No commit starts with abcd/,
     );
     assert.match(
-      popup('abcd', { query: 'abcd', result: { kind: 'ambiguous', count: 3 } }),
+      popup('abcd', {
+        type: 'hashLookup',
+        query: 'abcd',
+        result: { kind: 'ambiguous', count: 3 },
+      }),
       /3 commits start with abcd, type more/,
     );
     assert.match(popup('abcd'), /Looking for commit abcd/);

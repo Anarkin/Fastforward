@@ -37,6 +37,27 @@ suite('Tab folders', () => {
     assert.strictEqual(openFolders(all, 'one', ['src']), all);
   });
 
+  test("keeps a tab's folders when opening a selected file's folders", () => {
+    const all = toggleFolder(
+      toggleFolder(
+        toggleFolder(none, 'one', 'open', 'docs'),
+        'one',
+        'closed',
+        'lib',
+      ),
+      'two',
+      'open',
+      'x',
+    );
+    const result = openFolders(all, 'one', ['src']);
+    assert.deepStrictEqual(
+      [...foldersOfTab(result, 'one').open],
+      ['docs', 'src'],
+    );
+    assert.deepStrictEqual([...foldersOfTab(result, 'one').closed], ['lib']);
+    assert.deepStrictEqual([...foldersOfTab(result, 'two').open], ['x']);
+  });
+
   test('changes nothing without a tab', () => {
     assert.strictEqual(toggleFolder(none, undefined, 'open', 'src'), none);
     assert.strictEqual(openFolders(none, undefined, ['src']), none);

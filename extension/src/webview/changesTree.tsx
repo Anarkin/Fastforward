@@ -1,6 +1,7 @@
 import type { FileChange } from '../shared/protocol';
 import { buildFileTree, type FolderNode } from './fileTree';
-import { byName, FileRow, FolderRow } from './tree';
+import { byName } from './byName';
+import { FileRow, FolderRow } from './tree';
 
 export type ChangesTreeRow =
   | {

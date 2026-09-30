@@ -1,10 +1,11 @@
 import * as path from 'node:path';
 import type * as vscode from 'vscode';
-import type {
-  Bookmark,
-  ChangesView,
-  FilesMode,
-  ToWebviewOf,
+import {
+  defaultLayout,
+  type Bookmark,
+  type ChangesView,
+  type FilesMode,
+  type ToWebviewOf,
 } from './shared/protocol';
 
 export const tabsKey = 'tabs';
@@ -91,13 +92,22 @@ export class Storage {
       columnWidths: this.globalState.get<number[]>(columnWidthsKey),
       collapseMerges: this.collapseMerges,
       solo: this.solo,
-      filesMode: this.globalState.get<FilesMode>(filesModeKey, 'changes'),
-      changesView: this.globalState.get<ChangesView>(changesViewKey, 'tree'),
+      filesMode: this.globalState.get<FilesMode>(
+        filesModeKey,
+        defaultLayout.filesMode,
+      ),
+      changesView: this.globalState.get<ChangesView>(
+        changesViewKey,
+        defaultLayout.changesView,
+      ),
     };
   }
 
   get collapseMerges(): boolean {
-    return this.globalState.get(collapseMergesKey, true);
+    return this.globalState.get(
+      collapseMergesKey,
+      defaultLayout.collapseMerges,
+    );
   }
 
   async setColumnWidths(widths: readonly number[]): Promise<void> {
@@ -109,7 +119,7 @@ export class Storage {
   }
 
   get solo(): boolean {
-    return this.globalState.get(soloKey, false);
+    return this.globalState.get(soloKey, defaultLayout.solo);
   }
 
   async setSolo(solo: boolean): Promise<void> {
