@@ -219,4 +219,11 @@ suite('Style', () => {
     );
     assert.match(declarationsOf('button'), /font: inherit;/);
   });
+
+  test("centers the search field's text by its capitals and baseline, whatever the font's own spacing", () => {
+    assert.match(
+      declarationsOf('.address-text'),
+      /text-box: trim-both cap alphabetic;/,
+    );
+  });
 });
