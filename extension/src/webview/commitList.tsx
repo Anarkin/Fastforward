@@ -9,7 +9,6 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   workingTreeHash,
   workingTreeIndex,
-  workingTreeSubject,
   type RefInfo,
   type ScrollTarget,
 } from '../shared/protocol';
@@ -24,6 +23,7 @@ import { useSkeleton } from './skeleton';
 import { SoloIcon } from './icons';
 
 export const commitRowHeight = 50;
+export const workingTreeRowHeight = 30;
 export const bubbleLineHeight = 20;
 const loadDelay = 80;
 const scrolledDelay = 150;
@@ -38,7 +38,10 @@ export function estimatedRowHeight(
   offset: number,
   index: number,
 ): number {
-  return index >= offset && (history?.refCountAt(index - offset) ?? 0) > 0
+  if (index < offset) {
+    return workingTreeRowHeight;
+  }
+  return (history?.refCountAt(index - offset) ?? 0) > 0
     ? commitRowHeight + bubbleLineHeight
     : commitRowHeight;
 }
@@ -162,6 +165,13 @@ export function CommitBubbles({
   );
 }
 
+export function uncommittedChanges(count: number): string {
+  if (count === 0) {
+    return 'No uncommitted changes';
+  }
+  return count === 1 ? '1 uncommitted change' : `${count} uncommitted changes`;
+}
+
 export function WorkingTreeRow({
   count,
   selected,
@@ -181,17 +191,7 @@ export function WorkingTreeRow({
       onClick={() => onSelect(dirty ? workingTreeHash : undefined)}
     >
       <div className="commit-line">
-        <span className="subject">
-          {dirty ? workingTreeSubject : 'No changes'}
-        </span>
-        {dirty && <span className="count">{count}</span>}
-      </div>
-      <div className="commit-line secondary">
-        <span className="author">
-          {dirty
-            ? 'Staged, unstaged and untracked files'
-            : 'The working tree is clean'}
-        </span>
+        <span className="subject">{uncommittedChanges(count)}</span>
       </div>
     </div>
   );
@@ -211,6 +211,8 @@ export function Commits({
   collapseMerges,
   onCollapseMerges,
   solo,
+  headCommit,
+  applyingSolo,
   onSolo,
   navigation,
   search,
@@ -228,6 +230,8 @@ export function Commits({
   collapseMerges: boolean;
   onCollapseMerges: (collapse: boolean) => void;
   solo: boolean;
+  headCommit: string | undefined;
+  applyingSolo: boolean;
   onSolo: (solo: boolean) => void;
   navigation?: React.ReactNode;
   search?: React.ReactNode;
@@ -293,7 +297,7 @@ export function Commits({
         element.scrollTop,
         previous.offset,
         offset,
-        commitRowHeight,
+        workingTreeRowHeight,
       );
       if (shifted !== undefined) {
         virtualizer.scrollToOffset(shifted);
@@ -431,7 +435,7 @@ export function Commits({
     }
     return (
       <div
-        className={`commit ${commit.hash === selected ? 'selected' : ''}`}
+        className={commitClass(commit.hash, selected, headCommit)}
         style={{ paddingLeft: indent(index) }}
         onClick={() => onSelect(commit.hash)}
         onContextMenu={(event) =>
@@ -440,7 +444,6 @@ export function Commits({
       >
         <div className="commit-line">
           <span className="subject">{commit.subject}</span>
-          {commit.files > 0 && <span className="count">{commit.files}</span>}
         </div>
         <div className="commit-line secondary">
           <span className="author">{commit.authorName}</span>
@@ -462,14 +465,7 @@ export function Commits({
       start={navigation}
       actions={
         <>
-          <button
-            className={`nav-button toggle ${solo ? 'active' : ''}`}
-            title="Solo: show only the history of the checked-out commit"
-            aria-pressed={solo}
-            onClick={() => onSolo(!solo)}
-          >
-            <SoloIcon />
-          </button>
+          <SoloButton solo={solo} applying={applyingSolo} onSolo={onSolo} />
           <MenuButton
             title="Commit list settings"
             items={[
@@ -518,4 +514,40 @@ export function Commits({
       </div>
     </Column>
   );
+}
+
+export function SoloButton({
+  solo,
+  applying,
+  onSolo,
+}: {
+  solo: boolean;
+  applying: boolean;
+  onSolo: (solo: boolean) => void;
+}) {
+  return (
+    <button
+      className={`nav-button toggle ${solo ? 'active' : ''} ${applying ? 'running' : ''}`}
+      title="Solo: show only the history of the checked-out commit"
+      aria-pressed={solo}
+      disabled={applying}
+      onClick={() => onSolo(!solo)}
+    >
+      <span className="spin-icon">
+        <SoloIcon />
+      </span>
+    </button>
+  );
+}
+
+export function commitClass(
+  hash: string,
+  selected: string | undefined,
+  headCommit: string | undefined,
+): string {
+  return [
+    'commit',
+    ...(hash === selected ? ['selected'] : []),
+    ...(hash === headCommit ? ['checked-out'] : []),
+  ].join(' ');
 }

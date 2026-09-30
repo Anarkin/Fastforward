@@ -41,7 +41,7 @@ export function NavButtons({
         disabled={fetching}
         onClick={onFetch}
       >
-        <span className="fetch-arrow">
+        <span className="spin-icon">
           <RefreshIcon />
         </span>
       </button>
@@ -166,7 +166,6 @@ export function HistoryMenu({
 export function AddressBar({
   root,
   repository,
-  selected,
   hashLookup,
   onLookupHash,
   onJump,
@@ -177,7 +176,6 @@ export function AddressBar({
   hashLookup: ToWebviewOf<'hashLookup'> | undefined;
   onLookupHash: (query: string) => void;
   repository: RepositoryState | undefined;
-  selected: string | undefined;
   onJump: (commit: string) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -210,7 +208,6 @@ export function AddressBar({
         <LocationsPopup
           key={searches}
           repository={repository}
-          selected={selected}
           anchor={container}
           lookup={hashLookup}
           onLookup={onLookupHash}

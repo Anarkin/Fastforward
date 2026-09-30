@@ -240,7 +240,6 @@ function usePopupHeight(
 
 export function LocationsPopup({
   repository,
-  selected,
   anchor,
   lookup,
   onLookup,
@@ -252,7 +251,6 @@ export function LocationsPopup({
 }: {
   bookmarks: readonly Bookmark[];
   repository: RepositoryState | undefined;
-  selected: string | undefined;
   anchor: React.RefObject<HTMLElement | null>;
   lookup: ToWebviewOf<'hashLookup'> | undefined;
   onLookup: (query: string) => void;
@@ -268,14 +266,7 @@ export function LocationsPopup({
   const refs = useMemo(() => repository?.refs ?? [], [repository]);
   const search = useMemo(() => searchRefs(refs, query), [refs, query]);
   const detached = useContext(DetachedHead);
-  const pinned = pinnedRefs(
-    bookmarks,
-    refs,
-    repository?.head,
-    repository?.headUpstream,
-    detached,
-    query,
-  );
+  const pinned = pinnedRefs(bookmarks, refs, repository?.head, detached, query);
   const byKind = useMemo(
     () =>
       new Map(
@@ -356,14 +347,12 @@ export function LocationsPopup({
           title="Checked out"
           items={pinned.checkedOut}
           refs={refs}
-          selected={undefined}
           onJump={jump}
         />
         <PinnedSection
           title="Bookmarks"
           items={pinned.bookmarks}
           refs={refs}
-          selected={selected}
           onJump={jump}
         />
         {search.map((group, column) => (
@@ -382,15 +371,10 @@ export function LocationsPopup({
                   group={group}
                   query={query}
                   active={column === active.column ? activeRef : undefined}
-                  selected={selected}
                   onJump={jump}
                 />
               ) : (
-                <RefTree
-                  refs={byKind.get(group.kind) ?? []}
-                  selected={selected}
-                  onSelect={jump}
-                />
+                <RefTree refs={byKind.get(group.kind) ?? []} onSelect={jump} />
               )}
             </div>
           </section>
@@ -413,13 +397,11 @@ function PinnedSection({
   title,
   items,
   refs,
-  selected,
   onJump,
 }: {
   title: string;
   items: readonly Bookmark[];
   refs: readonly RefInfo[];
-  selected: string | undefined;
   onJump: (commit: string) => void;
 }) {
   const detached = useContext(DetachedHead);
@@ -436,7 +418,7 @@ function PinnedSection({
           return (
             <div
               key={`${item.kind}:${item.name}`}
-              className={`row result pinned ${commit !== undefined && commit === selected ? 'selected' : ''}`}
+              className="row result pinned"
               onClick={() => commit && onJump(commit)}
             >
               {item.kind !== 'commit' ? (
@@ -458,13 +440,11 @@ function SearchResults({
   group,
   query,
   active,
-  selected,
   onJump,
 }: {
   group: SearchGroup;
   query: string;
   active: RefInfo | undefined;
-  selected: string | undefined;
   onJump: (commit: string) => void;
 }) {
   const openMenu = useContext(OpenContextMenu);
@@ -476,7 +456,7 @@ function SearchResults({
       {group.refs.map((ref) => (
         <div
           key={ref.name}
-          className={`row result ${ref === active ? 'active' : ''} ${ref.commit === selected ? 'selected' : ''}`}
+          className={`row result ${ref === active ? 'active' : ''}`}
           title={ref.name}
           onClick={() => onJump(ref.commit)}
           onContextMenu={(event) => openMenu(event, refMenuTarget(ref))}
@@ -537,36 +517,25 @@ export function buildTree(refs: readonly RefInfo[]): TreeNode {
 
 function RefTree({
   refs,
-  selected,
   onSelect,
 }: {
   refs: readonly RefInfo[];
-  selected: string | undefined;
   onSelect: (commit: string) => void;
 }) {
   const tree = useMemo(() => buildTree(refs), [refs]);
   if (refs.length === 0) {
     return <div className="locations-empty">None</div>;
   }
-  return (
-    <TreeChildren
-      node={tree}
-      depth={0}
-      selected={selected}
-      onSelect={onSelect}
-    />
-  );
+  return <TreeChildren node={tree} depth={0} onSelect={onSelect} />;
 }
 
 function TreeChildren({
   node,
   depth,
-  selected,
   onSelect,
 }: {
   node: TreeNode;
   depth: number;
-  selected: string | undefined;
   onSelect: (commit: string) => void;
 }) {
   const openMenu = useContext(OpenContextMenu);
@@ -580,14 +549,13 @@ function TreeChildren({
             key={child.name}
             node={child}
             depth={depth}
-            selected={selected}
             onSelect={onSelect}
             initiallyOpen={depth === 0 && children.length === 1}
           />
         ) : (
           <div
             key={child.name}
-            className={`row tree-row leaf ${child.ref && child.ref.commit === selected ? 'selected' : ''}`}
+            className="row tree-row leaf"
             style={{ paddingLeft: leafIndent(depth, withFolders) }}
             title={child.ref?.name}
             onClick={() => child.ref && onSelect(child.ref.commit)}
@@ -610,13 +578,11 @@ function TreeChildren({
 function TreeFolder({
   node,
   depth,
-  selected,
   onSelect,
   initiallyOpen,
 }: {
   node: TreeNode;
   depth: number;
-  selected: string | undefined;
   onSelect: (commit: string) => void;
   initiallyOpen: boolean;
 }) {
@@ -634,12 +600,7 @@ function TreeFolder({
         {node.name}
       </FolderRow>
       {open && (
-        <TreeChildren
-          node={node}
-          depth={depth + 1}
-          selected={selected}
-          onSelect={onSelect}
-        />
+        <TreeChildren node={node} depth={depth + 1} onSelect={onSelect} />
       )}
     </div>
   );

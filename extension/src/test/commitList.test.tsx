@@ -8,12 +8,16 @@ import {
   bubbleLineHeight,
   commitRowHeight,
   CommitBubbles,
+  commitClass,
   estimatedRowHeight,
   fixedRowHeight,
   listScroll,
   listTop,
   rowKeyOf,
+  SoloButton,
+  uncommittedChanges,
   WorkingTreeRow,
+  workingTreeRowHeight,
   workingTreeShift,
 } from '../webview/commitList';
 import { commitInfo } from './fixtures';
@@ -26,7 +30,7 @@ suite('Commit list rows', () => {
       estimatedRowHeight(history, 0, 1),
       commitRowHeight + bubbleLineHeight,
     );
-    assert.strictEqual(estimatedRowHeight(history, 1, 0), commitRowHeight);
+    assert.strictEqual(estimatedRowHeight(history, 1, 0), workingTreeRowHeight);
     assert.strictEqual(
       estimatedRowHeight(history, 1, 2),
       commitRowHeight + bubbleLineHeight,
@@ -108,9 +112,10 @@ suite('Commit list working tree row', () => {
     const html = renderToStaticMarkup(
       <WorkingTreeRow count={0} selected={false} indent={26} onSelect={noop} />,
     );
-    assert.match(html, /^<div [^>]*class="commit working-tree empty /);
-    assert.match(html, />No changes</);
-    assert.match(html, />The working tree is clean</);
+    assert.match(
+      html,
+      /^<div [^>]*class="commit working-tree empty\s*"><div class="commit-line"><span class="subject">No uncommitted changes<\/span><\/div><\/div>$/,
+    );
     assert.strictEqual(clickedHash(0), undefined);
   });
 
@@ -119,14 +124,24 @@ suite('Commit list working tree row', () => {
       <WorkingTreeRow count={3} selected={false} indent={26} onSelect={noop} />,
     );
     assert.doesNotMatch(html, /empty/);
-    assert.match(html, /<span class="count">3<\/span>/);
+    assert.match(
+      html,
+      /<div class="commit-line"><span class="subject">3 uncommitted changes<\/span><\/div><\/div>$/,
+    );
+    assert.strictEqual(uncommittedChanges(1), '1 uncommitted change');
     assert.strictEqual(clickedHash(3), workingTreeHash);
   });
 
   test('keeps a scrolled list in place when the working tree row appears above it', () => {
-    assert.strictEqual(workingTreeShift(500, 0, 1, commitRowHeight), 550);
-    assert.strictEqual(workingTreeShift(0, 0, 1, commitRowHeight), undefined);
-    assert.strictEqual(workingTreeShift(500, 1, 1, commitRowHeight), undefined);
+    assert.strictEqual(workingTreeShift(500, 0, 1, workingTreeRowHeight), 530);
+    assert.strictEqual(
+      workingTreeShift(0, 0, 1, workingTreeRowHeight),
+      undefined,
+    );
+    assert.strictEqual(
+      workingTreeShift(500, 1, 1, workingTreeRowHeight),
+      undefined,
+    );
   });
 
   test('shifts the list rather than scrolling to its target again when only the working tree row comes or goes', () => {
@@ -234,5 +249,33 @@ suite('Commit list arrow keys', () => {
     const history = new CommitHistory(1000);
     history.locate('c', 500);
     assert.strictEqual(arrowKeyPosition(history, 'c', true, 1), 501);
+  });
+});
+
+suite('Solo button', () => {
+  test('spins its icon and takes no clicks while the history reloads', () => {
+    const idle = renderToStaticMarkup(
+      <SoloButton solo applying={false} onSolo={noop} />,
+    );
+    assert.match(idle, /class="nav-button toggle active\s*"/);
+    assert.doesNotMatch(idle, /disabled/);
+    const applying = renderToStaticMarkup(
+      <SoloButton solo applying onSolo={noop} />,
+    );
+    assert.match(applying, /class="nav-button toggle active running"/);
+    assert.match(applying, /disabled=""/);
+    assert.match(applying, /<span class="spin-icon"><svg/);
+  });
+});
+
+suite('Commit rows', () => {
+  test('marks the checked-out commit, whether or not it is selected', () => {
+    assert.strictEqual(commitClass('a', undefined, 'a'), 'commit checked-out');
+    assert.strictEqual(
+      commitClass('a', 'a', 'a'),
+      'commit selected checked-out',
+    );
+    assert.strictEqual(commitClass('b', 'b', 'a'), 'commit selected');
+    assert.strictEqual(commitClass('b', undefined, undefined), 'commit');
   });
 });

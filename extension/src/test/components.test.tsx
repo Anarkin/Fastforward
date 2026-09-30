@@ -23,6 +23,7 @@ import {
 } from '../webview/navBar';
 import { holdsDismissLayer, nextPeekMode } from '../webview/shortcutsHelp';
 import { changeTitle, statusClass } from '../webview/fileStatus';
+import { Column } from '../webview/column';
 import { Files } from '../webview/filesColumn';
 import { FileTree } from '../webview/fileTree';
 import { LineCounts } from '../webview/lineCounts';
@@ -143,6 +144,49 @@ function clickFile(row: React.ReactElement) {
 }
 
 suite('Files column', () => {
+  test('names the mode in its title and switches it at the bottom', () => {
+    for (const mode of ['changes', 'files'] as const) {
+      let column: React.ReactNode;
+      function Probe() {
+        column = Files({
+          mode,
+          onMode: noop,
+          changesView: 'list',
+          onChangesView: noop,
+          closedFolders: new Set(),
+          onToggleClosedFolder: noop,
+          files: [],
+          loading: false,
+          treeLoading: false,
+          tree: undefined,
+          openFolders: new Set(),
+          onToggleFolder: noop,
+          selected: undefined,
+          onSelect: noop,
+        });
+        return null;
+      }
+      renderToStaticMarkup(<Probe />);
+      assert.ok(
+        isValidElement<{ title: string; footer: React.ReactElement }>(column),
+      );
+      assert.strictEqual(
+        column.props.title,
+        mode === 'changes' ? 'Changes' : 'Files',
+      );
+      const html = renderToStaticMarkup(column.props.footer);
+      assert.match(html, /^<div class="switch" role="tablist">/);
+      tagWith(html, 'aria-selected="true"', 'switch-option', 'active');
+    }
+  });
+
+  test('draws a footer below its body', () => {
+    assert.strictEqual(
+      renderToStaticMarkup(<Column footer={<b />}>body</Column>),
+      '<section class="column"><header class="column-title"></header><div class="column-body">body</div><footer class="column-footer"><b></b></footer></section>',
+    );
+  });
+
   test('shows no rows without changes, not even their header', () => {
     assert.deepStrictEqual(changesRows([], undefined, noop).rows, []);
   });
@@ -170,6 +214,10 @@ suite('Files column', () => {
       picked.push(path),
     ).rows;
     assert.match(header.props.className, /\bselected\b/);
+    assert.strictEqual(
+      renderToStaticMarkup(header),
+      `<div class="${header.props.className}"><span class="path">All Changes</span></div>`,
+    );
     header.props.onClick();
     assert.deepStrictEqual(picked, [undefined]);
     const [unmarked] = changesRows([change('a.ts')], 'a.ts', noop).rows;
@@ -278,7 +326,6 @@ suite('Navigation bar', () => {
         root="/repo"
         bookmarks={[]}
         repository={undefined}
-        selected={undefined}
         hashLookup={undefined}
         onLookupHash={noop}
         onJump={noop}
@@ -437,7 +484,6 @@ const popup = (
     <LocationsPopup
       bookmarks={[]}
       repository={undefined}
-      selected={undefined}
       anchor={{ current: null }}
       lookup={result}
       onLookup={noop}
@@ -503,7 +549,6 @@ suite('Hash suggestion', () => {
 const repository = (...refs: [RefInfo['kind'], string][]): RepositoryState => ({
   head: undefined,
   headCommit: undefined,
-  headUpstream: undefined,
   refs: refs.map(([kind, name]) => ({ kind, name, commit: 'c'.repeat(40) })),
 });
 
@@ -526,7 +571,6 @@ suite('Search', () => {
     const element = renderedBy(LocationsPopup, {
       bookmarks: [],
       repository: undefined,
-      selected: undefined,
       anchor: { current: null },
       lookup: undefined,
       onLookup: noop,
@@ -566,14 +610,13 @@ suite('Search', () => {
     );
   });
 
-  test('keeps several folders closed, marks the selected ref and says when a kind has none', () => {
+  test('keeps several folders closed and says when a kind has none', () => {
     const html = popup('', undefined, {
       repository: repository(
         ['branch', 'main'],
         ['remote', 'origin/a'],
         ['remote', 'upstream/b'],
       ),
-      selected: 'c'.repeat(40),
     });
     assert.deepStrictEqual(counts(html), [1, 2, 0]);
     const folders = tagsWith(html, 'row', 'tree-row', 'folder', 'sticky');
@@ -585,7 +628,6 @@ suite('Search', () => {
     assert.match(html, /<\/span>origin<\/div>/);
     assert.match(html, /<\/span>upstream<\/div>/);
     assert.strictEqual(html.match(/class="twisty">▸</g)?.length, 2);
-    tagWith(html, 'title="main"', 'row', 'tree-row', 'leaf', 'selected');
     assert.match(html, /<div class="locations-empty">None<\/div>/);
   });
 
@@ -605,23 +647,6 @@ suite('Search', () => {
     const active = tagsWith(html, 'row', 'result', 'active');
     assert.strictEqual(active.length, 1);
     assert.match(active[0], /title="v1"/);
-  });
-
-  test('marks the selected commit among bookmarks, but not what is checked out', () => {
-    const html = popup('', undefined, {
-      repository: { ...refs, head: 'main' },
-      bookmarks: [{ kind: 'branch', name: 'main' }],
-      selected: 'c'.repeat(40),
-    });
-    assert.strictEqual(tagsWith(html, 'row', 'result', 'pinned').length, 2);
-    assert.strictEqual(
-      tagsWith(html, 'row', 'result', 'pinned', 'selected').length,
-      1,
-    );
-    assert.match(
-      html,
-      /Bookmarks<span class="locations-count">1<\/span><\/header><div class="locations-list"><div class="[^"]*selected/,
-    );
   });
 
   test('pins the checked-out branch and bookmarks, showing one that is gone as such', () => {

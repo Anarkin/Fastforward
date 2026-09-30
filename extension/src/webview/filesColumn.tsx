@@ -52,7 +52,8 @@ export function Files({
     () => new Map(files.map((file) => [file.path, file])),
     [files],
   );
-  const title = (
+  const title = mode === 'changes' ? 'Changes' : 'Files';
+  const modeSwitch = (
     <div className="switch" role="tablist">
       {(['changes', 'files'] as const).map((option) => (
         <button
@@ -69,7 +70,7 @@ export function Files({
   );
   if (mode === 'files') {
     return (
-      <Column title={title} index={1}>
+      <Column title={title} index={1} footer={modeSwitch}>
         {skeleton && <SkeletonRows count={12} indent />}
         {tree && (
           <FileTree
@@ -101,7 +102,7 @@ export function Files({
       className={`row group counted ${selected === undefined ? 'selected' : ''}`}
       onClick={() => onSelect(undefined)}
     >
-      <span className="path">CHANGES ({files.length})</span>
+      <span className="path">All Changes</span>
     </div>
   );
   const fileRows =
@@ -123,7 +124,7 @@ export function Files({
           />
         ));
   return (
-    <Column title={title} index={1} actions={settings}>
+    <Column title={title} index={1} actions={settings} footer={modeSwitch}>
       {skeleton && <SkeletonRows count={6} />}
       <VirtualRows
         rows={files.length > 0 ? [header, ...fileRows] : []}

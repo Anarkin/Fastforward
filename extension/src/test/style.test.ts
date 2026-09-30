@@ -57,6 +57,39 @@ suite('Style', () => {
     );
   });
 
+  test('writes the title of the checked-out commit in bold', () => {
+    assert.match(
+      declarationsOf('.commit.checked-out .subject'),
+      /font-weight: 600/,
+    );
+  });
+
+  test('tints a selection with the accent color, apart from the shaded background', () => {
+    const selected = declarationsOf('.row.selected,\n.commit.selected');
+    assert.match(
+      selected,
+      /background: color-mix\(\s*in srgb,\s*var\(--vscode-focusBorder\)/,
+    );
+    assert.doesNotMatch(selected, /shade-background/);
+  });
+
+  test('dims a clean working tree like an author or a folder', () => {
+    assert.match(
+      declarationsOf('.commit.working-tree.empty .subject'),
+      /opacity: var\(--muted-opacity\);/,
+    );
+  });
+
+  test('draws the checked-out branch in the solid color a branch is tinted with, in the text color made for it', () => {
+    assert.match(
+      declarationsOf('.badge.branch'),
+      /background: color-mix\(\s*in srgb,\s*var\(--vscode-button-background\) 25%/,
+    );
+    const checkedOut = declarationsOf('.badge.checked-out');
+    assert.match(checkedOut, /color: var\(--vscode-button-foreground\);/);
+    assert.match(checkedOut, /background: var\(--vscode-button-background\);/);
+  });
+
   test('cuts off every long name in a row with an ellipsis', () => {
     assert.match(declarationsOf('.row .path'), /text-overflow: ellipsis/);
   });
