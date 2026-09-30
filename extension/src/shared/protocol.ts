@@ -27,7 +27,23 @@ export function isLargeChange(file: {
 
 export type ChangesView = 'list' | 'tree';
 
+export const defaultLayout: {
+  readonly collapseMerges: boolean;
+  readonly solo: boolean;
+  readonly filesMode: FilesMode;
+  readonly changesView: ChangesView;
+} = {
+  collapseMerges: true,
+  solo: false,
+  filesMode: 'changes',
+  changesView: 'tree',
+};
+
 export const commitPageSize = 100;
+
+export function pageStart(index: number): number {
+  return index - (index % commitPageSize);
+}
 
 export interface RefInfo {
   readonly kind: RefKind;

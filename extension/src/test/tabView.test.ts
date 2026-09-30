@@ -2,13 +2,18 @@ import * as assert from 'node:assert';
 import {
   emptyTabView,
   reduceTabView,
+  treeOf,
   treeToLoad,
   type TabView,
 } from '../webview/tabView';
-import { commitInfo } from './fixtures';
+import { commitPageSize } from '../shared/protocol';
+import { commitInfo, fileChange } from './fixtures';
+
+const openTab = (view: TabView, active: string) =>
+  reduceTabView(view, { type: 'tabs', tabs: [], active });
 
 function busyTab(): TabView {
-  let view = reduceTabView(emptyTabView, {
+  let view = reduceTabView(openTab(emptyTabView, 'one'), {
     type: 'commits',
     generation: 1,
     total: 2,
@@ -23,15 +28,7 @@ function busyTab(): TabView {
   view = reduceTabView(view, {
     type: 'files',
     hash: 'a',
-    files: [
-      {
-        path: 'x.ts',
-        oldPath: undefined,
-        status: 'M',
-        insertions: 1,
-        deletions: 0,
-      },
-    ],
+    files: [fileChange('x.ts')],
   });
   view = reduceTabView(view, {
     type: 'diff',
@@ -44,11 +41,13 @@ function busyTab(): TabView {
 }
 
 suite('Tab view', () => {
-  test('starts over when another tab opens', () => {
-    assert.deepStrictEqual(
-      reduceTabView(busyTab(), { type: 'clear' }),
-      emptyTabView,
-    );
+  test('keeps the view when the tabs change but not the active one, and starts over when another becomes active', () => {
+    const view = busyTab();
+    assert.strictEqual(openTab(view, 'one'), view);
+    assert.deepStrictEqual(openTab(view, 'two'), {
+      ...emptyTabView,
+      root: 'two',
+    });
   });
 
   test('scrolls a new history to where the extension says', () => {
@@ -85,6 +84,11 @@ suite('Tab view', () => {
     assert.strictEqual(view.patch, '');
     assert.strictEqual(view.error, undefined);
     assert.strictEqual(view.fetching, true);
+  });
+
+  test('clears the error when selecting another file', () => {
+    const view = reduceTabView(busyTab(), { type: 'showFile', path: 'y.ts' });
+    assert.strictEqual(view.error, undefined);
   });
 
   test('fills in pages of the history, re-rendering for the selected commit', () => {
@@ -124,6 +128,96 @@ suite('Tab view', () => {
     assert.deepStrictEqual(first.scrollTarget, { index: 0 });
     assert.deepStrictEqual(second.scrollTarget, { index: 0 });
     assert.notStrictEqual(second.scrollTarget, first.scrollTarget);
+  });
+
+  test('selects a revealed commit and knows where it is before its page loads', () => {
+    const view = reduceTabView(busyTab(), {
+      type: 'reveal',
+      hash: 'z',
+      index: 1,
+    });
+    assert.strictEqual(view.hash, 'z');
+    assert.ok(view.filesLoading && view.patchLoading);
+    assert.strictEqual(view.history?.positionOf('z'), 1);
+    assert.strictEqual(view.history?.at(1), undefined);
+  });
+
+  test('scrolls to the offset in a row where the extension says the history was scrolled', () => {
+    const view = reduceTabView(emptyTabView, {
+      type: 'commits',
+      generation: 1,
+      total: 10,
+      decorations: [],
+      start: 0,
+      commits: [commitInfo('a')],
+      graph: [],
+      workingTreeGraph: { lane: 0, color: 0, lines: [] },
+      selectedIndex: 0,
+      scrollTarget: { index: 5, offset: 3 },
+    });
+    assert.deepStrictEqual(view.scrollTarget, { index: 5, offset: 3 });
+  });
+
+  test('scrolls nowhere for a new history the extension gives no place in', () => {
+    const view = reduceTabView(busyTab(), {
+      type: 'commits',
+      generation: 2,
+      total: 10,
+      decorations: [],
+      start: 0,
+      commits: [commitInfo('a')],
+      graph: [],
+      workingTreeGraph: { lane: 0, color: 0, lines: [] },
+      selectedIndex: undefined,
+      scrollTarget: undefined,
+    });
+    assert.strictEqual(view.scrollTarget, undefined);
+  });
+
+  test('asks again for a page that came back empty', () => {
+    const before = reduceTabView(emptyTabView, {
+      type: 'commits',
+      generation: 1,
+      total: 3 * commitPageSize,
+      decorations: [],
+      start: 0,
+      commits: [commitInfo('a')],
+      graph: [],
+      workingTreeGraph: { lane: 0, color: 0, lines: [] },
+      selectedIndex: 0,
+      scrollTarget: undefined,
+    });
+    const page = () =>
+      before.history?.takeMissingPages(commitPageSize, 2 * commitPageSize - 1);
+    assert.deepStrictEqual(page(), [commitPageSize]);
+    const after = reduceTabView(before, {
+      type: 'commitPage',
+      generation: 1,
+      start: commitPageSize,
+      commits: [],
+      graph: [],
+    });
+    assert.strictEqual(after, before);
+    assert.deepStrictEqual(page(), [commitPageSize]);
+  });
+
+  test('stops loading the selected commit when an error comes', () => {
+    const loading = reduceTabView(busyTab(), { type: 'showCommit', hash: 'b' });
+    const failed = reduceTabView(loading, { type: 'error', message: 'failed' });
+    assert.ok(!failed.filesLoading && !failed.patchLoading);
+    assert.strictEqual(failed.error, 'failed');
+  });
+
+  test('re-renders only when the count of working tree changes changes', () => {
+    const view = reduceTabView(emptyTabView, { type: 'workingTree', files: 2 });
+    assert.strictEqual(
+      reduceTabView(view, { type: 'workingTree', files: 2 }),
+      view,
+    );
+    assert.strictEqual(
+      reduceTabView(view, { type: 'workingTree', files: 3 }).workingTree,
+      3,
+    );
   });
 
   test('drops a page of the history before', () => {
@@ -175,7 +269,7 @@ suite('Tab view', () => {
   });
 
   test('shows what the extension says is selected after another tab opens', () => {
-    const cleared = reduceTabView(busyTab(), { type: 'clear' });
+    const cleared = openTab(busyTab(), 'two');
     const view = reduceTabView(
       reduceTabView(cleared, { type: 'files', hash: 'a', files: [] }),
       { type: 'diff', hash: 'a', path: 'x.ts', patch: 'x' },
@@ -225,6 +319,16 @@ suite('Tab view', () => {
       });
     assert.strictEqual(answer(view.diffs), again);
     assert.ok(answer(again.diffs).largeFiles.has('x.ts'));
+    assert.strictEqual(
+      reduceTabView(again, {
+        type: 'fileDiff',
+        hash: 'b',
+        path: 'x.ts',
+        patch: '',
+        diff: again.diffs,
+      }),
+      again,
+    );
   });
 
   test("asks for a commit's tree once, and again after the tab reopens", () => {
@@ -236,10 +340,50 @@ suite('Tab view', () => {
     assert.strictEqual(treeToLoad(late), undefined);
     const loaded = reduceTabView(asked, { type: 'tree', hash: 'a', paths: [] });
     assert.strictEqual(treeToLoad(loaded), undefined);
-    const reopened = reduceTabView(reduceTabView(asked, { type: 'clear' }), {
+    const reopened = reduceTabView(openTab(asked, 'two'), {
       type: 'showCommit',
       hash: 'a',
     });
     assert.strictEqual(treeToLoad(reopened), 'a');
+  });
+
+  test("keeps the selected commit's tree when an earlier commit's tree arrives after it", () => {
+    let view = reduceTabView(emptyTabView, { type: 'showCommit', hash: 'a' });
+    view = reduceTabView(view, { type: 'requestTree', hash: 'a' });
+    view = reduceTabView(view, { type: 'showCommit', hash: 'b' });
+    view = reduceTabView(view, { type: 'requestTree', hash: 'b' });
+    view = reduceTabView(view, { type: 'tree', hash: 'b', paths: ['b'] });
+    view = reduceTabView(view, { type: 'tree', hash: 'a', paths: ['a'] });
+    assert.deepStrictEqual(treeOf(view), ['b']);
+    assert.strictEqual(treeToLoad(view), undefined);
+  });
+
+  test('shows the tree of the selected commit only', () => {
+    assert.strictEqual(treeOf(emptyTabView), undefined);
+    const view = reduceTabView(emptyTabView, { type: 'showCommit', hash: 'a' });
+    const other = reduceTabView(view, {
+      type: 'tree',
+      hash: 'b',
+      paths: ['b'],
+    });
+    assert.strictEqual(treeOf(other), undefined);
+    const loaded = reduceTabView(view, {
+      type: 'tree',
+      hash: 'a',
+      paths: ['a'],
+    });
+    assert.deepStrictEqual(treeOf(loaded), ['a']);
+  });
+
+  test('shows no whole file of the file selected before', () => {
+    const whole = reduceTabView(busyTab(), {
+      type: 'fileContent',
+      hash: 'a',
+      path: 'y.ts',
+      content: 'y',
+      binary: false,
+    });
+    const next = reduceTabView(whole, { type: 'showFile', path: 'z.ts' });
+    assert.strictEqual(next.fileContent, undefined);
   });
 });

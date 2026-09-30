@@ -10,7 +10,7 @@ import {
 import { noNavigation, reachable, type Navigation } from './history/navigation';
 import { countRefs, decorations, fingerprint, type Head } from './refs';
 import {
-  commitPageSize,
+  pageStart,
   workingTreeHash,
   workingTreeIndex,
   workingTreeSubject,
@@ -139,9 +139,7 @@ export function firstPage(
     indexTarget(positionOf(tab, scrollTo) ?? tab.index);
   const index = scrollTarget?.index;
   const start =
-    index === undefined || index === workingTreeIndex
-      ? 0
-      : index - (index % commitPageSize);
+    index === undefined || index === workingTreeIndex ? 0 : pageStart(index);
   return { start, scrollTarget };
 }
 

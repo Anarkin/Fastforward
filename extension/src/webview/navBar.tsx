@@ -3,9 +3,9 @@ import { shortHash } from '../shared/hashes';
 import type {
   Bookmark,
   Direction,
-  HashLookup,
   NavigationEntry,
   RepositoryState,
+  ToWebviewOf,
 } from '../shared/protocol';
 import { useDismiss } from './contextMenu';
 import { BackIcon, ForwardIcon, HelpIcon, RefreshIcon } from './icons';
@@ -225,13 +225,11 @@ export function AddressBar({
   hashLookup,
   onLookupHash,
   onJump,
-  placeholder = 'Search branches, remotes and tags',
-  bookmarks = [],
+  bookmarks,
 }: {
   root: string | undefined;
-  placeholder?: string;
-  bookmarks?: readonly Bookmark[];
-  hashLookup: { query: string; result: HashLookup } | undefined;
+  bookmarks: readonly Bookmark[];
+  hashLookup: ToWebviewOf<'hashLookup'> | undefined;
   onLookupHash: (query: string) => void;
   repository: RepositoryState | undefined;
   selected: string | undefined;
@@ -261,7 +259,7 @@ export function AddressBar({
         title="Search branches, remotes and tags"
         onClick={() => setOpen(true)}
       >
-        <span className="address-text empty">{placeholder}</span>
+        <span className="address-text empty">Search…</span>
       </button>
       {open && (
         <LocationsPopup
@@ -330,7 +328,7 @@ export function ShortcutsPanel({
       </div>
       <dl className="shortcuts-list">
         {shortcuts.map((shortcut) => (
-          <Fragment key={shortcut.id}>
+          <Fragment key={shortcut.key}>
             <dt>
               <kbd>{shortcut.key.toUpperCase()}</kbd>
             </dt>

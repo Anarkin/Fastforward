@@ -48,40 +48,27 @@ export function bookmarkOptions(
   ];
 }
 
-export interface BubbleRow {
-  readonly branch: BookmarkRef | undefined;
-  readonly upstream: BookmarkRef | undefined;
-  readonly bookmarks: Bookmark[];
-  readonly checkedOutIsBookmark: boolean;
+export function toggleBookmark(
+  bookmarks: readonly Bookmark[],
+  bookmark: Bookmark,
+): Bookmark[] {
+  return hasRef(bookmarks, bookmark)
+    ? bookmarks.filter((other) => !sameRef(other, bookmark))
+    : [...bookmarks, bookmark];
 }
 
-export function bubbleRow(
-  bookmarks: readonly Bookmark[],
+function checkedOutRefs(
   refs: readonly RefInfo[],
   head: string | undefined,
   headUpstream: string | undefined,
-  detached?: string,
-): BubbleRow {
-  const branch: BookmarkRef | undefined =
-    head && hasRef(refs, { kind: 'branch', name: head })
-      ? { kind: 'branch', name: head }
-      : undefined;
-  const upstream: BookmarkRef | undefined =
-    branch &&
-    headUpstream &&
-    hasRef(refs, { kind: 'remote', name: headUpstream })
-      ? { kind: 'remote', name: headUpstream }
-      : undefined;
-  return {
-    branch,
-    upstream,
-    bookmarks: bookmarks
-      .filter((bookmark) => !(upstream && sameRef(bookmark, upstream)))
-      .toSorted(compareBookmarks),
-    checkedOutIsBookmark: detached
-      ? hasRef(bookmarks, { kind: 'commit', name: detached })
-      : branch !== undefined && hasRef(bookmarks, branch),
-  };
+): BookmarkRef[] {
+  if (!head || !hasRef(refs, { kind: 'branch', name: head })) {
+    return [];
+  }
+  const branch: BookmarkRef = { kind: 'branch', name: head };
+  return headUpstream && hasRef(refs, { kind: 'remote', name: headUpstream })
+    ? [branch, { kind: 'remote', name: headUpstream }]
+    : [branch];
 }
 
 export interface PinnedRefs {
@@ -97,13 +84,12 @@ export function pinnedRefs(
   detached: string | undefined,
   query: string,
 ): PinnedRefs {
-  const row = bubbleRow(bookmarks, refs, head, headUpstream, detached);
   const needle = query.toLowerCase();
   const matches = (bookmark: Bookmark) =>
     bookmark.name.toLowerCase().includes(needle);
   const checkedOut: Bookmark[] = detached
     ? [{ kind: 'commit', name: detached }]
-    : [row.branch, row.upstream].filter((ref) => ref !== undefined);
+    : checkedOutRefs(refs, head, headUpstream);
   return {
     checkedOut: checkedOut.filter(matches),
     bookmarks: bookmarks.toSorted(compareBookmarks).filter(matches),
