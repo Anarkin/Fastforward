@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useEffectEvent,
   useRef,
   useSyncExternalStore,
 } from 'react';
@@ -104,6 +105,17 @@ export function arrowKeyPosition(
     Math.min(history.total - 1, (from ?? top - 1) + step),
   );
   return position === from ? undefined : position;
+}
+
+export function workingTreeShift(
+  scrollTop: number,
+  previousOffset: number,
+  offset: number,
+  rowHeight: number,
+): number | undefined {
+  return offset === previousOffset || scrollTop === 0
+    ? undefined
+    : scrollTop + (offset - previousOffset) * rowHeight;
 }
 
 export function CommitBubbles({
@@ -241,26 +253,44 @@ export function Commits({
     return () => clearTimeout(timer);
   }, [history, first, last, onLoad]);
 
-  const scrollIndex = scrollTarget && offset + scrollTarget.index;
-  useEffect(() => {
-    if (!history || scrollIndex === undefined) {
-      return;
-    }
-    const rowOffset = scrollTarget?.offset;
-    if (rowOffset !== undefined) {
-      const [start] = virtualizer.getOffsetForIndex(scrollIndex, 'start') ?? [];
+  const shownOffset = useRef(offset);
+  const applyTarget = useEffectEvent((target: ScrollTarget) => {
+    shownOffset.current = offset;
+    const index = offset + target.index;
+    if (target.offset !== undefined) {
+      const [start] = virtualizer.getOffsetForIndex(index, 'start') ?? [];
       if (start !== undefined) {
-        virtualizer.scrollToOffset(start + rowOffset);
+        virtualizer.scrollToOffset(start + target.offset);
       }
       return;
     }
     const onScreen = virtualizer
       .getVirtualItems()
-      .some((row) => row.index === scrollIndex);
-    virtualizer.scrollToIndex(scrollIndex, {
-      align: onScreen ? 'auto' : 'center',
-    });
-  }, [history, scrollTarget, scrollIndex, virtualizer]);
+      .some((row) => row.index === index);
+    virtualizer.scrollToIndex(index, { align: onScreen ? 'auto' : 'center' });
+  });
+  useEffect(() => {
+    if (history && scrollTarget) {
+      applyTarget(scrollTarget);
+    }
+  }, [history, scrollTarget]);
+  useEffect(() => {
+    const previous = shownOffset.current;
+    shownOffset.current = offset;
+    const element = list.current;
+    if (!element) {
+      return;
+    }
+    const shifted = workingTreeShift(
+      element.scrollTop,
+      previous,
+      offset,
+      commitRowHeight,
+    );
+    if (shifted !== undefined) {
+      virtualizer.scrollToOffset(shifted);
+    }
+  }, [offset, virtualizer]);
 
   const topUnreported = useRef(false);
   const reportTop = useCallback(() => {

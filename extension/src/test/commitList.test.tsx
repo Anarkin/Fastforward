@@ -13,6 +13,7 @@ import {
   listTop,
   rowKeyOf,
   WorkingTreeRow,
+  workingTreeShift,
 } from '../webview/commitList';
 import { commitInfo } from './fixtures';
 
@@ -119,6 +120,12 @@ suite('Commit list working tree row', () => {
     assert.doesNotMatch(html, /empty/);
     assert.match(html, /<span class="count">3<\/span>/);
     assert.strictEqual(clickedHash(3), workingTreeHash);
+  });
+
+  test('keeps a scrolled list in place when the working tree row appears above it', () => {
+    assert.strictEqual(workingTreeShift(500, 0, 1, commitRowHeight), 550);
+    assert.strictEqual(workingTreeShift(0, 0, 1, commitRowHeight), undefined);
+    assert.strictEqual(workingTreeShift(500, 1, 1, commitRowHeight), undefined);
   });
 });
 
