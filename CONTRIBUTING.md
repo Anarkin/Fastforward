@@ -11,10 +11,10 @@
 ## Local Development and Debugging
 
 - Run `npm install` in `app/`
-- Run `npm run install-local` in `app/` to install the current code into your regular VS Code, then run Developer: Restart Extension Host
-- After that, run `npm run deploy-local` in `app/` to copy a new build into the installed extension, which restarts the extension host by itself; use `npm run install-local` again when `package.json` changes
-- When debugging a reported problem, read the newest `Fastforward.log` under `logs\*\window*\exthost\anarkin.fastforward\` in VS Code's data folder: `%APPDATA%\Code` on Windows, `~/Library/Application Support/Code` on macOS and `~/.config/Code` on Linux
+- Run `npm start` in `app/` to build and open the app, or `npm run dev` to rebuild on every change, which restarts the app after main process changes and reloads the page after the rest
+- Run `npm run dist` in `app/` to build an installer for the current OS into `app/release/`
+- When debugging a reported problem, read `Fastforward.log`, and `Fastforward.previous.log` for the run before, in the app's logs folder: `%APPDATA%\Fastforward\logs` on Windows, `~/Library/Logs/Fastforward` on macOS and `~/.config/Fastforward/logs` on Linux; Ctrl+Shift+I, or Cmd+Shift+I on macOS, opens the developer tools
 
 ## Testing
 
-- `npm run verify:fast` leaves out the tests that need VS Code and git repositories, which are named `*.vscode.test.ts`; run the full `npm run verify` before committing, and after changing code those tests cover: the Git access, the view and the extension
+- `npm run verify:fast` leaves out the tests that need git repositories, which are named `*.git.test.ts`; run the full `npm run verify` before committing, and after changing code those tests cover: the Git access and the view
