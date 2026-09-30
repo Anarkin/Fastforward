@@ -24,6 +24,7 @@ import {
 import { holdsDismissLayer, nextPeekMode } from '../webview/shortcutsHelp';
 import { changeTitle, statusClass } from '../webview/fileStatus';
 import { Files } from '../webview/filesColumn';
+import { FileTree } from '../webview/fileTree';
 import { LineCounts } from '../webview/lineCounts';
 import { SkeletonRows } from '../webview/skeleton';
 import { TabBar } from '../webview/tabBar';
@@ -212,6 +213,21 @@ suite('File rows', () => {
     tagWith(html, 'title="src/a.ts"', 'row', 'tree-row', 'file');
     tagWith(html, '', 'path');
     assert.deepStrictEqual(tagsWith(html, 'line-counts'), []);
+  });
+
+  test('names a folder of the file tree by its full path', () => {
+    const element = renderedBy(FileTree, {
+      paths: ['src/lib/a.ts'],
+      changes: new Map(),
+      selected: undefined,
+      expanded: new Set(['src']),
+      onToggle: noop,
+      onSelect: noop,
+    });
+    assert.ok(isValidElement<{ rows: React.ReactElement[] }>(element));
+    const html = renderToStaticMarkup(<>{element.props.rows}</>);
+    tagWith(html, 'title="src"', 'row', 'tree-row', 'folder');
+    tagWith(html, 'title="src/lib"', 'row', 'tree-row', 'folder');
   });
 });
 
@@ -560,19 +576,14 @@ suite('Search', () => {
       selected: 'c'.repeat(40),
     });
     assert.deepStrictEqual(counts(html), [1, 2, 0]);
-    for (const remote of ['origin', 'upstream']) {
-      assert.match(
-        tagWith(
-          html,
-          `title="${remote}"`,
-          'row',
-          'tree-row',
-          'folder',
-          'sticky',
-        ),
-        /z-index:100/,
-      );
+    const folders = tagsWith(html, 'row', 'tree-row', 'folder', 'sticky');
+    assert.strictEqual(folders.length, 2);
+    for (const folder of folders) {
+      assert.match(folder, /z-index:100/);
+      assert.ok(!folder.includes('title='));
     }
+    assert.match(html, /<\/span>origin<\/div>/);
+    assert.match(html, /<\/span>upstream<\/div>/);
     assert.strictEqual(html.match(/class="twisty">▸</g)?.length, 2);
     tagWith(html, 'title="main"', 'row', 'tree-row', 'leaf', 'selected');
     assert.match(html, /<div class="locations-empty">None<\/div>/);
