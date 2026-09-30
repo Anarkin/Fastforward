@@ -14,6 +14,11 @@ input {
 
 body {
   --muted-opacity: 0.45;
+  --selection-background: color-mix(
+    in srgb,
+    var(--color-focus) 18%,
+    var(--color-panel-background)
+  );
   --muted-foreground: color-mix(
     in srgb,
     var(--color-foreground) calc(var(--muted-opacity) * 100%),
@@ -448,11 +453,7 @@ body.resizing {
 .row.selected,
 .commit.selected {
   color: var(--color-foreground);
-  background: color-mix(
-    in srgb,
-    var(--color-focus) 18%,
-    var(--color-panel-background)
-  );
+  background: var(--selection-background);
 }
 
 .row.group {
@@ -713,7 +714,7 @@ body.resizing {
 
 .locations-list .row.result.active {
   color: var(--color-foreground);
-  background: var(--color-list-selection-background);
+  background: var(--selection-background);
 }
 
 .locations-list .match {
@@ -1156,7 +1157,7 @@ body.resizing {
 
 .hash-suggestion.active {
   color: var(--color-foreground);
-  background: var(--color-list-selection-background);
+  background: var(--selection-background);
 }
 
 .hash-suggestion.active .history-hash {
