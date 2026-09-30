@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { workingTreeHash } from '../shared/protocol';
 import {
   firstPage,
   keep,
@@ -7,6 +8,7 @@ import {
   nearestSteps,
   newTabState,
   replayOf,
+  select,
 } from '../tabState';
 
 suite('Tab state', () => {
@@ -45,6 +47,22 @@ suite('Tab state', () => {
       tab.history.map((entry) => entry.hash),
       ['c', 'b', 'a'],
     );
+  });
+
+  test('selects a commit at its position, dropping the selected file', () => {
+    const tab = newTabState();
+    loadHistory(tab, history, undefined, []);
+    layOutHistory(tab, false, undefined);
+    tab.path = 'x';
+    select(tab, 'b');
+    assert.deepStrictEqual(
+      [tab.hash, tab.index, tab.path],
+      ['b', 1, undefined],
+    );
+    select(tab, workingTreeHash);
+    assert.strictEqual(tab.index, -1);
+    select(tab, undefined);
+    assert.deepStrictEqual([tab.hash, tab.index], [undefined, undefined]);
   });
 
   test('starts the first page at the commit that keeps its place', () => {

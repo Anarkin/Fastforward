@@ -43,7 +43,6 @@ import {
   navigationEntry,
   nearestSteps,
   newTabState,
-  positionOf,
   replayOf,
   select,
   stillThere,
@@ -238,10 +237,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
           await storage.addRecent(root);
         }
         const added = roots.filter((root) => !storage.hasTab(root));
-        await storage.setTabs(
-          [...storage.tabs, ...new Set(added)],
-          storage.activeTab,
-        );
+        await storage.setTabs([...storage.tabs, ...added], storage.activeTab);
         const last = roots.at(-1);
         if (last) {
           await this.openTab(git, session, last);
@@ -329,7 +325,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
   }
 
   private async handleTab(
-    message: TabMessage,
+    message: Exclude<TabMessage, { type: 'setBookmarks' | 'scrolled' }>,
     git: API,
     session: Session,
   ): Promise<void> {
@@ -398,9 +394,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         if (message.hash) {
           this.visit(context, message.hash, message.replace);
         }
-        context.tab.hash = message.hash;
-        context.tab.index = positionOf(context.tab, message.hash);
-        context.tab.path = undefined;
+        select(context.tab, message.hash);
         if (!message.hash) {
           context.tab.shown.files = undefined;
           context.tab.shown.diff = undefined;
@@ -423,8 +417,6 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
           );
         }
         break;
-      default:
-        break;
     }
   }
 
@@ -432,12 +424,16 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     if (stillThere(context.tab)(hash)) {
       return true;
     }
-    context.post({ type: 'error', message: `${hash} is not in the history` });
+    this.notInHistory(context, hash);
     return false;
   }
 
   private shown(context: Context, hash: string): boolean {
     return this.known(context, hash) && hash === context.tab.hash;
+  }
+
+  private notInHistory(context: Context, hash: string): void {
+    context.post({ type: 'error', message: `${hash} is not in the history` });
   }
 
   private async addWorkspaceTab(git: API): Promise<void> {
@@ -752,7 +748,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     }
     tab.navigation = result.navigation;
     if (result.target === workingTreeHash) {
-      select(tab, workingTreeHash, -1);
+      select(tab, workingTreeHash);
       context.post({ type: 'reveal', hash: workingTreeHash, index: -1 });
       await this.sendCommit(context);
     } else {
@@ -776,13 +772,13 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     }
     const index = tab.positions.get(hash);
     if (index === undefined) {
-      context.post({ type: 'error', message: `${hash} is not in the history` });
+      this.notInHistory(context, hash);
       return;
     }
     if (record) {
       this.visit(context, hash);
     }
-    select(tab, hash, index);
+    select(tab, hash);
     context.post({ type: 'reveal', hash, index });
     await this.sendCommit(context);
   }
@@ -982,7 +978,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     } else if (context.tab.positions.has(hash)) {
       files = await showFiles(context.gitPath, context.root, hash);
     } else {
-      context.post({ type: 'error', message: `${hash} is not in the history` });
+      this.notInHistory(context, hash);
       return;
     }
     if (context.tab.hash !== hash) {

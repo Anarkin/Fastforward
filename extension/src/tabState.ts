@@ -171,9 +171,9 @@ export function mergesHidingCommit(tab: TabState, hash: string): string[] {
   return mergesHiding(tab.fullHistory, tab.positions, hash);
 }
 
-export function select(tab: TabState, hash: string, index: number): void {
+export function select(tab: TabState, hash: string | undefined): void {
   tab.hash = hash;
-  tab.index = index;
+  tab.index = positionOf(tab, hash);
   tab.path = undefined;
 }
 
@@ -277,7 +277,7 @@ export function keepSubjects(
   }
 }
 
-export function positionOf(
+function positionOf(
   tab: TabState,
   hash: string | undefined,
 ): number | undefined {
