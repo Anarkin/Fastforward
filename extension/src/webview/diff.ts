@@ -47,7 +47,7 @@ export function unquotePath(path: string): string {
   }
   const bytes: number[] = [];
   const encoder = new TextEncoder();
-  const inner = path.slice(1, -1);
+  const inner = Array.from(path.slice(1, -1));
   for (let i = 0; i < inner.length; i++) {
     const char = inner[i];
     if (char !== '\\') {
@@ -56,7 +56,7 @@ export function unquotePath(path: string): string {
     }
     const next = inner[++i];
     if (/[0-7]/.test(next)) {
-      bytes.push(Number.parseInt(inner.slice(i, i + 3), 8));
+      bytes.push(Number.parseInt(inner.slice(i, i + 3).join(''), 8));
       i += 2;
     } else {
       bytes.push(escapes[next] ?? next.charCodeAt(0));

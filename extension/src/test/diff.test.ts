@@ -74,6 +74,7 @@ suite('parsePatch', () => {
     assert.strictEqual(unquotePath('"a\\tb"'), 'a\tb');
     assert.strictEqual(unquotePath('"\\303\\251t\\303\\251.md"'), 'été.md');
     assert.strictEqual(unquotePath('plain.md'), 'plain.md');
+    assert.strictEqual(unquotePath('"say \\"hi\\" 😀.md"'), 'say "hi" 😀.md');
     const [file] = parsePatch(
       [
         'diff --git "a/say \\"hi\\".md" "b/say \\"hi\\".md"',
