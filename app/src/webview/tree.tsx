@@ -1,6 +1,5 @@
 import type { FileChange } from '../shared/protocol';
-import { changeTitle, changesClass, statusClass } from './fileStatus';
-import { LineCounts } from './lineCounts';
+import { changeTitle, changeClass } from './fileStatus';
 
 const treePadding = 8;
 export const twistyWidth = 10;
@@ -52,14 +51,12 @@ export function FileRow({
   name,
   depth,
   change,
-  inChanges = false,
   selected,
   onSelect,
 }: {
   path: string;
   name: string;
   depth?: number;
-  inChanges?: boolean;
   change: FileChange | undefined;
   selected: string | undefined;
   onSelect: (path: string | undefined) => void;
@@ -75,23 +72,7 @@ export function FileRow({
       title={change ? changeTitle(change) : path}
       onClick={() => onSelect(path === selected ? undefined : path)}
     >
-      <span
-        className={
-          change === undefined
-            ? 'path'
-            : inChanges
-              ? changesClass(change)
-              : statusClass(change)
-        }
-      >
-        {name}
-      </span>
-      {change && !inChanges && (
-        <LineCounts
-          deletions={change.deletions}
-          insertions={change.insertions}
-        />
-      )}
+      <span className={changeClass(change)}>{name}</span>
     </div>
   );
 }
