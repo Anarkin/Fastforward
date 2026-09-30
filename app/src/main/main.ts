@@ -131,9 +131,15 @@ async function start(): Promise<void> {
   checkForUpdates(log);
 }
 
-// Squirrel.Mac only installs signed updates, and the macOS app isn't signed
+// Squirrel.Mac only installs signed updates, and the macOS app isn't signed;
+// the portable Windows exe, which sets PORTABLE_EXECUTABLE_DIR, has nothing
+// installed to update
 function checkForUpdates(log: Log): void {
-  if (development || process.platform === 'darwin') {
+  if (
+    development ||
+    process.platform === 'darwin' ||
+    process.env.PORTABLE_EXECUTABLE_DIR
+  ) {
     return;
   }
   autoUpdater.logger = {
