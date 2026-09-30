@@ -8,7 +8,6 @@ import type {
   CommitSearch,
   HashLookup,
 } from '../shared/protocol';
-import { rawStatus } from './diff';
 import { gitConfigArgs, gitEnv, runGit, splitNul } from './run';
 
 export async function headCommit(
@@ -324,10 +323,7 @@ export async function logCommits(
       'log',
       '--stdin',
       '--no-walk=unsorted',
-      '--raw',
       '-z',
-      '-M',
-      '--diff-merges=first-parent',
       '--format=%x1e%H%x00%P%x00%aN%x00%aE%x00%at%x00%cN%x00%cE%x00%ct%x00%B',
       '--',
     ],
@@ -357,12 +353,6 @@ export function parseLog(output: string): CommitInfo[] {
       body = '',
     ] = tokens.slice(i, i + 9);
     i += 9;
-    let files = 0;
-    while (i < tokens.length && tokens[i].trimStart().startsWith(':')) {
-      const code = rawStatus(tokens[i]);
-      files++;
-      i += code === 'R' || code === 'C' ? 3 : 2;
-    }
     const message = body.replaceAll('\r\n', '\n').trimEnd();
     commits.push({
       hash: hash.slice(1),
@@ -375,7 +365,6 @@ export function parseLog(output: string): CommitInfo[] {
       committerName,
       committerEmail,
       commitDate: Number(commitTime) * 1000,
-      files,
     });
   }
   return commits;

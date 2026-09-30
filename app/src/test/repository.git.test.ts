@@ -274,8 +274,6 @@ suite('Git repository', function () {
         (await showFiles(gitPath, cwd, root)).map((file) => file.path),
         ['first.txt'],
       );
-      const [commit] = await logCommits(gitPath, cwd, [root]);
-      assert.strictEqual(commit.files, 1);
       await temp.git(
         '-c',
         'user.name=Ádám',
@@ -344,8 +342,6 @@ suite('Git repository', function () {
         ]),
         [['A', 'x.txt']],
       );
-      const [commit] = await logCommits(gitPath, cwd, [merge]);
-      assert.strictEqual(commit.files, 1);
       const patch = await showPatch(gitPath, cwd, merge);
       assert.ok(patch.includes('b/x.txt'), patch);
     } finally {
@@ -367,8 +363,6 @@ suite('Git repository', function () {
     });
     assert.ok(patch.includes('rename from second.txt'), patch);
     assert.ok(!patch.includes('new file mode'), patch);
-    const [commit] = await logCommits(gitPath, cwd, [rename]);
-    assert.strictEqual(commit.files, files.length);
   });
 });
 

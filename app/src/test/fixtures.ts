@@ -20,7 +20,6 @@ export const commitInfo = (
   committerName: 'Test',
   committerEmail: 'test@example.com',
   commitDate: 0,
-  files: 1,
   ...extra,
 });
 
