@@ -62,7 +62,7 @@ suite('Settings', () => {
       overridesOf(defaults, {
         ...defaults,
         solo: true,
-        columnWidths: [460, 300],
+        columnWidths: [...defaults.columnWidths],
       }),
       { solo: true },
     );
