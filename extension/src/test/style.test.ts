@@ -205,6 +205,15 @@ suite('Style', () => {
     );
   });
 
+  test("sits a shortcut's key on the text baseline without VS Code's shadow, its top padding making up for the thicker bottom border", () => {
+    const key = declarationsOf('.shortcuts-list kbd');
+    assert.match(key, /vertical-align: baseline;/);
+    assert.match(key, /box-shadow: none;/);
+    assert.match(key, /padding: 1px 6px 0;/);
+    assert.match(key, /border: 1px solid/);
+    assert.match(key, /border-bottom: 2px solid/);
+  });
+
   test("lays a sticky location row's see-through hover color over its solid background, so rows under it stay hidden", () => {
     assert.match(
       declarationsOf('.locations-list .tree-row.sticky:hover'),
