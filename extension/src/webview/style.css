@@ -1168,8 +1168,6 @@ body.resizing {
   margin: 0;
 }
 
-/* Overrides VS Code's webview style for kbd, which centers it vertically and
-   adds a shadow; the top padding balances the thicker bottom border */
 .shortcuts-list kbd {
   display: inline-block;
   min-width: 12px;
