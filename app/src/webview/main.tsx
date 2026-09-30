@@ -1,16 +1,23 @@
 import { createRoot } from 'react-dom/client';
-import type { ToExtension } from '../shared/protocol';
+import type { ToHost, ToWebview } from '../shared/protocol';
 import { App } from './App';
 import { errorText } from './errors';
 import './theme.css';
 import './style.css';
 
-declare function acquireVsCodeApi(): {
-  postMessage(message: ToExtension): void;
-};
+declare global {
+  interface Window {
+    readonly fastforward: {
+      post(message: ToHost): void;
+      listen(handler: (message: ToWebview) => void): () => void;
+    };
+  }
+}
 
-const vscode = acquireVsCodeApi();
-const post = (message: ToExtension) => vscode.postMessage(message);
+const { fastforward } = window;
+const post = (message: ToHost) => fastforward.post(message);
+const listen = (handler: (message: ToWebview) => void) =>
+  fastforward.listen(handler);
 
 window.addEventListener('error', (event) =>
   post({
@@ -25,5 +32,5 @@ window.addEventListener('unhandledrejection', (event) =>
 
 const root = document.getElementById('root');
 if (root) {
-  createRoot(root).render(<App post={post} />);
+  createRoot(root).render(<App post={post} listen={listen} />);
 }

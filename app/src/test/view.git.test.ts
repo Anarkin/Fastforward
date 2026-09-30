@@ -2,13 +2,13 @@ import * as assert from 'node:assert';
 import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import * as vscode from 'vscode';
 import {
   workingTreeHash,
   type ToWebview,
   type ToWebviewOf,
   type BookmarkRef,
 } from '../shared/protocol';
+import type { Log } from '../log';
 import {
   activeTabKey,
   bookmarksKey,
@@ -16,11 +16,12 @@ import {
   recentKey,
   sameRoot,
   soloKey,
+  Storage,
   tabsKey,
 } from '../storage';
-import { FastforwardView, type Connection } from '../view';
+import { FastforwardView, type Connection, type Host } from '../view';
+import { FakeStore } from './fakeStore';
 import { waitFor } from './fixtures';
-import { FakeMemento } from './memento';
 import {
   installedGit,
   removeFolder,
@@ -28,10 +29,18 @@ import {
   tempRepository,
   type TempRepository,
 } from './repositories';
-import { recordingLog, withMessageStub } from './stub';
+import { recordingLog } from './stub';
 
 class FakePage {
   readonly messages: ToWebview[] = [];
+  readonly listeners = new Set<(message: ToWebview) => void>();
+
+  receive(message: ToWebview): void {
+    this.messages.push(message);
+    for (const listener of this.listeners) {
+      listener(message);
+    }
+  }
 
   last<T extends ToWebview['type']>(type: T): ToWebviewOf<T> | undefined {
     return this.messages.findLast(
@@ -48,39 +57,66 @@ interface OpenView {
   view: FastforwardView;
   page: FakePage;
   connection: Connection;
-  globalState: FakeMemento;
+  store: FakeStore;
+}
+
+class FakeHost implements Host {
+  folders: readonly string[] = [];
+
+  chooseFolders(): Promise<readonly string[]> {
+    return Promise.resolve(this.folders);
+  }
+}
+
+async function withNotices(
+  page: FakePage,
+  level: 'info' | 'error',
+  run: (messages: string[]) => Promise<void>,
+): Promise<void> {
+  const messages: string[] = [];
+  const listener = (message: ToWebview) => {
+    if (message.type === 'notice' && message.level === level) {
+      messages.push(message.message);
+    }
+  };
+  page.listeners.add(listener);
+  try {
+    await run(messages);
+  } finally {
+    page.listeners.delete(listener);
+  }
 }
 
 async function openView(
-  log: vscode.LogOutputChannel,
+  log: Log,
   tabs: readonly string[],
   ready = true,
+  host: Host = new FakeHost(),
 ): Promise<OpenView> {
-  const workspaceState = new FakeMemento();
-  await workspaceState.update(tabsKey, tabs);
-  await workspaceState.update(activeTabKey, tabs[0]);
-  const globalState = new FakeMemento();
+  const store = new FakeStore();
+  await store.update(tabsKey, tabs);
+  await store.update(activeTabKey, tabs[0]);
   const view = new FastforwardView(
     log,
     await installedGit(),
-    vscode.Uri.file(__dirname),
-    workspaceState,
-    globalState,
+    new Storage(store),
+    host,
   );
   const { page, connection } = attach(view);
   if (ready) {
     await connection.receive({ type: 'ready' });
   }
-  return { view, page, connection, globalState };
+  return { view, page, connection, store };
 }
 
 async function withView(
-  log: vscode.LogOutputChannel,
+  log: Log,
   tabs: readonly string[],
   run: (view: OpenView) => Promise<void>,
   ready = true,
+  host?: Host,
 ): Promise<void> {
-  const view = await openView(log, tabs, ready);
+  const view = await openView(log, tabs, ready, host);
   try {
     await run(view);
   } finally {
@@ -95,7 +131,7 @@ function attach(view: FastforwardView): {
   const page = new FakePage();
   return {
     page,
-    connection: view.connect((message) => page.messages.push(message)),
+    connection: view.connect((message) => page.receive(message)),
   };
 }
 
@@ -141,10 +177,8 @@ function reopen(view: FastforwardView): {
   return { page, connection, ready: connection.receive({ type: 'ready' }) };
 }
 
-function savedBookmarks(
-  globalState: FakeMemento,
-): Record<string, BookmarkRef[]> {
-  return globalState.get<Record<string, BookmarkRef[]>>(bookmarksKey, {});
+function savedBookmarks(store: FakeStore): Record<string, BookmarkRef[]> {
+  return store.get<Record<string, BookmarkRef[]>>(bookmarksKey, {});
 }
 
 suite('View', function () {
@@ -156,9 +190,7 @@ suite('View', function () {
   let other: string;
   let otherHead: string;
 
-  const log = vscode.window.createOutputChannel('Fastforward view test', {
-    log: true,
-  });
+  const { log } = recordingLog();
 
   suiteSetup(async () => {
     folder = tempFolder('view');
@@ -185,7 +217,6 @@ suite('View', function () {
   });
 
   suiteTeardown(() => {
-    log.dispose();
     removeFolder(folder);
   });
 
@@ -198,14 +229,14 @@ suite('View', function () {
     let fastforward: FastforwardView;
     let page: FakePage;
     let connection: Connection;
-    let globalState: FakeMemento;
+    let store: FakeStore;
 
     setup(async () => {
       ({
         view: fastforward,
         page,
         connection,
-        globalState,
+        store,
       } = await openView(log, [repository.root]));
     });
 
@@ -295,7 +326,7 @@ suite('View', function () {
         root: repository.root,
         bookmarks: [],
       });
-      assert.deepStrictEqual(savedBookmarks(globalState)[repository.root], []);
+      assert.deepStrictEqual(savedBookmarks(store)[repository.root], []);
     });
 
     test('refreshes once at a time, without sending an unchanged diff', async () => {
@@ -1116,11 +1147,11 @@ suite('View', function () {
               (message) => message.type === 'applyingSolo',
             ),
         );
-        assert.strictEqual(globalState.get(soloKey), true);
+        assert.strictEqual(store.get(soloKey), true);
         await connection.receive({ type: 'setSolo', solo: false });
         assert.strictEqual(page.last('commits')?.total, 4);
       } finally {
-        await globalState.update(soloKey, false);
+        await store.update(soloKey, false);
         await repository.git('branch', '-D', 'side');
       }
     });
@@ -1182,14 +1213,14 @@ suite('View', function () {
     });
 
     test('reports what git said when it refuses a checkout', async () => {
-      await withMessageStub('showErrorMessage', async (messages) => {
+      await withNotices(page, 'error', async (messages) => {
         await connection.receive({
           type: 'checkout',
           root: repository.root,
           target: { kind: 'branch', name: 'no-such-branch' },
         });
         assert.strictEqual(messages.length, 1);
-        assert.match(messages[0], /couldn't check out no-such-branch/);
+        assert.match(messages[0], /^Couldn't check out no-such-branch/);
         assert.match(messages[0], /invalid reference: no-such-branch/);
         assert.doesNotMatch(messages[0], /Failed to execute git/);
       });
@@ -1400,7 +1431,7 @@ suite('View', function () {
         await repository.git('checkout', 'main');
         fs.writeFileSync(clash, 'mine');
         await connection.refresh();
-        await withMessageStub('showErrorMessage', async (messages) => {
+        await withNotices(page, 'error', async (messages) => {
           await connection.receive({
             type: 'checkout',
             root: repository.root,
@@ -1434,8 +1465,8 @@ suite('View', function () {
       await repository.git('branch', 'even', 'main');
       await repository.git('update-ref', 'refs/remotes/origin/even', 'main');
       try {
-        await withMessageStub('showErrorMessage', async (errors) => {
-          await withMessageStub('showInformationMessage', async (infos) => {
+        await withNotices(page, 'error', async (errors) => {
+          await withNotices(page, 'info', async (infos) => {
             await connection.receive({
               type: 'checkout',
               root: repository.root,
@@ -1464,7 +1495,7 @@ suite('View', function () {
         await repository.git('checkout', 'main');
         await repository.git('update-ref', 'refs/remotes/origin/apart', 'main');
         await connection.refresh();
-        await withMessageStub('showInformationMessage', async (messages) => {
+        await withNotices(page, 'info', async (messages) => {
           await connection.receive({
             type: 'checkout',
             root: repository.root,
@@ -1542,7 +1573,7 @@ suite('View', function () {
         type: 'setCollapseMerges',
         collapse: false,
       });
-      assert.strictEqual(tabs.globalState.get(collapseMergesKey), false);
+      assert.strictEqual(tabs.store.get(collapseMergesKey), false);
       tabs.page.clear();
       await tabs.connection.receive({
         type: 'selectTab',
@@ -1697,7 +1728,7 @@ suite('View', function () {
       });
       assert.strictEqual(tabs.page.last('files'), undefined);
       assert.strictEqual(tabs.page.last('navigation'), undefined);
-      const saved = savedBookmarks(tabs.globalState);
+      const saved = savedBookmarks(tabs.store);
       assert.deepStrictEqual(saved[repository.root], []);
       assert.deepStrictEqual(saved[other], [{ kind: 'branch', name: 'main' }]);
 
@@ -1784,7 +1815,7 @@ suite('View', function () {
             type: 'setCollapseMerges',
             collapse: false,
           });
-          assert.strictEqual(own.globalState.get(collapseMergesKey), false);
+          assert.strictEqual(own.store.get(collapseMergesKey), false);
         },
         false,
       );
@@ -1793,31 +1824,25 @@ suite('View', function () {
     test('opens the repositories picked in new tabs, showing the last one', async () => {
       const third = await tempRepository(path.join(folder, 'third'));
       await third.commit('third');
-      const recording = recordingLog(log);
-      const original = vscode.window.showOpenDialog;
-      Reflect.set(vscode.window, 'showOpenDialog', () =>
-        Promise.resolve(
-          [third.root, third.root, other].map((root) => vscode.Uri.file(root)),
-        ),
-      );
-      try {
-        await withView(recording.log, [repository.root], async (view) => {
-          await view.connection.receive({ type: 'addTab' });
-          const ours = new Set(['main', 'third', 'other']);
+      const recording = recordingLog();
+      const host = new FakeHost();
+      host.folders = [third.root, third.root, other];
+      await withView(
+        recording.log,
+        [repository.root],
+        async (view) => {
+          await view.connection.receive({ type: 'browseRepositories' });
           const shown = view.page.last('tabs');
           assert.deepStrictEqual(
-            shown?.tabs
-              .map((tab) => tab.name)
-              .filter((name) => ours.has(name))
-              .toSorted(),
-            ['main', 'other', 'third'],
+            shown?.tabs.map((tab) => tab.name),
+            ['main', 'third', 'other'],
           );
           assert.ok(shown.active && sameRoot(shown.active, other));
           assert.strictEqual(
             view.page.last('repository')?.headCommit,
             otherHead,
           );
-          const recent = view.globalState.get<string[]>(recentKey, []);
+          const recent = view.store.get<string[]>(recentKey, []);
           for (const root of [third.root, other]) {
             assert.ok(
               recent.some((saved) => sameRoot(saved, root)),
@@ -1829,16 +1854,82 @@ suite('View', function () {
             level: 'info',
             message: 'from the page',
           });
-          assert.ok(
-            recording.info.some(([text]) => text === 'Webview: from the page'),
+          assert.ok(recording.info.includes('Webview: from the page'));
+        },
+        true,
+        host,
+      );
+    });
+
+    test('opens a repository by a folder inside it', async () => {
+      const inner = path.join(other, 'inner');
+      fs.mkdirSync(inner, { recursive: true });
+      const host = new FakeHost();
+      host.folders = [inner];
+      await withView(
+        log,
+        [repository.root],
+        async (view) => {
+          await view.connection.receive({ type: 'browseRepositories' });
+          const shown = view.page.last('tabs');
+          assert.deepStrictEqual(
+            shown?.tabs.map((tab) => tab.name),
+            ['main', 'other'],
+          );
+        },
+        true,
+        host,
+      );
+    });
+
+    test('opens nothing when the folder dialog is cancelled', async () => {
+      await withView(log, [repository.root], async (view) => {
+        view.page.clear();
+        await view.connection.receive({ type: 'browseRepositories' });
+        assert.deepStrictEqual(
+          view.page.last('tabs')?.tabs.map((tab) => tab.name),
+          ['main'],
+        );
+        assert.strictEqual(view.page.last('notice'), undefined);
+      });
+    });
+
+    test('offers the recent repositories that are not open in a tab', async () => {
+      await withView(log, [repository.root], async (view) => {
+        await view.store.update(recentKey, [other, repository.root]);
+        await view.connection.receive({ type: 'sortTabs' });
+        assert.deepStrictEqual(view.page.last('tabs')?.recent, [
+          { root: other, name: 'other' },
+        ]);
+        await view.connection.receive({ type: 'openRepository', root: other });
+        const shown = view.page.last('tabs');
+        assert.ok(shown?.active && sameRoot(shown.active, other));
+        assert.deepStrictEqual(shown.recent, []);
+      });
+    });
+
+    test('forgets a recent folder that is no longer a repository, and says so', async () => {
+      const gone = tempFolder('gone');
+      try {
+        await withView(log, [repository.root], async (view) => {
+          await view.store.update(recentKey, [gone, other]);
+          await view.connection.receive({ type: 'openRepository', root: gone });
+          assert.match(
+            view.page.last('notice')?.message ?? '',
+            /is not in a git repository$/,
+          );
+          assert.deepStrictEqual(view.store.get(recentKey), [other]);
+          assert.deepStrictEqual(
+            view.page.last('tabs')?.tabs.map((tab) => tab.name),
+            ['main'],
           );
         });
       } finally {
-        Reflect.set(vscode.window, 'showOpenDialog', original);
+        removeFolder(gone);
       }
     });
 
-    test('closes the only tab, leaving none shown', async () => {
+    test('closes the only tab, leaving none shown but offering it again', async () => {
       await withView(log, [repository.root], async (view) => {
         for (const tab of view.page.last('tabs')?.tabs ?? []) {
           await view.connection.receive({ type: 'closeTab', root: tab.root });
@@ -1847,6 +1938,7 @@ suite('View', function () {
           type: 'tabs',
           tabs: [],
           active: undefined,
+          recent: [{ root: repository.root, name: 'main' }],
         });
         assert.deepStrictEqual(view.page.last('bookmarks')?.bookmarks, []);
         assert.strictEqual(view.page.last('error'), undefined);
@@ -2063,9 +2155,7 @@ suite('Fetch', function () {
   let page: FakePage;
   let connection: Connection;
 
-  const log = vscode.window.createOutputChannel('Fastforward fetch test', {
-    log: true,
-  });
+  const { log } = recordingLog();
 
   suiteSetup(async () => {
     folder = tempFolder('fetch');
@@ -2081,7 +2171,6 @@ suite('Fetch', function () {
 
   suiteTeardown(() => {
     connection.dispose();
-    log.dispose();
     removeFolder(folder);
   });
 
@@ -2169,11 +2258,11 @@ suite('Fetch', function () {
       path.join(folder, 'missing'),
     );
     try {
-      await withMessageStub('showErrorMessage', async (messages) => {
+      await withNotices(page, 'error', async (messages) => {
         page.clear();
         await connection.receive({ type: 'fetch', root: repository.root });
         assert.strictEqual(messages.length, 1);
-        assert.match(messages[0] ?? '', /^Fastforward: couldn't fetch\./);
+        assert.match(messages[0] ?? '', /^Couldn't fetch\./);
         assert.strictEqual(page.last('fetching')?.running, false);
         assert.ok(page.last('workingTree'));
       });

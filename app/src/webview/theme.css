@@ -22,6 +22,9 @@
   --color-widget-background: #fafafd;
   --color-widget-border: #e2e2e5;
   --color-widget-shadow: #00000000;
+  --color-scrollbar: #646464c0;
+  --color-scrollbar-hover: #646464d0;
+  --color-scrollbar-active: #646464e0;
   --color-section-header-background: #fafafd;
   --color-menu-separator: #eeeef1;
   --color-diff-added-line-background: #9bb95533;
@@ -81,6 +84,9 @@
     --color-widget-background: #202122;
     --color-widget-border: #2a2b2c;
     --color-widget-shadow: #0000005c;
+    --color-scrollbar: #a8a9aa85;
+    --color-scrollbar-hover: #a8a9aa90;
+    --color-scrollbar-active: #a8a9aa9c;
     --color-section-header-background: #191a1b;
     --color-menu-separator: #2a2b2c;
     --color-diff-added-line-background: #347d3926;

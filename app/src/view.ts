@@ -1,6 +1,4 @@
-import { randomBytes } from 'node:crypto';
 import * as path from 'node:path';
-import * as vscode from 'vscode';
 import { remoteDefaultBranches } from './git/branches';
 import { showFiles, showPatch, type PatchScope } from './git/diff';
 import { gitErrorText } from './git/errorText';
@@ -19,9 +17,14 @@ import {
   type WorkingTree,
 } from './git/workingTree';
 import { step, visit } from './history/navigation';
-import { checkout, fetchAll, type RepositoryAt } from './operations';
+import type { Log } from './log';
+import {
+  checkout,
+  fetchAll,
+  type Notify,
+  type RepositoryAt,
+} from './operations';
 import { defaultBookmarks, fingerprint } from './refs';
-import { pickRepositories } from './repositoryPicker';
 import { isFullHash } from './shared/hashes';
 import {
   commitPageSize,
@@ -31,8 +34,9 @@ import {
   type CheckoutTarget,
   type Direction,
   type FileChange,
+  type TabInfo,
   type TabMessage,
-  type ToExtension,
+  type ToHost,
   type ToWebview,
 } from './shared/protocol';
 import { sameRoot, Storage } from './storage';
@@ -56,13 +60,6 @@ import {
   type TabState,
 } from './tabState';
 
-export const toggleViewCommand = 'fastforward.toggleView';
-export const showViewCommand = 'fastforward.showView';
-export const viewType = 'fastforward.view';
-export const viewTitle = '⏩ Fastforward';
-const viewUri = vscode.Uri.from({ scheme: 'fastforward', path: '/view' });
-
-const modalEditorGroup = -4;
 const refreshDelay = 300;
 
 interface Tab extends TabState {
@@ -72,8 +69,12 @@ interface Tab extends TabState {
   isRepository: boolean;
 }
 
+export interface Host {
+  chooseFolders(): Promise<readonly string[]>;
+}
+
 export interface Connection {
-  receive(message: ToExtension): Promise<void>;
+  receive(message: ToHost): Promise<void>;
   refresh(): Promise<void>;
   dispose(): void;
 }
@@ -105,71 +106,16 @@ function toAll(contexts: readonly Context[]): Context | undefined {
   };
 }
 
-export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
+export class FastforwardView {
   private readonly tabStates = new Map<string, Tab>();
-  private readonly storage: Storage;
   private page: Session | undefined;
 
   constructor(
-    private readonly log: vscode.LogOutputChannel,
+    private readonly log: Log,
     private readonly gitPath: string,
-    private readonly extensionUri: vscode.Uri,
-    workspaceState: vscode.Memento,
-    globalState: vscode.ExtensionContext['globalState'],
-  ) {
-    this.storage = new Storage(workspaceState, globalState);
-  }
-
-  private get isShown(): boolean {
-    const input = vscode.window.tabGroups.activeTabGroup.activeTab?.input;
-    return (
-      input instanceof vscode.TabInputCustom && input.viewType === viewType
-    );
-  }
-
-  async toggle(): Promise<void> {
-    if (this.isShown) {
-      await this.hide();
-    } else {
-      await this.show();
-    }
-  }
-
-  async show(): Promise<void> {
-    await vscode.commands.executeCommand(
-      '_workbench.openWith',
-      viewUri,
-      viewType,
-      [modalEditorGroup, { pinned: true }],
-    );
-    this.log.info('View shown');
-  }
-
-  private async hide(): Promise<void> {
-    await vscode.commands.executeCommand('workbench.action.closeModalEditor');
-    this.log.info('View hidden');
-  }
-
-  openCustomDocument(uri: vscode.Uri): vscode.CustomDocument {
-    return { uri, dispose: () => {} };
-  }
-
-  resolveCustomEditor(
-    _document: vscode.CustomDocument,
-    panel: vscode.WebviewPanel,
-  ): void {
-    const dist = vscode.Uri.joinPath(this.extensionUri, 'dist');
-    panel.title = viewTitle;
-    panel.webview.options = { enableScripts: true, localResourceRoots: [dist] };
-    panel.webview.html = html(panel.webview, dist);
-    const connection = this.connect(
-      (message) => void panel.webview.postMessage(message),
-    );
-    panel.webview.onDidReceiveMessage(
-      (message: ToExtension) => void connection.receive(message),
-    );
-    panel.onDidDispose(() => connection.dispose());
-  }
+    private readonly storage: Storage,
+    private readonly host: Host,
+  ) {}
 
   connect(post: (message: ToWebview) => void): Connection {
     const session: Session = {
@@ -229,33 +175,22 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     }
   }
 
-  private async handle(message: ToExtension, session: Session): Promise<void> {
+  private async handle(message: ToHost, session: Session): Promise<void> {
     const { storage } = this;
     switch (message.type) {
       case 'ready':
         session.post(storage.layout);
-        await this.addWorkspaceTab();
         await this.openTab(session, storage.activeTab);
         return;
       case 'selectTab':
         await this.openTab(session, message.root);
         return;
-      case 'addTab': {
-        const roots = await pickRepositories(
-          (folder) => repositoryRoot(this.gitPath, folder),
-          storage,
-        );
-        for (const root of roots) {
-          await storage.addRecent(root);
-        }
-        const added = roots.filter((root) => !storage.hasTab(root));
-        await storage.setTabs([...storage.tabs, ...added], storage.activeTab);
-        const last = roots.at(-1);
-        if (last) {
-          await this.openTab(session, last);
-        }
+      case 'openRepository':
+        await this.openRepositories(session, [message.root]);
         return;
-      }
+      case 'browseRepositories':
+        await this.openRepositories(session, await this.host.chooseFolders());
+        return;
       case 'closeTab': {
         const { tabs, activeTab } = storage;
         const index = tabs.findIndex((tab) => sameRoot(tab, message.root));
@@ -447,18 +382,37 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     context.post({ type: 'error', message: `${hash} is not in the history` });
   }
 
-  private async addWorkspaceTab(): Promise<void> {
-    const editor = vscode.window.activeTextEditor?.document.uri;
-    const folder =
-      editor?.scheme === 'file'
-        ? path.dirname(editor.fsPath)
-        : vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-    const root = folder && (await repositoryRoot(this.gitPath, folder));
-    if (root && !this.storage.hasTab(root)) {
-      await this.storage.setTabs(
-        [root, ...this.storage.tabs],
-        this.storage.activeTab ?? root,
-      );
+  private async openRepositories(
+    session: Session,
+    folders: readonly string[],
+  ): Promise<void> {
+    const { storage } = this;
+    const roots: string[] = [];
+    for (const folder of folders) {
+      const root = await repositoryRoot(this.gitPath, folder);
+      if (root) {
+        roots.push(root);
+        await storage.addRecent(root);
+      } else {
+        await storage.removeRecent(folder);
+        session.post({
+          type: 'notice',
+          level: 'error',
+          message: `${folder} is not in a git repository`,
+        });
+      }
+    }
+    const added = roots.filter(
+      (root, index) =>
+        !storage.hasTab(root) &&
+        roots.findIndex((other) => sameRoot(other, root)) === index,
+    );
+    await storage.setTabs([...storage.tabs, ...added], storage.activeTab);
+    const last = roots.at(-1);
+    if (last) {
+      await this.openTab(session, last);
+    } else {
+      this.postTabs(session);
     }
   }
 
@@ -561,11 +515,12 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
   }
 
   private postTabs(session: Session): void {
-    const { tabs, activeTab: active } = this.storage;
+    const { tabs, activeTab: active, recent } = this.storage;
     session.post({
       type: 'tabs',
-      tabs: tabs.map((tab) => ({ root: tab, name: path.basename(tab) })),
+      tabs: tabs.map(tabInfo),
       active,
+      recent: recent.filter((root) => !this.storage.hasTab(root)).map(tabInfo),
     });
     session.post({
       type: 'bookmarks',
@@ -674,7 +629,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     context: Context,
     target: CheckoutTarget,
   ): Promise<void> {
-    if (!(await checkout(this.log, context, target))) {
+    if (!(await checkout(this.log, this.notify(context), context, target))) {
       return;
     }
     await this.refresh(context);
@@ -692,7 +647,11 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
   }
 
   private fetchRemotes(context: Context): Promise<void> {
-    return fetchAll(this.log, context);
+    return fetchAll(this.log, this.notify(context), context);
+  }
+
+  private notify(context: Context): Notify {
+    return (level, message) => context.post({ type: 'notice', level, message });
   }
 
   private visit(context: Context, hash: string, replace = false): void {
@@ -1137,22 +1096,6 @@ async function allSettled(
   }
 }
 
-function html(webview: vscode.Webview, dist: vscode.Uri): string {
-  const nonce = randomBytes(16).toString('base64');
-  const script = webview.asWebviewUri(vscode.Uri.joinPath(dist, 'webview.js'));
-  const style = webview.asWebviewUri(vscode.Uri.joinPath(dist, 'webview.css'));
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; font-src ${webview.cspSource};">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Fastforward</title>
-  <link rel="stylesheet" href="${style.toString()}">
-</head>
-<body>
-  <div id="root"></div>
-  <script nonce="${nonce}" src="${script.toString()}"></script>
-</body>
-</html>`;
+function tabInfo(root: string): TabInfo {
+  return { root, name: path.basename(root) };
 }

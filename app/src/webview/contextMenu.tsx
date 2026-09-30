@@ -26,6 +26,7 @@ export const commitMenuTarget = (hash: string): MenuTarget => ({
 export type ContextMenuItem =
   | {
       readonly label: string;
+      readonly title?: string;
       readonly onClick?: () => void;
       readonly submenu?: readonly ContextMenuItem[];
       readonly disabled?: boolean;
@@ -188,6 +189,7 @@ export function MenuItems({
                     : 'menuitemcheckbox'
               }
               aria-checked={item.checked}
+              title={item.title}
               aria-haspopup={item.submenu ? 'menu' : undefined}
               disabled={item.disabled}
               onClick={() => {

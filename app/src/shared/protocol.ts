@@ -125,10 +125,11 @@ export interface ScrollTarget {
   readonly offset?: number;
 }
 
-export type ToExtension =
+export type ToHost =
   | { readonly type: 'ready' }
   | { readonly type: 'selectTab'; readonly root: string }
-  | { readonly type: 'addTab' }
+  | { readonly type: 'openRepository'; readonly root: string }
+  | { readonly type: 'browseRepositories' }
   | { readonly type: 'closeTab'; readonly root: string }
   | { readonly type: 'sortTabs' }
   | { readonly type: 'preloadTab'; readonly root: string }
@@ -212,6 +213,7 @@ export type ToWebview =
       readonly type: 'tabs';
       readonly tabs: readonly TabInfo[];
       readonly active: string | undefined;
+      readonly recent: readonly TabInfo[];
     }
   | ({ readonly type: 'repository' } & RepositoryState)
   | {
@@ -265,7 +267,12 @@ export type ToWebview =
       readonly content: string;
       readonly binary: boolean;
     }
-  | { readonly type: 'error'; readonly message: string };
+  | { readonly type: 'error'; readonly message: string }
+  | {
+      readonly type: 'notice';
+      readonly level: 'info' | 'error';
+      readonly message: string;
+    };
 
 export type ToWebviewOf<T extends ToWebview['type']> = Extract<
   ToWebview,

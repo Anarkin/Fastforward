@@ -1,4 +1,3 @@
-import * as vscode from 'vscode';
 import { aheadBehind, fastForward } from './git/branches';
 import { gitErrorText } from './git/errorText';
 import {
@@ -9,6 +8,9 @@ import {
 } from './git/repository';
 import type { CheckoutTarget } from './shared/protocol';
 import { hasRef, withoutRemote } from './shared/refNames';
+import type { Log } from './log';
+
+export type Notify = (level: 'info' | 'error', message: string) => void;
 
 export interface RepositoryAt {
   readonly gitPath: string;
@@ -16,7 +18,8 @@ export interface RepositoryAt {
 }
 
 export async function checkout(
-  log: vscode.LogOutputChannel,
+  log: Log,
+  notify: Notify,
   at: RepositoryAt,
   target: CheckoutTarget,
 ): Promise<boolean> {
@@ -28,7 +31,7 @@ export async function checkout(
       const { refs } = await readRefs(gitPath, root);
       if (hasRef(refs, { kind: 'branch', name: local })) {
         await checkoutRef(gitPath, root, local);
-        await catchUp(log, at, local, target.name);
+        await catchUp(log, notify, at, local, target.name);
       } else {
         await checkoutNewBranch(gitPath, root, local, target.name);
       }
@@ -48,8 +51,9 @@ export async function checkout(
   } catch (error) {
     reportFailure(
       log,
+      notify,
       `Checking out ${target.kind} ${label} failed`,
-      `couldn't check out ${label}.`,
+      `Couldn't check out ${label}.`,
       error,
     );
     return false;
@@ -57,7 +61,8 @@ export async function checkout(
 }
 
 async function catchUp(
-  log: vscode.LogOutputChannel,
+  log: Log,
+  notify: Notify,
   { gitPath, root }: RepositoryAt,
   local: string,
   remote: string,
@@ -73,8 +78,9 @@ async function catchUp(
   }
   if (ahead > 0) {
     log.info(`${local} and ${remote} have diverged, not fast-forwarding`);
-    void vscode.window.showInformationMessage(
-      `Fastforward: switched to ${local}, which has diverged from ${remote}; pull to combine them.`,
+    notify(
+      'info',
+      `Switched to ${local}, which has diverged from ${remote}; pull to combine them.`,
     );
     return;
   }
@@ -84,27 +90,30 @@ async function catchUp(
   } catch (error) {
     reportFailure(
       log,
+      notify,
       `Fast-forwarding ${local} to ${remote} failed`,
-      `switched to ${local}, but couldn't fast-forward it to ${remote}.`,
+      `Switched to ${local}, but couldn't fast-forward it to ${remote}.`,
       error,
     );
   }
 }
 
 export async function fetchAll(
-  log: vscode.LogOutputChannel,
+  log: Log,
+  notify: Notify,
   { gitPath, root }: RepositoryAt,
 ): Promise<void> {
   try {
     await fetchAllRemotes(gitPath, root);
     log.info('Fetched every remote');
   } catch (error) {
-    reportFailure(log, 'fetch failed', "couldn't fetch.", error);
+    reportFailure(log, notify, 'fetch failed', "Couldn't fetch.", error);
   }
 }
 
 function reportFailure(
-  log: vscode.LogOutputChannel,
+  log: Log,
+  notify: Notify,
   failed: string,
   message: string,
   error: unknown,
@@ -112,5 +121,5 @@ function reportFailure(
   const details = gitErrorText(error);
   log.error(failed);
   log.error(details);
-  void vscode.window.showErrorMessage(`Fastforward: ${message} ${details}`);
+  notify('error', `${message} ${details}`);
 }

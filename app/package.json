@@ -1,78 +1,28 @@
 {
   "name": "fastforward",
-  "displayName": "Fastforward",
-  "description": "Git workflows for VS Code",
+  "productName": "Fastforward",
+  "description": "A desktop app for git",
   "version": "0.0.1",
-  "publisher": "anarkin",
+  "author": "Adam Lengyel",
   "license": "MIT",
+  "private": true,
   "repository": {
     "type": "git",
     "url": "https://github.com/Anarkin/Fastforward.git"
   },
-  "engines": {
-    "vscode": "^1.130.0"
-  },
-  "categories": [
-    "Other"
-  ],
-  "activationEvents": [
-    "onStartupFinished"
-  ],
-  "main": "./dist/extension.js",
-  "contributes": {
-    "commands": [
-      {
-        "command": "fastforward.toggleView",
-        "title": "Toggle View",
-        "category": "Fastforward"
-      }
-    ],
-    "keybindings": [
-      {
-        "command": "fastforward.toggleView",
-        "key": "ctrl+alt+f",
-        "mac": "cmd+alt+f"
-      }
-    ],
-    "customEditors": [
-      {
-        "viewType": "fastforward.view",
-        "displayName": "Fastforward",
-        "selector": [
-          {
-            "filenamePattern": "view"
-          }
-        ],
-        "priority": "option"
-      }
-    ],
-    "resourceLabelFormatters": [
-      {
-        "scheme": "fastforward",
-        "formatting": {
-          "label": "${authority}",
-          "separator": "/"
-        }
-      }
-    ]
-  },
+  "main": "./dist/main.js",
   "scripts": {
-    "vscode:prepublish": "npm run package",
     "build": "node esbuild.mjs",
-    "watch": "node esbuild.mjs --watch",
+    "dev": "node esbuild.mjs --dev",
+    "start": "npm run build && electron .",
     "package": "npm run check-types && node esbuild.mjs --production",
-    "check-types": "tsc --noEmit && tsc -p tsconfig.extension.json && tsc -p tsconfig.webview.json",
+    "check-types": "tsc --noEmit && tsc -p tsconfig.main.json && tsc -p tsconfig.webview.json",
     "compile-tests": "node -e \"require('fs').rmSync('out', { recursive: true, force: true })\" && tsc -p . --outDir out",
-    "pretest": "npm run build && npm run compile-tests",
-    "test": "vscode-test --coverage",
-    "test:unit": "mocha --ui tdd \"out/test/*.test.js\" --exclude \"out/test/*.vscode.test.js\"",
+    "pretest": "npm run compile-tests",
+    "test": "c8 --reporter text --reporter html mocha --ui tdd \"out/test/*.test.js\"",
+    "test:unit": "mocha --ui tdd \"out/test/*.test.js\" --exclude \"out/test/*.git.test.js\"",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "copy-root-files": "node -e \"for (const f of ['README.md', 'LICENSE']) require('fs').copyFileSync('../' + f, f)\"",
-    "vsce:package": "npm run copy-root-files && vsce package",
-    "vsce:publish": "npm run copy-root-files && vsce publish",
-    "deploy-local": "npm run package && node deploy-local.mjs",
-    "install-local": "npm run vsce:package -- --out fastforward.vsix && code --install-extension fastforward.vsix --force && node deploy-local.mjs",
     "verify": "npm run format:check && npm run lint && npm run knip && npm run check-types && npm test",
     "verify:fast": "npm run format:check && npm run lint && npm run knip && npm run check-types && npm run compile-tests && npm run test:unit",
     "lint": "oxlint --type-aware --deny-warnings",
@@ -84,10 +34,8 @@
     "@types/node": "^24.19.0",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "@types/vscode": "^1.125.0",
-    "@vscode/test-cli": "^0.0.15",
-    "@vscode/test-electron": "^3.1.0",
-    "@vscode/vsce": "^4.0.0",
+    "c8": "^12.0.0",
+    "electron": "^44.5.1",
     "esbuild": "^0.28.2",
     "knip": "^6.38.0",
     "mocha": "^11.8.0",
@@ -97,8 +45,5 @@
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "typescript": "^7.0.2"
-  },
-  "extensionDependencies": [
-    "vscode.git"
-  ]
+  }
 }

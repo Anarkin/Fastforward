@@ -31,6 +31,27 @@ body {
   font-size: var(--font-size);
 }
 
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-scrollbar);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-scrollbar-hover);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: var(--color-scrollbar-active);
+}
+
 .app {
   display: flex;
   flex-direction: column;
@@ -166,6 +187,62 @@ body {
 .empty-state {
   padding: 24px;
   color: var(--color-muted-foreground);
+}
+
+.notices {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(480px, calc(100vw - 32px));
+}
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 8px 8px 12px;
+  color: var(--color-foreground);
+  background: var(--popup-background);
+  border-left: 3px solid var(--color-accent);
+  border-radius: var(--card-radius);
+  box-shadow: var(--popup-shadow);
+}
+
+.notice.error {
+  border-left-color: var(--color-error-foreground);
+}
+
+.notice-message {
+  flex: 1;
+  min-width: 0;
+  padding-top: 2px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.notice-close {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  color: inherit;
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  opacity: 0.6;
+}
+
+.notice-close:hover {
+  opacity: 1;
+  background: var(--color-toolbar-hover-background);
 }
 
 .columns {
