@@ -2,6 +2,7 @@ import { createRoot } from 'react-dom/client';
 import type { ToHost, ToWebview } from '../shared/protocol';
 import { App } from './App';
 import { errorText } from './errors';
+import { installOverlayScrollbars } from './overlayScrollbars';
 import './theme.css';
 import './style.css';
 
@@ -44,6 +45,8 @@ window.addEventListener('error', (event) =>
 window.addEventListener('unhandledrejection', (event) =>
   post({ type: 'log', level: 'error', message: errorText(event.reason) }),
 );
+
+installOverlayScrollbars();
 
 const root = document.getElementById('root');
 if (root) {
