@@ -85,8 +85,8 @@ export function TabBar({
         items={[
           { label: 'Sort A-Z', onClick: onSort },
           { separator: true },
-          { label: 'Open Settings File', onClick: onOpenSettings },
           { label: 'Open Default Settings', onClick: onOpenDefaultSettings },
+          { label: 'Open User Settings', onClick: onOpenSettings },
         ]}
       />
       <ShortcutsHelp />

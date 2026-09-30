@@ -864,12 +864,12 @@ suite('Tab bar', () => {
     );
     assert.deepStrictEqual(
       items.map((item) => item.label),
-      ['Sort A-Z', 'Open Settings File', 'Open Default Settings'],
+      ['Sort A-Z', 'Open Default Settings', 'Open User Settings'],
     );
     for (const item of items) {
       item.onClick?.();
     }
-    assert.deepStrictEqual(picked, ['sort', 'settings', 'defaults']);
+    assert.deepStrictEqual(picked, ['sort', 'defaults', 'settings']);
   });
 
   test('stops the middle button from autoscrolling, so a middle click closes the tab', () => {
