@@ -859,8 +859,16 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         this.sendRepository(context, known),
         this.sendCommits(context, known, true),
       ]);
-    } else if (context.tab.shownStale) {
-      await this.sendShownHistory(context, { keepPlace: true });
+    } else {
+      if (
+        context.tab.shown.repository?.headUpstream !==
+        upstreamOf(context.repository)
+      ) {
+        await this.sendRepository(context, Promise.resolve(refs));
+      }
+      if (context.tab.shownStale) {
+        await this.sendShownHistory(context, { keepPlace: true });
+      }
     }
   }
 
@@ -912,7 +920,12 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       tab.history
         .slice(page.start, page.start + 2 * commitPageSize)
         .map((entry) => entry.hash),
-    );
+    ).catch((error: unknown) => {
+      if (tab.generation === generation) {
+        tab.shownStale = true;
+      }
+      throw error;
+    });
     keepSubjects(tab, commits);
     if (tab.generation !== generation) {
       return;
@@ -1040,6 +1053,9 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       context.root,
       hash === workingTreeHash ? undefined : hash,
     );
+    if (context.tab.hash !== hash) {
+      return;
+    }
     const shown = context.tab.shown.tree;
     const unchanged =
       refreshing &&

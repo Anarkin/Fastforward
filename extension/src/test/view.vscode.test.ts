@@ -412,11 +412,21 @@ suite('View', function () {
       fs.writeFileSync(file, 'tree\n');
       try {
         await connection.receive({
+          type: 'selectCommit',
+          root: repository.root,
+          hash: workingTreeHash,
+        });
+        await connection.receive({
           type: 'loadTree',
           root: repository.root,
           hash: workingTreeHash,
         });
         assert.ok(page.last('tree')?.paths.includes('tree-file.txt'));
+        await connection.receive({
+          type: 'selectCommit',
+          root: repository.root,
+          hash: fixture.merge,
+        });
         await connection.receive({
           type: 'loadTree',
           root: repository.root,
@@ -428,6 +438,27 @@ suite('View', function () {
       } finally {
         fs.rmSync(file);
       }
+    });
+
+    test('sends no tree of a commit no longer selected', async () => {
+      await connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: fixture.b,
+      });
+      page.clear();
+      await connection.receive({
+        type: 'loadTree',
+        root: repository.root,
+        hash: fixture.a,
+      });
+      assert.strictEqual(page.last('tree'), undefined);
+      await connection.receive({
+        type: 'loadTree',
+        root: repository.root,
+        hash: fixture.b,
+      });
+      assert.strictEqual(page.last('tree')?.hash, fixture.b);
     });
 
     test('loads pages of the history as the list asks for them', async () => {
@@ -690,6 +721,41 @@ suite('View', function () {
       });
       assert.strictEqual(page.last('reveal')?.hash, fixture.a);
       assert.strictEqual(page.last('navigation')?.forward.length, 0);
+    });
+
+    test('goes back to the working tree', async () => {
+      await connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: workingTreeHash,
+      });
+      await connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: fixture.b,
+      });
+      await waitFor(
+        () => page.last('navigation')?.back.length === 2,
+        'the history of two steps',
+      );
+      assert.strictEqual(
+        page.last('navigation')?.back[0]?.hash,
+        workingTreeHash,
+      );
+      page.clear();
+      await connection.receive({
+        type: 'navigate',
+        root: repository.root,
+        direction: 'back',
+        steps: 1,
+      });
+      assert.deepStrictEqual(page.last('reveal'), {
+        type: 'reveal',
+        hash: workingTreeHash,
+        index: -1,
+      });
+      assert.strictEqual(page.last('files')?.hash, workingTreeHash);
+      assert.strictEqual(page.last('error'), undefined);
     });
 
     test('adds no step for moving through the list with the arrow keys', async () => {
@@ -1001,6 +1067,40 @@ suite('View', function () {
       assert.strictEqual(page.last('diff')?.path, undefined);
     });
 
+    test('drops the diff of a file of a commit no longer selected', async () => {
+      await connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: fixture.b,
+      });
+      const held = gate();
+      let calls = 0;
+      stubMethod<string>(fastforward, 'patchOf', async (original, ...args) => {
+        calls += 1;
+        if (calls === 1) {
+          await held.opened;
+        }
+        return original(...args);
+      });
+      page.clear();
+      const loading = connection.receive({
+        type: 'loadFileDiff',
+        root: repository.root,
+        hash: fixture.b,
+        path: 'b.txt',
+        diff: 1,
+      });
+      await waitFor(() => calls === 1, 'the file diff');
+      await connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: workingTreeHash,
+      });
+      held.open();
+      await loading;
+      assert.strictEqual(page.last('fileDiff'), undefined);
+    });
+
     test('shows a selected uncommitted file deleted since, without failing the refresh', async () => {
       const added = path.join(repository.root, 'added.txt');
       fs.writeFileSync(added, 'added\n');
@@ -1131,6 +1231,31 @@ suite('View', function () {
         assert.ok(refs?.includes('created'));
       } finally {
         await repository.git('branch', '-D', 'created');
+      }
+    });
+
+    test('sends the history again on the next refresh after it failed to load', async () => {
+      await settle(repository.root, connection);
+      const before = page.last('commits')?.generation ?? -1;
+      let failed = false;
+      const elsewhere = tempFolder('not-a-repository');
+      stubMethod(fastforward, 'sendShownHistory', (original, ...args) => {
+        const [context, ...rest] = args;
+        if (failed || typeof context !== 'object') {
+          return original(...args);
+        }
+        failed = true;
+        return original({ ...context, root: elsewhere }, ...rest);
+      });
+      await repository.git('branch', 'failed-once', 'main~1');
+      try {
+        await connection.refresh();
+        assert.ok(failed);
+        await settle(repository.root, connection);
+        assert.ok((page.last('commits')?.generation ?? -1) > before);
+      } finally {
+        await repository.git('branch', '-D', 'failed-once');
+        removeFolder(elsewhere);
       }
     });
 
@@ -1944,6 +2069,39 @@ suite('Fetch', function () {
       'the deleted branch to go',
     );
     assert.strictEqual(page.last('fetching')?.running, false);
+  });
+
+  test('says so when a fetch fails, and stops fetching', async () => {
+    await repository.git(
+      'remote',
+      'add',
+      'broken',
+      path.join(folder, 'missing'),
+    );
+    try {
+      await withMessageStub('showErrorMessage', async (messages) => {
+        page.clear();
+        await connection.receive({ type: 'fetch', root: repository.root });
+        assert.strictEqual(messages.length, 1);
+        assert.match(messages[0] ?? '', /couldn't fetch/);
+        assert.strictEqual(page.last('fetching')?.running, false);
+        assert.ok(page.last('workingTree'));
+      });
+    } finally {
+      await repository.git('remote', 'remove', 'broken');
+    }
+  });
+
+  test('shows a new upstream of the checked-out branch', async () => {
+    await repository.git('branch', '--unset-upstream', 'main');
+    try {
+      await settle(repository.root, connection);
+      assert.strictEqual(page.last('repository')?.headUpstream, undefined);
+    } finally {
+      await repository.git('branch', '--set-upstream-to=origin/main', 'main');
+    }
+    await settle(repository.root, connection);
+    assert.strictEqual(page.last('repository')?.headUpstream, 'origin/main');
   });
 
   test("tells the checked-out branch's upstream", async () => {
