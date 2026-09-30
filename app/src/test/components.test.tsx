@@ -180,7 +180,7 @@ suite('Files column', () => {
       assert.ok(
         html
           .slice(html.indexOf(active))
-          .startsWith(`${active}${mode === 'changes' ? 'Changes' : 'Files'}`),
+          .startsWith(`${active}${mode === 'changes' ? 'Changes' : 'All Files'}`),
       );
     }
   });
