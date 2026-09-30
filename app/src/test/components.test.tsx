@@ -25,6 +25,7 @@ import { changeClass, changeTitle } from '../webview/fileStatus';
 import type { ContextMenuItem } from '../webview/contextMenu';
 import { DiffOptions } from '../webview/diffColumn';
 import { Files } from '../webview/filesColumn';
+import type { Folders } from '../webview/viewFolders';
 import { SkeletonRows } from '../webview/skeleton';
 import { TabBar } from '../webview/tabBar';
 import { GraphCell, graphWidth, rowLanes } from '../webview/graph';
@@ -91,6 +92,7 @@ function changesRows(
       tree: undefined,
       openFolders: new Set(),
       onToggleFolder: noop,
+      onReplaceFolders: noop,
       selected,
       onSelect,
     });
@@ -208,6 +210,7 @@ suite('Files column', () => {
           tree: undefined,
           openFolders: new Set(),
           onToggleFolder: noop,
+          onReplaceFolders: noop,
           selected: undefined,
           onSelect: noop,
         });
@@ -228,11 +231,63 @@ suite('Files column', () => {
       assert.strictEqual(toggle.includes('aria-pressed="true"'), showAll);
       assert.ok(
         isValidElement<{
-          children: React.ReactElement<{ onClick: () => void }>;
+          children: React.ReactElement<{ onClick: () => void }>[];
         }>(column.props.start),
       );
-      column.props.start.props.children.props.onClick();
+      column.props.start.props.children[0].props.onClick();
       assert.deepStrictEqual(picked, [!showAll]);
+    }
+  });
+
+  test('collapses every folder, or expands every folder shown, the unchanged ones too while all files show', () => {
+    for (const showAll of [false, true]) {
+      const replaced: Folders[] = [];
+      let column: React.ReactNode;
+      function Probe() {
+        column = Files({
+          showAll,
+          onShowAll: noop,
+          closedFolders: new Set(['src']),
+          onToggleClosedFolder: noop,
+          files: [change('src/app/a.ts'), change('src/b.ts')],
+          loading: false,
+          tree: ['docs/guide/intro.md', 'src/app/a.ts', 'src/b.ts'],
+          openFolders: new Set(['docs']),
+          onToggleFolder: noop,
+          onReplaceFolders: (folders) => replaced.push(folders),
+          selected: undefined,
+          onSelect: noop,
+        });
+        return null;
+      }
+      renderToStaticMarkup(<Probe />);
+      assert.ok(
+        isValidElement<{
+          start: React.ReactElement<{
+            children: React.ReactElement<{
+              title: string;
+              disabled?: boolean;
+              onClick: () => void;
+            }>[];
+          }>;
+        }>(column),
+      );
+      const buttons = column.props.start.props.children;
+      const button = (title: string) => {
+        const found = buttons.find((each) => each.props.title === title);
+        assert.ok(found, title);
+        assert.ok(!found.props.disabled, title);
+        return found;
+      };
+      button('Collapse All').props.onClick();
+      button('Expand All').props.onClick();
+      assert.deepStrictEqual(replaced, [
+        { open: new Set(), closed: new Set(['src', 'src/app']) },
+        {
+          open: new Set(showAll ? ['docs/guide'] : []),
+          closed: new Set(),
+        },
+      ]);
     }
   });
 

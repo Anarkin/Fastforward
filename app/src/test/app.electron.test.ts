@@ -86,7 +86,7 @@ suite('App', function () {
       await page.locator('.row.file', { hasText: 'kept.txt' }).count(),
       0,
     );
-    await page.locator('.all-files button').click();
+    await page.getByRole('button', { name: 'Show All Files' }).click();
     await page
       .locator('.row.file .path.unchanged', { hasText: 'kept.txt' })
       .waitFor();

@@ -70,6 +70,23 @@ export function changesTreeRows(
   return rows;
 }
 
+export function treeFolders(
+  files: readonly FileChange[],
+  unchanged: readonly string[] = [],
+): { changed: string[]; unchanged: string[] } {
+  const folders = { changed: [] as string[], unchanged: [] as string[] };
+  const add = (node: FolderNode) => {
+    for (const child of [...node.folders.values()].map(compact)) {
+      folders[child.changed ? 'changed' : 'unchanged'].push(child.path);
+      add(child);
+    }
+  };
+  add(
+    buildFileTree(unchanged, new Map(files.map((file) => [file.path, file]))),
+  );
+  return folders;
+}
+
 export function ancestorRows(
   rows: readonly ChangesTreeRow[],
   index: number,
