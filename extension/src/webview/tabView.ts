@@ -78,6 +78,7 @@ function selected(state: TabView, hash: string | undefined): TabView {
     patch: '',
     fileContent: undefined,
     largeFiles: new Map(),
+    treeRequested: hash === state.hash ? state.treeRequested : undefined,
     error: undefined,
   };
 }

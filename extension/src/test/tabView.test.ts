@@ -382,6 +382,31 @@ suite('Tab view', () => {
     assert.strictEqual(treeToLoad(view), undefined);
   });
 
+  test('asks again for the tree of a commit deselected before its tree arrived', () => {
+    let view = reduceTabView(emptyTabView, { type: 'showCommit', hash: 'a' });
+    view = reduceTabView(view, { type: 'requestTree', hash: 'a' });
+    view = reduceTabView(view, { type: 'showCommit', hash: undefined });
+    view = reduceTabView(view, { type: 'tree', hash: 'a', paths: ['a'] });
+    view = reduceTabView(view, { type: 'showCommit', hash: 'a' });
+    assert.strictEqual(treeToLoad(view), 'a');
+  });
+
+  test('asks again for the tree of a commit left for another without asking for its tree', () => {
+    let view = reduceTabView(emptyTabView, { type: 'showCommit', hash: 'a' });
+    view = reduceTabView(view, { type: 'requestTree', hash: 'a' });
+    view = reduceTabView(view, { type: 'showCommit', hash: 'b' });
+    view = reduceTabView(view, { type: 'tree', hash: 'a', paths: ['a'] });
+    view = reduceTabView(view, { type: 'showCommit', hash: 'a' });
+    assert.strictEqual(treeToLoad(view), 'a');
+  });
+
+  test('does not ask again for a tree on the way when its commit is shown again', () => {
+    let view = reduceTabView(emptyTabView, { type: 'showCommit', hash: 'a' });
+    view = reduceTabView(view, { type: 'requestTree', hash: 'a' });
+    view = reduceTabView(view, { type: 'showCommit', hash: 'a' });
+    assert.strictEqual(treeToLoad(view), undefined);
+  });
+
   test('shows the tree of the selected commit only', () => {
     assert.strictEqual(treeOf(emptyTabView), undefined);
     const view = reduceTabView(emptyTabView, { type: 'showCommit', hash: 'a' });
