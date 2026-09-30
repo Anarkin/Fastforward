@@ -61,4 +61,20 @@ suite('Style', () => {
       );
     }
   });
+
+  test('outlines no loading placeholder on hover in high contrast themes', () => {
+    assert.match(
+      declarationsOf(
+        ':is(.vscode-high-contrast, .vscode-high-contrast-light)\n  :is(.skeleton-row, .commit.placeholder, .hash-suggestion.empty):hover',
+      ),
+      /outline: none/,
+    );
+  });
+
+  test('writes tag badges in the text color, like branch badges', () => {
+    assert.match(
+      declarationsOf('.badge.tag'),
+      /color: var\(--vscode-foreground\)/,
+    );
+  });
 });
