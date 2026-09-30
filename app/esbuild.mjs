@@ -21,6 +21,7 @@ const copyStatic = {
       fs.mkdirSync('dist', { recursive: true });
       fs.copyFileSync('src/webview/index.html', 'dist/index.html');
       fs.copyFileSync('build/window-icon.png', 'dist/icon.png');
+      fs.copyFileSync('src/settings.json', 'dist/settings.json');
     });
   },
 };

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { type FileChange, type FilesMode } from '../shared/protocol';
+import type { FileChange } from '../shared/protocol';
 import { changesTreeElements, changesTreeRows } from './changesTree';
 import { Column } from './column';
 import { AllFilesIcon } from './icons';
@@ -8,8 +8,8 @@ import { fileRowKey } from './tree';
 import { VirtualRows } from './virtualRows';
 
 export function Files({
-  mode,
-  onMode,
+  showAll,
+  onShowAll,
   closedFolders,
   onToggleClosedFolder,
   files,
@@ -20,8 +20,8 @@ export function Files({
   selected,
   onSelect,
 }: {
-  mode: FilesMode;
-  onMode: (mode: FilesMode) => void;
+  showAll: boolean;
+  onShowAll: (show: boolean) => void;
   closedFolders: ReadonlySet<string>;
   onToggleClosedFolder: (folder: string) => void;
   files: readonly FileChange[];
@@ -33,8 +33,7 @@ export function Files({
   onSelect: (path: string | undefined) => void;
 }) {
   const skeleton = useSkeleton(loading);
-  const showsAll = mode === 'files';
-  const unchanged = showsAll ? tree : undefined;
+  const unchanged = showAll ? tree : undefined;
   const treeRows = useMemo(
     () => changesTreeRows(files, closedFolders, unchanged, openFolders),
     [files, closedFolders, unchanged, openFolders],
@@ -42,10 +41,10 @@ export function Files({
   const start = (
     <div className="nav-buttons all-files">
       <button
-        className={`nav-button toggle ${showsAll ? 'active' : ''}`}
+        className={`nav-button toggle ${showAll ? 'active' : ''}`}
         title="Show All Files"
-        aria-pressed={showsAll}
-        onClick={() => onMode(showsAll ? 'changes' : 'files')}
+        aria-pressed={showAll}
+        onClick={() => onShowAll(!showAll)}
       >
         <AllFilesIcon />
       </button>
@@ -62,7 +61,7 @@ export function Files({
   );
   const fileRows = changesTreeElements({
     rows: treeRows,
-    showsAll,
+    showsAll: showAll,
     onToggle: (folder, changed) =>
       changed ? onToggleClosedFolder(folder) : onToggleFolder(folder),
     selected,

@@ -7,10 +7,8 @@ import {
   useState,
 } from 'react';
 import {
-  defaultLayout,
   type Direction,
   type CheckoutTarget,
-  type FilesMode,
   type TabInfo,
   type TabMessage,
   type ToHost,
@@ -92,20 +90,12 @@ export function App({ post, listen }: Props) {
     hashLookup,
     error,
   } = tab;
-  const [entireFilePinned, setEntireFilePinned] = useState(
-    defaultLayout.entireFilePinned,
-  );
+  const [entireFilePinned, setEntireFilePinned] = useState(false);
   const [entireFileOf, setEntireFileOf] = useState<string>();
-  const [ignoreWhitespace, setIgnoreWhitespace] = useState(
-    defaultLayout.ignoreWhitespace,
-  );
-  const [collapseMerges, setCollapseMerges] = useState(
-    defaultLayout.collapseMerges,
-  );
+  const [ignoreWhitespace, setIgnoreWhitespace] = useState(false);
+  const [collapseMerges, setCollapseMerges] = useState(false);
   const [solo, setSolo] = useState(false);
-  const [filesMode, setFilesMode] = useState<FilesMode>(
-    defaultLayout.filesMode,
-  );
+  const [showAllFiles, setShowAllFiles] = useState(false);
   const [folders, setFolders] = useState<ViewFolders>(noFolders);
   const folderView = JSON.stringify([activeTab, hash]);
   const { open: openedFolders, closed: closedFolders } = shownFolders(
@@ -133,11 +123,11 @@ export function App({ post, listen }: Props) {
     const onMessage = (message: ToWebview) => {
       switch (message.type) {
         case 'layout':
-          loadColumnWidths(message.columnWidths);
+          loadColumnWidths(message.columnWidths, message.defaultColumnWidths);
           setCollapseMerges(message.collapseMerges);
           setEntireFilePinned(message.entireFilePinned);
           setIgnoreWhitespace(message.ignoreWhitespace);
-          setFilesMode(message.filesMode);
+          setShowAllFiles(message.showAllFiles);
           break;
         case 'solo':
           setSolo(message.solo);
@@ -258,7 +248,7 @@ export function App({ post, listen }: Props) {
   };
 
   const commitTree = treeOf(tab);
-  const treeNeeded = filesMode === 'files' ? treeToLoad(tab) : undefined;
+  const treeNeeded = showAllFiles ? treeToLoad(tab) : undefined;
   useEffect(() => {
     if (treeNeeded) {
       dispatch({ type: 'requestTree', hash: treeNeeded });
@@ -267,20 +257,20 @@ export function App({ post, listen }: Props) {
   }, [treeNeeded, postTab]);
 
   useEffect(() => {
-    if (filesMode !== 'files' || path === undefined) {
+    if (!showAllFiles || path === undefined) {
       return;
     }
     setFolders((all) => openFolders(all, folderView, foldersOf(path)));
-  }, [filesMode, path, folderView]);
+  }, [showAllFiles, path, folderView]);
 
   const toggleFolderOf = (kind: keyof Folders) => (folder: string) =>
     setFolders((all) => toggleFolder(all, folderView, kind, folder));
   const toggleOpenFolder = toggleFolderOf('open');
   const toggleClosedFolder = toggleFolderOf('closed');
 
-  const changeFilesMode = (mode: FilesMode) => {
-    setFilesMode(mode);
-    post({ type: 'setFilesMode', mode });
+  const changeShowAllFiles = (show: boolean) => {
+    setShowAllFiles(show);
+    post({ type: 'setShowAllFiles', show });
   };
 
   const shownFile = `${activeTab ?? ''}:${hash ?? ''}:${path ?? ''}`;
@@ -457,8 +447,8 @@ export function App({ post, listen }: Props) {
                     }
                   />
                   <Files
-                    mode={filesMode}
-                    onMode={changeFilesMode}
+                    showAll={showAllFiles}
+                    onShowAll={changeShowAllFiles}
                     closedFolders={closedFolders}
                     onToggleClosedFolder={toggleClosedFolder}
                     files={files}

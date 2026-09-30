@@ -223,8 +223,8 @@ export class FastforwardView {
       case 'setColumnWidths':
         await storage.setColumnWidths(message.widths);
         return;
-      case 'setFilesMode':
-        await storage.setFilesMode(message.mode);
+      case 'setShowAllFiles':
+        await storage.setShowAllFiles(message.show);
         return;
       case 'setCollapseMerges': {
         await storage.setCollapseMerges(message.collapse);

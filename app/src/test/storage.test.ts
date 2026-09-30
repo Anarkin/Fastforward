@@ -2,40 +2,56 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { UserSettings } from '../settings';
 import { JsonFileStore, Storage, tabsKey } from '../storage';
 import { FakeStore } from './fakeStore';
+import { defaultSettings } from './fixtures';
+
+function storageOf(state = new FakeStore()): Storage {
+  return new Storage(new UserSettings(defaultSettings()), state);
+}
 
 suite('Storage', () => {
-  test('reads the bookmarks saved under vips, their first name', async () => {
+  test('reads the bookmarks saved in the state', async () => {
     const store = new FakeStore();
     const bookmarks = [{ kind: 'branch', name: 'main' }];
-    await store.update('vips', { '/r': bookmarks });
-    const storage = new Storage(store);
+    await store.update('bookmarks', { '/r': bookmarks });
+    const storage = storageOf(store);
     assert.deepStrictEqual(storage.bookmarksOf('/r'), bookmarks);
   });
 
-  test('lays out a new view with merges collapsed and the changes as a tree', () => {
-    const storage = new Storage(new FakeStore());
-    assert.deepStrictEqual(storage.layout, {
+  test('lays out a new view as the default settings say', () => {
+    assert.deepStrictEqual(storageOf().layout, {
       type: 'layout',
-      columnWidths: undefined,
+      columnWidths: [460, 300],
+      defaultColumnWidths: [460, 300],
       collapseMerges: true,
       entireFilePinned: true,
       ignoreWhitespace: true,
-      filesMode: 'changes',
+      showAllFiles: false,
     });
+  });
+
+  test('keeps solo per repository in the state, only where it differs from the default', async () => {
+    const state = new FakeStore();
+    const storage = storageOf(state);
+    const root = path.resolve('r');
+    await storage.setSolo(root, true);
+    assert.deepStrictEqual(state.get('solo'), { [root]: true });
+    await storage.setSolo(root, false);
+    assert.deepStrictEqual(state.get('solo'), {});
   });
 
   test('reads a folder saved twice in the tabs as one tab', async () => {
     const store = new FakeStore();
     const root = path.resolve('r');
     await store.update(tabsKey, [root, root + path.sep]);
-    const storage = new Storage(store);
+    const storage = storageOf(store);
     assert.deepStrictEqual(storage.tabs, [root]);
   });
 
   test('finds a tab saved under another spelling of its folder', async () => {
-    const storage = new Storage(new FakeStore());
+    const storage = storageOf();
     const root = path.resolve('r');
     await storage.setTabs([root], root);
     assert.ok(storage.hasTab(root + path.sep));
@@ -43,19 +59,21 @@ suite('Storage', () => {
 
   test('keeps one set of bookmarks for a folder spelled two ways', async () => {
     const store = new FakeStore();
-    const storage = new Storage(store);
+    const storage = storageOf(store);
     const root = path.resolve('r');
     const main = [{ kind: 'branch', name: 'main' }] as const;
     await storage.setBookmarks(root, main);
     assert.deepStrictEqual(storage.bookmarksOf(root + path.sep), main);
     const dev = [{ kind: 'branch', name: 'dev' }] as const;
     await storage.setBookmarks(root + path.sep, dev);
-    assert.deepStrictEqual(Object.keys(store.get<object>('vips', {})), [root]);
+    assert.deepStrictEqual(Object.keys(store.get<object>('bookmarks', {})), [
+      root,
+    ]);
     assert.deepStrictEqual(storage.bookmarksOf(root), dev);
   });
 
   test('turns solo on and off for one repository, whatever the spelling of its folder', async () => {
-    const storage = new Storage(new FakeStore());
+    const storage = storageOf();
     const [r1, r2] = [path.resolve('r1'), path.resolve('r2')];
     assert.strictEqual(storage.soloOf(r1), false);
     await storage.setSolo(r1, true);
@@ -69,7 +87,7 @@ suite('Storage', () => {
   });
 
   test('keeps the 20 newest recent repositories, newest first', async () => {
-    const storage = new Storage(new FakeStore());
+    const storage = storageOf();
     for (let i = 0; i <= 20; i++) {
       await storage.addRecent(path.resolve(`r${i}`));
     }
@@ -80,7 +98,7 @@ suite('Storage', () => {
   });
 
   test('moves a recent repository added again to the front', async () => {
-    const storage = new Storage(new FakeStore());
+    const storage = storageOf();
     const [r1, r2] = [path.resolve('r1'), path.resolve('r2')];
     await storage.addRecent(r1);
     await storage.addRecent(r2);
@@ -89,7 +107,7 @@ suite('Storage', () => {
   });
 
   test('forgets a removed recent repository', async () => {
-    const storage = new Storage(new FakeStore());
+    const storage = storageOf();
     const [r1, r2] = [path.resolve('r1'), path.resolve('r2')];
     await storage.addRecent(r1);
     await storage.addRecent(r2);

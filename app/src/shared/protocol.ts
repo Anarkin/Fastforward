@@ -14,8 +14,6 @@ export interface NavigationEntry {
   readonly subject: string | undefined;
 }
 
-export type FilesMode = 'changes' | 'files';
-
 export const collapseThreshold = 1500;
 
 export function isLargeChange(file: {
@@ -24,18 +22,6 @@ export function isLargeChange(file: {
 }): boolean {
   return file.insertions + file.deletions > collapseThreshold;
 }
-
-export const defaultLayout: {
-  readonly collapseMerges: boolean;
-  readonly entireFilePinned: boolean;
-  readonly ignoreWhitespace: boolean;
-  readonly filesMode: FilesMode;
-} = {
-  collapseMerges: true,
-  entireFilePinned: true,
-  ignoreWhitespace: true,
-  filesMode: 'changes',
-};
 
 export const commitPageSize = 100;
 
@@ -135,7 +121,7 @@ export type ToHost =
   | { readonly type: 'setCollapseMerges'; readonly collapse: boolean }
   | { readonly type: 'pinEntireFile'; readonly pinned: boolean }
   | { readonly type: 'setIgnoreWhitespace'; readonly ignore: boolean }
-  | { readonly type: 'setFilesMode'; readonly mode: FilesMode }
+  | { readonly type: 'setShowAllFiles'; readonly show: boolean }
   | {
       readonly type: 'log';
       readonly level: 'info' | 'error';
@@ -190,11 +176,12 @@ export type TabMessage =
 export type ToWebview =
   | {
       readonly type: 'layout';
-      readonly columnWidths: readonly number[] | undefined;
+      readonly columnWidths: readonly number[];
+      readonly defaultColumnWidths: readonly number[];
       readonly collapseMerges: boolean;
       readonly entireFilePinned: boolean;
       readonly ignoreWhitespace: boolean;
-      readonly filesMode: FilesMode;
+      readonly showAllFiles: boolean;
     }
   | { readonly type: 'bookmarks'; readonly bookmarks: readonly Bookmark[] }
   | { readonly type: 'solo'; readonly solo: boolean }

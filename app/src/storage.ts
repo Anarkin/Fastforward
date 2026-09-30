@@ -1,23 +1,14 @@
 import * as fs from 'node:fs';
+import type { Bookmark, ToWebviewOf } from './shared/protocol';
+import { writeAtomically, type Settings, type UserSettings } from './settings';
 import * as path from 'node:path';
-import {
-  defaultLayout,
-  type Bookmark,
-  type FilesMode,
-  type ToWebviewOf,
-} from './shared/protocol';
 
 export const tabsKey = 'tabs';
 export const activeTabKey = 'activeTab';
 export const recentKey = 'recentRepositories';
 const maxRecent = 20;
-const columnWidthsKey = 'columnWidths';
-export const collapseMergesKey = 'collapseMerges';
-export const entireFilePinnedKey = 'entireFilePinned';
-export const ignoreWhitespaceKey = 'ignoreWhitespace';
-export const soloKey = 'soloRepositories';
-const filesModeKey = 'filesMode';
-export const bookmarksKey = 'vips';
+export const soloKey = 'solo';
+export const bookmarksKey = 'bookmarks';
 
 export interface Store {
   // oxlint-disable-next-line typescript/no-unnecessary-type-parameters
@@ -52,12 +43,7 @@ export class JsonFileStore implements Store {
     const json = JSON.stringify(this.values, undefined, 2);
     this.writing = this.writing
       .catch(() => undefined)
-      .then(async () => {
-        const temporary = `${this.file}.tmp`;
-        await fs.promises.mkdir(path.dirname(this.file), { recursive: true });
-        await fs.promises.writeFile(temporary, json);
-        await fs.promises.rename(temporary, this.file);
-      });
+      .then(() => writeAtomically(this.file, json));
     return this.writing;
   }
 
@@ -88,14 +74,21 @@ function readJson(file: string): Record<string, unknown> {
 }
 
 export class Storage {
-  constructor(private readonly store: Store) {}
+  constructor(
+    private readonly userSettings: UserSettings,
+    private readonly state: Store,
+  ) {}
+
+  private get settings(): Settings {
+    return this.userSettings.settings;
+  }
 
   get tabs(): string[] {
-    return uniqueRoots(this.store.get<string[]>(tabsKey, []));
+    return uniqueRoots(this.state.get<string[]>(tabsKey, []));
   }
 
   get activeTab(): string | undefined {
-    return this.store.get<string>(activeTabKey);
+    return this.state.get<string>(activeTabKey);
   }
 
   hasTab(root: string): boolean {
@@ -103,21 +96,21 @@ export class Storage {
   }
 
   async setTabs(tabs: string[], active: string | undefined): Promise<void> {
-    await this.store.update(tabsKey, uniqueRoots(tabs));
-    await this.store.update(activeTabKey, active);
+    await this.state.update(tabsKey, uniqueRoots(tabs));
+    await this.state.update(activeTabKey, active);
   }
 
   get recent(): string[] {
-    return this.store.get<string[]>(recentKey, []);
+    return this.state.get<string[]>(recentKey, []);
   }
 
   async addRecent(root: string): Promise<void> {
     const recent = [root, ...this.recent.filter((r) => !sameRoot(r, root))];
-    await this.store.update(recentKey, recent.slice(0, maxRecent));
+    await this.state.update(recentKey, recent.slice(0, maxRecent));
   }
 
   async removeRecent(root: string): Promise<void> {
-    await this.store.update(
+    await this.state.update(
       recentKey,
       this.recent.filter((r) => !sameRoot(r, root)),
     );
@@ -133,73 +126,79 @@ export class Storage {
     bookmarks: readonly Bookmark[],
   ): Promise<void> {
     const all = this.allBookmarks;
-    await this.store.update(bookmarksKey, {
+    await this.state.update(bookmarksKey, {
       ...all,
       [keyOf(all, root)]: bookmarks,
     });
   }
 
   private get allBookmarks(): Record<string, readonly Bookmark[]> {
-    return this.store.get(bookmarksKey, {});
+    return this.state.get(bookmarksKey, {});
   }
 
   get layout(): ToWebviewOf<'layout'> {
+    const { settings } = this;
     return {
       type: 'layout',
-      columnWidths: this.store.get<number[]>(columnWidthsKey),
-      collapseMerges: this.collapseMerges,
-      entireFilePinned: this.entireFilePinned,
-      ignoreWhitespace: this.ignoreWhitespace,
-      filesMode: this.store.get<FilesMode>(
-        filesModeKey,
-        defaultLayout.filesMode,
-      ),
+      columnWidths: settings.columnWidths,
+      defaultColumnWidths: this.userSettings.defaults.columnWidths,
+      collapseMerges: settings.collapseMerges,
+      entireFilePinned: settings.entireFilePinned,
+      ignoreWhitespace: settings.ignoreWhitespace,
+      showAllFiles: settings.showAllFiles,
     };
   }
 
   get collapseMerges(): boolean {
-    return this.store.get(collapseMergesKey, defaultLayout.collapseMerges);
-  }
-
-  async setColumnWidths(widths: readonly number[]): Promise<void> {
-    await this.store.update(columnWidthsKey, widths);
-  }
-
-  get entireFilePinned(): boolean {
-    return this.store.get(entireFilePinnedKey, defaultLayout.entireFilePinned);
-  }
-
-  async setEntireFilePinned(pinned: boolean): Promise<void> {
-    await this.store.update(entireFilePinnedKey, pinned);
-  }
-
-  get ignoreWhitespace(): boolean {
-    return this.store.get(ignoreWhitespaceKey, defaultLayout.ignoreWhitespace);
-  }
-
-  async setIgnoreWhitespace(ignore: boolean): Promise<void> {
-    await this.store.update(ignoreWhitespaceKey, ignore);
+    return this.settings.collapseMerges;
   }
 
   async setCollapseMerges(collapse: boolean): Promise<void> {
-    await this.store.update(collapseMergesKey, collapse);
+    await this.userSettings.set('collapseMerges', collapse);
+  }
+
+  async setColumnWidths(widths: readonly number[]): Promise<void> {
+    await this.userSettings.set('columnWidths', widths);
+  }
+
+  get entireFilePinned(): boolean {
+    return this.settings.entireFilePinned;
+  }
+
+  async setEntireFilePinned(pinned: boolean): Promise<void> {
+    await this.userSettings.set('entireFilePinned', pinned);
+  }
+
+  get ignoreWhitespace(): boolean {
+    return this.settings.ignoreWhitespace;
+  }
+
+  async setIgnoreWhitespace(ignore: boolean): Promise<void> {
+    await this.userSettings.set('ignoreWhitespace', ignore);
+  }
+
+  async setShowAllFiles(show: boolean): Promise<void> {
+    await this.userSettings.set('showAllFiles', show);
   }
 
   soloOf(root: string): boolean {
-    return this.soloRoots.some((solo) => sameRoot(solo, root));
+    const all = this.soloByRoot;
+    return all[keyOf(all, root)] ?? this.settings.solo;
   }
 
   async setSolo(root: string, solo: boolean): Promise<void> {
-    const others = this.soloRoots.filter((other) => !sameRoot(other, root));
-    await this.store.update(soloKey, solo ? [...others, root] : others);
+    const all = { ...this.soloByRoot };
+    const key = keyOf(all, root);
+    if (solo === this.settings.solo) {
+      delete all[key];
+    } else {
+      all[key] = solo;
+    }
+    await this.state.update(soloKey, all);
   }
 
-  private get soloRoots(): string[] {
-    return this.store.get<string[]>(soloKey, []);
-  }
-
-  async setFilesMode(mode: FilesMode): Promise<void> {
-    await this.store.update(filesModeKey, mode);
+  private get soloByRoot(): Record<string, boolean> {
+    return this.state.get(soloKey, {});
   }
 }
 

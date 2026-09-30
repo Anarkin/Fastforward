@@ -1,7 +1,6 @@
 import * as assert from 'node:assert';
 import {
   columnsClass,
-  defaultColumnWidths,
   draggedWidths,
   followDrag,
   maxWidth,
@@ -46,9 +45,9 @@ suite('Columns', () => {
   });
 
   test('loads saved widths, or the defaults for ones of other columns', () => {
-    assert.deepStrictEqual(widthsToLoad([400, 250]), [400, 250]);
-    assert.strictEqual(widthsToLoad(undefined), defaultColumnWidths);
-    assert.strictEqual(widthsToLoad([400]), defaultColumnWidths);
+    const defaults = [460, 300];
+    assert.deepStrictEqual(widthsToLoad([400, 250], defaults), [400, 250]);
+    assert.strictEqual(widthsToLoad([400], defaults), defaults);
   });
 
   test('drags a column to a whole width between its least and most', () => {
@@ -64,10 +63,7 @@ suite('Columns', () => {
   });
 
   test('resets only the column asked', () => {
-    assert.deepStrictEqual(resetWidth([400, 250], 1), [
-      400,
-      defaultColumnWidths[1],
-    ]);
+    assert.deepStrictEqual(resetWidth([400, 250], 1, [460, 300]), [400, 300]);
   });
 
   test('stops following a drag the browser cancels, or whose button went up unseen', () => {

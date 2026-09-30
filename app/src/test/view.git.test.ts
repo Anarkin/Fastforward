@@ -12,9 +12,6 @@ import type { Log } from '../log';
 import {
   activeTabKey,
   bookmarksKey,
-  collapseMergesKey,
-  entireFilePinnedKey,
-  ignoreWhitespaceKey,
   recentKey,
   sameRoot,
   soloKey,
@@ -22,8 +19,9 @@ import {
   tabsKey,
 } from '../storage';
 import { FastforwardView, type Connection, type Host } from '../view';
+import { UserSettings } from '../settings';
 import { FakeStore } from './fakeStore';
-import { waitFor } from './fixtures';
+import { defaultSettings, waitFor } from './fixtures';
 import {
   installedGit,
   removeFolder,
@@ -60,6 +58,7 @@ interface OpenView {
   page: FakePage;
   connection: Connection;
   store: FakeStore;
+  settings: UserSettings;
 }
 
 class FakeHost implements Host {
@@ -98,17 +97,18 @@ async function openView(
   const store = new FakeStore();
   await store.update(tabsKey, tabs);
   await store.update(activeTabKey, tabs[0]);
+  const settings = new UserSettings(defaultSettings());
   const view = new FastforwardView(
     log,
     await installedGit(),
-    new Storage(store),
+    new Storage(settings, store),
     host,
   );
   const { page, connection } = attach(view);
   if (ready) {
     await connection.receive({ type: 'ready' });
   }
-  return { view, page, connection, store };
+  return { view, page, connection, store, settings };
 }
 
 async function withView(
@@ -1160,7 +1160,7 @@ suite('View', function () {
               (message) => message.type === 'applyingSolo',
             ),
         );
-        assert.deepStrictEqual(store.get(soloKey), [repository.root]);
+        assert.deepStrictEqual(store.get(soloKey), { [repository.root]: true });
         await connection.receive({
           type: 'setSolo',
           root: repository.root,
@@ -1168,7 +1168,7 @@ suite('View', function () {
         });
         assert.strictEqual(page.last('commits')?.total, 4);
       } finally {
-        await store.update(soloKey, []);
+        await store.update(soloKey, {});
         await repository.git('branch', '-D', 'side');
       }
     });
@@ -1178,11 +1178,11 @@ suite('View', function () {
         type: 'setColumnWidths',
         widths: [400, 250],
       });
-      await connection.receive({ type: 'setFilesMode', mode: 'files' });
+      await connection.receive({ type: 'setShowAllFiles', show: true });
       await connection.receive({ type: 'ready' });
       const layout = page.last('layout');
       assert.deepStrictEqual(layout?.columnWidths, [400, 250]);
-      assert.strictEqual(layout.filesMode, 'files');
+      assert.strictEqual(layout.showAllFiles, true);
     });
 
     test('keeps a folder spelled two ways as one tab', async function () {
@@ -1587,7 +1587,7 @@ suite('View', function () {
         type: 'setCollapseMerges',
         collapse: false,
       });
-      assert.strictEqual(tabs.store.get(collapseMergesKey), false);
+      assert.strictEqual(tabs.settings.settings.collapseMerges, false);
       tabs.page.clear();
       await tabs.connection.receive({
         type: 'selectTab',
@@ -1632,7 +1632,7 @@ suite('View', function () {
         assert.strictEqual(spinning(), false);
       } finally {
         held.open();
-        await tabs.store.update(soloKey, []);
+        await tabs.store.update(soloKey, {});
       }
     });
 
@@ -1668,7 +1668,7 @@ suite('View', function () {
         assert.strictEqual(tabs.page.last('applyingSolo')?.running, false);
       } finally {
         held.open();
-        await tabs.store.update(soloKey, []);
+        await tabs.store.update(soloKey, {});
       }
     });
 
@@ -1705,7 +1705,7 @@ suite('View', function () {
         await tabs.connection.receive({ type: 'selectTab', root: other });
         assert.strictEqual(tabs.page.last('solo')?.solo, true);
       } finally {
-        await tabs.store.update(soloKey, []);
+        await tabs.store.update(soloKey, {});
         await repository.git('branch', '-D', 'side');
       }
     });
@@ -1956,7 +1956,7 @@ suite('View', function () {
         assert.strictEqual(entire(), true);
         await select('b.txt');
         assert.strictEqual(entire(), true);
-        assert.strictEqual(view.store.get(entireFilePinnedKey), true);
+        assert.strictEqual(view.settings.settings.entireFilePinned, true);
         await view.connection.receive({ type: 'ready' });
         assert.strictEqual(view.page.last('layout')?.entireFilePinned, true);
         await view.connection.receive({ type: 'pinEntireFile', pinned: false });
@@ -1994,7 +1994,7 @@ suite('View', function () {
           ignore: false,
         });
         assert.strictEqual(changed(), true);
-        assert.strictEqual(view.store.get(ignoreWhitespaceKey), false);
+        assert.strictEqual(view.settings.settings.ignoreWhitespace, false);
         await view.connection.receive({ type: 'ready' });
         assert.strictEqual(view.page.last('layout')?.ignoreWhitespace, false);
       });
@@ -2009,7 +2009,7 @@ suite('View', function () {
             type: 'setCollapseMerges',
             collapse: false,
           });
-          assert.strictEqual(own.store.get(collapseMergesKey), false);
+          assert.strictEqual(own.settings.settings.collapseMerges, false);
         },
         false,
       );
