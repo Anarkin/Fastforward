@@ -98,6 +98,21 @@ suite('Style', () => {
     );
   });
 
+  test('paints a column resizer no wider than the gap between columns, in the primary color', () => {
+    const resizer = declarationsOf('.resizer');
+    assert.match(resizer, /box-sizing: border-box;/);
+    assert.match(resizer, /width: 6px;/);
+    assert.match(
+      resizer,
+      /padding: 0 calc\(\(6px - var\(--gutter-width\)\) \/ 2\);/,
+    );
+    assert.match(resizer, /background-clip: content-box;/);
+    assert.match(
+      declarationsOf('.resizer:hover'),
+      /background-color: var\(--vscode-button-background\);/,
+    );
+  });
+
   test('spins the icon of a running button', () => {
     assert.match(
       declarationsOf('.nav-button.running .spin-icon'),
