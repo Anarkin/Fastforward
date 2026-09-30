@@ -220,10 +220,10 @@ suite('Style', () => {
     assert.match(declarationsOf('button'), /font: inherit;/);
   });
 
-  test("centers the search field's text by its capitals and baseline, whatever the font's own spacing", () => {
-    assert.match(
-      declarationsOf('.address-text'),
-      /text-box: trim-both cap alphabetic;/,
-    );
+  test("centers the search field's text by its capitals and baseline, whatever the font's own spacing, clipping only sideways so the round tops of letters above the capitals show", () => {
+    const text = declarationsOf('.address-text');
+    assert.match(text, /text-box: trim-both cap alphabetic;/);
+    assert.match(text, /overflow-x: clip;/);
+    assert.match(text, /overflow-y: visible;/);
   });
 });
