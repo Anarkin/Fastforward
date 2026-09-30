@@ -277,9 +277,9 @@ suite('Style', () => {
     );
   });
 
-  test('draws every bubble but the checked-out one alike, in the text color on a tint of the bubble color, ringed inside in the panel color to stand apart from a selected row', () => {
+  test('draws every bubble but the checked-out one alike, in the bubble text color on a tint of the bubble color, ringed inside in the panel color to stand apart from a selected row', () => {
     const badge = declarationsOf('.badge');
-    assert.ok(badge.includes('color: var(--color-foreground);'));
+    assert.ok(badge.includes('color: var(--color-bubble-foreground);'));
     assert.match(
       badge,
       /background: color-mix\(\s*in srgb,\s*var\(--color-bubble\) var\(--color-bubble-rest\),\s*var\(--color-panel-background\)\s*\);/,
