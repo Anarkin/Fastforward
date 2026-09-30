@@ -567,14 +567,6 @@ body.resizing {
   opacity: var(--muted-opacity);
 }
 
-.insertions {
-  color: var(--color-added);
-}
-
-.deletions {
-  color: var(--color-deleted);
-}
-
 .file-header {
   display: flex;
   align-items: center;
@@ -1038,14 +1030,6 @@ body.resizing {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.line-counts {
-  flex: none;
-  display: flex;
-  gap: 6px;
-  margin-left: auto;
-  font-weight: normal;
 }
 
 .row.folder.counted .twisty,
