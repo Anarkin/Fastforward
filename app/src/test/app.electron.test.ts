@@ -1,0 +1,102 @@
+import * as assert from 'node:assert';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import {
+  _electron,
+  type ElectronApplication,
+  type Page,
+} from 'playwright-core';
+import { waitFor } from './fixtures';
+import {
+  removeFolder,
+  tempFolder,
+  tempRepository,
+  type TempRepository,
+} from './repositories';
+
+const appFolder = path.join(__dirname, '..', '..');
+
+suite('App', function () {
+  this.timeout(60_000);
+
+  let folder: string;
+  let profile: string;
+  let repository: TempRepository;
+  let app: ElectronApplication;
+  let page: Page;
+
+  suiteSetup(async () => {
+    folder = tempFolder('app');
+    profile = path.join(folder, 'profile');
+    repository = await tempRepository(path.join(folder, 'repo'));
+    await repository.commit('first', {
+      'kept.txt': 'kept\n',
+      'changed.txt': 'one\ntwo\nthree\n',
+    });
+    await repository.commit('second', { 'changed.txt': 'one\n2\nthree\n' });
+    fs.mkdirSync(profile, { recursive: true });
+    fs.writeFileSync(
+      path.join(profile, 'settings.json'),
+      JSON.stringify({ tabs: [repository.root], activeTab: repository.root }),
+    );
+    app = await _electron.launch({
+      args: [appFolder, `--user-data-dir=${profile}`],
+      cwd: appFolder,
+    });
+    page = await app.firstWindow();
+  });
+
+  suiteTeardown(async () => {
+    await app?.close();
+    removeFolder(folder);
+  });
+
+  test('opens the saved tab, titling the window after its repository', async () => {
+    await page.locator('.tab.active').waitFor();
+    assert.strictEqual(
+      await page.locator('.tab.active .tab-name').textContent(),
+      'repo',
+    );
+    assert.strictEqual(await page.title(), `${repository.root} - Fastforward`);
+  });
+
+  test('lists the history and shows a commit entire, with its change', async () => {
+    await page.locator('.commit', { hasText: 'second' }).click();
+    await page.locator('.row.file', { hasText: 'changed.txt' }).click();
+    await page.locator('.diff-line.added').first().waitFor();
+    assert.deepStrictEqual(
+      await page.locator('.diff-line .code').allTextContents(),
+      ['one', 'two', '2', 'three'],
+    );
+    assert.ok(await page.locator('.diff-minimap').isVisible());
+  });
+
+  test('shows the unchanged files on the toggle, dimmed, and remembers it', async () => {
+    assert.strictEqual(
+      await page.locator('.row.file', { hasText: 'kept.txt' }).count(),
+      0,
+    );
+    await page.locator('.all-files button').click();
+    await page
+      .locator('.row.file .path.unchanged', { hasText: 'kept.txt' })
+      .waitFor();
+    await waitFor(() => {
+      const settings: unknown = JSON.parse(
+        fs.readFileSync(path.join(profile, 'settings.json'), 'utf8'),
+      );
+      return (
+        typeof settings === 'object' &&
+        settings !== null &&
+        'filesMode' in settings &&
+        settings.filesMode === 'files'
+      );
+    }, 'the setting to be saved');
+  });
+
+  test('refreshes by itself when the working tree changes', async () => {
+    fs.writeFileSync(path.join(repository.root, 'new.txt'), 'new\n');
+    await page
+      .locator('.working-tree', { hasText: '1 uncommitted change' })
+      .waitFor();
+  });
+});
