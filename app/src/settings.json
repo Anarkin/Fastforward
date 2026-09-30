@@ -6,8 +6,8 @@
   "solo": false,
   "columnWidths": [460, 300],
   "fonts": {
-    "family": "-apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif",
-    "size": "13px",
+    "family": "'JetBrains Mono NL', -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif",
+    "size": "12px",
     "monospaceFamily": "'JetBrains Mono NL', ui-monospace, Menlo, Monaco, Consolas, 'Droid Sans Mono', 'Courier New', monospace",
     "monospaceSize": "12px"
   },
