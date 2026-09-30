@@ -472,6 +472,23 @@ suite('Bubbles', () => {
     );
   });
 
+  test('marks every bubble as having a menu, unlike the labels of search results', () => {
+    const html = renderToStaticMarkup(
+      <>
+        <RefBubble info={{ kind: 'branch', name: 'main' }} />
+        <HeadBubble hash={'c'.repeat(40)} />
+        <CommitBubble hash={'d'.repeat(40)} />
+      </>,
+    );
+    const bubbles = [...html.matchAll(/class="([^"]*)"/g)].map(
+      (match) => new Set(match[1].split(' ')),
+    );
+    assert.strictEqual(bubbles.length, 3);
+    for (const classes of bubbles) {
+      assert.ok(classes.has('has-menu'), [...classes].join(' '));
+    }
+  });
+
   test('offers the menu of a detached HEAD commit', () => {
     const hash = 'c'.repeat(40);
     const targets: MenuTarget[] = [];

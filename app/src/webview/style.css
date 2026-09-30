@@ -556,6 +556,14 @@ body.resizing {
   border-radius: 3px;
 }
 
+.badge.has-menu:hover {
+  background: color-mix(
+    in srgb,
+    var(--color-focus) 40%,
+    var(--color-panel-background)
+  );
+}
+
 .row .path.deleted {
   text-decoration: line-through;
 }
