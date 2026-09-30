@@ -554,12 +554,13 @@ body.resizing {
   color: var(--color-bubble-foreground);
   background: var(--color-bubble);
   border-radius: 3px;
-  box-shadow: inset 0 0 0 1px var(--color-panel-background);
+  box-shadow: inset 0 0 0 1px var(--color-bubble-border);
 }
 
 .badge.checked-out {
   color: var(--color-bubble-checked-out-foreground);
   background: var(--color-bubble-checked-out);
+  box-shadow: inset 0 0 0 1px var(--color-bubble-checked-out-border);
 }
 
 .row .path.deleted {
