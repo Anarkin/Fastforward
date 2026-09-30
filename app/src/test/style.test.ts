@@ -80,12 +80,29 @@ suite('Style', () => {
     );
   });
 
-  test('tints a selection with the accent color', () => {
-    const selected = declarationsOf('.row.selected,\n.commit.selected');
-    assert.match(
-      selected,
-      /background: color-mix\(\s*in srgb,\s*var\(--color-focus\)/,
+  test('tints a selected row, the active search result and the active hash suggestion alike, with the focus color', () => {
+    const body = (/\nbody \{([^}]*)\}/.exec(css)?.[1] ?? '').replace(
+      /\s+/g,
+      ' ',
     );
+    assert.ok(
+      body.includes(
+        '--selection-background: color-mix( in srgb, var(--color-focus) 18%, var(--color-panel-background) );',
+      ),
+      body,
+    );
+    for (const selector of [
+      '.row.selected,\n.commit.selected',
+      '.locations-list .row.result.active',
+      '.hash-suggestion.active',
+    ]) {
+      assert.ok(
+        declarationsOf(selector).includes(
+          'background: var(--selection-background);',
+        ),
+        selector,
+      );
+    }
   });
 
   test('dims a clean working tree like an author or a folder', () => {
