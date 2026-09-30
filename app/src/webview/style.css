@@ -573,7 +573,7 @@ body.resizing {
   height: var(--diff-file-height);
   gap: 8px;
   padding: 4px 8px;
-  background: var(--color-section-header-background);
+  background: var(--color-border);
   border-bottom: 1px solid var(--color-border);
 }
 
