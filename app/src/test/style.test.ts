@@ -200,6 +200,29 @@ suite('Style', () => {
     );
   });
 
+  test('draws a menu like the other popups, its separators in the border color and the item under the pointer like a selected row', () => {
+    const menu = declarationsOf('.menu');
+    assert.ok(menu.includes('background: var(--color-panel-background);'));
+    assert.ok(menu.includes('box-shadow: var(--popup-shadow);'));
+    assert.doesNotMatch(menu, /border:/);
+    assert.ok(
+      declarationsOf('.menu-separator').includes(
+        'background: var(--color-border);',
+      ),
+    );
+    assert.ok(
+      declarationsOf('.menu-item:hover:not(:disabled)').includes(
+        'background: var(--selection-background);',
+      ),
+    );
+  });
+
+  test('fills the hash bubble in the border color, without an edge, like the other bubbles', () => {
+    const hash = declarationsOf('.badge.hash');
+    assert.ok(hash.includes('background: var(--color-border);'));
+    assert.doesNotMatch(hash, /border:/);
+  });
+
   test('tints a selected row, the active search result and the active hash suggestion alike, with the focus color', () => {
     const body = (/\nbody \{([^}]*)\}/.exec(css)?.[1] ?? '').replace(
       /\s+/g,
@@ -340,7 +363,7 @@ suite('Style', () => {
   test('edges a popup with an inset shadow rather than a border', () => {
     assert.match(
       css,
-      /--popup-shadow:\s*inset 0 0 0 1px var\(--color-widget-border\)/,
+      /--popup-shadow:\s*inset 0 0 0 1px var\(--color-border\)/,
     );
   });
 
