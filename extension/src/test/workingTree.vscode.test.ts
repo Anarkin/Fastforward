@@ -171,6 +171,28 @@ suite('Uncommitted changes', function () {
     }
   });
 
+  test('counts an untracked symlink as the one line git diffs it as, its target', async function () {
+    const target = path.join(cwd, 'target.txt');
+    const link = path.join(cwd, 'link');
+    fs.writeFileSync(target, 'a\nb\n');
+    try {
+      fs.symlinkSync('target.txt', link);
+    } catch {
+      fs.rmSync(target);
+      this.skip();
+    }
+    try {
+      const { files } = await workingTreeFiles(gitPath, cwd);
+      assert.strictEqual(
+        files.find((change) => change.path === 'link')?.insertions,
+        1,
+      );
+    } finally {
+      fs.rmSync(link);
+      fs.rmSync(target);
+    }
+  });
+
   test('counts and diffs only the first 50 untracked files, unless one is asked for alone', async () => {
     const many = path.join(cwd, 'many');
     fs.mkdirSync(many);

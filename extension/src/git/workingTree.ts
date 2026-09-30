@@ -118,9 +118,7 @@ export async function workingTreePatch(
     gitPath,
     cwd,
     [...workingTreeDiff(base), ...spec.args],
-    {
-      pathspecMagic: spec.magic,
-    },
+    { pathspecMagic: spec.magic },
   );
   if (path !== undefined) {
     return tracked;
