@@ -3,7 +3,10 @@
   "productName": "Fastforward",
   "description": "A desktop app for git",
   "version": "0.0.1",
-  "author": "Adam Lengyel",
+  "author": {
+    "name": "Adam Lengyel",
+    "email": "lengyel.adam@gmail.com"
+  },
   "license": "MIT",
   "private": true,
   "repository": {
@@ -26,7 +29,8 @@
     "verify": "npm run format:check && npm run lint && npm run knip && npm run check-types && npm test",
     "verify:fast": "npm run format:check && npm run lint && npm run knip && npm run check-types && npm run compile-tests && npm run test:unit",
     "lint": "oxlint --type-aware --deny-warnings",
-    "knip": "knip"
+    "knip": "knip",
+    "dist": "npm run package && electron-builder --publish never"
   },
   "devDependencies": {
     "@tanstack/react-virtual": "^3.14.13",
@@ -36,6 +40,7 @@
     "@types/react-dom": "^19.3.0",
     "c8": "^12.0.0",
     "electron": "^44.5.1",
+    "electron-builder": "^26.15.3",
     "esbuild": "^0.28.2",
     "knip": "^6.38.0",
     "mocha": "^11.8.0",
@@ -45,5 +50,63 @@
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
+  },
+  "homepage": "https://github.com/Anarkin/Fastforward",
+  "build": {
+    "appId": "io.github.anarkin.fastforward",
+    "productName": "Fastforward",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "!dist/**/*.map",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Development"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "Anarkin",
+      "repo": "Fastforward"
+    }
   }
 }

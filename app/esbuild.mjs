@@ -58,7 +58,7 @@ const contexts = await Promise.all([
     format: 'cjs',
     platform: 'node',
     outdir: 'dist',
-    external: ['electron'],
+    external: ['electron', 'electron-updater'],
     plugins: [copyStatic, restartApp],
   }),
   esbuild.context({
