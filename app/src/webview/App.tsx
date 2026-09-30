@@ -482,7 +482,7 @@ export function App({ post, listen }: Props) {
                     diffs={diffs}
                     fileContent={fileContent}
                     error={error}
-                    minimap={
+                    changeMarks={
                       path !== undefined &&
                       (entireFilePinned || entireFileOf === shownFile)
                     }

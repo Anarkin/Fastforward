@@ -3,7 +3,12 @@ import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { parsePatch, type DiffFile } from '../webview/diff';
 import { DiffFind, FindActions } from '../webview/diffColumn';
-import { diffRows, highlighted, lineKeys } from '../webview/diffView';
+import {
+  diffMinimapMarks,
+  diffRows,
+  highlighted,
+  lineKeys,
+} from '../webview/diffView';
 import {
   findMatches,
   matchCount,
@@ -152,6 +157,24 @@ suite('Find in diff', () => {
       '<mark class="find-match ">find</mark> a <mark class="find-match current">find</mark>',
     );
     assert.strictEqual(highlighted('plain', [], undefined), 'plain');
+  });
+
+  test('marks the changes on the minimap only when asked, as for a file shown entire, but the matches always', () => {
+    const rows = diffRows(parsePatch(patch), new Map(), undefined);
+    const keys = lineKeys(rows);
+    const matched = new Map([['0:3', []]]);
+    const kinds = (changeMarks: boolean) =>
+      diffMinimapMarks(rows, keys, matched, changeMarks).map(
+        (mark) => mark.kind,
+      );
+    assert.deepStrictEqual(kinds(false), ['match']);
+    assert.deepStrictEqual(kinds(true), [
+      'removed',
+      'added',
+      'removed',
+      'added',
+      'match',
+    ]);
   });
 
   test('ticks the minimap where the matched rows are', () => {
