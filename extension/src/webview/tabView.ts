@@ -15,6 +15,7 @@ export interface ScrollTarget {
 }
 
 export interface TabView {
+  readonly root: string | undefined;
   readonly repository: RepositoryState | undefined;
   readonly history: CommitHistory | undefined;
   readonly scrollTarget: ScrollTarget | undefined;
@@ -39,6 +40,7 @@ export interface TabView {
 }
 
 export const emptyTabView: TabView = {
+  root: undefined,
   repository: undefined,
   history: undefined,
   scrollTarget: undefined,
@@ -64,7 +66,6 @@ export const emptyTabView: TabView = {
 
 export type TabAction =
   | ToWebview
-  | { readonly type: 'clear' }
   | { readonly type: 'showCommit'; readonly hash: string | undefined }
   | { readonly type: 'showFile'; readonly path: string | undefined }
   | { readonly type: 'requestTree'; readonly hash: string };
@@ -95,8 +96,10 @@ function isLate(
 
 export function reduceTabView(state: TabView, action: TabAction): TabView {
   switch (action.type) {
-    case 'clear':
-      return emptyTabView;
+    case 'tabs':
+      return action.active === state.root
+        ? state
+        : { ...emptyTabView, root: action.active };
     case 'showCommit':
       return selected(state, action.hash);
     case 'showFile':
@@ -105,6 +108,7 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
         path: action.path,
         selectionKnown: true,
         patchLoading: state.hash !== undefined,
+        fileContent: undefined,
       };
     case 'repository':
       return { ...state, repository: action };
@@ -222,4 +226,9 @@ export function treeToLoad(state: TabView): string | undefined {
   return hash && tree?.hash !== hash && treeRequested !== hash
     ? hash
     : undefined;
+}
+
+export function treeOf(state: TabView): readonly string[] | undefined {
+  const { hash, tree } = state;
+  return hash !== undefined && tree?.hash === hash ? tree.paths : undefined;
 }

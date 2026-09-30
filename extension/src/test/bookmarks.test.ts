@@ -1,10 +1,10 @@
 import * as assert from 'node:assert';
 import type { RefInfo, Bookmark, BookmarkRef } from '../shared/protocol';
 import {
-  bubbleRow,
   compareBookmarks,
   bookmarkOptions,
   pinnedRefs,
+  toggleBookmark,
 } from '../webview/bookmarks';
 
 const names = (bookmarks: readonly Bookmark[]) =>
@@ -29,80 +29,30 @@ suite('Bookmark order', () => {
       'v1.0',
     ]);
   });
-});
-
-suite('Bubbles row', () => {
-  const refs: RefInfo[] = [
-    { kind: 'branch', name: 'main', commit: 'a' },
-    { kind: 'remote', name: 'origin/main', commit: 'a' },
-    { kind: 'branch', name: 'feature', commit: 'b' },
-    { kind: 'remote', name: 'fork/feature-work', commit: 'b' },
-    { kind: 'tag', name: 'v1', commit: 'a' },
-  ];
-  const main: BookmarkRef = { kind: 'branch', name: 'main' };
-  const v1: BookmarkRef = { kind: 'tag', name: 'v1' };
-
-  test('pairs the checked-out branch with the branch it tracks', () => {
-    const row = bubbleRow([main, v1], refs, 'feature', 'fork/feature-work');
-    assert.deepStrictEqual(row.branch, { kind: 'branch', name: 'feature' });
-    assert.deepStrictEqual(row.upstream, {
-      kind: 'remote',
-      name: 'fork/feature-work',
-    });
-    assert.deepStrictEqual(names(row.bookmarks), ['main', 'v1']);
-  });
-
-  test('keeps a checked-out bookmark in its place, without its upstream', () => {
-    const origin: BookmarkRef = { kind: 'remote', name: 'origin/main' };
-    const row = bubbleRow([v1, origin, main], refs, 'main', 'origin/main');
-    assert.deepStrictEqual(row.branch, main);
-    assert.deepStrictEqual(names(row.bookmarks), ['main', 'v1']);
-  });
-
-  test('pairs nothing without an upstream, or with a detached HEAD', () => {
-    assert.strictEqual(
-      bubbleRow([], refs, 'feature', undefined).upstream,
-      undefined,
-    );
-    const detached = bubbleRow([main], refs, undefined, undefined);
-    assert.strictEqual(detached.branch, undefined);
-    assert.deepStrictEqual(names(detached.bookmarks), ['main']);
-  });
-
-  test('knows whether what is checked out is a bookmark', () => {
-    assert.strictEqual(
-      bubbleRow([v1], refs, 'main', 'origin/main').checkedOutIsBookmark,
-      false,
-    );
-    assert.strictEqual(
-      bubbleRow([main], refs, 'main', 'origin/main').checkedOutIsBookmark,
-      true,
-    );
-    const commit: Bookmark = { kind: 'commit', name: 'c1' };
-    assert.strictEqual(
-      bubbleRow([commit], refs, undefined, undefined, 'c1')
-        .checkedOutIsBookmark,
-      true,
-    );
-    assert.strictEqual(
-      bubbleRow([main], refs, undefined, undefined, 'c2').checkedOutIsBookmark,
-      false,
-    );
-  });
 
   test('puts commits after the refs, in the order they were bookmarked', () => {
-    const older: Bookmark = { kind: 'commit', name: 'c1' };
-    const newer: Bookmark = { kind: 'commit', name: 'b2' };
-    const row = bubbleRow([older, v1, newer, main], refs, 'main', undefined);
-    assert.deepStrictEqual(names(row.bookmarks), ['main', 'v1', 'c1', 'b2']);
-    const detached = bubbleRow(
-      [older, newer],
-      refs,
-      undefined,
-      undefined,
+    const bookmarks: Bookmark[] = [
+      { kind: 'commit', name: 'c1' },
+      { kind: 'tag', name: 'v1' },
+      { kind: 'commit', name: 'b2' },
+      { kind: 'branch', name: 'main' },
+    ];
+    assert.deepStrictEqual(names(bookmarks.toSorted(compareBookmarks)), [
+      'main',
+      'v1',
       'c1',
-    );
-    assert.deepStrictEqual(names(detached.bookmarks), ['c1', 'b2']);
+      'b2',
+    ]);
+  });
+});
+
+suite('Bookmark toggling', () => {
+  test('adds a bookmark, and removes only the one of the same kind and name', () => {
+    const branch: Bookmark = { kind: 'branch', name: 'v1' };
+    const tag: Bookmark = { kind: 'tag', name: 'v1' };
+    const removed = toggleBookmark([branch, tag], tag);
+    assert.deepStrictEqual(removed, [branch]);
+    assert.deepStrictEqual(toggleBookmark(removed, tag), [branch, tag]);
   });
 });
 
@@ -125,8 +75,12 @@ suite('Pinned refs of the search', () => {
   const refs: RefInfo[] = [
     { kind: 'branch', name: 'main', commit: 'a' },
     { kind: 'remote', name: 'origin/main', commit: 'a' },
+    { kind: 'branch', name: 'feature', commit: 'b' },
+    { kind: 'remote', name: 'fork/feature-work', commit: 'b' },
     { kind: 'tag', name: 'v1', commit: 'b' },
   ];
+  const checkedOut = (head: string, upstream: string | undefined) =>
+    names(pinnedRefs([], refs, head, upstream, undefined, '').checkedOut);
   const bookmarks: Bookmark[] = [
     { kind: 'tag', name: 'v1' },
     { kind: 'commit', name: 'c1' },
@@ -144,6 +98,21 @@ suite('Pinned refs of the search', () => {
     );
     assert.deepStrictEqual(names(pinned.checkedOut), ['main', 'origin/main']);
     assert.deepStrictEqual(names(pinned.bookmarks), ['main', 'v1', 'c1']);
+  });
+
+  test('pairs the checked-out branch with the branch it tracks, even of another name', () => {
+    assert.deepStrictEqual(checkedOut('feature', 'fork/feature-work'), [
+      'feature',
+      'fork/feature-work',
+    ]);
+    assert.deepStrictEqual(checkedOut('feature', undefined), ['feature']);
+  });
+
+  test('pairs nothing with an upstream that is gone, and shows no branch before its first commit', () => {
+    assert.deepStrictEqual(checkedOut('feature', 'origin/feature'), [
+      'feature',
+    ]);
+    assert.deepStrictEqual(checkedOut('unborn', 'origin/main'), []);
   });
 
   test('lists a detached HEAD as the commit checked out', () => {
