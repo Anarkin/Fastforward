@@ -7,6 +7,10 @@
     "rootDir": "src",
     "sourceMap": true,
     "strict": true,
+    "isolatedModules": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "noImplicitOverride": true,
     "skipLibCheck": true,
     "jsx": "react-jsx"
   },
