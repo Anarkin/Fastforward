@@ -3,16 +3,12 @@ import type {
   HashLookup,
   NavigationEntry,
   RepositoryState,
+  ScrollTarget,
   ToWebview,
 } from '../shared/protocol';
 import { CommitHistory } from './commitHistory';
 import { parseFilePatch, type DiffFile } from './diff';
 import type { WholeFile } from './diffView';
-
-export interface ScrollTarget {
-  readonly index: number;
-  readonly offset?: number;
-}
 
 export interface TabView {
   readonly repository: RepositoryState | undefined;
@@ -120,11 +116,7 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
       return {
         ...state,
         history,
-        scrollTarget:
-          action.anchor ??
-          (action.selectedIndex === undefined
-            ? undefined
-            : { index: action.selectedIndex }),
+        scrollTarget: action.scrollTarget,
       };
     }
     case 'commitPage':

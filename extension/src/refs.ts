@@ -17,7 +17,7 @@ export function fingerprint(
   refs: readonly RefInfo[],
 ): string {
   return [
-    `HEAD ${head?.name ?? ''} ${head?.commit ?? ''}`,
+    `HEAD ${head?.type ?? ''} ${head?.name ?? ''} ${head?.commit ?? ''}`,
     ...refs.map((ref) => `${ref.kind} ${ref.name} ${ref.commit}`).toSorted(),
   ].join('\n');
 }

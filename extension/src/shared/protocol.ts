@@ -1,4 +1,6 @@
 export const workingTreeHash = 'working-tree';
+export const workingTreeIndex = -1;
+export const workingTreeSubject = 'Uncommitted changes';
 
 export type RefKind = 'branch' | 'remote' | 'tag';
 
@@ -103,6 +105,11 @@ export interface RepositoryState {
 
 export type Direction = 'back' | 'forward';
 
+export interface ScrollTarget {
+  readonly index: number;
+  readonly offset?: number;
+}
+
 export type ToExtension =
   | { readonly type: 'ready' }
   | { readonly type: 'selectTab'; readonly root: string }
@@ -146,7 +153,6 @@ export type TabMessage =
       readonly type: 'loadCommits';
       readonly generation: number;
       readonly start: number;
-      readonly count: number;
     }
   | {
       readonly type: 'scrolled';
@@ -202,8 +208,7 @@ export type ToWebview =
       readonly graph: readonly GraphRow[];
       readonly workingTreeGraph: GraphRow;
       readonly selectedIndex: number | undefined;
-      readonly anchor:
-        { readonly index: number; readonly offset: number } | undefined;
+      readonly scrollTarget: ScrollTarget | undefined;
     }
   | {
       readonly type: 'commitPage';
@@ -245,3 +250,8 @@ export type ToWebview =
       readonly binary: boolean;
     }
   | { readonly type: 'error'; readonly message: string };
+
+export type ToWebviewOf<T extends ToWebview['type']> = Extract<
+  ToWebview,
+  { readonly type: T }
+>;
