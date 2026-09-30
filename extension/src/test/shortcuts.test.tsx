@@ -4,22 +4,26 @@ import { handleShortcut, shortcutOf, shortcuts } from '../webview/shortcuts';
 import { ShortcutsPanel } from '../webview/shortcutsHelp';
 import { definitions } from './fixtures';
 
+const keyEvent = (
+  key: string,
+  extra: Partial<Parameters<typeof shortcutOf>[0]> = {},
+) => ({
+  key,
+  code: '',
+  ctrlKey: false,
+  shiftKey: false,
+  altKey: false,
+  metaKey: false,
+  repeat: false,
+  defaultPrevented: false,
+  target: null,
+  ...extra,
+});
+
 const press = (
   key: string,
   extra: Partial<Parameters<typeof shortcutOf>[0]> = {},
-) =>
-  shortcutOf({
-    key,
-    code: '',
-    ctrlKey: false,
-    shiftKey: false,
-    altKey: false,
-    metaKey: false,
-    repeat: false,
-    defaultPrevented: false,
-    target: null,
-    ...extra,
-  })?.key;
+) => shortcutOf(keyEvent(key, extra))?.key;
 
 function element(tagName: string, isContentEditable = false): EventTarget {
   const target = {
@@ -55,18 +59,7 @@ suite('Keyboard shortcuts', () => {
     let prevented = 0;
     const handle = (key: string) =>
       handleShortcut(
-        {
-          key,
-          code: '',
-          ctrlKey: false,
-          shiftKey: false,
-          altKey: false,
-          metaKey: false,
-          repeat: false,
-          defaultPrevented: false,
-          target: null,
-          preventDefault: () => prevented++,
-        },
+        { ...keyEvent(key), preventDefault: () => prevented++ },
         { c: () => called++ },
       );
     handle('s');

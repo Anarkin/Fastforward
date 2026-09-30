@@ -142,6 +142,49 @@ suite('Diff rows', () => {
       ['error', 'file', 'wholeLine'],
     );
   });
+
+  test('stands in for a diff that loads, and a large file being fetched', () => {
+    assert.deepStrictEqual(kinds(diffRows([], new Map(), undefined, true)), [
+      'error',
+      'skeleton',
+    ]);
+    const large = {
+      path: 'graph.json',
+      binary: false,
+      hunks: [],
+      placeholder: { lines: 5000 },
+    };
+    assert.deepStrictEqual(kinds(diffRows([large], new Map(), undefined)), [
+      'error',
+      'file',
+      'large',
+    ]);
+    assert.deepStrictEqual(
+      kinds(diffRows([large], new Map([['graph.json', true]]), undefined)),
+      ['error', 'file', 'skeletonLines'],
+    );
+  });
+
+  test('shows a binary file as such, whole or in a diff', () => {
+    assert.deepStrictEqual(
+      kinds(
+        diffRows([], new Map(), { path: 'a.png', content: '', binary: true }),
+      ),
+      ['error', 'file', 'binary'],
+    );
+    const [binary] = parsePatch(
+      [
+        'diff --git a/a.png b/a.png',
+        'index 1111111..2222222 100644',
+        'Binary files a/a.png and b/a.png differ',
+      ].join('\n'),
+    );
+    assert.deepStrictEqual(kinds(diffRows([binary], new Map(), undefined)), [
+      'error',
+      'file',
+      'binary',
+    ]);
+  });
 });
 
 function laidOut(rows: readonly DiffRow[]) {
@@ -201,49 +244,6 @@ suite('Stuck file header', () => {
     assert.ok(closedHeader.kind === 'file' && openHeader.kind === 'file');
     assert.strictEqual(scrollOnToggle(closed, closedHeader, true), 5);
     assert.strictEqual(scrollOnToggle(rows, openHeader, false), undefined);
-  });
-
-  test('stands in for a diff that loads, and a large file being fetched', () => {
-    assert.deepStrictEqual(kinds(diffRows([], new Map(), undefined, true)), [
-      'error',
-      'skeleton',
-    ]);
-    const large = {
-      path: 'graph.json',
-      binary: false,
-      hunks: [],
-      placeholder: { lines: 5000 },
-    };
-    assert.deepStrictEqual(kinds(diffRows([large], new Map(), undefined)), [
-      'error',
-      'file',
-      'large',
-    ]);
-    assert.deepStrictEqual(
-      kinds(diffRows([large], new Map([['graph.json', true]]), undefined)),
-      ['error', 'file', 'skeletonLines'],
-    );
-  });
-
-  test('shows a binary file as such, whole or in a diff', () => {
-    assert.deepStrictEqual(
-      kinds(
-        diffRows([], new Map(), { path: 'a.png', content: '', binary: true }),
-      ),
-      ['error', 'file', 'binary'],
-    );
-    const [binary] = parsePatch(
-      [
-        'diff --git a/a.png b/a.png',
-        'index 1111111..2222222 100644',
-        'Binary files a/a.png and b/a.png differ',
-      ].join('\n'),
-    );
-    assert.deepStrictEqual(kinds(diffRows([binary], new Map(), undefined)), [
-      'error',
-      'file',
-      'binary',
-    ]);
   });
 });
 
