@@ -564,6 +564,18 @@ body.resizing {
   );
 }
 
+.badge.checked-out,
+.badge.checked-out.has-menu:hover {
+  color: var(--color-accent-foreground);
+  background:
+    linear-gradient(var(--color-focus), var(--color-focus)),
+    var(--color-panel-background);
+}
+
+.badge.checked-out.has-menu:hover {
+  filter: brightness(1.15);
+}
+
 .row .path.deleted {
   text-decoration: line-through;
 }

@@ -256,7 +256,7 @@ suite('Style', () => {
     );
   });
 
-  test('draws every bubble alike, in the text color on a tint of the focus color, without an edge', () => {
+  test('draws every bubble but the checked-out one alike, in the text color on a tint of the focus color, without an edge', () => {
     const badge = declarationsOf('.badge');
     assert.ok(badge.includes('color: var(--color-foreground);'));
     assert.match(
@@ -266,7 +266,24 @@ suite('Style', () => {
     assert.doesNotMatch(badge, /border:/);
     assert.doesNotMatch(
       css,
-      /\.badge\.[a-z-]+(\s*,[^{]*)?\s*\{[^}]*(color|background|border):/,
+      /\.badge\.(?!checked-out)[a-z-]+(\s*,[^{]*)?\s*\{[^}]*(color|background|border):/,
+    );
+  });
+
+  test('fills the checked-out bubble with the solid focus color, even under the pointer, where it brightens instead', () => {
+    const checkedOut = declarationsOf('.badge.checked-out');
+    assert.ok(checkedOut.includes('color: var(--color-accent-foreground);'));
+    assert.match(
+      checkedOut,
+      /background:\s*linear-gradient\(var\(--color-focus\), var\(--color-focus\)\),\s*var\(--color-panel-background\);/,
+    );
+    assert.match(
+      css,
+      /\n\.badge\.checked-out,\s*\.badge\.checked-out\.has-menu:hover \{/,
+    );
+    assert.match(
+      css,
+      /\n\.badge\.checked-out\.has-menu:hover \{\s*filter: brightness\(1\.15\);\s*\}/,
     );
   });
 
