@@ -36,9 +36,7 @@
       "widget-border": "#e2e2e5",
       "widget-shadow": "#00000000",
 
-      "scrollbar": "#646464c0",
-      "scrollbar-hover": "#646464d0",
-      "scrollbar-active": "#646464e0",
+      "scrollbar": "#646464",
 
       "added": "#587c0c",
       "deleted": "#ad0707",
@@ -74,9 +72,7 @@
       "widget-border": "#2a2b2c",
       "widget-shadow": "#0000005c",
 
-      "scrollbar": "#a8a9aa85",
-      "scrollbar-hover": "#a8a9aa90",
-      "scrollbar-active": "#a8a9aa9c",
+      "scrollbar": "#7a7b7c",
 
       "added": "#73c991",
       "deleted": "#f48771",
