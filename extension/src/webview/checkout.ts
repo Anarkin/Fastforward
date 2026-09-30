@@ -1,6 +1,7 @@
 import { shortHash } from '../shared/hashes';
 import type { CheckoutTarget, RefInfo, BookmarkRef } from '../shared/protocol';
 import { hasRef, withoutRemote } from '../shared/refNames';
+import { byName } from './byName';
 
 export interface CheckoutOption {
   readonly label: string;
@@ -8,27 +9,28 @@ export interface CheckoutOption {
   readonly disabled: boolean;
 }
 
-const byName = (a: RefInfo, b: RefInfo) => a.name.localeCompare(b.name);
-
 export function checkoutRef(
   ref: BookmarkRef,
   refs: readonly RefInfo[],
   head: string | undefined,
 ): CheckoutOption {
   const target = { kind: ref.kind, name: ref.name };
+  return { label: ref.name, target, disabled: cannotCheckOut(ref, refs, head) };
+}
+
+function cannotCheckOut(
+  ref: BookmarkRef,
+  refs: readonly RefInfo[],
+  head: string | undefined,
+): boolean {
   if (!hasRef(refs, ref)) {
-    return { label: ref.name, target, disabled: true };
+    return true;
   }
   if (ref.kind === 'branch') {
-    const checkedOut = ref.name === head;
-    return {
-      label: ref.name,
-      target,
-      disabled: checkedOut,
-    };
+    return ref.name === head;
   }
   if (ref.kind === 'tag') {
-    return { label: ref.name, target, disabled: false };
+    return false;
   }
   const local = withoutRemote(ref.name);
   const localRef = refs.find(
@@ -37,12 +39,7 @@ export function checkoutRef(
   const remoteRef = refs.find(
     (other) => other.kind === 'remote' && other.name === ref.name,
   );
-  const same = localRef?.commit === remoteRef?.commit;
-  return {
-    label: ref.name,
-    target,
-    disabled: local === head && same,
-  };
+  return local === head && localRef?.commit === remoteRef?.commit;
 }
 
 export function checkoutCommit(
@@ -63,12 +60,13 @@ export function checkoutOptions(
   detachedHead: string | undefined,
 ): CheckoutOption[] {
   const here = refs.filter((ref) => ref.commit === hash);
-  const kind = (k: RefInfo['kind']) =>
-    here.filter((ref) => ref.kind === k).toSorted(byName);
   return [
-    ...kind('branch').map((ref) => checkoutRef(ref, refs, head)),
-    ...kind('remote').map((ref) => checkoutRef(ref, refs, head)),
-    ...kind('tag').map((ref) => checkoutRef(ref, refs, head)),
+    ...(['branch', 'remote', 'tag'] as const).flatMap((kind) =>
+      here
+        .filter((ref) => ref.kind === kind)
+        .toSorted(byName)
+        .map((ref) => checkoutRef(ref, refs, head)),
+    ),
     checkoutCommit(hash, detachedHead),
   ];
 }

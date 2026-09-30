@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import type { FileChange } from '../shared/protocol';
 import { VirtualRows } from './virtualRows';
-import { byName, FileRow, FolderRow } from './tree';
+import { byName } from './byName';
+import { FileRow, FolderRow } from './tree';
 
 export interface FolderNode {
   readonly name: string;

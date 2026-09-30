@@ -23,9 +23,6 @@ export function IndentGuides({ depth }: { depth: number }) {
   );
 }
 
-export const byName = (a: { name: string }, b: { name: string }) =>
-  a.name.localeCompare(b.name);
-
 export function FolderRow({
   path,
   depth,
