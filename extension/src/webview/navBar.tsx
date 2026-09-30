@@ -166,12 +166,8 @@ function isPeek(mode: PeekMode): boolean {
 
 export function nextPeekMode(
   mode: PeekMode,
-  action: 'rest' | 'leave' | 'toggle' | 'update',
-  canPeek: boolean,
+  action: 'rest' | 'leave' | 'toggle',
 ): PeekMode {
-  if (!canPeek) {
-    return isPeek(mode) ? 'closed' : mode;
-  }
   switch (action) {
     case 'rest':
       return mode === 'closed' ? 'peek' : mode;
@@ -179,18 +175,12 @@ export function nextPeekMode(
       return mode === 'peek' ? 'closed' : mode;
     case 'toggle':
       return isPeek(mode) ? 'closed' : mode === 'closed' ? 'pinned' : mode;
-    case 'update':
-      return mode;
   }
   return mode;
 }
 
-function usePeek(canPeek: boolean) {
+function usePeek() {
   const [mode, setMode] = useState<PeekMode>('closed');
-  const updated = nextPeekMode(mode, 'update', canPeek);
-  if (updated !== mode) {
-    setMode(updated);
-  }
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => {
     const current = timer;
@@ -204,21 +194,21 @@ function usePeek(canPeek: boolean) {
     mode,
     startPeek: () => {
       clearTimeout(timer.current);
-      const next = nextPeekMode(mode, 'rest', canPeek);
+      const next = nextPeekMode(mode, 'rest');
       if (next !== mode) {
         timer.current = setTimeout(() => setMode(next), peekDelay);
       }
     },
     endPeek: () => {
       clearTimeout(timer.current);
-      const next = nextPeekMode(mode, 'leave', canPeek);
+      const next = nextPeekMode(mode, 'leave');
       if (next !== mode) {
         timer.current = setTimeout(() => setMode(next), unpeekDelay);
       }
     },
     togglePeek: () => {
       clearTimeout(timer.current);
-      setMode(nextPeekMode(mode, 'toggle', canPeek));
+      setMode(nextPeekMode(mode, 'toggle'));
     },
     open: () => {
       clearTimeout(timer.current);
@@ -291,7 +281,7 @@ export function AddressBar({
 }
 
 export function ShortcutsHelp() {
-  const { mode, startPeek, endPeek, open, close } = usePeek(true);
+  const { mode, startPeek, endPeek, open, close } = usePeek();
   const container = useRef<HTMLDivElement>(null);
   const button = (
     <button

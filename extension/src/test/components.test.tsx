@@ -113,31 +113,22 @@ suite('Navigation bar', () => {
 
 suite('Peek', () => {
   test('peeks when the pointer rests, and closes a peek when it leaves', () => {
-    assert.strictEqual(nextPeekMode('closed', 'rest', true), 'peek');
-    assert.strictEqual(nextPeekMode('closed', 'rest', false), 'closed');
-    assert.strictEqual(nextPeekMode('peek', 'leave', true), 'closed');
-    assert.strictEqual(nextPeekMode('open', 'rest', true), 'open');
-    assert.strictEqual(nextPeekMode('open', 'leave', true), 'open');
+    assert.strictEqual(nextPeekMode('closed', 'rest'), 'peek');
+    assert.strictEqual(nextPeekMode('peek', 'leave'), 'closed');
+    assert.strictEqual(nextPeekMode('open', 'rest'), 'open');
+    assert.strictEqual(nextPeekMode('open', 'leave'), 'open');
   });
 
   test('toggles a peek from the keyboard, but not what a click opened', () => {
-    assert.strictEqual(nextPeekMode('closed', 'toggle', true), 'pinned');
-    assert.strictEqual(nextPeekMode('closed', 'toggle', false), 'closed');
-    assert.strictEqual(nextPeekMode('pinned', 'toggle', true), 'closed');
-    assert.strictEqual(nextPeekMode('peek', 'toggle', true), 'closed');
-    assert.strictEqual(nextPeekMode('open', 'toggle', true), 'open');
+    assert.strictEqual(nextPeekMode('closed', 'toggle'), 'pinned');
+    assert.strictEqual(nextPeekMode('pinned', 'toggle'), 'closed');
+    assert.strictEqual(nextPeekMode('peek', 'toggle'), 'closed');
+    assert.strictEqual(nextPeekMode('open', 'toggle'), 'open');
   });
 
   test('keeps a peek from the keyboard when the pointer leaves', () => {
-    assert.strictEqual(nextPeekMode('pinned', 'leave', true), 'pinned');
-    assert.strictEqual(nextPeekMode('pinned', 'rest', true), 'pinned');
-  });
-
-  test('closes a peek when what it peeks at goes away', () => {
-    assert.strictEqual(nextPeekMode('peek', 'update', false), 'closed');
-    assert.strictEqual(nextPeekMode('pinned', 'update', false), 'closed');
-    assert.strictEqual(nextPeekMode('pinned', 'update', true), 'pinned');
-    assert.strictEqual(nextPeekMode('open', 'update', false), 'open');
+    assert.strictEqual(nextPeekMode('pinned', 'leave'), 'pinned');
+    assert.strictEqual(nextPeekMode('pinned', 'rest'), 'pinned');
   });
 });
 
