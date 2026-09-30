@@ -183,14 +183,12 @@ function HashSuggestion({
 }
 
 function popupBottomGap(popup: HTMLElement): number {
-  const bar = popup.closest('.nav-bar');
-  return bar
-    ? parseFloat(getComputedStyle(bar).paddingRight) || 0
-    : parseFloat(getComputedStyle(popup).getPropertyValue('--gutter-width')) ||
-        0;
+  return (
+    parseFloat(getComputedStyle(popup).getPropertyValue('--gutter-width')) || 0
+  );
 }
 
-export function usePopupHeight(
+function usePopupHeight(
   popup: React.RefObject<HTMLElement | null>,
 ): number | undefined {
   const [height, setHeight] = useState<number>();

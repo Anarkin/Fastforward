@@ -7,10 +7,9 @@ import type {
   NavigationEntry,
   RepositoryState,
 } from '../shared/protocol';
-import { CommitDetails, type CardCommit } from './commitCard';
 import { useDismiss } from './contextMenu';
 import { BackIcon, ForwardIcon, HelpIcon, RefreshIcon } from './icons';
-import { LocationsPopup, usePopupHeight } from './locations';
+import { LocationsPopup } from './locations';
 import { shortcuts, useShortcuts } from './shortcuts';
 
 const holdDelay = 400;
@@ -46,38 +45,6 @@ export function NavButtons({
           <RefreshIcon />
         </span>
       </button>
-    </div>
-  );
-}
-
-export function NavBar({
-  root,
-  address,
-  repository,
-  selected,
-  hashLookup,
-  onLookupHash,
-  onJump,
-}: {
-  root: string | undefined;
-  hashLookup: { query: string; result: HashLookup } | undefined;
-  onLookupHash: (query: string) => void;
-  address: Address;
-  repository: RepositoryState | undefined;
-  selected: string | undefined;
-  onJump: (commit: string) => void;
-}) {
-  return (
-    <div className="nav-bar">
-      <AddressBar
-        root={root}
-        address={address}
-        repository={repository}
-        selected={selected}
-        hashLookup={hashLookup}
-        onLookupHash={onLookupHash}
-        onJump={onJump}
-      />
     </div>
   );
 }
@@ -188,12 +155,6 @@ export function HistoryMenu({
   );
 }
 
-export interface Address {
-  readonly hash: string | undefined;
-  readonly subject: string | undefined;
-  readonly commit: CardCommit | undefined;
-}
-
 const peekDelay = 300;
 const unpeekDelay = 200;
 
@@ -267,56 +228,28 @@ function usePeek(canPeek: boolean) {
   };
 }
 
-export function MessagePeek({
-  commit,
-  onOpen,
-}: {
-  commit: CardCommit;
-  onOpen: () => void;
-}) {
-  const popup = useRef<HTMLDivElement>(null);
-  const maxHeight = usePopupHeight(popup);
-  return (
-    <div className="locations-popup peek" ref={popup} style={{ maxHeight }}>
-      <div className="locations-search peek-search" onClick={onOpen}>
-        <span className="address-text">
-          <span className="address-hash">{shortHash(commit.hash)}</span>
-          {commit.subject}
-        </span>
-      </div>
-      <CommitDetails commit={commit} />
-    </div>
-  );
-}
-
 export function AddressBar({
   root,
-  address,
   repository,
   selected,
   hashLookup,
   onLookupHash,
   onJump,
-  placeholder = 'Search branches, remotes and tags',
-  bookmarks = [],
+  bookmarks,
 }: {
   root: string | undefined;
-  address: Address;
-  placeholder?: string;
-  bookmarks?: readonly Bookmark[];
+  bookmarks: readonly Bookmark[];
   hashLookup: { query: string; result: HashLookup } | undefined;
   onLookupHash: (query: string) => void;
   repository: RepositoryState | undefined;
   selected: string | undefined;
   onJump: (commit: string) => void;
 }) {
-  const { mode, startPeek, endPeek, open, close } = usePeek(
-    address.commit !== undefined,
-  );
+  const [open, setOpen] = useState(false);
   const [searches, setSearches] = useState(0);
   useShortcuts({
     s: () => {
-      open();
+      setOpen(true);
       setSearches((count) => count + 1);
     },
   });
@@ -327,31 +260,18 @@ export function AddressBar({
   const setQuery = (next: string) =>
     root && setQueries((all) => new Map(all).set(root, next));
   const container = useRef<HTMLDivElement>(null);
-  useDismiss(container, close, { enabled: isPeek(mode) });
+  const close = useCallback(() => setOpen(false), []);
 
   return (
-    <div
-      className="address"
-      ref={container}
-      onPointerEnter={startPeek}
-      onPointerLeave={endPeek}
-    >
+    <div className="address" ref={container}>
       <button
         className="address-bar"
-        title={address.commit ? undefined : 'Search branches, remotes and tags'}
-        onClick={open}
+        title="Search branches, remotes and tags"
+        onClick={() => setOpen(true)}
       >
-        <span className={`address-text ${address.subject ? '' : 'empty'}`}>
-          {address.hash && (
-            <span className="address-hash">{shortHash(address.hash)}</span>
-          )}
-          {address.subject ?? placeholder}
-        </span>
+        <span className="address-text empty">Search…</span>
       </button>
-      {isPeek(mode) && address.commit && (
-        <MessagePeek commit={address.commit} onOpen={open} />
-      )}
-      {mode === 'open' && (
+      {open && (
         <LocationsPopup
           key={searches}
           repository={repository}
