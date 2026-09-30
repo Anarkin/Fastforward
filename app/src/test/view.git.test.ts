@@ -63,9 +63,25 @@ interface OpenView {
 
 class FakeHost implements Host {
   folders: readonly string[] = [];
+  problems: readonly string[] = [];
+  readonly opened: string[] = [];
 
   chooseFolders(): Promise<readonly string[]> {
     return Promise.resolve(this.folders);
+  }
+
+  openSettings(): Promise<void> {
+    this.opened.push('settings');
+    return Promise.resolve();
+  }
+
+  openDefaultSettings(): Promise<void> {
+    this.opened.push('defaults');
+    return Promise.resolve();
+  }
+
+  settingsProblems(): readonly string[] {
+    return this.problems;
   }
 }
 
@@ -1997,6 +2013,68 @@ suite('View', function () {
         assert.strictEqual(view.settings.settings.ignoreWhitespace, false);
         await view.connection.receive({ type: 'ready' });
         assert.strictEqual(view.page.last('layout')?.ignoreWhitespace, false);
+      });
+    });
+
+    test('opens the settings files through the app', async () => {
+      const host = new FakeHost();
+      await withView(
+        log,
+        [],
+        async (view) => {
+          await view.connection.receive({ type: 'openSettings' });
+          await view.connection.receive({ type: 'openDefaultSettings' });
+          assert.deepStrictEqual(host.opened, ['settings', 'defaults']);
+        },
+        false,
+        host,
+      );
+    });
+
+    test('says what is wrong with the settings when the page loads', async () => {
+      const host = new FakeHost();
+      host.problems = ['Unknown setting "sollo"'];
+      await withView(
+        log,
+        [],
+        async (view) => {
+          assert.deepStrictEqual(view.page.last('notice'), {
+            type: 'notice',
+            level: 'error',
+            message: 'Settings: Unknown setting "sollo"',
+          });
+        },
+        true,
+        host,
+      );
+    });
+
+    test('shows the diff anew with settings changed by hand once the page loads again', async () => {
+      const spaced = await tempRepository(path.join(folder, 'respaced'));
+      await spaced.commit('first', { 'a.txt': 'one\ntwo\n' });
+      await spaced.commit('indent', { 'a.txt': '  one\ntwo\n' });
+      const [indent] = await spaced.resolve('HEAD');
+      await withView(log, [spaced.root], async (view) => {
+        const changed = () =>
+          /^[-+] {0,2}one$/m.test(view.page.last('diff')?.patch ?? '');
+        await view.connection.receive({
+          type: 'selectCommit',
+          root: spaced.root,
+          hash: indent,
+        });
+        assert.strictEqual(changed(), false);
+        const file = path.join(folder, 'respaced.settings.json');
+        fs.writeFileSync(file, JSON.stringify({ ignoreWhitespace: false }));
+        const edited = new UserSettings(defaultSettings(), file);
+        await view.settings.set(
+          'ignoreWhitespace',
+          edited.settings.ignoreWhitespace,
+        );
+        view.view.reloadSettings();
+        view.page.clear();
+        await view.connection.receive({ type: 'ready' });
+        assert.strictEqual(view.page.last('layout')?.ignoreWhitespace, false);
+        assert.strictEqual(changed(), true);
       });
     });
 

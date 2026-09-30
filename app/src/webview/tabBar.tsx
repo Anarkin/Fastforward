@@ -12,6 +12,8 @@ export function TabBar({
   onClose,
   onAdd,
   onSort,
+  onOpenSettings,
+  onOpenDefaultSettings,
   onLog,
 }: {
   tabs: readonly TabInfo[];
@@ -21,6 +23,8 @@ export function TabBar({
   onClose: (root: string) => void;
   onAdd: (event: React.MouseEvent) => void;
   onSort: () => void;
+  onOpenSettings: () => void;
+  onOpenDefaultSettings: () => void;
   onLog: (message: string) => void;
 }) {
   const bar = useRef<HTMLElement>(null);
@@ -78,7 +82,12 @@ export function TabBar({
       </div>
       <MenuButton
         title="Settings"
-        items={[{ label: 'Sort A-Z', onClick: onSort }]}
+        items={[
+          { label: 'Sort A-Z', onClick: onSort },
+          { separator: true },
+          { label: 'Open Settings File', onClick: onOpenSettings },
+          { label: 'Open Default Settings', onClick: onOpenDefaultSettings },
+        ]}
       />
       <ShortcutsHelp />
     </nav>

@@ -134,7 +134,7 @@ export class UserSettings {
     private readonly file?: string,
   ) {
     this.current = defaults;
-    this.reload();
+    this.read();
   }
 
   get settings(): Settings {
@@ -145,7 +145,13 @@ export class UserSettings {
     return this.issues;
   }
 
-  reload(): void {
+  reload(): boolean {
+    const before = JSON.stringify([this.current, this.issues]);
+    this.read();
+    return JSON.stringify([this.current, this.issues]) !== before;
+  }
+
+  private read(): void {
     const text = this.file === undefined ? undefined : readText(this.file);
     this.broken = false;
     if (text === undefined || text.trim() === '') {

@@ -88,10 +88,9 @@ async function start(): Promise<void> {
   if (migrateProfile(profile, defaults)) {
     log.info('Moved the settings into settings.user.json and state.json');
   }
-  const userSettings = new UserSettings(
-    defaults,
-    path.join(profile, 'settings.user.json'),
-  );
+  const userSettingsFile = path.join(profile, 'settings.user.json');
+  const defaultSettingsCopy = path.join(profile, 'settings.defaults.json');
+  const userSettings = new UserSettings(defaults, userSettingsFile);
   for (const problem of userSettings.problems) {
     log.warn(problem);
   }
@@ -99,7 +98,7 @@ async function start(): Promise<void> {
   protocol.handle(appScheme, (request) => {
     if (new URL(request.url).pathname === '/theme.css') {
       return new Response(themeCss(userSettings.settings), {
-        headers: { 'content-type': 'text/css' },
+        headers: { 'content-type': 'text/css', 'cache-control': 'no-store' },
       });
     }
     const file = appFile(dist, request.url);
@@ -119,6 +118,30 @@ async function start(): Promise<void> {
       });
       return chosen.canceled ? [] : chosen.filePaths;
     },
+    openSettings: async () => {
+      if (!fs.existsSync(userSettingsFile)) {
+        fs.writeFileSync(userSettingsFile, '{}\n');
+      }
+      await openFile(log, userSettingsFile);
+    },
+    openDefaultSettings: async () => {
+      fs.writeFileSync(
+        defaultSettingsCopy,
+        fs.readFileSync(path.join(dist, 'settings.json')),
+      );
+      await openFile(log, defaultSettingsCopy);
+    },
+    settingsProblems: () => userSettings.problems,
+  });
+  watchUserSettings(userSettingsFile, () => {
+    if (userSettings.reload()) {
+      log.info('Settings changed, reloading');
+      for (const problem of userSettings.problems) {
+        log.warn(problem);
+      }
+      view.reloadSettings();
+      window.webContents.reloadIgnoringCache();
+    }
   });
 
   let connection: Connection | undefined;
@@ -293,6 +316,23 @@ async function reportMissingGit(
   if (response === 0) {
     await shell.openExternal('https://git-scm.com/downloads');
   }
+}
+
+async function openFile(log: Log, file: string): Promise<void> {
+  const failure = await shell.openPath(file);
+  if (failure) {
+    log.error(`Opening ${file} failed: ${failure}`);
+  }
+}
+
+function watchUserSettings(file: string, onChange: () => void): void {
+  let timer: NodeJS.Timeout | undefined;
+  fs.watch(path.dirname(file), (_event, name) => {
+    if (name === path.basename(file)) {
+      clearTimeout(timer);
+      timer = setTimeout(onChange, 200);
+    }
+  });
 }
 
 function reloadOnRebuild(window: BrowserWindow): void {
