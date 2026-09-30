@@ -97,6 +97,14 @@ export function loadHistory(
   tab.refCounts = countRefs(refs, head);
 }
 
+export function historyLoaded(tab: TabState): boolean {
+  return tab.fingerprint !== '';
+}
+
+export function forgetHistory(tab: TabState): void {
+  tab.fingerprint = '';
+}
+
 export function layOutHistory(
   tab: TabState,
   collapse: boolean,

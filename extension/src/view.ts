@@ -35,6 +35,8 @@ import {
   commitsMessage,
   expandMerges,
   firstPage,
+  forgetHistory,
+  historyLoaded,
   keep,
   keepSubjects,
   layOutHistory,
@@ -56,6 +58,7 @@ export const viewTitle = '⏩ Fastforward';
 const viewUri = vscode.Uri.from({ scheme: 'fastforward', path: '/view' });
 
 const modalEditorGroup = -4;
+const refreshDelay = 300;
 
 interface Tab extends TabState {
   preloading: Promise<void> | undefined;
@@ -290,14 +293,14 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         }
         const context = await this.context(git, session);
         if (context) {
-          await this.sendShownHistory(context, undefined);
+          await this.sendShownHistory(context);
         }
         return;
       }
       case 'setSolo': {
         await storage.setSolo(message.solo);
         for (const tab of this.tabStates.values()) {
-          tab.fingerprint = '';
+          forgetHistory(tab);
         }
         const context = await this.context(git, session);
         if (context) {
@@ -347,7 +350,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         if (!toggled.delete(message.hash)) {
           toggled.add(message.hash);
         }
-        await this.sendShownHistory(context, message.hash);
+        await this.sendShownHistory(context, { scrollTo: message.hash });
         break;
       }
       case 'checkout':
@@ -458,7 +461,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     if (active) {
       const tab = this.tabState(active);
       await tab.preloading;
-      if (this.storage.activeTab !== active) {
+      if (!this.isActive(active)) {
         return;
       }
       for (const message of replayOf(tab)) {
@@ -469,11 +472,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     session.watcher?.dispose();
     session.watcher = undefined;
     const context = await this.context(git, session);
-    if (
-      !context ||
-      session.disposed ||
-      this.storage.activeTab !== context.root
-    ) {
+    if (!context || session.disposed || !this.isActive(context.root)) {
       return;
     }
     this.log.info(
@@ -497,7 +496,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     await allSettled([
       this.addDefaultBookmarks(context, refs),
       this.refresh(context, async (latest) => {
-        if (latest.tab.fingerprint === '') {
+        if (!historyLoaded(latest.tab)) {
           await this.sendCommits(latest, refs);
         }
         await (atHead ? this.showHead(latest) : this.sendCommit(latest));
@@ -512,7 +511,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     session: Session,
     root: string,
   ): Promise<void> {
-    if (!this.storage.tabs.includes(root) || root === this.storage.activeTab) {
+    if (!this.storage.tabs.includes(root) || this.isActive(root)) {
       return;
     }
     const tab = this.tabState(root);
@@ -608,13 +607,13 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     }
     const uri = vscode.Uri.file(root);
     const repository =
-      git.repositories.find(
-        (candidate) => path.relative(candidate.rootUri.fsPath, root) === '',
+      git.repositories.find((candidate) =>
+        sameRoot(candidate.rootUri.fsPath, root),
       ) ??
       (await git.openRepository(uri)) ??
       git.getRepository(uri);
     if (!repository) {
-      if (live && this.storage.activeTab === root) {
+      if (live && this.isActive(root)) {
         session.post({
           type: 'error',
           message: `${root} is not a git repository`,
@@ -634,7 +633,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       session: live ? session : undefined,
       post: (message) => {
         keep(tab.shown, message);
-        if (live && this.storage.activeTab === root) {
+        if (live && this.isActive(root)) {
           (session.disposed ? this.page : session)?.post(message);
         }
       },
@@ -654,7 +653,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
             () => this.refresh(context),
             context.root,
           ),
-        300,
+        refreshDelay,
       );
     });
     session.watcher = {
@@ -767,7 +766,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       const merges = mergesHidingCommit(tab, hash);
       if (merges.length > 0) {
         expandMerges(tab, merges, this.storage.collapseMerges);
-        await this.sendShownHistory(context, hash);
+        await this.sendShownHistory(context, { scrollTo: hash });
       }
     }
     const index = tab.positions.get(hash);
@@ -861,7 +860,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         this.sendCommits(context, known, true),
       ]);
     } else if (context.tab.shownStale) {
-      await this.sendShownHistory(context, undefined, true);
+      await this.sendShownHistory(context, { keepPlace: true });
     }
   }
 
@@ -882,7 +881,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     ]);
     const { tab } = context;
     loadHistory(tab, fullHistory, context.repository.state.HEAD, listed);
-    await this.sendShownHistory(context, undefined, keepPlace);
+    await this.sendShownHistory(context, { keepPlace });
     const { back, forward } = tab.navigation;
     if (back.length + forward.length > 0) {
       await this.sendNavigation(context);
@@ -891,8 +890,10 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
 
   private async sendShownHistory(
     context: Context,
-    scrollTo: string | undefined,
-    keepPlace = false,
+    {
+      scrollTo,
+      keepPlace = false,
+    }: { scrollTo?: string; keepPlace?: boolean } = {},
   ): Promise<void> {
     const { tab } = context;
     const started = performance.now();

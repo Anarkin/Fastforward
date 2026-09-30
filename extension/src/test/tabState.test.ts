@@ -2,6 +2,8 @@ import * as assert from 'node:assert';
 import { workingTreeHash } from '../shared/protocol';
 import {
   firstPage,
+  forgetHistory,
+  historyLoaded,
   keep,
   layOutHistory,
   loadHistory,
@@ -47,6 +49,15 @@ suite('Tab state', () => {
       tab.history.map((entry) => entry.hash),
       ['c', 'b', 'a'],
     );
+  });
+
+  test('knows whether the history is loaded, until it is forgotten', () => {
+    const tab = newTabState();
+    assert.strictEqual(historyLoaded(tab), false);
+    loadHistory(tab, history, { name: 'main', commit: 'c' }, []);
+    assert.strictEqual(historyLoaded(tab), true);
+    forgetHistory(tab);
+    assert.strictEqual(historyLoaded(tab), false);
   });
 
   test('selects a commit at its position, dropping the selected file', () => {
