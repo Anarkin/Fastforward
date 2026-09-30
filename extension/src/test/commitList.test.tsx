@@ -10,6 +10,7 @@ import {
   CommitBubbles,
   estimatedRowHeight,
   fixedRowHeight,
+  listScroll,
   listTop,
   rowKeyOf,
   WorkingTreeRow,
@@ -126,6 +127,30 @@ suite('Commit list working tree row', () => {
     assert.strictEqual(workingTreeShift(500, 0, 1, commitRowHeight), 550);
     assert.strictEqual(workingTreeShift(0, 0, 1, commitRowHeight), undefined);
     assert.strictEqual(workingTreeShift(500, 1, 1, commitRowHeight), undefined);
+  });
+
+  test('shifts the list rather than scrolling to its target again when only the working tree row comes or goes', () => {
+    const target = { index: 3 };
+    assert.deepStrictEqual(
+      listScroll({ target, offset: 0 }, { target, offset: 1 }),
+      { shiftBy: 1 },
+    );
+  });
+
+  test('scrolls to a new target without shifting, even when the working tree row appears with it', () => {
+    const target = { index: 3 };
+    assert.deepStrictEqual(
+      listScroll({ target: { index: 3 }, offset: 0 }, { target, offset: 1 }),
+      { target },
+    );
+  });
+
+  test('leaves the list alone when neither its target nor the working tree row changes', () => {
+    const target = { index: 3 };
+    assert.strictEqual(
+      listScroll({ target, offset: 1 }, { target, offset: 1 }),
+      undefined,
+    );
   });
 });
 
