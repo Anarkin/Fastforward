@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import {
   noFolders,
   openFolders,
+  seeView,
   shownFolders,
   toggleFolder,
 } from '../webview/viewFolders';
@@ -48,5 +49,13 @@ suite('View folders', () => {
     );
     assert.deepStrictEqual([...shownFolders(state, 'one').closed], ['lib']);
     assert.strictEqual(openFolders(state, 'one', ['src']), state);
+  });
+
+  test('forgets the folders toggled in a view once another is seen, so they open again on coming back', () => {
+    const closed = toggleFolder(noFolders, 'one', 'closed', 'src');
+    const elsewhere = seeView(closed, 'two');
+    const back = seeView(elsewhere, 'one');
+    assert.deepStrictEqual([...shownFolders(back, 'one').closed], []);
+    assert.strictEqual(seeView(closed, 'one'), closed);
   });
 });
