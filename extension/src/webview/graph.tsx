@@ -44,14 +44,10 @@ function path(line: GraphLine, height: number): string {
     : `M ${from} ${dotY} C ${from} ${dotY + turn / 2} ${to} ${dotY + turn / 2} ${to} ${dotY + turn} V ${height}`;
 }
 
-function drawnLines(
-  lines: readonly GraphLine[],
-  height: number,
-): { key: string; d: string; stroke: string; dashed: boolean }[] {
-  const drawn = new Map<
-    string,
-    { key: string; d: string; stroke: string; dashed: boolean }
-  >();
+type DrawnLine = { key: string; d: string; stroke: string; dashed: boolean };
+
+function drawnLines(lines: readonly GraphLine[], height: number): DrawnLine[] {
+  const drawn = new Map<string, DrawnLine>();
   for (const line of lines) {
     const d = path(line, height);
     const stroke = color(line.color);
@@ -72,6 +68,8 @@ export function GraphCell({
   height: number;
   onToggleMerge: () => void;
 }) {
+  const cx = x(row.lane);
+  const fill = color(row.color);
   return (
     <svg className="graph" width={graphWidth(rowLanes(row))} height={height}>
       {drawnLines(row.lines, height).map((line) => (
@@ -86,11 +84,11 @@ export function GraphCell({
       ))}
       {row.workingTree ? (
         <rect
-          x={x(row.lane) - dotRadius}
+          x={cx - dotRadius}
           y={dotY - dotRadius}
           width={2 * dotRadius}
           height={2 * dotRadius}
-          fill={color(row.color)}
+          fill={fill}
           stroke="var(--vscode-editor-background)"
           strokeWidth={1.5}
         />
@@ -103,35 +101,25 @@ export function GraphCell({
           }}
         >
           <title>{mergeTitle(row)}</title>
+          <circle cx={cx} cy={dotY} r={dotRadius + 4} fill="transparent" />
           <circle
-            cx={x(row.lane)}
-            cy={dotY}
-            r={dotRadius + 4}
-            fill="transparent"
-          />
-          <circle
-            cx={x(row.lane)}
+            cx={cx}
             cy={dotY}
             r={ringRadius(row)}
             fill="var(--vscode-editor-background)"
-            stroke={color(row.color)}
+            stroke={fill}
             strokeWidth={2}
           />
           {row.merge === 'expanded' && (
-            <circle
-              cx={x(row.lane)}
-              cy={dotY}
-              r={1.5}
-              fill={color(row.color)}
-            />
+            <circle cx={cx} cy={dotY} r={1.5} fill={fill} />
           )}
         </g>
       ) : (
         <circle
-          cx={x(row.lane)}
+          cx={cx}
           cy={dotY}
           r={dotRadius}
-          fill={color(row.color)}
+          fill={fill}
           stroke="var(--vscode-editor-background)"
           strokeWidth={1.5}
         />
