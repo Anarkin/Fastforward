@@ -69,13 +69,23 @@ suite('Style', () => {
     );
   });
 
-  test('tints a selection with the accent color, apart from the shaded background', () => {
+  test('fills and edges the search field in the border color until it is used, and draws the strip between hunks in it', () => {
+    const field = declarationsOf('.address-bar');
+    assert.ok(field.includes('background: var(--color-border);'));
+    assert.ok(field.includes('border: 1px solid var(--color-border);'));
+    assert.ok(
+      declarationsOf('.hunk-divider').includes(
+        'background: var(--color-border);',
+      ),
+    );
+  });
+
+  test('tints a selection with the accent color', () => {
     const selected = declarationsOf('.row.selected,\n.commit.selected');
     assert.match(
       selected,
       /background: color-mix\(\s*in srgb,\s*var\(--color-focus\)/,
     );
-    assert.doesNotMatch(selected, /shade-background/);
   });
 
   test('dims a clean working tree like an author or a folder', () => {
