@@ -130,27 +130,6 @@ export function PinIcon() {
   );
 }
 
-export function MatchCaseIcon() {
-  return (
-    <Icon>
-      <path d="M1.5 12l3-8 3 8M2.6 9.3h3.8" />
-      <circle cx="11.3" cy="10" r="2" />
-      <path d="M13.3 7.5V12" />
-    </Icon>
-  );
-}
-
-export function WholeWordIcon() {
-  return (
-    <Icon>
-      <circle cx="5" cy="7.5" r="1.8" />
-      <path d="M6.8 5.7v3.6M9.5 3.5v5.8" />
-      <circle cx="11.3" cy="7.5" r="1.8" />
-      <path d="M2 11.5v2h12v-2" />
-    </Icon>
-  );
-}
-
 export function PreviousIcon() {
   return (
     <Icon>
