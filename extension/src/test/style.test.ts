@@ -205,6 +205,13 @@ suite('Style', () => {
     );
   });
 
+  test("lays a sticky location row's see-through hover color over its solid background, so rows under it stay hidden", () => {
+    assert.match(
+      declarationsOf('.locations-list .tree-row.sticky:hover'),
+      /background:\s*linear-gradient\(\s*var\(--vscode-list-hoverBackground\),\s*var\(--vscode-list-hoverBackground\)\s*\),\s*var\(--popup-background\);/,
+    );
+  });
+
   test('writes tag badges in the text color, like branch badges', () => {
     assert.match(
       declarationsOf('.badge.tag'),

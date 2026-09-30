@@ -16,9 +16,8 @@ export interface TempRepository {
   resolve(...revisions: string[]): Promise<string[]>;
 }
 
-// A new folder in the temp folder; its repositories go in it, rather than in
-// another repository, where they would be untracked files for the view to
-// diff on every refresh
+// Repositories go in here rather than in another repository, where they would
+// be untracked files for the view to diff on every refresh
 export function tempFolder(name: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), `fastforward-${name}-`));
 }
