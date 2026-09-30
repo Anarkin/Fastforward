@@ -1,11 +1,7 @@
 import * as assert from 'node:assert';
-import { readFileSync } from 'node:fs';
-import * as path from 'node:path';
+import { stylesheet } from './fixtures';
 
-const css = readFileSync(
-  path.join(__dirname, '../../src/webview/style.css'),
-  'utf8',
-);
+const css = stylesheet();
 
 function declarationsOf(selector: string): string {
   const escaped = selector.replace(/[.()]/g, '\\$&');
