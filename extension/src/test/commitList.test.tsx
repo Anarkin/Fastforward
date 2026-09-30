@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { workingTreeHash } from '../shared/protocol';
 import { CommitHistory } from '../webview/commitHistory';
@@ -11,6 +12,8 @@ import {
   fixedRowHeight,
   listTop,
   rowKeyOf,
+  WorkingTreeRow,
+  workingTreeShift,
 } from '../webview/commitList';
 import { commitInfo } from './fixtures';
 
@@ -65,6 +68,15 @@ suite('Commit list rows', () => {
     );
   });
 
+  test('marks a detached HEAD on a commit without refs', () => {
+    assert.match(
+      renderToStaticMarkup(
+        <CommitBubbles hash={'a'.repeat(40)} refs={[]} detached />,
+      ),
+      /^<div class="bubble-line"><span class="badge head[^>]*>HEAD aaaaaaa<\/span><\/div>$/,
+    );
+  });
+
   test('draws no bubble line for a commit without refs', () => {
     assert.strictEqual(
       renderToStaticMarkup(
@@ -72,6 +84,48 @@ suite('Commit list rows', () => {
       ),
       '',
     );
+  });
+});
+
+const noop = () => {};
+
+function clickedHash(count: number): string | undefined {
+  let selected: string | undefined = 'none';
+  const row = WorkingTreeRow({
+    count,
+    selected: false,
+    indent: 26,
+    onSelect: (hash) => (selected = hash),
+  });
+  assert.ok(isValidElement<{ onClick: () => void }>(row));
+  row.props.onClick();
+  return selected;
+}
+
+suite('Commit list working tree row', () => {
+  test('shows a clean working tree, which clicking does not select', () => {
+    const html = renderToStaticMarkup(
+      <WorkingTreeRow count={0} selected={false} indent={26} onSelect={noop} />,
+    );
+    assert.match(html, /^<div [^>]*class="commit working-tree empty /);
+    assert.match(html, />No changes</);
+    assert.match(html, />The working tree is clean</);
+    assert.strictEqual(clickedHash(0), undefined);
+  });
+
+  test('shows how many files changed, and clicking selects them', () => {
+    const html = renderToStaticMarkup(
+      <WorkingTreeRow count={3} selected={false} indent={26} onSelect={noop} />,
+    );
+    assert.doesNotMatch(html, /empty/);
+    assert.match(html, /<span class="count">3<\/span>/);
+    assert.strictEqual(clickedHash(3), workingTreeHash);
+  });
+
+  test('keeps a scrolled list in place when the working tree row appears above it', () => {
+    assert.strictEqual(workingTreeShift(500, 0, 1, commitRowHeight), 550);
+    assert.strictEqual(workingTreeShift(0, 0, 1, commitRowHeight), undefined);
+    assert.strictEqual(workingTreeShift(500, 1, 1, commitRowHeight), undefined);
   });
 });
 
@@ -99,6 +153,23 @@ suite('Commit list top', () => {
     assert.deepStrictEqual(listTop(rows, 0, history, 1), top);
     assert.deepStrictEqual(listTop(rows, 10, history, 1), top);
   });
+
+  test('is the row a scroll ends exactly at, a first commit without a working tree, and nothing past the rows', () => {
+    const history = new CommitHistory(3);
+    history.add(0, [commitInfo('a'), commitInfo('b'), commitInfo('c')]);
+    assert.deepStrictEqual(listTop(rows, commitRowHeight, history, 1), {
+      hash: 'a',
+      offset: 0,
+    });
+    assert.deepStrictEqual(listTop(rows, 10, history, 0), {
+      hash: 'a',
+      offset: 10,
+    });
+    assert.strictEqual(
+      listTop(rows, 3 * commitRowHeight + 1, history, 0),
+      undefined,
+    );
+  });
 });
 
 suite('Commit list arrow keys', () => {
@@ -115,6 +186,7 @@ suite('Commit list arrow keys', () => {
     assert.strictEqual(arrowKeyPosition(history, 'a', false, -1), undefined);
     assert.strictEqual(arrowKeyPosition(history, undefined, true, 1), -1);
     assert.strictEqual(arrowKeyPosition(history, undefined, false, 1), 0);
+    assert.strictEqual(arrowKeyPosition(history, workingTreeHash, true, 1), 0);
   });
 
   test('step from where the extension said the selected commit is, before it loads', () => {

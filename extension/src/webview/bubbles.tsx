@@ -1,18 +1,23 @@
 import { createContext, useContext } from 'react';
 import { shortHash } from '../shared/hashes';
-import type { BookmarkRef } from '../shared/protocol';
+import type { BookmarkRef, RefInfo } from '../shared/protocol';
 import { useContextMenu } from './contextMenu';
 
 export const CheckedOutBranch = createContext<string | undefined>(undefined);
 export const DetachedHead = createContext<string | undefined>(undefined);
 
-export function HeadBubble({ commit }: { commit: string }) {
+export function HeadBubble({ hash }: { hash: string }) {
+  const menu = useContextMenu({
+    kind: 'ref',
+    ref: { kind: 'commit', name: hash },
+  });
   return (
     <span
       className="badge head checked-out"
-      title={`HEAD is detached at ${commit}`}
+      title={`HEAD is detached at ${hash}`}
+      {...menu}
     >
-      HEAD {shortHash(commit)}
+      HEAD {shortHash(hash)}
     </span>
   );
 }
@@ -57,4 +62,18 @@ export function RefBubble({
       {info.name}
     </span>
   );
+}
+
+export function commitBubbles(
+  hash: string,
+  refs: readonly RefInfo[],
+  detached: boolean,
+): { key: string; element: React.ReactElement }[] {
+  return [
+    ...(detached ? [{ key: 'HEAD', element: <HeadBubble hash={hash} /> }] : []),
+    ...refs.map((ref) => ({
+      key: `${ref.kind}:${ref.name}`,
+      element: <RefBubble info={ref} />,
+    })),
+  ];
 }

@@ -163,7 +163,7 @@ export function parseLog(output: string): CommitInfo[] {
       files++;
       i += /^[RC]/.test(status) ? 3 : 2;
     }
-    const message = body.trimEnd();
+    const message = body.replaceAll('\r\n', '\n').trimEnd();
     commits.push({
       hash: hash.slice(1),
       subject: message.split('\n', 1)[0],
