@@ -252,7 +252,7 @@ suite('Find in diff', () => {
     press('', 'Escape');
     assert.ok(blurred);
     const html = renderToStaticMarkup(field('x'));
-    assert.match(html, /placeholder="Find in Diff"/);
+    assert.match(html, /placeholder="Search…"/);
     assert.match(
       html,
       /<span class="diff-find-count" title="Large files not shown yet are not searched: 2">1 of 3<\/span>/,

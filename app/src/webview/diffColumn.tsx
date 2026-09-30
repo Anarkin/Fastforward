@@ -137,7 +137,7 @@ export function DiffFind({
       <input
         ref={input}
         className="diff-find-input"
-        placeholder="Find in Diff"
+        placeholder="Search…"
         spellCheck={false}
         value={query}
         onChange={(event) => onQuery(event.target.value)}
