@@ -528,8 +528,6 @@ body.resizing {
   font-style: normal;
   white-space: nowrap;
   border-radius: 3px;
-  color: var(--color-badge-foreground);
-  background: var(--color-badge-background);
 }
 
 .badge.branch,

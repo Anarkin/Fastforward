@@ -44,9 +44,6 @@
       "widget-border": "#e2e2e5",
       "widget-shadow": "#00000000",
 
-      "badge-background": "#0069cc",
-      "badge-foreground": "#ffffff",
-
       "scrollbar": "#646464c0",
       "scrollbar-hover": "#646464d0",
       "scrollbar-active": "#646464e0",
@@ -92,9 +89,6 @@
       "widget-background": "#202122",
       "widget-border": "#2a2b2c",
       "widget-shadow": "#0000005c",
-
-      "badge-background": "#307e9f",
-      "badge-foreground": "#ffffff",
 
       "scrollbar": "#a8a9aa85",
       "scrollbar-hover": "#a8a9aa90",
