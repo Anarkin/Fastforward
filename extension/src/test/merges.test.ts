@@ -9,7 +9,7 @@ const history = [
   { hash: 'c', parents: [] },
 ];
 
-suite('showHistory', () => {
+suite('Merges shown', () => {
   test('hides what a collapsed merge brought in', () => {
     const shown = showHistory(history, new Set(['m']), () => false);
     assert.deepStrictEqual(shown, [
@@ -57,14 +57,14 @@ suite('showHistory', () => {
   });
 });
 
-suite('headsOf', () => {
+suite('Branch heads', () => {
   test('finds unmerged tips, not the tips of merged branches', () => {
     const heads = headsOf([{ hash: 'u', parents: ['c'] }, ...history]);
     assert.deepStrictEqual([...heads].toSorted(), ['m', 'u']);
   });
 });
 
-suite('mergesHiding', () => {
+suite('Merges hiding a commit', () => {
   test('finds the merge that brought a hidden commit in', () => {
     const shown = new Set(['m', 'a', 'c']);
     assert.deepStrictEqual(mergesHiding(history, shown, 'b1'), ['m']);

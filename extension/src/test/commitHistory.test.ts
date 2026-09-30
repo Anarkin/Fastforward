@@ -3,7 +3,7 @@ import { commitPageSize } from '../shared/protocol';
 import { CommitHistory } from '../webview/commitHistory';
 import { commitInfo } from './fixtures';
 
-suite('CommitHistory', () => {
+suite('Commit history', () => {
   test('places pages at their positions', () => {
     const history = new CommitHistory(1000);
     history.add(300, [commitInfo('a'), commitInfo('b')]);
@@ -55,7 +55,7 @@ suite('CommitHistory', () => {
   });
 });
 
-suite('CommitHistory ref counts', () => {
+suite('Commit history ref counts', () => {
   test('knows how many refs each position has before loading it', () => {
     const history = new CommitHistory(100, [
       [0, 2],

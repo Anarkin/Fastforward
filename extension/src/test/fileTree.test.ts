@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { buildFileTree, foldersOf } from '../webview/fileTree';
 import { fileChange } from './fixtures';
 
-suite('file tree', () => {
+suite('File tree', () => {
   test('nests files in folders and marks the ones with changes', () => {
     const tree = buildFileTree(
       ['README.md', 'src/a.ts', 'src/lib/b.ts', 'docs/c.md'],
