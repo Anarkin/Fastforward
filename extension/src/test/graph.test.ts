@@ -57,6 +57,46 @@ suite('Graph', () => {
     ]);
   });
 
+  test('joins a merge to the lane already waiting for its parent', () => {
+    const graph = new Graph([
+      { hash: 'm', parents: ['a', 'b'] },
+      { hash: 'n', parents: ['a', 'b'] },
+      { hash: 'a', parents: ['c'] },
+      { hash: 'b', parents: ['c'] },
+      { hash: 'c', parents: [] },
+    ]);
+    assert.strictEqual(graph.width, 3);
+    assert.deepStrictEqual(graph.rows(0, 5).map(describe), [
+      '0: 0>0. 0>1.',
+      '2: 0>0 0>0. 1>1 1>1. 2>1. 2>2.',
+      '0: 0>0 0>0. 1>1 1>1. 2>0',
+      '1: 0>0 0>0. 1>1 1>1.',
+      '0: 0>0 1>0',
+    ]);
+  });
+
+  test('draws an octopus merge to a lane per parent', () => {
+    const graph = new Graph([
+      { hash: 'o', parents: ['a', 'b', 'c'] },
+      { hash: 'a', parents: ['d'] },
+      { hash: 'b', parents: ['d'] },
+      { hash: 'c', parents: ['d'] },
+      { hash: 'd', parents: [] },
+    ]);
+    assert.strictEqual(graph.width, 3);
+    assert.strictEqual(describe(graph.rows(0, 1)[0]), '0: 0>0. 0>1. 0>2.');
+  });
+
+  test('answers a page past the end with no rows', () => {
+    const graph = new Graph([
+      { hash: 'c', parents: ['b'] },
+      { hash: 'b', parents: ['a'] },
+      { hash: 'a', parents: [] },
+    ]);
+    assert.deepStrictEqual(graph.rows(3, 10), []);
+    assert.strictEqual(graph.rows(2, 10).length, 1);
+  });
+
   test('computes any page the same as a full walk', () => {
     const history = Array.from({ length: 50 }, (_, index) => ({
       hash: `c${index}`,

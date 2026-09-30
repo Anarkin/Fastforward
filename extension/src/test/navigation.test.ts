@@ -56,6 +56,42 @@ suite('Navigation', () => {
     });
   });
 
+  test('forgets the steps forward on a replaced visit', () => {
+    const back = step(history(), 'D', 'back', 1, all);
+    assert.ok(back);
+    assert.deepStrictEqual(visit(back.navigation, 'C', 'E', true), {
+      back: ['A', 'B'],
+      forward: [],
+    });
+  });
+
+  test('keeps only the last 100 steps back', () => {
+    let navigation = noNavigation;
+    let current: string | undefined;
+    for (let index = 0; index < 150; index++) {
+      navigation = visit(navigation, current, `h${index}`);
+      current = `h${index}`;
+    }
+    assert.strictEqual(navigation.back.length, 100);
+    assert.strictEqual(navigation.back[0], 'h49');
+    assert.strictEqual(navigation.back.at(-1), 'h148');
+  });
+
+  test('goes at least one step and at most as far as there are steps', () => {
+    assert.deepStrictEqual(step(history(), 'D', 'back', 10, all), {
+      navigation: { back: [], forward: ['D', 'C', 'B'] },
+      target: 'A',
+    });
+    assert.strictEqual(step(history(), 'D', 'back', 0, all)?.target, 'C');
+  });
+
+  test('leaves out the commit shown when there is none', () => {
+    assert.deepStrictEqual(step(history(), undefined, 'back', 1, all), {
+      navigation: { back: ['A', 'B'], forward: [] },
+      target: 'C',
+    });
+  });
+
   test('adds no step for a replaced one, or the same commit', () => {
     const navigation = history();
     assert.strictEqual(visit(navigation, 'D', 'E', true), navigation);

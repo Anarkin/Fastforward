@@ -125,9 +125,6 @@ export async function workingTreePatch(
   if (path !== undefined) {
     return tracked;
   }
-  // An untracked file that can't be read, like one being written, is left
-  // out instead of failing the whole diff, and so is a large one, until it
-  // is asked for alone
   const excluded = new Set(scope.exclude);
   const [trackedPatch, untrackedPatches] = await Promise.all([
     tracked,

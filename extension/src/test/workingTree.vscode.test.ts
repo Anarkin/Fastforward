@@ -130,6 +130,23 @@ suite('Uncommitted changes', function () {
     }
   });
 
+  test('leaves an untracked file it cannot read out of the full patch', async () => {
+    const gone = path.join(cwd, 'gone.txt');
+    fs.writeFileSync(gone, 'gone\n');
+    try {
+      const workingTree = await workingTreeFiles(gitPath, cwd);
+      fs.rmSync(gone);
+      const patch = await workingTreePatch(gitPath, cwd, workingTree);
+      assert.ok(patch.includes('+two'), patch);
+      assert.ok(patch.includes('+new'), patch);
+      assert.ok(!patch.includes('gone.txt'), patch);
+    } finally {
+      if (fs.existsSync(gone)) {
+        fs.rmSync(gone);
+      }
+    }
+  });
+
   test('counts a last line without a newline, and no lines of binary, empty or huge untracked files', async () => {
     const files: Record<string, string | Buffer> = {
       'partial.txt': 'a\nb',
