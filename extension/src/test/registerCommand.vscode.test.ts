@@ -62,6 +62,31 @@ suite('registerCommand', () => {
     }
   });
 
+  test('logs and reports errors from an async callback', async () => {
+    const { log, error } = recordingLog(channel);
+    const boom = new Error('boom');
+    const command = registerCommand(
+      log,
+      'fastforward.test.failAsync',
+      async () => {
+        await Promise.resolve();
+        throw boom;
+      },
+    );
+    try {
+      await withMessageStub('showErrorMessage', async (messages) => {
+        await vscode.commands.executeCommand('fastforward.test.failAsync');
+        assert.deepStrictEqual(error, [
+          ['fastforward.test.failAsync failed'],
+          [boom],
+        ]);
+        assert.strictEqual(messages.length, 1);
+      });
+    } finally {
+      command.dispose();
+    }
+  });
+
   test('logs non-Error values thrown by the callback as strings', async () => {
     const { log, error } = recordingLog(channel);
     const command = registerCommand(log, 'fastforward.test.failString', () => {
