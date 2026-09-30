@@ -81,12 +81,12 @@ export async function waitFor(
   }
 }
 
+export function stylesheet(): string {
+  return readFileSync(join(__dirname, '../../src/webview/style.css'), 'utf8');
+}
+
 export function stylesheetPx(pattern: RegExp): number {
-  const css = readFileSync(
-    join(__dirname, '../../src/webview/style.css'),
-    'utf8',
-  );
-  const match = pattern.exec(css);
+  const match = pattern.exec(stylesheet());
   assert.ok(match, String(pattern));
   return Number(match[1]);
 }

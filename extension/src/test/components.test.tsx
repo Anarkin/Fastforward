@@ -256,7 +256,7 @@ suite('Navigation bar', () => {
     assert.match(html, /title="Forward[^"]*" disabled=""/);
   });
 
-  test('shows the placeholder in the search field', () => {
+  test('says Search… in the search field, and what it searches in its tooltip', () => {
     const html = renderToStaticMarkup(
       <AddressBar
         root="/repo"
