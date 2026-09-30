@@ -76,6 +76,7 @@ export function changesTreeElements({
       <FolderRow
         key={`folder:${row.path}`}
         path={row.path}
+        title={row.path}
         depth={row.depth}
         open={row.open}
         className="counted"

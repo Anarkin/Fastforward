@@ -17,6 +17,7 @@ export function Twisty({ open }: { open: boolean }) {
 
 export function FolderRow({
   path,
+  title,
   depth,
   open,
   className,
@@ -25,6 +26,7 @@ export function FolderRow({
   children,
 }: {
   path: string;
+  title?: string;
   depth: number;
   open: boolean;
   className: string;
@@ -36,7 +38,7 @@ export function FolderRow({
     <div
       className={`row tree-row folder ${className}`}
       style={{ paddingLeft: treeIndent(depth), ...style }}
-      title={path}
+      title={title}
       onClick={() => onToggle(path)}
     >
       <Twisty open={open} />

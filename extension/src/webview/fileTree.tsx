@@ -129,6 +129,7 @@ export function FileTree({
           <FolderRow
             key={`folder:${row.path}`}
             path={row.path}
+            title={row.path}
             depth={row.depth}
             open={row.open}
             className={row.changed ? 'changed' : ''}
