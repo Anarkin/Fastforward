@@ -62,15 +62,12 @@ export async function findCommit(
   if (type === 'missing') {
     return { kind: 'none' };
   }
-  if (type !== 'ambiguous' && hash.startsWith(hex)) {
-    if (type !== 'commit') {
-      return { kind: 'none' };
-    }
-    const object = await runGit(gitPath, cwd, ['cat-file', 'commit', hash]);
-    const message = object.slice(object.indexOf('\n\n') + 2);
-    return { kind: 'found', hash, subject: message.split('\n', 1)[0] };
-  }
-  const hashes = await commitsStartingWith(gitPath, cwd, hex);
+  const unique = type !== 'ambiguous' && hash.startsWith(hex);
+  const hashes = unique
+    ? type === 'commit'
+      ? [hash]
+      : []
+    : await commitsStartingWith(gitPath, cwd, hex);
   if (hashes.length === 1) {
     const [commit] = await logCommits(gitPath, cwd, hashes);
     return { kind: 'found', hash: hashes[0], subject: commit?.subject ?? '' };
@@ -112,10 +109,6 @@ export function parseHistory(output: string): HistoryEntry[] {
     });
 }
 
-// The commits with these hashes, in this order; the Git extension API only
-// counts a commit's files with --shortstat, which diffs the contents of every
-// file and took 8 s for 300 commits in a large repository, while --raw only
-// compares trees and takes about 100 ms for 100 commits
 export async function logCommits(
   gitPath: string,
   cwd: string,
@@ -133,7 +126,7 @@ export async function logCommits(
       '--no-walk=unsorted',
       '--raw',
       '-z',
-      '--no-renames',
+      '-M',
       '--diff-merges=first-parent',
       '--format=%x1e%H%x00%P%x00%aN%x00%aE%x00%at%x00%cN%x00%cE%x00%ct%x00%B',
       '--',
@@ -166,8 +159,9 @@ export function parseLog(output: string): CommitInfo[] {
     i += 9;
     let files = 0;
     while (i < tokens.length && tokens[i].trimStart().startsWith(':')) {
+      const status = tokens[i].trim().split(' ')[4] ?? '';
       files++;
-      i += 2;
+      i += /^[RC]/.test(status) ? 3 : 2;
     }
     const message = body.trimEnd();
     commits.push({

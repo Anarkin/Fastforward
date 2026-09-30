@@ -1,4 +1,7 @@
 import * as assert from 'node:assert';
+import { createHash } from 'node:crypto';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import * as vscode from 'vscode';
 import type { Repository } from '../git/git';
 import { getGitApi, listRefs } from '../git/repository';
@@ -114,6 +117,10 @@ suite('Git repository', function () {
       hash: rename,
       subject: 'rename',
     });
+    assert.deepStrictEqual(
+      await findCommit(gitPath, cwd, rename.slice(0, 7).toUpperCase()),
+      { kind: 'found', hash: rename, subject: 'rename' },
+    );
     assert.deepStrictEqual(await findCommit(gitPath, cwd, 'ffffff0'), {
       kind: 'none',
     });
@@ -127,6 +134,79 @@ suite('Git repository', function () {
       });
     } finally {
       await temp.git('branch', '-D', 'fade');
+    }
+  });
+
+  test('reads the subject of a typed commit in its own encoding', async () => {
+    const folder = tempFolder('message');
+    try {
+      const message = path.join(folder, 'message.txt');
+      fs.writeFileSync(message, Buffer.from('caf\xe9\n', 'latin1'));
+      const hash = (
+        await temp.git(
+          '-c',
+          'i18n.commitEncoding=ISO-8859-1',
+          'commit-tree',
+          'HEAD^{tree}',
+          '-F',
+          message,
+        )
+      ).trim();
+      assert.deepStrictEqual(
+        await findCommit(gitPath, cwd, hash.slice(0, 12)),
+        { kind: 'found', hash, subject: 'café' },
+      );
+    } finally {
+      removeFolder(folder);
+    }
+  });
+
+  test('finds the one commit among other objects sharing its prefix, or says how many share it', async () => {
+    const prefix = rename.slice(0, 4);
+    const withPrefix = (type: string, content: (i: number) => string) => {
+      for (let i = 0; ; i++) {
+        const text = content(i);
+        const header = `${type} ${Buffer.byteLength(text)}\0`;
+        const sha1 = createHash('sha1')
+          .update(header + text)
+          .digest('hex');
+        if (sha1.startsWith(prefix)) {
+          return text;
+        }
+      }
+    };
+    const folder = tempFolder('objects');
+    try {
+      const write = async (type: string, text: string) => {
+        const file = path.join(folder, type);
+        fs.writeFileSync(file, text);
+        await temp.git('hash-object', '-t', type, '-w', file);
+      };
+      await write(
+        'blob',
+        withPrefix('blob', (i) => `${i}\n`),
+      );
+      assert.deepStrictEqual(await findCommit(gitPath, cwd, prefix), {
+        kind: 'found',
+        hash: rename,
+        subject: 'rename',
+      });
+      const [tree] = await temp.resolve('HEAD^{tree}');
+      const person = 'Test <test@example.com> 0 +0000';
+      await write(
+        'commit',
+        withPrefix(
+          'commit',
+          (i) =>
+            `tree ${tree}\nauthor ${person}\ncommitter ${person}\n\n${i}\n`,
+        ),
+      );
+      assert.deepStrictEqual(await findCommit(gitPath, cwd, prefix), {
+        kind: 'ambiguous',
+        count: 2,
+      });
+    } finally {
+      removeFolder(folder);
     }
   });
 
@@ -232,5 +312,7 @@ suite('Git repository', function () {
     });
     assert.ok(patch.includes('rename from second.txt'), patch);
     assert.ok(!patch.includes('new file mode'), patch);
+    const [commit] = await logCommits(gitPath, cwd, [rename]);
+    assert.strictEqual(commit.files, files.length);
   });
 });

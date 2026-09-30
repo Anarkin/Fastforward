@@ -319,6 +319,26 @@ suite('git log parser', () => {
       ],
     );
   });
+
+  test('counts a renamed or copied file once', () => {
+    const output = [
+      '\x1eaaa\0\0Ann\0ann@example.com\0',
+      '1700000000\0Ann\0ann@example.com\0',
+      '1700000000\0Move\n\0',
+      '\n:100644 100644 1111111 1111111 R100\0old.txt\0new.txt\0',
+      ':100644 100644 2222222 2222222 C075\0a.txt\0b.txt\0',
+      '\x1ebbb\0aaa\0Bob\0bob@example.com\0',
+      '1700000100\0Bob\0bob@example.com\0',
+      '1700000100\0Next\n\0',
+    ].join('');
+    assert.deepStrictEqual(
+      parseLog(output).map(({ hash, files }) => ({ hash, files })),
+      [
+        { hash: 'aaa', files: 2 },
+        { hash: 'bbb', files: 0 },
+      ],
+    );
+  });
 });
 
 suite('git rev-list parser', () => {
