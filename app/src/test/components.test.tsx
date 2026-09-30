@@ -38,6 +38,7 @@ import type {
 } from '../shared/protocol';
 import {
   classesOf,
+  commitInfo,
   fileChange as change,
   renderedBy,
   tagsWith,
@@ -626,54 +627,59 @@ const popup = (
     />,
   );
 
-suite('Hash suggestion', () => {
-  const hash = 'abcd'.padEnd(40, '0');
-  test('offers the commit a typed hash is, like a first suggestion', () => {
-    const html = popup('ABCD', {
-      type: 'hashLookup',
-      query: 'abcd',
-      result: { kind: 'found', hash, subject: 'the subject' },
+const found = (
+  commits: string[],
+  more = 0,
+  query = 'abcd',
+): Parameters<typeof LocationsPopup>[0]['lookup'] => ({
+  type: 'hashLookup',
+  query,
+  result: {
+    commits: commits.map((hash) =>
+      commitInfo(hash, { subject: `subject ${hash.at(-1) ?? ''}` }),
+    ),
+    more,
+  },
+});
+
+suite('Commit results', () => {
+  const first = 'abcd'.padEnd(40, '0');
+  const second = 'abcd'.padEnd(40, '1');
+
+  test('lists the commits a typed hash may be as commit rows, the first highlighted, with their bubbles', () => {
+    const html = popup('ABCD', found([first, second], 3), {
+      repository: {
+        head: 'main',
+        headCommit: second,
+        refs: [{ kind: 'branch', name: 'main', commit: second }],
+      },
     });
-    assert.strictEqual(
-      tagsWith(html, 'row', 'hash-suggestion', 'active').length,
-      1,
+    assert.deepStrictEqual(counts(html), [5]);
+    assert.match(html, /<header class="locations-heading">Commits/);
+    assert.strictEqual(tagsWith(html, 'commit', 'selected').length, 1);
+    assert.match(
+      html,
+      /<div class="commit selected" style="padding-left:8px">.*?subject 0/,
     );
-    assert.match(html, /Go to commit.*abcd000.*the subject/);
+    assert.match(html, /class="commit checked-out".*subject 1/);
+    assert.match(html, /<span class="badge branch[^>]*>main<\/span>/);
+    assert.match(html, /3 more; type more to narrow it down/);
   });
 
-  test('says when no commit or several start with it', () => {
-    assert.match(
-      popup('abcd', {
-        type: 'hashLookup',
-        query: 'abcd',
-        result: { kind: 'none' },
-      }),
-      /No commit starts with abcd/,
-    );
-    assert.match(
-      popup('abcd', {
-        type: 'hashLookup',
-        query: 'abcd',
-        result: { kind: 'ambiguous', count: 3 },
-      }),
-      /3 commits start with abcd, type more/,
-    );
+  test('says when no commit starts with it, or that it is still looking', () => {
+    assert.match(popup('abcd', found([])), /No commit starts with abcd/);
     assert.match(popup('abcd'), /Looking for commit abcd/);
   });
 
   test('waits for the lookup of what is typed now, not an earlier prefix', () => {
-    const html = popup('abcde', {
-      type: 'hashLookup',
-      query: 'abcd',
-      result: { kind: 'found', hash, subject: 's' },
-    });
+    const html = popup('abcde', found([first]));
     assert.match(html, /Looking for commit abcde/);
-    assert.strictEqual(tagsWith(html, 'hash-suggestion', 'active').length, 0);
+    assert.strictEqual(tagsWith(html, 'commit').length, 0);
   });
 
   test('offers nothing for what is no hash, or too short', () => {
-    assert.doesNotMatch(popup('abc'), /hash-suggestion/);
-    assert.doesNotMatch(popup('feature'), /hash-suggestion/);
+    assert.doesNotMatch(popup('abc'), /hash-suggestion|Commits/);
+    assert.doesNotMatch(popup('feature'), /hash-suggestion|Commits/);
   });
 });
 

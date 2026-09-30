@@ -6,17 +6,17 @@ import {
   useRef,
   useState,
 } from 'react';
-import { isHashPrefix, shortHash } from '../shared/hashes';
+import { isHashPrefix } from '../shared/hashes';
 import type {
   Bookmark,
-  BookmarkRef,
-  HashLookup,
+  CommitInfo,
+  CommitResults,
   RefInfo,
   RefKind,
   RepositoryState,
   ToWebviewOf,
 } from '../shared/protocol';
-import { findRef, sameRef } from '../shared/refNames';
+import { findRef } from '../shared/refNames';
 import { pinnedRefs } from './bookmarks';
 import { byName } from './byName';
 import { BackIcon } from './icons';
@@ -28,6 +28,7 @@ import {
   useCheckedOut,
 } from './bubbles';
 import { OpenContextMenu, refMenuTarget, useDismiss } from './contextMenu';
+import { CommitRow } from './commitList';
 import { FolderRow, treeIndent, twistyWidth } from './tree';
 
 const groups: readonly { kind: RefKind; title: string }[] = [
@@ -100,63 +101,58 @@ function Highlight({ text, query }: { text: string; query: string }) {
   );
 }
 
-export interface Active {
-  readonly column: number;
-  readonly index: number;
+export type ResultItem =
+  | { readonly kind: 'commit'; readonly commit: CommitInfo }
+  | { readonly kind: 'ref'; readonly ref: RefInfo };
+
+export function resultItems(
+  commits: readonly CommitInfo[],
+  search: readonly SearchGroup[],
+): ResultItem[] {
+  return [
+    ...commits.map((commit) => ({ kind: 'commit' as const, commit })),
+    ...search.flatMap((group) =>
+      group.refs.map((ref) => ({ kind: 'ref' as const, ref })),
+    ),
+  ];
 }
 
-function firstMatch(search: readonly SearchGroup[]): Active {
-  const column = search.findIndex((group) => group.refs.length > 0);
-  return { column: Math.max(0, column), index: 0 };
+export function itemKey(item: ResultItem): string {
+  return item.kind === 'commit'
+    ? `commit:${item.commit.hash}`
+    : `${item.ref.kind}:${item.ref.name}`;
 }
 
 export interface Highlighted {
   readonly query: string;
-  readonly ref: BookmarkRef;
+  readonly key: string;
 }
 
 export function currentActive(
-  search: readonly SearchGroup[],
+  items: readonly ResultItem[],
   query: string,
   highlight: Highlighted | undefined,
-): Active {
+): number {
   if (highlight?.query === query) {
-    const column = search.findIndex(
-      (group) => group.kind === highlight.ref.kind,
-    );
-    const index =
-      search[column]?.refs.findIndex((ref) => sameRef(ref, highlight.ref)) ??
-      -1;
+    const index = items.findIndex((item) => itemKey(item) === highlight.key);
     if (index >= 0) {
-      return { column, index };
+      return index;
     }
   }
-  return firstMatch(search);
+  return 0;
 }
 
 export function nextActive(
-  search: readonly SearchGroup[],
-  active: Active,
+  items: readonly ResultItem[],
+  active: number,
   step: 1 | -1,
-): Active {
-  const index = active.index + step;
-  if (index >= 0 && index < (search[active.column]?.refs.length ?? 0)) {
-    return { column: active.column, index };
-  }
-  for (
-    let column = active.column + step;
-    column >= 0 && column < search.length;
-    column += step
-  ) {
-    const count = search[column].refs.length;
-    if (count > 0) {
-      return { column, index: step > 0 ? 0 : count - 1 };
-    }
-  }
-  return active;
+): number {
+  return Math.max(0, Math.min(items.length - 1, active + step));
 }
 
 const hashLookupDelay = 150;
+
+const commitIndent = 8;
 
 function hashQuery(query: string): string | undefined {
   const trimmed = query.trim().toLowerCase();
@@ -165,49 +161,67 @@ function hashQuery(query: string): string | undefined {
 
 export function enterTarget(
   query: string,
-  found: HashLookup | undefined,
-  active: RefInfo | undefined,
+  found: CommitResults | undefined,
+  active: ResultItem | undefined,
 ): string | undefined {
   const hash = hashQuery(query);
-  if (found?.kind === 'found') {
-    return found.hash;
-  }
   if (hash && found === undefined) {
     return hash;
   }
-  return query ? active?.commit : undefined;
+  if (!query || !active) {
+    return undefined;
+  }
+  return active.kind === 'commit' ? active.commit.hash : active.ref.commit;
 }
 
-function HashSuggestion({
+function CommitResultsSection({
   hash,
   found,
+  active,
+  refs,
+  headCommit,
   onJump,
 }: {
   hash: string;
-  found: HashLookup | undefined;
+  found: CommitResults | undefined;
+  active: string | undefined;
+  refs: readonly RefInfo[];
+  headCommit: string | undefined;
   onJump: (commit: string) => void;
 }) {
-  if (found?.kind === 'found') {
+  const detached = useContext(DetachedHead);
+  if (found === undefined || found.commits.length === 0) {
     return (
-      <div
-        className="row hash-suggestion active"
-        title={found.hash}
-        onClick={() => onJump(found.hash)}
-      >
-        Go to commit{' '}
-        <span className="history-hash">{shortHash(found.hash)}</span>
-        {found.subject}
+      <div className="row hash-suggestion empty">
+        {found === undefined
+          ? `Looking for commit ${hash}…`
+          : `No commit starts with ${hash}`}
       </div>
     );
   }
   return (
-    <div className="row hash-suggestion empty">
-      {found === undefined
-        ? `Looking for commit ${hash}…`
-        : found.kind === 'none'
-          ? `No commit starts with ${hash}`
-          : `${found.count} commits start with ${hash}, type more`}
-    </div>
+    <section className="locations-group">
+      <GroupHeading title="Commits" count={found.commits.length + found.more} />
+      <div className="locations-list">
+        {found.commits.map((commit) => (
+          <CommitRow
+            key={commit.hash}
+            commit={commit}
+            selected={active}
+            headCommit={headCommit}
+            refs={refs.filter((ref) => ref.commit === commit.hash)}
+            detached={detached === commit.hash}
+            indent={commitIndent}
+            onSelect={onJump}
+          />
+        ))}
+        {found.more > 0 && (
+          <div className="locations-empty">
+            {found.more} more; type more to narrow it down
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -281,9 +295,6 @@ export function LocationsPopup({
       ),
     [refs],
   );
-  const [highlight, setHighlight] = useState<Highlighted>();
-  const active = currentActive(search, query, highlight);
-  const activeRef = search[active.column]?.refs[active.index];
   const hash = hashQuery(query);
   useEffect(() => {
     if (!hash) {
@@ -293,13 +304,21 @@ export function LocationsPopup({
     return () => clearTimeout(timer);
   }, [hash, onLookup]);
   const found = hash && lookup?.query === hash ? lookup.result : undefined;
+  const items = useMemo(
+    () => resultItems(found?.commits ?? [], search),
+    [found, search],
+  );
+  const [highlight, setHighlight] = useState<Highlighted>();
+  const active = currentActive(items, query, highlight);
+  const activeItem = query ? items.at(active) : undefined;
+  const activeKey = activeItem && itemKey(activeItem);
   useEffect(() => {
-    if (activeRef) {
+    if (activeKey) {
       popup.current
-        ?.querySelector('.row.result.active')
+        ?.querySelector('.row.result.active, .commit.selected')
         ?.scrollIntoView({ block: 'nearest' });
     }
-  }, [activeRef]);
+  }, [activeKey]);
 
   const jump = (target: string | undefined) => {
     if (target) {
@@ -314,14 +333,13 @@ export function LocationsPopup({
     const steps: Record<string, 1 | -1> = { ArrowDown: 1, ArrowUp: -1 };
     if (query && event.key in steps) {
       event.preventDefault();
-      const next = nextActive(search, active, steps[event.key]);
-      const ref = search[next.column]?.refs[next.index];
-      if (ref) {
-        setHighlight({ query, ref });
+      const next = items.at(nextActive(items, active, steps[event.key]));
+      if (next) {
+        setHighlight({ query, key: itemKey(next) });
       }
     } else if (event.key === 'Enter') {
       event.preventDefault();
-      jump(enterTarget(query, found, activeRef));
+      jump(enterTarget(query, found, activeItem));
     }
   };
 
@@ -345,8 +363,19 @@ export function LocationsPopup({
           onChange={(event) => onQuery(event.target.value)}
         />
       </div>
-      {hash && <HashSuggestion hash={hash} found={found} onJump={jump} />}
       <div className="locations-groups">
+        {hash && (
+          <CommitResultsSection
+            hash={hash}
+            found={found}
+            active={
+              activeItem?.kind === 'commit' ? activeItem.commit.hash : undefined
+            }
+            refs={refs}
+            headCommit={repository?.headCommit}
+            onJump={jump}
+          />
+        )}
         <PinnedSection
           title="Checked out"
           items={pinned.checkedOut}
@@ -362,7 +391,7 @@ export function LocationsPopup({
         {query && !hash && nothingFound && (
           <div className="locations-empty">No matches</div>
         )}
-        {search.map((group, column) =>
+        {search.map((group) =>
           query && group.refs.length === 0 ? null : (
             <section key={group.kind} className="locations-group">
               <GroupHeading
@@ -378,7 +407,9 @@ export function LocationsPopup({
                   <SearchResults
                     group={group}
                     query={query}
-                    active={column === active.column ? activeRef : undefined}
+                    active={
+                      activeItem?.kind === 'ref' ? activeItem.ref : undefined
+                    }
                     onJump={jump}
                   />
                 ) : (

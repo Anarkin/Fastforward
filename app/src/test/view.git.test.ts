@@ -597,17 +597,22 @@ suite('View', function () {
         root: repository.root,
         query: typed,
       });
-      assert.deepStrictEqual(page.last('hashLookup'), {
-        type: 'hashLookup',
-        query: typed,
-        result: { kind: 'found', hash: fixture.b, subject: 'b' },
-      });
+      const lookup = page.last('hashLookup');
+      assert.strictEqual(lookup?.query, typed);
+      assert.deepStrictEqual(
+        lookup.result.commits.map((commit) => [commit.hash, commit.subject]),
+        [[fixture.b, 'b']],
+      );
+      assert.strictEqual(lookup.result.more, 0);
       await connection.receive({
         type: 'lookupHash',
         root: repository.root,
         query: 'ffffff0',
       });
-      assert.deepStrictEqual(page.last('hashLookup')?.result, { kind: 'none' });
+      assert.deepStrictEqual(page.last('hashLookup')?.result, {
+        commits: [],
+        more: 0,
+      });
     });
 
     test('jumps to a commit by a short hash', async () => {

@@ -238,7 +238,7 @@ suite('Style', () => {
     );
   });
 
-  test('tints a selected row, the active search result and the active hash suggestion alike, with the focus color', () => {
+  test('tints a selected row and the active search result alike, with the focus color', () => {
     const body = (/\nbody \{([^}]*)\}/.exec(css)?.[1] ?? '').replace(
       /\s+/g,
       ' ',
@@ -252,7 +252,6 @@ suite('Style', () => {
     for (const selector of [
       '.row.selected,\n.commit.selected',
       '.locations-list .row.result.active',
-      '.hash-suggestion.active',
     ]) {
       assert.ok(
         declarationsOf(selector).includes(
@@ -494,14 +493,13 @@ suite('Style', () => {
     );
   });
 
-  test('dims close buttons, disabled controls, a gone bubble and the hash of the active suggestion like muted text, keeping its own fade only for the loading placeholder', () => {
+  test('dims close buttons, disabled controls and a gone bubble like muted text, keeping its own fade only for the loading placeholder', () => {
     for (const selector of [
       '.tab-close',
       '.notice-close',
       '.badge.missing',
       '.menu-item:disabled',
       '.nav-button:disabled',
-      '.hash-suggestion.active .history-hash',
     ]) {
       const own = new RegExp(
         `\\n${selector.replace(/[.:]/g, '\\$&')} \\{([^}]*)\\}`,

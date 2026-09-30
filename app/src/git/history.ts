@@ -1,5 +1,5 @@
 import { isHashPrefix } from '../shared/hashes';
-import type { CommitInfo, HashLookup } from '../shared/protocol';
+import type { CommitInfo, CommitResults, HashLookup } from '../shared/protocol';
 import { rawStatus } from './diff';
 import { runGit, splitNul } from './run';
 
@@ -47,13 +47,13 @@ export async function commitsStartingWith(
     .map((line) => line.slice(0, line.indexOf(' ')));
 }
 
-export async function findCommit(
+async function commitsWithPrefix(
   gitPath: string,
   cwd: string,
   prefix: string,
-): Promise<HashLookup> {
+): Promise<string[]> {
   if (!isHashPrefix(prefix)) {
-    return { kind: 'none' };
+    return [];
   }
   const hex = prefix.toLowerCase();
   const output = await runGit(gitPath, cwd, ['cat-file', '--batch-check'], {
@@ -61,14 +61,36 @@ export async function findCommit(
   });
   const [hash, type] = output.trim().split(' ');
   if (type === 'missing') {
-    return { kind: 'none' };
+    return [];
   }
   const unique = type !== 'ambiguous' && hash.startsWith(hex);
-  const hashes = unique
-    ? type === 'commit'
-      ? [hash]
-      : []
-    : await commitsStartingWith(gitPath, cwd, hex);
+  if (unique) {
+    return type === 'commit' ? [hash] : [];
+  }
+  return commitsStartingWith(gitPath, cwd, hex);
+}
+
+const commitResultLimit = 20;
+
+export async function findCommits(
+  gitPath: string,
+  cwd: string,
+  prefix: string,
+  limit = commitResultLimit,
+): Promise<CommitResults> {
+  const hashes = await commitsWithPrefix(gitPath, cwd, prefix);
+  return {
+    commits: await logCommits(gitPath, cwd, hashes.slice(0, limit)),
+    more: Math.max(0, hashes.length - limit),
+  };
+}
+
+export async function findCommit(
+  gitPath: string,
+  cwd: string,
+  prefix: string,
+): Promise<HashLookup> {
+  const hashes = await commitsWithPrefix(gitPath, cwd, prefix);
   if (hashes.length === 1) {
     const [commit] = await logCommits(gitPath, cwd, hashes);
     return { kind: 'found', hash: hashes[0], subject: commit?.subject ?? '' };

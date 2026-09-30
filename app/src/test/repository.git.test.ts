@@ -7,6 +7,7 @@ import { showFiles, showPatch } from '../git/diff';
 import {
   commitsStartingWith,
   findCommit,
+  findCommits,
   listHistory,
   logCommits,
 } from '../git/history';
@@ -246,6 +247,17 @@ suite('Git repository', function () {
       assert.deepStrictEqual(await findCommit(gitPath, cwd, prefix), {
         kind: 'ambiguous',
         count: 2,
+      });
+      const all = await findCommits(gitPath, cwd, prefix);
+      assert.strictEqual(all.commits.length, 2);
+      assert.ok(all.commits.some((commit) => commit.hash === rename));
+      assert.strictEqual(all.more, 0);
+      const limited = await findCommits(gitPath, cwd, prefix, 1);
+      assert.strictEqual(limited.commits.length, 1);
+      assert.strictEqual(limited.more, 1);
+      assert.deepStrictEqual(await findCommits(gitPath, cwd, 'ffffff0'), {
+        commits: [],
+        more: 0,
       });
     } finally {
       removeFolder(folder);

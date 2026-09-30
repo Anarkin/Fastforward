@@ -9,6 +9,11 @@ export type HashLookup =
   | { readonly kind: 'none' }
   | { readonly kind: 'ambiguous'; readonly count: number };
 
+export interface CommitResults {
+  readonly commits: readonly CommitInfo[];
+  readonly more: number;
+}
+
 export interface NavigationEntry {
   readonly hash: string;
   readonly subject: string | undefined;
@@ -192,7 +197,7 @@ export type ToWebview =
   | {
       readonly type: 'hashLookup';
       readonly query: string;
-      readonly result: HashLookup;
+      readonly result: CommitResults;
     }
   | {
       readonly type: 'navigation';
