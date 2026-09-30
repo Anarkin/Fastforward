@@ -103,6 +103,13 @@ suite('App', function () {
     );
     await field.press('Enter');
     await page.locator('.diff-find-count', { hasText: '2 of 2' }).waitFor();
+    assert.strictEqual(await page.locator('.minimap-mark.match').count(), 2);
+    assert.ok((await page.locator('.minimap-mark.added').count()) > 0);
+    await page.locator('.row.group', { hasText: 'All Changes' }).click();
+    await page.locator('.diff-find-count', { hasText: '1 of 2' }).waitFor();
+    assert.ok(await page.locator('.diff-minimap').isVisible());
+    assert.strictEqual(await page.locator('.minimap-mark.match').count(), 2);
+    assert.strictEqual(await page.locator('.minimap-mark.added').count(), 0);
     await field.press('Escape');
     await count.waitFor({ state: 'detached' });
     assert.strictEqual(await page.locator('.find-match').count(), 0);

@@ -234,7 +234,7 @@ export function Diff({
   fileContent,
   error,
   entireFile,
-  minimap,
+  changeMarks,
 }: {
   selection: string;
   path: string | undefined;
@@ -247,7 +247,7 @@ export function Diff({
   fileContent: WholeFile | undefined;
   error: string | undefined;
   entireFile: React.ReactNode;
-  minimap: boolean;
+  changeMarks: boolean;
 }) {
   const parsed = useMemo(() => parsePatch(patch), [patch]);
   const diffFiles = useMemo(
@@ -326,7 +326,7 @@ export function Diff({
         loading={loading}
         diff={diffs}
         onLoad={onLoadFile}
-        minimap={minimap}
+        changeMarks={changeMarks}
         matches={matches}
         current={shown}
         jump={jump}

@@ -3,7 +3,13 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { collapseThreshold } from '../shared/protocol';
 import type { DiffFile, DiffLine } from './diff';
 import { lineKey, wholeLines, type FindMatch, type FindRange } from './find';
-import { matchMarks, Minimap, minimapMarks, type MinimapRow } from './minimap';
+import {
+  matchMarks,
+  Minimap,
+  minimapMarks,
+  type MinimapMark,
+  type MinimapRow,
+} from './minimap';
 import { ownScrollbarAttribute } from './overlayScrollbars';
 import { SkeletonRows, useSkeleton } from './skeleton';
 import { Twisty } from './tree';
@@ -195,6 +201,24 @@ export function highlighted(
   return parts;
 }
 
+export function diffMinimapMarks(
+  rows: readonly DiffRow[],
+  keys: readonly (string | undefined)[],
+  matchedLines: ReadonlyMap<string, unknown>,
+  changeMarks: boolean,
+): MinimapMark[] {
+  const heights = minimapRows(rows);
+  const matched = new Set(
+    keys.flatMap((key, index) =>
+      key !== undefined && matchedLines.has(key) ? [index] : [],
+    ),
+  );
+  return [
+    ...(changeMarks ? minimapMarks(heights) : []),
+    ...matchMarks(heights, matched),
+  ];
+}
+
 function fileHeaderIndex(rows: readonly DiffRow[], file: number): number {
   return rows.findIndex((row) => row.kind === 'file' && row.file === file);
 }
@@ -252,7 +276,7 @@ export function DiffView({
   loading,
   diff,
   onLoad,
-  minimap = false,
+  changeMarks = false,
   matches = [],
   current = 0,
   jump = 0,
@@ -263,7 +287,7 @@ export function DiffView({
   loading: boolean;
   diff: number;
   onLoad: (path: string) => void;
-  minimap?: boolean;
+  changeMarks?: boolean;
   matches?: readonly FindMatch[];
   current?: number;
   jump?: number;
@@ -419,42 +443,29 @@ export function DiffView({
     return null;
   };
 
-  const marks = useMemo(() => {
-    if (!minimap) {
-      return [];
-    }
-    const heights = minimapRows(rows);
-    const matched = new Set(
-      keys.flatMap((key, index) =>
-        key !== undefined && rangesByLine.has(key) ? [index] : [],
-      ),
-    );
-    return [...minimapMarks(heights), ...matchMarks(heights, matched)];
-  }, [minimap, rows, keys, rangesByLine]);
+  const marks = useMemo(
+    () => diffMinimapMarks(rows, keys, rangesByLine, changeMarks),
+    [rows, keys, rangesByLine, changeMarks],
+  );
 
   const items = virtualizer.getVirtualItems();
   const scrollTop = virtualizer.scrollOffset ?? 0;
   const stuck = stuckHeader(rows, items, scrollTop);
 
   return (
-    <div
-      className={`diff-view ${minimap ? 'with-minimap' : ''}`}
-      style={heightVariables}
-    >
+    <div className="diff-view" style={heightVariables}>
       {stuck && <div className="diff-stuck-header">{header(stuck, true)}</div>}
-      {minimap && (
-        <Minimap
-          marks={marks}
-          scrollTop={scrollTop}
-          viewport={virtualizer.scrollRect?.height ?? 0}
-          total={virtualizer.getTotalSize()}
-          onScroll={(top) => virtualizer.scrollToOffset(top)}
-        />
-      )}
+      <Minimap
+        marks={marks}
+        scrollTop={scrollTop}
+        viewport={virtualizer.scrollRect?.height ?? 0}
+        total={virtualizer.getTotalSize()}
+        onScroll={(top) => virtualizer.scrollToOffset(top)}
+      />
       <div
         className="virtual-rows"
         ref={list}
-        {...(minimap ? { [ownScrollbarAttribute]: '' } : {})}
+        {...{ [ownScrollbarAttribute]: '' }}
       >
         <div
           className="virtual-spacer"
