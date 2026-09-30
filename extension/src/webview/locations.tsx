@@ -9,25 +9,26 @@ import {
 import { isHashPrefix, shortHash } from '../shared/hashes';
 import type {
   Bookmark,
+  BookmarkRef,
   HashLookup,
   RefInfo,
   RefKind,
   RepositoryState,
   ToWebviewOf,
 } from '../shared/protocol';
-import { findRef } from '../shared/refNames';
+import { findRef, sameRef } from '../shared/refNames';
 import { pinnedRefs } from './bookmarks';
 import { byName } from './byName';
 import { BackIcon } from './icons';
 import {
-  CheckedOutBranch,
   CommitBubble,
   DetachedHead,
   HeadBubble,
   RefBubble,
+  useCheckedOut,
 } from './bubbles';
-import { OpenContextMenu, useDismiss } from './contextMenu';
-import { treeIndent, twistyWidth } from './tree';
+import { OpenContextMenu, refMenuTarget, useDismiss } from './contextMenu';
+import { FolderRow, treeIndent, twistyWidth } from './tree';
 
 const groups: readonly { kind: RefKind; title: string }[] = [
   { kind: 'branch', title: 'Local branches' },
@@ -51,6 +52,9 @@ export function searchRefs(
 ): SearchGroup[] {
   const needle = query.toLowerCase();
   return groups.map((group) => {
+    if (!query) {
+      return { ...group, refs: [], more: 0 };
+    }
     const matches = refs
       .filter(
         (ref) =>
@@ -73,8 +77,7 @@ function RefLabel({
   children: React.ReactNode;
 }) {
   const { kind } = info;
-  const checkedOutBranch = useContext(CheckedOutBranch);
-  const checkedOut = kind === 'branch' && info.name === checkedOutBranch;
+  const checkedOut = useCheckedOut(info);
   return (
     <span className={`badge ${kind} ${checkedOut ? 'checked-out' : ''}`}>
       {children}
@@ -105,6 +108,30 @@ export interface Active {
 function firstMatch(search: readonly SearchGroup[]): Active {
   const column = search.findIndex((group) => group.refs.length > 0);
   return { column: Math.max(0, column), index: 0 };
+}
+
+export interface Highlighted {
+  readonly query: string;
+  readonly ref: BookmarkRef;
+}
+
+export function currentActive(
+  search: readonly SearchGroup[],
+  query: string,
+  highlight: Highlighted | undefined,
+): Active {
+  if (highlight?.query === query) {
+    const column = search.findIndex(
+      (group) => group.kind === highlight.ref.kind,
+    );
+    const index =
+      search[column]?.refs.findIndex((ref) => sameRef(ref, highlight.ref)) ??
+      -1;
+    if (index >= 0) {
+      return { column, index };
+    }
+  }
+  return firstMatch(search);
 }
 
 export function nextActive(
@@ -259,7 +286,8 @@ export function LocationsPopup({
       ),
     [refs],
   );
-  const [active, setActive] = useState<Active>(() => firstMatch(search));
+  const [highlight, setHighlight] = useState<Highlighted>();
+  const active = currentActive(search, query, highlight);
   const activeRef = search[active.column]?.refs[active.index];
   const hash = hashQuery(query);
   useEffect(() => {
@@ -291,7 +319,11 @@ export function LocationsPopup({
     const steps: Record<string, 1 | -1> = { ArrowDown: 1, ArrowUp: -1 };
     if (query && event.key in steps) {
       event.preventDefault();
-      setActive(nextActive(search, active, steps[event.key]));
+      const next = nextActive(search, active, steps[event.key]);
+      const ref = search[next.column]?.refs[next.index];
+      if (ref) {
+        setHighlight({ query, ref });
+      }
     } else if (event.key === 'Enter') {
       event.preventDefault();
       jump(enterTarget(query, found, activeRef));
@@ -315,11 +347,7 @@ export function LocationsPopup({
           ref={input}
           autoFocus
           value={query}
-          onChange={(event) => {
-            const next = event.target.value;
-            onQuery(next);
-            setActive(firstMatch(searchRefs(refs, next)));
-          }}
+          onChange={(event) => onQuery(event.target.value)}
         />
       </div>
       {hash && <HashSuggestion hash={hash} found={found} onJump={jump} />}
@@ -451,12 +479,7 @@ function SearchResults({
           className={`row result ${ref === active ? 'active' : ''} ${ref.commit === selected ? 'selected' : ''}`}
           title={ref.name}
           onClick={() => onJump(ref.commit)}
-          onContextMenu={(event) =>
-            openMenu(event, {
-              kind: 'ref',
-              ref: { kind: ref.kind, name: ref.name },
-            })
-          }
+          onContextMenu={(event) => openMenu(event, refMenuTarget(ref))}
         >
           <RefLabel info={ref}>
             <Highlight text={ref.name} query={query} />
@@ -472,14 +495,31 @@ function SearchResults({
   );
 }
 
-interface TreeNode {
-  name: string;
-  ref: RefInfo | undefined;
-  children: Map<string, TreeNode>;
+export interface TreeNode {
+  readonly name: string;
+  readonly ref: RefInfo | undefined;
+  readonly children: readonly TreeNode[];
 }
 
-function buildTree(refs: readonly RefInfo[]): TreeNode {
-  const root: TreeNode = { name: '', ref: undefined, children: new Map() };
+interface GrowingNode {
+  name: string;
+  ref: RefInfo | undefined;
+  children: Map<string, GrowingNode>;
+}
+
+const foldersFirst = (a: TreeNode, b: TreeNode) =>
+  Number(b.children.length > 0) - Number(a.children.length > 0) || byName(a, b);
+
+function sortedTree({ name, ref, children }: GrowingNode): TreeNode {
+  return {
+    name,
+    ref,
+    children: [...children.values()].map(sortedTree).toSorted(foldersFirst),
+  };
+}
+
+export function buildTree(refs: readonly RefInfo[]): TreeNode {
+  const root: GrowingNode = { name: '', ref: undefined, children: new Map() };
   for (const ref of refs) {
     let node = root;
     for (const part of ref.name.split('/')) {
@@ -492,7 +532,7 @@ function buildTree(refs: readonly RefInfo[]): TreeNode {
     }
     node.ref = ref;
   }
-  return root;
+  return sortedTree(root);
 }
 
 function RefTree({
@@ -530,15 +570,12 @@ function TreeChildren({
   onSelect: (commit: string) => void;
 }) {
   const openMenu = useContext(OpenContextMenu);
-  const children = [...node.children.values()].toSorted(
-    (a, b) =>
-      Number(b.children.size > 0) - Number(a.children.size > 0) || byName(a, b),
-  );
-  const withFolders = children.some((child) => child.children.size > 0);
+  const { children } = node;
+  const withFolders = children.some((child) => child.children.length > 0);
   return (
     <>
       {children.map((child) =>
-        child.children.size > 0 ? (
+        child.children.length > 0 ? (
           <TreeFolder
             key={child.name}
             node={child}
@@ -555,11 +592,7 @@ function TreeChildren({
             title={child.ref?.name}
             onClick={() => child.ref && onSelect(child.ref.commit)}
             onContextMenu={(event) =>
-              child.ref &&
-              openMenu(event, {
-                kind: 'ref',
-                ref: { kind: child.ref.kind, name: child.ref.name },
-              })
+              child.ref && openMenu(event, refMenuTarget(child.ref))
             }
           >
             {child.ref ? (
@@ -590,18 +623,16 @@ function TreeFolder({
   const [open, setOpen] = useState(initiallyOpen);
   return (
     <div className="tree-group">
-      <div
-        className="row tree-row folder sticky"
-        style={{
-          paddingLeft: treeIndent(depth),
-          top: depth * stickyRowHeight,
-          zIndex: 100 - depth,
-        }}
-        onClick={() => setOpen(!open)}
+      <FolderRow
+        path={node.name}
+        depth={depth}
+        open={open}
+        className="sticky"
+        style={{ top: depth * stickyRowHeight, zIndex: 100 - depth }}
+        onToggle={() => setOpen(!open)}
       >
-        <span className="twisty">{open ? '▾' : '▸'}</span>
         {node.name}
-      </div>
+      </FolderRow>
       {open && (
         <TreeChildren
           node={node}

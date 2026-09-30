@@ -1,6 +1,6 @@
 import type { RefInfo, BookmarkRef } from './shared/protocol';
 import { RefType } from './git/refType';
-import { hasRef, withoutRemote } from './shared/refNames';
+import { hasRef, refOf, withoutRemote } from './shared/refNames';
 
 export interface Head {
   readonly name?: string;
@@ -76,7 +76,7 @@ export function defaultBookmarks(
       .filter(
         (ref) => ref.kind === 'remote' && withoutRemote(ref.name) === main,
       )
-      .map((ref) => ({ kind: ref.kind, name: ref.name })),
+      .map(refOf),
   ];
   return candidates.filter(exists);
 }

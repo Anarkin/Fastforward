@@ -1,10 +1,13 @@
 import * as assert from 'node:assert';
 import type { RefInfo } from '../shared/protocol';
 import {
+  buildTree,
+  currentActive,
   enterTarget,
   leafIndent,
   nextActive,
   searchRefs,
+  type Highlighted,
   stickyRowHeight,
 } from '../webview/locations';
 import { treeIndent, twistyWidth } from '../webview/tree';
@@ -17,6 +20,12 @@ const refs: RefInfo[] = [
   { kind: 'branch', name: 'feat/epmaisa-798-drop', commit: 'a' },
   { kind: 'remote', name: 'origin/fix/typo', commit: 'd' },
 ];
+
+const branchNamed = (name: string): RefInfo => ({
+  kind: 'branch',
+  name,
+  commit: 'a',
+});
 
 const names = (groups: ReturnType<typeof searchRefs>) =>
   groups.map((group) => [group.title, group.refs.map((ref) => ref.name)]);
@@ -44,14 +53,35 @@ suite('Locations search', () => {
     assert.deepStrictEqual([remotes.refs.length, remotes.more], [1, 1]);
   });
 
+  test('sorts matches by name before cutting them to the limit', () => {
+    const [branches] = searchRefs(
+      [branchNamed('b1'), branchNamed('a1'), branchNamed('c1')],
+      '1',
+      2,
+    );
+    assert.deepStrictEqual(
+      branches.refs.map((ref) => ref.name),
+      ['a1', 'b1'],
+    );
+    assert.strictEqual(branches.more, 1);
+  });
+
+  test('searches nothing without a query', () => {
+    assert.deepStrictEqual(names(searchRefs(refs, '')), [
+      ['Local branches', []],
+      ['Remote branches', []],
+      ['Tags', []],
+    ]);
+  });
+
   test('moves the highlight through the groups one after another, skipping empty ones', () => {
     const search = searchRefs(
       [
         { kind: 'branch', name: 'main', commit: 'a' },
-        { kind: 'branch', name: 'feat/x', commit: 'b' },
-        { kind: 'tag', name: 'v1', commit: 'c' },
+        { kind: 'branch', name: 'feat/main', commit: 'b' },
+        { kind: 'tag', name: 'v1-main', commit: 'c' },
       ],
-      '',
+      'main',
     );
     assert.deepStrictEqual(
       search.map((group) => group.refs.length),
@@ -99,6 +129,50 @@ suite('Locations search', () => {
 
   test('jumps on Enter to a hash not looked up yet as typed', () => {
     assert.strictEqual(enterTarget('A1B2c3d4', undefined, refs[3]), 'a1b2c3d4');
+    assert.strictEqual(enterTarget(' AB12 ', undefined, refs[3]), 'ab12');
+  });
+
+  test('keeps the highlight on its ref while the refs change, and otherwise starts at the first match', () => {
+    const highlight: Highlighted = {
+      query: 'a',
+      ref: { kind: 'branch', name: 'feat/x' },
+    };
+    const before = searchRefs(
+      [branchNamed('main'), branchNamed('feat/x')],
+      'a',
+    );
+    assert.deepStrictEqual(currentActive(before, 'a', highlight), {
+      column: 0,
+      index: 0,
+    });
+    const shifted = searchRefs(
+      [branchNamed('alpha'), branchNamed('main'), branchNamed('feat/x')],
+      'a',
+    );
+    assert.deepStrictEqual(currentActive(shifted, 'a', highlight), {
+      column: 0,
+      index: 1,
+    });
+    const gone = searchRefs(
+      [branchNamed('main'), { kind: 'tag', name: 'va', commit: 'b' }],
+      'a',
+    );
+    assert.deepStrictEqual(currentActive(gone, 'a', highlight), {
+      column: 0,
+      index: 0,
+    });
+    assert.deepStrictEqual(currentActive(shifted, 'al', highlight), {
+      column: 0,
+      index: 0,
+    });
+    const tagsOnly = searchRefs(
+      [{ kind: 'tag', name: 'va', commit: 'b' }],
+      'a',
+    );
+    assert.deepStrictEqual(currentActive(tagsOnly, 'a', undefined), {
+      column: 2,
+      index: 0,
+    });
   });
 
   test('does nothing on Enter without a search, which highlights no match', () => {
@@ -107,6 +181,18 @@ suite('Locations search', () => {
 });
 
 suite('Locations popup', () => {
+  test('orders a tree folders first, then by name', () => {
+    const tags = ['v2', 'v10', 'rel/a', 'alpha'].map((name): RefInfo => ({
+      kind: 'tag',
+      name,
+      commit: 'a',
+    }));
+    assert.deepStrictEqual(
+      buildTree(tags).children.map((node) => node.name),
+      ['rel', 'alpha', 'v10', 'v2'],
+    );
+  });
+
   test("stacks stuck folders at the height the stylesheet gives the popup's rows", () => {
     assert.strictEqual(
       stylesheetPx(/^\.locations-list \.row \{[^}]*?\sheight: (\d+)px/m),
