@@ -504,6 +504,26 @@ suite('Style', () => {
     );
   });
 
+  test('dims close buttons, disabled controls, a gone bubble and the hash of the active suggestion like muted text, keeping its own fade only for the loading placeholder', () => {
+    for (const selector of [
+      '.tab-close',
+      '.notice-close',
+      '.badge.missing',
+      '.menu-item:disabled',
+      '.nav-button:disabled',
+      '.hash-suggestion.active .history-hash',
+    ]) {
+      const own = new RegExp(
+        `\\n${selector.replace(/[.:]/g, '\\$&')} \\{([^}]*)\\}`,
+      ).exec(css);
+      assert.ok(own?.[1].includes('opacity: var(--muted-opacity);'), selector);
+    }
+    assert.deepStrictEqual(
+      [...css.matchAll(/opacity: (0\.\d+);/g)].map((match) => match[1]),
+      ['0.15'],
+    );
+  });
+
   test('mutes the search placeholders like other muted text', () => {
     assert.ok(
       declarationsOf('.address-text.empty').includes(
