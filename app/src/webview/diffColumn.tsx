@@ -1,9 +1,33 @@
-import { useMemo } from 'react';
+import {
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from 'react';
 import { isLargeChange, type FileChange } from '../shared/protocol';
 import { Column } from './column';
 import { parsePatch, type DiffFile } from './diff';
 import { DiffView, type WholeFile } from './diffView';
-import { EntireFileIcon, IgnoreWhitespaceIcon, PinIcon } from './icons';
+import {
+  findMatches,
+  matchCount,
+  noFindOptions,
+  stepMatch,
+  unsearchedFiles,
+  type FindOptions,
+} from './find';
+import {
+  EntireFileIcon,
+  IgnoreWhitespaceIcon,
+  MatchCaseIcon,
+  NextIcon,
+  PinIcon,
+  PreviousIcon,
+  WholeWordIcon,
+} from './icons';
+import { isFindShortcut } from './shortcuts';
 
 export function withLargeFiles(
   parsed: readonly DiffFile[],
@@ -93,6 +117,111 @@ export function DiffOptions({
   );
 }
 
+export function DiffFind({
+  query,
+  count,
+  unsearched,
+  input,
+  onQuery,
+  onStep,
+}: {
+  query: string;
+  count: string;
+  unsearched: number;
+  input?: RefObject<HTMLInputElement | null>;
+  onQuery: (query: string) => void;
+  onStep: (step: 1 | -1) => void;
+}) {
+  return (
+    <div className={`diff-find ${query ? 'active' : ''}`}>
+      <input
+        ref={input}
+        className="diff-find-input"
+        placeholder="Find in Diff"
+        spellCheck={false}
+        value={query}
+        onChange={(event) => onQuery(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            onStep(event.shiftKey ? -1 : 1);
+          } else if (event.key === 'Escape') {
+            event.preventDefault();
+            if (query) {
+              onQuery('');
+            } else {
+              event.currentTarget.blur();
+            }
+          }
+        }}
+      />
+      {count && (
+        <span
+          className="diff-find-count"
+          title={
+            unsearched > 0
+              ? `Large files not shown yet are not searched: ${unsearched}`
+              : undefined
+          }
+        >
+          {count}
+        </span>
+      )}
+    </div>
+  );
+}
+
+export function FindActions({
+  options,
+  matches,
+  onOptions,
+  onStep,
+}: {
+  options: FindOptions;
+  matches: number;
+  onOptions: (options: FindOptions) => void;
+  onStep: (step: 1 | -1) => void;
+}) {
+  return (
+    <div className="nav-buttons diff-find-actions">
+      <button
+        className={`nav-button toggle ${options.caseSensitive ? 'active' : ''}`}
+        title="Match Case"
+        aria-pressed={options.caseSensitive}
+        onClick={() =>
+          onOptions({ ...options, caseSensitive: !options.caseSensitive })
+        }
+      >
+        <MatchCaseIcon />
+      </button>
+      <button
+        className={`nav-button toggle ${options.wholeWord ? 'active' : ''}`}
+        title="Match Whole Word"
+        aria-pressed={options.wholeWord}
+        onClick={() => onOptions({ ...options, wholeWord: !options.wholeWord })}
+      >
+        <WholeWordIcon />
+      </button>
+      <button
+        className="nav-button"
+        title="Previous Match (Shift+Enter)"
+        disabled={matches === 0}
+        onClick={() => onStep(-1)}
+      >
+        <PreviousIcon />
+      </button>
+      <button
+        className="nav-button"
+        title="Next Match (Enter)"
+        disabled={matches === 0}
+        onClick={() => onStep(1)}
+      >
+        <NextIcon />
+      </button>
+    </div>
+  );
+}
+
 export function Diff({
   selection,
   path,
@@ -128,8 +257,67 @@ export function Diff({
   );
   const errorRow = error && <div className="error">{error}</div>;
 
+  const [query, setQuery] = useState('');
+  const [options, setOptions] = useState<FindOptions>(noFindOptions);
+  const [current, setCurrent] = useState(0);
+  const [jump, setJump] = useState(0);
+  const input = useRef<HTMLInputElement>(null);
+  const matches = useMemo(
+    () => findMatches(diffFiles, fileContent, query, options),
+    [diffFiles, fileContent, query, options],
+  );
+  const shown = Math.min(current, Math.max(0, matches.length - 1));
+  const goTo = (index: number) => {
+    setCurrent(index);
+    setJump((count) => count + 1);
+  };
+  const step = (by: 1 | -1) => goTo(stepMatch(shown, matches.length, by));
+  const [seen, setSeen] = useState(selection);
+  if (seen !== selection) {
+    setSeen(selection);
+    setCurrent(0);
+    setJump((count) => count + 1);
+  }
+  const onKeyDown = useEffectEvent((event: KeyboardEvent) => {
+    if (isFindShortcut(event)) {
+      event.preventDefault();
+      input.current?.focus();
+      input.current?.select();
+    }
+  });
+  useEffect(() => {
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
   return (
-    <Column title="Diff" start={entireFile}>
+    <Column
+      title={
+        <DiffFind
+          query={query}
+          count={matchCount(query, matches.length, shown)}
+          unsearched={unsearchedFiles(diffFiles, fileContent)}
+          input={input}
+          onQuery={(next) => {
+            setQuery(next);
+            goTo(0);
+          }}
+          onStep={step}
+        />
+      }
+      start={entireFile}
+      actions={
+        <FindActions
+          options={options}
+          matches={matches.length}
+          onOptions={(next) => {
+            setOptions(next);
+            goTo(0);
+          }}
+          onStep={step}
+        />
+      }
+    >
       <DiffView
         key={selection}
         error={errorRow}
@@ -139,6 +327,9 @@ export function Diff({
         diff={diffs}
         onLoad={onLoadFile}
         minimap={minimap}
+        matches={matches}
+        current={shown}
+        jump={jump}
       />
     </Column>
   );

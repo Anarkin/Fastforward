@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { hideAfter } from './overlayScrollbars';
 
 export interface MinimapMark {
-  readonly kind: 'added' | 'removed';
+  readonly kind: 'added' | 'removed' | 'match';
   readonly top: number;
   readonly height: number;
 }
@@ -42,6 +42,29 @@ export function minimapMarks(rows: readonly MinimapRow[]): MinimapMark[] {
     offset += row.height;
   }
   close();
+  return marks;
+}
+
+export function matchMarks(
+  rows: readonly MinimapRow[],
+  found: ReadonlySet<number>,
+): MinimapMark[] {
+  const total = rows.reduce((sum, row) => sum + row.height, 0);
+  if (total === 0) {
+    return [];
+  }
+  const marks: MinimapMark[] = [];
+  let offset = 0;
+  rows.forEach((row, index) => {
+    if (found.has(index)) {
+      marks.push({
+        kind: 'match',
+        top: offset / total,
+        height: row.height / total,
+      });
+    }
+    offset += row.height;
+  });
   return marks;
 }
 

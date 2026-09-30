@@ -36,6 +36,20 @@ export function shortcutOf(event: ShortcutEvent): ShortcutKey | undefined {
   return shortcutKeys.find((shortcut) => shortcut === key);
 }
 
+export function isFindShortcut(
+  event: Pick<
+    KeyboardEvent,
+    'key' | 'code' | 'ctrlKey' | 'metaKey' | 'shiftKey' | 'altKey'
+  >,
+): boolean {
+  return (
+    (event.ctrlKey || event.metaKey) &&
+    !event.shiftKey &&
+    !event.altKey &&
+    (event.key.toLowerCase() === 'f' || event.code === 'KeyF')
+  );
+}
+
 export function handleShortcut(
   event: ShortcutEvent & Pick<KeyboardEvent, 'preventDefault'>,
   actions: Readonly<Partial<Record<ShortcutKey, () => void>>>,

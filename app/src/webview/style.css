@@ -402,13 +402,76 @@ body.resizing {
 }
 
 .column-title:has(.all-files) {
-  padding-left: calc(4px + 26px + 8px);
-  padding-right: calc(4px + 26px + 8px);
+  padding-left: calc(4px + 3 * 26px + 2 * 2px + 8px);
+  padding-right: calc(4px + 3 * 26px + 2 * 2px + 8px);
 }
 
 .column-title:has(.diff-options) {
   padding-left: calc(4px + 4 * 26px + 3 * 2px + 8px);
   padding-right: calc(4px + 4 * 26px + 3 * 2px + 8px);
+}
+
+.diff-find {
+  flex: 0 1 280px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-sizing: border-box;
+  min-width: 0;
+  height: 28px;
+  padding: 0 12px;
+  background: var(--color-border);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+}
+
+.diff-find:hover {
+  background:
+    linear-gradient(var(--hover-background), var(--hover-background)),
+    var(--color-border);
+  border-color: transparent;
+}
+
+.diff-find.active,
+.diff-find:focus-within {
+  background: var(--color-panel-background);
+  border-color: var(--color-border);
+}
+
+.diff-find:focus-within {
+  border-color: var(--color-focus);
+}
+
+.diff-find-input {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  color: var(--color-foreground);
+  background: none;
+  border: none;
+  outline: none;
+}
+
+.diff-find-input::placeholder {
+  color: var(--muted-foreground);
+  opacity: 1;
+}
+
+.diff-find-count {
+  flex: none;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+
+.diff-line .find-match {
+  color: var(--color-search-match-foreground);
+  background: var(--color-search-match);
+  border-radius: 2px;
+}
+
+.diff-line .find-match.current {
+  box-shadow: 0 0 0 1px var(--color-search-match-foreground);
 }
 
 .nav-button-space {
@@ -913,6 +976,11 @@ body.resizing {
     var(--color-added) var(--color-added-minimap),
     transparent
   );
+}
+
+.minimap-mark.match {
+  left: 50%;
+  background: var(--color-search-match);
 }
 
 .minimap-mark.removed {

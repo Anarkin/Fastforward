@@ -520,6 +520,39 @@ suite('Style', () => {
     assert.ok(match.includes('background: var(--color-search-match);'));
   });
 
+  test('highlights what a find in the diff matched in the search match colors, edging the current match, and ticks the minimap in them', () => {
+    const match = declarationsOf('.diff-line .find-match');
+    assert.ok(match.includes('color: var(--color-search-match-foreground);'));
+    assert.ok(match.includes('background: var(--color-search-match);'));
+    assert.ok(
+      declarationsOf('.diff-line .find-match.current').includes(
+        'box-shadow: 0 0 0 1px var(--color-search-match-foreground);',
+      ),
+    );
+    assert.ok(
+      declarationsOf('.minimap-mark.match').includes(
+        'background: var(--color-search-match);',
+      ),
+    );
+  });
+
+  test('draws the find field like the resting search field, edged in the focus color while typing in it', () => {
+    const field = declarationsOf('.diff-find');
+    assert.ok(field.includes('background: var(--color-border);'));
+    assert.ok(field.includes('border: 1px solid var(--color-border);'));
+    assert.match(
+      css,
+      /\n\.diff-find:focus-within \{\s*border-color: var\(--color-focus\);\s*\}/,
+    );
+  });
+
+  test('keeps the titles clear of the three buttons the Files column has on the left, and the four the Diff column has on each side', () => {
+    const files = declarationsOf('.column-title:has(.all-files)');
+    assert.strictEqual(pixels(files, 'padding-left'), 4 + 3 * 26 + 2 * 2 + 8);
+    const diff = declarationsOf('.column-title:has(.diff-options)');
+    assert.strictEqual(pixels(diff, 'padding-right'), 4 + 4 * 26 + 3 * 2 + 8);
+  });
+
   test('mutes the search placeholders like other muted text', () => {
     assert.ok(
       declarationsOf('.address-text.empty').includes(
