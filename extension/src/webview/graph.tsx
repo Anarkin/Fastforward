@@ -7,14 +7,14 @@ const dotRadius = 4;
 const turn = 20;
 
 const colors = [
-  'var(--vscode-charts-blue)',
-  'var(--vscode-charts-green)',
-  'var(--vscode-charts-orange)',
-  'var(--vscode-charts-purple)',
-  'var(--vscode-charts-red)',
-  'var(--vscode-charts-yellow)',
-  'var(--vscode-terminal-ansiCyan)',
-  'var(--vscode-terminal-ansiMagenta)',
+  'var(--color-chart-blue)',
+  'var(--color-chart-green)',
+  'var(--color-chart-orange)',
+  'var(--color-chart-purple)',
+  'var(--color-chart-red)',
+  'var(--color-chart-yellow)',
+  'var(--color-chart-cyan)',
+  'var(--color-chart-magenta)',
 ];
 
 const margin = 3;
@@ -89,7 +89,7 @@ export function GraphCell({
           width={2 * dotRadius}
           height={2 * dotRadius}
           fill={laneColor}
-          stroke="var(--vscode-editor-background)"
+          stroke="var(--color-background)"
           strokeWidth={1.5}
         />
       ) : row.merge ? (
@@ -106,7 +106,7 @@ export function GraphCell({
             cx={cx}
             cy={dotY}
             r={ringRadius(row)}
-            fill="var(--vscode-editor-background)"
+            fill="var(--color-background)"
             stroke={laneColor}
             strokeWidth={2}
           />
@@ -120,7 +120,7 @@ export function GraphCell({
           cy={dotY}
           r={dotRadius}
           fill={laneColor}
-          stroke="var(--vscode-editor-background)"
+          stroke="var(--color-background)"
           strokeWidth={1.5}
         />
       )}

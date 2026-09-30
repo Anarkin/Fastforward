@@ -1,0 +1,126 @@
+:root {
+  color-scheme: light;
+  --font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui,
+    'Ubuntu', 'Droid Sans', sans-serif;
+  --font-size: 13px;
+  --monospace-font-family:
+    ui-monospace, Menlo, Monaco, Consolas, 'Droid Sans Mono', 'Courier New',
+    monospace;
+  --monospace-font-size: 12px;
+
+  --color-foreground: #202020;
+  --color-muted-foreground: #606060;
+  --color-error-foreground: #ad0707;
+  --color-line-number-foreground: #606060;
+  --color-background: #ffffff;
+  --color-border: #f0f1f2;
+  --color-focus-border: #0069cc;
+  --color-tab-bar-background: #eaeaea;
+  --color-tab-active-foreground: #202020;
+  --color-tab-inactive-foreground: #606060;
+  --color-widget-background: #fafafd;
+  --color-widget-border: #e2e2e5;
+  --color-widget-shadow: #00000000;
+  --color-section-header-background: #fafafd;
+  --color-menu-separator: #eeeef1;
+  --color-diff-added-line-background: #9bb95533;
+  --color-diff-removed-line-background: #ff000033;
+  --color-keybinding-background: #dddddd66;
+  --color-toolbar-hover-background: #0000001f;
+  --color-list-hover-background: #00000014;
+  --color-list-selection-background: #00000025;
+  --color-list-selection-foreground: #202020;
+  --color-accent: #0069cc;
+  --color-accent-foreground: #ffffff;
+  --color-badge-background: #0069cc;
+  --color-badge-foreground: #ffffff;
+  --color-input-background: #ffffff;
+  --color-input-foreground: #202020;
+  --color-input-border: #d8d8d866;
+  --color-input-placeholder-foreground: #999999;
+  --color-input-option-active-background: #d6d6d6;
+  --color-input-option-active-foreground: #202020;
+  --color-input-option-active-border: #f0f1f2;
+  --color-menu-background: #fafafd;
+  --color-menu-foreground: #202020;
+  --color-menu-border: #e4e5e6;
+  --color-menu-selection-background: #0069cc1a;
+  --color-menu-selection-foreground: #202020;
+  --color-keybinding-foreground: #3b3b3b;
+  --color-keybinding-border: #cccccc66;
+  --color-keybinding-bottom-border: #bbbbbb66;
+  --color-added: #587c0c;
+  --color-modified: #667309;
+  --color-deleted: #ad0707;
+  --color-renamed: #007100;
+  --color-untracked: #587c0c;
+  --color-chart-blue: #1a5cff;
+  --color-chart-green: #388a34;
+  --color-chart-orange: #d18616;
+  --color-chart-purple: #652d90;
+  --color-chart-red: #ad0707;
+  --color-chart-yellow: #667309;
+  --color-chart-cyan: #0598bc;
+  --color-chart-magenta: #bc05bc;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --color-foreground: #bfbfbf;
+    --color-muted-foreground: #8c8c8c;
+    --color-error-foreground: #f48771;
+    --color-line-number-foreground: #858889;
+    --color-background: #121314;
+    --color-border: #2a2b2c;
+    --color-focus-border: #3994bcb3;
+    --color-tab-bar-background: #202122;
+    --color-tab-active-foreground: #bfbfbf;
+    --color-tab-inactive-foreground: #8c8c8c;
+    --color-widget-background: #202122;
+    --color-widget-border: #2a2b2c;
+    --color-widget-shadow: #0000005c;
+    --color-section-header-background: #191a1b;
+    --color-menu-separator: #2a2b2c;
+    --color-diff-added-line-background: #347d3926;
+    --color-diff-removed-line-background: #c93c3726;
+    --color-keybinding-background: #8080802b;
+    --color-toolbar-hover-background: #5a5d5e50;
+    --color-list-hover-background: #ffffff14;
+    --color-list-selection-background: #ffffff22;
+    --color-list-selection-foreground: #ededed;
+    --color-accent: #297aa0;
+    --color-accent-foreground: #ffffff;
+    --color-badge-background: #307e9f;
+    --color-badge-foreground: #ffffff;
+    --color-input-background: #191a1b;
+    --color-input-foreground: #bfbfbf;
+    --color-input-border: #333536;
+    --color-input-placeholder-foreground: #555555;
+    --color-input-option-active-background: #313233;
+    --color-input-option-active-foreground: #bfbfbf;
+    --color-input-option-active-border: #2a2b2c;
+    --color-menu-background: #202122;
+    --color-menu-foreground: #bfbfbf;
+    --color-menu-border: #2a2b2c;
+    --color-menu-selection-background: #3994bc26;
+    --color-menu-selection-foreground: #bfbfbf;
+    --color-keybinding-foreground: #cccccc;
+    --color-keybinding-border: #33333399;
+    --color-keybinding-bottom-border: #44444499;
+    --color-added: #73c991;
+    --color-modified: #e5ba7d;
+    --color-deleted: #f48771;
+    --color-renamed: #73c991;
+    --color-untracked: #73c991;
+    --color-chart-blue: #57a3f8;
+    --color-chart-green: #86cf86;
+    --color-chart-orange: #cd861a;
+    --color-chart-purple: #ad80d7;
+    --color-chart-red: #ef8773;
+    --color-chart-yellow: #e0b97f;
+    --color-chart-cyan: #11a8cd;
+    --color-chart-magenta: #bc3fbc;
+  }
+}

@@ -870,7 +870,7 @@ suite('Graph cell', () => {
       [...html.matchAll(/<path[^>]*stroke="([^"]*)"/g)].map(
         (match) => match[1],
       ),
-      ['var(--vscode-charts-green)', 'var(--vscode-charts-blue)'],
+      ['var(--color-chart-green)', 'var(--color-chart-blue)'],
     );
   });
 
@@ -921,11 +921,11 @@ suite('Graph cell', () => {
     assert.deepStrictEqual(attributes(html, 'svg', 'width'), ['150']);
     assert.deepStrictEqual(attributes(html, 'circle', 'cx'), ['141']);
     assert.deepStrictEqual(attributes(html, 'circle', 'fill'), [
-      'var(--vscode-charts-blue)',
+      'var(--color-chart-blue)',
     ]);
     assert.deepStrictEqual(attributes(html, 'path', 'd'), ['M 141 15 V 30']);
     assert.deepStrictEqual(attributes(html, 'path', 'stroke'), [
-      'var(--vscode-charts-green)',
+      'var(--color-chart-green)',
     ]);
   });
 
