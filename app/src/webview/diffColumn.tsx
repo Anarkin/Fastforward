@@ -109,11 +109,6 @@ export function Diff({
       path === undefined ? withLargeFiles(parsed, files, largeFiles) : parsed,
     [parsed, path, files, largeFiles],
   );
-  const changes = useMemo(
-    () => new Map(files.map((file) => [file.path, file])),
-    [files],
-  );
-
   const errorRow = error && <div className="error">{error}</div>;
 
   return (
@@ -122,7 +117,6 @@ export function Diff({
         key={selection}
         error={errorRow}
         files={diffFiles}
-        changes={changes}
         whole={fileContent}
         loading={loading}
         diff={diffs}

@@ -1,8 +1,7 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { collapseThreshold, type FileChange } from '../shared/protocol';
+import { collapseThreshold } from '../shared/protocol';
 import type { DiffFile, DiffLine } from './diff';
-import { LineCounts } from './lineCounts';
 import { Minimap, minimapMarks, type MinimapRow } from './minimap';
 import { ownScrollbarAttribute } from './overlayScrollbars';
 import { SkeletonRows, useSkeleton } from './skeleton';
@@ -212,7 +211,6 @@ export function largeFilesToLoad(
 export function DiffView({
   error,
   files,
-  changes,
   whole,
   loading,
   diff,
@@ -221,7 +219,6 @@ export function DiffView({
 }: {
   error: React.ReactNode;
   files: readonly DiffFile[];
-  changes: ReadonlyMap<string, FileChange>;
   whole: WholeFile | undefined;
   loading: boolean;
   diff: number;
@@ -265,7 +262,6 @@ export function DiffView({
   }, [files, toggled, diff, onLoad]);
 
   const header = (row: FileHeaderRow, stuck = false) => {
-    const change = changes.get(row.path);
     return (
       <div
         className="file-header"
@@ -282,16 +278,7 @@ export function DiffView({
       >
         {!whole && <Twisty open={row.open} />}
         <span className="path">{row.path}</span>
-        {whole ? (
-          <span className="unchanged">Unchanged in this commit</span>
-        ) : (
-          change && (
-            <LineCounts
-              deletions={change.deletions}
-              insertions={change.insertions}
-            />
-          )
-        )}
+        {whole && <span className="unchanged">Unchanged in this commit</span>}
       </div>
     );
   };

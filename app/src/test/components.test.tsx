@@ -26,7 +26,6 @@ import { changeClass, changeTitle } from '../webview/fileStatus';
 import { EntireFileButtons } from '../webview/diffColumn';
 import { Files } from '../webview/filesColumn';
 import { FileTree } from '../webview/fileTree';
-import { LineCounts } from '../webview/lineCounts';
 import { SkeletonRows } from '../webview/skeleton';
 import { TabBar } from '../webview/tabBar';
 import { GraphCell, graphWidth, rowLanes } from '../webview/graph';
@@ -68,30 +67,6 @@ suite('File status', () => {
       'path deleted',
     );
     assert.strictEqual(changeClass(undefined), 'path unchanged');
-  });
-});
-
-suite('Line counts', () => {
-  test('shows deletions before insertions', () => {
-    assert.strictEqual(
-      renderToStaticMarkup(<LineCounts deletions={2} insertions={3} />),
-      '<span class="line-counts"><span class="deletions">-2</span><span class="insertions">+3</span></span>',
-    );
-  });
-
-  test('leaves out a side without lines, and shows nothing without any', () => {
-    assert.strictEqual(
-      renderToStaticMarkup(<LineCounts deletions={2} insertions={0} />),
-      '<span class="line-counts"><span class="deletions">-2</span></span>',
-    );
-    assert.strictEqual(
-      renderToStaticMarkup(<LineCounts deletions={0} insertions={3} />),
-      '<span class="line-counts"><span class="insertions">+3</span></span>',
-    );
-    assert.strictEqual(
-      renderToStaticMarkup(<LineCounts deletions={0} insertions={0} />),
-      '',
-    );
   });
 });
 
@@ -302,14 +277,13 @@ suite('File rows', () => {
     assert.ok(!row.includes('padding-left'));
   });
 
-  test('shows a change plainly, marking only a deleted file, without line counts', () => {
+  test('shows a change plainly, marking only a deleted file', () => {
     for (const status of ['A', 'M', 'R', 'U'] as const) {
       assert.match(
         changedRow(status),
         /<span class="path">a\.ts<\/span>/,
         status,
       );
-      assert.deepStrictEqual(tagsWith(changedRow(status), 'line-counts'), []);
     }
     assert.match(changedRow('D'), /<span class="path deleted">a\.ts<\/span>/);
   });
