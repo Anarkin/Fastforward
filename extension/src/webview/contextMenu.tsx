@@ -18,6 +18,11 @@ export const refMenuTarget = (ref: BookmarkRef): MenuTarget => ({
   ref: refOf(ref),
 });
 
+export const commitMenuTarget = (hash: string): MenuTarget => ({
+  kind: 'ref',
+  ref: { kind: 'commit', name: hash },
+});
+
 export type ContextMenuItem =
   | {
       readonly label: string;

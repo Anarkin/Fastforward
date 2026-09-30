@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'react';
 import { shortHash } from '../shared/hashes';
 import type { BookmarkRef } from '../shared/protocol';
-import { refMenuTarget, useContextMenu } from './contextMenu';
+import { commitMenuTarget, refMenuTarget, useContextMenu } from './contextMenu';
 
 export const CheckedOutBranch = createContext<string | undefined>(undefined);
 export const DetachedHead = createContext<string | undefined>(undefined);
@@ -12,10 +12,7 @@ export function useCheckedOut(ref: BookmarkRef): boolean {
 }
 
 export function HeadBubble({ hash }: { hash: string }) {
-  const menu = useContextMenu({
-    kind: 'ref',
-    ref: { kind: 'commit', name: hash },
-  });
+  const menu = useContextMenu(commitMenuTarget(hash));
   return (
     <span
       className="badge head checked-out"
@@ -28,10 +25,7 @@ export function HeadBubble({ hash }: { hash: string }) {
 }
 
 export function CommitBubble({ hash }: { hash: string }) {
-  const menu = useContextMenu({
-    kind: 'ref',
-    ref: { kind: 'commit', name: hash },
-  });
+  const menu = useContextMenu(commitMenuTarget(hash));
   return (
     <span className="badge hash" title={`Commit ${hash}`} {...menu}>
       {shortHash(hash)}
