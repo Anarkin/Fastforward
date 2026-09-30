@@ -3,6 +3,8 @@ import { workingTreeHash } from '../shared/protocol';
 import {
   commitsMessage,
   firstPage,
+  forgetHistory,
+  historyLoaded,
   keep,
   keepSubjects,
   layOutHistory,
@@ -10,7 +12,6 @@ import {
   navigationEntry,
   nearestSteps,
   newTabState,
-  positionOf,
   replayOf,
   select,
 } from '../tabState';
@@ -65,6 +66,29 @@ suite('Tab state', () => {
     );
   });
 
+  test('knows whether the history is loaded, until it is forgotten', () => {
+    const tab = newTabState();
+    assert.strictEqual(historyLoaded(tab), false);
+    loadHistory(tab, history, { name: 'main', commit: 'c' }, []);
+    assert.strictEqual(historyLoaded(tab), true);
+    forgetHistory(tab);
+    assert.strictEqual(historyLoaded(tab), false);
+  });
+
+  test('selects a commit at its position, dropping the selected file', () => {
+    const tab = laidOut(history);
+    tab.path = 'x';
+    select(tab, 'b');
+    assert.deepStrictEqual(
+      [tab.hash, tab.index, tab.path],
+      ['b', 1, undefined],
+    );
+    select(tab, workingTreeHash);
+    assert.strictEqual(tab.index, -1);
+    select(tab, undefined);
+    assert.deepStrictEqual([tab.hash, tab.index], [undefined, undefined]);
+  });
+
   test('starts the first page at the page of the commit that keeps its place', () => {
     const tab = laidOut();
     tab.anchor = { hash: 'h150', offset: 3 };
@@ -104,7 +128,7 @@ suite('Tab state', () => {
 
   test('sends the selected commit apart from the one to scroll to', () => {
     const tab = laidOut(history);
-    select(tab, 'a', 2);
+    select(tab, 'a');
     const message = commitsMessage(tab, firstPage(tab, false, 'b'), []);
     assert.strictEqual(message.selectedIndex, 2);
     assert.deepStrictEqual(message.scrollTarget, { index: 1 });
@@ -113,7 +137,7 @@ suite('Tab state', () => {
   test('replays the commits at the selected commit and the one that keeps its place', () => {
     const tab = laidOut();
     keep(tab.shown, commitsMessage(tab, firstPage(tab, false, 'h0'), []));
-    select(tab, 'h5', 5);
+    select(tab, 'h5');
     tab.anchor = { hash: 'h9', offset: 2 };
     const replayed = replayOf(tab).find(
       (message) => message.type === 'commits',
@@ -136,12 +160,6 @@ suite('Tab state', () => {
     tab.hash = 'b';
     layOutHistory(tab, true, 'c');
     assert.strictEqual(tab.index, undefined);
-  });
-
-  test('places the working tree above the first commit', () => {
-    const tab = laidOut(history);
-    assert.strictEqual(positionOf(tab, workingTreeHash), -1);
-    assert.strictEqual(positionOf(tab, undefined), undefined);
   });
 
   test('names navigation entries after their subjects', () => {

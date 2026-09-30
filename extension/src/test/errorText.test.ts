@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { gitErrorText } from '../git/errorText';
 
-suite('gitErrorText', () => {
+suite('Git error text', () => {
   test("prefers git's trimmed stderr", () => {
     const error = Object.assign(new Error('Failed to execute git'), {
       stderr: '  fatal: bad revision\n',

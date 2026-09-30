@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
@@ -13,6 +14,8 @@ import {
   activeTabKey,
   bookmarksKey,
   collapseMergesKey,
+  recentKey,
+  sameRoot,
   soloKey,
   tabsKey,
 } from '../storage';
@@ -20,13 +23,14 @@ import { FastforwardView, type Connection } from '../view';
 import { waitFor } from './fixtures';
 import { FakeMemento } from './memento';
 import {
+  openedRepository,
   removeFolder,
   settle,
   tempFolder,
   tempRepository,
   type TempRepository,
 } from './repositories';
-import { withMessageStub } from './stub';
+import { recordingLog, withMessageStub } from './stub';
 
 class FakePage {
   readonly messages: ToWebview[] = [];
@@ -64,16 +68,44 @@ async function openView(
     workspaceState,
     globalState,
   );
-  const page = new FakePage();
-  const connection = view.connect((message) => page.messages.push(message));
+  const { page, connection } = attach(view);
   if (ready) {
     await connection.receive({ type: 'ready' });
   }
   return { view, page, connection, globalState };
 }
 
+async function withView(
+  log: vscode.LogOutputChannel,
+  tabs: readonly string[],
+  run: (view: OpenView) => Promise<void>,
+  ready = true,
+): Promise<void> {
+  const view = await openView(log, tabs, ready);
+  try {
+    await run(view);
+  } finally {
+    view.connection.dispose();
+  }
+}
+
+function attach(view: FastforwardView): {
+  page: FakePage;
+  connection: Connection;
+} {
+  const page = new FakePage();
+  return {
+    page,
+    connection: view.connect((message) => page.messages.push(message)),
+  };
+}
+
 function commitsSent(messages: readonly ToWebview[]): number {
   return messages.filter((message) => message.type === 'commits').length;
+}
+
+function workingTreesSent(messages: readonly ToWebview[]): number {
+  return messages.filter((message) => message.type === 'workingTree').length;
 }
 
 function gate(): { opened: Promise<void>; open: () => void } {
@@ -124,8 +156,7 @@ function reopen(view: FastforwardView): {
   connection: Connection;
   ready: Promise<void>;
 } {
-  const page = new FakePage();
-  const connection = view.connect((message) => page.messages.push(message));
+  const { page, connection } = attach(view);
   return { page, connection, ready: connection.receive({ type: 'ready' }) };
 }
 
@@ -227,13 +258,12 @@ suite('View', function () {
       page.clear();
       await connection.receive({ type: 'ready' });
       assert.strictEqual(page.last('reveal'), undefined);
+      assert.strictEqual(page.last('files'), undefined);
+      assert.strictEqual(page.last('diff'), undefined);
     });
 
     test('shows the branch checked out of a repository the Git extension has not read yet', async () => {
-      const opened = (await getGitApi()).getRepository(
-        vscode.Uri.file(repository.root),
-      );
-      assert.ok(opened);
+      const opened = await openedRepository(repository.root);
       let read = false;
       await withPrototypeOverride(
         opened,
@@ -256,24 +286,18 @@ suite('View', function () {
               },
             }),
             async () => {
-              const view = await openView(log, [repository.root]);
-              try {
+              await withView(log, [repository.root], async (view) => {
                 const info = view.page.last('repository');
                 assert.strictEqual(info?.head, 'main');
                 assert.strictEqual(info?.headCommit, fixture.merge);
-              } finally {
-                view.connection.dispose();
-              }
+              });
             },
           ),
       );
     });
 
     test('starts at the commit git has checked out even when the Git extension has not caught up', async () => {
-      const opened = (await getGitApi()).getRepository(
-        vscode.Uri.file(repository.root),
-      );
-      assert.ok(opened);
+      const opened = await openedRepository(repository.root);
       await withPrototypeOverride(
         opened.state,
         'HEAD',
@@ -284,13 +308,10 @@ suite('View', function () {
           },
         }),
         async () => {
-          const view = await openView(log, [repository.root]);
-          try {
+          await withView(log, [repository.root], async (view) => {
             assert.strictEqual(view.page.last('reveal')?.hash, fixture.merge);
             assert.strictEqual(view.page.last('files')?.hash, fixture.merge);
-          } finally {
-            view.connection.dispose();
-          }
+          });
         },
       );
     });
@@ -309,21 +330,29 @@ suite('View', function () {
       assert.strictEqual(replayed?.selectedIndex, 1);
     });
 
-    test('shows the last selected commit when answers come out of order', async () => {
-      // The working tree's files take more git than a commit's, so its
-      // answer comes last
-      await Promise.all([
-        connection.receive({
-          type: 'selectCommit',
-          root: repository.root,
-          hash: workingTreeHash,
-        }),
-        connection.receive({
-          type: 'selectCommit',
-          root: repository.root,
-          hash: fixture.b,
-        }),
-      ]);
+    test('shows the last selected commit when an earlier one answers last', async () => {
+      const held = gate();
+      let waiting = false;
+      stubMethod<string>(fastforward, 'patchOf', async (original, ...args) => {
+        if (args[1] === workingTreeHash) {
+          waiting = true;
+          await held.opened;
+        }
+        return original(...args);
+      });
+      const first = connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: workingTreeHash,
+      });
+      await waitFor(() => waiting, 'the working tree diff');
+      await connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: fixture.b,
+      });
+      held.open();
+      await first;
       assert.strictEqual(page.last('files')?.hash, fixture.b);
       assert.strictEqual(page.last('diff')?.hash, fixture.b);
     });
@@ -349,8 +378,24 @@ suite('View', function () {
           hash: workingTreeHash,
         });
         assert.ok(page.last('diff')?.patch.includes('+draft'));
+        await settle(repository.root, connection);
+        let calls = 0;
+        let running = 0;
+        let most = 0;
+        stubMethod(fastforward, 'refreshOnce', async (original, ...args) => {
+          calls++;
+          running++;
+          most = Math.max(most, running);
+          try {
+            await original(...args);
+          } finally {
+            running--;
+          }
+        });
         page.clear();
         await Promise.all([connection.refresh(), connection.refresh()]);
+        assert.strictEqual(most, 1);
+        assert.strictEqual(calls, 2);
         assert.ok(page.last('workingTree'));
         assert.strictEqual(page.last('files'), undefined);
         assert.strictEqual(page.last('diff'), undefined);
@@ -365,11 +410,21 @@ suite('View', function () {
       fs.writeFileSync(file, 'tree\n');
       try {
         await connection.receive({
+          type: 'selectCommit',
+          root: repository.root,
+          hash: workingTreeHash,
+        });
+        await connection.receive({
           type: 'loadTree',
           root: repository.root,
           hash: workingTreeHash,
         });
         assert.ok(page.last('tree')?.paths.includes('tree-file.txt'));
+        await connection.receive({
+          type: 'selectCommit',
+          root: repository.root,
+          hash: fixture.merge,
+        });
         await connection.receive({
           type: 'loadTree',
           root: repository.root,
@@ -381,6 +436,27 @@ suite('View', function () {
       } finally {
         fs.rmSync(file);
       }
+    });
+
+    test('sends no tree of a commit no longer selected', async () => {
+      await connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: fixture.b,
+      });
+      page.clear();
+      await connection.receive({
+        type: 'loadTree',
+        root: repository.root,
+        hash: fixture.a,
+      });
+      assert.strictEqual(page.last('tree'), undefined);
+      await connection.receive({
+        type: 'loadTree',
+        root: repository.root,
+        hash: fixture.b,
+      });
+      assert.strictEqual(page.last('tree')?.hash, fixture.b);
     });
 
     test('loads pages of the history as the list asks for them', async () => {
@@ -453,6 +529,17 @@ suite('View', function () {
       assert.strictEqual(page.last('commits')?.total, 3);
     });
 
+    test('forgets merges toggled by hand when the merge setting changes', async () => {
+      await connection.receive({
+        type: 'toggleMerge',
+        root: repository.root,
+        hash: fixture.merge,
+      });
+      assert.strictEqual(page.last('commits')?.total, 5);
+      await connection.receive({ type: 'setCollapseMerges', collapse: false });
+      assert.strictEqual(page.last('commits')?.total, 5);
+    });
+
     test('sends only the newest list when the history is worked out twice at once', async () => {
       page.clear();
       await Promise.all([
@@ -483,7 +570,7 @@ suite('View', function () {
       assert.strictEqual(page.last('files')?.hash, fixture.f2);
     });
 
-    test('says so when a commit picked is no longer in the history', async () => {
+    test('says so when a commit picked is hidden in a collapsed merge', async () => {
       await connection.receive({
         type: 'selectCommit',
         root: repository.root,
@@ -568,6 +655,39 @@ suite('View', function () {
       }
     });
 
+    test('says how many commits a short hash it jumps to could be', async () => {
+      const [tree] = await repository.resolve('HEAD^{tree}');
+      const byPrefix = new Map<string, string>();
+      let prefix: string | undefined;
+      for (let n = 0; prefix === undefined; n++) {
+        const content = `tree ${tree}\nauthor T <t@example.com> 0 +0000\ncommitter T <t@example.com> 0 +0000\n\nprobe ${n}\n`;
+        const start = createHash('sha1')
+          .update(`commit ${Buffer.byteLength(content)}\0${content}`)
+          .digest('hex')
+          .slice(0, 4);
+        const earlier = byPrefix.get(start);
+        if (earlier === undefined) {
+          byPrefix.set(start, content);
+          continue;
+        }
+        prefix = start;
+        for (const [index, probe] of [earlier, content].entries()) {
+          const file = path.join(folder, `probe-${index}`);
+          fs.writeFileSync(file, probe);
+          await repository.git('hash-object', '-t', 'commit', '-w', file);
+        }
+      }
+      await connection.receive({
+        type: 'jump',
+        root: repository.root,
+        hash: prefix,
+      });
+      assert.match(
+        page.last('error')?.message ?? '',
+        /^\d+ commits start with /,
+      );
+    });
+
     test('goes back and forward through the commits shown', async () => {
       await connection.receive({
         type: 'selectCommit',
@@ -616,6 +736,41 @@ suite('View', function () {
       });
       assert.strictEqual(page.last('reveal')?.hash, fixture.a);
       assert.strictEqual(page.last('navigation')?.forward.length, 0);
+    });
+
+    test('goes back to the working tree', async () => {
+      await connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: workingTreeHash,
+      });
+      await connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: fixture.b,
+      });
+      await waitFor(
+        () => page.last('navigation')?.back.length === 2,
+        'the history of two steps',
+      );
+      assert.strictEqual(
+        page.last('navigation')?.back[0]?.hash,
+        workingTreeHash,
+      );
+      page.clear();
+      await connection.receive({
+        type: 'navigate',
+        root: repository.root,
+        direction: 'back',
+        steps: 1,
+      });
+      assert.deepStrictEqual(page.last('reveal'), {
+        type: 'reveal',
+        hash: workingTreeHash,
+        index: -1,
+      });
+      assert.strictEqual(page.last('files')?.hash, workingTreeHash);
+      assert.strictEqual(page.last('error'), undefined);
     });
 
     test('adds no step for moving through the list with the arrow keys', async () => {
@@ -679,69 +834,78 @@ suite('View', function () {
     });
 
     test('loads the history once when a change comes in while a tab first opens', async () => {
-      const own = await openView(log, [repository.root], false);
-      try {
-        await Promise.all([
-          own.connection.receive({ type: 'ready' }),
-          own.connection.refresh(),
-        ]);
-        assert.strictEqual(commitsSent(own.page.messages), 1);
-        assert.strictEqual(own.page.last('reveal')?.hash, fixture.merge);
-      } finally {
-        own.connection.dispose();
-      }
+      await withView(
+        log,
+        [repository.root],
+        async (own) => {
+          await Promise.all([
+            own.connection.receive({ type: 'ready' }),
+            own.connection.refresh(),
+          ]);
+          assert.strictEqual(commitsSent(own.page.messages), 1);
+          assert.strictEqual(own.page.last('reveal')?.hash, fixture.merge);
+        },
+        false,
+      );
     });
 
     test('loads the history of a tab first opened during a refresh only after it', async () => {
-      const own = await openView(log, [repository.root], false);
-      const held = gate();
-      let calls = 0;
-      let running = 0;
-      let most = 0;
-      stubMethod(own.view, 'sendCommits', async (original, ...args) => {
-        calls++;
-        running++;
-        most = Math.max(most, running);
-        try {
-          if (calls === 1) {
-            await held.opened;
-          }
-          await original(...args);
-        } finally {
-          running--;
-        }
-      });
-      try {
-        const refreshing = own.connection.refresh();
-        await waitFor(() => calls === 1, 'the refresh to load the history');
-        const ready = own.connection.receive({ type: 'ready' });
-        await waitFor(
-          () => own.page.last('repository') !== undefined,
-          'the tab to open',
-        );
-        held.open();
-        await Promise.all([refreshing, ready]);
-        assert.strictEqual(most, 1);
-        assert.strictEqual(commitsSent(own.page.messages), 1);
-        assert.strictEqual(own.page.last('reveal')?.hash, fixture.merge);
-      } finally {
-        own.connection.dispose();
-      }
+      await withView(
+        log,
+        [repository.root],
+        async (own) => {
+          const held = gate();
+          let calls = 0;
+          let running = 0;
+          let most = 0;
+          stubMethod(own.view, 'sendCommits', async (original, ...args) => {
+            calls++;
+            running++;
+            most = Math.max(most, running);
+            try {
+              if (calls === 1) {
+                await held.opened;
+              }
+              await original(...args);
+            } finally {
+              running--;
+            }
+          });
+          const refreshing = own.connection.refresh();
+          await waitFor(() => calls === 1, 'the refresh to load the history');
+          const ready = own.connection.receive({ type: 'ready' });
+          await waitFor(
+            () => own.page.last('repository') !== undefined,
+            'the tab to open',
+          );
+          held.open();
+          await Promise.all([refreshing, ready]);
+          assert.strictEqual(most, 1);
+          assert.strictEqual(commitsSent(own.page.messages), 1);
+          assert.strictEqual(own.page.last('reveal')?.hash, fixture.merge);
+        },
+        false,
+      );
     });
 
     test('refreshes once more for a page that asks while a refresh runs', async () => {
       await settle(repository.root, connection);
-      const newer = new FakePage();
-      const newerConnection = fastforward.connect((message) =>
-        newer.messages.push(message),
-      );
+      let calls = 0;
+      stubMethod(fastforward, 'refreshOnce', async (original, ...args) => {
+        calls++;
+        await original(...args);
+      });
+      const { page: newer, connection: newerConnection } = attach(fastforward);
       try {
+        page.clear();
         await Promise.all([
           connection.refresh(),
           newerConnection.refresh(),
           connection.refresh(),
         ]);
-        assert.ok(newer.last('workingTree'));
+        assert.strictEqual(calls, 2);
+        assert.strictEqual(workingTreesSent(page.messages), 2);
+        assert.strictEqual(workingTreesSent(newer.messages), 1);
       } finally {
         newerConnection.dispose();
       }
@@ -798,9 +962,7 @@ suite('View', function () {
     });
 
     test('ends the fetch on a page opened again while it ran', async () => {
-      const git = await getGitApi();
-      const opened = git.getRepository(vscode.Uri.file(repository.root));
-      assert.ok(opened);
+      const opened = await openedRepository(repository.root);
       const held = gate();
       // On the prototype, as the Git extension may hand the view another
       // object for the same repository
@@ -864,10 +1026,7 @@ suite('View', function () {
         }
         await original(...args);
       });
-      const newer = new FakePage();
-      const newerConnection = fastforward.connect((message) =>
-        newer.messages.push(message),
-      );
+      const { page: newer, connection: newerConnection } = attach(fastforward);
       try {
         const failing = connection.refresh();
         const queued = newerConnection.refresh();
@@ -899,6 +1058,63 @@ suite('View', function () {
         assert.match(page.last('error')?.message ?? '', /not in the history/);
       }
       assert.ok(!fs.existsSync(written));
+    });
+
+    test('ignores a file picked on a commit no longer selected', async () => {
+      await connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: fixture.a,
+      });
+      await connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: workingTreeHash,
+      });
+      await connection.receive({
+        type: 'selectFile',
+        root: repository.root,
+        hash: fixture.a,
+        path: 'a',
+      });
+      page.clear();
+      await connection.refresh();
+      assert.strictEqual(page.last('fileContent'), undefined);
+      assert.strictEqual(page.last('diff')?.path, undefined);
+    });
+
+    test('drops the diff of a file of a commit no longer selected', async () => {
+      await connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: fixture.b,
+      });
+      const held = gate();
+      let calls = 0;
+      stubMethod<string>(fastforward, 'patchOf', async (original, ...args) => {
+        calls += 1;
+        if (calls === 1) {
+          await held.opened;
+        }
+        return original(...args);
+      });
+      page.clear();
+      const loading = connection.receive({
+        type: 'loadFileDiff',
+        root: repository.root,
+        hash: fixture.b,
+        path: 'b.txt',
+        diff: 1,
+      });
+      await waitFor(() => calls === 1, 'the file diff');
+      await connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: workingTreeHash,
+      });
+      held.open();
+      await loading;
+      assert.strictEqual(page.last('fileDiff'), undefined);
     });
 
     test('shows a selected uncommitted file deleted since, without failing the refresh', async () => {
@@ -980,8 +1196,7 @@ suite('View', function () {
           ? drive.toLowerCase()
           : drive.toUpperCase(),
       );
-      const view = await openView(log, [repository.root, respelled]);
-      try {
+      await withView(log, [repository.root, respelled], async (view) => {
         const roots = view.page.last('tabs')?.tabs.map((tab) => tab.root) ?? [];
         assert.deepStrictEqual(
           roots.filter(
@@ -989,9 +1204,23 @@ suite('View', function () {
           ),
           [repository.root],
         );
-      } finally {
-        view.connection.dispose();
-      }
+      });
+    });
+
+    test('shows what git said when a request fails', async () => {
+      stubMethod(fastforward, 'sendTree', () =>
+        Promise.reject(
+          Object.assign(new Error('Failed to execute git'), {
+            stderr: 'fatal: bad tree\n',
+          }),
+        ),
+      );
+      await connection.receive({
+        type: 'loadTree',
+        root: repository.root,
+        hash: fixture.merge,
+      });
+      assert.strictEqual(page.last('error')?.message, 'fatal: bad tree');
     });
 
     test('reports what git said when it refuses a checkout', async () => {
@@ -1018,6 +1247,31 @@ suite('View', function () {
         assert.ok(refs?.includes('created'));
       } finally {
         await repository.git('branch', '-D', 'created');
+      }
+    });
+
+    test('sends the history again on the next refresh after it failed to load', async () => {
+      await settle(repository.root, connection);
+      const before = page.last('commits')?.generation ?? -1;
+      let failed = false;
+      const elsewhere = tempFolder('not-a-repository');
+      stubMethod(fastforward, 'sendShownHistory', (original, ...args) => {
+        const [context, ...rest] = args;
+        if (failed || typeof context !== 'object') {
+          return original(...args);
+        }
+        failed = true;
+        return original({ ...context, root: elsewhere }, ...rest);
+      });
+      await repository.git('branch', 'failed-once', 'main~1');
+      try {
+        await connection.refresh();
+        assert.ok(failed);
+        await settle(repository.root, connection);
+        assert.ok((page.last('commits')?.generation ?? -1) > before);
+      } finally {
+        await repository.git('branch', '-D', 'failed-once');
+        removeFolder(elsewhere);
       }
     });
 
@@ -1341,6 +1595,28 @@ suite('View', function () {
       assert.strictEqual(tabs.page.last('commits')?.total, 5);
     });
 
+    test('reloads other tabs for a changed solo setting when they come back', async () => {
+      const [tree] = await repository.resolve('HEAD^{tree}');
+      const side = (
+        await repository.git('commit-tree', tree, '-p', fixture.a, '-m', 'side')
+      ).trim();
+      await repository.git('branch', 'side', side);
+      try {
+        await settle(repository.root, tabs.connection);
+        assert.strictEqual(tabs.page.last('commits')?.total, 4);
+        await tabs.connection.receive({ type: 'selectTab', root: other });
+        await tabs.connection.receive({ type: 'setSolo', solo: true });
+        tabs.page.clear();
+        await tabs.connection.receive({
+          type: 'selectTab',
+          root: repository.root,
+        });
+        assert.strictEqual(tabs.page.last('commits')?.total, 3);
+      } finally {
+        await repository.git('branch', '-D', 'side');
+      }
+    });
+
     test('preloads a tab in the background, which then opens as it was left', async () => {
       tabs.page.clear();
       await tabs.connection.receive({ type: 'preloadTab', root: other });
@@ -1508,42 +1784,114 @@ suite('View', function () {
       assert.match(tabs.page.last('error')?.message ?? '', /next tab failed/);
     });
 
+    test('keeps the shown tab when another one closes', async () => {
+      await tabs.connection.receive({ type: 'closeTab', root: other });
+      const left = tabs.page.last('tabs');
+      assert.strictEqual(left?.active, repository.root);
+      assert.ok(!left.tabs.some((tab) => sameRoot(tab.root, other)));
+    });
+
+    test('opens the tab before the shown one when that closes last in the list', async () => {
+      await tabs.connection.receive({ type: 'selectTab', root: other });
+      await tabs.connection.receive({ type: 'closeTab', root: other });
+      assert.strictEqual(tabs.page.last('tabs')?.active, repository.root);
+    });
+
     test('sorts tabs by name and closes one, opening the next', async () => {
       const zeta = await tempRepository(path.join(folder, 'Zeta'));
       await zeta.commit('zeta');
-      const own = await openView(log, [other, zeta.root, repository.root]);
       // Without the tab of the repository open in VS Code, which the view
       // adds first when the Git extension has opened it
       const ours = new Set(['main', 'other', 'Zeta']);
-      const names = () =>
-        (own.page.last('tabs')?.tabs ?? [])
-          .map((tab) => tab.name)
-          .filter((name) => ours.has(name));
-      try {
+      await withView(log, [other, zeta.root, repository.root], async (own) => {
+        const names = () =>
+          (own.page.last('tabs')?.tabs ?? [])
+            .map((tab) => tab.name)
+            .filter((name) => ours.has(name));
         await own.connection.receive({ type: 'sortTabs' });
         assert.deepStrictEqual(names(), ['main', 'other', 'Zeta']);
         await own.connection.receive({ type: 'closeTab', root: other });
         const left = own.page.last('tabs');
         assert.deepStrictEqual(names(), ['main', 'Zeta']);
         assert.strictEqual(left?.active, zeta.root);
-      } finally {
-        own.connection.dispose();
-      }
+      });
     });
   });
 
   suite('of other repositories', () => {
     test('saves the merge setting with no tab open', async () => {
-      const own = await openView(log, [], false);
+      await withView(
+        log,
+        [],
+        async (own) => {
+          await own.connection.receive({
+            type: 'setCollapseMerges',
+            collapse: false,
+          });
+          assert.strictEqual(own.globalState.get(collapseMergesKey), false);
+        },
+        false,
+      );
+    });
+
+    test('opens the repositories picked in new tabs, showing the last one', async () => {
+      const third = await tempRepository(path.join(folder, 'third'));
+      await third.commit('third');
+      const recording = recordingLog(log);
+      const original = vscode.window.showOpenDialog;
+      Reflect.set(vscode.window, 'showOpenDialog', () =>
+        Promise.resolve(
+          [third.root, third.root, other].map((root) => vscode.Uri.file(root)),
+        ),
+      );
       try {
-        await own.connection.receive({
-          type: 'setCollapseMerges',
-          collapse: false,
+        await withView(recording.log, [repository.root], async (view) => {
+          await view.connection.receive({ type: 'addTab' });
+          const ours = new Set(['main', 'third', 'other']);
+          const shown = view.page.last('tabs');
+          assert.deepStrictEqual(
+            shown?.tabs
+              .map((tab) => tab.name)
+              .filter((name) => ours.has(name))
+              .toSorted(),
+            ['main', 'other', 'third'],
+          );
+          assert.ok(shown.active && sameRoot(shown.active, other));
+          assert.strictEqual(view.page.last('files')?.hash, otherHead);
+          const recent = view.globalState.get<string[]>(recentKey, []);
+          for (const root of [third.root, other]) {
+            assert.ok(
+              recent.some((saved) => sameRoot(saved, root)),
+              root,
+            );
+          }
+          await view.connection.receive({
+            type: 'log',
+            level: 'info',
+            message: 'from the page',
+          });
+          assert.ok(
+            recording.info.some(([text]) => text === 'Webview: from the page'),
+          );
         });
-        assert.strictEqual(own.globalState.get(collapseMergesKey), false);
       } finally {
-        own.connection.dispose();
+        Reflect.set(vscode.window, 'showOpenDialog', original);
       }
+    });
+
+    test('closes the only tab, leaving none shown', async () => {
+      await withView(log, [repository.root], async (view) => {
+        for (const tab of view.page.last('tabs')?.tabs ?? []) {
+          await view.connection.receive({ type: 'closeTab', root: tab.root });
+        }
+        assert.deepStrictEqual(view.page.last('tabs'), {
+          type: 'tabs',
+          tabs: [],
+          active: undefined,
+        });
+        assert.deepStrictEqual(view.page.last('bookmarks')?.bookmarks, []);
+        assert.strictEqual(view.page.last('error'), undefined);
+      });
     });
 
     test('uses a repository cloned inside another, not the outer one', async () => {
@@ -1554,34 +1902,27 @@ suite('View', function () {
       });
       await nested.commit('inner');
       const [inner] = await nested.resolve('HEAD');
-      const view = await openView(log, [nested.root]);
-      try {
+      await withView(log, [nested.root], async (view) => {
         const info = view.page.last('repository');
         assert.strictEqual(info?.head, 'inner');
         assert.strictEqual(info?.headCommit, inner);
-      } finally {
-        view.connection.dispose();
-      }
+      });
     });
 
     test('opens a repository without commits', async () => {
       const empty = await tempRepository(path.join(folder, 'empty'));
       fs.writeFileSync(path.join(empty.root, 'new.txt'), 'new\n');
-      const view = await openView(log, [empty.root]);
-      try {
+      await withView(log, [empty.root], async (view) => {
         assert.strictEqual(view.page.last('error'), undefined);
         assert.strictEqual(view.page.last('commits')?.total, 0);
         assert.strictEqual(view.page.last('workingTree')?.files, 1);
-      } finally {
-        view.connection.dispose();
-      }
+      });
     });
 
     test('says nothing of a tab that fails to preload until it is opened', async () => {
       const plain = path.join(folder, 'plain');
       fs.mkdirSync(plain);
-      const view = await openView(log, [repository.root, plain]);
-      try {
+      await withView(log, [repository.root, plain], async (view) => {
         view.page.clear();
         await view.connection.receive({ type: 'preloadTab', root: plain });
         assert.strictEqual(view.page.last('error'), undefined);
@@ -1590,9 +1931,7 @@ suite('View', function () {
           view.page.last('error')?.message ?? '',
           /is not a git repository/,
         );
-      } finally {
-        view.connection.dispose();
-      }
+      });
     });
 
     test('leaves large files out of a commit diff until one is asked for', async () => {
@@ -1603,8 +1942,7 @@ suite('View', function () {
         'small.txt': 'small\n',
       });
       const [hash] = await large.resolve('HEAD');
-      const view = await openView(log, [large.root]);
-      try {
+      await withView(log, [large.root], async (view) => {
         const patch = view.page.last('diff')?.patch ?? '';
         assert.ok(patch.includes('b/small.txt'), patch);
         assert.ok(!patch.includes('large.txt'), patch);
@@ -1619,9 +1957,42 @@ suite('View', function () {
         assert.strictEqual(fileDiff?.path, 'large.txt');
         assert.ok(fileDiff?.patch.includes('+line 1999'));
         assert.strictEqual(fileDiff.diff, 1);
-      } finally {
-        view.connection.dispose();
-      }
+      });
+    });
+
+    test('shows the diff of one file the commit changed, following a rename', async () => {
+      const renamed = await tempRepository(path.join(folder, 'renamed'));
+      const lines = Array.from({ length: 20 }, (_, index) => `line ${index}`);
+      await renamed.commit('old', {
+        'old.txt': lines.join('\n'),
+        'other.txt': 'one\n',
+      });
+      await renamed.git('mv', 'old.txt', 'new.txt');
+      fs.writeFileSync(path.join(renamed.root, 'other.txt'), 'two\n');
+      await renamed.git('commit', '-am', 'rename');
+      const [hash] = await renamed.resolve('HEAD');
+      await withView(log, [renamed.root], async (view) => {
+        await view.connection.receive({
+          type: 'selectFile',
+          root: renamed.root,
+          hash,
+          path: 'new.txt',
+        });
+        const diff = view.page.last('diff');
+        assert.strictEqual(diff?.path, 'new.txt');
+        assert.ok(diff.patch.includes('rename from old.txt'), diff.patch);
+        assert.ok(!diff.patch.includes('other.txt'), diff.patch);
+        await view.connection.receive({
+          type: 'loadFileDiff',
+          root: renamed.root,
+          hash,
+          path: 'new.txt',
+          diff: 1,
+        });
+        assert.ok(
+          view.page.last('fileDiff')?.patch.includes('rename from old.txt'),
+        );
+      });
     });
 
     suite('with a file no commit changed since', () => {
@@ -1637,8 +2008,7 @@ suite('View', function () {
       });
 
       test('shows a file the commit did not change whole, until another commit is selected', async () => {
-        const view = await openView(log, [files.root]);
-        try {
+        await withView(log, [files.root], async (view) => {
           await view.connection.receive({
             type: 'selectFile',
             root: files.root,
@@ -1663,45 +2033,46 @@ suite('View', function () {
           );
           assert.strictEqual(shown?.type, 'diff');
           assert.strictEqual(shown.hash, kept);
-        } finally {
-          view.connection.dispose();
-        }
+        });
       });
 
       test('sends no unchanged Files tree or whole file on a refresh', async () => {
         const draft = path.join(files.root, 'draft.txt');
         const added = path.join(files.root, 'new.txt');
         fs.writeFileSync(draft, 'draft\n');
-        const view = await openView(log, [files.root]);
         try {
-          await view.connection.receive({
-            type: 'selectCommit',
-            root: files.root,
-            hash: workingTreeHash,
-          });
-          await view.connection.receive({
-            type: 'loadTree',
-            root: files.root,
-            hash: workingTreeHash,
-          });
-          await view.connection.receive({
-            type: 'selectFile',
-            root: files.root,
-            hash: workingTreeHash,
-            path: 'kept.txt',
-          });
-          assert.strictEqual(view.page.last('fileContent')?.content, 'kept\n');
-          view.page.clear();
-          await view.connection.refresh();
-          assert.ok(view.page.last('workingTree'));
-          assert.strictEqual(view.page.last('tree'), undefined);
-          assert.strictEqual(view.page.last('fileContent'), undefined);
+          await withView(log, [files.root], async (view) => {
+            await view.connection.receive({
+              type: 'selectCommit',
+              root: files.root,
+              hash: workingTreeHash,
+            });
+            await view.connection.receive({
+              type: 'loadTree',
+              root: files.root,
+              hash: workingTreeHash,
+            });
+            await view.connection.receive({
+              type: 'selectFile',
+              root: files.root,
+              hash: workingTreeHash,
+              path: 'kept.txt',
+            });
+            assert.strictEqual(
+              view.page.last('fileContent')?.content,
+              'kept\n',
+            );
+            view.page.clear();
+            await view.connection.refresh();
+            assert.ok(view.page.last('workingTree'));
+            assert.strictEqual(view.page.last('tree'), undefined);
+            assert.strictEqual(view.page.last('fileContent'), undefined);
 
-          fs.writeFileSync(added, 'new\n');
-          await view.connection.refresh();
-          assert.ok(view.page.last('tree')?.paths.includes('new.txt'));
+            fs.writeFileSync(added, 'new\n');
+            await view.connection.refresh();
+            assert.ok(view.page.last('tree')?.paths.includes('new.txt'));
+          });
         } finally {
-          view.connection.dispose();
           fs.rmSync(draft, { force: true });
           fs.rmSync(added, { force: true });
         }
@@ -1749,8 +2120,7 @@ suite('Fetch', function () {
     const [fetched] = await elsewhere.resolve('HEAD');
     page.clear();
     try {
-      const git = await getGitApi();
-      await git.getRepository(vscode.Uri.file(repository.root))?.fetch();
+      await (await openedRepository(repository.root)).fetch();
       await waitFor(
         () =>
           page
@@ -1788,7 +2158,7 @@ suite('Fetch', function () {
     assert.strictEqual(page.last('fetching')?.running, false);
   });
 
-  test("says when it couldn't fetch", async () => {
+  test('says so when a fetch fails, and stops fetching', async () => {
     await repository.git(
       'remote',
       'add',
@@ -1797,14 +2167,28 @@ suite('Fetch', function () {
     );
     try {
       await withMessageStub('showErrorMessage', async (messages) => {
+        page.clear();
         await connection.receive({ type: 'fetch', root: repository.root });
         assert.strictEqual(messages.length, 1);
-        assert.match(messages[0], /^Fastforward: couldn't fetch\./);
+        assert.match(messages[0] ?? '', /^Fastforward: couldn't fetch\./);
+        assert.strictEqual(page.last('fetching')?.running, false);
+        assert.ok(page.last('workingTree'));
       });
-      assert.strictEqual(page.last('fetching')?.running, false);
     } finally {
       await repository.git('remote', 'remove', 'broken');
     }
+  });
+
+  test('shows a new upstream of the checked-out branch', async () => {
+    await repository.git('branch', '--unset-upstream', 'main');
+    try {
+      await settle(repository.root, connection);
+      assert.strictEqual(page.last('repository')?.headUpstream, undefined);
+    } finally {
+      await repository.git('branch', '--set-upstream-to=origin/main', 'main');
+    }
+    await settle(repository.root, connection);
+    assert.strictEqual(page.last('repository')?.headUpstream, 'origin/main');
   });
 
   test("tells the checked-out branch's upstream", async () => {
