@@ -29,6 +29,13 @@ body {
   background: var(--color-background);
   font-family: var(--font-family);
   font-size: var(--font-size);
+  user-select: none;
+}
+
+.diff-view,
+.error,
+.notice-message {
+  user-select: text;
 }
 
 ::-webkit-scrollbar {

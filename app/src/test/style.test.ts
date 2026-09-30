@@ -218,4 +218,12 @@ suite('Style', () => {
       /color: var\(--color-foreground\)/,
     );
   });
+
+  test('lets only the diff, errors and notices be selected, not the controls around them', () => {
+    assert.match(css, /\nbody \{[^}]*user-select: none;/);
+    assert.match(
+      css,
+      /\n\.diff-view,\s*\.error,\s*\.notice-message \{\s*user-select: text;\s*\}/,
+    );
+  });
 });
