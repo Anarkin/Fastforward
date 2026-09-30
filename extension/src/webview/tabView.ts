@@ -105,6 +105,9 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
         path: action.path,
         selectionKnown: true,
         patchLoading: state.hash !== undefined,
+        patch: '',
+        fileContent: undefined,
+        largeFiles: new Map(),
       };
     case 'repository':
       return { ...state, repository: action };

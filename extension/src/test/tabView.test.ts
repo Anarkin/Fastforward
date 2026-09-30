@@ -174,6 +174,30 @@ suite('Tab view', () => {
     assert.strictEqual(reduceTabView(none, late[0]), none);
   });
 
+  test('drops what the previous selection showed while a file loads', () => {
+    const diff = reduceTabView(busyTab(), {
+      type: 'fileDiff',
+      hash: 'a',
+      path: 'large.json',
+      diff: busyTab().diffs,
+      patch: 'large',
+    });
+    const whole = reduceTabView(busyTab(), {
+      type: 'fileContent',
+      hash: 'a',
+      path: 'x.ts',
+      content: 'x',
+      binary: false,
+    });
+    for (const before of [diff, whole]) {
+      const view = reduceTabView(before, { type: 'showFile', path: 'y.ts' });
+      assert.strictEqual(view.patch, '');
+      assert.strictEqual(view.fileContent, undefined);
+      assert.strictEqual(view.largeFiles.size, 0);
+      assert.ok(view.patchLoading);
+    }
+  });
+
   test('shows what the extension says is selected after another tab opens', () => {
     const cleared = reduceTabView(busyTab(), { type: 'clear' });
     const view = reduceTabView(
