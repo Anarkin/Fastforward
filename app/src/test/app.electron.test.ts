@@ -6,7 +6,7 @@ import {
   type ElectronApplication,
   type Page,
 } from 'playwright-core';
-import { waitFor } from './fixtures';
+import { defaultSettings, waitFor } from './fixtures';
 import {
   removeFolder,
   tempFolder,
@@ -58,6 +58,19 @@ suite('App', function () {
       'repo',
     );
     assert.strictEqual(await page.title(), `${repository.root} - Fastforward`);
+  });
+
+  test('colors the page from the settings', async () => {
+    const { colors } = defaultSettings();
+    const accent = await page.evaluate(() =>
+      getComputedStyle(document.documentElement)
+        .getPropertyValue('--color-accent')
+        .trim(),
+    );
+    assert.ok(
+      [colors.light.accent, colors.dark.accent].includes(accent),
+      accent,
+    );
   });
 
   test('lists the history and shows a commit entire, with its change', async () => {

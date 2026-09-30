@@ -18,8 +18,14 @@ import { findGit, minimumGitVersion } from '../git/locate';
 import { fileLog, type Log } from '../log';
 import { titleBarHeight } from '../shared/titleBar';
 import type { ToHost, ToWebview } from '../shared/protocol';
-import { migrateProfile, readDefaults, UserSettings } from '../settings';
+import {
+  migrateProfile,
+  readDefaults,
+  UserSettings,
+  type Settings,
+} from '../settings';
 import { JsonFileStore, Storage } from '../storage';
+import { themeCss } from '../theme';
 import { FastforwardView, type Connection } from '../view';
 import { appFile, appOrigin, appScheme, visibleBounds } from './files';
 import { loginShellPath, mergePaths } from './shellPath';
@@ -77,13 +83,6 @@ async function start(): Promise<void> {
   }
   log.info(`Using git ${git.version} at ${git.path}`);
 
-  protocol.handle(appScheme, (request) => {
-    const file = appFile(dist, request.url);
-    return file
-      ? net.fetch(pathToFileURL(file).toString())
-      : new Response('Not found', { status: 404 });
-  });
-
   const profile = app.getPath('userData');
   const defaults = readDefaults(path.join(dist, 'settings.json'));
   if (migrateProfile(profile, defaults)) {
@@ -97,8 +96,19 @@ async function start(): Promise<void> {
     log.warn(problem);
   }
   const state = new JsonFileStore(path.join(profile, 'state.json'));
+  protocol.handle(appScheme, (request) => {
+    if (new URL(request.url).pathname === '/theme.css') {
+      return new Response(themeCss(userSettings.settings), {
+        headers: { 'content-type': 'text/css' },
+      });
+    }
+    const file = appFile(dist, request.url);
+    return file
+      ? net.fetch(pathToFileURL(file).toString())
+      : new Response('Not found', { status: 404 });
+  });
   setMenu();
-  const window = createWindow(state);
+  const window = createWindow(state, userSettings.settings);
   const storage = new Storage(userSettings, state);
   const view = new FastforwardView(log, git.path, storage, {
     chooseFolders: async () => {
@@ -184,7 +194,7 @@ function checkForUpdates(log: Log): void {
   });
 }
 
-function createWindow(store: JsonFileStore): BrowserWindow {
+function createWindow(store: JsonFileStore, settings: Settings): BrowserWindow {
   const bounds = visibleBounds(
     store.get(boundsKey),
     screen.getAllDisplays().map((display) => display.workArea),
@@ -195,7 +205,10 @@ function createWindow(store: JsonFileStore): BrowserWindow {
     minHeight: 400,
     title: 'Fastforward',
     show: false,
-    backgroundColor: nativeTheme.shouldUseDarkColors ? '#121314' : '#ffffff',
+    backgroundColor: (nativeTheme.shouldUseDarkColors
+      ? settings.colors.dark
+      : settings.colors.light
+    ).background,
     icon:
       process.platform === 'darwin' ? undefined : path.join(dist, 'icon.png'),
     titleBarStyle: 'hidden',
