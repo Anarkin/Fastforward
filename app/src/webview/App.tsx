@@ -486,6 +486,10 @@ export function App({ post, listen }: Props) {
                     diffs={diffs}
                     fileContent={fileContent}
                     error={error}
+                    minimap={
+                      path !== undefined &&
+                      (entireFilePinned || entireFileOf === shownFile)
+                    }
                     entireFile={
                       <EntireFileButtons
                         entire={entireFileOf === shownFile}

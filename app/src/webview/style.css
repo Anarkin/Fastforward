@@ -13,6 +13,7 @@ body {
   --gutter: var(--color-tab-bar-background);
   --gutter-width: 4px;
   --scrollbar-size: 25px;
+  --minimap-width: 40px;
   --title-bar-inset: 16px;
   --card-radius: 6px;
   --shade-background: color-mix(
@@ -939,6 +940,58 @@ body.resizing {
   white-space: pre;
 }
 
+.diff-minimap {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 6;
+  width: var(--minimap-width);
+  cursor: pointer;
+}
+
+.minimap-mark {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  min-height: 2px;
+  opacity: 0.5;
+}
+
+.minimap-mark.added {
+  background: var(--color-added);
+}
+
+.minimap-mark.removed {
+  background: var(--color-deleted);
+}
+
+.minimap-viewport {
+  position: absolute;
+  left: 0;
+  right: 0;
+  box-sizing: border-box;
+  min-height: 8px;
+  border: 2px solid transparent;
+  border-radius: 1px;
+  background: var(--color-scrollbar) padding-box;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+.diff-minimap.shown .minimap-viewport {
+  opacity: 1;
+}
+
+.diff-minimap:hover .minimap-viewport {
+  background-color: var(--color-scrollbar-hover);
+}
+
+.diff-minimap.dragging .minimap-viewport {
+  background-color: var(--color-scrollbar-active);
+}
+
 .diff-line.added {
   background: var(--color-diff-added-line-background);
 }
@@ -951,7 +1004,7 @@ body.resizing {
   position: absolute;
   top: 0;
   left: 0;
-  right: 10px;
+  right: 0;
   z-index: 5;
 }
 

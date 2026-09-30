@@ -1,4 +1,9 @@
 export const overlayScrollbarClass = 'overlay-scrollbar';
+export const ownScrollbarAttribute = 'data-own-vertical-scrollbar';
+
+export function drawsOverlay(axis: Axis, ownsVertical: boolean): boolean {
+  return axis === 'horizontal' || !ownsVertical;
+}
 
 export interface Thumb {
   readonly offset: number;
@@ -6,7 +11,7 @@ export interface Thumb {
 }
 
 const minThumb = 24;
-const hideAfter = 1000;
+export const hideAfter = 1000;
 
 export function thumbOf(
   scrollSize: number,
@@ -56,7 +61,9 @@ function scrollerOf(target: EventTarget | null, axis: Axis): Element | null {
   let element = target instanceof Element ? target : null;
   while (element && element !== document.documentElement) {
     if (scrollsAlong(element, axis)) {
-      return element;
+      return drawsOverlay(axis, element.hasAttribute(ownScrollbarAttribute))
+        ? element
+        : null;
     }
     element = element.parentElement;
   }
