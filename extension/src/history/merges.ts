@@ -19,7 +19,7 @@ export function mergesHiding(
   shown: { has(hash: string): boolean },
   target: string,
 ): string[] {
-  const { children, firstParents } = linksOf(history);
+  const { children, parents } = linksOf(history);
   const cameFrom = new Map<string, string>();
   const queue = [target];
   for (let next = queue.shift(); next !== undefined; next = queue.shift()) {
@@ -38,7 +38,7 @@ export function mergesHiding(
         if (parent === undefined) {
           break;
         }
-        if (firstParents.get(at) !== parent) {
+        if (parents.get(at)?.[0] !== parent) {
           merges.push(at);
         }
         at = parent;
@@ -51,7 +51,6 @@ export function mergesHiding(
 
 interface Links {
   readonly children: ReadonlyMap<string, readonly string[]>;
-  readonly firstParents: ReadonlyMap<string, string | undefined>;
   readonly parents: ReadonlyMap<string, readonly string[]>;
 }
 
@@ -63,10 +62,8 @@ function linksOf(history: readonly HistoryEntry[]): Links {
     return known;
   }
   const children = new Map<string, string[]>();
-  const firstParents = new Map<string, string | undefined>();
   const parents = new Map<string, readonly string[]>();
   for (const entry of history) {
-    firstParents.set(entry.hash, entry.parents[0]);
     parents.set(entry.hash, entry.parents);
     for (const parent of entry.parents) {
       const siblings = children.get(parent);
@@ -77,7 +74,7 @@ function linksOf(history: readonly HistoryEntry[]): Links {
       }
     }
   }
-  const result = { children, firstParents, parents };
+  const result = { children, parents };
   links.set(history, result);
   return result;
 }
