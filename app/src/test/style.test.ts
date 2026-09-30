@@ -289,7 +289,7 @@ suite('Style', () => {
     );
   });
 
-  test('fills the checked-out bubble with the solid focus color, even under the pointer or in a hovered or active search row, where it brightens instead', () => {
+  test('fills the checked-out bubble with the solid focus color, even under the pointer or in a hovered or active search row, where it deepens instead', () => {
     const checkedOut = declarationsOf('.badge.checked-out');
     assert.ok(checkedOut.includes('color: var(--color-focus-foreground);'));
     assert.match(
@@ -302,7 +302,7 @@ suite('Style', () => {
     );
     assert.match(
       css,
-      /\n\.badge\.checked-out\.has-menu:hover,\s*\.locations-list \.row:hover \.badge\.checked-out,\s*\.locations-list \.row\.active \.badge\.checked-out \{\s*filter: brightness\(1\.15\);\s*\}/,
+      /\n\.badge\.checked-out\.has-menu:hover,\s*\.locations-list \.row:hover \.badge\.checked-out,\s*\.locations-list \.row\.active \.badge\.checked-out \{\s*--deepened-focus: color-mix\(in srgb, var\(--color-focus\) 85%, black\);\s*background:\s*linear-gradient\(var\(--deepened-focus\), var\(--deepened-focus\)\),\s*var\(--color-panel-background\);\s*\}/,
     );
   });
 
