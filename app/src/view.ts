@@ -244,11 +244,17 @@ export class FastforwardView {
       case 'setSolo': {
         session.post({ type: 'applyingSolo', running: true });
         try {
-          await storage.setSolo(message.solo);
-          for (const tab of this.tabStates.values()) {
+          await storage.setSolo(message.root, message.solo);
+          if (this.isActive(message.root)) {
+            session.post({ type: 'solo', solo: message.solo });
+          }
+          const tab = this.tabStates.get(message.root);
+          if (tab) {
             forgetHistory(tab);
           }
-          const context = await this.context(session);
+          const context = this.isActive(message.root)
+            ? await this.context(session)
+            : undefined;
           if (context) {
             await this.refresh(context, (latest) =>
               this.sendCommits(latest, this.refsOf(latest), true),
@@ -277,7 +283,10 @@ export class FastforwardView {
   }
 
   private async handleTab(
-    message: Exclude<TabMessage, { type: 'setBookmarks' | 'scrolled' }>,
+    message: Exclude<
+      TabMessage,
+      { type: 'setBookmarks' | 'setSolo' | 'scrolled' }
+    >,
     session: Session,
   ): Promise<void> {
     const context = await this.context(session);
@@ -525,6 +534,10 @@ export class FastforwardView {
     session.post({
       type: 'bookmarks',
       bookmarks: active ? (this.storage.bookmarksOf(active) ?? []) : [],
+    });
+    session.post({
+      type: 'solo',
+      solo: active !== undefined && this.storage.soloOf(active),
     });
   }
 
@@ -844,7 +857,11 @@ export class FastforwardView {
     keepPlace = false,
   ): Promise<void> {
     const [fullHistory, { head, refs: listed }] = await Promise.all([
-      listHistory(context.gitPath, context.root, this.storage.solo),
+      listHistory(
+        context.gitPath,
+        context.root,
+        this.storage.soloOf(context.root),
+      ),
       refs,
     ]);
     const { tab } = context;
