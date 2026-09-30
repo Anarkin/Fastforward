@@ -3,6 +3,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { collapseThreshold, type FileChange } from '../shared/protocol';
 import type { DiffFile, DiffLine } from './diff';
 import { LineCounts } from './lineCounts';
+import { Minimap, minimapMarks, type MinimapRow } from './minimap';
+import { ownScrollbarAttribute } from './overlayScrollbars';
 import { SkeletonRows, useSkeleton } from './skeleton';
 import { Twisty } from './tree';
 
@@ -68,6 +70,16 @@ export function diffRowKey(row: DiffRow, index: number): string {
 export function rowHeight(row: DiffRow): number | undefined {
   const kind = row.kind;
   return isMeasured(kind) ? undefined : rowHeights[kind];
+}
+
+export function minimapRows(rows: readonly DiffRow[]): MinimapRow[] {
+  return rows.map((row) => ({
+    height: rowHeight(row) ?? 0,
+    change:
+      row.kind === 'line' && row.line.kind !== 'context'
+        ? row.line.kind
+        : undefined,
+  }));
 }
 
 declare module 'react' {
@@ -205,6 +217,7 @@ export function DiffView({
   loading,
   diff,
   onLoad,
+  minimap = false,
 }: {
   error: React.ReactNode;
   files: readonly DiffFile[];
@@ -213,6 +226,7 @@ export function DiffView({
   loading: boolean;
   diff: number;
   onLoad: (path: string) => void;
+  minimap?: boolean;
 }) {
   const list = useRef<HTMLDivElement>(null);
   const [toggled, setToggled] = useState<ReadonlyMap<string, boolean>>(
@@ -333,13 +347,35 @@ export function DiffView({
     return null;
   };
 
+  const marks = useMemo(
+    () => (minimap ? minimapMarks(minimapRows(rows)) : []),
+    [minimap, rows],
+  );
+
   const items = virtualizer.getVirtualItems();
-  const stuck = stuckHeader(rows, items, virtualizer.scrollOffset ?? 0);
+  const scrollTop = virtualizer.scrollOffset ?? 0;
+  const stuck = stuckHeader(rows, items, scrollTop);
 
   return (
-    <div className="diff-view" style={heightVariables}>
+    <div
+      className={`diff-view ${minimap ? 'with-minimap' : ''}`}
+      style={heightVariables}
+    >
       {stuck && <div className="diff-stuck-header">{header(stuck, true)}</div>}
-      <div className="virtual-rows" ref={list}>
+      {minimap && (
+        <Minimap
+          marks={marks}
+          scrollTop={scrollTop}
+          viewport={virtualizer.scrollRect?.height ?? 0}
+          total={virtualizer.getTotalSize()}
+          onScroll={(top) => virtualizer.scrollToOffset(top)}
+        />
+      )}
+      <div
+        className="virtual-rows"
+        ref={list}
+        {...(minimap ? { [ownScrollbarAttribute]: '' } : {})}
+      >
         <div
           className="virtual-spacer"
           style={{ height: virtualizer.getTotalSize() }}

@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import {
+  drawsOverlay,
   followedScroller,
   scrollPerPixel,
   thumbOf,
@@ -44,6 +45,12 @@ suite('Overlay scrollbars', () => {
     assert.strictEqual(followedScroller(true, 'list', 'diff'), 'list');
     assert.strictEqual(followedScroller(true, 'list', null), 'list');
     assert.strictEqual(followedScroller(false, 'list', 'diff'), 'diff');
+  });
+
+  test('leaves only the vertical scrollbar to an area with its own, like the minimap', () => {
+    assert.strictEqual(drawsOverlay('vertical', true), false);
+    assert.strictEqual(drawsOverlay('horizontal', true), true);
+    assert.strictEqual(drawsOverlay('vertical', false), true);
   });
 
   test('takes no room for the native scrollbars', () => {
