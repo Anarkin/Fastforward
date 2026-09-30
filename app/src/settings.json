@@ -28,9 +28,6 @@
       "accent": "#0069cc",
       "accent-foreground": "#ffffff",
 
-      "toolbar-hover-background": "#0000001f",
-      "input-option-active-background": "#d6d6d6",
-
       "input-background": "#ffffff",
       "input-border": "#d8d8d866",
 
@@ -71,9 +68,6 @@
 
       "accent": "#297aa0",
       "accent-foreground": "#ffffff",
-
-      "toolbar-hover-background": "#5a5d5e50",
-      "input-option-active-background": "#313233",
 
       "input-background": "#191a1b",
       "input-border": "#333536",

@@ -98,6 +98,36 @@ suite('Style', () => {
     }
   });
 
+  test('tints a hovered button like a hovered row, and a switched-on toggle as strongly as a selection, both see-through', () => {
+    const body = (/\nbody \{([^}]*)\}/.exec(css)?.[1] ?? '').replace(
+      /\s+/g,
+      ' ',
+    );
+    assert.ok(
+      body.includes(
+        '--toggle-on-background: color-mix( in srgb, var(--color-focus) 18%, transparent );',
+      ),
+      body,
+    );
+    for (const selector of [
+      '.tab-add:hover',
+      '.notice-close:hover',
+      '.nav-button:hover:not(:disabled)',
+    ]) {
+      assert.ok(
+        declarationsOf(selector).includes(
+          'background: var(--hover-background);',
+        ),
+        selector,
+      );
+    }
+    assert.ok(
+      declarationsOf('.nav-button.toggle.active').includes(
+        'background: var(--toggle-on-background);',
+      ),
+    );
+  });
+
   test('tints a selected row, the active search result and the active hash suggestion alike, with the focus color', () => {
     const body = (/\nbody \{([^}]*)\}/.exec(css)?.[1] ?? '').replace(
       /\s+/g,
