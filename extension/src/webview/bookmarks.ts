@@ -38,7 +38,7 @@ export function bookmarkOptions(
   return [
     ...refs
       .filter((ref) => ref.commit === hash)
-      .map((ref): Bookmark => refOf(ref))
+      .map(refOf)
       .toSorted(compareBookmarks)
       .map((bookmark) => ({ label: bookmark.name, bookmark })),
     {

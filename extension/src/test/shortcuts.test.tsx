@@ -65,7 +65,7 @@ suite('Keyboard shortcuts', () => {
       <ShortcutsPanel
         container={{ current: null }}
         onClose={() => {}}
-        dismissable
+        dismissible
       >
         ?
       </ShortcutsPanel>,

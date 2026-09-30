@@ -10,8 +10,8 @@ import { isHashPrefix, shortHash } from '../shared/hashes';
 import type {
   Bookmark,
   BookmarkRef,
-  HashLookupState,
   HashLookup,
+  HashLookupState,
   RefInfo,
   RefKind,
   RepositoryState,

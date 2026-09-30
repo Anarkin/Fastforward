@@ -82,7 +82,7 @@ export function ShortcutsHelp() {
         <ShortcutsPanel
           container={container}
           onClose={close}
-          dismissable={holdsDismissLayer(mode)}
+          dismissible={holdsDismissLayer(mode)}
         >
           {button}
         </ShortcutsPanel>
@@ -94,15 +94,15 @@ export function ShortcutsHelp() {
 export function ShortcutsPanel({
   container,
   onClose,
-  dismissable,
+  dismissible,
   children,
 }: {
   container: React.RefObject<HTMLElement | null>;
   onClose: () => void;
-  dismissable: boolean;
+  dismissible: boolean;
   children: React.ReactNode;
 }) {
-  useDismiss(container, onClose, { enabled: dismissable });
+  useDismiss(container, onClose, { enabled: dismissible });
   return (
     <div className="shortcuts-panel">
       <div className="shortcuts-header">
