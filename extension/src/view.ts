@@ -20,6 +20,7 @@ import {
   commitPageSize,
   isLargeChange,
   workingTreeHash,
+  workingTreeIndex,
   type CheckoutTarget,
   type Direction,
   type FileChange,
@@ -337,12 +338,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     }
     switch (message.type) {
       case 'loadCommits':
-        await this.sendCommitPage(
-          context,
-          message.generation,
-          message.start,
-          message.count,
-        );
+        await this.sendCommitPage(context, message.generation, message.start);
         break;
       case 'toggleMerge': {
         const toggled = context.tab.toggledMerges;
@@ -417,8 +413,6 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
             message.diff,
           );
         }
-        break;
-      default:
         break;
     }
   }
@@ -743,8 +737,12 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     }
     tab.navigation = result.navigation;
     if (result.target === workingTreeHash) {
-      select(tab, workingTreeHash, -1);
-      context.post({ type: 'reveal', hash: workingTreeHash, index: -1 });
+      select(tab, workingTreeHash, workingTreeIndex);
+      context.post({
+        type: 'reveal',
+        hash: workingTreeHash,
+        index: workingTreeIndex,
+      });
       await this.sendCommit(context);
     } else {
       await this.showCommit(context, result.target, false);
@@ -899,7 +897,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     this.log.info(
       `Graph of ${tab.history.length} of ${tab.fullHistory.length} commits laid out in ${Math.round(performance.now() - started)} ms, ${tab.graph.width} lanes wide`,
     );
-    const page = firstPage(tab, keepPlace);
+    const page = firstPage(tab, keepPlace, scrollTo);
     const commits = await logCommits(
       context.gitPath,
       context.root,
@@ -911,14 +909,13 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     if (tab.generation !== generation) {
       return;
     }
-    context.post(commitsMessage(tab, page, commits, scrollTo));
+    context.post(commitsMessage(tab, page, commits));
   }
 
   private async sendCommitPage(
     context: Context,
     generation: number,
     start: number,
-    count: number,
   ): Promise<void> {
     const { tab } = context;
     const replaced = () => tab.generation !== generation;
@@ -929,7 +926,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     const commits = await logCommits(
       context.gitPath,
       context.root,
-      history.slice(start, start + count).map((entry) => entry.hash),
+      history.slice(start, start + commitPageSize).map((entry) => entry.hash),
     ).catch((error: unknown) => {
       if (!replaced()) {
         context.post({

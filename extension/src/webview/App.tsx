@@ -7,7 +7,6 @@ import {
   useState,
 } from 'react';
 import {
-  commitPageSize,
   type ChangesView,
   type Direction,
   type CheckoutTarget,
@@ -164,12 +163,7 @@ export function App({ post }: Props) {
 
   const loadCommits = useCallback(
     (start: number, generation: number) =>
-      postTab({
-        type: 'loadCommits',
-        generation,
-        start,
-        count: commitPageSize,
-      }),
+      postTab({ type: 'loadCommits', generation, start }),
     [postTab],
   );
 

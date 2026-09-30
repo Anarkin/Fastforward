@@ -4,7 +4,7 @@ import type {
   Bookmark,
   ChangesView,
   FilesMode,
-  ToWebview,
+  ToWebviewOf,
 } from './shared/protocol';
 
 export const tabsKey = 'tabs';
@@ -66,23 +66,26 @@ export class Storage {
   }
 
   bookmarksOf(root: string): readonly Bookmark[] | undefined {
-    return this.globalState.get<Record<string, Bookmark[]>>(bookmarksKey, {})[
-      root
-    ];
+    const all = this.allBookmarks;
+    return all[keyOf(all, root)];
   }
 
   async setBookmarks(
     root: string,
     bookmarks: readonly Bookmark[],
   ): Promise<void> {
-    const all = this.globalState.get<Record<string, readonly Bookmark[]>>(
-      bookmarksKey,
-      {},
-    );
-    await this.globalState.update(bookmarksKey, { ...all, [root]: bookmarks });
+    const all = this.allBookmarks;
+    await this.globalState.update(bookmarksKey, {
+      ...all,
+      [keyOf(all, root)]: bookmarks,
+    });
   }
 
-  get layout(): Extract<ToWebview, { type: 'layout' }> {
+  private get allBookmarks(): Record<string, readonly Bookmark[]> {
+    return this.globalState.get(bookmarksKey, {});
+  }
+
+  get layout(): ToWebviewOf<'layout'> {
     return {
       type: 'layout',
       columnWidths: this.globalState.get<number[]>(columnWidthsKey),
@@ -124,6 +127,10 @@ export class Storage {
 
 export function sameRoot(a: string, b: string): boolean {
   return path.relative(a, b) === '';
+}
+
+function keyOf(roots: Record<string, unknown>, root: string): string {
+  return Object.keys(roots).find((key) => sameRoot(key, root)) ?? root;
 }
 
 function uniqueRoots(roots: readonly string[]): string[] {

@@ -23,8 +23,6 @@ export function activate(context: vscode.ExtensionContext): void {
   );
   context.subscriptions.push(
     vscode.window.registerCustomEditorProvider(viewType, view),
-  );
-  context.subscriptions.push(
     registerCommand(log, toggleViewCommand, () => view.toggle()),
     registerCommand(log, showViewCommand, () => view.show()),
   );
@@ -38,5 +36,3 @@ export function activate(context: vscode.ExtensionContext): void {
   statusBarItem.show();
   context.subscriptions.push(statusBarItem);
 }
-
-export function deactivate(): void {}

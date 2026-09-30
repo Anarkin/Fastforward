@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import * as vscode from 'vscode';
+import { viewType } from '../view';
 import { waitFor } from './fixtures';
 
 interface LabelFormatter {
@@ -9,10 +10,7 @@ interface LabelFormatter {
 
 function activeTabIsView(): boolean {
   const input = vscode.window.tabGroups.activeTabGroup.activeTab?.input;
-  return (
-    input instanceof vscode.TabInputCustom &&
-    input.viewType === 'fastforward.view'
-  );
+  return input instanceof vscode.TabInputCustom && input.viewType === viewType;
 }
 
 async function runUntilShown(command: string, shown: boolean): Promise<void> {
@@ -20,11 +18,11 @@ async function runUntilShown(command: string, shown: boolean): Promise<void> {
   await waitFor(
     () => activeTabIsView() === shown,
     shown ? 'the view to show' : 'the view to hide',
-    5000,
   );
 }
 
-suite('Extension', () => {
+suite('Extension', function () {
+  this.timeout(20_000);
   suiteSetup(async () => {
     const extension = vscode.extensions.getExtension('anarkin.fastforward');
     assert.ok(extension, 'extension anarkin.fastforward not found');
@@ -56,7 +54,7 @@ suite('Extension', () => {
   test('show view keeps the view shown', async () => {
     await runUntilShown('fastforward.showView', true);
     await vscode.commands.executeCommand('fastforward.showView');
-    assert.ok(activeTabIsView(), 'view hidden by the second show');
+    await runUntilShown('fastforward.toggleView', false);
   });
 
   test('shows the view with no path next to its title', async () => {

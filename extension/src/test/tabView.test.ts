@@ -18,7 +18,7 @@ function busyTab(): TabView {
     graph: [],
     workingTreeGraph: { lane: 0, color: 0, lines: [] },
     selectedIndex: 0,
-    anchor: undefined,
+    scrollTarget: { index: 0 },
   });
   view = reduceTabView(view, {
     type: 'files',
@@ -51,7 +51,7 @@ suite('Tab view', () => {
     );
   });
 
-  test('scrolls to the selected commit of a new history', () => {
+  test('scrolls a new history to where the extension says', () => {
     const view = busyTab();
     assert.deepStrictEqual(view.scrollTarget, { index: 0 });
     assert.strictEqual(view.history?.at(0)?.hash, 'a');
