@@ -21,14 +21,15 @@ suite('Storage', () => {
   });
 
   test('lays out a new view as the default settings say', () => {
+    const defaults = defaultSettings();
     assert.deepStrictEqual(storageOf().layout, {
       type: 'layout',
-      columnWidths: [460, 300],
-      defaultColumnWidths: [460, 300],
-      collapseMerges: true,
-      entireFilePinned: true,
-      ignoreWhitespace: true,
-      showAllFiles: false,
+      columnWidths: defaults.columnWidths,
+      defaultColumnWidths: defaults.columnWidths,
+      collapseMerges: defaults.collapseMerges,
+      entireFilePinned: defaults.entireFilePinned,
+      ignoreWhitespace: defaults.ignoreWhitespace,
+      showAllFiles: defaults.showAllFiles,
     });
   });
 
