@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { RefType } from '../git/refType';
 import type { RefInfo } from '../shared/protocol';
 import {
   countRefs,
@@ -41,6 +42,10 @@ suite('fingerprint', () => {
       before,
     );
     assert.notStrictEqual(fingerprint(head, refs.slice(1)), before);
+    assert.notStrictEqual(
+      fingerprint({ name: 'v1', commit: 'b', type: RefType.Tag }, refs),
+      fingerprint({ name: 'v1', commit: 'b', type: RefType.Head }, refs),
+    );
   });
 });
 
@@ -119,7 +124,7 @@ suite('detached HEAD', () => {
   });
 
   test('is at a tag the Git extension names HEAD after', () => {
-    const head = { name: 'v1', commit: 'c', type: 2 };
+    const head = { name: 'v1', commit: 'c', type: RefType.Tag };
     assert.strictEqual(checkedOutBranch(head), undefined);
     assert.strictEqual(detachedHead(head), 'c');
   });
