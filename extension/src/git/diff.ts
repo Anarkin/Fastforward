@@ -71,6 +71,10 @@ export function showPatch(
 
 const simpleStatuses = ['A', 'M', 'D', 'T'] as const;
 
+export function rawStatus(token: string): string {
+  return token.slice(token.lastIndexOf(' ') + 1)[0] ?? '';
+}
+
 export function parseChanges(output: string): FileChange[] {
   const tokens = splitNul(output);
   const files: FileChange[] = [];
@@ -78,7 +82,7 @@ export function parseChanges(output: string): FileChange[] {
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
     if (token.startsWith(':')) {
-      const code = token.slice(token.lastIndexOf(' ') + 1)[0];
+      const code = rawStatus(token);
       if (code === 'R' || code === 'C') {
         files.push({
           status: code,
