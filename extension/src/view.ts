@@ -116,7 +116,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     this.storage = new Storage(workspaceState, globalState);
   }
 
-  get isShown(): boolean {
+  private get isShown(): boolean {
     const input = vscode.window.tabGroups.activeTabGroup.activeTab?.input;
     return (
       input instanceof vscode.TabInputCustom && input.viewType === viewType
@@ -141,7 +141,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     this.log.info('View shown');
   }
 
-  async hide(): Promise<void> {
+  private async hide(): Promise<void> {
     await vscode.commands.executeCommand('workbench.action.closeModalEditor');
     this.log.info('View hidden');
   }
