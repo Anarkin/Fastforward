@@ -20,6 +20,11 @@ body {
     var(--color-panel-background)
   );
   --hover-background: color-mix(in srgb, var(--color-focus) 8%, transparent);
+  --toggle-on-background: color-mix(
+    in srgb,
+    var(--color-focus) 18%,
+    transparent
+  );
   --muted-foreground: color-mix(
     in srgb,
     var(--color-foreground) calc(var(--muted-opacity) * 100%),
@@ -149,7 +154,7 @@ body {
 }
 
 .menu-button-trigger.open {
-  background: var(--color-toolbar-hover-background);
+  background: var(--hover-background);
 }
 
 .menu {
@@ -229,7 +234,7 @@ body {
 .tab-close:hover,
 .tab-add:hover {
   opacity: 1;
-  background: var(--color-toolbar-hover-background);
+  background: var(--hover-background);
 }
 
 .tab-add {
@@ -297,7 +302,7 @@ body {
 
 .notice-close:hover {
   opacity: 1;
-  background: var(--color-toolbar-hover-background);
+  background: var(--hover-background);
 }
 
 .columns {
@@ -1056,11 +1061,11 @@ body.resizing {
 }
 
 .nav-button:hover:not(:disabled) {
-  background: var(--color-toolbar-hover-background);
+  background: var(--hover-background);
 }
 
 .nav-button.toggle.active {
-  background: var(--color-input-option-active-background);
+  background: var(--toggle-on-background);
 }
 
 .nav-button:disabled {
