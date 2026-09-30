@@ -1,0 +1,120 @@
+import type { DiffFile } from './diff';
+import type { WholeFile } from './diffView';
+
+export interface FindOptions {
+  readonly caseSensitive: boolean;
+  readonly wholeWord: boolean;
+}
+
+export interface FindRange {
+  readonly start: number;
+  readonly end: number;
+}
+
+export interface FindMatch extends FindRange {
+  readonly file: number;
+  readonly line: number;
+}
+
+export const noFindOptions: FindOptions = {
+  caseSensitive: false,
+  wholeWord: false,
+};
+
+const wordCharacter = /[\p{L}\p{N}_]/u;
+
+export function wholeLines(whole: WholeFile): string[] {
+  return whole.binary || whole.content === ''
+    ? []
+    : whole.content.replace(/\n$/, '').split('\n');
+}
+
+export function lineKey(file: number, line: number): string {
+  return `${file}:${line}`;
+}
+
+export function matchesIn(
+  text: string,
+  query: string,
+  options: FindOptions,
+): FindRange[] {
+  if (query === '') {
+    return [];
+  }
+  const haystack = options.caseSensitive ? text : text.toLowerCase();
+  const needle = options.caseSensitive ? query : query.toLowerCase();
+  const ranges: FindRange[] = [];
+  let from = haystack.indexOf(needle);
+  while (from !== -1) {
+    const end = from + needle.length;
+    if (
+      !options.wholeWord ||
+      (!wordCharacter.test(text.charAt(from - 1)) &&
+        !wordCharacter.test(text.charAt(end)))
+    ) {
+      ranges.push({ start: from, end });
+      from = haystack.indexOf(needle, end);
+    } else {
+      from = haystack.indexOf(needle, from + 1);
+    }
+  }
+  return ranges;
+}
+
+function searchedLines(
+  files: readonly DiffFile[],
+  whole: WholeFile | undefined,
+): string[][] {
+  if (whole) {
+    return [wholeLines(whole)];
+  }
+  return files.map((file) =>
+    file.hunks.flatMap((hunk) => hunk.lines.map((line) => line.text)),
+  );
+}
+
+export function findMatches(
+  files: readonly DiffFile[],
+  whole: WholeFile | undefined,
+  query: string,
+  options: FindOptions,
+): FindMatch[] {
+  if (query === '') {
+    return [];
+  }
+  return searchedLines(files, whole).flatMap((lines, file) =>
+    lines.flatMap((text, line) =>
+      matchesIn(text, query, options).map((range) => ({
+        file,
+        line,
+        ...range,
+      })),
+    ),
+  );
+}
+
+export function unsearchedFiles(
+  files: readonly DiffFile[],
+  whole: WholeFile | undefined,
+): number {
+  return whole ? 0 : files.filter((file) => file.placeholder).length;
+}
+
+export function matchCount(
+  query: string,
+  matches: number,
+  current: number,
+): string {
+  if (query === '') {
+    return '';
+  }
+  return matches === 0 ? 'No results' : `${current + 1} of ${matches}`;
+}
+
+export function stepMatch(
+  current: number,
+  matches: number,
+  step: 1 | -1,
+): number {
+  return matches === 0 ? 0 : (current + step + matches) % matches;
+}

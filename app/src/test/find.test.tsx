@@ -1,0 +1,280 @@
+import * as assert from 'node:assert';
+import { isValidElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { parsePatch, type DiffFile } from '../webview/diff';
+import { DiffFind, FindActions } from '../webview/diffColumn';
+import { diffRows, highlighted, lineKeys } from '../webview/diffView';
+import {
+  findMatches,
+  matchCount,
+  matchesIn,
+  noFindOptions,
+  stepMatch,
+  unsearchedFiles,
+  wholeLines,
+  type FindOptions,
+} from '../webview/find';
+import { matchMarks } from '../webview/minimap';
+import { isFindShortcut } from '../webview/shortcuts';
+
+const patch = [
+  'diff --git a/a.ts b/a.ts',
+  '--- a/a.ts',
+  '+++ b/a.ts',
+  '@@ -1,2 +1,2 @@',
+  ' const Find = 1;',
+  '-const find = 2;',
+  '+const finder = 2;',
+  '@@ -10,1 +10,1 @@',
+  ' find(find);',
+  'diff --git a/b.ts b/b.ts',
+  '--- a/b.ts',
+  '+++ b/b.ts',
+  '@@ -1,1 +1,1 @@',
+  '-nothing',
+  '+FIND',
+  '',
+].join('\n');
+
+const whole = { path: 'c.ts', content: 'find\nnone\n', binary: false };
+
+function noop() {}
+
+suite('Find in diff', () => {
+  test('finds every occurrence in a line, ignoring case unless asked, as whole words only if asked', () => {
+    assert.deepStrictEqual(matchesIn('Find find', 'find', noFindOptions), [
+      { start: 0, end: 4 },
+      { start: 5, end: 9 },
+    ]);
+    assert.deepStrictEqual(
+      matchesIn('Find find', 'find', { ...noFindOptions, caseSensitive: true }),
+      [{ start: 5, end: 9 }],
+    );
+    assert.deepStrictEqual(
+      matchesIn('finder find_x (find)', 'find', {
+        ...noFindOptions,
+        wholeWord: true,
+      }),
+      [{ start: 15, end: 19 }],
+    );
+    assert.deepStrictEqual(matchesIn('aaaa', 'aa', noFindOptions), [
+      { start: 0, end: 2 },
+      { start: 2, end: 4 },
+    ]);
+    assert.deepStrictEqual(matchesIn('find', '', noFindOptions), []);
+  });
+
+  test('searches every line of every file, collapsed or not, numbering lines across hunks', () => {
+    const files = parsePatch(patch);
+    const options: FindOptions = { caseSensitive: true, wholeWord: true };
+    assert.deepStrictEqual(findMatches(files, undefined, 'find', options), [
+      { file: 0, line: 1, start: 6, end: 10 },
+      { file: 0, line: 3, start: 0, end: 4 },
+      { file: 0, line: 3, start: 5, end: 9 },
+    ]);
+    assert.strictEqual(
+      findMatches(files, undefined, 'find', noFindOptions).length,
+      6,
+    );
+    assert.deepStrictEqual(
+      findMatches(files, undefined, '', noFindOptions),
+      [],
+    );
+  });
+
+  test('searches the whole of an unchanged file instead, when one is shown', () => {
+    assert.deepStrictEqual(findMatches([], whole, 'find', noFindOptions), [
+      { file: 0, line: 0, start: 0, end: 4 },
+    ]);
+    assert.deepStrictEqual(wholeLines(whole), ['find', 'none']);
+    assert.deepStrictEqual(wholeLines({ ...whole, binary: true }), []);
+    assert.deepStrictEqual(wholeLines({ ...whole, content: '' }), []);
+  });
+
+  test('counts the large files not loaded yet as not searched', () => {
+    const files: DiffFile[] = [
+      ...parsePatch(patch),
+      { path: 'big.ts', binary: false, hunks: [], placeholder: { lines: 9 } },
+    ];
+    assert.strictEqual(unsearchedFiles(files, undefined), 1);
+    assert.strictEqual(unsearchedFiles(files, whole), 0);
+  });
+
+  test('says which match is shown of how many, or that there are none', () => {
+    assert.strictEqual(matchCount('', 0, 0), '');
+    assert.strictEqual(matchCount('x', 0, 0), 'No results');
+    assert.strictEqual(matchCount('x', 17, 2), '3 of 17');
+  });
+
+  test('steps to the next or previous match, wrapping around', () => {
+    assert.strictEqual(stepMatch(0, 3, 1), 1);
+    assert.strictEqual(stepMatch(2, 3, 1), 0);
+    assert.strictEqual(stepMatch(0, 3, -1), 2);
+    assert.strictEqual(stepMatch(0, 0, 1), 0);
+  });
+
+  test('keys each row by the file and line a match names, and only lines', () => {
+    const files = parsePatch(patch);
+    const rows = diffRows(files, new Map([['b.ts', false]]), undefined);
+    assert.deepStrictEqual(lineKeys(rows), [
+      undefined,
+      undefined,
+      '0:0',
+      '0:1',
+      '0:2',
+      undefined,
+      '0:3',
+      undefined,
+    ]);
+    assert.deepStrictEqual(lineKeys(diffRows([], new Map(), whole)), [
+      undefined,
+      undefined,
+      '0:0',
+      '0:1',
+    ]);
+  });
+
+  test('marks the matches in a line, the current one apart', () => {
+    const html = renderToStaticMarkup(
+      <>
+        {highlighted(
+          'find a find',
+          [
+            { start: 0, end: 4 },
+            { start: 7, end: 11 },
+          ],
+          { start: 7, end: 11 },
+        )}
+      </>,
+    );
+    assert.strictEqual(
+      html,
+      '<mark class="find-match ">find</mark> a <mark class="find-match current">find</mark>',
+    );
+    assert.strictEqual(highlighted('plain', [], undefined), 'plain');
+  });
+
+  test('ticks the minimap where the matched rows are', () => {
+    const rows = [
+      { height: 20, change: undefined },
+      { height: 20, change: undefined },
+      { height: 40, change: 'added' as const },
+    ];
+    assert.deepStrictEqual(matchMarks(rows, new Set([1, 2])), [
+      { kind: 'match', top: 0.25, height: 0.25 },
+      { kind: 'match', top: 0.5, height: 0.5 },
+    ]);
+    assert.deepStrictEqual(matchMarks([], new Set([0])), []);
+  });
+
+  test('opens on Ctrl+F, or Cmd+F, whatever the keyboard layout', () => {
+    const key = {
+      key: 'f',
+      code: 'KeyF',
+      ctrlKey: true,
+      metaKey: false,
+      shiftKey: false,
+      altKey: false,
+    };
+    assert.ok(isFindShortcut(key));
+    assert.ok(isFindShortcut({ ...key, ctrlKey: false, metaKey: true }));
+    assert.ok(isFindShortcut({ ...key, key: 'ф' }));
+    assert.ok(!isFindShortcut({ ...key, ctrlKey: false }));
+    assert.ok(!isFindShortcut({ ...key, shiftKey: true }));
+    assert.ok(!isFindShortcut({ ...key, key: 'g', code: 'KeyG' }));
+  });
+
+  test('steps with Enter and Shift+Enter, and clears on Esc before letting go', () => {
+    const steps: number[] = [];
+    const queries: string[] = [];
+    let blurred = false;
+    const field = (query: string) => {
+      const element = DiffFind({
+        query,
+        count: matchCount(query, 3, 0),
+        unsearched: 2,
+        onQuery: (next) => queries.push(next),
+        onStep: (step) => steps.push(step),
+      });
+      assert.ok(
+        isValidElement<{
+          children: [
+            React.ReactElement<{
+              onKeyDown: (event: {
+                key: string;
+                shiftKey: boolean;
+                preventDefault: () => void;
+                currentTarget: { blur: () => void };
+              }) => void;
+            }>,
+            React.ReactNode,
+          ];
+        }>(element),
+      );
+      return element;
+    };
+    const press = (query: string, key: string, shiftKey = false) =>
+      field(query).props.children[0].props.onKeyDown({
+        key,
+        shiftKey,
+        preventDefault: noop,
+        currentTarget: { blur: () => (blurred = true) },
+      });
+    press('x', 'Enter');
+    press('x', 'Enter', true);
+    press('x', 'Escape');
+    assert.deepStrictEqual(steps, [1, -1]);
+    assert.deepStrictEqual(queries, ['']);
+    assert.ok(!blurred);
+    press('', 'Escape');
+    assert.ok(blurred);
+    const html = renderToStaticMarkup(field('x'));
+    assert.match(html, /placeholder="Find in Diff"/);
+    assert.match(
+      html,
+      /<span class="diff-find-count" title="Large files not shown yet are not searched: 2">1 of 3<\/span>/,
+    );
+    assert.doesNotMatch(renderToStaticMarkup(field('')), /diff-find-count/);
+  });
+
+  test('toggles matching case and whole words, and steps only while there are matches', () => {
+    const picked: FindOptions[] = [];
+    const steps: number[] = [];
+    const actions = (matches: number) => {
+      const element = FindActions({
+        options: noFindOptions,
+        matches,
+        onOptions: (next) => picked.push(next),
+        onStep: (step) => steps.push(step),
+      });
+      assert.ok(
+        isValidElement<{
+          children: React.ReactElement<{
+            title: string;
+            disabled?: boolean;
+            onClick: () => void;
+          }>[];
+        }>(element),
+      );
+      return element.props.children;
+    };
+    for (const button of actions(2)) {
+      assert.ok(!button.props.disabled, button.props.title);
+      button.props.onClick();
+    }
+    assert.deepStrictEqual(picked, [
+      { caseSensitive: true, wholeWord: false },
+      { caseSensitive: false, wholeWord: true },
+    ]);
+    assert.deepStrictEqual(steps, [-1, 1]);
+    assert.deepStrictEqual(
+      actions(0).map((button) => [button.props.title, !!button.props.disabled]),
+      [
+        ['Match Case', false],
+        ['Match Whole Word', false],
+        ['Previous Match (Shift+Enter)', true],
+        ['Next Match (Enter)', true],
+      ],
+    );
+  });
+});

@@ -81,6 +81,33 @@ suite('App', function () {
     assert.ok(await page.locator('.diff-minimap').isVisible());
   });
 
+  test('finds in the diff on Ctrl+F, stepping on Enter and clearing on Esc', async () => {
+    await page.keyboard.press('Control+F');
+    const field = page.locator('.diff-find-input');
+    assert.ok(
+      await field.evaluate((input) => input === document.activeElement),
+    );
+    await field.fill('T');
+    const count = page.locator('.diff-find-count');
+    await page.locator('.diff-find-count', { hasText: '1 of 2' }).waitFor();
+    assert.deepStrictEqual(
+      await page.locator('.diff-line .find-match').allTextContents(),
+      ['t', 't'],
+    );
+    assert.strictEqual(
+      await page
+        .locator('.diff-line', { has: page.locator('.find-match.current') })
+        .locator('.code')
+        .textContent(),
+      'two',
+    );
+    await field.press('Enter');
+    await page.locator('.diff-find-count', { hasText: '2 of 2' }).waitFor();
+    await field.press('Escape');
+    await count.waitFor({ state: 'detached' });
+    assert.strictEqual(await page.locator('.find-match').count(), 0);
+  });
+
   test('shows the unchanged files on the toggle, dimmed, and remembers it', async () => {
     assert.strictEqual(
       await page.locator('.row.file', { hasText: 'kept.txt' }).count(),

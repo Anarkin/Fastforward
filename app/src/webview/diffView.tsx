@@ -2,7 +2,8 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { collapseThreshold } from '../shared/protocol';
 import type { DiffFile, DiffLine } from './diff';
-import { Minimap, minimapMarks, type MinimapRow } from './minimap';
+import { lineKey, wholeLines, type FindMatch, type FindRange } from './find';
+import { matchMarks, Minimap, minimapMarks, type MinimapRow } from './minimap';
 import { ownScrollbarAttribute } from './overlayScrollbars';
 import { SkeletonRows, useSkeleton } from './skeleton';
 import { Twisty } from './tree';
@@ -119,14 +120,10 @@ export function diffRows(
     rows.push({ kind: 'file', file: 0, path: whole.path, open: true });
     if (whole.binary) {
       rows.push({ kind: 'binary', file: 0 });
-    } else if (whole.content !== '') {
-      whole.content
-        .replace(/\n$/, '')
-        .split('\n')
-        .forEach((text, index) =>
-          rows.push({ kind: 'wholeLine', file: 0, number: index + 1, text }),
-        );
     }
+    wholeLines(whole).forEach((text, index) =>
+      rows.push({ kind: 'wholeLine', file: 0, number: index + 1, text }),
+    );
     return rows;
   }
   files.forEach((file, index) => {
@@ -156,6 +153,46 @@ export function diffRows(
     }
   });
   return rows;
+}
+
+export function lineKeys(rows: readonly DiffRow[]): (string | undefined)[] {
+  const next = new Map<number, number>();
+  return rows.map((row) => {
+    if (row.kind !== 'line' && row.kind !== 'wholeLine') {
+      return undefined;
+    }
+    const line = next.get(row.file) ?? 0;
+    next.set(row.file, line + 1);
+    return lineKey(row.file, line);
+  });
+}
+
+export function highlighted(
+  text: string,
+  ranges: readonly FindRange[],
+  current: FindRange | undefined,
+): React.ReactNode {
+  if (ranges.length === 0) {
+    return text;
+  }
+  const parts: React.ReactNode[] = [];
+  let from = 0;
+  for (const range of ranges) {
+    parts.push(text.slice(from, range.start));
+    const isCurrent =
+      current?.start === range.start && current.end === range.end;
+    parts.push(
+      <mark
+        key={range.start}
+        className={`find-match ${isCurrent ? 'current' : ''}`}
+      >
+        {text.slice(range.start, range.end)}
+      </mark>,
+    );
+    from = range.end;
+  }
+  parts.push(text.slice(from));
+  return parts;
 }
 
 function fileHeaderIndex(rows: readonly DiffRow[], file: number): number {
@@ -216,6 +253,9 @@ export function DiffView({
   diff,
   onLoad,
   minimap = false,
+  matches = [],
+  current = 0,
+  jump = 0,
 }: {
   error: React.ReactNode;
   files: readonly DiffFile[];
@@ -224,6 +264,9 @@ export function DiffView({
   diff: number;
   onLoad: (path: string) => void;
   minimap?: boolean;
+  matches?: readonly FindMatch[];
+  current?: number;
+  jump?: number;
 }) {
   const list = useRef<HTMLDivElement>(null);
   const [toggled, setToggled] = useState<ReadonlyMap<string, boolean>>(
@@ -248,6 +291,36 @@ export function DiffView({
 
   const toggle = (path: string, open: boolean) =>
     setToggled((all) => new Map(all).set(path, !open));
+
+  const keys = useMemo(() => lineKeys(rows), [rows]);
+  const rangesByLine = useMemo(() => {
+    const byLine = new Map<string, FindRange[]>();
+    for (const match of matches) {
+      const key = lineKey(match.file, match.line);
+      byLine.set(key, [...(byLine.get(key) ?? []), match]);
+    }
+    return byLine;
+  }, [matches]);
+  const found = matches.at(current);
+  const foundKey = found && lineKey(found.file, found.line);
+  const jumped = useRef(0);
+  useEffect(() => {
+    if (found === undefined || jumped.current === jump) {
+      return;
+    }
+    const header = rows.find(
+      (row) => row.kind === 'file' && row.file === found.file,
+    );
+    if (header?.kind === 'file' && !header.open) {
+      setToggled((all) => new Map(all).set(header.path, true));
+      return;
+    }
+    const index = keys.indexOf(foundKey);
+    if (index !== -1) {
+      virtualizer.scrollToIndex(index, { align: 'center' });
+      jumped.current = jump;
+    }
+  }, [jump, found, foundKey, rows, keys, virtualizer]);
 
   const requested = useRef(new Map<string, number>());
   useEffect(() => {
@@ -283,7 +356,19 @@ export function DiffView({
     );
   };
 
-  const renderRow = (row: DiffRow) => {
+  const code = (index: number, text: string) => {
+    const key = keys[index];
+    const ranges = key === undefined ? undefined : rangesByLine.get(key);
+    return (
+      <span className="code">
+        {ranges
+          ? highlighted(text, ranges, key === foundKey ? found : undefined)
+          : text}
+      </span>
+    );
+  };
+
+  const renderRow = (row: DiffRow, index: number) => {
     switch (row.kind) {
       case 'error':
         return error;
@@ -320,24 +405,32 @@ export function DiffView({
           <div className={`diff-line ${row.line.kind}`}>
             <span className="number">{row.line.oldNumber}</span>
             <span className="number">{row.line.newNumber}</span>
-            <span className="code">{row.line.text}</span>
+            {code(index, row.line.text)}
           </div>
         );
       case 'wholeLine':
         return (
           <div className="diff-line">
             <span className="number">{row.number}</span>
-            <span className="code">{row.text}</span>
+            {code(index, row.text)}
           </div>
         );
     }
     return null;
   };
 
-  const marks = useMemo(
-    () => (minimap ? minimapMarks(minimapRows(rows)) : []),
-    [minimap, rows],
-  );
+  const marks = useMemo(() => {
+    if (!minimap) {
+      return [];
+    }
+    const heights = minimapRows(rows);
+    const matched = new Set(
+      keys.flatMap((key, index) =>
+        key !== undefined && rangesByLine.has(key) ? [index] : [],
+      ),
+    );
+    return [...minimapMarks(heights), ...matchMarks(heights, matched)];
+  }, [minimap, rows, keys, rangesByLine]);
 
   const items = virtualizer.getVirtualItems();
   const scrollTop = virtualizer.scrollOffset ?? 0;
@@ -378,7 +471,7 @@ export function DiffView({
                 ref={height === undefined ? virtualizer.measureElement : null}
                 style={{ height, transform: `translateY(${item.start}px)` }}
               >
-                {renderRow(row)}
+                {renderRow(row, item.index)}
               </div>
             );
           })}
