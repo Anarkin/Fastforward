@@ -80,6 +80,24 @@ suite('Style', () => {
     );
   });
 
+  test('tints a row under the pointer with a see-through touch of the focus color, over whatever lies under it', () => {
+    assert.match(
+      css,
+      /\nbody \{[^}]*--hover-background: color-mix\(in srgb, var\(--color-focus\) 8%, transparent\);/,
+    );
+    for (const selector of [
+      '.tab:not(.active):hover',
+      '.row:hover,\n.commit:hover',
+    ]) {
+      assert.ok(
+        declarationsOf(selector).includes(
+          'background: var(--hover-background);',
+        ),
+        selector,
+      );
+    }
+  });
+
   test('tints a selected row, the active search result and the active hash suggestion alike, with the focus color', () => {
     const body = (/\nbody \{([^}]*)\}/.exec(css)?.[1] ?? '').replace(
       /\s+/g,
@@ -227,7 +245,7 @@ suite('Style', () => {
   test("lays a sticky location row's see-through hover color over its solid background, so rows under it stay hidden", () => {
     assert.match(
       declarationsOf('.locations-list .tree-row.sticky:hover'),
-      /background:\s*linear-gradient\(\s*var\(--color-list-hover-background\),\s*var\(--color-list-hover-background\)\s*\),\s*var\(--popup-background\);/,
+      /background:\s*linear-gradient\(\s*var\(--hover-background\),\s*var\(--hover-background\)\s*\),\s*var\(--popup-background\);/,
     );
   });
 

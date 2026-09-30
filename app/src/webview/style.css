@@ -19,6 +19,7 @@ body {
     var(--color-focus) 18%,
     var(--color-panel-background)
   );
+  --hover-background: color-mix(in srgb, var(--color-focus) 8%, transparent);
   --muted-foreground: color-mix(
     in srgb,
     var(--color-foreground) calc(var(--muted-opacity) * 100%),
@@ -194,7 +195,7 @@ body {
 }
 
 .tab:not(.active):hover {
-  background: var(--color-list-hover-background);
+  background: var(--hover-background);
 }
 
 .tab.active {
@@ -443,7 +444,7 @@ body.resizing {
 
 .row:hover,
 .commit:hover {
-  background: var(--color-list-hover-background);
+  background: var(--hover-background);
 }
 
 .commit.checked-out .subject {
@@ -841,10 +842,7 @@ body.resizing {
 
 .locations-list .tree-row.sticky:hover {
   background:
-    linear-gradient(
-      var(--color-list-hover-background),
-      var(--color-list-hover-background)
-    ),
+    linear-gradient(var(--hover-background), var(--hover-background)),
     var(--popup-background);
 }
 
