@@ -15,10 +15,13 @@ const configArgs = [
   'diff.submodule=short',
   '-c',
   'i18n.logOutputEncoding=UTF-8',
+  '-c',
+  'diff.autoRefreshIndex=false',
 ];
 
-// Commands skip git's optional locks, so a refresh running while the user
-// commits elsewhere doesn't hold index.lock and make that commit fail
+// Commands skip git's optional locks and git diff its index refresh, so a
+// refresh running while the user commits elsewhere doesn't hold index.lock and
+// make that commit fail
 function env(pathspecMagic = false): NodeJS.ProcessEnv {
   return {
     ...process.env,

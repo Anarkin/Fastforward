@@ -51,6 +51,49 @@ suite('A repository without commits', function () {
   });
 });
 
+suite('Files touched but not changed', function () {
+  this.timeout(20_000);
+  let gitPath: string;
+  let cwd: string;
+  let index: string;
+
+  suiteSetup(async () => {
+    const repository = await tempRepository(tempFolder('touched'));
+    gitPath = repository.gitPath;
+    cwd = repository.root;
+    index = path.join(cwd, '.git', 'index');
+    await repository.git('config', 'core.autocrlf', 'true');
+    await repository.commit('initial', {
+      'text.txt': 'text\n',
+      'binary.bin': '\0\x01\x02',
+      'crlf.txt': 'one\r\ntwo\r\n',
+      'changed.txt': 'old\n',
+    });
+    fs.writeFileSync(path.join(cwd, 'changed.txt'), 'new\n');
+    const past = new Date(Date.UTC(2020, 0, 1));
+    for (const file of ['text.txt', 'binary.bin', 'crlf.txt', 'changed.txt']) {
+      fs.utimesSync(path.join(cwd, file), past, past);
+    }
+  });
+
+  suiteTeardown(() => removeFolder(cwd));
+
+  test('lists and diffs only the changed file, leaving the index for a commit made meanwhile to lock', async () => {
+    const before = fs.readFileSync(index);
+    const workingTree = await workingTreeFiles(gitPath, cwd);
+    assert.deepStrictEqual(
+      workingTree.files.map((file) => [file.status, file.path]),
+      [['M', 'changed.txt']],
+    );
+    const patch = await workingTreePatch(gitPath, cwd, workingTree);
+    assert.deepStrictEqual(
+      [...patch.matchAll(/^diff --git a\/(\S+)/gm)].map((match) => match[1]),
+      ['changed.txt'],
+    );
+    assert.ok(fs.readFileSync(index).equals(before));
+  });
+});
+
 suite('Uncommitted changes', function () {
   this.timeout(20_000);
   let gitPath: string;
