@@ -73,7 +73,7 @@ suite('Style', () => {
     const selected = declarationsOf('.row.selected,\n.commit.selected');
     assert.match(
       selected,
-      /background: color-mix\(\s*in srgb,\s*var\(--color-focus-border\)/,
+      /background: color-mix\(\s*in srgb,\s*var\(--color-focus\)/,
     );
     assert.doesNotMatch(selected, /shade-background/);
   });

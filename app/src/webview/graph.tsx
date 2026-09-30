@@ -89,7 +89,7 @@ export function GraphCell({
           width={2 * dotRadius}
           height={2 * dotRadius}
           fill={laneColor}
-          stroke="var(--color-background)"
+          stroke="var(--color-panel-background)"
           strokeWidth={1.5}
         />
       ) : row.merge ? (
@@ -106,7 +106,7 @@ export function GraphCell({
             cx={cx}
             cy={dotY}
             r={ringRadius(row)}
-            fill="var(--color-background)"
+            fill="var(--color-panel-background)"
             stroke={laneColor}
             strokeWidth={2}
           />
@@ -120,7 +120,7 @@ export function GraphCell({
           cy={dotY}
           r={dotRadius}
           fill={laneColor}
-          stroke="var(--color-background)"
+          stroke="var(--color-panel-background)"
           strokeWidth={1.5}
         />
       )}
