@@ -356,7 +356,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         await this.fetch(context);
         break;
       case 'loadTree':
-        if (this.known(context, message.hash)) {
+        if (this.isSelected(context, message.hash)) {
           await this.sendTree(context, message.hash);
         }
         break;
@@ -401,13 +401,13 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         await this.sendCommit(context);
         break;
       case 'selectFile':
-        if (this.shown(context, message.hash)) {
+        if (this.isSelected(context, message.hash)) {
           context.tab.path = message.path;
           await this.sendDiff(context, message.hash);
         }
         break;
       case 'loadFileDiff':
-        if (this.shown(context, message.hash)) {
+        if (this.isSelected(context, message.hash)) {
           await this.sendFileDiff(
             context,
             message.hash,
@@ -427,7 +427,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     return false;
   }
 
-  private shown(context: Context, hash: string): boolean {
+  private isSelected(context: Context, hash: string): boolean {
     return this.known(context, hash) && hash === context.tab.hash;
   }
 
@@ -507,7 +507,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     session: Session,
     root: string,
   ): Promise<void> {
-    if (!this.storage.tabs.includes(root) || this.isActive(root)) {
+    if (!this.storage.hasTab(root) || this.isActive(root)) {
       return;
     }
     const tab = this.tabState(root);
