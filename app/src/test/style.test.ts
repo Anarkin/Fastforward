@@ -514,6 +514,12 @@ suite('Style', () => {
     );
   });
 
+  test('highlights what a search matched in the search match colors', () => {
+    const match = declarationsOf('.locations-list .match');
+    assert.ok(match.includes('color: var(--color-search-match-foreground);'));
+    assert.ok(match.includes('background: var(--color-search-match);'));
+  });
+
   test('mutes the search placeholders like other muted text', () => {
     assert.ok(
       declarationsOf('.address-text.empty').includes(

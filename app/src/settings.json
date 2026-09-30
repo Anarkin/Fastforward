@@ -36,6 +36,9 @@
       "bubble-checked-out-foreground": "#ffffff",
       "bubble-checked-out-border": "#ffffff",
 
+      "search-match": "#fe6",
+      "search-match-foreground": "#000",
+
       "scrollbar": "#646464",
       "scrollbar-rest": "75%",
       "scrollbar-hover": "82%",
@@ -76,6 +79,9 @@
       "bubble-checked-out": "#2d6d8a",
       "bubble-checked-out-foreground": "#ffffff",
       "bubble-checked-out-border": "#121314",
+
+      "search-match": "#fc0",
+      "search-match-foreground": "#000",
 
       "scrollbar": "#7a7b7c",
       "scrollbar-rest": "75%",

@@ -731,12 +731,8 @@ body.resizing {
 }
 
 .locations-list .match {
-  color: inherit;
-  background: color-mix(
-    in srgb,
-    var(--color-panel-background) 45%,
-    transparent
-  );
+  color: var(--color-search-match-foreground);
+  background: var(--color-search-match);
   border-radius: 2px;
 }
 
