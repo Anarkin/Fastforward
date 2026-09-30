@@ -253,24 +253,7 @@ body.resizing {
 
 .column-title:has(.column-start) {
   padding-left: calc(4px + 3 * 26px + 2 * 2px + 8px);
-  padding-right: calc(4px + 2 * 26px + 8px);
-}
-
-.column-title .address {
-  position: static;
-  flex: 0 1 140px;
-  margin: 0;
-}
-
-.column-title .locations-popup {
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 100vh;
-  text-align: left;
-  --popup-background: var(--vscode-editor-background);
-  border-radius: var(--card-radius);
-  box-shadow: none;
+  padding-right: calc(4px + 2 * 26px + 2px + 8px);
 }
 
 .column-start {
@@ -341,18 +324,6 @@ body.resizing {
   display: inline-block;
   width: 10px;
   color: var(--vscode-descriptionForeground);
-}
-
-.tree-row {
-  position: relative;
-}
-
-.indent-guide {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: transparent;
 }
 
 /* Exact heights, adding up to commitRowHeight: 5 + 20 + 2 + 18 + 4 + 1 border,
@@ -441,13 +412,12 @@ body.resizing {
 }
 
 .badge.tag {
-  color: var(--vscode-editor-background);
-  background: var(--vscode-charts-yellow);
-}
-
-.row.file .path {
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: var(--vscode-foreground);
+  background: color-mix(
+    in srgb,
+    var(--vscode-charts-yellow) 30%,
+    var(--vscode-editor-background)
+  );
 }
 
 .status-A {
@@ -519,26 +489,12 @@ body.resizing {
 }
 
 .list {
-  height: 100%;
-  overflow: auto;
   outline: none;
 }
 
 .list:focus-visible {
   outline: 1px solid var(--vscode-focusBorder);
   outline-offset: -1px;
-}
-
-.list-spacer {
-  position: relative;
-  width: 100%;
-}
-
-.list-row {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
 }
 
 .bubble-line {
@@ -556,7 +512,7 @@ body.resizing {
   text-overflow: ellipsis;
 }
 
-.list-row > .commit {
+.virtual-row > .commit {
   box-sizing: border-box;
   height: 100%;
   overflow: hidden;
@@ -595,9 +551,8 @@ body.resizing {
   cursor: pointer;
 }
 
-/* Changes | Files in the Files column's title, like a segmented button;
-   whole pixels high, 26 with its padding, so it centers in the 34 pixel
-   column title without a blurred half-pixel edge */
+/* 26px with its padding, so it centers in the 34px column title on whole
+   pixels, without a blurred edge */
 .switch {
   display: inline-flex;
   box-sizing: border-box;
@@ -636,16 +591,18 @@ body.resizing {
 
 .locations-popup {
   position: absolute;
-  top: calc(-1 * var(--search-gap));
-  left: calc(-1 * var(--search-gap));
-  right: calc(-1 * var(--search-gap));
+  top: 0;
+  left: 0;
+  right: 0;
   z-index: 15;
   display: flex;
   flex-direction: column;
+  height: 100vh;
+  text-align: left;
+  --popup-background: var(--vscode-editor-background);
   color: var(--vscode-foreground);
   background: var(--popup-background);
-  border-radius: calc(var(--search-height) / 2 + var(--search-gap));
-  box-shadow: var(--popup-shadow);
+  border-radius: var(--card-radius);
 }
 
 .locations-search-row {
@@ -661,7 +618,7 @@ body.resizing {
   min-width: 0;
   box-sizing: border-box;
   height: var(--search-height);
-  margin: var(--search-gap);
+  margin: 0;
   padding: 0 12px;
   font: inherit;
   color: var(--vscode-input-foreground);
@@ -669,10 +626,6 @@ body.resizing {
   border: 1px solid var(--vscode-input-border, transparent);
   border-radius: calc(var(--search-height) / 2);
   outline: none;
-}
-
-.locations-search-row .locations-search {
-  margin: 0;
 }
 
 .locations-search:focus {
@@ -701,10 +654,6 @@ body.resizing {
 .locations-empty {
   padding: 4px 8px;
   color: var(--vscode-descriptionForeground);
-}
-
-.badge.clickable {
-  cursor: pointer;
 }
 
 .badge.missing {
@@ -748,10 +697,6 @@ body.resizing {
 .locations-count {
   font-weight: 400;
   letter-spacing: 0;
-}
-
-.locations-group .row.result {
-  padding-left: 8px;
 }
 
 .badge.checked-out {
@@ -818,11 +763,8 @@ body.resizing {
   align-items: center;
 }
 
-/* Above the rows scrolling under it, which are positioned too and come later,
-   so would be drawn on top */
 .locations-list .tree-row.sticky {
   position: sticky;
-  z-index: 1;
   background: var(--popup-background);
 }
 
@@ -841,20 +783,7 @@ body.resizing {
   height: 100%;
 }
 
-.diff-list {
-  height: 100%;
-  overflow: auto;
-}
-
-.diff-spacer {
-  position: relative;
-  min-width: 100%;
-}
-
-.diff-row {
-  position: absolute;
-  top: 0;
-  left: 0;
+.virtual-row.diff-row {
   min-width: 100%;
   width: max-content;
 }
@@ -941,6 +870,8 @@ body.resizing {
 
 .row .path {
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .line-counts {
@@ -956,7 +887,7 @@ body.resizing {
   opacity: var(--muted-opacity);
 }
 
-.badge.commit {
+.badge.hash {
   color: var(--vscode-foreground);
   background: var(--vscode-editorWidget-background);
   border: 1px solid var(--widget-border);
@@ -1000,6 +931,11 @@ body.resizing {
   outline-offset: -1px;
 }
 
+:is(.vscode-high-contrast, .vscode-high-contrast-light)
+  :is(.skeleton-row, .commit.placeholder, .hash-suggestion.empty):hover {
+  outline: none;
+}
+
 :is(.vscode-high-contrast, .vscode-high-contrast-light) .row.selected,
 :is(.vscode-high-contrast, .vscode-high-contrast-light) .commit.selected,
 :is(.vscode-high-contrast, .vscode-high-contrast-light)
@@ -1020,7 +956,9 @@ body.resizing {
   cursor: default;
 }
 
-.skeleton-row:hover {
+.skeleton-row:hover,
+.commit.placeholder:hover,
+.hash-suggestion.empty:hover {
   background: none;
 }
 
@@ -1038,15 +976,6 @@ body.resizing {
 
 .diff-skeleton .file-header .bar {
   margin: 0.2em 0;
-}
-
-.nav-bar {
-  flex: none;
-  background: var(--toolbar-background);
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 6px 8px;
 }
 
 .nav-button {
@@ -1121,10 +1050,8 @@ body.resizing {
 .address {
   --search-height: 28px;
   --search-gap: 6px;
-  position: relative;
-  flex: 1;
+  flex: 0 1 140px;
   min-width: 0;
-  margin-left: 6px;
 }
 
 .address-bar {
@@ -1149,11 +1076,6 @@ body.resizing {
   border-color: var(--vscode-input-border, transparent);
 }
 
-.address-hash {
-  margin-right: 18px;
-  color: var(--vscode-descriptionForeground);
-}
-
 .address-text {
   min-width: 0;
   overflow: hidden;
@@ -1163,96 +1085,6 @@ body.resizing {
 
 .address-text.empty {
   color: var(--vscode-input-placeholderForeground);
-}
-
-.commit-card {
-  --card-top: calc(var(--search-height) + var(--search-gap) + 5px);
-  flex: none;
-  display: flex;
-  margin: calc(-1 * (var(--search-height) + var(--search-gap)))
-    var(--search-gap) 8px;
-  padding: 0 13px;
-}
-
-.commit-card-indent {
-  flex: none;
-  visibility: hidden;
-}
-
-.commit-card-info {
-  flex: 1 1 0;
-  min-width: 0;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-content: start;
-  align-self: flex-start;
-  column-gap: 12px;
-  margin: 0;
-  padding: var(--card-top) 0 6px 16px;
-  overflow-wrap: anywhere;
-}
-
-.commit-card-info dt {
-  color: var(--vscode-descriptionForeground);
-}
-
-.commit-card-info dd {
-  margin: 0;
-}
-
-.commit-card-info .first-bubble {
-  margin-top: 6px;
-}
-
-.commit-card-info dd.same {
-  color: var(--vscode-descriptionForeground);
-}
-
-.commit-card-text {
-  flex: 1 1 0;
-  min-width: 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.commit-card-frame {
-  position: relative;
-  flex: 0 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  padding: var(--card-top) 8px 6px 0;
-}
-
-.commit-card-frame::before {
-  content: '';
-  position: absolute;
-  top: 7px;
-  bottom: 6px;
-  left: -10px;
-  z-index: 2;
-  width: 3px;
-  background: var(
-    --vscode-titleBar-activeBackground,
-    var(
-      --vscode-textBlockQuote-border,
-      var(--vscode-widget-border, var(--vscode-panel-border))
-    )
-  );
-  border-radius: 2px;
-}
-
-.commit-card-frame.empty {
-  visibility: hidden;
-}
-
-.commit-card-body {
-  margin: 0;
-  font: inherit;
-  white-space: pre-wrap;
-  min-height: 0;
-  overflow: auto;
 }
 
 .shortcuts {
@@ -1345,26 +1177,4 @@ body.resizing {
 .hash-suggestion.empty {
   cursor: default;
   color: var(--vscode-descriptionForeground);
-}
-
-.hash-suggestion.empty:hover {
-  background: none;
-}
-
-.locations-popup.peek {
-  overflow: hidden;
-}
-
-.peek .peek-search {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  cursor: text;
-}
-
-.peek .commit-card {
-  min-height: 0;
-  flex: 0 1 auto;
-  user-select: text;
 }

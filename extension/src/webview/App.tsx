@@ -403,11 +403,6 @@ export function App({ post }: Props) {
                     search={
                       <AddressBar
                         root={activeTab}
-                        address={{
-                          hash: undefined,
-                          subject: undefined,
-                          commit: undefined,
-                        }}
                         placeholder="Search…"
                         bookmarks={bookmarks}
                         repository={repository}
