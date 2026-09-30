@@ -48,10 +48,12 @@ suite('CommitHistory', () => {
   });
 
   test('asks again for a page that could not be loaded', () => {
-    const history = new CommitHistory(250);
-    assert.deepStrictEqual(history.takeMissingPages(100, 199), [100]);
-    history.release(100);
-    assert.deepStrictEqual(history.takeMissingPages(100, 199), [100]);
+    const history = new CommitHistory(3 * commitPageSize);
+    const page = () =>
+      history.takeMissingPages(commitPageSize, 2 * commitPageSize - 1);
+    assert.deepStrictEqual(page(), [commitPageSize]);
+    history.release(commitPageSize);
+    assert.deepStrictEqual(page(), [commitPageSize]);
   });
 });
 

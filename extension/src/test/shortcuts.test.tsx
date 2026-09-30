@@ -36,7 +36,6 @@ suite('Keyboard shortcuts', () => {
     assert.strictEqual(press('c'), 'c');
     assert.strictEqual(press('s'), 's');
     assert.strictEqual(press('x'), undefined);
-    assert.strictEqual(press('C', { shiftKey: true }), undefined);
   });
 
   test('matches a letter with Caps Lock on', () => {
@@ -49,6 +48,7 @@ suite('Keyboard shortcuts', () => {
     assert.strictEqual(press('s', { ctrlKey: true }), undefined);
     assert.strictEqual(press('c', { altKey: true }), undefined);
     assert.strictEqual(press('c', { metaKey: true }), undefined);
+    assert.strictEqual(press('c', { shiftKey: true }), undefined);
     assert.strictEqual(press('c', { repeat: true }), undefined);
     assert.strictEqual(press('c', { defaultPrevented: true }), undefined);
   });
@@ -56,6 +56,7 @@ suite('Keyboard shortcuts', () => {
   test('leaves keys typed into a field to the field', () => {
     assert.strictEqual(press('c', { target: element('INPUT') }), undefined);
     assert.strictEqual(press('c', { target: element('TEXTAREA') }), undefined);
+    assert.strictEqual(press('c', { target: element('SELECT') }), undefined);
     assert.strictEqual(press('c', { target: element('DIV', true) }), undefined);
     assert.strictEqual(press('c', { target: element('BUTTON') }), 'c');
   });

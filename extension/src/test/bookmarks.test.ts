@@ -7,7 +7,7 @@ import {
   pinnedRefs,
 } from '../webview/bookmarks';
 
-const names = (bookmarks: Bookmark[]) =>
+const names = (bookmarks: readonly Bookmark[]) =>
   bookmarks.map((bookmark) => bookmark.name);
 
 suite('Bookmark order', () => {
@@ -20,17 +20,14 @@ suite('Bookmark order', () => {
       { kind: 'branch', name: 'Main' },
       { kind: 'remote', name: 'upstream/main' },
     ];
-    assert.deepStrictEqual(
-      bookmarks.toSorted(compareBookmarks).map((bookmark) => bookmark.name),
-      [
-        'feature/x',
-        'origin/feature/x',
-        'Main',
-        'origin/main',
-        'upstream/main',
-        'v1.0',
-      ],
-    );
+    assert.deepStrictEqual(names(bookmarks.toSorted(compareBookmarks)), [
+      'feature/x',
+      'origin/feature/x',
+      'Main',
+      'origin/main',
+      'upstream/main',
+      'v1.0',
+    ]);
   });
 });
 
@@ -93,19 +90,19 @@ suite('Bubbles row', () => {
     );
   });
 
-  test('puts commits after the refs', () => {
-    const first: Bookmark = { kind: 'commit', name: 'c1' };
-    const second: Bookmark = { kind: 'commit', name: 'b2' };
-    const row = bubbleRow([second, v1, first, main], refs, 'main', undefined);
-    assert.deepStrictEqual(names(row.bookmarks), ['main', 'v1', 'b2', 'c1']);
+  test('puts commits after the refs, in the order they were bookmarked', () => {
+    const older: Bookmark = { kind: 'commit', name: 'c1' };
+    const newer: Bookmark = { kind: 'commit', name: 'b2' };
+    const row = bubbleRow([older, v1, newer, main], refs, 'main', undefined);
+    assert.deepStrictEqual(names(row.bookmarks), ['main', 'v1', 'c1', 'b2']);
     const detached = bubbleRow(
-      [second, first],
+      [older, newer],
       refs,
       undefined,
       undefined,
       'c1',
     );
-    assert.deepStrictEqual(names(detached.bookmarks), ['b2', 'c1']);
+    assert.deepStrictEqual(names(detached.bookmarks), ['c1', 'b2']);
   });
 });
 
@@ -145,11 +142,8 @@ suite('Pinned refs of the search', () => {
       undefined,
       '',
     );
-    assert.deepStrictEqual(names([...pinned.checkedOut]), [
-      'main',
-      'origin/main',
-    ]);
-    assert.deepStrictEqual(names([...pinned.bookmarks]), ['main', 'v1', 'c1']);
+    assert.deepStrictEqual(names(pinned.checkedOut), ['main', 'origin/main']);
+    assert.deepStrictEqual(names(pinned.bookmarks), ['main', 'v1', 'c1']);
   });
 
   test('lists a detached HEAD as the commit checked out', () => {
@@ -166,9 +160,16 @@ suite('Pinned refs of the search', () => {
       'main',
       'origin/main',
       undefined,
-      'ORIGIN',
+      'MAI',
     );
-    assert.deepStrictEqual(names([...pinned.checkedOut]), ['origin/main']);
-    assert.deepStrictEqual(pinned.bookmarks, []);
+    assert.deepStrictEqual(names(pinned.checkedOut), ['main', 'origin/main']);
+    assert.deepStrictEqual(names(pinned.bookmarks), ['main']);
+    assert.deepStrictEqual(
+      names(
+        pinnedRefs(bookmarks, refs, 'main', 'origin/main', undefined, 'ORIGIN')
+          .checkedOut,
+      ),
+      ['origin/main'],
+    );
   });
 });

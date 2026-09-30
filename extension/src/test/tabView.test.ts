@@ -5,7 +5,8 @@ import {
   treeToLoad,
   type TabView,
 } from '../webview/tabView';
-import { commitInfo } from './fixtures';
+import { commitPageSize } from '../shared/protocol';
+import { commitInfo, fileChange } from './fixtures';
 
 function busyTab(): TabView {
   let view = reduceTabView(emptyTabView, {
@@ -23,15 +24,7 @@ function busyTab(): TabView {
   view = reduceTabView(view, {
     type: 'files',
     hash: 'a',
-    files: [
-      {
-        path: 'x.ts',
-        oldPath: undefined,
-        status: 'M',
-        insertions: 1,
-        deletions: 0,
-      },
-    ],
+    files: [fileChange('x.ts')],
   });
   view = reduceTabView(view, {
     type: 'diff',
@@ -124,6 +117,78 @@ suite('Tab view', () => {
     assert.deepStrictEqual(first.scrollTarget, { index: 0 });
     assert.deepStrictEqual(second.scrollTarget, { index: 0 });
     assert.notStrictEqual(second.scrollTarget, first.scrollTarget);
+  });
+
+  test('knows where a revealed commit is before its page loads', () => {
+    const view = reduceTabView(busyTab(), {
+      type: 'reveal',
+      hash: 'z',
+      index: 1,
+    });
+    assert.strictEqual(view.history?.positionOf('z'), 1);
+    assert.strictEqual(view.history?.at(1), undefined);
+  });
+
+  test('scrolls to where the history was scrolled before, over the selected commit', () => {
+    const view = reduceTabView(emptyTabView, {
+      type: 'commits',
+      generation: 1,
+      total: 10,
+      decorations: [],
+      start: 0,
+      commits: [commitInfo('a')],
+      graph: [],
+      workingTreeGraph: { lane: 0, color: 0, lines: [] },
+      selectedIndex: 0,
+      anchor: { index: 5, offset: 3 },
+    });
+    assert.deepStrictEqual(view.scrollTarget, { index: 5, offset: 3 });
+  });
+
+  test('asks again for a page that came back empty', () => {
+    const before = reduceTabView(emptyTabView, {
+      type: 'commits',
+      generation: 1,
+      total: 3 * commitPageSize,
+      decorations: [],
+      start: 0,
+      commits: [commitInfo('a')],
+      graph: [],
+      workingTreeGraph: { lane: 0, color: 0, lines: [] },
+      selectedIndex: 0,
+      anchor: undefined,
+    });
+    const page = () =>
+      before.history?.takeMissingPages(commitPageSize, 2 * commitPageSize - 1);
+    assert.deepStrictEqual(page(), [commitPageSize]);
+    const after = reduceTabView(before, {
+      type: 'commitPage',
+      generation: 1,
+      start: commitPageSize,
+      commits: [],
+      graph: [],
+    });
+    assert.strictEqual(after, before);
+    assert.deepStrictEqual(page(), [commitPageSize]);
+  });
+
+  test('stops loading the selected commit when an error comes', () => {
+    const loading = reduceTabView(busyTab(), { type: 'showCommit', hash: 'b' });
+    const failed = reduceTabView(loading, { type: 'error', message: 'failed' });
+    assert.ok(!failed.filesLoading && !failed.patchLoading);
+    assert.strictEqual(failed.error, 'failed');
+  });
+
+  test('re-renders only when the count of working tree changes changes', () => {
+    const view = reduceTabView(emptyTabView, { type: 'workingTree', files: 2 });
+    assert.strictEqual(
+      reduceTabView(view, { type: 'workingTree', files: 2 }),
+      view,
+    );
+    assert.strictEqual(
+      reduceTabView(view, { type: 'workingTree', files: 3 }).workingTree,
+      3,
+    );
   });
 
   test('drops a page of the history before', () => {
