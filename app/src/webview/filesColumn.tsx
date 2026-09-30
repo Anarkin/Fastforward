@@ -119,6 +119,7 @@ export function Files({
             path={file.path}
             name={file.path}
             change={file}
+            inChanges
             selected={selected}
             onSelect={onSelect}
           />

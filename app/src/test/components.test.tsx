@@ -31,7 +31,12 @@ import { SkeletonRows } from '../webview/skeleton';
 import { TabBar } from '../webview/tabBar';
 import { GraphCell, graphWidth, rowLanes } from '../webview/graph';
 import { FileRow, treeIndent } from '../webview/tree';
-import type { GraphRow, RefInfo, RepositoryState } from '../shared/protocol';
+import type {
+  FileChange,
+  GraphRow,
+  RefInfo,
+  RepositoryState,
+} from '../shared/protocol';
 import {
   classesOf,
   fileChange as change,
@@ -217,6 +222,19 @@ suite('Files column', () => {
   });
 });
 
+function inChanges(status: FileChange['status']): string {
+  return renderToStaticMarkup(
+    <FileRow
+      path="a.ts"
+      name="a.ts"
+      change={change('a.ts', { status })}
+      inChanges
+      selected={undefined}
+      onSelect={noop}
+    />,
+  );
+}
+
 suite('File rows', () => {
   test('draws a row outside a tree without its indent', () => {
     const html = renderToStaticMarkup(
@@ -237,6 +255,32 @@ suite('File rows', () => {
     );
     assert.ok(!classesOf(row).has('tree-row'));
     assert.ok(!row.includes('padding-left'));
+  });
+
+  test('shows a change plainly in the Changes view, only a deleted file marked, without line counts', () => {
+    for (const status of ['A', 'M', 'R', 'U'] as const) {
+      assert.match(
+        inChanges(status),
+        /<span class="path">a\.ts<\/span>/,
+        status,
+      );
+      assert.deepStrictEqual(tagsWith(inChanges(status), 'line-counts'), []);
+    }
+    assert.match(inChanges('D'), /<span class="path status-D">a\.ts<\/span>/);
+  });
+
+  test('colors a change and counts its lines in the Files view', () => {
+    const html = renderToStaticMarkup(
+      <FileRow
+        path="a.ts"
+        name="a.ts"
+        change={change('a.ts')}
+        selected={undefined}
+        onSelect={noop}
+      />,
+    );
+    assert.match(html, /<span class="path status-M">a\.ts<\/span>/);
+    assert.strictEqual(tagsWith(html, 'line-counts').length, 1);
   });
 
   test('names an unchanged file by its path, without line counts', () => {
