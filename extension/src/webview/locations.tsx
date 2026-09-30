@@ -16,6 +16,7 @@ import type {
 } from '../shared/protocol';
 import { sameRef } from '../shared/refNames';
 import { pinnedRefs } from './bookmarks';
+import { BackIcon } from './icons';
 import {
   CheckedOutBranch,
   CommitBubble,
@@ -304,18 +305,23 @@ export function LocationsPopup({
       style={{ height }}
       onKeyDown={onKeyDown}
     >
-      <input
-        className="locations-search"
-        placeholder="Search…"
-        ref={input}
-        autoFocus
-        value={query}
-        onChange={(event) => {
-          const next = event.target.value;
-          onQuery(next);
-          setActive(firstMatch(searchRefs(refs, next)));
-        }}
-      />
+      <div className="locations-search-row">
+        <button className="nav-button" title="Close (Esc)" onClick={onClose}>
+          <BackIcon />
+        </button>
+        <input
+          className="locations-search"
+          placeholder="Search…"
+          ref={input}
+          autoFocus
+          value={query}
+          onChange={(event) => {
+            const next = event.target.value;
+            onQuery(next);
+            setActive(firstMatch(searchRefs(refs, next)));
+          }}
+        />
+      </div>
       {hash && <HashSuggestion hash={hash} found={found} onJump={jump} />}
       <div className="locations-groups">
         <PinnedSection

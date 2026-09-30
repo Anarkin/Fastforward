@@ -343,6 +343,12 @@ suite('Hash suggestion', () => {
   });
 });
 
+suite('Search', () => {
+  test('offers a way back out beside its field', () => {
+    tagWith(popup(''), 'title="Close (Esc)"', 'nav-button');
+  });
+});
+
 suite('Menu items', () => {
   test('keys items apart that have the same label', () => {
     let items: React.ReactNode;

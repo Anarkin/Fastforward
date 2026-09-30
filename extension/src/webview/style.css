@@ -648,8 +648,17 @@ body.resizing {
   box-shadow: var(--popup-shadow);
 }
 
-.locations-search {
+.locations-search-row {
   flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: var(--search-gap);
+}
+
+.locations-search {
+  flex: 1;
+  min-width: 0;
   box-sizing: border-box;
   height: var(--search-height);
   margin: var(--search-gap);
@@ -660,6 +669,10 @@ body.resizing {
   border: 1px solid var(--vscode-input-border, transparent);
   border-radius: calc(var(--search-height) / 2);
   outline: none;
+}
+
+.locations-search-row .locations-search {
+  margin: 0;
 }
 
 .locations-search:focus {
