@@ -28,10 +28,12 @@ export function isLargeChange(file: {
 export const defaultLayout: {
   readonly collapseMerges: boolean;
   readonly entireFilePinned: boolean;
+  readonly ignoreWhitespace: boolean;
   readonly filesMode: FilesMode;
 } = {
   collapseMerges: true,
-  entireFilePinned: false,
+  entireFilePinned: true,
+  ignoreWhitespace: true,
   filesMode: 'changes',
 };
 
@@ -132,6 +134,7 @@ export type ToHost =
   | { readonly type: 'setColumnWidths'; readonly widths: readonly number[] }
   | { readonly type: 'setCollapseMerges'; readonly collapse: boolean }
   | { readonly type: 'pinEntireFile'; readonly pinned: boolean }
+  | { readonly type: 'setIgnoreWhitespace'; readonly ignore: boolean }
   | { readonly type: 'setFilesMode'; readonly mode: FilesMode }
   | {
       readonly type: 'log';
@@ -190,6 +193,7 @@ export type ToWebview =
       readonly columnWidths: readonly number[] | undefined;
       readonly collapseMerges: boolean;
       readonly entireFilePinned: boolean;
+      readonly ignoreWhitespace: boolean;
       readonly filesMode: FilesMode;
     }
   | { readonly type: 'bookmarks'; readonly bookmarks: readonly Bookmark[] }

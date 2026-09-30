@@ -23,7 +23,7 @@ import {
 } from '../webview/navBar';
 import { holdsDismissLayer, nextPeekMode } from '../webview/shortcutsHelp';
 import { changeClass, changeTitle } from '../webview/fileStatus';
-import { EntireFileButtons } from '../webview/diffColumn';
+import { DiffOptions } from '../webview/diffColumn';
 import { Files } from '../webview/filesColumn';
 import { SkeletonRows } from '../webview/skeleton';
 import { TabBar } from '../webview/tabBar';
@@ -116,14 +116,21 @@ function clickFile(row: React.ReactElement) {
   drawn.props.onClick();
 }
 
-function entireFileButtons(entire: boolean, pinned: boolean, canShow = true) {
+function entireFileButtons(
+  entire: boolean,
+  pinned: boolean,
+  canShow = true,
+  ignoreWhitespace = false,
+) {
   const html = renderToStaticMarkup(
-    <EntireFileButtons
+    <DiffOptions
       entire={entire}
       pinned={pinned}
       canShow={canShow}
+      ignoreWhitespace={ignoreWhitespace}
       onEntire={noop}
       onPin={noop}
+      onIgnoreWhitespace={noop}
     />,
   );
   return [...html.matchAll(/<button[^>]*>/g)].map(([button]) =>
@@ -134,19 +141,22 @@ function entireFileButtons(entire: boolean, pinned: boolean, canShow = true) {
   );
 }
 
-suite('Entire file buttons', () => {
+suite('Diff options', () => {
   test('shows the file entire for now, or pinned for every file', () => {
     assert.deepStrictEqual(entireFileButtons(false, false), [
+      'off enabled',
       'off enabled',
       'off enabled',
     ]);
     assert.deepStrictEqual(entireFileButtons(true, false), [
       'on enabled',
       'off enabled',
+      'off enabled',
     ]);
     assert.deepStrictEqual(entireFileButtons(false, true), [
       'on disabled',
       'on enabled',
+      'off enabled',
     ]);
   });
 
@@ -154,7 +164,31 @@ suite('Entire file buttons', () => {
     assert.deepStrictEqual(entireFileButtons(false, false, false), [
       'off disabled',
       'off enabled',
+      'off enabled',
     ]);
+  });
+
+  test('ignores whitespace on its own toggle, one button apart from the others', () => {
+    assert.deepStrictEqual(entireFileButtons(false, false, true, true), [
+      'off enabled',
+      'off enabled',
+      'on enabled',
+    ]);
+    const html = renderToStaticMarkup(
+      <DiffOptions
+        entire={false}
+        pinned={false}
+        canShow
+        ignoreWhitespace={false}
+        onEntire={noop}
+        onPin={noop}
+        onIgnoreWhitespace={noop}
+      />,
+    );
+    assert.match(
+      html,
+      /<\/button><span class="nav-button-space"><\/span><button[^>]*title="Ignore Whitespace"/,
+    );
   });
 });
 

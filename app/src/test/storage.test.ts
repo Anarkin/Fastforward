@@ -20,7 +20,8 @@ suite('Storage', () => {
       type: 'layout',
       columnWidths: undefined,
       collapseMerges: true,
-      entireFilePinned: false,
+      entireFilePinned: true,
+      ignoreWhitespace: true,
       filesMode: 'changes',
     });
   });
