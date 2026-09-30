@@ -1,5 +1,9 @@
 import * as assert from 'node:assert';
-import { commitRowHeight, workingTreeRowHeight } from '../webview/commitList';
+import {
+  bubbleLineHeight,
+  commitRowHeight,
+  workingTreeRowHeight,
+} from '../webview/commitList';
 import { stylesheet } from './fixtures';
 
 const css = stylesheet();
@@ -120,7 +124,7 @@ suite('Style', () => {
     );
   });
 
-  test('draws a commit row and the one-line working tree row as tall as the list expects', () => {
+  test('draws a commit row and the one-line working tree row as tall as the list expects, as even lines of text', () => {
     const commit = /padding: (\d+)px \d+px (\d+)px;/.exec(
       declarationsOf('.commit'),
     );
@@ -129,17 +133,35 @@ suite('Style', () => {
     assert.ok(border);
     const line = /height: (\d+)px;/.exec(declarationsOf('.commit-line'));
     assert.ok(line);
-    const secondary = declarationsOf('.commit-line.secondary');
-    const second = /height: (\d+)px;/.exec(secondary);
-    const gap = /margin-top: (\d+)px;/.exec(secondary);
-    assert.ok(second && gap);
+    const lineHeight = Number(line[1]);
     const frame = Number(commit[1]) + Number(commit[2]) + Number(border[1]);
-    const oneLine = frame + Number(line[1]);
-    assert.strictEqual(oneLine, workingTreeRowHeight);
-    assert.strictEqual(
-      oneLine + Number(gap[1]) + Number(second[1]),
-      commitRowHeight,
+    assert.strictEqual(frame + lineHeight, workingTreeRowHeight);
+    assert.strictEqual(frame + 2 * lineHeight, commitRowHeight);
+    assert.doesNotMatch(
+      declarationsOf('.commit-line.secondary'),
+      /height|margin/,
     );
+    assert.match(
+      declarationsOf('.bubble-line'),
+      new RegExp(`line-height: ${bubbleLineHeight}px;`),
+    );
+    assert.strictEqual(bubbleLineHeight, lineHeight);
+  });
+
+  test('draws bubbles as text in the flow of their line, starting where the other lines start, their pill around it taking no room', () => {
+    const badge = declarationsOf('.bubble-line .badge');
+    assert.match(badge, /display: inline;/);
+    assert.match(badge, /line-height: inherit;/);
+    assert.match(badge, /box-decoration-break: clone;/);
+    assert.ok(
+      badge.includes(
+        'margin: 0 calc(4px + var(--bubble-inset)) 0 calc(-1 * var(--bubble-inset));',
+      ),
+    );
+    assert.ok(badge.includes('padding: 1px var(--bubble-inset);'));
+    const line = declarationsOf('.bubble-line');
+    assert.ok(line.includes('margin-left: calc(-1 * var(--bubble-inset));'));
+    assert.ok(line.includes('padding-left: var(--bubble-inset);'));
   });
 
   test('cuts off every long name in a row with an ellipsis', () => {

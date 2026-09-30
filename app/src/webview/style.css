@@ -488,8 +488,6 @@ body.resizing {
 }
 
 .commit-line.secondary {
-  height: 18px;
-  margin-top: 2px;
   opacity: var(--muted-opacity);
 }
 
@@ -616,18 +614,21 @@ body.resizing {
 }
 
 .bubble-line {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px;
+  --bubble-inset: 6px;
   min-width: 0;
-  padding: 2px 0;
+  margin-left: calc(-1 * var(--bubble-inset));
+  padding-left: var(--bubble-inset);
+  overflow-x: clip;
+  line-height: 20px;
 }
 
 .bubble-line .badge {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: inline;
+  height: auto;
+  margin: 0 calc(4px + var(--bubble-inset)) 0 calc(-1 * var(--bubble-inset));
+  padding: 1px var(--bubble-inset);
+  line-height: inherit;
+  box-decoration-break: clone;
 }
 
 .virtual-row > .commit {
