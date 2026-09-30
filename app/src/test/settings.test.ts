@@ -8,6 +8,7 @@ import {
   migrateProfile,
   overridesOf,
   UserSettings,
+  writeReadOnly,
 } from '../settings';
 import { defaultSettings } from './fixtures';
 
@@ -133,6 +134,37 @@ suite('User settings file', () => {
     assert.strictEqual(user.settings.solo, true);
     assert.strictEqual(user.settings.collapseMerges, true);
     assert.strictEqual(user.reload(), false);
+  });
+});
+
+suite('Default settings', () => {
+  test('takes new defaults, keeping the user changes over them', async () => {
+    const user = new UserSettings(defaults);
+    await user.set('solo', true);
+    const changed = user.replaceDefaults({
+      ...defaults,
+      solo: false,
+      collapseMerges: false,
+    });
+    assert.strictEqual(changed, true);
+    assert.strictEqual(user.settings.collapseMerges, false);
+    assert.strictEqual(user.settings.solo, true);
+    assert.strictEqual(user.defaults.collapseMerges, false);
+    assert.strictEqual(user.replaceDefaults(user.defaults), false);
+  });
+
+  test('writes the reference copy read-only, and can write it again', () => {
+    const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'fastforward-copy-'));
+    const file = path.join(folder, 'settings.defaults.json');
+    try {
+      writeReadOnly(file, 'first');
+      assert.throws(() => fs.writeFileSync(file, 'edited'));
+      writeReadOnly(file, 'second');
+      assert.strictEqual(fs.readFileSync(file, 'utf8'), 'second');
+    } finally {
+      fs.chmodSync(file, 0o644);
+      fs.rmSync(folder, { recursive: true, force: true });
+    }
   });
 });
 

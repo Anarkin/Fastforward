@@ -22,6 +22,7 @@ import {
   migrateProfile,
   readDefaults,
   UserSettings,
+  writeReadOnly,
   type Settings,
 } from '../settings';
 import { JsonFileStore, Storage } from '../storage';
@@ -125,22 +126,25 @@ async function start(): Promise<void> {
       await openFile(log, userSettingsFile);
     },
     openDefaultSettings: async () => {
-      fs.writeFileSync(
+      writeReadOnly(
         defaultSettingsCopy,
-        fs.readFileSync(path.join(dist, 'settings.json')),
+        fs.readFileSync(path.join(dist, 'settings.json'), 'utf8'),
       );
       await openFile(log, defaultSettingsCopy);
     },
     settingsProblems: () => userSettings.problems,
   });
+  const applySettings = () => {
+    log.info('Settings changed, reloading');
+    for (const problem of userSettings.problems) {
+      log.warn(problem);
+    }
+    view.reloadSettings();
+    window.webContents.reloadIgnoringCache();
+  };
   watchUserSettings(userSettingsFile, () => {
     if (userSettings.reload()) {
-      log.info('Settings changed, reloading');
-      for (const problem of userSettings.problems) {
-        log.warn(problem);
-      }
-      view.reloadSettings();
-      window.webContents.reloadIgnoringCache();
+      applySettings();
     }
   });
 
@@ -188,7 +192,20 @@ async function start(): Promise<void> {
     );
   });
   if (development && process.env.FASTFORWARD_DEV) {
-    reloadOnRebuild(window);
+    reloadOnRebuild(window, () => {
+      try {
+        if (
+          userSettings.replaceDefaults(
+            readDefaults(path.join(dist, 'settings.json')),
+          )
+        ) {
+          applySettings();
+        }
+      } catch (error) {
+        log.error('Reading the rebuilt default settings failed');
+        log.error(error instanceof Error ? error : String(error));
+      }
+    });
   }
   await window.loadURL(`${appOrigin}/index.html`);
   checkForUpdates(log);
@@ -335,12 +352,16 @@ function watchUserSettings(file: string, onChange: () => void): void {
   });
 }
 
-function reloadOnRebuild(window: BrowserWindow): void {
-  let timer: NodeJS.Timeout | undefined;
+function reloadOnRebuild(window: BrowserWindow, onDefaults: () => void): void {
+  let page: NodeJS.Timeout | undefined;
+  let defaults: NodeJS.Timeout | undefined;
   fs.watch(dist, (_event, file) => {
     if (file?.startsWith('webview.')) {
-      clearTimeout(timer);
-      timer = setTimeout(() => window.webContents.reloadIgnoringCache(), 100);
+      clearTimeout(page);
+      page = setTimeout(() => window.webContents.reloadIgnoringCache(), 100);
+    } else if (file === 'settings.json') {
+      clearTimeout(defaults);
+      defaults = setTimeout(onDefaults, 100);
     }
   });
 }

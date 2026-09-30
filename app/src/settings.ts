@@ -130,11 +130,15 @@ export class UserSettings {
   private writing: Promise<void> = Promise.resolve();
 
   constructor(
-    readonly defaults: Settings,
+    private base: Settings,
     private readonly file?: string,
   ) {
-    this.current = defaults;
+    this.current = base;
     this.read();
+  }
+
+  get defaults(): Settings {
+    return this.base;
   }
 
   get settings(): Settings {
@@ -145,6 +149,13 @@ export class UserSettings {
     return this.issues;
   }
 
+  replaceDefaults(defaults: Settings): boolean {
+    const before = JSON.stringify([this.base, this.current, this.issues]);
+    this.base = defaults;
+    this.read();
+    return JSON.stringify([this.base, this.current, this.issues]) !== before;
+  }
+
   reload(): boolean {
     const before = JSON.stringify([this.current, this.issues]);
     this.read();
@@ -152,10 +163,16 @@ export class UserSettings {
   }
 
   private read(): void {
-    const text = this.file === undefined ? undefined : readText(this.file);
+    if (this.file === undefined) {
+      const { settings, problems } = mergeSettings(this.base, this.written);
+      this.current = settings;
+      this.issues = problems;
+      return;
+    }
+    const text = readText(this.file);
     this.broken = false;
     if (text === undefined || text.trim() === '') {
-      this.current = this.defaults;
+      this.current = this.base;
       this.written = {};
       this.issues = [];
       return;
@@ -170,7 +187,7 @@ export class UserSettings {
       ];
       return;
     }
-    const { settings, problems } = mergeSettings(this.defaults, parsed);
+    const { settings, problems } = mergeSettings(this.base, parsed);
     this.current = settings;
     this.written = isObject(parsed) ? parsed : {};
     this.issues = problems;
@@ -179,7 +196,7 @@ export class UserSettings {
   set<K extends keyof Settings>(key: K, value: Settings[K]): Promise<void> {
     this.current = { ...this.current, [key]: value };
     const written = { ...this.written };
-    if (same(value, this.defaults[key])) {
+    if (same(value, this.base[key])) {
       delete written[key];
     } else {
       written[key] = value;
@@ -289,4 +306,12 @@ export function migrateProfile(folder: string, defaults: Settings): boolean {
   }
   fs.renameSync(old, path.join(folder, 'settings.old.json'));
   return true;
+}
+
+export function writeReadOnly(file: string, text: string): void {
+  if (fs.existsSync(file)) {
+    fs.chmodSync(file, 0o644);
+  }
+  fs.writeFileSync(file, text);
+  fs.chmodSync(file, 0o444);
 }

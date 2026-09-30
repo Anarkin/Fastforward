@@ -77,6 +77,16 @@ const contexts = await Promise.all([
 
 if (dev) {
   await Promise.all(contexts.map((ctx) => ctx.watch()));
+  let copying;
+  fs.watch('src', (_event, file) => {
+    if (file === 'settings.json') {
+      clearTimeout(copying);
+      copying = setTimeout(
+        () => fs.copyFileSync('src/settings.json', 'dist/settings.json'),
+        100,
+      );
+    }
+  });
 } else {
   await Promise.all(contexts.map((ctx) => ctx.rebuild()));
   await Promise.all(contexts.map((ctx) => ctx.dispose()));
