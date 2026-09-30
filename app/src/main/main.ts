@@ -35,6 +35,12 @@ protocol.registerSchemesAsPrivileged([
   },
 ]);
 
+const userDataDir = app.commandLine.getSwitchValue('user-data-dir');
+if (userDataDir) {
+  app.setPath('userData', userDataDir);
+  app.setPath('logs', path.join(userDataDir, 'logs'));
+}
+
 if (app.requestSingleInstanceLock()) {
   void start();
 } else {
