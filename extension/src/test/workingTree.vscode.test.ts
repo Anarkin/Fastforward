@@ -130,6 +130,58 @@ suite('Uncommitted changes', function () {
     }
   });
 
+  test('counts a last line without a newline, and no lines of binary, empty or huge untracked files', async () => {
+    const files: Record<string, string | Buffer> = {
+      'partial.txt': 'a\nb',
+      'binary.dat': Buffer.from([0, 1, 2]),
+      'empty.txt': '',
+      'huge.txt': 'x\n'.repeat(1024 * 1024 + 1),
+    };
+    for (const [file, content] of Object.entries(files)) {
+      fs.writeFileSync(path.join(cwd, file), content);
+    }
+    try {
+      const { files: changes } = await workingTreeFiles(gitPath, cwd);
+      assert.deepStrictEqual(
+        Object.keys(files).map(
+          (file) => changes.find((change) => change.path === file)?.insertions,
+        ),
+        [2, 0, 0, 0],
+      );
+    } finally {
+      for (const file of Object.keys(files)) {
+        fs.rmSync(path.join(cwd, file));
+      }
+    }
+  });
+
+  test('counts and diffs only the first 50 untracked files, unless one is asked for alone', async () => {
+    const many = path.join(cwd, 'many');
+    fs.mkdirSync(many);
+    for (let i = 0; i <= 50; i++) {
+      fs.writeFileSync(
+        path.join(many, `f${String(i).padStart(2, '0')}.txt`),
+        `many${i}\n`,
+      );
+    }
+    try {
+      const workingTree = await workingTreeFiles(gitPath, cwd);
+      const insertions = (file: string) =>
+        workingTree.files.find((change) => change.path === file)?.insertions;
+      assert.strictEqual(insertions('many/f49.txt'), 1);
+      assert.strictEqual(insertions('many/f50.txt'), 0);
+      const patch = await workingTreePatch(gitPath, cwd, workingTree);
+      assert.ok(patch.includes('+many49'), patch);
+      assert.ok(!patch.includes('+many50'), patch);
+      const alone = await workingTreePatch(gitPath, cwd, workingTree, {
+        path: 'many/f50.txt',
+      });
+      assert.ok(alone.includes('+many50'), alone);
+    } finally {
+      fs.rmSync(many, { recursive: true });
+    }
+  });
+
   test('diffs the untracked files the list had, not ones found since', async () => {
     const workingTree = await workingTreeFiles(gitPath, cwd);
     const listed = {

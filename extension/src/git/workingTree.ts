@@ -1,4 +1,5 @@
 import { createReadStream } from 'node:fs';
+import { lstat } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { FileChange } from '../shared/protocol';
 import {
@@ -8,6 +9,7 @@ import {
   pathspecs,
   type PatchScope,
 } from './diff';
+import { isBinary, maxFileSize } from './files';
 import { headCommit } from './history';
 import { runGit, splitNul } from './run';
 
@@ -23,11 +25,18 @@ async function addedLines(file: string): Promise<number> {
   let last = 0x0a;
   let first = true;
   try {
+    const stats = await lstat(file);
+    if (stats.isSymbolicLink()) {
+      return 1;
+    }
+    if (!stats.isFile() || stats.size > maxFileSize) {
+      return 0;
+    }
     for await (const chunk of createReadStream(file)) {
       if (!(chunk instanceof Buffer)) {
         continue;
       }
-      if (first && chunk.subarray(0, 8000).includes(0)) {
+      if (first && isBinary(chunk)) {
         return 0;
       }
       first = false;
