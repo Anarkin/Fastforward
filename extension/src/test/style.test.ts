@@ -169,6 +169,21 @@ suite('Style', () => {
     );
   });
 
+  test('highlights no disabled menu item on hover, whose text would vanish in the selection color', () => {
+    assert.match(
+      declarationsOf('.menu-item:hover:not(:disabled)'),
+      /color: var\(--vscode-menu-selectionForeground\);/,
+    );
+    assert.doesNotMatch(css, /\.menu-item:hover\s*{/);
+  });
+
+  test('edges a popup with an inset shadow rather than a border', () => {
+    assert.match(
+      css,
+      /--popup-shadow:\s*inset 0 0 0 1px var\(--widget-border\)/,
+    );
+  });
+
   test('writes tag badges in the text color, like branch badges', () => {
     assert.match(
       declarationsOf('.badge.tag'),
