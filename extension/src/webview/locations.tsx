@@ -13,6 +13,7 @@ import type {
   RefInfo,
   RefKind,
   RepositoryState,
+  WebviewMessage,
 } from '../shared/protocol';
 import { sameRef } from '../shared/refNames';
 import { pinnedRefs } from './bookmarks';
@@ -226,7 +227,7 @@ export function LocationsPopup({
   repository: RepositoryState | undefined;
   selected: string | undefined;
   anchor: React.RefObject<HTMLElement | null>;
-  lookup: { query: string; result: HashLookup } | undefined;
+  lookup: WebviewMessage<'hashLookup'> | undefined;
   onLookup: (query: string) => void;
   onJump: (commit: string) => void;
   onClose: () => void;

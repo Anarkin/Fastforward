@@ -181,6 +181,11 @@ export type TabMessage =
       readonly path: string | undefined;
     };
 
+export interface ScrollAnchor {
+  readonly index: number;
+  readonly offset: number;
+}
+
 export type ToWebview =
   | {
       readonly type: 'layout';
@@ -218,8 +223,7 @@ export type ToWebview =
       readonly graph: readonly GraphRow[];
       readonly workingTreeGraph: GraphRow;
       readonly selectedIndex: number | undefined;
-      readonly anchor:
-        { readonly index: number; readonly offset: number } | undefined;
+      readonly anchor: ScrollAnchor | undefined;
     }
   | {
       readonly type: 'commitPage';
@@ -261,3 +265,8 @@ export type ToWebview =
       readonly binary: boolean;
     }
   | { readonly type: 'error'; readonly message: string };
+
+export type WebviewMessage<T extends ToWebview['type']> = Extract<
+  ToWebview,
+  { type: T }
+>;

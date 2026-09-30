@@ -3,9 +3,9 @@ import { shortHash } from '../shared/hashes';
 import type {
   Bookmark,
   Direction,
-  HashLookup,
   NavigationEntry,
   RepositoryState,
+  WebviewMessage,
 } from '../shared/protocol';
 import { useDismiss } from './contextMenu';
 import { BackIcon, ForwardIcon, HelpIcon, RefreshIcon } from './icons';
@@ -239,7 +239,7 @@ export function AddressBar({
 }: {
   root: string | undefined;
   bookmarks: readonly Bookmark[];
-  hashLookup: { query: string; result: HashLookup } | undefined;
+  hashLookup: WebviewMessage<'hashLookup'> | undefined;
   onLookupHash: (query: string) => void;
   repository: RepositoryState | undefined;
   selected: string | undefined;

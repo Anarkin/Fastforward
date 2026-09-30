@@ -1,9 +1,9 @@
 import type {
   FileChange,
-  HashLookup,
   NavigationEntry,
   RepositoryState,
   ToWebview,
+  WebviewMessage,
 } from '../shared/protocol';
 import { CommitHistory } from './commitHistory';
 import { parseFilePatch, type DiffFile } from './diff';
@@ -30,12 +30,12 @@ export interface TabView {
   readonly diffs: number;
   readonly fileContent: WholeFile | undefined;
   readonly largeFiles: ReadonlyMap<string, DiffFile>;
-  readonly tree: { hash: string; paths: readonly string[] } | undefined;
+  readonly tree: WebviewMessage<'tree'> | undefined;
   readonly treeRequested: string | undefined;
   readonly fetching: boolean;
   readonly back: readonly NavigationEntry[];
   readonly forward: readonly NavigationEntry[];
-  readonly hashLookup: { query: string; result: HashLookup } | undefined;
+  readonly hashLookup: WebviewMessage<'hashLookup'> | undefined;
   readonly error: string | undefined;
 }
 

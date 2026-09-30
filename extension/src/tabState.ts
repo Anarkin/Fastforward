@@ -16,7 +16,9 @@ import {
   type FileChange,
   type NavigationEntry,
   type RefInfo,
+  type ScrollAnchor,
   type ToWebview,
+  type WebviewMessage,
 } from './shared/protocol';
 
 export interface TabState {
@@ -43,17 +45,15 @@ export interface TabState {
   shown: Shown;
 }
 
-type Message<T extends ToWebview['type']> = Extract<ToWebview, { type: T }>;
-
 interface Shown {
-  repository?: Message<'repository'>;
-  fetching?: Message<'fetching'>;
-  navigation?: Message<'navigation'>;
-  commits?: Message<'commits'>;
-  workingTree?: Message<'workingTree'>;
-  files?: Message<'files'>;
-  diff?: Message<'diff'> | Message<'fileContent'>;
-  tree?: Message<'tree'>;
+  repository?: WebviewMessage<'repository'>;
+  fetching?: WebviewMessage<'fetching'>;
+  navigation?: WebviewMessage<'navigation'>;
+  commits?: WebviewMessage<'commits'>;
+  workingTree?: WebviewMessage<'workingTree'>;
+  files?: WebviewMessage<'files'>;
+  diff?: WebviewMessage<'diff'> | WebviewMessage<'fileContent'>;
+  tree?: WebviewMessage<'tree'>;
 }
 
 const navigationShown = 20;
@@ -122,7 +122,7 @@ export function layOutHistory(
 export function firstPage(
   tab: TabState,
   keepPlace: boolean,
-): { start: number; anchor: { index: number; offset: number } | undefined } {
+): { start: number; anchor: ScrollAnchor | undefined } {
   const anchor = keepPlace ? anchorOf(tab) : undefined;
   const start =
     anchor === undefined || anchor.index < 0 ? 0 : pageStart(anchor.index);
@@ -134,7 +134,7 @@ export function commitsMessage(
   page: ReturnType<typeof firstPage>,
   commits: readonly CommitInfo[],
   scrollTo: string | undefined,
-): Message<'commits'> {
+): WebviewMessage<'commits'> {
   const { start, anchor } = page;
   return {
     type: 'commits',
@@ -175,9 +175,7 @@ export function select(tab: TabState, hash: string, index: number): void {
   tab.path = undefined;
 }
 
-function anchorOf(
-  tab: TabState,
-): { index: number; offset: number } | undefined {
+function anchorOf(tab: TabState): ScrollAnchor | undefined {
   if (!tab.anchor) {
     return undefined;
   }

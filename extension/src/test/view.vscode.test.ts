@@ -7,6 +7,7 @@ import {
   workingTreeHash,
   type ToWebview,
   type BookmarkRef,
+  type WebviewMessage,
 } from '../shared/protocol';
 import {
   activeTabKey,
@@ -30,12 +31,9 @@ import { withMessageStub } from './stub';
 class FakePage {
   readonly messages: ToWebview[] = [];
 
-  last<T extends ToWebview['type']>(
-    type: T,
-  ): Extract<ToWebview, { type: T }> | undefined {
+  last<T extends ToWebview['type']>(type: T): WebviewMessage<T> | undefined {
     return this.messages.findLast(
-      (message): message is Extract<ToWebview, { type: T }> =>
-        message.type === type,
+      (message): message is WebviewMessage<T> => message.type === type,
     );
   }
 
