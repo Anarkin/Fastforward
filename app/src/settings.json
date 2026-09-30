@@ -18,6 +18,7 @@
   "colors": {
     "light": {
       "foreground": "#202020",
+      "foreground-muted": "45%",
       "error-foreground": "#ad0707",
 
       "background": "#eaeaea",
@@ -29,11 +30,19 @@
       "focus-selected": "18%",
       "focus-bubble": "25%",
       "focus-bubble-hover": "40%",
+      "focus-darken": "15%",
 
       "scrollbar": "#646464",
+      "scrollbar-rest": "75%",
+      "scrollbar-hover": "82%",
+      "scrollbar-drag": "88%",
 
       "added": "#587c0c",
+      "added-line": "20%",
+      "added-minimap": "50%",
       "deleted": "#ad0707",
+      "deleted-line": "20%",
+      "deleted-minimap": "50%",
 
       "chart-blue": "#1a5cff",
       "chart-green": "#388a34",
@@ -46,6 +55,7 @@
     },
     "dark": {
       "foreground": "#bfbfbf",
+      "foreground-muted": "45%",
       "error-foreground": "#f48771",
 
       "background": "#202122",
@@ -57,11 +67,19 @@
       "focus-selected": "35%",
       "focus-bubble": "35%",
       "focus-bubble-hover": "60%",
+      "focus-darken": "15%",
 
       "scrollbar": "#7a7b7c",
+      "scrollbar-rest": "75%",
+      "scrollbar-hover": "82%",
+      "scrollbar-drag": "88%",
 
       "added": "#73c991",
+      "added-line": "20%",
+      "added-minimap": "50%",
       "deleted": "#f48771",
+      "deleted-line": "20%",
+      "deleted-minimap": "50%",
 
       "chart-blue": "#57a3f8",
       "chart-green": "#86cf86",

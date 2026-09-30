@@ -13,7 +13,7 @@ input {
 }
 
 body {
-  --muted-opacity: 0.45;
+  --muted-opacity: var(--color-foreground-muted);
   --selection-background: color-mix(
     in srgb,
     var(--color-focus) var(--color-focus-selected),
@@ -21,17 +21,17 @@ body {
   );
   --scrollbar-background: color-mix(
     in srgb,
-    var(--color-scrollbar) 75%,
+    var(--color-scrollbar) var(--color-scrollbar-rest),
     transparent
   );
   --scrollbar-hover-background: color-mix(
     in srgb,
-    var(--color-scrollbar) 82%,
+    var(--color-scrollbar) var(--color-scrollbar-hover),
     transparent
   );
   --scrollbar-active-background: color-mix(
     in srgb,
-    var(--color-scrollbar) 88%,
+    var(--color-scrollbar) var(--color-scrollbar-drag),
     transparent
   );
   --hover-background: color-mix(
@@ -46,7 +46,7 @@ body {
   );
   --muted-foreground: color-mix(
     in srgb,
-    var(--color-foreground) calc(var(--muted-opacity) * 100%),
+    var(--color-foreground) var(--color-foreground-muted),
     transparent
   );
   --toolbar-background: var(--color-panel-background);
@@ -584,7 +584,11 @@ body.resizing {
 .badge.checked-out.has-menu:hover,
 .locations-list .row:hover .badge.checked-out,
 .locations-list .row.active .badge.checked-out {
-  --deepened-focus: color-mix(in srgb, var(--color-focus) 85%, black);
+  --deepened-focus: color-mix(
+    in srgb,
+    var(--color-focus),
+    black var(--color-focus-darken)
+  );
   background:
     linear-gradient(var(--deepened-focus), var(--deepened-focus)),
     var(--color-panel-background);
@@ -936,15 +940,22 @@ body.resizing {
   left: 2px;
   right: 2px;
   min-height: 2px;
-  opacity: 0.5;
 }
 
 .minimap-mark.added {
-  background: var(--color-added);
+  background: color-mix(
+    in srgb,
+    var(--color-added) var(--color-added-minimap),
+    transparent
+  );
 }
 
 .minimap-mark.removed {
-  background: var(--color-deleted);
+  background: color-mix(
+    in srgb,
+    var(--color-deleted) var(--color-deleted-minimap),
+    transparent
+  );
 }
 
 .minimap-viewport {
@@ -974,11 +985,19 @@ body.resizing {
 }
 
 .diff-line.added {
-  background: color-mix(in srgb, var(--color-added) 20%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--color-added) var(--color-added-line),
+    transparent
+  );
 }
 
 .diff-line.removed {
-  background: color-mix(in srgb, var(--color-deleted) 20%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--color-deleted) var(--color-deleted-line),
+    transparent
+  );
 }
 
 .diff-stuck-header {
