@@ -21,6 +21,10 @@ export function shownFolders(state: ViewFolders, view: string): Folders {
   return state.view === view ? state : noFolders;
 }
 
+export function replaceFolders(view: string, folders: Folders): ViewFolders {
+  return { view, open: folders.open, closed: folders.closed };
+}
+
 export function toggleFolder(
   state: ViewFolders,
   view: string,

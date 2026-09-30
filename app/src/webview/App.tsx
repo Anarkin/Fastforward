@@ -41,6 +41,7 @@ import { TitleBar, windowTitle } from './titleBar';
 import {
   noFolders,
   openFolders,
+  replaceFolders,
   seeView,
   shownFolders,
   toggleFolder,
@@ -464,6 +465,9 @@ export function App({ post, listen }: Props) {
                     tree={commitTree}
                     openFolders={openedFolders}
                     onToggleFolder={toggleOpenFolder}
+                    onReplaceFolders={(shown) =>
+                      setFolders(replaceFolders(folderView, shown))
+                    }
                     selected={path}
                     onSelect={selectFile}
                   />

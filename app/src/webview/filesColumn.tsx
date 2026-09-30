@@ -4,11 +4,13 @@ import {
   ancestorRows,
   changesTreeElements,
   changesTreeRows,
+  treeFolders,
 } from './changesTree';
 import { Column } from './column';
-import { AllFilesIcon } from './icons';
+import { AllFilesIcon, CollapseAllIcon, ExpandAllIcon } from './icons';
 import { SkeletonRows, useSkeleton } from './skeleton';
 import { fileRowKey } from './tree';
+import type { Folders } from './viewFolders';
 import { VirtualRows } from './virtualRows';
 
 export function Files({
@@ -21,6 +23,7 @@ export function Files({
   tree,
   openFolders,
   onToggleFolder,
+  onReplaceFolders,
   selected,
   onSelect,
 }: {
@@ -33,6 +36,7 @@ export function Files({
   tree: readonly string[] | undefined;
   openFolders: ReadonlySet<string>;
   onToggleFolder: (folder: string) => void;
+  onReplaceFolders: (folders: Folders) => void;
   selected: string | undefined;
   onSelect: (path: string | undefined) => void;
 }) {
@@ -42,6 +46,12 @@ export function Files({
     () => changesTreeRows(files, closedFolders, unchanged, openFolders),
     [files, closedFolders, unchanged, openFolders],
   );
+  const folders = useMemo(
+    () => treeFolders(files, unchanged),
+    [files, unchanged],
+  );
+  const noFolders =
+    folders.changed.length === 0 && folders.unchanged.length === 0;
   const start = (
     <div className="nav-buttons all-files">
       <button
@@ -51,6 +61,32 @@ export function Files({
         onClick={() => onShowAll(!showAll)}
       >
         <AllFilesIcon />
+      </button>
+      <button
+        className="nav-button"
+        title="Collapse All"
+        disabled={noFolders}
+        onClick={() =>
+          onReplaceFolders({
+            open: new Set(),
+            closed: new Set(folders.changed),
+          })
+        }
+      >
+        <CollapseAllIcon />
+      </button>
+      <button
+        className="nav-button"
+        title="Expand All"
+        disabled={noFolders}
+        onClick={() =>
+          onReplaceFolders({
+            open: new Set(folders.unchanged),
+            closed: new Set(),
+          })
+        }
+      >
+        <ExpandAllIcon />
       </button>
     </div>
   );

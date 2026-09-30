@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import {
   noFolders,
   openFolders,
+  replaceFolders,
   seeView,
   shownFolders,
   toggleFolder,
@@ -57,5 +58,17 @@ suite('View folders', () => {
     const back = seeView(elsewhere, 'one');
     assert.deepStrictEqual([...shownFolders(back, 'one').closed], []);
     assert.strictEqual(seeView(closed, 'one'), closed);
+  });
+
+  test('replaces every folder toggled in a view at once, forgetting another view', () => {
+    const elsewhere = toggleFolder(noFolders, 'one', 'open', 'docs');
+    const replaced = replaceFolders('two', {
+      open: new Set(['lib']),
+      closed: new Set(['src']),
+    });
+    assert.deepStrictEqual([...shownFolders(replaced, 'two').open], ['lib']);
+    assert.deepStrictEqual([...shownFolders(replaced, 'two').closed], ['src']);
+    assert.deepStrictEqual([...shownFolders(replaced, 'one').open], []);
+    assert.deepStrictEqual([...shownFolders(elsewhere, 'one').open], ['docs']);
   });
 });

@@ -84,6 +84,26 @@ export function AllFilesIcon() {
   );
 }
 
+export function CollapseAllIcon() {
+  return (
+    <Icon>
+      <path d="M2.5 11V3.5a1 1 0 0 1 1-1H11" />
+      <rect x="4.5" y="4.5" width="9" height="9" rx="1" />
+      <path d="M6.5 9h5" />
+    </Icon>
+  );
+}
+
+export function ExpandAllIcon() {
+  return (
+    <Icon>
+      <path d="M2.5 11V3.5a1 1 0 0 1 1-1H11" />
+      <rect x="4.5" y="4.5" width="9" height="9" rx="1" />
+      <path d="M6.5 9h5M9 6.5v5" />
+    </Icon>
+  );
+}
+
 export function EntireFileIcon() {
   return (
     <Icon>
