@@ -31,8 +31,10 @@
 
       "bubble": "#bfdaf2",
       "bubble-foreground": "#202020",
+      "bubble-border": "#ffffff",
       "bubble-checked-out": "#0069cc",
       "bubble-checked-out-foreground": "#ffffff",
+      "bubble-checked-out-border": "#ffffff",
 
       "scrollbar": "#646464",
       "scrollbar-rest": "75%",
@@ -70,8 +72,10 @@
 
       "bubble": "#1c333d",
       "bubble-foreground": "#bfbfbf",
+      "bubble-border": "#121314",
       "bubble-checked-out": "#2d6d8a",
       "bubble-checked-out-foreground": "#ffffff",
+      "bubble-checked-out-border": "#121314",
 
       "scrollbar": "#7a7b7c",
       "scrollbar-rest": "75%",

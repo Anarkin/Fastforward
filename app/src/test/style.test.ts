@@ -270,15 +270,13 @@ suite('Style', () => {
     );
   });
 
-  test('draws every bubble but the checked-out one alike, in the bubble colors, ringed inside in the panel color to stand apart from a selected row', () => {
+  test('draws every bubble but the checked-out one alike, in the bubble colors, ringed inside in the bubble border color to stand apart from a selected row', () => {
     const badge = declarationsOf('.badge');
     assert.ok(badge.includes('color: var(--color-bubble-foreground);'));
     assert.ok(badge.includes('background: var(--color-bubble);'));
     assert.doesNotMatch(badge, /border:/);
     assert.ok(
-      badge.includes(
-        'box-shadow: inset 0 0 0 1px var(--color-panel-background);',
-      ),
+      badge.includes('box-shadow: inset 0 0 0 1px var(--color-bubble-border);'),
     );
     assert.doesNotMatch(
       css,
@@ -307,6 +305,11 @@ suite('Style', () => {
     );
     assert.ok(
       checkedOut.includes('background: var(--color-bubble-checked-out);'),
+    );
+    assert.ok(
+      checkedOut.includes(
+        'box-shadow: inset 0 0 0 1px var(--color-bubble-checked-out-border);',
+      ),
     );
     assert.doesNotMatch(
       css,
