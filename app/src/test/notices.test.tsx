@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { addNotice, Notices, type Notice } from '../webview/notices';
+import { addNotice, fading, Notices, type Notice } from '../webview/notices';
 import { repositoryMenuItems } from '../webview/repositoryMenu';
 
 const notice = (id: number, message = `notice ${id}`): Notice => ({
@@ -41,6 +41,13 @@ suite('Notices', () => {
     );
     assert.match(html, /class="notice error"[^>]*><span[^>]*>notice 1</);
     assert.match(html, /class="notice info"[^>]*><span[^>]*>fyi</);
+  });
+
+  test('lets information fade by itself, but keeps errors until dismissed', () => {
+    assert.deepStrictEqual(
+      fading([notice(1), { id: 2, level: 'info', message: 'fyi' }]),
+      [2],
+    );
   });
 
   test('shows nothing without notices', () => {

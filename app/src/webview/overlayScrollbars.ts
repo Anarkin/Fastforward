@@ -44,7 +44,7 @@ export function followedScroller<T>(
   return dragging ? current : hovered;
 }
 
-type Axis = 'vertical' | 'horizontal';
+export type Axis = 'vertical' | 'horizontal';
 
 function scrollsAlong(element: Element, axis: Axis): boolean {
   const style = getComputedStyle(element);
@@ -70,11 +70,117 @@ function scrollerOf(target: EventTarget | null, axis: Axis): Element | null {
   return null;
 }
 
+export interface ScrollerMetrics {
+  readonly left: number;
+  readonly top: number;
+  readonly clientLeft: number;
+  readonly clientTop: number;
+  readonly clientWidth: number;
+  readonly clientHeight: number;
+  readonly scrollWidth: number;
+  readonly scrollHeight: number;
+  readonly scrollLeft: number;
+  readonly scrollTop: number;
+}
+
+export interface ThumbBox {
+  readonly left: number;
+  readonly top: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+export function thumbBox(
+  axis: Axis,
+  scroller: ScrollerMetrics,
+  size: number,
+): ThumbBox | undefined {
+  const left = scroller.left + scroller.clientLeft;
+  const top = scroller.top + scroller.clientTop;
+  if (axis === 'vertical') {
+    const thumb = thumbOf(
+      scroller.scrollHeight,
+      scroller.clientHeight,
+      scroller.scrollTop,
+    );
+    return (
+      thumb && {
+        left: left + scroller.clientWidth - size,
+        top: top + thumb.offset,
+        width: size,
+        height: thumb.length,
+      }
+    );
+  }
+  const thumb = thumbOf(
+    scroller.scrollWidth,
+    scroller.clientWidth,
+    scroller.scrollLeft,
+  );
+  return (
+    thumb && {
+      left: left + thumb.offset,
+      top: top + scroller.clientHeight - size,
+      width: thumb.length,
+      height: size,
+    }
+  );
+}
+
+export interface Drag {
+  readonly pointer: number;
+  readonly scroll: number;
+  readonly ratio: number;
+}
+
+export function dragFrom(
+  axis: Axis,
+  scroller: ScrollerMetrics,
+  pointer: { readonly clientX: number; readonly clientY: number },
+): Drag {
+  return axis === 'vertical'
+    ? {
+        pointer: pointer.clientY,
+        scroll: scroller.scrollTop,
+        ratio: scrollPerPixel(scroller.scrollHeight, scroller.clientHeight),
+      }
+    : {
+        pointer: pointer.clientX,
+        scroll: scroller.scrollLeft,
+        ratio: scrollPerPixel(scroller.scrollWidth, scroller.clientWidth),
+      };
+}
+
+export function draggedScroll(
+  axis: Axis,
+  drag: Drag,
+  pointer: { readonly clientX: number; readonly clientY: number },
+): number {
+  const now = axis === 'vertical' ? pointer.clientY : pointer.clientX;
+  return drag.scroll + (now - drag.pointer) * drag.ratio;
+}
+
+function metricsOf(scroller: Element): ScrollerMetrics {
+  const { left, top } = scroller.getBoundingClientRect();
+  return {
+    left,
+    top,
+    clientLeft: scroller.clientLeft,
+    clientTop: scroller.clientTop,
+    clientWidth: scroller.clientWidth,
+    clientHeight: scroller.clientHeight,
+    scrollWidth: scroller.scrollWidth,
+    scrollHeight: scroller.scrollHeight,
+    scrollLeft: scroller.scrollLeft,
+    scrollTop: scroller.scrollTop,
+  };
+}
+
 class Bar {
   readonly element = document.createElement('div');
   scroller: Element | null = null;
   private timer: number | undefined;
-  private drag: { pointer: number; scroll: number; ratio: number } | undefined;
+  private drag: Drag | undefined;
 
   constructor(private readonly axis: Axis) {
     this.element.className = `${overlayScrollbarClass} ${axis}`;
@@ -104,41 +210,22 @@ class Bar {
   }
 
   place(): boolean {
-    const { scroller, axis } = this;
+    const { scroller } = this;
     if (!scroller?.isConnected) {
       return false;
     }
-    const vertical = axis === 'vertical';
-    const thumb = vertical
-      ? thumbOf(
-          scroller.scrollHeight,
-          scroller.clientHeight,
-          scroller.scrollTop,
-        )
-      : thumbOf(
-          scroller.scrollWidth,
-          scroller.clientWidth,
-          scroller.scrollLeft,
-        );
-    if (!thumb) {
-      return false;
-    }
-    const box = scroller.getBoundingClientRect();
     const size = parseFloat(
       getComputedStyle(document.body).getPropertyValue('--scrollbar-size'),
     );
-    const { style } = this.element;
-    if (vertical) {
-      style.left = `${box.left + scroller.clientLeft + scroller.clientWidth - size}px`;
-      style.top = `${box.top + scroller.clientTop + thumb.offset}px`;
-      style.width = `${size}px`;
-      style.height = `${thumb.length}px`;
-    } else {
-      style.left = `${box.left + scroller.clientLeft + thumb.offset}px`;
-      style.top = `${box.top + scroller.clientTop + scroller.clientHeight - size}px`;
-      style.width = `${thumb.length}px`;
-      style.height = `${size}px`;
+    const box = thumbBox(this.axis, metricsOf(scroller), size);
+    if (!box) {
+      return false;
     }
+    const { style } = this.element;
+    style.left = `${box.left}px`;
+    style.top = `${box.top}px`;
+    style.width = `${box.width}px`;
+    style.height = `${box.height}px`;
     return true;
   }
 
@@ -164,14 +251,7 @@ class Bar {
     event.preventDefault();
     this.element.setPointerCapture(event.pointerId);
     this.element.classList.add('dragging');
-    const vertical = this.axis === 'vertical';
-    this.drag = {
-      pointer: vertical ? event.clientY : event.clientX,
-      scroll: vertical ? scroller.scrollTop : scroller.scrollLeft,
-      ratio: vertical
-        ? scrollPerPixel(scroller.scrollHeight, scroller.clientHeight)
-        : scrollPerPixel(scroller.scrollWidth, scroller.clientWidth),
-    };
+    this.drag = dragFrom(this.axis, metricsOf(scroller), event);
   };
 
   private readonly onPointerMove = (event: PointerEvent) => {
@@ -179,10 +259,8 @@ class Bar {
     if (!drag || !scroller) {
       return;
     }
-    const vertical = this.axis === 'vertical';
-    const moved = (vertical ? event.clientY : event.clientX) - drag.pointer;
-    const scroll = drag.scroll + moved * drag.ratio;
-    if (vertical) {
+    const scroll = draggedScroll(this.axis, drag, event);
+    if (this.axis === 'vertical') {
       scroller.scrollTop = scroll;
     } else {
       scroller.scrollLeft = scroll;

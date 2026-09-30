@@ -45,6 +45,13 @@ export function minimapMarks(rows: readonly MinimapRow[]): MinimapMark[] {
   return marks;
 }
 
+export function pointerFraction(
+  clientY: number,
+  box: { readonly top: number; readonly height: number },
+): number {
+  return box.height > 0 ? (clientY - box.top) / box.height : 0;
+}
+
 export function minimapScrollTop(
   fraction: number,
   total: number,
@@ -98,8 +105,10 @@ export function Minimap({
   }, [scrollTop]);
 
   const scrollTo = (event: React.PointerEvent<HTMLDivElement>) => {
-    const box = event.currentTarget.getBoundingClientRect();
-    const fraction = (event.clientY - box.top) / box.height;
+    const fraction = pointerFraction(
+      event.clientY,
+      event.currentTarget.getBoundingClientRect(),
+    );
     onScroll(minimapScrollTop(fraction, total, viewport));
   };
   return (
