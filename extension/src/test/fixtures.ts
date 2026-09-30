@@ -1,5 +1,4 @@
 import type { CommitInfo, FileChange } from '../shared/protocol';
-import type { CardCommit } from '../webview/commitCard';
 
 export const commitInfo = (
   hash: string,
@@ -28,21 +27,6 @@ export const fileChange = (
   status: 'M',
   insertions: 1,
   deletions: 2,
-  ...extra,
-});
-
-export const cardCommit = (extra: Partial<CardCommit> = {}): CardCommit => ({
-  hash: 'a'.repeat(40),
-  subject: 'only',
-  message: 'only',
-  authorName: 'A',
-  authorEmail: 'a@example.com',
-  authorDate: 0,
-  committerName: 'A',
-  committerEmail: 'a@example.com',
-  commitDate: 0,
-  refs: [],
-  detachedHead: false,
   ...extra,
 });
 
