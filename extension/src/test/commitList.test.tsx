@@ -99,6 +99,23 @@ suite('Commit list top', () => {
     assert.deepStrictEqual(listTop(rows, 0, history, 1), top);
     assert.deepStrictEqual(listTop(rows, 10, history, 1), top);
   });
+
+  test('is the row a scroll ends exactly at, a first commit without a working tree, and nothing past the rows', () => {
+    const history = new CommitHistory(3);
+    history.add(0, [commitInfo('a'), commitInfo('b'), commitInfo('c')]);
+    assert.deepStrictEqual(listTop(rows, commitRowHeight, history, 1), {
+      hash: 'a',
+      offset: 0,
+    });
+    assert.deepStrictEqual(listTop(rows, 10, history, 0), {
+      hash: 'a',
+      offset: 10,
+    });
+    assert.strictEqual(
+      listTop(rows, 3 * commitRowHeight + 1, history, 0),
+      undefined,
+    );
+  });
 });
 
 suite('Commit list arrow keys', () => {

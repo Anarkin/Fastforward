@@ -48,15 +48,15 @@ export function CommitDetails({ commit }: { commit: CardCommit }) {
     commit.committerEmail === commit.authorEmail;
   const bubbles = [
     ...(commit.detachedHead
-      ? [{ key: 'HEAD', element: <HeadBubble commit={commit.hash} /> }]
+      ? [{ key: 'HEAD', element: <HeadBubble hash={commit.hash} /> }]
       : []),
     ...commit.refs.map((ref) => ({
       key: `${ref.kind}:${ref.name}`,
       element: <RefBubble info={ref} />,
     })),
   ];
-  const sameDate =
-    formatDateTime(commit.commitDate) === formatDateTime(commit.authorDate);
+  const authored = formatDateTime(commit.authorDate);
+  const committed = formatDateTime(commit.commitDate);
   return (
     <div className="commit-card">
       <span className="address-hash commit-card-indent" aria-hidden="true">
@@ -82,9 +82,9 @@ export function CommitDetails({ commit }: { commit: CardCommit }) {
           {commit.committerName} &lt;{commit.committerEmail}&gt;
         </LaterRow>
         <dt>Authored</dt>
-        <dd>{formatDateTime(commit.authorDate)}</dd>
-        <LaterRow label="Committed" same={sameDate}>
-          {formatDateTime(commit.commitDate)}
+        <dd>{authored}</dd>
+        <LaterRow label="Committed" same={authored === committed}>
+          {committed}
         </LaterRow>
         {bubbles.map((bubble, i) => (
           <Fragment key={bubble.key}>
