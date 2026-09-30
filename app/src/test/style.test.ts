@@ -128,6 +128,16 @@ suite('Style', () => {
     );
   });
 
+  test("edges the popup's search box in the border color, and tints the hovered search field like anything else hovered", () => {
+    const box = declarationsOf('.locations-search');
+    assert.ok(box.includes('background: var(--color-panel-background);'));
+    assert.ok(box.includes('border: 1px solid var(--color-border);'));
+    assert.match(
+      declarationsOf('.address-bar:hover'),
+      /background:\s*linear-gradient\(var\(--hover-background\), var\(--hover-background\)\),\s*var\(--color-border\);/,
+    );
+  });
+
   test('tints a selected row, the active search result and the active hash suggestion alike, with the focus color', () => {
     const body = (/\nbody \{([^}]*)\}/.exec(css)?.[1] ?? '').replace(
       /\s+/g,
