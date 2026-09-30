@@ -109,6 +109,7 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
         selectionKnown: true,
         patchLoading: state.hash !== undefined,
         fileContent: undefined,
+        error: undefined,
       };
     case 'repository':
       return { ...state, repository: action };
@@ -200,7 +201,9 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
         fileContent: action,
       };
     case 'tree':
-      return { ...state, tree: action };
+      return isLate(state, action.hash, state.path)
+        ? state
+        : { ...state, tree: action };
     case 'requestTree':
       return { ...state, treeRequested: action.hash };
     case 'fetching':

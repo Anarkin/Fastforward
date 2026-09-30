@@ -86,6 +86,11 @@ suite('Tab view', () => {
     assert.strictEqual(view.fetching, true);
   });
 
+  test('clears the error when selecting another file', () => {
+    const view = reduceTabView(busyTab(), { type: 'showFile', path: 'y.ts' });
+    assert.strictEqual(view.error, undefined);
+  });
+
   test('fills in pages of the history, re-rendering for the selected commit', () => {
     const before = busyTab();
     const after = reduceTabView(before, {
@@ -125,12 +130,14 @@ suite('Tab view', () => {
     assert.notStrictEqual(second.scrollTarget, first.scrollTarget);
   });
 
-  test('knows where a revealed commit is before its page loads', () => {
+  test('selects a revealed commit and knows where it is before its page loads', () => {
     const view = reduceTabView(busyTab(), {
       type: 'reveal',
       hash: 'z',
       index: 1,
     });
+    assert.strictEqual(view.hash, 'z');
+    assert.ok(view.filesLoading && view.patchLoading);
     assert.strictEqual(view.history?.positionOf('z'), 1);
     assert.strictEqual(view.history?.at(1), undefined);
   });
@@ -149,6 +156,22 @@ suite('Tab view', () => {
       anchor: { index: 5, offset: 3 },
     });
     assert.deepStrictEqual(view.scrollTarget, { index: 5, offset: 3 });
+  });
+
+  test('scrolls nowhere for a new history with no selected commit', () => {
+    const view = reduceTabView(busyTab(), {
+      type: 'commits',
+      generation: 2,
+      total: 10,
+      decorations: [],
+      start: 0,
+      commits: [commitInfo('a')],
+      graph: [],
+      workingTreeGraph: { lane: 0, color: 0, lines: [] },
+      selectedIndex: undefined,
+      anchor: undefined,
+    });
+    assert.strictEqual(view.scrollTarget, undefined);
   });
 
   test('asks again for a page that came back empty', () => {
@@ -296,6 +319,16 @@ suite('Tab view', () => {
       });
     assert.strictEqual(answer(view.diffs), again);
     assert.ok(answer(again.diffs).largeFiles.has('x.ts'));
+    assert.strictEqual(
+      reduceTabView(again, {
+        type: 'fileDiff',
+        hash: 'b',
+        path: 'x.ts',
+        patch: '',
+        diff: again.diffs,
+      }),
+      again,
+    );
   });
 
   test("asks for a commit's tree once, and again after the tab reopens", () => {
@@ -312,6 +345,17 @@ suite('Tab view', () => {
       hash: 'a',
     });
     assert.strictEqual(treeToLoad(reopened), 'a');
+  });
+
+  test("keeps the selected commit's tree when an earlier commit's tree arrives after it", () => {
+    let view = reduceTabView(emptyTabView, { type: 'showCommit', hash: 'a' });
+    view = reduceTabView(view, { type: 'requestTree', hash: 'a' });
+    view = reduceTabView(view, { type: 'showCommit', hash: 'b' });
+    view = reduceTabView(view, { type: 'requestTree', hash: 'b' });
+    view = reduceTabView(view, { type: 'tree', hash: 'b', paths: ['b'] });
+    view = reduceTabView(view, { type: 'tree', hash: 'a', paths: ['a'] });
+    assert.deepStrictEqual(treeOf(view), ['b']);
+    assert.strictEqual(treeToLoad(view), undefined);
   });
 
   test('shows the tree of the selected commit only', () => {
