@@ -243,8 +243,9 @@ body.resizing {
   display: flex;
   align-items: center;
   justify-content: center;
+  --title-height: 34px;
   box-sizing: border-box;
-  height: 34px;
+  height: var(--title-height);
   padding: 0 8px;
   text-align: center;
   color: var(--vscode-descriptionForeground);
@@ -610,7 +611,9 @@ body.resizing {
   display: flex;
   align-items: center;
   gap: 4px;
-  margin: var(--search-gap);
+  box-sizing: border-box;
+  height: calc(var(--title-height) - 1px);
+  padding: 0 var(--search-gap) 0 4px;
 }
 
 .locations-search {

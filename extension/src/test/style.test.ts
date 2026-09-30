@@ -40,6 +40,23 @@ suite('Style', () => {
     assert.strictEqual(pixels(title, 'padding-right'), buttons(2));
   });
 
+  test("opens the search over the commit column's title without moving its field or back button", () => {
+    const title = declarationsOf('.column-title');
+    const row = declarationsOf('.locations-search-row');
+    assert.match(title, /height: var\(--title-height\);/);
+    assert.match(title, /border-bottom: 1px solid/);
+    assert.match(declarationsOf('.locations-groups'), /border-top: 1px solid/);
+    assert.match(row, /height: calc\(var\(--title-height\) - 1px\);/);
+    assert.match(row, /box-sizing: border-box;/);
+    assert.doesNotMatch(row, /margin/);
+    const edge = /left: (\d+px);/.exec(declarationsOf('.column-start'));
+    assert.ok(edge);
+    assert.match(
+      row,
+      new RegExp(`padding: 0 var\\(--search-gap\\) 0 ${edge[1]};`),
+    );
+  });
+
   test('cuts off every long name in a row with an ellipsis', () => {
     assert.match(declarationsOf('.row .path'), /text-overflow: ellipsis/);
   });
