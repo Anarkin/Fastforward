@@ -19,6 +19,17 @@ interface Resizing {
 const ColumnResizing = createContext<Resizing | undefined>(undefined);
 export const ColumnResizingProvider = ColumnResizing.Provider;
 
+export function columnsClass(
+  commitsShown: boolean,
+  selected: string | undefined,
+): string {
+  return [
+    'columns',
+    ...(commitsShown ? [] : ['commits-hidden']),
+    ...(selected === undefined ? ['nothing-selected'] : []),
+  ].join(' ');
+}
+
 export function templateOf(
   widths: readonly number[],
   hidden: readonly boolean[],

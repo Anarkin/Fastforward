@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { commitRowHeight, workingTreeRowHeight } from '../webview/commitList';
 import { stylesheet } from './fixtures';
 
 const css = stylesheet();
@@ -88,6 +89,42 @@ suite('Style', () => {
     const checkedOut = declarationsOf('.badge.checked-out');
     assert.match(checkedOut, /color: var\(--vscode-button-foreground\);/);
     assert.match(checkedOut, /background: var\(--vscode-button-background\);/);
+  });
+
+  test('hides every column but the commits while no commit is selected', () => {
+    assert.match(
+      declarationsOf('.columns.nothing-selected > .column:not(:first-child)'),
+      /visibility: hidden;/,
+    );
+  });
+
+  test('spins the icon of a running button', () => {
+    assert.match(
+      declarationsOf('.nav-button.running .spin-icon'),
+      /animation: spin 1s linear infinite;/,
+    );
+  });
+
+  test('draws a commit row and the one-line working tree row as tall as the list expects', () => {
+    const commit = /padding: (\d+)px \d+px (\d+)px;/.exec(
+      declarationsOf('.commit'),
+    );
+    assert.ok(commit);
+    const border = /border-bottom: (\d+)px/.exec(declarationsOf('.commit'));
+    assert.ok(border);
+    const line = /height: (\d+)px;/.exec(declarationsOf('.commit-line'));
+    assert.ok(line);
+    const secondary = declarationsOf('.commit-line.secondary');
+    const second = /height: (\d+)px;/.exec(secondary);
+    const gap = /margin-top: (\d+)px;/.exec(secondary);
+    assert.ok(second && gap);
+    const frame = Number(commit[1]) + Number(commit[2]) + Number(border[1]);
+    const oneLine = frame + Number(line[1]);
+    assert.strictEqual(oneLine, workingTreeRowHeight);
+    assert.strictEqual(
+      oneLine + Number(gap[1]) + Number(second[1]),
+      commitRowHeight,
+    );
   });
 
   test('cuts off every long name in a row with an ellipsis', () => {

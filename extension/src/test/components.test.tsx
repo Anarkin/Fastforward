@@ -32,22 +32,14 @@ import { TabBar } from '../webview/tabBar';
 import { GraphCell, graphWidth, rowLanes } from '../webview/graph';
 import { FileRow, treeIndent } from '../webview/tree';
 import type { GraphRow, RefInfo, RepositoryState } from '../shared/protocol';
-import { classesOf, fileChange as change, tagsWith } from './fixtures';
+import {
+  classesOf,
+  fileChange as change,
+  renderedBy,
+  tagsWith,
+} from './fixtures';
 
 const noop = () => {};
-
-function renderedBy<P>(
-  component: (props: P) => React.ReactNode,
-  props: P,
-): React.ReactNode {
-  let rendered: React.ReactNode;
-  function Probe() {
-    rendered = component(props);
-    return null;
-  }
-  renderToStaticMarkup(<Probe />);
-  return rendered;
-}
 
 function tagWith(html: string, text: string, ...classes: string[]): string {
   const found = tagsWith(html, ...classes).filter((tag) => tag.includes(text));

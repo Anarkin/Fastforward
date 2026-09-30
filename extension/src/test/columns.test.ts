@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import {
+  columnsClass,
   defaultColumnWidths,
   draggedWidths,
   followDrag,
@@ -89,5 +90,20 @@ suite('Columns', () => {
       target.dispatch('pointerup', 0);
       assert.deepStrictEqual([moves, ends], [1, 1], type);
     }
+  });
+});
+
+suite('Columns', () => {
+  test('hides the commits on request, and the other columns while no commit is selected', () => {
+    assert.strictEqual(columnsClass(true, 'a'), 'columns');
+    assert.strictEqual(columnsClass(false, 'a'), 'columns commits-hidden');
+    assert.strictEqual(
+      columnsClass(true, undefined),
+      'columns nothing-selected',
+    );
+    assert.strictEqual(
+      columnsClass(false, undefined),
+      'columns commits-hidden nothing-selected',
+    );
   });
 });
