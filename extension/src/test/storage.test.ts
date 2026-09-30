@@ -31,14 +31,37 @@ suite('Storage', () => {
     assert.deepStrictEqual(storage.tabs, [root]);
   });
 
+  test('finds a tab saved under another spelling of its folder', async () => {
+    const storage = new Storage(new FakeMemento(), new FakeMemento());
+    const root = path.resolve('r');
+    await storage.setTabs([root], root);
+    assert.ok(storage.hasTab(root + path.sep));
+  });
+
+  test('keeps one set of bookmarks for a folder spelled two ways', async () => {
+    const globalState = new FakeMemento();
+    const storage = new Storage(new FakeMemento(), globalState);
+    const root = path.resolve('r');
+    const main = [{ kind: 'branch', name: 'main' }] as const;
+    await storage.setBookmarks(root, main);
+    assert.deepStrictEqual(storage.bookmarksOf(root + path.sep), main);
+    const dev = [{ kind: 'branch', name: 'dev' }] as const;
+    await storage.setBookmarks(root + path.sep, dev);
+    assert.deepStrictEqual(Object.keys(globalState.get<object>('vips', {})), [
+      root,
+    ]);
+    assert.deepStrictEqual(storage.bookmarksOf(root), dev);
+  });
+
   test('keeps the 20 newest recent repositories, newest first', async () => {
     const storage = new Storage(new FakeMemento(), new FakeMemento());
     for (let i = 0; i <= 20; i++) {
       await storage.addRecent(path.resolve(`r${i}`));
     }
-    assert.strictEqual(storage.recent.length, 20);
-    assert.strictEqual(storage.recent[0], path.resolve('r20'));
-    assert.ok(!storage.recent.includes(path.resolve('r0')));
+    assert.deepStrictEqual(
+      storage.recent,
+      Array.from({ length: 20 }, (_, i) => path.resolve(`r${20 - i}`)),
+    );
   });
 
   test('moves a recent repository added again to the front', async () => {
