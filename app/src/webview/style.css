@@ -49,7 +49,7 @@ body {
   z-index: 30;
   box-sizing: border-box;
   border: 2px solid transparent;
-  border-radius: calc(var(--scrollbar-size) / 2);
+  border-radius: 1px;
   background: var(--color-scrollbar) padding-box;
   opacity: 0;
   pointer-events: none;
