@@ -1,12 +1,25 @@
 import * as assert from 'node:assert';
 import { minimapRows, type DiffRow } from '../webview/diffView';
-import { minimapMarks, minimapScrollTop } from '../webview/minimap';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { Minimap, minimapMarks, minimapScrollTop } from '../webview/minimap';
 
 const line = (kind: 'added' | 'removed' | 'context'): DiffRow => ({
   kind: 'line',
   file: 0,
   line: { kind, text: '', oldNumber: undefined, newNumber: undefined },
 });
+
+function minimap(viewport: number): string {
+  return renderToStaticMarkup(
+    <Minimap
+      marks={[{ kind: 'added', top: 0.25, height: 0.5 }]}
+      scrollTop={100}
+      viewport={viewport}
+      total={400}
+      onScroll={() => {}}
+    />,
+  );
+}
 
 suite('Minimap', () => {
   test('marks each run of added or removed lines where it is in the file', () => {
@@ -40,5 +53,12 @@ suite('Minimap', () => {
     assert.strictEqual(minimapScrollTop(0.5, 1000, 200), 400);
     assert.strictEqual(minimapScrollTop(0.02, 1000, 200), 0);
     assert.strictEqual(minimapScrollTop(0.98, 1000, 200), 800);
+  });
+
+  test('draws the marks where they are, and the part in view only when not all of it is', () => {
+    const html = minimap(200);
+    assert.match(html, /class="minimap-mark added" style="top:25%;height:50%"/);
+    assert.match(html, /class="minimap-viewport" style="top:25%;height:50%"/);
+    assert.doesNotMatch(minimap(400), /minimap-viewport/);
   });
 });
