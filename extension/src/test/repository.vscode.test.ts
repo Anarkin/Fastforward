@@ -185,8 +185,38 @@ suite('Git repository', function () {
       const patch = await showPatch(gitPath, cwd, head, { path: '[ab].md' });
       assert.ok(patch.includes('b/[ab].md'), patch);
       assert.ok(!patch.includes('b/a.md'), patch);
+      const excluded = await showPatch(gitPath, cwd, head, {
+        exclude: ['[ab].md'],
+      });
+      assert.ok(excluded.includes('b/a.md'), excluded);
+      assert.ok(!excluded.includes('b/[ab].md'), excluded);
     } finally {
       await temp.git('reset', '--hard', rename);
+    }
+  });
+
+  test('diffs a merge against its first parent', async () => {
+    try {
+      await temp.git('checkout', '-b', 'side');
+      await temp.commit('side', { 'x.txt': 'x\n' });
+      await temp.git('checkout', 'main');
+      await temp.git('merge', '--no-ff', 'side', '-m', 'merge');
+      const [merge] = await temp.resolve('HEAD');
+      assert.deepStrictEqual(
+        (await showFiles(gitPath, cwd, merge)).map((file) => [
+          file.status,
+          file.path,
+        ]),
+        [['A', 'x.txt']],
+      );
+      const [commit] = await logCommits(gitPath, cwd, [merge]);
+      assert.strictEqual(commit.files, 1);
+      const patch = await showPatch(gitPath, cwd, merge);
+      assert.ok(patch.includes('b/x.txt'), patch);
+    } finally {
+      await temp.git('checkout', '-f', 'main');
+      await temp.git('reset', '--hard', rename);
+      await temp.git('branch', '-D', 'side');
     }
   });
 

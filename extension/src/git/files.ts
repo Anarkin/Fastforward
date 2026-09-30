@@ -53,7 +53,7 @@ export async function readFile(
       if (
         error instanceof Error &&
         'code' in error &&
-        error.code === 'ENOENT'
+        (error.code === 'ENOENT' || error.code === 'ENOTDIR')
       ) {
         return undefined;
       }

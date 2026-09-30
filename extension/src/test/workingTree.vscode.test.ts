@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { getGitApi } from '../git/repository';
-import { remoteDefaultBranches } from '../git/branches';
+import { aheadBehind, remoteDefaultBranches } from '../git/branches';
 import { showPatch } from '../git/diff';
 import { listTree, readFile } from '../git/files';
 import { headCommit, listHistory } from '../git/history';
@@ -181,9 +181,98 @@ suite('Repository files', function () {
       assert.deepStrictEqual(await remoteDefaultBranches(gitPath, cwd), [
         'origin/main',
       ]);
+      await repository.git('update-ref', 'refs/remotes/up/HEAD', 'HEAD');
+      assert.deepStrictEqual(await remoteDefaultBranches(gitPath, cwd), [
+        'origin/main',
+      ]);
     } finally {
       await repository.git('update-ref', '-d', 'refs/remotes/origin/main');
       await repository.git('symbolic-ref', '-d', 'refs/remotes/origin/HEAD');
+      await repository.git('update-ref', '-d', 'refs/remotes/up/HEAD');
+    }
+  });
+
+  test('counts the commits a branch is ahead and behind another', async () => {
+    const [tree] = await repository.resolve('HEAD^{tree}');
+    const extra = (
+      await repository.git('commit-tree', tree, '-p', 'HEAD', '-m', 'extra')
+    ).trim();
+    await repository.git('update-ref', 'refs/remotes/origin/main', extra);
+    try {
+      assert.deepStrictEqual(
+        await aheadBehind(
+          gitPath,
+          cwd,
+          'refs/remotes/origin/main',
+          'refs/heads/main',
+        ),
+        { ahead: 1, behind: 0 },
+      );
+      assert.deepStrictEqual(
+        await aheadBehind(
+          gitPath,
+          cwd,
+          'refs/heads/main',
+          'refs/remotes/origin/main',
+        ),
+        { ahead: 0, behind: 1 },
+      );
+      assert.deepStrictEqual(
+        await aheadBehind(
+          gitPath,
+          cwd,
+          'refs/heads/nope',
+          'refs/remotes/origin/main',
+        ),
+        { ahead: 0, behind: 0 },
+      );
+    } finally {
+      await repository.git('update-ref', '-d', 'refs/remotes/origin/main');
+    }
+  });
+
+  test('lists a conflicted file once', async () => {
+    const conflicted = await tempRepository(tempFolder('conflict'));
+    try {
+      await conflicted.commit('initial');
+      await conflicted.git('checkout', '-b', 'side');
+      await conflicted.commit('side', { 'conflict.txt': 'a\n' });
+      await conflicted.git('checkout', 'main');
+      await conflicted.commit('main', { 'conflict.txt': 'b\n' });
+      await assert.rejects(conflicted.git('merge', 'side'));
+      assert.deepStrictEqual(
+        await listTree(gitPath, conflicted.root, undefined),
+        ['conflict.txt'],
+      );
+    } finally {
+      removeFolder(conflicted.root);
+    }
+  });
+
+  test('shows a file with a NUL byte as binary, unless it comes late', async () => {
+    fs.writeFileSync(
+      path.join(cwd, 'bin.dat'),
+      Buffer.from([0x89, 0x50, 0, 1]),
+    );
+    fs.writeFileSync(path.join(cwd, 'late.txt'), `${'x'.repeat(9000)}\0`);
+    await repository.git('add', 'bin.dat', 'late.txt');
+    await repository.git('commit', '-m', 'binary');
+    try {
+      const binary = { content: '', binary: true };
+      for (const hash of ['HEAD', undefined]) {
+        assert.deepStrictEqual(
+          await readFile(gitPath, cwd, hash, 'bin.dat'),
+          binary,
+        );
+        assert.strictEqual(
+          (await readFile(gitPath, cwd, hash, 'late.txt')).binary,
+          false,
+        );
+      }
+    } finally {
+      await repository.git('reset', 'HEAD~1');
+      fs.rmSync(path.join(cwd, 'bin.dat'));
+      fs.rmSync(path.join(cwd, 'late.txt'));
     }
   });
 
@@ -192,6 +281,10 @@ suite('Repository files', function () {
     assert.deepStrictEqual(committed, { content: 'one\n', binary: false });
     const current = await readFile(gitPath, cwd, undefined, 'src/tracked.txt');
     assert.strictEqual(current.content, 'two\n');
+    await assert.rejects(
+      readFile(gitPath, cwd, 'HEAD', 'missing.txt'),
+      /missing.txt is not in HEAD/,
+    );
   });
 
   test('reads a file deleted since it was listed as empty', async () => {
@@ -202,6 +295,19 @@ suite('Repository files', function () {
         binary: false,
       },
     );
+  });
+
+  test('reads a file whose folder became a file as empty', async () => {
+    const folder = path.join(cwd, 'gone-dir');
+    fs.writeFileSync(folder, '');
+    try {
+      assert.deepStrictEqual(
+        await readFile(gitPath, cwd, undefined, 'gone-dir/f.txt'),
+        { content: '', binary: false },
+      );
+    } finally {
+      fs.rmSync(folder);
+    }
   });
 
   test('reads a symlink in the working tree by its target, as git does', async function () {
