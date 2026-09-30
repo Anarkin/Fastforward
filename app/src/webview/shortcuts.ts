@@ -1,19 +1,8 @@
 import { useEffect, useEffectEvent } from 'react';
 
-export interface Shortcut {
-  readonly key: string;
-  readonly description: string;
-}
+const shortcutKeys = ['c', 's'] as const;
 
-export const shortcuts = [
-  { key: 'c', description: 'Show or hide the commit list' },
-  {
-    key: 's',
-    description: 'Search branches, remotes and tags, or enter a hash',
-  },
-] as const satisfies readonly Shortcut[];
-
-export type ShortcutKey = (typeof shortcuts)[number]['key'];
+export type ShortcutKey = (typeof shortcutKeys)[number];
 
 type ShortcutEvent = Pick<
   KeyboardEvent,
@@ -28,9 +17,7 @@ type ShortcutEvent = Pick<
   | 'target'
 >;
 
-export function shortcutOf(
-  event: ShortcutEvent,
-): (typeof shortcuts)[number] | undefined {
+export function shortcutOf(event: ShortcutEvent): ShortcutKey | undefined {
   if (
     event.ctrlKey ||
     event.metaKey ||
@@ -46,7 +33,7 @@ export function shortcutOf(
     /^[a-z]$/i.test(event.key) || !/^Key[A-Z]$/.test(event.code)
       ? event.key.toLowerCase()
       : event.code.slice(3).toLowerCase();
-  return shortcuts.find((shortcut) => shortcut.key === key);
+  return shortcutKeys.find((shortcut) => shortcut === key);
 }
 
 export function handleShortcut(
@@ -54,7 +41,7 @@ export function handleShortcut(
   actions: Readonly<Partial<Record<ShortcutKey, () => void>>>,
 ): void {
   const shortcut = shortcutOf(event);
-  const action = shortcut && actions[shortcut.key];
+  const action = shortcut && actions[shortcut];
   if (action) {
     event.preventDefault();
     action();

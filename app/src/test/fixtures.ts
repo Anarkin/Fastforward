@@ -50,26 +50,6 @@ export function classesOf(tag: string): Set<string> {
   return new Set(names.split(/\s+/).filter(Boolean));
 }
 
-export function definitions(html: string): [string, string, string][] {
-  return [...html.matchAll(/<dt[^>]*>(.*?)<\/dt>(<dd[^>]*>)(.*?)<\/dd>/gs)].map(
-    ([, term, dd, description]) => [
-      textOf(term),
-      textOf(description),
-      [...classesOf(dd)].toSorted().join(' '),
-    ],
-  );
-}
-
-function textOf(html: string): string {
-  return html
-    .replaceAll(/<[^>]*>/g, '')
-    .replaceAll('&lt;', '<')
-    .replaceAll('&gt;', '>')
-    .replaceAll('&quot;', '"')
-    .replaceAll('&#x27;', "'")
-    .replaceAll('&amp;', '&');
-}
-
 export async function waitFor(
   condition: () => boolean,
   what: string,

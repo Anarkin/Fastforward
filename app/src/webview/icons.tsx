@@ -41,15 +41,6 @@ export function ForwardIcon() {
   );
 }
 
-export function HelpIcon() {
-  return (
-    <Icon>
-      <circle cx="8" cy="8" r="6.2" />
-      <path d="M6.3 6.4a1.75 1.75 0 1 1 2.5 1.6c-.5.25-.8.6-.8 1.15v.35M8 11.3v.05" />
-    </Icon>
-  );
-}
-
 export function RefreshIcon() {
   return (
     <Icon>

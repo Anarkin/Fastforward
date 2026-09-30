@@ -1,8 +1,5 @@
 import * as assert from 'node:assert';
-import { renderToStaticMarkup } from 'react-dom/server';
-import { handleShortcut, shortcutOf, shortcuts } from '../webview/shortcuts';
-import { ShortcutsPanel } from '../webview/shortcutsHelp';
-import { definitions } from './fixtures';
+import { handleShortcut, shortcutOf } from '../webview/shortcuts';
 
 const keyEvent = (
   key: string,
@@ -23,7 +20,7 @@ const keyEvent = (
 const press = (
   key: string,
   extra: Partial<Parameters<typeof shortcutOf>[0]> = {},
-) => shortcutOf(keyEvent(key, extra))?.key;
+) => shortcutOf(keyEvent(key, extra));
 
 function element(tagName: string, isContentEditable = false): EventTarget {
   const target = {
@@ -84,25 +81,5 @@ suite('Keyboard shortcuts', () => {
     assert.strictEqual(press('c', { target: element('SELECT') }), undefined);
     assert.strictEqual(press('c', { target: element('DIV', true) }), undefined);
     assert.strictEqual(press('c', { target: element('BUTTON') }), 'c');
-  });
-
-  test('lists every shortcut in the panel', () => {
-    const html = renderToStaticMarkup(
-      <ShortcutsPanel
-        container={{ current: null }}
-        onClose={() => {}}
-        dismissible
-      >
-        ?
-      </ShortcutsPanel>,
-    );
-    assert.deepStrictEqual(
-      definitions(html),
-      shortcuts.map((shortcut) => [
-        shortcut.key.toUpperCase(),
-        shortcut.description,
-        '',
-      ]),
-    );
   });
 });
