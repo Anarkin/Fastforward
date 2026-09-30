@@ -62,7 +62,11 @@ suite('Keyboard shortcuts', () => {
 
   test('lists every shortcut in the panel', () => {
     const html = renderToStaticMarkup(
-      <ShortcutsPanel container={{ current: null }} onClose={() => {}}>
+      <ShortcutsPanel
+        container={{ current: null }}
+        onClose={() => {}}
+        dismissable
+      >
         ?
       </ShortcutsPanel>,
     );

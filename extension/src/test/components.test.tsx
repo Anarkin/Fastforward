@@ -7,6 +7,7 @@ import { LocationsPopup } from '../webview/locations';
 import {
   historyButtonClick,
   HistoryMenu,
+  holdsDismissLayer,
   MessagePeek,
   NavBar,
   NavButtons,
@@ -256,6 +257,11 @@ suite('Peek', () => {
     assert.strictEqual(nextPeekMode('pinned', 'update', false), 'closed');
     assert.strictEqual(nextPeekMode('pinned', 'update', true), 'pinned');
     assert.strictEqual(nextPeekMode('open', 'update', false), 'open');
+  });
+
+  test('leaves Escape to what is open when only peeking', () => {
+    assert.strictEqual(holdsDismissLayer('peek'), false);
+    assert.strictEqual(holdsDismissLayer('open'), true);
   });
 });
 

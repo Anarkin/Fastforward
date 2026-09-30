@@ -203,6 +203,10 @@ function isPeek(mode: PeekMode): boolean {
   return mode === 'peek' || mode === 'pinned';
 }
 
+export function holdsDismissLayer(mode: PeekMode): boolean {
+  return mode === 'open';
+}
+
 export function nextPeekMode(
   mode: PeekMode,
   action: 'rest' | 'leave' | 'toggle' | 'update',
@@ -392,7 +396,11 @@ export function ShortcutsHelp() {
     >
       {button}
       {mode !== 'closed' && (
-        <ShortcutsPanel container={container} onClose={close}>
+        <ShortcutsPanel
+          container={container}
+          onClose={close}
+          dismissable={holdsDismissLayer(mode)}
+        >
           {button}
         </ShortcutsPanel>
       )}
@@ -403,13 +411,15 @@ export function ShortcutsHelp() {
 export function ShortcutsPanel({
   container,
   onClose,
+  dismissable,
   children,
 }: {
   container: React.RefObject<HTMLElement | null>;
   onClose: () => void;
+  dismissable: boolean;
   children: React.ReactNode;
 }) {
-  useDismiss(container, onClose);
+  useDismiss(container, onClose, { enabled: dismissable });
   return (
     <div className="shortcuts-panel">
       <div className="shortcuts-header">
