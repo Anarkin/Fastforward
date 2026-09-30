@@ -80,7 +80,7 @@ function step(lanes: Lanes, entry: ShownEntry, drawLines = true): GraphRow {
     }
   });
 
-  lanes.widest = Math.max(lanes.widest, before.length, lanes.hashes.length);
+  lanes.widest = Math.max(lanes.widest, lanes.hashes.length);
 
   while (
     lanes.hashes.length > 0 &&
