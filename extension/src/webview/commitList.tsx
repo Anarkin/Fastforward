@@ -119,7 +119,7 @@ export function CommitBubbles({
   }
   return (
     <div className="bubble-line">
-      {detached && <HeadBubble commit={hash} />}
+      {detached && <HeadBubble hash={hash} />}
       {refs.map((ref) => (
         <RefBubble key={`${ref.kind}:${ref.name}`} info={ref} />
       ))}

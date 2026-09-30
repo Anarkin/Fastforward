@@ -2,7 +2,17 @@ import * as assert from 'node:assert';
 import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { changesTreeElements, changesTreeRows } from '../webview/changesTree';
-import { MenuItems } from '../webview/contextMenu';
+import {
+  CheckedOutBranch,
+  CommitBubble,
+  HeadBubble,
+  RefBubble,
+} from '../webview/bubbles';
+import {
+  MenuItems,
+  OpenContextMenu,
+  type MenuTarget,
+} from '../webview/contextMenu';
 import { LocationsPopup } from '../webview/locations';
 import {
   historyButtonClick,
@@ -195,6 +205,30 @@ suite('Navigation bar', () => {
     ]);
   });
 
+  test('shows a committer of the same name under another address', () => {
+    const html = peek({ committerEmail: 'other@example.com' });
+    assert.deepStrictEqual(definitions(html)[2], [
+      'Committer',
+      'A <other@example.com>',
+      '',
+    ]);
+  });
+
+  test('starts the bubbles at the first ref without a detached HEAD', () => {
+    const hash = 'a'.repeat(40);
+    const html = peek({
+      hash,
+      refs: [
+        { kind: 'branch', name: 'main', commit: hash },
+        { kind: 'tag', name: 'v1.0', commit: hash },
+      ],
+    });
+    assert.deepStrictEqual(definitions(html).slice(-2), [
+      ['', 'main', 'first-bubble'],
+      ['', 'v1.0', ''],
+    ]);
+  });
+
   test("lists the commit's bubbles one to a row, without labels", () => {
     const hash = 'a'.repeat(40);
     const html = peek({
@@ -226,6 +260,54 @@ suite('Navigation bar', () => {
     assert.match(spinning, /disabled=""/);
     const idle = tagWith(buttons({}), 'title="Fetch', 'nav-button');
     assert.ok(!classesOf(idle).has('running'));
+  });
+});
+
+suite('Bubbles', () => {
+  test('marks only the branch checked out, and a ref gone missing', () => {
+    const html = renderToStaticMarkup(
+      <CheckedOutBranch.Provider value="main">
+        <RefBubble info={{ kind: 'branch', name: 'main' }} />
+        <RefBubble info={{ kind: 'tag', name: 'main' }} />
+        <RefBubble info={{ kind: 'branch', name: 'gone' }} missing />
+        <CommitBubble hash={'b'.repeat(40)} />
+      </CheckedOutBranch.Provider>,
+    );
+    assert.match(
+      tagWith(html, '', 'badge', 'branch', 'checked-out'),
+      /title="main, checked out"/,
+    );
+    assert.ok(!classesOf(tagWith(html, '', 'badge', 'tag')).has('checked-out'));
+    tagWith(
+      html,
+      'title="gone doesn&#x27;t exist anymore"',
+      'badge',
+      'missing',
+    );
+    assert.match(
+      html,
+      new RegExp(`title="Commit ${'b'.repeat(40)}">bbbbbbb</span>`),
+    );
+  });
+
+  test('offers the menu of a detached HEAD commit', () => {
+    const hash = 'c'.repeat(40);
+    const targets: MenuTarget[] = [];
+    let bubble: React.ReactElement<{ onContextMenu: () => void }> | undefined;
+    const Capture = () => (bubble = HeadBubble({ hash }));
+    renderToStaticMarkup(
+      <OpenContextMenu.Provider value={(_, target) => targets.push(target)}>
+        <Capture />
+      </OpenContextMenu.Provider>,
+    );
+    assert.match(
+      renderToStaticMarkup(bubble),
+      new RegExp(`title="HEAD is detached at ${hash}">HEAD ccccccc<`),
+    );
+    bubble?.props.onContextMenu();
+    assert.deepStrictEqual(targets, [
+      { kind: 'ref', ref: { kind: 'commit', name: hash } },
+    ]);
   });
 });
 

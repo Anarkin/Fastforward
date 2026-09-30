@@ -703,10 +703,6 @@ body.resizing {
   color: var(--vscode-descriptionForeground);
 }
 
-.badge.clickable {
-  cursor: pointer;
-}
-
 .badge.missing {
   opacity: 0.5;
   text-decoration: line-through;
