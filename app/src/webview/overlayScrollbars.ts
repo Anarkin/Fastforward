@@ -1,3 +1,5 @@
+export const overlayScrollbarClass = 'overlay-scrollbar';
+
 export interface Thumb {
   readonly offset: number;
   readonly length: number;
@@ -68,7 +70,7 @@ class Bar {
   private drag: { pointer: number; scroll: number; ratio: number } | undefined;
 
   constructor(private readonly axis: Axis) {
-    this.element.className = `overlay-scrollbar ${axis}`;
+    this.element.className = `${overlayScrollbarClass} ${axis}`;
     this.element.addEventListener('pointerdown', this.onPointerDown);
     this.element.addEventListener('pointermove', this.onPointerMove);
     this.element.addEventListener('pointerup', this.onPointerUp);
