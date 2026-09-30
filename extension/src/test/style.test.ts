@@ -69,7 +69,7 @@ suite('Style', () => {
     const selected = declarationsOf('.row.selected,\n.commit.selected');
     assert.match(
       selected,
-      /background: color-mix\(\s*in srgb,\s*var\(--vscode-focusBorder\)/,
+      /background: color-mix\(\s*in srgb,\s*var\(--color-focus-border\)/,
     );
     assert.doesNotMatch(selected, /shade-background/);
   });
@@ -84,11 +84,11 @@ suite('Style', () => {
   test('draws the checked-out branch in the solid color a branch is tinted with, in the text color made for it', () => {
     assert.match(
       declarationsOf('.badge.branch'),
-      /background: color-mix\(\s*in srgb,\s*var\(--vscode-button-background\) 25%/,
+      /background: color-mix\(\s*in srgb,\s*var\(--color-accent\) 25%/,
     );
     const checkedOut = declarationsOf('.badge.checked-out');
-    assert.match(checkedOut, /color: var\(--vscode-button-foreground\);/);
-    assert.match(checkedOut, /background: var\(--vscode-button-background\);/);
+    assert.match(checkedOut, /color: var\(--color-accent-foreground\);/);
+    assert.match(checkedOut, /background: var\(--color-accent\);/);
   });
 
   test('hides every column but the commits while no commit is selected', () => {
@@ -109,7 +109,7 @@ suite('Style', () => {
     assert.match(resizer, /background-clip: content-box;/);
     assert.match(
       declarationsOf('.resizer:hover'),
-      /background-color: var\(--vscode-button-background\);/,
+      /background-color: var\(--color-accent\);/,
     );
   });
 
@@ -160,19 +160,10 @@ suite('Style', () => {
     }
   });
 
-  test('outlines no loading placeholder on hover in high contrast themes', () => {
-    assert.match(
-      declarationsOf(
-        ':is(.vscode-high-contrast, .vscode-high-contrast-light)\n  :is(.skeleton-row, .commit.placeholder, .hash-suggestion.empty):hover',
-      ),
-      /outline: none/,
-    );
-  });
-
   test('highlights no disabled menu item on hover, whose text would vanish in the selection color', () => {
     assert.match(
       declarationsOf('.menu-item:hover:not(:disabled)'),
-      /color: var\(--vscode-menu-selectionForeground\);/,
+      /color: var\(--color-menu-selection-foreground\);/,
     );
     assert.doesNotMatch(css, /\.menu-item:hover\s*{/);
   });
@@ -195,13 +186,13 @@ suite('Style', () => {
     const pill = declarationsOf('.switch-option.active::before');
     assert.match(pill, /position: absolute;/);
     assert.match(pill, /inset: 0;/);
-    assert.match(pill, /background: var\(--vscode-editor-background\);/);
+    assert.match(pill, /background: var\(--color-background\);/);
   });
 
   test('edges a popup with an inset shadow rather than a border', () => {
     assert.match(
       css,
-      /--popup-shadow:\s*inset 0 0 0 1px var\(--widget-border\)/,
+      /--popup-shadow:\s*inset 0 0 0 1px var\(--color-widget-border\)/,
     );
   });
 
@@ -217,14 +208,14 @@ suite('Style', () => {
   test("lays a sticky location row's see-through hover color over its solid background, so rows under it stay hidden", () => {
     assert.match(
       declarationsOf('.locations-list .tree-row.sticky:hover'),
-      /background:\s*linear-gradient\(\s*var\(--vscode-list-hoverBackground\),\s*var\(--vscode-list-hoverBackground\)\s*\),\s*var\(--popup-background\);/,
+      /background:\s*linear-gradient\(\s*var\(--color-list-hover-background\),\s*var\(--color-list-hover-background\)\s*\),\s*var\(--popup-background\);/,
     );
   });
 
   test('writes tag badges in the text color, like branch badges', () => {
     assert.match(
       declarationsOf('.badge.tag'),
-      /color: var\(--vscode-foreground\)/,
+      /color: var\(--color-foreground\)/,
     );
   });
 });

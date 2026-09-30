@@ -2,6 +2,7 @@ import { createRoot } from 'react-dom/client';
 import type { ToExtension } from '../shared/protocol';
 import { App } from './App';
 import { errorText } from './errors';
+import './theme.css';
 import './style.css';
 
 declare function acquireVsCodeApi(): {

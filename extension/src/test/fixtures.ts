@@ -83,8 +83,8 @@ export async function waitFor(
   }
 }
 
-export function stylesheet(): string {
-  return readFileSync(join(__dirname, '../../src/webview/style.css'), 'utf8');
+export function stylesheet(name = 'style.css'): string {
+  return readFileSync(join(__dirname, '../../src/webview', name), 'utf8');
 }
 
 export function stylesheetPx(pattern: RegExp): number {
