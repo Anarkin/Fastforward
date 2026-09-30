@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react';
 import { shortHash } from '../shared/hashes';
-import type { BookmarkRef, RefInfo } from '../shared/protocol';
+import type { BookmarkRef } from '../shared/protocol';
 import { refMenuTarget, useContextMenu } from './contextMenu';
 
 export const CheckedOutBranch = createContext<string | undefined>(undefined);
@@ -63,18 +63,4 @@ export function RefBubble({
       {info.name}
     </span>
   );
-}
-
-export function commitBubbles(
-  hash: string,
-  refs: readonly RefInfo[],
-  detached: boolean,
-): { key: string; element: React.ReactElement }[] {
-  return [
-    ...(detached ? [{ key: 'HEAD', element: <HeadBubble hash={hash} /> }] : []),
-    ...refs.map((ref) => ({
-      key: `${ref.kind}:${ref.name}`,
-      element: <RefBubble info={ref} />,
-    })),
-  ];
 }
