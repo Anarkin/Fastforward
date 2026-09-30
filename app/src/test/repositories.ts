@@ -84,7 +84,7 @@ let gitPath: Promise<string> | undefined;
 
 export function installedGit(): Promise<string> {
   gitPath ??= findGit().then((git) => {
-    assert.ok(git.kind === 'found', 'git 2.31 or later is not installed');
+    assert.ok(git.kind === 'found', 'git 2.52 or later is not installed');
     return git.path;
   });
   return gitPath;

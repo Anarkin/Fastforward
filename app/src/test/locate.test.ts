@@ -72,11 +72,11 @@ suite('Finding git', () => {
     assert.strictEqual(parseVersion('command not found'), undefined);
   });
 
-  test('supports git 2.31 and later', () => {
-    assert.strictEqual(isSupported('2.31.0'), true);
+  test('supports git 2.52 and later', () => {
+    assert.strictEqual(isSupported('2.52.0'), true);
     assert.strictEqual(isSupported('2.55.0'), true);
     assert.strictEqual(isSupported('3.0'), true);
-    assert.strictEqual(isSupported('2.30.9'), false);
+    assert.strictEqual(isSupported('2.51.2'), false);
     assert.strictEqual(isSupported('1.99.0'), false);
   });
 });
