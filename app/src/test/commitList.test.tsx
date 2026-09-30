@@ -57,7 +57,7 @@ suite('Commit list rows', () => {
     assert.strictEqual(fixedRowHeight(undefined, 0, 0, 30), 30);
   });
 
-  test("puts a commit's bubbles on one line that wraps", () => {
+  test("puts a commit's bubbles on one line that can break between them", () => {
     const html = renderToStaticMarkup(
       <CommitBubbles
         hash={'a'.repeat(40)}
@@ -71,7 +71,7 @@ suite('Commit list rows', () => {
     assert.strictEqual(html.match(/class="bubble-line"/g)?.length, 1);
     assert.match(
       html,
-      /^<div class="bubble-line"><span class="badge head[^>]*>HEAD aaaaaaa<\/span><span class="badge branch[^>]*>main<\/span><span class="badge remote[^>]*>origin\/main<\/span><\/div>$/,
+      /^<div class="bubble-line"><span class="badge head[^>]*>HEAD aaaaaaa<\/span><wbr\/><span class="badge branch[^>]*>main<\/span><wbr\/><span class="badge remote[^>]*>origin\/main<\/span><\/div>$/,
     );
   });
 

@@ -156,12 +156,17 @@ export function CommitBubbles({
   if (!detached && refs.length === 0) {
     return null;
   }
+  const bubbles = [
+    ...(detached ? [<HeadBubble key="HEAD" hash={hash} />] : []),
+    ...refs.map((ref) => (
+      <RefBubble key={`${ref.kind}:${ref.name}`} info={ref} />
+    )),
+  ];
   return (
     <div className="bubble-line">
-      {detached && <HeadBubble hash={hash} />}
-      {refs.map((ref) => (
-        <RefBubble key={`${ref.kind}:${ref.name}`} info={ref} />
-      ))}
+      {bubbles.flatMap((bubble, index) =>
+        index === 0 ? [bubble] : [<wbr key={`break:${index}`} />, bubble],
+      )}
     </div>
   );
 }
