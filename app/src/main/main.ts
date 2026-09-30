@@ -30,6 +30,7 @@ import { themeCss } from '../theme';
 import { FastforwardView, type Connection } from '../view';
 import { appFile, appOrigin, appScheme, visibleBounds } from './files';
 import { loginShellPath, mergePaths } from './shellPath';
+import { checksForUpdates } from './updates';
 
 const dist = __dirname;
 const development = !app.isPackaged;
@@ -211,15 +212,8 @@ async function start(): Promise<void> {
   checkForUpdates(log);
 }
 
-// Squirrel.Mac only installs signed updates, and the macOS app isn't signed;
-// the portable Windows exe, which sets PORTABLE_EXECUTABLE_DIR, has nothing
-// installed to update
 function checkForUpdates(log: Log): void {
-  if (
-    development ||
-    process.platform === 'darwin' ||
-    process.env.PORTABLE_EXECUTABLE_DIR
-  ) {
+  if (!checksForUpdates(development, process.platform, process.env)) {
     return;
   }
   autoUpdater.logger = {

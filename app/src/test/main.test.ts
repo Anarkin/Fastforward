@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { appFile, visibleBounds } from '../main/files';
 import { mergePaths, pathFromOutput } from '../main/shellPath';
+import { checksForUpdates } from '../main/updates';
 
 suite('App files', () => {
   const root = path.resolve('dist');
@@ -89,5 +90,19 @@ suite('Login shell PATH', () => {
       '/opt/homebrew/bin:/usr/bin:/bin',
     );
     assert.strictEqual(mergePaths(undefined, '/usr/bin', ':'), '/usr/bin');
+  });
+});
+
+suite('Updates', () => {
+  test('checks for updates only in an installed app on Windows or Linux', () => {
+    assert.ok(checksForUpdates(false, 'win32', {}));
+    assert.ok(checksForUpdates(false, 'linux', {}));
+    assert.ok(!checksForUpdates(true, 'win32', {}));
+    assert.ok(!checksForUpdates(false, 'darwin', {}));
+    assert.ok(
+      !checksForUpdates(false, 'win32', {
+        PORTABLE_EXECUTABLE_DIR: 'C:\\Apps',
+      }),
+    );
   });
 });

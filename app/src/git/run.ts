@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 
-const configArgs = [
+export const gitConfigArgs = [
   '-c',
   'core.quotePath=false',
   '-c',
@@ -23,7 +23,7 @@ const configArgs = [
 // refresh running while the user commits elsewhere doesn't hold index.lock and
 // make that commit fail; and with no terminal to answer in, git fails rather
 // than waits when it would prompt for credentials
-function env(pathspecMagic = false): NodeJS.ProcessEnv {
+export function gitEnv(pathspecMagic = false): NodeJS.ProcessEnv {
   return {
     ...process.env,
     GIT_OPTIONAL_LOCKS: '0',
@@ -58,10 +58,10 @@ export function runGitBytes(
   return new Promise((resolve, reject) => {
     const child = execFile(
       gitPath,
-      [...configArgs, ...args],
+      [...gitConfigArgs, ...args],
       {
         cwd,
-        env: env(pathspecMagic),
+        env: gitEnv(pathspecMagic),
         maxBuffer: maxOutput,
         windowsHide: true,
         encoding: 'buffer',

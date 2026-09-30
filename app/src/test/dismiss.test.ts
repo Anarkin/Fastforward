@@ -36,7 +36,7 @@ function open(
 }
 
 suite('Dismissing menus and popups', () => {
-  test('closes only the top one on Escape, keeping it from VS Code', () => {
+  test('closes only the top one on Escape, keeping it from anything else', () => {
     const window = new EventTarget();
     const popup = open(window);
     const menu = open(window);

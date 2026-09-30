@@ -1909,14 +1909,9 @@ suite('View', function () {
     test('sorts tabs by name and closes one, opening the next', async () => {
       const zeta = await tempRepository(path.join(folder, 'Zeta'));
       await zeta.commit('zeta');
-      // Without the tab of the repository open in VS Code, which the view
-      // adds first when the Git extension has opened it
-      const ours = new Set(['main', 'other', 'Zeta']);
       await withView(log, [other, zeta.root, repository.root], async (own) => {
         const names = () =>
-          (own.page.last('tabs')?.tabs ?? [])
-            .map((tab) => tab.name)
-            .filter((name) => ours.has(name));
+          (own.page.last('tabs')?.tabs ?? []).map((tab) => tab.name);
         await own.connection.receive({ type: 'sortTabs' });
         assert.deepStrictEqual(names(), ['main', 'other', 'Zeta']);
         await own.connection.receive({ type: 'closeTab', root: other });
