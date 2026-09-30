@@ -34,10 +34,17 @@ export interface PatchScope {
   readonly oldPath?: string;
   readonly exclude?: readonly string[];
   readonly entireFile?: boolean;
+  readonly ignoreWhitespace?: boolean;
 }
 
-export function contextArgs({ entireFile }: PatchScope): string[] {
-  return entireFile ? ['--unified=2147483647'] : [];
+export function diffOptionArgs({
+  entireFile,
+  ignoreWhitespace,
+}: PatchScope): string[] {
+  return [
+    ...(entireFile ? ['--unified=2147483647'] : []),
+    ...(ignoreWhitespace ? ['--ignore-all-space'] : []),
+  ];
 }
 
 export function pathspecs({ path, oldPath, exclude = [] }: PatchScope): {
@@ -72,7 +79,7 @@ export function showPatch(
   return runGit(
     gitPath,
     cwd,
-    [...showArgs, '--patch', ...contextArgs(scope), hash, ...spec.args],
+    [...showArgs, '--patch', ...diffOptionArgs(scope), hash, ...spec.args],
     {
       pathspecMagic: spec.magic,
     },

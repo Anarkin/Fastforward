@@ -14,6 +14,7 @@ const maxRecent = 20;
 const columnWidthsKey = 'columnWidths';
 export const collapseMergesKey = 'collapseMerges';
 export const entireFilePinnedKey = 'entireFilePinned';
+export const ignoreWhitespaceKey = 'ignoreWhitespace';
 export const soloKey = 'soloRepositories';
 const filesModeKey = 'filesMode';
 export const bookmarksKey = 'vips';
@@ -148,6 +149,7 @@ export class Storage {
       columnWidths: this.store.get<number[]>(columnWidthsKey),
       collapseMerges: this.collapseMerges,
       entireFilePinned: this.entireFilePinned,
+      ignoreWhitespace: this.ignoreWhitespace,
       filesMode: this.store.get<FilesMode>(
         filesModeKey,
         defaultLayout.filesMode,
@@ -169,6 +171,14 @@ export class Storage {
 
   async setEntireFilePinned(pinned: boolean): Promise<void> {
     await this.store.update(entireFilePinnedKey, pinned);
+  }
+
+  get ignoreWhitespace(): boolean {
+    return this.store.get(ignoreWhitespaceKey, defaultLayout.ignoreWhitespace);
+  }
+
+  async setIgnoreWhitespace(ignore: boolean): Promise<void> {
+    await this.store.update(ignoreWhitespaceKey, ignore);
   }
 
   async setCollapseMerges(collapse: boolean): Promise<void> {

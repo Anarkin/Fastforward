@@ -246,6 +246,14 @@ export class FastforwardView {
         }
         return;
       }
+      case 'setIgnoreWhitespace': {
+        await storage.setIgnoreWhitespace(message.ignore);
+        const context = await this.context(session);
+        if (context?.tab.hash !== undefined) {
+          await this.sendDiff(context, context.tab.hash);
+        }
+        return;
+      }
       case 'setSolo': {
         const context = await this.context(session, message.root);
         await storage.setSolo(message.root, message.solo);
@@ -1018,6 +1026,7 @@ export class FastforwardView {
     const patch = await this.patchOf(context, hash, {
       path: file,
       oldPath: change?.oldPath,
+      ignoreWhitespace: this.storage.ignoreWhitespace,
     });
     if (context.tab.hash === hash) {
       context.post({ type: 'fileDiff', hash, path: file, patch, diff });
@@ -1105,11 +1114,13 @@ export class FastforwardView {
               .flatMap((large) =>
                 large.oldPath ? [large.oldPath, large.path] : [large.path],
               ),
+            ignoreWhitespace: this.storage.ignoreWhitespace,
           }
         : {
             path: file,
             oldPath: change?.oldPath,
             entireFile: context.tab.entireFile || this.storage.entireFilePinned,
+            ignoreWhitespace: this.storage.ignoreWhitespace,
           };
     const patch = await this.patchOf(context, hash, scope);
     const shownDiff = context.tab.shown.diff;

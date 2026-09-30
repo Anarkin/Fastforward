@@ -33,7 +33,7 @@ import {
   type MenuTarget,
   type OpenMenu,
 } from './contextMenu';
-import { Diff, EntireFileButtons } from './diffColumn';
+import { Diff, DiffOptions } from './diffColumn';
 import { Files } from './filesColumn';
 import { foldersOf } from './fileTree';
 import { hasRef } from '../shared/refNames';
@@ -96,6 +96,9 @@ export function App({ post, listen }: Props) {
     defaultLayout.entireFilePinned,
   );
   const [entireFileOf, setEntireFileOf] = useState<string>();
+  const [ignoreWhitespace, setIgnoreWhitespace] = useState(
+    defaultLayout.ignoreWhitespace,
+  );
   const [collapseMerges, setCollapseMerges] = useState(
     defaultLayout.collapseMerges,
   );
@@ -133,6 +136,7 @@ export function App({ post, listen }: Props) {
           loadColumnWidths(message.columnWidths);
           setCollapseMerges(message.collapseMerges);
           setEntireFilePinned(message.entireFilePinned);
+          setIgnoreWhitespace(message.ignoreWhitespace);
           setFilesMode(message.filesMode);
           break;
         case 'solo':
@@ -283,6 +287,10 @@ export function App({ post, listen }: Props) {
   const showEntireFile = (entire: boolean) => {
     setEntireFileOf(entire ? shownFile : undefined);
     postTab({ type: 'showEntireFile', entire });
+  };
+  const changeIgnoreWhitespace = (ignore: boolean) => {
+    setIgnoreWhitespace(ignore);
+    post({ type: 'setIgnoreWhitespace', ignore });
   };
   const pinEntireFile = (pinned: boolean) => {
     setEntireFilePinned(pinned);
@@ -477,12 +485,14 @@ export function App({ post, listen }: Props) {
                       (entireFilePinned || entireFileOf === shownFile)
                     }
                     entireFile={
-                      <EntireFileButtons
+                      <DiffOptions
                         entire={entireFileOf === shownFile}
                         pinned={entireFilePinned}
                         canShow={path !== undefined}
                         onEntire={showEntireFile}
                         onPin={pinEntireFile}
+                        ignoreWhitespace={ignoreWhitespace}
+                        onIgnoreWhitespace={changeIgnoreWhitespace}
                       />
                     }
                   />

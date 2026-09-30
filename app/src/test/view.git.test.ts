@@ -14,6 +14,7 @@ import {
   bookmarksKey,
   collapseMergesKey,
   entireFilePinnedKey,
+  ignoreWhitespaceKey,
   recentKey,
   sameRoot,
   soloKey,
@@ -1932,6 +1933,7 @@ suite('View', function () {
           });
         const entire = () =>
           /^ line 1$/m.test(view.page.last('diff')?.patch ?? '');
+        await view.connection.receive({ type: 'pinEntireFile', pinned: false });
         await view.connection.receive({
           type: 'selectCommit',
           root: long.root,
@@ -1969,6 +1971,32 @@ suite('View', function () {
         await view.connection.receive({ type: 'selectTab', root: other });
         await view.connection.receive({ type: 'selectTab', root: long.root });
         assert.strictEqual(entire(), false);
+      });
+    });
+
+    test('ignores whitespace by default, and shows changes to it once asked, remembering that', async () => {
+      const spaced = await tempRepository(path.join(folder, 'spaced'));
+      await spaced.commit('first', { 'a.txt': 'one\ntwo\n' });
+      await spaced.commit('indent', { 'a.txt': '  one\ntwo\n' });
+      const [indent] = await spaced.resolve('HEAD');
+      await withView(log, [spaced.root], async (view) => {
+        const changed = () =>
+          /^[-+] {0,2}one$/m.test(view.page.last('diff')?.patch ?? '');
+        assert.strictEqual(view.page.last('layout')?.ignoreWhitespace, true);
+        await view.connection.receive({
+          type: 'selectCommit',
+          root: spaced.root,
+          hash: indent,
+        });
+        assert.strictEqual(changed(), false);
+        await view.connection.receive({
+          type: 'setIgnoreWhitespace',
+          ignore: false,
+        });
+        assert.strictEqual(changed(), true);
+        assert.strictEqual(view.store.get(ignoreWhitespaceKey), false);
+        await view.connection.receive({ type: 'ready' });
+        assert.strictEqual(view.page.last('layout')?.ignoreWhitespace, false);
       });
     });
 

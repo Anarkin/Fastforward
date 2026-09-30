@@ -3,7 +3,7 @@ import { isLargeChange, type FileChange } from '../shared/protocol';
 import { Column } from './column';
 import { parsePatch, type DiffFile } from './diff';
 import { DiffView, type WholeFile } from './diffView';
-import { EntireFileIcon, PinIcon } from './icons';
+import { EntireFileIcon, IgnoreWhitespaceIcon, PinIcon } from './icons';
 
 export function withLargeFiles(
   parsed: readonly DiffFile[],
@@ -31,22 +31,26 @@ export function withLargeFiles(
   return [...result, ...byPath.values()];
 }
 
-export function EntireFileButtons({
+export function DiffOptions({
   entire,
   pinned,
   canShow,
+  ignoreWhitespace,
   onEntire,
   onPin,
+  onIgnoreWhitespace,
 }: {
   entire: boolean;
   pinned: boolean;
   canShow: boolean;
+  ignoreWhitespace: boolean;
   onEntire: (entire: boolean) => void;
   onPin: (pinned: boolean) => void;
+  onIgnoreWhitespace: (ignore: boolean) => void;
 }) {
   const shown = entire || pinned;
   return (
-    <div className="nav-buttons entire-file">
+    <div className="nav-buttons diff-options">
       <button
         className={`nav-button toggle ${shown ? 'active' : ''}`}
         title={
@@ -71,6 +75,19 @@ export function EntireFileButtons({
         onClick={() => onPin(!pinned)}
       >
         <PinIcon />
+      </button>
+      <span className="nav-button-space" />
+      <button
+        className={`nav-button toggle ${ignoreWhitespace ? 'active' : ''}`}
+        title={
+          ignoreWhitespace
+            ? 'Ignoring whitespace: show changes to it again'
+            : 'Ignore Whitespace'
+        }
+        aria-pressed={ignoreWhitespace}
+        onClick={() => onIgnoreWhitespace(!ignoreWhitespace)}
+      >
+        <IgnoreWhitespaceIcon />
       </button>
     </div>
   );
