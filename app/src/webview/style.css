@@ -699,8 +699,8 @@ body.resizing {
   margin: 0;
   padding: 0 12px;
   color: var(--color-foreground);
-  background: var(--color-input-background);
-  border: 1px solid var(--color-input-border);
+  background: var(--color-panel-background);
+  border: 1px solid var(--color-border);
   border-radius: calc(var(--search-height) / 2);
   outline: none;
 }
@@ -1134,8 +1134,9 @@ body.resizing {
 }
 
 .address-bar:hover {
-  background: var(--color-input-background);
-  border-color: var(--color-input-border);
+  background:
+    linear-gradient(var(--hover-background), var(--hover-background)),
+    var(--color-border);
 }
 
 .address-text {

@@ -28,9 +28,6 @@
       "accent": "#0069cc",
       "accent-foreground": "#ffffff",
 
-      "input-background": "#ffffff",
-      "input-border": "#d8d8d866",
-
       "menu-background": "#fafafd",
       "menu-border": "#e4e5e6",
       "menu-separator": "#eeeef1",
@@ -68,9 +65,6 @@
 
       "accent": "#297aa0",
       "accent-foreground": "#ffffff",
-
-      "input-background": "#191a1b",
-      "input-border": "#333536",
 
       "menu-background": "#202122",
       "menu-border": "#2a2b2c",
