@@ -25,7 +25,7 @@ import {
   RefBubble,
 } from './bubbles';
 import { OpenContextMenu, useDismiss } from './contextMenu';
-import { IndentGuides, treeIndent, twistyWidth } from './tree';
+import { treeIndent, twistyWidth } from './tree';
 
 const groups: readonly { kind: RefKind; title: string }[] = [
   { kind: 'branch', title: 'Local branches' },
@@ -565,7 +565,6 @@ function TreeChildren({
               })
             }
           >
-            <IndentGuides depth={depth} />
             {child.ref ? (
               <RefLabel info={child.ref}>{child.name}</RefLabel>
             ) : (
@@ -603,7 +602,6 @@ function TreeFolder({
         }}
         onClick={() => setOpen(!open)}
       >
-        <IndentGuides depth={depth} />
         <span className="twisty">{open ? '▾' : '▸'}</span>
         {node.name}
       </div>

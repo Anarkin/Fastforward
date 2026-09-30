@@ -9,20 +9,6 @@ export function treeIndent(depth: number): number {
   return treePadding + depth * twistyWidth;
 }
 
-export function IndentGuides({ depth }: { depth: number }) {
-  return (
-    <>
-      {Array.from({ length: depth }, (_, level) => (
-        <span
-          key={level}
-          className="indent-guide"
-          style={{ left: treeIndent(level) + twistyWidth / 2 }}
-        />
-      ))}
-    </>
-  );
-}
-
 export const byName = (a: { name: string }, b: { name: string }) =>
   a.name.localeCompare(b.name);
 
@@ -48,7 +34,6 @@ export function FolderRow({
       title={path}
       onClick={() => onToggle(path)}
     >
-      <IndentGuides depth={depth} />
       <span className="twisty">{open ? '▾' : '▸'}</span>
       {children}
     </div>
@@ -77,7 +62,6 @@ export function FileRow({
       title={change ? changeTitle(change) : path}
       onClick={() => onSelect(path === selected ? undefined : path)}
     >
-      <IndentGuides depth={depth} />
       <span className={change ? statusClass(change) : 'path'}>{name}</span>
       {change && (
         <LineCounts

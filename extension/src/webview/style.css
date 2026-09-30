@@ -343,18 +343,6 @@ body.resizing {
   color: var(--vscode-descriptionForeground);
 }
 
-.tree-row {
-  position: relative;
-}
-
-.indent-guide {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: transparent;
-}
-
 /* Exact heights, adding up to commitRowHeight: 5 + 20 + 2 + 18 + 4 + 1 border,
    and the bubbles' lines below */
 .commit {
@@ -818,8 +806,6 @@ body.resizing {
   align-items: center;
 }
 
-/* Above the rows scrolling under it, which are positioned too and come later,
-   so would be drawn on top */
 .locations-list .tree-row.sticky {
   position: sticky;
   z-index: 1;
