@@ -16,6 +16,7 @@ import {
 import { autoUpdater } from 'electron-updater';
 import { findGit, minimumGitVersion } from '../git/locate';
 import { fileLog, type Log } from '../log';
+import { titleBarHeight } from '../shared/titleBar';
 import type { ToHost, ToWebview } from '../shared/protocol';
 import { JsonFileStore, Storage } from '../storage';
 import { FastforwardView, type Connection } from '../view';
@@ -114,6 +115,15 @@ async function start(): Promise<void> {
       void connection?.receive(message);
     }
   });
+  ipcMain.on('windowButtonColor', (event, color: unknown) => {
+    if (
+      event.sender === window.webContents &&
+      typeof color === 'string' &&
+      process.platform !== 'darwin'
+    ) {
+      window.setTitleBarOverlay({ color: '#00000000', symbolColor: color });
+    }
+  });
   window.on('closed', () => connection?.dispose());
   app.on('second-instance', () => {
     if (window.isMinimized()) {
@@ -168,6 +178,12 @@ function createWindow(store: JsonFileStore): BrowserWindow {
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#121314' : '#ffffff',
     icon:
       process.platform === 'darwin' ? undefined : path.join(dist, 'icon.png'),
+    titleBarStyle: 'hidden',
+    titleBarOverlay:
+      process.platform === 'darwin'
+        ? undefined
+        : { color: '#00000000', height: titleBarHeight },
+    trafficLightPosition: { x: 12, y: (titleBarHeight - 12) / 2 },
     webPreferences: {
       preload: path.join(dist, 'preload.js'),
       contextIsolation: true,

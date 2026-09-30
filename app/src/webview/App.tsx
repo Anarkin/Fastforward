@@ -40,6 +40,7 @@ import { foldersOf } from './fileTree';
 import { hasRef } from '../shared/refNames';
 import { AddressBar, NavButtons } from './navBar';
 import { TabBar } from './tabBar';
+import { TitleBar, windowTitle } from './titleBar';
 import {
   foldersOfTab,
   openFolders,
@@ -378,6 +379,7 @@ export function App({ post, listen }: Props) {
       <CheckedOutBranch.Provider value={repository?.head}>
         <DetachedHead.Provider value={detached}>
           <div className="app">
+            <TitleBar title={windowTitle(activeTab)} />
             <TabBar
               tabs={tabs}
               active={activeTab}

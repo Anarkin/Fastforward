@@ -8,13 +8,28 @@ import './style.css';
 declare global {
   interface Window {
     readonly fastforward: {
+      readonly platform: string;
       post(message: ToHost): void;
+      setWindowButtonColor(color: string): void;
       listen(handler: (message: ToWebview) => void): () => void;
     };
   }
 }
 
 const { fastforward } = window;
+document.documentElement.dataset.platform = fastforward.platform;
+
+const followTheme = () =>
+  fastforward.setWindowButtonColor(
+    getComputedStyle(document.documentElement)
+      .getPropertyValue('--color-foreground')
+      .trim(),
+  );
+followTheme();
+matchMedia('(prefers-color-scheme: dark)').addEventListener(
+  'change',
+  followTheme,
+);
 const post = (message: ToHost) => fastforward.post(message);
 const listen = (handler: (message: ToWebview) => void) =>
   fastforward.listen(handler);
