@@ -285,7 +285,27 @@ const counts = (html: string) =>
 
 suite('Search', () => {
   test('offers a way back out beside its field', () => {
-    tagWith(popup(''), 'title="Close (Esc)"', 'nav-button');
+    let closed = 0;
+    const element = renderedBy(LocationsPopup, {
+      bookmarks: [],
+      repository: undefined,
+      selected: undefined,
+      anchor: { current: null },
+      lookup: undefined,
+      onLookup: noop,
+      onJump: noop,
+      onClose: () => closed++,
+      query: '',
+      onQuery: noop,
+    });
+    assert.ok(isValidElement<{ children: React.ReactElement[] }>(element));
+    const row = element.props.children[0];
+    assert.ok(isValidElement<{ children: React.ReactElement[] }>(row));
+    const back = row.props.children[0];
+    assert.ok(isValidElement<{ title: string; onClick: () => void }>(back));
+    assert.strictEqual(back.props.title, 'Close (Esc)');
+    back.props.onClick();
+    assert.strictEqual(closed, 1);
   });
 
   test('shows refs as trees, folders first, opening a lone folder', () => {
@@ -443,16 +463,33 @@ suite('Menu items', () => {
         items={[
           { label: 'View as List', checked: true, radio: true, onClick: noop },
           { label: 'Collapse', checked: false, onClick: noop },
+        ]}
+        onClose={noop}
+      />,
+    );
+    assert.match(
+      html,
+      /role="menuitemradio" aria-checked="true"><span class="menu-check">✓<\/span>View as List/,
+    );
+    assert.match(
+      html,
+      /role="menuitemcheckbox" aria-checked="false"><span class="menu-check"><\/span>Collapse/,
+    );
+  });
+
+  test('separates groups and greys out what cannot run', () => {
+    const html = renderToStaticMarkup(
+      <MenuItems
+        items={[
+          { label: 'Copy', onClick: noop },
           { separator: true },
           { label: 'Checkout', disabled: true, onClick: noop },
         ]}
         onClose={noop}
       />,
     );
-    assert.match(html, /role="menuitemradio" aria-checked="true"/);
-    assert.match(html, /role="menuitemcheckbox" aria-checked="false"/);
     assert.strictEqual(tagsWith(html, 'menu-separator').length, 1);
-    assert.match(html, /role="menuitem"[^>]*disabled=""/);
+    assert.match(html, /role="menuitem"[^>]*disabled=""[^>]*>Checkout/);
   });
 });
 
@@ -490,6 +527,49 @@ suite('Tab bar', () => {
     assert.strictEqual(prevented, 1);
     tab.props.onAuxClick({ button: 1 });
     assert.deepStrictEqual(closed, ['/repo']);
+  });
+
+  test('preloads only a tab not shown, and closes one only by its button or the middle button', () => {
+    const preloaded: string[] = [];
+    const closed: string[] = [];
+    const nav = renderedBy(TabBar, {
+      tabs: [
+        { root: '/a', name: 'a' },
+        { root: '/b', name: 'b' },
+      ],
+      active: '/a',
+      onSelect: noop,
+      onPreload: (root) => preloaded.push(root),
+      onClose: (root) => closed.push(root),
+      onAdd: noop,
+      onSort: noop,
+      onLog: noop,
+    });
+    assert.ok(isValidElement<{ children: React.ReactElement[] }>(nav));
+    const list = nav.props.children[0];
+    assert.ok(isValidElement<{ children: React.ReactElement[][] }>(list));
+    const [a, b] = list.props.children[0];
+    type Tab = {
+      onPointerEnter: () => void;
+      onAuxClick: (event: { button: number }) => void;
+      children: React.ReactElement[];
+    };
+    assert.ok(isValidElement<Tab>(a) && isValidElement<Tab>(b));
+    a.props.onPointerEnter();
+    b.props.onPointerEnter();
+    assert.deepStrictEqual(preloaded, ['/b']);
+    b.props.onAuxClick({ button: 2 });
+    assert.deepStrictEqual(closed, []);
+    const close = a.props.children[1];
+    assert.ok(
+      isValidElement<{
+        onClick: (event: { stopPropagation: () => void }) => void;
+      }>(close),
+    );
+    let stopped = 0;
+    close.props.onClick({ stopPropagation: () => stopped++ });
+    assert.strictEqual(stopped, 1);
+    assert.deepStrictEqual(closed, ['/a']);
   });
 });
 

@@ -54,6 +54,19 @@ suite('Locations search', () => {
     assert.deepStrictEqual([remotes.refs.length, remotes.more], [1, 1]);
   });
 
+  test('sorts matches by name before cutting them to the limit', () => {
+    const [branches] = searchRefs(
+      [branchNamed('b1'), branchNamed('a1'), branchNamed('c1')],
+      '1',
+      2,
+    );
+    assert.deepStrictEqual(
+      branches.refs.map((ref) => ref.name),
+      ['a1', 'b1'],
+    );
+    assert.strictEqual(branches.more, 1);
+  });
+
   test('searches nothing without a query', () => {
     assert.deepStrictEqual(names(searchRefs(refs, '')), [
       ['Local branches', []],
