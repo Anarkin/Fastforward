@@ -5,9 +5,14 @@ import { remoteDefaultBranches } from './git/branches';
 import { showFiles, showPatch, type PatchScope } from './git/diff';
 import { gitErrorText } from './git/errorText';
 import { listTree, readFile } from './git/files';
-import type { API } from './git/git';
 import { findCommit, headCommit, listHistory, logCommits } from './git/history';
-import { getGitApi, listRefs, pickRepository } from './git/repository';
+import {
+  readHead,
+  readRefs,
+  repositoryRoot,
+  type Refs,
+} from './git/repository';
+import { watchRepository, type Watcher } from './git/watch';
 import {
   workingTreeFiles,
   workingTreePatch,
@@ -15,7 +20,7 @@ import {
 } from './git/workingTree';
 import { step, visit } from './history/navigation';
 import { checkout, fetchAll, type RepositoryAt } from './operations';
-import { checkedOutBranch, defaultBookmarks, fingerprint } from './refs';
+import { defaultBookmarks, fingerprint } from './refs';
 import { pickRepositories } from './repositoryPicker';
 import { isFullHash } from './shared/hashes';
 import {
@@ -26,7 +31,6 @@ import {
   type CheckoutTarget,
   type Direction,
   type FileChange,
-  type RefInfo,
   type TabMessage,
   type ToExtension,
   type ToWebview,
@@ -65,6 +69,7 @@ interface Tab extends TabState {
   preloading: Promise<void> | undefined;
   refreshing: Promise<void> | undefined;
   refreshAgain: Map<Session | undefined, Context>;
+  isRepository: boolean;
 }
 
 export interface Connection {
@@ -75,7 +80,7 @@ export interface Connection {
 
 interface Session {
   readonly post: (message: ToWebview) => void;
-  watcher: vscode.Disposable | undefined;
+  watcher: Watcher | undefined;
   disposed: boolean;
 }
 
@@ -107,6 +112,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
 
   constructor(
     private readonly log: vscode.LogOutputChannel,
+    private readonly gitPath: string,
     private readonly extensionUri: vscode.Uri,
     workspaceState: vscode.Memento,
     globalState: vscode.ExtensionContext['globalState'],
@@ -187,7 +193,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         ),
       refresh: () =>
         this.run('refresh', session, async () => {
-          const context = await this.context(await getGitApi(), session);
+          const context = await this.context(session);
           if (context) {
             await this.refresh(context);
           }
@@ -225,18 +231,20 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
 
   private async handle(message: ToExtension, session: Session): Promise<void> {
     const { storage } = this;
-    const git = await getGitApi();
     switch (message.type) {
       case 'ready':
         session.post(storage.layout);
-        await this.addWorkspaceTab(git);
-        await this.openTab(git, session, storage.activeTab);
+        await this.addWorkspaceTab();
+        await this.openTab(session, storage.activeTab);
         return;
       case 'selectTab':
-        await this.openTab(git, session, message.root);
+        await this.openTab(session, message.root);
         return;
       case 'addTab': {
-        const roots = await pickRepositories(git, storage);
+        const roots = await pickRepositories(
+          (folder) => repositoryRoot(this.gitPath, folder),
+          storage,
+        );
         for (const root of roots) {
           await storage.addRecent(root);
         }
@@ -244,7 +252,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         await storage.setTabs([...storage.tabs, ...added], storage.activeTab);
         const last = roots.at(-1);
         if (last) {
-          await this.openTab(git, session, last);
+          await this.openTab(session, last);
         }
         return;
       }
@@ -258,11 +266,11 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
             ? rest[Math.min(index, rest.length - 1)]
             : activeTab;
         await storage.setTabs(rest, active);
-        await this.openTab(git, session, active);
+        await this.openTab(session, active);
         return;
       }
       case 'preloadTab':
-        await this.preloadTab(git, session, message.root);
+        await this.preloadTab(session, message.root);
         return;
       case 'sortTabs': {
         const tabs = storage.tabs.toSorted((a, b) =>
@@ -292,7 +300,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
           tab.toggledMerges.clear();
           tab.shownStale = true;
         }
-        const context = await this.context(git, session);
+        const context = await this.context(session);
         if (context) {
           await this.sendShownHistory(context);
         }
@@ -305,10 +313,10 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
           for (const tab of this.tabStates.values()) {
             forgetHistory(tab);
           }
-          const context = await this.context(git, session);
+          const context = await this.context(session);
           if (context) {
             await this.refresh(context, (latest) =>
-              this.sendCommits(latest, listRefs(latest.repository), true),
+              this.sendCommits(latest, this.refsOf(latest), true),
             );
           }
         } finally {
@@ -328,17 +336,16 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       }
       default:
         if (this.isActive(message.root)) {
-          await this.handleTab(message, git, session);
+          await this.handleTab(message, session);
         }
     }
   }
 
   private async handleTab(
     message: Exclude<TabMessage, { type: 'setBookmarks' | 'scrolled' }>,
-    git: API,
     session: Session,
   ): Promise<void> {
-    const context = await this.context(git, session);
+    const context = await this.context(session);
     if (!context) {
       return;
     }
@@ -440,8 +447,13 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     context.post({ type: 'error', message: `${hash} is not in the history` });
   }
 
-  private async addWorkspaceTab(git: API): Promise<void> {
-    const root = pickRepository(git)?.rootUri.fsPath;
+  private async addWorkspaceTab(): Promise<void> {
+    const editor = vscode.window.activeTextEditor?.document.uri;
+    const folder =
+      editor?.scheme === 'file'
+        ? path.dirname(editor.fsPath)
+        : vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    const root = folder && (await repositoryRoot(this.gitPath, folder));
     if (root && !this.storage.hasTab(root)) {
       await this.storage.setTabs(
         [root, ...this.storage.tabs],
@@ -451,7 +463,6 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
   }
 
   private async openTab(
-    git: API,
     session: Session,
     root: string | undefined,
   ): Promise<void> {
@@ -472,14 +483,15 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     }
     session.watcher?.dispose();
     session.watcher = undefined;
-    const context = await this.context(git, session);
+    const context = await this.context(session);
     if (!context || session.disposed || !this.isActive(context.root)) {
       return;
     }
+    const head = await readHead(context.gitPath, context.root);
     this.log.info(
-      `Tab ${context.root} uses the repository at ${context.repository.rootUri.fsPath}, HEAD ${checkedOutBranch(context.repository.state.HEAD) ?? '(detached)'} ${context.repository.state.HEAD?.commit ?? ''}`,
+      `Tab ${context.root} is open, HEAD ${head?.name ?? '(detached)'} ${head?.commit ?? ''}`,
     );
-    this.watch(context, session);
+    await this.watch(context, session);
     await this.storage.addRecent(context.root);
     const firstOpen = !context.tab.opened;
     context.tab.opened = true;
@@ -493,7 +505,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
   }
 
   private async loadTab(context: Context): Promise<void> {
-    const refs = listRefs(context.repository);
+    const refs = this.refsOf(context);
     await allSettled([
       this.addDefaultBookmarks(context, refs),
       this.refresh(context, async (latest) => {
@@ -507,11 +519,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     ]);
   }
 
-  private async preloadTab(
-    git: API,
-    session: Session,
-    root: string,
-  ): Promise<void> {
+  private async preloadTab(session: Session, root: string): Promise<void> {
     if (!this.storage.hasTab(root) || this.isActive(root)) {
       return;
     }
@@ -521,7 +529,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     }
     tab.preloading = (async () => {
       try {
-        const context = await this.context(git, session, root, false);
+        const context = await this.context(session, root, false);
         if (!context || tab.opened) {
           return;
         }
@@ -541,14 +549,13 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
 
   private async sendRepository(
     context: Context,
-    refs: Promise<readonly RefInfo[]>,
+    refs: Promise<Refs>,
   ): Promise<void> {
-    const listed = await refs;
-    const { HEAD } = context.repository.state;
+    const { head, refs: listed } = await refs;
     context.post({
       type: 'repository',
-      head: checkedOutBranch(HEAD),
-      headCommit: HEAD?.commit,
+      head: head?.name,
+      headCommit: head?.commit,
       refs: listed,
     });
   }
@@ -568,13 +575,13 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
 
   private async addDefaultBookmarks(
     context: Context,
-    refs?: Promise<readonly RefInfo[]>,
+    refs?: Promise<Refs>,
   ): Promise<void> {
     if (this.storage.bookmarksOf(context.root) !== undefined) {
       return;
     }
-    const [listed, defaults] = await Promise.all([
-      refs ?? listRefs(context.repository),
+    const [{ refs: listed }, defaults] = await Promise.all([
+      refs ?? this.refsOf(context),
       remoteDefaultBranches(context.gitPath, context.root),
     ]);
     const bookmarks = defaultBookmarks(listed, defaults);
@@ -590,14 +597,18 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         preloading: undefined,
         refreshing: undefined,
         refreshAgain: new Map(),
+        isRepository: false,
       };
       this.tabStates.set(root, tab);
     }
     return tab;
   }
 
+  private refsOf(context: Context): Promise<Refs> {
+    return readRefs(context.gitPath, context.root);
+  }
+
   private async context(
-    git: API,
     session: Session,
     root = this.storage.activeTab,
     live = true,
@@ -605,14 +616,10 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     if (!root) {
       return undefined;
     }
-    const uri = vscode.Uri.file(root);
-    const repository =
-      git.repositories.find((candidate) =>
-        sameRoot(candidate.rootUri.fsPath, root),
-      ) ??
-      (await git.openRepository(uri)) ??
-      git.getRepository(uri);
-    if (!repository) {
+    const tab = this.tabState(root);
+    tab.isRepository ||=
+      (await repositoryRoot(this.gitPath, root)) !== undefined;
+    if (!tab.isRepository) {
       if (live && this.isActive(root)) {
         session.post({
           type: 'error',
@@ -621,13 +628,8 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       }
       return undefined;
     }
-    if (!repository.state.HEAD) {
-      await repository.status();
-    }
-    const tab = this.tabState(root);
     return {
-      gitPath: git.git.path,
-      repository,
+      gitPath: this.gitPath,
       root,
       tab,
       session: live ? session : undefined,
@@ -640,28 +642,32 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     };
   }
 
-  private watch(context: Context, session: Session): void {
+  private async watch(context: Context, session: Session): Promise<void> {
     session.watcher?.dispose();
-    let timer: NodeJS.Timeout | undefined;
-    const subscription = context.repository.state.onDidChange(() => {
-      clearTimeout(timer);
-      timer = setTimeout(
-        () =>
-          void this.run(
-            'refresh',
-            session,
-            () => this.refresh(context),
-            context.root,
-          ),
-        refreshDelay,
-      );
-    });
-    session.watcher = {
-      dispose: () => {
-        clearTimeout(timer);
-        subscription.dispose();
+    session.watcher = undefined;
+    const watcher = await watchRepository(context.gitPath, context.root, {
+      delay: refreshDelay,
+      onChange: () =>
+        void this.run(
+          'refresh',
+          session,
+          () => this.refresh(context),
+          context.root,
+        ),
+      onError: (error) => {
+        this.log.error(`Watching ${context.root} failed`);
+        this.log.error(error instanceof Error ? error : String(error));
       },
-    };
+    });
+    if (
+      session.disposed ||
+      session.watcher !== undefined ||
+      !this.isActive(context.root)
+    ) {
+      watcher.dispose();
+      return;
+    }
+    session.watcher = watcher;
   }
 
   private async checkout(
@@ -671,7 +677,6 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     if (!(await checkout(this.log, context, target))) {
       return;
     }
-    await context.repository.status();
     await this.refresh(context);
     await this.showHead(context);
   }
@@ -679,12 +684,15 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
   private async fetch(context: Context): Promise<void> {
     context.post({ type: 'fetching', running: true });
     try {
-      await fetchAll(this.log, context.repository);
+      await this.fetchRemotes(context);
     } finally {
       context.post({ type: 'fetching', running: false });
     }
-    await context.repository.status();
     await this.refresh(context);
+  }
+
+  private fetchRemotes(context: Context): Promise<void> {
+    return fetchAll(this.log, context);
   }
 
   private visit(context: Context, hash: string, replace = false): void {
@@ -852,11 +860,8 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
   }
 
   private async refreshHistory(context: Context): Promise<void> {
-    const refs = await listRefs(context.repository);
-    if (
-      fingerprint(context.repository.state.HEAD, refs) !==
-      context.tab.fingerprint
-    ) {
+    const refs = await this.refsOf(context);
+    if (fingerprint(refs.head, refs.refs) !== context.tab.fingerprint) {
       this.log.info('Refs changed, reloading the history');
       const known = Promise.resolve(refs);
       await Promise.all([
@@ -876,15 +881,15 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
 
   private async sendCommits(
     context: Context,
-    refs: Promise<readonly RefInfo[]>,
+    refs: Promise<Refs>,
     keepPlace = false,
   ): Promise<void> {
-    const [fullHistory, listed] = await Promise.all([
+    const [fullHistory, { head, refs: listed }] = await Promise.all([
       listHistory(context.gitPath, context.root, this.storage.solo),
       refs,
     ]);
     const { tab } = context;
-    loadHistory(tab, fullHistory, context.repository.state.HEAD, listed);
+    loadHistory(tab, fullHistory, head, listed);
     await this.sendShownHistory(context, { keepPlace });
     const { back, forward } = tab.navigation;
     if (back.length + forward.length > 0) {
@@ -904,7 +909,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     const generation = layOutHistory(
       tab,
       this.storage.collapseMerges,
-      context.repository.state.HEAD?.commit,
+      tab.headCommit,
     );
     this.log.info(
       `Graph of ${tab.history.length} of ${tab.fullHistory.length} commits laid out in ${Math.round(performance.now() - started)} ms, ${tab.graph.width} lanes wide`,

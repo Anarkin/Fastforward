@@ -21,11 +21,13 @@ const configArgs = [
 
 // Commands skip git's optional locks and git diff its index refresh, so a
 // refresh running while the user commits elsewhere doesn't hold index.lock and
-// make that commit fail
+// make that commit fail; and with no terminal to answer in, git fails rather
+// than waits when it would prompt for credentials
 function env(pathspecMagic = false): NodeJS.ProcessEnv {
   return {
     ...process.env,
     GIT_OPTIONAL_LOCKS: '0',
+    GIT_TERMINAL_PROMPT: '0',
     GIT_LITERAL_PATHSPECS: pathspecMagic ? '0' : '1',
   };
 }
@@ -61,6 +63,7 @@ export function runGitBytes(
         cwd,
         env: env(pathspecMagic),
         maxBuffer: maxOutput,
+        windowsHide: true,
         encoding: 'buffer',
       },
       (error, stdout, stderr) => {

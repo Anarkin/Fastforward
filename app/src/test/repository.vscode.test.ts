@@ -2,9 +2,7 @@ import * as assert from 'node:assert';
 import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import * as vscode from 'vscode';
-import type { Repository } from '../git/git';
-import { getGitApi, listRefs } from '../git/repository';
+import { readHead, readRefs, repositoryRoot } from '../git/repository';
 import { showFiles, showPatch } from '../git/diff';
 import {
   commitsStartingWith,
@@ -24,12 +22,10 @@ suite('Git repository', function () {
   let gitPath: string;
   let temp: TempRepository;
   let cwd: string;
-  let repository: Repository;
   let rename: string;
   let blob: string;
 
   suiteSetup(async () => {
-    const git = await getGitApi();
     temp = await tempRepository(tempFolder('repository'));
     gitPath = temp.gitPath;
     cwd = temp.root;
@@ -38,10 +34,6 @@ suite('Git repository', function () {
     await temp.git('mv', 'second.txt', 'renamed.txt');
     await temp.git('commit', '-m', 'rename');
     [rename, blob] = await temp.resolve('HEAD', 'HEAD:first.txt');
-    const opened = await git.openRepository(vscode.Uri.file(cwd));
-    assert.ok(opened, 'repository not opened');
-    repository = opened;
-    await repository.status();
   });
 
   suiteTeardown(() => removeFolder(cwd));
@@ -54,18 +46,51 @@ suite('Git repository', function () {
       'refs/remotes/origin/main',
     );
     await temp.git('tag', 'v1');
-    await repository.status();
+    await temp.git('tag', '-a', '-m', 'annotated', 'v2');
     try {
-      const refs = await listRefs(repository);
+      const { refs } = await readRefs(gitPath, cwd);
       assert.deepStrictEqual(
         refs.map(({ kind, name }) => `${kind} ${name}`).toSorted(),
-        ['branch main', 'remote origin/main', 'tag v1'],
+        ['branch main', 'remote origin/main', 'tag v1', 'tag v2'],
+      );
+      assert.deepStrictEqual(
+        new Set(refs.map((ref) => ref.commit)),
+        new Set([rename]),
       );
     } finally {
       await temp.git('symbolic-ref', '-d', 'refs/remotes/origin/HEAD');
       await temp.git('update-ref', '-d', 'refs/remotes/origin/main');
-      await temp.git('tag', '-d', 'v1');
-      await repository.status();
+      await temp.git('tag', '-d', 'v1', 'v2');
+    }
+  });
+
+  test('reads the branch HEAD is on, or only its commit when detached', async () => {
+    assert.deepStrictEqual(await readHead(gitPath, cwd), {
+      name: 'main',
+      commit: rename,
+    });
+    await temp.git('checkout', '-q', '--detach');
+    try {
+      assert.deepStrictEqual(await readHead(gitPath, cwd), {
+        name: undefined,
+        commit: rename,
+      });
+    } finally {
+      await temp.git('checkout', '-q', 'main');
+    }
+  });
+
+  test('finds the root of the repository a folder is in, or none', async () => {
+    fs.mkdirSync(path.join(cwd, 'inner'), { recursive: true });
+    assert.strictEqual(
+      await repositoryRoot(gitPath, path.join(cwd, 'inner')),
+      path.resolve(cwd),
+    );
+    const outside = tempFolder('outside');
+    try {
+      assert.strictEqual(await repositoryRoot(gitPath, outside), undefined);
+    } finally {
+      removeFolder(outside);
     }
   });
 
