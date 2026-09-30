@@ -185,7 +185,7 @@ suite('Style', () => {
   test('highlights no disabled menu item on hover, whose text would vanish in the selection color', () => {
     assert.match(
       declarationsOf('.menu-item:hover:not(:disabled)'),
-      /color: var\(--color-menu-selection-foreground\);/,
+      /color: var\(--color-foreground\);/,
     );
     assert.doesNotMatch(css, /\.menu-item:hover\s*{/);
   });
@@ -266,6 +266,38 @@ suite('Style', () => {
         ),
       ],
       ['col-resize', 'text'],
+    );
+  });
+
+  test('mutes text by the one muted opacity, from the text color', () => {
+    const body = (/\nbody \{([^}]*)\}/.exec(css)?.[1] ?? '').replace(
+      /\s+/g,
+      ' ',
+    );
+    assert.ok(body.includes('--muted-opacity: 0.45;'));
+    assert.ok(
+      body.includes(
+        '--muted-foreground: color-mix( in srgb, var(--color-foreground) calc(var(--muted-opacity) * 100%), transparent );',
+      ),
+      body,
+    );
+    assert.ok(
+      declarationsOf('.commit-line.secondary').includes(
+        'color: var(--muted-foreground);',
+      ),
+    );
+  });
+
+  test('mutes the search placeholders like other muted text', () => {
+    assert.ok(
+      declarationsOf('.address-text.empty').includes(
+        'color: var(--muted-foreground);',
+      ),
+    );
+    assert.ok(
+      declarationsOf('.locations-search::placeholder').includes(
+        'color: var(--muted-foreground);',
+      ),
     );
   });
 });

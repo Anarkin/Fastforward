@@ -27,7 +27,7 @@ function AppIcon() {
         y1="316"
         x2="372"
         y2="316"
-        stroke="var(--color-muted-foreground)"
+        stroke="var(--muted-foreground)"
         strokeOpacity="0.35"
         strokeWidth="20"
         strokeLinecap="round"

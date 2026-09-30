@@ -14,6 +14,11 @@ input {
 
 body {
   --muted-opacity: 0.45;
+  --muted-foreground: color-mix(
+    in srgb,
+    var(--color-foreground) calc(var(--muted-opacity) * 100%),
+    transparent
+  );
   --toolbar-background: var(--color-background);
   --gutter: var(--color-tab-bar-background);
   --gutter-width: 4px;
@@ -95,7 +100,7 @@ body {
   height: 100%;
   margin-left: env(titlebar-area-x, 0);
   padding: 0 12px 0 var(--title-bar-inset);
-  color: var(--color-muted-foreground);
+  color: var(--muted-foreground);
 }
 
 :root[data-platform='darwin'] .title-bar-content {
@@ -154,7 +159,7 @@ body {
   min-width: 160px;
   width: max-content;
   padding: 4px;
-  color: var(--color-menu-foreground);
+  color: var(--color-foreground);
   background: var(--color-menu-background);
   border: 1px solid var(--color-menu-border);
   border-radius: 6px;
@@ -174,7 +179,7 @@ body {
 }
 
 .menu-item:hover:not(:disabled) {
-  color: var(--color-menu-selection-foreground);
+  color: var(--color-foreground);
   background: var(--color-menu-selection-background);
 }
 
@@ -184,7 +189,6 @@ body {
   gap: 4px;
   padding: 5px 4px 5px 12px;
   white-space: nowrap;
-  color: var(--color-tab-inactive-foreground);
   background: transparent;
   border-radius: var(--card-radius);
 }
@@ -194,7 +198,6 @@ body {
 }
 
 .tab.active {
-  color: var(--color-tab-active-foreground);
   background: var(--toolbar-background);
 }
 
@@ -238,7 +241,7 @@ body {
 
 .empty-state {
   padding: 24px;
-  color: var(--color-muted-foreground);
+  color: var(--muted-foreground);
 }
 
 .notices {
@@ -366,7 +369,7 @@ body.resizing {
   height: var(--title-height);
   padding: 0 8px;
   text-align: center;
-  color: var(--color-muted-foreground);
+  color: var(--muted-foreground);
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -464,7 +467,7 @@ body.resizing {
 .twisty {
   display: inline-block;
   width: 10px;
-  color: var(--color-muted-foreground);
+  color: var(--muted-foreground);
 }
 
 .commit {
@@ -481,7 +484,7 @@ body.resizing {
 }
 
 .commit-line.secondary {
-  opacity: var(--muted-opacity);
+  color: var(--muted-foreground);
 }
 
 .subject,
@@ -494,7 +497,7 @@ body.resizing {
 }
 
 .commit.working-tree {
-  color: var(--color-muted-foreground);
+  color: var(--muted-foreground);
 }
 
 .commit.working-tree.empty .subject {
@@ -588,7 +591,7 @@ body.resizing {
   box-sizing: border-box;
   height: 100%;
   padding: 0 8px;
-  color: var(--color-muted-foreground);
+  color: var(--muted-foreground);
 }
 
 .error {
@@ -634,7 +637,7 @@ body.resizing {
   height: 0.7em;
   margin: 0.25em 0;
   border-radius: 3px;
-  background: var(--color-muted-foreground);
+  background: var(--muted-foreground);
   opacity: 0.15;
 }
 
@@ -659,7 +662,7 @@ body.resizing {
 
 .file-header .unchanged {
   flex: none;
-  color: var(--color-muted-foreground);
+  color: var(--muted-foreground);
 }
 
 .locations-popup {
@@ -695,11 +698,16 @@ body.resizing {
   height: var(--search-height);
   margin: 0;
   padding: 0 12px;
-  color: var(--color-input-foreground);
+  color: var(--color-foreground);
   background: var(--color-input-background);
   border: 1px solid var(--color-input-border);
   border-radius: calc(var(--search-height) / 2);
   outline: none;
+}
+
+.locations-search::placeholder {
+  color: var(--muted-foreground);
+  opacity: 1;
 }
 
 .locations-search:focus {
@@ -711,7 +719,7 @@ body.resizing {
 }
 
 .locations-list .row.result.active {
-  color: var(--color-list-selection-foreground);
+  color: var(--color-foreground);
   background: var(--color-list-selection-background);
 }
 
@@ -723,7 +731,7 @@ body.resizing {
 
 .locations-empty {
   padding: 4px 8px;
-  color: var(--color-muted-foreground);
+  color: var(--muted-foreground);
 }
 
 .badge.missing {
@@ -756,7 +764,7 @@ body.resizing {
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--color-muted-foreground);
+  color: var(--muted-foreground);
 }
 
 .locations-group:first-child .locations-heading {
@@ -785,7 +793,7 @@ body.resizing {
 
 .submenu-arrow {
   margin-left: auto;
-  color: var(--color-muted-foreground);
+  color: var(--muted-foreground);
 }
 
 .menu.submenu {
@@ -875,7 +883,7 @@ body.resizing {
   padding: 0 6px;
   text-align: right;
   user-select: none;
-  color: var(--color-line-number-foreground);
+  color: var(--muted-foreground);
 }
 
 .diff-line .code {
@@ -958,7 +966,7 @@ body.resizing {
   box-sizing: border-box;
   height: 100%;
   padding: 0 12px;
-  color: var(--color-muted-foreground);
+  color: var(--muted-foreground);
 }
 
 .large-diff button {
@@ -1056,7 +1064,6 @@ body.resizing {
 }
 
 .nav-button.toggle.active {
-  color: var(--color-input-option-active-foreground);
   background: var(--color-input-option-active-background);
   box-shadow: inset 0 0 0 1px var(--color-input-option-active-border);
 }
@@ -1100,7 +1107,7 @@ body.resizing {
 
 .history-hash {
   margin-right: 8px;
-  color: var(--color-muted-foreground);
+  color: var(--muted-foreground);
 }
 
 .address {
@@ -1119,7 +1126,7 @@ body.resizing {
   height: var(--search-height);
   padding: 0 12px;
   text-align: left;
-  color: var(--color-input-foreground);
+  color: var(--color-foreground);
   cursor: text;
   background: var(--shade-background);
   border: 1px solid transparent;
@@ -1141,7 +1148,7 @@ body.resizing {
 }
 
 .address-text.empty {
-  color: var(--color-input-placeholder-foreground);
+  color: var(--muted-foreground);
 }
 
 .shortcuts {
@@ -1197,7 +1204,7 @@ body.resizing {
   font: inherit;
   text-align: center;
   vertical-align: baseline;
-  color: var(--color-keybinding-foreground);
+  color: var(--color-foreground);
   background: var(--color-keybinding-background);
   border: 1px solid var(--color-keybinding-border);
   border-bottom: 2px solid var(--color-keybinding-bottom-border);
@@ -1213,7 +1220,7 @@ body.resizing {
 }
 
 .hash-suggestion.active {
-  color: var(--color-list-selection-foreground);
+  color: var(--color-foreground);
   background: var(--color-list-selection-background);
 }
 
@@ -1223,5 +1230,5 @@ body.resizing {
 }
 
 .hash-suggestion.empty {
-  color: var(--color-muted-foreground);
+  color: var(--muted-foreground);
 }
