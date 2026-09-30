@@ -91,6 +91,7 @@ export function changesTreeElements({
         name={row.name}
         depth={row.depth}
         change={row.change}
+        inChanges
         selected={selected}
         onSelect={onSelect}
       />

@@ -15,6 +15,10 @@ export function statusClass(change: FileChange): string {
   return `path status-${change.status}`;
 }
 
+export function changesClass(change: FileChange): string {
+  return change.status === 'D' ? 'path status-D' : 'path';
+}
+
 export function changeTitle(change: FileChange): string {
   const path = change.oldPath
     ? `${change.oldPath} → ${change.path}`
