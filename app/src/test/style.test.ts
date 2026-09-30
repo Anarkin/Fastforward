@@ -249,6 +249,13 @@ suite('Style', () => {
     );
   });
 
+  test('deepens the tint of a bubble with a menu under the pointer', () => {
+    assert.match(
+      declarationsOf('.badge.has-menu:hover'),
+      /background: color-mix\(\s*in srgb,\s*var\(--color-focus\) 40%,\s*var\(--color-panel-background\)\s*\);/,
+    );
+  });
+
   test('draws every bubble alike, in the text color on a tint of the focus color, without an edge', () => {
     const badge = declarationsOf('.badge');
     assert.ok(badge.includes('color: var(--color-foreground);'));

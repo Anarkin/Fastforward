@@ -15,7 +15,7 @@ export function HeadBubble({ hash }: { hash: string }) {
   const menu = useContextMenu(commitMenuTarget(hash));
   return (
     <span
-      className="badge head checked-out"
+      className="badge head checked-out has-menu"
       title={`HEAD is detached at ${hash}`}
       {...menu}
     >
@@ -27,7 +27,7 @@ export function HeadBubble({ hash }: { hash: string }) {
 export function CommitBubble({ hash }: { hash: string }) {
   const menu = useContextMenu(commitMenuTarget(hash));
   return (
-    <span className="badge hash" title={`Commit ${hash}`} {...menu}>
+    <span className="badge hash has-menu" title={`Commit ${hash}`} {...menu}>
       {shortHash(hash)}
     </span>
   );
@@ -44,7 +44,7 @@ export function RefBubble({
   const checkedOut = useCheckedOut(info);
   return (
     <span
-      className={`badge ${info.kind} ${checkedOut ? 'checked-out' : ''} ${missing ? 'missing' : ''}`}
+      className={`badge ${info.kind} ${checkedOut ? 'checked-out' : ''} ${missing ? 'missing' : ''} has-menu`}
       title={
         missing
           ? `${info.name} doesn't exist anymore`
