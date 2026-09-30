@@ -9,6 +9,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   workingTreeHash,
   workingTreeIndex,
+  type CommitInfo,
   type RefInfo,
   type ScrollTarget,
 } from '../shared/protocol';
@@ -241,7 +242,6 @@ export function Commits({
     history?.getVersion ?? noVersion,
   );
   const list = useRef<HTMLDivElement>(null);
-  const openMenu = useContext(OpenContextMenu);
   const detached = useContext(DetachedHead);
   const hasWorkingTree = workingTree !== undefined;
   const offset = hasWorkingTree ? 1 : 0;
@@ -434,27 +434,15 @@ export function Commits({
       );
     }
     return (
-      <div
-        className={commitClass(commit.hash, selected, headCommit)}
-        style={{ paddingLeft: indent(index) }}
-        onClick={() => onSelect(commit.hash)}
-        onContextMenu={(event) =>
-          openMenu(event, { kind: 'commit', hash: commit.hash })
-        }
-      >
-        <div className="commit-line">
-          <span className="subject">{commit.subject}</span>
-        </div>
-        <div className="commit-line secondary">
-          <span className="author">{commit.authorName}</span>
-          <span className="date">{formatDateTime(commit.authorDate)}</span>
-        </div>
-        <CommitBubbles
-          hash={commit.hash}
-          refs={refsByCommit.get(commit.hash) ?? []}
-          detached={detached === commit.hash}
-        />
-      </div>
+      <CommitRow
+        commit={commit}
+        selected={selected}
+        headCommit={headCommit}
+        refs={refsByCommit.get(commit.hash) ?? []}
+        detached={detached === commit.hash}
+        indent={indent(index)}
+        onSelect={onSelect}
+      />
     );
   };
 
@@ -550,4 +538,43 @@ export function commitClass(
     ...(hash === selected ? ['selected'] : []),
     ...(hash === headCommit ? ['checked-out'] : []),
   ].join(' ');
+}
+
+export function CommitRow({
+  commit,
+  selected,
+  headCommit,
+  refs,
+  detached,
+  indent,
+  onSelect,
+}: {
+  commit: CommitInfo;
+  selected: string | undefined;
+  headCommit: string | undefined;
+  refs: readonly RefInfo[];
+  detached: boolean;
+  indent: number;
+  onSelect: (hash: string) => void;
+}) {
+  const openMenu = useContext(OpenContextMenu);
+  return (
+    <div
+      className={commitClass(commit.hash, selected, headCommit)}
+      style={{ paddingLeft: indent }}
+      onClick={() => onSelect(commit.hash)}
+      onContextMenu={(event) =>
+        openMenu(event, { kind: 'commit', hash: commit.hash })
+      }
+    >
+      <div className="commit-line">
+        <span className="subject">{commit.subject}</span>
+      </div>
+      <div className="commit-line secondary">
+        <span className="author">{commit.authorName}</span>
+        <span className="date">{formatDateTime(commit.authorDate)}</span>
+      </div>
+      <CommitBubbles hash={commit.hash} refs={refs} detached={detached} />
+    </div>
+  );
 }

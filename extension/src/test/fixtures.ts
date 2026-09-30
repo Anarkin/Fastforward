@@ -1,6 +1,8 @@
 import * as assert from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import type { CommitInfo, FileChange } from '../shared/protocol';
 
 export const commitInfo = (
@@ -89,4 +91,17 @@ export function stylesheetPx(pattern: RegExp): number {
   const match = pattern.exec(stylesheet());
   assert.ok(match, String(pattern));
   return Number(match[1]);
+}
+
+export function renderedBy<P>(
+  component: (props: P) => React.ReactNode,
+  props: P,
+): React.ReactNode {
+  let rendered: React.ReactNode;
+  function Probe() {
+    rendered = component(props);
+    return null;
+  }
+  renderToStaticMarkup(createElement(Probe));
+  return rendered;
 }

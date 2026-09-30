@@ -20,7 +20,11 @@ import {
 } from '../shared/protocol';
 import { CheckedOutBranch, DetachedHead } from './bubbles';
 import { checkoutCommit, checkoutOptions, checkoutRef } from './checkout';
-import { ColumnResizingProvider, useColumnWidths } from './columns';
+import {
+  columnsClass,
+  ColumnResizingProvider,
+  useColumnWidths,
+} from './columns';
 import { Commits } from './commitList';
 import { useShortcuts } from './shortcuts';
 import {
@@ -357,7 +361,7 @@ export function App({ post }: Props) {
             ) : (
               <ColumnResizingProvider value={resizing}>
                 <div
-                  className={`columns ${commitsShown ? '' : 'commits-hidden'} ${hash === undefined ? 'nothing-selected' : ''}`}
+                  className={columnsClass(commitsShown, hash)}
                   ref={columnsContainer}
                   style={{ gridTemplateColumns: columnsTemplate }}
                 >

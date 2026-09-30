@@ -8,6 +8,7 @@ import {
   bubbleLineHeight,
   commitRowHeight,
   CommitBubbles,
+  CommitRow,
   commitClass,
   estimatedRowHeight,
   fixedRowHeight,
@@ -20,7 +21,7 @@ import {
   workingTreeRowHeight,
   workingTreeShift,
 } from '../webview/commitList';
-import { commitInfo } from './fixtures';
+import { commitInfo, renderedBy } from './fixtures';
 
 suite('Commit list rows', () => {
   test('starts a row with bubbles at one line of them', () => {
@@ -277,5 +278,37 @@ suite('Commit rows', () => {
     );
     assert.strictEqual(commitClass('b', 'b', 'a'), 'commit selected');
     assert.strictEqual(commitClass('b', undefined, undefined), 'commit');
+  });
+});
+
+suite('Commit row', () => {
+  test('shows the subject, author, date and bubbles, but no file count', () => {
+    let picked: string | undefined;
+    const props = {
+      commit: commitInfo('a', {
+        subject: 'Fix it',
+        authorName: 'Ann',
+        files: 3,
+      }),
+      selected: undefined,
+      headCommit: 'a',
+      refs: [{ kind: 'branch' as const, name: 'main', commit: 'a' }],
+      detached: false,
+      indent: 26,
+      onSelect: (hash: string) => (picked = hash),
+    };
+    const html = renderToStaticMarkup(<CommitRow {...props} />);
+    assert.match(
+      html,
+      /^<div class="commit checked-out" style="padding-left:26px">/,
+    );
+    assert.match(html, /<span class="subject">Fix it<\/span><\/div>/);
+    assert.match(html, /<span class="author">Ann<\/span>/);
+    assert.match(html, />main</);
+    assert.doesNotMatch(html, /class="count"/);
+    const row = renderedBy(CommitRow, props);
+    assert.ok(isValidElement<{ onClick: () => void }>(row));
+    row.props.onClick();
+    assert.strictEqual(picked, 'a');
   });
 });
