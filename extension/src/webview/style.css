@@ -26,12 +26,9 @@ body {
     --vscode-widget-border,
     var(--vscode-panel-border, transparent)
   );
-  /* The popups' edge and shadow: the edge is an inset shadow instead of a
-     border, which Chromium draws a whole number of device pixels wide, less
-     than 1px at scales like 125%, and so would move what the popup takes in
-     off its place, by a pixel in some places; the shadows are dark in any
-     theme, for a clear edge against the columns also in light themes, whose
-     widget shadow is faint */
+  /* An inset shadow, not a border, which Chromium rounds to whole device
+     pixels and so shifts the popup's contents at scales like 125%; dark in
+     every theme, as light themes' widget shadow is too faint for an edge */
   --popup-shadow:
     inset 0 0 0 1px var(--widget-border), 0 12px 32px rgba(0, 0, 0, 0.22),
     0 2px 8px rgba(0, 0, 0, 0.16),
@@ -107,8 +104,6 @@ body {
   border-radius: 4px;
 }
 
-/* Not a disabled item, whose text would take the selection's color without
-   its background, and vanish in themes like Light Modern */
 .menu-item:hover:not(:disabled) {
   color: var(--vscode-menu-selectionForeground);
   background: var(--vscode-menu-selectionBackground);
@@ -356,8 +351,6 @@ body.resizing {
   color: var(--vscode-descriptionForeground);
 }
 
-/* Exact heights, adding up to commitRowHeight: 5 + 20 + 2 + 18 + 4 + 1 border,
-   and the bubbles' lines below */
 .commit {
   padding: 5px 8px 4px;
   cursor: pointer;
@@ -581,8 +574,6 @@ body.resizing {
   cursor: pointer;
 }
 
-/* 26px with its padding, so it centers in the 34px column footer on whole
-   pixels, without a blurred edge */
 .switch {
   display: inline-flex;
   box-sizing: border-box;
@@ -1166,10 +1157,8 @@ body.resizing {
   margin: 0;
 }
 
-/* A key cap in VS Code's colors for them, its letter in the middle: as much
-   room above it as the thicker bottom edge takes below; on the line of the
-   text, where VS Code's own style for webviews would move it to the middle,
-   with a shadow that would thicken its bottom edge more */
+/* Overrides VS Code's webview style for kbd, which centers it vertically and
+   adds a shadow; the top padding balances the thicker bottom border */
 .shortcuts-list kbd {
   display: inline-block;
   min-width: 12px;
