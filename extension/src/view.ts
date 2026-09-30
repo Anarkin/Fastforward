@@ -343,12 +343,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     }
     switch (message.type) {
       case 'loadCommits':
-        await this.sendCommitPage(
-          context,
-          message.generation,
-          message.start,
-          message.count,
-        );
+        await this.sendCommitPage(context, message.generation, message.start);
         break;
       case 'toggleMerge': {
         const toggled = context.tab.toggledMerges;
@@ -918,7 +913,6 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     context: Context,
     generation: number,
     start: number,
-    count: number,
   ): Promise<void> {
     const { tab } = context;
     const replaced = () => tab.generation !== generation;
@@ -929,7 +923,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     const commits = await logCommits(
       context.gitPath,
       context.root,
-      history.slice(start, start + count).map((entry) => entry.hash),
+      history.slice(start, start + commitPageSize).map((entry) => entry.hash),
     ).catch((error: unknown) => {
       if (!replaced()) {
         context.post({

@@ -146,7 +146,6 @@ export type TabMessage =
       readonly type: 'loadCommits';
       readonly generation: number;
       readonly start: number;
-      readonly count: number;
     }
   | {
       readonly type: 'scrolled';
