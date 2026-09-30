@@ -17,7 +17,7 @@ const refs: RefInfo[] = [
   { kind: 'tag', name: 'v1', commit: 'b' },
 ];
 
-suite('fingerprint', () => {
+suite('Fingerprint', () => {
   test('ignores the order of the refs', () => {
     assert.strictEqual(
       fingerprint({ name: 'main', commit: 'a' }, refs),
@@ -44,7 +44,7 @@ suite('fingerprint', () => {
   });
 });
 
-suite('ref counts', () => {
+suite('Ref counts', () => {
   test('counts the refs of each commit and places them in the list', () => {
     const counts = countRefs(refs);
     assert.deepStrictEqual(
@@ -103,7 +103,7 @@ suite('Default bookmarks', () => {
   });
 });
 
-suite('detached HEAD', () => {
+suite('Detached HEAD', () => {
   test('counts as a bubble on its commit', () => {
     const counts = countRefs(refs, { name: undefined, commit: 'c' });
     assert.strictEqual(counts.get('c'), 2);

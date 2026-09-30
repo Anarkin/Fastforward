@@ -1,9 +1,8 @@
 import * as assert from 'node:assert';
-import { parseChanges } from '../git/diff';
-import { parseHistory, parseLog } from '../git/history';
+import { parseChanges, pathspecs } from '../git/diff';
 import { parsePatch, unquotePath } from '../webview/diff';
 
-suite('parsePatch', () => {
+suite('Patch parser', () => {
   test('numbers context, removed and added lines', () => {
     const files = parsePatch(
       [
@@ -69,6 +68,22 @@ suite('parsePatch', () => {
     ]);
   });
 
+  test('takes the target of a copy or a rename, quoted or not', () => {
+    const paths = parsePatch(
+      [
+        'diff --git a/x b/y b/z',
+        'similarity index 100%',
+        'copy from x',
+        'copy to y b/z',
+        'diff --git a/plain "b/tab\\there"',
+        'similarity index 100%',
+        'rename from plain',
+        'rename to "tab\\there"',
+      ].join('\n'),
+    ).map((file) => file.path);
+    assert.deepStrictEqual(paths, ['y b/z', 'tab\there']);
+  });
+
   test('unquotes paths git quotes', () => {
     assert.strictEqual(unquotePath('"back\\\\slash"'), 'back\\slash');
     assert.strictEqual(unquotePath('"a\\tb"'), 'a\tb');
@@ -107,11 +122,33 @@ suite('parsePatch', () => {
   });
 });
 
+suite('Pathspecs', () => {
+  test('narrows to a path, or excludes files literally with pathspec magic', () => {
+    assert.deepStrictEqual(pathspecs({}), { args: [], magic: false });
+    assert.deepStrictEqual(pathspecs({ path: 'a' }), {
+      args: ['--', 'a'],
+      magic: false,
+    });
+    assert.deepStrictEqual(pathspecs({ path: 'b', oldPath: 'a' }), {
+      args: ['--', 'a', 'b'],
+      magic: false,
+    });
+    assert.deepStrictEqual(pathspecs({ path: 'a*b', exclude: ['x'] }), {
+      args: ['--', 'a*b'],
+      magic: false,
+    });
+    assert.deepStrictEqual(pathspecs({ exclude: ['[ab].md'] }), {
+      args: ['--', '.', ':(exclude,literal)[ab].md'],
+      magic: true,
+    });
+  });
+});
+
 function raw(status: string): string {
   return `:100644 100644 1111111 2222222 ${status}`;
 }
 
-suite('git show parsers', () => {
+suite('Git show parsers', () => {
   test('parses raw and numstat output with renames and binary files', () => {
     assert.deepStrictEqual(
       parseChanges(
@@ -176,81 +213,57 @@ suite('git show parsers', () => {
       ],
     );
   });
-});
 
-suite('git log parser', () => {
-  test('parses commits and counts their files', () => {
-    const output = [
-      '\x1eaaa\0p1 p2\0Ann\0ann@example.com\0',
-      '1700000000\0Carl\0carl@example.com\0',
-      '1700000100\0Subject\n\nBody\n\0',
-      '\n:100644 100644 1111111 2222222 M\0a.ts\0',
-      ':000000 100644 0000000 3333333 A\0b.ts\0',
-      '\x1ebbb\0\0Bob\0bob@example.com\0',
-      '1600000000\0Bob\0bob@example.com\0',
-      '1600000000\0Root\n\0',
-    ].join('');
-    assert.deepStrictEqual(parseLog(output), [
-      {
-        hash: 'aaa',
-        subject: 'Subject',
-        message: 'Subject\n\nBody',
-        parents: ['p1', 'p2'],
-        authorName: 'Ann',
-        authorEmail: 'ann@example.com',
-        authorDate: 1_700_000_000_000,
-        committerName: 'Carl',
-        committerEmail: 'carl@example.com',
-        commitDate: 1_700_000_100_000,
-        files: 2,
-      },
-      {
-        hash: 'bbb',
-        subject: 'Root',
-        message: 'Root',
-        parents: [],
-        authorName: 'Bob',
-        authorEmail: 'bob@example.com',
-        authorDate: 1_600_000_000_000,
-        committerName: 'Bob',
-        committerEmail: 'bob@example.com',
-        commitDate: 1_600_000_000_000,
-        files: 0,
-      },
-    ]);
-  });
-
-  test('reads a message with \\x1e in it, and paths that look like fields', () => {
-    const output = [
-      '\x1eaaa\0\0Ann\0ann@example.com\0',
-      '1700000000\0Ann\0ann@example.com\0',
-      '1700000000\0Subject\n\n\x1ebbb\n\0',
-      '\n:000000 100644 0000000 1111111 A\0:memo.txt\0',
-      ':000000 100644 0000000 2222222 A\0\x1eodd.txt\0',
-      '\x1eccc\0aaa\0Bob\0bob@example.com\0',
-      '1700000100\0Bob\0bob@example.com\0',
-      '1700000100\0Next\n\0',
-    ].join('');
+  test('parses copies, type changes and unknown statuses', () => {
     assert.deepStrictEqual(
-      parseLog(output).map(({ hash, message, parents, files }) => ({
-        hash,
-        message,
-        parents,
-        files,
-      })),
+      parseChanges(
+        [
+          raw('C075'),
+          'src.ts',
+          'copy.ts',
+          raw('T'),
+          'link',
+          raw('U'),
+          'odd',
+          raw('M'),
+          'after.ts',
+          '2\t0\t',
+          'src.ts',
+          'copy.ts',
+          '1\t1\tafter.ts',
+          '',
+        ].join('\0'),
+      ),
       [
-        { hash: 'aaa', message: 'Subject\n\n\x1ebbb', parents: [], files: 2 },
-        { hash: 'ccc', message: 'Next', parents: ['aaa'], files: 0 },
+        {
+          status: 'C',
+          oldPath: 'src.ts',
+          path: 'copy.ts',
+          insertions: 2,
+          deletions: 0,
+        },
+        {
+          status: 'T',
+          oldPath: undefined,
+          path: 'link',
+          insertions: 0,
+          deletions: 0,
+        },
+        {
+          status: '?',
+          oldPath: undefined,
+          path: 'odd',
+          insertions: 0,
+          deletions: 0,
+        },
+        {
+          status: 'M',
+          oldPath: undefined,
+          path: 'after.ts',
+          insertions: 1,
+          deletions: 1,
+        },
       ],
     );
-  });
-});
-
-suite('git rev-list parser', () => {
-  test('parses hashes and parents', () => {
-    assert.deepStrictEqual(parseHistory('aaa bbb ccc\nbbb\n'), [
-      { hash: 'aaa', parents: ['bbb', 'ccc'] },
-      { hash: 'bbb', parents: [] },
-    ]);
   });
 });

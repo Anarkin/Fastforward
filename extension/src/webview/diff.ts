@@ -24,7 +24,6 @@ interface ParsedFile {
   path: string;
   binary: boolean;
   hunks: DiffHunk[];
-  oldPath?: string;
 }
 
 const hunkHeader = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@ ?(.*)$/;
@@ -130,10 +129,8 @@ export function parsePatch(patch: string): DiffFile[] {
         file.binary = true;
       } else if (line.startsWith('rename to ') || line.startsWith('copy to ')) {
         file.path = unquotePath(line.slice(line.indexOf(' to ') + 4));
-      } else if (line.startsWith('--- ')) {
-        file.oldPath = prefixedPath(line.slice(4), 'a/');
       } else if (line.startsWith('+++ ')) {
-        const path = prefixedPath(line.slice(4), 'b/') ?? file.oldPath;
+        const path = prefixedPath(line.slice(4), 'b/');
         if (path !== undefined) {
           file.path = path;
         }

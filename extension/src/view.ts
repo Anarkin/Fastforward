@@ -5,13 +5,7 @@ import { remoteDefaultBranches } from './git/branches';
 import { showFiles, showPatch, type PatchScope } from './git/diff';
 import { listTree, readFile } from './git/files';
 import type { API, Repository } from './git/git';
-import {
-  commitOf,
-  findCommit,
-  headCommit,
-  listHistory,
-  logCommits,
-} from './git/history';
+import { findCommit, headCommit, listHistory, logCommits } from './git/history';
 import { getGitApi, listRefs, pickRepository } from './git/repository';
 import {
   workingTreeFiles,
@@ -370,9 +364,15 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         }
         break;
       case 'jump': {
-        const hash = /^[0-9a-f]{40}$/.test(message.hash)
-          ? message.hash
-          : await commitOf(context.gitPath, context.root, message.hash);
+        const found = /^[0-9a-f]{40}$/.test(message.hash)
+          ? undefined
+          : await findCommit(context.gitPath, context.root, message.hash);
+        const hash =
+          found === undefined
+            ? message.hash
+            : found.kind === 'found'
+              ? found.hash
+              : undefined;
         if (hash) {
           await this.showCommit(context, hash);
         } else {
