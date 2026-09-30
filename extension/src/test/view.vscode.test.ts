@@ -979,6 +979,22 @@ suite('View', function () {
       }
     });
 
+    test('shows what git said when a request fails', async () => {
+      stubMethod(fastforward, 'sendTree', () =>
+        Promise.reject(
+          Object.assign(new Error('Failed to execute git'), {
+            stderr: 'fatal: bad tree\n',
+          }),
+        ),
+      );
+      await connection.receive({
+        type: 'loadTree',
+        root: repository.root,
+        hash: fixture.merge,
+      });
+      assert.strictEqual(page.last('error')?.message, 'fatal: bad tree');
+    });
+
     test('reports what git said when it refuses a checkout', async () => {
       await withMessageStub('showErrorMessage', async (messages) => {
         await connection.receive({

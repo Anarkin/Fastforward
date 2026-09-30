@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { aheadBehind, fastForward } from './git/branches';
 import type { Repository } from './git/git';
+import { gitErrorText } from './git/errorText';
 import { listRefs } from './git/repository';
 import type { CheckoutTarget } from './shared/protocol';
 import { withoutRemote } from './shared/refNames';
@@ -101,14 +102,4 @@ export async function fetchAll(
       `Fastforward: couldn't fetch. ${details}`,
     );
   }
-}
-
-function gitErrorText(error: unknown): string {
-  if (typeof error === 'object' && error !== null && 'stderr' in error) {
-    const { stderr } = error;
-    if (typeof stderr === 'string' && stderr.trim()) {
-      return stderr.trim();
-    }
-  }
-  return error instanceof Error ? error.message : String(error);
 }

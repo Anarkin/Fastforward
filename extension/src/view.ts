@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { remoteDefaultBranches } from './git/branches';
 import { showFiles, showPatch, type PatchScope } from './git/diff';
+import { gitErrorText } from './git/errorText';
 import { listTree, readFile } from './git/files';
 import type { API, Repository } from './git/git';
 import {
@@ -215,7 +216,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
     try {
       await action();
     } catch (error) {
-      const text = error instanceof Error ? error.message : String(error);
+      const text = gitErrorText(error);
       this.log.error(`${name} failed`);
       this.log.error(error instanceof Error ? error : text);
       if (root === undefined || this.isActive(root)) {
