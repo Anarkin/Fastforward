@@ -19,6 +19,25 @@ suite('showHistory', () => {
     ]);
   });
 
+  test('counts a commit merged twice only for the merge that brought it in first', () => {
+    const twice = [
+      { hash: 'm2', parents: ['m1', 'd2'] },
+      { hash: 'd2', parents: ['d1'] },
+      { hash: 'm1', parents: ['base', 'd1'] },
+      { hash: 'd1', parents: ['base'] },
+      { hash: 'base', parents: [] },
+    ];
+    const shown = showHistory(twice, new Set(['m2']), () => false);
+    assert.deepStrictEqual(
+      shown.map((entry) => [entry.hash, entry.merge, entry.hidden]),
+      [
+        ['m2', 'collapsed', 1],
+        ['m1', 'collapsed', 1],
+        ['base', undefined, undefined],
+      ],
+    );
+  });
+
   test('shows the merged branch of an expanded merge', () => {
     const shown = showHistory(history, new Set(['m']), (hash) => hash === 'm');
     assert.deepStrictEqual(
