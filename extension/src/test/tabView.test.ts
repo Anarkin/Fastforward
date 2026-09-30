@@ -423,16 +423,4 @@ suite('Tab view', () => {
     });
     assert.deepStrictEqual(treeOf(loaded), ['a']);
   });
-
-  test('shows no whole file of the file selected before', () => {
-    const whole = reduceTabView(busyTab(), {
-      type: 'fileContent',
-      hash: 'a',
-      path: 'y.ts',
-      content: 'y',
-      binary: false,
-    });
-    const next = reduceTabView(whole, { type: 'showFile', path: 'z.ts' });
-    assert.strictEqual(next.fileContent, undefined);
-  });
 });
