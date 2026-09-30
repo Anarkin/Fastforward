@@ -24,7 +24,10 @@
           "error",
           {
             "paths": [
-              { "name": "vscode", "message": "The webview has no VS Code API" }
+              {
+                "name": "electron",
+                "message": "The webview runs sandboxed, without Electron"
+              }
             ],
             "patterns": [
               {
@@ -43,7 +46,10 @@
           "error",
           {
             "paths": [
-              { "name": "vscode", "message": "shared/ runs in the webview too" }
+              {
+                "name": "electron",
+                "message": "shared/ runs in the webview too"
+              }
             ],
             "patterns": [
               {
@@ -56,7 +62,7 @@
       }
     },
     {
-      "files": ["src/*.ts", "src/git/**", "src/history/**"],
+      "files": ["src/*.ts", "src/git/**", "src/history/**", "src/main/**"],
       "rules": {
         "no-restricted-imports": [
           "error",
@@ -64,7 +70,7 @@
             "patterns": [
               {
                 "group": ["**/webview/*", "./webview/*"],
-                "message": "The extension doesn't import the webview's code"
+                "message": "The main process doesn't import the webview's code"
               }
             ]
           }
@@ -72,5 +78,5 @@
       }
     }
   ],
-  "ignorePatterns": ["dist", "out", ".vscode-test", "src/git/git.d.ts"]
+  "ignorePatterns": ["dist", "out", "release"]
 }

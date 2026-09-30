@@ -3,7 +3,7 @@
     "module": "Node16",
     "target": "ES2024",
     "lib": ["ES2024", "DOM", "DOM.Iterable"],
-    "types": ["node", "mocha", "vscode"],
+    "types": ["node", "mocha"],
     "rootDir": "src",
     "sourceMap": true,
     "strict": true,

@@ -10,7 +10,7 @@ import { commitPageSize } from '../shared/protocol';
 import { commitInfo, fileChange } from './fixtures';
 
 const openTab = (view: TabView, active: string) =>
-  reduceTabView(view, { type: 'tabs', tabs: [], active });
+  reduceTabView(view, { type: 'tabs', tabs: [], active, recent: [] });
 
 function busyTab(): TabView {
   let view = reduceTabView(openTab(emptyTabView, 'one'), {

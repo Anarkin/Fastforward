@@ -14,7 +14,7 @@ import {
   type FilesMode,
   type TabInfo,
   type TabMessage,
-  type ToExtension,
+  type ToHost,
   type ToWebview,
   type Bookmark,
 } from '../shared/protocol';
@@ -49,13 +49,24 @@ import {
 } from './tabFolders';
 import { emptyTabView, reduceTabView, treeOf, treeToLoad } from './tabView';
 import { bookmarkOptions, toggleBookmark } from './bookmarks';
+import { addNotice, Notices, type Notice } from './notices';
+import { repositoryMenuItems } from './repositoryMenu';
 
 interface Props {
-  post: (message: ToExtension) => void;
+  post: (message: ToHost) => void;
+  listen: (handler: (message: ToWebview) => void) => () => void;
 }
 
-export function App({ post }: Props) {
+export function App({ post, listen }: Props) {
   const [tabs, setTabs] = useState<readonly TabInfo[]>([]);
+  const [recent, setRecent] = useState<readonly TabInfo[]>([]);
+  const [notices, setNotices] = useState<readonly Notice[]>([]);
+  const noticeCount = useRef(0);
+  const dismissNotice = useCallback(
+    (id: number) =>
+      setNotices((shown) => shown.filter((notice) => notice.id !== id)),
+    [],
+  );
   const activeTabRef = useRef<string>(undefined);
   const [tab, dispatch] = useReducer(reduceTabView, emptyTabView);
   const {
@@ -113,8 +124,7 @@ export function App({ post }: Props) {
   } = useColumnWidths(saveColumnWidths, hiddenColumns);
 
   useEffect(() => {
-    const onMessage = (event: MessageEvent<ToWebview>) => {
-      const message = event.data;
+    const onMessage = (message: ToWebview) => {
       switch (message.type) {
         case 'layout':
           loadColumnWidths(message.columnWidths);
@@ -129,8 +139,20 @@ export function App({ post }: Props) {
         case 'tabs':
           activeTabRef.current = message.active;
           setTabs(message.tabs);
+          setRecent(message.recent);
           dispatch(message);
           break;
+        case 'notice': {
+          const id = ++noticeCount.current;
+          setNotices((shown) =>
+            addNotice(shown, {
+              id,
+              level: message.level,
+              message: message.message,
+            }),
+          );
+          break;
+        }
         case 'bookmarks':
           setBookmarks(message.bookmarks);
           break;
@@ -138,14 +160,10 @@ export function App({ post }: Props) {
           dispatch(message);
       }
     };
-    window.addEventListener('message', onMessage);
+    const stop = listen(onMessage);
     post({ type: 'ready' });
-    // The modal focuses the webview before the page has loaded, so the page
-    // takes the focus itself, for the keyboard shortcuts to work without a
-    // click first
-    window.focus();
-    return () => window.removeEventListener('message', onMessage);
-  }, [post, loadColumnWidths]);
+    return stop;
+  }, [post, listen, loadColumnWidths]);
 
   const log = useCallback(
     (message: string) => post({ type: 'log', level: 'info', message }),
@@ -332,6 +350,23 @@ export function App({ post }: Props) {
     ];
   };
 
+  const openRepository = (event: React.MouseEvent) => {
+    if (recent.length === 0) {
+      post({ type: 'browseRepositories' });
+      return;
+    }
+    const button = event.currentTarget.getBoundingClientRect();
+    setMenu({
+      x: button.left,
+      y: button.bottom,
+      items: repositoryMenuItems(
+        recent,
+        (root) => post({ type: 'openRepository', root }),
+        () => post({ type: 'browseRepositories' }),
+      ),
+    });
+  };
+
   const openMenu = (event: React.MouseEvent, target: MenuTarget) => {
     event.stopPropagation();
     event.preventDefault();
@@ -349,11 +384,12 @@ export function App({ post }: Props) {
               onSelect={(root) => post({ type: 'selectTab', root })}
               onPreload={(root) => post({ type: 'preloadTab', root })}
               onClose={(root) => post({ type: 'closeTab', root })}
-              onAdd={() => post({ type: 'addTab' })}
+              onAdd={openRepository}
               onSort={() => post({ type: 'sortTabs' })}
               onLog={log}
             />
             {menu && <ContextMenu menu={menu} onClose={closeMenu} />}
+            <Notices notices={notices} onDismiss={dismissNotice} />
             {tabs.length === 0 ? (
               <div className="empty-state">
                 No repository is open. Use + to open one.

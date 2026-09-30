@@ -2,10 +2,6 @@ node_modules/
 dist/
 out/
 coverage/
-.vscode-test/
-*.vsix
+release/
 .claude/settings.local.json
-
-# Copied from the repo root at packaging time
-extension/README.md
-extension/LICENSE
+.vs/

@@ -19,7 +19,7 @@ export function TabBar({
   onSelect: (root: string) => void;
   onPreload: (root: string) => void;
   onClose: (root: string) => void;
-  onAdd: () => void;
+  onAdd: (event: React.MouseEvent) => void;
   onSort: () => void;
   onLog: (message: string) => void;
 }) {

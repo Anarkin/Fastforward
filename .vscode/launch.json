@@ -2,14 +2,20 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Run Extension",
-      "type": "extensionHost",
+      "name": "Debug Main Process",
+      "type": "node",
       "request": "launch",
+      "cwd": "${workspaceFolder}/app",
+      "runtimeExecutable": "${workspaceFolder}/app/node_modules/.bin/electron",
+      "windows": {
+        "runtimeExecutable": "${workspaceFolder}/app/node_modules/.bin/electron.cmd"
+      },
       "args": [
-        "--extensionDevelopmentPath=${workspaceFolder}/app",
-        "--disable-extensions"
+        "."
       ],
-      "outFiles": ["${workspaceFolder}/app/dist/**/*.js"],
+      "outFiles": [
+        "${workspaceFolder}/app/dist/**/*.js"
+      ],
       "preLaunchTask": "build"
     }
   ]
