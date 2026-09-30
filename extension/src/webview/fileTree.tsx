@@ -35,10 +35,10 @@ export function buildFileTree(
   }
   for (const path of all) {
     const parts = pathParts(path);
-    const name = parts[parts.length - 1];
+    const name = parts.pop() ?? path;
     const changed = changes.has(path);
     let node = root;
-    for (const part of parts.slice(0, -1)) {
+    for (const part of parts) {
       const childPath = node.path ? `${node.path}/${part}` : part;
       let child = node.folders.get(part);
       if (!child) {

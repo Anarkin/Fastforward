@@ -82,7 +82,12 @@ export function FileRow({
     >
       {depth !== undefined && <IndentGuides depth={depth} />}
       <span className={change ? statusClass(change) : 'path'}>{name}</span>
-      {change && <LineCounts {...change} />}
+      {change && (
+        <LineCounts
+          deletions={change.deletions}
+          insertions={change.insertions}
+        />
+      )}
     </div>
   );
 }
