@@ -1,7 +1,9 @@
 import {
+  Fragment,
   useCallback,
   useContext,
   useEffect,
+  useEffectEvent,
   useRef,
   useSyncExternalStore,
 } from 'react';
@@ -13,7 +15,7 @@ import {
   type RefInfo,
   type ScrollTarget,
 } from '../shared/protocol';
-import { DetachedHead, HeadBubble, RefBubble } from './bubbles';
+import { commitBubbles, DetachedHead } from './bubbles';
 import { Column } from './column';
 import { CommitHistory } from './commitHistory';
 import { OpenContextMenu } from './contextMenu';
@@ -110,6 +112,17 @@ export function arrowKeyPosition(
   return position === from ? undefined : position;
 }
 
+export function workingTreeShift(
+  scrollTop: number,
+  previousOffset: number,
+  offset: number,
+  rowHeight: number,
+): number | undefined {
+  return offset === previousOffset || scrollTop === 0
+    ? undefined
+    : scrollTop + (offset - previousOffset) * rowHeight;
+}
+
 export function CommitBubbles({
   hash,
   refs,
@@ -119,15 +132,50 @@ export function CommitBubbles({
   refs: readonly RefInfo[];
   detached: boolean;
 }) {
-  if (!detached && refs.length === 0) {
+  const bubbles = commitBubbles(hash, refs, detached);
+  if (bubbles.length === 0) {
     return null;
   }
   return (
     <div className="bubble-line">
-      {detached && <HeadBubble commit={hash} />}
-      {refs.map((ref) => (
-        <RefBubble key={`${ref.kind}:${ref.name}`} info={ref} />
+      {bubbles.map((bubble) => (
+        <Fragment key={bubble.key}>{bubble.element}</Fragment>
       ))}
+    </div>
+  );
+}
+
+export function WorkingTreeRow({
+  count,
+  selected,
+  indent,
+  onSelect,
+}: {
+  count: number;
+  selected: boolean;
+  indent: number;
+  onSelect: (hash: string | undefined) => void;
+}) {
+  const dirty = count > 0;
+  return (
+    <div
+      style={{ paddingLeft: indent }}
+      className={`commit working-tree ${dirty ? '' : 'empty'} ${selected ? 'selected' : ''}`}
+      onClick={() => onSelect(dirty ? workingTreeHash : undefined)}
+    >
+      <div className="commit-line">
+        <span className="subject">
+          {dirty ? workingTreeSubject : 'No changes'}
+        </span>
+        {dirty && <span className="count">{count}</span>}
+      </div>
+      <div className="commit-line secondary">
+        <span className="author">
+          {dirty
+            ? 'Staged, unstaged and untracked files'
+            : 'The working tree is clean'}
+        </span>
+      </div>
     </div>
   );
 }
@@ -156,7 +204,7 @@ export function Commits({
   onScrolled: (hash: string, offset: number) => void;
   onLoad: (start: number, generation: number) => void;
   workingTree: number | undefined;
-  refsByCommit: Map<string, RefInfo[]>;
+  refsByCommit: ReadonlyMap<string, readonly RefInfo[]>;
   selected: string | undefined;
   onSelect: (hash: string | undefined, replace?: boolean) => void;
   onToggleMerge: (hash: string) => void;
@@ -210,26 +258,44 @@ export function Commits({
     return () => clearTimeout(timer);
   }, [history, first, last, onLoad]);
 
-  const scrollIndex = scrollTarget && offset + scrollTarget.index;
-  useEffect(() => {
-    if (!history || scrollIndex === undefined) {
-      return;
-    }
-    const rowOffset = scrollTarget?.offset;
-    if (rowOffset !== undefined) {
-      const [start] = virtualizer.getOffsetForIndex(scrollIndex, 'start') ?? [];
+  const shownOffset = useRef(offset);
+  const applyTarget = useEffectEvent((target: ScrollTarget) => {
+    shownOffset.current = offset;
+    const index = offset + target.index;
+    if (target.offset !== undefined) {
+      const [start] = virtualizer.getOffsetForIndex(index, 'start') ?? [];
       if (start !== undefined) {
-        virtualizer.scrollToOffset(start + rowOffset);
+        virtualizer.scrollToOffset(start + target.offset);
       }
       return;
     }
     const onScreen = virtualizer
       .getVirtualItems()
-      .some((row) => row.index === scrollIndex);
-    virtualizer.scrollToIndex(scrollIndex, {
-      align: onScreen ? 'auto' : 'center',
-    });
-  }, [history, scrollTarget, scrollIndex, virtualizer]);
+      .some((row) => row.index === index);
+    virtualizer.scrollToIndex(index, { align: onScreen ? 'auto' : 'center' });
+  });
+  useEffect(() => {
+    if (history && scrollTarget) {
+      applyTarget(scrollTarget);
+    }
+  }, [history, scrollTarget]);
+  useEffect(() => {
+    const previous = shownOffset.current;
+    shownOffset.current = offset;
+    const element = list.current;
+    if (!element) {
+      return;
+    }
+    const shifted = workingTreeShift(
+      element.scrollTop,
+      previous,
+      offset,
+      commitRowHeight,
+    );
+    if (shifted !== undefined) {
+      virtualizer.scrollToOffset(shifted);
+    }
+  }, [offset, virtualizer]);
 
   const topUnreported = useRef(false);
   const reportTop = useCallback(() => {
@@ -321,27 +387,12 @@ export function Commits({
   const renderRow = (index: number) => {
     if (hasWorkingTree && index === 0) {
       return (
-        <div
-          style={{ paddingLeft: indent(index) }}
-          className={`commit working-tree ${workingTree === 0 ? 'empty' : ''} ${selected === workingTreeHash ? 'selected' : ''}`}
-          onClick={() =>
-            onSelect(workingTree > 0 ? workingTreeHash : undefined)
-          }
-        >
-          <div className="commit-line">
-            <span className="subject">
-              {workingTree > 0 ? workingTreeSubject : 'No changes'}
-            </span>
-            {workingTree > 0 && <span className="count">{workingTree}</span>}
-          </div>
-          <div className="commit-line secondary">
-            <span className="author">
-              {workingTree > 0
-                ? 'Staged, unstaged and untracked files'
-                : 'The working tree is clean'}
-            </span>
-          </div>
-        </div>
+        <WorkingTreeRow
+          count={workingTree}
+          selected={selected === workingTreeHash}
+          indent={indent(index)}
+          onSelect={onSelect}
+        />
       );
     }
     const position = index - offset;

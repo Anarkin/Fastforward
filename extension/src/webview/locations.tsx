@@ -414,7 +414,7 @@ function PinnedSection({
               {item.kind !== 'commit' ? (
                 <RefBubble info={item} missing={commit === undefined} />
               ) : item.name === detached ? (
-                <HeadBubble commit={item.name} />
+                <HeadBubble hash={item.name} />
               ) : (
                 <CommitBubble hash={item.name} />
               )}

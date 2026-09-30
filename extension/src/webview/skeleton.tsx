@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { treeIndent } from './tree';
 
 const skeletonDelay = 150;
 
@@ -32,7 +33,7 @@ export function SkeletonRows({
         <div
           key={index}
           className={`${className} skeleton-row`}
-          style={indent ? { paddingLeft: 8 + (index % 3) * 10 } : undefined}
+          style={indent ? { paddingLeft: treeIndent(index % 3) } : undefined}
         >
           <span
             className="bar"
