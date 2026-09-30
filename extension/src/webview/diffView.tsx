@@ -147,11 +147,16 @@ export function diffRows(
   return rows;
 }
 
-export function fileHeaderIndex(
-  rows: readonly DiffRow[],
-  file: number,
-): number {
+function fileHeaderIndex(rows: readonly DiffRow[], file: number): number {
   return rows.findIndex((row) => row.kind === 'file' && row.file === file);
+}
+
+export function scrollOnToggle(
+  rows: readonly DiffRow[],
+  row: FileHeaderRow,
+  stuck: boolean,
+): number | undefined {
+  return stuck ? fileHeaderIndex(rows, row.file) : undefined;
 }
 
 export function stuckHeader(
@@ -255,10 +260,9 @@ export function DiffView({
             return;
           }
           toggle(row.path, row.open);
-          if (stuck) {
-            virtualizer.scrollToIndex(fileHeaderIndex(rows, row.file), {
-              align: 'start',
-            });
+          const target = scrollOnToggle(rows, row, stuck);
+          if (target !== undefined) {
+            virtualizer.scrollToIndex(target, { align: 'start' });
           }
         }}
       >
