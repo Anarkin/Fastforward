@@ -1,9 +1,7 @@
 import {
-  Fragment,
   useCallback,
   useContext,
   useEffect,
-  useEffectEvent,
   useRef,
   useSyncExternalStore,
 } from 'react';
@@ -15,7 +13,7 @@ import {
   type RefInfo,
   type ScrollTarget,
 } from '../shared/protocol';
-import { commitBubbles, DetachedHead } from './bubbles';
+import { DetachedHead, HeadBubble, RefBubble } from './bubbles';
 import { Column } from './column';
 import { CommitHistory } from './commitHistory';
 import { OpenContextMenu } from './contextMenu';
@@ -123,6 +121,25 @@ export function workingTreeShift(
     : scrollTop + (offset - previousOffset) * rowHeight;
 }
 
+export interface ListScrollState {
+  readonly target: ScrollTarget | undefined;
+  readonly offset: number;
+}
+
+export type ListScroll = { target: ScrollTarget } | { shiftBy: number };
+
+export function listScroll(
+  previous: ListScrollState,
+  next: ListScrollState,
+): ListScroll | undefined {
+  if (next.target !== undefined && next.target !== previous.target) {
+    return { target: next.target };
+  }
+  return next.offset === previous.offset
+    ? undefined
+    : { shiftBy: next.offset - previous.offset };
+}
+
 export function CommitBubbles({
   hash,
   refs,
@@ -132,14 +149,14 @@ export function CommitBubbles({
   refs: readonly RefInfo[];
   detached: boolean;
 }) {
-  const bubbles = commitBubbles(hash, refs, detached);
-  if (bubbles.length === 0) {
+  if (!detached && refs.length === 0) {
     return null;
   }
   return (
     <div className="bubble-line">
-      {bubbles.map((bubble) => (
-        <Fragment key={bubble.key}>{bubble.element}</Fragment>
+      {detached && <HeadBubble hash={hash} />}
+      {refs.map((ref) => (
+        <RefBubble key={`${ref.kind}:${ref.name}`} info={ref} />
       ))}
     </div>
   );
@@ -258,14 +275,36 @@ export function Commits({
     return () => clearTimeout(timer);
   }, [history, first, last, onLoad]);
 
-  const shownOffset = useRef(offset);
-  const applyTarget = useEffectEvent((target: ScrollTarget) => {
-    shownOffset.current = offset;
-    const index = offset + target.index;
-    if (target.offset !== undefined) {
+  const shown = useRef<ListScrollState>({ target: undefined, offset });
+  useEffect(() => {
+    const next = { target: history ? scrollTarget : undefined, offset };
+    const previous = shown.current;
+    shown.current = next;
+    const action = listScroll(previous, next);
+    if (action === undefined) {
+      return;
+    }
+    if ('shiftBy' in action) {
+      const element = list.current;
+      if (!element) {
+        return;
+      }
+      const shifted = workingTreeShift(
+        element.scrollTop,
+        previous.offset,
+        offset,
+        commitRowHeight,
+      );
+      if (shifted !== undefined) {
+        virtualizer.scrollToOffset(shifted);
+      }
+      return;
+    }
+    const index = offset + action.target.index;
+    if (action.target.offset !== undefined) {
       const [start] = virtualizer.getOffsetForIndex(index, 'start') ?? [];
       if (start !== undefined) {
-        virtualizer.scrollToOffset(start + target.offset);
+        virtualizer.scrollToOffset(start + action.target.offset);
       }
       return;
     }
@@ -273,29 +312,7 @@ export function Commits({
       .getVirtualItems()
       .some((row) => row.index === index);
     virtualizer.scrollToIndex(index, { align: onScreen ? 'auto' : 'center' });
-  });
-  useEffect(() => {
-    if (history && scrollTarget) {
-      applyTarget(scrollTarget);
-    }
-  }, [history, scrollTarget]);
-  useEffect(() => {
-    const previous = shownOffset.current;
-    shownOffset.current = offset;
-    const element = list.current;
-    if (!element) {
-      return;
-    }
-    const shifted = workingTreeShift(
-      element.scrollTop,
-      previous,
-      offset,
-      commitRowHeight,
-    );
-    if (shifted !== undefined) {
-      virtualizer.scrollToOffset(shifted);
-    }
-  }, [offset, virtualizer]);
+  }, [history, scrollTarget, offset, virtualizer]);
 
   const topUnreported = useRef(false);
   const reportTop = useCallback(() => {
