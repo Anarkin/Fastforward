@@ -128,14 +128,16 @@ suite('Style', () => {
     );
   });
 
-  test("edges the popup's search box in the border color, and tints the hovered search field like anything else hovered", () => {
+  test("edges the popup's search box in the border color, and tints the hovered search field like anything else hovered, its edge included", () => {
     const box = declarationsOf('.locations-search');
     assert.ok(box.includes('background: var(--color-panel-background);'));
     assert.ok(box.includes('border: 1px solid var(--color-border);'));
+    const hovered = declarationsOf('.address-bar:hover');
     assert.match(
-      declarationsOf('.address-bar:hover'),
+      hovered,
       /background:\s*linear-gradient\(var\(--hover-background\), var\(--hover-background\)\),\s*var\(--color-border\);/,
     );
+    assert.ok(hovered.includes('border-color: transparent;'));
   });
 
   test('draws the scrollbars and the minimap viewport in the one scrollbar color, less see-through when hovered and more when dragged', () => {
