@@ -211,4 +211,12 @@ suite('Style', () => {
     assert.match(deleted, /text-decoration: line-through;/);
     assert.doesNotMatch(deleted, /color:/);
   });
+
+  test('sizes all text by the font size settings, buttons and inputs included', () => {
+    assert.deepStrictEqual(
+      [...css.matchAll(/font-size: ([^;]+);/g)].map((match) => match[1]),
+      ['var(--font-size)', 'var(--monospace-font-size)'],
+    );
+    assert.match(declarationsOf('button'), /font: inherit;/);
+  });
 });
