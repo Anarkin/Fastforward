@@ -80,7 +80,6 @@ export interface CommitInfo {
   readonly committerName: string;
   readonly committerEmail: string;
   readonly commitDate: number;
-  readonly files: number;
 }
 
 export interface GraphLine {

@@ -88,7 +88,7 @@ export function showPatch(
 
 const simpleStatuses = ['A', 'M', 'D', 'T'] as const;
 
-export function rawStatus(token: string): string {
+function rawStatus(token: string): string {
   return token.slice(token.lastIndexOf(' ') + 1)[0] ?? '';
 }
 

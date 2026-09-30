@@ -291,7 +291,6 @@ suite('Commit row', () => {
         authorName: 'Ann',
         authorDate: Date.UTC(2026, 8, 30, 0, 24),
         commitDate: Date.UTC(2026, 8, 30, 11, 56),
-        files: 3,
       }),
       selected: undefined,
       headCommit: 'a',
