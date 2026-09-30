@@ -10,22 +10,13 @@ import { isLargeChange, type FileChange } from '../shared/protocol';
 import { Column } from './column';
 import { parsePatch, type DiffFile } from './diff';
 import { DiffView, type WholeFile } from './diffView';
-import {
-  findMatches,
-  matchCount,
-  noFindOptions,
-  stepMatch,
-  unsearchedFiles,
-  type FindOptions,
-} from './find';
+import { findMatches, matchCount, stepMatch, unsearchedFiles } from './find';
 import {
   EntireFileIcon,
   IgnoreWhitespaceIcon,
-  MatchCaseIcon,
   NextIcon,
   PinIcon,
   PreviousIcon,
-  WholeWordIcon,
 } from './icons';
 import { isFindShortcut } from './shortcuts';
 
@@ -172,36 +163,14 @@ export function DiffFind({
 }
 
 export function FindActions({
-  options,
   matches,
-  onOptions,
   onStep,
 }: {
-  options: FindOptions;
   matches: number;
-  onOptions: (options: FindOptions) => void;
   onStep: (step: 1 | -1) => void;
 }) {
   return (
     <div className="nav-buttons diff-find-actions">
-      <button
-        className={`nav-button toggle ${options.caseSensitive ? 'active' : ''}`}
-        title="Match Case"
-        aria-pressed={options.caseSensitive}
-        onClick={() =>
-          onOptions({ ...options, caseSensitive: !options.caseSensitive })
-        }
-      >
-        <MatchCaseIcon />
-      </button>
-      <button
-        className={`nav-button toggle ${options.wholeWord ? 'active' : ''}`}
-        title="Match Whole Word"
-        aria-pressed={options.wholeWord}
-        onClick={() => onOptions({ ...options, wholeWord: !options.wholeWord })}
-      >
-        <WholeWordIcon />
-      </button>
       <button
         className="nav-button"
         title="Previous Match (Shift+Enter)"
@@ -258,13 +227,12 @@ export function Diff({
   const errorRow = error && <div className="error">{error}</div>;
 
   const [query, setQuery] = useState('');
-  const [options, setOptions] = useState<FindOptions>(noFindOptions);
   const [current, setCurrent] = useState(0);
   const [jump, setJump] = useState(0);
   const input = useRef<HTMLInputElement>(null);
   const matches = useMemo(
-    () => findMatches(diffFiles, fileContent, query, options),
-    [diffFiles, fileContent, query, options],
+    () => findMatches(diffFiles, fileContent, query),
+    [diffFiles, fileContent, query],
   );
   const shown = Math.min(current, Math.max(0, matches.length - 1));
   const goTo = (index: number) => {
@@ -306,17 +274,7 @@ export function Diff({
         />
       }
       start={entireFile}
-      actions={
-        <FindActions
-          options={options}
-          matches={matches.length}
-          onOptions={(next) => {
-            setOptions(next);
-            goTo(0);
-          }}
-          onStep={step}
-        />
-      }
+      actions={<FindActions matches={matches.length} onStep={step} />}
     >
       <DiffView
         key={selection}

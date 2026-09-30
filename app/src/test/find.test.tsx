@@ -13,11 +13,9 @@ import {
   findMatches,
   matchCount,
   matchesIn,
-  noFindOptions,
   stepMatch,
   unsearchedFiles,
   wholeLines,
-  type FindOptions,
 } from '../webview/find';
 import { matchMarks } from '../webview/minimap';
 import { isFindShortcut } from '../webview/shortcuts';
@@ -46,49 +44,42 @@ const whole = { path: 'c.ts', content: 'find\nnone\n', binary: false };
 function noop() {}
 
 suite('Find in diff', () => {
-  test('finds every occurrence in a line, ignoring case unless asked, as whole words only if asked', () => {
-    assert.deepStrictEqual(matchesIn('Find find', 'find', noFindOptions), [
+  test('finds every occurrence in a line, ignoring case, inside words too', () => {
+    assert.deepStrictEqual(matchesIn('Find finder', 'find'), [
       { start: 0, end: 4 },
       { start: 5, end: 9 },
     ]);
-    assert.deepStrictEqual(
-      matchesIn('Find find', 'find', { ...noFindOptions, caseSensitive: true }),
-      [{ start: 5, end: 9 }],
-    );
-    assert.deepStrictEqual(
-      matchesIn('finder find_x (find)', 'find', {
-        ...noFindOptions,
-        wholeWord: true,
-      }),
-      [{ start: 15, end: 19 }],
-    );
-    assert.deepStrictEqual(matchesIn('aaaa', 'aa', noFindOptions), [
+    assert.deepStrictEqual(matchesIn('aaaa', 'aa'), [
       { start: 0, end: 2 },
       { start: 2, end: 4 },
     ]);
-    assert.deepStrictEqual(matchesIn('find', '', noFindOptions), []);
+    assert.deepStrictEqual(matchesIn('find', ''), []);
   });
 
   test('searches every line of every file, collapsed or not, numbering lines across hunks', () => {
     const files = parsePatch(patch);
-    const options: FindOptions = { caseSensitive: true, wholeWord: true };
-    assert.deepStrictEqual(findMatches(files, undefined, 'find', options), [
-      { file: 0, line: 1, start: 6, end: 10 },
-      { file: 0, line: 3, start: 0, end: 4 },
-      { file: 0, line: 3, start: 5, end: 9 },
+    assert.deepStrictEqual(findMatches(files, undefined, 'finder'), [
+      { file: 0, line: 2, start: 6, end: 12 },
     ]);
-    assert.strictEqual(
-      findMatches(files, undefined, 'find', noFindOptions).length,
-      6,
-    );
     assert.deepStrictEqual(
-      findMatches(files, undefined, '', noFindOptions),
-      [],
+      findMatches(files, undefined, 'find').map((match) => [
+        match.file,
+        match.line,
+      ]),
+      [
+        [0, 0],
+        [0, 1],
+        [0, 2],
+        [0, 3],
+        [0, 3],
+        [1, 1],
+      ],
     );
+    assert.deepStrictEqual(findMatches(files, undefined, ''), []);
   });
 
   test('searches the whole of an unchanged file instead, when one is shown', () => {
-    assert.deepStrictEqual(findMatches([], whole, 'find', noFindOptions), [
+    assert.deepStrictEqual(findMatches([], whole, 'find'), [
       { file: 0, line: 0, start: 0, end: 4 },
     ]);
     assert.deepStrictEqual(wholeLines(whole), ['find', 'none']);
@@ -260,14 +251,11 @@ suite('Find in diff', () => {
     assert.doesNotMatch(renderToStaticMarkup(field('')), /diff-find-count/);
   });
 
-  test('toggles matching case and whole words, and steps only while there are matches', () => {
-    const picked: FindOptions[] = [];
+  test('steps only while there are matches', () => {
     const steps: number[] = [];
     const actions = (matches: number) => {
       const element = FindActions({
-        options: noFindOptions,
         matches,
-        onOptions: (next) => picked.push(next),
         onStep: (step) => steps.push(step),
       });
       assert.ok(
@@ -285,16 +273,10 @@ suite('Find in diff', () => {
       assert.ok(!button.props.disabled, button.props.title);
       button.props.onClick();
     }
-    assert.deepStrictEqual(picked, [
-      { caseSensitive: true, wholeWord: false },
-      { caseSensitive: false, wholeWord: true },
-    ]);
     assert.deepStrictEqual(steps, [-1, 1]);
     assert.deepStrictEqual(
       actions(0).map((button) => [button.props.title, !!button.props.disabled]),
       [
-        ['Match Case', false],
-        ['Match Whole Word', false],
         ['Previous Match (Shift+Enter)', true],
         ['Next Match (Enter)', true],
       ],
