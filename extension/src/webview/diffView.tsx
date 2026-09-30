@@ -4,6 +4,7 @@ import { collapseThreshold, type FileChange } from '../shared/protocol';
 import type { DiffFile, DiffLine } from './diff';
 import { LineCounts } from './lineCounts';
 import { SkeletonRows, useSkeleton } from './skeleton';
+import { Twisty } from './tree';
 
 export interface WholeFile {
   readonly path: string;
@@ -261,7 +262,7 @@ export function DiffView({
           }
         }}
       >
-        {!whole && <span className="twisty">{row.open ? '▾' : '▸'}</span>}
+        {!whole && <Twisty open={row.open} />}
         <span className="path">{row.path}</span>
         {whole ? (
           <span className="unchanged">Unchanged in this commit</span>

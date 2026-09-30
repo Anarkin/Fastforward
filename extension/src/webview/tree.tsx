@@ -11,11 +11,16 @@ export function treeIndent(depth: number): number {
 
 export const fileRowKey = (path: string) => `file:${path}`;
 
+export function Twisty({ open }: { open: boolean }) {
+  return <span className="twisty">{open ? '▾' : '▸'}</span>;
+}
+
 export function FolderRow({
   path,
   depth,
   open,
   className,
+  style,
   onToggle,
   children,
 }: {
@@ -23,17 +28,18 @@ export function FolderRow({
   depth: number;
   open: boolean;
   className: string;
+  style?: React.CSSProperties;
   onToggle: (folder: string) => void;
   children: React.ReactNode;
 }) {
   return (
     <div
       className={`row tree-row folder ${className}`}
-      style={{ paddingLeft: treeIndent(depth) }}
+      style={{ paddingLeft: treeIndent(depth), ...style }}
       title={path}
       onClick={() => onToggle(path)}
     >
-      <span className="twisty">{open ? '▾' : '▸'}</span>
+      <Twisty open={open} />
       {children}
     </div>
   );

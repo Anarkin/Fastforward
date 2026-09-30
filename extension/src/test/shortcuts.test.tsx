@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { ShortcutsPanel } from '../webview/navBar';
 import { handleShortcut, shortcutOf, shortcuts } from '../webview/shortcuts';
+import { ShortcutsPanel } from '../webview/shortcutsHelp';
 import { definitions } from './fixtures';
 
 const press = (
@@ -95,7 +95,11 @@ suite('Keyboard shortcuts', () => {
 
   test('lists every shortcut in the panel', () => {
     const html = renderToStaticMarkup(
-      <ShortcutsPanel container={{ current: null }} onClose={() => {}}>
+      <ShortcutsPanel
+        container={{ current: null }}
+        onClose={() => {}}
+        dismissible
+      >
         ?
       </ShortcutsPanel>,
     );

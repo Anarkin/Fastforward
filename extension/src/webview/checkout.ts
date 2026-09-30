@@ -1,6 +1,6 @@
 import { shortHash } from '../shared/hashes';
 import type { CheckoutTarget, RefInfo, BookmarkRef } from '../shared/protocol';
-import { findRef, hasRef, withoutRemote } from '../shared/refNames';
+import { findRef, hasRef, refOf, withoutRemote } from '../shared/refNames';
 import { byName } from './byName';
 
 export interface CheckoutOption {
@@ -14,7 +14,7 @@ export function checkoutRef(
   refs: readonly RefInfo[],
   head: string | undefined,
 ): CheckoutOption {
-  const target = { kind: ref.kind, name: ref.name };
+  const target = refOf(ref);
   return { label: ref.name, target, disabled: cannotCheckOut(ref, refs, head) };
 }
 

@@ -1,8 +1,8 @@
 import * as assert from 'node:assert';
 import type { RefInfo } from '../shared/protocol';
-import { findRef } from '../shared/refNames';
+import { findRef, refOf } from '../shared/refNames';
 
-suite('findRef', () => {
+suite('Ref names', () => {
   const refs: RefInfo[] = [
     { kind: 'remote', name: 'main', commit: 'a' },
     { kind: 'branch', name: 'main', commit: 'b' },
@@ -18,5 +18,10 @@ suite('findRef', () => {
 
   test('finds nothing when only the name matches', () => {
     assert.strictEqual(findRef(refs, { kind: 'tag', name: 'main' }), undefined);
+  });
+
+  test('names a ref by its kind and name, leaving its commit out', () => {
+    const tag: RefInfo = { kind: 'tag', name: 'v1', commit: 'a' };
+    assert.deepStrictEqual(refOf(tag), { kind: 'tag', name: 'v1' });
   });
 });
