@@ -572,7 +572,7 @@ export function CommitRow({
       </div>
       <div className="commit-line secondary">
         <span className="author">{commit.authorName}</span>
-        <span className="date">{formatDateTime(commit.authorDate)}</span>
+        <span className="date">{formatDateTime(commit.commitDate)}</span>
       </div>
       <CommitBubbles hash={commit.hash} refs={refs} detached={detached} />
     </div>
