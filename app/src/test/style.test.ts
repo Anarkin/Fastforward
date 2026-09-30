@@ -140,19 +140,19 @@ suite('Style', () => {
     assert.ok(hovered.includes('border-color: transparent;'));
   });
 
-  test('draws the scrollbars and the minimap viewport in the one scrollbar color, less see-through when hovered and more when dragged', () => {
+  test('draws the scrollbars and the minimap viewport in the one scrollbar color, as see-through as the theme says at rest, hovered and dragged', () => {
     const body = (/\nbody \{([^}]*)\}/.exec(css)?.[1] ?? '').replace(
       /\s+/g,
       ' ',
     );
-    for (const [name, percent] of <[string, number][]>[
-      ['scrollbar-background', 75],
-      ['scrollbar-hover-background', 82],
-      ['scrollbar-active-background', 88],
+    for (const [name, state] of [
+      ['scrollbar-background', 'rest'],
+      ['scrollbar-hover-background', 'hover'],
+      ['scrollbar-active-background', 'drag'],
     ]) {
       assert.ok(
         body.includes(
-          `--${name}: color-mix( in srgb, var(--color-scrollbar) ${percent}%, transparent );`,
+          `--${name}: color-mix( in srgb, var(--color-scrollbar) var(--color-scrollbar-${state}), transparent );`,
         ),
         name,
       );
@@ -187,17 +187,38 @@ suite('Style', () => {
     }
   });
 
-  test('tints added and removed diff lines with a see-through touch of the colors their minimap marks are drawn in', () => {
-    assert.ok(
-      declarationsOf('.diff-line.added').includes(
-        'background: color-mix(in srgb, var(--color-added) 20%, transparent);',
-      ),
-    );
-    assert.ok(
-      declarationsOf('.diff-line.removed').includes(
-        'background: color-mix(in srgb, var(--color-deleted) 20%, transparent);',
-      ),
-    );
+  test('draws the minimap marks as see-through as the theme says', () => {
+    const minimap = /\n\.minimap-mark \{([^}]*)\}/.exec(css)?.[1] ?? '';
+    assert.doesNotMatch(minimap, /opacity/);
+    for (const [selector, color] of [
+      ['.minimap-mark.added', 'added'],
+      ['.minimap-mark.removed', 'deleted'],
+    ]) {
+      assert.ok(
+        declarationsOf(selector)
+          .replace(/\s+/g, ' ')
+          .includes(
+            `background: color-mix( in srgb, var(--color-${color}) var(--color-${color}-minimap), transparent );`,
+          ),
+        selector,
+      );
+    }
+  });
+
+  test('tints added and removed diff lines as strongly as the theme says, in the colors their minimap marks are drawn in', () => {
+    for (const [selector, color] of [
+      ['.diff-line.added', 'added'],
+      ['.diff-line.removed', 'deleted'],
+    ]) {
+      assert.ok(
+        declarationsOf(selector)
+          .replace(/\s+/g, ' ')
+          .includes(
+            `background: color-mix( in srgb, var(--color-${color}) var(--color-${color}-line), transparent );`,
+          ),
+        selector,
+      );
+    }
   });
 
   test('draws a menu like the other popups, its separators in the border color and the item under the pointer like a selected row', () => {
@@ -302,7 +323,7 @@ suite('Style', () => {
     );
     assert.match(
       css,
-      /\n\.badge\.checked-out\.has-menu:hover,\s*\.locations-list \.row:hover \.badge\.checked-out,\s*\.locations-list \.row\.active \.badge\.checked-out \{\s*--deepened-focus: color-mix\(in srgb, var\(--color-focus\) 85%, black\);\s*background:\s*linear-gradient\(var\(--deepened-focus\), var\(--deepened-focus\)\),\s*var\(--color-panel-background\);\s*\}/,
+      /\n\.badge\.checked-out\.has-menu:hover,\s*\.locations-list \.row:hover \.badge\.checked-out,\s*\.locations-list \.row\.active \.badge\.checked-out \{\s*--deepened-focus: color-mix\(\s*in srgb,\s*var\(--color-focus\),\s*black var\(--color-focus-darken\)\s*\);\s*background:\s*linear-gradient\(var\(--deepened-focus\), var\(--deepened-focus\)\),\s*var\(--color-panel-background\);\s*\}/,
     );
   });
 
@@ -469,10 +490,10 @@ suite('Style', () => {
       /\s+/g,
       ' ',
     );
-    assert.ok(body.includes('--muted-opacity: 0.45;'));
+    assert.ok(body.includes('--muted-opacity: var(--color-foreground-muted);'));
     assert.ok(
       body.includes(
-        '--muted-foreground: color-mix( in srgb, var(--color-foreground) calc(var(--muted-opacity) * 100%), transparent );',
+        '--muted-foreground: color-mix( in srgb, var(--color-foreground) var(--color-foreground-muted), transparent );',
       ),
       body,
     );
