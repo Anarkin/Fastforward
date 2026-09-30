@@ -2,7 +2,6 @@ import { useEffect, useRef } from 'react';
 import { type TabInfo } from '../shared/protocol';
 import { CloseIcon } from './icons';
 import { MenuButton } from './menu';
-import { ShortcutsHelp } from './shortcutsHelp';
 
 export function TabBar({
   tabs,
@@ -89,7 +88,6 @@ export function TabBar({
           { label: 'Open User Settings', onClick: onOpenSettings },
         ]}
       />
-      <ShortcutsHelp />
     </nav>
   );
 }

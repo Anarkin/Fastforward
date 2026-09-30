@@ -1149,67 +1149,6 @@ body.resizing {
   color: var(--muted-foreground);
 }
 
-.shortcuts {
-  position: relative;
-  flex: none;
-  display: flex;
-  align-items: center;
-  margin: 0 6px 2px 0;
-}
-
-.shortcuts-panel {
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  z-index: 15;
-  width: 320px;
-  padding: 6px 6px 14px;
-  color: var(--color-foreground);
-  background: var(--popup-background);
-  border-radius: 19px;
-  box-shadow: var(--popup-shadow);
-}
-
-.shortcuts-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
-.shortcuts-title {
-  padding-left: 10px;
-  font-weight: 600;
-}
-
-.shortcuts-list {
-  padding: 0 10px;
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: baseline;
-  gap: 8px 12px;
-  margin: 0;
-}
-
-.shortcuts-list dd {
-  margin: 0;
-}
-
-.shortcuts-list kbd {
-  display: inline-block;
-  min-width: 12px;
-  padding: 1px 6px 0;
-  font: inherit;
-  text-align: center;
-  vertical-align: baseline;
-  color: var(--color-foreground);
-  background: var(--color-keybinding-background);
-  border: 1px solid var(--color-keybinding-border);
-  border-bottom: 2px solid var(--color-keybinding-bottom-border);
-  border-radius: 4px;
-  box-shadow: none;
-}
-
 .hash-suggestion {
   flex: none;
   margin: 0 6px 6px;

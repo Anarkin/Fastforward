@@ -21,7 +21,6 @@ import {
   nextHistoryOpen,
   NavButtons,
 } from '../webview/navBar';
-import { holdsDismissLayer, nextPeekMode } from '../webview/shortcutsHelp';
 import { changeClass, changeTitle } from '../webview/fileStatus';
 import type { ContextMenuItem } from '../webview/contextMenu';
 import { DiffOptions } from '../webview/diffColumn';
@@ -491,20 +490,6 @@ suite('Bubbles', () => {
     assert.deepStrictEqual(targets, [
       { kind: 'ref', ref: { kind: 'commit', name: hash } },
     ]);
-  });
-});
-
-suite('Peek', () => {
-  test('peeks when the pointer rests, and closes a peek when it leaves', () => {
-    assert.strictEqual(nextPeekMode('closed', 'rest'), 'peek');
-    assert.strictEqual(nextPeekMode('peek', 'leave'), 'closed');
-    assert.strictEqual(nextPeekMode('open', 'rest'), 'open');
-    assert.strictEqual(nextPeekMode('open', 'leave'), 'open');
-  });
-
-  test('leaves Escape to what is open when only peeking', () => {
-    assert.strictEqual(holdsDismissLayer('peek'), false);
-    assert.strictEqual(holdsDismissLayer('open'), true);
   });
 });
 
