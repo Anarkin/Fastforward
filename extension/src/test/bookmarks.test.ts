@@ -79,66 +79,38 @@ suite('Pinned refs of the search', () => {
     { kind: 'remote', name: 'fork/feature-work', commit: 'b' },
     { kind: 'tag', name: 'v1', commit: 'b' },
   ];
-  const checkedOut = (head: string, upstream: string | undefined) =>
-    names(pinnedRefs([], refs, head, upstream, undefined, '').checkedOut);
+  const checkedOut = (head: string) =>
+    names(pinnedRefs([], refs, head, undefined, '').checkedOut);
   const bookmarks: Bookmark[] = [
     { kind: 'tag', name: 'v1' },
     { kind: 'commit', name: 'c1' },
     { kind: 'branch', name: 'main' },
   ];
 
-  test('lists the checked-out branch with its upstream, and every bookmark in order', () => {
-    const pinned = pinnedRefs(
-      bookmarks,
-      refs,
-      'main',
-      'origin/main',
-      undefined,
-      '',
-    );
-    assert.deepStrictEqual(names(pinned.checkedOut), ['main', 'origin/main']);
+  test('lists only the checked-out branch, not its upstream, and every bookmark in order', () => {
+    const pinned = pinnedRefs(bookmarks, refs, 'main', undefined, '');
+    assert.deepStrictEqual(names(pinned.checkedOut), ['main']);
     assert.deepStrictEqual(names(pinned.bookmarks), ['main', 'v1', 'c1']);
   });
 
-  test('pairs the checked-out branch with the branch it tracks, even of another name', () => {
-    assert.deepStrictEqual(checkedOut('feature', 'fork/feature-work'), [
-      'feature',
-      'fork/feature-work',
-    ]);
-    assert.deepStrictEqual(checkedOut('feature', undefined), ['feature']);
-  });
-
-  test('pairs nothing with an upstream that is gone, and shows no branch before its first commit', () => {
-    assert.deepStrictEqual(checkedOut('feature', 'origin/feature'), [
-      'feature',
-    ]);
-    assert.deepStrictEqual(checkedOut('unborn', 'origin/main'), []);
+  test('shows no branch before its first commit', () => {
+    assert.deepStrictEqual(checkedOut('unborn'), []);
   });
 
   test('lists a detached HEAD as the commit checked out', () => {
     assert.deepStrictEqual(
-      pinnedRefs(bookmarks, refs, undefined, undefined, 'c9', '').checkedOut,
+      pinnedRefs(bookmarks, refs, undefined, 'c9', '').checkedOut,
       [{ kind: 'commit', name: 'c9' }],
     );
   });
 
   test('keeps only what matches the search, ignoring case', () => {
-    const pinned = pinnedRefs(
-      bookmarks,
-      refs,
-      'main',
-      'origin/main',
-      undefined,
-      'MAI',
-    );
-    assert.deepStrictEqual(names(pinned.checkedOut), ['main', 'origin/main']);
+    const pinned = pinnedRefs(bookmarks, refs, 'main', undefined, 'MAI');
+    assert.deepStrictEqual(names(pinned.checkedOut), ['main']);
     assert.deepStrictEqual(names(pinned.bookmarks), ['main']);
     assert.deepStrictEqual(
-      names(
-        pinnedRefs(bookmarks, refs, 'main', 'origin/main', undefined, 'ORIGIN')
-          .checkedOut,
-      ),
-      ['origin/main'],
+      names(pinnedRefs(bookmarks, refs, 'main', undefined, 'V1').checkedOut),
+      [],
     );
   });
 });

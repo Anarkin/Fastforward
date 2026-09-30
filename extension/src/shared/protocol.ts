@@ -115,7 +115,6 @@ export interface TabInfo {
 export interface RepositoryState {
   readonly head: string | undefined;
   readonly headCommit: string | undefined;
-  readonly headUpstream: string | undefined;
   readonly refs: readonly RefInfo[];
 }
 
@@ -198,6 +197,7 @@ export type ToWebview =
     }
   | { readonly type: 'bookmarks'; readonly bookmarks: readonly Bookmark[] }
   | { readonly type: 'fetching'; readonly running: boolean }
+  | { readonly type: 'applyingSolo'; readonly running: boolean }
   | {
       readonly type: 'hashLookup';
       readonly query: string;

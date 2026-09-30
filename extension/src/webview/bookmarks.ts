@@ -60,15 +60,10 @@ export function toggleBookmark(
 function checkedOutRefs(
   refs: readonly RefInfo[],
   head: string | undefined,
-  headUpstream: string | undefined,
 ): BookmarkRef[] {
-  if (!head || !hasRef(refs, { kind: 'branch', name: head })) {
-    return [];
-  }
-  const branch: BookmarkRef = { kind: 'branch', name: head };
-  return headUpstream && hasRef(refs, { kind: 'remote', name: headUpstream })
-    ? [branch, { kind: 'remote', name: headUpstream }]
-    : [branch];
+  return head && hasRef(refs, { kind: 'branch', name: head })
+    ? [{ kind: 'branch', name: head }]
+    : [];
 }
 
 export interface PinnedRefs {
@@ -80,7 +75,6 @@ export function pinnedRefs(
   bookmarks: readonly Bookmark[],
   refs: readonly RefInfo[],
   head: string | undefined,
-  headUpstream: string | undefined,
   detached: string | undefined,
   query: string,
 ): PinnedRefs {
@@ -89,7 +83,7 @@ export function pinnedRefs(
     bookmark.name.toLowerCase().includes(needle);
   const checkedOut: Bookmark[] = detached
     ? [{ kind: 'commit', name: detached }]
-    : checkedOutRefs(refs, head, headUpstream);
+    : checkedOutRefs(refs, head);
   return {
     checkedOut: checkedOut.filter(matches),
     bookmarks: bookmarks.toSorted(compareBookmarks).filter(matches),

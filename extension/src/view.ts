@@ -5,7 +5,7 @@ import { remoteDefaultBranches } from './git/branches';
 import { showFiles, showPatch, type PatchScope } from './git/diff';
 import { gitErrorText } from './git/errorText';
 import { listTree, readFile } from './git/files';
-import type { API, Repository } from './git/git';
+import type { API } from './git/git';
 import { findCommit, headCommit, listHistory, logCommits } from './git/history';
 import { getGitApi, listRefs, pickRepository } from './git/repository';
 import {
@@ -299,15 +299,20 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         return;
       }
       case 'setSolo': {
-        await storage.setSolo(message.solo);
-        for (const tab of this.tabStates.values()) {
-          forgetHistory(tab);
-        }
-        const context = await this.context(git, session);
-        if (context) {
-          await this.refresh(context, (latest) =>
-            this.sendCommits(latest, listRefs(latest.repository), true),
-          );
+        session.post({ type: 'applyingSolo', running: true });
+        try {
+          await storage.setSolo(message.solo);
+          for (const tab of this.tabStates.values()) {
+            forgetHistory(tab);
+          }
+          const context = await this.context(git, session);
+          if (context) {
+            await this.refresh(context, (latest) =>
+              this.sendCommits(latest, listRefs(latest.repository), true),
+            );
+          }
+        } finally {
+          session.post({ type: 'applyingSolo', running: false });
         }
         return;
       }
@@ -484,10 +489,10 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       await this.refresh(context);
       return;
     }
-    await this.loadTab(context, firstOpen);
+    await this.loadTab(context);
   }
 
-  private async loadTab(context: Context, atHead: boolean): Promise<void> {
+  private async loadTab(context: Context): Promise<void> {
     const refs = listRefs(context.repository);
     await allSettled([
       this.addDefaultBookmarks(context, refs),
@@ -495,7 +500,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         if (!historyLoaded(latest.tab)) {
           await this.sendCommits(latest, refs);
         }
-        await (atHead ? this.showHead(latest) : this.sendCommit(latest));
+        await this.sendCommit(latest);
       }),
       this.sendWorkingTree(context),
       this.sendRepository(context, refs),
@@ -522,7 +527,7 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         }
         this.log.info(`Preloading tab ${root}`);
         tab.opened = true;
-        await this.loadTab(context, true);
+        await this.loadTab(context);
       } catch (error) {
         Object.assign(tab, newTabState());
         this.log.error(`Preloading tab ${root} failed`);
@@ -544,7 +549,6 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
       type: 'repository',
       head: checkedOutBranch(HEAD),
       headCommit: HEAD?.commit,
-      headUpstream: upstreamOf(context.repository),
       refs: listed,
     });
   }
@@ -859,16 +863,8 @@ export class FastforwardView implements vscode.CustomReadonlyEditorProvider {
         this.sendRepository(context, known),
         this.sendCommits(context, known, true),
       ]);
-    } else {
-      if (
-        context.tab.shown.repository?.headUpstream !==
-        upstreamOf(context.repository)
-      ) {
-        await this.sendRepository(context, Promise.resolve(refs));
-      }
-      if (context.tab.shownStale) {
-        await this.sendShownHistory(context, { keepPlace: true });
-      }
+    } else if (context.tab.shownStale) {
+      await this.sendShownHistory(context, { keepPlace: true });
     }
   }
 
@@ -1134,11 +1130,6 @@ async function allSettled(
   if (failed) {
     throw failed.reason;
   }
-}
-
-function upstreamOf(repository: Repository): string | undefined {
-  const upstream = repository.state.HEAD?.upstream;
-  return upstream && `${upstream.remote}/${upstream.name}`;
 }
 
 function html(webview: vscode.Webview, dist: vscode.Uri): string {

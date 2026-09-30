@@ -79,6 +79,7 @@ export function App({ post }: Props) {
     defaultLayout.collapseMerges,
   );
   const [solo, setSolo] = useState(defaultLayout.solo);
+  const [applyingSolo, setApplyingSolo] = useState(false);
   const [filesMode, setFilesMode] = useState<FilesMode>(
     defaultLayout.filesMode,
   );
@@ -117,6 +118,9 @@ export function App({ post }: Props) {
           setSolo(message.solo);
           setFilesMode(message.filesMode);
           setChangesView(message.changesView);
+          break;
+        case 'applyingSolo':
+          setApplyingSolo(message.running);
           break;
         case 'tabs':
           activeTabRef.current = message.active;
@@ -353,7 +357,7 @@ export function App({ post }: Props) {
             ) : (
               <ColumnResizingProvider value={resizing}>
                 <div
-                  className={`columns ${commitsShown ? '' : 'commits-hidden'}`}
+                  className={`columns ${commitsShown ? '' : 'commits-hidden'} ${hash === undefined ? 'nothing-selected' : ''}`}
                   ref={columnsContainer}
                   style={{ gridTemplateColumns: columnsTemplate }}
                 >
@@ -373,6 +377,8 @@ export function App({ post }: Props) {
                     collapseMerges={collapseMerges}
                     onCollapseMerges={changeCollapseMerges}
                     solo={solo}
+                    headCommit={repository?.headCommit}
+                    applyingSolo={applyingSolo}
                     onSolo={changeSolo}
                     navigation={
                       <NavButtons
@@ -388,7 +394,6 @@ export function App({ post }: Props) {
                         root={activeTab}
                         bookmarks={bookmarks}
                         repository={repository}
-                        selected={hash}
                         hashLookup={hashLookup}
                         onLookupHash={lookupHash}
                         onJump={jump}

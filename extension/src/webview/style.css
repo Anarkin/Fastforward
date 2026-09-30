@@ -209,7 +209,12 @@ body {
   margin-right: calc(-1 * var(--gutter-width));
 }
 
+.columns.nothing-selected > .column:not(:first-child) {
+  visibility: hidden;
+}
+
 .column {
+  --title-height: 34px;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -243,7 +248,6 @@ body.resizing {
   display: flex;
   align-items: center;
   justify-content: center;
-  --title-height: 34px;
   box-sizing: border-box;
   height: var(--title-height);
   padding: 0 8px;
@@ -298,6 +302,20 @@ body.resizing {
   border-radius: 0 0 var(--card-radius) var(--card-radius);
 }
 
+.column-body:has(+ .column-footer) {
+  border-radius: 0;
+}
+
+.column-footer {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: var(--title-height);
+  border-top: 1px solid var(--vscode-panel-border);
+}
+
 .row {
   padding: 3px 8px;
   white-space: nowrap;
@@ -311,10 +329,18 @@ body.resizing {
   background: var(--vscode-list-hoverBackground);
 }
 
+.commit.checked-out .subject {
+  font-weight: 600;
+}
+
 .row.selected,
 .commit.selected {
   color: var(--vscode-foreground);
-  background: var(--shade-background);
+  background: color-mix(
+    in srgb,
+    var(--vscode-focusBorder) 18%,
+    var(--vscode-editor-background)
+  );
 }
 
 .row.group {
@@ -359,12 +385,12 @@ body.resizing {
   text-overflow: ellipsis;
 }
 
-.commit.working-tree.empty {
+.commit.working-tree {
   color: var(--vscode-descriptionForeground);
 }
 
-.commit.working-tree:not(.empty) .subject {
-  color: var(--vscode-gitDecoration-modifiedResourceForeground);
+.commit.working-tree.empty .subject {
+  opacity: var(--muted-opacity);
 }
 
 .refs {
@@ -552,7 +578,7 @@ body.resizing {
   cursor: pointer;
 }
 
-/* 26px with its padding, so it centers in the 34px column title on whole
+/* 26px with its padding, so it centers in the 34px column footer on whole
    pixels, without a blurred edge */
 .switch {
   display: inline-flex;
@@ -703,8 +729,8 @@ body.resizing {
 }
 
 .badge.checked-out {
-  color: var(--vscode-tab-activeForeground);
-  background: var(--vscode-tab-activeBackground);
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
 }
 
 .menu-entry {
@@ -1017,18 +1043,18 @@ body.resizing {
   opacity: 1;
 }
 
-.fetch-arrow {
+.spin-icon {
   display: flex;
 }
 
-@keyframes fetch-spin {
+@keyframes spin {
   to {
     transform: rotate(360deg);
   }
 }
 
-.nav-button.running .fetch-arrow {
-  animation: fetch-spin 1s linear infinite;
+.nav-button.running .spin-icon {
+  animation: spin 1s linear infinite;
 }
 
 .history-button {

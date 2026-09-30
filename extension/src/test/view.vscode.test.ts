@@ -246,9 +246,12 @@ suite('View', function () {
       assert.deepStrictEqual(refs?.toSorted(), ['feature', 'main']);
     });
 
-    test('starts at the checked-out commit the first time a tab opens', async () => {
-      assert.strictEqual(page.last('reveal')?.hash, fixture.merge);
-      assert.strictEqual(page.last('files')?.hash, fixture.merge);
+    test('starts with no commit selected the first time a tab opens, and after', async () => {
+      await withView(log, [repository.root], async (view) => {
+        assert.ok(view.page.last('commits'));
+        assert.strictEqual(view.page.last('reveal'), undefined);
+        assert.strictEqual(view.page.last('files'), undefined);
+      });
 
       await connection.receive({
         type: 'selectCommit',
@@ -293,26 +296,6 @@ suite('View', function () {
               });
             },
           ),
-      );
-    });
-
-    test('starts at the commit git has checked out even when the Git extension has not caught up', async () => {
-      const opened = await openedRepository(repository.root);
-      await withPrototypeOverride(
-        opened.state,
-        'HEAD',
-        (head) => ({
-          ...head,
-          get(this: unknown) {
-            return { ...head.get?.call(this), commit: fixture.b };
-          },
-        }),
-        async () => {
-          await withView(log, [repository.root], async (view) => {
-            assert.strictEqual(view.page.last('reveal')?.hash, fixture.merge);
-            assert.strictEqual(view.page.last('files')?.hash, fixture.merge);
-          });
-        },
       );
     });
 
@@ -580,6 +563,11 @@ suite('View', function () {
     });
 
     test('sends the files and diff again when the shown commit is selected again', async () => {
+      await connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: fixture.merge,
+      });
       assert.strictEqual(page.last('files')?.hash, fixture.merge);
       page.clear();
       await connection.receive({
@@ -698,6 +686,11 @@ suite('View', function () {
       await connection.receive({
         type: 'selectCommit',
         root: repository.root,
+        hash: fixture.merge,
+      });
+      await connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
         hash: fixture.b,
       });
       await connection.receive({
@@ -745,6 +738,11 @@ suite('View', function () {
     });
 
     test('goes back to the working tree', async () => {
+      await connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: fixture.merge,
+      });
       await connection.receive({
         type: 'selectCommit',
         root: repository.root,
@@ -811,7 +809,7 @@ suite('View', function () {
       await repository.git('update-ref', 'refs/heads/gone', gone);
       try {
         await connection.refresh();
-        for (const hash of [gone, fixture.b]) {
+        for (const hash of [fixture.merge, gone, fixture.b]) {
           await connection.receive({
             type: 'selectCommit',
             root: repository.root,
@@ -849,7 +847,7 @@ suite('View', function () {
             own.connection.refresh(),
           ]);
           assert.strictEqual(commitsSent(own.page.messages), 1);
-          assert.strictEqual(own.page.last('reveal')?.hash, fixture.merge);
+          assert.strictEqual(own.page.last('reveal'), undefined);
         },
         false,
       );
@@ -888,7 +886,7 @@ suite('View', function () {
           await Promise.all([refreshing, ready]);
           assert.strictEqual(most, 1);
           assert.strictEqual(commitsSent(own.page.messages), 1);
-          assert.strictEqual(own.page.last('reveal')?.hash, fixture.merge);
+          assert.strictEqual(own.page.last('reveal'), undefined);
         },
         false,
       );
@@ -1167,8 +1165,19 @@ suite('View', function () {
       try {
         await connection.refresh();
         assert.strictEqual(page.last('commits')?.total, 4);
+        page.clear();
         await connection.receive({ type: 'setSolo', solo: true });
         assert.strictEqual(page.last('commits')?.total, 3);
+        const applying = page.messages.flatMap((message) =>
+          message.type === 'applyingSolo' ? [message.running] : [],
+        );
+        assert.deepStrictEqual(applying, [true, false]);
+        assert.ok(
+          page.messages.findIndex((message) => message.type === 'commits') <
+            page.messages.findLastIndex(
+              (message) => message.type === 'applyingSolo',
+            ),
+        );
         assert.strictEqual(globalState.get(soloKey), true);
         await connection.receive({ type: 'setSolo', solo: false });
         assert.strictEqual(page.last('commits')?.total, 4);
@@ -1221,6 +1230,11 @@ suite('View', function () {
           }),
         ),
       );
+      await connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: fixture.merge,
+      });
       await connection.receive({
         type: 'loadTree',
         root: repository.root,
@@ -1330,6 +1344,11 @@ suite('View', function () {
       await repository.git('checkout', '--detach', fixture.b);
       try {
         await settle(repository.root);
+        const opened = await openedRepository(repository.root);
+        await waitFor(
+          () => opened.state.HEAD?.commit === fixture.b,
+          'the Git extension to see the detached HEAD',
+        );
         page.clear();
         await connection.refresh();
         const info = page.last('repository');
@@ -1636,7 +1655,7 @@ suite('View', function () {
       tabs.page.clear();
       await tabs.connection.receive({ type: 'selectTab', root: other });
       assert.strictEqual(commitsSent(tabs.page.messages), 1);
-      assert.strictEqual(tabs.page.last('files')?.hash, otherHead);
+      assert.strictEqual(tabs.page.last('files'), undefined);
       assert.strictEqual(tabs.page.last('commits')?.total, 1);
     });
 
@@ -1661,7 +1680,7 @@ suite('View', function () {
       tabs.page.clear();
       await tabs.connection.receive({ type: 'selectTab', root: other });
       assert.strictEqual(tabs.page.last('commits')?.total, 1);
-      assert.strictEqual(tabs.page.last('files')?.hash, otherHead);
+      assert.strictEqual(tabs.page.last('files'), undefined);
     });
 
     test("shows no error of a tab's request that failed after it was left", async () => {
@@ -1705,7 +1724,7 @@ suite('View', function () {
         tabs.connection.receive({ type: 'preloadTab', root: other }),
         tabs.connection.receive({ type: 'selectTab', root: other }),
       ]);
-      assert.strictEqual(tabs.page.last('files')?.hash, otherHead);
+      assert.strictEqual(tabs.page.last('files'), undefined);
       assert.strictEqual(tabs.page.last('commits')?.total, 1);
       assert.strictEqual(tabs.page.last('error'), undefined);
       assert.strictEqual(commitsSent(tabs.page.messages), 1);
@@ -1863,7 +1882,10 @@ suite('View', function () {
             ['main', 'other', 'third'],
           );
           assert.ok(shown.active && sameRoot(shown.active, other));
-          assert.strictEqual(view.page.last('files')?.hash, otherHead);
+          assert.strictEqual(
+            view.page.last('repository')?.headCommit,
+            otherHead,
+          );
           const recent = view.globalState.get<string[]>(recentKey, []);
           for (const root of [third.root, other]) {
             assert.ok(
@@ -1949,6 +1971,11 @@ suite('View', function () {
       });
       const [hash] = await large.resolve('HEAD');
       await withView(log, [large.root], async (view) => {
+        await view.connection.receive({
+          type: 'selectCommit',
+          root: large.root,
+          hash,
+        });
         const patch = view.page.last('diff')?.patch ?? '';
         assert.ok(patch.includes('b/small.txt'), patch);
         assert.ok(!patch.includes('large.txt'), patch);
@@ -1978,6 +2005,11 @@ suite('View', function () {
       await renamed.git('commit', '-am', 'rename');
       const [hash] = await renamed.resolve('HEAD');
       await withView(log, [renamed.root], async (view) => {
+        await view.connection.receive({
+          type: 'selectCommit',
+          root: renamed.root,
+          hash,
+        });
         await view.connection.receive({
           type: 'selectFile',
           root: renamed.root,
@@ -2015,6 +2047,11 @@ suite('View', function () {
 
       test('shows a file the commit did not change whole, until another commit is selected', async () => {
         await withView(log, [files.root], async (view) => {
+          await view.connection.receive({
+            type: 'selectCommit',
+            root: files.root,
+            hash: changed,
+          });
           await view.connection.receive({
             type: 'selectFile',
             root: files.root,
@@ -2183,27 +2220,5 @@ suite('Fetch', function () {
     } finally {
       await repository.git('remote', 'remove', 'broken');
     }
-  });
-
-  test('shows a new upstream of the checked-out branch', async () => {
-    await repository.git('branch', '--unset-upstream', 'main');
-    try {
-      await settle(repository.root, connection);
-      assert.strictEqual(page.last('repository')?.headUpstream, undefined);
-    } finally {
-      await repository.git('branch', '--set-upstream-to=origin/main', 'main');
-    }
-    await settle(repository.root, connection);
-    assert.strictEqual(page.last('repository')?.headUpstream, 'origin/main');
-  });
-
-  test("tells the checked-out branch's upstream", async () => {
-    await settle(repository.root, connection);
-    const shown = page.last('repository');
-    assert.strictEqual(shown?.headUpstream, 'origin/main');
-    assert.deepStrictEqual(
-      [shown.headCommit],
-      await repository.resolve('main'),
-    );
   });
 });
