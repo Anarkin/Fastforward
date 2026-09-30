@@ -21,6 +21,7 @@ jobs:
       - run: npm ci
       - run: npm run format:check
       - run: npm run lint
+      - run: npm run knip
       - run: npm run check-types
       - run: xvfb-run -a npm test
       - run: npm run vsce:package
