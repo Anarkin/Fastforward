@@ -90,6 +90,7 @@ export function App({ post, listen }: Props) {
     back,
     forward,
     hashLookup,
+    commitSearch,
     error,
   } = tab;
   const [entireFilePinned, setEntireFilePinned] = useState(false);
@@ -210,6 +211,10 @@ export function App({ post, listen }: Props) {
   };
   const lookupHash = useCallback(
     (query: string) => postTab({ type: 'lookupHash', query }),
+    [postTab],
+  );
+  const searchCommits = useCallback(
+    (query: string) => postTab({ type: 'searchCommits', query }),
     [postTab],
   );
   const navigate = useCallback(
@@ -451,6 +456,8 @@ export function App({ post, listen }: Props) {
                         repository={repository}
                         hashLookup={hashLookup}
                         onLookupHash={lookupHash}
+                        commitSearch={commitSearch}
+                        onSearchCommits={searchCommits}
                         onJump={jump}
                       />
                     }

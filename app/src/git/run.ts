@@ -36,6 +36,7 @@ interface RunOptions {
   readonly okExitCodes?: readonly number[];
   readonly input?: string;
   readonly pathspecMagic?: boolean;
+  readonly signal?: AbortSignal;
 }
 
 const maxOutput = 256 * 1024 * 1024;
@@ -53,7 +54,7 @@ export function runGitBytes(
   gitPath: string,
   cwd: string,
   args: readonly string[],
-  { okExitCodes = [0], input, pathspecMagic }: RunOptions = {},
+  { okExitCodes = [0], input, pathspecMagic, signal }: RunOptions = {},
 ): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const child = execFile(
@@ -65,6 +66,7 @@ export function runGitBytes(
         maxBuffer: maxOutput,
         windowsHide: true,
         encoding: 'buffer',
+        signal,
       },
       (error, stdout, stderr) => {
         if (error && !exitedWith(error, okExitCodes)) {

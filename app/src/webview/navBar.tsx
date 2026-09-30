@@ -168,6 +168,8 @@ export function AddressBar({
   repository,
   hashLookup,
   onLookupHash,
+  commitSearch,
+  onSearchCommits,
   onJump,
   bookmarks,
 }: {
@@ -175,6 +177,8 @@ export function AddressBar({
   bookmarks: readonly Bookmark[];
   hashLookup: ToWebviewOf<'hashLookup'> | undefined;
   onLookupHash: (query: string) => void;
+  commitSearch: ToWebviewOf<'commitSearch'> | undefined;
+  onSearchCommits: (query: string) => void;
   repository: RepositoryState | undefined;
   onJump: (commit: string) => void;
 }) {
@@ -199,7 +203,7 @@ export function AddressBar({
     <div className="address" ref={container}>
       <button
         className="address-bar"
-        title="Search branches, remotes and tags"
+        title="Search branches, remotes, tags and commits"
         onClick={() => setOpen(true)}
       >
         <span className="address-text empty">Search…</span>
@@ -211,6 +215,8 @@ export function AddressBar({
           anchor={container}
           lookup={hashLookup}
           onLookup={onLookupHash}
+          commitSearch={commitSearch}
+          onSearchCommits={onSearchCommits}
           onJump={onJump}
           onClose={close}
           query={query}

@@ -9,6 +9,7 @@ import {
   headCommit,
   listHistory,
   logCommits,
+  searchCommits,
 } from './git/history';
 import {
   readHead,
@@ -117,6 +118,7 @@ function toAll(contexts: readonly Context[]): Context | undefined {
 
 export class FastforwardView {
   private readonly tabStates = new Map<string, Tab>();
+  private readonly commitSearches = new Map<string, AbortController>();
   private page: Session | undefined;
 
   constructor(
@@ -382,6 +384,9 @@ export class FastforwardView {
         break;
       case 'lookupHash':
         await this.lookupHash(context, message.query);
+        break;
+      case 'searchCommits':
+        await this.searchCommits(context, message.query);
         break;
       case 'selectCommit':
         if (message.hash) {
@@ -758,6 +763,30 @@ export class FastforwardView {
       back: back.map((hash) => navigationEntry(tab, hash)),
       forward: forward.map((hash) => navigationEntry(tab, hash)),
     });
+  }
+
+  private async searchCommits(context: Context, query: string): Promise<void> {
+    this.commitSearches.get(context.root)?.abort();
+    const search = new AbortController();
+    this.commitSearches.set(context.root, search);
+    try {
+      const result = await searchCommits(
+        context.gitPath,
+        context.root,
+        query,
+        this.storage.soloOf(context.root),
+        search.signal,
+      );
+      context.post({ type: 'commitSearch', query, result });
+    } catch (error) {
+      if (!search.signal.aborted) {
+        throw error;
+      }
+    } finally {
+      if (this.commitSearches.get(context.root) === search) {
+        this.commitSearches.delete(context.root);
+      }
+    }
   }
 
   private async lookupHash(context: Context, query: string): Promise<void> {

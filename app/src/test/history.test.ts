@@ -1,5 +1,10 @@
 import * as assert from 'node:assert';
-import { parseHistory, parseLog } from '../git/history';
+import {
+  matchedFields,
+  parseHistory,
+  parseLog,
+  parseSearchedCommit,
+} from '../git/history';
 
 suite('Git log parser', () => {
   test('parses commits and counts their files', () => {
@@ -108,5 +113,27 @@ suite('Git rev-list parser', () => {
       { hash: 'aaa', parents: ['bbb', 'ccc'] },
       { hash: 'bbb', parents: [] },
     ]);
+  });
+});
+
+suite('Commit search matching', () => {
+  const commit = parseSearchedCommit(
+    'aaa\0Ada Lovelace\0ada@example.com\0Test\0test@example.com\0Subject\n\nBody about ADA\n',
+  );
+
+  test('reads the hash, the author and committer with their emails, and the whole message', () => {
+    assert.deepStrictEqual(commit, {
+      hash: 'aaa',
+      author: 'Ada Lovelace <ada@example.com>',
+      committer: 'Test <test@example.com>',
+      message: 'Subject\n\nBody about ADA\n',
+    });
+  });
+
+  test('says which of them contain the text, ignoring case, emails and the description included', () => {
+    assert.deepStrictEqual(matchedFields(commit, 'ada'), ['author', 'message']);
+    assert.deepStrictEqual(matchedFields(commit, 'TEST@'), ['committer']);
+    assert.deepStrictEqual(matchedFields(commit, 'body'), ['message']);
+    assert.deepStrictEqual(matchedFields(commit, 'nothing'), []);
   });
 });
