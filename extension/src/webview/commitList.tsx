@@ -411,14 +411,14 @@ export function Commits({
       }
     >
       <div
-        className="list"
+        className="virtual-rows list"
         ref={list}
         tabIndex={0}
         onKeyDown={onKeyDown}
         data-version={version}
       >
         <div
-          className="list-spacer"
+          className="virtual-spacer"
           style={{ height: virtualizer.getTotalSize() }}
         >
           {rows.map((row) => {
@@ -426,7 +426,7 @@ export function Commits({
             return (
               <div
                 key={row.key}
-                className="list-row"
+                className="virtual-row"
                 data-index={row.index}
                 ref={
                   height === undefined ? virtualizer.measureElement : undefined

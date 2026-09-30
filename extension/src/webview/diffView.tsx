@@ -311,9 +311,9 @@ export function DiffView({
   return (
     <div className="diff-view" style={heightVariables}>
       {showStuck && <div className="diff-stuck-header">{header(stuck)}</div>}
-      <div className="diff-list" ref={list}>
+      <div className="virtual-rows" ref={list}>
         <div
-          className="diff-spacer"
+          className="virtual-spacer"
           style={{ height: virtualizer.getTotalSize() }}
         >
           {items.map((item) => {
@@ -322,7 +322,7 @@ export function DiffView({
             return (
               <div
                 key={item.key}
-                className="diff-row"
+                className="virtual-row diff-row"
                 data-index={item.index}
                 ref={height === undefined ? virtualizer.measureElement : null}
                 style={{ height, transform: `translateY(${item.start}px)` }}

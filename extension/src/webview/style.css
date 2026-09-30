@@ -506,26 +506,12 @@ body.resizing {
 }
 
 .list {
-  height: 100%;
-  overflow: auto;
   outline: none;
 }
 
 .list:focus-visible {
   outline: 1px solid var(--vscode-focusBorder);
   outline-offset: -1px;
-}
-
-.list-spacer {
-  position: relative;
-  width: 100%;
-}
-
-.list-row {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
 }
 
 .bubble-line {
@@ -543,7 +529,7 @@ body.resizing {
   text-overflow: ellipsis;
 }
 
-.list-row > .commit {
+.virtual-row > .commit {
   box-sizing: border-box;
   height: 100%;
   overflow: hidden;
@@ -826,20 +812,7 @@ body.resizing {
   height: 100%;
 }
 
-.diff-list {
-  height: 100%;
-  overflow: auto;
-}
-
-.diff-spacer {
-  position: relative;
-  min-width: 100%;
-}
-
-.diff-row {
-  position: absolute;
-  top: 0;
-  left: 0;
+.virtual-row.diff-row {
   min-width: 100%;
   width: max-content;
 }
