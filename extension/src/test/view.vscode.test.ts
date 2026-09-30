@@ -834,8 +834,8 @@ suite('View', function () {
       );
     });
 
-    test('loads the history of a tab first opened during a refresh only after it', () =>
-      withView(
+    test('loads the history of a tab first opened during a refresh only after it', async () => {
+      await withView(
         log,
         [repository.root],
         async (own) => {
@@ -870,7 +870,8 @@ suite('View', function () {
           assert.strictEqual(own.page.last('reveal')?.hash, fixture.merge);
         },
         false,
-      ));
+      );
+    });
 
     test('refreshes once more for a page that asks while a refresh runs', async () => {
       await settle(repository.root, connection);
