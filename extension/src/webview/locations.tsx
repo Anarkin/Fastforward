@@ -14,7 +14,7 @@ import type {
   RefKind,
   RepositoryState,
 } from '../shared/protocol';
-import { sameRef } from '../shared/refNames';
+import { findRef } from '../shared/refNames';
 import { pinnedRefs } from './bookmarks';
 import { BackIcon } from './icons';
 import {
@@ -404,9 +404,7 @@ function PinnedSection({
       <div className="locations-list">
         {items.map((item) => {
           const commit =
-            item.kind === 'commit'
-              ? item.name
-              : refs.find((ref) => sameRef(ref, item))?.commit;
+            item.kind === 'commit' ? item.name : findRef(refs, item)?.commit;
           return (
             <div
               key={`${item.kind}:${item.name}`}

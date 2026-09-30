@@ -1,6 +1,6 @@
 import { shortHash } from '../shared/hashes';
 import type { CheckoutTarget, RefInfo, BookmarkRef } from '../shared/protocol';
-import { hasRef, withoutRemote } from '../shared/refNames';
+import { findRef, hasRef, withoutRemote } from '../shared/refNames';
 
 export interface CheckoutOption {
   readonly label: string;
@@ -31,12 +31,8 @@ export function checkoutRef(
     return { label: ref.name, target, disabled: false };
   }
   const local = withoutRemote(ref.name);
-  const localRef = refs.find(
-    (other) => other.kind === 'branch' && other.name === local,
-  );
-  const remoteRef = refs.find(
-    (other) => other.kind === 'remote' && other.name === ref.name,
-  );
+  const localRef = findRef(refs, { kind: 'branch', name: local });
+  const remoteRef = findRef(refs, { kind: 'remote', name: ref.name });
   const same = localRef?.commit === remoteRef?.commit;
   return {
     label: ref.name,
