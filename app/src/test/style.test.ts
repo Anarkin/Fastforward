@@ -205,4 +205,10 @@ suite('Style', () => {
       /\n\.diff-view,\s*\.error,\s*\.notice-message \{\s*user-select: text;\s*\}/,
     );
   });
+
+  test('strikes a deleted file through, in the text color like the other changes', () => {
+    const deleted = declarationsOf('.row .path.deleted');
+    assert.match(deleted, /text-decoration: line-through;/);
+    assert.doesNotMatch(deleted, /color:/);
+  });
 });
