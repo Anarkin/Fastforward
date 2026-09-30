@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import { changesTreeRows } from '../webview/changesTree';
+import { ancestorRows, changesTreeRows } from '../webview/changesTree';
 import { fileChange } from './fixtures';
 
 const files = [
@@ -86,5 +86,18 @@ suite('Changes tree', () => {
         'src/b.ts unchanged',
       ],
     );
+  });
+
+  test('finds the folders a row is in, outermost first', () => {
+    const rows = changesTreeRows(files, new Set());
+    const at = (text: string) => lines(rows).indexOf(text);
+    assert.deepStrictEqual(ancestorRows(rows, at('    VoidMethodSetup.cs')), [
+      at('▾ src'),
+      at('  ▾ Gyurma'),
+    ]);
+    assert.deepStrictEqual(ancestorRows(rows, at('  ▾ Gyurma.Generators')), [
+      at('▾ src'),
+    ]);
+    assert.deepStrictEqual(ancestorRows(rows, at('.editorconfig')), []);
   });
 });

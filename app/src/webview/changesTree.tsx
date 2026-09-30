@@ -70,6 +70,22 @@ export function changesTreeRows(
   return rows;
 }
 
+export function ancestorRows(
+  rows: readonly ChangesTreeRow[],
+  index: number,
+): number[] {
+  const ancestors: number[] = [];
+  let depth = rows[index]?.depth ?? 0;
+  for (let i = index - 1; i >= 0 && depth > 0; i--) {
+    const row = rows[i];
+    if (row.kind === 'folder' && row.depth < depth) {
+      ancestors.unshift(i);
+      depth = row.depth;
+    }
+  }
+  return ancestors;
+}
+
 export function changesTreeElements({
   rows,
   showsAll,
