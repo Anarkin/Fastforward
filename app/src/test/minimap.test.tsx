@@ -1,7 +1,12 @@
 import * as assert from 'node:assert';
 import { minimapRows, type DiffRow } from '../webview/diffView';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { Minimap, minimapMarks, minimapScrollTop } from '../webview/minimap';
+import {
+  Minimap,
+  minimapMarks,
+  minimapScrollTop,
+  pointerFraction,
+} from '../webview/minimap';
 
 const line = (kind: 'added' | 'removed' | 'context'): DiffRow => ({
   kind: 'line',
@@ -47,6 +52,11 @@ suite('Minimap', () => {
       minimapMarks(minimapRows([line('context'), line('context')])),
       [],
     );
+  });
+
+  test('reads how far down the strip the pointer is', () => {
+    assert.strictEqual(pointerFraction(150, { top: 100, height: 200 }), 0.25);
+    assert.strictEqual(pointerFraction(150, { top: 100, height: 0 }), 0);
   });
 
   test('centers the view where it is clicked, without scrolling past either end', () => {

@@ -1,7 +1,10 @@
 import * as assert from 'node:assert';
 import {
+  dragFrom,
+  draggedScroll,
   drawsOverlay,
   followedScroller,
+  thumbBox,
   scrollPerPixel,
   thumbOf,
 } from '../webview/overlayScrollbars';
@@ -57,6 +60,55 @@ suite('Overlay scrollbars', () => {
     assert.match(
       stylesheet(),
       /::-webkit-scrollbar \{\s*width: 0;\s*height: 0;\s*\}/,
+    );
+  });
+
+  const scroller = {
+    left: 100,
+    top: 50,
+    clientLeft: 1,
+    clientTop: 1,
+    clientWidth: 400,
+    clientHeight: 500,
+    scrollWidth: 800,
+    scrollHeight: 1000,
+    scrollLeft: 200,
+    scrollTop: 250,
+  };
+
+  test('places the vertical thumb over the right edge and the horizontal one over the bottom', () => {
+    assert.deepStrictEqual(thumbBox('vertical', scroller, 25), {
+      left: 101 + 400 - 25,
+      top: 51 + 125,
+      width: 25,
+      height: 250,
+    });
+    assert.deepStrictEqual(thumbBox('horizontal', scroller, 25), {
+      left: 101 + 100,
+      top: 51 + 500 - 25,
+      width: 200,
+      height: 25,
+    });
+  });
+
+  test('places no thumb along an axis that fits', () => {
+    assert.strictEqual(
+      thumbBox('horizontal', { ...scroller, scrollWidth: 400 }, 25),
+      undefined,
+    );
+  });
+
+  test('scrolls by how far the thumb is dragged along its own axis', () => {
+    const pointer = { clientX: 300, clientY: 200 };
+    const vertical = dragFrom('vertical', scroller, pointer);
+    assert.strictEqual(
+      draggedScroll('vertical', vertical, { clientX: 999, clientY: 210 }),
+      250 + 10 * 2,
+    );
+    const horizontal = dragFrom('horizontal', scroller, pointer);
+    assert.strictEqual(
+      draggedScroll('horizontal', horizontal, { clientX: 290, clientY: 999 }),
+      200 - 10 * 2,
     );
   });
 });

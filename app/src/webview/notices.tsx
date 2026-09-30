@@ -20,6 +20,12 @@ export function addNotice(
   ].slice(-maxNotices);
 }
 
+export function fading(notices: readonly Notice[]): number[] {
+  return notices
+    .filter((notice) => notice.level === 'info')
+    .map((notice) => notice.id);
+}
+
 export function Notices({
   notices,
   onDismiss,
@@ -28,9 +34,9 @@ export function Notices({
   onDismiss: (id: number) => void;
 }) {
   useEffect(() => {
-    const timers = notices
-      .filter((notice) => notice.level === 'info')
-      .map((notice) => setTimeout(() => onDismiss(notice.id), infoShownFor));
+    const timers = fading(notices).map((id) =>
+      setTimeout(() => onDismiss(id), infoShownFor),
+    );
     return () => timers.forEach(clearTimeout);
   }, [notices, onDismiss]);
 
