@@ -338,7 +338,7 @@ export function ShortcutsPanel({
       </div>
       <dl className="shortcuts-list">
         {shortcuts.map((shortcut) => (
-          <Fragment key={shortcut.id}>
+          <Fragment key={shortcut.key}>
             <dt>
               <kbd>{shortcut.key.toUpperCase()}</kbd>
             </dt>

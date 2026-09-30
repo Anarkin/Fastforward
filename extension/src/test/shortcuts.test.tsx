@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ShortcutsPanel } from '../webview/navBar';
-import { shortcutOf, shortcuts } from '../webview/shortcuts';
+import { handleShortcut, shortcutOf, shortcuts } from '../webview/shortcuts';
 import { definitions } from './fixtures';
 
 const press = (
@@ -10,6 +10,7 @@ const press = (
 ) =>
   shortcutOf({
     key,
+    code: '',
     ctrlKey: false,
     shiftKey: false,
     altKey: false,
@@ -18,7 +19,7 @@ const press = (
     defaultPrevented: false,
     target: null,
     ...extra,
-  })?.id;
+  })?.key;
 
 function element(tagName: string, isContentEditable = false): EventTarget {
   const target = {
@@ -41,6 +42,37 @@ suite('Keyboard shortcuts', () => {
   test('matches a letter with Caps Lock on', () => {
     assert.strictEqual(press('C'), 'c');
     assert.strictEqual(press('S'), 's');
+  });
+
+  test('matches the physical key on a non-Latin layout', () => {
+    assert.strictEqual(press('с', { code: 'KeyC' }), 'c');
+    assert.strictEqual(press('ы', { code: 'KeyS' }), 's');
+    assert.strictEqual(press('j', { code: 'KeyC' }), undefined);
+  });
+
+  test('leaves a shortcut it has no action for to the other handlers', () => {
+    let called = 0;
+    let prevented = 0;
+    const handle = (key: string) =>
+      handleShortcut(
+        {
+          key,
+          code: '',
+          ctrlKey: false,
+          shiftKey: false,
+          altKey: false,
+          metaKey: false,
+          repeat: false,
+          defaultPrevented: false,
+          target: null,
+          preventDefault: () => prevented++,
+        },
+        { c: () => called++ },
+      );
+    handle('s');
+    assert.deepStrictEqual([called, prevented], [0, 0]);
+    handle('c');
+    assert.deepStrictEqual([called, prevented], [1, 1]);
   });
 
   test("leaves VS Code's keys, repeats and handled keys alone", () => {
