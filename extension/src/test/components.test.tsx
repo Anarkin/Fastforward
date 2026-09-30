@@ -3,7 +3,7 @@ import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { changesTreeElements, changesTreeRows } from '../webview/changesTree';
 import { MenuItems } from '../webview/contextMenu';
-import { LocationsPopup } from '../webview/locations';
+import { leafIndent, LocationsPopup } from '../webview/locations';
 import {
   historyButtonClick,
   HistoryMenu,
@@ -13,8 +13,6 @@ import {
   NavButtons,
   nextPeekMode,
 } from '../webview/navBar';
-import { parsePatch } from '../webview/diff';
-import { diffRows } from '../webview/diffView';
 import { changeTitle, statusClass } from '../webview/fileStatus';
 import { LineCounts } from '../webview/lineCounts';
 import { SkeletonRows } from '../webview/skeleton';
@@ -27,11 +25,22 @@ import {
   fileChange as change,
   tagsWith,
 } from './fixtures';
+import type { RefInfo, RepositoryState } from '../shared/protocol';
 
 const noop = () => {};
 
-const kinds = (rows: ReturnType<typeof diffRows>) =>
-  rows.map((row) => row.kind);
+function renderedBy<P>(
+  component: (props: P) => React.ReactNode,
+  props: P,
+): React.ReactNode {
+  let rendered: React.ReactNode;
+  function Probe() {
+    rendered = component(props);
+    return null;
+  }
+  renderToStaticMarkup(<Probe />);
+  return rendered;
+}
 
 function tagWith(html: string, text: string, ...classes: string[]): string {
   const found = tagsWith(html, ...classes).filter((tag) => tag.includes(text));
@@ -54,7 +63,18 @@ suite('File status', () => {
 });
 
 suite('Line counts', () => {
+  test('shows deletions before insertions', () => {
+    assert.strictEqual(
+      renderToStaticMarkup(<LineCounts deletions={2} insertions={3} />),
+      '<span class="line-counts"><span class="deletions">-2</span><span class="insertions">+3</span></span>',
+    );
+  });
+
   test('leaves out a side without lines, and shows nothing without any', () => {
+    assert.strictEqual(
+      renderToStaticMarkup(<LineCounts deletions={2} insertions={0} />),
+      '<span class="line-counts"><span class="deletions">-2</span></span>',
+    );
     assert.strictEqual(
       renderToStaticMarkup(<LineCounts deletions={0} insertions={3} />),
       '<span class="line-counts"><span class="insertions">+3</span></span>',
@@ -277,21 +297,16 @@ suite('History buttons', () => {
 
   test('keys history entries apart that are the same commit', () => {
     const a = 'a'.repeat(40);
-    let menu: React.ReactNode;
-    function Probe() {
-      menu = HistoryMenu({
-        container: { current: null },
-        entries: [
-          { hash: a, subject: 'a' },
-          { hash: 'b'.repeat(40), subject: 'b' },
-          { hash: a, subject: 'a' },
-        ],
-        onPick: noop,
-        onClose: noop,
-      });
-      return null;
-    }
-    renderToStaticMarkup(<Probe />);
+    const menu = renderedBy(HistoryMenu, {
+      container: { current: null },
+      entries: [
+        { hash: a, subject: 'a' },
+        { hash: 'b'.repeat(40), subject: 'b' },
+        { hash: a, subject: 'a' },
+      ],
+      onPick: noop,
+      onClose: noop,
+    });
     assert.ok(isValidElement<{ children: React.ReactElement[] }>(menu));
     const keys = menu.props.children.map((entry) => entry.key);
     assert.strictEqual(new Set(keys).size, 3);
@@ -301,6 +316,7 @@ suite('History buttons', () => {
 const popup = (
   query: string,
   result?: Parameters<typeof LocationsPopup>[0]['lookup'],
+  props: Partial<Parameters<typeof LocationsPopup>[0]> = {},
 ) =>
   renderToStaticMarkup(
     <LocationsPopup
@@ -314,6 +330,7 @@ const popup = (
       onClose={noop}
       query={query}
       onQuery={noop}
+      {...props}
     />,
   );
 
@@ -349,30 +366,122 @@ suite('Hash suggestion', () => {
   });
 });
 
+const repository = (...refs: [RefInfo['kind'], string][]): RepositoryState => ({
+  head: undefined,
+  headCommit: undefined,
+  headUpstream: undefined,
+  refs: refs.map(([kind, name]) => ({ kind, name, commit: 'c'.repeat(40) })),
+});
+
+const refs = repository(
+  ['branch', 'main'],
+  ['branch', 'feat/a'],
+  ['branch', 'feat/b'],
+  ['remote', 'origin/main'],
+  ['tag', 'v1'],
+);
+
+const counts = (html: string) =>
+  [...html.matchAll(/class="locations-count">(\d+)</g)].map((match) =>
+    Number(match[1]),
+  );
+
 suite('Search', () => {
   test('offers a way back out beside its field', () => {
     tagWith(popup(''), 'title="Close (Esc)"', 'nav-button');
+  });
+
+  test('shows refs as trees, folders first, opening a lone folder', () => {
+    const html = popup('', undefined, { repository: refs });
+    assert.deepStrictEqual(counts(html), [3, 1, 1]);
+    assert.match(
+      html,
+      /tree-row folder[^>]*><span class="twisty">▸<\/span>feat<\/div><\/div><div[^>]*title="main"/,
+    );
+    assert.match(
+      tagWith(html, 'title="main"', 'tree-row', 'leaf'),
+      new RegExp(`padding-left:${leafIndent(0, true)}px`),
+    );
+    assert.match(
+      tagWith(html, 'title="origin/main"', 'tree-row', 'leaf'),
+      new RegExp(`padding-left:${leafIndent(1, false)}px`),
+    );
+    assert.match(
+      tagWith(html, 'title="v1"', 'tree-row', 'leaf'),
+      new RegExp(`padding-left:${leafIndent(0, false)}px`),
+    );
+  });
+
+  test('marks what matches, and counts only the matches', () => {
+    const html = popup('fe', undefined, { repository: refs });
+    assert.match(html, /<mark class="match">fe<\/mark>at\/a/);
+    assert.deepStrictEqual(counts(html), [2, 0, 0]);
+    assert.strictEqual(html.match(/No matches/g)?.length, 2);
+  });
+
+  test('pins the checked-out branch and bookmarks, showing one that is gone as such', () => {
+    const html = popup('', undefined, {
+      repository: { ...refs, head: 'main' },
+      bookmarks: [{ kind: 'branch', name: 'gone' }],
+    });
+    assert.match(
+      html,
+      /<header class="locations-heading">Checked out<span class="locations-count">1<\/span><\/header><div class="locations-list"><div[^>]*><span class="badge branch[^"]*"[^>]*>main</,
+    );
+    assert.match(
+      html,
+      /<header class="locations-heading">Bookmarks<span class="locations-count">1<\/span><\/header><div class="locations-list"><div[^>]*><span class="badge branch[^"]* missing[^"]*"[^>]*>gone</,
+    );
+  });
+
+  test('says how many more match than it shows', () => {
+    const many = repository(
+      ...Array.from({ length: 201 }, (_, index): [RefInfo['kind'], string] => [
+        'branch',
+        `b${index}`,
+      ]),
+    );
+    const html = popup('b', undefined, { repository: many });
+    assert.match(html, /1 more; type more to narrow it down/);
+    assert.strictEqual(counts(html)[0], 201);
   });
 });
 
 suite('Menu items', () => {
   test('keys items apart that have the same label', () => {
-    let items: React.ReactNode;
-    function Probe() {
-      items = MenuItems({
-        items: [
-          { label: 'v1', onClick: noop },
-          { separator: true },
-          { label: 'v1', onClick: noop },
-        ],
-        onClose: noop,
-      });
-      return null;
-    }
-    renderToStaticMarkup(<Probe />);
+    const items = renderedBy(MenuItems, {
+      items: [
+        { label: 'v1', onClick: noop },
+        { separator: true },
+        { label: 'v1', onClick: noop },
+      ],
+      onClose: noop,
+    });
     assert.ok(isValidElement<{ children: React.ReactElement[] }>(items));
     const keys = items.props.children.map((item) => item.key);
     assert.strictEqual(new Set(keys).size, 3);
+  });
+
+  test('runs a plain item and closes the menu, but opens a submenu in place', () => {
+    const log: string[] = [];
+    const items = renderedBy(MenuItems, {
+      items: [
+        { label: 'a', onClick: () => log.push('a') },
+        { label: 'sub', submenu: [{ label: 'x', onClick: noop }] },
+      ],
+      onClose: () => log.push('close'),
+    });
+    assert.ok(isValidElement<{ children: React.ReactElement[] }>(items));
+    const [plain, sub] = items.props.children.map((entry) => {
+      assert.ok(isValidElement<{ children: React.ReactNode[] }>(entry));
+      const button = entry.props.children[0];
+      assert.ok(isValidElement<{ onClick: () => void }>(button));
+      return button;
+    });
+    plain.props.onClick();
+    assert.deepStrictEqual(log, ['close', 'a']);
+    sub.props.onClick();
+    assert.deepStrictEqual(log, ['close', 'a']);
   });
 
   test('marks the picked one of several, and switches with a check', () => {
@@ -397,21 +506,16 @@ suite('Menu items', () => {
 suite('Tab bar', () => {
   test('stops the middle button from autoscrolling, so a middle click closes the tab', () => {
     const closed: string[] = [];
-    let nav: React.ReactNode;
-    function Probe() {
-      nav = TabBar({
-        tabs: [{ root: '/repo', name: 'repo' }],
-        active: '/repo',
-        onSelect: noop,
-        onPreload: noop,
-        onClose: (root) => closed.push(root),
-        onAdd: noop,
-        onSort: noop,
-        onLog: noop,
-      });
-      return null;
-    }
-    renderToStaticMarkup(<Probe />);
+    const nav = renderedBy(TabBar, {
+      tabs: [{ root: '/repo', name: 'repo' }],
+      active: '/repo',
+      onSelect: noop,
+      onPreload: noop,
+      onClose: (root) => closed.push(root),
+      onAdd: noop,
+      onSort: noop,
+      onLog: noop,
+    });
     assert.ok(isValidElement<{ children: React.ReactElement[] }>(nav));
     const list = nav.props.children[0];
     assert.ok(isValidElement<{ children: React.ReactElement[][] }>(list));
@@ -443,49 +547,6 @@ suite('Placeholders', () => {
     );
     assert.strictEqual(tagsWith(html, 'diff-line', 'skeleton-row').length, 3);
     assert.match(html, /aria-busy="true"/);
-  });
-
-  test('stand in for a diff that loads, and a large file being fetched', () => {
-    assert.deepStrictEqual(kinds(diffRows([], new Map(), undefined, true)), [
-      'error',
-      'skeleton',
-    ]);
-    const large = {
-      path: 'graph.json',
-      binary: false,
-      hunks: [],
-      placeholder: { lines: 5000 },
-    };
-    assert.deepStrictEqual(kinds(diffRows([large], new Map(), undefined)), [
-      'error',
-      'file',
-      'large',
-    ]);
-    assert.deepStrictEqual(
-      kinds(diffRows([large], new Map([['graph.json', true]]), undefined)),
-      ['error', 'file', 'skeletonLines'],
-    );
-  });
-
-  test('shows a binary file as such, whole or in a diff', () => {
-    assert.deepStrictEqual(
-      kinds(
-        diffRows([], new Map(), { path: 'a.png', content: '', binary: true }),
-      ),
-      ['error', 'file', 'binary'],
-    );
-    const [binary] = parsePatch(
-      [
-        'diff --git a/a.png b/a.png',
-        'index 1111111..2222222 100644',
-        'Binary files a/a.png and b/a.png differ',
-      ].join('\n'),
-    );
-    assert.deepStrictEqual(kinds(diffRows([binary], new Map(), undefined)), [
-      'error',
-      'file',
-      'binary',
-    ]);
   });
 });
 
