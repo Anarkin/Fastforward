@@ -8,7 +8,7 @@
 - Use only headings and simple bullet points in `.md` files; ask before using anything more complex
 - Only record things in `ARCHITECTURE.md` that are not clear from the code
 - All `.md` file names are uppercase
-- All `.md` files' first line should be a top-level heading matching the file name, except `README.md`, whose heading is the product name because it is also the Marketplace page
+- All `.md` files' first line should be a top-level heading matching the file name, except `README.md`, whose heading is the product name
 
 ### Contributing
 
@@ -16,5 +16,5 @@
 
 ### Debugging, Deployment, Development
 
-- After changing extension code and passing `npm run verify:fast`, deploy it as `CONTRIBUTING.md` describes; when that needs `npm run install-local`, ask the user to restart the extension host
+- After changing app code and passing `npm run verify:fast`, run `npm run build`, which a running `npm run dev` also does by itself; ask the user to restart the app when it isn't running with `npm run dev`
 - Cover every fix with a test that fails without it; when the bug itself can't be tested, as with layout in a real browser, move the logic behind the fix into code that can be, and test that
