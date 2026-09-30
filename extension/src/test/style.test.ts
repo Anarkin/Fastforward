@@ -177,6 +177,27 @@ suite('Style', () => {
     assert.doesNotMatch(css, /\.menu-item:hover\s*{/);
   });
 
+  test('spaces the mode switch and its pill with transparent borders, which Chromium snaps evenly on both sides at any scale', () => {
+    const track = declarationsOf('.switch');
+    assert.match(
+      declarationsOf('.column-footer'),
+      /height: var\(--title-height\);/,
+    );
+    assert.match(track, /height: 100%;/);
+    assert.match(track, /border: [\d.]+px solid transparent;/);
+    assert.match(track, /background-clip: padding-box;/);
+    assert.doesNotMatch(track, /padding:/);
+    const option = declarationsOf('.switch-option');
+    assert.match(option, /height: 100%;/);
+    assert.match(option, /border: \d+px solid transparent;/);
+    assert.match(option, /position: relative;/);
+    assert.doesNotMatch(declarationsOf('.switch-option.active'), /background/);
+    const pill = declarationsOf('.switch-option.active::before');
+    assert.match(pill, /position: absolute;/);
+    assert.match(pill, /inset: 0;/);
+    assert.match(pill, /background: var\(--vscode-editor-background\);/);
+  });
+
   test('edges a popup with an inset shadow rather than a border', () => {
     assert.match(
       css,
