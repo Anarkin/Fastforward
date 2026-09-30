@@ -1,10 +1,15 @@
 import { createContext, useContext } from 'react';
 import { shortHash } from '../shared/hashes';
 import type { BookmarkRef } from '../shared/protocol';
-import { useContextMenu } from './contextMenu';
+import { refMenuTarget, useContextMenu } from './contextMenu';
 
 export const CheckedOutBranch = createContext<string | undefined>(undefined);
 export const DetachedHead = createContext<string | undefined>(undefined);
+
+export function useCheckedOut(ref: BookmarkRef): boolean {
+  const checkedOutBranch = useContext(CheckedOutBranch);
+  return ref.kind === 'branch' && ref.name === checkedOutBranch;
+}
 
 export function HeadBubble({
   commit,
@@ -56,12 +61,8 @@ export function RefBubble({
   missing?: boolean;
   onClick?: () => void;
 }) {
-  const menu = useContextMenu({
-    kind: 'ref',
-    ref: { kind: info.kind, name: info.name },
-  });
-  const checkedOutBranch = useContext(CheckedOutBranch);
-  const checkedOut = info.kind === 'branch' && info.name === checkedOutBranch;
+  const menu = useContextMenu(refMenuTarget(info));
+  const checkedOut = useCheckedOut(info);
   return (
     <span
       className={`badge ${info.kind} ${checkedOut ? 'checked-out' : ''} ${missing ? 'missing' : ''} ${onClick ? 'clickable' : ''}`}

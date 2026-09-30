@@ -18,14 +18,14 @@ import { sameRef } from '../shared/refNames';
 import { pinnedRefs } from './bookmarks';
 import { BackIcon } from './icons';
 import {
-  CheckedOutBranch,
   CommitBubble,
   DetachedHead,
   HeadBubble,
   RefBubble,
+  useCheckedOut,
 } from './bubbles';
-import { OpenContextMenu, useDismiss } from './contextMenu';
-import { IndentGuides, treeIndent, twistyWidth } from './tree';
+import { OpenContextMenu, refMenuTarget, useDismiss } from './contextMenu';
+import { byName, IndentGuides, treeIndent, twistyWidth } from './tree';
 
 const groups: readonly { kind: RefKind; title: string }[] = [
   { kind: 'branch', title: 'Local branches' },
@@ -54,7 +54,7 @@ export function searchRefs(
         (ref) =>
           ref.kind === group.kind && ref.name.toLowerCase().includes(needle),
       )
-      .toSorted((a, b) => a.name.localeCompare(b.name));
+      .toSorted(byName);
     return {
       ...group,
       refs: matches.slice(0, limit),
@@ -71,8 +71,7 @@ function RefLabel({
   children: React.ReactNode;
 }) {
   const { kind } = info;
-  const checkedOutBranch = useContext(CheckedOutBranch);
-  const checkedOut = kind === 'branch' && info.name === checkedOutBranch;
+  const checkedOut = useCheckedOut(info);
   return (
     <span className={`badge ${kind} ${checkedOut ? 'checked-out' : ''}`}>
       {children}
@@ -453,12 +452,7 @@ function SearchResults({
           className={`row result ${ref === active ? 'active' : ''} ${ref.commit === selected ? 'selected' : ''}`}
           title={ref.name}
           onClick={() => onJump(ref.commit)}
-          onContextMenu={(event) =>
-            openMenu(event, {
-              kind: 'ref',
-              ref: { kind: ref.kind, name: ref.name },
-            })
-          }
+          onContextMenu={(event) => openMenu(event, refMenuTarget(ref))}
         >
           <RefLabel info={ref}>
             <Highlight text={ref.name} query={query} />
@@ -534,8 +528,7 @@ function TreeChildren({
   const openMenu = useContext(OpenContextMenu);
   const children = [...node.children.values()].toSorted(
     (a, b) =>
-      Number(b.children.size > 0) - Number(a.children.size > 0) ||
-      a.name.localeCompare(b.name),
+      Number(b.children.size > 0) - Number(a.children.size > 0) || byName(a, b),
   );
   const withFolders = children.some((child) => child.children.size > 0);
   return (
@@ -558,11 +551,7 @@ function TreeChildren({
             title={child.ref?.name}
             onClick={() => child.ref && onSelect(child.ref.commit)}
             onContextMenu={(event) =>
-              child.ref &&
-              openMenu(event, {
-                kind: 'ref',
-                ref: { kind: child.ref.kind, name: child.ref.name },
-              })
+              child.ref && openMenu(event, refMenuTarget(child.ref))
             }
           >
             <IndentGuides depth={depth} />

@@ -6,11 +6,16 @@ import {
   useRef,
   useState,
 } from 'react';
-import type { Bookmark } from '../shared/protocol';
+import type { Bookmark, BookmarkRef } from '../shared/protocol';
 
 export type MenuTarget =
   | { readonly kind: 'ref'; readonly ref: Bookmark }
   | { readonly kind: 'commit'; readonly hash: string };
+
+export const refMenuTarget = (ref: BookmarkRef): MenuTarget => ({
+  kind: 'ref',
+  ref: { kind: ref.kind, name: ref.name },
+});
 
 export type ContextMenuItem =
   | {
@@ -140,7 +145,7 @@ export function useDismiss(
 ): void {
   useEffect(() => {
     if (!enabled) {
-      return () => {};
+      return undefined;
     }
     return listenForDismiss(window, element, onClose, { onScroll, ignore });
   }, [element, onClose, onScroll, ignore, enabled]);
