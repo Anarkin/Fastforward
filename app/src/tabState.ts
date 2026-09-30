@@ -27,6 +27,7 @@ export interface TabState {
   hash: string | undefined;
   index: number | undefined;
   path: string | undefined;
+  entireFile: boolean;
   changedFiles: Map<string, FileChange>;
   workingTree: WorkingTree | undefined;
   fullHistory: readonly HistoryEntry[];
@@ -66,6 +67,7 @@ export function newTabState(): TabState {
     hash: undefined,
     index: undefined,
     path: undefined,
+    entireFile: false,
     changedFiles: new Map(),
     workingTree: undefined,
     fullHistory: [],
@@ -188,6 +190,7 @@ export function select(tab: TabState, hash: string | undefined): void {
   tab.hash = hash;
   tab.index = positionOf(tab, hash);
   tab.path = undefined;
+  tab.entireFile = false;
 }
 
 function anchorOf(tab: TabState): ScrollTarget | undefined {

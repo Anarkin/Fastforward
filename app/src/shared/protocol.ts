@@ -29,10 +29,12 @@ export type ChangesView = 'list' | 'tree';
 
 export const defaultLayout: {
   readonly collapseMerges: boolean;
+  readonly entireFilePinned: boolean;
   readonly filesMode: FilesMode;
   readonly changesView: ChangesView;
 } = {
   collapseMerges: true,
+  entireFilePinned: false,
   filesMode: 'changes',
   changesView: 'tree',
 };
@@ -133,6 +135,7 @@ export type ToHost =
   | { readonly type: 'preloadTab'; readonly root: string }
   | { readonly type: 'setColumnWidths'; readonly widths: readonly number[] }
   | { readonly type: 'setCollapseMerges'; readonly collapse: boolean }
+  | { readonly type: 'pinEntireFile'; readonly pinned: boolean }
   | { readonly type: 'setFilesMode'; readonly mode: FilesMode }
   | { readonly type: 'setChangesView'; readonly view: ChangesView }
   | {
@@ -147,6 +150,7 @@ export type ToHost =
 export type TabMessage =
   | { readonly type: 'setBookmarks'; readonly bookmarks: readonly Bookmark[] }
   | { readonly type: 'setSolo'; readonly solo: boolean }
+  | { readonly type: 'showEntireFile'; readonly entire: boolean }
   | { readonly type: 'loadTree'; readonly hash: string }
   | {
       readonly type: 'loadFileDiff';
@@ -190,6 +194,7 @@ export type ToWebview =
       readonly type: 'layout';
       readonly columnWidths: readonly number[] | undefined;
       readonly collapseMerges: boolean;
+      readonly entireFilePinned: boolean;
       readonly filesMode: FilesMode;
       readonly changesView: ChangesView;
     }

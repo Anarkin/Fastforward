@@ -33,6 +33,11 @@ export interface PatchScope {
   readonly path?: string;
   readonly oldPath?: string;
   readonly exclude?: readonly string[];
+  readonly entireFile?: boolean;
+}
+
+export function contextArgs({ entireFile }: PatchScope): string[] {
+  return entireFile ? ['--unified=2147483647'] : [];
 }
 
 export function pathspecs({ path, oldPath, exclude = [] }: PatchScope): {
@@ -64,9 +69,14 @@ export function showPatch(
   scope: PatchScope = {},
 ): Promise<string> {
   const spec = pathspecs(scope);
-  return runGit(gitPath, cwd, [...showArgs, '--patch', hash, ...spec.args], {
-    pathspecMagic: spec.magic,
-  });
+  return runGit(
+    gitPath,
+    cwd,
+    [...showArgs, '--patch', ...contextArgs(scope), hash, ...spec.args],
+    {
+      pathspecMagic: spec.magic,
+    },
+  );
 }
 
 const simpleStatuses = ['A', 'M', 'D', 'T'] as const;

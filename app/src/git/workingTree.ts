@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { collapseThreshold, type FileChange } from '../shared/protocol';
 import {
   changesArgs,
+  contextArgs,
   diffArgs,
   parseRawChanges,
   pathspecs,
@@ -164,7 +165,7 @@ export async function workingTreePatch(
   const tracked = runGit(
     gitPath,
     cwd,
-    [...workingTreeDiff(base), ...spec.args],
+    [...workingTreeDiff(base), ...contextArgs(scope), ...spec.args],
     { pathspecMagic: spec.magic },
   );
   if (path !== undefined) {

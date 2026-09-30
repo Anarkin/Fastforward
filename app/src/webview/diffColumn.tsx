@@ -3,6 +3,7 @@ import { isLargeChange, type FileChange } from '../shared/protocol';
 import { Column } from './column';
 import { parsePatch, type DiffFile } from './diff';
 import { DiffView, type WholeFile } from './diffView';
+import { EntireFileIcon, PinIcon } from './icons';
 
 export function withLargeFiles(
   parsed: readonly DiffFile[],
@@ -30,6 +31,51 @@ export function withLargeFiles(
   return [...result, ...byPath.values()];
 }
 
+export function EntireFileButtons({
+  entire,
+  pinned,
+  canShow,
+  onEntire,
+  onPin,
+}: {
+  entire: boolean;
+  pinned: boolean;
+  canShow: boolean;
+  onEntire: (entire: boolean) => void;
+  onPin: (pinned: boolean) => void;
+}) {
+  const shown = entire || pinned;
+  return (
+    <div className="nav-buttons entire-file">
+      <button
+        className={`nav-button toggle ${shown ? 'active' : ''}`}
+        title={
+          pinned
+            ? 'Showing every file entire, as pinned'
+            : 'Show the entire file, until you leave it'
+        }
+        aria-pressed={shown}
+        disabled={!canShow || pinned}
+        onClick={() => onEntire(!entire)}
+      >
+        <EntireFileIcon />
+      </button>
+      <button
+        className={`nav-button toggle ${pinned ? 'active' : ''}`}
+        title={
+          pinned
+            ? 'Unpin: show only the changes again'
+            : 'Pin: always show entire files'
+        }
+        aria-pressed={pinned}
+        onClick={() => onPin(!pinned)}
+      >
+        <PinIcon />
+      </button>
+    </div>
+  );
+}
+
 export function Diff({
   selection,
   path,
@@ -41,6 +87,7 @@ export function Diff({
   onLoadFile,
   fileContent,
   error,
+  entireFile,
 }: {
   selection: string;
   path: string | undefined;
@@ -52,6 +99,7 @@ export function Diff({
   onLoadFile: (path: string) => void;
   fileContent: WholeFile | undefined;
   error: string | undefined;
+  entireFile: React.ReactNode;
 }) {
   const parsed = useMemo(() => parsePatch(patch), [patch]);
   const diffFiles = useMemo(
@@ -67,7 +115,7 @@ export function Diff({
   const errorRow = error && <div className="error">{error}</div>;
 
   return (
-    <Column title="Diff">
+    <Column title="Diff" start={entireFile}>
       <DiffView
         key={selection}
         error={errorRow}

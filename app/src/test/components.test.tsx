@@ -23,6 +23,7 @@ import {
 } from '../webview/navBar';
 import { holdsDismissLayer, nextPeekMode } from '../webview/shortcutsHelp';
 import { changeClass, changeTitle } from '../webview/fileStatus';
+import { EntireFileButtons } from '../webview/diffColumn';
 import { Files } from '../webview/filesColumn';
 import { FileTree } from '../webview/fileTree';
 import { LineCounts } from '../webview/lineCounts';
@@ -144,6 +145,48 @@ function clickFile(row: React.ReactElement) {
   drawn.props.onClick();
 }
 
+function entireFileButtons(entire: boolean, pinned: boolean, canShow = true) {
+  const html = renderToStaticMarkup(
+    <EntireFileButtons
+      entire={entire}
+      pinned={pinned}
+      canShow={canShow}
+      onEntire={noop}
+      onPin={noop}
+    />,
+  );
+  return [...html.matchAll(/<button[^>]*>/g)].map(([button]) =>
+    [
+      button.includes('aria-pressed="true"') ? 'on' : 'off',
+      button.includes('disabled') ? 'disabled' : 'enabled',
+    ].join(' '),
+  );
+}
+
+suite('Entire file buttons', () => {
+  test('shows the file entire for now, or pinned for every file', () => {
+    assert.deepStrictEqual(entireFileButtons(false, false), [
+      'off enabled',
+      'off enabled',
+    ]);
+    assert.deepStrictEqual(entireFileButtons(true, false), [
+      'on enabled',
+      'off enabled',
+    ]);
+    assert.deepStrictEqual(entireFileButtons(false, true), [
+      'on disabled',
+      'on enabled',
+    ]);
+  });
+
+  test('offers the entire file only with a file selected, but the pin always', () => {
+    assert.deepStrictEqual(entireFileButtons(false, false, false), [
+      'off disabled',
+      'off enabled',
+    ]);
+  });
+});
+
 suite('Files column', () => {
   test('switches the mode in its title', () => {
     for (const mode of ['changes', 'files'] as const) {
@@ -180,7 +223,9 @@ suite('Files column', () => {
       assert.ok(
         html
           .slice(html.indexOf(active))
-          .startsWith(`${active}${mode === 'changes' ? 'Changes' : 'All Files'}`),
+          .startsWith(
+            `${active}${mode === 'changes' ? 'Changes' : 'All Files'}`,
+          ),
       );
     }
   });

@@ -376,6 +376,11 @@ body.resizing {
   padding-right: calc(4px + 2 * 26px + 2px + 8px);
 }
 
+.column-title:has(.entire-file) {
+  padding-left: calc(4px + 2 * 26px + 2px + 8px);
+  padding-right: calc(4px + 2 * 26px + 2px + 8px);
+}
+
 .column-start {
   position: absolute;
   top: 0;

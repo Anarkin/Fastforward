@@ -14,6 +14,7 @@ export const recentKey = 'recentRepositories';
 const maxRecent = 20;
 const columnWidthsKey = 'columnWidths';
 export const collapseMergesKey = 'collapseMerges';
+export const entireFilePinnedKey = 'entireFilePinned';
 export const soloKey = 'soloRepositories';
 const filesModeKey = 'filesMode';
 const changesViewKey = 'changesView';
@@ -148,6 +149,7 @@ export class Storage {
       type: 'layout',
       columnWidths: this.store.get<number[]>(columnWidthsKey),
       collapseMerges: this.collapseMerges,
+      entireFilePinned: this.entireFilePinned,
       filesMode: this.store.get<FilesMode>(
         filesModeKey,
         defaultLayout.filesMode,
@@ -165,6 +167,14 @@ export class Storage {
 
   async setColumnWidths(widths: readonly number[]): Promise<void> {
     await this.store.update(columnWidthsKey, widths);
+  }
+
+  get entireFilePinned(): boolean {
+    return this.store.get(entireFilePinnedKey, defaultLayout.entireFilePinned);
+  }
+
+  async setEntireFilePinned(pinned: boolean): Promise<void> {
+    await this.store.update(entireFilePinnedKey, pinned);
   }
 
   async setCollapseMerges(collapse: boolean): Promise<void> {
