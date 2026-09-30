@@ -21,6 +21,7 @@ import {
   workingTreeRowHeight,
   workingTreeShift,
 } from '../webview/commitList';
+import { formatDateTime } from '../webview/dates';
 import { commitInfo, renderedBy } from './fixtures';
 
 suite('Commit list rows', () => {
@@ -282,12 +283,14 @@ suite('Commit rows', () => {
 });
 
 suite('Commit row', () => {
-  test('shows the subject, author, date and bubbles, but no file count', () => {
+  test('shows the subject, author, the date it was last committed and bubbles, but no file count', () => {
     let picked: string | undefined;
     const props = {
       commit: commitInfo('a', {
         subject: 'Fix it',
         authorName: 'Ann',
+        authorDate: Date.UTC(2026, 8, 30, 0, 24),
+        commitDate: Date.UTC(2026, 8, 30, 11, 56),
         files: 3,
       }),
       selected: undefined,
@@ -304,6 +307,12 @@ suite('Commit row', () => {
     );
     assert.match(html, /<span class="subject">Fix it<\/span><\/div>/);
     assert.match(html, /<span class="author">Ann<\/span>/);
+    assert.ok(
+      html.includes(
+        `<span class="date">${formatDateTime(props.commit.commitDate)}</span>`,
+      ),
+    );
+    assert.ok(!html.includes(formatDateTime(props.commit.authorDate)));
     assert.match(html, />main</);
     assert.doesNotMatch(html, /class="count"/);
     const row = renderedBy(CommitRow, props);
