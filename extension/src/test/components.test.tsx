@@ -15,6 +15,7 @@ import {
 import { parsePatch } from '../webview/diff';
 import { diffRows } from '../webview/diffView';
 import { changeTitle, statusClass } from '../webview/fileStatus';
+import { Files } from '../webview/filesColumn';
 import { LineCounts } from '../webview/lineCounts';
 import { SkeletonRows } from '../webview/skeleton';
 import { TabBar } from '../webview/tabBar';
@@ -62,6 +63,83 @@ suite('Line counts', () => {
       renderToStaticMarkup(<LineCounts deletions={0} insertions={0} />),
       '',
     );
+  });
+});
+
+interface RowProps {
+  className: string;
+  onClick: () => void;
+}
+
+function changesRows(
+  files: ReturnType<typeof change>[],
+  selected: string | undefined,
+  onSelect: (path: string | undefined) => void,
+) {
+  let column: React.ReactNode;
+  function Probe() {
+    column = Files({
+      mode: 'changes',
+      onMode: noop,
+      changesView: 'list',
+      onChangesView: noop,
+      closedFolders: new Set(),
+      onToggleClosedFolder: noop,
+      files,
+      loading: false,
+      treeLoading: false,
+      tree: undefined,
+      openFolders: new Set(),
+      onToggleFolder: noop,
+      selected,
+      onSelect,
+    });
+    return null;
+  }
+  renderToStaticMarkup(<Probe />);
+  assert.ok(isValidElement<{ children: React.ReactNode[] }>(column));
+  const list = column.props.children[1];
+  assert.ok(
+    isValidElement<{
+      rows: React.ReactElement<RowProps>[];
+      selectedKey: string | undefined;
+    }>(list),
+  );
+  return list.props;
+}
+
+suite('Files column', () => {
+  test('shows no rows without changes, not even their header', () => {
+    assert.deepStrictEqual(changesRows([], undefined, noop).rows, []);
+  });
+
+  test('deselects the selected file on a click, and selects another', () => {
+    const picked: (string | undefined)[] = [];
+    const { rows, selectedKey } = changesRows(
+      [change('a.ts'), change('b.ts')],
+      'a.ts',
+      (path) => picked.push(path),
+    );
+    assert.strictEqual(selectedKey, 'file:a.ts');
+    assert.deepStrictEqual(
+      rows.map((row) => row.key),
+      ['changes', 'file:a.ts', 'file:b.ts'],
+    );
+    rows[1].props.onClick();
+    rows[2].props.onClick();
+    assert.deepStrictEqual(picked, [undefined, 'b.ts']);
+  });
+
+  test('selects all changes with their header, marked while no file is', () => {
+    const picked: (string | undefined)[] = [];
+    const [header] = changesRows([change('a.ts')], undefined, (path) =>
+      picked.push(path),
+    ).rows;
+    assert.match(header.props.className, /\bselected\b/);
+    header.props.onClick();
+    assert.deepStrictEqual(picked, [undefined]);
+    const [unmarked] = changesRows([change('a.ts')], 'a.ts', noop).rows;
+    assert.doesNotMatch(unmarked.props.className, /\bselected\b/);
   });
 });
 
