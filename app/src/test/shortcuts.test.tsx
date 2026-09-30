@@ -65,7 +65,7 @@ suite('Keyboard shortcuts', () => {
     assert.deepStrictEqual([called, prevented], [1, 1]);
   });
 
-  test("leaves VS Code's keys, repeats and handled keys alone", () => {
+  test('leaves keys with modifiers, repeats and handled keys alone', () => {
     assert.strictEqual(press('c', { ctrlKey: true }), undefined);
     assert.strictEqual(press('s', { ctrlKey: true }), undefined);
     assert.strictEqual(press('c', { altKey: true }), undefined);
