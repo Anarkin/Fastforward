@@ -1144,7 +1144,8 @@ body.resizing {
 .address-text {
   min-width: 0;
   text-box: trim-both cap alphabetic;
-  overflow: hidden;
+  overflow-x: clip;
+  overflow-y: visible;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
