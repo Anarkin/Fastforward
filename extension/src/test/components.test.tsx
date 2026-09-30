@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { CommitBubble } from '../webview/bubbles';
 import { changesTreeElements, changesTreeRows } from '../webview/changesTree';
 import { MenuItems } from '../webview/contextMenu';
 import { LocationsPopup } from '../webview/locations';
@@ -49,6 +50,15 @@ suite('File status', () => {
       'Deleted: gone.ts',
     );
     assert.strictEqual(statusClass(change('a.ts')), 'path status-M');
+  });
+});
+
+suite('Bubbles', () => {
+  test('marks a commit bubble apart from the commit rows', () => {
+    const html = renderToStaticMarkup(<CommitBubble hash={'a'.repeat(40)} />);
+    const classes = classesOf(tagWith(html, '', 'badge'));
+    assert.ok(classes.has('hash'));
+    assert.ok(!classes.has('commit'));
   });
 });
 

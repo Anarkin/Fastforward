@@ -253,7 +253,7 @@ body.resizing {
 
 .column-title:has(.column-start) {
   padding-left: calc(4px + 3 * 26px + 2 * 2px + 8px);
-  padding-right: calc(4px + 2 * 26px + 8px);
+  padding-right: calc(4px + 2 * 26px + 2px + 8px);
 }
 
 .column-title .address {
@@ -429,13 +429,12 @@ body.resizing {
 }
 
 .badge.tag {
-  color: var(--vscode-editor-background);
-  background: var(--vscode-charts-yellow);
-}
-
-.row.file .path {
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: var(--vscode-foreground);
+  background: color-mix(
+    in srgb,
+    var(--vscode-charts-yellow) 30%,
+    var(--vscode-editor-background)
+  );
 }
 
 .status-A {
@@ -927,6 +926,8 @@ body.resizing {
 
 .row .path {
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .line-counts {
@@ -942,7 +943,7 @@ body.resizing {
   opacity: var(--muted-opacity);
 }
 
-.badge.commit {
+.badge.hash {
   color: var(--vscode-foreground);
   background: var(--vscode-editorWidget-background);
   border: 1px solid var(--widget-border);
@@ -986,6 +987,11 @@ body.resizing {
   outline-offset: -1px;
 }
 
+:is(.vscode-high-contrast, .vscode-high-contrast-light)
+  :is(.skeleton-row, .commit.placeholder, .hash-suggestion.empty):hover {
+  outline: none;
+}
+
 :is(.vscode-high-contrast, .vscode-high-contrast-light) .row.selected,
 :is(.vscode-high-contrast, .vscode-high-contrast-light) .commit.selected,
 :is(.vscode-high-contrast, .vscode-high-contrast-light)
@@ -1006,7 +1012,9 @@ body.resizing {
   cursor: default;
 }
 
-.skeleton-row:hover {
+.skeleton-row:hover,
+.commit.placeholder:hover,
+.hash-suggestion.empty:hover {
   background: none;
 }
 
@@ -1331,10 +1339,6 @@ body.resizing {
 .hash-suggestion.empty {
   cursor: default;
   color: var(--vscode-descriptionForeground);
-}
-
-.hash-suggestion.empty:hover {
-  background: none;
 }
 
 .locations-popup.peek {

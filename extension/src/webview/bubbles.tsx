@@ -37,7 +37,7 @@ export function CommitBubble({
   });
   return (
     <span
-      className={`badge commit ${onClick ? 'clickable' : ''}`}
+      className={`badge hash ${onClick ? 'clickable' : ''}`}
       title={`Commit ${hash}`}
       onClick={onClick}
       {...menu}
