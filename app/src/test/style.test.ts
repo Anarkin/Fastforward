@@ -249,10 +249,10 @@ suite('Style', () => {
     );
   });
 
-  test('deepens the tint of a bubble with a menu under the pointer', () => {
+  test('deepens the tint of a bubble with a menu under the pointer, and of a bubble in a search row that is hovered or active, the row carrying its menu', () => {
     assert.match(
-      declarationsOf('.badge.has-menu:hover'),
-      /background: color-mix\(\s*in srgb,\s*var\(--color-focus\) 40%,\s*var\(--color-panel-background\)\s*\);/,
+      css,
+      /\n\.badge\.has-menu:hover,\s*\.locations-list \.row:hover \.badge,\s*\.locations-list \.row\.active \.badge \{\s*background: color-mix\(\s*in srgb,\s*var\(--color-focus\) 40%,\s*var\(--color-panel-background\)\s*\);\s*\}/,
     );
   });
 
@@ -289,7 +289,7 @@ suite('Style', () => {
     );
   });
 
-  test('fills the checked-out bubble with the solid focus color, even under the pointer, where it brightens instead', () => {
+  test('fills the checked-out bubble with the solid focus color, even under the pointer or in a hovered or active search row, where it brightens instead', () => {
     const checkedOut = declarationsOf('.badge.checked-out');
     assert.ok(checkedOut.includes('color: var(--color-focus-foreground);'));
     assert.match(
@@ -298,11 +298,11 @@ suite('Style', () => {
     );
     assert.match(
       css,
-      /\n\.badge\.checked-out,\s*\.badge\.checked-out\.has-menu:hover \{/,
+      /\n\.badge\.checked-out,\s*\.badge\.checked-out\.has-menu:hover,\s*\.locations-list \.row:hover \.badge\.checked-out,\s*\.locations-list \.row\.active \.badge\.checked-out \{/,
     );
     assert.match(
       css,
-      /\n\.badge\.checked-out\.has-menu:hover \{\s*filter: brightness\(1\.15\);\s*\}/,
+      /\n\.badge\.checked-out\.has-menu:hover,\s*\.locations-list \.row:hover \.badge\.checked-out,\s*\.locations-list \.row\.active \.badge\.checked-out \{\s*filter: brightness\(1\.15\);\s*\}/,
     );
   });
 
