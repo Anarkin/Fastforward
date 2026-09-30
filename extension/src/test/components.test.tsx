@@ -360,6 +360,15 @@ suite('Hash suggestion', () => {
     assert.match(popup('abcd'), /Looking for commit abcd/);
   });
 
+  test('waits for the lookup of what is typed now, not an earlier prefix', () => {
+    const html = popup('abcde', {
+      query: 'abcd',
+      result: { kind: 'found', hash, subject: 's' },
+    });
+    assert.match(html, /Looking for commit abcde/);
+    assert.strictEqual(tagsWith(html, 'hash-suggestion', 'active').length, 0);
+  });
+
   test('offers nothing for what is no hash, or too short', () => {
     assert.doesNotMatch(popup('abc'), /hash-suggestion/);
     assert.doesNotMatch(popup('feature'), /hash-suggestion/);
@@ -417,6 +426,34 @@ suite('Search', () => {
     assert.match(html, /<mark class="match">fe<\/mark>at\/a/);
     assert.deepStrictEqual(counts(html), [2, 0, 0]);
     assert.strictEqual(html.match(/No matches/g)?.length, 2);
+  });
+
+  test('marks a match ignoring case, and highlights the first one, skipping groups without any', () => {
+    assert.match(
+      popup('MAI', undefined, { repository: refs }),
+      /<mark class="match">mai<\/mark>n/,
+    );
+    const html = popup('v1', undefined, { repository: refs });
+    const active = tagsWith(html, 'row', 'result', 'active');
+    assert.strictEqual(active.length, 1);
+    assert.match(active[0], /title="v1"/);
+  });
+
+  test('marks the selected commit among bookmarks, but not what is checked out', () => {
+    const html = popup('', undefined, {
+      repository: { ...refs, head: 'main' },
+      bookmarks: [{ kind: 'branch', name: 'main' }],
+      selected: 'c'.repeat(40),
+    });
+    assert.strictEqual(tagsWith(html, 'row', 'result', 'pinned').length, 2);
+    assert.strictEqual(
+      tagsWith(html, 'row', 'result', 'pinned', 'selected').length,
+      1,
+    );
+    assert.match(
+      html,
+      /Bookmarks<span class="locations-count">1<\/span><\/header><div class="locations-list"><div class="[^"]*selected/,
+    );
   });
 
   test('pins the checked-out branch and bookmarks, showing one that is gone as such', () => {

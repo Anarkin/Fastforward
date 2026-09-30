@@ -9,6 +9,8 @@ import {
 import { isHashPrefix, shortHash } from '../shared/hashes';
 import type {
   Bookmark,
+  BookmarkRef,
+  HashLookupState,
   HashLookup,
   RefInfo,
   RefKind,
@@ -49,6 +51,9 @@ export function searchRefs(
 ): SearchGroup[] {
   const needle = query.toLowerCase();
   return groups.map((group) => {
+    if (!query) {
+      return { ...group, refs: [], more: 0 };
+    }
     const matches = refs
       .filter(
         (ref) =>
@@ -102,6 +107,30 @@ export interface Active {
 function firstMatch(search: readonly SearchGroup[]): Active {
   const column = search.findIndex((group) => group.refs.length > 0);
   return { column: Math.max(0, column), index: 0 };
+}
+
+export interface Highlighted {
+  readonly query: string;
+  readonly ref: BookmarkRef;
+}
+
+export function currentActive(
+  search: readonly SearchGroup[],
+  query: string,
+  highlight: Highlighted | undefined,
+): Active {
+  if (highlight?.query === query) {
+    const column = search.findIndex(
+      (group) => group.kind === highlight.ref.kind,
+    );
+    const index =
+      search[column]?.refs.findIndex((ref) => sameRef(ref, highlight.ref)) ??
+      -1;
+    if (index >= 0) {
+      return { column, index };
+    }
+  }
+  return firstMatch(search);
 }
 
 export function nextActive(
@@ -226,7 +255,7 @@ export function LocationsPopup({
   repository: RepositoryState | undefined;
   selected: string | undefined;
   anchor: React.RefObject<HTMLElement | null>;
-  lookup: { query: string; result: HashLookup } | undefined;
+  lookup: HashLookupState | undefined;
   onLookup: (query: string) => void;
   onJump: (commit: string) => void;
   onClose: () => void;
@@ -258,7 +287,8 @@ export function LocationsPopup({
       ),
     [refs],
   );
-  const [active, setActive] = useState<Active>(() => firstMatch(search));
+  const [highlight, setHighlight] = useState<Highlighted>();
+  const active = currentActive(search, query, highlight);
   const activeRef = search[active.column]?.refs[active.index];
   const hash = hashQuery(query);
   useEffect(() => {
@@ -290,7 +320,11 @@ export function LocationsPopup({
     const steps: Record<string, 1 | -1> = { ArrowDown: 1, ArrowUp: -1 };
     if (query && event.key in steps) {
       event.preventDefault();
-      setActive(nextActive(search, active, steps[event.key]));
+      const next = nextActive(search, active, steps[event.key]);
+      const ref = search[next.column]?.refs[next.index];
+      if (ref) {
+        setHighlight({ query, ref });
+      }
     } else if (event.key === 'Enter') {
       event.preventDefault();
       jump(enterTarget(query, found, activeRef));
@@ -314,11 +348,7 @@ export function LocationsPopup({
           ref={input}
           autoFocus
           value={query}
-          onChange={(event) => {
-            const next = event.target.value;
-            onQuery(next);
-            setActive(firstMatch(searchRefs(refs, next)));
-          }}
+          onChange={(event) => onQuery(event.target.value)}
         />
       </div>
       {hash && <HashSuggestion hash={hash} found={found} onJump={jump} />}
@@ -468,14 +498,31 @@ function SearchResults({
   );
 }
 
-interface TreeNode {
-  name: string;
-  ref: RefInfo | undefined;
-  children: Map<string, TreeNode>;
+export interface TreeNode {
+  readonly name: string;
+  readonly ref: RefInfo | undefined;
+  readonly children: readonly TreeNode[];
 }
 
-function buildTree(refs: readonly RefInfo[]): TreeNode {
-  const root: TreeNode = { name: '', ref: undefined, children: new Map() };
+interface GrowingNode {
+  name: string;
+  ref: RefInfo | undefined;
+  children: Map<string, GrowingNode>;
+}
+
+const foldersFirst = (a: TreeNode, b: TreeNode) =>
+  Number(b.children.length > 0) - Number(a.children.length > 0) || byName(a, b);
+
+function sortedTree({ name, ref, children }: GrowingNode): TreeNode {
+  return {
+    name,
+    ref,
+    children: [...children.values()].map(sortedTree).toSorted(foldersFirst),
+  };
+}
+
+export function buildTree(refs: readonly RefInfo[]): TreeNode {
+  const root: GrowingNode = { name: '', ref: undefined, children: new Map() };
   for (const ref of refs) {
     let node = root;
     for (const part of ref.name.split('/')) {
@@ -488,7 +535,7 @@ function buildTree(refs: readonly RefInfo[]): TreeNode {
     }
     node.ref = ref;
   }
-  return root;
+  return sortedTree(root);
 }
 
 function RefTree({
@@ -526,15 +573,12 @@ function TreeChildren({
   onSelect: (commit: string) => void;
 }) {
   const openMenu = useContext(OpenContextMenu);
-  const children = [...node.children.values()].toSorted(
-    (a, b) =>
-      Number(b.children.size > 0) - Number(a.children.size > 0) || byName(a, b),
-  );
-  const withFolders = children.some((child) => child.children.size > 0);
+  const { children } = node;
+  const withFolders = children.some((child) => child.children.length > 0);
   return (
     <>
       {children.map((child) =>
-        child.children.size > 0 ? (
+        child.children.length > 0 ? (
           <TreeFolder
             key={child.name}
             node={child}
