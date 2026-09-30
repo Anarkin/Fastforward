@@ -3,7 +3,13 @@ import { remoteDefaultBranches } from './git/branches';
 import { showFiles, showPatch, type PatchScope } from './git/diff';
 import { gitErrorText } from './git/errorText';
 import { listTree, readFile } from './git/files';
-import { findCommit, headCommit, listHistory, logCommits } from './git/history';
+import {
+  findCommit,
+  findCommits,
+  headCommit,
+  listHistory,
+  logCommits,
+} from './git/history';
 import {
   readHead,
   readRefs,
@@ -755,7 +761,7 @@ export class FastforwardView {
   }
 
   private async lookupHash(context: Context, query: string): Promise<void> {
-    const result = await findCommit(context.gitPath, context.root, query);
+    const result = await findCommits(context.gitPath, context.root, query);
     context.post({ type: 'hashLookup', query, result });
   }
 

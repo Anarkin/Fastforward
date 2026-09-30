@@ -1237,16 +1237,6 @@ body.resizing {
   border-radius: 6px;
 }
 
-.hash-suggestion.active {
-  color: var(--color-foreground);
-  background: var(--selection-background);
-}
-
-.hash-suggestion.active .history-hash {
-  color: inherit;
-  opacity: var(--muted-opacity);
-}
-
 .hash-suggestion.empty {
   color: var(--muted-foreground);
 }

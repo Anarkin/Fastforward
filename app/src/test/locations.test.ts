@@ -4,14 +4,16 @@ import {
   buildTree,
   currentActive,
   enterTarget,
+  itemKey,
   leafIndent,
   nextActive,
+  resultItems,
   searchRefs,
   type Highlighted,
   stickyRowHeight,
 } from '../webview/locations';
 import { treeIndent, twistyWidth } from '../webview/tree';
-import { stylesheetPx } from './fixtures';
+import { commitInfo, stylesheetPx } from './fixtures';
 
 const refs: RefInfo[] = [
   { kind: 'remote', name: 'origin/feat/EPMAISA-798-drop', commit: 'a' },
@@ -29,6 +31,12 @@ const branchNamed = (name: string): RefInfo => ({
 
 const names = (groups: ReturnType<typeof searchRefs>) =>
   groups.map((group) => [group.title, group.refs.map((ref) => ref.name)]);
+
+const resultsFor = (commits: string[], branches: string[]) =>
+  resultItems(
+    commits.map((hash) => commitInfo(hash)),
+    searchRefs(branches.map(branchNamed), 'a'),
+  );
 
 suite('Locations search', () => {
   test('finds parts of names, ignoring case, in a group per kind', () => {
@@ -74,109 +82,83 @@ suite('Locations search', () => {
     ]);
   });
 
-  test('moves the highlight through the groups one after another, skipping empty ones', () => {
+  test('lists the found commits first, then the matching refs group after group', () => {
     const search = searchRefs(
       [
         { kind: 'branch', name: 'main', commit: 'a' },
-        { kind: 'branch', name: 'feat/main', commit: 'b' },
         { kind: 'tag', name: 'v1-main', commit: 'c' },
+        { kind: 'branch', name: 'feat/main', commit: 'b' },
       ],
       'main',
     );
     assert.deepStrictEqual(
-      search.map((group) => group.refs.length),
-      [2, 0, 1],
+      resultItems([commitInfo('f1'), commitInfo('f2')], search).map(itemKey),
+      [
+        'commit:f1',
+        'commit:f2',
+        'branch:feat/main',
+        'branch:main',
+        'tag:v1-main',
+      ],
     );
-    assert.deepStrictEqual(nextActive(search, { column: 0, index: 0 }, 1), {
-      column: 0,
-      index: 1,
-    });
-    assert.deepStrictEqual(nextActive(search, { column: 0, index: 1 }, 1), {
-      column: 2,
-      index: 0,
-    });
-    assert.deepStrictEqual(nextActive(search, { column: 2, index: 0 }, -1), {
-      column: 0,
-      index: 1,
-    });
-    assert.deepStrictEqual(nextActive(search, { column: 2, index: 0 }, 1), {
-      column: 2,
-      index: 0,
-    });
-    assert.deepStrictEqual(nextActive(search, { column: 0, index: 0 }, -1), {
-      column: 0,
-      index: 0,
-    });
   });
 
-  test('jumps on Enter to a typed commit, then to the highlighted match', () => {
-    const branch = refs[3];
-    const commit = 'b'.repeat(40);
-    assert.strictEqual(
-      enterTarget(
-        'ab12',
-        { kind: 'found', hash: commit, subject: 's' },
-        branch,
-      ),
-      commit,
+  test('moves the highlight one result at a time, stopping at either end', () => {
+    const items = resultItems(
+      [commitInfo('f1')],
+      searchRefs([branchNamed('main')], 'main'),
     );
-    assert.strictEqual(
-      enterTarget('ab12', { kind: 'none' }, branch),
-      branch.commit,
+    assert.strictEqual(nextActive(items, 0, 1), 1);
+    assert.strictEqual(nextActive(items, 1, 1), 1);
+    assert.strictEqual(nextActive(items, 1, -1), 0);
+    assert.strictEqual(nextActive(items, 0, -1), 0);
+  });
+
+  test('jumps on Enter to the highlighted commit or ref', () => {
+    const [commit, branch] = resultItems(
+      [commitInfo('b'.repeat(40))],
+      searchRefs([refs[3]], 'feat'),
     );
-    assert.strictEqual(enterTarget('feat', undefined, branch), branch.commit);
+    const found = { commits: [], more: 0 };
+    assert.strictEqual(enterTarget('ab12', found, commit), 'b'.repeat(40));
+    assert.strictEqual(enterTarget('ab12', found, branch), refs[3].commit);
+    assert.strictEqual(enterTarget('feat', undefined, branch), refs[3].commit);
+    assert.strictEqual(enterTarget('zz', undefined, undefined), undefined);
   });
 
   test('jumps on Enter to a hash not looked up yet as typed', () => {
-    assert.strictEqual(enterTarget('A1B2c3d4', undefined, refs[3]), 'a1b2c3d4');
-    assert.strictEqual(enterTarget(' AB12 ', undefined, refs[3]), 'ab12');
+    const [branch] = resultItems([], searchRefs([refs[3]], 'a'));
+    assert.strictEqual(enterTarget('A1B2c3d4', undefined, branch), 'a1b2c3d4');
+    assert.strictEqual(enterTarget(' AB12 ', undefined, branch), 'ab12');
   });
 
-  test('keeps the highlight on its ref while the refs change, and otherwise starts at the first match', () => {
-    const highlight: Highlighted = {
-      query: 'a',
-      ref: { kind: 'branch', name: 'feat/x' },
-    };
-    const before = searchRefs(
-      [branchNamed('main'), branchNamed('feat/x')],
-      'a',
+  test('keeps the highlight on its result while the results change, and otherwise starts at the first', () => {
+    const highlight: Highlighted = { query: 'a', key: 'branch:feat/x' };
+    assert.strictEqual(
+      currentActive(resultsFor([], ['main', 'feat/x']), 'a', highlight),
+      0,
     );
-    assert.deepStrictEqual(currentActive(before, 'a', highlight), {
-      column: 0,
-      index: 0,
-    });
-    const shifted = searchRefs(
-      [branchNamed('alpha'), branchNamed('main'), branchNamed('feat/x')],
-      'a',
+    assert.strictEqual(
+      currentActive(
+        resultsFor(['a1'], ['alpha', 'main', 'feat/x']),
+        'a',
+        highlight,
+      ),
+      2,
     );
-    assert.deepStrictEqual(currentActive(shifted, 'a', highlight), {
-      column: 0,
-      index: 1,
-    });
-    const gone = searchRefs(
-      [branchNamed('main'), { kind: 'tag', name: 'va', commit: 'b' }],
-      'a',
+    assert.strictEqual(
+      currentActive(resultsFor(['a1'], ['main']), 'a', highlight),
+      0,
     );
-    assert.deepStrictEqual(currentActive(gone, 'a', highlight), {
-      column: 0,
-      index: 0,
-    });
-    assert.deepStrictEqual(currentActive(shifted, 'al', highlight), {
-      column: 0,
-      index: 0,
-    });
-    const tagsOnly = searchRefs(
-      [{ kind: 'tag', name: 'va', commit: 'b' }],
-      'a',
+    assert.strictEqual(
+      currentActive(resultsFor([], ['alpha', 'feat/x']), 'al', highlight),
+      0,
     );
-    assert.deepStrictEqual(currentActive(tagsOnly, 'a', undefined), {
-      column: 2,
-      index: 0,
-    });
   });
 
   test('does nothing on Enter without a search, which highlights no match', () => {
-    assert.strictEqual(enterTarget('', undefined, refs[3]), undefined);
+    const [branch] = resultItems([], searchRefs([refs[3]], 'a'));
+    assert.strictEqual(enterTarget('', undefined, branch), undefined);
   });
 });
 
