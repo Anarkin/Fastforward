@@ -8,7 +8,6 @@ export interface DiffLine {
 }
 
 interface DiffHunk {
-  readonly header: string;
   readonly lines: DiffLine[];
 }
 
@@ -27,7 +26,7 @@ interface ParsedFile {
   oldPath?: string;
 }
 
-const hunkHeader = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@ ?(.*)$/;
+const hunkHeader = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/;
 
 const escapes: Record<string, number> = {
   a: 7,
@@ -121,7 +120,7 @@ export function parsePatch(patch: string): DiffFile[] {
     if (header) {
       oldNumber = Number(header[1]);
       newNumber = Number(header[2]);
-      hunk = { header: header[3], lines: [] };
+      hunk = { lines: [] };
       file.hunks.push(hunk);
       continue;
     }

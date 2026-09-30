@@ -18,7 +18,6 @@ export type DiffRow =
       readonly file: number;
       readonly path: string;
       readonly open: boolean;
-      readonly lines: number;
     }
   | { readonly kind: 'large'; readonly file: number; readonly lines: number }
   | { readonly kind: 'binary'; readonly file: number }
@@ -97,13 +96,7 @@ export function diffRows(
     return rows;
   }
   if (whole) {
-    rows.push({
-      kind: 'file',
-      file: 0,
-      path: whole.path,
-      open: true,
-      lines: 0,
-    });
+    rows.push({ kind: 'file', file: 0, path: whole.path, open: true });
     if (whole.binary) {
       rows.push({ kind: 'binary', file: 0 });
     } else {
@@ -119,7 +112,7 @@ export function diffRows(
   files.forEach((file, index) => {
     const lines = changedLines(file);
     const open = toggled.get(file.path) ?? lines <= collapseThreshold;
-    rows.push({ kind: 'file', file: index, path: file.path, open, lines });
+    rows.push({ kind: 'file', file: index, path: file.path, open });
     if (!open) {
       if (lines > collapseThreshold && !toggled.has(file.path)) {
         rows.push({ kind: 'large', file: index, lines });

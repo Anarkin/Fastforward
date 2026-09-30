@@ -21,7 +21,6 @@ suite('parsePatch', () => {
     );
     assert.strictEqual(files.length, 1);
     assert.strictEqual(files[0].path, 'src/a.ts');
-    assert.strictEqual(files[0].hunks[0].header, 'function a() {');
     assert.deepStrictEqual(
       files[0].hunks[0].lines.map((line) => [
         line.kind,

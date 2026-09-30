@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { isLargeChange, type FileChange } from '../shared/protocol';
 import { Column } from './column';
 import { parsePatch, type DiffFile } from './diff';
-import { DiffView } from './diffView';
+import { DiffView, type WholeFile } from './diffView';
 
 export function withLargeFiles(
   parsed: readonly DiffFile[],
@@ -50,7 +50,7 @@ export function Diff({
   diffs: number;
   largeFiles: ReadonlyMap<string, DiffFile>;
   onLoadFile: (path: string) => void;
-  fileContent: { path: string; content: string; binary: boolean } | undefined;
+  fileContent: WholeFile | undefined;
   error: string | undefined;
 }) {
   const parsed = useMemo(() => parsePatch(patch), [patch]);
