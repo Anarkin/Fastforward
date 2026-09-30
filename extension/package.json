@@ -24,8 +24,7 @@
       {
         "command": "fastforward.toggleView",
         "title": "Toggle View",
-        "category": "Fastforward",
-        "icon": "$(run-all)"
+        "category": "Fastforward"
       }
     ],
     "keybindings": [

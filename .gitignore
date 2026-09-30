@@ -4,8 +4,8 @@ out/
 coverage/
 .vscode-test/
 *.vsix
+.claude/settings.local.json
 
 # Copied from the repo root at packaging time
 extension/README.md
 extension/LICENSE
-.claude/settings.local.json
