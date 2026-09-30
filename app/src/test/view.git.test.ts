@@ -1598,6 +1598,82 @@ suite('View', function () {
       assert.strictEqual(tabs.page.last('commits')?.total, 5);
     });
 
+    test('spins the solo button only on the repository applying it, also when left and come back to', async () => {
+      const held = gate();
+      let holding = true;
+      stubMethod(tabs.view, 'sendCommits', async (original, ...args) => {
+        if (holding) {
+          holding = false;
+          await held.opened;
+        }
+        await original(...args);
+      });
+      const spinning = () => tabs.page.last('applyingSolo')?.running;
+      try {
+        const applying = tabs.connection.receive({
+          type: 'setSolo',
+          root: repository.root,
+          solo: true,
+        });
+        await waitFor(() => spinning() === true, 'the solo button to spin');
+
+        tabs.page.clear();
+        await tabs.connection.receive({ type: 'selectTab', root: other });
+        assert.strictEqual(tabs.page.last('tabs')?.active, other);
+        assert.notStrictEqual(spinning(), true);
+
+        tabs.page.clear();
+        const back = tabs.connection.receive({
+          type: 'selectTab',
+          root: repository.root,
+        });
+        await waitFor(() => spinning() === true, 'the spin shown again');
+
+        held.open();
+        await Promise.all([applying, back]);
+        assert.strictEqual(spinning(), false);
+      } finally {
+        held.open();
+        await tabs.store.update(soloKey, []);
+      }
+    });
+
+    test('stops the solo spin of a repository left while applying it', async () => {
+      const held = gate();
+      let holding = true;
+      stubMethod(tabs.view, 'sendCommits', async (original, ...args) => {
+        if (holding) {
+          holding = false;
+          await held.opened;
+        }
+        await original(...args);
+      });
+      try {
+        const applying = tabs.connection.receive({
+          type: 'setSolo',
+          root: repository.root,
+          solo: true,
+        });
+        await waitFor(
+          () => tabs.page.last('applyingSolo')?.running === true,
+          'the solo button to spin',
+        );
+        await tabs.connection.receive({ type: 'selectTab', root: other });
+        tabs.page.clear();
+        held.open();
+        await applying;
+        assert.strictEqual(tabs.page.last('applyingSolo'), undefined);
+        await tabs.connection.receive({
+          type: 'selectTab',
+          root: repository.root,
+        });
+        assert.strictEqual(tabs.page.last('applyingSolo')?.running, false);
+      } finally {
+        held.open();
+        await tabs.store.update(soloKey, []);
+      }
+    });
+
     test('keeps solo to the repository it was turned on for', async () => {
       const [tree] = await repository.resolve('HEAD^{tree}');
       const side = (

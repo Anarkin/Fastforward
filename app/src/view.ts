@@ -250,26 +250,22 @@ export class FastforwardView {
         return;
       }
       case 'setSolo': {
-        session.post({ type: 'applyingSolo', running: true });
+        const context = await this.context(session, message.root);
+        await storage.setSolo(message.root, message.solo);
+        if (!context) {
+          return;
+        }
+        context.post({ type: 'solo', solo: message.solo });
+        context.post({ type: 'applyingSolo', running: true });
         try {
-          await storage.setSolo(message.root, message.solo);
+          forgetHistory(context.tab);
           if (this.isActive(message.root)) {
-            session.post({ type: 'solo', solo: message.solo });
-          }
-          const tab = this.tabStates.get(message.root);
-          if (tab) {
-            forgetHistory(tab);
-          }
-          const context = this.isActive(message.root)
-            ? await this.context(session)
-            : undefined;
-          if (context) {
             await this.refresh(context, (latest) =>
               this.sendCommits(latest, this.refsOf(latest), true),
             );
           }
         } finally {
-          session.post({ type: 'applyingSolo', running: false });
+          context.post({ type: 'applyingSolo', running: false });
         }
         return;
       }
