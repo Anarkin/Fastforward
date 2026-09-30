@@ -30,4 +30,32 @@ suite('Storage', () => {
     const storage = new Storage(workspaceState, new FakeMemento());
     assert.deepStrictEqual(storage.tabs, [root]);
   });
+
+  test('keeps the 20 newest recent repositories, newest first', async () => {
+    const storage = new Storage(new FakeMemento(), new FakeMemento());
+    for (let i = 0; i <= 20; i++) {
+      await storage.addRecent(path.resolve(`r${i}`));
+    }
+    assert.strictEqual(storage.recent.length, 20);
+    assert.strictEqual(storage.recent[0], path.resolve('r20'));
+    assert.ok(!storage.recent.includes(path.resolve('r0')));
+  });
+
+  test('moves a recent repository added again to the front', async () => {
+    const storage = new Storage(new FakeMemento(), new FakeMemento());
+    const [r1, r2] = [path.resolve('r1'), path.resolve('r2')];
+    await storage.addRecent(r1);
+    await storage.addRecent(r2);
+    await storage.addRecent(r1 + path.sep);
+    assert.deepStrictEqual(storage.recent, [r1 + path.sep, r2]);
+  });
+
+  test('forgets a removed recent repository', async () => {
+    const storage = new Storage(new FakeMemento(), new FakeMemento());
+    const [r1, r2] = [path.resolve('r1'), path.resolve('r2')];
+    await storage.addRecent(r1);
+    await storage.addRecent(r2);
+    await storage.removeRecent(r1 + path.sep);
+    assert.deepStrictEqual(storage.recent, [r2]);
+  });
 });
