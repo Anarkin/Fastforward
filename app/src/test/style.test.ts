@@ -248,4 +248,13 @@ suite('Style', () => {
     assert.match(text, /overflow-x: clip;/);
     assert.match(text, /overflow-y: visible;/);
   });
+
+  test('keeps one gutter at the left edge when the commits are hidden, the gap after their empty column', () => {
+    const columns = declarationsOf('.columns');
+    assert.ok(
+      columns.includes('padding: 0 var(--gutter-width) var(--gutter-width);'),
+    );
+    assert.ok(columns.includes('gap: var(--gutter-width);'));
+    assert.match(declarationsOf('.columns.commits-hidden'), /padding-left: 0;/);
+  });
 });

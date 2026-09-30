@@ -315,10 +315,13 @@ body {
   border-radius: var(--card-radius);
 }
 
+.columns.commits-hidden {
+  padding-left: 0;
+}
+
 .columns.commits-hidden > .column:first-child {
   visibility: hidden;
   overflow: hidden;
-  margin-right: calc(-1 * var(--gutter-width));
 }
 
 .columns.nothing-selected > .column:not(:first-child) {
