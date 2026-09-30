@@ -1,9 +1,10 @@
 import * as vscode from 'vscode';
 import { aheadBehind, fastForward } from './git/branches';
+import { gitErrorText } from './git/errorText';
 import type { Repository } from './git/git';
 import { listRefs } from './git/repository';
 import type { CheckoutTarget } from './shared/protocol';
-import { withoutRemote } from './shared/refNames';
+import { hasRef, withoutRemote } from './shared/refNames';
 
 export interface RepositoryAt {
   readonly gitPath: string;
@@ -22,7 +23,7 @@ export async function checkout(
     if (target.kind === 'remote') {
       const local = withoutRemote(target.name);
       const refs = await listRefs(repository);
-      if (refs.some((ref) => ref.kind === 'branch' && ref.name === local)) {
+      if (hasRef(refs, { kind: 'branch', name: local })) {
         await repository.checkout(local);
         await catchUp(log, at, local, target.name);
       } else {
@@ -41,11 +42,11 @@ export async function checkout(
     log.info(`Checked out ${target.kind} ${label}`);
     return true;
   } catch (error) {
-    const details = gitErrorText(error);
-    log.error(`Checking out ${target.kind} ${label} failed`);
-    log.error(details);
-    void vscode.window.showErrorMessage(
-      `Fastforward: couldn't check out ${label}. ${details}`,
+    reportFailure(
+      log,
+      `Checking out ${target.kind} ${label} failed`,
+      `couldn't check out ${label}.`,
+      error,
     );
     return false;
   }
@@ -77,11 +78,11 @@ async function catchUp(
     await fastForward(gitPath, root, `refs/remotes/${remote}`);
     log.info(`Fast-forwarded ${local} to ${remote}`);
   } catch (error) {
-    const details = gitErrorText(error);
-    log.error(`Fast-forwarding ${local} to ${remote} failed`);
-    log.error(details);
-    void vscode.window.showErrorMessage(
-      `Fastforward: switched to ${local}, but couldn't fast-forward it to ${remote}. ${details}`,
+    reportFailure(
+      log,
+      `Fast-forwarding ${local} to ${remote} failed`,
+      `switched to ${local}, but couldn't fast-forward it to ${remote}.`,
+      error,
     );
   }
 }
@@ -94,21 +95,18 @@ export async function fetchAll(
     await repository.fetch({ all: true, prune: true });
     log.info('Fetched every remote');
   } catch (error) {
-    const details = gitErrorText(error);
-    log.error('fetch failed');
-    log.error(details);
-    void vscode.window.showErrorMessage(
-      `Fastforward: couldn't fetch. ${details}`,
-    );
+    reportFailure(log, 'fetch failed', "couldn't fetch.", error);
   }
 }
 
-function gitErrorText(error: unknown): string {
-  if (typeof error === 'object' && error !== null && 'stderr' in error) {
-    const { stderr } = error;
-    if (typeof stderr === 'string' && stderr.trim()) {
-      return stderr.trim();
-    }
-  }
-  return error instanceof Error ? error.message : String(error);
+function reportFailure(
+  log: vscode.LogOutputChannel,
+  failed: string,
+  message: string,
+  error: unknown,
+): void {
+  const details = gitErrorText(error);
+  log.error(failed);
+  log.error(details);
+  void vscode.window.showErrorMessage(`Fastforward: ${message} ${details}`);
 }

@@ -392,7 +392,6 @@ suite('View', function () {
         root: repository.root,
         generation,
         start: 1,
-        count: 2,
       });
       const page2 = page.last('commitPage');
       assert.strictEqual(page2?.start, 1);
@@ -408,7 +407,6 @@ suite('View', function () {
         root: repository.root,
         generation: generation - 1,
         start: 1,
-        count: 2,
       });
       assert.strictEqual(page.last('commitPage'), page2);
     });
@@ -431,7 +429,6 @@ suite('View', function () {
           root: repository.root,
           generation,
           start: 1,
-          count: 2,
         });
         const failed = page.last('commitPage');
         assert.strictEqual(failed?.start, 1);
@@ -1159,6 +1156,77 @@ suite('View', function () {
       }
     });
 
+    test("says when it can't fast-forward the local branch of a remote branch", async () => {
+      await repository.git('remote', 'add', 'origin', repository.root);
+      await repository.git('checkout', '-b', 'blocked', 'main~1');
+      const clash = path.join(repository.root, 'clash');
+      try {
+        await repository.commit('adds clash', { clash: 'theirs' });
+        await repository.git(
+          'update-ref',
+          'refs/remotes/origin/blocked',
+          'HEAD',
+        );
+        await repository.git('reset', '--hard', 'main~1');
+        await repository.git('checkout', 'main');
+        fs.writeFileSync(clash, 'mine');
+        await settle(repository.root, connection);
+        await withMessageStub('showErrorMessage', async (messages) => {
+          await connection.receive({
+            type: 'checkout',
+            root: repository.root,
+            target: { kind: 'remote', name: 'origin/blocked' },
+          });
+          await waitFor(
+            () => page.last('repository')?.head === 'blocked',
+            'the checked-out branch',
+          );
+          assert.strictEqual(messages.length, 1);
+          assert.match(
+            messages[0],
+            /couldn't fast-forward it to origin\/blocked/,
+          );
+        });
+        assert.deepStrictEqual(
+          await repository.resolve('blocked'),
+          await repository.resolve('main~1'),
+        );
+      } finally {
+        fs.rmSync(clash, { force: true });
+        await restore();
+        await repository.git('branch', '-D', 'blocked');
+        await repository.git('update-ref', '-d', 'refs/remotes/origin/blocked');
+        await repository.git('remote', 'remove', 'origin');
+      }
+    });
+
+    test('says nothing when the local branch of a remote branch is up to date', async () => {
+      await repository.git('remote', 'add', 'origin', repository.root);
+      await repository.git('branch', 'even', 'main');
+      await repository.git('update-ref', 'refs/remotes/origin/even', 'main');
+      try {
+        await withMessageStub('showErrorMessage', async (errors) => {
+          await withMessageStub('showInformationMessage', async (infos) => {
+            await connection.receive({
+              type: 'checkout',
+              root: repository.root,
+              target: { kind: 'remote', name: 'origin/even' },
+            });
+            await waitFor(
+              () => page.last('repository')?.head === 'even',
+              'the checked-out branch',
+            );
+            assert.deepStrictEqual([...errors, ...infos], []);
+          });
+        });
+      } finally {
+        await restore();
+        await repository.git('branch', '-D', 'even');
+        await repository.git('update-ref', '-d', 'refs/remotes/origin/even');
+        await repository.git('remote', 'remove', 'origin');
+      }
+    });
+
     test('says when a remote branch has diverged from its local one', async () => {
       await repository.git('remote', 'add', 'origin', repository.root);
       await repository.git('checkout', '-b', 'apart', 'main~1');
@@ -1700,6 +1768,25 @@ suite('Fetch', function () {
       'the deleted branch to go',
     );
     assert.strictEqual(page.last('fetching')?.running, false);
+  });
+
+  test("says when it couldn't fetch", async () => {
+    await repository.git(
+      'remote',
+      'add',
+      'broken',
+      path.join(folder, 'missing'),
+    );
+    try {
+      await withMessageStub('showErrorMessage', async (messages) => {
+        await connection.receive({ type: 'fetch', root: repository.root });
+        assert.strictEqual(messages.length, 1);
+        assert.match(messages[0], /^Fastforward: couldn't fetch\./);
+      });
+      assert.strictEqual(page.last('fetching')?.running, false);
+    } finally {
+      await repository.git('remote', 'remove', 'broken');
+    }
   });
 
   test("tells the checked-out branch's upstream", async () => {
