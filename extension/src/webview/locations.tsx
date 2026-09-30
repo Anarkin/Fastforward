@@ -27,7 +27,13 @@ import {
   useCheckedOut,
 } from './bubbles';
 import { OpenContextMenu, refMenuTarget, useDismiss } from './contextMenu';
-import { byName, IndentGuides, treeIndent, twistyWidth } from './tree';
+import {
+  byName,
+  FolderRow,
+  IndentGuides,
+  treeIndent,
+  twistyWidth,
+} from './tree';
 
 const groups: readonly { kind: RefKind; title: string }[] = [
   { kind: 'branch', title: 'Local branches' },
@@ -625,19 +631,16 @@ function TreeFolder({
   const [open, setOpen] = useState(initiallyOpen);
   return (
     <div className="tree-group">
-      <div
-        className="row tree-row folder sticky"
-        style={{
-          paddingLeft: treeIndent(depth),
-          top: depth * stickyRowHeight,
-          zIndex: 100 - depth,
-        }}
-        onClick={() => setOpen(!open)}
+      <FolderRow
+        path={node.name}
+        depth={depth}
+        open={open}
+        className="sticky"
+        style={{ top: depth * stickyRowHeight, zIndex: 100 - depth }}
+        onToggle={() => setOpen(!open)}
       >
-        <IndentGuides depth={depth} />
-        <span className="twisty">{open ? '▾' : '▸'}</span>
         {node.name}
-      </div>
+      </FolderRow>
       {open && (
         <TreeChildren
           node={node}

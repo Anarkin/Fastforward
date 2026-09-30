@@ -317,6 +317,34 @@ suite('Search', () => {
     );
   });
 
+  test('keeps several folders closed, marks the selected ref and says when a kind has none', () => {
+    const html = popup('', undefined, {
+      repository: repository(
+        ['branch', 'main'],
+        ['remote', 'origin/a'],
+        ['remote', 'upstream/b'],
+      ),
+      selected: 'c'.repeat(40),
+    });
+    assert.deepStrictEqual(counts(html), [1, 2, 0]);
+    for (const remote of ['origin', 'upstream']) {
+      assert.match(
+        tagWith(
+          html,
+          `title="${remote}"`,
+          'row',
+          'tree-row',
+          'folder',
+          'sticky',
+        ),
+        /z-index:100/,
+      );
+    }
+    assert.strictEqual(html.match(/class="twisty">▸</g)?.length, 2);
+    tagWith(html, 'title="main"', 'row', 'tree-row', 'leaf', 'selected');
+    assert.match(html, /<div class="locations-empty">None<\/div>/);
+  });
+
   test('marks what matches, and counts only the matches', () => {
     const html = popup('fe', undefined, { repository: refs });
     assert.match(html, /<mark class="match">fe<\/mark>at\/a/);

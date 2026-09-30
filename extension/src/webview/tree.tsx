@@ -23,6 +23,10 @@ export function IndentGuides({ depth }: { depth: number }) {
   );
 }
 
+export function Twisty({ open }: { open: boolean }) {
+  return <span className="twisty">{open ? '▾' : '▸'}</span>;
+}
+
 export const byName = (a: { name: string }, b: { name: string }) =>
   a.name.localeCompare(b.name);
 
@@ -31,6 +35,7 @@ export function FolderRow({
   depth,
   open,
   className,
+  style,
   onToggle,
   children,
 }: {
@@ -38,18 +43,19 @@ export function FolderRow({
   depth: number;
   open: boolean;
   className: string;
+  style?: React.CSSProperties;
   onToggle: (folder: string) => void;
   children: React.ReactNode;
 }) {
   return (
     <div
       className={`row tree-row folder ${className}`}
-      style={{ paddingLeft: treeIndent(depth) }}
+      style={{ paddingLeft: treeIndent(depth), ...style }}
       title={path}
       onClick={() => onToggle(path)}
     >
       <IndentGuides depth={depth} />
-      <span className="twisty">{open ? '▾' : '▸'}</span>
+      <Twisty open={open} />
       {children}
     </div>
   );
