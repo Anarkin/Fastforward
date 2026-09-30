@@ -244,6 +244,19 @@ suite('git log parser', () => {
       ],
     );
   });
+
+  test('reads a message written with CRLF line endings', () => {
+    const output = [
+      '\x1eaaa\0\0Ann\0ann@example.com\0',
+      '1700000000\0Ann\0ann@example.com\0',
+      '1700000000\0subject\r\n\r\nbody\r\nmore\r\n\0',
+    ].join('');
+    const [{ subject, message }] = parseLog(output);
+    assert.deepStrictEqual(
+      { subject, message },
+      { subject: 'subject', message: 'subject\n\nbody\nmore' },
+    );
+  });
 });
 
 suite('git rev-list parser', () => {
