@@ -547,26 +547,13 @@ body.resizing {
   padding: 0 6px;
   font-style: normal;
   white-space: nowrap;
+  color: var(--color-foreground);
+  background: color-mix(
+    in srgb,
+    var(--color-focus) 25%,
+    var(--color-panel-background)
+  );
   border-radius: 3px;
-}
-
-.badge.branch,
-.badge.remote {
-  color: var(--color-foreground);
-  background: color-mix(
-    in srgb,
-    var(--color-accent) 25%,
-    var(--color-panel-background)
-  );
-}
-
-.badge.tag {
-  color: var(--color-foreground);
-  background: color-mix(
-    in srgb,
-    var(--color-chart-yellow) 30%,
-    var(--color-panel-background)
-  );
 }
 
 .row .path.deleted {
@@ -793,11 +780,6 @@ body.resizing {
   letter-spacing: 0;
 }
 
-.badge.checked-out {
-  color: var(--color-accent-foreground);
-  background: var(--color-accent);
-}
-
 .menu-entry {
   position: relative;
 }
@@ -1001,11 +983,6 @@ body.resizing {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.badge.hash {
-  color: var(--color-foreground);
-  background: var(--color-border);
 }
 
 .virtual-rows-frame {

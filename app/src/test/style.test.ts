@@ -217,12 +217,6 @@ suite('Style', () => {
     );
   });
 
-  test('fills the hash bubble in the border color, without an edge, like the other bubbles', () => {
-    const hash = declarationsOf('.badge.hash');
-    assert.ok(hash.includes('background: var(--color-border);'));
-    assert.doesNotMatch(hash, /border:/);
-  });
-
   test('tints a selected row, the active search result and the active hash suggestion alike, with the focus color', () => {
     const body = (/\nbody \{([^}]*)\}/.exec(css)?.[1] ?? '').replace(
       /\s+/g,
@@ -255,14 +249,18 @@ suite('Style', () => {
     );
   });
 
-  test('draws the checked-out branch in the solid color a branch is tinted with, in the text color made for it', () => {
+  test('draws every bubble alike, in the text color on a tint of the focus color, without an edge', () => {
+    const badge = declarationsOf('.badge');
+    assert.ok(badge.includes('color: var(--color-foreground);'));
     assert.match(
-      declarationsOf('.badge.branch'),
-      /background: color-mix\(\s*in srgb,\s*var\(--color-accent\) 25%/,
+      badge,
+      /background: color-mix\(\s*in srgb,\s*var\(--color-focus\) 25%,\s*var\(--color-panel-background\)\s*\);/,
     );
-    const checkedOut = declarationsOf('.badge.checked-out');
-    assert.match(checkedOut, /color: var\(--color-accent-foreground\);/);
-    assert.match(checkedOut, /background: var\(--color-accent\);/);
+    assert.doesNotMatch(badge, /border:/);
+    assert.doesNotMatch(
+      css,
+      /\.badge\.[a-z-]+(\s*,[^{]*)?\s*\{[^}]*(color|background|border):/,
+    );
   });
 
   test('hides every column but the commits while no commit is selected', () => {
@@ -371,13 +369,6 @@ suite('Style', () => {
     assert.match(
       declarationsOf('.locations-list .tree-row.sticky:hover'),
       /background:\s*linear-gradient\(\s*var\(--hover-background\),\s*var\(--hover-background\)\s*\),\s*var\(--popup-background\);/,
-    );
-  });
-
-  test('writes tag badges in the text color, like branch badges', () => {
-    assert.match(
-      declarationsOf('.badge.tag'),
-      /color: var\(--color-foreground\)/,
     );
   });
 
