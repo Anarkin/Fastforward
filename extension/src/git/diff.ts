@@ -76,8 +76,14 @@ export function rawStatus(token: string): string {
 }
 
 export function parseChanges(output: string): FileChange[] {
+  return parseRawChanges(output).map(({ file }) => file);
+}
+
+export function parseRawChanges(
+  output: string,
+): { readonly raw: string; readonly file: FileChange }[] {
   const tokens = splitNul(output);
-  const files: FileChange[] = [];
+  const files: { raw: string; file: FileChange }[] = [];
   const stats = new Map<string, { insertions: number; deletions: number }>();
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
@@ -85,20 +91,26 @@ export function parseChanges(output: string): FileChange[] {
       const code = rawStatus(token);
       if (code === 'R' || code === 'C') {
         files.push({
-          status: code,
-          oldPath: tokens[i + 1],
-          path: tokens[i + 2],
-          insertions: 0,
-          deletions: 0,
+          raw: token,
+          file: {
+            status: code,
+            oldPath: tokens[i + 1],
+            path: tokens[i + 2],
+            insertions: 0,
+            deletions: 0,
+          },
         });
         i += 2;
       } else {
         files.push({
-          status: simpleStatuses.find((known) => known === code) ?? '?',
-          oldPath: undefined,
-          path: tokens[i + 1],
-          insertions: 0,
-          deletions: 0,
+          raw: token,
+          file: {
+            status: simpleStatuses.find((known) => known === code) ?? '?',
+            oldPath: undefined,
+            path: tokens[i + 1],
+            insertions: 0,
+            deletions: 0,
+          },
         });
         i += 1;
       }
@@ -118,5 +130,8 @@ export function parseChanges(output: string): FileChange[] {
       deletions: Number(match[2]) || 0,
     });
   }
-  return files.map((file) => ({ ...file, ...stats.get(file.path) }));
+  return files.map(({ raw, file }) => ({
+    raw,
+    file: { ...file, ...stats.get(file.path) },
+  }));
 }

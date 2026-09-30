@@ -5,7 +5,7 @@ import { collapseThreshold, type FileChange } from '../shared/protocol';
 import {
   changesArgs,
   diffArgs,
-  parseChanges,
+  parseRawChanges,
   pathspecs,
   type PatchScope,
 } from './diff';
@@ -70,7 +70,11 @@ export async function workingTreeFiles(
       })
     ).trim();
   const [changes, untracked] = await Promise.all([
-    runGit(gitPath, cwd, [...workingTreeDiff(base), ...changesArgs]),
+    runGit(gitPath, cwd, [
+      ...workingTreeDiff(base),
+      ...changesArgs,
+      '--no-abbrev',
+    ]),
     runGit(gitPath, cwd, ['ls-files', '--others', '--exclude-standard', '-z']),
   ]);
   const untrackedFiles = await Promise.all(
@@ -87,7 +91,47 @@ export async function workingTreeFiles(
         deletions: 0,
       })),
   );
-  return { base, files: [...parseChanges(changes), ...untrackedFiles] };
+  return {
+    base,
+    files: [
+      ...(await withoutTouched(gitPath, cwd, parseRawChanges(changes))),
+      ...untrackedFiles,
+    ],
+  };
+}
+
+// Without the index refresh, git diff lists a file whose stat changed but
+// whose content didn't as modified, where git would recheck its content
+async function withoutTouched(
+  gitPath: string,
+  cwd: string,
+  changes: readonly { readonly raw: string; readonly file: FileChange }[],
+): Promise<FileChange[]> {
+  const suspects = changes.flatMap(({ raw, file }) => {
+    const [oldMode, mode, object, , status] = raw.slice(1).split(' ');
+    return status === 'M' &&
+      mode === oldMode &&
+      mode.startsWith('100') &&
+      !file.path.includes('\n')
+      ? [{ path: file.path, object }]
+      : [];
+  });
+  const hashes =
+    suspects.length === 0
+      ? []
+      : (
+          await runGit(gitPath, cwd, ['hash-object', '--stdin-paths'], {
+            input: suspects.map(({ path }) => `${path}\n`).join(''),
+          })
+        ).split('\n');
+  const touched = new Set(
+    suspects
+      .filter(({ object }, index) => hashes[index] === object)
+      .map(({ path }) => path),
+  );
+  return changes
+    .map(({ file }) => file)
+    .filter((file) => !touched.has(file.path));
 }
 
 function workingTreeDiff(base: string): string[] {
