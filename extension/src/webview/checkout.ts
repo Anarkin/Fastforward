@@ -45,6 +45,17 @@ export function checkoutRef(
   };
 }
 
+export function checkoutCommit(
+  hash: string,
+  detachedHead: string | undefined,
+): CheckoutOption {
+  return {
+    label: shortHash(hash),
+    target: { kind: 'commit', hash },
+    disabled: detachedHead === hash,
+  };
+}
+
 export function checkoutOptions(
   hash: string,
   refs: readonly RefInfo[],
@@ -54,15 +65,10 @@ export function checkoutOptions(
   const here = refs.filter((ref) => ref.commit === hash);
   const kind = (k: RefInfo['kind']) =>
     here.filter((ref) => ref.kind === k).toSorted(byName);
-  const checkedOut = detachedHead === hash;
   return [
     ...kind('branch').map((ref) => checkoutRef(ref, refs, head)),
     ...kind('remote').map((ref) => checkoutRef(ref, refs, head)),
     ...kind('tag').map((ref) => checkoutRef(ref, refs, head)),
-    {
-      label: shortHash(hash),
-      target: { kind: 'commit', hash },
-      disabled: checkedOut,
-    },
+    checkoutCommit(hash, detachedHead),
   ];
 }

@@ -20,7 +20,7 @@ import {
   type Bookmark,
 } from '../shared/protocol';
 import { CheckedOutBranch, DetachedHead } from './bubbles';
-import { checkoutOptions, checkoutRef } from './checkout';
+import { checkoutCommit, checkoutOptions, checkoutRef } from './checkout';
 import { ColumnResizingProvider, useColumnWidths } from './columns';
 import { Commits } from './commitList';
 import { useShortcuts } from './shortcuts';
@@ -316,10 +316,7 @@ export function App({ post }: Props) {
     const { ref } = target;
     const option =
       ref.kind === 'commit'
-        ? {
-            target: { kind: 'commit' as const, hash: ref.name },
-            disabled: ref.name === detached,
-          }
+        ? checkoutCommit(ref.name, detached)
         : checkoutRef(ref, refs, head);
     return [
       {

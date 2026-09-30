@@ -1,6 +1,10 @@
 import * as assert from 'node:assert';
 import type { RefInfo } from '../shared/protocol';
-import { checkoutOptions, checkoutRef } from '../webview/checkout';
+import {
+  checkoutCommit,
+  checkoutOptions,
+  checkoutRef,
+} from '../webview/checkout';
 
 const refs: RefInfo[] = [
   { kind: 'branch', name: 'main', commit: 'aaaaaaaa' },
@@ -49,17 +53,23 @@ suite('Checkout options', () => {
     );
   });
 
-  test('checks out a bubble the same way', () => {
-    const option = checkoutRef(
-      { kind: 'remote', name: 'origin/feature' },
-      refs,
-      'main',
-    );
-    assert.deepStrictEqual(option.target, {
-      kind: 'remote',
-      name: 'origin/feature',
+  test('checks out a ref by its kind and name', () => {
+    for (const ref of [
+      { kind: 'branch' as const, name: 'main' },
+      remote('origin/feature'),
+      { kind: 'tag' as const, name: 'v1' },
+    ]) {
+      assert.deepStrictEqual(checkoutRef(ref, refs, 'main').target, ref);
+    }
+  });
+
+  test('checks out a commit unless it is the detached HEAD', () => {
+    assert.deepStrictEqual(checkoutCommit('cccccccc', undefined), {
+      label: 'ccccccc',
+      target: { kind: 'commit', hash: 'cccccccc' },
+      disabled: false,
     });
-    assert.strictEqual(option.disabled, false);
+    assert.strictEqual(checkoutCommit('cccccccc', 'cccccccc').disabled, true);
   });
 
   test("greys out a bookmarked ref that doesn't exist anymore", () => {
