@@ -960,11 +960,11 @@ body.resizing {
 }
 
 .diff-line.added {
-  background: var(--color-diff-added-line-background);
+  background: color-mix(in srgb, var(--color-added) 20%, transparent);
 }
 
 .diff-line.removed {
-  background: var(--color-diff-removed-line-background);
+  background: color-mix(in srgb, var(--color-deleted) 20%, transparent);
 }
 
 .diff-stuck-header {

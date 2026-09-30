@@ -40,8 +40,6 @@
 
       "added": "#587c0c",
       "deleted": "#ad0707",
-      "diff-added-line-background": "#9bb95533",
-      "diff-removed-line-background": "#ff000033",
 
       "chart-blue": "#1a5cff",
       "chart-green": "#388a34",
@@ -76,8 +74,6 @@
 
       "added": "#73c991",
       "deleted": "#f48771",
-      "diff-added-line-background": "#347d3926",
-      "diff-removed-line-background": "#c93c3726",
 
       "chart-blue": "#57a3f8",
       "chart-green": "#86cf86",

@@ -185,6 +185,19 @@ suite('Style', () => {
     }
   });
 
+  test('tints added and removed diff lines with a see-through touch of the colors their minimap marks are drawn in', () => {
+    assert.ok(
+      declarationsOf('.diff-line.added').includes(
+        'background: color-mix(in srgb, var(--color-added) 20%, transparent);',
+      ),
+    );
+    assert.ok(
+      declarationsOf('.diff-line.removed').includes(
+        'background: color-mix(in srgb, var(--color-deleted) 20%, transparent);',
+      ),
+    );
+  });
+
   test('tints a selected row, the active search result and the active hash suggestion alike, with the focus color', () => {
     const body = (/\nbody \{([^}]*)\}/.exec(css)?.[1] ?? '').replace(
       /\s+/g,
