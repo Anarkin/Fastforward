@@ -5,8 +5,8 @@
     'Ubuntu', 'Droid Sans', sans-serif;
   --font-size: 13px;
   --monospace-font-family:
-    ui-monospace, Menlo, Monaco, Consolas, 'Droid Sans Mono', 'Courier New',
-    monospace;
+    'JetBrains Mono NL', ui-monospace, Menlo, Monaco, Consolas,
+    'Droid Sans Mono', 'Courier New', monospace;
   --monospace-font-size: 12px;
 
   --color-foreground: #202020;
