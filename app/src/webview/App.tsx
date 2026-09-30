@@ -41,6 +41,7 @@ import { TitleBar, windowTitle } from './titleBar';
 import {
   noFolders,
   openFolders,
+  seeView,
   shownFolders,
   toggleFolder,
   type Folders,
@@ -98,6 +99,9 @@ export function App({ post, listen }: Props) {
   const [showAllFiles, setShowAllFiles] = useState(false);
   const [folders, setFolders] = useState<ViewFolders>(noFolders);
   const folderView = JSON.stringify([activeTab, hash]);
+  useEffect(() => {
+    setFolders((all) => seeView(all, folderView));
+  }, [folderView]);
   const { open: openedFolders, closed: closedFolders } = shownFolders(
     folders,
     folderView,

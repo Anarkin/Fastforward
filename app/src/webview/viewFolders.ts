@@ -13,6 +13,10 @@ export const noFolders: ViewFolders = {
   closed: new Set(),
 };
 
+export function seeView(state: ViewFolders, view: string): ViewFolders {
+  return state.view === view ? state : { ...noFolders, view };
+}
+
 export function shownFolders(state: ViewFolders, view: string): Folders {
   return state.view === view ? state : noFolders;
 }
