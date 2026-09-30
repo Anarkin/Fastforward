@@ -18,7 +18,7 @@ import {
   AddressBar,
   historyButtonClick,
   HistoryMenu,
-  historyMenuOpen,
+  nextHistoryOpen,
   NavButtons,
 } from '../webview/navBar';
 import { holdsDismissLayer, nextPeekMode } from '../webview/shortcutsHelp';
@@ -365,9 +365,12 @@ suite('History buttons', () => {
   });
 
   test('close their history once it has no entries, so it stays closed when entries return', () => {
-    assert.strictEqual(historyMenuOpen(true, 0), false);
-    assert.strictEqual(historyMenuOpen(true, 2), true);
-    assert.strictEqual(historyMenuOpen(false, 2), false);
+    let open = true;
+    open = nextHistoryOpen(open, 0);
+    assert.strictEqual(open, false);
+    open = nextHistoryOpen(open, 2);
+    assert.strictEqual(open, false);
+    assert.strictEqual(nextHistoryOpen(true, 2), true);
   });
 
   test('go as many steps as the picked entry is from the current one', () => {
