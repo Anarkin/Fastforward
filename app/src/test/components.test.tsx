@@ -762,11 +762,20 @@ suite('Search', () => {
     assert.match(html, /<div class="locations-empty">None<\/div>/);
   });
 
-  test('marks what matches, and counts only the matches', () => {
+  test('marks what matches, counting only the matches and leaving out the groups without any', () => {
     const html = popup('fe', undefined, { repository: refs });
     assert.match(html, /<mark class="match">fe<\/mark>at\/a/);
-    assert.deepStrictEqual(counts(html), [2, 0, 0]);
-    assert.strictEqual(html.match(/No matches/g)?.length, 2);
+    assert.deepStrictEqual(counts(html), [2]);
+    assert.doesNotMatch(html, /No matches/);
+  });
+
+  test('says there are no matches once, when nothing matches', () => {
+    const html = popup('nothing like it', undefined, { repository: refs });
+    assert.deepStrictEqual(counts(html), []);
+    assert.strictEqual(
+      html.match(/<div class="locations-empty">No matches<\/div>/g)?.length,
+      1,
+    );
   });
 
   test('marks a match ignoring case, and highlights the first one, skipping groups without any', () => {
