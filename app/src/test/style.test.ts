@@ -256,7 +256,7 @@ suite('Style', () => {
     );
   });
 
-  test('draws every bubble but the checked-out one alike, in the text color on a tint of the focus color, without an edge', () => {
+  test('draws every bubble but the checked-out one alike, in the text color on a tint of the focus color, ringed inside in the panel color to stand apart from a selected row', () => {
     const badge = declarationsOf('.badge');
     assert.ok(badge.includes('color: var(--color-foreground);'));
     assert.match(
@@ -264,6 +264,11 @@ suite('Style', () => {
       /background: color-mix\(\s*in srgb,\s*var\(--color-focus\) 25%,\s*var\(--color-panel-background\)\s*\);/,
     );
     assert.doesNotMatch(badge, /border:/);
+    assert.ok(
+      badge.includes(
+        'box-shadow: inset 0 0 0 1px var(--color-panel-background);',
+      ),
+    );
     assert.doesNotMatch(
       css,
       /\.badge\.(?!checked-out)[a-z-]+(\s*,[^{]*)?\s*\{[^}]*(color|background|border):/,
