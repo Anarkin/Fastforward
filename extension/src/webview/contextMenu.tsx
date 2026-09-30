@@ -111,21 +111,21 @@ export function listenForDismiss(
       onClose();
     }
   };
-  target.addEventListener('pointerdown', onPointerDown, true);
-  target.addEventListener('keydown', onKeyDown, true);
+  target.addEventListener('pointerdown', onPointerDown, { capture: true });
+  target.addEventListener('keydown', onKeyDown, { capture: true });
   target.addEventListener('blur', onClose);
   if (onScroll) {
-    target.addEventListener('wheel', onClose, true);
+    target.addEventListener('wheel', onClose, { capture: true });
   }
   return () => {
     const index = layers.indexOf(layer);
     if (index !== -1) {
       layers.splice(index, 1);
     }
-    target.removeEventListener('pointerdown', onPointerDown, true);
-    target.removeEventListener('keydown', onKeyDown, true);
+    target.removeEventListener('pointerdown', onPointerDown, { capture: true });
+    target.removeEventListener('keydown', onKeyDown, { capture: true });
     target.removeEventListener('blur', onClose);
-    target.removeEventListener('wheel', onClose, true);
+    target.removeEventListener('wheel', onClose, { capture: true });
   };
 }
 

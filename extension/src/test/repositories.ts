@@ -1,8 +1,10 @@
+import * as assert from 'node:assert';
 import { execFile } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
+import type { Repository } from '../git/git';
 import { getGitApi } from '../git/repository';
 import type { Connection } from '../view';
 
@@ -80,6 +82,12 @@ export async function tempRepository(
     resolve: async (...revisions) =>
       (await git('rev-parse', ...revisions)).trim().split('\n'),
   };
+}
+
+export async function openedRepository(root: string): Promise<Repository> {
+  const opened = (await getGitApi()).getRepository(vscode.Uri.file(root));
+  assert.ok(opened, `${root} not opened`);
+  return opened;
 }
 
 export async function settle(

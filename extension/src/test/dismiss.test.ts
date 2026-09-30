@@ -41,6 +41,10 @@ suite('Dismissing menus and popups', () => {
     const popup = open(window);
     const menu = open(window);
     try {
+      window.dispatchEvent(keyDown('Enter'));
+      assert.strictEqual(menu.menu.closed, 0);
+      assert.strictEqual(popup.menu.closed, 0);
+
       const escape = keyDown('Escape');
       window.dispatchEvent(escape);
       assert.strictEqual(menu.menu.closed, 1);
@@ -50,6 +54,7 @@ suite('Dismissing menus and popups', () => {
       menu.stop();
       window.dispatchEvent(keyDown('Escape'));
       assert.strictEqual(popup.menu.closed, 1);
+      assert.strictEqual(menu.menu.closed, 1);
     } finally {
       menu.stop();
       popup.stop();
@@ -65,6 +70,8 @@ suite('Dismissing menus and popups', () => {
       assert.strictEqual(menu.closed, 0);
       window.dispatchEvent(pointerDown(element('elsewhere')));
       assert.strictEqual(menu.closed, 1);
+      window.dispatchEvent(pointerDown(null));
+      assert.strictEqual(menu.closed, 2);
     } finally {
       stop();
     }
@@ -84,5 +91,16 @@ suite('Dismissing menus and popups', () => {
       scrolled.stop();
       stop();
     }
+  });
+
+  test('closes nothing once stopped', () => {
+    const window = new EventTarget();
+    const { menu, stop } = open(window, { onScroll: true });
+    stop();
+    window.dispatchEvent(keyDown('Escape'));
+    window.dispatchEvent(new Event('blur'));
+    window.dispatchEvent(new Event('wheel'));
+    window.dispatchEvent(pointerDown(element('elsewhere')));
+    assert.strictEqual(menu.closed, 0);
   });
 });
