@@ -168,7 +168,6 @@ body {
   padding: 4px 10px;
   text-align: left;
   color: inherit;
-  cursor: pointer;
   background: none;
   border: none;
   border-radius: 4px;
@@ -185,7 +184,6 @@ body {
   gap: 4px;
   padding: 5px 4px 5px 12px;
   white-space: nowrap;
-  cursor: pointer;
   color: var(--color-tab-inactive-foreground);
   background: transparent;
   border-radius: var(--card-radius);
@@ -212,7 +210,6 @@ body {
   padding: 0;
   line-height: 1;
   color: inherit;
-  cursor: pointer;
   background: none;
   border: none;
   border-radius: 4px;
@@ -288,7 +285,6 @@ body {
   height: 20px;
   padding: 0;
   color: inherit;
-  cursor: pointer;
   background: none;
   border: none;
   border-radius: 4px;
@@ -440,7 +436,6 @@ body.resizing {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  cursor: pointer;
 }
 
 .row:hover,
@@ -474,7 +469,6 @@ body.resizing {
 
 .commit {
   padding: 5px 8px 4px;
-  cursor: pointer;
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -576,7 +570,6 @@ body.resizing {
   height: var(--diff-file-height);
   gap: 8px;
   padding: 4px 8px;
-  cursor: pointer;
   background: var(--color-section-header-background);
   border-bottom: 1px solid var(--color-border);
 }
@@ -636,10 +629,6 @@ body.resizing {
   overflow: hidden;
 }
 
-.commit.placeholder {
-  cursor: default;
-}
-
 .bar {
   display: block;
   height: 0.7em;
@@ -666,7 +655,6 @@ body.resizing {
 
 .merge-dot {
   pointer-events: all;
-  cursor: pointer;
 }
 
 .file-header .unchanged {
@@ -812,7 +800,6 @@ body.resizing {
 }
 
 .menu-item:disabled {
-  cursor: default;
   opacity: 0.5;
 }
 
@@ -904,7 +891,6 @@ body.resizing {
   bottom: 0;
   z-index: 6;
   width: var(--minimap-width);
-  cursor: pointer;
 }
 
 .minimap-mark {
@@ -978,7 +964,6 @@ body.resizing {
 .large-diff button {
   padding: 2px 10px;
   color: var(--color-accent-foreground);
-  cursor: pointer;
   background: var(--color-accent);
   border: none;
   border-radius: 3px;
@@ -1034,10 +1019,6 @@ body.resizing {
   width: 100%;
 }
 
-.skeleton-row {
-  cursor: default;
-}
-
 .skeleton-row:hover,
 .commit.placeholder:hover,
 .hash-suggestion.empty:hover {
@@ -1050,10 +1031,6 @@ body.resizing {
 
 .diff-line.skeleton-row {
   padding-left: 118px;
-}
-
-.diff-skeleton .file-header {
-  cursor: default;
 }
 
 .diff-skeleton .file-header .bar {
@@ -1069,7 +1046,6 @@ body.resizing {
   height: 26px;
   padding: 0;
   color: var(--color-foreground);
-  cursor: pointer;
   background: none;
   border: none;
   border-radius: 13px;
@@ -1086,7 +1062,6 @@ body.resizing {
 }
 
 .nav-button:disabled {
-  cursor: default;
   opacity: 0.35;
 }
 
@@ -1235,7 +1210,6 @@ body.resizing {
   margin: 0 6px 6px;
   padding: 4px 12px;
   border-radius: 6px;
-  cursor: pointer;
 }
 
 .hash-suggestion.active {
@@ -1249,6 +1223,5 @@ body.resizing {
 }
 
 .hash-suggestion.empty {
-  cursor: default;
   color: var(--color-muted-foreground);
 }
