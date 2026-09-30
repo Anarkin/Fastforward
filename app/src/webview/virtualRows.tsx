@@ -11,12 +11,51 @@ export function scrollTarget(
   return rowCount > 0 ? selectedKey : undefined;
 }
 
+export interface RowPlacement {
+  readonly start: number;
+  readonly end: number;
+}
+
+export function pinnedRows(
+  placements: readonly RowPlacement[],
+  scrollTop: number,
+  ancestorsOf: (index: number) => readonly number[],
+): readonly number[] {
+  let pinned: readonly number[] = [];
+  for (;;) {
+    const covered =
+      scrollTop +
+      pinned.reduce(
+        (sum, index) => sum + placements[index].end - placements[index].start,
+        0,
+      );
+    const top = placements.findIndex((row) => row.end > covered);
+    if (top === -1) {
+      return pinned;
+    }
+    const ancestors = ancestorsOf(top);
+    const outside = pinned.findIndex((row, depth) => ancestors[depth] !== row);
+    if (outside !== -1) {
+      return pinned.slice(0, outside);
+    }
+    const next = ancestors.at(pinned.length);
+    if (next === undefined || placements[next].start >= covered) {
+      return pinned;
+    }
+    pinned = [...pinned, next];
+  }
+}
+
+const noAncestors = () => [];
+
 export function VirtualRows({
   rows,
   selectedKey,
+  ancestorsOf = noAncestors,
 }: {
   rows: readonly React.ReactElement[];
   selectedKey: string | undefined;
+  ancestorsOf?: (index: number) => readonly number[];
 }) {
   const list = useRef<HTMLDivElement>(null);
   const itemKey = useCallback(
@@ -44,23 +83,38 @@ export function VirtualRows({
     }
   }, [target]);
 
+  const pinned = pinnedRows(
+    virtualizer.measurementsCache,
+    virtualizer.scrollOffset ?? 0,
+    ancestorsOf,
+  );
+
   return (
-    <div className="virtual-rows" ref={list}>
-      <div
-        className="virtual-spacer"
-        style={{ height: virtualizer.getTotalSize() }}
-      >
-        {virtualizer.getVirtualItems().map((item) => (
-          <div
-            key={item.key}
-            className="virtual-row"
-            data-index={item.index}
-            ref={virtualizer.measureElement}
-            style={{ transform: `translateY(${item.start}px)` }}
-          >
-            {rows[item.index]}
-          </div>
-        ))}
+    <div className="virtual-rows-frame">
+      {pinned.length > 0 && (
+        <div className="pinned-rows">
+          {pinned.map((index) => (
+            <div key={rows[index].key ?? index}>{rows[index]}</div>
+          ))}
+        </div>
+      )}
+      <div className="virtual-rows" ref={list}>
+        <div
+          className="virtual-spacer"
+          style={{ height: virtualizer.getTotalSize() }}
+        >
+          {virtualizer.getVirtualItems().map((item) => (
+            <div
+              key={item.key}
+              className="virtual-row"
+              data-index={item.index}
+              ref={virtualizer.measureElement}
+              style={{ transform: `translateY(${item.start}px)` }}
+            >
+              {rows[item.index]}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

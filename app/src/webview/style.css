@@ -435,10 +435,6 @@ body.resizing {
   border-radius: 0 0 var(--card-radius) var(--card-radius);
 }
 
-.column-body:has(+ .column-footer) {
-  border-radius: 0;
-}
-
 .row {
   padding: 3px 8px;
   white-space: nowrap;
@@ -1004,6 +1000,21 @@ body.resizing {
   color: var(--color-foreground);
   background: var(--color-widget-background);
   border: 1px solid var(--color-widget-border);
+}
+
+.virtual-rows-frame {
+  position: relative;
+  height: 100%;
+}
+
+.pinned-rows {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  background: var(--color-background);
+  box-shadow: 0 1px 0 var(--color-border);
 }
 
 .virtual-rows {

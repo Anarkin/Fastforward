@@ -1,6 +1,10 @@
 import { useMemo } from 'react';
 import type { FileChange } from '../shared/protocol';
-import { changesTreeElements, changesTreeRows } from './changesTree';
+import {
+  ancestorRows,
+  changesTreeElements,
+  changesTreeRows,
+} from './changesTree';
 import { Column } from './column';
 import { AllFilesIcon } from './icons';
 import { SkeletonRows, useSkeleton } from './skeleton';
@@ -72,6 +76,12 @@ export function Files({
       {skeleton && <SkeletonRows count={6} />}
       <VirtualRows
         rows={files.length > 0 ? [header, ...fileRows] : fileRows}
+        ancestorsOf={(index) => {
+          const offset = files.length > 0 ? 1 : 0;
+          return index < offset
+            ? []
+            : ancestorRows(treeRows, index - offset).map((row) => row + offset);
+        }}
         selectedKey={selected === undefined ? undefined : fileRowKey(selected)}
       />
     </Column>
