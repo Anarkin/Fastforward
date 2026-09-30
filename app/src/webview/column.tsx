@@ -5,14 +5,12 @@ export function Column({
   index,
   start,
   actions,
-  footer,
   children,
 }: {
   title?: React.ReactNode;
   index?: number;
   start?: React.ReactNode;
   actions?: React.ReactNode;
-  footer?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -23,7 +21,6 @@ export function Column({
         {actions && <div className="column-actions">{actions}</div>}
       </header>
       <div className="column-body">{children}</div>
-      {footer && <footer className="column-footer">{footer}</footer>}
       {index !== undefined && <Resizer index={index} />}
     </section>
   );

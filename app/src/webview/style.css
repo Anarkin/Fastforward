@@ -421,16 +421,6 @@ body.resizing {
   border-radius: 0;
 }
 
-.column-footer {
-  flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  height: var(--title-height);
-  border-top: 1px solid var(--color-border);
-}
-
 .row {
   padding: 3px 8px;
   white-space: nowrap;

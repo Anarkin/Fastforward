@@ -52,7 +52,6 @@ export function Files({
     () => new Map(files.map((file) => [file.path, file])),
     [files],
   );
-  const title = mode === 'changes' ? 'Changes' : 'Files';
   const modeSwitch = (
     <div className="switch" role="tablist">
       {(['changes', 'files'] as const).map((option) => (
@@ -70,7 +69,7 @@ export function Files({
   );
   if (mode === 'files') {
     return (
-      <Column title={title} index={1} footer={modeSwitch}>
+      <Column title={modeSwitch} index={1}>
         {skeleton && <SkeletonRows count={12} indent />}
         {tree && (
           <FileTree
@@ -124,7 +123,7 @@ export function Files({
           />
         ));
   return (
-    <Column title={title} index={1} actions={settings} footer={modeSwitch}>
+    <Column title={modeSwitch} index={1} actions={settings}>
       {skeleton && <SkeletonRows count={6} />}
       <VirtualRows
         rows={files.length > 0 ? [header, ...fileRows] : []}
