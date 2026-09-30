@@ -1,3 +1,6 @@
+import * as assert from 'node:assert';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { CommitInfo, FileChange } from '../shared/protocol';
 
 export const commitInfo = (
@@ -76,4 +79,14 @@ export async function waitFor(
     }
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
+}
+
+export function stylesheetPx(pattern: RegExp): number {
+  const css = readFileSync(
+    join(__dirname, '../../src/webview/style.css'),
+    'utf8',
+  );
+  const match = pattern.exec(css);
+  assert.ok(match, String(pattern));
+  return Number(match[1]);
 }

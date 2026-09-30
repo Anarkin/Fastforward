@@ -18,9 +18,13 @@ export type DiffRow =
       readonly file: number;
       readonly path: string;
       readonly open: boolean;
+    }
+  | {
+      readonly kind: 'large';
+      readonly file: number;
+      readonly path: string;
       readonly lines: number;
     }
-  | { readonly kind: 'large'; readonly file: number; readonly lines: number }
   | { readonly kind: 'binary'; readonly file: number }
   | { readonly kind: 'skeleton' }
   | { readonly kind: 'skeletonLines'; readonly file: number }
@@ -28,9 +32,12 @@ export type DiffRow =
   | { readonly kind: 'line'; readonly file: number; readonly line: DiffLine }
   | {
       readonly kind: 'wholeLine';
+      readonly file: number;
       readonly number: number;
       readonly text: string;
     };
+
+type FileHeaderRow = Extract<DiffRow, { kind: 'file' }>;
 
 type MeasuredKind = 'error' | 'skeleton' | 'skeletonLines';
 
@@ -97,21 +104,15 @@ export function diffRows(
     return rows;
   }
   if (whole) {
-    rows.push({
-      kind: 'file',
-      file: 0,
-      path: whole.path,
-      open: true,
-      lines: 0,
-    });
+    rows.push({ kind: 'file', file: 0, path: whole.path, open: true });
     if (whole.binary) {
       rows.push({ kind: 'binary', file: 0 });
-    } else {
+    } else if (whole.content !== '') {
       whole.content
         .replace(/\n$/, '')
         .split('\n')
         .forEach((text, index) =>
-          rows.push({ kind: 'wholeLine', number: index + 1, text }),
+          rows.push({ kind: 'wholeLine', file: 0, number: index + 1, text }),
         );
     }
     return rows;
@@ -119,10 +120,10 @@ export function diffRows(
   files.forEach((file, index) => {
     const lines = changedLines(file);
     const open = toggled.get(file.path) ?? lines <= collapseThreshold;
-    rows.push({ kind: 'file', file: index, path: file.path, open, lines });
+    rows.push({ kind: 'file', file: index, path: file.path, open });
     if (!open) {
       if (lines > collapseThreshold && !toggled.has(file.path)) {
-        rows.push({ kind: 'large', file: index, lines });
+        rows.push({ kind: 'large', file: index, path: file.path, lines });
       }
       return;
     }
@@ -143,6 +144,33 @@ export function diffRows(
     }
   });
   return rows;
+}
+
+export function fileHeaderIndex(
+  rows: readonly DiffRow[],
+  file: number,
+): number {
+  return rows.findIndex((row) => row.kind === 'file' && row.file === file);
+}
+
+export function stuckHeader(
+  rows: readonly DiffRow[],
+  items: readonly { index: number; start: number; end: number }[],
+  scrollTop: number,
+): FileHeaderRow | undefined {
+  const top = items.find((item) => item.end > scrollTop);
+  if (top === undefined) {
+    return undefined;
+  }
+  const topRow = rows[top.index];
+  if (
+    !('file' in topRow) ||
+    (topRow.kind === 'file' && top.start >= scrollTop)
+  ) {
+    return undefined;
+  }
+  const header = rows[fileHeaderIndex(rows, topRow.file)];
+  return header?.kind === 'file' ? header : undefined;
 }
 
 export function largeFilesToLoad(
@@ -216,12 +244,22 @@ export function DiffView({
     }
   }, [files, toggled, diff, onLoad]);
 
-  const header = (row: Extract<DiffRow, { kind: 'file' }>) => {
+  const header = (row: FileHeaderRow, stuck = false) => {
     const change = changes.get(row.path);
     return (
       <div
         className="file-header"
-        onClick={() => !whole && toggle(row.path, row.open)}
+        onClick={() => {
+          if (whole) {
+            return;
+          }
+          toggle(row.path, row.open);
+          if (stuck) {
+            virtualizer.scrollToIndex(fileHeaderIndex(rows, row.file), {
+              align: 'start',
+            });
+          }
+        }}
       >
         {!whole && <span className="twisty">{row.open ? '▾' : '▸'}</span>}
         <span className="path">{row.path}</span>
@@ -245,15 +283,13 @@ export function DiffView({
         return error;
       case 'file':
         return header(row);
-      case 'large': {
-        const path = files[row.file]?.path ?? '';
+      case 'large':
         return (
           <div className="large-diff">
             Large diff: {row.lines.toLocaleString()} changed lines
-            <button onClick={() => toggle(path, false)}>Show</button>
+            <button onClick={() => toggle(row.path, false)}>Show</button>
           </div>
         );
-      }
       case 'binary':
         return (
           <div className="binary-file">
@@ -293,24 +329,11 @@ export function DiffView({
   };
 
   const items = virtualizer.getVirtualItems();
-  const scrollTop = virtualizer.scrollOffset ?? 0;
-  const top = items.find((item) => item.end > scrollTop);
-  const topRow = top && rows[top.index];
-  const topFile = topRow && 'file' in topRow ? topRow.file : undefined;
-  const stuck =
-    topFile === undefined
-      ? undefined
-      : rows.find(
-          (row): row is Extract<DiffRow, { kind: 'file' }> =>
-            row.kind === 'file' && row.file === topFile,
-        );
-  const showStuck =
-    stuck &&
-    !(topRow?.kind === 'file' && top !== undefined && top.start >= scrollTop);
+  const stuck = stuckHeader(rows, items, virtualizer.scrollOffset ?? 0);
 
   return (
     <div className="diff-view" style={heightVariables}>
-      {showStuck && <div className="diff-stuck-header">{header(stuck)}</div>}
+      {stuck && <div className="diff-stuck-header">{header(stuck, true)}</div>}
       <div className="virtual-rows" ref={list}>
         <div
           className="virtual-spacer"

@@ -6,11 +6,10 @@ import {
 } from '../shared/protocol';
 import { changesTreeElements, changesTreeRows } from './changesTree';
 import { Column } from './column';
-import { changeTitle, statusClass } from './fileStatus';
 import { FileTree } from './fileTree';
-import { LineCounts } from './lineCounts';
 import { MenuButton } from './menu';
 import { SkeletonRows, useSkeleton } from './skeleton';
+import { FileRow, fileRowKey } from './tree';
 import { VirtualRows } from './virtualRows';
 
 export function Files({
@@ -114,27 +113,21 @@ export function Files({
           onSelect,
         })
       : files.map((file) => (
-          <div
-            key={`file:${file.path}`}
-            className={`row file ${file.path === selected ? 'selected' : ''}`}
-            title={changeTitle(file)}
-            onClick={() =>
-              onSelect(file.path === selected ? undefined : file.path)
-            }
-          >
-            <span className={statusClass(file)}>{file.path}</span>
-            <LineCounts
-              deletions={file.deletions}
-              insertions={file.insertions}
-            />
-          </div>
+          <FileRow
+            key={fileRowKey(file.path)}
+            path={file.path}
+            name={file.path}
+            change={file}
+            selected={selected}
+            onSelect={onSelect}
+          />
         ));
   return (
     <Column title={title} index={1} actions={settings}>
-      {loading && skeleton && <SkeletonRows count={6} />}
+      {skeleton && <SkeletonRows count={6} />}
       <VirtualRows
         rows={files.length > 0 ? [header, ...fileRows] : []}
-        selectedKey={selected === undefined ? undefined : `file:${selected}`}
+        selectedKey={selected === undefined ? undefined : fileRowKey(selected)}
       />
     </Column>
   );

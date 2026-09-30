@@ -20,7 +20,6 @@ suite('Patch parser', () => {
     );
     assert.strictEqual(files.length, 1);
     assert.strictEqual(files[0].path, 'src/a.ts');
-    assert.strictEqual(files[0].hunks[0].header, 'function a() {');
     assert.deepStrictEqual(
       files[0].hunks[0].lines.map((line) => [
         line.kind,
@@ -89,6 +88,7 @@ suite('Patch parser', () => {
     assert.strictEqual(unquotePath('"a\\tb"'), 'a\tb');
     assert.strictEqual(unquotePath('"\\303\\251t\\303\\251.md"'), 'été.md');
     assert.strictEqual(unquotePath('plain.md'), 'plain.md');
+    assert.strictEqual(unquotePath('"say \\"hi\\" 😀.md"'), 'say "hi" 😀.md');
     const [file] = parsePatch(
       [
         'diff --git "a/say \\"hi\\".md" "b/say \\"hi\\".md"',

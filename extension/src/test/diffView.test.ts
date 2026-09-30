@@ -5,8 +5,11 @@ import { withLargeFiles } from '../webview/diffColumn';
 import {
   diffRowKey,
   diffRows,
+  fileHeaderIndex,
   largeFilesToLoad,
   rowHeight,
+  stuckHeader,
+  type DiffRow,
 } from '../webview/diffView';
 import { fileChange } from './fixtures';
 
@@ -59,9 +62,29 @@ suite('Diff rows', () => {
     const files = parsePatch(patch('graph.json', collapseThreshold + 1));
     const collapsed = diffRows(files, new Map(), undefined);
     assert.deepStrictEqual(kinds(collapsed), ['error', 'file', 'large']);
+    assert.deepStrictEqual(collapsed[2], {
+      kind: 'large',
+      file: 0,
+      path: 'graph.json',
+      lines: collapseThreshold + 1,
+    });
 
     const opened = diffRows(files, new Map([['graph.json', true]]), undefined);
     assert.strictEqual(opened.length, 2 + collapseThreshold + 1);
+
+    const closed = diffRows(files, new Map([['graph.json', false]]), undefined);
+    assert.deepStrictEqual(kinds(closed), ['error', 'file']);
+  });
+
+  test('counts only changed lines toward collapsing a file', () => {
+    const files = parsePatch(
+      [patch('a.ts', collapseThreshold), ' one', ' two', ' three'].join('\n'),
+    );
+    assert.deepStrictEqual(kinds(diffRows(files, new Map(), undefined)), [
+      'error',
+      'file',
+      ...Array<string>(collapseThreshold + 3).fill('line'),
+    ]);
   });
 
   test('closes a small file when asked', () => {
@@ -82,6 +105,99 @@ suite('Diff rows', () => {
       'wholeLine',
       'wholeLine',
     ]);
+    const unterminated = diffRows([], new Map(), {
+      path: 'README.md',
+      content: 'one\ntwo',
+      binary: false,
+    });
+    assert.deepStrictEqual(
+      unterminated.map((row) => row.kind === 'wholeLine' && row.number),
+      [false, false, 1, 2],
+    );
+  });
+
+  test('lays out an empty whole file without lines', () => {
+    const rows = diffRows([], new Map(), {
+      path: '.gitkeep',
+      content: '',
+      binary: false,
+    });
+    assert.deepStrictEqual(kinds(rows), ['error', 'file']);
+  });
+
+  test('keeps what it shows while the next one loads, and shows a placeholder only in place of nothing', () => {
+    assert.deepStrictEqual(
+      kinds(diffRows(parsePatch(patch('a.ts', 1)), new Map(), undefined, true)),
+      ['error', 'file', 'line'],
+    );
+    assert.deepStrictEqual(
+      kinds(
+        diffRows(
+          [],
+          new Map(),
+          { path: 'a', content: 'x\n', binary: false },
+          true,
+        ),
+      ),
+      ['error', 'file', 'wholeLine'],
+    );
+  });
+});
+
+function laidOut(rows: readonly DiffRow[]) {
+  let start = 0;
+  return rows.map((row, index) => {
+    const item = { index, start, end: start + (rowHeight(row) ?? 100) };
+    start = item.end;
+    return item;
+  });
+}
+
+suite('Stuck file header', () => {
+  const files = parsePatch(`${patch('a.ts', 3)}\n${patch('b.ts', 3)}`);
+  const rows = diffRows(files, new Map(), undefined);
+  const items = laidOut(rows);
+  const start = (index: number) => items[index].start;
+
+  test('sticks the header of the file whose line is on top', () => {
+    assert.deepStrictEqual(kinds(rows), [
+      'error',
+      'file',
+      'line',
+      'line',
+      'line',
+      'file',
+      'line',
+      'line',
+      'line',
+    ]);
+    assert.strictEqual(stuckHeader(rows, items, start(7) + 1), rows[5]);
+    assert.strictEqual(stuckHeader(rows, items, start(5) + 1), rows[5]);
+  });
+
+  test('sticks nothing while a header is whole in its place, or no file is on top', () => {
+    assert.strictEqual(stuckHeader(rows, items, start(5)), undefined);
+    assert.strictEqual(stuckHeader(rows, items, 0), undefined);
+    assert.strictEqual(stuckHeader(rows, items, start(1)), undefined);
+  });
+
+  test('sticks the header of a whole file too', () => {
+    const whole = diffRows([], new Map(), {
+      path: 'README.md',
+      content: 'a\nb\nc\n',
+      binary: false,
+    });
+    const wholeItems = laidOut(whole);
+    assert.strictEqual(
+      stuckHeader(whole, wholeItems, wholeItems[3].start),
+      whole[1],
+    );
+  });
+
+  test('finds a header in the same place once its file is closed', () => {
+    const closed = diffRows(files, new Map([['b.ts', false]]), undefined);
+    assert.strictEqual(fileHeaderIndex(rows, 1), 5);
+    assert.strictEqual(fileHeaderIndex(closed, 1), 5);
   });
 });
 

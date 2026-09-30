@@ -24,11 +24,12 @@ import {
 import { parsePatch } from '../webview/diff';
 import { diffRows } from '../webview/diffView';
 import { changeTitle, statusClass } from '../webview/fileStatus';
+import { Files } from '../webview/filesColumn';
 import { LineCounts } from '../webview/lineCounts';
 import { SkeletonRows } from '../webview/skeleton';
 import { TabBar } from '../webview/tabBar';
 import { GraphCell, graphWidth, rowLanes } from '../webview/graph';
-import { treeIndent } from '../webview/tree';
+import { FileRow, treeIndent } from '../webview/tree';
 import type { GraphRow } from '../shared/protocol';
 import { classesOf, fileChange as change, tagsWith } from './fixtures';
 
@@ -67,6 +68,130 @@ suite('Line counts', () => {
       renderToStaticMarkup(<LineCounts deletions={0} insertions={0} />),
       '',
     );
+  });
+});
+
+interface RowProps {
+  className: string;
+  onClick: () => void;
+}
+
+function changesRows(
+  files: ReturnType<typeof change>[],
+  selected: string | undefined,
+  onSelect: (path: string | undefined) => void,
+) {
+  let column: React.ReactNode;
+  function Probe() {
+    column = Files({
+      mode: 'changes',
+      onMode: noop,
+      changesView: 'list',
+      onChangesView: noop,
+      closedFolders: new Set(),
+      onToggleClosedFolder: noop,
+      files,
+      loading: false,
+      treeLoading: false,
+      tree: undefined,
+      openFolders: new Set(),
+      onToggleFolder: noop,
+      selected,
+      onSelect,
+    });
+    return null;
+  }
+  renderToStaticMarkup(<Probe />);
+  assert.ok(isValidElement<{ children: React.ReactNode[] }>(column));
+  const list = column.props.children[1];
+  assert.ok(
+    isValidElement<{
+      rows: React.ReactElement<RowProps>[];
+      selectedKey: string | undefined;
+    }>(list),
+  );
+  return list.props;
+}
+
+function clickFile(row: React.ReactElement) {
+  assert.strictEqual(row.type, FileRow);
+  assert.ok(isValidElement<Parameters<typeof FileRow>[0]>(row));
+  const drawn = FileRow(row.props);
+  assert.ok(isValidElement<RowProps>(drawn));
+  drawn.props.onClick();
+}
+
+suite('Files column', () => {
+  test('shows no rows without changes, not even their header', () => {
+    assert.deepStrictEqual(changesRows([], undefined, noop).rows, []);
+  });
+
+  test('deselects the selected file on a click, and selects another', () => {
+    const picked: (string | undefined)[] = [];
+    const { rows, selectedKey } = changesRows(
+      [change('a.ts'), change('b.ts')],
+      'a.ts',
+      (path) => picked.push(path),
+    );
+    assert.strictEqual(selectedKey, 'file:a.ts');
+    assert.deepStrictEqual(
+      rows.map((row) => row.key),
+      ['changes', 'file:a.ts', 'file:b.ts'],
+    );
+    clickFile(rows[1]);
+    clickFile(rows[2]);
+    assert.deepStrictEqual(picked, [undefined, 'b.ts']);
+  });
+
+  test('selects all changes with their header, marked while no file is', () => {
+    const picked: (string | undefined)[] = [];
+    const [header] = changesRows([change('a.ts')], undefined, (path) =>
+      picked.push(path),
+    ).rows;
+    assert.match(header.props.className, /\bselected\b/);
+    header.props.onClick();
+    assert.deepStrictEqual(picked, [undefined]);
+    const [unmarked] = changesRows([change('a.ts')], 'a.ts', noop).rows;
+    assert.doesNotMatch(unmarked.props.className, /\bselected\b/);
+  });
+});
+
+suite('File rows', () => {
+  test('draws a row outside a tree without its indent', () => {
+    const html = renderToStaticMarkup(
+      <FileRow
+        path="src/a.ts"
+        name="src/a.ts"
+        change={change('src/a.ts')}
+        selected="src/a.ts"
+        onSelect={noop}
+      />,
+    );
+    const row = tagWith(
+      html,
+      'title="Modified: src/a.ts"',
+      'row',
+      'file',
+      'selected',
+    );
+    assert.ok(!classesOf(row).has('tree-row'));
+    assert.ok(!row.includes('padding-left'));
+  });
+
+  test('names an unchanged file by its path, without line counts', () => {
+    const html = renderToStaticMarkup(
+      <FileRow
+        path="src/a.ts"
+        name="a.ts"
+        depth={1}
+        change={undefined}
+        selected={undefined}
+        onSelect={noop}
+      />,
+    );
+    tagWith(html, 'title="src/a.ts"', 'row', 'tree-row', 'file');
+    tagWith(html, '', 'path');
+    assert.deepStrictEqual(tagsWith(html, 'line-counts'), []);
   });
 });
 
