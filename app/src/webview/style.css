@@ -16,7 +16,7 @@ body {
   --muted-opacity: 0.45;
   --selection-background: color-mix(
     in srgb,
-    var(--color-focus) 18%,
+    var(--color-focus) var(--color-focus-selected),
     var(--color-panel-background)
   );
   --scrollbar-background: color-mix(
@@ -34,10 +34,14 @@ body {
     var(--color-scrollbar) 88%,
     transparent
   );
-  --hover-background: color-mix(in srgb, var(--color-focus) 8%, transparent);
+  --hover-background: color-mix(
+    in srgb,
+    var(--color-focus) var(--color-focus-hover),
+    transparent
+  );
   --toggle-on-background: color-mix(
     in srgb,
-    var(--color-focus) 18%,
+    var(--color-focus) var(--color-focus-selected),
     transparent
   );
   --muted-foreground: color-mix(
@@ -550,7 +554,7 @@ body.resizing {
   color: var(--color-foreground);
   background: color-mix(
     in srgb,
-    var(--color-focus) 25%,
+    var(--color-focus) var(--color-focus-bubble),
     var(--color-panel-background)
   );
   border-radius: 3px;
@@ -562,7 +566,7 @@ body.resizing {
 .locations-list .row.active .badge {
   background: color-mix(
     in srgb,
-    var(--color-focus) 40%,
+    var(--color-focus) var(--color-focus-bubble-hover),
     var(--color-panel-background)
   );
 }

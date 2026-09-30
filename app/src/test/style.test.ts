@@ -83,7 +83,7 @@ suite('Style', () => {
   test('tints a row under the pointer with a see-through touch of the focus color, over whatever lies under it', () => {
     assert.match(
       css,
-      /\nbody \{[^}]*--hover-background: color-mix\(in srgb, var\(--color-focus\) 8%, transparent\);/,
+      /\nbody \{[^}]*--hover-background: color-mix\(\s*in srgb,\s*var\(--color-focus\) var\(--color-focus-hover\),\s*transparent\s*\);/,
     );
     for (const selector of [
       '.tab:not(.active):hover',
@@ -105,7 +105,7 @@ suite('Style', () => {
     );
     assert.ok(
       body.includes(
-        '--toggle-on-background: color-mix( in srgb, var(--color-focus) 18%, transparent );',
+        '--toggle-on-background: color-mix( in srgb, var(--color-focus) var(--color-focus-selected), transparent );',
       ),
       body,
     );
@@ -224,7 +224,7 @@ suite('Style', () => {
     );
     assert.ok(
       body.includes(
-        '--selection-background: color-mix( in srgb, var(--color-focus) 18%, var(--color-panel-background) );',
+        '--selection-background: color-mix( in srgb, var(--color-focus) var(--color-focus-selected), var(--color-panel-background) );',
       ),
       body,
     );
@@ -252,7 +252,7 @@ suite('Style', () => {
   test('deepens the tint of a bubble with a menu under the pointer, and of a bubble in a search row that is hovered or active, the row carrying its menu', () => {
     assert.match(
       css,
-      /\n\.badge\.has-menu:hover,\s*\.locations-list \.row:hover \.badge,\s*\.locations-list \.row\.active \.badge \{\s*background: color-mix\(\s*in srgb,\s*var\(--color-focus\) 40%,\s*var\(--color-panel-background\)\s*\);\s*\}/,
+      /\n\.badge\.has-menu:hover,\s*\.locations-list \.row:hover \.badge,\s*\.locations-list \.row\.active \.badge \{\s*background: color-mix\(\s*in srgb,\s*var\(--color-focus\) var\(--color-focus-bubble-hover\),\s*var\(--color-panel-background\)\s*\);\s*\}/,
     );
   });
 
@@ -261,7 +261,7 @@ suite('Style', () => {
     assert.ok(badge.includes('color: var(--color-foreground);'));
     assert.match(
       badge,
-      /background: color-mix\(\s*in srgb,\s*var\(--color-focus\) 25%,\s*var\(--color-panel-background\)\s*\);/,
+      /background: color-mix\(\s*in srgb,\s*var\(--color-focus\) var\(--color-focus-bubble\),\s*var\(--color-panel-background\)\s*\);/,
     );
     assert.doesNotMatch(badge, /border:/);
     assert.ok(

@@ -25,6 +25,10 @@
       "border": "#f0f1f2",
       "focus": "#0069cc",
       "focus-foreground": "#ffffff",
+      "focus-hover": "8%",
+      "focus-selected": "18%",
+      "focus-bubble": "25%",
+      "focus-bubble-hover": "40%",
 
       "scrollbar": "#646464",
 
@@ -49,6 +53,10 @@
       "border": "#2a2b2c",
       "focus": "#3994bcb3",
       "focus-foreground": "#ffffff",
+      "focus-hover": "20%",
+      "focus-selected": "35%",
+      "focus-bubble": "35%",
+      "focus-bubble-hover": "60%",
 
       "scrollbar": "#7a7b7c",
 
