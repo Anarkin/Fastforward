@@ -12,11 +12,15 @@ import { countRefs, decorations, fingerprint, type Head } from './refs';
 import {
   commitPageSize,
   workingTreeHash,
+  workingTreeIndex,
+  workingTreeSubject,
   type CommitInfo,
   type FileChange,
   type NavigationEntry,
   type RefInfo,
+  type ScrollTarget,
   type ToWebview,
+  type ToWebviewOf,
 } from './shared/protocol';
 
 export interface TabState {
@@ -43,17 +47,15 @@ export interface TabState {
   shown: Shown;
 }
 
-type Message<T extends ToWebview['type']> = Extract<ToWebview, { type: T }>;
-
 interface Shown {
-  repository?: Message<'repository'>;
-  fetching?: Message<'fetching'>;
-  navigation?: Message<'navigation'>;
-  commits?: Message<'commits'>;
-  workingTree?: Message<'workingTree'>;
-  files?: Message<'files'>;
-  diff?: Message<'diff'> | Message<'fileContent'>;
-  tree?: Message<'tree'>;
+  repository?: ToWebviewOf<'repository'>;
+  fetching?: ToWebviewOf<'fetching'>;
+  navigation?: ToWebviewOf<'navigation'>;
+  commits?: ToWebviewOf<'commits'>;
+  workingTree?: ToWebviewOf<'workingTree'>;
+  files?: ToWebviewOf<'files'>;
+  diff?: ToWebviewOf<'diff'> | ToWebviewOf<'fileContent'>;
+  tree?: ToWebviewOf<'tree'>;
 }
 
 const navigationShown = 20;
@@ -115,29 +117,32 @@ export function layOutHistory(
   tab.positions = new Map(history.map((entry, index) => [entry.hash, index]));
   tab.graph = new Graph(history, { head });
   tab.shownStale = false;
-  tab.index = tab.hash === undefined ? undefined : tab.positions.get(tab.hash);
+  tab.index = positionOf(tab, tab.hash);
   return ++tab.generation;
 }
 
 export function firstPage(
   tab: TabState,
   keepPlace: boolean,
-): { start: number; anchor: { index: number; offset: number } | undefined } {
-  const anchor = keepPlace ? anchorOf(tab) : undefined;
+  scrollTo?: string,
+): { start: number; scrollTarget: ScrollTarget | undefined } {
+  const scrollTarget =
+    (keepPlace ? anchorOf(tab) : undefined) ??
+    indexTarget(positionOf(tab, scrollTo) ?? tab.index);
+  const index = scrollTarget?.index;
   const start =
-    anchor === undefined || anchor.index < 0
+    index === undefined || index === workingTreeIndex
       ? 0
-      : anchor.index - (anchor.index % commitPageSize);
-  return { start, anchor };
+      : index - (index % commitPageSize);
+  return { start, scrollTarget };
 }
 
 export function commitsMessage(
   tab: TabState,
   page: ReturnType<typeof firstPage>,
   commits: readonly CommitInfo[],
-  scrollTo: string | undefined,
-): Message<'commits'> {
-  const { start, anchor } = page;
+): ToWebviewOf<'commits'> {
+  const { start, scrollTarget } = page;
   return {
     type: 'commits',
     generation: tab.generation,
@@ -147,9 +152,8 @@ export function commitsMessage(
     commits,
     graph: tab.graph.rows(start, commits.length),
     workingTreeGraph: tab.graph.workingTreeRow,
-    selectedIndex:
-      scrollTo === undefined ? tab.index : tab.positions.get(scrollTo),
-    anchor,
+    selectedIndex: tab.index,
+    scrollTarget,
   };
 }
 
@@ -177,17 +181,19 @@ export function select(tab: TabState, hash: string, index: number): void {
   tab.path = undefined;
 }
 
-function anchorOf(
-  tab: TabState,
-): { index: number; offset: number } | undefined {
+function anchorOf(tab: TabState): ScrollTarget | undefined {
   if (!tab.anchor) {
     return undefined;
   }
   if (tab.anchor.hash === workingTreeHash) {
-    return { index: -1, offset: 0 };
+    return { index: workingTreeIndex, offset: 0 };
   }
   const index = tab.positions.get(tab.anchor.hash);
   return index === undefined ? undefined : { index, offset: tab.anchor.offset };
+}
+
+function indexTarget(index: number | undefined): ScrollTarget | undefined {
+  return index === undefined ? undefined : { index };
 }
 
 export function keep(shown: Shown, message: ToWebview): void {
@@ -217,8 +223,6 @@ export function keep(shown: Shown, message: ToWebview): void {
     case 'tree':
       shown.tree = message;
       break;
-    default:
-      break;
   }
 }
 
@@ -231,7 +235,7 @@ export function replayOf(tab: TabState): ToWebview[] {
     shown.commits && {
       ...shown.commits,
       selectedIndex: tab.index,
-      anchor: anchorOf(tab),
+      scrollTarget: anchorOf(tab) ?? indexTarget(tab.index),
     },
     shown.workingTree,
     shown.files,
@@ -264,7 +268,7 @@ export function navigationEntry(tab: TabState, hash: string): NavigationEntry {
   return {
     hash,
     subject:
-      hash === workingTreeHash ? 'Uncommitted changes' : tab.subjects.get(hash),
+      hash === workingTreeHash ? workingTreeSubject : tab.subjects.get(hash),
   };
 }
 
@@ -282,7 +286,7 @@ export function positionOf(
   hash: string | undefined,
 ): number | undefined {
   if (hash === workingTreeHash) {
-    return -1;
+    return workingTreeIndex;
   }
   return hash === undefined ? undefined : tab.positions.get(hash);
 }

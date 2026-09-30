@@ -6,6 +6,7 @@ import { getGitApi } from '../git/repository';
 import {
   workingTreeHash,
   type ToWebview,
+  type ToWebviewOf,
   type BookmarkRef,
 } from '../shared/protocol';
 import {
@@ -30,12 +31,9 @@ import { withMessageStub } from './stub';
 class FakePage {
   readonly messages: ToWebview[] = [];
 
-  last<T extends ToWebview['type']>(
-    type: T,
-  ): Extract<ToWebview, { type: T }> | undefined {
+  last<T extends ToWebview['type']>(type: T): ToWebviewOf<T> | undefined {
     return this.messages.findLast(
-      (message): message is Extract<ToWebview, { type: T }> =>
-        message.type === type,
+      (message): message is ToWebviewOf<T> => message.type === type,
     );
   }
 
@@ -1021,7 +1019,7 @@ suite('View', function () {
         await connection.refresh();
         const commits = page.last('commits');
         assert.strictEqual(commits?.total, 4);
-        assert.deepStrictEqual(commits.anchor, { index: 2, offset: 7 });
+        assert.deepStrictEqual(commits.scrollTarget, { index: 2, offset: 7 });
         assert.ok(page.last('repository'));
       } finally {
         await restore();
@@ -1042,7 +1040,7 @@ suite('View', function () {
         await connection.refresh();
         const commits = page.last('commits');
         assert.strictEqual(commits?.commits[0]?.subject, 'on top');
-        assert.deepStrictEqual(commits.anchor, { index: -1, offset: 0 });
+        assert.deepStrictEqual(commits.scrollTarget, { index: -1, offset: 0 });
       } finally {
         await restore();
       }
@@ -1284,7 +1282,7 @@ suite('View', function () {
         root: repository.root,
       });
       assert.strictEqual(commitsSent(tabs.page.messages), 1);
-      assert.deepStrictEqual(tabs.page.last('commits')?.anchor, {
+      assert.deepStrictEqual(tabs.page.last('commits')?.scrollTarget, {
         index: 1,
         offset: 7,
       });
@@ -1458,7 +1456,7 @@ suite('View', function () {
       const replayed = tabs.page.messages.find(
         (message) => message.type === 'commits',
       );
-      assert.deepStrictEqual(replayed?.anchor, { index: 1, offset: 7 });
+      assert.deepStrictEqual(replayed?.scrollTarget, { index: 1, offset: 7 });
       assert.notStrictEqual(tabs.page.last('files')?.hash, fixture.b);
     });
 

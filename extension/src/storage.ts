@@ -4,7 +4,7 @@ import type {
   Bookmark,
   ChangesView,
   FilesMode,
-  ToWebview,
+  ToWebviewOf,
 } from './shared/protocol';
 
 export const tabsKey = 'tabs';
@@ -82,7 +82,7 @@ export class Storage {
     await this.globalState.update(bookmarksKey, { ...all, [root]: bookmarks });
   }
 
-  get layout(): Extract<ToWebview, { type: 'layout' }> {
+  get layout(): ToWebviewOf<'layout'> {
     return {
       type: 'layout',
       columnWidths: this.globalState.get<number[]>(columnWidthsKey),

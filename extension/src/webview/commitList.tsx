@@ -6,7 +6,13 @@ import {
   useSyncExternalStore,
 } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { workingTreeHash, type RefInfo } from '../shared/protocol';
+import {
+  workingTreeHash,
+  workingTreeIndex,
+  workingTreeSubject,
+  type RefInfo,
+  type ScrollTarget,
+} from '../shared/protocol';
 import { DetachedHead, HeadBubble, RefBubble } from './bubbles';
 import { Column } from './column';
 import { CommitHistory } from './commitHistory';
@@ -15,7 +21,6 @@ import { GraphCell, graphWidth, rowLanes } from './graph';
 import { formatDateTime } from './dates';
 import { MenuButton } from './menu';
 import { useSkeleton } from './skeleton';
-import type { ScrollTarget } from './tabView';
 import { SoloIcon } from './icons';
 
 export const commitRowHeight = 50;
@@ -85,10 +90,10 @@ export function arrowKeyPosition(
   workingTree: boolean,
   step: number,
 ): number | undefined {
-  const top = workingTree ? -1 : 0;
+  const top = workingTree ? workingTreeIndex : 0;
   let from: number | undefined;
   if (selected === workingTreeHash) {
-    from = -1;
+    from = workingTreeIndex;
   } else if (selected !== undefined) {
     const hint = history.selectedIndex;
     from =
@@ -277,7 +282,7 @@ export function Commits({
     if (position === undefined) {
       return;
     }
-    if (position === -1) {
+    if (position === workingTreeIndex) {
       onSelect(workingTreeHash, true);
     } else {
       const commit = history.at(position);
@@ -325,7 +330,7 @@ export function Commits({
         >
           <div className="commit-line">
             <span className="subject">
-              {workingTree > 0 ? 'Uncommitted changes' : 'No changes'}
+              {workingTree > 0 ? workingTreeSubject : 'No changes'}
             </span>
             {workingTree > 0 && <span className="count">{workingTree}</span>}
           </div>
