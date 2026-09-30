@@ -1,10 +1,30 @@
 import * as assert from 'node:assert';
 import {
   defaultColumnWidths,
+  draggedWidths,
+  followDrag,
   maxWidth,
+  resetWidth,
   templateOf,
   widthsToLoad,
 } from '../webview/columns';
+
+function dragTarget() {
+  const listeners = new Map<string, (event: { buttons: number }) => void>();
+  return {
+    addEventListener: (
+      type: string,
+      listener: (event: { buttons: number }) => void,
+    ) => {
+      listeners.set(type, listener);
+    },
+    removeEventListener: (type: string) => {
+      listeners.delete(type);
+    },
+    dispatch: (type: string, buttons: number) =>
+      listeners.get(type)?.({ buttons }),
+  };
+}
 
 suite('Columns', () => {
   test('gives a hidden column no width instead of dropping it, so it keeps its place', () => {
@@ -28,5 +48,46 @@ suite('Columns', () => {
     assert.deepStrictEqual(widthsToLoad([400, 250]), [400, 250]);
     assert.strictEqual(widthsToLoad(undefined), defaultColumnWidths);
     assert.strictEqual(widthsToLoad([400]), defaultColumnWidths);
+  });
+
+  test('drags a column to a whole width between its least and most', () => {
+    assert.deepStrictEqual(
+      draggedWidths([400, 250], 1, -1000, 500),
+      [400, 120],
+    );
+    assert.deepStrictEqual(
+      draggedWidths([400, 250], 1, 10000, 500),
+      [400, 500],
+    );
+    assert.deepStrictEqual(draggedWidths([400, 250], 0, 10.6, 500), [411, 250]);
+  });
+
+  test('resets only the column asked', () => {
+    assert.deepStrictEqual(resetWidth([400, 250], 1), [
+      400,
+      defaultColumnWidths[1],
+    ]);
+  });
+
+  test('stops following a drag the browser cancels, or whose button went up unseen', () => {
+    for (const [type, buttons] of [
+      ['pointercancel', 1],
+      ['pointerup', 0],
+      ['pointermove', 0],
+    ] as const) {
+      const target = dragTarget();
+      let moves = 0;
+      let ends = 0;
+      followDrag(
+        target,
+        () => moves++,
+        () => ends++,
+      );
+      target.dispatch('pointermove', 1);
+      target.dispatch(type, buttons);
+      target.dispatch('pointermove', 1);
+      target.dispatch('pointerup', 0);
+      assert.deepStrictEqual([moves, ends], [1, 1], type);
+    }
   });
 });
