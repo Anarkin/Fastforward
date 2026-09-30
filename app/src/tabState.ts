@@ -33,6 +33,7 @@ export interface TabState {
   inHistory: Set<string>;
   subjects: Map<string, string>;
   heads: Set<string>;
+  headCommit: string | undefined;
   fingerprint: string;
   anchor: { hash: string; offset: number } | undefined;
   opened: boolean;
@@ -71,6 +72,7 @@ export function newTabState(): TabState {
     inHistory: new Set(),
     subjects: new Map(),
     heads: new Set(),
+    headCommit: undefined,
     fingerprint: '',
     anchor: undefined,
     opened: false,
@@ -95,6 +97,7 @@ export function loadHistory(
   tab.fullHistory = fullHistory;
   tab.inHistory = new Set(fullHistory.map((entry) => entry.hash));
   tab.heads = headsOf(fullHistory);
+  tab.headCommit = head?.commit;
   tab.fingerprint = fingerprint(head, refs);
   tab.refCounts = countRefs(refs, head);
 }

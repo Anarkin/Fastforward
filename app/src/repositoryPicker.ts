@@ -1,10 +1,9 @@
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import type { API } from './git/git';
 import type { Storage } from './storage';
 
 export async function pickRepositories(
-  git: API,
+  rootOf: (folder: string) => Promise<string | undefined>,
   storage: Storage,
 ): Promise<string[]> {
   const recent = storage.recent.filter((root) => !storage.hasTab(root));
@@ -31,19 +30,15 @@ export async function pickRepositories(
       return [];
     }
     if (picked !== browse && picked.description) {
-      const root = await checkRepository(
-        git,
-        storage,
-        vscode.Uri.file(picked.description),
-      );
+      const root = await checkRepository(rootOf, storage, picked.description);
       return root ? [root] : [];
     }
   }
-  return browseRepositories(git, storage);
+  return browseRepositories(rootOf, storage);
 }
 
 async function browseRepositories(
-  git: API,
+  rootOf: (folder: string) => Promise<string | undefined>,
   storage: Storage,
 ): Promise<string[]> {
   const folders =
@@ -54,23 +49,23 @@ async function browseRepositories(
       openLabel: 'Open Repositories',
     })) ?? [];
   const roots = await Promise.all(
-    folders.map((folder) => checkRepository(git, storage, folder)),
+    folders.map((folder) => checkRepository(rootOf, storage, folder.fsPath)),
   );
   return roots.filter((root) => root !== undefined);
 }
 
 async function checkRepository(
-  git: API,
+  rootOf: (folder: string) => Promise<string | undefined>,
   storage: Storage,
-  folder: vscode.Uri,
+  folder: string,
 ): Promise<string | undefined> {
-  const root = await git.getRepositoryRoot(folder);
+  const root = await rootOf(folder);
   if (!root) {
-    await storage.removeRecent(folder.fsPath);
+    await storage.removeRecent(folder);
     void vscode.window.showErrorMessage(
-      `Fastforward: ${folder.fsPath} is not in a git repository`,
+      `Fastforward: ${folder} is not in a git repository`,
     );
     return undefined;
   }
-  return root.fsPath;
+  return root;
 }

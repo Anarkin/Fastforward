@@ -1,15 +1,9 @@
 import type { RefInfo, BookmarkRef } from './shared/protocol';
-import { RefType } from './git/refType';
 import { hasRef, refOf, withoutRemote } from './shared/refNames';
 
 export interface Head {
   readonly name?: string;
   readonly commit?: string;
-  readonly type?: number;
-}
-
-export function checkedOutBranch(head: Head | undefined): string | undefined {
-  return head?.type === RefType.Tag ? undefined : head?.name;
 }
 
 export function fingerprint(
@@ -17,7 +11,7 @@ export function fingerprint(
   refs: readonly RefInfo[],
 ): string {
   return [
-    `HEAD ${head?.type ?? ''} ${head?.name ?? ''} ${head?.commit ?? ''}`,
+    `HEAD ${head?.name ?? ''} ${head?.commit ?? ''}`,
     ...refs.map((ref) => `${ref.kind} ${ref.name} ${ref.commit}`).toSorted(),
   ].join('\n');
 }
@@ -40,7 +34,7 @@ export function countRefs(
 }
 
 export function detachedHead(head: Head | undefined): string | undefined {
-  return head && !checkedOutBranch(head) ? head.commit : undefined;
+  return head && !head.name ? head.commit : undefined;
 }
 
 export function decorations(

@@ -3,7 +3,6 @@ import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { getGitApi } from '../git/repository';
 import {
   workingTreeHash,
   type ToWebview,
@@ -23,9 +22,8 @@ import { FastforwardView, type Connection } from '../view';
 import { waitFor } from './fixtures';
 import { FakeMemento } from './memento';
 import {
-  openedRepository,
+  installedGit,
   removeFolder,
-  settle,
   tempFolder,
   tempRepository,
   type TempRepository,
@@ -64,6 +62,7 @@ async function openView(
   const globalState = new FakeMemento();
   const view = new FastforwardView(
     log,
+    await installedGit(),
     vscode.Uri.file(__dirname),
     workspaceState,
     globalState,
@@ -133,24 +132,6 @@ function stubMethod<T = void>(
   );
 }
 
-async function withPrototypeOverride(
-  target: unknown,
-  name: string,
-  override: (original: PropertyDescriptor) => PropertyDescriptor,
-  action: () => Promise<void>,
-): Promise<void> {
-  const prototype: unknown = Object.getPrototypeOf(target);
-  assert.ok(typeof prototype === 'object' && prototype !== null);
-  const original = Object.getOwnPropertyDescriptor(prototype, name);
-  assert.ok(original, name);
-  Object.defineProperty(prototype, name, override(original));
-  try {
-    await action();
-  } finally {
-    Object.defineProperty(prototype, name, original);
-  }
-}
-
 function reopen(view: FastforwardView): {
   page: FakePage;
   connection: Connection;
@@ -211,7 +192,6 @@ suite('View', function () {
   async function restore(): Promise<void> {
     await repository.git('checkout', '-f', 'main');
     await repository.git('reset', '--hard', fixture.merge);
-    await settle(repository.root);
   }
 
   suite('of one repository', () => {
@@ -263,40 +243,6 @@ suite('View', function () {
       assert.strictEqual(page.last('reveal'), undefined);
       assert.strictEqual(page.last('files'), undefined);
       assert.strictEqual(page.last('diff'), undefined);
-    });
-
-    test('shows the branch checked out of a repository the Git extension has not read yet', async () => {
-      const opened = await openedRepository(repository.root);
-      let read = false;
-      await withPrototypeOverride(
-        opened,
-        'status',
-        (status) => ({
-          ...status,
-          value(this: unknown, ...args: unknown[]) {
-            read = true;
-            return Reflect.apply(status.value, this, args);
-          },
-        }),
-        () =>
-          withPrototypeOverride(
-            opened.state,
-            'HEAD',
-            (head) => ({
-              ...head,
-              get(this: unknown) {
-                return read ? head.get?.call(this) : undefined;
-              },
-            }),
-            async () => {
-              await withView(log, [repository.root], async (view) => {
-                const info = view.page.last('repository');
-                assert.strictEqual(info?.head, 'main');
-                assert.strictEqual(info?.headCommit, fixture.merge);
-              });
-            },
-          ),
-      );
     });
 
     test('reopens at the position of the selected commit', async () => {
@@ -361,7 +307,7 @@ suite('View', function () {
           hash: workingTreeHash,
         });
         assert.ok(page.last('diff')?.patch.includes('+draft'));
-        await settle(repository.root, connection);
+        await connection.refresh();
         let calls = 0;
         let running = 0;
         let most = 0;
@@ -893,7 +839,7 @@ suite('View', function () {
     });
 
     test('refreshes once more for a page that asks while a refresh runs', async () => {
-      await settle(repository.root, connection);
+      await connection.refresh();
       let calls = 0;
       stubMethod(fastforward, 'refreshOnce', async (original, ...args) => {
         calls++;
@@ -941,7 +887,7 @@ suite('View', function () {
     });
 
     test('sends a history reloaded while the page was opened again', async () => {
-      await settle(repository.root, connection);
+      await connection.refresh();
       const held = gate();
       stubMethod(fastforward, 'sendCommits', async (original, ...args) => {
         await held.opened;
@@ -966,15 +912,9 @@ suite('View', function () {
     });
 
     test('ends the fetch on a page opened again while it ran', async () => {
-      const opened = await openedRepository(repository.root);
       const held = gate();
-      // On the prototype, as the Git extension may hand the view another
-      // object for the same repository
-      const prototype: unknown = Object.getPrototypeOf(opened);
-      assert.ok(typeof prototype === 'object' && prototype !== null);
-      const fetch: unknown = Reflect.get(prototype, 'fetch');
-      Reflect.set(prototype, 'fetch', () => held.opened);
-      try {
+      stubMethod(fastforward, 'fetchRemotes', () => held.opened);
+      {
         const fetching = connection.receive({
           type: 'fetch',
           root: repository.root,
@@ -996,8 +936,6 @@ suite('View', function () {
         } finally {
           reopened.connection.dispose();
         }
-      } finally {
-        Reflect.set(prototype, 'fetch', fetch);
       }
     });
 
@@ -1019,7 +957,7 @@ suite('View', function () {
     });
 
     test('runs the refreshes asked for during one that fails', async () => {
-      await settle(repository.root, connection);
+      await connection.refresh();
       const held = gate();
       let calls = 0;
       stubMethod(fastforward, 'refreshOnce', async (original, ...args) => {
@@ -1147,7 +1085,7 @@ suite('View', function () {
     });
 
     test('applies the merge setting to the history shown, without reloading it', async () => {
-      await settle(repository.root, connection);
+      await connection.refresh();
       await connection.receive({ type: 'setCollapseMerges', collapse: false });
       assert.strictEqual(page.last('commits')?.total, 5);
       page.clear();
@@ -1156,7 +1094,7 @@ suite('View', function () {
     });
 
     test('shows only the history of the checked-out commit when solo, and every branch again after', async () => {
-      await settle(repository.root, connection);
+      await connection.refresh();
       const [tree] = await repository.resolve('HEAD^{tree}');
       const side = (
         await repository.git('commit-tree', tree, '-p', fixture.a, '-m', 'side')
@@ -1252,7 +1190,7 @@ suite('View', function () {
         });
         assert.strictEqual(messages.length, 1);
         assert.match(messages[0], /couldn't check out no-such-branch/);
-        assert.match(messages[0], /pathspec 'no-such-branch' did not match/);
+        assert.match(messages[0], /invalid reference: no-such-branch/);
         assert.doesNotMatch(messages[0], /Failed to execute git/);
       });
     });
@@ -1271,7 +1209,7 @@ suite('View', function () {
     });
 
     test('sends the history again on the next refresh after it failed to load', async () => {
-      await settle(repository.root, connection);
+      await connection.refresh();
       const before = page.last('commits')?.generation ?? -1;
       let failed = false;
       const elsewhere = tempFolder('not-a-repository');
@@ -1287,7 +1225,7 @@ suite('View', function () {
       try {
         await connection.refresh();
         assert.ok(failed);
-        await settle(repository.root, connection);
+        await connection.refresh();
         assert.ok((page.last('commits')?.generation ?? -1) > before);
       } finally {
         await repository.git('branch', '-D', 'failed-once');
@@ -1296,7 +1234,7 @@ suite('View', function () {
     });
 
     test('reloads when a ref moves, keeping the top commit in place', async () => {
-      await settle(repository.root, connection);
+      await connection.refresh();
       await connection.receive({
         type: 'scrolled',
         root: repository.root,
@@ -1321,7 +1259,7 @@ suite('View', function () {
     });
 
     test('stays at the top of the list when new commits come in', async () => {
-      await settle(repository.root, connection);
+      await connection.refresh();
       await connection.receive({
         type: 'scrolled',
         root: repository.root,
@@ -1343,12 +1281,6 @@ suite('View', function () {
     test('shows a detached HEAD as a bubble on its commit', async () => {
       await repository.git('checkout', '--detach', fixture.b);
       try {
-        await settle(repository.root);
-        const opened = await openedRepository(repository.root);
-        await waitFor(
-          () => opened.state.HEAD?.commit === fixture.b,
-          'the Git extension to see the detached HEAD',
-        );
         page.clear();
         await connection.refresh();
         const info = page.last('repository');
@@ -1467,7 +1399,7 @@ suite('View', function () {
         await repository.git('reset', '--hard', 'main~1');
         await repository.git('checkout', 'main');
         fs.writeFileSync(clash, 'mine');
-        await settle(repository.root, connection);
+        await connection.refresh();
         await withMessageStub('showErrorMessage', async (messages) => {
           await connection.receive({
             type: 'checkout',
@@ -1531,7 +1463,7 @@ suite('View', function () {
         await repository.commit('apart only');
         await repository.git('checkout', 'main');
         await repository.git('update-ref', 'refs/remotes/origin/apart', 'main');
-        await settle(repository.root, connection);
+        await connection.refresh();
         await withMessageStub('showInformationMessage', async (messages) => {
           await connection.receive({
             type: 'checkout',
@@ -1561,7 +1493,7 @@ suite('View', function () {
 
     setup(async () => {
       tabs = await openView(log, [repository.root, other]);
-      await settle(repository.root, tabs.connection);
+      await tabs.connection.refresh();
     });
 
     teardown(() => tabs.connection.dispose());
@@ -1574,7 +1506,6 @@ suite('View', function () {
         offset: 7,
       });
       await tabs.connection.receive({ type: 'selectTab', root: other });
-      await settle(repository.root);
       tabs.page.clear();
       await tabs.connection.receive({
         type: 'selectTab',
@@ -1627,7 +1558,7 @@ suite('View', function () {
       ).trim();
       await repository.git('branch', 'side', side);
       try {
-        await settle(repository.root, tabs.connection);
+        await tabs.connection.refresh();
         assert.strictEqual(tabs.page.last('commits')?.total, 4);
         await tabs.connection.receive({ type: 'selectTab', root: other });
         await tabs.connection.receive({ type: 'setSolo', solo: true });
@@ -1924,7 +1855,6 @@ suite('View', function () {
 
     test('uses a repository cloned inside another, not the outer one', async () => {
       const outer = await tempRepository(path.join(folder, 'outer'));
-      await (await getGitApi()).openRepository(vscode.Uri.file(outer.root));
       const nested = await tempRepository(path.join(outer.root, 'nested'), {
         branch: 'inner',
       });
@@ -2163,7 +2093,7 @@ suite('Fetch', function () {
     const [fetched] = await elsewhere.resolve('HEAD');
     page.clear();
     try {
-      await (await openedRepository(repository.root)).fetch();
+      await repository.git('fetch');
       await waitFor(
         () =>
           page
@@ -2175,8 +2105,38 @@ suite('Fetch', function () {
       );
     } finally {
       await repository.git('merge', '--ff-only', 'origin/main');
-      await settle(repository.root, connection);
+      await connection.refresh();
     }
+  });
+
+  test('updates by itself when a file changes in the working tree', async () => {
+    page.clear();
+    fs.writeFileSync(path.join(repository.root, 'edited.txt'), 'edited\n');
+    try {
+      await waitFor(
+        () => page.last('workingTree')?.files === 1,
+        'the changed file to show',
+      );
+    } finally {
+      fs.rmSync(path.join(repository.root, 'edited.txt'));
+      await waitFor(
+        () => page.last('workingTree')?.files === 0,
+        'the removed file to go',
+      );
+    }
+  });
+
+  test('leaves ignored files changing alone', async () => {
+    fs.writeFileSync(
+      path.join(repository.root, '.git', 'info', 'exclude'),
+      'build/\n',
+    );
+    fs.mkdirSync(path.join(repository.root, 'build'));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    page.clear();
+    fs.writeFileSync(path.join(repository.root, 'build', 'out.txt'), 'built\n');
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    assert.strictEqual(page.last('workingTree'), undefined);
   });
 
   test('fetches every remote, dropping branches deleted there', async () => {

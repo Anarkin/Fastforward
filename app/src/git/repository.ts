@@ -1,40 +1,107 @@
-import * as vscode from 'vscode';
+import * as path from 'node:path';
 import type { RefInfo } from '../shared/protocol';
-import type { API, GitExtension, Repository } from './git';
-import { RefType } from './refType';
+import type { Head } from '../refs';
+import { runGit, splitNul } from './run';
 
-export async function getGitApi(): Promise<API> {
-  const extension = vscode.extensions.getExtension<GitExtension>('vscode.git');
-  if (!extension) {
-    throw new Error('The built-in Git extension is not available');
+export interface Refs {
+  readonly head: Head | undefined;
+  readonly refs: readonly RefInfo[];
+}
+
+export async function repositoryRoot(
+  gitPath: string,
+  folder: string,
+): Promise<string | undefined> {
+  try {
+    const up = (
+      await runGit(gitPath, folder, ['rev-parse', '--show-cdup'])
+    ).trim();
+    return path.resolve(folder, up);
+  } catch {
+    return undefined;
   }
-  const exports = extension.isActive
-    ? extension.exports
-    : await extension.activate();
-  return exports.getAPI(1);
 }
 
-export function pickRepository(git: API): Repository | undefined {
-  const active = vscode.window.activeTextEditor?.document.uri;
-  return (active && git.getRepository(active)) ?? git.repositories[0];
+export async function readRefs(gitPath: string, root: string): Promise<Refs> {
+  const [head, refs] = await Promise.all([
+    readHead(gitPath, root),
+    listRefs(gitPath, root),
+  ]);
+  return { head, refs };
 }
 
-export async function listRefs(repository: Repository): Promise<RefInfo[]> {
-  const refs = await repository.getRefs({});
-  return refs.flatMap((ref): RefInfo[] => {
-    if (!ref.name || !ref.commit) {
+export async function readHead(
+  gitPath: string,
+  root: string,
+): Promise<Head | undefined> {
+  const [branch, commit] = await Promise.all([
+    runGit(gitPath, root, ['symbolic-ref', '-q', '--short', 'HEAD'], {
+      okExitCodes: [0, 1],
+    }),
+    runGit(gitPath, root, ['rev-parse', '-q', '--verify', 'HEAD^{commit}'], {
+      okExitCodes: [0, 1],
+    }),
+  ]);
+  const name = branch.trim() || undefined;
+  const hash = commit.trim() || undefined;
+  return name || hash ? { name, commit: hash } : undefined;
+}
+
+async function listRefs(gitPath: string, root: string): Promise<RefInfo[]> {
+  const output = await runGit(gitPath, root, [
+    'for-each-ref',
+    '--format=%(refname)%00%(objectname)%00%(*objectname)',
+    'refs/heads',
+    'refs/remotes',
+    'refs/tags',
+  ]);
+  return output.split('\n').flatMap((line): RefInfo[] => {
+    const [refname, object, peeled] = splitNul(line);
+    if (!refname || !object) {
       return [];
     }
-    const type: number = ref.type;
-    if (type === RefType.RemoteHead && ref.name.endsWith('/HEAD')) {
-      return [];
+    const commit = peeled || object;
+    if (refname.startsWith('refs/heads/')) {
+      return [
+        { kind: 'branch', name: refname.slice('refs/heads/'.length), commit },
+      ];
     }
-    const kind =
-      type === RefType.Head
-        ? 'branch'
-        : type === RefType.RemoteHead
-          ? 'remote'
-          : 'tag';
-    return [{ kind, name: ref.name, commit: ref.commit }];
+    if (refname.startsWith('refs/remotes/')) {
+      const name = refname.slice('refs/remotes/'.length);
+      return name.endsWith('/HEAD') ? [] : [{ kind: 'remote', name, commit }];
+    }
+    return [{ kind: 'tag', name: refname.slice('refs/tags/'.length), commit }];
   });
+}
+
+export async function checkoutRef(
+  gitPath: string,
+  root: string,
+  ref: string,
+): Promise<void> {
+  await runGit(gitPath, root, ['checkout', '-q', ref, '--']);
+}
+
+export async function checkoutNewBranch(
+  gitPath: string,
+  root: string,
+  branch: string,
+  upstream: string,
+): Promise<void> {
+  await runGit(gitPath, root, [
+    'checkout',
+    '-q',
+    '--track',
+    '-b',
+    branch,
+    upstream,
+    '--',
+  ]);
+}
+
+export async function fetchAllRemotes(
+  gitPath: string,
+  root: string,
+): Promise<void> {
+  await runGit(gitPath, root, ['fetch', '--all', '--prune']);
 }

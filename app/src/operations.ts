@@ -1,14 +1,17 @@
 import * as vscode from 'vscode';
 import { aheadBehind, fastForward } from './git/branches';
 import { gitErrorText } from './git/errorText';
-import type { Repository } from './git/git';
-import { listRefs } from './git/repository';
+import {
+  checkoutNewBranch,
+  checkoutRef,
+  fetchAllRemotes,
+  readRefs,
+} from './git/repository';
 import type { CheckoutTarget } from './shared/protocol';
 import { hasRef, withoutRemote } from './shared/refNames';
 
 export interface RepositoryAt {
   readonly gitPath: string;
-  readonly repository: Repository;
   readonly root: string;
 }
 
@@ -17,21 +20,22 @@ export async function checkout(
   at: RepositoryAt,
   target: CheckoutTarget,
 ): Promise<boolean> {
-  const { repository } = at;
+  const { gitPath, root } = at;
   const label = target.kind === 'commit' ? target.hash : target.name;
   try {
     if (target.kind === 'remote') {
       const local = withoutRemote(target.name);
-      const refs = await listRefs(repository);
+      const { refs } = await readRefs(gitPath, root);
       if (hasRef(refs, { kind: 'branch', name: local })) {
-        await repository.checkout(local);
+        await checkoutRef(gitPath, root, local);
         await catchUp(log, at, local, target.name);
       } else {
-        await repository.createBranch(local, true, target.name);
-        await repository.setBranchUpstream(local, target.name);
+        await checkoutNewBranch(gitPath, root, local, target.name);
       }
     } else {
-      await repository.checkout(
+      await checkoutRef(
+        gitPath,
+        root,
         target.kind === 'commit'
           ? target.hash
           : target.kind === 'tag'
@@ -89,10 +93,10 @@ async function catchUp(
 
 export async function fetchAll(
   log: vscode.LogOutputChannel,
-  repository: Repository,
+  { gitPath, root }: RepositoryAt,
 ): Promise<void> {
   try {
-    await repository.fetch({ all: true, prune: true });
+    await fetchAllRemotes(gitPath, root);
     log.info('Fetched every remote');
   } catch (error) {
     reportFailure(log, 'fetch failed', "couldn't fetch.", error);

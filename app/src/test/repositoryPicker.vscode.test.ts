@@ -1,7 +1,6 @@
 import * as assert from 'node:assert';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import type { API } from '../git/git';
 import { pickRepositories } from '../repositoryPicker';
 import { Storage } from '../storage';
 import { FakeMemento } from './memento';
@@ -13,16 +12,14 @@ const inside = fsPath(path.join(repo, 'src'));
 const other = fsPath(path.resolve('other'));
 const gone = fsPath(path.resolve('gone'));
 
-const getRepositoryRoot = (uri: vscode.Uri) =>
+const rootOf = (folder: string) =>
   Promise.resolve(
-    uri.fsPath === repo || uri.fsPath === inside
-      ? vscode.Uri.file(repo)
-      : uri.fsPath === other
-        ? vscode.Uri.file(other)
-        : null,
+    folder === repo || folder === inside
+      ? repo
+      : folder === other
+        ? other
+        : undefined,
   );
-// oxlint-disable-next-line typescript/no-unsafe-type-assertion
-const git = { getRepositoryRoot } as unknown as API;
 
 interface Picked {
   readonly roots: string[];
@@ -51,7 +48,7 @@ async function pick(
     return Promise.resolve(folders?.map((folder) => vscode.Uri.file(folder)));
   });
   try {
-    const roots = await pickRepositories(git, storage);
+    const roots = await pickRepositories(rootOf, storage);
     return { roots, items, dialogs };
   } finally {
     Reflect.set(vscode.window, 'showQuickPick', showQuickPick);

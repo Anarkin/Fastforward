@@ -3,10 +3,7 @@ import { execFile } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import * as vscode from 'vscode';
-import type { Repository } from '../git/git';
-import { getGitApi } from '../git/repository';
-import type { Connection } from '../view';
+import { findGit } from '../git/locate';
 
 export interface TempRepository {
   readonly root: string;
@@ -23,7 +20,7 @@ export function tempFolder(name: string): string {
 }
 
 // Best effort, because git's read-only object files can't always be removed on
-// Windows, and the Git extension keeps reading a repository it opened
+// Windows
 export function removeFolder(folder: string): void {
   try {
     fs.rmSync(folder, { recursive: true, force: true });
@@ -34,7 +31,7 @@ export async function tempRepository(
   root: string,
   { branch = 'main', bare = false } = {},
 ): Promise<TempRepository> {
-  const gitPath = (await getGitApi()).git.path;
+  const gitPath = await installedGit();
   fs.mkdirSync(root, { recursive: true });
   let minute = 0;
   const git = (...args: string[]): Promise<string> => {
@@ -83,17 +80,12 @@ export async function tempRepository(
   };
 }
 
-export async function openedRepository(root: string): Promise<Repository> {
-  const opened = (await getGitApi()).getRepository(vscode.Uri.file(root));
-  assert.ok(opened, `${root} not opened`);
-  return opened;
-}
+let gitPath: Promise<string> | undefined;
 
-export async function settle(
-  root: string,
-  connection?: Connection,
-): Promise<void> {
-  const git = await getGitApi();
-  await git.getRepository(vscode.Uri.file(root))?.status();
-  await connection?.refresh();
+export function installedGit(): Promise<string> {
+  gitPath ??= findGit().then((git) => {
+    assert.ok(git.kind === 'found', 'git 2.31 or later is not installed');
+    return git.path;
+  });
+  return gitPath;
 }
