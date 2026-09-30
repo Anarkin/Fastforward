@@ -551,6 +551,26 @@ suite('View', function () {
         hash: 'abcdef0',
       });
       assert.match(page.last('error')?.message ?? '', /No commit abcdef0/);
+      await connection.receive({
+        type: 'jump',
+        root: repository.root,
+        hash: fixture.a.slice(0, 7).toUpperCase(),
+      });
+      assert.strictEqual(page.last('reveal')?.hash, fixture.a);
+    });
+
+    test('does not jump to a branch named like a short hash', async () => {
+      await repository.git('branch', 'fade', fixture.a);
+      try {
+        await connection.receive({
+          type: 'jump',
+          root: repository.root,
+          hash: 'fade',
+        });
+        assert.match(page.last('error')?.message ?? '', /No commit fade/);
+      } finally {
+        await repository.git('branch', '-D', 'fade');
+      }
     });
 
     test('goes back and forward through the commits shown', async () => {

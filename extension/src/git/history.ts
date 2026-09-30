@@ -15,23 +15,6 @@ export async function headCommit(
   return output.trim() || undefined;
 }
 
-export async function commitOf(
-  gitPath: string,
-  cwd: string,
-  prefix: string,
-): Promise<string | undefined> {
-  if (!isHashPrefix(prefix)) {
-    return undefined;
-  }
-  const output = await runGit(
-    gitPath,
-    cwd,
-    ['rev-parse', '--verify', '--quiet', `${prefix}^{commit}`],
-    { okExitCodes: [0, 1, 128] },
-  );
-  return output.trim() || undefined;
-}
-
 export async function commitsStartingWith(
   gitPath: string,
   cwd: string,
