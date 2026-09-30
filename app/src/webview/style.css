@@ -1152,6 +1152,7 @@ body.resizing {
   background:
     linear-gradient(var(--hover-background), var(--hover-background)),
     var(--color-border);
+  border-color: transparent;
 }
 
 .address-text {
