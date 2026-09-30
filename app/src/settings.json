@@ -30,6 +30,7 @@
       "focus-selected": "18%",
 
       "bubble": "#0069cc",
+      "bubble-foreground": "#202020",
       "bubble-rest": "25%",
       "bubble-hover": "40%",
       "bubble-checked-out": "#0069cc",
@@ -71,6 +72,7 @@
       "focus-selected": "35%",
 
       "bubble": "#3994bcb3",
+      "bubble-foreground": "#bfbfbf",
       "bubble-rest": "35%",
       "bubble-hover": "60%",
       "bubble-checked-out": "#3994bcb3",

@@ -551,7 +551,7 @@ body.resizing {
   padding: 0 6px;
   font-style: normal;
   white-space: nowrap;
-  color: var(--color-foreground);
+  color: var(--color-bubble-foreground);
   background: color-mix(
     in srgb,
     var(--color-bubble) var(--color-bubble-rest),
