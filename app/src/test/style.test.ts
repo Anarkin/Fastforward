@@ -257,4 +257,15 @@ suite('Style', () => {
     assert.ok(columns.includes('gap: var(--gutter-width);'));
     assert.match(declarationsOf('.columns.commits-hidden'), /padding-left: 0;/);
   });
+
+  test('keeps the arrow cursor of a desktop app, but for resizing and typing', () => {
+    assert.deepStrictEqual(
+      [
+        ...new Set(
+          [...css.matchAll(/cursor: ([^;]+);/g)].map((match) => match[1]),
+        ),
+      ],
+      ['col-resize', 'text'],
+    );
+  });
 });
