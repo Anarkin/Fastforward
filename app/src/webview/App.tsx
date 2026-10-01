@@ -15,6 +15,7 @@ import {
   type ToWebview,
   type Bookmark,
   type DiffLayout,
+  type TextRequest,
 } from '../shared/protocol';
 import { CheckedOutBranch, DetachedHead } from './bubbles';
 import { checkoutCommit, checkoutOptions, checkoutRef } from './checkout';
@@ -97,6 +98,7 @@ export function App({ post, listen }: Props) {
     diffs,
     fileContent,
     largeFiles,
+    texts,
     fetching,
     applyingSolo,
     back,
@@ -281,6 +283,15 @@ export function App({ post, listen }: Props) {
     (file: string) => {
       if (hash) {
         postTab({ type: 'loadFileDiff', hash, path: file, diff: diffs });
+      }
+    },
+    [hash, diffs, postTab],
+  );
+
+  const loadTexts = useCallback(
+    (requests: TextRequest[]) => {
+      if (hash) {
+        postTab({ type: 'loadTexts', hash, diff: diffs, texts: requests });
       }
     },
     [hash, diffs, postTab],
@@ -575,6 +586,8 @@ export function App({ post, listen }: Props) {
                     loading={patchLoading || opening}
                     largeFiles={largeFiles}
                     onLoadFile={loadFileDiff}
+                    texts={texts}
+                    onLoadTexts={loadTexts}
                     files={files}
                     patch={patch}
                     diffs={diffs}

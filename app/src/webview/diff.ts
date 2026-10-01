@@ -11,11 +11,17 @@ interface DiffHunk {
   readonly lines: DiffLine[];
 }
 
+interface Blobs {
+  readonly old: string | undefined;
+  readonly new: string | undefined;
+}
+
 export interface DiffFile {
   readonly path: string;
   readonly binary: boolean;
   readonly hunks: DiffHunk[];
   readonly placeholder?: { readonly lines: number };
+  readonly blobs?: Blobs;
 }
 
 interface ParsedFile {
@@ -23,9 +29,18 @@ interface ParsedFile {
   path: string;
   binary: boolean;
   hunks: DiffHunk[];
+  blobs?: Blobs;
+}
+
+export function textKey(path: string, side: 'old' | 'new'): string {
+  return `${side}:${path}`;
 }
 
 const hunkHeader = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/;
+
+const indexLine = /^index ([0-9a-f]+)\.\.([0-9a-f]+)/;
+
+const blob = (id: string) => (/^0+$/.test(id) ? undefined : id);
 
 const escapes: Record<string, number> = {
   a: 7,
@@ -124,7 +139,10 @@ export function parsePatch(patch: string): DiffFile[] {
       continue;
     }
     if (!hunk) {
-      if (line.startsWith('Binary files ')) {
+      const index = indexLine.exec(line);
+      if (index) {
+        file.blobs = { old: blob(index[1]), new: blob(index[2]) };
+      } else if (line.startsWith('Binary files ')) {
         file.binary = true;
       } else if (line.startsWith('rename to ') || line.startsWith('copy to ')) {
         file.path = unquotePath(line.slice(line.indexOf(' to ') + 4));
@@ -161,5 +179,7 @@ export function parsePatch(patch: string): DiffFile[] {
       });
     }
   }
-  return files.map(({ path, binary, hunks }) => ({ path, binary, hunks }));
+  return files.map(({ path, binary, hunks, blobs }) =>
+    blobs ? { path, binary, hunks, blobs } : { path, binary, hunks },
+  );
 }

@@ -7,7 +7,7 @@ import type {
   ToWebviewOf,
 } from '../shared/protocol';
 import { CommitHistory } from './commitHistory';
-import { parseFilePatch, type DiffFile } from './diff';
+import { parseFilePatch, textKey, type DiffFile } from './diff';
 import type { WholeFile } from './diffView';
 
 export interface TabView {
@@ -26,6 +26,7 @@ export interface TabView {
   readonly diffs: number;
   readonly fileContent: WholeFile | undefined;
   readonly largeFiles: ReadonlyMap<string, DiffFile>;
+  readonly texts: ReadonlyMap<string, string>;
   readonly tree: ToWebviewOf<'tree'> | undefined;
   readonly treeRequested: string | undefined;
   readonly fetching: boolean;
@@ -53,6 +54,7 @@ export const emptyTabView: TabView = {
   diffs: 0,
   fileContent: undefined,
   largeFiles: new Map(),
+  texts: new Map(),
   tree: undefined,
   treeRequested: undefined,
   fetching: false,
@@ -82,6 +84,7 @@ function selected(state: TabView, hash: string | undefined): TabView {
     patch: '',
     fileContent: undefined,
     largeFiles: new Map(),
+    texts: new Map(),
     treeRequested: hash === state.hash ? state.treeRequested : undefined,
     error: undefined,
   };
@@ -112,6 +115,7 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
         patch: '',
         fileContent: undefined,
         largeFiles: new Map(),
+        texts: new Map(),
         error: undefined,
       };
     case 'repository':
@@ -176,6 +180,7 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
         patchLoading: false,
         fileContent: undefined,
         largeFiles: new Map(),
+        texts: new Map(),
       };
     case 'fileDiff':
       return action.hash === state.hash && action.diff === state.diffs
@@ -185,6 +190,20 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
               action.path,
               parseFilePatch(action.path, action.patch),
             ),
+          }
+        : state;
+    case 'texts':
+      return action.hash === state.hash && action.diff === state.diffs
+        ? {
+            ...state,
+            texts: new Map([
+              ...state.texts,
+              ...action.texts.flatMap(({ path, side, text }) =>
+                text === undefined
+                  ? []
+                  : [[textKey(path, side), text] as const],
+              ),
+            ]),
           }
         : state;
     case 'fileContent':

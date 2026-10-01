@@ -118,6 +118,7 @@ suite('Word diff', () => {
       <>
         {marked(
           'let sum = 1',
+          [],
           [{ start: 4, end: 7 }],
           'word-added',
           [{ start: 5, end: 9 }],
@@ -130,7 +131,7 @@ suite('Word diff', () => {
       'let <span class="word-added">s</span><span class="word-added"><mark class="find-match current">um</mark></span><mark class="find-match current"> =</mark> 1',
     );
     assert.strictEqual(
-      marked('plain', [], 'word-added', [], undefined),
+      marked('plain', [], [], 'word-added', [], undefined),
       'plain',
     );
   });

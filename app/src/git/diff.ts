@@ -5,6 +5,7 @@ export const diffArgs = [
   '--no-color',
   '--no-ext-diff',
   '--no-textconv',
+  '--full-index',
   '--src-prefix=a/',
   '--dst-prefix=b/',
 ];

@@ -127,6 +127,12 @@ export interface ScrollTarget {
   readonly offset?: number;
 }
 
+export interface TextRequest {
+  readonly path: string;
+  readonly side: 'old' | 'new';
+  readonly blob: string;
+}
+
 export type ToHost =
   | { readonly type: 'ready' }
   | { readonly type: 'selectTab'; readonly root: string }
@@ -162,6 +168,12 @@ export type TabMessage =
       readonly hash: string;
       readonly path: string;
       readonly diff: number;
+    }
+  | {
+      readonly type: 'loadTexts';
+      readonly hash: string;
+      readonly diff: number;
+      readonly texts: readonly TextRequest[];
     }
   | { readonly type: 'jump'; readonly hash: string }
   | { readonly type: 'checkout'; readonly target: CheckoutTarget }
@@ -270,6 +282,14 @@ export type ToWebview =
       readonly path: string;
       readonly patch: string;
       readonly diff: number;
+    }
+  | {
+      readonly type: 'texts';
+      readonly hash: string;
+      readonly diff: number;
+      readonly texts: readonly (TextRequest & {
+        readonly text: string | undefined;
+      })[];
     }
   | {
       readonly type: 'tree';

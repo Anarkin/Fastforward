@@ -45,6 +45,44 @@ function submoduleContent(hash: string | undefined): FileContent {
   };
 }
 
+const batchInput = (list: readonly string[]) =>
+  list.map((id) => `${id}\n`).join('');
+
+export async function readBlobs(
+  gitPath: string,
+  cwd: string,
+  ids: readonly string[],
+): Promise<Map<string, string>> {
+  const texts = new Map<string, string>();
+  const checked =
+    ids.length === 0
+      ? ''
+      : await runGit(gitPath, cwd, ['cat-file', '--batch-check'], {
+          input: batchInput(ids),
+        });
+  const small = checked.split('\n').flatMap((line) => {
+    const [id, type, size] = line.split(' ');
+    return type === 'blob' && Number(size) <= maxFileSize ? [id] : [];
+  });
+  if (small.length === 0) {
+    return texts;
+  }
+  const output = await runGitBytes(gitPath, cwd, ['cat-file', '--batch'], {
+    input: batchInput(small),
+  });
+  let at = 0;
+  while (at < output.length) {
+    const end = output.indexOf(10, at);
+    const [id, , size] = output.subarray(at, end).toString('utf8').split(' ');
+    const content = output.subarray(end + 1, end + 1 + Number(size));
+    at = end + 2 + Number(size);
+    if (!isBinary(content)) {
+      texts.set(id, content.toString('utf8'));
+    }
+  }
+  return texts;
+}
+
 export async function readFile(
   gitPath: string,
   cwd: string,

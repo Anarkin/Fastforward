@@ -3,10 +3,11 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { aheadBehind, remoteDefaultBranches } from '../git/branches';
 import { showPatch } from '../git/diff';
-import { listTree, readFile } from '../git/files';
+import { listTree, maxFileSize, readBlobs, readFile } from '../git/files';
 import { headCommit, listHistory } from '../git/history';
 import { workingTreeFiles, workingTreePatch } from '../git/workingTree';
 import { isLargeChange } from '../shared/protocol';
+import { parsePatch } from '../webview/diff';
 import {
   removeFolder,
   tempFolder,
@@ -552,5 +553,41 @@ suite('Large files and submodules', function () {
     await repository.git('config', 'diff.submodule', 'log');
     const patch = await showPatch(gitPath, cwd, 'HEAD', { path: 'sub' });
     assert.ok(patch.includes(`-Subproject commit ${inner}`), patch);
+  });
+});
+
+suite('Blobs', function () {
+  this.timeout(20_000);
+
+  test('reads both sides of the files a patch changes by their full ids, leaving out what is missing, binary or too large', async () => {
+    const folder = tempFolder('blobs');
+    try {
+      const repository = await tempRepository(folder);
+      const { gitPath, root } = repository;
+      await repository.commit('first', {
+        'a.ts': 'one\n',
+        'image.png': Buffer.from([0, 1, 2]).toString('latin1'),
+        'large.txt': 'x'.repeat(maxFileSize + 1),
+      });
+      await repository.commit('second', {
+        'a.ts': 'two\n',
+        'image.png': Buffer.from([0, 3]).toString('latin1'),
+        'large.txt': 'y'.repeat(maxFileSize + 1),
+      });
+      const files = parsePatch(await showPatch(gitPath, root, 'HEAD'));
+      const [a, image, large] = files.map((file) => file.blobs);
+      const texts = await readBlobs(gitPath, root, [
+        a?.old ?? '',
+        a?.new ?? '',
+        image?.new ?? '',
+        large?.new ?? '',
+        'f'.repeat(40),
+      ]);
+      assert.deepStrictEqual([...texts.values()], ['one\n', 'two\n']);
+      assert.strictEqual(texts.get(a?.new ?? ''), 'two\n');
+      assert.deepStrictEqual(await readBlobs(gitPath, root, []), new Map());
+    } finally {
+      removeFolder(folder);
+    }
   });
 });
