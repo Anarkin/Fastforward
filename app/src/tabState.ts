@@ -165,8 +165,23 @@ export function commitsMessage(
     graph: tab.graph.rows(start, commits.length),
     workingTreeGraph: tab.graph.workingTreeRow,
     selectedIndex: tab.index,
+    keysFrom: keysFrom(tab),
     scrollTarget,
   };
+}
+
+function keysFrom(tab: TabState): number | undefined {
+  const { hash } = tab;
+  if (
+    tab.index !== undefined ||
+    hash === undefined ||
+    !tab.inHistory.has(hash)
+  ) {
+    return undefined;
+  }
+  return mergesHidingCommit(tab, hash)
+    .map((merge) => tab.positions.get(merge))
+    .find((index) => index !== undefined);
 }
 
 export function expandMerges(
@@ -252,6 +267,7 @@ export function replayOf(tab: TabState): ToWebview[] {
     shown.commits && {
       ...shown.commits,
       selectedIndex: tab.index,
+      keysFrom: keysFrom(tab),
       scrollTarget: anchorOf(tab) ?? indexTarget(tab.index),
     },
     shown.workingTree,

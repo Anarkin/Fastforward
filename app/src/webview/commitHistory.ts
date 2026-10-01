@@ -20,6 +20,7 @@ export class CommitHistory {
     readonly workingTreeGraph?: GraphRow,
     readonly generation = 0,
     readonly selectedIndex?: number,
+    readonly keysFrom?: number,
   ) {
     this.refCounts = new Map(decorations);
   }

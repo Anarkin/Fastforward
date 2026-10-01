@@ -134,6 +134,7 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
         action.workingTreeGraph,
         action.generation,
         action.selectedIndex,
+        action.keysFrom,
       );
       history.add(action.start, action.commits, action.graph);
       return {

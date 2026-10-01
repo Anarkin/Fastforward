@@ -335,6 +335,13 @@ suite('Commit list keys', () => {
     assert.strictEqual(press('End', moved, 'c', true), undefined);
   });
 
+  test('goes on from the merge the selected commit is hidden in', () => {
+    const history = new CommitHistory(3, [], undefined, 0, undefined, 0);
+    history.add(0, [commitInfo('m'), commitInfo('n'), commitInfo('o')]);
+    assert.strictEqual(press('ArrowDown', history, 'hidden', false), 1);
+    assert.strictEqual(press('End', history, 'hidden', false), 2);
+  });
+
   test('steps from a revealed commit before its page loads', () => {
     const history = new CommitHistory(1000);
     history.locate('c', 500);
