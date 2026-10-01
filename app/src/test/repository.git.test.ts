@@ -2,7 +2,12 @@ import * as assert from 'node:assert';
 import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { readHead, readRefs, repositoryRoot } from '../git/repository';
+import {
+  fetchAllRemotes,
+  readHead,
+  readRefs,
+  repositoryRoot,
+} from '../git/repository';
 import { showFiles, showPatch } from '../git/diff';
 import {
   commitsStartingWith,
@@ -325,6 +330,22 @@ suite('Git repository', function () {
       assert.ok(!excluded.includes('b/[ab].md'), excluded);
     } finally {
       await temp.git('reset', '--hard', rename);
+    }
+  });
+
+  test('gives up on a fetch that stalls', async () => {
+    await temp.git('remote', 'add', 'stalled', 'ssh://stalled.invalid/x');
+    await temp.git('config', 'core.sshCommand', "sh -c 'sleep 15' --");
+    try {
+      const started = performance.now();
+      await assert.rejects(
+        fetchAllRemotes(gitPath, cwd, 500),
+        /git fetch timed out/,
+      );
+      assert.ok(performance.now() - started < 5000);
+    } finally {
+      await temp.git('config', '--unset', 'core.sshCommand');
+      await temp.git('remote', 'remove', 'stalled');
     }
   });
 

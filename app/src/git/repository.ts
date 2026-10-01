@@ -113,9 +113,23 @@ export async function checkoutNewBranch(
   ]);
 }
 
+const fetchTimeout = 5 * 60_000;
+
 export async function fetchAllRemotes(
   gitPath: string,
   root: string,
+  timeout = fetchTimeout,
 ): Promise<void> {
-  await runGit(gitPath, root, ['fetch', '--all', '--prune']);
+  const signal = AbortSignal.timeout(timeout);
+  try {
+    await runGit(gitPath, root, ['fetch', '--all', '--prune'], { signal });
+  } catch (error) {
+    if (signal.aborted) {
+      throw new Error(
+        `git fetch timed out after ${Math.round(timeout / 1000)} seconds`,
+        { cause: error },
+      );
+    }
+    throw error;
+  }
 }
