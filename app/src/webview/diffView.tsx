@@ -152,10 +152,13 @@ export function splitSideClass(
 
 export function sideScroll(
   scroll: number,
-  delta: number,
+  deltas: readonly number[],
   widest: number,
 ): number {
-  return Math.max(0, Math.min(widest, scroll + delta));
+  return deltas.reduce(
+    (scrolled, delta) => Math.max(0, Math.min(widest, scrolled + delta)),
+    scroll,
+  );
 }
 
 export function wheelSideways(
@@ -674,12 +677,10 @@ export function DiffView({
     if (!element || !split) {
       return undefined;
     }
-    const onWheel = (event: WheelEvent) => {
-      const delta = wheelSideways(event);
-      if (delta === 0) {
-        return;
-      }
-      event.preventDefault();
+    let deltas: number[] = [];
+    let frame: number | undefined;
+    const scroll = () => {
+      frame = undefined;
       const widest = Math.max(
         0,
         ...Array.from(
@@ -690,10 +691,26 @@ export function DiffView({
               : 0) - code.clientWidth,
         ),
       );
-      setSideways((scroll) => sideScroll(scroll, delta, widest));
+      const ticks = deltas;
+      deltas = [];
+      setSideways((scrolled) => sideScroll(scrolled, ticks, widest));
+    };
+    const onWheel = (event: WheelEvent) => {
+      const delta = wheelSideways(event);
+      if (delta === 0) {
+        return;
+      }
+      event.preventDefault();
+      deltas.push(delta);
+      frame ??= requestAnimationFrame(scroll);
     };
     element.addEventListener('wheel', onWheel, { passive: false });
-    return () => element.removeEventListener('wheel', onWheel);
+    return () => {
+      element.removeEventListener('wheel', onWheel);
+      if (frame !== undefined) {
+        cancelAnimationFrame(frame);
+      }
+    };
   }, [split]);
   const [toggled, setToggled] = useState<ReadonlyMap<string, boolean>>(
     new Map(),

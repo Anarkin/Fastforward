@@ -152,9 +152,16 @@ suite('Side-by-side diff', () => {
       wheelSideways({ deltaX: 5, deltaY: 20, shiftKey: false }),
       0,
     );
-    assert.strictEqual(sideScroll(0, 30, 100), 30);
-    assert.strictEqual(sideScroll(90, 30, 100), 100);
-    assert.strictEqual(sideScroll(10, -30, 100), 0);
-    assert.strictEqual(sideScroll(0, 30, 0), 0);
+    assert.strictEqual(sideScroll(0, [30], 100), 30);
+    assert.strictEqual(sideScroll(90, [30], 100), 100);
+    assert.strictEqual(sideScroll(10, [-30], 100), 0);
+    assert.strictEqual(sideScroll(0, [30], 0), 0);
+  });
+
+  test('scrolls sideways by the wheel ticks of a frame at once, each in turn stopping at either end', () => {
+    assert.strictEqual(sideScroll(0, [30, 30], 100), 60);
+    assert.strictEqual(sideScroll(0, [-40, 40], 100), 40);
+    assert.strictEqual(sideScroll(90, [30, -30], 100), 70);
+    assert.strictEqual(sideScroll(50, [], 100), 50);
   });
 });
