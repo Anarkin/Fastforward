@@ -10,7 +10,7 @@ import {
 } from './git/repository';
 import type { CheckoutTarget } from './shared/protocol';
 import { shortHash } from './shared/hashes';
-import { hasRef, withoutRemote } from './shared/refNames';
+import { findRef, hasRef, withoutRemote } from './shared/refNames';
 import type { Log } from './log';
 
 export type Notify = (level: 'info' | 'error', message: string) => void;
@@ -31,8 +31,11 @@ export async function checkout(
   try {
     const before = await readHead(gitPath, root);
     if (target.kind === 'remote') {
-      const local = withoutRemote(target.name);
       const { refs } = await readRefs(gitPath, root);
+      const local = withoutRemote(
+        target.name,
+        findRef(refs, { kind: 'remote', name: target.name })?.remote,
+      );
       if (hasRef(refs, { kind: 'branch', name: local })) {
         await switchToBranch(gitPath, root, local);
         await catchUp(log, notify, at, local, target.name);

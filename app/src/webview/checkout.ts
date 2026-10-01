@@ -32,9 +32,9 @@ function cannotCheckOut(
   if (ref.kind === 'tag') {
     return false;
   }
-  const local = withoutRemote(ref.name);
-  const localRef = findRef(refs, { kind: 'branch', name: local });
   const remoteRef = findRef(refs, { kind: 'remote', name: ref.name });
+  const local = withoutRemote(ref.name, remoteRef?.remote);
+  const localRef = findRef(refs, { kind: 'branch', name: local });
   return local === head && localRef?.commit === remoteRef?.commit;
 }
 

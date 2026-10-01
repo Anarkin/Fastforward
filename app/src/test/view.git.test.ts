@@ -1589,6 +1589,27 @@ suite('View', function () {
       }
     });
 
+    test('checks out a remote branch of a remote with a slash in its name as a branch of the same name', async () => {
+      await repository.git('remote', 'add', 'team/fork', repository.root);
+      await repository.git(
+        'update-ref',
+        'refs/remotes/team/fork/forked',
+        'main~1',
+      );
+      try {
+        await connection.receive({
+          type: 'checkout',
+          root: repository.root,
+          target: { kind: 'remote', name: 'team/fork/forked' },
+        });
+        assert.strictEqual(page.last('repository')?.head, 'forked');
+      } finally {
+        await restore();
+        await repository.git('branch', '-D', 'forked').catch(() => '');
+        await repository.git('remote', 'remove', 'team/fork');
+      }
+    });
+
     test('checks out a remote branch as a new branch, even with a tag of its name', async () => {
       await repository.git('remote', 'add', 'origin', repository.root);
       await repository.git('update-ref', 'refs/remotes/origin/clash', 'main~1');

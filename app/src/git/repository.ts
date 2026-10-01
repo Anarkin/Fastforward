@@ -23,11 +23,13 @@ export async function repositoryRoot(
 }
 
 export async function readRefs(gitPath: string, root: string): Promise<Refs> {
-  const [head, refs] = await Promise.all([
+  const [head, refs, remotes] = await Promise.all([
     readHead(gitPath, root),
     listRefs(gitPath, root),
+    runGit(gitPath, root, ['remote']),
   ]);
-  return { head, refs };
+  const names = remotes.split('\n').filter(Boolean);
+  return { head, refs: refs.map((ref) => withRemote(ref, names)) };
 }
 
 export async function readHead(
@@ -48,6 +50,20 @@ export async function readHead(
     : undefined;
   const hash = commit.trim() || undefined;
   return name || hash ? { name, commit: hash } : undefined;
+}
+
+function withRemote(ref: RefInfo, remotes: readonly string[]): RefInfo {
+  if (ref.kind !== 'remote') {
+    return ref;
+  }
+  const remote = remotes
+    .filter((name) => ref.name.startsWith(`${name}/`))
+    .reduce<string | undefined>(
+      (longest, name) =>
+        longest === undefined || name.length > longest.length ? name : longest,
+      undefined,
+    );
+  return remote === undefined ? ref : { ...ref, remote };
 }
 
 async function listRefs(gitPath: string, root: string): Promise<RefInfo[]> {

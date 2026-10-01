@@ -78,6 +78,22 @@ suite('Default bookmarks', () => {
     ]);
   });
 
+  test('bookmarks the main branch of a remote with a slash in its name', () => {
+    const forked: RefInfo[] = [
+      { kind: 'branch', name: 'trunk', commit: 'a' },
+      {
+        kind: 'remote',
+        name: 'team/fork/trunk',
+        remote: 'team/fork',
+        commit: 'a',
+      },
+    ];
+    assert.deepStrictEqual(defaultBookmarks(forked, ['team/fork/trunk']), [
+      { kind: 'branch', name: 'trunk' },
+      { kind: 'remote', name: 'team/fork/trunk' },
+    ]);
+  });
+
   test('falls back to a local main, master or trunk', () => {
     const local: RefInfo[] = [
       { kind: 'branch', name: 'develop', commit: 'a' },

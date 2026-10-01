@@ -52,6 +52,7 @@ export interface RefInfo {
   readonly kind: RefKind;
   readonly name: string;
   readonly commit: string;
+  readonly remote?: string;
 }
 
 export type CheckoutTarget =
