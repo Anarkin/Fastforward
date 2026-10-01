@@ -41,7 +41,7 @@ export function templateOf(
   widths: readonly number[],
   hidden: readonly boolean[],
 ): string {
-  return `${widths.map((width, i) => `${hidden[i] ? 0 : width}px`).join(' ')} minmax(${minLastColumnWidth}px, 1fr)`;
+  return `${widths.map((width, i) => (hidden[i] ? '0px' : `minmax(${minColumnWidth}px, ${width}px)`)).join(' ')} minmax(${minLastColumnWidth}px, 1fr)`;
 }
 
 export function widthsToLoad(
@@ -56,12 +56,16 @@ export function maxWidth(
   hidden: readonly boolean[],
   index: number,
   viewWidth: number,
+  spacing: number,
 ): number {
   const others = widths.reduce(
     (sum, width, i) => (i === index || hidden[i] ? sum : sum + width),
     0,
   );
-  return Math.max(minColumnWidth, viewWidth - others - minLastColumnWidth);
+  return Math.max(
+    minColumnWidth,
+    viewWidth - spacing - others - minLastColumnWidth,
+  );
 }
 
 export function draggedWidths(
@@ -141,11 +145,18 @@ export function useColumnWidths(
         event.currentTarget.setPointerCapture(event.pointerId);
         const startX = event.clientX;
         const startWidths = current.current;
+        const grid = container.current;
+        const style = grid ? getComputedStyle(grid) : undefined;
         const max = maxWidth(
           startWidths,
           hidden,
           index,
-          container.current?.clientWidth ?? Infinity,
+          grid?.clientWidth ?? Infinity,
+          style
+            ? parseFloat(style.paddingLeft) +
+                parseFloat(style.paddingRight) +
+                parseFloat(style.columnGap) * startWidths.length
+            : 0,
         );
         const onMove = (move: PointerEvent) => {
           // Straight on the grid while dragging, so the columns' contents
