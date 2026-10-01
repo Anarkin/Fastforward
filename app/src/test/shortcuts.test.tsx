@@ -1,6 +1,8 @@
 import * as assert from 'node:assert';
 import {
+  changeStep,
   handleShortcut,
+  isFindShortcut,
   isNewTabShortcut,
   shortcutOf,
   tabStep,
@@ -115,6 +117,17 @@ suite('Switching tabs', () => {
     assert.strictEqual(adjacentTab(tabs, '/a', -1), '/c');
     assert.strictEqual(adjacentTab(tabs, undefined, 1), '/a');
     assert.strictEqual(adjacentTab(tabs.slice(0, 1), '/a', 1), undefined);
+  });
+
+  test('takes the letter typed, not the key pressed, on another Latin layout', () => {
+    const dvorak = { ...key, key: 'u', code: 'KeyF' };
+    assert.ok(!isFindShortcut(dvorak));
+    assert.ok(isFindShortcut({ ...dvorak, key: 'f', code: 'KeyY' }));
+    assert.ok(!isNewTabShortcut({ ...dvorak, key: 'y', code: 'KeyT' }));
+    assert.ok(isNewTabShortcut({ ...dvorak, key: 't', code: 'KeyK' }));
+    assert.strictEqual(changeStep({ key: 'h', code: 'KeyJ' }), undefined);
+    assert.strictEqual(changeStep({ key: 'j', code: 'KeyC' }), 1);
+    assert.strictEqual(changeStep({ key: 'л', code: 'KeyK' }), -1);
   });
 
   test('opens a repository on Ctrl+T, or Cmd+T, whatever the keyboard layout', () => {
