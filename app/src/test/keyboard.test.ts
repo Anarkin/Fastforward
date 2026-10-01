@@ -11,6 +11,7 @@ import {
   changeScrollTop,
   changeStarts,
   diffRows,
+  diffScrollLeft,
   diffScrollTop,
 } from '../webview/diffView';
 import { parsePatch } from '../webview/diff';
@@ -188,6 +189,13 @@ suite('Files column keys', () => {
 });
 
 suite('Diff keys', () => {
+  test('scrolls back left with the left arrow while scrolled right, leaving it to move between the columns only then', () => {
+    assert.strictEqual(diffScrollLeft('ArrowLeft', 100), 60);
+    assert.strictEqual(diffScrollLeft('ArrowLeft', 20), 0);
+    assert.strictEqual(diffScrollLeft('ArrowLeft', 0), undefined);
+    assert.strictEqual(diffScrollLeft('ArrowRight', 100), undefined);
+  });
+
   test('scrolls three lines with the arrows, a screen less a line with the page keys, and to either end', () => {
     assert.strictEqual(diffScrollTop('ArrowDown', 100, 400, 2000), 160);
     assert.strictEqual(diffScrollTop('ArrowUp', 40, 400, 2000), 0);

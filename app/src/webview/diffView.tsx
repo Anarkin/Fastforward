@@ -278,6 +278,17 @@ export function diffRows(
   return rows;
 }
 
+const sidewaysStep = 40;
+
+export function diffScrollLeft(
+  key: string,
+  scrolled: number,
+): number | undefined {
+  return key === 'ArrowLeft' && scrolled > 0
+    ? Math.max(0, scrolled - sidewaysStep)
+    : undefined;
+}
+
 export function diffScrollTop(
   key: string,
   scrollTop: number,
@@ -793,6 +804,19 @@ export function DiffView({
             event.altKey ||
             event.shiftKey
           ) {
+            return;
+          }
+          const left = diffScrollLeft(
+            event.key,
+            split ? sideways : event.currentTarget.scrollLeft,
+          );
+          if (left !== undefined) {
+            event.preventDefault();
+            if (split) {
+              setSideways(left);
+            } else {
+              event.currentTarget.scrollLeft = left;
+            }
             return;
           }
           const step = changeStep(event);
