@@ -655,9 +655,14 @@ function TreeChildren({
   const openMenu = useContext(OpenContextMenu);
   const { children } = node;
   const withFolders = children.some((child) => child.children.length > 0);
+  let leaves = 0;
+  const shown = children.filter(
+    (child) => child.children.length > 0 || leaves++ < maxResults,
+  );
+  const more = children.length - shown.length;
   return (
     <>
-      {children.map((child) =>
+      {shown.map((child) =>
         child.children.length > 0 ? (
           <TreeFolder
             key={child.name}
@@ -684,6 +689,14 @@ function TreeChildren({
             )}
           </div>
         ),
+      )}
+      {more > 0 && (
+        <div
+          className="locations-empty"
+          style={{ paddingLeft: leafIndent(depth, withFolders) }}
+        >
+          {more} more; type to narrow them down
+        </div>
       )}
     </>
   );
