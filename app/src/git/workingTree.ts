@@ -103,7 +103,7 @@ export async function workingTreeFiles(
 
 // Without the index refresh, git diff lists a file whose stat changed but
 // whose content didn't as modified, where git would recheck its content
-async function withoutTouched(
+export async function withoutTouched(
   gitPath: string,
   cwd: string,
   changes: readonly { readonly raw: string; readonly file: FileChange }[],
@@ -113,18 +113,20 @@ async function withoutTouched(
     return status === 'M' &&
       mode === oldMode &&
       mode.startsWith('100') &&
-      !file.path.includes('\n')
+      !file.path.includes('\n') &&
+      !file.path.startsWith('"')
       ? [{ path: file.path, object }]
       : [];
   });
   const hashes =
     suspects.length === 0
       ? []
-      : (
-          await runGit(gitPath, cwd, ['hash-object', '--stdin-paths'], {
-            input: suspects.map(({ path }) => `${path}\n`).join(''),
-          })
-        ).split('\n');
+      : await runGit(gitPath, cwd, ['hash-object', '--stdin-paths'], {
+          input: suspects.map(({ path }) => `${path}\n`).join(''),
+        }).then(
+          (output) => output.split('\n'),
+          () => [],
+        );
   const touched = new Set(
     suspects
       .filter(({ object }, index) => hashes[index] === object)
