@@ -199,9 +199,11 @@ body {
   background: none;
   border: none;
   border-radius: 4px;
+  outline: none;
 }
 
-.menu-item:hover:not(:disabled) {
+.menu-item:hover:not(:disabled),
+.menu-item:focus:not(:disabled) {
   color: var(--color-foreground);
   background: var(--selection-background);
 }

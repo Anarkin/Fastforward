@@ -416,6 +416,14 @@ suite('Style', () => {
     assert.doesNotMatch(css, /\.menu-item:hover\s*{/);
   });
 
+  test('highlights the menu item the keys are on like the one under the pointer, without an outline', () => {
+    assert.match(
+      css,
+      /\n\.menu-item:hover:not\(:disabled\),\s*\.menu-item:focus:not\(:disabled\) \{/,
+    );
+    assert.ok(declarationsOf('.menu-item').includes('outline: none;'));
+  });
+
   test('edges a popup with an inset shadow rather than a border', () => {
     assert.match(
       css,
