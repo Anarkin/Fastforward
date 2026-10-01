@@ -101,8 +101,8 @@ export async function workingTreeFiles(
   };
 }
 
-// Without the index refresh, git diff lists a file whose stat changed but
-// whose content didn't as modified, where git would recheck its content
+// git runs with diff.autoRefreshIndex=false (see gitConfigArgs), so git diff
+// lists a file whose stat changed but whose content didn't as modified
 export async function withoutTouched(
   gitPath: string,
   cwd: string,

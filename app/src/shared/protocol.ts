@@ -78,7 +78,6 @@ export interface CommitInfo {
   readonly parents: readonly string[];
   readonly authorName: string;
   readonly authorEmail: string;
-  // Milliseconds since the epoch, because Dates don't survive postMessage
   readonly authorDate: number;
   readonly committerName: string;
   readonly committerEmail: string;
