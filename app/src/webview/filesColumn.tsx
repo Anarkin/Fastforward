@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { FileChange } from '../shared/protocol';
 import {
   ancestorRows,
+  changesTree,
   changesTreeElements,
   changesKey,
   changesTreeRows,
@@ -69,14 +70,15 @@ export function Files({
 }) {
   const skeleton = useSkeleton(loading);
   const unchanged = showAll ? tree : undefined;
-  const treeRows = useMemo(
-    () => changesTreeRows(files, closedFolders, unchanged, openFolders),
-    [files, closedFolders, unchanged, openFolders],
-  );
-  const folders = useMemo(
-    () => treeFolders(files, unchanged),
+  const fileTree = useMemo(
+    () => changesTree(files, unchanged),
     [files, unchanged],
   );
+  const treeRows = useMemo(
+    () => changesTreeRows(fileTree, closedFolders, openFolders),
+    [fileTree, closedFolders, openFolders],
+  );
+  const folders = useMemo(() => treeFolders(fileTree), [fileTree]);
   const noFolders =
     folders.changed.length === 0 && folders.unchanged.length === 0;
   const hasHeader = files.length > 0;

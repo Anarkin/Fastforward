@@ -1,2 +1,4 @@
+const collator = new Intl.Collator();
+
 export const byName = (a: { name: string }, b: { name: string }) =>
-  a.name.localeCompare(b.name);
+  collator.compare(a.name, b.name);

@@ -1,5 +1,10 @@
 import * as assert from 'node:assert';
-import { ancestorRows, changesTreeRows } from '../webview/changesTree';
+import {
+  ancestorRows,
+  changesTree,
+  changesTreeRows,
+  treeFolders,
+} from '../webview/changesTree';
 import { fileChange } from './fixtures';
 
 const files = [
@@ -19,29 +24,35 @@ const lines = (rows: ReturnType<typeof changesTreeRows>) =>
 
 suite('Changes tree', () => {
   test('lists folders first, merging single-folder ones', () => {
-    assert.deepStrictEqual(lines(changesTreeRows(files, new Set())), [
-      '▾ src',
-      '  ▾ Gyurma',
-      '    MethodSetup.cs',
-      '    VoidMethodSetup.cs',
-      '  ▾ Gyurma.Generators',
-      '    GyurmaGenerator.cs',
-      '▾ tests/Gyurma.Tests',
-      '  SignatureTests.cs',
-      '.editorconfig',
-    ]);
+    assert.deepStrictEqual(
+      lines(changesTreeRows(changesTree(files), new Set())),
+      [
+        '▾ src',
+        '  ▾ Gyurma',
+        '    MethodSetup.cs',
+        '    VoidMethodSetup.cs',
+        '  ▾ Gyurma.Generators',
+        '    GyurmaGenerator.cs',
+        '▾ tests/Gyurma.Tests',
+        '  SignatureTests.cs',
+        '.editorconfig',
+      ],
+    );
   });
 
   test('lists an untracked nested repository by its name', () => {
     const nested = [fileChange('vendor/lib/', { status: 'U' })];
-    assert.deepStrictEqual(lines(changesTreeRows(nested, new Set())), [
-      '▾ vendor',
-      '  lib/',
-    ]);
+    assert.deepStrictEqual(
+      lines(changesTreeRows(changesTree(nested), new Set())),
+      ['▾ vendor', '  lib/'],
+    );
   });
 
   test('hides what is in a closed folder', () => {
-    const rows = changesTreeRows(files, new Set(['src', 'tests/Gyurma.Tests']));
+    const rows = changesTreeRows(
+      changesTree(files),
+      new Set(['src', 'tests/Gyurma.Tests']),
+    );
     assert.deepStrictEqual(lines(rows), [
       '▸ src',
       '▸ tests/Gyurma.Tests',
@@ -52,24 +63,29 @@ suite('Changes tree', () => {
   test('adds the unchanged files, keeping the folders without changes closed until opened', () => {
     const changed = [fileChange('src/a.ts')];
     const all = ['src/a.ts', 'src/b.ts', 'docs/c.md', 'README.md'];
-    assert.deepStrictEqual(lines(changesTreeRows(changed, new Set(), all)), [
-      '▸ docs',
-      '▾ src',
-      '  a.ts',
-      '  b.ts',
-      'README.md',
-    ]);
     assert.deepStrictEqual(
-      lines(changesTreeRows(changed, new Set(['src']), all, new Set(['docs']))),
+      lines(changesTreeRows(changesTree(changed, all), new Set())),
+      ['▸ docs', '▾ src', '  a.ts', '  b.ts', 'README.md'],
+    );
+    assert.deepStrictEqual(
+      lines(
+        changesTreeRows(
+          changesTree(changed, all),
+          new Set(['src']),
+          new Set(['docs']),
+        ),
+      ),
       ['▾ docs', '  c.md', '▸ src', 'README.md'],
     );
   });
 
   test('marks which folders and files hold changes', () => {
     const rows = changesTreeRows(
-      [fileChange('src/a.ts')],
+      changesTree(
+        [fileChange('src/a.ts')],
+        ['src/a.ts', 'src/b.ts', 'docs/c.md'],
+      ),
       new Set(),
-      ['src/a.ts', 'src/b.ts', 'docs/c.md'],
       new Set(['docs']),
     );
     assert.deepStrictEqual(
@@ -89,7 +105,7 @@ suite('Changes tree', () => {
   });
 
   test('finds the folders a row is in, outermost first', () => {
-    const rows = changesTreeRows(files, new Set());
+    const rows = changesTreeRows(changesTree(files), new Set());
     const at = (text: string) => lines(rows).indexOf(text);
     assert.deepStrictEqual(ancestorRows(rows, at('    VoidMethodSetup.cs')), [
       at('▾ src'),
@@ -99,5 +115,37 @@ suite('Changes tree', () => {
       at('▾ src'),
     ]);
     assert.deepStrictEqual(ancestorRows(rows, at('.editorconfig')), []);
+  });
+
+  test('lists the folders of a tree built once, opening and closing them without building it again', () => {
+    const tree = changesTree(files);
+    assert.deepStrictEqual(lines(changesTreeRows(tree, new Set(['src']))), [
+      '▸ src',
+      '▾ tests/Gyurma.Tests',
+      '  SignatureTests.cs',
+      '.editorconfig',
+    ]);
+    assert.deepStrictEqual(lines(changesTreeRows(tree, new Set())), [
+      '▾ src',
+      '  ▾ Gyurma',
+      '    MethodSetup.cs',
+      '    VoidMethodSetup.cs',
+      '  ▾ Gyurma.Generators',
+      '    GyurmaGenerator.cs',
+      '▾ tests/Gyurma.Tests',
+      '  SignatureTests.cs',
+      '.editorconfig',
+    ]);
+  });
+
+  test('lists every folder of the tree by whether it holds changes', () => {
+    const tree = changesTree(
+      [fileChange('src/lib/a.ts')],
+      ['src/lib/a.ts', 'src/b.ts', 'docs/api/c.md', 'docs/api/d.md'],
+    );
+    assert.deepStrictEqual(treeFolders(tree), {
+      changed: ['src', 'src/lib'],
+      unchanged: ['docs/api'],
+    });
   });
 });

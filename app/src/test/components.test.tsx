@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
+  changesTree,
   changesTreeElements,
   changesTreeRows,
   folderRowKey,
@@ -505,7 +506,7 @@ suite('Changes tree rows', () => {
     const html = renderToStaticMarkup(
       <>
         {changesTreeElements({
-          rows: changesTreeRows(files, new Set()),
+          rows: changesTreeRows(changesTree(files), new Set()),
           showsAll: false,
           onToggle: noop,
           selected: 'src/b.ts',
@@ -522,7 +523,7 @@ suite('Changes tree rows', () => {
   test('marks the row under the cursor, still deselecting the selected file on a click', () => {
     const picked: (string | undefined)[] = [];
     const elements = changesTreeElements({
-      rows: changesTreeRows([change('src/a.ts')], new Set()),
+      rows: changesTreeRows(changesTree([change('src/a.ts')]), new Set()),
       showsAll: false,
       onToggle: noop,
       selected: 'src/a.ts',
@@ -541,9 +542,11 @@ suite('Changes tree rows', () => {
     const toggled: string[] = [];
     const elements = changesTreeElements({
       rows: changesTreeRows(
-        [change('src/lib/a.ts')],
+        changesTree(
+          [change('src/lib/a.ts')],
+          ['src/lib/a.ts', 'src/b.ts', 'docs/c.md'],
+        ),
         new Set(),
-        ['src/lib/a.ts', 'src/b.ts', 'docs/c.md'],
         new Set(['docs']),
       ),
       showsAll: true,
