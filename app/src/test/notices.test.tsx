@@ -7,6 +7,13 @@ const notice = (id: number, message = `notice ${id}`): Notice => ({
   id,
   level: 'error',
   message,
+  shownAt: 0,
+});
+
+const info = (id: number, shownAt: number): Notice => ({
+  ...notice(id),
+  level: 'info',
+  shownAt,
 });
 
 suite('Notices', () => {
@@ -35,7 +42,7 @@ suite('Notices', () => {
   test('marks errors apart from information', () => {
     const html = renderToStaticMarkup(
       <Notices
-        notices={[notice(1), { id: 2, level: 'info', message: 'fyi' }]}
+        notices={[notice(1), { ...notice(2, 'fyi'), level: 'info' }]}
         onDismiss={() => {}}
       />,
     );
@@ -45,9 +52,19 @@ suite('Notices', () => {
 
   test('lets information fade by itself, but keeps errors until dismissed', () => {
     assert.deepStrictEqual(
-      fading([notice(1), { id: 2, level: 'info', message: 'fyi' }]),
+      fading([notice(1), { ...notice(2), level: 'info' }], 0).map(
+        ({ id }) => id,
+      ),
       [2],
     );
+  });
+
+  test('fades information eight seconds after it came, whatever came since', () => {
+    assert.deepStrictEqual(fading([info(1, 1000), info(2, 6000)], 7000), [
+      { id: 1, after: 2000 },
+      { id: 2, after: 7000 },
+    ]);
+    assert.deepStrictEqual(fading([info(1, 0)], 9000), [{ id: 1, after: 0 }]);
   });
 
   test('shows nothing without notices', () => {

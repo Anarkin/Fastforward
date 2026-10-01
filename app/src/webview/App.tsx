@@ -182,6 +182,7 @@ export function App({ post, listen }: Props) {
               id,
               level: message.level,
               message: message.message,
+              shownAt: performance.now(),
             }),
           );
           break;
