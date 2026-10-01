@@ -163,7 +163,9 @@ function sideSource(
   if (
     lines === undefined ||
     (shown.at(-1)?.number ?? 0) > maxWholeTextLines ||
-    shown.some(({ line, number }) => lines[number - 1] !== line.text)
+    shown.some(
+      ({ line, number }) => lines[number - 1] !== line.text.replace(/\r$/, ''),
+    )
   ) {
     return {
       language,
