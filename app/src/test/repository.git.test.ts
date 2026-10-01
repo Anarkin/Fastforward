@@ -339,7 +339,7 @@ suite('Git repository', function () {
     try {
       const started = performance.now();
       await assert.rejects(
-        fetchAllRemotes(gitPath, cwd, 500),
+        fetchAllRemotes(gitPath, cwd, { timeout: 500 }),
         /git fetch timed out/,
       );
       assert.ok(performance.now() - started < 5000);

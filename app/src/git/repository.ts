@@ -118,11 +118,14 @@ const fetchTimeout = 5 * 60_000;
 export async function fetchAllRemotes(
   gitPath: string,
   root: string,
-  timeout = fetchTimeout,
+  { timeout = fetchTimeout, interactive = true } = {},
 ): Promise<void> {
   const signal = AbortSignal.timeout(timeout);
   try {
-    await runGit(gitPath, root, ['fetch', '--all', '--prune'], { signal });
+    await runGit(gitPath, root, ['fetch', '--all', '--prune'], {
+      signal,
+      env: interactive ? {} : { GCM_INTERACTIVE: 'never' },
+    });
   } catch (error) {
     if (signal.aborted) {
       throw new Error(
