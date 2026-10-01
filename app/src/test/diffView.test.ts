@@ -8,6 +8,7 @@ import {
   largeFilesToLoad,
   rowHeight,
   scrollOnToggle,
+  showsSideBySide,
   stuckHeader,
   type DiffRow,
 } from '../webview/diffView';
@@ -33,6 +34,13 @@ const lines = (files: readonly DiffFile[]) =>
   ]);
 
 suite('Diff rows', () => {
+  test('lays a file shown entire out inline, even with the side by side layout chosen', () => {
+    const whole = { path: 'a.ts', content: 'a', binary: false };
+    assert.strictEqual(showsSideBySide(true, undefined), true);
+    assert.strictEqual(showsSideBySide(true, whole), false);
+    assert.strictEqual(showsSideBySide(false, undefined), false);
+  });
+
   test('lays out a small file whole', () => {
     const files = parsePatch(patch('a.ts', 2));
     assert.deepStrictEqual(kinds(diffRows(files, new Map(), undefined)), [
