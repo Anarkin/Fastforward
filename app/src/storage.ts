@@ -1,5 +1,10 @@
 import * as fs from 'node:fs';
-import type { Bookmark, ToWebviewOf, DiffLayout } from './shared/protocol';
+import type {
+  Bookmark,
+  ToWebviewOf,
+  DiffLayout,
+  RefKind,
+} from './shared/protocol';
 import { writeAtomically, type Settings, type UserSettings } from './settings';
 import * as path from 'node:path';
 
@@ -11,9 +16,7 @@ export const soloKey = 'solo';
 export const bookmarksKey = 'bookmarks';
 
 export interface Store {
-  // oxlint-disable-next-line typescript/no-unnecessary-type-parameters
-  get<T>(key: string): T | undefined;
-  get<T>(key: string, defaultValue: T): T;
+  get(key: string): unknown;
   update(key: string, value: unknown): Promise<void>;
 }
 
@@ -25,13 +28,8 @@ export class JsonFileStore implements Store {
     this.values = readJson(file);
   }
 
-  // oxlint-disable-next-line typescript/no-unnecessary-type-parameters
-  get<T>(key: string): T | undefined;
-  get<T>(key: string, defaultValue: T): T;
-  get<T>(key: string, defaultValue?: T): T | undefined {
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    return (key in this.values ? this.values[key] : defaultValue) as
-      T | undefined;
+  get(key: string): unknown {
+    return this.values[key];
   }
 
   update(key: string, value: unknown): Promise<void> {
@@ -86,11 +84,12 @@ export class Storage {
   }
 
   get tabs(): string[] {
-    return uniqueRoots(this.state.get<string[]>(tabsKey, []));
+    return uniqueRoots(strings(this.state.get(tabsKey)));
   }
 
   get activeTab(): string | undefined {
-    return this.state.get<string>(activeTabKey);
+    const active = this.state.get(activeTabKey);
+    return typeof active === 'string' ? active : undefined;
   }
 
   hasTab(root: string): boolean {
@@ -105,7 +104,7 @@ export class Storage {
   }
 
   get recent(): string[] {
-    return this.state.get<string[]>(recentKey, []);
+    return strings(this.state.get(recentKey));
   }
 
   async addRecent(root: string): Promise<void> {
@@ -122,7 +121,8 @@ export class Storage {
 
   bookmarksOf(root: string): readonly Bookmark[] | undefined {
     const all = this.allBookmarks;
-    return all[keyOf(all, root)];
+    const saved = all[keyOf(all, root)];
+    return Array.isArray(saved) ? saved.filter(isBookmark) : undefined;
   }
 
   async setBookmarks(
@@ -136,8 +136,8 @@ export class Storage {
     });
   }
 
-  private get allBookmarks(): Record<string, readonly Bookmark[]> {
-    return this.state.get(bookmarksKey, {});
+  private get allBookmarks(): Record<string, unknown> {
+    return recordOf(this.state.get(bookmarksKey));
   }
 
   get layout(): ToWebviewOf<'layout'> {
@@ -205,7 +205,8 @@ export class Storage {
 
   soloOf(root: string): boolean {
     const all = this.soloByRoot;
-    return all[keyOf(all, root)] ?? this.settings.solo;
+    const solo = all[keyOf(all, root)];
+    return typeof solo === 'boolean' ? solo : this.settings.solo;
   }
 
   async setSolo(root: string, solo: boolean): Promise<void> {
@@ -219,8 +220,8 @@ export class Storage {
     await this.state.update(soloKey, all);
   }
 
-  private get soloByRoot(): Record<string, boolean> {
-    return this.state.get(soloKey, {});
+  private get soloByRoot(): Record<string, unknown> {
+    return recordOf(this.state.get(soloKey));
   }
 }
 
@@ -236,5 +237,35 @@ function uniqueRoots(roots: readonly string[]): string[] {
   return roots.filter(
     (root, index) =>
       roots.findIndex((other) => sameRoot(other, root)) === index,
+  );
+}
+
+function strings(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item) => typeof item === 'string')
+    : [];
+}
+
+function recordOf(value: unknown): Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? { ...value }
+    : {};
+}
+
+const bookmarkKinds: readonly (RefKind | 'commit')[] = [
+  'branch',
+  'remote',
+  'tag',
+  'commit',
+];
+
+function isBookmark(value: unknown): value is Bookmark {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'kind' in value &&
+    'name' in value &&
+    bookmarkKinds.some((kind) => kind === value.kind) &&
+    typeof value.name === 'string'
   );
 }

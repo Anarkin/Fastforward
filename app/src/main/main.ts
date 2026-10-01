@@ -259,7 +259,7 @@ function createWindow(store: JsonFileStore, settings: Settings): BrowserWindow {
       spellcheck: false,
     },
   });
-  if (store.get(maximizedKey, false)) {
+  if (store.get(maximizedKey) === true) {
     window.maximize();
   }
   window.once('ready-to-show', () => window.show());

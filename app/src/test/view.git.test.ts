@@ -8,13 +8,13 @@ import {
   workingTreeHash,
   type ToWebview,
   type ToWebviewOf,
+  type Bookmark,
   type BookmarkRef,
 } from '../shared/protocol';
 import type { Timer } from '../autoFetch';
 import type { Log } from '../log';
 import {
   activeTabKey,
-  bookmarksKey,
   recentKey,
   sameRoot,
   soloKey,
@@ -200,8 +200,13 @@ function reopen(view: FastforwardView): {
   return { page, connection, ready: connection.receive({ type: 'ready' }) };
 }
 
-function savedBookmarks(store: FakeStore): Record<string, BookmarkRef[]> {
-  return store.get<Record<string, BookmarkRef[]>>(bookmarksKey, {});
+function savedBookmarks(
+  store: FakeStore,
+  root: string,
+): readonly Bookmark[] | undefined {
+  return new Storage(new UserSettings(defaultSettings()), store).bookmarksOf(
+    root,
+  );
 }
 
 function fortyLines(changed: number): string {
@@ -356,7 +361,7 @@ suite('View', function () {
         root: repository.root,
         bookmarks: [],
       });
-      assert.deepStrictEqual(savedBookmarks(store)[repository.root], []);
+      assert.deepStrictEqual(savedBookmarks(store, repository.root), []);
     });
 
     test('refreshes once at a time, without sending an unchanged diff', async () => {
@@ -2165,9 +2170,10 @@ suite('View', function () {
       });
       assert.strictEqual(tabs.page.last('files'), undefined);
       assert.strictEqual(tabs.page.last('navigation'), undefined);
-      const saved = savedBookmarks(tabs.store);
-      assert.deepStrictEqual(saved[repository.root], []);
-      assert.deepStrictEqual(saved[other], [{ kind: 'branch', name: 'main' }]);
+      assert.deepStrictEqual(savedBookmarks(tabs.store, repository.root), []);
+      assert.deepStrictEqual(savedBookmarks(tabs.store, other), [
+        { kind: 'branch', name: 'main' },
+      ]);
 
       await tabs.connection.receive({
         type: 'selectTab',
@@ -2503,7 +2509,8 @@ suite('View', function () {
             view.page.last('repository')?.headCommit,
             otherHead,
           );
-          const recent = view.store.get<string[]>(recentKey, []);
+          const recent = view.store.get(recentKey);
+          assert.ok(Array.isArray(recent));
           for (const root of [third.root, other]) {
             assert.ok(
               recent.some((saved) => sameRoot(saved, root)),

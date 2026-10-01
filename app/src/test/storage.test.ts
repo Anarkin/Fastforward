@@ -3,7 +3,15 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { UserSettings } from '../settings';
-import { JsonFileStore, Storage, tabsKey } from '../storage';
+import {
+  activeTabKey,
+  bookmarksKey,
+  JsonFileStore,
+  recentKey,
+  soloKey,
+  Storage,
+  tabsKey,
+} from '../storage';
 import { FakeStore } from './fakeStore';
 import { defaultSettings } from './fixtures';
 
@@ -59,6 +67,39 @@ suite('Storage', () => {
     assert.deepStrictEqual(state.get('solo'), {});
   });
 
+  test('reads state of the wrong shape, as a hand edit can leave it, as never saved', async () => {
+    const store = new FakeStore();
+    const root = path.resolve('r');
+    await store.update(tabsKey, 5);
+    await store.update(activeTabKey, 5);
+    await store.update(recentKey, 'x');
+    await store.update(bookmarksKey, { [root]: 'x' });
+    await store.update(soloKey, { [root]: 'yes' });
+    const storage = storageOf(store);
+    assert.deepStrictEqual(storage.tabs, []);
+    assert.strictEqual(storage.activeTab, undefined);
+    assert.deepStrictEqual(storage.recent, []);
+    assert.strictEqual(storage.bookmarksOf(root), undefined);
+    assert.strictEqual(storage.soloOf(root), defaultSettings().solo);
+    await storage.addRecent(root);
+    assert.deepStrictEqual(storage.recent, [root]);
+  });
+
+  test('leaves out the entries of the wrong shape from saved lists', async () => {
+    const store = new FakeStore();
+    const root = path.resolve('r');
+    const main = { kind: 'branch', name: 'main' };
+    await store.update(tabsKey, [root, 3]);
+    await store.update(recentKey, [null, root]);
+    await store.update(bookmarksKey, {
+      [root]: [main, { kind: 'x', name: 'y' }, { kind: 'tag' }, 5],
+    });
+    const storage = storageOf(store);
+    assert.deepStrictEqual(storage.tabs, [root]);
+    assert.deepStrictEqual(storage.recent, [root]);
+    assert.deepStrictEqual(storage.bookmarksOf(root), [main]);
+  });
+
   test('takes in the tabs and the active one together, before either is written', async () => {
     const written = Promise.withResolvers<void>();
     const store = new FakeStore();
@@ -99,7 +140,7 @@ suite('Storage', () => {
     assert.deepStrictEqual(storage.bookmarksOf(root + path.sep), main);
     const dev = [{ kind: 'branch', name: 'dev' }] as const;
     await storage.setBookmarks(root + path.sep, dev);
-    assert.deepStrictEqual(Object.keys(store.get<object>('bookmarks', {})), [
+    assert.deepStrictEqual(Object.keys(store.values.get('bookmarks') ?? {}), [
       root,
     ]);
     assert.deepStrictEqual(storage.bookmarksOf(root), dev);
@@ -165,7 +206,7 @@ suite('Settings file', () => {
     await store.update('solo', true);
     await store.update('tabs', ['/a']);
     const reopened = new JsonFileStore(file);
-    assert.strictEqual(reopened.get('solo', false), true);
+    assert.strictEqual(reopened.get('solo'), true);
     assert.deepStrictEqual(reopened.get('tabs'), ['/a']);
     assert.strictEqual(reopened.get('missing'), undefined);
   });
@@ -174,10 +215,7 @@ suite('Settings file', () => {
     const store = new JsonFileStore(file);
     await store.update('activeTab', '/a');
     await store.update('activeTab', undefined);
-    assert.strictEqual(
-      new JsonFileStore(file).get('activeTab', 'none'),
-      'none',
-    );
+    assert.strictEqual(new JsonFileStore(file).get('activeTab'), undefined);
   });
 
   test('saves the last of several quick changes', async () => {
