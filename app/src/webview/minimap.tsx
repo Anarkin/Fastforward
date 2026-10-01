@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { hideAfter } from './overlayScrollbars';
 
 export interface MinimapMark {
@@ -12,7 +12,10 @@ export interface MinimapRow {
   readonly change: 'added' | 'removed' | undefined;
 }
 
-export function minimapMarks(rows: readonly MinimapRow[]): MinimapMark[] {
+function runMarks(
+  rows: readonly MinimapRow[],
+  kindOf: (row: MinimapRow, index: number) => MinimapMark['kind'] | undefined,
+): MinimapMark[] {
   const total = rows.reduce((sum, row) => sum + row.height, 0);
   if (total === 0) {
     return [];
@@ -31,41 +34,30 @@ export function minimapMarks(rows: readonly MinimapRow[]): MinimapMark[] {
       run = undefined;
     }
   };
-  for (const row of rows) {
-    if (row.change === undefined || row.change !== run?.kind) {
+  rows.forEach((row, index) => {
+    const kind = kindOf(row, index);
+    if (kind === undefined || kind !== run?.kind) {
       close();
     }
-    if (row.change !== undefined) {
-      run ??= { kind: row.change, start: offset, end: offset };
+    if (kind !== undefined) {
+      run ??= { kind, start: offset, end: offset };
       run.end = offset + row.height;
     }
     offset += row.height;
-  }
+  });
   close();
   return marks;
+}
+
+export function minimapMarks(rows: readonly MinimapRow[]): MinimapMark[] {
+  return runMarks(rows, (row) => row.change);
 }
 
 export function matchMarks(
   rows: readonly MinimapRow[],
   found: ReadonlySet<number>,
 ): MinimapMark[] {
-  const total = rows.reduce((sum, row) => sum + row.height, 0);
-  if (total === 0) {
-    return [];
-  }
-  const marks: MinimapMark[] = [];
-  let offset = 0;
-  rows.forEach((row, index) => {
-    if (found.has(index)) {
-      marks.push({
-        kind: 'match',
-        top: offset / total,
-        height: row.height / total,
-      });
-    }
-    offset += row.height;
-  });
-  return marks;
+  return runMarks(rows, (_, index) => (found.has(index) ? 'match' : undefined));
 }
 
 export function pointerFraction(
@@ -87,6 +79,20 @@ export function minimapScrollTop(
 function percent(value: number): string {
   return `${value * 100}%`;
 }
+
+const Marks = memo(function Marks({
+  marks,
+}: {
+  marks: readonly MinimapMark[];
+}) {
+  return marks.map((mark) => (
+    <div
+      key={`${mark.kind}:${mark.top}`}
+      className={`minimap-mark ${mark.kind}`}
+      style={{ top: percent(mark.top), height: percent(mark.height) }}
+    />
+  ));
+});
 
 export function Minimap({
   marks,
@@ -151,13 +157,7 @@ export function Minimap({
       onPointerUp={() => setDragging(false)}
       onPointerCancel={() => setDragging(false)}
     >
-      {marks.map((mark) => (
-        <div
-          key={`${mark.kind}:${mark.top}`}
-          className={`minimap-mark ${mark.kind}`}
-          style={{ top: percent(mark.top), height: percent(mark.height) }}
-        />
-      ))}
+      <Marks marks={marks} />
       {total > viewport && (
         <div
           className="minimap-viewport"
