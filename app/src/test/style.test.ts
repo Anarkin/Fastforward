@@ -16,6 +16,12 @@ function declarationsOf(selector: string): string {
   return match[3];
 }
 
+function variablePx(name: string): number {
+  const match = new RegExp(`--${name}: (\\d+)px;`).exec(css);
+  assert.ok(match, name);
+  return Number(match[1]);
+}
+
 function pixels(declarations: string, property: string): number {
   const match = new RegExp(`${property}: calc\\(([^;]*)\\);`).exec(
     declarations,
@@ -554,6 +560,21 @@ suite('Style', () => {
   test('draws no focus outline around the commit list, whose selected row shows where the keys go', () => {
     assert.ok(declarationsOf('.list').includes('outline: none;'));
     assert.doesNotMatch(css, /.list:focus/);
+  });
+
+  test('keeps the search fields clear of the active column edge, the title holding both fields at one height', () => {
+    const edge = 2;
+    const above =
+      (variablePx('title-height') - 1 - variablePx('search-height')) / 2;
+    assert.ok(above - edge >= 2, String(above));
+    assert.ok(
+      declarationsOf('.diff-find').includes('height: var(--search-height);'),
+    );
+    assert.ok(
+      declarationsOf('.locations-search').includes(
+        'height: var(--search-height);',
+      ),
+    );
   });
 
   test('edges the active column in the focus color, over its contents but letting the pointer through, and outlines nothing in it', () => {
