@@ -397,7 +397,7 @@ suite('Large files fetched', () => {
 });
 
 suite('Diff row heights', () => {
-  test('gives every row but the error and placeholders a fixed height', () => {
+  test('gives every row but the error and placeholders a fixed height, a file header that of a row of the other columns', () => {
     const rows = diffRows(
       parsePatch(
         [
@@ -415,9 +415,9 @@ suite('Diff row heights', () => {
       rows.map((row) => [row.kind, rowHeight(row)]),
       [
         ['error', undefined],
-        ['file', 28],
+        ['file', 22],
         ['binary', 28],
-        ['file', 28],
+        ['file', 22],
         ['line', 20],
         ['hunk', 12],
         ['line', 20],
