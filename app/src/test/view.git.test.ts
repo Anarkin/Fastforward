@@ -1618,6 +1618,70 @@ suite('View', function () {
       }
     });
 
+    test('says which commits a checkout leaves behind on no branch or tag, and nothing when none', async () => {
+      await repository.git('checkout', '--detach', fixture.a);
+      await repository.commit('stray one');
+      await repository.commit('stray two');
+      const [two, one] = await repository.resolve('HEAD', 'HEAD~1');
+      try {
+        await connection.refresh();
+        await withNotices(page, 'info', async (messages) => {
+          await connection.receive({
+            type: 'checkout',
+            root: repository.root,
+            target: { kind: 'branch', name: 'main' },
+          });
+          assert.deepStrictEqual(messages, [
+            `Left 2 commits behind on no branch or tag: ${two.slice(0, 7)} ${one.slice(0, 7)}`,
+          ]);
+        });
+        await withNotices(page, 'info', async (messages) => {
+          await connection.receive({
+            type: 'checkout',
+            root: repository.root,
+            target: { kind: 'commit', hash: fixture.b },
+          });
+          await connection.receive({
+            type: 'checkout',
+            root: repository.root,
+            target: { kind: 'branch', name: 'main' },
+          });
+          assert.deepStrictEqual(messages, []);
+        });
+      } finally {
+        await restore();
+      }
+    });
+
+    test('names only the newest few commits a checkout leaves behind', async () => {
+      await repository.git('checkout', '--detach', fixture.a);
+      for (const stray of ['1', '2', '3', '4', '5', '6']) {
+        await repository.commit(stray);
+      }
+      const newest = await repository.resolve(
+        'HEAD',
+        'HEAD~1',
+        'HEAD~2',
+        'HEAD~3',
+        'HEAD~4',
+      );
+      try {
+        await connection.refresh();
+        await withNotices(page, 'info', async (messages) => {
+          await connection.receive({
+            type: 'checkout',
+            root: repository.root,
+            target: { kind: 'branch', name: 'main' },
+          });
+          assert.deepStrictEqual(messages, [
+            `Left 6 commits behind on no branch or tag: ${newest.map((hash) => hash.slice(0, 7)).join(' ')} and 1 more`,
+          ]);
+        });
+      } finally {
+        await restore();
+      }
+    });
+
     test('refuses to check out anything while a rebase is paused', async () => {
       await repository.git('checkout', '-b', 'onto', fixture.a);
       await repository.commit('onto');

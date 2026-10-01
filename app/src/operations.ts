@@ -1,13 +1,15 @@
-import { aheadBehind, fastForward } from './git/branches';
+import { aheadBehind, fastForward, onNoRef } from './git/branches';
 import { gitErrorText } from './git/errorText';
 import {
   checkoutNewBranch,
   fetchAllRemotes,
+  readHead,
   readRefs,
   switchToBranch,
   switchToCommit,
 } from './git/repository';
 import type { CheckoutTarget } from './shared/protocol';
+import { shortHash } from './shared/hashes';
 import { hasRef, withoutRemote } from './shared/refNames';
 import type { Log } from './log';
 
@@ -27,6 +29,7 @@ export async function checkout(
   const { gitPath, root } = at;
   const label = target.kind === 'commit' ? target.hash : target.name;
   try {
+    const before = await readHead(gitPath, root);
     if (target.kind === 'remote') {
       const local = withoutRemote(target.name);
       const { refs } = await readRefs(gitPath, root);
@@ -46,6 +49,9 @@ export async function checkout(
       );
     }
     log.info(`Checked out ${target.kind} ${label}`);
+    if (before && !before.name && before.commit) {
+      await sayLeftBehind(log, notify, at, before.commit);
+    }
     return true;
   } catch (error) {
     reportFailure(
@@ -57,6 +63,25 @@ export async function checkout(
     );
     return false;
   }
+}
+
+const namedLeftBehind = 5;
+
+async function sayLeftBehind(
+  log: Log,
+  notify: Notify,
+  { gitPath, root }: RepositoryAt,
+  commit: string,
+): Promise<void> {
+  const left = await onNoRef(gitPath, root, commit);
+  if (left.length === 0) {
+    return;
+  }
+  const named = left.slice(0, namedLeftBehind).map(shortHash).join(' ');
+  const more = left.length - namedLeftBehind;
+  const message = `Left ${left.length === 1 ? '1 commit' : `${left.length} commits`} behind on no branch or tag: ${named}${more > 0 ? ` and ${more} more` : ''}`;
+  log.info(message);
+  notify('info', message);
 }
 
 async function catchUp(
