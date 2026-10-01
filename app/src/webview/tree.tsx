@@ -52,6 +52,7 @@ export function FileRow({
   depth,
   change,
   selected,
+  marked = path === selected,
   onSelect,
 }: {
   path: string;
@@ -59,11 +60,12 @@ export function FileRow({
   depth?: number;
   change: FileChange | undefined;
   selected: string | undefined;
+  marked?: boolean;
   onSelect: (path: string | undefined) => void;
 }) {
   return (
     <div
-      className={`row ${depth === undefined ? '' : 'tree-row'} file ${path === selected ? 'selected' : ''}`}
+      className={`row ${depth === undefined ? '' : 'tree-row'} file ${marked ? 'selected' : ''}`}
       style={
         depth === undefined
           ? undefined
