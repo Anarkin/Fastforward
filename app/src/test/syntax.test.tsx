@@ -266,6 +266,33 @@ suite('Syntax', () => {
     );
   });
 
+  test('colors only the first 5000 lines of a file shown entire, or of a side shown from its hunks alone', () => {
+    const lines = Array.from({ length: 5001 }, (_, index) => `x = ${index};`);
+    const [whole] = syntaxSources([], {
+      path: 'a.ts',
+      binary: false,
+      content: lines.join('\n'),
+    });
+    assert.deepStrictEqual(whole.lines, lines.slice(0, 5000));
+    assert.strictEqual(whole.keys.length, 5000);
+    const [added] = syntaxSources(
+      parsePatch(
+        [
+          'diff --git a/a.ts b/a.ts',
+          'new file mode 100644',
+          '--- /dev/null',
+          '+++ b/a.ts',
+          '@@ -0,0 +1,5001 @@',
+          ...lines.map((line) => `+${line}`),
+          '',
+        ].join('\n'),
+      ),
+      undefined,
+    );
+    assert.deepStrictEqual(added.lines, lines.slice(0, 5000));
+    assert.strictEqual(added.keys.length, 5000);
+  });
+
   test('colors a side from its hunks alone when its whole text does not match them', async () => {
     const texts = new Map([['new:a.ts', 'other\ntext\nnew = 3;\nend */\n']]);
     assert.deepStrictEqual(

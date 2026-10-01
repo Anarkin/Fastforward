@@ -147,10 +147,10 @@ function hasGap(file: DiffFile, side: Side): boolean {
   return false;
 }
 
-const maxWholeTextLines = 5000;
+const maxSourceLines = 5000;
 
 function tooFar(shown: ReturnType<typeof sideLines>): boolean {
-  return (shown.at(-1)?.number ?? 0) > maxWholeTextLines;
+  return (shown.at(-1)?.number ?? 0) > maxSourceLines;
 }
 
 function sideSource(
@@ -173,10 +173,11 @@ function sideSource(
       ({ line, number }) => lines[number - 1] !== line.text.replace(/\r$/, ''),
     )
   ) {
+    const kept = shown.slice(0, maxSourceLines);
     return {
       language,
-      lines: shown.map(({ line }) => line.text),
-      keys: shown.map(keyOf),
+      lines: kept.map(({ line }) => line.text),
+      keys: kept.map(keyOf),
     };
   }
   const keys: (string | undefined)[] = [];
@@ -193,7 +194,7 @@ export function syntaxSources(
 ): SyntaxSource[] {
   if (whole) {
     const language = languageOf(whole.path);
-    const lines = wholeLines(whole);
+    const lines = wholeLines(whole).slice(0, maxSourceLines);
     return language
       ? [{ language, lines, keys: lines.map((_, index) => lineKey(0, index)) }]
       : [];
