@@ -211,6 +211,17 @@ export function listScroll(
     : { shiftBy: next.offset - previous.offset };
 }
 
+export function keptPlace(
+  start: number,
+  offset: number,
+  scrollTop: number,
+  reportedTop: number | undefined,
+): number {
+  return (
+    start + offset + (reportedTop === undefined ? 0 : scrollTop - reportedTop)
+  );
+}
+
 export function CommitBubbles({
   hash,
   refs,
@@ -354,6 +365,12 @@ export function Commits({
   }, [history, first, last, onLoad]);
 
   const shown = useRef<ListScrollState>({ target: undefined, offset });
+  const reportedTop = useRef<number>(undefined);
+  useEffect(() => {
+    if (!history) {
+      reportedTop.current = undefined;
+    }
+  }, [history]);
   useEffect(() => {
     const next = { target: history ? scrollTarget : undefined, offset };
     const previous = shown.current;
@@ -382,7 +399,14 @@ export function Commits({
     if (action.target.offset !== undefined) {
       const [start] = virtualizer.getOffsetForIndex(index, 'start') ?? [];
       if (start !== undefined) {
-        virtualizer.scrollToOffset(start + action.target.offset);
+        virtualizer.scrollToOffset(
+          keptPlace(
+            start,
+            action.target.offset,
+            list.current?.scrollTop ?? 0,
+            reportedTop.current,
+          ),
+        );
       }
       return;
     }
@@ -406,6 +430,7 @@ export function Commits({
     );
     topUnreported.current = top === undefined;
     if (top) {
+      reportedTop.current = element.scrollTop;
       onScrolled(top.hash, top.offset);
     }
   }, [history, offset, onScrolled, virtualizer]);
