@@ -217,6 +217,22 @@ suite('Style', () => {
     }
   });
 
+  test('tints the changed words within a line more strongly, as the theme says', () => {
+    for (const [selector, color] of [
+      ['.diff-line .word-added', 'added'],
+      ['.diff-line .word-removed', 'deleted'],
+    ]) {
+      assert.ok(
+        declarationsOf(selector)
+          .replace(/\s+/g, ' ')
+          .includes(
+            `background: color-mix( in srgb, var(--color-${color}) var(--color-${color}-word), transparent );`,
+          ),
+        selector,
+      );
+    }
+  });
+
   test('tints added and removed diff lines as strongly as the theme says, in the colors their minimap marks are drawn in', () => {
     for (const [selector, color] of [
       ['.diff-line.added', 'added'],

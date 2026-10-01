@@ -49,9 +49,11 @@
 
       "added": "#0a0",
       "added-line": "20%",
+      "added-word": "40%",
       "added-minimap": "50%",
       "deleted": "#a00",
       "deleted-line": "20%",
+      "deleted-word": "40%",
       "deleted-minimap": "50%",
 
       "chart-blue": "#15f",
@@ -95,9 +97,11 @@
 
       "added": "#0c0",
       "added-line": "20%",
+      "added-word": "40%",
       "added-minimap": "50%",
       "deleted": "#e00",
       "deleted-line": "20%",
+      "deleted-word": "40%",
       "deleted-minimap": "50%",
 
       "chart-blue": "#5af",

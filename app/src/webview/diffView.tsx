@@ -1,5 +1,5 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, Fragment } from 'react';
 import { collapseThreshold } from '../shared/protocol';
 import type { DiffFile, DiffLine } from './diff';
 import { lineKey, wholeLines, type FindMatch, type FindRange } from './find';
@@ -11,6 +11,7 @@ import {
   type MinimapRow,
 } from './minimap';
 import { columnFocusAttribute } from './activeColumn';
+import { wordRanges } from './wordDiff';
 import { changeStep } from './shortcuts';
 import { ownScrollbarAttribute } from './overlayScrollbars';
 import { SkeletonRows, useSkeleton } from './skeleton';
@@ -368,6 +369,51 @@ export function highlighted(
   return parts;
 }
 
+const covers = (range: FindRange, start: number, end: number) =>
+  range.start <= start && end <= range.end;
+
+export function marked(
+  text: string,
+  words: readonly FindRange[],
+  wordClass: string,
+  finds: readonly FindRange[],
+  current: FindRange | undefined,
+): React.ReactNode {
+  if (words.length === 0) {
+    return finds.length === 0 ? text : highlighted(text, finds, current);
+  }
+  const edges = [
+    ...new Set([
+      0,
+      text.length,
+      ...[...words, ...finds].flatMap((range) => [range.start, range.end]),
+    ]),
+  ].toSorted((a, b) => a - b);
+  return edges.slice(0, -1).map((start, index) => {
+    const end = edges[index + 1];
+    const piece = text.slice(start, end);
+    const find = finds.find((range) => covers(range, start, end));
+    const isCurrent =
+      find !== undefined &&
+      current?.start === find.start &&
+      current.end === find.end;
+    const content = find ? (
+      <mark className={`find-match ${isCurrent ? 'current' : ''}`}>
+        {piece}
+      </mark>
+    ) : (
+      piece
+    );
+    return words.some((range) => covers(range, start, end)) ? (
+      <span key={start} className={wordClass}>
+        {content}
+      </span>
+    ) : (
+      <Fragment key={start}>{content}</Fragment>
+    );
+  });
+}
+
 export function diffMinimapMarks(
   rows: readonly DiffRow[],
   keys: readonly (readonly string[])[],
@@ -513,6 +559,10 @@ export function DiffView({
     setToggled((all) => new Map(all).set(path, !open));
 
   const keys = useMemo(() => lineKeys(rows), [rows]);
+  const words = useMemo(
+    () => (whole ? new Map<string, FindRange[]>() : wordRanges(files)),
+    [files, whole],
+  );
   const rangesByLine = useMemo(() => {
     const byLine = new Map<string, FindRange[]>();
     for (const match of matches) {
@@ -576,13 +626,22 @@ export function DiffView({
     );
   };
 
-  const code = (key: string | undefined, text: string) => {
-    const ranges = key === undefined ? undefined : rangesByLine.get(key);
+  const code = (
+    key: string | undefined,
+    text: string,
+    kind: DiffLine['kind'] | undefined,
+  ) => {
+    const finds = (key !== undefined && rangesByLine.get(key)) || [];
+    const changed = (key !== undefined && words.get(key)) || [];
     return (
       <span className="code">
-        {ranges
-          ? highlighted(text, ranges, key === foundKey ? found : undefined)
-          : text}
+        {marked(
+          text,
+          changed,
+          kind === 'removed' ? 'word-removed' : 'word-added',
+          finds,
+          key === foundKey ? found : undefined,
+        )}
       </span>
     );
   };
@@ -624,7 +683,7 @@ export function DiffView({
           <div className={`diff-line ${row.line.kind}`}>
             <span className="number">{row.line.oldNumber}</span>
             <span className="number">{row.line.newNumber}</span>
-            {code(keys[index].at(0), row.line.text)}
+            {code(keys[index].at(0), row.line.text, row.line.kind)}
           </div>
         );
       case 'split':
@@ -639,7 +698,12 @@ export function DiffView({
                   {side === 0 ? cell?.line.oldNumber : cell?.line.newNumber}
                 </span>
                 <span className="split-code">
-                  {cell && code(lineKey(row.file, cell.index), cell.line.text)}
+                  {cell &&
+                    code(
+                      lineKey(row.file, cell.index),
+                      cell.line.text,
+                      cell.line.kind,
+                    )}
                 </span>
               </div>
             ))}
@@ -649,7 +713,7 @@ export function DiffView({
         return (
           <div className="diff-line">
             <span className="number">{row.number}</span>
-            {code(keys[index].at(0), row.text)}
+            {code(keys[index].at(0), row.text, undefined)}
           </div>
         );
     }
