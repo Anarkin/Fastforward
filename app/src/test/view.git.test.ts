@@ -313,6 +313,56 @@ suite('View', function () {
       assert.strictEqual(page.last('diff'), undefined);
     });
 
+    test('shows a tab without waiting for the state to be written', async () => {
+      const written = gate();
+      const state = new FakeStore();
+      await state.update(tabsKey, [repository.root]);
+      state.update = (key, value) => {
+        state.values.set(key, value);
+        return written.opened;
+      };
+      const view = new FastforwardView(
+        log,
+        await installedGit(),
+        new Storage(new UserSettings(defaultSettings()), state),
+        new FakeHost(),
+      );
+      const opened = attach(view);
+      try {
+        const ready = opened.connection.receive({ type: 'ready' });
+        await waitFor(
+          () => opened.page.last('commits') !== undefined,
+          'the history',
+        );
+        assert.strictEqual(state.get(activeTabKey), repository.root);
+        assert.deepStrictEqual(state.get(recentKey), [repository.root]);
+        written.open();
+        await ready;
+      } finally {
+        opened.connection.dispose();
+      }
+    });
+
+    test('shows a tab while its watcher starts', async () => {
+      const started = gate();
+      const opened = await openView(log, [repository.root], false);
+      stubMethod(opened.view, 'watch', async (original, ...args) => {
+        await started.opened;
+        return original(...args);
+      });
+      try {
+        const ready = opened.connection.receive({ type: 'ready' });
+        await waitFor(
+          () => opened.page.last('commits') !== undefined,
+          'the history',
+        );
+        started.open();
+        await ready;
+      } finally {
+        opened.connection.dispose();
+      }
+    });
+
     test('reopens at the position of the selected commit', async () => {
       await connection.receive({
         type: 'selectCommit',
