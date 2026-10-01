@@ -68,16 +68,38 @@ function lowercased(text: string): {
   return { lowered, starts, ends };
 }
 
-function searchedLines(
-  files: readonly DiffFile[],
-  whole: WholeFile | undefined,
-): string[][] {
-  if (whole) {
-    return [wholeLines(whole)];
-  }
-  return files.map((file) =>
-    file.hunks.flatMap((hunk) => hunk.lines.map((line) => line.text)),
+function lineMatches(
+  lines: readonly string[],
+  file: number,
+  query: string,
+): FindMatch[] {
+  return lines.flatMap((text, line) =>
+    matchesIn(text, query).map((range) => ({ file, line, ...range })),
   );
+}
+
+const matchesOfFile = new WeakMap<
+  DiffFile,
+  { readonly query: string; readonly matches: readonly FindMatch[] }
+>();
+
+function fileMatches(
+  file: DiffFile,
+  index: number,
+  query: string,
+): readonly FindMatch[] {
+  const cached = matchesOfFile.get(file);
+  if (cached?.query !== query) {
+    const lines = file.hunks.flatMap((hunk) =>
+      hunk.lines.map((line) => line.text),
+    );
+    const matches = lineMatches(lines, index, query);
+    matchesOfFile.set(file, { query, matches });
+    return matches;
+  }
+  return cached.matches[0]?.file === index
+    ? cached.matches
+    : cached.matches.map((match) => ({ ...match, file: index }));
 }
 
 export function findMatches(
@@ -88,15 +110,10 @@ export function findMatches(
   if (query === '') {
     return [];
   }
-  return searchedLines(files, whole).flatMap((lines, file) =>
-    lines.flatMap((text, line) =>
-      matchesIn(text, query).map((range) => ({
-        file,
-        line,
-        ...range,
-      })),
-    ),
-  );
+  if (whole) {
+    return lineMatches(wholeLines(whole), 0, query);
+  }
+  return files.flatMap((file, index) => fileMatches(file, index, query));
 }
 
 export function unsearchedFiles(

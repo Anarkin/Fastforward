@@ -167,11 +167,23 @@ export function wheelSideways(
   return Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : 0;
 }
 
-export function splitRows(
-  file: DiffFile,
-  index: number,
-): Extract<DiffRow, { kind: 'split' | 'hunk' }>[] {
-  const rows: Extract<DiffRow, { kind: 'split' | 'hunk' }>[] = [];
+type SplitRow = Extract<DiffRow, { kind: 'split' | 'hunk' }>;
+
+const splitRowsOfFile = new WeakMap<DiffFile, readonly SplitRow[]>();
+
+export function splitRows(file: DiffFile, index: number): readonly SplitRow[] {
+  let rows = splitRowsOfFile.get(file);
+  if (!rows) {
+    rows = alignedRows(file, index);
+    splitRowsOfFile.set(file, rows);
+  }
+  return rows[0]?.file === index
+    ? rows
+    : rows.map((row) => ({ ...row, file: index }));
+}
+
+function alignedRows(file: DiffFile, index: number): SplitRow[] {
+  const rows: SplitRow[] = [];
   let next = 0;
   for (const [number, hunk] of file.hunks.entries()) {
     if (number > 0) {
