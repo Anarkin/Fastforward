@@ -329,19 +329,12 @@ suite('Style', () => {
     );
   });
 
-  test('paints a column resizer no wider than the gap between columns, in the primary color', () => {
+  test('grabs a column edge over the gap between the columns without painting it, even while dragging', () => {
     const resizer = declarationsOf('.resizer');
-    assert.match(resizer, /box-sizing: border-box;/);
     assert.match(resizer, /width: 6px;/);
-    assert.match(
-      resizer,
-      /padding: 0 calc\(\(6px - var\(--gutter-width\)\) \/ 2\);/,
-    );
-    assert.match(resizer, /background-clip: content-box;/);
-    assert.match(
-      declarationsOf('.resizer:hover'),
-      /background-color: var\(--color-focus\);/,
-    );
+    assert.ok(resizer.includes('right: calc(-3px - var(--gutter-width) / 2);'));
+    assert.match(resizer, /cursor: col-resize;/);
+    assert.doesNotMatch(css, /\.resizer[^{]*\{[^}]*background/);
   });
 
   test('spins the icon of a running button', () => {
