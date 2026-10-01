@@ -673,11 +673,6 @@ body.resizing {
   outline: none;
 }
 
-.list:focus-visible {
-  outline: 1px solid var(--color-focus);
-  outline-offset: -1px;
-}
-
 .bubble-line {
   --bubble-inset: 6px;
   min-width: 0;

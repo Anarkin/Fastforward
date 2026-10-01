@@ -89,29 +89,113 @@ export function listTop(
   return commit && { hash: commit.hash, offset: scrollTop - row.start };
 }
 
-export function arrowKeyPosition(
+export interface VisibleRows {
+  readonly first: number;
+  readonly last: number;
+}
+
+export function fullyVisible(
+  items: readonly { index: number; start: number; end: number }[],
+  scrollTop: number,
+  height: number,
+  offset: number,
+): VisibleRows {
+  const first = items.find((item) => item.start >= scrollTop) ?? items.at(0);
+  const last =
+    items.findLast((item) => item.end <= scrollTop + height) ?? items.at(-1);
+  return {
+    first: (first?.index ?? 0) - offset,
+    last: (last?.index ?? 0) - offset,
+  };
+}
+
+const listKeys = new Set([
+  'ArrowDown',
+  'ArrowUp',
+  'Home',
+  'End',
+  'PageDown',
+  'PageUp',
+]);
+
+export function isListKey(
+  event: Pick<
+    KeyboardEvent,
+    'key' | 'ctrlKey' | 'metaKey' | 'altKey' | 'shiftKey'
+  >,
+): boolean {
+  return (
+    listKeys.has(event.key) &&
+    !event.ctrlKey &&
+    !event.metaKey &&
+    !event.altKey &&
+    !event.shiftKey
+  );
+}
+
+function startPosition(
+  history: CommitHistory,
+  selected: string | undefined,
+): number | null | undefined {
+  if (selected === workingTreeHash) {
+    return workingTreeIndex;
+  }
+  if (selected === undefined) {
+    return undefined;
+  }
+  const hint = history.selectedIndex;
+  return (
+    history.positionOf(selected) ??
+    (hint !== undefined && history.at(hint) === undefined ? hint : null)
+  );
+}
+
+export function listKeyPosition(
+  key: string,
   history: CommitHistory,
   selected: string | undefined,
   workingTree: boolean,
-  step: number,
+  visible: VisibleRows,
+  headCommit?: string,
+  pending?: number,
 ): number | undefined {
-  const top = workingTree ? workingTreeIndex : 0;
-  let from: number | undefined;
-  if (selected === workingTreeHash) {
-    from = workingTreeIndex;
-  } else if (selected !== undefined) {
-    const hint = history.selectedIndex;
-    from =
-      history.positionOf(selected) ??
-      (hint !== undefined && history.at(hint) === undefined ? hint : undefined);
-    if (from === undefined) {
-      return undefined;
-    }
+  const from = pending ?? startPosition(history, selected);
+  if (from === null) {
+    return undefined;
   }
-  const position = Math.max(
-    top,
-    Math.min(history.total - 1, (from ?? top - 1) + step),
-  );
+  const top = workingTree ? workingTreeIndex : 0;
+  const bottom = history.total - 1;
+  const page = Math.max(1, visible.last - visible.first);
+  const head =
+    headCommit === undefined ? undefined : history.positionOf(headCommit);
+  let target: number;
+  switch (key) {
+    case 'ArrowDown':
+      target = from === undefined ? (head ?? top) : from + 1;
+      break;
+    case 'ArrowUp':
+      target = from === undefined ? (head ?? top) : from - 1;
+      break;
+    case 'Home':
+      target = top;
+      break;
+    case 'End':
+      target = bottom;
+      break;
+    case 'PageDown':
+      target =
+        from === undefined || from < visible.last ? visible.last : from + page;
+      break;
+    case 'PageUp':
+      target =
+        from === undefined || from > visible.first
+          ? visible.first
+          : from - page;
+      break;
+    default:
+      return undefined;
+  }
+  const position = Math.max(top, Math.min(bottom, target));
   return position === from ? undefined : position;
 }
 
@@ -223,6 +307,7 @@ export function Commits({
   onSolo,
   navigation,
   search,
+  focusKey,
 }: {
   history: CommitHistory | undefined;
   opening: boolean;
@@ -242,6 +327,7 @@ export function Commits({
   onSolo: (solo: boolean) => void;
   navigation?: React.ReactNode;
   search?: React.ReactNode;
+  focusKey?: string;
 }) {
   const version = useSyncExternalStore(
     history?.subscribe ?? noHistory,
@@ -364,23 +450,56 @@ export function Commits({
     }
   }, [version, reportTop]);
 
+  const pending = useRef<number>(undefined);
+  useEffect(() => {
+    pending.current = undefined;
+  }, [selected]);
+  useEffect(() => {
+    const position = pending.current;
+    const commit = position === undefined ? undefined : history?.at(position);
+    if (commit) {
+      pending.current = undefined;
+      onSelect(commit.hash, true);
+    }
+  });
+  useEffect(() => {
+    if (focusKey !== undefined) {
+      list.current?.focus({ preventScroll: true });
+    }
+  }, [focusKey]);
+
   const onKeyDown = (event: React.KeyboardEvent) => {
-    const step =
-      event.key === 'ArrowDown' ? 1 : event.key === 'ArrowUp' ? -1 : 0;
-    if (!step || !history) {
+    if (!history || !isListKey(event.nativeEvent)) {
       return;
     }
     event.preventDefault();
-    const position = arrowKeyPosition(history, selected, !!workingTree, step);
+    const element = list.current;
+    const position = listKeyPosition(
+      event.key,
+      history,
+      selected,
+      hasWorkingTree,
+      fullyVisible(
+        virtualizer.getVirtualItems(),
+        element?.scrollTop ?? 0,
+        element?.clientHeight ?? 0,
+        offset,
+      ),
+      headCommit,
+      pending.current,
+    );
     if (position === undefined) {
       return;
     }
+    pending.current = undefined;
     if (position === workingTreeIndex) {
       onSelect(workingTreeHash, true);
     } else {
       const commit = history.at(position);
       if (commit) {
         onSelect(commit.hash, true);
+      } else {
+        pending.current = position;
       }
     }
     virtualizer.scrollToIndex(offset + position, { align: 'auto' });
