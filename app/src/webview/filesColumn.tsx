@@ -18,6 +18,26 @@ import { fileRowKey } from './tree';
 import type { Folders } from './viewFolders';
 import { VirtualRows } from './virtualRows';
 
+interface MovedCursor {
+  readonly key: string;
+  readonly from: string | undefined;
+  readonly view: string;
+}
+
+export function filesCursor(
+  moved: MovedCursor | undefined,
+  selectedKey: string | undefined,
+  view: string,
+  keys: readonly string[],
+): string | undefined {
+  return moved !== undefined &&
+    moved.from === selectedKey &&
+    moved.view === view &&
+    keys.includes(moved.key)
+    ? moved.key
+    : selectedKey;
+}
+
 export function Files({
   showAll,
   onShowAll,
@@ -31,6 +51,7 @@ export function Files({
   onReplaceFolders,
   selected,
   onSelect,
+  view,
 }: {
   showAll: boolean;
   onShowAll: (show: boolean) => void;
@@ -44,6 +65,7 @@ export function Files({
   onReplaceFolders: (folders: Folders) => void;
   selected: string | undefined;
   onSelect: (path: string | undefined) => void;
+  view: string;
 }) {
   const skeleton = useSkeleton(loading);
   const unchanged = showAll ? tree : undefined;
@@ -64,16 +86,13 @@ export function Files({
         ? changesKey
         : undefined
       : fileRowKey(selected);
-  const [moved, setMoved] = useState<{
-    readonly key: string;
-    readonly from: string | undefined;
-  }>();
-  const cursor =
-    moved !== undefined &&
-    moved.from === selectedKey &&
-    treeRows.some((row) => treeRowKey(row) === moved.key)
-      ? moved.key
-      : selectedKey;
+  const [moved, setMoved] = useState<MovedCursor>();
+  const cursor = filesCursor(
+    moved,
+    selectedKey,
+    view,
+    treeRows.map((row) => treeRowKey(row)),
+  );
   const select = (path: string | undefined) => {
     setMoved(undefined);
     if (path !== selected) {
@@ -100,7 +119,7 @@ export function Files({
         setMoved(undefined);
         onSelect(action.file);
       } else {
-        setMoved({ key: action.key, from: selectedKey });
+        setMoved({ key: action.key, from: selectedKey, view });
       }
     }
   };
@@ -155,7 +174,7 @@ export function Files({
     rows: treeRows,
     showsAll: showAll,
     onToggle: (folder, changed) => {
-      setMoved({ key: folderRowKey(folder), from: selectedKey });
+      setMoved({ key: folderRowKey(folder), from: selectedKey, view });
       if (changed) {
         onToggleClosedFolder(folder);
       } else {
