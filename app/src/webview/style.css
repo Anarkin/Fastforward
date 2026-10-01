@@ -1080,11 +1080,6 @@ body.resizing {
   );
 }
 
-.diff-line.added .number,
-.diff-line.removed .number {
-  background: var(--color-panel-background);
-}
-
 .diff-line .syntax-keyword {
   color: var(--color-syntax-keyword);
 }

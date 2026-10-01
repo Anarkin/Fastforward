@@ -222,7 +222,7 @@ suite('Style', () => {
     }
   });
 
-  test('tints no line numbers, and the changed characters of a line as strongly as the theme says', () => {
+  test('tints the line numbers of a changed line with its row, and its changed characters as strongly as the theme says', () => {
     for (const color of ['added', 'deleted']) {
       const word = color === 'added' ? 'word-added' : 'word-removed';
       assert.match(
@@ -233,10 +233,7 @@ suite('Style', () => {
         color,
       );
     }
-    assert.match(
-      css,
-      /\n\.diff-line\.added \.number,\s*\.diff-line\.removed \.number \{\s*background: var\(--color-panel-background\);\s*\}/,
-    );
+    assert.doesNotMatch(css, /\.diff-line\.(?:added|removed) \.number/);
     assert.doesNotMatch(css, /\.compared/);
   });
 
