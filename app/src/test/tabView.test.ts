@@ -12,6 +12,9 @@ import { commitInfo, fileChange } from './fixtures';
 const openTab = (view: TabView, active: string) =>
   reduceTabView(view, { type: 'tabs', tabs: [], active, recent: [] });
 
+const entire = (view: TabView) =>
+  reduceTabView(view, { type: 'showEntireFile', entire: true });
+
 function busyTab(): TabView {
   let view = reduceTabView(openTab(emptyTabView, 'one'), {
     type: 'commits',
@@ -42,6 +45,36 @@ function busyTab(): TabView {
 }
 
 suite('Tab view', () => {
+  test('shows a file entire until another file, commit or tab is shown', () => {
+    const shown = reduceTabView(busyTab(), { type: 'showFile', path: 'x.ts' });
+    assert.strictEqual(shown.entireFile, false);
+    assert.strictEqual(entire(shown).entireFile, true);
+    assert.strictEqual(
+      reduceTabView(entire(shown), { type: 'showEntireFile', entire: false })
+        .entireFile,
+      false,
+    );
+    assert.strictEqual(
+      reduceTabView(entire(shown), { type: 'showFile', path: 'x.ts' })
+        .entireFile,
+      true,
+    );
+    assert.strictEqual(
+      reduceTabView(entire(shown), { type: 'showFile', path: 'y.ts' })
+        .entireFile,
+      false,
+    );
+    assert.strictEqual(
+      reduceTabView(entire(shown), { type: 'showCommit', hash: 'a' })
+        .entireFile,
+      false,
+    );
+    assert.strictEqual(
+      openTab(openTab(entire(shown), 'two'), 'one').entireFile,
+      false,
+    );
+  });
+
   test('keeps the view when the tabs change but not the active one, and starts over when another becomes active', () => {
     const view = busyTab();
     assert.strictEqual(openTab(view, 'one'), view);

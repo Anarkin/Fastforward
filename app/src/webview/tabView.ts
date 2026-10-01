@@ -22,6 +22,7 @@ export interface TabView {
   readonly filesLoading: boolean;
   readonly patchLoading: boolean;
   readonly path: string | undefined;
+  readonly entireFile: boolean;
   readonly patch: string;
   readonly diffs: number;
   readonly fileContent: WholeFile | undefined;
@@ -50,6 +51,7 @@ export const emptyTabView: TabView = {
   filesLoading: false,
   patchLoading: false,
   path: undefined,
+  entireFile: false,
   patch: '',
   diffs: 0,
   fileContent: undefined,
@@ -70,6 +72,7 @@ export type TabAction =
   | ToWebview
   | { readonly type: 'showCommit'; readonly hash: string | undefined }
   | { readonly type: 'showFile'; readonly path: string | undefined }
+  | { readonly type: 'showEntireFile'; readonly entire: boolean }
   | { readonly type: 'requestTree'; readonly hash: string };
 
 function selected(state: TabView, hash: string | undefined): TabView {
@@ -81,6 +84,7 @@ function selected(state: TabView, hash: string | undefined): TabView {
     filesLoading: hash !== undefined,
     patchLoading: hash !== undefined,
     path: undefined,
+    entireFile: false,
     patch: '',
     fileContent: undefined,
     largeFiles: new Map(),
@@ -106,10 +110,13 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
         : { ...emptyTabView, root: action.active };
     case 'showCommit':
       return selected(state, action.hash);
+    case 'showEntireFile':
+      return { ...state, entireFile: action.entire };
     case 'showFile':
       return {
         ...state,
         path: action.path,
+        entireFile: action.path === state.path && state.entireFile,
         selectionKnown: true,
         patchLoading: state.hash !== undefined,
         patch: '',
