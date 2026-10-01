@@ -11,7 +11,7 @@ export async function loginShellPath(
   const output = await new Promise<string>((resolve) => {
     execFile(
       shell,
-      ['-ilc', `printf '%s' "${marker}$PATH${marker}"`],
+      ['-ilc', `printf '%s' "${marker}" "$PATH" "${marker}"`],
       { env, timeout: 5000, encoding: 'utf8' },
       (error, stdout) => resolve(error ? '' : stdout),
     );

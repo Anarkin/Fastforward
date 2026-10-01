@@ -1,8 +1,10 @@
 import * as assert from 'node:assert';
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { appFile, visibleBounds } from '../main/files';
-import { mergePaths, pathFromOutput } from '../main/shellPath';
+import { loginShellPath, mergePaths, pathFromOutput } from '../main/shellPath';
 import { checksForUpdates } from '../main/updates';
+import { installedGit } from './repositories';
 
 suite('App files', () => {
   const root = path.resolve('dist');
@@ -72,7 +74,31 @@ suite('Window bounds', () => {
   });
 });
 
+function gitShell(gitPath: string): string {
+  for (let folder = path.dirname(gitPath); ; folder = path.dirname(folder)) {
+    const shell = path.join(folder, 'bin', 'sh.exe');
+    if (fs.existsSync(shell)) {
+      return shell;
+    }
+    assert.notStrictEqual(path.dirname(folder), folder, 'no sh.exe beside git');
+  }
+}
+
 suite('Login shell PATH', () => {
+  test("reads the PATH the user's login shell sets", async function () {
+    this.timeout(10_000);
+    const shell =
+      process.platform === 'win32' ? gitShell(await installedGit()) : '/bin/sh';
+    const found = await loginShellPath({
+      ...process.env,
+      SHELL: shell,
+      PATH: [path.resolve('fastforward-probe'), process.env.PATH].join(
+        path.delimiter,
+      ),
+    });
+    assert.match(found ?? '', /fastforward-probe/);
+  });
+
   test("reads the PATH between the markers, past what the shell's profile prints", () => {
     assert.strictEqual(
       pathFromOutput(
