@@ -56,6 +56,13 @@
       "deleted-row": "8%",
       "deleted-minimap": "50%",
 
+      "syntax-keyword": "#00d",
+      "syntax-type": "#088",
+      "syntax-function": "#a0a",
+      "syntax-string": "#d00",
+      "syntax-number": "#d00",
+      "syntax-comment": "#080",
+
       "chart-blue": "#15f",
       "chart-green": "#383",
       "chart-orange": "#c81",
@@ -103,6 +110,13 @@
       "deleted-line": "20%",
       "deleted-row": "8%",
       "deleted-minimap": "50%",
+
+      "syntax-keyword": "#59c",
+      "syntax-type": "#088",
+      "syntax-function": "#da7",
+      "syntax-string": "#e75",
+      "syntax-number": "#e75",
+      "syntax-comment": "#5a5",
 
       "chart-blue": "#5af",
       "chart-green": "#8c8",

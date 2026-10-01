@@ -36,6 +36,30 @@ suite('Patch parser', () => {
     );
   });
 
+  test('keeps the ids of both sides of a file, but not of a side it lacks', () => {
+    const files = parsePatch(
+      [
+        'diff --git a/a.ts b/a.ts',
+        'index 1111111..2222222 100644',
+        'diff --git a/b.ts b/b.ts',
+        'deleted file mode 100644',
+        'index 3333333..0000000',
+        'diff --git a/c.ts b/c.ts',
+        'old mode 100644',
+        'new mode 100755',
+        '',
+      ].join('\n'),
+    );
+    assert.deepStrictEqual(
+      files.map((file) => file.blobs),
+      [
+        { old: '1111111', new: '2222222' },
+        { old: '3333333', new: undefined },
+        undefined,
+      ],
+    );
+  });
+
   test('takes paths with " b/" in them from the diff exactly', () => {
     const paths = parsePatch(
       [

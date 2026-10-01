@@ -12,6 +12,8 @@ import {
 } from './minimap';
 import { columnFocusAttribute } from './activeColumn';
 import { alignLines } from './pairing';
+import type { TextRequest } from '../shared/protocol';
+import { textsToLoad, useSyntax, type SyntaxRange } from './syntax';
 import { wordRanges } from './wordDiff';
 import { changeStep } from './shortcuts';
 import { ownScrollbarAttribute } from './overlayScrollbars';
@@ -382,19 +384,23 @@ const covers = (range: FindRange, start: number, end: number) =>
 
 export function marked(
   text: string,
+  syntax: readonly SyntaxRange[],
   words: readonly FindRange[],
   wordClass: string,
   finds: readonly FindRange[],
   current: FindRange | undefined,
 ): React.ReactNode {
-  if (words.length === 0) {
+  if (words.length === 0 && syntax.length === 0) {
     return finds.length === 0 ? text : highlighted(text, finds, current);
   }
   const edges = [
     ...new Set([
       0,
       text.length,
-      ...[...words, ...finds].flatMap((range) => [range.start, range.end]),
+      ...[...syntax, ...words, ...finds].flatMap((range) => [
+        range.start,
+        range.end,
+      ]),
     ]),
   ].toSorted((a, b) => a - b);
   return edges.slice(0, -1).map((start, index) => {
@@ -405,13 +411,17 @@ export function marked(
       find !== undefined &&
       current?.start === find.start &&
       current.end === find.end;
-    const content = find ? (
+    let content: React.ReactNode = find ? (
       <mark className={`find-match ${isCurrent ? 'current' : ''}`}>
         {piece}
       </mark>
     ) : (
       piece
     );
+    const token = syntax.find((range) => covers(range, start, end));
+    if (token) {
+      content = <span className={`syntax-${token.kind}`}>{content}</span>;
+    }
     return words.some((range) => covers(range, start, end)) ? (
       <span key={start} className={wordClass}>
         {content}
@@ -497,6 +507,8 @@ export function DiffView({
   loading,
   diff,
   onLoad,
+  texts = new Map(),
+  onLoadTexts = () => undefined,
   changeMarks = false,
   matches = [],
   current = 0,
@@ -509,6 +521,8 @@ export function DiffView({
   loading: boolean;
   diff: number;
   onLoad: (path: string) => void;
+  texts?: ReadonlyMap<string, string>;
+  onLoadTexts?: (texts: TextRequest[]) => void;
   changeMarks?: boolean;
   matches?: readonly FindMatch[];
   current?: number;
@@ -571,6 +585,14 @@ export function DiffView({
     () => (whole ? new Map<string, FindRange[]>() : wordRanges(files)),
     [files, whole],
   );
+  const syntax = useSyntax(files, whole, texts);
+  const requestedTexts = useRef(new Set<string>());
+  useEffect(() => {
+    const load = whole ? [] : textsToLoad(files, diff, requestedTexts.current);
+    if (load.length > 0) {
+      onLoadTexts(load);
+    }
+  }, [files, whole, diff, onLoadTexts]);
   const rangesByLine = useMemo(() => {
     const byLine = new Map<string, FindRange[]>();
     for (const match of matches) {
@@ -645,6 +667,7 @@ export function DiffView({
       <span className="code">
         {marked(
           text,
+          (key !== undefined && syntax.get(key)) || [],
           changed,
           kind === 'removed' ? 'word-removed' : 'word-added',
           finds,

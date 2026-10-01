@@ -10,6 +10,7 @@ import {
   isLargeChange,
   type DiffLayout,
   type FileChange,
+  type TextRequest,
 } from '../shared/protocol';
 import { Column } from './column';
 import { parsePatch, type DiffFile } from './diff';
@@ -226,6 +227,8 @@ export function Diff({
   diffs,
   largeFiles,
   onLoadFile,
+  texts,
+  onLoadTexts,
   fileContent,
   error,
   entireFile,
@@ -240,6 +243,8 @@ export function Diff({
   diffs: number;
   largeFiles: ReadonlyMap<string, DiffFile>;
   onLoadFile: (path: string) => void;
+  texts: ReadonlyMap<string, string>;
+  onLoadTexts: (texts: TextRequest[]) => void;
   fileContent: WholeFile | undefined;
   error: string | undefined;
   entireFile: React.ReactNode;
@@ -312,6 +317,8 @@ export function Diff({
         loading={loading}
         diff={diffs}
         onLoad={onLoadFile}
+        texts={texts}
+        onLoadTexts={onLoadTexts}
         changeMarks={changeMarks}
         sideBySide={sideBySide}
         matches={matches}

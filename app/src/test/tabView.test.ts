@@ -356,6 +356,36 @@ suite('Tab view', () => {
     );
   });
 
+  test('keeps the texts sent for the current diff, until the next diff', () => {
+    const view = reduceTabView(busyTab(), {
+      type: 'diff',
+      hash: 'a',
+      path: 'x.ts',
+      patch: 'x',
+    });
+    const answer = (hash: string, diff: number) =>
+      reduceTabView(view, {
+        type: 'texts',
+        hash,
+        diff,
+        texts: [
+          { path: 'x.ts', side: 'old', blob: '1', text: 'old' },
+          { path: 'x.ts', side: 'new', blob: '2', text: undefined },
+        ],
+      });
+    const answered = answer('a', view.diffs);
+    assert.deepStrictEqual(answered.texts, new Map([['old:x.ts', 'old']]));
+    assert.strictEqual(answer('a', view.diffs - 1), view);
+    assert.strictEqual(answer('b', view.diffs), view);
+    const next = reduceTabView(answered, {
+      type: 'diff',
+      hash: 'a',
+      path: 'x.ts',
+      patch: 'y',
+    });
+    assert.deepStrictEqual(next.texts, new Map());
+  });
+
   test("asks for a commit's tree once, and again after the tab reopens", () => {
     const view = reduceTabView(emptyTabView, { type: 'showCommit', hash: 'a' });
     assert.strictEqual(treeToLoad(view), 'a');

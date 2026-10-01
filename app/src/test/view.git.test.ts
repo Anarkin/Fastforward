@@ -1168,6 +1168,45 @@ suite('View', function () {
       }
     });
 
+    test('sends the texts a diff asks for, an uncommitted new side read from disk', async () => {
+      const file = path.join(repository.root, 'texts.ts');
+      fs.writeFileSync(file, 'old\n');
+      try {
+        const [blob] = await repository.resolve(
+          (await repository.git('hash-object', '-w', file)).trim(),
+        );
+        fs.writeFileSync(file, 'new\n');
+        await connection.receive({
+          type: 'selectCommit',
+          root: repository.root,
+          hash: workingTreeHash,
+        });
+        page.clear();
+        await connection.receive({
+          type: 'loadTexts',
+          root: repository.root,
+          hash: workingTreeHash,
+          diff: 3,
+          texts: [
+            { path: 'texts.ts', side: 'old', blob },
+            { path: 'texts.ts', side: 'new', blob },
+            { path: 'texts.ts', side: 'old', blob: '0'.repeat(39) + '1' },
+          ],
+        });
+        assert.deepStrictEqual(
+          page.last('texts')?.texts.map(({ side, text }) => [side, text]),
+          [
+            ['old', 'old\n'],
+            ['new', 'new\n'],
+            ['old', undefined],
+          ],
+        );
+        assert.strictEqual(page.last('texts')?.diff, 3);
+      } finally {
+        fs.rmSync(file, { force: true });
+      }
+    });
+
     test('applies the merge setting to the history shown, without reloading it', async () => {
       await connection.refresh();
       await connection.receive({ type: 'setCollapseMerges', collapse: false });

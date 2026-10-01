@@ -64,10 +64,12 @@ const contexts = await Promise.all([
   }),
   esbuild.context({
     ...shared,
-    entryPoints: ['src/webview/main.tsx'],
-    format: 'iife',
+    entryPoints: { webview: 'src/webview/main.tsx' },
+    format: 'esm',
+    splitting: true,
     platform: 'browser',
-    outfile: 'dist/webview.js',
+    outdir: 'dist',
+    chunkNames: 'chunks/[name]-[hash]',
     jsx: 'automatic',
     define: {
       'process.env.NODE_ENV': production ? '"production"' : '"development"',

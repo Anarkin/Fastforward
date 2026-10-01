@@ -2,7 +2,7 @@ import * as path from 'node:path';
 import { remoteDefaultBranches } from './git/branches';
 import { showFiles, showPatch, type PatchScope } from './git/diff';
 import { gitErrorText } from './git/errorText';
-import { listTree, readFile } from './git/files';
+import { listTree, readBlobs, readFile } from './git/files';
 import {
   findCommit,
   findCommits,
@@ -43,6 +43,7 @@ import {
   type FileChange,
   type TabInfo,
   type TabMessage,
+  type TextRequest,
   type ToHost,
   type ToWebview,
 } from './shared/protocol';
@@ -419,6 +420,11 @@ export class FastforwardView {
         }
         break;
       }
+      case 'loadTexts':
+        if (this.isSelected(context, message.hash)) {
+          await this.sendTexts(context, message);
+        }
+        break;
       case 'loadFileDiff':
         if (this.isSelected(context, message.hash)) {
           await this.sendFileDiff(
@@ -1091,6 +1097,32 @@ export class FastforwardView {
     });
     if (context.tab.hash === hash) {
       context.post({ type: 'fileDiff', hash, path: file, patch, diff });
+    }
+  }
+
+  private async sendTexts(
+    context: Context,
+    { hash, diff, texts }: Extract<TabMessage, { type: 'loadTexts' }>,
+  ): Promise<void> {
+    const { gitPath, root } = context;
+    const fromDisk = (request: TextRequest) =>
+      hash === workingTreeHash && request.side === 'new';
+    const blobs = await readBlobs(
+      gitPath,
+      root,
+      texts.filter((request) => !fromDisk(request)).map(({ blob }) => blob),
+    );
+    const read = await Promise.all(
+      texts.map(async (request) => {
+        if (!fromDisk(request)) {
+          return { ...request, text: blobs.get(request.blob) };
+        }
+        const file = await readFile(gitPath, root, undefined, request.path);
+        return { ...request, text: file.binary ? undefined : file.content };
+      }),
+    );
+    if (context.tab.hash === hash) {
+      context.post({ type: 'texts', hash, diff, texts: read });
     }
   }
 
