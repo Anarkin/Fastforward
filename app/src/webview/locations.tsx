@@ -54,9 +54,9 @@ export function searchRefs(
   query: string,
   limit = maxResults,
 ): SearchGroup[] {
-  const needle = query.toLowerCase();
+  const needle = query.trim().toLowerCase();
   return groups.map((group) => {
-    if (!query) {
+    if (!needle) {
       return { ...group, refs: [], more: 0 };
     }
     const matches = refs

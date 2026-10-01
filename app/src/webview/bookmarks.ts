@@ -78,7 +78,7 @@ export function pinnedRefs(
   detached: string | undefined,
   query: string,
 ): PinnedRefs {
-  const needle = query.toLowerCase();
+  const needle = query.trim().toLowerCase();
   const matches = (bookmark: Bookmark) =>
     bookmark.name.toLowerCase().includes(needle);
   const checkedOut: Bookmark[] = detached
