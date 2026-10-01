@@ -87,6 +87,15 @@ suite('Git repository', function () {
     }
   });
 
+  test('reads the branch HEAD is on by its name, even with a tag of that name', async () => {
+    await temp.git('tag', 'main');
+    try {
+      assert.strictEqual((await readHead(gitPath, cwd))?.name, 'main');
+    } finally {
+      await temp.git('tag', '-d', 'main');
+    }
+  });
+
   test('finds the root of the repository a folder is in, or none', async () => {
     fs.mkdirSync(path.join(cwd, 'inner'), { recursive: true });
     assert.strictEqual(
