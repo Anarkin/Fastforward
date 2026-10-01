@@ -73,6 +73,8 @@ function readJson(file: string): Record<string, unknown> {
   return {};
 }
 
+const maxAutoFetchMinutes = Math.floor((2 ** 31 - 1) / 60_000);
+
 export class Storage {
   constructor(
     private readonly userSettings: UserSettings,
@@ -154,7 +156,9 @@ export class Storage {
 
   get autoFetchMinutes(): number {
     const { autoFetch, autoFetchMinutes } = this.settings;
-    return autoFetch ? Math.max(0, autoFetchMinutes) : 0;
+    return autoFetch
+      ? Math.min(Math.max(0, autoFetchMinutes), maxAutoFetchMinutes)
+      : 0;
   }
 
   async setAutoFetch(on: boolean): Promise<void> {

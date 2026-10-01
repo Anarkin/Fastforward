@@ -36,6 +36,19 @@ suite('Storage', () => {
     });
   });
 
+  test('fetches at most as seldom as a timer can wait', () => {
+    const storage = new Storage(
+      new UserSettings({
+        ...defaultSettings(),
+        autoFetch: true,
+        autoFetchMinutes: 50_000,
+      }),
+      new FakeStore(),
+    );
+    assert.ok(storage.autoFetchMinutes * 60_000 <= 2 ** 31 - 1);
+    assert.ok(storage.autoFetchMinutes > 35_000);
+  });
+
   test('keeps solo per repository in the state, only where it differs from the default', async () => {
     const state = new FakeStore();
     const storage = storageOf(state);
