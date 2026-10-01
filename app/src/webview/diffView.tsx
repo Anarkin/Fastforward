@@ -1,5 +1,5 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { useEffect, useMemo, useRef, useState, Fragment } from 'react';
+import { memo, useEffect, useMemo, useRef, useState, Fragment } from 'react';
 import { collapseThreshold } from '../shared/protocol';
 import type { DiffFile, DiffLine } from './diff';
 import { lineKey, wholeLines, type FindMatch, type FindRange } from './find';
@@ -500,6 +500,59 @@ export function marked(
   });
 }
 
+export interface LineMarks {
+  readonly syntax: ReadonlyMap<string, readonly SyntaxRange[]>;
+  readonly words: ReadonlyMap<string, readonly FindRange[]>;
+  readonly finds: ReadonlyMap<string, readonly FindRange[]>;
+  readonly foundKey: string | undefined;
+  readonly found: FindRange | undefined;
+}
+
+interface CodeProps {
+  readonly text: string;
+  readonly syntax: readonly SyntaxRange[];
+  readonly words: readonly FindRange[];
+  readonly wordClass: string;
+  readonly finds: readonly FindRange[];
+  readonly current: FindRange | undefined;
+}
+
+const unmarked: readonly never[] = [];
+
+export function codeProps(
+  marks: LineMarks,
+  key: string | undefined,
+  text: string,
+  kind: DiffLine['kind'] | undefined,
+): CodeProps {
+  const of = <T,>(ranges: ReadonlyMap<string, readonly T[]>) =>
+    (key !== undefined && ranges.get(key)) || unmarked;
+  return {
+    text,
+    syntax: of(marks.syntax),
+    words: of(marks.words),
+    wordClass: kind === 'removed' ? 'word-removed' : 'word-added',
+    finds: of(marks.finds),
+    current:
+      key !== undefined && key === marks.foundKey ? marks.found : undefined,
+  };
+}
+
+const Code = memo(function Code({
+  text,
+  syntax,
+  words,
+  wordClass,
+  finds,
+  current,
+}: CodeProps) {
+  return (
+    <span className="code">
+      {marked(text, syntax, words, wordClass, finds, current)}
+    </span>
+  );
+});
+
 export function findRangesByLine(
   matches: readonly FindMatch[],
 ): Map<string, FindRange[]> {
@@ -739,26 +792,18 @@ export function DiffView({
     );
   };
 
+  const lineMarks: LineMarks = {
+    syntax,
+    words,
+    finds: rangesByLine,
+    foundKey,
+    found,
+  };
   const code = (
     key: string | undefined,
     text: string,
     kind: DiffLine['kind'] | undefined,
-  ) => {
-    const finds = (key !== undefined && rangesByLine.get(key)) || [];
-    const changed = (key !== undefined && words.get(key)) || [];
-    return (
-      <span className="code">
-        {marked(
-          text,
-          (key !== undefined && syntax.get(key)) || [],
-          changed,
-          kind === 'removed' ? 'word-removed' : 'word-added',
-          finds,
-          key === foundKey ? found : undefined,
-        )}
-      </span>
-    );
-  };
+  ) => <Code {...codeProps(lineMarks, key, text, kind)} />;
 
   const renderRow = (row: DiffRow, index: number) => {
     switch (row.kind) {
