@@ -21,6 +21,18 @@ export type ChangesTreeRow =
       readonly depth: number;
     };
 
+export interface ChangesFolder {
+  readonly name: string;
+  readonly path: string;
+  readonly changed: boolean;
+  readonly folders: readonly ChangesFolder[];
+  readonly files: readonly {
+    readonly name: string;
+    readonly path: string;
+    readonly change: FileChange | undefined;
+  }[];
+}
+
 function compact(node: FolderNode): FolderNode {
   let merged = node;
   while (merged.files.length === 0 && merged.folders.size === 1) {
@@ -30,18 +42,33 @@ function compact(node: FolderNode): FolderNode {
   return merged;
 }
 
-export function changesTreeRows(
+export function changesTree(
   files: readonly FileChange[],
-  closed: ReadonlySet<string>,
   unchanged: readonly string[] = [],
+): ChangesFolder {
+  const changes = new Map(files.map((file) => [file.path, file]));
+  const sorted = (node: FolderNode): ChangesFolder => ({
+    name: node.name,
+    path: node.path,
+    changed: node.changed,
+    folders: [...node.folders.values()]
+      .map((child) => sorted(compact(child)))
+      .toSorted(byName),
+    files: node.files
+      .map((file) => ({ ...file, change: changes.get(file.path) }))
+      .toSorted(byName),
+  });
+  return sorted(buildFileTree(unchanged, changes));
+}
+
+export function changesTreeRows(
+  tree: ChangesFolder,
+  closed: ReadonlySet<string>,
   opened: ReadonlySet<string> = new Set(),
 ): ChangesTreeRow[] {
-  const changes = new Map(files.map((file) => [file.path, file]));
   const rows: ChangesTreeRow[] = [];
-  const add = (node: FolderNode, depth: number) => {
-    for (const child of [...node.folders.values()]
-      .map(compact)
-      .toSorted(byName)) {
+  const add = (node: ChangesFolder, depth: number) => {
+    for (const child of node.folders) {
       const open = child.changed
         ? !closed.has(child.path)
         : opened.has(child.path);
@@ -57,34 +84,26 @@ export function changesTreeRows(
         add(child, depth + 1);
       }
     }
-    for (const file of node.files.toSorted(byName)) {
-      rows.push({
-        kind: 'file',
-        name: file.name,
-        path: file.path,
-        change: changes.get(file.path),
-        depth,
-      });
+    for (const file of node.files) {
+      rows.push({ kind: 'file', ...file, depth });
     }
   };
-  add(buildFileTree(unchanged, changes), 0);
+  add(tree, 0);
   return rows;
 }
 
-export function treeFolders(
-  files: readonly FileChange[],
-  unchanged: readonly string[] = [],
-): { changed: string[]; unchanged: string[] } {
+export function treeFolders(tree: ChangesFolder): {
+  changed: string[];
+  unchanged: string[];
+} {
   const folders = { changed: [] as string[], unchanged: [] as string[] };
-  const add = (node: FolderNode) => {
-    for (const child of [...node.folders.values()].map(compact)) {
+  const add = (node: ChangesFolder) => {
+    for (const child of node.folders) {
       folders[child.changed ? 'changed' : 'unchanged'].push(child.path);
       add(child);
     }
   };
-  add(
-    buildFileTree(unchanged, new Map(files.map((file) => [file.path, file]))),
-  );
+  add(tree);
   return folders;
 }
 

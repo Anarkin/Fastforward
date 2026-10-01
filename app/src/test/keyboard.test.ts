@@ -6,7 +6,7 @@ import {
   forwardedColumn,
   shownColumns,
 } from '../webview/activeColumn';
-import { changesTreeRows, filesKey } from '../webview/changesTree';
+import { changesTree, changesTreeRows, filesKey } from '../webview/changesTree';
 import {
   changeScrollTop,
   changeStarts,
@@ -134,7 +134,7 @@ suite('Files column keys', () => {
     fileChange('c.ts'),
   ];
   const rows = (closed: string[] = []) =>
-    changesTreeRows(files, new Set(closed));
+    changesTreeRows(changesTree(files), new Set(closed));
 
   test('moves through All Changes, the folders and the files, selecting the files it lands on', () => {
     assert.deepStrictEqual(
