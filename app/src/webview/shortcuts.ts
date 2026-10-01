@@ -50,6 +50,20 @@ export function isFindShortcut(
   );
 }
 
+export function isNewTabShortcut(
+  event: Pick<
+    KeyboardEvent,
+    'key' | 'code' | 'ctrlKey' | 'metaKey' | 'shiftKey' | 'altKey'
+  >,
+): boolean {
+  return (
+    (event.ctrlKey || event.metaKey) &&
+    !event.shiftKey &&
+    !event.altKey &&
+    (event.key.toLowerCase() === 't' || event.code === 'KeyT')
+  );
+}
+
 export function tabStep(
   event: Pick<
     KeyboardEvent,

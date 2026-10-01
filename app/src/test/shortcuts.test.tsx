@@ -1,6 +1,11 @@
 import * as assert from 'node:assert';
-import { handleShortcut, shortcutOf, tabStep } from '../webview/shortcuts';
-import { adjacentTab } from '../webview/tabBar';
+import {
+  handleShortcut,
+  isNewTabShortcut,
+  shortcutOf,
+  tabStep,
+} from '../webview/shortcuts';
+import { adjacentTab, tabBarKey } from '../webview/tabBar';
 
 const keyEvent = (
   key: string,
@@ -110,5 +115,33 @@ suite('Switching tabs', () => {
     assert.strictEqual(adjacentTab(tabs, '/a', -1), '/c');
     assert.strictEqual(adjacentTab(tabs, undefined, 1), '/a');
     assert.strictEqual(adjacentTab(tabs.slice(0, 1), '/a', 1), undefined);
+  });
+
+  test('opens a repository on Ctrl+T, or Cmd+T, whatever the keyboard layout', () => {
+    const newTab = { ...key, key: 't', code: 'KeyT' };
+    assert.ok(isNewTabShortcut(newTab));
+    assert.ok(isNewTabShortcut({ ...newTab, ctrlKey: false, metaKey: true }));
+    assert.ok(isNewTabShortcut({ ...newTab, key: 'е' }));
+    assert.ok(!isNewTabShortcut({ ...newTab, ctrlKey: false }));
+    assert.ok(!isNewTabShortcut({ ...newTab, shiftKey: true }));
+  });
+
+  test('opens a repository or picks the tab a key asks for, and nothing for other keys', () => {
+    assert.deepStrictEqual(
+      tabBarKey({ ...key, key: 't', code: 'KeyT' }, tabs, '/a'),
+      { kind: 'add' },
+    );
+    assert.deepStrictEqual(tabBarKey({ ...key, code: 'Tab' }, tabs, '/a'), {
+      kind: 'select',
+      root: '/b',
+    });
+    assert.deepStrictEqual(
+      tabBarKey({ ...key, code: 'Tab', shiftKey: true }, tabs, '/a'),
+      { kind: 'select', root: '/c' },
+    );
+    assert.strictEqual(
+      tabBarKey({ ...key, key: 'x', code: 'KeyX' }, tabs, '/a'),
+      undefined,
+    );
   });
 });
