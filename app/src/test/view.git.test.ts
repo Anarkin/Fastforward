@@ -435,6 +435,43 @@ suite('View', function () {
       }
     });
 
+    test('lists the untracked files of the working tree once per refresh, for its files and its tree', async () => {
+      await connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: workingTreeHash,
+      });
+      await connection.receive({
+        type: 'loadTree',
+        root: repository.root,
+        hash: workingTreeHash,
+      });
+      stubMethod(fastforward, 'sendWorkingTree', async (original, ...args) => {
+        const workingTree = await original(...args);
+        assert.ok(
+          typeof workingTree === 'object' &&
+            workingTree !== null &&
+            'files' in workingTree &&
+            Array.isArray(workingTree.files),
+        );
+        return {
+          ...workingTree,
+          files: [
+            ...workingTree.files,
+            {
+              path: 'listed.txt',
+              oldPath: undefined,
+              status: 'U',
+              insertions: 0,
+              deletions: 0,
+            },
+          ],
+        };
+      });
+      await connection.refresh();
+      assert.deepStrictEqual(page.last('tree')?.paths, ['listed.txt']);
+    });
+
     test('sends no tree of a commit no longer selected', async () => {
       await connection.receive({
         type: 'selectCommit',
