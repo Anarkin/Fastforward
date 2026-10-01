@@ -70,6 +70,9 @@ suite('App', function () {
     await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
     await page.keyboard.press('End');
     await page.locator('.commit.selected', { hasText: 'first' }).waitFor();
+    await page.keyboard.press('Home');
+    await page.locator('.commit.working-tree.empty.selected').waitFor();
+    await page.locator('.columns.nothing-selected').waitFor();
   });
 
   test('colors the page from the settings', async () => {

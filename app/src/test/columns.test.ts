@@ -5,9 +5,11 @@ import {
   followDrag,
   maxWidth,
   resetWidth,
+  shownSelection,
   templateOf,
   widthsToLoad,
 } from '../webview/columns';
+import { workingTreeHash } from '../shared/protocol';
 
 function dragTarget() {
   const listeners = new Map<string, (event: { buttons: number }) => void>();
@@ -101,5 +103,15 @@ suite('Columns', () => {
       columnsClass(false, undefined),
       'columns commits-hidden nothing-selected',
     );
+  });
+});
+
+suite('Shown selection', () => {
+  test('lays out a clean working tree, selected, like nothing selected, as there is nothing to show beside it', () => {
+    assert.strictEqual(shownSelection(workingTreeHash, 0), undefined);
+    assert.strictEqual(shownSelection(workingTreeHash, undefined), undefined);
+    assert.strictEqual(shownSelection(workingTreeHash, 2), workingTreeHash);
+    assert.strictEqual(shownSelection('a', 0), 'a');
+    assert.strictEqual(shownSelection(undefined, 2), undefined);
   });
 });
