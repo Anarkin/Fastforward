@@ -129,6 +129,7 @@ function toAll(contexts: readonly Context[]): Context | undefined {
 export class FastforwardView {
   private readonly tabStates = new Map<string, Tab>();
   private readonly commitSearches = new Map<string, AbortController>();
+  private readonly hashLookups = new Map<string, number>();
   private page: Session | undefined;
   private readonly autoFetch: AutoFetch;
 
@@ -888,8 +889,19 @@ export class FastforwardView {
   }
 
   private async lookupHash(context: Context, query: string): Promise<void> {
-    const result = await findCommits(context.gitPath, context.root, query);
-    context.post({ type: 'hashLookup', query, result });
+    const lookup = (this.hashLookups.get(context.root) ?? 0) + 1;
+    this.hashLookups.set(context.root, lookup);
+    const result = await this.commitsStartingWith(context, query);
+    if (this.hashLookups.get(context.root) === lookup) {
+      context.post({ type: 'hashLookup', query, result });
+    }
+  }
+
+  private commitsStartingWith(
+    context: Context,
+    query: string,
+  ): ReturnType<typeof findCommits> {
+    return findCommits(context.gitPath, context.root, query);
   }
 
   private async navigate(
