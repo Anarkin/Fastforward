@@ -122,19 +122,39 @@ async function catchUp(
   }
 }
 
-export async function fetchAll(
-  log: Log,
-  notify: Notify,
-  { gitPath, root }: RepositoryAt,
-): Promise<boolean> {
+export type Fetched =
+  | { readonly failed: false }
+  | { readonly failed: true; readonly error: unknown };
+
+export async function fetchAll({
+  gitPath,
+  root,
+}: RepositoryAt): Promise<Fetched> {
   try {
     await fetchAllRemotes(gitPath, root);
-    log.info('Fetched every remote');
-    return true;
+    return { failed: false };
   } catch (error) {
-    reportFailure(log, notify, 'fetch failed', "Couldn't fetch.", error);
+    return { failed: true, error };
+  }
+}
+
+export function reportFetched(
+  log: Log,
+  notify: Notify,
+  fetched: Fetched,
+): boolean {
+  if (fetched.failed) {
+    reportFailure(
+      log,
+      notify,
+      'fetch failed',
+      "Couldn't fetch.",
+      fetched.error,
+    );
     return false;
   }
+  log.info('Fetched every remote');
+  return true;
 }
 
 function reportFailure(
