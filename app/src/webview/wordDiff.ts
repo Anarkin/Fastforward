@@ -132,49 +132,63 @@ export function wholeText(text: string): FindRange[] | undefined {
   return start === -1 ? undefined : [{ start, end: text.trimEnd().length }];
 }
 
-export function wordRanges(
-  files: readonly DiffFile[],
-): Map<string, FindRange[]> {
-  const ranges = new Map<string, FindRange[]>();
+const rangesOfFile = new WeakMap<DiffFile, ReadonlyMap<number, FindRange[]>>();
+
+function fileWordRanges(file: DiffFile): ReadonlyMap<number, FindRange[]> {
+  const cached = rangesOfFile.get(file);
+  if (cached) {
+    return cached;
+  }
+  const ranges = new Map<number, FindRange[]>();
   const place = (
-    file: number,
     line: { readonly text: string; readonly index: number },
     words: FindRange[] | undefined,
   ) => {
     const marked = words ?? wholeText(line.text);
     if (marked) {
-      ranges.set(lineKey(file, line.index), marked);
+      ranges.set(line.index, marked);
     }
   };
-  files.forEach((file, fileIndex) => {
-    let next = 0;
-    for (const hunk of file.hunks) {
-      let removed: { text: string; index: number }[] = [];
-      let added: { text: string; index: number }[] = [];
-      const compare = () => {
-        const found = blockWordRanges(
-          removed.map((line) => line.text),
-          added.map((line) => line.text),
-        );
-        removed.forEach((line, i) => place(fileIndex, line, found?.removed[i]));
-        added.forEach((line, i) => place(fileIndex, line, found?.added[i]));
-        removed = [];
-        added = [];
-      };
-      for (const line of hunk.lines) {
-        const placed = { text: line.text, index: next++ };
-        if (line.kind === 'removed') {
-          if (added.length > 0) {
-            compare();
-          }
-          removed.push(placed);
-        } else if (line.kind === 'added') {
-          added.push(placed);
-        } else {
+  let next = 0;
+  for (const hunk of file.hunks) {
+    let removed: { text: string; index: number }[] = [];
+    let added: { text: string; index: number }[] = [];
+    const compare = () => {
+      const found = blockWordRanges(
+        removed.map((line) => line.text),
+        added.map((line) => line.text),
+      );
+      removed.forEach((line, i) => place(line, found?.removed[i]));
+      added.forEach((line, i) => place(line, found?.added[i]));
+      removed = [];
+      added = [];
+    };
+    for (const line of hunk.lines) {
+      const placed = { text: line.text, index: next++ };
+      if (line.kind === 'removed') {
+        if (added.length > 0) {
           compare();
         }
+        removed.push(placed);
+      } else if (line.kind === 'added') {
+        added.push(placed);
+      } else {
+        compare();
       }
-      compare();
+    }
+    compare();
+  }
+  rangesOfFile.set(file, ranges);
+  return ranges;
+}
+
+export function wordRanges(
+  files: readonly DiffFile[],
+): Map<string, FindRange[]> {
+  const ranges = new Map<string, FindRange[]>();
+  files.forEach((file, fileIndex) => {
+    for (const [line, marked] of fileWordRanges(file)) {
+      ranges.set(lineKey(fileIndex, line), marked);
     }
   });
   return ranges;

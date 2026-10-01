@@ -51,6 +51,22 @@ suite('Side-by-side diff', () => {
     ]);
   });
 
+  test('lines up the sides of each file once, keeping them as other files open and close or the file moves', () => {
+    const [file] = parsePatch(patch);
+    const other = parsePatch(patch.replaceAll('a.ts', 'b.ts'))[0];
+    const split = (toggled: ReadonlyMap<string, boolean>) =>
+      diffRows([file, other], toggled, undefined, false, true).filter(
+        (row) => row.kind === 'split' && row.file === 0,
+      );
+    const rows = split(new Map());
+    assert.strictEqual(rows.length, 7);
+    const closed = split(new Map([['b.ts', false]]));
+    rows.forEach((row, index) => assert.strictEqual(closed[index], row));
+    const moved = splitRows(file, 1);
+    assert.deepStrictEqual(sides(moved), sides(splitRows(file, 0)));
+    assert.ok(moved.every((row) => row.file === 1));
+  });
+
   test('numbers each line by its place across the hunks, as the search does', () => {
     const [file] = parsePatch(patch);
     const indices = splitRows(file, 0).flatMap((row) =>

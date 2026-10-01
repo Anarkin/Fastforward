@@ -106,6 +106,26 @@ suite('Word diff', () => {
     assert.deepStrictEqual(ranges.get('0:6'), [{ start: 0, end: 3 }]);
   });
 
+  test('pairs the words of each file once, keeping them as the file moves among the others', () => {
+    const [file] = parsePatch(
+      [
+        'diff --git a/a.ts b/a.ts',
+        '--- a/a.ts',
+        '+++ b/a.ts',
+        '@@ -1,1 +1,1 @@',
+        '-let total = 1;',
+        '+let sum = 1;',
+        '',
+      ].join('\n'),
+    );
+    const other = { path: 'b.ts', binary: false, hunks: [] };
+    const alone = wordRanges([file]);
+    const moved = wordRanges([other, file]);
+    assert.deepStrictEqual([...moved.keys()], ['1:0', '1:1']);
+    assert.strictEqual(moved.get('1:0'), alone.get('0:0'));
+    assert.strictEqual(moved.get('1:1'), alone.get('0:1'));
+  });
+
   test('marks the whole text of a line changed through, from its first character to its last, and nothing of a blank one', () => {
     assert.deepStrictEqual(wholeText('  gone  '), [{ start: 2, end: 6 }]);
     assert.deepStrictEqual(wholeText('x'), [{ start: 0, end: 1 }]);

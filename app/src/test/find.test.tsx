@@ -99,6 +99,34 @@ suite('Find in diff', () => {
     assert.deepStrictEqual(findMatches(files, undefined, ''), []);
   });
 
+  test('searches each file once a query, keeping its matches as other files load or it moves', () => {
+    const files = parsePatch(patch);
+    const matches = findMatches(files, undefined, 'find');
+    const loaded = findMatches(
+      [...files, { path: 'big.ts', binary: false, hunks: [] }],
+      undefined,
+      'find',
+    );
+    matches.forEach((match, index) => assert.strictEqual(loaded[index], match));
+    assert.deepStrictEqual(
+      findMatches(files.toReversed(), undefined, 'find').map((match) => [
+        match.file,
+        match.line,
+      ]),
+      [
+        [0, 1],
+        [1, 0],
+        [1, 1],
+        [1, 2],
+        [1, 3],
+        [1, 3],
+      ],
+    );
+    assert.deepStrictEqual(findMatches(files, undefined, 'finder'), [
+      { file: 0, line: 2, start: 6, end: 12 },
+    ]);
+  });
+
   test('searches the whole of an unchanged file instead, when one is shown', () => {
     assert.deepStrictEqual(findMatches([], whole, 'find'), [
       { file: 0, line: 0, start: 0, end: 4 },
