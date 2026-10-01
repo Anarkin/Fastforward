@@ -37,7 +37,12 @@ export async function checkout(
         await switchToBranch(gitPath, root, local);
         await catchUp(log, notify, at, local, target.name);
       } else {
-        await checkoutNewBranch(gitPath, root, local, target.name);
+        await checkoutNewBranch(
+          gitPath,
+          root,
+          local,
+          `refs/remotes/${target.name}`,
+        );
       }
     } else if (target.kind === 'branch') {
       await switchToBranch(gitPath, root, target.name);
