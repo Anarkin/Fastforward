@@ -93,7 +93,7 @@ export class Storage {
   }
 
   hasTab(root: string): boolean {
-    return this.tabs.some((tab) => sameRoot(tab, root));
+    return strings(this.state.get(tabsKey)).some((tab) => sameRoot(tab, root));
   }
 
   async setTabs(tabs: string[], active: string | undefined): Promise<void> {

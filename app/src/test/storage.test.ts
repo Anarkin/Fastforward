@@ -131,6 +131,17 @@ suite('Storage', () => {
     assert.ok(storage.hasTab(root + path.sep));
   });
 
+  test('finds a tab among a thousand without comparing every pair of them', async () => {
+    const store = new FakeStore();
+    const roots = Array.from({ length: 1000 }, (_, i) => path.resolve(`r${i}`));
+    await store.update(tabsKey, roots);
+    const storage = storageOf(store);
+    const started = performance.now();
+    assert.ok(storage.hasTab(path.resolve('r999')));
+    assert.ok(!storage.hasTab(path.resolve('missing')));
+    assert.ok(performance.now() - started < 200);
+  });
+
   test('keeps one set of bookmarks for a folder spelled two ways', async () => {
     const store = new FakeStore();
     const storage = storageOf(store);
