@@ -117,14 +117,16 @@ async function anyNotIgnored(
   if (files.length === 0) {
     return false;
   }
-  const ignored = new Set(
-    splitNul(
-      await runGit(gitPath, root, ['check-ignore', '-z', '--stdin'], {
-        input: files.map((file) => `${file}\0`).join(''),
-        okExitCodes: [0, 1],
-        pathspecMagic: true,
-      }),
-    ).filter(Boolean),
-  );
+  let output: string;
+  try {
+    output = await runGit(gitPath, root, ['check-ignore', '-z', '--stdin'], {
+      input: files.map((file) => `${file}\0`).join(''),
+      okExitCodes: [0, 1],
+      pathspecMagic: true,
+    });
+  } catch {
+    return true;
+  }
+  const ignored = new Set(splitNul(output).filter(Boolean));
   return files.some((file) => !ignored.has(file));
 }

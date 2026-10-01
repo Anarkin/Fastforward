@@ -2762,6 +2762,37 @@ suite('Fetch', function () {
     }
   });
 
+  test('updates by itself when a file changes in a submodule', async () => {
+    const library = await tempRepository(path.join(folder, 'library'));
+    await library.commit('library', { 'lib.c': 'lib\n' });
+    const host = await tempRepository(path.join(folder, 'host'));
+    await host.commit('host');
+    await host.git(
+      '-c',
+      'protocol.file.allow=always',
+      'submodule',
+      'add',
+      library.root,
+      'sub',
+    );
+    await host.git('commit', '-m', 'adds sub');
+    const opened = await openView(log, [host.root]);
+    try {
+      await waitFor(
+        () => opened.page.last('workingTree')?.files === 0,
+        'the clean working tree',
+      );
+      opened.page.clear();
+      fs.writeFileSync(path.join(host.root, 'sub', 'lib.c'), 'edited\n');
+      await waitFor(
+        () => opened.page.last('workingTree')?.files === 1,
+        'the changed submodule to show',
+      );
+    } finally {
+      opened.connection.dispose();
+    }
+  });
+
   test('leaves ignored files changing alone', async () => {
     fs.writeFileSync(
       path.join(repository.root, '.git', 'info', 'exclude'),
