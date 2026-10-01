@@ -4,6 +4,8 @@ export const similarEnough = 0.5;
 
 const maxCells = 40_000;
 
+const maxComparedWords = 1_000_000;
+
 export type LinePair = readonly [number | undefined, number | undefined];
 
 function words(text: string): string[] {
@@ -11,8 +13,13 @@ function words(text: string): string[] {
 }
 
 export function lineSimilarity(a: string, b: string): number {
-  const before = words(a);
-  const after = words(b);
+  return wordSimilarity(words(a), words(b));
+}
+
+function wordSimilarity(
+  before: readonly string[],
+  after: readonly string[],
+): number {
   if (before.length === 0 || after.length === 0) {
     return before.length === after.length ? similarEnough : 0;
   }
@@ -41,6 +48,9 @@ function inOrder(
   );
 }
 
+const wordCount = (lines: readonly string[][]) =>
+  lines.reduce((sum, line) => sum + line.length, 0);
+
 const range = (length: number) => Array.from({ length }, (_, index) => index);
 
 export function alignLines(
@@ -52,8 +62,16 @@ export function alignLines(
   if (rows === 0 || columns === 0 || rows * columns > maxCells) {
     return inOrder(range(rows), range(columns));
   }
-  const similarity = removed.map((before) =>
-    added.map((after) => lineSimilarity(before, after)),
+  const removedWords = removed.map(words);
+  const addedWords = added.map(words);
+  if (
+    columns * wordCount(removedWords) + rows * wordCount(addedWords) >
+    maxComparedWords
+  ) {
+    return inOrder(range(rows), range(columns));
+  }
+  const similarity = removedWords.map((before) =>
+    addedWords.map((after) => wordSimilarity(before, after)),
   );
   const best = Array.from({ length: rows + 1 }, () =>
     Array.from({ length: columns + 1 }, () => 0),
