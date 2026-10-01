@@ -14,6 +14,7 @@ import { isLargeChange } from '../shared/protocol';
 import { parsePatch } from '../webview/diff';
 import {
   removeFolder,
+  symlinkOrSkip,
   tempFolder,
   tempRepository,
   type TempRepository,
@@ -244,13 +245,8 @@ suite('Uncommitted changes', function () {
   test('counts an untracked symlink as the one line git diffs it as, its target', async function () {
     const target = path.join(cwd, 'target.txt');
     const link = path.join(cwd, 'link');
+    symlinkOrSkip(this, 'target.txt', link);
     fs.writeFileSync(target, 'a\nb\n');
-    try {
-      fs.symlinkSync('target.txt', link);
-    } catch {
-      fs.rmSync(target);
-      this.skip();
-    }
     try {
       const { files } = await workingTreeFiles(gitPath, cwd);
       assert.strictEqual(
@@ -472,12 +468,7 @@ suite('Repository files', function () {
 
   test('reads a symlink in the working tree by its target, as git does', async function () {
     const link = path.join(cwd, 'link');
-    try {
-      fs.symlinkSync('src/tracked.txt', link);
-    } catch {
-      // Windows allows symlinks only in developer mode or as an admin
-      this.skip();
-    }
+    symlinkOrSkip(this, 'src/tracked.txt', link);
     try {
       assert.deepStrictEqual(await readFile(gitPath, cwd, undefined, 'link'), {
         content: 'src/tracked.txt',

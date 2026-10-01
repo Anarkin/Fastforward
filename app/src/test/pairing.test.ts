@@ -120,7 +120,7 @@ suite('Aligning a change side by side', () => {
     );
   });
 
-  test('still puts unrelated replacements side by side in order, as before', () => {
+  test('puts unrelated replacements side by side in order', () => {
     assert.deepStrictEqual(shown(['two', 'three'], ['2']), [
       'two | 2',
       'three | ·',

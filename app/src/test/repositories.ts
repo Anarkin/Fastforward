@@ -19,12 +19,31 @@ export function tempFolder(name: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), `fastforward-${name}-`));
 }
 
-// Best effort, because git's read-only object files can't always be removed on
-// Windows
+// Best effort, because on Windows a file a watcher or git process still has
+// open can't be removed
 export function removeFolder(folder: string): void {
   try {
     fs.rmSync(folder, { recursive: true, force: true });
   } catch {}
+}
+
+export function symlinkOrSkip(
+  context: Mocha.Context,
+  target: string,
+  link: string,
+): void {
+  try {
+    fs.symlinkSync(target, link);
+  } catch (error) {
+    if (!(
+      error instanceof Error &&
+      'code' in error &&
+      error.code === 'EPERM'
+    )) {
+      throw error;
+    }
+    context.skip();
+  }
 }
 
 export async function tempRepository(

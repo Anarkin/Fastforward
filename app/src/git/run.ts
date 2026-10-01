@@ -16,13 +16,12 @@ export const gitConfigArgs = [
   '-c',
   'i18n.logOutputEncoding=UTF-8',
   '-c',
+  // git diff refreshes the index even without optional locks
   'diff.autoRefreshIndex=false',
 ];
 
-// Commands skip git's optional locks and git diff its index refresh, so a
-// refresh running while the user commits elsewhere doesn't hold index.lock and
-// make that commit fail; and with no terminal to answer in, git fails rather
-// than waits when it would prompt for credentials
+// Without optional locks, a refresh doesn't hold index.lock and make a commit
+// the user runs elsewhere meanwhile fail
 export function gitEnv(pathspecMagic = false): NodeJS.ProcessEnv {
   return {
     ...process.env,

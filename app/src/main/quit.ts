@@ -6,8 +6,8 @@ interface QuittingApp {
   quit(): void;
 }
 
-// Quitting with Cmd+Q or app.quit() closes the windows without the
-// window-all-closed event, so their last state would not finish saving
+// Cmd+Q and app.quit() skip window-all-closed, so the last state can only
+// finish saving on will-quit
 export function flushBeforeQuit(
   app: QuittingApp,
   saved: () => Promise<unknown>,
