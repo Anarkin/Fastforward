@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
-import { handleShortcut, shortcutOf } from '../webview/shortcuts';
+import { handleShortcut, shortcutOf, tabStep } from '../webview/shortcuts';
+import { adjacentTab } from '../webview/tabBar';
 
 const keyEvent = (
   key: string,
@@ -81,5 +82,33 @@ suite('Keyboard shortcuts', () => {
     assert.strictEqual(press('c', { target: element('SELECT') }), undefined);
     assert.strictEqual(press('c', { target: element('DIV', true) }), undefined);
     assert.strictEqual(press('c', { target: element('BUTTON') }), 'c');
+  });
+});
+
+suite('Switching tabs', () => {
+  const key = {
+    key: 'Tab',
+    ctrlKey: true,
+    shiftKey: false,
+    altKey: false,
+    metaKey: false,
+  };
+  const tabs = ['a', 'b', 'c'].map((name) => ({ root: `/${name}`, name }));
+
+  test('goes to the next tab on Ctrl+Tab, and the previous on Ctrl+Shift+Tab', () => {
+    assert.strictEqual(tabStep(key), 1);
+    assert.strictEqual(tabStep({ ...key, shiftKey: true }), -1);
+    assert.strictEqual(tabStep({ ...key, ctrlKey: false }), undefined);
+    assert.strictEqual(tabStep({ ...key, altKey: true }), undefined);
+    assert.strictEqual(tabStep({ ...key, metaKey: true }), undefined);
+    assert.strictEqual(tabStep({ ...key, key: 'q' }), undefined);
+  });
+
+  test('wraps around at either end, and stays put with one tab', () => {
+    assert.strictEqual(adjacentTab(tabs, '/a', 1), '/b');
+    assert.strictEqual(adjacentTab(tabs, '/c', 1), '/a');
+    assert.strictEqual(adjacentTab(tabs, '/a', -1), '/c');
+    assert.strictEqual(adjacentTab(tabs, undefined, 1), '/a');
+    assert.strictEqual(adjacentTab(tabs.slice(0, 1), '/a', 1), undefined);
   });
 });

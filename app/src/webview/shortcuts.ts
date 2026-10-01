@@ -50,6 +50,18 @@ export function isFindShortcut(
   );
 }
 
+export function tabStep(
+  event: Pick<
+    KeyboardEvent,
+    'key' | 'ctrlKey' | 'shiftKey' | 'altKey' | 'metaKey'
+  >,
+): 1 | -1 | undefined {
+  if (event.key !== 'Tab' || !event.ctrlKey || event.altKey || event.metaKey) {
+    return undefined;
+  }
+  return event.shiftKey ? -1 : 1;
+}
+
 export function handleShortcut(
   event: ShortcutEvent & Pick<KeyboardEvent, 'preventDefault'>,
   actions: Readonly<Partial<Record<ShortcutKey, () => void>>>,
