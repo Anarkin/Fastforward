@@ -149,20 +149,26 @@ function hasGap(file: DiffFile, side: Side): boolean {
 
 const maxWholeTextLines = 5000;
 
+function tooFar(shown: ReturnType<typeof sideLines>): boolean {
+  return (shown.at(-1)?.number ?? 0) > maxWholeTextLines;
+}
+
 function sideSource(
   file: DiffFile,
   fileIndex: number,
   language: string,
   side: Side,
   text: string | undefined,
-): SyntaxSource {
+): SyntaxSource | undefined {
   const shown = sideLines(file, side);
+  if (!shown.some(({ owned }) => owned)) {
+    return undefined;
+  }
   const keyOf = ({ owned, index }: (typeof shown)[number]) =>
     owned ? lineKey(fileIndex, index) : undefined;
-  const lines = text?.split(/\r?\n/);
+  const lines = tooFar(shown) ? undefined : text?.split(/\r?\n/);
   if (
     lines === undefined ||
-    (shown.at(-1)?.number ?? 0) > maxWholeTextLines ||
     shown.some(
       ({ line, number }) => lines[number - 1] !== line.text.replace(/\r$/, ''),
     )
@@ -195,14 +201,15 @@ export function syntaxSources(
   return files.flatMap((file, index) => {
     const language = languageOf(file.path);
     return language && !file.binary && !file.placeholder
-      ? sides.map((side) =>
-          sideSource(
-            file,
-            index,
-            language,
-            side,
-            texts.get(textKey(file.path, side)),
-          ),
+      ? sides.flatMap(
+          (side) =>
+            sideSource(
+              file,
+              index,
+              language,
+              side,
+              texts.get(textKey(file.path, side)),
+            ) ?? [],
         )
       : [];
   });
@@ -218,7 +225,14 @@ export function textsToLoad(
       ? sides.flatMap((side) => {
           const blob = file.blobs?.[side];
           const key = `${diff}:${textKey(file.path, side)}`;
-          if (!blob || requested.has(key) || !hasGap(file, side)) {
+          const shown = sideLines(file, side);
+          if (
+            !blob ||
+            requested.has(key) ||
+            !hasGap(file, side) ||
+            !shown.some(({ owned }) => owned) ||
+            tooFar(shown)
+          ) {
             return [];
           }
           requested.add(key);

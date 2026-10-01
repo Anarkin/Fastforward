@@ -326,6 +326,46 @@ suite('Syntax', () => {
     assert.deepStrictEqual(textsToLoad(files.slice(0, 1), 1, new Set()), []);
   });
 
+  const addedPatch = [
+    'diff --git a/a.ts b/a.ts',
+    'index 1111111111111111111111111111111111111111..2222222222222222222222222222222222222222 100644',
+    '--- a/a.ts',
+    '+++ b/a.ts',
+    '@@ -3,1 +3,2 @@',
+    ' end */',
+    '+new = 2;',
+    '',
+  ].join('\n');
+
+  test('asks for no text of a side that owns none of the lines shown, or with lines shown too far into it', () => {
+    assert.deepStrictEqual(textsToLoad(parsePatch(addedPatch), 1, new Set()), [
+      { path: 'a.ts', side: 'new', blob: '2'.repeat(40) },
+    ]);
+    const farPatch = [
+      'diff --git a/a.ts b/a.ts',
+      'index 1111111111111111111111111111111111111111..2222222222222222222222222222222222222222 100644',
+      '--- a/a.ts',
+      '+++ b/a.ts',
+      '@@ -3,1 +3,1 @@',
+      '-old = 1;',
+      '+new = 2;',
+      '@@ -5001,1 +5001,1 @@',
+      '-old = 1;',
+      '+new = 2;',
+      '',
+    ].join('\n');
+    assert.deepStrictEqual(textsToLoad(parsePatch(farPatch), 1, new Set()), []);
+  });
+
+  test('colors no side that owns none of the lines shown', () => {
+    assert.deepStrictEqual(
+      syntaxSources(parsePatch(addedPatch), undefined).map(
+        (source) => source.lines,
+      ),
+      [['end */', 'new = 2;']],
+    );
+  });
+
   test('leaves files of unknown languages, binary files and files not loaded yet out', () => {
     const files = parsePatch(
       [
