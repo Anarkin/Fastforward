@@ -8,6 +8,7 @@ import {
   type ToWebviewOf,
   type BookmarkRef,
 } from '../shared/protocol';
+import type { Timer } from '../autoFetch';
 import type { Log } from '../log';
 import {
   activeTabKey,
@@ -109,6 +110,7 @@ async function openView(
   tabs: readonly string[],
   ready = true,
   host: Host = new FakeHost(),
+  timer?: Timer,
 ): Promise<OpenView> {
   const store = new FakeStore();
   await store.update(tabsKey, tabs);
@@ -119,6 +121,7 @@ async function openView(
     await installedGit(),
     new Storage(settings, store),
     host,
+    timer,
   );
   const { page, connection } = attach(view);
   if (ready) {
@@ -2582,6 +2585,121 @@ suite('Fetch', function () {
       'the deleted branch to go',
     );
     assert.strictEqual(page.last('fetching')?.running, false);
+  });
+
+  test('fetches every open repository while pinned, telling of a failure once until one succeeds', async () => {
+    const broken = await tempRepository(path.join(folder, 'broken'));
+    await broken.commit('a');
+    await broken.git('remote', 'add', 'origin', path.join(folder, 'missing'));
+    const pusher = await tempRepository(path.join(folder, 'pusher'));
+    await pusher.git('pull', remote.root, 'main');
+    await pusher.commit('pushed');
+    await pusher.git('push', remote.root, 'main');
+    const [pushed] = await pusher.resolve('HEAD');
+    const rounds: (() => void)[] = [];
+    const view = await openView(
+      log,
+      [broken.root, repository.root],
+      true,
+      undefined,
+      (run) => {
+        rounds.push(run);
+        return () => undefined;
+      },
+    );
+    try {
+      await withNotices(view.page, 'error', async (messages) => {
+        await view.connection.receive({ type: 'setAutoFetch', on: true });
+        await waitFor(() => rounds.length === 1, 'the first round');
+        assert.deepStrictEqual(await repository.resolve('origin/main'), [
+          pushed,
+        ]);
+        assert.strictEqual(messages.length, 1);
+        assert.match(messages[0] ?? '', /^broken: Couldn't fetch\./);
+        assert.strictEqual(view.page.last('fetching'), undefined);
+        assert.strictEqual(view.settings.settings.autoFetch, true);
+
+        rounds[0]();
+        await waitFor(() => rounds.length === 2, 'the second round');
+        assert.strictEqual(messages.length, 1);
+
+        await broken.git('remote', 'set-url', 'origin', remote.root);
+        rounds[1]();
+        await waitFor(() => rounds.length === 3, 'the third round');
+        await broken.git('remote', 'set-url', 'origin', folder);
+        rounds[2]();
+        await waitFor(() => rounds.length === 4, 'the fourth round');
+        assert.strictEqual(messages.length, 2);
+      });
+    } finally {
+      view.connection.dispose();
+    }
+  });
+
+  test('keeps the selected commit, its files and diff, and the place in the list as a background fetch brings commits and branches', async () => {
+    await repository.commit('kept', { 'kept.txt': 'kept\n' });
+    const [kept] = await repository.resolve('HEAD');
+    const pusher = await tempRepository(path.join(folder, 'pusher-kept'));
+    await pusher.git('pull', remote.root, 'main');
+    await pusher.commit('newer');
+    await pusher.git('push', remote.root, 'main:main', 'main:brand-new');
+    const rounds: (() => void)[] = [];
+    const view = await openView(
+      log,
+      [repository.root],
+      true,
+      undefined,
+      (run) => {
+        rounds.push(run);
+        return () => undefined;
+      },
+    );
+    const { page: shown, connection: open } = view;
+    try {
+      await open.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: kept,
+      });
+      await open.receive({
+        type: 'selectFile',
+        root: repository.root,
+        hash: kept,
+        path: 'kept.txt',
+      });
+      await open.receive({
+        type: 'scrolled',
+        root: repository.root,
+        hash: kept,
+        offset: 7,
+      });
+      assert.ok(shown.last('diff')?.patch.includes('+kept'));
+      const before = shown.last('commits')?.total ?? 0;
+      shown.clear();
+      await open.receive({ type: 'setAutoFetch', on: true });
+      await waitFor(
+        () =>
+          shown
+            .last('repository')
+            ?.refs.some((ref) => ref.name === 'origin/brand-new') === true &&
+          shown.last('commits') !== undefined,
+        'the fetched branch and the reloaded history',
+      );
+      await waitFor(() => rounds.length === 1, 'the round to end');
+      const commits = shown.last('commits');
+      const index = commits?.selectedIndex ?? -1;
+      assert.strictEqual(
+        commits?.commits[index - (commits?.start ?? 0)]?.hash,
+        kept,
+      );
+      assert.deepStrictEqual(commits?.scrollTarget, { index, offset: 7 });
+      assert.ok((commits?.total ?? 0) > before);
+      for (const type of ['files', 'diff', 'fileContent', 'error'] as const) {
+        assert.strictEqual(shown.last(type), undefined, type);
+      }
+    } finally {
+      open.dispose();
+    }
   });
 
   test('says so when a fetch fails, and stops fetching', async () => {

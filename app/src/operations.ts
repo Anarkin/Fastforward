@@ -102,12 +102,14 @@ export async function fetchAll(
   log: Log,
   notify: Notify,
   { gitPath, root }: RepositoryAt,
-): Promise<void> {
+): Promise<boolean> {
   try {
     await fetchAllRemotes(gitPath, root);
     log.info('Fetched every remote');
+    return true;
   } catch (error) {
     reportFailure(log, notify, 'fetch failed', "Couldn't fetch.", error);
+    return false;
   }
 }
 

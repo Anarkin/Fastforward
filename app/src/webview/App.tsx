@@ -110,6 +110,8 @@ export function App({ post, listen }: Props) {
   const [entireFilePinned, setEntireFilePinned] = useState(false);
   const [entireFileOf, setEntireFileOf] = useState<string>();
   const [ignoreWhitespace, setIgnoreWhitespace] = useState(false);
+  const [autoFetch, setAutoFetch] = useState(false);
+  const [autoFetchMinutes, setAutoFetchMinutes] = useState(0);
   const [diffLayout, setDiffLayout] = useState<DiffLayout>('inline');
   const [collapseMerges, setCollapseMerges] = useState(false);
   const [solo, setSolo] = useState(false);
@@ -161,6 +163,8 @@ export function App({ post, listen }: Props) {
           setIgnoreWhitespace(message.ignoreWhitespace);
           setDiffLayout(message.diffLayout);
           setShowAllFiles(message.showAllFiles);
+          setAutoFetch(message.autoFetch);
+          setAutoFetchMinutes(message.autoFetchMinutes);
           break;
         case 'solo':
           setSolo(message.solo);
@@ -549,6 +553,12 @@ export function App({ post, listen }: Props) {
                         onNavigate={navigate}
                         fetching={fetching}
                         onFetch={() => postTab({ type: 'fetch' })}
+                        autoFetch={autoFetch}
+                        autoFetchMinutes={autoFetchMinutes}
+                        onAutoFetch={(on) => {
+                          setAutoFetch(on);
+                          post({ type: 'setAutoFetch', on });
+                        }}
                       />
                     }
                     search={

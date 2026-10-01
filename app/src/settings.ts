@@ -9,6 +9,8 @@ export interface Settings {
   readonly ignoreWhitespace: boolean;
   readonly diffLayout: DiffLayout;
   readonly solo: boolean;
+  readonly autoFetch: boolean;
+  readonly autoFetchMinutes: number;
   readonly columnWidths: readonly number[];
   readonly fonts: {
     readonly family: string;

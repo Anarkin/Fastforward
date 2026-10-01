@@ -147,7 +147,18 @@ export class Storage {
       ignoreWhitespace: settings.ignoreWhitespace,
       diffLayout: settings.diffLayout,
       showAllFiles: settings.showAllFiles,
+      autoFetch: settings.autoFetch,
+      autoFetchMinutes: settings.autoFetchMinutes,
     };
+  }
+
+  get autoFetchMinutes(): number {
+    const { autoFetch, autoFetchMinutes } = this.settings;
+    return autoFetch ? Math.max(0, autoFetchMinutes) : 0;
+  }
+
+  async setAutoFetch(on: boolean): Promise<void> {
+    await this.userSettings.set('autoFetch', on);
   }
 
   get collapseMerges(): boolean {

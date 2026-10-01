@@ -57,6 +57,27 @@ suite('Tab view', () => {
     assert.strictEqual(view.history?.at(0)?.hash, 'a');
   });
 
+  test('keeps the selected commit, its files and diff when a reloaded history comes', () => {
+    const view = busyTab();
+    const reloaded = reduceTabView(view, {
+      type: 'commits',
+      generation: 2,
+      total: 3,
+      decorations: [],
+      start: 0,
+      commits: [commitInfo('new'), commitInfo('a')],
+      graph: [],
+      workingTreeGraph: { lane: 0, color: 0, lines: [] },
+      selectedIndex: 1,
+      scrollTarget: { index: 1, offset: 7 },
+    });
+    assert.strictEqual(reloaded.hash, view.hash);
+    assert.strictEqual(reloaded.files, view.files);
+    assert.strictEqual(reloaded.path, view.path);
+    assert.strictEqual(reloaded.patch, view.patch);
+    assert.strictEqual(reloaded.history?.selectedIndex, 1);
+  });
+
   test('loads a selected commit, apart from having no files', () => {
     const loading = reduceTabView(busyTab(), { type: 'showCommit', hash: 'b' });
     assert.ok(loading.filesLoading && loading.patchLoading);
