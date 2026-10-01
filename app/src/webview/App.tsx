@@ -588,6 +588,7 @@ export function App({ post, listen }: Props) {
                     }
                     selected={path}
                     onSelect={selectFile}
+                    view={folderView}
                   />
                   <Diff
                     selection={`${hash ?? ''}:${path ?? ''}`}

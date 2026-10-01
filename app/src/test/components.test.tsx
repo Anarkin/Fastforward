@@ -28,7 +28,7 @@ import {
 import { changeClass, changeTitle } from '../webview/fileStatus';
 import type { ContextMenuItem } from '../webview/contextMenu';
 import { DiffOptions } from '../webview/diffColumn';
-import { Files } from '../webview/filesColumn';
+import { Files, filesCursor } from '../webview/filesColumn';
 import type { Folders } from '../webview/viewFolders';
 import { SkeletonRows } from '../webview/skeleton';
 import { TabBar } from '../webview/tabBar';
@@ -98,6 +98,7 @@ function changesRows(
       openFolders: new Set(),
       onToggleFolder: noop,
       onReplaceFolders: noop,
+      view: 'one',
       selected,
       onSelect,
     });
@@ -251,6 +252,28 @@ suite('Diff options', () => {
 });
 
 suite('Files column', () => {
+  test('keeps the cursor where the keys moved it only on the commit and tab it moved on', () => {
+    const keys = ['changes', 'folder:src', 'file:src/a.ts'];
+    const moved = { key: 'folder:src', from: 'changes', view: 'one' };
+    assert.strictEqual(
+      filesCursor(moved, 'changes', 'one', keys),
+      'folder:src',
+    );
+    assert.strictEqual(filesCursor(moved, 'changes', 'two', keys), 'changes');
+    assert.strictEqual(
+      filesCursor(moved, 'file:src/a.ts', 'one', keys),
+      'file:src/a.ts',
+    );
+    assert.strictEqual(
+      filesCursor(moved, 'changes', 'one', ['changes']),
+      'changes',
+    );
+    assert.strictEqual(
+      filesCursor(undefined, 'changes', 'one', keys),
+      'changes',
+    );
+  });
+
   test('titles itself Files, showing all files only while its toggle is on', () => {
     for (const showAll of [false, true]) {
       const picked: boolean[] = [];
@@ -267,6 +290,7 @@ suite('Files column', () => {
           openFolders: new Set(),
           onToggleFolder: noop,
           onReplaceFolders: noop,
+          view: 'one',
           selected: undefined,
           onSelect: noop,
         });
@@ -311,6 +335,7 @@ suite('Files column', () => {
           openFolders: new Set(['docs']),
           onToggleFolder: noop,
           onReplaceFolders: (folders) => replaced.push(folders),
+          view: 'one',
           selected: undefined,
           onSelect: noop,
         });
