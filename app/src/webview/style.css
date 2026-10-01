@@ -946,7 +946,15 @@ body.resizing {
 }
 
 .split-side.filler {
-  background: var(--color-border);
+  background: linear-gradient(
+      -45deg,
+      var(--color-border) 0 4%,
+      transparent 4% 46%,
+      var(--color-border) 46% 54%,
+      transparent 54% 96%,
+      var(--color-border) 96%
+    )
+    0 0 / 10px 10px;
 }
 
 .split-code {
