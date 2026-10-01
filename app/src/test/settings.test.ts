@@ -125,6 +125,17 @@ suite('User settings file', () => {
     assert.strictEqual(fs.readFileSync(file, 'utf8'), '{ "solo": tru');
   });
 
+  test('keeps a change still being saved when reading the file its earlier save wrote', async () => {
+    const user = new UserSettings(defaults, file);
+    await user.set('collapseMerges', false);
+    const saving = user.set('solo', true);
+    assert.strictEqual(user.reload(), false);
+    assert.strictEqual(user.settings.solo, true);
+    await saving;
+    assert.strictEqual(user.reload(), false);
+    assert.strictEqual(user.settings.solo, true);
+  });
+
   test('reads the file again once it changes, telling a change from its own saves', async () => {
     const user = new UserSettings(defaults, file);
     await user.set('collapseMerges', false);
