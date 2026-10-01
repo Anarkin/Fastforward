@@ -1,10 +1,11 @@
+import { matchesIn } from './find';
+
 export function Highlight({ text, query }: { text: string; query: string }) {
-  const needle = query.trim();
-  const start = text.toLowerCase().indexOf(needle.toLowerCase());
-  if (!needle || start === -1) {
+  const [match] = matchesIn(text, query.trim());
+  if (!match) {
     return <>{text}</>;
   }
-  const end = start + needle.length;
+  const { start, end } = match;
   return (
     <>
       {text.slice(0, start)}
