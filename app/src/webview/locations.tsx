@@ -183,9 +183,10 @@ export function enterTarget(
   query: string,
   found: CommitResults | undefined,
   active: ResultItem | undefined,
+  picked = false,
 ): string | undefined {
   const hash = hashQuery(query);
-  if (hash && found === undefined) {
+  if (hash && found === undefined && !(picked && active)) {
     return hash;
   }
   if (!query || !active) {
@@ -407,7 +408,7 @@ export function LocationsPopup({
       }
     } else if (event.key === 'Enter') {
       event.preventDefault();
-      jump(enterTarget(query, found, activeItem));
+      jump(enterTarget(query, found, activeItem, highlight?.query === query));
     }
   };
 
