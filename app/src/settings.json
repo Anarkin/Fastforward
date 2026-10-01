@@ -3,6 +3,7 @@
   "showAllFiles": false,
   "entireFilePinned": true,
   "ignoreWhitespace": true,
+  "diffLayout": "inline",
   "solo": false,
   "columnWidths": [400, 275],
   "fonts": {

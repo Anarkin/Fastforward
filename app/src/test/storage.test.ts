@@ -29,6 +29,7 @@ suite('Storage', () => {
       collapseMerges: defaults.collapseMerges,
       entireFilePinned: defaults.entireFilePinned,
       ignoreWhitespace: defaults.ignoreWhitespace,
+      diffLayout: defaults.diffLayout,
       showAllFiles: defaults.showAllFiles,
     });
   });

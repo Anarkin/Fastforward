@@ -1,11 +1,13 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import type { DiffLayout } from './shared/protocol';
 
 export interface Settings {
   readonly collapseMerges: boolean;
   readonly showAllFiles: boolean;
   readonly entireFilePinned: boolean;
   readonly ignoreWhitespace: boolean;
+  readonly diffLayout: DiffLayout;
   readonly solo: boolean;
   readonly columnWidths: readonly number[];
   readonly fonts: {

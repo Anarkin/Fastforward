@@ -155,6 +155,32 @@ suite('App', function () {
     assert.strictEqual(await page.locator('.find-match').count(), 0);
   });
 
+  test('shows the diff side by side on its button, saving the choice, and inline again on the other', async () => {
+    await page.getByRole('button', { name: 'Side by Side' }).click();
+    const sides = page.locator('.split-line');
+    await sides.first().waitFor();
+    assert.deepStrictEqual(
+      await sides.evaluateAll((rows) =>
+        rows.map((row) =>
+          [...row.querySelectorAll('.split-side')]
+            .map((side) => side.querySelector('.code')?.textContent ?? '')
+            .join(' | '),
+        ),
+      ),
+      ['one | one', 'two | 2', 'three | three'],
+    );
+    assert.strictEqual(await page.locator('.split-side.removed').count(), 1);
+    assert.strictEqual(await page.locator('.split-side.added').count(), 1);
+    const userSettings = path.join(profile, 'settings.user.json');
+    await waitFor(
+      () => fs.readFileSync(userSettings, 'utf8').includes('"sideBySide"'),
+      'the layout to be saved',
+    );
+    await page.getByRole('button', { name: 'Inline' }).click();
+    await sides.first().waitFor({ state: 'detached' });
+    await page.locator('.diff-line.added').first().waitFor();
+  });
+
   test('moves between the columns with the arrows and Tab, the keys working in the one active', async () => {
     const active = (column: string) =>
       page.locator(`.columns[data-active-column="${column}"]`).waitFor();

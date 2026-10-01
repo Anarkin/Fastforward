@@ -42,11 +42,22 @@ export type DiffRow =
   | { readonly kind: 'hunk'; readonly file: number }
   | { readonly kind: 'line'; readonly file: number; readonly line: DiffLine }
   | {
+      readonly kind: 'split';
+      readonly file: number;
+      readonly left: SplitCell | undefined;
+      readonly right: SplitCell | undefined;
+    }
+  | {
       readonly kind: 'wholeLine';
       readonly file: number;
       readonly number: number;
       readonly text: string;
     };
+
+export interface SplitCell {
+  readonly line: DiffLine;
+  readonly index: number;
+}
 
 type FileHeaderRow = Extract<DiffRow, { kind: 'file' }>;
 
@@ -58,6 +69,7 @@ const rowHeights: Record<Exclude<DiffRow['kind'], MeasuredKind>, number> = {
   binary: 28,
   hunk: 12,
   line: 20,
+  split: 20,
   wholeLine: 20,
 };
 
@@ -80,13 +92,92 @@ export function rowHeight(row: DiffRow): number | undefined {
   return isMeasured(kind) ? undefined : rowHeights[kind];
 }
 
+function changeOf(row: DiffRow): 'added' | 'removed' | undefined {
+  if (row.kind === 'line') {
+    return row.line.kind === 'context' ? undefined : row.line.kind;
+  }
+  if (row.kind === 'split') {
+    if (row.right?.line.kind === 'added') {
+      return 'added';
+    }
+    if (row.left?.line.kind === 'removed') {
+      return 'removed';
+    }
+  }
+  return undefined;
+}
+
+export function splitSideClass(
+  cell: SplitCell | undefined,
+  change: 'added' | 'removed',
+): string {
+  if (cell === undefined) {
+    return 'filler';
+  }
+  return cell.line.kind === change ? change : '';
+}
+
+export function sideScroll(
+  scroll: number,
+  delta: number,
+  widest: number,
+): number {
+  return Math.max(0, Math.min(widest, scroll + delta));
+}
+
+export function wheelSideways(
+  event: Pick<WheelEvent, 'deltaX' | 'deltaY' | 'shiftKey'>,
+): number {
+  if (event.shiftKey) {
+    return event.deltaX || event.deltaY;
+  }
+  return Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : 0;
+}
+
+export function splitRows(
+  file: DiffFile,
+  index: number,
+): Extract<DiffRow, { kind: 'split' | 'hunk' }>[] {
+  const rows: Extract<DiffRow, { kind: 'split' | 'hunk' }>[] = [];
+  let next = 0;
+  for (const [number, hunk] of file.hunks.entries()) {
+    if (number > 0) {
+      rows.push({ kind: 'hunk', file: index });
+    }
+    const removed: SplitCell[] = [];
+    const added: SplitCell[] = [];
+    const pair = () => {
+      for (let i = 0; i < Math.max(removed.length, added.length); i++) {
+        rows.push({
+          kind: 'split',
+          file: index,
+          left: removed[i],
+          right: added[i],
+        });
+      }
+      removed.length = 0;
+      added.length = 0;
+    };
+    for (const line of hunk.lines) {
+      const cell = { line, index: next++ };
+      if (line.kind === 'removed') {
+        removed.push(cell);
+      } else if (line.kind === 'added') {
+        added.push(cell);
+      } else {
+        pair();
+        rows.push({ kind: 'split', file: index, left: cell, right: cell });
+      }
+    }
+    pair();
+  }
+  return rows;
+}
+
 export function minimapRows(rows: readonly DiffRow[]): MinimapRow[] {
   return rows.map((row) => ({
     height: rowHeight(row) ?? 0,
-    change:
-      row.kind === 'line' && row.line.kind !== 'context'
-        ? row.line.kind
-        : undefined,
+    change: changeOf(row),
   }));
 }
 
@@ -94,6 +185,7 @@ declare module 'react' {
   interface CSSProperties {
     readonly '--diff-file-height'?: string;
     readonly '--diff-line-height'?: string;
+    readonly '--split-scroll'?: string;
   }
 }
 
@@ -118,6 +210,7 @@ export function diffRows(
   toggled: ReadonlyMap<string, boolean>,
   whole: WholeFile | undefined,
   loading = false,
+  sideBySide = false,
 ): DiffRow[] {
   const rows: DiffRow[] = [{ kind: 'error' }];
   if (loading && files.length === 0 && !whole) {
@@ -150,6 +243,10 @@ export function diffRows(
     }
     if (file.binary) {
       rows.push({ kind: 'binary', file: index });
+    }
+    if (sideBySide) {
+      rows.push(...splitRows(file, index));
+      return;
     }
     for (const [number, hunk] of file.hunks.entries()) {
       if (number > 0) {
@@ -198,7 +295,7 @@ export function diffScrollTop(
 }
 
 const isChange = (row: DiffRow | undefined) =>
-  row?.kind === 'line' && row.line.kind !== 'context';
+  row !== undefined && changeOf(row) !== undefined;
 
 export function changeStarts(rows: readonly DiffRow[]): number[] {
   return rows.flatMap((row, index) =>
@@ -222,15 +319,24 @@ export function changeScrollTop(
   return target;
 }
 
-export function lineKeys(rows: readonly DiffRow[]): (string | undefined)[] {
+export function lineKeys(rows: readonly DiffRow[]): string[][] {
   const next = new Map<number, number>();
   return rows.map((row) => {
+    if (row.kind === 'split') {
+      return [
+        ...new Set(
+          [row.left, row.right].flatMap((cell) =>
+            cell ? [lineKey(row.file, cell.index)] : [],
+          ),
+        ),
+      ];
+    }
     if (row.kind !== 'line' && row.kind !== 'wholeLine') {
-      return undefined;
+      return [];
     }
     const line = next.get(row.file) ?? 0;
     next.set(row.file, line + 1);
-    return lineKey(row.file, line);
+    return [lineKey(row.file, line)];
   });
 }
 
@@ -264,14 +370,14 @@ export function highlighted(
 
 export function diffMinimapMarks(
   rows: readonly DiffRow[],
-  keys: readonly (string | undefined)[],
+  keys: readonly (readonly string[])[],
   matchedLines: ReadonlyMap<string, unknown>,
   changeMarks: boolean,
 ): MinimapMark[] {
   const heights = minimapRows(rows);
   const matched = new Set(
-    keys.flatMap((key, index) =>
-      key !== undefined && matchedLines.has(key) ? [index] : [],
+    keys.flatMap((row, index) =>
+      row.some((key) => matchedLines.has(key)) ? [index] : [],
     ),
   );
   return [
@@ -341,6 +447,7 @@ export function DiffView({
   matches = [],
   current = 0,
   jump = 0,
+  sideBySide = false,
 }: {
   error: React.ReactNode;
   files: readonly DiffFile[];
@@ -352,15 +459,43 @@ export function DiffView({
   matches?: readonly FindMatch[];
   current?: number;
   jump?: number;
+  sideBySide?: boolean;
 }) {
   const list = useRef<HTMLDivElement>(null);
+  const [sideways, setSideways] = useState(0);
+  useEffect(() => {
+    const element = list.current;
+    if (!element || !sideBySide) {
+      return undefined;
+    }
+    const onWheel = (event: WheelEvent) => {
+      const delta = wheelSideways(event);
+      if (delta === 0) {
+        return;
+      }
+      event.preventDefault();
+      const widest = Math.max(
+        0,
+        ...Array.from(
+          element.querySelectorAll<HTMLElement>('.split-code'),
+          (code) =>
+            (code.firstElementChild instanceof HTMLElement
+              ? code.firstElementChild.offsetWidth
+              : 0) - code.clientWidth,
+        ),
+      );
+      setSideways((scroll) => sideScroll(scroll, delta, widest));
+    };
+    element.addEventListener('wheel', onWheel, { passive: false });
+    return () => element.removeEventListener('wheel', onWheel);
+  }, [sideBySide]);
   const [toggled, setToggled] = useState<ReadonlyMap<string, boolean>>(
     new Map(),
   );
   const skeleton = useSkeleton(loading);
   const rows = useMemo(
-    () => diffRows(files, toggled, whole, skeleton),
-    [files, toggled, whole, skeleton],
+    () => diffRows(files, toggled, whole, skeleton, sideBySide),
+    [files, toggled, whole, skeleton, sideBySide],
   );
 
   const virtualizer = useVirtualizer({
@@ -400,7 +535,7 @@ export function DiffView({
       setToggled((all) => new Map(all).set(header.path, true));
       return;
     }
-    const index = keys.indexOf(foundKey);
+    const index = keys.findIndex((row) => row.includes(foundKey ?? ''));
     if (index !== -1) {
       virtualizer.scrollToIndex(index, { align: 'center' });
       jumped.current = jump;
@@ -441,8 +576,7 @@ export function DiffView({
     );
   };
 
-  const code = (index: number, text: string) => {
-    const key = keys[index];
+  const code = (key: string | undefined, text: string) => {
     const ranges = key === undefined ? undefined : rangesByLine.get(key);
     return (
       <span className="code">
@@ -490,14 +624,32 @@ export function DiffView({
           <div className={`diff-line ${row.line.kind}`}>
             <span className="number">{row.line.oldNumber}</span>
             <span className="number">{row.line.newNumber}</span>
-            {code(index, row.line.text)}
+            {code(keys[index].at(0), row.line.text)}
+          </div>
+        );
+      case 'split':
+        return (
+          <div className="split-line">
+            {[row.left, row.right].map((cell, side) => (
+              <div
+                key={side}
+                className={`diff-line split-side ${splitSideClass(cell, side === 0 ? 'removed' : 'added')}`}
+              >
+                <span className="number">
+                  {side === 0 ? cell?.line.oldNumber : cell?.line.newNumber}
+                </span>
+                <span className="split-code">
+                  {cell && code(lineKey(row.file, cell.index), cell.line.text)}
+                </span>
+              </div>
+            ))}
           </div>
         );
       case 'wholeLine':
         return (
           <div className="diff-line">
             <span className="number">{row.number}</span>
-            {code(index, row.text)}
+            {code(keys[index].at(0), row.text)}
           </div>
         );
     }
@@ -514,7 +666,10 @@ export function DiffView({
   const stuck = stuckHeader(rows, items, scrollTop);
 
   return (
-    <div className="diff-view" style={heightVariables}>
+    <div
+      className="diff-view"
+      style={{ ...heightVariables, '--split-scroll': `${sideways}px` }}
+    >
       {stuck && <div className="diff-stuck-header">{header(stuck, true)}</div>}
       <Minimap
         marks={marks}
@@ -569,7 +724,7 @@ export function DiffView({
             return (
               <div
                 key={item.key}
-                className="virtual-row diff-row"
+                className={`virtual-row diff-row ${row.kind === 'split' ? 'split-row' : ''}`}
                 data-index={item.index}
                 ref={height === undefined ? virtualizer.measureElement : null}
                 style={{ height, transform: `translateY(${item.start}px)` }}
