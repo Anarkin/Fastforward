@@ -154,6 +154,8 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
       return action.commits.some((commit) => commit.hash === state.hash)
         ? { ...state }
         : state;
+    case 'unselect':
+      return selected(state, undefined);
     case 'reveal':
       state.history?.locate(action.hash, action.index);
       return {

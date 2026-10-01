@@ -1061,6 +1061,12 @@ export class FastforwardView {
     ]);
     const { tab } = context;
     loadHistory(tab, fullHistory, head, listed);
+    if (tab.hash !== undefined && !stillThere(tab)(tab.hash)) {
+      select(tab, undefined);
+      tab.shown.files = undefined;
+      tab.shown.diff = undefined;
+      context.post({ type: 'unselect' });
+    }
     await this.sendShownHistory(context, { keepPlace });
     const { back, forward } = tab.navigation;
     if (back.length + forward.length > 0) {

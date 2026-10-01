@@ -1479,6 +1479,30 @@ suite('View', function () {
       }
     });
 
+    test('lets go of the selected commit once it is gone from the history', async () => {
+      await repository.commit('doomed', { 'doomed.txt': 'doomed\n' });
+      const [doomed] = await repository.resolve('HEAD');
+      try {
+        await connection.refresh();
+        await connection.receive({
+          type: 'selectCommit',
+          root: repository.root,
+          hash: doomed,
+        });
+        assert.strictEqual(page.last('files')?.hash, doomed);
+        page.clear();
+        await repository.git('reset', '--hard', 'HEAD~1');
+        await connection.refresh();
+        assert.ok(page.last('unselect'));
+        page.clear();
+        await connection.receive({ type: 'ready' });
+        assert.strictEqual(page.last('files'), undefined);
+        assert.strictEqual(page.last('commits')?.selectedIndex, undefined);
+      } finally {
+        await restore();
+      }
+    });
+
     test('shows a detached HEAD as a bubble on its commit', async () => {
       await repository.git('checkout', '--detach', fixture.b);
       try {
