@@ -19,6 +19,7 @@ import { CheckedOutBranch, DetachedHead } from './bubbles';
 import { checkoutCommit, checkoutOptions, checkoutRef } from './checkout';
 import {
   columnsClass,
+  shownSelection,
   ColumnResizingProvider,
   useColumnWidths,
 } from './columns';
@@ -221,15 +222,18 @@ export function App({ post, listen }: Props) {
   const detached =
     repository && !repository.head ? repository.headCommit : undefined;
   const opening = activeTab !== undefined && history === undefined && !error;
-  const activeShown = shownColumns(commitsShown, hash).includes(activeColumn);
+  const layoutSelection = shownSelection(hash, workingTree);
+  const activeShown = shownColumns(commitsShown, layoutSelection).includes(
+    activeColumn,
+  );
   useEffect(() => {
     if (!activeShown) {
-      const [first] = shownColumns(commitsShown, hash);
+      const [first] = shownColumns(commitsShown, layoutSelection);
       if (first) {
         focusColumn(first);
       }
     }
-  }, [activeShown, commitsShown, hash, focusColumn]);
+  }, [activeShown, commitsShown, layoutSelection, focusColumn]);
 
   const selectCommit = (next: string | undefined, replace = false) => {
     const target = next === hash ? undefined : next;
@@ -444,7 +448,7 @@ export function App({ post, listen }: Props) {
             ) : (
               <ColumnResizingProvider value={resizing}>
                 <div
-                  className={columnsClass(commitsShown, hash)}
+                  className={columnsClass(commitsShown, layoutSelection)}
                   ref={columnsContainer}
                   style={{ gridTemplateColumns: columnsTemplate }}
                   data-active-column={activeColumn}
@@ -475,7 +479,7 @@ export function App({ post, listen }: Props) {
                       event.preventDefault();
                     }
                     const next = adjacentColumn(
-                      shownColumns(commitsShown, hash),
+                      shownColumns(commitsShown, layoutSelection),
                       columnOf(target) ?? activeColumn,
                       step,
                     );

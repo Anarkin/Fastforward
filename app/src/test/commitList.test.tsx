@@ -111,7 +111,7 @@ function clickedHash(count: number): string | undefined {
 }
 
 suite('Commit list working tree row', () => {
-  test('shows a clean working tree, which clicking does not select', () => {
+  test('shows a clean working tree, which clicking selects, as the keys do', () => {
     const html = renderToStaticMarkup(
       <WorkingTreeRow count={0} selected={false} indent={26} onSelect={noop} />,
     );
@@ -119,7 +119,7 @@ suite('Commit list working tree row', () => {
       html,
       /^<div [^>]*class="commit working-tree empty\s*"><div class="commit-line"><span class="subject">No uncommitted changes<\/span><\/div><\/div>$/,
     );
-    assert.strictEqual(clickedHash(0), undefined);
+    assert.strictEqual(clickedHash(0), workingTreeHash);
   });
 
   test('shows how many files changed, and clicking selects them', () => {

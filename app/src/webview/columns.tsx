@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { workingTreeHash } from '../shared/protocol';
 
 const minColumnWidth = 120;
 const minLastColumnWidth = 240;
@@ -17,6 +18,13 @@ interface Resizing {
 
 const ColumnResizing = createContext<Resizing | undefined>(undefined);
 export const ColumnResizingProvider = ColumnResizing.Provider;
+
+export function shownSelection(
+  selected: string | undefined,
+  workingTree: number | undefined,
+): string | undefined {
+  return selected === workingTreeHash && !workingTree ? undefined : selected;
+}
 
 export function columnsClass(
   commitsShown: boolean,

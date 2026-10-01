@@ -261,7 +261,7 @@ export function WorkingTreeRow({
     <div
       style={{ paddingLeft: indent }}
       className={`commit working-tree ${dirty ? '' : 'empty'} ${selected ? 'selected' : ''}`}
-      onClick={() => onSelect(dirty ? workingTreeHash : undefined)}
+      onClick={() => onSelect(workingTreeHash)}
     >
       <div className="commit-line">
         <span className="subject">{uncommittedChanges(count)}</span>

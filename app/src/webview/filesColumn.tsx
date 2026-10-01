@@ -6,6 +6,7 @@ import {
   changesKey,
   changesTreeRows,
   filesKey,
+  folderRowKey,
   treeFolders,
   treeRowKey,
 } from './changesTree';
@@ -147,8 +148,14 @@ export function Files({
   const fileRows = changesTreeElements({
     rows: treeRows,
     showsAll: showAll,
-    onToggle: (folder, changed) =>
-      changed ? onToggleClosedFolder(folder) : onToggleFolder(folder),
+    onToggle: (folder, changed) => {
+      setMoved({ key: folderRowKey(folder), from: selectedKey });
+      if (changed) {
+        onToggleClosedFolder(folder);
+      } else {
+        onToggleFolder(folder);
+      }
+    },
     selected: cursor === selectedKey ? selected : undefined,
     onSelect,
     cursor,

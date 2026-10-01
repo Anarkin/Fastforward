@@ -90,7 +90,7 @@ export function treeFolders(
 
 export const changesKey = 'changes';
 
-const folderRowKey = (path: string) => `folder:${path}`;
+export const folderRowKey = (path: string) => `folder:${path}`;
 
 export function treeRowKey(row: ChangesTreeRow): string {
   return row.kind === 'folder' ? folderRowKey(row.path) : fileRowKey(row.path);
