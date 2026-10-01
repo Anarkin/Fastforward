@@ -100,9 +100,36 @@ export function loadHistory(
   tab.fullHistory = fullHistory;
   tab.inHistory = new Set(fullHistory.map((entry) => entry.hash));
   tab.heads = headsOf(fullHistory);
+  takeRefs(tab, head, refs);
+}
+
+export function takeRefs(
+  tab: TabState,
+  head: Head | undefined,
+  refs: readonly RefInfo[],
+): void {
   tab.headCommit = head?.commit;
   tab.fingerprint = fingerprint(head, refs);
   tab.refCounts = countRefs(refs, head);
+}
+
+// The commits reachable from the tips are those of the history exactly when
+// every tip is in it and every commit without children in it is a tip
+export function refsKeepHistory(
+  tab: TabState,
+  head: Head | undefined,
+  refs: readonly RefInfo[],
+  solo: boolean,
+): boolean {
+  const tips = new Set(solo ? [] : refs.map((ref) => ref.commit));
+  if (head?.commit) {
+    tips.add(head.commit);
+  }
+  return (
+    historyLoaded(tab) &&
+    [...tips].every((tip) => tab.inHistory.has(tip)) &&
+    [...tab.heads].every((commit) => tips.has(commit))
+  );
 }
 
 export function historyLoaded(tab: TabState): boolean {

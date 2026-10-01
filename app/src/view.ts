@@ -67,9 +67,11 @@ import {
   navigationEntry,
   nearestSteps,
   newTabState,
+  refsKeepHistory,
   replayOf,
   select,
   stillThere,
+  takeRefs,
   type TabState,
 } from './tabState';
 
@@ -1043,16 +1045,30 @@ export class FastforwardView {
 
   private async refreshHistory(context: Context): Promise<void> {
     const refs = await this.refsOf(context);
-    if (fingerprint(refs.head, refs.refs) !== context.tab.fingerprint) {
-      this.log.info('Refs changed, reloading the history');
-      const known = Promise.resolve(refs);
+    const { tab } = context;
+    const { head, refs: listed } = refs;
+    if (fingerprint(head, listed) === tab.fingerprint) {
+      if (tab.shownStale) {
+        await this.sendShownHistory(context, { keepPlace: true });
+      }
+      return;
+    }
+    const known = Promise.resolve(refs);
+    if (refsKeepHistory(tab, head, listed, this.storage.soloOf(context.root))) {
+      this.log.info('Refs changed, keeping the history');
+      const layOut = tab.shownStale || tab.headCommit !== head?.commit;
+      takeRefs(tab, head, listed);
       await Promise.all([
         this.sendRepository(context, known),
-        this.sendCommits(context, known, true),
+        this.sendShownHistory(context, { keepPlace: true, layOut }),
       ]);
-    } else if (context.tab.shownStale) {
-      await this.sendShownHistory(context, { keepPlace: true });
+      return;
     }
+    this.log.info('Refs changed, reloading the history');
+    await Promise.all([
+      this.sendRepository(context, known),
+      this.sendCommits(context, known, true),
+    ]);
   }
 
   private async sendWorkingTree(context: Context): Promise<WorkingTree> {
@@ -1094,18 +1110,11 @@ export class FastforwardView {
     {
       scrollTo,
       keepPlace = false,
-    }: { scrollTo?: string; keepPlace?: boolean } = {},
+      layOut = true,
+    }: { scrollTo?: string; keepPlace?: boolean; layOut?: boolean } = {},
   ): Promise<void> {
     const { tab } = context;
-    const started = performance.now();
-    const generation = layOutHistory(
-      tab,
-      this.storage.collapseMerges,
-      tab.headCommit,
-    );
-    this.log.info(
-      `Graph of ${tab.history.length} of ${tab.fullHistory.length} commits laid out in ${Math.round(performance.now() - started)} ms, ${tab.graph.width} lanes wide`,
-    );
+    const generation = layOut ? this.layOut(tab) : ++tab.generation;
     const page = firstPage(tab, keepPlace, scrollTo);
     const commits = await logCommits(
       context.gitPath,
@@ -1124,6 +1133,19 @@ export class FastforwardView {
       return;
     }
     context.post(commitsMessage(tab, page, commits));
+  }
+
+  private layOut(tab: Tab): number {
+    const started = performance.now();
+    const generation = layOutHistory(
+      tab,
+      this.storage.collapseMerges,
+      tab.headCommit,
+    );
+    this.log.info(
+      `Graph of ${tab.history.length} of ${tab.fullHistory.length} commits laid out in ${Math.round(performance.now() - started)} ms, ${tab.graph.width} lanes wide`,
+    );
+    return generation;
   }
 
   private async sendCommitPage(

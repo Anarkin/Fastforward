@@ -1478,6 +1478,60 @@ suite('View', function () {
       }
     });
 
+    test('lists the history again only for refs that change its commits, whatever solo leaves out', async () => {
+      await connection.refresh();
+      let listed = 0;
+      stubMethod(fastforward, 'sendCommits', async (original, ...args) => {
+        listed++;
+        await original(...args);
+      });
+      const refreshed = async () => {
+        page.clear();
+        await connection.refresh();
+        return page.last('commits');
+      };
+      const [tree] = await repository.resolve('HEAD^{tree}');
+      const side = (
+        await repository.git('commit-tree', tree, '-p', fixture.a, '-m', 'side')
+      ).trim();
+      try {
+        await repository.git('tag', 'kept', fixture.a);
+        const tagged = await refreshed();
+        assert.ok(
+          page.last('repository')?.refs.some((ref) => ref.name === 'kept'),
+        );
+        assert.deepStrictEqual(
+          tagged?.decorations.find(([index]) => index === 2),
+          [2, 1],
+        );
+        await repository.git('checkout', '--detach', fixture.f2);
+        assert.ok(((await refreshed())?.total ?? 0) > 3);
+        await repository.git('checkout', 'main');
+        await repository.git('tag', '-d', 'kept');
+        assert.strictEqual((await refreshed())?.total, 3);
+        assert.strictEqual(listed, 0);
+        await repository.git('branch', 'side', side);
+        assert.strictEqual((await refreshed())?.total, 4);
+        assert.strictEqual(listed, 1);
+        await repository.git('branch', '-D', 'side');
+        assert.strictEqual((await refreshed())?.total, 3);
+        assert.strictEqual(listed, 2);
+        await connection.receive({
+          type: 'setSolo',
+          root: repository.root,
+          solo: true,
+        });
+        listed = 0;
+        await repository.git('update-ref', 'refs/remotes/origin/side', side);
+        assert.strictEqual((await refreshed())?.total, 3);
+        assert.strictEqual(listed, 0);
+      } finally {
+        await store.update(soloKey, {});
+        await repository.git('update-ref', '-d', 'refs/remotes/origin/side');
+        await restore();
+      }
+    });
+
     test('sends the history again on the next refresh after it failed to load', async () => {
       await connection.refresh();
       const before = page.last('commits')?.generation ?? -1;
