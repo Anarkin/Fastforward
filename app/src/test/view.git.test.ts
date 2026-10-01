@@ -519,6 +519,26 @@ suite('View', function () {
       assert.strictEqual(page.last('commits')?.total, 3);
     });
 
+    test('lets the keys go on from the merge a collapse hides the selected commit in, leaving it selected', async () => {
+      const toggle = () =>
+        connection.receive({
+          type: 'toggleMerge',
+          root: repository.root,
+          hash: fixture.merge,
+        });
+      await toggle();
+      await connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: fixture.f2,
+      });
+      await toggle();
+      const commits = page.last('commits');
+      assert.strictEqual(commits?.total, 3);
+      assert.strictEqual(commits.selectedIndex, undefined);
+      assert.strictEqual(commits.keysFrom, 0);
+    });
+
     test('forgets merges toggled by hand when the merge setting changes', async () => {
       await connection.receive({
         type: 'toggleMerge',

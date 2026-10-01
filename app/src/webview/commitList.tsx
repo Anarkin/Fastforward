@@ -128,7 +128,9 @@ function startPosition(
   const hint = history.selectedIndex;
   return (
     history.positionOf(selected) ??
-    (hint !== undefined && history.at(hint) === undefined ? hint : null)
+    (hint !== undefined && history.at(hint) === undefined
+      ? hint
+      : (history.keysFrom ?? null))
   );
 }
 

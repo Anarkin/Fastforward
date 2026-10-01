@@ -162,6 +162,23 @@ suite('Tab state', () => {
     assert.strictEqual(tab.index, undefined);
   });
 
+  test('lets the keys go on from the merge that collapsing hides the selected commit in', () => {
+    const tab = newTabState();
+    loadHistory(tab, history, { name: 'main', commit: 'c' }, []);
+    tab.hash = 'b';
+    layOutHistory(tab, true, 'c');
+    const message = commitsMessage(tab, firstPage(tab, false), []);
+    assert.strictEqual(message.selectedIndex, undefined);
+    assert.strictEqual(message.keysFrom, 0);
+    const replayed = replayOf(tab).find((shown) => shown.type === 'commits');
+    assert.strictEqual(replayed, undefined);
+    keep(tab.shown, message);
+    assert.strictEqual(
+      replayOf(tab).find((shown) => shown.type === 'commits')?.keysFrom,
+      0,
+    );
+  });
+
   test('names navigation entries after their subjects', () => {
     const tab = newTabState();
     keepSubjects(tab, [commitInfo('b', { subject: 'bee' })]);

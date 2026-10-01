@@ -258,6 +258,7 @@ export type ToWebview =
       readonly graph: readonly GraphRow[];
       readonly workingTreeGraph: GraphRow;
       readonly selectedIndex: number | undefined;
+      readonly keysFrom?: number;
       readonly scrollTarget: ScrollTarget | undefined;
     }
   | {
