@@ -44,6 +44,18 @@ const whole = { path: 'c.ts', content: 'find\nnone\n', binary: false };
 function noop() {}
 
 suite('Find in diff', () => {
+  test('finds a match where it is, also after letters that lowercase longer', () => {
+    assert.deepStrictEqual(matchesIn('İstanbul foo', 'foo'), [
+      { start: 9, end: 12 },
+    ]);
+    assert.deepStrictEqual(matchesIn('İİ x İ', 'i̇'), [
+      { start: 0, end: 1 },
+      { start: 1, end: 2 },
+      { start: 5, end: 6 },
+    ]);
+    assert.deepStrictEqual(matchesIn('İ', 'i'), [{ start: 0, end: 1 }]);
+  });
+
   test('finds every occurrence in a line, ignoring case, inside words too', () => {
     assert.deepStrictEqual(matchesIn('Find finder', 'find'), [
       { start: 0, end: 4 },

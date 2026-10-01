@@ -25,16 +25,37 @@ export function matchesIn(text: string, query: string): FindRange[] {
   if (query === '') {
     return [];
   }
-  const haystack = text.toLowerCase();
+  const { lowered, starts, ends } = lowercased(text);
   const needle = query.toLowerCase();
   const ranges: FindRange[] = [];
-  let from = haystack.indexOf(needle);
+  let from = lowered.indexOf(needle);
   while (from !== -1) {
     const end = from + needle.length;
-    ranges.push({ start: from, end });
-    from = haystack.indexOf(needle, end);
+    ranges.push({ start: starts[from], end: ends[end - 1] });
+    from = lowered.indexOf(needle, end);
   }
   return ranges;
+}
+
+function lowercased(text: string): {
+  lowered: string;
+  starts: number[];
+  ends: number[];
+} {
+  let lowered = '';
+  const starts: number[] = [];
+  const ends: number[] = [];
+  let index = 0;
+  for (const character of text) {
+    const lower = character.toLowerCase();
+    for (let unit = 0; unit < lower.length; unit++) {
+      starts.push(index);
+      ends.push(index + character.length);
+    }
+    lowered += lower;
+    index += character.length;
+  }
+  return { lowered, starts, ends };
 }
 
 function searchedLines(
