@@ -2418,6 +2418,35 @@ suite('View', function () {
       });
     });
 
+    test('expands every merge once collapsing them is turned off by hand, also one expanded before', async () => {
+      await withView(log, [repository.root], async (view) => {
+        await view.connection.receive({
+          type: 'toggleMerge',
+          root: repository.root,
+          hash: fixture.merge,
+        });
+        assert.notStrictEqual(
+          view.page.last('commits')?.graph[0]?.merge,
+          'collapsed',
+        );
+        view.view.reloadSettings();
+        view.page.clear();
+        await view.connection.receive({ type: 'ready' });
+        assert.notStrictEqual(
+          view.page.last('commits')?.graph[0]?.merge,
+          'collapsed',
+        );
+        await view.settings.set('collapseMerges', false);
+        view.view.reloadSettings();
+        view.page.clear();
+        await view.connection.receive({ type: 'ready' });
+        assert.notStrictEqual(
+          view.page.last('commits')?.graph[0]?.merge,
+          'collapsed',
+        );
+      });
+    });
+
     test('saves the merge setting with no tab open', async () => {
       await withView(
         log,
