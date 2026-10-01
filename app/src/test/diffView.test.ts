@@ -7,6 +7,7 @@ import {
   diffRows,
   largeFilesToLoad,
   rowHeight,
+  rowMeasures,
   scrollOnToggle,
   showsSideBySide,
   stuckHeader,
@@ -436,5 +437,30 @@ suite('Diff row heights', () => {
     assert.strictEqual(rowHeight(loading[1]), undefined);
     assert.notStrictEqual(rowHeight(loaded[1]), undefined);
     assert.notStrictEqual(diffRowKey(loading[1], 1), diffRowKey(loaded[1], 1));
+  });
+
+  test('keeps the same size and key callbacks while the rows are the same, so the virtualizer measures only from the first changed row', () => {
+    const rows = diffRows(parsePatch(patch('a.ts', 2)), new Map(), undefined);
+    const same = diffRows(parsePatch(patch('a.ts', 2)), new Map(), undefined);
+    const measures = rowMeasures(rows);
+    assert.strictEqual(rowMeasures(rows), measures);
+    assert.notStrictEqual(rowMeasures(same).getItemKey, measures.getItemKey);
+    assert.deepStrictEqual(
+      rows.map((_, index) => [
+        measures.estimateSize(index),
+        measures.getItemKey(index),
+      ]),
+      [
+        [200, '0:error'],
+        [22, '1:file'],
+        [20, '2:line'],
+        [20, '3:line'],
+      ],
+    );
+    const loading = diffRows([], new Map(), undefined, true);
+    assert.deepStrictEqual(
+      loading.map((_, index) => rowMeasures(loading).estimateSize(index)),
+      [200, 240],
+    );
   });
 });
