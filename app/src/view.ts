@@ -83,6 +83,8 @@ interface Tab extends TabState {
   fetching: Promise<Fetched> | undefined;
   fetchFailed: boolean;
   diffRequest: number;
+  loadingFiles: AbortController;
+  loadingDiff: AbortController;
   untrackedPatches: UntrackedPatches;
 }
 
@@ -680,6 +682,8 @@ export class FastforwardView {
         fetching: undefined,
         fetchFailed: false,
         diffRequest: 0,
+        loadingFiles: new AbortController(),
+        loadingDiff: new AbortController(),
         untrackedPatches: new Map(),
       };
       this.tabStates.set(root, tab);
@@ -1166,31 +1170,45 @@ export class FastforwardView {
     context: Context,
     knownWorkingTree?: WorkingTree,
   ): Promise<void> {
-    const { hash } = context.tab;
+    const { tab } = context;
+    const { hash } = tab;
     if (!hash) {
       return;
     }
+    const refreshing = knownWorkingTree !== undefined;
+    if (!refreshing) {
+      tab.loadingFiles.abort();
+      tab.loadingDiff.abort();
+      tab.loadingFiles = new AbortController();
+    }
+    const { signal } = tab.loadingFiles;
     let files: readonly FileChange[];
     let workingTree: WorkingTree | undefined;
-    if (hash === workingTreeHash) {
-      workingTree =
-        knownWorkingTree ??
-        (await workingTreeFiles(context.gitPath, context.root));
-      files = workingTree.files;
-    } else if (context.tab.positions.has(hash)) {
-      files = await showFiles(context.gitPath, context.root, hash);
-    } else {
-      this.notInHistory(context, hash);
-      return;
+    try {
+      if (hash === workingTreeHash) {
+        workingTree =
+          knownWorkingTree ??
+          (await workingTreeFiles(context.gitPath, context.root));
+        files = workingTree.files;
+      } else if (tab.positions.has(hash)) {
+        files = await this.commitFiles(context, hash, signal);
+      } else {
+        this.notInHistory(context, hash);
+        return;
+      }
+    } catch (error) {
+      if (signal.aborted) {
+        return;
+      }
+      throw error;
     }
-    if (context.tab.hash !== hash) {
+    if (tab.hash !== hash || signal.aborted) {
       return;
     }
     context.tab.changedFiles = new Map(files.map((file) => [file.path, file]));
     if (workingTree) {
       context.tab.workingTree = workingTree;
     }
-    const refreshing = knownWorkingTree !== undefined;
     const shownFiles = context.tab.shown.files;
     const unchanged =
       shownFiles?.hash === hash &&
@@ -1199,6 +1217,14 @@ export class FastforwardView {
       context.post({ type: 'files', hash, files });
     }
     await this.sendDiff(context, hash, refreshing);
+  }
+
+  private commitFiles(
+    context: Context,
+    hash: string,
+    signal: AbortSignal,
+  ): Promise<FileChange[]> {
+    return showFiles(context.gitPath, context.root, hash, signal);
   }
 
   private async sendFileDiff(
@@ -1248,10 +1274,11 @@ export class FastforwardView {
     context: Context,
     hash: string,
     scope: PatchScope,
+    signal?: AbortSignal,
   ): Promise<string> {
     const { gitPath, root } = context;
     if (hash !== workingTreeHash) {
-      return showPatch(gitPath, root, hash, scope);
+      return showPatch(gitPath, root, hash, scope, signal);
     }
     const workingTree =
       context.tab.workingTree ?? (await workingTreeFiles(gitPath, root));
@@ -1296,6 +1323,9 @@ export class FastforwardView {
     const { tab } = context;
     const { path: file } = tab;
     const request = ++tab.diffRequest;
+    tab.loadingDiff.abort();
+    const loading = new AbortController();
+    tab.loadingDiff = loading;
     const stale = () =>
       tab.diffRequest !== request || tab.hash !== hash || tab.path !== file;
     const change =
@@ -1338,7 +1368,15 @@ export class FastforwardView {
             entireFile: context.tab.entireFile || this.storage.entireFilePinned,
             ignoreWhitespace: this.storage.ignoreWhitespace,
           };
-    const patch = await this.patchOf(context, hash, scope);
+    let patch: string;
+    try {
+      patch = await this.patchOf(context, hash, scope, loading.signal);
+    } catch (error) {
+      if (loading.signal.aborted) {
+        return;
+      }
+      throw error;
+    }
     const shownDiff = context.tab.shown.diff;
     const unchanged =
       refreshing &&

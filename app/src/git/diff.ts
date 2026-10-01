@@ -24,9 +24,12 @@ export async function showFiles(
   gitPath: string,
   cwd: string,
   hash: string,
+  signal?: AbortSignal,
 ): Promise<FileChange[]> {
   return parseChanges(
-    await runGit(gitPath, cwd, [...showArgs, ...changesArgs, hash]),
+    await runGit(gitPath, cwd, [...showArgs, ...changesArgs, hash], {
+      signal,
+    }),
   );
 }
 
@@ -60,17 +63,23 @@ export function showPatch(
   cwd: string,
   hash: string,
   scope: PatchScope = {},
+  signal?: AbortSignal,
 ): Promise<string> {
   if (scope.include?.length === 0) {
     return Promise.resolve('');
   }
-  return runGit(gitPath, cwd, [
-    ...showArgs,
-    '--patch',
-    ...diffOptionArgs(scope),
-    hash,
-    ...pathspecs(scope),
-  ]);
+  return runGit(
+    gitPath,
+    cwd,
+    [
+      ...showArgs,
+      '--patch',
+      ...diffOptionArgs(scope),
+      hash,
+      ...pathspecs(scope),
+    ],
+    { signal },
+  );
 }
 
 const simpleStatuses = ['A', 'M', 'D', 'T'] as const;
