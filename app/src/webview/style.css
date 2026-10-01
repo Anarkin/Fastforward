@@ -419,7 +419,7 @@ body.resizing {
 
 .column-title:has(.diff-options) {
   padding-left: calc(4px + 6 * 26px + 5 * 2px + 8px);
-  padding-right: calc(4px + 6 * 26px + 5 * 2px + 8px);
+  padding-right: calc(4px + 2 * 26px + 2px + 8px);
 }
 
 .diff-find {
@@ -428,7 +428,7 @@ body.resizing {
   align-items: center;
   gap: 8px;
   box-sizing: border-box;
-  min-width: 0;
+  min-width: 100px;
   height: var(--search-height);
   padding: 0 12px;
   background: var(--color-border);
