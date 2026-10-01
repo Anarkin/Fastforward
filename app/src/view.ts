@@ -794,11 +794,14 @@ export class FastforwardView {
             message: `${path.basename(root)}: ${message}`,
           })
       : silent;
-    if (
-      (await this.fetchRemotes(context, log, notify)) &&
-      this.isActive(root)
-    ) {
-      await this.run('refresh', session, () => this.refresh(context), root);
+    if (!(await this.fetchRemotes(context, log, notify))) {
+      return;
+    }
+    const page = this.page;
+    const shown =
+      page && this.isActive(root) ? await this.context(page, root) : undefined;
+    if (page && shown) {
+      await this.run('refresh', page, () => this.refresh(shown), root);
     }
   }
 
