@@ -8,6 +8,7 @@ export interface Watcher {
 
 interface WatchOptions {
   readonly delay: number;
+  readonly maxDelay: number;
   readonly onChange: () => void;
   readonly onError: (error: unknown) => void;
 }
@@ -15,7 +16,7 @@ interface WatchOptions {
 export async function watchRepository(
   gitPath: string,
   root: string,
-  { delay, onChange, onError }: WatchOptions,
+  { delay, maxDelay, onChange, onError }: WatchOptions,
 ): Promise<Watcher> {
   const [gitDir, commonDir] = (
     await runGit(gitPath, root, ['rev-parse', '--git-dir', '--git-common-dir'])
@@ -27,11 +28,13 @@ export async function watchRepository(
 
   let disposed = false;
   let timer: NodeJS.Timeout | undefined;
+  let firstPending: number | undefined;
   let gitDirChanged = false;
   const changedFiles = new Set<string>();
 
   const flush = async () => {
     timer = undefined;
+    firstPending = undefined;
     const files = [...changedFiles];
     const refresh = gitDirChanged;
     changedFiles.clear();
@@ -50,8 +53,13 @@ export async function watchRepository(
     }
   };
   const schedule = () => {
+    const now = Date.now();
+    firstPending ??= now;
     clearTimeout(timer);
-    timer = setTimeout(() => void flush(), delay);
+    timer = setTimeout(
+      () => void flush(),
+      waitBeforeFlush(now - firstPending, delay, maxDelay),
+    );
   };
   const changed = (file: string) => {
     const inGitDir = gitDirs.find((dir) => isInside(dir, file));
@@ -89,6 +97,14 @@ export async function watchRepository(
       }
     },
   };
+}
+
+export function waitBeforeFlush(
+  sinceFirstPending: number,
+  delay: number,
+  maxDelay: number,
+): number {
+  return Math.max(0, Math.min(delay, maxDelay - sinceFirstPending));
 }
 
 function isInside(folder: string, file: string): boolean {
