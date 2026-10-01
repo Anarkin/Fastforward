@@ -32,18 +32,25 @@ suite('Columns', () => {
   test('gives a hidden column no width instead of dropping it, so it keeps its place', () => {
     assert.strictEqual(
       templateOf([460, 300], [true, false]),
-      '0px 300px minmax(240px, 1fr)',
+      '0px minmax(120px, 300px) minmax(240px, 1fr)',
     );
+  });
+
+  test('narrows the columns to fit a narrow window, keeping the last one its room, rather than pushing it out of view', () => {
     assert.strictEqual(
       templateOf([460, 300], [false, false]),
-      '460px 300px minmax(240px, 1fr)',
+      'minmax(120px, 460px) minmax(120px, 300px) minmax(240px, 1fr)',
     );
   });
 
   test('leaves the last column its room, which a hidden column does not take', () => {
-    assert.strictEqual(maxWidth([460, 300], [false, false], 0, 1000), 460);
-    assert.strictEqual(maxWidth([460, 300], [true, false], 1, 1000), 760);
-    assert.strictEqual(maxWidth([460, 300], [false, false], 1, 500), 120);
+    assert.strictEqual(maxWidth([460, 300], [false, false], 0, 1000, 0), 460);
+    assert.strictEqual(maxWidth([460, 300], [true, false], 1, 1000, 0), 760);
+    assert.strictEqual(maxWidth([460, 300], [false, false], 1, 500, 0), 120);
+  });
+
+  test('leaves the last column its room past the padding and gaps between the columns', () => {
+    assert.strictEqual(maxWidth([460, 300], [false, false], 0, 1000, 16), 444);
   });
 
   test('loads saved widths, or the defaults for ones of other columns', () => {
