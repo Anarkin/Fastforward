@@ -420,8 +420,20 @@ export function highlighted(
   return parts;
 }
 
-const covers = (range: FindRange, start: number, end: number) =>
-  range.start <= start && end <= range.end;
+function covering<T extends FindRange>(
+  ranges: readonly T[],
+): (start: number, end: number) => T | undefined {
+  let next = 0;
+  return (start, end) => {
+    while (next < ranges.length && ranges[next].end <= start) {
+      next++;
+    }
+    const range = ranges.at(next);
+    return range && range.start <= start && end <= range.end
+      ? range
+      : undefined;
+  };
+}
 
 export function marked(
   text: string,
@@ -444,10 +456,13 @@ export function marked(
       ]),
     ]),
   ].toSorted((a, b) => a - b);
+  const findAt = covering(finds);
+  const tokenAt = covering(syntax);
+  const wordAt = covering(words);
   return edges.slice(0, -1).map((start, index) => {
     const end = edges[index + 1];
     const piece = text.slice(start, end);
-    const find = finds.find((range) => covers(range, start, end));
+    const find = findAt(start, end);
     const isCurrent =
       find !== undefined &&
       current?.start === find.start &&
@@ -459,11 +474,11 @@ export function marked(
     ) : (
       piece
     );
-    const token = syntax.find((range) => covers(range, start, end));
+    const token = tokenAt(start, end);
     if (token) {
       content = <span className={`syntax-${token.kind}`}>{content}</span>;
     }
-    return words.some((range) => covers(range, start, end)) ? (
+    return wordAt(start, end) ? (
       <span key={start} className={wordClass}>
         {content}
       </span>

@@ -135,4 +135,28 @@ suite('Word diff', () => {
       'plain',
     );
   });
+
+  test('marks a line dense with colors, changed words and matches piece by piece in one pass', () => {
+    const pairs = 20_000;
+    const text = 'ab'.repeat(pairs);
+    const every = (offset: number) =>
+      Array.from({ length: pairs }, (_, pair) => ({
+        start: 2 * pair + offset,
+        end: 2 * pair + offset + 1,
+      }));
+    const drawn = marked(
+      text,
+      every(0).map((range) => ({ ...range, kind: 'keyword' as const })),
+      every(1),
+      'word-added',
+      every(1),
+      undefined,
+    );
+    assert.ok(Array.isArray(drawn));
+    assert.strictEqual(drawn.length, 2 * pairs);
+    assert.strictEqual(
+      renderToStaticMarkup(<>{drawn.slice(-2)}</>),
+      '<span class="syntax-keyword">a</span><span class="word-added"><mark class="find-match ">b</mark></span>',
+    );
+  });
 });
