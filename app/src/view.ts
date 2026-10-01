@@ -82,6 +82,7 @@ interface Tab extends TabState {
   preloading: Promise<void> | undefined;
   refreshing: Promise<void> | undefined;
   refreshAgain: Map<Session | undefined, Context>;
+  refreshRefsAgain: boolean;
   isRepository: boolean;
   fetching: Promise<Fetched> | undefined;
   fetchFailed: boolean;
@@ -681,6 +682,7 @@ export class FastforwardView {
         preloading: undefined,
         refreshing: undefined,
         refreshAgain: new Map(),
+        refreshRefsAgain: false,
         isRepository: false,
         fetching: undefined,
         fetchFailed: false,
@@ -738,11 +740,11 @@ export class FastforwardView {
     const watcher = await watchRepository(context.gitPath, context.root, {
       delay: refreshDelay,
       maxDelay: refreshMaxDelay,
-      onChange: () =>
+      onChange: (gitDirChanged) =>
         void this.run(
           'refresh',
           session,
-          () => this.refresh(context),
+          () => this.refresh(context, undefined, gitDirChanged),
           context.root,
         ),
       onError: (error) => {
@@ -990,11 +992,13 @@ export class FastforwardView {
   private refresh(
     context: Context,
     load?: (context: Context) => Promise<void>,
+    refs = true,
   ): Promise<void> {
     const { tab } = context;
     if (tab.refreshing) {
       if (!load) {
         tab.refreshAgain.set(context.session, context);
+        tab.refreshRefsAgain ||= refs;
         return tab.refreshing;
       }
       return tab.refreshing
@@ -1011,18 +1015,23 @@ export class FastforwardView {
         }
       };
       try {
-        await attempt(() => (load ? load(context) : this.refreshOnce(context)));
+        await attempt(() =>
+          load ? load(context) : this.refreshOnce(context, refs),
+        );
         for (;;) {
           const again = toAll([...tab.refreshAgain.values()]);
           if (!again) {
             break;
           }
+          const refsAgain = tab.refreshRefsAgain;
           tab.refreshAgain.clear();
-          await attempt(() => this.refreshOnce(again));
+          tab.refreshRefsAgain = false;
+          await attempt(() => this.refreshOnce(again, refsAgain));
         }
       } finally {
         tab.refreshing = undefined;
         tab.refreshAgain.clear();
+        tab.refreshRefsAgain = false;
       }
       if (failure) {
         throw failure.error;
@@ -1031,7 +1040,7 @@ export class FastforwardView {
     return tab.refreshing;
   }
 
-  private async refreshOnce(context: Context): Promise<void> {
+  private async refreshOnce(context: Context, refs = true): Promise<void> {
     await Promise.all([
       this.sendWorkingTree(context).then(async (workingTree) => {
         if (context.tab.hash === workingTreeHash) {
@@ -1041,7 +1050,7 @@ export class FastforwardView {
           }
         }
       }),
-      this.refreshHistory(context),
+      refs || context.tab.shownStale ? this.refreshHistory(context) : undefined,
     ]);
   }
 

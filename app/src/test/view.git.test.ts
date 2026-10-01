@@ -3009,6 +3009,41 @@ suite('Fetch', function () {
     }
   });
 
+  test('reads the refs again by itself only when the git folder changes', async () => {
+    const opened = await openView(log, [repository.root]);
+    let reads = 0;
+    stubMethod(opened.view, 'refsOf', (original, ...args) => {
+      reads++;
+      return original(...args);
+    });
+    const file = path.join(repository.root, 'saved.txt');
+    try {
+      fs.writeFileSync(file, 'saved\n');
+      await waitFor(
+        () => opened.page.last('workingTree')?.files === 1,
+        'the saved file to show',
+      );
+      assert.strictEqual(reads, 0);
+      await repository.git('tag', 'watched');
+      await waitFor(
+        () =>
+          opened.page
+            .last('repository')
+            ?.refs.some((ref) => ref.name === 'watched') === true,
+        'the new tag',
+      );
+      assert.ok(reads > 0);
+    } finally {
+      opened.connection.dispose();
+      fs.rmSync(file);
+      await repository.git('update-ref', '-d', 'refs/tags/watched');
+      await waitFor(
+        () => page.last('workingTree')?.files === 0,
+        'the removed file to go',
+      );
+    }
+  });
+
   test('updates by itself when a file changes in a submodule', async () => {
     const library = await tempRepository(path.join(folder, 'library'));
     await library.commit('library', { 'lib.c': 'lib\n' });
