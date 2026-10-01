@@ -604,7 +604,16 @@ export function DiffView({
     () => (whole ? new Map<string, FindRange[]>() : wordRanges(files)),
     [files, whole],
   );
-  const syntax = useSyntax(files, whole, texts);
+  const open = useMemo(
+    () =>
+      new Set(
+        rows.flatMap((row) =>
+          row.kind === 'file' && row.open ? [row.file] : [],
+        ),
+      ),
+    [rows],
+  );
+  const syntax = useSyntax(files, whole, texts, open);
   const requestedTexts = useRef(new Set<string>());
   useEffect(() => {
     const load = whole ? [] : textsToLoad(files, diff, requestedTexts.current);
