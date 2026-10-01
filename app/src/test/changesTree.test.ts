@@ -148,4 +148,26 @@ suite('Changes tree', () => {
       unchanged: ['docs/api'],
     });
   });
+
+  test('finds the folders of a row in a large folder without reading the rows before it', () => {
+    const tree = changesTree(
+      Array.from({ length: 10_000 }, (_, i) => fileChange(`src/lib/${i}.ts`)),
+      ['src/a.ts'],
+    );
+    const listed = changesTreeRows(tree, new Set());
+    ancestorRows(listed, 0);
+    let reads = 0;
+    const counted = new Proxy(listed, {
+      get(target, key, receiver) {
+        if (typeof key === 'string' && /^\d+$/.test(key)) {
+          reads++;
+        }
+        return Reflect.get(target, key, receiver) as unknown;
+      },
+    });
+    ancestorRows(counted, 0);
+    reads = 0;
+    assert.deepStrictEqual(ancestorRows(counted, listed.length - 2), [0, 1]);
+    assert.ok(reads < 100, `${reads} reads`);
+  });
 });

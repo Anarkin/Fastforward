@@ -18,6 +18,23 @@ export interface RowPlacement {
   readonly end: number;
 }
 
+function firstEndingAfter(
+  placements: readonly RowPlacement[],
+  offset: number,
+): number {
+  let low = 0;
+  let high = placements.length;
+  while (low < high) {
+    const middle = (low + high) >>> 1;
+    if (placements[middle].end > offset) {
+      high = middle;
+    } else {
+      low = middle + 1;
+    }
+  }
+  return low === placements.length ? -1 : low;
+}
+
 export function pinnedRows(
   placements: readonly RowPlacement[],
   scrollTop: number,
@@ -31,7 +48,7 @@ export function pinnedRows(
         (sum, index) => sum + placements[index].end - placements[index].start,
         0,
       );
-    const top = placements.findIndex((row) => row.end > covered);
+    const top = firstEndingAfter(placements, covered);
     if (top === -1) {
       return pinned;
     }
