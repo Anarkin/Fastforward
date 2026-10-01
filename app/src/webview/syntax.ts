@@ -147,6 +147,8 @@ function hasGap(file: DiffFile, side: Side): boolean {
   return false;
 }
 
+const maxWholeTextLines = 5000;
+
 function sideSource(
   file: DiffFile,
   fileIndex: number,
@@ -160,6 +162,7 @@ function sideSource(
   const lines = text?.split(/\r?\n/);
   if (
     lines === undefined ||
+    (shown.at(-1)?.number ?? 0) > maxWholeTextLines ||
     shown.some(({ line, number }) => lines[number - 1] !== line.text)
   ) {
     return {

@@ -214,6 +214,32 @@ suite('Syntax', () => {
     );
   });
 
+  test('colors a side from its hunks alone when they are too far into its whole text', () => {
+    const far = 5001;
+    const text = Array.from({ length: far + 1 }, (_, index) =>
+      index === far - 1 ? 'new = 2;' : 'x;',
+    ).join('\n');
+    const farPatch = [
+      'diff --git a/a.ts b/a.ts',
+      'index 1111111111111111111111111111111111111111..2222222222222222222222222222222222222222 100644',
+      '--- a/a.ts',
+      '+++ b/a.ts',
+      `@@ -${far},1 +${far},1 @@`,
+      '-old = 1;',
+      '+new = 2;',
+      '',
+    ].join('\n');
+    const sources = syntaxSources(
+      parsePatch(farPatch),
+      undefined,
+      new Map([['new:a.ts', text]]),
+    );
+    assert.deepStrictEqual(
+      sources.map((source) => source.lines),
+      [['old = 1;'], ['new = 2;']],
+    );
+  });
+
   test('colors a side from its hunks alone when its whole text does not match them', async () => {
     const texts = new Map([['new:a.ts', 'other\ntext\nnew = 3;\nend */\n']]);
     assert.deepStrictEqual(
