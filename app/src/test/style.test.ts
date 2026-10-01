@@ -576,12 +576,13 @@ suite('Style', () => {
     );
   });
 
-  test('keeps the titles clear of the three buttons the Files column has on the left, and the six the Diff column has on its left, mirrored on its right', () => {
+  test('keeps the titles clear of the three buttons the Files column has on the left, and the six on the left and two on the right the Diff column has, its search field never squeezed out', () => {
     const files = declarationsOf('.column-title:has(.all-files)');
     assert.strictEqual(pixels(files, 'padding-left'), 4 + 3 * 26 + 2 * 2 + 8);
     const diff = declarationsOf('.column-title:has(.diff-options)');
     assert.strictEqual(pixels(diff, 'padding-left'), 4 + 6 * 26 + 5 * 2 + 8);
-    assert.strictEqual(pixels(diff, 'padding-right'), 4 + 6 * 26 + 5 * 2 + 8);
+    assert.strictEqual(pixels(diff, 'padding-right'), 4 + 2 * 26 + 2 + 8);
+    assert.ok(declarationsOf('.diff-find').includes('min-width: 100px;'));
   });
 
   test('divides the two sides with one line from top to bottom, across headers and hunk gaps, letting the pointer through', () => {
