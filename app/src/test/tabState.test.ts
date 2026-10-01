@@ -24,6 +24,9 @@ const at = (commit: string) => ({
   commit,
 });
 
+const page = (from: number, count: number) =>
+  Array.from({ length: count }, (_, i) => commitInfo(`c${from + i}`));
+
 suite('Tab state', () => {
   const history = [
     { hash: 'c', parents: ['a', 'b'] },
@@ -217,6 +220,20 @@ suite('Tab state', () => {
     assert.strictEqual(
       navigationEntry(tab, workingTreeHash).subject,
       'Uncommitted changes',
+    );
+  });
+
+  test('forgets the subjects no step back or forward needs once a thousand are kept', () => {
+    const tab = newTabState();
+    keepSubjects(tab, page(0, 1000));
+    tab.navigation = { back: ['c1'], forward: ['c2'] };
+    tab.hash = 'c3';
+    keepSubjects(tab, page(1000, 1));
+    assert.deepStrictEqual(
+      ['c0', 'c1', 'c2', 'c3', 'c1000'].map(
+        (hash) => navigationEntry(tab, hash).subject,
+      ),
+      [undefined, 'c1', 'c2', 'c3', 'c1000'],
     );
   });
 

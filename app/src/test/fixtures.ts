@@ -12,13 +12,7 @@ export const commitInfo = (
 ): CommitInfo => ({
   hash,
   subject: hash,
-  message: hash,
-  parents: [],
   authorName: 'Test',
-  authorEmail: 'test@example.com',
-  authorDate: 0,
-  committerName: 'Test',
-  committerEmail: 'test@example.com',
   commitDate: 0,
   ...extra,
 });

@@ -417,7 +417,6 @@ suite('Commit row', () => {
       commit: commitInfo('a', {
         subject: 'Fix it',
         authorName: 'Ann',
-        authorDate: Date.UTC(2026, 8, 30, 0, 24),
         commitDate: Date.UTC(2026, 8, 30, 11, 56),
       }),
       selected: undefined,
@@ -439,7 +438,6 @@ suite('Commit row', () => {
         `<span class="date">${formatDateTime(props.commit.commitDate)}</span>`,
       ),
     );
-    assert.ok(!html.includes(formatDateTime(props.commit.authorDate)));
     assert.match(html, />main</);
     assert.doesNotMatch(html, /class="count"/);
     const row = renderedBy(CommitRow, props);
