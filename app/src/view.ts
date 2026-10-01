@@ -132,6 +132,7 @@ export class FastforwardView {
   private readonly hashLookups = new Map<string, number>();
   private page: Session | undefined;
   private readonly autoFetch: AutoFetch;
+  private collapseMerges: boolean;
 
   constructor(
     private readonly log: Log,
@@ -140,6 +141,7 @@ export class FastforwardView {
     private readonly host: Host,
     timer?: Timer,
   ) {
+    this.collapseMerges = storage.collapseMerges;
     this.autoFetch = new AutoFetch(
       () => storage.autoFetchMinutes,
       () => {
@@ -157,9 +159,14 @@ export class FastforwardView {
 
   reloadSettings(): void {
     this.autoFetch.update();
+    const collapseChanged = this.storage.collapseMerges !== this.collapseMerges;
+    this.collapseMerges = this.storage.collapseMerges;
     for (const tab of this.tabStates.values()) {
       forgetHistory(tab);
       tab.opened = false;
+      if (collapseChanged) {
+        tab.toggledMerges.clear();
+      }
     }
   }
 
@@ -287,6 +294,7 @@ export class FastforwardView {
         return;
       case 'setCollapseMerges': {
         await storage.setCollapseMerges(message.collapse);
+        this.collapseMerges = message.collapse;
         for (const tab of this.tabStates.values()) {
           tab.toggledMerges.clear();
           tab.shownStale = true;
