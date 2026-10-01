@@ -763,9 +763,10 @@ export class FastforwardView {
     context: Context,
     log: Log = this.log,
     notify: Notify = this.notify(context),
+    interactive = true,
   ): Promise<boolean> {
     const { tab } = context;
-    tab.fetching ??= fetchAll(context).finally(() => {
+    tab.fetching ??= fetchAll(context, interactive).finally(() => {
       tab.fetching = undefined;
     });
     const fetched = reportFetched(log, notify, await tab.fetching);
@@ -797,7 +798,7 @@ export class FastforwardView {
             message: `${path.basename(root)}: ${message}`,
           })
       : silent;
-    if (!(await this.fetchRemotes(context, log, notify))) {
+    if (!(await this.fetchRemotes(context, log, notify, false))) {
       return;
     }
     const page = this.page;

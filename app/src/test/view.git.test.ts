@@ -1,6 +1,8 @@
 import * as assert from 'node:assert';
 import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import * as path from 'node:path';
 import {
   workingTreeHash,
@@ -2947,7 +2949,7 @@ suite('Fetch', function () {
     let asked: Promise<void> | undefined;
     stubMethod(opened.view, 'fetchRemotes', (original, ...args) => {
       const fetched = original(...args);
-      if (rounds.length === 1 && args.length === 3) {
+      if (rounds.length === 1 && args[3] === false) {
         asked ??= opened.connection.receive({
           type: 'fetch',
           root: failing.root,
@@ -2968,6 +2970,52 @@ suite('Fetch', function () {
       });
     } finally {
       opened.connection.dispose();
+    }
+  });
+
+  test('lets only a fetch asked for, not one in the background, ask for credentials', async () => {
+    const server = createServer((_request, response) => {
+      response.writeHead(401, { 'WWW-Authenticate': 'Basic realm="locked"' });
+      response.end();
+    });
+    await new Promise<void>((resolve) =>
+      server.listen(0, '127.0.0.1', resolve),
+    );
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    const { port } = server.address() as AddressInfo;
+    const locked = await tempRepository(path.join(folder, 'locked'));
+    await locked.commit('a');
+    await locked.git('remote', 'add', 'origin', `http://127.0.0.1:${port}/x`);
+    const asked = path.join(folder, 'asked.txt').replaceAll('\\', '/');
+    await locked.git('config', 'credential.helper', '');
+    await locked.git(
+      'config',
+      '--add',
+      'credential.helper',
+      `!f() { echo "[$GCM_INTERACTIVE]" >> '${asked}'; }; f`,
+    );
+    const rounds: (() => void)[] = [];
+    const opened = await openView(
+      log,
+      [locked.root],
+      true,
+      undefined,
+      (run) => {
+        rounds.push(run);
+        return () => undefined;
+      },
+    );
+    try {
+      await opened.connection.receive({ type: 'setAutoFetch', on: true });
+      await waitFor(() => rounds.length === 1, 'the round to end');
+      await opened.connection.receive({ type: 'fetch', root: locked.root });
+      assert.deepStrictEqual(
+        fs.readFileSync(asked, 'utf8').trim().split('\n'),
+        ['[never]', '[]'],
+      );
+    } finally {
+      opened.connection.dispose();
+      await new Promise((resolve) => server.close(resolve));
     }
   });
 

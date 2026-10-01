@@ -126,12 +126,12 @@ export type Fetched =
   | { readonly failed: false }
   | { readonly failed: true; readonly error: unknown };
 
-export async function fetchAll({
-  gitPath,
-  root,
-}: RepositoryAt): Promise<Fetched> {
+export async function fetchAll(
+  { gitPath, root }: RepositoryAt,
+  interactive = true,
+): Promise<Fetched> {
   try {
-    await fetchAllRemotes(gitPath, root);
+    await fetchAllRemotes(gitPath, root, { interactive });
     return { failed: false };
   } catch (error) {
     return { failed: true, error };
