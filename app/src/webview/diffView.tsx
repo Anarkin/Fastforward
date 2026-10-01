@@ -11,6 +11,7 @@ import {
   type MinimapRow,
 } from './minimap';
 import { columnFocusAttribute } from './activeColumn';
+import { alignLines } from './pairing';
 import { wordRanges } from './wordDiff';
 import { changeStep } from './shortcuts';
 import { ownScrollbarAttribute } from './overlayScrollbars';
@@ -148,12 +149,16 @@ export function splitRows(
     const removed: SplitCell[] = [];
     const added: SplitCell[] = [];
     const pair = () => {
-      for (let i = 0; i < Math.max(removed.length, added.length); i++) {
+      const aligned = alignLines(
+        removed.map((cell) => cell.line.text),
+        added.map((cell) => cell.line.text),
+      );
+      for (const [left, right] of aligned) {
         rows.push({
           kind: 'split',
           file: index,
-          left: removed[i],
-          right: added[i],
+          left: left === undefined ? undefined : removed[left],
+          right: right === undefined ? undefined : added[right],
         });
       }
       removed.length = 0;
@@ -162,6 +167,9 @@ export function splitRows(
     for (const line of hunk.lines) {
       const cell = { line, index: next++ };
       if (line.kind === 'removed') {
+        if (added.length > 0) {
+          pair();
+        }
         removed.push(cell);
       } else if (line.kind === 'added') {
         added.push(cell);
