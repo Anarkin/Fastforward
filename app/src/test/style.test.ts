@@ -16,6 +16,12 @@ function declarationsOf(selector: string): string {
   return match[3];
 }
 
+function level(selector: string): number {
+  const match = /z-index: (\d+);/.exec(declarationsOf(selector));
+  assert.ok(match, selector);
+  return Number(match[1]);
+}
+
 function variablePx(name: string): number {
   const match = new RegExp(`--${name}: (\\d+)px;`).exec(css);
   assert.ok(match, name);
@@ -568,6 +574,16 @@ suite('Style', () => {
         'height: var(--search-height);',
       ),
     );
+  });
+
+  test('draws the active column edge over the search popup that covers the column, but under menus and notices', () => {
+    const edge = level(
+      ".columns[data-active-column='commits'] > .column:nth-child(1)::after",
+    );
+    assert.ok(edge > level('.locations-popup'));
+    for (const above of ['.menu', '.menu.context-menu', '.notices']) {
+      assert.ok(level(above) > edge, above);
+    }
   });
 
   test('edges the active column in the focus color, over its contents but letting the pointer through, and outlines nothing in it', () => {
