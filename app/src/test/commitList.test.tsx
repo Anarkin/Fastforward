@@ -5,6 +5,7 @@ import { workingTreeHash } from '../shared/protocol';
 import { CommitHistory } from '../webview/commitHistory';
 import {
   isListKey,
+  keptPlace,
   listKeyPosition,
   bubbleLineHeight,
   commitRowHeight,
@@ -145,6 +146,12 @@ suite('Commit list working tree row', () => {
       workingTreeShift(500, 1, 1, workingTreeRowHeight),
       undefined,
     );
+  });
+
+  test('keeps its place by what was scrolled since the place it last told', () => {
+    assert.strictEqual(keptPlace(1000, 7, 400, 400), 1007);
+    assert.strictEqual(keptPlace(1000, 7, 900, 400), 1507);
+    assert.strictEqual(keptPlace(1000, 7, 900, undefined), 1007);
   });
 
   test('shifts the list rather than scrolling to its target again when only the working tree row comes or goes', () => {
