@@ -76,6 +76,18 @@ export function tabStep(
   return event.shiftKey ? -1 : 1;
 }
 
+export function changeStep(
+  event: Pick<KeyboardEvent, 'key' | 'code'>,
+): 1 | -1 | undefined {
+  if (event.key === 'j' || event.code === 'KeyJ') {
+    return 1;
+  }
+  if (event.key === 'k' || event.code === 'KeyK') {
+    return -1;
+  }
+  return undefined;
+}
+
 export function handleShortcut(
   event: ShortcutEvent & Pick<KeyboardEvent, 'preventDefault'>,
   actions: Readonly<Partial<Record<ShortcutKey, () => void>>>,

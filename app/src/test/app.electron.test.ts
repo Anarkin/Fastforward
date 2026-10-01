@@ -161,6 +161,8 @@ suite('App', function () {
     await active('commits');
     await page.keyboard.press('Tab');
     await active('files');
+    await page.keyboard.press('j');
+    await active('diff');
   });
 
   test('shows the unchanged files on the toggle, dimmed, and remembers it', async () => {

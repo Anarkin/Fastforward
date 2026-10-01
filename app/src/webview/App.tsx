@@ -29,6 +29,7 @@ import {
   columnOf,
   columnOrder,
   columnStep,
+  forwardedColumn,
   shownColumns,
   type ColumnName,
 } from './activeColumn';
@@ -137,9 +138,11 @@ export function App({ post, listen }: Props) {
   const [activeColumn, setActiveColumn] = useState<ColumnName>('commits');
   const focusColumn = useCallback(
     (column: ColumnName) => {
-      columnsContainer.current?.children[columnOrder.indexOf(column)]
-        ?.querySelector<HTMLElement>(`[${columnFocusAttribute}]`)
-        ?.focus();
+      const target = columnsContainer.current?.children[
+        columnOrder.indexOf(column)
+      ]?.querySelector<HTMLElement>(`[${columnFocusAttribute}]`);
+      target?.focus();
+      return target;
     },
     [columnsContainer],
   );
@@ -463,6 +466,18 @@ export function App({ post, listen }: Props) {
                   onKeyDown={(event) => {
                     const target =
                       event.target instanceof HTMLElement ? event.target : null;
+                    const forwarded = forwardedColumn(columnOf(target), event);
+                    if (forwarded) {
+                      event.preventDefault();
+                      focusColumn(forwarded)?.dispatchEvent(
+                        new KeyboardEvent('keydown', {
+                          key: event.key,
+                          code: event.code,
+                          bubbles: true,
+                        }),
+                      );
+                      return;
+                    }
                     const step = columnStep({
                       key: event.key,
                       ctrlKey: event.ctrlKey,

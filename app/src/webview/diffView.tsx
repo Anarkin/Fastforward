@@ -11,6 +11,7 @@ import {
   type MinimapRow,
 } from './minimap';
 import { columnFocusAttribute } from './activeColumn';
+import { changeStep } from './shortcuts';
 import { ownScrollbarAttribute } from './overlayScrollbars';
 import { SkeletonRows, useSkeleton } from './skeleton';
 import { Twisty } from './tree';
@@ -206,18 +207,6 @@ export function changeStarts(rows: readonly DiffRow[]): number[] {
 }
 
 const changeMargin = rowHeights.file + 2 * rowHeights.line;
-
-export function changeStep(
-  event: Pick<KeyboardEvent, 'key' | 'code'>,
-): 1 | -1 | undefined {
-  if (event.key === 'j' || event.code === 'KeyJ') {
-    return 1;
-  }
-  if (event.key === 'k' || event.code === 'KeyK') {
-    return -1;
-  }
-  return undefined;
-}
 
 export function changeScrollTop(
   starts: readonly number[],
