@@ -7,6 +7,7 @@ import {
   blockWordRanges,
   changedTokens,
   tokenize,
+  wholeText,
   wordRanges,
 } from '../webview/wordDiff';
 
@@ -86,19 +87,30 @@ suite('Word diff', () => {
         'diff --git a/a.ts b/a.ts',
         '--- a/a.ts',
         '+++ b/a.ts',
-        '@@ -1,4 +1,4 @@',
+        '@@ -1,6 +1,6 @@',
         ' keep',
         '-let total = 1;',
         '+let sum = 1;',
         ' keep',
-        '-only gone',
+        '-  only gone  ',
+        '+',
+        '+foo',
         '',
       ].join('\n'),
     );
     const ranges = wordRanges(files);
-    assert.deepStrictEqual([...ranges.keys()], ['0:1', '0:2']);
+    assert.deepStrictEqual([...ranges.keys()], ['0:1', '0:2', '0:4', '0:6']);
     assert.deepStrictEqual(ranges.get('0:1'), [{ start: 4, end: 9 }]);
     assert.deepStrictEqual(ranges.get('0:2'), [{ start: 4, end: 7 }]);
+    assert.deepStrictEqual(ranges.get('0:4'), [{ start: 2, end: 11 }]);
+    assert.deepStrictEqual(ranges.get('0:6'), [{ start: 0, end: 3 }]);
+  });
+
+  test('marks the whole text of a line changed through, from its first character to its last, and nothing of a blank one', () => {
+    assert.deepStrictEqual(wholeText('  gone  '), [{ start: 2, end: 6 }]);
+    assert.deepStrictEqual(wholeText('x'), [{ start: 0, end: 1 }]);
+    assert.strictEqual(wholeText('   '), undefined);
+    assert.strictEqual(wholeText(''), undefined);
   });
 
   test('draws the changed words inside the line, with search matches over them', () => {

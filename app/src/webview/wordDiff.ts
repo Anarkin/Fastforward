@@ -127,10 +127,25 @@ export function blockWordRanges(
   };
 }
 
+export function wholeText(text: string): FindRange[] | undefined {
+  const start = text.search(/\S/);
+  return start === -1 ? undefined : [{ start, end: text.trimEnd().length }];
+}
+
 export function wordRanges(
   files: readonly DiffFile[],
 ): Map<string, FindRange[]> {
   const ranges = new Map<string, FindRange[]>();
+  const place = (
+    file: number,
+    line: { readonly text: string; readonly index: number },
+    words: FindRange[] | undefined,
+  ) => {
+    const marked = words ?? wholeText(line.text);
+    if (marked) {
+      ranges.set(lineKey(file, line.index), marked);
+    }
+  };
   files.forEach((file, fileIndex) => {
     let next = 0;
     for (const hunk of file.hunks) {
@@ -141,14 +156,8 @@ export function wordRanges(
           removed.map((line) => line.text),
           added.map((line) => line.text),
         );
-        if (found) {
-          removed.forEach((line, i) =>
-            ranges.set(lineKey(fileIndex, line.index), found.removed[i]),
-          );
-          added.forEach((line, i) =>
-            ranges.set(lineKey(fileIndex, line.index), found.added[i]),
-          );
-        }
+        removed.forEach((line, i) => place(fileIndex, line, found?.removed[i]));
+        added.forEach((line, i) => place(fileIndex, line, found?.added[i]));
         removed = [];
         added = [];
       };
