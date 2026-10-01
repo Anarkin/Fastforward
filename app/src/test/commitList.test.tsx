@@ -48,7 +48,7 @@ suite('Commit list rows', () => {
     assert.strictEqual(rowKeyOf(history, 1, 0), workingTreeHash);
     assert.strictEqual(rowKeyOf(history, 1, 2), 'b');
     assert.strictEqual(rowKeyOf(history, 0, 1), 'b');
-    assert.strictEqual(rowKeyOf(history, 0, 2), 'position 2');
+    assert.strictEqual(rowKeyOf(history, 0, 2), 2);
   });
 
   test("keeps a commit not loaded yet at the height it is estimated at, so the list doesn't move when it loads", () => {

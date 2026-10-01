@@ -70,10 +70,10 @@ export function rowKeyOf(
   history: CommitHistory | undefined,
   offset: number,
   index: number,
-): string {
+): string | number {
   return index < offset
     ? workingTreeHash
-    : (history?.at(index - offset)?.hash ?? `position ${index}`);
+    : (history?.at(index - offset)?.hash ?? index);
 }
 
 export function fixedRowHeight(
