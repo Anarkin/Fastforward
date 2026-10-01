@@ -29,6 +29,7 @@ import { changeClass, changeTitle } from '../webview/fileStatus';
 import type { ContextMenuItem } from '../webview/contextMenu';
 import { DiffOptions } from '../webview/diffColumn';
 import { Files, filesCursor } from '../webview/filesColumn';
+import { Highlight } from '../webview/highlight';
 import type { Folders } from '../webview/viewFolders';
 import { SkeletonRows } from '../webview/skeleton';
 import { TabBar } from '../webview/tabBar';
@@ -479,6 +480,15 @@ suite('File rows', () => {
     );
     tagWith(html, 'title="src/a.ts"', 'row', 'tree-row', 'file');
     tagWith(html, '', 'path', 'unchanged');
+  });
+});
+
+suite('Highlight', () => {
+  test('marks the search in a text, ignoring case and spaces around it', () => {
+    assert.strictEqual(
+      renderToStaticMarkup(<Highlight text="feature/Main" query=" main " />),
+      'feature/<mark class="match">Main</mark>',
+    );
   });
 });
 

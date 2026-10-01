@@ -104,8 +104,8 @@ suite('Pinned refs of the search', () => {
     );
   });
 
-  test('keeps only what matches the search, ignoring case', () => {
-    const pinned = pinnedRefs(bookmarks, refs, 'main', undefined, 'MAI');
+  test('keeps only what matches the search, ignoring case and spaces around it', () => {
+    const pinned = pinnedRefs(bookmarks, refs, 'main', undefined, ' MAI ');
     assert.deepStrictEqual(names(pinned.checkedOut), ['main']);
     assert.deepStrictEqual(names(pinned.bookmarks), ['main']);
     assert.deepStrictEqual(

@@ -48,6 +48,13 @@ suite('Locations search', () => {
     ]);
   });
 
+  test('leaves out spaces around the search, as pasted text may have', () => {
+    assert.deepStrictEqual(
+      names(searchRefs(refs, ' Epmaisa-798 ')),
+      names(searchRefs(refs, 'Epmaisa-798')),
+    );
+  });
+
   test('keeps every group, also one with no matches', () => {
     assert.deepStrictEqual(names(searchRefs(refs, 'v0.16')), [
       ['Local branches', []],
