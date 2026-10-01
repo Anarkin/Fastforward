@@ -1046,7 +1046,7 @@ export class FastforwardView {
         if (context.tab.hash === workingTreeHash) {
           await this.sendCommit(context, workingTree);
           if (context.tab.shown.tree?.hash === workingTreeHash) {
-            await this.sendTree(context, workingTreeHash, true);
+            await this.sendTree(context, workingTreeHash, workingTree);
           }
         }
       }),
@@ -1327,19 +1327,22 @@ export class FastforwardView {
   private async sendTree(
     context: Context,
     hash: string,
-    refreshing = false,
+    refreshed?: WorkingTree,
   ): Promise<void> {
     const paths = await listTree(
       context.gitPath,
       context.root,
       hash === workingTreeHash ? undefined : hash,
+      refreshed?.files
+        .filter((file) => file.status === 'U')
+        .map((file) => file.path),
     );
     if (context.tab.hash !== hash) {
       return;
     }
     const shown = context.tab.shown.tree;
     const unchanged =
-      refreshing &&
+      refreshed !== undefined &&
       shown?.hash === hash &&
       shown.paths.length === paths.length &&
       shown.paths.every((file, index) => file === paths[index]);

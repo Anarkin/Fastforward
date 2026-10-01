@@ -7,15 +7,20 @@ export async function listTree(
   gitPath: string,
   cwd: string,
   hash: string | undefined,
+  untracked?: readonly string[],
 ): Promise<string[]> {
   const output = await runGit(
     gitPath,
     cwd,
-    hash === undefined
-      ? ['ls-files', '-z', '--cached', '--others', '--exclude-standard']
-      : ['ls-tree', '-r', '-z', '--name-only', hash],
+    hash !== undefined
+      ? ['ls-tree', '-r', '-z', '--name-only', hash]
+      : untracked !== undefined
+        ? ['ls-files', '-z', '--cached']
+        : ['ls-files', '-z', '--cached', '--others', '--exclude-standard'],
   );
-  return [...new Set(splitNul(output).filter(Boolean))];
+  return [...new Set([...(untracked ?? []), ...splitNul(output)])].filter(
+    Boolean,
+  );
 }
 
 export const maxFileSize = 2 * 1024 * 1024;
