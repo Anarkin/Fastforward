@@ -26,7 +26,9 @@ export interface CommitSearch {
   readonly capped: boolean;
 }
 
-export type DiffLayout = 'inline' | 'sideBySide';
+export const diffLayouts = ['inline', 'sideBySide'] as const;
+
+export type DiffLayout = (typeof diffLayouts)[number];
 
 export interface NavigationEntry {
   readonly hash: string;

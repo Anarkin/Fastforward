@@ -50,6 +50,20 @@ suite('Settings', () => {
     ]);
   });
 
+  test('keeps the default of a setting set to none of its choices, and names them', () => {
+    const { settings, problems } = mergeSettings(defaults, {
+      diffLayout: 'sideways',
+    });
+    assert.deepStrictEqual(settings, defaults);
+    assert.deepStrictEqual(problems, [
+      '"diffLayout" should be "inline" or "sideBySide"',
+    ]);
+    assert.strictEqual(
+      mergeSettings(defaults, { diffLayout: 'sideBySide' }).settings.diffLayout,
+      'sideBySide',
+    );
+  });
+
   test('keeps the defaults for user settings that are no object', () => {
     assert.deepStrictEqual(mergeSettings(defaults, [1]), {
       settings: defaults,
