@@ -1,0 +1,13 @@
+# DEVELOPMENT
+
+## Local Development and Debugging
+
+- Run `npm install` in `app/`
+- Run `npm start` in `app/` to build and open the app, or `npm run dev` to rebuild on every change, which restarts the app after main process changes and reloads the page after the rest
+- Run `npm run dist` in `app/` to build an installer for the current OS into `app/release/`
+- When debugging a reported problem, read `Fastforward.log`, and `Fastforward.previous.log` for the run before, in the app's logs folder: `%APPDATA%\Fastforward\logs` on Windows, `~/Library/Logs/Fastforward` on macOS and `~/.config/Fastforward/logs` on Linux; Ctrl+Shift+I, or Cmd+Shift+I on macOS, opens the developer tools
+
+## Testing
+
+- `npm run verify:fast` leaves out the tests that need git repositories, which are named `*.git.test.ts`, and the ones that start the app, which are named `*.electron.test.ts`
+- `npm run verify` runs the full test suite
