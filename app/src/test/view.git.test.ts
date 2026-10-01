@@ -643,6 +643,41 @@ suite('View', function () {
       assert.strictEqual(page.last('error'), undefined);
     });
 
+    test('drops the result of a search a newer one replaced once it was found', async () => {
+      const held = gate();
+      let waiting = false;
+      stubMethod(fastforward, 'commitsMatching', async (original, ...args) => {
+        const [context, query, signal] = args;
+        if (query !== 'nothing like it') {
+          return original(...args);
+        }
+        const found = await original(
+          context,
+          query,
+          new AbortController().signal,
+        );
+        waiting = true;
+        await held.opened;
+        assert.ok(signal instanceof AbortSignal && signal.aborted);
+        return found;
+      });
+      page.clear();
+      const replaced = connection.receive({
+        type: 'searchCommits',
+        root: repository.root,
+        query: 'nothing like it',
+      });
+      await waitFor(() => waiting, 'the replaced search');
+      await connection.receive({
+        type: 'searchCommits',
+        root: repository.root,
+        query: 'test',
+      });
+      held.open();
+      await replaced;
+      assert.strictEqual(page.last('commitSearch')?.query, 'test');
+    });
+
     test('jumps to a commit by a short hash', async () => {
       await connection.receive({
         type: 'jump',

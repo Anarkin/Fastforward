@@ -42,6 +42,7 @@ import {
   workingTreeHash,
   workingTreeIndex,
   type CheckoutTarget,
+  type CommitSearch,
   type Direction,
   type FileChange,
   type TabInfo,
@@ -857,14 +858,10 @@ export class FastforwardView {
     const search = new AbortController();
     this.commitSearches.set(context.root, search);
     try {
-      const result = await searchCommits(
-        context.gitPath,
-        context.root,
-        query,
-        this.storage.soloOf(context.root),
-        search.signal,
-      );
-      context.post({ type: 'commitSearch', query, result });
+      const result = await this.commitsMatching(context, query, search.signal);
+      if (!search.signal.aborted) {
+        context.post({ type: 'commitSearch', query, result });
+      }
     } catch (error) {
       if (!search.signal.aborted) {
         throw error;
@@ -874,6 +871,20 @@ export class FastforwardView {
         this.commitSearches.delete(context.root);
       }
     }
+  }
+
+  private commitsMatching(
+    context: Context,
+    query: string,
+    signal: AbortSignal,
+  ): Promise<CommitSearch> {
+    return searchCommits(
+      context.gitPath,
+      context.root,
+      query,
+      this.storage.soloOf(context.root),
+      signal,
+    );
   }
 
   private async lookupHash(context: Context, query: string): Promise<void> {
