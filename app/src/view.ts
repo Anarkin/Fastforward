@@ -76,6 +76,7 @@ import {
 } from './tabState';
 
 const refreshDelay = 300;
+const refreshMaxDelay = 1500;
 
 interface Tab extends TabState {
   preloading: Promise<void> | undefined;
@@ -736,6 +737,7 @@ export class FastforwardView {
     session.watcher = undefined;
     const watcher = await watchRepository(context.gitPath, context.root, {
       delay: refreshDelay,
+      maxDelay: refreshMaxDelay,
       onChange: () =>
         void this.run(
           'refresh',

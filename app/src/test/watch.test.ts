@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import { isInternal } from '../git/watch';
+import { isInternal, waitBeforeFlush } from '../git/watch';
 
 suite('Watching the git folder', () => {
   test('refreshes for HEAD, the index and refs', () => {
@@ -26,5 +26,18 @@ suite('Watching the git folder', () => {
     ]) {
       assert.strictEqual(isInternal(file), true, file);
     }
+  });
+});
+
+suite('Debouncing changes', () => {
+  test('waits the delay after the last change', () => {
+    assert.strictEqual(waitBeforeFlush(0, 300, 1500), 300);
+    assert.strictEqual(waitBeforeFlush(1000, 300, 1500), 300);
+  });
+
+  test('flushes at most the longest wait after the first pending change, however often files keep changing', () => {
+    assert.strictEqual(waitBeforeFlush(1400, 300, 1500), 100);
+    assert.strictEqual(waitBeforeFlush(1500, 300, 1500), 0);
+    assert.strictEqual(waitBeforeFlush(2000, 300, 1500), 0);
   });
 });
