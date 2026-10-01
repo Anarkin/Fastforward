@@ -473,6 +473,22 @@ export function marked(
   });
 }
 
+export function findRangesByLine(
+  matches: readonly FindMatch[],
+): Map<string, FindRange[]> {
+  const byLine = new Map<string, FindRange[]>();
+  for (const match of matches) {
+    const key = lineKey(match.file, match.line);
+    const ranges = byLine.get(key);
+    if (ranges) {
+      ranges.push(match);
+    } else {
+      byLine.set(key, [match]);
+    }
+  }
+  return byLine;
+}
+
 export function diffMinimapMarks(
   rows: readonly DiffRow[],
   keys: readonly (readonly string[])[],
@@ -640,14 +656,7 @@ export function DiffView({
       onLoadTexts(load);
     }
   }, [files, whole, diff, onLoadTexts]);
-  const rangesByLine = useMemo(() => {
-    const byLine = new Map<string, FindRange[]>();
-    for (const match of matches) {
-      const key = lineKey(match.file, match.line);
-      byLine.set(key, [...(byLine.get(key) ?? []), match]);
-    }
-    return byLine;
-  }, [matches]);
+  const rangesByLine = useMemo(() => findRangesByLine(matches), [matches]);
   const found = matches.at(current);
   const foundKey = found && lineKey(found.file, found.line);
   const jumped = useRef(0);

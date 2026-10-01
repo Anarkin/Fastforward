@@ -6,6 +6,7 @@ import { DiffFind, FindActions } from '../webview/diffColumn';
 import {
   diffMinimapMarks,
   diffRows,
+  findRangesByLine,
   highlighted,
   lineKeys,
 } from '../webview/diffView';
@@ -160,6 +161,36 @@ suite('Find in diff', () => {
       ['0:3'],
       [],
     ]);
+  });
+
+  test('groups the matches by their line, in order, even a great many on one line', () => {
+    const files = parsePatch(patch);
+    const byLine = findRangesByLine(findMatches(files, undefined, 'find'));
+    assert.deepStrictEqual(
+      [...byLine].map(([key, ranges]) => [
+        key,
+        ranges.map((range) => [range.start, range.end]),
+      ]),
+      [
+        ['0:0', [[6, 10]]],
+        ['0:1', [[6, 10]]],
+        ['0:2', [[6, 10]]],
+        [
+          '0:3',
+          [
+            [0, 4],
+            [5, 9],
+          ],
+        ],
+        ['1:1', [[0, 4]]],
+      ],
+    );
+    const many = findMatches(
+      [],
+      { ...whole, content: 'a'.repeat(50_000) },
+      'a',
+    );
+    assert.strictEqual(findRangesByLine(many).get('0:0')?.length, 50_000);
   });
 
   test('marks the matches in a line, the current one apart', () => {
