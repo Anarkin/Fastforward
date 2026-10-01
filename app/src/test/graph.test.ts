@@ -140,6 +140,22 @@ suite('Graph', () => {
     assert.deepStrictEqual(paged.rows(23, 10), full.slice(23, 33));
   });
 
+  test('lays out no row past the page asked for', () => {
+    const history = Array.from({ length: 1000 }, (_, index) =>
+      index < 250
+        ? { hash: `c${index}`, parents: [`c${index + 1}`] }
+        : {
+            hash: `c${index}`,
+            get parents(): string[] {
+              throw new Error(`laid out c${index}`);
+            },
+          },
+    );
+    const graph = new Graph(history);
+    assert.strictEqual(graph.rows(0, 100).length, 100);
+    assert.strictEqual(graph.rows(99, 100).length, 100);
+  });
+
   test('leads the working tree to HEAD, moving what is built on it aside', () => {
     const graph = new Graph(
       [
