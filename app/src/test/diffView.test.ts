@@ -1,6 +1,11 @@
 import * as assert from 'node:assert';
 import { parseFilePatch, parsePatch, type DiffFile } from '../webview/diff';
-import { collapseThreshold } from '../shared/protocol';
+import {
+  collapseThreshold,
+  deferredChanges,
+  patchLineBudget,
+  patchPathBudget,
+} from '../shared/protocol';
 import { withLargeFiles } from '../webview/diffColumn';
 import {
   diffRowKey,
@@ -284,6 +289,63 @@ suite('Large files in a commit diff', () => {
     );
     assert.strictEqual(loaded[1].placeholder, undefined);
     assert.strictEqual(loaded[1].hunks[0].lines.length, 3);
+  });
+
+  test('defers each large file, and every file once the diff would grow past its budget', () => {
+    const fitting = Array.from(
+      { length: Math.floor(patchLineBudget / collapseThreshold) },
+      (_, index) =>
+        fileChange(`${index}.ts`, {
+          insertions: collapseThreshold,
+          deletions: 0,
+        }),
+    );
+    const files = [
+      ...fitting,
+      large,
+      fileChange('a.ts', { insertions: collapseThreshold, deletions: 0 }),
+      fileChange('b.ts', { insertions: 0, deletions: 0 }),
+    ];
+    assert.deepStrictEqual(
+      [...deferredChanges(files)],
+      ['large.json', 'a.ts', 'b.ts'],
+    );
+    assert.deepStrictEqual(
+      [...deferredChanges([...fitting, large, fileChange('b.ts')])],
+      ['large.json'],
+    );
+  });
+
+  test('defers every file once the paths of the rest would make too long a command line', () => {
+    const long = 'x'.repeat(patchPathBudget / 2);
+    const files = [
+      fileChange(`${long}1`, { oldPath: 'a' }),
+      fileChange('b'),
+      fileChange(`${long}2`),
+      fileChange('c'),
+    ];
+    assert.deepStrictEqual([...deferredChanges(files)], [`${long}2`, 'c']);
+  });
+
+  test('puts a file deferred for the budget in its place, collapsed until asked for', () => {
+    const deferred = 'x'.repeat(patchPathBudget);
+    const diff = withLargeFiles(
+      parsePatch(patch('a.ts', 1)),
+      [fileChange('a.ts'), fileChange(deferred)],
+      new Map(),
+    );
+    assert.deepStrictEqual(diff[1].placeholder, { lines: 3 });
+    assert.deepStrictEqual(kinds(diffRows(diff, new Map(), undefined)), [
+      'error',
+      'file',
+      'line',
+      'file',
+      'large',
+    ]);
+    assert.deepStrictEqual(
+      kinds(diffRows(diff, new Map([[deferred, true]]), undefined)),
+      ['error', 'file', 'line', 'file', 'skeletonLines'],
+    );
   });
 
   test('keeps both halves of a file that changed type', () => {

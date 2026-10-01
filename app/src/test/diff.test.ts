@@ -147,24 +147,22 @@ suite('Patch parser', () => {
 });
 
 suite('Pathspecs', () => {
-  test('narrows to a path, or excludes files literally with pathspec magic', () => {
-    assert.deepStrictEqual(pathspecs({}), { args: [], magic: false });
-    assert.deepStrictEqual(pathspecs({ path: 'a' }), {
-      args: ['--', 'a'],
-      magic: false,
-    });
-    assert.deepStrictEqual(pathspecs({ path: 'b', oldPath: 'a' }), {
-      args: ['--', 'a', 'b'],
-      magic: false,
-    });
-    assert.deepStrictEqual(pathspecs({ path: 'a*b', exclude: ['x'] }), {
-      args: ['--', 'a*b'],
-      magic: false,
-    });
-    assert.deepStrictEqual(pathspecs({ exclude: ['[ab].md'] }), {
-      args: ['--', '.', ':(exclude,literal)[ab].md'],
-      magic: true,
-    });
+  test('narrows to a path, or to the files given', () => {
+    assert.deepStrictEqual(pathspecs({}), []);
+    assert.deepStrictEqual(pathspecs({ path: 'a' }), ['--', 'a']);
+    assert.deepStrictEqual(pathspecs({ path: 'b', oldPath: 'a' }), [
+      '--',
+      'a',
+      'b',
+    ]);
+    assert.deepStrictEqual(pathspecs({ path: 'a*b', include: ['x'] }), [
+      '--',
+      'a*b',
+    ]);
+    assert.deepStrictEqual(pathspecs({ include: ['[ab].md'] }), [
+      '--',
+      '[ab].md',
+    ]);
   });
 });
 

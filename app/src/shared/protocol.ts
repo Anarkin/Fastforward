@@ -44,6 +44,34 @@ export function isLargeChange(file: {
   return file.insertions + file.deletions > collapseThreshold;
 }
 
+export const patchLineBudget = 20_000;
+
+// Kept well under the 32767 characters of a command line on Windows, as the
+// files of a diff past its budget are passed to git one by one
+export const patchPathBudget = 16_000;
+
+export function deferredChanges(
+  files: readonly FileChange[],
+): ReadonlySet<string> {
+  const deferred = new Set<string>();
+  let lines = 0;
+  let paths = 0;
+  let full = false;
+  for (const file of files) {
+    if (isLargeChange(file)) {
+      deferred.add(file.path);
+      continue;
+    }
+    lines += file.insertions + file.deletions;
+    paths += file.path.length + (file.oldPath?.length ?? 0);
+    full ||= lines > patchLineBudget || paths > patchPathBudget;
+    if (full) {
+      deferred.add(file.path);
+    }
+  }
+  return deferred;
+}
+
 export const commitPageSize = 100;
 
 export function pageStart(index: number): number {

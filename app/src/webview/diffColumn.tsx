@@ -7,7 +7,7 @@ import {
   type RefObject,
 } from 'react';
 import {
-  isLargeChange,
+  deferredChanges,
   type DiffLayout,
   type FileChange,
   type TextRequest,
@@ -33,13 +33,14 @@ export function withLargeFiles(
   largeFiles: ReadonlyMap<string, DiffFile>,
 ): DiffFile[] {
   const byPath = new Map(parsed.map((file) => [file.path, file]));
+  const deferred = deferredChanges(files);
   const result: DiffFile[] = [];
   for (const change of files) {
     const file = byPath.get(change.path);
     if (file) {
       result.push(file);
       byPath.delete(change.path);
-    } else if (isLargeChange(change)) {
+    } else if (deferred.has(change.path)) {
       result.push(
         largeFiles.get(change.path) ?? {
           path: change.path,

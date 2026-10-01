@@ -366,11 +366,11 @@ suite('Git repository', function () {
       const patch = await showPatch(gitPath, cwd, head, { path: '[ab].md' });
       assert.ok(patch.includes('b/[ab].md'), patch);
       assert.ok(!patch.includes('b/a.md'), patch);
-      const excluded = await showPatch(gitPath, cwd, head, {
-        exclude: ['[ab].md'],
+      const included = await showPatch(gitPath, cwd, head, {
+        include: ['[ab].md'],
       });
-      assert.ok(excluded.includes('b/a.md'), excluded);
-      assert.ok(!excluded.includes('b/[ab].md'), excluded);
+      assert.ok(included.includes('b/[ab].md'), included);
+      assert.ok(!included.includes('b/a.md'), included);
     } finally {
       await temp.git('reset', '--hard', rename);
     }

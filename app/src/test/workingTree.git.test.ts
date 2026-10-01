@@ -154,7 +154,7 @@ suite('Uncommitted changes', function () {
     assert.strictEqual(nested, '');
   });
 
-  test('counts the lines of untracked files, and leaves large ones out when asked', async () => {
+  test('counts the lines of untracked files, and patches only the files asked for', async () => {
     const large = path.join(cwd, 'large.txt');
     fs.writeFileSync(large, 'line\n'.repeat(2000));
     try {
@@ -170,10 +170,15 @@ suite('Uncommitted changes', function () {
         ['untracked.txt', 1],
       ]);
       const patch = await workingTreePatch(gitPath, cwd, workingTree, {
-        exclude: ['large.txt'],
+        include: ['untracked.txt'],
       });
       assert.ok(patch.includes('+new'), patch);
+      assert.ok(!patch.includes('+two'), patch);
       assert.ok(!patch.includes('+line'), patch);
+      assert.strictEqual(
+        await workingTreePatch(gitPath, cwd, workingTree, { include: [] }),
+        '',
+      );
     } finally {
       fs.rmSync(large);
     }

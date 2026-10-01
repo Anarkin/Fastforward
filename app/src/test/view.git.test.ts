@@ -4,6 +4,8 @@ import * as fs from 'node:fs';
 import { createServer } from 'node:http';
 import * as path from 'node:path';
 import {
+  collapseThreshold,
+  patchLineBudget,
   workingTreeHash,
   type ToWebview,
   type ToWebviewOf,
@@ -2677,6 +2679,34 @@ suite('View', function () {
         assert.strictEqual(fileDiff?.path, 'large.txt');
         assert.ok(fileDiff?.patch.includes('+line 1999'));
         assert.strictEqual(fileDiff.diff, 1);
+      });
+    });
+
+    test('leaves the files past the budget out of a commit diff', async () => {
+      const many = await tempRepository(path.join(folder, 'many'));
+      const files = Math.ceil(patchLineBudget / collapseThreshold);
+      const text = 'line\n'.repeat(collapseThreshold);
+      await many.commit(
+        'many',
+        Object.fromEntries(
+          Array.from({ length: files }, (_, index) => [
+            `${String(index).padStart(2, '0')}.txt`,
+            text,
+          ]),
+        ),
+      );
+      const [hash] = await many.resolve('HEAD');
+      await withView(log, [many.root], async (view) => {
+        await view.connection.receive({
+          type: 'selectCommit',
+          root: many.root,
+          hash,
+        });
+        assert.strictEqual(view.page.last('files')?.files.length, files);
+        const patch = view.page.last('diff')?.patch ?? '';
+        const last = `${String(files - 1).padStart(2, '0')}.txt`;
+        assert.ok(patch.includes('b/00.txt'), patch.slice(0, 200));
+        assert.ok(!patch.includes(last), last);
       });
     });
 
