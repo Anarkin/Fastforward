@@ -8,9 +8,9 @@ const estimateSize = () => estimatedRowHeight;
 
 export function scrollTarget(
   selectedKey: string | undefined,
-  rowCount: number,
+  keys: readonly (string | number | null)[],
 ): string | undefined {
-  return rowCount > 0 ? selectedKey : undefined;
+  return keys.includes(selectedKey ?? null) ? selectedKey : undefined;
 }
 
 export interface RowPlacement {
@@ -110,7 +110,10 @@ export function VirtualRows({
       virtualizer.scrollToOffset(offset);
     }
   });
-  const target = scrollTarget(selectedKey, rows.length);
+  const target = scrollTarget(
+    selectedKey,
+    rows.map((row) => row.key),
+  );
   useEffect(() => {
     if (target !== undefined) {
       scrollToSelected();
