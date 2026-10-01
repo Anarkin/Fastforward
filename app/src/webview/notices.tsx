@@ -5,6 +5,7 @@ export interface Notice {
   readonly id: number;
   readonly level: 'info' | 'error';
   readonly message: string;
+  readonly shownAt: number;
 }
 
 const maxNotices = 4;
@@ -20,10 +21,16 @@ export function addNotice(
   ].slice(-maxNotices);
 }
 
-export function fading(notices: readonly Notice[]): number[] {
+export function fading(
+  notices: readonly Notice[],
+  now: number,
+): { id: number; after: number }[] {
   return notices
     .filter((notice) => notice.level === 'info')
-    .map((notice) => notice.id);
+    .map((notice) => ({
+      id: notice.id,
+      after: Math.max(0, notice.shownAt + infoShownFor - now),
+    }));
 }
 
 export function Notices({
@@ -34,8 +41,8 @@ export function Notices({
   onDismiss: (id: number) => void;
 }) {
   useEffect(() => {
-    const timers = fading(notices).map((id) =>
-      setTimeout(() => onDismiss(id), infoShownFor),
+    const timers = fading(notices, performance.now()).map(({ id, after }) =>
+      setTimeout(() => onDismiss(id), after),
     );
     return () => timers.forEach(clearTimeout);
   }, [notices, onDismiss]);
