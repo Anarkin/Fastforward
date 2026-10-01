@@ -1143,7 +1143,7 @@ export class FastforwardView {
       tab.headCommit,
     );
     this.log.info(
-      `Graph of ${tab.history.length} of ${tab.fullHistory.length} commits laid out in ${Math.round(performance.now() - started)} ms, ${tab.graph.width} lanes wide`,
+      `Graph of ${tab.history.length} of ${tab.fullHistory.length} commits laid out in ${Math.round(performance.now() - started)} ms`,
     );
     return generation;
   }
