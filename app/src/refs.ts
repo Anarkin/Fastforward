@@ -1,5 +1,5 @@
 import type { RefInfo, BookmarkRef } from './shared/protocol';
-import { hasRef, refOf, withoutRemote } from './shared/refNames';
+import { findRef, hasRef, refOf, withoutRemote } from './shared/refNames';
 
 export interface Head {
   readonly name?: string;
@@ -57,7 +57,9 @@ export function defaultBookmarks(
 ): BookmarkRef[] {
   const exists = (bookmark: BookmarkRef) => hasRef(refs, bookmark);
   const [main] = remoteDefaults.length
-    ? remoteDefaults.map(withoutRemote)
+    ? remoteDefaults.map((name) =>
+        withoutRemote(name, findRef(refs, { kind: 'remote', name })?.remote),
+      )
     : ['main', 'master', 'trunk'].filter((name) =>
         exists({ kind: 'branch', name }),
       );
@@ -68,7 +70,8 @@ export function defaultBookmarks(
     { kind: 'branch', name: main },
     ...refs
       .filter(
-        (ref) => ref.kind === 'remote' && withoutRemote(ref.name) === main,
+        (ref) =>
+          ref.kind === 'remote' && withoutRemote(ref.name, ref.remote) === main,
       )
       .map(refOf),
   ];

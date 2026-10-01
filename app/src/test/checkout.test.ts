@@ -53,6 +53,22 @@ suite('Checkout options', () => {
     );
   });
 
+  test('knows the local branch of a remote branch of a remote with a slash in its name', () => {
+    const forked: RefInfo[] = [
+      { kind: 'branch', name: 'main', commit: 'aaaaaaaa' },
+      {
+        kind: 'remote',
+        name: 'team/fork/main',
+        remote: 'team/fork',
+        commit: 'aaaaaaaa',
+      },
+    ];
+    assert.strictEqual(
+      checkoutRef(remote('team/fork/main'), forked, 'main').disabled,
+      true,
+    );
+  });
+
   test('checks out a ref by its kind and name', () => {
     for (const ref of [
       { kind: 'branch' as const, name: 'main' },

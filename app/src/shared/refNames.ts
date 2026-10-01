@@ -1,7 +1,9 @@
 import type { Bookmark, BookmarkRef } from './protocol';
 
-export function withoutRemote(name: string): string {
-  return name.slice(name.indexOf('/') + 1);
+export function withoutRemote(name: string, remote?: string): string {
+  return remote !== undefined && name.startsWith(`${remote}/`)
+    ? name.slice(remote.length + 1)
+    : name.slice(name.indexOf('/') + 1);
 }
 
 export function refOf(ref: BookmarkRef): BookmarkRef {

@@ -87,6 +87,27 @@ suite('Git repository', function () {
     }
   });
 
+  test('tells which remote a remote branch is of, even one with a slash in its name', async () => {
+    await temp.git('remote', 'add', 'team/fork', cwd);
+    await temp.git('update-ref', 'refs/remotes/team/fork/main', 'HEAD');
+    try {
+      const { refs } = await readRefs(gitPath, cwd);
+      assert.deepStrictEqual(
+        refs.filter((ref) => ref.kind === 'remote'),
+        [
+          {
+            kind: 'remote',
+            name: 'team/fork/main',
+            remote: 'team/fork',
+            commit: rename,
+          },
+        ],
+      );
+    } finally {
+      await temp.git('remote', 'remove', 'team/fork');
+    }
+  });
+
   test('reads the branch HEAD is on by its name, even with a tag of that name', async () => {
     await temp.git('tag', 'main');
     try {
