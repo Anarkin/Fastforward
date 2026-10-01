@@ -5,6 +5,7 @@ import {
   currentActive,
   enterTarget,
   foundCommits,
+  indexRefs,
   itemKey,
   leafIndent,
   nextActive,
@@ -37,12 +38,12 @@ const names = (groups: ReturnType<typeof searchRefs>) =>
 const resultsFor = (commits: string[], branches: string[]) =>
   resultItems(
     commits.map((hash) => commitInfo(hash)),
-    searchRefs(branches.map(branchNamed), 'a'),
+    searchRefs(indexRefs(branches.map(branchNamed)), 'a'),
   );
 
 suite('Locations search', () => {
   test('finds parts of names, ignoring case, in a group per kind', () => {
-    assert.deepStrictEqual(names(searchRefs(refs, 'Epmaisa-798')), [
+    assert.deepStrictEqual(names(searchRefs(indexRefs(refs), 'Epmaisa-798')), [
       ['Local branches', ['feat/epmaisa-798-drop']],
       ['Remote branches', ['origin/feat/EPMAISA-798-drop']],
       ['Tags', []],
@@ -51,13 +52,13 @@ suite('Locations search', () => {
 
   test('leaves out spaces around the search, as pasted text may have', () => {
     assert.deepStrictEqual(
-      names(searchRefs(refs, ' Epmaisa-798 ')),
-      names(searchRefs(refs, 'Epmaisa-798')),
+      names(searchRefs(indexRefs(refs), ' Epmaisa-798 ')),
+      names(searchRefs(indexRefs(refs), 'Epmaisa-798')),
     );
   });
 
   test('keeps every group, also one with no matches', () => {
-    assert.deepStrictEqual(names(searchRefs(refs, 'v0.16')), [
+    assert.deepStrictEqual(names(searchRefs(indexRefs(refs), 'v0.16')), [
       ['Local branches', []],
       ['Remote branches', []],
       ['Tags', ['v0.16.4']],
@@ -65,14 +66,14 @@ suite('Locations search', () => {
   });
 
   test('draws at most the limit per group and counts the rest', () => {
-    const [branches, remotes] = searchRefs(refs, 'o', 1);
+    const [branches, remotes] = searchRefs(indexRefs(refs), 'o', 1);
     assert.deepStrictEqual([branches.refs.length, branches.more], [1, 0]);
     assert.deepStrictEqual([remotes.refs.length, remotes.more], [1, 1]);
   });
 
   test('sorts matches by name before cutting them to the limit', () => {
     const [branches] = searchRefs(
-      [branchNamed('b1'), branchNamed('a1'), branchNamed('c1')],
+      indexRefs([branchNamed('b1'), branchNamed('a1'), branchNamed('c1')]),
       '1',
       2,
     );
@@ -83,8 +84,24 @@ suite('Locations search', () => {
     assert.strictEqual(branches.more, 1);
   });
 
+  test('sorts the refs of each kind by name once, for every search after', () => {
+    const index = indexRefs([
+      branchNamed('b'),
+      { kind: 'tag', name: 'v1', commit: 'c' },
+      branchNamed('A'),
+    ]);
+    assert.deepStrictEqual(
+      index.map((group) => [group.kind, group.refs.map((ref) => ref.name)]),
+      [
+        ['branch', ['A', 'b']],
+        ['remote', []],
+        ['tag', ['v1']],
+      ],
+    );
+  });
+
   test('searches nothing without a query', () => {
-    assert.deepStrictEqual(names(searchRefs(refs, '')), [
+    assert.deepStrictEqual(names(searchRefs(indexRefs(refs), '')), [
       ['Local branches', []],
       ['Remote branches', []],
       ['Tags', []],
@@ -110,11 +127,11 @@ suite('Locations search', () => {
 
   test('lists the found commits first, then the matching refs group after group', () => {
     const search = searchRefs(
-      [
+      indexRefs([
         { kind: 'branch', name: 'main', commit: 'a' },
         { kind: 'tag', name: 'v1-main', commit: 'c' },
         { kind: 'branch', name: 'feat/main', commit: 'b' },
-      ],
+      ]),
       'main',
     );
     assert.deepStrictEqual(
@@ -132,7 +149,7 @@ suite('Locations search', () => {
   test('moves the highlight one result at a time, stopping at either end', () => {
     const items = resultItems(
       [commitInfo('f1')],
-      searchRefs([branchNamed('main')], 'main'),
+      searchRefs(indexRefs([branchNamed('main')]), 'main'),
     );
     assert.strictEqual(nextActive(items, 0, 1), 1);
     assert.strictEqual(nextActive(items, 1, 1), 1);
@@ -143,7 +160,7 @@ suite('Locations search', () => {
   test('jumps on Enter to the highlighted commit or ref', () => {
     const [commit, branch] = resultItems(
       [commitInfo('b'.repeat(40))],
-      searchRefs([refs[3]], 'feat'),
+      searchRefs(indexRefs([refs[3]]), 'feat'),
     );
     const found = { commits: [], more: 0 };
     assert.strictEqual(enterTarget('ab12', found, commit), 'b'.repeat(40));
@@ -153,13 +170,13 @@ suite('Locations search', () => {
   });
 
   test('jumps on Enter to a hash not looked up yet as typed', () => {
-    const [branch] = resultItems([], searchRefs([refs[3]], 'a'));
+    const [branch] = resultItems([], searchRefs(indexRefs([refs[3]]), 'a'));
     assert.strictEqual(enterTarget('A1B2c3d4', undefined, branch), 'a1b2c3d4');
     assert.strictEqual(enterTarget(' AB12 ', undefined, branch), 'ab12');
   });
 
   test('jumps on Enter to the result picked with the arrows, though the typed text may be a hash not looked up yet', () => {
-    const [branch] = resultItems([], searchRefs([refs[3]], 'a'));
+    const [branch] = resultItems([], searchRefs(indexRefs([refs[3]]), 'a'));
     assert.strictEqual(
       enterTarget('ab12', undefined, branch, true),
       refs[3].commit,
@@ -191,7 +208,7 @@ suite('Locations search', () => {
   });
 
   test('does nothing on Enter without a search, which highlights no match', () => {
-    const [branch] = resultItems([], searchRefs([refs[3]], 'a'));
+    const [branch] = resultItems([], searchRefs(indexRefs([refs[3]]), 'a'));
     assert.strictEqual(enterTarget('', undefined, branch), undefined);
   });
 });
