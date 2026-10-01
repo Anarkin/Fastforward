@@ -98,6 +98,28 @@ export function diffRowKey(row: DiffRow, index: number): string {
   return `${index}:${row.kind}`;
 }
 
+interface RowMeasures {
+  readonly estimateSize: (index: number) => number;
+  readonly getItemKey: (index: number) => string;
+}
+
+const measuresOfRows = new WeakMap<readonly DiffRow[], RowMeasures>();
+
+export function rowMeasures(rows: readonly DiffRow[]): RowMeasures {
+  let measures = measuresOfRows.get(rows);
+  if (!measures) {
+    measures = {
+      estimateSize: (index) => {
+        const kind = rows[index].kind;
+        return isMeasured(kind) ? measuredEstimates[kind] : rowHeights[kind];
+      },
+      getItemKey: (index) => diffRowKey(rows[index], index),
+    };
+    measuresOfRows.set(rows, measures);
+  }
+  return measures;
+}
+
 export function rowHeight(row: DiffRow): number | undefined {
   const kind = row.kind;
   return isMeasured(kind) ? undefined : rowHeights[kind];
@@ -588,11 +610,7 @@ export function DiffView({
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => list.current,
-    estimateSize: (index) => {
-      const kind = rows[index].kind;
-      return isMeasured(kind) ? measuredEstimates[kind] : rowHeights[kind];
-    },
-    getItemKey: (index) => diffRowKey(rows[index], index),
+    ...rowMeasures(rows),
     overscan: 30,
   });
 
