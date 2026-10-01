@@ -19,7 +19,8 @@ export function mergesHiding(
   shown: { has(hash: string): boolean },
   target: string,
 ): string[] {
-  const { children, parents } = linksOf(history);
+  const children = childrenOf(history);
+  const parents = parentsOf(history);
   const cameFrom = new Map<string, string>();
   const queue = [target];
   for (let next = queue.shift(); next !== undefined; next = queue.shift()) {
@@ -49,33 +50,47 @@ export function mergesHiding(
   return [];
 }
 
-interface Links {
-  readonly children: ReadonlyMap<string, readonly string[]>;
-  readonly parents: ReadonlyMap<string, readonly string[]>;
-}
+const knownChildren = new WeakMap<
+  readonly HistoryEntry[],
+  ReadonlyMap<string, readonly string[]>
+>();
 
-const links = new WeakMap<readonly HistoryEntry[], Links>();
-
-function linksOf(history: readonly HistoryEntry[]): Links {
-  const known = links.get(history);
+function childrenOf(
+  history: readonly HistoryEntry[],
+): ReadonlyMap<string, readonly string[]> {
+  const known = knownChildren.get(history);
   if (known) {
     return known;
   }
-  const children = new Map<string, string[]>();
-  const parents = new Map<string, readonly string[]>();
+  const result = new Map<string, string[]>();
   for (const entry of history) {
-    parents.set(entry.hash, entry.parents);
     for (const parent of entry.parents) {
-      const siblings = children.get(parent);
+      const siblings = result.get(parent);
       if (siblings) {
         siblings.push(entry.hash);
       } else {
-        children.set(parent, [entry.hash]);
+        result.set(parent, [entry.hash]);
       }
     }
   }
-  const result = { children, parents };
-  links.set(history, result);
+  knownChildren.set(history, result);
+  return result;
+}
+
+const knownParents = new WeakMap<
+  readonly HistoryEntry[],
+  ReadonlyMap<string, readonly string[]>
+>();
+
+function parentsOf(
+  history: readonly HistoryEntry[],
+): ReadonlyMap<string, readonly string[]> {
+  const known = knownParents.get(history);
+  if (known) {
+    return known;
+  }
+  const result = new Map(history.map((entry) => [entry.hash, entry.parents]));
+  knownParents.set(history, result);
   return result;
 }
 
@@ -121,7 +136,7 @@ function countHidden(
   history: readonly HistoryEntry[],
   shown: ReadonlySet<string>,
 ): Map<string, number> {
-  const { parents } = linksOf(history);
+  const parents = parentsOf(history);
   const counted = new Set<string>();
   const counts = new Map<string, number>();
   for (let index = history.length - 1; index >= 0; index--) {
