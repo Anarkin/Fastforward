@@ -55,6 +55,20 @@ suite('Finding git', () => {
     assert.strictEqual(onPath('git', { PATH: folder }, 'linux'), undefined);
   });
 
+  test('skips a .cmd or .bat wrapper on Windows, which it cannot run without a shell', () => {
+    const wrappers = path.join(folder, 'wrappers');
+    const installed = path.join(folder, 'installed');
+    fs.mkdirSync(wrappers);
+    fs.mkdirSync(installed);
+    fs.writeFileSync(path.join(wrappers, 'git.cmd'), '');
+    fs.writeFileSync(path.join(wrappers, 'git.bat'), '');
+    fs.writeFileSync(path.join(installed, 'git.exe'), '');
+    assert.strictEqual(
+      onPath('git', { PATH: `${wrappers};${installed}` }, 'win32'),
+      path.join(installed, 'git.exe'),
+    );
+  });
+
   test('finds nothing without a PATH', () => {
     assert.strictEqual(onPath('git', {}, 'linux'), undefined);
   });

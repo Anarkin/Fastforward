@@ -47,7 +47,9 @@ export function onPath(
     .split(windows ? ';' : ':')
     .filter(Boolean);
   const extensions = windows
-    ? (env.PATHEXT ?? '.EXE;.CMD;.BAT;.COM').split(';').filter(Boolean)
+    ? (env.PATHEXT ?? '.EXE;.COM')
+        .split(';')
+        .filter((extension) => /^\.(?:exe|com)$/i.test(extension))
     : [''];
   for (const folder of folders) {
     for (const extension of extensions) {
