@@ -29,6 +29,8 @@ import type { Log } from './log';
 import {
   checkout,
   fetchAll,
+  reportFetched,
+  type Fetched,
   type Notify,
   type RepositoryAt,
 } from './operations';
@@ -76,7 +78,7 @@ interface Tab extends TabState {
   refreshing: Promise<void> | undefined;
   refreshAgain: Map<Session | undefined, Context>;
   isRepository: boolean;
-  fetching: Promise<boolean> | undefined;
+  fetching: Promise<Fetched> | undefined;
   fetchFailed: boolean;
 }
 
@@ -763,10 +765,10 @@ export class FastforwardView {
     notify: Notify = this.notify(context),
   ): Promise<boolean> {
     const { tab } = context;
-    tab.fetching ??= fetchAll(log, notify, context).finally(() => {
+    tab.fetching ??= fetchAll(context).finally(() => {
       tab.fetching = undefined;
     });
-    const fetched = await tab.fetching;
+    const fetched = reportFetched(log, notify, await tab.fetching);
     tab.fetchFailed = !fetched;
     return fetched;
   }

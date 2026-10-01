@@ -2929,6 +2929,48 @@ suite('Fetch', function () {
     }
   });
 
+  test('says when a fetch asked for fails, even while a background fetch that keeps quiet runs', async () => {
+    const failing = await tempRepository(path.join(folder, 'failing'));
+    await failing.commit('a');
+    await failing.git('remote', 'add', 'origin', path.join(folder, 'absent'));
+    const rounds: (() => void)[] = [];
+    const opened = await openView(
+      log,
+      [failing.root],
+      true,
+      undefined,
+      (run) => {
+        rounds.push(run);
+        return () => undefined;
+      },
+    );
+    let asked: Promise<void> | undefined;
+    stubMethod(opened.view, 'fetchRemotes', (original, ...args) => {
+      const fetched = original(...args);
+      if (rounds.length === 1 && args.length === 3) {
+        asked ??= opened.connection.receive({
+          type: 'fetch',
+          root: failing.root,
+        });
+      }
+      return fetched;
+    });
+    try {
+      await withNotices(opened.page, 'error', async (messages) => {
+        await opened.connection.receive({ type: 'setAutoFetch', on: true });
+        await waitFor(() => rounds.length === 1, 'the first round');
+        assert.strictEqual(messages.length, 1);
+        rounds[0]();
+        await waitFor(() => rounds.length === 2, 'the second round');
+        await asked;
+        assert.strictEqual(messages.length, 2);
+        assert.match(messages[1] ?? '', /^Couldn't fetch./);
+      });
+    } finally {
+      opened.connection.dispose();
+    }
+  });
+
   test('says so when a fetch fails, and stops fetching', async () => {
     await repository.git(
       'remote',
