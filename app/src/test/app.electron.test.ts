@@ -127,6 +127,27 @@ suite('App', function () {
     assert.strictEqual(await page.locator('.find-match').count(), 0);
   });
 
+  test('moves between the columns with the arrows and Tab, the keys working in the one active', async () => {
+    const active = (column: string) =>
+      page.locator(`.columns[data-active-column="${column}"]`).waitFor();
+    await page.locator('.virtual-rows.list').focus();
+    await active('commits');
+    await page.keyboard.press('ArrowRight');
+    await active('files');
+    await page.keyboard.press('ArrowDown');
+    await page
+      .locator('.row.file.selected', { hasText: 'changed.txt' })
+      .waitFor();
+    await page.keyboard.press('ArrowRight');
+    await active('diff');
+    await page.keyboard.press('ArrowLeft');
+    await active('files');
+    await page.keyboard.press('Shift+Tab');
+    await active('commits');
+    await page.keyboard.press('Tab');
+    await active('files');
+  });
+
   test('shows the unchanged files on the toggle, dimmed, and remembers it', async () => {
     assert.strictEqual(
       await page.locator('.row.file', { hasText: 'kept.txt' }).count(),

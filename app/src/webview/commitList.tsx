@@ -22,6 +22,8 @@ import { formatDateTime } from './dates';
 import { MenuButton } from './menu';
 import { useSkeleton } from './skeleton';
 import { Highlight } from './highlight';
+import { columnFocusAttribute } from './activeColumn';
+import { fullyVisible, type VisibleRows } from './listMoves';
 import { SoloIcon } from './icons';
 
 export const commitRowHeight = 50;
@@ -87,26 +89,6 @@ export function listTop(
   }
   const commit = history?.at(row.index - offset);
   return commit && { hash: commit.hash, offset: scrollTop - row.start };
-}
-
-export interface VisibleRows {
-  readonly first: number;
-  readonly last: number;
-}
-
-export function fullyVisible(
-  items: readonly { index: number; start: number; end: number }[],
-  scrollTop: number,
-  height: number,
-  offset: number,
-): VisibleRows {
-  const first = items.find((item) => item.start >= scrollTop) ?? items.at(0);
-  const last =
-    items.findLast((item) => item.end <= scrollTop + height) ?? items.at(-1);
-  return {
-    first: (first?.index ?? 0) - offset,
-    last: (last?.index ?? 0) - offset,
-  };
 }
 
 const listKeys = new Set([
@@ -596,6 +578,7 @@ export function Commits({
         className="virtual-rows list"
         ref={list}
         tabIndex={0}
+        {...{ [columnFocusAttribute]: '' }}
         onKeyDown={onKeyDown}
         data-version={version}
       >

@@ -1,14 +1,18 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { FileChange } from '../shared/protocol';
 import {
   ancestorRows,
   changesTreeElements,
+  changesKey,
   changesTreeRows,
+  filesKey,
   treeFolders,
+  treeRowKey,
 } from './changesTree';
 import { Column } from './column';
 import { AllFilesIcon, CollapseAllIcon, ExpandAllIcon } from './icons';
 import { SkeletonRows, useSkeleton } from './skeleton';
+import type { VisibleRows } from './listMoves';
 import { fileRowKey } from './tree';
 import type { Folders } from './viewFolders';
 import { VirtualRows } from './virtualRows';
@@ -52,6 +56,47 @@ export function Files({
   );
   const noFolders =
     folders.changed.length === 0 && folders.unchanged.length === 0;
+  const hasHeader = files.length > 0;
+  const selectedKey =
+    selected === undefined
+      ? hasHeader
+        ? changesKey
+        : undefined
+      : fileRowKey(selected);
+  const [moved, setMoved] = useState<{
+    readonly key: string;
+    readonly from: string | undefined;
+  }>();
+  const cursor =
+    moved !== undefined &&
+    moved.from === selectedKey &&
+    treeRows.some((row) => treeRowKey(row) === moved.key)
+      ? moved.key
+      : selectedKey;
+  const onKeyDown = (event: React.KeyboardEvent, visible: VisibleRows) => {
+    if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) {
+      return;
+    }
+    const action = filesKey(event.key, treeRows, hasHeader, cursor, visible);
+    if (action === undefined) {
+      return;
+    }
+    event.preventDefault();
+    if (action.kind === 'toggle') {
+      if (action.changed) {
+        onToggleClosedFolder(action.folder);
+      } else {
+        onToggleFolder(action.folder);
+      }
+    } else if (action.kind === 'cursor') {
+      if ('file' in action) {
+        setMoved(undefined);
+        onSelect(action.file);
+      } else {
+        setMoved({ key: action.key, from: selectedKey });
+      }
+    }
+  };
   const start = (
     <div className="nav-buttons all-files">
       <button
@@ -93,7 +138,7 @@ export function Files({
   const header = (
     <div
       key="changes"
-      className={`row group counted ${selected === undefined ? 'selected' : ''}`}
+      className={`row group counted ${cursor === changesKey ? 'selected' : ''}`}
       onClick={() => onSelect(undefined)}
     >
       <span className="path">All Changes</span>
@@ -104,8 +149,9 @@ export function Files({
     showsAll: showAll,
     onToggle: (folder, changed) =>
       changed ? onToggleClosedFolder(folder) : onToggleFolder(folder),
-    selected,
+    selected: cursor === selectedKey ? selected : undefined,
     onSelect,
+    cursor,
   });
   return (
     <Column title="Files" index={1} start={start}>
@@ -118,7 +164,8 @@ export function Files({
             ? []
             : ancestorRows(treeRows, index - offset).map((row) => row + offset);
         }}
-        selectedKey={selected === undefined ? undefined : fileRowKey(selected)}
+        selectedKey={cursor === changesKey ? undefined : cursor}
+        onKeyDown={onKeyDown}
       />
     </Column>
   );

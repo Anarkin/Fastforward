@@ -10,6 +10,7 @@ import {
   type MinimapMark,
   type MinimapRow,
 } from './minimap';
+import { columnFocusAttribute } from './activeColumn';
 import { ownScrollbarAttribute } from './overlayScrollbars';
 import { SkeletonRows, useSkeleton } from './skeleton';
 import { Twisty } from './tree';
@@ -159,6 +160,40 @@ export function diffRows(
     }
   });
   return rows;
+}
+
+export function diffScrollTop(
+  key: string,
+  scrollTop: number,
+  viewport: number,
+  total: number,
+): number | undefined {
+  const line = rowHeights.line;
+  const bottom = Math.max(0, total - viewport);
+  let target: number;
+  switch (key) {
+    case 'ArrowDown':
+      target = scrollTop + 3 * line;
+      break;
+    case 'ArrowUp':
+      target = scrollTop - 3 * line;
+      break;
+    case 'PageDown':
+      target = scrollTop + Math.max(line, viewport - line);
+      break;
+    case 'PageUp':
+      target = scrollTop - Math.max(line, viewport - line);
+      break;
+    case 'Home':
+      target = 0;
+      break;
+    case 'End':
+      target = bottom;
+      break;
+    default:
+      return undefined;
+  }
+  return Math.max(0, Math.min(bottom, target));
 }
 
 export function lineKeys(rows: readonly DiffRow[]): (string | undefined)[] {
@@ -465,7 +500,28 @@ export function DiffView({
       <div
         className="virtual-rows"
         ref={list}
-        {...{ [ownScrollbarAttribute]: '' }}
+        tabIndex={0}
+        {...{ [ownScrollbarAttribute]: '', [columnFocusAttribute]: '' }}
+        onKeyDown={(event) => {
+          if (
+            event.ctrlKey ||
+            event.metaKey ||
+            event.altKey ||
+            event.shiftKey
+          ) {
+            return;
+          }
+          const top = diffScrollTop(
+            event.key,
+            event.currentTarget.scrollTop,
+            event.currentTarget.clientHeight,
+            virtualizer.getTotalSize(),
+          );
+          if (top !== undefined) {
+            event.preventDefault();
+            virtualizer.scrollToOffset(top);
+          }
+        }}
       >
         <div
           className="virtual-spacer"

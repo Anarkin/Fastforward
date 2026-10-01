@@ -22,6 +22,15 @@ import {
   ColumnResizingProvider,
   useColumnWidths,
 } from './columns';
+import {
+  adjacentColumn,
+  columnFocusAttribute,
+  columnOf,
+  columnOrder,
+  columnStep,
+  shownColumns,
+  type ColumnName,
+} from './activeColumn';
 import { Commits } from './commitList';
 import { useShortcuts } from './shortcuts';
 import {
@@ -124,6 +133,15 @@ export function App({ post, listen }: Props) {
     load: loadColumnWidths,
     resizing,
   } = useColumnWidths(saveColumnWidths, hiddenColumns);
+  const [activeColumn, setActiveColumn] = useState<ColumnName>('commits');
+  const focusColumn = useCallback(
+    (column: ColumnName) => {
+      columnsContainer.current?.children[columnOrder.indexOf(column)]
+        ?.querySelector<HTMLElement>(`[${columnFocusAttribute}]`)
+        ?.focus();
+    },
+    [columnsContainer],
+  );
 
   useEffect(() => {
     const onMessage = (message: ToWebview) => {
@@ -203,6 +221,15 @@ export function App({ post, listen }: Props) {
   const detached =
     repository && !repository.head ? repository.headCommit : undefined;
   const opening = activeTab !== undefined && history === undefined && !error;
+  const activeShown = shownColumns(commitsShown, hash).includes(activeColumn);
+  useEffect(() => {
+    if (!activeShown) {
+      const [first] = shownColumns(commitsShown, hash);
+      if (first) {
+        focusColumn(first);
+      }
+    }
+  }, [activeShown, commitsShown, hash, focusColumn]);
 
   const selectCommit = (next: string | undefined, replace = false) => {
     const target = next === hash ? undefined : next;
@@ -420,6 +447,43 @@ export function App({ post, listen }: Props) {
                   className={columnsClass(commitsShown, hash)}
                   ref={columnsContainer}
                   style={{ gridTemplateColumns: columnsTemplate }}
+                  data-active-column={activeColumn}
+                  onFocus={(event) => {
+                    const column = columnOf(
+                      event.target instanceof Element ? event.target : null,
+                    );
+                    if (column) {
+                      setActiveColumn(column);
+                    }
+                  }}
+                  onKeyDown={(event) => {
+                    const target =
+                      event.target instanceof HTMLElement ? event.target : null;
+                    const step = columnStep({
+                      key: event.key,
+                      ctrlKey: event.ctrlKey,
+                      metaKey: event.metaKey,
+                      altKey: event.altKey,
+                      shiftKey: event.shiftKey,
+                      defaultPrevented: event.defaultPrevented,
+                      target,
+                    });
+                    if (step === undefined) {
+                      return;
+                    }
+                    if (event.key === 'Tab') {
+                      event.preventDefault();
+                    }
+                    const next = adjacentColumn(
+                      shownColumns(commitsShown, hash),
+                      columnOf(target) ?? activeColumn,
+                      step,
+                    );
+                    if (next) {
+                      event.preventDefault();
+                      focusColumn(next);
+                    }
+                  }}
                 >
                   <Commits
                     history={history}
