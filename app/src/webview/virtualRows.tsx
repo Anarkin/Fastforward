@@ -1,16 +1,24 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { useCallback, useEffect, useEffectEvent, useRef } from 'react';
+import { useEffect, useEffectEvent, useRef } from 'react';
 import { columnFocusAttribute } from './activeColumn';
 import { fullyVisible, type VisibleRows } from './listMoves';
 
 const estimatedRowHeight = 24;
 const estimateSize = () => estimatedRowHeight;
 
+export interface ListedRows {
+  readonly count: number;
+  readonly keyOf: (index: number) => string;
+  readonly indexOf: (key: string) => number;
+}
+
 export function scrollTarget(
   selectedKey: string | undefined,
-  keys: readonly (string | number | null)[],
+  keys: { indexOf(key: string): number },
 ): string | undefined {
-  return keys.includes(selectedKey ?? null) ? selectedKey : undefined;
+  return selectedKey !== undefined && keys.indexOf(selectedKey) !== -1
+    ? selectedKey
+    : undefined;
 }
 
 export interface RowPlacement {
@@ -84,25 +92,23 @@ const noAncestors = () => [];
 
 export function VirtualRows({
   rows,
+  renderRow,
   selectedKey,
   ancestorsOf = noAncestors,
   onKeyDown,
 }: {
-  rows: readonly React.ReactElement[];
+  rows: ListedRows;
+  renderRow: (index: number) => React.ReactNode;
   selectedKey: string | undefined;
   ancestorsOf?: (index: number) => readonly number[];
   onKeyDown?: (event: React.KeyboardEvent, visible: VisibleRows) => void;
 }) {
   const list = useRef<HTMLDivElement>(null);
-  const itemKey = useCallback(
-    (index: number) => rows[index].key ?? index,
-    [rows],
-  );
   const virtualizer = useVirtualizer({
-    count: rows.length,
+    count: rows.count,
     getScrollElement: () => list.current,
     estimateSize,
-    getItemKey: itemKey,
+    getItemKey: rows.keyOf,
     overscan: 20,
   });
 
@@ -111,7 +117,7 @@ export function VirtualRows({
     return row ? row.end - row.start : 0;
   };
   const scrollToSelected = useEffectEvent(() => {
-    const index = rows.findIndex((row) => row.key === selectedKey);
+    const index = selectedKey === undefined ? -1 : rows.indexOf(selectedKey);
     const element = list.current;
     const row = virtualizer.measurementsCache[index];
     if (index === -1 || !element || !row) {
@@ -127,10 +133,7 @@ export function VirtualRows({
       virtualizer.scrollToOffset(offset);
     }
   });
-  const target = scrollTarget(
-    selectedKey,
-    rows.map((row) => row.key),
-  );
+  const target = scrollTarget(selectedKey, rows);
   useEffect(() => {
     if (target !== undefined) {
       scrollToSelected();
@@ -148,7 +151,7 @@ export function VirtualRows({
       {pinned.length > 0 && (
         <div className="pinned-rows">
           {pinned.map((index) => (
-            <div key={rows[index].key ?? index}>{rows[index]}</div>
+            <div key={rows.keyOf(index)}>{renderRow(index)}</div>
           ))}
         </div>
       )}
@@ -189,7 +192,7 @@ export function VirtualRows({
               ref={virtualizer.measureElement}
               style={{ transform: `translateY(${item.start}px)` }}
             >
-              {rows[item.index]}
+              {renderRow(item.index)}
             </div>
           ))}
         </div>

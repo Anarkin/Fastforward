@@ -3,9 +3,10 @@ import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
   changesTree,
-  changesTreeElements,
+  changesTreeElement,
   changesTreeRows,
   folderRowKey,
+  type ChangesTreeRow,
 } from '../webview/changesTree';
 import {
   CheckedOutBranch,
@@ -36,6 +37,7 @@ import { SkeletonRows } from '../webview/skeleton';
 import { TabBar } from '../webview/tabBar';
 import { GraphCell, graphWidth, rowLanes } from '../webview/graph';
 import { FileRow, treeIndent } from '../webview/tree';
+import { VirtualRows, type ListedRows } from '../webview/virtualRows';
 import type {
   FileChange,
   GraphRow,
@@ -51,6 +53,13 @@ import {
 } from './fixtures';
 
 const noop = () => {};
+
+const changesTreeElements = ({
+  rows,
+  ...options
+}: { rows: readonly ChangesTreeRow[] } & Parameters<
+  typeof changesTreeElement
+>[1]) => rows.map((row) => changesTreeElement(row, options));
 
 function tagWith(html: string, text: string, ...classes: string[]): string {
   const found = tagsWith(html, ...classes).filter((tag) => tag.includes(text));
@@ -111,11 +120,17 @@ function changesRows(
   const list = column.props.children[1];
   assert.ok(
     isValidElement<{
-      rows: React.ReactElement<RowProps>[];
+      rows: ListedRows;
+      renderRow: (index: number) => React.ReactElement<RowProps>;
       selectedKey: string | undefined;
     }>(list),
   );
-  return list.props;
+  const { rows, renderRow, selectedKey } = list.props;
+  return {
+    keys: Array.from({ length: rows.count }, (_, index) => rows.keyOf(index)),
+    rows: Array.from({ length: rows.count }, (_, index) => renderRow(index)),
+    selectedKey,
+  };
 }
 
 function clickFile(row: React.ReactElement) {
@@ -374,6 +389,26 @@ suite('Files column', () => {
     }
   });
 
+  test('draws only the rows in view of a long list, not every row', () => {
+    const drawn: number[] = [];
+    const keys = Array.from({ length: 10_000 }, (_, index) => `row:${index}`);
+    renderToStaticMarkup(
+      <VirtualRows
+        rows={{
+          count: keys.length,
+          keyOf: (index) => keys[index],
+          indexOf: (key) => keys.indexOf(key),
+        }}
+        renderRow={(index) => {
+          drawn.push(index);
+          return keys[index];
+        }}
+        selectedKey={undefined}
+      />,
+    );
+    assert.ok(drawn.length < 100, `${drawn.length} rows drawn`);
+  });
+
   test('shows no rows without changes, not even their header', () => {
     assert.deepStrictEqual(changesRows([], undefined, noop).rows, []);
   });
@@ -387,16 +422,13 @@ suite('Files column', () => {
 
   test('deselects the selected file on a click, and selects another', () => {
     const picked: (string | undefined)[] = [];
-    const { rows, selectedKey } = changesRows(
+    const { keys, rows, selectedKey } = changesRows(
       [change('a.ts'), change('b.ts')],
       'a.ts',
       (path) => picked.push(path),
     );
     assert.strictEqual(selectedKey, 'file:a.ts');
-    assert.deepStrictEqual(
-      rows.map((row) => row.key),
-      ['changes', 'file:a.ts', 'file:b.ts'],
-    );
+    assert.deepStrictEqual(keys, ['changes', 'file:a.ts', 'file:b.ts']);
     clickFile(rows[1]);
     clickFile(rows[2]);
     assert.deepStrictEqual(picked, [undefined, 'b.ts']);

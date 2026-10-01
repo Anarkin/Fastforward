@@ -3,6 +3,7 @@ import {
   ancestorRows,
   changesTree,
   changesTreeRows,
+  listedTreeRows,
   treeFolders,
 } from '../webview/changesTree';
 import { fileChange } from './fixtures';
@@ -169,5 +170,25 @@ suite('Changes tree', () => {
     reads = 0;
     assert.deepStrictEqual(ancestorRows(counted, listed.length - 2), [0, 1]);
     assert.ok(reads < 100, `${reads} reads`);
+  });
+
+  test('keys the rows the same while they stay the same, so the list keeps their sizes', () => {
+    const rows = changesTreeRows(changesTree(files), new Set(['src']));
+    const listed = listedTreeRows(rows, true);
+    assert.strictEqual(listedTreeRows(rows, true), listed);
+    assert.notStrictEqual(listedTreeRows(rows, false), listed);
+    assert.deepStrictEqual(
+      Array.from({ length: listed.count }, (_, index) => listed.keyOf(index)),
+      [
+        'changes',
+        'folder:src',
+        'folder:tests/Gyurma.Tests',
+        'file:tests/Gyurma.Tests/SignatureTests.cs',
+        'file:.editorconfig',
+      ],
+    );
+    assert.strictEqual(listed.indexOf('file:.editorconfig'), 4);
+    assert.strictEqual(listed.indexOf('file:src/Gyurma/MethodSetup.cs'), -1);
+    assert.strictEqual(listedTreeRows(rows, false).indexOf('folder:src'), 0);
   });
 });

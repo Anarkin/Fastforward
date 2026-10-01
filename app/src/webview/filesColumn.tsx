@@ -3,13 +3,13 @@ import type { FileChange } from '../shared/protocol';
 import {
   ancestorRows,
   changesTree,
-  changesTreeElements,
+  changesTreeElement,
   changesKey,
   changesTreeRows,
   filesKey,
   folderRowKey,
+  listedTreeRows,
   treeFolders,
-  treeRowKey,
 } from './changesTree';
 import { Column } from './column';
 import { AllFilesIcon, CollapseAllIcon, ExpandAllIcon } from './icons';
@@ -17,7 +17,7 @@ import { SkeletonRows, useSkeleton } from './skeleton';
 import type { VisibleRows } from './listMoves';
 import { fileRowKey } from './tree';
 import type { Folders } from './viewFolders';
-import { VirtualRows } from './virtualRows';
+import { VirtualRows, type ListedRows } from './virtualRows';
 
 interface MovedCursor {
   readonly key: string;
@@ -29,12 +29,12 @@ export function filesCursor(
   moved: MovedCursor | undefined,
   selectedKey: string | undefined,
   view: string,
-  keys: readonly string[],
+  keys: Pick<ListedRows, 'indexOf'>,
 ): string | undefined {
   return moved !== undefined &&
     moved.from === selectedKey &&
     moved.view === view &&
-    keys.includes(moved.key)
+    keys.indexOf(moved.key) !== -1
     ? moved.key
     : selectedKey;
 }
@@ -82,6 +82,7 @@ export function Files({
   const noFolders =
     folders.changed.length === 0 && folders.unchanged.length === 0;
   const hasHeader = files.length > 0;
+  const listed = listedTreeRows(treeRows, hasHeader);
   const selectedKey =
     selected === undefined
       ? hasHeader
@@ -89,12 +90,7 @@ export function Files({
         : undefined
       : fileRowKey(selected);
   const [moved, setMoved] = useState<MovedCursor>();
-  const cursor = filesCursor(
-    moved,
-    selectedKey,
-    view,
-    treeRows.map((row) => treeRowKey(row)),
-  );
+  const cursor = filesCursor(moved, selectedKey, view, listed);
   const select = (path: string | undefined) => {
     setMoved(undefined);
     if (path !== selected) {
@@ -172,10 +168,10 @@ export function Files({
       <span className="path">All Changes</span>
     </div>
   );
-  const fileRows = changesTreeElements({
-    rows: treeRows,
+  const offset = hasHeader ? 1 : 0;
+  const rowOptions = {
     showsAll: showAll,
-    onToggle: (folder, changed) => {
+    onToggle: (folder: string, changed: boolean) => {
       setMoved({ key: folderRowKey(folder), from: selectedKey, view });
       if (changed) {
         onToggleClosedFolder(folder);
@@ -186,18 +182,22 @@ export function Files({
     selected,
     onSelect: select,
     cursor,
-  });
+  };
   return (
     <Column title="Files" index={1} start={start}>
       {skeleton && <SkeletonRows count={6} />}
       <VirtualRows
-        rows={files.length > 0 ? [header, ...fileRows] : fileRows}
-        ancestorsOf={(index) => {
-          const offset = files.length > 0 ? 1 : 0;
-          return index < offset
+        rows={listed}
+        renderRow={(index) =>
+          index < offset
+            ? header
+            : changesTreeElement(treeRows[index - offset], rowOptions)
+        }
+        ancestorsOf={(index) =>
+          index < offset
             ? []
-            : ancestorRows(treeRows, index - offset).map((row) => row + offset);
-        }}
+            : ancestorRows(treeRows, index - offset).map((row) => row + offset)
+        }
         selectedKey={cursor}
         onKeyDown={onKeyDown}
       />

@@ -3,6 +3,7 @@ import { buildFileTree, type FolderNode } from './fileTree';
 import { byName } from './byName';
 import { moveInList, type VisibleRows } from './listMoves';
 import { FileRow, fileRowKey, FolderRow } from './tree';
+import type { ListedRows } from './virtualRows';
 
 export type ChangesTreeRow =
   | {
@@ -111,8 +112,30 @@ export const changesKey = 'changes';
 
 export const folderRowKey = (path: string) => `folder:${path}`;
 
-export function treeRowKey(row: ChangesTreeRow): string {
+function treeRowKey(row: ChangesTreeRow): string {
   return row.kind === 'folder' ? folderRowKey(row.path) : fileRowKey(row.path);
+}
+
+const listings = new WeakMap<readonly ChangesTreeRow[], ListedRows>();
+const headedListings = new WeakMap<readonly ChangesTreeRow[], ListedRows>();
+
+export function listedTreeRows(
+  rows: readonly ChangesTreeRow[],
+  header: boolean,
+): ListedRows {
+  const cache = header ? headedListings : listings;
+  let listed = cache.get(rows);
+  if (!listed) {
+    const keys = [...(header ? [changesKey] : []), ...rows.map(treeRowKey)];
+    const indexes = new Map(keys.map((key, index) => [key, index]));
+    listed = {
+      count: keys.length,
+      keyOf: (index) => keys[index],
+      indexOf: (key) => indexes.get(key) ?? -1,
+    };
+    cache.set(rows, listed);
+  }
+  return listed;
 }
 
 export type FilesKeyAction =
@@ -131,9 +154,9 @@ export function filesKey(
   cursor: string | undefined,
   visible: VisibleRows,
 ): FilesKeyAction | undefined {
-  const keys = [...(header ? [changesKey] : []), ...rows.map(treeRowKey)];
+  const listed = listedTreeRows(rows, header);
   const offset = header ? 1 : 0;
-  const index = cursor === undefined ? -1 : keys.indexOf(cursor);
+  const index = cursor === undefined ? -1 : listed.indexOf(cursor);
   const row = index < offset ? undefined : rows[index - offset];
   if (key === ' ') {
     return row?.kind === 'folder'
@@ -143,7 +166,7 @@ export function filesKey(
   const moved = moveInList(
     key,
     index === -1 ? undefined : index,
-    keys.length,
+    listed.count,
     visible,
   );
   if (moved === undefined) {
@@ -152,7 +175,7 @@ export function filesKey(
   const target = moved < offset ? undefined : rows[moved - offset];
   return {
     kind: 'cursor',
-    key: keys[moved],
+    key: listed.keyOf(moved),
     ...(target === undefined || target.kind === 'file'
       ? { file: target?.path }
       : {}),
@@ -204,51 +227,50 @@ export function ancestorRows(
   return ancestors;
 }
 
-export function changesTreeElements({
-  rows,
-  showsAll,
-  onToggle,
-  selected,
-  onSelect,
-  cursor,
-}: {
-  rows: readonly ChangesTreeRow[];
-  showsAll: boolean;
-  onToggle: (folder: string, changed: boolean) => void;
-  selected: string | undefined;
-  onSelect: (path: string | undefined) => void;
-  cursor?: string;
-}): React.ReactElement[] {
-  return rows.map((row) =>
-    row.kind === 'folder' ? (
-      <FolderRow
-        key={`folder:${row.path}`}
-        path={row.path}
-        title={row.path}
-        depth={row.depth}
-        open={row.open}
-        className={[
-          'counted',
-          ...(showsAll && row.changed ? [] : ['dimmed']),
-          ...(cursor === folderRowKey(row.path) ? ['selected'] : []),
-        ].join(' ')}
-        onToggle={(folder) => onToggle(folder, row.changed)}
-      >
-        <span className="path">{row.name}</span>
-      </FolderRow>
-    ) : (
-      <FileRow
-        key={fileRowKey(row.path)}
-        path={row.path}
-        name={row.name}
-        depth={row.depth}
-        change={row.change}
-        selected={selected}
-        marked={
-          cursor === undefined ? undefined : cursor === fileRowKey(row.path)
-        }
-        onSelect={onSelect}
-      />
-    ),
+export function changesTreeElement(
+  row: ChangesTreeRow,
+  {
+    showsAll,
+    onToggle,
+    selected,
+    onSelect,
+    cursor,
+  }: {
+    showsAll: boolean;
+    onToggle: (folder: string, changed: boolean) => void;
+    selected: string | undefined;
+    onSelect: (path: string | undefined) => void;
+    cursor?: string;
+  },
+): React.ReactElement {
+  return row.kind === 'folder' ? (
+    <FolderRow
+      key={`folder:${row.path}`}
+      path={row.path}
+      title={row.path}
+      depth={row.depth}
+      open={row.open}
+      className={[
+        'counted',
+        ...(showsAll && row.changed ? [] : ['dimmed']),
+        ...(cursor === folderRowKey(row.path) ? ['selected'] : []),
+      ].join(' ')}
+      onToggle={(folder) => onToggle(folder, row.changed)}
+    >
+      <span className="path">{row.name}</span>
+    </FolderRow>
+  ) : (
+    <FileRow
+      key={fileRowKey(row.path)}
+      path={row.path}
+      name={row.name}
+      depth={row.depth}
+      change={row.change}
+      selected={selected}
+      marked={
+        cursor === undefined ? undefined : cursor === fileRowKey(row.path)
+      }
+      onSelect={onSelect}
+    />
   );
 }
