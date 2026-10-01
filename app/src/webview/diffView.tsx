@@ -731,7 +731,7 @@ export function DiffView({
 
   return (
     <div
-      className="diff-view"
+      className={`diff-view ${sideBySide && !whole ? 'side-by-side' : ''}`}
       style={{ ...heightVariables, '--split-scroll': `${sideways}px` }}
     >
       {stuck && <div className="diff-stuck-header">{header(stuck, true)}</div>}

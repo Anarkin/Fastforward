@@ -584,6 +584,21 @@ suite('Style', () => {
     assert.strictEqual(pixels(diff, 'padding-right'), 4 + 6 * 26 + 5 * 2 + 8);
   });
 
+  test('divides the two sides with one line from top to bottom, across headers and hunk gaps, letting the pointer through', () => {
+    const line = declarationsOf('.diff-view.side-by-side::after');
+    for (const declaration of [
+      'top: 0;',
+      'bottom: 0;',
+      'left: 50%;',
+      'width: 1px;',
+      'background: var(--color-border);',
+      'pointer-events: none;',
+    ]) {
+      assert.ok(line.includes(declaration), declaration);
+    }
+    assert.ok(!css.includes('.split-side + .split-side'));
+  });
+
   test('stripes the empty side of a change in the border color, in tiles that meet across rows', () => {
     const filler = declarationsOf('.split-side.filler').replace(/\s+/g, ' ');
     assert.match(filler, /linear-gradient\( -45deg, var\(--color-border\)/);

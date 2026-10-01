@@ -159,6 +159,7 @@ suite('App', function () {
     await page.getByRole('button', { name: 'Side by Side' }).click();
     const sides = page.locator('.split-line');
     await sides.first().waitFor();
+    await page.locator('.diff-view.side-by-side').waitFor();
     assert.deepStrictEqual(
       await sides.evaluateAll((rows) =>
         rows.map((row) =>
@@ -178,6 +179,10 @@ suite('App', function () {
     );
     await page.getByRole('button', { name: 'Inline' }).click();
     await sides.first().waitFor({ state: 'detached' });
+    assert.strictEqual(
+      await page.locator('.diff-view.side-by-side').count(),
+      0,
+    );
     await page.locator('.diff-line.added').first().waitFor();
   });
 

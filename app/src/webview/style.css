@@ -941,8 +941,16 @@ body.resizing {
   min-width: 0;
 }
 
-.split-side + .split-side {
-  box-shadow: inset 1px 0 0 var(--color-border);
+.diff-view.side-by-side::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  z-index: 5;
+  width: 1px;
+  background: var(--color-border);
+  pointer-events: none;
 }
 
 .split-side.filler {
