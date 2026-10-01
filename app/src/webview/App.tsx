@@ -14,6 +14,7 @@ import {
   type ToHost,
   type ToWebview,
   type Bookmark,
+  type DiffLayout,
 } from '../shared/protocol';
 import { CheckedOutBranch, DetachedHead } from './bubbles';
 import { checkoutCommit, checkoutOptions, checkoutRef } from './checkout';
@@ -107,6 +108,7 @@ export function App({ post, listen }: Props) {
   const [entireFilePinned, setEntireFilePinned] = useState(false);
   const [entireFileOf, setEntireFileOf] = useState<string>();
   const [ignoreWhitespace, setIgnoreWhitespace] = useState(false);
+  const [diffLayout, setDiffLayout] = useState<DiffLayout>('inline');
   const [collapseMerges, setCollapseMerges] = useState(false);
   const [solo, setSolo] = useState(false);
   const [showAllFiles, setShowAllFiles] = useState(false);
@@ -155,6 +157,7 @@ export function App({ post, listen }: Props) {
           setCollapseMerges(message.collapseMerges);
           setEntireFilePinned(message.entireFilePinned);
           setIgnoreWhitespace(message.ignoreWhitespace);
+          setDiffLayout(message.diffLayout);
           setShowAllFiles(message.showAllFiles);
           break;
         case 'solo':
@@ -325,6 +328,10 @@ export function App({ post, listen }: Props) {
   const changeIgnoreWhitespace = (ignore: boolean) => {
     setIgnoreWhitespace(ignore);
     post({ type: 'setIgnoreWhitespace', ignore });
+  };
+  const changeDiffLayout = (layout: DiffLayout) => {
+    setDiffLayout(layout);
+    post({ type: 'setDiffLayout', layout });
   };
   const pinEntireFile = (pinned: boolean) => {
     setEntireFilePinned(pinned);
@@ -573,6 +580,7 @@ export function App({ post, listen }: Props) {
                     diffs={diffs}
                     fileContent={fileContent}
                     error={error}
+                    sideBySide={diffLayout === 'sideBySide'}
                     changeMarks={
                       path !== undefined &&
                       (entireFilePinned || entireFileOf === shownFile)
@@ -586,6 +594,8 @@ export function App({ post, listen }: Props) {
                         onPin={pinEntireFile}
                         ignoreWhitespace={ignoreWhitespace}
                         onIgnoreWhitespace={changeIgnoreWhitespace}
+                        layout={diffLayout}
+                        onLayout={changeDiffLayout}
                       />
                     }
                   />

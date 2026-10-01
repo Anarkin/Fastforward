@@ -418,8 +418,8 @@ body.resizing {
 }
 
 .column-title:has(.diff-options) {
-  padding-left: calc(4px + 4 * 26px + 3 * 2px + 8px);
-  padding-right: calc(4px + 4 * 26px + 3 * 2px + 8px);
+  padding-left: calc(4px + 6 * 26px + 5 * 2px + 8px);
+  padding-right: calc(4px + 6 * 26px + 5 * 2px + 8px);
 }
 
 .diff-find {
@@ -926,6 +926,38 @@ body.resizing {
 .virtual-row.diff-row {
   min-width: 100%;
   width: max-content;
+}
+
+.virtual-row.diff-row.split-row {
+  width: 100%;
+}
+
+.split-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.split-side {
+  min-width: 0;
+}
+
+.split-side + .split-side {
+  box-shadow: inset 1px 0 0 var(--color-border);
+}
+
+.split-side.filler {
+  background: var(--color-border);
+}
+
+.split-code {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.split-code .code {
+  display: inline-block;
+  transform: translateX(calc(-1 * var(--split-scroll)));
 }
 
 .hunk-divider {

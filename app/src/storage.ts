@@ -1,5 +1,5 @@
 import * as fs from 'node:fs';
-import type { Bookmark, ToWebviewOf } from './shared/protocol';
+import type { Bookmark, ToWebviewOf, DiffLayout } from './shared/protocol';
 import { writeAtomically, type Settings, type UserSettings } from './settings';
 import * as path from 'node:path';
 
@@ -145,6 +145,7 @@ export class Storage {
       collapseMerges: settings.collapseMerges,
       entireFilePinned: settings.entireFilePinned,
       ignoreWhitespace: settings.ignoreWhitespace,
+      diffLayout: settings.diffLayout,
       showAllFiles: settings.showAllFiles,
     };
   }
@@ -175,6 +176,10 @@ export class Storage {
 
   async setIgnoreWhitespace(ignore: boolean): Promise<void> {
     await this.userSettings.set('ignoreWhitespace', ignore);
+  }
+
+  async setDiffLayout(layout: DiffLayout): Promise<void> {
+    await this.userSettings.set('diffLayout', layout);
   }
 
   async setShowAllFiles(show: boolean): Promise<void> {

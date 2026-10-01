@@ -130,6 +130,24 @@ export function PinIcon() {
   );
 }
 
+export function InlineIcon() {
+  return (
+    <Icon>
+      <rect x="2" y="2.5" width="12" height="11" rx="1" />
+      <path d="M4.5 6h7M4.5 10h7" />
+    </Icon>
+  );
+}
+
+export function SideBySideIcon() {
+  return (
+    <Icon>
+      <rect x="2" y="2.5" width="12" height="11" rx="1" />
+      <path d="M8 2.5v11M4 6h2.5M9.5 10H12" />
+    </Icon>
+  );
+}
+
 export function PreviousIcon() {
   return (
     <Icon>

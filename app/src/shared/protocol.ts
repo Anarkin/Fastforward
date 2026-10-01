@@ -26,6 +26,8 @@ export interface CommitSearch {
   readonly capped: boolean;
 }
 
+export type DiffLayout = 'inline' | 'sideBySide';
+
 export interface NavigationEntry {
   readonly hash: string;
   readonly subject: string | undefined;
@@ -139,6 +141,7 @@ export type ToHost =
   | { readonly type: 'setCollapseMerges'; readonly collapse: boolean }
   | { readonly type: 'pinEntireFile'; readonly pinned: boolean }
   | { readonly type: 'setIgnoreWhitespace'; readonly ignore: boolean }
+  | { readonly type: 'setDiffLayout'; readonly layout: DiffLayout }
   | { readonly type: 'setShowAllFiles'; readonly show: boolean }
   | {
       readonly type: 'log';
@@ -200,6 +203,7 @@ export type ToWebview =
       readonly collapseMerges: boolean;
       readonly entireFilePinned: boolean;
       readonly ignoreWhitespace: boolean;
+      readonly diffLayout: DiffLayout;
       readonly showAllFiles: boolean;
     }
   | { readonly type: 'bookmarks'; readonly bookmarks: readonly Bookmark[] }

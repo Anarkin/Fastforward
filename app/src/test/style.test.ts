@@ -557,11 +557,12 @@ suite('Style', () => {
     );
   });
 
-  test('keeps the titles clear of the three buttons the Files column has on the left, and the four the Diff column has on each side', () => {
+  test('keeps the titles clear of the three buttons the Files column has on the left, and the six the Diff column has on its left, mirrored on its right', () => {
     const files = declarationsOf('.column-title:has(.all-files)');
     assert.strictEqual(pixels(files, 'padding-left'), 4 + 3 * 26 + 2 * 2 + 8);
     const diff = declarationsOf('.column-title:has(.diff-options)');
-    assert.strictEqual(pixels(diff, 'padding-right'), 4 + 4 * 26 + 3 * 2 + 8);
+    assert.strictEqual(pixels(diff, 'padding-left'), 4 + 6 * 26 + 5 * 2 + 8);
+    assert.strictEqual(pixels(diff, 'padding-right'), 4 + 6 * 26 + 5 * 2 + 8);
   });
 
   test('draws no focus outline around the commit list, whose selected row shows where the keys go', () => {

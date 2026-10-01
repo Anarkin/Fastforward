@@ -134,14 +134,18 @@ function entireFileButtons(
       onEntire={noop}
       onPin={noop}
       onIgnoreWhitespace={noop}
+      layout="inline"
+      onLayout={noop}
     />,
   );
-  return [...html.matchAll(/<button[^>]*>/g)].map(([button]) =>
-    [
-      button.includes('aria-pressed="true"') ? 'on' : 'off',
-      button.includes('disabled') ? 'disabled' : 'enabled',
-    ].join(' '),
-  );
+  return [...html.matchAll(/<button[^>]*>/g)]
+    .slice(0, 3)
+    .map(([button]) =>
+      [
+        button.includes('aria-pressed="true"') ? 'on' : 'off',
+        button.includes('disabled') ? 'disabled' : 'enabled',
+      ].join(' '),
+    );
 }
 
 suite('Diff options', () => {
@@ -186,12 +190,59 @@ suite('Diff options', () => {
         onEntire={noop}
         onPin={noop}
         onIgnoreWhitespace={noop}
+        layout="inline"
+        onLayout={noop}
       />,
     );
     assert.match(
       html,
       /<\/button><span class="nav-button-space"><\/span><button[^>]*title="Ignore Whitespace"/,
     );
+  });
+
+  test('shows the diff inline or side by side, the chosen layout pressed, switching on the other', () => {
+    for (const layout of ['inline', 'sideBySide'] as const) {
+      const picked: string[] = [];
+      const element = DiffOptions({
+        entire: false,
+        pinned: false,
+        canShow: true,
+        ignoreWhitespace: false,
+        onEntire: noop,
+        onPin: noop,
+        onIgnoreWhitespace: noop,
+        layout,
+        onLayout: (next) => picked.push(next),
+      });
+      assert.ok(
+        isValidElement<{
+          children: React.ReactElement<{
+            title?: string;
+            'aria-pressed'?: boolean;
+            onClick?: () => void;
+          }>[];
+        }>(element),
+      );
+      const buttons = element.props.children.filter(
+        (button) =>
+          button.props.title === 'Inline' ||
+          button.props.title === 'Side by Side',
+      );
+      assert.deepStrictEqual(
+        buttons.map((button) => [
+          button.props.title,
+          button.props['aria-pressed'],
+        ]),
+        [
+          ['Inline', layout === 'inline'],
+          ['Side by Side', layout === 'sideBySide'],
+        ],
+      );
+      for (const button of buttons) {
+        button.props.onClick?.();
+      }
+      assert.deepStrictEqual(picked, ['inline', 'sideBySide']);
+    }
   });
 });
 

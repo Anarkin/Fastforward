@@ -6,7 +6,11 @@ import {
   useState,
   type RefObject,
 } from 'react';
-import { isLargeChange, type FileChange } from '../shared/protocol';
+import {
+  isLargeChange,
+  type DiffLayout,
+  type FileChange,
+} from '../shared/protocol';
 import { Column } from './column';
 import { parsePatch, type DiffFile } from './diff';
 import { DiffView, type WholeFile } from './diffView';
@@ -14,9 +18,11 @@ import { findMatches, matchCount, stepMatch, unsearchedFiles } from './find';
 import {
   EntireFileIcon,
   IgnoreWhitespaceIcon,
+  InlineIcon,
   NextIcon,
   PinIcon,
   PreviousIcon,
+  SideBySideIcon,
 } from './icons';
 import { isFindShortcut } from './shortcuts';
 
@@ -54,6 +60,8 @@ export function DiffOptions({
   onEntire,
   onPin,
   onIgnoreWhitespace,
+  layout,
+  onLayout,
 }: {
   entire: boolean;
   pinned: boolean;
@@ -62,6 +70,8 @@ export function DiffOptions({
   onEntire: (entire: boolean) => void;
   onPin: (pinned: boolean) => void;
   onIgnoreWhitespace: (ignore: boolean) => void;
+  layout: DiffLayout;
+  onLayout: (layout: DiffLayout) => void;
 }) {
   const shown = entire || pinned;
   return (
@@ -103,6 +113,22 @@ export function DiffOptions({
         onClick={() => onIgnoreWhitespace(!ignoreWhitespace)}
       >
         <IgnoreWhitespaceIcon />
+      </button>
+      <button
+        className={`nav-button toggle ${layout === 'inline' ? 'active' : ''}`}
+        title="Inline"
+        aria-pressed={layout === 'inline'}
+        onClick={() => onLayout('inline')}
+      >
+        <InlineIcon />
+      </button>
+      <button
+        className={`nav-button toggle ${layout === 'sideBySide' ? 'active' : ''}`}
+        title="Side by Side"
+        aria-pressed={layout === 'sideBySide'}
+        onClick={() => onLayout('sideBySide')}
+      >
+        <SideBySideIcon />
       </button>
     </div>
   );
@@ -204,6 +230,7 @@ export function Diff({
   error,
   entireFile,
   changeMarks,
+  sideBySide = false,
 }: {
   selection: string;
   path: string | undefined;
@@ -217,6 +244,7 @@ export function Diff({
   error: string | undefined;
   entireFile: React.ReactNode;
   changeMarks: boolean;
+  sideBySide?: boolean;
 }) {
   const parsed = useMemo(() => parsePatch(patch), [patch]);
   const diffFiles = useMemo(
@@ -285,6 +313,7 @@ export function Diff({
         diff={diffs}
         onLoad={onLoadFile}
         changeMarks={changeMarks}
+        sideBySide={sideBySide}
         matches={matches}
         current={shown}
         jump={jump}

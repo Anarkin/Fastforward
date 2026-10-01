@@ -113,20 +113,40 @@ suite('Find in diff', () => {
     const files = parsePatch(patch);
     const rows = diffRows(files, new Map([['b.ts', false]]), undefined);
     assert.deepStrictEqual(lineKeys(rows), [
-      undefined,
-      undefined,
-      '0:0',
-      '0:1',
-      '0:2',
-      undefined,
-      '0:3',
-      undefined,
+      [],
+      [],
+      ['0:0'],
+      ['0:1'],
+      ['0:2'],
+      [],
+      ['0:3'],
+      [],
     ]);
     assert.deepStrictEqual(lineKeys(diffRows([], new Map(), whole)), [
+      [],
+      [],
+      ['0:0'],
+      ['0:1'],
+    ]);
+  });
+
+  test('keys a side-by-side row by both of its lines, an unchanged one once', () => {
+    const files = parsePatch(patch);
+    const rows = diffRows(
+      files,
+      new Map([['b.ts', false]]),
       undefined,
-      undefined,
-      '0:0',
-      '0:1',
+      false,
+      true,
+    );
+    assert.deepStrictEqual(lineKeys(rows), [
+      [],
+      [],
+      ['0:0'],
+      ['0:1', '0:2'],
+      [],
+      ['0:3'],
+      [],
     ]);
   });
 
