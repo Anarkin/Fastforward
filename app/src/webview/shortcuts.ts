@@ -29,11 +29,14 @@ export function shortcutOf(event: ShortcutEvent): ShortcutKey | undefined {
   ) {
     return undefined;
   }
-  const key =
-    /^[a-z]$/i.test(event.key) || !/^Key[A-Z]$/.test(event.code)
-      ? event.key.toLowerCase()
-      : event.code.slice(3).toLowerCase();
+  const key = letterOf(event);
   return shortcutKeys.find((shortcut) => shortcut === key);
+}
+
+function letterOf(event: Pick<KeyboardEvent, 'key' | 'code'>): string {
+  return /^[a-z]$/i.test(event.key) || !/^Key[A-Z]$/.test(event.code)
+    ? event.key.toLowerCase()
+    : event.code.slice(3).toLowerCase();
 }
 
 export function isFindShortcut(
@@ -46,7 +49,7 @@ export function isFindShortcut(
     (event.ctrlKey || event.metaKey) &&
     !event.shiftKey &&
     !event.altKey &&
-    (event.key.toLowerCase() === 'f' || event.code === 'KeyF')
+    letterOf(event) === 'f'
   );
 }
 
@@ -60,7 +63,7 @@ export function isNewTabShortcut(
     (event.ctrlKey || event.metaKey) &&
     !event.shiftKey &&
     !event.altKey &&
-    (event.key.toLowerCase() === 't' || event.code === 'KeyT')
+    letterOf(event) === 't'
   );
 }
 
@@ -79,13 +82,8 @@ export function tabStep(
 export function changeStep(
   event: Pick<KeyboardEvent, 'key' | 'code'>,
 ): 1 | -1 | undefined {
-  if (event.key === 'j' || event.code === 'KeyJ') {
-    return 1;
-  }
-  if (event.key === 'k' || event.code === 'KeyK') {
-    return -1;
-  }
-  return undefined;
+  const letter = letterOf(event);
+  return letter === 'j' ? 1 : letter === 'k' ? -1 : undefined;
 }
 
 export function handleShortcut(
