@@ -245,25 +245,31 @@ export function textsToLoad(
 
 const maxLineLength = 2000;
 
-export function syntaxRanges(
+type LineRanges = readonly (readonly SyntaxRange[])[];
+
+const maxCachedLines = 100_000;
+const cache = new Map<string, LineRanges>();
+let cachedLines = 0;
+
+function lineRanges(
   highlighter: HighlighterCore,
-  sources: readonly SyntaxSource[],
-): Map<string, SyntaxRange[]> {
-  const ranges = new Map<string, SyntaxRange[]>();
-  for (const { language, lines, keys } of sources) {
-    if (lines.length === 0) {
-      continue;
-    }
-    const tokens = highlighter.codeToTokensBase(lines.join('\n'), {
+  { language, lines }: SyntaxSource,
+): LineRanges {
+  const text = lines.join('\n');
+  const key = `${language}\n${text}`;
+  const cached = cache.get(key);
+  if (cached) {
+    cache.delete(key);
+    cache.set(key, cached);
+    return cached;
+  }
+  const ranges = highlighter
+    .codeToTokensBase(text, {
       lang: language,
       theme: theme.name,
       tokenizeMaxLineLength: maxLineLength,
-    });
-    tokens.forEach((line, index) => {
-      const key = keys[index];
-      if (key === undefined) {
-        return;
-      }
+    })
+    .map((line) => {
       const found: SyntaxRange[] = [];
       let start = 0;
       for (const token of line) {
@@ -277,7 +283,34 @@ export function syntaxRanges(
         }
         start = end;
       }
-      ranges.set(key, found);
+      return found;
+    });
+  cache.set(key, ranges);
+  cachedLines += ranges.length;
+  for (const [oldest, { length }] of cache) {
+    if (cachedLines <= maxCachedLines) {
+      break;
+    }
+    cache.delete(oldest);
+    cachedLines -= length;
+  }
+  return ranges;
+}
+
+export function syntaxRanges(
+  highlighter: HighlighterCore,
+  sources: readonly SyntaxSource[],
+): Map<string, readonly SyntaxRange[]> {
+  const ranges = new Map<string, readonly SyntaxRange[]>();
+  for (const source of sources) {
+    if (source.lines.length === 0) {
+      continue;
+    }
+    lineRanges(highlighter, source).forEach((found, index) => {
+      const key = source.keys[index];
+      if (key !== undefined) {
+        ranges.set(key, found);
+      }
     });
   }
   return ranges;

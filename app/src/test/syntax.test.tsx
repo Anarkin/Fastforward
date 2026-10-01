@@ -421,6 +421,31 @@ suite('Syntax', () => {
     );
   });
 
+  test('tokenizes a text it has colored before only once, keying its lines anew', async () => {
+    const highlighter = await loadLanguages(['typescript']);
+    let tokenized = 0;
+    const counting = {
+      ...highlighter,
+      codeToTokensBase: (
+        ...args: Parameters<typeof highlighter.codeToTokensBase>
+      ) => {
+        tokenized += 1;
+        return highlighter.codeToTokensBase(...args);
+      },
+    };
+    const lines = ['let once = 1;', 'once;'];
+    syntaxRanges(counting, [
+      { language: 'typescript', lines, keys: ['0:0', '0:1'] },
+    ]);
+    const ranges = syntaxRanges(counting, [
+      { language: 'typescript', lines, keys: [undefined, '3:7'] },
+    ]);
+    assert.strictEqual(tokenized, 1);
+    assert.deepStrictEqual(Object.fromEntries(ranges), {
+      '3:7': [{ start: 4, end: 5, kind: 'keyword' }],
+    });
+  });
+
   test('draws the syntax colors inside the changed words, under the search matches', () => {
     assert.strictEqual(
       renderToStaticMarkup(
