@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { DiffLayout } from './shared/protocol';
+import { diffLayouts, type DiffLayout } from './shared/protocol';
 
 export interface Settings {
   readonly collapseMerges: boolean;
@@ -52,6 +52,10 @@ function sameKind(fallback: unknown, value: unknown): boolean {
   return kindOf(fallback) === kindOf(value);
 }
 
+const choices = new Map<string, readonly string[]>([
+  ['diffLayout', diffLayouts],
+]);
+
 function merge(
   defaults: Json,
   overrides: Json,
@@ -62,10 +66,15 @@ function merge(
   for (const [key, value] of Object.entries(overrides)) {
     const name = `${prefix}${key}`;
     const fallback = defaults[key];
+    const allowed = choices.get(name);
     if (!(key in defaults)) {
       problems.push(`Unknown setting "${name}"`);
     } else if (!sameKind(fallback, value)) {
       problems.push(`"${name}" should be ${kindOf(fallback)}`);
+    } else if (allowed && !allowed.some((choice) => choice === value)) {
+      problems.push(
+        `"${name}" should be ${allowed.map((choice) => `"${choice}"`).join(' or ')}`,
+      );
     } else if (isObject(fallback) && isObject(value)) {
       merged[key] = merge(fallback, value, `${name}.`, problems);
     } else {
