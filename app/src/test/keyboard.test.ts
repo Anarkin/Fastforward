@@ -6,7 +6,14 @@ import {
   shownColumns,
 } from '../webview/activeColumn';
 import { changesTreeRows, filesKey } from '../webview/changesTree';
-import { diffScrollTop } from '../webview/diffView';
+import {
+  changeScrollTop,
+  changeStarts,
+  changeStep,
+  diffRows,
+  diffScrollTop,
+} from '../webview/diffView';
+import { parsePatch } from '../webview/diff';
 import { fullyVisible, moveInList } from '../webview/listMoves';
 import { fileChange } from './fixtures';
 
@@ -189,5 +196,71 @@ suite('Diff keys', () => {
     assert.strictEqual(diffScrollTop('End', 0, 400, 2000), 1600);
     assert.strictEqual(diffScrollTop('End', 0, 400, 300), 0);
     assert.strictEqual(diffScrollTop('Enter', 0, 400, 2000), undefined);
+  });
+});
+
+suite('Jumping between changes', () => {
+  test('finds where each run of added or removed lines starts', () => {
+    const rows = diffRows(
+      parsePatch(
+        [
+          'diff --git a/a.ts b/a.ts',
+          '--- a/a.ts',
+          '+++ b/a.ts',
+          '@@ -1,6 +1,6 @@',
+          ' one',
+          '-two',
+          '+2',
+          ' three',
+          ' four',
+          '+five',
+          '',
+        ].join('\n'),
+      ),
+      new Map(),
+      undefined,
+    );
+    assert.deepStrictEqual(
+      changeStarts(rows).map((index) => rows[index]),
+      [
+        {
+          kind: 'line',
+          file: 0,
+          line: {
+            kind: 'removed',
+            oldNumber: 2,
+            newNumber: undefined,
+            text: 'two',
+          },
+        },
+        {
+          kind: 'line',
+          file: 0,
+          line: {
+            kind: 'added',
+            oldNumber: undefined,
+            newNumber: 5,
+            text: 'five',
+          },
+        },
+      ],
+    );
+  });
+
+  test('scrolls to the next or previous change below the header and some context, and no further at either end', () => {
+    const starts = [100, 500, 900];
+    assert.strictEqual(changeScrollTop(starts, 0, 1, 60), 40);
+    assert.strictEqual(changeScrollTop(starts, 40, 1, 60), 440);
+    assert.strictEqual(changeScrollTop(starts, 440, -1, 60), 40);
+    assert.strictEqual(changeScrollTop(starts, 40, -1, 60), undefined);
+    assert.strictEqual(changeScrollTop(starts, 840, 1, 60), undefined);
+    assert.strictEqual(changeScrollTop([30], 100, -1, 60), 0);
+  });
+
+  test('takes j and k, whatever the keyboard layout', () => {
+    assert.strictEqual(changeStep({ key: 'j', code: 'KeyJ' }), 1);
+    assert.strictEqual(changeStep({ key: 'k', code: 'KeyK' }), -1);
+    assert.strictEqual(changeStep({ key: 'о', code: 'KeyJ' }), 1);
+    assert.strictEqual(changeStep({ key: 'x', code: 'KeyX' }), undefined);
   });
 });

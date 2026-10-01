@@ -196,6 +196,43 @@ export function diffScrollTop(
   return Math.max(0, Math.min(bottom, target));
 }
 
+const isChange = (row: DiffRow | undefined) =>
+  row?.kind === 'line' && row.line.kind !== 'context';
+
+export function changeStarts(rows: readonly DiffRow[]): number[] {
+  return rows.flatMap((row, index) =>
+    isChange(row) && !isChange(rows[index - 1]) ? [index] : [],
+  );
+}
+
+const changeMargin = rowHeights.file + 2 * rowHeights.line;
+
+export function changeStep(
+  event: Pick<KeyboardEvent, 'key' | 'code'>,
+): 1 | -1 | undefined {
+  if (event.key === 'j' || event.code === 'KeyJ') {
+    return 1;
+  }
+  if (event.key === 'k' || event.code === 'KeyK') {
+    return -1;
+  }
+  return undefined;
+}
+
+export function changeScrollTop(
+  starts: readonly number[],
+  scrollTop: number,
+  step: 1 | -1,
+  margin = changeMargin,
+): number | undefined {
+  const targets = starts.map((start) => Math.max(0, start - margin));
+  const target =
+    step > 0
+      ? targets.find((top) => top > scrollTop + 1)
+      : targets.findLast((top) => top < scrollTop - 1);
+  return target;
+}
+
 export function lineKeys(rows: readonly DiffRow[]): (string | undefined)[] {
   const next = new Map<number, number>();
   return rows.map((row) => {
@@ -511,12 +548,22 @@ export function DiffView({
           ) {
             return;
           }
-          const top = diffScrollTop(
-            event.key,
-            event.currentTarget.scrollTop,
-            event.currentTarget.clientHeight,
-            virtualizer.getTotalSize(),
-          );
+          const step = changeStep(event);
+          const top =
+            step === undefined
+              ? diffScrollTop(
+                  event.key,
+                  event.currentTarget.scrollTop,
+                  event.currentTarget.clientHeight,
+                  virtualizer.getTotalSize(),
+                )
+              : changeScrollTop(
+                  changeStarts(rows).map(
+                    (index) => virtualizer.measurementsCache[index]?.start ?? 0,
+                  ),
+                  event.currentTarget.scrollTop,
+                  step,
+                );
           if (top !== undefined) {
             event.preventDefault();
             virtualizer.scrollToOffset(top);
