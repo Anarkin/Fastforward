@@ -1589,6 +1589,26 @@ suite('View', function () {
       }
     });
 
+    test('checks out a remote branch as a new branch, even with a tag of its name', async () => {
+      await repository.git('remote', 'add', 'origin', repository.root);
+      await repository.git('update-ref', 'refs/remotes/origin/clash', 'main~1');
+      await repository.git('tag', 'origin/clash', fixture.a);
+      try {
+        await connection.receive({
+          type: 'checkout',
+          root: repository.root,
+          target: { kind: 'remote', name: 'origin/clash' },
+        });
+        assert.strictEqual(page.last('repository')?.head, 'clash');
+        assert.deepStrictEqual(await repository.resolve('clash'), [fixture.b]);
+      } finally {
+        await restore();
+        await repository.git('branch', '-D', 'clash').catch(() => '');
+        await repository.git('tag', '-d', 'origin/clash');
+        await repository.git('remote', 'remove', 'origin');
+      }
+    });
+
     test('fast-forwards the local branch of a remote branch that is ahead', async () => {
       await repository.git('remote', 'add', 'origin', repository.root);
       await repository.git('branch', 'behind', 'main~1');
