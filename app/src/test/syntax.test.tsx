@@ -214,6 +214,32 @@ suite('Syntax', () => {
     );
   });
 
+  test('colors a hunk of a file with CRLF line ends as its whole text has it', async () => {
+    const crlfPatch = [
+      'diff --git a/a.ts b/a.ts',
+      'index 1111111111111111111111111111111111111111..2222222222222222222222222222222222222222 100644',
+      '--- a/a.ts',
+      '+++ b/a.ts',
+      '@@ -3,2 +3,2 @@',
+      '-old = 1;\r',
+      '+new = 2;\r',
+      ' end */\r',
+      '',
+    ].join('\n');
+    const texts = new Map([
+      ['old:a.ts', '/* start\r\nmiddle\r\nold = 1;\r\nend */\r\n'],
+      ['new:a.ts', '/* start\r\nmiddle\r\nnew = 2;\r\nend */\r\n'],
+    ]);
+    assert.deepStrictEqual(
+      await colored(parsePatch(crlfPatch), undefined, texts),
+      {
+        '0:0': ['comment old = 1;'],
+        '0:1': ['comment new = 2;'],
+        '0:2': ['comment end */'],
+      },
+    );
+  });
+
   test('colors a side from its hunks alone when they are too far into its whole text', () => {
     const far = 5001;
     const text = Array.from({ length: far + 1 }, (_, index) =>
