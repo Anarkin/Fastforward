@@ -1,3 +1,4 @@
+import type { Positions } from './history/merges';
 import type { RefInfo, BookmarkRef } from './shared/protocol';
 import { findRef, hasRef, refOf, withoutRemote } from './shared/refNames';
 
@@ -39,7 +40,7 @@ export function detachedHead(head: Head | undefined): string | undefined {
 
 export function decorations(
   refCounts: ReadonlyMap<string, number>,
-  positions: ReadonlyMap<string, number>,
+  positions: Pick<Positions, 'get'>,
 ): [number, number][] {
   const result: [number, number][] = [];
   for (const [commit, count] of refCounts) {

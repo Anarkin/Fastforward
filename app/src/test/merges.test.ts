@@ -1,5 +1,10 @@
 import * as assert from 'node:assert';
-import { headsOf, mergesHiding, showHistory } from '../history/merges';
+import {
+  headsOf,
+  mergesHiding,
+  positionsOf,
+  showHistory,
+} from '../history/merges';
 
 const history = [
   { hash: 'm', parents: ['a', 'b2'] },
@@ -54,6 +59,37 @@ suite('Merges shown', () => {
       shown.map((entry) => entry.hash),
       ['m', 'a', 'b1', 'c'],
     );
+  });
+
+  test('keeps the parents a shallow history leaves out, counting them hidden behind a merge', () => {
+    const shallow = [
+      { hash: 'm', parents: ['a', 'x'] },
+      { hash: 'a', parents: ['y'] },
+    ];
+    assert.deepStrictEqual(
+      showHistory(shallow, new Set(['m']), () => false),
+      [
+        { hash: 'm', parents: ['a'], merge: 'collapsed', hidden: 1 },
+        { hash: 'a', parents: ['y'] },
+      ],
+    );
+    assert.deepStrictEqual(
+      showHistory(shallow, new Set(['m']), () => true)[0].parents,
+      ['a', 'x'],
+    );
+  });
+});
+
+suite('Positions shown', () => {
+  test('places each shown commit, and none hidden or outside the history', () => {
+    const shown = showHistory(history, new Set(['m']), () => false);
+    const positions = positionsOf(history, shown);
+    assert.deepStrictEqual(
+      ['m', 'a', 'c', 'b1', 'z'].map((hash) => positions.get(hash)),
+      [0, 1, 2, undefined, undefined],
+    );
+    assert.ok(positions.has('c'));
+    assert.ok(!positions.has('b2'));
   });
 });
 

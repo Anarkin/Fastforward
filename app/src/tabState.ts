@@ -4,7 +4,9 @@ import { Graph } from './history/graph';
 import {
   headsOf,
   mergesHiding,
+  positionsOf,
   showHistory,
+  type Positions,
   type ShownEntry,
 } from './history/merges';
 import { noNavigation, reachable, type Navigation } from './history/navigation';
@@ -42,7 +44,7 @@ export interface TabState {
   refCounts: Map<string, number>;
   toggledMerges: Set<string>;
   history: readonly ShownEntry[];
-  positions: Map<string, number>;
+  positions: Positions;
   generation: number;
   graph: Graph;
   shownStale: boolean;
@@ -155,7 +157,7 @@ export function layOutHistory(
     (hash) => collapse === tab.toggledMerges.has(hash),
   );
   tab.history = history;
-  tab.positions = new Map(history.map((entry, index) => [entry.hash, index]));
+  tab.positions = positionsOf(tab.fullHistory, history);
   tab.graph = new Graph(history, { head });
   tab.shownStale = false;
   tab.index = positionOf(tab, tab.hash);

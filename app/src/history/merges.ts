@@ -5,13 +5,46 @@ export interface ShownEntry extends HistoryEntry {
   readonly hidden?: number;
 }
 
+export interface Positions {
+  get(hash: string): number | undefined;
+  has(hash: string): boolean;
+}
+
+export function positionsOf(
+  history: readonly HistoryEntry[],
+  shown: readonly ShownEntry[],
+): Positions {
+  const { index } = linksOf(history);
+  const positions = new Int32Array(index.size).fill(-1);
+  shown.forEach((entry, position) => {
+    const at = index.get(entry.hash);
+    if (at !== undefined) {
+      positions[at] = position;
+    }
+  });
+  const get = (hash: string) => {
+    const at = index.get(hash);
+    const position = at === undefined ? -1 : positions[at];
+    return position === -1 ? undefined : position;
+  };
+  return { get, has: (hash) => get(hash) !== undefined };
+}
+
 export function headsOf(history: readonly HistoryEntry[]): Set<string> {
-  const parents = new Set(history.flatMap((entry) => entry.parents));
-  return new Set(
-    history
-      .filter((entry) => !parents.has(entry.hash))
-      .map((entry) => entry.hash),
-  );
+  const { parents } = linksOf(history);
+  const hasChild = new Uint8Array(history.length);
+  for (const parent of parents) {
+    if (parent < history.length) {
+      hasChild[parent] = 1;
+    }
+  }
+  const heads = new Set<string>();
+  history.forEach((entry, index) => {
+    if (!hasChild[index]) {
+      heads.add(entry.hash);
+    }
+  });
+  return heads;
 }
 
 export function mergesHiding(
@@ -20,7 +53,11 @@ export function mergesHiding(
   target: string,
 ): string[] {
   const children = childrenOf(history);
-  const parents = parentsOf(history);
+  const { index } = linksOf(history);
+  const firstParent = (hash: string) => {
+    const at = index.get(hash);
+    return at === undefined ? undefined : history[at]?.parents[0];
+  };
   const cameFrom = new Map<string, string>();
   const queue = [target];
   for (let next = queue.shift(); next !== undefined; next = queue.shift()) {
@@ -39,7 +76,7 @@ export function mergesHiding(
         if (parent === undefined) {
           break;
         }
-        if (parents.get(at)?.[0] !== parent) {
+        if (firstParent(at) !== parent) {
           merges.push(at);
         }
         at = parent;
@@ -77,20 +114,44 @@ function childrenOf(
   return result;
 }
 
-const knownParents = new WeakMap<
-  readonly HistoryEntry[],
-  ReadonlyMap<string, readonly string[]>
->();
+// Parents outside the history, as a shallow clone has, get the indices after
+// its entries, so they can be marked shown like any commit
+interface Links {
+  readonly index: ReadonlyMap<string, number>;
+  readonly starts: Int32Array;
+  readonly parents: Int32Array;
+}
 
-function parentsOf(
-  history: readonly HistoryEntry[],
-): ReadonlyMap<string, readonly string[]> {
-  const known = knownParents.get(history);
+const knownLinks = new WeakMap<readonly HistoryEntry[], Links>();
+
+function linksOf(history: readonly HistoryEntry[]): Links {
+  const known = knownLinks.get(history);
   if (known) {
     return known;
   }
-  const result = new Map(history.map((entry) => [entry.hash, entry.parents]));
-  knownParents.set(history, result);
+  const index = new Map<string, number>();
+  let count = 0;
+  history.forEach((entry, at) => {
+    index.set(entry.hash, at);
+    count += entry.parents.length;
+  });
+  const starts = new Int32Array(history.length + 1);
+  const parents = new Int32Array(count);
+  let next = 0;
+  history.forEach((entry, at) => {
+    starts[at] = next;
+    for (const parent of entry.parents) {
+      let parentAt = index.get(parent);
+      if (parentAt === undefined) {
+        parentAt = index.size;
+        index.set(parent, parentAt);
+      }
+      parents[next++] = parentAt;
+    }
+  });
+  starts[history.length] = next;
+  const result = { index, starts, parents };
+  knownLinks.set(history, result);
   return result;
 }
 
@@ -99,64 +160,92 @@ export function showHistory(
   tips: ReadonlySet<string>,
   isExpanded: (hash: string) => boolean,
 ): ShownEntry[] {
-  const shown = new Set(tips);
-  for (const entry of history) {
-    if (!shown.has(entry.hash)) {
-      continue;
-    }
-    const parents =
-      entry.parents.length > 1 && isExpanded(entry.hash)
-        ? entry.parents
-        : entry.parents.slice(0, 1);
-    for (const parent of parents) {
-      shown.add(parent);
+  const links = linksOf(history);
+  const { index, starts, parents } = links;
+  const shown = new Uint8Array(index.size);
+  for (const tip of tips) {
+    const at = index.get(tip);
+    if (at !== undefined) {
+      shown[at] = 1;
     }
   }
-  const hidden = countHidden(history, shown);
-  return history.flatMap((entry): ShownEntry[] => {
-    if (!shown.has(entry.hash)) {
-      return [];
+  const expanded = new Uint8Array(history.length);
+  for (let at = 0; at < history.length; at++) {
+    if (!shown[at]) {
+      continue;
     }
-    const parents = entry.parents.filter((parent) => shown.has(parent));
-    if (entry.parents.length < 2) {
-      return [{ hash: entry.hash, parents }];
+    const first = starts[at];
+    let end = starts[at + 1];
+    if (end - first > 1) {
+      if (isExpanded(history[at].hash)) {
+        expanded[at] = 1;
+      } else {
+        end = first + 1;
+      }
     }
-    return [
-      {
-        hash: entry.hash,
-        parents,
-        merge: isExpanded(entry.hash) ? 'expanded' : 'collapsed',
-        hidden: hidden.get(entry.hash),
-      },
-    ];
-  });
+    for (let parent = first; parent < end; parent++) {
+      shown[parents[parent]] = 1;
+    }
+  }
+  const hidden = countHidden(links, history.length, shown);
+  const result: ShownEntry[] = [];
+  for (let at = 0; at < history.length; at++) {
+    if (!shown[at]) {
+      continue;
+    }
+    const entry = history[at];
+    const first = starts[at];
+    const end = starts[at + 1];
+    let allShown = true;
+    for (let parent = first; parent < end; parent++) {
+      allShown &&= shown[parents[parent]] === 1;
+    }
+    const shownParents = allShown
+      ? entry.parents
+      : entry.parents.filter((_, parent) => shown[parents[first + parent]]);
+    result.push(
+      end - first < 2
+        ? { hash: entry.hash, parents: shownParents }
+        : {
+            hash: entry.hash,
+            parents: shownParents,
+            merge: expanded[at] ? 'expanded' : 'collapsed',
+            hidden: hidden[at] || undefined,
+          },
+    );
+  }
+  return result;
 }
 
 function countHidden(
-  history: readonly HistoryEntry[],
-  shown: ReadonlySet<string>,
-): Map<string, number> {
-  const parents = parentsOf(history);
-  const counted = new Set<string>();
-  const counts = new Map<string, number>();
-  for (let index = history.length - 1; index >= 0; index--) {
-    const entry = history[index];
-    if (!shown.has(entry.hash) || entry.parents.length < 2) {
+  { starts, parents }: Links,
+  length: number,
+  shown: Uint8Array,
+): Int32Array {
+  const counted = new Uint8Array(shown.length);
+  const counts = new Int32Array(length);
+  const stack: number[] = [];
+  for (let at = length - 1; at >= 0; at--) {
+    if (!shown[at] || starts[at + 1] - starts[at] < 2) {
       continue;
     }
     let count = 0;
-    const stack = entry.parents.slice(1);
+    for (let parent = starts[at] + 1; parent < starts[at + 1]; parent++) {
+      stack.push(parents[parent]);
+    }
     for (let next = stack.pop(); next !== undefined; next = stack.pop()) {
-      if (shown.has(next) || counted.has(next)) {
+      if (shown[next] || counted[next]) {
         continue;
       }
-      counted.add(next);
+      counted[next] = 1;
       count++;
-      stack.push(...(parents.get(next) ?? []));
+      if (next < length) {
+        for (let parent = starts[next]; parent < starts[next + 1]; parent++) {
+          stack.push(parents[parent]);
+        }
+      }
     }
-    if (count > 0) {
-      counts.set(entry.hash, count);
-    }
+    counts[at] = count;
   }
   return counts;
 }
