@@ -75,7 +75,7 @@ type FileHeaderRow = Extract<DiffRow, { kind: 'file' }>;
 type MeasuredKind = 'error' | 'skeleton' | 'skeletonLines';
 
 const rowHeights: Record<Exclude<DiffRow['kind'], MeasuredKind>, number> = {
-  file: 28,
+  file: 22,
   large: 36,
   binary: 28,
   hunk: 12,
