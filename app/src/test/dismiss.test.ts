@@ -1,5 +1,9 @@
 import * as assert from 'node:assert';
-import { listenForDismiss, nextMenuItem } from '../webview/contextMenu';
+import {
+  claimsMenuKey,
+  listenForDismiss,
+  nextMenuItem,
+} from '../webview/contextMenu';
 
 function keyDown(key: string): Event {
   return Object.assign(new Event('keydown', { cancelable: true }), { key });
@@ -117,5 +121,20 @@ suite('Menu keys', () => {
     assert.strictEqual(nextMenuItem('End', 0, 3), 2);
     assert.strictEqual(nextMenuItem('Enter', 0, 3), undefined);
     assert.strictEqual(nextMenuItem('ArrowDown', -1, 0), undefined);
+  });
+
+  test('keeps every arrow and Tab to itself, so none moves between the columns behind it', () => {
+    for (const key of [
+      'ArrowRight',
+      'ArrowLeft',
+      'ArrowUp',
+      'ArrowDown',
+      'Tab',
+    ]) {
+      assert.ok(claimsMenuKey(key), key);
+    }
+    for (const key of ['Enter', 'a', 'Escape']) {
+      assert.ok(!claimsMenuKey(key), key);
+    }
   });
 });

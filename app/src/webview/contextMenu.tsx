@@ -218,17 +218,20 @@ export function onMenuKeyDown(
     items[next].focus();
   } else if (event.key === 'ArrowRight') {
     const item = items[current];
-    if (item?.getAttribute('aria-haspopup') !== 'menu') {
-      return;
+    if (item?.getAttribute('aria-haspopup') === 'menu') {
+      item.click();
     }
-    item.click();
   } else if (event.key === 'ArrowLeft' && onBack) {
     onBack();
-  } else if (event.key !== 'Tab' && event.key !== 'ArrowLeft') {
+  } else if (!claimsMenuKey(event.key)) {
     return;
   }
   event.preventDefault();
   event.stopPropagation();
+}
+
+export function claimsMenuKey(key: string): boolean {
+  return key === 'Tab' || key.startsWith('Arrow');
 }
 
 export function useDismiss(
