@@ -643,6 +643,39 @@ suite('View', function () {
       assert.strictEqual(page.last('error'), undefined);
     });
 
+    test('drops the lookup of a hash a newer one replaced', async () => {
+      const held = gate();
+      let waiting = false;
+      const older = fixture.b.slice(0, 4);
+      const newer = fixture.b.slice(0, 5);
+      stubMethod(
+        fastforward,
+        'commitsStartingWith',
+        async (original, ...args) => {
+          const found = await original(...args);
+          if (args[1] === older) {
+            waiting = true;
+            await held.opened;
+          }
+          return found;
+        },
+      );
+      const replaced = connection.receive({
+        type: 'lookupHash',
+        root: repository.root,
+        query: older,
+      });
+      await waitFor(() => waiting, 'the older lookup');
+      await connection.receive({
+        type: 'lookupHash',
+        root: repository.root,
+        query: newer,
+      });
+      held.open();
+      await replaced;
+      assert.strictEqual(page.last('hashLookup')?.query, newer);
+    });
+
     test('drops the result of a search a newer one replaced once it was found', async () => {
       const held = gate();
       let waiting = false;
