@@ -43,3 +43,21 @@ export async function remoteDefaultBranches(
     .filter((line) => line.startsWith('refs/remotes/'))
     .map((line) => line.slice('refs/remotes/'.length));
 }
+
+export async function onNoRef(
+  gitPath: string,
+  cwd: string,
+  commit: string,
+): Promise<string[]> {
+  const output = await runGit(gitPath, cwd, [
+    'rev-list',
+    commit,
+    '--not',
+    '--branches',
+    '--remotes',
+    '--tags',
+    'HEAD',
+    '--',
+  ]);
+  return output.split('\n').filter(Boolean);
+}
