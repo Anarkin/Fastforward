@@ -13,10 +13,14 @@ export async function repositoryRoot(
   folder: string,
 ): Promise<string | undefined> {
   try {
-    const up = (
-      await runGit(gitPath, folder, ['rev-parse', '--show-cdup'])
-    ).trim();
-    return path.resolve(folder, up);
+    const [inside, up = ''] = (
+      await runGit(gitPath, folder, [
+        'rev-parse',
+        '--is-inside-work-tree',
+        '--show-cdup',
+      ])
+    ).split('\n');
+    return inside === 'true' ? path.resolve(folder, up) : undefined;
   } catch {
     return undefined;
   }
