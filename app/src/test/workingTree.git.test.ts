@@ -5,7 +5,11 @@ import { aheadBehind, remoteDefaultBranches } from '../git/branches';
 import { showPatch } from '../git/diff';
 import { listTree, maxFileSize, readBlobs, readFile } from '../git/files';
 import { headCommit, listHistory } from '../git/history';
-import { workingTreeFiles, workingTreePatch } from '../git/workingTree';
+import {
+  withoutTouched,
+  workingTreeFiles,
+  workingTreePatch,
+} from '../git/workingTree';
 import { isLargeChange } from '../shared/protocol';
 import { parsePatch } from '../webview/diff';
 import {
@@ -589,5 +593,52 @@ suite('Blobs', function () {
     } finally {
       removeFolder(folder);
     }
+  });
+});
+
+suite('Files touched but unchanged', function () {
+  this.timeout(20_000);
+  let repository: TempRepository;
+  let blob: string;
+  const zero = '0'.repeat(40);
+  const modified = (file: string, object: string) => ({
+    raw: `:100644 100644 ${object} ${zero} M`,
+    file: {
+      status: 'M' as const,
+      path: file,
+      oldPath: undefined,
+      insertions: 0,
+      deletions: 0,
+    },
+  });
+
+  suiteSetup(async () => {
+    repository = await tempRepository(tempFolder('touched'));
+    await repository.commit('first', { 'a.txt': 'one\n' });
+    [blob] = await repository.resolve('HEAD:a.txt');
+  });
+
+  suiteTeardown(() => removeFolder(repository.root));
+
+  test('leaves out a file only touched, past one whose name starts with a quote', async () => {
+    const files = await withoutTouched(repository.gitPath, repository.root, [
+      modified('a.txt', blob),
+      modified('"notes".md', blob),
+    ]);
+    assert.deepStrictEqual(
+      files.map((file) => file.path),
+      ['"notes".md'],
+    );
+  });
+
+  test('keeps every file as modified when one is gone before it is read', async () => {
+    const files = await withoutTouched(repository.gitPath, repository.root, [
+      modified('a.txt', blob),
+      modified('gone.txt', blob),
+    ]);
+    assert.deepStrictEqual(
+      files.map((file) => file.path),
+      ['a.txt', 'gone.txt'],
+    );
   });
 });
