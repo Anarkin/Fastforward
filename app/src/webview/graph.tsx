@@ -1,7 +1,11 @@
-import type { GraphLine, GraphRow } from '../shared/protocol';
+import {
+  graphColors,
+  maxLanes,
+  type GraphLine,
+  type GraphRow,
+} from '../shared/protocol';
 
 const laneWidth = 12;
-const maxLanes = 12;
 const dotY = 15;
 const dotRadius = 4;
 const turn = 20;
@@ -28,7 +32,7 @@ function x(lane: number): number {
 }
 
 function color(index: number): string {
-  return colors[index % colors.length];
+  return colors[index % graphColors];
 }
 
 function path(line: GraphLine, height: number): string {
