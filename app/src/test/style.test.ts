@@ -75,6 +75,10 @@ suite('Style', () => {
     );
   });
 
+  test('draws a tab in the code as wide as four spaces', () => {
+    assert.match(declarationsOf('.diff-line .code'), /tab-size: 4;/);
+  });
+
   test('writes the title of the checked-out commit in bold', () => {
     assert.match(
       declarationsOf('.commit.checked-out .subject'),
