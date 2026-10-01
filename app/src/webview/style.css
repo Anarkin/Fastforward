@@ -1063,18 +1063,25 @@ body.resizing {
   );
 }
 
+.diff-line.added.compared,
+.diff-line.removed.compared {
+  background: none;
+}
+
+.diff-line.added.compared .number,
 .diff-line .word-added {
   background: color-mix(
     in srgb,
-    var(--color-added) var(--color-added-word),
+    var(--color-added) var(--color-added-line),
     transparent
   );
 }
 
+.diff-line.removed.compared .number,
 .diff-line .word-removed {
   background: color-mix(
     in srgb,
-    var(--color-deleted) var(--color-deleted-word),
+    var(--color-deleted) var(--color-deleted-line),
     transparent
   );
 }
