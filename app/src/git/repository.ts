@@ -35,14 +35,17 @@ export async function readHead(
   root: string,
 ): Promise<Head | undefined> {
   const [branch, commit] = await Promise.all([
-    runGit(gitPath, root, ['symbolic-ref', '-q', '--short', 'HEAD'], {
+    runGit(gitPath, root, ['symbolic-ref', '-q', 'HEAD'], {
       okExitCodes: [0, 1],
     }),
     runGit(gitPath, root, ['rev-parse', '-q', '--verify', 'HEAD^{commit}'], {
       okExitCodes: [0, 1],
     }),
   ]);
-  const name = branch.trim() || undefined;
+  const ref = branch.trim();
+  const name = ref.startsWith('refs/heads/')
+    ? ref.slice('refs/heads/'.length)
+    : undefined;
   const hash = commit.trim() || undefined;
   return name || hash ? { name, commit: hash } : undefined;
 }
