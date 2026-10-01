@@ -1,4 +1,9 @@
-import type { GraphLine, GraphRow } from '../shared/protocol';
+import {
+  graphColors,
+  maxLanes,
+  type GraphLine,
+  type GraphRow,
+} from '../shared/protocol';
 import type { ShownEntry } from './merges';
 
 interface Lanes {
@@ -33,10 +38,21 @@ function allocate(lanes: Lanes, hash: string): number {
 }
 
 function step(lanes: Lanes, entry: ShownEntry, drawLines = true): GraphRow {
-  const lines: GraphLine[] = [];
-  const line = (from: number, to: number, color: number, bottom: boolean) => {
-    lines.push(
-      lanes.dashed[from]
+  const lines = new Map<string, GraphLine>();
+  const line = (
+    lane: number,
+    toLane: number,
+    color: number,
+    bottom: boolean,
+  ) => {
+    const from = Math.min(lane, maxLanes - 1);
+    const to = Math.min(toLane, maxLanes - 1);
+    const dashed = lanes.dashed[lane];
+    const key = `${from} ${to} ${color % graphColors} ${bottom} ${dashed}`;
+    lines.delete(key);
+    lines.set(
+      key,
+      dashed
         ? { from, to, color, bottom, dashed: true }
         : { from, to, color, bottom },
     );
@@ -96,8 +112,14 @@ function step(lanes: Lanes, entry: ShownEntry, drawLines = true): GraphRow {
     lanes.dashed.pop();
   }
   return entry.hash === workingTree
-    ? { lane, color, lines, workingTree: true }
-    : { lane, color, lines, merge: entry.merge, hidden: entry.hidden };
+    ? { lane, color, lines: [...lines.values()], workingTree: true }
+    : {
+        lane,
+        color,
+        lines: [...lines.values()],
+        merge: entry.merge,
+        hidden: entry.hidden,
+      };
 }
 
 function noLanes(): Lanes {

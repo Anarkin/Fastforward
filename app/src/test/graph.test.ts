@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { Graph } from '../history/graph';
-import type { GraphRow } from '../shared/protocol';
+import { graphColors, maxLanes, type GraphRow } from '../shared/protocol';
 
 function describe(row: GraphRow): string {
   const lines = row.lines
@@ -154,6 +154,36 @@ suite('Graph', () => {
     const graph = new Graph(history);
     assert.strictEqual(graph.rows(0, 100).length, 100);
     assert.strictEqual(graph.rows(99, 100).length, 100);
+  });
+
+  test('draws lanes past the last one shown in it, once per color', () => {
+    const tips = Array.from({ length: 40 }, (_, index) => ({
+      hash: `t${index}`,
+      parents: ['c'],
+    }));
+    const row = new Graph([...tips, { hash: 'c', parents: [] }]).rows(39, 1)[0];
+    assert.strictEqual(row.lane, 39);
+    assert.ok(
+      row.lines.every((line) => line.from < maxLanes && line.to < maxLanes),
+    );
+    const drawn = (bottom: boolean) =>
+      row.lines
+        .filter((line) => line.bottom === bottom)
+        .map((line) => `${line.from}>${line.to}:${line.color % graphColors}`);
+    const lanes = Array.from({ length: maxLanes - 1 }, (_, lane) => lane);
+    const past = Array.from(
+      { length: graphColors },
+      (_, color) => `${maxLanes - 1}>${maxLanes - 1}:${color}`,
+    );
+    for (const bottom of [false, true]) {
+      assert.deepStrictEqual(
+        drawn(bottom).toSorted(),
+        [
+          ...lanes.map((lane) => `${lane}>${lane}:${(lane + 1) % graphColors}`),
+          ...past,
+        ].toSorted(),
+      );
+    }
   });
 
   test('leads the working tree to HEAD, moving what is built on it aside', () => {

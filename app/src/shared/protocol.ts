@@ -114,6 +114,9 @@ export interface CommitInfo {
   readonly commitDate: number;
 }
 
+export const maxLanes = 12;
+export const graphColors = 8;
+
 export interface GraphLine {
   readonly from: number;
   readonly to: number;
