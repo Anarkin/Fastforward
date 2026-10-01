@@ -80,6 +80,7 @@ interface Tab extends TabState {
   isRepository: boolean;
   fetching: Promise<Fetched> | undefined;
   fetchFailed: boolean;
+  diffRequest: number;
 }
 
 export interface Host {
@@ -666,6 +667,7 @@ export class FastforwardView {
         isRepository: false,
         fetching: undefined,
         fetchFailed: false,
+        diffRequest: 0,
       };
       this.tabStates.set(root, tab);
     }
@@ -1245,8 +1247,11 @@ export class FastforwardView {
     hash: string,
     refreshing = false,
   ): Promise<void> {
-    const { path: file } = context.tab;
-    const stale = () => context.tab.hash !== hash || context.tab.path !== file;
+    const { tab } = context;
+    const { path: file } = tab;
+    const request = ++tab.diffRequest;
+    const stale = () =>
+      tab.diffRequest !== request || tab.hash !== hash || tab.path !== file;
     const change =
       file === undefined ? undefined : context.tab.changedFiles.get(file);
     if (file !== undefined && !change) {

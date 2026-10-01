@@ -2147,6 +2147,56 @@ suite('View', function () {
       });
     });
 
+    test('shows the diff of the last entire file choice when an earlier one answers last', async () => {
+      const long = await tempRepository(path.join(folder, 'long-raced'));
+      await long.commit('first', { 'a.txt': fortyLines(-1) });
+      await long.commit('second', { 'a.txt': fortyLines(19) });
+      const [second] = await long.resolve('HEAD');
+      await withView(log, [long.root], async (view) => {
+        await view.connection.receive({ type: 'pinEntireFile', pinned: false });
+        await view.connection.receive({
+          type: 'selectCommit',
+          root: long.root,
+          hash: second,
+        });
+        await view.connection.receive({
+          type: 'selectFile',
+          root: long.root,
+          hash: second,
+          path: 'a.txt',
+        });
+        const held = gate();
+        let waiting = false;
+        stubMethod<string>(view.view, 'patchOf', async (original, ...args) => {
+          const [, , scope] = args;
+          if (
+            typeof scope === 'object' &&
+            scope !== null &&
+            'entireFile' in scope &&
+            scope.entireFile === true
+          ) {
+            waiting = true;
+            await held.opened;
+          }
+          return original(...args);
+        });
+        const shown = view.connection.receive({
+          type: 'showEntireFile',
+          root: long.root,
+          entire: true,
+        });
+        await waitFor(() => waiting, 'the entire file');
+        await view.connection.receive({
+          type: 'showEntireFile',
+          root: long.root,
+          entire: false,
+        });
+        held.open();
+        await shown;
+        assert.doesNotMatch(view.page.last('diff')?.patch ?? '', /^ line 1$/m);
+      });
+    });
+
     test('ignores whitespace by default, and shows changes to it once asked, remembering that', async () => {
       const spaced = await tempRepository(path.join(folder, 'spaced'));
       await spaced.commit('first', { 'a.txt': 'one\ntwo\n' });
