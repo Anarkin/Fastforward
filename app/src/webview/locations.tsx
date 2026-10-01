@@ -49,27 +49,48 @@ export interface SearchGroup {
   readonly more: number;
 }
 
+export interface RefGroup {
+  readonly kind: RefKind;
+  readonly title: string;
+  readonly refs: readonly RefInfo[];
+  readonly names: readonly string[];
+}
+
+export function indexRefs(refs: readonly RefInfo[]): RefGroup[] {
+  return groups.map((group) => {
+    const sorted = refs
+      .filter((ref) => ref.kind === group.kind)
+      .toSorted(byName);
+    return {
+      ...group,
+      refs: sorted,
+      names: sorted.map((ref) => ref.name.toLowerCase()),
+    };
+  });
+}
+
 export function searchRefs(
-  refs: readonly RefInfo[],
+  index: readonly RefGroup[],
   query: string,
   limit = maxResults,
 ): SearchGroup[] {
   const needle = query.trim().toLowerCase();
-  return groups.map((group) => {
-    if (!needle) {
-      return { ...group, refs: [], more: 0 };
+  return index.map(({ kind, title, refs, names }) => {
+    const found: RefInfo[] = [];
+    let more = 0;
+    if (needle) {
+      for (const [i, name] of names.entries()) {
+        if (!name.includes(needle)) {
+          continue;
+        }
+        if (found.length < limit) {
+          found.push(refs[i]);
+        } else {
+          more++;
+        }
+      }
     }
-    const matches = refs
-      .filter(
-        (ref) =>
-          ref.kind === group.kind && ref.name.toLowerCase().includes(needle),
-      )
-      .toSorted(byName);
-    return {
-      ...group,
-      refs: matches.slice(0, limit),
-      more: Math.max(0, matches.length - limit),
-    };
+    return { kind, title, refs: found, more };
   });
 }
 
@@ -324,19 +345,10 @@ export function LocationsPopup({
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => input.current?.select(), []);
   const refs = useMemo(() => repository?.refs ?? [], [repository]);
-  const search = useMemo(() => searchRefs(refs, query), [refs, query]);
+  const index = useMemo(() => indexRefs(refs), [refs]);
+  const search = useMemo(() => searchRefs(index, query), [index, query]);
   const detached = useContext(DetachedHead);
   const pinned = pinnedRefs(bookmarks, refs, repository?.head, detached, query);
-  const byKind = useMemo(
-    () =>
-      new Map(
-        groups.map((group) => [
-          group.kind,
-          refs.filter((ref) => ref.kind === group.kind),
-        ]),
-      ),
-    [refs],
-  );
   const hash = hashQuery(query);
   useEffect(() => {
     if (!hash) {
@@ -465,15 +477,13 @@ export function LocationsPopup({
         {query && !hash && nothingFound && (
           <div className="locations-empty">No matches</div>
         )}
-        {search.map((group) =>
+        {search.map((group, i) =>
           query && group.refs.length === 0 ? null : (
             <section key={group.kind} className="locations-group">
               <GroupHeading
                 title={group.title}
                 count={
-                  query
-                    ? group.refs.length + group.more
-                    : (byKind.get(group.kind) ?? []).length
+                  query ? group.refs.length + group.more : index[i].refs.length
                 }
               />
               <div className="locations-list">
@@ -487,10 +497,7 @@ export function LocationsPopup({
                     onJump={jump}
                   />
                 ) : (
-                  <RefTree
-                    refs={byKind.get(group.kind) ?? []}
-                    onSelect={jump}
-                  />
+                  <RefTree refs={index[i].refs} onSelect={jump} />
                 )}
               </div>
             </section>
