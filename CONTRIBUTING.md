@@ -17,4 +17,4 @@
 
 ## Testing
 
-- `npm run verify:fast` leaves out the tests that need git repositories, which are named `*.git.test.ts`, and the ones that start the app, which are named `*.electron.test.ts`; run the full `npm run verify` before committing, and after changing code those tests cover: the Git access, the view and the app
+- `npm run verify:fast` leaves out the tests that need git repositories, which are named `*.git.test.ts`, and the ones that start the app, which are named `*.electron.test.ts`; run the full `npm run verify` only when justified
