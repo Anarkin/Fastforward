@@ -8,11 +8,18 @@ import type {
   ToWebviewOf,
 } from '../shared/protocol';
 import { useDismiss } from './contextMenu';
-import { BackIcon, ForwardIcon, RefreshIcon } from './icons';
+import { BackIcon, ForwardIcon, PinIcon, RefreshIcon } from './icons';
 import { LocationsPopup } from './locations';
 import { useShortcuts } from './shortcuts';
 
 const holdDelay = 400;
+
+function autoFetchTitle(on: boolean, minutes: number): string {
+  const every = minutes === 1 ? 'every minute' : `every ${minutes} minutes`;
+  return on
+    ? `Fetching ${every}; unpin to stop`
+    : `Pin: fetch every repository ${every}`;
+}
 
 export function NavButtons({
   back,
@@ -20,12 +27,18 @@ export function NavButtons({
   onNavigate,
   fetching,
   onFetch,
+  autoFetch,
+  autoFetchMinutes,
+  onAutoFetch,
 }: {
   back: readonly NavigationEntry[];
   forward: readonly NavigationEntry[];
   onNavigate: (direction: Direction, steps: number) => void;
   fetching: boolean;
   onFetch: () => void;
+  autoFetch: boolean;
+  autoFetchMinutes: number;
+  onAutoFetch: (on: boolean) => void;
 }) {
   return (
     <div className="nav-buttons">
@@ -45,6 +58,16 @@ export function NavButtons({
           <RefreshIcon />
         </span>
       </button>
+      {autoFetchMinutes > 0 && (
+        <button
+          className={`nav-button toggle ${autoFetch ? 'active' : ''}`}
+          title={autoFetchTitle(autoFetch, autoFetchMinutes)}
+          aria-pressed={autoFetch}
+          onClick={() => onAutoFetch(!autoFetch)}
+        >
+          <PinIcon />
+        </button>
+      )}
     </div>
   );
 }

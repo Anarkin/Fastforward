@@ -31,6 +31,8 @@ suite('Storage', () => {
       ignoreWhitespace: defaults.ignoreWhitespace,
       diffLayout: defaults.diffLayout,
       showAllFiles: defaults.showAllFiles,
+      autoFetch: defaults.autoFetch,
+      autoFetchMinutes: defaults.autoFetchMinutes,
     });
   });
 

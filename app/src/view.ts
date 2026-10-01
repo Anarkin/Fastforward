@@ -1,4 +1,5 @@
 import * as path from 'node:path';
+import { AutoFetch, type Timer } from './autoFetch';
 import { remoteDefaultBranches } from './git/branches';
 import { showFiles, showPatch, type PatchScope } from './git/diff';
 import { gitErrorText } from './git/errorText';
@@ -75,6 +76,8 @@ interface Tab extends TabState {
   refreshing: Promise<void> | undefined;
   refreshAgain: Map<Session | undefined, Context>;
   isRepository: boolean;
+  fetching: Promise<boolean> | undefined;
+  fetchFailed: boolean;
 }
 
 export interface Host {
@@ -102,6 +105,8 @@ interface Context extends RepositoryAt {
   readonly post: (message: ToWebview) => void;
 }
 
+const silent = () => undefined;
+
 function toAll(contexts: readonly Context[]): Context | undefined {
   const [first] = contexts;
   if (!first || contexts.length === 1) {
@@ -121,15 +126,32 @@ export class FastforwardView {
   private readonly tabStates = new Map<string, Tab>();
   private readonly commitSearches = new Map<string, AbortController>();
   private page: Session | undefined;
+  private readonly autoFetch: AutoFetch;
 
   constructor(
     private readonly log: Log,
     private readonly gitPath: string,
     private readonly storage: Storage,
     private readonly host: Host,
-  ) {}
+    timer?: Timer,
+  ) {
+    this.autoFetch = new AutoFetch(
+      () => storage.autoFetchMinutes,
+      () => {
+        const { tabs, activeTab } = storage;
+        const active = tabs.filter(
+          (tab) => activeTab !== undefined && sameRoot(tab, activeTab),
+        );
+        return [...active, ...tabs.filter((tab) => !active.includes(tab))];
+      },
+      (root) => this.fetchInBackground(root),
+      timer,
+    );
+    this.autoFetch.update();
+  }
 
   reloadSettings(): void {
+    this.autoFetch.update();
     for (const tab of this.tabStates.values()) {
       forgetHistory(tab);
       tab.opened = false;
@@ -278,6 +300,10 @@ export class FastforwardView {
         }
         return;
       }
+      case 'setAutoFetch':
+        await storage.setAutoFetch(message.on);
+        this.autoFetch.update(message.on);
+        return;
       case 'setDiffLayout':
         await storage.setDiffLayout(message.layout);
         return;
@@ -636,6 +662,8 @@ export class FastforwardView {
         refreshing: undefined,
         refreshAgain: new Map(),
         isRepository: false,
+        fetching: undefined,
+        fetchFailed: false,
       };
       this.tabStates.set(root, tab);
     }
@@ -729,8 +757,49 @@ export class FastforwardView {
     await this.refresh(context);
   }
 
-  private fetchRemotes(context: Context): Promise<void> {
-    return fetchAll(this.log, this.notify(context), context);
+  private async fetchRemotes(
+    context: Context,
+    log: Log = this.log,
+    notify: Notify = this.notify(context),
+  ): Promise<boolean> {
+    const { tab } = context;
+    tab.fetching ??= fetchAll(log, notify, context).finally(() => {
+      tab.fetching = undefined;
+    });
+    const fetched = await tab.fetching;
+    tab.fetchFailed = !fetched;
+    return fetched;
+  }
+
+  private async fetchInBackground(root: string): Promise<void> {
+    const session = this.page;
+    if (!session) {
+      return;
+    }
+    const context = await this.context(session, root, this.isActive(root));
+    if (!context) {
+      return;
+    }
+    const reported = !context.tab.fetchFailed;
+    const log: Log = {
+      info: silent,
+      warn: reported ? (message) => this.log.warn(message) : silent,
+      error: reported ? (error) => this.log.error(error) : silent,
+    };
+    const notify: Notify = reported
+      ? (level, message) =>
+          (session.disposed ? this.page : session)?.post({
+            type: 'notice',
+            level,
+            message: `${path.basename(root)}: ${message}`,
+          })
+      : silent;
+    if (
+      (await this.fetchRemotes(context, log, notify)) &&
+      this.isActive(root)
+    ) {
+      await this.run('refresh', session, () => this.refresh(context), root);
+    }
   }
 
   private notify(context: Context): Notify {

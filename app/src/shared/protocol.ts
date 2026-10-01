@@ -149,6 +149,7 @@ export type ToHost =
   | { readonly type: 'setIgnoreWhitespace'; readonly ignore: boolean }
   | { readonly type: 'setDiffLayout'; readonly layout: DiffLayout }
   | { readonly type: 'setShowAllFiles'; readonly show: boolean }
+  | { readonly type: 'setAutoFetch'; readonly on: boolean }
   | {
       readonly type: 'log';
       readonly level: 'info' | 'error';
@@ -217,6 +218,8 @@ export type ToWebview =
       readonly ignoreWhitespace: boolean;
       readonly diffLayout: DiffLayout;
       readonly showAllFiles: boolean;
+      readonly autoFetch: boolean;
+      readonly autoFetchMinutes: number;
     }
   | { readonly type: 'bookmarks'; readonly bookmarks: readonly Bookmark[] }
   | { readonly type: 'solo'; readonly solo: boolean }

@@ -511,6 +511,9 @@ const buttons = (props: Partial<Parameters<typeof NavButtons>[0]>) =>
       onNavigate={noop}
       fetching={false}
       onFetch={noop}
+      autoFetch={false}
+      autoFetchMinutes={1}
+      onAutoFetch={noop}
       {...props}
     />,
   );
@@ -555,6 +558,22 @@ suite('Navigation bar', () => {
     assert.match(spinning, /disabled=""/);
     const idle = tagWith(buttons({}), 'title="Fetch', 'nav-button');
     assert.ok(!classesOf(idle).has('running'));
+  });
+
+  test('pins fetching every few minutes next to the fetch button, hidden when the settings turn it off', () => {
+    tagWith(buttons({}), 'title="Pin: fetch every repository every minute"');
+    const on = tagWith(
+      buttons({ autoFetch: true, autoFetchMinutes: 5 }),
+      'title="Fetching every 5 minutes; unpin to stop"',
+      'nav-button',
+      'toggle',
+      'active',
+    );
+    assert.match(on, /aria-pressed="true"/);
+    assert.doesNotMatch(
+      buttons({ autoFetch: true, autoFetchMinutes: 0 }),
+      /Fetching every|Pin: fetch/,
+    );
   });
 });
 

@@ -5,6 +5,8 @@
   "ignoreWhitespace": true,
   "diffLayout": "inline",
   "solo": false,
+  "autoFetch": false,
+  "autoFetchMinutes": 1,
   "columnWidths": [400, 275],
   "fonts": {
     "family": "'JetBrains Mono NL', 'JetBrains Mono', -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif",
