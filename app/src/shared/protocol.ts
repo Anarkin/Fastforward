@@ -267,6 +267,7 @@ export type ToWebview =
       readonly graph: readonly GraphRow[];
     }
   | { readonly type: 'reveal'; readonly hash: string; readonly index: number }
+  | { readonly type: 'unselect' }
   | { readonly type: 'workingTree'; readonly files: number }
   | {
       readonly type: 'files';

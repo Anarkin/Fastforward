@@ -45,6 +45,15 @@ function busyTab(): TabView {
 }
 
 suite('Tab view', () => {
+  test('lets go of the selected commit, its files and diff when the app does', () => {
+    const view = reduceTabView(busyTab(), { type: 'unselect' });
+    assert.strictEqual(view.hash, undefined);
+    assert.strictEqual(view.path, undefined);
+    assert.deepStrictEqual(view.files, []);
+    assert.strictEqual(view.patch, '');
+    assert.strictEqual(view.history?.at(0)?.hash, 'a');
+  });
+
   test('shows a file entire until another file, commit or tab is shown', () => {
     const shown = reduceTabView(busyTab(), { type: 'showFile', path: 'x.ts' });
     assert.strictEqual(shown.entireFile, false);
