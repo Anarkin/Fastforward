@@ -21,7 +21,7 @@ async function colored(
     ),
   );
   return Object.fromEntries(
-    [...syntaxRanges(highlighter, sources)].map(([key, ranges]) => [
+    [...syntaxRanges(highlighter, sources).ranges].map(([key, ranges]) => [
       key,
       ranges.map(
         (range) =>
@@ -437,13 +437,85 @@ suite('Syntax', () => {
     syntaxRanges(counting, [
       { language: 'typescript', lines, keys: ['0:0', '0:1'] },
     ]);
-    const ranges = syntaxRanges(counting, [
+    const { ranges } = syntaxRanges(counting, [
       { language: 'typescript', lines, keys: [undefined, '3:7'] },
     ]);
     assert.strictEqual(tokenized, 1);
     assert.deepStrictEqual(Object.fromEntries(ranges), {
       '3:7': [{ start: 4, end: 5, kind: 'keyword' }],
     });
+  });
+
+  test('tokenizes past its deadline only the first text not tokenized before, leaving the rest for later', async () => {
+    const highlighter = await loadLanguages(['typescript']);
+    const [seen, first, second, third] = [
+      'seen',
+      'first',
+      'second',
+      'third',
+    ].map((name, index) => ({
+      language: 'typescript',
+      lines: [`let ${name}Late = 1;`],
+      keys: [`${index}:0`],
+    }));
+    syntaxRanges(highlighter, [seen]);
+    const { ranges, rest } = syntaxRanges(
+      highlighter,
+      [first, second, seen, third],
+      0,
+    );
+    assert.deepStrictEqual([...ranges.keys()], ['1:0', '0:0']);
+    assert.deepStrictEqual(rest, [second, third]);
+  });
+
+  test('colors no file that is collapsed', () => {
+    const files = parsePatch(
+      ['a.ts', 'b.ts']
+        .flatMap((path) => [
+          `diff --git a/${path} b/${path}`,
+          '@@ -0,0 +1 @@',
+          `+let ${path[0]};`,
+        ])
+        .concat('')
+        .join('\n'),
+    );
+    assert.deepStrictEqual(
+      syntaxSources(files, undefined, new Map(), new Set([1])).map(
+        (source) => source.lines,
+      ),
+      [['let b;']],
+    );
+  });
+
+  test('colors sides from their hunks alone once the sides before take 20000 lines', () => {
+    const paths = ['a.ts', 'b.ts', 'c.ts'];
+    const files = parsePatch(
+      paths
+        .flatMap((path) => [
+          `diff --git a/${path} b/${path}`,
+          'index 1111111111111111111111111111111111111111..2222222222222222222222222222222222222222 100644',
+          '@@ -5000,1 +5000,1 @@',
+          '-old;',
+          '+new;',
+        ])
+        .concat('')
+        .join('\n'),
+    );
+    const filler = Array.from({ length: 4999 }, () => 'x;');
+    const texts = new Map(
+      paths.flatMap((path) =>
+        ['old', 'new'].map(
+          (side) =>
+            [`${side}:${path}`, [...filler, `${side};`].join('\n')] as const,
+        ),
+      ),
+    );
+    assert.deepStrictEqual(
+      syntaxSources(files, undefined, texts).map(
+        (source) => source.lines.length,
+      ),
+      [5000, 5000, 5000, 5000, 1, 1],
+    );
   });
 
   test('draws the syntax colors inside the changed words, under the search matches', () => {

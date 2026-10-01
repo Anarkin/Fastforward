@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useLayoutEffect, useMemo, useState } from 'react';
 import {
   createHighlighterCore,
   type HighlighterCore,
@@ -149,6 +149,8 @@ function hasGap(file: DiffFile, side: Side): boolean {
 
 const maxSourceLines = 5000;
 
+const maxTextLines = 20_000;
+
 function tooFar(shown: ReturnType<typeof sideLines>): boolean {
   return (shown.at(-1)?.number ?? 0) > maxSourceLines;
 }
@@ -191,6 +193,7 @@ export function syntaxSources(
   files: readonly DiffFile[],
   whole: WholeFile | undefined,
   texts: ReadonlyMap<string, string> = new Map(),
+  open?: ReadonlySet<number>,
 ): SyntaxSource[] {
   if (whole) {
     const language = languageOf(whole.path);
@@ -199,20 +202,28 @@ export function syntaxSources(
       ? [{ language, lines, keys: lines.map((_, index) => lineKey(0, index)) }]
       : [];
   }
+  let used = 0;
   return files.flatMap((file, index) => {
     const language = languageOf(file.path);
-    return language && !file.binary && !file.placeholder
-      ? sides.flatMap(
-          (side) =>
-            sideSource(
-              file,
-              index,
-              language,
-              side,
-              texts.get(textKey(file.path, side)),
-            ) ?? [],
-        )
-      : [];
+    if (
+      !language ||
+      file.binary ||
+      file.placeholder ||
+      (open && !open.has(index))
+    ) {
+      return [];
+    }
+    return sides.flatMap((side) => {
+      const source = sideSource(
+        file,
+        index,
+        language,
+        side,
+        used < maxTextLines ? texts.get(textKey(file.path, side)) : undefined,
+      );
+      used += source?.lines.length ?? 0;
+      return source ?? [];
+    });
   });
 }
 
@@ -251,18 +262,20 @@ const maxCachedLines = 100_000;
 const cache = new Map<string, LineRanges>();
 let cachedLines = 0;
 
-function lineRanges(
-  highlighter: HighlighterCore,
-  { language, lines }: SyntaxSource,
-): LineRanges {
-  const text = lines.join('\n');
-  const key = `${language}\n${text}`;
-  const cached = cache.get(key);
-  if (cached) {
+function cached(key: string): LineRanges | undefined {
+  const ranges = cache.get(key);
+  if (ranges) {
     cache.delete(key);
-    cache.set(key, cached);
-    return cached;
+    cache.set(key, ranges);
   }
+  return ranges;
+}
+
+function tokenize(
+  highlighter: HighlighterCore,
+  language: string,
+  text: string,
+): LineRanges {
   const ranges = highlighter
     .codeToTokensBase(text, {
       lang: language,
@@ -285,7 +298,7 @@ function lineRanges(
       }
       return found;
     });
-  cache.set(key, ranges);
+  cache.set(`${language}\n${text}`, ranges);
   cachedLines += ranges.length;
   for (const [oldest, { length }] of cache) {
     if (cachedLines <= maxCachedLines) {
@@ -300,20 +313,36 @@ function lineRanges(
 export function syntaxRanges(
   highlighter: HighlighterCore,
   sources: readonly SyntaxSource[],
-): Map<string, readonly SyntaxRange[]> {
+  deadline = Infinity,
+): {
+  ranges: Map<string, readonly SyntaxRange[]>;
+  rest: SyntaxSource[];
+} {
   const ranges = new Map<string, readonly SyntaxRange[]>();
+  const rest: SyntaxSource[] = [];
+  let tokenized = false;
   for (const source of sources) {
     if (source.lines.length === 0) {
       continue;
     }
-    lineRanges(highlighter, source).forEach((found, index) => {
+    const text = source.lines.join('\n');
+    let found = cached(`${source.language}\n${text}`);
+    if (!found && (!tokenized || performance.now() < deadline)) {
+      found = tokenize(highlighter, source.language, text);
+      tokenized = true;
+    }
+    if (!found) {
+      rest.push(source);
+      continue;
+    }
+    found.forEach((line, index) => {
       const key = source.keys[index];
       if (key !== undefined) {
-        ranges.set(key, found);
+        ranges.set(key, line);
       }
     });
   }
-  return ranges;
+  return { ranges, rest };
 }
 
 let created: Promise<HighlighterCore> | undefined;
@@ -341,53 +370,70 @@ export async function loadLanguages(
   return highlighter;
 }
 
-interface Loaded {
-  readonly highlighter: HighlighterCore;
-  readonly languages: readonly string[];
-}
+const sliceTime = 10;
 
-const snapshot = (highlighter: HighlighterCore): Loaded => ({
-  highlighter,
-  languages: highlighter.getLoadedLanguages(),
-});
+const noRanges: ReadonlyMap<string, readonly SyntaxRange[]> = new Map();
+
+interface Colored {
+  readonly files: readonly DiffFile[];
+  readonly whole: WholeFile | undefined;
+  readonly ranges: ReadonlyMap<string, readonly SyntaxRange[]>;
+}
 
 export function useSyntax(
   files: readonly DiffFile[],
   whole: WholeFile | undefined,
   texts: ReadonlyMap<string, string>,
+  open: ReadonlySet<number>,
 ): ReadonlyMap<string, readonly SyntaxRange[]> {
   const sources = useMemo(
-    () => syntaxSources(files, whole, texts),
-    [files, whole, texts],
+    () => syntaxSources(files, whole, texts, open),
+    [files, whole, texts, open],
   );
-  const [loaded, setLoaded] = useState(() => ready && snapshot(ready));
-  useEffect(() => {
+  const [colored, setColored] = useState<Colored>();
+  useLayoutEffect(() => {
     let current = true;
-    void loadLanguages(sources.map((source) => source.language)).then(
-      (highlighter) => {
-        if (current) {
-          setLoaded((last) =>
-            last?.languages.length === highlighter.getLoadedLanguages().length
-              ? last
-              : snapshot(highlighter),
-          );
-        }
-      },
-    );
+    const color = (
+      highlighter: HighlighterCore,
+      pending: readonly SyntaxSource[],
+    ) => {
+      if (!current) {
+        return;
+      }
+      const { ranges, rest } = syntaxRanges(
+        highlighter,
+        pending,
+        performance.now() + sliceTime,
+      );
+      setColored((last) => ({
+        files,
+        whole,
+        ranges:
+          last?.files === files && last.whole === whole
+            ? new Map([...last.ranges, ...ranges])
+            : ranges,
+      }));
+      if (rest.length > 0) {
+        setTimeout(() => color(highlighter, rest));
+      }
+    };
+    const languages = sources.map((source) => source.language);
+    const highlighter = ready;
+    if (
+      highlighter &&
+      languages.every((language) =>
+        highlighter.getLoadedLanguages().includes(language),
+      )
+    ) {
+      color(highlighter, sources);
+    } else {
+      void loadLanguages(languages).then((loaded) => color(loaded, sources));
+    }
     return () => {
       current = false;
     };
-  }, [sources]);
-  return useMemo(
-    () =>
-      loaded
-        ? syntaxRanges(
-            loaded.highlighter,
-            sources.filter((source) =>
-              loaded.languages.includes(source.language),
-            ),
-          )
-        : new Map(),
-    [loaded, sources],
-  );
+  }, [sources, files, whole]);
+  return colored?.files === files && colored.whole === whole
+    ? colored.ranges
+    : noRanges;
 }
