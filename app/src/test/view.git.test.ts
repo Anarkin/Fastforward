@@ -2,7 +2,6 @@ import * as assert from 'node:assert';
 import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import { createServer } from 'node:http';
-import type { AddressInfo } from 'node:net';
 import * as path from 'node:path';
 import {
   workingTreeHash,
@@ -171,21 +170,22 @@ function gate(): { opened: Promise<void>; open: () => void } {
   return { opened: promise, open: () => resolve() };
 }
 
-function stubMethod<T = void>(
+function stubMethod(
   view: FastforwardView,
   name: string,
   replace: (
-    original: (...args: unknown[]) => Promise<T>,
+    original: (...args: unknown[]) => Promise<unknown>,
     ...args: unknown[]
-  ) => Promise<T>,
+  ) => Promise<unknown>,
 ): void {
   const original: unknown = Reflect.get(view, name);
   assert.ok(typeof original === 'function', name);
   Reflect.set(view, name, (...args: unknown[]) =>
     replace(
-      (...inner) =>
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-        Reflect.apply(original, view, inner) as Promise<T>,
+      (...inner) => {
+        const result: unknown = Reflect.apply(original, view, inner);
+        return Promise.resolve(result);
+      },
       ...args,
     ),
   );
@@ -328,7 +328,7 @@ suite('View', function () {
     test('shows the last selected commit when an earlier one answers last', async () => {
       const held = gate();
       let waiting = false;
-      stubMethod<string>(fastforward, 'patchOf', async (original, ...args) => {
+      stubMethod(fastforward, 'patchOf', async (original, ...args) => {
         if (args[1] === workingTreeHash) {
           waiting = true;
           await held.opened;
@@ -484,14 +484,11 @@ suite('View', function () {
       const generation = page.last('commits')?.generation ?? -1;
       const elsewhere = tempFolder('not-a-repository');
       try {
-        stubMethod<object>(
-          fastforward,
-          'context',
-          async (original, ...args) => ({
-            ...(await original(...args)),
-            root: elsewhere,
-          }),
-        );
+        stubMethod(fastforward, 'context', async (original, ...args) => {
+          const context = await original(...args);
+          assert.ok(typeof context === 'object' && context !== null);
+          return { ...context, root: elsewhere };
+        });
         page.clear();
         await connection.receive({
           type: 'loadCommits',
@@ -1215,7 +1212,7 @@ suite('View', function () {
       });
       const held = gate();
       let calls = 0;
-      stubMethod<string>(fastforward, 'patchOf', async (original, ...args) => {
+      stubMethod(fastforward, 'patchOf', async (original, ...args) => {
         calls += 1;
         if (calls === 1) {
           await held.opened;
@@ -2326,7 +2323,7 @@ suite('View', function () {
         });
         const held = gate();
         let waiting = false;
-        stubMethod<string>(view.view, 'patchOf', async (original, ...args) => {
+        stubMethod(view.view, 'patchOf', async (original, ...args) => {
           const [, , scope] = args;
           if (
             typeof scope === 'object' &&
@@ -3251,8 +3248,9 @@ suite('Fetch', function () {
     await new Promise<void>((resolve) =>
       server.listen(0, '127.0.0.1', resolve),
     );
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    const { port } = server.address() as AddressInfo;
+    const address = server.address();
+    assert.ok(typeof address === 'object' && address !== null);
+    const { port } = address;
     const locked = await tempRepository(path.join(folder, 'locked'));
     await locked.commit('a');
     await locked.git('remote', 'add', 'origin', `http://127.0.0.1:${port}/x`);
