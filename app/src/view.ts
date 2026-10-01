@@ -22,6 +22,7 @@ import { watchRepository, type Watcher } from './git/watch';
 import {
   workingTreeFiles,
   workingTreePatch,
+  type UntrackedPatches,
   type WorkingTree,
 } from './git/workingTree';
 import { step, visit } from './history/navigation';
@@ -82,6 +83,7 @@ interface Tab extends TabState {
   fetching: Promise<Fetched> | undefined;
   fetchFailed: boolean;
   diffRequest: number;
+  untrackedPatches: UntrackedPatches;
 }
 
 export interface Host {
@@ -678,6 +680,7 @@ export class FastforwardView {
         fetching: undefined,
         fetchFailed: false,
         diffRequest: 0,
+        untrackedPatches: new Map(),
       };
       this.tabStates.set(root, tab);
     }
@@ -1252,7 +1255,13 @@ export class FastforwardView {
     }
     const workingTree =
       context.tab.workingTree ?? (await workingTreeFiles(gitPath, root));
-    return workingTreePatch(gitPath, root, workingTree, scope);
+    return workingTreePatch(
+      gitPath,
+      root,
+      workingTree,
+      scope,
+      context.tab.untrackedPatches,
+    );
   }
 
   private async sendTree(

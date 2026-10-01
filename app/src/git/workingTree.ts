@@ -19,6 +19,11 @@ export interface WorkingTree {
   readonly files: readonly FileChange[];
 }
 
+export type UntrackedPatches = Map<
+  string,
+  { readonly stamp: string; readonly patch: string }
+>;
+
 const maxUntrackedPatches = 50;
 
 async function addedLines(file: string): Promise<number> {
@@ -146,16 +151,28 @@ export async function workingTreePatch(
   cwd: string,
   { base, files }: WorkingTree,
   scope: PatchScope = {},
+  kept: UntrackedPatches = new Map(),
 ): Promise<string> {
-  const untrackedPatch = (file: string) =>
-    file.endsWith('/')
-      ? Promise.resolve('')
-      : runGit(
-          gitPath,
-          cwd,
-          ['diff', '--no-index', ...diffArgs, '--', '/dev/null', file],
-          { okExitCodes: [0, 1] },
-        );
+  const untrackedPatch = async (file: string) => {
+    if (file.endsWith('/')) {
+      return '';
+    }
+    const stamp = await stampOf(join(cwd, file));
+    const known = kept.get(file);
+    if (stamp !== undefined && known?.stamp === stamp) {
+      return known.patch;
+    }
+    const patch = await runGit(
+      gitPath,
+      cwd,
+      ['diff', '--no-index', ...diffArgs, '--', '/dev/null', file],
+      { okExitCodes: [0, 1] },
+    );
+    if (stamp !== undefined) {
+      kept.set(file, { stamp, patch });
+    }
+    return patch;
+  };
   const { path } = scope;
   const untracked = files
     .filter((file) => file.status === 'U')
@@ -174,6 +191,12 @@ export async function workingTreePatch(
   if (path !== undefined) {
     return tracked;
   }
+  const listed = new Set(untracked);
+  for (const file of kept.keys()) {
+    if (!listed.has(file)) {
+      kept.delete(file);
+    }
+  }
   const included = scope.include && new Set(scope.include);
   const [trackedPatch, untrackedPatches] = await Promise.all([
     tracked,
@@ -190,4 +213,13 @@ export async function workingTreePatch(
       patch.status === 'fulfilled' ? patch.value : '',
     ),
   ].join('');
+}
+
+async function stampOf(file: string): Promise<string | undefined> {
+  try {
+    const { size, mtimeMs, ctimeMs, ino } = await lstat(file);
+    return `${size} ${mtimeMs} ${ctimeMs} ${ino}`;
+  } catch {
+    return undefined;
+  }
 }

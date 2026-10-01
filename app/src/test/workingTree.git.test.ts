@@ -9,6 +9,7 @@ import {
   withoutTouched,
   workingTreeFiles,
   workingTreePatch,
+  type UntrackedPatches,
 } from '../git/workingTree';
 import { isLargeChange } from '../shared/protocol';
 import { parsePatch } from '../webview/diff';
@@ -288,6 +289,64 @@ suite('Uncommitted changes', function () {
       assert.ok(alone.includes('+many50'), alone);
     } finally {
       fs.rmSync(many, { recursive: true });
+    }
+  });
+
+  test('diffs an untracked file again only once it changed on disk', async () => {
+    const draft = path.join(cwd, 'draft.txt');
+    fs.writeFileSync(draft, 'first\n');
+    try {
+      const patches: UntrackedPatches = new Map();
+      const workingTree = await workingTreeFiles(gitPath, cwd);
+      const first = await workingTreePatch(
+        gitPath,
+        cwd,
+        workingTree,
+        {},
+        patches,
+      );
+      assert.ok(first.includes('+first'), first);
+      for (const [file, { stamp }] of patches) {
+        patches.set(file, { stamp, patch: `kept ${file}\n` });
+      }
+      const kept = await workingTreePatch(
+        gitPath,
+        cwd,
+        workingTree,
+        {},
+        patches,
+      );
+      assert.ok(kept.includes('kept draft.txt'), kept);
+      assert.ok(kept.includes('kept untracked.txt'), kept);
+      assert.ok(kept.includes('+two'), kept);
+      assert.strictEqual(
+        await workingTreePatch(
+          gitPath,
+          cwd,
+          workingTree,
+          { path: 'draft.txt' },
+          patches,
+        ),
+        'kept draft.txt\n',
+      );
+      fs.writeFileSync(draft, 'second line\n');
+      const changed = await workingTreePatch(
+        gitPath,
+        cwd,
+        workingTree,
+        {},
+        patches,
+      );
+      assert.ok(changed.includes('+second line'), changed);
+      assert.ok(changed.includes('kept untracked.txt'), changed);
+      const listed = {
+        ...workingTree,
+        files: workingTree.files.filter((file) => file.path !== 'draft.txt'),
+      };
+      await workingTreePatch(gitPath, cwd, listed, {}, patches);
+      assert.ok(!patches.has('draft.txt'));
+    } finally {
+      fs.rmSync(draft);
     }
   });
 
