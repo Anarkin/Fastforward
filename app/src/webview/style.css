@@ -1058,14 +1058,9 @@ body.resizing {
 .diff-line.added {
   background: color-mix(
     in srgb,
-    var(--color-added) var(--color-added-line),
+    var(--color-added) var(--color-added-row),
     transparent
   );
-}
-
-.diff-line.added.compared,
-.diff-line.removed.compared {
-  background: none;
 }
 
 .diff-line.added .number,
@@ -1092,7 +1087,7 @@ body.resizing {
 .diff-line.removed {
   background: color-mix(
     in srgb,
-    var(--color-deleted) var(--color-deleted-line),
+    var(--color-deleted) var(--color-deleted-row),
     transparent
   );
 }
