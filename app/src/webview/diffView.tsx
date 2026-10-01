@@ -269,10 +269,11 @@ export function diffRows(
   }
   files.forEach((file, index) => {
     const lines = changedLines(file);
-    const open = toggled.get(file.path) ?? lines <= collapseThreshold;
+    const large = file.placeholder !== undefined || lines > collapseThreshold;
+    const open = toggled.get(file.path) ?? !large;
     rows.push({ kind: 'file', file: index, path: file.path, open });
     if (!open) {
-      if (lines > collapseThreshold && !toggled.has(file.path)) {
+      if (large && !toggled.has(file.path)) {
         rows.push({ kind: 'large', file: index, path: file.path, lines });
       }
       return;
@@ -732,7 +733,8 @@ export function DiffView({
       case 'large':
         return (
           <div className="large-diff">
-            Large diff: {row.lines.toLocaleString()} changed lines
+            {row.lines > collapseThreshold ? 'Large diff' : 'Not loaded'}:{' '}
+            {row.lines.toLocaleString()} changed lines
             <button onClick={() => toggle(row.path, false)}>Show</button>
           </div>
         );

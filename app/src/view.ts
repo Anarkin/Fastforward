@@ -38,7 +38,7 @@ import { defaultBookmarks, fingerprint } from './refs';
 import { isFullHash } from './shared/hashes';
 import {
   commitPageSize,
-  isLargeChange,
+  deferredChanges,
   workingTreeHash,
   workingTreeIndex,
   type CheckoutTarget,
@@ -1320,11 +1320,7 @@ export class FastforwardView {
     const scope =
       file === undefined
         ? {
-            exclude: [...context.tab.changedFiles.values()]
-              .filter(isLargeChange)
-              .flatMap((large) =>
-                large.oldPath ? [large.oldPath, large.path] : [large.path],
-              ),
+            include: includedChanges([...context.tab.changedFiles.values()]),
             ignoreWhitespace: this.storage.ignoreWhitespace,
           }
         : {
@@ -1345,6 +1341,17 @@ export class FastforwardView {
       context.post({ type: 'diff', hash, path: file, patch });
     }
   }
+}
+
+function includedChanges(files: readonly FileChange[]): string[] | undefined {
+  const deferred = deferredChanges(files);
+  return deferred.size === 0
+    ? undefined
+    : files
+        .filter((file) => !deferred.has(file.path))
+        .flatMap((file) =>
+          file.oldPath ? [file.oldPath, file.path] : [file.path],
+        );
 }
 
 async function allSettled(

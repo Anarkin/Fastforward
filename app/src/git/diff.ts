@@ -33,7 +33,7 @@ export async function showFiles(
 export interface PatchScope {
   readonly path?: string;
   readonly oldPath?: string;
-  readonly exclude?: readonly string[];
+  readonly include?: readonly string[];
   readonly entireFile?: boolean;
   readonly ignoreWhitespace?: boolean;
 }
@@ -48,26 +48,11 @@ export function diffOptionArgs({
   ];
 }
 
-export function pathspecs({ path, oldPath, exclude = [] }: PatchScope): {
-  args: string[];
-  magic: boolean;
-} {
+export function pathspecs({ path, oldPath, include }: PatchScope): string[] {
   if (path !== undefined) {
-    return {
-      args: oldPath ? ['--', oldPath, path] : ['--', path],
-      magic: false,
-    };
+    return oldPath ? ['--', oldPath, path] : ['--', path];
   }
-  return exclude.length > 0
-    ? {
-        args: [
-          '--',
-          '.',
-          ...exclude.map((file) => `:(exclude,literal)${file}`),
-        ],
-        magic: true,
-      }
-    : { args: [], magic: false };
+  return include ? ['--', ...include] : [];
 }
 
 export function showPatch(
@@ -76,15 +61,16 @@ export function showPatch(
   hash: string,
   scope: PatchScope = {},
 ): Promise<string> {
-  const spec = pathspecs(scope);
-  return runGit(
-    gitPath,
-    cwd,
-    [...showArgs, '--patch', ...diffOptionArgs(scope), hash, ...spec.args],
-    {
-      pathspecMagic: spec.magic,
-    },
-  );
+  if (scope.include?.length === 0) {
+    return Promise.resolve('');
+  }
+  return runGit(gitPath, cwd, [
+    ...showArgs,
+    '--patch',
+    ...diffOptionArgs(scope),
+    hash,
+    ...pathspecs(scope),
+  ]);
 }
 
 const simpleStatuses = ['A', 'M', 'D', 'T'] as const;

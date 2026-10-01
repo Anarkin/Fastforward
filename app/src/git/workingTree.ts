@@ -163,23 +163,24 @@ export async function workingTreePatch(
   if (path !== undefined && untracked.includes(path)) {
     return untrackedPatch(path);
   }
-  const spec = pathspecs(scope);
-  const tracked = runGit(
-    gitPath,
-    cwd,
-    [...workingTreeDiff(base), ...diffOptionArgs(scope), ...spec.args],
-    { pathspecMagic: spec.magic },
-  );
+  if (scope.include?.length === 0) {
+    return '';
+  }
+  const tracked = runGit(gitPath, cwd, [
+    ...workingTreeDiff(base),
+    ...diffOptionArgs(scope),
+    ...pathspecs(scope),
+  ]);
   if (path !== undefined) {
     return tracked;
   }
-  const excluded = new Set(scope.exclude);
+  const included = scope.include && new Set(scope.include);
   const [trackedPatch, untrackedPatches] = await Promise.all([
     tracked,
     Promise.allSettled(
       untracked
         .slice(0, maxUntrackedPatches)
-        .filter((file) => !excluded.has(file))
+        .filter((file) => !included || included.has(file))
         .map(untrackedPatch),
     ),
   ]);
