@@ -2,9 +2,10 @@ import { aheadBehind, fastForward } from './git/branches';
 import { gitErrorText } from './git/errorText';
 import {
   checkoutNewBranch,
-  checkoutRef,
   fetchAllRemotes,
   readRefs,
+  switchToBranch,
+  switchToCommit,
 } from './git/repository';
 import type { CheckoutTarget } from './shared/protocol';
 import { hasRef, withoutRemote } from './shared/refNames';
@@ -30,20 +31,18 @@ export async function checkout(
       const local = withoutRemote(target.name);
       const { refs } = await readRefs(gitPath, root);
       if (hasRef(refs, { kind: 'branch', name: local })) {
-        await checkoutRef(gitPath, root, local);
+        await switchToBranch(gitPath, root, local);
         await catchUp(log, notify, at, local, target.name);
       } else {
         await checkoutNewBranch(gitPath, root, local, target.name);
       }
+    } else if (target.kind === 'branch') {
+      await switchToBranch(gitPath, root, target.name);
     } else {
-      await checkoutRef(
+      await switchToCommit(
         gitPath,
         root,
-        target.kind === 'commit'
-          ? target.hash
-          : target.kind === 'tag'
-            ? `refs/tags/${target.name}`
-            : target.name,
+        target.kind === 'commit' ? target.hash : `refs/tags/${target.name}`,
       );
     }
     log.info(`Checked out ${target.kind} ${label}`);

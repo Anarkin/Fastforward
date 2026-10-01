@@ -74,12 +74,26 @@ async function listRefs(gitPath: string, root: string): Promise<RefInfo[]> {
   });
 }
 
-export async function checkoutRef(
+export async function switchToBranch(
   gitPath: string,
   root: string,
-  ref: string,
+  branch: string,
 ): Promise<void> {
-  await runGit(gitPath, root, ['checkout', '-q', ref, '--']);
+  await runGit(gitPath, root, ['switch', '-q', '--end-of-options', branch]);
+}
+
+export async function switchToCommit(
+  gitPath: string,
+  root: string,
+  commit: string,
+): Promise<void> {
+  await runGit(gitPath, root, [
+    'switch',
+    '-q',
+    '--detach',
+    '--end-of-options',
+    commit,
+  ]);
 }
 
 export async function checkoutNewBranch(
@@ -89,13 +103,13 @@ export async function checkoutNewBranch(
   upstream: string,
 ): Promise<void> {
   await runGit(gitPath, root, [
-    'checkout',
+    'switch',
     '-q',
     '--track',
-    '-b',
+    '-c',
     branch,
+    '--end-of-options',
     upstream,
-    '--',
   ]);
 }
 

@@ -1617,6 +1617,32 @@ suite('View', function () {
         await repository.git('remote', 'remove', 'origin');
       }
     });
+
+    test('refuses to check out anything while a rebase is paused', async () => {
+      await repository.git('checkout', '-b', 'onto', fixture.a);
+      await repository.commit('onto');
+      await repository.git('checkout', '-b', 'paused', fixture.a);
+      await repository.commit('paused');
+      await assert.rejects(repository.git('rebase', '--exec', 'false', 'onto'));
+      const [stopped] = await repository.resolve('HEAD');
+      try {
+        await connection.refresh();
+        await withNotices(page, 'error', async (messages) => {
+          await connection.receive({
+            type: 'checkout',
+            root: repository.root,
+            target: { kind: 'branch', name: 'feature' },
+          });
+          assert.strictEqual(messages.length, 1);
+          assert.match(messages[0], /^Couldn't check out feature/);
+        });
+        assert.deepStrictEqual(await repository.resolve('HEAD'), [stopped]);
+      } finally {
+        await repository.git('rebase', '--abort').catch(() => undefined);
+        await restore();
+        await repository.git('branch', '-D', 'onto', 'paused');
+      }
+    });
   });
 
   suite('with two tabs', () => {
