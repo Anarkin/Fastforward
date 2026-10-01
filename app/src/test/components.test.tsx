@@ -34,7 +34,7 @@ import { Files, filesCursor } from '../webview/filesColumn';
 import { Highlight } from '../webview/highlight';
 import type { Folders } from '../webview/viewFolders';
 import { SkeletonRows } from '../webview/skeleton';
-import { TabBar } from '../webview/tabBar';
+import { preloadDelay, resting, TabBar } from '../webview/tabBar';
 import { GraphCell, graphWidth, rowLanes } from '../webview/graph';
 import { FileRow, treeIndent } from '../webview/tree';
 import { VirtualRows, type ListedRows } from '../webview/virtualRows';
@@ -1176,7 +1176,23 @@ suite('Menu items', () => {
   });
 });
 
+const rested = () =>
+  new Promise((resolve) => setTimeout(resolve, preloadDelay + 20));
+
 suite('Tab bar', () => {
+  test('acts on what the pointer rests on, not on what it only passes over', async () => {
+    const done: string[] = [];
+    const rest = resting(10);
+    rest.start(() => done.push('a'));
+    rest.start(() => done.push('b'));
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    assert.deepStrictEqual(done, ['b']);
+    rest.start(() => done.push('c'));
+    rest.cancel();
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    assert.deepStrictEqual(done, ['b']);
+  });
+
   test('offers sorting the tabs and opening the settings files in its menu', () => {
     const picked: string[] = [];
     const nav = renderedBy(TabBar, {
@@ -1244,7 +1260,7 @@ suite('Tab bar', () => {
     assert.deepStrictEqual(closed, ['/repo']);
   });
 
-  test('preloads only a tab not shown, and closes one only by its button or the middle button', () => {
+  test('preloads only a tab not shown that the pointer rests on, and closes one only by its button or the middle button', async () => {
     const preloaded: string[] = [];
     const closed: string[] = [];
     const nav = renderedBy(TabBar, {
@@ -1268,12 +1284,22 @@ suite('Tab bar', () => {
     const [a, b] = list.props.children[0];
     type Tab = {
       onPointerEnter: () => void;
+      onPointerLeave: () => void;
+      onClick: () => void;
       onAuxClick: (event: { button: number }) => void;
       children: React.ReactElement[];
     };
     assert.ok(isValidElement<Tab>(a) && isValidElement<Tab>(b));
     a.props.onPointerEnter();
     b.props.onPointerEnter();
+    b.props.onPointerLeave();
+    await rested();
+    b.props.onPointerEnter();
+    b.props.onClick();
+    await rested();
+    assert.deepStrictEqual(preloaded, []);
+    b.props.onPointerEnter();
+    await rested();
     assert.deepStrictEqual(preloaded, ['/b']);
     b.props.onAuxClick({ button: 2 });
     assert.deepStrictEqual(closed, []);

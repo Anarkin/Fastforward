@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useRef } from 'react';
+import { useEffect, useEffectEvent, useMemo, useRef } from 'react';
 import { type TabInfo } from '../shared/protocol';
 import { CloseIcon } from './icons';
 import { MenuButton } from './menu';
@@ -36,6 +36,23 @@ export function tabBarKey(
   return step === undefined
     ? undefined
     : { kind: 'select', root: adjacentTab(tabs, active, step) };
+}
+
+export const preloadDelay = 200;
+
+export function resting(delay: number): {
+  start: (action: () => void) => void;
+  cancel: () => void;
+} {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const cancel = () => clearTimeout(timer);
+  return {
+    start: (action) => {
+      cancel();
+      timer = setTimeout(action, delay);
+    },
+    cancel,
+  };
 }
 
 export function TabBar({
@@ -76,6 +93,9 @@ export function TabBar({
     });
   }, [onLog]);
 
+  const rest = useMemo(() => resting(preloadDelay), []);
+  useEffect(() => rest.cancel, [rest]);
+
   const add = useRef<HTMLButtonElement>(null);
   const onKeyDown = useEffectEvent((event: KeyboardEvent) => {
     const action = tabBarKey(event, tabs, active);
@@ -108,8 +128,14 @@ export function TabBar({
             key={tab.root}
             className={`tab ${tab.root === active ? 'active' : ''}`}
             title={tab.root}
-            onClick={() => onSelect(tab.root)}
-            onPointerEnter={() => tab.root !== active && onPreload(tab.root)}
+            onClick={() => {
+              rest.cancel();
+              onSelect(tab.root);
+            }}
+            onPointerEnter={() =>
+              tab.root !== active && rest.start(() => onPreload(tab.root))
+            }
+            onPointerLeave={rest.cancel}
             onMouseDown={(event) =>
               event.button === 1 && event.preventDefault()
             }
