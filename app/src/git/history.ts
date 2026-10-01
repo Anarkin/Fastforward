@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
 import { StringDecoder } from 'node:string_decoder';
 import { isHashPrefix } from '../shared/hashes';
 import type {
@@ -186,6 +186,123 @@ interface FoundHashes {
   readonly capped: boolean;
 }
 
+export function messageGrep(query: string): string[] {
+  return /^[\t\x20-\x7e]+$/.test(query)
+    ? ['--regexp-ignore-case', '--fixed-strings', `--grep=${query}`]
+    : [];
+}
+
+export class SearchMerge {
+  private readonly found: FoundHashes['found'] = [];
+  private readonly messages: SearchedCommit[] = [];
+  private readonly idents: SearchedCommit[] = [];
+  private identsEnded = false;
+  private result: FoundHashes | undefined;
+
+  constructor(
+    private readonly query: string,
+    private readonly limit: number,
+    private messagesEnded: boolean,
+  ) {}
+
+  addMessage(record: string): FoundHashes | undefined {
+    this.messages.push(parseSearchedCommit(record));
+    return this.advance();
+  }
+
+  endMessages(): FoundHashes | undefined {
+    this.messagesEnded = true;
+    return this.advance();
+  }
+
+  addIdent(record: string): FoundHashes | undefined {
+    this.idents.push(parseSearchedCommit(record));
+    return this.advance();
+  }
+
+  endIdents(): FoundHashes | undefined {
+    this.identsEnded = true;
+    return this.advance();
+  }
+
+  private advance(): FoundHashes | undefined {
+    while (this.result === undefined && this.idents.length > 0) {
+      const [ident] = this.idents;
+      let commit = ident;
+      if (this.messages[0]?.hash === ident.hash) {
+        commit = this.messages.shift() ?? ident;
+      } else if (this.messages.length === 0 && !this.messagesEnded) {
+        return undefined;
+      }
+      this.idents.shift();
+      this.take(commit);
+    }
+    if (this.result === undefined && this.identsEnded) {
+      this.result = { found: this.found, capped: false };
+    }
+    return this.result;
+  }
+
+  private take(commit: SearchedCommit): void {
+    const fields = matchedFields(commit, this.query);
+    if (fields.length === 0) {
+      return;
+    }
+    if (this.found.length === this.limit) {
+      this.result = { found: this.found, capped: true };
+      return;
+    }
+    this.found.push({ hash: commit.hash, fields });
+  }
+}
+
+function streamRecords(
+  gitPath: string,
+  cwd: string,
+  args: readonly string[],
+  signal: AbortSignal | undefined,
+  onRecord: (record: string) => void,
+  onEnd: () => void,
+  onError: (error: Error) => void,
+): ChildProcess {
+  const child = spawn(gitPath, [...gitConfigArgs, 'log', ...args, '--'], {
+    cwd,
+    env: gitEnv(),
+    windowsHide: true,
+    signal,
+  });
+  const decoder = new StringDecoder('utf8');
+  let pending = '';
+  let stderr = '';
+  child.stdout.on('data', (chunk: Buffer) => {
+    pending += decoder.write(chunk);
+    let end = pending.indexOf(recordStart, 1);
+    while (end !== -1) {
+      onRecord(pending.slice(1, end));
+      pending = pending.slice(end);
+      end = pending.indexOf(recordStart, 1);
+    }
+  });
+  child.stderr.on('data', (chunk: Buffer) => {
+    stderr += chunk.toString('utf8');
+  });
+  child.on('error', onError);
+  child.on('close', (code) => {
+    if (code !== 0) {
+      onError(new Error(`git log failed: ${stderr}`));
+      return;
+    }
+    pending += decoder.end();
+    if (pending.length > 1) {
+      onRecord(pending.slice(1));
+    }
+    onEnd();
+  });
+  return child;
+}
+
+const identFormat = `--format=${recordStart}%H%x00%aN%x00%aE%x00%cN%x00%cE`;
+
 function streamMatches(
   gitPath: string,
   cwd: string,
@@ -194,76 +311,60 @@ function streamMatches(
   limit: number,
   signal: AbortSignal | undefined,
 ): Promise<FoundHashes> {
+  const grep = messageGrep(query);
+  const merge = new SearchMerge(query, limit, grep.length === 0);
   return new Promise((resolve, reject) => {
-    const child = spawn(
-      gitPath,
-      [
-        ...gitConfigArgs,
-        'log',
-        ...historyRefs(solo),
-        `--format=${recordStart}%H%x00%aN%x00%aE%x00%cN%x00%cE%x00%B`,
-        '--',
-      ],
-      { cwd, env: gitEnv(), windowsHide: true, signal },
-    );
-    const decoder = new StringDecoder('utf8');
-    const found: FoundHashes['found'] = [];
-    let pending = '';
-    let stderr = '';
+    const children: ChildProcess[] = [];
     let settled = false;
-    const settle = (capped: boolean) => {
+    const finish = (settle: () => void) => {
+      if (settled) {
+        return;
+      }
       settled = true;
-      resolve({ found, capped });
-    };
-    const take = (record: string): boolean => {
-      const commit = parseSearchedCommit(record);
-      const fields = matchedFields(commit, query);
-      if (fields.length === 0) {
-        return false;
+      for (const child of children) {
+        child.kill();
       }
-      if (found.length === limit) {
-        return true;
-      }
-      found.push({ hash: commit.hash, fields });
-      return false;
+      settle();
     };
-    child.stdout.on('data', (chunk: Buffer) => {
+    const step = (next: () => FoundHashes | undefined) => {
       if (settled) {
         return;
       }
-      pending += decoder.write(chunk);
-      let end = pending.indexOf(recordStart, 1);
-      while (end !== -1) {
-        if (take(pending.slice(1, end))) {
-          settle(true);
-          child.kill();
-          return;
-        }
-        pending = pending.slice(end);
-        end = pending.indexOf(recordStart, 1);
+      const result = next();
+      if (result !== undefined) {
+        finish(() => resolve(result));
       }
-    });
-    child.stderr.on('data', (chunk: Buffer) => {
-      stderr += chunk.toString('utf8');
-    });
-    child.on('error', (error) => {
-      if (!settled) {
-        settled = true;
-        reject(error);
-      }
-    });
-    child.on('close', (code) => {
-      if (settled) {
-        return;
-      }
-      if (code !== 0) {
-        settled = true;
-        reject(new Error(`git log failed: ${stderr}`));
-        return;
-      }
-      pending += decoder.end();
-      settle(pending.length > 1 && take(pending.slice(1)));
-    });
+    };
+    const stream = (
+      args: readonly string[],
+      onRecord: (record: string) => FoundHashes | undefined,
+      onEnd: () => FoundHashes | undefined,
+    ) => {
+      children.push(
+        streamRecords(
+          gitPath,
+          cwd,
+          [...historyRefs(solo), ...args],
+          signal,
+          (record) => step(() => onRecord(record)),
+          () => step(onEnd),
+          (error) => finish(() => reject(error)),
+        ),
+      );
+    };
+    const fullFormat = `${identFormat}%x00%B`;
+    if (grep.length > 0) {
+      stream(
+        [...grep, fullFormat],
+        (record) => merge.addMessage(record),
+        () => merge.endMessages(),
+      );
+    }
+    stream(
+      [grep.length > 0 ? identFormat : fullFormat],
+      (record) => merge.addIdent(record),
+      () => merge.endIdents(),
+    );
   });
 }
 

@@ -466,10 +466,29 @@ suite('Commit search', function () {
       '--author',
       'Test <test@example.com>',
     );
+    await search.git(
+      'commit',
+      '--allow-empty',
+      '-m',
+      'Literal (a+b)*[c]\\d? text',
+      '-m',
+      'Élan in the description',
+      '--author',
+      'Old Name <old@example.com>',
+    );
     await search.commit('unrelated');
+    fs.writeFileSync(
+      path.join(search.root, '.mailmap'),
+      'New Name <old@example.com>\n',
+    );
   });
 
   suiteTeardown(() => removeFolder(search.root));
+
+  const subjectsFound = async (query: string) =>
+    (await searchCommits(gitPath, search.root, query, false)).commits.map(
+      ({ commit, fields }) => [commit.subject, fields],
+    );
 
   test('finds commits by author, committer or message, ignoring case, newest first, saying which matched', async () => {
     const found = await searchCommits(gitPath, search.root, 'ADA', false);
@@ -502,6 +521,23 @@ suite('Commit search', function () {
       ['third', 'second'],
     );
     assert.strictEqual(limited.capped, true);
+  });
+
+  test('finds authors by their mailmapped names, and takes special characters and any letters literally, ignoring case', async () => {
+    const literal = 'Literal (a+b)*[c]\\d? text';
+    assert.deepStrictEqual(await subjectsFound('NEW NAME <old@'), [
+      [literal, ['author']],
+    ]);
+    assert.deepStrictEqual(await subjectsFound('old name'), []);
+    assert.deepStrictEqual(await subjectsFound('(A+B)*[C]\\D?'), [
+      [literal, ['message']],
+    ]);
+    assert.deepStrictEqual(await subjectsFound('ÉLAN in'), [
+      [literal, ['message']],
+    ]);
+    assert.deepStrictEqual(await subjectsFound('text\n\nélan'), [
+      [literal, ['message']],
+    ]);
   });
 
   test('stops when cancelled', async () => {
