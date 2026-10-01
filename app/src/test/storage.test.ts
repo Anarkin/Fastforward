@@ -59,6 +59,22 @@ suite('Storage', () => {
     assert.deepStrictEqual(state.get('solo'), {});
   });
 
+  test('takes in the tabs and the active one together, before either is written', async () => {
+    const written = Promise.withResolvers<void>();
+    const store = new FakeStore();
+    store.update = (key, value) => {
+      store.values.set(key, value);
+      return written.promise;
+    };
+    const storage = storageOf(store);
+    const [one, two] = [path.resolve('one'), path.resolve('two')];
+    const saved = storage.setTabs([one, two], two);
+    assert.deepStrictEqual(storage.tabs, [one, two]);
+    assert.strictEqual(storage.activeTab, two);
+    written.resolve();
+    await saved;
+  });
+
   test('reads a folder saved twice in the tabs as one tab', async () => {
     const store = new FakeStore();
     const root = path.resolve('r');
