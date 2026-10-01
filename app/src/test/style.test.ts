@@ -217,20 +217,22 @@ suite('Style', () => {
     }
   });
 
-  test('tints the changed words within a line more strongly, as the theme says', () => {
-    for (const [selector, color] of [
-      ['.diff-line .word-added', 'added'],
-      ['.diff-line .word-removed', 'deleted'],
-    ]) {
-      assert.ok(
-        declarationsOf(selector)
-          .replace(/\s+/g, ' ')
-          .includes(
-            `background: color-mix( in srgb, var(--color-${color}) var(--color-${color}-word), transparent );`,
-          ),
-        selector,
+  test('leaves a line compared word by word untinted but for its numbers, tinting only the changed words, as a whole changed line is', () => {
+    for (const color of ['added', 'deleted']) {
+      const kind = color === 'added' ? 'added' : 'removed';
+      const word = color === 'added' ? 'word-added' : 'word-removed';
+      assert.match(
+        css,
+        new RegExp(
+          `\\n\\.diff-line\\.${kind}\\.compared \\.number,\\s*\\.diff-line \\.${word} \\{\\s*background: color-mix\\(\\s*in srgb,\\s*var\\(--color-${color}\\) var\\(--color-${color}-line\\),\\s*transparent\\s*\\);\\s*\\}`,
+        ),
+        color,
       );
     }
+    assert.match(
+      css,
+      /\n\.diff-line\.added\.compared,\s*\.diff-line\.removed\.compared \{\s*background: none;\s*\}/,
+    );
   });
 
   test('tints added and removed diff lines as strongly as the theme says, in the colors their minimap marks are drawn in', () => {

@@ -626,6 +626,9 @@ export function DiffView({
     );
   };
 
+  const compared = (key: string | undefined) =>
+    key !== undefined && words.has(key);
+
   const code = (
     key: string | undefined,
     text: string,
@@ -680,7 +683,9 @@ export function DiffView({
         return <div className="hunk-divider" />;
       case 'line':
         return (
-          <div className={`diff-line ${row.line.kind}`}>
+          <div
+            className={`diff-line ${row.line.kind} ${compared(keys[index].at(0)) ? 'compared' : ''}`}
+          >
             <span className="number">{row.line.oldNumber}</span>
             <span className="number">{row.line.newNumber}</span>
             {code(keys[index].at(0), row.line.text, row.line.kind)}
@@ -692,7 +697,7 @@ export function DiffView({
             {[row.left, row.right].map((cell, side) => (
               <div
                 key={side}
-                className={`diff-line split-side ${splitSideClass(cell, side === 0 ? 'removed' : 'added')}`}
+                className={`diff-line split-side ${splitSideClass(cell, side === 0 ? 'removed' : 'added')} ${cell && compared(lineKey(row.file, cell.index)) ? 'compared' : ''}`}
               >
                 <span className="number">
                   {side === 0 ? cell?.line.oldNumber : cell?.line.newNumber}
