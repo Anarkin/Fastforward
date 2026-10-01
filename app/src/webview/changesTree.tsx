@@ -116,17 +116,10 @@ export function filesKey(
   const offset = header ? 1 : 0;
   const index = cursor === undefined ? -1 : keys.indexOf(cursor);
   const row = index < offset ? undefined : rows[index - offset];
-  if (key === 'ArrowRight' || key === 'ArrowLeft') {
-    if (row?.kind !== 'folder' || row.open !== (key === 'ArrowLeft')) {
-      if (key === 'ArrowRight' || row === undefined) {
-        return undefined;
-      }
-      const parent = ancestorRows(rows, index - offset).at(-1);
-      return parent === undefined
-        ? undefined
-        : { kind: 'cursor', key: treeRowKey(rows[parent]) };
-    }
-    return { kind: 'toggle', folder: row.path, changed: row.changed };
+  if (key === ' ') {
+    return row?.kind === 'folder'
+      ? { kind: 'toggle', folder: row.path, changed: row.changed }
+      : { kind: 'stay' };
   }
   const moved = moveInList(
     key,

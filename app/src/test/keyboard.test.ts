@@ -151,46 +151,31 @@ suite('Files column keys', () => {
     );
   });
 
-  test('opens a closed folder on Right, and leaves Right on anything else to the next column', () => {
+  test('opens or closes the folder under the cursor on Space, doing nothing else on a file', () => {
     assert.deepStrictEqual(
-      filesKey('ArrowRight', rows(['src']), true, 'folder:src', visible),
+      filesKey(' ', rows(['src']), true, 'folder:src', visible),
       { kind: 'toggle', folder: 'src', changed: true },
     );
-    assert.strictEqual(
-      filesKey('ArrowRight', rows(), true, 'folder:src', visible),
-      undefined,
-    );
-    assert.strictEqual(
-      filesKey('ArrowRight', rows(), true, 'file:c.ts', visible),
-      undefined,
-    );
-  });
-
-  test('closes an open folder on Left, then goes to its parent, and leaves Left at the top to the previous column', () => {
     assert.deepStrictEqual(
-      filesKey('ArrowLeft', rows(), true, 'folder:src/app', visible),
+      filesKey(' ', rows(), true, 'folder:src/app', visible),
       { kind: 'toggle', folder: 'src/app', changed: true },
     );
-    assert.deepStrictEqual(
-      filesKey('ArrowLeft', rows(), true, 'file:src/app/a.ts', visible),
-      { kind: 'cursor', key: 'folder:src/app' },
-    );
-    assert.deepStrictEqual(
-      filesKey('ArrowLeft', rows(['src/app']), true, 'folder:src/app', visible),
-      { kind: 'cursor', key: 'folder:src' },
-    );
-    assert.strictEqual(
-      filesKey('ArrowLeft', rows(['src']), true, 'folder:src', visible),
-      undefined,
-    );
-    assert.strictEqual(
-      filesKey('ArrowLeft', rows(), true, 'file:c.ts', visible),
-      undefined,
-    );
-    assert.strictEqual(
-      filesKey('ArrowLeft', rows(), true, 'changes', visible),
-      undefined,
-    );
+    assert.deepStrictEqual(filesKey(' ', rows(), true, 'file:c.ts', visible), {
+      kind: 'stay',
+    });
+  });
+
+  test('leaves Left and Right to moving between the columns', () => {
+    for (const cursor of ['folder:src', 'file:src/app/a.ts', 'changes']) {
+      assert.strictEqual(
+        filesKey('ArrowLeft', rows(), true, cursor, visible),
+        undefined,
+      );
+      assert.strictEqual(
+        filesKey('ArrowRight', rows(['src']), true, cursor, visible),
+        undefined,
+      );
+    }
   });
 });
 
