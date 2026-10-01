@@ -94,6 +94,7 @@ export function App({ post, listen }: Props) {
     filesLoading,
     patchLoading,
     path,
+    entireFile,
     patch,
     diffs,
     fileContent,
@@ -108,7 +109,6 @@ export function App({ post, listen }: Props) {
     error,
   } = tab;
   const [entireFilePinned, setEntireFilePinned] = useState(false);
-  const [entireFileOf, setEntireFileOf] = useState<string>();
   const [ignoreWhitespace, setIgnoreWhitespace] = useState(false);
   const [autoFetch, setAutoFetch] = useState(false);
   const [autoFetchMinutes, setAutoFetchMinutes] = useState(0);
@@ -335,9 +335,8 @@ export function App({ post, listen }: Props) {
     post({ type: 'setShowAllFiles', show });
   };
 
-  const shownFile = `${activeTab ?? ''}:${hash ?? ''}:${path ?? ''}`;
   const showEntireFile = (entire: boolean) => {
-    setEntireFileOf(entire ? shownFile : undefined);
+    dispatch({ type: 'showEntireFile', entire });
     postTab({ type: 'showEntireFile', entire });
   };
   const changeIgnoreWhitespace = (ignore: boolean) => {
@@ -605,12 +604,11 @@ export function App({ post, listen }: Props) {
                     error={error}
                     sideBySide={diffLayout === 'sideBySide'}
                     changeMarks={
-                      path !== undefined &&
-                      (entireFilePinned || entireFileOf === shownFile)
+                      path !== undefined && (entireFilePinned || entireFile)
                     }
                     entireFile={
                       <DiffOptions
-                        entire={entireFileOf === shownFile}
+                        entire={entireFile}
                         pinned={entireFilePinned}
                         canShow={path !== undefined}
                         onEntire={showEntireFile}
