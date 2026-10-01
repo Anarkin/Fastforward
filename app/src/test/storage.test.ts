@@ -235,6 +235,31 @@ suite('Settings file', () => {
     assert.strictEqual(new JsonFileStore(file).get('n'), 3);
   });
 
+  test('writes changes made while a write waits to start in that one write', async () => {
+    const store = new JsonFileStore(file);
+    const rename = fs.promises.rename;
+    let writes = 0;
+    Reflect.set(fs.promises, 'rename', (...args: Parameters<typeof rename>) => {
+      writes++;
+      return rename(...args);
+    });
+    try {
+      await Promise.all([
+        store.update('tabs', ['/a']),
+        store.update('activeTab', '/a'),
+        store.update('recentRepositories', ['/a']),
+      ]);
+      await store.update('solo', true);
+    } finally {
+      Reflect.set(fs.promises, 'rename', rename);
+    }
+    assert.strictEqual(writes, 2);
+    const reopened = new JsonFileStore(file);
+    assert.strictEqual(reopened.get('activeTab'), '/a');
+    assert.deepStrictEqual(reopened.get('recentRepositories'), ['/a']);
+    assert.strictEqual(reopened.get('solo'), true);
+  });
+
   test('starts afresh from a broken file, keeping a copy of it', () => {
     fs.writeFileSync(file, '{ broken');
     const store = new JsonFileStore(file);

@@ -23,6 +23,7 @@ export interface Store {
 export class JsonFileStore implements Store {
   private readonly values: Record<string, unknown>;
   private writing: Promise<void> = Promise.resolve();
+  private waiting = false;
 
   constructor(private readonly file: string) {
     this.values = readJson(file);
@@ -38,10 +39,18 @@ export class JsonFileStore implements Store {
     } else {
       this.values[key] = value;
     }
-    const json = JSON.stringify(this.values, undefined, 2);
-    this.writing = this.writing
-      .catch(() => undefined)
-      .then(() => writeAtomically(this.file, json));
+    if (!this.waiting) {
+      this.waiting = true;
+      this.writing = this.writing
+        .catch(() => undefined)
+        .then(() => {
+          this.waiting = false;
+          return writeAtomically(
+            this.file,
+            JSON.stringify(this.values, undefined, 2),
+          );
+        });
+    }
     return this.writing;
   }
 

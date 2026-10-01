@@ -12,12 +12,7 @@ import {
   logCommits,
   searchCommits,
 } from './git/history';
-import {
-  readHead,
-  readRefs,
-  repositoryRoot,
-  type Refs,
-} from './git/repository';
+import { readRefs, repositoryRoot, type Refs } from './git/repository';
 import { watchRepository, type Watcher } from './git/watch';
 import {
   workingTreeFiles,
@@ -541,7 +536,7 @@ export class FastforwardView {
   ): Promise<void> {
     const { tabs } = this.storage;
     const active = (root && tabs.find((tab) => sameRoot(tab, root))) ?? tabs[0];
-    await this.storage.setTabs(tabs, active);
+    this.save(this.storage.setTabs(tabs, active));
     this.postTabs(session);
     if (active) {
       const tab = this.tabState(active);
@@ -560,12 +555,12 @@ export class FastforwardView {
     if (!context || session.disposed || !this.isActive(context.root)) {
       return;
     }
-    const head = await readHead(context.gitPath, context.root);
-    this.log.info(
-      `Tab ${context.root} is open, HEAD ${head?.name ?? '(detached)'} ${head?.commit ?? ''}`,
-    );
-    await this.watch(context, session);
-    await this.storage.addRecent(context.root);
+    this.log.info(`Tab ${context.root} is open`);
+    this.save(this.storage.addRecent(context.root));
+    await allSettled([this.watch(context, session), this.showTab(context)]);
+  }
+
+  private async showTab(context: Context): Promise<void> {
     if (context.tab.entireFile) {
       context.tab.entireFile = false;
       const { hash, path: file } = context.tab;
@@ -582,6 +577,13 @@ export class FastforwardView {
       return;
     }
     await this.loadTab(context);
+  }
+
+  private save(saving: Promise<void>): void {
+    void saving.catch((error: unknown) => {
+      this.log.error('Saving the state failed');
+      this.log.error(error instanceof Error ? error : String(error));
+    });
   }
 
   private async loadTab(context: Context): Promise<void> {
