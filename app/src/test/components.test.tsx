@@ -805,6 +805,21 @@ const searched = (
   },
 });
 
+suite('Locations tree', () => {
+  test('draws at most a few hundred refs side by side, counting the rest', () => {
+    const refs = Array.from({ length: 300 }, (_, index): RefInfo => ({
+      kind: 'tag',
+      name: `v${String(index).padStart(3, '0')}`,
+      commit: 'a',
+    }));
+    const html = popup('', undefined, {
+      repository: { head: undefined, headCommit: undefined, refs },
+    });
+    assert.strictEqual(tagsWith(html, 'row', 'tree-row', 'leaf').length, 200);
+    assert.match(html, /100 more; type to narrow them down/);
+  });
+});
+
 suite('Commit results', () => {
   const first = 'abcd'.padEnd(40, '0');
   const second = 'abcd'.padEnd(40, '1');
