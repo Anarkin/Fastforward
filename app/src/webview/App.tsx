@@ -438,6 +438,7 @@ export function App({ post, listen }: Props) {
                     onCollapseMerges={changeCollapseMerges}
                     solo={solo}
                     headCommit={repository?.headCommit}
+                    focusKey={activeTab}
                     applyingSolo={applyingSolo}
                     onSolo={changeSolo}
                     navigation={

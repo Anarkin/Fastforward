@@ -4,7 +4,9 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { workingTreeHash } from '../shared/protocol';
 import { CommitHistory } from '../webview/commitHistory';
 import {
-  arrowKeyPosition,
+  fullyVisible,
+  isListKey,
+  listKeyPosition,
   bubbleLineHeight,
   commitRowHeight,
   CommitBubbles,
@@ -214,43 +216,155 @@ suite('Commit list top', () => {
   });
 });
 
-suite('Commit list arrow keys', () => {
-  test('step from the selected row, and stop at either end', () => {
-    const history = new CommitHistory(2);
-    history.add(0, [commitInfo('a'), commitInfo('b')]);
-    assert.strictEqual(arrowKeyPosition(history, 'a', true, 1), 1);
-    assert.strictEqual(arrowKeyPosition(history, 'a', true, -1), -1);
-    assert.strictEqual(arrowKeyPosition(history, 'b', true, 1), undefined);
+const loaded = (...hashes: string[]) => {
+  const history = new CommitHistory(hashes.length);
+  history.add(
+    0,
+    hashes.map((hash) => commitInfo(hash)),
+  );
+  return history;
+};
+
+suite('Commit list keys', () => {
+  const visible = { first: 0, last: 0 };
+  const press = (
+    key: string,
+    history: CommitHistory,
+    selected: string | undefined,
+    workingTree: boolean,
+    rows = visible,
+    headCommit?: string,
+    pending?: number,
+  ) =>
+    listKeyPosition(
+      key,
+      history,
+      selected,
+      workingTree,
+      rows,
+      headCommit,
+      pending,
+    );
+
+  test('steps with the arrows from the selected row, and stops at either end', () => {
+    const history = loaded('a', 'b');
+    assert.strictEqual(press('ArrowDown', history, 'a', true), 1);
+    assert.strictEqual(press('ArrowUp', history, 'a', true), -1);
+    assert.strictEqual(press('ArrowDown', history, 'b', true), undefined);
     assert.strictEqual(
-      arrowKeyPosition(history, workingTreeHash, true, -1),
+      press('ArrowUp', history, workingTreeHash, true),
       undefined,
     );
-    assert.strictEqual(arrowKeyPosition(history, 'a', false, -1), undefined);
-    assert.strictEqual(arrowKeyPosition(history, undefined, true, 1), -1);
-    assert.strictEqual(arrowKeyPosition(history, undefined, false, 1), 0);
-    assert.strictEqual(arrowKeyPosition(history, workingTreeHash, true, 1), 0);
+    assert.strictEqual(press('ArrowUp', history, 'a', false), undefined);
+    assert.strictEqual(press('ArrowDown', history, workingTreeHash, true), 0);
   });
 
-  test('step from where the extension said the selected commit is, before it loads', () => {
+  test('starts from the checked-out commit when nothing is selected, or else from the top', () => {
+    const history = loaded('a', 'b', 'c');
+    assert.strictEqual(
+      press('ArrowDown', history, undefined, true, visible, 'b'),
+      1,
+    );
+    assert.strictEqual(
+      press('ArrowUp', history, undefined, true, visible, 'b'),
+      1,
+    );
+    assert.strictEqual(press('ArrowDown', history, undefined, true), -1);
+    assert.strictEqual(press('ArrowDown', history, undefined, false), 0);
+  });
+
+  test('goes to the first row on Home and the last on End, loaded or not', () => {
+    const history = new CommitHistory(1000);
+    history.add(0, [commitInfo('a'), commitInfo('b')]);
+    assert.strictEqual(press('Home', history, 'b', true), -1);
+    assert.strictEqual(press('Home', history, 'b', false), 0);
+    assert.strictEqual(press('End', history, 'a', true), 999);
+    assert.strictEqual(press('End', history, undefined, false), 999);
+  });
+
+  test('pages down to the last row in view first, then a screen further, and up likewise', () => {
+    const history = new CommitHistory(100);
+    history.add(
+      0,
+      Array.from({ length: 30 }, (_, index) => commitInfo(`c${index}`)),
+    );
+    const rows = { first: 10, last: 19 };
+    assert.strictEqual(press('PageDown', history, 'c12', false, rows), 19);
+    assert.strictEqual(press('PageDown', history, 'c19', false, rows), 28);
+    assert.strictEqual(press('PageDown', history, undefined, false, rows), 19);
+    assert.strictEqual(press('PageUp', history, 'c15', false, rows), 10);
+    assert.strictEqual(press('PageUp', history, 'c10', false, rows), 1);
+    assert.strictEqual(
+      press('PageUp', history, 'c3', false, { first: 3, last: 12 }),
+      0,
+    );
+    assert.strictEqual(
+      press('PageDown', history, 'c0', false, { first: 95, last: 99 }),
+      99,
+    );
+  });
+
+  test('keeps going from a row still loading, rather than the selected one', () => {
+    const history = new CommitHistory(1000);
+    history.add(0, [commitInfo('a')]);
+    assert.strictEqual(
+      press('ArrowUp', history, 'a', false, visible, undefined, 999),
+      998,
+    );
+  });
+
+  test('steps from where the extension said the selected commit is, before it loads', () => {
     const history = new CommitHistory(1000, [], undefined, 1, 5);
     history.add(900, [commitInfo('x')]);
-    assert.strictEqual(arrowKeyPosition(history, 'c', true, 1), 6);
-    assert.strictEqual(arrowKeyPosition(history, 'c', true, -1), 4);
+    assert.strictEqual(press('ArrowDown', history, 'c', true), 6);
+    assert.strictEqual(press('ArrowUp', history, 'c', true), 4);
   });
 
-  test("don't start over from the top without knowing where the selected commit is", () => {
+  test("doesn't start over from the top without knowing where the selected commit is", () => {
     const history = new CommitHistory(1000);
     history.add(900, [commitInfo('x')]);
-    assert.strictEqual(arrowKeyPosition(history, 'c', true, 1), undefined);
+    assert.strictEqual(press('ArrowDown', history, 'c', true), undefined);
     const moved = new CommitHistory(1000, [], undefined, 1, 0);
     moved.add(0, [commitInfo('d')]);
-    assert.strictEqual(arrowKeyPosition(moved, 'c', true, 1), undefined);
+    assert.strictEqual(press('End', moved, 'c', true), undefined);
   });
 
-  test('step from a revealed commit before its page loads', () => {
+  test('steps from a revealed commit before its page loads', () => {
     const history = new CommitHistory(1000);
     history.locate('c', 500);
-    assert.strictEqual(arrowKeyPosition(history, 'c', true, 1), 501);
+    assert.strictEqual(press('ArrowDown', history, 'c', true), 501);
+  });
+
+  test('takes only the list keys without modifiers', () => {
+    const key = {
+      key: 'End',
+      ctrlKey: false,
+      metaKey: false,
+      altKey: false,
+      shiftKey: false,
+    };
+    assert.ok(isListKey(key));
+    assert.ok(isListKey({ ...key, key: 'PageUp' }));
+    assert.ok(!isListKey({ ...key, ctrlKey: true }));
+    assert.ok(!isListKey({ ...key, shiftKey: true }));
+    assert.ok(!isListKey({ ...key, key: 'Enter' }));
+  });
+
+  test('counts the rows wholly in view, leaving out ones cut off at either edge', () => {
+    const rows = [0, 1, 2, 3, 4].map((index) => ({
+      index,
+      start: index * 40,
+      end: (index + 1) * 40,
+    }));
+    assert.deepStrictEqual(fullyVisible(rows, 10, 100, 0), {
+      first: 1,
+      last: 1,
+    });
+    assert.deepStrictEqual(fullyVisible(rows, 0, 120, 1), {
+      first: -1,
+      last: 1,
+    });
+    assert.deepStrictEqual(fullyVisible([], 0, 100, 0), { first: 0, last: 0 });
   });
 });
 

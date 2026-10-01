@@ -551,6 +551,11 @@ suite('Style', () => {
     assert.strictEqual(pixels(diff, 'padding-right'), 4 + 4 * 26 + 3 * 2 + 8);
   });
 
+  test('draws no focus outline around the commit list, whose selected row shows where the keys go', () => {
+    assert.ok(declarationsOf('.list').includes('outline: none;'));
+    assert.doesNotMatch(css, /.list:focus/);
+  });
+
   test('mutes the search placeholders like other muted text', () => {
     assert.ok(
       declarationsOf('.address-text.empty').includes(

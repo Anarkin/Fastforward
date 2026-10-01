@@ -60,6 +60,18 @@ suite('App', function () {
     assert.strictEqual(await page.title(), `${repository.root} - Fastforward`);
   });
 
+  test('focuses the commit list, whose keys start from the checked-out commit', async () => {
+    const list = page.locator('.virtual-rows.list');
+    await page.locator('.commit', { hasText: 'second' }).waitFor();
+    assert.ok(
+      await list.evaluate((element) => element === document.activeElement),
+    );
+    await page.keyboard.press('ArrowDown');
+    await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
+    await page.keyboard.press('End');
+    await page.locator('.commit.selected', { hasText: 'first' }).waitFor();
+  });
+
   test('colors the page from the settings', async () => {
     const { colors } = defaultSettings();
     const focus = await page.evaluate(() =>
