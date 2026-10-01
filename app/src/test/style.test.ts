@@ -4,6 +4,7 @@ import {
   commitRowHeight,
   workingTreeRowHeight,
 } from '../webview/commitList';
+import { rowHeight } from '../webview/diffView';
 import { stylesheet } from './fixtures';
 
 const css = stylesheet();
@@ -581,6 +582,21 @@ suite('Style', () => {
     const diff = declarationsOf('.column-title:has(.diff-options)');
     assert.strictEqual(pixels(diff, 'padding-left'), 4 + 6 * 26 + 5 * 2 + 8);
     assert.strictEqual(pixels(diff, 'padding-right'), 4 + 6 * 26 + 5 * 2 + 8);
+  });
+
+  test('stripes the empty side of a change in the border color, in tiles that meet across rows', () => {
+    const filler = declarationsOf('.split-side.filler').replace(/\s+/g, ' ');
+    assert.match(filler, /linear-gradient\( -45deg, var\(--color-border\)/);
+    const tile = /\/ (\d+)px (\d+)px;/.exec(filler);
+    assert.ok(tile, filler);
+    const height = rowHeight({
+      kind: 'split',
+      file: 0,
+      left: undefined,
+      right: undefined,
+    });
+    assert.ok(height !== undefined);
+    assert.strictEqual(height % Number(tile[2]), 0);
   });
 
   test('draws no focus outline around the commit list, whose selected row shows where the keys go', () => {
