@@ -2792,6 +2792,58 @@ suite('Fetch', function () {
     }
   });
 
+  test('shows what a background fetch brought to a tab selected while it ran', async () => {
+    const first = await tempRepository(path.join(folder, 'first-selected'));
+    await first.commit('first');
+    const pusher = await tempRepository(path.join(folder, 'pusher-selected'));
+    await pusher.git('pull', remote.root, 'main');
+    await pusher.commit('brought');
+    await pusher.git('push', remote.root, 'main');
+    const [brought] = await pusher.resolve('HEAD');
+    const rounds: (() => void)[] = [];
+    const opened = await openView(
+      log,
+      [first.root, repository.root],
+      true,
+      undefined,
+      (run) => {
+        rounds.push(run);
+        return () => undefined;
+      },
+    );
+    stubMethod(opened.view, 'watch', () => Promise.resolve());
+    stubMethod(opened.view, 'fetchRemotes', async (original, ...args) => {
+      const [context] = args;
+      if (
+        typeof context === 'object' &&
+        context !== null &&
+        'root' in context &&
+        context.root === repository.root
+      ) {
+        await opened.connection.receive({
+          type: 'selectTab',
+          root: repository.root,
+        });
+      }
+      return original(...args);
+    });
+    try {
+      await opened.connection.receive({ type: 'setAutoFetch', on: true });
+      await waitFor(() => rounds.length === 1, 'the round to end');
+      await waitFor(
+        () =>
+          opened.page
+            .last('repository')
+            ?.refs.some(
+              (ref) => ref.name === 'origin/main' && ref.commit === brought,
+            ) === true,
+        'the fetched branch',
+      );
+    } finally {
+      opened.connection.dispose();
+    }
+  });
+
   test('says so when a fetch fails, and stops fetching', async () => {
     await repository.git(
       'remote',
