@@ -1,7 +1,21 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useEffectEvent, useRef } from 'react';
 import { type TabInfo } from '../shared/protocol';
 import { CloseIcon } from './icons';
 import { MenuButton } from './menu';
+import { tabStep } from './shortcuts';
+
+export function adjacentTab(
+  tabs: readonly TabInfo[],
+  active: string | undefined,
+  step: 1 | -1,
+): string | undefined {
+  if (tabs.length < 2) {
+    return undefined;
+  }
+  const index = tabs.findIndex((tab) => tab.root === active);
+  const next = index === -1 ? 0 : (index + step + tabs.length) % tabs.length;
+  return tabs[next].root;
+}
 
 export function TabBar({
   tabs,
@@ -40,6 +54,22 @@ export function TabBar({
       );
     });
   }, [onLog]);
+
+  const onKeyDown = useEffectEvent((event: KeyboardEvent) => {
+    const step = tabStep(event);
+    if (step === undefined) {
+      return;
+    }
+    event.preventDefault();
+    const next = adjacentTab(tabs, active, step);
+    if (next !== undefined) {
+      onSelect(next);
+    }
+  });
+  useEffect(() => {
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   const onWheel = (event: React.WheelEvent) => {
     if (list.current && event.deltaY !== 0) {
