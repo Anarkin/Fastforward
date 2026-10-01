@@ -157,6 +157,14 @@ suite('Locations search', () => {
     assert.strictEqual(enterTarget(' AB12 ', undefined, branch), 'ab12');
   });
 
+  test('jumps on Enter to the result picked with the arrows, though the typed text may be a hash not looked up yet', () => {
+    const [branch] = resultItems([], searchRefs([refs[3]], 'a'));
+    assert.strictEqual(
+      enterTarget('ab12', undefined, branch, true),
+      refs[3].commit,
+    );
+  });
+
   test('keeps the highlight on its result while the results change, and otherwise starts at the first', () => {
     const highlight: Highlighted = { query: 'a', key: 'branch:feat/x' };
     assert.strictEqual(
