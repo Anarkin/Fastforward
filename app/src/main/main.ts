@@ -29,6 +29,7 @@ import { JsonFileStore, Storage } from '../storage';
 import { themeCss } from '../theme';
 import { FastforwardView, type Connection } from '../view';
 import { appFile, appOrigin, appScheme, visibleBounds } from './files';
+import { flushBeforeQuit } from './quit';
 import { loginShellPath, mergePaths } from './shellPath';
 import { checksForUpdates } from './updates';
 
@@ -187,11 +188,10 @@ async function start(): Promise<void> {
     }
     window.focus();
   });
-  app.on('window-all-closed', () => {
-    void Promise.all([state.saved(), userSettings.saved()]).finally(() =>
-      app.quit(),
-    );
-  });
+  app.on('window-all-closed', () => app.quit());
+  flushBeforeQuit(app, () =>
+    Promise.all([state.saved(), userSettings.saved()]),
+  );
   if (development && process.env.FASTFORWARD_DEV) {
     reloadOnRebuild(window, () => {
       try {

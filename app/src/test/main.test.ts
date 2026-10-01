@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { appFile, visibleBounds } from '../main/files';
+import { flushBeforeQuit } from '../main/quit';
 import { loginShellPath, mergePaths, pathFromOutput } from '../main/shellPath';
 import { checksForUpdates } from '../main/updates';
 import { installedGit } from './repositories';
@@ -130,5 +131,37 @@ suite('Updates', () => {
         PORTABLE_EXECUTABLE_DIR: 'C:\\Apps',
       }),
     );
+  });
+});
+
+suite('Quitting', () => {
+  test('waits for what is being saved before it quits, however it was asked to', async () => {
+    let quitting: ((event: { preventDefault(): void }) => void) | undefined;
+    let quits = 0;
+    const app = {
+      on: (_event: 'will-quit', listener: typeof quitting) => {
+        quitting = listener;
+      },
+      quit: () => {
+        quits += 1;
+      },
+    };
+    const saved = Promise.withResolvers<void>();
+    flushBeforeQuit(app, () => saved.promise);
+    let prevented = 0;
+    const event = {
+      preventDefault: () => {
+        prevented += 1;
+      },
+    };
+    quitting?.(event);
+    assert.strictEqual(prevented, 1);
+    assert.strictEqual(quits, 0);
+    saved.resolve();
+    await saved.promise;
+    await Promise.resolve();
+    assert.strictEqual(quits, 1);
+    quitting?.(event);
+    assert.strictEqual(prevented, 1);
   });
 });
