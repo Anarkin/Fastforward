@@ -8,6 +8,7 @@ import {
 } from '../shared/protocol';
 import { withLargeFiles } from '../webview/diffColumn';
 import {
+  codeProps,
   diffRowKey,
   diffRows,
   largeFilesToLoad,
@@ -524,5 +525,40 @@ suite('Diff row heights', () => {
       loading.map((_, index) => rowMeasures(loading).estimateSize(index)),
       [200, 240],
     );
+  });
+
+  test('gives a line the same inputs to draw it from while its colors, changed words and matches stay, so it is not drawn again', () => {
+    const keyword = [{ start: 0, end: 3, kind: 'keyword' as const }];
+    const changed = [{ start: 4, end: 7 }];
+    const match = { file: 0, line: 1, start: 4, end: 5 };
+    const matched = [match];
+    const marks = () => ({
+      syntax: new Map([['0:1', keyword]]),
+      words: new Map([['0:1', changed]]),
+      finds: new Map([['0:1', matched]]),
+      foundKey: '0:1',
+      found: match,
+    });
+    const before = codeProps(marks(), '0:1', 'let sum', 'removed');
+    const after = codeProps(marks(), '0:1', 'let sum', 'removed');
+    assert.deepStrictEqual(
+      Object.entries(after).map(([name, value]) => [name, value]),
+      Object.entries(before),
+    );
+    assert.ok(
+      Object.values(after).every(
+        (value, index) => Object.values(before)[index] === value,
+      ),
+    );
+    assert.strictEqual(before.wordClass, 'word-removed');
+    assert.strictEqual(before.current, match);
+    const plain = codeProps(marks(), '0:2', 'x', 'added');
+    const again = codeProps(marks(), undefined, 'x', undefined);
+    assert.deepStrictEqual(plain.syntax, []);
+    assert.strictEqual(again.syntax, plain.syntax);
+    assert.strictEqual(again.words, plain.words);
+    assert.strictEqual(again.finds, plain.finds);
+    assert.strictEqual(plain.current, undefined);
+    assert.strictEqual(plain.wordClass, 'word-added');
   });
 });
