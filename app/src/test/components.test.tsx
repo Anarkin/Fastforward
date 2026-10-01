@@ -1,7 +1,11 @@
 import * as assert from 'node:assert';
 import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { changesTreeElements, changesTreeRows } from '../webview/changesTree';
+import {
+  changesTreeElements,
+  changesTreeRows,
+  folderRowKey,
+} from '../webview/changesTree';
 import {
   CheckedOutBranch,
   CommitBubble,
@@ -371,7 +375,7 @@ suite('Files column', () => {
     assert.deepStrictEqual(picked, [undefined, 'b.ts']);
   });
 
-  test('selects all changes with their header, marked while no file is', () => {
+  test('selects all changes with their header, marked while no file is, leaving them be when they are', () => {
     const picked: (string | undefined)[] = [];
     const [header] = changesRows([change('a.ts')], undefined, (path) =>
       picked.push(path),
@@ -382,9 +386,13 @@ suite('Files column', () => {
       `<div class="${header.props.className}"><span class="path">All Changes</span></div>`,
     );
     header.props.onClick();
-    assert.deepStrictEqual(picked, [undefined]);
-    const [unmarked] = changesRows([change('a.ts')], 'a.ts', noop).rows;
+    assert.strictEqual(picked.length, 0);
+    const [unmarked] = changesRows([change('a.ts')], 'a.ts', (path) =>
+      picked.push(path),
+    ).rows;
     assert.doesNotMatch(unmarked.props.className, /\bselected\b/);
+    unmarked.props.onClick();
+    assert.deepStrictEqual(picked, [undefined]);
   });
 });
 
@@ -467,6 +475,24 @@ suite('Changes tree rows', () => {
     tagWith(html, 'title="Modified: src/b.ts"', 'row', 'file', 'selected');
     const a = tagWith(html, 'title="Modified: src/a.ts"', 'row', 'file');
     assert.ok(!classesOf(a).has('selected'));
+  });
+
+  test('marks the row under the cursor, still deselecting the selected file on a click', () => {
+    const picked: (string | undefined)[] = [];
+    const elements = changesTreeElements({
+      rows: changesTreeRows([change('src/a.ts')], new Set()),
+      showsAll: false,
+      onToggle: noop,
+      selected: 'src/a.ts',
+      onSelect: (path) => picked.push(path),
+      cursor: folderRowKey('src'),
+    });
+    const html = renderToStaticMarkup(<>{elements}</>);
+    tagWith(html, 'title="src"', 'row', 'folder', 'selected');
+    const a = tagWith(html, 'title="Modified: src/a.ts"', 'row', 'file');
+    assert.ok(!classesOf(a).has('selected'));
+    clickFile(elements[1]);
+    assert.deepStrictEqual(picked, [undefined]);
   });
 
   test('showing all files, dims the folders and files without changes, and toggles each kind of folder its own way', () => {

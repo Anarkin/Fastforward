@@ -74,6 +74,12 @@ export function Files({
     treeRows.some((row) => treeRowKey(row) === moved.key)
       ? moved.key
       : selectedKey;
+  const select = (path: string | undefined) => {
+    setMoved(undefined);
+    if (path !== selected) {
+      onSelect(path);
+    }
+  };
   const onKeyDown = (event: React.KeyboardEvent, visible: VisibleRows) => {
     if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) {
       return;
@@ -140,7 +146,7 @@ export function Files({
     <div
       key="changes"
       className={`row group counted ${cursor === changesKey ? 'selected' : ''}`}
-      onClick={() => onSelect(undefined)}
+      onClick={() => select(undefined)}
     >
       <span className="path">All Changes</span>
     </div>
@@ -156,8 +162,8 @@ export function Files({
         onToggleFolder(folder);
       }
     },
-    selected: cursor === selectedKey ? selected : undefined,
-    onSelect,
+    selected,
+    onSelect: select,
     cursor,
   });
   return (

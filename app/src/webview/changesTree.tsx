@@ -209,6 +209,9 @@ export function changesTreeElements({
         depth={row.depth}
         change={row.change}
         selected={selected}
+        marked={
+          cursor === undefined ? undefined : cursor === fileRowKey(row.path)
+        }
         onSelect={onSelect}
       />
     ),
