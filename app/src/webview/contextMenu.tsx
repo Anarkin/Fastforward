@@ -70,6 +70,7 @@ export function ContextMenu({
   }, [menu]);
 
   useDismiss(element, onClose, { onScroll: true });
+  useMenuFocus(element);
 
   return (
     <div
@@ -78,6 +79,7 @@ export function ContextMenu({
       role="menu"
       style={position}
       onContextMenu={(event) => event.preventDefault()}
+      onKeyDown={(event) => onMenuKeyDown(event)}
     >
       <MenuItems items={menu.items} onClose={onClose} />
     </div>
@@ -144,6 +146,91 @@ export function listenForDismiss(
   };
 }
 
+export function nextMenuItem(
+  key: string,
+  current: number,
+  count: number,
+): number | undefined {
+  if (count === 0) {
+    return undefined;
+  }
+  switch (key) {
+    case 'ArrowDown':
+      return current === -1 ? 0 : (current + 1) % count;
+    case 'ArrowUp':
+      return current === -1 ? count - 1 : (current - 1 + count) % count;
+    case 'Home':
+      return 0;
+    case 'End':
+      return count - 1;
+    default:
+      return undefined;
+  }
+}
+
+function menuItems(menu: Element | null): HTMLElement[] {
+  return Array.from(
+    menu?.querySelectorAll<HTMLElement>(
+      ':scope > .menu-entry > .menu-item:not(:disabled)',
+    ) ?? [],
+  );
+}
+
+export function useMenuFocus(
+  menu: React.RefObject<HTMLElement | null>,
+  focusFirst = true,
+): void {
+  useEffect(() => {
+    const element = menu.current;
+    const previous = document.activeElement;
+    if (focusFirst) {
+      menuItems(element).at(0)?.focus();
+    }
+    return () => {
+      const active = document.activeElement;
+      if (
+        previous instanceof HTMLElement &&
+        (active === null ||
+          active === document.body ||
+          element?.contains(active))
+      ) {
+        previous.focus();
+      }
+    };
+  }, [menu, focusFirst]);
+}
+
+export function onMenuKeyDown(
+  event: React.KeyboardEvent<HTMLElement>,
+  onBack?: () => void,
+): void {
+  const menu = event.currentTarget;
+  if (
+    !(event.target instanceof Element) ||
+    event.target.closest('.menu') !== menu
+  ) {
+    return;
+  }
+  const items = menuItems(menu);
+  const current = items.findIndex((item) => item === document.activeElement);
+  const next = nextMenuItem(event.key, current, items.length);
+  if (next !== undefined) {
+    items[next].focus();
+  } else if (event.key === 'ArrowRight') {
+    const item = items[current];
+    if (item?.getAttribute('aria-haspopup') !== 'menu') {
+      return;
+    }
+    item.click();
+  } else if (event.key === 'ArrowLeft' && onBack) {
+    onBack();
+  } else if (event.key !== 'Tab' && event.key !== 'ArrowLeft') {
+    return;
+  }
+  event.preventDefault();
+  event.stopPropagation();
+}
+
 export function useDismiss(
   element: React.RefObject<HTMLElement | null>,
   onClose: () => void,
@@ -169,6 +256,8 @@ export function MenuItems({
   onClose: () => void;
 }) {
   const [openSubmenu, setOpenSubmenu] = useState<number>();
+  const [submenuByKey, setSubmenuByKey] = useState(false);
+  const entries = useRef<(HTMLButtonElement | null)[]>([]);
   return (
     <>
       {items.map((item, index) =>
@@ -178,11 +267,16 @@ export function MenuItems({
           <div
             key={index}
             className="menu-entry"
-            onMouseEnter={() =>
-              setOpenSubmenu(item.submenu ? index : undefined)
-            }
+            onMouseEnter={() => {
+              setSubmenuByKey(false);
+              setOpenSubmenu(item.submenu ? index : undefined);
+            }}
           >
             <button
+              ref={(button) => {
+                entries.current[index] = button;
+              }}
+              onMouseEnter={(event) => event.currentTarget.focus()}
               className={`menu-item ${item.submenu ? 'has-submenu' : ''}`}
               role={
                 item.checked === undefined
@@ -195,8 +289,9 @@ export function MenuItems({
               title={item.title}
               aria-haspopup={item.submenu ? 'menu' : undefined}
               disabled={item.disabled}
-              onClick={() => {
+              onClick={(event) => {
                 if (item.submenu) {
+                  setSubmenuByKey(event.detail === 0);
                   setOpenSubmenu(index);
                 } else {
                   onClose();
@@ -211,7 +306,15 @@ export function MenuItems({
               {item.submenu && <span className="submenu-arrow">▸</span>}
             </button>
             {item.submenu && openSubmenu === index && (
-              <Submenu items={item.submenu} onClose={onClose} />
+              <Submenu
+                items={item.submenu}
+                onClose={onClose}
+                focusFirst={submenuByKey}
+                onBack={() => {
+                  setOpenSubmenu(undefined);
+                  entries.current[index]?.focus();
+                }}
+              />
             )}
           </div>
         ),
@@ -223,11 +326,16 @@ export function MenuItems({
 function Submenu({
   items,
   onClose,
+  focusFirst,
+  onBack,
 }: {
   items: readonly ContextMenuItem[];
   onClose: () => void;
+  focusFirst: boolean;
+  onBack: () => void;
 }) {
   const element = useRef<HTMLDivElement>(null);
+  useMenuFocus(element, focusFirst);
   const [flipped, setFlipped] = useState(false);
   useLayoutEffect(() => {
     const box = element.current?.getBoundingClientRect();
@@ -240,6 +348,7 @@ function Submenu({
       ref={element}
       className={`menu submenu ${flipped ? 'flipped' : ''}`}
       role="menu"
+      onKeyDown={(event) => onMenuKeyDown(event, onBack)}
     >
       <MenuItems items={items} onClose={onClose} />
     </div>

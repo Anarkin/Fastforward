@@ -75,6 +75,31 @@ suite('App', function () {
     await page.locator('.columns.nothing-selected').waitFor();
   });
 
+  test('works a menu with the keys, giving the keyboard back when it closes', async () => {
+    await page
+      .locator('.commit', { hasText: 'first' })
+      .click({ button: 'right' });
+    const focused = () =>
+      page.evaluate(() => document.activeElement?.textContent ?? '');
+    const first = await page
+      .locator('.context-menu .menu-item')
+      .first()
+      .textContent();
+    await page.waitForFunction(
+      () => document.activeElement?.classList.contains('menu-item') ?? false,
+    );
+    assert.strictEqual(await focused(), first);
+    await page.keyboard.press('ArrowDown');
+    assert.notStrictEqual(await focused(), first);
+    await page.keyboard.press('Escape');
+    await page.locator('.context-menu').waitFor({ state: 'detached' });
+    assert.ok(
+      await page
+        .locator('.virtual-rows.list')
+        .evaluate((element) => element === document.activeElement),
+    );
+  });
+
   test('colors the page from the settings', async () => {
     const { colors } = defaultSettings();
     const focus = await page.evaluate(() =>

@@ -939,12 +939,16 @@ suite('Menu items', () => {
     const [plain, sub] = items.props.children.map((entry) => {
       assert.ok(isValidElement<{ children: React.ReactNode[] }>(entry));
       const button = entry.props.children[0];
-      assert.ok(isValidElement<{ onClick: () => void }>(button));
+      assert.ok(
+        isValidElement<{ onClick: (event: { detail: number }) => void }>(
+          button,
+        ),
+      );
       return button;
     });
-    plain.props.onClick();
+    plain.props.onClick({ detail: 1 });
     assert.deepStrictEqual(log, ['close', 'a']);
-    sub.props.onClick();
+    sub.props.onClick({ detail: 1 });
     assert.deepStrictEqual(log, ['close', 'a']);
   });
 

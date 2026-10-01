@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import { listenForDismiss } from '../webview/contextMenu';
+import { listenForDismiss, nextMenuItem } from '../webview/contextMenu';
 
 function keyDown(key: string): Event {
   return Object.assign(new Event('keydown', { cancelable: true }), { key });
@@ -103,5 +103,19 @@ suite('Dismissing menus and popups', () => {
     window.dispatchEvent(new Event('wheel'));
     window.dispatchEvent(pointerDown(element('elsewhere')));
     assert.strictEqual(menu.closed, 0);
+  });
+});
+
+suite('Menu keys', () => {
+  test('moves through the items with the arrows, wrapping around, and to either end with Home and End', () => {
+    assert.strictEqual(nextMenuItem('ArrowDown', 0, 3), 1);
+    assert.strictEqual(nextMenuItem('ArrowDown', 2, 3), 0);
+    assert.strictEqual(nextMenuItem('ArrowUp', 0, 3), 2);
+    assert.strictEqual(nextMenuItem('ArrowUp', -1, 3), 2);
+    assert.strictEqual(nextMenuItem('ArrowDown', -1, 3), 0);
+    assert.strictEqual(nextMenuItem('Home', 2, 3), 0);
+    assert.strictEqual(nextMenuItem('End', 0, 3), 2);
+    assert.strictEqual(nextMenuItem('Enter', 0, 3), undefined);
+    assert.strictEqual(nextMenuItem('ArrowDown', -1, 0), undefined);
   });
 });
