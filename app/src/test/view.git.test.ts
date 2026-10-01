@@ -2844,6 +2844,91 @@ suite('Fetch', function () {
     }
   });
 
+  test('leaves a tab closed during a background round unfetched', async () => {
+    const first = await tempRepository(path.join(folder, 'first-closed'));
+    await first.commit('first');
+    const pusher = await tempRepository(path.join(folder, 'pusher-closed'));
+    await pusher.git('pull', remote.root, 'main');
+    await pusher.commit('unfetched');
+    await pusher.git('push', remote.root, 'main');
+    const [before] = await repository.resolve('origin/main');
+    const rounds: (() => void)[] = [];
+    const opened = await openView(
+      log,
+      [first.root, repository.root],
+      true,
+      undefined,
+      (run) => {
+        rounds.push(run);
+        return () => undefined;
+      },
+    );
+    stubMethod(opened.view, 'fetchRemotes', async (original, ...args) => {
+      const [context] = args;
+      if (
+        typeof context === 'object' &&
+        context !== null &&
+        'root' in context &&
+        context.root === first.root
+      ) {
+        await opened.connection.receive({
+          type: 'closeTab',
+          root: repository.root,
+        });
+      }
+      return original(...args);
+    });
+    try {
+      await opened.connection.receive({ type: 'setAutoFetch', on: true });
+      await waitFor(() => rounds.length === 1, 'the round to end');
+      assert.deepStrictEqual(await repository.resolve('origin/main'), [before]);
+    } finally {
+      opened.connection.dispose();
+      await repository.git('fetch');
+    }
+  });
+
+  test('tells nothing of a background fetch failing for a tab closed while it ran', async () => {
+    const closing = await tempRepository(path.join(folder, 'closing'));
+    await closing.commit('a');
+    await closing.git('remote', 'add', 'origin', path.join(folder, 'gone'));
+    const rounds: (() => void)[] = [];
+    const opened = await openView(
+      log,
+      [repository.root, closing.root],
+      true,
+      undefined,
+      (run) => {
+        rounds.push(run);
+        return () => undefined;
+      },
+    );
+    stubMethod(opened.view, 'fetchRemotes', async (original, ...args) => {
+      const [context] = args;
+      if (
+        typeof context === 'object' &&
+        context !== null &&
+        'root' in context &&
+        context.root === closing.root
+      ) {
+        await opened.connection.receive({
+          type: 'closeTab',
+          root: closing.root,
+        });
+      }
+      return original(...args);
+    });
+    try {
+      await withNotices(opened.page, 'error', async (messages) => {
+        await opened.connection.receive({ type: 'setAutoFetch', on: true });
+        await waitFor(() => rounds.length === 1, 'the round to end');
+        assert.deepStrictEqual(messages, []);
+      });
+    } finally {
+      opened.connection.dispose();
+    }
+  });
+
   test('says so when a fetch fails, and stops fetching', async () => {
     await repository.git(
       'remote',

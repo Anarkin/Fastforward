@@ -773,7 +773,7 @@ export class FastforwardView {
 
   private async fetchInBackground(root: string): Promise<void> {
     const session = this.page;
-    if (!session) {
+    if (!session || !this.storage.hasTab(root)) {
       return;
     }
     const context = await this.context(session, root, this.isActive(root));
@@ -788,6 +788,7 @@ export class FastforwardView {
     };
     const notify: Notify = reported
       ? (level, message) =>
+          this.storage.hasTab(root) &&
           (session.disposed ? this.page : session)?.post({
             type: 'notice',
             level,
