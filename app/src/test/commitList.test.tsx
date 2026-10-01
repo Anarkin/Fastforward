@@ -6,6 +6,7 @@ import { CommitHistory } from '../webview/commitHistory';
 import {
   isListKey,
   keptPlace,
+  settling,
   listKeyPosition,
   bubbleLineHeight,
   commitRowHeight,
@@ -231,7 +232,24 @@ const loaded = (...hashes: string[]) => {
   return history;
 };
 
+const settled = () => new Promise((resolve) => setTimeout(resolve, 30));
+
 suite('Commit list keys', () => {
+  test('sends a selection made by a held key only once the key settles', async () => {
+    const sent: string[] = [];
+    const select = settling((hash: string) => sent.push(hash), 10);
+    select('a', false);
+    select('b', true);
+    select('c', true);
+    assert.deepStrictEqual(sent, ['a']);
+    await settled();
+    assert.deepStrictEqual(sent, ['a', 'c']);
+    select('d', true);
+    select('e', false);
+    await settled();
+    assert.deepStrictEqual(sent, ['a', 'c', 'e']);
+  });
+
   const visible = { first: 0, last: 0 };
   const press = (
     key: string,

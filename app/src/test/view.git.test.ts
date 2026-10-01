@@ -1240,6 +1240,51 @@ suite('View', function () {
       assert.strictEqual(page.last('fileDiff'), undefined);
     });
 
+    test('stops reading the files and diff of a commit selected before another', async () => {
+      for (const name of ['commitFiles', 'patchOf']) {
+        const held = gate();
+        const signals: AbortSignal[] = [];
+        stubMethod(fastforward, name, async (original, ...args) => {
+          const signal = args.at(-1);
+          assert.ok(signal instanceof AbortSignal);
+          if (args[1] === fixture.a) {
+            signals.push(signal);
+            await held.opened;
+          }
+          return original(...args);
+        });
+        await connection.receive({
+          type: 'selectCommit',
+          root: repository.root,
+          hash: workingTreeHash,
+        });
+        page.clear();
+        const first = connection.receive({
+          type: 'selectCommit',
+          root: repository.root,
+          hash: fixture.a,
+        });
+        await waitFor(() => signals.length === 1, `the first ${name}`);
+        await connection.receive({
+          type: 'selectCommit',
+          root: repository.root,
+          hash: fixture.b,
+        });
+        assert.ok(signals[0]?.aborted, name);
+        held.open();
+        await first;
+        assert.strictEqual(page.last('error'), undefined, name);
+        assert.strictEqual(page.last('files')?.hash, fixture.b, name);
+        assert.strictEqual(page.last('diff')?.hash, fixture.b, name);
+        assert.ok(
+          page.messages.every(
+            (message) => message.type !== 'diff' || message.hash !== fixture.a,
+          ),
+          name,
+        );
+      }
+    });
+
     test('shows a selected uncommitted file deleted since, without failing the refresh', async () => {
       const added = path.join(repository.root, 'added.txt');
       fs.writeFileSync(added, 'added\n');

@@ -35,7 +35,7 @@ import {
   shownColumns,
   type ColumnName,
 } from './activeColumn';
-import { Commits } from './commitList';
+import { Commits, settling } from './commitList';
 import { useShortcuts } from './shortcuts';
 import {
   ContextMenu,
@@ -248,10 +248,21 @@ export function App({ post, listen }: Props) {
     }
   }, [activeShown, commitsShown, layoutSelection, focusColumn]);
 
-  const selectCommit = (next: string | undefined, replace = false) => {
+  const postSelection = useMemo(() => settling(post), [post]);
+  const selectCommit = (
+    next: string | undefined,
+    replace = false,
+    repeat = false,
+  ) => {
     const target = next === hash ? undefined : next;
     dispatch({ type: 'showCommit', hash: target });
-    postTab({ type: 'selectCommit', hash: target, replace });
+    const root = activeTabRef.current;
+    if (root !== undefined) {
+      postSelection(
+        { type: 'selectCommit', hash: target, replace, root },
+        repeat,
+      );
+    }
   };
   const lookupHash = useCallback(
     (query: string) => postTab({ type: 'lookupHash', query }),

@@ -31,11 +31,27 @@ export const workingTreeRowHeight = 30;
 export const bubbleLineHeight = 20;
 const loadDelay = 80;
 const scrolledDelay = 150;
+const keyRepeatDelay = 75;
 
 const noHistory = () => () => {};
 const noVersion = () => 0;
 
 const openingRows = 20;
+
+export function settling<T>(
+  send: (value: T) => void,
+  delay = keyRepeatDelay,
+): (value: T, repeat: boolean) => void {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  return (value, repeat) => {
+    clearTimeout(timer);
+    if (repeat) {
+      timer = setTimeout(() => send(value), delay);
+    } else {
+      send(value);
+    }
+  };
+}
 
 export function estimatedRowHeight(
   history: CommitHistory | undefined,
@@ -312,7 +328,11 @@ export function Commits({
   workingTree: number | undefined;
   refsByCommit: ReadonlyMap<string, readonly RefInfo[]>;
   selected: string | undefined;
-  onSelect: (hash: string | undefined, replace?: boolean) => void;
+  onSelect: (
+    hash: string | undefined,
+    replace?: boolean,
+    repeat?: boolean,
+  ) => void;
   onToggleMerge: (hash: string) => void;
   collapseMerges: boolean;
   onCollapseMerges: (collapse: boolean) => void;
@@ -502,11 +522,11 @@ export function Commits({
     }
     pending.current = undefined;
     if (position === workingTreeIndex) {
-      onSelect(workingTreeHash, true);
+      onSelect(workingTreeHash, true, event.repeat);
     } else {
       const commit = history.at(position);
       if (commit) {
-        onSelect(commit.hash, true);
+        onSelect(commit.hash, true, event.repeat);
       } else {
         pending.current = position;
       }
