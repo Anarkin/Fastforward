@@ -10,6 +10,7 @@ import {
   nextActive,
   resultItems,
   searchRefs,
+  shownChildren,
   type Highlighted,
   stickyRowHeight,
 } from '../webview/locations';
@@ -206,6 +207,16 @@ suite('Locations popup', () => {
       buildTree(tags).children.map((node) => node.name),
       ['rel', 'alpha', 'v10', 'v2'],
     );
+  });
+
+  test('draws at most the limit of folders and refs under a folder together, counting the rest', () => {
+    const tree = buildTree(['a/1', 'b/1', 'c/1', 'd', 'e'].map(branchNamed));
+    const { shown, more } = shownChildren(tree.children, 2);
+    assert.deepStrictEqual(
+      shown.map((node) => node.name),
+      ['a', 'b'],
+    );
+    assert.strictEqual(more, 3);
   });
 
   test("stacks stuck folders at the height the stylesheet gives the popup's rows", () => {

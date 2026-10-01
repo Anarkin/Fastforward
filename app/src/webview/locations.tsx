@@ -629,6 +629,16 @@ export function buildTree(refs: readonly RefInfo[]): TreeNode {
   return sortedTree(root);
 }
 
+export function shownChildren(
+  children: readonly TreeNode[],
+  limit = maxResults,
+): { shown: readonly TreeNode[]; more: number } {
+  return {
+    shown: children.slice(0, limit),
+    more: Math.max(0, children.length - limit),
+  };
+}
+
 function RefTree({
   refs,
   onSelect,
@@ -655,11 +665,7 @@ function TreeChildren({
   const openMenu = useContext(OpenContextMenu);
   const { children } = node;
   const withFolders = children.some((child) => child.children.length > 0);
-  let leaves = 0;
-  const shown = children.filter(
-    (child) => child.children.length > 0 || leaves++ < maxResults,
-  );
-  const more = children.length - shown.length;
+  const { shown, more } = shownChildren(children);
   return (
     <>
       {shown.map((child) =>
