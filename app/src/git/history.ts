@@ -425,7 +425,7 @@ export async function logCommits(
       '--stdin',
       '--no-walk=unsorted',
       '-z',
-      '--format=%x1e%H%x00%P%x00%aN%x00%aE%x00%at%x00%cN%x00%cE%x00%ct%x00%B',
+      '--format=%x1e%H%x00%aN%x00%ct%x00%B',
       '--',
     ],
     { input: `${hashes.join('\n')}\n` },
@@ -442,29 +442,13 @@ export function parseLog(output: string): CommitInfo[] {
       i++;
       continue;
     }
-    const [
-      hash,
-      parents,
-      authorName,
-      authorEmail,
-      time,
-      committerName,
-      committerEmail,
-      commitTime,
-      body = '',
-    ] = tokens.slice(i, i + 9);
-    i += 9;
+    const [hash, authorName, commitTime, body = ''] = tokens.slice(i, i + 4);
+    i += 4;
     const message = body.replaceAll('\r\n', '\n').trimEnd();
     commits.push({
       hash: hash.slice(1),
       subject: message.split('\n', 1)[0],
-      message,
-      parents: parents ? parents.split(' ') : [],
       authorName,
-      authorEmail,
-      authorDate: Number(time) * 1000,
-      committerName,
-      committerEmail,
       commitDate: Number(commitTime) * 1000,
     });
   }

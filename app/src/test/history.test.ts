@@ -9,38 +9,24 @@ import {
 } from '../git/history';
 
 suite('Git log parser', () => {
-  test('parses commits', () => {
+  test('parses only what the commit list shows of each commit', () => {
     const output = [
-      '\x1eaaa\0p1 p2\0Ann\0ann@example.com\0',
-      '1700000000\0Carl\0carl@example.com\0',
+      '\x1eaaa\0Ann\0',
       '1700000100\0Subject\n\nBody\n\0',
-      '\x1ebbb\0\0Bob\0bob@example.com\0',
-      '1600000000\0Bob\0bob@example.com\0',
+      '\x1ebbb\0Bob\0',
       '1600000000\0Root\n\0',
     ].join('');
     assert.deepStrictEqual(parseLog(output), [
       {
         hash: 'aaa',
         subject: 'Subject',
-        message: 'Subject\n\nBody',
-        parents: ['p1', 'p2'],
         authorName: 'Ann',
-        authorEmail: 'ann@example.com',
-        authorDate: 1_700_000_000_000,
-        committerName: 'Carl',
-        committerEmail: 'carl@example.com',
         commitDate: 1_700_000_100_000,
       },
       {
         hash: 'bbb',
         subject: 'Root',
-        message: 'Root',
-        parents: [],
         authorName: 'Bob',
-        authorEmail: 'bob@example.com',
-        authorDate: 1_600_000_000_000,
-        committerName: 'Bob',
-        committerEmail: 'bob@example.com',
         commitDate: 1_600_000_000_000,
       },
     ]);
@@ -48,37 +34,23 @@ suite('Git log parser', () => {
 
   test('reads a message with \\x1e in it', () => {
     const output = [
-      '\x1eaaa\0\0Ann\0ann@example.com\0',
-      '1700000000\0Ann\0ann@example.com\0',
+      '\x1eaaa\0Ann\0',
       '1700000000\0Subject\n\n\x1ebbb\n\0',
-      '\x1eccc\0aaa\0Bob\0bob@example.com\0',
-      '1700000100\0Bob\0bob@example.com\0',
+      '\x1eccc\0Bob\0',
       '1700000100\0Next\n\0',
     ].join('');
     assert.deepStrictEqual(
-      parseLog(output).map(({ hash, message, parents }) => ({
-        hash,
-        message,
-        parents,
-      })),
+      parseLog(output).map(({ hash, subject }) => ({ hash, subject })),
       [
-        { hash: 'aaa', message: 'Subject\n\n\x1ebbb', parents: [] },
-        { hash: 'ccc', message: 'Next', parents: ['aaa'] },
+        { hash: 'aaa', subject: 'Subject' },
+        { hash: 'ccc', subject: 'Next' },
       ],
     );
   });
 
   test('reads a message written with CRLF line endings', () => {
-    const output = [
-      '\x1eaaa\0\0Ann\0ann@example.com\0',
-      '1700000000\0Ann\0ann@example.com\0',
-      '1700000000\0subject\r\n\r\nbody\r\nmore\r\n\0',
-    ].join('');
-    const [{ subject, message }] = parseLog(output);
-    assert.deepStrictEqual(
-      { subject, message },
-      { subject: 'subject', message: 'subject\n\nbody\nmore' },
-    );
+    const output = '\x1eaaa\0Ann\x001700000000\0subject\r\n\r\nbody\r\n\0';
+    assert.strictEqual(parseLog(output)[0].subject, 'subject');
   });
 });
 

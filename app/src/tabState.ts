@@ -64,6 +64,7 @@ interface Shown {
 }
 
 const navigationShown = 20;
+const subjectsKept = 1000;
 
 export function newTabState(): TabState {
   return {
@@ -338,6 +339,15 @@ export function keepSubjects(
   tab: TabState,
   commits: readonly CommitInfo[],
 ): void {
+  if (tab.subjects.size + commits.length > subjectsKept) {
+    const { back, forward } = tab.navigation;
+    const needed = new Set([...back, ...forward, tab.hash]);
+    for (const hash of tab.subjects.keys()) {
+      if (!needed.has(hash)) {
+        tab.subjects.delete(hash);
+      }
+    }
+  }
   for (const commit of commits) {
     tab.subjects.set(commit.hash, commit.subject);
   }
