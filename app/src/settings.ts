@@ -132,6 +132,7 @@ export class UserSettings {
   private broken = false;
   private issues: readonly string[] = [];
   private writing: Promise<void> = Promise.resolve();
+  private pending = 0;
 
   constructor(
     private base: Settings,
@@ -161,6 +162,9 @@ export class UserSettings {
   }
 
   reload(): boolean {
+    if (this.pending > 0) {
+      return false;
+    }
     const before = JSON.stringify([this.current, this.issues]);
     this.read();
     return JSON.stringify([this.current, this.issues]) !== before;
@@ -211,9 +215,13 @@ export class UserSettings {
       return Promise.resolve();
     }
     const json = `${JSON.stringify(written, undefined, 2)}\n`;
+    this.pending += 1;
     this.writing = this.writing
       .catch(() => undefined)
-      .then(() => writeAtomically(file, json));
+      .then(() => writeAtomically(file, json))
+      .finally(() => {
+        this.pending -= 1;
+      });
     return this.writing;
   }
 
