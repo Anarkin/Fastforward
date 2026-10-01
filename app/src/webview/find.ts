@@ -25,9 +25,19 @@ export function matchesIn(text: string, query: string): FindRange[] {
   if (query === '') {
     return [];
   }
-  const { lowered, starts, ends } = lowercased(text);
   const needle = query.toLowerCase();
+  const whole = text.toLowerCase();
   const ranges: FindRange[] = [];
+  if (whole.length === text.length && !text.includes('Σ')) {
+    let from = whole.indexOf(needle);
+    while (from !== -1) {
+      const end = from + needle.length;
+      ranges.push({ start: from, end });
+      from = whole.indexOf(needle, end);
+    }
+    return ranges;
+  }
+  const { lowered, starts, ends } = lowercased(text);
   let from = lowered.indexOf(needle);
   while (from !== -1) {
     const end = from + needle.length;

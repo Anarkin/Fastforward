@@ -57,6 +57,14 @@ suite('Find in diff', () => {
     assert.deepStrictEqual(matchesIn('İ', 'i'), [{ start: 0, end: 1 }]);
   });
 
+  test('finds a capital sigma by its lowercase, also at the end of a word', () => {
+    assert.deepStrictEqual(matchesIn('ΟΔΟΣ ΟΔΟΣ', 'σ'), [
+      { start: 3, end: 4 },
+      { start: 8, end: 9 },
+    ]);
+    assert.deepStrictEqual(matchesIn('ΟΔΟΣ x', 'Σ x'), [{ start: 3, end: 6 }]);
+  });
+
   test('finds every occurrence in a line, ignoring case, inside words too', () => {
     assert.deepStrictEqual(matchesIn('Find finder', 'find'), [
       { start: 0, end: 4 },
