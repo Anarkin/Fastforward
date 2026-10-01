@@ -98,8 +98,10 @@ export class Storage {
   }
 
   async setTabs(tabs: string[], active: string | undefined): Promise<void> {
-    await this.state.update(tabsKey, uniqueRoots(tabs));
-    await this.state.update(activeTabKey, active);
+    await Promise.all([
+      this.state.update(tabsKey, uniqueRoots(tabs)),
+      this.state.update(activeTabKey, active),
+    ]);
   }
 
   get recent(): string[] {
