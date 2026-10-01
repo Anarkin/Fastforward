@@ -9,7 +9,7 @@ export interface Watcher {
 interface WatchOptions {
   readonly delay: number;
   readonly maxDelay: number;
-  readonly onChange: () => void;
+  readonly onChange: (gitDirChanged: boolean) => void;
   readonly onError: (error: unknown) => void;
 }
 
@@ -44,7 +44,7 @@ export async function watchRepository(
         !disposed &&
         (refresh || (await anyNotIgnored(gitPath, root, files)))
       ) {
-        onChange();
+        onChange(refresh);
       }
     } catch (error) {
       if (!disposed) {
