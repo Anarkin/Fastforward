@@ -135,9 +135,21 @@ suite('App', function () {
     await page.keyboard.press('ArrowRight');
     await active('files');
     await page.keyboard.press('ArrowDown');
-    await page
-      .locator('.row.file.selected', { hasText: 'changed.txt' })
-      .waitFor();
+    const changedFile = page.locator('.row.file.selected', {
+      hasText: 'changed.txt',
+    });
+    const allChanges = page.locator('.row.group.selected', {
+      hasText: 'All Changes',
+    });
+    await changedFile.waitFor();
+    await page.keyboard.press('Home');
+    await allChanges.waitFor();
+    await page.keyboard.press('End');
+    await changedFile.waitFor();
+    await page.keyboard.press('PageUp');
+    await allChanges.waitFor();
+    await page.keyboard.press('PageDown');
+    await changedFile.waitFor();
     await page.keyboard.press('ArrowRight');
     await active('diff');
     await page.keyboard.press('ArrowLeft');

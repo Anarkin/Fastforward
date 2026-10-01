@@ -296,6 +296,13 @@ suite('Files column', () => {
     assert.deepStrictEqual(changesRows([], undefined, noop).rows, []);
   });
 
+  test('scrolls All Changes into view when it is selected, as Home or Page Up may select it', () => {
+    assert.strictEqual(
+      changesRows([change('a.ts')], undefined, noop).selectedKey,
+      'changes',
+    );
+  });
+
   test('deselects the selected file on a click, and selects another', () => {
     const picked: (string | undefined)[] = [];
     const { rows, selectedKey } = changesRows(

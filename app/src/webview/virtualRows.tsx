@@ -48,6 +48,21 @@ export function pinnedRows(
   }
 }
 
+export function revealOffset(
+  row: RowPlacement,
+  scrollTop: number,
+  height: number,
+  covered: number,
+): number | undefined {
+  if (row.start < scrollTop + covered) {
+    return Math.max(0, row.start - covered);
+  }
+  if (row.end > scrollTop + height) {
+    return row.end - height;
+  }
+  return undefined;
+}
+
 const noAncestors = () => [];
 
 export function VirtualRows({
@@ -74,10 +89,25 @@ export function VirtualRows({
     overscan: 20,
   });
 
+  const heightOf = (index: number) => {
+    const row = virtualizer.measurementsCache[index];
+    return row ? row.end - row.start : 0;
+  };
   const scrollToSelected = useEffectEvent(() => {
     const index = rows.findIndex((row) => row.key === selectedKey);
-    if (index !== -1) {
-      virtualizer.scrollToIndex(index, { align: 'auto' });
+    const element = list.current;
+    const row = virtualizer.measurementsCache[index];
+    if (index === -1 || !element || !row) {
+      return;
+    }
+    const offset = revealOffset(
+      row,
+      element.scrollTop,
+      element.clientHeight,
+      ancestorsOf(index).reduce((sum, ancestor) => sum + heightOf(ancestor), 0),
+    );
+    if (offset !== undefined) {
+      virtualizer.scrollToOffset(offset);
     }
   });
   const target = scrollTarget(selectedKey, rows.length);
@@ -109,16 +139,21 @@ export function VirtualRows({
           ? {
               tabIndex: 0,
               [columnFocusAttribute]: '',
-              onKeyDown: (event: React.KeyboardEvent) =>
+              onKeyDown: (event: React.KeyboardEvent) => {
+                const covered = pinned.reduce(
+                  (sum, index) => sum + heightOf(index),
+                  0,
+                );
                 onKeyDown(
                   event,
                   fullyVisible(
                     virtualizer.getVirtualItems(),
-                    list.current?.scrollTop ?? 0,
-                    list.current?.clientHeight ?? 0,
+                    (list.current?.scrollTop ?? 0) + covered,
+                    (list.current?.clientHeight ?? 0) - covered,
                     0,
                   ),
-                ),
+                );
+              },
             }
           : {})}
       >
