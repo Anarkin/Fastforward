@@ -1063,6 +1063,22 @@ body.resizing {
   );
 }
 
+.diff-line .word-added {
+  background: color-mix(
+    in srgb,
+    var(--color-added) var(--color-added-word),
+    transparent
+  );
+}
+
+.diff-line .word-removed {
+  background: color-mix(
+    in srgb,
+    var(--color-deleted) var(--color-deleted-word),
+    transparent
+  );
+}
+
 .diff-line.removed {
   background: color-mix(
     in srgb,
