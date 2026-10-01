@@ -12,10 +12,17 @@ import {
   navigationEntry,
   nearestSteps,
   newTabState,
+  refsKeepHistory,
   replayOf,
   select,
 } from '../tabState';
 import { commitInfo } from './fixtures';
+
+const at = (commit: string) => ({
+  kind: 'branch' as const,
+  name: commit,
+  commit,
+});
 
 suite('Tab state', () => {
   const history = [
@@ -73,6 +80,30 @@ suite('Tab state', () => {
     assert.strictEqual(historyLoaded(tab), true);
     forgetHistory(tab);
     assert.strictEqual(historyLoaded(tab), false);
+  });
+
+  test('keeps the history for refs that reach exactly its commits', () => {
+    const tab = newTabState();
+    const main = { name: 'main', commit: 'c' };
+    assert.strictEqual(refsKeepHistory(tab, main, [], false), false);
+    loadHistory(tab, history, main, [at('c')]);
+    assert.strictEqual(
+      refsKeepHistory(tab, main, [at('c'), at('b')], false),
+      true,
+    );
+    assert.strictEqual(refsKeepHistory(tab, main, [], false), true);
+    assert.strictEqual(refsKeepHistory(tab, main, [at('d')], false), false);
+    assert.strictEqual(
+      refsKeepHistory(tab, { commit: 'b' }, [at('a')], false),
+      false,
+    );
+    assert.strictEqual(refsKeepHistory(tab, main, [at('d')], true), true);
+    assert.strictEqual(
+      refsKeepHistory(tab, { name: 'b', commit: 'b' }, [at('c')], true),
+      false,
+    );
+    forgetHistory(tab);
+    assert.strictEqual(refsKeepHistory(tab, main, [at('c')], false), false);
   });
 
   test('selects a commit at its position, dropping the selected file', () => {
