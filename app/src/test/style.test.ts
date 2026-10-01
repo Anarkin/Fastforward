@@ -217,7 +217,7 @@ suite('Style', () => {
     }
   });
 
-  test('tints no line numbers, and of a line compared word by word only its changed words, as a whole changed line is', () => {
+  test('tints no line numbers, and the changed characters of a line as strongly as the theme says', () => {
     for (const color of ['added', 'deleted']) {
       const word = color === 'added' ? 'word-added' : 'word-removed';
       assert.match(
@@ -228,18 +228,14 @@ suite('Style', () => {
         color,
       );
     }
-    assert.doesNotMatch(css, /\.compared \.number/);
     assert.match(
       css,
       /\n\.diff-line\.added \.number,\s*\.diff-line\.removed \.number \{\s*background: var\(--color-panel-background\);\s*\}/,
     );
-    assert.match(
-      css,
-      /\n\.diff-line\.added\.compared,\s*\.diff-line\.removed\.compared \{\s*background: none;\s*\}/,
-    );
+    assert.doesNotMatch(css, /\.compared/);
   });
 
-  test('tints added and removed diff lines as strongly as the theme says, in the colors their minimap marks are drawn in', () => {
+  test('tints the whole row of every added and removed line more lightly, as the theme says, in the colors their minimap marks are drawn in', () => {
     for (const [selector, color] of [
       ['.diff-line.added', 'added'],
       ['.diff-line.removed', 'deleted'],
@@ -248,7 +244,7 @@ suite('Style', () => {
         declarationsOf(selector)
           .replace(/\s+/g, ' ')
           .includes(
-            `background: color-mix( in srgb, var(--color-${color}) var(--color-${color}-line), transparent );`,
+            `background: color-mix( in srgb, var(--color-${color}) var(--color-${color}-row), transparent );`,
           ),
         selector,
       );
