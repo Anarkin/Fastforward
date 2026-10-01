@@ -172,18 +172,34 @@ function listKey(key: string): boolean {
   return listKeyNames.has(key);
 }
 
+const parentRows = new WeakMap<readonly ChangesTreeRow[], readonly number[]>();
+
+function parentsOf(rows: readonly ChangesTreeRow[]): readonly number[] {
+  let parents = parentRows.get(rows);
+  if (!parents) {
+    const folders: number[] = [];
+    parents = rows.map((row, index) => {
+      folders.length = row.depth;
+      const parent = folders.at(-1) ?? -1;
+      if (row.kind === 'folder') {
+        folders.push(index);
+      }
+      return parent;
+    });
+    parentRows.set(rows, parents);
+  }
+  return parents;
+}
+
 export function ancestorRows(
   rows: readonly ChangesTreeRow[],
   index: number,
 ): number[] {
+  const parents = parentsOf(rows);
   const ancestors: number[] = [];
-  let depth = rows[index]?.depth ?? 0;
-  for (let i = index - 1; i >= 0 && depth > 0; i--) {
-    const row = rows[i];
-    if (row.kind === 'folder' && row.depth < depth) {
-      ancestors.unshift(i);
-      depth = row.depth;
-    }
+  for (let parent = parents[index] ?? -1; parent !== -1;) {
+    ancestors.unshift(parent);
+    parent = parents[parent];
   }
   return ancestors;
 }

@@ -41,6 +41,24 @@ suite('Pinned rows', () => {
     assert.deepStrictEqual(pinnedRows(rows(7), 81, ancestorsOf), [0]);
     assert.deepStrictEqual(pinnedRows(rows(7), 110, ancestorsOf), []);
   });
+
+  test('finds the row at the top of a long list reading only a few rows', () => {
+    const all = rows(100_000);
+    let reads = 0;
+    const counted = new Proxy(all, {
+      get(target, key, receiver) {
+        if (typeof key === 'string' && /^\d+$/.test(key)) {
+          reads++;
+        }
+        return Reflect.get(target, key, receiver) as unknown;
+      },
+    });
+    assert.deepStrictEqual(
+      pinnedRows(counted, 1_500_005, () => []),
+      [],
+    );
+    assert.ok(reads < 100, `${reads} reads`);
+  });
 });
 
 suite('Revealing a row', () => {
