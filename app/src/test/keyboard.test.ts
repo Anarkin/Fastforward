@@ -3,18 +3,19 @@ import {
   adjacentColumn,
   columnOf,
   columnStep,
+  forwardedColumn,
   shownColumns,
 } from '../webview/activeColumn';
 import { changesTreeRows, filesKey } from '../webview/changesTree';
 import {
   changeScrollTop,
   changeStarts,
-  changeStep,
   diffRows,
   diffScrollTop,
 } from '../webview/diffView';
 import { parsePatch } from '../webview/diff';
 import { fullyVisible, moveInList } from '../webview/listMoves';
+import { changeStep } from '../webview/shortcuts';
 import { fileChange } from './fixtures';
 
 const visible = { first: 0, last: 0 };
@@ -262,5 +263,43 @@ suite('Jumping between changes', () => {
     assert.strictEqual(changeStep({ key: 'k', code: 'KeyK' }), -1);
     assert.strictEqual(changeStep({ key: 'о', code: 'KeyJ' }), 1);
     assert.strictEqual(changeStep({ key: 'x', code: 'KeyX' }), undefined);
+  });
+});
+
+suite('Changes from the Files column', () => {
+  const key = {
+    key: 'j',
+    code: 'KeyJ',
+    ctrlKey: false,
+    metaKey: false,
+    altKey: false,
+    shiftKey: false,
+    defaultPrevented: false,
+  };
+
+  test('hands j and k in the Files column to the diff, to jump there', () => {
+    assert.strictEqual(forwardedColumn('files', key), 'diff');
+    assert.strictEqual(
+      forwardedColumn('files', { ...key, key: 'k', code: 'KeyK' }),
+      'diff',
+    );
+  });
+
+  test('keeps them where they are elsewhere, and other keys or ones with modifiers in the Files column', () => {
+    assert.strictEqual(forwardedColumn('commits', key), undefined);
+    assert.strictEqual(forwardedColumn('diff', key), undefined);
+    assert.strictEqual(forwardedColumn(undefined, key), undefined);
+    assert.strictEqual(
+      forwardedColumn('files', { ...key, key: 'x', code: 'KeyX' }),
+      undefined,
+    );
+    assert.strictEqual(
+      forwardedColumn('files', { ...key, ctrlKey: true }),
+      undefined,
+    );
+    assert.strictEqual(
+      forwardedColumn('files', { ...key, defaultPrevented: true }),
+      undefined,
+    );
   });
 });

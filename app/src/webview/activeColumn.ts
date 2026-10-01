@@ -1,3 +1,5 @@
+import { changeStep } from './shortcuts';
+
 export type ColumnName = 'commits' | 'files' | 'diff';
 
 export const columnOrder: readonly ColumnName[] = ['commits', 'files', 'diff'];
@@ -40,6 +42,30 @@ export function columnStep(
     : event.key === 'ArrowLeft'
       ? -1
       : undefined;
+}
+
+export function forwardedColumn(
+  column: ColumnName | undefined,
+  event: Pick<
+    KeyboardEvent,
+    | 'key'
+    | 'code'
+    | 'ctrlKey'
+    | 'metaKey'
+    | 'altKey'
+    | 'shiftKey'
+    | 'defaultPrevented'
+  >,
+): ColumnName | undefined {
+  return column === 'files' &&
+    !event.defaultPrevented &&
+    !event.ctrlKey &&
+    !event.metaKey &&
+    !event.altKey &&
+    !event.shiftKey &&
+    changeStep(event) !== undefined
+    ? 'diff'
+    : undefined;
 }
 
 export function adjacentColumn(
