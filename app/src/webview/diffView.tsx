@@ -26,6 +26,13 @@ export interface WholeFile {
   readonly binary: boolean;
 }
 
+export function showsSideBySide(
+  sideBySide: boolean,
+  whole: WholeFile | undefined,
+): boolean {
+  return sideBySide && !whole;
+}
+
 export type DiffRow =
   | { readonly kind: 'error' }
   | {
@@ -531,9 +538,10 @@ export function DiffView({
 }) {
   const list = useRef<HTMLDivElement>(null);
   const [sideways, setSideways] = useState(0);
+  const split = showsSideBySide(sideBySide, whole);
   useEffect(() => {
     const element = list.current;
-    if (!element || !sideBySide) {
+    if (!element || !split) {
       return undefined;
     }
     const onWheel = (event: WheelEvent) => {
@@ -556,7 +564,7 @@ export function DiffView({
     };
     element.addEventListener('wheel', onWheel, { passive: false });
     return () => element.removeEventListener('wheel', onWheel);
-  }, [sideBySide]);
+  }, [split]);
   const [toggled, setToggled] = useState<ReadonlyMap<string, boolean>>(
     new Map(),
   );
@@ -762,7 +770,7 @@ export function DiffView({
 
   return (
     <div
-      className={`diff-view ${sideBySide && !whole ? 'side-by-side' : ''}`}
+      className={`diff-view ${split ? 'side-by-side' : ''}`}
       style={{ ...heightVariables, '--split-scroll': `${sideways}px` }}
     >
       {stuck && <div className="diff-stuck-header">{header(stuck, true)}</div>}
