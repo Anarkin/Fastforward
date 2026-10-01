@@ -131,6 +131,19 @@ suite('Git repository', function () {
     }
   });
 
+  test('finds no root in a bare repository or a git folder, which have no working tree', async () => {
+    const bare = await tempRepository(tempFolder('bare'), { bare: true });
+    try {
+      assert.strictEqual(await repositoryRoot(gitPath, bare.root), undefined);
+      assert.strictEqual(
+        await repositoryRoot(gitPath, path.join(cwd, '.git')),
+        undefined,
+      );
+    } finally {
+      removeFolder(bare.root);
+    }
+  });
+
   test('lists only the history of HEAD when solo, not a branch off it', async () => {
     const [first, tree] = await temp.resolve('HEAD~2', 'HEAD^{tree}');
     const side = (
