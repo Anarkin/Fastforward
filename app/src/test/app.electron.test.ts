@@ -304,3 +304,42 @@ suite('App', function () {
       .waitFor();
   });
 });
+
+suite('App without git', function () {
+  this.timeout(60_000);
+
+  test('says it needs git, showing no window', async () => {
+    const folder = tempFolder('no-git');
+    const profile = path.join(folder, 'profile');
+    const log = path.join(profile, 'logs', 'Fastforward.log');
+    const app = await _electron.launch({
+      args: [appFolder, `--user-data-dir=${profile}`],
+      cwd: appFolder,
+      env: {
+        ...process.env,
+        PATH: folder,
+        Path: folder,
+        SHELL: path.join(folder, 'no-shell'),
+      },
+    });
+    try {
+      await waitFor(() => {
+        try {
+          return fs.readFileSync(log, 'utf8').includes('Install git');
+        } catch {
+          return false;
+        }
+      }, 'the missing git to be logged');
+      const page = await app.firstWindow();
+      await page.waitForLoadState('load');
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      const visible = await app.evaluate(({ BrowserWindow }) =>
+        BrowserWindow.getAllWindows().map((window) => window.isVisible()),
+      );
+      assert.deepStrictEqual(visible, [false]);
+    } finally {
+      await app.close();
+      removeFolder(folder);
+    }
+  });
+});

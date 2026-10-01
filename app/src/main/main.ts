@@ -58,6 +58,7 @@ if (app.requestSingleInstanceLock()) {
 }
 
 async function start(): Promise<void> {
+  const gitSearch = searchGit();
   await app.whenReady();
   const log = fileLog(
     path.join(app.getPath('logs'), 'Fastforward.log'),
@@ -70,21 +71,6 @@ async function start(): Promise<void> {
   process.on('unhandledRejection', (reason) =>
     log.error(reason instanceof Error ? reason : String(reason)),
   );
-
-  if (process.platform !== 'win32') {
-    process.env.PATH = mergePaths(
-      await loginShellPath(),
-      process.env.PATH,
-      path.delimiter,
-    );
-  }
-  const git = await findGit();
-  if (git.kind !== 'found') {
-    await reportMissingGit(log, git);
-    app.quit();
-    return;
-  }
-  log.info(`Using git ${git.version} at ${git.path}`);
 
   const profile = app.getPath('userData');
   const defaults = readDefaults(path.join(dist, 'settings.json'));
@@ -110,7 +96,71 @@ async function start(): Promise<void> {
       : new Response('Not found', { status: 404 });
   });
   setMenu();
-  const window = createWindow(state, userSettings.settings);
+  const window = createWindow(
+    state,
+    userSettings.settings,
+    gitSearch.then((git) => git.kind === 'found'),
+  );
+  const views = Promise.withResolvers<FastforwardView>();
+  let connection: Promise<Connection | undefined> = Promise.resolve(undefined);
+  const connect = () => {
+    connection = Promise.all([connection, views.promise]).then(
+      ([previous, view]) => {
+        previous?.dispose();
+        return view.connect((message: ToWebview) => {
+          if (!window.isDestroyed()) {
+            window.webContents.send('message', message);
+          }
+        });
+      },
+    );
+  };
+  window.webContents.on('did-start-navigation', (details) => {
+    if (details.isMainFrame && !details.isSameDocument) {
+      connect();
+    }
+  });
+  ipcMain.on('message', (event, message: ToHost) => {
+    if (
+      event.sender === window.webContents &&
+      event.senderFrame?.url.startsWith(appOrigin)
+    ) {
+      void connection.then((current) => current?.receive(message));
+    }
+  });
+  ipcMain.on('windowButtonColor', (event, color: unknown) => {
+    if (
+      event.sender === window.webContents &&
+      typeof color === 'string' &&
+      process.platform !== 'darwin'
+    ) {
+      window.setTitleBarOverlay({ color: '#00000000', symbolColor: color });
+    }
+  });
+  window.on(
+    'closed',
+    () => void connection.then((current) => current?.dispose()),
+  );
+  app.on('second-instance', () => {
+    if (window.isMinimized()) {
+      window.restore();
+    }
+    window.focus();
+  });
+  app.on('window-all-closed', () => app.quit());
+  flushBeforeQuit(app, () =>
+    Promise.all([state.saved(), userSettings.saved()]),
+  );
+  const loading = window.loadURL(`${appOrigin}/index.html`);
+
+  const git = await gitSearch;
+  if (git.kind !== 'found') {
+    await reportMissingGit(log, git);
+    window.destroy();
+    app.quit();
+    return;
+  }
+  log.info(`Using git ${git.version} at ${git.path}`);
   const storage = new Storage(userSettings, state);
   const view = new FastforwardView(log, git.path, storage, {
     chooseFolders: async () => {
@@ -136,6 +186,7 @@ async function start(): Promise<void> {
     },
     settingsProblems: () => userSettings.problems,
   });
+  views.resolve(view);
   const applySettings = () => {
     log.info('Settings changed, reloading');
     for (const problem of userSettings.problems) {
@@ -150,48 +201,6 @@ async function start(): Promise<void> {
     }
   });
 
-  let connection: Connection | undefined;
-  const connect = () => {
-    connection?.dispose();
-    connection = view.connect((message: ToWebview) => {
-      if (!window.isDestroyed()) {
-        window.webContents.send('message', message);
-      }
-    });
-  };
-  window.webContents.on('did-start-navigation', (details) => {
-    if (details.isMainFrame && !details.isSameDocument) {
-      connect();
-    }
-  });
-  ipcMain.on('message', (event, message: ToHost) => {
-    if (
-      event.sender === window.webContents &&
-      event.senderFrame?.url.startsWith(appOrigin)
-    ) {
-      void connection?.receive(message);
-    }
-  });
-  ipcMain.on('windowButtonColor', (event, color: unknown) => {
-    if (
-      event.sender === window.webContents &&
-      typeof color === 'string' &&
-      process.platform !== 'darwin'
-    ) {
-      window.setTitleBarOverlay({ color: '#00000000', symbolColor: color });
-    }
-  });
-  window.on('closed', () => connection?.dispose());
-  app.on('second-instance', () => {
-    if (window.isMinimized()) {
-      window.restore();
-    }
-    window.focus();
-  });
-  app.on('window-all-closed', () => app.quit());
-  flushBeforeQuit(app, () =>
-    Promise.all([state.saved(), userSettings.saved()]),
-  );
   if (development && process.env.FASTFORWARD_DEV) {
     reloadOnRebuild(window, () => {
       try {
@@ -208,8 +217,19 @@ async function start(): Promise<void> {
       }
     });
   }
-  await window.loadURL(`${appOrigin}/index.html`);
+  await loading;
   checkForUpdates(log);
+}
+
+async function searchGit(): ReturnType<typeof findGit> {
+  if (process.platform !== 'win32') {
+    process.env.PATH = mergePaths(
+      await loginShellPath(),
+      process.env.PATH,
+      path.delimiter,
+    );
+  }
+  return findGit();
 }
 
 function checkForUpdates(log: Log): void {
@@ -228,7 +248,11 @@ function checkForUpdates(log: Log): void {
   });
 }
 
-function createWindow(store: JsonFileStore, settings: Settings): BrowserWindow {
+function createWindow(
+  store: JsonFileStore,
+  settings: Settings,
+  shown: Promise<boolean>,
+): BrowserWindow {
   const bounds = visibleBounds(
     store.get(boundsKey),
     screen.getAllDisplays().map((display) => display.workArea),
@@ -259,10 +283,19 @@ function createWindow(store: JsonFileStore, settings: Settings): BrowserWindow {
       spellcheck: false,
     },
   });
-  if (store.get(maximizedKey) === true) {
-    window.maximize();
-  }
-  window.once('ready-to-show', () => window.show());
+  const maximized = store.get(maximizedKey) === true;
+  window.once(
+    'ready-to-show',
+    () =>
+      void shown.then((show) => {
+        if (show) {
+          if (maximized) {
+            window.maximize();
+          }
+          window.show();
+        }
+      }),
+  );
   window.on('close', () => {
     void store.update(boundsKey, window.getNormalBounds());
     void store.update(maximizedKey, window.isMaximized());
