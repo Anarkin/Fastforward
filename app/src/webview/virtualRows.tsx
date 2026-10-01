@@ -1,5 +1,7 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useCallback, useEffect, useEffectEvent, useRef } from 'react';
+import { columnFocusAttribute } from './activeColumn';
+import { fullyVisible, type VisibleRows } from './listMoves';
 
 const estimatedRowHeight = 24;
 const estimateSize = () => estimatedRowHeight;
@@ -52,10 +54,12 @@ export function VirtualRows({
   rows,
   selectedKey,
   ancestorsOf = noAncestors,
+  onKeyDown,
 }: {
   rows: readonly React.ReactElement[];
   selectedKey: string | undefined;
   ancestorsOf?: (index: number) => readonly number[];
+  onKeyDown?: (event: React.KeyboardEvent, visible: VisibleRows) => void;
 }) {
   const list = useRef<HTMLDivElement>(null);
   const itemKey = useCallback(
@@ -98,7 +102,26 @@ export function VirtualRows({
           ))}
         </div>
       )}
-      <div className="virtual-rows" ref={list}>
+      <div
+        className="virtual-rows"
+        ref={list}
+        {...(onKeyDown
+          ? {
+              tabIndex: 0,
+              [columnFocusAttribute]: '',
+              onKeyDown: (event: React.KeyboardEvent) =>
+                onKeyDown(
+                  event,
+                  fullyVisible(
+                    virtualizer.getVirtualItems(),
+                    list.current?.scrollTop ?? 0,
+                    list.current?.clientHeight ?? 0,
+                    0,
+                  ),
+                ),
+            }
+          : {})}
+      >
         <div
           className="virtual-spacer"
           style={{ height: virtualizer.getTotalSize() }}

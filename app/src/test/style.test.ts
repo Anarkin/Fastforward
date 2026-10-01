@@ -9,7 +9,7 @@ import { stylesheet } from './fixtures';
 const css = stylesheet();
 
 function declarationsOf(selector: string): string {
-  const escaped = selector.replace(/[.()]/g, '\\$&');
+  const escaped = selector.replace(/[.()[\]]/g, '\\$&');
   const rule = new RegExp(`(^|,\\s*)${escaped}\\s*(,[^{]*)?{([^}]*)}`, 'm');
   const match = rule.exec(css);
   assert.ok(match, selector);
@@ -554,6 +554,20 @@ suite('Style', () => {
   test('draws no focus outline around the commit list, whose selected row shows where the keys go', () => {
     assert.ok(declarationsOf('.list').includes('outline: none;'));
     assert.doesNotMatch(css, /.list:focus/);
+  });
+
+  test('edges the active column in the focus color, over its contents but letting the pointer through, and outlines nothing in it', () => {
+    const edge = declarationsOf(
+      ".columns[data-active-column='commits'] > .column:nth-child(1)::after",
+    );
+    assert.ok(edge.includes('box-shadow: inset 0 0 0 2px var(--color-focus);'));
+    assert.ok(edge.includes('pointer-events: none;'));
+    assert.ok(edge.includes('position: absolute;'));
+    assert.match(
+      css,
+      /\.columns\[data-active-column='files'\] > \.column:nth-child\(2\)::after,\s*\.columns\[data-active-column='diff'\] > \.column:nth-child\(3\)::after/,
+    );
+    assert.ok(declarationsOf('[data-column-focus]').includes('outline: none;'));
   });
 
   test('mutes the search placeholders like other muted text', () => {

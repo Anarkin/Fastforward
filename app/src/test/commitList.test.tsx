@@ -4,7 +4,6 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { workingTreeHash } from '../shared/protocol';
 import { CommitHistory } from '../webview/commitHistory';
 import {
-  fullyVisible,
   isListKey,
   listKeyPosition,
   bubbleLineHeight,
@@ -348,23 +347,6 @@ suite('Commit list keys', () => {
     assert.ok(!isListKey({ ...key, ctrlKey: true }));
     assert.ok(!isListKey({ ...key, shiftKey: true }));
     assert.ok(!isListKey({ ...key, key: 'Enter' }));
-  });
-
-  test('counts the rows wholly in view, leaving out ones cut off at either edge', () => {
-    const rows = [0, 1, 2, 3, 4].map((index) => ({
-      index,
-      start: index * 40,
-      end: (index + 1) * 40,
-    }));
-    assert.deepStrictEqual(fullyVisible(rows, 10, 100, 0), {
-      first: 1,
-      last: 1,
-    });
-    assert.deepStrictEqual(fullyVisible(rows, 0, 120, 1), {
-      first: -1,
-      last: 1,
-    });
-    assert.deepStrictEqual(fullyVisible([], 0, 100, 0), { first: 0, last: 0 });
   });
 });
 

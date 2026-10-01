@@ -337,6 +337,22 @@ body {
   border-radius: var(--card-radius);
 }
 
+.columns[data-active-column='commits'] > .column:nth-child(1)::after,
+.columns[data-active-column='files'] > .column:nth-child(2)::after,
+.columns[data-active-column='diff'] > .column:nth-child(3)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  border-radius: var(--card-radius);
+  box-shadow: inset 0 0 0 2px var(--color-focus);
+  pointer-events: none;
+}
+
+[data-column-focus] {
+  outline: none;
+}
+
 .columns.commits-hidden {
   padding-left: 0;
 }
