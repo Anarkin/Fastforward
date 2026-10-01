@@ -1068,7 +1068,6 @@ body.resizing {
   background: none;
 }
 
-.diff-line.added.compared .number,
 .diff-line .word-added {
   background: color-mix(
     in srgb,
@@ -1077,7 +1076,6 @@ body.resizing {
   );
 }
 
-.diff-line.removed.compared .number,
 .diff-line .word-removed {
   background: color-mix(
     in srgb,

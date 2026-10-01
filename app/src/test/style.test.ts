@@ -217,18 +217,18 @@ suite('Style', () => {
     }
   });
 
-  test('leaves a line compared word by word untinted but for its numbers, tinting only the changed words, as a whole changed line is', () => {
+  test('leaves a line compared word by word untinted, numbers included, tinting only the changed words, as a whole changed line is', () => {
     for (const color of ['added', 'deleted']) {
-      const kind = color === 'added' ? 'added' : 'removed';
       const word = color === 'added' ? 'word-added' : 'word-removed';
       assert.match(
         css,
         new RegExp(
-          `\\n\\.diff-line\\.${kind}\\.compared \\.number,\\s*\\.diff-line \\.${word} \\{\\s*background: color-mix\\(\\s*in srgb,\\s*var\\(--color-${color}\\) var\\(--color-${color}-line\\),\\s*transparent\\s*\\);\\s*\\}`,
+          `\\n\\.diff-line \\.${word} \\{\\s*background: color-mix\\(\\s*in srgb,\\s*var\\(--color-${color}\\) var\\(--color-${color}-line\\),\\s*transparent\\s*\\);\\s*\\}`,
         ),
         color,
       );
     }
+    assert.doesNotMatch(css, /\.compared \.number/);
     assert.match(
       css,
       /\n\.diff-line\.added\.compared,\s*\.diff-line\.removed\.compared \{\s*background: none;\s*\}/,
