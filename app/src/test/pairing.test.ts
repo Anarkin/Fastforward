@@ -284,6 +284,19 @@ suite('Aligning a change side by side', () => {
     assert.strictEqual(aligned.length, 301);
   });
 
+  test('falls back to the plain order for a few lines with too many words to compare', () => {
+    const long = Array.from({ length: 300_000 }, (_, i) => `w${i % 7}`).join(
+      ' ',
+    );
+    assert.deepStrictEqual(
+      alignLines([long, 'alpha one'], ['alpha one', long]),
+      [
+        [0, 0],
+        [1, 1],
+      ],
+    );
+  });
+
   test('lines up a large block that still fits, even with insertions', () => {
     const removed = Array.from({ length: 150 }, (_, i) => `value ${i} = ${i};`);
     const added = [
