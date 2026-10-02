@@ -186,6 +186,13 @@ export function HistoryMenu({
   );
 }
 
+export function locationsPopupKey(
+  searches: number,
+  root: string | undefined,
+): string {
+  return `${searches}\n${root ?? ''}`;
+}
+
 export function AddressBar({
   root,
   repository,
@@ -233,7 +240,7 @@ export function AddressBar({
       </button>
       {open && (
         <LocationsPopup
-          key={searches}
+          key={locationsPopupKey(searches, root)}
           repository={repository}
           anchor={container}
           lookup={hashLookup}
