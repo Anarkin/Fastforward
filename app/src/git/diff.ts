@@ -79,9 +79,7 @@ export async function withBytes(
       }
       const bytes =
         (sizes.get(oldId) ?? 0) +
-        (isNullId(newId)
-          ? await workTreeSize(file.path)
-          : (sizes.get(newId) ?? 0));
+        (sizes.get(newId) ?? (await workTreeSize(file.path)));
       return { raw, file: { ...file, bytes } };
     }),
   );

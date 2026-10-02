@@ -101,6 +101,28 @@ suite('Files touched but not changed', function () {
   });
 });
 
+suite('A file renamed and edited', function () {
+  this.timeout(20_000);
+
+  test('counts the bytes of its new text on disk', async () => {
+    const repository = await tempRepository(tempFolder('renamed'));
+    const cwd = repository.root;
+    try {
+      const old = Array.from({ length: 20 }, (_, i) => `line ${i}\n`).join('');
+      await repository.commit('initial', { 'old.txt': old });
+      await repository.git('mv', 'old.txt', 'new.txt');
+      fs.appendFileSync(path.join(cwd, 'new.txt'), 'extra\n');
+      const { files } = await workingTreeFiles(repository.gitPath, cwd);
+      assert.deepStrictEqual(
+        files.map((file) => [file.status, file.path, file.bytes]),
+        [['R', 'new.txt', old.length * 2 + 'extra\n'.length]],
+      );
+    } finally {
+      removeFolder(cwd);
+    }
+  });
+});
+
 suite('Uncommitted changes', function () {
   this.timeout(20_000);
   let gitPath: string;
