@@ -429,6 +429,57 @@ suite('Git repository', function () {
     }
   });
 
+  test('keeps a line as it is when blank lines around it are added and removed', async () => {
+    const spaced = await tempRepository(tempFolder('spaced'));
+    try {
+      await spaced.commit('old', {
+        'a.md': [
+          '# A',
+          '',
+          '## B',
+          '',
+          '- one',
+          '- two',
+          '- three',
+          '- four',
+          '',
+          '## C',
+          '',
+          '- five',
+          '- six',
+          '',
+        ].join('\n'),
+      });
+      await spaced.commit('new', {
+        'a.md': [
+          '# A',
+          '',
+          '- one',
+          '',
+          '- two',
+          '',
+          '- three',
+          '',
+          '- four',
+          '',
+          '- five',
+          '',
+          '- six',
+          '',
+        ].join('\n'),
+      });
+      const [hash] = await spaced.resolve('HEAD');
+      const patch = await showPatch(gitPath, spaced.root, hash);
+      const changed = patch
+        .slice(patch.indexOf('@@'))
+        .split('\n')
+        .filter((line) => /^[+-]./.test(line));
+      assert.deepStrictEqual(changed, ['-## B', '-## C'], patch);
+    } finally {
+      removeFolder(spaced.root);
+    }
+  });
+
   test('counts the bytes of the old and new text of each file whose lines changed', async () => {
     const sized = await tempRepository(tempFolder('sized'));
     try {
