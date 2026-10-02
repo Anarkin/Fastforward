@@ -11,6 +11,7 @@ import {
 } from './history/merges';
 import { noNavigation, reachable, type Navigation } from './history/navigation';
 import { countRefs, decorations, fingerprint, type Head } from './refs';
+import { comparedOf, sidesOf } from './shared/comparisons';
 import {
   pageStart,
   workingTreeHash,
@@ -309,7 +310,10 @@ export function replayOf(tab: TabState): ToWebview[] {
 }
 
 export function stillThere(tab: TabState): (hash: string) => boolean {
-  return (hash) => hash === workingTreeHash || tab.inHistory.has(hash);
+  return (hash) =>
+    sidesOf(hash).every(
+      (side) => side === workingTreeHash || tab.inHistory.has(side),
+    );
 }
 
 export function nearestSteps(
@@ -342,7 +346,9 @@ export function keepSubjects(
 ): void {
   if (tab.subjects.size + commits.length > subjectsKept) {
     const { back, forward } = tab.navigation;
-    const needed = new Set([...back, ...forward, tab.hash]);
+    const needed = new Set(
+      [...back, ...forward, tab.hash].flatMap((hash) => sidesOf(hash)),
+    );
     for (const hash of tab.subjects.keys()) {
       if (!needed.has(hash)) {
         tab.subjects.delete(hash);
@@ -356,8 +362,9 @@ export function keepSubjects(
 
 function positionOf(
   tab: TabState,
-  hash: string | undefined,
+  selection: string | undefined,
 ): number | undefined {
+  const hash = comparedOf(selection)?.to ?? selection;
   if (hash === workingTreeHash) {
     return workingTreeIndex;
   }

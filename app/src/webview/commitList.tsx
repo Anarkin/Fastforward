@@ -6,6 +6,7 @@ import {
   useSyncExternalStore,
 } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { comparedOf, sidesOf } from '../shared/comparisons';
 import {
   workingTreeHash,
   workingTreeIndex,
@@ -162,8 +163,9 @@ export function isListKey(
 
 function startPosition(
   history: CommitHistory,
-  selected: string | undefined,
+  selection: string | undefined,
 ): number | null | undefined {
+  const selected = comparedOf(selection)?.to ?? selection;
   if (selected === workingTreeHash) {
     return workingTreeIndex;
   }
@@ -332,23 +334,44 @@ export function uncommittedChanges(count: number): string {
   return count === 1 ? '1 uncommitted change' : `${count} uncommitted changes`;
 }
 
+type Click = Pick<MouseEvent, 'ctrlKey' | 'metaKey' | 'shiftKey' | 'altKey'>;
+
+export function isCompareClick(event: Click): boolean {
+  return (event.ctrlKey || event.metaKey) && !event.shiftKey && !event.altKey;
+}
+
+function selectionClasses(hash: string, selection: string | undefined) {
+  if (!sidesOf(selection).includes(hash)) {
+    return [];
+  }
+  return comparedOf(selection)?.from === hash
+    ? ['selected', 'compare-from']
+    : ['selected'];
+}
+
 export function WorkingTreeRow({
   count,
-  selected,
+  selection,
   indent,
   onSelect,
+  onCompare,
 }: {
   count: number;
-  selected: boolean;
+  selection: string | undefined;
   indent: number;
   onSelect: (hash: string | undefined) => void;
+  onCompare?: (hash: string) => void;
 }) {
   const dirty = count > 0;
   return (
     <div
       style={{ paddingLeft: indent }}
-      className={`commit working-tree ${dirty ? '' : 'empty'} ${selected ? 'selected' : ''}`}
-      onClick={() => onSelect(workingTreeHash)}
+      className={`commit working-tree ${dirty ? '' : 'empty'} ${selectionClasses(workingTreeHash, selection).join(' ')}`}
+      onClick={(event: Click) =>
+        onCompare && isCompareClick(event)
+          ? onCompare(workingTreeHash)
+          : onSelect(workingTreeHash)
+      }
     >
       <div className="commit-line">
         <span className="subject">{uncommittedChanges(count)}</span>
@@ -367,6 +390,7 @@ export function Commits({
   refsByCommit,
   selected,
   onSelect,
+  onCompare,
   onToggleMerge,
   collapseMerges,
   onCollapseMerges,
@@ -392,6 +416,7 @@ export function Commits({
     replace?: boolean,
     repeat?: boolean,
   ) => void;
+  onCompare: (hash: string) => void;
   onToggleMerge: (hash: string) => void;
   collapseMerges: boolean;
   onCollapseMerges: (collapse: boolean) => void;
@@ -623,9 +648,10 @@ export function Commits({
       return (
         <WorkingTreeRow
           count={workingTree}
-          selected={selected === workingTreeHash}
+          selection={selected}
           indent={indent(index)}
           onSelect={onSelect}
+          onCompare={onCompare}
         />
       );
     }
@@ -655,6 +681,7 @@ export function Commits({
         detached={detached === commit.hash}
         indent={indent(index)}
         onSelect={onSelect}
+        onCompare={onCompare}
       />
     );
   };
@@ -750,7 +777,7 @@ export function commitClass(
 ): string {
   return [
     'commit',
-    ...(hash === selected ? ['selected'] : []),
+    ...selectionClasses(hash, selected),
     ...(hash === headCommit ? ['checked-out'] : []),
   ].join(' ');
 }
@@ -763,6 +790,7 @@ export function CommitRow({
   detached,
   indent,
   onSelect,
+  onCompare,
   highlight = '',
 }: {
   commit: CommitInfo;
@@ -772,6 +800,7 @@ export function CommitRow({
   detached: boolean;
   indent: number;
   onSelect: (hash: string) => void;
+  onCompare?: (hash: string) => void;
   highlight?: string;
 }) {
   const openMenu = useContext(OpenContextMenu);
@@ -779,7 +808,11 @@ export function CommitRow({
     <div
       className={commitClass(commit.hash, selected, headCommit)}
       style={{ paddingLeft: indent }}
-      onClick={() => onSelect(commit.hash)}
+      onClick={(event: Click) =>
+        onCompare && isCompareClick(event)
+          ? onCompare(commit.hash)
+          : onSelect(commit.hash)
+      }
       onContextMenu={(event) =>
         openMenu(event, { kind: 'commit', hash: commit.hash })
       }

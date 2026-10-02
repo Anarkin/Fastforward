@@ -403,6 +403,7 @@ suite('Uncommitted changes', function () {
       const listed = {
         ...workingTree,
         files: workingTree.files.filter((file) => file.path !== 'draft.txt'),
+        untracked: workingTree.untracked.filter((file) => file !== 'draft.txt'),
       };
       await workingTreePatch(gitPath, cwd, listed, {}, patches);
       assert.ok(!patches.has('draft.txt'));
@@ -440,6 +441,7 @@ suite('Uncommitted changes', function () {
     const listed = {
       ...workingTree,
       files: workingTree.files.filter((file) => file.status !== 'U'),
+      untracked: [],
     };
     const patch = await workingTreePatch(gitPath, cwd, listed);
     assert.ok(patch.includes('+two'));

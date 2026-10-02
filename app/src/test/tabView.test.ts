@@ -6,6 +6,7 @@ import {
   treeToLoad,
   type TabView,
 } from '../webview/tabView';
+import { comparisonOf } from '../shared/comparisons';
 import { commitPageSize } from '../shared/protocol';
 import { commitInfo, fileChange } from './fixtures';
 
@@ -204,6 +205,18 @@ suite('Tab view', () => {
     assert.ok(view.filesLoading && view.patchLoading);
     assert.strictEqual(view.history?.positionOf('z'), 1);
     assert.strictEqual(view.history?.at(1), undefined);
+  });
+
+  test('selects a revealed comparison and knows where the commit compared to is', () => {
+    const selection = comparisonOf('a', 'z');
+    const view = reduceTabView(busyTab(), {
+      type: 'reveal',
+      hash: selection,
+      index: 1,
+    });
+    assert.strictEqual(view.hash, selection);
+    assert.strictEqual(view.history?.positionOf('z'), 1);
+    assert.strictEqual(view.history?.positionOf(selection), undefined);
   });
 
   test('scrolls to the offset in a row where the extension says the history was scrolled', () => {

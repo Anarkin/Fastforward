@@ -1,3 +1,4 @@
+import { comparedOf } from '../shared/comparisons';
 import type {
   FileChange,
   NavigationEntry,
@@ -158,7 +159,10 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
     case 'unselect':
       return selected(state, undefined);
     case 'reveal':
-      state.history?.locate(action.hash, action.index);
+      state.history?.locate(
+        comparedOf(action.hash)?.to ?? action.hash,
+        action.index,
+      );
       return {
         ...selected(state, action.hash),
         scrollTarget: { index: action.index },

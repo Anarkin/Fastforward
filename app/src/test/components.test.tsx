@@ -23,6 +23,7 @@ import { leafIndent, LocationsPopup } from '../webview/locations';
 import {
   AddressBar,
   historyButtonClick,
+  historyLabel,
   HistoryMenu,
   locationsPopupKey,
   nextHistoryOpen,
@@ -32,7 +33,8 @@ import { changeClass, changeTitle } from '../webview/fileStatus';
 import type { ContextMenuItem } from '../webview/contextMenu';
 import { DiffOptions } from '../webview/diffColumn';
 import { HunkDivider } from '../webview/diffView';
-import { Files, filesCursor } from '../webview/filesColumn';
+import { Files, filesCursor, filesTitle } from '../webview/filesColumn';
+import { comparisonOf } from '../shared/comparisons';
 import { Highlight } from '../webview/highlight';
 import type { Folders } from '../webview/viewFolders';
 import { SkeletonRows } from '../webview/skeleton';
@@ -40,11 +42,12 @@ import { preloadDelay, resting, TabBar } from '../webview/tabBar';
 import { GraphCell, graphWidth, rowLanes } from '../webview/graph';
 import { FileRow, treeIndent } from '../webview/tree';
 import { VirtualRows, type ListedRows } from '../webview/virtualRows';
-import type {
-  FileChange,
-  GraphRow,
-  RefInfo,
-  RepositoryState,
+import {
+  workingTreeHash,
+  type FileChange,
+  type GraphRow,
+  type RefInfo,
+  type RepositoryState,
 } from '../shared/protocol';
 import {
   classesOf,
@@ -374,6 +377,16 @@ suite('Files column', () => {
       column.props.start.props.children[0].props.onClick();
       assert.deepStrictEqual(picked, [!showAll]);
     }
+  });
+
+  test('titles itself with the commits compared', () => {
+    const hash = '0123456789abcdef0123456789abcdef01234567';
+    assert.strictEqual(filesTitle(undefined), 'Files');
+    assert.strictEqual(filesTitle(hash), 'Files');
+    assert.strictEqual(
+      filesTitle(comparisonOf(hash, workingTreeHash)),
+      'Files: 0123456 → uncommitted',
+    );
   });
 
   test('collapses every folder, or expands every folder shown, the unchanged ones too while all files show', () => {
@@ -819,6 +832,22 @@ suite('History buttons', () => {
     menu.props.children[0].props.onClick();
     menu.props.children[2].props.onClick();
     assert.deepStrictEqual(picked, [1, 3]);
+  });
+
+  test('label an entry by its short hash, or a comparison by both', () => {
+    const a = 'a'.repeat(40);
+    const b = 'b'.repeat(40);
+    assert.strictEqual(historyLabel(a), 'aaaaaaa');
+    assert.strictEqual(historyLabel(comparisonOf(a, b)), 'aaaaaaa → bbbbbbb');
+    const menu = renderToStaticMarkup(
+      <HistoryMenu
+        container={{ current: null }}
+        entries={[{ hash: comparisonOf(a, b), subject: undefined }]}
+        onPick={noop}
+        onClose={noop}
+      />,
+    );
+    assert.match(menu, /<span class="history-hash">aaaaaaa → bbbbbbb<\/span>/);
   });
 
   test('keys history entries apart that are the same commit', () => {

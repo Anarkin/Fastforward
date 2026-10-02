@@ -15,9 +15,14 @@ import { isBinary, maxFileSize } from './files';
 import { headCommit } from './history';
 import { runGit, splitNul } from './run';
 
-export interface WorkingTree {
+export interface WorkingTreeDiff {
   readonly base: string;
+  readonly reverse: boolean;
+}
+
+export interface WorkingTree extends WorkingTreeDiff {
   readonly files: readonly FileChange[];
+  readonly untracked: readonly string[];
 }
 
 export type UntrackedPatches = Map<
@@ -68,48 +73,56 @@ async function addedLines(file: string): Promise<number> {
 export async function workingTreeFiles(
   gitPath: string,
   cwd: string,
+  against?: WorkingTreeDiff,
 ): Promise<WorkingTree> {
-  const base =
-    (await headCommit(gitPath, cwd)) ??
-    (
-      await runGit(gitPath, cwd, ['hash-object', '-t', 'tree', '--stdin'], {
-        input: '',
-      })
-    ).trim();
-  const [changes, untracked] = await Promise.all([
-    runGit(gitPath, cwd, [...workingTreeDiff(base), ...changesArgs]),
+  const diff = against ?? {
+    base:
+      (await headCommit(gitPath, cwd)) ??
+      (
+        await runGit(gitPath, cwd, ['hash-object', '-t', 'tree', '--stdin'], {
+          input: '',
+        })
+      ).trim(),
+    reverse: false,
+  };
+  const { reverse } = diff;
+  const [changes, listed] = await Promise.all([
+    runGit(gitPath, cwd, [...workingTreeDiff(diff), ...changesArgs]),
     runGit(gitPath, cwd, ['ls-files', '--others', '--exclude-standard', '-z']),
   ]);
   const trackedChanges = await withoutTouched(
     gitPath,
     cwd,
-    await withBytes(gitPath, cwd, parseRawChanges(changes), cwd),
+    await withBytes(gitPath, cwd, parseRawChanges(changes), cwd, reverse),
+    reverse,
   );
   const tracked = new Set(trackedChanges.map((file) => file.path));
+  const untracked = splitNul(listed).filter(
+    (path) => path && !tracked.has(path),
+  );
   const untrackedFiles = await Promise.all(
-    splitNul(untracked)
-      .filter((path) => path && !tracked.has(path))
-      .map(async (path, index): Promise<FileChange> => {
-        const file = join(cwd, path);
-        const insertions =
-          index < maxUntrackedPatches && !path.endsWith('/')
-            ? await addedLines(file)
-            : 0;
-        const bytes =
-          insertions > 0 ? (await lstat(file).catch(() => undefined))?.size : 0;
-        return {
-          path,
-          oldPath: undefined,
-          status: 'U',
-          insertions,
-          deletions: 0,
-          ...(bytes ? { bytes } : {}),
-        };
-      }),
+    untracked.map(async (path, index): Promise<FileChange> => {
+      const file = join(cwd, path);
+      const lines =
+        index < maxUntrackedPatches && !path.endsWith('/')
+          ? await addedLines(file)
+          : 0;
+      const bytes =
+        lines > 0 ? (await lstat(file).catch(() => undefined))?.size : 0;
+      return {
+        path,
+        oldPath: undefined,
+        status: reverse ? 'D' : 'U',
+        insertions: reverse ? 0 : lines,
+        deletions: reverse ? lines : 0,
+        ...(bytes ? { bytes } : {}),
+      };
+    }),
   );
   return {
-    base,
+    ...diff,
     files: [...trackedChanges, ...untrackedFiles],
+    untracked,
   };
 }
 
@@ -119,9 +132,11 @@ export async function withoutTouched(
   gitPath: string,
   cwd: string,
   changes: readonly { readonly raw: string; readonly file: FileChange }[],
+  reverse = false,
 ): Promise<FileChange[]> {
   const suspects = changes.flatMap(({ raw, file }) => {
-    const [oldMode, mode, object, , status] = raw.slice(1).split(' ');
+    const [oldMode, mode, oldId, newId, status] = raw.slice(1).split(' ');
+    const object = reverse ? newId : oldId;
     return status === 'M' &&
       mode === oldMode &&
       mode.startsWith('100') &&
@@ -149,14 +164,25 @@ export async function withoutTouched(
     .filter((file) => !touched.has(file.path));
 }
 
-function workingTreeDiff(base: string): string[] {
-  return ['diff', base, '-M', ...diffArgs];
+// -R swaps the prefixes too, which the patch is parsed by
+function workingTreeDiff({ base, reverse }: WorkingTreeDiff): string[] {
+  return reverse
+    ? [
+        'diff',
+        base,
+        '-M',
+        '-R',
+        ...diffArgs,
+        '--src-prefix=b/',
+        '--dst-prefix=a/',
+      ]
+    : ['diff', base, '-M', ...diffArgs];
 }
 
 export async function workingTreePatch(
   gitPath: string,
   cwd: string,
-  { base, files }: WorkingTree,
+  workingTree: WorkingTree,
   scope: PatchScope = {},
   kept: UntrackedPatches = new Map(),
 ): Promise<string> {
@@ -165,26 +191,27 @@ export async function workingTreePatch(
       return '';
     }
     const stats = await lstat(join(cwd, file)).catch(() => undefined);
-    const stamp = stats && stampOf(stats);
+    const stamp = stats && stampOf(stats, workingTree.reverse);
     const known = kept.get(file);
     if (stamp !== undefined && known?.stamp === stamp) {
       return known.patch;
     }
+    const sides = workingTree.reverse
+      ? [file, '/dev/null']
+      : ['/dev/null', file];
     const patch = await runGit(
       gitPath,
       cwd,
-      ['diff', '--no-index', ...diffArgs, '--', '/dev/null', file],
+      ['diff', '--no-index', ...diffArgs, '--', ...sides],
       { okExitCodes: [0, 1] },
     );
     if (stats && stats.size <= maxFileSize) {
-      kept.set(file, { stamp: stampOf(stats), patch });
+      kept.set(file, { stamp: stampOf(stats, workingTree.reverse), patch });
     }
     return patch;
   };
   const { path } = scope;
-  const untracked = files
-    .filter((file) => file.status === 'U')
-    .map((file) => file.path);
+  const { untracked } = workingTree;
   if (path !== undefined && untracked.includes(path)) {
     return untrackedPatch(path);
   }
@@ -192,7 +219,7 @@ export async function workingTreePatch(
     return '';
   }
   const tracked = runGit(gitPath, cwd, [
-    ...workingTreeDiff(base),
+    ...workingTreeDiff(workingTree),
     ...diffOptionArgs(scope),
     ...pathspecs(scope),
   ]);
@@ -223,6 +250,9 @@ export async function workingTreePatch(
   ].join('');
 }
 
-function stampOf({ size, mtimeMs, ctimeMs, ino }: Stats): string {
-  return `${size} ${mtimeMs} ${ctimeMs} ${ino}`;
+function stampOf(
+  { size, mtimeMs, ctimeMs, ino }: Stats,
+  reverse: boolean,
+): string {
+  return `${size} ${mtimeMs} ${ctimeMs} ${ino}${reverse ? ' reverse' : ''}`;
 }
