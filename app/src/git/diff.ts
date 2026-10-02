@@ -23,17 +23,44 @@ const showArgs = [
 
 export const changesArgs = ['--raw', '--numstat', '-z', '--no-abbrev'];
 
-export async function showFiles(
+const compareArgs = ['diff', '-M', ...diffArgs];
+
+export function showFiles(
   gitPath: string,
   cwd: string,
   hash: string,
   signal?: AbortSignal,
 ): Promise<FileChange[]> {
-  const changes = parseRawChanges(
-    await runGit(gitPath, cwd, [...showArgs, ...changesArgs, hash], {
-      signal,
-    }),
+  return changedFiles(
+    gitPath,
+    cwd,
+    [...showArgs, ...changesArgs, hash],
+    signal,
   );
+}
+
+export function compareFiles(
+  gitPath: string,
+  cwd: string,
+  from: string,
+  to: string,
+  signal?: AbortSignal,
+): Promise<FileChange[]> {
+  return changedFiles(
+    gitPath,
+    cwd,
+    [...compareArgs, ...changesArgs, from, to],
+    signal,
+  );
+}
+
+async function changedFiles(
+  gitPath: string,
+  cwd: string,
+  args: readonly string[],
+  signal: AbortSignal | undefined,
+): Promise<FileChange[]> {
+  const changes = parseRawChanges(await runGit(gitPath, cwd, args, { signal }));
   return (await withBytes(gitPath, cwd, changes)).map(({ file }) => file);
 }
 
@@ -47,6 +74,7 @@ export async function withBytes(
   cwd: string,
   changes: readonly RawChange[],
   workTree?: string,
+  reverse = false,
 ): Promise<RawChange[]> {
   const sides = changes.map(({ raw, file }) => {
     const [, , oldId, newId] = raw.slice(1).split(' ');
@@ -78,9 +106,12 @@ export async function withBytes(
       if (oldId === undefined || newId === undefined) {
         return { raw, file };
       }
+      const [committed, workTreeId, path] = reverse
+        ? [newId, oldId, file.oldPath ?? file.path]
+        : [oldId, newId, file.path];
       const bytes =
-        (sizes.get(oldId) ?? 0) +
-        (sizes.get(newId) ?? (await workTreeSize(file.path)));
+        (sizes.get(committed) ?? 0) +
+        (sizes.get(workTreeId) ?? (await workTreeSize(path)));
       return { raw, file: { ...file, bytes } };
     }),
   );
@@ -122,19 +153,35 @@ export function showPatch(
   scope: PatchScope = {},
   signal?: AbortSignal,
 ): Promise<string> {
+  return patchOf(gitPath, cwd, [...showArgs, '--patch'], [hash], scope, signal);
+}
+
+export function comparePatch(
+  gitPath: string,
+  cwd: string,
+  from: string,
+  to: string,
+  scope: PatchScope = {},
+  signal?: AbortSignal,
+): Promise<string> {
+  return patchOf(gitPath, cwd, compareArgs, [from, to], scope, signal);
+}
+
+function patchOf(
+  gitPath: string,
+  cwd: string,
+  args: readonly string[],
+  revisions: readonly string[],
+  scope: PatchScope,
+  signal: AbortSignal | undefined,
+): Promise<string> {
   if (scope.include?.length === 0) {
     return Promise.resolve('');
   }
   return runGit(
     gitPath,
     cwd,
-    [
-      ...showArgs,
-      '--patch',
-      ...diffOptionArgs(scope),
-      hash,
-      ...pathspecs(scope),
-    ],
+    [...args, ...diffOptionArgs(scope), ...revisions, ...pathspecs(scope)],
     { signal },
   );
 }

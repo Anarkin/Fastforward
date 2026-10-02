@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { comparisonOf } from '../shared/comparisons';
 import { workingTreeHash, workingTreeIndex } from '../shared/protocol';
 import { CommitHistory } from '../webview/commitHistory';
 import {
@@ -17,6 +18,7 @@ import {
   commitClass,
   estimatedRowHeight,
   fixedRowHeight,
+  isCompareClick,
   listScroll,
   listTop,
   rowKeyOf,
@@ -101,34 +103,66 @@ suite('Commit list rows', () => {
 
 const noop = () => {};
 
-function clickedHash(count: number): string | undefined {
-  let selected: string | undefined = 'none';
+const plainClick = {
+  ctrlKey: false,
+  metaKey: false,
+  shiftKey: false,
+  altKey: false,
+};
+
+function clickedHash(
+  count: number,
+  click = plainClick,
+): { selected?: string; compared?: string } {
+  const clicked: { selected?: string; compared?: string } = {};
   const row = WorkingTreeRow({
     count,
-    selected: false,
+    selection: undefined,
     indent: 26,
-    onSelect: (hash) => (selected = hash),
+    onSelect: (hash) => (clicked.selected = hash),
+    onCompare: (hash) => (clicked.compared = hash),
   });
-  assert.ok(isValidElement<{ onClick: () => void }>(row));
-  row.props.onClick();
-  return selected;
+  assert.ok(isValidElement<{ onClick: (event: typeof click) => void }>(row));
+  row.props.onClick(click);
+  return clicked;
+}
+
+function workingTreeHtml(selection: string): string {
+  return renderToStaticMarkup(
+    <WorkingTreeRow
+      count={1}
+      selection={selection}
+      indent={0}
+      onSelect={noop}
+    />,
+  );
 }
 
 suite('Commit list working tree row', () => {
   test('shows a clean working tree, which clicking selects, as the keys do', () => {
     const html = renderToStaticMarkup(
-      <WorkingTreeRow count={0} selected={false} indent={26} onSelect={noop} />,
+      <WorkingTreeRow
+        count={0}
+        selection={undefined}
+        indent={26}
+        onSelect={noop}
+      />,
     );
     assert.match(
       html,
       /^<div [^>]*class="commit working-tree empty\s*"><div class="commit-line"><span class="subject">No uncommitted changes<\/span><\/div><\/div>$/,
     );
-    assert.strictEqual(clickedHash(0), workingTreeHash);
+    assert.deepStrictEqual(clickedHash(0), { selected: workingTreeHash });
   });
 
   test('shows how many files changed, and clicking selects them', () => {
     const html = renderToStaticMarkup(
-      <WorkingTreeRow count={3} selected={false} indent={26} onSelect={noop} />,
+      <WorkingTreeRow
+        count={3}
+        selection={undefined}
+        indent={26}
+        onSelect={noop}
+      />,
     );
     assert.doesNotMatch(html, /empty/);
     assert.match(
@@ -136,7 +170,27 @@ suite('Commit list working tree row', () => {
       /<div class="commit-line"><span class="subject">3 uncommitted changes<\/span><\/div><\/div>$/,
     );
     assert.strictEqual(uncommittedChanges(1), '1 uncommitted change');
-    assert.strictEqual(clickedHash(3), workingTreeHash);
+    assert.deepStrictEqual(clickedHash(3), { selected: workingTreeHash });
+  });
+
+  test('compares with the working tree when clicked with Ctrl, or Cmd', () => {
+    assert.deepStrictEqual(clickedHash(3, { ...plainClick, ctrlKey: true }), {
+      compared: workingTreeHash,
+    });
+    assert.deepStrictEqual(clickedHash(0, { ...plainClick, metaKey: true }), {
+      compared: workingTreeHash,
+    });
+  });
+
+  test('shows the working tree selected as either side of a comparison', () => {
+    assert.match(
+      workingTreeHtml(comparisonOf(workingTreeHash, 'a')),
+      /class="commit working-tree\s+selected compare-from"/,
+    );
+    assert.match(
+      workingTreeHtml(comparisonOf('a', workingTreeHash)),
+      /class="commit working-tree\s+selected"/,
+    );
   });
 
   test('keeps a scrolled list in place when the working tree row appears above it', () => {
@@ -349,6 +403,22 @@ suite('Commit list keys', () => {
     assert.strictEqual(press('ArrowDown', history, undefined, false), 0);
   });
 
+  test('steps with the arrows from the commit compared to', () => {
+    const history = loaded('a', 'b', 'c');
+    assert.strictEqual(
+      press('ArrowDown', history, comparisonOf('c', 'a'), true),
+      1,
+    );
+    assert.strictEqual(
+      press('ArrowUp', history, comparisonOf('a', workingTreeHash), true),
+      undefined,
+    );
+    assert.strictEqual(
+      press('ArrowDown', history, comparisonOf('a', workingTreeHash), true),
+      0,
+    );
+  });
+
   test('goes to the first row on Home and the last on End, loaded or not', () => {
     const history = new CommitHistory(1000);
     history.add(0, [commitInfo('a'), commitInfo('b')]);
@@ -497,6 +567,29 @@ suite('Commit rows', () => {
     assert.strictEqual(commitClass('b', 'b', 'a'), 'commit selected');
     assert.strictEqual(commitClass('b', undefined, undefined), 'commit');
   });
+
+  test('marks both commits of a comparison selected, and the one compared from', () => {
+    const selection = comparisonOf('a', 'b');
+    assert.strictEqual(
+      commitClass('a', selection, undefined),
+      'commit selected compare-from',
+    );
+    assert.strictEqual(
+      commitClass('b', selection, undefined),
+      'commit selected',
+    );
+    assert.strictEqual(commitClass('c', selection, undefined), 'commit');
+  });
+
+  test('compares only on a click with Ctrl, or Cmd, alone', () => {
+    assert.ok(isCompareClick({ ...plainClick, ctrlKey: true }));
+    assert.ok(isCompareClick({ ...plainClick, metaKey: true }));
+    assert.ok(!isCompareClick(plainClick));
+    assert.ok(
+      !isCompareClick({ ...plainClick, ctrlKey: true, shiftKey: true }),
+    );
+    assert.ok(!isCompareClick({ ...plainClick, metaKey: true, altKey: true }));
+  });
 });
 
 suite('Commit row', () => {
@@ -530,8 +623,30 @@ suite('Commit row', () => {
     assert.match(html, />main</);
     assert.doesNotMatch(html, /class="count"/);
     const row = renderedBy(CommitRow, props);
-    assert.ok(isValidElement<{ onClick: () => void }>(row));
-    row.props.onClick();
+    assert.ok(
+      isValidElement<{ onClick: (event: typeof plainClick) => void }>(row),
+    );
+    row.props.onClick(plainClick);
     assert.strictEqual(picked, 'a');
+  });
+
+  test('compares with the commit when clicked with Ctrl', () => {
+    const picked: string[] = [];
+    const compared: string[] = [];
+    const row = renderedBy(CommitRow, {
+      commit: commitInfo('a'),
+      selected: 'b',
+      headCommit: undefined,
+      refs: [],
+      detached: false,
+      indent: 0,
+      onSelect: (hash: string) => picked.push(hash),
+      onCompare: (hash: string) => compared.push(hash),
+    });
+    assert.ok(
+      isValidElement<{ onClick: (event: typeof plainClick) => void }>(row),
+    );
+    row.props.onClick({ ...plainClick, ctrlKey: true });
+    assert.deepStrictEqual([picked, compared], [[], ['a']]);
   });
 });

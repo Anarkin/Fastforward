@@ -555,6 +555,10 @@ body.resizing {
   background: var(--selection-background);
 }
 
+.commit.compare-from {
+  box-shadow: inset 3px 0 0 var(--color-focus);
+}
+
 .row.group {
   font-weight: 600;
 }

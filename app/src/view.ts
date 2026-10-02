@@ -1,7 +1,13 @@
 import * as path from 'node:path';
 import { AutoFetch, type Timer } from './autoFetch';
 import { remoteDefaultBranches } from './git/branches';
-import { showFiles, showPatch, type PatchScope } from './git/diff';
+import {
+  compareFiles,
+  comparePatch,
+  showFiles,
+  showPatch,
+  type PatchScope,
+} from './git/diff';
 import { gitErrorText } from './git/errorText';
 import { listTree, readBlobs, readFile } from './git/files';
 import {
@@ -19,6 +25,7 @@ import {
   workingTreePatch,
   type UntrackedPatches,
   type WorkingTree,
+  type WorkingTreeDiff,
 } from './git/workingTree';
 import { step, visit } from './history/navigation';
 import type { Log } from './log';
@@ -31,12 +38,12 @@ import {
   type RepositoryAt,
 } from './operations';
 import { defaultBookmarks, fingerprint } from './refs';
+import { comparedOf, sidesOf } from './shared/comparisons';
 import { isFullHash } from './shared/hashes';
 import {
   commitPageSize,
   deferredChanges,
   workingTreeHash,
-  workingTreeIndex,
   type CheckoutTarget,
   type CommitSearch,
   type Direction,
@@ -467,8 +474,10 @@ export class FastforwardView {
         }
         if (
           message.hash !== undefined &&
-          message.hash !== workingTreeHash &&
-          !context.tab.positions.has(message.hash)
+          sidesOf(message.hash).some(
+            (side) =>
+              side !== workingTreeHash && !context.tab.positions.has(side),
+          )
         ) {
           this.notInHistory(context, message.hash);
           break;
@@ -931,7 +940,10 @@ export class FastforwardView {
     const { navigation } = tab;
     const { back, forward } = nearestSteps(tab, current);
     const unknown = [...new Set([...back, ...forward])].filter(
-      (hash) => hash !== workingTreeHash && !tab.subjects.has(hash),
+      (hash) =>
+        hash !== workingTreeHash &&
+        !comparedOf(hash) &&
+        !tab.subjects.has(hash),
     );
     if (unknown.length > 0) {
       keepSubjects(
@@ -1029,17 +1041,7 @@ export class FastforwardView {
       return;
     }
     tab.navigation = result.navigation;
-    if (result.target === workingTreeHash) {
-      select(tab, workingTreeHash);
-      context.post({
-        type: 'reveal',
-        hash: workingTreeHash,
-        index: workingTreeIndex,
-      });
-      await this.sendCommit(context);
-    } else {
-      await this.showCommit(context, result.target, false);
-    }
+    await this.showCommit(context, result.target, false);
     await this.sendNavigation(context);
   }
 
@@ -1049,15 +1051,18 @@ export class FastforwardView {
     record = true,
   ): Promise<void> {
     const { tab } = context;
-    if (!tab.positions.has(hash)) {
-      const merges = mergesHidingCommit(tab, hash);
-      if (merges.length > 0) {
-        toggleMerges(tab, merges);
-        await this.sendShownHistory(context, { scrollTo: hash });
-      }
+    const hidden = () =>
+      sidesOf(hash).filter(
+        (side) => side !== workingTreeHash && !tab.positions.has(side),
+      );
+    const merges = new Set(
+      hidden().flatMap((side) => mergesHidingCommit(tab, side)),
+    );
+    if (merges.size > 0) {
+      toggleMerges(tab, [...merges]);
+      await this.sendShownHistory(context, { scrollTo: hash });
     }
-    const index = tab.positions.get(hash);
-    if (index === undefined) {
+    if (hidden().length > 0) {
       this.notInHistory(context, hash);
       return;
     }
@@ -1065,7 +1070,9 @@ export class FastforwardView {
       this.visit(context, hash);
     }
     select(tab, hash);
-    context.post({ type: 'reveal', hash, index });
+    if (tab.index !== undefined) {
+      context.post({ type: 'reveal', hash, index: tab.index });
+    }
     await this.sendCommit(context);
   }
 
@@ -1130,10 +1137,14 @@ export class FastforwardView {
   private async refreshOnce(context: Context, refs = true): Promise<void> {
     await Promise.all([
       this.sendWorkingTree(context).then(async (workingTree) => {
-        if (context.tab.hash === workingTreeHash) {
+        const { hash } = context.tab;
+        if (hash !== undefined && workingTreeSide(hash)) {
           await this.sendCommit(context, workingTree);
-          if (context.tab.shown.tree?.hash === workingTreeHash) {
-            await this.sendTree(context, workingTreeHash, workingTree);
+          if (
+            context.tab.shown.tree?.hash === hash &&
+            shownCommit(hash) === undefined
+          ) {
+            await this.sendTree(context, hash, workingTree);
           }
         }
       }),
@@ -1305,16 +1316,21 @@ export class FastforwardView {
     let files: readonly FileChange[];
     let workingTree: WorkingTree | undefined;
     try {
-      if (hash === workingTreeHash) {
-        workingTree =
-          knownWorkingTree ??
-          (await workingTreeFiles(context.gitPath, context.root));
-        files = workingTree.files;
-      } else if (stillThere(tab)(hash)) {
-        files = await this.commitFiles(context, hash, signal);
-      } else {
+      if (!stillThere(tab)(hash)) {
         this.notInHistory(context, hash);
         return;
+      }
+      if (workingTreeSide(hash)) {
+        workingTree =
+          (hash === workingTreeHash ? knownWorkingTree : undefined) ??
+          (await workingTreeFiles(
+            context.gitPath,
+            context.root,
+            workingTreeDiffOf(hash),
+          ));
+        files = workingTree.files;
+      } else {
+        files = await this.commitFiles(context, hash, signal);
       }
     } catch (error) {
       if (signal.aborted) {
@@ -1344,7 +1360,16 @@ export class FastforwardView {
     hash: string,
     signal: AbortSignal,
   ): Promise<FileChange[]> {
-    return showFiles(context.gitPath, context.root, hash, signal);
+    const compared = comparedOf(hash);
+    return compared
+      ? compareFiles(
+          context.gitPath,
+          context.root,
+          compared.from,
+          compared.to,
+          signal,
+        )
+      : showFiles(context.gitPath, context.root, hash, signal);
   }
 
   private async sendFileDiff(
@@ -1371,7 +1396,7 @@ export class FastforwardView {
   ): Promise<void> {
     const { gitPath, root } = context;
     const fromDisk = (request: TextRequest) =>
-      hash === workingTreeHash && request.side === 'new';
+      request.side === workingTreeSide(hash);
     const blobs = await readBlobs(
       gitPath,
       root,
@@ -1398,11 +1423,15 @@ export class FastforwardView {
     signal?: AbortSignal,
   ): Promise<string> {
     const { gitPath, root } = context;
-    if (hash !== workingTreeHash) {
-      return showPatch(gitPath, root, hash, scope, signal);
+    if (!workingTreeSide(hash)) {
+      const compared = comparedOf(hash);
+      return compared
+        ? comparePatch(gitPath, root, compared.from, compared.to, scope, signal)
+        : showPatch(gitPath, root, hash, scope, signal);
     }
     const workingTree =
-      context.tab.workingTree ?? (await workingTreeFiles(gitPath, root));
+      context.tab.workingTree ??
+      (await workingTreeFiles(gitPath, root, workingTreeDiffOf(hash)));
     return workingTreePatch(
       gitPath,
       root,
@@ -1420,10 +1449,8 @@ export class FastforwardView {
     const paths = await listTree(
       context.gitPath,
       context.root,
-      hash === workingTreeHash ? undefined : hash,
-      refreshed?.files
-        .filter((file) => file.status === 'U')
-        .map((file) => file.path),
+      shownCommit(hash),
+      refreshed?.untracked,
     );
     if (context.tab.hash !== hash) {
       return;
@@ -1461,7 +1488,7 @@ export class FastforwardView {
       const { content, binary } = await readFile(
         context.gitPath,
         context.root,
-        hash === workingTreeHash ? undefined : hash,
+        shownCommit(hash),
         file,
       );
       const shownDiff = context.tab.shown.diff;
@@ -1536,6 +1563,29 @@ export class FastforwardView {
         ),
     );
   }
+}
+
+function workingTreeSide(hash: string): TextRequest['side'] | undefined {
+  const { from, to } = comparedOf(hash) ?? { from: undefined, to: hash };
+  if (to === workingTreeHash) {
+    return 'new';
+  }
+  return from === workingTreeHash ? 'old' : undefined;
+}
+
+function workingTreeDiffOf(hash: string): WorkingTreeDiff | undefined {
+  const compared = comparedOf(hash);
+  if (!compared) {
+    return undefined;
+  }
+  return compared.to === workingTreeHash
+    ? { base: compared.from, reverse: false }
+    : { base: compared.to, reverse: true };
+}
+
+function shownCommit(hash: string): string | undefined {
+  const shown = comparedOf(hash)?.to ?? hash;
+  return shown === workingTreeHash ? undefined : shown;
 }
 
 function includedChanges(files: readonly FileChange[]): string[] | undefined {

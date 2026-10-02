@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { comparisonOf } from '../shared/comparisons';
 import { workingTreeHash } from '../shared/protocol';
 import {
   commitsMessage,
@@ -16,6 +17,7 @@ import {
   refsKeepHistory,
   replayOf,
   select,
+  stillThere,
   toggleMerges,
 } from '../tabState';
 import { commitInfo } from './fixtures';
@@ -157,6 +159,22 @@ suite('Tab state', () => {
     assert.strictEqual(tab.index, -1);
     select(tab, undefined);
     assert.deepStrictEqual([tab.hash, tab.index], [undefined, undefined]);
+  });
+
+  test('selects a comparison at the position of the commit compared to', () => {
+    const tab = laidOut(history);
+    select(tab, comparisonOf('c', 'b'));
+    assert.strictEqual(tab.index, 1);
+    select(tab, comparisonOf('b', workingTreeHash));
+    assert.strictEqual(tab.index, -1);
+  });
+
+  test('keeps a comparison while both of its commits are in the history', () => {
+    const exists = stillThere(laidOut(history));
+    assert.ok(exists(comparisonOf('a', 'c')));
+    assert.ok(exists(comparisonOf(workingTreeHash, 'c')));
+    assert.ok(!exists(comparisonOf('a', 'x')));
+    assert.ok(!exists(comparisonOf('x', workingTreeHash)));
   });
 
   test('starts the first page at the page of the commit that keeps its place', () => {

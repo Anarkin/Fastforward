@@ -46,8 +46,9 @@ import {
   type OpenMenu,
 } from './contextMenu';
 import { Diff, DiffOptions, diffSelection } from './diffColumn';
-import { Files } from './filesColumn';
+import { Files, filesTitle } from './filesColumn';
 import { foldersOf } from './fileTree';
+import { compareWith } from '../shared/comparisons';
 import { hasRef } from '../shared/refNames';
 import { AddressBar, NavButtons } from './navBar';
 import { TabBar } from './tabBar';
@@ -266,6 +267,12 @@ export function App({ post: postToHost, listen }: Props) {
         { type: 'selectCommit', hash: target, replace, root },
         repeat,
       );
+    }
+  };
+  const compareCommit = (added: string) => {
+    const next = compareWith(hash, added);
+    if (next !== hash) {
+      selectCommit(next);
     }
   };
   const lookupHash = useCallback(
@@ -559,6 +566,7 @@ export function App({ post: postToHost, listen }: Props) {
                     refsByCommit={refsByCommit}
                     selected={hash}
                     onSelect={selectCommit}
+                    onCompare={compareCommit}
                     onToggleMerge={(merge) =>
                       postTab({ type: 'toggleMerge', hash: merge })
                     }
@@ -599,6 +607,7 @@ export function App({ post: postToHost, listen }: Props) {
                     }
                   />
                   <Files
+                    title={filesTitle(hash)}
                     showAll={showAllFiles}
                     onShowAll={changeShowAllFiles}
                     closedFolders={closedFolders}

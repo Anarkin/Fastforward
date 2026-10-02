@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
+import { comparedOf, comparisonLabel } from '../shared/comparisons';
 import { shortHash } from '../shared/hashes';
 import type {
   Bookmark,
@@ -178,7 +179,7 @@ export function HistoryMenu({
           title={entry.hash}
           onClick={() => onPick(index + 1)}
         >
-          <span className="history-hash">{shortHash(entry.hash)}</span>
+          <span className="history-hash">{historyLabel(entry.hash)}</span>
           {entry.subject}
         </button>
       ))}
@@ -256,4 +257,9 @@ export function AddressBar({
       )}
     </div>
   );
+}
+
+export function historyLabel(hash: string): string {
+  const compared = comparedOf(hash);
+  return compared ? comparisonLabel(compared) : shortHash(hash);
 }

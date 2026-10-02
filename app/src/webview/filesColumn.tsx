@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { comparedOf, comparisonLabel } from '../shared/comparisons';
 import type { FileChange } from '../shared/protocol';
 import {
   ancestorRows,
@@ -39,7 +40,13 @@ export function filesCursor(
     : selectedKey;
 }
 
+export function filesTitle(selection: string | undefined): string {
+  const compared = comparedOf(selection);
+  return compared ? `Files: ${comparisonLabel(compared)}` : 'Files';
+}
+
 export function Files({
+  title = 'Files',
   showAll,
   onShowAll,
   closedFolders,
@@ -54,6 +61,7 @@ export function Files({
   onSelect,
   view,
 }: {
+  title?: string;
   showAll: boolean;
   onShowAll: (show: boolean) => void;
   closedFolders: ReadonlySet<string>;
@@ -191,7 +199,7 @@ export function Files({
     cursor,
   };
   return (
-    <Column title="Files" index={1} start={start}>
+    <Column title={title} index={1} start={start}>
       {skeleton && <SkeletonRows count={6} />}
       <VirtualRows
         rows={listed}
