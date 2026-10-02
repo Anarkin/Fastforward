@@ -79,7 +79,7 @@ interface Tab extends TabState {
   refreshAgain: Map<Session | undefined, Context>;
   refreshRefsAgain: boolean;
   isRepository: boolean;
-  fetching: Promise<Fetched> | undefined;
+  fetching: { fetched: Promise<Fetched>; interactive: boolean } | undefined;
   fetchFailed: boolean;
   diffRequest: number;
   loadingFiles: AbortController;
@@ -808,10 +808,27 @@ export class FastforwardView {
     interactive = true,
   ): Promise<boolean> {
     const { tab } = context;
-    tab.fetching ??= fetchAll(context, interactive).finally(() => {
-      tab.fetching = undefined;
-    });
-    const fetched = reportFetched(log, notify, await tab.fetching);
+    let fetching = tab.fetching;
+    if (!fetching || (interactive && !fetching.interactive)) {
+      const running = fetching?.fetched;
+      const started = {
+        fetched: (running
+          ? running.then(() => fetchAll(context, interactive))
+          : fetchAll(context, interactive)
+        ).finally(() => {
+          if (tab.fetching === started) {
+            tab.fetching = undefined;
+          }
+        }),
+        interactive,
+      };
+      tab.fetching = fetching = started;
+    }
+    const result = await fetching.fetched;
+    if (!interactive && tab.fetching?.interactive) {
+      return !(await tab.fetching.fetched).failed;
+    }
+    const fetched = reportFetched(log, notify, result);
     tab.fetchFailed = !fetched;
     return fetched;
   }
