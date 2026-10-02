@@ -11,12 +11,19 @@ interface WatchOptions {
   readonly maxDelay: number;
   readonly onChange: (gitDirChanged: boolean) => void;
   readonly onError: (error: unknown) => void;
+  readonly recursive?: boolean;
 }
 
 export async function watchRepository(
   gitPath: string,
   root: string,
-  { delay, maxDelay, onChange, onError }: WatchOptions,
+  {
+    delay,
+    maxDelay,
+    onChange,
+    onError,
+    recursive = process.platform !== 'linux',
+  }: WatchOptions,
 ): Promise<Watcher> {
   const [gitDir, commonDir] = (
     await runGit(gitPath, root, ['rev-parse', '--git-dir', '--git-common-dir'])
@@ -90,28 +97,242 @@ export async function watchRepository(
     }
   };
 
-  const folders = [root, ...gitDirs.filter((dir) => !isInside(root, dir))];
-  const watchers = folders.map((folder) => {
-    const watcher = fs.watch(folder, { recursive: true }, (_event, file) => {
-      if (file) {
-        changed(path.join(folder, file));
-      } else {
-        gitDirChanged();
-      }
+  const onEvent = (folder: string, file: string | null) => {
+    if (file) {
+      changed(path.join(folder, file));
+    } else {
+      gitDirChanged();
+    }
+  };
+  let watchers: Watcher[];
+  if (recursive) {
+    const folders = [root, ...gitDirs.filter((dir) => !isInside(root, dir))];
+    watchers = folders.map((folder) => {
+      const watcher = fs.watch(folder, { recursive: true }, (_event, file) =>
+        onEvent(folder, file),
+      );
+      watcher.on('error', onError);
+      return { dispose: () => watcher.close() };
     });
-    watcher.on('error', onError);
-    return watcher;
-  });
+  } else {
+    watchers = await Promise.all([
+      watchTree(root, {
+        skip: (folder) => gitDirs.some((dir) => isInside(dir, folder)),
+        ignored: (repo, folders) => ignoredFolders(gitPath, repo, folders),
+        onEvent,
+        onError,
+        watch: watchOneFolder,
+      }),
+      ...gitDirs.map((gitDirTree) =>
+        watchTree(gitDirTree, {
+          skip: (folder) =>
+            !affectsWorktree(
+              path.relative(gitDirTree, folder),
+              gitDirTree === commonDir && commonDir !== gitDir,
+            ),
+          ignored: () => Promise.resolve([]),
+          onEvent,
+          onError,
+          watch: watchOneFolder,
+        }),
+      ),
+    ]);
+  }
 
   return {
     dispose: () => {
       disposed = true;
       clearTimeout(timer);
       for (const watcher of watchers) {
-        watcher.close();
+        watcher.dispose();
       }
     },
   };
+}
+
+export interface FolderWatcher {
+  close(): void;
+  on(event: 'error', listener: (error: Error) => void): unknown;
+}
+
+interface TreeOptions {
+  readonly skip: (folder: string) => boolean;
+  readonly ignored: (
+    repo: string,
+    folders: readonly string[],
+  ) => Promise<readonly string[]>;
+  readonly onEvent: (folder: string, file: string | null) => void;
+  readonly onError: (error: unknown) => void;
+  readonly watch: (
+    folder: string,
+    listener: (event: string, file: string | null) => void,
+  ) => FolderWatcher;
+}
+
+interface Folder {
+  readonly path: string;
+  readonly repo: string;
+}
+
+// Node's recursive fs.watch on Linux walks the whole tree synchronously,
+// ignored folders too, with one inotify watch per file
+export async function watchTree(
+  root: string,
+  { skip, ignored, onEvent, onError, watch }: TreeOptions,
+): Promise<Watcher> {
+  const watched = new Map<string, { watcher: FolderWatcher; repo: string }>();
+  let disposed = false;
+  let reported = false;
+  const report = (error: unknown) => {
+    if (!isMissing(error) && !reported && !disposed) {
+      reported = true;
+      onError(error);
+    }
+  };
+
+  const unwatch = (folder: string) => {
+    for (const [watchedFolder, { watcher }] of watched) {
+      if (isInside(folder, watchedFolder)) {
+        watcher.close();
+        watched.delete(watchedFolder);
+      }
+    }
+  };
+
+  const notIgnored = async (folders: readonly Folder[]): Promise<Folder[]> => {
+    const byRepo = Map.groupBy(folders, (folder) => folder.repo);
+    const kept = await Promise.all(
+      [...byRepo].map(async ([repo, inRepo]) => {
+        const asked = inRepo.filter((folder) => folder.path !== repo);
+        try {
+          const skipped = new Set(
+            asked.length === 0
+              ? []
+              : await ignored(
+                  repo,
+                  asked.map((folder) => folder.path),
+                ),
+          );
+          return inRepo.filter((folder) => !skipped.has(folder.path));
+        } catch (error) {
+          report(error);
+          return inRepo.filter((folder) => folder.path === repo);
+        }
+      }),
+    );
+    return kept.flat();
+  };
+
+  const watchFolder = async (folder: Folder): Promise<Folder[]> => {
+    if (disposed || watched.has(folder.path)) {
+      return [];
+    }
+    let watcher: FolderWatcher;
+    try {
+      watcher = watch(folder.path, (event, file) => {
+        onEvent(folder.path, file);
+        if (file && event === 'rename') {
+          void renamed(path.join(folder.path, file));
+        }
+      });
+    } catch (error) {
+      report(error);
+      return [];
+    }
+    watcher.on('error', report);
+    const entry = { watcher, repo: folder.repo };
+    watched.set(folder.path, entry);
+    let entries: fs.Dirent[];
+    try {
+      entries = await fs.promises.readdir(folder.path, { withFileTypes: true });
+    } catch (error) {
+      report(error);
+      return [];
+    }
+    if (entries.some((child) => child.name === '.git')) {
+      entry.repo = folder.path;
+    }
+    return entries
+      .filter((child) => child.isDirectory() && child.name !== '.git')
+      .map((child) => ({
+        path: path.join(folder.path, child.name),
+        repo: entry.repo,
+      }))
+      .filter((child) => !skip(child.path));
+  };
+
+  const add = async (folders: readonly Folder[]) => {
+    let level = folders;
+    while (level.length > 0) {
+      if (disposed) {
+        return;
+      }
+      const kept = await notIgnored(level);
+      level = (await Promise.all(kept.map(watchFolder))).flat();
+    }
+  };
+
+  const renamed = async (file: string) => {
+    const parent = watched.get(path.dirname(file));
+    if (watched.has(file)) {
+      unwatch(file);
+    }
+    const stats = await fs.promises.lstat(file).catch(() => undefined);
+    if (
+      parent !== undefined &&
+      stats?.isDirectory() === true &&
+      path.basename(file) !== '.git' &&
+      !skip(file)
+    ) {
+      await add([{ path: file, repo: parent.repo }]);
+    }
+  };
+
+  await add([{ path: root, repo: root }]);
+
+  return {
+    dispose: () => {
+      disposed = true;
+      unwatch(root);
+    },
+  };
+}
+
+function isMissing(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    'code' in error &&
+    (error.code === 'ENOENT' || error.code === 'ENOTDIR')
+  );
+}
+
+function watchOneFolder(
+  folder: string,
+  listener: (event: string, file: string | null) => void,
+): FolderWatcher {
+  return fs.watch(folder, listener);
+}
+
+export async function ignoredFolders(
+  gitPath: string,
+  repo: string,
+  folders: readonly string[],
+): Promise<string[]> {
+  const relative = folders.map((folder) =>
+    path.relative(repo, folder).split(path.sep).join('/'),
+  );
+  const output = await runGit(
+    gitPath,
+    repo,
+    ['check-ignore', '-z', '--stdin'],
+    {
+      input: relative.map((folder) => `${folder}\0`).join(''),
+      okExitCodes: [0, 1],
+      pathspecMagic: true,
+    },
+  );
+  const ignored = new Set(splitNul(output));
+  return folders.filter((_folder, index) => ignored.has(relative[index]));
 }
 
 interface PendingChanges {
