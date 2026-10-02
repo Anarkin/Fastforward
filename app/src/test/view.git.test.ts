@@ -2582,6 +2582,42 @@ suite('View', function () {
       });
     });
 
+    test('keeps a tab as it is when it is clicked while active', async () => {
+      const long = await tempRepository(path.join(folder, 'long-clicked'));
+      await long.commit('first', { 'a.txt': fortyLines(-1) });
+      await long.commit('second', { 'a.txt': fortyLines(19) });
+      const [second] = await long.resolve('HEAD');
+      await withView(log, [long.root, other], async (view) => {
+        await view.connection.receive({ type: 'pinEntireFile', pinned: false });
+        await view.connection.receive({
+          type: 'selectCommit',
+          root: long.root,
+          hash: second,
+        });
+        await view.connection.receive({
+          type: 'selectFile',
+          root: long.root,
+          hash: second,
+          path: 'a.txt',
+        });
+        await view.connection.receive({
+          type: 'showEntireFile',
+          root: long.root,
+          entire: true,
+        });
+        view.page.clear();
+        await view.connection.receive({ type: 'selectTab', root: long.root });
+        assert.strictEqual(view.page.last('commits'), undefined);
+        assert.strictEqual(view.page.last('diff'), undefined);
+        await view.connection.receive({
+          type: 'showEntireFile',
+          root: long.root,
+          entire: false,
+        });
+        assert.doesNotMatch(view.page.last('diff')?.patch ?? '', /^ line 1$/m);
+      });
+    });
+
     test('shows the diff of the last entire file choice when an earlier one answers last', async () => {
       const long = await tempRepository(path.join(folder, 'long-raced'));
       await long.commit('first', { 'a.txt': fortyLines(-1) });

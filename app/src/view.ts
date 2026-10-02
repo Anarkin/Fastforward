@@ -253,6 +253,9 @@ export class FastforwardView {
         await this.host.openDefaultSettings();
         return;
       case 'selectTab':
+        if (this.page === session && this.isActive(message.root)) {
+          return;
+        }
         await this.openTab(session, message.root);
         return;
       case 'openRepository':
