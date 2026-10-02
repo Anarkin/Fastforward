@@ -164,4 +164,10 @@ suite('Side-by-side diff', () => {
     assert.strictEqual(sideScroll(90, [30, -30], 100), 70);
     assert.strictEqual(sideScroll(50, [], 100), 50);
   });
+
+  test('keeps the sideways scroll within the widest line shown, once narrower lines replace wider ones', () => {
+    assert.strictEqual(sideScroll(800, [], 0), 0);
+    assert.strictEqual(sideScroll(800, [], 300), 300);
+    assert.strictEqual(sideScroll(800, [-30], 300), 270);
+  });
 });

@@ -237,9 +237,10 @@ export function sideScroll(
   deltas: readonly number[],
   widest: number,
 ): number {
+  const within = (scrolled: number) => Math.max(0, Math.min(widest, scrolled));
   return deltas.reduce(
-    (scrolled, delta) => Math.max(0, Math.min(widest, scrolled + delta)),
-    scroll,
+    (scrolled, delta) => within(scrolled + delta),
+    within(scroll),
   );
 }
 
@@ -1161,6 +1162,15 @@ export function DiffView({
   };
 
   const items = virtualizer.getVirtualItems();
+  useLayoutEffect(() => {
+    const element = list.current;
+    if (element && scrollsSides && sideways > 0) {
+      const within = sideScroll(sideways, [], sideRoom(element).widest);
+      if (within !== sideways) {
+        setSideways(within);
+      }
+    }
+  }, [items, rows, scrollsSides, sideways]);
   const measurements = virtualizer.measurementsCache;
   const marks = useMemo(
     () =>
