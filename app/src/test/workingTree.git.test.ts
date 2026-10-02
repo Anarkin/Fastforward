@@ -350,6 +350,30 @@ suite('Uncommitted changes', function () {
     }
   });
 
+  test('keeps no patch of an untracked file too large to show whole', async () => {
+    const large = path.join(cwd, 'large.log');
+    fs.writeFileSync(
+      large,
+      `${'x'.repeat(maxFileSize)}
+`,
+    );
+    try {
+      const patches: UntrackedPatches = new Map();
+      const workingTree = await workingTreeFiles(gitPath, cwd);
+      const patch = await workingTreePatch(
+        gitPath,
+        cwd,
+        workingTree,
+        { path: 'large.log' },
+        patches,
+      );
+      assert.ok(patch.includes('+xxx'));
+      assert.ok(!patches.has('large.log'));
+    } finally {
+      fs.rmSync(large);
+    }
+  });
+
   test('diffs the untracked files the list had, not ones found since', async () => {
     const workingTree = await workingTreeFiles(gitPath, cwd);
     const listed = {

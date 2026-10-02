@@ -1,4 +1,4 @@
-import { createReadStream } from 'node:fs';
+import { createReadStream, type Stats } from 'node:fs';
 import { lstat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { collapseThreshold, type FileChange } from '../shared/protocol';
@@ -157,7 +157,8 @@ export async function workingTreePatch(
     if (file.endsWith('/')) {
       return '';
     }
-    const stamp = await stampOf(join(cwd, file));
+    const stats = await lstat(join(cwd, file)).catch(() => undefined);
+    const stamp = stats && stampOf(stats);
     const known = kept.get(file);
     if (stamp !== undefined && known?.stamp === stamp) {
       return known.patch;
@@ -168,8 +169,8 @@ export async function workingTreePatch(
       ['diff', '--no-index', ...diffArgs, '--', '/dev/null', file],
       { okExitCodes: [0, 1] },
     );
-    if (stamp !== undefined) {
-      kept.set(file, { stamp, patch });
+    if (stats && stats.size <= maxFileSize) {
+      kept.set(file, { stamp: stampOf(stats), patch });
     }
     return patch;
   };
@@ -215,11 +216,6 @@ export async function workingTreePatch(
   ].join('');
 }
 
-async function stampOf(file: string): Promise<string | undefined> {
-  try {
-    const { size, mtimeMs, ctimeMs, ino } = await lstat(file);
-    return `${size} ${mtimeMs} ${ctimeMs} ${ino}`;
-  } catch {
-    return undefined;
-  }
+function stampOf({ size, mtimeMs, ctimeMs, ino }: Stats): string {
+  return `${size} ${mtimeMs} ${ctimeMs} ${ino}`;
 }
