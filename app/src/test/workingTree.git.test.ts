@@ -602,6 +602,28 @@ suite('Repository files', function () {
     );
   });
 
+  test('reads no file outside the repository', async () => {
+    const outside = path.join(path.dirname(cwd), 'outside.txt');
+    fs.writeFileSync(outside, 'secret\n');
+    try {
+      await assert.rejects(
+        readFile(gitPath, cwd, undefined, '../outside.txt'),
+        /outside the repository/,
+      );
+      await assert.rejects(
+        readFile(gitPath, cwd, undefined, outside),
+        /outside the repository/,
+      );
+    } finally {
+      fs.rmSync(outside);
+    }
+    fs.writeFileSync(path.join(cwd, '..dots.txt'), 'inside\n');
+    assert.strictEqual(
+      (await readFile(gitPath, cwd, undefined, '..dots.txt')).content,
+      'inside\n',
+    );
+  });
+
   test('reads a file whose folder became a file as empty', async () => {
     const folder = path.join(cwd, 'gone-dir');
     fs.writeFileSync(folder, '');

@@ -1,5 +1,5 @@
 import * as fs from 'node:fs/promises';
-import { join } from 'node:path';
+import { isAbsolute, join, relative, sep } from 'node:path';
 import { headCommit } from './history';
 import { runGit, runGitBytes, splitNul } from './run';
 
@@ -96,6 +96,10 @@ export async function readFile(
 ): Promise<FileContent> {
   if (hash === undefined) {
     const file = join(cwd, path);
+    const [first] = relative(cwd, file).split(sep);
+    if (isAbsolute(path) || first === '..') {
+      throw new Error(`${path} is outside the repository`);
+    }
     const stats = await fs.lstat(file).catch((error: unknown) => {
       if (
         error instanceof Error &&
