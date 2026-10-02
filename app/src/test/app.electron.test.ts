@@ -341,8 +341,18 @@ suite('App', function () {
       document.body.append(sample);
       const char = sample.getBoundingClientRect().width / 100;
       sample.remove();
-      const text = document.createRange();
-      text.selectNodeContents(code);
+      let right = 0;
+      const walker = document.createTreeWalker(code, NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const glyph = document.createRange();
+        for (let index = 0; index < (node.textContent ?? '').length; index++) {
+          if (!/\s/.test(node.textContent?.[index] ?? '')) {
+            glyph.setStart(node, index);
+            glyph.setEnd(node, index + 1);
+            right = Math.max(right, glyph.getBoundingClientRect().right);
+          }
+        }
+      }
       return {
         height: element.getBoundingClientRect().height,
         width:
@@ -350,7 +360,7 @@ suite('App', function () {
           parseFloat(style.paddingLeft) -
           parseFloat(style.paddingRight),
         char,
-        right: text.getBoundingClientRect().right,
+        right,
         minimap: minimap.getBoundingClientRect().left,
       };
     });
