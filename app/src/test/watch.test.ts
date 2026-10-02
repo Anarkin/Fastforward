@@ -6,6 +6,7 @@ import {
   affectsWorktree,
   isInternal,
   nextFlush,
+  watchEach,
   watchTree,
   type FolderWatcher,
 } from '../git/watch';
@@ -299,5 +300,27 @@ suite('Watching folders one by one', () => {
     });
     assert.deepStrictEqual(watched(), ['']);
     assert.deepStrictEqual(errors, [failure]);
+  });
+});
+
+suite('Watching folders recursively', () => {
+  test('closes the folders it watched when watching a later one fails', () => {
+    const watched: FakeWatcher[] = [];
+    assert.throws(
+      () =>
+        watchEach(['root', 'git dir'], (folder) => {
+          if (folder === 'git dir') {
+            throw new Error('EMFILE');
+          }
+          const watcher = new FakeWatcher(() => undefined);
+          watched.push(watcher);
+          return watcher;
+        }),
+      /EMFILE/,
+    );
+    assert.deepStrictEqual(
+      watched.map((watcher) => watcher.closed),
+      [true],
+    );
   });
 });

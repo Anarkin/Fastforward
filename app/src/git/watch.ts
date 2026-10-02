@@ -107,12 +107,12 @@ export async function watchRepository(
   let watchers: Watcher[];
   if (recursive) {
     const folders = [root, ...gitDirs.filter((dir) => !isInside(root, dir))];
-    watchers = folders.map((folder) => {
+    watchers = watchEach(folders, (folder) => {
       const watcher = fs.watch(folder, { recursive: true }, (_event, file) =>
         onEvent(folder, file),
       );
       watcher.on('error', onError);
-      return { dispose: () => watcher.close() };
+      return watcher;
     });
   } else {
     watchers = await Promise.all([
@@ -153,6 +153,24 @@ export async function watchRepository(
 export interface FolderWatcher {
   close(): void;
   on(event: 'error', listener: (error: Error) => void): unknown;
+}
+
+export function watchEach(
+  folders: readonly string[],
+  watch: (folder: string) => FolderWatcher,
+): Watcher[] {
+  const watchers: FolderWatcher[] = [];
+  try {
+    for (const folder of folders) {
+      watchers.push(watch(folder));
+    }
+  } catch (error) {
+    for (const watcher of watchers) {
+      watcher.close();
+    }
+    throw error;
+  }
+  return watchers.map((watcher) => ({ dispose: () => watcher.close() }));
 }
 
 interface TreeOptions {
