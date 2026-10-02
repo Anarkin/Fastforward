@@ -18,6 +18,7 @@
 
 ### Also follow
 
+- @ARCHITECTURE.md
 - @CONTRIBUTING.md
 - @DEVELOPMENT.md
-- @ARCHITECTURE.md
+- @LIMITATIONS.md
