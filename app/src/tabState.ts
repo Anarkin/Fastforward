@@ -30,6 +30,7 @@ export interface TabState {
   index: number | undefined;
   path: string | undefined;
   entireFile: boolean;
+  diffStale: boolean;
   changedFiles: Map<string, FileChange>;
   workingTree: WorkingTree | undefined;
   fullHistory: readonly HistoryEntry[];
@@ -73,6 +74,7 @@ export function newTabState(): TabState {
     index: undefined,
     path: undefined,
     entireFile: false,
+    diffStale: false,
     changedFiles: new Map(),
     workingTree: undefined,
     fullHistory: [],
