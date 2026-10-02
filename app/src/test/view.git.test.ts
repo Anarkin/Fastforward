@@ -3520,8 +3520,10 @@ suite('Fetch', function () {
   let connection: Connection;
 
   const { log } = recordingLog();
+  const interactive = process.env.GCM_INTERACTIVE;
 
   suiteSetup(async () => {
+    delete process.env.GCM_INTERACTIVE;
     folder = tempFolder('fetch');
     repository = await tempRepository(path.join(folder, 'local'));
     await repository.commit('a');
@@ -3536,6 +3538,9 @@ suite('Fetch', function () {
   suiteTeardown(() => {
     connection.dispose();
     removeFolder(folder);
+    if (interactive !== undefined) {
+      process.env.GCM_INTERACTIVE = interactive;
+    }
   });
 
   test('updates by itself when a fetch brings new commits', async () => {
