@@ -5,6 +5,7 @@ import { createServer } from 'node:http';
 import * as path from 'node:path';
 import {
   collapseThreshold,
+  patchByteBudget,
   patchLineBudget,
   workingTreeHash,
   type ToWebview,
@@ -2934,6 +2935,25 @@ suite('View', function () {
         const last = `${String(files - 1).padStart(2, '0')}.txt`;
         assert.ok(patch.includes('b/00.txt'), patch.slice(0, 200));
         assert.ok(!patch.includes(last), last);
+      });
+    });
+
+    test('leaves a file of one line past the bytes of the budget out of a commit diff', async () => {
+      const bundled = await tempRepository(path.join(folder, 'bundled'));
+      await bundled.commit('bundled', {
+        'a.txt': 'small\n',
+        'bundle.min.js': 'x'.repeat(patchByteBudget + 1),
+      });
+      const [hash] = await bundled.resolve('HEAD');
+      await withView(log, [bundled.root], async (view) => {
+        await view.connection.receive({
+          type: 'selectCommit',
+          root: bundled.root,
+          hash,
+        });
+        const patch = view.page.last('diff')?.patch ?? '';
+        assert.ok(patch.includes('b/a.txt'), patch.slice(0, 200));
+        assert.ok(!patch.includes('bundle.min.js'), patch.slice(0, 200));
       });
     });
 

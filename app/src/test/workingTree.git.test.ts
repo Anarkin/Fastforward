@@ -131,6 +131,18 @@ suite('Uncommitted changes', function () {
     );
   });
 
+  test('counts the bytes of the old and new text of each changed file', async () => {
+    const { files } = await workingTreeFiles(gitPath, cwd);
+    assert.deepStrictEqual(
+      files.map((file) => [file.path, file.bytes]),
+      [
+        ['tracked.txt', 8],
+        ['nested/', undefined],
+        ['untracked.txt', 4],
+      ],
+    );
+  });
+
   test('includes untracked files in the full patch', async () => {
     const patch = await workingTreePatch(
       gitPath,

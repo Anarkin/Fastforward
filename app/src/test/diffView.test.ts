@@ -3,6 +3,7 @@ import { parseFilePatch, parsePatch, type DiffFile } from '../webview/diff';
 import {
   collapseThreshold,
   deferredChanges,
+  patchByteBudget,
   patchLineBudget,
   patchPathBudget,
 } from '../shared/protocol';
@@ -326,6 +327,19 @@ suite('Large files in a commit diff', () => {
       fileChange('c'),
     ];
     assert.deepStrictEqual([...deferredChanges(files)], [`${long}2`, 'c']);
+  });
+
+  test('defers every file once the old and new text of the files changed would pass the bytes of its budget, however few lines they have', () => {
+    const files = [
+      fileChange('bundle.min.js', { bytes: patchByteBudget / 2 }),
+      fileChange('a.ts', { bytes: 100 }),
+      fileChange('bundle.js.map', { bytes: patchByteBudget / 2 }),
+      fileChange('b.ts'),
+    ];
+    assert.deepStrictEqual(
+      [...deferredChanges(files)],
+      ['bundle.js.map', 'b.ts'],
+    );
   });
 
   test('puts a file deferred for the budget in its place, collapsed until asked for', () => {

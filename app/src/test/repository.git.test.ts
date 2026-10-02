@@ -415,6 +415,29 @@ suite('Git repository', function () {
     }
   });
 
+  test('counts the bytes of the old and new text of each file whose lines changed', async () => {
+    const sized = await tempRepository(tempFolder('sized'));
+    try {
+      await sized.commit('old', { 'a.txt': 'one\n', 'b.txt': 'gone\n' });
+      await sized.git('mv', 'b.txt', 'moved.txt');
+      await sized.commit('new', { 'a.txt': 'three\n', 'c.txt': 'added\n' });
+      const [hash] = await sized.resolve('HEAD');
+      assert.deepStrictEqual(
+        (await showFiles(gitPath, sized.root, hash)).map((file) => [
+          file.path,
+          file.bytes,
+        ]),
+        [
+          ['a.txt', 10],
+          ['c.txt', 6],
+          ['moved.txt', undefined],
+        ],
+      );
+    } finally {
+      removeFolder(sized.root);
+    }
+  });
+
   test('diffs a renamed file as a rename', async () => {
     const files = await showFiles(gitPath, cwd, rename);
     assert.deepStrictEqual(
