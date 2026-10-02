@@ -32,5 +32,6 @@ This file only observes and documents the codebase mainly for human readers; the
 
 - A git command fails past 256 MB of output, as Node's `maxBuffer` must be set to some limit
 - A fetch is stopped and reported as failed after 5 minutes
+- On Linux, which has no recursive file watching, every folder that is not ignored takes one of the system's inotify watches, and past `fs.inotify.max_user_watches` the rest are not watched and the error is logged
 - The login shell's PATH, read on macOS and Linux, is waited for at most 5 seconds, then the app starts with the PATH it was given, so a profile waiting for input does not keep the window from opening
 - At most 4 notices are shown, dropping the oldest
