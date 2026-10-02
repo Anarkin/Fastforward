@@ -12,7 +12,6 @@
 - The commit list is every commit of `HEAD`, and, unless Solo is on, also of the branches, the remotes and the tags, from `git rev-list`, kept by the main process per tab, so the list knows its full size up front and locations can jump to any commit's position; it took 0.5 s for 190k commits
 - Commits are loaded by hash with `git log --stdin --no-walk=unsorted`, without `--raw` or `--shortstat`; `--shortstat` diffs every file's contents and took 8 s instead of 0.1 s for 300 commits in a large repository
 - Commit files and patches come from `git show`, because diffing ranges (`a...b`) fails for root commits
-- The patch of a whole commit leaves out each file over 1500 changed lines, and every file once it would pass 20000 lines or 16 MB of their old and new text, a minified file being one line however long, as the webview would freeze laying them all out; these load when opened, and git is passed the files kept rather than those left out, so the command line stays under the Windows limit
 - Auto-fetch fetches the open repositories one at a time, the active one first, and waits the interval from the end of a round, so slow remotes never overlap; a failing repository is reported once until a fetch of it succeeds
 
 ### Syntax Highlighting
@@ -20,3 +19,40 @@
 - Use Shiki with its Oniguruma engine, the TextMate grammars and engine VS Code uses, so scope rules carry over from VS Code; semantic tokens are left out, as they need a language server
 - A side of a diff with lines hidden before a hunk is tokenized from its whole text, which the diff asks for by the blob ids `--full-index` puts in the patch, read in one `git cat-file --batch`, the uncommitted side from disk; until it comes, or when it does not match the hunks, the side is tokenized from its hunks alone
 - The webview is built as ES modules split into chunks, so each language's grammar loads only when a file needs it
+
+## Intentional Limitations
+
+This section only observes and documents the codebase mainly for human readers; the codebase is the single source of truth.
+
+### Diff
+
+- A file over 1500 changed lines is left out of a commit's patch and loads when opened, as the webview would freeze laying it out
+- Once a commit's patch would pass 20000 changed lines, every later file is left out and loads when opened, for the same reason
+- Once the old and new text of a commit's files would pass 16 MB, every later file is left out and loads when opened, as a minified file counts as one line however long
+- Once the paths of a commit's patch would pass 16000 characters, every later file is left out and loads when opened; git is passed the files kept rather than those left out, so the command line stays under the 32767 characters Windows allows
+- A file over 2 MB has its whole text shown as binary and not used for colors, and an untracked one's patch is diffed again on every refresh
+- Only the first 50 untracked files get line counts and are part of the All Changes patch, as each one is diffed on its own with `git diff --no-index`
+- A block of over 40000 removed by added lines, or 1 million words compared, has its lines paired in order instead of by similarity, as pairing compares every removed line with every added one
+- A block of over 1 million removed by added words has no changed words marked, as the word diff's table grows with both counts
+
+### Syntax
+
+- Lines of a side past its 5000th are not colored, and a side shown past it is tokenized from its hunks alone, as tokenizing is sequential, so a late line costs every line before it
+- Once the whole texts of the open files pass 20000 lines, later sides are tokenized from their hunks alone, as each whole text is read from git and tokenized in full
+- A line over 2000 characters is not colored, through Shiki's `tokenizeMaxLineLength`, as minified lines take long to tokenize
+- The colors kept are bounded at 100000 lines or 8 million characters, forgetting the least recently used texts, and a text over 2 million characters is never kept, bounding the webview's memory
+
+### History
+
+- The graph draws at most 12 lanes, drawing lines past the last lane on it
+- A commit search stops at 50 matches and asks to narrow it down, and needs at least 3 characters to search commit messages, as each search walks every commit
+- A hash prefix lists at most 20 commits
+- The ref search draws at most 200 refs per group, and the ref tree at most 200 folders and refs under a folder, counting the rest, as repositories can have thousands of refs
+- Back keeps at most 100 steps, showing 20 in its menu
+
+### Other
+
+- A git command fails past 256 MB of output, as Node's `maxBuffer` must be set to some limit
+- A fetch is stopped and reported as failed after 5 minutes
+- The login shell's PATH, read on macOS and Linux, is waited for at most 5 seconds, then the app starts with the PATH it was given, so a profile waiting for input does not keep the window from opening
+- At most 4 notices are shown, dropping the oldest
