@@ -50,7 +50,6 @@ import {
 import { sameRoot, Storage } from './storage';
 import {
   commitsMessage,
-  expandMerges,
   firstPage,
   forgetHistory,
   historyLoaded,
@@ -67,6 +66,7 @@ import {
   select,
   stillThere,
   takeRefs,
+  toggleMerges,
   type TabState,
 } from './tabState';
 
@@ -403,14 +403,10 @@ export class FastforwardView {
       case 'loadCommits':
         await this.sendCommitPage(context, message.generation, message.start);
         break;
-      case 'toggleMerge': {
-        const toggled = context.tab.toggledMerges;
-        if (!toggled.delete(message.hash)) {
-          toggled.add(message.hash);
-        }
+      case 'toggleMerge':
+        toggleMerges(context.tab, [message.hash]);
         await this.sendShownHistory(context, { scrollTo: message.hash });
         break;
-      }
       case 'checkout':
         await this.checkout(context, message.target);
         break;
@@ -1035,7 +1031,7 @@ export class FastforwardView {
     if (!tab.positions.has(hash)) {
       const merges = mergesHidingCommit(tab, hash);
       if (merges.length > 0) {
-        expandMerges(tab, merges, this.storage.collapseMerges);
+        toggleMerges(tab, merges);
         await this.sendShownHistory(context, { scrollTo: hash });
       }
     }

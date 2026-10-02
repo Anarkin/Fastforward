@@ -9,12 +9,14 @@ import {
   keepSubjects,
   layOutHistory,
   loadHistory,
+  mergesHidingCommit,
   navigationEntry,
   nearestSteps,
   newTabState,
   refsKeepHistory,
   replayOf,
   select,
+  toggleMerges,
 } from '../tabState';
 import { commitInfo } from './fixtures';
 
@@ -74,6 +76,40 @@ suite('Tab state', () => {
       tab.history.map((entry) => entry.hash),
       ['c', 'b', 'a'],
     );
+  });
+
+  const pull = [
+    { hash: 'p', parents: ['d', 'm'] },
+    { hash: 'd', parents: ['base'] },
+    { hash: 'm', parents: ['base', 'f'] },
+    { hash: 'f', parents: ['base'] },
+    { hash: 'base', parents: [] },
+  ];
+
+  test('expands a pull merge while merges are collapsed, until it is toggled', () => {
+    const tab = newTabState();
+    loadHistory(tab, pull, { name: 'main', commit: 'p' }, []);
+    layOutHistory(tab, true, 'p');
+    assert.deepStrictEqual(
+      tab.history.map((entry) => entry.hash),
+      ['p', 'd', 'm', 'base'],
+    );
+    toggleMerges(tab, ['p']);
+    layOutHistory(tab, true, 'p');
+    assert.deepStrictEqual(
+      tab.history.map((entry) => entry.hash),
+      ['p', 'd', 'base'],
+    );
+  });
+
+  test('expands the merges hiding a commit, though a pull merge among them was collapsed by hand', () => {
+    const tab = newTabState();
+    loadHistory(tab, pull, { name: 'main', commit: 'p' }, []);
+    toggleMerges(tab, ['p']);
+    layOutHistory(tab, true, 'p');
+    toggleMerges(tab, mergesHidingCommit(tab, 'f'));
+    layOutHistory(tab, true, 'p');
+    assert.ok(tab.positions.has('f'));
   });
 
   test('knows whether the history is loaded, until it is forgotten', () => {

@@ -158,7 +158,7 @@ export function layOutHistory(
   const history = showHistory(
     tab.fullHistory,
     tips,
-    (hash) => collapse === tab.toggledMerges.has(hash),
+    (hash, isPull) => (collapse && !isPull) === tab.toggledMerges.has(hash),
   );
   tab.history = history;
   tab.positions = positionsOf(tab.fullHistory, history);
@@ -217,16 +217,10 @@ function keysFrom(tab: TabState): number | undefined {
     .find((index) => index !== undefined);
 }
 
-export function expandMerges(
-  tab: TabState,
-  merges: readonly string[],
-  collapse: boolean,
-): void {
+export function toggleMerges(tab: TabState, merges: readonly string[]): void {
   for (const merge of merges) {
-    if (collapse) {
+    if (!tab.toggledMerges.delete(merge)) {
       tab.toggledMerges.add(merge);
-    } else {
-      tab.toggledMerges.delete(merge);
     }
   }
 }
