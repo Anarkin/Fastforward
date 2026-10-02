@@ -170,6 +170,15 @@ function startPosition(
   );
 }
 
+export function pendingCommit(
+  pending: { history: CommitHistory; position: number } | undefined,
+  history: CommitHistory | undefined,
+) {
+  return pending && pending.history === history
+    ? history.at(pending.position)
+    : undefined;
+}
+
 export function listKeyPosition(
   key: string,
   history: CommitHistory,
@@ -499,13 +508,14 @@ export function Commits({
     }
   }, [version, reportTop]);
 
-  const pending = useRef<number>(undefined);
+  const pending = useRef<{ history: CommitHistory; position: number }>(
+    undefined,
+  );
   useEffect(() => {
     pending.current = undefined;
-  }, [selected]);
+  }, [selected, history]);
   useEffect(() => {
-    const position = pending.current;
-    const commit = position === undefined ? undefined : history?.at(position);
+    const commit = pendingCommit(pending.current, history);
     if (commit) {
       pending.current = undefined;
       onSelect(commit.hash, true);
@@ -535,7 +545,9 @@ export function Commits({
         offset,
       ),
       headCommit,
-      pending.current,
+      pending.current?.history === history
+        ? pending.current.position
+        : undefined,
     );
     if (position === undefined) {
       return;
@@ -548,7 +560,7 @@ export function Commits({
       if (commit) {
         onSelect(commit.hash, true, event.repeat);
       } else {
-        pending.current = position;
+        pending.current = { history, position };
       }
     }
     virtualizer.scrollToIndex(offset + position, { align: 'auto' });

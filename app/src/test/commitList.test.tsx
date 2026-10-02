@@ -8,6 +8,7 @@ import {
   keptPlace,
   settling,
   listKeyPosition,
+  pendingCommit,
   bubbleLineHeight,
   commitRowHeight,
   CommitBubbles,
@@ -378,6 +379,21 @@ suite('Commit list keys', () => {
     const history = new CommitHistory(1000);
     history.locate('c', 500);
     assert.strictEqual(press('ArrowDown', history, 'c', true), 501);
+  });
+
+  test('selects a row a key went to once it loads, but not in a history laid out anew meanwhile', () => {
+    const history = new CommitHistory(10);
+    const pending = { history, position: 9 };
+    assert.strictEqual(pendingCommit(pending, history), undefined);
+    history.add(9, [commitInfo('last')]);
+    assert.strictEqual(pendingCommit(pending, history)?.hash, 'last');
+    assert.strictEqual(
+      pendingCommit(
+        pending,
+        loaded(...Array.from({ length: 12 }, (_, i) => `c${i}`)),
+      ),
+      undefined,
+    );
   });
 
   test('takes only the list keys without modifiers', () => {
