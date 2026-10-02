@@ -3,6 +3,7 @@ import {
   claimsMenuKey,
   listenForDismiss,
   nextMenuItem,
+  submenuPlacement,
 } from '../webview/contextMenu';
 
 function keyDown(key: string): Event {
@@ -136,5 +137,37 @@ suite('Menu keys', () => {
     for (const key of ['Enter', 'a', 'Escape']) {
       assert.ok(!claimsMenuKey(key), key);
     }
+  });
+});
+
+suite('Submenu placement', () => {
+  const window = { width: 800, height: 600 };
+
+  test('opens to the right and down from its entry when it fits', () => {
+    assert.deepStrictEqual(
+      submenuPlacement({ top: 100, right: 700, bottom: 500 }, window),
+      { flipped: false, up: 0 },
+    );
+  });
+
+  test('opens to the left when it would run off the right of the window', () => {
+    assert.deepStrictEqual(
+      submenuPlacement({ top: 100, right: 801, bottom: 500 }, window),
+      { flipped: true, up: 0 },
+    );
+  });
+
+  test('moves up to end at the bottom of the window when it would run off it', () => {
+    assert.deepStrictEqual(
+      submenuPlacement({ top: 400, right: 700, bottom: 750 }, window),
+      { flipped: false, up: 150 },
+    );
+  });
+
+  test('moves up no further than the top of the window when taller than it', () => {
+    assert.deepStrictEqual(
+      submenuPlacement({ top: 400, right: 700, bottom: 1100 }, window),
+      { flipped: false, up: 400 },
+    );
   });
 });

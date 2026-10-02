@@ -326,6 +326,20 @@ export function MenuItems({
   );
 }
 
+export function submenuPlacement(
+  box: {
+    readonly top: number;
+    readonly right: number;
+    readonly bottom: number;
+  },
+  window: { readonly width: number; readonly height: number },
+): { flipped: boolean; up: number } {
+  return {
+    flipped: box.right > window.width,
+    up: Math.max(0, Math.min(box.bottom - window.height, box.top)),
+  };
+}
+
 function Submenu({
   items,
   onClose,
@@ -339,17 +353,23 @@ function Submenu({
 }) {
   const element = useRef<HTMLDivElement>(null);
   useMenuFocus(element, focusFirst);
-  const [flipped, setFlipped] = useState(false);
+  const [placement, setPlacement] = useState({ flipped: false, up: 0 });
   useLayoutEffect(() => {
     const box = element.current?.getBoundingClientRect();
-    if (box && box.right > window.innerWidth) {
-      setFlipped(true);
+    if (box) {
+      setPlacement(
+        submenuPlacement(box, {
+          width: window.innerWidth,
+          height: window.innerHeight,
+        }),
+      );
     }
   }, []);
   return (
     <div
       ref={element}
-      className={`menu submenu ${flipped ? 'flipped' : ''}`}
+      className={`menu submenu ${placement.flipped ? 'flipped' : ''}`}
+      style={{ marginTop: -placement.up }}
       role="menu"
       onKeyDown={(event) => onMenuKeyDown(event, onBack)}
     >
