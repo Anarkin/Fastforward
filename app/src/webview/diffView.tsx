@@ -1,5 +1,14 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { memo, useEffect, useMemo, useRef, useState, Fragment } from 'react';
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  Fragment,
+} from 'react';
 import { collapseThreshold } from '../shared/protocol';
 import type { DiffFile, DiffLine } from './diff';
 import { lineKey, wholeLines, type FindMatch, type FindRange } from './find';
@@ -19,6 +28,7 @@ import { changeStep } from './shortcuts';
 import { ownScrollbarAttribute } from './overlayScrollbars';
 import { SkeletonRows, useSkeleton } from './skeleton';
 import { Twisty } from './tree';
+import { wrapColumns, wrappedLines } from './wordWrap';
 
 export interface WholeFile {
   readonly path: string;
@@ -96,6 +106,33 @@ function isMeasured(kind: DiffRow['kind']): kind is MeasuredKind {
   return kind in measuredEstimates;
 }
 
+type CodeRow = Extract<DiffRow, { kind: 'line' | 'split' | 'wholeLine' }>;
+
+function isCode(row: DiffRow): row is CodeRow {
+  return (
+    row.kind === 'line' || row.kind === 'split' || row.kind === 'wholeLine'
+  );
+}
+
+export interface WrapColumns {
+  readonly left: number;
+  readonly right: number;
+}
+
+function wrappedHeight(row: CodeRow, columns: WrapColumns): number {
+  const lines =
+    row.kind === 'split'
+      ? Math.max(
+          row.left ? wrappedLines(row.left.line.text, columns.left) : 1,
+          row.right ? wrappedLines(row.right.line.text, columns.right) : 1,
+        )
+      : wrappedLines(
+          row.kind === 'line' ? row.line.text : row.text,
+          columns.left,
+        );
+  return lines * rowHeights.line;
+}
+
 export function diffRowKey(row: DiffRow, index: number): string {
   return `${index}:${row.kind}`;
 }
@@ -103,23 +140,49 @@ export function diffRowKey(row: DiffRow, index: number): string {
 interface RowMeasures {
   readonly estimateSize: (index: number) => number;
   readonly getItemKey: (index: number) => string;
+  readonly columns: WrapColumns | undefined;
 }
 
 const measuresOfRows = new WeakMap<readonly DiffRow[], RowMeasures>();
+let wrapGeneration = 0;
 
-export function rowMeasures(rows: readonly DiffRow[]): RowMeasures {
+export function rowMeasures(
+  rows: readonly DiffRow[],
+  columns?: WrapColumns,
+): RowMeasures {
   let measures = measuresOfRows.get(rows);
-  if (!measures) {
-    measures = {
-      estimateSize: (index) => {
-        const kind = rows[index].kind;
-        return isMeasured(kind) ? measuredEstimates[kind] : rowHeights[kind];
-      },
-      getItemKey: (index) => diffRowKey(rows[index], index),
-    };
+  if (
+    !measures ||
+    measures.columns?.left !== columns?.left ||
+    measures.columns?.right !== columns?.right
+  ) {
+    measures = measuresOf(rows, columns);
     measuresOfRows.set(rows, measures);
   }
   return measures;
+}
+
+function measuresOf(
+  rows: readonly DiffRow[],
+  columns: WrapColumns | undefined,
+): RowMeasures {
+  const generation = wrapGeneration++;
+  const wrapped: number[] = [];
+  return {
+    estimateSize: (index) => {
+      const row = rows[index];
+      if (columns && isCode(row)) {
+        return (wrapped[index] ??= wrappedHeight(row, columns));
+      }
+      const kind = row.kind;
+      return isMeasured(kind) ? measuredEstimates[kind] : rowHeights[kind];
+    },
+    getItemKey: (index) => {
+      const key = diffRowKey(rows[index], index);
+      return columns && isCode(rows[index]) ? `${key}:${generation}` : key;
+    },
+    columns,
+  };
 }
 
 export function HunkDivider() {
@@ -130,9 +193,11 @@ export function HunkDivider() {
   );
 }
 
-export function rowHeight(row: DiffRow): number | undefined {
+export function rowHeight(row: DiffRow, wrap = false): number | undefined {
   const kind = row.kind;
-  return isMeasured(kind) ? undefined : rowHeights[kind];
+  return isMeasured(kind) || (wrap && isCode(row))
+    ? undefined
+    : rowHeights[kind];
 }
 
 function changeOf(row: DiffRow): 'added' | 'removed' | undefined {
@@ -244,7 +309,7 @@ export function minimapRows(
   measured: (index: number) => number | undefined = () => undefined,
 ): MinimapRow[] {
   return rows.map((row, index) => ({
-    height: rowHeight(row) ?? measured(index) ?? 0,
+    height: measured(index) ?? rowHeight(row) ?? 0,
     change: changeOf(row),
   }));
 }
@@ -616,6 +681,67 @@ export function scrollOnToggle(
   return stuck ? fileHeaderIndex(rows, row.file) : undefined;
 }
 
+export function rowAnchors(rows: readonly DiffRow[]): string[][] {
+  const lines = lineKeys(rows);
+  const hunks = new Map<number, number>();
+  return rows.map((row, index) => {
+    if (lines[index].length > 0) {
+      return lines[index];
+    }
+    if (row.kind === 'hunk') {
+      const hunk = (hunks.get(row.file) ?? 0) + 1;
+      hunks.set(row.file, hunk);
+      return [`${row.file}:hunk:${hunk}`];
+    }
+    return ['file' in row ? `${row.file}:${row.kind}` : row.kind];
+  });
+}
+
+export interface ScrollAnchor {
+  readonly shows: readonly string[];
+  readonly fraction: number;
+}
+
+type Laid = readonly { readonly start: number; readonly size: number }[];
+
+export function scrollAnchor(
+  rows: Laid,
+  shown: readonly (readonly string[])[],
+  scrollTop: number,
+): ScrollAnchor | undefined {
+  let low = 0;
+  let high = rows.length - 1;
+  while (low < high) {
+    const middle = Math.ceil((low + high) / 2);
+    if (rows[middle].start <= scrollTop) {
+      low = middle;
+    } else {
+      high = middle - 1;
+    }
+  }
+  const row = rows.at(low);
+  const shows = shown.at(low);
+  if (!row || !shows) {
+    return undefined;
+  }
+  return {
+    shows,
+    fraction: row.size > 0 ? (scrollTop - row.start) / row.size : 0,
+  };
+}
+
+export function anchoredScrollTop(
+  anchor: ScrollAnchor,
+  rows: Laid,
+  shown: readonly (readonly string[])[],
+): number | undefined {
+  const index = shown.findIndex((shows) =>
+    shows.some((id) => anchor.shows.includes(id)),
+  );
+  const row = index === -1 ? undefined : rows.at(index);
+  return row && row.start + anchor.fraction * row.size;
+}
+
 export function stuckHeader(
   rows: readonly DiffRow[],
   items: readonly { index: number; start: number; end: number }[],
@@ -654,6 +780,76 @@ export function largeFilesToLoad(
   return load;
 }
 
+const wrapSample = '0'.repeat(100);
+
+const unmeasured: WrapColumns = { left: Infinity, right: Infinity };
+
+function measureWrapColumns(probe: HTMLElement): WrapColumns {
+  const [left = Infinity, right = left] = Array.from(
+    probe.querySelectorAll<HTMLElement>('.code'),
+    (code) => {
+      const style = getComputedStyle(code);
+      const sample = code.firstElementChild;
+      return wrapColumns(
+        code.getBoundingClientRect().width -
+          parseFloat(style.paddingLeft) -
+          parseFloat(style.paddingRight),
+        sample ? sample.getBoundingClientRect().width / wrapSample.length : 0,
+      );
+    },
+  );
+  return { left, right };
+}
+
+const WrapProbe = memo(function WrapProbe({
+  split,
+  numbers,
+  onColumns,
+}: {
+  split: boolean;
+  numbers: number;
+  onColumns: (columns: WrapColumns) => void;
+}) {
+  const observe = useCallback(
+    (probe: HTMLDivElement) => {
+      const measure = () => onColumns(measureWrapColumns(probe));
+      measure();
+      const observer = new ResizeObserver(measure);
+      for (const element of probe.querySelectorAll('.code, .wrap-sample')) {
+        observer.observe(element);
+      }
+      return () => observer.disconnect();
+    },
+    [onColumns],
+  );
+  const code = (
+    <span className="code">
+      <span className="wrap-sample">{wrapSample}</span>
+    </span>
+  );
+  return (
+    <div className="wrap-probe" aria-hidden ref={observe}>
+      {split ? (
+        <div className="split-line">
+          {[0, 1].map((side) => (
+            <div key={side} className="diff-line split-side">
+              <span className="number" />
+              <span className="split-code">{code}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="diff-line">
+          {Array.from({ length: numbers }, (_, index) => (
+            <span key={index} className="number" />
+          ))}
+          {code}
+        </div>
+      )}
+    </div>
+  );
+});
+
 export function DiffView({
   error,
   files,
@@ -668,6 +864,7 @@ export function DiffView({
   current = 0,
   jump = 0,
   sideBySide = false,
+  wordWrap = false,
 }: {
   error: React.ReactNode;
   files: readonly DiffFile[];
@@ -682,13 +879,23 @@ export function DiffView({
   current?: number;
   jump?: number;
   sideBySide?: boolean;
+  wordWrap?: boolean;
 }) {
   const list = useRef<HTMLDivElement>(null);
   const [sideways, setSideways] = useState(0);
   const split = showsSideBySide(sideBySide, whole);
+  const scrollsSides = split && !wordWrap;
+  const [columns, setColumns] = useState<WrapColumns>();
+  const changeColumns = useCallback(
+    (next: WrapColumns) =>
+      setColumns((last) =>
+        last?.left === next.left && last.right === next.right ? last : next,
+      ),
+    [],
+  );
   useEffect(() => {
     const element = list.current;
-    if (!element || !split) {
+    if (!element || !scrollsSides) {
       return undefined;
     }
     let deltas: number[] = [];
@@ -725,7 +932,7 @@ export function DiffView({
         cancelAnimationFrame(frame);
       }
     };
-  }, [split]);
+  }, [scrollsSides]);
   const [toggled, setToggled] = useState<ReadonlyMap<string, boolean>>(
     new Map(),
   );
@@ -738,7 +945,7 @@ export function DiffView({
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => list.current,
-    ...rowMeasures(rows),
+    ...rowMeasures(rows, wordWrap ? (columns ?? unmeasured) : undefined),
     overscan: 30,
   });
 
@@ -930,9 +1137,38 @@ export function DiffView({
   const scrollTop = virtualizer.scrollOffset ?? 0;
   const stuck = stuckHeader(rows, items, scrollTop);
 
+  const layoutKey = `${split}:${wordWrap ? `${columns?.left}:${columns?.right}` : ''}`;
+  const shown = useMemo(() => rowAnchors(rows), [rows]);
+  const anchor = useRef<{ key: string; at: ScrollAnchor | undefined }>(
+    undefined,
+  );
+  useLayoutEffect(() => {
+    const last = anchor.current;
+    if (last?.at && last.key !== layoutKey) {
+      anchor.current = { key: layoutKey, at: last.at };
+      const top = anchoredScrollTop(
+        last.at,
+        virtualizer.measurementsCache,
+        shown,
+      );
+      if (top !== undefined) {
+        virtualizer.scrollToOffset(top);
+      }
+      return;
+    }
+    anchor.current = {
+      key: layoutKey,
+      at: scrollAnchor(
+        virtualizer.measurementsCache,
+        shown,
+        list.current?.scrollTop ?? 0,
+      ),
+    };
+  });
+
   return (
     <div
-      className={`diff-view ${split ? 'side-by-side' : ''}`}
+      className={`diff-view ${split ? 'side-by-side' : ''} ${wordWrap ? 'wrap' : ''}`}
       style={{ ...heightVariables, '--split-scroll': `${sideways}px` }}
     >
       {stuck && <div className="diff-stuck-header">{header(stuck, true)}</div>}
@@ -959,11 +1195,11 @@ export function DiffView({
           }
           const left = diffScrollLeft(
             event.key,
-            split ? sideways : event.currentTarget.scrollLeft,
+            scrollsSides ? sideways : event.currentTarget.scrollLeft,
           );
           if (left !== undefined) {
             event.preventDefault();
-            if (split) {
+            if (scrollsSides) {
               setSideways(left);
             } else {
               event.currentTarget.scrollLeft = left;
@@ -996,9 +1232,17 @@ export function DiffView({
           className="virtual-spacer"
           style={{ height: virtualizer.getTotalSize() }}
         >
+          {wordWrap && (
+            <WrapProbe
+              key={split ? 'split' : whole ? 'whole' : 'inline'}
+              split={split}
+              numbers={whole ? 1 : 2}
+              onColumns={changeColumns}
+            />
+          )}
           {items.map((item) => {
             const row = rows[item.index];
-            const height = rowHeight(row);
+            const height = rowHeight(row, wordWrap);
             return (
               <div
                 key={item.key}

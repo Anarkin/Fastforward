@@ -45,17 +45,20 @@ suite('Keyboard shortcuts', () => {
   test('matches a key pressed on its own', () => {
     assert.strictEqual(press('c'), 'c');
     assert.strictEqual(press('s'), 's');
+    assert.strictEqual(press('w'), 'w');
     assert.strictEqual(press('x'), undefined);
   });
 
   test('matches a letter with Caps Lock on', () => {
     assert.strictEqual(press('C'), 'c');
     assert.strictEqual(press('S'), 's');
+    assert.strictEqual(press('W'), 'w');
   });
 
   test('matches the physical key on a non-Latin layout', () => {
     assert.strictEqual(press('с', { code: 'KeyC' }), 'c');
     assert.strictEqual(press('ы', { code: 'KeyS' }), 's');
+    assert.strictEqual(press('ц', { code: 'KeyW' }), 'w');
     assert.strictEqual(press('j', { code: 'KeyC' }), undefined);
   });
 

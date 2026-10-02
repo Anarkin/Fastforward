@@ -2694,6 +2694,16 @@ suite('View', function () {
       });
     });
 
+    test('wraps no long lines by default, and wraps them once asked, remembering that', async () => {
+      await withView(log, [other], async (view) => {
+        assert.strictEqual(view.page.last('layout')?.wordWrap, false);
+        await view.connection.receive({ type: 'setWordWrap', wrap: true });
+        assert.strictEqual(view.settings.settings.wordWrap, true);
+        await view.connection.receive({ type: 'ready' });
+        assert.strictEqual(view.page.last('layout')?.wordWrap, true);
+      });
+    });
+
     test('shows the diffs of the other tabs with the whitespace and entire file choices made in another', async () => {
       const spaced = await tempRepository(path.join(folder, 'spaced-tabs'));
       await spaced.commit('first', { 'a.txt': fortyLines(-1) });

@@ -122,6 +122,14 @@ export function IgnoreWhitespaceIcon() {
   );
 }
 
+export function WordWrapIcon() {
+  return (
+    <Icon>
+      <path d="M2.5 4h11M2.5 8h9a2 2 0 0 1 0 4H8M9.5 10.5 8 12l1.5 1.5M2.5 12H5" />
+    </Icon>
+  );
+}
+
 export function PinIcon() {
   return (
     <Icon>

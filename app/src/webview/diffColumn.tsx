@@ -24,6 +24,7 @@ import {
   PinIcon,
   PreviousIcon,
   SideBySideIcon,
+  WordWrapIcon,
 } from './icons';
 import { isFindShortcut } from './shortcuts';
 
@@ -59,9 +60,11 @@ export function DiffOptions({
   pinned,
   canShow,
   ignoreWhitespace,
+  wordWrap,
   onEntire,
   onPin,
   onIgnoreWhitespace,
+  onWordWrap,
   layout,
   onLayout,
 }: {
@@ -69,9 +72,11 @@ export function DiffOptions({
   pinned: boolean;
   canShow: boolean;
   ignoreWhitespace: boolean;
+  wordWrap: boolean;
   onEntire: (entire: boolean) => void;
   onPin: (pinned: boolean) => void;
   onIgnoreWhitespace: (ignore: boolean) => void;
+  onWordWrap: (wrap: boolean) => void;
   layout: DiffLayout;
   onLayout: (layout: DiffLayout) => void;
 }) {
@@ -115,6 +120,18 @@ export function DiffOptions({
         onClick={() => onIgnoreWhitespace(!ignoreWhitespace)}
       >
         <IgnoreWhitespaceIcon />
+      </button>
+      <button
+        className={`nav-button toggle ${wordWrap ? 'active' : ''}`}
+        title={
+          wordWrap
+            ? 'Wrapping long lines: show them unwrapped again'
+            : 'Word Wrap'
+        }
+        aria-pressed={wordWrap}
+        onClick={() => onWordWrap(!wordWrap)}
+      >
+        <WordWrapIcon />
       </button>
       <span className="nav-button-space" />
       <button
@@ -236,6 +253,7 @@ export function Diff({
   entireFile,
   changeMarks,
   sideBySide = false,
+  wordWrap = false,
 }: {
   selection: string;
   path: string | undefined;
@@ -252,6 +270,7 @@ export function Diff({
   entireFile: React.ReactNode;
   changeMarks: boolean;
   sideBySide?: boolean;
+  wordWrap?: boolean;
 }) {
   const parsed = useMemo(() => parsePatch(patch), [patch]);
   const diffFiles = useMemo(
@@ -323,6 +342,7 @@ export function Diff({
         onLoadTexts={onLoadTexts}
         changeMarks={changeMarks}
         sideBySide={sideBySide}
+        wordWrap={wordWrap}
         matches={matches}
         current={shown}
         jump={jump}

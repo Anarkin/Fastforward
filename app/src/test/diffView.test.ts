@@ -15,6 +15,9 @@ import {
   largeFilesToLoad,
   rowHeight,
   rowMeasures,
+  anchoredScrollTop,
+  rowAnchors,
+  scrollAnchor,
   scrollOnToggle,
   showsSideBySide,
   stuckHeader,
@@ -202,6 +205,15 @@ suite('Diff rows', () => {
     ]);
   });
 });
+
+function sized(...sizes: number[]) {
+  let start = 0;
+  return sizes.map((size) => {
+    const row = { start, size };
+    start += size;
+    return row;
+  });
+}
 
 function laidOut(rows: readonly DiffRow[]) {
   let start = 0;
@@ -538,6 +550,145 @@ suite('Diff row heights', () => {
     assert.deepStrictEqual(
       loading.map((_, index) => rowMeasures(loading).estimateSize(index)),
       [200, 240],
+    );
+  });
+
+  const wrapping = parsePatch(
+    [
+      'diff --git a/a.ts b/a.ts',
+      '--- a/a.ts',
+      '+++ b/a.ts',
+      '@@ -1,2 +1,2 @@',
+      ' one',
+      '-one two three',
+      '+one two three four five',
+    ].join('\n'),
+  );
+
+  test('measures the rows of code while wrapping, keeping the height of the others fixed', () => {
+    const rows = diffRows(wrapping, new Map(), undefined);
+    assert.deepStrictEqual(
+      rows.map((row) => [row.kind, rowHeight(row, true)]),
+      [
+        ['error', undefined],
+        ['file', 22],
+        ['line', undefined],
+        ['line', undefined],
+        ['line', undefined],
+      ],
+    );
+    const split = diffRows(wrapping, new Map(), undefined, false, true);
+    assert.deepStrictEqual(
+      split.map((row) => rowHeight(row, true)),
+      [undefined, 22, undefined, undefined],
+    );
+    const whole = diffRows([], new Map(), {
+      path: 'a.ts',
+      content: 'one\n',
+      binary: false,
+    });
+    assert.deepStrictEqual(
+      whole.map((row) => rowHeight(row, true)),
+      [undefined, 22, undefined],
+    );
+  });
+
+  test('estimates a row of code by the rows its text wraps to, a side by side row by its taller side', () => {
+    const rows = diffRows(wrapping, new Map(), undefined);
+    const measures = rowMeasures(rows, { left: 7, right: 7 });
+    assert.deepStrictEqual(
+      rows.map((_, index) => measures.estimateSize(index)),
+      [200, 22, 22, 44, 88],
+    );
+    const split = diffRows(wrapping, new Map(), undefined, false, true);
+    const sides = rowMeasures(split, { left: 13, right: 7 });
+    assert.deepStrictEqual(
+      split.map((_, index) => sides.estimateSize(index)),
+      [200, 22, 22, 88],
+    );
+  });
+
+  test('keys the rows of code again when the rows or the width they wrap in change, so they are measured again, but no other row', () => {
+    const rows = diffRows(wrapping, new Map(), undefined);
+    const same = diffRows(wrapping, new Map(), undefined);
+    const narrow = rowMeasures(rows, { left: 7, right: 7 });
+    const wide = rowMeasures(rows, { left: 8, right: 8 });
+    const other = rowMeasures(same, { left: 7, right: 7 });
+    assert.strictEqual(rowMeasures(rows, { left: 8, right: 8 }), wide);
+    for (const measures of [wide, other, rowMeasures(rows)]) {
+      assert.notStrictEqual(measures.getItemKey(2), narrow.getItemKey(2));
+      assert.strictEqual(measures.getItemKey(1), narrow.getItemKey(1));
+    }
+  });
+
+  test('finds what the row at the top of the view shows, and how far into it the view starts', () => {
+    const rows = sized(22, 22, 22);
+    const shown = [['a'], ['b', 'c'], ['d']];
+    assert.deepStrictEqual(scrollAnchor(rows, shown, 0), {
+      shows: ['a'],
+      fraction: 0,
+    });
+    assert.deepStrictEqual(scrollAnchor(rows, shown, 33), {
+      shows: ['b', 'c'],
+      fraction: 0.5,
+    });
+    assert.deepStrictEqual(scrollAnchor(rows, shown, 66), {
+      shows: ['d'],
+      fraction: 1,
+    });
+    assert.strictEqual(scrollAnchor([], [], 0), undefined);
+  });
+
+  test('scrolls back to the first row showing what was at the top once the rows change, as far into it as before', () => {
+    const rows = sized(66, 44, 22);
+    const shown = [['a'], ['b'], ['c']];
+    assert.strictEqual(
+      anchoredScrollTop({ shows: ['b', 'c'], fraction: 0.5 }, rows, shown),
+      88,
+    );
+    assert.strictEqual(
+      anchoredScrollTop({ shows: ['a'], fraction: 0 }, rows, shown),
+      0,
+    );
+    assert.strictEqual(
+      anchoredScrollTop({ shows: ['x'], fraction: 0 }, rows, shown),
+      undefined,
+    );
+  });
+
+  test('names a line alike inline and side by side, and the headers and hunk gaps by their file and order', () => {
+    const files = parsePatch(
+      [
+        patch('a.ts', 1),
+        '@@ -10,1 +11,1 @@',
+        '-one two three',
+        '+one two three four five',
+      ].join('\n'),
+    );
+    const inline = rowAnchors(diffRows(files, new Map(), undefined));
+    const split = rowAnchors(
+      diffRows(files, new Map(), undefined, false, true),
+    );
+    assert.deepStrictEqual(inline, [
+      ['error'],
+      ['0:file'],
+      ['0:0'],
+      ['0:hunk:1'],
+      ['0:1'],
+      ['0:2'],
+    ]);
+    assert.deepStrictEqual(split, [
+      ['error'],
+      ['0:file'],
+      ['0:0'],
+      ['0:hunk:1'],
+      ['0:1', '0:2'],
+    ]);
+    const added = scrollAnchor(sized(22, 22, 22, 22, 22, 22), inline, 115.5);
+    assert.ok(added);
+    assert.strictEqual(
+      anchoredScrollTop(added, sized(22, 22, 22, 22, 44), split),
+      88 + 0.25 * 44,
     );
   });
 
