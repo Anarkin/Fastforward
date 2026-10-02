@@ -123,6 +123,33 @@ suite('A file renamed and edited', function () {
   });
 });
 
+suite('A file removed from the index but kept on disk', function () {
+  this.timeout(20_000);
+
+  test('lists it once, as deleted, and diffs its deletion', async () => {
+    const repository = await tempRepository(tempFolder('uncached'));
+    const cwd = repository.root;
+    try {
+      await repository.commit('initial', { 'kept.txt': 'committed\n' });
+      await repository.git('rm', '--cached', 'kept.txt');
+      const workingTree = await workingTreeFiles(repository.gitPath, cwd);
+      assert.deepStrictEqual(
+        workingTree.files.map((file) => [file.status, file.path]),
+        [['D', 'kept.txt']],
+      );
+      const patch = await workingTreePatch(
+        repository.gitPath,
+        cwd,
+        workingTree,
+        { path: 'kept.txt' },
+      );
+      assert.ok(patch.includes('-committed'), patch);
+    } finally {
+      removeFolder(cwd);
+    }
+  });
+});
+
 suite('Uncommitted changes', function () {
   this.timeout(20_000);
   let gitPath: string;

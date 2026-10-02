@@ -80,9 +80,15 @@ export async function workingTreeFiles(
     runGit(gitPath, cwd, [...workingTreeDiff(base), ...changesArgs]),
     runGit(gitPath, cwd, ['ls-files', '--others', '--exclude-standard', '-z']),
   ]);
+  const trackedChanges = await withoutTouched(
+    gitPath,
+    cwd,
+    await withBytes(gitPath, cwd, parseRawChanges(changes), cwd),
+  );
+  const tracked = new Set(trackedChanges.map((file) => file.path));
   const untrackedFiles = await Promise.all(
     splitNul(untracked)
-      .filter(Boolean)
+      .filter((path) => path && !tracked.has(path))
       .map(async (path, index): Promise<FileChange> => {
         const file = join(cwd, path);
         const insertions =
@@ -103,14 +109,7 @@ export async function workingTreeFiles(
   );
   return {
     base,
-    files: [
-      ...(await withoutTouched(
-        gitPath,
-        cwd,
-        await withBytes(gitPath, cwd, parseRawChanges(changes), cwd),
-      )),
-      ...untrackedFiles,
-    ],
+    files: [...trackedChanges, ...untrackedFiles],
   };
 }
 
