@@ -237,17 +237,31 @@ const settled = () => new Promise((resolve) => setTimeout(resolve, 30));
 suite('Commit list keys', () => {
   test('sends a selection made by a held key only once the key settles', async () => {
     const sent: string[] = [];
-    const select = settling((hash: string) => sent.push(hash), 10);
-    select('a', false);
-    select('b', true);
-    select('c', true);
+    const { settle } = settling((hash: string) => sent.push(hash), 10);
+    settle('a', false);
+    settle('b', true);
+    settle('c', true);
     assert.deepStrictEqual(sent, ['a']);
     await settled();
     assert.deepStrictEqual(sent, ['a', 'c']);
-    select('d', true);
-    select('e', false);
+    settle('d', true);
+    settle('e', false);
     await settled();
     assert.deepStrictEqual(sent, ['a', 'c', 'e']);
+  });
+
+  test('sends a selection made by a held key at once before anything sent after it, and only once', async () => {
+    const sent: string[] = [];
+    const { settle, send } = settling(
+      (message: string) => sent.push(message),
+      10,
+    );
+    settle('select b', true);
+    send('switch tab');
+    send('load tree');
+    assert.deepStrictEqual(sent, ['select b', 'switch tab', 'load tree']);
+    await settled();
+    assert.deepStrictEqual(sent, ['select b', 'switch tab', 'load tree']);
   });
 
   const visible = { first: 0, last: 0 };
