@@ -370,12 +370,17 @@ export function tokenizing(
   highlighter: HighlighterCore,
   pending: readonly Pending[],
 ): (deadline: number, ranges: Map<string, readonly SyntaxRange[]>) => boolean {
-  const generation = grammars;
+  let generation = grammars;
   let index = 0;
   let done: (readonly SyntaxRange[])[] = [];
   let state: GrammarState | undefined;
   return (deadline, ranges) => {
     while (index < pending.length) {
+      if (generation !== grammars) {
+        generation = grammars;
+        done = [];
+        state = undefined;
+      }
       const { source, key } = pending[index];
       const start = done.length;
       const chunk = source.lines.slice(start, chunkEnd(source.lines, start));

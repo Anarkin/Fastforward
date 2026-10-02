@@ -567,6 +567,36 @@ suite('Syntax', () => {
     });
   });
 
+  test('tokenizes a text anew from its start when a language another embeds loads while it is half done', async () => {
+    const lines = [
+      '# T',
+      '',
+      '> quote',
+      '> - item `x`',
+      '>   <div>',
+      '>   ```js',
+      ...Array<string>(400).fill('>   let a = 1'),
+      '>   ```',
+      '> more **bold** text',
+      '',
+      'plain [link](u) `code`',
+    ];
+    const text = {
+      language: 'markdown',
+      lines,
+      keys: lines.map((_, index) => `0:${index}`),
+    };
+    const ranges = new Map<string, readonly SyntaxRange[]>();
+    const step = tokenizing(
+      await loadLanguages(['markdown']),
+      cachedRanges([text], ranges),
+    );
+    assert.ok(step(-Infinity, ranges));
+    const highlighter = await loadLanguages(['ruby']);
+    step(Infinity, ranges);
+    assert.deepStrictEqual(ranges, syntaxRanges(highlighter, [text]));
+  });
+
   test('keeps the colors of texts of at most 8 million characters in all, and of none longer than 2 million', async () => {
     const highlighter = await loadLanguages(['typescript']);
     const tokenized: string[] = [];
