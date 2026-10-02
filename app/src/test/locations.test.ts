@@ -9,6 +9,7 @@ import {
   itemKey,
   leafIndent,
   nextActive,
+  popupKeyAction,
   resultItems,
   searchRefs,
   shownChildren,
@@ -167,6 +168,32 @@ suite('Locations search', () => {
     assert.strictEqual(enterTarget('ab12', found, branch), refs[3].commit);
     assert.strictEqual(enterTarget('feat', undefined, branch), refs[3].commit);
     assert.strictEqual(enterTarget('zz', undefined, undefined), undefined);
+  });
+
+  test('leaves Enter and the arrows to an input method composing text', () => {
+    const key = { isComposing: false, keyCode: 13 };
+    assert.strictEqual(popupKeyAction({ ...key, key: 'Enter' }, 'x'), 'enter');
+    assert.strictEqual(popupKeyAction({ ...key, key: 'ArrowDown' }, 'x'), 1);
+    assert.strictEqual(popupKeyAction({ ...key, key: 'ArrowUp' }, 'x'), -1);
+    assert.strictEqual(
+      popupKeyAction({ ...key, key: 'ArrowUp' }, ''),
+      undefined,
+    );
+    assert.strictEqual(
+      popupKeyAction({ key: 'Enter', isComposing: true, keyCode: 13 }, 'x'),
+      undefined,
+    );
+    assert.strictEqual(
+      popupKeyAction({ key: 'Enter', isComposing: false, keyCode: 229 }, 'x'),
+      undefined,
+    );
+    assert.strictEqual(
+      popupKeyAction(
+        { key: 'ArrowDown', isComposing: true, keyCode: 229 },
+        'x',
+      ),
+      undefined,
+    );
   });
 
   test('jumps on Enter to a hash not looked up yet as typed', () => {

@@ -315,6 +315,21 @@ function usePopupHeight(
   return height;
 }
 
+const steps: Readonly<Record<string, 1 | -1>> = { ArrowDown: 1, ArrowUp: -1 };
+
+export function popupKeyAction(
+  event: Pick<KeyboardEvent, 'key' | 'isComposing' | 'keyCode'>,
+  query: string,
+): 1 | -1 | 'enter' | undefined {
+  if (event.isComposing || event.keyCode === 229) {
+    return undefined;
+  }
+  if (query && event.key in steps) {
+    return steps[event.key];
+  }
+  return event.key === 'Enter' ? 'enter' : undefined;
+}
+
 export function LocationsPopup({
   repository,
   anchor,
@@ -411,14 +426,14 @@ export function LocationsPopup({
   useDismiss(anchor, onClose, { ignore: '.context-menu' });
 
   const onKeyDown = (event: React.KeyboardEvent) => {
-    const steps: Record<string, 1 | -1> = { ArrowDown: 1, ArrowUp: -1 };
-    if (query && event.key in steps) {
+    const action = popupKeyAction(event.nativeEvent, query);
+    if (typeof action === 'number') {
       event.preventDefault();
-      const next = items.at(nextActive(items, active, steps[event.key]));
+      const next = items.at(nextActive(items, active, action));
       if (next) {
         setHighlight({ query, key: itemKey(next) });
       }
-    } else if (event.key === 'Enter') {
+    } else if (action === 'enter') {
       event.preventDefault();
       jump(enterTarget(query, found, activeItem, highlight?.query === query));
     }
