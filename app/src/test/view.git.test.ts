@@ -109,6 +109,11 @@ async function withNotices(
   }
 }
 
+// Each test that fetches in the background turns it on, with a fake timer
+function viewSettings(): UserSettings {
+  return new UserSettings({ ...defaultSettings(), autoFetch: false });
+}
+
 async function openView(
   log: Log,
   tabs: readonly string[],
@@ -119,7 +124,7 @@ async function openView(
   const store = new FakeStore();
   await store.update(tabsKey, tabs);
   await store.update(activeTabKey, tabs[0]);
-  const settings = new UserSettings(defaultSettings());
+  const settings = viewSettings();
   const view = new FastforwardView(
     log,
     await installedGit(),
@@ -331,7 +336,7 @@ suite('View', function () {
       const view = new FastforwardView(
         log,
         await installedGit(),
-        new Storage(new UserSettings(defaultSettings()), state),
+        new Storage(viewSettings(), state),
         new FakeHost(),
       );
       const opened = attach(view);
