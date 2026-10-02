@@ -170,13 +170,29 @@ function startPosition(
   );
 }
 
-export function pendingCommit(
+export function keySelection(
+  history: CommitHistory,
+  position: number,
+  selected: string | undefined,
+): string | null | undefined {
+  const hash =
+    position === workingTreeIndex
+      ? workingTreeHash
+      : history.at(position)?.hash;
+  if (hash === undefined) {
+    return null;
+  }
+  return hash === selected ? undefined : hash;
+}
+
+export function pendingSelection(
   pending: { history: CommitHistory; position: number } | undefined,
   history: CommitHistory | undefined,
-) {
+  selected: string | undefined,
+): string | null | undefined {
   return pending && pending.history === history
-    ? history.at(pending.position)
-    : undefined;
+    ? keySelection(history, pending.position, selected)
+    : null;
 }
 
 export function listKeyPosition(
@@ -515,10 +531,12 @@ export function Commits({
     pending.current = undefined;
   }, [selected, history]);
   useEffect(() => {
-    const commit = pendingCommit(pending.current, history);
-    if (commit) {
+    const hash = pendingSelection(pending.current, history, selected);
+    if (hash !== null) {
       pending.current = undefined;
-      onSelect(commit.hash, true);
+      if (hash !== undefined) {
+        onSelect(hash, true);
+      }
     }
   });
   useEffect(() => {
@@ -552,16 +570,10 @@ export function Commits({
     if (position === undefined) {
       return;
     }
-    pending.current = undefined;
-    if (position === workingTreeIndex) {
-      onSelect(workingTreeHash, true, event.repeat);
-    } else {
-      const commit = history.at(position);
-      if (commit) {
-        onSelect(commit.hash, true, event.repeat);
-      } else {
-        pending.current = { history, position };
-      }
+    const hash = keySelection(history, position, selected);
+    pending.current = hash === null ? { history, position } : undefined;
+    if (hash) {
+      onSelect(hash, true, event.repeat);
     }
     virtualizer.scrollToIndex(offset + position, { align: 'auto' });
   };
