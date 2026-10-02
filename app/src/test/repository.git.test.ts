@@ -71,6 +71,20 @@ suite('Git repository', function () {
     }
   });
 
+  test('leaves out the tags that point at a tree or a blob', async () => {
+    await temp.git('tag', 'tree', 'HEAD^{tree}');
+    await temp.git('tag', '-a', '-m', 'blob', 'blob', blob);
+    try {
+      const { refs } = await readRefs(gitPath, cwd);
+      assert.deepStrictEqual(
+        refs.map(({ kind, name }) => `${kind} ${name}`),
+        ['branch main'],
+      );
+    } finally {
+      await temp.git('tag', '-d', 'tree', 'blob');
+    }
+  });
+
   test('reads the branch HEAD is on, or only its commit when detached', async () => {
     assert.deepStrictEqual(await readHead(gitPath, cwd), {
       name: 'main',
