@@ -1,3 +1,5 @@
+import { lstat } from 'node:fs/promises';
+import { join } from 'node:path';
 import type { FileChange } from '../shared/protocol';
 import { runGit, splitNul } from './run';
 
@@ -18,7 +20,7 @@ const showArgs = [
   ...diffArgs,
 ];
 
-export const changesArgs = ['--raw', '--numstat', '-z'];
+export const changesArgs = ['--raw', '--numstat', '-z', '--no-abbrev'];
 
 export async function showFiles(
   gitPath: string,
@@ -26,11 +28,67 @@ export async function showFiles(
   hash: string,
   signal?: AbortSignal,
 ): Promise<FileChange[]> {
-  return parseChanges(
+  const changes = parseRawChanges(
     await runGit(gitPath, cwd, [...showArgs, ...changesArgs, hash], {
       signal,
     }),
   );
+  return (await withBytes(gitPath, cwd, changes)).map(({ file }) => file);
+}
+
+interface RawChange {
+  readonly raw: string;
+  readonly file: FileChange;
+}
+
+export async function withBytes(
+  gitPath: string,
+  cwd: string,
+  changes: readonly RawChange[],
+  workTree?: string,
+): Promise<RawChange[]> {
+  const sides = changes.map(({ raw, file }) => {
+    const [, , oldId, newId] = raw.slice(1).split(' ');
+    return file.insertions + file.deletions === 0 ? [] : [oldId, newId];
+  });
+  const ids = [...new Set(sides.flat().filter((id) => !isNullId(id)))];
+  const sizes = new Map<string, number>();
+  if (ids.length > 0) {
+    const checked = await runGit(gitPath, cwd, ['cat-file', '--batch-check'], {
+      input: ids.map((id) => `${id}\n`).join(''),
+    });
+    for (const line of checked.split('\n')) {
+      const [id, type, size] = line.split(' ');
+      if (type === 'blob') {
+        sizes.set(id, Number(size));
+      }
+    }
+  }
+  const workTreeSize = async (path: string) => {
+    if (workTree === undefined) {
+      return 0;
+    }
+    const stats = await lstat(join(workTree, path)).catch(() => undefined);
+    return stats?.isFile() ? stats.size : 0;
+  };
+  return Promise.all(
+    changes.map(async ({ raw, file }, index) => {
+      const [oldId, newId] = sides[index];
+      if (oldId === undefined || newId === undefined) {
+        return { raw, file };
+      }
+      const bytes =
+        (sizes.get(oldId) ?? 0) +
+        (isNullId(newId)
+          ? await workTreeSize(file.path)
+          : (sizes.get(newId) ?? 0));
+      return { raw, file: { ...file, bytes } };
+    }),
+  );
+}
+
+function isNullId(id: string): boolean {
+  return /^0+$/.test(id);
 }
 
 export interface PatchScope {

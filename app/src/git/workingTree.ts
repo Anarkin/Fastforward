@@ -9,6 +9,7 @@ import {
   parseRawChanges,
   pathspecs,
   type PatchScope,
+  withBytes,
 } from './diff';
 import { isBinary, maxFileSize } from './files';
 import { headCommit } from './history';
@@ -76,31 +77,38 @@ export async function workingTreeFiles(
       })
     ).trim();
   const [changes, untracked] = await Promise.all([
-    runGit(gitPath, cwd, [
-      ...workingTreeDiff(base),
-      ...changesArgs,
-      '--no-abbrev',
-    ]),
+    runGit(gitPath, cwd, [...workingTreeDiff(base), ...changesArgs]),
     runGit(gitPath, cwd, ['ls-files', '--others', '--exclude-standard', '-z']),
   ]);
   const untrackedFiles = await Promise.all(
     splitNul(untracked)
       .filter(Boolean)
-      .map(async (path, index) => ({
-        path,
-        oldPath: undefined,
-        status: 'U' as const,
-        insertions:
+      .map(async (path, index): Promise<FileChange> => {
+        const file = join(cwd, path);
+        const insertions =
           index < maxUntrackedPatches && !path.endsWith('/')
-            ? await addedLines(join(cwd, path))
-            : 0,
-        deletions: 0,
-      })),
+            ? await addedLines(file)
+            : 0;
+        const bytes =
+          insertions > 0 ? (await lstat(file).catch(() => undefined))?.size : 0;
+        return {
+          path,
+          oldPath: undefined,
+          status: 'U',
+          insertions,
+          deletions: 0,
+          ...(bytes ? { bytes } : {}),
+        };
+      }),
   );
   return {
     base,
     files: [
-      ...(await withoutTouched(gitPath, cwd, parseRawChanges(changes))),
+      ...(await withoutTouched(
+        gitPath,
+        cwd,
+        await withBytes(gitPath, cwd, parseRawChanges(changes), cwd),
+      )),
       ...untrackedFiles,
     ],
   };

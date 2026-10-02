@@ -46,6 +46,8 @@ export function isLargeChange(file: {
 
 export const patchLineBudget = 20_000;
 
+export const patchByteBudget = 16 * 1024 * 1024;
+
 // Kept well under the 32767 characters of a command line on Windows, as the
 // files of a diff past its budget are passed to git one by one
 export const patchPathBudget = 16_000;
@@ -56,6 +58,7 @@ export function deferredChanges(
   const deferred = new Set<string>();
   let lines = 0;
   let paths = 0;
+  let bytes = 0;
   let full = false;
   for (const file of files) {
     if (isLargeChange(file)) {
@@ -64,7 +67,11 @@ export function deferredChanges(
     }
     lines += file.insertions + file.deletions;
     paths += file.path.length + (file.oldPath?.length ?? 0);
-    full ||= lines > patchLineBudget || paths > patchPathBudget;
+    bytes += file.bytes ?? 0;
+    full ||=
+      lines > patchLineBudget ||
+      paths > patchPathBudget ||
+      bytes > patchByteBudget;
     if (full) {
       deferred.add(file.path);
     }
@@ -134,6 +141,7 @@ export interface FileChange {
   readonly status: 'A' | 'M' | 'D' | 'R' | 'C' | 'T' | 'U' | '?';
   readonly insertions: number;
   readonly deletions: number;
+  readonly bytes?: number;
 }
 
 export interface TabInfo {
