@@ -21,6 +21,8 @@ suite('Watching the git folder', () => {
       'FETCH_HEAD',
       'refs/heads/main',
       'refs\\remotes\\origin\\main',
+      'modules/sub/HEAD',
+      'modules/nested/sub/refs/heads/main',
     ]) {
       assert.strictEqual(isInternal(file), false, file);
     }
@@ -34,6 +36,11 @@ suite('Watching the git folder', () => {
       'logs/HEAD',
       'index.lock',
       'refs/heads/main.lock',
+      'modules/sub/objects/ab/cdef',
+      'modules\\nested\\sub\\logs\\HEAD',
+      'modules/sub/modules/inner/objects/pack',
+      'lfs/objects/ab/cd/abcdef',
+      'lfs/tmp/download',
     ]) {
       assert.strictEqual(isInternal(file), true, file);
     }

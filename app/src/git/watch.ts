@@ -370,11 +370,14 @@ function isInside(folder: string, file: string): boolean {
   );
 }
 
+const internalFolders = new Set(['objects', 'logs', 'lfs']);
+
 export function isInternal(inGitDir: string): boolean {
-  const [first] = inGitDir.split(/[\\/]/);
+  const [first, , ...inModule] = inGitDir.split(/[\\/]/);
   return (
-    first === 'objects' ||
-    first === 'logs' ||
+    internalFolders.has(first) ||
+    (first === 'modules' &&
+      inModule.some((folder) => internalFolders.has(folder))) ||
     inGitDir.endsWith('.lock') ||
     inGitDir === ''
   );
