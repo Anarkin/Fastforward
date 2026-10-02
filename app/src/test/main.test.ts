@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { PassThrough } from 'node:stream';
-import { appFile, visibleBounds } from '../main/files';
+import { appFile, rebuilt, visibleBounds } from '../main/files';
 import { flushBeforeQuit } from '../main/quit';
 import {
   loginShellPath,
@@ -49,6 +49,17 @@ suite('App files', () => {
       appFile(root, 'fastforward://other/index.html'),
       undefined,
     );
+  });
+});
+
+suite('Rebuilding while the app runs', () => {
+  test('reloads the page for its script and its HTML, and the defaults for the settings', () => {
+    assert.strictEqual(rebuilt('webview.js'), 'page');
+    assert.strictEqual(rebuilt('webview.css'), 'page');
+    assert.strictEqual(rebuilt('index.html'), 'page');
+    assert.strictEqual(rebuilt('settings.json'), 'defaults');
+    assert.strictEqual(rebuilt('main.js'), undefined);
+    assert.strictEqual(rebuilt(null), undefined);
   });
 });
 

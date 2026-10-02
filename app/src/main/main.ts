@@ -28,7 +28,7 @@ import {
 import { JsonFileStore, Storage } from '../storage';
 import { themeCss } from '../theme';
 import { FastforwardView, type Connection } from '../view';
-import { appFile, appOrigin, appScheme, visibleBounds } from './files';
+import { appFile, appOrigin, appScheme, rebuilt, visibleBounds } from './files';
 import { flushBeforeQuit } from './quit';
 import { loginShellPath, mergePaths } from './shellPath';
 import { checksForUpdates } from './updates';
@@ -383,10 +383,11 @@ function reloadOnRebuild(window: BrowserWindow, onDefaults: () => void): void {
   let page: NodeJS.Timeout | undefined;
   let defaults: NodeJS.Timeout | undefined;
   fs.watch(dist, (_event, file) => {
-    if (file?.startsWith('webview.')) {
+    const change = rebuilt(file);
+    if (change === 'page') {
       clearTimeout(page);
       page = setTimeout(() => window.webContents.reloadIgnoringCache(), 100);
-    } else if (file === 'settings.json') {
+    } else if (change === 'defaults') {
       clearTimeout(defaults);
       defaults = setTimeout(onDefaults, 100);
     }

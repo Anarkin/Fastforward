@@ -79,16 +79,22 @@ const contexts = await Promise.all([
 
 if (dev) {
   await Promise.all(contexts.map((ctx) => ctx.watch()));
-  let copying;
-  fs.watch('src', (_event, file) => {
-    if (file === 'settings.json') {
-      clearTimeout(copying);
-      copying = setTimeout(
-        () => fs.copyFileSync('src/settings.json', 'dist/settings.json'),
-        100,
-      );
-    }
-  });
+  const copied = new Map();
+  const copyOnChange = (folder, name) =>
+    fs.watch(folder, (_event, file) => {
+      if (file === name) {
+        clearTimeout(copied.get(name));
+        copied.set(
+          name,
+          setTimeout(
+            () => fs.copyFileSync(`${folder}/${name}`, `dist/${name}`),
+            100,
+          ),
+        );
+      }
+    });
+  copyOnChange('src', 'settings.json');
+  copyOnChange('src/webview', 'index.html');
 } else {
   await Promise.all(contexts.map((ctx) => ctx.rebuild()));
   await Promise.all(contexts.map((ctx) => ctx.dispose()));
