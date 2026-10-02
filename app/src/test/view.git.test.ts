@@ -3994,7 +3994,7 @@ suite('Fetch', function () {
       'config',
       '--add',
       'credential.helper',
-      `!f() { echo "[$GCM_INTERACTIVE]" >> '${asked}'; }; f`,
+      `!f() { test "$1" = get || exit 0; echo "[$GCM_INTERACTIVE]" >> '${asked}'; echo username=u; echo password=p; }; f`,
     );
     const rounds: (() => void)[] = [];
     const opened = await openView(
@@ -4041,7 +4041,7 @@ suite('Fetch', function () {
       'config',
       '--add',
       'credential.helper',
-      `!f() { echo "[$GCM_INTERACTIVE]" >> '${asked}'; }; f`,
+      `!f() { test "$1" = get || exit 0; echo "[$GCM_INTERACTIVE]" >> '${asked}'; echo username=u; echo password=p; }; f`,
     );
     const rounds: (() => void)[] = [];
     const opened = await openView(
@@ -4098,6 +4098,12 @@ suite('Fetch', function () {
     await locked.commit('a');
     await locked.git('remote', 'add', 'origin', `http://127.0.0.1:${port}/x`);
     await locked.git('config', 'credential.helper', '');
+    await locked.git(
+      'config',
+      '--add',
+      'credential.helper',
+      '!f() { echo username=u; echo password=p; }; f',
+    );
     const rounds: (() => void)[] = [];
     const opened = await openView(
       log,
