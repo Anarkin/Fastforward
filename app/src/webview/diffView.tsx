@@ -25,7 +25,14 @@ import type { TextRequest } from '../shared/protocol';
 import { textsToLoad, useSyntax, type SyntaxRange } from './syntax';
 import { wordRanges } from './wordDiff';
 import { changeStep } from './shortcuts';
-import { ownScrollbarAttribute } from './overlayScrollbars';
+import {
+  elementMetrics,
+  ownScrollbarAttribute,
+  setSidewaysScroller,
+  sidewaysMetrics,
+  sidewaysScroll,
+  sidewaysScrollEvent,
+} from './overlayScrollbars';
 import { SkeletonRows, useSkeleton } from './skeleton';
 import { Twisty } from './tree';
 import { wrapColumns, wrappedLines } from './wordWrap';
@@ -780,6 +787,24 @@ export function largeFilesToLoad(
   return load;
 }
 
+function sideRoom(element: HTMLElement): { side: number; widest: number } {
+  const codes = Array.from(
+    element.querySelectorAll<HTMLElement>('.split-code'),
+  );
+  return {
+    side: codes.at(0)?.clientWidth ?? 0,
+    widest: Math.max(
+      0,
+      ...codes.map(
+        (code) =>
+          (code.firstElementChild instanceof HTMLElement
+            ? code.firstElementChild.offsetWidth
+            : 0) - code.clientWidth,
+      ),
+    ),
+  };
+}
+
 const wrapSample = '0'.repeat(100);
 
 const unmeasured: WrapColumns = { left: Infinity, right: Infinity };
@@ -883,6 +908,7 @@ export function DiffView({
 }) {
   const list = useRef<HTMLDivElement>(null);
   const [sideways, setSideways] = useState(0);
+  const scrolledSideways = useRef(sideways);
   const split = showsSideBySide(sideBySide, whole);
   const scrollsSides = split && !wordWrap;
   const [columns, setColumns] = useState<WrapColumns>();
@@ -902,16 +928,7 @@ export function DiffView({
     let frame: number | undefined;
     const scroll = () => {
       frame = undefined;
-      const widest = Math.max(
-        0,
-        ...Array.from(
-          element.querySelectorAll<HTMLElement>('.split-code'),
-          (code) =>
-            (code.firstElementChild instanceof HTMLElement
-              ? code.firstElementChild.offsetWidth
-              : 0) - code.clientWidth,
-        ),
-      );
+      const { widest } = sideRoom(element);
       const ticks = deltas;
       deltas = [];
       setSideways((scrolled) => sideScroll(scrolled, ticks, widest));
@@ -926,13 +943,36 @@ export function DiffView({
       frame ??= requestAnimationFrame(scroll);
     };
     element.addEventListener('wheel', onWheel, { passive: false });
+    setSidewaysScroller(element, {
+      metrics: () => {
+        const { side, widest } = sideRoom(element);
+        return sidewaysMetrics(
+          elementMetrics(element),
+          side,
+          widest,
+          scrolledSideways.current,
+        );
+      },
+      scrollTo: (scrollLeft) => {
+        const { side, widest } = sideRoom(element);
+        const left = sidewaysScroll(scrollLeft, element.clientWidth, side);
+        setSideways(Math.max(0, Math.min(widest, left)));
+      },
+    });
     return () => {
       element.removeEventListener('wheel', onWheel);
+      setSidewaysScroller(element, undefined);
       if (frame !== undefined) {
         cancelAnimationFrame(frame);
       }
     };
   }, [scrollsSides]);
+  useEffect(() => {
+    if (scrolledSideways.current !== sideways) {
+      scrolledSideways.current = sideways;
+      list.current?.dispatchEvent(new Event(sidewaysScrollEvent));
+    }
+  }, [sideways]);
   const [toggled, setToggled] = useState<ReadonlyMap<string, boolean>>(
     new Map(),
   );

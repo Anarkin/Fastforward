@@ -57,9 +57,56 @@ function scrollsAlong(element: Element, axis: Axis): boolean {
     : element.scrollWidth > element.clientWidth + 1;
 }
 
+export interface SidewaysScroller {
+  readonly metrics: () => ScrollerMetrics;
+  readonly scrollTo: (scrollLeft: number) => void;
+}
+
+const sidewaysScrollers = new WeakMap<Element, SidewaysScroller>();
+
+export const sidewaysScrollEvent = 'sidewaysscroll';
+
+export function setSidewaysScroller(
+  element: Element,
+  scroller: SidewaysScroller | undefined,
+): void {
+  if (scroller) {
+    sidewaysScrollers.set(element, scroller);
+  } else {
+    sidewaysScrollers.delete(element);
+  }
+}
+
+export function sidewaysMetrics(
+  area: ScrollerMetrics,
+  side: number,
+  widest: number,
+  scrolled: number,
+): ScrollerMetrics {
+  const scale = side > 0 ? area.clientWidth / side : 0;
+  return {
+    ...area,
+    scrollWidth: area.clientWidth + widest * scale,
+    scrollLeft: scrolled * scale,
+  };
+}
+
+export function sidewaysScroll(
+  scrollLeft: number,
+  clientWidth: number,
+  side: number,
+): number {
+  return clientWidth > 0 ? (scrollLeft * side) / clientWidth : 0;
+}
+
 function scrollerOf(target: EventTarget | null, axis: Axis): Element | null {
   let element = target instanceof Element ? target : null;
   while (element && element !== document.documentElement) {
+    const sideways = axis === 'horizontal' && sidewaysScrollers.get(element);
+    if (sideways) {
+      const metrics = sideways.metrics();
+      return metrics.scrollWidth > metrics.clientWidth + 1 ? element : null;
+    }
     if (scrollsAlong(element, axis)) {
       return drawsOverlay(axis, element.hasAttribute(ownScrollbarAttribute))
         ? element
@@ -160,7 +207,12 @@ export function draggedScroll(
   return drag.scroll + (now - drag.pointer) * drag.ratio;
 }
 
-function metricsOf(scroller: Element): ScrollerMetrics {
+function metricsOf(scroller: Element, axis: Axis): ScrollerMetrics {
+  const sideways = axis === 'horizontal' && sidewaysScrollers.get(scroller);
+  return sideways ? sideways.metrics() : elementMetrics(scroller);
+}
+
+export function elementMetrics(scroller: Element): ScrollerMetrics {
   const { left, top } = scroller.getBoundingClientRect();
   return {
     left,
@@ -217,7 +269,7 @@ class Bar {
     const size = parseFloat(
       getComputedStyle(document.body).getPropertyValue('--scrollbar-size'),
     );
-    const box = thumbBox(this.axis, metricsOf(scroller), size);
+    const box = thumbBox(this.axis, metricsOf(scroller, this.axis), size);
     if (!box) {
       return false;
     }
@@ -251,7 +303,7 @@ class Bar {
     event.preventDefault();
     this.element.setPointerCapture(event.pointerId);
     this.element.classList.add('dragging');
-    this.drag = dragFrom(this.axis, metricsOf(scroller), event);
+    this.drag = dragFrom(this.axis, metricsOf(scroller, this.axis), event);
   };
 
   private readonly onPointerMove = (event: PointerEvent) => {
@@ -260,8 +312,11 @@ class Bar {
       return;
     }
     const scroll = draggedScroll(this.axis, drag, event);
+    const sideways = sidewaysScrollers.get(scroller);
     if (this.axis === 'vertical') {
       scroller.scrollTop = scroll;
+    } else if (sideways) {
+      sideways.scrollTo(scroll);
     } else {
       scroller.scrollLeft = scroll;
     }
@@ -286,19 +341,18 @@ export function installOverlayScrollbars(): void {
   document.addEventListener('pointermove', (event) => showFor(event.target), {
     passive: true,
   });
-  document.addEventListener(
-    'scroll',
-    (event) => {
-      for (const bar of bars) {
-        if (bar.scroller === event.target) {
-          bar.show(bar.scroller);
-        }
+  const onScroll = (event: Event) => {
+    for (const bar of bars) {
+      if (bar.scroller === event.target) {
+        bar.show(bar.scroller);
       }
-      if (!bars.some((bar) => bar.scroller === event.target)) {
-        showFor(event.target);
-      }
-    },
-    { capture: true, passive: true },
-  );
+    }
+    if (!bars.some((bar) => bar.scroller === event.target)) {
+      showFor(event.target);
+    }
+  };
+  for (const type of ['scroll', sidewaysScrollEvent]) {
+    document.addEventListener(type, onScroll, { capture: true, passive: true });
+  }
   window.addEventListener('resize', () => bars.forEach((bar) => bar.hide()));
 }
