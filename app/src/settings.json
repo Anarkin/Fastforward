@@ -6,11 +6,11 @@
   "wordWrap": false,
   "diffLayout": "inline",
   "solo": false,
-  "autoFetch": false,
+  "autoFetch": true,
   "autoFetchMinutes": 1,
   "columnWidths": [400, 275],
   "fonts": {
-    "family": "'JetBrains Mono NL', 'JetBrains Mono', -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif",
+    "family": "-apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif",
     "size": "12px",
     "monospaceFamily": "'JetBrains Mono NL', 'JetBrains Mono', ui-monospace, Menlo, Monaco, Consolas, 'Droid Sans Mono', 'Courier New', monospace",
     "monospaceSize": "12px"
