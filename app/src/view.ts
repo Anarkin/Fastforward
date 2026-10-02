@@ -1267,6 +1267,7 @@ export class FastforwardView {
     hash: string,
     file: string,
     diff: number,
+    shownPatch?: string,
   ): Promise<void> {
     const change = context.tab.changedFiles.get(file);
     const patch = await this.patchOf(context, hash, {
@@ -1274,7 +1275,7 @@ export class FastforwardView {
       oldPath: change?.oldPath,
       ignoreWhitespace: this.storage.ignoreWhitespace,
     });
-    if (context.tab.hash === hash) {
+    if (context.tab.hash === hash && patch !== shownPatch) {
       context.post({ type: 'fileDiff', hash, path: file, patch, diff });
     }
   }
@@ -1422,9 +1423,28 @@ export class FastforwardView {
       shownDiff.hash === hash &&
       shownDiff.path === file &&
       shownDiff.patch === patch;
-    if (!stale() && !unchanged) {
-      context.post({ type: 'diff', hash, path: file, patch });
+    if (stale()) {
+      return;
     }
+    if (!unchanged) {
+      context.post({ type: 'diff', hash, path: file, patch });
+    } else if (file === undefined) {
+      await this.sendFileDiffsAgain(context, hash);
+    }
+  }
+
+  private async sendFileDiffsAgain(
+    context: Context,
+    hash: string,
+  ): Promise<void> {
+    const { changedFiles, shown } = context.tab;
+    await Promise.all(
+      [...(shown.fileDiffs?.values() ?? [])]
+        .filter((sent) => sent.hash === hash && changedFiles.has(sent.path))
+        .map((sent) =>
+          this.sendFileDiff(context, hash, sent.path, sent.diff, sent.patch),
+        ),
+    );
   }
 }
 

@@ -60,6 +60,7 @@ interface Shown {
   workingTree?: ToWebviewOf<'workingTree'>;
   files?: ToWebviewOf<'files'>;
   diff?: ToWebviewOf<'diff'> | ToWebviewOf<'fileContent'>;
+  fileDiffs?: ReadonlyMap<string, ToWebviewOf<'fileDiff'>>;
   tree?: ToWebviewOf<'tree'>;
 }
 
@@ -280,6 +281,10 @@ export function keep(shown: Shown, message: ToWebview): void {
     case 'diff':
     case 'fileContent':
       shown.diff = message;
+      shown.fileDiffs = undefined;
+      break;
+    case 'fileDiff':
+      shown.fileDiffs = new Map(shown.fileDiffs).set(message.path, message);
       break;
     case 'tree':
       shown.tree = message;
