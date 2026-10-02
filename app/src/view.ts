@@ -271,6 +271,10 @@ export class FastforwardView {
             ? rest[Math.min(index, rest.length - 1)]
             : activeTab;
         await storage.setTabs(rest, active);
+        if (active === activeTab && active !== undefined) {
+          this.postTabs(session);
+          return;
+        }
         await this.openTab(session, active);
         return;
       }

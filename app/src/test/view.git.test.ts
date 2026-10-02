@@ -2549,6 +2549,39 @@ suite('View', function () {
       });
     });
 
+    test('keeps a file entire when another tab is closed', async () => {
+      const long = await tempRepository(path.join(folder, 'long-kept'));
+      await long.commit('first', { 'a.txt': fortyLines(-1) });
+      await long.commit('second', { 'a.txt': fortyLines(19) });
+      const [second] = await long.resolve('HEAD');
+      await withView(log, [other, long.root], async (view) => {
+        const entire = () =>
+          /^ line 1$/m.test(view.page.last('diff')?.patch ?? '');
+        await view.connection.receive({ type: 'pinEntireFile', pinned: false });
+        await view.connection.receive({ type: 'selectTab', root: long.root });
+        await view.connection.receive({
+          type: 'selectCommit',
+          root: long.root,
+          hash: second,
+        });
+        await view.connection.receive({
+          type: 'selectFile',
+          root: long.root,
+          hash: second,
+          path: 'a.txt',
+        });
+        await view.connection.receive({
+          type: 'showEntireFile',
+          root: long.root,
+          entire: true,
+        });
+        assert.strictEqual(entire(), true);
+        await view.connection.receive({ type: 'closeTab', root: other });
+        assert.strictEqual(view.page.last('tabs')?.active, long.root);
+        assert.strictEqual(entire(), true);
+      });
+    });
+
     test('shows the diff of the last entire file choice when an earlier one answers last', async () => {
       const long = await tempRepository(path.join(folder, 'long-raced'));
       await long.commit('first', { 'a.txt': fortyLines(-1) });
