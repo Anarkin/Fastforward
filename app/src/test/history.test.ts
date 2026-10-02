@@ -5,6 +5,7 @@ import {
   parseLog,
   parseSearchedCommit,
   SearchMatches,
+  takeRecords,
 } from '../git/history';
 
 suite('Git log parser', () => {
@@ -85,6 +86,21 @@ suite('Commit search matching', () => {
 });
 
 suite('Commit search stream', () => {
+  test('cuts the commits by their fields, whatever their messages hold, keeping the unfinished one', () => {
+    assert.deepStrictEqual(
+      takeRecords(
+        'aaa\0A\0a@x\0B\0b@x\0One\x1eline\n\0bbb\0A\0a@x\0B\0b@x\0Two\n\0ccc\0A',
+      ),
+      {
+        records: [
+          'aaa\0A\0a@x\0B\0b@x\0One\x1eline\n',
+          'bbb\0A\0a@x\0B\0b@x\0Two\n',
+        ],
+        rest: 'ccc\0A',
+      },
+    );
+  });
+
   test('takes the commits that match from the one walk of the history, settling at one past the limit without waiting for the rest', () => {
     const matches = new SearchMatches('ada', 2);
     assert.strictEqual(

@@ -565,6 +565,7 @@ suite('Commit search', function () {
       'Old Name <old@example.com>',
     );
     await search.commit('unrelated');
+    await search.commit('Separated\x1eby a record separator');
     fs.writeFileSync(
       path.join(search.root, '.mailmap'),
       'New Name <old@example.com>\n',
@@ -626,6 +627,14 @@ suite('Commit search', function () {
     assert.deepStrictEqual(await subjectsFound('text\n\nélan'), [
       [literal, ['message']],
     ]);
+  });
+
+  test('searches the whole of a commit with a record separator in its message', async () => {
+    const subject = 'Separated\x1eby a record separator';
+    assert.deepStrictEqual(await subjectsFound('by a record'), [
+      [subject, ['message']],
+    ]);
+    assert.deepStrictEqual(await subjectsFound('fine'), []);
   });
 
   test('stops when cancelled', async () => {
