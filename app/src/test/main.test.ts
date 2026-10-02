@@ -1,9 +1,17 @@
 import * as assert from 'node:assert';
+import { EventEmitter } from 'node:events';
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
+import { PassThrough } from 'node:stream';
 import { appFile, visibleBounds } from '../main/files';
 import { flushBeforeQuit } from '../main/quit';
-import { loginShellPath, mergePaths, pathFromOutput } from '../main/shellPath';
+import {
+  loginShellPath,
+  mergePaths,
+  pathFromOutput,
+  pathFromShell,
+} from '../main/shellPath';
 import { checksForUpdates } from '../main/updates';
 import { installedGit } from './repositories';
 
@@ -98,6 +106,39 @@ suite('Login shell PATH', () => {
       ),
     });
     assert.match(found ?? '', /fastforward-probe/);
+  });
+
+  test("reads the PATH when the shell's profile waits for input", async function () {
+    this.timeout(10_000);
+    const shell =
+      process.platform === 'win32'
+        ? gitShell(await installedGit())
+        : '/bin/bash';
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'fastforward-shell-'));
+    try {
+      for (const profile of ['.bash_profile', '.profile']) {
+        fs.writeFileSync(path.join(home, profile), 'read answer\n');
+      }
+      const found = await loginShellPath(
+        { ...process.env, HOME: home, SHELL: shell },
+        3000,
+      );
+      assert.ok(found);
+    } finally {
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  test('gives up on a shell that never prints the PATH, killing it for good', async () => {
+    const signals: unknown[] = [];
+    const stdout = new PassThrough();
+    stdout.write('Update now? [y/N] ');
+    const shell = Object.assign(new EventEmitter(), {
+      stdout,
+      kill: (signal: unknown) => signals.push(signal) > 0,
+    });
+    assert.strictEqual(await pathFromShell(shell, 10), undefined);
+    assert.deepStrictEqual(signals, ['SIGKILL']);
   });
 
   test("reads the PATH between the markers, past what the shell's profile prints", () => {
