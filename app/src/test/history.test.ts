@@ -1,11 +1,10 @@
 import * as assert from 'node:assert';
 import {
   matchedFields,
-  messageGrep,
   parseHistory,
   parseLog,
   parseSearchedCommit,
-  SearchMerge,
+  SearchMatches,
 } from '../git/history';
 
 suite('Git log parser', () => {
@@ -85,49 +84,35 @@ suite('Commit search matching', () => {
   });
 });
 
-suite('Commit search streams', () => {
-  test('leaves the messages to git for printable ASCII text, taken literally and ignoring case', () => {
-    assert.deepStrictEqual(messageGrep('Fix (a+b)*[c]\\d?'), [
-      '--regexp-ignore-case',
-      '--fixed-strings',
-      '--grep=Fix (a+b)*[c]\\d?',
-    ]);
-    for (const query of ['', 'élan', 'line\nbreak']) {
-      assert.deepStrictEqual(messageGrep(query), [], query);
-    }
-  });
-
-  test('goes through every commit in order, waiting for the commits whose message matched, until the limit', () => {
-    const merge = new SearchMerge('ada', 2, false);
-    assert.strictEqual(merge.addIdent('aaa\0Ada\0a@x\0B\0b@x'), undefined);
-    assert.strictEqual(merge.addIdent('bbb\0B\0b@x\0B\0b@x'), undefined);
-    assert.strictEqual(merge.addIdent('ccc\0B\0b@x\0B\0b@x'), undefined);
-    assert.strictEqual(merge.addIdent('ddd\0B\0b@x\0Ada\0a@x'), undefined);
+suite('Commit search stream', () => {
+  test('takes the commits that match from the one walk of the history, settling at one past the limit without waiting for the rest', () => {
+    const matches = new SearchMatches('ada', 2);
     assert.strictEqual(
-      merge.addMessage('aaa\0Ada\0a@x\0B\0b@x\0About ada'),
+      matches.add('aaa\0Ada\0a@x\0B\0b@x\0About ada'),
       undefined,
     );
-    assert.strictEqual(merge.addMessage('ccc\0B\0b@x\0B\0b@x\0ADA'), undefined);
-    assert.deepStrictEqual(merge.endMessages(), {
+    assert.strictEqual(matches.add('bbb\0B\0b@x\0B\0b@x\0Nothing'), undefined);
+    assert.strictEqual(matches.add('ccc\0B\0b@x\0Ada\0a@x\0'), undefined);
+    assert.deepStrictEqual(matches.add('ddd\0B\0b@x\0B\0b@x\0ADA'), {
       found: [
         { hash: 'aaa', fields: ['author', 'message'] },
-        { hash: 'ccc', fields: ['message'] },
+        { hash: 'ccc', fields: ['committer'] },
       ],
       capped: true,
     });
   });
 
-  test('ends after the last commit, finding by their names the commits git matched no message of', () => {
-    const merge = new SearchMerge('ada', 5, false);
-    merge.addIdent('aaa\0Ada\0a@x\0B\0b@x');
-    assert.strictEqual(merge.endIdents(), undefined);
-    assert.deepStrictEqual(merge.endMessages(), {
+  test('ends after the last commit, with every match in any letters', () => {
+    const matches = new SearchMatches('ada', 5);
+    matches.add('aaa\0Ada\0a@x\0B\0b@x\0');
+    matches.add('bbb\0B\0b@x\0B\0b@x\0Nothing');
+    assert.deepStrictEqual(matches.end(), {
       found: [{ hash: 'aaa', fields: ['author'] }],
       capped: false,
     });
-    const whole = new SearchMerge('ÉLAN', 5, true);
-    whole.addIdent('aaa\0B\0b@x\0B\0b@x\0élan');
-    assert.deepStrictEqual(whole.endIdents(), {
+    const whole = new SearchMatches('ÉLAN', 5);
+    whole.add('aaa\0B\0b@x\0B\0b@x\0élan');
+    assert.deepStrictEqual(whole.end(), {
       found: [{ hash: 'aaa', fields: ['message'] }],
       capped: false,
     });
