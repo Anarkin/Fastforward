@@ -311,6 +311,7 @@ export class FastforwardView {
       case 'pinEntireFile': {
         await storage.setEntireFilePinned(message.pinned);
         const context = await this.context(session);
+        this.staleDiffs(context, (tab) => tab.path !== undefined);
         if (context?.tab.hash !== undefined && context.tab.path !== undefined) {
           await this.sendDiff(context, context.tab.hash);
         }
@@ -326,6 +327,7 @@ export class FastforwardView {
       case 'setIgnoreWhitespace': {
         await storage.setIgnoreWhitespace(message.ignore);
         const context = await this.context(session);
+        this.staleDiffs(context, () => true);
         if (context?.tab.hash !== undefined) {
           await this.sendDiff(context, context.tab.hash);
         }
@@ -560,13 +562,26 @@ export class FastforwardView {
     await allSettled([this.watch(context, session), this.showTab(context)]);
   }
 
-  private async showTab(context: Context): Promise<void> {
-    if (context.tab.entireFile) {
-      context.tab.entireFile = false;
-      const { hash, path: file } = context.tab;
-      if (hash !== undefined && file !== undefined) {
-        await this.sendDiff(context, hash);
+  private staleDiffs(
+    active: Context | undefined,
+    affected: (tab: TabState) => boolean,
+  ): void {
+    for (const tab of this.tabStates.values()) {
+      if (tab !== active?.tab && tab.hash !== undefined && affected(tab)) {
+        tab.diffStale = true;
       }
+    }
+  }
+
+  private async showTab(context: Context): Promise<void> {
+    const { tab } = context;
+    const resend =
+      (tab.entireFile && tab.path !== undefined) ||
+      (tab.diffStale && tab.opened);
+    tab.entireFile = false;
+    tab.diffStale = false;
+    if (resend && tab.hash !== undefined) {
+      await this.sendDiff(context, tab.hash);
     }
     const firstOpen = !context.tab.opened;
     context.tab.opened = true;

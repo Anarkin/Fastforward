@@ -2574,6 +2574,46 @@ suite('View', function () {
       });
     });
 
+    test('shows the diffs of the other tabs with the whitespace and entire file choices made in another', async () => {
+      const spaced = await tempRepository(path.join(folder, 'spaced-tabs'));
+      await spaced.commit('first', { 'a.txt': fortyLines(-1) });
+      await spaced.commit('indent', { 'a.txt': `  ${fortyLines(19)}` });
+      const [indent] = await spaced.resolve('HEAD');
+      await withView(log, [spaced.root, other], async (view) => {
+        const patch = () => view.page.last('diff')?.patch ?? '';
+        const selectTab = (root: string) =>
+          view.connection.receive({ type: 'selectTab', root });
+        await view.connection.receive({ type: 'pinEntireFile', pinned: false });
+        await selectTab(spaced.root);
+        await view.connection.receive({
+          type: 'selectCommit',
+          root: spaced.root,
+          hash: indent,
+        });
+        assert.doesNotMatch(patch(), /^\+ {2}line 1$/m);
+
+        await selectTab(other);
+        await view.connection.receive({
+          type: 'setIgnoreWhitespace',
+          ignore: false,
+        });
+        await selectTab(spaced.root);
+        assert.match(patch(), /^\+ {2}line 1$/m);
+
+        await view.connection.receive({
+          type: 'selectFile',
+          root: spaced.root,
+          hash: indent,
+          path: 'a.txt',
+        });
+        assert.doesNotMatch(patch(), /^ line 40$/m);
+        await selectTab(other);
+        await view.connection.receive({ type: 'pinEntireFile', pinned: true });
+        await selectTab(spaced.root);
+        assert.match(patch(), /^ line 40$/m);
+      });
+    });
+
     test('opens the settings files through the app', async () => {
       const host = new FakeHost();
       await withView(
