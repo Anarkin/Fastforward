@@ -1,6 +1,9 @@
 import * as assert from 'node:assert';
 import { execFile, spawn } from 'node:child_process';
 import { once } from 'node:events';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import { exitedWith, gitConfigArgs, gitEnv, stopGit } from '../git/run';
 
 suite('Running git', () => {
@@ -32,25 +35,58 @@ suite('Running git', () => {
       this.skip();
     }
     this.timeout(20_000);
-    const launcher = spawn('cmd.exe', ['/c', 'ping -n 60 127.0.0.1 > nul'], {
-      windowsHide: true,
-    });
-    let started: string[] = [];
-    while (started.length === 0) {
-      started = await powershell(
-        `(Get-CimInstance Win32_Process -Filter "ParentProcessId=${launcher.pid}").ProcessId`,
-      );
+    await stopsWhatItStarted();
+  });
+
+  test('stops git with the system taskkill, not one in the current folder', async function () {
+    if (process.platform !== 'win32') {
+      this.skip();
     }
-    stopGit(launcher);
-    await once(launcher, 'close');
-    assert.deepStrictEqual(
-      await powershell(
-        `(Get-Process -Id ${started.join(',')} -ErrorAction SilentlyContinue).Id`,
+    this.timeout(20_000);
+    const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'fastforward-run-'));
+    fs.copyFileSync(
+      path.join(
+        process.env.SystemRoot ?? 'C:\\Windows',
+        'System32',
+        'hostname.exe',
       ),
-      [],
+      path.join(folder, 'taskkill.exe'),
     );
+    const cwd = process.cwd();
+    const noCurrent = process.env.NoDefaultCurrentDirectoryInExePath;
+    delete process.env.NoDefaultCurrentDirectoryInExePath;
+    process.chdir(folder);
+    try {
+      await stopsWhatItStarted();
+    } finally {
+      process.chdir(cwd);
+      if (noCurrent !== undefined) {
+        process.env.NoDefaultCurrentDirectoryInExePath = noCurrent;
+      }
+      fs.rmSync(folder, { recursive: true, force: true });
+    }
   });
 });
+
+async function stopsWhatItStarted(): Promise<void> {
+  const launcher = spawn('cmd.exe', ['/c', 'ping -n 60 127.0.0.1 > nul'], {
+    windowsHide: true,
+  });
+  let started: string[] = [];
+  while (started.length === 0) {
+    started = await powershell(
+      `(Get-CimInstance Win32_Process -Filter "ParentProcessId=${launcher.pid}").ProcessId`,
+    );
+  }
+  stopGit(launcher);
+  await once(launcher, 'close');
+  assert.deepStrictEqual(
+    await powershell(
+      `(Get-Process -Id ${started.join(',')} -ErrorAction SilentlyContinue).Id`,
+    ),
+    [],
+  );
+}
 
 function powershell(command: string): Promise<string[]> {
   return new Promise((resolve, reject) => {
