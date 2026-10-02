@@ -11,6 +11,10 @@ import {
   wordRanges,
 } from '../webview/wordDiff';
 
+function tokens(count: number): string[] {
+  return Array.from({ length: count }, () => 'x');
+}
+
 function pieces(lines: readonly string[], ranges: readonly FindRange[][]) {
   return lines.map((line, index) =>
     ranges[index].map((range) => line.slice(range.start, range.end)),
@@ -79,6 +83,11 @@ suite('Word diff', () => {
     assert.strictEqual(blockWordRanges([], ['bar']), undefined);
     const long = 'x '.repeat(1000);
     assert.strictEqual(blockWordRanges([long], [long + 'y']), undefined);
+  });
+
+  test('compares a block of up to 1 million removed by added tokens, spaces and punctuation counting as tokens', () => {
+    assert.ok(changedTokens(tokens(1000), tokens(1000)));
+    assert.strictEqual(changedTokens(tokens(1000), tokens(1001)), undefined);
   });
 
   test('compares each run of removed lines with the added lines after it, keyed as the search keys lines', () => {
