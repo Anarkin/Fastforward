@@ -145,6 +145,23 @@ suite('Git repository', function () {
     }
   });
 
+  test('finds the root of the repository a folder is in through a link to it', async () => {
+    fs.mkdirSync(path.join(cwd, 'sub', 'deep'), { recursive: true });
+    const outside = tempFolder('link');
+    try {
+      const link = path.join(outside, 'link');
+      fs.symlinkSync(path.join(cwd, 'sub', 'deep'), link, 'junction');
+      const root = await repositoryRoot(gitPath, link);
+      assert.ok(root !== undefined);
+      assert.strictEqual(
+        fs.realpathSync.native(root),
+        fs.realpathSync.native(cwd),
+      );
+    } finally {
+      removeFolder(outside);
+    }
+  });
+
   test('finds no root in a bare repository or a git folder, which have no working tree', async () => {
     const bare = await tempRepository(tempFolder('bare'), { bare: true });
     try {

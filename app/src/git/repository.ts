@@ -1,3 +1,4 @@
+import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { RefInfo } from '../shared/protocol';
 import type { Head } from '../refs';
@@ -13,16 +14,33 @@ export async function repositoryRoot(
   folder: string,
 ): Promise<string | undefined> {
   try {
-    const [inside, up = ''] = (
+    const [inside, up = '', top = ''] = (
       await runGit(gitPath, folder, [
         'rev-parse',
         '--is-inside-work-tree',
         '--show-cdup',
+        '--show-toplevel',
       ])
     ).split('\n');
-    return inside === 'true' ? path.resolve(folder, up) : undefined;
+    if (inside !== 'true') {
+      return undefined;
+    }
+    const root = path.resolve(folder, up);
+    return (await sameFolder(root, top)) ? root : path.resolve(top);
   } catch {
     return undefined;
+  }
+}
+
+// Git walks up from the folder after following links, so going up from the
+// folder as given only reaches the root when no link was followed; that keeps
+// the folder's own spelling, unlike the top level git gives
+async function sameFolder(a: string, b: string): Promise<boolean> {
+  try {
+    const [realA, realB] = await Promise.all([fs.realpath(a), fs.realpath(b)]);
+    return realA === realB;
+  } catch {
+    return false;
   }
 }
 
