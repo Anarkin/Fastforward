@@ -75,9 +75,11 @@ const refreshMaxDelay = 1500;
 
 interface Tab extends TabState {
   preloading: Promise<void> | undefined;
-  refreshing: Promise<void> | undefined;
+  refreshing: boolean;
   refreshAgain: Map<Session | undefined, Context>;
   refreshRefsAgain: boolean;
+  refreshedAgain: PromiseWithResolvers<void> | undefined;
+  loadsAgain: Refresh[];
   isRepository: boolean;
   fetching: { fetched: Promise<Fetched>; interactive: boolean } | undefined;
   fetchFailed: boolean;
@@ -105,6 +107,11 @@ interface Session {
   readonly post: (message: ToWebview) => void;
   watcher: Watcher | undefined;
   disposed: boolean;
+}
+
+interface Refresh {
+  readonly run: () => Promise<void>;
+  readonly done: PromiseWithResolvers<void>;
 }
 
 interface Context extends RepositoryAt {
@@ -716,9 +723,11 @@ export class FastforwardView {
       tab = {
         ...newTabState(),
         preloading: undefined,
-        refreshing: undefined,
+        refreshing: false,
         refreshAgain: new Map(),
         refreshRefsAgain: false,
+        refreshedAgain: undefined,
+        loadsAgain: [],
         isRepository: false,
         fetching: undefined,
         fetchFailed: false,
@@ -1052,49 +1061,49 @@ export class FastforwardView {
     refs = true,
   ): Promise<void> {
     const { tab } = context;
-    if (tab.refreshing) {
-      if (!load) {
-        tab.refreshAgain.set(context.session, context);
-        tab.refreshRefsAgain ||= refs;
-        return tab.refreshing;
-      }
-      return tab.refreshing
-        .catch(() => undefined)
-        .then(() => this.refresh(context, load));
+    const run = () => (load ? load(context) : this.refreshOnce(context, refs));
+    if (!tab.refreshing) {
+      const done = Promise.withResolvers<void>();
+      tab.refreshing = true;
+      void this.runRefreshes(tab, { run, done });
+      return done.promise;
     }
-    tab.refreshing = (async () => {
-      let failure: { error: unknown } | undefined;
-      const attempt = async (run: () => Promise<void>) => {
-        try {
-          await run();
-        } catch (error) {
-          failure ??= { error };
-        }
-      };
+    if (load) {
+      const done = Promise.withResolvers<void>();
+      tab.loadsAgain.push({ run, done });
+      return done.promise;
+    }
+    tab.refreshAgain.set(context.session, context);
+    tab.refreshRefsAgain ||= refs;
+    tab.refreshedAgain ??= Promise.withResolvers();
+    return tab.refreshedAgain.promise;
+  }
+
+  private async runRefreshes(tab: Tab, first: Refresh): Promise<void> {
+    let next: Refresh | undefined = first;
+    while (next) {
       try {
-        await attempt(() =>
-          load ? load(context) : this.refreshOnce(context, refs),
-        );
-        for (;;) {
-          const again = toAll([...tab.refreshAgain.values()]);
-          if (!again) {
-            break;
-          }
-          const refsAgain = tab.refreshRefsAgain;
-          tab.refreshAgain.clear();
-          tab.refreshRefsAgain = false;
-          await attempt(() => this.refreshOnce(again, refsAgain));
-        }
-      } finally {
-        tab.refreshing = undefined;
-        tab.refreshAgain.clear();
-        tab.refreshRefsAgain = false;
+        await next.run();
+        next.done.resolve();
+      } catch (error) {
+        next.done.reject(error);
       }
-      if (failure) {
-        throw failure.error;
-      }
-    })();
-    return tab.refreshing;
+      next = tab.loadsAgain.shift() ?? this.queuedRefresh(tab);
+    }
+    tab.refreshing = false;
+  }
+
+  private queuedRefresh(tab: Tab): Refresh | undefined {
+    const again = toAll([...tab.refreshAgain.values()]);
+    const done = tab.refreshedAgain;
+    if (!again || !done) {
+      return undefined;
+    }
+    const refs = tab.refreshRefsAgain;
+    tab.refreshAgain.clear();
+    tab.refreshRefsAgain = false;
+    tab.refreshedAgain = undefined;
+    return { run: () => this.refreshOnce(again, refs), done };
   }
 
   private async refreshOnce(context: Context, refs = true): Promise<void> {

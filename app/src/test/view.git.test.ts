@@ -1328,6 +1328,51 @@ suite('View', function () {
       }
     });
 
+    test('applies Solo and ends a refresh while refreshes keep being asked for', async () => {
+      await connection.refresh();
+      let refilling = true;
+      const refresh: unknown = Reflect.get(fastforward, 'refresh');
+      assert.ok(typeof refresh === 'function');
+      stubMethod(fastforward, 'refreshOnce', async (original, ...args) => {
+        await original(...args);
+        if (refilling) {
+          const queued: unknown = Reflect.apply(refresh, fastforward, [
+            args[0],
+          ]);
+          void Promise.resolve(queued).catch(() => undefined);
+        }
+      });
+      const looping = connection.refresh();
+      try {
+        page.clear();
+        const solo = connection.receive({
+          type: 'setSolo',
+          root: repository.root,
+          solo: true,
+        });
+        await waitFor(
+          () => page.last('applyingSolo')?.running === false,
+          'Solo to be applied',
+          5000,
+        );
+        await solo;
+        let refreshed = false;
+        const refreshing = connection.refresh().then(() => {
+          refreshed = true;
+        });
+        await waitFor(() => refreshed, 'the refresh to end', 5000);
+        await refreshing;
+      } finally {
+        refilling = false;
+        await looping;
+        await connection.receive({
+          type: 'setSolo',
+          root: repository.root,
+          solo: false,
+        });
+      }
+    });
+
     test('takes only hashes of the history from the page', async () => {
       const written = path.join(folder, 'written.txt');
       const hash = `--output=${written}`;
