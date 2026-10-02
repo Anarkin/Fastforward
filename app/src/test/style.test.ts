@@ -4,6 +4,9 @@ import {
   commitRowHeight,
   workingTreeRowHeight,
 } from '../webview/commitList';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { DiffOptions } from '../webview/diffColumn';
 import { rowHeight } from '../webview/diffView';
 import { stylesheet } from './fixtures';
 
@@ -73,6 +76,35 @@ suite('Style', () => {
       row,
       new RegExp(`padding: 0 var\\(--search-gap\\) 0 ${edge[1]};`),
     );
+  });
+
+  test('wraps long lines of code at spaces, breaking a word only where it would not fit, in rows as tall as their lines', () => {
+    const code = declarationsOf('.diff-view.wrap .diff-line .code');
+    assert.match(code, /white-space: pre-wrap;/);
+    assert.match(code, /overflow-wrap: anywhere;/);
+    assert.match(code, /min-width: 0;/);
+    const line = declarationsOf('.diff-view.wrap .diff-line');
+    assert.match(line, /height: auto;/);
+    assert.match(line, /min-height: var\(--diff-line-height\);/);
+    assert.match(
+      declarationsOf('.diff-view.wrap .virtual-row.diff-row'),
+      /width: 100%;/,
+    );
+    const split = declarationsOf('.diff-view.wrap .split-code .code');
+    assert.match(split, /display: block;/);
+    assert.match(split, /transform: none;/);
+  });
+
+  test('wraps the lines that reach the right edge before the minimap, keeping their rows tinted under it', () => {
+    for (const selector of [
+      '.diff-view.wrap .diff-line:not(.split-side) .code',
+      '.diff-view.wrap .split-side:last-child .code',
+    ]) {
+      assert.match(
+        declarationsOf(selector),
+        /padding-right: calc\(6px \+ var\(--minimap-width\)\);/,
+      );
+    }
   });
 
   test('draws a tab in the code as wide as four spaces', () => {
@@ -600,11 +632,30 @@ suite('Style', () => {
     );
   });
 
-  test('keeps the titles clear of the three buttons the Files column has on the left, and the six on the left and two on the right the Diff column has, its search field never squeezed out', () => {
+  test('keeps the titles clear of the three buttons the Files column has on the left, and of the buttons and gaps the Diff column has on the left and the two on the right, its search field never squeezed out', () => {
     const files = declarationsOf('.column-title:has(.all-files)');
     assert.strictEqual(pixels(files, 'padding-left'), 4 + 3 * 26 + 2 * 2 + 8);
+    const options = renderToStaticMarkup(
+      createElement(DiffOptions, {
+        entire: false,
+        pinned: false,
+        canShow: true,
+        ignoreWhitespace: false,
+        wordWrap: false,
+        onEntire: () => undefined,
+        onPin: () => undefined,
+        onIgnoreWhitespace: () => undefined,
+        onWordWrap: () => undefined,
+        layout: 'inline',
+        onLayout: () => undefined,
+      }),
+    );
+    const slots = options.match(/class="nav-button[ "-]/g)?.length ?? 0;
     const diff = declarationsOf('.column-title:has(.diff-options)');
-    assert.strictEqual(pixels(diff, 'padding-left'), 4 + 6 * 26 + 5 * 2 + 8);
+    assert.strictEqual(
+      pixels(diff, 'padding-left'),
+      4 + slots * 26 + (slots - 1) * 2 + 8,
+    );
     assert.strictEqual(pixels(diff, 'padding-right'), 4 + 2 * 26 + 2 + 8);
     assert.ok(declarationsOf('.diff-find').includes('min-width: 100px;'));
   });

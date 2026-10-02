@@ -13,8 +13,18 @@ import {
   tempRepository,
   type TempRepository,
 } from './repositories';
+import { wrapColumns, wrappedLines } from '../webview/wordWrap';
 
 const appFolder = path.join(__dirname, '..', '..');
+
+const longLine = Array.from({ length: 80 }, (_, index) => `word${index}`).join(
+  ' ',
+);
+const longLines = Array.from(
+  { length: 200 },
+  (_, index) => `line${index} ${longLine}`,
+);
+const [firstLongLine] = longLines;
 
 suite('App', function () {
   this.timeout(60_000);
@@ -31,6 +41,7 @@ suite('App', function () {
     repository = await tempRepository(path.join(folder, 'repo'));
     await repository.commit('first', {
       'kept.txt': 'kept\n',
+      'long.txt': `${longLines.join('\n')}\n`,
       'changed.txt': 'one\ntwo\nthree\n',
     });
     await repository.commit('second', { 'changed.txt': 'one\n2\nthree\n' });
@@ -295,6 +306,101 @@ suite('App', function () {
           .getPropertyValue('--color-focus')
           .trim() !== '#123456',
     );
+  });
+
+  test('wraps long lines on its button or W, each row as tall as the lines the app expects its text to wrap to, clear of the minimap, keeping the line at the top in place, saving the choice', async () => {
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await page.locator('.row.file', { hasText: 'long.txt' }).click();
+    const row = page.locator('.diff-row', {
+      has: page.locator('.code', { hasText: firstLongLine }),
+    });
+    await row.waitFor();
+    assert.strictEqual((await row.boundingBox())?.height, 22);
+    await page.getByRole('button', { name: 'Word Wrap' }).click();
+    await page.locator('.diff-view.wrap').waitFor();
+    await page.waitForFunction(
+      (text) =>
+        [...document.querySelectorAll('.diff-row')].some(
+          (wrapped) =>
+            wrapped.querySelector('.code')?.textContent === text &&
+            wrapped.getBoundingClientRect().height > 22,
+        ),
+      firstLongLine,
+    );
+    const laidOut = await row.evaluate((element) => {
+      const code = element.querySelector('.code');
+      const minimap = document.querySelector('.diff-minimap');
+      if (!code || !minimap) {
+        throw new Error('No code or minimap');
+      }
+      const style = getComputedStyle(code);
+      const sample = document.createElement('span');
+      sample.style.font = style.font;
+      sample.style.whiteSpace = 'pre';
+      sample.textContent = '0'.repeat(100);
+      document.body.append(sample);
+      const char = sample.getBoundingClientRect().width / 100;
+      sample.remove();
+      const text = document.createRange();
+      text.selectNodeContents(code);
+      return {
+        height: element.getBoundingClientRect().height,
+        width:
+          code.getBoundingClientRect().width -
+          parseFloat(style.paddingLeft) -
+          parseFloat(style.paddingRight),
+        char,
+        right: text.getBoundingClientRect().right,
+        minimap: minimap.getBoundingClientRect().left,
+      };
+    });
+    assert.strictEqual(
+      laidOut.height,
+      wrappedLines(firstLongLine, wrapColumns(laidOut.width, laidOut.char)) *
+        22,
+    );
+    assert.ok(laidOut.right <= laidOut.minimap, JSON.stringify(laidOut));
+    const userSettings = path.join(profile, 'settings.user.json');
+    await waitFor(
+      () => fs.readFileSync(userSettings, 'utf8').includes('"wordWrap": true'),
+      'the choice to be saved',
+    );
+    const list = page.locator('.diff-view .virtual-rows');
+    await list.evaluate((element) => {
+      element.scrollTop = element.scrollHeight / 2;
+    });
+    const topLine = () =>
+      list.evaluate((element) => {
+        const top = element.getBoundingClientRect().top + 0.5;
+        const atTop = [...element.querySelectorAll('.diff-row')].find(
+          (candidate) => {
+            const box = candidate.getBoundingClientRect();
+            return box.top <= top && box.bottom > top;
+          },
+        );
+        return atTop?.querySelector('.code')?.textContent?.split(' ')[0];
+      });
+    await page.waitForTimeout(100);
+    const reading = await topLine();
+    assert.match(reading ?? '', /^line[1-9]\d*$/);
+    for (const wrapped of [false, true]) {
+      await page.keyboard.press('w');
+      await page
+        .locator('.diff-view.wrap')
+        .waitFor({ state: wrapped ? 'attached' : 'detached' });
+      await page.waitForTimeout(100);
+      assert.strictEqual(await topLine(), reading);
+    }
+    for (const change of [
+      () => page.getByRole('button', { name: 'Side by Side' }).click(),
+      () => page.keyboard.press('w'),
+      () => page.getByRole('button', { name: 'Inline' }).click(),
+      () => page.keyboard.press('w'),
+    ]) {
+      await change();
+      await page.waitForTimeout(100);
+      assert.strictEqual(await topLine(), reading);
+    }
   });
 
   test('refreshes by itself when the working tree changes', async () => {

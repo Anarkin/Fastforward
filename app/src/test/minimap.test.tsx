@@ -73,6 +73,15 @@ suite('Minimap', () => {
     ]);
   });
 
+  test('counts the measured height of a wrapped line over the height of one row', () => {
+    const rows = minimapRows([line('context'), line('added')], (index) =>
+      index === 0 ? 66 : 22,
+    );
+    assert.deepStrictEqual(minimapMarks(rows), [
+      { kind: 'added', top: 66 / 88, height: 22 / 88 },
+    ]);
+  });
+
   test('marks nothing in an empty or unchanged file', () => {
     assert.deepStrictEqual(minimapMarks([]), []);
     assert.deepStrictEqual(

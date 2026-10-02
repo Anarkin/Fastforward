@@ -3,6 +3,7 @@
   "showAllFiles": false,
   "entireFilePinned": true,
   "ignoreWhitespace": true,
+  "wordWrap": false,
   "diffLayout": "inline",
   "solo": false,
   "autoFetch": false,

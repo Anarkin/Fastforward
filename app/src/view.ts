@@ -332,6 +332,9 @@ export class FastforwardView {
       case 'setDiffLayout':
         await storage.setDiffLayout(message.layout);
         return;
+      case 'setWordWrap':
+        await storage.setWordWrap(message.wrap);
+        return;
       case 'setIgnoreWhitespace': {
         await storage.setIgnoreWhitespace(message.ignore);
         const context = await this.context(session);

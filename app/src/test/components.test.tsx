@@ -143,27 +143,61 @@ function clickFile(row: React.ReactElement) {
   drawn.props.onClick();
 }
 
+type DiffOptionsProps = Parameters<typeof DiffOptions>[0];
+
+function diffOptionsProps(
+  overrides: Partial<DiffOptionsProps> = {},
+): DiffOptionsProps {
+  return {
+    entire: false,
+    pinned: false,
+    canShow: true,
+    ignoreWhitespace: false,
+    wordWrap: false,
+    onEntire: noop,
+    onPin: noop,
+    onIgnoreWhitespace: noop,
+    onWordWrap: noop,
+    layout: 'inline',
+    onLayout: noop,
+    ...overrides,
+  };
+}
+
+function diffOptionButtons(overrides: Partial<DiffOptionsProps> = {}) {
+  const element = DiffOptions(diffOptionsProps(overrides));
+  assert.ok(
+    isValidElement<{
+      children: React.ReactElement<{
+        title?: string;
+        'aria-pressed'?: boolean;
+        onClick?: () => void;
+      }>[];
+    }>(element),
+  );
+  return element.props.children.filter((child) => child.type === 'button');
+}
+
 function entireFileButtons(
   entire: boolean,
   pinned: boolean,
   canShow = true,
   ignoreWhitespace = false,
+  wordWrap = false,
 ) {
   const html = renderToStaticMarkup(
     <DiffOptions
-      entire={entire}
-      pinned={pinned}
-      canShow={canShow}
-      ignoreWhitespace={ignoreWhitespace}
-      onEntire={noop}
-      onPin={noop}
-      onIgnoreWhitespace={noop}
-      layout="inline"
-      onLayout={noop}
+      {...diffOptionsProps({
+        entire,
+        pinned,
+        canShow,
+        ignoreWhitespace,
+        wordWrap,
+      })}
     />,
   );
   return [...html.matchAll(/<button[^>]*>/g)]
-    .slice(0, 3)
+    .slice(0, 4)
     .map(([button]) =>
       [
         button.includes('aria-pressed="true"') ? 'on' : 'off',
@@ -178,15 +212,18 @@ suite('Diff options', () => {
       'off enabled',
       'off enabled',
       'off enabled',
+      'off enabled',
     ]);
     assert.deepStrictEqual(entireFileButtons(true, false), [
       'on enabled',
+      'off enabled',
       'off enabled',
       'off enabled',
     ]);
     assert.deepStrictEqual(entireFileButtons(false, true), [
       'on disabled',
       'on enabled',
+      'off enabled',
       'off enabled',
     ]);
   });
@@ -196,62 +233,50 @@ suite('Diff options', () => {
       'off disabled',
       'off enabled',
       'off enabled',
+      'off enabled',
     ]);
   });
 
-  test('ignores whitespace on its own toggle, set apart from the others on both sides', () => {
+  test('ignores whitespace and wraps long lines on their own toggles, set apart from the others on both sides', () => {
     assert.deepStrictEqual(entireFileButtons(false, false, true, true), [
       'off enabled',
       'off enabled',
       'on enabled',
+      'off enabled',
     ]);
-    const html = renderToStaticMarkup(
-      <DiffOptions
-        entire={false}
-        pinned={false}
-        canShow
-        ignoreWhitespace={false}
-        onEntire={noop}
-        onPin={noop}
-        onIgnoreWhitespace={noop}
-        layout="inline"
-        onLayout={noop}
-      />,
-    );
+    assert.deepStrictEqual(entireFileButtons(false, false, true, false, true), [
+      'off enabled',
+      'off enabled',
+      'off enabled',
+      'on enabled',
+    ]);
+    const html = renderToStaticMarkup(<DiffOptions {...diffOptionsProps()} />);
     assert.match(
       html,
-      /<\/button><span class="nav-button-space"><\/span><button[^>]*title="Ignore Whitespace"/,
+      /<\/button><span class="nav-button-space"><\/span><button[^>]*title="Ignore Whitespace"[^>]*>.*?<\/button><button[^>]*title="Word Wrap"[^>]*>.*?<\/button><span class="nav-button-space"><\/span><button[^>]*title="Inline"/,
     );
-    assert.match(
-      html,
-      /<\/button><span class="nav-button-space"><\/span><button[^>]*title="Inline"/,
-    );
+  });
+
+  test('wraps long lines on its toggle, and stops on it again', () => {
+    for (const wordWrap of [false, true]) {
+      const wrapped: boolean[] = [];
+      const [button] = diffOptionButtons({
+        wordWrap,
+        onWordWrap: (wrap) => wrapped.push(wrap),
+      }).filter((child) => child.props.title?.toLowerCase().includes('wrap'));
+      assert.strictEqual(button.props['aria-pressed'], wordWrap);
+      button.props.onClick?.();
+      assert.deepStrictEqual(wrapped, [!wordWrap]);
+    }
   });
 
   test('shows the diff inline or side by side, the chosen layout pressed, switching on the other', () => {
     for (const layout of ['inline', 'sideBySide'] as const) {
       const picked: string[] = [];
-      const element = DiffOptions({
-        entire: false,
-        pinned: false,
-        canShow: true,
-        ignoreWhitespace: false,
-        onEntire: noop,
-        onPin: noop,
-        onIgnoreWhitespace: noop,
+      const buttons = diffOptionButtons({
         layout,
         onLayout: (next) => picked.push(next),
-      });
-      assert.ok(
-        isValidElement<{
-          children: React.ReactElement<{
-            title?: string;
-            'aria-pressed'?: boolean;
-            onClick?: () => void;
-          }>[];
-        }>(element),
-      );
-      const buttons = element.props.children.filter(
+      }).filter(
         (button) =>
           button.props.title === 'Inline' ||
           button.props.title === 'Side by Side',

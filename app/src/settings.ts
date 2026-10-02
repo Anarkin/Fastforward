@@ -7,6 +7,7 @@ export interface Settings {
   readonly showAllFiles: boolean;
   readonly entireFilePinned: boolean;
   readonly ignoreWhitespace: boolean;
+  readonly wordWrap: boolean;
   readonly diffLayout: DiffLayout;
   readonly solo: boolean;
   readonly autoFetch: boolean;

@@ -158,6 +158,7 @@ export class Storage {
       collapseMerges: settings.collapseMerges,
       entireFilePinned: settings.entireFilePinned,
       ignoreWhitespace: settings.ignoreWhitespace,
+      wordWrap: settings.wordWrap,
       diffLayout: settings.diffLayout,
       showAllFiles: settings.showAllFiles,
       autoFetch: settings.autoFetch,
@@ -202,6 +203,10 @@ export class Storage {
 
   async setIgnoreWhitespace(ignore: boolean): Promise<void> {
     await this.userSettings.set('ignoreWhitespace', ignore);
+  }
+
+  async setWordWrap(wrap: boolean): Promise<void> {
+    await this.userSettings.set('wordWrap', wrap);
   }
 
   async setDiffLayout(layout: DiffLayout): Promise<void> {

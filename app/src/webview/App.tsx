@@ -112,6 +112,7 @@ export function App({ post: postToHost, listen }: Props) {
   } = tab;
   const [entireFilePinned, setEntireFilePinned] = useState(false);
   const [ignoreWhitespace, setIgnoreWhitespace] = useState(false);
+  const [wordWrap, setWordWrap] = useState(false);
   const [autoFetch, setAutoFetch] = useState(false);
   const [autoFetchMinutes, setAutoFetchMinutes] = useState(0);
   const [diffLayout, setDiffLayout] = useState<DiffLayout>('inline');
@@ -163,6 +164,7 @@ export function App({ post: postToHost, listen }: Props) {
           setCollapseMerges(message.collapseMerges);
           setEntireFilePinned(message.entireFilePinned);
           setIgnoreWhitespace(message.ignoreWhitespace);
+          setWordWrap(message.wordWrap);
           setDiffLayout(message.diffLayout);
           setShowAllFiles(message.showAllFiles);
           setAutoFetch(message.autoFetch);
@@ -356,6 +358,11 @@ export function App({ post: postToHost, listen }: Props) {
     setIgnoreWhitespace(ignore);
     post({ type: 'setIgnoreWhitespace', ignore });
   };
+  const changeWordWrap = (wrap: boolean) => {
+    setWordWrap(wrap);
+    post({ type: 'setWordWrap', wrap });
+  };
+  useShortcuts({ w: () => changeWordWrap(!wordWrap) });
   const changeDiffLayout = (layout: DiffLayout) => {
     setDiffLayout(layout);
     post({ type: 'setDiffLayout', layout });
@@ -617,6 +624,7 @@ export function App({ post: postToHost, listen }: Props) {
                     fileContent={fileContent}
                     error={error}
                     sideBySide={diffLayout === 'sideBySide'}
+                    wordWrap={wordWrap}
                     changeMarks={
                       path !== undefined && (entireFilePinned || entireFile)
                     }
@@ -629,6 +637,8 @@ export function App({ post: postToHost, listen }: Props) {
                         onPin={pinEntireFile}
                         ignoreWhitespace={ignoreWhitespace}
                         onIgnoreWhitespace={changeIgnoreWhitespace}
+                        wordWrap={wordWrap}
+                        onWordWrap={changeWordWrap}
                         layout={diffLayout}
                         onLayout={changeDiffLayout}
                       />

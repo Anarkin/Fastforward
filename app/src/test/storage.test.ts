@@ -37,6 +37,7 @@ suite('Storage', () => {
       collapseMerges: defaults.collapseMerges,
       entireFilePinned: defaults.entireFilePinned,
       ignoreWhitespace: defaults.ignoreWhitespace,
+      wordWrap: defaults.wordWrap,
       diffLayout: defaults.diffLayout,
       showAllFiles: defaults.showAllFiles,
       autoFetch: defaults.autoFetch,
