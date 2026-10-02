@@ -748,11 +748,13 @@ export function DiffView({
   const syntax = useSyntax(files, whole, texts, open);
   const requestedTexts = useRef(new Set<string>());
   useEffect(() => {
-    const load = whole ? [] : textsToLoad(files, diff, requestedTexts.current);
+    const load = whole
+      ? []
+      : textsToLoad(files, diff, requestedTexts.current, open);
     if (load.length > 0) {
       onLoadTexts(load);
     }
-  }, [files, whole, diff, onLoadTexts]);
+  }, [files, whole, diff, open, onLoadTexts]);
   const rangesByLine = useMemo(() => findRangesByLine(matches), [matches]);
   const found = matches.at(current);
   const foundKey = found && lineKey(found.file, found.line);

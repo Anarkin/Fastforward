@@ -614,20 +614,26 @@ suite('Syntax', () => {
     );
   });
 
-  test('colors sides from their hunks alone once the sides before take 20000 lines', () => {
-    const paths = ['a.ts', 'b.ts', 'c.ts'];
-    const files = parsePatch(
-      paths
-        .flatMap((path) => [
-          `diff --git a/${path} b/${path}`,
-          'index 1111111111111111111111111111111111111111..2222222222222222222222222222222222222222 100644',
-          '@@ -5000,1 +5000,1 @@',
-          '-old;',
-          '+new;',
-        ])
-        .concat('')
-        .join('\n'),
+  const paths = ['a.ts', 'b.ts', 'c.ts'];
+  const farFiles = parsePatch(
+    paths
+      .flatMap((path) => [
+        `diff --git a/${path} b/${path}`,
+        'index 1111111111111111111111111111111111111111..2222222222222222222222222222222222222222 100644',
+        '@@ -5000,1 +5000,1 @@',
+        '-old;',
+        '+new;',
+      ])
+      .concat('')
+      .join('\n'),
+  );
+
+  const farRequests = (open?: ReadonlySet<number>) =>
+    textsToLoad(farFiles, 1, new Set(), open).map(
+      ({ path, side }) => `${side}:${path}`,
     );
+
+  test('colors sides from their hunks alone once the sides before take 20000 lines', () => {
     const filler = Array.from({ length: 4999 }, () => 'x;');
     const texts = new Map(
       paths.flatMap((path) =>
@@ -638,11 +644,21 @@ suite('Syntax', () => {
       ),
     );
     assert.deepStrictEqual(
-      syntaxSources(files, undefined, texts).map(
+      syntaxSources(farFiles, undefined, texts).map(
         (source) => source.lines.length,
       ),
       [5000, 5000, 5000, 5000, 1, 1],
     );
+  });
+
+  test('asks for the whole texts of open files only, as long as the sides before take less than 20000 lines', () => {
+    assert.deepStrictEqual(farRequests(), [
+      'old:a.ts',
+      'new:a.ts',
+      'old:b.ts',
+      'new:b.ts',
+    ]);
+    assert.deepStrictEqual(farRequests(new Set([2])), ['old:c.ts', 'new:c.ts']);
   });
 
   test('draws the syntax colors inside the changed words, under the search matches', () => {
