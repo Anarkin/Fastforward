@@ -747,7 +747,10 @@ export function anchoredScrollTop(
     shows.some((id) => anchor.shows.includes(id)),
   );
   const row = index === -1 ? undefined : rows.at(index);
-  return row && row.start + anchor.fraction * row.size;
+  return (
+    row &&
+    row.start + Math.min(anchor.fraction * row.size, Math.max(0, row.size - 1))
+  );
 }
 
 export function stuckHeader(
