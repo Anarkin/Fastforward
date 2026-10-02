@@ -658,6 +658,7 @@ body.resizing {
   padding: 4px 8px;
   background: var(--color-border);
   border-bottom: 1px solid var(--color-border);
+  user-select: none;
 }
 
 .file-header .path {
