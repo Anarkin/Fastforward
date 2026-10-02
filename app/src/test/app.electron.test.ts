@@ -403,6 +403,44 @@ suite('App', function () {
     }
   });
 
+  test('scrolls the two sides of a side by side diff together on a sideways scrollbar, shown while a line is too wide', async () => {
+    const first = page.locator('.commit', { hasText: 'first' });
+    if (!(await first.evaluate((row) => row.classList.contains('selected')))) {
+      await first.click();
+    }
+    await page.locator('.row.file', { hasText: 'long.txt' }).click();
+    await page.getByRole('button', { name: 'Side by Side' }).click();
+    if ((await page.locator('.diff-view.wrap').count()) > 0) {
+      await page.keyboard.press('w');
+      await page.locator('.diff-view.wrap').waitFor({ state: 'detached' });
+    }
+    const code = page.locator('.split-row .split-code').nth(1);
+    await code.hover();
+    const bar = page.locator('.overlay-scrollbar.horizontal.shown');
+    await bar.waitFor();
+    const before = await code.locator('.code').boundingBox();
+    const thumb = await bar.boundingBox();
+    assert.ok(before && thumb);
+    await page.mouse.move(thumb.x + 5, thumb.y + thumb.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(thumb.x + 105, thumb.y + thumb.height / 2, {
+      steps: 5,
+    });
+    await page.mouse.up();
+    const after = await code.locator('.code').boundingBox();
+    assert.ok(after && after.x < before.x - 100, JSON.stringify(after));
+    const moved = await bar.boundingBox();
+    assert.ok(moved && moved.x > thumb.x + 90, JSON.stringify(moved));
+
+    await page.keyboard.press('w');
+    await page.locator('.diff-view.wrap').waitFor();
+    await page.mouse.move(0, 0);
+    await code.hover();
+    await page.waitForTimeout(100);
+    assert.strictEqual(await bar.count(), 0);
+    await page.getByRole('button', { name: 'Inline' }).click();
+  });
+
   test('refreshes by itself when the working tree changes', async () => {
     fs.writeFileSync(path.join(repository.root, 'new.txt'), 'new\n');
     await page
