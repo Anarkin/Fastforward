@@ -71,7 +71,9 @@ interface Props {
   listen: (handler: (message: ToWebview) => void) => () => void;
 }
 
-export function App({ post, listen }: Props) {
+export function App({ post: postToHost, listen }: Props) {
+  const outbox = useMemo(() => settling(postToHost), [postToHost]);
+  const post = outbox.send;
   const [tabs, setTabs] = useState<readonly TabInfo[]>([]);
   const [recent, setRecent] = useState<readonly TabInfo[]>([]);
   const [notices, setNotices] = useState<readonly Notice[]>([]);
@@ -248,7 +250,6 @@ export function App({ post, listen }: Props) {
     }
   }, [activeShown, commitsShown, layoutSelection, focusColumn]);
 
-  const postSelection = useMemo(() => settling(post), [post]);
   const selectCommit = (
     next: string | undefined,
     replace = false,
@@ -258,7 +259,7 @@ export function App({ post, listen }: Props) {
     dispatch({ type: 'showCommit', hash: target });
     const root = activeTabRef.current;
     if (root !== undefined) {
-      postSelection(
+      outbox.settle(
         { type: 'selectCommit', hash: target, replace, root },
         repeat,
       );

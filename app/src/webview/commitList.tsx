@@ -39,17 +39,37 @@ const noVersion = () => 0;
 const openingRows = 20;
 
 export function settling<T>(
-  send: (value: T) => void,
+  post: (value: T) => void,
   delay = keyRepeatDelay,
-): (value: T, repeat: boolean) => void {
+): {
+  settle: (value: T, repeat: boolean) => void;
+  send: (value: T) => void;
+} {
   let timer: ReturnType<typeof setTimeout> | undefined;
-  return (value, repeat) => {
+  let pending: { value: T } | undefined;
+  const flush = () => {
     clearTimeout(timer);
-    if (repeat) {
-      timer = setTimeout(() => send(value), delay);
-    } else {
-      send(value);
+    const held = pending;
+    pending = undefined;
+    if (held) {
+      post(held.value);
     }
+  };
+  return {
+    settle: (value, repeat) => {
+      clearTimeout(timer);
+      pending = undefined;
+      if (repeat) {
+        pending = { value };
+        timer = setTimeout(flush, delay);
+      } else {
+        post(value);
+      }
+    },
+    send: (value) => {
+      flush();
+      post(value);
+    },
   };
 }
 
