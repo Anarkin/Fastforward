@@ -2,7 +2,7 @@ import type { DiffFile } from './diff';
 import type { FindRange } from './find';
 import { lineKey } from './find';
 
-const maxCells = 1_000_000;
+const maxTokens = 1_000_000;
 
 export function tokenize(text: string): string[] {
   return text.match(/[\p{L}\p{N}_]+|\s+|[^\p{L}\p{N}_\s]/gu) ?? [];
@@ -29,11 +29,11 @@ export function changedTokens(
   a: readonly string[],
   b: readonly string[],
 ): { readonly a: boolean[]; readonly b: boolean[] } | undefined {
-  const rows = a.length + 1;
-  const columns = b.length + 1;
-  if (rows * columns > maxCells) {
+  if (a.length * b.length > maxTokens) {
     return undefined;
   }
+  const rows = a.length + 1;
+  const columns = b.length + 1;
   const common = new Uint32Array(rows * columns);
   for (let i = a.length - 1; i >= 0; i--) {
     for (let j = b.length - 1; j >= 0; j--) {

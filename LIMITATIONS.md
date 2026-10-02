@@ -11,7 +11,7 @@ This file only observes and documents the codebase mainly for human readers; the
 - A file over 2 MB has its whole text shown as binary and not used for colors, and an untracked one's patch is diffed again on every refresh
 - Only the first 50 untracked files get line counts and are part of the All Changes patch, as each one is diffed on its own with `git diff --no-index`
 - A block of over 40000 removed by added lines, or 1 million words compared, has its lines paired in order instead of by similarity, as pairing compares every removed line with every added one
-- A block of over 1 million removed by added words has no changed words marked, as the word diff's table grows with both counts
+- A block of over 1 million removed by added tokens, each word, run of spaces and punctuation mark counting as one, has no changed words marked, as the word diff's table grows with both counts
 
 ## Syntax
 
