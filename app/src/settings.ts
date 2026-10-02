@@ -265,10 +265,11 @@ export async function writeAtomically(
   file: string,
   text: string,
 ): Promise<void> {
-  const temporary = `${file}.tmp`;
-  await fs.promises.mkdir(path.dirname(file), { recursive: true });
+  const target = await fs.promises.realpath(file).catch(() => file);
+  const temporary = `${target}.tmp`;
+  await fs.promises.mkdir(path.dirname(target), { recursive: true });
   await fs.promises.writeFile(temporary, text);
-  await fs.promises.rename(temporary, file);
+  await fs.promises.rename(temporary, target);
 }
 
 const stateKeys = [
