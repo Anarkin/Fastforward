@@ -5,7 +5,12 @@ import type {
   DiffLayout,
   RefKind,
 } from './shared/protocol';
-import { writeAtomically, type Settings, type UserSettings } from './settings';
+import {
+  isMissing,
+  writeAtomically,
+  type Settings,
+  type UserSettings,
+} from './settings';
 import * as path from 'node:path';
 
 export const tabsKey = 'tabs';
@@ -22,11 +27,14 @@ export interface Store {
 
 export class JsonFileStore implements Store {
   private readonly values: Record<string, unknown>;
+  private readonly unreadable: boolean;
   private writing: Promise<void> = Promise.resolve();
   private waiting = false;
 
   constructor(private readonly file: string) {
-    this.values = readJson(file);
+    const values = readJson(file);
+    this.values = values ?? {};
+    this.unreadable = values === undefined;
   }
 
   get(key: string): unknown {
@@ -39,7 +47,7 @@ export class JsonFileStore implements Store {
     } else {
       this.values[key] = value;
     }
-    if (!this.waiting) {
+    if (!this.waiting && !this.unreadable) {
       this.waiting = true;
       this.writing = this.writing
         .catch(() => undefined)
@@ -59,12 +67,12 @@ export class JsonFileStore implements Store {
   }
 }
 
-function readJson(file: string): Record<string, unknown> {
+function readJson(file: string): Record<string, unknown> | undefined {
   let text: string;
   try {
     text = fs.readFileSync(file, 'utf8');
-  } catch {
-    return {};
+  } catch (error) {
+    return isMissing(error) ? {} : undefined;
   }
   try {
     const parsed: unknown = JSON.parse(text);
