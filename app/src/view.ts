@@ -631,13 +631,17 @@ export class FastforwardView {
     const refs = this.refsOf(context);
     await allSettled([
       this.addDefaultBookmarks(context, refs),
-      this.refresh(context, async (latest) => {
-        if (!historyLoaded(latest.tab)) {
-          await this.sendCommits(latest, refs);
-        }
-        await this.sendCommit(latest);
-      }),
-      this.sendWorkingTree(context),
+      this.refresh(context, (latest) =>
+        allSettled([
+          (async () => {
+            if (!historyLoaded(latest.tab)) {
+              await this.sendCommits(latest, refs);
+            }
+            await this.sendCommit(latest);
+          })(),
+          this.sendWorkingTree(latest),
+        ]),
+      ),
       this.sendRepository(context, refs),
     ]);
   }
