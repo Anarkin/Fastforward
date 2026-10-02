@@ -307,6 +307,20 @@ suite('Syntax', () => {
     assert.strictEqual(added.keys.length, 5000);
   });
 
+  test('colors a line of 2000 characters, but not one over 2000', async () => {
+    assert.deepStrictEqual(
+      await colored([], {
+        path: 'a.ts',
+        binary: false,
+        content: `a = ${'1'.repeat(1996)}\na = ${'1'.repeat(1997)}`,
+      }),
+      {
+        '0:0': ['keyword =', `number ${'1'.repeat(1996)}`],
+        '0:1': [],
+      },
+    );
+  });
+
   test('colors a side from its hunks alone when its whole text does not match them', async () => {
     const texts = new Map([['new:a.ts', 'other\ntext\nnew = 3;\nend */\n']]);
     assert.deepStrictEqual(
