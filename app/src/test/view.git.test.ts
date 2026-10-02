@@ -3821,6 +3821,57 @@ suite('Fetch', function () {
     }
   });
 
+  test('says once that a fetch failed when a background one joins it', async () => {
+    const server = createServer((_request, response) => {
+      response.writeHead(401, { 'WWW-Authenticate': 'Basic realm="locked"' });
+      response.end();
+    });
+    await new Promise<void>((resolve) =>
+      server.listen(0, '127.0.0.1', resolve),
+    );
+    const address = server.address();
+    assert.ok(typeof address === 'object' && address !== null);
+    const { port } = address;
+    const locked = await tempRepository(path.join(folder, 'joining'));
+    await locked.commit('a');
+    await locked.git('remote', 'add', 'origin', `http://127.0.0.1:${port}/x`);
+    await locked.git('config', 'credential.helper', '');
+    const rounds: (() => void)[] = [];
+    const opened = await openView(
+      log,
+      [locked.root],
+      true,
+      undefined,
+      (run) => {
+        rounds.push(run);
+        return () => undefined;
+      },
+    );
+    let background: Promise<void> | undefined;
+    stubMethod(opened.view, 'fetchRemotes', (original, ...args) => {
+      const fetched = original(...args);
+      if (args[3] !== false) {
+        background ??= opened.connection.receive({
+          type: 'setAutoFetch',
+          on: true,
+        });
+      }
+      return fetched;
+    });
+    try {
+      await withNotices(opened.page, 'error', async (messages) => {
+        await opened.connection.receive({ type: 'fetch', root: locked.root });
+        await background;
+        await waitFor(() => rounds.length === 1, 'the round to end');
+        assert.strictEqual(messages.length, 1);
+        assert.match(messages[0] ?? '', /^Couldn't fetch\./);
+      });
+    } finally {
+      opened.connection.dispose();
+      await new Promise((resolve) => server.close(resolve));
+    }
+  });
+
   test('says so when a fetch fails, and stops fetching', async () => {
     await repository.git(
       'remote',
