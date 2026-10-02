@@ -387,7 +387,7 @@ export function tokenizing(
       const tokens = highlighter.codeToTokensBase(chunk.join('\n'), {
         lang: source.language,
         theme: theme.name,
-        tokenizeMaxLineLength: maxLineLength,
+        tokenizeMaxLineLength: maxLineLength + 1,
         grammarState: state,
       });
       state = highlighter.getLastGrammarState(tokens);
