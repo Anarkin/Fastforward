@@ -199,7 +199,7 @@ suite('Diff options', () => {
     ]);
   });
 
-  test('ignores whitespace on its own toggle, one button apart from the others', () => {
+  test('ignores whitespace on its own toggle, set apart from the others on both sides', () => {
     assert.deepStrictEqual(entireFileButtons(false, false, true, true), [
       'off enabled',
       'off enabled',
@@ -221,6 +221,10 @@ suite('Diff options', () => {
     assert.match(
       html,
       /<\/button><span class="nav-button-space"><\/span><button[^>]*title="Ignore Whitespace"/,
+    );
+    assert.match(
+      html,
+      /<\/button><span class="nav-button-space"><\/span><button[^>]*title="Inline"/,
     );
   });
 
