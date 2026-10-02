@@ -152,6 +152,7 @@ export function filesKey(
   rows: readonly ChangesTreeRow[],
   header: boolean,
   cursor: string | undefined,
+  selected: string | undefined,
   visible: VisibleRows,
 ): FilesKeyAction | undefined {
   const listed = listedTreeRows(rows, header);
@@ -176,7 +177,8 @@ export function filesKey(
   return {
     kind: 'cursor',
     key: listed.keyOf(moved),
-    ...(target === undefined || target.kind === 'file'
+    ...((target === undefined || target.kind === 'file') &&
+    target?.path !== selected
       ? { file: target?.path }
       : {}),
   };

@@ -138,50 +138,85 @@ suite('Files column keys', () => {
 
   test('moves through All Changes, the folders and the files, selecting the files it lands on', () => {
     assert.deepStrictEqual(
-      filesKey('ArrowDown', rows(), true, 'changes', visible),
+      filesKey('ArrowDown', rows(), true, 'changes', undefined, visible),
       { kind: 'cursor', key: 'folder:src' },
     );
-    assert.deepStrictEqual(filesKey('End', rows(), true, 'changes', visible), {
-      kind: 'cursor',
-      key: 'file:c.ts',
-      file: 'c.ts',
-    });
     assert.deepStrictEqual(
-      filesKey('Home', rows(), true, 'file:c.ts', visible),
+      filesKey('End', rows(), true, 'changes', undefined, visible),
+      {
+        kind: 'cursor',
+        key: 'file:c.ts',
+        file: 'c.ts',
+      },
+    );
+    assert.deepStrictEqual(
+      filesKey('Home', rows(), true, 'file:c.ts', 'c.ts', visible),
       { kind: 'cursor', key: 'changes', file: undefined },
     );
     assert.deepStrictEqual(
-      filesKey('ArrowUp', rows(), true, 'changes', visible),
+      filesKey('ArrowUp', rows(), true, 'changes', undefined, visible),
       { kind: 'stay' },
     );
     assert.strictEqual(
-      filesKey('Enter', rows(), true, 'changes', visible),
+      filesKey('Enter', rows(), true, 'changes', undefined, visible),
       undefined,
+    );
+  });
+
+  test('selects the file or All Changes it lands on only when it is not selected already, so the diff is not loaded anew', () => {
+    assert.deepStrictEqual(
+      filesKey(
+        'ArrowDown',
+        rows(),
+        true,
+        'folder:src/app',
+        'src/app/a.ts',
+        visible,
+      ),
+      { kind: 'cursor', key: 'file:src/app/a.ts' },
+    );
+    assert.deepStrictEqual(
+      filesKey(
+        'ArrowDown',
+        rows(),
+        true,
+        'folder:src/app',
+        'src/b.ts',
+        visible,
+      ),
+      { kind: 'cursor', key: 'file:src/app/a.ts', file: 'src/app/a.ts' },
+    );
+    assert.deepStrictEqual(
+      filesKey('ArrowUp', rows(), true, 'folder:src', undefined, visible),
+      { kind: 'cursor', key: 'changes' },
     );
   });
 
   test('opens or closes the folder under the cursor on Space, doing nothing else on a file', () => {
     assert.deepStrictEqual(
-      filesKey(' ', rows(['src']), true, 'folder:src', visible),
+      filesKey(' ', rows(['src']), true, 'folder:src', undefined, visible),
       { kind: 'toggle', folder: 'src', changed: true },
     );
     assert.deepStrictEqual(
-      filesKey(' ', rows(), true, 'folder:src/app', visible),
+      filesKey(' ', rows(), true, 'folder:src/app', undefined, visible),
       { kind: 'toggle', folder: 'src/app', changed: true },
     );
-    assert.deepStrictEqual(filesKey(' ', rows(), true, 'file:c.ts', visible), {
-      kind: 'stay',
-    });
+    assert.deepStrictEqual(
+      filesKey(' ', rows(), true, 'file:c.ts', 'c.ts', visible),
+      {
+        kind: 'stay',
+      },
+    );
   });
 
   test('leaves Left and Right to moving between the columns', () => {
     for (const cursor of ['folder:src', 'file:src/app/a.ts', 'changes']) {
       assert.strictEqual(
-        filesKey('ArrowLeft', rows(), true, cursor, visible),
+        filesKey('ArrowLeft', rows(), true, cursor, undefined, visible),
         undefined,
       );
       assert.strictEqual(
-        filesKey('ArrowRight', rows(['src']), true, cursor, visible),
+        filesKey('ArrowRight', rows(['src']), true, cursor, undefined, visible),
         undefined,
       );
     }
