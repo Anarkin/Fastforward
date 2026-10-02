@@ -46,6 +46,20 @@ suite('Minimap', () => {
     ]);
   });
 
+  test('counts the measured height of rows like an error above the file', () => {
+    const rows = minimapRows(
+      [
+        { kind: 'error' },
+        { kind: 'file', file: 0, path: 'a', open: true },
+        line('added'),
+      ],
+      (index) => (index === 0 ? 40 : undefined),
+    );
+    assert.deepStrictEqual(minimapMarks(rows), [
+      { kind: 'added', top: 62 / 82, height: 20 / 82 },
+    ]);
+  });
+
   test('marks nothing in an empty or unchanged file', () => {
     assert.deepStrictEqual(minimapMarks([]), []);
     assert.deepStrictEqual(

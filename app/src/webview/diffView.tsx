@@ -229,9 +229,12 @@ function alignedRows(file: DiffFile, index: number): SplitRow[] {
   return rows;
 }
 
-export function minimapRows(rows: readonly DiffRow[]): MinimapRow[] {
-  return rows.map((row) => ({
-    height: rowHeight(row) ?? 0,
+export function minimapRows(
+  rows: readonly DiffRow[],
+  measured: (index: number) => number | undefined = () => undefined,
+): MinimapRow[] {
+  return rows.map((row, index) => ({
+    height: rowHeight(row) ?? measured(index) ?? 0,
     change: changeOf(row),
   }));
 }
@@ -577,8 +580,9 @@ export function diffMinimapMarks(
   keys: readonly (readonly string[])[],
   matchedLines: ReadonlyMap<string, unknown>,
   changeMarks: boolean,
+  measured?: (index: number) => number | undefined,
 ): MinimapMark[] {
-  const heights = minimapRows(rows);
+  const heights = minimapRows(rows, measured);
   const matched = new Set(
     keys.flatMap((row, index) =>
       row.some((key) => matchedLines.has(key)) ? [index] : [],
@@ -899,12 +903,20 @@ export function DiffView({
     return null;
   };
 
+  const items = virtualizer.getVirtualItems();
+  const measurements = virtualizer.measurementsCache;
   const marks = useMemo(
-    () => diffMinimapMarks(rows, keys, rangesByLine, changeMarks),
-    [rows, keys, rangesByLine, changeMarks],
+    () =>
+      diffMinimapMarks(
+        rows,
+        keys,
+        rangesByLine,
+        changeMarks,
+        (index) => measurements[index]?.size,
+      ),
+    [rows, keys, rangesByLine, changeMarks, measurements],
   );
 
-  const items = virtualizer.getVirtualItems();
   const scrollTop = virtualizer.scrollOffset ?? 0;
   const stuck = stuckHeader(rows, items, scrollTop);
 
