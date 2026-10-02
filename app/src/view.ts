@@ -81,7 +81,6 @@ interface Tab extends TabState {
   refreshedAgain: PromiseWithResolvers<void> | undefined;
   loadsAgain: Refresh[];
   isRepository: boolean;
-  fetching: { fetched: Promise<Fetched>; interactive: boolean } | undefined;
   fetchFailed: boolean;
   diffRequest: number;
   diffOwed: boolean;
@@ -107,6 +106,11 @@ interface Session {
   readonly post: (message: ToWebview) => void;
   watcher: Watcher | undefined;
   disposed: boolean;
+}
+
+interface Fetching {
+  readonly fetched: Promise<Fetched>;
+  readonly interactive: boolean;
 }
 
 interface Refresh {
@@ -139,6 +143,7 @@ function toAll(contexts: readonly Context[]): Context | undefined {
 
 export class FastforwardView {
   private readonly tabStates = new Map<string, Tab>();
+  private readonly fetches = new Map<string, Fetching>();
   private readonly commitSearches = new Map<string, AbortController>();
   private readonly hashLookups = new Map<string, number>();
   private page: Session | undefined;
@@ -729,7 +734,6 @@ export class FastforwardView {
         refreshedAgain: undefined,
         loadsAgain: [],
         isRepository: false,
-        fetching: undefined,
         fetchFailed: false,
         diffRequest: 0,
         diffOwed: false,
@@ -773,7 +777,7 @@ export class FastforwardView {
       session: live ? session : undefined,
       post: (message) => {
         keep(tab.shown, message);
-        if (live && this.isActive(root)) {
+        if (live && this.isActive(root) && this.tabStates.get(root) === tab) {
           (session.disposed ? this.page : session)?.post(message);
         }
       },
@@ -836,26 +840,28 @@ export class FastforwardView {
     notify: Notify = this.notify(context),
     interactive = true,
   ): Promise<boolean> {
-    const { tab } = context;
-    let fetching = tab.fetching;
+    const { tab, root } = context;
+    const { fetches } = this;
+    let fetching = fetches.get(root);
     if (!fetching || (interactive && !fetching.interactive)) {
       const running = fetching?.fetched;
-      const started = {
+      const started: Fetching = {
         fetched: (running
           ? running.then(() => fetchAll(context, interactive))
           : fetchAll(context, interactive)
         ).finally(() => {
-          if (tab.fetching === started) {
-            tab.fetching = undefined;
+          if (fetches.get(root) === started) {
+            fetches.delete(root);
           }
         }),
         interactive,
       };
-      tab.fetching = fetching = started;
+      fetches.set(root, (fetching = started));
     }
     const result = await fetching.fetched;
-    if (!interactive && tab.fetching?.interactive) {
-      return !(await tab.fetching.fetched).failed;
+    const latest = fetches.get(root);
+    if (!interactive && latest?.interactive) {
+      return !(await latest.fetched).failed;
     }
     if (!interactive && fetching.interactive) {
       return !result.failed;

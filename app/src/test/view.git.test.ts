@@ -2592,6 +2592,102 @@ suite('View', function () {
         assert.strictEqual(left?.active, zeta.root);
       });
     });
+
+    test('sends nothing of a tab closed while it loads to the tab opened again for its repository', async () => {
+      const held = gate();
+      let holding = true;
+      stubMethod(tabs.view, 'sendCommits', async (original, ...args) => {
+        if (holding) {
+          holding = false;
+          await held.opened;
+        }
+        await original(...args);
+      });
+      try {
+        const applying = tabs.connection.receive({
+          type: 'setSolo',
+          root: repository.root,
+          solo: true,
+        });
+        await waitFor(
+          () => tabs.page.last('applyingSolo')?.running === true,
+          'the solo button to spin',
+        );
+        await tabs.connection.receive({
+          type: 'closeTab',
+          root: repository.root,
+        });
+        await tabs.connection.receive({
+          type: 'openRepository',
+          root: repository.root,
+        });
+        assert.ok(tabs.page.last('commits'));
+        tabs.page.clear();
+        held.open();
+        await applying;
+        assert.strictEqual(commitsSent(tabs.page.messages), 0);
+      } finally {
+        held.open();
+        await tabs.store.update(soloKey, {});
+      }
+    });
+
+    test('fetches a repository once at a time, also when its tab is closed and opened again while it fetches', async () => {
+      let requests = 0;
+      let released = false;
+      const waiting: (() => void)[] = [];
+      const server = createServer((_request, response) => {
+        requests += 1;
+        const answer = () => {
+          response.writeHead(404);
+          response.end();
+        };
+        if (released) {
+          answer();
+        } else {
+          waiting.push(answer);
+        }
+      });
+      await new Promise<void>((resolve) =>
+        server.listen(0, '127.0.0.1', resolve),
+      );
+      const address = server.address();
+      assert.ok(typeof address === 'object' && address !== null);
+      const slow = await tempRepository(path.join(folder, 'slow-remote'));
+      await slow.commit('a');
+      await slow.git(
+        'remote',
+        'add',
+        'origin',
+        `http://127.0.0.1:${address.port}/x`,
+      );
+      try {
+        await withView(log, [slow.root, other], async (own) => {
+          const first = own.connection.receive({
+            type: 'fetch',
+            root: slow.root,
+          });
+          await waitFor(() => requests === 1, 'the fetch to reach the remote');
+          await own.connection.receive({ type: 'closeTab', root: slow.root });
+          await own.connection.receive({
+            type: 'openRepository',
+            root: slow.root,
+          });
+          const second = own.connection.receive({
+            type: 'fetch',
+            root: slow.root,
+          });
+          released = true;
+          for (const answer of waiting) {
+            answer();
+          }
+          await Promise.all([first, second]);
+          assert.strictEqual(requests, 1);
+        });
+      } finally {
+        await new Promise((resolve) => server.close(resolve));
+      }
+    });
   });
 
   suite('of other repositories', () => {
