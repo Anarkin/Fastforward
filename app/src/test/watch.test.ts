@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import { isInternal, nextFlush } from '../git/watch';
+import { affectsWorktree, isInternal, nextFlush } from '../git/watch';
 
 suite('Watching the git folder', () => {
   test('refreshes for HEAD, the index and refs', () => {
@@ -25,6 +25,45 @@ suite('Watching the git folder', () => {
       'refs/heads/main.lock',
     ]) {
       assert.strictEqual(isInternal(file), true, file);
+    }
+  });
+
+  test('leaves the files of other worktrees alone', () => {
+    for (const file of [
+      'worktrees/feature/index',
+      'worktrees\\feature\\HEAD',
+    ]) {
+      assert.strictEqual(affectsWorktree(file, false), false, file);
+      assert.strictEqual(affectsWorktree(file, true), false, file);
+    }
+    for (const file of [
+      'index',
+      'HEAD',
+      'ORIG_HEAD',
+      'refs/bisect/bad',
+      'refs/worktree/x',
+      'logs/HEAD',
+    ]) {
+      assert.strictEqual(affectsWorktree(file, true), false, file);
+    }
+  });
+
+  test('refreshes a linked worktree for the refs it shares', () => {
+    for (const file of [
+      'refs/heads/main',
+      'refs\\tags\\v1',
+      'packed-refs',
+      'config',
+    ]) {
+      assert.strictEqual(affectsWorktree(file, true), true, file);
+    }
+    for (const file of [
+      'index',
+      'HEAD',
+      'refs/heads/main',
+      'refs/bisect/bad',
+    ]) {
+      assert.strictEqual(affectsWorktree(file, false), true, file);
     }
   });
 });

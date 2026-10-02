@@ -70,7 +70,12 @@ export async function watchRepository(
   const changed = (file: string) => {
     const inGitDir = gitDirs.find((dir) => isInside(dir, file));
     if (inGitDir !== undefined) {
-      if (!isInternal(path.relative(inGitDir, file))) {
+      if (
+        affectsWorktree(
+          path.relative(inGitDir, file),
+          inGitDir === commonDir && commonDir !== gitDir,
+        )
+      ) {
         gitDirChanged();
       }
     } else if (isInside(root, file)) {
@@ -151,6 +156,24 @@ export function isInternal(inGitDir: string): boolean {
     first === 'logs' ||
     inGitDir.endsWith('.lock') ||
     inGitDir === ''
+  );
+}
+
+const perWorktreeRefs = new Set(['bisect', 'worktree', 'rewritten']);
+
+export function affectsWorktree(inGitDir: string, shared: boolean): boolean {
+  if (isInternal(inGitDir)) {
+    return false;
+  }
+  const [first, second] = inGitDir.split(/[\\/]/);
+  if (first === 'worktrees') {
+    return false;
+  }
+  return (
+    !shared ||
+    (first === 'refs' && !perWorktreeRefs.has(second ?? '')) ||
+    first === 'packed-refs' ||
+    first === 'config'
   );
 }
 
