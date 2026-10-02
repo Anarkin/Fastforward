@@ -1,6 +1,6 @@
 # LIMITATIONS
 
-This file only observes and documents the codebase mainly for human readers; the codebase is the single source of truth.
+This file only observes and documents the codebase mainly for human readers; the codebase is the single source of truth. It should be updated whenever a limit in the codebase changes.
 
 ## Diff
 
