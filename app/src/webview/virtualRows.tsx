@@ -21,6 +21,18 @@ export function scrollTarget(
     : undefined;
 }
 
+interface Reveal {
+  readonly key: string | undefined;
+  readonly rows: unknown;
+}
+
+export function revealAgain(before: Reveal | undefined, now: Reveal): boolean {
+  return (
+    now.key !== undefined &&
+    (before?.key !== now.key || before.rows !== now.rows)
+  );
+}
+
 export interface RowPlacement {
   readonly start: number;
   readonly end: number;
@@ -94,12 +106,14 @@ export function VirtualRows({
   rows,
   renderRow,
   selectedKey,
+  revealWith,
   ancestorsOf = noAncestors,
   onKeyDown,
 }: {
   rows: ListedRows;
   renderRow: (index: number) => React.ReactNode;
   selectedKey: string | undefined;
+  revealWith?: unknown;
   ancestorsOf?: (index: number) => readonly number[];
   onKeyDown?: (event: React.KeyboardEvent, visible: VisibleRows) => void;
 }) {
@@ -133,12 +147,14 @@ export function VirtualRows({
       virtualizer.scrollToOffset(offset);
     }
   });
-  const target = scrollTarget(selectedKey, rows);
+  const reveal = { key: scrollTarget(selectedKey, rows), rows: revealWith };
+  const revealed = useRef<Reveal>(undefined);
   useEffect(() => {
-    if (target !== undefined) {
+    if (revealAgain(revealed.current, reveal)) {
       scrollToSelected();
     }
-  }, [target]);
+    revealed.current = reveal;
+  });
 
   const pinned = pinnedRows(
     virtualizer.measurementsCache,
