@@ -486,6 +486,7 @@ suite('Style', () => {
       css,
       /\n\.diff-view,\s*\.error,\s*\.notice-message \{\s*user-select: text;\s*\}/,
     );
+    assert.match(declarationsOf('.file-header'), /user-select: none;/);
   });
 
   test('strikes a deleted file through, in the text color like the other changes', () => {
