@@ -24,6 +24,7 @@ import {
   AddressBar,
   historyButtonClick,
   HistoryMenu,
+  locationsPopupKey,
   nextHistoryOpen,
   NavButtons,
 } from '../webview/navBar';
@@ -649,6 +650,12 @@ suite('Navigation bar', () => {
       'address-bar',
     );
     assert.match(html, /class="address-text empty">Search…<\/span>/);
+  });
+
+  test('opens the search popup anew in another tab, so it searches again there for the same query', () => {
+    assert.notEqual(locationsPopupKey(1, '/a'), locationsPopupKey(1, '/b'));
+    assert.equal(locationsPopupKey(1, '/a'), locationsPopupKey(1, '/a'));
+    assert.notEqual(locationsPopupKey(1, '/a'), locationsPopupKey(2, '/a'));
   });
 
   test('spins the fetch button while fetching', () => {
