@@ -233,27 +233,37 @@ export function textsToLoad(
   files: readonly DiffFile[],
   diff: number,
   requested: Set<string>,
+  open?: ReadonlySet<number>,
 ): TextRequest[] {
-  return files.flatMap((file) =>
-    languageOf(file.path) && !file.binary && !file.placeholder
-      ? sides.flatMap((side) => {
-          const blob = file.blobs?.[side];
-          const key = `${diff}:${textKey(file.path, side)}`;
-          const shown = sideLines(file, side);
-          if (
-            !blob ||
-            requested.has(key) ||
-            !hasGap(file, side) ||
-            !shown.some(({ owned }) => owned) ||
-            tooFar(shown)
-          ) {
-            return [];
-          }
-          requested.add(key);
-          return [{ path: file.path, side, blob }];
-        })
-      : [],
-  );
+  let used = 0;
+  return files.flatMap((file, index) => {
+    if (
+      !languageOf(file.path) ||
+      file.binary ||
+      file.placeholder ||
+      (open && !open.has(index))
+    ) {
+      return [];
+    }
+    return sides.flatMap((side) => {
+      const shown = sideLines(file, side);
+      if (!shown.some(({ owned }) => owned)) {
+        return [];
+      }
+      const blob = file.blobs?.[side];
+      const fits = used < maxTextLines;
+      const whole = fits && !!blob && hasGap(file, side) && !tooFar(shown);
+      used += whole
+        ? (shown.at(-1)?.number ?? 0)
+        : Math.min(shown.length, maxSourceLines);
+      const key = `${diff}:${textKey(file.path, side)}`;
+      if (!whole || !blob || requested.has(key)) {
+        return [];
+      }
+      requested.add(key);
+      return [{ path: file.path, side, blob }];
+    });
+  });
 }
 
 const maxLineLength = 2000;
