@@ -688,6 +688,27 @@ suite('View', function () {
       assert.strictEqual(commits.keysFrom, 0);
     });
 
+    test('loads the files of a selected commit a collapsed merge hides once the page loads again with settings changed by hand', async () => {
+      const toggle = () =>
+        connection.receive({
+          type: 'toggleMerge',
+          root: repository.root,
+          hash: fixture.merge,
+        });
+      await toggle();
+      await connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: fixture.f2,
+      });
+      await toggle();
+      fastforward.reloadSettings();
+      page.clear();
+      await connection.receive({ type: 'ready' });
+      assert.strictEqual(page.last('error'), undefined);
+      assert.strictEqual(page.last('files')?.hash, fixture.f2);
+    });
+
     test('forgets merges toggled by hand when the merge setting changes', async () => {
       await connection.receive({
         type: 'toggleMerge',
