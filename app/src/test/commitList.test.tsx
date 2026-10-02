@@ -279,6 +279,29 @@ suite('Commit list keys', () => {
     assert.deepStrictEqual(sent, ['select b', 'switch tab', 'load tree']);
   });
 
+  test('holds what follows a selection made by a held key with it, dropping it when the key moves on', async () => {
+    const sent: string[] = [];
+    const { settle, follow } = settling(
+      (message: string) => sent.push(message),
+      10,
+    );
+    settle('select b', true);
+    follow('load tree b');
+    settle('select c', true);
+    follow('load tree c');
+    assert.deepStrictEqual(sent, []);
+    await settled();
+    assert.deepStrictEqual(sent, ['select c', 'load tree c']);
+    settle('select d', false);
+    follow('load tree d');
+    assert.deepStrictEqual(sent, [
+      'select c',
+      'load tree c',
+      'select d',
+      'load tree d',
+    ]);
+  });
+
   const visible = { first: 0, last: 0 };
   const press = (
     key: string,
