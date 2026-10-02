@@ -28,23 +28,24 @@ export async function watchRepository(
 
   let disposed = false;
   let timer: NodeJS.Timeout | undefined;
-  let firstPending: number | undefined;
-  let gitDirChanged = false;
+  let pending: PendingChanges = {};
   const changedFiles = new Set<string>();
 
-  const flush = async () => {
+  const flush = async (withGitDir: boolean) => {
     timer = undefined;
-    firstPending = undefined;
     const files = [...changedFiles];
-    const refresh = gitDirChanged;
     changedFiles.clear();
-    gitDirChanged = false;
+    pending =
+      withGitDir || pending.lastGitDir === undefined
+        ? {}
+        : { lastGitDir: pending.lastGitDir };
+    schedule();
     try {
       if (
         !disposed &&
-        (refresh || (await anyNotIgnored(gitPath, root, files)))
+        (withGitDir || (await anyNotIgnored(gitPath, root, files)))
       ) {
-        onChange(refresh);
+        onChange(withGitDir);
       }
     } catch (error) {
       if (!disposed) {
@@ -53,23 +54,33 @@ export async function watchRepository(
     }
   };
   const schedule = () => {
-    const now = Date.now();
-    firstPending ??= now;
     clearTimeout(timer);
-    timer = setTimeout(
-      () => void flush(),
-      waitBeforeFlush(now - firstPending, delay, maxDelay),
-    );
+    const next = nextFlush(pending, delay, maxDelay);
+    timer =
+      next &&
+      setTimeout(
+        () => void flush(next.gitDir),
+        Math.max(0, next.at - Date.now()),
+      );
+  };
+  const gitDirChanged = () => {
+    pending = { ...pending, lastGitDir: Date.now() };
+    schedule();
   };
   const changed = (file: string) => {
     const inGitDir = gitDirs.find((dir) => isInside(dir, file));
     if (inGitDir !== undefined) {
       if (!isInternal(path.relative(inGitDir, file))) {
-        gitDirChanged = true;
-        schedule();
+        gitDirChanged();
       }
     } else if (isInside(root, file)) {
       changedFiles.add(path.relative(root, file).split(path.sep).join('/'));
+      const now = Date.now();
+      pending = {
+        ...pending,
+        firstWorkTree: pending.firstWorkTree ?? now,
+        lastWorkTree: now,
+      };
       schedule();
     }
   };
@@ -80,8 +91,7 @@ export async function watchRepository(
       if (file) {
         changed(path.join(folder, file));
       } else {
-        gitDirChanged = true;
-        schedule();
+        gitDirChanged();
       }
     });
     watcher.on('error', onError);
@@ -99,12 +109,31 @@ export async function watchRepository(
   };
 }
 
-export function waitBeforeFlush(
-  sinceFirstPending: number,
+interface PendingChanges {
+  readonly firstWorkTree?: number;
+  readonly lastWorkTree?: number;
+  readonly lastGitDir?: number;
+}
+
+export function nextFlush(
+  { firstWorkTree, lastWorkTree, lastGitDir }: PendingChanges,
   delay: number,
   maxDelay: number,
-): number {
-  return Math.max(0, Math.min(delay, maxDelay - sinceFirstPending));
+): { readonly at: number; readonly gitDir: boolean } | undefined {
+  const workTreeAt =
+    firstWorkTree === undefined || lastWorkTree === undefined
+      ? undefined
+      : Math.min(lastWorkTree + delay, firstWorkTree + maxDelay);
+  const gitDirAt = lastGitDir === undefined ? undefined : lastGitDir + delay;
+  if (
+    gitDirAt !== undefined &&
+    (workTreeAt === undefined || gitDirAt <= workTreeAt)
+  ) {
+    return { at: gitDirAt, gitDir: true };
+  }
+  return workTreeAt === undefined
+    ? undefined
+    : { at: workTreeAt, gitDir: false };
 }
 
 function isInside(folder: string, file: string): boolean {
