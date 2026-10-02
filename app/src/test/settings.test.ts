@@ -139,6 +139,17 @@ suite('User settings file', () => {
     assert.strictEqual(fs.readFileSync(file, 'utf8'), '{ "solo": tru');
   });
 
+  test('neither reads nor overwrites a file that cannot be read, and says so', async () => {
+    fs.mkdirSync(file);
+    const user = new UserSettings(defaults, file);
+    assert.deepStrictEqual(user.settings, defaults);
+    assert.match(user.problems[0] ?? '', /could not be read/);
+    await user.set('solo', true);
+    assert.strictEqual(user.settings.solo, true);
+    assert.ok(fs.statSync(file).isDirectory());
+    assert.ok(!fs.existsSync(`${file}.tmp`));
+  });
+
   test('keeps a change still being saved when reading the file its earlier save wrote', async () => {
     const user = new UserSettings(defaults, file);
     await user.set('collapseMerges', false);

@@ -189,6 +189,11 @@ export class UserSettings {
     }
     const text = readText(this.file);
     this.broken = false;
+    if (text instanceof Error) {
+      this.broken = true;
+      this.issues = [`The user settings could not be read: ${text.message}`];
+      return;
+    }
     if (text === undefined || text.trim() === '') {
       this.current = this.base;
       this.written = {};
@@ -240,12 +245,20 @@ export class UserSettings {
   }
 }
 
-function readText(file: string): string | undefined {
+function readText(file: string): string | Error | undefined {
   try {
     return fs.readFileSync(file, 'utf8');
-  } catch {
-    return undefined;
+  } catch (error) {
+    return isMissing(error)
+      ? undefined
+      : error instanceof Error
+        ? error
+        : new Error(String(error));
   }
+}
+
+export function isMissing(error: unknown): boolean {
+  return error instanceof Error && 'code' in error && error.code === 'ENOENT';
 }
 
 export async function writeAtomically(

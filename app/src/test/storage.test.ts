@@ -261,6 +261,15 @@ suite('Settings file', () => {
     assert.strictEqual(reopened.get('solo'), true);
   });
 
+  test('keeps changes to itself when the file is there but cannot be read', async () => {
+    fs.mkdirSync(file);
+    const store = new JsonFileStore(file);
+    await store.update('tabs', ['/a']);
+    assert.deepStrictEqual(store.get('tabs'), ['/a']);
+    assert.ok(fs.statSync(file).isDirectory());
+    assert.ok(!fs.existsSync(`${file}.tmp`));
+  });
+
   test('starts afresh from a broken file, keeping a copy of it', () => {
     fs.writeFileSync(file, '{ broken');
     const store = new JsonFileStore(file);
