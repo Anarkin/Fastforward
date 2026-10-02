@@ -11,6 +11,7 @@ import {
   writeReadOnly,
 } from '../settings';
 import { defaultSettings } from './fixtures';
+import { symlinkOrSkip } from './repositories';
 
 const defaults = defaultSettings();
 
@@ -148,6 +149,18 @@ suite('User settings file', () => {
     assert.strictEqual(user.settings.solo, true);
     assert.ok(fs.statSync(file).isDirectory());
     assert.ok(!fs.existsSync(`${file}.tmp`));
+  });
+
+  test('saves to the file a symlink points to, keeping the symlink', async function () {
+    const target = path.join(folder, 'dotfiles.json');
+    fs.writeFileSync(target, '{}');
+    symlinkOrSkip(this, target, file);
+    const user = new UserSettings(defaults, file);
+    await user.set('solo', true);
+    assert.ok(fs.lstatSync(file).isSymbolicLink());
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(target, 'utf8')), {
+      solo: true,
+    });
   });
 
   test('keeps a change still being saved when reading the file its earlier save wrote', async () => {
