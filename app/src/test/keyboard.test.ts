@@ -232,10 +232,10 @@ suite('Diff keys', () => {
   });
 
   test('scrolls three lines with the arrows, a screen less a line with the page keys, and to either end', () => {
-    assert.strictEqual(diffScrollTop('ArrowDown', 100, 400, 2000), 160);
+    assert.strictEqual(diffScrollTop('ArrowDown', 100, 400, 2000), 166);
     assert.strictEqual(diffScrollTop('ArrowUp', 40, 400, 2000), 0);
-    assert.strictEqual(diffScrollTop('PageDown', 100, 400, 2000), 480);
-    assert.strictEqual(diffScrollTop('PageUp', 500, 400, 2000), 120);
+    assert.strictEqual(diffScrollTop('PageDown', 100, 400, 2000), 478);
+    assert.strictEqual(diffScrollTop('PageUp', 500, 400, 2000), 122);
     assert.strictEqual(diffScrollTop('Home', 500, 400, 2000), 0);
     assert.strictEqual(diffScrollTop('End', 0, 400, 2000), 1600);
     assert.strictEqual(diffScrollTop('End', 0, 400, 300), 0);

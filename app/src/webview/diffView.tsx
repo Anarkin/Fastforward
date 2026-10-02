@@ -74,14 +74,16 @@ type FileHeaderRow = Extract<DiffRow, { kind: 'file' }>;
 
 type MeasuredKind = 'error' | 'skeleton' | 'skeletonLines';
 
+const uniformHeight = 22;
+
 const rowHeights: Record<Exclude<DiffRow['kind'], MeasuredKind>, number> = {
-  file: 22,
+  file: uniformHeight,
   large: 36,
-  binary: 28,
-  hunk: 12,
-  line: 20,
-  split: 20,
-  wholeLine: 20,
+  binary: uniformHeight,
+  hunk: uniformHeight,
+  line: uniformHeight,
+  split: uniformHeight,
+  wholeLine: uniformHeight,
 };
 
 const measuredEstimates: Record<MeasuredKind, number> = {
@@ -118,6 +120,14 @@ export function rowMeasures(rows: readonly DiffRow[]): RowMeasures {
     measuresOfRows.set(rows, measures);
   }
   return measures;
+}
+
+export function HunkDivider() {
+  return (
+    <div className="hunk-divider">
+      <span className="hunk-dots">⋯</span>
+    </div>
+  );
 }
 
 export function rowHeight(row: DiffRow): number | undefined {
@@ -860,7 +870,7 @@ export function DiffView({
       case 'skeletonLines':
         return <SkeletonRows count={4} className="diff-line" />;
       case 'hunk':
-        return <div className="hunk-divider" />;
+        return <HunkDivider />;
       case 'line':
         return (
           <div className={`diff-line ${row.line.kind}`}>

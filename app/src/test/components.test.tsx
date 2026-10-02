@@ -31,6 +31,7 @@ import {
 import { changeClass, changeTitle } from '../webview/fileStatus';
 import type { ContextMenuItem } from '../webview/contextMenu';
 import { DiffOptions } from '../webview/diffColumn';
+import { HunkDivider } from '../webview/diffView';
 import { Files, filesCursor } from '../webview/filesColumn';
 import { Highlight } from '../webview/highlight';
 import type { Folders } from '../webview/viewFolders';
@@ -266,6 +267,15 @@ suite('Diff options', () => {
       }
       assert.deepStrictEqual(picked, ['inline', 'sideBySide']);
     }
+  });
+});
+
+suite('Hunk divider', () => {
+  test('marks the lines left out between hunks with dots', () => {
+    assert.strictEqual(
+      renderToStaticMarkup(<HunkDivider />),
+      '<div class="hunk-divider"><span class="hunk-dots">⋯</span></div>',
+    );
   });
 });
 
