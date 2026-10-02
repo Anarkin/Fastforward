@@ -671,6 +671,19 @@ suite('Diff row heights', () => {
     );
   });
 
+  test('keeps a pixel of the row that was at the top in view, as a row scrolled nearly past it would leave the next one there once it shrinks', () => {
+    const rows = sized(22, 22, 22);
+    const shown = [['a'], ['b'], ['c']];
+    assert.strictEqual(
+      anchoredScrollTop({ shows: ['b'], fraction: 219.6 / 220 }, rows, shown),
+      22 + 21,
+    );
+    assert.strictEqual(
+      anchoredScrollTop({ shows: ['b'], fraction: 1 }, rows, shown),
+      22 + 21,
+    );
+  });
+
   test('names a line alike inline and side by side, and the headers and hunk gaps by their file and order', () => {
     const files = parsePatch(
       [
