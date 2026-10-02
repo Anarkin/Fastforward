@@ -279,10 +279,14 @@ export function keptPlace(
   offset: number,
   scrollTop: number,
   reportedTop: number | undefined,
-): number {
-  return (
-    start + offset + (reportedTop === undefined ? 0 : scrollTop - reportedTop)
-  );
+): { top: number; reportedTop: number } {
+  return {
+    top:
+      start +
+      offset +
+      (reportedTop === undefined ? 0 : scrollTop - reportedTop),
+    reportedTop: start + offset,
+  };
 }
 
 export function CommitBubbles({
@@ -466,14 +470,14 @@ export function Commits({
     if (action.target.offset !== undefined) {
       const [start] = virtualizer.getOffsetForIndex(index, 'start') ?? [];
       if (start !== undefined) {
-        virtualizer.scrollToOffset(
-          keptPlace(
-            start,
-            action.target.offset,
-            list.current?.scrollTop ?? 0,
-            reportedTop.current,
-          ),
+        const place = keptPlace(
+          start,
+          action.target.offset,
+          list.current?.scrollTop ?? 0,
+          reportedTop.current,
         );
+        reportedTop.current = place.reportedTop;
+        virtualizer.scrollToOffset(place.top);
       }
       return;
     }

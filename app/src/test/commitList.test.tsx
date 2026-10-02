@@ -152,9 +152,22 @@ suite('Commit list working tree row', () => {
   });
 
   test('keeps its place by what was scrolled since the place it last told', () => {
-    assert.strictEqual(keptPlace(1000, 7, 400, 400), 1007);
-    assert.strictEqual(keptPlace(1000, 7, 900, 400), 1507);
-    assert.strictEqual(keptPlace(1000, 7, 900, undefined), 1007);
+    assert.strictEqual(keptPlace(1000, 7, 400, 400).top, 1007);
+    assert.strictEqual(keptPlace(1000, 7, 900, 400).top, 1507);
+    assert.strictEqual(keptPlace(1000, 7, 900, undefined).top, 1007);
+  });
+
+  test('keeps its place only once when another history comes before its own scroll is told', () => {
+    const first = keptPlace(1000, 7, 900, 400);
+    assert.strictEqual(
+      keptPlace(1300, 7, first.top, first.reportedTop).top,
+      1807,
+    );
+    const unscrolled = keptPlace(1000, 7, 0, undefined);
+    assert.strictEqual(
+      keptPlace(1300, 7, unscrolled.top, unscrolled.reportedTop).top,
+      1307,
+    );
   });
 
   test('shifts the list rather than scrolling to its target again when only the working tree row comes or goes', () => {
