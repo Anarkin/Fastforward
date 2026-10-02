@@ -8,7 +8,7 @@ import type {
   CommitSearch,
   HashLookup,
 } from '../shared/protocol';
-import { gitConfigArgs, gitEnv, runGit, splitNul } from './run';
+import { gitConfigArgs, gitEnv, runGit, splitNul, stopGit } from './run';
 
 export async function headCommit(
   gitPath: string,
@@ -244,14 +244,20 @@ function streamMatches(
 ): Promise<FoundHashes> {
   const matches = new SearchMatches(query, limit);
   return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(signal.reason);
+      return;
+    }
     let settled = false;
     const finish = (settle: () => void) => {
       if (!settled) {
         settled = true;
-        child.kill();
+        signal?.removeEventListener('abort', abort);
+        stopGit(child);
         settle();
       }
     };
+    const abort = () => finish(() => reject(signal?.reason));
     const child = spawn(
       gitPath,
       [
@@ -262,8 +268,9 @@ function streamMatches(
         '--format=%H%x00%aN%x00%aE%x00%cN%x00%cE%x00%B',
         '--',
       ],
-      { cwd, env: gitEnv(), windowsHide: true, signal },
+      { cwd, env: gitEnv(), windowsHide: true },
     );
+    signal?.addEventListener('abort', abort, { once: true });
     const onRecord = (record: string) => {
       const result = settled ? undefined : matches.add(record);
       if (result !== undefined) {
@@ -274,6 +281,9 @@ function streamMatches(
     let pending = '';
     let stderr = '';
     child.stdout.on('data', (chunk: Buffer) => {
+      if (settled) {
+        return;
+      }
       const { records, rest } = takeRecords(pending + decoder.write(chunk));
       records.forEach(onRecord);
       pending = rest;
