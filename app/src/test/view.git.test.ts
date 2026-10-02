@@ -459,6 +459,57 @@ suite('View', function () {
       }
     });
 
+    test('sends a diff asked for again while a refresh finds it unchanged', async () => {
+      fs.writeFileSync(path.join(repository.root, 'one.txt'), 'one\n');
+      fs.writeFileSync(path.join(repository.root, 'two.txt'), 'two\n');
+      try {
+        await connection.receive({
+          type: 'selectCommit',
+          root: repository.root,
+          hash: workingTreeHash,
+        });
+        await connection.receive({
+          type: 'selectFile',
+          root: repository.root,
+          hash: workingTreeHash,
+          path: 'one.txt',
+        });
+        assert.strictEqual(page.last('diff')?.path, 'one.txt');
+        const held = gate();
+        let waiting = 0;
+        stubMethod(fastforward, 'patchOf', async (original, ...args) => {
+          if (waiting < 2) {
+            waiting++;
+            await held.opened;
+          }
+          return original(...args);
+        });
+        page.clear();
+        const asked = Promise.all([
+          connection.receive({
+            type: 'selectFile',
+            root: repository.root,
+            hash: workingTreeHash,
+            path: 'two.txt',
+          }),
+          connection.receive({
+            type: 'selectFile',
+            root: repository.root,
+            hash: workingTreeHash,
+            path: 'one.txt',
+          }),
+        ]);
+        await waitFor(() => waiting === 2, 'the asked for diffs');
+        await connection.refresh();
+        held.open();
+        await asked;
+        assert.strictEqual(page.last('diff')?.path, 'one.txt');
+      } finally {
+        fs.rmSync(path.join(repository.root, 'one.txt'));
+        fs.rmSync(path.join(repository.root, 'two.txt'));
+      }
+    });
+
     test('lists every file of a commit and of the working tree', async () => {
       const file = path.join(repository.root, 'tree-file.txt');
       fs.writeFileSync(file, 'tree\n');

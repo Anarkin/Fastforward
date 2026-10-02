@@ -82,6 +82,7 @@ interface Tab extends TabState {
   fetching: { fetched: Promise<Fetched>; interactive: boolean } | undefined;
   fetchFailed: boolean;
   diffRequest: number;
+  diffOwed: boolean;
   loadingFiles: AbortController;
   loadingDiff: AbortController;
   untrackedPatches: UntrackedPatches;
@@ -704,6 +705,7 @@ export class FastforwardView {
         fetching: undefined,
         fetchFailed: false,
         diffRequest: 0,
+        diffOwed: false,
         loadingFiles: new AbortController(),
         loadingDiff: new AbortController(),
         untrackedPatches: new Map(),
@@ -1394,6 +1396,9 @@ export class FastforwardView {
     const { tab } = context;
     const { path: file } = tab;
     const request = ++tab.diffRequest;
+    if (!refreshing) {
+      tab.diffOwed = true;
+    }
     tab.loadingDiff.abort();
     const loading = new AbortController();
     tab.loadingDiff = loading;
@@ -1410,13 +1415,14 @@ export class FastforwardView {
       );
       const shownDiff = context.tab.shown.diff;
       const unchanged =
-        refreshing &&
+        !tab.diffOwed &&
         shownDiff?.type === 'fileContent' &&
         shownDiff.hash === hash &&
         shownDiff.path === file &&
         shownDiff.content === content &&
         shownDiff.binary === binary;
       if (!stale() && !unchanged) {
+        tab.diffOwed = false;
         context.post({
           type: 'fileContent',
           hash,
@@ -1450,7 +1456,7 @@ export class FastforwardView {
     }
     const shownDiff = context.tab.shown.diff;
     const unchanged =
-      refreshing &&
+      !tab.diffOwed &&
       shownDiff?.type === 'diff' &&
       shownDiff.hash === hash &&
       shownDiff.path === file &&
@@ -1459,6 +1465,7 @@ export class FastforwardView {
       return;
     }
     if (!unchanged) {
+      tab.diffOwed = false;
       context.post({ type: 'diff', hash, path: file, patch });
     } else if (file === undefined) {
       await this.sendFileDiffsAgain(context, hash);
