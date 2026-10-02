@@ -1,5 +1,10 @@
 import * as assert from 'node:assert';
-import { pinnedRows, revealOffset, scrollTarget } from '../webview/virtualRows';
+import {
+  pinnedRows,
+  revealAgain,
+  revealOffset,
+  scrollTarget,
+} from '../webview/virtualRows';
 
 suite('Virtual rows', () => {
   test('scrolls to the selected row again once it arrives, as a tree loads after its file was selected', () => {
@@ -7,6 +12,20 @@ suite('Virtual rows', () => {
     assert.strictEqual(scrollTarget('a', ['b', 'c']), undefined);
     assert.strictEqual(scrollTarget('a', ['b', 'a']), 'a');
     assert.strictEqual(scrollTarget(undefined, ['a']), undefined);
+  });
+
+  test('scrolls to the selected row again once the rows it reveals with change, as unchanged files load above a selected one', () => {
+    const files = ['b'];
+    const tree = ['a', 'b'];
+    assert.ok(revealAgain(undefined, { key: 'b', rows: files }));
+    assert.ok(
+      !revealAgain({ key: 'b', rows: files }, { key: 'b', rows: files }),
+    );
+    assert.ok(revealAgain({ key: 'b', rows: files }, { key: 'b', rows: tree }));
+    assert.ok(revealAgain({ key: 'b', rows: tree }, { key: 'a', rows: tree }));
+    assert.ok(
+      !revealAgain({ key: 'b', rows: files }, { key: undefined, rows: tree }),
+    );
   });
 });
 

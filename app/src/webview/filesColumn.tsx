@@ -206,6 +206,7 @@ export function Files({
             : ancestorRows(treeRows, index - offset).map((row) => row + offset)
         }
         selectedKey={cursor}
+        revealWith={unchanged}
         onKeyDown={onKeyDown}
       />
     </Column>
