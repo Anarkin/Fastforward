@@ -32,6 +32,12 @@ suite('Log file', () => {
     assert.match(lines, /\[error\] plain$/m);
   });
 
+  test('has each line on disk as soon as it is logged, as an alert holding the main process or a crash can come next', () => {
+    const file = path.join(folder, 'Fastforward.log');
+    fileLog(file).error('Install git');
+    assert.match(fs.readFileSync(file, 'utf8'), /\[error\] Install git$/m);
+  });
+
   test('keeps the log of the run before as the previous log', async () => {
     const file = path.join(folder, 'Fastforward.log');
     fileLog(file).info('first run');
