@@ -837,6 +837,9 @@ export class FastforwardView {
     if (!interactive && tab.fetching?.interactive) {
       return !(await tab.fetching.fetched).failed;
     }
+    if (!interactive && fetching.interactive) {
+      return !result.failed;
+    }
     const fetched = reportFetched(log, notify, result);
     tab.fetchFailed = !fetched;
     return fetched;
