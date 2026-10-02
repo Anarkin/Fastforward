@@ -137,7 +137,29 @@ function historyRefs(solo: boolean): string[] {
 
 const searchLimit = 50;
 
-const recordStart = '\x1e';
+const searchedFields = 6;
+
+export function takeRecords(text: string): {
+  readonly records: string[];
+  readonly rest: string;
+} {
+  const records: string[] = [];
+  let start = 0;
+  let fields = 0;
+  for (
+    let end = text.indexOf('\0');
+    end !== -1;
+    end = text.indexOf('\0', end + 1)
+  ) {
+    fields++;
+    if (fields === searchedFields) {
+      records.push(text.slice(start, end));
+      start = end + 1;
+      fields = 0;
+    }
+  }
+  return { records, rest: text.slice(start) };
+}
 
 interface SearchedCommit {
   readonly hash: string;
@@ -236,7 +258,8 @@ function streamMatches(
         ...gitConfigArgs,
         'log',
         ...historyRefs(solo),
-        `--format=${recordStart}%H%x00%aN%x00%aE%x00%cN%x00%cE%x00%B`,
+        '-z',
+        '--format=%H%x00%aN%x00%aE%x00%cN%x00%cE%x00%B',
         '--',
       ],
       { cwd, env: gitEnv(), windowsHide: true, signal },
@@ -251,13 +274,9 @@ function streamMatches(
     let pending = '';
     let stderr = '';
     child.stdout.on('data', (chunk: Buffer) => {
-      pending += decoder.write(chunk);
-      let end = pending.indexOf(recordStart, 1);
-      while (end !== -1) {
-        onRecord(pending.slice(1, end));
-        pending = pending.slice(end);
-        end = pending.indexOf(recordStart, 1);
-      }
+      const { records, rest } = takeRecords(pending + decoder.write(chunk));
+      records.forEach(onRecord);
+      pending = rest;
     });
     child.stderr.on('data', (chunk: Buffer) => {
       stderr += chunk.toString('utf8');
@@ -269,8 +288,8 @@ function streamMatches(
         return;
       }
       pending += decoder.end();
-      if (pending.length > 1) {
-        onRecord(pending.slice(1));
+      if (pending.length > 0) {
+        onRecord(pending);
       }
       finish(() => resolve(matches.end()));
     });
