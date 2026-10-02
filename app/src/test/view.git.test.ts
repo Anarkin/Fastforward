@@ -3639,6 +3639,68 @@ suite('Fetch', function () {
     }
   });
 
+  test('lets a fetch asked for while a background one runs ask for credentials, and says it failed once', async () => {
+    const server = createServer((_request, response) => {
+      response.writeHead(401, { 'WWW-Authenticate': 'Basic realm="locked"' });
+      response.end();
+    });
+    await new Promise<void>((resolve) =>
+      server.listen(0, '127.0.0.1', resolve),
+    );
+    const address = server.address();
+    assert.ok(typeof address === 'object' && address !== null);
+    const { port } = address;
+    const locked = await tempRepository(path.join(folder, 'joined'));
+    await locked.commit('a');
+    await locked.git('remote', 'add', 'origin', `http://127.0.0.1:${port}/x`);
+    const asked = path.join(folder, 'joined.txt').replaceAll('\\', '/');
+    await locked.git('config', 'credential.helper', '');
+    await locked.git(
+      'config',
+      '--add',
+      'credential.helper',
+      `!f() { echo "[$GCM_INTERACTIVE]" >> '${asked}'; }; f`,
+    );
+    const rounds: (() => void)[] = [];
+    const opened = await openView(
+      log,
+      [locked.root],
+      true,
+      undefined,
+      (run) => {
+        rounds.push(run);
+        return () => undefined;
+      },
+    );
+    let manual: Promise<void> | undefined;
+    stubMethod(opened.view, 'fetchRemotes', (original, ...args) => {
+      const fetched = original(...args);
+      if (args[3] === false) {
+        manual ??= opened.connection.receive({
+          type: 'fetch',
+          root: locked.root,
+        });
+      }
+      return fetched;
+    });
+    try {
+      await withNotices(opened.page, 'error', async (messages) => {
+        await opened.connection.receive({ type: 'setAutoFetch', on: true });
+        await waitFor(() => rounds.length === 1, 'the round to end');
+        await manual;
+        assert.deepStrictEqual(
+          fs.readFileSync(asked, 'utf8').trim().split('\n'),
+          ['[never]', '[]'],
+        );
+        assert.strictEqual(messages.length, 1);
+        assert.match(messages[0] ?? '', /^Couldn't fetch\./);
+      });
+    } finally {
+      opened.connection.dispose();
+      await new Promise((resolve) => server.close(resolve));
+    }
+  });
+
   test('says so when a fetch fails, and stops fetching', async () => {
     await repository.git(
       'remote',
