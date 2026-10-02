@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import { minimapRows, type DiffRow } from '../webview/diffView';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
+  grabPointer,
   Minimap,
   minimapMarks,
   minimapScrollTop,
@@ -27,6 +28,18 @@ function minimap(viewport: number): string {
 }
 
 suite('Minimap', () => {
+  test('takes the pointer it is pressed with, starting no text selection, so dragging it scrolls even with text selected', () => {
+    const calls: string[] = [];
+    grabPointer({
+      pointerId: 7,
+      preventDefault: () => calls.push('preventDefault'),
+      currentTarget: {
+        setPointerCapture: (id: number) => calls.push(`capture ${id}`),
+      },
+    });
+    assert.deepStrictEqual(calls, ['preventDefault', 'capture 7']);
+  });
+
   test('marks each run of added or removed lines where it is in the file', () => {
     const rows = minimapRows([
       { kind: 'file', file: 0, path: 'a', open: true },

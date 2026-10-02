@@ -76,6 +76,15 @@ export function minimapScrollTop(
   return Math.max(0, Math.min(top, total - viewport));
 }
 
+export function grabPointer(event: {
+  readonly pointerId: number;
+  readonly preventDefault: () => void;
+  readonly currentTarget: { setPointerCapture: (id: number) => void };
+}) {
+  event.preventDefault();
+  event.currentTarget.setPointerCapture(event.pointerId);
+}
+
 function percent(value: number): string {
   return `${value * 100}%`;
 }
@@ -145,7 +154,7 @@ export function Minimap({
       ref={element}
       className={`diff-minimap ${shown || dragging ? 'shown' : ''} ${dragging ? 'dragging' : ''}`}
       onPointerDown={(event) => {
-        event.currentTarget.setPointerCapture(event.pointerId);
+        grabPointer(event);
         setDragging(true);
         scrollTo(event);
       }}
