@@ -468,6 +468,22 @@ suite('Syntax', () => {
     assert.deepStrictEqual(rest, [second, third]);
   });
 
+  test('colors code in a Markdown fence anew once its language loads', async () => {
+    const fence = {
+      language: 'markdown',
+      lines: ['```python', 'def f(): pass', '```'],
+      keys: ['0:0', '0:1', '0:2'],
+    };
+    const before = syntaxRanges(await loadLanguages(['markdown']), [fence]);
+    assert.deepStrictEqual(before.ranges.get('0:1'), []);
+    const after = syntaxRanges(await loadLanguages(['python']), [fence]);
+    assert.deepStrictEqual(after.ranges.get('0:1')?.[0], {
+      start: 0,
+      end: 3,
+      kind: 'keyword',
+    });
+  });
+
   test('keeps the colors of texts of at most 8 million characters in all, and of none longer than 2 million', async () => {
     const highlighter = await loadLanguages(['typescript']);
     const tokenized: string[] = [];

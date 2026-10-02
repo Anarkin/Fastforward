@@ -368,15 +368,19 @@ export async function loadLanguages(
   });
   const highlighter = await created;
   const loaded = highlighter.getLoadedLanguages();
-  await highlighter.loadLanguage(
-    ...(await Promise.all(
-      bundledLanguagesInfo
-        .filter(
-          (info) => languages.includes(info.id) && !loaded.includes(info.id),
-        )
-        .map((info) => info.import()),
-    )),
+  const added = await Promise.all(
+    bundledLanguagesInfo
+      .filter(
+        (info) => languages.includes(info.id) && !loaded.includes(info.id),
+      )
+      .map((info) => info.import()),
   );
+  if (added.length > 0) {
+    await highlighter.loadLanguage(...added);
+    cache.clear();
+    cachedLines = 0;
+    cachedChars = 0;
+  }
   ready = highlighter;
   return highlighter;
 }
