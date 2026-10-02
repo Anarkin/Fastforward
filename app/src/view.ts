@@ -456,6 +456,14 @@ export class FastforwardView {
           context.tab.shown.files = undefined;
           context.tab.shown.diff = undefined;
         }
+        if (
+          message.hash !== undefined &&
+          message.hash !== workingTreeHash &&
+          !context.tab.positions.has(message.hash)
+        ) {
+          this.notInHistory(context, message.hash);
+          break;
+        }
         await this.sendCommit(context);
         break;
       case 'selectFile':
@@ -1272,7 +1280,7 @@ export class FastforwardView {
           knownWorkingTree ??
           (await workingTreeFiles(context.gitPath, context.root));
         files = workingTree.files;
-      } else if (tab.positions.has(hash)) {
+      } else if (stillThere(tab)(hash)) {
         files = await this.commitFiles(context, hash, signal);
       } else {
         this.notInHistory(context, hash);
