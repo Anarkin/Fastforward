@@ -37,6 +37,13 @@ export function columnsClass(
   ].join(' ');
 }
 
+export function listError(
+  error: string | undefined,
+  selected: string | undefined,
+): string | undefined {
+  return selected === undefined ? error : undefined;
+}
+
 export function templateOf(
   widths: readonly number[],
   hidden: readonly boolean[],

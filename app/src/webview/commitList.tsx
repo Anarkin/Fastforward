@@ -377,6 +377,7 @@ export function Commits({
   navigation,
   search,
   focusKey,
+  error,
 }: {
   history: CommitHistory | undefined;
   opening: boolean;
@@ -401,6 +402,7 @@ export function Commits({
   navigation?: React.ReactNode;
   search?: React.ReactNode;
   focusKey?: string;
+  error?: string;
 }) {
   const version = useSyncExternalStore(
     history?.subscribe ?? noHistory,
@@ -678,6 +680,7 @@ export function Commits({
         </>
       }
     >
+      {error && <div className="error">{error}</div>}
       <div
         className="virtual-rows list"
         ref={list}

@@ -21,6 +21,7 @@ import { CheckedOutBranch, DetachedHead } from './bubbles';
 import { checkoutCommit, checkoutOptions, checkoutRef } from './checkout';
 import {
   columnsClass,
+  listError,
   shownSelection,
   ColumnResizingProvider,
   useColumnWidths,
@@ -566,6 +567,7 @@ export function App({ post: postToHost, listen }: Props) {
                     solo={solo}
                     headCommit={repository?.headCommit}
                     focusKey={activeTab}
+                    error={listError(error, layoutSelection)}
                     applyingSolo={applyingSolo}
                     onSolo={changeSolo}
                     navigation={
