@@ -116,6 +116,7 @@ export function DiffOptions({
       >
         <IgnoreWhitespaceIcon />
       </button>
+      <span className="nav-button-space" />
       <button
         className={`nav-button toggle ${layout === 'inline' ? 'active' : ''}`}
         title="Inline"
