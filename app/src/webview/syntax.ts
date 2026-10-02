@@ -384,7 +384,8 @@ export function tokenizing(
       const { source, key } = pending[index];
       const start = done.length;
       const chunk = source.lines.slice(start, chunkEnd(source.lines, start));
-      const tokens = highlighter.codeToTokensBase(chunk.join('\n'), {
+      const text = chunk.map((line) => line.replace(/\r$/, '')).join('\n');
+      const tokens = highlighter.codeToTokensBase(text, {
         lang: source.language,
         theme: theme.name,
         tokenizeMaxLineLength: maxLineLength + 1,

@@ -321,6 +321,21 @@ suite('Syntax', () => {
     );
   });
 
+  test('colors a line of 2000 characters ending a CRLF text', async () => {
+    const line = `a = ${'1'.repeat(1996)}`;
+    assert.deepStrictEqual(
+      await colored([], {
+        path: 'a.ts',
+        binary: false,
+        content: `${line}\r\n${line}\r\n`,
+      }),
+      {
+        '0:0': ['keyword =', `number ${'1'.repeat(1996)}`],
+        '0:1': ['keyword =', `number ${'1'.repeat(1996)}`],
+      },
+    );
+  });
+
   test('colors a side from its hunks alone when its whole text does not match them', async () => {
     const texts = new Map([['new:a.ts', 'other\ntext\nnew = 3;\nend */\n']]);
     assert.deepStrictEqual(
