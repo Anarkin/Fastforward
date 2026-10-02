@@ -5,10 +5,24 @@ import { marked } from '../webview/diffView';
 import {
   languageOf,
   loadLanguages,
-  syntaxRanges,
+  cachedRanges,
+  startColoring,
   syntaxSources,
   textsToLoad,
+  tokenizing,
+  type SyntaxRange,
 } from '../webview/syntax';
+
+type Highlighter = Awaited<ReturnType<typeof loadLanguages>>;
+
+function syntaxRanges(
+  highlighter: Highlighter,
+  sources: Parameters<typeof cachedRanges>[0],
+) {
+  const ranges = new Map<string, readonly SyntaxRange[]>();
+  tokenizing(highlighter, cachedRanges(sources, ranges))(Infinity, ranges);
+  return ranges;
+}
 
 async function colored(
   ...args: Parameters<typeof syntaxSources>
@@ -21,7 +35,7 @@ async function colored(
     ),
   );
   return Object.fromEntries(
-    [...syntaxRanges(highlighter, sources).ranges].map(([key, ranges]) => [
+    [...syntaxRanges(highlighter, sources)].map(([key, ranges]) => [
       key,
       ranges.map(
         (range) =>
@@ -437,7 +451,7 @@ suite('Syntax', () => {
     syntaxRanges(counting, [
       { language: 'typescript', lines, keys: ['0:0', '0:1'] },
     ]);
-    const { ranges } = syntaxRanges(counting, [
+    const ranges = syntaxRanges(counting, [
       { language: 'typescript', lines, keys: [undefined, '3:7'] },
     ]);
     assert.strictEqual(tokenized, 1);
@@ -446,26 +460,70 @@ suite('Syntax', () => {
     });
   });
 
-  test('tokenizes past its deadline only the first text not tokenized before, leaving the rest for later', async () => {
+  test('colors at once only the texts colored before, tokenizing the rest a slice at a time after', async () => {
     const highlighter = await loadLanguages(['typescript']);
-    const [seen, first, second, third] = [
-      'seen',
-      'first',
-      'second',
-      'third',
-    ].map((name, index) => ({
-      language: 'typescript',
-      lines: [`let ${name}Late = 1;`],
-      keys: [`${index}:0`],
-    }));
-    syntaxRanges(highlighter, [seen]);
-    const { ranges, rest } = syntaxRanges(
-      highlighter,
-      [first, second, seen, third],
-      0,
+    const [seen, first, second] = ['seen', 'first', 'second'].map(
+      (name, index) => ({
+        language: 'typescript',
+        lines: [`let ${name}Later = 1;`],
+        keys: [`${index}:0`],
+      }),
     );
-    assert.deepStrictEqual([...ranges.keys()], ['1:0', '0:0']);
-    assert.deepStrictEqual(rest, [second, third]);
+    syntaxRanges(highlighter, [seen]);
+    const ranges = new Map<string, readonly SyntaxRange[]>();
+    const slices: (() => void)[] = [];
+    let published = 0;
+    startColoring(
+      [first, seen, second],
+      ranges,
+      () => (published += 1),
+      (slice) => slices.push(slice),
+    );
+    assert.deepStrictEqual([...ranges.keys()], ['0:0']);
+    assert.strictEqual(published, 1);
+    while (slices.length > 0) {
+      slices.shift()?.();
+    }
+    assert.deepStrictEqual([...ranges.keys()], ['0:0', '1:0', '2:0']);
+    assert.strictEqual(published, 2);
+  });
+
+  test('tokenizes past its deadline only a few thousand characters of a text, going on from where they leave off', async () => {
+    const highlighter = await loadLanguages(['typescript']);
+    let tokenized = 0;
+    const counting = {
+      ...highlighter,
+      codeToTokensBase: (
+        ...args: Parameters<typeof highlighter.codeToTokensBase>
+      ) => {
+        tokenized += 1;
+        return highlighter.codeToTokensBase(...args);
+      },
+    };
+    const lines = ['/* start', ...Array<string>(3000).fill('x'), '*/ x;'];
+    const long = {
+      language: 'typescript',
+      lines,
+      keys: lines.map((_, index) => `0:${index}`),
+    };
+    const short = { language: 'typescript', lines: ['let y;'], keys: ['1:0'] };
+    const ranges = new Map<string, readonly SyntaxRange[]>();
+    const step = tokenizing(counting, cachedRanges([long, short], ranges));
+    let slices = 1;
+    while (step(0, ranges)) {
+      assert.ok(!ranges.has('1:0'));
+      slices += 1;
+    }
+    assert.strictEqual(tokenized, slices);
+    assert.ok(slices > 2);
+    assert.deepStrictEqual(ranges.get('0:3000'), [
+      { start: 0, end: 1, kind: 'comment' },
+    ]);
+    assert.deepStrictEqual(ranges.get('0:3001'), [
+      { start: 0, end: 2, kind: 'comment' },
+      { start: 4, end: 5, kind: 'keyword' },
+    ]);
+    assert.deepStrictEqual(ranges.get('1:0')?.length, 2);
   });
 
   test('colors code in a Markdown fence anew once its language loads', async () => {
@@ -475,9 +533,9 @@ suite('Syntax', () => {
       keys: ['0:0', '0:1', '0:2'],
     };
     const before = syntaxRanges(await loadLanguages(['markdown']), [fence]);
-    assert.deepStrictEqual(before.ranges.get('0:1'), []);
+    assert.deepStrictEqual(before.get('0:1'), []);
     const after = syntaxRanges(await loadLanguages(['python']), [fence]);
-    assert.deepStrictEqual(after.ranges.get('0:1')?.[0], {
+    assert.deepStrictEqual(after.get('0:1')?.[0], {
       start: 0,
       end: 3,
       kind: 'keyword',
