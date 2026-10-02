@@ -65,6 +65,13 @@ suite('Find in diff', () => {
     assert.deepStrictEqual(matchesIn('ΟΔΟΣ x', 'Σ x'), [{ start: 3, end: 6 }]);
   });
 
+  test('finds a word ending in a sigma however either side spells the sigma', () => {
+    assert.deepStrictEqual(matchesIn('ΟΔΟΣ', 'ΟΔΟΣ'), [{ start: 0, end: 4 }]);
+    assert.deepStrictEqual(matchesIn('ΟΔΟΣ x', 'οδος'), [{ start: 0, end: 4 }]);
+    assert.deepStrictEqual(matchesIn('οδος', 'ΟΔΟΣ'), [{ start: 0, end: 4 }]);
+    assert.deepStrictEqual(matchesIn('οδος', 'σ'), [{ start: 3, end: 4 }]);
+  });
+
   test('finds every occurrence in a line, ignoring case, inside words too', () => {
     assert.deepStrictEqual(matchesIn('Find finder', 'find'), [
       { start: 0, end: 4 },

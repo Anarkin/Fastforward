@@ -25,10 +25,10 @@ export function matchesIn(text: string, query: string): FindRange[] {
   if (query === '') {
     return [];
   }
-  const needle = query.toLowerCase();
-  const whole = text.toLowerCase();
+  const needle = folded(query);
+  const whole = folded(text);
   const ranges: FindRange[] = [];
-  if (whole.length === text.length && !text.includes('Σ')) {
+  if (whole.length === text.length) {
     let from = whole.indexOf(needle);
     while (from !== -1) {
       const end = from + needle.length;
@@ -47,6 +47,10 @@ export function matchesIn(text: string, query: string): FindRange[] {
   return ranges;
 }
 
+function folded(text: string): string {
+  return text.toLowerCase().replaceAll('ς', 'σ');
+}
+
 function lowercased(text: string): {
   lowered: string;
   starts: number[];
@@ -57,7 +61,7 @@ function lowercased(text: string): {
   const ends: number[] = [];
   let index = 0;
   for (const character of text) {
-    const lower = character.toLowerCase();
+    const lower = folded(character);
     for (let unit = 0; unit < lower.length; unit++) {
       starts.push(index);
       ends.push(index + character.length);
