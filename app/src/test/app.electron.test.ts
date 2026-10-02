@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { once } from 'node:events';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
@@ -484,14 +485,24 @@ suite('App without git', function () {
           return false;
         }
       }, 'the missing git to be logged');
-      const page = await app.firstWindow();
-      await page.waitForLoadState('load');
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      const visible = await app.evaluate(({ BrowserWindow }) =>
-        BrowserWindow.getAllWindows().map((window) => window.isVisible()),
-      );
-      assert.deepStrictEqual(visible, [false]);
+      // On macOS the alert about git is app-modal without a window shown,
+      // holding the main process until it is answered
+      if (process.platform !== 'darwin') {
+        const page = await app.firstWindow();
+        await page.waitForLoadState('load');
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        const visible = await app.evaluate(({ BrowserWindow }) =>
+          BrowserWindow.getAllWindows().map((window) => window.isVisible()),
+        );
+        assert.deepStrictEqual(visible, [false]);
+      }
     } finally {
+      const child = app.process();
+      if (child.exitCode === null && child.signalCode === null) {
+        const exited = once(child, 'exit');
+        child.kill('SIGKILL');
+        await exited;
+      }
       await app.close();
       removeFolder(folder);
     }
