@@ -82,6 +82,7 @@ interface Tab extends TabState {
   loadsAgain: Refresh[];
   isRepository: boolean;
   fetchFailed: boolean;
+  navigating: Promise<void>;
   diffRequest: number;
   diffOwed: boolean;
   loadingFiles: AbortController;
@@ -735,6 +736,7 @@ export class FastforwardView {
         loadsAgain: [],
         isRepository: false,
         fetchFailed: false,
+        navigating: Promise.resolve(),
         diffRequest: 0,
         diffOwed: false,
         loadingFiles: new AbortController(),
@@ -997,7 +999,20 @@ export class FastforwardView {
     return findCommits(context.gitPath, context.root, query);
   }
 
-  private async navigate(
+  private navigate(
+    context: Context,
+    direction: Direction,
+    steps: number,
+  ): Promise<void> {
+    const { tab } = context;
+    const navigating = tab.navigating.then(() =>
+      this.navigateNow(context, direction, steps),
+    );
+    tab.navigating = navigating.catch(() => undefined);
+    return navigating;
+  }
+
+  private async navigateNow(
     context: Context,
     direction: Direction,
     steps: number,

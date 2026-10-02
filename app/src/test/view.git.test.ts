@@ -1030,6 +1030,49 @@ suite('View', function () {
       assert.strictEqual(page.last('navigation')?.forward.length, 0);
     });
 
+    test('goes back two steps clicked at once, the first to a commit a collapsed merge hides', async () => {
+      for (const hash of [fixture.merge, fixture.b]) {
+        await connection.receive({
+          type: 'selectCommit',
+          root: repository.root,
+          hash,
+        });
+      }
+      await connection.receive({
+        type: 'jump',
+        root: repository.root,
+        hash: fixture.f2,
+      });
+      await connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: fixture.a,
+      });
+      await connection.receive({
+        type: 'toggleMerge',
+        root: repository.root,
+        hash: fixture.merge,
+      });
+      const back = () =>
+        connection.receive({
+          type: 'navigate',
+          root: repository.root,
+          direction: 'back',
+          steps: 1,
+        });
+      await Promise.all([back(), back()]);
+      assert.strictEqual(page.last('reveal')?.hash, fixture.b);
+      const navigation = page.last('navigation');
+      assert.deepStrictEqual(
+        navigation?.back.map((entry) => entry.hash),
+        [fixture.merge],
+      );
+      assert.deepStrictEqual(
+        navigation?.forward.map((entry) => entry.hash).toSorted(),
+        [fixture.a, fixture.f2].toSorted(),
+      );
+    });
+
     test('goes back to the working tree', async () => {
       await connection.receive({
         type: 'selectCommit',
