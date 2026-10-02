@@ -73,14 +73,14 @@ function withRemote(ref: RefInfo, remotes: readonly string[]): RefInfo {
 async function listRefs(gitPath: string, root: string): Promise<RefInfo[]> {
   const output = await runGit(gitPath, root, [
     'for-each-ref',
-    '--format=%(refname)%00%(objectname)%00%(*objectname)',
+    '--format=%(refname)%00%(objectname)%00%(objecttype)%00%(*objectname)%00%(*objecttype)',
     'refs/heads',
     'refs/remotes',
     'refs/tags',
   ]);
   return output.split('\n').flatMap((line): RefInfo[] => {
-    const [refname, object, peeled] = splitNul(line);
-    if (!refname || !object) {
+    const [refname, object, type, peeled, peeledType] = splitNul(line);
+    if (!refname || !object || (peeled ? peeledType : type) !== 'commit') {
       return [];
     }
     const commit = peeled || object;
