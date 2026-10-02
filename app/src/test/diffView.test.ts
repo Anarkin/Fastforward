@@ -7,7 +7,7 @@ import {
   patchLineBudget,
   patchPathBudget,
 } from '../shared/protocol';
-import { withLargeFiles } from '../webview/diffColumn';
+import { diffSelection, withLargeFiles } from '../webview/diffColumn';
 import {
   codeProps,
   diffRowKey,
@@ -303,6 +303,21 @@ suite('Large files in a commit diff', () => {
     );
     assert.strictEqual(loaded[1].placeholder, undefined);
     assert.strictEqual(loaded[1].hunks[0].lines.length, 3);
+  });
+
+  test('starts the requests of a diff over in another tab, though it shows the same commit and file', () => {
+    assert.notStrictEqual(
+      diffSelection('/a', 'working-tree', undefined),
+      diffSelection('/b', 'working-tree', undefined),
+    );
+    assert.strictEqual(
+      diffSelection('/a', 'working-tree', 'a.ts'),
+      diffSelection('/a', 'working-tree', 'a.ts'),
+    );
+    assert.notStrictEqual(
+      diffSelection('/a', 'working-tree', 'a.ts'),
+      diffSelection('/a', 'working-tree', undefined),
+    );
   });
 
   test('defers each large file, and every file once the diff would grow past its budget', () => {

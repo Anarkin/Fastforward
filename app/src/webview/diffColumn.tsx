@@ -237,6 +237,14 @@ export function FindActions({
   );
 }
 
+export function diffSelection(
+  root: string | undefined,
+  hash: string | undefined,
+  path: string | undefined,
+): string {
+  return JSON.stringify([root, hash, path]);
+}
+
 export function Diff({
   selection,
   path,

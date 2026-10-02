@@ -45,7 +45,7 @@ import {
   type MenuTarget,
   type OpenMenu,
 } from './contextMenu';
-import { Diff, DiffOptions } from './diffColumn';
+import { Diff, DiffOptions, diffSelection } from './diffColumn';
 import { Files } from './filesColumn';
 import { foldersOf } from './fileTree';
 import { hasRef } from '../shared/refNames';
@@ -616,7 +616,7 @@ export function App({ post: postToHost, listen }: Props) {
                     view={folderView}
                   />
                   <Diff
-                    selection={`${hash ?? ''}:${path ?? ''}`}
+                    selection={diffSelection(activeTab, hash, path)}
                     path={path}
                     loading={patchLoading || opening}
                     largeFiles={largeFiles}
