@@ -167,6 +167,12 @@ function workingTreesSent(messages: readonly ToWebview[]): number {
   return messages.filter((message) => message.type === 'workingTree').length;
 }
 
+function numberedLines(text: string): string {
+  return Array.from({ length: 2000 }, (_, index) => `${text} ${index}\n`).join(
+    '',
+  );
+}
+
 function gate(): { opened: Promise<void>; open: () => void } {
   const { promise, resolve } = Promise.withResolvers<void>();
   return { opened: promise, open: () => resolve() };
@@ -2865,6 +2871,41 @@ suite('View', function () {
         assert.strictEqual(fileDiff?.path, 'large.txt');
         assert.ok(fileDiff?.patch.includes('+line 1999'));
         assert.strictEqual(fileDiff.diff, 1);
+      });
+    });
+
+    test('sends an opened file left out of the uncommitted diff again once it changed on disk', async () => {
+      const large = await tempRepository(path.join(folder, 'large-edited'));
+      await large.commit('large', {
+        'large.txt': numberedLines('line'),
+        'small.txt': 'small\n',
+      });
+      const file = path.join(large.root, 'large.txt');
+      fs.writeFileSync(file, numberedLines('first'));
+      fs.writeFileSync(path.join(large.root, 'small.txt'), 'changed\n');
+      await withView(log, [large.root], async (view) => {
+        await view.connection.receive({
+          type: 'selectCommit',
+          root: large.root,
+          hash: workingTreeHash,
+        });
+        await view.connection.receive({
+          type: 'loadFileDiff',
+          root: large.root,
+          hash: workingTreeHash,
+          path: 'large.txt',
+          diff: 1,
+        });
+        assert.ok(view.page.last('fileDiff')?.patch.includes('+first 1999'));
+        view.page.clear();
+        await view.connection.refresh();
+        assert.strictEqual(view.page.last('fileDiff'), undefined);
+        fs.writeFileSync(file, numberedLines('second'));
+        await view.connection.refresh();
+        assert.strictEqual(view.page.last('diff'), undefined);
+        const fileDiff = view.page.last('fileDiff');
+        assert.strictEqual(fileDiff?.diff, 1);
+        assert.ok(fileDiff.patch.includes('+second 1999'));
       });
     });
 
