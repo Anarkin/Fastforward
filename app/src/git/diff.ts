@@ -7,6 +7,7 @@ export const diffArgs = [
   '--no-color',
   '--no-ext-diff',
   '--no-textconv',
+  '--histogram',
   '--full-index',
   '--src-prefix=a/',
   '--dst-prefix=b/',
