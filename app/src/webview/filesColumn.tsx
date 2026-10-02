@@ -101,7 +101,14 @@ export function Files({
     if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) {
       return;
     }
-    const action = filesKey(event.key, treeRows, hasHeader, cursor, visible);
+    const action = filesKey(
+      event.key,
+      treeRows,
+      hasHeader,
+      cursor,
+      selected,
+      visible,
+    );
     if (action === undefined) {
       return;
     }
