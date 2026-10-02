@@ -1373,6 +1373,48 @@ suite('View', function () {
       }
     });
 
+    test('reads the working tree once at a time while a tab first loads', async () => {
+      const own = await openView(log, [repository.root], false);
+      const held = gate();
+      let calls = 0;
+      let running = 0;
+      let most = 0;
+      let loaded = false;
+      stubMethod(own.view, 'sendWorkingTree', async (original, ...args) => {
+        calls++;
+        running++;
+        most = Math.max(most, running);
+        try {
+          if (calls === 1) {
+            await held.opened;
+          }
+          return await original(...args);
+        } finally {
+          running--;
+        }
+      });
+      stubMethod(own.view, 'sendCommit', async (original, ...args) => {
+        await original(...args);
+        loaded = true;
+      });
+      try {
+        const first = own.connection.receive({ type: 'ready' });
+        await waitFor(() => calls === 1, 'the working tree to be read');
+        const again = own.connection.refresh();
+        await waitFor(() => loaded, 'the history to load');
+        await Promise.race([
+          again,
+          new Promise((resolve) => setTimeout(resolve, 500)),
+        ]);
+        held.open();
+        await Promise.all([first, again]);
+        assert.strictEqual(most, 1);
+        assert.ok(calls >= 2);
+      } finally {
+        own.connection.dispose();
+      }
+    });
+
     test('takes only hashes of the history from the page', async () => {
       const written = path.join(folder, 'written.txt');
       const hash = `--output=${written}`;
