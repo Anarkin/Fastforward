@@ -44,15 +44,17 @@ export function settling<T>(
 ): {
   settle: (value: T, repeat: boolean) => void;
   send: (value: T) => void;
+  follow: (value: T) => void;
 } {
   let timer: ReturnType<typeof setTimeout> | undefined;
-  let pending: { value: T } | undefined;
+  let pending: { value: T; followers: T[] } | undefined;
   const flush = () => {
     clearTimeout(timer);
     const held = pending;
     pending = undefined;
     if (held) {
       post(held.value);
+      held.followers.forEach(post);
     }
   };
   return {
@@ -60,7 +62,7 @@ export function settling<T>(
       clearTimeout(timer);
       pending = undefined;
       if (repeat) {
-        pending = { value };
+        pending = { value, followers: [] };
         timer = setTimeout(flush, delay);
       } else {
         post(value);
@@ -69,6 +71,13 @@ export function settling<T>(
     send: (value) => {
       flush();
       post(value);
+    },
+    follow: (value) => {
+      if (pending) {
+        pending.followers.push(value);
+      } else {
+        post(value);
+      }
     },
   };
 }

@@ -329,9 +329,12 @@ export function App({ post: postToHost, listen }: Props) {
   useEffect(() => {
     if (treeNeeded) {
       dispatch({ type: 'requestTree', hash: treeNeeded });
-      postTab({ type: 'loadTree', hash: treeNeeded });
+      const root = activeTabRef.current;
+      if (root !== undefined) {
+        outbox.follow({ type: 'loadTree', hash: treeNeeded, root });
+      }
     }
-  }, [treeNeeded, postTab]);
+  }, [treeNeeded, outbox]);
 
   useEffect(() => {
     if (!showAllFiles || path === undefined) {
