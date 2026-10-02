@@ -436,13 +436,15 @@ export function startColoring(
   later: (run: () => void) => void = (run) => setTimeout(run),
 ): () => void {
   let current = true;
+  let job = 0;
   const pending = cachedRanges(sources, ranges);
   publish();
-  const work = (highlighter: HighlighterCore) => {
-    const step = tokenizing(highlighter, pending);
+  const work = (highlighter: HighlighterCore, todo: readonly Pending[]) => {
+    const step = tokenizing(highlighter, todo);
+    const mine = job;
     let published = performance.now();
     const slice = () => {
-      if (!current) {
+      if (!current || job !== mine) {
         return;
       }
       const more = step(performance.now() + sliceTime, ranges);
@@ -456,20 +458,27 @@ export function startColoring(
     };
     later(slice);
   };
-  if (pending.length === 0) {
-    return () => {};
+  const loaded = ready?.getLoadedLanguages() ?? [];
+  const now = pending.filter(({ source }) => loaded.includes(source.language));
+  const missing = pending.filter((item) => !now.includes(item));
+  if (ready && now.length > 0) {
+    work(ready, now);
   }
-  const languages = pending.map(({ source }) => source.language);
-  const highlighter = ready;
-  if (
-    highlighter &&
-    languages.every((language) =>
-      highlighter.getLoadedLanguages().includes(language),
-    )
-  ) {
-    work(highlighter);
-  } else {
-    void loadLanguages(languages).then((loaded) => current && work(loaded));
+  if (missing.length > 0) {
+    const before = grammars;
+    void loadLanguages(missing.map(({ source }) => source.language)).then(
+      (highlighter) => {
+        if (!current) {
+          return;
+        }
+        if (grammars === before) {
+          work(highlighter, missing);
+        } else {
+          job += 1;
+          work(highlighter, cachedRanges(sources, ranges));
+        }
+      },
+    );
   }
   return () => {
     current = false;

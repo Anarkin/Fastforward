@@ -488,6 +488,31 @@ suite('Syntax', () => {
     assert.strictEqual(published, 2);
   });
 
+  test('colors the texts of the languages loaded while it loads the others', async () => {
+    await loadLanguages(['typescript']);
+    const ranges = new Map<string, readonly SyntaxRange[]>();
+    const slices: (() => void)[] = [];
+    const run = () => {
+      while (slices.length > 0) {
+        slices.shift()?.();
+      }
+    };
+    startColoring(
+      [
+        { language: 'typescript', lines: ['let loadedNow;'], keys: ['0:0'] },
+        { language: 'rust', lines: ['let later = 1;'], keys: ['1:0'] },
+      ],
+      ranges,
+      () => {},
+      (slice) => slices.push(slice),
+    );
+    run();
+    assert.deepStrictEqual([...ranges.keys()], ['0:0']);
+    await loadLanguages(['rust']);
+    run();
+    assert.deepStrictEqual([...ranges.keys()].toSorted(), ['0:0', '1:0']);
+  });
+
   test('tokenizes past its deadline only a few thousand characters of a text, going on from where they leave off', async () => {
     const highlighter = await loadLanguages(['typescript']);
     let tokenized = 0;
