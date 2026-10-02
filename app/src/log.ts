@@ -12,10 +12,10 @@ export function fileLog(file: string, echo = false): Log {
   try {
     fs.renameSync(file, file.replace(/\.log$/, '.previous.log'));
   } catch {}
-  const stream = fs.createWriteStream(file, { flags: 'a' });
+  const descriptor = fs.openSync(file, 'a');
   const write = (level: string, text: string) => {
     const line = `${new Date().toISOString()} [${level}] ${text}\n`;
-    stream.write(line);
+    fs.writeSync(descriptor, line);
     if (echo) {
       process.stdout.write(line);
     }
