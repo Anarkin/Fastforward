@@ -1,14 +1,15 @@
 import * as assert from 'node:assert';
 import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { workingTreeHash } from '../shared/protocol';
+import { workingTreeHash, workingTreeIndex } from '../shared/protocol';
 import { CommitHistory } from '../webview/commitHistory';
 import {
   isListKey,
   keptPlace,
   settling,
   listKeyPosition,
-  pendingCommit,
+  keySelection,
+  pendingSelection,
   bubbleLineHeight,
   commitRowHeight,
   CommitBubbles,
@@ -384,14 +385,36 @@ suite('Commit list keys', () => {
   test('selects a row a key went to once it loads, but not in a history laid out anew meanwhile', () => {
     const history = new CommitHistory(10);
     const pending = { history, position: 9 };
-    assert.strictEqual(pendingCommit(pending, history), undefined);
+    assert.strictEqual(pendingSelection(pending, history, 'a'), null);
     history.add(9, [commitInfo('last')]);
-    assert.strictEqual(pendingCommit(pending, history)?.hash, 'last');
+    assert.strictEqual(pendingSelection(pending, history, 'a'), 'last');
     assert.strictEqual(
-      pendingCommit(
+      pendingSelection(
         pending,
         loaded(...Array.from({ length: 12 }, (_, i) => `c${i}`)),
+        'a',
       ),
+      null,
+    );
+  });
+
+  test('keeps the selected commit selected when a key comes back to it from a row still loading', () => {
+    const history = new CommitHistory(10);
+    history.add(0, [commitInfo('a'), commitInfo('b')]);
+    assert.strictEqual(keySelection(history, 2, 'b'), null);
+    assert.strictEqual(keySelection(history, 1, 'b'), undefined);
+    assert.strictEqual(keySelection(history, 0, 'b'), 'a');
+    assert.strictEqual(
+      keySelection(history, workingTreeIndex, workingTreeHash),
+      undefined,
+    );
+    assert.strictEqual(
+      keySelection(history, workingTreeIndex, 'a'),
+      workingTreeHash,
+    );
+    history.add(9, [commitInfo('last')]);
+    assert.strictEqual(
+      pendingSelection({ history, position: 9 }, history, 'last'),
       undefined,
     );
   });
