@@ -468,6 +468,34 @@ suite('Syntax', () => {
     assert.deepStrictEqual(rest, [second, third]);
   });
 
+  test('keeps the colors of texts of at most 8 million characters in all, and of none longer than 2 million', async () => {
+    const highlighter = await loadLanguages(['typescript']);
+    const tokenized: string[] = [];
+    const counting = {
+      ...highlighter,
+      codeToTokensBase: (
+        ...args: Parameters<typeof highlighter.codeToTokensBase>
+      ) => {
+        tokenized.push(args[0][0]);
+        return highlighter.codeToTokensBase(...args);
+      },
+    };
+    const color = (name: string, length = 1_999_000) =>
+      syntaxRanges(counting, [
+        {
+          language: 'typescript',
+          lines: [name.padEnd(length, ' ')],
+          keys: ['0:0'],
+        },
+      ]);
+    for (const name of ['a', 'b', 'c', 'd', 'e', 'b', 'a']) {
+      color(name);
+    }
+    color('f', 2_000_001);
+    color('f', 2_000_001);
+    assert.deepStrictEqual(tokenized, ['a', 'b', 'c', 'd', 'e', 'a', 'f', 'f']);
+  });
+
   test('colors no file that is collapsed', () => {
     const files = parsePatch(
       ['a.ts', 'b.ts']

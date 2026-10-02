@@ -259,8 +259,10 @@ const maxLineLength = 2000;
 type LineRanges = readonly (readonly SyntaxRange[])[];
 
 const maxCachedLines = 100_000;
+const maxCachedChars = 8_000_000;
 const cache = new Map<string, LineRanges>();
 let cachedLines = 0;
+let cachedChars = 0;
 
 function cached(key: string): LineRanges | undefined {
   const ranges = cache.get(key);
@@ -269,6 +271,23 @@ function cached(key: string): LineRanges | undefined {
     cache.set(key, ranges);
   }
   return ranges;
+}
+
+function store(key: string, ranges: LineRanges) {
+  if (key.length > maxCachedChars / 4 || cache.has(key)) {
+    return;
+  }
+  cache.set(key, ranges);
+  cachedLines += ranges.length;
+  cachedChars += key.length;
+  for (const [oldest, { length }] of cache) {
+    if (cachedLines <= maxCachedLines && cachedChars <= maxCachedChars) {
+      break;
+    }
+    cache.delete(oldest);
+    cachedLines -= length;
+    cachedChars -= oldest.length;
+  }
 }
 
 function tokenize(
@@ -298,15 +317,7 @@ function tokenize(
       }
       return found;
     });
-  cache.set(`${language}\n${text}`, ranges);
-  cachedLines += ranges.length;
-  for (const [oldest, { length }] of cache) {
-    if (cachedLines <= maxCachedLines) {
-      break;
-    }
-    cache.delete(oldest);
-    cachedLines -= length;
-  }
+  store(`${language}\n${text}`, ranges);
   return ranges;
 }
 
