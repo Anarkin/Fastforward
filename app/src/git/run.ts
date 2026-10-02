@@ -1,4 +1,4 @@
-import { execFile } from 'node:child_process';
+import { type ChildProcess, execFile } from 'node:child_process';
 
 export const gitConfigArgs = [
   '-c',
@@ -57,6 +57,11 @@ export function runGitBytes(
   { okExitCodes = [0], input, pathspecMagic, signal, env }: RunOptions = {},
 ): Promise<Buffer> {
   return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(signal.reason);
+      return;
+    }
+    const stop = () => stopGit(child);
     const child = execFile(
       gitPath,
       [...gitConfigArgs, ...args],
@@ -66,10 +71,12 @@ export function runGitBytes(
         maxBuffer: maxOutput,
         windowsHide: true,
         encoding: 'buffer',
-        signal,
       },
       (error, stdout, stderr) => {
-        if (error && !exitedWith(error, okExitCodes)) {
+        signal?.removeEventListener('abort', stop);
+        if (signal?.aborted) {
+          reject(signal.reason);
+        } else if (error && !exitedWith(error, okExitCodes)) {
           reject(
             new Error(
               `git ${args.join(' ')} failed: ${stderr.toString('utf8') || error.message}`,
@@ -80,8 +87,28 @@ export function runGitBytes(
         }
       },
     );
+    signal?.addEventListener('abort', stop, { once: true });
     child.stdin?.end(input);
   });
+}
+
+// Git for Windows' cmd\git.exe only starts the real git, which outlives it
+// being killed; running that git directly would lose the PATH the launcher
+// sets for hooks, shell aliases and credential helpers
+export function stopGit(child: ChildProcess): void {
+  if (child.exitCode !== null || child.signalCode !== null) {
+    return;
+  }
+  if (process.platform === 'win32' && child.pid !== undefined) {
+    execFile(
+      'taskkill',
+      ['/pid', String(child.pid), '/t', '/f'],
+      { windowsHide: true },
+      () => undefined,
+    );
+  } else {
+    child.kill();
+  }
 }
 
 export function exitedWith(

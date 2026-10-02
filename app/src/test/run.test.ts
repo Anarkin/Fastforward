@@ -1,5 +1,7 @@
 import * as assert from 'node:assert';
-import { exitedWith, gitConfigArgs, gitEnv } from '../git/run';
+import { execFile, spawn } from 'node:child_process';
+import { once } from 'node:events';
+import { exitedWith, gitConfigArgs, gitEnv, stopGit } from '../git/run';
 
 suite('Running git', () => {
   test('takes only the exit codes asked for as success', () => {
@@ -24,4 +26,40 @@ suite('Running git', () => {
     assert.strictEqual(gitEnv().GIT_LITERAL_PATHSPECS, '1');
     assert.strictEqual(gitEnv(true).GIT_LITERAL_PATHSPECS, '0');
   });
+
+  test("stops what git started too, as the real git outlives Git for Windows' launcher being killed", async function () {
+    if (process.platform !== 'win32') {
+      this.skip();
+    }
+    this.timeout(20_000);
+    const launcher = spawn('cmd.exe', ['/c', 'ping -n 60 127.0.0.1 > nul'], {
+      windowsHide: true,
+    });
+    let started: string[] = [];
+    while (started.length === 0) {
+      started = await powershell(
+        `(Get-CimInstance Win32_Process -Filter "ParentProcessId=${launcher.pid}").ProcessId`,
+      );
+    }
+    stopGit(launcher);
+    await once(launcher, 'close');
+    assert.deepStrictEqual(
+      await powershell(
+        `(Get-Process -Id ${started.join(',')} -ErrorAction SilentlyContinue).Id`,
+      ),
+      [],
+    );
+  });
 });
+
+function powershell(command: string): Promise<string[]> {
+  return new Promise((resolve, reject) => {
+    execFile(
+      'powershell.exe',
+      ['-NoProfile', '-Command', command],
+      { windowsHide: true },
+      (error, stdout) =>
+        error ? reject(error) : resolve(stdout.split(/\s+/).filter(Boolean)),
+    );
+  });
+}
