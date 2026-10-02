@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import {
   columnsClass,
+  listError,
   draggedWidths,
   followDrag,
   maxWidth,
@@ -110,6 +111,17 @@ suite('Columns', () => {
       columnsClass(false, undefined),
       'columns commits-hidden nothing-selected',
     );
+  });
+});
+
+suite('Error placement', () => {
+  test('shows an error in the commit list while nothing is selected, as the other columns are hidden then', () => {
+    assert.strictEqual(
+      listError('Not a repository', undefined),
+      'Not a repository',
+    );
+    assert.strictEqual(listError('Not a repository', 'a'), undefined);
+    assert.strictEqual(listError(undefined, undefined), undefined);
   });
 });
 

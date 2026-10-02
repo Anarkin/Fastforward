@@ -683,6 +683,16 @@ body.resizing {
   color: var(--color-error-foreground);
 }
 
+.column-body:has(> .error) {
+  display: flex;
+  flex-direction: column;
+}
+
+.column-body > .error + .virtual-rows {
+  flex: 1;
+  min-height: 0;
+}
+
 .list {
   outline: none;
 }
