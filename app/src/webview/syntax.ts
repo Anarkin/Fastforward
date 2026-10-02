@@ -1,7 +1,9 @@
-import { useLayoutEffect, useMemo, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   createHighlighterCore,
+  type GrammarState,
   type HighlighterCore,
+  type ThemedToken,
   type ThemeRegistrationRaw,
 } from 'shiki/core';
 import { createOnigurumaEngine } from 'shiki/engine/oniguruma';
@@ -290,74 +292,112 @@ function store(key: string, ranges: LineRanges) {
   }
 }
 
-function tokenize(
-  highlighter: HighlighterCore,
-  language: string,
-  text: string,
-): LineRanges {
-  const ranges = highlighter
-    .codeToTokensBase(text, {
-      lang: language,
-      theme: theme.name,
-      tokenizeMaxLineLength: maxLineLength,
-    })
-    .map((line) => {
-      const found: SyntaxRange[] = [];
-      let start = 0;
-      for (const token of line) {
-        const end = start + token.content.length;
-        const kind = kindsByColor.get(token.color?.toLowerCase() ?? '');
-        const last = found.at(-1);
-        if (kind && last?.kind === kind && last.end === start) {
-          found[found.length - 1] = { ...last, end };
-        } else if (kind) {
-          found.push({ start, end, kind });
-        }
-        start = end;
-      }
-      return found;
-    });
-  store(`${language}\n${text}`, ranges);
-  return ranges;
+function rangesOf(line: readonly ThemedToken[]): SyntaxRange[] {
+  const found: SyntaxRange[] = [];
+  let start = 0;
+  for (const token of line) {
+    const end = start + token.content.length;
+    const kind = kindsByColor.get(token.color?.toLowerCase() ?? '');
+    const last = found.at(-1);
+    if (kind && last?.kind === kind && last.end === start) {
+      found[found.length - 1] = { ...last, end };
+    } else if (kind) {
+      found.push({ start, end, kind });
+    }
+    start = end;
+  }
+  return found;
 }
 
-export function syntaxRanges(
-  highlighter: HighlighterCore,
+function apply(
+  source: SyntaxSource,
+  lines: LineRanges,
+  ranges: Map<string, readonly SyntaxRange[]>,
+  from = 0,
+) {
+  lines.forEach((line, index) => {
+    const key = source.keys[from + index];
+    if (key !== undefined) {
+      ranges.set(key, line);
+    }
+  });
+}
+
+interface Pending {
+  readonly source: SyntaxSource;
+  readonly key: string;
+}
+
+export function cachedRanges(
   sources: readonly SyntaxSource[],
-  deadline = Infinity,
-): {
-  ranges: Map<string, readonly SyntaxRange[]>;
-  rest: SyntaxSource[];
-} {
-  const ranges = new Map<string, readonly SyntaxRange[]>();
-  const rest: SyntaxSource[] = [];
-  let tokenized = false;
-  for (const source of sources) {
+  ranges: Map<string, readonly SyntaxRange[]>,
+): Pending[] {
+  return sources.flatMap((source) => {
     if (source.lines.length === 0) {
-      continue;
+      return [];
     }
-    const text = source.lines.join('\n');
-    let found = cached(`${source.language}\n${text}`);
-    if (!found && (!tokenized || performance.now() < deadline)) {
-      found = tokenize(highlighter, source.language, text);
-      tokenized = true;
+    const key = `${source.language}\n${source.lines.join('\n')}`;
+    const found = cached(key);
+    if (found) {
+      apply(source, found, ranges);
+      return [];
     }
-    if (!found) {
-      rest.push(source);
-      continue;
-    }
-    found.forEach((line, index) => {
-      const key = source.keys[index];
-      if (key !== undefined) {
-        ranges.set(key, line);
-      }
-    });
+    return [{ source, key }];
+  });
+}
+
+const chunkChars = 4000;
+
+function chunkEnd(lines: readonly string[], start: number): number {
+  let end = start;
+  for (let chars = 0; end < lines.length && chars < chunkChars; end += 1) {
+    chars += Math.min(lines[end].length, maxLineLength) + 1;
   }
-  return { ranges, rest };
+  return end;
+}
+
+export function tokenizing(
+  highlighter: HighlighterCore,
+  pending: readonly Pending[],
+): (deadline: number, ranges: Map<string, readonly SyntaxRange[]>) => boolean {
+  const generation = grammars;
+  let index = 0;
+  let done: (readonly SyntaxRange[])[] = [];
+  let state: GrammarState | undefined;
+  return (deadline, ranges) => {
+    while (index < pending.length) {
+      const { source, key } = pending[index];
+      const start = done.length;
+      const chunk = source.lines.slice(start, chunkEnd(source.lines, start));
+      const tokens = highlighter.codeToTokensBase(chunk.join('\n'), {
+        lang: source.language,
+        theme: theme.name,
+        tokenizeMaxLineLength: maxLineLength,
+        grammarState: state,
+      });
+      state = highlighter.getLastGrammarState(tokens);
+      const lines = chunk.map((_, line) => rangesOf(tokens[line] ?? []));
+      apply(source, lines, ranges, start);
+      done.push(...lines);
+      if (done.length === source.lines.length) {
+        if (generation === grammars) {
+          store(key, done);
+        }
+        index += 1;
+        done = [];
+        state = undefined;
+      }
+      if (performance.now() >= deadline) {
+        break;
+      }
+    }
+    return index < pending.length;
+  };
 }
 
 let created: Promise<HighlighterCore> | undefined;
 let ready: HighlighterCore | undefined;
+let grammars = 0;
 
 export async function loadLanguages(
   languages: readonly string[],
@@ -377,6 +417,7 @@ export async function loadLanguages(
   );
   if (added.length > 0) {
     await highlighter.loadLanguage(...added);
+    grammars += 1;
     cache.clear();
     cachedLines = 0;
     cachedChars = 0;
@@ -386,13 +427,61 @@ export async function loadLanguages(
 }
 
 const sliceTime = 10;
+const publishTime = 50;
+
+export function startColoring(
+  sources: readonly SyntaxSource[],
+  ranges: Map<string, readonly SyntaxRange[]>,
+  publish: () => void,
+  later: (run: () => void) => void = (run) => setTimeout(run),
+): () => void {
+  let current = true;
+  const pending = cachedRanges(sources, ranges);
+  publish();
+  const work = (highlighter: HighlighterCore) => {
+    const step = tokenizing(highlighter, pending);
+    let published = performance.now();
+    const slice = () => {
+      if (!current) {
+        return;
+      }
+      const more = step(performance.now() + sliceTime, ranges);
+      if (!more || performance.now() - published >= publishTime) {
+        publish();
+        published = performance.now();
+      }
+      if (more) {
+        later(slice);
+      }
+    };
+    later(slice);
+  };
+  if (pending.length === 0) {
+    return () => {};
+  }
+  const languages = pending.map(({ source }) => source.language);
+  const highlighter = ready;
+  if (
+    highlighter &&
+    languages.every((language) =>
+      highlighter.getLoadedLanguages().includes(language),
+    )
+  ) {
+    work(highlighter);
+  } else {
+    void loadLanguages(languages).then((loaded) => current && work(loaded));
+  }
+  return () => {
+    current = false;
+  };
+}
 
 const noRanges: ReadonlyMap<string, readonly SyntaxRange[]> = new Map();
 
 interface Colored {
   readonly files: readonly DiffFile[];
   readonly whole: WholeFile | undefined;
-  readonly ranges: ReadonlyMap<string, readonly SyntaxRange[]>;
+  readonly ranges: Map<string, readonly SyntaxRange[]>;
 }
 
 export function useSyntax(
@@ -406,47 +495,17 @@ export function useSyntax(
     [files, whole, texts, open],
   );
   const [colored, setColored] = useState<Colored>();
+  const shown = useRef<Colored>(undefined);
   useLayoutEffect(() => {
-    let current = true;
-    const color = (
-      highlighter: HighlighterCore,
-      pending: readonly SyntaxSource[],
-    ) => {
-      if (!current) {
-        return;
-      }
-      const { ranges, rest } = syntaxRanges(
-        highlighter,
-        pending,
-        performance.now() + sliceTime,
-      );
-      setColored((last) => ({
-        files,
-        whole,
-        ranges:
-          last?.files === files && last.whole === whole
-            ? new Map([...last.ranges, ...ranges])
-            : ranges,
-      }));
-      if (rest.length > 0) {
-        setTimeout(() => color(highlighter, rest));
-      }
-    };
-    const languages = sources.map((source) => source.language);
-    const highlighter = ready;
-    if (
-      highlighter &&
-      languages.every((language) =>
-        highlighter.getLoadedLanguages().includes(language),
-      )
-    ) {
-      color(highlighter, sources);
-    } else {
-      void loadLanguages(languages).then((loaded) => color(loaded, sources));
-    }
-    return () => {
-      current = false;
-    };
+    const last = shown.current;
+    const ranges =
+      last?.files === files && last.whole === whole
+        ? last.ranges
+        : new Map<string, readonly SyntaxRange[]>();
+    return startColoring(sources, ranges, () => {
+      shown.current = { files, whole, ranges };
+      setColored(shown.current);
+    });
   }, [sources, files, whole]);
   return colored?.files === files && colored.whole === whole
     ? colored.ranges
