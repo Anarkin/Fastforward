@@ -1,4 +1,5 @@
 import { type ChildProcess, execFile } from 'node:child_process';
+import { join } from 'node:path';
 
 export const gitConfigArgs = [
   '-c',
@@ -101,7 +102,7 @@ export function stopGit(child: ChildProcess): void {
   }
   if (process.platform === 'win32' && child.pid !== undefined) {
     execFile(
-      'taskkill',
+      join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'taskkill.exe'),
       ['/pid', String(child.pid), '/t', '/f'],
       { windowsHide: true },
       () => undefined,
