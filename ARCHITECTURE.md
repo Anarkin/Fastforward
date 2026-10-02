@@ -13,6 +13,7 @@
 - Commits are loaded by hash with `git log --stdin --no-walk=unsorted`, without `--raw` or `--shortstat`; `--shortstat` diffs every file's contents and took 8 s instead of 0.1 s for 300 commits in a large repository
 - Commit files and patches come from `git show`, because diffing ranges (`a...b`) fails for root commits
 - Diffs use `--histogram`, as git's default Myers algorithm matches blank lines over unique ones, showing a line moved past blank lines as removed and added again
+- Collapsing merges keeps expanded a merge whose first parent reaches the second parent's first-parent chain through commits only, and the second parent through merges only, as `git pull` leaves that on a mainline of merges with the mainline as the second parent, which would hide the merges that landed on it
 - Auto-fetch fetches the open repositories one at a time, the active one first, and waits the interval from the end of a round, so slow remotes never overlap; a failing repository is reported once until a fetch of it succeeds
 
 ### Syntax

@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import type { HistoryEntry } from '../git/history';
 import {
   headsOf,
   mergesHiding,
@@ -13,6 +14,26 @@ const history = [
   { hash: 'b1', parents: ['c'] },
   { hash: 'c', parents: [] },
 ];
+
+const pull = [
+  { hash: 'p', parents: ['d2', 'm1'] },
+  { hash: 'd2', parents: ['d1'] },
+  { hash: 'm1', parents: ['base', 'f1'] },
+  { hash: 'f1', parents: ['base'] },
+  { hash: 'd1', parents: ['base'] },
+  { hash: 'base', parents: [] },
+];
+
+function pulled(entries: readonly HistoryEntry[]): string[] {
+  const found: string[] = [];
+  showHistory(entries, new Set([entries[0].hash]), (hash, isPull) => {
+    if (isPull) {
+      found.push(hash);
+    }
+    return true;
+  });
+  return found;
+}
 
 suite('Merges shown', () => {
   test('hides what a collapsed merge brought in', () => {
@@ -51,6 +72,48 @@ suite('Merges shown', () => {
     );
     assert.strictEqual(shown[0].merge, 'expanded');
     assert.deepStrictEqual(shown[0].parents, ['a', 'b2']);
+  });
+
+  test('tells a merge that took a line of merges into a branch of commits, as git pull leaves on a mainline of merges', () => {
+    assert.deepStrictEqual(pulled(pull), ['p']);
+  });
+
+  test('tells no merge of a branch of commits a pull', () => {
+    assert.deepStrictEqual(pulled(history), []);
+  });
+
+  test('tells no merge a pull when its first parent took in merges too', () => {
+    const integration = [
+      { hash: 'm', parents: ['m1', 'i1'] },
+      { hash: 'm1', parents: ['base', 'f'] },
+      { hash: 'i1', parents: ['base', 'g'] },
+      { hash: 'f', parents: ['base'] },
+      { hash: 'g', parents: ['base'] },
+      { hash: 'base', parents: [] },
+    ];
+    assert.deepStrictEqual(pulled(integration), []);
+  });
+
+  test('tells no merge a pull when its second parent reaches the first through a commit', () => {
+    const direct = [
+      { hash: 'p', parents: ['d1', 'm1'] },
+      { hash: 'm1', parents: ['x', 'f'] },
+      { hash: 'x', parents: ['base'] },
+      { hash: 'f', parents: ['base'] },
+      { hash: 'd1', parents: ['base'] },
+      { hash: 'base', parents: [] },
+    ];
+    assert.deepStrictEqual(pulled(direct), []);
+  });
+
+  test('tells no merge a pull when its first parent has no commits of its own', () => {
+    const stacked = [
+      { hash: 'n', parents: ['base', 'm1'] },
+      { hash: 'm1', parents: ['base', 'f'] },
+      { hash: 'f', parents: ['base'] },
+      { hash: 'base', parents: [] },
+    ];
+    assert.deepStrictEqual(pulled(stacked), []);
   });
 
   test('shows every tip it is given', () => {

@@ -158,7 +158,7 @@ function linksOf(history: readonly HistoryEntry[]): Links {
 export function showHistory(
   history: readonly HistoryEntry[],
   tips: ReadonlySet<string>,
-  isExpanded: (hash: string) => boolean,
+  isExpanded: (hash: string, isPull: boolean) => boolean,
 ): ShownEntry[] {
   const links = linksOf(history);
   const { index, starts, parents } = links;
@@ -177,7 +177,7 @@ export function showHistory(
     const first = starts[at];
     let end = starts[at + 1];
     if (end - first > 1) {
-      if (isExpanded(history[at].hash)) {
+      if (isExpanded(history[at].hash, isPull(links, history.length, at))) {
         expanded[at] = 1;
       } else {
         end = first + 1;
@@ -215,6 +215,33 @@ export function showHistory(
     );
   }
   return result;
+}
+
+// Walks both first-parent chains to where they meet, which works as parents
+// always come after their children, also those outside the history
+function isPull({ starts, parents }: Links, length: number, at: number) {
+  const parentCount = (commit: number) =>
+    commit < length ? starts[commit + 1] - starts[commit] : 0;
+  const start = parents[starts[at]];
+  let first = start;
+  let second = parents[starts[at] + 1];
+  if (parentCount(second) < 2) {
+    return false;
+  }
+  while (first !== second) {
+    if (first < second) {
+      if (parentCount(first) !== 1) {
+        return false;
+      }
+      first = parents[starts[first]];
+    } else {
+      if (parentCount(second) < 2) {
+        return false;
+      }
+      second = parents[starts[second]];
+    }
+  }
+  return first !== start;
 }
 
 function countHidden(

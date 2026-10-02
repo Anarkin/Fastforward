@@ -23,6 +23,7 @@ This file only observes and documents the codebase mainly for human readers; the
 ## History
 
 - The graph draws at most 12 lanes, drawing lines past the last lane on it
+- Collapsing merges hides the commits a mainline of plain commits had when `git pull` merged it into a branch that then became the mainline, as that merge looks just like merging a branch
 - A commit search stops at 50 matches and asks to narrow it down, and needs at least 3 characters to search commit messages, as each search walks every commit
 - A hash prefix lists at most 20 commits
 - The ref search draws at most 200 refs per group, and the ref tree at most 200 folders and refs under a folder, counting the rest, as repositories can have thousands of refs
