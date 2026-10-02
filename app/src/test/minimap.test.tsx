@@ -38,11 +38,11 @@ suite('Minimap', () => {
       line('context'),
       line('added'),
     ]);
-    const total = 22 + 7 * 20;
+    const total = 8 * 22;
     assert.deepStrictEqual(minimapMarks(rows), [
-      { kind: 'removed', top: 42 / total, height: 20 / total },
-      { kind: 'added', top: 62 / total, height: 40 / total },
-      { kind: 'added', top: 142 / total, height: 20 / total },
+      { kind: 'removed', top: 44 / total, height: 22 / total },
+      { kind: 'added', top: 66 / total, height: 44 / total },
+      { kind: 'added', top: 154 / total, height: 22 / total },
     ]);
   });
 
@@ -56,7 +56,7 @@ suite('Minimap', () => {
       (index) => (index === 0 ? 40 : undefined),
     );
     assert.deepStrictEqual(minimapMarks(rows), [
-      { kind: 'added', top: 62 / 82, height: 20 / 82 },
+      { kind: 'added', top: 62 / 84, height: 22 / 84 },
     ]);
   });
 

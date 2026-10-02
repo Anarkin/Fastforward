@@ -475,7 +475,7 @@ suite('Large files fetched', () => {
 });
 
 suite('Diff row heights', () => {
-  test('gives every row but the error and placeholders a fixed height, a file header that of a row of the other columns', () => {
+  test('gives every row but the error, a large file and placeholders the same fixed height, that of a row of the other columns, so the columns line up', () => {
     const rows = diffRows(
       parsePatch(
         [
@@ -494,11 +494,11 @@ suite('Diff row heights', () => {
       [
         ['error', undefined],
         ['file', 22],
-        ['binary', 28],
+        ['binary', 22],
         ['file', 22],
-        ['line', 20],
-        ['hunk', 12],
-        ['line', 20],
+        ['line', 22],
+        ['hunk', 22],
+        ['line', 22],
       ],
     );
     const loading = diffRows([], new Map(), undefined, true);
@@ -530,8 +530,8 @@ suite('Diff row heights', () => {
       [
         [200, '0:error'],
         [22, '1:file'],
-        [20, '2:line'],
-        [20, '3:line'],
+        [22, '2:line'],
+        [22, '3:line'],
       ],
     );
     const loading = diffRows([], new Map(), undefined, true);

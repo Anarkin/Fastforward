@@ -410,6 +410,28 @@ suite('Style', () => {
     assert.ok(line.includes('padding-left: var(--bubble-inset);'));
   });
 
+  test('gives a row of the other columns the fixed height of a diff row, whatever the font, so the columns line up', () => {
+    const row = declarationsOf('.row');
+    assert.match(row, /box-sizing: border-box;/);
+    assert.match(
+      row,
+      new RegExp(`height: ${rowHeight({ kind: 'hunk', file: 0 })}px;`),
+    );
+  });
+
+  test('puts the dots of a hunk divider under the line numbers, in both of them inline and in the one of a side by side', () => {
+    const number = /width: (\d+)px;/.exec(declarationsOf('.diff-line .number'));
+    assert.ok(number);
+    assert.match(
+      declarationsOf('.hunk-dots'),
+      new RegExp(`width: ${2 * Number(number[1])}px;`),
+    );
+    assert.match(
+      declarationsOf('.side-by-side .hunk-dots'),
+      new RegExp(`width: ${number[1]}px;`),
+    );
+  });
+
   test('cuts off every long name in a row with an ellipsis', () => {
     assert.match(declarationsOf('.row .path'), /text-overflow: ellipsis/);
   });

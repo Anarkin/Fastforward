@@ -532,6 +532,8 @@ body.resizing {
 }
 
 .row {
+  box-sizing: border-box;
+  height: 22px;
   padding: 3px 8px;
   white-space: nowrap;
   overflow: hidden;
@@ -962,7 +964,7 @@ body.resizing {
       transparent 54% 96%,
       var(--color-border) 96%
     )
-    0 0 / 10px 10px;
+    0 0 / 11px 11px;
 }
 
 .split-code {
@@ -977,11 +979,26 @@ body.resizing {
 }
 
 .hunk-divider {
+  display: flex;
+  align-items: center;
   box-sizing: border-box;
   height: 100%;
   background: var(--color-border);
   border-top: 1px solid var(--color-border);
   border-bottom: 1px solid var(--color-border);
+}
+
+.hunk-dots {
+  box-sizing: border-box;
+  width: 112px;
+  padding: 0 6px;
+  text-align: right;
+  user-select: none;
+  color: var(--muted-foreground);
+}
+
+.side-by-side .hunk-dots {
+  width: 56px;
 }
 
 .diff-line {
