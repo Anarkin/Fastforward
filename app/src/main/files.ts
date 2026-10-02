@@ -52,3 +52,10 @@ function isBounds(value: unknown): value is Bounds {
     (key) => typeof record[key] === 'number' && Number.isFinite(record[key]),
   );
 }
+
+export function rebuilt(file: string | null): 'page' | 'defaults' | undefined {
+  if (file?.startsWith('webview.') || file === 'index.html') {
+    return 'page';
+  }
+  return file === 'settings.json' ? 'defaults' : undefined;
+}
