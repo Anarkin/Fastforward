@@ -1,12 +1,24 @@
 import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { appName } from '../shared/titleBar';
 import { TitleBar, windowTitle } from '../webview/titleBar';
 import { stylesheet } from './fixtures';
 
 suite('Title bar', () => {
   test('names the open repository, or only the app without one', () => {
-    assert.strictEqual(windowTitle('/code/app'), '/code/app - Fastforward');
-    assert.strictEqual(windowTitle(undefined), 'Fastforward');
+    assert.strictEqual(
+      windowTitle('/code/app', 'Fastforward 1.2.3'),
+      '/code/app - Fastforward 1.2.3',
+    );
+    assert.strictEqual(
+      windowTitle(undefined, 'Fastforward 1.2.3'),
+      'Fastforward 1.2.3',
+    );
+  });
+
+  test('names the app with its version, marking a run from the source', () => {
+    assert.strictEqual(appName('1.2.3', false), 'Fastforward 1.2.3');
+    assert.strictEqual(appName('1.2.3', true), 'Fastforward 1.2.3 Dev');
   });
 
   test('shows the icon and the title', () => {

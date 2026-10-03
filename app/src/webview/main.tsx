@@ -9,6 +9,7 @@ declare global {
   interface Window {
     readonly fastforward: {
       readonly platform: string;
+      readonly name: string;
       post(message: ToHost): void;
       setWindowButtonColor(color: string): void;
       listen(handler: (message: ToWebview) => void): () => void;
@@ -49,5 +50,7 @@ installOverlayScrollbars();
 
 const root = document.getElementById('root');
 if (root) {
-  createRoot(root).render(<App post={post} listen={listen} />);
+  createRoot(root).render(
+    <App name={fastforward.name} post={post} listen={listen} />,
+  );
 }

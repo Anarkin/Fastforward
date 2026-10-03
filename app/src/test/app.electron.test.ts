@@ -7,6 +7,7 @@ import {
   type ElectronApplication,
   type Page,
 } from 'playwright-core';
+import { appName } from '../shared/titleBar';
 import { defaultSettings, waitFor } from './fixtures';
 import {
   removeFolder,
@@ -69,7 +70,11 @@ suite('App', function () {
       await page.locator('.tab.active .tab-name').textContent(),
       'repo',
     );
-    assert.strictEqual(await page.title(), `${repository.root} - Fastforward`);
+    const version = await app.evaluate((electron) => electron.app.getVersion());
+    assert.strictEqual(
+      await page.title(),
+      `${repository.root} - ${appName(version, true)}`,
+    );
   });
 
   test('focuses the commit list, whose keys start from the checked-out commit', async () => {

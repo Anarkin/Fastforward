@@ -16,7 +16,7 @@ import {
 import { autoUpdater } from 'electron-updater';
 import { findGit, minimumGitVersion } from '../git/locate';
 import { fileLog, type Log } from '../log';
-import { titleBarHeight } from '../shared/titleBar';
+import { appName, appNameSwitch, titleBarHeight } from '../shared/titleBar';
 import type { ToHost, ToWebview } from '../shared/protocol';
 import {
   migrateProfile,
@@ -289,6 +289,9 @@ function createWindow(
     trafficLightPosition: { x: 12, y: (titleBarHeight - 12) / 2 },
     webPreferences: {
       preload: path.join(dist, 'preload.js'),
+      additionalArguments: [
+        appNameSwitch + appName(app.getVersion(), development),
+      ],
       contextIsolation: true,
       sandbox: true,
       nodeIntegration: false,

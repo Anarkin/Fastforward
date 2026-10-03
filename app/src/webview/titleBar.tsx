@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import { titleBarHeight } from '../shared/titleBar';
 
-export function windowTitle(root: string | undefined): string {
-  return root === undefined ? 'Fastforward' : `${root} - Fastforward`;
+export function windowTitle(root: string | undefined, app: string): string {
+  return root === undefined ? app : `${root} - ${app}`;
 }
 
 function Dot({ cx, color }: { cx: number; color: string }) {
