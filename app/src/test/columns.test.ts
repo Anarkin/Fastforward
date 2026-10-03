@@ -5,11 +5,14 @@ import {
   draggedWidths,
   followDrag,
   maxWidth,
+  minColumnWidths,
+  minLastColumnWidth,
   resetWidth,
   shownSelection,
   templateOf,
   widthsToLoad,
 } from '../webview/columns';
+import { minimumWindowSize } from '../main/files';
 import { workingTreeHash } from '../shared/protocol';
 
 function dragTarget() {
@@ -33,21 +36,32 @@ suite('Columns', () => {
   test('gives a hidden column no width instead of dropping it, so it keeps its place', () => {
     assert.strictEqual(
       templateOf([460, 300], [true, false]),
-      '0px minmax(120px, 300px) minmax(240px, 1fr)',
+      '0px minmax(150px, 300px) minmax(240px, 1fr)',
     );
   });
 
   test('narrows the columns to fit a narrow window, keeping the last one its room, rather than pushing it out of view', () => {
     assert.strictEqual(
       templateOf([460, 300], [false, false]),
-      'minmax(120px, 460px) minmax(120px, 300px) minmax(240px, 1fr)',
+      'minmax(275px, 460px) minmax(150px, 300px) minmax(240px, 1fr)',
     );
   });
 
   test('leaves the last column its room, which a hidden column does not take', () => {
     assert.strictEqual(maxWidth([460, 300], [false, false], 0, 1000, 0), 460);
     assert.strictEqual(maxWidth([460, 300], [true, false], 1, 1000, 0), 760);
-    assert.strictEqual(maxWidth([460, 300], [false, false], 1, 500, 0), 120);
+    assert.strictEqual(maxWidth([460, 300], [false, false], 1, 500, 0), 150);
+    assert.strictEqual(maxWidth([460, 300], [false, false], 0, 500, 0), 275);
+  });
+
+  test('fits every column at its least width in the smallest window, past the padding and gaps between them', () => {
+    const gutter = 4;
+    const columns = minColumnWidths.length + 1;
+    const least =
+      minColumnWidths.reduce((sum, width) => sum + width, 0) +
+      minLastColumnWidth +
+      (columns + 1) * gutter;
+    assert.ok(least <= minimumWindowSize.width, `${least}`);
   });
 
   test('leaves the last column its room past the padding and gaps between the columns', () => {
@@ -63,7 +77,11 @@ suite('Columns', () => {
   test('drags a column to a whole width between its least and most', () => {
     assert.deepStrictEqual(
       draggedWidths([400, 250], 1, -1000, 500),
-      [400, 120],
+      [400, 150],
+    );
+    assert.deepStrictEqual(
+      draggedWidths([400, 250], 0, -1000, 500),
+      [275, 250],
     );
     assert.deepStrictEqual(
       draggedWidths([400, 250], 1, 10000, 500),

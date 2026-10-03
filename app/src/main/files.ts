@@ -16,6 +16,8 @@ export function appFile(root: string, url: string): string | undefined {
     : undefined;
 }
 
+export const minimumWindowSize = { width: 1280, height: 720 };
+
 export interface Bounds {
   readonly x: number;
   readonly y: number;
