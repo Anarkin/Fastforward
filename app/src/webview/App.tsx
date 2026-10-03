@@ -69,11 +69,12 @@ import { addNotice, Notices, type Notice } from './notices';
 import { repositoryMenuItems } from './repositoryMenu';
 
 interface Props {
+  name: string;
   post: (message: ToHost) => void;
   listen: (handler: (message: ToWebview) => void) => () => void;
 }
 
-export function App({ post: postToHost, listen }: Props) {
+export function App({ name, post: postToHost, listen }: Props) {
   const outbox = useMemo(() => settling(postToHost), [postToHost]);
   const post = outbox.send;
   const [tabs, setTabs] = useState<readonly TabInfo[]>([]);
@@ -479,7 +480,7 @@ export function App({ post: postToHost, listen }: Props) {
       <CheckedOutBranch.Provider value={repository?.head}>
         <DetachedHead.Provider value={detached}>
           <div className="app">
-            <TitleBar title={windowTitle(activeTab)} />
+            <TitleBar title={windowTitle(activeTab, name)} />
             <TabBar
               tabs={tabs}
               active={activeTab}
