@@ -59,6 +59,10 @@ suite('Style', () => {
     const title = declarationsOf('.column-title:has(.column-start)');
     assert.strictEqual(pixels(title, 'padding-left'), buttons(3));
     assert.strictEqual(pixels(title, 'padding-right'), buttons(2));
+    const pinned = declarationsOf(
+      '.column-title:has(.nav-buttons > :nth-child(4))',
+    );
+    assert.strictEqual(pixels(pinned, 'padding-left'), buttons(4));
   });
 
   test("opens the search over the commit column's title without moving its field or back button", () => {
