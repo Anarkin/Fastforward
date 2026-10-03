@@ -412,6 +412,10 @@ body.resizing {
   padding-right: calc(4px + 2 * 26px + 2px + 8px);
 }
 
+.column-title:has(.nav-buttons > :nth-child(4)) {
+  padding-left: calc(4px + 4 * 26px + 3 * 2px + 8px);
+}
+
 .column-title:has(.all-files) {
   padding-left: calc(4px + 3 * 26px + 2 * 2px + 8px);
   padding-right: calc(4px + 3 * 26px + 2 * 2px + 8px);
