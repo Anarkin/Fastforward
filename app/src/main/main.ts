@@ -28,7 +28,14 @@ import {
 import { JsonFileStore, Storage } from '../storage';
 import { themeCss } from '../theme';
 import { FastforwardView, type Connection } from '../view';
-import { appFile, appOrigin, appScheme, rebuilt, visibleBounds } from './files';
+import {
+  appFile,
+  appOrigin,
+  appScheme,
+  minimumWindowSize,
+  rebuilt,
+  visibleBounds,
+} from './files';
 import { flushBeforeQuit } from './quit';
 import { loginShellPath, mergePaths } from './shellPath';
 import { checksForUpdates } from './updates';
@@ -259,8 +266,8 @@ function createWindow(
   );
   const window = new BrowserWindow({
     ...(bounds ?? { width: 1400, height: 900 }),
-    minWidth: 640,
-    minHeight: 400,
+    minWidth: minimumWindowSize.width,
+    minHeight: minimumWindowSize.height,
     title: 'Fastforward',
     show: false,
     backgroundColor: (nativeTheme.shouldUseDarkColors

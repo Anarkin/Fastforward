@@ -8,8 +8,8 @@ import {
 } from 'react';
 import { workingTreeHash } from '../shared/protocol';
 
-const minColumnWidth = 120;
-const minLastColumnWidth = 240;
+export const minColumnWidths = [275, 150];
+export const minLastColumnWidth = 240;
 
 interface Resizing {
   start: (index: number, event: React.PointerEvent) => void;
@@ -48,7 +48,7 @@ export function templateOf(
   widths: readonly number[],
   hidden: readonly boolean[],
 ): string {
-  return `${widths.map((width, i) => (hidden[i] ? '0px' : `minmax(${minColumnWidth}px, ${width}px)`)).join(' ')} minmax(${minLastColumnWidth}px, 1fr)`;
+  return `${widths.map((width, i) => (hidden[i] ? '0px' : `minmax(${minColumnWidths[i]}px, ${width}px)`)).join(' ')} minmax(${minLastColumnWidth}px, 1fr)`;
 }
 
 export function widthsToLoad(
@@ -70,7 +70,7 @@ export function maxWidth(
     0,
   );
   return Math.max(
-    minColumnWidth,
+    minColumnWidths[index],
     viewWidth - spacing - others - minLastColumnWidth,
   );
 }
@@ -82,7 +82,7 @@ export function draggedWidths(
   max: number,
 ): number[] {
   const width = Math.round(
-    Math.min(max, Math.max(minColumnWidth, start[index] + delta)),
+    Math.min(max, Math.max(minColumnWidths[index], start[index] + delta)),
   );
   return start.map((w, i) => (i === index ? width : w));
 }
