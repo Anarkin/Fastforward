@@ -5,6 +5,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { PassThrough } from 'node:stream';
 import { appFile, rebuilt, visibleBounds } from '../main/files';
+import { profileFolder } from '../main/profile';
 import { flushBeforeQuit } from '../main/quit';
 import {
   loginShellPath,
@@ -169,6 +170,24 @@ suite('Login shell PATH', () => {
       '/opt/homebrew/bin:/usr/bin:/bin',
     );
     assert.strictEqual(mergePaths(undefined, '/usr/bin', ':'), '/usr/bin');
+  });
+});
+
+suite('Profile', () => {
+  const appData = path.join('C:', 'Users', 'me', 'AppData', 'Roaming');
+  const given = path.join('C:', 'profiles', 'test');
+
+  test('keeps a run from the source apart from the installed app, so both can be open', () => {
+    assert.strictEqual(profileFolder(false, '', appData), undefined);
+    assert.strictEqual(
+      profileFolder(true, '', appData),
+      path.join(appData, 'Fastforward Dev'),
+    );
+  });
+
+  test('uses the folder it was given, however it runs', () => {
+    assert.strictEqual(profileFolder(false, given, appData), given);
+    assert.strictEqual(profileFolder(true, given, appData), given);
   });
 });
 

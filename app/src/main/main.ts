@@ -36,6 +36,7 @@ import {
   rebuilt,
   visibleBounds,
 } from './files';
+import { profileFolder } from './profile';
 import { flushBeforeQuit } from './quit';
 import { loginShellPath, mergePaths } from './shellPath';
 import { checksForUpdates } from './updates';
@@ -52,7 +53,11 @@ protocol.registerSchemesAsPrivileged([
   },
 ]);
 
-const userDataDir = app.commandLine.getSwitchValue('user-data-dir');
+const userDataDir = profileFolder(
+  development,
+  app.commandLine.getSwitchValue('user-data-dir'),
+  app.getPath('appData'),
+);
 if (userDataDir) {
   app.setPath('userData', userDataDir);
   app.setPath('logs', path.join(userDataDir, 'logs'));
