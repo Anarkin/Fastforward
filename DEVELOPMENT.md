@@ -2,7 +2,7 @@
 
 - Run `npm install` in `app/`
 
-- Run `npm start` in `app/` to build and open the app, or `npm run dev` to rebuild on every change, which restarts the app after main process changes and reloads the page after the rest
+- Run `npm start` in `app/` to build and open the app, or `npm run dev` to rebuild on every change, which restarts the app after main process changes and reloads the page after the rest; both keep their settings, state and logs in a `Fastforward Dev` folder next to the installed app's, so they run beside it
 
 - Run `npm run dist` in `app/` to build an installer for the current OS into `app/release/`
 
