@@ -8,8 +8,6 @@ on:
 
 jobs:
   build:
-    # Release runs this for the tag, whose push carries the same commit message, so only the branch push is skipped
-    if: ${{ !(github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'chore(release):')) }}
     strategy:
       fail-fast: false
       matrix:
