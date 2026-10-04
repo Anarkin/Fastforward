@@ -396,19 +396,21 @@ suite('App', function () {
         );
         return atTop?.querySelector('.code')?.textContent?.split(' ')[0];
       });
-    await page.waitForTimeout(100);
-    await waitFor(
-      async () => /^line[1-9]\d*$/.test((await topLine()) ?? ''),
-      'a line at the top',
-    );
-    const reading = await topLine();
+    const shownTopLine = async () => {
+      await page.waitForTimeout(100);
+      await waitFor(
+        async () => /^line[1-9]\d*$/.test((await topLine()) ?? ''),
+        'a line at the top',
+      );
+      return topLine();
+    };
+    const reading = await shownTopLine();
     for (const wrapped of [false, true]) {
       await page.keyboard.press('w');
       await page
         .locator('.diff-view.wrap')
         .waitFor({ state: wrapped ? 'attached' : 'detached' });
-      await page.waitForTimeout(100);
-      assert.strictEqual(await topLine(), reading);
+      assert.strictEqual(await shownTopLine(), reading);
     }
     for (const change of [
       () => page.getByRole('button', { name: 'Side by Side' }).click(),
@@ -417,8 +419,7 @@ suite('App', function () {
       () => page.keyboard.press('w'),
     ]) {
       await change();
-      await page.waitForTimeout(100);
-      assert.strictEqual(await topLine(), reading);
+      assert.strictEqual(await shownTopLine(), reading);
     }
   });
 
