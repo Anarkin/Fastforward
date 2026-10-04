@@ -275,13 +275,13 @@ suite('Aligning a change side by side', () => {
     );
   });
 
-  test('falls back to the plain order for a block too big to compare', () => {
-    const removed = Array.from({ length: 300 }, (_, i) => `line ${i}`);
+  test('falls back to the plain order for a block of over 40000 removed by added lines', () => {
+    const removed = Array.from({ length: 200 }, (_, i) => `line ${i}`);
     const added = ['inserted', ...removed];
     const aligned = alignLines(removed, added);
     assert.deepStrictEqual(aligned[0], [0, 0]);
-    assert.deepStrictEqual(aligned.at(-1), [u, 300]);
-    assert.strictEqual(aligned.length, 301);
+    assert.deepStrictEqual(aligned.at(-1), [u, 200]);
+    assert.strictEqual(aligned.length, 201);
   });
 
   test('falls back to the plain order for a few lines with too many words to compare', () => {
@@ -297,16 +297,17 @@ suite('Aligning a change side by side', () => {
     );
   });
 
-  test('lines up a large block that still fits, even with insertions', () => {
-    const removed = Array.from({ length: 150 }, (_, i) => `value ${i} = ${i};`);
+  test('lines up a block of 40000 removed by added lines, even with insertions', () => {
+    const removed = Array.from({ length: 200 }, (_, i) => `value ${i} = ${i};`);
     const added = [
       'inserted();',
-      ...removed.map((line) => line.replace(';', ' ;')),
+      ...removed.slice(0, 199).map((line) => line.replace(';', ' ;')),
     ];
     const aligned = alignLines(removed, added);
     assert.deepStrictEqual(aligned[0], [u, 0]);
     assert.deepStrictEqual(aligned[1], [0, 1]);
-    assert.deepStrictEqual(aligned.at(-1), [149, 150]);
+    assert.deepStrictEqual(aligned.at(-2), [198, 199]);
+    assert.deepStrictEqual(aligned.at(-1), [199, u]);
   });
 });
 
