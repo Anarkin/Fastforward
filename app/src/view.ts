@@ -799,7 +799,21 @@ export class FastforwardView {
   private async watch(context: Context, session: Session): Promise<void> {
     session.watcher?.dispose();
     session.watcher = undefined;
-    const watcher = await watchRepository(context.gitPath, context.root, {
+    const watcher = await this.startWatching(context, session);
+    if (
+      session.disposed ||
+      session.watcher !== undefined ||
+      !this.isActive(context.root) ||
+      this.tabStates.get(context.root) !== context.tab
+    ) {
+      watcher.dispose();
+      return;
+    }
+    session.watcher = watcher;
+  }
+
+  private startWatching(context: Context, session: Session): Promise<Watcher> {
+    return watchRepository(context.gitPath, context.root, {
       delay: refreshDelay,
       maxDelay: refreshMaxDelay,
       onChange: (gitDirChanged) =>
@@ -814,15 +828,6 @@ export class FastforwardView {
         this.log.error(error instanceof Error ? error : String(error));
       },
     });
-    if (
-      session.disposed ||
-      session.watcher !== undefined ||
-      !this.isActive(context.root)
-    ) {
-      watcher.dispose();
-      return;
-    }
-    session.watcher = watcher;
   }
 
   private async checkout(

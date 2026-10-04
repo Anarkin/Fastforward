@@ -3837,6 +3837,53 @@ suite('Fetch', function () {
     }
   });
 
+  test('keeps updating a tab opened again while the watcher of the closed one still starts', async () => {
+    const second = await tempRepository(path.join(folder, 'second-watched'));
+    await second.commit('second');
+    const opened = await openView(log, [repository.root, second.root], false);
+    const started: (() => void)[] = [];
+    stubMethod(opened.view, 'startWatching', async (original, ...args) => {
+      const watcher = await original(...args);
+      const held = gate();
+      started.push(held.open);
+      await held.opened;
+      return watcher;
+    });
+    try {
+      const handled = [opened.connection.receive({ type: 'ready' })];
+      await waitFor(() => started.length === 1, 'the first watcher');
+      handled.push(
+        opened.connection.receive({ type: 'closeTab', root: repository.root }),
+      );
+      await waitFor(() => started.length === 2, "the next tab's watcher");
+      handled.push(
+        opened.connection.receive({
+          type: 'openRepository',
+          root: repository.root,
+        }),
+      );
+      await waitFor(() => started.length === 3, "the reopened tab's watcher");
+      for (const open of started) {
+        open();
+        await new Promise((resolve) => setImmediate(resolve));
+      }
+      await Promise.all(handled);
+      await waitFor(
+        () => opened.page.last('workingTree') !== undefined,
+        'the working tree',
+      );
+      opened.page.clear();
+      fs.writeFileSync(path.join(repository.root, 'watched.txt'), 'new\n');
+      await waitFor(
+        () => opened.page.last('workingTree') !== undefined,
+        'the reopened tab to update',
+      );
+    } finally {
+      opened.connection.dispose();
+      fs.rmSync(path.join(repository.root, 'watched.txt'), { force: true });
+    }
+  });
+
   test('leaves ignored files changing alone', async () => {
     fs.writeFileSync(
       path.join(repository.root, '.git', 'info', 'exclude'),
