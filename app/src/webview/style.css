@@ -924,6 +924,9 @@ body.resizing {
   top: -5px;
   left: 100%;
   right: auto;
+  box-sizing: border-box;
+  max-height: 100vh;
+  overflow-y: auto;
 }
 
 .menu.submenu.flipped {

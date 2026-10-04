@@ -99,6 +99,19 @@ suite('Dismissing menus and popups', () => {
     }
   });
 
+  test('stays open on scrolling inside it, so a long menu scrolls', () => {
+    const window = new EventTarget();
+    const { menu, stop } = open(window, { onScroll: true });
+    try {
+      const inside = new Event('wheel');
+      Object.defineProperty(inside, 'target', { value: menu.element });
+      window.dispatchEvent(inside);
+      assert.strictEqual(menu.closed, 0);
+    } finally {
+      stop();
+    }
+  });
+
   test('closes nothing once stopped', () => {
     const window = new EventTarget();
     const { menu, stop } = open(window, { onScroll: true });

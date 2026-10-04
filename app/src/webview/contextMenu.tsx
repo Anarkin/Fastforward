@@ -122,6 +122,12 @@ export function listenForDismiss(
       onClose();
     }
   };
+  const onWheel = (event: Event) => {
+    const { target: scrolled } = event;
+    if (!(isNode(scrolled) && element.current?.contains(scrolled))) {
+      onClose();
+    }
+  };
   const onKeyDown = (event: Event) => {
     if ('key' in event && event.key === 'Escape' && layers.at(-1) === layer) {
       event.stopPropagation();
@@ -132,7 +138,7 @@ export function listenForDismiss(
   target.addEventListener('keydown', onKeyDown, { capture: true });
   target.addEventListener('blur', onClose);
   if (onScroll) {
-    target.addEventListener('wheel', onClose, { capture: true });
+    target.addEventListener('wheel', onWheel, { capture: true });
   }
   return () => {
     const index = layers.indexOf(layer);
@@ -142,7 +148,7 @@ export function listenForDismiss(
     target.removeEventListener('pointerdown', onPointerDown, { capture: true });
     target.removeEventListener('keydown', onKeyDown, { capture: true });
     target.removeEventListener('blur', onClose);
-    target.removeEventListener('wheel', onClose, { capture: true });
+    target.removeEventListener('wheel', onWheel, { capture: true });
   };
 }
 

@@ -504,6 +504,13 @@ suite('Style', () => {
     }
   });
 
+  test('scrolls a submenu taller than the window, which lists every ref at a commit', () => {
+    const submenu = declarationsOf('.menu.submenu');
+    assert.ok(submenu.includes('box-sizing: border-box;'));
+    assert.ok(submenu.includes('max-height: 100vh;'));
+    assert.ok(submenu.includes('overflow-y: auto;'));
+  });
+
   test('highlights no disabled menu item on hover, whose text would vanish in the selection color', () => {
     assert.match(
       declarationsOf('.menu-item:hover:not(:disabled)'),
