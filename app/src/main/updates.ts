@@ -1,10 +1,25 @@
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+
 // Squirrel.Mac only installs signed updates, and the macOS app isn't signed;
-// the portable Windows exe, which sets PORTABLE_EXECUTABLE_DIR, has nothing
-// installed to update
+// on Windows only the installer leaves an uninstaller next to the app, and an
+// update from the zip or the portable exe would install a second copy instead
 export function checksForUpdates(
   development: boolean,
   platform: NodeJS.Platform,
-  env: NodeJS.ProcessEnv,
+  executable: string,
+  exists: (file: string) => boolean = fs.existsSync,
 ): boolean {
-  return !development && platform !== 'darwin' && !env.PORTABLE_EXECUTABLE_DIR;
+  if (development || platform === 'darwin') {
+    return false;
+  }
+  return (
+    platform !== 'win32' ||
+    exists(
+      path.win32.join(
+        path.win32.dirname(executable),
+        'Uninstall Fastforward.exe',
+      ),
+    )
+  );
 }

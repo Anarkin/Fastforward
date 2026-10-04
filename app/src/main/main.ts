@@ -245,7 +245,7 @@ async function searchGit(): ReturnType<typeof findGit> {
 }
 
 function checkForUpdates(log: Log): void {
-  if (!checksForUpdates(development, process.platform, process.env)) {
+  if (!checksForUpdates(development, process.platform, process.execPath)) {
     return;
   }
   autoUpdater.logger = {
