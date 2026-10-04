@@ -73,6 +73,8 @@
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
+      "identity": "-",
+      "hardenedRuntime": false,
       "target": [
         {
           "target": "dmg",
