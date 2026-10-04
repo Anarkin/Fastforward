@@ -354,7 +354,7 @@ export function diffRows(
   sideBySide = false,
 ): DiffRow[] {
   const rows: DiffRow[] = [{ kind: 'error' }];
-  if (loading && files.length === 0 && !whole) {
+  if (loading && files.every((file) => file.placeholder) && !whole) {
     rows.push({ kind: 'skeleton' });
     return rows;
   }

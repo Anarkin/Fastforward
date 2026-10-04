@@ -184,6 +184,19 @@ suite('Diff rows', () => {
     );
   });
 
+  test('stands in for a diff that loads while only its files past the budget are known', () => {
+    const large = {
+      path: 'graph.json',
+      binary: false,
+      hunks: [],
+      placeholder: { lines: 5000 },
+    };
+    assert.deepStrictEqual(
+      kinds(diffRows([large], new Map(), undefined, true)),
+      ['error', 'skeleton'],
+    );
+  });
+
   test('shows a binary file as such, whole or in a diff', () => {
     assert.deepStrictEqual(
       kinds(
