@@ -3,6 +3,7 @@ import { comparisonOf } from '../shared/comparisons';
 import { workingTreeHash } from '../shared/protocol';
 import {
   commitsMessage,
+  expandMerges,
   firstPage,
   forgetHistory,
   historyLoaded,
@@ -109,9 +110,32 @@ suite('Tab state', () => {
     loadHistory(tab, pull, { name: 'main', commit: 'p' }, []);
     toggleMerges(tab, ['p']);
     layOutHistory(tab, true, 'p');
-    toggleMerges(tab, mergesHidingCommit(tab, 'f'));
+    expandMerges(tab, mergesHidingCommit(tab, 'f'), true);
     layOutHistory(tab, true, 'p');
     assert.ok(tab.positions.has('f'));
+  });
+
+  test('expands the merges hiding a commit, leaving a merge inside them expanded', () => {
+    const tab = newTabState();
+    loadHistory(
+      tab,
+      [
+        { hash: 'outer', parents: ['a', 'inner'] },
+        { hash: 'a', parents: ['base'] },
+        { hash: 'inner', parents: ['b', 'x'] },
+        { hash: 'b', parents: ['base'] },
+        { hash: 'x', parents: ['base'] },
+        { hash: 'base', parents: [] },
+      ],
+      { name: 'main', commit: 'outer' },
+      [],
+    );
+    toggleMerges(tab, ['outer']);
+    layOutHistory(tab, false, 'outer');
+    expandMerges(tab, mergesHidingCommit(tab, 'x'), false);
+    layOutHistory(tab, false, 'outer');
+    assert.ok(tab.positions.has('x'));
+    assert.deepStrictEqual([...tab.toggledMerges], []);
   });
 
   test('knows whether the history is loaded, until it is forgotten', () => {

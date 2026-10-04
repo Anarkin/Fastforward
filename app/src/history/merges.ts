@@ -87,6 +87,20 @@ export function mergesHiding(
   return [];
 }
 
+export function mergeExpanded(
+  history: readonly HistoryEntry[],
+  hash: string,
+  isExpanded: (hash: string, isPull: boolean) => boolean,
+): boolean {
+  const links = linksOf(history);
+  const at = links.index.get(hash);
+  return (
+    at !== undefined &&
+    at < history.length &&
+    isExpanded(hash, isPull(links, history.length, at))
+  );
+}
+
 const knownChildren = new WeakMap<
   readonly HistoryEntry[],
   ReadonlyMap<string, readonly string[]>

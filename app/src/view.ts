@@ -57,6 +57,7 @@ import {
 import { sameRoot, Storage } from './storage';
 import {
   commitsMessage,
+  expandMerges,
   firstPage,
   forgetHistory,
   historyLoaded,
@@ -1059,7 +1060,7 @@ export class FastforwardView {
       hidden().flatMap((side) => mergesHidingCommit(tab, side)),
     );
     if (merges.size > 0) {
-      toggleMerges(tab, [...merges]);
+      expandMerges(tab, [...merges], this.storage.collapseMerges);
       await this.sendShownHistory(context, { scrollTo: hash });
     }
     if (hidden().length > 0) {

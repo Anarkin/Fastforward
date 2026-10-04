@@ -3,6 +3,7 @@ import type { WorkingTree } from './git/workingTree';
 import { Graph } from './history/graph';
 import {
   headsOf,
+  mergeExpanded,
   mergesHiding,
   positionsOf,
   showHistory,
@@ -156,11 +157,7 @@ export function layOutHistory(
   if (head) {
     tips.add(head);
   }
-  const history = showHistory(
-    tab.fullHistory,
-    tips,
-    (hash, isPull) => (collapse && !isPull) === tab.toggledMerges.has(hash),
-  );
+  const history = showHistory(tab.fullHistory, tips, isExpanded(tab, collapse));
   tab.history = history;
   tab.positions = positionsOf(tab.fullHistory, history);
   tab.graph = new Graph(history, { head });
@@ -224,6 +221,27 @@ export function toggleMerges(tab: TabState, merges: readonly string[]): void {
       tab.toggledMerges.add(merge);
     }
   }
+}
+
+export function expandMerges(
+  tab: TabState,
+  merges: readonly string[],
+  collapse: boolean,
+): void {
+  const expanded = isExpanded(tab, collapse);
+  for (const merge of merges) {
+    if (!mergeExpanded(tab.fullHistory, merge, expanded)) {
+      toggleMerges(tab, [merge]);
+    }
+  }
+}
+
+function isExpanded(
+  tab: TabState,
+  collapse: boolean,
+): (hash: string, isPull: boolean) => boolean {
+  return (hash, isPull) =>
+    (collapse && !isPull) === tab.toggledMerges.has(hash);
 }
 
 export function mergesHidingCommit(tab: TabState, hash: string): string[] {
