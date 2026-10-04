@@ -336,9 +336,11 @@ export async function ignoredFolders(
   repo: string,
   folders: readonly string[],
 ): Promise<string[]> {
-  const relative = folders.map((folder) =>
-    path.relative(repo, folder).split(path.sep).join('/'),
-  );
+  const relative = folders.map((folder) => {
+    const inRepo = path.relative(repo, folder).split(path.sep).join('/');
+    // check-ignore reads a path starting with ':' as pathspec magic
+    return inRepo.startsWith(':') ? `./${inRepo}` : inRepo;
+  });
   const output = await runGit(
     gitPath,
     repo,

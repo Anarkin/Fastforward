@@ -66,6 +66,19 @@ suite('Watching a repository folder by folder, as on Linux', function () {
     );
   });
 
+  test('tells the ignored folders among ones named like pathspec magic', async () => {
+    fs.appendFileSync(path.join(repository.root, '.gitignore'), ':!tmp\n');
+    const magic = path.join(repository.root, ':!tmp');
+    assert.deepStrictEqual(
+      await ignoredFolders(repository.gitPath, repository.root, [
+        path.join(repository.root, ':-)'),
+        magic,
+        path.join(repository.root, 'ignored'),
+      ]),
+      [magic, path.join(repository.root, 'ignored')],
+    );
+  });
+
   test('refreshes for the git folder', async () => {
     await repository.git('commit', '--allow-empty', '-m', 'second');
     await waitFor(() => changes.includes(true), 'the commit');
