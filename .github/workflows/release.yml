@@ -8,7 +8,19 @@ permissions:
   contents: write
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check that the tag matches the version in package.json
+        run: |
+          version="v$(node -p "require('./app/package.json').version")"
+          if [ "$GITHUB_REF_NAME" != "$version" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match $version in app/package.json"
+            exit 1
+          fi
   release:
+    needs: check
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
