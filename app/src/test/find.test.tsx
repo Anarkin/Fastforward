@@ -12,6 +12,7 @@ import {
 } from '../webview/diffView';
 import {
   findMatches,
+  jumpStep,
   matchCount,
   matchesIn,
   stepMatch,
@@ -163,6 +164,14 @@ suite('Find in diff', () => {
     assert.strictEqual(stepMatch(2, 3, 1), 0);
     assert.strictEqual(stepMatch(0, 3, -1), 2);
     assert.strictEqual(stepMatch(0, 0, 1), 0);
+  });
+
+  test('jumps to a match once it loads, opening its file first, and gives up when there is none', () => {
+    assert.strictEqual(jumpStep(false, true, true), 'wait');
+    assert.strictEqual(jumpStep(false, false, true), 'done');
+    assert.strictEqual(jumpStep(true, false, false), 'open');
+    assert.strictEqual(jumpStep(true, false, true), 'scroll');
+    assert.strictEqual(jumpStep(true, true, true), 'scroll');
   });
 
   test('keys each row by the file and line a match names, and only lines', () => {

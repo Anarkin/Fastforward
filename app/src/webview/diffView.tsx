@@ -11,7 +11,13 @@ import {
 } from 'react';
 import { collapseThreshold } from '../shared/protocol';
 import type { DiffFile, DiffLine } from './diff';
-import { lineKey, wholeLines, type FindMatch, type FindRange } from './find';
+import {
+  jumpStep,
+  lineKey,
+  wholeLines,
+  type FindMatch,
+  type FindRange,
+} from './find';
 import {
   matchMarks,
   Minimap,
@@ -1160,22 +1166,33 @@ export function DiffView({
   const foundKey = found && lineKey(found.file, found.line);
   const jumped = useRef(0);
   useEffect(() => {
-    if (found === undefined || jumped.current === jump) {
+    if (jumped.current === jump) {
       return;
     }
-    const header = rows.find(
-      (row) => row.kind === 'file' && row.file === found.file,
-    );
-    if (header?.kind === 'file' && !header.open) {
-      setToggled((all) => new Map(all).set(header.path, true));
-      return;
+    const header =
+      found &&
+      rows.find((row) => row.kind === 'file' && row.file === found.file);
+    const closed = header?.kind === 'file' && !header.open;
+    switch (jumpStep(found !== undefined, loading, !closed)) {
+      case 'wait':
+        return;
+      case 'done':
+        jumped.current = jump;
+        return;
+      case 'open':
+        if (header?.kind === 'file') {
+          setToggled((all) => new Map(all).set(header.path, true));
+        }
+        return;
+      case 'scroll': {
+        const index = keys.findIndex((row) => row.includes(foundKey ?? ''));
+        if (index !== -1) {
+          virtualizer.scrollToIndex(index, { align: 'center' });
+          jumped.current = jump;
+        }
+      }
     }
-    const index = keys.findIndex((row) => row.includes(foundKey ?? ''));
-    if (index !== -1) {
-      virtualizer.scrollToIndex(index, { align: 'center' });
-      jumped.current = jump;
-    }
-  }, [jump, found, foundKey, rows, keys, virtualizer]);
+  }, [jump, found, foundKey, loading, rows, keys, virtualizer]);
 
   const requested = useRef(new Map<string, number>());
   useEffect(() => {

@@ -138,6 +138,17 @@ export function matchCount(
   return matches === 0 ? 'No results' : `${current + 1} of ${matches}`;
 }
 
+export function jumpStep(
+  found: boolean,
+  loading: boolean,
+  fileOpen: boolean,
+): 'wait' | 'done' | 'open' | 'scroll' {
+  if (!found) {
+    return loading ? 'wait' : 'done';
+  }
+  return fileOpen ? 'scroll' : 'open';
+}
+
 export function stepMatch(
   current: number,
   matches: number,
