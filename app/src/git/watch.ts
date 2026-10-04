@@ -415,6 +415,7 @@ export function affectsWorktree(inGitDir: string, shared: boolean): boolean {
     !shared ||
     (first === 'refs' && !perWorktreeRefs.has(second ?? '')) ||
     first === 'packed-refs' ||
+    first === 'reftable' ||
     first === 'config'
   );
 }

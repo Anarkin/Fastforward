@@ -72,6 +72,8 @@ suite('Watching the git folder', () => {
       'refs/heads/main',
       'refs\\tags\\v1',
       'packed-refs',
+      'reftable/tables.list',
+      'reftable\\0x000000000002-0x000000000002-1a2b3c4d.ref',
       'config',
     ]) {
       assert.strictEqual(affectsWorktree(file, true), true, file);
