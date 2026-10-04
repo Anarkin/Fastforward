@@ -4034,6 +4034,34 @@ suite('Fetch', function () {
     }
   });
 
+  test('fetches the active repository first in the background', async () => {
+    const first = await tempRepository(path.join(folder, 'first-in-strip'));
+    await first.commit('first');
+    const view = await openView(
+      log,
+      [first.root, repository.root],
+      true,
+      undefined,
+      () => () => undefined,
+    );
+    const fetched: unknown[] = [];
+    stubMethod(view.view, 'fetchInBackground', (_original, root) => {
+      fetched.push(root);
+      return Promise.resolve();
+    });
+    try {
+      await view.connection.receive({
+        type: 'selectTab',
+        root: repository.root,
+      });
+      await view.connection.receive({ type: 'setAutoFetch', on: true });
+      await waitFor(() => fetched.length === 2, 'the round');
+      assert.deepStrictEqual(fetched, [repository.root, first.root]);
+    } finally {
+      view.connection.dispose();
+    }
+  });
+
   test('shows what a background fetch brought to a tab selected while it ran', async () => {
     const first = await tempRepository(path.join(folder, 'first-selected'));
     await first.commit('first');
