@@ -132,7 +132,7 @@ suite('App', function () {
     await page.locator('.row.file', { hasText: 'changed.txt' }).click();
     await page.locator('.diff-line.added').first().waitFor();
     assert.deepStrictEqual(
-      await page.locator('.diff-line .code').allTextContents(),
+      await page.locator('.diff-row .diff-line .code').allTextContents(),
       ['one', 'two', '2', 'three'],
     );
     assert.ok(await page.locator('.diff-minimap').isVisible());
@@ -397,8 +397,11 @@ suite('App', function () {
         return atTop?.querySelector('.code')?.textContent?.split(' ')[0];
       });
     await page.waitForTimeout(100);
+    await waitFor(
+      async () => /^line[1-9]\d*$/.test((await topLine()) ?? ''),
+      'a line at the top',
+    );
     const reading = await topLine();
-    assert.match(reading ?? '', /^line[1-9]\d*$/);
     for (const wrapped of [false, true]) {
       await page.keyboard.press('w');
       await page

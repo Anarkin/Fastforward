@@ -44,12 +44,12 @@ export function classesOf(tag: string): Set<string> {
 }
 
 export async function waitFor(
-  condition: () => boolean,
+  condition: () => boolean | Promise<boolean>,
   what: string,
   timeout = 15_000,
 ): Promise<void> {
   const until = Date.now() + timeout;
-  while (!condition()) {
+  while (!(await condition())) {
     if (Date.now() > until) {
       throw new Error(`Timed out waiting for ${what}`);
     }
