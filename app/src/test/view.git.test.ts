@@ -3895,6 +3895,16 @@ suite('Fetch', function () {
     fs.writeFileSync(path.join(repository.root, 'build', 'out.txt'), 'built\n');
     await new Promise((resolve) => setTimeout(resolve, 1000));
     assert.strictEqual(page.last('workingTree'), undefined);
+    const seen = path.join(repository.root, 'seen.txt');
+    fs.writeFileSync(seen, 'seen\n');
+    try {
+      await waitFor(
+        () => page.last('workingTree')?.files === 1,
+        'a file that is not ignored to show',
+      );
+    } finally {
+      fs.rmSync(seen);
+    }
   });
 
   test('fetches every remote, dropping branches deleted there', async () => {
