@@ -30,13 +30,18 @@ let app;
 const restartApp = {
   name: 'restart-app',
   setup(build) {
-    build.onEnd((result) => {
+    build.onEnd(async (result) => {
       if (!dev || result.errors.length > 0) {
         return;
       }
       if (app) {
-        app.removeAllListeners('exit');
-        app.kill();
+        const old = app;
+        old.removeAllListeners('exit');
+        if (old.exitCode === null && old.signalCode === null) {
+          const exited = new Promise((resolve) => old.once('exit', resolve));
+          old.kill();
+          await exited;
+        }
       }
       app = spawn(electron, ['.'], {
         stdio: 'inherit',
