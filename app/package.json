@@ -31,6 +31,7 @@
     "lint": "oxlint --type-aware --deny-warnings",
     "knip": "knip",
     "dist": "npm run package && electron-builder --publish never",
+    "release": "node release.mjs",
     "portable": "npm run package && electron-builder --publish never -c.win.target=portable -c.mac.target=zip -c.linux.target=AppImage"
   },
   "devDependencies": {
