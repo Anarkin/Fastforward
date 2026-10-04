@@ -118,6 +118,14 @@ suite('Commit search stream', () => {
     });
   });
 
+  test('stops at 50 matches unless told another limit', () => {
+    const matches = new SearchMatches('ada');
+    for (let i = 0; i < 50; i++) {
+      assert.strictEqual(matches.add(`h${i}\0Ada\0a@x\0B\0b@x\0`), undefined);
+    }
+    assert.strictEqual(matches.add('last\0Ada\0a@x\0B\0b@x\0')?.capped, true);
+  });
+
   test('ends after the last commit, with every match in any letters', () => {
     const matches = new SearchMatches('ada', 5);
     matches.add('aaa\0Ada\0a@x\0B\0b@x\0');

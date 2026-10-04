@@ -213,7 +213,7 @@ export class SearchMatches {
 
   constructor(
     private readonly query: string,
-    private readonly limit: number,
+    private readonly limit = searchLimit,
   ) {}
 
   add(record: string): FoundHashes | undefined {
@@ -239,7 +239,7 @@ function streamMatches(
   cwd: string,
   query: string,
   solo: boolean,
-  limit: number,
+  limit: number | undefined,
   signal: AbortSignal | undefined,
 ): Promise<FoundHashes> {
   const matches = new SearchMatches(query, limit);
@@ -312,7 +312,7 @@ export async function searchCommits(
   query: string,
   solo: boolean,
   signal?: AbortSignal,
-  limit = searchLimit,
+  limit?: number,
 ): Promise<CommitSearch> {
   const { found, capped } = await streamMatches(
     gitPath,

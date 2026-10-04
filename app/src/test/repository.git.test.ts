@@ -344,6 +344,33 @@ suite('Git repository', function () {
     }
   });
 
+  test('lists at most 20 commits sharing a prefix, counting the rest', async () => {
+    const prefix = '0000';
+    const person = 'Test <test@example.com> 0 +0000';
+    const [tree] = await temp.resolve('HEAD^{tree}');
+    const folder = tempFolder('prefixed');
+    try {
+      const files: string[] = [];
+      for (let i = 0; files.length < 21; i++) {
+        const text = `tree ${tree}\nauthor ${person}\ncommitter ${person}\n\n${i}\n`;
+        const sha1 = createHash('sha1')
+          .update(`commit ${Buffer.byteLength(text)}\0${text}`)
+          .digest('hex');
+        if (sha1.startsWith(prefix)) {
+          const file = path.join(folder, `${files.length}`);
+          fs.writeFileSync(file, text);
+          files.push(file);
+        }
+      }
+      await temp.git('hash-object', '-t', 'commit', '-w', ...files);
+      const found = await findCommits(gitPath, cwd, prefix);
+      assert.strictEqual(found.commits.length, 20);
+      assert.strictEqual(found.more, 1);
+    } finally {
+      removeFolder(folder);
+    }
+  });
+
   test("reads the same whatever the repository's config says", async () => {
     await temp.git('config', 'log.showRoot', 'false');
     await temp.git('config', 'i18n.logOutputEncoding', 'ISO-8859-1');
