@@ -1,4 +1,4 @@
-const tabSize = 4;
+export const tabSize = 4;
 
 export function wrappedLines(text: string, columns: number): number {
   if (text.length <= columns && !text.includes('\t')) {

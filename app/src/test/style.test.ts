@@ -8,6 +8,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { DiffOptions } from '../webview/diffColumn';
 import { rowHeight } from '../webview/diffView';
+import { codePadding, numberWidth } from '../webview/overflow';
 import { stylesheet } from './fixtures';
 
 const css = stylesheet();
@@ -73,6 +74,17 @@ suite('Style', () => {
     );
     assert.match(declarationsOf('.nav-button'), /border-radius: 13px;/);
     assert.match(declarationsOf('.nav-button'), /width: 26px;/);
+  });
+
+  test('places the hidden-change markers by the line numbers and padding the diff draws', () => {
+    assert.match(
+      declarationsOf('.diff-line .number'),
+      new RegExp(`width: ${numberWidth}px;`),
+    );
+    assert.match(
+      declarationsOf('.diff-line .code'),
+      new RegExp(`padding: 0 ${codePadding}px;`),
+    );
   });
 
   test("opens the search over the commit column's title without moving its field or back button", () => {

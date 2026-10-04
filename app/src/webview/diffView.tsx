@@ -36,6 +36,17 @@ import {
 import { SkeletonRows, useSkeleton } from './skeleton';
 import { Twisty } from './tree';
 import { wrapColumns, wrappedLines } from './wordWrap';
+import {
+  areaColumns,
+  hiddenChanges,
+  inlineArea,
+  numberWidth,
+  revealChange,
+  shownSideways,
+  sideArea,
+  type Sideways,
+  type TextArea,
+} from './overflow';
 
 export interface WholeFile {
   readonly path: string;
@@ -327,6 +338,8 @@ declare module 'react' {
     readonly '--diff-file-height'?: string;
     readonly '--diff-line-height'?: string;
     readonly '--split-scroll'?: string;
+    readonly '--visible-left'?: string;
+    readonly '--visible-right'?: string;
   }
 }
 
@@ -879,6 +892,103 @@ const WrapProbe = memo(function WrapProbe({
   );
 });
 
+const CharProbe = memo(function CharProbe({
+  onWidth,
+}: {
+  onWidth: (width: number) => void;
+}) {
+  const observe = useCallback(
+    (sample: HTMLSpanElement) => {
+      const measure = () =>
+        onWidth(sample.getBoundingClientRect().width / wrapSample.length);
+      measure();
+      const observer = new ResizeObserver(measure);
+      observer.observe(sample);
+      return () => observer.disconnect();
+    },
+    [onWidth],
+  );
+  return (
+    <div className="wrap-probe" aria-hidden>
+      <div className="diff-line">
+        <span className="code">
+          <span className="wrap-sample" ref={observe}>
+            {wrapSample}
+          </span>
+        </span>
+      </div>
+    </div>
+  );
+});
+
+function readSideways(element: HTMLElement, scrollsSides: boolean): Sideways {
+  const minimap =
+    parseFloat(getComputedStyle(element).getPropertyValue('--minimap-width')) ||
+    0;
+  if (scrollsSides) {
+    const { side, widest } = sideRoom(element);
+    return { scrolled: 0, width: side, room: widest, minimap };
+  }
+  return {
+    scrolled: element.scrollLeft,
+    width: element.clientWidth,
+    room: element.scrollWidth - element.clientWidth,
+    minimap,
+  };
+}
+
+const sameSideways = (a: Sideways | undefined, b: Sideways) =>
+  a?.scrolled === b.scrolled &&
+  a.width === b.width &&
+  a.room === b.room &&
+  a.minimap === b.minimap;
+
+function HiddenChangeMarks({
+  text,
+  words,
+  kind,
+  view,
+  area,
+  charWidth,
+  place,
+  onReveal,
+}: {
+  text: string;
+  words: readonly FindRange[];
+  kind: DiffLine['kind'];
+  view: Sideways;
+  area: TextArea;
+  charWidth: number;
+  place: (edge: 'left' | 'right') => React.CSSProperties;
+  onReveal: (scrolled: number) => void;
+}) {
+  const columns = areaColumns(view, area, charWidth);
+  if (!columns || words.length === 0 || kind === 'context') {
+    return null;
+  }
+  const hidden = hiddenChanges(text, words, columns);
+  return (['left', 'right'] as const).map((edge) => {
+    const word = hidden[edge];
+    return (
+      word && (
+        <button
+          key={edge}
+          className={`hidden-change ${edge} ${kind}`}
+          title="Show the Hidden Change"
+          tabIndex={-1}
+          style={place(edge)}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() =>
+            onReveal(revealChange(view, area, text, word, charWidth))
+          }
+        >
+          {edge === 'left' ? '‹' : '›'}
+        </button>
+      )
+    );
+  });
+}
+
 export function DiffView({
   error,
   files,
@@ -916,6 +1026,9 @@ export function DiffView({
   const split = showsSideBySide(sideBySide, whole);
   const scrollsSides = split && !wordWrap;
   const [columns, setColumns] = useState<WrapColumns>();
+  const [charWidth, setCharWidth] = useState(0);
+  const [measured, setMeasured] = useState<Sideways>();
+  const view = measured && shownSideways(measured, scrollsSides, sideways);
   const changeColumns = useCallback(
     (next: WrapColumns) =>
       setColumns((last) =>
@@ -977,6 +1090,28 @@ export function DiffView({
       list.current?.dispatchEvent(new Event(sidewaysScrollEvent));
     }
   }, [sideways]);
+  const measureSideways = useCallback(() => {
+    const element = list.current;
+    if (!element || wordWrap) {
+      setMeasured(undefined);
+      return;
+    }
+    const next = readSideways(element, scrollsSides);
+    setMeasured((last) => (sameSideways(last, next) ? last : next));
+  }, [wordWrap, scrollsSides]);
+  useEffect(() => {
+    const element = list.current;
+    if (!element) {
+      return undefined;
+    }
+    const observer = new ResizeObserver(measureSideways);
+    observer.observe(element);
+    element.addEventListener('scroll', measureSideways, { passive: true });
+    return () => {
+      observer.disconnect();
+      element.removeEventListener('scroll', measureSideways);
+    };
+  }, [measureSideways]);
   const [toggled, setToggled] = useState<ReadonlyMap<string, boolean>>(
     new Map(),
   );
@@ -1089,6 +1224,32 @@ export function DiffView({
     kind: DiffLine['kind'] | undefined,
   ) => <Code {...codeProps(lineMarks, key, text, kind)} />;
 
+  const reveal = (scrolled: number) => {
+    if (scrollsSides) {
+      setSideways(scrolled);
+    } else if (list.current) {
+      list.current.scrollLeft = scrolled;
+    }
+  };
+  const hiddenMarks = (
+    key: string,
+    line: DiffLine,
+    area: (shown: Sideways) => TextArea,
+    place: (edge: 'left' | 'right') => React.CSSProperties,
+  ) =>
+    view && (
+      <HiddenChangeMarks
+        text={line.text}
+        words={words.get(key) ?? unmarked}
+        kind={line.kind}
+        view={view}
+        area={area(view)}
+        charWidth={charWidth}
+        place={place}
+        onReveal={reveal}
+      />
+    );
+
   const renderRow = (row: DiffRow, index: number) => {
     switch (row.kind) {
       case 'error':
@@ -1124,10 +1285,19 @@ export function DiffView({
         return <HunkDivider />;
       case 'line':
         return (
-          <div className={`diff-line ${row.line.kind}`}>
+          <div className={`diff-line text-line ${row.line.kind}`}>
             <span className="number">{row.line.oldNumber}</span>
             <span className="number">{row.line.newNumber}</span>
             {code(keys[index].at(0), row.line.text, row.line.kind)}
+            {hiddenMarks(
+              keys[index].at(0) ?? '',
+              row.line,
+              (shown) => inlineArea(shown, 2),
+              (edge) =>
+                edge === 'left'
+                  ? { left: 'calc(var(--visible-left) + 2px)' }
+                  : { left: 'calc(var(--visible-right) - 16px)' },
+            )}
           </div>
         );
       case 'split':
@@ -1136,7 +1306,7 @@ export function DiffView({
             {[row.left, row.right].map((cell, side) => (
               <div
                 key={side}
-                className={`diff-line split-side ${splitSideClass(cell, side === 0 ? 'removed' : 'added')}`}
+                className={`diff-line text-line split-side ${splitSideClass(cell, side === 0 ? 'removed' : 'added')}`}
               >
                 <span className="number">
                   {side === 0 ? cell?.line.oldNumber : cell?.line.newNumber}
@@ -1149,13 +1319,28 @@ export function DiffView({
                       cell.line.kind,
                     )}
                 </span>
+                {cell &&
+                  hiddenMarks(
+                    lineKey(row.file, cell.index),
+                    cell.line,
+                    (shown) => sideArea(shown, side === 1),
+                    (edge) =>
+                      edge === 'left'
+                        ? { left: numberWidth + 2 }
+                        : {
+                            right:
+                              side === 1
+                                ? 'calc(var(--minimap-width) + 2px)'
+                                : 2,
+                          },
+                  )}
               </div>
             ))}
           </div>
         );
       case 'wholeLine':
         return (
-          <div className="diff-line">
+          <div className="diff-line text-line">
             <span className="number">{row.number}</span>
             {code(keys[index].at(0), row.text, undefined)}
           </div>
@@ -1174,6 +1359,7 @@ export function DiffView({
       }
     }
   }, [items, rows, scrollsSides, sideways]);
+  useLayoutEffect(measureSideways, [measureSideways, items, rows]);
   const measurements = virtualizer.measurementsCache;
   const marks = useMemo(
     () =>
@@ -1222,7 +1408,15 @@ export function DiffView({
   return (
     <div
       className={`diff-view ${split ? 'side-by-side' : ''} ${wordWrap ? 'wrap' : ''}`}
-      style={{ ...heightVariables, '--split-scroll': `${sideways}px` }}
+      style={{
+        ...heightVariables,
+        '--split-scroll': `${sideways}px`,
+        ...(view &&
+          !scrollsSides && {
+            '--visible-left': `${view.scrolled}px`,
+            '--visible-right': `${view.scrolled + view.width - view.minimap}px`,
+          }),
+      }}
     >
       {stuck && <div className="diff-stuck-header">{header(stuck, true)}</div>}
       <Minimap
@@ -1285,6 +1479,7 @@ export function DiffView({
           className="virtual-spacer"
           style={{ height: virtualizer.getTotalSize() }}
         >
+          {!wordWrap && <CharProbe onWidth={setCharWidth} />}
           {wordWrap && (
             <WrapProbe
               key={split ? 'split' : whole ? 'whole' : 'inline'}
