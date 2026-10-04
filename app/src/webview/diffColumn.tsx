@@ -88,8 +88,10 @@ export function DiffOptions({
           className={`nav-button toggle ${shown ? 'active' : ''}`}
           title={
             pinned
-              ? 'Showing every file entire, as pinned'
-              : 'Show the entire file, until you leave it'
+              ? 'Pinned to Show Entire Files'
+              : entire
+                ? 'Show Only the Changes'
+                : 'Show the Entire File'
           }
           aria-pressed={shown}
           disabled={!canShow || pinned}
@@ -99,11 +101,7 @@ export function DiffOptions({
         </button>
         <button
           className={`nav-button toggle ${pinned ? 'active' : ''}`}
-          title={
-            pinned
-              ? 'Unpin: show only the changes again'
-              : 'Pin: always show entire files'
-          }
+          title={pinned ? 'Unpin Entire Files' : 'Pin Entire Files'}
           aria-pressed={pinned}
           onClick={() => onPin(!pinned)}
         >
@@ -115,8 +113,8 @@ export function DiffOptions({
         className={`nav-button toggle ${ignoreWhitespace ? 'active' : ''}`}
         title={
           ignoreWhitespace
-            ? 'Ignoring whitespace: show changes to it again'
-            : 'Ignore Whitespace'
+            ? 'Show Whitespace Changes'
+            : 'Ignore Whitespace Changes'
         }
         aria-pressed={ignoreWhitespace}
         onClick={() => onIgnoreWhitespace(!ignoreWhitespace)}
@@ -125,11 +123,7 @@ export function DiffOptions({
       </button>
       <button
         className={`nav-button toggle ${wordWrap ? 'active' : ''}`}
-        title={
-          wordWrap
-            ? 'Wrapping long lines: show them unwrapped again'
-            : 'Word Wrap'
-        }
+        title={wordWrap ? 'Unwrap Long Lines' : 'Wrap Long Lines'}
         aria-pressed={wordWrap}
         onClick={() => onWordWrap(!wordWrap)}
       >

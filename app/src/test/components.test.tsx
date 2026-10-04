@@ -182,6 +182,10 @@ function diffOptionButtons(overrides: Partial<DiffOptionsProps> = {}) {
   );
 }
 
+function diffOptionTitles(overrides: Partial<DiffOptionsProps>) {
+  return diffOptionButtons(overrides).map((button) => button.props.title);
+}
+
 function entireFileButtons(
   entire: boolean,
   pinned: boolean,
@@ -257,7 +261,7 @@ suite('Diff options', () => {
     const html = renderToStaticMarkup(<DiffOptions {...diffOptionsProps()} />);
     assert.match(
       html,
-      /<\/button><\/span><span class="nav-button-space"><\/span><button[^>]*title="Ignore Whitespace"[^>]*>.*?<\/button><button[^>]*title="Word Wrap"[^>]*>.*?<\/button><span class="nav-button-space"><\/span><div class="segmented"/,
+      /<\/button><\/span><span class="nav-button-space"><\/span><button[^>]*title="Ignore Whitespace Changes"[^>]*>.*?<\/button><button[^>]*title="Wrap Long Lines"[^>]*>.*?<\/button><span class="nav-button-space"><\/span><div class="segmented"/,
     );
   });
 
@@ -269,10 +273,36 @@ suite('Diff options', () => {
       assert.match(
         html,
         new RegExp(
-          `^<div[^>]*><span class="pin-pair ${pinned ? 'pinned' : ''}"><button[^>]*title="(Show|Showing)[^"]*"[^>]*>.*?</button><button[^>]*title="[^"]*[Pp]in[^"]*"[^>]*>.*?</button></span>`,
+          `^<div[^>]*><span class="pin-pair ${pinned ? 'pinned' : ''}"><button[^>]*title="${pinned ? 'Pinned to Show Entire Files' : 'Show the Entire File'}"[^>]*>.*?</button><button[^>]*title="${pinned ? 'Unpin' : 'Pin'} Entire Files"[^>]*>.*?</button></span>`,
         ),
       );
     }
+  });
+
+  test('names each toggle by what a click does, flipping as it switches', () => {
+    assert.deepStrictEqual(diffOptionTitles({}).slice(0, 4), [
+      'Show the Entire File',
+      'Pin Entire Files',
+      'Ignore Whitespace Changes',
+      'Wrap Long Lines',
+    ]);
+    assert.deepStrictEqual(
+      diffOptionTitles({
+        entire: true,
+        ignoreWhitespace: true,
+        wordWrap: true,
+      }).slice(0, 4),
+      [
+        'Show Only the Changes',
+        'Pin Entire Files',
+        'Show Whitespace Changes',
+        'Unwrap Long Lines',
+      ],
+    );
+    assert.deepStrictEqual(diffOptionTitles({ pinned: true }).slice(0, 2), [
+      'Pinned to Show Entire Files',
+      'Unpin Entire Files',
+    ]);
   });
 
   test('holds the inline and side by side buttons together, as only one of them is on at a time', () => {
@@ -736,20 +766,24 @@ suite('Navigation bar', () => {
   test('spins the fetch button while fetching', () => {
     const spinning = tagWith(
       buttons({ fetching: true }),
-      'title="Fetch',
+      'title="Fetch every remote',
       'nav-button',
       'running',
     );
     assert.match(spinning, /disabled=""/);
-    const idle = tagWith(buttons({}), 'title="Fetch', 'nav-button');
+    const idle = tagWith(
+      buttons({}),
+      'title="Fetch every remote',
+      'nav-button',
+    );
     assert.ok(!classesOf(idle).has('running'));
   });
 
   test('pins fetching every few minutes next to the fetch button, hidden when the settings turn it off', () => {
-    tagWith(buttons({}), 'title="Pin: fetch every repository every minute"');
+    tagWith(buttons({}), 'title="Fetch Every Minute"');
     const on = tagWith(
       buttons({ autoFetch: true, autoFetchMinutes: 5 }),
-      'title="Fetching every 5 minutes; unpin to stop"',
+      'title="Stop Fetching Every 5 Minutes"',
       'nav-button',
       'toggle',
       'active',
@@ -757,7 +791,7 @@ suite('Navigation bar', () => {
     assert.match(on, /aria-pressed="true"/);
     assert.doesNotMatch(
       buttons({ autoFetch: true, autoFetchMinutes: 0 }),
-      /Fetching every|Pin: fetch/,
+      /Fetch(ing)? Every/,
     );
   });
 
@@ -766,7 +800,7 @@ suite('Navigation bar', () => {
       assert.match(
         buttons({ autoFetch }),
         new RegExp(
-          `<span class="pin-pair ${autoFetch ? 'pinned' : ''}"><button[^>]*title="Fetch[^"]*"[^>]*>.*?</button><button[^>]*title="[^"]*(Pin|pin)[^"]*"[^>]*>.*?</button></span></div>$`,
+          `<span class="pin-pair ${autoFetch ? 'pinned' : ''}"><button[^>]*title="Fetch[^"]*"[^>]*>.*?</button><button[^>]*title="${autoFetch ? 'Stop Fetching' : 'Fetch'} Every Minute"[^>]*>.*?</button></span></div>$`,
         ),
       );
     }

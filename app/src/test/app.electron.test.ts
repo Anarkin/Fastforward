@@ -322,7 +322,7 @@ suite('App', function () {
     });
     await row.waitFor();
     assert.strictEqual((await row.boundingBox())?.height, 22);
-    await page.getByRole('button', { name: 'Word Wrap' }).click();
+    await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
     await page.locator('.diff-view.wrap').waitFor();
     await page.waitForFunction(
       (text) =>

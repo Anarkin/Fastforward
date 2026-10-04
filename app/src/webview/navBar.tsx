@@ -16,10 +16,8 @@ import { useShortcuts } from './shortcuts';
 const holdDelay = 400;
 
 function autoFetchTitle(on: boolean, minutes: number): string {
-  const every = minutes === 1 ? 'every minute' : `every ${minutes} minutes`;
-  return on
-    ? `Fetching ${every}; unpin to stop`
-    : `Pin: fetch every repository ${every}`;
+  const every = minutes === 1 ? 'Every Minute' : `Every ${minutes} Minutes`;
+  return on ? `Stop Fetching ${every}` : `Fetch ${every}`;
 }
 
 export function NavButtons({
