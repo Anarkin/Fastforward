@@ -661,6 +661,17 @@ suite('Style', () => {
       4 + slots * 26 + (slots - 1) * 2 + 8,
     );
     assert.strictEqual(pixels(diff, 'padding-right'), 4 + 2 * 26 + 2 + 8);
+    const segmented = declarationsOf('.segmented');
+    assert.ok(segmented.includes('gap: 2px;'));
+    assert.doesNotMatch(segmented, /(^|\s)(border|padding):/);
+    assert.match(
+      declarationsOf('.segmented > .nav-button:hover:not(:disabled)'),
+      /var\(--color-panel-background\);/,
+    );
+    assert.match(
+      declarationsOf('.segmented > .nav-button.toggle.active'),
+      /var\(--color-panel-background\);/,
+    );
     assert.ok(declarationsOf('.diff-find').includes('min-width: 100px;'));
   });
 

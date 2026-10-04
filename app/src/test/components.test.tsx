@@ -167,18 +167,19 @@ function diffOptionsProps(
   };
 }
 
+type OptionElement = React.ReactElement<{
+  title?: string;
+  'aria-pressed'?: boolean;
+  onClick?: () => void;
+  children?: OptionElement[];
+}>;
+
 function diffOptionButtons(overrides: Partial<DiffOptionsProps> = {}) {
   const element = DiffOptions(diffOptionsProps(overrides));
-  assert.ok(
-    isValidElement<{
-      children: React.ReactElement<{
-        title?: string;
-        'aria-pressed'?: boolean;
-        onClick?: () => void;
-      }>[];
-    }>(element),
+  assert.ok(isValidElement<{ children: OptionElement[] }>(element));
+  return element.props.children.flatMap((child) =>
+    child.type === 'button' ? [child] : (child.props.children ?? []),
   );
-  return element.props.children.filter((child) => child.type === 'button');
 }
 
 function entireFileButtons(
@@ -256,7 +257,15 @@ suite('Diff options', () => {
     const html = renderToStaticMarkup(<DiffOptions {...diffOptionsProps()} />);
     assert.match(
       html,
-      /<\/button><span class="nav-button-space"><\/span><button[^>]*title="Ignore Whitespace"[^>]*>.*?<\/button><button[^>]*title="Word Wrap"[^>]*>.*?<\/button><span class="nav-button-space"><\/span><button[^>]*title="Inline"/,
+      /<\/button><span class="nav-button-space"><\/span><button[^>]*title="Ignore Whitespace"[^>]*>.*?<\/button><button[^>]*title="Word Wrap"[^>]*>.*?<\/button><span class="nav-button-space"><\/span><div class="segmented"/,
+    );
+  });
+
+  test('holds the inline and side by side buttons together, as only one of them is on at a time', () => {
+    const html = renderToStaticMarkup(<DiffOptions {...diffOptionsProps()} />);
+    assert.match(
+      html,
+      /<div class="segmented" role="group" aria-label="Layout"><button[^>]*title="Inline"[^>]*>.*?<\/button><button[^>]*title="Side by Side"[^>]*>.*?<\/button><\/div><\/div>$/,
     );
   });
 

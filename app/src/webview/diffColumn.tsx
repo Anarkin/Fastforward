@@ -134,22 +134,24 @@ export function DiffOptions({
         <WordWrapIcon />
       </button>
       <span className="nav-button-space" />
-      <button
-        className={`nav-button toggle ${layout === 'inline' ? 'active' : ''}`}
-        title="Inline"
-        aria-pressed={layout === 'inline'}
-        onClick={() => onLayout('inline')}
-      >
-        <InlineIcon />
-      </button>
-      <button
-        className={`nav-button toggle ${layout === 'sideBySide' ? 'active' : ''}`}
-        title="Side by Side"
-        aria-pressed={layout === 'sideBySide'}
-        onClick={() => onLayout('sideBySide')}
-      >
-        <SideBySideIcon />
-      </button>
+      <div className="segmented" role="group" aria-label="Layout">
+        <button
+          className={`nav-button toggle ${layout === 'inline' ? 'active' : ''}`}
+          title="Inline"
+          aria-pressed={layout === 'inline'}
+          onClick={() => onLayout('inline')}
+        >
+          <InlineIcon />
+        </button>
+        <button
+          className={`nav-button toggle ${layout === 'sideBySide' ? 'active' : ''}`}
+          title="Side by Side"
+          aria-pressed={layout === 'sideBySide'}
+          onClick={() => onLayout('sideBySide')}
+        >
+          <SideBySideIcon />
+        </button>
+      </div>
     </div>
   );
 }
