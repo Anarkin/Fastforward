@@ -19,8 +19,10 @@ jobs:
             echo "::error::Tag $GITHUB_REF_NAME does not match $version in app/package.json"
             exit 1
           fi
+  ci:
+    uses: ./.github/workflows/ci.yml
   release:
-    needs: check
+    needs: [check, ci]
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
