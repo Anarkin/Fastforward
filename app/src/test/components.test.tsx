@@ -257,8 +257,22 @@ suite('Diff options', () => {
     const html = renderToStaticMarkup(<DiffOptions {...diffOptionsProps()} />);
     assert.match(
       html,
-      /<\/button><span class="nav-button-space"><\/span><button[^>]*title="Ignore Whitespace"[^>]*>.*?<\/button><button[^>]*title="Word Wrap"[^>]*>.*?<\/button><span class="nav-button-space"><\/span><div class="segmented"/,
+      /<\/button><\/span><span class="nav-button-space"><\/span><button[^>]*title="Ignore Whitespace"[^>]*>.*?<\/button><button[^>]*title="Word Wrap"[^>]*>.*?<\/button><span class="nav-button-space"><\/span><div class="segmented"/,
     );
+  });
+
+  test('holds the pin together with the entire file button, filling both as one while pinned', () => {
+    for (const pinned of [false, true]) {
+      const html = renderToStaticMarkup(
+        <DiffOptions {...diffOptionsProps({ pinned })} />,
+      );
+      assert.match(
+        html,
+        new RegExp(
+          `^<div[^>]*><span class="pin-pair ${pinned ? 'pinned' : ''}"><button[^>]*title="(Show|Showing)[^"]*"[^>]*>.*?</button><button[^>]*title="[^"]*[Pp]in[^"]*"[^>]*>.*?</button></span>`,
+        ),
+      );
+    }
   });
 
   test('holds the inline and side by side buttons together, as only one of them is on at a time', () => {
@@ -745,6 +759,17 @@ suite('Navigation bar', () => {
       buttons({ autoFetch: true, autoFetchMinutes: 0 }),
       /Fetching every|Pin: fetch/,
     );
+  });
+
+  test('holds the pin together with the fetch button, filling both as one while pinned', () => {
+    for (const autoFetch of [false, true]) {
+      assert.match(
+        buttons({ autoFetch }),
+        new RegExp(
+          `<span class="pin-pair ${autoFetch ? 'pinned' : ''}"><button[^>]*title="Fetch[^"]*"[^>]*>.*?</button><button[^>]*title="[^"]*(Pin|pin)[^"]*"[^>]*>.*?</button></span></div>$`,
+        ),
+      );
+    }
   });
 });
 

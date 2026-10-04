@@ -83,31 +83,33 @@ export function DiffOptions({
   const shown = entire || pinned;
   return (
     <div className="nav-buttons diff-options">
-      <button
-        className={`nav-button toggle ${shown ? 'active' : ''}`}
-        title={
-          pinned
-            ? 'Showing every file entire, as pinned'
-            : 'Show the entire file, until you leave it'
-        }
-        aria-pressed={shown}
-        disabled={!canShow || pinned}
-        onClick={() => onEntire(!entire)}
-      >
-        <EntireFileIcon />
-      </button>
-      <button
-        className={`nav-button toggle ${pinned ? 'active' : ''}`}
-        title={
-          pinned
-            ? 'Unpin: show only the changes again'
-            : 'Pin: always show entire files'
-        }
-        aria-pressed={pinned}
-        onClick={() => onPin(!pinned)}
-      >
-        <PinIcon />
-      </button>
+      <span className={`pin-pair ${pinned ? 'pinned' : ''}`}>
+        <button
+          className={`nav-button toggle ${shown ? 'active' : ''}`}
+          title={
+            pinned
+              ? 'Showing every file entire, as pinned'
+              : 'Show the entire file, until you leave it'
+          }
+          aria-pressed={shown}
+          disabled={!canShow || pinned}
+          onClick={() => onEntire(!entire)}
+        >
+          <EntireFileIcon />
+        </button>
+        <button
+          className={`nav-button toggle ${pinned ? 'active' : ''}`}
+          title={
+            pinned
+              ? 'Unpin: show only the changes again'
+              : 'Pin: always show entire files'
+          }
+          aria-pressed={pinned}
+          onClick={() => onPin(!pinned)}
+        >
+          <PinIcon />
+        </button>
+      </span>
       <span className="nav-button-space" />
       <button
         className={`nav-button toggle ${ignoreWhitespace ? 'active' : ''}`}

@@ -60,7 +60,7 @@ suite('Style', () => {
     assert.strictEqual(pixels(title, 'padding-left'), buttons(3));
     assert.strictEqual(pixels(title, 'padding-right'), buttons(2));
     const pinned = declarationsOf(
-      '.column-title:has(.nav-buttons > :nth-child(4))',
+      '.column-title:has(.column-start .pin-pair > :nth-child(2))',
     );
     assert.strictEqual(pixels(pinned, 'padding-left'), buttons(4));
   });
@@ -667,6 +667,22 @@ suite('Style', () => {
     assert.match(
       declarationsOf('.segmented > .nav-button:hover:not(:disabled)'),
       /var\(--color-panel-background\);/,
+    );
+    assert.doesNotMatch(css, /\.pin-pair[^{]*\{[^}]*color:/);
+    const pair = declarationsOf('.pin-pair');
+    assert.ok(pair.includes('gap: 2px;'));
+    assert.doesNotMatch(pair, /(^|\s)(border|padding):/);
+    assert.match(
+      declarationsOf('.pin-pair.pinned'),
+      /background: var\(--toggle-on-background\);/,
+    );
+    assert.match(
+      declarationsOf('.pin-pair.pinned > .nav-button.toggle.active'),
+      /background: none;/,
+    );
+    assert.match(
+      declarationsOf('.pin-pair.pinned > .nav-button:disabled'),
+      /opacity: 1;/,
     );
     assert.match(
       declarationsOf('.segmented > .nav-button.toggle.active'),

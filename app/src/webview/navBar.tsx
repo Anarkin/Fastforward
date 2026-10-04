@@ -49,26 +49,30 @@ export function NavButtons({
         entries={forward}
         onNavigate={onNavigate}
       />
-      <button
-        className={`nav-button ${fetching ? 'running' : ''}`}
-        title="Fetch every remote, dropping branches deleted there"
-        disabled={fetching}
-        onClick={onFetch}
+      <span
+        className={`pin-pair ${autoFetch && autoFetchMinutes > 0 ? 'pinned' : ''}`}
       >
-        <span className="spin-icon">
-          <RefreshIcon />
-        </span>
-      </button>
-      {autoFetchMinutes > 0 && (
         <button
-          className={`nav-button toggle ${autoFetch ? 'active' : ''}`}
-          title={autoFetchTitle(autoFetch, autoFetchMinutes)}
-          aria-pressed={autoFetch}
-          onClick={() => onAutoFetch(!autoFetch)}
+          className={`nav-button ${fetching ? 'running' : ''}`}
+          title="Fetch every remote, dropping branches deleted there"
+          disabled={fetching}
+          onClick={onFetch}
         >
-          <PinIcon />
+          <span className="spin-icon">
+            <RefreshIcon />
+          </span>
         </button>
-      )}
+        {autoFetchMinutes > 0 && (
+          <button
+            className={`nav-button toggle ${autoFetch ? 'active' : ''}`}
+            title={autoFetchTitle(autoFetch, autoFetchMinutes)}
+            aria-pressed={autoFetch}
+            onClick={() => onAutoFetch(!autoFetch)}
+          >
+            <PinIcon />
+          </button>
+        )}
+      </span>
     </div>
   );
 }
