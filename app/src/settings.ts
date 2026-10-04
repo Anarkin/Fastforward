@@ -218,22 +218,25 @@ export class UserSettings {
 
   set<K extends keyof Settings>(key: K, value: Settings[K]): Promise<void> {
     this.current = { ...this.current, [key]: value };
-    const written = { ...this.written };
-    if (same(value, this.base[key])) {
-      delete written[key];
-    } else {
-      written[key] = value;
-    }
-    this.written = written;
+    this.written = this.withSetting(this.written, key, value);
     const file = this.file;
     if (file === undefined || this.broken) {
       return Promise.resolve();
     }
-    const json = `${JSON.stringify(written, undefined, 2)}\n`;
     this.pending += 1;
     this.writing = this.writing
       .catch(() => undefined)
-      .then(() => writeAtomically(file, json))
+      .then(() => {
+        const latest = writtenIn(file);
+        if (latest === undefined) {
+          return Promise.resolve();
+        }
+        this.written = this.withSetting(latest, key, value);
+        return writeAtomically(
+          file,
+          `${JSON.stringify(this.written, undefined, 2)}\n`,
+        );
+      })
       .finally(() => {
         this.pending -= 1;
       });
@@ -242,6 +245,36 @@ export class UserSettings {
 
   saved(): Promise<void> {
     return this.writing.catch(() => undefined);
+  }
+
+  private withSetting<K extends keyof Settings>(
+    written: Json,
+    key: K,
+    value: Settings[K],
+  ): Json {
+    const result = { ...written };
+    if (same(value, this.base[key])) {
+      delete result[key];
+    } else {
+      result[key] = value;
+    }
+    return result;
+  }
+}
+
+function writtenIn(file: string): Json | undefined {
+  const text = readText(file);
+  if (text instanceof Error) {
+    return undefined;
+  }
+  if (text === undefined || text.trim() === '') {
+    return {};
+  }
+  try {
+    const parsed: unknown = JSON.parse(text);
+    return isObject(parsed) ? parsed : {};
+  } catch {
+    return undefined;
   }
 }
 

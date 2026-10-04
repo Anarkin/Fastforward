@@ -174,6 +174,26 @@ suite('User settings file', () => {
     assert.strictEqual(user.settings.solo, true);
   });
 
+  test('keeps a change made to the file since it was read when saving its own', async () => {
+    const user = new UserSettings(defaults, file);
+    fs.writeFileSync(file, JSON.stringify({ solo: true }));
+    await user.set('collapseMerges', false);
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(file, 'utf8')), {
+      solo: true,
+      collapseMerges: false,
+    });
+    assert.strictEqual(user.reload(), true);
+    assert.strictEqual(user.settings.solo, true);
+    assert.strictEqual(user.settings.collapseMerges, false);
+  });
+
+  test('leaves a file broken since it was read alone when saving', async () => {
+    const user = new UserSettings(defaults, file);
+    fs.writeFileSync(file, '{ "solo": ');
+    await user.set('collapseMerges', false);
+    assert.strictEqual(fs.readFileSync(file, 'utf8'), '{ "solo": ');
+  });
+
   test('reads the file again once it changes, telling a change from its own saves', async () => {
     const user = new UserSettings(defaults, file);
     await user.set('collapseMerges', false);
