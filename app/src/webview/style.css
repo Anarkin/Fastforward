@@ -1326,7 +1326,7 @@ body.resizing {
 }
 
 .nav-button:hover:not(:disabled) {
-  background: var(--hover-background);
+  box-shadow: inset 0 0 0 13px var(--hover-background);
 }
 
 .nav-button.toggle.active {
@@ -1342,9 +1342,7 @@ body.resizing {
 }
 
 .segmented > .nav-button:hover:not(:disabled) {
-  background:
-    linear-gradient(var(--hover-background), var(--hover-background)),
-    var(--color-panel-background);
+  background: var(--color-panel-background);
 }
 
 .segmented > .nav-button.toggle.active {

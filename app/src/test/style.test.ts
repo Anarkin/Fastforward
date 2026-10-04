@@ -65,6 +65,16 @@ suite('Style', () => {
     assert.strictEqual(pixels(pinned, 'padding-left'), buttons(4));
   });
 
+  test('shades a round button on hover over whatever fill it has, so an active toggle or a pinned pair changes too', () => {
+    const hover = declarationsOf('.nav-button:hover:not(:disabled)');
+    assert.match(
+      hover,
+      /^\s*box-shadow: inset 0 0 0 13px var\(--hover-background\);\s*$/,
+    );
+    assert.match(declarationsOf('.nav-button'), /border-radius: 13px;/);
+    assert.match(declarationsOf('.nav-button'), /width: 26px;/);
+  });
+
   test("opens the search over the commit column's title without moving its field or back button", () => {
     const title = declarationsOf('.column-title');
     const row = declarationsOf('.locations-search-row');
@@ -162,11 +172,7 @@ suite('Style', () => {
       ),
       body,
     );
-    for (const selector of [
-      '.tab-add:hover',
-      '.notice-close:hover',
-      '.nav-button:hover:not(:disabled)',
-    ]) {
+    for (const selector of ['.tab-add:hover', '.notice-close:hover']) {
       assert.ok(
         declarationsOf(selector).includes(
           'background: var(--hover-background);',
@@ -666,7 +672,7 @@ suite('Style', () => {
     assert.doesNotMatch(segmented, /(^|\s)(border|padding):/);
     assert.match(
       declarationsOf('.segmented > .nav-button:hover:not(:disabled)'),
-      /var\(--color-panel-background\);/,
+      /^\s*background: var\(--color-panel-background\);\s*$/,
     );
     assert.doesNotMatch(css, /\.pin-pair[^{]*\{[^}]*color:/);
     const pair = declarationsOf('.pin-pair');
