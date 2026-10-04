@@ -33,7 +33,12 @@ import { changeClass, changeTitle } from '../webview/fileStatus';
 import type { ContextMenuItem } from '../webview/contextMenu';
 import { DiffOptions } from '../webview/diffColumn';
 import { HunkDivider } from '../webview/diffView';
-import { Files, filesCursor, filesTitle } from '../webview/filesColumn';
+import {
+  Files,
+  filesCursor,
+  filesTitle,
+  noChangesText,
+} from '../webview/filesColumn';
 import { comparisonOf } from '../shared/comparisons';
 import { Highlight } from '../webview/highlight';
 import type { Folders } from '../webview/viewFolders';
@@ -136,6 +141,36 @@ function changesRows(
     rows: Array.from({ length: rows.count }, (_, index) => renderRow(index)),
     selectedKey,
   };
+}
+
+function noChangesShown(
+  files: ReturnType<typeof change>[],
+  loading: boolean,
+  showAll = false,
+): string {
+  let column: React.ReactNode;
+  function Probe() {
+    column = Files({
+      noChanges: 'No changes',
+      showAll,
+      onShowAll: noop,
+      closedFolders: new Set(),
+      onToggleClosedFolder: noop,
+      files,
+      loading,
+      tree: ['kept.ts'],
+      openFolders: new Set(),
+      onToggleFolder: noop,
+      onReplaceFolders: noop,
+      view: 'one',
+      selected: undefined,
+      onSelect: noop,
+    });
+    return null;
+  }
+  renderToStaticMarkup(<Probe />);
+  assert.ok(isValidElement<{ children: React.ReactNode[] }>(column));
+  return renderToStaticMarkup(<>{column.props.children[2]}</>);
 }
 
 function clickFile(row: React.ReactElement) {
@@ -440,6 +475,26 @@ suite('Files column', () => {
       filesTitle(comparisonOf(hash, workingTreeHash)),
       'Files: 0123456 → uncommitted',
     );
+  });
+
+  test('says a commit changed nothing, or that the two compared have the same files', () => {
+    const hash = '0123456789abcdef0123456789abcdef01234567';
+    assert.strictEqual(noChangesText(undefined), undefined);
+    assert.strictEqual(noChangesText(hash), 'No changes');
+    assert.strictEqual(
+      noChangesText(comparisonOf(hash, workingTreeHash)),
+      'No differences, both have the same files',
+    );
+  });
+
+  test('shows that nothing changed only once loaded, while it lists no file', () => {
+    assert.strictEqual(
+      noChangesShown([], false),
+      '<div class="empty-state">No changes</div>',
+    );
+    assert.strictEqual(noChangesShown([], true), '');
+    assert.strictEqual(noChangesShown([change('a.ts')], false), '');
+    assert.strictEqual(noChangesShown([], false, true), '');
   });
 
   test('collapses every folder, or expands every folder shown, the unchanged ones too while all files show', () => {

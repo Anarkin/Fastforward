@@ -718,6 +718,21 @@ body.resizing {
   min-height: 0;
 }
 
+.column-body:has(> .empty-state) {
+  display: flex;
+  flex-direction: column;
+}
+
+.column-body > .empty-state {
+  order: -1;
+  padding: 8px;
+}
+
+.column-body:has(> .empty-state) > .virtual-rows-frame {
+  flex: 1;
+  min-height: 0;
+}
+
 .list {
   outline: none;
 }

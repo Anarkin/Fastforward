@@ -534,6 +534,18 @@ suite('Style', () => {
     );
   });
 
+  test('shows that nothing changed above the empty list, which still fills the column to take the keys', () => {
+    const body = declarationsOf('.column-body:has(> .empty-state)');
+    assert.match(body, /display: flex;/);
+    assert.match(body, /flex-direction: column;/);
+    assert.match(declarationsOf('.column-body > .empty-state'), /order: -1;/);
+    const list = declarationsOf(
+      '.column-body:has(> .empty-state) > .virtual-rows-frame',
+    );
+    assert.match(list, /flex: 1;/);
+    assert.match(list, /min-height: 0;/);
+  });
+
   test('lets only the diff, errors and notices be selected, not the controls around them', () => {
     assert.match(css, /\nbody \{[^}]*user-select: none;/);
     assert.match(

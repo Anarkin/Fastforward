@@ -45,8 +45,20 @@ export function filesTitle(selection: string | undefined): string {
   return compared ? `Files: ${comparisonLabel(compared)}` : 'Files';
 }
 
+export function noChangesText(
+  selection: string | undefined,
+): string | undefined {
+  if (selection === undefined) {
+    return undefined;
+  }
+  return comparedOf(selection)
+    ? 'No differences, both have the same files'
+    : 'No changes';
+}
+
 export function Files({
   title = 'Files',
+  noChanges,
   showAll,
   onShowAll,
   closedFolders,
@@ -62,6 +74,7 @@ export function Files({
   view,
 }: {
   title?: string;
+  noChanges?: string;
   showAll: boolean;
   onShowAll: (show: boolean) => void;
   closedFolders: ReadonlySet<string>;
@@ -217,6 +230,9 @@ export function Files({
         revealWith={unchanged}
         onKeyDown={onKeyDown}
       />
+      {!loading && listed.count === 0 && noChanges && (
+        <div className="empty-state">{noChanges}</div>
+      )}
     </Column>
   );
 }

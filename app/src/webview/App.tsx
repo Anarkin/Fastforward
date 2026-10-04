@@ -46,7 +46,7 @@ import {
   type OpenMenu,
 } from './contextMenu';
 import { Diff, DiffOptions, diffSelection } from './diffColumn';
-import { Files, filesTitle } from './filesColumn';
+import { Files, filesTitle, noChangesText } from './filesColumn';
 import { foldersOf } from './fileTree';
 import { compareWith } from '../shared/comparisons';
 import { hasRef } from '../shared/refNames';
@@ -609,6 +609,7 @@ export function App({ name, post: postToHost, listen }: Props) {
                   />
                   <Files
                     title={filesTitle(hash)}
+                    noChanges={noChangesText(hash)}
                     showAll={showAllFiles}
                     onShowAll={changeShowAllFiles}
                     closedFolders={closedFolders}
