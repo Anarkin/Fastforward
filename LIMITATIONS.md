@@ -15,7 +15,7 @@ This file only observes and documents the codebase mainly for human readers; the
 
 ## Syntax
 
-- Lines of a side past its 5000th are not colored, and a side shown past it is tokenized from its hunks alone, as tokenizing is sequential, so a late line costs every line before it
+- A side showing a line past its 5000th is tokenized from its hunks alone, as tokenizing is sequential, so a late line costs every line before it, and only the first 5000 lines shown of a side, or of a file shown entire, are colored
 - Once the sides of the open files take 20000 lines, counting a side tokenized from its hunks alone by its lines shown, later sides are tokenized from their hunks alone, as each whole text is read from git and tokenized in full
 - A line over 2000 characters is not colored, through Shiki's `tokenizeMaxLineLength`, as minified lines take long to tokenize
 - The colors kept are bounded at 100000 lines or 8 million characters, forgetting the least recently used texts, and a text over 2 million characters is never kept, bounding the webview's memory
