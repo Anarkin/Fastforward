@@ -1,3 +1,4 @@
 {
-  "spinnerVerbs": { "mode": "replace", "verbs": ["Fastforwarding"] }
+  "spinnerVerbs": { "mode": "replace", "verbs": ["Fastforwarding"] },
+  "attribution": { "commit": "", "pr": "", "sessionUrl": false }
 }
