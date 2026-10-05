@@ -8,6 +8,7 @@ import {
   tabStep,
 } from '../webview/shortcuts';
 import { adjacentTab, tabBarKey } from '../webview/tabBar';
+import { element } from './fixtures';
 
 const keyEvent = (
   key: string,
@@ -29,17 +30,6 @@ const press = (
   key: string,
   extra: Partial<Parameters<typeof shortcutOf>[0]> = {},
 ) => shortcutOf(keyEvent(key, extra));
-
-function element(tagName: string, isContentEditable = false): EventTarget {
-  const target = {
-    tagName,
-    isContentEditable,
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    dispatchEvent: () => true,
-  };
-  return target;
-}
 
 suite('Keyboard shortcuts', () => {
   test('matches a key pressed on its own', () => {

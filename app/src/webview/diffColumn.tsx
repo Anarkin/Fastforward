@@ -1,11 +1,4 @@
-import {
-  useEffect,
-  useEffectEvent,
-  useMemo,
-  useRef,
-  useState,
-  type RefObject,
-} from 'react';
+import { useMemo, useRef, useState, type RefObject } from 'react';
 import {
   deferredChanges,
   type DiffLayout,
@@ -26,7 +19,7 @@ import {
   SideBySideIcon,
   WordWrapIcon,
 } from './icons';
-import { isFindShortcut } from './shortcuts';
+import { isFindShortcut, useWindowKeyDown } from './shortcuts';
 
 export function withLargeFiles(
   parsed: readonly DiffFile[],
@@ -306,17 +299,13 @@ export function Diff({
     setCurrent(0);
     setJump((count) => count + 1);
   }
-  const onKeyDown = useEffectEvent((event: KeyboardEvent) => {
+  useWindowKeyDown((event) => {
     if (isFindShortcut(event)) {
       event.preventDefault();
       input.current?.focus();
       input.current?.select();
     }
   });
-  useEffect(() => {
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
 
   return (
     <Column

@@ -94,9 +94,10 @@ suite('Columns', () => {
     assert.deepStrictEqual(resetWidth([400, 250], 1, [460, 300]), [400, 300]);
   });
 
-  test('stops following a drag the browser cancels, or whose button went up unseen', () => {
+  test('stops following a drag the browser cancels or takes the pointer from, or whose button went up unseen', () => {
     for (const [type, buttons] of [
       ['pointercancel', 1],
+      ['lostpointercapture', 1],
       ['pointerup', 0],
       ['pointermove', 0],
     ] as const) {

@@ -77,7 +77,7 @@ interface Props {
 export function App({ name, post: postToHost, listen }: Props) {
   const outbox = useMemo(() => settling(postToHost), [postToHost]);
   const post = outbox.send;
-  const [tabs, setTabs] = useState<readonly TabInfo[]>([]);
+  const [tabs, setTabs] = useState<readonly TabInfo[]>();
   const [recent, setRecent] = useState<readonly TabInfo[]>([]);
   const [notices, setNotices] = useState<readonly Notice[]>([]);
   const noticeCount = useRef(0);
@@ -482,7 +482,7 @@ export function App({ name, post: postToHost, listen }: Props) {
           <div className="app">
             <TitleBar title={windowTitle(activeTab, name)} />
             <TabBar
-              tabs={tabs}
+              tabs={tabs ?? []}
               active={activeTab}
               onSelect={(root) => post({ type: 'selectTab', root })}
               onPreload={(root) => post({ type: 'preloadTab', root })}
@@ -497,7 +497,7 @@ export function App({ name, post: postToHost, listen }: Props) {
             />
             {menu && <ContextMenu menu={menu} onClose={closeMenu} />}
             <Notices notices={notices} onDismiss={dismissNotice} />
-            {tabs.length === 0 ? (
+            {tabs === undefined ? null : tabs.length === 0 ? (
               <div className="empty-state">
                 No repository is open. Use + to open one.
               </div>

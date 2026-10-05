@@ -43,6 +43,20 @@ export function classesOf(tag: string): Set<string> {
   return new Set(names.split(/\s+/).filter(Boolean));
 }
 
+export function element(
+  tagName: string,
+  isContentEditable = false,
+): EventTarget {
+  const target = {
+    tagName,
+    isContentEditable,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => true,
+  };
+  return target;
+}
+
 export async function waitFor(
   condition: () => boolean | Promise<boolean>,
   what: string,

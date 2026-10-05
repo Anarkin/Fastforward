@@ -17,7 +17,7 @@ import {
 import { parsePatch } from '../webview/diff';
 import { fullyVisible, moveInList } from '../webview/listMoves';
 import { changeStep } from '../webview/shortcuts';
-import { fileChange } from './fixtures';
+import { element, fileChange } from './fixtures';
 
 const visible = { first: 0, last: 0 };
 
@@ -64,7 +64,7 @@ suite('Active column', () => {
     altKey: false,
     shiftKey: false,
     defaultPrevented: false,
-    target: { tagName: 'DIV' },
+    target: element('DIV'),
   };
 
   test('shows the files and the diff only with a commit selected, and the commits unless hidden', () => {
@@ -86,11 +86,15 @@ suite('Active column', () => {
 
   test('leaves the arrows to fields and to keys a column used itself, and keys with modifiers alone', () => {
     assert.strictEqual(
-      columnStep({ ...key, target: { tagName: 'INPUT' } }),
+      columnStep({ ...key, target: element('INPUT') }),
       undefined,
     );
     assert.strictEqual(
-      columnStep({ ...key, key: 'Tab', target: { tagName: 'INPUT' } }),
+      columnStep({ ...key, target: element('DIV', true) }),
+      undefined,
+    );
+    assert.strictEqual(
+      columnStep({ ...key, key: 'Tab', target: element('INPUT') }),
       1,
     );
     assert.strictEqual(

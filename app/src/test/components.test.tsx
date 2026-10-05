@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { App } from '../webview/App';
 import {
   changesTree,
   changesTreeElement,
@@ -45,7 +46,7 @@ import type { Folders } from '../webview/viewFolders';
 import { SkeletonRows } from '../webview/skeleton';
 import { preloadDelay, resting, TabBar } from '../webview/tabBar';
 import { GraphCell, graphWidth, rowLanes } from '../webview/graph';
-import { FileRow, treeIndent } from '../webview/tree';
+import { FileRow } from '../webview/tree';
 import { VirtualRows, type ListedRows } from '../webview/virtualRows';
 import {
   workingTreeHash,
@@ -1338,11 +1339,11 @@ suite('Menu items', () => {
     assert.deepStrictEqual(log, ['close', 'a']);
   });
 
-  test('marks the picked one of several, and switches with a check', () => {
+  test('marks the items that are on with a check', () => {
     const html = renderToStaticMarkup(
       <MenuItems
         items={[
-          { label: 'View as List', checked: true, radio: true, onClick: noop },
+          { label: 'main', checked: true, onClick: noop },
           { label: 'Collapse', checked: false, onClick: noop },
         ]}
         onClose={noop}
@@ -1350,7 +1351,7 @@ suite('Menu items', () => {
     );
     assert.match(
       html,
-      /role="menuitemradio" aria-checked="true"><span class="menu-check">✓<\/span>View as List/,
+      /role="menuitemcheckbox" aria-checked="true"><span class="menu-check">✓<\/span>main/,
     );
     assert.match(
       html,
@@ -1371,6 +1372,16 @@ suite('Menu items', () => {
     );
     assert.strictEqual(tagsWith(html, 'menu-separator').length, 1);
     assert.match(html, /role="menuitem"[^>]*disabled=""[^>]*>Checkout/);
+  });
+});
+
+suite('Window', () => {
+  test('says no repository is open only once the host says which tabs are', () => {
+    const html = renderToStaticMarkup(
+      <App name="Fastforward" post={noop} listen={() => noop} />,
+    );
+    assert.strictEqual(tagsWith(html, 'tabs').length, 1);
+    assert.doesNotMatch(html, /No repository is open/);
   });
 });
 
@@ -1521,16 +1532,6 @@ suite('Placeholders', () => {
     );
     assert.strictEqual(tagsWith(html, 'diff-line', 'skeleton-row').length, 3);
     assert.match(html, /aria-busy="true"/);
-  });
-
-  test('indent their stand-in tree rows like the tree indents its levels', () => {
-    const html = renderToStaticMarkup(<SkeletonRows count={4} indent />);
-    assert.deepStrictEqual(
-      [...html.matchAll(/padding-left:(\d+)px/g)].map((match) =>
-        Number(match[1]),
-      ),
-      [0, 1, 2, 0].map(treeIndent),
-    );
   });
 });
 

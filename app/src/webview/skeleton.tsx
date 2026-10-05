@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { treeIndent } from './tree';
 
 const skeletonDelay = 150;
 
@@ -21,20 +20,14 @@ const widths = ['62%', '45%', '78%', '53%', '70%', '38%', '66%', '49%'];
 export function SkeletonRows({
   count,
   className = 'row',
-  indent = false,
 }: {
   count: number;
   className?: string;
-  indent?: boolean;
 }) {
   return (
     <div className="skeleton" aria-busy="true">
       {Array.from({ length: count }, (_, index) => (
-        <div
-          key={index}
-          className={`${className} skeleton-row`}
-          style={indent ? { paddingLeft: treeIndent(index % 3) } : undefined}
-        >
+        <div key={index} className={`${className} skeleton-row`}>
           <span
             className="bar"
             style={{ width: widths[index % widths.length] }}

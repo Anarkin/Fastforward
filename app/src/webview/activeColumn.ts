@@ -1,4 +1,4 @@
-import { changeStep } from './shortcuts';
+import { changeStep, typing } from './shortcuts';
 
 export type ColumnName = 'commits' | 'files' | 'diff';
 
@@ -15,13 +15,17 @@ export function shownColumns(
   );
 }
 
-const fields = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
-
 export function columnStep(
   event: Pick<
     KeyboardEvent,
-    'key' | 'ctrlKey' | 'metaKey' | 'altKey' | 'shiftKey' | 'defaultPrevented'
-  > & { readonly target: { readonly tagName?: string } | null },
+    | 'key'
+    | 'ctrlKey'
+    | 'metaKey'
+    | 'altKey'
+    | 'shiftKey'
+    | 'defaultPrevented'
+    | 'target'
+  >,
 ): 1 | -1 | undefined {
   if (
     event.defaultPrevented ||
@@ -34,7 +38,7 @@ export function columnStep(
   if (event.key === 'Tab') {
     return event.shiftKey ? -1 : 1;
   }
-  if (event.shiftKey || fields.has(event.target?.tagName ?? '')) {
+  if (event.shiftKey || typing(event.target)) {
     return undefined;
   }
   return event.key === 'ArrowRight'

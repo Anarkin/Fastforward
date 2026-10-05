@@ -100,6 +100,8 @@ interface DragTarget<E> {
   removeEventListener(type: string, listener: (event: E) => void): void;
 }
 
+const endEvents = ['pointerup', 'pointercancel', 'lostpointercapture'];
+
 export function followDrag<E extends { readonly buttons: number }>(
   target: DragTarget<E>,
   onMove: (event: E) => void,
@@ -114,13 +116,15 @@ export function followDrag<E extends { readonly buttons: number }>(
   };
   const end = () => {
     target.removeEventListener('pointermove', move);
-    target.removeEventListener('pointerup', end);
-    target.removeEventListener('pointercancel', end);
+    for (const type of endEvents) {
+      target.removeEventListener(type, end);
+    }
     onEnd();
   };
   target.addEventListener('pointermove', move);
-  target.addEventListener('pointerup', end);
-  target.addEventListener('pointercancel', end);
+  for (const type of endEvents) {
+    target.addEventListener(type, end);
+  }
 }
 
 export function useColumnWidths(

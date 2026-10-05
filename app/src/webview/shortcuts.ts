@@ -39,32 +39,26 @@ function letterOf(event: Pick<KeyboardEvent, 'key' | 'code'>): string {
     : event.code.slice(3).toLowerCase();
 }
 
-export function isFindShortcut(
-  event: Pick<
-    KeyboardEvent,
-    'key' | 'code' | 'ctrlKey' | 'metaKey' | 'shiftKey' | 'altKey'
-  >,
-): boolean {
+type CommandEvent = Pick<
+  KeyboardEvent,
+  'key' | 'code' | 'ctrlKey' | 'metaKey' | 'shiftKey' | 'altKey'
+>;
+
+function isCommandShortcut(event: CommandEvent, letter: string): boolean {
   return (
     (event.ctrlKey || event.metaKey) &&
     !event.shiftKey &&
     !event.altKey &&
-    letterOf(event) === 'f'
+    letterOf(event) === letter
   );
 }
 
-export function isNewTabShortcut(
-  event: Pick<
-    KeyboardEvent,
-    'key' | 'code' | 'ctrlKey' | 'metaKey' | 'shiftKey' | 'altKey'
-  >,
-): boolean {
-  return (
-    (event.ctrlKey || event.metaKey) &&
-    !event.shiftKey &&
-    !event.altKey &&
-    letterOf(event) === 't'
-  );
+export function isFindShortcut(event: CommandEvent): boolean {
+  return isCommandShortcut(event, 'f');
+}
+
+export function isNewTabShortcut(event: CommandEvent): boolean {
+  return isCommandShortcut(event, 't');
 }
 
 export function tabStep(
@@ -104,21 +98,25 @@ function isElement(target: EventTarget | null): target is HTMLElement {
   return target !== null && 'tagName' in target;
 }
 
-function typing(target: EventTarget | null): boolean {
+export function typing(target: EventTarget | null): boolean {
   return (
     isElement(target) &&
     (target.isContentEditable || fields.has(target.tagName))
   );
 }
 
-export function useShortcuts(
-  actions: Readonly<Partial<Record<ShortcutKey, () => void>>>,
+export function useWindowKeyDown(
+  handler: (event: KeyboardEvent) => void,
 ): void {
-  const onKeyDown = useEffectEvent((event: KeyboardEvent) =>
-    handleShortcut(event, actions),
-  );
+  const onKeyDown = useEffectEvent(handler);
   useEffect(() => {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
+}
+
+export function useShortcuts(
+  actions: Readonly<Partial<Record<ShortcutKey, () => void>>>,
+): void {
+  useWindowKeyDown((event) => handleShortcut(event, actions));
 }

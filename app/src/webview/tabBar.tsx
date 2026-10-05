@@ -1,8 +1,8 @@
-import { useEffect, useEffectEvent, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { type TabInfo } from '../shared/protocol';
 import { CloseIcon } from './icons';
 import { MenuButton } from './menu';
-import { isNewTabShortcut, tabStep } from './shortcuts';
+import { isNewTabShortcut, tabStep, useWindowKeyDown } from './shortcuts';
 
 export function adjacentTab(
   tabs: readonly TabInfo[],
@@ -97,7 +97,7 @@ export function TabBar({
   useEffect(() => rest.cancel, [rest]);
 
   const add = useRef<HTMLButtonElement>(null);
-  const onKeyDown = useEffectEvent((event: KeyboardEvent) => {
+  useWindowKeyDown((event) => {
     const action = tabBarKey(event, tabs, active);
     if (action === undefined) {
       return;
@@ -109,10 +109,6 @@ export function TabBar({
       onSelect(action.root);
     }
   });
-  useEffect(() => {
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
 
   const onWheel = (event: React.WheelEvent) => {
     if (list.current && event.deltaY !== 0) {

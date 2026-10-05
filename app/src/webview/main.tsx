@@ -1,19 +1,15 @@
 import { createRoot } from 'react-dom/client';
+import type { Bridge } from '../shared/bridge';
 import type { ToHost, ToWebview } from '../shared/protocol';
 import { App } from './App';
+import { ErrorBoundary } from './errorBoundary';
 import { errorText } from './errors';
 import { installOverlayScrollbars } from './overlayScrollbars';
 import './style.css';
 
 declare global {
   interface Window {
-    readonly fastforward: {
-      readonly platform: string;
-      readonly name: string;
-      post(message: ToHost): void;
-      setWindowButtonColor(color: string): void;
-      listen(handler: (message: ToWebview) => void): () => void;
-    };
+    readonly fastforward: Bridge;
   }
 }
 
@@ -51,6 +47,11 @@ installOverlayScrollbars();
 const root = document.getElementById('root');
 if (root) {
   createRoot(root).render(
-    <App name={fastforward.name} post={post} listen={listen} />,
+    <ErrorBoundary
+      title={fastforward.name}
+      onError={(message) => post({ type: 'log', level: 'error', message })}
+    >
+      <App name={fastforward.name} post={post} listen={listen} />
+    </ErrorBoundary>,
   );
 }

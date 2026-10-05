@@ -32,7 +32,6 @@ export type ContextMenuItem =
       readonly submenu?: readonly ContextMenuItem[];
       readonly disabled?: boolean;
       readonly checked?: boolean;
-      readonly radio?: boolean;
     }
   | { readonly separator: true };
 
@@ -243,18 +242,12 @@ export function claimsMenuKey(key: string): boolean {
 export function useDismiss(
   element: React.RefObject<HTMLElement | null>,
   onClose: () => void,
-  {
-    onScroll = false,
-    ignore,
-    enabled = true,
-  }: DismissOptions & { readonly enabled?: boolean } = {},
+  { onScroll = false, ignore }: DismissOptions = {},
 ): void {
-  useEffect(() => {
-    if (!enabled) {
-      return undefined;
-    }
-    return listenForDismiss(window, element, onClose, { onScroll, ignore });
-  }, [element, onClose, onScroll, ignore, enabled]);
+  useEffect(
+    () => listenForDismiss(window, element, onClose, { onScroll, ignore }),
+    [element, onClose, onScroll, ignore],
+  );
 }
 
 export function MenuItems({
@@ -288,11 +281,7 @@ export function MenuItems({
               onMouseEnter={(event) => event.currentTarget.focus()}
               className={`menu-item ${item.submenu ? 'has-submenu' : ''}`}
               role={
-                item.checked === undefined
-                  ? 'menuitem'
-                  : item.radio
-                    ? 'menuitemradio'
-                    : 'menuitemcheckbox'
+                item.checked === undefined ? 'menuitem' : 'menuitemcheckbox'
               }
               aria-checked={item.checked}
               title={item.title}

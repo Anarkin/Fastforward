@@ -1,3 +1,5 @@
+import { followDrag } from './columns';
+
 export const overlayScrollbarClass = 'overlay-scrollbar';
 export const ownScrollbarAttribute = 'data-own-vertical-scrollbar';
 
@@ -232,14 +234,11 @@ class Bar {
   readonly element = document.createElement('div');
   scroller: Element | null = null;
   private timer: number | undefined;
-  private drag: Drag | undefined;
+  private dragging = false;
 
   constructor(private readonly axis: Axis) {
     this.element.className = `${overlayScrollbarClass} ${axis}`;
     this.element.addEventListener('pointerdown', this.onPointerDown);
-    this.element.addEventListener('pointermove', this.onPointerMove);
-    this.element.addEventListener('pointerup', this.onPointerUp);
-    this.element.addEventListener('pointercancel', this.onPointerUp);
     this.element.addEventListener('pointerenter', () =>
       window.clearTimeout(this.timer),
     );
@@ -248,11 +247,7 @@ class Bar {
   }
 
   show(scroller: Element | null): void {
-    this.scroller = followedScroller(
-      this.drag !== undefined,
-      this.scroller,
-      scroller,
-    );
+    this.scroller = followedScroller(this.dragging, this.scroller, scroller);
     if (!this.place()) {
       this.hide();
       return;
@@ -289,7 +284,7 @@ class Bar {
   private hideLater(): void {
     window.clearTimeout(this.timer);
     this.timer = window.setTimeout(() => {
-      if (!this.drag && !this.element.matches(':hover')) {
+      if (!this.dragging && !this.element.matches(':hover')) {
         this.hide();
       }
     }, hideAfter);
@@ -303,15 +298,21 @@ class Bar {
     event.preventDefault();
     this.element.setPointerCapture(event.pointerId);
     this.element.classList.add('dragging');
-    this.drag = dragFrom(this.axis, metricsOf(scroller, this.axis), event);
+    this.dragging = true;
+    const drag = dragFrom(this.axis, metricsOf(scroller, this.axis), event);
+    followDrag(
+      this.element,
+      (move: PointerEvent) => this.scroll(scroller, drag, move),
+      () => {
+        this.dragging = false;
+        this.element.classList.remove('dragging');
+        this.hideLater();
+      },
+    );
   };
 
-  private readonly onPointerMove = (event: PointerEvent) => {
-    const { drag, scroller } = this;
-    if (!drag || !scroller) {
-      return;
-    }
-    const scroll = draggedScroll(this.axis, drag, event);
+  private scroll(scroller: Element, drag: Drag, pointer: PointerEvent): void {
+    const scroll = draggedScroll(this.axis, drag, pointer);
     const sideways = sidewaysScrollers.get(scroller);
     if (this.axis === 'vertical') {
       scroller.scrollTop = scroll;
@@ -320,13 +321,7 @@ class Bar {
     } else {
       scroller.scrollLeft = scroll;
     }
-  };
-
-  private readonly onPointerUp = () => {
-    this.drag = undefined;
-    this.element.classList.remove('dragging');
-    this.hideLater();
-  };
+  }
 }
 
 export function installOverlayScrollbars(): void {
