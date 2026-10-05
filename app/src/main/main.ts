@@ -415,7 +415,7 @@ function tryWatching(log: Log, what: string, watch: () => void): void {
 function reloadOnRebuild(window: BrowserWindow, onDefaults: () => void): void {
   let page: NodeJS.Timeout | undefined;
   let defaults: NodeJS.Timeout | undefined;
-  fs.watch(dist, (_event, file) => {
+  const watcher = fs.watch(dist, (_event, file) => {
     const change = rebuilt(file);
     if (change === 'page') {
       clearTimeout(page);
@@ -424,5 +424,10 @@ function reloadOnRebuild(window: BrowserWindow, onDefaults: () => void): void {
       clearTimeout(defaults);
       defaults = setTimeout(onDefaults, 100);
     }
+  });
+  window.on('closed', () => {
+    watcher.close();
+    clearTimeout(page);
+    clearTimeout(defaults);
   });
 }
