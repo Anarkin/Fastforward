@@ -617,8 +617,8 @@ export function App({ name, post: postToHost, listen }: Props) {
                     files={files}
                     loading={filesLoading || opening}
                     tree={commitTree}
-                    openFolders={openedFolders}
-                    onToggleFolder={toggleOpenFolder}
+                    openedFolders={openedFolders}
+                    onToggleOpenFolder={toggleOpenFolder}
                     onReplaceFolders={(shown) =>
                       setFolders(replaceFolders(folderView, shown))
                     }

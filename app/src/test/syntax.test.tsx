@@ -5,7 +5,7 @@ import { marked } from '../webview/diffView';
 import {
   languageOf,
   loadLanguages,
-  cachedRanges,
+  uncachedSources,
   startColoring,
   syntaxSources,
   textsToLoad,
@@ -17,10 +17,10 @@ type Highlighter = Awaited<ReturnType<typeof loadLanguages>>;
 
 function syntaxRanges(
   highlighter: Highlighter,
-  sources: Parameters<typeof cachedRanges>[0],
+  sources: Parameters<typeof uncachedSources>[0],
 ) {
   const ranges = new Map<string, readonly SyntaxRange[]>();
-  tokenizing(highlighter, cachedRanges(sources, ranges))(Infinity, ranges);
+  tokenizing(highlighter, uncachedSources(sources, ranges))(Infinity, ranges);
   return ranges;
 }
 
@@ -542,6 +542,51 @@ suite('Syntax', () => {
     assert.deepStrictEqual([...ranges.keys()].toSorted(), ['0:0', '1:0']);
   });
 
+  test('colors nothing more once stopped, though slices are left and a language loads', async () => {
+    await loadLanguages(['typescript']);
+    const ranges = new Map<string, readonly SyntaxRange[]>();
+    const slices: (() => void)[] = [];
+    let published = 0;
+    const stop = startColoring(
+      [
+        { language: 'typescript', lines: ['let stopped;'], keys: ['0:0'] },
+        { language: 'toml', lines: ['stopped = 1'], keys: ['1:0'] },
+      ],
+      ranges,
+      () => (published += 1),
+      (slice) => slices.push(slice),
+    );
+    stop();
+    await loadLanguages(['toml']);
+    assert.strictEqual(slices.length, 1);
+    slices.shift()?.();
+    assert.deepStrictEqual([slices.length, published, ranges.size], [0, 1, 0]);
+  });
+
+  test('drops the slices of a job started over once a language loads, as the new job colors every text anew', async () => {
+    await loadLanguages(['typescript']);
+    const ranges = new Map<string, readonly SyntaxRange[]>();
+    const slices: (() => void)[] = [];
+    let published = 0;
+    startColoring(
+      [
+        { language: 'typescript', lines: ['let superseded;'], keys: ['0:0'] },
+        { language: 'go', lines: ['var later = 1'], keys: ['1:0'] },
+      ],
+      ranges,
+      () => (published += 1),
+      (slice) => slices.push(slice),
+    );
+    await loadLanguages(['go']);
+    assert.strictEqual(slices.length, 2);
+    slices.shift()?.();
+    assert.deepStrictEqual([slices.length, published, ranges.size], [1, 1, 0]);
+    while (slices.length > 0) {
+      slices.shift()?.();
+    }
+    assert.deepStrictEqual([...ranges.keys()].toSorted(), ['0:0', '1:0']);
+  });
+
   test('tokenizes past its deadline only a few thousand characters of a text, going on from where they leave off', async () => {
     const highlighter = await loadLanguages(['typescript']);
     let tokenized = 0;
@@ -562,7 +607,7 @@ suite('Syntax', () => {
     };
     const short = { language: 'typescript', lines: ['let y;'], keys: ['1:0'] };
     const ranges = new Map<string, readonly SyntaxRange[]>();
-    const step = tokenizing(counting, cachedRanges([long, short], ranges));
+    const step = tokenizing(counting, uncachedSources([long, short], ranges));
     let slices = 1;
     while (step(0, ranges)) {
       assert.ok(!ranges.has('1:0'));
@@ -618,11 +663,17 @@ suite('Syntax', () => {
     const ranges = new Map<string, readonly SyntaxRange[]>();
     const step = tokenizing(
       await loadLanguages(['markdown']),
-      cachedRanges([text], ranges),
+      uncachedSources([text], ranges),
     );
+    const letColored = () =>
+      ranges
+        .get('0:6')
+        ?.some(({ start, kind }) => start === 4 && kind === 'keyword');
     assert.ok(step(-Infinity, ranges));
-    const highlighter = await loadLanguages(['ruby']);
+    assert.strictEqual(letColored(), false);
+    const highlighter = await loadLanguages(['javascript']);
     step(Infinity, ranges);
+    assert.strictEqual(letColored(), true);
     assert.deepStrictEqual(ranges, syntaxRanges(highlighter, [text]));
   });
 
@@ -652,6 +703,39 @@ suite('Syntax', () => {
     color('f', 2_000_001);
     color('f', 2_000_001);
     assert.deepStrictEqual(tokenized, ['a', 'b', 'c', 'd', 'e', 'a', 'f', 'f']);
+  });
+
+  test('keeps the colors of at most 100000 lines in all', async () => {
+    const highlighter = await loadLanguages(['typescript']);
+    const tokenized: string[] = [];
+    const counting = {
+      ...highlighter,
+      codeToTokensBase: (
+        ...args: Parameters<typeof highlighter.codeToTokensBase>
+      ) => {
+        tokenized.push(args[0]);
+        return highlighter.codeToTokensBase(...args);
+      },
+    };
+    const color = (name: string, length = 50_000) =>
+      syntaxRanges(counting, [
+        {
+          language: 'typescript',
+          lines: [name, ...Array<string>(length - 1).fill('')],
+          keys: ['0:0'],
+        },
+      ]);
+    for (const name of ['a', 'b', 'a']) {
+      color(name);
+    }
+    color('c', 1);
+    for (const name of ['a', 'b', 'a']) {
+      color(name);
+    }
+    assert.deepStrictEqual(
+      tokenized.flatMap((text) => (/^\w/.test(text) ? [text[0]] : [])),
+      ['a', 'b', 'c', 'b'],
+    );
   });
 
   test('colors no file that is collapsed', () => {

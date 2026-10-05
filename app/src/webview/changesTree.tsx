@@ -45,7 +45,7 @@ function compact(node: FolderNode): FolderNode {
 
 export function changesTree(
   files: readonly FileChange[],
-  unchanged: readonly string[] = [],
+  allPaths: readonly string[] = [],
 ): ChangesFolder {
   const changes = new Map(files.map((file) => [file.path, file]));
   const sorted = (node: FolderNode): ChangesFolder => ({
@@ -59,7 +59,7 @@ export function changesTree(
       .map((file) => ({ ...file, change: changes.get(file.path) }))
       .toSorted(byName),
   });
-  return sorted(buildFileTree(unchanged, changes));
+  return sorted(buildFileTree(allPaths, changes));
 }
 
 export function changesTreeRows(
@@ -140,7 +140,12 @@ export function listedTreeRows(
 
 export type FilesKeyAction =
   | { readonly kind: 'stay' }
-  | { readonly kind: 'cursor'; readonly key: string; readonly file?: string }
+  | { readonly kind: 'cursor'; readonly key: string }
+  | {
+      readonly kind: 'select';
+      readonly key: string;
+      readonly file: string | undefined;
+    }
   | {
       readonly kind: 'toggle';
       readonly folder: string;
@@ -174,14 +179,11 @@ export function filesKey(
     return listKey(key) ? { kind: 'stay' } : undefined;
   }
   const target = moved < offset ? undefined : rows[moved - offset];
-  return {
-    kind: 'cursor',
-    key: listed.keyOf(moved),
-    ...((target === undefined || target.kind === 'file') &&
+  const movedKey = listed.keyOf(moved);
+  return (target === undefined || target.kind === 'file') &&
     target?.path !== selected
-      ? { file: target?.path }
-      : {}),
-  };
+    ? { kind: 'select', key: movedKey, file: target?.path }
+    : { kind: 'cursor', key: movedKey };
 }
 
 const listKeyNames = new Set([
@@ -242,12 +244,12 @@ export function changesTreeElement(
     onToggle: (folder: string, changed: boolean) => void;
     selected: string | undefined;
     onSelect: (path: string | undefined) => void;
-    cursor?: string;
+    cursor: string | undefined;
   },
 ): React.ReactElement {
   return row.kind === 'folder' ? (
     <FolderRow
-      key={`folder:${row.path}`}
+      key={folderRowKey(row.path)}
       path={row.path}
       title={row.path}
       depth={row.depth}
@@ -269,9 +271,7 @@ export function changesTreeElement(
       depth={row.depth}
       change={row.change}
       selected={selected}
-      marked={
-        cursor === undefined ? undefined : cursor === fileRowKey(row.path)
-      }
+      marked={cursor === fileRowKey(row.path)}
       onSelect={onSelect}
     />
   );

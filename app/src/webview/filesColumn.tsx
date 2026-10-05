@@ -66,8 +66,8 @@ export function Files({
   files,
   loading,
   tree,
-  openFolders,
-  onToggleFolder,
+  openedFolders,
+  onToggleOpenFolder,
   onReplaceFolders,
   selected,
   onSelect,
@@ -82,22 +82,22 @@ export function Files({
   files: readonly FileChange[];
   loading: boolean;
   tree: readonly string[] | undefined;
-  openFolders: ReadonlySet<string>;
-  onToggleFolder: (folder: string) => void;
+  openedFolders: ReadonlySet<string>;
+  onToggleOpenFolder: (folder: string) => void;
   onReplaceFolders: (folders: Folders) => void;
   selected: string | undefined;
   onSelect: (path: string | undefined) => void;
   view: string;
 }) {
   const skeleton = useSkeleton(loading);
-  const unchanged = showAll ? tree : undefined;
+  const allPaths = showAll ? tree : undefined;
   const fileTree = useMemo(
-    () => changesTree(files, unchanged),
-    [files, unchanged],
+    () => changesTree(files, allPaths),
+    [files, allPaths],
   );
   const treeRows = useMemo(
-    () => changesTreeRows(fileTree, closedFolders, openFolders),
-    [fileTree, closedFolders, openFolders],
+    () => changesTreeRows(fileTree, closedFolders, openedFolders),
+    [fileTree, closedFolders, openedFolders],
   );
   const folders = useMemo(() => treeFolders(fileTree), [fileTree]);
   const noFolders =
@@ -118,6 +118,13 @@ export function Files({
       onSelect(path);
     }
   };
+  const toggle = (folder: string, changed: boolean) => {
+    if (changed) {
+      onToggleClosedFolder(folder);
+    } else {
+      onToggleOpenFolder(folder);
+    }
+  };
   const onKeyDown = (event: React.KeyboardEvent, visible: VisibleRows) => {
     if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) {
       return;
@@ -135,18 +142,11 @@ export function Files({
     }
     event.preventDefault();
     if (action.kind === 'toggle') {
-      if (action.changed) {
-        onToggleClosedFolder(action.folder);
-      } else {
-        onToggleFolder(action.folder);
-      }
+      toggle(action.folder, action.changed);
+    } else if (action.kind === 'select') {
+      select(action.file);
     } else if (action.kind === 'cursor') {
-      if ('file' in action) {
-        setMoved(undefined);
-        onSelect(action.file);
-      } else {
-        setMoved({ key: action.key, from: selectedKey, view });
-      }
+      setMoved({ key: action.key, from: selectedKey, view });
     }
   };
   const start = (
@@ -189,7 +189,7 @@ export function Files({
   );
   const header = (
     <div
-      key="changes"
+      key={changesKey}
       className={`row group counted ${cursor === changesKey ? 'selected' : ''}`}
       onClick={() => select(undefined)}
     >
@@ -201,11 +201,7 @@ export function Files({
     showsAll: showAll,
     onToggle: (folder: string, changed: boolean) => {
       setMoved({ key: folderRowKey(folder), from: selectedKey, view });
-      if (changed) {
-        onToggleClosedFolder(folder);
-      } else {
-        onToggleFolder(folder);
-      }
+      toggle(folder, changed);
     },
     selected,
     onSelect: select,
@@ -227,7 +223,7 @@ export function Files({
             : ancestorRows(treeRows, index - offset).map((row) => row + offset)
         }
         selectedKey={cursor}
-        revealWith={unchanged}
+        revealWith={allPaths}
         onKeyDown={onKeyDown}
       />
       {!loading && listed.count === 0 && noChanges && (

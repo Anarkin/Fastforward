@@ -150,13 +150,12 @@ suite('Changes tree', () => {
     });
   });
 
-  test('finds the folders of a row in a large folder without reading the rows before it', () => {
+  test('lists the folders of the rows of a large folder once, then finds those of a row without reading the rows before it', () => {
     const tree = changesTree(
       Array.from({ length: 10_000 }, (_, i) => fileChange(`src/lib/${i}.ts`)),
       ['src/a.ts'],
     );
     const listed = changesTreeRows(tree, new Set());
-    ancestorRows(listed, 0);
     let reads = 0;
     const counted = new Proxy(listed, {
       get(target, key, receiver) {

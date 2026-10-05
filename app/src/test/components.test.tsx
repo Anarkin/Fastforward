@@ -33,7 +33,7 @@ import {
 import { changeClass, changeTitle } from '../webview/fileStatus';
 import type { ContextMenuItem } from '../webview/contextMenu';
 import { DiffOptions } from '../webview/diffColumn';
-import { HunkDivider } from '../webview/diffView';
+import { HunkDivider, rowHeight } from '../webview/diffView';
 import {
   Files,
   filesCursor,
@@ -46,7 +46,7 @@ import type { Folders } from '../webview/viewFolders';
 import { SkeletonRows } from '../webview/skeleton';
 import { preloadDelay, resting, TabBar } from '../webview/tabBar';
 import { GraphCell, graphWidth, rowLanes } from '../webview/graph';
-import { FileRow } from '../webview/tree';
+import { FileRow, fileRowKey } from '../webview/tree';
 import { VirtualRows, type ListedRows } from '../webview/virtualRows';
 import {
   workingTreeHash,
@@ -117,8 +117,8 @@ function changesRows(
       files,
       loading: false,
       tree: undefined,
-      openFolders: new Set(),
-      onToggleFolder: noop,
+      openedFolders: new Set(),
+      onToggleOpenFolder: noop,
       onReplaceFolders: noop,
       view: 'one',
       selected,
@@ -160,8 +160,8 @@ function noChangesShown(
       files,
       loading,
       tree: ['kept.ts'],
-      openFolders: new Set(),
-      onToggleFolder: noop,
+      openedFolders: new Set(),
+      onToggleOpenFolder: noop,
       onReplaceFolders: noop,
       view: 'one',
       selected: undefined,
@@ -436,8 +436,8 @@ suite('Files column', () => {
           files: [],
           loading: false,
           tree: undefined,
-          openFolders: new Set(),
-          onToggleFolder: noop,
+          openedFolders: new Set(),
+          onToggleOpenFolder: noop,
           onReplaceFolders: noop,
           view: 'one',
           selected: undefined,
@@ -511,8 +511,8 @@ suite('Files column', () => {
           files: [change('src/app/a.ts'), change('src/b.ts')],
           loading: false,
           tree: ['docs/guide/intro.md', 'src/app/a.ts', 'src/b.ts'],
-          openFolders: new Set(['docs']),
-          onToggleFolder: noop,
+          openedFolders: new Set(['docs']),
+          onToggleOpenFolder: noop,
           onReplaceFolders: (folders) => replaced.push(folders),
           view: 'one',
           selected: undefined,
@@ -571,6 +571,25 @@ suite('Files column', () => {
     assert.ok(drawn.length < 100, `${drawn.length} rows drawn`);
   });
 
+  test('sizes the rows not drawn yet at the fixed height of a row, so the list is as long as it will be', () => {
+    const html = renderToStaticMarkup(
+      <VirtualRows
+        rows={{
+          count: 1000,
+          keyOf: (index) => `row:${index}`,
+          indexOf: () => -1,
+        }}
+        renderRow={() => null}
+        selectedKey={undefined}
+      />,
+    );
+    const height = 1000 * (rowHeight({ kind: 'hunk', file: 0 }) ?? 0);
+    assert.match(
+      html,
+      new RegExp(`class="virtual-spacer" style="height:${height}px"`),
+    );
+  });
+
   test('shows no rows without changes, not even their header', () => {
     assert.deepStrictEqual(changesRows([], undefined, noop).rows, []);
   });
@@ -622,35 +641,16 @@ function changedRow(status: FileChange['status']): string {
     <FileRow
       path="a.ts"
       name="a.ts"
+      depth={0}
       change={change('a.ts', { status })}
       selected={undefined}
+      marked={false}
       onSelect={noop}
     />,
   );
 }
 
 suite('File rows', () => {
-  test('draws a row outside a tree without its indent', () => {
-    const html = renderToStaticMarkup(
-      <FileRow
-        path="src/a.ts"
-        name="src/a.ts"
-        change={change('src/a.ts')}
-        selected="src/a.ts"
-        onSelect={noop}
-      />,
-    );
-    const row = tagWith(
-      html,
-      'title="Modified: src/a.ts"',
-      'row',
-      'file',
-      'selected',
-    );
-    assert.ok(!classesOf(row).has('tree-row'));
-    assert.ok(!row.includes('padding-left'));
-  });
-
   test('shows a change plainly, marking only a deleted file', () => {
     for (const status of ['A', 'M', 'R', 'U'] as const) {
       assert.match(
@@ -670,6 +670,7 @@ suite('File rows', () => {
         depth={1}
         change={undefined}
         selected={undefined}
+        marked={false}
         onSelect={noop}
       />,
     );
@@ -705,6 +706,7 @@ suite('Changes tree rows', () => {
           onToggle: noop,
           selected: 'src/b.ts',
           onSelect: noop,
+          cursor: fileRowKey('src/b.ts'),
         })}
       </>,
     );
@@ -747,6 +749,7 @@ suite('Changes tree rows', () => {
       onToggle: (folder, changed) => toggled.push(`${folder} ${changed}`),
       selected: undefined,
       onSelect: noop,
+      cursor: undefined,
     });
     const html = renderToStaticMarkup(<>{elements}</>);
     for (const title of ['src', 'src/lib']) {

@@ -61,7 +61,6 @@ suite('View folders', () => {
   });
 
   test('replaces every folder toggled in a view at once, forgetting another view', () => {
-    const elsewhere = toggleFolder(noFolders, 'one', 'open', 'docs');
     const replaced = replaceFolders('two', {
       open: new Set(['lib']),
       closed: new Set(['src']),
@@ -69,6 +68,5 @@ suite('View folders', () => {
     assert.deepStrictEqual([...shownFolders(replaced, 'two').open], ['lib']);
     assert.deepStrictEqual([...shownFolders(replaced, 'two').closed], ['src']);
     assert.deepStrictEqual([...shownFolders(replaced, 'one').open], []);
-    assert.deepStrictEqual([...shownFolders(elsewhere, 'one').open], ['docs']);
   });
 });

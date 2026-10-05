@@ -148,14 +148,14 @@ suite('Files column keys', () => {
     assert.deepStrictEqual(
       filesKey('End', rows(), true, 'changes', undefined, visible),
       {
-        kind: 'cursor',
+        kind: 'select',
         key: 'file:c.ts',
         file: 'c.ts',
       },
     );
     assert.deepStrictEqual(
       filesKey('Home', rows(), true, 'file:c.ts', 'c.ts', visible),
-      { kind: 'cursor', key: 'changes', file: undefined },
+      { kind: 'select', key: 'changes', file: undefined },
     );
     assert.deepStrictEqual(
       filesKey('ArrowUp', rows(), true, 'changes', undefined, visible),
@@ -188,7 +188,7 @@ suite('Files column keys', () => {
         'src/b.ts',
         visible,
       ),
-      { kind: 'cursor', key: 'file:src/app/a.ts', file: 'src/app/a.ts' },
+      { kind: 'select', key: 'file:src/app/a.ts', file: 'src/app/a.ts' },
     );
     assert.deepStrictEqual(
       filesKey('ArrowUp', rows(), true, 'folder:src', undefined, visible),

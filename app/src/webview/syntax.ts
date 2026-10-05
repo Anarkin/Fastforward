@@ -55,7 +55,8 @@ const plainScopes = [
 
 const plainColor = '#000000';
 
-const colorOf = (index: number) => `#00000${index + 1}`;
+const colorOf = (index: number) =>
+  `#${(index + 1).toString(16).padStart(6, '0')}`;
 
 const kindsByColor = new Map(
   kinds.map(({ kind }, index) => [colorOf(index), kind]),
@@ -131,46 +132,59 @@ function sideLines(file: DiffFile, side: Side) {
     );
 }
 
-function hasGap(file: DiffFile, side: Side): boolean {
-  let next = 1;
-  for (const hunk of file.hunks) {
-    const numbers = hunk.lines.flatMap((line) => {
-      const number = side === 'old' ? line.oldNumber : line.newNumber;
-      return number === undefined ? [] : [number];
-    });
-    if (numbers.length === 0) {
-      continue;
-    }
-    if (numbers[0] !== next) {
-      return true;
-    }
-    next = numbers[numbers.length - 1] + 1;
-  }
-  return false;
-}
-
 const maxSourceLines = 5000;
 
 const maxTextLines = 20_000;
 
-function tooFar(shown: ReturnType<typeof sideLines>): boolean {
-  return (shown.at(-1)?.number ?? 0) > maxSourceLines;
+interface SidePlan {
+  readonly file: DiffFile;
+  readonly fileIndex: number;
+  readonly language: string;
+  readonly side: Side;
+  readonly shown: ReturnType<typeof sideLines>;
+  readonly wholeText: boolean;
+}
+
+function sidePlans(
+  files: readonly DiffFile[],
+  open: ReadonlySet<number> | undefined,
+): SidePlan[] {
+  let used = 0;
+  return files.flatMap((file, fileIndex) => {
+    const language = languageOf(file.path);
+    if (
+      !language ||
+      file.binary ||
+      file.placeholder ||
+      (open && !open.has(fileIndex))
+    ) {
+      return [];
+    }
+    return sides.flatMap((side) => {
+      const shown = sideLines(file, side);
+      if (!shown.some(({ owned }) => owned)) {
+        return [];
+      }
+      const last = shown.at(-1)?.number ?? 0;
+      const gap = last !== shown.length;
+      const wholeText =
+        used < maxTextLines &&
+        !!file.blobs?.[side] &&
+        gap &&
+        last <= maxSourceLines;
+      used += wholeText ? last : Math.min(shown.length, maxSourceLines);
+      return [{ file, fileIndex, language, side, shown, wholeText }];
+    });
+  });
 }
 
 function sideSource(
-  file: DiffFile,
-  fileIndex: number,
-  language: string,
-  side: Side,
+  { fileIndex, language, shown, wholeText }: SidePlan,
   text: string | undefined,
-): SyntaxSource | undefined {
-  const shown = sideLines(file, side);
-  if (!shown.some(({ owned }) => owned)) {
-    return undefined;
-  }
+): SyntaxSource {
   const keyOf = ({ owned, index }: (typeof shown)[number]) =>
     owned ? lineKey(fileIndex, index) : undefined;
-  const lines = tooFar(shown) ? undefined : text?.split(/\r?\n/);
+  const lines = wholeText ? text?.split(/\r?\n/) : undefined;
   if (
     lines === undefined ||
     shown.some(
@@ -204,29 +218,9 @@ export function syntaxSources(
       ? [{ language, lines, keys: lines.map((_, index) => lineKey(0, index)) }]
       : [];
   }
-  let used = 0;
-  return files.flatMap((file, index) => {
-    const language = languageOf(file.path);
-    if (
-      !language ||
-      file.binary ||
-      file.placeholder ||
-      (open && !open.has(index))
-    ) {
-      return [];
-    }
-    return sides.flatMap((side) => {
-      const source = sideSource(
-        file,
-        index,
-        language,
-        side,
-        used < maxTextLines ? texts.get(textKey(file.path, side)) : undefined,
-      );
-      used += source?.lines.length ?? 0;
-      return source ?? [];
-    });
-  });
+  return sidePlans(files, open).map((plan) =>
+    sideSource(plan, texts.get(textKey(plan.file.path, plan.side))),
+  );
 }
 
 export function textsToLoad(
@@ -235,34 +229,14 @@ export function textsToLoad(
   requested: Set<string>,
   open?: ReadonlySet<number>,
 ): TextRequest[] {
-  let used = 0;
-  return files.flatMap((file, index) => {
-    if (
-      !languageOf(file.path) ||
-      file.binary ||
-      file.placeholder ||
-      (open && !open.has(index))
-    ) {
+  return sidePlans(files, open).flatMap(({ file, side, wholeText }) => {
+    const blob = file.blobs?.[side];
+    const key = `${diff}:${textKey(file.path, side)}`;
+    if (!wholeText || !blob || requested.has(key)) {
       return [];
     }
-    return sides.flatMap((side) => {
-      const shown = sideLines(file, side);
-      if (!shown.some(({ owned }) => owned)) {
-        return [];
-      }
-      const blob = file.blobs?.[side];
-      const fits = used < maxTextLines;
-      const whole = fits && !!blob && hasGap(file, side) && !tooFar(shown);
-      used += whole
-        ? (shown.at(-1)?.number ?? 0)
-        : Math.min(shown.length, maxSourceLines);
-      const key = `${diff}:${textKey(file.path, side)}`;
-      if (!whole || !blob || requested.has(key)) {
-        return [];
-      }
-      requested.add(key);
-      return [{ path: file.path, side, blob }];
-    });
+    requested.add(key);
+    return [{ path: file.path, side, blob }];
   });
 }
 
@@ -307,7 +281,7 @@ function rangesOf(line: readonly ThemedToken[]): SyntaxRange[] {
   let start = 0;
   for (const token of line) {
     const end = start + token.content.length;
-    const kind = kindsByColor.get(token.color?.toLowerCase() ?? '');
+    const kind = kindsByColor.get(token.color ?? '');
     const last = found.at(-1);
     if (kind && last?.kind === kind && last.end === start) {
       found[found.length - 1] = { ...last, end };
@@ -338,7 +312,7 @@ interface Pending {
   readonly key: string;
 }
 
-export function cachedRanges(
+export function uncachedSources(
   sources: readonly SyntaxSource[],
   ranges: Map<string, readonly SyntaxRange[]>,
 ): Pending[] {
@@ -396,9 +370,7 @@ export function tokenizing(
       apply(source, lines, ranges, start);
       done.push(...lines);
       if (done.length === source.lines.length) {
-        if (generation === grammars) {
-          store(key, done);
-        }
+        store(key, done);
         index += 1;
         done = [];
         state = undefined;
@@ -453,7 +425,7 @@ export function startColoring(
 ): () => void {
   let current = true;
   let job = 0;
-  const pending = cachedRanges(sources, ranges);
+  const pending = uncachedSources(sources, ranges);
   publish();
   const work = (highlighter: HighlighterCore, todo: readonly Pending[]) => {
     const step = tokenizing(highlighter, todo);
@@ -491,7 +463,7 @@ export function startColoring(
           work(highlighter, missing);
         } else {
           job += 1;
-          work(highlighter, cachedRanges(sources, ranges));
+          work(highlighter, uncachedSources(sources, ranges));
         }
       },
     );

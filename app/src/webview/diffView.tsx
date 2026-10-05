@@ -108,7 +108,7 @@ type FileHeaderRow = Extract<DiffRow, { kind: 'file' }>;
 
 type MeasuredKind = 'error' | 'skeleton' | 'skeletonLines';
 
-const uniformHeight = 22;
+export const uniformHeight = 22;
 
 const rowHeights: Record<Exclude<DiffRow['kind'], MeasuredKind>, number> = {
   file: uniformHeight,

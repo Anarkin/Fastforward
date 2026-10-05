@@ -1,10 +1,10 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useEffectEvent, useRef } from 'react';
 import { columnFocusAttribute } from './activeColumn';
+import { uniformHeight } from './diffView';
 import { fullyVisible, type VisibleRows } from './listMoves';
 
-const estimatedRowHeight = 24;
-const estimateSize = () => estimatedRowHeight;
+const estimateSize = () => uniformHeight;
 
 export interface ListedRows {
   readonly count: number;
