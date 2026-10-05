@@ -10,13 +10,14 @@ This file only observes and documents the codebase mainly for human readers; the
 - Once the paths of a commit's patch would pass 16000 characters, every later file is left out and loads when opened; git is passed the files kept rather than those left out, so the command line stays under the 32767 characters Windows allows
 - A file over 2 MB has its whole text shown as binary and not used for colors, and an untracked one's patch is diffed again on every refresh
 - Only the first 50 untracked files get line counts and are part of the All Changes patch, as each one is diffed on its own with `git diff --no-index`
-- A block of over 40000 removed by added lines, or 1 million words compared, has its lines paired in order instead of by similarity, as pairing compares every removed line with every added one
-- A block of over 1 million removed by added tokens, each word, run of spaces and punctuation mark counting as one, has no changed words marked, as the word diff's table grows with both counts
+- A block of over 40000 removed by added lines, or 1 million words and punctuation marks compared, has its lines paired in order instead of by similarity, as pairing compares every removed line with every added one
+- A block of over 1 million removed by added tokens, each word, run of spaces and punctuation mark counting as one, has its lines marked as changed in full, like a block with no word in common, instead of word by word, as the word diff's table grows with both counts
+- Find in a diff stops collecting matches at 10000, and its count then reads 10000+, as each match is marked in the page
 
 ## Syntax
 
 - A side showing a line past its 5000th is tokenized from its hunks alone, as tokenizing is sequential, so a late line costs every line before it, and only the first 5000 lines shown of a side, or of a file shown entire, are colored
-- Once the sides of the open files take 20000 lines, counting a side tokenized from its hunks alone by its lines shown, later sides are tokenized from their hunks alone, as each whole text is read from git and tokenized in full
+- Once the sides of the open files take 20000 lines, counting a side tokenized from its hunks alone by its lines shown, later sides are tokenized from their hunks alone, as each whole text is read in full and tokenized up to its last line shown
 - A line over 2000 characters is not colored, through Shiki's `tokenizeMaxLineLength`, as minified lines take long to tokenize
 - The colors kept are bounded at 100000 lines or 8 million characters, forgetting the least recently used texts, and a text over 2 million characters is never kept, bounding the webview's memory
 
@@ -24,7 +25,8 @@ This file only observes and documents the codebase mainly for human readers; the
 
 - The graph draws at most 12 lanes, drawing lines past the last lane on it
 - Collapsing merges hides the commits a mainline of plain commits had when `git pull` merged it into a branch that then became the mainline, as that merge looks just like merging a branch
-- A commit search stops at 50 matches and asks to narrow it down, and needs at least 3 characters to search commit messages, as each search walks every commit
+- A commit search stops at 50 matches and asks to narrow it down, and needs at least 3 characters to search commit messages, authors and committers, as each search walks every commit
+- A hash needs at least 4 hex digits to be looked up, so 3 only search commit messages, authors and committers
 - A hash prefix lists at most 20 commits
 - The ref search draws at most 200 refs per group, and the ref tree at most 200 folders and refs under a folder, counting the rest, as repositories can have thousands of refs
 - Back keeps at most 100 steps, showing 20 in its menu
@@ -33,6 +35,9 @@ This file only observes and documents the codebase mainly for human readers; the
 
 - A git command fails past 256 MB of output, as Node's `maxBuffer` must be set to some limit
 - A fetch is stopped and reported as failed after 5 minutes
+- Opening a repository runs the commands its git config names, as git itself does, such as clean filters while reading the working tree and credential helpers or `core.sshCommand` while fetching; only a `core.fsmonitor` hook is never run, while git's built-in fsmonitor daemon still is
 - On Linux, which has no recursive file watching, every folder that is not ignored takes one of the system's inotify watches, and past `fs.inotify.max_user_watches` the rest are not watched and the error is logged
 - The login shell's PATH, read on macOS and Linux, is waited for at most 5 seconds, then the app starts with the PATH it was given, so a profile waiting for input does not keep the window from opening
+- `git --version` is waited for at most 10 seconds when the app looks for git, past which git counts as missing
 - At most 4 notices are shown, dropping the oldest
+- At most 20 recent repositories are kept, dropping the oldest
