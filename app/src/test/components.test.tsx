@@ -18,6 +18,7 @@ import {
 import {
   MenuItems,
   OpenContextMenu,
+  type ContextMenuItem,
   type MenuTarget,
 } from '../webview/contextMenu';
 import { leafIndent, LocationsPopup } from '../webview/locations';
@@ -31,9 +32,8 @@ import {
   NavButtons,
 } from '../webview/navBar';
 import { changeClass, changeTitle } from '../webview/fileStatus';
-import type { ContextMenuItem } from '../webview/contextMenu';
 import { DiffOptions } from '../webview/diffColumn';
-import { HunkDivider, rowHeight } from '../webview/diffView';
+import { FileHeader, HunkDivider, rowHeight } from '../webview/diffView';
 import {
   Files,
   filesCursor,
@@ -396,6 +396,22 @@ suite('Hunk divider', () => {
     assert.strictEqual(
       renderToStaticMarkup(<HunkDivider />),
       '<div class="hunk-divider"><span class="hunk-dots">⋯</span></div>',
+    );
+  });
+});
+
+suite('Diff file header', () => {
+  test('labels a file shown entire as unchanged, naming no commit, as it may be in the uncommitted changes or a comparison', () => {
+    const html = renderToStaticMarkup(
+      <FileHeader path="a.ts" open whole onClick={() => {}} />,
+    );
+    assert.match(html, /<span class="unchanged">Unchanged<\/span>/);
+    assert.doesNotMatch(html, /commit/);
+    assert.doesNotMatch(
+      renderToStaticMarkup(
+        <FileHeader path="a.ts" open whole={false} onClick={() => {}} />,
+      ),
+      /unchanged/,
     );
   });
 });

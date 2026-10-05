@@ -968,7 +968,7 @@ body.resizing {
 }
 
 .virtual-row.diff-row {
-  min-width: 100%;
+  min-width: max(100%, var(--diff-content-width, 0px));
   width: max-content;
 }
 
@@ -1032,7 +1032,7 @@ body.resizing {
 
 .hunk-dots {
   box-sizing: border-box;
-  width: 112px;
+  width: calc(2 * var(--diff-number-width));
   padding: 0 6px;
   text-align: right;
   user-select: none;
@@ -1040,7 +1040,7 @@ body.resizing {
 }
 
 .side-by-side .hunk-dots {
-  width: 56px;
+  width: var(--diff-number-width);
 }
 
 .diff-line {
@@ -1054,7 +1054,7 @@ body.resizing {
 .diff-line .number {
   flex: none;
   box-sizing: border-box;
-  width: 56px;
+  width: var(--diff-number-width);
   padding: 0 6px;
   text-align: right;
   user-select: none;
@@ -1063,9 +1063,9 @@ body.resizing {
 
 .diff-line .code {
   flex: 1;
-  padding: 0 6px;
+  padding: 0 var(--diff-code-padding);
   white-space: pre;
-  tab-size: 4;
+  tab-size: var(--diff-tab-size);
 }
 
 .diff-line.text-line {
@@ -1079,7 +1079,7 @@ body.resizing {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 14px;
+  width: var(--diff-marker-width);
   padding: 0;
   font: inherit;
   line-height: 1;
@@ -1114,7 +1114,7 @@ body.resizing {
 
 .diff-view.wrap .diff-line:not(.split-side) .code,
 .diff-view.wrap .split-side:last-child .code {
-  padding-right: calc(6px + var(--minimap-width));
+  padding-right: calc(var(--diff-code-padding) + var(--minimap-width));
 }
 
 .diff-view.wrap .split-code .code {
@@ -1340,7 +1340,7 @@ body.resizing {
 }
 
 .diff-line.skeleton-row {
-  padding-left: 118px;
+  padding-left: calc(2 * var(--diff-number-width) + var(--diff-code-padding));
 }
 
 .diff-skeleton .file-header .bar {

@@ -30,14 +30,32 @@ function minimap(viewport: number): string {
 suite('Minimap', () => {
   test('takes the pointer it is pressed with, starting no text selection, so dragging it scrolls even with text selected', () => {
     const calls: string[] = [];
-    grabPointer({
+    const grabbed = grabPointer({
+      button: 0,
       pointerId: 7,
       preventDefault: () => calls.push('preventDefault'),
       currentTarget: {
         setPointerCapture: (id: number) => calls.push(`capture ${id}`),
       },
     });
+    assert.strictEqual(grabbed, true);
     assert.deepStrictEqual(calls, ['preventDefault', 'capture 7']);
+  });
+
+  test('leaves a press of any but the main button alone, as the scrollbars do, so a right or middle click does not scroll', () => {
+    for (const button of [1, 2, 3, 4]) {
+      const calls: string[] = [];
+      const grabbed = grabPointer({
+        button,
+        pointerId: 7,
+        preventDefault: () => calls.push('preventDefault'),
+        currentTarget: {
+          setPointerCapture: (id: number) => calls.push(`capture ${id}`),
+        },
+      });
+      assert.strictEqual(grabbed, false);
+      assert.deepStrictEqual(calls, []);
+    }
   });
 
   test('marks each run of added or removed lines where it is in the file', () => {

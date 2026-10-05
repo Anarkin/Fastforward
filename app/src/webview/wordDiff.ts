@@ -1,11 +1,56 @@
-import type { DiffFile } from './diff';
-import type { FindRange } from './find';
-import { lineKey } from './find';
+import {
+  changeBlocks,
+  type ChangeBlock,
+  type DiffFile,
+  type NumberedLine,
+} from './diff';
+import { keyedLine, type FindRange } from './find';
 
 const maxTokens = 1_000_000;
 
+const tokenPattern = /[\p{L}\p{N}_]+|\s+|[^\p{L}\p{N}_\s]/gu;
+
+export const wordPattern = /[\p{L}\p{N}_]+|[^\p{L}\p{N}_\s]/gu;
+
 export function tokenize(text: string): string[] {
-  return text.match(/[\p{L}\p{N}_]+|\s+|[^\p{L}\p{N}_\s]/gu) ?? [];
+  return text.match(tokenPattern) ?? [];
+}
+
+export function tokenSteps(
+  lines: readonly string[],
+  pattern: RegExp,
+): () => boolean {
+  const tokens = new RegExp(pattern);
+  let line = 0;
+  return () => {
+    while (line < lines.length) {
+      if (tokens.test(lines[line])) {
+        return true;
+      }
+      line++;
+    }
+    return false;
+  };
+}
+
+function fewEnoughTokens(
+  removed: readonly string[],
+  added: readonly string[],
+): boolean {
+  const nextRemoved = tokenSteps(removed, tokenPattern);
+  const nextAdded = tokenSteps(added, tokenPattern);
+  let a = 0;
+  let b = 0;
+  while (a * b <= maxTokens) {
+    const removedOne = nextRemoved();
+    const addedOne = nextAdded();
+    if (!removedOne && !addedOne) {
+      return true;
+    }
+    a += removedOne ? 1 : 0;
+    b += addedOne ? 1 : 0;
+  }
+  return false;
 }
 
 interface Token {
@@ -104,7 +149,11 @@ export function blockWordRanges(
 ):
   | { readonly removed: FindRange[][]; readonly added: FindRange[][] }
   | undefined {
-  if (removed.length === 0 || added.length === 0) {
+  if (
+    removed.length === 0 ||
+    added.length === 0 ||
+    !fewEnoughTokens(removed, added)
+  ) {
     return undefined;
   }
   const before = tokensOf(removed);
@@ -132,64 +181,65 @@ export function wholeText(text: string): FindRange[] | undefined {
   return start === -1 ? undefined : [{ start, end: text.trimEnd().length }];
 }
 
-const rangesOfFile = new WeakMap<DiffFile, ReadonlyMap<number, FindRange[]>>();
+type Change = Extract<ChangeBlock, { kind: 'change' }>;
 
-function fileWordRanges(file: DiffFile): ReadonlyMap<number, FindRange[]> {
-  const cached = rangesOfFile.get(file);
-  if (cached) {
-    return cached;
-  }
-  const ranges = new Map<number, FindRange[]>();
-  const place = (
-    line: { readonly text: string; readonly index: number },
-    words: FindRange[] | undefined,
-  ) => {
-    const marked = words ?? wholeText(line.text);
-    if (marked) {
-      ranges.set(line.index, marked);
-    }
-  };
-  let next = 0;
-  for (const hunk of file.hunks) {
-    let removed: { text: string; index: number }[] = [];
-    let added: { text: string; index: number }[] = [];
-    const compare = () => {
-      const found = blockWordRanges(
-        removed.map((line) => line.text),
-        added.map((line) => line.text),
-      );
-      removed.forEach((line, i) => place(line, found?.removed[i]));
-      added.forEach((line, i) => place(line, found?.added[i]));
-      removed = [];
-      added = [];
-    };
-    for (const line of hunk.lines) {
-      const placed = { text: line.text, index: next++ };
-      if (line.kind === 'removed') {
-        if (added.length > 0) {
-          compare();
+const changesOfFile = new WeakMap<DiffFile, ReadonlyMap<number, Change>>();
+
+function lineChanges(file: DiffFile): ReadonlyMap<number, Change> {
+  let changes = changesOfFile.get(file);
+  if (!changes) {
+    const byLine = new Map<number, Change>();
+    for (const blocks of changeBlocks(file)) {
+      for (const block of blocks) {
+        if (block.kind === 'change') {
+          for (const { index } of [...block.removed, ...block.added]) {
+            byLine.set(index, block);
+          }
         }
-        removed.push(placed);
-      } else if (line.kind === 'added') {
-        added.push(placed);
-      } else {
-        compare();
       }
     }
-    compare();
+    changes = byLine;
+    changesOfFile.set(file, changes);
   }
-  rangesOfFile.set(file, ranges);
+  return changes;
+}
+
+const rangesOfChange = new WeakMap<Change, ReadonlyMap<number, FindRange[]>>();
+
+function changeRanges(change: Change): ReadonlyMap<number, FindRange[]> {
+  let ranges = rangesOfChange.get(change);
+  if (!ranges) {
+    const found = blockWordRanges(
+      change.removed.map(({ line }) => line.text),
+      change.added.map(({ line }) => line.text),
+    );
+    const byLine = new Map<number, FindRange[]>();
+    const place = (
+      { line, index }: NumberedLine,
+      words: FindRange[] | undefined,
+    ) => {
+      const marked = words ?? wholeText(line.text);
+      if (marked) {
+        byLine.set(index, marked);
+      }
+    };
+    change.removed.forEach((line, i) => place(line, found?.removed[i]));
+    change.added.forEach((line, i) => place(line, found?.added[i]));
+    ranges = byLine;
+    rangesOfChange.set(change, ranges);
+  }
   return ranges;
 }
 
-export function wordRanges(
-  files: readonly DiffFile[],
-): Map<string, FindRange[]> {
-  const ranges = new Map<string, FindRange[]>();
-  files.forEach((file, fileIndex) => {
-    for (const [line, marked] of fileWordRanges(file)) {
-      ranges.set(lineKey(fileIndex, line), marked);
-    }
-  });
-  return ranges;
+export type WordRanges = Pick<ReadonlyMap<string, readonly FindRange[]>, 'get'>;
+
+export function wordRanges(files: readonly DiffFile[]): WordRanges {
+  return {
+    get: (key) => {
+      const [file, line] = keyedLine(key);
+      const diffFile = files.at(file);
+      const change = diffFile && lineChanges(diffFile).get(line);
+      return change && changeRanges(change).get(line);
+    },
+  };
 }

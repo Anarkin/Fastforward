@@ -1,5 +1,9 @@
 export const tabSize = 4;
 
+export function tabStop(column: number): number {
+  return column + tabSize - (column % tabSize);
+}
+
 export function wrappedLines(text: string, columns: number): number {
   if (text.length <= columns && !text.includes('\t')) {
     return 1;
@@ -18,7 +22,7 @@ export function wrappedLines(text: string, columns: number): number {
     }
     column += length;
     for (const space of spaces) {
-      column += space === '\t' ? tabSize - (column % tabSize) : 1;
+      column = space === '\t' ? tabStop(column) : column + 1;
     }
   }
   return lines;

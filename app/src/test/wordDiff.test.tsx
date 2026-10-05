@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { parsePatch } from '../webview/diff';
+import { parsePatch, type DiffLine } from '../webview/diff';
 import { marked } from '../webview/diffView';
 import type { FindRange } from '../webview/find';
 import {
@@ -85,6 +85,13 @@ suite('Word diff', () => {
     assert.strictEqual(blockWordRanges([long], [long + 'y']), undefined);
   });
 
+  test('gives up on a block too big to compare before splitting its lines into tokens, however long they are', () => {
+    const long = 'x '.repeat(1_000_000);
+    const started = performance.now();
+    assert.strictEqual(blockWordRanges([long], [long]), undefined);
+    assert.ok(performance.now() - started < 100);
+  });
+
   test('compares a block of up to 1 million removed by added tokens, spaces and punctuation counting as tokens', () => {
     assert.ok(changedTokens(tokens(1000), tokens(1000)));
     assert.strictEqual(changedTokens(tokens(1000), tokens(1001)), undefined);
@@ -108,11 +115,60 @@ suite('Word diff', () => {
       ].join('\n'),
     );
     const ranges = wordRanges(files);
-    assert.deepStrictEqual([...ranges.keys()], ['0:1', '0:2', '0:4', '0:6']);
-    assert.deepStrictEqual(ranges.get('0:1'), [{ start: 4, end: 9 }]);
-    assert.deepStrictEqual(ranges.get('0:2'), [{ start: 4, end: 7 }]);
-    assert.deepStrictEqual(ranges.get('0:4'), [{ start: 2, end: 11 }]);
-    assert.deepStrictEqual(ranges.get('0:6'), [{ start: 0, end: 3 }]);
+    assert.deepStrictEqual(
+      Array.from({ length: 8 }, (_, line) => ranges.get(`0:${line}`)),
+      [
+        undefined,
+        [{ start: 4, end: 9 }],
+        [{ start: 4, end: 7 }],
+        undefined,
+        [{ start: 2, end: 11 }],
+        undefined,
+        [{ start: 0, end: 3 }],
+        undefined,
+      ],
+    );
+    assert.strictEqual(ranges.get('1:1'), undefined);
+  });
+
+  test('compares the words of a block only once a line of it is drawn, as most of a long patch never is', () => {
+    const [file] = parsePatch(
+      [
+        'diff --git a/a.ts b/a.ts',
+        '--- a/a.ts',
+        '+++ b/a.ts',
+        '@@ -1,3 +1,3 @@',
+        '-let total = 1;',
+        '+let sum = 1;',
+        ' keep',
+        '-other();',
+        '+another();',
+        '',
+      ].join('\n'),
+    );
+    let read = 0;
+    const watched = (line: DiffLine): DiffLine => ({
+      kind: line.kind,
+      oldNumber: line.oldNumber,
+      newNumber: line.newNumber,
+      get text() {
+        read++;
+        return line.text;
+      },
+    });
+    const lines = file.hunks[0].lines;
+    const ranges = wordRanges([
+      {
+        ...file,
+        hunks: [
+          { lines: [...lines.slice(0, 3), ...lines.slice(3).map(watched)] },
+        ],
+      },
+    ]);
+    assert.deepStrictEqual(ranges.get('0:0'), [{ start: 4, end: 9 }]);
+    assert.strictEqual(read, 0);
+    assert.deepStrictEqual(ranges.get('0:4'), [{ start: 0, end: 7 }]);
+    assert.ok(read > 0);
   });
 
   test('pairs the words of each file once, keeping them as the file moves among the others', () => {
@@ -130,7 +186,8 @@ suite('Word diff', () => {
     const other = { path: 'b.ts', binary: false, hunks: [] };
     const alone = wordRanges([file]);
     const moved = wordRanges([other, file]);
-    assert.deepStrictEqual([...moved.keys()], ['1:0', '1:1']);
+    assert.strictEqual(moved.get('0:0'), undefined);
+    assert.ok(moved.get('1:0'));
     assert.strictEqual(moved.get('1:0'), alone.get('0:0'));
     assert.strictEqual(moved.get('1:1'), alone.get('0:1'));
   });

@@ -21,7 +21,18 @@ export function lineKey(file: number, line: number): string {
   return `${file}:${line}`;
 }
 
-export function matchesIn(text: string, query: string): FindRange[] {
+export function keyedLine(key: string): readonly [number, number] {
+  const colon = key.indexOf(':');
+  return [Number(key.slice(0, colon)), Number(key.slice(colon + 1))];
+}
+
+const maxMatches = 10_000;
+
+export function matchesIn(
+  text: string,
+  query: string,
+  limit = Infinity,
+): FindRange[] {
   if (query === '') {
     return [];
   }
@@ -30,7 +41,7 @@ export function matchesIn(text: string, query: string): FindRange[] {
   const ranges: FindRange[] = [];
   if (whole.length === text.length) {
     let from = whole.indexOf(needle);
-    while (from !== -1) {
+    while (from !== -1 && ranges.length < limit) {
       const end = from + needle.length;
       ranges.push({ start: from, end });
       from = whole.indexOf(needle, end);
@@ -39,7 +50,7 @@ export function matchesIn(text: string, query: string): FindRange[] {
   }
   const { lowered, starts, ends } = lowercased(text);
   let from = lowered.indexOf(needle);
-  while (from !== -1) {
+  while (from !== -1 && ranges.length < limit) {
     const end = from + needle.length;
     ranges.push({ start: starts[from], end: ends[end - 1] });
     from = lowered.indexOf(needle, end);
@@ -77,9 +88,16 @@ function lineMatches(
   file: number,
   query: string,
 ): FindMatch[] {
-  return lines.flatMap((text, line) =>
-    matchesIn(text, query).map((range) => ({ file, line, ...range })),
-  );
+  const matches: FindMatch[] = [];
+  for (const [line, text] of lines.entries()) {
+    for (const range of matchesIn(text, query, maxMatches - matches.length)) {
+      matches.push({ file, line, ...range });
+    }
+    if (matches.length === maxMatches) {
+      break;
+    }
+  }
+  return matches;
 }
 
 const matchesOfFile = new WeakMap<
@@ -117,7 +135,16 @@ export function findMatches(
   if (whole) {
     return lineMatches(wholeLines(whole), 0, query);
   }
-  return files.flatMap((file, index) => fileMatches(file, index, query));
+  const matches: FindMatch[] = [];
+  for (const [index, file] of files.entries()) {
+    for (const match of fileMatches(file, index, query)) {
+      if (matches.length === maxMatches) {
+        return matches;
+      }
+      matches.push(match);
+    }
+  }
+  return matches;
 }
 
 export function unsearchedFiles(
@@ -135,7 +162,10 @@ export function matchCount(
   if (query === '') {
     return '';
   }
-  return matches === 0 ? 'No results' : `${current + 1} of ${matches}`;
+  if (matches === 0) {
+    return 'No results';
+  }
+  return `${current + 1} of ${matches}${matches >= maxMatches ? '+' : ''}`;
 }
 
 export function jumpStep(

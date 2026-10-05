@@ -13,11 +13,12 @@ import { ContextMenu } from '../webview/contextMenu';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { DiffOptions } from '../webview/diffColumn';
-import { rowHeight } from '../webview/diffView';
+import { layoutVariables, rowHeight } from '../webview/diffView';
 import { NavButtons } from '../webview/navBar';
 import { Notices } from '../webview/notices';
 import { overlayScrollbarClass } from '../webview/overlayScrollbars';
-import { codePadding, numberWidth } from '../webview/overflow';
+import { codePadding, markerWidth, numberWidth } from '../webview/overflow';
+import { tabSize } from '../webview/wordWrap';
 import {
   cascaded,
   matchingRules,
@@ -123,14 +124,39 @@ suite('Style', () => {
     assert.match(declarationsOf('.nav-button'), /width: 26px;/);
   });
 
-  test('places the hidden-change markers by the line numbers and padding the diff draws', () => {
+  test('places the hidden-change markers by the line numbers, padding and marker width the diff draws', () => {
     assert.match(
       declarationsOf('.diff-line .number'),
-      new RegExp(`width: ${numberWidth}px;`),
+      /width: var\(--diff-number-width\);/,
     );
     assert.match(
       declarationsOf('.diff-line .code'),
-      new RegExp(`padding: 0 ${codePadding}px;`),
+      /padding: 0 var\(--diff-code-padding\);/,
+    );
+    assert.match(
+      declarationsOf('.hidden-change'),
+      /width: var\(--diff-marker-width\);/,
+    );
+    assert.deepStrictEqual(
+      [
+        layoutVariables['--diff-number-width'],
+        layoutVariables['--diff-code-padding'],
+        layoutVariables['--diff-marker-width'],
+      ],
+      [`${numberWidth}px`, `${codePadding}px`, `${markerWidth}px`],
+    );
+  });
+
+  test('widens every row of an inline diff to its widest line, so short lines stay tinted and the strips between files and hunks reach across when scrolled sideways', () => {
+    const row = declarationsOf('.virtual-row.diff-row');
+    assert.match(
+      row,
+      /min-width: max\(100%, var\(--diff-content-width, 0px\)\);/,
+    );
+    assert.match(row, /width: max-content;/);
+    assert.match(
+      declarationsOf('.diff-view.wrap .virtual-row.diff-row'),
+      /width: 100%;/,
     );
   });
 
@@ -175,13 +201,17 @@ suite('Style', () => {
     ]) {
       assert.match(
         declarationsOf(selector),
-        /padding-right: calc\(6px \+ var\(--minimap-width\)\);/,
+        /padding-right: calc\(var\(--diff-code-padding\) \+ var\(--minimap-width\)\);/,
       );
     }
   });
 
-  test('draws a tab in the code as wide as four spaces', () => {
-    assert.match(declarationsOf('.diff-line .code'), /tab-size: 4;/);
+  test('draws a tab in the code as wide as the wrapping and the hidden changes count it', () => {
+    assert.match(
+      declarationsOf('.diff-line .code'),
+      /tab-size: var\(--diff-tab-size\);/,
+    );
+    assert.strictEqual(layoutVariables['--diff-tab-size'], String(tabSize));
   });
 
   test('writes the title of the checked-out commit in bold', () => {
@@ -555,15 +585,17 @@ suite('Style', () => {
   });
 
   test('puts the dots of a hunk divider under the line numbers, in both of them inline and in the one of a side by side', () => {
-    const number = /width: (\d+)px;/.exec(declarationsOf('.diff-line .number'));
-    assert.ok(number);
+    assert.match(
+      declarationsOf('.diff-line .number'),
+      /width: var\(--diff-number-width\);/,
+    );
     assert.match(
       declarationsOf('.hunk-dots'),
-      new RegExp(`width: ${2 * Number(number[1])}px;`),
+      /width: calc\(2 \* var\(--diff-number-width\)\);/,
     );
     assert.match(
       declarationsOf('.side-by-side .hunk-dots'),
-      new RegExp(`width: ${number[1]}px;`),
+      /width: var\(--diff-number-width\);/,
     );
   });
 

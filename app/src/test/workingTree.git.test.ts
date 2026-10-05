@@ -287,7 +287,7 @@ suite('Uncommitted changes', function () {
     }
   });
 
-  test('counts a huge untracked text file as a large change, and a huge binary one as no lines', async () => {
+  test('counts a huge untracked text file as a large change too large to count, and a huge binary one as no lines', async () => {
     const files: Record<string, string | Buffer> = {
       'huge.txt': 'x\n'.repeat(1024 * 1024 + 1),
       'huge.dat': Buffer.alloc(3 * 1024 * 1024),
@@ -301,7 +301,10 @@ suite('Uncommitted changes', function () {
         changes.find((change) => change.path === file),
       );
       assert.ok(text && isLargeChange(text));
+      assert.strictEqual(text.tooLargeToCount, true);
+      assert.strictEqual(text.insertions, 0);
       assert.strictEqual(binary?.insertions, 0);
+      assert.strictEqual(binary?.tooLargeToCount, undefined);
     } finally {
       for (const file of Object.keys(files)) {
         fs.rmSync(path.join(cwd, file));

@@ -40,7 +40,11 @@ export function withLargeFiles(
           path: change.path,
           binary: false,
           hunks: [],
-          placeholder: { lines: change.insertions + change.deletions },
+          placeholder: {
+            lines: change.tooLargeToCount
+              ? undefined
+              : change.insertions + change.deletions,
+          },
         },
       );
     }
@@ -249,10 +253,10 @@ export function Diff({
   onLoadTexts,
   fileContent,
   error,
-  entireFile,
+  options,
   changeMarks,
-  sideBySide = false,
-  wordWrap = false,
+  sideBySide,
+  wordWrap,
 }: {
   selection: string;
   path: string | undefined;
@@ -266,10 +270,10 @@ export function Diff({
   onLoadTexts: (texts: TextRequest[]) => void;
   fileContent: WholeFile | undefined;
   error: string | undefined;
-  entireFile: React.ReactNode;
+  options: React.ReactNode;
   changeMarks: boolean;
-  sideBySide?: boolean;
-  wordWrap?: boolean;
+  sideBySide: boolean;
+  wordWrap: boolean;
 }) {
   const parsed = useMemo(() => parsePatch(patch), [patch]);
   const diffFiles = useMemo(
@@ -322,7 +326,7 @@ export function Diff({
           onStep={step}
         />
       }
-      start={entireFile}
+      start={options}
       actions={<FindActions matches={matches.length} onStep={step} />}
     >
       <DiffView

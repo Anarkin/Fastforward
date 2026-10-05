@@ -12,7 +12,9 @@ import {
   codeProps,
   diffRowKey,
   diffRows,
+  largeDiffText,
   largeFilesToLoad,
+  lineKeys,
   rowHeight,
   rowMeasures,
   anchoredScrollTop,
@@ -21,8 +23,10 @@ import {
   scrollOnToggle,
   showsSideBySide,
   stuckHeader,
+  widestColumns,
   type DiffRow,
 } from '../webview/diffView';
+import { codePadding, lineWidth, numberWidth } from '../webview/overflow';
 import { fileChange } from './fixtures';
 
 function patch(path: string, added: number): string {
@@ -358,6 +362,28 @@ suite('Large files in a commit diff', () => {
     );
   });
 
+  test('keeps a diff of exactly the 20000 changed lines of its budget whole, deferring from the file that passes it', () => {
+    const fitting = Array.from(
+      { length: Math.floor(patchLineBudget / collapseThreshold) },
+      (_, index) =>
+        fileChange(`${index}.ts`, {
+          insertions: collapseThreshold,
+          deletions: 0,
+        }),
+    );
+    const rest = patchLineBudget - fitting.length * collapseThreshold;
+    const files = (insertions: number) => [
+      ...fitting,
+      fileChange('a.ts', { insertions, deletions: 0 }),
+      fileChange('b.ts', { insertions: 0, deletions: 0 }),
+    ];
+    assert.deepStrictEqual([...deferredChanges(files(rest))], []);
+    assert.deepStrictEqual(
+      [...deferredChanges(files(rest + 1))],
+      ['a.ts', 'b.ts'],
+    );
+  });
+
   test('defers every file once the paths of the rest would make too long a command line', () => {
     const long = 'x'.repeat(patchPathBudget / 2);
     const files = [
@@ -367,6 +393,20 @@ suite('Large files in a commit diff', () => {
       fileChange('c'),
     ];
     assert.deepStrictEqual([...deferredChanges(files)], [`${long}2`, 'c']);
+  });
+
+  test('keeps the paths of a diff of exactly the 16000 characters of its budget whole, deferring from the file that passes it', () => {
+    const half = patchPathBudget / 2;
+    const files = (last: string) => [
+      fileChange('x'.repeat(half)),
+      fileChange('y'.repeat(half - 2), { oldPath: 'z' }),
+      fileChange(last),
+    ];
+    assert.deepStrictEqual([...deferredChanges(files('c'))], []);
+    assert.deepStrictEqual(
+      [...deferredChanges([...files('cc'), fileChange('d')])],
+      ['cc', 'd'],
+    );
   });
 
   test('defers every file once the old and new text of the files changed would pass the bytes of its budget, however few lines they have', () => {
@@ -379,6 +419,20 @@ suite('Large files in a commit diff', () => {
     assert.deepStrictEqual(
       [...deferredChanges(files)],
       ['bundle.js.map', 'b.ts'],
+    );
+  });
+
+  test('keeps a diff of exactly the 16 MB of its budget whole, deferring from the file that passes it', () => {
+    const half = patchByteBudget / 2;
+    const files = (bytes: number) => [
+      fileChange('a.min.js', { bytes: half }),
+      fileChange('b.min.js', { bytes }),
+      fileChange('c.ts'),
+    ];
+    assert.deepStrictEqual([...deferredChanges(files(half))], []);
+    assert.deepStrictEqual(
+      [...deferredChanges(files(half + 1))],
+      ['b.min.js', 'c.ts'],
     );
   });
 
@@ -400,6 +454,34 @@ suite('Large files in a commit diff', () => {
     assert.deepStrictEqual(
       kinds(diffRows(diff, new Map([[deferred, true]]), undefined)),
       ['error', 'file', 'line', 'file', 'skeletonLines'],
+    );
+  });
+
+  test('puts a file too large to count the lines of in its place, saying it is large without making up a count', () => {
+    const huge = fileChange('huge.log', {
+      insertions: 0,
+      deletions: 0,
+      tooLargeToCount: true,
+    });
+    assert.deepStrictEqual([...deferredChanges([huge])], ['huge.log']);
+    const diff = withLargeFiles([], [huge], new Map());
+    assert.deepStrictEqual(diff[0].placeholder, { lines: undefined });
+    const rows = diffRows(diff, new Map(), undefined);
+    assert.deepStrictEqual(rows[2], {
+      kind: 'large',
+      file: 0,
+      path: 'huge.log',
+      lines: undefined,
+    });
+    assert.strictEqual(largeDiffText(undefined), 'Large file');
+  });
+
+  test('says how many lines a file not loaded changed, or only that it is not loaded when it changed none, as a binary file', () => {
+    assert.strictEqual(largeDiffText(3), 'Not loaded: 3 changed lines');
+    assert.strictEqual(largeDiffText(0), 'Not loaded');
+    assert.strictEqual(
+      largeDiffText(collapseThreshold + 1),
+      `Large diff: ${(collapseThreshold + 1).toLocaleString()} changed lines`,
     );
   });
 
@@ -541,11 +623,79 @@ suite('Diff row heights', () => {
         ['line', 22],
       ],
     );
+    const split = diffRows(
+      parsePatch(patch('a.ts', 1)),
+      new Map(),
+      undefined,
+      false,
+      true,
+    );
+    assert.deepStrictEqual(
+      split.map((row) => [row.kind, rowHeight(row)]),
+      [
+        ['error', undefined],
+        ['file', 22],
+        ['split', 22],
+      ],
+    );
+    const whole = diffRows([], new Map(), {
+      path: 'a.ts',
+      content: 'a\n',
+      binary: false,
+    });
+    assert.deepStrictEqual(
+      whole.map((row) => [row.kind, rowHeight(row)]),
+      [
+        ['error', undefined],
+        ['file', 22],
+        ['wholeLine', 22],
+      ],
+    );
+    const [, , large] = diffRows(
+      parsePatch(patch('graph.json', collapseThreshold + 1)),
+      new Map(),
+      undefined,
+    );
+    assert.strictEqual(large.kind, 'large');
+    assert.notStrictEqual(rowHeight(large), 22);
     const loading = diffRows([], new Map(), undefined, true);
     assert.deepStrictEqual(
       loading.map((row) => rowHeight(row)),
       [undefined, undefined],
     );
+  });
+
+  test('measures how far the widest line of an inline diff reaches, a tab to its next stop, to widen every row to it', () => {
+    const files = parsePatch(
+      [
+        'diff --git a/a.ts b/a.ts',
+        '--- a/a.ts',
+        '+++ b/a.ts',
+        '@@ -1,2 +1,2 @@',
+        ' short',
+        '-abcdefghi\tx',
+        '+longer line',
+      ].join('\n'),
+    );
+    assert.strictEqual(
+      widestColumns(diffRows(files, new Map(), undefined)),
+      13,
+    );
+    assert.strictEqual(
+      widestColumns(
+        diffRows([], new Map(), {
+          path: 'a.ts',
+          content: 'a\nbbb\n',
+          binary: false,
+        }),
+      ),
+      3,
+    );
+    assert.strictEqual(
+      lineWidth(13, 2, 7.5),
+      2 * numberWidth + 2 * codePadding + 98,
+    );
+    assert.strictEqual(lineWidth(3, 1, 8), numberWidth + 2 * codePadding + 24);
   });
 
   test("keys a row by its kind too, so a row of fixed height doesn't take the measured height of a placeholder that was in its place", () => {
@@ -706,10 +856,10 @@ suite('Diff row heights', () => {
         '+one two three four five',
       ].join('\n'),
     );
-    const inline = rowAnchors(diffRows(files, new Map(), undefined));
-    const split = rowAnchors(
-      diffRows(files, new Map(), undefined, false, true),
-    );
+    const inlineRows = diffRows(files, new Map(), undefined);
+    const splitRows = diffRows(files, new Map(), undefined, false, true);
+    const inline = rowAnchors(inlineRows, lineKeys(inlineRows));
+    const split = rowAnchors(splitRows, lineKeys(splitRows));
     assert.deepStrictEqual(inline, [
       ['error'],
       ['0:file'],

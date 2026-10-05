@@ -33,8 +33,12 @@ export const collapseThreshold = 1500;
 export function isLargeChange(file: {
   readonly insertions: number;
   readonly deletions: number;
+  readonly tooLargeToCount?: boolean;
 }): boolean {
-  return file.insertions + file.deletions > collapseThreshold;
+  return (
+    file.tooLargeToCount === true ||
+    file.insertions + file.deletions > collapseThreshold
+  );
 }
 
 export const patchLineBudget = 20_000;
@@ -135,6 +139,7 @@ export interface FileChange {
   readonly insertions: number;
   readonly deletions: number;
   readonly bytes?: number;
+  readonly tooLargeToCount?: boolean;
 }
 
 export interface TabInfo {

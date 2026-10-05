@@ -1,7 +1,7 @@
 import { createReadStream, type Stats } from 'node:fs';
 import { lstat } from 'node:fs/promises';
 import { join } from 'node:path';
-import { collapseThreshold, type FileChange } from '../shared/protocol';
+import type { FileChange } from '../shared/protocol';
 import {
   changesArgs,
   diffOptionArgs,
@@ -32,7 +32,7 @@ export type UntrackedPatches = Map<
 
 const maxUntrackedPatches = 50;
 
-async function addedLines(file: string): Promise<number> {
+async function addedLines(file: string): Promise<number | 'tooLarge'> {
   let lines = 0;
   let last = 0x0a;
   let first = true;
@@ -52,7 +52,7 @@ async function addedLines(file: string): Promise<number> {
         return 0;
       }
       if (stats.size > maxFileSize) {
-        return collapseThreshold + 1;
+        return 'tooLarge';
       }
       first = false;
       for (
@@ -103,12 +103,13 @@ export async function workingTreeFiles(
   const untrackedFiles = await Promise.all(
     untracked.map(async (path, index): Promise<FileChange> => {
       const file = join(cwd, path);
-      const lines =
+      const added =
         index < maxUntrackedPatches && !path.endsWith('/')
           ? await addedLines(file)
           : 0;
+      const lines = added === 'tooLarge' ? 0 : added;
       const bytes =
-        lines > 0 ? (await lstat(file).catch(() => undefined))?.size : 0;
+        added !== 0 ? (await lstat(file).catch(() => undefined))?.size : 0;
       return {
         path,
         oldPath: undefined,
@@ -116,6 +117,7 @@ export async function workingTreeFiles(
         insertions: reverse ? 0 : lines,
         deletions: reverse ? lines : 0,
         ...(bytes ? { bytes } : {}),
+        ...(added === 'tooLarge' ? { tooLargeToCount: true } : {}),
       };
     }),
   );

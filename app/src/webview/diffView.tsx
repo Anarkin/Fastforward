@@ -9,8 +9,13 @@ import {
   useState,
   Fragment,
 } from 'react';
-import { collapseThreshold } from '../shared/protocol';
-import type { DiffFile, DiffLine } from './diff';
+import { collapseThreshold, type TextRequest } from '../shared/protocol';
+import {
+  changeBlocks,
+  type DiffFile,
+  type DiffLine,
+  type NumberedLine,
+} from './diff';
 import {
   jumpStep,
   lineKey,
@@ -27,9 +32,8 @@ import {
 } from './minimap';
 import { columnFocusAttribute } from './activeColumn';
 import { alignLines } from './pairing';
-import type { TextRequest } from '../shared/protocol';
 import { textsToLoad, useSyntax, type SyntaxRange } from './syntax';
-import { wordRanges } from './wordDiff';
+import { wordRanges, type WordRanges } from './wordDiff';
 import { changeStep } from './shortcuts';
 import {
   elementMetrics,
@@ -41,15 +45,20 @@ import {
 } from './overlayScrollbars';
 import { SkeletonRows, useSkeleton } from './skeleton';
 import { Twisty } from './tree';
-import { wrapColumns, wrappedLines } from './wordWrap';
+import { tabSize, wrapColumns, wrappedLines } from './wordWrap';
 import {
   areaColumns,
+  codePadding,
   hiddenChanges,
   inlineArea,
+  lineWidth,
+  markerInset,
+  markerWidth,
   numberWidth,
   revealChange,
   shownSideways,
   sideArea,
+  textColumn,
   type Sideways,
   type TextArea,
 } from './overflow';
@@ -79,7 +88,7 @@ export type DiffRow =
       readonly kind: 'large';
       readonly file: number;
       readonly path: string;
-      readonly lines: number;
+      readonly lines: number | undefined;
     }
   | { readonly kind: 'binary'; readonly file: number }
   | { readonly kind: 'skeleton' }
@@ -89,8 +98,8 @@ export type DiffRow =
   | {
       readonly kind: 'split';
       readonly file: number;
-      readonly left: SplitCell | undefined;
-      readonly right: SplitCell | undefined;
+      readonly left: NumberedLine | undefined;
+      readonly right: NumberedLine | undefined;
     }
   | {
       readonly kind: 'wholeLine';
@@ -98,11 +107,6 @@ export type DiffRow =
       readonly number: number;
       readonly text: string;
     };
-
-export interface SplitCell {
-  readonly line: DiffLine;
-  readonly index: number;
-}
 
 type FileHeaderRow = Extract<DiffRow, { kind: 'file' }>;
 
@@ -217,6 +221,26 @@ export function HunkDivider() {
   );
 }
 
+export function FileHeader({
+  path,
+  open,
+  whole,
+  onClick,
+}: {
+  path: string;
+  open: boolean;
+  whole: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <div className="file-header" onClick={onClick}>
+      {!whole && <Twisty open={open} />}
+      <span className="path">{path}</span>
+      {whole && <span className="unchanged">Unchanged</span>}
+    </div>
+  );
+}
+
 export function rowHeight(row: DiffRow, wrap = false): number | undefined {
   const kind = row.kind;
   return isMeasured(kind) || (wrap && isCode(row))
@@ -240,7 +264,7 @@ function changeOf(row: DiffRow): 'added' | 'removed' | undefined {
 }
 
 export function splitSideClass(
-  cell: SplitCell | undefined,
+  cell: NumberedLine | undefined,
   change: 'added' | 'removed',
 ): string {
   if (cell === undefined) {
@@ -287,14 +311,21 @@ export function splitRows(file: DiffFile, index: number): readonly SplitRow[] {
 
 function alignedRows(file: DiffFile, index: number): SplitRow[] {
   const rows: SplitRow[] = [];
-  let next = 0;
-  for (const [number, hunk] of file.hunks.entries()) {
+  for (const [number, blocks] of changeBlocks(file).entries()) {
     if (number > 0) {
       rows.push({ kind: 'hunk', file: index });
     }
-    const removed: SplitCell[] = [];
-    const added: SplitCell[] = [];
-    const pair = () => {
+    for (const block of blocks) {
+      if (block.kind === 'context') {
+        rows.push({
+          kind: 'split',
+          file: index,
+          left: block.line,
+          right: block.line,
+        });
+        continue;
+      }
+      const { removed, added } = block;
       const aligned = alignLines(
         removed.map((cell) => cell.line.text),
         added.map((cell) => cell.line.text),
@@ -307,24 +338,7 @@ function alignedRows(file: DiffFile, index: number): SplitRow[] {
           right: right === undefined ? undefined : added[right],
         });
       }
-      removed.length = 0;
-      added.length = 0;
-    };
-    for (const line of hunk.lines) {
-      const cell = { line, index: next++ };
-      if (line.kind === 'removed') {
-        if (added.length > 0) {
-          pair();
-        }
-        removed.push(cell);
-      } else if (line.kind === 'added') {
-        added.push(cell);
-      } else {
-        pair();
-        rows.push({ kind: 'split', file: index, left: cell, right: cell });
-      }
     }
-    pair();
   }
   return rows;
 }
@@ -343,18 +357,38 @@ declare module 'react' {
   interface CSSProperties {
     readonly '--diff-file-height'?: string;
     readonly '--diff-line-height'?: string;
+    readonly '--diff-tab-size'?: string;
+    readonly '--diff-number-width'?: string;
+    readonly '--diff-code-padding'?: string;
+    readonly '--diff-marker-width'?: string;
+    readonly '--diff-content-width'?: string;
     readonly '--split-scroll'?: string;
     readonly '--visible-left'?: string;
     readonly '--visible-right'?: string;
   }
 }
 
-const heightVariables: React.CSSProperties = {
+export const layoutVariables: React.CSSProperties = {
   '--diff-file-height': `${rowHeights.file}px`,
   '--diff-line-height': `${rowHeights.line}px`,
+  '--diff-tab-size': String(tabSize),
+  '--diff-number-width': `${numberWidth}px`,
+  '--diff-code-padding': `${codePadding}px`,
+  '--diff-marker-width': `${markerWidth}px`,
 };
 
-function changedLines(file: DiffFile): number {
+export function widestColumns(rows: readonly DiffRow[]): number {
+  let widest = 0;
+  for (const row of rows) {
+    if (row.kind === 'line' || row.kind === 'wholeLine') {
+      const text = row.kind === 'line' ? row.line.text : row.text;
+      widest = Math.max(widest, textColumn(text, text.length));
+    }
+  }
+  return widest;
+}
+
+function changedLines(file: DiffFile): number | undefined {
   if (file.placeholder) {
     return file.placeholder.lines;
   }
@@ -363,6 +397,16 @@ function changedLines(file: DiffFile): number {
       sum + hunk.lines.filter((line) => line.kind !== 'context').length,
     0,
   );
+}
+
+export function largeDiffText(lines: number | undefined): string {
+  if (lines === undefined) {
+    return 'Large file';
+  }
+  if (lines === 0) {
+    return 'Not loaded';
+  }
+  return `${lines > collapseThreshold ? 'Large diff' : 'Not loaded'}: ${lines.toLocaleString()} changed lines`;
 }
 
 export function diffRows(
@@ -389,7 +433,8 @@ export function diffRows(
   }
   files.forEach((file, index) => {
     const lines = changedLines(file);
-    const large = file.placeholder !== undefined || lines > collapseThreshold;
+    const large =
+      file.placeholder !== undefined || (lines ?? 0) > collapseThreshold;
     const open = toggled.get(file.path) ?? !large;
     rows.push({ kind: 'file', file: index, path: file.path, open });
     if (!open) {
@@ -406,7 +451,9 @@ export function diffRows(
       rows.push({ kind: 'binary', file: index });
     }
     if (sideBySide) {
-      rows.push(...splitRows(file, index));
+      for (const row of splitRows(file, index)) {
+        rows.push(row);
+      }
       return;
     }
     for (const [number, hunk] of file.hunks.entries()) {
@@ -426,10 +473,15 @@ const sidewaysStep = 40;
 export function diffScrollLeft(
   key: string,
   scrolled: number,
+  room?: number,
 ): number | undefined {
-  return key === 'ArrowLeft' && scrolled > 0
-    ? Math.max(0, scrolled - sidewaysStep)
-    : undefined;
+  if (key === 'ArrowLeft' && scrolled > 0) {
+    return Math.max(0, scrolled - sidewaysStep);
+  }
+  if (key === 'ArrowRight' && room !== undefined && scrolled < room) {
+    return Math.min(room, scrolled + sidewaysStep);
+  }
+  return undefined;
 }
 
 export function diffScrollTop(
@@ -512,34 +564,6 @@ export function lineKeys(rows: readonly DiffRow[]): string[][] {
   });
 }
 
-export function highlighted(
-  text: string,
-  ranges: readonly FindRange[],
-  current: FindRange | undefined,
-): React.ReactNode {
-  if (ranges.length === 0) {
-    return text;
-  }
-  const parts: React.ReactNode[] = [];
-  let from = 0;
-  for (const range of ranges) {
-    parts.push(text.slice(from, range.start));
-    const isCurrent =
-      current?.start === range.start && current.end === range.end;
-    parts.push(
-      <mark
-        key={range.start}
-        className={`find-match ${isCurrent ? 'current' : ''}`}
-      >
-        {text.slice(range.start, range.end)}
-      </mark>,
-    );
-    from = range.end;
-  }
-  parts.push(text.slice(from));
-  return parts;
-}
-
 function covering<T extends FindRange>(
   ranges: readonly T[],
 ): (start: number, end: number) => T | undefined {
@@ -563,8 +587,8 @@ export function marked(
   finds: readonly FindRange[],
   current: FindRange | undefined,
 ): React.ReactNode {
-  if (words.length === 0 && syntax.length === 0) {
-    return finds.length === 0 ? text : highlighted(text, finds, current);
+  if (words.length === 0 && syntax.length === 0 && finds.length === 0) {
+    return text;
   }
   const edges = [
     ...new Set([
@@ -610,7 +634,7 @@ export function marked(
 
 export interface LineMarks {
   readonly syntax: ReadonlyMap<string, readonly SyntaxRange[]>;
-  readonly words: ReadonlyMap<string, readonly FindRange[]>;
+  readonly words: WordRanges;
   readonly finds: ReadonlyMap<string, readonly FindRange[]>;
   readonly foundKey: string | undefined;
   readonly found: FindRange | undefined;
@@ -633,7 +657,7 @@ export function codeProps(
   text: string,
   kind: DiffLine['kind'] | undefined,
 ): CodeProps {
-  const of = <T,>(ranges: ReadonlyMap<string, readonly T[]>) =>
+  const of = <T,>(ranges: Pick<ReadonlyMap<string, readonly T[]>, 'get'>) =>
     (key !== undefined && ranges.get(key)) || unmarked;
   return {
     text,
@@ -708,8 +732,10 @@ export function scrollOnToggle(
   return stuck ? fileHeaderIndex(rows, row.file) : undefined;
 }
 
-export function rowAnchors(rows: readonly DiffRow[]): string[][] {
-  const lines = lineKeys(rows);
+export function rowAnchors(
+  rows: readonly DiffRow[],
+  lines: readonly (readonly string[])[],
+): (readonly string[])[] {
   const hunks = new Map<number, number>();
   return rows.map((row, index) => {
     if (lines[index].length > 0) {
@@ -1002,14 +1028,14 @@ export function DiffView({
   loading,
   diff,
   onLoad,
-  texts = new Map(),
-  onLoadTexts = () => undefined,
-  changeMarks = false,
-  matches = [],
-  current = 0,
-  jump = 0,
-  sideBySide = false,
-  wordWrap = false,
+  texts,
+  onLoadTexts,
+  changeMarks,
+  matches,
+  current,
+  jump,
+  sideBySide,
+  wordWrap,
 }: {
   error: React.ReactNode;
   files: readonly DiffFile[];
@@ -1017,14 +1043,14 @@ export function DiffView({
   loading: boolean;
   diff: number;
   onLoad: (path: string) => void;
-  texts?: ReadonlyMap<string, string>;
-  onLoadTexts?: (texts: TextRequest[]) => void;
-  changeMarks?: boolean;
-  matches?: readonly FindMatch[];
-  current?: number;
-  jump?: number;
-  sideBySide?: boolean;
-  wordWrap?: boolean;
+  texts: ReadonlyMap<string, string>;
+  onLoadTexts: (texts: TextRequest[]) => void;
+  changeMarks: boolean;
+  matches: readonly FindMatch[];
+  current: number;
+  jump: number;
+  sideBySide: boolean;
+  wordWrap: boolean;
 }) {
   const list = useRef<HTMLDivElement>(null);
   const [sideways, setSideways] = useState(0);
@@ -1138,6 +1164,10 @@ export function DiffView({
     setToggled((all) => new Map(all).set(path, !open));
 
   const keys = useMemo(() => lineKeys(rows), [rows]);
+  const widest = useMemo(
+    () => (split || wordWrap ? 0 : widestColumns(rows)),
+    [rows, split, wordWrap],
+  );
   const words = useMemo(
     () => (whole ? new Map<string, FindRange[]>() : wordRanges(files)),
     [files, whole],
@@ -1206,27 +1236,23 @@ export function DiffView({
     }
   }, [files, toggled, diff, onLoad]);
 
-  const header = (row: FileHeaderRow, stuck = false) => {
-    return (
-      <div
-        className="file-header"
-        onClick={() => {
-          if (whole) {
-            return;
-          }
-          toggle(row.path, row.open);
-          const target = scrollOnToggle(rows, row, stuck);
-          if (target !== undefined) {
-            virtualizer.scrollToIndex(target, { align: 'start' });
-          }
-        }}
-      >
-        {!whole && <Twisty open={row.open} />}
-        <span className="path">{row.path}</span>
-        {whole && <span className="unchanged">Unchanged in this commit</span>}
-      </div>
-    );
-  };
+  const header = (row: FileHeaderRow, stuck = false) => (
+    <FileHeader
+      path={row.path}
+      open={row.open}
+      whole={whole !== undefined}
+      onClick={() => {
+        if (whole) {
+          return;
+        }
+        toggle(row.path, row.open);
+        const target = scrollOnToggle(rows, row, stuck);
+        if (target !== undefined) {
+          virtualizer.scrollToIndex(target, { align: 'start' });
+        }
+      }}
+    />
+  );
 
   const lineMarks: LineMarks = {
     syntax,
@@ -1249,7 +1275,7 @@ export function DiffView({
     }
   };
   const hiddenMarks = (
-    key: string,
+    key: string | undefined,
     line: DiffLine,
     area: (shown: Sideways) => TextArea,
     place: (edge: 'left' | 'right') => React.CSSProperties,
@@ -1257,7 +1283,7 @@ export function DiffView({
     view && (
       <HiddenChangeMarks
         text={line.text}
-        words={words.get(key) ?? unmarked}
+        words={(key !== undefined && words.get(key)) || unmarked}
         kind={line.kind}
         view={view}
         area={area(view)}
@@ -1276,8 +1302,7 @@ export function DiffView({
       case 'large':
         return (
           <div className="large-diff">
-            {row.lines > collapseThreshold ? 'Large diff' : 'Not loaded'}:{' '}
-            {row.lines.toLocaleString()} changed lines
+            {largeDiffText(row.lines)}
             <button onClick={() => toggle(row.path, false)}>Show</button>
           </div>
         );
@@ -1307,13 +1332,15 @@ export function DiffView({
             <span className="number">{row.line.newNumber}</span>
             {code(keys[index].at(0), row.line.text, row.line.kind)}
             {hiddenMarks(
-              keys[index].at(0) ?? '',
+              keys[index].at(0),
               row.line,
               (shown) => inlineArea(shown, 2),
               (edge) =>
                 edge === 'left'
-                  ? { left: 'calc(var(--visible-left) + 2px)' }
-                  : { left: 'calc(var(--visible-right) - 16px)' },
+                  ? { left: `calc(var(--visible-left) + ${markerInset}px)` }
+                  : {
+                      left: `calc(var(--visible-right) - ${markerInset + markerWidth}px)`,
+                    },
             )}
           </div>
         );
@@ -1343,12 +1370,12 @@ export function DiffView({
                     (shown) => sideArea(shown, side === 1),
                     (edge) =>
                       edge === 'left'
-                        ? { left: numberWidth + 2 }
+                        ? { left: numberWidth + markerInset }
                         : {
                             right:
                               side === 1
-                                ? 'calc(var(--minimap-width) + 2px)'
-                                : 2,
+                                ? `calc(var(--minimap-width) + ${markerInset}px)`
+                                : markerInset,
                           },
                   )}
               </div>
@@ -1362,8 +1389,9 @@ export function DiffView({
             {code(keys[index].at(0), row.text, undefined)}
           </div>
         );
+      default:
+        return row satisfies never;
     }
-    return null;
   };
 
   const items = virtualizer.getVirtualItems();
@@ -1394,7 +1422,7 @@ export function DiffView({
   const stuck = stuckHeader(rows, items, scrollTop);
 
   const layoutKey = `${split}:${wordWrap ? `${columns?.left}:${columns?.right}` : ''}`;
-  const shown = useMemo(() => rowAnchors(rows), [rows]);
+  const shown = useMemo(() => rowAnchors(rows, keys), [rows, keys]);
   const anchor = useRef<{ key: string; at: ScrollAnchor | undefined }>(
     undefined,
   );
@@ -1426,8 +1454,13 @@ export function DiffView({
     <div
       className={`diff-view ${split ? 'side-by-side' : ''} ${wordWrap ? 'wrap' : ''}`}
       style={{
-        ...heightVariables,
+        ...layoutVariables,
         '--split-scroll': `${sideways}px`,
+        ...(!split &&
+          !wordWrap &&
+          charWidth > 0 && {
+            '--diff-content-width': `${lineWidth(widest, whole ? 1 : 2, charWidth)}px`,
+          }),
         ...(view &&
           !scrollsSides && {
             '--visible-left': `${view.scrolled}px`,
@@ -1457,10 +1490,13 @@ export function DiffView({
           ) {
             return;
           }
-          const left = diffScrollLeft(
-            event.key,
-            scrollsSides ? sideways : event.currentTarget.scrollLeft,
-          );
+          const left = scrollsSides
+            ? diffScrollLeft(
+                event.key,
+                sideways,
+                sideRoom(event.currentTarget).widest,
+              )
+            : diffScrollLeft(event.key, event.currentTarget.scrollLeft);
           if (left !== undefined) {
             event.preventDefault();
             if (scrollsSides) {

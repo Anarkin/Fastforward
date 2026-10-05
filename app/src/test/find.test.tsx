@@ -7,8 +7,8 @@ import {
   diffMinimapMarks,
   diffRows,
   findRangesByLine,
-  highlighted,
   lineKeys,
+  marked,
 } from '../webview/diffView';
 import {
   findMatches,
@@ -159,6 +159,45 @@ suite('Find in diff', () => {
     assert.strictEqual(matchCount('x', 17, 2), '3 of 17');
   });
 
+  test('stops at 10000 matches, on one line or across files, saying there are more, as each one is marked', () => {
+    assert.strictEqual(
+      findMatches([], { ...whole, content: 'a'.repeat(30_000) }, 'a').length,
+      10_000,
+    );
+    const files = parsePatch(
+      ['a.js', 'b.js']
+        .flatMap((path) => [
+          `diff --git a/${path} b/${path}`,
+          `--- a/${path}`,
+          `+++ b/${path}`,
+          '@@ -1,1 +1,1 @@',
+          `-${'a'.repeat(3000)}`,
+          `+${'a'.repeat(3000)}`,
+        ])
+        .join('\n'),
+    );
+    const matches = findMatches(files, undefined, 'a');
+    assert.strictEqual(matches.length, 10_000);
+    assert.deepStrictEqual(
+      [matches[5999], matches[6000], matches.at(-1)].map((match) => [
+        match?.file,
+        match?.line,
+        match?.start,
+      ]),
+      [
+        [0, 1, 2999],
+        [1, 0, 0],
+        [1, 1, 999],
+      ],
+    );
+    assert.strictEqual(
+      findMatches(files.toReversed(), undefined, 'a')[6000].file,
+      1,
+    );
+    assert.strictEqual(matchCount('a', 10_000, 2), '3 of 10000+');
+    assert.strictEqual(matchCount('a', 9_999, 2), '3 of 9999');
+  });
+
   test('steps to the next or previous match, wrapping around', () => {
     assert.strictEqual(stepMatch(0, 3, 1), 1);
     assert.strictEqual(stepMatch(2, 3, 1), 0);
@@ -237,19 +276,23 @@ suite('Find in diff', () => {
         ['1:1', [[0, 4]]],
       ],
     );
-    const many = findMatches(
-      [],
-      { ...whole, content: 'a'.repeat(50_000) },
-      'a',
-    );
+    const many = Array.from({ length: 50_000 }, (_, start) => ({
+      file: 0,
+      line: 0,
+      start,
+      end: start + 1,
+    }));
     assert.strictEqual(findRangesByLine(many).get('0:0')?.length, 50_000);
   });
 
   test('marks the matches in a line, the current one apart', () => {
     const html = renderToStaticMarkup(
       <>
-        {highlighted(
+        {marked(
           'find a find',
+          [],
+          [],
+          'word-added',
           [
             { start: 0, end: 4 },
             { start: 7, end: 11 },
@@ -262,7 +305,10 @@ suite('Find in diff', () => {
       html,
       '<mark class="find-match ">find</mark> a <mark class="find-match current">find</mark>',
     );
-    assert.strictEqual(highlighted('plain', [], undefined), 'plain');
+    assert.strictEqual(
+      marked('plain', [], [], 'word-added', [], undefined),
+      'plain',
+    );
   });
 
   test('marks the changes on the minimap only when asked, as for a file shown entire, but the matches always', () => {

@@ -1,5 +1,5 @@
 import type { FindRange } from './find';
-import { tabSize } from './wordWrap';
+import { tabStop } from './wordWrap';
 
 export interface Columns {
   readonly first: number;
@@ -11,12 +11,24 @@ export interface HiddenChanges {
   readonly right: FindRange | undefined;
 }
 
-export function textColumn(text: string, index: number): number {
+function columnsOf(text: string): (index: number) => number {
+  let at = 0;
   let column = 0;
-  for (let at = 0; at < index; at++) {
-    column += text[at] === '\t' ? tabSize - (column % tabSize) : 1;
-  }
-  return column;
+  let tab = text.indexOf('\t');
+  return (index) => {
+    while (tab !== -1 && tab < index) {
+      column = tabStop(column + tab - at);
+      at = tab + 1;
+      tab = text.indexOf('\t', at);
+    }
+    column += index - at;
+    at = index;
+    return column;
+  };
+}
+
+export function textColumn(text: string, index: number): number {
+  return columnsOf(text)(index);
 }
 
 export function visibleColumns(
@@ -34,19 +46,20 @@ export function hiddenChanges(
   words: readonly FindRange[],
   { first, last }: Columns,
 ): HiddenChanges {
+  const columnAt = columnsOf(text);
   let left: FindRange | undefined;
-  let right: FindRange | undefined;
   for (const word of words) {
     if (word.start === word.end) {
       continue;
     }
-    if (textColumn(text, word.end) <= first) {
+    const start = columnAt(word.start);
+    if (columnAt(word.end) <= first) {
       left = word;
-    } else if (textColumn(text, word.start) >= last) {
-      right ??= word;
+    } else if (start >= last) {
+      return { left, right: word };
     }
   }
-  return { left, right };
+  return { left, right: undefined };
 }
 
 export function revealScroll(
@@ -60,7 +73,9 @@ export function revealScroll(
 
 export const numberWidth = 56;
 export const codePadding = 6;
-const markerRoom = 18;
+export const markerWidth = 14;
+export const markerInset = 2;
+const markerRoom = markerInset + markerWidth + markerInset;
 
 export interface Sideways {
   readonly scrolled: number;
@@ -87,6 +102,16 @@ export function inlineArea(view: Sideways, numbers: number): TextArea {
     origin: numbers * numberWidth + codePadding,
     visible: view.width - view.minimap,
   };
+}
+
+export function lineWidth(
+  columns: number,
+  numbers: number,
+  charWidth: number,
+): number {
+  return (
+    numbers * numberWidth + 2 * codePadding + Math.ceil(columns * charWidth)
+  );
 }
 
 export function sideArea(view: Sideways, last: boolean): TextArea {

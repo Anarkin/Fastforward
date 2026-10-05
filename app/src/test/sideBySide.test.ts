@@ -97,6 +97,23 @@ suite('Side-by-side diff', () => {
     );
   });
 
+  test('lays out side by side a file with more rows than a call takes arguments, as one shown entire can have', () => {
+    const lines = 200_000;
+    const files = parsePatch(
+      [
+        'diff --git a/a.ts b/a.ts',
+        '--- a/a.ts',
+        '+++ b/a.ts',
+        `@@ -1,${lines} +1,${lines} @@`,
+        ...Array.from({ length: lines }, (_, index) => ` ${index}`),
+      ].join('\n'),
+    );
+    assert.strictEqual(
+      diffRows(files, new Map(), undefined, false, true).length,
+      2 + lines,
+    );
+  });
+
   test('tints the old side of a change as removed and the new side as added, and an empty side as filler', () => {
     const [file] = parsePatch(patch);
     const rows = splitRows(file, 0).filter((row) => row.kind === 'split');

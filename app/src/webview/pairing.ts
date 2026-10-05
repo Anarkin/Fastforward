@@ -1,4 +1,4 @@
-import { tokenize } from './wordDiff';
+import { tokenSteps, wordPattern } from './wordDiff';
 
 export const similarEnough = 0.5;
 
@@ -8,34 +8,36 @@ const maxComparedWords = 1_000_000;
 
 export type LinePair = readonly [number | undefined, number | undefined];
 
-function words(text: string): string[] {
-  return tokenize(text).filter((token) => !/^\s+$/.test(token));
+interface Words {
+  readonly counts: ReadonlyMap<string, number>;
+  readonly total: number;
+}
+
+function wordsOf(text: string): Words {
+  const words = text.match(wordPattern) ?? [];
+  const counts = new Map<string, number>();
+  for (const word of words) {
+    counts.set(word, (counts.get(word) ?? 0) + 1);
+  }
+  return { counts, total: words.length };
 }
 
 export function lineSimilarity(a: string, b: string): number {
-  return wordSimilarity(words(a), words(b));
+  return wordSimilarity(wordsOf(a), wordsOf(b));
 }
 
-function wordSimilarity(
-  before: readonly string[],
-  after: readonly string[],
-): number {
-  if (before.length === 0 || after.length === 0) {
-    return before.length === after.length ? similarEnough : 0;
+function wordSimilarity(before: Words, after: Words): number {
+  if (before.total === 0 || after.total === 0) {
+    return before.total === after.total ? similarEnough : 0;
   }
-  const counts = new Map<string, number>();
-  for (const word of before) {
-    counts.set(word, (counts.get(word) ?? 0) + 1);
-  }
+  const fewer =
+    before.counts.size <= after.counts.size ? before.counts : after.counts;
+  const more = fewer === before.counts ? after.counts : before.counts;
   let common = 0;
-  for (const word of after) {
-    const left = counts.get(word) ?? 0;
-    if (left > 0) {
-      counts.set(word, left - 1);
-      common++;
-    }
+  for (const [word, count] of fewer) {
+    common += Math.min(count, more.get(word) ?? 0);
   }
-  return (2 * common) / (before.length + after.length);
+  return (2 * common) / (before.total + after.total);
 }
 
 function inOrder(
@@ -48,8 +50,23 @@ function inOrder(
   );
 }
 
-const wordCount = (lines: readonly string[][]) =>
-  lines.reduce((sum, line) => sum + line.length, 0);
+function fewEnoughWords(
+  removed: readonly string[],
+  added: readonly string[],
+): boolean {
+  let compared = 0;
+  const count = (lines: readonly string[], comparisons: number) => {
+    const next = tokenSteps(lines, wordPattern);
+    while (next()) {
+      compared += comparisons;
+      if (compared > maxComparedWords) {
+        return false;
+      }
+    }
+    return true;
+  };
+  return count(removed, added.length) && count(added, removed.length);
+}
 
 const range = (length: number) => Array.from({ length }, (_, index) => index);
 
@@ -59,17 +76,16 @@ export function alignLines(
 ): LinePair[] {
   const rows = removed.length;
   const columns = added.length;
-  if (rows === 0 || columns === 0 || rows * columns > maxCells) {
-    return inOrder(range(rows), range(columns));
-  }
-  const removedWords = removed.map(words);
-  const addedWords = added.map(words);
   if (
-    columns * wordCount(removedWords) + rows * wordCount(addedWords) >
-    maxComparedWords
+    rows === 0 ||
+    columns === 0 ||
+    rows * columns > maxCells ||
+    !fewEnoughWords(removed, added)
   ) {
     return inOrder(range(rows), range(columns));
   }
+  const removedWords = removed.map(wordsOf);
+  const addedWords = added.map(wordsOf);
   const similarity = removedWords.map((before) =>
     addedWords.map((after) => wordSimilarity(before, after)),
   );

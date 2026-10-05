@@ -235,6 +235,14 @@ suite('Diff keys', () => {
     assert.strictEqual(diffScrollLeft('ArrowRight', 100), undefined);
   });
 
+  test('scrolls the sides of a side by side diff right with the right arrow too, no further than the widest line, as nothing else scrolls them', () => {
+    assert.strictEqual(diffScrollLeft('ArrowRight', 0, 100), 40);
+    assert.strictEqual(diffScrollLeft('ArrowRight', 80, 100), 100);
+    assert.strictEqual(diffScrollLeft('ArrowRight', 100, 100), undefined);
+    assert.strictEqual(diffScrollLeft('ArrowRight', 0, 0), undefined);
+    assert.strictEqual(diffScrollLeft('ArrowLeft', 100, 100), 60);
+  });
+
   test('scrolls three lines with the arrows, a screen less a line with the page keys, and to either end', () => {
     assert.strictEqual(diffScrollTop('ArrowDown', 100, 400, 2000), 166);
     assert.strictEqual(diffScrollTop('ArrowUp', 40, 400, 2000), 0);

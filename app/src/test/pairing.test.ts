@@ -297,6 +297,16 @@ suite('Aligning a change side by side', () => {
     );
   });
 
+  test('falls back to the plain order before splitting into words a line with too many of them to compare', () => {
+    const long = 'x '.repeat(3_000_000);
+    const added = Array.from({ length: 100 }, (_, i) => `line ${i}`);
+    const started = performance.now();
+    const aligned = alignLines([long], added);
+    assert.ok(performance.now() - started < 100);
+    assert.deepStrictEqual(aligned[0], [0, 0]);
+    assert.strictEqual(aligned.length, 100);
+  });
+
   test('lines up a block of 40000 removed by added lines, even with insertions', () => {
     const removed = Array.from({ length: 200 }, (_, i) => `value ${i} = ${i};`);
     const added = [
