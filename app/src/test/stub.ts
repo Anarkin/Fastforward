@@ -4,13 +4,13 @@ export interface RecordingLog {
   readonly log: Log;
   readonly info: string[];
   readonly warn: string[];
-  readonly error: (Error | string)[];
+  readonly error: unknown[];
 }
 
 export function recordingLog(): RecordingLog {
   const info: string[] = [];
   const warn: string[] = [];
-  const error: (Error | string)[] = [];
+  const error: unknown[] = [];
   return {
     log: {
       info: (message) => info.push(message),

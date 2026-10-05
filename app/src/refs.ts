@@ -1,6 +1,6 @@
 import type { Positions } from './history/merges';
 import type { RefInfo, BookmarkRef } from './shared/protocol';
-import { findRef, hasRef, refOf, withoutRemote } from './shared/refNames';
+import { hasRef, localBranchOf, refOf, withoutRemote } from './shared/refNames';
 
 export interface Head {
   readonly name?: string;
@@ -58,9 +58,7 @@ export function defaultBookmarks(
 ): BookmarkRef[] {
   const exists = (bookmark: BookmarkRef) => hasRef(refs, bookmark);
   const [main] = remoteDefaults.length
-    ? remoteDefaults.map((name) =>
-        withoutRemote(name, findRef(refs, { kind: 'remote', name })?.remote),
-      )
+    ? remoteDefaults.map((name) => localBranchOf(refs, name))
     : ['main', 'master', 'trunk'].filter((name) =>
         exists({ kind: 'branch', name }),
       );

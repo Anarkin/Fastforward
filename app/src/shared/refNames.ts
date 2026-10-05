@@ -1,9 +1,19 @@
-import type { Bookmark, BookmarkRef } from './protocol';
+import type { Bookmark, BookmarkRef, RefInfo } from './protocol';
 
 export function withoutRemote(name: string, remote?: string): string {
   return remote !== undefined && name.startsWith(`${remote}/`)
     ? name.slice(remote.length + 1)
     : name.slice(name.indexOf('/') + 1);
+}
+
+export function localBranchOf(
+  refs: readonly RefInfo[],
+  remoteName: string,
+): string {
+  return withoutRemote(
+    remoteName,
+    findRef(refs, { kind: 'remote', name: remoteName })?.remote,
+  );
 }
 
 export function refOf(ref: BookmarkRef): BookmarkRef {

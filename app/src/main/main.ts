@@ -14,14 +14,15 @@ import {
   shell,
 } from 'electron';
 import { autoUpdater } from 'electron-updater';
-import { findGit, minimumGitVersion } from '../git/locate';
-import { fileLog, type Log } from '../log';
+import { findGit, minimumGitVersion, type GitSearch } from '../git/locate';
+import { errorLine, fileLog, type Log } from '../log';
 import { appName, appNameSwitch, titleBarHeight } from '../shared/titleBar';
 import type { ToHost, ToWebview } from '../shared/protocol';
 import {
   migrateProfile,
   readDefaults,
   UserSettings,
+  watchSettings,
   writeReadOnly,
   type Settings,
 } from '../settings';
@@ -32,12 +33,16 @@ import {
   appFile,
   appOrigin,
   appScheme,
+  isAppUrl,
+  minimumHeight,
   minimumWindowSize,
+  opensExternally,
   rebuilt,
+  restoresMaximized,
   visibleBounds,
 } from './files';
 import { profileFolder } from './profile';
-import { flushBeforeQuit } from './quit';
+import { exitOnFailure, flushBeforeQuit } from './quit';
 import { loginShellPath, mergePaths } from './shellPath';
 import { checksForUpdates } from './updates';
 
@@ -64,7 +69,12 @@ if (userDataDir) {
 }
 
 if (app.requestSingleInstanceLock()) {
-  void start();
+  void exitOnFailure(app, start(), (error) =>
+    dialog.showErrorBox(
+      'Fastforward',
+      `Fastforward couldn't start.\n\n${errorLine(error)}`,
+    ),
+  );
 } else {
   app.quit();
 }
@@ -80,9 +90,7 @@ async function start(): Promise<void> {
     `Fastforward ${app.getVersion()} on ${process.platform} ${process.arch}, Electron ${process.versions.electron}`,
   );
   process.on('uncaughtException', (error) => log.error(error));
-  process.on('unhandledRejection', (reason) =>
-    log.error(reason instanceof Error ? reason : String(reason)),
-  );
+  process.on('unhandledRejection', (reason) => log.error(reason));
 
   const profile = app.getPath('userData');
   const defaults = readDefaults(path.join(dist, 'settings.json'));
@@ -135,7 +143,8 @@ async function start(): Promise<void> {
   ipcMain.on('message', (event, message: ToHost) => {
     if (
       event.sender === window.webContents &&
-      event.senderFrame?.url.startsWith(appOrigin)
+      event.senderFrame &&
+      isAppUrl(event.senderFrame.url)
     ) {
       void connection.then((current) => current?.receive(message));
     }
@@ -207,33 +216,36 @@ async function start(): Promise<void> {
     view.reloadSettings();
     window.webContents.reloadIgnoringCache();
   };
-  watchUserSettings(userSettingsFile, () => {
-    if (userSettings.reload()) {
-      applySettings();
-    }
-  });
+  tryWatching(log, 'the settings', () =>
+    watchSettings(userSettingsFile, () => {
+      if (userSettings.reload()) {
+        applySettings();
+      }
+    }),
+  );
 
   if (development && process.env.FASTFORWARD_DEV) {
-    reloadOnRebuild(window, () => {
-      try {
-        if (
-          userSettings.replaceDefaults(
-            readDefaults(path.join(dist, 'settings.json')),
-          )
-        ) {
-          applySettings();
+    tryWatching(log, 'the build', () =>
+      reloadOnRebuild(window, () => {
+        try {
+          if (
+            userSettings.replaceDefaults(
+              readDefaults(path.join(dist, 'settings.json')),
+            )
+          ) {
+            applySettings();
+          }
+        } catch (error) {
+          log.error('Reading the rebuilt default settings failed');
+          log.error(error);
         }
-      } catch (error) {
-        log.error('Reading the rebuilt default settings failed');
-        log.error(error instanceof Error ? error : String(error));
-      }
-    });
+      }),
+    );
   }
-  await loading;
-  checkForUpdates(log);
+  void loading.then(() => checkForUpdates(log));
 }
 
-async function searchGit(): ReturnType<typeof findGit> {
+async function searchGit(): Promise<GitSearch> {
   if (process.platform !== 'win32') {
     process.env.PATH = mergePaths(
       await loginShellPath(),
@@ -256,7 +268,7 @@ function checkForUpdates(log: Log): void {
   };
   autoUpdater.checkForUpdatesAndNotify().catch((error: unknown) => {
     log.error('Checking for updates failed');
-    log.error(error instanceof Error ? error : String(error));
+    log.error(error);
   });
 }
 
@@ -265,14 +277,12 @@ function createWindow(
   settings: Settings,
   shown: Promise<boolean>,
 ): BrowserWindow {
-  const bounds = visibleBounds(
-    store.get(boundsKey),
-    screen.getAllDisplays().map((display) => display.workArea),
-  );
+  const workAreas = screen.getAllDisplays().map((display) => display.workArea);
+  const bounds = visibleBounds(store.get(boundsKey), workAreas);
   const window = new BrowserWindow({
     ...(bounds ?? { width: 1400, height: 900 }),
     minWidth: minimumWindowSize.width,
-    minHeight: minimumWindowSize.height,
+    minHeight: minimumHeight(workAreas),
     title: 'Fastforward',
     show: false,
     backgroundColor: (nativeTheme.shouldUseDarkColors
@@ -311,18 +321,22 @@ function createWindow(
         }
       }),
   );
+  const restores = restoresMaximized(window, maximized);
+  window.on('maximize', restores);
+  window.on('unmaximize', restores);
+  window.on('resize', restores);
   window.on('close', () => {
     void store.update(boundsKey, window.getNormalBounds());
-    void store.update(maximizedKey, window.isMaximized());
+    void store.update(maximizedKey, restores());
   });
   window.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('https://')) {
+    if (opensExternally(url)) {
       void shell.openExternal(url);
     }
     return { action: 'deny' };
   });
   window.webContents.on('will-navigate', (event, url) => {
-    if (!url.startsWith(appOrigin)) {
+    if (!isAppUrl(url)) {
       event.preventDefault();
     }
   });
@@ -355,7 +369,7 @@ function setMenu(): void {
 
 async function reportMissingGit(
   log: Log,
-  git: Exclude<Awaited<ReturnType<typeof findGit>>, { kind: 'found' }>,
+  git: Exclude<GitSearch, { kind: 'found' }>,
 ): Promise<void> {
   const needed = minimumGitVersion.join('.');
   const detail =
@@ -384,14 +398,13 @@ async function openFile(log: Log, file: string): Promise<void> {
   }
 }
 
-function watchUserSettings(file: string, onChange: () => void): void {
-  let timer: NodeJS.Timeout | undefined;
-  fs.watch(path.dirname(file), (_event, name) => {
-    if (name === path.basename(file)) {
-      clearTimeout(timer);
-      timer = setTimeout(onChange, 200);
-    }
-  });
+function tryWatching(log: Log, what: string, watch: () => void): void {
+  try {
+    watch();
+  } catch (error) {
+    log.error(`Watching ${what} failed`);
+    log.error(error);
+  }
 }
 
 function reloadOnRebuild(window: BrowserWindow, onDefaults: () => void): void {

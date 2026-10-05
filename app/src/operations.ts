@@ -10,8 +10,9 @@ import {
 } from './git/repository';
 import type { CheckoutTarget } from './shared/protocol';
 import { shortHash } from './shared/hashes';
-import { findRef, hasRef, withoutRemote } from './shared/refNames';
+import { hasRef, localBranchOf } from './shared/refNames';
 import type { Log } from './log';
+import { detachedHead } from './refs';
 
 export type Notify = (level: 'info' | 'error', message: string) => void;
 
@@ -32,10 +33,7 @@ export async function checkout(
     const before = await readHead(gitPath, root);
     if (target.kind === 'remote') {
       const { refs } = await readRefs(gitPath, root);
-      const local = withoutRemote(
-        target.name,
-        findRef(refs, { kind: 'remote', name: target.name })?.remote,
-      );
+      const local = localBranchOf(refs, target.name);
       if (hasRef(refs, { kind: 'branch', name: local })) {
         await switchToBranch(gitPath, root, local);
         await catchUp(log, notify, at, local, target.name);
@@ -57,8 +55,9 @@ export async function checkout(
       );
     }
     log.info(`Checked out ${target.kind} ${label}`);
-    if (before && !before.name && before.commit) {
-      await sayLeftBehind(log, notify, at, before.commit);
+    const detached = detachedHead(before);
+    if (detached) {
+      await sayLeftBehind(log, notify, at, detached);
     }
     return true;
   } catch (error) {
@@ -66,7 +65,7 @@ export async function checkout(
       log,
       notify,
       `Checking out ${target.kind} ${label} failed`,
-      `Couldn't check out ${label}.`,
+      `Couldn't check out ${target.kind === 'commit' ? shortHash(label) : label}.`,
       error,
     );
     return false;

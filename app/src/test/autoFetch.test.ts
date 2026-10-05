@@ -60,6 +60,24 @@ suite('Auto fetch', () => {
     );
   });
 
+  test('leaves the next round to the one running when the settings change meanwhile, so rounds never double up', async () => {
+    const { timer, waiting, fire } = fakeTimer();
+    const active = Promise.withResolvers<void>();
+    const auto = new AutoFetch(
+      () => 1,
+      () => ['active'],
+      () => active.promise,
+      timer,
+    );
+    auto.update();
+    await fire();
+    auto.update();
+    assert.strictEqual(waiting().length, 0);
+    active.resolve();
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.strictEqual(waiting().length, 1);
+  });
+
   test('fetches at once when switched on, and stops when switched off', async () => {
     const { timer, waiting, fire } = fakeTimer();
     let minutes = 0;
@@ -86,6 +104,32 @@ suite('Auto fetch', () => {
     auto.update();
     await fire();
     assert.deepStrictEqual(fetched, ['a', 'a']);
+  });
+
+  test('stops a round before its next repository when switched off meanwhile', async () => {
+    const { timer, waiting, fire } = fakeTimer();
+    let minutes = 1;
+    const fetched: string[] = [];
+    const active = Promise.withResolvers<void>();
+    const auto = new AutoFetch(
+      () => minutes,
+      () => ['active', 'other'],
+      async (root) => {
+        fetched.push(root);
+        if (root === 'active') {
+          await active.promise;
+        }
+      },
+      timer,
+    );
+    auto.update();
+    await fire();
+    minutes = 0;
+    auto.update();
+    active.resolve();
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepStrictEqual(fetched, ['active']);
+    assert.strictEqual(waiting().length, 0);
   });
 
   test('goes on after a repository fails to fetch', async () => {

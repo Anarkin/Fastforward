@@ -8,9 +8,10 @@ import {
   migrateProfile,
   overridesOf,
   UserSettings,
+  watchSettings,
   writeReadOnly,
 } from '../settings';
-import { defaultSettings } from './fixtures';
+import { defaultSettings, waitFor } from './fixtures';
 import { symlinkOrSkip } from './repositories';
 
 const defaults = defaultSettings();
@@ -47,7 +48,20 @@ suite('Settings', () => {
     assert.deepStrictEqual(problems, [
       'Unknown setting "ignoreWhitespaces"',
       '"solo" should be a boolean',
-      '"columnWidths" should be a list',
+      '"columnWidths" should be a list of numbers',
+    ]);
+  });
+
+  test('knows no setting by a name every object has', () => {
+    const { settings, problems } = mergeSettings(
+      defaults,
+      JSON.parse('{ "toString": 1, "__proto__": { "solo": true } }'),
+    );
+    assert.deepStrictEqual(settings, defaults);
+    assert.strictEqual(Object.getPrototypeOf(settings), Object.prototype);
+    assert.deepStrictEqual(problems, [
+      'Unknown setting "toString"',
+      'Unknown setting "__proto__"',
     ]);
   });
 
@@ -97,6 +111,24 @@ suite('User settings file', () => {
 
   const written = (): unknown => JSON.parse(fs.readFileSync(file, 'utf8'));
 
+  const noticed = async (changed: string, target?: string): Promise<void> => {
+    let changes = 0;
+    const stop = watchSettings(
+      file,
+      () => {
+        changes += 1;
+      },
+      10,
+      target,
+    );
+    try {
+      fs.writeFileSync(changed, JSON.stringify({ solo: true }));
+      await waitFor(() => changes > 0, 'the change', 1000);
+    } finally {
+      stop();
+    }
+  };
+
   test('starts from the defaults without a file', () => {
     const user = new UserSettings(defaults, file);
     assert.deepStrictEqual(user.settings, defaults);
@@ -140,6 +172,18 @@ suite('User settings file', () => {
     assert.strictEqual(fs.readFileSync(file, 'utf8'), '{ "solo": tru');
   });
 
+  test('neither reads nor overwrites a file that is no JSON object', async () => {
+    fs.writeFileSync(file, '[{ "solo": true }]');
+    const user = new UserSettings(defaults, file);
+    assert.deepStrictEqual(user.settings, defaults);
+    assert.deepStrictEqual(user.problems, [
+      'The user settings are not a JSON object',
+    ]);
+    await user.set('solo', true);
+    assert.strictEqual(user.settings.solo, true);
+    assert.strictEqual(fs.readFileSync(file, 'utf8'), '[{ "solo": true }]');
+  });
+
   test('neither reads nor overwrites a file that cannot be read, and says so', async () => {
     fs.mkdirSync(file);
     const user = new UserSettings(defaults, file);
@@ -161,6 +205,20 @@ suite('User settings file', () => {
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(target, 'utf8')), {
       solo: true,
     });
+  });
+
+  test('notices a change to the file a symlink points to, as an editor writes there', async () => {
+    const target = path.join(folder, 'dotfiles', 'settings.json');
+    fs.mkdirSync(path.dirname(target));
+    await noticed(target, target);
+  });
+
+  test('finds the file a symlink points to for watching', async function () {
+    const target = path.join(folder, 'dotfiles', 'settings.json');
+    fs.mkdirSync(path.dirname(target));
+    fs.writeFileSync(target, '{}');
+    symlinkOrSkip(this, target, file);
+    await noticed(target);
   });
 
   test('keeps a change still being saved when reading the file its earlier save wrote', async () => {
@@ -194,6 +252,13 @@ suite('User settings file', () => {
     assert.strictEqual(fs.readFileSync(file, 'utf8'), '{ "solo": ');
   });
 
+  test('leaves a file that became no JSON object since it was read alone when saving', async () => {
+    const user = new UserSettings(defaults, file);
+    fs.writeFileSync(file, '[]');
+    await user.set('collapseMerges', false);
+    assert.strictEqual(fs.readFileSync(file, 'utf8'), '[]');
+  });
+
   test('reads the file again once it changes, telling a change from its own saves', async () => {
     const user = new UserSettings(defaults, file);
     await user.set('collapseMerges', false);
@@ -203,6 +268,20 @@ suite('User settings file', () => {
     assert.strictEqual(user.settings.solo, true);
     assert.strictEqual(user.settings.collapseMerges, true);
     assert.strictEqual(user.reload(), false);
+  });
+
+  test('takes new defaults, keeping the changes in the file over them', async () => {
+    const user = new UserSettings(defaults, file);
+    await user.set('solo', true);
+    const changed = user.replaceDefaults({
+      ...defaults,
+      solo: false,
+      collapseMerges: false,
+    });
+    assert.strictEqual(changed, true);
+    assert.strictEqual(user.settings.collapseMerges, false);
+    assert.strictEqual(user.settings.solo, true);
+    assert.strictEqual(user.replaceDefaults(user.defaults), false);
   });
 });
 

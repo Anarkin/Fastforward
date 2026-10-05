@@ -12,11 +12,7 @@ interface FoundGit {
 export type GitSearch =
   | ({ readonly kind: 'found' } & FoundGit)
   | { readonly kind: 'missing' }
-  | {
-      readonly kind: 'tooOld';
-      readonly path: string;
-      readonly version: string;
-    };
+  | ({ readonly kind: 'tooOld' } & FoundGit);
 
 export async function findGit(
   env: NodeJS.ProcessEnv = process.env,

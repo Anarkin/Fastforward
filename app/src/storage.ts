@@ -7,6 +7,7 @@ import type {
 } from './shared/protocol';
 import {
   isMissing,
+  isObject,
   writeAtomically,
   type Settings,
   type UserSettings,
@@ -76,11 +77,7 @@ function readJson(file: string): Record<string, unknown> | undefined {
   }
   try {
     const parsed: unknown = JSON.parse(text);
-    if (
-      typeof parsed === 'object' &&
-      parsed !== null &&
-      !Array.isArray(parsed)
-    ) {
+    if (isObject(parsed)) {
       return { ...parsed };
     }
   } catch {}
@@ -269,9 +266,7 @@ function strings(value: unknown): string[] {
 }
 
 function recordOf(value: unknown): Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? { ...value }
-    : {};
+  return isObject(value) ? { ...value } : {};
 }
 
 const bookmarkKinds: readonly (RefKind | 'commit')[] = [

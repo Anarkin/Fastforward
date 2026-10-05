@@ -4,7 +4,7 @@ import * as path from 'node:path';
 export interface Log {
   info(message: string): void;
   warn(message: string): void;
-  error(error: Error | string): void;
+  error(error: unknown): void;
 }
 
 export function fileLog(file: string, echo = false): Log {
@@ -23,11 +23,12 @@ export function fileLog(file: string, echo = false): Log {
   return {
     info: (message) => write('info', message),
     warn: (message) => write('warn', message),
-    error: (error) =>
-      write('error', error instanceof Error ? errorLine(error) : error),
+    error: (error) => write('error', errorLine(error)),
   };
 }
 
-function errorLine(error: Error): string {
-  return error.stack ?? `${error.name}: ${error.message}`;
+export function errorLine(error: unknown): string {
+  return error instanceof Error
+    ? (error.stack ?? `${error.name}: ${error.message}`)
+    : String(error);
 }

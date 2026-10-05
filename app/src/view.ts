@@ -635,7 +635,7 @@ export class FastforwardView {
   private save(saving: Promise<void>): void {
     void saving.catch((error: unknown) => {
       this.log.error('Saving the state failed');
-      this.log.error(error instanceof Error ? error : String(error));
+      this.log.error(error);
     });
   }
 
@@ -678,7 +678,7 @@ export class FastforwardView {
       } catch (error) {
         Object.assign(tab, newTabState());
         this.log.error(`Preloading tab ${root} failed`);
-        this.log.error(error instanceof Error ? error : String(error));
+        this.log.error(error);
       } finally {
         tab.preloading = undefined;
       }
@@ -825,7 +825,7 @@ export class FastforwardView {
         ),
       onError: (error) => {
         this.log.error(`Watching ${context.root} failed`);
-        this.log.error(error instanceof Error ? error : String(error));
+        this.log.error(error);
       },
     });
   }
@@ -932,9 +932,10 @@ export class FastforwardView {
     const next = visit(tab.navigation, tab.hash, hash, replace);
     if (next !== tab.navigation) {
       tab.navigation = next;
-      void this.sendNavigation(context, hash).catch((error: unknown) =>
-        this.log.error(error instanceof Error ? error : String(error)),
-      );
+      void this.sendNavigation(context, hash).catch((error: unknown) => {
+        this.log.error('Loading the navigation failed');
+        this.log.error(error);
+      });
     }
   }
 

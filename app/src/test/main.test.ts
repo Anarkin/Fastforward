@@ -4,9 +4,18 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { PassThrough } from 'node:stream';
-import { appFile, rebuilt, visibleBounds } from '../main/files';
+import {
+  appFile,
+  isAppUrl,
+  minimumHeight,
+  minimumWindowSize,
+  opensExternally,
+  rebuilt,
+  restoresMaximized,
+  visibleBounds,
+} from '../main/files';
 import { profileFolder } from '../main/profile';
-import { flushBeforeQuit } from '../main/quit';
+import { exitOnFailure, flushBeforeQuit } from '../main/quit';
 import {
   loginShellPath,
   mergePaths,
@@ -51,6 +60,33 @@ suite('App files', () => {
       undefined,
     );
   });
+
+  test('takes messages and navigation only from its own origin, not one that only starts the same', () => {
+    assert.ok(isAppUrl('fastforward://app/index.html'));
+    for (const url of [
+      'fastforward://app.evil/index.html',
+      'fastforward://application/index.html',
+      'fastforward://app:1/index.html',
+      'https://app/index.html',
+      'about:blank',
+      '',
+    ]) {
+      assert.ok(!isAppUrl(url), url);
+    }
+  });
+
+  test('opens only https links outside the app', () => {
+    assert.ok(opensExternally('https://github.com/Anarkin/Fastforward'));
+    for (const url of [
+      'http://example.com/',
+      'file:///C:/Windows/notepad.exe',
+      'fastforward://app/index.html',
+      'javascript:alert(1)',
+      '',
+    ]) {
+      assert.ok(!opensExternally(url), url);
+    }
+  });
 });
 
 suite('Rebuilding while the app runs', () => {
@@ -75,6 +111,14 @@ suite('Window bounds', () => {
     assert.deepStrictEqual(visibleBounds(saved, screens), saved);
   });
 
+  test('keeps only the bounds of a window saved with more, as a hand edit can leave it', () => {
+    const saved = { x: 2000, y: 100, width: 800, height: 600 };
+    assert.deepStrictEqual(
+      visibleBounds({ ...saved, fullscreen: true }, screens),
+      saved,
+    );
+  });
+
   test('forgets a window left on a screen since removed', () => {
     assert.strictEqual(
       visibleBounds({ x: 3500, y: 100, width: 800, height: 600 }, screens),
@@ -92,6 +136,32 @@ suite('Window bounds', () => {
       visibleBounds({ x: 0, y: 0, width: 'wide', height: 600 }, screens),
       undefined,
     );
+  });
+
+  test('lowers the least height of a window to fit the shortest screen, as a 1080p screen at 150% has 672 pixels above its taskbar', () => {
+    assert.strictEqual(minimumHeight(screens), minimumWindowSize.height);
+    assert.strictEqual(
+      minimumHeight([...screens, { x: 3200, y: 0, width: 1280, height: 672 }]),
+      672,
+    );
+  });
+
+  test('remembers a minimized window restores maximized, as it says it is not maximized while minimized', () => {
+    let minimized = false;
+    let maximized = true;
+    const window = {
+      isMinimized: () => minimized,
+      isMaximized: () => maximized,
+    };
+    const restores = restoresMaximized(window, false);
+    assert.strictEqual(restores(), true);
+    minimized = true;
+    maximized = false;
+    assert.strictEqual(restores(), true);
+    minimized = false;
+    assert.strictEqual(restores(), false);
+    minimized = true;
+    assert.strictEqual(restoresMaximized(window, true)(), true);
   });
 });
 
@@ -255,5 +325,19 @@ suite('Quitting', () => {
     assert.strictEqual(quits, 1);
     quitting?.(event);
     assert.strictEqual(prevented, 1);
+  });
+
+  test('says why it could not start and exits, as a process left without a window would keep the app from starting again', async () => {
+    const exits: number[] = [];
+    const said: unknown[] = [];
+    const app = { exit: (code: number) => exits.push(code) };
+    const failure = new Error('disk full');
+    await exitOnFailure(app, Promise.resolve(), (error) => said.push(error));
+    assert.deepStrictEqual(exits, []);
+    await exitOnFailure(app, Promise.reject(failure), (error) =>
+      said.push(error),
+    );
+    assert.deepStrictEqual(said, [failure]);
+    assert.deepStrictEqual(exits, [1]);
   });
 });

@@ -31,16 +31,15 @@ export interface Settings {
 
 type Json = Record<string, unknown>;
 
-function isObject(value: unknown): value is Json {
+export function isObject(value: unknown): value is Json {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function kindOf(value: unknown): string {
-  return Array.isArray(value)
-    ? 'a list'
-    : isObject(value)
-      ? 'an object'
-      : `a ${typeof value}`;
+  if (Array.isArray(value)) {
+    return value.length > 0 ? `a list of ${typeof value[0]}s` : 'a list';
+  }
+  return isObject(value) ? 'an object' : `a ${typeof value}`;
 }
 
 function sameKind(fallback: unknown, value: unknown): boolean {
@@ -66,11 +65,13 @@ function merge(
   const merged: Json = { ...defaults };
   for (const [key, value] of Object.entries(overrides)) {
     const name = `${prefix}${key}`;
+    if (!Object.hasOwn(defaults, key)) {
+      problems.push(`Unknown setting "${name}"`);
+      continue;
+    }
     const fallback = defaults[key];
     const allowed = choices.get(name);
-    if (!(key in defaults)) {
-      problems.push(`Unknown setting "${name}"`);
-    } else if (!sameKind(fallback, value)) {
+    if (!sameKind(fallback, value)) {
       problems.push(`"${name}" should be ${kindOf(fallback)}`);
     } else if (allowed && !allowed.some((choice) => choice === value)) {
       problems.push(
@@ -138,7 +139,7 @@ export function readDefaults(file: string): Settings {
 
 export class UserSettings {
   private current: Settings;
-  private written: Json = {};
+  private inMemory: Json = {};
   private broken = false;
   private issues: readonly string[] = [];
   private writing: Promise<void> = Promise.resolve();
@@ -182,7 +183,7 @@ export class UserSettings {
 
   private read(): void {
     if (this.file === undefined) {
-      const { settings, problems } = mergeSettings(this.base, this.written);
+      const { settings, problems } = mergeSettings(this.base, this.inMemory);
       this.current = settings;
       this.issues = problems;
       return;
@@ -196,7 +197,6 @@ export class UserSettings {
     }
     if (text === undefined || text.trim() === '') {
       this.current = this.base;
-      this.written = {};
       this.issues = [];
       return;
     }
@@ -212,15 +212,18 @@ export class UserSettings {
     }
     const { settings, problems } = mergeSettings(this.base, parsed);
     this.current = settings;
-    this.written = isObject(parsed) ? parsed : {};
+    this.broken = !isObject(parsed);
     this.issues = problems;
   }
 
   set<K extends keyof Settings>(key: K, value: Settings[K]): Promise<void> {
     this.current = { ...this.current, [key]: value };
-    this.written = this.withSetting(this.written, key, value);
     const file = this.file;
-    if (file === undefined || this.broken) {
+    if (file === undefined) {
+      this.inMemory = this.withSetting(this.inMemory, key, value);
+      return Promise.resolve();
+    }
+    if (this.broken) {
       return Promise.resolve();
     }
     this.pending += 1;
@@ -231,10 +234,9 @@ export class UserSettings {
         if (latest === undefined) {
           return Promise.resolve();
         }
-        this.written = this.withSetting(latest, key, value);
         return writeAtomically(
           file,
-          `${JSON.stringify(this.written, undefined, 2)}\n`,
+          `${JSON.stringify(this.withSetting(latest, key, value), undefined, 2)}\n`,
         );
       })
       .finally(() => {
@@ -272,7 +274,7 @@ function writtenIn(file: string): Json | undefined {
   }
   try {
     const parsed: unknown = JSON.parse(text);
-    return isObject(parsed) ? parsed : {};
+    return isObject(parsed) ? parsed : undefined;
   } catch {
     return undefined;
   }
@@ -292,6 +294,37 @@ function readText(file: string): string | Error | undefined {
 
 export function isMissing(error: unknown): boolean {
   return error instanceof Error && 'code' in error && error.code === 'ENOENT';
+}
+
+export function watchSettings(
+  file: string,
+  onChange: () => void,
+  delay = 200,
+  target = realPath(file),
+): () => void {
+  let timer: NodeJS.Timeout | undefined;
+  const watchers = [...new Set([file, target])].map((watched) =>
+    fs.watch(path.dirname(watched), (_event, name) => {
+      if (name === path.basename(watched)) {
+        clearTimeout(timer);
+        timer = setTimeout(onChange, delay);
+      }
+    }),
+  );
+  return () => {
+    clearTimeout(timer);
+    for (const watcher of watchers) {
+      watcher.close();
+    }
+  };
+}
+
+function realPath(file: string): string {
+  try {
+    return fs.realpathSync(file);
+  } catch {
+    return file;
+  }
 }
 
 export async function writeAtomically(
