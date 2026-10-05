@@ -1,6 +1,7 @@
 import { lstat } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { FileChange } from '../shared/protocol';
+import { blobSizes } from './files';
 import { runGit, splitNul } from './run';
 
 export const diffArgs = [
@@ -64,8 +65,11 @@ async function changedFiles(
   return (await withBytes(gitPath, cwd, changes)).map(({ file }) => file);
 }
 
-interface RawChange {
-  readonly raw: string;
+export interface RawChange {
+  readonly oldMode: string;
+  readonly newMode: string;
+  readonly oldId: string;
+  readonly newId: string;
   readonly file: FileChange;
 }
 
@@ -73,51 +77,42 @@ export async function withBytes(
   gitPath: string,
   cwd: string,
   changes: readonly RawChange[],
-  workTree?: string,
-  reverse = false,
+  { fromDisk = false, reverse = false } = {},
 ): Promise<RawChange[]> {
-  const sides = changes.map(({ raw, file }) => {
-    const [, , oldId, newId] = raw.slice(1).split(' ');
-    return file.insertions + file.deletions === 0 ? [] : [oldId, newId];
-  });
-  const ids = [...new Set(sides.flat().filter((id) => !isNullId(id)))];
-  const sizes = new Map<string, number>();
-  if (ids.length > 0) {
-    const checked = await runGit(gitPath, cwd, ['cat-file', '--batch-check'], {
-      input: ids.map((id) => `${id}\n`).join(''),
-    });
-    for (const line of checked.split('\n')) {
-      const [id, type, size] = line.split(' ');
-      if (type === 'blob') {
-        sizes.set(id, Number(size));
-      }
-    }
-  }
-  const workTreeSize = async (path: string) => {
-    if (workTree === undefined) {
+  const counted = ({ file }: RawChange) => file.insertions + file.deletions > 0;
+  const sizes = await blobSizes(gitPath, cwd, [
+    ...new Set(
+      changes
+        .filter(counted)
+        .flatMap(({ oldId, newId }) => [oldId, newId])
+        .filter((id) => !isNullId(id)),
+    ),
+  ]);
+  const sizeOnDisk = async (path: string) => {
+    if (!fromDisk) {
       return 0;
     }
-    const stats = await lstat(join(workTree, path)).catch(() => undefined);
+    const stats = await lstat(join(cwd, path)).catch(() => undefined);
     return stats?.isFile() ? stats.size : 0;
   };
   return Promise.all(
-    changes.map(async ({ raw, file }, index) => {
-      const [oldId, newId] = sides[index];
-      if (oldId === undefined || newId === undefined) {
-        return { raw, file };
+    changes.map(async (change) => {
+      if (!counted(change)) {
+        return change;
       }
-      const [committed, workTreeId, path] = reverse
+      const { oldId, newId, file } = change;
+      const [oldSide, newSide, path] = reverse
         ? [newId, oldId, file.oldPath ?? file.path]
         : [oldId, newId, file.path];
       const bytes =
-        (sizes.get(committed) ?? 0) +
-        (sizes.get(workTreeId) ?? (await workTreeSize(path)));
-      return { raw, file: { ...file, bytes } };
+        (sizes.get(oldSide) ?? 0) +
+        (sizes.get(newSide) ?? (await sizeOnDisk(path)));
+      return { ...change, file: { ...file, bytes } };
     }),
   );
 }
 
-function isNullId(id: string): boolean {
+export function isNullId(id: string): boolean {
   return /^0+$/.test(id);
 }
 
@@ -188,27 +183,24 @@ function patchOf(
 
 const simpleStatuses = ['A', 'M', 'D', 'T'] as const;
 
-function rawStatus(token: string): string {
-  return token.slice(token.lastIndexOf(' ') + 1)[0] ?? '';
-}
-
 export function parseChanges(output: string): FileChange[] {
   return parseRawChanges(output).map(({ file }) => file);
 }
 
-export function parseRawChanges(
-  output: string,
-): { readonly raw: string; readonly file: FileChange }[] {
+export function parseRawChanges(output: string): RawChange[] {
   const tokens = splitNul(output);
-  const files: { raw: string; file: FileChange }[] = [];
+  const files: RawChange[] = [];
   const stats = new Map<string, { insertions: number; deletions: number }>();
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
     if (token.startsWith(':')) {
-      const code = rawStatus(token);
+      const [oldMode = '', newMode = '', oldId = '', newId = '', status = ''] =
+        token.slice(1).split(' ');
+      const sides = { oldMode, newMode, oldId, newId };
+      const code = status[0] ?? '';
       if (code === 'R' || code === 'C') {
         files.push({
-          raw: token,
+          ...sides,
           file: {
             status: code,
             oldPath: tokens[i + 1],
@@ -220,7 +212,7 @@ export function parseRawChanges(
         i += 2;
       } else {
         files.push({
-          raw: token,
+          ...sides,
           file: {
             status: simpleStatuses.find((known) => known === code) ?? '?',
             oldPath: undefined,
@@ -247,8 +239,8 @@ export function parseRawChanges(
       deletions: Number(match[2]) || 0,
     });
   }
-  return files.map(({ raw, file }) => ({
-    raw,
-    file: { ...file, ...stats.get(file.path) },
+  return files.map((change) => ({
+    ...change,
+    file: { ...change.file, ...stats.get(change.file.path) },
   }));
 }

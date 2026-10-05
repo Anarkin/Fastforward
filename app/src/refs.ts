@@ -1,11 +1,7 @@
+import type { Head } from './git/repository';
 import type { Positions } from './history/merges';
 import type { RefInfo, BookmarkRef } from './shared/protocol';
 import { hasRef, localBranchOf, refOf, withoutRemote } from './shared/refNames';
-
-export interface Head {
-  readonly name?: string;
-  readonly commit?: string;
-}
 
 export function fingerprint(
   head: Head | undefined,

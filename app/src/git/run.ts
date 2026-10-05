@@ -32,12 +32,44 @@ export function gitEnv(pathspecMagic = false): NodeJS.ProcessEnv {
   };
 }
 
+// The user's hooks get git's environment and -c settings too, so a command
+// that runs them runs as the user's own would
+function hooksEnv(): NodeJS.ProcessEnv {
+  return { ...process.env, GIT_TERMINAL_PROMPT: '0' };
+}
+
+const monitors = new Map<string, Promise<string[]>>();
+
+// git runs a core.fsmonitor that names a command whenever it reads the index,
+// so one a repository sets is never run; its own daemon, which true starts,
+// is kept
+function monitorArgs(gitPath: string, cwd: string): Promise<string[]> {
+  const key = `${gitPath}\0${cwd}`;
+  let args = monitors.get(key);
+  if (args === undefined) {
+    args = new Promise((resolve) => {
+      execFile(
+        gitPath,
+        ['config', '--type=bool', '--get', 'core.fsmonitor'],
+        { cwd, env: gitEnv(), windowsHide: true },
+        (error, stdout) => {
+          const daemon = !error && stdout.trim() === 'true';
+          resolve(['-c', `core.fsmonitor=${daemon}`]);
+        },
+      );
+    });
+    monitors.set(key, args);
+  }
+  return args;
+}
+
 interface RunOptions {
   readonly okExitCodes?: readonly number[];
   readonly input?: string;
   readonly pathspecMagic?: boolean;
   readonly signal?: AbortSignal;
   readonly env?: NodeJS.ProcessEnv;
+  readonly runsHooks?: boolean;
 }
 
 const maxOutput = 256 * 1024 * 1024;
@@ -51,12 +83,21 @@ export async function runGit(
   return (await runGitBytes(gitPath, cwd, args, options)).toString('utf8');
 }
 
-export function runGitBytes(
+export async function runGitBytes(
   gitPath: string,
   cwd: string,
   args: readonly string[],
-  { okExitCodes = [0], input, pathspecMagic, signal, env }: RunOptions = {},
+  {
+    okExitCodes = [0],
+    input,
+    pathspecMagic,
+    signal,
+    env,
+    runsHooks = false,
+  }: RunOptions = {},
 ): Promise<Buffer> {
+  signal?.throwIfAborted();
+  const monitor = await monitorArgs(gitPath, cwd);
   return new Promise((resolve, reject) => {
     if (signal?.aborted) {
       reject(signal.reason);
@@ -65,10 +106,10 @@ export function runGitBytes(
     const stop = () => stopGit(child);
     const child = execFile(
       gitPath,
-      [...gitConfigArgs, ...args],
+      [...(runsHooks ? [] : gitConfigArgs), ...monitor, ...args],
       {
         cwd,
-        env: { ...gitEnv(pathspecMagic), ...env },
+        env: { ...(runsHooks ? hooksEnv() : gitEnv(pathspecMagic)), ...env },
         maxBuffer: maxOutput,
         windowsHide: true,
         encoding: 'buffer',
@@ -78,9 +119,13 @@ export function runGitBytes(
         if (signal?.aborted) {
           reject(signal.reason);
         } else if (error && !exitedWith(error, okExitCodes)) {
+          const said = stderr.toString('utf8');
           reject(
-            new Error(
-              `git ${args.join(' ')} failed: ${stderr.toString('utf8') || error.message}`,
+            Object.assign(
+              new Error(
+                `git ${args.join(' ')} failed: ${said || error.message}`,
+              ),
+              { stderr: said.trim() },
             ),
           );
         } else {
@@ -89,6 +134,8 @@ export function runGitBytes(
       },
     );
     signal?.addEventListener('abort', stop, { once: true });
+    // git can exit before reading all its input, which its exit code tells
+    child.stdin?.on('error', () => undefined);
     child.stdin?.end(input);
   });
 }

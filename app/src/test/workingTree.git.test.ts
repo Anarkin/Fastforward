@@ -5,6 +5,8 @@ import { aheadBehind, remoteDefaultBranches } from '../git/branches';
 import { showPatch } from '../git/diff';
 import { listTree, maxFileSize, readBlobs, readFile } from '../git/files';
 import { headCommit, listHistory } from '../git/history';
+import { runGit } from '../git/run';
+import { ignoredPaths } from '../git/watch';
 import {
   withoutTouched,
   workingTreeFiles,
@@ -98,6 +100,47 @@ suite('Files touched but not changed', function () {
       ['changed.txt'],
     );
     assert.ok(fs.readFileSync(index).equals(before));
+  });
+});
+
+suite('A file system monitor the repository sets', function () {
+  this.timeout(20_000);
+
+  test('is never run when it is a command', async () => {
+    const folder = tempFolder('monitored');
+    try {
+      const repository = await tempRepository(path.join(folder, 'repository'));
+      const { gitPath, root } = repository;
+      await repository.commit('first', { 'a.txt': 'one\n' });
+      fs.writeFileSync(path.join(root, 'a.txt'), 'two\n');
+      fs.writeFileSync(path.join(root, 'b.txt'), 'new\n');
+      const ran = path.join(folder, 'ran.txt').replaceAll('\\', '/');
+      await repository.git('config', 'core.fsmonitor', `echo >> '${ran}'`);
+      const workingTree = await workingTreeFiles(gitPath, root);
+      await workingTreePatch(gitPath, root, workingTree);
+      await ignoredPaths(gitPath, root, [path.join(root, 'b.txt')]);
+      assert.strictEqual(fs.existsSync(ran), false);
+      assert.deepStrictEqual(
+        workingTree.files.map((file) => file.path),
+        ['a.txt', 'b.txt'],
+      );
+    } finally {
+      removeFolder(folder);
+    }
+  });
+
+  test("is kept on when it is git's own", async () => {
+    const repository = await tempRepository(tempFolder('daemon'));
+    try {
+      await repository.git('config', 'core.fsmonitor', 'true');
+      const monitor = await runGit(repository.gitPath, repository.root, [
+        'config',
+        'core.fsmonitor',
+      ]);
+      assert.strictEqual(monitor.trim(), 'true');
+    } finally {
+      removeFolder(repository.root);
+    }
   });
 });
 
@@ -450,6 +493,42 @@ suite('Uncommitted changes', function () {
     assert.ok(patch.includes('+two'));
     assert.ok(!patch.includes('+new'));
   });
+
+  test("diffs an untracked file named '-' by what it holds, not by git's input", async () => {
+    const dash = path.join(cwd, '-');
+    fs.writeFileSync(dash, 'dashed\n');
+    try {
+      const workingTree = await workingTreeFiles(gitPath, cwd);
+      for (const scope of [{ path: '-' }, {}]) {
+        const patch = await workingTreePatch(gitPath, cwd, workingTree, scope);
+        const dashed = parsePatch(patch).find((file) => file.path === '-');
+        assert.ok(dashed, patch);
+        assert.match(patch, /^diff --git a\/- b\/-$/m);
+        assert.match(patch, /^\+dashed$/m);
+      }
+    } finally {
+      fs.rmSync(dash);
+    }
+  });
+
+  test('stops when cancelled', async () => {
+    const workingTree = await workingTreeFiles(gitPath, cwd);
+    const controller = new AbortController();
+    controller.abort();
+    const { signal } = controller;
+    await assert.rejects(workingTreeFiles(gitPath, cwd, undefined, signal));
+    for (const scope of [
+      {},
+      { path: 'tracked.txt' },
+      { path: 'untracked.txt' },
+    ]) {
+      const patches: UntrackedPatches = new Map();
+      await assert.rejects(
+        workingTreePatch(gitPath, cwd, workingTree, scope, patches, signal),
+      );
+      assert.deepStrictEqual(patches, new Map());
+    }
+  });
 });
 
 suite('Repository files', function () {
@@ -781,8 +860,11 @@ suite('Files touched but unchanged', function () {
   let repository: TempRepository;
   let blob: string;
   const zero = '0'.repeat(40);
-  const modified = (file: string, object: string) => ({
-    raw: `:100644 100644 ${object} ${zero} M`,
+  const modified = (file: string, object: string, newId = zero) => ({
+    oldMode: '100644',
+    newMode: '100644',
+    oldId: object,
+    newId,
     file: {
       status: 'M' as const,
       path: file,
@@ -800,15 +882,24 @@ suite('Files touched but unchanged', function () {
 
   suiteTeardown(() => removeFolder(repository.root));
 
-  test('leaves out a file only touched, past one whose name starts with a quote', async () => {
-    const files = await withoutTouched(repository.gitPath, repository.root, [
-      modified('a.txt', blob),
-      modified('"notes".md', blob),
-    ]);
-    assert.deepStrictEqual(
-      files.map((file) => file.path),
-      ['"notes".md'],
+  test('leaves out files only touched, whatever their names hold', async function () {
+    if (process.platform === 'win32') {
+      this.skip();
+    }
+    const names = ['"notes".md', 'Icon\r', 'two\nlines', 'back\\slash'];
+    for (const name of names) {
+      fs.writeFileSync(path.join(repository.root, name), `${name}\n`);
+    }
+    await repository.git('add', '--all');
+    await repository.git('commit', '-m', 'names');
+    const ids = await repository.resolve(
+      ...names.map((name) => `HEAD:${name}`),
     );
+    const files = await withoutTouched(repository.gitPath, repository.root, [
+      ...names.map((name, index) => modified(name, ids[index])),
+      modified('a.txt', blob),
+    ]);
+    assert.deepStrictEqual(files, []);
   });
 
   test('keeps every file as modified when one is gone before it is read', async () => {
@@ -820,5 +911,27 @@ suite('Files touched but unchanged', function () {
       files.map((file) => file.path),
       ['a.txt', 'gone.txt'],
     );
+  });
+
+  test('reads only the files git could not tell changed, not ones whose new text it already has', async () => {
+    const files = await withoutTouched(repository.gitPath, repository.root, [
+      modified('gone.txt', blob, '1'.repeat(40)),
+      modified('a.txt', blob),
+    ]);
+    assert.deepStrictEqual(
+      files.map((file) => file.path),
+      ['gone.txt'],
+    );
+  });
+
+  test('keeps every file as modified when the first of many is gone, which git stops reading at', async () => {
+    const many = Array.from({ length: 20_000 }, (_, i) =>
+      modified(`gone/${i}.txt`, blob),
+    );
+    const files = await withoutTouched(repository.gitPath, repository.root, [
+      ...many,
+      modified('a.txt', blob),
+    ]);
+    assert.strictEqual(files.length, many.length + 1);
   });
 });

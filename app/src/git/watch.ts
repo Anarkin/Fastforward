@@ -1,10 +1,16 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { isMissing } from './files';
 import { runGit, splitNul } from './run';
 
 export interface Watcher {
   dispose(): void;
 }
+
+type Ignored = (
+  repo: string,
+  paths: readonly string[],
+) => Promise<readonly string[]>;
 
 interface WatchOptions {
   readonly delay: number;
@@ -12,6 +18,7 @@ interface WatchOptions {
   readonly onChange: (gitDirChanged: boolean) => void;
   readonly onError: (error: unknown) => void;
   readonly recursive?: boolean;
+  readonly ignored?: Ignored;
 }
 
 export async function watchRepository(
@@ -23,6 +30,7 @@ export async function watchRepository(
     onChange,
     onError,
     recursive = process.platform !== 'linux',
+    ignored = (repo, paths) => ignoredPaths(gitPath, repo, paths),
   }: WatchOptions,
 ): Promise<Watcher> {
   const [gitDir, commonDir] = (
@@ -48,10 +56,8 @@ export async function watchRepository(
         : { lastGitDir: pending.lastGitDir };
     schedule();
     try {
-      if (
-        !disposed &&
-        (withGitDir || (await anyNotIgnored(gitPath, root, files)))
-      ) {
+      const notify = withGitDir || (await anyNotIgnored(ignored, root, files));
+      if (notify && !disposed) {
         onChange(withGitDir);
       }
     } catch (error) {
@@ -86,7 +92,7 @@ export async function watchRepository(
         gitDirChanged();
       }
     } else if (isInside(root, file)) {
-      changedFiles.add(path.relative(root, file).split(path.sep).join('/'));
+      changedFiles.add(file);
       const now = Date.now();
       pending = {
         ...pending,
@@ -118,7 +124,7 @@ export async function watchRepository(
     watchers = await Promise.all([
       watchTree(root, {
         skip: (folder) => gitDirs.some((dir) => isInside(dir, folder)),
-        ignored: (repo, folders) => ignoredFolders(gitPath, repo, folders),
+        ignored,
         onEvent,
         onError,
         watch: watchOneFolder,
@@ -175,10 +181,7 @@ export function watchEach(
 
 interface TreeOptions {
   readonly skip: (folder: string) => boolean;
-  readonly ignored: (
-    repo: string,
-    folders: readonly string[],
-  ) => Promise<readonly string[]>;
+  readonly ignored: Ignored;
   readonly onEvent: (folder: string, file: string | null) => void;
   readonly onError: (error: unknown) => void;
   readonly watch: (
@@ -192,13 +195,22 @@ interface Folder {
   readonly repo: string;
 }
 
+interface WatchedFolder {
+  readonly watcher: FolderWatcher;
+  repo: string;
+  readonly children: Set<string>;
+  // A watcher keeps watching a folder removed or moved away, so one created
+  // in its place needs a watcher of its own
+  gone: boolean;
+}
+
 // Node's recursive fs.watch on Linux walks the whole tree synchronously,
 // ignored folders too, with one inotify watch per file
 export async function watchTree(
   root: string,
   { skip, ignored, onEvent, onError, watch }: TreeOptions,
 ): Promise<Watcher> {
-  const watched = new Map<string, { watcher: FolderWatcher; repo: string }>();
+  const watched = new Map<string, WatchedFolder>();
   let disposed = false;
   let reported = false;
   const report = (error: unknown) => {
@@ -209,11 +221,15 @@ export async function watchTree(
   };
 
   const unwatch = (folder: string) => {
-    for (const [watchedFolder, { watcher }] of watched) {
-      if (isInside(folder, watchedFolder)) {
-        watcher.close();
-        watched.delete(watchedFolder);
-      }
+    const entry = watched.get(folder);
+    if (entry === undefined) {
+      return;
+    }
+    watched.delete(folder);
+    entry.watcher.close();
+    watched.get(path.dirname(folder))?.children.delete(folder);
+    for (const child of entry.children) {
+      unwatch(child);
     }
   };
 
@@ -242,29 +258,42 @@ export async function watchTree(
   };
 
   const watchFolder = async (folder: Folder): Promise<Folder[]> => {
-    if (disposed || watched.has(folder.path)) {
+    const parent = watched.get(path.dirname(folder.path));
+    if (
+      disposed ||
+      watched.has(folder.path) ||
+      (folder.path !== root && parent === undefined)
+    ) {
       return [];
     }
-    let watcher: FolderWatcher;
+    let entry: WatchedFolder | undefined;
     try {
-      watcher = watch(folder.path, (event, file) => {
+      const watcher = watch(folder.path, (event, file) => {
         onEvent(folder.path, file);
         if (file && event === 'rename') {
-          void renamed(path.join(folder.path, file));
+          if (entry && file === path.basename(folder.path)) {
+            entry.gone = true;
+            renamed(folder.path);
+          }
+          renamed(path.join(folder.path, file));
         }
       });
+      entry = { watcher, repo: folder.repo, children: new Set(), gone: false };
     } catch (error) {
       report(error);
       return [];
     }
-    watcher.on('error', report);
-    const entry = { watcher, repo: folder.repo };
+    entry.watcher.on('error', report);
     watched.set(folder.path, entry);
+    parent?.children.add(folder.path);
     let entries: fs.Dirent[];
     try {
       entries = await fs.promises.readdir(folder.path, { withFileTypes: true });
     } catch (error) {
       report(error);
+      return [];
+    }
+    if (watched.get(folder.path) !== entry) {
       return [];
     }
     if (entries.some((child) => child.name === '.git')) {
@@ -290,20 +319,39 @@ export async function watchTree(
     }
   };
 
-  const renamed = async (file: string) => {
-    const parent = watched.get(path.dirname(file));
-    if (watched.has(file)) {
+  const created = async (file: string): Promise<Folder[]> => {
+    const stats = await fs.promises.lstat(file).catch(() => undefined);
+    const isFolder = stats?.isDirectory() === true;
+    const known = watched.get(file);
+    if (known !== undefined) {
+      if (isFolder && !known.gone) {
+        return [];
+      }
       unwatch(file);
     }
-    const stats = await fs.promises.lstat(file).catch(() => undefined);
-    if (
-      parent !== undefined &&
-      stats?.isDirectory() === true &&
+    const parent = watched.get(path.dirname(file));
+    return parent !== undefined &&
+      isFolder &&
       path.basename(file) !== '.git' &&
       !skip(file)
-    ) {
-      await add([{ path: file, repo: parent.repo }]);
+      ? [{ path: file, repo: parent.repo }]
+      : [];
+  };
+
+  // Folders created together are checked together, as asking git costs a
+  // process
+  let renames = new Set<string>();
+  const renamed = (file: string) => {
+    if (renames.size === 0) {
+      setImmediate(() => {
+        const files = [...renames];
+        renames = new Set();
+        void Promise.all(files.map(created)).then((folders) =>
+          add(folders.flat()),
+        );
+      });
     }
+    renames.add(file);
   };
 
   await add([{ path: root, repo: root }]);
@@ -311,17 +359,12 @@ export async function watchTree(
   return {
     dispose: () => {
       disposed = true;
-      unwatch(root);
+      for (const { watcher } of watched.values()) {
+        watcher.close();
+      }
+      watched.clear();
     },
   };
-}
-
-function isMissing(error: unknown): boolean {
-  return (
-    error instanceof Error &&
-    'code' in error &&
-    (error.code === 'ENOENT' || error.code === 'ENOTDIR')
-  );
 }
 
 function watchOneFolder(
@@ -331,13 +374,13 @@ function watchOneFolder(
   return fs.watch(folder, listener);
 }
 
-export async function ignoredFolders(
+export async function ignoredPaths(
   gitPath: string,
   repo: string,
-  folders: readonly string[],
+  paths: readonly string[],
 ): Promise<string[]> {
-  const relative = folders.map((folder) => {
-    const inRepo = path.relative(repo, folder).split(path.sep).join('/');
+  const relative = paths.map((file) => {
+    const inRepo = path.relative(repo, file).split(path.sep).join('/');
     // check-ignore reads a path starting with ':' as pathspec magic
     return inRepo.startsWith(':') ? `./${inRepo}` : inRepo;
   });
@@ -346,13 +389,13 @@ export async function ignoredFolders(
     repo,
     ['check-ignore', '-z', '--stdin'],
     {
-      input: relative.map((folder) => `${folder}\0`).join(''),
+      input: relative.map((file) => `${file}\0`).join(''),
       okExitCodes: [0, 1],
       pathspecMagic: true,
     },
   );
-  const ignored = new Set(splitNul(output));
-  return folders.filter((_folder, index) => ignored.has(relative[index]));
+  const ignored = new Set(splitNul(output).filter(Boolean));
+  return paths.filter((_file, index) => ignored.has(relative[index]));
 }
 
 interface PendingChanges {
@@ -386,21 +429,48 @@ function isInside(folder: string, file: string): boolean {
   const relative = path.relative(folder, file);
   return (
     relative === '' ||
-    (!relative.startsWith('..') && !path.isAbsolute(relative))
+    (relative.split(path.sep)[0] !== '..' && !path.isAbsolute(relative))
   );
 }
 
 const internalFolders = new Set(['objects', 'logs', 'lfs']);
 
+const gitDirEntries = new Set(['HEAD', 'index', 'config', 'refs', 'modules']);
+
 export function isInternal(inGitDir: string): boolean {
-  const [first, , ...inModule] = inGitDir.split(/[\\/]/);
+  const [first, ...rest] = inGitDir.split(/[\\/]/);
   return (
     internalFolders.has(first) ||
-    (first === 'modules' &&
-      inModule.some((folder) => internalFolders.has(folder))) ||
+    (first === 'modules' && isInternalInModule(rest)) ||
     inGitDir.endsWith('.lock') ||
     inGitDir === ''
   );
+}
+
+// A submodule's git dir is modules/ followed by its name, which can have
+// several segments, so objects, logs or lfs is a folder of the git dir only
+// when what follows can't begin a git dir; logs followed by HEAD or refs could
+// be either, and is taken for a reflog
+function isInternalInModule(segments: readonly string[]): boolean {
+  for (let i = 1; i < segments.length; i++) {
+    const segment = segments[i];
+    const next = segments[i + 1];
+    if (segment === 'modules') {
+      return isInternalInModule(segments.slice(i + 1));
+    }
+    if (gitDirEntries.has(segment)) {
+      return false;
+    }
+    if (
+      internalFolders.has(segment) &&
+      next !== undefined &&
+      (!gitDirEntries.has(next) ||
+        (segment === 'logs' && (next === 'HEAD' || next === 'refs')))
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 const perWorktreeRefs = new Set(['bisect', 'worktree', 'rewritten']);
@@ -423,23 +493,18 @@ export function affectsWorktree(inGitDir: string, shared: boolean): boolean {
 }
 
 async function anyNotIgnored(
-  gitPath: string,
+  ignored: Ignored,
   root: string,
   files: readonly string[],
 ): Promise<boolean> {
   if (files.length === 0) {
     return false;
   }
-  let output: string;
+  let found: ReadonlySet<string>;
   try {
-    output = await runGit(gitPath, root, ['check-ignore', '-z', '--stdin'], {
-      input: files.map((file) => `${file}\0`).join(''),
-      okExitCodes: [0, 1],
-      pathspecMagic: true,
-    });
+    found = new Set(await ignored(root, files));
   } catch {
     return true;
   }
-  const ignored = new Set(splitNul(output).filter(Boolean));
-  return files.some((file) => !ignored.has(file));
+  return files.some((file) => !found.has(file));
 }

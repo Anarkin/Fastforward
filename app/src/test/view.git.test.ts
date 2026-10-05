@@ -23,6 +23,7 @@ import {
   Storage,
   tabsKey,
 } from '../storage';
+import { runGit } from '../git/run';
 import { FastforwardView, tabName, type Connection, type Host } from '../view';
 import { UserSettings } from '../settings';
 import { FakeStore } from './fakeStore';
@@ -1921,11 +1922,7 @@ suite('View', function () {
 
     test('shows what git said when a request fails', async () => {
       stubMethod(fastforward, 'sendTree', () =>
-        Promise.reject(
-          Object.assign(new Error('Failed to execute git'), {
-            stderr: 'fatal: bad tree\n',
-          }),
-        ),
+        runGit(repository.gitPath, repository.root, ['ls-tree', 'no-tree']),
       );
       await connection.receive({
         type: 'selectCommit',
@@ -1937,7 +1934,7 @@ suite('View', function () {
         root: repository.root,
         hash: fixture.merge,
       });
-      assert.strictEqual(page.last('error')?.message, 'fatal: bad tree');
+      assert.match(page.last('error')?.message ?? '', /^fatal: .*no-tree$/);
     });
 
     test('reports what git said when it refuses a checkout', async () => {
@@ -1948,9 +1945,10 @@ suite('View', function () {
           target: { kind: 'branch', name: 'no-such-branch' },
         });
         assert.strictEqual(messages.length, 1);
-        assert.match(messages[0], /^Couldn't check out no-such-branch/);
-        assert.match(messages[0], /invalid reference: no-such-branch/);
-        assert.doesNotMatch(messages[0], /Failed to execute git/);
+        assert.match(
+          messages[0],
+          /^Couldn't check out no-such-branch\. fatal: invalid reference: no-such-branch$/,
+        );
       });
     });
 
@@ -3502,6 +3500,45 @@ suite('View', function () {
       }
     });
 
+    test('keeps a recent repository git refuses to open, and says what git said', async () => {
+      await withView(log, [repository.root], async (view) => {
+        await view.store.update(recentKey, [other]);
+        process.env.GIT_TEST_ASSUME_DIFFERENT_OWNER = '1';
+        try {
+          await view.connection.receive({
+            type: 'openRepository',
+            root: other,
+          });
+        } finally {
+          delete process.env.GIT_TEST_ASSUME_DIFFERENT_OWNER;
+        }
+        assert.match(
+          view.page.last('notice')?.message ?? '',
+          /^Couldn't open .*other\. fatal: detected dubious ownership/,
+        );
+        assert.deepStrictEqual(view.store.get(recentKey), [other]);
+        assert.deepStrictEqual(
+          view.page.last('tabs')?.tabs.map((tab) => tab.name),
+          ['main'],
+        );
+      });
+    });
+
+    test('says what git said of a tab it refuses to open', async () => {
+      await withView(log, [repository.root, other], async (view) => {
+        process.env.GIT_TEST_ASSUME_DIFFERENT_OWNER = '1';
+        try {
+          await view.connection.receive({ type: 'selectTab', root: other });
+        } finally {
+          delete process.env.GIT_TEST_ASSUME_DIFFERENT_OWNER;
+        }
+        assert.match(
+          view.page.last('error')?.message ?? '',
+          /^fatal: detected dubious ownership/,
+        );
+      });
+    });
+
     test('closes the only tab, leaving none shown but offering it again', async () => {
       await withView(log, [repository.root], async (view) => {
         for (const tab of view.page.last('tabs')?.tabs ?? []) {
@@ -4595,6 +4632,56 @@ suite('Fetch', function () {
     } finally {
       opened.connection.dispose();
       await close();
+    }
+  });
+
+  test('lets only a fetch asked for, not one in the background, ask for credentials with a program the user set', async () => {
+    const server = createServer((_request, response) => {
+      response.writeHead(401, { 'WWW-Authenticate': 'Basic realm="locked"' });
+      response.end();
+    });
+    await new Promise<void>((resolve) =>
+      server.listen(0, '127.0.0.1', resolve),
+    );
+    const address = server.address();
+    assert.ok(typeof address === 'object' && address !== null);
+    const { port } = address;
+    const locked = await tempRepository(path.join(folder, 'prompted'));
+    await locked.commit('a');
+    await locked.git('remote', 'add', 'origin', `http://127.0.0.1:${port}/x`);
+    await locked.git('config', 'credential.helper', '');
+    const asked = path.join(folder, 'prompted.txt').replaceAll('\\', '/');
+    const askpass = path.join(folder, 'askpass.sh').replaceAll('\\', '/');
+    fs.writeFileSync(askpass, `#!/bin/sh\necho "$1" >> '${asked}'\necho x\n`, {
+      mode: 0o755,
+    });
+    const rounds: (() => void)[] = [];
+    const opened = await openView(
+      log,
+      [locked.root],
+      true,
+      undefined,
+      (run) => {
+        rounds.push(run);
+        return () => undefined;
+      },
+    );
+    const previous = process.env.GIT_ASKPASS;
+    process.env.GIT_ASKPASS = askpass;
+    try {
+      await opened.connection.receive({ type: 'setAutoFetch', on: true });
+      await waitFor(() => rounds.length === 1, 'the round to end');
+      assert.strictEqual(fs.existsSync(asked), false);
+      await opened.connection.receive({ type: 'fetch', root: locked.root });
+      assert.match(fs.readFileSync(asked, 'utf8'), /^Username/);
+    } finally {
+      if (previous === undefined) {
+        delete process.env.GIT_ASKPASS;
+      } else {
+        process.env.GIT_ASKPASS = previous;
+      }
+      opened.connection.dispose();
+      await new Promise((resolve) => server.close(resolve));
     }
   });
 

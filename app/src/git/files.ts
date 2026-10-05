@@ -53,22 +53,36 @@ function submoduleContent(hash: string | undefined): FileContent {
 const batchInput = (list: readonly string[]) =>
   list.map((id) => `${id}\n`).join('');
 
+export async function blobSizes(
+  gitPath: string,
+  cwd: string,
+  ids: readonly string[],
+): Promise<Map<string, number>> {
+  const sizes = new Map<string, number>();
+  if (ids.length === 0) {
+    return sizes;
+  }
+  const checked = await runGit(gitPath, cwd, ['cat-file', '--batch-check'], {
+    input: batchInput(ids),
+  });
+  for (const line of checked.split('\n')) {
+    const [id, type, size] = line.split(' ');
+    if (type === 'blob') {
+      sizes.set(id, Number(size));
+    }
+  }
+  return sizes;
+}
+
 export async function readBlobs(
   gitPath: string,
   cwd: string,
   ids: readonly string[],
 ): Promise<Map<string, string>> {
   const texts = new Map<string, string>();
-  const checked =
-    ids.length === 0
-      ? ''
-      : await runGit(gitPath, cwd, ['cat-file', '--batch-check'], {
-          input: batchInput(ids),
-        });
-  const small = checked.split('\n').flatMap((line) => {
-    const [id, type, size] = line.split(' ');
-    return type === 'blob' && Number(size) <= maxFileSize ? [id] : [];
-  });
+  const small = [...(await blobSizes(gitPath, cwd, ids))].flatMap(
+    ([id, size]) => (size <= maxFileSize ? [id] : []),
+  );
   if (small.length === 0) {
     return texts;
   }
@@ -88,6 +102,14 @@ export async function readBlobs(
   return texts;
 }
 
+export function isMissing(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    'code' in error &&
+    (error.code === 'ENOENT' || error.code === 'ENOTDIR')
+  );
+}
+
 export async function readFile(
   gitPath: string,
   cwd: string,
@@ -101,11 +123,7 @@ export async function readFile(
       throw new Error(`${path} is outside the repository`);
     }
     const stats = await fs.lstat(file).catch((error: unknown) => {
-      if (
-        error instanceof Error &&
-        'code' in error &&
-        (error.code === 'ENOENT' || error.code === 'ENOTDIR')
-      ) {
+      if (isMissing(error)) {
         return undefined;
       }
       throw error;

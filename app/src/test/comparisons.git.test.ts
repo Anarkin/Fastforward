@@ -2,7 +2,11 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { compareFiles, comparePatch } from '../git/diff';
-import { workingTreeFiles, workingTreePatch } from '../git/workingTree';
+import {
+  workingTreeFiles,
+  workingTreePatch,
+  type UntrackedPatches,
+} from '../git/workingTree';
 import { parsePatch } from '../webview/diff';
 import {
   removeFolder,
@@ -172,6 +176,24 @@ suite('Comparing a commit with the working tree', function () {
       { path: 'new.txt' },
     );
     assert.match(alone, /^-new$/m);
+  });
+
+  test('diffs an untracked file again when the direction changes, not reusing the patch kept', async () => {
+    const patches: UntrackedPatches = new Map();
+    const patchOf = async (reverse: boolean) =>
+      workingTreePatch(
+        repository.gitPath,
+        repository.root,
+        await workingTreeFiles(repository.gitPath, repository.root, {
+          base: first,
+          reverse,
+        }),
+        { path: 'new.txt' },
+        patches,
+      );
+    assert.match(await patchOf(false), /^\+new$/m);
+    assert.match(await patchOf(true), /^-new$/m);
+    assert.match(await patchOf(false), /^\+new$/m);
   });
 
   test('leaves out a file only touched on disk, in either direction', async () => {

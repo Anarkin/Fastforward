@@ -5,7 +5,6 @@ import type {
   CommitInfo,
   CommitResults,
   CommitSearch,
-  HashLookup,
 } from '../shared/protocol';
 import { gitConfigArgs, gitEnv, runGit, splitNul, stopGit } from './run';
 
@@ -91,6 +90,11 @@ export async function findCommits(
   };
 }
 
+type HashLookup =
+  | { readonly kind: 'found'; readonly hash: string }
+  | { readonly kind: 'none' }
+  | { readonly kind: 'ambiguous'; readonly count: number };
+
 export async function findCommit(
   gitPath: string,
   cwd: string,
@@ -98,8 +102,7 @@ export async function findCommit(
 ): Promise<HashLookup> {
   const hashes = await commitsWithPrefix(gitPath, cwd, prefix);
   if (hashes.length === 1) {
-    const [commit] = await logCommits(gitPath, cwd, hashes);
-    return { kind: 'found', hash: hashes[0], subject: commit?.subject ?? '' };
+    return { kind: 'found', hash: hashes[0] };
   }
   return hashes.length === 0
     ? { kind: 'none' }
@@ -281,7 +284,13 @@ function streamMatches(
     child.on('error', (error) => finish(() => reject(error)));
     child.on('close', (code) => {
       if (code !== 0) {
-        finish(() => reject(new Error(`git log failed: ${stderr}`)));
+        finish(() =>
+          reject(
+            Object.assign(new Error(`git log failed: ${stderr}`), {
+              stderr: stderr.trim(),
+            }),
+          ),
+        );
         return;
       }
       pending += decoder.end();

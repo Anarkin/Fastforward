@@ -1,4 +1,5 @@
 import type { HistoryEntry } from './git/history';
+import type { Head } from './git/repository';
 import type { WorkingTree } from './git/workingTree';
 import { Graph } from './history/graph';
 import {
@@ -11,7 +12,7 @@ import {
   type ShownEntry,
 } from './history/merges';
 import { noNavigation, reachable, type Navigation } from './history/navigation';
-import { decoratedCommits, decorations, fingerprint, type Head } from './refs';
+import { decoratedCommits, decorations, fingerprint } from './refs';
 import { shownSide, sidesOf } from './shared/comparisons';
 import {
   pageStart,

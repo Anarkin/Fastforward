@@ -24,9 +24,24 @@ suite('Watching the git folder', () => {
       'refs\\remotes\\origin\\main',
       'modules/sub/HEAD',
       'modules/nested/sub/refs/heads/main',
+      'modules/sub/refs/heads/logs',
     ]) {
       assert.strictEqual(isInternal(file), false, file);
     }
+  });
+
+  test('refreshes for submodules named like the folders it leaves alone', () => {
+    for (const file of [
+      'modules/vendor/lfs',
+      'modules/vendor/lfs/HEAD',
+      'modules/vendor/lfs/refs/heads/main',
+      'modules/vendor/objects/index',
+      'modules/vendor/logs/config',
+      'modules/sub/modules/vendor/lfs/index',
+    ]) {
+      assert.strictEqual(isInternal(file), false, file);
+    }
+    assert.strictEqual(isInternal('modules/vendor/lfs/objects/ab/cd'), true);
   });
 
   test('leaves objects, logs and locks alone', () => {
@@ -221,6 +236,14 @@ suite('Watching folders one by one', () => {
     assert.deepStrictEqual(watched(), []);
   });
 
+  test('stops watching a folder named like a parent folder when disposed', async () => {
+    mkdir('..cache/deep');
+    const tree = await start();
+    assert.deepStrictEqual(watched(), ['', '..cache', '..cache/deep']);
+    tree.dispose();
+    assert.deepStrictEqual(watched(), []);
+  });
+
   test('leaves git folders alone and asks a nested repository whether its folders are ignored', async () => {
     mkdir('.git/refs', 'sub/.git', 'sub/inner', 'sub/ignored');
     await start();
@@ -249,6 +272,49 @@ suite('Watching folders one by one', () => {
     watchers.get(path.join(root, 'a'))?.listener('rename', 'new');
     await waitFor(() => watched().includes('a/new/deep'), 'the new folder');
     assert.deepStrictEqual(watched(), ['', 'a', 'a/new', 'a/new/deep']);
+  });
+
+  test('asks once whether the folders created at once are ignored', async () => {
+    mkdir('a');
+    await start();
+    ignoredCalls = [];
+    mkdir('a/x', 'a/y', 'a/z');
+    for (const name of ['x', 'y', 'z']) {
+      watchers.get(path.join(root, 'a'))?.listener('rename', name);
+    }
+    await waitFor(() => watched().length === 5, 'the new folders');
+    assert.deepStrictEqual(ignoredCalls, [['', ['a/x', 'a/y', 'a/z']]]);
+  });
+
+  test('keeps watching a folder it already watches when told of it again', async () => {
+    mkdir('a/b');
+    await start();
+    ignoredCalls = [];
+    const watcher = watchers.get(path.join(root, 'a', 'b'));
+    mkdir('a/c');
+    watchers.get(path.join(root, 'a'))?.listener('rename', 'b');
+    watchers.get(path.join(root, 'a'))?.listener('rename', 'c');
+    await waitFor(() => watched().includes('a/c'), 'the new folder');
+    assert.strictEqual(watchers.get(path.join(root, 'a', 'b')), watcher);
+    assert.strictEqual(watcher?.closed, false);
+    assert.deepStrictEqual(ignoredCalls, [['', ['a/c']]]);
+  });
+
+  test('watches a folder removed and created again anew, even when told of its removal last', async () => {
+    mkdir('a/b');
+    await start();
+    const watcher = watchers.get(path.join(root, 'a', 'b'));
+    fs.rmSync(path.join(root, 'a', 'b'), { recursive: true });
+    mkdir('a/b');
+    watchers.get(path.join(root, 'a'))?.listener('rename', 'b');
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    watcher?.listener('rename', 'b');
+    await waitFor(
+      () => watchers.get(path.join(root, 'a', 'b')) !== watcher,
+      'the folder created anew',
+    );
+    assert.strictEqual(watcher?.closed, true);
+    assert.deepStrictEqual(watched(), ['', 'a', 'a/b']);
   });
 
   test('stops watching removed folders', async () => {

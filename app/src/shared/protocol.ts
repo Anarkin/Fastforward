@@ -4,11 +4,6 @@ export const workingTreeSubject = 'Uncommitted changes';
 
 export type RefKind = 'branch' | 'remote' | 'tag';
 
-export type HashLookup =
-  | { readonly kind: 'found'; readonly hash: string; readonly subject: string }
-  | { readonly kind: 'none' }
-  | { readonly kind: 'ambiguous'; readonly count: number };
-
 export interface CommitResults {
   readonly commits: readonly CommitInfo[];
   readonly more: number;

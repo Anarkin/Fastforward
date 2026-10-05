@@ -1,35 +1,54 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { RefInfo } from '../shared/protocol';
-import type { Head } from '../refs';
+import { gitErrorText } from './errorText';
+import { headCommit } from './history';
 import { runGit, splitNul } from './run';
+
+export interface Head {
+  readonly name?: string;
+  readonly commit?: string;
+}
 
 export interface Refs {
   readonly head: Head | undefined;
   readonly refs: readonly RefInfo[];
 }
 
+// What git says in English, which LC_ALL=C has it say in whatever the locale
+const noRepository = /not a git repository|must be run in a work tree/;
+
 export async function repositoryRoot(
   gitPath: string,
   folder: string,
 ): Promise<string | undefined> {
+  let output: string;
   try {
-    const [inside, up = '', top = ''] = (
-      await runGit(gitPath, folder, [
-        'rev-parse',
-        '--is-inside-work-tree',
-        '--show-cdup',
-        '--show-toplevel',
-      ])
-    ).split('\n');
-    if (inside !== 'true') {
+    output = await runGit(
+      gitPath,
+      folder,
+      ['rev-parse', '--is-inside-work-tree', '--show-cdup', '--show-toplevel'],
+      { env: { LC_ALL: 'C' } },
+    );
+  } catch (error) {
+    if (noRepository.test(gitErrorText(error)) || !(await isFolder(folder))) {
       return undefined;
     }
-    const root = path.resolve(folder, up);
-    return (await sameFolder(root, top)) ? root : path.resolve(top);
-  } catch {
+    throw error;
+  }
+  const [inside, up = '', top = ''] = output.split('\n');
+  if (inside !== 'true') {
     return undefined;
   }
+  const root = path.resolve(folder, up);
+  return (await sameFolder(root, top)) ? root : path.resolve(top);
+}
+
+function isFolder(folder: string): Promise<boolean> {
+  return fs.stat(folder).then(
+    (stats) => stats.isDirectory(),
+    () => false,
+  );
 }
 
 // Git walks up from the folder after following links, so going up from the
@@ -58,19 +77,16 @@ export async function readHead(
   gitPath: string,
   root: string,
 ): Promise<Head | undefined> {
-  const [branch, commit] = await Promise.all([
+  const [branch, hash] = await Promise.all([
     runGit(gitPath, root, ['symbolic-ref', '-q', 'HEAD'], {
       okExitCodes: [0, 1],
     }),
-    runGit(gitPath, root, ['rev-parse', '-q', '--verify', 'HEAD^{commit}'], {
-      okExitCodes: [0, 1],
-    }),
+    headCommit(gitPath, root),
   ]);
   const ref = branch.trim();
   const name = ref.startsWith('refs/heads/')
     ? ref.slice('refs/heads/'.length)
     : undefined;
-  const hash = commit.trim() || undefined;
   return name || hash ? { name, commit: hash } : undefined;
 }
 
@@ -120,7 +136,9 @@ export async function switchToBranch(
   root: string,
   branch: string,
 ): Promise<void> {
-  await runGit(gitPath, root, ['switch', '-q', '--end-of-options', branch]);
+  await runGit(gitPath, root, ['switch', '-q', '--end-of-options', branch], {
+    runsHooks: true,
+  });
 }
 
 export async function switchToCommit(
@@ -128,13 +146,12 @@ export async function switchToCommit(
   root: string,
   commit: string,
 ): Promise<void> {
-  await runGit(gitPath, root, [
-    'switch',
-    '-q',
-    '--detach',
-    '--end-of-options',
-    commit,
-  ]);
+  await runGit(
+    gitPath,
+    root,
+    ['switch', '-q', '--detach', '--end-of-options', commit],
+    { runsHooks: true },
+  );
 }
 
 export async function checkoutNewBranch(
@@ -143,18 +160,22 @@ export async function checkoutNewBranch(
   branch: string,
   upstream: string,
 ): Promise<void> {
-  await runGit(gitPath, root, [
-    'switch',
-    '-q',
-    '--track',
-    '-c',
-    branch,
-    '--end-of-options',
-    upstream,
-  ]);
+  await runGit(
+    gitPath,
+    root,
+    ['switch', '-q', '--track', '-c', branch, '--end-of-options', upstream],
+    { runsHooks: true },
+  );
 }
 
 const fetchTimeout = 5 * 60_000;
+
+// An empty GIT_ASKPASS keeps git from core.askPass and SSH_ASKPASS too
+const neverAsk = {
+  GCM_INTERACTIVE: 'never',
+  GIT_ASKPASS: '',
+  SSH_ASKPASS_REQUIRE: 'never',
+};
 
 export async function fetchAllRemotes(
   gitPath: string,
@@ -165,7 +186,8 @@ export async function fetchAllRemotes(
   try {
     await runGit(gitPath, root, ['fetch', '--all', '--prune'], {
       signal,
-      env: interactive ? {} : { GCM_INTERACTIVE: 'never' },
+      env: interactive ? {} : neverAsk,
+      runsHooks: true,
     });
   } catch (error) {
     if (signal.aborted) {

@@ -540,7 +540,19 @@ export class FastforwardView {
     const { storage } = this;
     const roots: string[] = [];
     for (const folder of folders) {
-      const root = await repositoryRoot(this.gitPath, folder);
+      let root: string | undefined;
+      try {
+        root = await repositoryRoot(this.gitPath, folder);
+      } catch (error) {
+        this.log.error(`Opening ${folder} failed`);
+        this.log.error(error instanceof Error ? error : String(error));
+        session.post({
+          type: 'notice',
+          level: 'error',
+          message: `Couldn't open ${folder}. ${gitErrorText(error)}`,
+        });
+        continue;
+      }
       if (root) {
         roots.push(root);
         this.save(storage.addRecent(root));
@@ -1377,6 +1389,7 @@ export class FastforwardView {
             context.gitPath,
             context.root,
             workingTreeDiffOf(hash),
+            signal,
           ));
         files = workingTree.files;
       } else {
@@ -1481,13 +1494,14 @@ export class FastforwardView {
     }
     const workingTree =
       context.tab.workingTree ??
-      (await workingTreeFiles(gitPath, root, workingTreeDiffOf(hash)));
+      (await workingTreeFiles(gitPath, root, workingTreeDiffOf(hash), signal));
     return workingTreePatch(
       gitPath,
       root,
       workingTree,
       scope,
       context.tab.untrackedPatches,
+      signal,
     );
   }
 

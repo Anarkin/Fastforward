@@ -6,8 +6,10 @@ import {
   readHead,
   readRefs,
   repositoryRoot,
+  switchToBranch,
 } from '../git/repository';
 import { showFiles, showPatch } from '../git/diff';
+import { gitErrorText } from '../git/errorText';
 import {
   commitsStartingWith,
   findCommit,
@@ -163,6 +165,24 @@ suite('Git repository', function () {
     }
   });
 
+  test('finds no root in a folder that is gone', async () => {
+    const gone = tempFolder('gone');
+    removeFolder(gone);
+    assert.strictEqual(await repositoryRoot(gitPath, gone), undefined);
+  });
+
+  test('says what git said when it refuses a repository, not that there is none', async () => {
+    process.env.GIT_TEST_ASSUME_DIFFERENT_OWNER = '1';
+    try {
+      await assert.rejects(repositoryRoot(gitPath, cwd), (error) => {
+        assert.match(gitErrorText(error), /^fatal: detected dubious ownership/);
+        return true;
+      });
+    } finally {
+      delete process.env.GIT_TEST_ASSUME_DIFFERENT_OWNER;
+    }
+  });
+
   test('finds no root in a bare repository or a git folder, which have no working tree', async () => {
     const bare = await tempRepository(tempFolder('bare'), { bare: true });
     try {
@@ -239,11 +259,10 @@ suite('Git repository', function () {
     assert.deepStrictEqual(await findCommit(gitPath, cwd, rename.slice(0, 7)), {
       kind: 'found',
       hash: rename,
-      subject: 'rename',
     });
     assert.deepStrictEqual(
       await findCommit(gitPath, cwd, rename.slice(0, 7).toUpperCase()),
-      { kind: 'found', hash: rename, subject: 'rename' },
+      { kind: 'found', hash: rename },
     );
     assert.deepStrictEqual(await findCommit(gitPath, cwd, 'ffffff0'), {
       kind: 'none',
@@ -261,7 +280,7 @@ suite('Git repository', function () {
     }
   });
 
-  test('reads the subject of a typed commit in its own encoding', async () => {
+  test('reads the subject of a commit found by its hash in its own encoding', async () => {
     const folder = tempFolder('message');
     try {
       const message = path.join(folder, 'message.txt');
@@ -276,9 +295,10 @@ suite('Git repository', function () {
           message,
         )
       ).trim();
+      const { commits } = await findCommits(gitPath, cwd, hash.slice(0, 12));
       assert.deepStrictEqual(
-        await findCommit(gitPath, cwd, hash.slice(0, 12)),
-        { kind: 'found', hash, subject: 'café' },
+        commits.map((commit) => [commit.hash, commit.subject]),
+        [[hash, 'café']],
       );
     } finally {
       removeFolder(folder);
@@ -309,7 +329,6 @@ suite('Git repository', function () {
       assert.deepStrictEqual(await findCommit(gitPath, cwd, prefix), {
         kind: 'found',
         hash: rename,
-        subject: 'rename',
       });
       const [tree] = await temp.resolve('HEAD^{tree}');
       await write(
@@ -420,6 +439,48 @@ suite('Git repository', function () {
     } finally {
       await temp.git('reset', '--hard', rename);
     }
+  });
+
+  test("runs hooks without the settings it reads git's output with", async () => {
+    const folder = tempFolder('hooked');
+    const seen = path.join(folder, 'seen.txt').replaceAll('\\', '/');
+    const hooks = path.join(cwd, '.git', 'hooks');
+    fs.mkdirSync(hooks, { recursive: true });
+    fs.writeFileSync(
+      path.join(hooks, 'post-checkout'),
+      `#!/bin/sh\necho "[$GIT_LITERAL_PATHSPECS][$GIT_OPTIONAL_LOCKS][$GIT_CONFIG_PARAMETERS]" > '${seen}'\n`,
+      { mode: 0o755 },
+    );
+    await temp.git('branch', 'hooked');
+    try {
+      await switchToBranch(gitPath, cwd, 'hooked');
+      const [, literal, locks, config = ''] =
+        /^\[(.*)\]\[(.*)\]\[(.*)\]$/.exec(
+          fs.readFileSync(seen, 'utf8').trim(),
+        ) ?? [];
+      assert.strictEqual(literal, '');
+      assert.strictEqual(locks, '');
+      assert.doesNotMatch(config, /autoRefreshIndex|quotePath/);
+    } finally {
+      fs.rmSync(path.join(hooks, 'post-checkout'));
+      await temp.git('checkout', '-q', 'main');
+      await temp.git('branch', '-D', 'hooked');
+      removeFolder(folder);
+    }
+  });
+
+  test('says only what git said when it fails, keeping the command for the log', async () => {
+    await assert.rejects(
+      switchToBranch(gitPath, cwd, 'no-such-branch'),
+      (error) => {
+        assert.strictEqual(
+          gitErrorText(error),
+          'fatal: invalid reference: no-such-branch',
+        );
+        assert.match(String(error), /git switch .*no-such-branch failed/);
+        return true;
+      },
+    );
   });
 
   test('gives up on a fetch that stalls', async () => {
@@ -661,6 +722,22 @@ suite('Commit search', function () {
     await assert.rejects(
       searchCommits(gitPath, search.root, 'ada', false, controller.signal),
     );
+  });
+
+  test('says only what git said when it fails', async () => {
+    const outside = tempFolder('unsearched');
+    try {
+      await assert.rejects(
+        searchCommits(gitPath, outside, 'ada', false),
+        (error) => {
+          assert.match(gitErrorText(error), /^fatal: not a git repository/);
+          assert.match(String(error), /git log failed/);
+          return true;
+        },
+      );
+    } finally {
+      removeFolder(outside);
+    }
   });
 });
 

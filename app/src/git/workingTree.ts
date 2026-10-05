@@ -6,9 +6,11 @@ import {
   changesArgs,
   diffOptionArgs,
   diffArgs,
+  isNullId,
   parseRawChanges,
   pathspecs,
   type PatchScope,
+  type RawChange,
   withBytes,
 } from './diff';
 import { isBinary, maxFileSize } from './files';
@@ -74,6 +76,7 @@ export async function workingTreeFiles(
   gitPath: string,
   cwd: string,
   against?: WorkingTreeDiff,
+  signal?: AbortSignal,
 ): Promise<WorkingTree> {
   const diff = against ?? {
     base:
@@ -81,19 +84,27 @@ export async function workingTreeFiles(
       (
         await runGit(gitPath, cwd, ['hash-object', '-t', 'tree', '--stdin'], {
           input: '',
+          signal,
         })
       ).trim(),
     reverse: false,
   };
   const { reverse } = diff;
   const [changes, listed] = await Promise.all([
-    runGit(gitPath, cwd, [...workingTreeDiff(diff), ...changesArgs]),
-    runGit(gitPath, cwd, ['ls-files', '--others', '--exclude-standard', '-z']),
+    runGit(gitPath, cwd, [...workingTreeDiff(diff), ...changesArgs], {
+      signal,
+    }),
+    runGit(gitPath, cwd, ['ls-files', '--others', '--exclude-standard', '-z'], {
+      signal,
+    }),
   ]);
   const trackedChanges = await withoutTouched(
     gitPath,
     cwd,
-    await withBytes(gitPath, cwd, parseRawChanges(changes), cwd, reverse),
+    await withBytes(gitPath, cwd, parseRawChanges(changes), {
+      fromDisk: true,
+      reverse,
+    }),
     reverse,
   );
   const tracked = new Set(trackedChanges.map((file) => file.path));
@@ -129,29 +140,28 @@ export async function workingTreeFiles(
 }
 
 // git runs with diff.autoRefreshIndex=false (see gitConfigArgs), so git diff
-// lists a file whose stat changed but whose content didn't as modified
+// lists a file whose stat changed but whose content didn't as modified, with
+// no id for its content
 export async function withoutTouched(
   gitPath: string,
   cwd: string,
-  changes: readonly { readonly raw: string; readonly file: FileChange }[],
+  changes: readonly RawChange[],
   reverse = false,
 ): Promise<FileChange[]> {
-  const suspects = changes.flatMap(({ raw, file }) => {
-    const [oldMode, mode, oldId, newId, status] = raw.slice(1).split(' ');
-    const object = reverse ? newId : oldId;
-    return status === 'M' &&
-      mode === oldMode &&
-      mode.startsWith('100') &&
-      !file.path.includes('\n') &&
-      !file.path.startsWith('"')
-      ? [{ path: file.path, object }]
-      : [];
-  });
+  const suspects = changes.flatMap(
+    ({ oldMode, newMode, oldId, newId, file }) =>
+      file.status === 'M' &&
+      newMode === oldMode &&
+      newMode.startsWith('100') &&
+      isNullId(reverse ? oldId : newId)
+        ? [{ path: file.path, object: reverse ? newId : oldId }]
+        : [],
+  );
   const hashes =
     suspects.length === 0
       ? []
       : await runGit(gitPath, cwd, ['hash-object', '--stdin-paths'], {
-          input: suspects.map(({ path }) => `${path}\n`).join(''),
+          input: suspects.map(({ path }) => `${quoted(path)}\n`).join(''),
         }).then(
           (output) => output.split('\n'),
           () => [],
@@ -164,6 +174,18 @@ export async function withoutTouched(
   return changes
     .map(({ file }) => file)
     .filter((file) => !touched.has(file.path));
+}
+
+// hash-object reads a path a line, dropping a trailing CR, and unquotes one
+// in quotes
+function quoted(path: string): string {
+  // oxlint-disable-next-line no-control-regex
+  const escaped = path.replace(/[\\"\x00-\x1f]/g, (char) =>
+    char === '\\' || char === '"'
+      ? `\\${char}`
+      : `\\${char.charCodeAt(0).toString(8).padStart(3, '0')}`,
+  );
+  return `"${escaped}"`;
 }
 
 // -R swaps the prefixes too, which the patch is parsed by
@@ -187,6 +209,7 @@ export async function workingTreePatch(
   workingTree: WorkingTree,
   scope: PatchScope = {},
   kept: UntrackedPatches = new Map(),
+  signal?: AbortSignal,
 ): Promise<string> {
   const untrackedPatch = async (file: string) => {
     if (file.endsWith('/')) {
@@ -198,15 +221,18 @@ export async function workingTreePatch(
     if (stamp !== undefined && known?.stamp === stamp) {
       return known.patch;
     }
+    // git diff --no-index reads '-' as its standard input
+    const asked = file === '-' ? './-' : file;
     const sides = workingTree.reverse
-      ? [file, '/dev/null']
-      : ['/dev/null', file];
-    const patch = await runGit(
+      ? [asked, '/dev/null']
+      : ['/dev/null', asked];
+    const diffed = await runGit(
       gitPath,
       cwd,
       ['diff', '--no-index', ...diffArgs, '--', ...sides],
-      { okExitCodes: [0, 1] },
+      { okExitCodes: [0, 1], signal },
     );
+    const patch = asked === file ? diffed : named(diffed, asked, file);
     if (stats && stats.size <= maxFileSize) {
       kept.set(file, { stamp: stampOf(stats, workingTree.reverse), patch });
     }
@@ -220,11 +246,16 @@ export async function workingTreePatch(
   if (scope.include?.length === 0) {
     return '';
   }
-  const tracked = runGit(gitPath, cwd, [
-    ...workingTreeDiff(workingTree),
-    ...diffOptionArgs(scope),
-    ...pathspecs(scope),
-  ]);
+  const tracked = runGit(
+    gitPath,
+    cwd,
+    [
+      ...workingTreeDiff(workingTree),
+      ...diffOptionArgs(scope),
+      ...pathspecs(scope),
+    ],
+    { signal },
+  );
   if (path !== undefined) {
     return tracked;
   }
@@ -250,6 +281,14 @@ export async function workingTreePatch(
       patch.status === 'fulfilled' ? patch.value : '',
     ),
   ].join('');
+}
+
+function named(patch: string, asked: string, file: string): string {
+  const hunks = patch.indexOf('\n@@');
+  const header = hunks === -1 ? patch : patch.slice(0, hunks);
+  return (
+    header.replaceAll(`/${asked}`, `/${file}`) + patch.slice(header.length)
+  );
 }
 
 function stampOf(
