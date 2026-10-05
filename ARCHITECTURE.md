@@ -5,6 +5,7 @@
 ### Tooling
 
 - Use Oxlint instead of ESLint, because typescript-eslint does not support TypeScript 7 yet
+- Release builds are not minified, so the stack traces in `Fastforward.log` keep their names and lines; minifying saved less than 1 MB
 
 ### Git
 

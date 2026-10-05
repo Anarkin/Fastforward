@@ -225,6 +225,11 @@ async function start(): Promise<void> {
   );
 
   if (development && process.env.FASTFORWARD_DEV) {
+    if (process.connected) {
+      process.on('disconnect', () => app.quit());
+    } else {
+      app.quit();
+    }
     tryWatching(log, 'the build', () =>
       reloadOnRebuild(window, () => {
         try {

@@ -8,20 +8,24 @@ const dev = process.argv.includes('--dev');
 
 const shared = {
   bundle: true,
-  minify: production,
   sourcemap: !production,
   sourcesContent: false,
   logLevel: 'info',
 };
 
-const copyStatic = {
-  name: 'copy-static',
+let webviewBuild = Promise.withResolvers();
+const trackWebview = {
+  name: 'track-webview',
   setup(build) {
+    let built = false;
+    build.onStart(() => {
+      if (built) {
+        webviewBuild = Promise.withResolvers();
+      }
+    });
     build.onEnd(() => {
-      fs.mkdirSync('dist', { recursive: true });
-      fs.copyFileSync('src/webview/index.html', 'dist/index.html');
-      fs.copyFileSync('build/window-icon.png', 'dist/icon.png');
-      fs.copyFileSync('src/settings.json', 'dist/settings.json');
+      built = true;
+      webviewBuild.resolve();
     });
   },
 };
@@ -39,12 +43,19 @@ const restartApp = {
         old.removeAllListeners('exit');
         if (old.exitCode === null && old.signalCode === null) {
           const exited = new Promise((resolve) => old.once('exit', resolve));
-          old.kill();
+          // Killing skips the app's close and will-quit handlers on Windows,
+          // so it is asked to quit first
+          if (old.connected) {
+            old.disconnect();
+          }
+          const killing = setTimeout(() => old.kill(), 5000);
           await exited;
+          clearTimeout(killing);
         }
       }
+      await webviewBuild.promise;
       app = spawn(electron, ['.'], {
-        stdio: 'inherit',
+        stdio: ['inherit', 'inherit', 'inherit', 'ipc'],
         env: { ...process.env, FASTFORWARD_DEV: '1' },
       });
       app.on('exit', (code) => process.exit(code ?? 0));
@@ -52,7 +63,13 @@ const restartApp = {
   },
 };
 
-fs.rmSync('dist', { recursive: true, force: true });
+fs.mkdirSync('dist', { recursive: true });
+for (const entry of fs.readdirSync('dist')) {
+  fs.rmSync(`dist/${entry}`, { recursive: true, force: true });
+}
+fs.copyFileSync('src/webview/index.html', 'dist/index.html');
+fs.copyFileSync('build/window-icon.png', 'dist/icon.png');
+fs.copyFileSync('src/settings.json', 'dist/settings.json');
 
 const contexts = await Promise.all([
   esbuild.context({
@@ -65,7 +82,7 @@ const contexts = await Promise.all([
     platform: 'node',
     outdir: 'dist',
     external: ['electron', 'electron-updater'],
-    plugins: [copyStatic, restartApp],
+    plugins: [restartApp],
   }),
   esbuild.context({
     ...shared,
@@ -79,6 +96,7 @@ const contexts = await Promise.all([
     define: {
       'process.env.NODE_ENV': production ? '"production"' : '"development"',
     },
+    plugins: [trackWebview],
   }),
 ]);
 
