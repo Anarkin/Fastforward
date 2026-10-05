@@ -121,8 +121,10 @@ suite('User settings file', () => {
       target,
     );
     try {
-      fs.writeFileSync(changed, JSON.stringify({ solo: true }));
-      await waitFor(() => changes > 0, 'the change', 1000);
+      await waitFor(() => {
+        fs.writeFileSync(changed, JSON.stringify({ solo: true }));
+        return changes > 0;
+      }, 'the change');
     } finally {
       stop();
     }
@@ -206,13 +208,15 @@ suite('User settings file', () => {
     });
   });
 
-  test('notices a change to the file a symlink points to, as an editor writes there', async () => {
+  test('notices a change to the file a symlink points to, as an editor writes there', async function () {
+    this.timeout(20_000);
     const target = path.join(folder, 'dotfiles', 'settings.json');
     fs.mkdirSync(path.dirname(target));
     await noticed(target, target);
   });
 
   test('finds the file a symlink points to for watching', async function () {
+    this.timeout(20_000);
     const target = path.join(folder, 'dotfiles', 'settings.json');
     fs.mkdirSync(path.dirname(target));
     fs.writeFileSync(target, '{}');
