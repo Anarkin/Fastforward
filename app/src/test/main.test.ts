@@ -6,6 +6,7 @@ import { PassThrough } from 'node:stream';
 import {
   appFile,
   isAppUrl,
+  keptBounds,
   minimumHeight,
   minimumWindowSize,
   opensExternally,
@@ -161,6 +162,16 @@ suite('Window bounds', () => {
     assert.strictEqual(restores(), false);
     minimized = true;
     assert.strictEqual(restoresMaximized(window, true)(), true);
+  });
+
+  test('keeps the bounds a window was made with until it is moved or resized, as a window with a hidden title bar says it is larger than made on a scaled screen', () => {
+    const made = { x: 100, y: 80, width: 1400, height: 900 };
+    let normal = { x: 100, y: 80, width: 1406, height: 905 };
+    const kept = keptBounds({ getNormalBounds: () => normal }, made);
+    assert.deepStrictEqual(kept.bounds(), made);
+    normal = { x: 300, y: 80, width: 1200, height: 800 };
+    kept.changed();
+    assert.deepStrictEqual(kept.bounds(), normal);
   });
 });
 

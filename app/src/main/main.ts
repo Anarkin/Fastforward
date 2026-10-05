@@ -34,6 +34,7 @@ import {
   appOrigin,
   appScheme,
   isAppUrl,
+  keptBounds,
   minimumHeight,
   minimumWindowSize,
   opensExternally,
@@ -283,9 +284,10 @@ function createWindow(
   shown: Promise<boolean>,
 ): BrowserWindow {
   const workAreas = screen.getAllDisplays().map((display) => display.workArea);
+  const size = { width: 1400, height: 900 };
   const bounds = visibleBounds(store.get(boundsKey), workAreas);
   const window = new BrowserWindow({
-    ...(bounds ?? { width: 1400, height: 900 }),
+    ...(bounds ?? size),
     minWidth: minimumWindowSize.width,
     minHeight: minimumHeight(workAreas),
     title: 'Fastforward',
@@ -330,8 +332,18 @@ function createWindow(
   window.on('maximize', restores);
   window.on('unmaximize', restores);
   window.on('resize', restores);
+  const kept = keptBounds(
+    window,
+    bounds ?? { ...window.getNormalBounds(), ...size },
+  );
+  window.on('resized', kept.changed);
+  window.on('moved', kept.changed);
+  const reportsUserMoves = process.platform !== 'linux';
   window.on('close', () => {
-    void store.update(boundsKey, window.getNormalBounds());
+    void store.update(
+      boundsKey,
+      reportsUserMoves ? kept.bounds() : window.getNormalBounds(),
+    );
     void store.update(maximizedKey, restores());
   });
   window.webContents.setWindowOpenHandler(({ url }) => {

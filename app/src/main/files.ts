@@ -95,6 +95,23 @@ export function restoresMaximized(
   };
 }
 
+interface NormalBounds {
+  getNormalBounds(): Bounds;
+}
+
+export function keptBounds(
+  window: NormalBounds,
+  made: Bounds,
+): { readonly changed: () => void; readonly bounds: () => Bounds } {
+  let bounds = made;
+  return {
+    changed: () => {
+      bounds = window.getNormalBounds();
+    },
+    bounds: () => bounds,
+  };
+}
+
 export function rebuilt(file: string | null): 'page' | 'defaults' | undefined {
   if (file?.startsWith('webview.') || file === 'index.html') {
     return 'page';
