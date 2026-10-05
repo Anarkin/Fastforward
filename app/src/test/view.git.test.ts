@@ -4240,11 +4240,16 @@ suite('Fetch', function () {
   });
 
   test('leaves ignored files changing alone', async () => {
+    page.clear();
     fs.writeFileSync(
       path.join(repository.root, '.git', 'info', 'exclude'),
       'build/\n',
     );
     fs.mkdirSync(path.join(repository.root, 'build'));
+    await waitFor(
+      () => page.last('workingTree') !== undefined,
+      'the refresh the changed exclude file starts',
+    );
     await new Promise((resolve) => setTimeout(resolve, 1000));
     page.clear();
     fs.writeFileSync(path.join(repository.root, 'build', 'out.txt'), 'built\n');
