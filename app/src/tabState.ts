@@ -12,7 +12,7 @@ import {
 } from './history/merges';
 import { noNavigation, reachable, type Navigation } from './history/navigation';
 import { decoratedCommits, decorations, fingerprint, type Head } from './refs';
-import { comparedOf, sidesOf } from './shared/comparisons';
+import { shownSide, sidesOf } from './shared/comparisons';
 import {
   pageStart,
   workingTreeHash,
@@ -202,7 +202,7 @@ export function commitsMessage(
 }
 
 function keysFrom(tab: TabState): number | undefined {
-  const { hash } = tab;
+  const hash = shownSide(tab.hash);
   if (
     tab.index !== undefined ||
     hash === undefined ||
@@ -253,6 +253,12 @@ export function select(tab: TabState, hash: string | undefined): void {
   tab.index = positionOf(tab, hash);
   tab.path = undefined;
   tab.entireFile = false;
+}
+
+export function unselect(tab: TabState): void {
+  select(tab, undefined);
+  tab.shown.files = undefined;
+  tab.shown.diff = undefined;
 }
 
 function anchorOf(tab: TabState): ScrollTarget | undefined {
@@ -334,6 +340,12 @@ export function stillThere(tab: TabState): (hash: string) => boolean {
     );
 }
 
+export function hiddenSides(tab: TabState, selection: string): string[] {
+  return sidesOf(selection).filter(
+    (side) => side !== workingTreeHash && !tab.positions.has(side),
+  );
+}
+
 export function nearestSteps(
   tab: TabState,
   current = tab.hash,
@@ -382,7 +394,7 @@ function positionOf(
   tab: TabState,
   selection: string | undefined,
 ): number | undefined {
-  const hash = comparedOf(selection)?.to ?? selection;
+  const hash = shownSide(selection);
   if (hash === workingTreeHash) {
     return workingTreeIndex;
   }

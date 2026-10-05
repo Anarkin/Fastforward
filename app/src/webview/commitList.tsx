@@ -6,7 +6,7 @@ import {
   useSyncExternalStore,
 } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { comparedOf, sidesOf } from '../shared/comparisons';
+import { comparedOf, shownSide, sidesOf } from '../shared/comparisons';
 import {
   workingTreeHash,
   workingTreeIndex,
@@ -161,7 +161,7 @@ function startPosition(
   history: CommitHistory,
   selection: string | undefined,
 ): number | null | undefined {
-  const selected = comparedOf(selection)?.to ?? selection;
+  const selected = shownSide(selection);
   if (selected === workingTreeHash) {
     return workingTreeIndex;
   }

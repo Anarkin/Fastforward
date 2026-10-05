@@ -115,6 +115,10 @@ async function catchUp(
     );
     return;
   }
+  if ((await readHead(gitPath, root))?.name !== local) {
+    log.info(`${local} is no longer checked out, not fast-forwarding`);
+    return;
+  }
   try {
     await fastForward(gitPath, root, `refs/remotes/${remote}`);
     log.info(`Fast-forwarded ${local} to ${remote}`);

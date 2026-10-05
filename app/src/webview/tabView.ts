@@ -1,4 +1,4 @@
-import { comparedOf } from '../shared/comparisons';
+import { shownSide } from '../shared/comparisons';
 import type {
   FileChange,
   NavigationEntry,
@@ -19,6 +19,7 @@ export interface TabView {
   readonly workingTree: number | undefined;
   readonly hash: string | undefined;
   readonly selectionKnown: boolean;
+  readonly selection: number | undefined;
   readonly files: readonly FileChange[];
   readonly filesLoading: boolean;
   readonly patchLoading: boolean;
@@ -48,6 +49,7 @@ export const emptyTabView: TabView = {
   workingTree: undefined,
   hash: undefined,
   selectionKnown: false,
+  selection: undefined,
   files: [],
   filesLoading: false,
   patchLoading: false,
@@ -71,7 +73,11 @@ export const emptyTabView: TabView = {
 
 export type TabAction =
   | ToWebview
-  | { readonly type: 'showCommit'; readonly hash: string | undefined }
+  | {
+      readonly type: 'showCommit';
+      readonly hash: string | undefined;
+      readonly selection?: number;
+    }
   | { readonly type: 'showFile'; readonly path: string | undefined }
   | { readonly type: 'showEntireFile'; readonly entire: boolean }
   | { readonly type: 'requestTree'; readonly hash: string };
@@ -103,6 +109,10 @@ function isLate(
   return state.selectionKnown && (hash !== state.hash || path !== state.path);
 }
 
+function pickedSince(state: TabView, selection: number | undefined): boolean {
+  return state.selection !== undefined && selection !== state.selection;
+}
+
 export function reduceTabView(state: TabView, action: TabAction): TabView {
   switch (action.type) {
     case 'tabs':
@@ -110,7 +120,7 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
         ? state
         : { ...emptyTabView, root: action.active };
     case 'showCommit':
-      return selected(state, action.hash);
+      return { ...selected(state, action.hash), selection: action.selection };
     case 'showEntireFile':
       return { ...state, entireFile: action.entire };
     case 'showFile':
@@ -157,12 +167,14 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
         ? { ...state }
         : state;
     case 'unselect':
-      return selected(state, undefined);
+      return pickedSince(state, action.selection)
+        ? state
+        : selected(state, undefined);
     case 'reveal':
-      state.history?.locate(
-        comparedOf(action.hash)?.to ?? action.hash,
-        action.index,
-      );
+      if (pickedSince(state, action.selection)) {
+        return state;
+      }
+      state.history?.locate(shownSide(action.hash), action.index);
       return {
         ...selected(state, action.hash),
         scrollTarget: { index: action.index },
@@ -255,6 +267,10 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
         filesLoading: false,
         patchLoading: false,
       };
+    case 'clearError':
+      return action.message === state.error
+        ? { ...state, error: undefined }
+        : state;
     default:
       return state;
   }

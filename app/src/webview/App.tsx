@@ -86,7 +86,7 @@ export function App({ name, post: postToHost, listen }: Props) {
       setNotices((shown) => shown.filter((notice) => notice.id !== id)),
     [],
   );
-  const activeTabRef = useRef<string>(undefined);
+  const selections = useRef(0);
   const [tab, dispatch] = useReducer(reduceTabView, emptyTabView);
   const {
     root: activeTab,
@@ -177,7 +177,6 @@ export function App({ name, post: postToHost, listen }: Props) {
           setSolo(message.solo);
           break;
         case 'tabs':
-          activeTabRef.current = message.active;
           setTabs(message.tabs);
           setRecent(message.recent);
           dispatch(message);
@@ -213,12 +212,11 @@ export function App({ name, post: postToHost, listen }: Props) {
 
   const postTab = useCallback(
     (message: TabMessage) => {
-      const root = activeTabRef.current;
-      if (root !== undefined) {
-        post({ ...message, root });
+      if (activeTab !== undefined) {
+        post({ ...message, root: activeTab });
       }
     },
-    [post],
+    [post, activeTab],
   );
 
   const onScrolled = useCallback(
@@ -261,11 +259,17 @@ export function App({ name, post: postToHost, listen }: Props) {
     repeat = false,
   ) => {
     const target = next === hash ? undefined : next;
-    dispatch({ type: 'showCommit', hash: target });
-    const root = activeTabRef.current;
-    if (root !== undefined) {
+    const selection = ++selections.current;
+    dispatch({ type: 'showCommit', hash: target, selection });
+    if (activeTab !== undefined) {
       outbox.settle(
-        { type: 'selectCommit', hash: target, replace, root },
+        {
+          type: 'selectCommit',
+          hash: target,
+          replace,
+          selection,
+          root: activeTab,
+        },
         repeat,
       );
     }
@@ -338,12 +342,11 @@ export function App({ name, post: postToHost, listen }: Props) {
   useEffect(() => {
     if (treeNeeded) {
       dispatch({ type: 'requestTree', hash: treeNeeded });
-      const root = activeTabRef.current;
-      if (root !== undefined) {
-        outbox.follow({ type: 'loadTree', hash: treeNeeded, root });
+      if (activeTab !== undefined) {
+        outbox.follow({ type: 'loadTree', hash: treeNeeded, root: activeTab });
       }
     }
-  }, [treeNeeded, outbox]);
+  }, [treeNeeded, activeTab, outbox]);
 
   useEffect(() => {
     if (!showAllFiles || path === undefined) {

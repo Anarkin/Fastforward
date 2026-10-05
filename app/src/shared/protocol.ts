@@ -235,6 +235,7 @@ export type TabMessage =
       readonly type: 'selectCommit';
       readonly hash: string | undefined;
       readonly replace?: boolean;
+      readonly selection?: number;
     }
   | {
       readonly type: 'selectFile';
@@ -302,8 +303,13 @@ export type ToWebview =
       readonly commits: readonly CommitInfo[];
       readonly graph: readonly GraphRow[];
     }
-  | { readonly type: 'reveal'; readonly hash: string; readonly index: number }
-  | { readonly type: 'unselect' }
+  | {
+      readonly type: 'reveal';
+      readonly hash: string;
+      readonly index: number;
+      readonly selection?: number;
+    }
+  | { readonly type: 'unselect'; readonly selection?: number }
   | { readonly type: 'workingTree'; readonly files: number }
   | {
       readonly type: 'files';
@@ -344,6 +350,7 @@ export type ToWebview =
       readonly binary: boolean;
     }
   | { readonly type: 'error'; readonly message: string }
+  | { readonly type: 'clearError'; readonly message: string }
   | {
       readonly type: 'notice';
       readonly level: 'info' | 'error';

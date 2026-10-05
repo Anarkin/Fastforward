@@ -24,6 +24,12 @@ export function comparedOf(
       };
 }
 
+export function shownSide<T extends string | undefined>(
+  selection: T,
+): string | T {
+  return comparedOf(selection)?.to ?? selection;
+}
+
 export function sidesOf(selection: string | undefined): readonly string[] {
   if (selection === undefined) {
     return [];

@@ -38,7 +38,7 @@ import {
   type RepositoryAt,
 } from './operations';
 import { defaultBookmarks, fingerprint } from './refs';
-import { comparedOf, sidesOf } from './shared/comparisons';
+import { comparedOf, shownSide } from './shared/comparisons';
 import { isFullHash } from './shared/hashes';
 import {
   commitPageSize,
@@ -60,6 +60,7 @@ import {
   expandMerges,
   firstPage,
   forgetHistory,
+  hiddenSides,
   historyLoaded,
   keep,
   keepSubjects,
@@ -75,6 +76,7 @@ import {
   stillThere,
   takeRefs,
   toggleMerges,
+  unselect,
   type TabState,
 } from './tabState';
 
@@ -85,12 +87,15 @@ interface Tab extends TabState {
   preloading: Promise<void> | undefined;
   refreshing: boolean;
   refreshAgain: Map<Session | undefined, Context>;
-  refreshRefsAgain: boolean;
+  checkRefsAgain: boolean;
   refreshedAgain: PromiseWithResolvers<void> | undefined;
   loadsAgain: Refresh[];
+  refreshError: string | undefined;
   isRepository: boolean;
   fetchFailed: boolean;
+  selection: number | undefined;
   navigating: Promise<void>;
+  checkingOut: Promise<void>;
   diffRequest: number;
   diffOwed: boolean;
   loadingFiles: AbortController;
@@ -294,7 +299,7 @@ export class FastforwardView {
           activeTab !== undefined && sameRoot(activeTab, message.root)
             ? rest[Math.min(index, rest.length - 1)]
             : activeTab;
-        await storage.setTabs(rest, active);
+        this.save(storage.setTabs(rest, active));
         if (active === activeTab && active !== undefined) {
           this.postTabs(session);
           return;
@@ -307,11 +312,11 @@ export class FastforwardView {
         return;
       case 'sortTabs': {
         const tabs = storage.tabs.toSorted((a, b) =>
-          path.basename(a).localeCompare(path.basename(b), undefined, {
+          tabName(a).localeCompare(tabName(b), undefined, {
             sensitivity: 'base',
           }),
         );
-        await storage.setTabs(tabs, storage.activeTab);
+        this.save(storage.setTabs(tabs, storage.activeTab));
         this.postTabs(session);
         return;
       }
@@ -325,7 +330,7 @@ export class FastforwardView {
         await storage.setShowAllFiles(message.show);
         return;
       case 'setCollapseMerges': {
-        await storage.setCollapseMerges(message.collapse);
+        this.save(storage.setCollapseMerges(message.collapse));
         this.collapseMerges = message.collapse;
         for (const tab of this.tabStates.values()) {
           tab.toggledMerges.clear();
@@ -338,7 +343,7 @@ export class FastforwardView {
         return;
       }
       case 'pinEntireFile': {
-        await storage.setEntireFilePinned(message.pinned);
+        this.save(storage.setEntireFilePinned(message.pinned));
         const context = await this.context(session);
         this.staleDiffs(context, (tab) => tab.path !== undefined);
         if (context?.tab.hash !== undefined && context.tab.path !== undefined) {
@@ -347,7 +352,7 @@ export class FastforwardView {
         return;
       }
       case 'setAutoFetch':
-        await storage.setAutoFetch(message.on);
+        this.save(storage.setAutoFetch(message.on));
         this.autoFetch.update(message.on);
         return;
       case 'setDiffLayout':
@@ -357,7 +362,7 @@ export class FastforwardView {
         await storage.setWordWrap(message.wrap);
         return;
       case 'setIgnoreWhitespace': {
-        await storage.setIgnoreWhitespace(message.ignore);
+        this.save(storage.setIgnoreWhitespace(message.ignore));
         const context = await this.context(session);
         this.staleDiffs(context, () => true);
         if (context?.tab.hash !== undefined) {
@@ -367,7 +372,7 @@ export class FastforwardView {
       }
       case 'setSolo': {
         const context = await this.context(session, message.root);
-        await storage.setSolo(message.root, message.solo);
+        this.save(storage.setSolo(message.root, message.solo));
         if (!context) {
           return;
         }
@@ -376,8 +381,8 @@ export class FastforwardView {
         try {
           forgetHistory(context.tab);
           if (this.isActive(message.root)) {
-            await this.refresh(context, (latest) =>
-              this.sendCommits(latest, this.refsOf(latest), true),
+            await this.refresh(context, () =>
+              this.sendCommits(context, this.refsOf(context), true),
             );
           }
         } finally {
@@ -445,13 +450,12 @@ export class FastforwardView {
         if (found.kind === 'found') {
           await this.showCommit(context, found.hash);
         } else {
-          context.post({
-            type: 'error',
-            message:
-              found.kind === 'ambiguous'
-                ? `${found.count} commits start with ${message.hash}`
-                : `No commit ${message.hash}`,
-          });
+          this.notify(context)(
+            'error',
+            found.kind === 'ambiguous'
+              ? `${found.count} commits start with ${message.hash}`
+              : `No commit starts with ${message.hash}`,
+          );
         }
         break;
       }
@@ -465,21 +469,14 @@ export class FastforwardView {
         await this.searchCommits(context, message.query);
         break;
       case 'selectCommit':
-        if (message.hash) {
-          this.visit(context, message.hash, message.replace);
+        context.tab.selection = message.selection;
+        if (message.hash === undefined) {
+          unselect(context.tab);
+          break;
         }
+        this.visit(context, message.hash, message.replace);
         select(context.tab, message.hash);
-        if (!message.hash) {
-          context.tab.shown.files = undefined;
-          context.tab.shown.diff = undefined;
-        }
-        if (
-          message.hash !== undefined &&
-          sidesOf(message.hash).some(
-            (side) =>
-              side !== workingTreeHash && !context.tab.positions.has(side),
-          )
-        ) {
+        if (hiddenSides(context.tab, message.hash).length > 0) {
           this.notInHistory(context, message.hash);
           break;
         }
@@ -533,7 +530,7 @@ export class FastforwardView {
   }
 
   private notInHistory(context: Context, hash: string): void {
-    context.post({ type: 'error', message: `${hash} is not in the history` });
+    context.post({ type: 'error', message: notInHistoryText(hash) });
   }
 
   private async openRepositories(
@@ -546,9 +543,9 @@ export class FastforwardView {
       const root = await repositoryRoot(this.gitPath, folder);
       if (root) {
         roots.push(root);
-        await storage.addRecent(root);
+        this.save(storage.addRecent(root));
       } else {
-        await storage.removeRecent(folder);
+        this.save(storage.removeRecent(folder));
         session.post({
           type: 'notice',
           level: 'error',
@@ -561,7 +558,7 @@ export class FastforwardView {
         !storage.hasTab(root) &&
         roots.findIndex((other) => sameRoot(other, root)) === index,
     );
-    await storage.setTabs([...storage.tabs, ...added], storage.activeTab);
+    this.save(storage.setTabs([...storage.tabs, ...added], storage.activeTab));
     const last = roots.at(-1);
     if (last) {
       await this.openTab(session, last);
@@ -643,15 +640,15 @@ export class FastforwardView {
     const refs = this.refsOf(context);
     await allSettled([
       this.addDefaultBookmarks(context, refs),
-      this.refresh(context, (latest) =>
+      this.refresh(context, () =>
         allSettled([
           (async () => {
-            if (!historyLoaded(latest.tab)) {
-              await this.sendCommits(latest, refs);
+            if (!historyLoaded(context.tab)) {
+              await this.sendCommits(context, refs);
             }
-            await this.sendCommit(latest);
+            await this.sendCommit(context);
           })(),
-          this.sendWorkingTree(latest),
+          this.sendWorkingTree(context),
         ]),
       ),
       this.sendRepository(context, refs),
@@ -721,7 +718,9 @@ export class FastforwardView {
     context: Context,
     refs?: Promise<Refs>,
   ): Promise<void> {
-    if (this.storage.bookmarksOf(context.root) !== undefined) {
+    const saved = this.storage.bookmarksOf(context.root);
+    if (saved !== undefined) {
+      context.post({ type: 'bookmarks', bookmarks: saved });
       return;
     }
     const [{ refs: listed }, defaults] = await Promise.all([
@@ -741,12 +740,15 @@ export class FastforwardView {
         preloading: undefined,
         refreshing: false,
         refreshAgain: new Map(),
-        refreshRefsAgain: false,
+        checkRefsAgain: false,
         refreshedAgain: undefined,
         loadsAgain: [],
+        refreshError: undefined,
         isRepository: false,
         fetchFailed: false,
+        selection: undefined,
         navigating: Promise.resolve(),
+        checkingOut: Promise.resolve(),
         diffRequest: 0,
         diffOwed: false,
         loadingFiles: new AbortController(),
@@ -830,7 +832,16 @@ export class FastforwardView {
     });
   }
 
-  private async checkout(
+  private checkout(context: Context, target: CheckoutTarget): Promise<void> {
+    const { tab } = context;
+    const checkingOut = tab.checkingOut.then(() =>
+      this.checkoutNow(context, target),
+    );
+    tab.checkingOut = checkingOut.catch(() => undefined);
+    return checkingOut;
+  }
+
+  private async checkoutNow(
     context: Context,
     target: CheckoutTarget,
   ): Promise<void> {
@@ -903,15 +914,7 @@ export class FastforwardView {
       warn: reported ? (message) => this.log.warn(message) : silent,
       error: reported ? (error) => this.log.error(error) : silent,
     };
-    const notify: Notify = reported
-      ? (level, message) =>
-          this.storage.hasTab(root) &&
-          (session.disposed ? this.page : session)?.post({
-            type: 'notice',
-            level,
-            message: `${path.basename(root)}: ${message}`,
-          })
-      : silent;
+    const notify: Notify = reported ? this.noticesOf(session, root) : silent;
     if (!(await this.fetchRemotes(context, log, notify, false))) {
       return;
     }
@@ -924,7 +927,25 @@ export class FastforwardView {
   }
 
   private notify(context: Context): Notify {
-    return (level, message) => context.post({ type: 'notice', level, message });
+    const elsewhere =
+      context.session && this.noticesOf(context.session, context.root);
+    return (level, message) => {
+      if (elsewhere && !this.isActive(context.root)) {
+        elsewhere(level, message);
+      } else {
+        context.post({ type: 'notice', level, message });
+      }
+    };
+  }
+
+  private noticesOf(session: Session, root: string): Notify {
+    return (level, message) =>
+      this.storage.hasTab(root) &&
+      (session.disposed ? this.page : session)?.post({
+        type: 'notice',
+        level,
+        message: `${tabName(root)}: ${message}`,
+      });
   }
 
   private visit(context: Context, hash: string, replace = false): void {
@@ -1058,19 +1079,15 @@ export class FastforwardView {
     record = true,
   ): Promise<void> {
     const { tab } = context;
-    const hidden = () =>
-      sidesOf(hash).filter(
-        (side) => side !== workingTreeHash && !tab.positions.has(side),
-      );
     const merges = new Set(
-      hidden().flatMap((side) => mergesHidingCommit(tab, side)),
+      hiddenSides(tab, hash).flatMap((side) => mergesHidingCommit(tab, side)),
     );
     if (merges.size > 0) {
       expandMerges(tab, [...merges], this.storage.collapseMerges);
       await this.sendShownHistory(context, { scrollTo: hash });
     }
-    if (hidden().length > 0) {
-      this.notInHistory(context, hash);
+    if (hiddenSides(tab, hash).length > 0) {
+      this.notify(context)('error', notInHistoryText(hash));
       return;
     }
     if (record) {
@@ -1078,7 +1095,12 @@ export class FastforwardView {
     }
     select(tab, hash);
     if (tab.index !== undefined) {
-      context.post({ type: 'reveal', hash, index: tab.index });
+      context.post({
+        type: 'reveal',
+        hash,
+        index: tab.index,
+        selection: tab.selection,
+      });
     }
     await this.sendCommit(context);
   }
@@ -1090,13 +1112,31 @@ export class FastforwardView {
     }
   }
 
-  private refresh(
+  private async refresh(
     context: Context,
-    load?: (context: Context) => Promise<void>,
-    refs = true,
+    load?: () => Promise<void>,
+    checkRefs = true,
   ): Promise<void> {
     const { tab } = context;
-    const run = () => (load ? load(context) : this.refreshOnce(context, refs));
+    try {
+      await this.queueRefresh(context, load, checkRefs);
+    } catch (error) {
+      tab.refreshError = gitErrorText(error);
+      throw error;
+    }
+    if (tab.refreshError !== undefined) {
+      context.post({ type: 'clearError', message: tab.refreshError });
+      tab.refreshError = undefined;
+    }
+  }
+
+  private queueRefresh(
+    context: Context,
+    load: (() => Promise<void>) | undefined,
+    checkRefs: boolean,
+  ): Promise<void> {
+    const { tab } = context;
+    const run = load ?? (() => this.refreshOnce(context, checkRefs));
     if (!tab.refreshing) {
       const done = Promise.withResolvers<void>();
       tab.refreshing = true;
@@ -1109,7 +1149,7 @@ export class FastforwardView {
       return done.promise;
     }
     tab.refreshAgain.set(context.session, context);
-    tab.refreshRefsAgain ||= refs;
+    tab.checkRefsAgain ||= checkRefs;
     tab.refreshedAgain ??= Promise.withResolvers();
     return tab.refreshedAgain.promise;
   }
@@ -1134,15 +1174,18 @@ export class FastforwardView {
     if (!again || !done) {
       return undefined;
     }
-    const refs = tab.refreshRefsAgain;
+    const checkRefs = tab.checkRefsAgain;
     tab.refreshAgain.clear();
-    tab.refreshRefsAgain = false;
+    tab.checkRefsAgain = false;
     tab.refreshedAgain = undefined;
-    return { run: () => this.refreshOnce(again, refs), done };
+    return { run: () => this.refreshOnce(again, checkRefs), done };
   }
 
-  private async refreshOnce(context: Context, refs = true): Promise<void> {
-    await Promise.all([
+  private async refreshOnce(
+    context: Context,
+    checkRefs: boolean,
+  ): Promise<void> {
+    await allSettled([
       this.sendWorkingTree(context).then(async (workingTree) => {
         const { hash } = context.tab;
         if (hash !== undefined && workingTreeSide(hash)) {
@@ -1155,7 +1198,9 @@ export class FastforwardView {
           }
         }
       }),
-      refs || context.tab.shownStale ? this.refreshHistory(context) : undefined,
+      checkRefs || context.tab.shownStale
+        ? this.refreshHistory(context)
+        : Promise.resolve(),
     ]);
   }
 
@@ -1209,10 +1254,8 @@ export class FastforwardView {
     const { tab } = context;
     loadHistory(tab, fullHistory, head, listed);
     if (tab.hash !== undefined && !stillThere(tab)(tab.hash)) {
-      select(tab, undefined);
-      tab.shown.files = undefined;
-      tab.shown.diff = undefined;
-      context.post({ type: 'unselect' });
+      unselect(tab);
+      context.post({ type: 'unselect', selection: tab.selection });
     }
     await this.sendShownHistory(context, { keepPlace });
     const { back, forward } = tab.navigation;
@@ -1590,8 +1633,12 @@ function workingTreeDiffOf(hash: string): WorkingTreeDiff | undefined {
     : { base: compared.to, reverse: true };
 }
 
+function notInHistoryText(hash: string): string {
+  return `${hash} is not in the history`;
+}
+
 function shownCommit(hash: string): string | undefined {
-  const shown = comparedOf(hash)?.to ?? hash;
+  const shown = shownSide(hash);
   return shown === workingTreeHash ? undefined : shown;
 }
 
@@ -1618,5 +1665,9 @@ async function allSettled(
 }
 
 function tabInfo(root: string): TabInfo {
-  return { root, name: path.basename(root) };
+  return { root, name: tabName(root) };
+}
+
+export function tabName(root: string): string {
+  return path.basename(root) || root;
 }

@@ -291,6 +291,18 @@ suite('Tab state', () => {
     );
   });
 
+  test('lets the keys go on from the merge that collapsing hides the commit compared to in', () => {
+    const tab = newTabState();
+    loadHistory(tab, pull, { name: 'main', commit: 'p' }, []);
+    layOutHistory(tab, false, 'p');
+    select(tab, comparisonOf('base', 'f'));
+    toggleMerges(tab, ['p']);
+    layOutHistory(tab, false, 'p');
+    const message = commitsMessage(tab, firstPage(tab, false), []);
+    assert.strictEqual(message.selectedIndex, undefined);
+    assert.strictEqual(message.keysFrom, 0);
+  });
+
   test('names navigation entries after their subjects', () => {
     const tab = newTabState();
     keepSubjects(tab, [commitInfo('b', { subject: 'bee' })]);

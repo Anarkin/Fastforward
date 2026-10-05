@@ -285,6 +285,18 @@ suite('Tab view', () => {
     assert.strictEqual(failed.error, 'failed');
   });
 
+  test('takes back an error the app says is over, but not another one shown since', () => {
+    const failed = busyTab();
+    assert.strictEqual(
+      reduceTabView(failed, { type: 'clearError', message: 'failed' }).error,
+      undefined,
+    );
+    assert.strictEqual(
+      reduceTabView(failed, { type: 'clearError', message: 'earlier' }),
+      failed,
+    );
+  });
+
   test('re-renders only when the count of working tree changes changes', () => {
     const view = reduceTabView(emptyTabView, { type: 'workingTree', files: 2 });
     assert.strictEqual(
@@ -345,6 +357,50 @@ suite('Tab view', () => {
     assert.strictEqual(reduceTabView(none, late[0]), none);
   });
 
+  test('keeps a commit picked while a selection the app made before it was on its way', () => {
+    const picked = reduceTabView(busyTab(), {
+      type: 'showCommit',
+      hash: 'y',
+      selection: 2,
+    });
+    const crossed = reduceTabView(picked, {
+      type: 'reveal',
+      hash: 'head',
+      index: 0,
+      selection: 1,
+    });
+    assert.strictEqual(crossed.hash, 'y');
+    const loaded = reduceTabView(crossed, {
+      type: 'files',
+      hash: 'y',
+      files: [fileChange('y.ts')],
+    });
+    assert.deepStrictEqual(
+      loaded.files.map((file) => file.path),
+      ['y.ts'],
+    );
+    assert.ok(!loaded.filesLoading);
+    for (const earlier of [1, undefined]) {
+      assert.strictEqual(
+        reduceTabView(picked, { type: 'unselect', selection: earlier }),
+        picked,
+      );
+    }
+    assert.strictEqual(
+      reduceTabView(picked, {
+        type: 'reveal',
+        hash: 'head',
+        index: 0,
+        selection: 2,
+      }).hash,
+      'head',
+    );
+    assert.strictEqual(
+      reduceTabView(picked, { type: 'unselect', selection: 2 }).hash,
+      undefined,
+    );
+  });
+
   test('drops what the previous selection showed while a file loads', () => {
     const diff = reduceTabView(busyTab(), {
       type: 'fileDiff',
@@ -366,6 +422,40 @@ suite('Tab view', () => {
       assert.strictEqual(view.fileContent, undefined);
       assert.strictEqual(view.largeFiles.size, 0);
       assert.ok(view.patchLoading);
+    }
+  });
+
+  test('drops the whole file, large files and texts of the commit selected before', () => {
+    let shown = reduceTabView(busyTab(), {
+      type: 'fileDiff',
+      hash: 'a',
+      path: 'large.json',
+      diff: busyTab().diffs,
+      patch: 'large',
+    });
+    shown = reduceTabView(shown, {
+      type: 'texts',
+      hash: 'a',
+      diff: shown.diffs,
+      texts: [{ path: 'x.ts', side: 'old', blob: '1', text: 'old' }],
+    });
+    shown = reduceTabView(shown, {
+      type: 'fileContent',
+      hash: 'a',
+      path: 'x.ts',
+      content: 'x',
+      binary: false,
+    });
+    assert.ok(shown.fileContent && shown.largeFiles.size && shown.texts.size);
+    for (const action of [
+      { type: 'showCommit', hash: 'b' },
+      { type: 'unselect' },
+      { type: 'reveal', hash: 'b', index: 1 },
+    ] as const) {
+      const view = reduceTabView(shown, action);
+      assert.strictEqual(view.fileContent, undefined, action.type);
+      assert.strictEqual(view.largeFiles.size, 0, action.type);
+      assert.strictEqual(view.texts.size, 0, action.type);
     }
   });
 
@@ -400,7 +490,14 @@ suite('Tab view', () => {
   });
 
   test('counts the diffs, which the large files are fetched again for', () => {
-    const view = busyTab();
+    const view = reduceTabView(busyTab(), {
+      type: 'fileDiff',
+      hash: 'a',
+      path: 'big.json',
+      patch: '',
+      diff: busyTab().diffs,
+    });
+    assert.ok(view.largeFiles.has('big.json'));
     const again = reduceTabView(view, {
       type: 'diff',
       hash: 'a',

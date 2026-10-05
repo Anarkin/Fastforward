@@ -4,6 +4,7 @@ import {
   comparedOf,
   comparisonLabel,
   comparisonOf,
+  shownSide,
   sidesOf,
 } from '../shared/comparisons';
 import { workingTreeHash } from '../shared/protocol';
@@ -20,6 +21,16 @@ suite('Comparisons', () => {
     assert.strictEqual(comparedOf(workingTreeHash), undefined);
     assert.strictEqual(comparedOf(undefined), undefined);
     assert.deepStrictEqual(sidesOf('a'), ['a']);
+  });
+
+  test('shows a comparison at the commit compared to, and a single commit at itself', () => {
+    assert.strictEqual(shownSide(comparisonOf('a', 'b')), 'b');
+    assert.strictEqual(
+      shownSide(comparisonOf('a', workingTreeHash)),
+      workingTreeHash,
+    );
+    assert.strictEqual(shownSide('a'), 'a');
+    assert.strictEqual(shownSide(undefined), undefined);
   });
 
   test('compares the selected commit with the one added, in the order picked', () => {
