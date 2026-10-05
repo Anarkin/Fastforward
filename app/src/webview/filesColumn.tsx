@@ -190,7 +190,7 @@ export function Files({
   const header = (
     <div
       key={changesKey}
-      className={`row group counted ${cursor === changesKey ? 'selected' : ''}`}
+      className={`row group ${cursor === changesKey ? 'selected' : ''}`}
       onClick={() => select(undefined)}
     >
       <span className="path">All Changes</span>

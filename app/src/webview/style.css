@@ -68,7 +68,7 @@ body {
 }
 
 .diff-view,
-.error,
+.error-message,
 .notice-message {
   user-select: text;
 }
@@ -286,6 +286,7 @@ body {
   flex-direction: column;
   gap: 8px;
   max-width: min(480px, calc(100vw - 32px));
+  pointer-events: none;
 }
 
 .notice {
@@ -298,6 +299,7 @@ body {
   border-left: 3px solid var(--color-focus);
   border-radius: var(--card-radius);
   box-shadow: var(--popup-shadow);
+  pointer-events: auto;
 }
 
 .notice.error {
@@ -398,7 +400,6 @@ body {
 
 body.resizing {
   cursor: col-resize;
-  user-select: none;
 }
 
 .column-title {
@@ -420,7 +421,7 @@ body.resizing {
   padding-right: calc(4px + 2 * 26px + 2px + 8px);
 }
 
-.column-title:has(.column-start .pin-pair > :nth-child(2)) {
+.column-title:has(.history-button ~ .pin-pair > :nth-child(2)) {
   padding-left: calc(4px + 4 * 26px + 3 * 2px + 8px);
 }
 
@@ -632,24 +633,8 @@ body.resizing {
   opacity: var(--muted-opacity);
 }
 
-.refs {
-  display: flex;
-  gap: 4px;
-  flex: none;
-  max-width: 60%;
-  overflow: hidden;
-}
-
 .date {
   flex: none;
-}
-
-.count {
-  flex: none;
-  padding: 0 5px;
-  border-radius: 3px;
-  color: var(--color-foreground);
-  background: color-mix(in srgb, var(--color-foreground) 12%, transparent);
 }
 
 .badge {
@@ -711,17 +696,17 @@ body.resizing {
   color: var(--muted-foreground);
 }
 
-.error {
+.error-message {
   padding: 8px;
   color: var(--color-error-foreground);
 }
 
-.column-body:has(> .error) {
+.column-body:has(> .error-message) {
   display: flex;
   flex-direction: column;
 }
 
-.column-body > .error + .virtual-rows {
+.column-body > .error-message + .virtual-rows {
   flex: 1;
   min-height: 0;
 }
@@ -739,10 +724,6 @@ body.resizing {
 .column-body:has(> .empty-state) > .virtual-rows-frame {
   flex: 1;
   min-height: 0;
-}
-
-.list {
-  outline: none;
 }
 
 .bubble-line {
@@ -879,7 +860,7 @@ body.resizing {
 .menu.context-menu {
   position: fixed;
   right: auto;
-  z-index: 20;
+  z-index: 21;
 }
 
 .locations-groups {
@@ -929,7 +910,7 @@ body.resizing {
 }
 
 .menu.submenu {
-  top: -5px;
+  top: -4px;
   left: 100%;
   right: auto;
   box-sizing: border-box;
@@ -952,11 +933,10 @@ body.resizing {
   background: var(--color-border);
 }
 
-.locations-list .badge {
+.locations-list .row > .badge {
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
-  vertical-align: middle;
 }
 
 .icon {
@@ -1306,9 +1286,9 @@ body.resizing {
 }
 
 .row.file,
-.row.counted {
+.row.folder,
+.row.group {
   display: flex;
-  gap: 6px;
 }
 
 .row .path {
@@ -1492,10 +1472,8 @@ body.resizing {
 }
 
 .hash-suggestion {
-  flex: none;
   margin: 0 6px 6px;
   padding: 4px 12px;
-  border-radius: 6px;
 }
 
 .hash-suggestion.empty {

@@ -707,7 +707,7 @@ export function Commits({
         </>
       }
     >
-      {error && <div className="error">{error}</div>}
+      {error && <div className="error-message">{error}</div>}
       <div
         className="virtual-rows list"
         ref={list}

@@ -1,15 +1,31 @@
 import * as assert from 'node:assert';
+import { columnFocusAttribute } from '../webview/activeColumn';
+import { RefBubble } from '../webview/bubbles';
+import { changesTreeElement } from '../webview/changesTree';
+import { Column } from '../webview/column';
 import {
   bubbleLineHeight,
   commitRowHeight,
+  CommitRow,
   workingTreeRowHeight,
 } from '../webview/commitList';
+import { ContextMenu } from '../webview/contextMenu';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { DiffOptions } from '../webview/diffColumn';
 import { rowHeight } from '../webview/diffView';
+import { NavButtons } from '../webview/navBar';
+import { Notices } from '../webview/notices';
+import { overlayScrollbarClass } from '../webview/overlayScrollbars';
 import { codePadding, numberWidth } from '../webview/overflow';
-import { stylesheet } from './fixtures';
+import {
+  cascaded,
+  matchingRules,
+  rendered,
+  withClass,
+  type MarkupElement,
+} from './cascade';
+import { commitInfo, renderedBy, stylesheet } from './fixtures';
 
 const css = stylesheet();
 
@@ -33,11 +49,9 @@ function variablePx(name: string): number {
   return Number(match[1]);
 }
 
-function pixels(declarations: string, property: string): number {
-  const match = new RegExp(`${property}: calc\\(([^;]*)\\);`).exec(
-    declarations,
-  );
-  assert.ok(match, property);
+function pixels(value: string | undefined): number {
+  const match = /^calc\((.*)\)$/.exec(value ?? '');
+  assert.ok(match, value);
   return match[1]
     .split('+')
     .map((term) =>
@@ -49,6 +63,38 @@ function pixels(declarations: string, property: string): number {
     .reduce((sum, term) => sum + term, 0);
 }
 
+function columnTitle(start: React.ReactNode): MarkupElement {
+  return withClass(
+    rendered(renderedBy(Column, { start, children: null })),
+    'column-title',
+  );
+}
+
+function commitColumnTitle(autoFetchMinutes: number): MarkupElement {
+  return columnTitle(
+    createElement(NavButtons, {
+      back: [],
+      forward: [],
+      onNavigate: () => undefined,
+      fetching: false,
+      onFetch: () => undefined,
+      autoFetch: false,
+      autoFetchMinutes,
+      onAutoFetch: () => undefined,
+    }),
+  );
+}
+
+function layer(element: MarkupElement): number {
+  return Number(cascaded(element, 'z-index'));
+}
+
+function badgeRules(node: React.ReactNode): string[] {
+  return matchingRules(withClass(rendered(node), 'badge')).map(
+    (rule) => rule.selector,
+  );
+}
+
 suite('Style', () => {
   test("keeps the commit column's title clear of its buttons and the gaps between them", () => {
     const edge = 4;
@@ -57,13 +103,14 @@ suite('Style', () => {
     const clearance = 8;
     const buttons = (count: number) =>
       edge + count * button + (count - 1) * gap + clearance;
-    const title = declarationsOf('.column-title:has(.column-start)');
-    assert.strictEqual(pixels(title, 'padding-left'), buttons(3));
-    assert.strictEqual(pixels(title, 'padding-right'), buttons(2));
-    const pinned = declarationsOf(
-      '.column-title:has(.column-start .pin-pair > :nth-child(2))',
+    const title = commitColumnTitle(0);
+    assert.strictEqual(pixels(cascaded(title, 'padding-left')), buttons(3));
+    assert.strictEqual(pixels(cascaded(title, 'padding-right')), buttons(2));
+    const withAutoFetch = commitColumnTitle(5);
+    assert.strictEqual(
+      pixels(cascaded(withAutoFetch, 'padding-left')),
+      buttons(4),
     );
-    assert.strictEqual(pixels(pinned, 'padding-left'), buttons(4));
   });
 
   test('shades a round button on hover over whatever fill it has, so an active toggle or a pinned pair changes too', () => {
@@ -464,6 +511,40 @@ suite('Style', () => {
     assert.ok(line.includes('padding-left: var(--bubble-inset);'));
   });
 
+  test("draws the bubbles of a commit a search found as in the commit list, cutting off only a ref that is a result's own row", () => {
+    const commit = createElement(CommitRow, {
+      commit: commitInfo('a'),
+      selected: undefined,
+      headCommit: undefined,
+      refs: [{ kind: 'branch', name: 'main', commit: 'a' }],
+      detached: false,
+      indent: 0,
+      onSelect: () => undefined,
+    });
+    assert.deepStrictEqual(
+      badgeRules(createElement('div', { className: 'locations-list' }, commit)),
+      badgeRules(commit),
+    );
+    const ref = withClass(
+      rendered(
+        createElement(
+          'div',
+          { className: 'locations-list' },
+          createElement(
+            'div',
+            { className: 'row result' },
+            createElement(RefBubble, {
+              info: { kind: 'branch', name: 'main' },
+            }),
+          ),
+        ),
+      ),
+      'badge',
+    );
+    assert.strictEqual(cascaded(ref, 'overflow'), 'hidden');
+    assert.strictEqual(cascaded(ref, 'text-overflow'), 'ellipsis');
+  });
+
   test('gives a row of the other columns the fixed height of a diff row, whatever the font, so the columns line up', () => {
     const row = declarationsOf('.row');
     assert.match(row, /box-sizing: border-box;/);
@@ -490,6 +571,29 @@ suite('Style', () => {
     assert.match(declarationsOf('.row .path'), /text-overflow: ellipsis/);
   });
 
+  test("lines a folder's name up with the names of the files beside it, leaving no gap after its twisty", () => {
+    const folder = rendered(
+      changesTreeElement(
+        {
+          kind: 'folder',
+          name: 'src',
+          path: 'src',
+          depth: 0,
+          open: true,
+          changed: true,
+        },
+        {
+          showsAll: false,
+          onToggle: () => undefined,
+          selected: undefined,
+          onSelect: () => undefined,
+          cursor: undefined,
+        },
+      ),
+    );
+    assert.strictEqual(cascaded(folder, 'gap'), undefined);
+  });
+
   test('highlights no loading placeholder on hover', () => {
     for (const placeholder of [
       '.skeleton-row',
@@ -509,6 +613,16 @@ suite('Style', () => {
     assert.ok(submenu.includes('box-sizing: border-box;'));
     assert.ok(submenu.includes('max-height: 100vh;'));
     assert.ok(submenu.includes('overflow-y: auto;'));
+  });
+
+  test('lines the first item of a submenu up with the item that opens it', () => {
+    const submenu = rendered(
+      createElement('div', { className: 'menu submenu' }),
+    );
+    assert.strictEqual(cascaded(submenu, 'border'), undefined);
+    const padding = cascaded(submenu, 'padding');
+    assert.match(padding ?? '', /^\d+px$/);
+    assert.strictEqual(cascaded(submenu, 'top'), `-${padding}`);
   });
 
   test('highlights no disabled menu item on hover, whose text would vanish in the selection color', () => {
@@ -557,9 +671,29 @@ suite('Style', () => {
     assert.match(css, /\nbody \{[^}]*user-select: none;/);
     assert.match(
       css,
-      /\n\.diff-view,\s*\.error,\s*\.notice-message \{\s*user-select: text;\s*\}/,
+      /\n\.diff-view,\s*\.error-message,\s*\.notice-message \{\s*user-select: text;\s*\}/,
     );
     assert.match(declarationsOf('.file-header'), /user-select: none;/);
+  });
+
+  test('draws an error notice by the notice rules alone, like any other notice but for its edge', () => {
+    const notice = withClass(
+      rendered(
+        createElement(Notices, {
+          notices: [{ id: 1, level: 'error', message: 'failed', shownAt: 0 }],
+          onDismiss: () => undefined,
+        }),
+      ),
+      'notice',
+    );
+    assert.deepStrictEqual(
+      matchingRules(notice).map((rule) => rule.selector),
+      ['.notice', '.notice.error'],
+    );
+    assert.match(
+      declarationsOf('.notice.error'),
+      /^\s*border-left-color: [^;]*;\s*$/,
+    );
   });
 
   test('strikes a deleted file through, in the text color like the other changes', () => {
@@ -674,30 +808,37 @@ suite('Style', () => {
   });
 
   test('keeps the titles clear of the three buttons the Files column has on the left, and of the buttons and gaps the Diff column has on the left and the two on the right, its search field never squeezed out', () => {
-    const files = declarationsOf('.column-title:has(.all-files)');
-    assert.strictEqual(pixels(files, 'padding-left'), 4 + 3 * 26 + 2 * 2 + 8);
-    const options = renderToStaticMarkup(
-      createElement(DiffOptions, {
-        entire: false,
-        pinned: false,
-        canShow: true,
-        ignoreWhitespace: false,
-        wordWrap: false,
-        onEntire: () => undefined,
-        onPin: () => undefined,
-        onIgnoreWhitespace: () => undefined,
-        onWordWrap: () => undefined,
-        layout: 'inline',
-        onLayout: () => undefined,
-      }),
+    const files = columnTitle(
+      createElement('div', { className: 'nav-buttons all-files' }),
     );
-    const slots = options.match(/class="nav-button[ "-]/g)?.length ?? 0;
-    const diff = declarationsOf('.column-title:has(.diff-options)');
     assert.strictEqual(
-      pixels(diff, 'padding-left'),
+      pixels(cascaded(files, 'padding-left')),
+      4 + 3 * 26 + 2 * 2 + 8,
+    );
+    const diffOptions = createElement(DiffOptions, {
+      entire: false,
+      pinned: false,
+      canShow: true,
+      ignoreWhitespace: false,
+      wordWrap: false,
+      onEntire: () => undefined,
+      onPin: () => undefined,
+      onIgnoreWhitespace: () => undefined,
+      onWordWrap: () => undefined,
+      layout: 'inline',
+      onLayout: () => undefined,
+    });
+    const options = renderToStaticMarkup(diffOptions);
+    const slots = options.match(/class="nav-button[ "-]/g)?.length ?? 0;
+    const diff = columnTitle(diffOptions);
+    assert.strictEqual(
+      pixels(cascaded(diff, 'padding-left')),
       4 + slots * 26 + (slots - 1) * 2 + 8,
     );
-    assert.strictEqual(pixels(diff, 'padding-right'), 4 + 2 * 26 + 2 + 8);
+    assert.strictEqual(
+      pixels(cascaded(diff, 'padding-right')),
+      4 + 2 * 26 + 2 + 8,
+    );
     const segmented = declarationsOf('.segmented');
     assert.ok(segmented.includes('gap: 2px;'));
     assert.doesNotMatch(segmented, /(^|\s)(border|padding):/);
@@ -759,7 +900,13 @@ suite('Style', () => {
   });
 
   test('draws no focus outline around the commit list, whose selected row shows where the keys go', () => {
-    assert.ok(declarationsOf('.list').includes('outline: none;'));
+    const list = rendered(
+      createElement('div', {
+        className: 'virtual-rows list',
+        [columnFocusAttribute]: '',
+      }),
+    );
+    assert.strictEqual(cascaded(list, 'outline'), 'none');
     assert.doesNotMatch(css, /.list:focus/);
   });
 
@@ -786,6 +933,32 @@ suite('Style', () => {
     for (const above of ['.menu', '.menu.context-menu', '.notices']) {
       assert.ok(level(above) > edge, above);
     }
+  });
+
+  test('draws a context menu, and so its submenus, over the notices, which take the pointer only on a notice, and both under the overlay scrollbars', () => {
+    const notices = rendered(
+      createElement(Notices, {
+        notices: [{ id: 1, level: 'error', message: 'failed', shownAt: 0 }],
+        onDismiss: () => undefined,
+      }),
+    );
+    const menu = rendered(
+      createElement(ContextMenu, {
+        menu: { x: 0, y: 0, items: [{ label: 'Check out' }] },
+        onClose: () => undefined,
+      }),
+    );
+    const scrollbar = rendered(
+      createElement('div', { className: overlayScrollbarClass }),
+    );
+    assert.strictEqual(cascaded(menu, 'position'), 'fixed');
+    assert.ok(layer(menu) > layer(notices));
+    assert.ok(layer(scrollbar) > layer(menu));
+    assert.strictEqual(cascaded(notices, 'pointer-events'), 'none');
+    assert.strictEqual(
+      cascaded(withClass(notices, 'notice'), 'pointer-events'),
+      'auto',
+    );
   });
 
   test('edges the active column in the focus color, over its contents but letting the pointer through, and outlines nothing in it', () => {

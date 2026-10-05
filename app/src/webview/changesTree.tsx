@@ -255,7 +255,6 @@ export function changesTreeElement(
       depth={row.depth}
       open={row.open}
       className={[
-        'counted',
         ...(showsAll && row.changed ? [] : ['dimmed']),
         ...(cursor === folderRowKey(row.path) ? ['selected'] : []),
       ].join(' ')}

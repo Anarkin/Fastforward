@@ -26,7 +26,7 @@ suite('Error boundary', () => {
     const html = renderToStaticMarkup(boundary.render());
     assert.match(html, /class="title-bar"/);
     assert.match(html, />Fastforward 1.2.3<\/span>/);
-    assert.match(html, /<div class="error">[^<]*boom<\/div>/);
+    assert.match(html, /<div class="error-message">[^<]*boom<\/div>/);
     assert.match(html, /<button[^>]*>Reload<\/button>/);
   });
 
@@ -34,7 +34,7 @@ suite('Error boundary', () => {
     const html = renderToStaticMarkup(
       <Crash title="Fastforward" error="boom" onReload={noop} />,
     );
-    assert.match(html, /<div class="error">[^<]*boom<\/div>/);
+    assert.match(html, /<div class="error-message">[^<]*boom<\/div>/);
   });
 
   test('logs the failure with the components it happened in', () => {

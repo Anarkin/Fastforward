@@ -15,7 +15,7 @@ export function Crash({
     <div className="app">
       <TitleBar title={title} />
       <div className="crash">
-        <div className="error">
+        <div className="error-message">
           Something went wrong:{' '}
           {error instanceof Error ? error.message : String(error)}
         </div>

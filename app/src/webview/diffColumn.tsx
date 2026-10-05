@@ -277,7 +277,7 @@ export function Diff({
       path === undefined ? withLargeFiles(parsed, files, largeFiles) : parsed,
     [parsed, path, files, largeFiles],
   );
-  const errorRow = error && <div className="error">{error}</div>;
+  const errorRow = error && <div className="error-message">{error}</div>;
 
   const [query, setQuery] = useState('');
   const [current, setCurrent] = useState(0);

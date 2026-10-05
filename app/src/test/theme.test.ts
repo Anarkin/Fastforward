@@ -53,10 +53,25 @@ suite('Theme', () => {
     assert.deepStrictEqual(colors(dark), colors(light));
   });
 
-  test('uses no color from outside the theme', () => {
+  test("uses no color from outside the theme but the logo's own, the shadows of popups and the colors that only tell syntax apart", () => {
+    const allowed: Readonly<Record<string, readonly string[]>> = {
+      'style.css': ['rgba(0, 0, 0, 0.22)', 'rgba(0, 0, 0, 0.16)'],
+      'syntax.ts': ['#000000', '#ffffff'],
+      'titleBar.tsx': ['#4285F4', '#EA4335', '#FBBC04', '#34A853'],
+    };
     for (const file of readdirSync(webview)) {
       const source = readFileSync(join(webview, file), 'utf8');
-      assert.doesNotMatch(source, /--vscode-/, file);
+      assert.deepStrictEqual(
+        [
+          ...new Set(
+            source.match(
+              /#[\da-f]{3,8}\b|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch)\([^)]*\)/gi,
+            ),
+          ),
+        ],
+        allowed[file] ?? [],
+        file,
+      );
     }
   });
 
