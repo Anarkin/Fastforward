@@ -18,6 +18,19 @@ export function fullyVisible(
   };
 }
 
+const listKeys = new Set([
+  'ArrowDown',
+  'ArrowUp',
+  'Home',
+  'End',
+  'PageDown',
+  'PageUp',
+]);
+
+export function listKey(key: string): boolean {
+  return listKeys.has(key);
+}
+
 export function moveInList(
   key: string,
   from: number | undefined,

@@ -11,7 +11,6 @@ interface Lanes {
   readonly colors: number[];
   readonly dashed: boolean[];
   nextColor: number;
-  widest: number;
 }
 
 function copy(lanes: Lanes): Lanes {
@@ -20,7 +19,6 @@ function copy(lanes: Lanes): Lanes {
     colors: [...lanes.colors],
     dashed: [...lanes.dashed],
     nextColor: lanes.nextColor,
-    widest: lanes.widest,
   };
 }
 
@@ -101,8 +99,6 @@ function step(lanes: Lanes, entry: ShownEntry, drawLines = true): GraphRow {
     });
   }
 
-  lanes.widest = Math.max(lanes.widest, lanes.hashes.length);
-
   while (
     lanes.hashes.length > 0 &&
     lanes.hashes[lanes.hashes.length - 1] === undefined
@@ -123,7 +119,7 @@ function step(lanes: Lanes, entry: ShownEntry, drawLines = true): GraphRow {
 }
 
 function noLanes(): Lanes {
-  return { hashes: [], colors: [], dashed: [], nextColor: 0, widest: 0 };
+  return { hashes: [], colors: [], dashed: [], nextColor: 0 };
 }
 
 export class Graph {
@@ -149,11 +145,6 @@ export class Graph {
     ];
     this.checkpointEvery = checkpointEvery;
     this.workingTreeRow = step(noLanes(), this.entries[0]);
-  }
-
-  get width(): number {
-    this.layOutTo(this.entries.length);
-    return this.lanes.widest;
   }
 
   rows(start: number, count: number): GraphRow[] {

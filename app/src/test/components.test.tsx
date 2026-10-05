@@ -953,12 +953,29 @@ suite('History buttons', () => {
     });
     assert.ok(
       isValidElement<{
-        children: React.ReactElement<{ onClick: () => void }>[];
+        children: React.ReactElement<{
+          children: React.ReactElement<{ onClick: () => void }>;
+        }>[];
       }>(menu),
     );
-    menu.props.children[0].props.onClick();
-    menu.props.children[2].props.onClick();
+    menu.props.children[0].props.children.props.onClick();
+    menu.props.children[2].props.children.props.onClick();
     assert.deepStrictEqual(picked, [1, 3]);
+  });
+
+  test('hold each entry the way other menus do, so the keys move between them alike', () => {
+    const menu = renderToStaticMarkup(
+      <HistoryMenu
+        container={{ current: null }}
+        entries={[{ hash: 'a'.repeat(40), subject: 'a' }]}
+        onPick={noop}
+        onClose={noop}
+      />,
+    );
+    assert.match(
+      menu,
+      /^<div class="menu history-menu" role="menu"><div class="menu-entry"><button class="menu-item history-item"/,
+    );
   });
 
   test('label an entry by its short hash, or a comparison by both', () => {
@@ -975,6 +992,15 @@ suite('History buttons', () => {
       />,
     );
     assert.match(menu, /<span class="history-hash">aaaaaaa → bbbbbbb<\/span>/);
+  });
+
+  test('label the uncommitted changes as such, alone or compared', () => {
+    const a = 'a'.repeat(40);
+    assert.strictEqual(historyLabel(workingTreeHash), 'uncommitted');
+    assert.strictEqual(
+      historyLabel(comparisonOf(a, workingTreeHash)),
+      'aaaaaaa → uncommitted',
+    );
   });
 
   test('keys history entries apart that are the same commit', () => {
@@ -1102,17 +1128,11 @@ suite('Commit results', () => {
         query,
         result: {
           commits: [
-            {
-              commit: commitInfo(first, { subject: 'subject 0' }),
-              fields: ['message' as const],
-            },
-            {
-              commit: commitInfo('e'.repeat(40), {
-                subject: 'Fix the abcd parser',
-                authorName: 'Abcd Author',
-              }),
-              fields: ['author' as const, 'message' as const],
-            },
+            commitInfo(first, { subject: 'subject 0' }),
+            commitInfo('e'.repeat(40), {
+              subject: 'Fix the abcd parser',
+              authorName: 'Abcd Author',
+            }),
           ],
           capped,
         },
@@ -1145,6 +1165,7 @@ suite('Commit results', () => {
     });
     assert.doesNotMatch(none, /Searching commits/);
     assert.match(none, /No matches/);
+    assert.match(popup('par'), /Searching commits…/);
     assert.doesNotMatch(popup('pa'), /Searching commits/);
     assert.match(popup('pa'), /No matches/);
   });
@@ -1248,6 +1269,13 @@ suite('Search', () => {
     assert.match(html, /<mark class="match">fe<\/mark>at\/a/);
     assert.deepStrictEqual(counts(html), [2]);
     assert.doesNotMatch(html, /No matches/);
+  });
+
+  test('shows the trees for a search of spaces alone, as for no search', () => {
+    const html = popup(' ', undefined, { repository: refs });
+    assert.deepStrictEqual(counts(html), [3, 1, 1]);
+    assert.doesNotMatch(html, /No matches/);
+    assert.strictEqual(tagsWith(html, 'row', 'tree-row', 'leaf').length, 3);
   });
 
   test('says there are no matches once, when nothing matches', () => {
@@ -1552,24 +1580,6 @@ const titles = (html: string) =>
   [...html.matchAll(/<title>([^<]*)<\/title>/g)].map((match) => match[1]);
 
 suite('Graph cell', () => {
-  test('draws a line repeated in a row once, over the lines its last copy was over', () => {
-    const a = { from: 0, to: 0, color: 0, bottom: false };
-    const b = { from: 1, to: 1, color: 1, bottom: false };
-    const html = renderToStaticMarkup(
-      <GraphCell
-        row={{ lane: 0, color: 0, lines: [a, b, a] }}
-        height={30}
-        onToggleMerge={noop}
-      />,
-    );
-    assert.deepStrictEqual(
-      [...html.matchAll(/<path[^>]*stroke="([^"]*)"/g)].map(
-        (match) => match[1],
-      ),
-      ['var(--color-chart-green)', 'var(--color-chart-blue)'],
-    );
-  });
-
   test('draws lines to the foot of the row, curving between lanes, dashed where asked', () => {
     const html = cell(
       {

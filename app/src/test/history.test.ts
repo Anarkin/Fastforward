@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import {
-  matchedFields,
+  matchesCommit,
   parseHistory,
   parseLog,
   parseSearchedCommit,
@@ -77,11 +77,11 @@ suite('Commit search matching', () => {
     });
   });
 
-  test('says which of them contain the text, ignoring case, emails and the description included', () => {
-    assert.deepStrictEqual(matchedFields(commit, 'ada'), ['author', 'message']);
-    assert.deepStrictEqual(matchedFields(commit, 'TEST@'), ['committer']);
-    assert.deepStrictEqual(matchedFields(commit, 'body'), ['message']);
-    assert.deepStrictEqual(matchedFields(commit, 'nothing'), []);
+  test('finds the text in any of them, ignoring case, emails and the description included', () => {
+    assert.strictEqual(matchesCommit(commit, 'LOVELACE'), true);
+    assert.strictEqual(matchesCommit(commit, 'TEST@'), true);
+    assert.strictEqual(matchesCommit(commit, 'body'), true);
+    assert.strictEqual(matchesCommit(commit, 'nothing'), false);
   });
 });
 
@@ -110,10 +110,7 @@ suite('Commit search stream', () => {
     assert.strictEqual(matches.add('bbb\0B\0b@x\0B\0b@x\0Nothing'), undefined);
     assert.strictEqual(matches.add('ccc\0B\0b@x\0Ada\0a@x\0'), undefined);
     assert.deepStrictEqual(matches.add('ddd\0B\0b@x\0B\0b@x\0ADA'), {
-      found: [
-        { hash: 'aaa', fields: ['author', 'message'] },
-        { hash: 'ccc', fields: ['committer'] },
-      ],
+      found: ['aaa', 'ccc'],
       capped: true,
     });
   });
@@ -131,13 +128,13 @@ suite('Commit search stream', () => {
     matches.add('aaa\0Ada\0a@x\0B\0b@x\0');
     matches.add('bbb\0B\0b@x\0B\0b@x\0Nothing');
     assert.deepStrictEqual(matches.end(), {
-      found: [{ hash: 'aaa', fields: ['author'] }],
+      found: ['aaa'],
       capped: false,
     });
     const whole = new SearchMatches('ÉLAN', 5);
     whole.add('aaa\0B\0b@x\0B\0b@x\0élan');
     assert.deepStrictEqual(whole.end(), {
-      found: [{ hash: 'aaa', fields: ['message'] }],
+      found: ['aaa'],
       capped: false,
     });
   });

@@ -4,6 +4,7 @@ import {
   buildTree,
   currentActive,
   enterTarget,
+  focusLeaves,
   foundCommits,
   indexRefs,
   itemKey,
@@ -35,6 +36,27 @@ const branchNamed = (name: string): RefInfo => ({
 
 const names = (groups: ReturnType<typeof searchRefs>) =>
   groups.map((group) => [group.title, group.refs.map((ref) => ref.name)]);
+
+const manyBranches = (count: number) =>
+  Array.from({ length: count }, (_, index) => branchNamed(`b${index}`));
+
+const refsDrawn = (count: number) => {
+  const [branches] = searchRefs(indexRefs(manyBranches(count)), 'b');
+  return [branches.refs.length, branches.more];
+};
+
+const childrenDrawn = (count: number) => {
+  const { shown, more } = shownChildren(
+    buildTree(manyBranches(count)).children,
+  );
+  return [shown.length, more];
+};
+
+const focused = (inside: boolean, menu = false) => ({
+  inside,
+  closest: (selector: string) =>
+    menu && selector === '.context-menu' ? {} : null,
+});
 
 const resultsFor = (commits: string[], branches: string[]) =>
   resultItems(
@@ -70,6 +92,11 @@ suite('Locations search', () => {
     const [branches, remotes] = searchRefs(indexRefs(refs), 'o', 1);
     assert.deepStrictEqual([branches.refs.length, branches.more], [1, 0]);
     assert.deepStrictEqual([remotes.refs.length, remotes.more], [1, 1]);
+  });
+
+  test('draws 200 refs per group unless told another limit', () => {
+    assert.deepStrictEqual(refsDrawn(200), [200, 0]);
+    assert.deepStrictEqual(refsDrawn(201), [200, 1]);
   });
 
   test('sorts matches by name before cutting them to the limit', () => {
@@ -112,17 +139,11 @@ suite('Locations search', () => {
   test('puts the commits a typed hash may be before those found by text, each once', () => {
     const found = foundCommits(
       [commitInfo('a1')],
-      [
-        { commit: commitInfo('a1'), fields: ['message'] },
-        { commit: commitInfo('b2'), fields: ['author', 'committer'] },
-      ],
+      [commitInfo('a1'), commitInfo('b2')],
     );
     assert.deepStrictEqual(
-      found.map(({ commit, by }) => [commit.hash, by]),
-      [
-        ['a1', ['hash']],
-        ['b2', ['author', 'committer']],
-      ],
+      found.map((commit) => commit.hash),
+      ['a1', 'b2'],
     );
   });
 
@@ -238,6 +259,18 @@ suite('Locations search', () => {
     const [branch] = resultItems([], searchRefs(indexRefs([refs[3]]), 'a'));
     assert.strictEqual(enterTarget('', undefined, branch), undefined);
   });
+
+  test('takes a search of spaces alone as no search, moving no highlight and jumping nowhere', () => {
+    const [branch] = resultItems([], searchRefs(indexRefs([refs[3]]), 'a'));
+    assert.strictEqual(enterTarget('  ', undefined, branch), undefined);
+    assert.strictEqual(
+      popupKeyAction(
+        { key: 'ArrowDown', isComposing: false, keyCode: 40 },
+        ' ',
+      ),
+      undefined,
+    );
+  });
 });
 
 suite('Locations popup', () => {
@@ -261,6 +294,21 @@ suite('Locations popup', () => {
       ['a', 'b'],
     );
     assert.strictEqual(more, 3);
+  });
+
+  test('draws 200 folders and refs under a folder unless told another limit', () => {
+    assert.deepStrictEqual(childrenDrawn(200), [200, 0]);
+    assert.deepStrictEqual(childrenDrawn(201), [200, 1]);
+  });
+
+  test('closes once the focus moves out of it, as Tab moves it to the next column, but not into its context menu, nor when nothing takes it', () => {
+    const popup = {
+      contains: (target: ReturnType<typeof focused>) => target.inside,
+    };
+    assert.strictEqual(focusLeaves(popup, focused(false)), true);
+    assert.strictEqual(focusLeaves(popup, focused(true)), false);
+    assert.strictEqual(focusLeaves(popup, focused(false, true)), false);
+    assert.strictEqual(focusLeaves(popup, null), false);
   });
 
   test("stacks stuck folders at the height the stylesheet gives the popup's rows", () => {

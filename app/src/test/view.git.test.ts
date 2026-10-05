@@ -837,7 +837,7 @@ suite('View', function () {
       assert.strictEqual(search?.query, 'test');
       assert.ok(search.result.commits.length > 0);
       assert.ok(
-        search.result.commits.every(({ fields }) => fields.includes('author')),
+        search.result.commits.every(({ authorName }) => authorName === 'Test'),
       );
       assert.strictEqual(page.last('error'), undefined);
     });
@@ -1805,10 +1805,7 @@ suite('View', function () {
         assert.ok(
           page.last('repository')?.refs.some((ref) => ref.name === 'kept'),
         );
-        assert.deepStrictEqual(
-          tagged?.decorations.find(([index]) => index === 2),
-          [2, 1],
-        );
+        assert.ok(tagged?.decorations.includes(2));
         await repository.git('checkout', '--detach', fixture.f2);
         assert.ok(((await refreshed())?.total ?? 0) > 3);
         await repository.git('checkout', 'main');
@@ -1939,10 +1936,7 @@ suite('View', function () {
         const info = page.last('repository');
         assert.strictEqual(info?.head, undefined);
         assert.strictEqual(info?.headCommit, fixture.b);
-        assert.deepStrictEqual(
-          page.last('commits')?.decorations.find(([index]) => index === 1),
-          [1, 1],
-        );
+        assert.ok(page.last('commits')?.decorations.includes(1));
       } finally {
         await restore();
       }

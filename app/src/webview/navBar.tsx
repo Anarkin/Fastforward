@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { comparedOf, comparisonLabel } from '../shared/comparisons';
-import { shortHash } from '../shared/hashes';
+import { comparedOf, comparisonLabel, sideLabel } from '../shared/comparisons';
 import type {
   Bookmark,
   Direction,
@@ -8,7 +7,7 @@ import type {
   RepositoryState,
   ToWebviewOf,
 } from '../shared/protocol';
-import { useDismiss } from './contextMenu';
+import { onMenuKeyDown, useDismiss, useMenuFocus } from './contextMenu';
 import { BackIcon, ForwardIcon, PinIcon, RefreshIcon } from './icons';
 import { LocationsPopup } from './locations';
 import { useShortcuts } from './shortcuts';
@@ -170,20 +169,29 @@ export function HistoryMenu({
   onPick: (steps: number) => void;
   onClose: () => void;
 }) {
+  const menu = useRef<HTMLDivElement>(null);
   useDismiss(container, onClose);
+  useMenuFocus(menu);
   return (
-    <div className="menu history-menu" role="menu">
+    <div
+      className="menu history-menu"
+      role="menu"
+      ref={menu}
+      onKeyDown={(event) => onMenuKeyDown(event)}
+    >
       {entries.map((entry, index) => (
-        <button
-          key={index}
-          className="menu-item history-item"
-          role="menuitem"
-          title={entry.hash}
-          onClick={() => onPick(index + 1)}
-        >
-          <span className="history-hash">{historyLabel(entry.hash)}</span>
-          {entry.subject}
-        </button>
+        <div key={index} className="menu-entry">
+          <button
+            className="menu-item history-item"
+            role="menuitem"
+            title={entry.hash}
+            onMouseEnter={(event) => event.currentTarget.focus()}
+            onClick={() => onPick(index + 1)}
+          >
+            <span className="history-hash">{historyLabel(entry.hash)}</span>
+            {entry.subject}
+          </button>
+        </div>
       ))}
     </div>
   );
@@ -263,5 +271,5 @@ export function AddressBar({
 
 export function historyLabel(hash: string): string {
   const compared = comparedOf(hash);
-  return compared ? comparisonLabel(compared) : shortHash(hash);
+  return compared ? comparisonLabel(compared) : sideLabel(hash);
 }

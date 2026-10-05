@@ -48,21 +48,6 @@ function path(line: GraphLine, height: number): string {
     : `M ${from} ${dotY} C ${from} ${dotY + turn / 2} ${to} ${dotY + turn / 2} ${to} ${dotY + turn} V ${height}`;
 }
 
-type DrawnLine = { key: string; d: string; stroke: string; dashed: boolean };
-
-function drawnLines(lines: readonly GraphLine[], height: number): DrawnLine[] {
-  const drawn = new Map<string, DrawnLine>();
-  for (const line of lines) {
-    const d = path(line, height);
-    const stroke = color(line.color);
-    const dashed = line.dashed ?? false;
-    const key = `${d} ${stroke} ${dashed}`;
-    drawn.delete(key);
-    drawn.set(key, { key, d, stroke, dashed });
-  }
-  return [...drawn.values()];
-}
-
 export function GraphCell({
   row,
   height,
@@ -76,16 +61,20 @@ export function GraphCell({
   const laneColor = color(row.color);
   return (
     <svg className="graph" width={graphWidth(rowLanes(row))} height={height}>
-      {drawnLines(row.lines, height).map((line) => (
-        <path
-          key={line.key}
-          d={line.d}
-          stroke={line.stroke}
-          strokeWidth={2}
-          strokeDasharray={line.dashed ? '2 3' : undefined}
-          fill="none"
-        />
-      ))}
+      {row.lines.map((line) => {
+        const d = path(line, height);
+        const stroke = color(line.color);
+        return (
+          <path
+            key={`${d} ${stroke} ${line.dashed ?? false}`}
+            d={d}
+            stroke={stroke}
+            strokeWidth={2}
+            strokeDasharray={line.dashed ? '2 3' : undefined}
+            fill="none"
+          />
+        );
+      })}
       {row.workingTree ? (
         <rect
           x={cx - dotRadius}

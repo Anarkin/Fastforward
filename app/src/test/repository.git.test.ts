@@ -620,18 +620,14 @@ suite('Commit search', function () {
 
   const subjectsFound = async (query: string) =>
     (await searchCommits(gitPath, search.root, query, false)).commits.map(
-      ({ commit, fields }) => [commit.subject, fields],
+      (commit) => commit.subject,
     );
 
-  test('finds commits by author, committer or message, ignoring case, newest first, saying which matched', async () => {
+  test('finds commits by author, committer or message, ignoring case, newest first', async () => {
     const found = await searchCommits(gitPath, search.root, 'ADA', false);
     assert.deepStrictEqual(
-      found.commits.map(({ commit, fields }) => [commit.subject, fields]),
-      [
-        ['third', ['committer']],
-        ['second', ['message']],
-        ['first', ['author']],
-      ],
+      found.commits.map((commit) => commit.subject),
+      ['third', 'second', 'first'],
     );
     assert.strictEqual(found.capped, false);
   });
@@ -650,7 +646,7 @@ suite('Commit search', function () {
       2,
     );
     assert.deepStrictEqual(
-      limited.commits.map(({ commit }) => commit.subject),
+      limited.commits.map((commit) => commit.subject),
       ['third', 'second'],
     );
     assert.strictEqual(limited.capped, true);
@@ -658,26 +654,16 @@ suite('Commit search', function () {
 
   test('finds authors by their mailmapped names, and takes special characters and any letters literally, ignoring case', async () => {
     const literal = 'Literal (a+b)*[c]\\d? text';
-    assert.deepStrictEqual(await subjectsFound('NEW NAME <old@'), [
-      [literal, ['author']],
-    ]);
+    assert.deepStrictEqual(await subjectsFound('NEW NAME <old@'), [literal]);
     assert.deepStrictEqual(await subjectsFound('old name'), []);
-    assert.deepStrictEqual(await subjectsFound('(A+B)*[C]\\D?'), [
-      [literal, ['message']],
-    ]);
-    assert.deepStrictEqual(await subjectsFound('ÉLAN in'), [
-      [literal, ['message']],
-    ]);
-    assert.deepStrictEqual(await subjectsFound('text\n\nélan'), [
-      [literal, ['message']],
-    ]);
+    assert.deepStrictEqual(await subjectsFound('(A+B)*[C]\\D?'), [literal]);
+    assert.deepStrictEqual(await subjectsFound('ÉLAN in'), [literal]);
+    assert.deepStrictEqual(await subjectsFound('text\n\nélan'), [literal]);
   });
 
   test('searches the whole of a commit with a record separator in its message', async () => {
     const subject = 'Separated\x1eby a record separator';
-    assert.deepStrictEqual(await subjectsFound('by a record'), [
-      [subject, ['message']],
-    ]);
+    assert.deepStrictEqual(await subjectsFound('by a record'), [subject]);
     assert.deepStrictEqual(await subjectsFound('fine'), []);
   });
 

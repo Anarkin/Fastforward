@@ -50,7 +50,7 @@ export function compareWith(
     : comparisonOf(compared.from, added);
 }
 
-function sideLabel(side: string): string {
+export function sideLabel(side: string): string {
   return side === workingTreeHash ? 'uncommitted' : shortHash(side);
 }
 

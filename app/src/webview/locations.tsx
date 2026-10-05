@@ -9,9 +9,7 @@ import {
 import { isHashPrefix } from '../shared/hashes';
 import type {
   Bookmark,
-  CommitField,
   CommitInfo,
-  CommitMatch,
   CommitResults,
   RefInfo,
   RefKind,
@@ -167,27 +165,12 @@ const minSearchLength = 3;
 
 const commitIndent = 8;
 
-type FoundBy = 'hash' | CommitField;
-
-export interface FoundCommit {
-  readonly commit: CommitInfo;
-  readonly by: readonly FoundBy[];
-}
-
 export function foundCommits(
   byHash: readonly CommitInfo[],
-  byText: readonly CommitMatch[],
-): FoundCommit[] {
+  byText: readonly CommitInfo[],
+): CommitInfo[] {
   const hashes = new Set(byHash.map((commit) => commit.hash));
-  return [
-    ...byHash.map((commit): FoundCommit => ({ commit, by: ['hash'] })),
-    ...byText
-      .filter((match) => !hashes.has(match.commit.hash))
-      .map((match): FoundCommit => ({
-        commit: match.commit,
-        by: match.fields,
-      })),
-  ];
+  return [...byHash, ...byText.filter((commit) => !hashes.has(commit.hash))];
 }
 
 function textQuery(query: string): string | undefined {
@@ -210,7 +193,7 @@ export function enterTarget(
   if (hash && found === undefined && !(picked && active)) {
     return hash;
   }
-  if (!query || !active) {
+  if (!query.trim() || !active) {
     return undefined;
   }
   return active.kind === 'commit' ? active.commit.hash : active.ref.commit;
@@ -225,19 +208,19 @@ function CommitResultsSection({
   capped,
   query,
   active,
-  refs,
+  refsByCommit,
   headCommit,
   onJump,
 }: {
   hash: string | undefined;
   lookingUp: boolean;
   searching: boolean;
-  found: readonly FoundCommit[];
+  found: readonly CommitInfo[];
   hashMore: number;
   capped: boolean;
   query: string;
   active: string | undefined;
-  refs: readonly RefInfo[];
+  refsByCommit: ReadonlyMap<string, readonly RefInfo[]>;
   headCommit: string | undefined;
   onJump: (commit: string) => void;
 }) {
@@ -256,13 +239,13 @@ function CommitResultsSection({
     <section className="locations-group">
       <GroupHeading title="Commits" count={found.length + hashMore} />
       <div className="locations-list">
-        {found.map(({ commit }) => (
+        {found.map((commit) => (
           <CommitRow
             key={commit.hash}
             commit={commit}
             selected={active}
             headCommit={headCommit}
-            refs={refs.filter((ref) => ref.commit === commit.hash)}
+            refs={refsByCommit.get(commit.hash) ?? []}
             detached={detached === commit.hash}
             indent={commitIndent}
             onSelect={onJump}
@@ -317,6 +300,22 @@ function usePopupHeight(
 
 const steps: Readonly<Record<string, 1 | -1>> = { ArrowDown: 1, ArrowUp: -1 };
 
+const contextMenus = '.context-menu';
+
+export function focusLeaves<
+  Focused extends { closest(selector: string): unknown },
+>(
+  popup: { readonly contains: (focused: Focused) => boolean } | null,
+  focused: Focused | null,
+): boolean {
+  return (
+    focused !== null &&
+    popup !== null &&
+    !popup.contains(focused) &&
+    focused.closest(contextMenus) === null
+  );
+}
+
 export function popupKeyAction(
   event: Pick<KeyboardEvent, 'key' | 'isComposing' | 'keyCode'>,
   query: string,
@@ -324,7 +323,7 @@ export function popupKeyAction(
   if (event.isComposing || event.keyCode === 229) {
     return undefined;
   }
-  if (query && event.key in steps) {
+  if (query.trim() && event.key in steps) {
     return steps[event.key];
   }
   return event.key === 'Enter' ? 'enter' : undefined;
@@ -360,8 +359,13 @@ export function LocationsPopup({
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => input.current?.select(), []);
   const refs = useMemo(() => repository?.refs ?? [], [repository]);
+  const refsByCommit = useMemo(
+    () => Map.groupBy(refs, (ref) => ref.commit),
+    [refs],
+  );
   const index = useMemo(() => indexRefs(refs), [refs]);
   const search = useMemo(() => searchRefs(index, query), [index, query]);
+  const hasQuery = query.trim() !== '';
   const detached = useContext(DetachedHead);
   const pinned = pinnedRefs(bookmarks, refs, repository?.head, detached, query);
   const hash = hashQuery(query);
@@ -396,17 +400,10 @@ export function LocationsPopup({
     pinned.checkedOut.length === 0 &&
     pinned.bookmarks.length === 0 &&
     search.every((group) => group.refs.length === 0);
-  const items = useMemo(
-    () =>
-      resultItems(
-        commits.map(({ commit }) => commit),
-        search,
-      ),
-    [commits, search],
-  );
+  const items = useMemo(() => resultItems(commits, search), [commits, search]);
   const [highlight, setHighlight] = useState<Highlighted>();
   const active = currentActive(items, query, highlight);
-  const activeItem = query ? items.at(active) : undefined;
+  const activeItem = hasQuery ? items.at(active) : undefined;
   const activeKey = activeItem && itemKey(activeItem);
   useEffect(() => {
     if (activeKey) {
@@ -423,7 +420,7 @@ export function LocationsPopup({
     }
   };
 
-  useDismiss(anchor, onClose, { ignore: '.context-menu' });
+  useDismiss(anchor, onClose, { ignore: contextMenus });
 
   const onKeyDown = (event: React.KeyboardEvent) => {
     const action = popupKeyAction(event.nativeEvent, query);
@@ -445,6 +442,11 @@ export function LocationsPopup({
       ref={popup}
       style={{ height }}
       onKeyDown={onKeyDown}
+      onBlur={(event) => {
+        if (focusLeaves(anchor.current, event.relatedTarget)) {
+          onClose();
+        }
+      }}
     >
       <div className="locations-search-row">
         <button className="nav-button" title="Close (Esc)" onClick={onClose}>
@@ -472,7 +474,7 @@ export function LocationsPopup({
             active={
               activeItem?.kind === 'commit' ? activeItem.commit.hash : undefined
             }
-            refs={refs}
+            refsByCommit={refsByCommit}
             headCommit={repository?.headCommit}
             onJump={jump}
           />
@@ -489,20 +491,22 @@ export function LocationsPopup({
           refs={refs}
           onJump={jump}
         />
-        {query && !hash && nothingFound && (
+        {hasQuery && !hash && nothingFound && (
           <div className="locations-empty">No matches</div>
         )}
         {search.map((group, i) =>
-          query && group.refs.length === 0 ? null : (
+          hasQuery && group.refs.length === 0 ? null : (
             <section key={group.kind} className="locations-group">
               <GroupHeading
                 title={group.title}
                 count={
-                  query ? group.refs.length + group.more : index[i].refs.length
+                  hasQuery
+                    ? group.refs.length + group.more
+                    : index[i].refs.length
                 }
               />
               <div className="locations-list">
-                {query ? (
+                {hasQuery ? (
                   <SearchResults
                     group={group}
                     query={query}

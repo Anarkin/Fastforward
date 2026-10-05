@@ -11,7 +11,7 @@ import {
   type ShownEntry,
 } from './history/merges';
 import { noNavigation, reachable, type Navigation } from './history/navigation';
-import { countRefs, decorations, fingerprint, type Head } from './refs';
+import { decoratedCommits, decorations, fingerprint, type Head } from './refs';
 import { comparedOf, sidesOf } from './shared/comparisons';
 import {
   pageStart,
@@ -44,7 +44,7 @@ export interface TabState {
   anchor: { hash: string; offset: number } | undefined;
   opened: boolean;
   navigation: Navigation;
-  refCounts: Map<string, number>;
+  decorated: Set<string>;
   toggledMerges: Set<string>;
   history: readonly ShownEntry[];
   positions: Positions;
@@ -87,7 +87,7 @@ export function newTabState(): TabState {
     fingerprint: '',
     anchor: undefined,
     opened: false,
-    refCounts: new Map(),
+    decorated: new Set(),
     toggledMerges: new Set(),
     history: [],
     positions: new Map(),
@@ -118,7 +118,7 @@ export function takeRefs(
 ): void {
   tab.headCommit = head?.commit;
   tab.fingerprint = fingerprint(head, refs);
-  tab.refCounts = countRefs(refs, head);
+  tab.decorated = decoratedCommits(refs, head);
 }
 
 // The commits reachable from the tips are those of the history exactly when
@@ -190,7 +190,7 @@ export function commitsMessage(
     type: 'commits',
     generation: tab.generation,
     total: tab.history.length,
-    decorations: decorations(tab.refCounts, tab.positions),
+    decorations: decorations(tab.decorated, tab.positions),
     start,
     commits,
     graph: tab.graph.rows(start, commits.length),

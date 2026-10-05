@@ -82,14 +82,11 @@ suite('Commit pages', () => {
   });
 });
 
-suite('Commit history ref counts', () => {
-  test('knows how many refs each position has before loading it', () => {
-    const history = new CommitHistory(100, [
-      [0, 2],
-      [42, 1],
-    ]);
-    assert.strictEqual(history.refCountAt(0), 2);
-    assert.strictEqual(history.refCountAt(42), 1);
-    assert.strictEqual(history.refCountAt(7), 0);
+suite('Commit history bubbles', () => {
+  test('knows which positions have bubbles before loading them', () => {
+    const history = new CommitHistory(100, [0, 42]);
+    assert.strictEqual(history.hasBubbles(0), true);
+    assert.strictEqual(history.hasBubbles(42), true);
+    assert.strictEqual(history.hasBubbles(7), false);
   });
 });

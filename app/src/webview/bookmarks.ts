@@ -1,6 +1,12 @@
 import { shortHash } from '../shared/hashes';
 import type { RefInfo, Bookmark, BookmarkRef } from '../shared/protocol';
-import { hasRef, refOf, sameRef, withoutRemote } from '../shared/refNames';
+import {
+  findRef,
+  hasRef,
+  refOf,
+  sameRef,
+  withoutRemote,
+} from '../shared/refNames';
 
 const kindOrder: Record<BookmarkRef['kind'], number> = {
   branch: 0,
@@ -8,13 +14,15 @@ const kindOrder: Record<BookmarkRef['kind'], number> = {
   tag: 2,
 };
 
-function sortName(bookmark: BookmarkRef): string {
+type SortedBookmark = Bookmark & { readonly remote?: string };
+
+function sortName(bookmark: SortedBookmark): string {
   return bookmark.kind === 'remote'
-    ? withoutRemote(bookmark.name)
+    ? withoutRemote(bookmark.name, bookmark.remote)
     : bookmark.name;
 }
 
-export function compareBookmarks(a: Bookmark, b: Bookmark): number {
+export function compareBookmarks(a: SortedBookmark, b: SortedBookmark): number {
   if (a.kind === 'commit' || b.kind === 'commit') {
     return Number(a.kind === 'commit') - Number(b.kind === 'commit');
   }
@@ -38,8 +46,8 @@ export function bookmarkOptions(
   return [
     ...refs
       .filter((ref) => ref.commit === hash)
-      .map(refOf)
       .toSorted(compareBookmarks)
+      .map(refOf)
       .map((bookmark) => ({ label: bookmark.name, bookmark })),
     {
       label: shortHash(hash),
@@ -86,6 +94,15 @@ export function pinnedRefs(
     : checkedOutRefs(refs, head);
   return {
     checkedOut: checkedOut.filter(matches),
-    bookmarks: bookmarks.toSorted(compareBookmarks).filter(matches),
+    bookmarks: bookmarks
+      .filter(matches)
+      .map((bookmark): [Bookmark, SortedBookmark] => [
+        bookmark,
+        bookmark.kind === 'remote'
+          ? (findRef(refs, bookmark) ?? bookmark)
+          : bookmark,
+      ])
+      .toSorted(([, a], [, b]) => compareBookmarks(a, b))
+      .map(([bookmark]) => bookmark),
   };
 }

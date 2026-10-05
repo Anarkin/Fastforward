@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import type { RefInfo } from '../shared/protocol';
 import {
-  countRefs,
+  decoratedCommits,
   decorations,
   defaultBookmarks,
   detachedHead,
@@ -47,25 +47,15 @@ suite('Fingerprint', () => {
   });
 });
 
-suite('Ref counts', () => {
-  test('counts the refs of each commit and places them in the list', () => {
-    const counts = countRefs(refs);
-    assert.deepStrictEqual(
-      [...counts],
-      [
-        ['a', 2],
-        ['b', 2],
-        ['c', 1],
-      ],
-    );
+suite('Decorated commits', () => {
+  test('finds the commits with refs and places those shown in the list', () => {
+    const decorated = decoratedCommits(refs);
+    assert.deepStrictEqual([...decorated], ['a', 'b', 'c']);
     const positions = new Map([
       ['a', 0],
       ['b', 5],
     ]);
-    assert.deepStrictEqual(decorations(counts, positions), [
-      [0, 2],
-      [5, 2],
-    ]);
+    assert.deepStrictEqual(decorations(decorated, positions), [0, 5]);
   });
 });
 
@@ -161,16 +151,13 @@ suite('Default bookmarks', () => {
 
 suite('Detached HEAD', () => {
   test('counts as a bubble on its commit', () => {
-    const counts = countRefs(refs, { name: undefined, commit: 'c' });
-    assert.strictEqual(counts.get('c'), 2);
-    assert.strictEqual(detachedHead({ name: undefined, commit: 'c' }), 'c');
+    const detached = { name: undefined, commit: 'd' };
+    assert.ok(decoratedCommits(refs, detached).has('d'));
+    assert.strictEqual(detachedHead(detached), 'd');
   });
 
   test('is nothing while a branch is checked out', () => {
-    assert.strictEqual(
-      countRefs(refs, { name: 'main', commit: 'a' }).get('a'),
-      2,
-    );
+    assert.ok(!decoratedCommits(refs, { name: 'main', commit: 'd' }).has('d'));
     assert.strictEqual(detachedHead({ name: 'main', commit: 'a' }), undefined);
   });
 });

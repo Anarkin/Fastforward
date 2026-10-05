@@ -1,7 +1,7 @@
 import type { FileChange } from '../shared/protocol';
 import { buildFileTree, type FolderNode } from './fileTree';
 import { byName } from './byName';
-import { moveInList, type VisibleRows } from './listMoves';
+import { listKey, moveInList, type VisibleRows } from './listMoves';
 import { FileRow, fileRowKey, FolderRow } from './tree';
 import type { ListedRows } from './virtualRows';
 
@@ -184,19 +184,6 @@ export function filesKey(
     target?.path !== selected
     ? { kind: 'select', key: movedKey, file: target?.path }
     : { kind: 'cursor', key: movedKey };
-}
-
-const listKeyNames = new Set([
-  'ArrowDown',
-  'ArrowUp',
-  'Home',
-  'End',
-  'PageDown',
-  'PageUp',
-]);
-
-function listKey(key: string): boolean {
-  return listKeyNames.has(key);
 }
 
 const parentRows = new WeakMap<readonly ChangesTreeRow[], readonly number[]>();

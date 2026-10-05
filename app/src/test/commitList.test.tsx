@@ -33,7 +33,7 @@ import { commitInfo, renderedBy } from './fixtures';
 
 suite('Commit list rows', () => {
   test('starts a row with bubbles at one line of them', () => {
-    const history = new CommitHistory(3, [[1, 2]]);
+    const history = new CommitHistory(3, [1]);
     assert.strictEqual(estimatedRowHeight(history, 0, 0), commitRowHeight);
     assert.strictEqual(
       estimatedRowHeight(history, 0, 1),
@@ -194,15 +194,9 @@ suite('Commit list working tree row', () => {
   });
 
   test('keeps a scrolled list in place when the working tree row appears above it', () => {
-    assert.strictEqual(workingTreeShift(500, 0, 1, workingTreeRowHeight), 530);
-    assert.strictEqual(
-      workingTreeShift(0, 0, 1, workingTreeRowHeight),
-      undefined,
-    );
-    assert.strictEqual(
-      workingTreeShift(500, 1, 1, workingTreeRowHeight),
-      undefined,
-    );
+    assert.strictEqual(workingTreeShift(500, 1, workingTreeRowHeight), 530);
+    assert.strictEqual(workingTreeShift(530, -1, workingTreeRowHeight), 500);
+    assert.strictEqual(workingTreeShift(0, 1, workingTreeRowHeight), undefined);
   });
 
   test('keeps its place by what was scrolled since the place it last told', () => {

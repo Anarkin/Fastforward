@@ -440,7 +440,7 @@ export function App({ name, post: postToHost, listen }: Props) {
     const option =
       ref.kind === 'commit'
         ? checkoutCommit(ref.name, detached)
-        : checkoutRef(ref, refs, head);
+        : checkoutRef(ref, refs, head, detached);
     return [
       {
         label: 'Checkout',

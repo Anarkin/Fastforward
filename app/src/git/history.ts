@@ -2,7 +2,6 @@ import { spawn } from 'node:child_process';
 import { StringDecoder } from 'node:string_decoder';
 import { isHashPrefix } from '../shared/hashes';
 import type {
-  CommitField,
   CommitInfo,
   CommitResults,
   CommitSearch,
@@ -185,31 +184,20 @@ export function parseSearchedCommit(record: string): SearchedCommit {
   };
 }
 
-export function matchedFields(
-  commit: SearchedCommit,
-  query: string,
-): CommitField[] {
+export function matchesCommit(commit: SearchedCommit, query: string): boolean {
   const needle = query.toLowerCase();
-  const fields: CommitField[] = [];
-  if (commit.author.toLowerCase().includes(needle)) {
-    fields.push('author');
-  }
-  if (commit.committer.toLowerCase().includes(needle)) {
-    fields.push('committer');
-  }
-  if (commit.message.toLowerCase().includes(needle)) {
-    fields.push('message');
-  }
-  return fields;
+  return [commit.author, commit.committer, commit.message].some((field) =>
+    field.toLowerCase().includes(needle),
+  );
 }
 
 interface FoundHashes {
-  readonly found: { readonly hash: string; readonly fields: CommitField[] }[];
+  readonly found: string[];
   readonly capped: boolean;
 }
 
 export class SearchMatches {
-  private readonly found: FoundHashes['found'] = [];
+  private readonly found: string[] = [];
 
   constructor(
     private readonly query: string,
@@ -218,14 +206,13 @@ export class SearchMatches {
 
   add(record: string): FoundHashes | undefined {
     const commit = parseSearchedCommit(record);
-    const fields = matchedFields(commit, this.query);
-    if (fields.length === 0) {
+    if (!matchesCommit(commit, this.query)) {
       return undefined;
     }
     if (this.found.length === this.limit) {
       return { found: this.found, capped: true };
     }
-    this.found.push({ hash: commit.hash, fields });
+    this.found.push(commit.hash);
     return undefined;
   }
 
@@ -322,19 +309,7 @@ export async function searchCommits(
     limit,
     signal,
   );
-  const commits = await logCommits(
-    gitPath,
-    cwd,
-    found.map(({ hash }) => hash),
-  );
-  const fieldsOf = new Map(found.map(({ hash, fields }) => [hash, fields]));
-  return {
-    commits: commits.map((commit) => ({
-      commit,
-      fields: fieldsOf.get(commit.hash) ?? [],
-    })),
-    capped,
-  };
+  return { commits: await logCommits(gitPath, cwd, found), capped };
 }
 
 export function parseHistory(output: string): HistoryEntry[] {

@@ -13,10 +13,32 @@ function describe(row: GraphRow): string {
   return `${row.lane}: ${lines}`;
 }
 
+function widthOf(rows: readonly GraphRow[]): number {
+  return Math.max(
+    ...rows.map((row) =>
+      Math.max(
+        row.lane + 1,
+        ...row.lines.map((line) => Math.max(line.from, line.to) + 1),
+      ),
+    ),
+  );
+}
+
 function colors(row: GraphRow): string[] {
   return row.lines
     .map((line) => `${line.from}>${line.to}:${line.color}`)
     .toSorted();
+}
+
+function lanesReached(tips: number): number {
+  const [row] = new Graph([
+    ...Array.from({ length: tips }, (_, index) => ({
+      hash: `t${index}`,
+      parents: ['c'],
+    })),
+    { hash: 'c', parents: [] },
+  ]).rows(tips - 1, 1);
+  return Math.max(...row.lines.map((line) => Math.max(line.from, line.to) + 1));
 }
 
 suite('Graph', () => {
@@ -26,7 +48,7 @@ suite('Graph', () => {
       { hash: 'b', parents: ['a'] },
       { hash: 'a', parents: [] },
     ]);
-    assert.strictEqual(graph.width, 1);
+    assert.strictEqual(widthOf(graph.rows(0, 3)), 1);
     assert.deepStrictEqual(graph.rows(0, 3).map(describe), [
       '0: 0>0.',
       '0: 0>0 0>0.',
@@ -41,7 +63,7 @@ suite('Graph', () => {
       { hash: 'b', parents: ['c'] },
       { hash: 'c', parents: [] },
     ]);
-    assert.strictEqual(graph.width, 2);
+    assert.strictEqual(widthOf(graph.rows(0, 4)), 2);
     assert.deepStrictEqual(graph.rows(0, 4).map(describe), [
       '0: 0>0. 0>1.',
       '0: 0>0 0>0. 1>1 1>1.',
@@ -86,7 +108,7 @@ suite('Graph', () => {
       { hash: 'b', parents: ['c'] },
       { hash: 'c', parents: [] },
     ]);
-    assert.strictEqual(graph.width, 3);
+    assert.strictEqual(widthOf(graph.rows(0, 5)), 3);
     assert.deepStrictEqual(graph.rows(0, 5).map(describe), [
       '0: 0>0. 0>1.',
       '2: 0>0 0>0. 1>1 1>1. 2>1. 2>2.',
@@ -104,7 +126,7 @@ suite('Graph', () => {
       { hash: 'c', parents: ['d'] },
       { hash: 'd', parents: [] },
     ]);
-    assert.strictEqual(graph.width, 3);
+    assert.strictEqual(widthOf(graph.rows(0, 5)), 3);
     assert.strictEqual(describe(graph.rows(0, 1)[0]), '0: 0>0. 0>1. 0>2.');
   });
 
@@ -131,12 +153,6 @@ suite('Graph', () => {
     const full = new Graph(history, { checkpointEvery: 1000 }).rows(0, 50);
     const paged = new Graph(history, { checkpointEvery: 7 });
     assert.deepStrictEqual(paged.rows(0, 50), full);
-    const widest = Math.max(
-      ...full.map((row) =>
-        Math.max(row.lane + 1, ...row.lines.map((line) => line.to + 1)),
-      ),
-    );
-    assert.strictEqual(paged.width, widest);
     assert.deepStrictEqual(paged.rows(23, 10), full.slice(23, 33));
   });
 
@@ -184,6 +200,26 @@ suite('Graph', () => {
         ].toSorted(),
       );
     }
+  });
+
+  test('draws a line folded onto the last lane over the ones folded before it, once per color', () => {
+    const tips = Array.from({ length: 20 }, (_, index) => ({
+      hash: `t${index}`,
+      parents: ['c'],
+    }));
+    const row = new Graph([...tips, { hash: 'c', parents: [] }]).rows(19, 1)[0];
+    const folded = row.lines.filter(
+      (line) => line.bottom && line.from === maxLanes - 1,
+    );
+    assert.deepStrictEqual(
+      folded.map((line) => line.color),
+      [13, 14, 15, 16, 17, 18, 19, 20],
+    );
+  });
+
+  test('draws twelve lanes at most, folding a thirteenth onto the last', () => {
+    assert.strictEqual(lanesReached(12), 12);
+    assert.strictEqual(lanesReached(13), 12);
   });
 
   test('leads the working tree to HEAD, moving what is built on it aside', () => {

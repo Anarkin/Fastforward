@@ -17,21 +17,16 @@ export function fingerprint(
   ].join('\n');
 }
 
-export function countRefs(
+export function decoratedCommits(
   refs: readonly RefInfo[],
   head?: Head,
-): Map<string, number> {
-  const counts = new Map<string, number>();
-  const add = (commit: string) =>
-    counts.set(commit, (counts.get(commit) ?? 0) + 1);
-  for (const ref of refs) {
-    add(ref.commit);
-  }
+): Set<string> {
+  const decorated = new Set(refs.map((ref) => ref.commit));
   const detached = detachedHead(head);
   if (detached) {
-    add(detached);
+    decorated.add(detached);
   }
-  return counts;
+  return decorated;
 }
 
 export function detachedHead(head: Head | undefined): string | undefined {
@@ -39,14 +34,14 @@ export function detachedHead(head: Head | undefined): string | undefined {
 }
 
 export function decorations(
-  refCounts: ReadonlyMap<string, number>,
+  decorated: ReadonlySet<string>,
   positions: Pick<Positions, 'get'>,
-): [number, number][] {
-  const result: [number, number][] = [];
-  for (const [commit, count] of refCounts) {
+): number[] {
+  const result: number[] = [];
+  for (const commit of decorated) {
     const position = positions.get(commit);
     if (position !== undefined) {
-      result.push([position, count]);
+      result.push(position);
     }
   }
   return result;

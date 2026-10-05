@@ -20,6 +20,11 @@ export const refMenuTarget = (ref: BookmarkRef): MenuTarget => ({
 });
 
 export const commitMenuTarget = (hash: string): MenuTarget => ({
+  kind: 'commit',
+  hash,
+});
+
+export const commitBookmarkTarget = (hash: string): MenuTarget => ({
   kind: 'ref',
   ref: { kind: 'commit', name: hash },
 });

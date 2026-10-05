@@ -128,8 +128,9 @@ function childrenOf(
   return result;
 }
 
-// Parents outside the history, as a shallow clone has, get the indices after
-// its entries, so they can be marked shown like any commit
+// Parents missing from the history get the indices after its entries, so they
+// can be marked shown like any commit; git's history has none, as it lists a
+// shallow clone's boundary commits without parents
 interface Links {
   readonly index: ReadonlyMap<string, number>;
   readonly starts: Int32Array;

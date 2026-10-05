@@ -10,23 +10,23 @@ export class CommitHistory {
   private readonly graph = new Map<number, GraphRow>();
   private readonly positions = new Map<string, number>();
   private readonly requested = new Set<number>();
-  private readonly refCounts: ReadonlyMap<number, number>;
+  private readonly decorated: ReadonlySet<number>;
   private readonly listeners = new Set<() => void>();
   private version = 0;
 
   constructor(
     readonly total: number,
-    decorations: readonly (readonly [number, number])[] = [],
+    decorations: readonly number[] = [],
     readonly workingTreeGraph?: GraphRow,
     readonly generation = 0,
     readonly selectedIndex?: number,
     readonly keysFrom?: number,
   ) {
-    this.refCounts = new Map(decorations);
+    this.decorated = new Set(decorations);
   }
 
-  refCountAt(position: number): number {
-    return this.refCounts.get(position) ?? 0;
+  hasBubbles(position: number): boolean {
+    return this.decorated.has(position);
   }
 
   at(position: number): CommitInfo | undefined {

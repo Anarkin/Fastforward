@@ -14,15 +14,8 @@ export interface CommitResults {
   readonly more: number;
 }
 
-export type CommitField = 'author' | 'committer' | 'message';
-
-export interface CommitMatch {
-  readonly commit: CommitInfo;
-  readonly fields: readonly CommitField[];
-}
-
 export interface CommitSearch {
-  readonly commits: readonly CommitMatch[];
+  readonly commits: readonly CommitInfo[];
   readonly capped: boolean;
 }
 
@@ -288,7 +281,7 @@ export type ToWebview =
       readonly type: 'commits';
       readonly generation: number;
       readonly total: number;
-      readonly decorations: readonly (readonly [number, number])[];
+      readonly decorations: readonly number[];
       readonly start: number;
       readonly commits: readonly CommitInfo[];
       readonly graph: readonly GraphRow[];

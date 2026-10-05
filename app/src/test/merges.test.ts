@@ -124,20 +124,20 @@ suite('Merges shown', () => {
     );
   });
 
-  test('keeps the parents a shallow history leaves out, counting them hidden behind a merge', () => {
-    const shallow = [
+  test('keeps the parents missing from the history, counting them hidden behind a merge', () => {
+    const partial = [
       { hash: 'm', parents: ['a', 'x'] },
       { hash: 'a', parents: ['y'] },
     ];
     assert.deepStrictEqual(
-      showHistory(shallow, new Set(['m']), () => false),
+      showHistory(partial, new Set(['m']), () => false),
       [
         { hash: 'm', parents: ['a'], merge: 'collapsed', hidden: 1 },
         { hash: 'a', parents: ['y'] },
       ],
     );
     assert.deepStrictEqual(
-      showHistory(shallow, new Set(['m']), () => true)[0].parents,
+      showHistory(partial, new Set(['m']), () => true)[0].parents,
       ['a', 'x'],
     );
   });

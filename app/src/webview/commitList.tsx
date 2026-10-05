@@ -17,14 +17,19 @@ import {
 import { DetachedHead, HeadBubble, RefBubble } from './bubbles';
 import { Column } from './column';
 import { CommitHistory } from './commitHistory';
-import { OpenContextMenu } from './contextMenu';
+import { commitMenuTarget, OpenContextMenu } from './contextMenu';
 import { GraphCell, graphWidth, rowLanes } from './graph';
 import { formatDateTime } from './dates';
 import { MenuButton } from './menu';
 import { useSkeleton } from './skeleton';
 import { Highlight } from './highlight';
 import { columnFocusAttribute } from './activeColumn';
-import { fullyVisible, type VisibleRows } from './listMoves';
+import {
+  fullyVisible,
+  listKey,
+  moveInList,
+  type VisibleRows,
+} from './listMoves';
 import { SoloIcon } from './icons';
 
 export const commitRowHeight = 50;
@@ -91,7 +96,7 @@ export function estimatedRowHeight(
   if (index < offset) {
     return workingTreeRowHeight;
   }
-  return (history?.refCountAt(index - offset) ?? 0) > 0
+  return history?.hasBubbles(index - offset)
     ? commitRowHeight + bubbleLineHeight
     : commitRowHeight;
 }
@@ -137,15 +142,6 @@ export function listTop(
   return commit && { hash: commit.hash, offset: scrollTop - row.start };
 }
 
-const listKeys = new Set([
-  'ArrowDown',
-  'ArrowUp',
-  'Home',
-  'End',
-  'PageDown',
-  'PageUp',
-]);
-
 export function isListKey(
   event: Pick<
     KeyboardEvent,
@@ -153,7 +149,7 @@ export function isListKey(
   >,
 ): boolean {
   return (
-    listKeys.has(event.key) &&
+    listKey(event.key) &&
     !event.ctrlKey &&
     !event.metaKey &&
     !event.altKey &&
@@ -219,51 +215,31 @@ export function listKeyPosition(
   if (from === null) {
     return undefined;
   }
-  const top = workingTree ? workingTreeIndex : 0;
-  const bottom = history.total - 1;
-  const page = Math.max(1, visible.last - visible.first);
   const head =
     headCommit === undefined ? undefined : history.positionOf(headCommit);
-  let target: number;
-  switch (key) {
-    case 'ArrowDown':
-      target = from === undefined ? (head ?? top) : from + 1;
-      break;
-    case 'ArrowUp':
-      target = from === undefined ? (head ?? top) : from - 1;
-      break;
-    case 'Home':
-      target = top;
-      break;
-    case 'End':
-      target = bottom;
-      break;
-    case 'PageDown':
-      target =
-        from === undefined || from < visible.last ? visible.last : from + page;
-      break;
-    case 'PageUp':
-      target =
-        from === undefined || from > visible.first
-          ? visible.first
-          : from - page;
-      break;
-    default:
-      return undefined;
+  if (
+    from === undefined &&
+    head !== undefined &&
+    (key === 'ArrowDown' || key === 'ArrowUp')
+  ) {
+    return head;
   }
-  const position = Math.max(top, Math.min(bottom, target));
-  return position === from ? undefined : position;
+  const top = workingTree ? workingTreeIndex : 0;
+  const moved = moveInList(
+    key,
+    from === undefined ? undefined : from - top,
+    history.total - top,
+    { first: visible.first - top, last: visible.last - top },
+  );
+  return moved === undefined ? undefined : moved + top;
 }
 
 export function workingTreeShift(
   scrollTop: number,
-  previousOffset: number,
-  offset: number,
+  shiftBy: number,
   rowHeight: number,
 ): number | undefined {
-  return offset === previousOffset || scrollTop === 0
-    ? undefined
-    : scrollTop + (offset - previousOffset) * rowHeight;
+  return scrollTop === 0 ? undefined : scrollTop + shiftBy * rowHeight;
 }
 
 export interface ListScrollState {
@@ -493,8 +469,7 @@ export function Commits({
       }
       const shifted = workingTreeShift(
         element.scrollTop,
-        previous.offset,
-        offset,
+        action.shiftBy,
         workingTreeRowHeight,
       );
       if (shifted !== undefined) {
@@ -714,7 +689,6 @@ export function Commits({
         tabIndex={0}
         {...{ [columnFocusAttribute]: '' }}
         onKeyDown={onKeyDown}
-        data-version={version}
       >
         <div
           className="virtual-spacer"
@@ -813,9 +787,7 @@ export function CommitRow({
           ? onCompare(commit.hash)
           : onSelect(commit.hash)
       }
-      onContextMenu={(event) =>
-        openMenu(event, { kind: 'commit', hash: commit.hash })
-      }
+      onContextMenu={(event) => openMenu(event, commitMenuTarget(commit.hash))}
     >
       <div className="commit-line">
         <span className="subject">

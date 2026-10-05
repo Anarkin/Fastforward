@@ -44,11 +44,11 @@ suite('Checkout options', () => {
 
   test('offers a remote branch whose checked-out local branch is elsewhere', () => {
     assert.strictEqual(
-      checkoutRef(remote('origin/fix'), refs, 'fix').disabled,
+      checkoutRef(remote('origin/fix'), refs, 'fix', undefined).disabled,
       false,
     );
     assert.strictEqual(
-      checkoutRef(remote('origin/main'), refs, 'main').disabled,
+      checkoutRef(remote('origin/main'), refs, 'main', undefined).disabled,
       true,
     );
   });
@@ -64,7 +64,7 @@ suite('Checkout options', () => {
       },
     ];
     assert.strictEqual(
-      checkoutRef(remote('team/fork/main'), forked, 'main').disabled,
+      checkoutRef(remote('team/fork/main'), forked, 'main', undefined).disabled,
       true,
     );
   });
@@ -75,7 +75,10 @@ suite('Checkout options', () => {
       remote('origin/feature'),
       { kind: 'tag' as const, name: 'v1' },
     ]) {
-      assert.deepStrictEqual(checkoutRef(ref, refs, 'main').target, ref);
+      assert.deepStrictEqual(
+        checkoutRef(ref, refs, 'main', undefined).target,
+        ref,
+      );
     }
   });
 
@@ -88,13 +91,34 @@ suite('Checkout options', () => {
     assert.strictEqual(checkoutCommit('cccccccc', 'cccccccc').disabled, true);
   });
 
+  test('greys out a tag on the detached HEAD, as checking it out changes nothing', () => {
+    assert.deepStrictEqual(
+      labels(checkoutOptions('aaaaaaaa', refs, undefined, 'aaaaaaaa')).filter(
+        ([label]) => label === 'v1' || label === 'aaaaaaa',
+      ),
+      [
+        ['v1', true],
+        ['aaaaaaa', true],
+      ],
+    );
+    assert.deepStrictEqual(
+      labels(checkoutOptions('aaaaaaaa', refs, undefined, 'bbbbbbbb')).filter(
+        ([label]) => label === 'v1',
+      ),
+      [['v1', false]],
+    );
+  });
+
   test("greys out a bookmarked ref that doesn't exist anymore", () => {
     for (const ref of [
       { kind: 'branch' as const, name: 'deleted' },
       remote('origin/deleted'),
       { kind: 'tag' as const, name: 'v0' },
     ]) {
-      assert.strictEqual(checkoutRef(ref, refs, 'main').disabled, true);
+      assert.strictEqual(
+        checkoutRef(ref, refs, 'main', undefined).disabled,
+        true,
+      );
     }
   });
 });

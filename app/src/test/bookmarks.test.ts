@@ -30,6 +30,26 @@ suite('Bookmark order', () => {
     ]);
   });
 
+  test('puts remote branches next to the local ones of the same name, also of a remote with a slash in its name', () => {
+    const refs: RefInfo[] = [
+      {
+        kind: 'remote',
+        name: 'team/fork/main',
+        remote: 'team/fork',
+        commit: 'a',
+      },
+      { kind: 'branch', name: 'hotfix', commit: 'a' },
+      { kind: 'remote', name: 'origin/main', remote: 'origin', commit: 'a' },
+      { kind: 'branch', name: 'main', commit: 'a' },
+    ];
+    assert.deepStrictEqual(names(refs.toSorted(compareBookmarks)), [
+      'hotfix',
+      'main',
+      'origin/main',
+      'team/fork/main',
+    ]);
+  });
+
   test('puts commits after the refs, in the order they were bookmarked', () => {
     const bookmarks: Bookmark[] = [
       { kind: 'commit', name: 'c1' },
@@ -69,6 +89,28 @@ suite('Bookmark options', () => {
       ['feature', 'origin/feature', 'v2', 'abcdef1'],
     );
   });
+
+  test("knows the remote of a commit's remote branches, also one with a slash in its name", () => {
+    const refs: RefInfo[] = [
+      {
+        kind: 'remote',
+        name: 'team/fork/main',
+        remote: 'team/fork',
+        commit: 'a',
+      },
+      { kind: 'branch', name: 'hotfix', commit: 'a' },
+      { kind: 'branch', name: 'main', commit: 'a' },
+    ];
+    assert.deepStrictEqual(
+      bookmarkOptions('a', refs).map((option) => option.bookmark),
+      [
+        { kind: 'branch', name: 'hotfix' },
+        { kind: 'branch', name: 'main' },
+        { kind: 'remote', name: 'team/fork/main' },
+        { kind: 'commit', name: 'a' },
+      ],
+    );
+  });
 });
 
 suite('Pinned refs of the search', () => {
@@ -91,6 +133,34 @@ suite('Pinned refs of the search', () => {
     const pinned = pinnedRefs(bookmarks, refs, 'main', undefined, '');
     assert.deepStrictEqual(names(pinned.checkedOut), ['main']);
     assert.deepStrictEqual(names(pinned.bookmarks), ['main', 'v1', 'c1']);
+  });
+
+  test('orders bookmarked remote branches by the remote they are on, also one with a slash in its name', () => {
+    const forked: RefInfo[] = [
+      ...refs,
+      {
+        kind: 'remote',
+        name: 'team/fork/main',
+        remote: 'team/fork',
+        commit: 'a',
+      },
+    ];
+    const pinned = pinnedRefs(
+      [
+        { kind: 'remote', name: 'team/fork/main' },
+        { kind: 'branch', name: 'hotfix' },
+        { kind: 'branch', name: 'main' },
+      ],
+      forked,
+      'main',
+      undefined,
+      '',
+    );
+    assert.deepStrictEqual(names(pinned.bookmarks), [
+      'hotfix',
+      'main',
+      'team/fork/main',
+    ]);
   });
 
   test('shows no branch before its first commit', () => {

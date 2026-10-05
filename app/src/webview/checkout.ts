@@ -1,6 +1,6 @@
 import { shortHash } from '../shared/hashes';
 import type { CheckoutTarget, RefInfo, BookmarkRef } from '../shared/protocol';
-import { findRef, hasRef, localBranchOf, refOf } from '../shared/refNames';
+import { findRef, localBranchOf, refOf } from '../shared/refNames';
 import { byName } from './byName';
 
 export interface CheckoutOption {
@@ -13,28 +13,35 @@ export function checkoutRef(
   ref: BookmarkRef,
   refs: readonly RefInfo[],
   head: string | undefined,
+  detachedHead: string | undefined,
 ): CheckoutOption {
   const target = refOf(ref);
-  return { label: ref.name, target, disabled: cannotCheckOut(ref, refs, head) };
+  return {
+    label: ref.name,
+    target,
+    disabled: cannotCheckOut(ref, refs, head, detachedHead),
+  };
 }
 
 function cannotCheckOut(
   ref: BookmarkRef,
   refs: readonly RefInfo[],
   head: string | undefined,
+  detachedHead: string | undefined,
 ): boolean {
-  if (!hasRef(refs, ref)) {
+  const found = findRef(refs, ref);
+  if (!found) {
     return true;
   }
   if (ref.kind === 'branch') {
     return ref.name === head;
   }
   if (ref.kind === 'tag') {
-    return false;
+    return found.commit === detachedHead;
   }
   const local = localBranchOf(refs, ref.name);
   const localRef = findRef(refs, { kind: 'branch', name: local });
-  return local === head && localRef?.commit === findRef(refs, ref)?.commit;
+  return local === head && localRef?.commit === found.commit;
 }
 
 export function checkoutCommit(
@@ -60,7 +67,7 @@ export function checkoutOptions(
       here
         .filter((ref) => ref.kind === kind)
         .toSorted(byName)
-        .map((ref) => checkoutRef(ref, refs, head)),
+        .map((ref) => checkoutRef(ref, refs, head, detachedHead)),
     ),
     checkoutCommit(hash, detachedHead),
   ];
