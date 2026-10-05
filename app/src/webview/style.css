@@ -179,7 +179,7 @@ body {
   position: absolute;
   top: 100%;
   right: 0;
-  z-index: 17;
+  z-index: 21;
   min-width: 160px;
   width: max-content;
   padding: 4px;
@@ -860,7 +860,6 @@ body.resizing {
 .menu.context-menu {
   position: fixed;
   right: auto;
-  z-index: 21;
 }
 
 .locations-groups {

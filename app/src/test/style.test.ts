@@ -962,12 +962,12 @@ suite('Style', () => {
       ".columns[data-active-column='commits'] > .column:nth-child(1)::after",
     );
     assert.ok(edge > level('.locations-popup'));
-    for (const above of ['.menu', '.menu.context-menu', '.notices']) {
+    for (const above of ['.menu', '.notices']) {
       assert.ok(level(above) > edge, above);
     }
   });
 
-  test('draws a context menu, and so its submenus, over the notices, which take the pointer only on a notice, and both under the overlay scrollbars', () => {
+  test('draws a menu, a context menu and so their submenus over the notices, which take the pointer only on a notice, and both under the overlay scrollbars', () => {
     const notices = rendered(
       createElement(Notices, {
         notices: [{ id: 1, level: 'error', message: 'failed', shownAt: 0 }],
@@ -985,6 +985,7 @@ suite('Style', () => {
     );
     assert.strictEqual(cascaded(menu, 'position'), 'fixed');
     assert.ok(layer(menu) > layer(notices));
+    assert.ok(level('.menu') > layer(notices));
     assert.ok(layer(scrollbar) > layer(menu));
     assert.strictEqual(cascaded(notices, 'pointer-events'), 'none');
     assert.strictEqual(
