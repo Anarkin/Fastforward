@@ -20,7 +20,7 @@
     "start": "npm run build && electron .",
     "package": "npm run check-types && node esbuild.mjs --production",
     "check-types": "tsc --noEmit && tsc -p tsconfig.main.json && tsc -p tsconfig.webview.json",
-    "compile-tests": "node -e \"require('fs').rmSync('out', { recursive: true, force: true })\" && tsc -p . --outDir out",
+    "compile-tests": "node -e \"require('fs').rmSync('out', { recursive: true, force: true })\" && tsc -p .",
     "pretest": "npm run build && npm run compile-tests",
     "test": "c8 --reporter text --reporter html mocha --ui tdd \"out/test/*.test.js\"",
     "test:unit": "mocha --ui tdd \"out/test/*.test.js\" --exclude \"out/test/*.git.test.js\" --exclude \"out/test/*.electron.test.js\"",

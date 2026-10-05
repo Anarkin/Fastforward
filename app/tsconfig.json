@@ -5,6 +5,7 @@
     "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "types": ["node", "mocha"],
     "rootDir": "src",
+    "outDir": "out",
     "sourceMap": true,
     "strict": true,
     "isolatedModules": true,
