@@ -175,8 +175,7 @@ function reportFailure(
   message: string,
   error: unknown,
 ): void {
-  const details = gitErrorText(error);
   log.error(failed);
-  log.error(details);
-  notify('error', `${message} ${details}`);
+  log.error(error);
+  notify('error', `${message} ${gitErrorText(error)}`);
 }

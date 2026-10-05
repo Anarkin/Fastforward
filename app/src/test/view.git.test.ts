@@ -286,7 +286,7 @@ suite('View', function () {
   let other: string;
   let otherHead: string;
 
-  const { log } = recordingLog();
+  const { log, error: logged } = recordingLog();
 
   suiteSetup(async () => {
     folder = tempFolder('view');
@@ -1937,7 +1937,7 @@ suite('View', function () {
       assert.match(page.last('error')?.message ?? '', /^fatal: .*no-tree$/);
     });
 
-    test('reports what git said when it refuses a checkout', async () => {
+    test('reports what git said when it refuses a checkout, logging the command too', async () => {
       await withNotices(page, 'error', async (messages) => {
         await connection.receive({
           type: 'checkout',
@@ -1950,6 +1950,13 @@ suite('View', function () {
           /^Couldn't check out no-such-branch\. fatal: invalid reference: no-such-branch$/,
         );
       });
+      assert.ok(
+        logged.some(
+          (entry) =>
+            entry instanceof Error &&
+            /^git .*switch .*no-such-branch failed: /.test(entry.message),
+        ),
+      );
     });
 
     test('reloads when a branch is created', async () => {
