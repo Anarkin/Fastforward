@@ -70,6 +70,16 @@ function isBounds(value: unknown): value is Bounds {
   );
 }
 
+export function firstWindowSize(workArea: Bounds): {
+  readonly width: number;
+  readonly height: number;
+} {
+  return {
+    width: Math.min(1400, workArea.width),
+    height: Math.min(900, workArea.height),
+  };
+}
+
 export function minimumHeight(workAreas: readonly Bounds[]): number {
   return Math.min(
     minimumWindowSize.height,

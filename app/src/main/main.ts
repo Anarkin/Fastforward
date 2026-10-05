@@ -33,6 +33,7 @@ import {
   appFile,
   appOrigin,
   appScheme,
+  firstWindowSize,
   isAppUrl,
   keptBounds,
   minimumHeight,
@@ -284,7 +285,7 @@ function createWindow(
   shown: Promise<boolean>,
 ): BrowserWindow {
   const workAreas = screen.getAllDisplays().map((display) => display.workArea);
-  const size = { width: 1400, height: 900 };
+  const size = firstWindowSize(screen.getPrimaryDisplay().workArea);
   const bounds = visibleBounds(store.get(boundsKey), workAreas);
   const window = new BrowserWindow({
     ...(bounds ?? size),

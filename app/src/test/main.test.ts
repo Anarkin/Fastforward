@@ -5,6 +5,7 @@ import * as path from 'node:path';
 import { PassThrough } from 'node:stream';
 import {
   appFile,
+  firstWindowSize,
   isAppUrl,
   keptBounds,
   minimumHeight,
@@ -162,6 +163,17 @@ suite('Window bounds', () => {
     assert.strictEqual(restores(), false);
     minimized = true;
     assert.strictEqual(restoresMaximized(window, true)(), true);
+  });
+
+  test('opens a first window at 1400 by 900, or only as large as the work area of a smaller screen', () => {
+    assert.deepStrictEqual(
+      firstWindowSize({ x: 0, y: 0, width: 1920, height: 1040 }),
+      { width: 1400, height: 900 },
+    );
+    assert.deepStrictEqual(
+      firstWindowSize({ x: 0, y: 0, width: 1366, height: 728 }),
+      { width: 1366, height: 728 },
+    );
   });
 
   test('keeps the bounds a window was made with until it is moved or resized, as a window with a hidden title bar says it is larger than made on a scaled screen', () => {
