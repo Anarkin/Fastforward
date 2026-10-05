@@ -1,6 +1,5 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
-import * as os from 'node:os';
 import * as path from 'node:path';
 import {
   mergeSettings,
@@ -12,7 +11,7 @@ import {
   writeReadOnly,
 } from '../settings';
 import { defaultSettings, waitFor } from './fixtures';
-import { symlinkOrSkip } from './repositories';
+import { removeFolder, symlinkOrSkip, tempFolder } from './repositories';
 
 const defaults = defaultSettings();
 
@@ -103,11 +102,11 @@ suite('User settings file', () => {
   let file: string;
 
   setup(() => {
-    folder = fs.mkdtempSync(path.join(os.tmpdir(), 'fastforward-settings-'));
+    folder = tempFolder('settings');
     file = path.join(folder, 'settings.user.json');
   });
 
-  teardown(() => fs.rmSync(folder, { recursive: true, force: true }));
+  teardown(() => removeFolder(folder));
 
   const written = (): unknown => JSON.parse(fs.readFileSync(file, 'utf8'));
 
@@ -302,7 +301,7 @@ suite('Default settings', () => {
   });
 
   test('writes the reference copy read-only, and can write it again', () => {
-    const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'fastforward-copy-'));
+    const folder = tempFolder('copy');
     const file = path.join(folder, 'settings.defaults.json');
     try {
       writeReadOnly(file, 'first');
@@ -310,8 +309,7 @@ suite('Default settings', () => {
       writeReadOnly(file, 'second');
       assert.strictEqual(fs.readFileSync(file, 'utf8'), 'second');
     } finally {
-      fs.chmodSync(file, 0o644);
-      fs.rmSync(folder, { recursive: true, force: true });
+      removeFolder(folder);
     }
   });
 });
@@ -352,7 +350,7 @@ suite('Moving to settings and state', () => {
   });
 
   test('moves an old profile once, keeping the old file aside', () => {
-    const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'fastforward-move-'));
+    const folder = tempFolder('move');
     try {
       fs.writeFileSync(path.join(folder, 'settings.json'), JSON.stringify(old));
       assert.strictEqual(migrateProfile(folder, defaults), true);
@@ -368,7 +366,7 @@ suite('Moving to settings and state', () => {
       assert.ok(!fs.existsSync(path.join(folder, 'settings.json')));
       assert.strictEqual(migrateProfile(folder, defaults), false);
     } finally {
-      fs.rmSync(folder, { recursive: true, force: true });
+      removeFolder(folder);
     }
   });
 });

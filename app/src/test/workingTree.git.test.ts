@@ -454,12 +454,14 @@ suite('Uncommitted changes', function () {
 
 suite('Repository files', function () {
   this.timeout(20_000);
+  let parent: string;
   let gitPath: string;
   let repository: TempRepository;
   let cwd: string;
 
   suiteSetup(async () => {
-    repository = await tempRepository(tempFolder('files'));
+    parent = tempFolder('files');
+    repository = await tempRepository(path.join(parent, 'repository'));
     gitPath = repository.gitPath;
     cwd = repository.root;
     await repository.commit('initial', { 'src/tracked.txt': 'one\n' });
@@ -467,7 +469,7 @@ suite('Repository files', function () {
     fs.writeFileSync(path.join(cwd, 'untracked.txt'), 'new\n');
   });
 
-  suiteTeardown(() => removeFolder(cwd));
+  suiteTeardown(() => removeFolder(parent));
 
   test('lists the files at a commit and in the working tree', async () => {
     assert.deepStrictEqual(await listTree(gitPath, cwd, 'HEAD'), [
@@ -608,7 +610,7 @@ suite('Repository files', function () {
   });
 
   test('reads no file outside the repository', async () => {
-    const outside = path.join(path.dirname(cwd), 'outside.txt');
+    const outside = path.join(parent, 'outside.txt');
     fs.writeFileSync(outside, 'secret\n');
     try {
       await assert.rejects(
@@ -622,11 +624,16 @@ suite('Repository files', function () {
     } finally {
       fs.rmSync(outside);
     }
-    fs.writeFileSync(path.join(cwd, '..dots.txt'), 'inside\n');
-    assert.strictEqual(
-      (await readFile(gitPath, cwd, undefined, '..dots.txt')).content,
-      'inside\n',
-    );
+    const dots = path.join(cwd, '..dots.txt');
+    fs.writeFileSync(dots, 'inside\n');
+    try {
+      assert.strictEqual(
+        (await readFile(gitPath, cwd, undefined, '..dots.txt')).content,
+        'inside\n',
+      );
+    } finally {
+      fs.rmSync(dots);
+    }
   });
 
   test('reads a file whose folder became a file as empty', async () => {
@@ -722,8 +729,14 @@ suite('Large files and submodules', function () {
     await repository.git('add', 'sub');
     await repository.git('commit', '-m', 'move sub');
     await repository.git('config', 'diff.submodule', 'log');
-    const patch = await showPatch(gitPath, cwd, 'HEAD', { path: 'sub' });
-    assert.ok(patch.includes(`-Subproject commit ${inner}`), patch);
+    try {
+      const patch = await showPatch(gitPath, cwd, 'HEAD', { path: 'sub' });
+      assert.ok(patch.includes(`-Subproject commit ${inner}`), patch);
+    } finally {
+      await repository.git('config', '--unset', 'diff.submodule');
+      await repository.git('reset', '--hard', 'HEAD~1');
+      await sub.git('reset', '--hard', inner);
+    }
   });
 });
 

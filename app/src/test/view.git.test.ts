@@ -1,5 +1,4 @@
 import * as assert from 'node:assert';
-import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import { createServer } from 'node:http';
 import * as path from 'node:path';
@@ -29,7 +28,9 @@ import { UserSettings } from '../settings';
 import { FakeStore } from './fakeStore';
 import { defaultSettings, waitFor } from './fixtures';
 import {
+  commitText,
   installedGit,
+  objectId,
   removeFolder,
   tempFolder,
   tempRepository,
@@ -204,6 +205,50 @@ function stubMethod(
       ...args,
     ),
   );
+}
+
+function rootOf(context: unknown): string | undefined {
+  return typeof context === 'object' &&
+    context !== null &&
+    'root' in context &&
+    typeof context.root === 'string'
+    ? context.root
+    : undefined;
+}
+
+async function lockedRepository(root: string): Promise<{
+  repository: TempRepository;
+  asked: () => string[];
+  close: () => Promise<void>;
+}> {
+  const repository = await tempRepository(root);
+  await repository.commit('a');
+  const asked = `${root}-asked.txt`.replaceAll('\\', '/');
+  await repository.git('config', 'credential.helper', '');
+  await repository.git(
+    'config',
+    '--add',
+    'credential.helper',
+    `!f() { test "$1" = get || exit 0; echo "[$GCM_INTERACTIVE]" >> '${asked}'; echo username=u; echo password=p; }; f`,
+  );
+  const server = createServer((_request, response) => {
+    response.writeHead(401, { 'WWW-Authenticate': 'Basic realm="locked"' });
+    response.end();
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  assert.ok(typeof address === 'object' && address !== null);
+  await repository.git(
+    'remote',
+    'add',
+    'origin',
+    `http://127.0.0.1:${address.port}/x`,
+  );
+  return {
+    repository,
+    asked: () => fs.readFileSync(asked, 'utf8').trim().split('\n'),
+    close: () => new Promise((resolve) => server.close(() => resolve())),
+  };
 }
 
 function reopen(view: FastforwardView): {
@@ -924,6 +969,7 @@ suite('View', function () {
     test('drops the result of a search a newer one replaced once it was found', async () => {
       const held = gate();
       let waiting = false;
+      let abortedWhenFound = false;
       stubMethod(fastforward, 'commitsMatching', async (original, ...args) => {
         const [context, query, signal] = args;
         if (query !== 'nothing like it') {
@@ -936,7 +982,7 @@ suite('View', function () {
         );
         waiting = true;
         await held.opened;
-        assert.ok(signal instanceof AbortSignal && signal.aborted);
+        abortedWhenFound = signal instanceof AbortSignal && signal.aborted;
         return found;
       });
       page.clear();
@@ -953,7 +999,9 @@ suite('View', function () {
       });
       held.open();
       await replaced;
+      assert.ok(abortedWhenFound);
       assert.strictEqual(page.last('commitSearch')?.query, 'test');
+      assert.strictEqual(page.last('error'), undefined);
     });
 
     test('jumps to a commit by a short hash', async () => {
@@ -1021,11 +1069,8 @@ suite('View', function () {
       const byPrefix = new Map<string, string>();
       let prefix: string | undefined;
       for (let n = 0; prefix === undefined; n++) {
-        const content = `tree ${tree}\nauthor T <t@example.com> 0 +0000\ncommitter T <t@example.com> 0 +0000\n\nprobe ${n}\n`;
-        const start = createHash('sha1')
-          .update(`commit ${Buffer.byteLength(content)}\0${content}`)
-          .digest('hex')
-          .slice(0, 4);
+        const content = commitText(tree, `probe ${n}`);
+        const start = objectId('commit', content).slice(0, 4);
         const earlier = byPrefix.get(start);
         if (earlier === undefined) {
           byPrefix.set(start, content);
@@ -1328,28 +1373,37 @@ suite('View', function () {
     });
 
     test('sends the history to a page opened again while the tab first loads', async () => {
-      const own = await openView(log, [repository.root], false);
-      const held = gate();
-      stubMethod(own.view, 'sendCommits', async (original, ...args) => {
-        await held.opened;
-        await original(...args);
-      });
-      const first = own.connection.receive({ type: 'ready' });
-      await waitFor(() => own.page.last('repository') !== undefined, 'refs');
-      own.connection.dispose();
-      const reopened = reopen(own.view);
-      try {
-        await waitFor(
-          () => reopened.page.last('repository') !== undefined,
-          'the replayed refs',
-        );
-        held.open();
-        await Promise.all([first, reopened.ready]);
-        assert.strictEqual(reopened.page.last('commits')?.total, 3);
-        assert.strictEqual(reopened.page.last('error'), undefined);
-      } finally {
-        reopened.connection.dispose();
-      }
+      await withView(
+        log,
+        [repository.root],
+        async (own) => {
+          const held = gate();
+          stubMethod(own.view, 'sendCommits', async (original, ...args) => {
+            await held.opened;
+            await original(...args);
+          });
+          const first = own.connection.receive({ type: 'ready' });
+          await waitFor(
+            () => own.page.last('repository') !== undefined,
+            'refs',
+          );
+          own.connection.dispose();
+          const reopened = reopen(own.view);
+          try {
+            await waitFor(
+              () => reopened.page.last('repository') !== undefined,
+              'the replayed refs',
+            );
+            held.open();
+            await Promise.all([first, reopened.ready]);
+            assert.strictEqual(reopened.page.last('commits')?.total, 3);
+            assert.strictEqual(reopened.page.last('error'), undefined);
+          } finally {
+            reopened.connection.dispose();
+          }
+        },
+        false,
+      );
     });
 
     test('sends a history reloaded while the page was opened again', async () => {
@@ -1406,20 +1460,29 @@ suite('View', function () {
     });
 
     test('sends nothing to a page closed while its tab first loads', async () => {
-      const own = await openView(log, [repository.root], false);
-      const held = gate();
-      stubMethod(own.view, 'sendCommits', async (original, ...args) => {
-        await held.opened;
-        await original(...args);
-      });
-      const first = own.connection.receive({ type: 'ready' });
-      await waitFor(() => own.page.last('repository') !== undefined, 'refs');
-      own.connection.dispose();
-      const sent = own.page.messages.length;
-      held.open();
-      await first;
-      assert.strictEqual(own.page.messages.length, sent);
-      assert.strictEqual(own.page.last('commits'), undefined);
+      await withView(
+        log,
+        [repository.root],
+        async (own) => {
+          const held = gate();
+          stubMethod(own.view, 'sendCommits', async (original, ...args) => {
+            await held.opened;
+            await original(...args);
+          });
+          const first = own.connection.receive({ type: 'ready' });
+          await waitFor(
+            () => own.page.last('repository') !== undefined,
+            'refs',
+          );
+          own.connection.dispose();
+          const sent = own.page.messages.length;
+          held.open();
+          await first;
+          assert.strictEqual(own.page.messages.length, sent);
+          assert.strictEqual(own.page.last('commits'), undefined);
+        },
+        false,
+      );
     });
 
     test('runs the refreshes asked for during one that fails', async () => {
@@ -2663,13 +2726,7 @@ suite('View', function () {
       let failed = false;
       stubMethod(tabs.view, 'sendWorkingTree', async (original, ...args) => {
         const [context] = args;
-        if (
-          !failed &&
-          typeof context === 'object' &&
-          context !== null &&
-          'root' in context &&
-          context.root === other
-        ) {
+        if (!failed && rootOf(context) === other) {
           failed = true;
           throw new Error('working tree failed');
         }
@@ -3283,13 +3340,7 @@ suite('View', function () {
           hash: indent,
         });
         assert.strictEqual(changed(), false);
-        const file = path.join(folder, 'respaced.settings.json');
-        fs.writeFileSync(file, JSON.stringify({ ignoreWhitespace: false }));
-        const edited = new UserSettings(defaultSettings(), file);
-        await view.settings.set(
-          'ignoreWhitespace',
-          edited.settings.ignoreWhitespace,
-        );
+        await view.settings.set('ignoreWhitespace', false);
         view.view.reloadSettings();
         view.page.clear();
         await view.connection.receive({ type: 'ready' });
@@ -3983,11 +4034,11 @@ suite('Fetch', function () {
   });
 
   suiteTeardown(() => {
-    connection.dispose();
-    removeFolder(folder);
     if (interactive !== undefined) {
       process.env.GCM_INTERACTIVE = interactive;
     }
+    connection?.dispose();
+    removeFolder(folder);
   });
 
   test('updates by itself when a fetch brings new commits', async () => {
@@ -4354,12 +4405,7 @@ suite('Fetch', function () {
     stubMethod(opened.view, 'watch', () => Promise.resolve());
     stubMethod(opened.view, 'fetchRemotes', async (original, ...args) => {
       const [context] = args;
-      if (
-        typeof context === 'object' &&
-        context !== null &&
-        'root' in context &&
-        context.root === repository.root
-      ) {
+      if (rootOf(context) === repository.root) {
         await opened.connection.receive({
           type: 'selectTab',
           root: repository.root,
@@ -4405,12 +4451,7 @@ suite('Fetch', function () {
     );
     stubMethod(opened.view, 'fetchRemotes', async (original, ...args) => {
       const [context] = args;
-      if (
-        typeof context === 'object' &&
-        context !== null &&
-        'root' in context &&
-        context.root === first.root
-      ) {
+      if (rootOf(context) === first.root) {
         await opened.connection.receive({
           type: 'closeTab',
           root: repository.root,
@@ -4445,12 +4486,7 @@ suite('Fetch', function () {
     );
     stubMethod(opened.view, 'fetchRemotes', async (original, ...args) => {
       const [context] = args;
-      if (
-        typeof context === 'object' &&
-        context !== null &&
-        'root' in context &&
-        context.root === closing.root
-      ) {
+      if (rootOf(context) === closing.root) {
         await opened.connection.receive({
           type: 'closeTab',
           root: closing.root,
@@ -4535,27 +4571,11 @@ suite('Fetch', function () {
   });
 
   test('lets only a fetch asked for, not one in the background, ask for credentials', async () => {
-    const server = createServer((_request, response) => {
-      response.writeHead(401, { 'WWW-Authenticate': 'Basic realm="locked"' });
-      response.end();
-    });
-    await new Promise<void>((resolve) =>
-      server.listen(0, '127.0.0.1', resolve),
-    );
-    const address = server.address();
-    assert.ok(typeof address === 'object' && address !== null);
-    const { port } = address;
-    const locked = await tempRepository(path.join(folder, 'locked'));
-    await locked.commit('a');
-    await locked.git('remote', 'add', 'origin', `http://127.0.0.1:${port}/x`);
-    const asked = path.join(folder, 'asked.txt').replaceAll('\\', '/');
-    await locked.git('config', 'credential.helper', '');
-    await locked.git(
-      'config',
-      '--add',
-      'credential.helper',
-      `!f() { test "$1" = get || exit 0; echo "[$GCM_INTERACTIVE]" >> '${asked}'; echo username=u; echo password=p; }; f`,
-    );
+    const {
+      repository: locked,
+      asked,
+      close,
+    } = await lockedRepository(path.join(folder, 'locked'));
     const rounds: (() => void)[] = [];
     const opened = await openView(
       log,
@@ -4571,38 +4591,19 @@ suite('Fetch', function () {
       await opened.connection.receive({ type: 'setAutoFetch', on: true });
       await waitFor(() => rounds.length === 1, 'the round to end');
       await opened.connection.receive({ type: 'fetch', root: locked.root });
-      assert.deepStrictEqual(
-        fs.readFileSync(asked, 'utf8').trim().split('\n'),
-        ['[never]', '[]'],
-      );
+      assert.deepStrictEqual(asked(), ['[never]', '[]']);
     } finally {
       opened.connection.dispose();
-      await new Promise((resolve) => server.close(resolve));
+      await close();
     }
   });
 
   test('lets a fetch asked for while a background one runs ask for credentials, and says it failed once', async () => {
-    const server = createServer((_request, response) => {
-      response.writeHead(401, { 'WWW-Authenticate': 'Basic realm="locked"' });
-      response.end();
-    });
-    await new Promise<void>((resolve) =>
-      server.listen(0, '127.0.0.1', resolve),
-    );
-    const address = server.address();
-    assert.ok(typeof address === 'object' && address !== null);
-    const { port } = address;
-    const locked = await tempRepository(path.join(folder, 'joined'));
-    await locked.commit('a');
-    await locked.git('remote', 'add', 'origin', `http://127.0.0.1:${port}/x`);
-    const asked = path.join(folder, 'joined.txt').replaceAll('\\', '/');
-    await locked.git('config', 'credential.helper', '');
-    await locked.git(
-      'config',
-      '--add',
-      'credential.helper',
-      `!f() { test "$1" = get || exit 0; echo "[$GCM_INTERACTIVE]" >> '${asked}'; echo username=u; echo password=p; }; f`,
-    );
+    const {
+      repository: locked,
+      asked,
+      close,
+    } = await lockedRepository(path.join(folder, 'joined'));
     const rounds: (() => void)[] = [];
     const opened = await openView(
       log,
@@ -4630,39 +4631,19 @@ suite('Fetch', function () {
         await opened.connection.receive({ type: 'setAutoFetch', on: true });
         await waitFor(() => rounds.length === 1, 'the round to end');
         await manual;
-        assert.deepStrictEqual(
-          fs.readFileSync(asked, 'utf8').trim().split('\n'),
-          ['[never]', '[]'],
-        );
+        assert.deepStrictEqual(asked(), ['[never]', '[]']);
         assert.strictEqual(messages.length, 1);
         assert.match(messages[0] ?? '', /^Couldn't fetch\./);
       });
     } finally {
       opened.connection.dispose();
-      await new Promise((resolve) => server.close(resolve));
+      await close();
     }
   });
 
   test('says once that a fetch failed when a background one joins it', async () => {
-    const server = createServer((_request, response) => {
-      response.writeHead(401, { 'WWW-Authenticate': 'Basic realm="locked"' });
-      response.end();
-    });
-    await new Promise<void>((resolve) =>
-      server.listen(0, '127.0.0.1', resolve),
-    );
-    const address = server.address();
-    assert.ok(typeof address === 'object' && address !== null);
-    const { port } = address;
-    const locked = await tempRepository(path.join(folder, 'joining'));
-    await locked.commit('a');
-    await locked.git('remote', 'add', 'origin', `http://127.0.0.1:${port}/x`);
-    await locked.git('config', 'credential.helper', '');
-    await locked.git(
-      'config',
-      '--add',
-      'credential.helper',
-      '!f() { echo username=u; echo password=p; }; f',
+    const { repository: locked, close } = await lockedRepository(
+      path.join(folder, 'joining'),
     );
     const rounds: (() => void)[] = [];
     const opened = await openView(
@@ -4696,7 +4677,7 @@ suite('Fetch', function () {
       });
     } finally {
       opened.connection.dispose();
-      await new Promise((resolve) => server.close(resolve));
+      await close();
     }
   });
 

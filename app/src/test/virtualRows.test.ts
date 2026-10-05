@@ -5,6 +5,7 @@ import {
   revealOffset,
   scrollTarget,
 } from '../webview/virtualRows';
+import { countingReads } from './fixtures';
 
 suite('Virtual rows', () => {
   test('scrolls to the selected row again once it arrives, as a tree loads after its file was selected', () => {
@@ -62,21 +63,12 @@ suite('Pinned rows', () => {
   });
 
   test('finds the row at the top of a long list reading only a few rows', () => {
-    const all = rows(100_000);
-    let reads = 0;
-    const counted = new Proxy(all, {
-      get(target, key, receiver) {
-        if (typeof key === 'string' && /^\d+$/.test(key)) {
-          reads++;
-        }
-        return Reflect.get(target, key, receiver) as unknown;
-      },
-    });
+    const all = countingReads(rows(100_000));
     assert.deepStrictEqual(
-      pinnedRows(counted, 1_500_005, () => []),
+      pinnedRows(all.counted, 1_500_005, () => []),
       [],
     );
-    assert.ok(reads < 100, `${reads} reads`);
+    assert.ok(all.reads < 100, `${all.reads} reads`);
   });
 });
 

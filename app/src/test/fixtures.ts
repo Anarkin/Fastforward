@@ -81,6 +81,23 @@ export function stylesheetPx(pattern: RegExp): number {
   return Number(match[1]);
 }
 
+export function countingReads<T extends object>(
+  target: T,
+): { readonly counted: T; reads: number } {
+  const counter = {
+    reads: 0,
+    counted: new Proxy(target, {
+      get(object, key, receiver) {
+        if (typeof key === 'string' && /^\d+$/.test(key)) {
+          counter.reads++;
+        }
+        return Reflect.get(object, key, receiver) as unknown;
+      },
+    }),
+  };
+  return counter;
+}
+
 export function renderedBy<P>(
   component: (props: P) => React.ReactNode,
   props: P,

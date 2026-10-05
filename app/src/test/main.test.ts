@@ -1,7 +1,6 @@
 import * as assert from 'node:assert';
 import { EventEmitter } from 'node:events';
 import * as fs from 'node:fs';
-import * as os from 'node:os';
 import * as path from 'node:path';
 import { PassThrough } from 'node:stream';
 import {
@@ -23,7 +22,7 @@ import {
   pathFromShell,
 } from '../main/shellPath';
 import { checksForUpdates } from '../main/updates';
-import { installedGit } from './repositories';
+import { installedGit, removeFolder, tempFolder } from './repositories';
 
 suite('App files', () => {
   const root = path.resolve('dist');
@@ -196,7 +195,7 @@ suite('Login shell PATH', () => {
       process.platform === 'win32'
         ? gitShell(await installedGit())
         : '/bin/bash';
-    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'fastforward-shell-'));
+    const home = tempFolder('shell');
     try {
       for (const profile of ['.bash_profile', '.profile']) {
         fs.writeFileSync(path.join(home, profile), 'read answer\n');
@@ -207,7 +206,7 @@ suite('Login shell PATH', () => {
       );
       assert.ok(found);
     } finally {
-      fs.rmSync(home, { recursive: true, force: true });
+      removeFolder(home);
     }
   });
 

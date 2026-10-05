@@ -18,6 +18,7 @@ import {
 import {
   MenuItems,
   OpenContextMenu,
+  openedSubmenu,
   type ContextMenuItem,
   type MenuTarget,
 } from '../webview/contextMenu';
@@ -102,31 +103,33 @@ interface RowProps {
   onClick: () => void;
 }
 
+type FilesProps = Parameters<typeof Files>[0];
+
+function filesProps(overrides: Partial<FilesProps> = {}): FilesProps {
+  return {
+    showAll: false,
+    onShowAll: noop,
+    closedFolders: new Set(),
+    onToggleClosedFolder: noop,
+    files: [],
+    loading: false,
+    tree: undefined,
+    openedFolders: new Set(),
+    onToggleOpenFolder: noop,
+    onReplaceFolders: noop,
+    view: 'one',
+    selected: undefined,
+    onSelect: noop,
+    ...overrides,
+  };
+}
+
 function changesRows(
   files: ReturnType<typeof change>[],
   selected: string | undefined,
   onSelect: (path: string | undefined) => void,
 ) {
-  let column: React.ReactNode;
-  function Probe() {
-    column = Files({
-      showAll: false,
-      onShowAll: noop,
-      closedFolders: new Set(),
-      onToggleClosedFolder: noop,
-      files,
-      loading: false,
-      tree: undefined,
-      openedFolders: new Set(),
-      onToggleOpenFolder: noop,
-      onReplaceFolders: noop,
-      view: 'one',
-      selected,
-      onSelect,
-    });
-    return null;
-  }
-  renderToStaticMarkup(<Probe />);
+  const column = renderedBy(Files, filesProps({ files, selected, onSelect }));
   assert.ok(isValidElement<{ children: React.ReactNode[] }>(column));
   const list = column.props.children[1];
   assert.ok(
@@ -149,27 +152,16 @@ function noChangesShown(
   loading: boolean,
   showAll = false,
 ): string {
-  let column: React.ReactNode;
-  function Probe() {
-    column = Files({
+  const column = renderedBy(
+    Files,
+    filesProps({
       noChanges: 'No changes',
       showAll,
-      onShowAll: noop,
-      closedFolders: new Set(),
-      onToggleClosedFolder: noop,
       files,
       loading,
       tree: ['kept.ts'],
-      openedFolders: new Set(),
-      onToggleOpenFolder: noop,
-      onReplaceFolders: noop,
-      view: 'one',
-      selected: undefined,
-      onSelect: noop,
-    });
-    return null;
-  }
-  renderToStaticMarkup(<Probe />);
+    }),
+  );
   assert.ok(isValidElement<{ children: React.ReactNode[] }>(column));
   return renderToStaticMarkup(<>{column.props.children[2]}</>);
 }
@@ -442,26 +434,10 @@ suite('Files column', () => {
   test('titles itself Files, showing all files only while its toggle is on', () => {
     for (const showAll of [false, true]) {
       const picked: boolean[] = [];
-      let column: React.ReactNode;
-      function Probe() {
-        column = Files({
-          showAll,
-          onShowAll: (next) => picked.push(next),
-          closedFolders: new Set(),
-          onToggleClosedFolder: noop,
-          files: [],
-          loading: false,
-          tree: undefined,
-          openedFolders: new Set(),
-          onToggleOpenFolder: noop,
-          onReplaceFolders: noop,
-          view: 'one',
-          selected: undefined,
-          onSelect: noop,
-        });
-        return null;
-      }
-      renderToStaticMarkup(<Probe />);
+      const column = renderedBy(
+        Files,
+        filesProps({ showAll, onShowAll: (next) => picked.push(next) }),
+      );
       assert.ok(
         isValidElement<{ title: string; start: React.ReactElement }>(column),
       );
@@ -517,26 +493,17 @@ suite('Files column', () => {
   test('collapses every folder, or expands every folder shown, the unchanged ones too while all files show', () => {
     for (const showAll of [false, true]) {
       const replaced: Folders[] = [];
-      let column: React.ReactNode;
-      function Probe() {
-        column = Files({
+      const column = renderedBy(
+        Files,
+        filesProps({
           showAll,
-          onShowAll: noop,
           closedFolders: new Set(['src']),
-          onToggleClosedFolder: noop,
           files: [change('src/app/a.ts'), change('src/b.ts')],
-          loading: false,
           tree: ['docs/guide/intro.md', 'src/app/a.ts', 'src/b.ts'],
           openedFolders: new Set(['docs']),
-          onToggleOpenFolder: noop,
           onReplaceFolders: (folders) => replaced.push(folders),
-          view: 'one',
-          selected: undefined,
-          onSelect: noop,
-        });
-        return null;
-      }
-      renderToStaticMarkup(<Probe />);
+        }),
+      );
       assert.ok(
         isValidElement<{
           start: React.ReactElement<{
@@ -582,8 +549,11 @@ suite('Files column', () => {
           return keys[index];
         }}
         selectedKey={undefined}
+        initialRect={{ width: 400, height: 240 }}
       />,
     );
+    const inView = Array.from({ length: 10 }, (_, index) => index);
+    assert.deepStrictEqual(drawn.slice(0, inView.length), inView);
     assert.ok(drawn.length < 100, `${drawn.length} rows drawn`);
   });
 
@@ -1360,7 +1330,7 @@ suite('Menu items', () => {
     assert.strictEqual(new Set(keys).size, 3);
   });
 
-  test('runs a plain item and closes the menu, but opens a submenu in place', () => {
+  test('runs a plain item and closes the menu, but keeps it open on a submenu', () => {
     const log: string[] = [];
     const items = renderedBy(MenuItems, {
       items: [
@@ -1384,6 +1354,17 @@ suite('Menu items', () => {
     assert.deepStrictEqual(log, ['close', 'a']);
     sub.props.onClick({ detail: 1 });
     assert.deepStrictEqual(log, ['close', 'a']);
+  });
+
+  test('opens a submenu in place of running it, focusing its first item only on a click from the keyboard', () => {
+    const submenu = [{ label: 'x', onClick: noop }];
+    assert.deepStrictEqual(openedSubmenu({ submenu }, 0), {
+      focusFirst: true,
+    });
+    assert.deepStrictEqual(openedSubmenu({ submenu }, 1), {
+      focusFirst: false,
+    });
+    assert.strictEqual(openedSubmenu({}, 0), undefined);
   });
 
   test('marks the items that are on with a check', () => {

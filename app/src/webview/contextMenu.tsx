@@ -255,6 +255,13 @@ export function useDismiss(
   );
 }
 
+export function openedSubmenu(
+  item: { readonly submenu?: readonly ContextMenuItem[] },
+  detail: number,
+): { readonly focusFirst: boolean } | undefined {
+  return item.submenu ? { focusFirst: detail === 0 } : undefined;
+}
+
 export function MenuItems({
   items,
   onClose,
@@ -293,8 +300,9 @@ export function MenuItems({
               aria-haspopup={item.submenu ? 'menu' : undefined}
               disabled={item.disabled}
               onClick={(event) => {
-                if (item.submenu) {
-                  setSubmenuByKey(event.detail === 0);
+                const opened = openedSubmenu(item, event.detail);
+                if (opened) {
+                  setSubmenuByKey(opened.focusFirst);
                   setOpenSubmenu(index);
                 } else {
                   onClose();

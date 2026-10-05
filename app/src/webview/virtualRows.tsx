@@ -1,4 +1,4 @@
-import { useVirtualizer } from '@tanstack/react-virtual';
+import { useVirtualizer, type Rect } from '@tanstack/react-virtual';
 import { useEffect, useEffectEvent, useRef } from 'react';
 import { columnFocusAttribute } from './activeColumn';
 import { uniformHeight } from './diffView';
@@ -109,6 +109,7 @@ export function VirtualRows({
   revealWith,
   ancestorsOf = noAncestors,
   onKeyDown,
+  initialRect,
 }: {
   rows: ListedRows;
   renderRow: (index: number) => React.ReactNode;
@@ -116,6 +117,7 @@ export function VirtualRows({
   revealWith?: unknown;
   ancestorsOf?: (index: number) => readonly number[];
   onKeyDown?: (event: React.KeyboardEvent, visible: VisibleRows) => void;
+  initialRect?: Rect;
 }) {
   const list = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
@@ -124,6 +126,7 @@ export function VirtualRows({
     estimateSize,
     getItemKey: rows.keyOf,
     overscan: 20,
+    initialRect,
   });
 
   const heightOf = (index: number) => {

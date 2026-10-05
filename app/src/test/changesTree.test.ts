@@ -6,7 +6,7 @@ import {
   listedTreeRows,
   treeFolders,
 } from '../webview/changesTree';
-import { fileChange } from './fixtures';
+import { countingReads, fileChange } from './fixtures';
 
 const files = [
   '.editorconfig',
@@ -156,19 +156,14 @@ suite('Changes tree', () => {
       ['src/a.ts'],
     );
     const listed = changesTreeRows(tree, new Set());
-    let reads = 0;
-    const counted = new Proxy(listed, {
-      get(target, key, receiver) {
-        if (typeof key === 'string' && /^\d+$/.test(key)) {
-          reads++;
-        }
-        return Reflect.get(target, key, receiver) as unknown;
-      },
-    });
-    ancestorRows(counted, 0);
-    reads = 0;
-    assert.deepStrictEqual(ancestorRows(counted, listed.length - 2), [0, 1]);
-    assert.ok(reads < 100, `${reads} reads`);
+    const rows = countingReads(listed);
+    ancestorRows(rows.counted, 0);
+    rows.reads = 0;
+    assert.deepStrictEqual(
+      ancestorRows(rows.counted, listed.length - 2),
+      [0, 1],
+    );
+    assert.ok(rows.reads < 100, `${rows.reads} reads`);
   });
 
   test('keys the rows the same while they stay the same, so the list keeps their sizes', () => {

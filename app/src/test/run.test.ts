@@ -2,9 +2,9 @@ import * as assert from 'node:assert';
 import { execFile, spawn } from 'node:child_process';
 import { once } from 'node:events';
 import * as fs from 'node:fs';
-import * as os from 'node:os';
 import * as path from 'node:path';
 import { exitedWith, gitConfigArgs, gitEnv, stopGit } from '../git/run';
+import { removeFolder, tempFolder } from './repositories';
 
 suite('Running git', () => {
   test('takes only the exit codes asked for as success', () => {
@@ -43,7 +43,7 @@ suite('Running git', () => {
       this.skip();
     }
     this.timeout(20_000);
-    const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'fastforward-run-'));
+    const folder = tempFolder('run');
     fs.copyFileSync(
       path.join(
         process.env.SystemRoot ?? 'C:\\Windows',
@@ -63,7 +63,7 @@ suite('Running git', () => {
       if (noCurrent !== undefined) {
         process.env.NoDefaultCurrentDirectoryInExePath = noCurrent;
       }
-      fs.rmSync(folder, { recursive: true, force: true });
+      removeFolder(folder);
     }
   });
 });

@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import { execFile } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -63,6 +64,9 @@ export async function tempRepository(
           cwd: root,
           env: {
             ...process.env,
+            // Leaves out the user's config, which may sign commits or run
+            // hooks, but not the system's, whose defaults the app reads too
+            GIT_CONFIG_GLOBAL: '/dev/null',
             GIT_AUTHOR_DATE: date,
             GIT_COMMITTER_DATE: date,
           },
@@ -97,6 +101,17 @@ export async function tempRepository(
     resolve: async (...revisions) =>
       (await git('rev-parse', ...revisions)).trim().split('\n'),
   };
+}
+
+export function objectId(type: string, content: string): string {
+  return createHash('sha1')
+    .update(`${type} ${Buffer.byteLength(content)}\0${content}`)
+    .digest('hex');
+}
+
+export function commitText(tree: string, message: string): string {
+  const person = 'Test <test@example.com> 0 +0000';
+  return `tree ${tree}\nauthor ${person}\ncommitter ${person}\n\n${message}\n`;
 }
 
 let gitPath: Promise<string> | undefined;

@@ -1,17 +1,17 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
-import * as os from 'node:os';
 import * as path from 'node:path';
 import { isSupported, onPath, parseVersion } from '../git/locate';
+import { removeFolder, tempFolder } from './repositories';
 
 suite('Finding git', () => {
   let folder: string;
 
   setup(() => {
-    folder = fs.mkdtempSync(path.join(os.tmpdir(), 'fastforward-locate-'));
+    folder = tempFolder('locate');
   });
 
-  teardown(() => fs.rmSync(folder, { recursive: true, force: true }));
+  teardown(() => removeFolder(folder));
 
   function executable(name: string): string {
     const file = path.join(folder, name);

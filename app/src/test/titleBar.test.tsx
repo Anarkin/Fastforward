@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { appName } from '../shared/titleBar';
 import { TitleBar, windowTitle } from '../webview/titleBar';
-import { stylesheet } from './fixtures';
+import { stylesheet, stylesheetPx } from './fixtures';
 
 suite('Title bar', () => {
   test('names the open repository, or only the app without one', () => {
@@ -43,16 +43,10 @@ suite('Title bar', () => {
   });
 
   test('starts the icon where the tab names start', () => {
-    const css = stylesheet();
-    const px = (pattern: RegExp) => {
-      const match = pattern.exec(css);
-      assert.ok(match, String(pattern));
-      return Number(match[1]);
-    };
     assert.strictEqual(
-      px(/--title-bar-inset: (\d+)px;/),
-      px(/\n\.tabs \{[^}]*padding: \S+ \S+ \S+ (\d+)px;/) +
-        px(/\n\.tab \{[^}]*padding: \S+ \S+ \S+ (\d+)px;/),
+      stylesheetPx(/--title-bar-inset: (\d+)px;/),
+      stylesheetPx(/\n\.tabs \{[^}]*padding: \S+ \S+ \S+ (\d+)px;/) +
+        stylesheetPx(/\n\.tab \{[^}]*padding: \S+ \S+ \S+ (\d+)px;/),
     );
   });
 });

@@ -64,6 +64,19 @@ suite('App', function () {
     removeFolder(folder);
   });
 
+  function savedSetting(name: string): unknown {
+    try {
+      const settings: unknown = JSON.parse(
+        fs.readFileSync(path.join(profile, 'settings.user.json'), 'utf8'),
+      );
+      return typeof settings === 'object' && settings !== null
+        ? Reflect.get(settings, name)
+        : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
   test('opens the saved tab, titling the window after its repository', async () => {
     await page.locator('.tab.active').waitFor();
     assert.strictEqual(
@@ -189,9 +202,8 @@ suite('App', function () {
     );
     assert.strictEqual(await page.locator('.split-side.removed').count(), 1);
     assert.strictEqual(await page.locator('.split-side.added').count(), 1);
-    const userSettings = path.join(profile, 'settings.user.json');
     await waitFor(
-      () => fs.readFileSync(userSettings, 'utf8').includes('"sideBySide"'),
+      () => savedSetting('diffLayout') === 'sideBySide',
       'the layout to be saved',
     );
     await page.getByRole('button', { name: 'Inline' }).click();
@@ -247,22 +259,10 @@ suite('App', function () {
     await page
       .locator('.row.file .path.unchanged', { hasText: 'kept.txt' })
       .waitFor();
-    const userSettings = path.join(profile, 'settings.user.json');
-    await waitFor(() => {
-      try {
-        const settings: unknown = JSON.parse(
-          fs.readFileSync(userSettings, 'utf8'),
-        );
-        return (
-          typeof settings === 'object' &&
-          settings !== null &&
-          'showAllFiles' in settings &&
-          settings.showAllFiles === true
-        );
-      } catch {
-        return false;
-      }
-    }, 'the setting to be saved');
+    await waitFor(
+      () => savedSetting('showAllFiles') === true,
+      'the setting to be saved',
+    );
   });
 
   test('moved the old settings file into the state, keeping it aside', () => {
@@ -376,9 +376,8 @@ suite('App', function () {
         22,
     );
     assert.ok(laidOut.right <= laidOut.minimap, JSON.stringify(laidOut));
-    const userSettings = path.join(profile, 'settings.user.json');
     await waitFor(
-      () => fs.readFileSync(userSettings, 'utf8').includes('"wordWrap": true'),
+      () => savedSetting('wordWrap') === true,
       'the choice to be saved',
     );
     const list = page.locator('.diff-view .virtual-rows');

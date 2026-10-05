@@ -1,5 +1,4 @@
 import * as assert from 'node:assert';
-import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
@@ -18,6 +17,8 @@ import {
   logCommits,
 } from '../git/history';
 import {
+  commitText,
+  objectId,
   removeFolder,
   tempFolder,
   tempRepository,
@@ -289,11 +290,7 @@ suite('Git repository', function () {
     const withPrefix = (type: string, content: (i: number) => string) => {
       for (let i = 0; ; i++) {
         const text = content(i);
-        const header = `${type} ${Buffer.byteLength(text)}\0`;
-        const sha1 = createHash('sha1')
-          .update(header + text)
-          .digest('hex');
-        if (sha1.startsWith(prefix)) {
+        if (objectId(type, text).startsWith(prefix)) {
           return text;
         }
       }
@@ -315,14 +312,9 @@ suite('Git repository', function () {
         subject: 'rename',
       });
       const [tree] = await temp.resolve('HEAD^{tree}');
-      const person = 'Test <test@example.com> 0 +0000';
       await write(
         'commit',
-        withPrefix(
-          'commit',
-          (i) =>
-            `tree ${tree}\nauthor ${person}\ncommitter ${person}\n\n${i}\n`,
-        ),
+        withPrefix('commit', (i) => commitText(tree, `${i}`)),
       );
       assert.deepStrictEqual(await findCommit(gitPath, cwd, prefix), {
         kind: 'ambiguous',
@@ -346,17 +338,13 @@ suite('Git repository', function () {
 
   test('lists at most 20 commits sharing a prefix, counting the rest', async () => {
     const prefix = '0000';
-    const person = 'Test <test@example.com> 0 +0000';
     const [tree] = await temp.resolve('HEAD^{tree}');
     const folder = tempFolder('prefixed');
     try {
       const files: string[] = [];
       for (let i = 0; files.length < 21; i++) {
-        const text = `tree ${tree}\nauthor ${person}\ncommitter ${person}\n\n${i}\n`;
-        const sha1 = createHash('sha1')
-          .update(`commit ${Buffer.byteLength(text)}\0${text}`)
-          .digest('hex');
-        if (sha1.startsWith(prefix)) {
+        const text = commitText(tree, `${i}`);
+        if (objectId('commit', text).startsWith(prefix)) {
           const file = path.join(folder, `${files.length}`);
           fs.writeFileSync(file, text);
           files.push(file);
@@ -673,5 +661,31 @@ suite('Commit search', function () {
     await assert.rejects(
       searchCommits(gitPath, search.root, 'ada', false, controller.signal),
     );
+  });
+});
+
+suite('Test repository', function () {
+  this.timeout(20_000);
+
+  test("commits whatever the user's own git config says, which may sign commits", async () => {
+    const folder = tempFolder('own-config');
+    const own = process.env.GIT_CONFIG_GLOBAL;
+    const config = path.join(folder, '.gitconfig');
+    fs.writeFileSync(
+      config,
+      '[commit]\n\tgpgSign = true\n[gpg]\n\tprogram = missing-gpg\n',
+    );
+    process.env.GIT_CONFIG_GLOBAL = config;
+    try {
+      const repository = await tempRepository(path.join(folder, 'repository'));
+      await repository.commit('unsigned');
+    } finally {
+      if (own === undefined) {
+        delete process.env.GIT_CONFIG_GLOBAL;
+      } else {
+        process.env.GIT_CONFIG_GLOBAL = own;
+      }
+      removeFolder(folder);
+    }
   });
 });

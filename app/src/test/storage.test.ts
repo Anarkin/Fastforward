@@ -1,6 +1,5 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
-import * as os from 'node:os';
 import * as path from 'node:path';
 import { UserSettings } from '../settings';
 import {
@@ -14,6 +13,7 @@ import {
 } from '../storage';
 import { FakeStore } from './fakeStore';
 import { defaultSettings } from './fixtures';
+import { removeFolder, tempFolder } from './repositories';
 
 function storageOf(state = new FakeStore()): Storage {
   return new Storage(new UserSettings(defaultSettings()), state);
@@ -202,16 +202,16 @@ suite('Storage', () => {
   });
 });
 
-suite('Settings file', () => {
+suite('State file', () => {
   let folder: string;
   let file: string;
 
   setup(() => {
-    folder = fs.mkdtempSync(path.join(os.tmpdir(), 'fastforward-store-'));
-    file = path.join(folder, 'settings.json');
+    folder = tempFolder('state');
+    file = path.join(folder, 'state.json');
   });
 
-  teardown(() => fs.rmSync(folder, { recursive: true, force: true }));
+  teardown(() => removeFolder(folder));
 
   test('keeps what was saved for the next start', async () => {
     const store = new JsonFileStore(file);
