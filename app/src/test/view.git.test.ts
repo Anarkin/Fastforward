@@ -29,6 +29,7 @@ import { UserSettings } from '../settings';
 import { FakeStore } from './fakeStore';
 import { defaultSettings, waitFor } from './fixtures';
 import {
+  asIfOwnedByAnother,
   commitText,
   installedGit,
   objectId,
@@ -3510,15 +3511,9 @@ suite('View', function () {
     test('keeps a recent repository git refuses to open, and says what git said', async () => {
       await withView(log, [repository.root], async (view) => {
         await view.store.update(recentKey, [other]);
-        process.env.GIT_TEST_ASSUME_DIFFERENT_OWNER = '1';
-        try {
-          await view.connection.receive({
-            type: 'openRepository',
-            root: other,
-          });
-        } finally {
-          delete process.env.GIT_TEST_ASSUME_DIFFERENT_OWNER;
-        }
+        await asIfOwnedByAnother(() =>
+          view.connection.receive({ type: 'openRepository', root: other }),
+        );
         assert.match(
           view.page.last('notice')?.message ?? '',
           /^Couldn't open .*other\. fatal: detected dubious ownership/,
@@ -3533,12 +3528,9 @@ suite('View', function () {
 
     test('says what git said of a tab it refuses to open', async () => {
       await withView(log, [repository.root, other], async (view) => {
-        process.env.GIT_TEST_ASSUME_DIFFERENT_OWNER = '1';
-        try {
-          await view.connection.receive({ type: 'selectTab', root: other });
-        } finally {
-          delete process.env.GIT_TEST_ASSUME_DIFFERENT_OWNER;
-        }
+        await asIfOwnedByAnother(() =>
+          view.connection.receive({ type: 'selectTab', root: other }),
+        );
         assert.match(
           view.page.last('error')?.message ?? '',
           /^fatal: detected dubious ownership/,

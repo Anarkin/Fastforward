@@ -28,6 +28,34 @@ export function removeFolder(folder: string): void {
   } catch {}
 }
 
+// The system or global config can turn the ownership check off with
+// safe.directory, as CI runners do for every folder
+const ownedByAnother = {
+  GIT_TEST_ASSUME_DIFFERENT_OWNER: '1',
+  GIT_CONFIG_NOSYSTEM: '1',
+  GIT_CONFIG_GLOBAL: '/dev/null',
+};
+
+export async function asIfOwnedByAnother(
+  run: () => Promise<void>,
+): Promise<void> {
+  const saved = Object.keys(ownedByAnother).map(
+    (key) => [key, process.env[key]] as const,
+  );
+  Object.assign(process.env, ownedByAnother);
+  try {
+    await run();
+  } finally {
+    for (const [key, value] of saved) {
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
+  }
+}
+
 export function symlinkOrSkip(
   context: Mocha.Context,
   target: string,

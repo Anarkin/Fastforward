@@ -19,6 +19,7 @@ import {
   logCommits,
 } from '../git/history';
 import {
+  asIfOwnedByAnother,
   commitText,
   objectId,
   removeFolder,
@@ -172,15 +173,12 @@ suite('Git repository', function () {
   });
 
   test('says what git said when it refuses a repository, not that there is none', async () => {
-    process.env.GIT_TEST_ASSUME_DIFFERENT_OWNER = '1';
-    try {
-      await assert.rejects(repositoryRoot(gitPath, cwd), (error) => {
+    await asIfOwnedByAnother(() =>
+      assert.rejects(repositoryRoot(gitPath, cwd), (error) => {
         assert.match(gitErrorText(error), /^fatal: detected dubious ownership/);
         return true;
-      });
-    } finally {
-      delete process.env.GIT_TEST_ASSUME_DIFFERENT_OWNER;
-    }
+      }),
+    );
   });
 
   test('finds no root in a bare repository or a git folder, which have no working tree', async () => {
