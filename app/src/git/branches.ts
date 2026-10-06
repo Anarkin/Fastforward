@@ -1,4 +1,59 @@
-import { runGit } from './run';
+import { runGit, splitNul } from './run';
+
+export type Upstream =
+  | { readonly kind: 'detached' }
+  | { readonly kind: 'none'; readonly branch: string }
+  | { readonly kind: 'gone'; readonly branch: string; readonly name: string }
+  | {
+      readonly kind: 'found';
+      readonly branch: string;
+      readonly name: string;
+      readonly commit: string;
+    };
+
+export async function readUpstream(
+  gitPath: string,
+  cwd: string,
+): Promise<Upstream> {
+  const ref = (
+    await runGit(gitPath, cwd, ['symbolic-ref', '-q', 'HEAD'], {
+      okExitCodes: [0, 1],
+    })
+  ).trim();
+  if (!ref.startsWith('refs/heads/')) {
+    return { kind: 'detached' };
+  }
+  const branch = ref.slice('refs/heads/'.length);
+  const [upstream = '', name = ''] = splitNul(
+    (
+      await runGit(gitPath, cwd, [
+        'for-each-ref',
+        '--format=%(upstream)%00%(upstream:short)',
+        ref,
+      ])
+    ).trim(),
+  );
+  if (!upstream) {
+    return { kind: 'none', branch };
+  }
+  const commit = (
+    await runGit(
+      gitPath,
+      cwd,
+      [
+        'rev-parse',
+        '--verify',
+        '--quiet',
+        '--end-of-options',
+        `${upstream}^{commit}`,
+      ],
+      { okExitCodes: [0, 1] },
+    )
+  ).trim();
+  return commit
+    ? { kind: 'found', branch, name, commit }
+    : { kind: 'gone', branch, name };
+}
 
 export async function aheadBehind(
   gitPath: string,

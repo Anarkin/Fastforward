@@ -8,6 +8,7 @@ import {
   repositoryRoot,
   switchToBranch,
 } from '../git/repository';
+import { readUpstream } from '../git/branches';
 import { showFiles, showPatch } from '../git/diff';
 import { gitErrorText } from '../git/errorText';
 import {
@@ -72,6 +73,38 @@ suite('Git repository', function () {
       await temp.git('symbolic-ref', '-d', 'refs/remotes/origin/HEAD');
       await temp.git('update-ref', '-d', 'refs/remotes/origin/main');
       await temp.git('tag', '-d', 'v1', 'v2');
+    }
+  });
+
+  test('reads the upstream of the checked-out branch, or why it has none', async () => {
+    await temp.git('remote', 'add', 'origin', 'https://example.com/x.git');
+    await temp.git('update-ref', 'refs/remotes/origin/main', 'HEAD~1');
+    const [behind] = await temp.resolve('HEAD~1');
+    try {
+      assert.deepStrictEqual(await readUpstream(gitPath, cwd), {
+        kind: 'none',
+        branch: 'main',
+      });
+      await temp.git('branch', '--set-upstream-to=origin/main');
+      assert.deepStrictEqual(await readUpstream(gitPath, cwd), {
+        kind: 'found',
+        branch: 'main',
+        name: 'origin/main',
+        commit: behind,
+      });
+      await temp.git('update-ref', '-d', 'refs/remotes/origin/main');
+      assert.deepStrictEqual(await readUpstream(gitPath, cwd), {
+        kind: 'gone',
+        branch: 'main',
+        name: 'origin/main',
+      });
+      await temp.git('switch', '-q', '--detach');
+      assert.deepStrictEqual(await readUpstream(gitPath, cwd), {
+        kind: 'detached',
+      });
+    } finally {
+      await temp.git('switch', '-q', 'main');
+      await temp.git('remote', 'remove', 'origin');
     }
   });
 

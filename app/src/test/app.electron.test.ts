@@ -119,6 +119,13 @@ suite('App', function () {
     await page.locator('.commit.working-tree.empty.selected').waitFor();
   });
 
+  test('says on U that the checked-out branch has no upstream to show', async () => {
+    await page.keyboard.press('u');
+    await page
+      .locator('.notice.info', { hasText: 'main has no upstream' })
+      .waitFor();
+  });
+
   test('works a menu with the keys, giving the keyboard back when it closes', async () => {
     await page
       .locator('.commit', { hasText: 'first' })

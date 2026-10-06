@@ -317,7 +317,10 @@ export function App({ name, post: postToHost, listen }: Props) {
       postTab({ type: 'jump', hash: target });
     }
   };
-  useShortcuts({ h: () => jump(repository?.headCommit) });
+  useShortcuts({
+    h: () => jump(repository?.headCommit),
+    u: () => postTab({ type: 'showUpstream' }),
+  });
   const loadFileDiff = useCallback(
     (file: string) => {
       if (hash) {

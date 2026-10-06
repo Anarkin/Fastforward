@@ -1,6 +1,6 @@
 import * as path from 'node:path';
 import { AutoFetch, type Timer } from './autoFetch';
-import { remoteDefaultBranches } from './git/branches';
+import { readUpstream, remoteDefaultBranches } from './git/branches';
 import {
   compareFiles,
   comparePatch,
@@ -542,6 +542,9 @@ export class FastforwardView {
         }
         break;
       }
+      case 'showUpstream':
+        await this.showUpstream(context);
+        break;
       case 'navigate':
         await this.navigate(context, message.direction, message.steps);
         break;
@@ -1396,6 +1399,40 @@ export class FastforwardView {
       });
     }
     await this.sendCommit(context);
+  }
+
+  private async showUpstream(context: Context): Promise<void> {
+    const upstream = await readUpstream(context.gitPath, context.root);
+    const notify = this.notify(context);
+    switch (upstream.kind) {
+      case 'detached':
+        notify(
+          'info',
+          'The checked-out commit is on no branch, so it has no upstream',
+        );
+        return;
+      case 'none':
+        notify('info', `${upstream.branch} has no upstream`);
+        return;
+      case 'gone':
+        notify(
+          'info',
+          `${upstream.name}, the upstream of ${upstream.branch}, doesn't exist anymore`,
+        );
+        return;
+      case 'found':
+        if (
+          this.storage.soloOf(context.root) &&
+          !stillThere(context.tab)(upstream.commit)
+        ) {
+          notify(
+            'info',
+            `${upstream.name} is not in the history while Solo shows only that of the checked-out commit`,
+          );
+          return;
+        }
+        await this.showCommit(context, upstream.commit);
+    }
   }
 
   private async showHead(context: Context): Promise<void> {
