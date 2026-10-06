@@ -64,6 +64,16 @@ const resultsFor = (commits: string[], branches: string[]) =>
     searchRefs(indexRefs(branches.map(branchNamed)), 'a'),
   );
 
+const press = {
+  key: '',
+  code: '',
+  ctrlKey: false,
+  metaKey: false,
+  altKey: false,
+  shiftKey: false,
+  target: null,
+};
+
 suite('Locations search', () => {
   test('finds parts of names, ignoring case, in a group per kind', () => {
     assert.deepStrictEqual(names(searchRefs(indexRefs(refs), 'Epmaisa-798')), [
@@ -192,7 +202,7 @@ suite('Locations search', () => {
   });
 
   test('leaves Enter and the arrows to an input method composing text', () => {
-    const key = { isComposing: false, keyCode: 13 };
+    const key = { ...press, isComposing: false, keyCode: 13 };
     assert.strictEqual(popupKeyAction({ ...key, key: 'Enter' }, 'x'), 'enter');
     assert.strictEqual(popupKeyAction({ ...key, key: 'ArrowDown' }, 'x'), 1);
     assert.strictEqual(popupKeyAction({ ...key, key: 'ArrowUp' }, 'x'), -1);
@@ -201,16 +211,22 @@ suite('Locations search', () => {
       undefined,
     );
     assert.strictEqual(
-      popupKeyAction({ key: 'Enter', isComposing: true, keyCode: 13 }, 'x'),
-      undefined,
-    );
-    assert.strictEqual(
-      popupKeyAction({ key: 'Enter', isComposing: false, keyCode: 229 }, 'x'),
+      popupKeyAction(
+        { ...press, key: 'Enter', isComposing: true, keyCode: 13 },
+        'x',
+      ),
       undefined,
     );
     assert.strictEqual(
       popupKeyAction(
-        { key: 'ArrowDown', isComposing: true, keyCode: 229 },
+        { ...press, key: 'Enter', isComposing: false, keyCode: 229 },
+        'x',
+      ),
+      undefined,
+    );
+    assert.strictEqual(
+      popupKeyAction(
+        { ...press, key: 'ArrowDown', isComposing: true, keyCode: 229 },
         'x',
       ),
       undefined,
@@ -265,7 +281,7 @@ suite('Locations search', () => {
     assert.strictEqual(enterTarget('  ', undefined, branch), undefined);
     assert.strictEqual(
       popupKeyAction(
-        { key: 'ArrowDown', isComposing: false, keyCode: 40 },
+        { ...press, key: 'ArrowDown', isComposing: false, keyCode: 40 },
         ' ',
       ),
       undefined,

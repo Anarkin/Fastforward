@@ -6,6 +6,8 @@ import {
   useRef,
   useState,
 } from 'react';
+import { keymap } from '../shared/keymap';
+import { isKeyPress, keyPressed } from './shortcuts';
 import type { Bookmark, BookmarkRef } from '../shared/protocol';
 import { refOf } from '../shared/refNames';
 import { overlayScrollbarClass } from './overlayScrollbars';
@@ -133,7 +135,11 @@ export function listenForDismiss(
     }
   };
   const onKeyDown = (event: Event) => {
-    if ('key' in event && event.key === 'Escape' && layers.at(-1) === layer) {
+    if (
+      isKeyPress(event) &&
+      keyPressed(keymap.close, event) &&
+      layers.at(-1) === layer
+    ) {
       event.stopPropagation();
       onClose();
     }
@@ -157,25 +163,23 @@ export function listenForDismiss(
 }
 
 export function nextMenuItem(
-  key: string,
+  move: 'next' | 'previous' | 'first' | 'last',
   current: number,
   count: number,
 ): number | undefined {
   if (count === 0) {
     return undefined;
   }
-  switch (key) {
-    case 'ArrowDown':
-      return current === -1 ? 0 : (current + 1) % count;
-    case 'ArrowUp':
-      return current === -1 ? count - 1 : (current - 1 + count) % count;
-    case 'Home':
-      return 0;
-    case 'End':
-      return count - 1;
-    default:
-      return undefined;
+  if (move === 'first') {
+    return 0;
   }
+  if (move === 'last') {
+    return count - 1;
+  }
+  if (move === 'next') {
+    return current === -1 ? 0 : (current + 1) % count;
+  }
+  return current === -1 ? count - 1 : (current - 1 + count) % count;
 }
 
 function menuItems(menu: Element | null): HTMLElement[] {
@@ -223,25 +227,35 @@ export function onMenuKeyDown(
   }
   const items = menuItems(menu);
   const current = items.findIndex((item) => item === document.activeElement);
-  const next = nextMenuItem(event.key, current, items.length);
+  const move = keyPressed(keymap.menuItem, event);
+  const submenu = keyPressed(keymap.submenu, event);
+  const next =
+    move === undefined ? undefined : nextMenuItem(move, current, items.length);
   if (next !== undefined) {
     items[next].focus();
-  } else if (event.key === 'ArrowRight') {
+  } else if (submenu === 'open') {
     const item = items[current];
     if (item?.getAttribute('aria-haspopup') === 'menu') {
       item.click();
     }
-  } else if (event.key === 'ArrowLeft' && onBack) {
+  } else if (submenu === 'back' && onBack) {
     onBack();
-  } else if (!claimsMenuKey(event.key)) {
+  } else if (!claimsMenuKey(event)) {
     return;
   }
   event.preventDefault();
   event.stopPropagation();
 }
 
-export function claimsMenuKey(key: string): boolean {
-  return key === 'Tab' || key.startsWith('Arrow');
+// A menu keeps the keys that would move between the columns or in a list
+// behind it
+export function claimsMenuKey(
+  event: Parameters<typeof keyPressed>[1],
+): boolean {
+  return (
+    keyPressed(keymap.column, event) !== undefined ||
+    keyPressed(keymap.move, event) !== undefined
+  );
 }
 
 export function useDismiss(

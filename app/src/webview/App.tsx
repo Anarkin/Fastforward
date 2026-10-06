@@ -31,14 +31,15 @@ import {
   adjacentColumn,
   columnFocusAttribute,
   columnOf,
+  columnMove,
   columnOrder,
-  columnStep,
   forwardedColumn,
   shownColumns,
   type ColumnName,
 } from './activeColumn';
 import { Commits, settling } from './commitList';
-import { isShortcutsKey, useShortcuts, useWindowKeyDown } from './shortcuts';
+import { clicked, keymap } from '../shared/keymap';
+import { useBinding } from './shortcuts';
 import { ShortcutsPopup } from './shortcutsPopup';
 import {
   ContextMenu,
@@ -141,18 +142,13 @@ export function App({ name, post: postToHost, listen }: Props) {
   const closeMenu = useCallback(() => setMenu(undefined), []);
   const [shortcutsShown, setShortcutsShown] = useState(false);
   const closeShortcuts = useCallback(() => setShortcutsShown(false), []);
-  useWindowKeyDown((event) => {
-    if (isShortcutsKey(event)) {
-      event.preventDefault();
-      setShortcutsShown((shown) => !shown);
-    }
-  });
+  useBinding(keymap.shortcuts, () => setShortcutsShown((shown) => !shown));
   const saveColumnWidths = useCallback(
     (widths: readonly number[]) => post({ type: 'setColumnWidths', widths }),
     [post],
   );
   const [commitsShown, setCommitsShown] = useState(true);
-  useShortcuts({ c: () => setCommitsShown((shown) => !shown) });
+  useBinding(keymap.commits, () => setCommitsShown((shown) => !shown));
   const hiddenColumns = useMemo(() => [!commitsShown, false], [commitsShown]);
   const {
     container: columnsContainer,
@@ -310,9 +306,8 @@ export function App({ name, post: postToHost, listen }: Props) {
   );
 
   useEffect(() => {
-    const buttons: Record<number, Direction> = { 3: 'back', 4: 'forward' };
     const onMouseUp = (event: MouseEvent) => {
-      const direction = buttons[event.button];
+      const direction = clicked(keymap.navigate, event);
       if (direction) {
         event.preventDefault();
         navigate(direction, 1);
@@ -326,10 +321,8 @@ export function App({ name, post: postToHost, listen }: Props) {
       postTab({ type: 'jump', hash: target });
     }
   };
-  useShortcuts({
-    h: () => jump(repository?.headCommit),
-    u: () => postTab({ type: 'showUpstream' }),
-  });
+  useBinding(keymap.head, () => jump(repository?.headCommit));
+  useBinding(keymap.upstream, () => postTab({ type: 'showUpstream' }));
   const loadFileDiff = useCallback(
     (file: string) => {
       if (hash) {
@@ -396,7 +389,7 @@ export function App({ name, post: postToHost, listen }: Props) {
     setWordWrap(wrap);
     post({ type: 'setWordWrap', wrap });
   };
-  useShortcuts({ w: () => changeWordWrap(!wordWrap) });
+  useBinding(keymap.wrap, () => changeWordWrap(!wordWrap));
   const changeDiffLayout = (layout: DiffLayout) => {
     setDiffLayout(layout);
     post({ type: 'setDiffLayout', layout });
@@ -558,33 +551,21 @@ export function App({ name, post: postToHost, listen }: Props) {
                     if (forwarded) {
                       event.preventDefault();
                       focusColumn(forwarded)?.dispatchEvent(
-                        new KeyboardEvent('keydown', {
-                          key: event.key,
-                          code: event.code,
-                          bubbles: true,
-                        }),
+                        new KeyboardEvent('keydown', event.nativeEvent),
                       );
                       return;
                     }
-                    const step = columnStep({
-                      key: event.key,
-                      ctrlKey: event.ctrlKey,
-                      metaKey: event.metaKey,
-                      altKey: event.altKey,
-                      shiftKey: event.shiftKey,
-                      defaultPrevented: event.defaultPrevented,
-                      target,
-                    });
-                    if (step === undefined) {
+                    const move = columnMove(event);
+                    if (move === undefined) {
                       return;
                     }
-                    if (event.key === 'Tab') {
+                    if (move.tab) {
                       event.preventDefault();
                     }
                     const next = adjacentColumn(
                       shownColumns(commitsShown, layoutSelection),
                       columnOf(target) ?? activeColumn,
-                      step,
+                      move.step,
                     );
                     if (next) {
                       event.preventDefault();

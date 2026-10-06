@@ -1425,6 +1425,13 @@ suite('Window', () => {
 const rested = () =>
   new Promise((resolve) => setTimeout(resolve, preloadDelay + 20));
 
+const noKeys = {
+  ctrlKey: false,
+  metaKey: false,
+  altKey: false,
+  shiftKey: false,
+};
+
 suite('Tab bar', () => {
   test('acts on what the pointer rests on, not on what it only passes over', async () => {
     const done: string[] = [];
@@ -1510,11 +1517,11 @@ suite('Tab bar', () => {
     );
     let prevented = 0;
     const preventDefault = () => prevented++;
-    tab.props.onMouseDown({ button: 0, preventDefault });
+    tab.props.onMouseDown({ button: 0, ...noKeys, preventDefault });
     assert.strictEqual(prevented, 0);
-    tab.props.onMouseDown({ button: 1, preventDefault });
+    tab.props.onMouseDown({ button: 1, ...noKeys, preventDefault });
     assert.strictEqual(prevented, 1);
-    tab.props.onAuxClick({ button: 1 });
+    tab.props.onAuxClick({ button: 1, ...noKeys });
     assert.deepStrictEqual(closed, ['/repo']);
   });
 
@@ -1560,7 +1567,7 @@ suite('Tab bar', () => {
     b.props.onPointerEnter();
     await rested();
     assert.deepStrictEqual(preloaded, ['/b']);
-    b.props.onAuxClick({ button: 2 });
+    b.props.onAuxClick({ button: 2, ...noKeys });
     assert.deepStrictEqual(closed, []);
     const close = a.props.children[1];
     assert.ok(

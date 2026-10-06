@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef } from 'react';
 import { type TabInfo } from '../shared/protocol';
 import { CloseIcon } from './icons';
 import { MenuButton } from './menu';
-import { isNewTabShortcut, tabStep, useWindowKeyDown } from './shortcuts';
+import { clicked, keymap } from '../shared/keymap';
+import { useBinding } from './shortcuts';
 
 export function adjacentTab(
   tabs: readonly TabInfo[],
@@ -15,27 +16,6 @@ export function adjacentTab(
   const index = tabs.findIndex((tab) => tab.root === active);
   const next = index === -1 ? 0 : (index + step + tabs.length) % tabs.length;
   return tabs[next].root;
-}
-
-export type TabBarKey =
-  | { readonly kind: 'add' }
-  | { readonly kind: 'select'; readonly root: string | undefined };
-
-export function tabBarKey(
-  event: Pick<
-    KeyboardEvent,
-    'key' | 'code' | 'ctrlKey' | 'metaKey' | 'shiftKey' | 'altKey'
-  >,
-  tabs: readonly TabInfo[],
-  active: string | undefined,
-): TabBarKey | undefined {
-  if (isNewTabShortcut(event)) {
-    return { kind: 'add' };
-  }
-  const step = tabStep(event);
-  return step === undefined
-    ? undefined
-    : { kind: 'select', root: adjacentTab(tabs, active, step) };
 }
 
 export const preloadDelay = 200;
@@ -99,16 +79,11 @@ export function TabBar({
   useEffect(() => rest.cancel, [rest]);
 
   const add = useRef<HTMLButtonElement>(null);
-  useWindowKeyDown((event) => {
-    const action = tabBarKey(event, tabs, active);
-    if (action === undefined) {
-      return;
-    }
-    event.preventDefault();
-    if (action.kind === 'add') {
-      add.current?.click();
-    } else if (action.root !== undefined) {
-      onSelect(action.root);
+  useBinding(keymap.openRepository, () => add.current?.click());
+  useBinding(keymap.repository, (step) => {
+    const root = adjacentTab(tabs, active, step);
+    if (root !== undefined) {
+      onSelect(root);
     }
   });
 
@@ -129,9 +104,11 @@ export function TabBar({
             }
             onPointerLeave={rest.cancel}
             onMouseDown={(event) =>
-              event.button === 1 && event.preventDefault()
+              clicked(keymap.closeRepository, event) && event.preventDefault()
             }
-            onAuxClick={(event) => event.button === 1 && onClose(tab.root)}
+            onAuxClick={(event) =>
+              clicked(keymap.closeRepository, event) && onClose(tab.root)
+            }
           >
             <span className="tab-name">{tab.name}</span>
             <button

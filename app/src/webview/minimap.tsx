@@ -1,4 +1,5 @@
 import { memo, useEffect, useRef, useState } from 'react';
+import { clicked, keymap, type Modifiers } from '../shared/keymap';
 import { hideAfter } from './overlayScrollbars';
 
 export interface MinimapMark {
@@ -76,13 +77,15 @@ export function minimapScrollTop(
   return Math.max(0, Math.min(top, total - viewport));
 }
 
-export function grabPointer(event: {
-  readonly button: number;
-  readonly pointerId: number;
-  readonly preventDefault: () => void;
-  readonly currentTarget: { setPointerCapture: (id: number) => void };
-}): boolean {
-  if (event.button !== 0) {
+export function grabPointer(
+  event: Modifiers & {
+    readonly button: number;
+    readonly pointerId: number;
+    readonly preventDefault: () => void;
+    readonly currentTarget: { setPointerCapture: (id: number) => void };
+  },
+): boolean {
+  if (!clicked(keymap.drag, event)) {
     return false;
   }
   event.preventDefault();

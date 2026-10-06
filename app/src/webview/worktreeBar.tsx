@@ -1,7 +1,8 @@
 import { useEffect, useMemo } from 'react';
 import { type WorktreeInfo } from '../shared/protocol';
 import { useSkeleton } from './skeleton';
-import { worktreeStep, useWindowKeyDown } from './shortcuts';
+import { keymap } from '../shared/keymap';
+import { useBinding } from './shortcuts';
 import { adjacentTab, preloadDelay, resting } from './tabBar';
 
 export function adjacentWorktree(
@@ -33,12 +34,7 @@ export function WorktreeBar({
   const rest = useMemo(() => resting(preloadDelay), []);
   useEffect(() => rest.cancel, [rest]);
 
-  useWindowKeyDown((event) => {
-    const step = worktreeStep(event);
-    if (step === undefined) {
-      return;
-    }
-    event.preventDefault();
+  useBinding(keymap.worktree, (step) => {
     const root = adjacentWorktree(worktrees ?? [], active, step);
     if (root !== undefined) {
       onSelect(root);

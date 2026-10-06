@@ -36,6 +36,13 @@ function sides(rows: readonly DiffRow[]): string[] {
   );
 }
 
+const none = {
+  ctrlKey: false,
+  metaKey: false,
+  altKey: false,
+  shiftKey: false,
+};
+
 suite('Side-by-side diff', () => {
   test('shows unchanged lines on both sides, and pairs removed lines with added ones, filling the shorter side', () => {
     const [file] = parsePatch(patch);
@@ -158,15 +165,15 @@ suite('Side-by-side diff', () => {
 
   test('scrolls both sides sideways together, with the wheel held with Shift or a sideways swipe, no further than the widest line', () => {
     assert.strictEqual(
-      wheelSideways({ deltaX: 0, deltaY: 30, shiftKey: true }),
+      wheelSideways({ deltaX: 0, deltaY: 30, ...none, shiftKey: true }),
       30,
     );
     assert.strictEqual(
-      wheelSideways({ deltaX: 20, deltaY: 5, shiftKey: false }),
+      wheelSideways({ deltaX: 20, deltaY: 5, ...none, shiftKey: false }),
       20,
     );
     assert.strictEqual(
-      wheelSideways({ deltaX: 5, deltaY: 20, shiftKey: false }),
+      wheelSideways({ deltaX: 5, deltaY: 20, ...none, shiftKey: false }),
       0,
     );
     assert.strictEqual(sideScroll(0, [30], 100), 30);

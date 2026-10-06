@@ -10,7 +10,8 @@ import type {
 import { onMenuKeyDown, useDismiss, useMenuFocus } from './contextMenu';
 import { BackIcon, ForwardIcon, PinIcon, RefreshIcon } from './icons';
 import { LocationsPopup } from './locations';
-import { useShortcuts } from './shortcuts';
+import { keymap } from '../shared/keymap';
+import { useBinding } from './shortcuts';
 
 const holdDelay = 400;
 
@@ -226,11 +227,9 @@ export function AddressBar({
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
   const [searches, setSearches] = useState(0);
-  useShortcuts({
-    s: () => {
-      setOpen(true);
-      setSearches((count) => count + 1);
-    },
+  useBinding(keymap.search, () => {
+    setOpen(true);
+    setSearches((count) => count + 1);
   });
   const [queries, setQueries] = useState<ReadonlyMap<string, string>>(
     new Map(),

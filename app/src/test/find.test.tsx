@@ -20,7 +20,8 @@ import {
   wholeLines,
 } from '../webview/find';
 import { matchMarks } from '../webview/minimap';
-import { isFindShortcut } from '../webview/shortcuts';
+import { keymap } from '../shared/keymap';
+import { keyPressed } from '../webview/shortcuts';
 
 const patch = [
   'diff --git a/a.ts b/a.ts',
@@ -352,7 +353,10 @@ suite('Find in diff', () => {
       metaKey: false,
       shiftKey: false,
       altKey: false,
+      target: null,
     };
+    const isFindShortcut = (event: typeof key) =>
+      keyPressed(keymap.find, event) === true;
     assert.ok(isFindShortcut(key));
     assert.ok(isFindShortcut({ ...key, ctrlKey: false, metaKey: true }));
     assert.ok(isFindShortcut({ ...key, key: 'ф' }));
@@ -379,7 +383,12 @@ suite('Find in diff', () => {
             React.ReactElement<{
               onKeyDown: (event: {
                 key: string;
+                code: string;
+                ctrlKey: boolean;
+                metaKey: boolean;
+                altKey: boolean;
                 shiftKey: boolean;
+                target: null;
                 preventDefault: () => void;
                 currentTarget: { blur: () => void };
               }) => void;
@@ -393,7 +402,12 @@ suite('Find in diff', () => {
     const press = (query: string, key: string, shiftKey = false) =>
       field(query).props.children[0].props.onKeyDown({
         key,
+        code: '',
+        ctrlKey: false,
+        metaKey: false,
+        altKey: false,
         shiftKey,
+        target: null,
         preventDefault: noop,
         currentTarget: { blur: () => (blurred = true) },
       });

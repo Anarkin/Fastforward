@@ -1,11 +1,11 @@
 import * as assert from 'node:assert';
+import { listMoveOf } from '../webview/listMoves';
 import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { comparisonOf } from '../shared/comparisons';
 import { workingTreeHash, workingTreeIndex } from '../shared/protocol';
 import { CommitHistory } from '../webview/commitHistory';
 import {
-  isListKey,
   keptPlace,
   settling,
   listKeyPosition,
@@ -104,6 +104,7 @@ suite('Commit list rows', () => {
 const noop = () => {};
 
 const plainClick = {
+  button: 0,
   ctrlKey: false,
   metaKey: false,
   shiftKey: false,
@@ -359,9 +360,19 @@ suite('Commit list keys', () => {
     rows = visible,
     headCommit?: string,
     pending?: number,
-  ) =>
-    listKeyPosition(
+  ) => {
+    const move = listMoveOf({
       key,
+      code: '',
+      ctrlKey: false,
+      metaKey: false,
+      altKey: false,
+      shiftKey: false,
+      target: null,
+    });
+    assert.ok(move, key);
+    return listKeyPosition(
+      move,
       history,
       selected,
       workingTree,
@@ -369,6 +380,7 @@ suite('Commit list keys', () => {
       headCommit,
       pending,
     );
+  };
 
   test('steps with the arrows from the selected row, and stops at either end', () => {
     const history = loaded('a', 'b');
@@ -522,16 +534,18 @@ suite('Commit list keys', () => {
   test('takes only the list keys without modifiers', () => {
     const key = {
       key: 'End',
+      code: '',
       ctrlKey: false,
       metaKey: false,
       altKey: false,
       shiftKey: false,
+      target: null,
     };
-    assert.ok(isListKey(key));
-    assert.ok(isListKey({ ...key, key: 'PageUp' }));
-    assert.ok(!isListKey({ ...key, ctrlKey: true }));
-    assert.ok(!isListKey({ ...key, shiftKey: true }));
-    assert.ok(!isListKey({ ...key, key: 'Enter' }));
+    assert.strictEqual(listMoveOf(key), 'last');
+    assert.strictEqual(listMoveOf({ ...key, key: 'PageUp' }), 'pageUp');
+    assert.strictEqual(listMoveOf({ ...key, ctrlKey: true }), undefined);
+    assert.strictEqual(listMoveOf({ ...key, shiftKey: true }), undefined);
+    assert.strictEqual(listMoveOf({ ...key, key: 'Enter' }), undefined);
   });
 });
 

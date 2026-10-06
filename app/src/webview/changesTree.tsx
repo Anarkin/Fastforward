@@ -1,7 +1,7 @@
 import type { FileChange } from '../shared/protocol';
 import { buildFileTree, type FolderNode } from './fileTree';
 import { byName } from './byName';
-import { listKey, moveInList, type VisibleRows } from './listMoves';
+import { moveInList, type ListMove, type VisibleRows } from './listMoves';
 import { FileRow, fileRowKey, FolderRow } from './tree';
 import type { ListedRows } from './virtualRows';
 
@@ -153,7 +153,7 @@ export type FilesKeyAction =
     };
 
 export function filesKey(
-  key: string,
+  key: ListMove | 'folder',
   rows: readonly ChangesTreeRow[],
   header: boolean,
   cursor: string | undefined,
@@ -164,7 +164,7 @@ export function filesKey(
   const offset = header ? 1 : 0;
   const index = cursor === undefined ? -1 : listed.indexOf(cursor);
   const row = index < offset ? undefined : rows[index - offset];
-  if (key === ' ') {
+  if (key === 'folder') {
     return row?.kind === 'folder'
       ? { kind: 'toggle', folder: row.path, changed: row.changed }
       : { kind: 'stay' };
@@ -176,7 +176,7 @@ export function filesKey(
     visible,
   );
   if (moved === undefined) {
-    return listKey(key) ? { kind: 'stay' } : undefined;
+    return { kind: 'stay' };
   }
   const target = moved < offset ? undefined : rows[moved - offset];
   const movedKey = listed.keyOf(moved);

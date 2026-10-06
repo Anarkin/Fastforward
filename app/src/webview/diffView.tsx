@@ -34,7 +34,9 @@ import { columnFocusAttribute } from './activeColumn';
 import { alignLines } from './pairing';
 import { textsToLoad, useSyntax, type SyntaxRange } from './syntax';
 import { wordRanges, type WordRanges } from './wordDiff';
-import { changeStep } from './shortcuts';
+import { keymap, wheeled, type Modifiers } from '../shared/keymap';
+import { listMoveOf, type ListMove } from './listMoves';
+import { keyPressed } from './shortcuts';
 import {
   elementMetrics,
   ownScrollbarAttribute,
@@ -286,9 +288,9 @@ export function sideScroll(
 }
 
 export function wheelSideways(
-  event: Pick<WheelEvent, 'deltaX' | 'deltaY' | 'shiftKey'>,
+  event: Modifiers & Pick<WheelEvent, 'deltaX' | 'deltaY'>,
 ): number {
-  if (event.shiftKey) {
+  if (wheeled(keymap.wheelSideways, event)) {
     return event.deltaX || event.deltaY;
   }
   return Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : 0;
@@ -471,21 +473,21 @@ export function diffRows(
 const sidewaysStep = 40;
 
 export function diffScrollLeft(
-  key: string,
+  step: 1 | -1,
   scrolled: number,
   room?: number,
 ): number | undefined {
-  if (key === 'ArrowLeft' && scrolled > 0) {
+  if (step === -1 && scrolled > 0) {
     return Math.max(0, scrolled - sidewaysStep);
   }
-  if (key === 'ArrowRight' && room !== undefined && scrolled < room) {
+  if (step === 1 && room !== undefined && scrolled < room) {
     return Math.min(room, scrolled + sidewaysStep);
   }
   return undefined;
 }
 
 export function diffScrollTop(
-  key: string,
+  move: ListMove,
   scrollTop: number,
   viewport: number,
   total: number,
@@ -493,27 +495,25 @@ export function diffScrollTop(
   const line = rowHeights.line;
   const bottom = Math.max(0, total - viewport);
   let target: number;
-  switch (key) {
-    case 'ArrowDown':
+  switch (move) {
+    case 'down':
       target = scrollTop + 3 * line;
       break;
-    case 'ArrowUp':
+    case 'up':
       target = scrollTop - 3 * line;
       break;
-    case 'PageDown':
+    case 'pageDown':
       target = scrollTop + Math.max(line, viewport - line);
       break;
-    case 'PageUp':
+    case 'pageUp':
       target = scrollTop - Math.max(line, viewport - line);
       break;
-    case 'Home':
+    case 'first':
       target = 0;
       break;
-    case 'End':
+    case 'last':
       target = bottom;
       break;
-    default:
-      return undefined;
   }
   return Math.max(0, Math.min(bottom, target));
 }
@@ -1482,21 +1482,17 @@ export function DiffView({
         tabIndex={0}
         {...{ [ownScrollbarAttribute]: '', [columnFocusAttribute]: '' }}
         onKeyDown={(event) => {
-          if (
-            event.ctrlKey ||
-            event.metaKey ||
-            event.altKey ||
-            event.shiftKey
-          ) {
-            return;
-          }
-          const left = scrollsSides
-            ? diffScrollLeft(
-                event.key,
-                sideways,
-                sideRoom(event.currentTarget).widest,
-              )
-            : diffScrollLeft(event.key, event.currentTarget.scrollLeft);
+          const side = keyPressed(keymap.sideways, event);
+          const left =
+            side === undefined
+              ? undefined
+              : scrollsSides
+                ? diffScrollLeft(
+                    side,
+                    sideways,
+                    sideRoom(event.currentTarget).widest,
+                  )
+                : diffScrollLeft(side, event.currentTarget.scrollLeft);
           if (left !== undefined) {
             event.preventDefault();
             if (scrollsSides) {
@@ -1506,11 +1502,13 @@ export function DiffView({
             }
             return;
           }
-          const step = changeStep(event);
+          const step = keyPressed(keymap.change, event);
+          const move = listMoveOf(event);
           const top =
             step === undefined
-              ? diffScrollTop(
-                  event.key,
+              ? move &&
+                diffScrollTop(
+                  move,
                   event.currentTarget.scrollTop,
                   event.currentTarget.clientHeight,
                   virtualizer.getTotalSize(),

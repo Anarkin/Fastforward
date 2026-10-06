@@ -1,4 +1,5 @@
-import { changeStep, typing } from './shortcuts';
+import { keymap } from '../shared/keymap';
+import { keyPressed } from './shortcuts';
 
 export type ColumnName = 'commits' | 'files' | 'diff';
 
@@ -15,59 +16,25 @@ export function shownColumns(
   );
 }
 
-export function columnStep(
-  event: Pick<
-    KeyboardEvent,
-    | 'key'
-    | 'ctrlKey'
-    | 'metaKey'
-    | 'altKey'
-    | 'shiftKey'
-    | 'defaultPrevented'
-    | 'target'
-  >,
-): 1 | -1 | undefined {
-  if (
-    event.defaultPrevented ||
-    event.ctrlKey ||
-    event.metaKey ||
-    event.altKey
-  ) {
-    return undefined;
-  }
-  if (event.key === 'Tab') {
-    return event.shiftKey ? -1 : 1;
-  }
-  if (event.shiftKey || typing(event.target)) {
-    return undefined;
-  }
-  return event.key === 'ArrowRight'
-    ? 1
-    : event.key === 'ArrowLeft'
-      ? -1
-      : undefined;
+// Tab keeps the focus in the columns even with none to move to, as the
+// browser would take it elsewhere
+export function columnMove(
+  event: Parameters<typeof keyPressed>[1],
+): { readonly step: 1 | -1; readonly tab: boolean } | undefined {
+  const move = keyPressed(keymap.column, event);
+  return move === undefined
+    ? undefined
+    : {
+        step: move === 'next' || move === 'right' ? 1 : -1,
+        tab: move === 'next' || move === 'previous',
+      };
 }
 
 export function forwardedColumn(
   column: ColumnName | undefined,
-  event: Pick<
-    KeyboardEvent,
-    | 'key'
-    | 'code'
-    | 'ctrlKey'
-    | 'metaKey'
-    | 'altKey'
-    | 'shiftKey'
-    | 'defaultPrevented'
-  >,
+  event: Parameters<typeof keyPressed>[1],
 ): ColumnName | undefined {
-  return column === 'files' &&
-    !event.defaultPrevented &&
-    !event.ctrlKey &&
-    !event.metaKey &&
-    !event.altKey &&
-    !event.shiftKey &&
-    changeStep(event) !== undefined
+  return column === 'files' && keyPressed(keymap.change, event) !== undefined
     ? 'diff'
     : undefined;
 }

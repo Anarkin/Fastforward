@@ -23,11 +23,13 @@ import { formatDateTime } from './dates';
 import { MenuButton } from './menu';
 import { useSkeleton } from './skeleton';
 import { Highlight } from './highlight';
+import { clicked, keymap, type Click } from '../shared/keymap';
 import { columnFocusAttribute } from './activeColumn';
 import {
   fullyVisible,
-  listKey,
+  listMoveOf,
   moveInList,
+  type ListMove,
   type VisibleRows,
 } from './listMoves';
 import { SoloIcon } from './icons';
@@ -142,21 +144,6 @@ export function listTop(
   return commit && { hash: commit.hash, offset: scrollTop - row.start };
 }
 
-export function isListKey(
-  event: Pick<
-    KeyboardEvent,
-    'key' | 'ctrlKey' | 'metaKey' | 'altKey' | 'shiftKey'
-  >,
-): boolean {
-  return (
-    listKey(event.key) &&
-    !event.ctrlKey &&
-    !event.metaKey &&
-    !event.altKey &&
-    !event.shiftKey
-  );
-}
-
 function startPosition(
   history: CommitHistory,
   selection: string | undefined,
@@ -203,7 +190,7 @@ export function pendingSelection(
 }
 
 export function listKeyPosition(
-  key: string,
+  move: ListMove,
   history: CommitHistory,
   selected: string | undefined,
   workingTree: boolean,
@@ -220,13 +207,13 @@ export function listKeyPosition(
   if (
     from === undefined &&
     head !== undefined &&
-    (key === 'ArrowDown' || key === 'ArrowUp')
+    (move === 'down' || move === 'up')
   ) {
     return head;
   }
   const top = workingTree ? workingTreeIndex : 0;
   const moved = moveInList(
-    key,
+    move,
     from === undefined ? undefined : from - top,
     history.total - top,
     { first: visible.first - top, last: visible.last - top },
@@ -310,10 +297,8 @@ export function uncommittedChanges(count: number): string {
   return count === 1 ? '1 uncommitted change' : `${count} uncommitted changes`;
 }
 
-type Click = Pick<MouseEvent, 'ctrlKey' | 'metaKey' | 'shiftKey' | 'altKey'>;
-
 export function isCompareClick(event: Click): boolean {
-  return (event.ctrlKey || event.metaKey) && !event.shiftKey && !event.altKey;
+  return clicked(keymap.compare, event) !== undefined;
 }
 
 function selectionClasses(hash: string, selection: string | undefined) {
@@ -561,13 +546,14 @@ export function Commits({
   }, [focusKey]);
 
   const onKeyDown = (event: React.KeyboardEvent) => {
-    if (!history || !isListKey(event.nativeEvent)) {
+    const move = listMoveOf(event);
+    if (!history || move === undefined) {
       return;
     }
     event.preventDefault();
     const element = list.current;
     const position = listKeyPosition(
-      event.key,
+      move,
       history,
       selected,
       hasWorkingTree,

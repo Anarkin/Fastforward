@@ -15,7 +15,9 @@ import {
 import { Column } from './column';
 import { AllFilesIcon, CollapseAllIcon, ExpandAllIcon } from './icons';
 import { SkeletonRows, useSkeleton } from './skeleton';
-import type { VisibleRows } from './listMoves';
+import { keymap } from '../shared/keymap';
+import { listMoveOf, type VisibleRows } from './listMoves';
+import { keyPressed } from './shortcuts';
 import { fileRowKey } from './tree';
 import type { Folders } from './viewFolders';
 import { VirtualRows, type ListedRows } from './virtualRows';
@@ -126,11 +128,12 @@ export function Files({
     }
   };
   const onKeyDown = (event: React.KeyboardEvent, visible: VisibleRows) => {
-    if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) {
+    const key = keyPressed(keymap.folder, event) ? 'folder' : listMoveOf(event);
+    if (key === undefined) {
       return;
     }
     const action = filesKey(
-      event.key,
+      key,
       treeRows,
       hasHeader,
       cursor,

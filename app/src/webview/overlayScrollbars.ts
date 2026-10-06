@@ -1,3 +1,4 @@
+import { clicked, keymap } from '../shared/keymap';
 import { followDrag } from './columns';
 
 export const overlayScrollbarClass = 'overlay-scrollbar';
@@ -292,7 +293,7 @@ class Bar {
 
   private readonly onPointerDown = (event: PointerEvent) => {
     const { scroller } = this;
-    if (!scroller || event.button !== 0) {
+    if (!scroller || !clicked(keymap.drag, event)) {
       return;
     }
     event.preventDefault();

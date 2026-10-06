@@ -31,6 +31,8 @@ import { OpenContextMenu, refMenuTarget, useDismiss } from './contextMenu';
 import { CommitRow } from './commitList';
 import { Highlight } from './highlight';
 import { FolderRow, treeIndent, twistyWidth } from './tree';
+import { keymap } from '../shared/keymap';
+import { keyPressed } from './shortcuts';
 
 const groups: readonly { kind: RefKind; title: string }[] = [
   { kind: 'branch', title: 'Local branches' },
@@ -298,8 +300,6 @@ function usePopupHeight(
   return height;
 }
 
-const steps: Readonly<Record<string, 1 | -1>> = { ArrowDown: 1, ArrowUp: -1 };
-
 const contextMenus = '.context-menu';
 
 export function focusLeaves<
@@ -317,16 +317,11 @@ export function focusLeaves<
 }
 
 export function popupKeyAction(
-  event: Pick<KeyboardEvent, 'key' | 'isComposing' | 'keyCode'>,
+  event: Parameters<typeof keyPressed>[1],
   query: string,
 ): 1 | -1 | 'enter' | undefined {
-  if (event.isComposing || event.keyCode === 229) {
-    return undefined;
-  }
-  if (query.trim() && event.key in steps) {
-    return steps[event.key];
-  }
-  return event.key === 'Enter' ? 'enter' : undefined;
+  const step = query.trim() ? keyPressed(keymap.result, event) : undefined;
+  return step ?? (keyPressed(keymap.go, event) ? 'enter' : undefined);
 }
 
 export function LocationsPopup({

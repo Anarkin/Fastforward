@@ -17,6 +17,7 @@ import { autoUpdater } from 'electron-updater';
 import { findGit, minimumGitVersion, type GitSearch } from '../git/locate';
 import { errorLine, fileLog, type Log } from '../log';
 import { appName, appNameSwitch, titleBarHeight } from '../shared/titleBar';
+import { keymap, pressed, pressOfInput } from '../shared/keymap';
 import type { ToHost, ToWebview } from '../shared/protocol';
 import {
   migrateProfile,
@@ -361,9 +362,7 @@ function createWindow(
   window.webContents.on('before-input-event', (event, input) => {
     if (
       input.type === 'keyDown' &&
-      input.shift &&
-      (input.control || input.meta) &&
-      input.key.toLowerCase() === 'i'
+      pressed(keymap.devTools, pressOfInput(input), false)
     ) {
       window.webContents.toggleDevTools();
       event.preventDefault();

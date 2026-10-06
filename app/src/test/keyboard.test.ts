@@ -1,8 +1,8 @@
 import * as assert from 'node:assert';
 import {
   adjacentColumn,
+  columnMove,
   columnOf,
-  columnStep,
   forwardedColumn,
   shownColumns,
 } from '../webview/activeColumn';
@@ -15,27 +15,41 @@ import {
   diffScrollTop,
 } from '../webview/diffView';
 import { parsePatch } from '../webview/diff';
-import { fullyVisible, moveInList } from '../webview/listMoves';
-import { changeStep } from '../webview/shortcuts';
+import { keymap } from '../shared/keymap';
+import { fullyVisible, listMoveOf, moveInList } from '../webview/listMoves';
+import { keyPressed } from '../webview/shortcuts';
 import { element, fileChange } from './fixtures';
 
 const visible = { first: 0, last: 0 };
 
+const changeStep = (key: string, code: string) =>
+  keyPressed(keymap.change, { ...press, key, code });
+
+const press = {
+  key: '',
+  code: '',
+  ctrlKey: false,
+  metaKey: false,
+  altKey: false,
+  shiftKey: false,
+  defaultPrevented: false,
+  target: null,
+};
+
 suite('Moving in a list', () => {
   test('steps, jumps to either end, and pages to the last row in view before a screen further', () => {
     const rows = { first: 10, last: 19 };
-    assert.strictEqual(moveInList('ArrowDown', 3, 30, rows), 4);
-    assert.strictEqual(moveInList('ArrowUp', 0, 30, rows), undefined);
-    assert.strictEqual(moveInList('ArrowDown', undefined, 30, rows), 0);
-    assert.strictEqual(moveInList('Home', 12, 30, rows), 0);
-    assert.strictEqual(moveInList('End', 12, 30, rows), 29);
-    assert.strictEqual(moveInList('PageDown', 12, 30, rows), 19);
-    assert.strictEqual(moveInList('PageDown', 19, 30, rows), 28);
-    assert.strictEqual(moveInList('PageDown', 28, 30, rows), 29);
-    assert.strictEqual(moveInList('PageUp', 15, 30, rows), 10);
-    assert.strictEqual(moveInList('PageUp', 10, 30, rows), 1);
-    assert.strictEqual(moveInList('Enter', 3, 30, rows), undefined);
-    assert.strictEqual(moveInList('End', undefined, 0, rows), undefined);
+    assert.strictEqual(moveInList('down', 3, 30, rows), 4);
+    assert.strictEqual(moveInList('up', 0, 30, rows), undefined);
+    assert.strictEqual(moveInList('down', undefined, 30, rows), 0);
+    assert.strictEqual(moveInList('first', 12, 30, rows), 0);
+    assert.strictEqual(moveInList('last', 12, 30, rows), 29);
+    assert.strictEqual(moveInList('pageDown', 12, 30, rows), 19);
+    assert.strictEqual(moveInList('pageDown', 19, 30, rows), 28);
+    assert.strictEqual(moveInList('pageDown', 28, 30, rows), 29);
+    assert.strictEqual(moveInList('pageUp', 15, 30, rows), 10);
+    assert.strictEqual(moveInList('pageUp', 10, 30, rows), 1);
+    assert.strictEqual(moveInList('last', undefined, 0, rows), undefined);
   });
 
   test('counts the rows wholly in view, leaving out ones cut off at either edge', () => {
@@ -77,33 +91,45 @@ suite('Active column', () => {
     assert.deepStrictEqual(shownColumns(false, 'a'), ['files', 'diff']);
   });
 
-  test('moves to the next column on Right or Tab, and back on Left or Shift+Tab', () => {
-    assert.strictEqual(columnStep(key), 1);
-    assert.strictEqual(columnStep({ ...key, key: 'ArrowLeft' }), -1);
-    assert.strictEqual(columnStep({ ...key, key: 'Tab' }), 1);
-    assert.strictEqual(columnStep({ ...key, key: 'Tab', shiftKey: true }), -1);
+  test('moves to the next column on Right or Tab, and back on Left or Shift+Tab, telling Tab apart', () => {
+    assert.deepStrictEqual(columnMove(key), { step: 1, tab: false });
+    assert.deepStrictEqual(columnMove({ ...key, key: 'ArrowLeft' }), {
+      step: -1,
+      tab: false,
+    });
+    assert.deepStrictEqual(columnMove({ ...key, key: 'Tab' }), {
+      step: 1,
+      tab: true,
+    });
+    assert.deepStrictEqual(columnMove({ ...key, key: 'Tab', shiftKey: true }), {
+      step: -1,
+      tab: true,
+    });
   });
 
   test('leaves the arrows to fields and to keys a column used itself, and keys with modifiers alone', () => {
     assert.strictEqual(
-      columnStep({ ...key, target: element('INPUT') }),
+      columnMove({ ...key, target: element('INPUT') })?.step,
       undefined,
     );
     assert.strictEqual(
-      columnStep({ ...key, target: element('DIV', true) }),
+      columnMove({ ...key, target: element('DIV', true) })?.step,
       undefined,
     );
     assert.strictEqual(
-      columnStep({ ...key, key: 'Tab', target: element('INPUT') }),
+      columnMove({ ...key, key: 'Tab', target: element('INPUT') })?.step,
       1,
     );
     assert.strictEqual(
-      columnStep({ ...key, defaultPrevented: true }),
+      columnMove({ ...key, defaultPrevented: true })?.step,
       undefined,
     );
-    assert.strictEqual(columnStep({ ...key, ctrlKey: true }), undefined);
-    assert.strictEqual(columnStep({ ...key, shiftKey: true }), undefined);
-    assert.strictEqual(columnStep({ ...key, key: 'ArrowDown' }), undefined);
+    assert.strictEqual(columnMove({ ...key, ctrlKey: true })?.step, undefined);
+    assert.strictEqual(columnMove({ ...key, shiftKey: true })?.step, undefined);
+    assert.strictEqual(
+      columnMove({ ...key, key: 'ArrowDown' })?.step,
+      undefined,
+    );
   });
 
   test('stops at the first and last shown column, starting from the first', () => {
@@ -142,11 +168,11 @@ suite('Files column keys', () => {
 
   test('moves through All Changes, the folders and the files, selecting the files it lands on', () => {
     assert.deepStrictEqual(
-      filesKey('ArrowDown', rows(), true, 'changes', undefined, visible),
+      filesKey('down', rows(), true, 'changes', undefined, visible),
       { kind: 'cursor', key: 'folder:src' },
     );
     assert.deepStrictEqual(
-      filesKey('End', rows(), true, 'changes', undefined, visible),
+      filesKey('last', rows(), true, 'changes', undefined, visible),
       {
         kind: 'select',
         key: 'file:c.ts',
@@ -154,59 +180,42 @@ suite('Files column keys', () => {
       },
     );
     assert.deepStrictEqual(
-      filesKey('Home', rows(), true, 'file:c.ts', 'c.ts', visible),
+      filesKey('first', rows(), true, 'file:c.ts', 'c.ts', visible),
       { kind: 'select', key: 'changes', file: undefined },
     );
     assert.deepStrictEqual(
-      filesKey('ArrowUp', rows(), true, 'changes', undefined, visible),
+      filesKey('up', rows(), true, 'changes', undefined, visible),
       { kind: 'stay' },
     );
-    assert.strictEqual(
-      filesKey('Enter', rows(), true, 'changes', undefined, visible),
-      undefined,
-    );
+    assert.strictEqual(listMoveOf({ ...press, key: 'Enter' }), undefined);
   });
 
   test('selects the file or All Changes it lands on only when it is not selected already, so the diff is not loaded anew', () => {
     assert.deepStrictEqual(
-      filesKey(
-        'ArrowDown',
-        rows(),
-        true,
-        'folder:src/app',
-        'src/app/a.ts',
-        visible,
-      ),
+      filesKey('down', rows(), true, 'folder:src/app', 'src/app/a.ts', visible),
       { kind: 'cursor', key: 'file:src/app/a.ts' },
     );
     assert.deepStrictEqual(
-      filesKey(
-        'ArrowDown',
-        rows(),
-        true,
-        'folder:src/app',
-        'src/b.ts',
-        visible,
-      ),
+      filesKey('down', rows(), true, 'folder:src/app', 'src/b.ts', visible),
       { kind: 'select', key: 'file:src/app/a.ts', file: 'src/app/a.ts' },
     );
     assert.deepStrictEqual(
-      filesKey('ArrowUp', rows(), true, 'folder:src', undefined, visible),
+      filesKey('up', rows(), true, 'folder:src', undefined, visible),
       { kind: 'cursor', key: 'changes' },
     );
   });
 
   test('opens or closes the folder under the cursor on Space, doing nothing else on a file', () => {
     assert.deepStrictEqual(
-      filesKey(' ', rows(['src']), true, 'folder:src', undefined, visible),
+      filesKey('folder', rows(['src']), true, 'folder:src', undefined, visible),
       { kind: 'toggle', folder: 'src', changed: true },
     );
     assert.deepStrictEqual(
-      filesKey(' ', rows(), true, 'folder:src/app', undefined, visible),
+      filesKey('folder', rows(), true, 'folder:src/app', undefined, visible),
       { kind: 'toggle', folder: 'src/app', changed: true },
     );
     assert.deepStrictEqual(
-      filesKey(' ', rows(), true, 'file:c.ts', 'c.ts', visible),
+      filesKey('folder', rows(), true, 'file:c.ts', 'c.ts', visible),
       {
         kind: 'stay',
       },
@@ -215,43 +224,37 @@ suite('Files column keys', () => {
 
   test('leaves Left and Right to moving between the columns', () => {
     for (const cursor of ['folder:src', 'file:src/app/a.ts', 'changes']) {
-      assert.strictEqual(
-        filesKey('ArrowLeft', rows(), true, cursor, undefined, visible),
-        undefined,
-      );
-      assert.strictEqual(
-        filesKey('ArrowRight', rows(['src']), true, cursor, undefined, visible),
-        undefined,
-      );
+      for (const key of ['ArrowLeft', 'ArrowRight']) {
+        assert.strictEqual(listMoveOf({ ...press, key }), undefined, cursor);
+      }
     }
   });
 });
 
 suite('Diff keys', () => {
   test('scrolls back left with the left arrow while scrolled right, leaving it to move between the columns only then', () => {
-    assert.strictEqual(diffScrollLeft('ArrowLeft', 100), 60);
-    assert.strictEqual(diffScrollLeft('ArrowLeft', 20), 0);
-    assert.strictEqual(diffScrollLeft('ArrowLeft', 0), undefined);
-    assert.strictEqual(diffScrollLeft('ArrowRight', 100), undefined);
+    assert.strictEqual(diffScrollLeft(-1, 100), 60);
+    assert.strictEqual(diffScrollLeft(-1, 20), 0);
+    assert.strictEqual(diffScrollLeft(-1, 0), undefined);
+    assert.strictEqual(diffScrollLeft(1, 100), undefined);
   });
 
   test('scrolls the sides of a side by side diff right with the right arrow too, no further than the widest line, as nothing else scrolls them', () => {
-    assert.strictEqual(diffScrollLeft('ArrowRight', 0, 100), 40);
-    assert.strictEqual(diffScrollLeft('ArrowRight', 80, 100), 100);
-    assert.strictEqual(diffScrollLeft('ArrowRight', 100, 100), undefined);
-    assert.strictEqual(diffScrollLeft('ArrowRight', 0, 0), undefined);
-    assert.strictEqual(diffScrollLeft('ArrowLeft', 100, 100), 60);
+    assert.strictEqual(diffScrollLeft(1, 0, 100), 40);
+    assert.strictEqual(diffScrollLeft(1, 80, 100), 100);
+    assert.strictEqual(diffScrollLeft(1, 100, 100), undefined);
+    assert.strictEqual(diffScrollLeft(1, 0, 0), undefined);
+    assert.strictEqual(diffScrollLeft(-1, 100, 100), 60);
   });
 
   test('scrolls three lines with the arrows, a screen less a line with the page keys, and to either end', () => {
-    assert.strictEqual(diffScrollTop('ArrowDown', 100, 400, 2000), 166);
-    assert.strictEqual(diffScrollTop('ArrowUp', 40, 400, 2000), 0);
-    assert.strictEqual(diffScrollTop('PageDown', 100, 400, 2000), 478);
-    assert.strictEqual(diffScrollTop('PageUp', 500, 400, 2000), 122);
-    assert.strictEqual(diffScrollTop('Home', 500, 400, 2000), 0);
-    assert.strictEqual(diffScrollTop('End', 0, 400, 2000), 1600);
-    assert.strictEqual(diffScrollTop('End', 0, 400, 300), 0);
-    assert.strictEqual(diffScrollTop('Enter', 0, 400, 2000), undefined);
+    assert.strictEqual(diffScrollTop('down', 100, 400, 2000), 166);
+    assert.strictEqual(diffScrollTop('up', 40, 400, 2000), 0);
+    assert.strictEqual(diffScrollTop('pageDown', 100, 400, 2000), 478);
+    assert.strictEqual(diffScrollTop('pageUp', 500, 400, 2000), 122);
+    assert.strictEqual(diffScrollTop('first', 500, 400, 2000), 0);
+    assert.strictEqual(diffScrollTop('last', 0, 400, 2000), 1600);
+    assert.strictEqual(diffScrollTop('last', 0, 400, 300), 0);
   });
 });
 
@@ -314,23 +317,15 @@ suite('Jumping between changes', () => {
   });
 
   test('takes j and k, whatever the keyboard layout', () => {
-    assert.strictEqual(changeStep({ key: 'j', code: 'KeyJ' }), 1);
-    assert.strictEqual(changeStep({ key: 'k', code: 'KeyK' }), -1);
-    assert.strictEqual(changeStep({ key: 'о', code: 'KeyJ' }), 1);
-    assert.strictEqual(changeStep({ key: 'x', code: 'KeyX' }), undefined);
+    assert.strictEqual(changeStep('j', 'KeyJ'), 1);
+    assert.strictEqual(changeStep('k', 'KeyK'), -1);
+    assert.strictEqual(changeStep('о', 'KeyJ'), 1);
+    assert.strictEqual(changeStep('x', 'KeyX'), undefined);
   });
 });
 
 suite('Changes from the Files column', () => {
-  const key = {
-    key: 'j',
-    code: 'KeyJ',
-    ctrlKey: false,
-    metaKey: false,
-    altKey: false,
-    shiftKey: false,
-    defaultPrevented: false,
-  };
+  const key = { ...press, key: 'j', code: 'KeyJ' };
 
   test('hands j and k in the Files column to the diff, to jump there', () => {
     assert.strictEqual(forwardedColumn('files', key), 'diff');

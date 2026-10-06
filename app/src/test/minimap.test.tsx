@@ -27,11 +27,19 @@ function minimap(viewport: number): string {
   );
 }
 
+const none = {
+  ctrlKey: false,
+  metaKey: false,
+  altKey: false,
+  shiftKey: false,
+};
+
 suite('Minimap', () => {
   test('takes the pointer it is pressed with, starting no text selection, so dragging it scrolls even with text selected', () => {
     const calls: string[] = [];
     const grabbed = grabPointer({
       button: 0,
+      ...none,
       pointerId: 7,
       preventDefault: () => calls.push('preventDefault'),
       currentTarget: {
@@ -47,6 +55,7 @@ suite('Minimap', () => {
       const calls: string[] = [];
       const grabbed = grabPointer({
         button,
+        ...none,
         pointerId: 7,
         preventDefault: () => calls.push('preventDefault'),
         currentTarget: {

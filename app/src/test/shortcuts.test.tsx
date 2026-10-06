@@ -1,22 +1,13 @@
 import * as assert from 'node:assert';
-import {
-  changeStep,
-  handleShortcut,
-  isFindShortcut,
-  isNewTabShortcut,
-  isShortcutsKey,
-  shortcutOf,
-  tabStep,
-  worktreeStep,
-} from '../webview/shortcuts';
-import { adjacentTab, tabBarKey } from '../webview/tabBar';
+import { keymap } from '../shared/keymap';
+import { keyPressed } from '../webview/shortcuts';
+import { adjacentTab } from '../webview/tabBar';
 import { adjacentWorktree } from '../webview/worktreeBar';
 import { element } from './fixtures';
 
-const keyEvent = (
-  key: string,
-  extra: Partial<Parameters<typeof shortcutOf>[0]> = {},
-) => ({
+type KeyEvent = Parameters<typeof keyPressed>[1];
+
+const keyEvent = (key: string, extra: Partial<KeyEvent> = {}): KeyEvent => ({
   key,
   code: '',
   ctrlKey: false,
@@ -29,65 +20,86 @@ const keyEvent = (
   ...extra,
 });
 
-const press = (
-  key: string,
-  extra: Partial<Parameters<typeof shortcutOf>[0]> = {},
-) => shortcutOf(keyEvent(key, extra));
+const ctrlTab = keyEvent('Tab', { ctrlKey: true });
 
-const shortcuts = (
-  key: string,
-  extra: Partial<Parameters<typeof shortcutOf>[0]> = {},
-) => isShortcutsKey(keyEvent(key, extra));
+const shortcuts = (key: string, extra: Partial<KeyEvent> = {}) =>
+  keyPressed(keymap.shortcuts, keyEvent(key, extra)) === true;
+
+const repositoryStep = (extra: Partial<KeyEvent>) =>
+  keyPressed(keymap.repository, { ...ctrlTab, ...extra });
+
+const worktreeStep = (extra: Partial<KeyEvent>) =>
+  keyPressed(keymap.worktree, { ...ctrlTab, key: 'PageDown', ...extra });
+
+const opensRepository = (extra: Partial<KeyEvent>) =>
+  keyPressed(keymap.openRepository, {
+    ...ctrlTab,
+    key: 't',
+    code: 'KeyT',
+    ...extra,
+  });
+
+const letters = [
+  [keymap.commits, 'c'],
+  [keymap.search, 's'],
+  [keymap.wrap, 'w'],
+  [keymap.head, 'h'],
+  [keymap.upstream, 'u'],
+] as const;
 
 suite('Keyboard shortcuts', () => {
   test('matches a key pressed on its own', () => {
-    assert.strictEqual(press('c'), 'c');
-    assert.strictEqual(press('s'), 's');
-    assert.strictEqual(press('w'), 'w');
-    assert.strictEqual(press('h'), 'h');
-    assert.strictEqual(press('u'), 'u');
-    assert.strictEqual(press('x'), undefined);
+    for (const [binding, letter] of letters) {
+      assert.strictEqual(keyPressed(binding, keyEvent(letter)), true, letter);
+    }
+    assert.strictEqual(keyPressed(keymap.commits, keyEvent('x')), undefined);
   });
 
   test('matches a letter with Caps Lock on', () => {
-    assert.strictEqual(press('C'), 'c');
-    assert.strictEqual(press('S'), 's');
-    assert.strictEqual(press('W'), 'w');
-    assert.strictEqual(press('H'), 'h');
-    assert.strictEqual(press('U'), 'u');
+    for (const [binding, letter] of letters) {
+      assert.strictEqual(
+        keyPressed(binding, keyEvent(letter.toUpperCase())),
+        true,
+        letter,
+      );
+    }
   });
 
   test('matches the physical key on a non-Latin layout', () => {
-    assert.strictEqual(press('с', { code: 'KeyC' }), 'c');
-    assert.strictEqual(press('ы', { code: 'KeyS' }), 's');
-    assert.strictEqual(press('ц', { code: 'KeyW' }), 'w');
-    assert.strictEqual(press('р', { code: 'KeyH' }), 'h');
-    assert.strictEqual(press('г', { code: 'KeyU' }), 'u');
-    assert.strictEqual(press('j', { code: 'KeyC' }), undefined);
-  });
-
-  test('leaves a shortcut it has no action for to the other handlers', () => {
-    let called = 0;
-    let prevented = 0;
-    const handle = (key: string) =>
-      handleShortcut(
-        { ...keyEvent(key), preventDefault: () => prevented++ },
-        { c: () => called++ },
-      );
-    handle('s');
-    assert.deepStrictEqual([called, prevented], [0, 0]);
-    handle('c');
-    assert.deepStrictEqual([called, prevented], [1, 1]);
+    for (const [binding, key, code] of [
+      [keymap.commits, 'с', 'KeyC'],
+      [keymap.search, 'ы', 'KeyS'],
+      [keymap.wrap, 'ц', 'KeyW'],
+      [keymap.head, 'р', 'KeyH'],
+      [keymap.upstream, 'г', 'KeyU'],
+    ] as const) {
+      assert.strictEqual(keyPressed(binding, keyEvent(key, { code })), true);
+    }
+    assert.strictEqual(
+      keyPressed(keymap.commits, keyEvent('j', { code: 'KeyC' })),
+      undefined,
+    );
   });
 
   test('leaves keys with modifiers, repeats and handled keys alone', () => {
-    assert.strictEqual(press('c', { ctrlKey: true }), undefined);
-    assert.strictEqual(press('s', { ctrlKey: true }), undefined);
-    assert.strictEqual(press('c', { altKey: true }), undefined);
-    assert.strictEqual(press('c', { metaKey: true }), undefined);
-    assert.strictEqual(press('c', { shiftKey: true }), undefined);
-    assert.strictEqual(press('c', { repeat: true }), undefined);
-    assert.strictEqual(press('c', { defaultPrevented: true }), undefined);
+    for (const extra of [
+      { ctrlKey: true },
+      { altKey: true },
+      { metaKey: true },
+      { shiftKey: true },
+      { repeat: true },
+      { defaultPrevented: true },
+    ]) {
+      assert.strictEqual(
+        keyPressed(keymap.commits, keyEvent('c', extra)),
+        undefined,
+        JSON.stringify(extra),
+      );
+    }
+    assert.strictEqual(
+      keyPressed(keymap.search, keyEvent('s', { ctrlKey: true })),
+      undefined,
+    );
   });
 
   test('shows the shortcuts on F1, even in a field, or on ? outside one', () => {
@@ -103,48 +115,45 @@ suite('Keyboard shortcuts', () => {
   });
 
   test('leaves keys typed into a field to the field', () => {
-    assert.strictEqual(press('c', { target: element('INPUT') }), undefined);
-    assert.strictEqual(press('c', { target: element('TEXTAREA') }), undefined);
-    assert.strictEqual(press('c', { target: element('SELECT') }), undefined);
-    assert.strictEqual(press('c', { target: element('DIV', true) }), undefined);
-    assert.strictEqual(press('c', { target: element('BUTTON') }), 'c');
+    for (const target of [
+      element('INPUT'),
+      element('TEXTAREA'),
+      element('SELECT'),
+      element('DIV', true),
+    ]) {
+      assert.strictEqual(
+        keyPressed(keymap.commits, keyEvent('c', { target })),
+        undefined,
+      );
+    }
+    assert.strictEqual(
+      keyPressed(keymap.commits, keyEvent('c', { target: element('BUTTON') })),
+      true,
+    );
   });
 });
 
 suite('Switching tabs', () => {
-  const key = {
-    key: 'Tab',
-    ctrlKey: true,
-    shiftKey: false,
-    altKey: false,
-    metaKey: false,
-  };
+  const key = ctrlTab;
   const tabs = ['a', 'b', 'c'].map((name) => ({ root: `/${name}`, name }));
 
   test('goes to the next tab on Ctrl+Tab, and the previous on Ctrl+Shift+Tab', () => {
-    assert.strictEqual(tabStep(key), 1);
-    assert.strictEqual(tabStep({ ...key, shiftKey: true }), -1);
-    assert.strictEqual(tabStep({ ...key, ctrlKey: false }), undefined);
-    assert.strictEqual(tabStep({ ...key, altKey: true }), undefined);
-    assert.strictEqual(tabStep({ ...key, metaKey: true }), undefined);
-    assert.strictEqual(tabStep({ ...key, key: 'q' }), undefined);
+    assert.strictEqual(repositoryStep({}), 1);
+    assert.strictEqual(repositoryStep({ shiftKey: true }), -1);
+    assert.strictEqual(repositoryStep({ ctrlKey: false }), undefined);
+    assert.strictEqual(repositoryStep({ altKey: true }), undefined);
+    assert.strictEqual(repositoryStep({ metaKey: true }), undefined);
+    assert.strictEqual(repositoryStep({ key: 'q' }), undefined);
   });
 
   test('goes to the next worktree on Ctrl+PageDown, and the previous on Ctrl+PageUp', () => {
-    const pageDown = { ...key, key: 'PageDown' };
-    assert.strictEqual(worktreeStep(pageDown), 1);
-    assert.strictEqual(worktreeStep({ ...pageDown, key: 'PageUp' }), -1);
-    assert.strictEqual(
-      worktreeStep({ ...pageDown, ctrlKey: false }),
-      undefined,
-    );
-    assert.strictEqual(
-      worktreeStep({ ...pageDown, shiftKey: true }),
-      undefined,
-    );
-    assert.strictEqual(worktreeStep({ ...pageDown, altKey: true }), undefined);
-    assert.strictEqual(worktreeStep({ ...pageDown, metaKey: true }), undefined);
-    assert.strictEqual(worktreeStep(key), undefined);
+    assert.strictEqual(worktreeStep({}), 1);
+    assert.strictEqual(worktreeStep({ key: 'PageUp' }), -1);
+    assert.strictEqual(worktreeStep({ ctrlKey: false }), undefined);
+    assert.strictEqual(worktreeStep({ shiftKey: true }), undefined);
+    assert.strictEqual(worktreeStep({ altKey: true }), undefined);
+    assert.strictEqual(worktreeStep({ metaKey: true }), undefined);
+    assert.strictEqual(worktreeStep({ key: 'Tab' }), undefined);
   });
 
   test('skips the worktrees whose folder is missing', () => {
@@ -172,40 +181,41 @@ suite('Switching tabs', () => {
 
   test('takes the letter typed, not the key pressed, on another Latin layout', () => {
     const dvorak = { ...key, key: 'u', code: 'KeyF' };
-    assert.ok(!isFindShortcut(dvorak));
-    assert.ok(isFindShortcut({ ...dvorak, key: 'f', code: 'KeyY' }));
-    assert.ok(!isNewTabShortcut({ ...dvorak, key: 'y', code: 'KeyT' }));
-    assert.ok(isNewTabShortcut({ ...dvorak, key: 't', code: 'KeyK' }));
-    assert.strictEqual(changeStep({ key: 'h', code: 'KeyJ' }), undefined);
-    assert.strictEqual(changeStep({ key: 'j', code: 'KeyC' }), 1);
-    assert.strictEqual(changeStep({ key: 'л', code: 'KeyK' }), -1);
+    assert.strictEqual(keyPressed(keymap.find, dvorak), undefined);
+    assert.strictEqual(
+      keyPressed(keymap.find, { ...dvorak, key: 'f', code: 'KeyY' }),
+      true,
+    );
+    assert.strictEqual(
+      keyPressed(keymap.openRepository, { ...dvorak, key: 'y', code: 'KeyT' }),
+      undefined,
+    );
+    assert.strictEqual(
+      keyPressed(keymap.openRepository, { ...dvorak, key: 't', code: 'KeyK' }),
+      true,
+    );
+    assert.strictEqual(
+      keyPressed(keymap.change, keyEvent('h', { code: 'KeyJ' })),
+      undefined,
+    );
+    assert.strictEqual(
+      keyPressed(keymap.change, keyEvent('j', { code: 'KeyC' })),
+      1,
+    );
+    assert.strictEqual(
+      keyPressed(keymap.change, keyEvent('л', { code: 'KeyK' })),
+      -1,
+    );
   });
 
   test('opens a repository on Ctrl+T, or Cmd+T, whatever the keyboard layout', () => {
-    const newTab = { ...key, key: 't', code: 'KeyT' };
-    assert.ok(isNewTabShortcut(newTab));
-    assert.ok(isNewTabShortcut({ ...newTab, ctrlKey: false, metaKey: true }));
-    assert.ok(isNewTabShortcut({ ...newTab, key: 'е' }));
-    assert.ok(!isNewTabShortcut({ ...newTab, ctrlKey: false }));
-    assert.ok(!isNewTabShortcut({ ...newTab, shiftKey: true }));
-  });
-
-  test('opens a repository or picks the tab a key asks for, and nothing for other keys', () => {
-    assert.deepStrictEqual(
-      tabBarKey({ ...key, key: 't', code: 'KeyT' }, tabs, '/a'),
-      { kind: 'add' },
-    );
-    assert.deepStrictEqual(tabBarKey({ ...key, code: 'Tab' }, tabs, '/a'), {
-      kind: 'select',
-      root: '/b',
-    });
-    assert.deepStrictEqual(
-      tabBarKey({ ...key, code: 'Tab', shiftKey: true }, tabs, '/a'),
-      { kind: 'select', root: '/c' },
-    );
+    assert.strictEqual(opensRepository({}), true);
     assert.strictEqual(
-      tabBarKey({ ...key, key: 'x', code: 'KeyX' }, tabs, '/a'),
-      undefined,
+      opensRepository({ ctrlKey: false, metaKey: true }),
+      true,
     );
+    assert.strictEqual(opensRepository({ key: 'е' }), true);
+    assert.strictEqual(opensRepository({ ctrlKey: false }), undefined);
+    assert.strictEqual(opensRepository({ shiftKey: true }), undefined);
   });
 });

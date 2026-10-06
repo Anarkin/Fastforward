@@ -19,7 +19,8 @@ import {
   SideBySideIcon,
   WordWrapIcon,
 } from './icons';
-import { isFindShortcut, useWindowKeyDown } from './shortcuts';
+import { keymap } from '../shared/keymap';
+import { keyPressed, useBinding } from './shortcuts';
 
 export function withLargeFiles(
   parsed: readonly DiffFile[],
@@ -174,10 +175,11 @@ export function DiffFind({
         value={query}
         onChange={(event) => onQuery(event.target.value)}
         onKeyDown={(event) => {
-          if (event.key === 'Enter') {
+          const step = keyPressed(keymap.match, event);
+          if (step !== undefined) {
             event.preventDefault();
-            onStep(event.shiftKey ? -1 : 1);
-          } else if (event.key === 'Escape') {
+            onStep(step);
+          } else if (keyPressed(keymap.stopFinding, event)) {
             event.preventDefault();
             if (query) {
               onQuery('');
@@ -303,12 +305,9 @@ export function Diff({
     setCurrent(0);
     setJump((count) => count + 1);
   }
-  useWindowKeyDown((event) => {
-    if (isFindShortcut(event)) {
-      event.preventDefault();
-      input.current?.focus();
-      input.current?.select();
-    }
+  useBinding(keymap.find, () => {
+    input.current?.focus();
+    input.current?.select();
   });
 
   return (

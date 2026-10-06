@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { released } from '../shared/keymap';
 import { workingTreeHash } from '../shared/protocol';
 
 export const minColumnWidths = [275, 150];
@@ -108,7 +109,7 @@ export function followDrag<E extends { readonly buttons: number }>(
   onEnd: () => void,
 ): void {
   const move = (event: E) => {
-    if (event.buttons === 0) {
+    if (released(event)) {
       end();
     } else {
       onMove(event);

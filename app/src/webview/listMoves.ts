@@ -1,3 +1,6 @@
+import { keymap } from '../shared/keymap';
+import { keyPressed } from './shortcuts';
+
 export interface VisibleRows {
   readonly first: number;
   readonly last: number;
@@ -18,21 +21,16 @@ export function fullyVisible(
   };
 }
 
-const listKeys = new Set([
-  'ArrowDown',
-  'ArrowUp',
-  'Home',
-  'End',
-  'PageDown',
-  'PageUp',
-]);
+export type ListMove = 'up' | 'down' | 'pageUp' | 'pageDown' | 'first' | 'last';
 
-export function listKey(key: string): boolean {
-  return listKeys.has(key);
+export function listMoveOf(
+  event: Parameters<typeof keyPressed>[1],
+): ListMove | undefined {
+  return keyPressed(keymap.move, event) ?? keyPressed(keymap.page, event);
 }
 
 export function moveInList(
-  key: string,
+  move: ListMove,
   from: number | undefined,
   count: number,
   visible: VisibleRows,
@@ -42,31 +40,29 @@ export function moveInList(
   }
   const page = Math.max(1, visible.last - visible.first);
   let target: number;
-  switch (key) {
-    case 'ArrowDown':
+  switch (move) {
+    case 'down':
       target = from === undefined ? 0 : from + 1;
       break;
-    case 'ArrowUp':
+    case 'up':
       target = from === undefined ? 0 : from - 1;
       break;
-    case 'Home':
+    case 'first':
       target = 0;
       break;
-    case 'End':
+    case 'last':
       target = count - 1;
       break;
-    case 'PageDown':
+    case 'pageDown':
       target =
         from === undefined || from < visible.last ? visible.last : from + page;
       break;
-    case 'PageUp':
+    case 'pageUp':
       target =
         from === undefined || from > visible.first
           ? visible.first
           : from - page;
       break;
-    default:
-      return undefined;
   }
   const index = Math.max(0, Math.min(count - 1, target));
   return index === from ? undefined : index;

@@ -6,8 +6,19 @@ import {
   submenuPlacement,
 } from '../webview/contextMenu';
 
+const none = {
+  code: '',
+  ctrlKey: false,
+  metaKey: false,
+  altKey: false,
+  shiftKey: false,
+};
+
 function keyDown(key: string): Event {
-  return Object.assign(new Event('keydown', { cancelable: true }), { key });
+  return Object.assign(new Event('keydown', { cancelable: true }), {
+    key,
+    ...none,
+  });
 }
 
 function pointerDown(target: object | null): Event {
@@ -126,15 +137,14 @@ suite('Dismissing menus and popups', () => {
 
 suite('Menu keys', () => {
   test('moves through the items with the arrows, wrapping around, and to either end with Home and End', () => {
-    assert.strictEqual(nextMenuItem('ArrowDown', 0, 3), 1);
-    assert.strictEqual(nextMenuItem('ArrowDown', 2, 3), 0);
-    assert.strictEqual(nextMenuItem('ArrowUp', 0, 3), 2);
-    assert.strictEqual(nextMenuItem('ArrowUp', -1, 3), 2);
-    assert.strictEqual(nextMenuItem('ArrowDown', -1, 3), 0);
-    assert.strictEqual(nextMenuItem('Home', 2, 3), 0);
-    assert.strictEqual(nextMenuItem('End', 0, 3), 2);
-    assert.strictEqual(nextMenuItem('Enter', 0, 3), undefined);
-    assert.strictEqual(nextMenuItem('ArrowDown', -1, 0), undefined);
+    assert.strictEqual(nextMenuItem('next', 0, 3), 1);
+    assert.strictEqual(nextMenuItem('next', 2, 3), 0);
+    assert.strictEqual(nextMenuItem('previous', 0, 3), 2);
+    assert.strictEqual(nextMenuItem('previous', -1, 3), 2);
+    assert.strictEqual(nextMenuItem('next', -1, 3), 0);
+    assert.strictEqual(nextMenuItem('first', 2, 3), 0);
+    assert.strictEqual(nextMenuItem('last', 0, 3), 2);
+    assert.strictEqual(nextMenuItem('next', -1, 0), undefined);
   });
 
   test('keeps every arrow and Tab to itself, so none moves between the columns behind it', () => {
@@ -145,10 +155,10 @@ suite('Menu keys', () => {
       'ArrowDown',
       'Tab',
     ]) {
-      assert.ok(claimsMenuKey(key), key);
+      assert.ok(claimsMenuKey({ key, ...none, target: null }), key);
     }
     for (const key of ['Enter', 'a', 'Escape']) {
-      assert.ok(!claimsMenuKey(key), key);
+      assert.ok(!claimsMenuKey({ key, ...none, target: null }), key);
     }
   });
 });
