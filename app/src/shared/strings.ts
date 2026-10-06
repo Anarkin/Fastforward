@@ -53,6 +53,7 @@ export const strings = {
     move: 'Move in a list',
     page: 'Move a page, or to either end',
     parent: 'Select the first parent',
+    merge: 'Expand or collapse a merge',
     compare: 'Compare with the commit selected',
     navigate: 'Back or forward',
     column: 'Next or previous column',

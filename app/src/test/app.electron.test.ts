@@ -508,6 +508,29 @@ suite('App', function () {
       .locator('.working-tree', { hasText: '1 uncommitted change' })
       .waitFor();
   });
+
+  test('expands and collapses the selected merge on Space', async () => {
+    await repository.git('switch', '-q', '-c', 'topic', 'HEAD~1');
+    await repository.commit('topic work');
+    await repository.git('switch', '-q', 'main');
+    await repository.git(
+      'merge',
+      '-q',
+      '--no-ff',
+      '-m',
+      'merge topic',
+      'topic',
+    );
+    const merged = page.locator('.commit', { hasText: 'topic work' });
+    await page.locator('.commit', { hasText: 'merge topic' }).click();
+    await page
+      .locator('.commit.selected', { hasText: 'merge topic' })
+      .waitFor();
+    await page.keyboard.press('Space');
+    await merged.waitFor();
+    await page.keyboard.press('Space');
+    await merged.waitFor({ state: 'detached' });
+  });
 });
 
 suite('App without git', function () {

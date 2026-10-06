@@ -24,6 +24,7 @@ import { MenuButton } from './menu';
 import { useSkeleton } from './skeleton';
 import { Highlight } from './highlight';
 import { clicked, keymap, type Click } from '../shared/keymap';
+import { keyPressed } from './shortcuts';
 import { strings } from '../shared/strings';
 import { columnFocusAttribute } from './activeColumn';
 import {
@@ -178,6 +179,17 @@ export function keySelection(
     return null;
   }
   return hash === selected ? undefined : hash;
+}
+
+export function mergeToToggle(
+  history: CommitHistory,
+  selected: string | undefined,
+): string | undefined {
+  const position =
+    selected === undefined ? undefined : history.positionOf(selected);
+  return position !== undefined && history.graphAt(position)?.merge
+    ? selected
+    : undefined;
 }
 
 export function pendingSelection(
@@ -542,6 +554,14 @@ export function Commits({
   }, [focusKey]);
 
   const onKeyDown = (event: React.KeyboardEvent) => {
+    if (keyPressed(keymap.merge, event)) {
+      event.preventDefault();
+      const merge = history && mergeToToggle(history, selected);
+      if (merge !== undefined) {
+        onToggleMerge(merge);
+      }
+      return;
+    }
     const move = listMoveOf(event);
     if (!history || move === undefined) {
       return;

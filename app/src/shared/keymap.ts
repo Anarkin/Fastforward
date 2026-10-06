@@ -70,6 +70,7 @@ export const keymap = {
     { repeats: true },
   ),
   parent: bind('History', strings.actions.parent, { 'Alt+ArrowDown': true }),
+  merge: bind('History', strings.actions.merge, { Space: true }),
   compare: bind('History', strings.actions.compare, {
     'Mod+Click': true,
   }),

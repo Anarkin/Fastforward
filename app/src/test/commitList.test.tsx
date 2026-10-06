@@ -22,6 +22,7 @@ import {
   isCompareClick,
   listScroll,
   listTop,
+  mergeToToggle,
   rowKeyOf,
   SoloButton,
   WorkingTreeRow,
@@ -532,6 +533,30 @@ suite('Commit list keys', () => {
       pendingSelection({ history, position: 9 }, history, 'last'),
       undefined,
     );
+  });
+
+  test('toggles the selected merge, collapsed or expanded, and no other row', () => {
+    const history = new CommitHistory(4);
+    history.add(
+      0,
+      [commitInfo('m'), commitInfo('n'), commitInfo('a')],
+      [
+        { lane: 0, color: 0, lines: [], merge: 'collapsed', hidden: 2 },
+        { lane: 0, color: 0, lines: [], merge: 'expanded' },
+        { lane: 0, color: 0, lines: [] },
+      ],
+    );
+    history.locate('later', 3);
+    assert.strictEqual(mergeToToggle(history, 'm'), 'm');
+    assert.strictEqual(mergeToToggle(history, 'n'), 'n');
+    assert.strictEqual(mergeToToggle(history, 'a'), undefined);
+    assert.strictEqual(mergeToToggle(history, 'later'), undefined);
+    assert.strictEqual(mergeToToggle(history, workingTreeHash), undefined);
+    assert.strictEqual(
+      mergeToToggle(history, comparisonOf('m', 'a')),
+      undefined,
+    );
+    assert.strictEqual(mergeToToggle(history, undefined), undefined);
   });
 
   test('takes only the list keys without modifiers', () => {
