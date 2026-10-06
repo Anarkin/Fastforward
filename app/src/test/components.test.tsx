@@ -1610,12 +1610,14 @@ suite('Worktree bar', () => {
     });
   }
 
-  test('marks the main worktree and the one shown, naming each folder in its tooltip', () => {
+  test('marks the worktree shown, naming each folder in its tooltip and the main one by its branch alone', () => {
     const [main, gone, feature] = worktreesOf([], []);
     assert.strictEqual(main.props.title, '/a');
     assert.match(main.props.className, /\bactive\b/);
-    assert.ok(isValidElement(main.props.children[0]));
-    assert.strictEqual(feature.props.children[0], false);
+    const [name, folder] = main.props.children;
+    assert.ok(isValidElement<{ className: string }>(name));
+    assert.strictEqual(name.props.className, 'tab-name');
+    assert.strictEqual(folder, false);
     assert.doesNotMatch(feature.props.className, /\bactive\b/);
     assert.match(gone.props.className, /\bmissing\b/);
     assert.strictEqual(gone.props.title, "/b doesn't exist anymore");
@@ -1623,12 +1625,12 @@ suite('Worktree bar', () => {
 
   test('shows the folder of a linked worktree dimmed after its branch, unless they are named the same', () => {
     const [main, gone, feature] = worktreesOf([], []);
-    const shown = feature.props.children[2];
+    const shown = feature.props.children[1];
     assert.ok(isValidElement<{ className: string; children: string }>(shown));
     assert.strictEqual(shown.props.className, 'tab-folder');
     assert.strictEqual(shown.props.children, 'app-feature');
-    assert.strictEqual(main.props.children[2], false);
-    assert.strictEqual(gone.props.children[2], false);
+    assert.strictEqual(main.props.children[1], false);
+    assert.strictEqual(gone.props.children[1], false);
   });
 
   test('holds the place of the worktrees with a placeholder tab while they are listed, drawing its bar only after a moment', () => {

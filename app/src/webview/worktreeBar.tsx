@@ -1,6 +1,5 @@
 import { useEffect, useMemo } from 'react';
 import { type WorktreeInfo } from '../shared/protocol';
-import { HomeIcon } from './icons';
 import { useSkeleton } from './skeleton';
 import { worktreeStep, useWindowKeyDown } from './shortcuts';
 import { adjacentTab, preloadDelay, resting } from './tabBar';
@@ -81,7 +80,6 @@ export function WorktreeBar({
             }
             onPointerLeave={rest.cancel}
           >
-            {worktree.main && <HomeIcon />}
             <span className="tab-name">{worktree.name}</span>
             {!worktree.main && worktree.folder !== worktree.name && (
               <span className="tab-folder">{worktree.folder}</span>

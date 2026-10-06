@@ -256,10 +256,6 @@ body {
   visibility: hidden;
 }
 
-.tab .icon {
-  flex: none;
-}
-
 .tab-folder {
   color: var(--muted-foreground);
 }

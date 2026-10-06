@@ -25,15 +25,6 @@ export function CloseIcon() {
   );
 }
 
-export function HomeIcon() {
-  return (
-    <Icon>
-      <path d="M2.5 7.5L8 3l5.5 4.5" />
-      <path d="M4 6.5V13h3V9.5h2V13h3V6.5" />
-    </Icon>
-  );
-}
-
 export function BackIcon() {
   return (
     <Icon>
