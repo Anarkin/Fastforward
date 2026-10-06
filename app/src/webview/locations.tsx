@@ -449,7 +449,7 @@ export function LocationsPopup({
       }}
     >
       <div className="locations-search-row">
-        <button className="nav-button" title="Close (Esc)" onClick={onClose}>
+        <button className="nav-button" title="Close" onClick={onClose}>
           <BackIcon />
         </button>
         <input

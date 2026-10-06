@@ -114,7 +114,7 @@ export function ShortcutsPopup({
     >
       <div className="shortcuts-title">
         <span>Shortcuts</span>
-        <button className="nav-button" title="Close (Esc)" onClick={onClose}>
+        <button className="nav-button" title="Close" onClick={onClose}>
           <CloseIcon />
         </button>
       </div>

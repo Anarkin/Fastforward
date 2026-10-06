@@ -149,7 +149,7 @@ export function TabBar({
         <button
           ref={add}
           className="tab-add"
-          title="Open a repository (Ctrl+T)"
+          title="Open a repository"
           onClick={onAdd}
         >
           +

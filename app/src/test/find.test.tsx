@@ -440,8 +440,8 @@ suite('Find in diff', () => {
     assert.deepStrictEqual(
       actions(0).map((button) => [button.props.title, !!button.props.disabled]),
       [
-        ['Previous Match (Shift+Enter)', true],
-        ['Next Match (Enter)', true],
+        ['Previous Match', true],
+        ['Next Match', true],
       ],
     );
   });

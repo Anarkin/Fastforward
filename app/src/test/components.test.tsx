@@ -1204,7 +1204,7 @@ suite('Search', () => {
     assert.ok(isValidElement<{ children: React.ReactElement[] }>(row));
     const back = row.props.children[0];
     assert.ok(isValidElement<{ title: string; onClick: () => void }>(back));
-    assert.strictEqual(back.props.title, 'Close (Esc)');
+    assert.strictEqual(back.props.title, 'Close');
     back.props.onClick();
     assert.strictEqual(closed, 1);
   });

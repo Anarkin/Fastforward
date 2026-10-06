@@ -214,7 +214,7 @@ export function FindActions({
     <div className="nav-buttons diff-find-actions">
       <button
         className="nav-button"
-        title="Previous Match (Shift+Enter)"
+        title="Previous Match"
         disabled={matches === 0}
         onClick={() => onStep(-1)}
       >
@@ -222,7 +222,7 @@ export function FindActions({
       </button>
       <button
         className="nav-button"
-        title="Next Match (Enter)"
+        title="Next Match"
         disabled={matches === 0}
         onClick={() => onStep(1)}
       >
