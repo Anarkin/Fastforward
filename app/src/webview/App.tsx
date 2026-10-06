@@ -81,7 +81,7 @@ export function App({ name, post: postToHost, listen }: Props) {
   const post = outbox.send;
   const [tabs, setTabs] = useState<readonly TabInfo[]>();
   const [activeRepository, setActiveRepository] = useState<string>();
-  const [worktrees, setWorktrees] = useState<readonly WorktreeInfo[]>([]);
+  const [worktrees, setWorktrees] = useState<readonly WorktreeInfo[]>();
   const [recent, setRecent] = useState<readonly TabInfo[]>([]);
   const [notices, setNotices] = useState<readonly Notice[]>([]);
   const noticeCount = useRef(0);
@@ -504,14 +504,12 @@ export function App({ name, post: postToHost, listen }: Props) {
               }
               onLog={log}
             />
-            {activeRepository !== undefined && (
-              <WorktreeBar
-                worktrees={worktrees}
-                active={activeTab}
-                onSelect={(root) => post({ type: 'selectWorktree', root })}
-                onPreload={(root) => post({ type: 'preloadWorktree', root })}
-              />
-            )}
+            <WorktreeBar
+              worktrees={worktrees}
+              active={activeTab}
+              onSelect={(root) => post({ type: 'selectWorktree', root })}
+              onPreload={(root) => post({ type: 'preloadWorktree', root })}
+            />
             {menu && <ContextMenu menu={menu} onClose={closeMenu} />}
             <Notices notices={notices} onDismiss={dismissNotice} />
             {tabs === undefined ? null : tabs.length === 0 ? (

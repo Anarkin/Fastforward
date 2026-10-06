@@ -125,6 +125,19 @@ suite('Style', () => {
     );
   });
 
+  test('keeps the worktree row as tall while its worktrees are listed, or when it has none, as with them', () => {
+    const height = 'calc(1lh + 6px)';
+    assert.ok(declarationsOf('.worktrees .tab').includes(`height: ${height};`));
+    assert.ok(
+      declarationsOf('.worktrees .tab-list').includes(`min-height: ${height};`),
+    );
+    assert.ok(
+      declarationsOf('.skeleton-tab.waiting .bar').includes(
+        'visibility: hidden;',
+      ),
+    );
+  });
+
   test('shades a round button on hover over whatever fill it has, so an active toggle or a pinned pair changes too', () => {
     const hover = declarationsOf('.nav-button:hover:not(:disabled)');
     assert.match(
@@ -642,6 +655,7 @@ suite('Style', () => {
       '.skeleton-row',
       '.commit.placeholder',
       '.hash-suggestion.empty',
+      '.tab.skeleton-tab',
     ]) {
       assert.match(
         declarationsOf(`${placeholder}:hover`),

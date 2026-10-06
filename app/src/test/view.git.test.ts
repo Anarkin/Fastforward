@@ -4807,7 +4807,9 @@ function sameRealFolder(a: string | undefined, b: string): boolean {
   );
 }
 
-function worktreesOf(view: OpenView): ToWebviewOf<'tabs'>['worktrees'] {
+function worktreesOf(
+  view: OpenView,
+): NonNullable<ToWebviewOf<'tabs'>['worktrees']> {
   return view.page.last('tabs')?.worktrees ?? [];
 }
 
@@ -4868,7 +4870,7 @@ suite('Worktrees', function () {
         assert.ok(sameRealFolder(shown.active, repository.root));
         assert.strictEqual(shown.worktree, feature);
         assert.deepStrictEqual(
-          shown.worktrees.map((worktree) => ({
+          shown.worktrees?.map((worktree) => ({
             name: worktree.name,
             folder: worktree.folder,
             main: worktree.main,
@@ -4917,6 +4919,40 @@ suite('Worktrees', function () {
       assert.strictEqual(view.page.last('tabs')?.worktree, root);
       assert.strictEqual(worktreesOf(view).length, 4);
       assert.strictEqual(view.page.last('repository')?.headCommit, reviewHead);
+    });
+  });
+
+  test('says the worktrees of a tab opened are still being listed until git lists them', async () => {
+    await withView(log, [other, repository.root], async (view) => {
+      view.page.clear();
+      await view.connection.receive({
+        type: 'selectTab',
+        root: repository.root,
+      });
+      const sent = view.page.messages.flatMap((message) =>
+        message.type === 'tabs' ? [message.worktrees] : [],
+      );
+      assert.strictEqual(sent[0], undefined);
+      assert.strictEqual(sent.at(-1)?.length, 4);
+    });
+  });
+
+  test('lists the worktrees of a tab pointed at, so they show as soon as it is clicked', async () => {
+    await withView(log, [other, repository.root], async (view) => {
+      await view.connection.receive({
+        type: 'preloadTab',
+        root: repository.root,
+      });
+      view.page.clear();
+      await view.connection.receive({
+        type: 'selectTab',
+        root: repository.root,
+      });
+      assert.strictEqual(
+        view.page.messages.find((message) => message.type === 'tabs')?.worktrees
+          ?.length,
+        4,
+      );
     });
   });
 
@@ -4990,7 +5026,7 @@ suite('Worktrees', function () {
           ['bare-layout'],
         );
         assert.deepStrictEqual(
-          shown.worktrees.map(({ name, main }) => ({ name, main })),
+          shown.worktrees?.map(({ name, main }) => ({ name, main })),
           [
             { name: 'feature', main: false },
             { name: 'main', main: false },

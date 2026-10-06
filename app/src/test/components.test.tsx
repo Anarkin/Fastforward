@@ -1412,6 +1412,14 @@ suite('Window', () => {
     assert.strictEqual(tagsWith(html, 'tabs').length, 1);
     assert.doesNotMatch(html, /No repository is open/);
   });
+
+  test('holds the place of the worktree row before the host says which tabs are open', () => {
+    const html = renderToStaticMarkup(
+      <App name="Fastforward" post={noop} listen={() => noop} />,
+    );
+    assert.strictEqual(tagsWith(html, 'worktrees').length, 1);
+    assert.strictEqual(tagsWith(html, 'skeleton-tab').length, 1);
+  });
 });
 
 const rested = () =>
@@ -1591,8 +1599,12 @@ suite('Worktree bar', () => {
     });
     assert.ok(isValidElement<{ children: React.ReactElement }>(nav));
     const list = nav.props.children;
-    assert.ok(isValidElement<{ children: React.ReactElement[] }>(list));
-    return list.props.children.map((worktree) => {
+    assert.ok(
+      isValidElement<{ children: [false, React.ReactElement[]] }>(list),
+    );
+    const [placeholder, worktrees] = list.props.children;
+    assert.strictEqual(placeholder, false);
+    return worktrees.map((worktree) => {
       assert.ok(isValidElement<Worktree>(worktree));
       return worktree;
     });
@@ -1617,6 +1629,21 @@ suite('Worktree bar', () => {
     assert.strictEqual(shown.props.children, 'app-feature');
     assert.strictEqual(main.props.children[2], false);
     assert.strictEqual(gone.props.children[2], false);
+  });
+
+  test('holds the place of the worktrees with a placeholder tab while they are listed, drawing its bar only after a moment', () => {
+    const html = renderToStaticMarkup(
+      <WorktreeBar
+        worktrees={undefined}
+        active="/a"
+        onSelect={noop}
+        onPreload={noop}
+      />,
+    );
+    const [placeholder] = tagsWith(html, 'tab', 'skeleton-tab', 'waiting');
+    assert.ok(placeholder, html);
+    assert.match(placeholder, /aria-busy="true"/);
+    assert.strictEqual(tagsWith(html, 'bar').length, 1);
   });
 
   test('opens and preloads a worktree, but neither a missing one', async () => {

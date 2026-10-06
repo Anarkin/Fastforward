@@ -237,8 +237,23 @@ body {
   background: var(--toolbar-background);
 }
 
+.worktrees .tab-list {
+  min-height: calc(1lh + 6px);
+}
+
 .worktrees .tab {
-  padding: 3px 12px;
+  box-sizing: border-box;
+  height: calc(1lh + 6px);
+  padding: 0 12px;
+}
+
+.skeleton-tab .bar {
+  width: 80px;
+  margin: 0;
+}
+
+.skeleton-tab.waiting .bar {
+  visibility: hidden;
 }
 
 .tab .icon {
@@ -1361,7 +1376,8 @@ body.resizing {
 
 .skeleton-row:hover,
 .commit.placeholder:hover,
-.hash-suggestion.empty:hover {
+.hash-suggestion.empty:hover,
+.tab.skeleton-tab:hover {
   background: none;
 }
 

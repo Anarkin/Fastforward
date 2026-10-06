@@ -286,7 +286,8 @@ export type ToWebview =
       readonly tabs: readonly TabInfo[];
       readonly active: string | undefined;
       readonly worktree: string | undefined;
-      readonly worktrees: readonly WorktreeInfo[];
+      // Left out until git has listed them
+      readonly worktrees: readonly WorktreeInfo[] | undefined;
       readonly recent: readonly TabInfo[];
     }
   | ({ readonly type: 'repository' } & RepositoryState)

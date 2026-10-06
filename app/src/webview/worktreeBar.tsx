@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { type WorktreeInfo } from '../shared/protocol';
 import { HomeIcon } from './icons';
+import { useSkeleton } from './skeleton';
 import { worktreeStep, useWindowKeyDown } from './shortcuts';
 import { adjacentTab, preloadDelay, resting } from './tabBar';
 
@@ -24,11 +25,12 @@ export function WorktreeBar({
   onSelect,
   onPreload,
 }: {
-  worktrees: readonly WorktreeInfo[];
+  worktrees: readonly WorktreeInfo[] | undefined;
   active: string | undefined;
   onSelect: (root: string) => void;
   onPreload: (root: string) => void;
 }) {
+  const skeleton = useSkeleton(worktrees === undefined);
   const rest = useMemo(() => resting(preloadDelay), []);
   useEffect(() => rest.cancel, [rest]);
 
@@ -38,7 +40,7 @@ export function WorktreeBar({
       return;
     }
     event.preventDefault();
-    const root = adjacentWorktree(worktrees, active, step);
+    const root = adjacentWorktree(worktrees ?? [], active, step);
     if (root !== undefined) {
       onSelect(root);
     }
@@ -47,7 +49,15 @@ export function WorktreeBar({
   return (
     <nav className="worktrees">
       <div className="tab-list">
-        {worktrees.map((worktree) => (
+        {worktrees === undefined && (
+          <div
+            className={`tab skeleton-tab ${skeleton ? '' : 'waiting'}`}
+            aria-busy="true"
+          >
+            <span className="bar" />
+          </div>
+        )}
+        {worktrees?.map((worktree) => (
           <div
             key={worktree.root}
             className={`tab ${worktree.root === active ? 'active' : ''} ${worktree.missing ? 'missing' : ''}`}

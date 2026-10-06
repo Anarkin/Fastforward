@@ -369,11 +369,14 @@ export class FastforwardView {
           storage.hasTab(message.root) &&
           !this.isActiveRepository(message.root)
         ) {
-          await this.preload(
-            session,
-            storage.worktreeOf(message.root),
-            message.root,
-          );
+          await allSettled([
+            this.loadWorktrees(session, message.root),
+            this.preload(
+              session,
+              storage.worktreeOf(message.root),
+              message.root,
+            ),
+          ]);
         }
         return;
       case 'preloadWorktree': {
@@ -846,7 +849,7 @@ export class FastforwardView {
     } catch (error) {
       this.log.error(`Listing the worktrees of ${repository} failed`);
       this.log.error(error);
-      return;
+      worktrees = [];
     }
     const shown = JSON.stringify(this.worktreeLists.get(repository));
     this.takeWorktrees(repository, worktrees);
@@ -984,7 +987,7 @@ export class FastforwardView {
       tabs: tabs.map(tabInfo),
       active,
       worktree,
-      worktrees: (active !== undefined && this.worktreeLists.get(active)) || [],
+      worktrees: active === undefined ? [] : this.worktreeLists.get(active),
       recent: storage.recent
         .filter(
           (root) =>
