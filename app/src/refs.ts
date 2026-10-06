@@ -1,23 +1,26 @@
 import type { Head } from './git/repository';
 import type { Positions } from './history/merges';
-import type { RefInfo, BookmarkRef } from './shared/protocol';
+import type { RefInfo, BookmarkRef, StashInfo } from './shared/protocol';
 import { hasRef, localBranchOf, refOf, withoutRemote } from './shared/refNames';
 
 export function fingerprint(
   head: Head | undefined,
   refs: readonly RefInfo[],
+  stashes: readonly StashInfo[] = [],
 ): string {
   return [
     `HEAD ${head?.name ?? ''} ${head?.commit ?? ''}`,
     ...refs.map((ref) => `${ref.kind} ${ref.name} ${ref.commit}`).toSorted(),
+    ...stashes.map((stash) => `stash ${stash.name} ${stash.commit}`),
   ].join('\n');
 }
 
 export function decoratedCommits(
   refs: readonly RefInfo[],
   head?: Head,
+  stashes: readonly StashInfo[] = [],
 ): Set<string> {
-  const decorated = new Set(refs.map((ref) => ref.commit));
+  const decorated = new Set([...refs, ...stashes].map((ref) => ref.commit));
   const detached = detachedHead(head);
   if (detached) {
     decorated.add(detached);

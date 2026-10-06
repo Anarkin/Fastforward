@@ -45,6 +45,20 @@ suite('Fingerprint', () => {
       fingerprint({ name: 'v1', commit: 'b' }, refs),
     );
   });
+
+  test('changes when a stash comes, goes or takes another place', () => {
+    const head = { name: 'main', commit: 'a' };
+    const stashes = [
+      { name: 'stash@{0}', commit: 's0', message: 'On main: zero' },
+      { name: 'stash@{1}', commit: 's1', message: 'On main: one' },
+    ];
+    const before = fingerprint(head, refs, stashes);
+    assert.notStrictEqual(fingerprint(head, refs), before);
+    assert.notStrictEqual(
+      fingerprint(head, refs, [{ ...stashes[1], name: 'stash@{0}' }]),
+      before,
+    );
+  });
 });
 
 suite('Decorated commits', () => {
@@ -56,6 +70,13 @@ suite('Decorated commits', () => {
       ['b', 5],
     ]);
     assert.deepStrictEqual(decorations(decorated, positions), [0, 5]);
+  });
+
+  test('counts the bubble of a stash on its commit', () => {
+    const decorated = decoratedCommits(refs, undefined, [
+      { name: 'stash@{0}', commit: 's', message: 'On main: kept' },
+    ]);
+    assert.ok(decorated.has('s'));
   });
 });
 

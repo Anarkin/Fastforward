@@ -143,15 +143,11 @@ export async function watchRepository(
       }),
       ...gitDirs.map((gitDirTree) =>
         watchTree(gitDirTree, {
-          skip: (folder) => {
-            const inside = path.relative(gitDirTree, folder);
-            return (
-              !affectsWorktree(
-                inside,
-                gitDirTree === commonDir && commonDir !== gitDir,
-              ) && !affectsWorktreeList(inside)
-            );
-          },
+          skip: (folder) =>
+            !watchedFolder(
+              path.relative(gitDirTree, folder),
+              gitDirTree === commonDir && commonDir !== gitDir,
+            ),
           ignored: () => Promise.resolve([]),
           onEvent,
           onError,
@@ -454,10 +450,13 @@ const internalFolders = new Set(['objects', 'logs', 'lfs']);
 
 const gitDirEntries = new Set(['HEAD', 'index', 'config', 'refs', 'modules']);
 
+// Dropping any stash but the newest rewrites only the reflog of the stashes
+const stashLog = /^logs[\\/]refs[\\/]stash$/;
+
 export function isInternal(inGitDir: string): boolean {
   const [first, ...rest] = inGitDir.split(/[\\/]/);
   return (
-    internalFolders.has(first) ||
+    (internalFolders.has(first) && !stashLog.test(inGitDir)) ||
     (first === 'modules' && isInternalInModule(rest)) ||
     inGitDir.endsWith('.lock') ||
     inGitDir === ''
@@ -503,6 +502,7 @@ export function affectsWorktree(inGitDir: string, shared: boolean): boolean {
   return (
     !shared ||
     (first === 'refs' && !perWorktreeRefs.has(second ?? '')) ||
+    stashLog.test(inGitDir) ||
     first === 'packed-refs' ||
     first === 'reftable' ||
     first === 'config'
@@ -520,6 +520,16 @@ export function affectsWorktreeList(inGitDir: string): boolean {
     first === 'worktrees' &&
     (entry === undefined ||
       ((entry === 'HEAD' || entry === 'gitdir') && rest.length === 0))
+  );
+}
+
+const stashLogFolders = /^logs([\\/]refs)?$/;
+
+export function watchedFolder(inGitDir: string, shared: boolean): boolean {
+  return (
+    affectsWorktree(inGitDir, shared) ||
+    affectsWorktreeList(inGitDir) ||
+    stashLogFolders.test(inGitDir)
   );
 }
 

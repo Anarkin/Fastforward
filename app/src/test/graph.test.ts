@@ -237,6 +237,27 @@ suite('Graph', () => {
     ]);
   });
 
+  test('draws a stash like the working tree, dashed down to its base', () => {
+    const graph = new Graph(
+      [
+        { hash: 's', parents: ['b'] },
+        { hash: 'b', parents: ['a'] },
+        { hash: 'a', parents: [] },
+      ],
+      { stashes: new Set(['s']) },
+    );
+    const rows = graph.rows(0, 3);
+    assert.deepStrictEqual(rows.map(describe), [
+      '0: 0>0.~',
+      '0: 0>0. 0>0~',
+      '0: 0>0',
+    ]);
+    assert.deepStrictEqual(
+      rows.map((row) => row.stash ?? false),
+      [true, false, false],
+    );
+  });
+
   test('leaves the working tree alone when HEAD is not shown', () => {
     const graph = new Graph([{ hash: 'a', parents: [] }], { head: 'x' });
     assert.strictEqual(describe(graph.workingTreeRow), '0: ');

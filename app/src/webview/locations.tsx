@@ -14,6 +14,7 @@ import type {
   RefInfo,
   RefKind,
   RepositoryState,
+  StashInfo,
   ToWebviewOf,
 } from '../shared/protocol';
 import { findRef } from '../shared/refNames';
@@ -95,6 +96,33 @@ export function searchRefs(
   });
 }
 
+export interface StashSearch {
+  readonly stashes: readonly StashInfo[];
+  readonly more: number;
+}
+
+const noStashes: StashSearch = { stashes: [], more: 0 };
+
+export function searchStashes(
+  stashes: readonly StashInfo[],
+  query: string,
+  limit = maxResults,
+): StashSearch {
+  const needle = query.trim().toLowerCase();
+  if (!needle) {
+    return noStashes;
+  }
+  const found = stashes.filter((stash) =>
+    [stash.name, stash.message].some((text) =>
+      text.toLowerCase().includes(needle),
+    ),
+  );
+  return {
+    stashes: found.slice(0, limit),
+    more: Math.max(0, found.length - limit),
+  };
+}
+
 function RefLabel({
   info,
   children,
@@ -113,24 +141,29 @@ function RefLabel({
 
 export type ResultItem =
   | { readonly kind: 'commit'; readonly commit: CommitInfo }
-  | { readonly kind: 'ref'; readonly ref: RefInfo };
+  | { readonly kind: 'ref'; readonly ref: RefInfo }
+  | { readonly kind: 'stash'; readonly stash: StashInfo };
 
 export function resultItems(
   commits: readonly CommitInfo[],
   search: readonly SearchGroup[],
+  found: StashSearch = noStashes,
 ): ResultItem[] {
   return [
     ...commits.map((commit) => ({ kind: 'commit' as const, commit })),
     ...search.flatMap((group) =>
       group.refs.map((ref) => ({ kind: 'ref' as const, ref })),
     ),
+    ...found.stashes.map((stash) => ({ kind: 'stash' as const, stash })),
   ];
 }
 
 export function itemKey(item: ResultItem): string {
   return item.kind === 'commit'
     ? `commit:${item.commit.hash}`
-    : `${item.ref.kind}:${item.ref.name}`;
+    : item.kind === 'stash'
+      ? `stash:${item.stash.name}`
+      : `${item.ref.kind}:${item.ref.name}`;
 }
 
 export interface Highlighted {
@@ -199,7 +232,11 @@ export function enterTarget(
   if (!query.trim() || !active) {
     return undefined;
   }
-  return active.kind === 'commit' ? active.commit.hash : active.ref.commit;
+  return active.kind === 'commit'
+    ? active.commit.hash
+    : active.kind === 'stash'
+      ? active.stash.commit
+      : active.ref.commit;
 }
 
 function CommitResultsSection({
@@ -361,6 +398,11 @@ export function LocationsPopup({
   );
   const index = useMemo(() => indexRefs(refs), [refs]);
   const search = useMemo(() => searchRefs(index, query), [index, query]);
+  const stashes = useMemo(() => repository?.stashes ?? [], [repository]);
+  const stashSearch = useMemo(
+    () => searchStashes(stashes, query),
+    [stashes, query],
+  );
   const hasQuery = query.trim() !== '';
   const detached = useContext(DetachedHead);
   const pinned = pinnedRefs(bookmarks, refs, repository?.head, detached, query);
@@ -395,8 +437,12 @@ export function LocationsPopup({
     !searching &&
     pinned.checkedOut.length === 0 &&
     pinned.bookmarks.length === 0 &&
-    search.every((group) => group.refs.length === 0);
-  const items = useMemo(() => resultItems(commits, search), [commits, search]);
+    search.every((group) => group.refs.length === 0) &&
+    stashSearch.stashes.length === 0;
+  const items = useMemo(
+    () => resultItems(commits, search, stashSearch),
+    [commits, search, stashSearch],
+  );
   const [highlight, setHighlight] = useState<Highlighted>();
   const active = currentActive(items, query, highlight);
   const activeItem = hasQuery ? items.at(active) : undefined;
@@ -522,8 +568,61 @@ export function LocationsPopup({
             </section>
           ),
         )}
+        <StashesSection
+          stashes={hasQuery ? stashSearch.stashes : stashes}
+          more={hasQuery ? stashSearch.more : 0}
+          query={query}
+          active={activeItem?.kind === 'stash' ? activeItem.stash : undefined}
+          onJump={jump}
+        />
       </div>
     </div>
+  );
+}
+
+function StashesSection({
+  stashes,
+  more,
+  query,
+  active,
+  onJump,
+}: {
+  stashes: readonly StashInfo[];
+  more: number;
+  query: string;
+  active: StashInfo | undefined;
+  onJump: (commit: string) => void;
+}) {
+  if (stashes.length === 0) {
+    return null;
+  }
+  return (
+    <section className="locations-group">
+      <GroupHeading
+        title={strings.search.stashes}
+        count={stashes.length + more}
+      />
+      <div className="locations-list">
+        {stashes.map((stash) => (
+          <div
+            key={stash.name}
+            className={`row result ${stash === active ? 'active' : ''}`}
+            title={stash.message}
+            onClick={() => onJump(stash.commit)}
+          >
+            <span className="badge stash">
+              <Highlight text={stash.name} query={query} />
+            </span>
+            <span className="stash-message">
+              <Highlight text={stash.message} query={query} />
+            </span>
+          </div>
+        ))}
+        {more > 0 && (
+          <div className="locations-empty">{strings.search.more(more)}</div>
+        )}
+      </div>
+    </section>
   );
 }
 

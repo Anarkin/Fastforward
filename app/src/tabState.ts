@@ -1,5 +1,6 @@
 import type { HistoryEntry } from './git/history';
 import type { Head } from './git/repository';
+import type { Stash } from './git/stashes';
 import type { WorkingTree } from './git/workingTree';
 import { Graph } from './history/graph';
 import {
@@ -41,6 +42,7 @@ export interface TabState {
   subjects: Map<string, string>;
   heads: Set<string>;
   headCommit: string | undefined;
+  stashes: ReadonlyMap<string, Stash>;
   fingerprint: string;
   anchor: { hash: string; offset: number } | undefined;
   opened: boolean;
@@ -85,6 +87,7 @@ export function newTabState(): TabState {
     subjects: new Map(),
     heads: new Set(),
     headCommit: undefined,
+    stashes: new Map(),
     fingerprint: '',
     anchor: undefined,
     opened: false,
@@ -105,21 +108,24 @@ export function loadHistory(
   fullHistory: readonly HistoryEntry[],
   head: Head | undefined,
   refs: readonly RefInfo[],
+  stashes: readonly Stash[] = [],
 ): void {
   tab.fullHistory = fullHistory;
   tab.inHistory = new Set(fullHistory.map((entry) => entry.hash));
   tab.heads = headsOf(fullHistory);
-  takeRefs(tab, head, refs);
+  takeRefs(tab, head, refs, stashes);
 }
 
 export function takeRefs(
   tab: TabState,
   head: Head | undefined,
   refs: readonly RefInfo[],
+  stashes: readonly Stash[] = [],
 ): void {
   tab.headCommit = head?.commit;
-  tab.fingerprint = fingerprint(head, refs);
-  tab.decorated = decoratedCommits(refs, head);
+  tab.stashes = new Map(stashes.map((stash) => [stash.commit, stash]));
+  tab.fingerprint = fingerprint(head, refs, stashes);
+  tab.decorated = decoratedCommits(refs, head, stashes);
 }
 
 // The commits reachable from the tips are those of the history exactly when
@@ -129,8 +135,11 @@ export function refsKeepHistory(
   head: Head | undefined,
   refs: readonly RefInfo[],
   solo: boolean,
+  stashes: readonly Stash[] = [],
 ): boolean {
-  const tips = new Set(solo ? [] : refs.map((ref) => ref.commit));
+  const tips = new Set(
+    solo ? [] : [...refs, ...stashes].map((ref) => ref.commit),
+  );
   if (head?.commit) {
     tips.add(head.commit);
   }
@@ -161,7 +170,10 @@ export function layOutHistory(
   const history = showHistory(tab.fullHistory, tips, isExpanded(tab, collapse));
   tab.history = history;
   tab.positions = positionsOf(tab.fullHistory, history);
-  tab.graph = new Graph(history, { head });
+  tab.graph = new Graph(history, {
+    head,
+    stashes: new Set(tab.stashes.keys()),
+  });
   tab.shownStale = false;
   tab.index = positionOf(tab, tab.hash);
   return ++tab.generation;

@@ -666,6 +666,25 @@ suite('Commit row', () => {
     assert.strictEqual(picked, 'a');
   });
 
+  test('marks a stash with a bubble, not its place among the stashes, which changes as they come and go, and offers no menu, as a stash can be neither checked out nor bookmarked', () => {
+    const props = {
+      commit: commitInfo('s', { subject: 'On main: kept' }),
+      selected: undefined,
+      headCommit: undefined,
+      refs: [],
+      stash: true,
+      detached: false,
+      indent: 0,
+      onSelect: noop,
+    };
+    const html = renderToStaticMarkup(<CommitRow {...props} />);
+    assert.match(html, /<span class="badge stash">stash<\/span>/);
+    assert.doesNotMatch(html, /@\{/);
+    const row = renderedBy(CommitRow, props);
+    assert.ok(isValidElement<{ onContextMenu?: unknown }>(row));
+    assert.strictEqual(row.props.onContextMenu, undefined);
+  });
+
   test('compares with the commit when clicked with Ctrl', () => {
     const picked: string[] = [];
     const compared: string[] = [];

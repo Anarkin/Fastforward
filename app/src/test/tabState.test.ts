@@ -172,6 +172,57 @@ suite('Tab state', () => {
     assert.strictEqual(refsKeepHistory(tab, main, [at('c')], false), false);
   });
 
+  test('keeps the history only while its stashes stay, unless solo leaves them out', () => {
+    const tab = newTabState();
+    const main = { name: 'main', commit: 'c' };
+    const stash = {
+      name: 'stash@{0}',
+      commit: 's',
+      message: 'On main: kept',
+      untracked: undefined,
+    };
+    loadHistory(tab, [{ hash: 's', parents: ['c'] }, ...history], main, [
+      at('c'),
+    ]);
+    assert.strictEqual(
+      refsKeepHistory(tab, main, [at('c')], false, [stash]),
+      true,
+    );
+    assert.strictEqual(refsKeepHistory(tab, main, [at('c')], false), false);
+    loadHistory(tab, history, main, [at('c')]);
+    assert.strictEqual(
+      refsKeepHistory(tab, main, [at('c')], false, [stash]),
+      false,
+    );
+    assert.strictEqual(
+      refsKeepHistory(tab, main, [at('c')], true, [stash]),
+      true,
+    );
+  });
+
+  test('draws its stashes like the working tree', () => {
+    const tab = newTabState();
+    loadHistory(
+      tab,
+      [{ hash: 's', parents: ['c'] }, ...history],
+      { name: 'main', commit: 'c' },
+      [at('c')],
+      [
+        {
+          name: 'stash@{0}',
+          commit: 's',
+          message: 'On main: kept',
+          untracked: undefined,
+        },
+      ],
+    );
+    layOutHistory(tab, false, 'c');
+    assert.deepStrictEqual(
+      tab.graph.rows(0, 2).map((row) => row.stash ?? false),
+      [true, false],
+    );
+  });
+
   test('selects a commit at its position, dropping the selected file', () => {
     const tab = laidOut(history);
     tab.path = 'x';

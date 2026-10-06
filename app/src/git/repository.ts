@@ -5,6 +5,7 @@ import { strings } from '../shared/strings';
 import { gitErrorText } from './errorText';
 import { headCommit } from './history';
 import { runGit, splitNul } from './run';
+import { listStashes, type Stash } from './stashes';
 
 export interface Head {
   readonly name?: string;
@@ -14,6 +15,7 @@ export interface Head {
 export interface Refs {
   readonly head: Head | undefined;
   readonly refs: readonly RefInfo[];
+  readonly stashes: readonly Stash[];
 }
 
 // What git says in English, which LC_ALL=C has it say in whatever the locale
@@ -65,13 +67,18 @@ export async function sameFolder(a: string, b: string): Promise<boolean> {
 }
 
 export async function readRefs(gitPath: string, root: string): Promise<Refs> {
-  const [head, refs, remotes] = await Promise.all([
+  const [head, refs, remotes, stashes] = await Promise.all([
     readHead(gitPath, root),
     listRefs(gitPath, root),
     runGit(gitPath, root, ['remote']),
+    listStashes(gitPath, root),
   ]);
   const names = remotes.split('\n').filter(Boolean);
-  return { head, refs: refs.map((ref) => withRemote(ref, names)) };
+  return {
+    head,
+    refs: refs.map((ref) => withRemote(ref, names)),
+    stashes,
+  };
 }
 
 export async function readHead(

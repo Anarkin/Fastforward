@@ -14,7 +14,7 @@ import {
   type RefInfo,
   type ScrollTarget,
 } from '../shared/protocol';
-import { DetachedHead, HeadBubble, RefBubble } from './bubbles';
+import { DetachedHead, HeadBubble, RefBubble, StashBubble } from './bubbles';
 import { Column } from './column';
 import { CommitHistory } from './commitHistory';
 import { commitMenuTarget, OpenContextMenu } from './contextMenu';
@@ -279,13 +279,15 @@ export function keptPlace(
 export function CommitBubbles({
   hash,
   refs,
+  stash = false,
   detached,
 }: {
   hash: string;
   refs: readonly RefInfo[];
+  stash?: boolean;
   detached: boolean;
 }) {
-  if (!detached && refs.length === 0) {
+  if (!detached && refs.length === 0 && !stash) {
     return null;
   }
   const bubbles = [
@@ -293,6 +295,7 @@ export function CommitBubbles({
     ...refs.map((ref) => (
       <RefBubble key={`${ref.kind}:${ref.name}`} info={ref} />
     )),
+    ...(stash ? [<StashBubble key="stash" />] : []),
   ];
   return (
     <div className="bubble-line">
@@ -357,6 +360,7 @@ export function Commits({
   onLoad,
   workingTree,
   refsByCommit,
+  stashes,
   selected,
   onSelect,
   onCompare,
@@ -379,6 +383,7 @@ export function Commits({
   onLoad: (start: number, generation: number) => void;
   workingTree: number | undefined;
   refsByCommit: ReadonlyMap<string, readonly RefInfo[]>;
+  stashes: ReadonlySet<string>;
   selected: string | undefined;
   onSelect: (
     hash: string | undefined,
@@ -655,6 +660,7 @@ export function Commits({
         selected={selected}
         headCommit={headCommit}
         refs={refsByCommit.get(commit.hash) ?? []}
+        stash={stashes.has(commit.hash)}
         detached={detached === commit.hash}
         indent={indent(index)}
         onSelect={onSelect}
@@ -763,6 +769,7 @@ export function CommitRow({
   selected,
   headCommit,
   refs,
+  stash,
   detached,
   indent,
   onSelect,
@@ -773,6 +780,7 @@ export function CommitRow({
   selected: string | undefined;
   headCommit: string | undefined;
   refs: readonly RefInfo[];
+  stash?: boolean;
   detached: boolean;
   indent: number;
   onSelect: (hash: string) => void;
@@ -789,7 +797,11 @@ export function CommitRow({
           ? onCompare(commit.hash)
           : onSelect(commit.hash)
       }
-      onContextMenu={(event) => openMenu(event, commitMenuTarget(commit.hash))}
+      onContextMenu={
+        stash
+          ? undefined
+          : (event) => openMenu(event, commitMenuTarget(commit.hash))
+      }
     >
       <div className="commit-line">
         <span className="subject">
@@ -802,7 +814,12 @@ export function CommitRow({
         </span>
         <span className="date">{formatDateTime(commit.commitDate)}</span>
       </div>
-      <CommitBubbles hash={commit.hash} refs={refs} detached={detached} />
+      <CommitBubbles
+        hash={commit.hash}
+        refs={refs}
+        stash={stash}
+        detached={detached}
+      />
     </div>
   );
 }

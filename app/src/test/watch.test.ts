@@ -8,6 +8,7 @@ import {
   isInternal,
   nextFlush,
   watchEach,
+  watchedFolder,
   watchTree,
   type FolderWatcher,
 } from '../git/watch';
@@ -29,6 +30,26 @@ suite('Watching the git folder', () => {
     ]) {
       assert.strictEqual(isInternal(file), false, file);
     }
+  });
+
+  test('refreshes for the stashes, which dropping all but the newest changes only in their reflog', () => {
+    for (const file of ['refs/stash', 'logs/refs/stash', 'logs\\refs\\stash']) {
+      assert.strictEqual(isInternal(file), false, file);
+      assert.strictEqual(affectsWorktree(file, true), true, file);
+    }
+    for (const file of ['logs/refs/stash.lock', 'logs/refs/heads/main']) {
+      assert.strictEqual(isInternal(file), true, file);
+    }
+  });
+
+  test('watches the folders of the git folder it refreshes for, and those on the way to the reflog of the stashes', () => {
+    for (const folder of ['refs', 'refs/heads', 'logs', 'logs\\refs']) {
+      assert.strictEqual(watchedFolder(folder, true), true, folder);
+    }
+    for (const folder of ['objects', 'logs/refs/heads', 'refs/bisect']) {
+      assert.strictEqual(watchedFolder(folder, true), false, folder);
+    }
+    assert.strictEqual(watchedFolder('worktrees/other', false), true);
   });
 
   test('refreshes for submodules named like the folders it leaves alone', () => {

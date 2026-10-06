@@ -6,6 +6,7 @@ import {
   parseSearchedCommit,
   SearchMatches,
   takeRecords,
+  withStashesOnBases,
 } from '../git/history';
 
 suite('Git log parser', () => {
@@ -60,6 +61,24 @@ suite('Git rev-list parser', () => {
       { hash: 'aaa', parents: ['bbb', 'ccc'] },
       { hash: 'bbb', parents: [] },
     ]);
+  });
+});
+
+suite('Stashes in the history', () => {
+  test('keeps each stash on its base alone, leaving out the commits git keeps its index and untracked files in', () => {
+    const history = [
+      { hash: 's', parents: ['b', 'i', 'u'] },
+      { hash: 'i', parents: ['b'] },
+      { hash: 'u', parents: [] },
+      { hash: 'b', parents: ['a'] },
+      { hash: 'a', parents: [] },
+    ];
+    assert.deepStrictEqual(withStashesOnBases(history, ['s']), [
+      { hash: 's', parents: ['b'] },
+      { hash: 'b', parents: ['a'] },
+      { hash: 'a', parents: [] },
+    ]);
+    assert.strictEqual(withStashesOnBases(history, []), history);
   });
 });
 

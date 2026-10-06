@@ -35,7 +35,12 @@ function allocate(lanes: Lanes, hash: string): number {
   return lane;
 }
 
-function step(lanes: Lanes, entry: ShownEntry, drawLines = true): GraphRow {
+function step(
+  lanes: Lanes,
+  entry: ShownEntry,
+  stashes: ReadonlySet<string>,
+  drawLines = true,
+): GraphRow {
   const lines = new Map<string, GraphLine>();
   const line = (
     lane: number,
@@ -78,8 +83,9 @@ function step(lanes: Lanes, entry: ShownEntry, drawLines = true): GraphRow {
   }
 
   const [first, ...others] = entry.parents;
+  const stash = stashes.has(entry.hash);
   lanes.hashes[lane] = first;
-  lanes.dashed[lane] = entry.hash === workingTree;
+  lanes.dashed[lane] = entry.hash === workingTree || stash;
   const started = new Set<number>();
   for (const parent of others) {
     let to = lanes.hashes.indexOf(parent);
@@ -115,6 +121,7 @@ function step(lanes: Lanes, entry: ShownEntry, drawLines = true): GraphRow {
         lines: [...lines.values()],
         merge: entry.merge,
         hidden: entry.hidden,
+        stash: stash || undefined,
       };
 }
 
@@ -128,14 +135,20 @@ export class Graph {
   private readonly checkpointEvery: number;
   private readonly lanes = noLanes();
   private reached = 0;
+  private readonly stashes: ReadonlySet<string>;
   readonly workingTreeRow: GraphRow;
 
   constructor(
     history: readonly ShownEntry[],
     {
       head,
+      stashes = new Set(),
       checkpointEvery = 100,
-    }: { head?: string; checkpointEvery?: number } = {},
+    }: {
+      head?: string;
+      stashes?: ReadonlySet<string>;
+      checkpointEvery?: number;
+    } = {},
   ) {
     const shown =
       head !== undefined && history.some((entry) => entry.hash === head);
@@ -144,7 +157,8 @@ export class Graph {
       ...history,
     ];
     this.checkpointEvery = checkpointEvery;
-    this.workingTreeRow = step(noLanes(), this.entries[0]);
+    this.stashes = stashes;
+    this.workingTreeRow = step(noLanes(), this.entries[0], stashes);
   }
 
   rows(start: number, count: number): GraphRow[] {
@@ -159,7 +173,7 @@ export class Graph {
     const lanes = copy(from);
     const rows: GraphRow[] = [];
     for (let index = checkpoint * this.checkpointEvery; index < end; index++) {
-      const row = step(lanes, this.entries[index]);
+      const row = step(lanes, this.entries[index], this.stashes);
       if (index >= first) {
         rows.push(row);
       }
@@ -172,7 +186,7 @@ export class Graph {
       if (this.reached % this.checkpointEvery === 0) {
         this.checkpoints.push(copy(this.lanes));
       }
-      step(this.lanes, this.entries[this.reached], false);
+      step(this.lanes, this.entries[this.reached], this.stashes, false);
     }
   }
 }

@@ -1053,6 +1053,18 @@ body.resizing {
   text-overflow: ellipsis;
 }
 
+.locations-list .row > .badge.stash {
+  flex: none;
+}
+
+.locations-list .row > .stash-message {
+  min-width: 0;
+  margin-left: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .icon {
   display: block;
   flex: none;

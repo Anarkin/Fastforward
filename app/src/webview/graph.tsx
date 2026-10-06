@@ -76,7 +76,7 @@ export function GraphCell({
           />
         );
       })}
-      {row.workingTree ? (
+      {row.workingTree || row.stash ? (
         <rect
           x={cx - dotRadius}
           y={dotY - dotRadius}

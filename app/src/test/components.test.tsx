@@ -1063,10 +1063,39 @@ suite('Locations tree', () => {
       commit: 'a',
     }));
     const html = popup('', undefined, {
-      repository: { head: undefined, headCommit: undefined, refs },
+      repository: { head: undefined, headCommit: undefined, refs, stashes: [] },
     });
     assert.strictEqual(tagsWith(html, 'row', 'tree-row', 'leaf').length, 200);
     assert.match(html, /100 more; type to narrow them down/);
+  });
+
+  test('lists the stashes newest first with their messages, those a search finds, and no group without any', () => {
+    const stashes = [
+      { name: 'stash@{0}', commit: 'a', message: 'On main: With new.txt' },
+      { name: 'stash@{1}', commit: 'b', message: 'On main: Tidy up' },
+    ];
+    const shown = (query: string, listed = stashes) =>
+      popup(query, undefined, {
+        repository: {
+          head: undefined,
+          headCommit: undefined,
+          refs: [],
+          stashes: listed,
+        },
+      });
+    const all = shown('');
+    assert.match(all, /Stashes<span class="locations-count">2<\/span>/);
+    assert.deepStrictEqual(
+      [...all.matchAll(/<span class="badge stash">([^<]*)<\/span>/g)].map(
+        (match) => match[1],
+      ),
+      ['stash@{0}', 'stash@{1}'],
+    );
+    assert.match(all, /<span class="stash-message">On main: Tidy up<\/span>/);
+    const tidy = shown('tidy');
+    assert.match(tidy, /Stashes<span class="locations-count">1<\/span>/);
+    assert.doesNotMatch(tidy, /stash@\{0\}/);
+    assert.doesNotMatch(shown('', []), /Stashes/);
   });
 });
 
@@ -1080,6 +1109,7 @@ suite('Commit results', () => {
         head: 'main',
         headCommit: second,
         refs: [{ kind: 'branch', name: 'main', commit: second }],
+        stashes: [],
       },
     });
     assert.deepStrictEqual(counts(html), [5]);
@@ -1168,6 +1198,7 @@ const repository = (...refs: [RefInfo['kind'], string][]): RepositoryState => ({
   head: undefined,
   headCommit: undefined,
   refs: refs.map(([kind, name]) => ({ kind, name, commit: 'c'.repeat(40) })),
+  stashes: [],
 });
 
 const refs = repository(
@@ -1785,7 +1816,7 @@ suite('Graph cell', () => {
     assert.strictEqual(graphWidth(20), 150);
   });
 
-  test('draws a merge as a ring sized and titled by what it hides, the working tree as a square', () => {
+  test('draws a merge as a ring sized and titled by what it hides, the working tree and stashes as a square', () => {
     const merge = (hidden: number | undefined) =>
       cell({ lane: 0, color: 0, lines: [], merge: 'collapsed', hidden });
     for (const [hidden, title, radius] of [
@@ -1818,6 +1849,10 @@ suite('Graph cell', () => {
     });
     assert.match(workingTree, /<rect/);
     assert.doesNotMatch(workingTree, /<circle|merge-dot/);
+
+    const stash = cell({ lane: 0, color: 0, lines: [], stash: true });
+    assert.match(stash, /<rect/);
+    assert.doesNotMatch(stash, /<circle|merge-dot/);
 
     const plain = cell({ lane: 0, color: 0, lines: [] });
     assert.deepStrictEqual(attributes(plain, 'circle', 'r'), ['4']);

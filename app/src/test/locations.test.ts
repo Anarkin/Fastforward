@@ -13,6 +13,7 @@ import {
   popupKeyAction,
   resultItems,
   searchRefs,
+  searchStashes,
   shownChildren,
   type Highlighted,
   stickyRowHeight,
@@ -231,6 +232,36 @@ suite('Locations search', () => {
       ),
       undefined,
     );
+  });
+
+  test('finds stashes by name or message, newest first', () => {
+    const stashes = [
+      { name: 'stash@{0}', commit: 's0', message: 'On main: With new.txt' },
+      { name: 'stash@{1}', commit: 's1', message: 'WIP on main: 1a2b3c4 Fix' },
+      { name: 'stash@{2}', commit: 's2', message: 'On main: New notes' },
+    ];
+    const found = (query: string, limit?: number) => {
+      const search = searchStashes(stashes, query, limit);
+      return [search.stashes.map((stash) => stash.name), search.more];
+    };
+    assert.deepStrictEqual(found(' NEW '), [['stash@{0}', 'stash@{2}'], 0]);
+    assert.deepStrictEqual(found('stash@{1}'), [['stash@{1}'], 0]);
+    assert.deepStrictEqual(found('on main', 1), [['stash@{0}'], 2]);
+    assert.deepStrictEqual(found(''), [[], 0]);
+  });
+
+  test('lists the matching stashes after the refs, jumping to one on Enter', () => {
+    const stash = { name: 'stash@{0}', commit: 's0', message: 'On main: x' };
+    const items = resultItems(
+      [],
+      searchRefs(indexRefs([branchNamed('main')]), 'main'),
+      searchStashes([stash], 'main'),
+    );
+    assert.deepStrictEqual(items.map(itemKey), [
+      'branch:main',
+      'stash:stash@{0}',
+    ]);
+    assert.strictEqual(enterTarget('main', undefined, items[1]), 's0');
   });
 
   test('jumps on Enter to a hash not looked up yet as typed', () => {

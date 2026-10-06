@@ -119,15 +119,45 @@ export async function listHistory(
   gitPath: string,
   cwd: string,
   solo = false,
-): Promise<HistoryEntry[]> {
-  const output = await runGit(gitPath, cwd, [
-    'rev-list',
-    '--date-order',
-    '--parents',
-    ...historyRefs(solo),
-    '--',
-  ]);
-  return parseHistory(output);
+  stashes: readonly string[] = [],
+): Promise<readonly HistoryEntry[]> {
+  const tips = solo ? [] : stashes;
+  const output = await runGit(
+    gitPath,
+    cwd,
+    [
+      'rev-list',
+      '--date-order',
+      '--parents',
+      ...historyRefs(solo),
+      '--stdin',
+      '--',
+    ],
+    { input: tips.map((tip) => `${tip}\n`).join('') },
+  );
+  return withStashesOnBases(parseHistory(output), tips);
+}
+
+export function withStashesOnBases(
+  history: readonly HistoryEntry[],
+  stashes: readonly string[],
+): readonly HistoryEntry[] {
+  if (stashes.length === 0) {
+    return history;
+  }
+  const stashed = new Set(stashes);
+  const hidden = new Set(
+    history.flatMap((entry) =>
+      stashed.has(entry.hash) ? entry.parents.slice(1) : [],
+    ),
+  );
+  return history.flatMap((entry) =>
+    hidden.has(entry.hash)
+      ? []
+      : stashed.has(entry.hash)
+        ? [{ hash: entry.hash, parents: entry.parents.slice(0, 1) }]
+        : [entry],
+  );
 }
 
 function historyRefs(solo: boolean): string[] {

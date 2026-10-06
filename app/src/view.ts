@@ -10,6 +10,7 @@ import {
 } from './git/diff';
 import { gitErrorText } from './git/errorText';
 import { listTree, readBlobs, readFile } from './git/files';
+import { stashFiles, stashPatch } from './git/stashes';
 import {
   findCommit,
   findCommits,
@@ -971,12 +972,17 @@ export class FastforwardView {
     context: Context,
     refs: Promise<Refs>,
   ): Promise<void> {
-    const { head, refs: listed } = await refs;
+    const { head, refs: listed, stashes } = await refs;
     context.post({
       type: 'repository',
       head: head?.name,
       headCommit: head?.commit,
       refs: listed,
+      stashes: stashes.map(({ name, commit, message }) => ({
+        name,
+        commit,
+        message,
+      })),
     });
   }
 
@@ -1543,18 +1549,26 @@ export class FastforwardView {
   private async refreshHistory(context: Context): Promise<void> {
     const refs = await this.refsOf(context);
     const { tab } = context;
-    const { head, refs: listed } = refs;
-    if (fingerprint(head, listed) === tab.fingerprint) {
+    const { head, refs: listed, stashes } = refs;
+    if (fingerprint(head, listed, stashes) === tab.fingerprint) {
       if (tab.shownStale) {
         await this.sendShownHistory(context, { keepPlace: true });
       }
       return;
     }
     const known = Promise.resolve(refs);
-    if (refsKeepHistory(tab, head, listed, this.storage.soloOf(context.root))) {
+    if (
+      refsKeepHistory(
+        tab,
+        head,
+        listed,
+        this.storage.soloOf(context.root),
+        stashes,
+      )
+    ) {
       this.log.info(strings.log.refsKept);
       const layOut = tab.shownStale || tab.headCommit !== head?.commit;
-      takeRefs(tab, head, listed);
+      takeRefs(tab, head, listed, stashes);
       await Promise.all([
         this.sendRepository(context, known),
         this.sendShownHistory(context, { keepPlace: true, layOut }),
@@ -1579,16 +1593,15 @@ export class FastforwardView {
     refs: Promise<Refs>,
     keepPlace = false,
   ): Promise<void> {
-    const [fullHistory, { head, refs: listed }] = await Promise.all([
-      listHistory(
-        context.gitPath,
-        context.root,
-        this.storage.soloOf(context.root),
-      ),
-      refs,
-    ]);
+    const { head, refs: listed, stashes } = await refs;
+    const fullHistory = await listHistory(
+      context.gitPath,
+      context.root,
+      this.storage.soloOf(context.root),
+      stashes.map((stash) => stash.commit),
+    );
     const { tab } = context;
-    loadHistory(tab, fullHistory, head, listed);
+    loadHistory(tab, fullHistory, head, listed, stashes);
     if (tab.hash !== undefined && !stillThere(tab)(tab.hash)) {
       unselect(tab);
       context.post({ type: 'unselect', selection: tab.selection });
@@ -1752,6 +1765,7 @@ export class FastforwardView {
     signal: AbortSignal,
   ): Promise<FileChange[]> {
     const compared = comparedOf(hash);
+    const stash = context.tab.stashes.get(hash);
     return compared
       ? compareFiles(
           context.gitPath,
@@ -1760,7 +1774,9 @@ export class FastforwardView {
           compared.to,
           signal,
         )
-      : showFiles(context.gitPath, context.root, hash, signal);
+      : stash
+        ? stashFiles(context.gitPath, context.root, stash, signal)
+        : showFiles(context.gitPath, context.root, hash, signal);
   }
 
   private async sendFileDiff(
@@ -1816,9 +1832,12 @@ export class FastforwardView {
     const { gitPath, root } = context;
     if (!workingTreeSide(hash)) {
       const compared = comparedOf(hash);
+      const stash = context.tab.stashes.get(hash);
       return compared
         ? comparePatch(gitPath, root, compared.from, compared.to, scope, signal)
-        : showPatch(gitPath, root, hash, scope, signal);
+        : stash
+          ? stashPatch(gitPath, root, stash, scope, signal)
+          : showPatch(gitPath, root, hash, scope, signal);
     }
     const workingTree =
       context.tab.workingTree ??

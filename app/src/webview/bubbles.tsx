@@ -63,3 +63,7 @@ export function RefBubble({
     </span>
   );
 }
+
+export function StashBubble() {
+  return <span className="badge stash">{strings.commits.stash}</span>;
+}

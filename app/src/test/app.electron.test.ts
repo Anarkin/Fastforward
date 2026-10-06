@@ -531,6 +531,21 @@ suite('App', function () {
     await page.keyboard.press('Space');
     await merged.waitFor({ state: 'detached' });
   });
+
+  test('shows a stash in the list, found in the search by its message, with its untracked files', async () => {
+    fs.writeFileSync(path.join(repository.root, 'aside.txt'), 'aside\n');
+    await repository.git('stash', 'push', '-q', '-u', '-m', 'kept aside');
+    await page.locator('.commit', { hasText: 'On main: kept aside' }).waitFor();
+    await page.keyboard.press('s');
+    await page.locator('.locations-search').fill('kept');
+    await page
+      .locator('.locations-group', { hasText: 'Stashes' })
+      .locator('.row.result', { hasText: 'stash@{0}' })
+      .waitFor();
+    await page.keyboard.press('Enter');
+    await page.locator('.commit.selected', { hasText: 'kept aside' }).waitFor();
+    await page.locator('.row.file', { hasText: 'aside.txt' }).waitFor();
+  });
 });
 
 suite('App without git', function () {

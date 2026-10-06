@@ -248,6 +248,10 @@ export function App({ name, post: postToHost, listen }: Props) {
     () => Map.groupBy(repository?.refs ?? [], (info) => info.commit),
     [repository],
   );
+  const stashes = useMemo(
+    () => new Set(repository?.stashes.map((stash) => stash.commit)),
+    [repository],
+  );
 
   const detached =
     repository && !repository.head ? repository.headCommit : undefined;
@@ -583,6 +587,7 @@ export function App({ name, post: postToHost, listen }: Props) {
                     onLoad={loadCommits}
                     workingTree={workingTree}
                     refsByCommit={refsByCommit}
+                    stashes={stashes}
                     selected={hash}
                     onSelect={selectCommit}
                     onCompare={compareCommit}

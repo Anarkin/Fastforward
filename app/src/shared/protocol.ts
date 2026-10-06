@@ -83,6 +83,12 @@ export interface RefInfo {
   readonly remote?: string;
 }
 
+export interface StashInfo {
+  readonly name: string;
+  readonly commit: string;
+  readonly message: string;
+}
+
 export type CheckoutTarget =
   | { readonly kind: RefKind; readonly name: string }
   | { readonly kind: 'commit'; readonly hash: string };
@@ -124,6 +130,7 @@ export interface GraphRow {
   readonly merge?: 'collapsed' | 'expanded';
   readonly hidden?: number;
   readonly workingTree?: boolean;
+  readonly stash?: boolean;
 }
 
 export interface FileChange {
@@ -153,6 +160,7 @@ export interface RepositoryState {
   readonly head: string | undefined;
   readonly headCommit: string | undefined;
   readonly refs: readonly RefInfo[];
+  readonly stashes: readonly StashInfo[];
 }
 
 export type Direction = 'back' | 'forward';
