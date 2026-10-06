@@ -1,6 +1,6 @@
 import { useEffect, useEffectEvent } from 'react';
 
-const shortcutKeys = ['c', 's', 'w'] as const;
+const shortcutKeys = ['c', 'h', 's', 'w'] as const;
 
 export type ShortcutKey = (typeof shortcutKeys)[number];
 

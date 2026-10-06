@@ -110,6 +110,15 @@ suite('App', function () {
     await page.locator('.columns.nothing-selected').waitFor();
   });
 
+  test('selects the checked-out commit on H, revealing it', async () => {
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await page.locator('.commit.selected', { hasText: 'first' }).waitFor();
+    await page.keyboard.press('h');
+    await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
+    await page.keyboard.press('Home');
+    await page.locator('.commit.working-tree.empty.selected').waitFor();
+  });
+
   test('works a menu with the keys, giving the keyboard back when it closes', async () => {
     await page
       .locator('.commit', { hasText: 'first' })
