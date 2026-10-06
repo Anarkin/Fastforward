@@ -44,7 +44,7 @@ export async function repositoryRoot(
   return (await sameFolder(root, top)) ? root : path.resolve(top);
 }
 
-function isFolder(folder: string): Promise<boolean> {
+export function isFolder(folder: string): Promise<boolean> {
   return fs.stat(folder).then(
     (stats) => stats.isDirectory(),
     () => false,
@@ -54,7 +54,7 @@ function isFolder(folder: string): Promise<boolean> {
 // Git walks up from the folder after following links, so going up from the
 // folder as given only reaches the root when no link was followed; that keeps
 // the folder's own spelling, unlike the top level git gives
-async function sameFolder(a: string, b: string): Promise<boolean> {
+export async function sameFolder(a: string, b: string): Promise<boolean> {
   try {
     const [realA, realB] = await Promise.all([fs.realpath(a), fs.realpath(b)]);
     return realA === realB;

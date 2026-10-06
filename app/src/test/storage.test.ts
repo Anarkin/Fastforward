@@ -10,6 +10,7 @@ import {
   soloKey,
   Storage,
   tabsKey,
+  worktreesKey,
 } from '../storage';
 import { FakeStore } from './fakeStore';
 import { defaultSettings } from './fixtures';
@@ -170,6 +171,21 @@ suite('Storage', () => {
     await storage.setSolo(r1, false);
     assert.strictEqual(storage.soloOf(r1), false);
     assert.strictEqual(storage.soloOf(r2), true);
+  });
+
+  test('remembers the worktree shown of each repository, the main one unless another was', async () => {
+    const store = new FakeStore();
+    const storage = storageOf(store);
+    const [repository, linked] = [path.resolve('r'), path.resolve('r-linked')];
+    assert.strictEqual(storage.worktreeOf(repository), repository);
+    await storage.setTabs([repository], repository);
+    assert.strictEqual(storage.activeWorktree, repository);
+    await storage.setWorktree(repository + path.sep, linked);
+    assert.strictEqual(storage.worktreeOf(repository), linked);
+    assert.strictEqual(storage.activeWorktree, linked);
+    await storage.setWorktree(repository, repository + path.sep);
+    assert.deepStrictEqual(store.values.get(worktreesKey), {});
+    assert.strictEqual(storage.activeWorktree, repository);
   });
 
   test('keeps the 20 newest recent repositories, newest first', async () => {

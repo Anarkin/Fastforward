@@ -18,7 +18,13 @@ import {
   logCommits,
   searchCommits,
 } from './git/history';
-import { readRefs, repositoryRoot, type Refs } from './git/repository';
+import {
+  isFolder,
+  readRefs,
+  repositoryRoot,
+  sameFolder,
+  type Refs,
+} from './git/repository';
 import { watchRepository, type Watcher } from './git/watch';
 import {
   workingTreeFiles,
@@ -27,6 +33,12 @@ import {
   type WorkingTree,
   type WorkingTreeDiff,
 } from './git/workingTree';
+import {
+  listWorktrees,
+  locateRepository,
+  type Location,
+  type Worktree,
+} from './git/worktrees';
 import { step, visit } from './history/navigation';
 import type { Log } from './log';
 import {
@@ -39,7 +51,7 @@ import {
 } from './operations';
 import { defaultBookmarks, fingerprint } from './refs';
 import { comparedOf, shownSide } from './shared/comparisons';
-import { isFullHash } from './shared/hashes';
+import { isFullHash, shortHash } from './shared/hashes';
 import {
   commitPageSize,
   deferredChanges,
@@ -53,6 +65,7 @@ import {
   type TextRequest,
   type ToHost,
   type ToWebview,
+  type WorktreeInfo,
 } from './shared/protocol';
 import { sameRoot, Storage } from './storage';
 import {
@@ -92,7 +105,6 @@ interface Tab extends TabState {
   loadsAgain: Refresh[];
   refreshError: string | undefined;
   isRepository: boolean;
-  fetchFailed: boolean;
   selection: number | undefined;
   navigating: Promise<void>;
   checkingOut: Promise<void>;
@@ -133,6 +145,7 @@ interface Refresh {
 }
 
 interface Context extends RepositoryAt {
+  readonly repository: string;
   readonly tab: Tab;
   readonly session: Session | undefined;
   readonly post: (message: ToWebview) => void;
@@ -155,9 +168,15 @@ function toAll(contexts: readonly Context[]): Context | undefined {
   };
 }
 
+// A tab is a repository, which shows one of its worktrees; the state of each
+// worktree is kept by the folder of the worktree
 export class FastforwardView {
   private readonly tabStates = new Map<string, Tab>();
+  private readonly repositories = new Map<string, string>();
+  private readonly worktreeLists = new Map<string, readonly WorktreeInfo[]>();
+  private grouped: Promise<void> | undefined;
   private readonly fetches = new Map<string, Fetching>();
+  private readonly fetchFailures = new Set<string>();
   private readonly commitSearches = new Map<string, AbortController>();
   private readonly hashLookups = new Map<string, number>();
   private page: Session | undefined;
@@ -216,9 +235,7 @@ export class FastforwardView {
           message.type,
           session,
           () => this.handle(message, session),
-          'root' in message && message.type !== 'closeTab'
-            ? message.root
-            : undefined,
+          this.worktreeAsked(message),
         ),
       refresh: () =>
         this.run('refresh', session, async () => {
@@ -236,8 +253,30 @@ export class FastforwardView {
   }
 
   private isActive(root: string): boolean {
-    const active = this.storage.activeTab;
+    const active = this.storage.activeWorktree;
     return active !== undefined && sameRoot(active, root);
+  }
+
+  private isActiveRepository(repository: string): boolean {
+    const active = this.storage.activeTab;
+    return active !== undefined && sameRoot(active, repository);
+  }
+
+  private repositoryOf(root: string): string {
+    return this.repositories.get(root) ?? root;
+  }
+
+  private worktreeAsked(message: ToHost): string | undefined {
+    switch (message.type) {
+      case 'closeTab':
+        return undefined;
+      case 'selectTab':
+      case 'preloadTab':
+      case 'openRepository':
+        return this.storage.worktreeOf(message.root);
+      default:
+        return 'root' in message ? message.root : undefined;
+    }
   }
 
   private async run(
@@ -270,6 +309,7 @@ export class FastforwardView {
             message: `Settings: ${problem}`,
           });
         }
+        await this.groupTabs();
         await this.openTab(session, storage.activeTab);
         return;
       case 'openSettings':
@@ -279,13 +319,26 @@ export class FastforwardView {
         await this.host.openDefaultSettings();
         return;
       case 'selectTab':
-        if (this.page === session && this.isActive(message.root)) {
+        if (this.page === session && this.isActiveRepository(message.root)) {
           return;
         }
         await this.openTab(session, message.root);
         return;
+      case 'selectWorktree': {
+        const repository = storage.activeTab;
+        if (
+          repository === undefined ||
+          !sameRoot(this.repositoryOf(message.root), repository) ||
+          (this.page === session && this.isActive(message.root))
+        ) {
+          return;
+        }
+        this.save(storage.setWorktree(repository, message.root));
+        await this.openTab(session, repository);
+        return;
+      }
       case 'openRepository':
-        await this.openRepositories(session, [message.root]);
+        await this.openRepositories(session, [message.root], true);
         return;
       case 'browseRepositories':
         await this.openRepositories(session, await this.host.chooseFolders());
@@ -294,7 +347,11 @@ export class FastforwardView {
         const { tabs, activeTab } = storage;
         const index = tabs.findIndex((tab) => sameRoot(tab, message.root));
         const rest = tabs.filter((tab) => !sameRoot(tab, message.root));
-        this.tabStates.delete(message.root);
+        for (const root of this.tabStates.keys()) {
+          if (sameRoot(this.repositoryOf(root), message.root)) {
+            this.tabStates.delete(root);
+          }
+        }
         const active =
           activeTab !== undefined && sameRoot(activeTab, message.root)
             ? rest[Math.min(index, rest.length - 1)]
@@ -308,8 +365,28 @@ export class FastforwardView {
         return;
       }
       case 'preloadTab':
-        await this.preloadTab(session, message.root);
+        if (
+          storage.hasTab(message.root) &&
+          !this.isActiveRepository(message.root)
+        ) {
+          await this.preload(
+            session,
+            storage.worktreeOf(message.root),
+            message.root,
+          );
+        }
         return;
+      case 'preloadWorktree': {
+        const repository = storage.activeTab;
+        if (
+          repository !== undefined &&
+          sameRoot(this.repositoryOf(message.root), repository) &&
+          !this.isActive(message.root)
+        ) {
+          await this.preload(session, message.root, repository);
+        }
+        return;
+      }
       case 'sortTabs': {
         const tabs = storage.tabs.toSorted((a, b) =>
           tabName(a).localeCompare(tabName(b), undefined, {
@@ -391,7 +468,10 @@ export class FastforwardView {
         return;
       }
       case 'setBookmarks':
-        await storage.setBookmarks(message.root, message.bookmarks);
+        await storage.setBookmarks(
+          this.repositoryOf(message.root),
+          message.bookmarks,
+        );
         return;
       case 'scrolled': {
         const tab = this.tabStates.get(message.root);
@@ -533,16 +613,19 @@ export class FastforwardView {
     context.post({ type: 'error', message: notInHistoryText(hash) });
   }
 
+  // A repository opened again from the recent ones shows the worktree shown
+  // last, while a folder picked shows its own worktree
   private async openRepositories(
     session: Session,
     folders: readonly string[],
+    reopened = false,
   ): Promise<void> {
     const { storage } = this;
-    const roots: string[] = [];
+    const repositories: string[] = [];
     for (const folder of folders) {
-      let root: string | undefined;
+      let location: Location | undefined;
       try {
-        root = await repositoryRoot(this.gitPath, folder);
+        location = await locateRepository(this.gitPath, folder);
       } catch (error) {
         this.log.error(`Opening ${folder} failed`);
         this.log.error(error instanceof Error ? error : String(error));
@@ -553,25 +636,38 @@ export class FastforwardView {
         });
         continue;
       }
-      if (root) {
-        roots.push(root);
-        this.save(storage.addRecent(root));
-      } else {
+      if (!location) {
         this.save(storage.removeRecent(folder));
         session.post({
           type: 'notice',
           level: 'error',
           message: `${folder} is not in a git repository`,
         });
+        continue;
       }
+      const repository = await knownFolder(location.repository, storage.tabs);
+      const usable = this.takeWorktrees(repository, location.worktrees).filter(
+        (worktree) => !worktree.bare && !worktree.missing,
+      );
+      const saved = storage.worktreeOf(repository);
+      const worktree =
+        (reopened ? undefined : location.worktree) ??
+        usable.find((other) => sameRoot(other.path, saved))?.path ??
+        usable[0]?.path;
+      if (worktree !== undefined) {
+        this.save(storage.setWorktree(repository, worktree));
+      }
+      repositories.push(repository);
+      this.save(storage.addRecent(repository));
     }
-    const added = roots.filter(
-      (root, index) =>
-        !storage.hasTab(root) &&
-        roots.findIndex((other) => sameRoot(other, root)) === index,
+    const added = repositories.filter(
+      (repository, index) =>
+        !storage.hasTab(repository) &&
+        repositories.findIndex((other) => sameRoot(other, repository)) ===
+          index,
     );
     this.save(storage.setTabs([...storage.tabs, ...added], storage.activeTab));
-    const last = roots.at(-1);
+    const last = repositories.at(-1);
     if (last) {
       await this.openTab(session, last);
     } else {
@@ -581,23 +677,36 @@ export class FastforwardView {
 
   private async openTab(
     session: Session,
-    root: string | undefined,
+    repository: string | undefined,
   ): Promise<void> {
     const { tabs } = this.storage;
-    const active = (root && tabs.find((tab) => sameRoot(tab, root))) ?? tabs[0];
+    const active =
+      (repository && tabs.find((tab) => sameRoot(tab, repository))) ?? tabs[0];
     this.save(this.storage.setTabs(tabs, active));
     this.postTabs(session);
-    if (active) {
-      const tab = this.tabState(active);
-      await tab.preloading;
-      if (!this.isActive(active)) {
-        return;
-      }
-      for (const message of replayOf(tab)) {
-        session.post(message);
-      }
-      this.page = session;
+    if (active === undefined) {
+      session.watcher?.dispose();
+      session.watcher = undefined;
+      return;
     }
+    const worktree = this.storage.worktreeOf(active);
+    this.repositories.set(worktree, active);
+    await allSettled([
+      this.loadWorktrees(session, active),
+      this.openWorktree(session, worktree),
+    ]);
+  }
+
+  private async openWorktree(session: Session, root: string): Promise<void> {
+    const tab = this.tabState(root);
+    await tab.preloading;
+    if (!this.isActive(root)) {
+      return;
+    }
+    for (const message of replayOf(tab)) {
+      session.post(message);
+    }
+    this.page = session;
     session.watcher?.dispose();
     session.watcher = undefined;
     const context = await this.context(session);
@@ -605,8 +714,151 @@ export class FastforwardView {
       return;
     }
     this.log.info(`Tab ${context.root} is open`);
-    this.save(this.storage.addRecent(context.root));
+    this.save(this.storage.addRecent(context.repository));
     await allSettled([this.watch(context, session), this.showTab(context)]);
+  }
+
+  // Tabs saved before tabs were repositories can be linked worktrees, which
+  // join the tab of their repository
+  private groupTabs(): Promise<void> {
+    this.grouped ??= this.groupTabsNow().catch((error: unknown) => {
+      this.log.error('Grouping the tabs by repository failed');
+      this.log.error(error);
+    });
+    return this.grouped;
+  }
+
+  private async groupTabsNow(): Promise<void> {
+    const { storage } = this;
+    const { tabs, activeTab } = storage;
+    const located = await Promise.all(
+      tabs.map((root) => this.locateSavedTab(root)),
+    );
+    if (located.every((location) => location === undefined)) {
+      return;
+    }
+    const unlocated = tabs.filter((_, index) => located[index] === undefined);
+    const grouped: string[] = [];
+    const shown = new Map<string, string>();
+    const linked = new Set<string>();
+    let active = activeTab;
+    for (const [index, root] of tabs.entries()) {
+      const location = located[index];
+      const repository =
+        location === undefined
+          ? root
+          : await knownFolder(location.repository, [
+              root,
+              ...unlocated,
+              ...grouped,
+            ]);
+      if (!grouped.some((tab) => sameRoot(tab, repository))) {
+        grouped.push(repository);
+      }
+      const worktree = location === undefined ? root : location.worktree;
+      if (location !== undefined) {
+        this.takeWorktrees(repository, location.worktrees);
+        if (worktree !== undefined && !sameRoot(worktree, repository)) {
+          linked.add(repository);
+          await this.mergeBookmarks(repository, root);
+        }
+      }
+      if (activeTab !== undefined && sameRoot(activeTab, root)) {
+        active = repository;
+        if (worktree !== undefined) {
+          shown.set(repository, worktree);
+        }
+      } else if (worktree !== undefined && !shown.has(repository)) {
+        shown.set(repository, worktree);
+      }
+    }
+    for (const [repository, worktree] of shown) {
+      if (linked.has(repository)) {
+        await storage.setWorktree(repository, worktree);
+      }
+    }
+    await storage.setTabs(grouped, active);
+  }
+
+  // The folder of a main worktree is a repository already
+  private async locateSavedTab(root: string): Promise<Location | undefined> {
+    if (await isFolder(path.join(root, '.git'))) {
+      return undefined;
+    }
+    try {
+      return await locateRepository(this.gitPath, root);
+    } catch {
+      return undefined;
+    }
+  }
+
+  private async mergeBookmarks(
+    repository: string,
+    root: string,
+  ): Promise<void> {
+    const { storage } = this;
+    const added = storage.bookmarksOf(root);
+    if (added === undefined) {
+      return;
+    }
+    const kept = storage.bookmarksOf(repository) ?? [];
+    await storage.setBookmarks(repository, [
+      ...kept,
+      ...added.filter(
+        (bookmark) =>
+          !kept.some(
+            (other) =>
+              other.kind === bookmark.kind && other.name === bookmark.name,
+          ),
+      ),
+    ]);
+  }
+
+  // The main worktree is spelled as its repository, so the page names both
+  // the same way
+  private takeWorktrees(
+    repository: string,
+    worktrees: readonly Worktree[],
+  ): Worktree[] {
+    const [first, ...rest] = worktrees;
+    const spelled = first ? [{ ...first, path: repository }, ...rest] : [];
+    for (const worktree of spelled) {
+      this.repositories.set(worktree.path, repository);
+    }
+    this.worktreeLists.set(repository, worktreeInfos(spelled));
+    return spelled;
+  }
+
+  private async loadWorktrees(
+    session: Session,
+    repository: string,
+  ): Promise<void> {
+    const known = [
+      repository,
+      this.storage.worktreeOf(repository),
+      ...(this.worktreeLists.get(repository) ?? []).map(
+        (worktree) => worktree.root,
+      ),
+    ];
+    let worktrees: Worktree[];
+    try {
+      worktrees = await listWorktrees(this.gitPath, repository, known);
+    } catch (error) {
+      this.log.error(`Listing the worktrees of ${repository} failed`);
+      this.log.error(error);
+      return;
+    }
+    const shown = JSON.stringify(this.worktreeLists.get(repository));
+    this.takeWorktrees(repository, worktrees);
+    if (
+      JSON.stringify(this.worktreeLists.get(repository)) !== shown &&
+      this.isActiveRepository(repository)
+    ) {
+      const page = session.disposed ? this.page : session;
+      if (page) {
+        this.sendTabs(page);
+      }
+    }
   }
 
   private staleDiffs(
@@ -667,10 +919,12 @@ export class FastforwardView {
     ]);
   }
 
-  private async preloadTab(session: Session, root: string): Promise<void> {
-    if (!this.storage.hasTab(root) || this.isActive(root)) {
-      return;
-    }
+  private async preload(
+    session: Session,
+    root: string,
+    repository: string,
+  ): Promise<void> {
+    this.repositories.set(root, repository);
     const tab = this.tabState(root);
     if (tab.opened || tab.preloading) {
       return;
@@ -709,20 +963,34 @@ export class FastforwardView {
   }
 
   private postTabs(session: Session): void {
-    const { tabs, activeTab: active, recent } = this.storage;
+    const { storage } = this;
+    const { activeTab: active, activeWorktree: worktree } = storage;
+    this.sendTabs(session);
+    session.post({
+      type: 'bookmarks',
+      bookmarks: active ? (storage.bookmarksOf(active) ?? []) : [],
+    });
+    session.post({
+      type: 'solo',
+      solo: worktree !== undefined && storage.soloOf(worktree),
+    });
+  }
+
+  private sendTabs(session: Session): void {
+    const { storage } = this;
+    const { tabs, activeTab: active, activeWorktree: worktree } = storage;
     session.post({
       type: 'tabs',
       tabs: tabs.map(tabInfo),
       active,
-      recent: recent.filter((root) => !this.storage.hasTab(root)).map(tabInfo),
-    });
-    session.post({
-      type: 'bookmarks',
-      bookmarks: active ? (this.storage.bookmarksOf(active) ?? []) : [],
-    });
-    session.post({
-      type: 'solo',
-      solo: active !== undefined && this.storage.soloOf(active),
+      worktree,
+      worktrees: (active !== undefined && this.worktreeLists.get(active)) || [],
+      recent: storage.recent
+        .filter(
+          (root) =>
+            !storage.hasTab(root) && !storage.hasTab(this.repositoryOf(root)),
+        )
+        .map(tabInfo),
     });
   }
 
@@ -730,7 +998,7 @@ export class FastforwardView {
     context: Context,
     refs?: Promise<Refs>,
   ): Promise<void> {
-    const saved = this.storage.bookmarksOf(context.root);
+    const saved = this.storage.bookmarksOf(context.repository);
     if (saved !== undefined) {
       context.post({ type: 'bookmarks', bookmarks: saved });
       return;
@@ -740,7 +1008,7 @@ export class FastforwardView {
       remoteDefaultBranches(context.gitPath, context.root),
     ]);
     const bookmarks = defaultBookmarks(listed, defaults);
-    await this.storage.setBookmarks(context.root, bookmarks);
+    await this.storage.setBookmarks(context.repository, bookmarks);
     context.post({ type: 'bookmarks', bookmarks });
   }
 
@@ -757,7 +1025,6 @@ export class FastforwardView {
         loadsAgain: [],
         refreshError: undefined,
         isRepository: false,
-        fetchFailed: false,
         selection: undefined,
         navigating: Promise.resolve(),
         checkingOut: Promise.resolve(),
@@ -778,7 +1045,7 @@ export class FastforwardView {
 
   private async context(
     session: Session,
-    root = this.storage.activeTab,
+    root = this.storage.activeWorktree,
     live = true,
   ): Promise<Context | undefined> {
     if (!root) {
@@ -799,6 +1066,7 @@ export class FastforwardView {
     return {
       gitPath: this.gitPath,
       root,
+      repository: this.repositoryOf(root),
       tab,
       session: live ? session : undefined,
       post: (message) => {
@@ -837,6 +1105,8 @@ export class FastforwardView {
           () => this.refresh(context, undefined, gitDirChanged),
           context.root,
         ),
+      onWorktreesChange: () =>
+        void this.loadWorktrees(session, context.repository),
       onError: (error) => {
         this.log.error(`Watching ${context.root} failed`);
         this.log.error(error);
@@ -880,9 +1150,9 @@ export class FastforwardView {
     notify: Notify = this.notify(context),
     interactive = true,
   ): Promise<boolean> {
-    const { tab, root } = context;
+    const { repository } = context;
     const { fetches } = this;
-    let fetching = fetches.get(root);
+    let fetching = fetches.get(repository);
     if (!fetching || (interactive && !fetching.interactive)) {
       const running = fetching?.fetched;
       const started: Fetching = {
@@ -890,16 +1160,16 @@ export class FastforwardView {
           ? running.then(() => fetchAll(context, interactive))
           : fetchAll(context, interactive)
         ).finally(() => {
-          if (fetches.get(root) === started) {
-            fetches.delete(root);
+          if (fetches.get(repository) === started) {
+            fetches.delete(repository);
           }
         }),
         interactive,
       };
-      fetches.set(root, (fetching = started));
+      fetches.set(repository, (fetching = started));
     }
     const result = await fetching.fetched;
-    const latest = fetches.get(root);
+    const latest = fetches.get(repository);
     if (!interactive && latest?.interactive) {
       return !(await latest.fetched).failed;
     }
@@ -907,26 +1177,34 @@ export class FastforwardView {
       return !result.failed;
     }
     const fetched = reportFetched(log, notify, result);
-    tab.fetchFailed = !fetched;
+    if (fetched) {
+      this.fetchFailures.delete(repository);
+    } else {
+      this.fetchFailures.add(repository);
+    }
     return fetched;
   }
 
-  private async fetchInBackground(root: string): Promise<void> {
+  private async fetchInBackground(repository: string): Promise<void> {
     const session = this.page;
-    if (!session || !this.storage.hasTab(root)) {
+    if (!session || !this.storage.hasTab(repository)) {
       return;
     }
+    const root = this.storage.worktreeOf(repository);
+    this.repositories.set(root, repository);
     const context = await this.context(session, root, this.isActive(root));
     if (!context) {
       return;
     }
-    const reported = !context.tab.fetchFailed;
+    const reported = !this.fetchFailures.has(repository);
     const log: Log = {
       info: silent,
       warn: reported ? (message) => this.log.warn(message) : silent,
       error: reported ? (error) => this.log.error(error) : silent,
     };
-    const notify: Notify = reported ? this.noticesOf(session, root) : silent;
+    const notify: Notify = reported
+      ? this.noticesOf(session, repository)
+      : silent;
     if (!(await this.fetchRemotes(context, log, notify, false))) {
       return;
     }
@@ -940,7 +1218,7 @@ export class FastforwardView {
 
   private notify(context: Context): Notify {
     const elsewhere =
-      context.session && this.noticesOf(context.session, context.root);
+      context.session && this.noticesOf(context.session, context.repository);
     return (level, message) => {
       if (elsewhere && !this.isActive(context.root)) {
         elsewhere(level, message);
@@ -950,13 +1228,13 @@ export class FastforwardView {
     };
   }
 
-  private noticesOf(session: Session, root: string): Notify {
+  private noticesOf(session: Session, repository: string): Notify {
     return (level, message) =>
-      this.storage.hasTab(root) &&
+      this.storage.hasTab(repository) &&
       (session.disposed ? this.page : session)?.post({
         type: 'notice',
         level,
-        message: `${tabName(root)}: ${message}`,
+        message: `${tabName(repository)}: ${message}`,
       });
   }
 
@@ -1682,6 +1960,44 @@ function tabInfo(root: string): TabInfo {
   return { root, name: tabName(root) };
 }
 
+// A bare repository is named as a clone of it would be, and one in a .bare
+// or .git folder after the folder holding its worktrees
 export function tabName(root: string): string {
-  return path.basename(root) || root;
+  const name = path.basename(root);
+  if (name === '.bare' || name === '.git') {
+    return tabName(path.dirname(root));
+  }
+  return name.replace(/(.)\.git$/, '$1') || root;
+}
+
+function worktreeInfos(worktrees: readonly Worktree[]): WorktreeInfo[] {
+  const [first] = worktrees;
+  const main = first !== undefined && !first.bare;
+  return worktrees
+    .filter((worktree) => !worktree.bare)
+    .map((worktree, index) => ({
+      root: worktree.path,
+      name:
+        worktree.branch ??
+        (worktree.head === undefined
+          ? tabName(worktree.path)
+          : shortHash(worktree.head)),
+      folder: path.basename(worktree.path),
+      main: main && index === 0,
+      missing: worktree.missing,
+    }));
+}
+
+async function knownFolder(
+  folder: string,
+  known: readonly string[],
+): Promise<string> {
+  const same = known.find((spelling) => sameRoot(spelling, folder));
+  if (same !== undefined) {
+    return same;
+  }
+  const real = await Promise.all(
+    known.map((spelling) => sameFolder(spelling, folder)),
+  );
+  return known[real.indexOf(true)] ?? folder;
 }

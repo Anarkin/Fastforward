@@ -16,6 +16,7 @@ import {
   type Bookmark,
   type DiffLayout,
   type TextRequest,
+  type WorktreeInfo,
 } from '../shared/protocol';
 import { CheckedOutBranch, DetachedHead } from './bubbles';
 import { checkoutCommit, checkoutOptions, checkoutRef } from './checkout';
@@ -52,6 +53,7 @@ import { compareWith } from '../shared/comparisons';
 import { hasRef } from '../shared/refNames';
 import { AddressBar, NavButtons } from './navBar';
 import { TabBar } from './tabBar';
+import { WorktreeBar } from './worktreeBar';
 import { TitleBar, windowTitle } from './titleBar';
 import {
   noFolders,
@@ -78,6 +80,8 @@ export function App({ name, post: postToHost, listen }: Props) {
   const outbox = useMemo(() => settling(postToHost), [postToHost]);
   const post = outbox.send;
   const [tabs, setTabs] = useState<readonly TabInfo[]>();
+  const [activeRepository, setActiveRepository] = useState<string>();
+  const [worktrees, setWorktrees] = useState<readonly WorktreeInfo[]>([]);
   const [recent, setRecent] = useState<readonly TabInfo[]>([]);
   const [notices, setNotices] = useState<readonly Notice[]>([]);
   const noticeCount = useRef(0);
@@ -178,6 +182,8 @@ export function App({ name, post: postToHost, listen }: Props) {
           break;
         case 'tabs':
           setTabs(message.tabs);
+          setActiveRepository(message.active);
+          setWorktrees(message.worktrees);
           setRecent(message.recent);
           dispatch(message);
           break;
@@ -486,7 +492,7 @@ export function App({ name, post: postToHost, listen }: Props) {
             <TitleBar title={windowTitle(activeTab, name)} />
             <TabBar
               tabs={tabs ?? []}
-              active={activeTab}
+              active={activeRepository}
               onSelect={(root) => post({ type: 'selectTab', root })}
               onPreload={(root) => post({ type: 'preloadTab', root })}
               onClose={(root) => post({ type: 'closeTab', root })}
@@ -498,6 +504,14 @@ export function App({ name, post: postToHost, listen }: Props) {
               }
               onLog={log}
             />
+            {activeRepository !== undefined && (
+              <WorktreeBar
+                worktrees={worktrees}
+                active={activeTab}
+                onSelect={(root) => post({ type: 'selectWorktree', root })}
+                onPreload={(root) => post({ type: 'preloadWorktree', root })}
+              />
+            )}
             {menu && <ContextMenu menu={menu} onClose={closeMenu} />}
             <Notices notices={notices} onDismiss={dismissNotice} />
             {tabs === undefined ? null : tabs.length === 0 ? (

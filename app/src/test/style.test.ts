@@ -114,6 +114,17 @@ suite('Style', () => {
     );
   });
 
+  test('wraps the repository and worktree tabs onto more rows rather than scrolling them sideways, keeping the settings button by the first row', () => {
+    const list = declarationsOf('.tab-list');
+    assert.ok(list.includes('flex-wrap: wrap;'), list);
+    assert.ok(!list.includes('overflow-x'), list);
+    assert.ok(
+      declarationsOf('.tabs > .menu-button').includes(
+        'align-self: flex-start;',
+      ),
+    );
+  });
+
   test('shades a round button on hover over whatever fill it has, so an active toggle or a pinned pair changes too', () => {
     const hover = declarationsOf('.nav-button:hover:not(:disabled)');
     assert.match(

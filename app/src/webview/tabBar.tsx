@@ -110,15 +110,9 @@ export function TabBar({
     }
   });
 
-  const onWheel = (event: React.WheelEvent) => {
-    if (list.current && event.deltaY !== 0) {
-      list.current.scrollLeft += event.deltaY;
-    }
-  };
-
   return (
     <nav className="tabs" ref={bar}>
-      <div className="tab-list" ref={list} onWheel={onWheel}>
+      <div className="tab-list" ref={list}>
         {tabs.map((tab) => (
           <div
             key={tab.root}

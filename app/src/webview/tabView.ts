@@ -116,9 +116,9 @@ function pickedSince(state: TabView, selection: number | undefined): boolean {
 export function reduceTabView(state: TabView, action: TabAction): TabView {
   switch (action.type) {
     case 'tabs':
-      return action.active === state.root
+      return action.worktree === state.root
         ? state
-        : { ...emptyTabView, root: action.active };
+        : { ...emptyTabView, root: action.worktree };
     case 'showCommit':
       return { ...selected(state, action.hash), selection: action.selection };
     case 'showEntireFile':

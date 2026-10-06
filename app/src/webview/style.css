@@ -153,14 +153,20 @@ body {
   background: var(--color-background);
 }
 
+.worktrees {
+  flex: none;
+  display: flex;
+  padding: 0 4px var(--gutter-width) 4px;
+  background: var(--color-background);
+}
+
 .tab-list {
   flex: 1;
   min-width: 0;
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   gap: 2px;
-  overflow-x: auto;
-  scrollbar-width: none;
 }
 
 .menu-button {
@@ -169,6 +175,11 @@ body {
   display: flex;
   align-items: center;
   padding: 0 2px 2px 4px;
+}
+
+.tabs > .menu-button {
+  align-self: flex-start;
+  padding-top: 1px;
 }
 
 .menu-button-trigger.open {
@@ -224,6 +235,26 @@ body {
 
 .tab.active {
   background: var(--toolbar-background);
+}
+
+.worktrees .tab {
+  padding: 3px 12px;
+}
+
+.tab .icon {
+  flex: none;
+}
+
+.tab-folder {
+  color: var(--muted-foreground);
+}
+
+.tab.missing {
+  opacity: var(--muted-opacity);
+}
+
+.tab.missing:hover {
+  background: transparent;
 }
 
 .tab:not(.active):not(:hover) .tab-close {

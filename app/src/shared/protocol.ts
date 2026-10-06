@@ -142,6 +142,14 @@ export interface TabInfo {
   readonly name: string;
 }
 
+export interface WorktreeInfo {
+  readonly root: string;
+  readonly name: string;
+  readonly folder: string;
+  readonly main: boolean;
+  readonly missing: boolean;
+}
+
 export interface RepositoryState {
   readonly head: string | undefined;
   readonly headCommit: string | undefined;
@@ -171,6 +179,8 @@ export type ToHost =
   | { readonly type: 'closeTab'; readonly root: string }
   | { readonly type: 'sortTabs' }
   | { readonly type: 'preloadTab'; readonly root: string }
+  | { readonly type: 'selectWorktree'; readonly root: string }
+  | { readonly type: 'preloadWorktree'; readonly root: string }
   | { readonly type: 'setColumnWidths'; readonly widths: readonly number[] }
   | { readonly type: 'setCollapseMerges'; readonly collapse: boolean }
   | { readonly type: 'pinEntireFile'; readonly pinned: boolean }
@@ -275,6 +285,8 @@ export type ToWebview =
       readonly type: 'tabs';
       readonly tabs: readonly TabInfo[];
       readonly active: string | undefined;
+      readonly worktree: string | undefined;
+      readonly worktrees: readonly WorktreeInfo[];
       readonly recent: readonly TabInfo[];
     }
   | ({ readonly type: 'repository' } & RepositoryState)

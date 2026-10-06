@@ -46,6 +46,7 @@ import { Highlight } from '../webview/highlight';
 import type { Folders } from '../webview/viewFolders';
 import { SkeletonRows } from '../webview/skeleton';
 import { preloadDelay, resting, TabBar } from '../webview/tabBar';
+import { WorktreeBar } from '../webview/worktreeBar';
 import { GraphCell, graphWidth, rowLanes } from '../webview/graph';
 import { FileRow, fileRowKey } from '../webview/tree';
 import { VirtualRows, type ListedRows } from '../webview/virtualRows';
@@ -1550,6 +1551,86 @@ suite('Tab bar', () => {
     close.props.onClick({ stopPropagation: () => stopped++ });
     assert.strictEqual(stopped, 1);
     assert.deepStrictEqual(closed, ['/a']);
+  });
+});
+
+suite('Worktree bar', () => {
+  type Worktree = {
+    title: string;
+    className: string;
+    onPointerEnter: () => void;
+    onClick?: () => void;
+    children: React.ReactNode[];
+  };
+
+  function worktreesOf(
+    selected: string[],
+    preloaded: string[],
+  ): React.ReactElement<Worktree>[] {
+    const nav = renderedBy(WorktreeBar, {
+      worktrees: [
+        { root: '/a', name: 'main', folder: 'app', main: true, missing: false },
+        {
+          root: '/b',
+          name: 'gone',
+          folder: 'gone',
+          main: false,
+          missing: true,
+        },
+        {
+          root: '/c',
+          name: 'feature',
+          folder: 'app-feature',
+          main: false,
+          missing: false,
+        },
+      ],
+      active: '/a',
+      onSelect: (root) => selected.push(root),
+      onPreload: (root) => preloaded.push(root),
+    });
+    assert.ok(isValidElement<{ children: React.ReactElement }>(nav));
+    const list = nav.props.children;
+    assert.ok(isValidElement<{ children: React.ReactElement[] }>(list));
+    return list.props.children.map((worktree) => {
+      assert.ok(isValidElement<Worktree>(worktree));
+      return worktree;
+    });
+  }
+
+  test('marks the main worktree and the one shown, naming each folder in its tooltip', () => {
+    const [main, gone, feature] = worktreesOf([], []);
+    assert.strictEqual(main.props.title, '/a');
+    assert.match(main.props.className, /\bactive\b/);
+    assert.ok(isValidElement(main.props.children[0]));
+    assert.strictEqual(feature.props.children[0], false);
+    assert.doesNotMatch(feature.props.className, /\bactive\b/);
+    assert.match(gone.props.className, /\bmissing\b/);
+    assert.strictEqual(gone.props.title, "/b doesn't exist anymore");
+  });
+
+  test('shows the folder of a linked worktree dimmed after its branch, unless they are named the same', () => {
+    const [main, gone, feature] = worktreesOf([], []);
+    const shown = feature.props.children[2];
+    assert.ok(isValidElement<{ className: string; children: string }>(shown));
+    assert.strictEqual(shown.props.className, 'tab-folder');
+    assert.strictEqual(shown.props.children, 'app-feature');
+    assert.strictEqual(main.props.children[2], false);
+    assert.strictEqual(gone.props.children[2], false);
+  });
+
+  test('opens and preloads a worktree, but neither a missing one', async () => {
+    const selected: string[] = [];
+    const preloaded: string[] = [];
+    const [, gone, feature] = worktreesOf(selected, preloaded);
+    gone.props.onPointerEnter();
+    gone.props.onClick?.();
+    await rested();
+    assert.deepStrictEqual([selected, preloaded], [[], []]);
+    feature.props.onPointerEnter();
+    await rested();
+    feature.props.onClick?.();
+    assert.deepStrictEqual([selected, preloaded], [['/c'], ['/c']]);
   });
 });
 

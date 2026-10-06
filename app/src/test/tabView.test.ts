@@ -10,8 +10,15 @@ import { comparisonOf } from '../shared/comparisons';
 import { commitPageSize } from '../shared/protocol';
 import { commitInfo, fileChange } from './fixtures';
 
-const openTab = (view: TabView, active: string) =>
-  reduceTabView(view, { type: 'tabs', tabs: [], active, recent: [] });
+const openTab = (view: TabView, worktree: string) =>
+  reduceTabView(view, {
+    type: 'tabs',
+    tabs: [],
+    active: 'repository',
+    worktree,
+    worktrees: [],
+    recent: [],
+  });
 
 const entire = (view: TabView) =>
   reduceTabView(view, { type: 'showEntireFile', entire: true });
@@ -85,7 +92,7 @@ suite('Tab view', () => {
     );
   });
 
-  test('keeps the view when the tabs change but not the active one, and starts over when another becomes active', () => {
+  test('keeps the view when the tabs change but not the worktree shown, and starts over when another is shown', () => {
     const view = busyTab();
     assert.strictEqual(openTab(view, 'one'), view);
     assert.deepStrictEqual(openTab(view, 'two'), {

@@ -16,6 +16,7 @@ interface WatchOptions {
   readonly delay: number;
   readonly maxDelay: number;
   readonly onChange: (gitDirChanged: boolean) => void;
+  readonly onWorktreesChange?: () => void;
   readonly onError: (error: unknown) => void;
   readonly recursive?: boolean;
   readonly ignored?: Ignored;
@@ -28,6 +29,7 @@ export async function watchRepository(
     delay,
     maxDelay,
     onChange,
+    onWorktreesChange,
     onError,
     recursive = process.platform !== 'linux',
     ignored = (repo, paths) => ignoredPaths(gitPath, repo, paths),
@@ -43,6 +45,7 @@ export async function watchRepository(
 
   let disposed = false;
   let timer: NodeJS.Timeout | undefined;
+  let worktreesTimer: NodeJS.Timeout | undefined;
   let pending: PendingChanges = {};
   const changedFiles = new Set<string>();
 
@@ -80,16 +83,25 @@ export async function watchRepository(
     pending = { ...pending, lastGitDir: Date.now() };
     schedule();
   };
+  const worktreesChanged = () => {
+    clearTimeout(worktreesTimer);
+    worktreesTimer = setTimeout(() => {
+      if (!disposed) {
+        onWorktreesChange?.();
+      }
+    }, delay);
+  };
   const changed = (file: string) => {
     const inGitDir = gitDirs.find((dir) => isInside(dir, file));
     if (inGitDir !== undefined) {
+      const inside = path.relative(inGitDir, file);
       if (
-        affectsWorktree(
-          path.relative(inGitDir, file),
-          inGitDir === commonDir && commonDir !== gitDir,
-        )
+        affectsWorktree(inside, inGitDir === commonDir && commonDir !== gitDir)
       ) {
         gitDirChanged();
+      }
+      if (affectsWorktreeList(inside)) {
+        worktreesChanged();
       }
     } else if (isInside(root, file)) {
       changedFiles.add(file);
@@ -131,11 +143,15 @@ export async function watchRepository(
       }),
       ...gitDirs.map((gitDirTree) =>
         watchTree(gitDirTree, {
-          skip: (folder) =>
-            !affectsWorktree(
-              path.relative(gitDirTree, folder),
-              gitDirTree === commonDir && commonDir !== gitDir,
-            ),
+          skip: (folder) => {
+            const inside = path.relative(gitDirTree, folder);
+            return (
+              !affectsWorktree(
+                inside,
+                gitDirTree === commonDir && commonDir !== gitDir,
+              ) && !affectsWorktreeList(inside)
+            );
+          },
           ignored: () => Promise.resolve([]),
           onEvent,
           onError,
@@ -149,6 +165,7 @@ export async function watchRepository(
     dispose: () => {
       disposed = true;
       clearTimeout(timer);
+      clearTimeout(worktreesTimer);
       for (const watcher of watchers) {
         watcher.dispose();
       }
@@ -489,6 +506,20 @@ export function affectsWorktree(inGitDir: string, shared: boolean): boolean {
     first === 'packed-refs' ||
     first === 'reftable' ||
     first === 'config'
+  );
+}
+
+// The HEAD of each worktree names what it shows, and a folder in worktrees
+// comes and goes with a worktree
+export function affectsWorktreeList(inGitDir: string): boolean {
+  const [first, name, entry, ...rest] = inGitDir.split(/[\\/]/);
+  if (first === 'HEAD') {
+    return name === undefined;
+  }
+  return (
+    first === 'worktrees' &&
+    (entry === undefined ||
+      ((entry === 'HEAD' || entry === 'gitdir') && rest.length === 0))
   );
 }
 

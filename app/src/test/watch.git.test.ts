@@ -147,6 +147,35 @@ suite('Watching a repository folder by folder, as on Linux', function () {
   });
 
   for (const recursive of [true, false]) {
+    test(`tells when a worktree is added or switches branch, watching ${recursive ? 'recursively' : 'folder by folder'}`, async () => {
+      const folder = tempFolder('listed');
+      const linked = path.join(folder, 'linked');
+      let listed = 0;
+      const listing = await watchRepository(
+        repository.gitPath,
+        repository.root,
+        {
+          delay: 50,
+          maxDelay: 200,
+          recursive,
+          onChange: () => undefined,
+          onWorktreesChange: () => listed++,
+          onError: (error) => errors.push(error),
+        },
+      );
+      try {
+        await repository.git('worktree', 'add', '-q', '--detach', linked);
+        await waitFor(() => listed > 0, 'the worktree added');
+        listed = 0;
+        await repository.git('-C', linked, 'switch', '-q', '-c', 'switched');
+        await waitFor(() => listed > 0, 'the branch switched to');
+        assert.deepStrictEqual(errors, []);
+      } finally {
+        listing.dispose();
+        removeFolder(folder);
+      }
+    });
+
     test(`refreshes a linked worktree for a branch made in the main one, watching ${recursive ? 'recursively' : 'folder by folder'}`, async () => {
       const folder = tempFolder('linked');
       const linked = path.join(folder, 'linked');

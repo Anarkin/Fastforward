@@ -20,6 +20,7 @@ export const recentKey = 'recentRepositories';
 const maxRecent = 20;
 export const soloKey = 'solo';
 export const bookmarksKey = 'bookmarks';
+export const worktreesKey = 'activeWorktrees';
 
 export interface Store {
   get(key: string): unknown;
@@ -104,6 +105,33 @@ export class Storage {
   get activeTab(): string | undefined {
     const active = this.state.get(activeTabKey);
     return typeof active === 'string' ? active : undefined;
+  }
+
+  get activeWorktree(): string | undefined {
+    const active = this.activeTab;
+    return active === undefined ? undefined : this.worktreeOf(active);
+  }
+
+  // The repository is its main worktree, unless it is bare
+  worktreeOf(repository: string): string {
+    const all = this.activeWorktrees;
+    const saved = all[keyOf(all, repository)];
+    return typeof saved === 'string' ? saved : repository;
+  }
+
+  async setWorktree(repository: string, worktree: string): Promise<void> {
+    const all = { ...this.activeWorktrees };
+    const key = keyOf(all, repository);
+    if (sameRoot(worktree, repository)) {
+      delete all[key];
+    } else {
+      all[key] = worktree;
+    }
+    await this.state.update(worktreesKey, all);
+  }
+
+  private get activeWorktrees(): Record<string, unknown> {
+    return recordOf(this.state.get(worktreesKey));
   }
 
   hasTab(root: string): boolean {

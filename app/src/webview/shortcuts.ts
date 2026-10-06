@@ -73,6 +73,18 @@ export function tabStep(
   return event.shiftKey ? -1 : 1;
 }
 
+export function worktreeStep(
+  event: Pick<
+    KeyboardEvent,
+    'key' | 'ctrlKey' | 'shiftKey' | 'altKey' | 'metaKey'
+  >,
+): 1 | -1 | undefined {
+  if (!event.ctrlKey || event.shiftKey || event.altKey || event.metaKey) {
+    return undefined;
+  }
+  return event.key === 'PageDown' ? 1 : event.key === 'PageUp' ? -1 : undefined;
+}
+
 export function changeStep(
   event: Pick<KeyboardEvent, 'key' | 'code'>,
 ): 1 | -1 | undefined {

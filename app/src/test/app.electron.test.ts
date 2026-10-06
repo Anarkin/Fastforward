@@ -78,10 +78,15 @@ suite('App', function () {
   }
 
   test('opens the saved tab, titling the window after its repository', async () => {
-    await page.locator('.tab.active').waitFor();
+    await page.locator('.tabs .tab.active').waitFor();
     assert.strictEqual(
-      await page.locator('.tab.active .tab-name').textContent(),
+      await page.locator('.tabs .tab.active .tab-name').textContent(),
       'repo',
+    );
+    await page.locator('.worktrees .tab.active').waitFor();
+    assert.strictEqual(
+      await page.locator('.worktrees .tab.active .tab-name').textContent(),
+      'main',
     );
     const version = await app.evaluate((electron) => electron.app.getVersion());
     assert.strictEqual(

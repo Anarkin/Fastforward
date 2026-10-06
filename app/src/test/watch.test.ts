@@ -4,6 +4,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
   affectsWorktree,
+  affectsWorktreeList,
   isInternal,
   nextFlush,
   watchEach,
@@ -79,6 +80,29 @@ suite('Watching the git folder', () => {
       'logs/HEAD',
     ]) {
       assert.strictEqual(affectsWorktree(file, true), false, file);
+    }
+  });
+
+  test('lists the worktrees again for a HEAD, or a worktree added or removed', () => {
+    for (const file of [
+      'HEAD',
+      'worktrees',
+      'worktrees/feature',
+      'worktrees\\feature\\HEAD',
+      'worktrees/feature/gitdir',
+    ]) {
+      assert.strictEqual(affectsWorktreeList(file), true, file);
+    }
+    for (const file of [
+      'ORIG_HEAD',
+      'HEAD.lock',
+      'refs/heads/main',
+      'worktrees/feature/index',
+      'worktrees/feature/HEAD.lock',
+      'worktrees/feature/logs/HEAD',
+      'worktrees/feature/refs/bisect/bad',
+    ]) {
+      assert.strictEqual(affectsWorktreeList(file), false, file);
     }
   });
 

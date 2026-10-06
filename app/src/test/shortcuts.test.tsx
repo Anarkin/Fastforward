@@ -6,8 +6,10 @@ import {
   isNewTabShortcut,
   shortcutOf,
   tabStep,
+  worktreeStep,
 } from '../webview/shortcuts';
 import { adjacentTab, tabBarKey } from '../webview/tabBar';
+import { adjacentWorktree } from '../webview/worktreeBar';
 import { element } from './fixtures';
 
 const keyEvent = (
@@ -102,6 +104,38 @@ suite('Switching tabs', () => {
     assert.strictEqual(tabStep({ ...key, altKey: true }), undefined);
     assert.strictEqual(tabStep({ ...key, metaKey: true }), undefined);
     assert.strictEqual(tabStep({ ...key, key: 'q' }), undefined);
+  });
+
+  test('goes to the next worktree on Ctrl+PageDown, and the previous on Ctrl+PageUp', () => {
+    const pageDown = { ...key, key: 'PageDown' };
+    assert.strictEqual(worktreeStep(pageDown), 1);
+    assert.strictEqual(worktreeStep({ ...pageDown, key: 'PageUp' }), -1);
+    assert.strictEqual(
+      worktreeStep({ ...pageDown, ctrlKey: false }),
+      undefined,
+    );
+    assert.strictEqual(
+      worktreeStep({ ...pageDown, shiftKey: true }),
+      undefined,
+    );
+    assert.strictEqual(worktreeStep({ ...pageDown, altKey: true }), undefined);
+    assert.strictEqual(worktreeStep({ ...pageDown, metaKey: true }), undefined);
+    assert.strictEqual(worktreeStep(key), undefined);
+  });
+
+  test('skips the worktrees whose folder is missing', () => {
+    const worktrees = [
+      { root: '/a', name: 'main', folder: 'a', main: true, missing: false },
+      { root: '/b', name: 'gone', folder: 'b', main: false, missing: true },
+      { root: '/c', name: 'feature', folder: 'c', main: false, missing: false },
+    ];
+    assert.strictEqual(adjacentWorktree(worktrees, '/a', 1), '/c');
+    assert.strictEqual(adjacentWorktree(worktrees, '/a', -1), '/c');
+    assert.strictEqual(adjacentWorktree(worktrees, '/b', 1), '/c');
+    assert.strictEqual(
+      adjacentWorktree(worktrees.slice(0, 2), '/a', 1),
+      undefined,
+    );
   });
 
   test('wraps around at either end, and stays put with one tab', () => {
