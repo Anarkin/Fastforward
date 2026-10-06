@@ -6,6 +6,7 @@ import type {
   CommitResults,
   CommitSearch,
 } from '../shared/protocol';
+import { strings } from '../shared/strings';
 import { gitConfigArgs, gitEnv, runGit, splitNul, stopGit } from './run';
 
 export async function headCommit(
@@ -286,7 +287,7 @@ function streamMatches(
       if (code !== 0) {
         finish(() =>
           reject(
-            Object.assign(new Error(`git log failed: ${stderr}`), {
+            Object.assign(new Error(strings.errors.gitFailed('log', stderr)), {
               stderr: stderr.trim(),
             }),
           ),

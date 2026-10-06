@@ -1,6 +1,5 @@
 export const workingTreeHash = 'working-tree';
 export const workingTreeIndex = -1;
-export const workingTreeSubject = 'Uncommitted changes';
 
 export type RefKind = 'branch' | 'remote' | 'tag';
 

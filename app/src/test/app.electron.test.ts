@@ -7,7 +7,7 @@ import {
   type ElectronApplication,
   type Page,
 } from 'playwright-core';
-import { appName } from '../shared/titleBar';
+import { strings } from '../shared/strings';
 import { defaultSettings, waitFor } from './fixtures';
 import {
   removeFolder,
@@ -91,7 +91,7 @@ suite('App', function () {
     const version = await app.evaluate((electron) => electron.app.getVersion());
     assert.strictEqual(
       await page.title(),
-      `${repository.root} - ${appName(version, true)}`,
+      `${repository.root} - ${strings.app.name(version, true)}`,
     );
   });
 

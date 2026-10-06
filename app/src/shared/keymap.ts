@@ -1,3 +1,5 @@
+import { strings } from './strings';
+
 export type Group = 'Tabs' | 'History' | 'Columns' | 'Files' | 'Diff' | 'App';
 
 export const groups: readonly Group[] = [
@@ -31,48 +33,52 @@ function bind<const Value>(
 // Without a group, the shortcuts screen leaves a binding out, as the keys
 // menus and search fields take
 export const keymap = {
-  openRepository: bind('Tabs', 'Open a repository', { 'Mod+T': true }),
+  openRepository: bind('Tabs', strings.actions.openRepository, {
+    'Mod+T': true,
+  }),
   repository: bind(
     'Tabs',
-    'Next or previous repository',
+    strings.actions.repository,
     { 'Ctrl+Tab': 1, 'Ctrl+Shift+Tab': -1 },
     { repeats: true },
   ),
   worktree: bind(
     'Tabs',
-    'Next or previous worktree',
+    strings.actions.worktree,
     { 'Ctrl+PageDown': 1, 'Ctrl+PageUp': -1 },
     { repeats: true },
   ),
-  closeRepository: bind('Tabs', 'Close a repository', { MiddleClick: true }),
-  head: bind('History', 'Select the checked-out commit', { H: true }),
-  upstream: bind('History', 'Select the upstream of its branch', { U: true }),
-  search: bind('History', 'Search branches, remotes, tags and commits', {
+  closeRepository: bind('Tabs', strings.actions.closeRepository, {
+    MiddleClick: true,
+  }),
+  head: bind('History', strings.actions.head, { H: true }),
+  upstream: bind('History', strings.actions.upstream, { U: true }),
+  search: bind('History', strings.actions.search, {
     S: true,
   }),
-  commits: bind('History', 'Show or hide the commit list', { C: true }),
+  commits: bind('History', strings.actions.commits, { C: true }),
   move: bind(
     'History',
-    'Move in a list',
+    strings.actions.move,
     { ArrowUp: 'up', ArrowDown: 'down' },
     { repeats: true },
   ),
   page: bind(
     'History',
-    'Move a page, or to either end',
+    strings.actions.page,
     { PageUp: 'pageUp', PageDown: 'pageDown', Home: 'first', End: 'last' },
     { repeats: true },
   ),
-  compare: bind('History', 'Compare with the commit selected', {
+  compare: bind('History', strings.actions.compare, {
     'Mod+Click': true,
   }),
-  navigate: bind('History', 'Back or forward', {
+  navigate: bind('History', strings.actions.navigate, {
     BackButton: 'back',
     ForwardButton: 'forward',
   }),
   column: bind(
     'Columns',
-    'Next or previous column',
+    strings.actions.column,
     {
       Tab: 'next',
       'Shift+Tab': 'previous',
@@ -81,62 +87,62 @@ export const keymap = {
     },
     { repeats: true },
   ),
-  folder: bind('Files', 'Open or close a folder', { Space: true }),
+  folder: bind('Files', strings.actions.folder, { Space: true }),
   change: bind(
     'Diff',
-    'Next or previous change',
+    strings.actions.change,
     { J: 1, K: -1 },
     { repeats: true },
   ),
   sideways: bind(
     'Diff',
-    'Scroll sideways',
+    strings.actions.sideways,
     { ArrowRight: 1, ArrowLeft: -1 },
     { repeats: true },
   ),
-  wheelSideways: bind('Diff', 'Scroll sideways with the wheel', {
+  wheelSideways: bind('Diff', strings.actions.wheelSideways, {
     'Shift+Wheel': true,
   }),
-  wrap: bind('Diff', 'Wrap long lines', { W: true }),
-  find: bind('Diff', 'Find', { 'Mod+F': true }),
+  wrap: bind('Diff', strings.actions.wrap, { W: true }),
+  find: bind('Diff', strings.actions.find, { 'Mod+F': true }),
   match: bind(
     'Diff',
-    'Next or previous match',
+    strings.actions.match,
     { Enter: 1, 'Shift+Enter': -1 },
     { repeats: true, fields: true },
   ),
-  stopFinding: bind('Diff', 'Stop finding', { Escape: true }, { fields: true }),
-  shortcuts: bind('App', 'Show these shortcuts', { F1: true, '?': true }),
-  devTools: bind('App', 'Developer tools', { 'Mod+Shift+I': true }),
+  stopFinding: bind(
+    'Diff',
+    strings.actions.stopFinding,
+    { Escape: true },
+    { fields: true },
+  ),
+  shortcuts: bind('App', strings.actions.shortcuts, { F1: true, '?': true }),
+  devTools: bind('App', strings.actions.devTools, { 'Mod+Shift+I': true }),
   close: bind(
     undefined,
-    'Close a menu or popup',
+    strings.actions.close,
     { Escape: true },
     { fields: true },
   ),
   menuItem: bind(
     undefined,
-    'Move in a menu',
+    strings.actions.menuItem,
     { ArrowDown: 'next', ArrowUp: 'previous', Home: 'first', End: 'last' },
     { repeats: true },
   ),
-  submenu: bind(undefined, 'Open a submenu, or go back from it', {
+  submenu: bind(undefined, strings.actions.submenu, {
     ArrowRight: 'open',
     ArrowLeft: 'back',
   }),
   result: bind(
     undefined,
-    'Move in the search results',
+    strings.actions.result,
     { ArrowDown: 1, ArrowUp: -1 },
     { repeats: true, fields: true },
   ),
-  go: bind(
-    undefined,
-    'Go to the search result',
-    { Enter: true },
-    { fields: true },
-  ),
-  drag: bind(undefined, 'Drag a scrollbar or the minimap', { Click: true }),
+  go: bind(undefined, strings.actions.go, { Enter: true }, { fields: true }),
+  drag: bind(undefined, strings.actions.drag, { Click: true }),
 };
 
 export interface Modifiers {
@@ -323,25 +329,13 @@ export function pressOfInput(input: {
   };
 }
 
-const labels: Readonly<Record<string, string>> = {
-  ArrowUp: '↑',
-  ArrowDown: '↓',
-  ArrowLeft: '←',
-  ArrowRight: '→',
-  PageUp: 'PgUp',
-  PageDown: 'PgDn',
-  Escape: 'Esc',
-  MiddleClick: 'Middle-click',
-  BackButton: 'Mouse Back',
-  ForwardButton: 'Mouse Forward',
-};
-
 export function keyLabels(keys: string, mac: boolean): string[] {
   const combo = comboOf(keys);
+  const names: Readonly<Record<string, string>> = strings.keys;
   return [
-    ...(combo.mod ? [mac ? '⌘' : 'Ctrl'] : []),
-    ...(combo.ctrl ? ['Ctrl'] : []),
-    ...(combo.shift ? ['Shift'] : []),
-    labels[combo.key] ?? combo.key,
+    ...(combo.mod ? [mac ? strings.keys.Command : strings.keys.Ctrl] : []),
+    ...(combo.ctrl ? [strings.keys.Ctrl] : []),
+    ...(combo.shift ? [strings.keys.Shift] : []),
+    names[combo.key] ?? combo.key,
   ];
 }

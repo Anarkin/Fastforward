@@ -53,6 +53,7 @@ import { Files, filesTitle, noChangesText } from './filesColumn';
 import { foldersOf } from './fileTree';
 import { compareWith } from '../shared/comparisons';
 import { hasRef } from '../shared/refNames';
+import { strings } from '../shared/strings';
 import { AddressBar, NavButtons } from './navBar';
 import { TabBar } from './tabBar';
 import { WorktreeBar } from './worktreeBar';
@@ -418,11 +419,13 @@ export function App({ name, post: postToHost, listen }: Props) {
   const toggle = (bookmark: Bookmark) =>
     changeBookmarks(toggleBookmark(bookmarks, bookmark));
   const bookmarkItem = (bookmark: Bookmark): ContextMenuItem => ({
-    label: isBookmark(bookmark) ? 'Remove bookmark' : 'Add bookmark',
+    label: isBookmark(bookmark)
+      ? strings.commits.removeBookmark
+      : strings.commits.addBookmark,
     onClick: () => toggle(bookmark),
   });
   const commitBookmarkItem = (commitHash: string): ContextMenuItem => ({
-    label: 'Bookmark',
+    label: strings.commits.bookmark,
     submenu: bookmarkOptions(commitHash, refs).map((option) => ({
       label: option.label,
       checked: isBookmark(option.bookmark),
@@ -438,7 +441,7 @@ export function App({ name, post: postToHost, listen }: Props) {
     if (target.kind === 'commit') {
       return [
         {
-          label: 'Checkout',
+          label: strings.commits.checkout,
           submenu: checkoutOptions(target.hash, refs, head, detached).map(
             (option) => ({
               label: option.label,
@@ -458,7 +461,7 @@ export function App({ name, post: postToHost, listen }: Props) {
         : checkoutRef(ref, refs, head, detached);
     return [
       {
-        label: 'Checkout',
+        label: strings.commits.checkout,
         disabled: option.disabled,
         onClick: () => checkout(option.target),
       },
@@ -526,9 +529,7 @@ export function App({ name, post: postToHost, listen }: Props) {
             )}
             <Notices notices={notices} onDismiss={dismissNotice} />
             {tabs === undefined ? null : tabs.length === 0 ? (
-              <div className="empty-state">
-                No repository is open. Use + to open one.
-              </div>
+              <div className="empty-state">{strings.app.noRepository}</div>
             ) : (
               <ColumnResizingProvider value={resizing}>
                 <div

@@ -51,6 +51,25 @@ suite('Settings', () => {
     ]);
   });
 
+  test('takes no null, list or object for a setting of another kind', () => {
+    const { settings, problems } = mergeSettings(defaults, {
+      fonts: null,
+      sizes: ['20px'],
+      solo: {},
+      autoFetchMinutes: [1],
+    });
+    assert.deepStrictEqual(settings, defaults);
+    assert.deepStrictEqual(problems, [
+      '"fonts" should be an object',
+      '"sizes" should be an object',
+      '"solo" should be a boolean',
+      '"autoFetchMinutes" should be a number',
+    ]);
+    assert.deepStrictEqual(mergeSettings({ list: [] }, { list: 1 }).problems, [
+      '"list" should be a list',
+    ]);
+  });
+
   test('knows no setting by a name every object has', () => {
     const { settings, problems } = mergeSettings(
       defaults,

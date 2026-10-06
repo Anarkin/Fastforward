@@ -16,6 +16,7 @@ import { Column } from './column';
 import { AllFilesIcon, CollapseAllIcon, ExpandAllIcon } from './icons';
 import { SkeletonRows, useSkeleton } from './skeleton';
 import { keymap } from '../shared/keymap';
+import { strings } from '../shared/strings';
 import { listMoveOf, type VisibleRows } from './listMoves';
 import { keyPressed } from './shortcuts';
 import { fileRowKey } from './tree';
@@ -44,7 +45,9 @@ export function filesCursor(
 
 export function filesTitle(selection: string | undefined): string {
   const compared = comparedOf(selection);
-  return compared ? `Files: ${comparisonLabel(compared)}` : 'Files';
+  return compared
+    ? strings.files.compared(comparisonLabel(compared))
+    : strings.files.title;
 }
 
 export function noChangesText(
@@ -54,12 +57,12 @@ export function noChangesText(
     return undefined;
   }
   return comparedOf(selection)
-    ? 'No differences, both have the same files'
-    : 'No changes';
+    ? strings.files.noDifferences
+    : strings.files.noChanges;
 }
 
 export function Files({
-  title = 'Files',
+  title = strings.files.title,
   noChanges,
   showAll,
   onShowAll,
@@ -156,7 +159,7 @@ export function Files({
     <div className="nav-buttons all-files">
       <button
         className={`nav-button toggle ${showAll ? 'active' : ''}`}
-        title="Show All Files"
+        title={strings.files.showAll}
         aria-pressed={showAll}
         onClick={() => onShowAll(!showAll)}
       >
@@ -164,7 +167,7 @@ export function Files({
       </button>
       <button
         className="nav-button"
-        title="Collapse All"
+        title={strings.files.collapseAll}
         disabled={noFolders}
         onClick={() =>
           onReplaceFolders({
@@ -177,7 +180,7 @@ export function Files({
       </button>
       <button
         className="nav-button"
-        title="Expand All"
+        title={strings.files.expandAll}
         disabled={noFolders}
         onClick={() =>
           onReplaceFolders({
@@ -196,7 +199,7 @@ export function Files({
       className={`row group ${cursor === changesKey ? 'selected' : ''}`}
       onClick={() => select(undefined)}
     >
-      <span className="path">All Changes</span>
+      <span className="path">{strings.files.allChanges}</span>
     </div>
   );
   const offset = hasHeader ? 1 : 0;

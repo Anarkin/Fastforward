@@ -20,6 +20,14 @@
     {
       "files": ["src/webview/**"],
       "rules": {
+        "react/jsx-no-literals": [
+          "error",
+          {
+            "noStrings": true,
+            "ignoreProps": true,
+            "restrictedAttributes": ["title", "placeholder", "aria-label"]
+          }
+        ],
         "no-restricted-imports": [
           "error",
           {

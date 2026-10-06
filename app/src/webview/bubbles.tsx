@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react';
 import { shortHash } from '../shared/hashes';
 import type { BookmarkRef } from '../shared/protocol';
+import { strings } from '../shared/strings';
 import {
   commitBookmarkTarget,
   refMenuTarget,
@@ -20,10 +21,10 @@ export function HeadBubble({ hash }: { hash: string }) {
   return (
     <span
       className="badge head checked-out"
-      title={`HEAD is detached at ${hash}`}
+      title={strings.commits.detachedAt(hash)}
       {...menu}
     >
-      HEAD {shortHash(hash)}
+      {strings.commits.head(shortHash(hash))}
     </span>
   );
 }
@@ -31,7 +32,7 @@ export function HeadBubble({ hash }: { hash: string }) {
 export function CommitBubble({ hash }: { hash: string }) {
   const menu = useContextMenu(commitBookmarkTarget(hash));
   return (
-    <span className="badge hash" title={`Commit ${hash}`} {...menu}>
+    <span className="badge hash" title={strings.commits.commit(hash)} {...menu}>
       {shortHash(hash)}
     </span>
   );
@@ -51,9 +52,9 @@ export function RefBubble({
       className={`badge ${info.kind} ${checkedOut ? 'checked-out' : ''} ${missing ? 'missing' : ''}`}
       title={
         missing
-          ? `${info.name} doesn't exist anymore`
+          ? strings.common.gone(info.name)
           : checkedOut
-            ? `${info.name}, checked out`
+            ? strings.commits.checkedOut(info.name)
             : info.name
       }
       {...menu}

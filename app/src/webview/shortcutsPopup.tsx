@@ -1,10 +1,11 @@
 import { Fragment, useRef } from 'react';
 import { groups, keyLabels, keymap } from '../shared/keymap';
+import { strings } from '../shared/strings';
 import { useDismiss } from './contextMenu';
 import { CloseIcon } from './icons';
 
 export const shortcutGroups = groups.map((group) => ({
-  title: group,
+  title: strings.shortcuts.groups[group],
   bindings: Object.values(keymap).filter((binding) => binding.group === group),
 }));
 
@@ -22,11 +23,15 @@ export function ShortcutsPopup({
       className="shortcuts-popup"
       ref={popup}
       role="dialog"
-      aria-label="Shortcuts"
+      aria-label={strings.shortcuts.title}
     >
       <div className="shortcuts-title">
-        <span>Shortcuts</span>
-        <button className="nav-button" title="Close" onClick={onClose}>
+        <span>{strings.shortcuts.title}</span>
+        <button
+          className="nav-button"
+          title={strings.common.close}
+          onClick={onClose}
+        >
           <CloseIcon />
         </button>
       </div>
@@ -42,7 +47,7 @@ export function ShortcutsPopup({
                       <span key={keys} className="shortcut-combo">
                         {keyLabels(keys, mac).map((label, place) => (
                           <Fragment key={place}>
-                            {place > 0 && '+'}
+                            {place > 0 && strings.shortcuts.joiner}
                             <kbd>{label}</kbd>
                           </Fragment>
                         ))}

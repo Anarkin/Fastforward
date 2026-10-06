@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { type WorktreeInfo } from '../shared/protocol';
 import { useSkeleton } from './skeleton';
 import { keymap } from '../shared/keymap';
+import { strings } from '../shared/strings';
 import { useBinding } from './shortcuts';
 import { adjacentTab, preloadDelay, resting } from './tabBar';
 
@@ -58,7 +59,7 @@ export function WorktreeBar({
             className={`tab ${worktree.root === active ? 'active' : ''} ${worktree.missing ? 'missing' : ''}`}
             title={
               worktree.missing
-                ? `${worktree.root} doesn't exist anymore`
+                ? strings.common.gone(worktree.root)
                 : worktree.root
             }
             onClick={

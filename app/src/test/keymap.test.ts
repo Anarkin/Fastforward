@@ -202,14 +202,16 @@ suite('Keymap', () => {
 
   test('leaves telling keys, modifiers and buttons apart to itself, so the shortcuts screen lists every one', () => {
     const source = path.join(__dirname, '../../src');
-    const own = path.join(source, 'shared', 'keymap.ts');
+    const own = ['keymap.ts', 'strings.ts'].map((file) =>
+      path.join(source, 'shared', file),
+    );
     const reads =
       /\b(?:event|nativeEvent|input)\.(?:key|code|keyCode|button|buttons|ctrlKey|metaKey|altKey|shiftKey|isComposing|control|meta|alt|shift)\b|'(?:Arrow(?:Up|Down|Left|Right)|Page(?:Up|Down)|Home|End|Enter|Escape|Tab|F\d{1,2})'|'(?:ctrlKey|metaKey|altKey|shiftKey)'/;
     const offenders = fs
       .readdirSync(source, { recursive: true, encoding: 'utf8' })
       .filter((file) => /\.tsx?$/.test(file) && !file.startsWith('test'))
       .map((file) => path.join(source, file))
-      .filter((file) => file !== own)
+      .filter((file) => !own.includes(file))
       .flatMap((file) =>
         fs
           .readFileSync(file, 'utf8')

@@ -11,13 +11,15 @@ import { onMenuKeyDown, useDismiss, useMenuFocus } from './contextMenu';
 import { BackIcon, ForwardIcon, PinIcon, RefreshIcon } from './icons';
 import { LocationsPopup } from './locations';
 import { keymap } from '../shared/keymap';
+import { strings } from '../shared/strings';
 import { useBinding } from './shortcuts';
 
 const holdDelay = 400;
 
 function autoFetchTitle(on: boolean, minutes: number): string {
-  const every = minutes === 1 ? 'Every Minute' : `Every ${minutes} Minutes`;
-  return on ? `Stop Fetching ${every}` : `Fetch ${every}`;
+  return on
+    ? strings.navigation.stopFetchingEvery(minutes)
+    : strings.navigation.fetchEvery(minutes);
 }
 
 export function NavButtons({
@@ -52,7 +54,7 @@ export function NavButtons({
       >
         <button
           className={`nav-button ${fetching ? 'running' : ''}`}
-          title="Fetch every remote, dropping branches deleted there"
+          title={strings.navigation.fetch}
           disabled={fetching}
           onClick={onFetch}
         >
@@ -110,13 +112,12 @@ function HistoryButton({
     held.current = false;
     setOpen(false);
   }, []);
-  const label = direction === 'back' ? 'Back' : 'Forward';
 
   return (
     <div className="history-button" ref={container}>
       <button
         className="nav-button"
-        title={`${label}; hold or right-click for the history`}
+        title={strings.navigation.history[direction]}
         disabled={entries.length === 0}
         onPointerDown={() => {
           held.current = false;
@@ -243,10 +244,10 @@ export function AddressBar({
     <div className="address" ref={container}>
       <button
         className="address-bar"
-        title="Search branches, remotes, tags and commits"
+        title={strings.actions.search}
         onClick={() => setOpen(true)}
       >
-        <span className="address-text empty">Search…</span>
+        <span className="address-text empty">{strings.search.placeholder}</span>
       </button>
       {open && (
         <LocationsPopup

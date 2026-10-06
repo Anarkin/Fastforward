@@ -32,12 +32,13 @@ import { CommitRow } from './commitList';
 import { Highlight } from './highlight';
 import { FolderRow, treeIndent, twistyWidth } from './tree';
 import { keymap } from '../shared/keymap';
+import { strings } from '../shared/strings';
 import { keyPressed } from './shortcuts';
 
 const groups: readonly { kind: RefKind; title: string }[] = [
-  { kind: 'branch', title: 'Local branches' },
-  { kind: 'remote', title: 'Remote branches' },
-  { kind: 'tag', title: 'Tags' },
+  { kind: 'branch', title: strings.search.localBranches },
+  { kind: 'remote', title: strings.search.remoteBranches },
+  { kind: 'tag', title: strings.search.tags },
 ];
 
 const maxResults = 200;
@@ -228,18 +229,22 @@ function CommitResultsSection({
 }) {
   const detached = useContext(DetachedHead);
   if (found.length === 0) {
-    const status = lookingUp
-      ? `Looking for commit ${hash}…`
-      : searching
-        ? 'Searching commits…'
-        : hash && `No commit starts with ${hash}`;
+    const status =
+      lookingUp && hash !== undefined
+        ? strings.search.lookingUp(hash)
+        : searching
+          ? strings.search.searching
+          : hash && strings.search.noCommitStartsWith(hash);
     return status ? (
       <div className="row hash-suggestion empty">{status}</div>
     ) : null;
   }
   return (
     <section className="locations-group">
-      <GroupHeading title="Commits" count={found.length + hashMore} />
+      <GroupHeading
+        title={strings.search.commits}
+        count={found.length + hashMore}
+      />
       <div className="locations-list">
         {found.map((commit) => (
           <CommitRow
@@ -255,17 +260,13 @@ function CommitResultsSection({
           />
         ))}
         {(lookingUp || searching) && (
-          <div className="locations-empty">Searching commits…</div>
+          <div className="locations-empty">{strings.search.searching}</div>
         )}
         {hashMore > 0 ? (
-          <div className="locations-empty">
-            {hashMore} more; type more to narrow it down
-          </div>
+          <div className="locations-empty">{strings.search.more(hashMore)}</div>
         ) : (
           capped && (
-            <div className="locations-empty">
-              More commits match; type more to narrow it down
-            </div>
+            <div className="locations-empty">{strings.search.moreCommits}</div>
           )
         )}
       </div>
@@ -444,12 +445,16 @@ export function LocationsPopup({
       }}
     >
       <div className="locations-search-row">
-        <button className="nav-button" title="Close" onClick={onClose}>
+        <button
+          className="nav-button"
+          title={strings.common.close}
+          onClick={onClose}
+        >
           <BackIcon />
         </button>
         <input
           className="locations-search"
-          placeholder="Search…"
+          placeholder={strings.search.placeholder}
           ref={input}
           autoFocus
           value={query}
@@ -475,19 +480,19 @@ export function LocationsPopup({
           />
         )}
         <PinnedSection
-          title="Checked out"
+          title={strings.search.checkedOut}
           items={pinned.checkedOut}
           refs={refs}
           onJump={jump}
         />
         <PinnedSection
-          title="Bookmarks"
+          title={strings.search.bookmarks}
           items={pinned.bookmarks}
           refs={refs}
           onJump={jump}
         />
         {hasQuery && !hash && nothingFound && (
-          <div className="locations-empty">No matches</div>
+          <div className="locations-empty">{strings.search.noMatches}</div>
         )}
         {search.map((group, i) =>
           hasQuery && group.refs.length === 0 ? null : (
@@ -602,9 +607,7 @@ function SearchResults({
         </div>
       ))}
       {group.more > 0 && (
-        <div className="locations-empty">
-          {group.more} more; type more to narrow it down
-        </div>
+        <div className="locations-empty">{strings.search.more(group.more)}</div>
       )}
     </>
   );
@@ -669,7 +672,7 @@ function RefTree({
 }) {
   const tree = useMemo(() => buildTree(refs), [refs]);
   if (refs.length === 0) {
-    return <div className="locations-empty">None</div>;
+    return <div className="locations-empty">{strings.search.none}</div>;
   }
   return <TreeChildren node={tree} depth={0} onSelect={onSelect} />;
 }
@@ -722,7 +725,7 @@ function TreeChildren({
           className="locations-empty"
           style={{ paddingLeft: leafIndent(depth, withFolders) }}
         >
-          {more} more; type to narrow them down
+          {strings.search.moreInFolder(more)}
         </div>
       )}
     </>

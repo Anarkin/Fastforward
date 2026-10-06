@@ -1,6 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { errorText } from './errors';
 import { TitleBar } from './titleBar';
+import { strings } from '../shared/strings';
 
 export function Crash({
   title,
@@ -16,10 +17,11 @@ export function Crash({
       <TitleBar title={title} />
       <div className="crash">
         <div className="error-message">
-          Something went wrong:{' '}
-          {error instanceof Error ? error.message : String(error)}
+          {strings.app.crashed(
+            error instanceof Error ? error.message : String(error),
+          )}
         </div>
-        <button onClick={onReload}>Reload</button>
+        <button onClick={onReload}>{strings.app.reload}</button>
       </div>
     </div>
   );

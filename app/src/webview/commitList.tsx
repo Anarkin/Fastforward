@@ -24,6 +24,7 @@ import { MenuButton } from './menu';
 import { useSkeleton } from './skeleton';
 import { Highlight } from './highlight';
 import { clicked, keymap, type Click } from '../shared/keymap';
+import { strings } from '../shared/strings';
 import { columnFocusAttribute } from './activeColumn';
 import {
   fullyVisible,
@@ -290,13 +291,6 @@ export function CommitBubbles({
   );
 }
 
-export function uncommittedChanges(count: number): string {
-  if (count === 0) {
-    return 'No uncommitted changes';
-  }
-  return count === 1 ? '1 uncommitted change' : `${count} uncommitted changes`;
-}
-
 export function isCompareClick(event: Click): boolean {
   return clicked(keymap.compare, event) !== undefined;
 }
@@ -335,7 +329,9 @@ export function WorkingTreeRow({
       }
     >
       <div className="commit-line">
-        <span className="subject">{uncommittedChanges(count)}</span>
+        <span className="subject">
+          {strings.commits.uncommittedChanges(count)}
+        </span>
       </div>
     </div>
   );
@@ -656,10 +652,10 @@ export function Commits({
         <>
           <SoloButton solo={solo} applying={applyingSolo} onSolo={onSolo} />
           <MenuButton
-            title="Commit list settings"
+            title={strings.commits.settings}
             items={[
               {
-                label: 'Collapse merge commits',
+                label: strings.commits.collapseMerges,
                 checked: collapseMerges,
                 onClick: () => onCollapseMerges(!collapseMerges),
               },
@@ -718,7 +714,7 @@ export function SoloButton({
   return (
     <button
       className={`nav-button toggle ${solo ? 'active' : ''} ${applying ? 'running' : ''}`}
-      title="Solo: show only the history of the checked-out commit"
+      title={strings.commits.solo}
       aria-pressed={solo}
       disabled={applying}
       onClick={() => onSolo(!solo)}

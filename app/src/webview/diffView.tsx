@@ -35,6 +35,7 @@ import { alignLines } from './pairing';
 import { textsToLoad, useSyntax, type SyntaxRange } from './syntax';
 import { wordRanges, type WordRanges } from './wordDiff';
 import { keymap, wheeled, type Modifiers } from '../shared/keymap';
+import { strings } from '../shared/strings';
 import { listMoveOf, type ListMove } from './listMoves';
 import { keyPressed } from './shortcuts';
 import {
@@ -218,7 +219,7 @@ function measuresOf(
 export function HunkDivider() {
   return (
     <div className="hunk-divider">
-      <span className="hunk-dots">⋯</span>
+      <span className="hunk-dots">{strings.symbols.hunk}</span>
     </div>
   );
 }
@@ -238,7 +239,7 @@ export function FileHeader({
     <div className="file-header" onClick={onClick}>
       {!whole && <Twisty open={open} />}
       <span className="path">{path}</span>
-      {whole && <span className="unchanged">Unchanged</span>}
+      {whole && <span className="unchanged">{strings.diff.unchanged}</span>}
     </div>
   );
 }
@@ -403,12 +404,14 @@ function changedLines(file: DiffFile): number | undefined {
 
 export function largeDiffText(lines: number | undefined): string {
   if (lines === undefined) {
-    return 'Large file';
+    return strings.diff.largeFile;
   }
   if (lines === 0) {
-    return 'Not loaded';
+    return strings.diff.notLoaded;
   }
-  return `${lines > collapseThreshold ? 'Large diff' : 'Not loaded'}: ${lines.toLocaleString()} changed lines`;
+  return lines > collapseThreshold
+    ? strings.diff.largeDiff(lines)
+    : strings.diff.notLoadedLines(lines);
 }
 
 export function diffRows(
@@ -1006,7 +1009,7 @@ function HiddenChangeMarks({
         <button
           key={edge}
           className={`hidden-change ${edge} ${kind}`}
-          title="Show the Hidden Change"
+          title={strings.diff.showHiddenChange}
           tabIndex={-1}
           style={place(edge)}
           onMouseDown={(event) => event.preventDefault()}
@@ -1014,7 +1017,9 @@ function HiddenChangeMarks({
             onReveal(revealChange(view, area, text, word, charWidth))
           }
         >
-          {edge === 'left' ? '‹' : '›'}
+          {edge === 'left'
+            ? strings.symbols.hiddenLeft
+            : strings.symbols.hiddenRight}
         </button>
       )
     );
@@ -1303,13 +1308,15 @@ export function DiffView({
         return (
           <div className="large-diff">
             {largeDiffText(row.lines)}
-            <button onClick={() => toggle(row.path, false)}>Show</button>
+            <button onClick={() => toggle(row.path, false)}>
+              {strings.diff.show}
+            </button>
           </div>
         );
       case 'binary':
         return (
           <div className="binary-file">
-            {whole ? 'Binary or very large file' : 'Binary file'}
+            {whole ? strings.diff.binaryOrLarge : strings.diff.binary}
           </div>
         );
       case 'skeleton':

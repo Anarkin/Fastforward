@@ -18,7 +18,6 @@ import {
   pageStart,
   workingTreeHash,
   workingTreeIndex,
-  workingTreeSubject,
   type CommitInfo,
   type FileChange,
   type NavigationEntry,
@@ -27,6 +26,7 @@ import {
   type ToWebview,
   type ToWebviewOf,
 } from './shared/protocol';
+import { strings } from './shared/strings';
 
 export interface TabState {
   hash: string | undefined;
@@ -367,7 +367,9 @@ export function navigationEntry(tab: TabState, hash: string): NavigationEntry {
   return {
     hash,
     subject:
-      hash === workingTreeHash ? workingTreeSubject : tab.subjects.get(hash),
+      hash === workingTreeHash
+        ? strings.commits.uncommitted
+        : tab.subjects.get(hash),
   };
 }
 

@@ -1,5 +1,6 @@
 import type { DiffFile } from './diff';
 import type { WholeFile } from './diffView';
+import { strings } from '../shared/strings';
 
 export interface FindRange {
   readonly start: number;
@@ -163,9 +164,9 @@ export function matchCount(
     return '';
   }
   if (matches === 0) {
-    return 'No results';
+    return strings.find.noResults;
   }
-  return `${current + 1} of ${matches}${matches >= maxMatches ? '+' : ''}`;
+  return strings.find.count(current + 1, matches, matches >= maxMatches);
 }
 
 export function jumpStep(

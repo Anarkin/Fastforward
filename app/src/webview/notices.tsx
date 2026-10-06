@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { CloseIcon } from './icons';
+import { strings } from '../shared/strings';
 
 export interface Notice {
   readonly id: number;
@@ -57,7 +58,7 @@ export function Notices({
           <span className="notice-message">{notice.message}</span>
           <button
             className="notice-close"
-            title="Dismiss"
+            title={strings.messages.dismiss}
             onClick={() => onDismiss(notice.id)}
           >
             <CloseIcon />

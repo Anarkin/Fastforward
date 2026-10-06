@@ -4,6 +4,7 @@ import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { comparisonOf } from '../shared/comparisons';
 import { workingTreeHash, workingTreeIndex } from '../shared/protocol';
+import { strings } from '../shared/strings';
 import { CommitHistory } from '../webview/commitHistory';
 import {
   keptPlace,
@@ -23,7 +24,6 @@ import {
   listTop,
   rowKeyOf,
   SoloButton,
-  uncommittedChanges,
   WorkingTreeRow,
   workingTreeRowHeight,
   workingTreeShift,
@@ -170,7 +170,10 @@ suite('Commit list working tree row', () => {
       html,
       /<div class="commit-line"><span class="subject">3 uncommitted changes<\/span><\/div><\/div>$/,
     );
-    assert.strictEqual(uncommittedChanges(1), '1 uncommitted change');
+    assert.strictEqual(
+      strings.commits.uncommittedChanges(1),
+      '1 uncommitted change',
+    );
     assert.deepStrictEqual(clickedHash(3), { selected: workingTreeHash });
   });
 

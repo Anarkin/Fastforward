@@ -1,6 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { RefInfo } from '../shared/protocol';
+import { strings } from '../shared/strings';
 import { gitErrorText } from './errorText';
 import { headCommit } from './history';
 import { runGit, splitNul } from './run';
@@ -192,7 +193,7 @@ export async function fetchAllRemotes(
   } catch (error) {
     if (signal.aborted) {
       throw new Error(
-        `git fetch timed out after ${Math.round(timeout / 1000)} seconds`,
+        strings.errors.fetchTimedOut(Math.round(timeout / 1000)),
         { cause: error },
       );
     }

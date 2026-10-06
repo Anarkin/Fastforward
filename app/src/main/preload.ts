@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import type { Bridge } from '../shared/bridge';
 import type { ToWebview } from '../shared/protocol';
+import { brand } from '../shared/strings';
 import { appNameSwitch } from '../shared/titleBar';
 
 contextBridge.exposeInMainWorld('fastforward', {
@@ -8,7 +9,7 @@ contextBridge.exposeInMainWorld('fastforward', {
   name:
     process.argv
       .find((arg) => arg.startsWith(appNameSwitch))
-      ?.slice(appNameSwitch.length) ?? 'Fastforward',
+      ?.slice(appNameSwitch.length) ?? brand,
   post: (message) => ipcRenderer.send('message', message),
   listen: (handler) => {
     const listener = (_event: IpcRendererEvent, message: ToWebview) =>

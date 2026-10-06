@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { appName } from '../shared/titleBar';
+import { strings } from '../shared/strings';
 import { TitleBar, windowTitle } from '../webview/titleBar';
 import { stylesheet, stylesheetPx } from './fixtures';
 
@@ -17,8 +17,11 @@ suite('Title bar', () => {
   });
 
   test('names the app with its version, marking a run from the source', () => {
-    assert.strictEqual(appName('1.2.3', false), 'Fastforward 1.2.3');
-    assert.strictEqual(appName('1.2.3', true), 'Fastforward 1.2.3 Dev');
+    assert.strictEqual(strings.app.name('1.2.3', false), 'Fastforward 1.2.3');
+    assert.strictEqual(
+      strings.app.name('1.2.3', true),
+      'Fastforward 1.2.3 Dev',
+    );
   });
 
   test('shows the icon and the title', () => {

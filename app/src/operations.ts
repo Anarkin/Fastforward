@@ -11,6 +11,7 @@ import {
 import type { CheckoutTarget } from './shared/protocol';
 import { shortHash } from './shared/hashes';
 import { hasRef, localBranchOf } from './shared/refNames';
+import { strings } from './shared/strings';
 import type { Log } from './log';
 import { detachedHead } from './refs';
 
@@ -54,7 +55,7 @@ export async function checkout(
         target.kind === 'commit' ? target.hash : `refs/tags/${target.name}`,
       );
     }
-    log.info(`Checked out ${target.kind} ${label}`);
+    log.info(strings.log.checkedOut(target.kind, label));
     const detached = detachedHead(before);
     if (detached) {
       await sayLeftBehind(log, notify, at, detached);
@@ -64,8 +65,12 @@ export async function checkout(
     reportFailure(
       log,
       notify,
-      `Checking out ${target.kind} ${label} failed`,
-      `Couldn't check out ${target.kind === 'commit' ? shortHash(label) : label}.`,
+      strings.log.checkoutFailed(target.kind, label),
+      (reason) =>
+        strings.messages.couldNotCheckOut(
+          target.kind === 'commit' ? shortHash(label) : label,
+          reason,
+        ),
       error,
     );
     return false;
@@ -84,9 +89,11 @@ async function sayLeftBehind(
   if (left.length === 0) {
     return;
   }
-  const named = left.slice(0, namedLeftBehind).map(shortHash).join(' ');
-  const more = left.length - namedLeftBehind;
-  const message = `Left ${left.length === 1 ? '1 commit' : `${left.length} commits`} behind on no branch or tag: ${named}${more > 0 ? ` and ${more} more` : ''}`;
+  const message = strings.messages.leftBehind(
+    left.length,
+    left.slice(0, namedLeftBehind).map(shortHash).join(' '),
+    left.length - namedLeftBehind,
+  );
   log.info(message);
   notify('info', message);
 }
@@ -108,26 +115,23 @@ async function catchUp(
     return;
   }
   if (ahead > 0) {
-    log.info(`${local} and ${remote} have diverged, not fast-forwarding`);
-    notify(
-      'info',
-      `Switched to ${local}, which has diverged from ${remote}; pull to combine them.`,
-    );
+    log.info(strings.log.diverged(local, remote));
+    notify('info', strings.messages.diverged(local, remote));
     return;
   }
   if ((await readHead(gitPath, root))?.name !== local) {
-    log.info(`${local} is no longer checked out, not fast-forwarding`);
+    log.info(strings.log.notCheckedOut(local));
     return;
   }
   try {
     await fastForward(gitPath, root, `refs/remotes/${remote}`);
-    log.info(`Fast-forwarded ${local} to ${remote}`);
+    log.info(strings.log.fastForwarded(local, remote));
   } catch (error) {
     reportFailure(
       log,
       notify,
-      `Fast-forwarding ${local} to ${remote} failed`,
-      `Switched to ${local}, but couldn't fast-forward it to ${remote}.`,
+      strings.log.fastForwardFailed(local, remote),
+      (reason) => strings.messages.couldNotFastForward(local, remote, reason),
       error,
     );
   }
@@ -158,13 +162,13 @@ export function reportFetched(
     reportFailure(
       log,
       notify,
-      'fetch failed',
-      "Couldn't fetch.",
+      strings.log.fetchFailed,
+      strings.messages.couldNotFetch,
       fetched.error,
     );
     return false;
   }
-  log.info('Fetched every remote');
+  log.info(strings.log.fetched);
   return true;
 }
 
@@ -172,10 +176,10 @@ function reportFailure(
   log: Log,
   notify: Notify,
   failed: string,
-  message: string,
+  message: (reason: string) => string,
   error: unknown,
 ): void {
   log.error(failed);
   log.error(error);
-  notify('error', `${message} ${gitErrorText(error)}`);
+  notify('error', message(gitErrorText(error)));
 }

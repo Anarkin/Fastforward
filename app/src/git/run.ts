@@ -1,5 +1,6 @@
 import { type ChildProcess, execFile } from 'node:child_process';
 import { join } from 'node:path';
+import { strings } from '../shared/strings';
 
 export const gitConfigArgs = [
   '-c',
@@ -123,7 +124,7 @@ export async function runGitBytes(
           reject(
             Object.assign(
               new Error(
-                `git ${args.join(' ')} failed: ${said || error.message}`,
+                strings.errors.gitFailed(args.join(' '), said || error.message),
               ),
               { stderr: said.trim() },
             ),

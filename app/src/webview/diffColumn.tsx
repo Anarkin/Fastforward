@@ -20,6 +20,7 @@ import {
   WordWrapIcon,
 } from './icons';
 import { keymap } from '../shared/keymap';
+import { strings } from '../shared/strings';
 import { keyPressed, useBinding } from './shortcuts';
 
 export function withLargeFiles(
@@ -86,10 +87,10 @@ export function DiffOptions({
           className={`nav-button toggle ${shown ? 'active' : ''}`}
           title={
             pinned
-              ? 'Pinned to Show Entire Files'
+              ? strings.diff.pinnedEntire
               : entire
-                ? 'Show Only the Changes'
-                : 'Show the Entire File'
+                ? strings.diff.showOnlyChanges
+                : strings.diff.showEntireFile
           }
           aria-pressed={shown}
           disabled={!canShow || pinned}
@@ -99,7 +100,7 @@ export function DiffOptions({
         </button>
         <button
           className={`nav-button toggle ${pinned ? 'active' : ''}`}
-          title={pinned ? 'Unpin Entire Files' : 'Pin Entire Files'}
+          title={pinned ? strings.diff.unpinEntire : strings.diff.pinEntire}
           aria-pressed={pinned}
           onClick={() => onPin(!pinned)}
         >
@@ -111,8 +112,8 @@ export function DiffOptions({
         className={`nav-button toggle ${ignoreWhitespace ? 'active' : ''}`}
         title={
           ignoreWhitespace
-            ? 'Show Whitespace Changes'
-            : 'Ignore Whitespace Changes'
+            ? strings.diff.showWhitespace
+            : strings.diff.ignoreWhitespace
         }
         aria-pressed={ignoreWhitespace}
         onClick={() => onIgnoreWhitespace(!ignoreWhitespace)}
@@ -121,17 +122,17 @@ export function DiffOptions({
       </button>
       <button
         className={`nav-button toggle ${wordWrap ? 'active' : ''}`}
-        title={wordWrap ? 'Unwrap Long Lines' : 'Wrap Long Lines'}
+        title={wordWrap ? strings.diff.unwrap : strings.diff.wrap}
         aria-pressed={wordWrap}
         onClick={() => onWordWrap(!wordWrap)}
       >
         <WordWrapIcon />
       </button>
       <span className="nav-button-space" />
-      <div className="segmented" role="group" aria-label="Layout">
+      <div className="segmented" role="group" aria-label={strings.diff.layout}>
         <button
           className={`nav-button toggle ${layout === 'inline' ? 'active' : ''}`}
-          title="Inline"
+          title={strings.diff.inline}
           aria-pressed={layout === 'inline'}
           onClick={() => onLayout('inline')}
         >
@@ -139,7 +140,7 @@ export function DiffOptions({
         </button>
         <button
           className={`nav-button toggle ${layout === 'sideBySide' ? 'active' : ''}`}
-          title="Side by Side"
+          title={strings.diff.sideBySide}
           aria-pressed={layout === 'sideBySide'}
           onClick={() => onLayout('sideBySide')}
         >
@@ -170,7 +171,7 @@ export function DiffFind({
       <input
         ref={input}
         className="diff-find-input"
-        placeholder="Search…"
+        placeholder={strings.find.placeholder}
         spellCheck={false}
         value={query}
         onChange={(event) => onQuery(event.target.value)}
@@ -193,9 +194,7 @@ export function DiffFind({
         <span
           className="diff-find-count"
           title={
-            unsearched > 0
-              ? `Large files not shown yet are not searched: ${unsearched}`
-              : undefined
+            unsearched > 0 ? strings.find.unsearched(unsearched) : undefined
           }
         >
           {count}
@@ -216,7 +215,7 @@ export function FindActions({
     <div className="nav-buttons diff-find-actions">
       <button
         className="nav-button"
-        title="Previous Match"
+        title={strings.find.previous}
         disabled={matches === 0}
         onClick={() => onStep(-1)}
       >
@@ -224,7 +223,7 @@ export function FindActions({
       </button>
       <button
         className="nav-button"
-        title="Next Match"
+        title={strings.find.next}
         disabled={matches === 0}
         onClick={() => onStep(1)}
       >

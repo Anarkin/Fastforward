@@ -67,6 +67,7 @@ import {
   type ToWebview,
   type WorktreeInfo,
 } from './shared/protocol';
+import { strings } from './shared/strings';
 import { sameRoot, Storage } from './storage';
 import {
   commitsMessage,
@@ -289,7 +290,7 @@ export class FastforwardView {
       await action();
     } catch (error) {
       const text = gitErrorText(error);
-      this.log.error(`${name} failed`);
+      this.log.error(strings.log.failed(name));
       this.log.error(error instanceof Error ? error : text);
       if (root === undefined || this.isActive(root)) {
         session.post({ type: 'error', message: text });
@@ -306,7 +307,7 @@ export class FastforwardView {
           session.post({
             type: 'notice',
             level: 'error',
-            message: `Settings: ${problem}`,
+            message: strings.messages.settingsProblem(problem),
           });
         }
         await this.groupTabs();
@@ -401,7 +402,7 @@ export class FastforwardView {
         return;
       }
       case 'log':
-        this.log[message.level](`Webview: ${message.message}`);
+        this.log[message.level](strings.log.webview(message.message));
         return;
       case 'setColumnWidths':
         await storage.setColumnWidths(message.widths);
@@ -536,8 +537,8 @@ export class FastforwardView {
           this.notify(context)(
             'error',
             found.kind === 'ambiguous'
-              ? `${found.count} commits start with ${message.hash}`
-              : `No commit starts with ${message.hash}`,
+              ? strings.search.commitsStartWith(found.count, message.hash)
+              : strings.search.noCommitStartsWith(message.hash),
           );
         }
         break;
@@ -616,7 +617,10 @@ export class FastforwardView {
   }
 
   private notInHistory(context: Context, hash: string): void {
-    context.post({ type: 'error', message: notInHistoryText(hash) });
+    context.post({
+      type: 'error',
+      message: strings.commits.notInHistory(hash),
+    });
   }
 
   // A repository opened again from the recent ones shows the worktree shown
@@ -633,12 +637,12 @@ export class FastforwardView {
       try {
         location = await locateRepository(this.gitPath, folder);
       } catch (error) {
-        this.log.error(`Opening ${folder} failed`);
+        this.log.error(strings.log.openingFailed(folder));
         this.log.error(error instanceof Error ? error : String(error));
         session.post({
           type: 'notice',
           level: 'error',
-          message: `Couldn't open ${folder}. ${gitErrorText(error)}`,
+          message: strings.messages.couldNotOpen(folder, gitErrorText(error)),
         });
         continue;
       }
@@ -647,7 +651,7 @@ export class FastforwardView {
         session.post({
           type: 'notice',
           level: 'error',
-          message: `${folder} is not in a git repository`,
+          message: strings.messages.notInRepository(folder),
         });
         continue;
       }
@@ -719,7 +723,7 @@ export class FastforwardView {
     if (!context || session.disposed || !this.isActive(context.root)) {
       return;
     }
-    this.log.info(`Tab ${context.root} is open`);
+    this.log.info(strings.log.tabOpen(context.root));
     this.save(this.storage.addRecent(context.repository));
     await allSettled([this.watch(context, session), this.showTab(context)]);
   }
@@ -728,7 +732,7 @@ export class FastforwardView {
   // join the tab of their repository
   private groupTabs(): Promise<void> {
     this.grouped ??= this.groupTabsNow().catch((error: unknown) => {
-      this.log.error('Grouping the tabs by repository failed');
+      this.log.error(strings.log.groupingFailed);
       this.log.error(error);
     });
     return this.grouped;
@@ -850,7 +854,7 @@ export class FastforwardView {
     try {
       worktrees = await listWorktrees(this.gitPath, repository, known);
     } catch (error) {
-      this.log.error(`Listing the worktrees of ${repository} failed`);
+      this.log.error(strings.log.listingWorktreesFailed(repository));
       this.log.error(error);
       worktrees = [];
     }
@@ -891,7 +895,7 @@ export class FastforwardView {
     const firstOpen = !context.tab.opened;
     context.tab.opened = true;
     if (!firstOpen && context.tab.shown.commits) {
-      this.log.info(`Tab ${context.root} is shown as it was left`);
+      this.log.info(strings.log.tabShownAsLeft(context.root));
       await this.addDefaultBookmarks(context);
       await this.refresh(context);
       return;
@@ -901,7 +905,7 @@ export class FastforwardView {
 
   private save(saving: Promise<void>): void {
     void saving.catch((error: unknown) => {
-      this.log.error('Saving the state failed');
+      this.log.error(strings.log.savingFailed);
       this.log.error(error);
     });
   }
@@ -941,12 +945,12 @@ export class FastforwardView {
         if (!context || tab.opened) {
           return;
         }
-        this.log.info(`Preloading tab ${root}`);
+        this.log.info(strings.log.preloading(root));
         tab.opened = true;
         await this.loadTab(context);
       } catch (error) {
         Object.assign(tab, newTabState());
-        this.log.error(`Preloading tab ${root} failed`);
+        this.log.error(strings.log.preloadingFailed(root));
         this.log.error(error);
       } finally {
         tab.preloading = undefined;
@@ -1064,7 +1068,7 @@ export class FastforwardView {
       if (live && this.isActive(root)) {
         session.post({
           type: 'error',
-          message: `${root} is not a git repository`,
+          message: strings.messages.notRepository(root),
         });
       }
       return undefined;
@@ -1114,7 +1118,7 @@ export class FastforwardView {
       onWorktreesChange: () =>
         void this.loadWorktrees(session, context.repository),
       onError: (error) => {
-        this.log.error(`Watching ${context.root} failed`);
+        this.log.error(strings.log.watchingFailed(context.root));
         this.log.error(error);
       },
     });
@@ -1240,7 +1244,7 @@ export class FastforwardView {
       (session.disposed ? this.page : session)?.post({
         type: 'notice',
         level,
-        message: `${tabName(repository)}: ${message}`,
+        message: strings.messages.inTab(tabName(repository), message),
       });
   }
 
@@ -1250,7 +1254,7 @@ export class FastforwardView {
     if (next !== tab.navigation) {
       tab.navigation = next;
       void this.sendNavigation(context, hash).catch((error: unknown) => {
-        this.log.error('Loading the navigation failed');
+        this.log.error(strings.log.navigationFailed);
         this.log.error(error);
       });
     }
@@ -1383,7 +1387,7 @@ export class FastforwardView {
       await this.sendShownHistory(context, { scrollTo: hash });
     }
     if (hiddenSides(tab, hash).length > 0) {
-      this.notify(context)('error', notInHistoryText(hash));
+      this.notify(context)('error', strings.commits.notInHistory(hash));
       return;
     }
     if (record) {
@@ -1406,18 +1410,15 @@ export class FastforwardView {
     const notify = this.notify(context);
     switch (upstream.kind) {
       case 'detached':
-        notify(
-          'info',
-          'The checked-out commit is on no branch, so it has no upstream',
-        );
+        notify('info', strings.messages.detachedUpstream);
         return;
       case 'none':
-        notify('info', `${upstream.branch} has no upstream`);
+        notify('info', strings.messages.noUpstream(upstream.branch));
         return;
       case 'gone':
         notify(
           'info',
-          `${upstream.name}, the upstream of ${upstream.branch}, doesn't exist anymore`,
+          strings.messages.upstreamGone(upstream.name, upstream.branch),
         );
         return;
       case 'found':
@@ -1425,10 +1426,7 @@ export class FastforwardView {
           this.storage.soloOf(context.root) &&
           !stillThere(context.tab)(upstream.commit)
         ) {
-          notify(
-            'info',
-            `${upstream.name} is not in the history while Solo shows only that of the checked-out commit`,
-          );
+          notify('info', strings.messages.upstreamHidden(upstream.name));
           return;
         }
         await this.showCommit(context, upstream.commit);
@@ -1546,7 +1544,7 @@ export class FastforwardView {
     }
     const known = Promise.resolve(refs);
     if (refsKeepHistory(tab, head, listed, this.storage.soloOf(context.root))) {
-      this.log.info('Refs changed, keeping the history');
+      this.log.info(strings.log.refsKept);
       const layOut = tab.shownStale || tab.headCommit !== head?.commit;
       takeRefs(tab, head, listed);
       await Promise.all([
@@ -1555,7 +1553,7 @@ export class FastforwardView {
       ]);
       return;
     }
-    this.log.info('Refs changed, reloading the history');
+    this.log.info(strings.log.refsReloaded);
     await Promise.all([
       this.sendRepository(context, known),
       this.sendCommits(context, known, true),
@@ -1632,7 +1630,11 @@ export class FastforwardView {
       tab.headCommit,
     );
     this.log.info(
-      `Graph of ${tab.history.length} of ${tab.fullHistory.length} commits laid out in ${Math.round(performance.now() - started)} ms`,
+      strings.log.laidOut(
+        tab.history.length,
+        tab.fullHistory.length,
+        Math.round(performance.now() - started),
+      ),
     );
     return generation;
   }
@@ -1963,10 +1965,6 @@ function workingTreeDiffOf(hash: string): WorkingTreeDiff | undefined {
   return compared.to === workingTreeHash
     ? { base: compared.from, reverse: false }
     : { base: compared.to, reverse: true };
-}
-
-function notInHistoryText(hash: string): string {
-  return `${hash} is not in the history`;
 }
 
 function shownCommit(hash: string): string | undefined {

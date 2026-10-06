@@ -4,6 +4,7 @@ import {
   type GraphLine,
   type GraphRow,
 } from '../shared/protocol';
+import { strings } from '../shared/strings';
 
 const laneWidth = 12;
 const dotY = 15;
@@ -138,12 +139,12 @@ function ringRadius(row: GraphRow): number {
 
 function mergeTitle(row: GraphRow): string {
   if (row.merge === 'expanded') {
-    return 'Collapse merge';
+    return strings.commits.collapseMerge;
   }
   const hidden = row.hidden ?? 0;
   return hidden > 0
-    ? `${hidden} ${hidden === 1 ? 'commit' : 'commits'} merged, click to expand`
-    : 'Expand merge';
+    ? strings.commits.merged(hidden)
+    : strings.commits.expandMerge;
 }
 
 export function rowLanes(row: GraphRow | undefined): number {

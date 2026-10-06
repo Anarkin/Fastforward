@@ -3,6 +3,7 @@ import { type TabInfo } from '../shared/protocol';
 import { CloseIcon } from './icons';
 import { MenuButton } from './menu';
 import { clicked, keymap } from '../shared/keymap';
+import { strings } from '../shared/strings';
 import { useBinding } from './shortcuts';
 
 export function adjacentTab(
@@ -66,11 +67,14 @@ export function TabBar({
   useEffect(() => {
     requestAnimationFrame(() => {
       onLog(
-        `layout: window ${window.innerWidth}x${window.innerHeight}, ` +
-          `dpr ${window.devicePixelRatio}, ` +
-          `body ${elementWidth(document.body)}, ` +
-          `tab bar ${elementWidth(bar.current)}, ` +
-          `tab list ${elementWidth(list.current)}`,
+        strings.log.layout(
+          window.innerWidth,
+          window.innerHeight,
+          window.devicePixelRatio,
+          elementWidth(document.body),
+          elementWidth(bar.current),
+          elementWidth(list.current),
+        ),
       );
     });
   }, [onLog]);
@@ -113,7 +117,7 @@ export function TabBar({
             <span className="tab-name">{tab.name}</span>
             <button
               className="tab-close"
-              title="Close"
+              title={strings.common.close}
               onClick={(event) => {
                 event.stopPropagation();
                 onClose(tab.root);
@@ -126,21 +130,24 @@ export function TabBar({
         <button
           ref={add}
           className="tab-add"
-          title="Open a repository"
+          title={strings.actions.openRepository}
           onClick={onAdd}
         >
-          +
+          {strings.symbols.add}
         </button>
       </div>
       <MenuButton
-        title="Settings"
+        title={strings.tabs.settings}
         items={[
-          { label: 'Sort A-Z', onClick: onSort },
+          { label: strings.tabs.sort, onClick: onSort },
           { separator: true },
-          { label: 'Open Default Settings', onClick: onOpenDefaultSettings },
-          { label: 'Open User Settings', onClick: onOpenSettings },
+          {
+            label: strings.tabs.openDefaultSettings,
+            onClick: onOpenDefaultSettings,
+          },
+          { label: strings.tabs.openUserSettings, onClick: onOpenSettings },
           { separator: true },
-          { label: 'Keyboard Shortcuts', onClick: onShowShortcuts },
+          { label: strings.tabs.keyboardShortcuts, onClick: onShowShortcuts },
         ]}
       />
     </nav>

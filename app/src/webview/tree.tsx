@@ -1,4 +1,5 @@
 import type { FileChange } from '../shared/protocol';
+import { strings } from '../shared/strings';
 import { changeTitle, changeClass } from './fileStatus';
 
 const treePadding = 8;
@@ -11,7 +12,11 @@ export function treeIndent(depth: number): number {
 export const fileRowKey = (path: string) => `file:${path}`;
 
 export function Twisty({ open }: { open: boolean }) {
-  return <span className="twisty">{open ? '▾' : '▸'}</span>;
+  return (
+    <span className="twisty">
+      {open ? strings.symbols.open : strings.symbols.closed}
+    </span>
+  );
 }
 
 export function FolderRow({

@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { diffLayouts, type DiffLayout } from './shared/protocol';
+import { strings } from './shared/strings';
 
 export interface Settings {
   readonly collapseMerges: boolean;
@@ -35,11 +36,25 @@ export function isObject(value: unknown): value is Json {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function jsonKind(value: unknown): 'boolean' | 'number' | 'string' | 'object' {
+  const kind = typeof value;
+  switch (kind) {
+    case 'boolean':
+    case 'number':
+    case 'string':
+      return kind;
+    default:
+      return 'object';
+  }
+}
+
 function kindOf(value: unknown): string {
   if (Array.isArray(value)) {
-    return value.length > 0 ? `a list of ${typeof value[0]}s` : 'a list';
+    return value.length > 0
+      ? strings.settings.listsOf[jsonKind(value[0])]
+      : strings.settings.kinds.list;
   }
-  return isObject(value) ? 'an object' : `a ${typeof value}`;
+  return strings.settings.kinds[jsonKind(value)];
 }
 
 function sameKind(fallback: unknown, value: unknown): boolean {
@@ -49,7 +64,11 @@ function sameKind(fallback: unknown, value: unknown): boolean {
       value.every((item) => typeof item === typeof fallback[0])
     );
   }
-  return kindOf(fallback) === kindOf(value);
+  return (
+    !Array.isArray(value) &&
+    isObject(value) === isObject(fallback) &&
+    typeof value === typeof fallback
+  );
 }
 
 const choices = new Map<string, readonly string[]>([
@@ -66,17 +85,15 @@ function merge(
   for (const [key, value] of Object.entries(overrides)) {
     const name = `${prefix}${key}`;
     if (!Object.hasOwn(defaults, key)) {
-      problems.push(`Unknown setting "${name}"`);
+      problems.push(strings.settings.unknown(name));
       continue;
     }
     const fallback = defaults[key];
     const allowed = choices.get(name);
     if (!sameKind(fallback, value)) {
-      problems.push(`"${name}" should be ${kindOf(fallback)}`);
+      problems.push(strings.settings.shouldBe(name, kindOf(fallback)));
     } else if (allowed && !allowed.some((choice) => choice === value)) {
-      problems.push(
-        `"${name}" should be ${allowed.map((choice) => `"${choice}"`).join(' or ')}`,
-      );
+      problems.push(strings.settings.shouldBeOneOf(name, allowed));
     } else if (isObject(fallback) && isObject(value)) {
       merged[key] = merge(fallback, value, `${name}.`, problems);
     } else {
@@ -94,7 +111,7 @@ export function mergeSettings<T extends object>(
   if (!isObject(overrides)) {
     return {
       settings: defaults,
-      problems: ['The user settings are not a JSON object'],
+      problems: [strings.settings.notObject],
     };
   }
   const settings = merge(
@@ -131,7 +148,7 @@ export function overridesOf(defaults: object, settings: object): Json {
 export function readDefaults(file: string): Settings {
   const parsed: unknown = JSON.parse(fs.readFileSync(file, 'utf8'));
   if (!isObject(parsed)) {
-    throw new Error(`${file} is not a JSON object`);
+    throw new Error(strings.errors.notObject(file));
   }
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return parsed as unknown as Settings;
@@ -192,7 +209,7 @@ export class UserSettings {
     this.broken = false;
     if (text instanceof Error) {
       this.broken = true;
-      this.issues = [`The user settings could not be read: ${text.message}`];
+      this.issues = [strings.settings.unreadable(text.message)];
       return;
     }
     if (text === undefined || text.trim() === '') {
@@ -206,7 +223,9 @@ export class UserSettings {
     } catch (error) {
       this.broken = true;
       this.issues = [
-        `The user settings are not valid JSON: ${error instanceof Error ? error.message : String(error)}`,
+        strings.settings.invalid(
+          error instanceof Error ? error.message : String(error),
+        ),
       ];
       return;
     }

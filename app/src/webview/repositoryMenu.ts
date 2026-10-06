@@ -1,4 +1,5 @@
 import type { TabInfo } from '../shared/protocol';
+import { strings } from '../shared/strings';
 import type { ContextMenuItem } from './contextMenu';
 
 export function repositoryMenuItems(
@@ -13,6 +14,6 @@ export function repositoryMenuItems(
       onClick: () => onOpen(repository.root),
     })),
     { separator: true },
-    { label: 'Browse...', onClick: onBrowse },
+    { label: strings.tabs.browse, onClick: onBrowse },
   ];
 }

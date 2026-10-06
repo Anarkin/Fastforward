@@ -1,5 +1,6 @@
 import { shortHash } from './hashes';
 import { workingTreeHash } from './protocol';
+import { strings } from './strings';
 
 export interface Comparison {
   readonly from: string;
@@ -57,9 +58,11 @@ export function compareWith(
 }
 
 export function sideLabel(side: string): string {
-  return side === workingTreeHash ? 'uncommitted' : shortHash(side);
+  return side === workingTreeHash
+    ? strings.commits.uncommittedSide
+    : shortHash(side);
 }
 
 export function comparisonLabel({ from, to }: Comparison): string {
-  return `${sideLabel(from)} → ${sideLabel(to)}`;
+  return strings.common.fromTo(sideLabel(from), sideLabel(to));
 }

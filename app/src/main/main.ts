@@ -16,9 +16,10 @@ import {
 import { autoUpdater } from 'electron-updater';
 import { findGit, minimumGitVersion, type GitSearch } from '../git/locate';
 import { errorLine, fileLog, type Log } from '../log';
-import { appName, appNameSwitch, titleBarHeight } from '../shared/titleBar';
+import { appNameSwitch, titleBarHeight } from '../shared/titleBar';
 import { keymap, pressed, pressOfInput } from '../shared/keymap';
 import type { ToHost, ToWebview } from '../shared/protocol';
+import { brand, strings } from '../shared/strings';
 import {
   migrateProfile,
   readDefaults,
@@ -73,10 +74,7 @@ if (userDataDir) {
 
 if (app.requestSingleInstanceLock()) {
   void exitOnFailure(app, start(), (error) =>
-    dialog.showErrorBox(
-      'Fastforward',
-      `Fastforward couldn't start.\n\n${errorLine(error)}`,
-    ),
+    dialog.showErrorBox(brand, strings.app.couldNotStart(errorLine(error))),
   );
 } else {
   app.quit();
@@ -90,7 +88,12 @@ async function start(): Promise<void> {
     development,
   );
   log.info(
-    `Fastforward ${app.getVersion()} on ${process.platform} ${process.arch}, Electron ${process.versions.electron}`,
+    strings.log.started(
+      app.getVersion(),
+      process.platform,
+      process.arch,
+      process.versions.electron,
+    ),
   );
   process.on('uncaughtException', (error) => log.error(error));
   process.on('unhandledRejection', (reason) => log.error(reason));
@@ -98,7 +101,7 @@ async function start(): Promise<void> {
   const profile = app.getPath('userData');
   const defaults = readDefaults(path.join(dist, 'settings.json'));
   if (migrateProfile(profile, defaults)) {
-    log.info('Moved the settings into settings.user.json and state.json');
+    log.info(strings.log.movedSettings);
   }
   const userSettingsFile = path.join(profile, 'settings.user.json');
   const defaultSettingsCopy = path.join(profile, 'settings.defaults.json');
@@ -116,7 +119,7 @@ async function start(): Promise<void> {
     const file = appFile(dist, request.url);
     return file
       ? net.fetch(pathToFileURL(file).toString())
-      : new Response('Not found', { status: 404 });
+      : new Response(strings.errors.notFound, { status: 404 });
   });
   setMenu();
   const window = createWindow(
@@ -184,13 +187,13 @@ async function start(): Promise<void> {
     app.quit();
     return;
   }
-  log.info(`Using git ${git.version} at ${git.path}`);
+  log.info(strings.log.usingGit(git.version, git.path));
   const storage = new Storage(userSettings, state);
   const view = new FastforwardView(log, git.path, storage, {
     chooseFolders: async () => {
       const chosen = await dialog.showOpenDialog(window, {
-        title: 'Open Repositories',
-        buttonLabel: 'Open',
+        title: strings.app.openRepositories,
+        buttonLabel: strings.app.open,
         properties: ['openDirectory', 'multiSelections'],
       });
       return chosen.canceled ? [] : chosen.filePaths;
@@ -212,14 +215,14 @@ async function start(): Promise<void> {
   });
   views.resolve(view);
   const applySettings = () => {
-    log.info('Settings changed, reloading');
+    log.info(strings.log.settingsChanged);
     for (const problem of userSettings.problems) {
       log.warn(problem);
     }
     view.reloadSettings();
     window.webContents.reloadIgnoringCache();
   };
-  tryWatching(log, 'the settings', () =>
+  tryWatching(log, strings.log.watchingSettingsFailed, () =>
     watchSettings(userSettingsFile, () => {
       if (userSettings.reload()) {
         applySettings();
@@ -233,7 +236,7 @@ async function start(): Promise<void> {
     } else {
       app.quit();
     }
-    tryWatching(log, 'the build', () =>
+    tryWatching(log, strings.log.watchingBuildFailed, () =>
       reloadOnRebuild(window, () => {
         try {
           if (
@@ -244,7 +247,7 @@ async function start(): Promise<void> {
             applySettings();
           }
         } catch (error) {
-          log.error('Reading the rebuilt default settings failed');
+          log.error(strings.log.rebuiltDefaultsFailed);
           log.error(error);
         }
       }),
@@ -269,13 +272,14 @@ function checkForUpdates(log: Log): void {
     return;
   }
   autoUpdater.logger = {
-    info: (message: unknown) => log.info(`Updater: ${String(message)}`),
-    warn: (message: unknown) => log.warn(`Updater: ${String(message)}`),
-    error: (message: unknown) => log.error(`Updater: ${String(message)}`),
+    info: (message: unknown) => log.info(strings.log.updater(String(message))),
+    warn: (message: unknown) => log.warn(strings.log.updater(String(message))),
+    error: (message: unknown) =>
+      log.error(strings.log.updater(String(message))),
     debug: () => {},
   };
   autoUpdater.checkForUpdatesAndNotify().catch((error: unknown) => {
-    log.error('Checking for updates failed');
+    log.error(strings.log.updateCheckFailed);
     log.error(error);
   });
 }
@@ -292,7 +296,7 @@ function createWindow(
     ...(bounds ?? size),
     minWidth: minimumWindowSize.width,
     minHeight: minimumHeight(workAreas),
-    title: 'Fastforward',
+    title: brand,
     show: false,
     backgroundColor: (nativeTheme.shouldUseDarkColors
       ? settings.colors.dark
@@ -309,7 +313,7 @@ function createWindow(
     webPreferences: {
       preload: path.join(dist, 'preload.js'),
       additionalArguments: [
-        appNameSwitch + appName(app.getVersion(), development),
+        appNameSwitch + strings.app.name(app.getVersion(), development),
       ],
       contextIsolation: true,
       sandbox: true,
@@ -391,15 +395,15 @@ async function reportMissingGit(
   const needed = minimumGitVersion.join('.');
   const detail =
     git.kind === 'missing'
-      ? `Install git ${needed} or later, make sure it is on the PATH, then start Fastforward again.`
-      : `Git ${git.version} at ${git.path} is too old. Install git ${needed} or later, then start Fastforward again.`;
+      ? strings.app.installGit(needed)
+      : strings.app.gitTooOld(git.version, git.path, needed);
   log.error(detail);
   const { response } = await dialog.showMessageBox({
     type: 'error',
-    title: 'Fastforward',
-    message: 'Fastforward needs git',
+    title: brand,
+    message: strings.app.needsGit,
     detail,
-    buttons: ['Download Git', 'Quit'],
+    buttons: [strings.app.downloadGit, strings.app.quit],
     defaultId: 0,
     cancelId: 1,
   });
@@ -411,15 +415,15 @@ async function reportMissingGit(
 async function openFile(log: Log, file: string): Promise<void> {
   const failure = await shell.openPath(file);
   if (failure) {
-    log.error(`Opening ${file} failed: ${failure}`);
+    log.error(strings.log.openingFileFailed(file, failure));
   }
 }
 
-function tryWatching(log: Log, what: string, watch: () => void): void {
+function tryWatching(log: Log, failed: string, watch: () => void): void {
   try {
     watch();
   } catch (error) {
-    log.error(`Watching ${what} failed`);
+    log.error(failed);
     log.error(error);
   }
 }
