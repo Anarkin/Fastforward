@@ -52,6 +52,7 @@ export const strings = {
     commits: 'Show or hide the commit list',
     move: 'Move in a list',
     page: 'Move a page, or to either end',
+    parent: 'Select the first parent',
     compare: 'Compare with the commit selected',
     navigate: 'Back or forward',
     column: 'Next or previous column',
@@ -86,7 +87,9 @@ export const strings = {
   },
   keys: {
     Command: '⌘',
+    Option: '⌥',
     Ctrl: 'Ctrl',
+    Alt: 'Alt',
     Shift: 'Shift',
     Tab: 'Tab',
     Enter: 'Enter',

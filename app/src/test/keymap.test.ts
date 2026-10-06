@@ -97,6 +97,14 @@ suite('Keymap', () => {
     }
   });
 
+  test('takes Alt only for a key bound with it', () => {
+    const down = press('ArrowDown');
+    const altDown = press('ArrowDown', { altKey: true });
+    assert.strictEqual(pressed(keymap.parent, altDown, false), true);
+    assert.strictEqual(pressed(keymap.parent, down, false), undefined);
+    assert.strictEqual(pressed(keymap.move, altDown, false), undefined);
+  });
+
   test('repeats a step held down, but not an action', () => {
     assert.strictEqual(
       pressed(keymap.change, press('j', { repeat: true }), false),
@@ -104,6 +112,14 @@ suite('Keymap', () => {
     );
     assert.strictEqual(
       pressed(keymap.commits, press('c', { repeat: true }), false),
+      undefined,
+    );
+    assert.strictEqual(
+      pressed(
+        keymap.parent,
+        press('ArrowDown', { altKey: true, repeat: true }),
+        false,
+      ),
       undefined,
     );
   });
@@ -114,6 +130,10 @@ suite('Keymap', () => {
     assert.strictEqual(pressed(keymap.shortcuts, press('F1'), true), true);
     assert.strictEqual(
       pressed(keymap.column, press('ArrowLeft'), true),
+      undefined,
+    );
+    assert.strictEqual(
+      pressed(keymap.parent, press('ArrowDown', { altKey: true }), true),
       undefined,
     );
     assert.strictEqual(pressed(keymap.column, press('Tab'), true), 'next');
@@ -188,7 +208,7 @@ suite('Keymap', () => {
     );
   });
 
-  test('names the keys as the keyboard does, Mod as Ctrl, or Cmd on macOS', () => {
+  test('names the keys as the keyboard does, Mod as Ctrl, or Cmd on macOS, and Alt as Option there', () => {
     assert.deepStrictEqual(keyLabels('Mod+Shift+I', false), [
       'Ctrl',
       'Shift',
@@ -197,6 +217,8 @@ suite('Keymap', () => {
     assert.deepStrictEqual(keyLabels('Mod+T', true), ['⌘', 'T']);
     assert.deepStrictEqual(keyLabels('Ctrl+PageDown', true), ['Ctrl', 'PgDn']);
     assert.deepStrictEqual(keyLabels('ArrowLeft', false), ['←']);
+    assert.deepStrictEqual(keyLabels('Alt+ArrowDown', false), ['Alt', '↓']);
+    assert.deepStrictEqual(keyLabels('Alt+ArrowDown', true), ['⌥', '↓']);
     assert.deepStrictEqual(keyLabels('MiddleClick', false), ['Middle-click']);
   });
 

@@ -15,6 +15,7 @@ import {
   navigationEntry,
   nearestSteps,
   newTabState,
+  parentOf,
   refsKeepHistory,
   replayOf,
   select,
@@ -183,6 +184,30 @@ suite('Tab state', () => {
     assert.strictEqual(tab.index, -1);
     select(tab, undefined);
     assert.deepStrictEqual([tab.hash, tab.index], [undefined, undefined]);
+  });
+
+  test('finds the first parent of the selected commit, past the commits its merge brought in', () => {
+    const tab = newTabState();
+    loadHistory(tab, history, { name: 'main', commit: 'c' }, []);
+    layOutHistory(tab, false, 'c');
+    const parent = (selection: string) => {
+      select(tab, selection);
+      return parentOf(tab);
+    };
+    assert.strictEqual(parent('c'), 'a');
+    assert.strictEqual(parent('b'), 'a');
+    assert.strictEqual(parent(workingTreeHash), 'c');
+    assert.strictEqual(parent('a'), undefined);
+    assert.strictEqual(parent(comparisonOf('c', 'b')), undefined);
+    layOutHistory(tab, true, 'c');
+    assert.strictEqual(parent('c'), 'a');
+    assert.strictEqual(parent('b'), undefined);
+  });
+
+  test('finds no parent of the working tree without a checked-out commit', () => {
+    const tab = laidOut(history);
+    select(tab, workingTreeHash);
+    assert.strictEqual(parentOf(tab), undefined);
   });
 
   test('selects a comparison at the position of the commit compared to', () => {

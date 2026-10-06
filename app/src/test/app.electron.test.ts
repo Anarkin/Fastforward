@@ -119,6 +119,15 @@ suite('App', function () {
     await page.locator('.commit.working-tree.empty.selected').waitFor();
   });
 
+  test('selects the first parent on Alt+Down', async () => {
+    await page.keyboard.press('h');
+    await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
+    await page.keyboard.press('Alt+ArrowDown');
+    await page.locator('.commit.selected', { hasText: 'first' }).waitFor();
+    await page.keyboard.press('Home');
+    await page.locator('.commit.working-tree.empty.selected').waitFor();
+  });
+
   test('says on U that the checked-out branch has no upstream to show', async () => {
     await page.keyboard.press('u');
     await page

@@ -203,6 +203,7 @@ export type TabMessage =
   | { readonly type: 'showEntireFile'; readonly entire: boolean }
   | { readonly type: 'loadTree'; readonly hash: string }
   | { readonly type: 'showUpstream' }
+  | { readonly type: 'showParent' }
   | {
       readonly type: 'loadFileDiff';
       readonly hash: string;

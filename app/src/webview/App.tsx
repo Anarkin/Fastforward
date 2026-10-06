@@ -324,6 +324,7 @@ export function App({ name, post: postToHost, listen }: Props) {
   };
   useBinding(keymap.head, () => jump(repository?.headCommit));
   useBinding(keymap.upstream, () => postTab({ type: 'showUpstream' }));
+  useBinding(keymap.parent, () => postTab({ type: 'showParent' }));
   const loadFileDiff = useCallback(
     (file: string) => {
       if (hash) {

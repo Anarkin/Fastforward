@@ -262,6 +262,16 @@ export function unselect(tab: TabState): void {
   tab.shown.diff = undefined;
 }
 
+export function parentOf(tab: TabState): string | undefined {
+  if (tab.hash === workingTreeHash) {
+    return tab.headCommit;
+  }
+  const entry = tab.index === undefined ? undefined : tab.history[tab.index];
+  return entry !== undefined && entry.hash === tab.hash
+    ? entry.parents[0]
+    : undefined;
+}
+
 function anchorOf(tab: TabState): ScrollTarget | undefined {
   if (!tab.anchor) {
     return undefined;

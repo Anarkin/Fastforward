@@ -11,8 +11,8 @@ export const groups: readonly Group[] = [
   'App',
 ];
 
-// Keys are written as Mod, Ctrl and Shift before the key KeyboardEvent names,
-// a letter in capitals; Mod is Cmd on macOS, while Ctrl stays Ctrl there
+// Keys are written as Mod, Ctrl, Alt and Shift before the key KeyboardEvent
+// names, a letter in capitals; Mod is Cmd on macOS, while Ctrl stays Ctrl there
 export interface Binding<Value> {
   readonly group: Group | undefined;
   readonly action: string;
@@ -69,6 +69,7 @@ export const keymap = {
     { PageUp: 'pageUp', PageDown: 'pageDown', Home: 'first', End: 'last' },
     { repeats: true },
   ),
+  parent: bind('History', strings.actions.parent, { 'Alt+ArrowDown': true }),
   compare: bind('History', strings.actions.compare, {
     'Mod+Click': true,
   }),
@@ -169,6 +170,7 @@ interface Combo {
   readonly key: string;
   readonly mod: boolean;
   readonly ctrl: boolean;
+  readonly alt: boolean;
   readonly shift: boolean;
 }
 
@@ -179,6 +181,7 @@ function comboOf(keys: string): Combo {
     key,
     mod: parts.includes('Mod'),
     ctrl: parts.includes('Ctrl'),
+    alt: parts.includes('Alt'),
     shift: parts.includes('Shift'),
   };
 }
@@ -228,7 +231,7 @@ function modifiersMatch(combo: Combo, held: Modifiers): boolean {
       : !held.ctrlKey && !held.metaKey;
   return (
     ctrl &&
-    !held.altKey &&
+    held.altKey === combo.alt &&
     (!shiftMatters(combo.key) || held.shiftKey === combo.shift)
   );
 }
@@ -335,6 +338,7 @@ export function keyLabels(keys: string, mac: boolean): string[] {
   return [
     ...(combo.mod ? [mac ? strings.keys.Command : strings.keys.Ctrl] : []),
     ...(combo.ctrl ? [strings.keys.Ctrl] : []),
+    ...(combo.alt ? [mac ? strings.keys.Option : strings.keys.Alt] : []),
     ...(combo.shift ? [strings.keys.Shift] : []),
     names[combo.key] ?? combo.key,
   ];

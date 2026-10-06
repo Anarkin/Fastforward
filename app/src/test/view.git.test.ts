@@ -1257,6 +1257,29 @@ suite('View', function () {
       assert.strictEqual(page.last('files')?.hash, fixture.a);
     });
 
+    test('selects the first parent of the selected commit as a step back can return from', async () => {
+      await connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: fixture.merge,
+        selection: 2,
+      });
+      page.clear();
+      await connection.receive({ type: 'showParent', root: repository.root });
+      assert.deepStrictEqual(page.last('reveal'), {
+        type: 'reveal',
+        hash: fixture.b,
+        index: 1,
+        selection: 2,
+      });
+      assert.strictEqual(page.last('files')?.hash, fixture.b);
+      await waitFor(
+        () => page.last('navigation')?.back.length === 1,
+        'the step from the merge',
+      );
+      assert.strictEqual(page.last('navigation')?.back[0]?.hash, fixture.merge);
+    });
+
     test('leaves steps to commits that are gone out of the history', async () => {
       const gone = (
         await repository.git(

@@ -84,6 +84,7 @@ import {
   navigationEntry,
   nearestSteps,
   newTabState,
+  parentOf,
   refsKeepHistory,
   replayOf,
   select,
@@ -546,6 +547,13 @@ export class FastforwardView {
       case 'showUpstream':
         await this.showUpstream(context);
         break;
+      case 'showParent': {
+        const parent = parentOf(context.tab);
+        if (parent !== undefined) {
+          await this.showCommit(context, parent);
+        }
+        break;
+      }
       case 'navigate':
         await this.navigate(context, message.direction, message.steps);
         break;
