@@ -1,6 +1,6 @@
 import { useEffect, useEffectEvent } from 'react';
 
-const shortcutKeys = ['c', 'h', 's', 'u', 'w'] as const;
+export const shortcutKeys = ['c', 'h', 's', 'u', 'w'] as const;
 
 export type ShortcutKey = (typeof shortcutKeys)[number];
 
@@ -71,6 +71,20 @@ export function tabStep(
     return undefined;
   }
   return event.shiftKey ? -1 : 1;
+}
+
+export function isShortcutsKey(
+  event: Pick<
+    KeyboardEvent,
+    'key' | 'ctrlKey' | 'metaKey' | 'altKey' | 'shiftKey' | 'repeat' | 'target'
+  >,
+): boolean {
+  if (event.ctrlKey || event.metaKey || event.altKey || event.repeat) {
+    return false;
+  }
+  return event.key === 'F1'
+    ? !event.shiftKey
+    : event.key === '?' && !typing(event.target);
 }
 
 export function worktreeStep(

@@ -126,6 +126,18 @@ suite('App', function () {
       .waitFor();
   });
 
+  test('shows the shortcuts on F1 or ?, closing them on Esc or F1', async () => {
+    const shortcuts = page.getByRole('dialog', { name: 'Shortcuts' });
+    await page.keyboard.press('F1');
+    await shortcuts.waitFor();
+    await page.keyboard.press('Escape');
+    await shortcuts.waitFor({ state: 'detached' });
+    await page.keyboard.press('?');
+    await shortcuts.waitFor();
+    await page.keyboard.press('F1');
+    await shortcuts.waitFor({ state: 'detached' });
+  });
+
   test('works a menu with the keys, giving the keyboard back when it closes', async () => {
     await page
       .locator('.commit', { hasText: 'first' })

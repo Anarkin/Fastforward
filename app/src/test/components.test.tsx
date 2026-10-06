@@ -1439,7 +1439,7 @@ suite('Tab bar', () => {
     assert.deepStrictEqual(done, ['b']);
   });
 
-  test('offers sorting the tabs and opening the settings files in its menu', () => {
+  test('offers sorting the tabs, opening the settings files and showing the shortcuts in its menu', () => {
     const picked: string[] = [];
     const nav = renderedBy(TabBar, {
       tabs: [],
@@ -1451,6 +1451,7 @@ suite('Tab bar', () => {
       onSort: () => picked.push('sort'),
       onOpenSettings: () => picked.push('settings'),
       onOpenDefaultSettings: () => picked.push('defaults'),
+      onShowShortcuts: () => picked.push('shortcuts'),
       onLog: noop,
     });
     assert.ok(isValidElement<{ children: React.ReactElement[] }>(nav));
@@ -1461,12 +1462,22 @@ suite('Tab bar', () => {
     );
     assert.deepStrictEqual(
       items.map((item) => item.label),
-      ['Sort A-Z', 'Open Default Settings', 'Open User Settings'],
+      [
+        'Sort A-Z',
+        'Open Default Settings',
+        'Open User Settings',
+        'Keyboard Shortcuts',
+      ],
     );
     for (const item of items) {
       item.onClick?.();
     }
-    assert.deepStrictEqual(picked, ['sort', 'defaults', 'settings']);
+    assert.deepStrictEqual(picked, [
+      'sort',
+      'defaults',
+      'settings',
+      'shortcuts',
+    ]);
   });
 
   test('stops the middle button from autoscrolling, so a middle click closes the tab', () => {
@@ -1481,6 +1492,7 @@ suite('Tab bar', () => {
       onSort: noop,
       onOpenSettings: noop,
       onOpenDefaultSettings: noop,
+      onShowShortcuts: noop,
       onLog: noop,
     });
     assert.ok(isValidElement<{ children: React.ReactElement[] }>(nav));
@@ -1522,6 +1534,7 @@ suite('Tab bar', () => {
       onSort: noop,
       onOpenSettings: noop,
       onOpenDefaultSettings: noop,
+      onShowShortcuts: noop,
       onLog: noop,
     });
     assert.ok(isValidElement<{ children: React.ReactElement[] }>(nav));

@@ -982,6 +982,23 @@ suite('Style', () => {
     );
   });
 
+  test('gives the keys of every shortcut group the same share of the width, wrapping a long list of them, so the actions line up', () => {
+    assert.ok(
+      declarationsOf('.shortcuts-list').includes(
+        'grid-template-columns: 48% 1fr;',
+      ),
+    );
+    assert.ok(declarationsOf('.shortcut-keys').includes('flex-wrap: wrap;'));
+  });
+
+  test('draws the shortcuts over the notices and menus, but under the overlay scrollbars', () => {
+    const shortcuts = level('.shortcuts-popup');
+    for (const below of ['.menu', '.notices']) {
+      assert.ok(shortcuts > level(below), below);
+    }
+    assert.ok(level('.overlay-scrollbar') > shortcuts);
+  });
+
   test('draws the active column edge over the search popup that covers the column, but under menus and notices', () => {
     const edge = level(
       ".columns[data-active-column='commits'] > .column:nth-child(1)::after",

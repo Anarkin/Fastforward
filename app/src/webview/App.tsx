@@ -38,7 +38,8 @@ import {
   type ColumnName,
 } from './activeColumn';
 import { Commits, settling } from './commitList';
-import { useShortcuts } from './shortcuts';
+import { isShortcutsKey, useShortcuts, useWindowKeyDown } from './shortcuts';
+import { ShortcutsPopup } from './shortcutsPopup';
 import {
   ContextMenu,
   OpenContextMenu,
@@ -138,6 +139,14 @@ export function App({ name, post: postToHost, listen }: Props) {
   const [bookmarks, setBookmarks] = useState<readonly Bookmark[]>([]);
   const [menu, setMenu] = useState<OpenMenu>();
   const closeMenu = useCallback(() => setMenu(undefined), []);
+  const [shortcutsShown, setShortcutsShown] = useState(false);
+  const closeShortcuts = useCallback(() => setShortcutsShown(false), []);
+  useWindowKeyDown((event) => {
+    if (isShortcutsKey(event)) {
+      event.preventDefault();
+      setShortcutsShown((shown) => !shown);
+    }
+  });
   const saveColumnWidths = useCallback(
     (widths: readonly number[]) => post({ type: 'setColumnWidths', widths }),
     [post],
@@ -506,6 +515,7 @@ export function App({ name, post: postToHost, listen }: Props) {
               onOpenDefaultSettings={() =>
                 post({ type: 'openDefaultSettings' })
               }
+              onShowShortcuts={() => setShortcutsShown(true)}
               onLog={log}
             />
             <WorktreeBar
@@ -515,6 +525,12 @@ export function App({ name, post: postToHost, listen }: Props) {
               onPreload={(root) => post({ type: 'preloadWorktree', root })}
             />
             {menu && <ContextMenu menu={menu} onClose={closeMenu} />}
+            {shortcutsShown && (
+              <ShortcutsPopup
+                mac={document.documentElement.dataset.platform === 'darwin'}
+                onClose={closeShortcuts}
+              />
+            )}
             <Notices notices={notices} onDismiss={dismissNotice} />
             {tabs === undefined ? null : tabs.length === 0 ? (
               <div className="empty-state">

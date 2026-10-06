@@ -4,6 +4,7 @@ import {
   handleShortcut,
   isFindShortcut,
   isNewTabShortcut,
+  isShortcutsKey,
   shortcutOf,
   tabStep,
   worktreeStep,
@@ -32,6 +33,11 @@ const press = (
   key: string,
   extra: Partial<Parameters<typeof shortcutOf>[0]> = {},
 ) => shortcutOf(keyEvent(key, extra));
+
+const shortcuts = (
+  key: string,
+  extra: Partial<Parameters<typeof shortcutOf>[0]> = {},
+) => isShortcutsKey(keyEvent(key, extra));
 
 suite('Keyboard shortcuts', () => {
   test('matches a key pressed on its own', () => {
@@ -82,6 +88,18 @@ suite('Keyboard shortcuts', () => {
     assert.strictEqual(press('c', { shiftKey: true }), undefined);
     assert.strictEqual(press('c', { repeat: true }), undefined);
     assert.strictEqual(press('c', { defaultPrevented: true }), undefined);
+  });
+
+  test('shows the shortcuts on F1, even in a field, or on ? outside one', () => {
+    assert.ok(shortcuts('F1'));
+    assert.ok(shortcuts('F1', { target: element('INPUT') }));
+    assert.ok(shortcuts('?', { shiftKey: true }));
+    assert.ok(!shortcuts('?', { shiftKey: true, target: element('INPUT') }));
+    assert.ok(!shortcuts('F1', { ctrlKey: true }));
+    assert.ok(!shortcuts('F1', { shiftKey: true }));
+    assert.ok(!shortcuts('?', { altKey: true }));
+    assert.ok(!shortcuts('F1', { repeat: true }));
+    assert.ok(!shortcuts('F2'));
   });
 
   test('leaves keys typed into a field to the field', () => {

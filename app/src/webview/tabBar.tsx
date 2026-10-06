@@ -65,6 +65,7 @@ export function TabBar({
   onSort,
   onOpenSettings,
   onOpenDefaultSettings,
+  onShowShortcuts,
   onLog,
 }: {
   tabs: readonly TabInfo[];
@@ -76,6 +77,7 @@ export function TabBar({
   onSort: () => void;
   onOpenSettings: () => void;
   onOpenDefaultSettings: () => void;
+  onShowShortcuts: () => void;
   onLog: (message: string) => void;
 }) {
   const bar = useRef<HTMLElement>(null);
@@ -160,6 +162,8 @@ export function TabBar({
           { separator: true },
           { label: 'Open Default Settings', onClick: onOpenDefaultSettings },
           { label: 'Open User Settings', onClick: onOpenSettings },
+          { separator: true },
+          { label: 'Keyboard Shortcuts', onClick: onShowShortcuts },
         ]}
       />
     </nav>
