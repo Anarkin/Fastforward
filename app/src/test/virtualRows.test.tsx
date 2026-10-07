@@ -1,9 +1,12 @@
 import * as assert from 'node:assert';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { uniformHeight } from '../webview/diffView';
 import {
   pinnedRows,
   revealAgain,
   revealOffset,
   scrollTarget,
+  VirtualRows,
 } from '../webview/virtualRows';
 import { countingReads } from './fixtures';
 
@@ -26,6 +29,48 @@ suite('Virtual rows', () => {
     assert.ok(revealAgain({ key: 'b', rows: tree }, { key: 'a', rows: tree }));
     assert.ok(
       !revealAgain({ key: 'b', rows: files }, { key: undefined, rows: tree }),
+    );
+  });
+
+  test('draws only the rows in view of a long list, not every row', () => {
+    const drawn: number[] = [];
+    const keys = Array.from({ length: 10_000 }, (_, index) => `row:${index}`);
+    renderToStaticMarkup(
+      <VirtualRows
+        rows={{
+          count: keys.length,
+          keyOf: (index) => keys[index],
+          indexOf: (key) => keys.indexOf(key),
+        }}
+        renderRow={(index) => {
+          drawn.push(index);
+          return keys[index];
+        }}
+        selectedKey={undefined}
+        initialRect={{ width: 400, height: 240 }}
+      />,
+    );
+    const inView = Array.from({ length: 10 }, (_, index) => index);
+    assert.deepStrictEqual(drawn.slice(0, inView.length), inView);
+    assert.ok(drawn.length < 100, `${drawn.length} rows drawn`);
+  });
+
+  test('sizes the rows not drawn yet at the fixed height of a row, so the list is as long as it will be', () => {
+    const html = renderToStaticMarkup(
+      <VirtualRows
+        rows={{
+          count: 1000,
+          keyOf: (index) => `row:${index}`,
+          indexOf: () => -1,
+        }}
+        renderRow={() => null}
+        selectedKey={undefined}
+      />,
+    );
+    const height = 1000 * uniformHeight;
+    assert.match(
+      html,
+      new RegExp(`class="virtual-spacer" style="height:${height}px"`),
     );
   });
 });

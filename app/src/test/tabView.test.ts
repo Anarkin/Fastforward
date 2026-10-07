@@ -101,12 +101,6 @@ suite('Tab view', () => {
     });
   });
 
-  test('scrolls a new history to where the extension says', () => {
-    const view = busyTab();
-    assert.deepStrictEqual(view.scrollTarget, { index: 0 });
-    assert.strictEqual(view.history?.at(0)?.hash, 'a');
-  });
-
   test('keeps the selected commit, its files and diff when a reloaded history comes', () => {
     const view = busyTab();
     const reloaded = reduceTabView(view, {

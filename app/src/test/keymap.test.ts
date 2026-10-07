@@ -21,6 +21,13 @@ const press = (key: string, extra: Partial<KeyPress> = {}): KeyPress => ({
   ...extra,
 });
 
+const worktreeStep = (extra: Partial<KeyPress>) =>
+  pressed(
+    keymap.worktree,
+    press('PageDown', { ctrlKey: true, ...extra }),
+    false,
+  );
+
 suite('Keymap', () => {
   test('takes a letter typed, with Caps Lock on, or on the key of another layout', () => {
     assert.strictEqual(pressed(keymap.head, press('h'), false), true);
@@ -34,6 +41,55 @@ suite('Keymap', () => {
       true,
     );
     assert.strictEqual(pressed(keymap.head, press('x'), false), undefined);
+    assert.strictEqual(
+      pressed(
+        keymap.openRepository,
+        press('е', { code: 'KeyT', ctrlKey: true }),
+        false,
+      ),
+      true,
+    );
+  });
+
+  test('takes the letter typed, not the key pressed, on another Latin layout', () => {
+    const dvorak = press('u', { code: 'KeyF', ctrlKey: true });
+    assert.strictEqual(pressed(keymap.find, dvorak, false), undefined);
+    assert.strictEqual(
+      pressed(keymap.find, { ...dvorak, key: 'f', code: 'KeyY' }, false),
+      true,
+    );
+    assert.strictEqual(
+      pressed(
+        keymap.openRepository,
+        { ...dvorak, key: 'y', code: 'KeyT' },
+        false,
+      ),
+      undefined,
+    );
+    assert.strictEqual(
+      pressed(
+        keymap.openRepository,
+        { ...dvorak, key: 't', code: 'KeyK' },
+        false,
+      ),
+      true,
+    );
+    assert.strictEqual(
+      pressed(keymap.change, press('h', { code: 'KeyJ' }), false),
+      undefined,
+    );
+    assert.strictEqual(
+      pressed(keymap.commits, press('j', { code: 'KeyC' }), false),
+      undefined,
+    );
+    assert.strictEqual(
+      pressed(keymap.change, press('j', { code: 'KeyC' }), false),
+      1,
+    );
+    assert.strictEqual(
+      pressed(keymap.change, press('л', { code: 'KeyK' }), false),
+      -1,
+    );
   });
 
   test('takes Mod as Ctrl or Cmd, but Ctrl only as Ctrl', () => {
@@ -80,6 +136,26 @@ suite('Keymap', () => {
       pressed(keymap.shortcuts, press('F1', { shiftKey: true }), false),
       undefined,
     );
+  });
+
+  test('takes no key bound on its own with Ctrl or Cmd held', () => {
+    for (const extra of [{ ctrlKey: true }, { metaKey: true }]) {
+      assert.strictEqual(
+        pressed(keymap.commits, press('c', extra), false),
+        undefined,
+        JSON.stringify(extra),
+      );
+    }
+  });
+
+  test('goes to the next worktree on Ctrl+PageDown, and the previous on Ctrl+PageUp', () => {
+    assert.strictEqual(worktreeStep({}), 1);
+    assert.strictEqual(worktreeStep({ key: 'PageUp' }), -1);
+    assert.strictEqual(worktreeStep({ ctrlKey: false }), undefined);
+    assert.strictEqual(worktreeStep({ shiftKey: true }), undefined);
+    assert.strictEqual(worktreeStep({ altKey: true }), undefined);
+    assert.strictEqual(worktreeStep({ metaKey: true }), undefined);
+    assert.strictEqual(worktreeStep({ key: 'Tab' }), undefined);
   });
 
   test('takes no key with Alt, nor one handled already or composing text', () => {

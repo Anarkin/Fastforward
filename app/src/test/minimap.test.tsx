@@ -7,6 +7,7 @@ import {
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
   grabPointer,
+  matchMarks,
   Minimap,
   minimapMarks,
   minimapScrollTop,
@@ -144,5 +145,20 @@ suite('Minimap', () => {
     assert.match(html, /class="minimap-mark added" style="top:25%;height:50%"/);
     assert.match(html, /class="minimap-viewport" style="top:25%;height:50%"/);
     assert.doesNotMatch(minimap(400), /minimap-viewport/);
+  });
+
+  test('ticks the minimap where the matched rows are, once for each run of them', () => {
+    const rows = [
+      { height: 10, change: undefined },
+      { height: 30, change: undefined },
+      { height: 40, change: 'added' as const },
+      { height: 10, change: undefined },
+      { height: 10, change: undefined },
+    ];
+    assert.deepStrictEqual(matchMarks(rows, new Set([0, 2, 3])), [
+      { kind: 'match', top: 0, height: 0.1 },
+      { kind: 'match', top: 0.4, height: 0.5 },
+    ]);
+    assert.deepStrictEqual(matchMarks([], new Set([0])), []);
   });
 });

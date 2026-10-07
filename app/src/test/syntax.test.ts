@@ -1,7 +1,5 @@
 import * as assert from 'node:assert';
-import { renderToStaticMarkup } from 'react-dom/server';
 import { parsePatch } from '../webview/diff';
-import { marked } from '../webview/diffView';
 import {
   languageOf,
   loadLanguages,
@@ -814,29 +812,5 @@ suite('Syntax', () => {
       'new:b.ts',
     ]);
     assert.deepStrictEqual(farRequests(new Set([2])), ['old:c.ts', 'new:c.ts']);
-  });
-
-  test('draws the syntax colors inside the changed words, under the search matches', () => {
-    assert.strictEqual(
-      renderToStaticMarkup(
-        <>
-          {marked(
-            'let sum = 1',
-            [
-              { start: 0, end: 3, kind: 'keyword' },
-              { start: 10, end: 11, kind: 'number' },
-            ],
-            [{ start: 0, end: 7 }],
-            'word-added',
-            [{ start: 2, end: 5 }],
-            undefined,
-          )}
-        </>,
-      ),
-      '<span class="word-added"><span class="syntax-keyword">le</span></span>' +
-        '<span class="word-added"><span class="syntax-keyword"><mark class="find-match ">t</mark></span></span>' +
-        '<span class="word-added"><mark class="find-match "> s</mark></span>' +
-        '<span class="word-added">um</span> = <span class="syntax-number">1</span>',
-    );
   });
 });

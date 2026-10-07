@@ -46,12 +46,16 @@ suite('Watching a repository', function () {
     });
   };
 
-  const keepWriting = (file: string, what: string) => {
+  const keepWriting = (
+    file: string,
+    what: string,
+    until = () => changes.includes(false),
+  ) => {
     let lines = '';
     return waitFor(() => {
       lines += 'line\n';
-      fs.writeFileSync(path.join(repository.root, file), lines);
-      return changes.includes(false);
+      fs.writeFileSync(path.resolve(repository.root, file), lines);
+      return until();
     }, what);
   };
 
@@ -114,12 +118,11 @@ suite('Watching a repository', function () {
         });
       },
     });
-    let lines = '';
-    await waitFor(() => {
-      lines += 'line\n';
-      fs.writeFileSync(path.join(repository.root, 'file.txt'), lines);
-      return answers.length > 0;
-    }, 'the changed file to be checked');
+    await keepWriting(
+      'file.txt',
+      'the changed file to be checked',
+      () => answers.length > 0,
+    );
     let done = false;
     const stopping = stopped.dispose().then(() => {
       done = true;
@@ -156,12 +159,9 @@ suite('Watching a repository', function () {
       },
     );
     try {
-      let lines = '';
-      await waitFor(() => {
-        lines += 'line\n';
-        fs.writeFileSync(built, lines);
-        return checked.includes(built);
-      }, 'the ignored file to be checked');
+      await keepWriting(built, 'the ignored file to be checked', () =>
+        checked.includes(built),
+      );
       await new Promise((resolve) => setImmediate(resolve));
       assert.ok(!seen.includes(false));
       fs.writeFileSync(path.join(repository.root, 'seen.txt'), 'seen\n');
@@ -191,12 +191,7 @@ suite('Watching a repository', function () {
       },
     );
     try {
-      let lines = '';
-      await waitFor(() => {
-        lines += 'line\n';
-        fs.writeFileSync(file, lines);
-        return seen.includes(false);
-      }, 'the changed file');
+      await keepWriting(file, 'the changed file', () => seen.includes(false));
       assert.deepStrictEqual(errors, []);
     } finally {
       await watching.dispose();

@@ -114,3 +114,15 @@ export function renderedBy<P>(
 export function defaultSettings(): Settings {
   return readDefaults(join(__dirname, '../../src/settings.json'));
 }
+
+export const noop = () => {};
+
+export function tagWith(
+  html: string,
+  text: string,
+  ...classes: string[]
+): string {
+  const found = tagsWith(html, ...classes).filter((tag) => tag.includes(text));
+  assert.strictEqual(found.length, 1, `${classes.join(' ')} with ${text}`);
+  return found[0];
+}

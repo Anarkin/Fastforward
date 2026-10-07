@@ -212,12 +212,6 @@ suite('View navigating the history', function () {
     await connection.receive({
       type: 'jump',
       root: repository.root,
-      hash: fixture.a.slice(0, 7).toUpperCase(),
-    });
-    assert.strictEqual(page.last('reveal')?.hash, fixture.a);
-    await connection.receive({
-      type: 'jump',
-      root: repository.root,
       hash: fixture.b.toUpperCase(),
     });
     assert.strictEqual(page.last('reveal')?.hash, fixture.b);

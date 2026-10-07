@@ -105,6 +105,7 @@ export async function openView(
   ready: boolean | 'unwatched' = true,
   host: Host = new FakeHost(),
   timer?: Timer,
+  gitPath?: string,
 ): Promise<OpenView> {
   const store = new FakeStore();
   await store.update(tabsKey, tabs);
@@ -112,7 +113,7 @@ export async function openView(
   const settings = viewSettings();
   const view = new FastforwardView(
     log,
-    await installedGit(),
+    gitPath ?? (await installedGit()),
     new Storage(settings, store),
     host,
     timer,
@@ -134,8 +135,9 @@ export async function withView(
   run: (view: OpenView) => Promise<void>,
   ready: boolean | 'unwatched' = true,
   host?: Host,
+  gitPath?: string,
 ): Promise<void> {
-  const view = await openView(log, tabs, ready, host);
+  const view = await openView(log, tabs, ready, host, undefined, gitPath);
   try {
     await run(view);
   } finally {

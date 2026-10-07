@@ -1,8 +1,11 @@
 import * as assert from 'node:assert';
 import {
   areaColumns,
+  codePadding,
   hiddenChanges,
   inlineArea,
+  lineWidth,
+  numberWidth,
   revealChange,
   revealScroll,
   shownSideways,
@@ -19,6 +22,14 @@ suite('Overflow', () => {
     assert.strictEqual(textColumn('ab\tx', 3), 4);
     assert.strictEqual(textColumn('abcd\tx', 5), 8);
     assert.strictEqual(textColumn('a\t\tx', 3), 8);
+  });
+
+  test('widens a line by its line numbers, the padding on either side and its columns rounded up to a pixel', () => {
+    assert.strictEqual(
+      lineWidth(13, 2, 7.5),
+      2 * numberWidth + 2 * codePadding + 98,
+    );
+    assert.strictEqual(lineWidth(3, 1, 8), numberWidth + 2 * codePadding + 24);
   });
 
   test('shows the columns between the scrolled edge and the room left before the far edge', () => {

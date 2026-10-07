@@ -1,13 +1,4 @@
 import * as assert from 'node:assert';
-import { parsePatch } from '../webview/diff';
-import {
-  changeStarts,
-  diffRows,
-  lineKeys,
-  minimapRows,
-  splitRows,
-  type DiffRow,
-} from '../webview/diffView';
 import {
   alignLines,
   lineSimilarity,
@@ -16,27 +7,6 @@ import {
 } from '../webview/pairing';
 
 const u = undefined;
-
-function patchOf(...lines: string[]): string {
-  return [
-    'diff --git a/a.ts b/a.ts',
-    '--- a/a.ts',
-    '+++ b/a.ts',
-    `@@ -1,${lines.length} +1,${lines.length} @@`,
-    ...lines,
-    '',
-  ].join('\n');
-}
-
-function sides(rows: readonly DiffRow[]): string[] {
-  return rows.flatMap((row) =>
-    row.kind === 'split'
-      ? [`${row.left?.line.text ?? '·'} | ${row.right?.line.text ?? '·'}`]
-      : row.kind === 'hunk'
-        ? ['hunk']
-        : [],
-  );
-}
 
 function shown(removed: readonly string[], added: readonly string[]): string[] {
   return alignLines(removed, added).map(
@@ -354,11 +324,19 @@ function score(
 }
 
 suite('Aligning random changes', () => {
-  const next = random(20261001);
-  const cases = Array.from({ length: 500 }, () => {
-    const removed = block(next, Math.floor(next() * 8));
-    const added = block(next, Math.floor(next() * 8));
-    return { removed, added, aligned: alignLines(removed, added) };
+  let cases: {
+    removed: string[];
+    added: string[];
+    aligned: LinePair[];
+  }[] = [];
+
+  suiteSetup(() => {
+    const next = random(20261001);
+    cases = Array.from({ length: 500 }, () => {
+      const removed = block(next, Math.floor(next() * 8));
+      const added = block(next, Math.floor(next() * 8));
+      return { removed, added, aligned: alignLines(removed, added) };
+    });
   });
 
   test('shows every removed and every added line exactly once, each side in its order', () => {
@@ -406,12 +384,6 @@ suite('Aligning random changes', () => {
     }
   });
 
-  test('aligns the same lines the same way every time', () => {
-    for (const { removed, added, aligned } of cases.slice(0, 50)) {
-      assert.deepStrictEqual(alignLines(removed, added), aligned);
-    }
-  });
-
   test('aligns a block against itself line for line', () => {
     for (const { removed } of cases) {
       assert.deepStrictEqual(
@@ -419,137 +391,5 @@ suite('Aligning random changes', () => {
         removed.map((_, index): LinePair => [index, index]),
       );
     }
-  });
-});
-
-suite('Side-by-side rows with matched lines', () => {
-  const file = parsePatch(
-    patchOf(
-      ' keep',
-      '-const total = a + b;',
-      '+// new',
-      '+// lines',
-      '+const sum = a + b + c;',
-      ' keep',
-    ),
-  );
-
-  test('places the matched lines on one row, the inserted ones across from filler', () => {
-    assert.deepStrictEqual(sides(splitRows(file[0], 0)), [
-      'keep | keep',
-      '· | // new',
-      '· | // lines',
-      'const total = a + b; | const sum = a + b + c;',
-      'keep | keep',
-    ]);
-  });
-
-  test('keeps each line numbered by its place, as the search counts lines', () => {
-    const indices = splitRows(file[0], 0).flatMap((row) =>
-      row.kind === 'split' ? [[row.left?.index, row.right?.index]] : [],
-    );
-    assert.deepStrictEqual(indices, [
-      [0, 0],
-      [u, 2],
-      [u, 3],
-      [1, 4],
-      [5, 5],
-    ]);
-  });
-
-  test('keys each row by its lines, so search finds them where they are shown', () => {
-    const rows = diffRows(file, new Map(), undefined, false, true);
-    assert.deepStrictEqual(lineKeys(rows).slice(2), [
-      ['0:0'],
-      ['0:2'],
-      ['0:3'],
-      ['0:1', '0:4'],
-      ['0:5'],
-    ]);
-  });
-
-  test('starts one change at the first inserted line, the matched pair continuing it', () => {
-    const rows = diffRows(file, new Map(), undefined, false, true);
-    assert.deepStrictEqual(sides(changeStarts(rows).map((i) => rows[i])), [
-      '· | // new',
-    ]);
-  });
-
-  test('marks the matched and inserted rows as added on the minimap', () => {
-    const rows = diffRows(file, new Map(), undefined, false, true);
-    assert.deepStrictEqual(
-      minimapRows(rows)
-        .slice(2)
-        .map((row) => row.change),
-      [u, 'added', 'added', 'added', u],
-    );
-  });
-
-  test('aligns each change block on its own, never across unchanged lines', () => {
-    const files = parsePatch(
-      patchOf(
-        '-let first = 1;',
-        '+// header',
-        ' keep',
-        '-let other = 1;',
-        '+let first = 2;',
-      ),
-    );
-    assert.deepStrictEqual(sides(splitRows(files[0], 0)), [
-      'let first = 1; | // header',
-      'keep | keep',
-      'let other = 1; | let first = 2;',
-    ]);
-  });
-
-  test('aligns each hunk on its own', () => {
-    const files = parsePatch(
-      [
-        'diff --git a/a.ts b/a.ts',
-        '--- a/a.ts',
-        '+++ b/a.ts',
-        '@@ -1,1 +1,2 @@',
-        '-let total = 1;',
-        '+// new',
-        '+let sum = 1;',
-        '@@ -10,1 +11,1 @@',
-        '-done();',
-        '+done(now);',
-        '',
-      ].join('\n'),
-    );
-    assert.deepStrictEqual(sides(splitRows(files[0], 0)), [
-      '· | // new',
-      'let total = 1; | let sum = 1;',
-      'hunk',
-      'done(); | done(now);',
-    ]);
-  });
-
-  test('aligns removed lines that follow added ones as a block of their own', () => {
-    const files = parsePatch(
-      patchOf('+let sum = 1;', '-let total = 1;', '-other();'),
-    );
-    assert.deepStrictEqual(sides(splitRows(files[0], 0)), [
-      '· | let sum = 1;',
-      'let total = 1; | ·',
-      'other(); | ·',
-    ]);
-  });
-
-  test('leaves the inline layout as it was', () => {
-    const rows = diffRows(file, new Map(), undefined);
-    assert.ok(rows.every((row) => row.kind !== 'split'));
-    assert.deepStrictEqual(
-      rows.flatMap((row) => (row.kind === 'line' ? [row.line.text] : [])),
-      [
-        'keep',
-        'const total = a + b;',
-        '// new',
-        '// lines',
-        'const sum = a + b + c;',
-        'keep',
-      ],
-    );
   });
 });

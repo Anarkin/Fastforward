@@ -8,7 +8,6 @@ import {
   diffRows,
   findRangesByLine,
   lineKeys,
-  marked,
 } from '../webview/diffView';
 import {
   findMatches,
@@ -19,9 +18,6 @@ import {
   unsearchedFiles,
   wholeLines,
 } from '../webview/find';
-import { matchMarks } from '../webview/minimap';
-import { keymap } from '../shared/keymap';
-import { keyPressed } from '../webview/shortcuts';
 
 const patch = [
   'diff --git a/a.ts b/a.ts',
@@ -286,32 +282,6 @@ suite('Find in diff', () => {
     assert.strictEqual(findRangesByLine(many).get('0:0')?.length, 50_000);
   });
 
-  test('marks the matches in a line, the current one apart', () => {
-    const html = renderToStaticMarkup(
-      <>
-        {marked(
-          'find a find',
-          [],
-          [],
-          'word-added',
-          [
-            { start: 0, end: 4 },
-            { start: 7, end: 11 },
-          ],
-          { start: 7, end: 11 },
-        )}
-      </>,
-    );
-    assert.strictEqual(
-      html,
-      '<mark class="find-match ">find</mark> a <mark class="find-match current">find</mark>',
-    );
-    assert.strictEqual(
-      marked('plain', [], [], 'word-added', [], undefined),
-      'plain',
-    );
-  });
-
   test('marks the changes on the minimap only when asked, as for a file shown entire, but the matches always', () => {
     const rows = diffRows(parsePatch(patch), new Map(), undefined);
     const keys = lineKeys(rows);
@@ -328,41 +298,6 @@ suite('Find in diff', () => {
       'added',
       'match',
     ]);
-  });
-
-  test('ticks the minimap where the matched rows are, once for each run of them', () => {
-    const rows = [
-      { height: 10, change: undefined },
-      { height: 30, change: undefined },
-      { height: 40, change: 'added' as const },
-      { height: 10, change: undefined },
-      { height: 10, change: undefined },
-    ];
-    assert.deepStrictEqual(matchMarks(rows, new Set([0, 2, 3])), [
-      { kind: 'match', top: 0, height: 0.1 },
-      { kind: 'match', top: 0.4, height: 0.5 },
-    ]);
-    assert.deepStrictEqual(matchMarks([], new Set([0])), []);
-  });
-
-  test('opens on Ctrl+F, or Cmd+F, whatever the keyboard layout', () => {
-    const key = {
-      key: 'f',
-      code: 'KeyF',
-      ctrlKey: true,
-      metaKey: false,
-      shiftKey: false,
-      altKey: false,
-      target: null,
-    };
-    const isFindShortcut = (event: typeof key) =>
-      keyPressed(keymap.find, event) === true;
-    assert.ok(isFindShortcut(key));
-    assert.ok(isFindShortcut({ ...key, ctrlKey: false, metaKey: true }));
-    assert.ok(isFindShortcut({ ...key, key: 'ф' }));
-    assert.ok(!isFindShortcut({ ...key, ctrlKey: false }));
-    assert.ok(!isFindShortcut({ ...key, shiftKey: true }));
-    assert.ok(!isFindShortcut({ ...key, key: 'g', code: 'KeyG' }));
   });
 
   test('steps with Enter and Shift+Enter, and clears on Esc before letting go', () => {

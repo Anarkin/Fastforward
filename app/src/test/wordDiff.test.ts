@@ -1,7 +1,5 @@
 import * as assert from 'node:assert';
-import { renderToStaticMarkup } from 'react-dom/server';
 import { parsePatch, type DiffLine } from '../webview/diff';
-import { marked } from '../webview/diffView';
 import type { FindRange } from '../webview/find';
 import {
   blockWordRanges,
@@ -194,53 +192,5 @@ suite('Word diff', () => {
     assert.deepStrictEqual(wholeText('x'), [{ start: 0, end: 1 }]);
     assert.strictEqual(wholeText('   '), undefined);
     assert.strictEqual(wholeText(''), undefined);
-  });
-
-  test('draws the changed words inside the line, with search matches over them', () => {
-    const html = renderToStaticMarkup(
-      <>
-        {marked(
-          'let sum = 1',
-          [],
-          [{ start: 4, end: 7 }],
-          'word-added',
-          [{ start: 5, end: 9 }],
-          { start: 5, end: 9 },
-        )}
-      </>,
-    );
-    assert.strictEqual(
-      html,
-      'let <span class="word-added">s</span><span class="word-added"><mark class="find-match current">um</mark></span><mark class="find-match current"> =</mark> 1',
-    );
-    assert.strictEqual(
-      marked('plain', [], [], 'word-added', [], undefined),
-      'plain',
-    );
-  });
-
-  test('marks a line dense with colors, changed words and matches piece by piece in one pass', () => {
-    const pairs = 20_000;
-    const text = 'ab'.repeat(pairs);
-    const every = (offset: number) =>
-      Array.from({ length: pairs }, (_, pair) => ({
-        start: 2 * pair + offset,
-        end: 2 * pair + offset + 1,
-      }));
-    const colors = every(0).map((range) => ({
-      ...range,
-      kind: 'keyword' as const,
-    }));
-    const words = every(1);
-    const matches = every(1);
-    const started = performance.now();
-    const drawn = marked(text, colors, words, 'word-added', matches, undefined);
-    assert.ok(performance.now() - started < 1000);
-    assert.ok(Array.isArray(drawn));
-    assert.strictEqual(drawn.length, 2 * pairs);
-    assert.strictEqual(
-      renderToStaticMarkup(<>{drawn.slice(-2)}</>),
-      '<span class="syntax-keyword">a</span><span class="word-added"><mark class="find-match ">b</mark></span>',
-    );
   });
 });

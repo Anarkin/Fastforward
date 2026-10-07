@@ -1,10 +1,15 @@
 import * as assert from 'node:assert';
+import { isValidElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import {
   claimsMenuKey,
   listenForDismiss,
+  MenuItems,
   nextMenuItem,
+  openedSubmenu,
   submenuPlacement,
 } from '../webview/contextMenu';
+import { noop, renderedBy, tagsWith } from './fixtures';
 
 const none = {
   code: '',
@@ -192,5 +197,93 @@ suite('Submenu placement', () => {
       submenuPlacement({ top: 400, right: 700, bottom: 1100 }, window),
       { flipped: false, up: 400 },
     );
+  });
+});
+
+suite('Menu items', () => {
+  test('keys items apart that have the same label', () => {
+    const items = renderedBy(MenuItems, {
+      items: [
+        { label: 'v1', onClick: noop },
+        { separator: true },
+        { label: 'v1', onClick: noop },
+      ],
+      onClose: noop,
+    });
+    assert.ok(isValidElement<{ children: React.ReactElement[] }>(items));
+    const keys = items.props.children.map((item) => item.key);
+    assert.strictEqual(new Set(keys).size, 3);
+  });
+
+  test('runs a plain item and closes the menu, but keeps it open on a submenu', () => {
+    const log: string[] = [];
+    const items = renderedBy(MenuItems, {
+      items: [
+        { label: 'a', onClick: () => log.push('a') },
+        { label: 'sub', submenu: [{ label: 'x', onClick: noop }] },
+      ],
+      onClose: () => log.push('close'),
+    });
+    assert.ok(isValidElement<{ children: React.ReactElement[] }>(items));
+    const [plain, sub] = items.props.children.map((entry) => {
+      assert.ok(isValidElement<{ children: React.ReactNode[] }>(entry));
+      const button = entry.props.children[0];
+      assert.ok(
+        isValidElement<{ onClick: (event: { detail: number }) => void }>(
+          button,
+        ),
+      );
+      return button;
+    });
+    plain.props.onClick({ detail: 1 });
+    assert.deepStrictEqual(log, ['close', 'a']);
+    sub.props.onClick({ detail: 1 });
+    assert.deepStrictEqual(log, ['close', 'a']);
+  });
+
+  test('opens a submenu in place of running it, focusing its first item only on a click from the keyboard', () => {
+    const submenu = [{ label: 'x', onClick: noop }];
+    assert.deepStrictEqual(openedSubmenu({ submenu }, 0), {
+      focusFirst: true,
+    });
+    assert.deepStrictEqual(openedSubmenu({ submenu }, 1), {
+      focusFirst: false,
+    });
+    assert.strictEqual(openedSubmenu({}, 0), undefined);
+  });
+
+  test('marks the items that are on with a check', () => {
+    const html = renderToStaticMarkup(
+      <MenuItems
+        items={[
+          { label: 'main', checked: true, onClick: noop },
+          { label: 'Collapse', checked: false, onClick: noop },
+        ]}
+        onClose={noop}
+      />,
+    );
+    assert.match(
+      html,
+      /role="menuitemcheckbox" aria-checked="true"><span class="menu-check">✓<\/span>main/,
+    );
+    assert.match(
+      html,
+      /role="menuitemcheckbox" aria-checked="false"><span class="menu-check"><\/span>Collapse/,
+    );
+  });
+
+  test('separates groups and greys out what cannot run', () => {
+    const html = renderToStaticMarkup(
+      <MenuItems
+        items={[
+          { label: 'Copy', onClick: noop },
+          { separator: true },
+          { label: 'Checkout', disabled: true, onClick: noop },
+        ]}
+        onClose={noop}
+      />,
+    );
+    assert.strictEqual(tagsWith(html, 'menu-separator').length, 1);
+    assert.match(html, /role="menuitem"[^>]*disabled=""[^>]*>Checkout/);
   });
 });

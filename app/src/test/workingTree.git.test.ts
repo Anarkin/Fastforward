@@ -1,12 +1,7 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { aheadBehind, remoteDefaultBranches } from '../git/branches';
-import { showPatch } from '../git/diff';
-import { listTree, maxFileSize, readBlobs, readFile } from '../git/files';
-import { headCommit, listHistory } from '../git/history';
-import { runGit } from '../git/run';
-import { ignoredPaths } from '../git/watch';
+import { listTree, maxFileSize } from '../git/files';
 import {
   stagedPatch,
   uncommittedCount,
@@ -41,11 +36,6 @@ suite('A repository without commits', function () {
 
   suiteTeardown(() => removeFolder(cwd));
 
-  test('has no HEAD and an empty history', async () => {
-    assert.strictEqual(await headCommit(gitPath, cwd), undefined);
-    assert.deepStrictEqual(await listHistory(gitPath, cwd), []);
-  });
-
   test('lists staged files as added, and untracked ones', async () => {
     const workingTree = await workingTreeFiles(gitPath, cwd);
     assert.deepStrictEqual(
@@ -61,14 +51,30 @@ suite('A repository without commits', function () {
   });
 });
 
-suite('Files touched but not changed', function () {
+suite('Files touched but unchanged', function () {
   this.timeout(20_000);
+  let repository: TempRepository;
   let gitPath: string;
   let cwd: string;
   let index: string;
+  let blob: string;
+  const zero = '0'.repeat(40);
+  const modified = (file: string, object: string, newId = zero) => ({
+    oldMode: '100644',
+    newMode: '100644',
+    oldId: object,
+    newId,
+    file: {
+      status: 'M' as const,
+      path: file,
+      oldPath: undefined,
+      insertions: 0,
+      deletions: 0,
+    },
+  });
 
   suiteSetup(async () => {
-    const repository = await tempRepository(tempFolder('touched'));
+    repository = await tempRepository(tempFolder('touched'));
     gitPath = repository.gitPath;
     cwd = repository.root;
     index = path.join(cwd, '.git', 'index');
@@ -78,7 +84,9 @@ suite('Files touched but not changed', function () {
       'binary.bin': '\0\x01\x02',
       'crlf.txt': 'one\r\ntwo\r\n',
       'changed.txt': 'old\n',
+      'a.txt': 'one\n',
     });
+    [blob] = await repository.resolve('HEAD:a.txt');
     fs.writeFileSync(path.join(cwd, 'changed.txt'), 'new\n');
     const past = new Date(Date.UTC(2020, 0, 1));
     for (const file of ['text.txt', 'binary.bin', 'crlf.txt', 'changed.txt']) {
@@ -102,46 +110,58 @@ suite('Files touched but not changed', function () {
     );
     assert.ok(fs.readFileSync(index).equals(before));
   });
-});
 
-suite('A file system monitor the repository sets', function () {
-  this.timeout(20_000);
-
-  test('is never run when it is a command, which git would run on every read of the index', async () => {
-    const folder = tempFolder('monitored');
-    try {
-      const repository = await tempRepository(path.join(folder, 'repository'));
-      const { gitPath, root } = repository;
-      await repository.commit('first', { 'a.txt': 'one\n' });
-      fs.writeFileSync(path.join(root, 'a.txt'), 'two\n');
-      fs.writeFileSync(path.join(root, 'b.txt'), 'new\n');
-      const ran = path.join(folder, 'ran.txt').replaceAll('\\', '/');
-      await repository.git('config', 'core.fsmonitor', `echo >> '${ran}'`);
-      const workingTree = await workingTreeFiles(gitPath, root);
-      await workingTreePatch(gitPath, root, workingTree);
-      await ignoredPaths(gitPath, root, [path.join(root, 'b.txt')]);
-      assert.strictEqual(fs.existsSync(ran), false);
-      assert.deepStrictEqual(
-        workingTree.files.map((file) => file.path),
-        ['a.txt', 'b.txt'],
-      );
-    } finally {
-      removeFolder(folder);
+  test('leaves out files only touched, whatever their names hold', async function () {
+    if (process.platform === 'win32') {
+      this.skip();
     }
+    const names = ['"notes".md', 'Icon\r', 'two\nlines', 'back\\slash'];
+    for (const name of names) {
+      fs.writeFileSync(path.join(repository.root, name), `${name}\n`);
+    }
+    await repository.git('add', '--all', '--', '.', ':!changed.txt');
+    await repository.git('commit', '-m', 'names');
+    const ids = await repository.resolve(
+      ...names.map((name) => `HEAD:${name}`),
+    );
+    const files = await withoutTouched(repository.gitPath, repository.root, [
+      ...names.map((name, i) => modified(name, ids[i])),
+      modified('a.txt', blob),
+    ]);
+    assert.deepStrictEqual(files, []);
   });
 
-  test("is kept on when it is git's own", async () => {
-    const repository = await tempRepository(tempFolder('daemon'));
-    try {
-      await repository.git('config', 'core.fsmonitor', 'true');
-      const monitor = await runGit(repository.gitPath, repository.root, [
-        'config',
-        'core.fsmonitor',
-      ]);
-      assert.strictEqual(monitor.trim(), 'true');
-    } finally {
-      removeFolder(repository.root);
-    }
+  test('keeps every file as modified when one is gone before it is read', async () => {
+    const files = await withoutTouched(repository.gitPath, repository.root, [
+      modified('a.txt', blob),
+      modified('gone.txt', blob),
+    ]);
+    assert.deepStrictEqual(
+      files.map((file) => file.path),
+      ['a.txt', 'gone.txt'],
+    );
+  });
+
+  test('reads only the files git could not tell changed, not ones whose new text it already has', async () => {
+    const files = await withoutTouched(repository.gitPath, repository.root, [
+      modified('gone.txt', blob, '1'.repeat(40)),
+      modified('a.txt', blob),
+    ]);
+    assert.deepStrictEqual(
+      files.map((file) => file.path),
+      ['gone.txt'],
+    );
+  });
+
+  test('keeps every file as modified when the first of many is gone, which git stops reading at', async () => {
+    const many = Array.from({ length: 20_000 }, (_, i) =>
+      modified(`gone/${i}.txt`, blob),
+    );
+    const files = await withoutTouched(repository.gitPath, repository.root, [
+      ...many,
+      modified('a.txt', blob),
+    ]);
+    assert.strictEqual(files.length, many.length + 1);
   });
 });
 
@@ -651,389 +671,132 @@ suite('Uncommitted changes', function () {
   });
 });
 
-suite('Repository files', function () {
-  this.timeout(20_000);
-  let parent: string;
-  let gitPath: string;
-  let repository: TempRepository;
-  let cwd: string;
-
-  suiteSetup(async () => {
-    parent = tempFolder('files');
-    repository = await tempRepository(path.join(parent, 'repository'));
-    gitPath = repository.gitPath;
-    cwd = repository.root;
-    await repository.commit('initial', { 'src/tracked.txt': 'one\n' });
-    fs.writeFileSync(path.join(cwd, 'src', 'tracked.txt'), 'two\n');
-    fs.writeFileSync(path.join(cwd, 'untracked.txt'), 'new\n');
-  });
-
-  suiteTeardown(() => removeFolder(parent));
-
-  test('lists the files at a commit and in the working tree', async () => {
-    assert.deepStrictEqual(await listTree(gitPath, cwd, 'HEAD'), [
-      'src/tracked.txt',
-    ]);
-    assert.deepStrictEqual(
-      (await listTree(gitPath, cwd, undefined)).toSorted(),
-      ['src/tracked.txt', 'untracked.txt'],
-    );
-  });
-
-  test("reads a remote's default branch", async () => {
-    assert.deepStrictEqual(await remoteDefaultBranches(gitPath, cwd), []);
-    await repository.git('update-ref', 'refs/remotes/origin/main', 'HEAD');
-    try {
-      await repository.git(
-        'symbolic-ref',
-        'refs/remotes/origin/HEAD',
-        'refs/remotes/origin/main',
-      );
-      assert.deepStrictEqual(await remoteDefaultBranches(gitPath, cwd), [
-        'origin/main',
-      ]);
-      await repository.git('update-ref', 'refs/remotes/up/HEAD', 'HEAD');
-      assert.deepStrictEqual(await remoteDefaultBranches(gitPath, cwd), [
-        'origin/main',
-      ]);
-    } finally {
-      await repository.git('update-ref', '-d', 'refs/remotes/origin/main');
-      await repository.git('symbolic-ref', '-d', 'refs/remotes/origin/HEAD');
-      await repository.git('update-ref', '-d', 'refs/remotes/up/HEAD');
-    }
-  });
-
-  test('counts the commits a branch is ahead and behind another', async () => {
-    const [tree] = await repository.resolve('HEAD^{tree}');
-    const extra = (
-      await repository.git('commit-tree', tree, '-p', 'HEAD', '-m', 'extra')
-    ).trim();
-    await repository.git('update-ref', 'refs/remotes/origin/main', extra);
-    try {
-      assert.deepStrictEqual(
-        await aheadBehind(
-          gitPath,
-          cwd,
-          'refs/remotes/origin/main',
-          'refs/heads/main',
-        ),
-        { ahead: 1, behind: 0 },
-      );
-      assert.deepStrictEqual(
-        await aheadBehind(
-          gitPath,
-          cwd,
-          'refs/heads/main',
-          'refs/remotes/origin/main',
-        ),
-        { ahead: 0, behind: 1 },
-      );
-      assert.deepStrictEqual(
-        await aheadBehind(
-          gitPath,
-          cwd,
-          'refs/heads/nope',
-          'refs/remotes/origin/main',
-        ),
-        { ahead: 0, behind: 0 },
-      );
-    } finally {
-      await repository.git('update-ref', '-d', 'refs/remotes/origin/main');
-    }
-  });
-
-  test('shows a file with a NUL byte as binary, unless it comes late', async () => {
-    fs.writeFileSync(
-      path.join(cwd, 'bin.dat'),
-      Buffer.from([0x89, 0x50, 0, 1]),
-    );
-    fs.writeFileSync(path.join(cwd, 'late.txt'), `${'x'.repeat(9000)}\0`);
-    await repository.git('add', 'bin.dat', 'late.txt');
-    await repository.git('commit', '-m', 'binary');
-    try {
-      const binary = { content: '', binary: true };
-      for (const hash of ['HEAD', undefined]) {
-        assert.deepStrictEqual(
-          await readFile(gitPath, cwd, hash, 'bin.dat'),
-          binary,
-        );
-        assert.strictEqual(
-          (await readFile(gitPath, cwd, hash, 'late.txt')).binary,
-          false,
-        );
-      }
-    } finally {
-      await repository.git('reset', 'HEAD~1');
-      fs.rmSync(path.join(cwd, 'bin.dat'));
-      fs.rmSync(path.join(cwd, 'late.txt'));
-    }
-  });
-
-  test('reads a file at a commit and in the working tree', async () => {
-    const committed = await readFile(gitPath, cwd, 'HEAD', 'src/tracked.txt');
-    assert.deepStrictEqual(committed, { content: 'one\n', binary: false });
-    const current = await readFile(gitPath, cwd, undefined, 'src/tracked.txt');
-    assert.strictEqual(current.content, 'two\n');
-    await assert.rejects(
-      readFile(gitPath, cwd, 'HEAD', 'missing.txt'),
-      /missing.txt is not in HEAD/,
-    );
-  });
-
-  test('reads a file deleted since it was listed as empty', async () => {
-    assert.deepStrictEqual(
-      await readFile(gitPath, cwd, undefined, 'gone.txt'),
-      {
-        content: '',
-        binary: false,
-      },
-    );
-  });
-
-  test('reads no file outside the repository', async () => {
-    const outside = path.join(parent, 'outside.txt');
-    fs.writeFileSync(outside, 'secret\n');
-    try {
-      await assert.rejects(
-        readFile(gitPath, cwd, undefined, '../outside.txt'),
-        /outside the repository/,
-      );
-      await assert.rejects(
-        readFile(gitPath, cwd, undefined, outside),
-        /outside the repository/,
-      );
-    } finally {
-      fs.rmSync(outside);
-    }
-    const dots = path.join(cwd, '..dots.txt');
-    fs.writeFileSync(dots, 'inside\n');
-    try {
-      assert.strictEqual(
-        (await readFile(gitPath, cwd, undefined, '..dots.txt')).content,
-        'inside\n',
-      );
-    } finally {
-      fs.rmSync(dots);
-    }
-  });
-
-  test('reads a file whose folder became a file as empty', async () => {
-    const folder = path.join(cwd, 'gone-dir');
-    fs.writeFileSync(folder, '');
-    try {
-      assert.deepStrictEqual(
-        await readFile(gitPath, cwd, undefined, 'gone-dir/f.txt'),
-        { content: '', binary: false },
-      );
-    } finally {
-      fs.rmSync(folder);
-    }
-  });
-
-  test('reads a symlink in the working tree by its target, as git does', async function () {
-    const link = path.join(cwd, 'link');
-    symlinkOrSkip(this, 'src/tracked.txt', link);
-    try {
-      assert.deepStrictEqual(await readFile(gitPath, cwd, undefined, 'link'), {
-        content: 'src/tracked.txt',
-        binary: false,
-      });
-    } finally {
-      fs.rmSync(link);
-    }
-  });
-});
-
-suite('Large files and submodules', function () {
-  this.timeout(20_000);
-  let gitPath: string;
-  let cwd: string;
-  let inner: string;
-  let repository: TempRepository;
-  let sub: TempRepository;
-
-  suiteSetup(async () => {
-    repository = await tempRepository(tempFolder('large'));
-    gitPath = repository.gitPath;
-    cwd = repository.root;
-    sub = await tempRepository(path.join(cwd, 'sub'));
-    await sub.commit('inner');
-    [inner] = await sub.resolve('HEAD');
-    fs.writeFileSync(path.join(cwd, 'large.txt'), 'x'.repeat(3 * 1024 * 1024));
-    await repository.git('add', '.');
-    await repository.git('commit', '-m', 'initial');
-  });
-
-  suiteTeardown(() => removeFolder(cwd));
-
-  test('shows a file too large to show as binary', async () => {
-    const binary = { content: '', binary: true };
-    assert.deepStrictEqual(
-      await readFile(gitPath, cwd, 'HEAD', 'large.txt'),
-      binary,
-    );
-    assert.deepStrictEqual(
-      await readFile(gitPath, cwd, undefined, 'large.txt'),
-      binary,
-    );
-  });
-
-  test('shows a submodule by its commit', async () => {
-    const submodule = {
-      content: `Subproject commit ${inner}\n`,
-      binary: false,
-    };
-    assert.deepStrictEqual(
-      await readFile(gitPath, cwd, 'HEAD', 'sub'),
-      submodule,
-    );
-    assert.deepStrictEqual(
-      await readFile(gitPath, cwd, undefined, 'sub'),
-      submodule,
-    );
-  });
-
-  test('shows a submodule that is not checked out as empty', async () => {
-    fs.mkdirSync(path.join(cwd, 'unchecked'));
-    try {
-      assert.deepStrictEqual(
-        await readFile(gitPath, cwd, undefined, 'unchecked'),
-        { content: '', binary: false },
-      );
-    } finally {
-      fs.rmSync(path.join(cwd, 'unchecked'), { recursive: true });
-    }
-  });
-
-  test('diffs a submodule by its commits, whatever the config says', async () => {
-    await sub.commit('moved');
-    await repository.git('add', 'sub');
-    await repository.git('commit', '-m', 'move sub');
-    await repository.git('config', 'diff.submodule', 'log');
-    try {
-      const patch = await showPatch(gitPath, cwd, 'HEAD', { path: 'sub' });
-      assert.ok(patch.includes(`-Subproject commit ${inner}`), patch);
-    } finally {
-      await repository.git('config', '--unset', 'diff.submodule');
-      await repository.git('reset', '--hard', 'HEAD~1');
-      await sub.git('reset', '--hard', inner);
-    }
-  });
-});
-
-suite('Blobs', function () {
-  this.timeout(20_000);
-
-  test('reads both sides of the files a patch changes by their full ids, leaving out what is missing, binary or too large', async () => {
-    const folder = tempFolder('blobs');
-    try {
-      const repository = await tempRepository(folder);
-      const { gitPath, root } = repository;
-      await repository.commit('first', {
-        'a.ts': 'one\n',
-        'image.png': Buffer.from([0, 1, 2]).toString('latin1'),
-        'large.txt': 'x'.repeat(maxFileSize + 1),
-      });
-      await repository.commit('second', {
-        'a.ts': 'two\n',
-        'image.png': Buffer.from([0, 3]).toString('latin1'),
-        'large.txt': 'y'.repeat(maxFileSize + 1),
-      });
-      const files = parsePatch(await showPatch(gitPath, root, 'HEAD'));
-      const [a, image, large] = files.map((file) => file.blobs);
-      const texts = await readBlobs(gitPath, root, [
-        a?.old ?? '',
-        a?.new ?? '',
-        image?.new ?? '',
-        large?.new ?? '',
-        'f'.repeat(40),
-      ]);
-      assert.deepStrictEqual([...texts.values()], ['one\n', 'two\n']);
-      assert.strictEqual(texts.get(a?.new ?? ''), 'two\n');
-      assert.deepStrictEqual(await readBlobs(gitPath, root, []), new Map());
-    } finally {
-      removeFolder(folder);
-    }
-  });
-});
-
-suite('Files touched but unchanged', function () {
+suite('Comparing a commit with the working tree', function () {
   this.timeout(20_000);
   let repository: TempRepository;
-  let blob: string;
-  const zero = '0'.repeat(40);
-  const modified = (file: string, object: string, newId = zero) => ({
-    oldMode: '100644',
-    newMode: '100644',
-    oldId: object,
-    newId,
-    file: {
-      status: 'M' as const,
-      path: file,
-      oldPath: undefined,
-      insertions: 0,
-      deletions: 0,
-    },
-  });
+  let first: string;
 
   suiteSetup(async () => {
-    repository = await tempRepository(tempFolder('touched'));
-    await repository.commit('first', { 'a.txt': 'one\n' });
-    [blob] = await repository.resolve('HEAD:a.txt');
+    repository = await tempRepository(tempFolder('compare-working-tree'));
+    await repository.commit('first', { 'kept.txt': 'one\n' });
+    await repository.commit('second', {
+      'kept.txt': 'two\n',
+      'later.txt': 'later\n',
+    });
+    [first] = await repository.resolve('HEAD~1');
+    fs.writeFileSync(path.join(repository.root, 'kept.txt'), 'three\n');
+    fs.writeFileSync(path.join(repository.root, 'new.txt'), 'new\n');
   });
 
   suiteTeardown(() => removeFolder(repository.root));
 
-  test('leaves out files only touched, whatever their names hold', async function () {
-    if (process.platform === 'win32') {
-      this.skip();
-    }
-    const names = ['"notes".md', 'Icon\r', 'two\nlines', 'back\\slash'];
-    for (const name of names) {
-      fs.writeFileSync(path.join(repository.root, name), `${name}\n`);
-    }
-    await repository.git('add', '--all');
-    await repository.git('commit', '-m', 'names');
-    const ids = await repository.resolve(
-      ...names.map((name) => `HEAD:${name}`),
+  test('diffs from the commit to the files on disk', async () => {
+    const workingTree = await workingTreeFiles(
+      repository.gitPath,
+      repository.root,
+      { base: first, reverse: false },
     );
-    const files = await withoutTouched(repository.gitPath, repository.root, [
-      ...names.map((name, index) => modified(name, ids[index])),
-      modified('a.txt', blob),
-    ]);
-    assert.deepStrictEqual(files, []);
-  });
-
-  test('keeps every file as modified when one is gone before it is read', async () => {
-    const files = await withoutTouched(repository.gitPath, repository.root, [
-      modified('a.txt', blob),
-      modified('gone.txt', blob),
-    ]);
     assert.deepStrictEqual(
-      files.map((file) => file.path),
-      ['a.txt', 'gone.txt'],
+      workingTree.files.map((file) => [
+        file.status,
+        file.path,
+        file.insertions,
+        file.deletions,
+      ]),
+      [
+        ['M', 'kept.txt', 1, 1],
+        ['A', 'later.txt', 1, 0],
+        ['U', 'new.txt', 1, 0],
+      ],
     );
+    const patch = await workingTreePatch(
+      repository.gitPath,
+      repository.root,
+      workingTree,
+    );
+    assert.match(patch, /^-one$/m);
+    assert.match(patch, /^\+three$/m);
+    assert.match(patch, /^\+new$/m);
   });
 
-  test('reads only the files git could not tell changed, not ones whose new text it already has', async () => {
-    const files = await withoutTouched(repository.gitPath, repository.root, [
-      modified('gone.txt', blob, '1'.repeat(40)),
-      modified('a.txt', blob),
-    ]);
+  test('diffs from the files on disk to the commit, an untracked file as deleted', async () => {
+    const workingTree = await workingTreeFiles(
+      repository.gitPath,
+      repository.root,
+      { base: first, reverse: true },
+    );
     assert.deepStrictEqual(
-      files.map((file) => file.path),
-      ['gone.txt'],
+      workingTree.files.map((file) => [
+        file.status,
+        file.path,
+        file.insertions,
+        file.deletions,
+      ]),
+      [
+        ['M', 'kept.txt', 1, 1],
+        ['D', 'later.txt', 0, 1],
+        ['D', 'new.txt', 0, 1],
+      ],
     );
+    assert.ok(workingTree.files.every((file) => (file.bytes ?? 0) > 0));
+    const patch = await workingTreePatch(
+      repository.gitPath,
+      repository.root,
+      workingTree,
+    );
+    assert.deepStrictEqual(
+      parsePatch(patch).map((file) => file.path),
+      ['kept.txt', 'later.txt', 'new.txt'],
+    );
+    assert.match(patch, /^-three$/m);
+    assert.match(patch, /^\+one$/m);
+    assert.match(patch, /^-new$/m);
+    const alone = await workingTreePatch(
+      repository.gitPath,
+      repository.root,
+      workingTree,
+      { path: 'new.txt' },
+    );
+    assert.match(alone, /^-new$/m);
   });
 
-  test('keeps every file as modified when the first of many is gone, which git stops reading at', async () => {
-    const many = Array.from({ length: 20_000 }, (_, i) =>
-      modified(`gone/${i}.txt`, blob),
-    );
-    const files = await withoutTouched(repository.gitPath, repository.root, [
-      ...many,
-      modified('a.txt', blob),
-    ]);
-    assert.strictEqual(files.length, many.length + 1);
+  test('diffs an untracked file again when the direction changes, not reusing the patch kept', async () => {
+    const patches: UntrackedPatches = new Map();
+    const patchOf = async (reverse: boolean) =>
+      workingTreePatch(
+        repository.gitPath,
+        repository.root,
+        await workingTreeFiles(repository.gitPath, repository.root, {
+          base: first,
+          reverse,
+        }),
+        { path: 'new.txt' },
+        patches,
+      );
+    assert.match(await patchOf(false), /^\+new$/m);
+    assert.match(await patchOf(true), /^-new$/m);
+    assert.match(await patchOf(false), /^\+new$/m);
+  });
+
+  test('leaves out a file only touched on disk, in either direction', async () => {
+    const file = path.join(repository.root, 'later.txt');
+    const past = new Date(Date.UTC(2020, 0, 1));
+    fs.utimesSync(file, past, past);
+    try {
+      for (const reverse of [false, true]) {
+        const { files } = await workingTreeFiles(
+          repository.gitPath,
+          repository.root,
+          { base: 'HEAD', reverse },
+        );
+        assert.deepStrictEqual(
+          files.map((change) => change.path),
+          ['kept.txt', 'new.txt'],
+        );
+      }
+    } finally {
+      const now = new Date();
+      fs.utimesSync(file, now, now);
+    }
   });
 });

@@ -584,21 +584,6 @@ suite('View of one repository', function () {
       }
     });
 
-    test('expands and collapses a merge', async () => {
-      await connection.receive({
-        type: 'toggleMerge',
-        root: repository.root,
-        hash: fixture.merge,
-      });
-      assert.strictEqual(page.last('commits')?.total, 5);
-      await connection.receive({
-        type: 'toggleMerge',
-        root: repository.root,
-        hash: fixture.merge,
-      });
-      assert.strictEqual(page.last('commits')?.total, 3);
-    });
-
     test('lets the keys go on from the merge a collapse hides the selected commit in, leaving it selected', async () => {
       const toggle = () =>
         connection.receive({
@@ -641,12 +626,17 @@ suite('View of one repository', function () {
     });
 
     test('forgets merges toggled by hand when the merge setting changes', async () => {
-      await connection.receive({
-        type: 'toggleMerge',
-        root: repository.root,
-        hash: fixture.merge,
-      });
+      const toggle = () =>
+        connection.receive({
+          type: 'toggleMerge',
+          root: repository.root,
+          hash: fixture.merge,
+        });
+      await toggle();
       assert.strictEqual(page.last('commits')?.total, 5);
+      await toggle();
+      assert.strictEqual(page.last('commits')?.total, 3);
+      await toggle();
       await connection.receive({ type: 'setCollapseMerges', collapse: false });
       assert.strictEqual(page.last('commits')?.total, 5);
     });

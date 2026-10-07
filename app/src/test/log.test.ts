@@ -13,7 +13,7 @@ suite('Log file', () => {
 
   teardown(() => removeFolder(folder));
 
-  test('writes each line with its time and level, errors with their stack', () => {
+  test('writes each line to disk as soon as it is logged, with its time and level, errors with their stack, as an alert holding the main process or a crash can come next', () => {
     const file = path.join(folder, 'logs', 'Fastforward.log');
     const log = fileLog(file);
     log.info('started');
@@ -25,12 +25,6 @@ suite('Log file', () => {
     assert.match(lines, /\[warn\] careful$/m);
     assert.match(lines, /\[error\] Error: broke\n\s+at /);
     assert.match(lines, /\[error\] plain$/m);
-  });
-
-  test('has each line on disk as soon as it is logged, as an alert holding the main process or a crash can come next', () => {
-    const file = path.join(folder, 'Fastforward.log');
-    fileLog(file).error('Install git');
-    assert.match(fs.readFileSync(file, 'utf8'), /\[error\] Install git$/m);
   });
 
   test('keeps the log of the run before as the previous log', () => {

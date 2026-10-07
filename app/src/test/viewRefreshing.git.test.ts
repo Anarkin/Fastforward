@@ -631,18 +631,6 @@ suite('View refreshing one repository', function () {
       }
     });
 
-    test('reloads when a branch is created', async () => {
-      page.clear();
-      await repository.git('branch', 'created', 'main~1');
-      try {
-        await connection.refresh();
-        const refs = page.last('repository')?.refs.map((ref) => ref.name);
-        assert.ok(refs?.includes('created'));
-      } finally {
-        await repository.git('branch', '-D', 'created');
-      }
-    });
-
     test('lists the history again only for refs that change its commits, whatever solo leaves out', async () => {
       let listed = 0;
       stubMethod(fastforward, 'sendCommits', async (original, ...args) => {
@@ -681,6 +669,9 @@ suite('View refreshing one repository', function () {
         assert.strictEqual(
           (await refreshed(['branch', 'side', side]))?.total,
           4,
+        );
+        assert.ok(
+          page.last('repository')?.refs.some((ref) => ref.name === 'side'),
         );
         assert.strictEqual(listed, 1);
         assert.strictEqual(

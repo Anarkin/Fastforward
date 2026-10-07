@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { parseFilePatch, parsePatch, type DiffFile } from '../webview/diff';
 import {
   collapseThreshold,
@@ -9,12 +10,19 @@ import {
 } from '../shared/protocol';
 import { diffSelection, withLargeFiles } from '../webview/diffColumn';
 import {
+  changeScrollTop,
+  changeStarts,
   codeProps,
   diffRowKey,
   diffRows,
+  diffScrollLeft,
+  diffScrollTop,
+  FileHeader,
+  HunkDivider,
   largeDiffText,
   largeFilesToLoad,
   lineKeys,
+  marked,
   rowHeight,
   rowMeasures,
   anchoredScrollTop,
@@ -26,7 +34,6 @@ import {
   widestColumns,
   type DiffRow,
 } from '../webview/diffView';
-import { codePadding, lineWidth, numberWidth } from '../webview/overflow';
 import { fileChange } from './fixtures';
 
 function patch(path: string, added: number): string {
@@ -322,25 +329,6 @@ suite('Large files in a commit diff', () => {
     assert.strictEqual(loaded[1].hunks[0].lines.length, 3);
   });
 
-  test('starts the requests of a diff over in another tab, though it shows the same commit and file', () => {
-    assert.notStrictEqual(
-      diffSelection('/a', 'working-tree', undefined),
-      diffSelection('/b', 'working-tree', undefined),
-    );
-    assert.strictEqual(
-      diffSelection('/a', 'working-tree', 'a.ts'),
-      diffSelection('/a', 'working-tree', 'a.ts'),
-    );
-    assert.notStrictEqual(
-      diffSelection('/a', 'working-tree', 'a.ts', 'staged'),
-      diffSelection('/a', 'working-tree', 'a.ts', 'unstaged'),
-    );
-    assert.notStrictEqual(
-      diffSelection('/a', 'working-tree', 'a.ts'),
-      diffSelection('/a', 'working-tree', undefined),
-    );
-  });
-
   test('defers each large file, and every file once the diff would grow past its budget', () => {
     const fitting = Array.from(
       { length: Math.floor(patchLineBudget / collapseThreshold) },
@@ -598,6 +586,25 @@ suite('Large files fetched', () => {
       [],
     );
   });
+
+  test('starts the requests of a diff over in another tab, though it shows the same commit and file', () => {
+    assert.notStrictEqual(
+      diffSelection('/a', 'working-tree', undefined),
+      diffSelection('/b', 'working-tree', undefined),
+    );
+    assert.strictEqual(
+      diffSelection('/a', 'working-tree', 'a.ts'),
+      diffSelection('/a', 'working-tree', 'a.ts'),
+    );
+    assert.notStrictEqual(
+      diffSelection('/a', 'working-tree', 'a.ts', 'staged'),
+      diffSelection('/a', 'working-tree', 'a.ts', 'unstaged'),
+    );
+    assert.notStrictEqual(
+      diffSelection('/a', 'working-tree', 'a.ts'),
+      diffSelection('/a', 'working-tree', undefined),
+    );
+  });
 });
 
 suite('Diff row heights', () => {
@@ -695,11 +702,6 @@ suite('Diff row heights', () => {
       ),
       3,
     );
-    assert.strictEqual(
-      lineWidth(13, 2, 7.5),
-      2 * numberWidth + 2 * codePadding + 98,
-    );
-    assert.strictEqual(lineWidth(3, 1, 8), numberWidth + 2 * codePadding + 24);
   });
 
   test("keys a row by its kind too, so a row of fixed height doesn't take the measured height of a placeholder that was in its place", () => {
@@ -802,7 +804,9 @@ suite('Diff row heights', () => {
       assert.strictEqual(measures.getItemKey(1), narrow.getItemKey(1));
     }
   });
+});
 
+suite('Scroll anchoring', () => {
   test('finds what the row at the top of the view shows, and how far into it the view starts', () => {
     const rows = sized(22, 22, 22);
     const shown = [['a'], ['b', 'c'], ['d']];
@@ -886,7 +890,9 @@ suite('Diff row heights', () => {
       88 + 0.25 * 44,
     );
   });
+});
 
+suite('Drawing code', () => {
   test('gives a line the same inputs to draw it from while its colors, changed words and matches stay, so it is not drawn again', () => {
     const keyword = [{ start: 0, end: 3, kind: 'keyword' as const }];
     const changed = [{ start: 4, end: 7 }];
@@ -920,5 +926,210 @@ suite('Diff row heights', () => {
     assert.strictEqual(again.finds, plain.finds);
     assert.strictEqual(plain.current, undefined);
     assert.strictEqual(plain.wordClass, 'word-added');
+  });
+
+  test('draws the changed words inside the line, with search matches over them', () => {
+    const html = renderToStaticMarkup(
+      <>
+        {marked(
+          'let sum = 1',
+          [],
+          [{ start: 4, end: 7 }],
+          'word-added',
+          [{ start: 5, end: 9 }],
+          { start: 5, end: 9 },
+        )}
+      </>,
+    );
+    assert.strictEqual(
+      html,
+      'let <span class="word-added">s</span><span class="word-added"><mark class="find-match current">um</mark></span><mark class="find-match current"> =</mark> 1',
+    );
+  });
+
+  test('marks a line dense with colors, changed words and matches piece by piece in one pass', () => {
+    const pairs = 20_000;
+    const text = 'ab'.repeat(pairs);
+    const every = (offset: number) =>
+      Array.from({ length: pairs }, (_, pair) => ({
+        start: 2 * pair + offset,
+        end: 2 * pair + offset + 1,
+      }));
+    const colors = every(0).map((range) => ({
+      ...range,
+      kind: 'keyword' as const,
+    }));
+    const words = every(1);
+    const matches = every(1);
+    const started = performance.now();
+    const drawn = marked(text, colors, words, 'word-added', matches, undefined);
+    assert.ok(performance.now() - started < 1000);
+    assert.ok(Array.isArray(drawn));
+    assert.strictEqual(drawn.length, 2 * pairs);
+    assert.strictEqual(
+      renderToStaticMarkup(<>{drawn.slice(-2)}</>),
+      '<span class="syntax-keyword">a</span><span class="word-added"><mark class="find-match ">b</mark></span>',
+    );
+  });
+
+  test('draws the syntax colors inside the changed words, under the search matches', () => {
+    assert.strictEqual(
+      renderToStaticMarkup(
+        <>
+          {marked(
+            'let sum = 1',
+            [
+              { start: 0, end: 3, kind: 'keyword' },
+              { start: 10, end: 11, kind: 'number' },
+            ],
+            [{ start: 0, end: 7 }],
+            'word-added',
+            [{ start: 2, end: 5 }],
+            undefined,
+          )}
+        </>,
+      ),
+      '<span class="word-added"><span class="syntax-keyword">le</span></span>' +
+        '<span class="word-added"><span class="syntax-keyword"><mark class="find-match ">t</mark></span></span>' +
+        '<span class="word-added"><mark class="find-match "> s</mark></span>' +
+        '<span class="word-added">um</span> = <span class="syntax-number">1</span>',
+    );
+  });
+
+  test('marks the matches in a line, the current one apart', () => {
+    const html = renderToStaticMarkup(
+      <>
+        {marked(
+          'find a find',
+          [],
+          [],
+          'word-added',
+          [
+            { start: 0, end: 4 },
+            { start: 7, end: 11 },
+          ],
+          { start: 7, end: 11 },
+        )}
+      </>,
+    );
+    assert.strictEqual(
+      html,
+      '<mark class="find-match ">find</mark> a <mark class="find-match current">find</mark>',
+    );
+    assert.strictEqual(
+      marked('plain', [], [], 'word-added', [], undefined),
+      'plain',
+    );
+  });
+});
+
+suite('Diff keys', () => {
+  test('scrolls back left with the left arrow while scrolled right, leaving it to move between the columns only then', () => {
+    assert.strictEqual(diffScrollLeft(-1, 100), 60);
+    assert.strictEqual(diffScrollLeft(-1, 20), 0);
+    assert.strictEqual(diffScrollLeft(-1, 0), undefined);
+    assert.strictEqual(diffScrollLeft(1, 100), undefined);
+  });
+
+  test('scrolls the sides of a side by side diff right with the right arrow too, no further than the widest line, as nothing else scrolls them', () => {
+    assert.strictEqual(diffScrollLeft(1, 0, 100), 40);
+    assert.strictEqual(diffScrollLeft(1, 80, 100), 100);
+    assert.strictEqual(diffScrollLeft(1, 100, 100), undefined);
+    assert.strictEqual(diffScrollLeft(1, 0, 0), undefined);
+    assert.strictEqual(diffScrollLeft(-1, 100, 100), 60);
+  });
+
+  test('scrolls three lines with the arrows, a screen less a line with the page keys, and to either end', () => {
+    assert.strictEqual(diffScrollTop('down', 100, 400, 2000), 166);
+    assert.strictEqual(diffScrollTop('up', 40, 400, 2000), 0);
+    assert.strictEqual(diffScrollTop('pageDown', 100, 400, 2000), 478);
+    assert.strictEqual(diffScrollTop('pageUp', 500, 400, 2000), 122);
+    assert.strictEqual(diffScrollTop('first', 500, 400, 2000), 0);
+    assert.strictEqual(diffScrollTop('last', 0, 400, 2000), 1600);
+    assert.strictEqual(diffScrollTop('last', 0, 400, 300), 0);
+  });
+});
+
+suite('Jumping between changes', () => {
+  test('finds where each run of added or removed lines starts', () => {
+    const rows = diffRows(
+      parsePatch(
+        [
+          'diff --git a/a.ts b/a.ts',
+          '--- a/a.ts',
+          '+++ b/a.ts',
+          '@@ -1,6 +1,6 @@',
+          ' one',
+          '-two',
+          '+2',
+          ' three',
+          ' four',
+          '+five',
+          '',
+        ].join('\n'),
+      ),
+      new Map(),
+      undefined,
+    );
+    assert.deepStrictEqual(
+      changeStarts(rows).map((index) => rows[index]),
+      [
+        {
+          kind: 'line',
+          file: 0,
+          line: {
+            kind: 'removed',
+            oldNumber: 2,
+            newNumber: undefined,
+            text: 'two',
+          },
+        },
+        {
+          kind: 'line',
+          file: 0,
+          line: {
+            kind: 'added',
+            oldNumber: undefined,
+            newNumber: 5,
+            text: 'five',
+          },
+        },
+      ],
+    );
+  });
+
+  test('scrolls to the next or previous change below the header and some context, and no further at either end', () => {
+    const starts = [100, 500, 900];
+    assert.strictEqual(changeScrollTop(starts, 0, 1, 60), 40);
+    assert.strictEqual(changeScrollTop(starts, 40, 1, 60), 440);
+    assert.strictEqual(changeScrollTop(starts, 440, -1, 60), 40);
+    assert.strictEqual(changeScrollTop(starts, 40, -1, 60), undefined);
+    assert.strictEqual(changeScrollTop(starts, 840, 1, 60), undefined);
+    assert.strictEqual(changeScrollTop([30], 100, -1, 60), 0);
+  });
+});
+
+suite('Hunk divider', () => {
+  test('marks the lines left out between hunks with dots', () => {
+    assert.strictEqual(
+      renderToStaticMarkup(<HunkDivider />),
+      '<div class="hunk-divider"><span class="hunk-dots">⋯</span></div>',
+    );
+  });
+});
+
+suite('Diff file header', () => {
+  test('labels a file shown entire as unchanged, naming no commit, as it may be in the uncommitted changes or a comparison', () => {
+    const html = renderToStaticMarkup(
+      <FileHeader path="a.ts" open whole onClick={() => {}} />,
+    );
+    assert.match(html, /<span class="unchanged">Unchanged<\/span>/);
+    assert.doesNotMatch(html, /commit/);
+    assert.doesNotMatch(
+      renderToStaticMarkup(
+        <FileHeader path="a.ts" open whole={false} onClick={() => {}} />,
+      ),
+      /unchanged/,
+    );
   });
 });

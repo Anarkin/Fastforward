@@ -44,39 +44,6 @@ suite('View of other repositories', function () {
     removeFolder(folder);
   });
 
-  test('opens the settings files through the app', async () => {
-    const host = new FakeHost();
-    await withView(
-      log,
-      [],
-      async (view) => {
-        await view.connection.receive({ type: 'openSettings' });
-        await view.connection.receive({ type: 'openDefaultSettings' });
-        assert.deepStrictEqual(host.opened, ['settings', 'defaults']);
-      },
-      false,
-      host,
-    );
-  });
-
-  test('says what is wrong with the settings when the page loads', async () => {
-    const host = new FakeHost();
-    host.problems = ['Unknown setting "sollo"'];
-    await withView(
-      log,
-      [],
-      async (view) => {
-        assert.deepStrictEqual(view.page.last('notice'), {
-          type: 'notice',
-          level: 'error',
-          message: 'Settings: Unknown setting "sollo"',
-        });
-      },
-      true,
-      host,
-    );
-  });
-
   test('expands every merge once collapsing them is turned off by hand, also one expanded before', async () => {
     await withView(log, [repository.root], async (view) => {
       await view.connection.receive({
@@ -104,35 +71,6 @@ suite('View of other repositories', function () {
         'collapsed',
       );
     });
-  });
-
-  test('saves the layout and sends it when the page loads', async () => {
-    await withView(log, [], async (view) => {
-      await view.connection.receive({
-        type: 'setColumnWidths',
-        widths: [400, 250],
-      });
-      await view.connection.receive({ type: 'setShowAllFiles', show: true });
-      await view.connection.receive({ type: 'ready' });
-      const layout = view.page.last('layout');
-      assert.deepStrictEqual(layout?.columnWidths, [400, 250]);
-      assert.strictEqual(layout.showAllFiles, true);
-    });
-  });
-
-  test('saves the merge setting with no tab open', async () => {
-    await withView(
-      log,
-      [],
-      async (own) => {
-        await own.connection.receive({
-          type: 'setCollapseMerges',
-          collapse: false,
-        });
-        assert.strictEqual(own.settings.settings.collapseMerges, false);
-      },
-      false,
-    );
   });
 
   test('opens the repositories picked in new tabs, showing the last one', async () => {

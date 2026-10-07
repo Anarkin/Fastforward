@@ -210,25 +210,6 @@ suite('Commit list working tree row', () => {
     assert.strictEqual(workingTreeShift(0, 1, workingTreeRowHeight), undefined);
   });
 
-  test('keeps its place by what was scrolled since the place it last told', () => {
-    assert.strictEqual(keptPlace(1000, 7, 400, 400).top, 1007);
-    assert.strictEqual(keptPlace(1000, 7, 900, 400).top, 1507);
-    assert.strictEqual(keptPlace(1000, 7, 900, undefined).top, 1007);
-  });
-
-  test('keeps its place only once when another history comes before its own scroll is told', () => {
-    const first = keptPlace(1000, 7, 900, 400);
-    assert.strictEqual(
-      keptPlace(1300, 7, first.top, first.reportedTop).top,
-      1807,
-    );
-    const unscrolled = keptPlace(1000, 7, 0, undefined);
-    assert.strictEqual(
-      keptPlace(1300, 7, unscrolled.top, unscrolled.reportedTop).top,
-      1307,
-    );
-  });
-
   test('shifts the list rather than scrolling to its target again when only the working tree row comes or goes', () => {
     const target = { index: 3 };
     assert.deepStrictEqual(
@@ -293,6 +274,25 @@ suite('Commit list top', () => {
     assert.strictEqual(
       listTop(rows, 3 * commitRowHeight + 1, history, 0),
       undefined,
+    );
+  });
+
+  test('keeps its place by what was scrolled since the place it last told', () => {
+    assert.strictEqual(keptPlace(1000, 7, 400, 400).top, 1007);
+    assert.strictEqual(keptPlace(1000, 7, 900, 400).top, 1507);
+    assert.strictEqual(keptPlace(1000, 7, 900, undefined).top, 1007);
+  });
+
+  test('keeps its place only once when another history comes before its own scroll is told', () => {
+    const first = keptPlace(1000, 7, 900, 400);
+    assert.strictEqual(
+      keptPlace(1300, 7, first.top, first.reportedTop).top,
+      1807,
+    );
+    const unscrolled = keptPlace(1000, 7, 0, undefined);
+    assert.strictEqual(
+      keptPlace(1300, 7, unscrolled.top, unscrolled.reportedTop).top,
+      1307,
     );
   });
 });
@@ -466,6 +466,24 @@ suite('Commit list keys', () => {
     );
   });
 
+  test('pages counting the working tree row as a row in view', () => {
+    const history = new CommitHistory(100);
+    history.add(
+      0,
+      Array.from({ length: 30 }, (_, index) => commitInfo(`c${index}`)),
+    );
+    const rows = { first: workingTreeIndex, last: 8 };
+    assert.strictEqual(
+      press('PageDown', history, workingTreeHash, true, rows),
+      8,
+    );
+    assert.strictEqual(press('PageDown', history, 'c8', true, rows), 17);
+    assert.strictEqual(
+      press('PageUp', history, 'c3', true, rows),
+      workingTreeIndex,
+    );
+  });
+
   test('keeps going from a row still loading, rather than the selected one', () => {
     const history = new CommitHistory(1000);
     history.add(0, [commitInfo('a')]);
@@ -564,23 +582,6 @@ suite('Commit list keys', () => {
     );
     assert.strictEqual(mergeToToggle(history, undefined), undefined);
   });
-
-  test('takes only the list keys without modifiers', () => {
-    const key = {
-      key: 'End',
-      code: '',
-      ctrlKey: false,
-      metaKey: false,
-      altKey: false,
-      shiftKey: false,
-      target: null,
-    };
-    assert.strictEqual(listMoveOf(key), 'last');
-    assert.strictEqual(listMoveOf({ ...key, key: 'PageUp' }), 'pageUp');
-    assert.strictEqual(listMoveOf({ ...key, ctrlKey: true }), undefined);
-    assert.strictEqual(listMoveOf({ ...key, shiftKey: true }), undefined);
-    assert.strictEqual(listMoveOf({ ...key, key: 'Enter' }), undefined);
-  });
 });
 
 suite('Solo button', () => {
@@ -599,7 +600,7 @@ suite('Solo button', () => {
   });
 });
 
-suite('Commit rows', () => {
+suite('Commit row', () => {
   test('marks the checked-out commit, whether or not it is selected', () => {
     assert.strictEqual(commitClass('a', undefined, 'a'), 'commit checked-out');
     assert.strictEqual(
@@ -632,9 +633,7 @@ suite('Commit rows', () => {
     );
     assert.ok(!isCompareClick({ ...plainClick, metaKey: true, altKey: true }));
   });
-});
 
-suite('Commit row', () => {
   test('shows the subject, author, the date it was last committed and bubbles, but no file count', () => {
     let picked: string | undefined;
     const props = {
