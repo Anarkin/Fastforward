@@ -311,7 +311,7 @@ suite('Style', () => {
     );
   });
 
-  test('widens every row of an inline diff to its widest line, so short lines stay tinted and the strips between files and hunks reach across when scrolled sideways', () => {
+  test('widens every row of an inline diff to its widest line and past it by the minimap, so short lines stay tinted, the strips between files and hunks reach across when scrolled sideways, and the widest line ends before the minimap', () => {
     const rows = allWithClass(
       diffView(
         {},
@@ -325,7 +325,8 @@ suite('Style', () => {
     assert.strictEqual(rows.length, 3);
     for (const row of rows) {
       looks(row, {
-        'min-width': 'max(100%, var(--diff-content-width, 0px))',
+        'min-width':
+          'max(100%, var(--diff-content-width, 0px) + var(--minimap-width))',
         width: 'max-content',
       });
     }
@@ -381,23 +382,23 @@ suite('Style', () => {
     }
   });
 
-  test('wraps the lines that reach the right edge before the minimap, keeping their rows tinted under it', () => {
+  test('ends the lines that reach the right edge before the minimap, wrapped or scrolled sideways, keeping their rows tinted under it', () => {
     const clear = 'calc(var(--diff-code-padding) + var(--minimap-width))';
-    looks(
-      withClass(
-        shownRow(diffView({ wordWrap: true }, inlineLine('added'))),
-        'code',
-      ),
-      { 'padding-right': clear },
-    );
-    const [left, right] = allWithClass(
-      shownRow(
-        diffView({ sideBySide: true, wordWrap: true }, splitLine('', '')),
-      ),
-      'split-side',
-    ).map((side) => withClass(side, 'code'));
-    looks(left, { 'padding-right': undefined });
-    looks(right, { 'padding-right': clear });
+    for (const wordWrap of [false, true]) {
+      looks(
+        withClass(
+          shownRow(diffView({ wordWrap }, inlineLine('added'))),
+          'code',
+        ),
+        { 'padding-right': clear },
+      );
+      const [left, right] = allWithClass(
+        shownRow(diffView({ sideBySide: true, wordWrap }, splitLine('', ''))),
+        'split-side',
+      ).map((side) => withClass(side, 'code'));
+      looks(left, { 'padding-right': undefined });
+      looks(right, { 'padding-right': clear });
+    }
   });
 
   test('draws a tab in the code as wide as the wrapping and the hidden changes count it', () => {

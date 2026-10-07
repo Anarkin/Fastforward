@@ -1092,7 +1092,7 @@ body.resizing {
 }
 
 .virtual-row.diff-row {
-  min-width: max(100%, var(--diff-content-width, 0px));
+  min-width: max(100%, var(--diff-content-width, 0px) + var(--minimap-width));
   width: max-content;
 }
 
@@ -1236,8 +1236,8 @@ body.resizing {
   overflow-wrap: anywhere;
 }
 
-.diff-view.wrap .diff-line:not(.split-side) .code,
-.diff-view.wrap .split-side:last-child .code {
+.diff-line:not(.split-side) .code,
+.split-side:last-child .code {
   padding-right: calc(var(--diff-code-padding) + var(--minimap-width));
 }
 
