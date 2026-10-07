@@ -51,6 +51,17 @@ async function colored(
 }
 
 suite('Syntax', () => {
+  // Shiki gives up on a line past 500 ms, leaving the rest of it one token,
+  // which the first lines a cold grammar tokenizes took on a slow runner
+  suiteSetup(async function () {
+    this.timeout(30_000);
+    const highlighter = await loadLanguages(['typescript']);
+    highlighter.codeToTokensBase(
+      "/** a */ let s = 'x' + `y${1}` + /z/g; // c\nclass C<T> { m(): T[] { return []; } }",
+      { lang: 'typescript', theme: highlighter.getLoadedThemes()[0] },
+    );
+  });
+
   test('knows the language from the file name', () => {
     assert.strictEqual(languageOf('src/app.ts'), 'typescript');
     assert.strictEqual(languageOf('esbuild.mjs'), 'javascript');
