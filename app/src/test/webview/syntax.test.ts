@@ -813,4 +813,25 @@ suite('Syntax', () => {
     ]);
     assert.deepStrictEqual(farRequests(new Set([2])), ['old:c.ts', 'new:c.ts']);
   });
+
+  test('counts a side colored from its hunks alone by at most the 5000 lines it colors', () => {
+    const added = parsePatch(
+      [
+        'diff --git a/added.ts b/added.ts',
+        'new file mode 100644',
+        'index 0000000000000000000000000000000000000000..3333333333333333333333333333333333333333',
+        '--- /dev/null',
+        '+++ b/added.ts',
+        '@@ -0,0 +1,20000 @@',
+        ...Array.from({ length: 20_000 }, () => '+x;'),
+        '',
+      ].join('\n'),
+    );
+    assert.deepStrictEqual(
+      textsToLoad([...added, ...farFiles.slice(0, 1)], 1, new Set()).map(
+        ({ path, side }) => `${side}:${path}`,
+      ),
+      ['old:a.ts', 'new:a.ts'],
+    );
+  });
 });
