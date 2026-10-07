@@ -314,6 +314,32 @@ suite('View showing diffs', function () {
     });
   });
 
+  test('reads a commit diff while reading its files, only once when no file is left out', async () => {
+    const [first] = await long.resolve('HEAD~1');
+    await withView(log, [long.root], async (view) => {
+      const held = gate();
+      stubMethod(view.view, 'commitFiles', async (original, ...args) => {
+        await held.opened;
+        return original(...args);
+      });
+      let patches = 0;
+      stubMethod(view.view, 'patchOf', (original, ...args) => {
+        patches += 1;
+        return original(...args);
+      });
+      const selected = view.connection.receive({
+        type: 'selectCommit',
+        root: long.root,
+        hash: first,
+      });
+      await waitFor(() => patches > 0, 'the diff to be read');
+      held.open();
+      await selected;
+      assert.ok(view.page.last('diff')?.patch.includes('b/a.txt'));
+      assert.strictEqual(patches, 1);
+    });
+  });
+
   test('leaves large files out of a commit diff until one is asked for', async () => {
     const large = await tempRepository(path.join(folder, 'large'));
     const lines = Array.from({ length: 2000 }, (_, index) => `line ${index}`);

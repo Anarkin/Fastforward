@@ -155,6 +155,11 @@ interface Refresh {
   readonly done: PromiseWithResolvers<void>;
 }
 
+interface EarlyPatch {
+  readonly patch: Promise<string | undefined>;
+  readonly loading: AbortController;
+}
+
 interface Context extends RepositoryAt {
   readonly repository: string;
   readonly tab: Tab;
@@ -1810,6 +1815,7 @@ export class FastforwardView {
     let files: readonly FileChange[];
     let staged: readonly FileChange[] | undefined;
     let workingTree: WorkingTree | undefined;
+    let early: EarlyPatch | undefined;
     try {
       if (!stillThere(tab)(hash)) {
         this.notInHistory(context, hash);
@@ -1827,15 +1833,18 @@ export class FastforwardView {
         files = workingTree.files;
         staged = workingTree.staged;
       } else {
+        early = this.earlyPatch(context, hash, signal);
         files = await this.commitFiles(context, hash, signal);
       }
     } catch (error) {
+      early?.loading.abort();
       if (signal.aborted) {
         return;
       }
       throw error;
     }
     if (tab.hash !== hash || signal.aborted) {
+      early?.loading.abort();
       return;
     }
     context.tab.changedFiles = new Map(files.map((file) => [file.path, file]));
@@ -1861,7 +1870,35 @@ export class FastforwardView {
         ...(staged === undefined ? {} : { staged }),
       });
     }
-    await this.sendDiff(context, hash, refreshing);
+    const whole =
+      tab.path === undefined && includedChanges(files) === undefined;
+    if (!whole) {
+      early?.loading.abort();
+    }
+    await this.sendDiff(
+      context,
+      hash,
+      refreshing,
+      whole ? early?.patch : undefined,
+    );
+  }
+
+  private earlyPatch(
+    context: Context,
+    hash: string,
+    signal: AbortSignal,
+  ): EarlyPatch | undefined {
+    if (context.tab.path !== undefined) {
+      return undefined;
+    }
+    const loading = new AbortController();
+    const patch = this.patchOf(
+      context,
+      hash,
+      { ignoreWhitespace: this.storage.ignoreWhitespace },
+      AbortSignal.any([signal, loading.signal]),
+    ).catch(() => undefined);
+    return { patch, loading };
   }
 
   private commitFiles(
@@ -1998,6 +2035,7 @@ export class FastforwardView {
     context: Context,
     hash: string,
     refreshing = false,
+    early?: Promise<string | undefined>,
   ): Promise<void> {
     const { tab } = context;
     const { path: file, area } = tab;
@@ -2058,7 +2096,9 @@ export class FastforwardView {
           };
     let patch: string;
     try {
-      patch = await this.patchOf(context, hash, scope, loading.signal);
+      patch =
+        (await early) ??
+        (await this.patchOf(context, hash, scope, loading.signal));
     } catch (error) {
       if (loading.signal.aborted) {
         return;
