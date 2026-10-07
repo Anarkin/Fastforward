@@ -47,18 +47,19 @@ suite('Running git in a repository', function () {
     fs.mkdirSync(hooks, { recursive: true });
     fs.writeFileSync(
       path.join(hooks, 'post-checkout'),
-      `#!/bin/sh\necho "[$GIT_LITERAL_PATHSPECS][$GIT_OPTIONAL_LOCKS][$GIT_CONFIG_PARAMETERS]" > '${seen}'\n`,
+      `#!/bin/sh\necho "[$GIT_LITERAL_PATHSPECS][$GIT_OPTIONAL_LOCKS][$LC_ALL][$GIT_CONFIG_PARAMETERS]" > '${seen}'\n`,
       { mode: 0o755 },
     );
     await temp.git('branch', 'hooked');
     try {
       await switchToBranch(gitPath, cwd, 'hooked');
-      const [, literal, locks, config = ''] =
-        /^\[(.*)\]\[(.*)\]\[(.*)\]$/.exec(
+      const [, literal, locks, locale, config = ''] =
+        /^\[(.*)\]\[(.*)\]\[(.*)\]\[(.*)\]$/.exec(
           fs.readFileSync(seen, 'utf8').trim(),
         ) ?? [];
       assert.strictEqual(literal, '');
       assert.strictEqual(locks, '');
+      assert.strictEqual(locale, process.env.LC_ALL ?? '');
       assert.doesNotMatch(config, /autoRefreshIndex|quotePath/);
     } finally {
       fs.rmSync(path.join(hooks, 'post-checkout'));
@@ -143,6 +144,15 @@ suite('Running git in a repository', function () {
     } finally {
       removeFolder(folder);
     }
+  });
+
+  test('runs its own commands in the C locale, sparing git setting up translations each time it starts', async () => {
+    const locale = await runGit(gitPath, cwd, [
+      '-c',
+      'alias.locale=!echo "[$LC_ALL]"',
+      'locale',
+    ]);
+    assert.strictEqual(locale.trim(), '[C]');
   });
 
   test('says only what git said when it fails, keeping the command for the log', async () => {

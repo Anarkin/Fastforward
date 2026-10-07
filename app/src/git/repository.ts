@@ -26,12 +26,12 @@ export async function repositoryRoot(
 ): Promise<string | undefined> {
   let output: string;
   try {
-    output = await runGit(
-      gitPath,
-      folder,
-      ['rev-parse', '--is-inside-work-tree', '--show-cdup', '--show-toplevel'],
-      { env: { LC_ALL: 'C' } },
-    );
+    output = await runGit(gitPath, folder, [
+      'rev-parse',
+      '--is-inside-work-tree',
+      '--show-cdup',
+      '--show-toplevel',
+    ]);
   } catch (error) {
     if (noRepository.test(gitErrorText(error)) || !(await isFolder(folder))) {
       return undefined;
