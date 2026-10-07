@@ -6,6 +6,7 @@ import {
   isAppUrl,
   keptBounds,
   minimumHeight,
+  minimumWidth,
   minimumWindowSize,
   opensExternally,
   restoresMaximized,
@@ -119,6 +120,14 @@ suite('Window bounds', () => {
     assert.strictEqual(
       minimumHeight([...screens, { x: 3200, y: 0, width: 1280, height: 672 }]),
       672,
+    );
+  });
+
+  test('lowers the least width of a window to fit the narrowest screen, as the window could not be narrowed to fit a 1366 by 768 screen at 125%', () => {
+    assert.strictEqual(minimumWidth(screens), minimumWindowSize.width);
+    assert.strictEqual(
+      minimumWidth([...screens, { x: 3200, y: 0, width: 1093, height: 728 }]),
+      1093,
     );
   });
 

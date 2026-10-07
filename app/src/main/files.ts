@@ -80,6 +80,13 @@ export function firstWindowSize(workArea: Bounds): {
   };
 }
 
+export function minimumWidth(workAreas: readonly Bounds[]): number {
+  return Math.min(
+    minimumWindowSize.width,
+    ...workAreas.map((area) => area.width),
+  );
+}
+
 export function minimumHeight(workAreas: readonly Bounds[]): number {
   return Math.min(
     minimumWindowSize.height,

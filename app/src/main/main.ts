@@ -39,7 +39,7 @@ import {
   isAppUrl,
   keptBounds,
   minimumHeight,
-  minimumWindowSize,
+  minimumWidth,
   opensExternally,
   restoresMaximized,
   visibleBounds,
@@ -294,7 +294,7 @@ function createWindow(
   const bounds = visibleBounds(store.get(boundsKey), workAreas);
   const window = new BrowserWindow({
     ...(bounds ?? size),
-    minWidth: minimumWindowSize.width,
+    minWidth: minimumWidth(workAreas),
     minHeight: minimumHeight(workAreas),
     title: brand,
     show: false,
