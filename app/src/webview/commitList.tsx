@@ -35,6 +35,8 @@ import {
   type VisibleRows,
 } from './listMoves';
 import { SoloIcon } from './icons';
+import { useCappedScroll } from './cappedVirtualizer';
+import { realHeight } from './cappedScroll';
 
 export const commitRowHeight = 50;
 export const workingTreeRowHeight = 30;
@@ -422,12 +424,14 @@ export function Commits({
     (index: number) => rowKeyOf(history, offset, index),
     [history, offset],
   );
+  const { scrolling, shift, scrollTop } = useCappedScroll<HTMLDivElement>();
   const virtualizer = useVirtualizer({
     count,
     getScrollElement: () => list.current,
     estimateSize: rowHeight,
     getItemKey: rowKey,
     overscan: 10,
+    ...scrolling,
   });
   const rows = virtualizer.getVirtualItems();
   const first = Math.max(0, (rows[0]?.index ?? 0) - offset);
@@ -466,7 +470,7 @@ export function Commits({
         return;
       }
       const shifted = workingTreeShift(
-        element.scrollTop,
+        scrollTop(element),
         action.shiftBy,
         workingTreeRowHeight,
       );
@@ -482,7 +486,7 @@ export function Commits({
         const place = keptPlace(
           start,
           action.target.offset,
-          list.current?.scrollTop ?? 0,
+          scrollTop(list.current),
           reportedTop.current,
         );
         reportedTop.current = place.reportedTop;
@@ -494,7 +498,7 @@ export function Commits({
       .getVirtualItems()
       .some((row) => row.index === index);
     virtualizer.scrollToIndex(index, { align: onScreen ? 'auto' : 'center' });
-  }, [history, scrollTarget, offset, virtualizer]);
+  }, [history, scrollTarget, offset, virtualizer, scrollTop]);
 
   const topUnreported = useRef(false);
   const reportTop = useCallback(() => {
@@ -502,18 +506,19 @@ export function Commits({
     if (!element) {
       return;
     }
+    const scrolled = scrollTop(element);
     const top = listTop(
       virtualizer.getVirtualItems(),
-      element.scrollTop,
+      scrolled,
       history,
       offset,
     );
     topUnreported.current = top === undefined;
     if (top) {
-      reportedTop.current = element.scrollTop;
+      reportedTop.current = scrolled;
       onScrolled(top.hash, top.offset);
     }
-  }, [history, offset, onScrolled, virtualizer]);
+  }, [history, offset, onScrolled, virtualizer, scrollTop]);
   useEffect(() => {
     const element = list.current;
     if (!element) {
@@ -580,7 +585,7 @@ export function Commits({
       hasWorkingTree,
       fullyVisible(
         virtualizer.getVirtualItems(),
-        element?.scrollTop ?? 0,
+        scrollTop(element),
         element?.clientHeight ?? 0,
         offset,
       ),
@@ -700,7 +705,7 @@ export function Commits({
       >
         <div
           className="virtual-spacer"
-          style={{ height: virtualizer.getTotalSize() }}
+          style={{ height: realHeight(virtualizer.getTotalSize()) }}
         >
           {rows.map((row) => {
             const height = fixedRowHeight(history, offset, row.index, row.size);
@@ -714,7 +719,7 @@ export function Commits({
                 }
                 style={{
                   height,
-                  transform: `translateY(${row.start}px)`,
+                  transform: `translateY(${row.start - shift}px)`,
                 }}
               >
                 {renderGraph(row.index, row.size)}
