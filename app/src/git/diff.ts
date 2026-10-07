@@ -70,6 +70,7 @@ export interface RawChange {
   readonly newMode: string;
   readonly oldId: string;
   readonly newId: string;
+  readonly linesCounted: boolean;
   readonly file: FileChange;
 }
 
@@ -189,7 +190,7 @@ export function parseChanges(output: string): FileChange[] {
 
 export function parseRawChanges(output: string): RawChange[] {
   const tokens = splitNul(output);
-  const files: RawChange[] = [];
+  const files: Omit<RawChange, 'linesCounted'>[] = [];
   const stats = new Map<string, { insertions: number; deletions: number }>();
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
@@ -239,8 +240,12 @@ export function parseRawChanges(output: string): RawChange[] {
       deletions: Number(match[2]) || 0,
     });
   }
-  return files.map((change) => ({
-    ...change,
-    file: { ...change.file, ...stats.get(change.file.path) },
-  }));
+  return files.map((change) => {
+    const counted = stats.get(change.file.path);
+    return {
+      ...change,
+      linesCounted: counted !== undefined,
+      file: { ...change.file, ...counted },
+    };
+  });
 }

@@ -64,6 +64,7 @@ suite('Files touched but unchanged', function () {
     newMode: '100644',
     oldId: object,
     newId,
+    linesCounted: true,
     file: {
       status: 'M' as const,
       path: file,
@@ -164,6 +165,38 @@ suite('Files touched but unchanged', function () {
     assert.strictEqual(files.length, many.length + 1);
   });
 });
+
+suite(
+  'Files touched but unchanged, committed with CRLF before autocrlf was on',
+  function () {
+    this.timeout(20_000);
+
+    test('leaves out the touched file, which git does not count as changed, but keeps a changed binary file, whose lines git does not count', async () => {
+      const repository = await tempRepository(tempFolder('touched-crlf'));
+      const cwd = repository.root;
+      try {
+        await repository.git('config', 'core.autocrlf', 'false');
+        await repository.commit('initial', {
+          'crlf.txt': 'one\r\ntwo\r\n',
+          'binary.bin': '\0\x01\x02',
+        });
+        await repository.git('config', 'core.autocrlf', 'true');
+        fs.writeFileSync(path.join(cwd, 'binary.bin'), '\0\x01\x03');
+        const past = new Date(Date.UTC(2020, 0, 1));
+        for (const file of ['crlf.txt', 'binary.bin']) {
+          fs.utimesSync(path.join(cwd, file), past, past);
+        }
+        const workingTree = await workingTreeFiles(repository.gitPath, cwd);
+        assert.deepStrictEqual(
+          workingTree.files.map((file) => [file.status, file.path]),
+          [['M', 'binary.bin']],
+        );
+      } finally {
+        removeFolder(cwd);
+      }
+    });
+  },
+);
 
 suite('A file renamed and edited', function () {
   this.timeout(20_000);
