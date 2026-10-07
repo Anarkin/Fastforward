@@ -1,25 +1,6 @@
 import * as assert from 'node:assert';
-import { AutoFetch, type Timer } from '../autoFetch';
-
-function fakeTimer() {
-  const pending: { run: () => void; ms: number; cancelled: boolean }[] = [];
-  const timer: Timer = (run, ms) => {
-    const entry = { run, ms, cancelled: false };
-    pending.push(entry);
-    return () => {
-      entry.cancelled = true;
-    };
-  };
-  const waiting = () => pending.filter((entry) => !entry.cancelled);
-  const fire = async () => {
-    const [next] = waiting();
-    assert.ok(next, 'a timer is waiting');
-    next.cancelled = true;
-    next.run();
-    await new Promise((resolve) => setImmediate(resolve));
-  };
-  return { timer, waiting, fire };
-}
+import { AutoFetch } from '../autoFetch';
+import { fakeTimer } from './fakeTimer';
 
 suite('Auto fetch', () => {
   test('fetches the repositories one after another, the interval after the last one ends', async () => {

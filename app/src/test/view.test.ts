@@ -69,6 +69,27 @@ suite('View with no tab open', () => {
     );
   });
 
+  test('leaves updating to the app, sending how far it got when the page loads', async () => {
+    const host = new FakeHost();
+    host.update = { kind: 'ready', version: '7.0.0' };
+    await withView(
+      log,
+      [],
+      async (view) => {
+        assert.deepStrictEqual(view.page.last('update'), {
+          type: 'update',
+          status: { kind: 'ready', version: '7.0.0' },
+        });
+        await view.connection.receive({ type: 'checkForUpdates' });
+        await view.connection.receive({ type: 'installUpdate' });
+        assert.deepStrictEqual(host.opened, ['update check', 'update install']);
+      },
+      true,
+      host,
+      noGit,
+    );
+  });
+
   test('saves the layout and sends it when the page loads', async () => {
     await withView(
       log,

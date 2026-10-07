@@ -54,6 +54,7 @@ import {
   inlineLine,
   locationsPopup,
   minimap,
+  menuButton,
   navButtons,
   notices,
   repository,
@@ -774,6 +775,20 @@ suite('Style', () => {
       looks(mark?.parent, { position: 'relative' });
       assert.ok(!mark?.parent?.classes.includes('spin-icon'));
     }
+  });
+
+  test('marks the menu button in the focus color while an update waits, as a dot like the one on the fetch button', () => {
+    const mark = withClass(rendered(menuButton({ marked: true })), 'menu-mark');
+    looks(mark, {
+      position: 'absolute',
+      'border-radius': '50%',
+      background: 'var(--color-focus)',
+    });
+    looks(mark?.parent, { position: 'relative' });
+    assert.deepStrictEqual(
+      allWithClass(rendered(menuButton()), 'menu-mark'),
+      [],
+    );
   });
 
   test('draws a commit row and the one-line working tree row as tall as the list expects, as even lines of text', () => {

@@ -49,7 +49,7 @@ import { profileFolder } from './profile';
 import { exitOnFailure, flushBeforeQuit } from './quit';
 import { reloadOnRebuild } from './rebuild';
 import { loginShellPath, mergePaths } from './shellPath';
-import { checksForUpdates } from './updates';
+import { updateMode, Updates } from './updates';
 
 const dist = __dirname;
 const development = !app.isPackaged;
@@ -190,6 +190,25 @@ async function start(): Promise<void> {
   }
   log.info(strings.log.usingGit(git.version, git.path));
   const storage = new Storage(userSettings, state);
+  const updates = new Updates(
+    updateMode(development, process.platform, process.execPath),
+    app.getVersion(),
+    autoUpdater,
+    (message) => {
+      if (!window.isDestroyed()) {
+        window.webContents.send('message', message);
+      }
+    },
+    log,
+    (url) => void shell.openExternal(url),
+  );
+  autoUpdater.logger = {
+    info: (message: unknown) => log.info(strings.log.updater(String(message))),
+    warn: (message: unknown) => log.warn(strings.log.updater(String(message))),
+    error: (message: unknown) =>
+      log.error(strings.log.updater(String(message))),
+    debug: () => {},
+  };
   const view = new FastforwardView(log, git.path, storage, {
     chooseFolders: async () => {
       const chosen = await dialog.showOpenDialog(window, {
@@ -213,6 +232,9 @@ async function start(): Promise<void> {
       await openFile(log, defaultSettingsCopy);
     },
     settingsProblems: () => userSettings.problems,
+    checkForUpdates: () => updates.check(true),
+    installUpdate: () => updates.install(),
+    updateStatus: () => updates.status,
   });
   views.resolve(view);
   const applySettings = () => {
@@ -254,7 +276,7 @@ async function start(): Promise<void> {
       }),
     );
   }
-  void loading.then(() => checkForUpdates(log));
+  void loading.then(() => updates.start());
 }
 
 async function searchGit(): Promise<GitSearch> {
@@ -266,23 +288,6 @@ async function searchGit(): Promise<GitSearch> {
     );
   }
   return findGit();
-}
-
-function checkForUpdates(log: Log): void {
-  if (!checksForUpdates(development, process.platform, process.execPath)) {
-    return;
-  }
-  autoUpdater.logger = {
-    info: (message: unknown) => log.info(strings.log.updater(String(message))),
-    warn: (message: unknown) => log.warn(strings.log.updater(String(message))),
-    error: (message: unknown) =>
-      log.error(strings.log.updater(String(message))),
-    debug: () => {},
-  };
-  autoUpdater.checkForUpdatesAndNotify().catch((error: unknown) => {
-    log.error(strings.log.updateCheckFailed);
-    log.error(error);
-  });
 }
 
 function createWindow(

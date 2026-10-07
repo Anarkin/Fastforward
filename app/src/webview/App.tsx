@@ -17,6 +17,7 @@ import {
   type ChangeArea,
   type DiffLayout,
   type LastFetch,
+  type UpdateStatus,
   type TextRequest,
   type WorktreeInfo,
 } from '../shared/protocol';
@@ -170,6 +171,7 @@ export function App({ name, post: postToHost, listen }: Props) {
   );
   const [bookmarks, setBookmarks] = useState<readonly Bookmark[]>([]);
   const [lastFetch, setLastFetch] = useState<LastFetch>({});
+  const [update, setUpdate] = useState<UpdateStatus>({ kind: 'idle' });
   const [openedMenu, setMenu] = useState<TabMenu>();
   const menu = menuIn(openedMenu, activeTab);
   if (openedMenu && !menu) {
@@ -245,6 +247,9 @@ export function App({ name, post: postToHost, listen }: Props) {
           break;
         case 'lastFetch':
           setLastFetch(message);
+          break;
+        case 'update':
+          setUpdate(message.status);
           break;
         default:
           dispatch(message);
@@ -567,6 +572,9 @@ export function App({ name, post: postToHost, listen }: Props) {
                 post({ type: 'openDefaultSettings' })
               }
               onShowShortcuts={() => setShortcutsShown(true)}
+              update={update}
+              onCheckForUpdates={() => post({ type: 'checkForUpdates' })}
+              onInstallUpdate={() => post({ type: 'installUpdate' })}
               onLog={log}
             />
             <WorktreeBar

@@ -58,6 +58,15 @@ export const strings = {
     openDefaultSettings: 'Open Default Settings',
     openUserSettings: 'Open User Settings',
     keyboardShortcuts: 'Keyboard Shortcuts',
+    checkForUpdates: 'Check for Updates',
+    checkForUpdatesWith: (status: string) => `Check for Updates (${status})`,
+    checking: 'checking...',
+    upToDate: 'up to date',
+    downloading: (version: string, percent: number) =>
+      `downloading ${version}, ${percent}%`,
+    failed: 'failed',
+    restartToUpdate: (version: string) => `Restart to Update to ${version}`,
+    download: (version: string) => `Download ${version}`,
   },
   actions: {
     openRepository: 'Open a repository',
@@ -270,6 +279,17 @@ export const strings = {
     couldNotFastForward: (local: string, remote: string, reason: string) =>
       `Switched to ${local}, but couldn't fast-forward it to ${remote}. ${reason}`,
     couldNotFetch: (reason: string) => `Couldn't fetch. ${reason}`,
+    upToDate: (version: string) => `${brand} ${version} is up to date`,
+    downloadingUpdate: (version: string) => `Downloading ${brand} ${version}`,
+    updateReady: (version: string) =>
+      `${brand} ${version} is downloaded. Restart from the menu at the top right to update now, or it updates when you quit.`,
+    updateAvailable: (version: string) =>
+      `${brand} ${version} is out. Download it from the menu at the top right.`,
+    couldNotCheckForUpdates: (reason: string) =>
+      `Couldn't check for updates. ${reason}`,
+    couldNotDownloadUpdate: (version: string, reason: string) =>
+      `Couldn't download ${brand} ${version}. ${reason}`,
+    cannotUpdate: `Only a copy of ${brand} set up by its installer can update itself`,
     detachedUpstream:
       'The checked-out commit is on no branch, so it has no upstream',
     noUpstream: (branch: string) => `${branch} has no upstream`,
@@ -330,7 +350,7 @@ export const strings = {
     watchingBuildFailed: 'Watching the build failed',
     rebuiltDefaultsFailed: 'Reading the rebuilt default settings failed',
     updater: (message: string) => `Updater: ${message}`,
-    updateCheckFailed: 'Checking for updates failed',
+    updateFailed: 'Updating failed',
     openingFileFailed: (file: string, reason: string) =>
       `Opening ${file} failed: ${reason}`,
     webview: (message: string) => `Webview: ${message}`,

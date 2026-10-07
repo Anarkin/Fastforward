@@ -1535,7 +1535,8 @@ body.resizing {
   animation: spin 1s linear infinite;
 }
 
-.fetch-mark {
+.fetch-mark,
+.menu-mark {
   position: absolute;
   right: 4px;
   bottom: 4px;
@@ -1551,6 +1552,10 @@ body.resizing {
 
 .fetch-mark.failed {
   background: var(--color-error-foreground);
+}
+
+.menu-mark {
+  background: var(--color-focus);
 }
 
 .history-button {

@@ -2,7 +2,12 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import { createServer } from 'node:http';
 import * as path from 'node:path';
-import type { ToWebview, ToWebviewOf, Bookmark } from '../shared/protocol';
+import type {
+  ToWebview,
+  ToWebviewOf,
+  Bookmark,
+  UpdateStatus,
+} from '../shared/protocol';
 import type { Timer } from '../autoFetch';
 import type { Log } from '../log';
 import { activeTabKey, Storage, tabsKey } from '../storage';
@@ -50,6 +55,7 @@ export interface OpenView {
 export class FakeHost implements Host {
   folders: readonly string[] = [];
   problems: readonly string[] = [];
+  update: UpdateStatus = { kind: 'idle' };
   readonly opened: string[] = [];
 
   chooseFolders(): Promise<readonly string[]> {
@@ -68,6 +74,18 @@ export class FakeHost implements Host {
 
   settingsProblems(): readonly string[] {
     return this.problems;
+  }
+
+  checkForUpdates(): void {
+    this.opened.push('update check');
+  }
+
+  installUpdate(): void {
+    this.opened.push('update install');
+  }
+
+  updateStatus(): UpdateStatus {
+    return this.update;
   }
 }
 

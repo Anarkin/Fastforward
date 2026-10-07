@@ -168,6 +168,19 @@ export interface LastFetch {
   readonly failed?: number;
 }
 
+export type UpdateStatus =
+  | { readonly kind: 'idle' }
+  | { readonly kind: 'checking' }
+  | { readonly kind: 'upToDate' }
+  | {
+      readonly kind: 'downloading';
+      readonly version: string;
+      readonly percent: number;
+    }
+  | { readonly kind: 'ready'; readonly version: string }
+  | { readonly kind: 'available'; readonly version: string }
+  | { readonly kind: 'failed' };
+
 export type Direction = 'back' | 'forward';
 
 export interface ScrollTarget {
@@ -201,6 +214,8 @@ export type ToHost =
   | { readonly type: 'setDiffLayout'; readonly layout: DiffLayout }
   | { readonly type: 'setShowAllFiles'; readonly show: boolean }
   | { readonly type: 'setAutoFetch'; readonly on: boolean }
+  | { readonly type: 'checkForUpdates' }
+  | { readonly type: 'installUpdate' }
   | {
       readonly type: 'log';
       readonly level: 'info' | 'error';
@@ -280,6 +295,7 @@ export type ToWebview =
   | { readonly type: 'bookmarks'; readonly bookmarks: readonly Bookmark[] }
   | { readonly type: 'solo'; readonly solo: boolean }
   | { readonly type: 'fetching'; readonly running: boolean }
+  | { readonly type: 'update'; readonly status: UpdateStatus }
   | ({ readonly type: 'lastFetch' } & LastFetch)
   | { readonly type: 'applyingSolo'; readonly running: boolean }
   | {

@@ -18,6 +18,7 @@ import { LocationsPopup } from '../webview/locations';
 import { Minimap } from '../webview/minimap';
 import { AddressBar, HistoryMenu, NavButtons } from '../webview/navBar';
 import { Notices } from '../webview/notices';
+import { MenuButton } from '../webview/menu';
 import { TabBar } from '../webview/tabBar';
 import { FileRow } from '../webview/tree';
 import { WorktreeBar } from '../webview/worktreeBar';
@@ -105,6 +106,12 @@ export function diffOptions(
   );
 }
 
+export function menuButton(
+  props: Partial<React.ComponentProps<typeof MenuButton>> = {},
+) {
+  return <MenuButton title="" items={[]} {...props} />;
+}
+
 export const tabBar = memoized(() =>
   rendered(
     <TabBar
@@ -121,6 +128,9 @@ export const tabBar = memoized(() =>
       onOpenSettings={noop}
       onOpenDefaultSettings={noop}
       onShowShortcuts={noop}
+      update={{ kind: 'idle' }}
+      onCheckForUpdates={noop}
+      onInstallUpdate={noop}
       onLog={noop}
     />,
   ),

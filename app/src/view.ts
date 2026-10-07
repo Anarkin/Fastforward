@@ -70,6 +70,7 @@ import {
   type TextRequest,
   type ToHost,
   type ToWebview,
+  type UpdateStatus,
   type WorktreeInfo,
 } from './shared/protocol';
 import { strings } from './shared/strings';
@@ -127,6 +128,9 @@ export interface Host {
   openSettings(): Promise<void>;
   openDefaultSettings(): Promise<void>;
   settingsProblems(): readonly string[];
+  checkForUpdates(): void;
+  installUpdate(): void;
+  updateStatus(): UpdateStatus;
 }
 
 export interface Connection {
@@ -331,6 +335,7 @@ export class FastforwardView {
     switch (message.type) {
       case 'ready':
         session.post(storage.layout);
+        session.post({ type: 'update', status: this.host.updateStatus() });
         for (const problem of this.host.settingsProblems()) {
           session.post({
             type: 'notice',
@@ -346,6 +351,12 @@ export class FastforwardView {
         return;
       case 'openDefaultSettings':
         await this.host.openDefaultSettings();
+        return;
+      case 'checkForUpdates':
+        this.host.checkForUpdates();
+        return;
+      case 'installUpdate':
+        this.host.installUpdate();
         return;
       case 'selectTab':
         if (this.page === session && this.isActiveRepository(message.root)) {

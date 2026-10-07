@@ -2,7 +2,12 @@ import * as assert from 'node:assert';
 import { mock } from 'node:test';
 import { isValidElement } from 'react';
 import type { ContextMenuItem } from '../../webview/contextMenu';
-import { adjacentTab, resting, TabBar } from '../../webview/tabBar';
+import {
+  adjacentTab,
+  resting,
+  TabBar,
+  updateLabel,
+} from '../../webview/tabBar';
 import { rested } from '../componentFixtures';
 import { noModifiers, noop, renderedBy } from '../fixtures';
 
@@ -32,7 +37,7 @@ suite('Tab bar', () => {
     assert.deepStrictEqual(done, ['b']);
   });
 
-  test('offers sorting the tabs, opening the settings files and showing the shortcuts in its menu', () => {
+  test('offers sorting the tabs, opening the settings files, showing the shortcuts and checking for updates in its menu', () => {
     const picked: string[] = [];
     const nav = renderedBy(TabBar, {
       tabs: [],
@@ -45,6 +50,9 @@ suite('Tab bar', () => {
       onOpenSettings: () => picked.push('settings'),
       onOpenDefaultSettings: () => picked.push('defaults'),
       onShowShortcuts: () => picked.push('shortcuts'),
+      update: { kind: 'idle' },
+      onCheckForUpdates: () => picked.push('update'),
+      onInstallUpdate: noop,
       onLog: noop,
     });
     assert.ok(isValidElement<{ children: React.ReactElement[] }>(nav));
@@ -60,6 +68,7 @@ suite('Tab bar', () => {
         'Open Default Settings',
         'Open User Settings',
         'Keyboard Shortcuts',
+        'Check for Updates',
       ],
     );
     for (const item of items) {
@@ -70,7 +79,71 @@ suite('Tab bar', () => {
       'defaults',
       'settings',
       'shortcuts',
+      'update',
     ]);
+  });
+
+  test('names the update item after how far updating got', () => {
+    assert.deepStrictEqual(
+      (
+        [
+          { kind: 'idle' },
+          { kind: 'checking' },
+          { kind: 'upToDate' },
+          { kind: 'downloading', version: '7.0.0', percent: 42 },
+          { kind: 'failed' },
+          { kind: 'ready', version: '7.0.0' },
+          { kind: 'available', version: '7.0.0' },
+        ] as const
+      ).map(updateLabel),
+      [
+        'Check for Updates',
+        'Check for Updates (checking...)',
+        'Check for Updates (up to date)',
+        'Check for Updates (downloading 7.0.0, 42%)',
+        'Check for Updates (failed)',
+        'Restart to Update to 7.0.0',
+        'Download 7.0.0',
+      ],
+    );
+  });
+
+  test('checks for updates from its menu until one is ready, then installs it from there, marking the menu button', () => {
+    for (const [update, action, marked] of [
+      [{ kind: 'downloading', version: '7.0.0', percent: 42 }, 'check', false],
+      [{ kind: 'ready', version: '7.0.0' }, 'install', true],
+      [{ kind: 'available', version: '7.0.0' }, 'install', true],
+    ] as const) {
+      const picked: string[] = [];
+      const nav = renderedBy(TabBar, {
+        tabs: [],
+        active: undefined,
+        onSelect: noop,
+        onPreload: noop,
+        onClose: noop,
+        onAdd: noop,
+        onSort: noop,
+        onOpenSettings: noop,
+        onOpenDefaultSettings: noop,
+        onShowShortcuts: noop,
+        update,
+        onCheckForUpdates: () => picked.push('check'),
+        onInstallUpdate: () => picked.push('install'),
+        onLog: noop,
+      });
+      assert.ok(isValidElement<{ children: React.ReactElement[] }>(nav));
+      const menu = nav.props.children[1];
+      assert.ok(
+        isValidElement<{ items: readonly ContextMenuItem[]; marked: boolean }>(
+          menu,
+        ),
+      );
+      assert.strictEqual(menu.props.marked, marked);
+      const item = menu.props.items.at(-1);
+      assert.ok(item && !('separator' in item));
+      item.onClick?.();
+      assert.deepStrictEqual(picked, [action]);
+    }
   });
 
   test('stops the middle button from autoscrolling, so a middle click closes the tab', () => {
@@ -86,6 +159,9 @@ suite('Tab bar', () => {
       onOpenSettings: noop,
       onOpenDefaultSettings: noop,
       onShowShortcuts: noop,
+      update: { kind: 'idle' },
+      onCheckForUpdates: noop,
+      onInstallUpdate: noop,
       onLog: noop,
     });
     assert.ok(isValidElement<{ children: React.ReactElement[] }>(nav));
@@ -129,6 +205,9 @@ suite('Tab bar', () => {
       onOpenSettings: noop,
       onOpenDefaultSettings: noop,
       onShowShortcuts: noop,
+      update: { kind: 'idle' },
+      onCheckForUpdates: noop,
+      onInstallUpdate: noop,
       onLog: noop,
     });
     assert.ok(isValidElement<{ children: React.ReactElement[] }>(nav));

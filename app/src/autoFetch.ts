@@ -2,7 +2,7 @@ import { sameRoot } from './storage';
 
 export type Timer = (run: () => void, ms: number) => () => void;
 
-const realTimer: Timer = (run, ms) => {
+export const realTimer: Timer = (run, ms) => {
   const timeout = setTimeout(run, ms);
   return () => clearTimeout(timeout);
 };

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { type TabInfo } from '../shared/protocol';
+import { type TabInfo, type UpdateStatus } from '../shared/protocol';
 import { CloseIcon } from './icons';
 import { MenuButton } from './menu';
 import { clicked, keymap } from '../shared/keymap';
@@ -17,6 +17,29 @@ export function adjacentTab(
   const index = tabs.findIndex((tab) => tab.root === active);
   const next = index === -1 ? 0 : (index + step + tabs.length) % tabs.length;
   return tabs[next].root;
+}
+
+export function updateLabel(status: UpdateStatus): string {
+  switch (status.kind) {
+    case 'idle':
+      return strings.tabs.checkForUpdates;
+    case 'checking':
+      return strings.tabs.checkForUpdatesWith(strings.tabs.checking);
+    case 'upToDate':
+      return strings.tabs.checkForUpdatesWith(strings.tabs.upToDate);
+    case 'downloading':
+      return strings.tabs.checkForUpdatesWith(
+        strings.tabs.downloading(status.version, status.percent),
+      );
+    case 'failed':
+      return strings.tabs.checkForUpdatesWith(strings.tabs.failed);
+    case 'ready':
+      return strings.tabs.restartToUpdate(status.version);
+    case 'available':
+      return strings.tabs.download(status.version);
+    default:
+      return status satisfies never;
+  }
 }
 
 export const preloadDelay = 200;
@@ -47,6 +70,9 @@ export function TabBar({
   onOpenSettings,
   onOpenDefaultSettings,
   onShowShortcuts,
+  update,
+  onCheckForUpdates,
+  onInstallUpdate,
   onLog,
 }: {
   tabs: readonly TabInfo[];
@@ -59,6 +85,9 @@ export function TabBar({
   onOpenSettings: () => void;
   onOpenDefaultSettings: () => void;
   onShowShortcuts: () => void;
+  update: UpdateStatus;
+  onCheckForUpdates: () => void;
+  onInstallUpdate: () => void;
   onLog: (message: string) => void;
 }) {
   const bar = useRef<HTMLElement>(null);
@@ -82,6 +111,7 @@ export function TabBar({
   const rest = useMemo(() => resting(preloadDelay), []);
   useEffect(() => rest.cancel, [rest]);
 
+  const installs = update.kind === 'ready' || update.kind === 'available';
   const add = useRef<HTMLButtonElement>(null);
   useBinding(keymap.openRepository, () => add.current?.click());
   useBinding(keymap.repository, (step) => {
@@ -138,6 +168,7 @@ export function TabBar({
       </div>
       <MenuButton
         title={strings.tabs.settings}
+        marked={installs}
         items={[
           { label: strings.tabs.sort, onClick: onSort },
           { separator: true },
@@ -148,6 +179,11 @@ export function TabBar({
           { label: strings.tabs.openUserSettings, onClick: onOpenSettings },
           { separator: true },
           { label: strings.tabs.keyboardShortcuts, onClick: onShowShortcuts },
+          { separator: true },
+          {
+            label: updateLabel(update),
+            onClick: installs ? onInstallUpdate : onCheckForUpdates,
+          },
         ]}
       />
     </nav>
