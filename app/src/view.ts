@@ -1846,7 +1846,16 @@ export class FastforwardView {
         if (!fromDisk(request)) {
           return { ...request, text: blobs.get(request.blob) };
         }
-        const file = await readFile(gitPath, root, undefined, request.path);
+        const onDisk =
+          request.side === 'old'
+            ? changesOf(context.tab).get(request.path)?.oldPath
+            : undefined;
+        const file = await readFile(
+          gitPath,
+          root,
+          undefined,
+          onDisk ?? request.path,
+        );
         return { ...request, text: file.binary ? undefined : file.content };
       }),
     );

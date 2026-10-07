@@ -163,6 +163,37 @@ suite('View comparing', function () {
     }
   });
 
+  test('reads the uncommitted side of a file renamed since the commit from its path on disk', async () => {
+    await repository.git('mv', 'shared.txt', 'moved.txt');
+    fs.writeFileSync(
+      path.join(repository.root, 'moved.txt'),
+      'one\ntwo\nthree\n',
+    );
+    try {
+      const backward = comparisonOf(workingTreeHash, main);
+      await select(backward);
+      assert.deepStrictEqual(
+        page
+          .last('files')
+          ?.files.map((change) => [change.status, change.path, change.oldPath]),
+        [['R', 'shared.txt', 'moved.txt']],
+      );
+      await connection.receive({
+        type: 'loadTexts',
+        root: repository.root,
+        hash: backward,
+        diff: 1,
+        texts: [{ path: 'shared.txt', side: 'old', blob: '1'.repeat(40) }],
+      });
+      assert.deepStrictEqual(
+        page.last('texts')?.texts.map(({ side, text }) => [side, text]),
+        [['old', 'one\ntwo\nthree\n']],
+      );
+    } finally {
+      await repository.git('reset', '-q', '--hard');
+    }
+  });
+
   test('updates a comparison with the working tree as files change', async () => {
     const draft = path.join(repository.root, 'draft.txt');
     await select(comparisonOf(main, workingTreeHash));
