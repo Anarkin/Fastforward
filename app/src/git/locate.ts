@@ -17,12 +17,13 @@ export type GitSearch =
 export async function findGit(
   env: NodeJS.ProcessEnv = process.env,
   platform: NodeJS.Platform = process.platform,
+  readVersion: (gitPath: string) => Promise<string> = versionOutput,
 ): Promise<GitSearch> {
   const candidate = onPath('git', env, platform);
   if (!candidate) {
     return { kind: 'missing' };
   }
-  const version = parseVersion(await versionOutput(candidate));
+  const version = parseVersion(await readVersion(candidate));
   if (!version) {
     return { kind: 'missing' };
   }
@@ -75,12 +76,16 @@ function isExecutable(file: string, windows: boolean): boolean {
 
 function versionOutput(gitPath: string): Promise<string> {
   return new Promise((resolve) => {
-    execFile(
-      gitPath,
-      ['--version'],
-      { windowsHide: true, timeout: 10_000 },
-      (error, stdout) => resolve(error ? '' : stdout),
-    );
+    try {
+      execFile(
+        gitPath,
+        ['--version'],
+        { windowsHide: true, timeout: 10_000 },
+        (error, stdout) => resolve(error ? '' : stdout),
+      );
+    } catch {
+      resolve('');
+    }
   });
 }
 
