@@ -26,12 +26,12 @@ export function tempFolder(name: string): string {
 
 const unremoved = new Set<string>();
 
-function tryRemoving(folder: string): unknown {
+function tryRemoving(folder: string, maxRetries = 5): unknown {
   try {
     fs.rmSync(folder, {
       recursive: true,
       force: true,
-      maxRetries: 5,
+      maxRetries,
       retryDelay: 100,
     });
     return undefined;
@@ -58,18 +58,31 @@ export async function assertNoFoldersLeft(): Promise<void> {
   }
   const left = [...unremoved];
   unremoved.clear();
-  const failures: string[] = [];
-  for (const folder of left) {
-    let error = tryRemoving(folder);
-    for (let tries = 0; error !== undefined && tries < 20; tries++) {
-      await new Promise((resolve) => setTimeout(resolve, 250));
-      error = tryRemoving(folder);
-    }
-    if (error !== undefined) {
-      failures.push(error instanceof Error ? error.message : folder);
-    }
+  assert.deepStrictEqual(
+    await foldersLeft(left, Date.now() + 7000),
+    [],
+    'folders left behind',
+  );
+}
+
+export async function foldersLeft(
+  folders: readonly string[],
+  until: number,
+  remove = (folder: string) => tryRemoving(folder, 0),
+): Promise<string[]> {
+  const removing = (left: readonly string[]) =>
+    left.flatMap((folder) => {
+      const error = remove(folder);
+      return error === undefined ? [] : [{ folder, error }];
+    });
+  let left = removing(folders);
+  while (left.length > 0 && Date.now() < until) {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    left = removing(left.map(({ folder }) => folder));
   }
-  assert.deepStrictEqual(failures, [], 'folders left behind');
+  return left.map(({ folder, error }) =>
+    error instanceof Error ? `${folder}: ${error.message}` : folder,
+  );
 }
 
 // The system or global config can turn the ownership check off with
