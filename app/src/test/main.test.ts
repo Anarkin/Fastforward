@@ -3,6 +3,7 @@ import { EventEmitter } from 'node:events';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { PassThrough } from 'node:stream';
+import { setTimeout as delay } from 'node:timers/promises';
 import {
   appFile,
   firstWindowSize,
@@ -17,6 +18,7 @@ import {
 } from '../main/files';
 import { profileFolder } from '../main/profile';
 import { exitOnFailure, flushBeforeQuit } from '../main/quit';
+import { reloadOnRebuild } from '../main/rebuild';
 import {
   loginShellPath,
   mergePaths,
@@ -98,6 +100,47 @@ suite('Rebuilding while the app runs', () => {
     assert.strictEqual(rebuilt('settings.json'), 'defaults');
     assert.strictEqual(rebuilt('main.js'), undefined);
     assert.strictEqual(rebuilt(null), undefined);
+  });
+
+  test('reloads once for a burst of rebuilds, and stops watching when the window closes, as a rebuild during a restart would reload a destroyed window', async () => {
+    let changed: ((event: string, file: string | null) => void) | undefined;
+    let closed: (() => void) | undefined;
+    const counts = { reloads: 0, defaults: 0, closes: 0 };
+    const window = {
+      on: (_event: 'closed', listener: () => void) => {
+        closed = listener;
+      },
+      webContents: {
+        reloadIgnoringCache: () => {
+          counts.reloads += 1;
+        },
+      },
+    };
+    reloadOnRebuild(
+      window,
+      'dist',
+      () => {
+        counts.defaults += 1;
+      },
+      (_folder, listener) => {
+        changed = listener;
+        return {
+          close: () => {
+            counts.closes += 1;
+          },
+        };
+      },
+    );
+    changed?.('change', 'webview.js');
+    changed?.('change', 'index.html');
+    changed?.('change', 'settings.json');
+    await delay(100);
+    assert.deepStrictEqual(counts, { reloads: 1, defaults: 1, closes: 0 });
+    changed?.('change', 'webview.js');
+    changed?.('change', 'settings.json');
+    closed?.();
+    await delay(100);
+    assert.deepStrictEqual(counts, { reloads: 1, defaults: 1, closes: 1 });
   });
 });
 
@@ -198,21 +241,7 @@ function gitShell(gitPath: string): string {
 }
 
 suite('Login shell PATH', () => {
-  test("reads the PATH the user's login shell sets, which an app started from the macOS Dock or a Linux launcher lacks", async function () {
-    this.timeout(10_000);
-    const shell =
-      process.platform === 'win32' ? gitShell(await installedGit()) : '/bin/sh';
-    const found = await loginShellPath({
-      ...process.env,
-      SHELL: shell,
-      PATH: [path.resolve('fastforward-probe'), process.env.PATH].join(
-        path.delimiter,
-      ),
-    });
-    assert.match(found ?? '', /fastforward-probe/);
-  });
-
-  test("reads the PATH when the shell's profile waits for input", async function () {
+  test("reads the PATH the user's login shell profile sets, which an app started from the macOS Dock or a Linux launcher lacks, even when the profile waits for input", async function () {
     this.timeout(10_000);
     const shell =
       process.platform === 'win32'
@@ -221,13 +250,16 @@ suite('Login shell PATH', () => {
     const home = tempFolder('shell');
     try {
       for (const profile of ['.bash_profile', '.profile']) {
-        fs.writeFileSync(path.join(home, profile), 'read answer\n');
+        fs.writeFileSync(
+          path.join(home, profile),
+          'read answer\nPATH="/fastforward-probe:$PATH"\n',
+        );
       }
       const found = await loginShellPath(
         { ...process.env, HOME: home, SHELL: shell },
         3000,
       );
-      assert.ok(found);
+      assert.match(found ?? '', /^\/fastforward-probe:/);
     } finally {
       removeFolder(home);
     }

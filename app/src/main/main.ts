@@ -41,12 +41,12 @@ import {
   minimumHeight,
   minimumWindowSize,
   opensExternally,
-  rebuilt,
   restoresMaximized,
   visibleBounds,
 } from './files';
 import { profileFolder } from './profile';
 import { exitOnFailure, flushBeforeQuit } from './quit';
+import { reloadOnRebuild } from './rebuild';
 import { loginShellPath, mergePaths } from './shellPath';
 import { checksForUpdates } from './updates';
 
@@ -237,7 +237,7 @@ async function start(): Promise<void> {
       app.quit();
     }
     tryWatching(log, strings.log.watchingBuildFailed, () =>
-      reloadOnRebuild(window, () => {
+      reloadOnRebuild(window, dist, () => {
         try {
           if (
             userSettings.replaceDefaults(
@@ -426,24 +426,4 @@ function tryWatching(log: Log, failed: string, watch: () => void): void {
     log.error(failed);
     log.error(error);
   }
-}
-
-function reloadOnRebuild(window: BrowserWindow, onDefaults: () => void): void {
-  let page: NodeJS.Timeout | undefined;
-  let defaults: NodeJS.Timeout | undefined;
-  const watcher = fs.watch(dist, (_event, file) => {
-    const change = rebuilt(file);
-    if (change === 'page') {
-      clearTimeout(page);
-      page = setTimeout(() => window.webContents.reloadIgnoringCache(), 100);
-    } else if (change === 'defaults') {
-      clearTimeout(defaults);
-      defaults = setTimeout(onDefaults, 100);
-    }
-  });
-  window.on('closed', () => {
-    watcher.close();
-    clearTimeout(page);
-    clearTimeout(defaults);
-  });
 }
