@@ -182,6 +182,15 @@ suite('User settings file', () => {
     });
   });
 
+  test('reads and saves a file an editor wrote with a byte order mark', async () => {
+    fs.writeFileSync(file, `\uFEFF${JSON.stringify({ solo: true })}`);
+    const user = new UserSettings(defaults, file);
+    assert.strictEqual(user.settings.solo, true);
+    assert.deepStrictEqual(user.problems, []);
+    await user.set('collapseMerges', false);
+    assert.deepStrictEqual(written(), { solo: true, collapseMerges: false });
+  });
+
   test('neither reads nor overwrites a file that is no valid JSON', async () => {
     fs.writeFileSync(file, '{ "solo": tru');
     const user = new UserSettings(defaults, file);

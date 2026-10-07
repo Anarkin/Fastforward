@@ -301,7 +301,7 @@ function writtenIn(file: string): Json | undefined {
 
 function readText(file: string): string | Error | undefined {
   try {
-    return fs.readFileSync(file, 'utf8');
+    return fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, '');
   } catch (error) {
     return isMissing(error)
       ? undefined
