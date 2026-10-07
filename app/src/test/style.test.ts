@@ -1,53 +1,80 @@
 import * as assert from 'node:assert';
-import { columnFocusAttribute } from '../webview/activeColumn';
+import { createElement } from 'react';
+import { columnFocusAttribute, type ColumnName } from '../webview/activeColumn';
 import { RefBubble } from '../webview/bubbles';
-import { changesTreeElement } from '../webview/changesTree';
+import { listedFilesRows } from '../webview/changesTree';
 import { Column } from '../webview/column';
+import { columnsClass } from '../webview/columns';
 import {
   bubbleLineHeight,
   commitRowHeight,
-  CommitRow,
+  SoloButton,
   workingTreeRowHeight,
 } from '../webview/commitList';
-import { ContextMenu } from '../webview/contextMenu';
-import { createElement } from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
-import { DiffOptions } from '../webview/diffColumn';
-import { layoutVariables, rowHeight } from '../webview/diffView';
-import { NavButtons } from '../webview/navBar';
-import { Notices } from '../webview/notices';
+import {
+  FileHeader,
+  HunkDivider,
+  layoutVariables,
+  rowHeight,
+} from '../webview/diffView';
+import { Crash } from '../webview/errorBoundary';
 import { overlayScrollbarClass } from '../webview/overlayScrollbars';
 import { codePadding, markerWidth, numberWidth } from '../webview/overflow';
+import { ShortcutsPopup } from '../webview/shortcutsPopup';
+import { SkeletonRows } from '../webview/skeleton';
+import { VirtualRows } from '../webview/virtualRows';
 import { tabSize } from '../webview/wordWrap';
 import {
+  allWithClass,
   cascaded,
   matchingRules,
   rendered,
   withClass,
   type MarkupElement,
+  type States,
 } from './cascade';
-import { commitInfo, renderedBy, stylesheet } from './fixtures';
+import { fileChange, renderedBy, stylesheet } from './fixtures';
+import {
+  addressBar,
+  bubbles,
+  columns,
+  columnTitle,
+  commitRow,
+  contextMenu,
+  diffFind,
+  diffOptions,
+  diffRow,
+  diffView,
+  fileRow,
+  folderRow,
+  historyMenu,
+  inlineLine,
+  locationsPopup,
+  minimap,
+  navButtons,
+  notices,
+  repository,
+  shownRow,
+  splitLine,
+  tabBar,
+  workingTreeRow,
+  worktree,
+  worktreeBar,
+} from './styleFixtures';
 
 const css = stylesheet();
 
-function declarationsOf(selector: string): string {
-  const escaped = selector.replace(/[.()[\]]/g, '\\$&');
-  const rule = new RegExp(`(^|,\\s*)${escaped}\\s*(,[^{]*)?{([^}]*)}`, 'm');
-  const match = rule.exec(css);
-  assert.ok(match, selector);
-  return match[3];
-}
+const noop = () => undefined;
 
-function level(selector: string): number {
-  const match = /z-index: (\d+);/.exec(declarationsOf(selector));
-  assert.ok(match, selector);
-  return Number(match[1]);
-}
+const titleEdge = 4;
+const buttonWidth = 26;
+const buttonGap = 2;
+const titleClearance = 8;
 
-function variablePx(name: string): number {
-  const match = new RegExp(`--${name}: (\\d+)px;`).exec(css);
-  assert.ok(match, name);
-  return Number(match[1]);
+function buttonsWidth(count: number): number {
+  return (
+    titleEdge + count * buttonWidth + (count - 1) * buttonGap + titleClearance
+  );
 }
 
 function pixels(value: string | undefined): number {
@@ -64,30 +91,98 @@ function pixels(value: string | undefined): number {
     .reduce((sum, term) => sum + term, 0);
 }
 
-function columnTitle(start: React.ReactNode): MarkupElement {
-  return withClass(
-    rendered(renderedBy(Column, { start, children: null })),
-    'column-title',
+function looks(
+  element: MarkupElement | undefined,
+  expected: Readonly<Record<string, string | undefined>>,
+  states?: States,
+): void {
+  assert.ok(element);
+  assert.deepStrictEqual(
+    Object.fromEntries(
+      Object.keys(expected).map((property) => [
+        property,
+        cascaded(element, property, states),
+      ]),
+    ),
+    expected,
+    element.classes.join(' '),
   );
 }
 
+function looksAlike(
+  element: MarkupElement,
+  properties: readonly string[],
+  states: States,
+  other: States = {},
+): void {
+  looks(
+    element,
+    Object.fromEntries(
+      properties.map((property) => [
+        property,
+        cascaded(element, property, other),
+      ]),
+    ),
+    states,
+  );
+}
+
+const body = rendered(createElement('body'));
+
+function bodyVariable(name: string): string | undefined {
+  return cascaded(body, `--${name}`);
+}
+
+function layer(element: MarkupElement, states?: States): number {
+  return Number(cascaded(element, 'z-index', states));
+}
+
+const hovered = { hover: true } as const;
+const focused = { focus: true } as const;
+const after = { pseudoElement: '::after' };
+
 function commitColumnTitle(autoFetchMinutes: number): MarkupElement {
-  return columnTitle(
-    createElement(NavButtons, {
-      back: [],
-      forward: [],
-      onNavigate: () => undefined,
-      fetching: false,
-      onFetch: () => undefined,
-      autoFetch: false,
-      autoFetchMinutes,
-      onAutoFetch: () => undefined,
+  return columnTitle(navButtons({ autoFetchMinutes }));
+}
+
+function shortcutsPopup(): MarkupElement {
+  return rendered(createElement(ShortcutsPopup, { mac: false, onClose: noop }));
+}
+
+function overlayScrollbar(classes = ''): MarkupElement {
+  return rendered(
+    createElement('div', {
+      className: `${overlayScrollbarClass} vertical ${classes}`,
     }),
   );
 }
 
-function layer(element: MarkupElement): number {
-  return Number(cascaded(element, 'z-index'));
+function skeletonRow(className?: string): MarkupElement {
+  return withClass(
+    rendered(createElement(SkeletonRows, { count: 1, className })),
+    'skeleton-row',
+  );
+}
+
+function soloButton(solo: boolean, applying: boolean): MarkupElement {
+  return rendered(createElement(SoloButton, { solo, applying, onSolo: noop }));
+}
+
+function frameAndLine(row: MarkupElement): { frame: number; line: number } {
+  const padding = /^(\d+)px \d+px (\d+)px$/.exec(
+    cascaded(row, 'padding') ?? '',
+  );
+  assert.ok(padding);
+  const border = /^(\d+)px /.exec(cascaded(row, 'border-bottom') ?? '');
+  assert.ok(border);
+  const height = /^(\d+)px$/.exec(
+    cascaded(withClass(row, 'commit-line'), 'height') ?? '',
+  );
+  assert.ok(height);
+  return {
+    frame: Number(padding[1]) + Number(padding[2]) + Number(border[1]),
+    line: Number(height[1]),
+  };
 }
 
 function badgeRules(node: React.ReactNode): string[] {
@@ -96,71 +191,113 @@ function badgeRules(node: React.ReactNode): string[] {
   );
 }
 
+function hunkDots(sideBySide: boolean): MarkupElement {
+  return withClass(
+    diffView({ sideBySide }, diffRow(createElement(HunkDivider))),
+    'hunk-dots',
+  );
+}
+
+const fileHeader = diffRow(
+  createElement(FileHeader, {
+    path: 'a',
+    open: true,
+    whole: false,
+    onClick: noop,
+  }),
+);
+
+function columnVisibility(selected: string | undefined) {
+  return allWithClass(columns(columnsClass(true, selected)), 'column').map(
+    (column) => cascaded(column, 'visibility'),
+  );
+}
+
+const bubbleLook = ['color', 'background', 'box-shadow', 'border'];
+
 suite('Style', () => {
   test("keeps the commit column's title clear of its buttons and the gaps between them", () => {
-    const edge = 4;
-    const button = 26;
-    const gap = 2;
-    const clearance = 8;
-    const buttons = (count: number) =>
-      edge + count * button + (count - 1) * gap + clearance;
     const title = commitColumnTitle(0);
-    assert.strictEqual(pixels(cascaded(title, 'padding-left')), buttons(3));
-    assert.strictEqual(pixels(cascaded(title, 'padding-right')), buttons(2));
-    const withAutoFetch = commitColumnTitle(5);
     assert.strictEqual(
-      pixels(cascaded(withAutoFetch, 'padding-left')),
-      buttons(4),
+      pixels(cascaded(title, 'padding-left')),
+      buttonsWidth(3),
+    );
+    assert.strictEqual(
+      pixels(cascaded(title, 'padding-right')),
+      buttonsWidth(2),
+    );
+    assert.strictEqual(
+      pixels(cascaded(commitColumnTitle(5), 'padding-left')),
+      buttonsWidth(4),
     );
   });
 
   test('wraps the repository and worktree tabs onto more rows rather than scrolling them sideways, keeping the settings button by the first row', () => {
-    const list = declarationsOf('.tab-list');
-    assert.ok(list.includes('flex-wrap: wrap;'), list);
-    assert.ok(!list.includes('overflow-x'), list);
-    assert.ok(
-      declarationsOf('.tabs > .menu-button').includes(
-        'align-self: flex-start;',
-      ),
-    );
+    for (const bar of [tabBar(), worktreeBar([worktree('a')])]) {
+      looks(withClass(bar, 'tab-list'), {
+        'flex-wrap': 'wrap',
+        overflow: undefined,
+        'overflow-x': undefined,
+      });
+    }
+    looks(withClass(tabBar(), 'menu-button'), { 'align-self': 'flex-start' });
   });
 
   test('keeps the worktree row as tall while its worktrees are listed, or when it has none, as with them', () => {
     const height = 'calc(1lh + 6px)';
-    assert.ok(declarationsOf('.worktrees .tab').includes(`height: ${height};`));
-    assert.ok(
-      declarationsOf('.worktrees .tab-list').includes(`min-height: ${height};`),
+    looks(withClass(worktreeBar([worktree('a')]), 'tab'), { height });
+    looks(withClass(worktreeBar([]), 'tab-list'), { 'min-height': height });
+    const waiting = withClass(
+      worktreeBar(undefined),
+      'skeleton-tab',
+      'waiting',
     );
-    assert.ok(
-      declarationsOf('.skeleton-tab.waiting .bar').includes(
-        'visibility: hidden;',
-      ),
-    );
+    looks(waiting, { height });
+    looks(withClass(waiting, 'bar'), { visibility: 'hidden' });
   });
 
   test('shades a round button on hover over whatever fill it has, so an active toggle or a pinned pair changes too', () => {
-    const hover = declarationsOf('.nav-button:hover:not(:disabled)');
-    assert.match(
-      hover,
-      /^\s*box-shadow: inset 0 0 0 13px var\(--hover-background\);\s*$/,
+    const pinned = rendered(
+      navButtons({ autoFetch: true, autoFetchMinutes: 5 }),
     );
-    assert.match(declarationsOf('.nav-button'), /border-radius: 13px;/);
-    assert.match(declarationsOf('.nav-button'), /width: 26px;/);
+    const enabled = [
+      pinned,
+      rendered(diffOptions({ ignoreWhitespace: true })),
+    ].flatMap((root) =>
+      allWithClass(root, 'nav-button').filter(
+        (button) => !button.attributes.has('disabled'),
+      ),
+    );
+    const filled = enabled.filter((button) =>
+      button.classes.includes('active'),
+    );
+    assert.strictEqual(filled.length, 3);
+    for (const button of enabled) {
+      looks(button, { 'border-radius': '13px', width: '26px' });
+      looks(
+        button,
+        { 'box-shadow': 'inset 0 0 0 13px var(--hover-background)' },
+        hovered,
+      );
+    }
+    for (const button of filled) {
+      looksAlike(button, ['background'], hovered);
+    }
+    looksAlike(withClass(pinned, 'pin-pair'), ['background'], {
+      hover: filled[0],
+    });
+    const disabled = withClass(pinned, 'nav-button');
+    assert.ok(disabled.attributes.has('disabled'));
+    looks(disabled, { 'box-shadow': undefined }, hovered);
   });
 
   test('places the hidden-change markers by the line numbers, padding and marker width the diff draws', () => {
-    assert.match(
-      declarationsOf('.diff-line .number'),
-      /width: var\(--diff-number-width\);/,
-    );
-    assert.match(
-      declarationsOf('.diff-line .code'),
-      /padding: 0 var\(--diff-code-padding\);/,
-    );
-    assert.match(
-      declarationsOf('.hidden-change'),
-      /width: var\(--diff-marker-width\);/,
-    );
+    const row = shownRow(diffView({}, inlineLine('added', { marker: true })));
+    looks(withClass(row, 'number'), { width: 'var(--diff-number-width)' });
+    looks(withClass(row, 'code'), { padding: '0 var(--diff-code-padding)' });
+    looks(withClass(row, 'hidden-change'), {
+      width: 'var(--diff-marker-width)',
+    });
     assert.deepStrictEqual(
       [
         layoutVariables['--diff-number-width'],
@@ -172,504 +309,564 @@ suite('Style', () => {
   });
 
   test('widens every row of an inline diff to its widest line, so short lines stay tinted and the strips between files and hunks reach across when scrolled sideways', () => {
-    const row = declarationsOf('.virtual-row.diff-row');
-    assert.match(
-      row,
-      /min-width: max\(100%, var\(--diff-content-width, 0px\)\);/,
+    const rows = allWithClass(
+      diffView(
+        {},
+        fileHeader,
+        diffRow(createElement(HunkDivider)),
+        inlineLine('added'),
+      ),
+      'virtual-row',
+      'diff-row',
     );
-    assert.match(row, /width: max-content;/);
-    assert.match(
-      declarationsOf('.diff-view.wrap .virtual-row.diff-row'),
-      /width: 100%;/,
-    );
-  });
-
-  test("opens the search over the commit column's title without moving its field or back button", () => {
-    const title = declarationsOf('.column-title');
-    const row = declarationsOf('.locations-search-row');
-    assert.match(title, /height: var\(--title-height\);/);
-    assert.match(title, /border-bottom: 1px solid/);
-    assert.match(declarationsOf('.locations-groups'), /border-top: 1px solid/);
-    assert.match(row, /height: calc\(var\(--title-height\) - 1px\);/);
-    assert.match(row, /box-sizing: border-box;/);
-    assert.doesNotMatch(row, /margin/);
-    const edge = /left: (\d+px);/.exec(declarationsOf('.column-start'));
-    assert.ok(edge);
-    assert.match(
-      row,
-      new RegExp(`padding: 0 var\\(--search-gap\\) 0 ${edge[1]};`),
-    );
-  });
-
-  test('wraps long lines of code at spaces, breaking a word only where it would not fit, in rows as tall as their lines', () => {
-    const code = declarationsOf('.diff-view.wrap .diff-line .code');
-    assert.match(code, /white-space: pre-wrap;/);
-    assert.match(code, /overflow-wrap: anywhere;/);
-    assert.match(code, /min-width: 0;/);
-    const line = declarationsOf('.diff-view.wrap .diff-line');
-    assert.match(line, /height: auto;/);
-    assert.match(line, /min-height: var\(--diff-line-height\);/);
-    assert.match(
-      declarationsOf('.diff-view.wrap .virtual-row.diff-row'),
-      /width: 100%;/,
-    );
-    const split = declarationsOf('.diff-view.wrap .split-code .code');
-    assert.match(split, /display: block;/);
-    assert.match(split, /transform: none;/);
-  });
-
-  test('wraps the lines that reach the right edge before the minimap, keeping their rows tinted under it', () => {
-    for (const selector of [
-      '.diff-view.wrap .diff-line:not(.split-side) .code',
-      '.diff-view.wrap .split-side:last-child .code',
-    ]) {
-      assert.match(
-        declarationsOf(selector),
-        /padding-right: calc\(var\(--diff-code-padding\) \+ var\(--minimap-width\)\);/,
-      );
+    assert.strictEqual(rows.length, 3);
+    for (const row of rows) {
+      looks(row, {
+        'min-width': 'max(100%, var(--diff-content-width, 0px))',
+        width: 'max-content',
+      });
     }
   });
 
-  test('draws a tab in the code as wide as the wrapping and the hidden changes count it', () => {
+  test("opens the search over the commit column's title without moving its field or back button", () => {
+    const title = commitColumnTitle(0);
+    assert.strictEqual(cascaded(title, 'height'), 'var(--title-height)');
+    assert.match(cascaded(title, 'border-bottom') ?? '', /^1px solid /);
     assert.match(
-      declarationsOf('.diff-line .code'),
-      /tab-size: var\(--diff-tab-size\);/,
+      cascaded(
+        withClass(locationsPopup(''), 'locations-groups'),
+        'border-top',
+      ) ?? '',
+      /^1px solid /,
     );
+    const edge = cascaded(withClass(title, 'column-start'), 'left');
+    assert.match(edge ?? '', /^\d+px$/);
+    looks(withClass(locationsPopup(''), 'locations-search-row'), {
+      height: 'calc(var(--title-height) - 1px)',
+      'box-sizing': 'border-box',
+      margin: undefined,
+      'margin-top': undefined,
+      'margin-bottom': undefined,
+      padding: `0 var(--search-gap) 0 ${edge}`,
+    });
+  });
+
+  test('wraps long lines of code at spaces, breaking a word only where it would not fit, in rows as tall as their lines', () => {
+    const inline = shownRow(diffView({ wordWrap: true }, inlineLine('added')));
+    looks(inline, { width: '100%' });
+    looks(withClass(inline, 'text-line'), {
+      height: 'auto',
+      'min-height': 'var(--diff-line-height)',
+    });
+    looks(withClass(inline, 'code'), {
+      'white-space': 'pre-wrap',
+      'overflow-wrap': 'anywhere',
+      'min-width': '0',
+    });
+    const split = shownRow(
+      diffView(
+        { sideBySide: true, wordWrap: true },
+        splitLine('removed', 'added'),
+      ),
+    );
+    for (const side of allWithClass(split, 'split-code')) {
+      looks(withClass(side, 'code'), {
+        display: 'block',
+        transform: 'none',
+        'white-space': 'pre-wrap',
+      });
+    }
+  });
+
+  test('wraps the lines that reach the right edge before the minimap, keeping their rows tinted under it', () => {
+    const clear = 'calc(var(--diff-code-padding) + var(--minimap-width))';
+    looks(
+      withClass(
+        shownRow(diffView({ wordWrap: true }, inlineLine('added'))),
+        'code',
+      ),
+      { 'padding-right': clear },
+    );
+    const [left, right] = allWithClass(
+      shownRow(
+        diffView({ sideBySide: true, wordWrap: true }, splitLine('', '')),
+      ),
+      'split-side',
+    ).map((side) => withClass(side, 'code'));
+    looks(left, { 'padding-right': undefined });
+    looks(right, { 'padding-right': clear });
+  });
+
+  test('draws a tab in the code as wide as the wrapping and the hidden changes count it', () => {
+    for (const wordWrap of [false, true]) {
+      looks(
+        withClass(
+          shownRow(diffView({ wordWrap }, inlineLine('context'))),
+          'code',
+        ),
+        { 'tab-size': 'var(--diff-tab-size)' },
+      );
+    }
     assert.strictEqual(layoutVariables['--diff-tab-size'], String(tabSize));
   });
 
   test('writes the title of the checked-out commit in bold', () => {
-    assert.match(
-      declarationsOf('.commit.checked-out .subject'),
-      /font-weight: 600/,
-    );
+    looks(withClass(rendered(commitRow({ headCommit: 'a' })), 'subject'), {
+      'font-weight': '600',
+    });
+    looks(withClass(rendered(commitRow({ headCommit: 'b' })), 'subject'), {
+      'font-weight': undefined,
+    });
   });
 
   test('fills and edges the search field in the border color until it is used, and draws the strip between hunks in it', () => {
-    const field = declarationsOf('.address-bar');
-    assert.ok(field.includes('background: var(--color-border);'));
-    assert.ok(field.includes('border: 1px solid var(--color-border);'));
-    assert.ok(
-      declarationsOf('.hunk-divider').includes(
-        'background: var(--color-border);',
+    looks(withClass(addressBar(), 'address-bar'), {
+      background: 'var(--color-border)',
+      border: '1px solid var(--color-border)',
+    });
+    looks(
+      withClass(
+        diffView({}, diffRow(createElement(HunkDivider))),
+        'hunk-divider',
       ),
+      { background: 'var(--color-border)' },
     );
   });
 
   test('tints a row under the pointer with a see-through touch of the focus color, over whatever lies under it', () => {
-    assert.match(
-      css,
-      /\nbody \{[^}]*--hover-background: color-mix\(\s*in srgb,\s*var\(--color-focus\) var\(--color-focus-hover\),\s*transparent\s*\);/,
+    assert.strictEqual(
+      bodyVariable('hover-background'),
+      'color-mix( in srgb, var(--color-focus) var(--color-focus-hover), transparent )',
     );
-    for (const selector of [
-      '.tab:not(.active):hover',
-      '.row:hover,\n.commit:hover',
+    for (const row of [
+      allWithClass(tabBar(), 'tab').find(
+        (tab) => !tab.classes.includes('active'),
+      ),
+      withClass(worktreeBar([worktree('a')]), 'tab'),
+      fileRow(fileChange('src/a.ts')),
+      folderRow(),
+      rendered(commitRow()),
+      workingTreeRow(1),
     ]) {
-      assert.ok(
-        declarationsOf(selector).includes(
-          'background: var(--hover-background);',
-        ),
-        selector,
-      );
+      looks(row, { background: 'var(--hover-background)' }, hovered);
     }
   });
 
   test('tints a hovered button like a hovered row, and a switched-on toggle as strongly as a selection, both see-through', () => {
-    const body = (/\nbody \{([^}]*)\}/.exec(css)?.[1] ?? '').replace(
-      /\s+/g,
-      ' ',
+    assert.strictEqual(
+      bodyVariable('toggle-on-background'),
+      'color-mix( in srgb, var(--color-focus) var(--color-focus-selected), transparent )',
     );
-    assert.ok(
-      body.includes(
-        '--toggle-on-background: color-mix( in srgb, var(--color-focus) var(--color-focus-selected), transparent );',
-      ),
-      body,
-    );
-    for (const selector of ['.tab-add:hover', '.notice-close:hover']) {
-      assert.ok(
-        declarationsOf(selector).includes(
-          'background: var(--hover-background);',
-        ),
-        selector,
-      );
+    for (const button of [
+      withClass(tabBar(), 'tab-add'),
+      withClass(tabBar(), 'tab-close'),
+      withClass(notices(), 'notice-close'),
+    ]) {
+      looks(button, { background: 'var(--hover-background)' }, hovered);
     }
-    assert.ok(
-      declarationsOf('.nav-button.toggle.active').includes(
-        'background: var(--toggle-on-background);',
-      ),
-    );
+    looks(soloButton(true, false), {
+      background: 'var(--toggle-on-background)',
+    });
   });
 
   test("edges the popup's search box in the border color, and tints the hovered search field like anything else hovered, its edge included", () => {
-    const box = declarationsOf('.locations-search');
-    assert.ok(box.includes('background: var(--color-panel-background);'));
-    assert.ok(box.includes('border: 1px solid var(--color-border);'));
-    const hovered = declarationsOf('.address-bar:hover');
-    assert.match(
+    looks(withClass(locationsPopup(''), 'locations-search'), {
+      background: 'var(--color-panel-background)',
+      border: '1px solid var(--color-border)',
+    });
+    looks(
+      withClass(addressBar(), 'address-bar'),
+      {
+        background:
+          'linear-gradient(var(--hover-background), var(--hover-background)), var(--color-border)',
+        'border-color': 'transparent',
+      },
       hovered,
-      /background:\s*linear-gradient\(var\(--hover-background\), var\(--hover-background\)\),\s*var\(--color-border\);/,
     );
-    assert.ok(hovered.includes('border-color: transparent;'));
   });
 
   test('draws the scrollbars and the minimap viewport in the one scrollbar color, as see-through as the theme says at rest, hovered and dragged', () => {
-    const body = (/\nbody \{([^}]*)\}/.exec(css)?.[1] ?? '').replace(
-      /\s+/g,
-      ' ',
-    );
     for (const [name, state] of [
       ['scrollbar-background', 'rest'],
       ['scrollbar-hover-background', 'hover'],
       ['scrollbar-active-background', 'drag'],
     ]) {
-      assert.ok(
-        body.includes(
-          `--${name}: color-mix( in srgb, var(--color-scrollbar) var(--color-scrollbar-${state}), transparent );`,
-        ),
+      assert.strictEqual(
+        bodyVariable(name),
+        `color-mix( in srgb, var(--color-scrollbar) var(--color-scrollbar-${state}), transparent )`,
         name,
       );
     }
-    for (const [selector, background] of [
-      [
-        '.overlay-scrollbar',
-        'background: var(--scrollbar-background) padding-box;',
-      ],
-      [
-        '.overlay-scrollbar:hover',
-        'background-color: var(--scrollbar-hover-background);',
-      ],
-      [
-        '.overlay-scrollbar.dragging',
-        'background-color: var(--scrollbar-active-background);',
-      ],
-      [
-        '.minimap-viewport',
-        'background: var(--scrollbar-background) padding-box;',
-      ],
-      [
-        '.diff-minimap:hover .minimap-viewport',
-        'background-color: var(--scrollbar-hover-background);',
-      ],
-      [
-        '.diff-minimap.dragging .minimap-viewport',
-        'background-color: var(--scrollbar-active-background);',
-      ],
-    ]) {
-      assert.ok(declarationsOf(selector).includes(background), selector);
-    }
+    const resting = { background: 'var(--scrollbar-background) padding-box' };
+    const hover = { 'background-color': 'var(--scrollbar-hover-background)' };
+    const drag = { 'background-color': 'var(--scrollbar-active-background)' };
+    looks(overlayScrollbar('shown'), resting);
+    looks(overlayScrollbar('shown'), hover, hovered);
+    looks(overlayScrollbar('shown dragging'), drag);
+    const viewport = withClass(minimap(), 'minimap-viewport');
+    looks(viewport, resting);
+    looks(viewport, hover, { hover: minimap() });
+    looks(
+      withClass(
+        rendered(
+          createElement(
+            'div',
+            { className: 'diff-minimap shown dragging' },
+            createElement('div', { className: 'minimap-viewport' }),
+          ),
+        ),
+        'minimap-viewport',
+      ),
+      drag,
+    );
   });
 
   test('draws the minimap marks as see-through as the theme says', () => {
-    const minimap = /\n\.minimap-mark \{([^}]*)\}/.exec(css)?.[1] ?? '';
-    assert.doesNotMatch(minimap, /opacity/);
-    for (const [selector, color] of [
-      ['.minimap-mark.added', 'added'],
-      ['.minimap-mark.removed', 'deleted'],
+    for (const [kind, color] of [
+      ['added', 'added'],
+      ['removed', 'deleted'],
     ]) {
-      assert.ok(
-        declarationsOf(selector)
-          .replace(/\s+/g, ' ')
-          .includes(
-            `background: color-mix( in srgb, var(--color-${color}) var(--color-${color}-minimap), transparent );`,
-          ),
-        selector,
-      );
+      looks(withClass(minimap(), 'minimap-mark', kind), {
+        opacity: undefined,
+        background: `color-mix( in srgb, var(--color-${color}) var(--color-${color}-minimap), transparent )`,
+      });
     }
   });
 
   test('tints the line numbers of a changed line with its row, and its changed characters as strongly as the theme says', () => {
-    for (const color of ['added', 'deleted']) {
-      const word = color === 'added' ? 'word-added' : 'word-removed';
-      assert.match(
-        css,
-        new RegExp(
-          `\\n\\.diff-line \\.${word} \\{\\s*background: color-mix\\(\\s*in srgb,\\s*var\\(--color-${color}\\) var\\(--color-${color}-line\\),\\s*transparent\\s*\\);\\s*\\}`,
-        ),
-        color,
+    for (const [kind, color, word] of [
+      ['added', 'added', 'word-added'],
+      ['removed', 'deleted', 'word-removed'],
+    ] as const) {
+      const inline = shownRow(
+        diffView({}, inlineLine(kind, { words: [{ start: 0, end: 1 }] })),
       );
+      looks(withClass(inline, word), {
+        background: `color-mix( in srgb, var(--color-${color}) var(--color-${color}-line), transparent )`,
+      });
+      const split = shownRow(
+        diffView(
+          { sideBySide: true },
+          splitLine(
+            kind === 'removed' ? kind : '',
+            kind === 'added' ? kind : '',
+          ),
+        ),
+      );
+      for (const number of [
+        ...allWithClass(inline, 'number'),
+        ...allWithClass(split, 'number'),
+      ]) {
+        looks(number, { background: undefined, 'background-color': undefined });
+      }
     }
-    assert.doesNotMatch(css, /\.diff-line\.(?:added|removed) \.number/);
-    assert.doesNotMatch(css, /\.compared/);
   });
 
   test('tints the whole row of every added and removed line more lightly, as the theme says, in the colors their minimap marks are drawn in', () => {
-    for (const [selector, color] of [
-      ['.diff-line.added', 'added'],
-      ['.diff-line.removed', 'deleted'],
-    ]) {
-      assert.ok(
-        declarationsOf(selector)
-          .replace(/\s+/g, ' ')
-          .includes(
-            `background: color-mix( in srgb, var(--color-${color}) var(--color-${color}-row), transparent );`,
+    for (const [kind, color] of [
+      ['added', 'added'],
+      ['removed', 'deleted'],
+    ] as const) {
+      const tint = {
+        background: `color-mix( in srgb, var(--color-${color}) var(--color-${color}-row), transparent )`,
+      };
+      looks(withClass(diffView({}, inlineLine(kind)), 'text-line'), tint);
+      looks(
+        withClass(
+          diffView(
+            { sideBySide: true },
+            splitLine(
+              kind === 'removed' ? kind : '',
+              kind === 'added' ? kind : '',
+            ),
           ),
-        selector,
+          'split-side',
+          kind,
+        ),
+        tint,
       );
     }
   });
 
   test('draws a menu like the other popups, its separators in the border color and the item under the pointer like a selected row', () => {
-    const menu = declarationsOf('.menu');
-    assert.ok(menu.includes('background: var(--color-panel-background);'));
-    assert.ok(menu.includes('box-shadow: var(--popup-shadow);'));
-    assert.doesNotMatch(menu, /border:/);
-    assert.ok(
-      declarationsOf('.menu-separator').includes(
-        'background: var(--color-border);',
-      ),
-    );
-    assert.ok(
-      declarationsOf('.menu-item:hover:not(:disabled)').includes(
-        'background: var(--selection-background);',
-      ),
+    for (const menu of [contextMenu(), historyMenu()]) {
+      looks(menu, {
+        background: 'var(--color-panel-background)',
+        'box-shadow': 'var(--popup-shadow)',
+        border: undefined,
+      });
+    }
+    looks(withClass(contextMenu(), 'menu-separator'), {
+      background: 'var(--color-border)',
+    });
+    looks(
+      withClass(contextMenu(), 'menu-item'),
+      { background: 'var(--selection-background)' },
+      hovered,
     );
   });
 
   test('tints a selected row and the active search result alike, with the focus color', () => {
-    const body = (/\nbody \{([^}]*)\}/.exec(css)?.[1] ?? '').replace(
-      /\s+/g,
-      ' ',
+    assert.strictEqual(
+      bodyVariable('selection-background'),
+      'color-mix( in srgb, var(--color-focus) var(--color-focus-selected), var(--color-panel-background) )',
     );
-    assert.ok(
-      body.includes(
-        '--selection-background: color-mix( in srgb, var(--color-focus) var(--color-focus-selected), var(--color-panel-background) );',
-      ),
-      body,
-    );
-    for (const selector of [
-      '.row.selected,\n.commit.selected',
-      '.locations-list .row.result.active',
+    for (const row of [
+      fileRow(fileChange('src/a.ts'), true),
+      rendered(commitRow({ selected: 'a' })),
+      withClass(locationsPopup('m'), 'row', 'result', 'active'),
     ]) {
-      assert.ok(
-        declarationsOf(selector).includes(
-          'background: var(--selection-background);',
-        ),
-        selector,
-      );
+      for (const states of [{}, hovered]) {
+        looks(row, { background: 'var(--selection-background)' }, states);
+      }
     }
   });
 
   test('dims a clean working tree like an author or a folder', () => {
-    assert.match(
-      declarationsOf('.commit.working-tree.empty .subject'),
-      /opacity: var\(--muted-opacity\);/,
-    );
+    looks(withClass(workingTreeRow(0), 'subject'), {
+      opacity: 'var(--muted-opacity)',
+    });
+    looks(withClass(workingTreeRow(1), 'subject'), { opacity: undefined });
   });
 
   test('draws every bubble but the checked-out one alike, in the bubble colors, ringed inside in the bubble border color to stand apart from a selected row', () => {
-    const badge = declarationsOf('.badge');
-    assert.ok(badge.includes('color: var(--color-bubble-foreground);'));
-    assert.ok(badge.includes('background: var(--color-bubble);'));
-    assert.doesNotMatch(badge, /border:/);
-    assert.ok(
-      badge.includes('box-shadow: inset 0 0 0 1px var(--color-bubble-border);'),
+    const all = bubbles().filter(
+      (bubble) => !bubble.classes.includes('checked-out'),
     );
-    assert.doesNotMatch(
-      css,
-      /\.badge\.(?!checked-out)[a-z-]+(\s*,[^{]*)?\s*\{[^}]*(color|background|border):/,
-    );
+    for (const kind of [
+      'branch',
+      'remote',
+      'tag',
+      'stash',
+      'hash',
+      'missing',
+    ]) {
+      assert.ok(
+        all.some((bubble) => bubble.classes.includes(kind)),
+        kind,
+      );
+    }
+    for (const bubble of all) {
+      looks(bubble, {
+        color: 'var(--color-bubble-foreground)',
+        background: 'var(--color-bubble)',
+        'box-shadow': 'inset 0 0 0 1px var(--color-bubble-border)',
+        border: undefined,
+      });
+    }
   });
 
   test('draws the button that shows a large diff, and the edge of a notice, in the solid focus color', () => {
-    const button = declarationsOf('.large-diff button');
-    assert.ok(button.includes('color: var(--color-focus-foreground);'));
-    assert.match(
-      button,
-      /background:\s*linear-gradient\(var\(--color-focus\), var\(--color-focus\)\),\s*var\(--color-panel-background\);/,
-    );
-    assert.ok(
-      declarationsOf('.notice').includes(
-        'border-left: 3px solid var(--color-focus);',
+    looks(
+      withClass(
+        rendered(
+          createElement(
+            'div',
+            { className: 'large-diff' },
+            createElement('button', { className: 'show' }),
+          ),
+        ),
+        'show',
       ),
+      {
+        color: 'var(--color-focus-foreground)',
+        background:
+          'linear-gradient(var(--color-focus), var(--color-focus)), var(--color-panel-background)',
+      },
     );
+    looks(withClass(notices('info'), 'notice'), {
+      'border-left': '3px solid var(--color-focus)',
+    });
   });
 
   test('fills the checked-out bubble with its own colors, and no bubble changes under the pointer', () => {
-    const checkedOut = declarationsOf('.badge.checked-out');
-    assert.ok(
-      checkedOut.includes('color: var(--color-bubble-checked-out-foreground);'),
+    const all = bubbles('main');
+    const checkedOut = all.filter((bubble) =>
+      bubble.classes.includes('checked-out'),
     );
-    assert.ok(
-      checkedOut.includes('background: var(--color-bubble-checked-out);'),
-    );
-    assert.ok(
-      checkedOut.includes(
-        'box-shadow: inset 0 0 0 1px var(--color-bubble-checked-out-border);',
-      ),
-    );
-    assert.doesNotMatch(
-      css,
-      /\.badge[^{]*:hover|\.row(:hover|\.active) \.badge/,
-    );
+    for (const kind of ['head', 'branch']) {
+      assert.ok(
+        checkedOut.some((bubble) => bubble.classes.includes(kind)),
+        kind,
+      );
+    }
+    for (const bubble of checkedOut) {
+      looks(bubble, {
+        color: 'var(--color-bubble-checked-out-foreground)',
+        background: 'var(--color-bubble-checked-out)',
+        'box-shadow': 'inset 0 0 0 1px var(--color-bubble-checked-out-border)',
+        border: undefined,
+      });
+    }
+    assert.ok(all.some((bubble) => bubble.parent?.classes.includes('active')));
+    for (const bubble of all) {
+      looksAlike(bubble, bubbleLook, hovered);
+    }
   });
 
   test('hides every column but the commits while no commit is selected', () => {
-    assert.match(
-      declarationsOf('.columns.nothing-selected > .column:not(:first-child)'),
-      /visibility: hidden;/,
-    );
+    assert.deepStrictEqual(columnVisibility(undefined), [
+      undefined,
+      'hidden',
+      'hidden',
+    ]);
+    assert.deepStrictEqual(columnVisibility('a'), [
+      undefined,
+      undefined,
+      undefined,
+    ]);
   });
 
   test('grabs a column edge over the gap between the columns without painting it, even while dragging', () => {
-    const resizer = declarationsOf('.resizer');
-    assert.match(resizer, /width: 6px;/);
-    assert.ok(resizer.includes('right: calc(-3px - var(--gutter-width) / 2);'));
-    assert.match(resizer, /cursor: col-resize;/);
-    assert.doesNotMatch(css, /\.resizer[^{]*\{[^}]*background/);
+    const resizer = withClass(columns(columnsClass(true, 'a')), 'resizer');
+    looks(resizer, {
+      width: '6px',
+      right: 'calc(-3px - var(--gutter-width) / 2)',
+      cursor: 'col-resize',
+    });
+    for (const states of [{}, hovered]) {
+      looks(
+        resizer,
+        { background: undefined, 'background-color': undefined },
+        states,
+      );
+    }
+    looks(rendered(createElement('body', { className: 'resizing' })), {
+      cursor: 'col-resize',
+    });
   });
 
   test('spins the icon of a running button', () => {
-    assert.match(
-      declarationsOf('.nav-button.running .spin-icon'),
-      /animation: spin 1s linear infinite;/,
+    const spinning = { animation: 'spin 1s linear infinite' };
+    looks(
+      withClass(rendered(navButtons({ fetching: true })), 'spin-icon'),
+      spinning,
     );
+    looks(withClass(soloButton(false, true), 'spin-icon'), spinning);
+    looks(withClass(rendered(navButtons()), 'spin-icon'), {
+      animation: undefined,
+    });
   });
 
   test('draws a commit row and the one-line working tree row as tall as the list expects, as even lines of text', () => {
-    const commit = /padding: (\d+)px \d+px (\d+)px;/.exec(
-      declarationsOf('.commit'),
+    const commit = rendered(commitRow({ refs: repository.refs }));
+    const { frame, line } = frameAndLine(commit);
+    assert.strictEqual(frame + 2 * line, commitRowHeight);
+    const workingTree = frameAndLine(workingTreeRow(1));
+    assert.strictEqual(
+      workingTree.frame + workingTree.line,
+      workingTreeRowHeight,
     );
-    assert.ok(commit);
-    const border = /border-bottom: (\d+)px/.exec(declarationsOf('.commit'));
-    assert.ok(border);
-    const line = /height: (\d+)px;/.exec(declarationsOf('.commit-line'));
-    assert.ok(line);
-    const lineHeight = Number(line[1]);
-    const frame = Number(commit[1]) + Number(commit[2]) + Number(border[1]);
-    assert.strictEqual(frame + lineHeight, workingTreeRowHeight);
-    assert.strictEqual(frame + 2 * lineHeight, commitRowHeight);
-    assert.doesNotMatch(
-      declarationsOf('.commit-line.secondary'),
-      /height|margin/,
-    );
-    assert.match(
-      declarationsOf('.bubble-line'),
-      new RegExp(`line-height: ${bubbleLineHeight}px;`),
-    );
-    assert.strictEqual(bubbleLineHeight, lineHeight);
+    looks(withClass(commit, 'commit-line', 'secondary'), {
+      height: `${line}px`,
+      margin: undefined,
+      'margin-top': undefined,
+      'margin-bottom': undefined,
+    });
+    looks(withClass(commit, 'bubble-line'), {
+      'line-height': `${bubbleLineHeight}px`,
+    });
+    assert.strictEqual(bubbleLineHeight, line);
   });
 
   test('draws bubbles as text in the flow of their line, starting where the other lines start, their pill around it taking no room', () => {
-    const badge = declarationsOf('.bubble-line .badge');
-    assert.match(badge, /display: inline;/);
-    assert.match(badge, /line-height: inherit;/);
-    assert.match(badge, /box-decoration-break: clone;/);
-    assert.ok(
-      badge.includes(
-        'margin: 0 calc(4px + var(--bubble-inset)) 0 calc(-1 * var(--bubble-inset));',
-      ),
-    );
-    assert.ok(badge.includes('padding: 1px var(--bubble-inset);'));
-    const line = declarationsOf('.bubble-line');
-    assert.ok(line.includes('margin-left: calc(-1 * var(--bubble-inset));'));
-    assert.ok(line.includes('padding-left: var(--bubble-inset);'));
+    const commit = rendered(commitRow({ refs: repository.refs }));
+    for (const badge of allWithClass(commit, 'badge')) {
+      looks(badge, {
+        display: 'inline',
+        'line-height': 'inherit',
+        'box-decoration-break': 'clone',
+        margin:
+          '0 calc(4px + var(--bubble-inset)) 0 calc(-1 * var(--bubble-inset))',
+        padding: '1px var(--bubble-inset)',
+      });
+    }
+    looks(withClass(commit, 'bubble-line'), {
+      'margin-left': 'calc(-1 * var(--bubble-inset))',
+      'padding-left': 'var(--bubble-inset)',
+    });
   });
 
   test("draws the bubbles of a commit a search found as in the commit list, cutting off only a ref that is a result's own row", () => {
-    const commit = createElement(CommitRow, {
-      commit: commitInfo('a'),
-      selected: undefined,
-      headCommit: undefined,
+    const commit = commitRow({
       refs: [{ kind: 'branch', name: 'main', commit: 'a' }],
-      detached: false,
-      indent: 0,
-      onSelect: () => undefined,
     });
     assert.deepStrictEqual(
       badgeRules(createElement('div', { className: 'locations-list' }, commit)),
       badgeRules(commit),
     );
-    const ref = withClass(
-      rendered(
-        createElement(
-          'div',
-          { className: 'locations-list' },
+    looks(
+      withClass(
+        rendered(
           createElement(
             'div',
-            { className: 'row result' },
-            createElement(RefBubble, {
-              info: { kind: 'branch', name: 'main' },
-            }),
+            { className: 'locations-list' },
+            createElement(
+              'div',
+              { className: 'row result' },
+              createElement(RefBubble, {
+                info: { kind: 'branch', name: 'main' },
+              }),
+            ),
           ),
         ),
+        'badge',
       ),
-      'badge',
+      { overflow: 'hidden', 'text-overflow': 'ellipsis' },
     );
-    assert.strictEqual(cascaded(ref, 'overflow'), 'hidden');
-    assert.strictEqual(cascaded(ref, 'text-overflow'), 'ellipsis');
   });
 
   test('gives a row of the other columns the fixed height of a diff row, whatever the font, so the columns line up', () => {
-    const row = declarationsOf('.row');
-    assert.match(row, /box-sizing: border-box;/);
-    assert.match(
-      row,
-      new RegExp(`height: ${rowHeight({ kind: 'hunk', file: 0 })}px;`),
-    );
+    for (const row of [fileRow(fileChange('src/a.ts')), folderRow()]) {
+      looks(row, {
+        'box-sizing': 'border-box',
+        height: `${rowHeight({ kind: 'hunk', file: 0 })}px`,
+      });
+    }
   });
 
   test('puts the dots of a hunk divider under the line numbers, in both of them inline and in the one of a side by side', () => {
-    assert.match(
-      declarationsOf('.diff-line .number'),
-      /width: var\(--diff-number-width\);/,
-    );
-    assert.match(
-      declarationsOf('.hunk-dots'),
-      /width: calc\(2 \* var\(--diff-number-width\)\);/,
-    );
-    assert.match(
-      declarationsOf('.side-by-side .hunk-dots'),
-      /width: var\(--diff-number-width\);/,
-    );
+    looks(hunkDots(false), { width: 'calc(2 * var(--diff-number-width))' });
+    looks(hunkDots(true), { width: 'var(--diff-number-width)' });
   });
 
   test('cuts off every long name in a row with an ellipsis', () => {
-    assert.match(declarationsOf('.row .path'), /text-overflow: ellipsis/);
+    for (const row of [
+      fileRow(fileChange('src/a.ts')),
+      fileRow(fileChange('src/a.ts', { status: 'D' })),
+      fileRow(undefined),
+      folderRow(),
+    ]) {
+      looks(withClass(row, 'path'), {
+        overflow: 'hidden',
+        'text-overflow': 'ellipsis',
+        'min-width': '0',
+      });
+    }
   });
 
   test("lines a folder's name up with the names of the files beside it, leaving no gap after its twisty", () => {
-    const folder = rendered(
-      changesTreeElement(
-        {
-          kind: 'folder',
-          name: 'src',
-          path: 'src',
-          depth: 0,
-          open: true,
-          changed: true,
-        },
-        {
-          showsAll: false,
-          onToggle: () => undefined,
-          selected: undefined,
-          onSelect: () => undefined,
-          cursor: undefined,
-        },
-      ),
-    );
-    assert.strictEqual(cascaded(folder, 'gap'), undefined);
+    looks(folderRow(), { gap: undefined });
   });
 
   test('highlights no loading placeholder on hover', () => {
     for (const placeholder of [
-      '.skeleton-row',
-      '.commit.placeholder',
-      '.hash-suggestion.empty',
-      '.tab.skeleton-tab',
+      skeletonRow(),
+      skeletonRow('diff-line'),
+      rendered(createElement('div', { className: 'commit placeholder' })),
+      withClass(locationsPopup('abcd'), 'hash-suggestion', 'empty'),
+      withClass(worktreeBar(undefined), 'skeleton-tab'),
     ]) {
-      assert.match(
-        declarationsOf(`${placeholder}:hover`),
-        /background: none/,
-        placeholder,
-      );
+      looks(placeholder, { background: 'none' }, hovered);
     }
   });
 
   test('scrolls a submenu taller than the window, which lists every ref at a commit', () => {
-    const submenu = declarationsOf('.menu.submenu');
-    assert.ok(submenu.includes('box-sizing: border-box;'));
-    assert.ok(submenu.includes('max-height: 100vh;'));
-    assert.ok(submenu.includes('overflow-y: auto;'));
+    looks(rendered(createElement('div', { className: 'menu submenu' })), {
+      'box-sizing': 'border-box',
+      'max-height': '100vh',
+      'overflow-y': 'auto',
+    });
   });
 
   test('lines the first item of a submenu up with the item that opens it', () => {
@@ -683,80 +880,118 @@ suite('Style', () => {
   });
 
   test('highlights no disabled menu item on hover, whose text would vanish in the selection color', () => {
-    assert.match(
-      declarationsOf('.menu-item:hover:not(:disabled)'),
-      /color: var\(--color-foreground\);/,
-    );
-    assert.doesNotMatch(css, /\.menu-item:hover\s*{/);
+    const [enabled, disabled] = allWithClass(contextMenu(), 'menu-item');
+    assert.ok(disabled.attributes.has('disabled'));
+    looks(enabled, { color: 'var(--color-foreground)' }, hovered);
+    for (const states of [hovered, focused]) {
+      looksAlike(disabled, ['color', 'background'], states);
+    }
   });
 
   test('highlights the menu item the keys are on like the one under the pointer, without an outline', () => {
-    assert.match(
-      css,
-      /\n\.menu-item:hover:not\(:disabled\),\s*\.menu-item:focus:not\(:disabled\) \{/,
+    const [item] = allWithClass(contextMenu(), 'menu-item');
+    looksAlike(item, ['color', 'background'], focused, hovered);
+    assert.notStrictEqual(
+      cascaded(item, 'background', focused),
+      cascaded(item, 'background'),
     );
-    assert.ok(declarationsOf('.menu-item').includes('outline: none;'));
+    for (const states of [{}, focused]) {
+      looks(item, { outline: 'none' }, states);
+    }
   });
 
   test("edges a popup with an inset shadow rather than a border, which Chromium rounds to whole device pixels, shifting the popup's contents at scales like 125%", () => {
     assert.match(
-      css,
-      /--popup-shadow:\s*inset 0 0 0 1px var\(--color-border\)/,
+      bodyVariable('popup-shadow') ?? '',
+      /^inset 0 0 0 1px var\(--color-border\),/,
     );
+    for (const popup of [
+      contextMenu(),
+      historyMenu(),
+      shortcutsPopup(),
+      withClass(notices(), 'notice'),
+    ]) {
+      looks(popup, { 'box-shadow': 'var(--popup-shadow)', border: undefined });
+    }
   });
 
   test("lays a sticky location row's see-through hover color over its solid background, so rows under it stay hidden", () => {
-    assert.match(
-      declarationsOf('.locations-list .tree-row.sticky:hover'),
-      /background:\s*linear-gradient\(\s*var\(--hover-background\),\s*var\(--hover-background\)\s*\),\s*var\(--popup-background\);/,
+    const sticky = withClass(locationsPopup(''), 'tree-row', 'sticky');
+    looks(sticky, { background: 'var(--popup-background)' });
+    looks(
+      sticky,
+      {
+        background:
+          'linear-gradient(var(--hover-background), var(--hover-background)), var(--popup-background)',
+      },
+      hovered,
     );
   });
 
   test('shows that nothing changed above the empty list, which still fills the column to take the keys', () => {
-    const body = declarationsOf('.column-body:has(> .empty-state)');
-    assert.match(body, /display: flex;/);
-    assert.match(body, /flex-direction: column;/);
-    assert.match(declarationsOf('.column-body > .empty-state'), /order: -1;/);
-    const list = declarationsOf(
-      '.column-body:has(> .empty-state) > .virtual-rows-frame',
+    const column = rendered(
+      renderedBy(Column, {
+        children: [
+          createElement(VirtualRows, {
+            key: 'rows',
+            rows: listedFilesRows([]),
+            renderRow: noop,
+            selectedKey: undefined,
+          }),
+          createElement('div', { key: 'empty', className: 'empty-state' }),
+        ],
+      }),
     );
-    assert.match(list, /flex: 1;/);
-    assert.match(list, /min-height: 0;/);
+    looks(withClass(column, 'column-body'), {
+      display: 'flex',
+      'flex-direction': 'column',
+    });
+    looks(withClass(column, 'empty-state'), { order: '-1' });
+    looks(withClass(column, 'virtual-rows-frame'), {
+      flex: '1',
+      'min-height': '0',
+    });
   });
 
   test('lets only the diff, errors and notices be selected, not the controls around them', () => {
-    assert.match(css, /\nbody \{[^}]*user-select: none;/);
-    assert.match(
-      css,
-      /\n\.diff-view,\s*\.error-message,\s*\.notice-message \{\s*user-select: text;\s*\}/,
-    );
-    assert.match(declarationsOf('.file-header'), /user-select: none;/);
+    looks(body, { 'user-select': 'none' });
+    const view = diffView({}, fileHeader);
+    for (const selectable of [
+      view,
+      withClass(notices(), 'notice-message'),
+      withClass(
+        rendered(
+          createElement(Crash, {
+            title: 'Fastforward',
+            error: new Error('boom'),
+            onReload: noop,
+          }),
+        ),
+        'error-message',
+      ),
+    ]) {
+      looks(selectable, { 'user-select': 'text' });
+    }
+    looks(withClass(view, 'file-header'), { 'user-select': 'none' });
   });
 
   test('draws an error notice by the notice rules alone, like any other notice but for its edge', () => {
-    const notice = withClass(
-      rendered(
-        createElement(Notices, {
-          notices: [{ id: 1, level: 'error', message: 'failed', shownAt: 0 }],
-          onDismiss: () => undefined,
-        }),
-      ),
-      'notice',
-    );
+    const rules = matchingRules(withClass(notices(), 'notice'));
     assert.deepStrictEqual(
-      matchingRules(notice).map((rule) => rule.selector),
+      rules.map((rule) => rule.selector),
       ['.notice', '.notice.error'],
     );
-    assert.match(
-      declarationsOf('.notice.error'),
-      /^\s*border-left-color: [^;]*;\s*$/,
+    assert.deepStrictEqual(
+      [...(rules.at(-1)?.declarations.keys() ?? [])],
+      ['border-left-color'],
     );
   });
 
   test('strikes a deleted file through, in the text color like the other changes', () => {
-    const deleted = declarationsOf('.row .path.deleted');
-    assert.match(deleted, /text-decoration: line-through;/);
-    assert.doesNotMatch(deleted, /color:/);
+    looks(withClass(fileRow(fileChange('src/a.ts', { status: 'D' })), 'path'), {
+      'text-decoration': 'line-through',
+      color: undefined,
+    });
   });
 
   test('sizes all text by the font size settings, buttons and inputs included', () => {
@@ -764,23 +999,41 @@ suite('Style', () => {
       [...css.matchAll(/font-size: ([^;]+);/g)].map((match) => match[1]),
       ['var(--font-size)', 'var(--monospace-font-size)'],
     );
-    assert.match(declarationsOf('button'), /font: inherit;/);
+    const controls = [
+      tabBar(),
+      contextMenu(),
+      locationsPopup(''),
+      diffFind(),
+      notices(),
+      addressBar(),
+      rendered(navButtons()),
+    ].flatMap((root) =>
+      allWithClass(root).filter((element) =>
+        ['button', 'input'].includes(element.tag),
+      ),
+    );
+    assert.ok(controls.length > 10);
+    for (const control of controls) {
+      looks(control, { font: 'inherit' });
+    }
   });
 
   test("centers the search field's text by its capitals and baseline, whatever the font's own spacing, clipping only sideways so the round tops of letters above the capitals show", () => {
-    const text = declarationsOf('.address-text');
-    assert.match(text, /text-box: trim-both cap alphabetic;/);
-    assert.match(text, /overflow-x: clip;/);
-    assert.match(text, /overflow-y: visible;/);
+    looks(withClass(addressBar(), 'address-text'), {
+      'text-box': 'trim-both cap alphabetic',
+      overflow: undefined,
+      'overflow-x': 'clip',
+      'overflow-y': 'visible',
+    });
   });
 
   test('keeps one gutter at the left edge when the commits are hidden, the gap after their empty column', () => {
-    const columns = declarationsOf('.columns');
-    assert.ok(
-      columns.includes('padding: 0 var(--gutter-width) var(--gutter-width);'),
-    );
-    assert.ok(columns.includes('gap: var(--gutter-width);'));
-    assert.match(declarationsOf('.columns.commits-hidden'), /padding-left: 0;/);
+    looks(columns(columnsClass(true, 'a')), {
+      padding: '0 var(--gutter-width) var(--gutter-width)',
+      'padding-left': undefined,
+      gap: 'var(--gutter-width)',
+    });
+    looks(columns(columnsClass(false, 'a')), { 'padding-left': '0' });
   });
 
   test('keeps the arrow cursor of a desktop app, but for resizing and typing', () => {
@@ -795,73 +1048,92 @@ suite('Style', () => {
   });
 
   test('mutes text by the one muted opacity, from the text color', () => {
-    const body = (/\nbody \{([^}]*)\}/.exec(css)?.[1] ?? '').replace(
-      /\s+/g,
-      ' ',
+    assert.strictEqual(
+      bodyVariable('muted-opacity'),
+      'var(--color-foreground-muted)',
     );
-    assert.ok(body.includes('--muted-opacity: var(--color-foreground-muted);'));
-    assert.ok(
-      body.includes(
-        '--muted-foreground: color-mix( in srgb, var(--color-foreground) var(--color-foreground-muted), transparent );',
-      ),
-      body,
+    assert.strictEqual(
+      bodyVariable('muted-foreground'),
+      'color-mix( in srgb, var(--color-foreground) var(--color-foreground-muted), transparent )',
     );
-    assert.ok(
-      declarationsOf('.commit-line.secondary').includes(
-        'color: var(--muted-foreground);',
-      ),
-    );
+    looks(withClass(rendered(commitRow()), 'commit-line', 'secondary'), {
+      color: 'var(--muted-foreground)',
+    });
   });
 
   test('dims close buttons, disabled controls and a gone bubble like muted text, keeping its own fade only for the loading placeholder', () => {
-    for (const selector of [
-      '.tab-close',
-      '.notice-close',
-      '.badge.missing',
-      '.menu-item:disabled',
-      '.nav-button:disabled',
+    for (const dimmed of [
+      withClass(tabBar(), 'tab-close'),
+      withClass(notices(), 'notice-close'),
+      withClass(locationsPopup(''), 'badge', 'missing'),
+      allWithClass(contextMenu(), 'menu-item').find((item) =>
+        item.attributes.has('disabled'),
+      ),
+      allWithClass(rendered(navButtons()), 'nav-button').find((button) =>
+        button.attributes.has('disabled'),
+      ),
     ]) {
-      const own = new RegExp(
-        `\\n${selector.replace(/[.:]/g, '\\$&')} \\{([^}]*)\\}`,
-      ).exec(css);
-      assert.ok(own?.[1].includes('opacity: var(--muted-opacity);'), selector);
+      looks(dimmed, { opacity: 'var(--muted-opacity)' });
     }
     assert.deepStrictEqual(
       [...css.matchAll(/opacity: (0\.\d+);/g)].map((match) => match[1]),
       ['0.15'],
     );
+    looks(withClass(skeletonRow(), 'bar'), { opacity: '0.15' });
   });
 
   test('highlights what a search matched in the search match colors', () => {
-    const match = declarationsOf('.locations-list .match');
-    assert.ok(match.includes('color: var(--color-search-match-foreground);'));
-    assert.ok(match.includes('background: var(--color-search-match);'));
+    const matches = allWithClass(locationsPopup('m'), 'match');
+    assert.ok(matches.length > 1);
+    for (const match of matches) {
+      looks(match, {
+        color: 'var(--color-search-match-foreground)',
+        background: 'var(--color-search-match)',
+      });
+    }
   });
 
   test('highlights what a find in the diff matched in the search match colors, edging the current match, and ticks the minimap in them', () => {
-    const match = declarationsOf('.diff-line .find-match');
-    assert.ok(match.includes('color: var(--color-search-match-foreground);'));
-    assert.ok(match.includes('background: var(--color-search-match);'));
-    assert.ok(
-      declarationsOf('.diff-line .find-match.current').includes(
-        'box-shadow: 0 0 0 1px var(--color-search-match-foreground);',
+    const [match, current] = allWithClass(
+      diffView(
+        {},
+        inlineLine('context', {
+          finds: [
+            { start: 0, end: 1 },
+            { start: 2, end: 3 },
+          ],
+          current: { start: 2, end: 3 },
+        }),
       ),
+      'find-match',
     );
-    assert.ok(
-      declarationsOf('.minimap-mark.match').includes(
-        'background: var(--color-search-match);',
-      ),
-    );
+    const colors = {
+      color: 'var(--color-search-match-foreground)',
+      background: 'var(--color-search-match)',
+    };
+    looks(match, { ...colors, 'box-shadow': undefined });
+    looks(current, {
+      ...colors,
+      'box-shadow': '0 0 0 1px var(--color-search-match-foreground)',
+    });
+    assert.ok(current.classes.includes('current'));
+    looks(withClass(minimap(), 'minimap-mark', 'match'), {
+      background: 'var(--color-search-match)',
+    });
   });
 
   test('draws the find field like the resting search field, edged in the focus color while typing in it', () => {
-    const field = declarationsOf('.diff-find');
-    assert.ok(field.includes('background: var(--color-border);'));
-    assert.ok(field.includes('border: 1px solid var(--color-border);'));
-    assert.match(
-      css,
-      /\n\.diff-find:focus-within \{\s*border-color: var\(--color-focus\);\s*\}/,
-    );
+    looks(diffFind(), {
+      background: 'var(--color-border)',
+      border: '1px solid var(--color-border)',
+    });
+    for (const field of [diffFind(), diffFind('a')]) {
+      looks(
+        field,
+        { 'border-color': 'var(--color-focus)' },
+        { focus: withClass(field, 'diff-find-input') },
+      );
+    }
   });
 
   test('keeps the titles clear of the three buttons the Files column has on the left, and of the buttons and gaps the Diff column has on the left and the two on the right, its search field never squeezed out', () => {
@@ -870,81 +1142,101 @@ suite('Style', () => {
     );
     assert.strictEqual(
       pixels(cascaded(files, 'padding-left')),
-      4 + 3 * 26 + 2 * 2 + 8,
+      buttonsWidth(3),
     );
-    const diffOptions = createElement(DiffOptions, {
-      entire: false,
-      pinned: false,
-      canShow: true,
-      ignoreWhitespace: false,
-      wordWrap: false,
-      onEntire: () => undefined,
-      onPin: () => undefined,
-      onIgnoreWhitespace: () => undefined,
-      onWordWrap: () => undefined,
-      layout: 'inline',
-      onLayout: () => undefined,
-    });
-    const options = renderToStaticMarkup(diffOptions);
-    const slots = options.match(/class="nav-button[ "-]/g)?.length ?? 0;
-    const diff = columnTitle(diffOptions);
+    const options = diffOptions();
+    const slots = allWithClass(rendered(options)).filter(
+      (element) =>
+        element.classes.includes('nav-button') ||
+        element.classes.includes('nav-button-space'),
+    ).length;
+    const diff = columnTitle(options);
     assert.strictEqual(
       pixels(cascaded(diff, 'padding-left')),
-      4 + slots * 26 + (slots - 1) * 2 + 8,
+      buttonsWidth(slots),
     );
     assert.strictEqual(
       pixels(cascaded(diff, 'padding-right')),
-      4 + 2 * 26 + 2 + 8,
+      buttonsWidth(2),
     );
-    const segmented = declarationsOf('.segmented');
-    assert.ok(segmented.includes('gap: 2px;'));
-    assert.doesNotMatch(segmented, /(^|\s)(border|padding):/);
-    assert.match(
-      declarationsOf('.segmented > .nav-button:hover:not(:disabled)'),
-      /^\s*background: var\(--color-panel-background\);\s*$/,
+    for (const group of [
+      withClass(diff, 'nav-buttons'),
+      withClass(diff, 'segmented'),
+      withClass(diff, 'pin-pair'),
+    ]) {
+      looks(group, {
+        gap: `${buttonGap}px`,
+        border: undefined,
+        padding: undefined,
+      });
+    }
+    looks(diffFind(), { 'min-width': '100px' });
+  });
+
+  test('fills a pinned pair as one undimmed switched-on toggle, and lifts the chosen and the hovered layout button onto the panel inside their ring', () => {
+    const pinned = rendered(diffOptions({ pinned: true }));
+    const pair = withClass(pinned, 'pin-pair');
+    looks(pair, { background: 'var(--toggle-on-background)' });
+    const [entire, pin] = allWithClass(pair, 'nav-button', 'active');
+    assert.ok(entire.attributes.has('disabled'));
+    looks(entire, { opacity: '1', background: 'none' });
+    looks(pin, { background: 'none' });
+    for (const button of [
+      entire,
+      pin,
+      ...allWithClass(
+        withClass(rendered(diffOptions()), 'pin-pair'),
+        'nav-button',
+      ),
+    ]) {
+      looks(button, { color: 'var(--color-foreground)' });
+    }
+    const [chosen, other] = allWithClass(
+      withClass(pinned, 'segmented'),
+      'nav-button',
     );
-    assert.doesNotMatch(css, /\.pin-pair[^{]*\{[^}]*color:/);
-    const pair = declarationsOf('.pin-pair');
-    assert.ok(pair.includes('gap: 2px;'));
-    assert.doesNotMatch(pair, /(^|\s)(border|padding):/);
-    assert.match(
-      declarationsOf('.pin-pair.pinned'),
-      /background: var\(--toggle-on-background\);/,
-    );
-    assert.match(
-      declarationsOf('.pin-pair.pinned > .nav-button.toggle.active'),
-      /background: none;/,
-    );
-    assert.match(
-      declarationsOf('.pin-pair.pinned > .nav-button:disabled'),
-      /opacity: 1;/,
-    );
-    assert.match(
-      declarationsOf('.segmented > .nav-button.toggle.active'),
-      /var\(--color-panel-background\);/,
-    );
-    assert.ok(declarationsOf('.diff-find').includes('min-width: 100px;'));
+    assert.ok(chosen.classes.includes('active'));
+    looks(chosen, {
+      background:
+        'linear-gradient(var(--toggle-on-background), var(--toggle-on-background)), var(--color-panel-background)',
+    });
+    looks(other, { background: 'var(--color-panel-background)' }, hovered);
   });
 
   test('divides the two sides with one line from top to bottom, across headers and hunk gaps, letting the pointer through', () => {
-    const line = declarationsOf('.diff-view.side-by-side::after');
-    for (const declaration of [
-      'top: 0;',
-      'bottom: 0;',
-      'left: 50%;',
-      'width: 1px;',
-      'background: var(--color-border);',
-      'pointer-events: none;',
-    ]) {
-      assert.ok(line.includes(declaration), declaration);
-    }
-    assert.ok(!css.includes('.split-side + .split-side'));
+    const view = diffView({ sideBySide: true }, splitLine('', ''));
+    looks(
+      view,
+      {
+        content: "''",
+        position: 'absolute',
+        top: '0',
+        bottom: '0',
+        left: '50%',
+        width: '1px',
+        background: 'var(--color-border)',
+        'pointer-events': 'none',
+      },
+      after,
+    );
+    const [left, right] = allWithClass(shownRow(view), 'split-side').map(
+      (side) => matchingRules(side).map((rule) => rule.selector),
+    );
+    assert.deepStrictEqual(right, left);
   });
 
   test('stripes the empty side of a change in the border color, in tiles that meet across rows', () => {
-    const filler = declarationsOf('.split-side.filler').replace(/\s+/g, ' ');
+    const filler =
+      cascaded(
+        withClass(
+          diffView({ sideBySide: true }, splitLine('filler', 'added')),
+          'split-side',
+          'filler',
+        ),
+        'background',
+      ) ?? '';
     assert.match(filler, /linear-gradient\( -45deg, var\(--color-border\)/);
-    const tile = /\/ (\d+)px (\d+)px;/.exec(filler);
+    const tile = /\/ (\d+)px (\d+)px$/.exec(filler);
     assert.ok(tile, filler);
     const height = rowHeight({
       kind: 'split',
@@ -963,103 +1255,110 @@ suite('Style', () => {
         [columnFocusAttribute]: '',
       }),
     );
-    assert.strictEqual(cascaded(list, 'outline'), 'none');
-    assert.doesNotMatch(css, /.list:focus/);
+    for (const states of [{}, focused]) {
+      looks(list, { outline: 'none' }, states);
+    }
   });
 
   test('keeps the search fields clear of the active column edge, the title holding both fields at one height', () => {
+    const column = rendered(renderedBy(Column, { children: null }));
+    const px = (name: string) => {
+      const match = /^(\d+)px$/.exec(cascaded(column, `--${name}`) ?? '');
+      assert.ok(match, name);
+      return Number(match[1]);
+    };
     const edge = 2;
-    const above =
-      (variablePx('title-height') - 1 - variablePx('search-height')) / 2;
+    const above = (px('title-height') - 1 - px('search-height')) / 2;
     assert.ok(above - edge >= 2, String(above));
-    assert.ok(
-      declarationsOf('.diff-find').includes('height: var(--search-height);'),
-    );
-    assert.ok(
-      declarationsOf('.locations-search').includes(
-        'height: var(--search-height);',
-      ),
-    );
+    for (const field of [
+      diffFind(),
+      withClass(locationsPopup(''), 'locations-search'),
+      withClass(addressBar(), 'address-bar'),
+    ]) {
+      looks(field, { height: 'var(--search-height)' });
+    }
   });
 
   test('gives the keys of every shortcut group the same share of the width, wrapping a long list of them, so the actions line up', () => {
-    assert.ok(
-      declarationsOf('.shortcuts-list').includes(
-        'grid-template-columns: 48% 1fr;',
-      ),
-    );
-    assert.ok(declarationsOf('.shortcut-keys').includes('flex-wrap: wrap;'));
+    for (const list of allWithClass(shortcutsPopup(), 'shortcuts-list')) {
+      looks(list, { 'grid-template-columns': '48% 1fr' });
+    }
+    for (const keys of allWithClass(shortcutsPopup(), 'shortcut-keys')) {
+      looks(keys, { 'flex-wrap': 'wrap' });
+    }
   });
 
   test('draws the shortcuts over the notices and menus, but under the overlay scrollbars', () => {
-    const shortcuts = level('.shortcuts-popup');
-    for (const below of ['.menu', '.notices']) {
-      assert.ok(shortcuts > level(below), below);
+    const shortcuts = layer(shortcutsPopup());
+    for (const below of [contextMenu(), historyMenu(), notices()]) {
+      assert.ok(shortcuts > layer(below), below.classes.join(' '));
     }
-    assert.ok(level('.overlay-scrollbar') > shortcuts);
+    assert.ok(layer(overlayScrollbar()) > shortcuts);
   });
 
   test('draws the active column edge over the search popup that covers the column, but under menus and notices', () => {
-    const edge = level(
-      ".columns[data-active-column='commits'] > .column:nth-child(1)::after",
+    const edge = layer(
+      withClass(columns(columnsClass(true, 'a'), 'commits'), 'column'),
+      after,
     );
-    assert.ok(edge > level('.locations-popup'));
-    for (const above of ['.menu', '.notices']) {
-      assert.ok(level(above) > edge, above);
+    assert.ok(edge > layer(locationsPopup('')));
+    for (const above of [contextMenu(), historyMenu(), notices()]) {
+      assert.ok(layer(above) > edge, above.classes.join(' '));
     }
   });
 
   test('draws a menu, a context menu and so their submenus over the notices, which take the pointer only on a notice, and both under the overlay scrollbars', () => {
-    const notices = rendered(
-      createElement(Notices, {
-        notices: [{ id: 1, level: 'error', message: 'failed', shownAt: 0 }],
-        onDismiss: () => undefined,
-      }),
-    );
-    const menu = rendered(
-      createElement(ContextMenu, {
-        menu: { x: 0, y: 0, items: [{ label: 'Check out' }] },
-        onClose: () => undefined,
-      }),
-    );
-    const scrollbar = rendered(
-      createElement('div', { className: overlayScrollbarClass }),
-    );
-    assert.strictEqual(cascaded(menu, 'position'), 'fixed');
-    assert.ok(layer(menu) > layer(notices));
-    assert.ok(level('.menu') > layer(notices));
-    assert.ok(layer(scrollbar) > layer(menu));
-    assert.strictEqual(cascaded(notices, 'pointer-events'), 'none');
-    assert.strictEqual(
-      cascaded(withClass(notices, 'notice'), 'pointer-events'),
-      'auto',
-    );
+    assert.strictEqual(cascaded(contextMenu(), 'position'), 'fixed');
+    assert.ok(layer(contextMenu()) > layer(notices()));
+    assert.ok(layer(historyMenu()) > layer(notices()));
+    assert.ok(layer(overlayScrollbar()) > layer(contextMenu()));
+    looks(notices(), { 'pointer-events': 'none' });
+    looks(withClass(notices(), 'notice'), { 'pointer-events': 'auto' });
   });
 
   test('edges the active column in the focus color, over its contents but letting the pointer through, and outlines nothing in it', () => {
-    const edge = declarationsOf(
-      ".columns[data-active-column='commits'] > .column:nth-child(1)::after",
+    const names: readonly ColumnName[] = ['commits', 'files', 'diff'];
+    for (const active of names) {
+      const edges = allWithClass(
+        columns(columnsClass(true, 'a'), active),
+        'column',
+      );
+      for (const [index, name] of names.entries()) {
+        const shown = name === active;
+        looks(
+          edges[index],
+          {
+            content: shown ? "''" : undefined,
+            position: shown ? 'absolute' : undefined,
+            'box-shadow': shown
+              ? 'inset 0 0 0 2px var(--color-focus)'
+              : undefined,
+            'pointer-events': shown ? 'none' : undefined,
+          },
+          after,
+        );
+      }
+    }
+    const focusable = allWithClass(diffView({}, inlineLine('added'))).filter(
+      (element) => element.attributes.has(columnFocusAttribute),
     );
-    assert.ok(edge.includes('box-shadow: inset 0 0 0 2px var(--color-focus);'));
-    assert.ok(edge.includes('pointer-events: none;'));
-    assert.ok(edge.includes('position: absolute;'));
-    assert.match(
-      css,
-      /\.columns\[data-active-column='files'\] > \.column:nth-child\(2\)::after,\s*\.columns\[data-active-column='diff'\] > \.column:nth-child\(3\)::after/,
-    );
-    assert.ok(declarationsOf('[data-column-focus]').includes('outline: none;'));
+    assert.strictEqual(focusable.length, 1);
+    looks(focusable[0], { outline: 'none' }, focused);
   });
 
   test('mutes the search placeholders like other muted text', () => {
-    assert.ok(
-      declarationsOf('.address-text.empty').includes(
-        'color: var(--muted-foreground);',
-      ),
-    );
-    assert.ok(
-      declarationsOf('.locations-search::placeholder').includes(
-        'color: var(--muted-foreground);',
-      ),
-    );
+    looks(withClass(addressBar(), 'address-text', 'empty'), {
+      color: 'var(--muted-foreground)',
+    });
+    for (const field of [
+      withClass(locationsPopup(''), 'locations-search'),
+      withClass(diffFind(), 'diff-find-input'),
+    ]) {
+      looks(
+        field,
+        { color: 'var(--muted-foreground)' },
+        { pseudoElement: '::placeholder' },
+      );
+    }
   });
 });
