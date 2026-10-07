@@ -139,6 +139,19 @@ export function areaColumns(
   );
 }
 
+function textSpan(
+  area: TextArea,
+  text: string,
+  range: FindRange,
+  charWidth: number,
+): { start: number; end: number } {
+  const columnAt = columnsOf(text);
+  return {
+    start: area.origin + columnAt(range.start) * charWidth,
+    end: area.origin + columnAt(range.end) * charWidth,
+  };
+}
+
 export function revealChange(
   view: Sideways,
   area: TextArea,
@@ -146,10 +159,19 @@ export function revealChange(
   word: FindRange,
   charWidth: number,
 ): number {
-  return revealScroll(
-    area.origin + textColumn(text, word.start) * charWidth,
-    area.origin + textColumn(text, word.end) * charWidth,
-    area.visible,
-    view.room,
-  );
+  const { start, end } = textSpan(area, text, word, charWidth);
+  return revealScroll(start, end, area.visible, view.room);
+}
+
+export function revealFound(
+  view: Sideways,
+  area: TextArea,
+  text: string,
+  found: FindRange,
+  charWidth: number,
+): number {
+  const { start, end } = textSpan(area, text, found, charWidth);
+  return start >= view.scrolled && end <= view.scrolled + area.visible
+    ? view.scrolled
+    : revealScroll(start, end, area.visible, view.room);
 }

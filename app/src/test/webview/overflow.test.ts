@@ -7,6 +7,7 @@ import {
   lineWidth,
   numberWidth,
   revealChange,
+  revealFound,
   revealScroll,
   shownSideways,
   sideArea,
@@ -161,5 +162,19 @@ suite('Overflow', () => {
       ),
       118 + 820 - 280,
     );
+  });
+
+  test('scrolls a found match into the middle of the text it is in only when some of it is hidden, the minimap counting as hiding it', () => {
+    const view = { scrolled: 0, width: 600, room: 3000, minimap: 40 };
+    const text = 'a'.repeat(400);
+    const reveal = (scrolled: number, start: number, end: number) => {
+      const shown = { ...view, scrolled };
+      return revealFound(shown, inlineArea(shown, 2), text, { start, end }, 8);
+    };
+    assert.strictEqual(reveal(0, 300, 304), 118 + 2416 - 280);
+    assert.strictEqual(reveal(2000, 0, 4), 0);
+    assert.strictEqual(reveal(0, 10, 14), 0);
+    assert.strictEqual(reveal(50, 10, 14), 50);
+    assert.strictEqual(reveal(0, 55, 59), 118 + 456 - 280);
   });
 });

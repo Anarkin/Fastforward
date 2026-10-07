@@ -59,6 +59,7 @@ import {
   markerWidth,
   numberWidth,
   revealChange,
+  revealFound,
   shownSideways,
   sideArea,
   textColumn,
@@ -839,6 +840,42 @@ export function largeFilesToLoad(
   return load;
 }
 
+export function foundScroll(
+  row: DiffRow,
+  found: FindMatch,
+  view: Sideways,
+  charWidth: number,
+): number | undefined {
+  switch (row.kind) {
+    case 'line':
+      return revealFound(
+        view,
+        inlineArea(view, 2),
+        row.line.text,
+        found,
+        charWidth,
+      );
+    case 'wholeLine':
+      return revealFound(view, inlineArea(view, 1), row.text, found, charWidth);
+    case 'split': {
+      const right = row.right?.index === found.line;
+      const cell = right ? row.right : row.left;
+      return (
+        cell &&
+        revealFound(
+          view,
+          sideArea(view, right),
+          cell.line.text,
+          found,
+          charWidth,
+        )
+      );
+    }
+    default:
+      return undefined;
+  }
+}
+
 function sideRoom(element: HTMLElement): { side: number; widest: number } {
   const codes = Array.from(
     element.querySelectorAll<HTMLElement>('.split-code'),
@@ -1200,6 +1237,7 @@ export function DiffView({
   const found = matches.at(current);
   const foundKey = found && lineKey(found.file, found.line);
   const jumped = useRef(0);
+  const [revealing, setRevealing] = useState<string>();
   useEffect(() => {
     if (jumped.current === jump) {
       return;
@@ -1224,6 +1262,7 @@ export function DiffView({
         if (index !== -1) {
           virtualizer.scrollToIndex(index, { align: 'center' });
           jumped.current = jump;
+          setRevealing(foundKey);
         }
       }
     }
@@ -1272,13 +1311,16 @@ export function DiffView({
     kind: DiffLine['kind'] | undefined,
   ) => <Code {...codeProps(lineMarks, key, text, kind)} />;
 
-  const reveal = (scrolled: number) => {
-    if (scrollsSides) {
-      setSideways(scrolled);
-    } else if (list.current) {
-      list.current.scrollLeft = scrolled;
-    }
-  };
+  const reveal = useCallback(
+    (scrolled: number) => {
+      if (scrollsSides) {
+        setSideways(scrolled);
+      } else if (list.current) {
+        list.current.scrollLeft = scrolled;
+      }
+    },
+    [scrollsSides],
+  );
   const hiddenMarks = (
     key: string | undefined,
     line: DiffLine,
@@ -1412,6 +1454,44 @@ export function DiffView({
     }
   }, [items, rows, scrollsSides, sideways]);
   useLayoutEffect(measureSideways, [measureSideways, items, rows]);
+  useLayoutEffect(() => {
+    const element = list.current;
+    if (!revealing || !element) {
+      return;
+    }
+    const index =
+      revealing === foundKey
+        ? keys.findIndex((row) => row.includes(revealing))
+        : -1;
+    if (index !== -1 && !items.some((item) => item.index === index)) {
+      return;
+    }
+    setRevealing(undefined);
+    if (!found || index === -1 || wordWrap || charWidth === 0) {
+      return;
+    }
+    const shown = shownSideways(
+      readSideways(element, scrollsSides),
+      scrollsSides,
+      sideways,
+    );
+    const scrolled = foundScroll(rows[index], found, shown, charWidth);
+    if (scrolled !== undefined && scrolled !== shown.scrolled) {
+      reveal(scrolled);
+    }
+  }, [
+    revealing,
+    found,
+    foundKey,
+    keys,
+    items,
+    rows,
+    wordWrap,
+    charWidth,
+    scrollsSides,
+    sideways,
+    reveal,
+  ]);
   const measurements = virtualizer.measurementsCache;
   const marks = useMemo(
     () =>
