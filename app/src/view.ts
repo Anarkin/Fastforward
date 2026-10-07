@@ -1049,12 +1049,14 @@ export class FastforwardView {
       context.post({ type: 'bookmarks', bookmarks: saved });
       return;
     }
-    const [{ refs: listed }, defaults] = await Promise.all([
+    const [{ head, refs: listed }, defaults] = await Promise.all([
       refs ?? this.refsOf(context),
       remoteDefaultBranches(context.gitPath, context.root),
     ]);
     const bookmarks = defaultBookmarks(listed, defaults);
-    await this.storage.setBookmarks(context.repository, bookmarks);
+    if (head?.commit !== undefined) {
+      await this.storage.setBookmarks(context.repository, bookmarks);
+    }
     context.post({ type: 'bookmarks', bookmarks });
   }
 

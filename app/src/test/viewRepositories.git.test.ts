@@ -15,6 +15,7 @@ import {
   closeViews,
   failOnErrorsLogged,
   FakeHost,
+  savedBookmarks,
   takeErrorsLogged,
   viewRepositories,
   withNotices,
@@ -302,6 +303,26 @@ suite('View of other repositories', function () {
       /^Listing the worktrees of .*removed failed$/,
       /^selectTab failed$/,
       /^git .* failed: spawn .* ENOENT$/,
+    );
+  });
+
+  test('makes the main branch a bookmark once a repository opened without commits has one', async () => {
+    const empty = await tempRepository(path.join(folder, 'unborn'));
+    await withView(
+      log,
+      [empty.root],
+      async (view) => {
+        assert.deepStrictEqual(view.page.last('bookmarks')?.bookmarks, []);
+        await empty.commit('first');
+        await view.connection.receive({ type: 'ready' });
+        assert.deepStrictEqual(view.page.last('bookmarks')?.bookmarks, [
+          { kind: 'branch', name: 'main' },
+        ]);
+        assert.deepStrictEqual(savedBookmarks(view.store, empty.root), [
+          { kind: 'branch', name: 'main' },
+        ]);
+      },
+      'unwatched',
     );
   });
 
