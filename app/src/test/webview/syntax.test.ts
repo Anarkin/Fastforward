@@ -507,16 +507,22 @@ suite('Syntax', () => {
     const ranges = new Map<string, readonly SyntaxRange[]>();
     const slices: (() => void)[] = [];
     let published = 0;
-    startColoring(
-      [first, seen, second],
-      ranges,
-      () => (published += 1),
-      (slice) => slices.push(slice),
-    );
-    assert.deepStrictEqual([...ranges.keys()], ['0:0']);
-    assert.strictEqual(published, 1);
-    while (slices.length > 0) {
-      slices.shift()?.();
+    const now = performance.now.bind(performance);
+    performance.now = () => 0;
+    try {
+      startColoring(
+        [first, seen, second],
+        ranges,
+        () => (published += 1),
+        (slice) => slices.push(slice),
+      );
+      assert.deepStrictEqual([...ranges.keys()], ['0:0']);
+      assert.strictEqual(published, 1);
+      while (slices.length > 0) {
+        slices.shift()?.();
+      }
+    } finally {
+      performance.now = now;
     }
     assert.deepStrictEqual([...ranges.keys()], ['0:0', '1:0', '2:0']);
     assert.strictEqual(published, 2);
