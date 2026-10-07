@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { App, tabContent } from '../../webview/App';
+import { App, menuIn, tabContent } from '../../webview/App';
 import { noop, tagsWith } from '../fixtures';
 
 const columns = () => 'columns';
@@ -29,5 +29,15 @@ suite('Window', () => {
     );
     assert.strictEqual(tagsWith(html, 'worktrees').length, 1);
     assert.strictEqual(tagsWith(html, 'skeleton-tab').length, 1);
+  });
+
+  test('closes a menu once another worktree is shown, as its items act on the one it opened in', () => {
+    const menu = { x: 1, y: 2, items: [] };
+    const opened = { root: '/a', menu };
+    assert.strictEqual(menuIn(opened, '/a'), menu);
+    assert.strictEqual(menuIn(opened, '/b'), undefined);
+    assert.strictEqual(menuIn(opened, undefined), undefined);
+    assert.strictEqual(menuIn({ root: undefined, menu }, undefined), menu);
+    assert.strictEqual(menuIn(undefined, '/a'), undefined);
   });
 });

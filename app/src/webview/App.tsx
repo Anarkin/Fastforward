@@ -88,6 +88,18 @@ export function tabContent(
   );
 }
 
+interface TabMenu {
+  readonly root: string | undefined;
+  readonly menu: OpenMenu;
+}
+
+export function menuIn(
+  opened: TabMenu | undefined,
+  root: string | undefined,
+): OpenMenu | undefined {
+  return opened !== undefined && opened.root === root ? opened.menu : undefined;
+}
+
 interface Props {
   name: string;
   post: (message: ToHost) => void;
@@ -156,7 +168,11 @@ export function App({ name, post: postToHost, listen }: Props) {
     folderView,
   );
   const [bookmarks, setBookmarks] = useState<readonly Bookmark[]>([]);
-  const [menu, setMenu] = useState<OpenMenu>();
+  const [openedMenu, setMenu] = useState<TabMenu>();
+  const menu = menuIn(openedMenu, activeTab);
+  if (openedMenu && !menu) {
+    setMenu(undefined);
+  }
   const closeMenu = useCallback(() => setMenu(undefined), []);
   const [shortcutsShown, setShortcutsShown] = useState(false);
   const closeShortcuts = useCallback(() => setShortcutsShown(false), []);
@@ -505,20 +521,26 @@ export function App({ name, post: postToHost, listen }: Props) {
     }
     const button = event.currentTarget.getBoundingClientRect();
     setMenu({
-      x: button.left,
-      y: button.bottom,
-      items: repositoryMenuItems(
-        recent,
-        (root) => post({ type: 'openRepository', root }),
-        () => post({ type: 'browseRepositories' }),
-      ),
+      root: activeTab,
+      menu: {
+        x: button.left,
+        y: button.bottom,
+        items: repositoryMenuItems(
+          recent,
+          (root) => post({ type: 'openRepository', root }),
+          () => post({ type: 'browseRepositories' }),
+        ),
+      },
     });
   };
 
   const openMenu = (event: React.MouseEvent, target: MenuTarget) => {
     event.stopPropagation();
     event.preventDefault();
-    setMenu({ x: event.clientX, y: event.clientY, items: menuItems(target) });
+    setMenu({
+      root: activeTab,
+      menu: { x: event.clientX, y: event.clientY, items: menuItems(target) },
+    });
   };
 
   return (
