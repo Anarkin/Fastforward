@@ -34,7 +34,7 @@ import {
   widestColumns,
   type DiffRow,
 } from '../../webview/diffView';
-import { fileChange } from '../fixtures';
+import { countingReads, fileChange } from '../fixtures';
 
 function patch(path: string, added: number): string {
   return [
@@ -948,7 +948,7 @@ suite('Drawing code', () => {
   });
 
   test('marks a line dense with colors, changed words and matches piece by piece in one pass', () => {
-    const pairs = 20_000;
+    const pairs = 2000;
     const text = 'ab'.repeat(pairs);
     const every = (offset: number) =>
       Array.from({ length: pairs }, (_, pair) => ({
@@ -959,11 +959,20 @@ suite('Drawing code', () => {
       ...range,
       kind: 'keyword' as const,
     }));
-    const words = every(1);
-    const matches = every(1);
-    const started = performance.now();
-    const drawn = marked(text, colors, words, 'word-added', matches, undefined);
-    assert.ok(performance.now() - started < 1000);
+    const syntax = countingReads(colors);
+    const words = countingReads(every(1));
+    const matches = countingReads(every(1));
+    const drawn = marked(
+      text,
+      syntax.counted,
+      words.counted,
+      'word-added',
+      matches.counted,
+      undefined,
+    );
+    for (const { reads } of [syntax, words, matches]) {
+      assert.ok(reads <= 10 * pairs, `${reads} reads of ${pairs} ranges`);
+    }
     assert.ok(Array.isArray(drawn));
     assert.strictEqual(drawn.length, 2 * pairs);
     assert.strictEqual(

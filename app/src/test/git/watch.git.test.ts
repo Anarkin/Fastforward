@@ -102,12 +102,17 @@ suite('Watching a repository', function () {
 
   test('stays quiet when stopped while telling whether the changed files are ignored, and stops once told, watching folder by folder', async () => {
     const answers: ((ignored: readonly string[]) => void)[] = [];
+    let disposing = false;
     const quiet: boolean[] = [];
     const stopped = await watchRepository(repository.gitPath, repository.root, {
       delay: 0,
       maxDelay: 0,
       recursive: false,
-      onChange: (gitDirChanged) => quiet.push(gitDirChanged),
+      onChange: (gitDirChanged) => {
+        if (disposing) {
+          quiet.push(gitDirChanged);
+        }
+      },
       onError: (error) => errors.push(error),
       ignored: (_repo, paths) => {
         if (!paths.some((file) => path.basename(file) === 'file.txt')) {
@@ -124,6 +129,7 @@ suite('Watching a repository', function () {
       () => answers.length > 0,
     );
     let done = false;
+    disposing = true;
     const stopping = stopped.dispose().then(() => {
       done = true;
     });
