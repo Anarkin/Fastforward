@@ -97,34 +97,39 @@ export async function runGitBytes(
       return;
     }
     const stop = () => void stopGit(child);
-    const child = execFile(
-      gitPath,
-      [...(runsHooks ? [] : gitConfigArgs), ...monitor, ...args],
-      {
-        cwd,
-        env: { ...(runsHooks ? hooksEnv() : gitEnv(pathspecMagic)), ...env },
-        maxBuffer: maxOutput,
-        ...gitProcessOptions(),
-        encoding: 'buffer',
-      },
-      (error, stdout, stderr) => {
-        signal?.removeEventListener('abort', stop);
-        if (signal?.aborted) {
-          reject(signal.reason);
-        } else if (error && !exitedWith(error, okExitCodes)) {
-          const said = stderr.toString('utf8');
-          reject(
-            Object.assign(
-              new Error(
-                strings.errors.gitFailed(args.join(' '), said || error.message),
+    const child = keptRunning(
+      execFile(
+        gitPath,
+        [...(runsHooks ? [] : gitConfigArgs), ...monitor, ...args],
+        {
+          cwd,
+          env: { ...(runsHooks ? hooksEnv() : gitEnv(pathspecMagic)), ...env },
+          maxBuffer: maxOutput,
+          ...gitProcessOptions(),
+          encoding: 'buffer',
+        },
+        (error, stdout, stderr) => {
+          signal?.removeEventListener('abort', stop);
+          if (signal?.aborted) {
+            reject(signal.reason);
+          } else if (error && !exitedWith(error, okExitCodes)) {
+            const said = stderr.toString('utf8');
+            reject(
+              Object.assign(
+                new Error(
+                  strings.errors.gitFailed(
+                    args.join(' '),
+                    said || error.message,
+                  ),
+                ),
+                { stderr: said.trim() },
               ),
-              { stderr: said.trim() },
-            ),
-          );
-        } else {
-          resolve(stdout);
-        }
-      },
+            );
+          } else {
+            resolve(stdout);
+          }
+        },
+      ),
     );
     signal?.addEventListener('abort', stop, { once: true });
     child.stdin?.on('error', () => undefined);
@@ -137,6 +142,20 @@ export function gitProcessOptions(platform = process.platform): {
   readonly detached: boolean;
 } {
   return { windowsHide: true, detached: platform !== 'win32' };
+}
+
+const running = new Set<ChildProcess>();
+
+export function keptRunning<T extends ChildProcess>(child: T): T {
+  running.add(child);
+  const done = () => running.delete(child);
+  child.once('close', done);
+  child.once('error', done);
+  return child;
+}
+
+export async function stopRunningGit(): Promise<void> {
+  await Promise.all([...running].map((child) => stopGit(child)));
 }
 
 export async function stopGit(

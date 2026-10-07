@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { gitErrorText } from '../../git/errorText';
 import { switchToBranch } from '../../git/repository';
-import { runGit } from '../../git/run';
+import { runGit, stopRunningGit } from '../../git/run';
 import { ignoredPaths } from '../../git/watch';
 import { workingTreeFiles, workingTreePatch } from '../../git/workingTree';
 import { waitFor } from '../fixtures';
@@ -120,6 +120,26 @@ suite('Running git in a repository', function () {
       stopping.abort();
       await assert.rejects(stalled);
       await waitFor(() => !running(outlived), 'what git started to stop', 5000);
+    } finally {
+      removeFolder(folder);
+    }
+  });
+
+  test('stops every git still running when asked, as the app does when it quits', async () => {
+    const folder = tempFolder('quitting');
+    const started = path.join(folder, 'started').replaceAll('\\', '/');
+    try {
+      const stalled = runGit(gitPath, cwd, [
+        '-c',
+        `alias.stall=!echo > '${started}'; sleep 15`,
+        'stall',
+      ]);
+      await waitFor(() => fs.existsSync(started), 'git to start');
+      const stopped = performance.now();
+      const failed = assert.rejects(stalled);
+      await stopRunningGit();
+      await failed;
+      assert.ok(performance.now() - stopped < 5000);
     } finally {
       removeFolder(folder);
     }

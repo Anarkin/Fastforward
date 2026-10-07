@@ -11,6 +11,7 @@ import {
   gitConfigArgs,
   gitEnv,
   gitProcessOptions,
+  keptRunning,
   runGit,
   splitNul,
   stopGit,
@@ -297,18 +298,20 @@ function streamMatches(
       }
     };
     const abort = () => finish(() => reject(signal?.reason));
-    const child = spawn(
-      gitPath,
-      [
-        ...gitConfigArgs,
-        'log',
-        ...historyRefs(solo),
-        '--stdin',
-        '-z',
-        '--format=%H%x00%aN%x00%aE%x00%cN%x00%cE%x00%B',
-        '--',
-      ],
-      { cwd, env: gitEnv(), ...gitProcessOptions() },
+    const child = keptRunning(
+      spawn(
+        gitPath,
+        [
+          ...gitConfigArgs,
+          'log',
+          ...historyRefs(solo),
+          '--stdin',
+          '-z',
+          '--format=%H%x00%aN%x00%aE%x00%cN%x00%cE%x00%B',
+          '--',
+        ],
+        { cwd, env: gitEnv(), ...gitProcessOptions() },
+      ),
     );
     signal?.addEventListener('abort', abort, { once: true });
     child.stdin.on('error', () => undefined);

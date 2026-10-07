@@ -15,6 +15,7 @@ import {
 } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import { findGit, minimumGitVersion, type GitSearch } from '../git/locate';
+import { stopRunningGit } from '../git/run';
 import { errorLine, fileLog, type Log } from '../log';
 import { appNameSwitch, titleBarHeight } from '../shared/titleBar';
 import { keymap, pressed, pressOfInput } from '../shared/keymap';
@@ -176,7 +177,7 @@ async function start(): Promise<void> {
   });
   app.on('window-all-closed', () => app.quit());
   flushBeforeQuit(app, () =>
-    Promise.all([state.saved(), userSettings.saved()]),
+    Promise.all([state.saved(), userSettings.saved(), stopRunningGit()]),
   );
   const loading = window.loadURL(`${appOrigin}/index.html`);
 
