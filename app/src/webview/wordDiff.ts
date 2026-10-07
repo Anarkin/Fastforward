@@ -73,10 +73,7 @@ function tokensOf(lines: readonly string[]): Token[] {
 export function changedTokens(
   a: readonly string[],
   b: readonly string[],
-): { readonly a: boolean[]; readonly b: boolean[] } | undefined {
-  if (a.length * b.length > maxTokens) {
-    return undefined;
-  }
+): { readonly a: boolean[]; readonly b: boolean[] } {
   const rows = a.length + 1;
   const columns = b.length + 1;
   const common = new Uint32Array(rows * columns);
@@ -163,7 +160,6 @@ export function blockWordRanges(
     after.map((token) => token.text),
   );
   if (
-    !changed ||
     !before.some(
       (token, index) => !changed.a[index] && !/^\s+$/.test(token.text),
     )

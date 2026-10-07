@@ -11,10 +11,6 @@ import {
   wordRanges,
 } from '../webview/wordDiff';
 
-function tokens(count: number): string[] {
-  return Array.from({ length: count }, () => 'x');
-}
-
 function pieces(lines: readonly string[], ranges: readonly FindRange[][]) {
   return lines.map((line, index) =>
     ranges[index].map((range) => line.slice(range.start, range.end)),
@@ -93,8 +89,9 @@ suite('Word diff', () => {
   });
 
   test('compares a block of up to 1 million removed by added tokens, spaces and punctuation counting as tokens', () => {
-    assert.ok(changedTokens(tokens(1000), tokens(1000)));
-    assert.strictEqual(changedTokens(tokens(1000), tokens(1001)), undefined);
+    const lines = Array<string>(125).fill('let a = b;');
+    assert.ok(blockWordRanges(lines, lines));
+    assert.strictEqual(blockWordRanges(lines, [...lines, 'c']), undefined);
   });
 
   test('compares each run of removed lines with the added lines after it, keyed as the search keys lines', () => {
@@ -230,14 +227,15 @@ suite('Word diff', () => {
         start: 2 * pair + offset,
         end: 2 * pair + offset + 1,
       }));
-    const drawn = marked(
-      text,
-      every(0).map((range) => ({ ...range, kind: 'keyword' as const })),
-      every(1),
-      'word-added',
-      every(1),
-      undefined,
-    );
+    const colors = every(0).map((range) => ({
+      ...range,
+      kind: 'keyword' as const,
+    }));
+    const words = every(1);
+    const matches = every(1);
+    const started = performance.now();
+    const drawn = marked(text, colors, words, 'word-added', matches, undefined);
+    assert.ok(performance.now() - started < 1000);
     assert.ok(Array.isArray(drawn));
     assert.strictEqual(drawn.length, 2 * pairs);
     assert.strictEqual(
