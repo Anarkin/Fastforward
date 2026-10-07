@@ -88,7 +88,9 @@ function step(
   lanes.dashed[lane] = entry.hash === workingTree || stash;
   const started = new Set<number>();
   for (const parent of others) {
-    let to = lanes.hashes.indexOf(parent);
+    let to = lanes.hashes.findIndex(
+      (hash, index) => hash === parent && !lanes.dashed[index],
+    );
     if (to === -1) {
       to = allocate(lanes, parent);
       started.add(to);

@@ -261,6 +261,40 @@ suite('Graph', () => {
     );
   });
 
+  test('keeps a merge of HEAD out of the dashed line leading the working tree to it', () => {
+    const graph = new Graph(
+      [
+        { hash: 'm', parents: ['p', 'h'] },
+        { hash: 'h', parents: ['b'] },
+        { hash: 'p', parents: ['b'] },
+        { hash: 'b', parents: [] },
+      ],
+      { head: 'h' },
+    );
+    assert.deepStrictEqual(graph.rows(0, 2).map(describe), [
+      '1: 0>0.~ 0>0~ 1>1. 1>2.',
+      '0: 0>0. 0>0~ 1>1 1>1. 2>0',
+    ]);
+  });
+
+  test('keeps a merge of a stash base out of the dashed line leading the stash to it', () => {
+    const graph = new Graph(
+      [
+        { hash: 's', parents: ['b'] },
+        { hash: 'm', parents: ['a', 'b'] },
+        { hash: 'a', parents: ['b'] },
+        { hash: 'b', parents: [] },
+      ],
+      { stashes: new Set(['s']) },
+    );
+    assert.deepStrictEqual(graph.rows(0, 4).map(describe), [
+      '0: 0>0.~',
+      '1: 0>0.~ 0>0~ 1>1. 1>2.',
+      '1: 0>0.~ 0>0~ 1>1 1>1. 2>2 2>2.',
+      '0: 0>0~ 1>0 2>0',
+    ]);
+  });
+
   test('leaves the working tree alone when HEAD is not shown', () => {
     const graph = new Graph([{ hash: 'a', parents: [] }], { head: 'x' });
     assert.strictEqual(describe(graph.workingTreeRow), '0: ');
