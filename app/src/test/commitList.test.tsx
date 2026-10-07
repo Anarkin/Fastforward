@@ -306,12 +306,12 @@ const loaded = (...hashes: string[]) => {
   return history;
 };
 
-const settled = () => new Promise((resolve) => setTimeout(resolve, 30));
+const settled = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 suite('Commit list keys', () => {
   test('sends a selection made by a held key only once the key settles', async () => {
     const sent: string[] = [];
-    const { settle } = settling((hash: string) => sent.push(hash), 10);
+    const { settle } = settling((hash: string) => sent.push(hash), 0);
     settle('a', false);
     settle('b', true);
     settle('c', true);
@@ -328,7 +328,7 @@ suite('Commit list keys', () => {
     const sent: string[] = [];
     const { settle, send } = settling(
       (message: string) => sent.push(message),
-      10,
+      0,
     );
     settle('select b', true);
     send('switch tab');
@@ -342,7 +342,7 @@ suite('Commit list keys', () => {
     const sent: string[] = [];
     const { settle, follow } = settling(
       (message: string) => sent.push(message),
-      10,
+      0,
     );
     settle('select b', true);
     follow('load tree b');

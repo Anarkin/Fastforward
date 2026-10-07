@@ -132,7 +132,7 @@ export async function withView(
   log: Log,
   tabs: readonly string[],
   run: (view: OpenView) => Promise<void>,
-  ready = true,
+  ready: boolean | 'unwatched' = true,
   host?: Host,
 ): Promise<void> {
   const view = await openView(log, tabs, ready, host);

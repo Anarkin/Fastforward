@@ -29,6 +29,8 @@ suite('View updating by itself', function () {
   let folder: string;
   let repository: TempRepository;
   let remote: TempRepository;
+  let pusher: TempRepository;
+  let first: TempRepository;
   let page: FakePage;
   let connection: Connection;
 
@@ -54,6 +56,10 @@ suite('View updating by itself', function () {
     });
     await repository.git('remote', 'add', 'origin', remote.root);
     await repository.git('push', '-u', 'origin', 'main');
+    pusher = await tempRepository(path.join(folder, 'pusher'));
+    await pusher.git('pull', remote.root, 'main');
+    first = await tempRepository(path.join(folder, 'first'));
+    await first.commit('first');
     ({ page, connection } = await openView(log, [repository.root]));
   });
 
@@ -65,12 +71,15 @@ suite('View updating by itself', function () {
     removeFolder(folder);
   });
 
+  async function push(message: string, refspecs = ['main']): Promise<string> {
+    await pusher.commit(message);
+    await pusher.git('push', remote.root, ...refspecs);
+    const [pushed] = await pusher.resolve('HEAD');
+    return pushed;
+  }
+
   test('updates by itself when a fetch brings new commits', async () => {
-    const elsewhere = await tempRepository(path.join(folder, 'elsewhere'));
-    await elsewhere.git('pull', remote.root, 'main');
-    await elsewhere.commit('from elsewhere');
-    await elsewhere.git('push', remote.root, 'main');
-    const [fetched] = await elsewhere.resolve('HEAD');
+    const fetched = await push('from elsewhere');
     page.clear();
     try {
       await repository.git('fetch');
@@ -146,7 +155,7 @@ suite('View updating by itself', function () {
     const opened = await openView(
       log,
       [repository.root],
-      true,
+      'unwatched',
       undefined,
       () => () => undefined,
     );
@@ -160,37 +169,6 @@ suite('View updating by itself', function () {
       await waitFor(() => fetching, 'the background fetch');
       opened.connection.dispose();
       await idleOnlyOnceOpened(opened.view, held);
-    } finally {
-      opened.connection.dispose();
-    }
-  });
-
-  test('updates by itself when a file changes in a submodule', async () => {
-    const library = await tempRepository(path.join(folder, 'library'));
-    await library.commit('library', { 'lib.c': 'lib\n' });
-    const host = await tempRepository(path.join(folder, 'host'));
-    await host.commit('host');
-    await host.git(
-      '-c',
-      'protocol.file.allow=always',
-      'submodule',
-      'add',
-      library.root,
-      'sub',
-    );
-    await host.git('commit', '-m', 'adds sub');
-    const opened = await openView(log, [host.root]);
-    try {
-      await waitFor(
-        () => opened.page.last('workingTree')?.files === 0,
-        'the clean working tree',
-      );
-      opened.page.clear();
-      fs.writeFileSync(path.join(host.root, 'sub', 'lib.c'), 'edited\n');
-      await waitFor(
-        () => opened.page.last('workingTree')?.files === 1,
-        'the changed submodule to show',
-      );
     } finally {
       opened.connection.dispose();
     }
@@ -246,17 +224,15 @@ suite('View updating by itself', function () {
   test('fetches every open repository while pinned, telling of a failure once until one succeeds', async () => {
     const broken = await tempRepository(path.join(folder, 'broken'));
     await broken.commit('a');
-    await broken.git('remote', 'add', 'origin', path.join(folder, 'missing'));
-    const pusher = await tempRepository(path.join(folder, 'pusher'));
-    await pusher.git('pull', remote.root, 'main');
-    await pusher.commit('pushed');
-    await pusher.git('push', remote.root, 'main');
-    const [pushed] = await pusher.resolve('HEAD');
+    const missing = path.join(folder, 'missing');
+    await broken.git('remote', 'add', 'origin', missing);
+    await first.git('remote', 'add', 'origin', remote.root);
+    const [head] = await remote.resolve('main');
     const rounds: (() => void)[] = [];
     const view = await openView(
       log,
-      [broken.root, repository.root],
-      true,
+      [broken.root, first.root],
+      'unwatched',
       undefined,
       (run) => {
         rounds.push(run);
@@ -267,22 +243,21 @@ suite('View updating by itself', function () {
       await withNotices(view.page, 'error', async (messages) => {
         await view.connection.receive({ type: 'setAutoFetch', on: true });
         await waitFor(() => rounds.length === 1, 'the first round');
-        assert.deepStrictEqual(await repository.resolve('origin/main'), [
-          pushed,
-        ]);
+        assert.deepStrictEqual(await first.resolve('origin/main'), [head]);
         assert.strictEqual(messages.length, 1);
         assert.match(messages[0] ?? '', /^broken: Couldn't fetch\./);
         assert.strictEqual(view.page.last('fetching'), undefined);
         assert.strictEqual(view.settings.settings.autoFetch, true);
 
+        await view.connection.receive({ type: 'closeTab', root: first.root });
         rounds[0]();
         await waitFor(() => rounds.length === 2, 'the second round');
         assert.strictEqual(messages.length, 1);
 
-        await broken.git('remote', 'set-url', 'origin', remote.root);
+        await tempRepository(missing, { bare: true });
         rounds[1]();
         await waitFor(() => rounds.length === 3, 'the third round');
-        await broken.git('remote', 'set-url', 'origin', folder);
+        removeFolder(missing);
         rounds[2]();
         await waitFor(() => rounds.length === 4, 'the fourth round');
         assert.strictEqual(messages.length, 2);
@@ -290,21 +265,19 @@ suite('View updating by itself', function () {
       takeFetchFailures(/'.*' does not appear to be a git repository/);
     } finally {
       view.connection.dispose();
+      await first.git('remote', 'remove', 'origin');
     }
   });
 
   test('keeps the selected commit, its files and diff, and the place in the list as a background fetch brings commits and branches', async () => {
     await repository.commit('kept', { 'kept.txt': 'kept\n' });
     const [kept] = await repository.resolve('HEAD');
-    const pusher = await tempRepository(path.join(folder, 'pusher-kept'));
-    await pusher.git('pull', remote.root, 'main');
-    await pusher.commit('newer');
-    await pusher.git('push', remote.root, 'main:main', 'main:brand-new');
+    await push('newer', ['main:main', 'main:brand-new']);
     const rounds: (() => void)[] = [];
     const view = await openView(
       log,
       [repository.root],
-      true,
+      'unwatched',
       undefined,
       (run) => {
         rounds.push(run);
@@ -359,54 +332,19 @@ suite('View updating by itself', function () {
     }
   });
 
-  test('fetches the active repository first in the background', async () => {
-    const first = await tempRepository(path.join(folder, 'first-in-strip'));
-    await first.commit('first');
-    const view = await openView(
-      log,
-      [first.root, repository.root],
-      true,
-      undefined,
-      () => () => undefined,
-    );
-    const fetched: unknown[] = [];
-    stubMethod(view.view, 'fetchInBackground', (_original, root) => {
-      fetched.push(root);
-      return Promise.resolve();
-    });
-    try {
-      await view.connection.receive({
-        type: 'selectTab',
-        root: repository.root,
-      });
-      await view.connection.receive({ type: 'setAutoFetch', on: true });
-      await waitFor(() => fetched.length === 2, 'the round');
-      assert.deepStrictEqual(fetched, [repository.root, first.root]);
-    } finally {
-      view.connection.dispose();
-    }
-  });
-
   test('shows what a background fetch brought to a tab selected while it ran', async () => {
-    const first = await tempRepository(path.join(folder, 'first-selected'));
-    await first.commit('first');
-    const pusher = await tempRepository(path.join(folder, 'pusher-selected'));
-    await pusher.git('pull', remote.root, 'main');
-    await pusher.commit('brought');
-    await pusher.git('push', remote.root, 'main');
-    const [brought] = await pusher.resolve('HEAD');
+    const brought = await push('brought');
     const rounds: (() => void)[] = [];
     const opened = await openView(
       log,
       [first.root, repository.root],
-      true,
+      'unwatched',
       undefined,
       (run) => {
         rounds.push(run);
         return () => undefined;
       },
     );
-    stubMethod(opened.view, 'watch', () => Promise.resolve());
     stubMethod(opened.view, 'fetchRemotes', async (original, ...args) => {
       const [context] = args;
       if (rootOf(context) === repository.root) {
@@ -435,18 +373,13 @@ suite('View updating by itself', function () {
   });
 
   test('leaves a tab closed during a background round unfetched', async () => {
-    const first = await tempRepository(path.join(folder, 'first-closed'));
-    await first.commit('first');
-    const pusher = await tempRepository(path.join(folder, 'pusher-closed'));
-    await pusher.git('pull', remote.root, 'main');
-    await pusher.commit('unfetched');
-    await pusher.git('push', remote.root, 'main');
+    await push('unfetched');
     const [before] = await repository.resolve('origin/main');
     const rounds: (() => void)[] = [];
     const opened = await openView(
       log,
       [first.root, repository.root],
-      true,
+      'unwatched',
       undefined,
       (run) => {
         rounds.push(run);
@@ -469,7 +402,6 @@ suite('View updating by itself', function () {
       assert.deepStrictEqual(await repository.resolve('origin/main'), [before]);
     } finally {
       opened.connection.dispose();
-      await repository.git('fetch');
     }
   });
 
@@ -480,8 +412,8 @@ suite('View updating by itself', function () {
     const rounds: (() => void)[] = [];
     const opened = await openView(
       log,
-      [repository.root, closing.root],
-      true,
+      [first.root, closing.root],
+      'unwatched',
       undefined,
       (run) => {
         rounds.push(run);

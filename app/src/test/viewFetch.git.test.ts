@@ -1,6 +1,4 @@
 import * as assert from 'node:assert';
-import * as fs from 'node:fs';
-import { createServer } from 'node:http';
 import * as path from 'node:path';
 import type { Connection } from '../view';
 import { waitFor } from './fixtures';
@@ -53,7 +51,11 @@ suite('View fetching', function () {
     });
     await repository.git('remote', 'add', 'origin', remote.root);
     await repository.git('push', '-u', 'origin', 'main');
-    ({ page, connection } = await openView(log, [repository.root]));
+    ({ page, connection } = await openView(
+      log,
+      [repository.root],
+      'unwatched',
+    ));
   });
 
   suiteTeardown(async () => {
@@ -98,7 +100,7 @@ suite('View fetching', function () {
     const opened = await openView(
       log,
       [failing.root],
-      true,
+      'unwatched',
       undefined,
       (run) => {
         rounds.push(run);
@@ -137,7 +139,11 @@ suite('View fetching', function () {
     const left = await tempRepository(path.join(folder, 'left'));
     await left.commit('a');
     await left.git('remote', 'add', 'origin', path.join(folder, 'nowhere'));
-    const opened = await openView(log, [left.root, repository.root]);
+    const opened = await openView(
+      log,
+      [left.root, repository.root],
+      'unwatched',
+    );
     stubMethod(opened.view, 'fetchRemotes', async (original, ...args) => {
       await opened.connection.receive({
         type: 'selectTab',
@@ -167,7 +173,7 @@ suite('View fetching', function () {
     const opened = await openView(
       log,
       [locked.root],
-      true,
+      'unwatched',
       undefined,
       (run) => {
         rounds.push(run);
@@ -186,92 +192,6 @@ suite('View fetching', function () {
     }
   });
 
-  test('lets only a fetch asked for, not one in the background, ask for credentials with a program the user set, in any of the ways git takes one', async () => {
-    let requests = 0;
-    const server = createServer((_request, response) => {
-      requests++;
-      response.writeHead(401, { 'WWW-Authenticate': 'Basic realm="locked"' });
-      response.end();
-    });
-    await new Promise<void>((resolve) =>
-      server.listen(0, '127.0.0.1', resolve),
-    );
-    const address = server.address();
-    assert.ok(typeof address === 'object' && address !== null);
-    const { port } = address;
-    const variables = ['GIT_ASKPASS', 'SSH_ASKPASS'];
-    const previous = variables.map(
-      (name) => [name, process.env[name]] as const,
-    );
-    try {
-      for (const way of ['GIT_ASKPASS', 'core.askPass', 'SSH_ASKPASS']) {
-        const locked = await tempRepository(path.join(folder, `asks-${way}`));
-        await locked.commit('a');
-        await locked.git(
-          'remote',
-          'add',
-          'origin',
-          `http://127.0.0.1:${port}/x`,
-        );
-        await locked.git('config', 'credential.helper', '');
-        const asked = path.join(folder, `asked-${way}`).replaceAll('\\', '/');
-        const askpass = path
-          .join(folder, `askpass-${way}.sh`)
-          .replaceAll('\\', '/');
-        fs.writeFileSync(
-          askpass,
-          `#!/bin/sh\necho "$1" >> '${asked}'\necho x\n`,
-          { mode: 0o755 },
-        );
-        for (const name of variables) {
-          delete process.env[name];
-        }
-        if (way === 'core.askPass') {
-          await locked.git('config', way, askpass);
-        } else {
-          process.env[way] = askpass;
-        }
-        const rounds: (() => void)[] = [];
-        const opened = await openView(
-          log,
-          [locked.root],
-          true,
-          undefined,
-          (run) => {
-            rounds.push(run);
-            return () => undefined;
-          },
-        );
-        try {
-          requests = 0;
-          await opened.connection.receive({ type: 'setAutoFetch', on: true });
-          await waitFor(() => rounds.length === 1, 'the round to end');
-          assert.ok(requests > 0, way);
-          assert.strictEqual(fs.existsSync(asked), false, way);
-          await opened.connection.receive({ type: 'fetch', root: locked.root });
-          assert.match(fs.readFileSync(asked, 'utf8'), /^Username/, way);
-          takeErrorsLogged(
-            logged,
-            /^fetch failed$/,
-            /^git fetch --all --prune failed: fatal: could not read Username for '.*': terminal prompts disabled/,
-            /^git fetch --all --prune failed: fatal: Authentication failed/,
-          );
-        } finally {
-          opened.connection.dispose();
-        }
-      }
-    } finally {
-      for (const [name, value] of previous) {
-        if (value === undefined) {
-          delete process.env[name];
-        } else {
-          process.env[name] = value;
-        }
-      }
-      await new Promise((resolve) => server.close(resolve));
-    }
-  });
-
   test('lets a fetch asked for while a background one runs ask for credentials, and says it failed once', async () => {
     const {
       repository: locked,
@@ -282,7 +202,7 @@ suite('View fetching', function () {
     const opened = await openView(
       log,
       [locked.root],
-      true,
+      'unwatched',
       undefined,
       (run) => {
         rounds.push(run);
@@ -324,7 +244,7 @@ suite('View fetching', function () {
     const opened = await openView(
       log,
       [locked.root],
-      true,
+      'unwatched',
       undefined,
       (run) => {
         rounds.push(run);

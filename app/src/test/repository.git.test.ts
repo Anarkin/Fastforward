@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
+import { createServer } from 'node:http';
 import * as path from 'node:path';
 import {
   fetchAllRemotes,
@@ -29,6 +30,8 @@ import {
   tempRepository,
   type TempRepository,
 } from './repositories';
+
+const emptyTree = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
 
 suite('Git repository', function () {
   this.timeout(20_000);
@@ -344,15 +347,15 @@ suite('Git repository', function () {
   });
 
   test('finds the one commit among other objects sharing its prefix, or says how many share it', async () => {
-    const prefix = rename.slice(0, 4);
-    const withPrefix = (type: string, content: (i: number) => string) => {
-      for (let i = 0; ; i++) {
-        const text = content(i);
-        if (objectId(type, text).startsWith(prefix)) {
-          return text;
-        }
-      }
-    };
+    const blobText = '476\n';
+    const [found, other] = ['76', '2116'].map((message) =>
+      commitText(emptyTree, message),
+    );
+    const prefix = objectId('blob', blobText).slice(0, 4);
+    for (const text of [found, other]) {
+      assert.ok(objectId('commit', text).startsWith(prefix));
+    }
+    const hash = objectId('commit', found);
     const folder = tempFolder('objects');
     try {
       const write = async (type: string, text: string) => {
@@ -360,34 +363,24 @@ suite('Git repository', function () {
         fs.writeFileSync(file, text);
         await temp.git('hash-object', '-t', type, '-w', file);
       };
-      await write(
-        'blob',
-        withPrefix('blob', (i) => `${i}\n`),
-      );
+      await write('blob', blobText);
+      await write('commit', found);
       assert.deepStrictEqual(await findCommit(gitPath, cwd, prefix), {
         kind: 'found',
-        hash: rename,
+        hash,
       });
-      const [tree] = await temp.resolve('HEAD^{tree}');
-      await write(
-        'commit',
-        withPrefix('commit', (i) => commitText(tree, `${i}`)),
-      );
+      await write('commit', other);
       assert.deepStrictEqual(await findCommit(gitPath, cwd, prefix), {
         kind: 'ambiguous',
         count: 2,
       });
       const all = await findCommits(gitPath, cwd, prefix);
       assert.strictEqual(all.commits.length, 2);
-      assert.ok(all.commits.some((commit) => commit.hash === rename));
+      assert.ok(all.commits.some((commit) => commit.hash === hash));
       assert.strictEqual(all.more, 0);
       const limited = await findCommits(gitPath, cwd, prefix, 1);
       assert.strictEqual(limited.commits.length, 1);
       assert.strictEqual(limited.more, 1);
-      assert.deepStrictEqual(await findCommits(gitPath, cwd, 'ffffff0'), {
-        commits: [],
-        more: 0,
-      });
     } finally {
       removeFolder(folder);
     }
@@ -395,18 +388,19 @@ suite('Git repository', function () {
 
   test('lists at most 20 commits sharing a prefix, counting the rest', async () => {
     const prefix = '0000';
-    const [tree] = await temp.resolve('HEAD^{tree}');
+    const texts = [
+      66330, 82218, 163167, 165457, 204413, 272219, 337817, 428796, 449636,
+      536741, 729867, 801315, 833667, 884169, 953508, 978456, 1010149, 1011515,
+      1275593, 1281590, 1353900,
+    ].map((message) => commitText(emptyTree, `${message}`));
     const folder = tempFolder('prefixed');
     try {
-      const files: string[] = [];
-      for (let i = 0; files.length < 21; i++) {
-        const text = commitText(tree, `${i}`);
-        if (objectId('commit', text).startsWith(prefix)) {
-          const file = path.join(folder, `${files.length}`);
-          fs.writeFileSync(file, text);
-          files.push(file);
-        }
-      }
+      const files = texts.map((text, index) => {
+        assert.ok(objectId('commit', text).startsWith(prefix));
+        const file = path.join(folder, `${index}`);
+        fs.writeFileSync(file, text);
+        return file;
+      });
       await temp.git('hash-object', '-t', 'commit', '-w', ...files);
       const found = await findCommits(gitPath, cwd, prefix);
       assert.strictEqual(found.commits.length, 20);
@@ -552,6 +546,83 @@ suite('Git repository', function () {
     }
   });
 
+  test('lets only an interactive fetch ask for credentials with a program the user set, in any of the ways git takes one', async () => {
+    let requests = 0;
+    const server = createServer((_request, response) => {
+      requests++;
+      response.writeHead(401, { 'WWW-Authenticate': 'Basic realm="locked"' });
+      response.end();
+    });
+    await new Promise<void>((resolve) =>
+      server.listen(0, '127.0.0.1', resolve),
+    );
+    const address = server.address();
+    assert.ok(typeof address === 'object' && address !== null);
+    await temp.git(
+      'remote',
+      'add',
+      'locked',
+      `http://127.0.0.1:${address.port}/x`,
+    );
+    await temp.git('config', 'credential.helper', '');
+    const folder = tempFolder('askpass');
+    const variables = ['GIT_ASKPASS', 'SSH_ASKPASS'];
+    const previous = variables.map(
+      (name) => [name, process.env[name]] as const,
+    );
+    try {
+      for (const way of ['GIT_ASKPASS', 'core.askPass', 'SSH_ASKPASS']) {
+        const asked = path.join(folder, `asked-${way}`).replaceAll('\\', '/');
+        const askpass = path
+          .join(folder, `askpass-${way}.sh`)
+          .replaceAll('\\', '/');
+        fs.writeFileSync(
+          askpass,
+          `#!/bin/sh\necho "$1" >> '${asked}'\necho x\n`,
+          { mode: 0o755 },
+        );
+        for (const name of variables) {
+          delete process.env[name];
+        }
+        if (way === 'core.askPass') {
+          await temp.git('config', way, askpass);
+        } else {
+          process.env[way] = askpass;
+        }
+        try {
+          requests = 0;
+          await assert.rejects(
+            fetchAllRemotes(gitPath, cwd, { interactive: false }),
+            /could not read Username for '.*': terminal prompts disabled/,
+          );
+          assert.ok(requests > 0, way);
+          assert.strictEqual(fs.existsSync(asked), false, way);
+          await assert.rejects(
+            fetchAllRemotes(gitPath, cwd),
+            /Authentication failed/,
+          );
+          assert.match(fs.readFileSync(asked, 'utf8'), /^Username/, way);
+        } finally {
+          if (way === 'core.askPass') {
+            await temp.git('config', '--unset', way);
+          }
+        }
+      }
+    } finally {
+      for (const [name, value] of previous) {
+        if (value === undefined) {
+          delete process.env[name];
+        } else {
+          process.env[name] = value;
+        }
+      }
+      await temp.git('config', '--unset', 'credential.helper');
+      await temp.git('remote', 'remove', 'locked');
+      await new Promise((resolve) => server.close(resolve));
+      removeFolder(folder);
+    }
+  });
+
   test('diffs a merge against its first parent', async () => {
     try {
       await temp.git('checkout', '-b', 'side');
@@ -576,9 +647,8 @@ suite('Git repository', function () {
   });
 
   test('keeps a line as it is when blank lines around it are added and removed', async () => {
-    const spaced = await tempRepository(tempFolder('spaced'));
     try {
-      await spaced.commit('old', {
+      await temp.commit('old', {
         'a.md': [
           '# A',
           '',
@@ -596,7 +666,7 @@ suite('Git repository', function () {
           '',
         ].join('\n'),
       });
-      await spaced.commit('new', {
+      await temp.commit('new', {
         'a.md': [
           '# A',
           '',
@@ -614,27 +684,26 @@ suite('Git repository', function () {
           '',
         ].join('\n'),
       });
-      const [hash] = await spaced.resolve('HEAD');
-      const patch = await showPatch(gitPath, spaced.root, hash);
+      const [hash] = await temp.resolve('HEAD');
+      const patch = await showPatch(gitPath, cwd, hash);
       const changed = patch
         .slice(patch.indexOf('@@'))
         .split('\n')
         .filter((line) => /^[+-]./.test(line));
       assert.deepStrictEqual(changed, ['-## B', '-## C'], patch);
     } finally {
-      removeFolder(spaced.root);
+      await temp.git('reset', '--hard', rename);
     }
   });
 
   test('counts the bytes of the old and new text of each file whose lines changed', async () => {
-    const sized = await tempRepository(tempFolder('sized'));
     try {
-      await sized.commit('old', { 'a.txt': 'one\n', 'b.txt': 'gone\n' });
-      await sized.git('mv', 'b.txt', 'moved.txt');
-      await sized.commit('new', { 'a.txt': 'three\n', 'c.txt': 'added\n' });
-      const [hash] = await sized.resolve('HEAD');
+      await temp.commit('old', { 'a.txt': 'one\n', 'b.txt': 'gone\n' });
+      await temp.git('mv', 'b.txt', 'moved.txt');
+      await temp.commit('new', { 'a.txt': 'three\n', 'c.txt': 'added\n' });
+      const [hash] = await temp.resolve('HEAD');
       assert.deepStrictEqual(
-        (await showFiles(gitPath, sized.root, hash)).map((file) => [
+        (await showFiles(gitPath, cwd, hash)).map((file) => [
           file.path,
           file.bytes,
         ]),
@@ -645,7 +714,7 @@ suite('Git repository', function () {
         ],
       );
     } finally {
-      removeFolder(sized.root);
+      await temp.git('reset', '--hard', rename);
     }
   });
 

@@ -1,9 +1,11 @@
 import * as assert from 'node:assert';
-import { execFile, spawn } from 'node:child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
 import { once } from 'node:events';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { createInterface } from 'node:readline';
 import { exitedWith, gitEnv, stopGit } from '../git/run';
+import { waitFor } from './fixtures';
 import { removeFolder, tempFolder } from './repositories';
 
 suite('Running git', () => {
@@ -32,7 +34,11 @@ suite('Running git', () => {
       this.skip();
     }
     this.timeout(20_000);
-    await stopsWhatItStarted();
+    const [outlived] = await Promise.all([
+      outlivesKilledLauncher(),
+      stopsWhatItStarted(),
+    ]);
+    assert.ok(outlived);
   });
 
   test('stops git with the system taskkill, not one in the current folder', async function () {
@@ -66,33 +72,67 @@ suite('Running git', () => {
 });
 
 async function stopsWhatItStarted(): Promise<void> {
-  const launcher = spawn('cmd.exe', ['/c', 'ping -n 60 127.0.0.1 > nul'], {
-    windowsHide: true,
-  });
-  let started: string[] = [];
-  while (started.length === 0) {
-    started = await powershell(
-      `(Get-CimInstance Win32_Process -Filter "ParentProcessId=${launcher.pid}").ProcessId`,
+  const { launcher, started } = await startLauncher();
+  try {
+    stopGit(launcher);
+    await waitFor(
+      () => !running(launcher.pid!) && !running(started),
+      'the launcher and what it started to stop',
+      5_000,
     );
+  } finally {
+    stop(launcher.pid!);
+    stop(started);
   }
-  stopGit(launcher);
-  await once(launcher, 'close');
-  assert.deepStrictEqual(
-    await powershell(
-      `(Get-Process -Id ${started.join(',')} -ErrorAction SilentlyContinue).Id`,
-    ),
-    [],
-  );
 }
 
-function powershell(command: string): Promise<string[]> {
-  return new Promise((resolve, reject) => {
-    execFile(
-      'powershell.exe',
-      ['-NoProfile', '-Command', command],
-      { windowsHide: true },
-      (error, stdout) =>
-        error ? reject(error) : resolve(stdout.split(/\s+/).filter(Boolean)),
-    );
+async function outlivesKilledLauncher(): Promise<boolean> {
+  const { launcher, started } = await startLauncher();
+  try {
+    launcher.kill();
+    await once(launcher, 'close');
+    return running(started);
+  } finally {
+    stop(started);
+  }
+}
+
+// Node stops the children it did not detach when it exits, which Git for
+// Windows' launcher does not
+const launcherScript = `
+const child = require('node:child_process').spawn(
+  process.execPath,
+  ['-e', 'setInterval(() => {}, 60_000)'],
+  { detached: true, stdio: 'ignore', windowsHide: true },
+);
+console.log(child.pid);
+setInterval(() => {}, 60_000);
+`;
+
+async function startLauncher(): Promise<{
+  launcher: ChildProcess;
+  started: number;
+}> {
+  const launcher = spawn(process.execPath, ['-e', launcherScript], {
+    windowsHide: true,
   });
+  const line = await new Promise<string>((resolve) =>
+    createInterface(launcher.stdout).once('line', resolve),
+  );
+  return { launcher, started: Number(line) };
+}
+
+function running(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function stop(pid: number): void {
+  if (running(pid)) {
+    process.kill(pid);
+  }
 }

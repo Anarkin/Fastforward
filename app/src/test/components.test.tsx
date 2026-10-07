@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { mock } from 'node:test';
 import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { App, tabContent } from '../webview/App';
@@ -1536,8 +1537,7 @@ suite('Window', () => {
   });
 });
 
-const rested = () =>
-  new Promise((resolve) => setTimeout(resolve, preloadDelay + 20));
+const rested = () => mock.timers.tick(preloadDelay);
 
 const noKeys = {
   ctrlKey: false,
@@ -1547,6 +1547,8 @@ const noKeys = {
 };
 
 suite('Tab bar', () => {
+  teardown(() => mock.timers.reset());
+
   test('acts on what the pointer rests on, not on what it only passes over', async () => {
     const done: string[] = [];
     const rest = resting(10);
@@ -1639,7 +1641,8 @@ suite('Tab bar', () => {
     assert.deepStrictEqual(closed, ['/repo']);
   });
 
-  test('preloads only a tab not shown that the pointer rests on, and closes one only by its button or the middle button', async () => {
+  test('preloads only a tab not shown that the pointer rests on, and closes one only by its button or the middle button', () => {
+    mock.timers.enable({ apis: ['setTimeout'] });
     const preloaded: string[] = [];
     const closed: string[] = [];
     const nav = renderedBy(TabBar, {
@@ -1671,17 +1674,17 @@ suite('Tab bar', () => {
     };
     assert.ok(isValidElement<Tab>(a) && isValidElement<Tab>(b));
     a.props.onPointerEnter();
-    await rested();
+    rested();
     assert.deepStrictEqual(preloaded, []);
     b.props.onPointerEnter();
     b.props.onPointerLeave();
-    await rested();
+    rested();
     b.props.onPointerEnter();
     b.props.onClick();
-    await rested();
+    rested();
     assert.deepStrictEqual(preloaded, []);
     b.props.onPointerEnter();
-    await rested();
+    rested();
     assert.deepStrictEqual(preloaded, ['/b']);
     b.props.onAuxClick({ button: 2, ...noKeys });
     assert.deepStrictEqual(closed, []);
@@ -1699,6 +1702,8 @@ suite('Tab bar', () => {
 });
 
 suite('Worktree bar', () => {
+  teardown(() => mock.timers.reset());
+
   type Worktree = {
     title: string;
     className: string;
@@ -1784,16 +1789,17 @@ suite('Worktree bar', () => {
     assert.strictEqual(tagsWith(html, 'bar').length, 1);
   });
 
-  test('opens and preloads a worktree, but neither a missing one', async () => {
+  test('opens and preloads a worktree, but neither a missing one', () => {
+    mock.timers.enable({ apis: ['setTimeout'] });
     const selected: string[] = [];
     const preloaded: string[] = [];
     const [, gone, feature] = worktreesOf(selected, preloaded);
     gone.props.onPointerEnter();
     gone.props.onClick?.();
-    await rested();
+    rested();
     assert.deepStrictEqual([selected, preloaded], [[], []]);
     feature.props.onPointerEnter();
-    await rested();
+    rested();
     feature.props.onClick?.();
     assert.deepStrictEqual([selected, preloaded], [['/c'], ['/c']]);
   });

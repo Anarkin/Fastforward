@@ -47,7 +47,6 @@ suite('Git stashes', function () {
 
   test('lists no stashes in a repository without any', async () => {
     const empty = await tempRepository(path.join(folder, 'empty'));
-    await empty.commit('only');
     assert.deepStrictEqual(await listStashes(empty.gitPath, empty.root), []);
   });
 

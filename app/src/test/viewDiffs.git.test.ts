@@ -30,21 +30,17 @@ suite('View showing diffs', function () {
 
   let folder: string;
   let other: string;
+  let long: TempRepository;
+  let second: string;
+  let spaced: TempRepository;
+  let indent: string;
 
   const { log, error: logged } = recordingLog();
   failOnErrorsLogged(logged);
 
   suiteSetup(async () => {
     ({ folder, other } = await viewRepositories());
-  });
-
-  suiteTeardown(async () => {
-    await closeViews();
-    removeFolder(folder);
-  });
-
-  test('shows a file entire until it is left, or always when pinned', async () => {
-    const long = await tempRepository(path.join(folder, 'long'));
+    long = await tempRepository(path.join(folder, 'long'));
     await long.commit('first', {
       'a.txt': fortyLines(-1),
       'b.txt': fortyLines(-1),
@@ -53,7 +49,19 @@ suite('View showing diffs', function () {
       'a.txt': fortyLines(19),
       'b.txt': fortyLines(19),
     });
-    const [second] = await long.resolve('HEAD');
+    [second] = await long.resolve('HEAD');
+    spaced = await tempRepository(path.join(folder, 'spaced'));
+    await spaced.commit('first', { 'a.txt': 'one\ntwo\n' });
+    await spaced.commit('indent', { 'a.txt': '  one\ntwo\n' });
+    [indent] = await spaced.resolve('HEAD');
+  });
+
+  suiteTeardown(async () => {
+    await closeViews();
+    removeFolder(folder);
+  });
+
+  test('shows a file entire until it is left, or always when pinned', async () => {
     await withView(log, [long.root, other], async (view) => {
       const select = (file: string | undefined) =>
         view.connection.receive({
@@ -106,10 +114,6 @@ suite('View showing diffs', function () {
   });
 
   test('keeps a file entire when another tab is closed', async () => {
-    const long = await tempRepository(path.join(folder, 'long-kept'));
-    await long.commit('first', { 'a.txt': fortyLines(-1) });
-    await long.commit('second', { 'a.txt': fortyLines(19) });
-    const [second] = await long.resolve('HEAD');
     await withView(log, [other, long.root], async (view) => {
       const entire = () =>
         /^ line 1$/m.test(view.page.last('diff')?.patch ?? '');
@@ -139,10 +143,6 @@ suite('View showing diffs', function () {
   });
 
   test('keeps a tab as it is when it is clicked while active', async () => {
-    const long = await tempRepository(path.join(folder, 'long-clicked'));
-    await long.commit('first', { 'a.txt': fortyLines(-1) });
-    await long.commit('second', { 'a.txt': fortyLines(19) });
-    const [second] = await long.resolve('HEAD');
     await withView(log, [long.root, other], async (view) => {
       await view.connection.receive({ type: 'pinEntireFile', pinned: false });
       await view.connection.receive({
@@ -178,10 +178,6 @@ suite('View showing diffs', function () {
   });
 
   test('shows the diff of the last entire file choice when an earlier one answers last', async () => {
-    const long = await tempRepository(path.join(folder, 'long-raced'));
-    await long.commit('first', { 'a.txt': fortyLines(-1) });
-    await long.commit('second', { 'a.txt': fortyLines(19) });
-    const [second] = await long.resolve('HEAD');
     await withView(log, [long.root], async (view) => {
       await view.connection.receive({ type: 'pinEntireFile', pinned: false });
       await view.connection.receive({
@@ -228,10 +224,6 @@ suite('View showing diffs', function () {
   });
 
   test('ignores whitespace by default, and shows changes to it once asked, remembering that', async () => {
-    const spaced = await tempRepository(path.join(folder, 'spaced'));
-    await spaced.commit('first', { 'a.txt': 'one\ntwo\n' });
-    await spaced.commit('indent', { 'a.txt': '  one\ntwo\n' });
-    const [indent] = await spaced.resolve('HEAD');
     await withView(log, [spaced.root], async (view) => {
       const changed = () =>
         /^[-+] {0,2}one$/m.test(view.page.last('diff')?.patch ?? '');
@@ -253,8 +245,27 @@ suite('View showing diffs', function () {
     });
   });
 
+  test('shows the diff anew with settings changed by hand once the page loads again', async () => {
+    await withView(log, [spaced.root], async (view) => {
+      const changed = () =>
+        /^[-+] {0,2}one$/m.test(view.page.last('diff')?.patch ?? '');
+      await view.connection.receive({
+        type: 'selectCommit',
+        root: spaced.root,
+        hash: indent,
+      });
+      assert.strictEqual(changed(), false);
+      await view.settings.set('ignoreWhitespace', false);
+      view.view.reloadSettings();
+      view.page.clear();
+      await view.connection.receive({ type: 'ready' });
+      assert.strictEqual(view.page.last('layout')?.ignoreWhitespace, false);
+      assert.strictEqual(changed(), true);
+    });
+  });
+
   test('wraps no long lines by default, and wraps them once asked, remembering that', async () => {
-    await withView(log, [other], async (view) => {
+    await withView(log, [], async (view) => {
       assert.strictEqual(view.page.last('layout')?.wordWrap, false);
       await view.connection.receive({ type: 'setWordWrap', wrap: true });
       assert.strictEqual(view.settings.settings.wordWrap, true);
@@ -264,20 +275,20 @@ suite('View showing diffs', function () {
   });
 
   test('shows the diffs of the other tabs with the whitespace and entire file choices made in another', async () => {
-    const spaced = await tempRepository(path.join(folder, 'spaced-tabs'));
-    await spaced.commit('first', { 'a.txt': fortyLines(-1) });
-    await spaced.commit('indent', { 'a.txt': `  ${fortyLines(19)}` });
-    const [indent] = await spaced.resolve('HEAD');
-    await withView(log, [spaced.root, other], async (view) => {
+    const tabbed = await tempRepository(path.join(folder, 'spaced-tabs'));
+    await tabbed.commit('first', { 'a.txt': fortyLines(-1) });
+    await tabbed.commit('indent', { 'a.txt': `  ${fortyLines(19)}` });
+    const [tabbedIndent] = await tabbed.resolve('HEAD');
+    await withView(log, [tabbed.root, other], async (view) => {
       const patch = () => view.page.last('diff')?.patch ?? '';
       const selectTab = (root: string) =>
         view.connection.receive({ type: 'selectTab', root });
       await view.connection.receive({ type: 'pinEntireFile', pinned: false });
-      await selectTab(spaced.root);
+      await selectTab(tabbed.root);
       await view.connection.receive({
         type: 'selectCommit',
-        root: spaced.root,
-        hash: indent,
+        root: tabbed.root,
+        hash: tabbedIndent,
       });
       assert.doesNotMatch(patch(), /^\+ {2}line 1$/m);
 
@@ -286,19 +297,19 @@ suite('View showing diffs', function () {
         type: 'setIgnoreWhitespace',
         ignore: false,
       });
-      await selectTab(spaced.root);
+      await selectTab(tabbed.root);
       assert.match(patch(), /^\+ {2}line 1$/m);
 
       await view.connection.receive({
         type: 'selectFile',
-        root: spaced.root,
-        hash: indent,
+        root: tabbed.root,
+        hash: tabbedIndent,
         path: 'a.txt',
       });
       assert.doesNotMatch(patch(), /^ line 40$/m);
       await selectTab(other);
       await view.connection.receive({ type: 'pinEntireFile', pinned: true });
-      await selectTab(spaced.root);
+      await selectTab(tabbed.root);
       assert.match(patch(), /^ line 40$/m);
     });
   });
@@ -343,30 +354,35 @@ suite('View showing diffs', function () {
     const file = path.join(large.root, 'large.txt');
     fs.writeFileSync(file, numberedLines('first'));
     fs.writeFileSync(path.join(large.root, 'small.txt'), 'changed\n');
-    await withView(log, [large.root], async (view) => {
-      await view.connection.receive({
-        type: 'selectCommit',
-        root: large.root,
-        hash: workingTreeHash,
-      });
-      await view.connection.receive({
-        type: 'loadFileDiff',
-        root: large.root,
-        hash: workingTreeHash,
-        path: 'large.txt',
-        diff: 1,
-      });
-      assert.ok(view.page.last('fileDiff')?.patch.includes('+first 1999'));
-      view.page.clear();
-      await view.connection.refresh();
-      assert.strictEqual(view.page.last('fileDiff'), undefined);
-      fs.writeFileSync(file, numberedLines('second'));
-      await view.connection.refresh();
-      assert.strictEqual(view.page.last('diff'), undefined);
-      const fileDiff = view.page.last('fileDiff');
-      assert.strictEqual(fileDiff?.diff, 1);
-      assert.ok(fileDiff.patch.includes('+second 1999'));
-    });
+    await withView(
+      log,
+      [large.root],
+      async (view) => {
+        await view.connection.receive({
+          type: 'selectCommit',
+          root: large.root,
+          hash: workingTreeHash,
+        });
+        await view.connection.receive({
+          type: 'loadFileDiff',
+          root: large.root,
+          hash: workingTreeHash,
+          path: 'large.txt',
+          diff: 1,
+        });
+        assert.ok(view.page.last('fileDiff')?.patch.includes('+first 1999'));
+        view.page.clear();
+        await view.connection.refresh();
+        assert.strictEqual(view.page.last('fileDiff'), undefined);
+        fs.writeFileSync(file, numberedLines('second'));
+        await view.connection.refresh();
+        assert.strictEqual(view.page.last('diff'), undefined);
+        const fileDiff = view.page.last('fileDiff');
+        assert.strictEqual(fileDiff?.diff, 1);
+        assert.ok(fileDiff.patch.includes('+second 1999'));
+      },
+      'unwatched',
+    );
   });
 
   test('leaves the files past the budget out of a commit diff', async () => {
@@ -531,35 +547,43 @@ suite('View showing diffs', function () {
       const added = path.join(files.root, 'new.txt');
       fs.writeFileSync(draft, 'draft\n');
       try {
-        await withView(log, [files.root], async (view) => {
-          await view.connection.receive({
-            type: 'selectCommit',
-            root: files.root,
-            hash: workingTreeHash,
-          });
-          await view.connection.receive({
-            type: 'loadTree',
-            root: files.root,
-            hash: workingTreeHash,
-          });
-          await view.connection.receive({
-            type: 'selectFile',
-            root: files.root,
-            hash: workingTreeHash,
-            path: 'kept.txt',
-            area: 'unstaged',
-          });
-          assert.strictEqual(view.page.last('fileContent')?.content, 'kept\n');
-          view.page.clear();
-          await view.connection.refresh();
-          assert.ok(view.page.last('workingTree'));
-          assert.strictEqual(view.page.last('tree'), undefined);
-          assert.strictEqual(view.page.last('fileContent'), undefined);
+        await withView(
+          log,
+          [files.root],
+          async (view) => {
+            await view.connection.receive({
+              type: 'selectCommit',
+              root: files.root,
+              hash: workingTreeHash,
+            });
+            await view.connection.receive({
+              type: 'loadTree',
+              root: files.root,
+              hash: workingTreeHash,
+            });
+            await view.connection.receive({
+              type: 'selectFile',
+              root: files.root,
+              hash: workingTreeHash,
+              path: 'kept.txt',
+              area: 'unstaged',
+            });
+            assert.strictEqual(
+              view.page.last('fileContent')?.content,
+              'kept\n',
+            );
+            view.page.clear();
+            await view.connection.refresh();
+            assert.ok(view.page.last('workingTree'));
+            assert.strictEqual(view.page.last('tree'), undefined);
+            assert.strictEqual(view.page.last('fileContent'), undefined);
 
-          fs.writeFileSync(added, 'new\n');
-          await view.connection.refresh();
-          assert.ok(view.page.last('tree')?.paths.includes('new.txt'));
-        });
+            fs.writeFileSync(added, 'new\n');
+            await view.connection.refresh();
+            assert.ok(view.page.last('tree')?.paths.includes('new.txt'));
+          },
+          'unwatched',
+        );
       } finally {
         fs.rmSync(draft, { force: true });
         fs.rmSync(added, { force: true });

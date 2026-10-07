@@ -28,6 +28,15 @@ suite('Watching a repository', function () {
     await repository.git('commit', '-m', 'first');
     changes = [];
     errors = [];
+  });
+
+  teardown(async () => {
+    await watcher?.dispose();
+    watcher = undefined;
+    removeFolder(repository.root);
+  });
+
+  const start = async () => {
     watcher = await watchRepository(repository.gitPath, repository.root, {
       delay: 50,
       maxDelay: 200,
@@ -35,12 +44,7 @@ suite('Watching a repository', function () {
       onChange: (gitDirChanged) => changes.push(gitDirChanged),
       onError: (error) => errors.push(error),
     });
-  });
-
-  teardown(async () => {
-    await watcher?.dispose();
-    removeFolder(repository.root);
-  });
+  };
 
   const keepWriting = (file: string, what: string) => {
     let lines = '';
@@ -52,6 +56,7 @@ suite('Watching a repository', function () {
   };
 
   test('refreshes for a file in a folder created after it started, watching folder by folder', async () => {
+    await start();
     const folder = path.join(repository.root, 'new', 'deep');
     fs.mkdirSync(folder, { recursive: true });
     await waitFor(() => changes.length > 0, 'the new folder');
@@ -61,6 +66,7 @@ suite('Watching a repository', function () {
   });
 
   test("refreshes for a file whose name starts with '..', which is not a parent folder, watching folder by folder", async () => {
+    await start();
     await keepWriting('..env', 'the file');
     assert.deepStrictEqual(errors, []);
   });
@@ -69,47 +75,24 @@ suite('Watching a repository', function () {
     if (process.platform === 'win32') {
       this.skip();
     }
+    await start();
     await keepWriting(':build', 'the file');
     assert.deepStrictEqual(errors, []);
   });
 
-  test('tells the ignored folders', async () => {
-    const kept = path.join(repository.root, 'kept');
-    fs.mkdirSync(kept);
-    const ignored = path.join(repository.root, 'ignored');
-    assert.deepStrictEqual(
-      await ignoredPaths(repository.gitPath, repository.root, [kept, ignored]),
-      [ignored],
-    );
-  });
-
-  test('tells the ignored folders among ones named like pathspec magic', async () => {
-    fs.appendFileSync(path.join(repository.root, '.gitignore'), ':!tmp\n');
-    const magic = path.join(repository.root, ':!tmp');
-    assert.deepStrictEqual(
-      await ignoredPaths(repository.gitPath, repository.root, [
-        path.join(repository.root, ':-)'),
-        magic,
-        path.join(repository.root, 'ignored'),
-      ]),
-      [magic, path.join(repository.root, 'ignored')],
-    );
-  });
-
-  test('tells a path named like pathspec magic from the ignored one it names', async () => {
-    const build = path.join(repository.root, 'build');
-    assert.deepStrictEqual(
-      await ignoredPaths(repository.gitPath, repository.root, [
-        path.join(repository.root, ':build'),
-        build,
-      ]),
-      [build],
-    );
-  });
-
   test('refreshes for the git folder, watching folder by folder', async () => {
+    await start();
     await repository.git('commit', '--allow-empty', '-m', 'second');
     await waitFor(() => changes.includes(true), 'the commit');
+    assert.deepStrictEqual(errors, []);
+  });
+
+  test('refreshes for a file changed inside a submodule, which git cannot tell is ignored or not, watching folder by folder', async () => {
+    const library = await tempRepository(path.join(repository.root, 'sub'));
+    await library.commit('library', { 'lib.c': 'lib\n' });
+    await repository.git('add', '--no-warn-embedded-repo', 'sub');
+    await start();
+    await keepWriting(path.join('sub', 'lib.c'), 'the file in the submodule');
     assert.deepStrictEqual(errors, []);
   });
 
@@ -314,4 +297,54 @@ suite('Watching a repository', function () {
       }
     });
   }
+});
+
+suite('Telling the ignored paths', function () {
+  this.timeout(20_000);
+  let repository: TempRepository;
+
+  suiteSetup(async () => {
+    repository = await tempRepository(tempFolder('ignored'));
+    fs.writeFileSync(
+      path.join(repository.root, '.gitignore'),
+      'ignored/\n/build\n',
+    );
+    fs.mkdirSync(path.join(repository.root, 'ignored'));
+  });
+
+  suiteTeardown(() => removeFolder(repository.root));
+
+  test('tells the ignored folders', async () => {
+    const kept = path.join(repository.root, 'kept');
+    fs.mkdirSync(kept);
+    const ignored = path.join(repository.root, 'ignored');
+    assert.deepStrictEqual(
+      await ignoredPaths(repository.gitPath, repository.root, [kept, ignored]),
+      [ignored],
+    );
+  });
+
+  test('tells the ignored folders among ones named like pathspec magic', async () => {
+    fs.appendFileSync(path.join(repository.root, '.gitignore'), ':!tmp\n');
+    const magic = path.join(repository.root, ':!tmp');
+    assert.deepStrictEqual(
+      await ignoredPaths(repository.gitPath, repository.root, [
+        path.join(repository.root, ':-)'),
+        magic,
+        path.join(repository.root, 'ignored'),
+      ]),
+      [magic, path.join(repository.root, 'ignored')],
+    );
+  });
+
+  test('tells a path named like pathspec magic from the ignored one it names', async () => {
+    const build = path.join(repository.root, 'build');
+    assert.deepStrictEqual(
+      await ignoredPaths(repository.gitPath, repository.root, [
+        path.join(repository.root, ':build'),
+        build,
+      ]),
+      [build],
+    );
+  });
 });

@@ -1,9 +1,21 @@
+import { sameRoot } from './storage';
+
 export type Timer = (run: () => void, ms: number) => () => void;
 
 const realTimer: Timer = (run, ms) => {
   const timeout = setTimeout(run, ms);
   return () => clearTimeout(timeout);
 };
+
+export function fetchOrder(
+  tabs: readonly string[],
+  activeTab: string | undefined,
+): string[] {
+  const active = tabs.filter(
+    (tab) => activeTab !== undefined && sameRoot(tab, activeTab),
+  );
+  return [...active, ...tabs.filter((tab) => !active.includes(tab))];
+}
 
 export class AutoFetch {
   private cancel: (() => void) | undefined;

@@ -5,7 +5,6 @@ import * as path from 'node:path';
 import type { ToWebviewOf } from '../shared/protocol';
 import { shortHash } from '../shared/hashes';
 import { activeTabKey, bookmarksKey, worktreesKey } from '../storage';
-import { tabName } from '../view';
 import { waitFor } from './fixtures';
 import {
   removeFolder,
@@ -299,12 +298,6 @@ suite('View of worktrees', function () {
       true,
       host,
     );
-  });
-
-  test('names a bare repository after its folder without .git, or after the folder holding it', () => {
-    assert.strictEqual(tabName(path.join(folder, 'app.git')), 'app');
-    assert.strictEqual(tabName(path.join(folder, 'app', '.bare')), 'app');
-    assert.strictEqual(tabName(path.join(folder, 'app', '.git')), 'app');
   });
 
   test('keeps bookmarks to the repository and solo to the worktree', async () => {

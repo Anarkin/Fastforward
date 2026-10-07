@@ -170,36 +170,6 @@ suite('A file renamed and edited', function () {
   });
 });
 
-suite('A file removed from the index but kept on disk', function () {
-  this.timeout(20_000);
-
-  test('lists it once, as deleted, and diffs its deletion', async () => {
-    const repository = await tempRepository(tempFolder('uncached'));
-    const cwd = repository.root;
-    try {
-      await repository.commit('initial', { 'kept.txt': 'committed\n' });
-      await repository.git('rm', '--cached', 'kept.txt');
-      const workingTree = await workingTreeFiles(repository.gitPath, cwd, {
-        base: 'HEAD',
-        reverse: false,
-      });
-      assert.deepStrictEqual(
-        workingTree.files.map((file) => [file.status, file.path]),
-        [['D', 'kept.txt']],
-      );
-      const patch = await workingTreePatch(
-        repository.gitPath,
-        cwd,
-        workingTree,
-        { path: 'kept.txt' },
-      );
-      assert.ok(patch.includes('-committed'), patch);
-    } finally {
-      removeFolder(cwd);
-    }
-  });
-});
-
 suite('Staged and unstaged changes', function () {
   this.timeout(20_000);
   let repository: TempRepository;
@@ -266,27 +236,65 @@ suite('Staged and unstaged changes', function () {
     assert.match(unstaged, /^\+three$/m);
   });
 
-  test('lists a conflicted file once, with the unstaged changes', async () => {
-    const conflicted = await tempRepository(tempFolder('conflicted'));
-    try {
-      await conflicted.commit('initial');
-      await conflicted.git('checkout', '-q', '-b', 'side');
-      await conflicted.commit('side', { 'conflict.txt': 'a\n' });
-      await conflicted.git('checkout', '-q', 'main');
-      await conflicted.commit('main', { 'conflict.txt': 'b\n' });
-      await assert.rejects(conflicted.git('merge', 'side'));
-      const workingTree = await workingTreeFiles(
-        conflicted.gitPath,
-        conflicted.root,
-      );
-      assert.deepStrictEqual(workingTree.staged, []);
-      assert.deepStrictEqual(
-        workingTree.files.map((file) => file.path),
-        ['conflict.txt'],
-      );
-    } finally {
-      removeFolder(conflicted.root);
-    }
+  test('lists a file removed from the index but kept on disk once against HEAD, as deleted, and diffs its deletion', async () => {
+    const workingTree = await workingTreeFiles(
+      repository.gitPath,
+      repository.root,
+      { base: 'HEAD', reverse: false },
+    );
+    assert.deepStrictEqual(
+      workingTree.files.map((file) => [file.status, file.path]),
+      [
+        ['M', 'both.txt'],
+        ['M', 'staged.txt'],
+        ['D', 'uncached.txt'],
+        ['M', 'unstaged.txt'],
+        ['U', 'new.txt'],
+      ],
+    );
+    const patch = await workingTreePatch(
+      repository.gitPath,
+      repository.root,
+      workingTree,
+      { path: 'uncached.txt' },
+    );
+    assert.match(patch, /^-kept$/m);
+  });
+});
+
+suite('A conflicted merge', function () {
+  this.timeout(20_000);
+  let conflicted: TempRepository;
+
+  suiteSetup(async () => {
+    conflicted = await tempRepository(tempFolder('conflicted'));
+    await conflicted.commit('initial');
+    await conflicted.git('checkout', '-q', '-b', 'side');
+    await conflicted.commit('side', { 'conflict.txt': 'a\n' });
+    await conflicted.git('checkout', '-q', 'main');
+    await conflicted.commit('main', { 'conflict.txt': 'b\n' });
+    await assert.rejects(conflicted.git('merge', 'side'));
+  });
+
+  suiteTeardown(() => removeFolder(conflicted.root));
+
+  test('lists the conflicted file once, with the unstaged changes', async () => {
+    const workingTree = await workingTreeFiles(
+      conflicted.gitPath,
+      conflicted.root,
+    );
+    assert.deepStrictEqual(workingTree.staged, []);
+    assert.deepStrictEqual(
+      workingTree.files.map((file) => file.path),
+      ['conflict.txt'],
+    );
+  });
+
+  test('lists the conflicted file once among the files of the working tree', async () => {
+    assert.deepStrictEqual(
+      await listTree(conflicted.gitPath, conflicted.root, undefined),
+      ['conflict.txt'],
+    );
   });
 });
 
@@ -484,7 +492,9 @@ suite('Uncommitted changes', function () {
         workingTree.files.find((change) => change.path === file)?.insertions;
       assert.strictEqual(insertions('many/f49.txt'), 1);
       assert.strictEqual(insertions('many/f50.txt'), 0);
-      const patch = await workingTreePatch(gitPath, cwd, workingTree);
+      const patch = await workingTreePatch(gitPath, cwd, workingTree, {
+        include: ['many/f49.txt', 'many/f50.txt'],
+      });
       assert.ok(patch.includes('+many49'), patch);
       assert.ok(!patch.includes('+many50'), patch);
       const alone = await workingTreePatch(gitPath, cwd, workingTree, {
@@ -729,24 +739,6 @@ suite('Repository files', function () {
       );
     } finally {
       await repository.git('update-ref', '-d', 'refs/remotes/origin/main');
-    }
-  });
-
-  test('lists a conflicted file once', async () => {
-    const conflicted = await tempRepository(tempFolder('conflict'));
-    try {
-      await conflicted.commit('initial');
-      await conflicted.git('checkout', '-b', 'side');
-      await conflicted.commit('side', { 'conflict.txt': 'a\n' });
-      await conflicted.git('checkout', 'main');
-      await conflicted.commit('main', { 'conflict.txt': 'b\n' });
-      await assert.rejects(conflicted.git('merge', 'side'));
-      assert.deepStrictEqual(
-        await listTree(gitPath, conflicted.root, undefined),
-        ['conflict.txt'],
-      );
-    } finally {
-      removeFolder(conflicted.root);
     }
   });
 

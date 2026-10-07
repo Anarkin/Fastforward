@@ -1,5 +1,5 @@
 import * as path from 'node:path';
-import { AutoFetch, type Timer } from './autoFetch';
+import { AutoFetch, fetchOrder, type Timer } from './autoFetch';
 import { readUpstream, remoteDefaultBranches } from './git/branches';
 import {
   compareFiles,
@@ -203,13 +203,7 @@ export class FastforwardView {
     this.collapseMerges = storage.collapseMerges;
     this.autoFetch = new AutoFetch(
       () => storage.autoFetchMinutes,
-      () => {
-        const { tabs, activeTab } = storage;
-        const active = tabs.filter(
-          (tab) => activeTab !== undefined && sameRoot(tab, activeTab),
-        );
-        return [...active, ...tabs.filter((tab) => !active.includes(tab))];
-      },
+      () => fetchOrder(storage.tabs, storage.activeTab),
       (root) => this.inFlight.track(this.fetchInBackground(root)),
       timer,
     );

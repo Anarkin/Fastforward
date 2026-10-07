@@ -77,29 +77,6 @@ suite('View of other repositories', function () {
     );
   });
 
-  test('shows the diff anew with settings changed by hand once the page loads again', async () => {
-    const spaced = await tempRepository(path.join(folder, 'respaced'));
-    await spaced.commit('first', { 'a.txt': 'one\ntwo\n' });
-    await spaced.commit('indent', { 'a.txt': '  one\ntwo\n' });
-    const [indent] = await spaced.resolve('HEAD');
-    await withView(log, [spaced.root], async (view) => {
-      const changed = () =>
-        /^[-+] {0,2}one$/m.test(view.page.last('diff')?.patch ?? '');
-      await view.connection.receive({
-        type: 'selectCommit',
-        root: spaced.root,
-        hash: indent,
-      });
-      assert.strictEqual(changed(), false);
-      await view.settings.set('ignoreWhitespace', false);
-      view.view.reloadSettings();
-      view.page.clear();
-      await view.connection.receive({ type: 'ready' });
-      assert.strictEqual(view.page.last('layout')?.ignoreWhitespace, false);
-      assert.strictEqual(changed(), true);
-    });
-  });
-
   test('expands every merge once collapsing them is turned off by hand, also one expanded before', async () => {
     await withView(log, [repository.root], async (view) => {
       await view.connection.receive({
@@ -126,6 +103,20 @@ suite('View of other repositories', function () {
         view.page.last('commits')?.graph[0]?.merge,
         'collapsed',
       );
+    });
+  });
+
+  test('saves the layout and sends it when the page loads', async () => {
+    await withView(log, [], async (view) => {
+      await view.connection.receive({
+        type: 'setColumnWidths',
+        widths: [400, 250],
+      });
+      await view.connection.receive({ type: 'setShowAllFiles', show: true });
+      await view.connection.receive({ type: 'ready' });
+      const layout = view.page.last('layout');
+      assert.deepStrictEqual(layout?.columnWidths, [400, 250]);
+      assert.strictEqual(layout.showAllFiles, true);
     });
   });
 
@@ -403,50 +394,55 @@ suite('View upstream', function () {
   });
 
   test('says why there is no upstream to show', async () => {
-    await withView(log, [repository.root], async (view) => {
-      await withNotices(view.page, 'info', async (messages) => {
-        const ask = () =>
-          view.connection.receive({
-            type: 'showUpstream',
+    await withView(
+      log,
+      [repository.root],
+      async (view) => {
+        await withNotices(view.page, 'info', async (messages) => {
+          const ask = () =>
+            view.connection.receive({
+              type: 'showUpstream',
+              root: repository.root,
+            });
+          await repository.git('branch', '--unset-upstream');
+          try {
+            await ask();
+          } finally {
+            await repository.git('branch', '--set-upstream-to=origin/main');
+          }
+          await repository.git('update-ref', '-d', 'refs/remotes/origin/main');
+          try {
+            await ask();
+          } finally {
+            await repository.git(
+              'update-ref',
+              'refs/remotes/origin/main',
+              upstream,
+            );
+          }
+          await repository.git('switch', '-q', '--detach');
+          try {
+            await ask();
+          } finally {
+            await repository.git('switch', '-q', 'main');
+          }
+          await view.connection.receive({
+            type: 'setSolo',
             root: repository.root,
+            solo: true,
           });
-        await repository.git('branch', '--unset-upstream');
-        try {
           await ask();
-        } finally {
-          await repository.git('branch', '--set-upstream-to=origin/main');
-        }
-        await repository.git('update-ref', '-d', 'refs/remotes/origin/main');
-        try {
-          await ask();
-        } finally {
-          await repository.git(
-            'update-ref',
-            'refs/remotes/origin/main',
-            upstream,
-          );
-        }
-        await repository.git('switch', '-q', '--detach');
-        try {
-          await ask();
-        } finally {
-          await repository.git('switch', '-q', 'main');
-        }
-        await view.connection.receive({
-          type: 'setSolo',
-          root: repository.root,
-          solo: true,
+          assert.deepStrictEqual(messages, [
+            'main has no upstream',
+            "origin/main, the upstream of main, doesn't exist anymore",
+            'The checked-out commit is on no branch, so it has no upstream',
+            'origin/main is not in the history while Solo shows only that of the checked-out commit',
+          ]);
+          assert.strictEqual(view.page.last('reveal'), undefined);
         });
-        await ask();
-        assert.deepStrictEqual(messages, [
-          'main has no upstream',
-          "origin/main, the upstream of main, doesn't exist anymore",
-          'The checked-out commit is on no branch, so it has no upstream',
-          'origin/main is not in the history while Solo shows only that of the checked-out commit',
-        ]);
-        assert.strictEqual(view.page.last('reveal'), undefined);
-      });
-    });
+      },
+      'unwatched',
+    );
   });
 });
 
@@ -516,16 +512,28 @@ suite('View stashes', function () {
   });
 
   test('lists the history again once a stash is dropped', async () => {
-    await withView(log, [repository.root], async (view) => {
-      await repository.git('stash', 'drop', '-q');
-      try {
-        await view.connection.refresh();
-        assert.strictEqual(view.page.last('commits')?.total, 2);
-        assert.deepStrictEqual(view.page.last('repository')?.stashes, []);
-      } finally {
-        await repository.git('stash', 'store', '-q', '-m', 'kept aside', stash);
-      }
-    });
+    await withView(
+      log,
+      [repository.root],
+      async (view) => {
+        await repository.git('stash', 'drop', '-q');
+        try {
+          await view.connection.refresh();
+          assert.strictEqual(view.page.last('commits')?.total, 2);
+          assert.deepStrictEqual(view.page.last('repository')?.stashes, []);
+        } finally {
+          await repository.git(
+            'stash',
+            'store',
+            '-q',
+            '-m',
+            'kept aside',
+            stash,
+          );
+        }
+      },
+      'unwatched',
+    );
   });
 });
 

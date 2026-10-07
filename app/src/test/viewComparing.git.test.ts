@@ -4,7 +4,6 @@ import * as path from 'node:path';
 import { workingTreeHash } from '../shared/protocol';
 import { comparisonOf } from '../shared/comparisons';
 import type { Connection } from '../view';
-import { waitFor } from './fixtures';
 import {
   removeFolder,
   tempFolder,
@@ -52,7 +51,11 @@ suite('View comparing', function () {
   });
 
   setup(async () => {
-    ({ page, connection } = await openView(log, [repository.root]));
+    ({ page, connection } = await openView(
+      log,
+      [repository.root],
+      'unwatched',
+    ));
   });
 
   teardown(() => connection.dispose());
@@ -60,11 +63,10 @@ suite('View comparing', function () {
   const select = (hash: string) =>
     connection.receive({ type: 'selectCommit', root: repository.root, hash });
 
-  // A refresh, such as the watcher's for a file a test wrote, can take over
-  // loading the diff of a selection, sending it after the selection is handled
-  const diffOf = async (hash: string) => {
-    await waitFor(() => page.last('diff')?.hash === hash, 'the diff');
-    return page.last('diff')?.patch ?? '';
+  const diffOf = (hash: string) => {
+    const diff = page.last('diff');
+    assert.strictEqual(diff?.hash, hash);
+    return diff.patch;
   };
 
   test('diffs two commits on different branches, from the one selected first', async () => {
@@ -127,7 +129,7 @@ suite('View comparing', function () {
           ['M', 'shared.txt'],
         ],
       );
-      assert.match(await diffOf(forward), /^\+disk$/m);
+      assert.match(diffOf(forward), /^\+disk$/m);
 
       const backward = comparisonOf(workingTreeHash, main);
       await select(backward);
@@ -135,7 +137,7 @@ suite('View comparing', function () {
         page.last('files')?.files.map((change) => [change.status, change.path]),
         [['M', 'shared.txt']],
       );
-      const patch = await diffOf(backward);
+      const patch = diffOf(backward);
       assert.match(patch, /^-disk$/m);
       assert.match(patch, /^\+two$/m);
       const [blob] = await repository.resolve('main:shared.txt');
