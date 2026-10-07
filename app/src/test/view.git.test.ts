@@ -480,8 +480,23 @@ suite('View', function () {
     });
 
     test('refreshes once at a time, without sending an unchanged diff', async () => {
+      let calls = 0;
+      let running = 0;
+      let most = 0;
+      stubMethod(fastforward, 'refreshOnce', async (original, ...args) => {
+        calls++;
+        running++;
+        most = Math.max(most, running);
+        try {
+          await original(...args);
+        } finally {
+          running--;
+        }
+      });
       fs.writeFileSync(path.join(repository.root, 'draft.txt'), 'draft\n');
       try {
+        // The two refreshes below make one rerun while the watcher's one runs
+        await waitFor(() => calls > 0, "the watcher's refresh for the draft");
         await connection.receive({
           type: 'selectCommit',
           root: repository.root,
@@ -489,19 +504,8 @@ suite('View', function () {
         });
         assert.ok(page.last('diff')?.patch.includes('+draft'));
         await connection.refresh();
-        let calls = 0;
-        let running = 0;
-        let most = 0;
-        stubMethod(fastforward, 'refreshOnce', async (original, ...args) => {
-          calls++;
-          running++;
-          most = Math.max(most, running);
-          try {
-            await original(...args);
-          } finally {
-            running--;
-          }
-        });
+        calls = 0;
+        most = 0;
         page.clear();
         await Promise.all([connection.refresh(), connection.refresh()]);
         assert.strictEqual(most, 1);
