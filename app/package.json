@@ -2,7 +2,7 @@
   "name": "fastforward",
   "productName": "Fastforward",
   "description": "A desktop app for git",
-  "version": "10.0.0",
+  "version": "11.0.0",
   "author": {
     "name": "Adam Lengyel",
     "email": "lengyel.adam@gmail.com"
