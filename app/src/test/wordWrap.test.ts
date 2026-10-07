@@ -20,7 +20,7 @@ suite('Word wrap', () => {
   });
 
   test('wraps only at spaces and tabs, not at a non-breaking space', () => {
-    assert.strictEqual(wrappedLines('one two', 4), 2);
+    assert.strictEqual(wrappedLines('ab\u00a0cd', 2), 3);
     assert.strictEqual(wrappedLines('one\ttwo', 4), 2);
   });
 

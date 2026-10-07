@@ -49,6 +49,21 @@ export function adjacentColumn(
   return shown[index + step];
 }
 
+export function columnStep(
+  event: Parameters<typeof keyPressed>[1],
+  shown: readonly ColumnName[],
+  current: ColumnName | undefined,
+):
+  | { readonly next: ColumnName | undefined; readonly preventDefault: boolean }
+  | undefined {
+  const move = columnMove(event);
+  if (move === undefined) {
+    return undefined;
+  }
+  const next = adjacentColumn(shown, current, move.step);
+  return { next, preventDefault: move.tab || next !== undefined };
+}
+
 interface ColumnElement {
   readonly parentElement: { readonly children: ArrayLike<unknown> } | null;
 }

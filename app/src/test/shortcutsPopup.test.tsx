@@ -1,8 +1,9 @@
 import * as assert from 'node:assert';
+import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { keyLabels, keymap } from '../shared/keymap';
 import { shortcutGroups, ShortcutsPopup } from '../webview/shortcutsPopup';
-import { tagsWith } from './fixtures';
+import { renderedBy, tagsWith } from './fixtures';
 
 const noop = () => undefined;
 
@@ -42,5 +43,21 @@ suite('Shortcuts popup', () => {
       renderToStaticMarkup(<ShortcutsPopup mac onClose={noop} />),
       /<kbd>\u2318<\/kbd>\+<kbd>T<\/kbd>/,
     );
+  });
+
+  test('closes on its close button', () => {
+    let closed = 0;
+    const popup = renderedBy(ShortcutsPopup, {
+      mac: false,
+      onClose: () => closed++,
+    });
+    assert.ok(isValidElement<{ children: React.ReactElement[] }>(popup));
+    const title = popup.props.children[0];
+    assert.ok(isValidElement<{ children: React.ReactElement[] }>(title));
+    const close = title.props.children[1];
+    assert.ok(isValidElement<{ title: string; onClick: () => void }>(close));
+    assert.strictEqual(close.props.title, 'Close');
+    close.props.onClick();
+    assert.strictEqual(closed, 1);
   });
 });

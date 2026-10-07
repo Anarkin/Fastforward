@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { renderToStaticMarkup } from 'react-dom/server';
 import type { RefInfo } from '../shared/protocol';
 import {
   buildTree,
@@ -18,7 +19,7 @@ import {
   type Highlighted,
   stickyRowHeight,
 } from '../webview/locations';
-import { treeIndent, twistyWidth } from '../webview/tree';
+import { FolderRow } from '../webview/tree';
 import { commitInfo, stylesheetPx } from './fixtures';
 
 const refs: RefInfo[] = [
@@ -64,6 +65,24 @@ const resultsFor = (commits: string[], branches: string[]) =>
     commits.map((hash) => commitInfo(hash)),
     searchRefs(indexRefs(branches.map(branchNamed)), 'a'),
   );
+
+const folderNameStart = (depth: number) => {
+  const html = renderToStaticMarkup(
+    FolderRow({
+      path: 'f',
+      depth,
+      open: false,
+      className: 'sticky',
+      onToggle: () => {},
+      children: 'f',
+    }),
+  );
+  const padding = /padding-left:(\d+)px/.exec(html);
+  assert.ok(padding, html);
+  return (
+    Number(padding[1]) + stylesheetPx(/^\.twisty \{[^}]*?\swidth: (\d+)px/m)
+  );
+};
 
 const press = {
   key: '',
@@ -208,10 +227,6 @@ suite('Locations search', () => {
     assert.strictEqual(popupKeyAction({ ...key, key: 'ArrowDown' }, 'x'), 1);
     assert.strictEqual(popupKeyAction({ ...key, key: 'ArrowUp' }, 'x'), -1);
     assert.strictEqual(
-      popupKeyAction({ ...key, key: 'ArrowUp' }, ''),
-      undefined,
-    );
-    assert.strictEqual(
       popupKeyAction(
         { ...press, key: 'Enter', isComposing: true, keyCode: 13 },
         'x',
@@ -281,8 +296,8 @@ suite('Locations search', () => {
   test('keeps the highlight on its result while the results change, and otherwise starts at the first', () => {
     const highlight: Highlighted = { query: 'a', key: 'branch:feat/x' };
     assert.strictEqual(
-      currentActive(resultsFor([], ['main', 'feat/x']), 'a', highlight),
-      0,
+      currentActive(resultsFor([], ['alpha', 'feat/x']), 'a', highlight),
+      1,
     );
     assert.strictEqual(
       currentActive(
@@ -302,9 +317,16 @@ suite('Locations search', () => {
     );
   });
 
-  test('does nothing on Enter without a search, which highlights no match', () => {
+  test('does nothing on Enter or the arrows without a search, which highlights no match', () => {
     const [branch] = resultItems([], searchRefs(indexRefs([refs[3]]), 'a'));
     assert.strictEqual(enterTarget('', undefined, branch), undefined);
+    assert.strictEqual(
+      popupKeyAction(
+        { ...press, key: 'ArrowUp', isComposing: false, keyCode: 38 },
+        '',
+      ),
+      undefined,
+    );
   });
 
   test('takes a search of spaces alone as no search, moving no highlight and jumping nowhere', () => {
@@ -365,9 +387,13 @@ suite('Locations popup', () => {
     );
   });
 
-  test('lines a ref up with the heading, leaving room for a twisty only beside a folder', () => {
-    assert.strictEqual(leafIndent(0, false), treeIndent(0));
-    assert.strictEqual(leafIndent(0, true), treeIndent(0) + twistyWidth);
-    assert.strictEqual(leafIndent(1, false), treeIndent(1));
+  test("lines a ref up with the heading, with its folder's name, and with the names past the twisty of the folders beside it", () => {
+    assert.strictEqual(
+      leafIndent(0, false),
+      stylesheetPx(/^\.locations-heading \{[^}]*?\spadding: \d+px (\d+)px/m),
+    );
+    assert.strictEqual(leafIndent(1, false), folderNameStart(0));
+    assert.strictEqual(leafIndent(0, true), folderNameStart(0));
+    assert.strictEqual(leafIndent(1, true), folderNameStart(1));
   });
 });

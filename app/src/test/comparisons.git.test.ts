@@ -18,9 +18,9 @@ import {
 suite('Comparing two commits', function () {
   this.timeout(20_000);
   let repository: TempRepository;
-  let root: string;
   let feature: string;
   let main: string;
+  let unrelated: string;
 
   suiteSetup(async () => {
     repository = await tempRepository(tempFolder('compare'));
@@ -32,10 +32,14 @@ suite('Comparing two commits', function () {
     });
     await repository.git('checkout', 'main');
     await repository.commit('main', { 'main.txt': 'main only\n' });
-    [root, feature, main] = await repository.resolve(
-      'main~1',
+    await repository.git('checkout', '-q', '--orphan', 'unrelated');
+    await repository.git('rm', '-q', '-r', '-f', '.');
+    await repository.commit('unrelated', { 'other.txt': 'other\n' });
+    await repository.git('checkout', '-q', 'main');
+    [feature, main, unrelated] = await repository.resolve(
       'feature',
       'main',
+      'unrelated',
     );
   });
 
@@ -75,16 +79,30 @@ suite('Comparing two commits', function () {
     assert.match(patch, /^\+feature$/m);
   });
 
-  test('compares with a root commit', async () => {
+  test('compares commits with no history in common', async () => {
+    const files = await compareFiles(
+      repository.gitPath,
+      repository.root,
+      main,
+      unrelated,
+    );
+    assert.deepStrictEqual(
+      files.map((file) => [file.status, file.path]),
+      [
+        ['D', 'main.txt'],
+        ['A', 'other.txt'],
+        ['D', 'shared.txt'],
+      ],
+    );
     const patch = await comparePatch(
       repository.gitPath,
       repository.root,
-      root,
       main,
+      unrelated,
     );
     assert.deepStrictEqual(
       parsePatch(patch).map((file) => file.path),
-      ['main.txt'],
+      ['main.txt', 'other.txt', 'shared.txt'],
     );
   });
 });

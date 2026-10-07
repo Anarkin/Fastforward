@@ -4,7 +4,6 @@ import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { comparisonOf } from '../shared/comparisons';
 import { workingTreeHash, workingTreeIndex } from '../shared/protocol';
-import { strings } from '../shared/strings';
 import { CommitHistory } from '../webview/commitHistory';
 import {
   keptPlace,
@@ -171,9 +170,16 @@ suite('Commit list working tree row', () => {
       html,
       /<div class="commit-line"><span class="subject">3 uncommitted changes<\/span><\/div><\/div>$/,
     );
-    assert.strictEqual(
-      strings.commits.uncommittedChanges(1),
-      '1 uncommitted change',
+    assert.match(
+      renderToStaticMarkup(
+        <WorkingTreeRow
+          count={1}
+          selection={undefined}
+          indent={26}
+          onSelect={noop}
+        />,
+      ),
+      /<span class="subject">1 uncommitted change<\/span>/,
     );
     assert.deepStrictEqual(clickedHash(3), { selected: workingTreeHash });
   });
@@ -683,6 +689,9 @@ suite('Commit row', () => {
     const row = renderedBy(CommitRow, props);
     assert.ok(isValidElement<{ onContextMenu?: unknown }>(row));
     assert.strictEqual(row.props.onContextMenu, undefined);
+    const commitRow = renderedBy(CommitRow, { ...props, stash: false });
+    assert.ok(isValidElement<{ onContextMenu?: unknown }>(commitRow));
+    assert.strictEqual(typeof commitRow.props.onContextMenu, 'function');
   });
 
   test('compares with the commit when clicked with Ctrl', () => {

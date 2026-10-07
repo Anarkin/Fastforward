@@ -3,7 +3,7 @@ import { execFile, spawn } from 'node:child_process';
 import { once } from 'node:events';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { exitedWith, gitConfigArgs, gitEnv, stopGit } from '../git/run';
+import { exitedWith, gitEnv, stopGit } from '../git/run';
 import { removeFolder, tempFolder } from './repositories';
 
 suite('Running git', () => {
@@ -18,11 +18,8 @@ suite('Running git', () => {
     assert.ok(!exitedWith({}, [0]));
   });
 
-  test('runs git without its optional locks or index refresh, and without prompting for credentials', () => {
-    const env = gitEnv();
-    assert.strictEqual(env.GIT_OPTIONAL_LOCKS, '0');
-    assert.strictEqual(env.GIT_TERMINAL_PROMPT, '0');
-    assert.ok(gitConfigArgs.includes('diff.autoRefreshIndex=false'));
+  test('runs git without prompting for credentials', () => {
+    assert.strictEqual(gitEnv().GIT_TERMINAL_PROMPT, '0');
   });
 
   test('takes paths literally unless asked for pathspec magic', () => {

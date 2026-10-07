@@ -543,13 +543,26 @@ suite('Uncommitted changes', function () {
       );
       assert.ok(changed.includes('+second line'), changed);
       assert.ok(changed.includes('kept untracked.txt'), changed);
+    } finally {
+      fs.rmSync(draft);
+    }
+  });
+
+  test('forgets the patch kept of an untracked file the list no longer has', async () => {
+    const draft = path.join(cwd, 'draft.txt');
+    fs.writeFileSync(draft, 'draft\n');
+    try {
+      const patches: UntrackedPatches = new Map();
+      const workingTree = await workingTreeFiles(gitPath, cwd);
+      await workingTreePatch(gitPath, cwd, workingTree, {}, patches);
+      assert.ok(patches.has('draft.txt'));
       const listed = {
         ...workingTree,
         files: workingTree.files.filter((file) => file.path !== 'draft.txt'),
         untracked: workingTree.untracked.filter((file) => file !== 'draft.txt'),
       };
       await workingTreePatch(gitPath, cwd, listed, {}, patches);
-      assert.ok(!patches.has('draft.txt'));
+      assert.deepStrictEqual([...patches.keys()], ['untracked.txt']);
     } finally {
       fs.rmSync(draft);
     }

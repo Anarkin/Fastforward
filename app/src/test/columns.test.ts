@@ -14,21 +14,24 @@ import {
 } from '../webview/columns';
 import { minimumWindowSize } from '../main/files';
 import { workingTreeHash } from '../shared/protocol';
+import { stylesheetPx } from './fixtures';
+
+type DragListener = (event: { buttons: number }) => void;
 
 function dragTarget() {
-  const listeners = new Map<string, (event: { buttons: number }) => void>();
+  const listeners = new Map<string, Set<DragListener>>();
   return {
-    addEventListener: (
-      type: string,
-      listener: (event: { buttons: number }) => void,
-    ) => {
-      listeners.set(type, listener);
+    addEventListener: (type: string, listener: DragListener) => {
+      listeners.set(type, (listeners.get(type) ?? new Set()).add(listener));
     },
-    removeEventListener: (type: string) => {
-      listeners.delete(type);
+    removeEventListener: (type: string, listener: DragListener) => {
+      listeners.get(type)?.delete(listener);
     },
-    dispatch: (type: string, buttons: number) =>
-      listeners.get(type)?.({ buttons }),
+    dispatch: (type: string, buttons: number) => {
+      for (const listener of listeners.get(type) ?? []) {
+        listener({ buttons });
+      }
+    },
   };
 }
 
@@ -55,7 +58,7 @@ suite('Columns', () => {
   });
 
   test('fits every column at its least width in the smallest window, past the padding and gaps between them', () => {
-    const gutter = 4;
+    const gutter = stylesheetPx(/--gutter-width: (\d+)px;/);
     const columns = minColumnWidths.length + 1;
     const least =
       minColumnWidths.reduce((sum, width) => sum + width, 0) +

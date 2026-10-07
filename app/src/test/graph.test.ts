@@ -41,6 +41,18 @@ function lanesReached(tips: number): number {
   return Math.max(...row.lines.map((line) => Math.max(line.from, line.to) + 1));
 }
 
+const laidOutBefore = (end: number) =>
+  Array.from({ length: 1000 }, (_, index) =>
+    index < end
+      ? { hash: `c${index}`, parents: [`c${index + 1}`] }
+      : {
+          hash: `c${index}`,
+          get parents(): string[] {
+            throw new Error(`laid out c${index}`);
+          },
+        },
+  );
+
 suite('Graph', () => {
   test('keeps a straight history in one lane', () => {
     const graph = new Graph([
@@ -157,17 +169,8 @@ suite('Graph', () => {
   });
 
   test('lays out no row past the page asked for', () => {
-    const history = Array.from({ length: 1000 }, (_, index) =>
-      index < 250
-        ? { hash: `c${index}`, parents: [`c${index + 1}`] }
-        : {
-            hash: `c${index}`,
-            get parents(): string[] {
-              throw new Error(`laid out c${index}`);
-            },
-          },
-    );
-    const graph = new Graph(history);
+    assert.strictEqual(new Graph(laidOutBefore(100)).rows(0, 100).length, 100);
+    const graph = new Graph(laidOutBefore(199));
     assert.strictEqual(graph.rows(0, 100).length, 100);
     assert.strictEqual(graph.rows(99, 100).length, 100);
   });

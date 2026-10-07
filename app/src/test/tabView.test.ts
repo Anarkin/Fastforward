@@ -128,7 +128,7 @@ suite('Tab view', () => {
     assert.strictEqual(reloaded.history?.selectedIndex, 1);
   });
 
-  test('loads a selected commit, apart from having no files', () => {
+  test('loads the files and the diff of a selected commit, ending only the files on an empty list, and nothing with no commit selected', () => {
     const loading = reduceTabView(busyTab(), { type: 'showCommit', hash: 'b' });
     assert.ok(loading.filesLoading && loading.patchLoading);
     const empty = reduceTabView(loading, {
@@ -316,7 +316,7 @@ suite('Tab view', () => {
     );
   });
 
-  test('drops a page of the history before', () => {
+  test('drops a page of a history laid out before the current one', () => {
     const before = busyTab();
     const after = reduceTabView(before, {
       type: 'commitPage',

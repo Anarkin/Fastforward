@@ -10,7 +10,7 @@ import {
   type TempRepository,
 } from './repositories';
 
-suite('Watching a repository folder by folder, as on Linux', function () {
+suite('Watching a repository', function () {
   this.timeout(20_000);
   let repository: TempRepository;
   let watcher: Watcher | undefined;
@@ -51,7 +51,7 @@ suite('Watching a repository folder by folder, as on Linux', function () {
     }, what);
   };
 
-  test('refreshes for a file in a folder created after it started', async () => {
+  test('refreshes for a file in a folder created after it started, watching folder by folder', async () => {
     const folder = path.join(repository.root, 'new', 'deep');
     fs.mkdirSync(folder, { recursive: true });
     await waitFor(() => changes.length > 0, 'the new folder');
@@ -60,12 +60,12 @@ suite('Watching a repository folder by folder, as on Linux', function () {
     assert.deepStrictEqual(errors, []);
   });
 
-  test("refreshes for a file whose name starts with '..', which is not a parent folder", async () => {
+  test("refreshes for a file whose name starts with '..', which is not a parent folder, watching folder by folder", async () => {
     await keepWriting('..env', 'the file');
     assert.deepStrictEqual(errors, []);
   });
 
-  test('refreshes for a file named like pathspec magic, though the file it names is ignored', async function () {
+  test('refreshes for a file named like pathspec magic, though the file it names is ignored, watching folder by folder', async function () {
     if (process.platform === 'win32') {
       this.skip();
     }
@@ -107,13 +107,13 @@ suite('Watching a repository folder by folder, as on Linux', function () {
     );
   });
 
-  test('refreshes for the git folder', async () => {
+  test('refreshes for the git folder, watching folder by folder', async () => {
     await repository.git('commit', '--allow-empty', '-m', 'second');
     await waitFor(() => changes.includes(true), 'the commit');
     assert.deepStrictEqual(errors, []);
   });
 
-  test('stays quiet when stopped while telling whether the changed files are ignored', async () => {
+  test('stays quiet when stopped while telling whether the changed files are ignored, watching folder by folder', async () => {
     let asked = false;
     let answer: ((ignored: readonly string[]) => void) | undefined;
     const quiet: boolean[] = [];
@@ -184,10 +184,40 @@ suite('Watching a repository folder by folder, as on Linux', function () {
     }
   });
 
+  test('refreshes for a changed file when telling whether it is ignored fails, watching recursively', async () => {
+    const file = path.join(repository.root, 'file.txt');
+    const seen: boolean[] = [];
+    const watching = await watchRepository(
+      repository.gitPath,
+      repository.root,
+      {
+        delay: 50,
+        maxDelay: 200,
+        recursive: true,
+        onChange: (gitDirChanged) => seen.push(gitDirChanged),
+        onError: (error) => errors.push(error),
+        ignored: (_repo, paths) =>
+          paths.includes(file)
+            ? Promise.reject(new Error('check-ignore failed'))
+            : Promise.resolve([]),
+      },
+    );
+    try {
+      let lines = '';
+      await waitFor(() => {
+        lines += 'line\n';
+        fs.writeFileSync(file, lines);
+        return seen.includes(false);
+      }, 'the changed file');
+      assert.deepStrictEqual(errors, []);
+    } finally {
+      watching.dispose();
+    }
+  });
+
   for (const recursive of [true, false]) {
-    test(`tells when a worktree is added or switches branch, watching ${recursive ? 'recursively' : 'folder by folder'}`, async () => {
+    test(`tells when a worktree is added, watching ${recursive ? 'recursively' : 'folder by folder'}`, async () => {
       const folder = tempFolder('listed');
-      const linked = path.join(folder, 'linked');
       let listed = 0;
       const listing = await watchRepository(
         repository.gitPath,
@@ -202,8 +232,48 @@ suite('Watching a repository folder by folder, as on Linux', function () {
         },
       );
       try {
-        await repository.git('worktree', 'add', '-q', '--detach', linked);
+        await repository.git(
+          'worktree',
+          'add',
+          '-q',
+          '--detach',
+          path.join(folder, 'linked'),
+        );
         await waitFor(() => listed > 0, 'the worktree added');
+        assert.deepStrictEqual(errors, []);
+      } finally {
+        listing.dispose();
+        removeFolder(folder);
+      }
+    });
+
+    test(`tells when a linked worktree switches branch, watching ${recursive ? 'recursively' : 'folder by folder'}`, async () => {
+      const folder = tempFolder('switched');
+      const linked = path.join(folder, 'linked');
+      await repository.git('worktree', 'add', '-q', '--detach', linked);
+      let listed = 0;
+      const listing = await watchRepository(
+        repository.gitPath,
+        repository.root,
+        {
+          delay: 50,
+          maxDelay: 200,
+          recursive,
+          onChange: () => undefined,
+          onWorktreesChange: () => listed++,
+          onError: (error) => errors.push(error),
+        },
+      );
+      try {
+        let last = listed;
+        let since = Date.now();
+        await waitFor(() => {
+          if (listed !== last) {
+            last = listed;
+            since = Date.now();
+          }
+          return Date.now() - since > 500;
+        }, 'the worktree added to be told');
         listed = 0;
         await repository.git('-C', linked, 'switch', '-q', '-c', 'switched');
         await waitFor(() => listed > 0, 'the branch switched to');

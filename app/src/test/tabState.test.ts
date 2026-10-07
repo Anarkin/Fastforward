@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { comparisonOf } from '../shared/comparisons';
-import { workingTreeHash } from '../shared/protocol';
+import { commitPageSize, workingTreeHash } from '../shared/protocol';
 import {
   commitsMessage,
   expandMerges,
@@ -39,10 +39,12 @@ suite('Tab state', () => {
     { hash: 'b', parents: ['a'] },
     { hash: 'a', parents: [] },
   ];
-  const long = Array.from({ length: 250 }, (_, i) => ({
+  const long = Array.from({ length: 3 * commitPageSize }, (_, i) => ({
     hash: `h${i}`,
-    parents: i < 249 ? [`h${i + 1}`] : [],
+    parents: i < 3 * commitPageSize - 1 ? [`h${i + 1}`] : [],
   }));
+  const inSecondPage = commitPageSize + commitPageSize / 2;
+  const inThirdPage = 2 * commitPageSize + commitPageSize / 5;
 
   function laidOut(entries = long) {
     const tab = newTabState();
@@ -279,10 +281,10 @@ suite('Tab state', () => {
 
   test('starts the first page at the page of the commit that keeps its place', () => {
     const tab = laidOut();
-    tab.anchor = { hash: 'h150', offset: 3 };
+    tab.anchor = { hash: `h${inSecondPage}`, offset: 3 };
     assert.deepStrictEqual(firstPage(tab, true), {
-      start: 100,
-      scrollTarget: { index: 150, offset: 3 },
+      start: commitPageSize,
+      scrollTarget: { index: inSecondPage, offset: 3 },
     });
     assert.deepStrictEqual(firstPage(tab, false), {
       start: 0,
@@ -302,15 +304,15 @@ suite('Tab state', () => {
 
   test('starts the first page at the page of the commit to scroll to, or else of the selected one', () => {
     const tab = laidOut();
-    assert.deepStrictEqual(firstPage(tab, false, 'h150'), {
-      start: 100,
-      scrollTarget: { index: 150 },
+    assert.deepStrictEqual(firstPage(tab, false, `h${inSecondPage}`), {
+      start: commitPageSize,
+      scrollTarget: { index: inSecondPage },
     });
-    tab.hash = 'h220';
+    tab.hash = `h${inThirdPage}`;
     layOutHistory(tab, false, undefined);
     assert.deepStrictEqual(firstPage(tab, false), {
-      start: 200,
-      scrollTarget: { index: 220 },
+      start: 2 * commitPageSize,
+      scrollTarget: { index: inThirdPage },
     });
   });
 

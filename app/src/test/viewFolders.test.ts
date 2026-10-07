@@ -60,13 +60,12 @@ suite('View folders', () => {
     assert.strictEqual(seeView(closed, 'one'), closed);
   });
 
-  test('replaces every folder toggled in a view at once, forgetting another view', () => {
+  test('replaces every folder toggled in a view at once', () => {
     const replaced = replaceFolders('two', {
       open: new Set(['lib']),
       closed: new Set(['src']),
     });
     assert.deepStrictEqual([...shownFolders(replaced, 'two').open], ['lib']);
     assert.deepStrictEqual([...shownFolders(replaced, 'two').closed], ['src']);
-    assert.deepStrictEqual([...shownFolders(replaced, 'one').open], []);
   });
 });

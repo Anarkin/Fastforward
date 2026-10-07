@@ -11,6 +11,16 @@ function keysOf(value: object, at: readonly string[] = []): string[][] {
   );
 }
 
+function textsOf(value: object): string[] {
+  return Object.values(value).flatMap((child: unknown) =>
+    typeof child === 'object' && child !== null
+      ? textsOf(child)
+      : typeof child === 'string'
+        ? [child]
+        : [],
+  );
+}
+
 const escaped = (key: string) => key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 suite('Strings', () => {
@@ -37,6 +47,17 @@ suite('Strings', () => {
       keysOf(strings)
         .filter((keys) => !used(keys))
         .map((keys) => keys.join('.')),
+      [],
+    );
+  });
+
+  test('names no keys in parentheses, as they read Ctrl on macOS too, while the shortcuts screen lists the right ones', () => {
+    const keys = Object.values(strings.keys).map(escaped).join('|');
+    const hint = new RegExp(`\\([^)]*(?<!\\w)(?:${keys}|Cmd)(?!\\w)[^)]*\\)`);
+    const texts = textsOf(strings);
+    assert.ok(texts.includes(strings.actions.openRepository));
+    assert.deepStrictEqual(
+      texts.filter((text) => hint.test(text)),
       [],
     );
   });

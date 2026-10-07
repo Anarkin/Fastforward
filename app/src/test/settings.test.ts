@@ -227,7 +227,7 @@ suite('User settings file', () => {
     });
   });
 
-  test('notices a change to the file a symlink points to, as an editor writes there', async function () {
+  test('notices a change to the file it was given as the one the settings resolve to, in another folder, as an editor writes to the file a symlink points to', async function () {
     this.timeout(20_000);
     const target = path.join(folder, 'dotfiles', 'settings.json');
     fs.mkdirSync(path.dirname(target));

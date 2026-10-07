@@ -8,11 +8,16 @@ import {
 
 const refs: RefInfo[] = [
   { kind: 'branch', name: 'main', commit: 'aaaaaaaa' },
-  { kind: 'remote', name: 'origin/main', commit: 'aaaaaaaa' },
-  { kind: 'remote', name: 'origin/feature', commit: 'aaaaaaaa' },
+  { kind: 'remote', name: 'origin/main', remote: 'origin', commit: 'aaaaaaaa' },
+  {
+    kind: 'remote',
+    name: 'origin/feature',
+    remote: 'origin',
+    commit: 'aaaaaaaa',
+  },
   { kind: 'tag', name: 'v1', commit: 'aaaaaaaa' },
   { kind: 'branch', name: 'fix', commit: 'bbbbbbbb' },
-  { kind: 'remote', name: 'origin/fix', commit: 'aaaaaaaa' },
+  { kind: 'remote', name: 'origin/fix', remote: 'origin', commit: 'aaaaaaaa' },
 ];
 
 const remote = (name: string) => ({ kind: 'remote' as const, name });
@@ -67,19 +72,27 @@ suite('Checkout options', () => {
       checkoutRef(remote('team/fork/main'), forked, 'main', undefined).disabled,
       true,
     );
+    assert.strictEqual(
+      checkoutRef(remote('team/fork/main'), forked, 'other', undefined)
+        .disabled,
+      false,
+    );
   });
 
-  test('checks out a ref by its kind and name', () => {
-    for (const ref of [
-      { kind: 'branch' as const, name: 'main' },
-      remote('origin/feature'),
-      { kind: 'tag' as const, name: 'v1' },
-    ]) {
-      assert.deepStrictEqual(
-        checkoutRef(ref, refs, 'main', undefined).target,
-        ref,
-      );
-    }
+  test('checks out a ref by its kind and name alone', () => {
+    assert.deepStrictEqual(
+      checkoutOptions('aaaaaaaa', refs, 'main', undefined).map(
+        (option) => option.target,
+      ),
+      [
+        { kind: 'branch', name: 'main' },
+        remote('origin/feature'),
+        remote('origin/fix'),
+        remote('origin/main'),
+        { kind: 'tag', name: 'v1' },
+        { kind: 'commit', hash: 'aaaaaaaa' },
+      ],
+    );
   });
 
   test('checks out a commit unless it is the detached HEAD', () => {

@@ -228,7 +228,7 @@ suite('Keymap', () => {
       path.join(source, 'shared', file),
     );
     const reads =
-      /\b(?:event|nativeEvent|input)\.(?:key|code|keyCode|button|buttons|ctrlKey|metaKey|altKey|shiftKey|isComposing|control|meta|alt|shift)\b|'(?:Arrow(?:Up|Down|Left|Right)|Page(?:Up|Down)|Home|End|Enter|Escape|Tab|F\d{1,2})'|'(?:ctrlKey|metaKey|altKey|shiftKey)'/;
+      /\b(?:e|ev|\w*[eE]vent|input)\.(?:key|code|button|control|meta|alt|shift)\b|\b\w+\.buttons\b|\b(?:ctrlKey|metaKey|altKey|shiftKey|isComposing|keyCode)\b|'(?:Arrow(?:Up|Down|Left|Right)|Page(?:Up|Down)|Home|End|Enter|Escape|Tab|F\d{1,2})'/;
     const offenders = fs
       .readdirSync(source, { recursive: true, encoding: 'utf8' })
       .filter((file) => /\.tsx?$/.test(file) && !file.startsWith('test'))

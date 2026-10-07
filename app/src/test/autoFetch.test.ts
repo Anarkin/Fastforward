@@ -78,6 +78,34 @@ suite('Auto fetch', () => {
     assert.strictEqual(waiting().length, 1);
   });
 
+  test('starts no second round when switched off and on again while a round runs', async () => {
+    const { timer, waiting, fire } = fakeTimer();
+    let minutes = 1;
+    let fetches = 0;
+    const active = Promise.withResolvers<void>();
+    const auto = new AutoFetch(
+      () => minutes,
+      () => ['active'],
+      () => {
+        fetches += 1;
+        return active.promise;
+      },
+      timer,
+    );
+    auto.update();
+    await fire();
+    minutes = 0;
+    auto.update();
+    minutes = 1;
+    auto.update(true);
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.strictEqual(fetches, 1);
+    active.resolve();
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.strictEqual(fetches, 1);
+    assert.strictEqual(waiting().length, 1);
+  });
+
   test('fetches at once when switched on, and stops when switched off', async () => {
     const { timer, waiting, fire } = fakeTimer();
     let minutes = 0;

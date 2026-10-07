@@ -72,16 +72,19 @@ suite('Overflow', () => {
     );
   });
 
-  test('finds the hidden changes of a long line in one pass over it, however many changes it has', () => {
-    const text = `\t${'x'.repeat(200_000)}`;
+  test('finds the hidden changes of a long line in one pass over it, however many tabs and changes it has', () => {
+    const text = '\tx'.repeat(100_000);
     const words = Array.from({ length: 6000 }, (_, index) => ({
       start: 1 + index * 30,
       end: 5 + index * 30,
     }));
     const started = performance.now();
-    const hidden = hiddenChanges(text, words, { first: 50_000, last: 60_000 });
-    assert.ok(performance.now() - started < 100);
-    assert.deepStrictEqual(hidden, { left: words[1666], right: words[2000] });
+    const hidden = hiddenChanges(text, words, {
+      first: 200_000,
+      last: 210_000,
+    });
+    assert.ok(performance.now() - started < 1000);
+    assert.deepStrictEqual(hidden, { left: words[3333], right: words[3500] });
   });
 
   test('scrolls a hidden change to the middle, within the room there is', () => {

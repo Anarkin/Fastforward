@@ -215,6 +215,30 @@ function stubMethod(
   );
 }
 
+function failOnErrorsLogged(logged: unknown[]): void {
+  teardown(() => {
+    assert.deepStrictEqual(logged.splice(0), []);
+  });
+}
+
+function takeErrorsLogged(logged: unknown[], ...expected: RegExp[]): void {
+  const messages = logged
+    .splice(0)
+    .map((entry) => (entry instanceof Error ? entry.message : String(entry)));
+  for (const pattern of expected) {
+    assert.ok(
+      messages.some((message) => pattern.test(message)),
+      `${pattern} in ${JSON.stringify(messages)}`,
+    );
+  }
+  for (const message of messages) {
+    assert.ok(
+      expected.some((pattern) => pattern.test(message)),
+      `unexpected error logged: ${message}`,
+    );
+  }
+}
+
 function rootOf(context: unknown): string | undefined {
   return typeof context === 'object' &&
     context !== null &&
@@ -294,6 +318,7 @@ suite('View', function () {
   let otherHead: string;
 
   const { log, error: logged } = recordingLog();
+  failOnErrorsLogged(logged);
 
   suiteSetup(async () => {
     folder = tempFolder('view');
@@ -360,13 +385,17 @@ suite('View', function () {
       assert.deepStrictEqual(refs?.toSorted(), ['feature', 'main']);
     });
 
-    test('starts with no commit selected the first time a tab opens, and after', async () => {
-      await withView(log, [repository.root], async (view) => {
-        assert.ok(view.page.last('commits'));
-        assert.strictEqual(view.page.last('reveal'), undefined);
-        assert.strictEqual(view.page.last('files'), undefined);
-      });
+    test('starts with no commit selected the first time a tab opens, and opens again with none once the commit is deselected', async () => {
+      assert.ok(page.last('commits'));
+      assert.strictEqual(page.last('reveal'), undefined);
+      assert.strictEqual(page.last('files'), undefined);
 
+      await connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: fixture.b,
+      });
+      assert.strictEqual(page.last('files')?.hash, fixture.b);
       await connection.receive({
         type: 'selectCommit',
         root: repository.root,
@@ -470,7 +499,7 @@ suite('View', function () {
       assert.strictEqual(page.last('diff')?.hash, fixture.b);
     });
 
-    test('makes the main branch a bookmark once, then keeps the saved bookmarks', async () => {
+    test('makes the main branch a bookmark the first time, and saves the bookmarks the page sets', async () => {
       const main: BookmarkRef = { kind: 'branch', name: 'main' };
       assert.deepStrictEqual(page.last('bookmarks')?.bookmarks, [main]);
 
@@ -712,6 +741,11 @@ suite('View', function () {
         assert.strictEqual(failed.generation, generation);
         assert.deepStrictEqual(failed.commits, []);
         assert.ok(page.last('error'));
+        takeErrorsLogged(
+          logged,
+          /^loadCommits failed$/,
+          /^git log .* failed: fatal: not a git repository/,
+        );
       } finally {
         removeFolder(elsewhere);
       }
@@ -821,6 +855,11 @@ suite('View', function () {
         await own.connection.receive({ type: 'setAutoFetch', on: true });
         await waitFor(() => rounds.length === 1, 'a background round');
         assert.strictEqual(own.page.last('error'), undefined);
+        takeErrorsLogged(
+          logged,
+          /^Saving the state failed$/,
+          /^settings not written$/,
+        );
       } finally {
         own.connection.dispose();
       }
@@ -934,8 +973,14 @@ suite('View', function () {
           query: 'test',
         }),
       ]);
+      assert.deepStrictEqual(
+        page.messages.flatMap((message) =>
+          message.type === 'commitSearch' ? [message.query] : [],
+        ),
+        ['test'],
+      );
       const search = page.last('commitSearch');
-      assert.strictEqual(search?.query, 'test');
+      assert.ok(search);
       assert.ok(search.result.commits.length > 0);
       assert.ok(
         search.result.commits.every(({ authorName }) => authorName === 'Test'),
@@ -1076,11 +1121,25 @@ suite('View', function () {
 
     test('says how many commits a short hash it jumps to could be', async () => {
       const [tree] = await repository.resolve('HEAD^{tree}');
+      const taken = new Set(
+        (
+          await repository.git(
+            'cat-file',
+            '--batch-all-objects',
+            '--batch-check=%(objectname)',
+          )
+        )
+          .split('\n')
+          .map((hash) => hash.slice(0, 4)),
+      );
       const byPrefix = new Map<string, string>();
       let prefix: string | undefined;
       for (let n = 0; prefix === undefined; n++) {
         const content = commitText(tree, `probe ${n}`);
         const start = objectId('commit', content).slice(0, 4);
+        if (taken.has(start)) {
+          continue;
+        }
         const earlier = byPrefix.get(start);
         if (earlier === undefined) {
           byPrefix.set(start, content);
@@ -1099,8 +1158,7 @@ suite('View', function () {
           root: repository.root,
           hash: prefix,
         });
-        assert.strictEqual(messages.length, 1);
-        assert.match(messages[0], /^\d+ commits start with /);
+        assert.deepStrictEqual(messages, [`2 commits start with ${prefix}`]);
       });
     });
 
@@ -1538,6 +1596,7 @@ suite('View', function () {
         await Promise.all([failing, queued]);
         assert.ok(newer.last('workingTree'));
         assert.match(page.last('error')?.message ?? '', /refresh failed/);
+        takeErrorsLogged(logged, /^refresh failed$/);
       } finally {
         newerConnection.dispose();
       }
@@ -1562,6 +1621,7 @@ suite('View', function () {
       page.clear();
       await connection.refresh();
       assert.strictEqual(page.last('clearError'), undefined);
+      takeErrorsLogged(logged, /^refresh failed$/);
     });
 
     test('refreshes again only once the history is read, though the working tree failed to be', async () => {
@@ -1595,6 +1655,7 @@ suite('View', function () {
       await Promise.all([failed, queued]);
       assert.strictEqual(most, 1);
       assert.match(page.last('error')?.message ?? '', /working tree failed/);
+      takeErrorsLogged(logged, /^refresh failed$/, /^working tree failed$/);
     });
 
     test('applies Solo and ends a refresh while refreshes keep being asked for', async () => {
@@ -1729,37 +1790,44 @@ suite('View', function () {
     });
 
     test('drops the diff of a file of a commit no longer selected', async () => {
-      await connection.receive({
-        type: 'selectCommit',
-        root: repository.root,
-        hash: fixture.b,
-      });
-      const held = gate();
-      let calls = 0;
-      stubMethod(fastforward, 'patchOf', async (original, ...args) => {
-        calls += 1;
-        if (calls === 1) {
-          await held.opened;
-        }
-        return original(...args);
-      });
-      page.clear();
-      const loading = connection.receive({
-        type: 'loadFileDiff',
-        root: repository.root,
-        hash: fixture.b,
-        path: 'b.txt',
-        diff: 1,
-      });
-      await waitFor(() => calls === 1, 'the file diff');
-      await connection.receive({
-        type: 'selectCommit',
-        root: repository.root,
-        hash: workingTreeHash,
-      });
-      held.open();
-      await loading;
-      assert.strictEqual(page.last('fileDiff'), undefined);
+      await repository.commit('changes c', { 'c.txt': 'c\n' });
+      const [changed] = await repository.resolve('HEAD');
+      try {
+        await connection.refresh();
+        await connection.receive({
+          type: 'selectCommit',
+          root: repository.root,
+          hash: changed,
+        });
+        const held = gate();
+        let calls = 0;
+        stubMethod(fastforward, 'patchOf', async (original, ...args) => {
+          calls += 1;
+          if (calls === 1) {
+            await held.opened;
+          }
+          return original(...args);
+        });
+        page.clear();
+        const loading = connection.receive({
+          type: 'loadFileDiff',
+          root: repository.root,
+          hash: changed,
+          path: 'c.txt',
+          diff: 1,
+        });
+        await waitFor(() => calls === 1, 'the file diff');
+        await connection.receive({
+          type: 'selectCommit',
+          root: repository.root,
+          hash: workingTreeHash,
+        });
+        held.open();
+        await loading;
+        assert.strictEqual(page.last('fileDiff'), undefined);
+      } finally {
+        await restore();
+      }
     });
 
     test('stops reading the files and diff of a commit selected before another', async () => {
@@ -1873,8 +1941,14 @@ suite('View', function () {
 
     test('applies the merge setting to the history shown, without reloading it', async () => {
       await connection.refresh();
+      let listed = 0;
+      stubMethod(fastforward, 'sendCommits', async (original, ...args) => {
+        listed++;
+        await original(...args);
+      });
       await connection.receive({ type: 'setCollapseMerges', collapse: false });
       assert.strictEqual(page.last('commits')?.total, 5);
+      assert.strictEqual(listed, 0);
       page.clear();
       await connection.refresh();
       assert.strictEqual(page.last('commits'), undefined, 'reloaded');
@@ -1967,6 +2041,11 @@ suite('View', function () {
         hash: fixture.merge,
       });
       assert.match(page.last('error')?.message ?? '', /^fatal: .*no-tree$/);
+      takeErrorsLogged(
+        logged,
+        /^loadTree failed$/,
+        /^git ls-tree no-tree failed: /,
+      );
     });
 
     test('reports what git said when it refuses a checkout, logging the command too', async () => {
@@ -1988,6 +2067,11 @@ suite('View', function () {
             entry instanceof Error &&
             /^git .*switch .*no-such-branch failed: /.test(entry.message),
         ),
+      );
+      takeErrorsLogged(
+        logged,
+        /^Checking out branch no-such-branch failed$/,
+        /^git .*switch .*no-such-branch failed: /,
       );
     });
 
@@ -2029,9 +2113,11 @@ suite('View', function () {
           page.last('repository')?.refs.some((ref) => ref.name === 'kept'),
         );
         assert.ok(tagged?.decorations.includes(2));
-        assert.ok(
-          ((await refreshed(['checkout', '--detach', fixture.f2]))?.total ??
-            0) > 3,
+        const detached = await refreshed(['checkout', '--detach', fixture.f2]);
+        assert.strictEqual(detached?.total, 5);
+        assert.deepStrictEqual(
+          detached.commits.map((commit) => commit.subject),
+          ['merge feature', 'b', 'f2', 'f1', 'a'],
         );
         assert.strictEqual(
           (await refreshed(['checkout', 'main'], ['tag', '-d', 'kept']))?.total,
@@ -2086,6 +2172,11 @@ suite('View', function () {
         assert.ok(failed);
         await connection.refresh();
         assert.ok((page.last('commits')?.generation ?? -1) > before);
+        takeErrorsLogged(
+          logged,
+          /^refresh failed$/,
+          /^git log .* failed: fatal: not a git repository/,
+        );
       } finally {
         await repository.git('branch', '-D', 'failed-once');
         removeFolder(elsewhere);
@@ -2421,6 +2512,11 @@ suite('View', function () {
           await repository.resolve('blocked'),
           await repository.resolve('main~1'),
         );
+        takeErrorsLogged(
+          logged,
+          /^Fast-forwarding blocked to origin\/blocked failed$/,
+          /^git merge --ff-only refs\/remotes\/origin\/blocked failed: /,
+        );
       } finally {
         fs.rmSync(clash, { force: true });
         await restore();
@@ -2571,6 +2667,11 @@ suite('View', function () {
           assert.match(messages[0], /^Couldn't check out feature/);
         });
         assert.deepStrictEqual(await repository.resolve('HEAD'), [stopped]);
+        takeErrorsLogged(
+          logged,
+          /^Checking out branch feature failed$/,
+          /^git .*switch .*feature failed: fatal: cannot switch branch while rebasing/,
+        );
       } finally {
         await repository.git('rebase', '--abort').catch(() => undefined);
         await restore();
@@ -2789,11 +2890,23 @@ suite('View', function () {
       await tabs.connection.receive({ type: 'selectTab', root: other });
       assert.strictEqual(tabs.page.last('commits')?.total, 1);
       assert.strictEqual(tabs.page.last('files'), undefined);
+      takeErrorsLogged(
+        logged,
+        /^Preloading tab .*other failed$/,
+        /^working tree failed$/,
+      );
     });
 
     test("shows no error of a tab's request that failed after it was left", async () => {
+      await tabs.connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: fixture.merge,
+      });
       const held = gate();
+      let loadingTree = false;
       stubMethod(tabs.view, 'sendTree', async () => {
+        loadingTree = true;
         await held.opened;
         throw new Error('tree failed');
       });
@@ -2802,28 +2915,40 @@ suite('View', function () {
         root: repository.root,
         hash: fixture.merge,
       });
+      await waitFor(() => loadingTree, 'the tree to load');
       await tabs.connection.receive({ type: 'selectTab', root: other });
       tabs.page.clear();
       held.open();
       await loading;
       assert.strictEqual(tabs.page.last('error'), undefined);
+      takeErrorsLogged(logged, /^loadTree failed$/, /^tree failed$/);
     });
 
     test('preloads nothing for the shown tab, or one opened before', async () => {
-      tabs.page.clear();
+      const preloaded: unknown[] = [];
+      stubMethod(tabs.view, 'preload', (original, ...args) => {
+        preloaded.push(args[1]);
+        return original(...args);
+      });
+      const loaded: unknown[] = [];
+      stubMethod(tabs.view, 'loadTab', (original, ...args) => {
+        loaded.push(rootOf(args[0]));
+        return original(...args);
+      });
       await tabs.connection.receive({
         type: 'preloadTab',
         root: repository.root,
       });
+      assert.deepStrictEqual(preloaded, []);
       await tabs.connection.receive({ type: 'selectTab', root: other });
       await tabs.connection.receive({
         type: 'selectTab',
         root: repository.root,
       });
-      tabs.page.clear();
+      assert.deepStrictEqual(loaded, [other]);
       await tabs.connection.receive({ type: 'preloadTab', root: other });
-      assert.strictEqual(commitsSent(tabs.page.messages), 0);
-      assert.strictEqual(tabs.page.last('files'), undefined);
+      assert.deepStrictEqual(preloaded, [other]);
+      assert.deepStrictEqual(loaded, [other]);
     });
 
     test('opens a tab that is preloading once it has loaded, without sending its history again', async () => {
@@ -2926,6 +3051,7 @@ suite('View', function () {
       });
       assert.strictEqual(tabs.page.last('tabs')?.active, other);
       assert.match(tabs.page.last('error')?.message ?? '', /next tab failed/);
+      takeErrorsLogged(logged, /^closeTab failed$/, /^next tab failed$/);
     });
 
     test('sorts, solos, closes and opens tabs though the state fails to be written', async () => {
@@ -2953,6 +3079,12 @@ suite('View', function () {
         root: repository.root,
       });
       assert.strictEqual(tabs.page.last('tabs')?.active, repository.root);
+      takeErrorsLogged(
+        logged,
+        /^Saving the state failed$/,
+        /^closeTab failed$/,
+        /^state not written$/,
+      );
     });
 
     test('keeps the shown tab when another one closes', async () => {
@@ -3080,6 +3212,11 @@ suite('View', function () {
           await Promise.all([first, second]);
           assert.strictEqual(requests, 1);
         });
+        takeErrorsLogged(
+          logged,
+          /^fetch failed$/,
+          /^git fetch --all --prune failed: fatal: repository '.*' not found/,
+        );
       } finally {
         await new Promise((resolve) => server.close(resolve));
       }
@@ -3214,7 +3351,10 @@ suite('View', function () {
           root: long.root,
           entire: false,
         });
-        assert.doesNotMatch(view.page.last('diff')?.patch ?? '', /^ line 1$/m);
+        const diff = view.page.last('diff');
+        assert.strictEqual(diff?.path, 'a.txt');
+        assert.match(diff.patch, /^\+changed$/m);
+        assert.doesNotMatch(diff.patch, /^ line 1$/m);
       });
     });
 
@@ -3447,11 +3587,10 @@ suite('View', function () {
     test('opens the repositories picked in new tabs, showing the last one', async () => {
       const third = await tempRepository(path.join(folder, 'third'));
       await third.commit('third');
-      const recording = recordingLog();
       const host = new FakeHost();
       host.folders = [third.root, third.root, other];
       await withView(
-        recording.log,
+        log,
         [repository.root],
         async (view) => {
           await view.connection.receive({ type: 'browseRepositories' });
@@ -3473,16 +3612,30 @@ suite('View', function () {
               root,
             );
           }
-          await view.connection.receive({
-            type: 'log',
-            level: 'info',
-            message: 'from the page',
-          });
-          assert.ok(recording.info.includes('Webview: from the page'));
         },
         true,
         host,
       );
+    });
+
+    test('logs what the page sends at its level, marked as from the webview', async () => {
+      const recording = recordingLog();
+      await withView(recording.log, [], async (view) => {
+        await view.connection.receive({
+          type: 'log',
+          level: 'info',
+          message: 'from the page',
+        });
+        await view.connection.receive({
+          type: 'log',
+          level: 'error',
+          message: 'failed in the page',
+        });
+        assert.ok(recording.info.includes('Webview: from the page'));
+        assert.deepStrictEqual(recording.error, [
+          'Webview: failed in the page',
+        ]);
+      });
     });
 
     test('opens a repository by a folder inside it', async () => {
@@ -3569,6 +3722,11 @@ suite('View', function () {
           ['main'],
         );
       });
+      takeErrorsLogged(
+        logged,
+        /^Opening .*other failed$/,
+        /^git rev-parse .* failed: fatal: detected dubious ownership/,
+      );
     });
 
     test('says what git said of a tab it refuses to open', async () => {
@@ -3581,6 +3739,12 @@ suite('View', function () {
           /^fatal: detected dubious ownership/,
         );
       });
+      takeErrorsLogged(
+        logged,
+        /^Listing the worktrees of .*other failed$/,
+        /^selectTab failed$/,
+        /^git .* failed: fatal: detected dubious ownership/,
+      );
     });
 
     test('closes the only tab, leaving none shown but offering it again', async () => {
@@ -3638,6 +3802,11 @@ suite('View', function () {
           /is not a git repository/,
         );
       });
+      takeErrorsLogged(
+        logged,
+        /^Listing the worktrees of .*plain failed$/,
+        /^git worktree list .* failed: fatal: not a git repository/,
+      );
     });
 
     test('leaves large files out of a commit diff until one is asked for', async () => {
@@ -3919,7 +4088,8 @@ suite('Comparing', function () {
   let feature: string;
   let main: string;
 
-  const { log } = recordingLog();
+  const { log, error: logged } = recordingLog();
+  failOnErrorsLogged(logged);
 
   suiteSetup(async () => {
     repository = await tempRepository(tempFolder('view-compare'));
@@ -4101,8 +4271,17 @@ suite('Fetch', function () {
   let page: FakePage;
   let connection: Connection;
 
-  const { log } = recordingLog();
+  const { log, error: logged } = recordingLog();
+  failOnErrorsLogged(logged);
   const interactive = process.env.GCM_INTERACTIVE;
+
+  function takeFetchFailures(reason: RegExp): void {
+    takeErrorsLogged(
+      logged,
+      /^fetch failed$/,
+      new RegExp(`^git fetch --all --prune failed: fatal: ${reason.source}`),
+    );
+  }
 
   suiteSetup(async () => {
     delete process.env.GCM_INTERACTIVE;
@@ -4280,25 +4459,29 @@ suite('Fetch', function () {
   });
 
   test('fetches every remote, dropping branches deleted there', async () => {
-    await remote.git('branch', 'short-lived', 'main');
-    await connection.receive({ type: 'fetch', root: repository.root });
-    await waitFor(
-      () =>
+    const upstream = await tempRepository(path.join(folder, 'upstream'), {
+      bare: true,
+    });
+    await repository.git('remote', 'add', 'upstream', upstream.root);
+    try {
+      await repository.git('push', upstream.root, 'main:upstream-only');
+      await remote.git('branch', 'short-lived', 'main');
+      await connection.receive({ type: 'fetch', root: repository.root });
+      const fetched =
+        page.last('repository')?.refs.map((ref) => ref.name) ?? [];
+      assert.ok(fetched.includes('origin/short-lived'));
+      assert.ok(fetched.includes('upstream/upstream-only'));
+      await remote.git('branch', '-D', 'short-lived');
+      await connection.receive({ type: 'fetch', root: repository.root });
+      assert.ok(
         page
           .last('repository')
-          ?.refs.some((ref) => ref.name === 'origin/short-lived') === true,
-      'the fetched branch',
-    );
-    await remote.git('branch', '-D', 'short-lived');
-    await connection.receive({ type: 'fetch', root: repository.root });
-    await waitFor(
-      () =>
-        page
-          .last('repository')
-          ?.refs.every((ref) => ref.name !== 'origin/short-lived') === true,
-      'the deleted branch to go',
-    );
-    assert.strictEqual(page.last('fetching')?.running, false);
+          ?.refs.every((ref) => ref.name !== 'origin/short-lived'),
+      );
+      assert.strictEqual(page.last('fetching')?.running, false);
+    } finally {
+      await repository.git('remote', 'remove', 'upstream');
+    }
   });
 
   test('fetches every open repository while pinned, telling of a failure once until one succeeds', async () => {
@@ -4345,6 +4528,7 @@ suite('Fetch', function () {
         await waitFor(() => rounds.length === 4, 'the fourth round');
         assert.strictEqual(messages.length, 2);
       });
+      takeFetchFailures(/'.*' does not appear to be a git repository/);
     } finally {
       view.connection.dispose();
     }
@@ -4561,6 +4745,7 @@ suite('Fetch', function () {
         await waitFor(() => rounds.length === 1, 'the round to end');
         assert.deepStrictEqual(messages, []);
       });
+      takeFetchFailures(/'.*' does not appear to be a git repository/);
     } finally {
       opened.connection.dispose();
     }
@@ -4603,6 +4788,7 @@ suite('Fetch', function () {
         assert.strictEqual(messages.length, 2);
         assert.match(messages[1] ?? '', /^Couldn't fetch./);
       });
+      takeFetchFailures(/'.*' does not appear to be a git repository/);
     } finally {
       opened.connection.dispose();
     }
@@ -4626,6 +4812,7 @@ suite('Fetch', function () {
         assert.strictEqual(messages.length, 1);
         assert.match(messages[0] ?? '', /^left: Couldn't fetch\./);
       });
+      takeFetchFailures(/'.*' does not appear to be a git repository/);
     } finally {
       opened.connection.dispose();
     }
@@ -4653,6 +4840,7 @@ suite('Fetch', function () {
       await waitFor(() => rounds.length === 1, 'the round to end');
       await opened.connection.receive({ type: 'fetch', root: locked.root });
       assert.deepStrictEqual(asked(), ['[never]', '[]']);
+      takeFetchFailures(/Authentication failed/);
     } finally {
       opened.connection.dispose();
       await close();
@@ -4660,7 +4848,9 @@ suite('Fetch', function () {
   });
 
   test('lets only a fetch asked for, not one in the background, ask for credentials with a program the user set, in any of the ways git takes one', async () => {
+    let requests = 0;
     const server = createServer((_request, response) => {
+      requests++;
       response.writeHead(401, { 'WWW-Authenticate': 'Basic realm="locked"' });
       response.end();
     });
@@ -4714,11 +4904,19 @@ suite('Fetch', function () {
           },
         );
         try {
+          requests = 0;
           await opened.connection.receive({ type: 'setAutoFetch', on: true });
           await waitFor(() => rounds.length === 1, 'the round to end');
+          assert.ok(requests > 0, way);
           assert.strictEqual(fs.existsSync(asked), false, way);
           await opened.connection.receive({ type: 'fetch', root: locked.root });
           assert.match(fs.readFileSync(asked, 'utf8'), /^Username/, way);
+          takeErrorsLogged(
+            logged,
+            /^fetch failed$/,
+            /^git fetch --all --prune failed: fatal: could not read Username for '.*': terminal prompts disabled/,
+            /^git fetch --all --prune failed: fatal: Authentication failed/,
+          );
         } finally {
           opened.connection.dispose();
         }
@@ -4772,6 +4970,7 @@ suite('Fetch', function () {
         assert.strictEqual(messages.length, 1);
         assert.match(messages[0] ?? '', /^Couldn't fetch\./);
       });
+      takeFetchFailures(/Authentication failed/);
     } finally {
       opened.connection.dispose();
       await close();
@@ -4812,6 +5011,7 @@ suite('Fetch', function () {
         assert.strictEqual(messages.length, 1);
         assert.match(messages[0] ?? '', /^Couldn't fetch\./);
       });
+      takeFetchFailures(/Authentication failed/);
     } finally {
       opened.connection.dispose();
       await close();
@@ -4834,6 +5034,7 @@ suite('Fetch', function () {
         assert.strictEqual(page.last('fetching')?.running, false);
         assert.ok(page.last('workingTree'));
       });
+      takeFetchFailures(/'.*' does not appear to be a git repository/);
     } finally {
       await repository.git('remote', 'remove', 'broken');
     }
@@ -4864,7 +5065,8 @@ function worktreeRoot(view: OpenView, root: string): string {
 
 suite('Worktrees', function () {
   this.timeout(30_000);
-  const { log } = recordingLog();
+  const { log, error: logged } = recordingLog();
+  failOnErrorsLogged(logged);
   let folder: string;
   let repository: TempRepository;
   let feature: string;
@@ -5002,8 +5204,14 @@ suite('Worktrees', function () {
       const root = worktreeRoot(view, feature);
       await view.connection.receive({ type: 'preloadWorktree', root });
       assert.strictEqual(view.page.last('repository')?.head, 'main');
+      let listed = 0;
+      stubMethod(view.view, 'sendCommits', async (original, ...args) => {
+        listed++;
+        await original(...args);
+      });
       view.page.clear();
       await view.connection.receive({ type: 'selectWorktree', root });
+      assert.strictEqual(listed, 0);
       assert.strictEqual(commitsSent(view.page.messages), 1);
       assert.strictEqual(view.page.last('repository')?.head, 'feature');
     });
@@ -5245,6 +5453,11 @@ suite('Worktrees', function () {
         await Promise.all([first, second]);
         assert.strictEqual(requests, 1);
       });
+      takeErrorsLogged(
+        logged,
+        /^fetch failed$/,
+        /^git fetch --all --prune failed: fatal: repository '.*' not found/,
+      );
     } finally {
       await new Promise((resolve) => server.close(resolve));
     }
@@ -5253,7 +5466,8 @@ suite('Worktrees', function () {
 
 suite('Upstream', function () {
   this.timeout(30_000);
-  const { log } = recordingLog();
+  const { log, error: logged } = recordingLog();
+  failOnErrorsLogged(logged);
   let folder: string;
   let repository: TempRepository;
   let upstream: string;
@@ -5334,7 +5548,8 @@ suite('Upstream', function () {
 
 suite('Stashes', function () {
   this.timeout(30_000);
-  const { log } = recordingLog();
+  const { log, error: logged } = recordingLog();
+  failOnErrorsLogged(logged);
   let folder: string;
   let repository: TempRepository;
   let stash: string;
@@ -5384,20 +5599,12 @@ suite('Stashes', function () {
 
   test('leaves the stashes out of the history while solo', async () => {
     await withView(log, [repository.root], async (view) => {
-      try {
-        await view.connection.receive({
-          type: 'setSolo',
-          root: repository.root,
-          solo: true,
-        });
-        assert.strictEqual(view.page.last('commits')?.total, 2);
-      } finally {
-        await view.connection.receive({
-          type: 'setSolo',
-          root: repository.root,
-          solo: false,
-        });
-      }
+      await view.connection.receive({
+        type: 'setSolo',
+        root: repository.root,
+        solo: true,
+      });
+      assert.strictEqual(view.page.last('commits')?.total, 2);
     });
   });
 
@@ -5417,7 +5624,8 @@ suite('Stashes', function () {
 
 suite('Staged and unstaged changes', function () {
   this.timeout(30_000);
-  const { log } = recordingLog();
+  const { log, error: logged } = recordingLog();
+  failOnErrorsLogged(logged);
   let folder: string;
   let repository: TempRepository;
 

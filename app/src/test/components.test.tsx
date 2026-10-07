@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { App } from '../webview/App';
+import { App, tabContent } from '../webview/App';
 import {
   changesTree,
   changesTreeElement,
@@ -32,7 +32,7 @@ import {
   nextHistoryOpen,
   NavButtons,
 } from '../webview/navBar';
-import { changeClass, changeTitle } from '../webview/fileStatus';
+import { changeTitle } from '../webview/fileStatus';
 import { DiffOptions } from '../webview/diffColumn';
 import { FileHeader, HunkDivider, rowHeight } from '../webview/diffView';
 import {
@@ -90,12 +90,6 @@ suite('File status', () => {
       changeTitle(change('gone.ts', { status: 'D' })),
       'Deleted: gone.ts',
     );
-    assert.strictEqual(changeClass(change('a.ts')), 'path');
-    assert.strictEqual(
-      changeClass(change('a.ts', { status: 'D' })),
-      'path deleted',
-    );
-    assert.strictEqual(changeClass(undefined), 'path unchanged');
   });
 });
 
@@ -342,16 +336,24 @@ suite('Diff options', () => {
     );
   });
 
-  test('wraps long lines on its toggle, and stops on it again', () => {
-    for (const wordWrap of [false, true]) {
-      const wrapped: boolean[] = [];
-      const [button] = diffOptionButtons({
-        wordWrap,
-        onWordWrap: (wrap) => wrapped.push(wrap),
-      }).filter((child) => child.props.title?.toLowerCase().includes('wrap'));
-      assert.strictEqual(button.props['aria-pressed'], wordWrap);
-      button.props.onClick?.();
-      assert.deepStrictEqual(wrapped, [!wordWrap]);
+  test('shows the entire file, pins it, ignores whitespace and wraps long lines on their toggles, and stops on them again', () => {
+    for (const on of [false, true]) {
+      const flipped: boolean[] = [];
+      const flip = (value: boolean) => {
+        flipped.push(value);
+      };
+      const toggles: Partial<DiffOptionsProps>[] = [
+        { entire: on, onEntire: flip },
+        { pinned: on, onPin: flip },
+        { ignoreWhitespace: on, onIgnoreWhitespace: flip },
+        { wordWrap: on, onWordWrap: flip },
+      ];
+      toggles.forEach((overrides, index) => {
+        const button = diffOptionButtons(overrides)[index];
+        assert.strictEqual(button.props['aria-pressed'], on);
+        button.props.onClick?.();
+      });
+      assert.deepStrictEqual(flipped, [!on, !on, !on, !on]);
     }
   });
 
@@ -885,6 +887,30 @@ suite('Navigation bar', () => {
       buttons({ autoFetch: true, autoFetchMinutes: 0 }),
       /Fetch(ing)? Every/,
     );
+  });
+
+  test('fetches on its button, and pins fetching every few minutes on the pin, unpinning it again', () => {
+    for (const autoFetch of [false, true]) {
+      const clicked: string[] = [];
+      const bar = renderedBy(NavButtons, {
+        back: [],
+        forward: [],
+        onNavigate: noop,
+        fetching: false,
+        onFetch: () => clicked.push('fetch'),
+        autoFetch,
+        autoFetchMinutes: 1,
+        onAutoFetch: (on) => clicked.push(`pin ${on}`),
+      });
+      assert.ok(isValidElement<{ children: React.ReactElement[] }>(bar));
+      const pair = bar.props.children[2];
+      assert.ok(isValidElement<{ children: React.ReactElement[] }>(pair));
+      for (const button of pair.props.children) {
+        assert.ok(isValidElement<{ onClick: () => void }>(button));
+        button.props.onClick();
+      }
+      assert.deepStrictEqual(clicked, ['fetch', `pin ${!autoFetch}`]);
+    }
   });
 
   test('holds the pin together with the fetch button, filling both as one while pinned', () => {
@@ -1481,6 +1507,8 @@ suite('Menu items', () => {
   });
 });
 
+const columns = () => 'columns';
+
 suite('Window', () => {
   test('says no repository is open only once the host says which tabs are', () => {
     const html = renderToStaticMarkup(
@@ -1488,6 +1516,15 @@ suite('Window', () => {
     );
     assert.strictEqual(tagsWith(html, 'tabs').length, 1);
     assert.doesNotMatch(html, /No repository is open/);
+    assert.strictEqual(tabContent(undefined, columns), null);
+    assert.strictEqual(
+      renderToStaticMarkup(<>{tabContent([], columns)}</>),
+      '<div class="empty-state">No repository is open. Use + to open one.</div>',
+    );
+    assert.strictEqual(
+      tabContent([{ root: '/repo', name: 'repo' }], columns),
+      'columns',
+    );
   });
 
   test('holds the place of the worktree row before the host says which tabs are open', () => {
@@ -1634,6 +1671,8 @@ suite('Tab bar', () => {
     };
     assert.ok(isValidElement<Tab>(a) && isValidElement<Tab>(b));
     a.props.onPointerEnter();
+    await rested();
+    assert.deepStrictEqual(preloaded, []);
     b.props.onPointerEnter();
     b.props.onPointerLeave();
     await rested();

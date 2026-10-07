@@ -1,7 +1,9 @@
 import * as assert from 'node:assert';
+import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { addNotice, fading, Notices, type Notice } from '../webview/notices';
 import { repositoryMenuItems } from '../webview/repositoryMenu';
+import { renderedBy } from './fixtures';
 
 const notice = (id: number, message = `notice ${id}`): Notice => ({
   id,
@@ -48,6 +50,21 @@ suite('Notices', () => {
     );
     assert.match(html, /class="notice error"[^>]*><span[^>]*>notice 1</);
     assert.match(html, /class="notice info"[^>]*><span[^>]*>fyi</);
+  });
+
+  test('dismisses a notice by its close button', () => {
+    const dismissed: number[] = [];
+    const shown = renderedBy(Notices, {
+      notices: [notice(1), notice(2)],
+      onDismiss: (id) => dismissed.push(id),
+    });
+    assert.ok(isValidElement<{ children: React.ReactElement[] }>(shown));
+    const second = shown.props.children[1];
+    assert.ok(isValidElement<{ children: React.ReactElement[] }>(second));
+    const close = second.props.children[1];
+    assert.ok(isValidElement<{ onClick: () => void }>(close));
+    close.props.onClick();
+    assert.deepStrictEqual(dismissed, [2]);
   });
 
   test('lets information fade by itself, but keeps errors until dismissed', () => {

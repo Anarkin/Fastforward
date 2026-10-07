@@ -3,6 +3,7 @@ import {
   adjacentColumn,
   columnMove,
   columnOf,
+  columnStep,
   forwardedColumn,
   shownColumns,
 } from '../webview/activeColumn';
@@ -98,7 +99,7 @@ suite('Active column', () => {
     assert.deepStrictEqual(shownColumns(false, 'a'), ['files', 'diff']);
   });
 
-  test('moves to the next column on Right or Tab, and back on Left or Shift+Tab, telling Tab apart, which keeps the focus in the columns even with none to move to, as the browser would take it elsewhere', () => {
+  test('moves to the next column on Right or Tab, and back on Left or Shift+Tab, telling Tab apart', () => {
     assert.deepStrictEqual(columnMove(key), { step: 1, tab: false });
     assert.deepStrictEqual(columnMove({ ...key, key: 'ArrowLeft' }), {
       step: -1,
@@ -148,6 +149,30 @@ suite('Active column', () => {
     assert.strictEqual(
       adjacentColumn(shownColumns(false, 'a'), 'commits', 1),
       'files',
+    );
+  });
+
+  test('keeps Tab from leaving the columns past either end, letting the arrows go there', () => {
+    const all = shownColumns(true, 'a');
+    assert.deepStrictEqual(columnStep(key, all, 'commits'), {
+      next: 'files',
+      preventDefault: true,
+    });
+    assert.deepStrictEqual(columnStep(key, all, 'diff'), {
+      next: undefined,
+      preventDefault: false,
+    });
+    assert.deepStrictEqual(columnStep({ ...key, key: 'Tab' }, all, 'diff'), {
+      next: undefined,
+      preventDefault: true,
+    });
+    assert.deepStrictEqual(
+      columnStep({ ...key, key: 'Tab', shiftKey: true }, all, 'commits'),
+      { next: undefined, preventDefault: true },
+    );
+    assert.strictEqual(
+      columnStep({ ...key, key: 'ArrowDown' }, all, 'commits'),
+      undefined,
     );
   });
 
@@ -305,10 +330,12 @@ suite('Files column keys', () => {
   });
 
   test('leaves Left and Right to moving between the columns', () => {
-    for (const cursor of ['folder:src', 'file:src/app/a.ts', 'changes']) {
-      for (const key of ['ArrowLeft', 'ArrowRight']) {
-        assert.strictEqual(listMoveOf({ ...press, key }), undefined, cursor);
-      }
+    for (const key of ['ArrowLeft', 'ArrowRight']) {
+      assert.strictEqual(listMoveOf({ ...press, key }), undefined);
+      assert.strictEqual(
+        keyPressed(keymap.folder, { ...press, key }),
+        undefined,
+      );
     }
   });
 });

@@ -140,5 +140,6 @@ suite('Overlay scrollbars', () => {
       assert.strictEqual(thumbBox('horizontal', sides, 25), undefined);
     }
     assert.strictEqual(sidewaysScroll(500, 1000, 0), 0);
+    assert.strictEqual(sidewaysScroll(500, 0, 400), 0);
   });
 });

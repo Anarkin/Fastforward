@@ -6,6 +6,10 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { findGit } from '../git/locate';
 
+// The code under test, and the app the tests start, run git with the tests'
+// environment, so they leave out the user's config as tempRepository does
+process.env.GIT_CONFIG_GLOBAL = '/dev/null';
+
 export interface TempRepository {
   readonly root: string;
   readonly gitPath: string;

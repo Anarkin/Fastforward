@@ -23,7 +23,7 @@ suite('File tree', () => {
       src.folders.get('lib')?.files.map((file) => file.path),
       ['src/lib/b.ts'],
     );
-    assert.ok(!tree.folders.get('docs')?.changed);
+    assert.strictEqual(tree.folders.get('docs')?.changed, false);
   });
 
   test('includes files the commit deleted', () => {

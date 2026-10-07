@@ -1,5 +1,9 @@
 import * as assert from 'node:assert';
-import { minimapRows, type DiffRow } from '../webview/diffView';
+import {
+  minimapRows,
+  uniformHeight as row,
+  type DiffRow,
+} from '../webview/diffView';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
   grabPointer,
@@ -78,11 +82,14 @@ suite('Minimap', () => {
       line('context'),
       line('added'),
     ]);
-    const total = 8 * 22;
     assert.deepStrictEqual(minimapMarks(rows), [
-      { kind: 'removed', top: 44 / total, height: 22 / total },
-      { kind: 'added', top: 66 / total, height: 44 / total },
-      { kind: 'added', top: 154 / total, height: 22 / total },
+      { kind: 'removed', top: (2 * row) / (8 * row), height: row / (8 * row) },
+      {
+        kind: 'added',
+        top: (3 * row) / (8 * row),
+        height: (2 * row) / (8 * row),
+      },
+      { kind: 'added', top: (7 * row) / (8 * row), height: row / (8 * row) },
     ]);
   });
 
@@ -96,7 +103,11 @@ suite('Minimap', () => {
       (index) => (index === 0 ? 40 : undefined),
     );
     assert.deepStrictEqual(minimapMarks(rows), [
-      { kind: 'added', top: 62 / 84, height: 22 / 84 },
+      {
+        kind: 'added',
+        top: (40 + row) / (40 + 2 * row),
+        height: row / (40 + 2 * row),
+      },
     ]);
   });
 

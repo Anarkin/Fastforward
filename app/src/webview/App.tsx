@@ -30,11 +30,10 @@ import {
   useColumnWidths,
 } from './columns';
 import {
-  adjacentColumn,
   columnFocusAttribute,
   columnOf,
-  columnMove,
   columnOrder,
+  columnStep,
   forwardedColumn,
   shownColumns,
   type ColumnName,
@@ -74,6 +73,20 @@ import { emptyTabView, reduceTabView, treeOf, treeToLoad } from './tabView';
 import { bookmarkOptions, toggleBookmark } from './bookmarks';
 import { addNotice, Notices, type Notice } from './notices';
 import { repositoryMenuItems } from './repositoryMenu';
+
+export function tabContent(
+  tabs: readonly TabInfo[] | undefined,
+  open: () => React.ReactNode,
+): React.ReactNode {
+  if (tabs === undefined) {
+    return null;
+  }
+  return tabs.length === 0 ? (
+    <div className="empty-state">{strings.app.noRepository}</div>
+  ) : (
+    open()
+  );
+}
 
 interface Props {
   name: string;
@@ -543,9 +556,7 @@ export function App({ name, post: postToHost, listen }: Props) {
               />
             )}
             <Notices notices={notices} onDismiss={dismissNotice} />
-            {tabs === undefined ? null : tabs.length === 0 ? (
-              <div className="empty-state">{strings.app.noRepository}</div>
-            ) : (
+            {tabContent(tabs, () => (
               <ColumnResizingProvider value={resizing}>
                 <div
                   className={columnsClass(commitsShown, layoutSelection)}
@@ -571,21 +582,16 @@ export function App({ name, post: postToHost, listen }: Props) {
                       );
                       return;
                     }
-                    const move = columnMove(event);
-                    if (move === undefined) {
-                      return;
-                    }
-                    if (move.tab) {
-                      event.preventDefault();
-                    }
-                    const next = adjacentColumn(
+                    const step = columnStep(
+                      event,
                       shownColumns(commitsShown, layoutSelection),
                       columnOf(target) ?? activeColumn,
-                      move.step,
                     );
-                    if (next) {
+                    if (step?.preventDefault) {
                       event.preventDefault();
-                      focusColumn(next);
+                    }
+                    if (step?.next) {
+                      focusColumn(step.next);
                     }
                   }}
                 >
@@ -697,7 +703,7 @@ export function App({ name, post: postToHost, listen }: Props) {
                   />
                 </div>
               </ColumnResizingProvider>
-            )}
+            ))}
           </div>
         </DetachedHead.Provider>
       </CheckedOutBranch.Provider>

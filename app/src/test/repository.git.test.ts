@@ -177,6 +177,12 @@ suite('Git repository', function () {
     );
     const outside = tempFolder('outside');
     try {
+      const link = path.join(outside, 'link');
+      fs.symlinkSync(cwd, link, 'junction');
+      assert.strictEqual(
+        await repositoryRoot(gitPath, path.join(link, 'inner')),
+        link,
+      );
       assert.strictEqual(await repositoryRoot(gitPath, outside), undefined);
     } finally {
       removeFolder(outside);
@@ -763,12 +769,23 @@ suite('Commit search', function () {
     assert.deepStrictEqual(await subjectsFound('fine'), []);
   });
 
-  test('stops when cancelled', async () => {
-    const controller = new AbortController();
-    controller.abort();
+  test('stops when cancelled, before or while it searches', async () => {
+    const before = new AbortController();
+    before.abort();
     await assert.rejects(
-      searchCommits(gitPath, search.root, 'ada', false, controller.signal),
+      searchCommits(gitPath, search.root, 'ada', false, before.signal),
+      (error) => error === before.signal.reason,
     );
+    const during = new AbortController();
+    const searching = searchCommits(
+      gitPath,
+      search.root,
+      'ada',
+      false,
+      during.signal,
+    );
+    during.abort();
+    await assert.rejects(searching, (error) => error === during.signal.reason);
   });
 
   test('says only what git said when it fails', async () => {

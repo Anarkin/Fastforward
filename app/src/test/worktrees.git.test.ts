@@ -35,6 +35,14 @@ suite('Git worktrees', function () {
 
   suiteTeardown(() => removeFolder(folder));
 
+  let links = 0;
+  const linkTo = (target: string) => {
+    const link = path.join(folder, 'links', String(links++));
+    fs.mkdirSync(path.dirname(link), { recursive: true });
+    fs.symlinkSync(target, link, 'junction');
+    return link;
+  };
+
   test('lists the worktrees of a repository from any of them, the main one first and the rest by folder, keeping the spelling of the folders known', async () => {
     for (const cwd of [repository.root, review]) {
       const worktrees = await listWorktrees(repository.gitPath, cwd, [
@@ -61,6 +69,16 @@ suite('Git worktrees', function () {
         [repository.root, feature, review],
       );
     }
+    const known = [repository.root, feature, review].map(linkTo);
+    const linked = await listWorktrees(
+      repository.gitPath,
+      repository.root,
+      known,
+    );
+    assert.deepStrictEqual(
+      [linked[0].path, linked[1].path, linked[3].path],
+      known,
+    );
   });
 
   test('finds the repository of a folder in a worktree', async () => {
@@ -83,6 +101,10 @@ suite('Git worktrees', function () {
     );
     assert.strictEqual(location?.repository, repository.root);
     assert.strictEqual(location.worktree, repository.root);
+    const link = linkTo(repository.root);
+    const linked = await locateRepository(repository.gitPath, link);
+    assert.strictEqual(linked?.repository, link);
+    assert.strictEqual(linked.worktree, link);
   });
 
   test('finds a bare repository with worktrees beside it, also by the folder that holds them', async () => {

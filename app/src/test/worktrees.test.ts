@@ -5,7 +5,7 @@ import { parseWorktrees } from '../git/worktrees';
 const head = 'a'.repeat(40);
 
 suite('Worktrees', () => {
-  test('reads the branch or detached HEAD of each worktree, the main one first', () => {
+  test('reads the branch, keeping its slashes, or the detached HEAD of each worktree', () => {
     const output = [
       'worktree C:/repo',
       `HEAD ${head}`,
@@ -58,7 +58,6 @@ suite('Worktrees', () => {
       'worktree /repo/gone',
       `HEAD ${head}`,
       'detached',
-      'locked',
       'prunable gitdir file points to non-existent location',
       '',
       '',
