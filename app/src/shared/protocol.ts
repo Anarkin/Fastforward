@@ -163,6 +163,11 @@ export interface RepositoryState {
   readonly stashes: readonly StashInfo[];
 }
 
+export interface LastFetch {
+  readonly succeeded?: number;
+  readonly failed?: number;
+}
+
 export type Direction = 'back' | 'forward';
 
 export interface ScrollTarget {
@@ -275,6 +280,7 @@ export type ToWebview =
   | { readonly type: 'bookmarks'; readonly bookmarks: readonly Bookmark[] }
   | { readonly type: 'solo'; readonly solo: boolean }
   | { readonly type: 'fetching'; readonly running: boolean }
+  | ({ readonly type: 'lastFetch' } & LastFetch)
   | { readonly type: 'applyingSolo'; readonly running: boolean }
   | {
       readonly type: 'hashLookup';

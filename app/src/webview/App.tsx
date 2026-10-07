@@ -16,6 +16,7 @@ import {
   type Bookmark,
   type ChangeArea,
   type DiffLayout,
+  type LastFetch,
   type TextRequest,
   type WorktreeInfo,
 } from '../shared/protocol';
@@ -168,6 +169,7 @@ export function App({ name, post: postToHost, listen }: Props) {
     folderView,
   );
   const [bookmarks, setBookmarks] = useState<readonly Bookmark[]>([]);
+  const [lastFetch, setLastFetch] = useState<LastFetch>({});
   const [openedMenu, setMenu] = useState<TabMenu>();
   const menu = menuIn(openedMenu, activeTab);
   if (openedMenu && !menu) {
@@ -240,6 +242,9 @@ export function App({ name, post: postToHost, listen }: Props) {
         }
         case 'bookmarks':
           setBookmarks(message.bookmarks);
+          break;
+        case 'lastFetch':
+          setLastFetch(message);
           break;
         default:
           dispatch(message);
@@ -653,6 +658,7 @@ export function App({ name, post: postToHost, listen }: Props) {
                           setAutoFetch(on);
                           post({ type: 'setAutoFetch', on });
                         }}
+                        lastFetch={lastFetch}
                       />
                     }
                     search={

@@ -1020,6 +1020,7 @@ export class FastforwardView {
       type: 'solo',
       solo: worktree !== undefined && storage.soloOf(worktree),
     });
+    this.postLastFetch(session, active);
   }
 
   private sendTabs(session: Session): void {
@@ -1231,7 +1232,21 @@ export class FastforwardView {
     } else {
       this.fetchFailures.add(repository);
     }
+    this.save(this.storage.recordFetch(repository, !fetched, Date.now()));
+    if (this.page && this.isActiveRepository(repository)) {
+      this.postLastFetch(this.page, repository);
+    }
     return fetched;
+  }
+
+  private postLastFetch(
+    session: Session,
+    repository: string | undefined,
+  ): void {
+    session.post({
+      type: 'lastFetch',
+      ...(repository !== undefined && this.storage.lastFetchOf(repository)),
+    });
   }
 
   private startFetch(context: Context, interactive: boolean): Fetching {

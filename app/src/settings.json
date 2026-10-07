@@ -24,6 +24,7 @@
       "foreground": "#000",
       "foreground-muted": "45%",
       "error-foreground": "#f00",
+      "warning-foreground": "#e90",
 
       "background": "#ddd",
       "panel-background": "#fff",
@@ -79,6 +80,7 @@
       "foreground": "#ddd",
       "foreground-muted": "45%",
       "error-foreground": "#f44",
+      "warning-foreground": "#fb0",
 
       "background": "#111",
       "panel-background": "#2a2a2a",

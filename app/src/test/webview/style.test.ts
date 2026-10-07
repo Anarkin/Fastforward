@@ -752,6 +752,30 @@ suite('Style', () => {
     });
   });
 
+  test('marks the fetch button in the warning color while stale and the error color when failed, as a dot outside the spinning icon', () => {
+    const stale = rendered(
+      navButtons({
+        lastFetch: { succeeded: 0 },
+        autoFetch: true,
+        autoFetchMinutes: 1,
+      }),
+    );
+    const failed = rendered(navButtons({ lastFetch: { failed: 0 } }));
+    for (const [root, color] of [
+      [stale, 'warning'],
+      [failed, 'error'],
+    ] as const) {
+      const mark = withClass(root, 'fetch-mark');
+      looks(mark, {
+        position: 'absolute',
+        'border-radius': '50%',
+        background: `var(--color-${color}-foreground)`,
+      });
+      looks(mark?.parent, { position: 'relative' });
+      assert.ok(!mark?.parent?.classes.includes('spin-icon'));
+    }
+  });
+
   test('draws a commit row and the one-line working tree row as tall as the list expects, as even lines of text', () => {
     const commit = rendered(commitRow({ refs: repository.refs }));
     const { frame, line } = frameAndLine(commit);

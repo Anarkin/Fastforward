@@ -3,6 +3,7 @@ import type {
   Bookmark,
   ToWebviewOf,
   DiffLayout,
+  LastFetch,
   RefKind,
 } from './shared/protocol';
 import {
@@ -21,6 +22,7 @@ const maxRecent = 20;
 export const soloKey = 'solo';
 export const bookmarksKey = 'bookmarks';
 export const worktreesKey = 'activeWorktrees';
+export const lastFetchesKey = 'lastFetches';
 
 export interface Store {
   get(key: string): unknown;
@@ -179,6 +181,34 @@ export class Storage {
 
   private get allBookmarks(): Record<string, unknown> {
     return recordOf(this.state.get(bookmarksKey));
+  }
+
+  lastFetchOf(repository: string): LastFetch {
+    const all = this.lastFetches;
+    const { succeeded, failed } = recordOf(all[keyOf(all, repository)]);
+    return {
+      ...(typeof succeeded === 'number' && { succeeded }),
+      ...(typeof failed === 'number' && { failed }),
+    };
+  }
+
+  async recordFetch(
+    repository: string,
+    failed: boolean,
+    at: number,
+  ): Promise<void> {
+    const all = this.lastFetches;
+    await this.state.update(lastFetchesKey, {
+      ...all,
+      [keyOf(all, repository)]: {
+        ...this.lastFetchOf(repository),
+        [failed ? 'failed' : 'succeeded']: at,
+      },
+    });
+  }
+
+  private get lastFetches(): Record<string, unknown> {
+    return recordOf(this.state.get(lastFetchesKey));
   }
 
   get layout(): ToWebviewOf<'layout'> {

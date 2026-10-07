@@ -78,6 +78,7 @@ export function navButtons(
       autoFetch={false}
       autoFetchMinutes={0}
       onAutoFetch={noop}
+      lastFetch={{}}
       {...props}
     />
   );

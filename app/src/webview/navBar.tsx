@@ -1,14 +1,16 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { comparedOf, comparisonLabel, sideLabel } from '../shared/comparisons';
 import type {
   Bookmark,
   Direction,
+  LastFetch,
   NavigationEntry,
   RepositoryState,
   ToWebviewOf,
 } from '../shared/protocol';
 import { onMenuKeyDown, useDismiss, useMenuFocus } from './contextMenu';
 import { BackIcon, ForwardIcon, PinIcon, RefreshIcon } from './icons';
+import { fetchStatus } from './fetchStatus';
 import { LocationsPopup } from './locations';
 import { keymap } from '../shared/keymap';
 import { strings } from '../shared/strings';
@@ -16,10 +18,38 @@ import { useBinding } from './shortcuts';
 
 const holdDelay = 400;
 
+const clockTick = 30_000;
+
 function autoFetchTitle(on: boolean, minutes: number): string {
   return on
     ? strings.navigation.stopFetchingEvery(minutes)
     : strings.navigation.fetchEvery(minutes);
+}
+
+function lastFetchText(
+  { succeeded, failed }: LastFetch,
+  failing: boolean,
+  now: number,
+): string | undefined {
+  const since = (time: number) => now - time;
+  if (failing && failed !== undefined) {
+    return strings.navigation.couldNotFetch(
+      since(failed),
+      succeeded === undefined ? undefined : since(succeeded),
+    );
+  }
+  return succeeded === undefined
+    ? undefined
+    : strings.navigation.fetched(since(succeeded));
+}
+
+function useNow(): number {
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), clockTick);
+    return () => clearInterval(timer);
+  }, []);
+  return now;
 }
 
 export function NavButtons({
@@ -31,6 +61,7 @@ export function NavButtons({
   autoFetch,
   autoFetchMinutes,
   onAutoFetch,
+  lastFetch,
 }: {
   back: readonly NavigationEntry[];
   forward: readonly NavigationEntry[];
@@ -40,7 +71,15 @@ export function NavButtons({
   autoFetch: boolean;
   autoFetchMinutes: number;
   onAutoFetch: (on: boolean) => void;
+  lastFetch: LastFetch;
 }) {
+  const now = Math.max(
+    useNow(),
+    lastFetch.succeeded ?? 0,
+    lastFetch.failed ?? 0,
+  );
+  const status = fetchStatus(lastFetch, autoFetch ? autoFetchMinutes : 0, now);
+  const fetchedText = lastFetchText(lastFetch, status === 'failed', now);
   return (
     <div className="nav-buttons">
       <HistoryButton direction="back" entries={back} onNavigate={onNavigate} />
@@ -54,13 +93,20 @@ export function NavButtons({
       >
         <button
           className={`nav-button ${fetching ? 'running' : ''}`}
-          title={strings.navigation.fetch}
+          title={
+            fetchedText === undefined
+              ? strings.navigation.fetch
+              : `${strings.navigation.fetch}\n${fetchedText}`
+          }
           disabled={fetching}
           onClick={onFetch}
         >
           <span className="spin-icon">
             <RefreshIcon />
           </span>
+          {!fetching && (status === 'stale' || status === 'failed') && (
+            <span className={`fetch-mark ${status}`} />
+          )}
         </button>
         {autoFetchMinutes > 0 && (
           <button

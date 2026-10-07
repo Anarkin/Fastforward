@@ -25,9 +25,14 @@ const buttons = (props: Partial<Parameters<typeof NavButtons>[0]>) =>
       autoFetch={false}
       autoFetchMinutes={1}
       onAutoFetch={noop}
+      lastFetch={{}}
       {...props}
     />,
   );
+
+const minute = 60_000;
+const hour = 60 * minute;
+const day = 24 * hour;
 
 suite('Navigation bar', () => {
   test('greys out back and forward without steps', () => {
@@ -81,6 +86,58 @@ suite('Navigation bar', () => {
     assert.ok(!classesOf(idle).has('running'));
   });
 
+  test('says when it last fetched in the fetch button tooltip, marking nothing while that is fresh', () => {
+    const html = buttons({
+      lastFetch: { succeeded: Date.now() - 3 * minute },
+      autoFetch: true,
+      autoFetchMinutes: 5,
+    });
+    tagWith(
+      html,
+      'title="Fetch every remote, dropping branches deleted there\nFetched 3 minutes ago"',
+      'nav-button',
+    );
+    assert.doesNotMatch(html, /fetch-mark/);
+    assert.doesNotMatch(buttons({}), /fetch-mark|Fetched/);
+  });
+
+  test('marks the fetch button once fetching every few minutes missed a round', () => {
+    const html = buttons({
+      lastFetch: { succeeded: Date.now() - 3 * day },
+      autoFetch: true,
+      autoFetchMinutes: 5,
+    });
+    tagWith(html, '', 'fetch-mark', 'stale');
+    tagWith(html, 'Fetched 3 days ago"', 'nav-button');
+  });
+
+  test('marks the fetch button when the last fetch failed, saying when it last fetched', () => {
+    const html = buttons({
+      lastFetch: {
+        succeeded: Date.now() - 2 * hour,
+        failed: Date.now() - minute,
+      },
+    });
+    tagWith(html, '', 'fetch-mark', 'failed');
+    tagWith(
+      html,
+      'Couldn&#x27;t fetch 1 minute ago; last fetched 2 hours ago"',
+      'nav-button',
+    );
+    tagWith(
+      buttons({ lastFetch: { failed: Date.now() } }),
+      'Couldn&#x27;t fetch just now"',
+      'nav-button',
+    );
+  });
+
+  test('leaves the mark off while fetching, as the spinning button says more', () => {
+    assert.doesNotMatch(
+      buttons({ fetching: true, lastFetch: { failed: Date.now() } }),
+      /fetch-mark/,
+    );
+  });
+
   test('pins fetching every few minutes next to the fetch button, hidden when the settings turn it off', () => {
     tagWith(buttons({}), 'title="Fetch Every Minute"');
     const on = tagWith(
@@ -109,6 +166,7 @@ suite('Navigation bar', () => {
         autoFetch,
         autoFetchMinutes: 1,
         onAutoFetch: (on) => clicked.push(`pin ${on}`),
+        lastFetch: {},
       });
       assert.ok(isValidElement<{ children: React.ReactElement[] }>(bar));
       const pair = bar.props.children[2];

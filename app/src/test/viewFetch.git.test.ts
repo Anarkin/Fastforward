@@ -92,6 +92,48 @@ suite('View fetching', function () {
     }
   });
 
+  test('tells the page when the repository of its tab last fetched and last failed to', async () => {
+    const before = Date.now();
+    await connection.receive({ type: 'fetch', root: repository.root });
+    const succeeded = page.last('lastFetch')?.succeeded ?? 0;
+    assert.ok(succeeded >= before && succeeded <= Date.now());
+
+    const unreachable = await tempRepository(path.join(folder, 'unreachable'));
+    await unreachable.commit('a');
+    await unreachable.git(
+      'remote',
+      'add',
+      'origin',
+      path.join(folder, 'nowhere at all'),
+    );
+    const opened = await openView(
+      log,
+      [unreachable.root, repository.root],
+      'unwatched',
+    );
+    try {
+      assert.deepStrictEqual(opened.page.last('lastFetch'), {
+        type: 'lastFetch',
+      });
+      await withNotices(opened.page, 'error', () =>
+        opened.connection.receive({ type: 'fetch', root: unreachable.root }),
+      );
+      takeFetchFailures(/'.*' does not appear to be a git repository/);
+      const failed = opened.page.last('lastFetch');
+      assert.ok((failed?.failed ?? 0) >= succeeded);
+      assert.strictEqual(failed?.succeeded, undefined);
+      await opened.connection.receive({
+        type: 'selectTab',
+        root: repository.root,
+      });
+      assert.deepStrictEqual(opened.page.last('lastFetch'), {
+        type: 'lastFetch',
+      });
+    } finally {
+      opened.connection.dispose();
+    }
+  });
+
   test('says when a fetch asked for fails, even while a background fetch that keeps quiet runs', async () => {
     const failing = await tempRepository(path.join(folder, 'failing'));
     await failing.commit('a');

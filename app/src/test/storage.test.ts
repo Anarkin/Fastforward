@@ -6,6 +6,7 @@ import {
   activeTabKey,
   bookmarksKey,
   JsonFileStore,
+  lastFetchesKey,
   recentKey,
   soloKey,
   Storage,
@@ -69,6 +70,21 @@ suite('Storage', () => {
     assert.deepStrictEqual(state.get('solo'), {});
   });
 
+  test('keeps when each repository last fetched and last failed to, for the next start', async () => {
+    const state = new FakeStore();
+    const storage = storageOf(state);
+    const root = path.resolve('r');
+    assert.deepStrictEqual(storage.lastFetchOf(root), {});
+    await storage.recordFetch(root, true, 1);
+    await storage.recordFetch(root, false, 2);
+    await storage.recordFetch(`${root}${path.sep}`, true, 3);
+    assert.deepStrictEqual(storageOf(state).lastFetchOf(root), {
+      succeeded: 2,
+      failed: 3,
+    });
+    assert.deepStrictEqual(storage.lastFetchOf(path.resolve('other')), {});
+  });
+
   test('reads state of the wrong shape, as a hand edit can leave it, as never saved', async () => {
     const store = new FakeStore();
     const root = path.resolve('r');
@@ -77,7 +93,11 @@ suite('Storage', () => {
     await store.update(recentKey, 'x');
     await store.update(bookmarksKey, { [root]: 'x' });
     await store.update(soloKey, { [root]: 'yes' });
+    await store.update(lastFetchesKey, {
+      [root]: { succeeded: 'x', failed: 5 },
+    });
     const storage = storageOf(store);
+    assert.deepStrictEqual(storage.lastFetchOf(root), { failed: 5 });
     assert.deepStrictEqual(storage.tabs, []);
     assert.strictEqual(storage.activeTab, undefined);
     assert.deepStrictEqual(storage.recent, []);

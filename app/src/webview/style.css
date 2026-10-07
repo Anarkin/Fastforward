@@ -1473,6 +1473,7 @@ body.resizing {
 }
 
 .nav-button {
+  position: relative;
   flex: none;
   display: flex;
   align-items: center;
@@ -1532,6 +1533,24 @@ body.resizing {
 
 .nav-button.running .spin-icon {
   animation: spin 1s linear infinite;
+}
+
+.fetch-mark {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1.5px var(--toolbar-background);
+}
+
+.fetch-mark.stale {
+  background: var(--color-warning-foreground);
+}
+
+.fetch-mark.failed {
+  background: var(--color-error-foreground);
 }
 
 .history-button {
