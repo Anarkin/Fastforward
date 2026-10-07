@@ -8,12 +8,34 @@ import {
   overridesOf,
   UserSettings,
   watchSettings,
+  writeAtomically,
   writeReadOnly,
 } from '../settings';
 import { defaultSettings, waitFor } from './fixtures';
 import { removeFolder, symlinkOrSkip, tempFolder } from './repositories';
 
 const defaults = defaultSettings();
+
+async function renameFailing(
+  failures: number,
+  code: string,
+  run: () => Promise<void>,
+): Promise<number> {
+  const rename = fs.promises.rename;
+  let renames = 0;
+  Reflect.set(fs.promises, 'rename', (...args: Parameters<typeof rename>) => {
+    renames += 1;
+    return renames <= failures
+      ? Promise.reject(Object.assign(new Error(code), { code }))
+      : rename(...args);
+  });
+  try {
+    await run();
+  } finally {
+    Reflect.set(fs.promises, 'rename', rename);
+  }
+  return renames;
+}
 
 suite('Settings', () => {
   test('takes each setting the user changed over its default', () => {
@@ -250,6 +272,45 @@ suite('User settings file', () => {
     fs.writeFileSync(target, '{}');
     symlinkOrSkip(this, target, file);
     await noticed(target);
+  });
+
+  test('saves once the file is let go, as Windows refuses to replace a file antivirus or the indexer holds for a moment', async () => {
+    for (const code of ['EPERM', 'EACCES', 'EBUSY']) {
+      const user = new UserSettings(defaults, file);
+      const renames = await renameFailing(2, code, () =>
+        user.set('solo', code === 'EBUSY'),
+      );
+      assert.strictEqual(renames, 3);
+      assert.strictEqual(
+        new UserSettings(defaults, file).settings.solo,
+        code === 'EBUSY',
+      );
+    }
+  });
+
+  test('removes its temporary file when the file stays held', async () => {
+    let failure: unknown;
+    const renames = await renameFailing(Infinity, 'EPERM', () =>
+      writeAtomically(file, '{}', [1, 1]).catch((error: unknown) => {
+        failure = error;
+      }),
+    );
+    assert.strictEqual(renames, 3);
+    assert.match(String(failure), /EPERM/);
+    assert.ok(!fs.existsSync(`${file}.tmp`));
+    assert.ok(!fs.existsSync(file));
+  });
+
+  test('gives up at once when the file can never be replaced', async () => {
+    let failure: unknown;
+    const renames = await renameFailing(Infinity, 'EISDIR', () =>
+      writeAtomically(file, '{}').catch((error: unknown) => {
+        failure = error;
+      }),
+    );
+    assert.strictEqual(renames, 1);
+    assert.match(String(failure), /EISDIR/);
+    assert.ok(!fs.existsSync(`${file}.tmp`));
   });
 
   test('keeps a change still being saved when reading the file its earlier save wrote', async () => {

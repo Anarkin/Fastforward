@@ -346,15 +346,52 @@ function realPath(file: string): string {
   }
 }
 
+const renameRetryDelays = [10, 20, 40, 80, 160, 320, 640];
+
 export async function writeAtomically(
   file: string,
   text: string,
+  retryDelays: readonly number[] = renameRetryDelays,
 ): Promise<void> {
   const target = await fs.promises.realpath(file).catch(() => file);
   const temporary = `${target}.tmp`;
   await fs.promises.mkdir(path.dirname(target), { recursive: true });
-  await fs.promises.writeFile(temporary, text);
-  await fs.promises.rename(temporary, target);
+  try {
+    await fs.promises.writeFile(temporary, text);
+    await renameRetrying(temporary, target, retryDelays);
+  } catch (error) {
+    await fs.promises.rm(temporary, { force: true }).catch(() => undefined);
+    throw error;
+  }
+}
+
+async function renameRetrying(
+  from: string,
+  to: string,
+  retryDelays: readonly number[],
+): Promise<void> {
+  for (const delay of retryDelays) {
+    try {
+      await fs.promises.rename(from, to);
+      return;
+    } catch (error) {
+      if (!isHeld(error)) {
+        throw error;
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, delay));
+  }
+  await fs.promises.rename(from, to);
+}
+
+function isHeld(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    'code' in error &&
+    (error.code === 'EPERM' ||
+      error.code === 'EACCES' ||
+      error.code === 'EBUSY')
+  );
 }
 
 const stateKeys = [
