@@ -689,7 +689,7 @@ suite('Syntax', () => {
     assert.deepStrictEqual(ranges, syntaxRanges(highlighter, [text]));
   });
 
-  test('keeps the colors of texts of at most 8 million characters in all, and of none longer than 2 million', async () => {
+  test('keeps the colors of texts of at most 8 million characters in all, forgetting the least recently used, and of none longer than 2 million', async () => {
     const highlighter = await loadLanguages(['typescript']);
     const tokenized: string[] = [];
     const counting = {
@@ -701,7 +701,7 @@ suite('Syntax', () => {
         return highlighter.codeToTokensBase(...args);
       },
     };
-    const color = (name: string, length = 1_999_000) =>
+    const color = (name: string, length = 2_000_000) =>
       syntaxRanges(counting, [
         {
           language: 'typescript',
@@ -709,7 +709,7 @@ suite('Syntax', () => {
           keys: ['0:0'],
         },
       ]);
-    for (const name of ['a', 'b', 'c', 'd', 'e', 'b', 'a']) {
+    for (const name of ['a', 'b', 'c', 'd', 'e', 'b', 'a', 'b']) {
       color(name);
     }
     color('f', 2_000_001);

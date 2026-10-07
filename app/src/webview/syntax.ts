@@ -259,20 +259,24 @@ function cached(key: string): LineRanges | undefined {
   return ranges;
 }
 
+function textLength(key: string): number {
+  return key.length - key.indexOf('\n') - 1;
+}
+
 function store(key: string, ranges: LineRanges) {
-  if (key.length > maxCachedChars / 4 || cache.has(key)) {
+  if (textLength(key) > maxCachedChars / 4 || cache.has(key)) {
     return;
   }
   cache.set(key, ranges);
   cachedLines += ranges.length;
-  cachedChars += key.length;
+  cachedChars += textLength(key);
   for (const [oldest, { length }] of cache) {
     if (cachedLines <= maxCachedLines && cachedChars <= maxCachedChars) {
       break;
     }
     cache.delete(oldest);
     cachedLines -= length;
-    cachedChars -= oldest.length;
+    cachedChars -= textLength(oldest);
   }
 }
 
