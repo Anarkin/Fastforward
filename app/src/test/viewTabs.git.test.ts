@@ -62,6 +62,16 @@ suite('View with two tabs', function () {
     });
   });
 
+  test('opens the tab before the shown one when that closes last in the list', async () => {
+    const last = await tempRepository(path.join(folder, 'last'));
+    await last.commit('last');
+    await withView(log, [repository.root, other, last.root], async (own) => {
+      await own.connection.receive({ type: 'selectTab', root: last.root });
+      await own.connection.receive({ type: 'closeTab', root: last.root });
+      assert.strictEqual(own.page.last('tabs')?.active, other);
+    });
+  });
+
   test('fetches a repository once at a time, also when its tab is closed and opened again while it fetches', async () => {
     let requests = 0;
     let released = false;
@@ -535,12 +545,6 @@ suite('View with two tabs', function () {
       const left = tabs.page.last('tabs');
       assert.strictEqual(left?.active, repository.root);
       assert.ok(!left.tabs.some((tab) => sameRoot(tab.root, other)));
-    });
-
-    test('opens the tab before the shown one when that closes last in the list', async () => {
-      await tabs.connection.receive({ type: 'selectTab', root: other });
-      await tabs.connection.receive({ type: 'closeTab', root: other });
-      assert.strictEqual(tabs.page.last('tabs')?.active, repository.root);
     });
 
     test('sends nothing of a tab closed while it loads to the tab opened again for its repository', async () => {
