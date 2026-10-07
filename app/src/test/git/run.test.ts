@@ -4,7 +4,7 @@ import { once } from 'node:events';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createInterface } from 'node:readline';
-import { exitedWith, gitEnv, stopGit } from '../../git/run';
+import { exitedWith, gitEnv, gitProcessOptions, stopGit } from '../../git/run';
 import { waitFor } from '../fixtures';
 import { removeFolder, tempFolder, withEnv } from '../repositories';
 
@@ -27,6 +27,33 @@ suite('Running git', () => {
   test('takes paths literally unless asked for pathspec magic', () => {
     assert.strictEqual(gitEnv().GIT_LITERAL_PATHSPECS, '1');
     assert.strictEqual(gitEnv(true).GIT_LITERAL_PATHSPECS, '0');
+  });
+
+  test('starts git in a process group of its own outside Windows and stops the whole group, as git leaves running the ssh or https helper it started', async () => {
+    assert.strictEqual(gitProcessOptions('win32').detached, false);
+    assert.strictEqual(gitProcessOptions('linux').detached, true);
+    const killed: unknown[][] = [];
+    const kill = process.kill.bind(process);
+    process.kill = (...args: Parameters<typeof process.kill>) => {
+      killed.push(args);
+      return true;
+    };
+    try {
+      await stopGit(
+        {
+          pid: 4321,
+          exitCode: null,
+          signalCode: null,
+          stdout: null,
+          stderr: null,
+          kill: () => true,
+        },
+        'linux',
+      );
+    } finally {
+      process.kill = kill;
+    }
+    assert.deepStrictEqual(killed, [[-4321, 'SIGTERM']]);
   });
 
   test("stops what git started too, as the real git outlives Git for Windows' launcher being killed", async function () {
@@ -72,7 +99,7 @@ suite('Running git', () => {
 async function stopsWhatItStarted(): Promise<void> {
   const { launcher, started } = await startLauncher();
   try {
-    stopGit(launcher);
+    await stopGit(launcher);
     await waitFor(
       () => !running(launcher.pid!) && !running(started),
       'the launcher and what it started to stop',

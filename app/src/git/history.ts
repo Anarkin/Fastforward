@@ -7,7 +7,14 @@ import type {
   CommitSearch,
 } from '../shared/protocol';
 import { strings } from '../shared/strings';
-import { gitConfigArgs, gitEnv, runGit, splitNul, stopGit } from './run';
+import {
+  gitConfigArgs,
+  gitEnv,
+  gitProcessOptions,
+  runGit,
+  splitNul,
+  stopGit,
+} from './run';
 
 export async function headCommit(
   gitPath: string,
@@ -285,7 +292,7 @@ function streamMatches(
       if (!settled) {
         settled = true;
         signal?.removeEventListener('abort', abort);
-        stopGit(child);
+        void stopGit(child);
         settle();
       }
     };
@@ -301,7 +308,7 @@ function streamMatches(
         '--format=%H%x00%aN%x00%aE%x00%cN%x00%cE%x00%B',
         '--',
       ],
-      { cwd, env: gitEnv(), windowsHide: true },
+      { cwd, env: gitEnv(), ...gitProcessOptions() },
     );
     signal?.addEventListener('abort', abort, { once: true });
     child.stdin.on('error', () => undefined);

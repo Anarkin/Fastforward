@@ -96,7 +96,7 @@ export async function runGitBytes(
       reject(signal.reason);
       return;
     }
-    const stop = () => stopGit(child);
+    const stop = () => void stopGit(child);
     const child = execFile(
       gitPath,
       [...(runsHooks ? [] : gitConfigArgs), ...monitor, ...args],
@@ -104,7 +104,7 @@ export async function runGitBytes(
         cwd,
         env: { ...(runsHooks ? hooksEnv() : gitEnv(pathspecMagic)), ...env },
         maxBuffer: maxOutput,
-        windowsHide: true,
+        ...gitProcessOptions(),
         encoding: 'buffer',
       },
       (error, stdout, stderr) => {
@@ -132,18 +132,48 @@ export async function runGitBytes(
   });
 }
 
-export function stopGit(child: ChildProcess): void {
-  if (child.exitCode !== null || child.signalCode !== null) {
+export function gitProcessOptions(platform = process.platform): {
+  readonly windowsHide: true;
+  readonly detached: boolean;
+} {
+  return { windowsHide: true, detached: platform !== 'win32' };
+}
+
+export async function stopGit(
+  child: Pick<
+    ChildProcess,
+    'pid' | 'exitCode' | 'signalCode' | 'stdout' | 'stderr' | 'kill'
+  >,
+  platform = process.platform,
+): Promise<void> {
+  child.stdout?.destroy();
+  child.stderr?.destroy();
+  if (
+    child.exitCode !== null ||
+    child.signalCode !== null ||
+    child.pid === undefined
+  ) {
     return;
   }
-  if (process.platform === 'win32' && child.pid !== undefined) {
-    execFile(
-      join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'taskkill.exe'),
-      ['/pid', String(child.pid), '/t', '/f'],
-      { windowsHide: true },
-      () => undefined,
-    );
-  } else {
+  const { pid } = child;
+  if (platform === 'win32') {
+    await new Promise((resolve) => {
+      execFile(
+        join(
+          process.env.SystemRoot ?? 'C:\\Windows',
+          'System32',
+          'taskkill.exe',
+        ),
+        ['/pid', String(pid), '/t', '/f'],
+        { windowsHide: true },
+        resolve,
+      );
+    });
+    return;
+  }
+  try {
+    process.kill(-pid, 'SIGTERM');
+  } catch {
     child.kill();
   }
 }

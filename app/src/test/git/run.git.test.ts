@@ -6,6 +6,7 @@ import { switchToBranch } from '../../git/repository';
 import { runGit } from '../../git/run';
 import { ignoredPaths } from '../../git/watch';
 import { workingTreeFiles, workingTreePatch } from '../../git/workingTree';
+import { waitFor } from '../fixtures';
 import {
   removeFolder,
   tempFolder,
@@ -67,6 +68,63 @@ suite('Running git in a repository', function () {
     }
   });
 
+  test('gives up on a stopped git even while what it started outlives it holding its output, as a stalled ssh would', async () => {
+    const folder = tempFolder('outlived');
+    const started = path.join(folder, 'started').replaceAll('\\', '/');
+    const stopping = new AbortController();
+    try {
+      const stalled = runGit(
+        gitPath,
+        cwd,
+        [
+          '-c',
+          `alias.stall=!(sleep 15 &); echo > '${started}'; sleep 15`,
+          'stall',
+        ],
+        { signal: stopping.signal },
+      );
+      await waitFor(() => fs.existsSync(started), 'git to start');
+      const stopped = performance.now();
+      stopping.abort();
+      await assert.rejects(stalled);
+      assert.ok(performance.now() - stopped < 5000);
+    } finally {
+      removeFolder(folder);
+    }
+  });
+
+  test('stops what git started too, even what outlived the process that started it', async function () {
+    if (process.platform === 'win32') {
+      this.skip();
+    }
+    const folder = tempFolder('outlived');
+    const started = path.join(folder, 'started');
+    const stopping = new AbortController();
+    try {
+      const stalled = runGit(
+        gitPath,
+        cwd,
+        [
+          '-c',
+          `alias.stall=!(sleep 15 & echo $! > '${started}'); sleep 15`,
+          'stall',
+        ],
+        { signal: stopping.signal },
+      );
+      await waitFor(
+        () =>
+          fs.existsSync(started) && /\d/.test(fs.readFileSync(started, 'utf8')),
+        'git to start',
+      );
+      const outlived = Number(fs.readFileSync(started, 'utf8'));
+      stopping.abort();
+      await assert.rejects(stalled);
+      await waitFor(() => !running(outlived), 'what git started to stop', 5000);
+    } finally {
+      removeFolder(folder);
+    }
+  });
+
   test('says only what git said when it fails, keeping the command for the log', async () => {
     await assert.rejects(
       switchToBranch(gitPath, cwd, 'no-such-branch'),
@@ -96,6 +154,15 @@ suite('Running git in a repository', function () {
     );
   });
 });
+
+function running(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 suite('A file system monitor the repository sets', function () {
   this.timeout(20_000);
