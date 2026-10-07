@@ -73,6 +73,7 @@
       "package.json"
     ],
     "mac": {
+      "artifactName": "fastforward-${version}-macos-${arch}.${ext}",
       "category": "public.app-category.developer-tools",
       "identity": "-",
       "hardenedRuntime": false,
@@ -93,7 +94,11 @@
         }
       ]
     },
+    "dmg": {
+      "writeUpdateInfo": false
+    },
     "win": {
+      "artifactName": "fastforward-${version}-windows-x64.${ext}",
       "target": [
         "nsis",
         "zip"
@@ -101,10 +106,15 @@
       "icon": "build/icon.ico"
     },
     "nsis": {
+      "artifactName": "fastforward-${version}-windows-x64-setup.${ext}",
       "oneClick": true,
       "perMachine": false
     },
+    "portable": {
+      "artifactName": "fastforward-${version}-windows-x64-portable.${ext}"
+    },
     "linux": {
+      "artifactName": "fastforward-${version}-linux-x64.${ext}",
       "target": [
         "AppImage",
         "deb"
