@@ -1,10 +1,11 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { InFlight } from '../shared/inFlight';
 import { isMissing } from './files';
 import { runGit, splitNul } from './run';
 
 export interface Watcher {
-  dispose(): void;
+  dispose(): Promise<void>;
 }
 
 type Ignored = (
@@ -44,6 +45,7 @@ export async function watchRepository(
   const gitDirs = [...new Set([gitDir, commonDir])];
 
   let disposed = false;
+  const inFlight = new InFlight();
   let timer: NodeJS.Timeout | undefined;
   let worktreesTimer: NodeJS.Timeout | undefined;
   let pending: PendingChanges = {};
@@ -75,7 +77,7 @@ export async function watchRepository(
     timer =
       next &&
       setTimeout(
-        () => void flush(next.gitDir),
+        () => void inFlight.track(flush(next.gitDir)),
         Math.max(0, next.at - Date.now()),
       );
   };
@@ -158,13 +160,12 @@ export async function watchRepository(
   }
 
   return {
-    dispose: () => {
+    dispose: async () => {
       disposed = true;
       clearTimeout(timer);
       clearTimeout(worktreesTimer);
-      for (const watcher of watchers) {
-        watcher.dispose();
-      }
+      await Promise.all(watchers.map((watcher) => watcher.dispose()));
+      await inFlight.settled();
     },
   };
 }
@@ -189,7 +190,12 @@ export function watchEach(
     }
     throw error;
   }
-  return watchers.map((watcher) => ({ dispose: () => watcher.close() }));
+  return watchers.map((watcher) => ({
+    dispose: () => {
+      watcher.close();
+      return Promise.resolve();
+    },
+  }));
 }
 
 interface TreeOptions {
@@ -221,6 +227,7 @@ export async function watchTree(
 ): Promise<Watcher> {
   const watched = new Map<string, WatchedFolder>();
   let disposed = false;
+  const inFlight = new InFlight();
   let reported = false;
   const report = (error: unknown) => {
     if (!isMissing(error) && !reported && !disposed) {
@@ -353,8 +360,10 @@ export async function watchTree(
       setImmediate(() => {
         const files = [...renames];
         renames = new Set();
-        void Promise.all(files.map(created)).then((folders) =>
-          add(folders.flat()),
+        void inFlight.track(
+          Promise.all(files.map(created)).then((folders) =>
+            add(folders.flat()),
+          ),
         );
       });
     }
@@ -364,12 +373,13 @@ export async function watchTree(
   await add([{ path: root, repo: root }]);
 
   return {
-    dispose: () => {
+    dispose: async () => {
       disposed = true;
       for (const { watcher } of watched.values()) {
         watcher.close();
       }
       watched.clear();
+      await inFlight.settled();
     },
   };
 }

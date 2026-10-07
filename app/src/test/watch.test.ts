@@ -283,7 +283,7 @@ suite('Watching folders one by one', () => {
     fs.writeFileSync(path.join(root, 'a', 'file'), '');
     const tree = await start();
     assert.deepStrictEqual(watched(), ['', 'a', 'a/b', 'e']);
-    tree.dispose();
+    await tree.dispose();
     assert.deepStrictEqual(watched(), []);
   });
 
@@ -291,7 +291,7 @@ suite('Watching folders one by one', () => {
     mkdir('..cache/deep');
     const tree = await start();
     assert.deepStrictEqual(watched(), ['', '..cache', '..cache/deep']);
-    tree.dispose();
+    await tree.dispose();
     assert.deepStrictEqual(watched(), []);
   });
 
@@ -335,6 +335,36 @@ suite('Watching folders one by one', () => {
     }
     await waitFor(() => watched().length === 5, 'the new folders');
     assert.deepStrictEqual(ignoredCalls, [['', ['a/x', 'a/y', 'a/z']]]);
+  });
+
+  test('stops once done telling whether the folders created later are ignored', async () => {
+    mkdir('a');
+    let answer: ((ignored: readonly string[]) => void) | undefined;
+    const tree = await watchTree(root, {
+      skip: () => false,
+      ignored: (_repo, folders) =>
+        folders.some((folder) => path.basename(folder) === 'new')
+          ? new Promise((resolve) => {
+              answer = resolve;
+            })
+          : Promise.resolve([]),
+      onEvent: () => {},
+      onError: (error) => errors.push(error),
+      watch: fakeWatch,
+    });
+    mkdir('a/new');
+    watchers.get(path.join(root, 'a'))?.listener('rename', 'new');
+    await waitFor(() => answer !== undefined, 'the new folder to be checked');
+    let done = false;
+    const stopping = tree.dispose().then(() => {
+      done = true;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.strictEqual(done, false);
+    answer?.([]);
+    await stopping;
+    assert.deepStrictEqual(watched(), []);
+    assert.deepStrictEqual(errors, []);
   });
 
   test('keeps watching a folder it already watches when told of it again', async () => {

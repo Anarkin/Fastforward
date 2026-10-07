@@ -37,8 +37,8 @@ suite('Watching a repository', function () {
     });
   });
 
-  teardown(() => {
-    watcher?.dispose();
+  teardown(async () => {
+    await watcher?.dispose();
     removeFolder(repository.root);
   });
 
@@ -113,9 +113,8 @@ suite('Watching a repository', function () {
     assert.deepStrictEqual(errors, []);
   });
 
-  test('stays quiet when stopped while telling whether the changed files are ignored, watching folder by folder', async () => {
-    let asked = false;
-    let answer: ((ignored: readonly string[]) => void) | undefined;
+  test('stays quiet when stopped while telling whether the changed files are ignored, and stops once told, watching folder by folder', async () => {
+    const answers: ((ignored: readonly string[]) => void)[] = [];
     const quiet: boolean[] = [];
     const stopped = await watchRepository(repository.gitPath, repository.root, {
       delay: 0,
@@ -127,9 +126,8 @@ suite('Watching a repository', function () {
         if (!paths.some((file) => path.basename(file) === 'file.txt')) {
           return Promise.resolve([]);
         }
-        asked = true;
         return new Promise((resolve) => {
-          answer = resolve;
+          answers.push(resolve);
         });
       },
     });
@@ -137,11 +135,18 @@ suite('Watching a repository', function () {
     await waitFor(() => {
       lines += 'line\n';
       fs.writeFileSync(path.join(repository.root, 'file.txt'), lines);
-      return asked;
+      return answers.length > 0;
     }, 'the changed file to be checked');
-    stopped.dispose();
-    answer?.([]);
+    let done = false;
+    const stopping = stopped.dispose().then(() => {
+      done = true;
+    });
     await new Promise((resolve) => setTimeout(resolve, 50));
+    assert.strictEqual(done, false);
+    for (const answer of answers) {
+      answer([]);
+    }
+    await stopping;
     assert.deepStrictEqual(quiet, []);
     assert.deepStrictEqual(errors, []);
   });
@@ -180,7 +185,7 @@ suite('Watching a repository', function () {
       await waitFor(() => seen.includes(false), 'a file that is not ignored');
       assert.deepStrictEqual(errors, []);
     } finally {
-      watching.dispose();
+      await watching.dispose();
     }
   });
 
@@ -211,7 +216,7 @@ suite('Watching a repository', function () {
       }, 'the changed file');
       assert.deepStrictEqual(errors, []);
     } finally {
-      watching.dispose();
+      await watching.dispose();
     }
   });
 
@@ -242,7 +247,7 @@ suite('Watching a repository', function () {
         await waitFor(() => listed > 0, 'the worktree added');
         assert.deepStrictEqual(errors, []);
       } finally {
-        listing.dispose();
+        await listing.dispose();
         removeFolder(folder);
       }
     });
@@ -279,7 +284,7 @@ suite('Watching a repository', function () {
         await waitFor(() => listed > 0, 'the branch switched to');
         assert.deepStrictEqual(errors, []);
       } finally {
-        listing.dispose();
+        await listing.dispose();
         removeFolder(folder);
       }
     });
@@ -304,7 +309,7 @@ suite('Watching a repository', function () {
         }, 'the branch');
         assert.deepStrictEqual(errors, []);
       } finally {
-        linkedWatcher.dispose();
+        await linkedWatcher.dispose();
         removeFolder(folder);
       }
     });

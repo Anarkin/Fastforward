@@ -55,6 +55,7 @@ import {
 import { defaultBookmarks, fingerprint } from './refs';
 import { comparedOf, shownSide } from './shared/comparisons';
 import { isFullHash, shortHash } from './shared/hashes';
+import { InFlight } from './shared/inFlight';
 import {
   commitPageSize,
   deferredChanges,
@@ -185,6 +186,7 @@ export class FastforwardView {
   private readonly commitSearches = new Map<string, AbortController>();
   private readonly hashLookups = new Map<string, number>();
   private page: Session | undefined;
+  private readonly inFlight = new InFlight();
   private readonly autoFetch: AutoFetch;
   private collapseMerges: boolean;
 
@@ -205,7 +207,7 @@ export class FastforwardView {
         );
         return [...active, ...tabs.filter((tab) => !active.includes(tab))];
       },
-      (root) => this.fetchInBackground(root),
+      (root) => this.inFlight.track(this.fetchInBackground(root)),
       timer,
     );
     this.autoFetch.update();
@@ -251,10 +253,13 @@ export class FastforwardView {
         }),
       dispose: () => {
         session.disposed = true;
-        session.watcher?.dispose();
-        session.watcher = undefined;
+        this.stopWatching(session);
       },
     };
+  }
+
+  idle(): Promise<void> {
+    return this.inFlight.settled();
   }
 
   private isActive(root: string): boolean {
@@ -284,7 +289,16 @@ export class FastforwardView {
     }
   }
 
-  private async run(
+  private run(
+    name: string,
+    session: Session,
+    action: () => Promise<void>,
+    root?: string,
+  ): Promise<void> {
+    return this.inFlight.track(this.runNow(name, session, action, root));
+  }
+
+  private async runNow(
     name: string,
     session: Session,
     action: () => Promise<void>,
@@ -708,8 +722,7 @@ export class FastforwardView {
     this.save(this.storage.setTabs(tabs, active));
     this.postTabs(session);
     if (active === undefined) {
-      session.watcher?.dispose();
-      session.watcher = undefined;
+      this.stopWatching(session);
       return;
     }
     const worktree = this.storage.worktreeOf(active);
@@ -730,8 +743,7 @@ export class FastforwardView {
       session.post(message);
     }
     this.page = session;
-    session.watcher?.dispose();
-    session.watcher = undefined;
+    this.stopWatching(session);
     const context = await this.context(session);
     if (!context || session.disposed || !this.isActive(context.root)) {
       return;
@@ -1102,8 +1114,7 @@ export class FastforwardView {
   }
 
   private async watch(context: Context, session: Session): Promise<void> {
-    session.watcher?.dispose();
-    session.watcher = undefined;
+    this.stopWatching(session);
     const watcher = await this.startWatching(context, session);
     if (
       session.disposed ||
@@ -1111,10 +1122,18 @@ export class FastforwardView {
       !this.isActive(context.root) ||
       this.tabStates.get(context.root) !== context.tab
     ) {
-      watcher.dispose();
+      void this.inFlight.track(watcher.dispose());
       return;
     }
     session.watcher = watcher;
+  }
+
+  private stopWatching(session: Session): void {
+    const { watcher } = session;
+    session.watcher = undefined;
+    if (watcher) {
+      void this.inFlight.track(watcher.dispose());
+    }
   }
 
   private startWatching(context: Context, session: Session): Promise<Watcher> {
@@ -1129,7 +1148,9 @@ export class FastforwardView {
           context.root,
         ),
       onWorktreesChange: () =>
-        void this.loadWorktrees(session, context.repository),
+        void this.inFlight.track(
+          this.loadWorktrees(session, context.repository),
+        ),
       onError: (error) => {
         this.log.error(strings.log.watchingFailed(context.root));
         this.log.error(error);
@@ -1266,10 +1287,12 @@ export class FastforwardView {
     const next = visit(tab.navigation, tab.hash, hash, replace);
     if (next !== tab.navigation) {
       tab.navigation = next;
-      void this.sendNavigation(context, hash).catch((error: unknown) => {
-        this.log.error(strings.log.navigationFailed);
-        this.log.error(error);
-      });
+      void this.inFlight.track(
+        this.sendNavigation(context, hash).catch((error: unknown) => {
+          this.log.error(strings.log.navigationFailed);
+          this.log.error(error);
+        }),
+      );
     }
   }
 

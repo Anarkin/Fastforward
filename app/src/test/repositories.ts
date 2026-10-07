@@ -24,13 +24,27 @@ export function tempFolder(name: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), `fastforward-${name}-`));
 }
 
-// Best effort, because on Windows a file a watcher or git process still has
-// open can't be removed
+const unremoved: string[] = [];
+
+// On Windows a folder can't be removed while a process a test started still
+// runs in it; that fails the run once all tests are done, as failing the
+// teardown would skip the rest of its suite
 export function removeFolder(folder: string): void {
   try {
-    fs.rmSync(folder, { recursive: true, force: true });
-  } catch {}
+    fs.rmSync(folder, {
+      recursive: true,
+      force: true,
+      maxRetries: 5,
+      retryDelay: 100,
+    });
+  } catch (error) {
+    unremoved.push(error instanceof Error ? error.message : folder);
+  }
 }
+
+suiteTeardown(() => {
+  assert.deepStrictEqual(unremoved.splice(0), [], 'folders left behind');
+});
 
 // The system or global config can turn the ownership check off with
 // safe.directory, as CI runners do for every folder

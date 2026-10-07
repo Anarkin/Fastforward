@@ -161,7 +161,24 @@ async function withView(
     await run(view);
   } finally {
     view.connection.dispose();
+    openGates();
+    await view.view.idle();
   }
+}
+
+// Windows can't remove a folder git still runs in, so the suites wait for
+// every view they opened before removing their repositories
+const views = new Set<FastforwardView>();
+const connections = new Set<Connection>();
+
+async function closeViews(): Promise<void> {
+  for (const connection of connections) {
+    connection.dispose();
+  }
+  connections.clear();
+  openGates();
+  await Promise.all([...views].map((view) => view.idle()));
+  views.clear();
 }
 
 function attach(view: FastforwardView): {
@@ -169,10 +186,10 @@ function attach(view: FastforwardView): {
   connection: Connection;
 } {
   const page = new FakePage();
-  return {
-    page,
-    connection: view.connect((message) => page.receive(message)),
-  };
+  const connection = view.connect((message) => page.receive(message));
+  views.add(view);
+  connections.add(connection);
+  return { page, connection };
 }
 
 function commitsSent(messages: readonly ToWebview[]): number {
@@ -189,9 +206,34 @@ function numberedLines(text: string): string {
   );
 }
 
+const gates = new Set<() => void>();
+
 function gate(): { opened: Promise<void>; open: () => void } {
   const { promise, resolve } = Promise.withResolvers<void>();
-  return { opened: promise, open: () => resolve() };
+  const open = () => resolve();
+  gates.add(open);
+  return { opened: promise, open };
+}
+
+function openGates(): void {
+  for (const open of gates) {
+    open();
+  }
+  gates.clear();
+}
+
+async function idleOnlyOnceOpened(
+  view: FastforwardView,
+  held: { open: () => void },
+): Promise<void> {
+  let idle = false;
+  const idling = view.idle().then(() => {
+    idle = true;
+  });
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  assert.strictEqual(idle, false);
+  held.open();
+  await idling;
 }
 
 function stubMethod(
@@ -344,7 +386,8 @@ suite('View', function () {
     [otherHead] = await second.resolve('HEAD');
   });
 
-  suiteTeardown(() => {
+  suiteTeardown(async () => {
+    await closeViews();
     removeFolder(folder);
   });
 
@@ -456,6 +499,77 @@ suite('View', function () {
       } finally {
         opened.connection.dispose();
       }
+    });
+
+    test('is idle only once the messages it was handling are handled, also after the page closed', async () => {
+      const held = gate();
+      let handling = false;
+      stubMethod(fastforward, 'handle', async (original, ...args) => {
+        handling = true;
+        await held.opened;
+        return original(...args);
+      });
+      const handled = connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: fixture.b,
+      });
+      await waitFor(() => handling, 'the message to be handled');
+      connection.dispose();
+      await idleOnlyOnceOpened(fastforward, held);
+      await handled;
+    });
+
+    test('is idle only once the steps back and forward of a commit selected are sent', async () => {
+      await connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: fixture.a,
+      });
+      const held = gate();
+      let sending = false;
+      stubMethod(fastforward, 'sendNavigation', async (original, ...args) => {
+        sending = true;
+        await held.opened;
+        return original(...args);
+      });
+      await connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: fixture.b,
+      });
+      assert.ok(sending);
+      await idleOnlyOnceOpened(fastforward, held);
+    });
+
+    test('is idle only once the watcher of a closed page has stopped', async () => {
+      const held = gate();
+      const opened = await openView(log, [repository.root], false);
+      stubMethod(opened.view, 'startWatching', () =>
+        Promise.resolve({ dispose: () => held.opened }),
+      );
+      await opened.connection.receive({ type: 'ready' });
+      opened.connection.dispose();
+      await idleOnlyOnceOpened(opened.view, held);
+    });
+
+    test('is idle only once a watcher started for a page closed meanwhile has stopped', async () => {
+      const started = gate();
+      const held = gate();
+      const opened = await openView(log, [repository.root], false);
+      stubMethod(opened.view, 'startWatching', async () => {
+        await started.opened;
+        return { dispose: () => held.opened };
+      });
+      const ready = opened.connection.receive({ type: 'ready' });
+      await waitFor(
+        () => opened.page.last('commits') !== undefined,
+        'the history',
+      );
+      opened.connection.dispose();
+      started.open();
+      await ready;
+      await idleOnlyOnceOpened(opened.view, held);
     });
 
     test('reopens at the position of the selected commit', async () => {
@@ -4105,7 +4219,10 @@ suite('Comparing', function () {
     );
   });
 
-  suiteTeardown(() => removeFolder(repository.root));
+  suiteTeardown(async () => {
+    await closeViews();
+    removeFolder(repository.root);
+  });
 
   setup(async () => {
     ({ page, connection } = await openView(log, [repository.root]));
@@ -4115,6 +4232,13 @@ suite('Comparing', function () {
 
   const select = (hash: string) =>
     connection.receive({ type: 'selectCommit', root: repository.root, hash });
+
+  // A refresh, such as the watcher's for a file a test wrote, can take over
+  // loading the diff of a selection, sending it after the selection is handled
+  const diffOf = async (hash: string) => {
+    await waitFor(() => page.last('diff')?.hash === hash, 'the diff');
+    return page.last('diff')?.patch ?? '';
+  };
 
   test('diffs two commits on different branches, from the one selected first', async () => {
     const hash = comparisonOf(main, feature);
@@ -4176,7 +4300,7 @@ suite('Comparing', function () {
           ['M', 'shared.txt'],
         ],
       );
-      assert.match(page.last('diff')?.patch ?? '', /^\+disk$/m);
+      assert.match(await diffOf(forward), /^\+disk$/m);
 
       const backward = comparisonOf(workingTreeHash, main);
       await select(backward);
@@ -4184,7 +4308,7 @@ suite('Comparing', function () {
         page.last('files')?.files.map((change) => [change.status, change.path]),
         [['M', 'shared.txt']],
       );
-      const patch = page.last('diff')?.patch ?? '';
+      const patch = await diffOf(backward);
       assert.match(patch, /^-disk$/m);
       assert.match(patch, /^\+two$/m);
       const [blob] = await repository.resolve('main:shared.txt');
@@ -4296,11 +4420,11 @@ suite('Fetch', function () {
     ({ page, connection } = await openView(log, [repository.root]));
   });
 
-  suiteTeardown(() => {
+  suiteTeardown(async () => {
     if (interactive !== undefined) {
       process.env.GCM_INTERACTIVE = interactive;
     }
-    connection?.dispose();
+    await closeViews();
     removeFolder(folder);
   });
 
@@ -4377,6 +4501,30 @@ suite('Fetch', function () {
         () => page.last('workingTree')?.files === 0,
         'the removed file to go',
       );
+    }
+  });
+
+  test('is idle only once a background fetch is done', async () => {
+    const held = gate();
+    const opened = await openView(
+      log,
+      [repository.root],
+      true,
+      undefined,
+      () => () => undefined,
+    );
+    let fetching = false;
+    stubMethod(opened.view, 'fetchInBackground', async () => {
+      fetching = true;
+      await held.opened;
+    });
+    try {
+      await opened.connection.receive({ type: 'setAutoFetch', on: true });
+      await waitFor(() => fetching, 'the background fetch');
+      opened.connection.dispose();
+      await idleOnlyOnceOpened(opened.view, held);
+    } finally {
+      opened.connection.dispose();
     }
   });
 
@@ -5093,7 +5241,32 @@ suite('Worktrees', function () {
     other = second.root;
   });
 
-  suiteTeardown(() => removeFolder(folder));
+  suiteTeardown(async () => {
+    await closeViews();
+    removeFolder(folder);
+  });
+
+  test('is idle only once it has listed the worktrees again for a change its watcher saw', async () => {
+    const own = await tempRepository(path.join(folder, 'idle'));
+    await own.commit('a');
+    const opened = await openView(log, [own.root]);
+    const held = gate();
+    let listing = false;
+    stubMethod(opened.view, 'loadWorktrees', async (original, ...args) => {
+      listing = true;
+      await held.opened;
+      return original(...args);
+    });
+    stubMethod(opened.view, 'refresh', () => Promise.resolve());
+    try {
+      await own.git('switch', '-q', '-c', 'switched');
+      await waitFor(() => listing, 'the worktrees to be listed again');
+      opened.connection.dispose();
+      await idleOnlyOnceOpened(opened.view, held);
+    } finally {
+      opened.connection.dispose();
+    }
+  });
 
   test('opens a folder in a linked worktree in the tab of its repository, listing its worktrees with the main one first', async () => {
     const host = new FakeHost();
@@ -5486,7 +5659,10 @@ suite('Upstream', function () {
     await repository.git('branch', '--set-upstream-to=origin/main');
   });
 
-  suiteTeardown(() => removeFolder(folder));
+  suiteTeardown(async () => {
+    await closeViews();
+    removeFolder(folder);
+  });
 
   test('reveals the upstream of the checked-out branch when asked', async () => {
     await withView(log, [repository.root], async (view) => {
@@ -5565,7 +5741,10 @@ suite('Stashes', function () {
     [stash] = await repository.resolve('stash@{0}');
   });
 
-  suiteTeardown(() => removeFolder(folder));
+  suiteTeardown(async () => {
+    await closeViews();
+    removeFolder(folder);
+  });
 
   test('shows a stash on its base, and its untracked files with its changes', async () => {
     await withView(log, [repository.root], async (view) => {
@@ -5638,7 +5817,10 @@ suite('Staged and unstaged changes', function () {
     fs.writeFileSync(path.join(repository.root, 'both.txt'), 'three\n');
   });
 
-  suiteTeardown(() => removeFolder(folder));
+  suiteTeardown(async () => {
+    await closeViews();
+    removeFolder(folder);
+  });
 
   test('shows the staged and unstaged changes apart, starting with the staged ones, each side read from where it is kept', async () => {
     await withView(log, [repository.root], async (view) => {
