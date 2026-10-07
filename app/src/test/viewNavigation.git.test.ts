@@ -232,6 +232,69 @@ suite('View navigating the history', function () {
     assert.strictEqual(page.last('reveal')?.selection, 3);
   });
 
+  test('keeps a commit picked while a jump was looking up its hash', async () => {
+    const held = gate();
+    let reached = false;
+    stubMethod(fastforward, 'showCommit', async (original, ...args) => {
+      reached = true;
+      await held.opened;
+      return original(...args);
+    });
+    const jumping = connection.receive({
+      type: 'jump',
+      root: repository.root,
+      hash: fixture.b.slice(0, 7),
+    });
+    await waitFor(() => reached, 'the hash to be looked up');
+    page.clear();
+    await connection.receive({
+      type: 'selectCommit',
+      root: repository.root,
+      hash: fixture.a,
+      selection: 4,
+    });
+    held.open();
+    await jumping;
+    assert.strictEqual(page.last('reveal'), undefined);
+    assert.strictEqual(page.last('files')?.hash, fixture.a);
+  });
+
+  test('keeps a commit picked while going back was waiting its turn', async () => {
+    for (const [selection, hash] of [fixture.merge, fixture.b].entries()) {
+      await connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash,
+        selection,
+      });
+    }
+    const held = gate();
+    let reached = false;
+    stubMethod(fastforward, 'navigateNow', async (original, ...args) => {
+      reached = true;
+      await held.opened;
+      return original(...args);
+    });
+    const navigating = connection.receive({
+      type: 'navigate',
+      root: repository.root,
+      direction: 'back',
+      steps: 1,
+    });
+    await waitFor(() => reached, 'going back to be on its way');
+    page.clear();
+    await connection.receive({
+      type: 'selectCommit',
+      root: repository.root,
+      hash: fixture.a,
+      selection: 2,
+    });
+    held.open();
+    await navigating;
+    assert.strictEqual(page.last('reveal'), undefined);
+    assert.strictEqual(page.last('files')?.hash, fixture.a);
+  });
+
   test('does not jump to a branch named like a short hash', async () => {
     await repository.git('branch', 'fade', fixture.a);
     try {

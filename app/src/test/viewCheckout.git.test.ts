@@ -132,6 +132,38 @@ suite('View checking out', function () {
     }
   });
 
+  test('keeps a commit picked while a checkout was running rather than revealing the new HEAD', async () => {
+    const held = gate();
+    let reached = false;
+    stubMethod(fastforward, 'showHead', async (original, ...args) => {
+      reached = true;
+      await held.opened;
+      return original(...args);
+    });
+    try {
+      const checkingOut = connection.receive({
+        type: 'checkout',
+        root: repository.root,
+        target: { kind: 'branch', name: 'feature' },
+      });
+      await waitFor(() => reached, 'the checkout to finish in git');
+      page.clear();
+      await connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: fixture.a,
+        selection: 7,
+      });
+      held.open();
+      await checkingOut;
+      assert.strictEqual(page.last('reveal'), undefined);
+      assert.strictEqual(page.last('files')?.hash, fixture.a);
+    } finally {
+      held.open();
+      await restore();
+    }
+  });
+
   test('reports what git said when it refuses a checkout, logging the command too', async () => {
     await withNotices(page, 'error', async (messages) => {
       await connection.receive({

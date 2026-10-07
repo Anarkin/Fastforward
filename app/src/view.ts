@@ -517,6 +517,7 @@ export class FastforwardView {
     if (!context) {
       return;
     }
+    const picked = context.tab.selection;
     switch (message.type) {
       case 'loadCommits':
         await this.sendCommitPage(context, message.generation, message.start);
@@ -526,7 +527,7 @@ export class FastforwardView {
         await this.sendShownHistory(context, { scrollTo: message.hash });
         break;
       case 'checkout':
-        await this.checkout(context, message.target);
+        await this.checkout(context, message.target, picked);
         break;
       case 'fetch':
         await this.fetch(context);
@@ -538,7 +539,7 @@ export class FastforwardView {
         break;
       case 'jump': {
         if (isFullHash(message.hash)) {
-          await this.showCommit(context, message.hash.toLowerCase());
+          await this.showCommit(context, message.hash.toLowerCase(), picked);
           break;
         }
         const found = await findCommit(
@@ -547,7 +548,7 @@ export class FastforwardView {
           message.hash,
         );
         if (found.kind === 'found') {
-          await this.showCommit(context, found.hash);
+          await this.showCommit(context, found.hash, picked);
         } else {
           this.notify(context)(
             'error',
@@ -559,17 +560,17 @@ export class FastforwardView {
         break;
       }
       case 'showUpstream':
-        await this.showUpstream(context);
+        await this.showUpstream(context, picked);
         break;
       case 'showParent': {
         const parent = parentOf(context.tab);
         if (parent !== undefined) {
-          await this.showCommit(context, parent);
+          await this.showCommit(context, parent, picked);
         }
         break;
       }
       case 'navigate':
-        await this.navigate(context, message.direction, message.steps);
+        await this.navigate(context, message.direction, message.steps, picked);
         break;
       case 'lookupHash':
         await this.lookupHash(context, message.query);
@@ -1154,10 +1155,14 @@ export class FastforwardView {
     });
   }
 
-  private checkout(context: Context, target: CheckoutTarget): Promise<void> {
+  private checkout(
+    context: Context,
+    target: CheckoutTarget,
+    picked: number | undefined,
+  ): Promise<void> {
     const { tab } = context;
     const checkingOut = tab.checkingOut.then(() =>
-      this.checkoutNow(context, target),
+      this.checkoutNow(context, target, picked),
     );
     tab.checkingOut = checkingOut.catch(() => undefined);
     return checkingOut;
@@ -1166,12 +1171,13 @@ export class FastforwardView {
   private async checkoutNow(
     context: Context,
     target: CheckoutTarget,
+    picked: number | undefined,
   ): Promise<void> {
     if (!(await checkout(this.log, this.notify(context), context, target))) {
       return;
     }
     await this.refresh(context);
-    await this.showHead(context);
+    await this.showHead(context, picked);
   }
 
   private async fetch(context: Context): Promise<void> {
@@ -1382,10 +1388,11 @@ export class FastforwardView {
     context: Context,
     direction: Direction,
     steps: number,
+    picked: number | undefined,
   ): Promise<void> {
     const { tab } = context;
     const navigating = tab.navigating.then(() =>
-      this.navigateNow(context, direction, steps),
+      this.navigateNow(context, direction, steps, picked),
     );
     tab.navigating = navigating.catch(() => undefined);
     return navigating;
@@ -1395,8 +1402,12 @@ export class FastforwardView {
     context: Context,
     direction: Direction,
     steps: number,
+    picked: number | undefined,
   ): Promise<void> {
     const { tab } = context;
+    if (tab.selection !== picked) {
+      return;
+    }
     const result = step(
       tab.navigation,
       tab.hash,
@@ -1408,22 +1419,29 @@ export class FastforwardView {
       return;
     }
     tab.navigation = result.navigation;
-    await this.showCommit(context, result.target, false);
+    await this.showCommit(context, result.target, picked, false);
     await this.sendNavigation(context);
   }
 
   private async showCommit(
     context: Context,
     hash: string,
+    picked: number | undefined,
     record = true,
   ): Promise<void> {
     const { tab } = context;
+    if (tab.selection !== picked) {
+      return;
+    }
     const merges = new Set(
       hiddenSides(tab, hash).flatMap((side) => mergesHidingCommit(tab, side)),
     );
     if (merges.size > 0) {
       expandMerges(tab, [...merges], this.storage.collapseMerges);
       await this.sendShownHistory(context, { scrollTo: hash });
+      if (tab.selection !== picked) {
+        return;
+      }
     }
     if (hiddenSides(tab, hash).length > 0) {
       this.notify(context)('error', strings.commits.notInHistory(hash));
@@ -1438,13 +1456,16 @@ export class FastforwardView {
         type: 'reveal',
         hash,
         index: tab.index,
-        selection: tab.selection,
+        selection: picked,
       });
     }
     await this.sendCommit(context);
   }
 
-  private async showUpstream(context: Context): Promise<void> {
+  private async showUpstream(
+    context: Context,
+    picked: number | undefined,
+  ): Promise<void> {
     const upstream = await readUpstream(context.gitPath, context.root);
     const notify = this.notify(context);
     switch (upstream.kind) {
@@ -1468,14 +1489,17 @@ export class FastforwardView {
           notify('info', strings.messages.upstreamHidden(upstream.name));
           return;
         }
-        await this.showCommit(context, upstream.commit);
+        await this.showCommit(context, upstream.commit, picked);
     }
   }
 
-  private async showHead(context: Context): Promise<void> {
+  private async showHead(
+    context: Context,
+    picked: number | undefined,
+  ): Promise<void> {
     const head = await headCommit(context.gitPath, context.root);
     if (head) {
-      await this.showCommit(context, head);
+      await this.showCommit(context, head, picked);
     }
   }
 
