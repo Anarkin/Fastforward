@@ -39,8 +39,6 @@ export const patchLineBudget = 20_000;
 
 export const patchByteBudget = 16 * 1024 * 1024;
 
-// Kept well under the 32767 characters of a command line on Windows, as the
-// files of a diff past its budget are passed to git one by one
 export const patchPathBudget = 16_000;
 
 export function deferredChanges(
@@ -133,7 +131,6 @@ export interface GraphRow {
   readonly stash?: boolean;
 }
 
-// The uncommitted changes are told apart by whether they are staged
 export type ChangeArea = 'staged' | 'unstaged';
 
 export interface FileChange {
@@ -299,7 +296,6 @@ export type ToWebview =
       readonly tabs: readonly TabInfo[];
       readonly active: string | undefined;
       readonly worktree: string | undefined;
-      // Left out until git has listed them
       readonly worktrees: readonly WorktreeInfo[] | undefined;
       readonly recent: readonly TabInfo[];
     }

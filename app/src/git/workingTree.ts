@@ -16,7 +16,6 @@ import {
 import { isBinary, maxFileSize } from './files';
 import { runGit, splitNul } from './run';
 
-// Without a base, the working tree is diffed against the index
 export interface WorkingTreeDiff {
   readonly base: string | undefined;
   readonly reverse: boolean;
@@ -135,7 +134,6 @@ export async function workingTreeFiles(
   };
 }
 
-// Unmerged files, which git lists as U, are left to the unstaged changes
 async function stagedFiles(
   gitPath: string,
   cwd: string,
@@ -152,8 +150,6 @@ async function stagedFiles(
     .filter((file) => file.status !== '?');
 }
 
-// git diff lists an unmerged file once for being unmerged, and again for how
-// it differs
 function onePerPath(files: readonly FileChange[]): FileChange[] {
   const byPath = new Map<string, FileChange>();
   for (const file of files) {
@@ -193,9 +189,6 @@ export function stagedPatch(
   );
 }
 
-// git runs with diff.autoRefreshIndex=false (see gitConfigArgs), so git diff
-// lists a file whose stat changed but whose content didn't as modified, with
-// no id for its content
 export async function withoutTouched(
   gitPath: string,
   cwd: string,
@@ -230,8 +223,6 @@ export async function withoutTouched(
     .filter((file) => !touched.has(file.path));
 }
 
-// hash-object reads a path a line, dropping a trailing CR, and unquotes one
-// in quotes
 function quoted(path: string): string {
   // oxlint-disable-next-line no-control-regex
   const escaped = path.replace(/[\\"\x00-\x1f]/g, (char) =>
@@ -242,7 +233,6 @@ function quoted(path: string): string {
   return `"${escaped}"`;
 }
 
-// -R swaps the prefixes too, which the patch is parsed by
 function workingTreeDiff({ base, reverse }: WorkingTreeDiff): string[] {
   const against = base === undefined ? [] : [base];
   return reverse
@@ -276,7 +266,6 @@ export async function workingTreePatch(
     if (stamp !== undefined && known?.stamp === stamp) {
       return known.patch;
     }
-    // git diff --no-index reads '-' as its standard input
     const asked = file === '-' ? './-' : file;
     const sides = workingTree.reverse
       ? [asked, '/dev/null']

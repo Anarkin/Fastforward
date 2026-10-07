@@ -112,7 +112,6 @@ export class Storage {
     return active === undefined ? undefined : this.worktreeOf(active);
   }
 
-  // The repository is its main worktree, unless it is bare
   worktreeOf(repository: string): string {
     const all = this.activeWorktrees;
     const saved = all[keyOf(all, repository)];

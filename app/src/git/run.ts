@@ -18,12 +18,9 @@ export const gitConfigArgs = [
   '-c',
   'i18n.logOutputEncoding=UTF-8',
   '-c',
-  // git diff refreshes the index even without optional locks
   'diff.autoRefreshIndex=false',
 ];
 
-// Without optional locks, a refresh doesn't hold index.lock and make a commit
-// the user runs elsewhere meanwhile fail
 export function gitEnv(pathspecMagic = false): NodeJS.ProcessEnv {
   return {
     ...process.env,
@@ -33,17 +30,12 @@ export function gitEnv(pathspecMagic = false): NodeJS.ProcessEnv {
   };
 }
 
-// The user's hooks get git's environment and -c settings too, so a command
-// that runs them runs as the user's own would
 function hooksEnv(): NodeJS.ProcessEnv {
   return { ...process.env, GIT_TERMINAL_PROMPT: '0' };
 }
 
 const monitors = new Map<string, Promise<string[]>>();
 
-// git runs a core.fsmonitor that names a command whenever it reads the index,
-// so one a repository sets is never run; its own daemon, which true starts,
-// is kept
 function monitorArgs(gitPath: string, cwd: string): Promise<string[]> {
   const key = `${gitPath}\0${cwd}`;
   let args = monitors.get(key);
@@ -135,15 +127,11 @@ export async function runGitBytes(
       },
     );
     signal?.addEventListener('abort', stop, { once: true });
-    // git can exit before reading all its input, which its exit code tells
     child.stdin?.on('error', () => undefined);
     child.stdin?.end(input);
   });
 }
 
-// Git for Windows' cmd\git.exe only starts the real git, which outlives it
-// being killed; running that git directly would lose the PATH the launcher
-// sets for hooks, shell aliases and credential helpers
 export function stopGit(child: ChildProcess): void {
   if (child.exitCode !== null || child.signalCode !== null) {
     return;

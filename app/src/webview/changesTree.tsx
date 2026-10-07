@@ -112,8 +112,6 @@ export const changesKey = 'changes';
 
 export const folderRowKey = (path: string) => `folder:${path}`;
 
-// A file staged and changed again is listed on both sides, so the keys of
-// the rows of a side start with it
 export function areaKey(area: ChangeArea | undefined, key: string): string {
   return area === undefined ? key : `${area}:${key}`;
 }

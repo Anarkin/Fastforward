@@ -52,7 +52,7 @@ suite('Watching the git folder', () => {
     assert.strictEqual(watchedFolder('worktrees/other', false), true);
   });
 
-  test('refreshes for submodules named like the folders it leaves alone', () => {
+  test("refreshes for submodules named like the folders it leaves alone, but for the HEAD and refs of one named like logs, which can't be told from reflogs", () => {
     for (const file of [
       'modules/vendor/lfs',
       'modules/vendor/lfs/HEAD',
@@ -63,7 +63,13 @@ suite('Watching the git folder', () => {
     ]) {
       assert.strictEqual(isInternal(file), false, file);
     }
-    assert.strictEqual(isInternal('modules/vendor/lfs/objects/ab/cd'), true);
+    for (const file of [
+      'modules/vendor/lfs/objects/ab/cd',
+      'modules/vendor/logs/HEAD',
+      'modules/vendor/logs/refs/heads/main',
+    ]) {
+      assert.strictEqual(isInternal(file), true, file);
+    }
   });
 
   test('leaves objects, logs and locks alone', () => {
@@ -319,7 +325,7 @@ suite('Watching folders one by one', () => {
     assert.deepStrictEqual(watched(), ['', 'a', 'a/new', 'a/new/deep']);
   });
 
-  test('asks once whether the folders created at once are ignored', async () => {
+  test('asks once whether the folders created at once are ignored, as asking git costs a process', async () => {
     mkdir('a');
     await start();
     ignoredCalls = [];

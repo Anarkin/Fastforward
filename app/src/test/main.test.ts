@@ -198,7 +198,7 @@ function gitShell(gitPath: string): string {
 }
 
 suite('Login shell PATH', () => {
-  test("reads the PATH the user's login shell sets", async function () {
+  test("reads the PATH the user's login shell sets, which an app started from the macOS Dock or a Linux launcher lacks", async function () {
     this.timeout(10_000);
     const shell =
       process.platform === 'win32' ? gitShell(await installedGit()) : '/bin/sh';
@@ -233,7 +233,7 @@ suite('Login shell PATH', () => {
     }
   });
 
-  test('gives up on a shell that never prints the PATH, killing it for good', async () => {
+  test('gives up on a shell that never prints the PATH, killing it for good, as an interactive shell ignores SIGTERM', async () => {
     const signals: unknown[] = [];
     const stdout = new PassThrough();
     stdout.write('Update now? [y/N] ');
@@ -243,6 +243,19 @@ suite('Login shell PATH', () => {
     });
     assert.strictEqual(await pathFromShell(shell, 10), undefined);
     assert.deepStrictEqual(signals, ['SIGKILL']);
+    assert.ok(stdout.destroyed);
+  });
+
+  test('lets go of the output of a shell once it prints the PATH, which what its profile starts in the background can hold open long after the shell is gone', async () => {
+    const stdout = new PassThrough();
+    const shell = Object.assign(new EventEmitter(), {
+      stdout,
+      kill: () => true,
+    });
+    const found = pathFromShell(shell, 10_000);
+    stdout.write('__FASTFORWARD_PATH__/usr/bin__FASTFORWARD_PATH__');
+    assert.strictEqual(await found, '/usr/bin');
+    assert.ok(stdout.destroyed);
   });
 
   test("reads the PATH between the markers, past what the shell's profile prints", () => {
@@ -288,7 +301,7 @@ suite('Updates', () => {
   const exists = (file: string) =>
     file === `${installed}\\Uninstall Fastforward.exe`;
 
-  test('checks for updates only in an installed app on Windows or Linux', () => {
+  test('checks for updates only in an installed app on Windows or Linux, as Squirrel.Mac installs only updates signed with a Developer ID, and the macOS app is only ad-hoc signed', () => {
     const executable = `${installed}\\Fastforward.exe`;
     assert.ok(checksForUpdates(false, 'win32', executable, exists));
     assert.ok(
@@ -298,7 +311,7 @@ suite('Updates', () => {
     assert.ok(!checksForUpdates(false, 'darwin', '/Applications/x', exists));
   });
 
-  test('leaves a Windows app it did not install alone, as from the zip or the portable exe', () => {
+  test('leaves a Windows app it did not install alone, as from the zip or the portable exe, where an update would install a second copy', () => {
     assert.ok(
       !checksForUpdates(
         false,
@@ -319,7 +332,7 @@ suite('Updates', () => {
 });
 
 suite('Quitting', () => {
-  test('waits for what is being saved before it quits, however it was asked to', async () => {
+  test('waits for what is being saved before it quits, however it was asked to, as Cmd+Q and app.quit() skip window-all-closed', async () => {
     let quitting: ((event: { preventDefault(): void }) => void) | undefined;
     let quits = 0;
     const app = {

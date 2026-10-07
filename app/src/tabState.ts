@@ -133,8 +133,6 @@ export function takeRefs(
   tab.decorated = decoratedCommits(refs, head, stashes);
 }
 
-// The commits reachable from the tips are those of the history exactly when
-// every tip is in it and every commit without children in it is a tip
 export function refsKeepHistory(
   tab: TabState,
   head: Head | undefined,

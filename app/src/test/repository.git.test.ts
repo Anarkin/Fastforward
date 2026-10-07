@@ -19,6 +19,7 @@ import {
   listHistory,
   logCommits,
 } from '../git/history';
+import { runGit } from '../git/run';
 import {
   asIfOwnedByAnother,
   commitText,
@@ -168,7 +169,7 @@ suite('Git repository', function () {
     }
   });
 
-  test('finds the root of the repository a folder is in, or none', async () => {
+  test('finds the root of the repository a folder is in, spelled the way the folder was given, or none', async () => {
     fs.mkdirSync(path.join(cwd, 'inner'), { recursive: true });
     assert.strictEqual(
       await repositoryRoot(gitPath, path.join(cwd, 'inner')),
@@ -182,7 +183,7 @@ suite('Git repository', function () {
     }
   });
 
-  test('finds the root of the repository a folder is in through a link to it', async () => {
+  test('finds the root of the repository a folder is in through a link to it, which git follows before going up', async () => {
     fs.mkdirSync(path.join(cwd, 'sub', 'deep'), { recursive: true });
     const outside = tempFolder('link');
     try {
@@ -472,7 +473,7 @@ suite('Git repository', function () {
     }
   });
 
-  test("runs hooks without the settings it reads git's output with", async () => {
+  test("runs hooks without the settings it reads git's output with, as the user's own git would run them", async () => {
     const folder = tempFolder('hooked');
     const seen = path.join(folder, 'seen.txt').replaceAll('\\', '/');
     const hooks = path.join(cwd, '.git', 'hooks');
@@ -509,6 +510,21 @@ suite('Git repository', function () {
           'fatal: invalid reference: no-such-branch',
         );
         assert.match(String(error), /git switch .*no-such-branch failed/);
+        return true;
+      },
+    );
+  });
+
+  test('says what git said when it exits before reading all its input', async () => {
+    await assert.rejects(
+      runGit(gitPath, cwd, ['rev-parse', '--verify', 'no-such-ref'], {
+        input: 'x\n'.repeat(4 * 1024 * 1024),
+      }),
+      (error) => {
+        assert.strictEqual(
+          gitErrorText(error),
+          'fatal: Needed a single revision',
+        );
         return true;
       },
     );

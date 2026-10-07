@@ -175,8 +175,6 @@ function toAll(contexts: readonly Context[]): Context | undefined {
   };
 }
 
-// A tab is a repository, which shows one of its worktrees; the state of each
-// worktree is kept by the folder of the worktree
 export class FastforwardView {
   private readonly tabStates = new Map<string, Tab>();
   private readonly repositories = new Map<string, string>();
@@ -640,8 +638,6 @@ export class FastforwardView {
     });
   }
 
-  // A repository opened again from the recent ones shows the worktree shown
-  // last, while a folder picked shows its own worktree
   private async openRepositories(
     session: Session,
     folders: readonly string[],
@@ -745,8 +741,6 @@ export class FastforwardView {
     await allSettled([this.watch(context, session), this.showTab(context)]);
   }
 
-  // Tabs saved before tabs were repositories can be linked worktrees, which
-  // join the tab of their repository
   private groupTabs(): Promise<void> {
     this.grouped ??= this.groupTabsNow().catch((error: unknown) => {
       this.log.error(strings.log.groupingFailed);
@@ -807,7 +801,6 @@ export class FastforwardView {
     await storage.setTabs(grouped, active);
   }
 
-  // The folder of a main worktree is a repository already
   private async locateSavedTab(root: string): Promise<Location | undefined> {
     if (await isFolder(path.join(root, '.git'))) {
       return undefined;
@@ -841,8 +834,6 @@ export class FastforwardView {
     ]);
   }
 
-  // The main worktree is spelled as its repository, so the page names both
-  // the same way
   private takeWorktrees(
     repository: string,
     worktrees: readonly Worktree[],
@@ -2061,8 +2052,6 @@ function tabInfo(root: string): TabInfo {
   return { root, name: tabName(root) };
 }
 
-// A bare repository is named as a clone of it would be, and one in a .bare
-// or .git folder after the folder holding its worktrees
 export function tabName(root: string): string {
   const name = path.basename(root);
   if (name === '.bare' || name === '.git') {

@@ -11,7 +11,6 @@ export interface Worktree {
 }
 
 export interface Location {
-  // The main worktree, or the bare repository that has none
   readonly repository: string;
   readonly worktree: string | undefined;
   readonly worktrees: readonly Worktree[];
@@ -49,8 +48,6 @@ async function isBareRepository(
   }
 }
 
-// git spells the folders by their real paths, so a folder opened through
-// another spelling of its path, such as a link, keeps that spelling
 export async function listWorktrees(
   gitPath: string,
   cwd: string,

@@ -3,8 +3,6 @@ import type { EventEmitter } from 'node:events';
 
 const marker = '__FASTFORWARD_PATH__';
 
-// Apps started from the macOS Dock or a Linux launcher get a bare PATH without
-// what the user's shell profile adds, such as Homebrew, where git often is
 export async function loginShellPath(
   env: NodeJS.ProcessEnv = process.env,
   timeout = 5000,
@@ -17,8 +15,6 @@ export async function loginShellPath(
   return pathFromShell(shell, timeout);
 }
 
-// Interactive shells ignore SIGTERM, and what the profile starts in the
-// background can hold stdout open long after the shell is gone
 export function pathFromShell(
   shell: Pick<ChildProcess, 'stdout' | 'kill'> & EventEmitter,
   timeout: number,

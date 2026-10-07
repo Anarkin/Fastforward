@@ -698,7 +698,7 @@ suite('Style', () => {
     assert.ok(declarationsOf('.menu-item').includes('outline: none;'));
   });
 
-  test('edges a popup with an inset shadow rather than a border', () => {
+  test("edges a popup with an inset shadow rather than a border, which Chromium rounds to whole device pixels, shifting the popup's contents at scales like 125%", () => {
     assert.match(
       css,
       /--popup-shadow:\s*inset 0 0 0 1px var\(--color-border\)/,

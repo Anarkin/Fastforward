@@ -112,7 +112,6 @@ function selected(state: TabView, hash: string | undefined): TabView {
   };
 }
 
-// The app picks the side of the working tree shown first
 function isLate(
   state: TabView,
   hash: string,

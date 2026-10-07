@@ -10,6 +10,8 @@
 ### Git
 
 - Use the installed git CLI for everything, without bundling one; it needs git 2.52 or later on the PATH
+- On Windows, git is run as found on the PATH, usually Git for Windows' `cmd\git.exe`, rather than the real git it starts, which would lose the PATH it sets for hooks, shell aliases and credential helpers; the real git outlives the launcher being killed, so git is stopped with every process it started
+- On Linux, the working tree and the git folder are watched folder by folder, skipping the folders that can't affect what is shown, ignored ones included, as Node's recursive `fs.watch` there walks the whole tree synchronously, ignored folders too, with one inotify watch per file
 - The commit list is every commit of `HEAD`, and, unless Solo is on, also of the branches, the remotes, the tags and the stashes, from `git rev-list`, kept by the main process per worktree, so the list knows its full size up front and locations can jump to any commit's position; it took 0.5 s for 190k commits
 - Commits are loaded by hash with `git log --stdin --no-walk=unsorted`, without `--raw` or `--shortstat`; `--shortstat` diffs every file's contents and took 8 s instead of 0.1 s for 300 commits in a large repository
 - Commit files and patches come from `git show`, because diffing ranges (`a...b`) fails for root commits

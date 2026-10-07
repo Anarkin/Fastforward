@@ -11,8 +11,6 @@ export const groups: readonly Group[] = [
   'App',
 ];
 
-// Keys are written as Mod, Ctrl, Alt and Shift before the key KeyboardEvent
-// names, a letter in capitals; Mod is Cmd on macOS, while Ctrl stays Ctrl there
 export interface Binding<Value> {
   readonly group: Group | undefined;
   readonly action: string;
@@ -30,8 +28,6 @@ function bind<const Value>(
   return { group, action, keys, repeats, fields };
 }
 
-// Without a group, the shortcuts screen leaves a binding out, as the keys
-// menus and search fields take
 export const keymap = {
   openRepository: bind('Tabs', strings.actions.openRepository, {
     'Mod+T': true,
@@ -219,7 +215,6 @@ function letterOf(press: KeyPress): string {
     : (press.code ?? '').slice(3);
 }
 
-// Typing a character may take Shift, so Shift tells such keys apart no more
 function shiftMatters(key: string): boolean {
   return isLetter(key) || key.length > 1;
 }
@@ -243,7 +238,6 @@ function keyMatches(combo: Combo, press: KeyPress): boolean {
     : press.key === (named[combo.key] ?? combo.key);
 }
 
-// A key that would type or move the caret in a text field is the field's
 function editsField(combo: Combo): boolean {
   return (
     !combo.mod &&

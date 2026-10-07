@@ -98,7 +98,7 @@ suite('Active column', () => {
     assert.deepStrictEqual(shownColumns(false, 'a'), ['files', 'diff']);
   });
 
-  test('moves to the next column on Right or Tab, and back on Left or Shift+Tab, telling Tab apart', () => {
+  test('moves to the next column on Right or Tab, and back on Left or Shift+Tab, telling Tab apart, which keeps the focus in the columns even with none to move to, as the browser would take it elsewhere', () => {
     assert.deepStrictEqual(columnMove(key), { step: 1, tab: false });
     assert.deepStrictEqual(columnMove({ ...key, key: 'ArrowLeft' }), {
       step: -1,

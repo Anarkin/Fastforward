@@ -212,13 +212,9 @@ interface WatchedFolder {
   readonly watcher: FolderWatcher;
   repo: string;
   readonly children: Set<string>;
-  // A watcher keeps watching a folder removed or moved away, so one created
-  // in its place needs a watcher of its own
   gone: boolean;
 }
 
-// Node's recursive fs.watch on Linux walks the whole tree synchronously,
-// ignored folders too, with one inotify watch per file
 export async function watchTree(
   root: string,
   { skip, ignored, onEvent, onError, watch }: TreeOptions,
@@ -351,8 +347,6 @@ export async function watchTree(
       : [];
   };
 
-  // Folders created together are checked together, as asking git costs a
-  // process
   let renames = new Set<string>();
   const renamed = (file: string) => {
     if (renames.size === 0) {
@@ -394,7 +388,6 @@ export async function ignoredPaths(
 ): Promise<string[]> {
   const relative = paths.map((file) => {
     const inRepo = path.relative(repo, file).split(path.sep).join('/');
-    // check-ignore reads a path starting with ':' as pathspec magic
     return inRepo.startsWith(':') ? `./${inRepo}` : inRepo;
   });
   const output = await runGit(
@@ -450,7 +443,6 @@ const internalFolders = new Set(['objects', 'logs', 'lfs']);
 
 const gitDirEntries = new Set(['HEAD', 'index', 'config', 'refs', 'modules']);
 
-// Dropping any stash but the newest rewrites only the reflog of the stashes
 const stashLog = /^logs[\\/]refs[\\/]stash$/;
 
 export function isInternal(inGitDir: string): boolean {
@@ -463,10 +455,6 @@ export function isInternal(inGitDir: string): boolean {
   );
 }
 
-// A submodule's git dir is modules/ followed by its name, which can have
-// several segments, so objects, logs or lfs is a folder of the git dir only
-// when what follows can't begin a git dir; logs followed by HEAD or refs could
-// be either, and is taken for a reflog
 function isInternalInModule(segments: readonly string[]): boolean {
   for (let i = 1; i < segments.length; i++) {
     const segment = segments[i];
@@ -509,8 +497,6 @@ export function affectsWorktree(inGitDir: string, shared: boolean): boolean {
   );
 }
 
-// The HEAD of each worktree names what it shows, and a folder in worktrees
-// comes and goes with a worktree
 export function affectsWorktreeList(inGitDir: string): boolean {
   const [first, name, entry, ...rest] = inGitDir.split(/[\\/]/);
   if (first === 'HEAD') {

@@ -248,8 +248,6 @@ export function onMenuKeyDown(
   event.stopPropagation();
 }
 
-// A menu keeps the keys that would move between the columns or in a list
-// behind it
 export function claimsMenuKey(
   event: Parameters<typeof keyPressed>[1],
 ): boolean {

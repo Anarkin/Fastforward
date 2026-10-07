@@ -55,8 +55,6 @@ body {
   --title-bar-inset: 16px;
   --card-radius: 6px;
   --popup-background: var(--color-background);
-  /* An inset shadow, not a border, which Chromium rounds to whole device
-     pixels and so shifts the popup's contents at scales like 125% */
   --popup-shadow:
     inset 0 0 0 1px var(--color-border), 0 12px 32px rgba(0, 0, 0, 0.22),
     0 2px 8px rgba(0, 0, 0, 0.16);

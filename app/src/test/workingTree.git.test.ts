@@ -107,7 +107,7 @@ suite('Files touched but not changed', function () {
 suite('A file system monitor the repository sets', function () {
   this.timeout(20_000);
 
-  test('is never run when it is a command', async () => {
+  test('is never run when it is a command, which git would run on every read of the index', async () => {
     const folder = tempFolder('monitored');
     try {
       const repository = await tempRepository(path.join(folder, 'repository'));

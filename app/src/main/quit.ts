@@ -22,8 +22,6 @@ export async function exitOnFailure(
   }
 }
 
-// Cmd+Q and app.quit() skip window-all-closed, so the last state can only
-// finish saving on will-quit
 export function flushBeforeQuit(
   app: QuittingApp,
   saved: () => Promise<unknown>,

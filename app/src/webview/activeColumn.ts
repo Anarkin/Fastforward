@@ -16,8 +16,6 @@ export function shownColumns(
   );
 }
 
-// Tab keeps the focus in the columns even with none to move to, as the
-// browser would take it elsewhere
 export function columnMove(
   event: Parameters<typeof keyPressed>[1],
 ): { readonly step: 1 | -1; readonly tab: boolean } | undefined {

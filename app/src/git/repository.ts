@@ -18,7 +18,6 @@ export interface Refs {
   readonly stashes: readonly Stash[];
 }
 
-// What git says in English, which LC_ALL=C has it say in whatever the locale
 const noRepository = /not a git repository|must be run in a work tree/;
 
 export async function repositoryRoot(
@@ -54,9 +53,6 @@ export function isFolder(folder: string): Promise<boolean> {
   );
 }
 
-// Git walks up from the folder after following links, so going up from the
-// folder as given only reaches the root when no link was followed; that keeps
-// the folder's own spelling, unlike the top level git gives
 export async function sameFolder(a: string, b: string): Promise<boolean> {
   try {
     const [realA, realB] = await Promise.all([fs.realpath(a), fs.realpath(b)]);
@@ -178,7 +174,6 @@ export async function checkoutNewBranch(
 
 const fetchTimeout = 5 * 60_000;
 
-// An empty GIT_ASKPASS keeps git from core.askPass and SSH_ASKPASS too
 const neverAsk = {
   GCM_INTERACTIVE: 'never',
   GIT_ASKPASS: '',

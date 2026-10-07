@@ -2,7 +2,6 @@ import type { FileChange, StashInfo } from '../shared/protocol';
 import { showFiles, showPatch, type PatchScope } from './diff';
 import { runGit } from './run';
 
-// Git keeps a stash's untracked files in a third parent, outside its tree
 export interface Stash extends StashInfo {
   readonly untracked: string | undefined;
 }

@@ -4672,7 +4672,7 @@ suite('Fetch', function () {
     }
   });
 
-  test('lets only a fetch asked for, not one in the background, ask for credentials with a program the user set', async () => {
+  test('lets only a fetch asked for, not one in the background, ask for credentials with a program the user set, in any of the ways git takes one', async () => {
     const server = createServer((_request, response) => {
       response.writeHead(401, { 'WWW-Authenticate': 'Basic realm="locked"' });
       response.end();
@@ -4683,41 +4683,67 @@ suite('Fetch', function () {
     const address = server.address();
     assert.ok(typeof address === 'object' && address !== null);
     const { port } = address;
-    const locked = await tempRepository(path.join(folder, 'prompted'));
-    await locked.commit('a');
-    await locked.git('remote', 'add', 'origin', `http://127.0.0.1:${port}/x`);
-    await locked.git('config', 'credential.helper', '');
-    const asked = path.join(folder, 'prompted.txt').replaceAll('\\', '/');
-    const askpass = path.join(folder, 'askpass.sh').replaceAll('\\', '/');
-    fs.writeFileSync(askpass, `#!/bin/sh\necho "$1" >> '${asked}'\necho x\n`, {
-      mode: 0o755,
-    });
-    const rounds: (() => void)[] = [];
-    const opened = await openView(
-      log,
-      [locked.root],
-      true,
-      undefined,
-      (run) => {
-        rounds.push(run);
-        return () => undefined;
-      },
+    const variables = ['GIT_ASKPASS', 'SSH_ASKPASS'];
+    const previous = variables.map(
+      (name) => [name, process.env[name]] as const,
     );
-    const previous = process.env.GIT_ASKPASS;
-    process.env.GIT_ASKPASS = askpass;
     try {
-      await opened.connection.receive({ type: 'setAutoFetch', on: true });
-      await waitFor(() => rounds.length === 1, 'the round to end');
-      assert.strictEqual(fs.existsSync(asked), false);
-      await opened.connection.receive({ type: 'fetch', root: locked.root });
-      assert.match(fs.readFileSync(asked, 'utf8'), /^Username/);
-    } finally {
-      if (previous === undefined) {
-        delete process.env.GIT_ASKPASS;
-      } else {
-        process.env.GIT_ASKPASS = previous;
+      for (const way of ['GIT_ASKPASS', 'core.askPass', 'SSH_ASKPASS']) {
+        const locked = await tempRepository(path.join(folder, `asks-${way}`));
+        await locked.commit('a');
+        await locked.git(
+          'remote',
+          'add',
+          'origin',
+          `http://127.0.0.1:${port}/x`,
+        );
+        await locked.git('config', 'credential.helper', '');
+        const asked = path.join(folder, `asked-${way}`).replaceAll('\\', '/');
+        const askpass = path
+          .join(folder, `askpass-${way}.sh`)
+          .replaceAll('\\', '/');
+        fs.writeFileSync(
+          askpass,
+          `#!/bin/sh\necho "$1" >> '${asked}'\necho x\n`,
+          { mode: 0o755 },
+        );
+        for (const name of variables) {
+          delete process.env[name];
+        }
+        if (way === 'core.askPass') {
+          await locked.git('config', way, askpass);
+        } else {
+          process.env[way] = askpass;
+        }
+        const rounds: (() => void)[] = [];
+        const opened = await openView(
+          log,
+          [locked.root],
+          true,
+          undefined,
+          (run) => {
+            rounds.push(run);
+            return () => undefined;
+          },
+        );
+        try {
+          await opened.connection.receive({ type: 'setAutoFetch', on: true });
+          await waitFor(() => rounds.length === 1, 'the round to end');
+          assert.strictEqual(fs.existsSync(asked), false, way);
+          await opened.connection.receive({ type: 'fetch', root: locked.root });
+          assert.match(fs.readFileSync(asked, 'utf8'), /^Username/, way);
+        } finally {
+          opened.connection.dispose();
+        }
       }
-      opened.connection.dispose();
+    } finally {
+      for (const [name, value] of previous) {
+        if (value === undefined) {
+          delete process.env[name];
+        } else {
+          process.env[name] = value;
+        }
+      }
       await new Promise((resolve) => server.close(resolve));
     }
   });
