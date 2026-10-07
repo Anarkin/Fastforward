@@ -59,6 +59,19 @@ suite('Watching a repository', function () {
     }, what);
   };
 
+  const settled = async () => {
+    let last = changes.length;
+    let since = Date.now();
+    await waitFor(() => {
+      if (changes.length !== last) {
+        last = changes.length;
+        since = Date.now();
+      }
+      return Date.now() - since > 500;
+    }, 'the folders read while starting to be told');
+    changes = [];
+  };
+
   test('refreshes for a file in a folder created after it started, watching folder by folder', async () => {
     await start();
     const folder = path.join(repository.root, 'new', 'deep');
@@ -205,6 +218,30 @@ suite('Watching a repository', function () {
   });
 
   for (const recursive of [true, false]) {
+    test(`refreshes for a commit in a submodule with a folder named like logs in its path, watching ${recursive ? 'recursively' : 'folder by folder'}`, async () => {
+      const sub = await tempRepository(
+        path.join(repository.root, 'deps', 'logs', 'parser'),
+      );
+      await sub.commit('parser');
+      fs.writeFileSync(
+        path.join(repository.root, '.gitmodules'),
+        '[submodule "deps/logs/parser"]\n\tpath = deps/logs/parser\n\turl = ./parser\n',
+      );
+      await repository.git('add', '--no-warn-embedded-repo', '.');
+      await repository.git('submodule', 'absorbgitdirs');
+      watcher = await watchRepository(repository.gitPath, repository.root, {
+        delay: 50,
+        maxDelay: 200,
+        recursive,
+        onChange: (gitDirChanged) => changes.push(gitDirChanged),
+        onError: (error) => errors.push(error),
+      });
+      await settled();
+      await sub.commit('second');
+      await waitFor(() => changes.includes(true), 'the commit');
+      assert.deepStrictEqual(errors, []);
+    });
+
     test(`tells when a worktree is added, watching ${recursive ? 'recursively' : 'folder by folder'}`, async () => {
       const folder = tempFolder('listed');
       let listed = 0;

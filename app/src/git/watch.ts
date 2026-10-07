@@ -98,7 +98,11 @@ export async function watchRepository(
     if (inGitDir !== undefined) {
       const inside = path.relative(inGitDir, file);
       if (
-        affectsWorktree(inside, inGitDir === commonDir && commonDir !== gitDir)
+        affectsWorktree(
+          inside,
+          inGitDir === commonDir && commonDir !== gitDir,
+          isGitDirIn(inGitDir),
+        )
       ) {
         gitDirChanged();
       }
@@ -149,6 +153,7 @@ export async function watchRepository(
             !watchedFolder(
               path.relative(gitDirTree, folder),
               gitDirTree === commonDir && commonDir !== gitDir,
+              isGitDirIn(gitDirTree),
             ),
           ignored: () => Promise.resolve([]),
           onEvent,
@@ -449,48 +454,68 @@ function isInside(folder: string, file: string): boolean {
   );
 }
 
-const internalFolders = new Set(['objects', 'logs', 'lfs']);
-
-const gitDirEntries = new Set(['HEAD', 'index', 'config', 'refs', 'modules']);
+const internalEntries = new Set(['objects', 'logs', 'lfs']);
 
 const stashLog = /^logs[\\/]refs[\\/]stash$/;
 
-export function isInternal(inGitDir: string): boolean {
-  const [first, ...rest] = inGitDir.split(/[\\/]/);
+type IsGitDir = (inGitDir: string) => boolean;
+
+export function isInternal(inGitDir: string, isGitDir: IsGitDir): boolean {
   return (
-    (internalFolders.has(first) && !stashLog.test(inGitDir)) ||
-    (first === 'modules' && isInternalInModule(rest)) ||
+    (!stashLog.test(inGitDir) &&
+      isInternalIn([], inGitDir.split(/[\\/]/), isGitDir)) ||
     inGitDir.endsWith('.lock') ||
     inGitDir === ''
   );
 }
 
-function isInternalInModule(segments: readonly string[]): boolean {
-  for (let i = 1; i < segments.length; i++) {
-    const segment = segments[i];
-    const next = segments[i + 1];
-    if (segment === 'modules') {
-      return isInternalInModule(segments.slice(i + 1));
-    }
-    if (gitDirEntries.has(segment)) {
-      return false;
-    }
-    if (
-      internalFolders.has(segment) &&
-      next !== undefined &&
-      (!gitDirEntries.has(next) ||
-        (segment === 'logs' && (next === 'HEAD' || next === 'refs')))
-    ) {
-      return true;
+// Git refuses to put a submodule's git folder inside another's, so the first
+// git folder on the path is the submodule's, however its name looks
+function isInternalIn(
+  gitDir: readonly string[],
+  inside: readonly string[],
+  isGitDir: IsGitDir,
+): boolean {
+  const [first] = inside;
+  if (internalEntries.has(first)) {
+    return true;
+  }
+  if (first !== 'modules') {
+    return false;
+  }
+  for (let end = 2; end < inside.length; end++) {
+    const moduleDir = [...gitDir, ...inside.slice(0, end)];
+    if (isGitDir(moduleDir.join('/'))) {
+      return isInternalIn(moduleDir, inside.slice(end), isGitDir);
     }
   }
   return false;
 }
 
+function isGitDirIn(gitDir: string): IsGitDir {
+  return (inGitDir) => {
+    try {
+      return (
+        fs
+          .statSync(path.join(gitDir, inGitDir, 'HEAD'), {
+            throwIfNoEntry: false,
+          })
+          ?.isFile() === true
+      );
+    } catch {
+      return false;
+    }
+  };
+}
+
 const perWorktreeRefs = new Set(['bisect', 'worktree', 'rewritten']);
 
-export function affectsWorktree(inGitDir: string, shared: boolean): boolean {
-  if (isInternal(inGitDir)) {
+export function affectsWorktree(
+  inGitDir: string,
+  shared: boolean,
+  isGitDir: IsGitDir,
+): boolean {
+  if (isInternal(inGitDir, isGitDir)) {
     return false;
   }
   const [first, second] = inGitDir.split(/[\\/]/);
@@ -521,9 +546,13 @@ export function affectsWorktreeList(inGitDir: string): boolean {
 
 const stashLogFolders = /^logs([\\/]refs)?$/;
 
-export function watchedFolder(inGitDir: string, shared: boolean): boolean {
+export function watchedFolder(
+  inGitDir: string,
+  shared: boolean,
+  isGitDir: IsGitDir,
+): boolean {
   return (
-    affectsWorktree(inGitDir, shared) ||
+    affectsWorktree(inGitDir, shared, isGitDir) ||
     affectsWorktreeList(inGitDir) ||
     stashLogFolders.test(inGitDir)
   );

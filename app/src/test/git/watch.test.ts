@@ -16,6 +16,21 @@ import { waitFor } from '../fixtures';
 import { removeFolder, tempFolder } from '../repositories';
 
 suite('Watching the git folder', () => {
+  const modules = new Set([
+    'modules/sub',
+    'modules/sub/modules/inner',
+    'modules/sub/modules/vendor/lfs',
+    'modules/nested/sub',
+    'modules/vendor/lfs',
+    'modules/vendor/logs',
+    'modules/vendor/objects',
+    'modules/deps/logs/parser',
+    'modules/deps/objects/parser',
+    'modules/deps/lfs/x',
+  ]);
+  const isModule = (inGitDir: string) =>
+    modules.has(inGitDir.split(/[\\/]/).join('/'));
+
   test('refreshes for HEAD, the index and refs', () => {
     for (const file of [
       'HEAD',
@@ -28,47 +43,72 @@ suite('Watching the git folder', () => {
       'modules/nested/sub/refs/heads/main',
       'modules/sub/refs/heads/logs',
     ]) {
-      assert.strictEqual(isInternal(file), false, file);
+      assert.strictEqual(isInternal(file, isModule), false, file);
     }
   });
 
   test('refreshes for the stashes, which dropping all but the newest changes only in their reflog', () => {
     for (const file of ['refs/stash', 'logs/refs/stash', 'logs\\refs\\stash']) {
-      assert.strictEqual(isInternal(file), false, file);
-      assert.strictEqual(affectsWorktree(file, true), true, file);
+      assert.strictEqual(isInternal(file, isModule), false, file);
+      assert.strictEqual(affectsWorktree(file, true, isModule), true, file);
     }
     for (const file of ['logs/refs/stash.lock', 'logs/refs/heads/main']) {
-      assert.strictEqual(isInternal(file), true, file);
+      assert.strictEqual(isInternal(file, isModule), true, file);
     }
   });
 
   test('watches the folders of the git folder it refreshes for, and those on the way to the reflog of the stashes', () => {
     for (const folder of ['refs', 'refs/heads', 'logs', 'logs\\refs']) {
-      assert.strictEqual(watchedFolder(folder, true), true, folder);
+      assert.strictEqual(watchedFolder(folder, true, isModule), true, folder);
     }
     for (const folder of ['objects', 'logs/refs/heads', 'refs/bisect']) {
-      assert.strictEqual(watchedFolder(folder, true), false, folder);
+      assert.strictEqual(watchedFolder(folder, true, isModule), false, folder);
     }
-    assert.strictEqual(watchedFolder('worktrees/other', false), true);
+    assert.strictEqual(watchedFolder('worktrees/other', false, isModule), true);
   });
 
-  test("refreshes for submodules named like the folders it leaves alone, but for the HEAD and refs of one named like logs, which can't be told from reflogs", () => {
+  test('tells a submodule named like the folders it leaves alone by where its git folder is', () => {
     for (const file of [
       'modules/vendor/lfs',
       'modules/vendor/lfs/HEAD',
       'modules/vendor/lfs/refs/heads/main',
       'modules/vendor/objects/index',
       'modules/vendor/logs/config',
+      'modules/vendor/logs/HEAD',
+      'modules/vendor/logs/refs/heads/main',
       'modules/sub/modules/vendor/lfs/index',
+      'modules/deps/logs/parser/index',
+      'modules\\deps\\logs\\parser\\HEAD',
+      'modules/deps/objects/parser/refs/heads/main',
+      'modules/deps/lfs/x/index',
     ]) {
-      assert.strictEqual(isInternal(file), false, file);
+      assert.strictEqual(isInternal(file, isModule), false, file);
     }
     for (const file of [
       'modules/vendor/lfs/objects/ab/cd',
-      'modules/vendor/logs/HEAD',
-      'modules/vendor/logs/refs/heads/main',
+      'modules/vendor/logs/logs/HEAD',
+      'modules/deps/logs/parser/logs/refs/heads/main',
+      'modules/deps/objects/parser/objects/ab/cd',
     ]) {
-      assert.strictEqual(isInternal(file), true, file);
+      assert.strictEqual(isInternal(file, isModule), true, file);
+    }
+  });
+
+  test('watches the folders on the way to a submodule named like the folders it leaves alone', () => {
+    for (const folder of [
+      'modules/deps',
+      'modules/deps/logs',
+      'modules/deps/logs/parser',
+      'modules/deps/logs/parser/refs',
+    ]) {
+      assert.strictEqual(watchedFolder(folder, false, isModule), true, folder);
+    }
+    for (const folder of [
+      'modules/sub/objects',
+      'modules/sub/logs',
+      'modules/deps/logs/parser/objects',
+    ]) {
+      assert.strictEqual(watchedFolder(folder, false, isModule), false, folder);
     }
   });
 
@@ -86,7 +126,7 @@ suite('Watching the git folder', () => {
       'lfs/objects/ab/cd/abcdef',
       'lfs/tmp/download',
     ]) {
-      assert.strictEqual(isInternal(file), true, file);
+      assert.strictEqual(isInternal(file, isModule), true, file);
     }
   });
 
@@ -95,8 +135,8 @@ suite('Watching the git folder', () => {
       'worktrees/feature/index',
       'worktrees\\feature\\HEAD',
     ]) {
-      assert.strictEqual(affectsWorktree(file, false), false, file);
-      assert.strictEqual(affectsWorktree(file, true), false, file);
+      assert.strictEqual(affectsWorktree(file, false, isModule), false, file);
+      assert.strictEqual(affectsWorktree(file, true, isModule), false, file);
     }
     for (const file of [
       'index',
@@ -106,7 +146,7 @@ suite('Watching the git folder', () => {
       'refs/worktree/x',
       'logs/HEAD',
     ]) {
-      assert.strictEqual(affectsWorktree(file, true), false, file);
+      assert.strictEqual(affectsWorktree(file, true, isModule), false, file);
     }
   });
 
@@ -142,7 +182,7 @@ suite('Watching the git folder', () => {
       'reftable\\0x000000000002-0x000000000002-1a2b3c4d.ref',
       'config',
     ]) {
-      assert.strictEqual(affectsWorktree(file, true), true, file);
+      assert.strictEqual(affectsWorktree(file, true, isModule), true, file);
     }
     for (const file of [
       'index',
@@ -150,7 +190,7 @@ suite('Watching the git folder', () => {
       'refs/heads/main',
       'refs/bisect/bad',
     ]) {
-      assert.strictEqual(affectsWorktree(file, false), true, file);
+      assert.strictEqual(affectsWorktree(file, false, isModule), true, file);
     }
   });
 });
