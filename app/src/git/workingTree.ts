@@ -234,7 +234,7 @@ function quoted(path: string): string {
 }
 
 function workingTreeDiff({ base, reverse }: WorkingTreeDiff): string[] {
-  const against = base === undefined ? [] : [base];
+  const against = base === undefined ? ['--ours'] : [base];
   return reverse
     ? [
         'diff',

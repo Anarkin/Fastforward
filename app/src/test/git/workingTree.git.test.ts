@@ -310,6 +310,48 @@ suite('A conflicted merge', function () {
     );
   });
 
+  test('diffs the conflicted file against our side, alone and with the rest, in as many lines as it counts', async () => {
+    for (const base of [undefined, 'HEAD']) {
+      const workingTree = await workingTreeFiles(
+        conflicted.gitPath,
+        conflicted.root,
+        { base, reverse: false },
+      );
+      const [listed] = workingTree.files;
+      for (const scope of [{}, { path: 'conflict.txt' }]) {
+        const patch = await workingTreePatch(
+          conflicted.gitPath,
+          conflicted.root,
+          workingTree,
+          scope,
+        );
+        const files = parsePatch(patch);
+        assert.deepStrictEqual(
+          files.map((file) => file.path),
+          ['conflict.txt'],
+          patch,
+        );
+        const lines = files[0].hunks.flatMap((hunk) => hunk.lines);
+        const count = (kind: string) =>
+          lines.filter((line) => line.kind === kind).length;
+        assert.deepStrictEqual(
+          [count('added'), count('removed')],
+          [listed.insertions, listed.deletions],
+        );
+        assert.deepStrictEqual(
+          lines.map((line) => [line.kind, line.text.slice(0, 7)]),
+          [
+            ['added', '<<<<<<<'],
+            ['context', 'b'],
+            ['added', '======='],
+            ['added', 'a'],
+            ['added', '>>>>>>>'],
+          ],
+        );
+      }
+    }
+  });
+
   test('lists the conflicted file once among the files of the working tree', async () => {
     assert.deepStrictEqual(
       await listTree(conflicted.gitPath, conflicted.root, undefined),
