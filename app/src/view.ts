@@ -28,6 +28,8 @@ import {
 } from './git/repository';
 import { watchRepository, type Watcher } from './git/watch';
 import {
+  stagedPatch,
+  uncommittedCount,
   workingTreeFiles,
   workingTreePatch,
   type UntrackedPatches,
@@ -57,6 +59,7 @@ import {
   commitPageSize,
   deferredChanges,
   workingTreeHash,
+  type ChangeArea,
   type CheckoutTarget,
   type CommitSearch,
   type Direction,
@@ -71,6 +74,7 @@ import {
 import { strings } from './shared/strings';
 import { sameRoot, Storage } from './storage';
 import {
+  changesOf,
   commitsMessage,
   expandMerges,
   firstPage,
@@ -580,10 +584,14 @@ export class FastforwardView {
         break;
       case 'selectFile':
         if (this.isSelected(context, message.hash)) {
-          if (context.tab.path !== message.path) {
+          if (
+            context.tab.path !== message.path ||
+            context.tab.area !== message.area
+          ) {
             context.tab.entireFile = false;
           }
           context.tab.path = message.path;
+          context.tab.area = message.area;
           await this.sendDiff(context, message.hash);
         }
         break;
@@ -1584,7 +1592,7 @@ export class FastforwardView {
 
   private async sendWorkingTree(context: Context): Promise<WorkingTree> {
     const workingTree = await workingTreeFiles(context.gitPath, context.root);
-    context.post({ type: 'workingTree', files: workingTree.files.length });
+    context.post({ type: 'workingTree', files: uncommittedCount(workingTree) });
     return workingTree;
   }
 
@@ -1717,6 +1725,7 @@ export class FastforwardView {
     }
     const { signal } = tab.loadingFiles;
     let files: readonly FileChange[];
+    let staged: readonly FileChange[] | undefined;
     let workingTree: WorkingTree | undefined;
     try {
       if (!stillThere(tab)(hash)) {
@@ -1733,6 +1742,7 @@ export class FastforwardView {
             signal,
           ));
         files = workingTree.files;
+        staged = workingTree.staged;
       } else {
         files = await this.commitFiles(context, hash, signal);
       }
@@ -1746,15 +1756,27 @@ export class FastforwardView {
       return;
     }
     context.tab.changedFiles = new Map(files.map((file) => [file.path, file]));
+    context.tab.stagedFiles = new Map(
+      (staged ?? []).map((file) => [file.path, file]),
+    );
+    if (staged !== undefined && context.tab.area === undefined) {
+      context.tab.area = staged.length > 0 ? 'staged' : 'unstaged';
+    }
     if (workingTree) {
       context.tab.workingTree = workingTree;
     }
     const shownFiles = context.tab.shown.files;
     const unchanged =
       shownFiles?.hash === hash &&
-      JSON.stringify(shownFiles.files) === JSON.stringify(files);
+      JSON.stringify([shownFiles.files, shownFiles.staged]) ===
+        JSON.stringify([files, staged]);
     if (!(refreshing && unchanged)) {
-      context.post({ type: 'files', hash, files });
+      context.post({
+        type: 'files',
+        hash,
+        files,
+        ...(staged === undefined ? {} : { staged }),
+      });
     }
     await this.sendDiff(context, hash, refreshing);
   }
@@ -1786,7 +1808,7 @@ export class FastforwardView {
     diff: number,
     shownPatch?: string,
   ): Promise<void> {
-    const change = context.tab.changedFiles.get(file);
+    const change = changesOf(context.tab).get(file);
     const patch = await this.patchOf(context, hash, {
       path: file,
       oldPath: change?.oldPath,
@@ -1803,7 +1825,7 @@ export class FastforwardView {
   ): Promise<void> {
     const { gitPath, root } = context;
     const fromDisk = (request: TextRequest) =>
-      request.side === workingTreeSide(hash);
+      context.tab.area !== 'staged' && request.side === workingTreeSide(hash);
     const blobs = await readBlobs(
       gitPath,
       root,
@@ -1838,6 +1860,9 @@ export class FastforwardView {
         : stash
           ? stashPatch(gitPath, root, stash, scope, signal)
           : showPatch(gitPath, root, hash, scope, signal);
+    }
+    if (context.tab.area === 'staged') {
+      return stagedPatch(gitPath, root, scope, signal);
     }
     const workingTree =
       context.tab.workingTree ??
@@ -1883,7 +1908,7 @@ export class FastforwardView {
     refreshing = false,
   ): Promise<void> {
     const { tab } = context;
-    const { path: file } = tab;
+    const { path: file, area } = tab;
     const request = ++tab.diffRequest;
     if (!refreshing) {
       tab.diffOwed = true;
@@ -1892,9 +1917,12 @@ export class FastforwardView {
     const loading = new AbortController();
     tab.loadingDiff = loading;
     const stale = () =>
-      tab.diffRequest !== request || tab.hash !== hash || tab.path !== file;
-    const change =
-      file === undefined ? undefined : context.tab.changedFiles.get(file);
+      tab.diffRequest !== request ||
+      tab.hash !== hash ||
+      tab.path !== file ||
+      tab.area !== area;
+    const changes = changesOf(tab);
+    const change = file === undefined ? undefined : changes.get(file);
     if (file !== undefined && !change) {
       const { content, binary } = await readFile(
         context.gitPath,
@@ -1908,6 +1936,7 @@ export class FastforwardView {
         shownDiff?.type === 'fileContent' &&
         shownDiff.hash === hash &&
         shownDiff.path === file &&
+        shownDiff.area === area &&
         shownDiff.content === content &&
         shownDiff.binary === binary;
       if (!stale() && !unchanged) {
@@ -1916,6 +1945,7 @@ export class FastforwardView {
           type: 'fileContent',
           hash,
           path: file,
+          ...areaOf(area),
           content,
           binary,
         });
@@ -1925,7 +1955,7 @@ export class FastforwardView {
     const scope =
       file === undefined
         ? {
-            include: includedChanges([...context.tab.changedFiles.values()]),
+            include: includedChanges([...changes.values()]),
             ignoreWhitespace: this.storage.ignoreWhitespace,
           }
         : {
@@ -1949,13 +1979,14 @@ export class FastforwardView {
       shownDiff?.type === 'diff' &&
       shownDiff.hash === hash &&
       shownDiff.path === file &&
+      shownDiff.area === area &&
       shownDiff.patch === patch;
     if (stale()) {
       return;
     }
     if (!unchanged) {
       tab.diffOwed = false;
-      context.post({ type: 'diff', hash, path: file, patch });
+      context.post({ type: 'diff', hash, path: file, ...areaOf(area), patch });
     } else if (file === undefined) {
       await this.sendFileDiffsAgain(context, hash);
     }
@@ -1965,10 +1996,11 @@ export class FastforwardView {
     context: Context,
     hash: string,
   ): Promise<void> {
-    const { changedFiles, shown } = context.tab;
+    const { shown } = context.tab;
+    const changes = changesOf(context.tab);
     await Promise.all(
       [...(shown.fileDiffs?.values() ?? [])]
-        .filter((sent) => sent.hash === hash && changedFiles.has(sent.path))
+        .filter((sent) => sent.hash === hash && changes.has(sent.path))
         .map((sent) =>
           this.sendFileDiff(context, hash, sent.path, sent.diff, sent.patch),
         ),
@@ -1992,6 +2024,10 @@ function workingTreeDiffOf(hash: string): WorkingTreeDiff | undefined {
   return compared.to === workingTreeHash
     ? { base: compared.from, reverse: false }
     : { base: compared.to, reverse: true };
+}
+
+function areaOf(area: ChangeArea | undefined): { area?: ChangeArea } {
+  return area === undefined ? {} : { area };
 }
 
 function shownCommit(hash: string): string | undefined {

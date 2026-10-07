@@ -14,18 +14,21 @@ import {
   withBytes,
 } from './diff';
 import { isBinary, maxFileSize } from './files';
-import { headCommit } from './history';
 import { runGit, splitNul } from './run';
 
+// Without a base, the working tree is diffed against the index
 export interface WorkingTreeDiff {
-  readonly base: string;
+  readonly base: string | undefined;
   readonly reverse: boolean;
 }
 
 export interface WorkingTree extends WorkingTreeDiff {
   readonly files: readonly FileChange[];
   readonly untracked: readonly string[];
+  readonly staged: readonly FileChange[] | undefined;
 }
+
+const againstIndex: WorkingTreeDiff = { base: undefined, reverse: false };
 
 export type UntrackedPatches = Map<
   string,
@@ -75,37 +78,29 @@ async function addedLines(file: string): Promise<number | 'tooLarge'> {
 export async function workingTreeFiles(
   gitPath: string,
   cwd: string,
-  against?: WorkingTreeDiff,
+  diff = againstIndex,
   signal?: AbortSignal,
 ): Promise<WorkingTree> {
-  const diff = against ?? {
-    base:
-      (await headCommit(gitPath, cwd)) ??
-      (
-        await runGit(gitPath, cwd, ['hash-object', '-t', 'tree', '--stdin'], {
-          input: '',
-          signal,
-        })
-      ).trim(),
-    reverse: false,
-  };
-  const { reverse } = diff;
-  const [changes, listed] = await Promise.all([
+  const { base, reverse } = diff;
+  const [changes, listed, staged] = await Promise.all([
     runGit(gitPath, cwd, [...workingTreeDiff(diff), ...changesArgs], {
       signal,
     }),
     runGit(gitPath, cwd, ['ls-files', '--others', '--exclude-standard', '-z'], {
       signal,
     }),
+    base === undefined ? stagedFiles(gitPath, cwd, signal) : undefined,
   ]);
-  const trackedChanges = await withoutTouched(
-    gitPath,
-    cwd,
-    await withBytes(gitPath, cwd, parseRawChanges(changes), {
-      fromDisk: true,
+  const trackedChanges = onePerPath(
+    await withoutTouched(
+      gitPath,
+      cwd,
+      await withBytes(gitPath, cwd, parseRawChanges(changes), {
+        fromDisk: true,
+        reverse,
+      }),
       reverse,
-    }),
-    reverse,
+    ),
   );
   const tracked = new Set(trackedChanges.map((file) => file.path));
   const untracked = splitNul(listed).filter(
@@ -136,7 +131,66 @@ export async function workingTreeFiles(
     ...diff,
     files: [...trackedChanges, ...untrackedFiles],
     untracked,
+    staged,
   };
+}
+
+// Unmerged files, which git lists as U, are left to the unstaged changes
+async function stagedFiles(
+  gitPath: string,
+  cwd: string,
+  signal?: AbortSignal,
+): Promise<FileChange[]> {
+  const output = await runGit(
+    gitPath,
+    cwd,
+    ['diff', '--cached', '-M', ...diffArgs, ...changesArgs],
+    { signal },
+  );
+  return (await withBytes(gitPath, cwd, parseRawChanges(output)))
+    .map(({ file }) => file)
+    .filter((file) => file.status !== '?');
+}
+
+// git diff lists an unmerged file once for being unmerged, and again for how
+// it differs
+function onePerPath(files: readonly FileChange[]): FileChange[] {
+  const byPath = new Map<string, FileChange>();
+  for (const file of files) {
+    const kept = byPath.get(file.path);
+    if (kept === undefined || kept.status === '?') {
+      byPath.set(file.path, file);
+    }
+  }
+  return [...byPath.values()];
+}
+
+export function uncommittedCount({ files, staged = [] }: WorkingTree): number {
+  return new Set([...files, ...staged].map((file) => file.path)).size;
+}
+
+export function stagedPatch(
+  gitPath: string,
+  cwd: string,
+  scope: PatchScope = {},
+  signal?: AbortSignal,
+): Promise<string> {
+  if (scope.include?.length === 0) {
+    return Promise.resolve('');
+  }
+  return runGit(
+    gitPath,
+    cwd,
+    [
+      'diff',
+      '--cached',
+      '-M',
+      ...diffArgs,
+      ...diffOptionArgs(scope),
+      ...pathspecs(scope),
+    ],
+    { signal },
+  );
 }
 
 // git runs with diff.autoRefreshIndex=false (see gitConfigArgs), so git diff
@@ -190,17 +244,18 @@ function quoted(path: string): string {
 
 // -R swaps the prefixes too, which the patch is parsed by
 function workingTreeDiff({ base, reverse }: WorkingTreeDiff): string[] {
+  const against = base === undefined ? [] : [base];
   return reverse
     ? [
         'diff',
-        base,
+        ...against,
         '-M',
         '-R',
         ...diffArgs,
         '--src-prefix=b/',
         '--dst-prefix=a/',
       ]
-    : ['diff', base, '-M', ...diffArgs];
+    : ['diff', ...against, '-M', ...diffArgs];
 }
 
 export async function workingTreePatch(

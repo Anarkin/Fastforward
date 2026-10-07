@@ -8,6 +8,8 @@ import { headCommit, listHistory } from '../git/history';
 import { runGit } from '../git/run';
 import { ignoredPaths } from '../git/watch';
 import {
+  stagedPatch,
+  uncommittedCount,
   withoutTouched,
   workingTreeFiles,
   workingTreePatch,
@@ -47,15 +49,14 @@ suite('A repository without commits', function () {
   test('lists staged files as added, and untracked ones', async () => {
     const workingTree = await workingTreeFiles(gitPath, cwd);
     assert.deepStrictEqual(
-      workingTree.files.map((file) => [file.status, file.path]),
-      [
-        ['A', 'staged.txt'],
-        ['U', 'untracked.txt'],
-      ],
+      workingTree.staged?.map((file) => [file.status, file.path]),
+      [['A', 'staged.txt']],
     );
-    const patch = await workingTreePatch(gitPath, cwd, workingTree, {
-      path: 'staged.txt',
-    });
+    assert.deepStrictEqual(
+      workingTree.files.map((file) => [file.status, file.path]),
+      [['U', 'untracked.txt']],
+    );
+    const patch = await stagedPatch(gitPath, cwd, { path: 'staged.txt' });
     assert.ok(patch.includes('+one'), patch);
   });
 });
@@ -155,7 +156,10 @@ suite('A file renamed and edited', function () {
       await repository.commit('initial', { 'old.txt': old });
       await repository.git('mv', 'old.txt', 'new.txt');
       fs.appendFileSync(path.join(cwd, 'new.txt'), 'extra\n');
-      const { files } = await workingTreeFiles(repository.gitPath, cwd);
+      const { files } = await workingTreeFiles(repository.gitPath, cwd, {
+        base: 'HEAD',
+        reverse: false,
+      });
       assert.deepStrictEqual(
         files.map((file) => [file.status, file.path, file.bytes]),
         [['R', 'new.txt', old.length * 2 + 'extra\n'.length]],
@@ -175,7 +179,10 @@ suite('A file removed from the index but kept on disk', function () {
     try {
       await repository.commit('initial', { 'kept.txt': 'committed\n' });
       await repository.git('rm', '--cached', 'kept.txt');
-      const workingTree = await workingTreeFiles(repository.gitPath, cwd);
+      const workingTree = await workingTreeFiles(repository.gitPath, cwd, {
+        base: 'HEAD',
+        reverse: false,
+      });
       assert.deepStrictEqual(
         workingTree.files.map((file) => [file.status, file.path]),
         [['D', 'kept.txt']],
@@ -189,6 +196,96 @@ suite('A file removed from the index but kept on disk', function () {
       assert.ok(patch.includes('-committed'), patch);
     } finally {
       removeFolder(cwd);
+    }
+  });
+});
+
+suite('Staged and unstaged changes', function () {
+  this.timeout(20_000);
+  let repository: TempRepository;
+
+  suiteSetup(async () => {
+    repository = await tempRepository(tempFolder('staged'));
+    await repository.commit('initial', {
+      'both.txt': 'one\n',
+      'staged.txt': 'a\n',
+      'unstaged.txt': 'x\n',
+      'uncached.txt': 'kept\n',
+    });
+    const write = (file: string, text: string) =>
+      fs.writeFileSync(path.join(repository.root, file), text);
+    write('both.txt', 'two\n');
+    write('staged.txt', 'b\n');
+    await repository.git('add', 'both.txt', 'staged.txt');
+    await repository.git('rm', '-q', '--cached', 'uncached.txt');
+    write('both.txt', 'three\n');
+    write('unstaged.txt', 'y\n');
+    write('new.txt', 'new\n');
+  });
+
+  suiteTeardown(() => removeFolder(repository.root));
+
+  test('lists the staged changes apart from the unstaged ones, which it diffs against the index', async () => {
+    const workingTree = await workingTreeFiles(
+      repository.gitPath,
+      repository.root,
+    );
+    assert.deepStrictEqual(
+      workingTree.staged?.map((file) => [file.status, file.path]),
+      [
+        ['M', 'both.txt'],
+        ['M', 'staged.txt'],
+        ['D', 'uncached.txt'],
+      ],
+    );
+    assert.deepStrictEqual(
+      workingTree.files.map((file) => [file.status, file.path]),
+      [
+        ['M', 'both.txt'],
+        ['M', 'unstaged.txt'],
+        ['U', 'new.txt'],
+        ['U', 'uncached.txt'],
+      ],
+    );
+    assert.strictEqual(uncommittedCount(workingTree), 5);
+  });
+
+  test('diffs the staged half of a file against HEAD and its unstaged half against the index', async () => {
+    const staged = await stagedPatch(repository.gitPath, repository.root, {
+      path: 'both.txt',
+    });
+    assert.match(staged, /^-one$/m);
+    assert.match(staged, /^\+two$/m);
+    const unstaged = await workingTreePatch(
+      repository.gitPath,
+      repository.root,
+      await workingTreeFiles(repository.gitPath, repository.root),
+      { path: 'both.txt' },
+    );
+    assert.match(unstaged, /^-two$/m);
+    assert.match(unstaged, /^\+three$/m);
+  });
+
+  test('lists a conflicted file once, with the unstaged changes', async () => {
+    const conflicted = await tempRepository(tempFolder('conflicted'));
+    try {
+      await conflicted.commit('initial');
+      await conflicted.git('checkout', '-q', '-b', 'side');
+      await conflicted.commit('side', { 'conflict.txt': 'a\n' });
+      await conflicted.git('checkout', '-q', 'main');
+      await conflicted.commit('main', { 'conflict.txt': 'b\n' });
+      await assert.rejects(conflicted.git('merge', 'side'));
+      const workingTree = await workingTreeFiles(
+        conflicted.gitPath,
+        conflicted.root,
+      );
+      assert.deepStrictEqual(workingTree.staged, []);
+      assert.deepStrictEqual(
+        workingTree.files.map((file) => file.path),
+        ['conflict.txt'],
+      );
+    } finally {
+      removeFolder(conflicted.root);
     }
   });
 });

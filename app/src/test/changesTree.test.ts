@@ -3,7 +3,8 @@ import {
   ancestorRows,
   changesTree,
   changesTreeRows,
-  listedTreeRows,
+  filesRows,
+  listedFilesRows,
   treeFolders,
 } from '../webview/changesTree';
 import { countingReads, fileChange } from './fixtures';
@@ -167,10 +168,12 @@ suite('Changes tree', () => {
   });
 
   test('keys the rows the same while they stay the same, so the list keeps their sizes', () => {
-    const rows = changesTreeRows(changesTree(files), new Set(['src']));
-    const listed = listedTreeRows(rows, true);
-    assert.strictEqual(listedTreeRows(rows, true), listed);
-    assert.notStrictEqual(listedTreeRows(rows, false), listed);
+    const tree = changesTreeRows(changesTree(files), new Set(['src']));
+    const section = (header: boolean) =>
+      filesRows([{ area: undefined, header, rows: tree }]);
+    const rows = section(true);
+    const listed = listedFilesRows(rows);
+    assert.strictEqual(listedFilesRows(rows), listed);
     assert.deepStrictEqual(
       Array.from({ length: listed.count }, (_, index) => listed.keyOf(index)),
       [
@@ -183,6 +186,9 @@ suite('Changes tree', () => {
     );
     assert.strictEqual(listed.indexOf('file:.editorconfig'), 4);
     assert.strictEqual(listed.indexOf('file:src/Gyurma/MethodSetup.cs'), -1);
-    assert.strictEqual(listedTreeRows(rows, false).indexOf('folder:src'), 0);
+    assert.strictEqual(
+      listedFilesRows(section(false)).indexOf('folder:src'),
+      0,
+    );
   });
 });

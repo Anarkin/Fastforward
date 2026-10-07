@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, type RefObject } from 'react';
 import {
   deferredChanges,
+  type ChangeArea,
   type DiffLayout,
   type FileChange,
   type TextRequest,
@@ -237,8 +238,9 @@ export function diffSelection(
   root: string | undefined,
   hash: string | undefined,
   path: string | undefined,
+  area?: ChangeArea,
 ): string {
-  return JSON.stringify([root, hash, path]);
+  return JSON.stringify([root, hash, path, area]);
 }
 
 export function Diff({

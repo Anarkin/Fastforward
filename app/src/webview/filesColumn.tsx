@@ -1,16 +1,19 @@
 import { useMemo, useState } from 'react';
 import { comparedOf, comparisonLabel } from '../shared/comparisons';
-import type { FileChange } from '../shared/protocol';
+import type { ChangeArea, FileChange } from '../shared/protocol';
 import {
-  ancestorRows,
+  areaKey,
   changesTree,
   changesTreeElement,
   changesKey,
   changesTreeRows,
+  filesAncestors,
   filesKey,
+  filesRows,
   folderRowKey,
-  listedTreeRows,
+  listedFilesRows,
   treeFolders,
+  treeRowOf,
 } from './changesTree';
 import { Column } from './column';
 import { AllFilesIcon, CollapseAllIcon, ExpandAllIcon } from './icons';
@@ -61,6 +64,48 @@ export function noChangesText(
     : strings.files.noChanges;
 }
 
+interface Side {
+  readonly area: ChangeArea | undefined;
+  readonly files: readonly FileChange[];
+  readonly allPaths: readonly string[] | undefined;
+}
+
+function sidesOf(
+  files: readonly FileChange[],
+  staged: readonly FileChange[] | undefined,
+  allPaths: readonly string[] | undefined,
+): Side[] {
+  return staged === undefined
+    ? [{ area: undefined, files, allPaths }]
+    : [
+        { area: 'staged', files: staged, allPaths: undefined },
+        { area: 'unstaged', files, allPaths },
+      ];
+}
+
+function foldersOn(
+  folders: ReadonlySet<string>,
+  area: ChangeArea | undefined,
+): ReadonlySet<string> {
+  if (area === undefined) {
+    return folders;
+  }
+  const prefix = areaKey(area, '');
+  return new Set(
+    [...folders]
+      .filter((folder) => folder.startsWith(prefix))
+      .map((folder) => folder.slice(prefix.length)),
+  );
+}
+
+function headerTitle(area: ChangeArea | undefined): string {
+  return area === undefined
+    ? strings.files.allChanges
+    : area === 'staged'
+      ? strings.files.staged
+      : strings.files.unstaged;
+}
+
 export function Files({
   title = strings.files.title,
   noChanges,
@@ -69,12 +114,14 @@ export function Files({
   closedFolders,
   onToggleClosedFolder,
   files,
+  staged,
   loading,
   tree,
   openedFolders,
   onToggleOpenFolder,
   onReplaceFolders,
   selected,
+  area,
   onSelect,
   view,
 }: {
@@ -85,49 +132,84 @@ export function Files({
   closedFolders: ReadonlySet<string>;
   onToggleClosedFolder: (folder: string) => void;
   files: readonly FileChange[];
+  staged?: readonly FileChange[];
   loading: boolean;
   tree: readonly string[] | undefined;
   openedFolders: ReadonlySet<string>;
   onToggleOpenFolder: (folder: string) => void;
   onReplaceFolders: (folders: Folders) => void;
   selected: string | undefined;
-  onSelect: (path: string | undefined) => void;
+  area?: ChangeArea;
+  onSelect: (path: string | undefined, area?: ChangeArea) => void;
   view: string;
 }) {
   const skeleton = useSkeleton(loading);
   const allPaths = showAll ? tree : undefined;
-  const fileTree = useMemo(
-    () => changesTree(files, allPaths),
-    [files, allPaths],
+  const sides = useMemo(
+    () => sidesOf(files, staged, allPaths),
+    [files, staged, allPaths],
   );
-  const treeRows = useMemo(
-    () => changesTreeRows(fileTree, closedFolders, openedFolders),
-    [fileTree, closedFolders, openedFolders],
+  const trees = useMemo(
+    () => sides.map((side) => changesTree(side.files, side.allPaths)),
+    [sides],
   );
-  const folders = useMemo(() => treeFolders(fileTree), [fileTree]);
+  const rows = useMemo(
+    () =>
+      filesRows(
+        sides.map((side, index) => ({
+          area: side.area,
+          header: side.area !== undefined || side.files.length > 0,
+          rows: changesTreeRows(
+            trees[index],
+            foldersOn(closedFolders, side.area),
+            foldersOn(openedFolders, side.area),
+          ),
+        })),
+      ),
+    [sides, trees, closedFolders, openedFolders],
+  );
+  const folders = useMemo(() => {
+    const all = { changed: [] as string[], unchanged: [] as string[] };
+    sides.forEach((side, index) => {
+      const { changed, unchanged } = treeFolders(trees[index]);
+      const keyed = (folder: string) => areaKey(side.area, folder);
+      all.changed.push(...changed.map(keyed));
+      all.unchanged.push(...unchanged.map(keyed));
+    });
+    return all;
+  }, [sides, trees]);
   const noFolders =
     folders.changed.length === 0 && folders.unchanged.length === 0;
-  const hasHeader = files.length > 0;
-  const listed = listedTreeRows(treeRows, hasHeader);
+  const listed = listedFilesRows(rows);
+  const selection = {
+    area: staged === undefined ? undefined : area,
+    path: selected,
+  };
+  const headerKey = areaKey(selection.area, changesKey);
   const selectedKey =
-    selected === undefined
-      ? hasHeader
-        ? changesKey
-        : undefined
-      : fileRowKey(selected);
+    selected !== undefined
+      ? areaKey(selection.area, fileRowKey(selected))
+      : listed.indexOf(headerKey) !== -1
+        ? headerKey
+        : undefined;
   const [moved, setMoved] = useState<MovedCursor>();
   const cursor = filesCursor(moved, selectedKey, view, listed);
-  const select = (path: string | undefined) => {
+  const select = (path: string | undefined, side?: ChangeArea) => {
     setMoved(undefined);
-    if (path !== selected) {
-      onSelect(path);
+    if (path !== selection.path || side !== selection.area) {
+      onSelect(path, side);
     }
   };
-  const toggle = (folder: string, changed: boolean) => {
+  const toggle = (
+    side: ChangeArea | undefined,
+    folder: string,
+    changed: boolean,
+  ) => {
+    const key = areaKey(side, folder);
     if (changed) {
-      onToggleClosedFolder(folder);
+      onToggleClosedFolder(key);
     } else {
-      onToggleOpenFolder(folder);
+      onToggleOpenFolder(key);
     }
   };
   const onKeyDown = (event: React.KeyboardEvent, visible: VisibleRows) => {
@@ -135,22 +217,15 @@ export function Files({
     if (key === undefined) {
       return;
     }
-    const action = filesKey(
-      key,
-      treeRows,
-      hasHeader,
-      cursor,
-      selected,
-      visible,
-    );
+    const action = filesKey(key, rows, cursor, selection, visible);
     if (action === undefined) {
       return;
     }
     event.preventDefault();
     if (action.kind === 'toggle') {
-      toggle(action.folder, action.changed);
+      toggle(action.area, action.folder, action.changed);
     } else if (action.kind === 'select') {
-      select(action.file);
+      select(action.file, action.area);
     } else if (action.kind === 'cursor') {
       setMoved({ key: action.key, from: selectedKey, view });
     }
@@ -193,41 +268,46 @@ export function Files({
       </button>
     </div>
   );
-  const header = (
-    <div
-      key={changesKey}
-      className={`row group ${cursor === changesKey ? 'selected' : ''}`}
-      onClick={() => select(undefined)}
-    >
-      <span className="path">{strings.files.allChanges}</span>
-    </div>
-  );
-  const offset = hasHeader ? 1 : 0;
-  const rowOptions = {
+  const header = (side: ChangeArea | undefined) => {
+    const key = areaKey(side, changesKey);
+    return (
+      <div
+        key={key}
+        className={`row group ${cursor === key ? 'selected' : ''}`}
+        onClick={() => select(undefined, side)}
+      >
+        <span className="path">{headerTitle(side)}</span>
+      </div>
+    );
+  };
+  const rowOptions = (side: ChangeArea | undefined) => ({
+    area: side,
     showsAll: showAll,
     onToggle: (folder: string, changed: boolean) => {
-      setMoved({ key: folderRowKey(folder), from: selectedKey, view });
-      toggle(folder, changed);
+      setMoved({
+        key: areaKey(side, folderRowKey(folder)),
+        from: selectedKey,
+        view,
+      });
+      toggle(side, folder, changed);
     },
-    selected,
-    onSelect: select,
+    selected: side === selection.area ? selected : undefined,
+    onSelect: (path: string | undefined) => select(path, side),
     cursor,
-  };
+  });
   return (
     <Column title={title} index={1} start={start}>
       {skeleton && <SkeletonRows count={6} />}
       <VirtualRows
         rows={listed}
-        renderRow={(index) =>
-          index < offset
-            ? header
-            : changesTreeElement(treeRows[index - offset], rowOptions)
-        }
-        ancestorsOf={(index) =>
-          index < offset
-            ? []
-            : ancestorRows(treeRows, index - offset).map((row) => row + offset)
-        }
+        renderRow={(index) => {
+          const row = rows[index];
+          const treeRow = treeRowOf(row);
+          return treeRow
+            ? changesTreeElement(treeRow, rowOptions(row.area))
+            : header(row.area);
+        }}
+        ancestorsOf={(index) => filesAncestors(rows, index)}
         selectedKey={cursor}
         revealWith={allPaths}
         onKeyDown={onKeyDown}

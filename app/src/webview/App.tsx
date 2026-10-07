@@ -14,11 +14,13 @@ import {
   type ToHost,
   type ToWebview,
   type Bookmark,
+  type ChangeArea,
   type DiffLayout,
   type TextRequest,
   type WorktreeInfo,
 } from '../shared/protocol';
 import { CheckedOutBranch, DetachedHead } from './bubbles';
+import { areaKey } from './changesTree';
 import { checkoutCommit, checkoutOptions, checkoutRef } from './checkout';
 import {
   columnsClass,
@@ -103,9 +105,11 @@ export function App({ name, post: postToHost, listen }: Props) {
     workingTree,
     hash,
     files,
+    staged,
     filesLoading,
     patchLoading,
     path,
+    area,
     entireFile,
     patch,
     diffs,
@@ -347,12 +351,12 @@ export function App({ name, post: postToHost, listen }: Props) {
     [hash, diffs, postTab],
   );
 
-  const selectFile = (next: string | undefined) => {
+  const selectFile = (next: string | undefined, nextArea?: ChangeArea) => {
     if (!hash) {
       return;
     }
-    dispatch({ type: 'showFile', path: next });
-    postTab({ type: 'selectFile', hash, path: next });
+    dispatch({ type: 'showFile', path: next, area: nextArea });
+    postTab({ type: 'selectFile', hash, path: next, area: nextArea });
   };
 
   const commitTree = treeOf(tab);
@@ -370,8 +374,14 @@ export function App({ name, post: postToHost, listen }: Props) {
     if (!showAllFiles || path === undefined) {
       return;
     }
-    setFolders((all) => openFolders(all, folderView, foldersOf(path)));
-  }, [showAllFiles, path, folderView]);
+    setFolders((all) =>
+      openFolders(
+        all,
+        folderView,
+        foldersOf(path).map((folder) => areaKey(area, folder)),
+      ),
+    );
+  }, [showAllFiles, path, area, folderView]);
 
   const toggleFolderOf = (kind: keyof Folders) => (folder: string) =>
     setFolders((all) => toggleFolder(all, folderView, kind, folder));
@@ -638,6 +648,7 @@ export function App({ name, post: postToHost, listen }: Props) {
                     closedFolders={closedFolders}
                     onToggleClosedFolder={toggleClosedFolder}
                     files={files}
+                    staged={staged}
                     loading={filesLoading || opening}
                     tree={commitTree}
                     openedFolders={openedFolders}
@@ -646,18 +657,19 @@ export function App({ name, post: postToHost, listen }: Props) {
                       setFolders(replaceFolders(folderView, shown))
                     }
                     selected={path}
+                    area={area}
                     onSelect={selectFile}
                     view={folderView}
                   />
                   <Diff
-                    selection={diffSelection(activeTab, hash, path)}
+                    selection={diffSelection(activeTab, hash, path, area)}
                     path={path}
                     loading={patchLoading || opening}
                     largeFiles={largeFiles}
                     onLoadFile={loadFileDiff}
                     texts={texts}
                     onLoadTexts={loadTexts}
-                    files={files}
+                    files={area === 'staged' ? (staged ?? []) : files}
                     patch={patch}
                     diffs={diffs}
                     fileContent={fileContent}

@@ -546,6 +546,24 @@ suite('App', function () {
     await page.locator('.commit.selected', { hasText: 'kept aside' }).waitFor();
     await page.locator('.row.file', { hasText: 'aside.txt' }).waitFor();
   });
+
+  test('shows the staged and unstaged halves of a file apart, the staged one first', async () => {
+    const file = path.join(repository.root, 'changed.txt');
+    fs.writeFileSync(file, 'one\nstaged\nthree\n');
+    await repository.git('add', 'changed.txt');
+    fs.writeFileSync(file, 'one\nstaged\nunstaged\n');
+    await page
+      .locator('.commit.working-tree', { hasText: '1 uncommitted change' })
+      .click();
+    await page.locator('.row.group.selected', { hasText: /^Staged/ }).waitFor();
+    await page.locator('.diff-line.added', { hasText: 'staged' }).waitFor();
+    await page.locator('.row.file', { hasText: 'changed.txt' }).nth(1).click();
+    await page.locator('.diff-line.added', { hasText: 'unstaged' }).waitFor();
+    assert.deepStrictEqual(
+      await page.locator('.diff-line.added .code').allTextContents(),
+      ['unstaged'],
+    );
+  });
 });
 
 suite('App without git', function () {

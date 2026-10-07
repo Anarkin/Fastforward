@@ -19,6 +19,7 @@ import {
   pageStart,
   workingTreeHash,
   workingTreeIndex,
+  type ChangeArea,
   type CommitInfo,
   type FileChange,
   type NavigationEntry,
@@ -33,9 +34,11 @@ export interface TabState {
   hash: string | undefined;
   index: number | undefined;
   path: string | undefined;
+  area: ChangeArea | undefined;
   entireFile: boolean;
   diffStale: boolean;
   changedFiles: Map<string, FileChange>;
+  stagedFiles: Map<string, FileChange>;
   workingTree: WorkingTree | undefined;
   fullHistory: readonly HistoryEntry[];
   inHistory: Set<string>;
@@ -78,9 +81,11 @@ export function newTabState(): TabState {
     hash: undefined,
     index: undefined,
     path: undefined,
+    area: undefined,
     entireFile: false,
     diffStale: false,
     changedFiles: new Map(),
+    stagedFiles: new Map(),
     workingTree: undefined,
     fullHistory: [],
     inHistory: new Set(),
@@ -265,7 +270,12 @@ export function select(tab: TabState, hash: string | undefined): void {
   tab.hash = hash;
   tab.index = positionOf(tab, hash);
   tab.path = undefined;
+  tab.area = undefined;
   tab.entireFile = false;
+}
+
+export function changesOf(tab: TabState): Map<string, FileChange> {
+  return tab.area === 'staged' ? tab.stagedFiles : tab.changedFiles;
 }
 
 export function unselect(tab: TabState): void {

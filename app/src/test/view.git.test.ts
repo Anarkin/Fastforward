@@ -3869,6 +3869,7 @@ suite('View', function () {
               root: files.root,
               hash: workingTreeHash,
               path: 'kept.txt',
+              area: 'unstaged',
             });
             assert.strictEqual(
               view.page.last('fileContent')?.content,
@@ -5397,6 +5398,95 @@ suite('Stashes', function () {
       } finally {
         await repository.git('stash', 'store', '-q', '-m', 'kept aside', stash);
       }
+    });
+  });
+});
+
+suite('Staged and unstaged changes', function () {
+  this.timeout(30_000);
+  const { log } = recordingLog();
+  let folder: string;
+  let repository: TempRepository;
+
+  suiteSetup(async () => {
+    folder = tempFolder('staging');
+    repository = await tempRepository(path.join(folder, 'app'));
+    await repository.commit('a', { 'both.txt': 'one\n' });
+    fs.writeFileSync(path.join(repository.root, 'both.txt'), 'two\n');
+    await repository.git('add', 'both.txt');
+    fs.writeFileSync(path.join(repository.root, 'both.txt'), 'three\n');
+  });
+
+  suiteTeardown(() => removeFolder(folder));
+
+  test('shows the staged and unstaged changes apart, starting with the staged ones, each side read from where it is kept', async () => {
+    await withView(log, [repository.root], async (view) => {
+      const root = repository.root;
+      assert.strictEqual(view.page.last('workingTree')?.files, 1);
+      await view.connection.receive({
+        type: 'selectCommit',
+        root,
+        hash: workingTreeHash,
+      });
+      const files = view.page.last('files');
+      assert.deepStrictEqual(
+        [
+          files?.staged?.map((file) => file.path),
+          files?.files.map((file) => file.path),
+        ],
+        [['both.txt'], ['both.txt']],
+      );
+      const staged = view.page.last('diff');
+      assert.strictEqual(staged?.area, 'staged');
+      assert.match(staged.patch, /^\+two$/m);
+      await view.connection.receive({
+        type: 'selectFile',
+        root,
+        hash: workingTreeHash,
+        path: 'both.txt',
+        area: 'staged',
+      });
+      const blob = /^index [0-9a-f]+\.\.([0-9a-f]+)/m.exec(
+        view.page.last('diff')?.patch ?? '',
+      )?.[1];
+      assert.ok(blob);
+      await view.connection.receive({
+        type: 'loadTexts',
+        root,
+        hash: workingTreeHash,
+        diff: 0,
+        texts: [{ path: 'both.txt', side: 'new', blob }],
+      });
+      assert.strictEqual(view.page.last('texts')?.texts[0]?.text, 'two\n');
+      await view.connection.receive({
+        type: 'selectFile',
+        root,
+        hash: workingTreeHash,
+        path: 'both.txt',
+        area: 'unstaged',
+      });
+      const unstaged = view.page.last('diff');
+      assert.deepStrictEqual(
+        [unstaged?.path, unstaged?.area],
+        ['both.txt', 'unstaged'],
+      );
+      assert.match(unstaged?.patch ?? '', /^-two$/m);
+      assert.match(unstaged?.patch ?? '', /^\+three$/m);
+    });
+  });
+
+  test('starts with the unstaged changes while nothing is staged', async () => {
+    await repository.git('restore', '--staged', 'both.txt');
+    await withView(log, [repository.root], async (view) => {
+      await view.connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: workingTreeHash,
+      });
+      assert.deepStrictEqual(view.page.last('files')?.staged, []);
+      const diff = view.page.last('diff');
+      assert.strictEqual(diff?.area, 'unstaged');
+      assert.match(diff.patch, /^\+three$/m);
     });
   });
 });

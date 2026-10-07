@@ -6,7 +6,14 @@ import {
   forwardedColumn,
   shownColumns,
 } from '../webview/activeColumn';
-import { changesTree, changesTreeRows, filesKey } from '../webview/changesTree';
+import {
+  changesTree,
+  changesTreeRows,
+  filesAncestors,
+  filesKey,
+  filesRows,
+  listedFilesRows,
+} from '../webview/changesTree';
 import {
   changeScrollTop,
   changeStarts,
@@ -157,6 +164,14 @@ suite('Active column', () => {
   });
 });
 
+const at = (path: string) => ({ area: undefined, path });
+
+const tree = (paths: string[]) =>
+  changesTreeRows(
+    changesTree(paths.map((path) => fileChange(path))),
+    new Set(),
+  );
+
 suite('Files column keys', () => {
   const files = [
     fileChange('src/app/a.ts'),
@@ -164,62 +179,129 @@ suite('Files column keys', () => {
     fileChange('c.ts'),
   ];
   const rows = (closed: string[] = []) =>
-    changesTreeRows(changesTree(files), new Set(closed));
+    filesRows([
+      {
+        area: undefined,
+        header: true,
+        rows: changesTreeRows(changesTree(files), new Set(closed)),
+      },
+    ]);
+  const none = { area: undefined, path: undefined };
 
   test('moves through All Changes, the folders and the files, selecting the files it lands on', () => {
+    assert.deepStrictEqual(filesKey('down', rows(), 'changes', none, visible), {
+      kind: 'cursor',
+      key: 'folder:src',
+    });
+    assert.deepStrictEqual(filesKey('last', rows(), 'changes', none, visible), {
+      kind: 'select',
+      key: 'file:c.ts',
+      area: undefined,
+      file: 'c.ts',
+    });
     assert.deepStrictEqual(
-      filesKey('down', rows(), true, 'changes', undefined, visible),
-      { kind: 'cursor', key: 'folder:src' },
+      filesKey('first', rows(), 'file:c.ts', at('c.ts'), visible),
+      { kind: 'select', key: 'changes', area: undefined, file: undefined },
     );
-    assert.deepStrictEqual(
-      filesKey('last', rows(), true, 'changes', undefined, visible),
-      {
-        kind: 'select',
-        key: 'file:c.ts',
-        file: 'c.ts',
-      },
-    );
-    assert.deepStrictEqual(
-      filesKey('first', rows(), true, 'file:c.ts', 'c.ts', visible),
-      { kind: 'select', key: 'changes', file: undefined },
-    );
-    assert.deepStrictEqual(
-      filesKey('up', rows(), true, 'changes', undefined, visible),
-      { kind: 'stay' },
-    );
+    assert.deepStrictEqual(filesKey('up', rows(), 'changes', none, visible), {
+      kind: 'stay',
+    });
     assert.strictEqual(listMoveOf({ ...press, key: 'Enter' }), undefined);
   });
 
   test('selects the file or All Changes it lands on only when it is not selected already, so the diff is not loaded anew', () => {
     assert.deepStrictEqual(
-      filesKey('down', rows(), true, 'folder:src/app', 'src/app/a.ts', visible),
+      filesKey('down', rows(), 'folder:src/app', at('src/app/a.ts'), visible),
       { kind: 'cursor', key: 'file:src/app/a.ts' },
     );
     assert.deepStrictEqual(
-      filesKey('down', rows(), true, 'folder:src/app', 'src/b.ts', visible),
-      { kind: 'select', key: 'file:src/app/a.ts', file: 'src/app/a.ts' },
+      filesKey('down', rows(), 'folder:src/app', at('src/b.ts'), visible),
+      {
+        kind: 'select',
+        key: 'file:src/app/a.ts',
+        area: undefined,
+        file: 'src/app/a.ts',
+      },
     );
     assert.deepStrictEqual(
-      filesKey('up', rows(), true, 'folder:src', undefined, visible),
+      filesKey('up', rows(), 'folder:src', none, visible),
       { kind: 'cursor', key: 'changes' },
     );
   });
 
   test('opens or closes the folder under the cursor on Space, doing nothing else on a file', () => {
     assert.deepStrictEqual(
-      filesKey('folder', rows(['src']), true, 'folder:src', undefined, visible),
-      { kind: 'toggle', folder: 'src', changed: true },
+      filesKey('folder', rows(['src']), 'folder:src', none, visible),
+      { kind: 'toggle', area: undefined, folder: 'src', changed: true },
     );
     assert.deepStrictEqual(
-      filesKey('folder', rows(), true, 'folder:src/app', undefined, visible),
-      { kind: 'toggle', folder: 'src/app', changed: true },
+      filesKey('folder', rows(), 'folder:src/app', none, visible),
+      { kind: 'toggle', area: undefined, folder: 'src/app', changed: true },
     );
     assert.deepStrictEqual(
-      filesKey('folder', rows(), true, 'file:c.ts', 'c.ts', visible),
+      filesKey('folder', rows(), 'file:c.ts', at('c.ts'), visible),
+      { kind: 'stay' },
+    );
+  });
+
+  test('moves from the staged changes on into the unstaged ones, keying a file in both apart and its folders by their side', () => {
+    const sections = filesRows([
+      { area: 'staged', header: true, rows: tree(['a.ts']) },
+      { area: 'unstaged', header: true, rows: tree(['a.ts', 'src/b.ts']) },
+    ]);
+    const listed = listedFilesRows(sections);
+    assert.deepStrictEqual(
+      Array.from({ length: listed.count }, (_, index) => listed.keyOf(index)),
+      [
+        'staged:changes',
+        'staged:file:a.ts',
+        'unstaged:changes',
+        'unstaged:folder:src',
+        'unstaged:file:src/b.ts',
+        'unstaged:file:a.ts',
+      ],
+    );
+    assert.deepStrictEqual(
+      filesKey(
+        'down',
+        sections,
+        'staged:file:a.ts',
+        { area: 'staged', path: 'a.ts' },
+        visible,
+      ),
       {
-        kind: 'stay',
+        kind: 'select',
+        key: 'unstaged:changes',
+        area: 'unstaged',
+        file: undefined,
       },
     );
+    assert.deepStrictEqual(
+      filesKey(
+        'last',
+        sections,
+        'staged:changes',
+        { area: 'staged', path: undefined },
+        visible,
+      ),
+      {
+        kind: 'select',
+        key: 'unstaged:file:a.ts',
+        area: 'unstaged',
+        file: 'a.ts',
+      },
+    );
+    assert.deepStrictEqual(
+      filesKey(
+        'folder',
+        sections,
+        'unstaged:folder:src',
+        { area: 'staged', path: undefined },
+        visible,
+      ),
+      { kind: 'toggle', area: 'unstaged', folder: 'src', changed: true },
+    );
+    assert.deepStrictEqual(filesAncestors(sections, 4), [3]);
   });
 
   test('leaves Left and Right to moving between the columns', () => {

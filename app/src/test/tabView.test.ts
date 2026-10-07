@@ -7,7 +7,7 @@ import {
   type TabView,
 } from '../webview/tabView';
 import { comparisonOf } from '../shared/comparisons';
-import { commitPageSize } from '../shared/protocol';
+import { commitPageSize, workingTreeHash } from '../shared/protocol';
 import { commitInfo, fileChange } from './fixtures';
 
 const openTab = (view: TabView, worktree: string) =>
@@ -327,6 +327,61 @@ suite('Tab view', () => {
     });
     assert.strictEqual(after, before);
     assert.strictEqual(after.history?.at(1), undefined);
+  });
+
+  test('keeps the staged changes of the working tree apart, taking the side the app starts on, and ignores a late answer for the other side', () => {
+    let view = reduceTabView(busyTab(), {
+      type: 'showCommit',
+      hash: workingTreeHash,
+    });
+    view = reduceTabView(view, {
+      type: 'files',
+      hash: workingTreeHash,
+      files: [fileChange('a.ts')],
+      staged: [fileChange('b.ts')],
+    });
+    assert.deepStrictEqual(
+      [
+        view.files.map((file) => file.path),
+        view.staged?.map((file) => file.path),
+      ],
+      [['a.ts'], ['b.ts']],
+    );
+    view = reduceTabView(view, {
+      type: 'diff',
+      hash: workingTreeHash,
+      path: undefined,
+      area: 'staged',
+      patch: 'staged',
+    });
+    assert.deepStrictEqual([view.area, view.patch], ['staged', 'staged']);
+    const picked = reduceTabView(view, {
+      type: 'showFile',
+      path: 'a.ts',
+      area: 'unstaged',
+    });
+    assert.strictEqual(
+      reduceTabView(picked, {
+        type: 'diff',
+        hash: workingTreeHash,
+        path: 'a.ts',
+        area: 'staged',
+        patch: 'late',
+      }),
+      picked,
+    );
+    assert.strictEqual(
+      reduceTabView(picked, {
+        type: 'diff',
+        hash: workingTreeHash,
+        path: 'a.ts',
+        area: 'unstaged',
+        patch: 'a',
+      }).patch,
+      'a',
+    );
+    const other = reduceTabView(picked, { type: 'showCommit', hash: 'b' });
+    assert.deepStrictEqual([other.staged, other.area], [undefined, undefined]);
   });
 
   test('ignores late answers about the commit or file selected before', () => {

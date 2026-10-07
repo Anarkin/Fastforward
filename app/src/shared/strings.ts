@@ -181,6 +181,8 @@ export const strings = {
     collapseAll: 'Collapse All',
     expandAll: 'Expand All',
     allChanges: 'All Changes',
+    staged: 'Staged',
+    unstaged: 'Unstaged',
     statuses: {
       A: 'Added',
       M: 'Modified',

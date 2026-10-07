@@ -20,5 +20,5 @@
 ### Syntax
 
 - Use Shiki with its Oniguruma engine, the TextMate grammars and engine VS Code uses, so scope rules carry over from VS Code; semantic tokens are left out, as they need a language server
-- A side of a diff with lines hidden before a hunk is tokenized from its whole text, which the diff asks for by the blob ids `--full-index` puts in the patch, read in one `git cat-file --batch`, the uncommitted side from disk; until it comes, or when it does not match the hunks, the side is tokenized from its hunks alone
+- A side of a diff with lines hidden before a hunk is tokenized from its whole text, which the diff asks for by the blob ids `--full-index` puts in the patch, read in one `git cat-file --batch`, the working tree side from disk; until it comes, or when it does not match the hunks, the side is tokenized from its hunks alone
 - The webview is built as ES modules split into chunks, so each language's grammar loads only when a file needs it

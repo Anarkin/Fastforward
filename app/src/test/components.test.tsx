@@ -588,6 +588,52 @@ suite('Files column', () => {
     );
   });
 
+  test('shows the staged and unstaged changes of the working tree in sections, with a file in both', () => {
+    const picked: [string | undefined, string | undefined][] = [];
+    const column = renderedBy(
+      Files,
+      filesProps({
+        files: [change('a.ts')],
+        staged: [change('a.ts'), change('b.ts')],
+        area: 'unstaged',
+        onSelect: (path, area) => picked.push([path, area]),
+      }),
+    );
+    assert.ok(isValidElement<{ children: React.ReactNode[] }>(column));
+    const list = column.props.children[1];
+    assert.ok(
+      isValidElement<{
+        rows: ListedRows;
+        renderRow: (index: number) => React.ReactElement<RowProps>;
+        selectedKey: string | undefined;
+      }>(list),
+    );
+    const { rows, renderRow, selectedKey } = list.props;
+    assert.deepStrictEqual(
+      Array.from({ length: rows.count }, (_, index) => rows.keyOf(index)),
+      [
+        'staged:changes',
+        'staged:file:a.ts',
+        'staged:file:b.ts',
+        'unstaged:changes',
+        'unstaged:file:a.ts',
+      ],
+    );
+    assert.strictEqual(selectedKey, 'unstaged:changes');
+    const header = (index: number) =>
+      renderToStaticMarkup(renderRow(index))
+        .replace(/<[^>]*>/g, ' ')
+        .trim();
+    assert.strictEqual(header(0), 'Staged');
+    assert.strictEqual(header(3), 'Unstaged');
+    renderRow(0).props.onClick();
+    clickFile(renderRow(4));
+    assert.deepStrictEqual(picked, [
+      [undefined, 'staged'],
+      ['a.ts', 'unstaged'],
+    ]);
+  });
+
   test('deselects the selected file on a click, and selects another', () => {
     const picked: (string | undefined)[] = [];
     const { keys, rows, selectedKey } = changesRows(

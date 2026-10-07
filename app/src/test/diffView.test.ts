@@ -332,6 +332,10 @@ suite('Large files in a commit diff', () => {
       diffSelection('/a', 'working-tree', 'a.ts'),
     );
     assert.notStrictEqual(
+      diffSelection('/a', 'working-tree', 'a.ts', 'staged'),
+      diffSelection('/a', 'working-tree', 'a.ts', 'unstaged'),
+    );
+    assert.notStrictEqual(
       diffSelection('/a', 'working-tree', 'a.ts'),
       diffSelection('/a', 'working-tree', undefined),
     );

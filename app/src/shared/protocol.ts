@@ -133,6 +133,9 @@ export interface GraphRow {
   readonly stash?: boolean;
 }
 
+// The uncommitted changes are told apart by whether they are staged
+export type ChangeArea = 'staged' | 'unstaged';
+
 export interface FileChange {
   readonly path: string;
   readonly oldPath: string | undefined;
@@ -255,6 +258,7 @@ export type TabMessage =
       readonly type: 'selectFile';
       readonly hash: string;
       readonly path: string | undefined;
+      readonly area?: ChangeArea;
     };
 
 export type ToWebview =
@@ -332,11 +336,13 @@ export type ToWebview =
       readonly type: 'files';
       readonly hash: string;
       readonly files: readonly FileChange[];
+      readonly staged?: readonly FileChange[];
     }
   | {
       readonly type: 'diff';
       readonly hash: string;
       readonly path: string | undefined;
+      readonly area?: ChangeArea;
       readonly patch: string;
     }
   | {
@@ -363,6 +369,7 @@ export type ToWebview =
       readonly type: 'fileContent';
       readonly hash: string;
       readonly path: string;
+      readonly area?: ChangeArea;
       readonly content: string;
       readonly binary: boolean;
     }

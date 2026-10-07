@@ -1,5 +1,6 @@
 import { shownSide } from '../shared/comparisons';
 import type {
+  ChangeArea,
   FileChange,
   NavigationEntry,
   RepositoryState,
@@ -21,9 +22,11 @@ export interface TabView {
   readonly selectionKnown: boolean;
   readonly selection: number | undefined;
   readonly files: readonly FileChange[];
+  readonly staged: readonly FileChange[] | undefined;
   readonly filesLoading: boolean;
   readonly patchLoading: boolean;
   readonly path: string | undefined;
+  readonly area: ChangeArea | undefined;
   readonly entireFile: boolean;
   readonly patch: string;
   readonly diffs: number;
@@ -51,9 +54,11 @@ export const emptyTabView: TabView = {
   selectionKnown: false,
   selection: undefined,
   files: [],
+  staged: undefined,
   filesLoading: false,
   patchLoading: false,
   path: undefined,
+  area: undefined,
   entireFile: false,
   patch: '',
   diffs: 0,
@@ -78,7 +83,11 @@ export type TabAction =
       readonly hash: string | undefined;
       readonly selection?: number;
     }
-  | { readonly type: 'showFile'; readonly path: string | undefined }
+  | {
+      readonly type: 'showFile';
+      readonly path: string | undefined;
+      readonly area?: ChangeArea;
+    }
   | { readonly type: 'showEntireFile'; readonly entire: boolean }
   | { readonly type: 'requestTree'; readonly hash: string };
 
@@ -88,9 +97,11 @@ function selected(state: TabView, hash: string | undefined): TabView {
     hash,
     selectionKnown: true,
     files: [],
+    staged: undefined,
     filesLoading: hash !== undefined,
     patchLoading: hash !== undefined,
     path: undefined,
+    area: undefined,
     entireFile: false,
     patch: '',
     fileContent: undefined,
@@ -101,12 +112,19 @@ function selected(state: TabView, hash: string | undefined): TabView {
   };
 }
 
+// The app picks the side of the working tree shown first
 function isLate(
   state: TabView,
   hash: string,
   path: string | undefined,
+  area = state.area,
 ): boolean {
-  return state.selectionKnown && (hash !== state.hash || path !== state.path);
+  return (
+    state.selectionKnown &&
+    (hash !== state.hash ||
+      path !== state.path ||
+      (state.area !== undefined && area !== state.area))
+  );
 }
 
 function pickedSince(state: TabView, selection: number | undefined): boolean {
@@ -127,7 +145,11 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
       return {
         ...state,
         path: action.path,
-        entireFile: action.path === state.path && state.entireFile,
+        area: action.area,
+        entireFile:
+          action.path === state.path &&
+          action.area === state.area &&
+          state.entireFile,
         selectionKnown: true,
         patchLoading: state.hash !== undefined,
         patch: '',
@@ -191,16 +213,18 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
         ...state,
         hash: action.hash,
         files: action.files,
+        staged: action.staged,
         filesLoading: false,
       };
     case 'diff':
-      if (isLate(state, action.hash, action.path)) {
+      if (isLate(state, action.hash, action.path, action.area)) {
         return state;
       }
       return {
         ...state,
         hash: action.hash,
         path: action.path,
+        area: action.area,
         patch: action.patch,
         diffs: state.diffs + 1,
         patchLoading: false,
@@ -233,13 +257,14 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
           }
         : state;
     case 'fileContent':
-      if (isLate(state, action.hash, action.path)) {
+      if (isLate(state, action.hash, action.path, action.area)) {
         return state;
       }
       return {
         ...state,
         hash: action.hash,
         path: action.path,
+        area: action.area,
         patch: '',
         patchLoading: false,
         fileContent: action,
