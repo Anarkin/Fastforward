@@ -80,24 +80,36 @@ const ownedByAnother = {
   GIT_CONFIG_GLOBAL: '/dev/null',
 };
 
-export async function asIfOwnedByAnother(
+export function savedEnv(names: readonly string[]): () => void {
+  const saved = names.map((name) => [name, process.env[name]] as const);
+  return () => setEnv(Object.fromEntries(saved));
+}
+
+function setEnv(variables: Readonly<Record<string, string | undefined>>) {
+  for (const [name, value] of Object.entries(variables)) {
+    if (value === undefined) {
+      delete process.env[name];
+    } else {
+      process.env[name] = value;
+    }
+  }
+}
+
+export async function withEnv(
+  variables: Readonly<Record<string, string | undefined>>,
   run: () => Promise<void>,
 ): Promise<void> {
-  const saved = Object.keys(ownedByAnother).map(
-    (key) => [key, process.env[key]] as const,
-  );
-  Object.assign(process.env, ownedByAnother);
+  const restore = savedEnv(Object.keys(variables));
+  setEnv(variables);
   try {
     await run();
   } finally {
-    for (const [key, value] of saved) {
-      if (value === undefined) {
-        delete process.env[key];
-      } else {
-        process.env[key] = value;
-      }
-    }
+    restore();
   }
+}
+
+export function asIfOwnedByAnother(run: () => Promise<void>): Promise<void> {
+  return withEnv(ownedByAnother, run);
 }
 
 export function symlinkOrSkip(

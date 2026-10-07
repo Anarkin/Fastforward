@@ -4,7 +4,29 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import type { KeyPress, Modifiers } from '../shared/keymap';
 import type { CommitInfo, FileChange } from '../shared/protocol';
+
+export const noModifiers: Modifiers = {
+  ctrlKey: false,
+  metaKey: false,
+  altKey: false,
+  shiftKey: false,
+};
+
+type KeyEvent = KeyPress & { readonly target: EventTarget | null };
+
+export const keyPress = (
+  key = '',
+  extra: Partial<KeyEvent> = {},
+): KeyEvent => ({
+  key,
+  code: '',
+  ...noModifiers,
+  defaultPrevented: false,
+  target: null,
+  ...extra,
+});
 
 export const commitInfo = (
   hash: string,

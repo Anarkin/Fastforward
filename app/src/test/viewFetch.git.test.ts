@@ -4,6 +4,7 @@ import type { Connection } from '../view';
 import { waitFor } from './fixtures';
 import {
   removeFolder,
+  savedEnv,
   tempFolder,
   tempRepository,
   type TempRepository,
@@ -31,7 +32,7 @@ suite('View fetching', function () {
 
   const { log, error: logged } = recordingLog();
   failOnErrorsLogged(logged);
-  const interactive = process.env.GCM_INTERACTIVE;
+  let restoreEnv: () => void;
 
   function takeFetchFailures(reason: RegExp): void {
     takeErrorsLogged(
@@ -42,6 +43,7 @@ suite('View fetching', function () {
   }
 
   suiteSetup(async () => {
+    restoreEnv = savedEnv(['GCM_INTERACTIVE']);
     delete process.env.GCM_INTERACTIVE;
     folder = tempFolder('fetch');
     repository = await tempRepository(path.join(folder, 'local'));
@@ -59,9 +61,7 @@ suite('View fetching', function () {
   });
 
   suiteTeardown(async () => {
-    if (interactive !== undefined) {
-      process.env.GCM_INTERACTIVE = interactive;
-    }
+    restoreEnv();
     await closeViews();
     removeFolder(folder);
   });
