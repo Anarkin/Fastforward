@@ -146,6 +146,44 @@ suite('Watching a repository folder by folder, as on Linux', function () {
     assert.deepStrictEqual(errors, []);
   });
 
+  test('stays quiet for a change to an ignored file, watching recursively', async () => {
+    fs.mkdirSync(path.join(repository.root, 'build'));
+    const built = path.join(repository.root, 'build', 'out.txt');
+    const checked: string[] = [];
+    const seen: boolean[] = [];
+    const watching = await watchRepository(
+      repository.gitPath,
+      repository.root,
+      {
+        delay: 50,
+        maxDelay: 200,
+        recursive: true,
+        onChange: (gitDirChanged) => seen.push(gitDirChanged),
+        onError: (error) => errors.push(error),
+        ignored: async (repo, paths) => {
+          const found = await ignoredPaths(repository.gitPath, repo, paths);
+          checked.push(...paths);
+          return found;
+        },
+      },
+    );
+    try {
+      let lines = '';
+      await waitFor(() => {
+        lines += 'line\n';
+        fs.writeFileSync(built, lines);
+        return checked.includes(built);
+      }, 'the ignored file to be checked');
+      await new Promise((resolve) => setImmediate(resolve));
+      assert.ok(!seen.includes(false));
+      fs.writeFileSync(path.join(repository.root, 'seen.txt'), 'seen\n');
+      await waitFor(() => seen.includes(false), 'a file that is not ignored');
+      assert.deepStrictEqual(errors, []);
+    } finally {
+      watching.dispose();
+    }
+  });
+
   for (const recursive of [true, false]) {
     test(`tells when a worktree is added or switches branch, watching ${recursive ? 'recursively' : 'folder by folder'}`, async () => {
       const folder = tempFolder('listed');

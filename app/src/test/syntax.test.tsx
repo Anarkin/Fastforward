@@ -24,6 +24,13 @@ function syntaxRanges(
   return ranges;
 }
 
+async function assertNotLoaded(language: string) {
+  assert.ok(
+    !(await loadLanguages([])).getLoadedLanguages().includes(language),
+    `${language} was loaded before this test, so it cannot see it load`,
+  );
+}
+
 async function colored(
   ...args: Parameters<typeof syntaxSources>
 ): Promise<Record<string, string[]>> {
@@ -518,6 +525,7 @@ suite('Syntax', () => {
   });
 
   test('colors the texts of the languages loaded while it loads the others', async () => {
+    await assertNotLoaded('rust');
     await loadLanguages(['typescript']);
     const ranges = new Map<string, readonly SyntaxRange[]>();
     const slices: (() => void)[] = [];
@@ -543,6 +551,7 @@ suite('Syntax', () => {
   });
 
   test('colors nothing more once stopped, though slices are left and a language loads', async () => {
+    await assertNotLoaded('toml');
     await loadLanguages(['typescript']);
     const ranges = new Map<string, readonly SyntaxRange[]>();
     const slices: (() => void)[] = [];
@@ -564,6 +573,7 @@ suite('Syntax', () => {
   });
 
   test('drops the slices of a job started over once a language loads, as the new job colors every text anew', async () => {
+    await assertNotLoaded('go');
     await loadLanguages(['typescript']);
     const ranges = new Map<string, readonly SyntaxRange[]>();
     const slices: (() => void)[] = [];
@@ -626,6 +636,7 @@ suite('Syntax', () => {
   });
 
   test('colors code in a Markdown fence anew once its language loads', async () => {
+    await assertNotLoaded('python');
     const fence = {
       language: 'markdown',
       lines: ['```python', 'def f(): pass', '```'],
@@ -642,6 +653,7 @@ suite('Syntax', () => {
   });
 
   test('tokenizes a text anew from its start when a language another embeds loads while it is half done', async () => {
+    await assertNotLoaded('javascript');
     const lines = [
       '# T',
       '',

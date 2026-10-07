@@ -124,7 +124,7 @@ function viewSettings(): UserSettings {
 async function openView(
   log: Log,
   tabs: readonly string[],
-  ready = true,
+  ready: boolean | 'unwatched' = true,
   host: Host = new FakeHost(),
   timer?: Timer,
 ): Promise<OpenView> {
@@ -140,6 +140,9 @@ async function openView(
     timer,
   );
   const { page, connection } = attach(view);
+  if (ready === 'unwatched') {
+    stubMethod(view, 'watch', () => Promise.resolve());
+  }
   if (ready) {
     await connection.receive({ type: 'ready' });
   }
@@ -337,7 +340,7 @@ suite('View', function () {
         page,
         connection,
         store,
-      } = await openView(log, [repository.root]));
+      } = await openView(log, [repository.root], 'unwatched'));
     });
 
     teardown(() => connection.dispose());
@@ -495,8 +498,6 @@ suite('View', function () {
       });
       fs.writeFileSync(path.join(repository.root, 'draft.txt'), 'draft\n');
       try {
-        // The two refreshes below make one rerun while the watcher's one runs
-        await waitFor(() => calls > 0, "the watcher's refresh for the draft");
         await connection.receive({
           type: 'selectCommit',
           root: repository.root,
@@ -2010,8 +2011,11 @@ suite('View', function () {
         listed++;
         await original(...args);
       });
-      const refreshed = async () => {
+      const refreshed = async (...changes: (readonly string[])[]) => {
         page.clear();
+        for (const change of changes) {
+          await repository.git(...change);
+        }
         await connection.refresh();
         return page.last('commits');
       };
@@ -2020,23 +2024,29 @@ suite('View', function () {
         await repository.git('commit-tree', tree, '-p', fixture.a, '-m', 'side')
       ).trim();
       try {
-        await repository.git('tag', 'kept', fixture.a);
-        const tagged = await refreshed();
+        const tagged = await refreshed(['tag', 'kept', fixture.a]);
         assert.ok(
           page.last('repository')?.refs.some((ref) => ref.name === 'kept'),
         );
         assert.ok(tagged?.decorations.includes(2));
-        await repository.git('checkout', '--detach', fixture.f2);
-        assert.ok(((await refreshed())?.total ?? 0) > 3);
-        await repository.git('checkout', 'main');
-        await repository.git('tag', '-d', 'kept');
-        assert.strictEqual((await refreshed())?.total, 3);
+        assert.ok(
+          ((await refreshed(['checkout', '--detach', fixture.f2]))?.total ??
+            0) > 3,
+        );
+        assert.strictEqual(
+          (await refreshed(['checkout', 'main'], ['tag', '-d', 'kept']))?.total,
+          3,
+        );
         assert.strictEqual(listed, 0);
-        await repository.git('branch', 'side', side);
-        assert.strictEqual((await refreshed())?.total, 4);
+        assert.strictEqual(
+          (await refreshed(['branch', 'side', side]))?.total,
+          4,
+        );
         assert.strictEqual(listed, 1);
-        await repository.git('branch', '-D', 'side');
-        assert.strictEqual((await refreshed())?.total, 3);
+        assert.strictEqual(
+          (await refreshed(['branch', '-D', 'side']))?.total,
+          3,
+        );
         assert.strictEqual(listed, 2);
         await connection.receive({
           type: 'setSolo',
@@ -2044,8 +2054,11 @@ suite('View', function () {
           solo: true,
         });
         listed = 0;
-        await repository.git('update-ref', 'refs/remotes/origin/side', side);
-        assert.strictEqual((await refreshed())?.total, 3);
+        assert.strictEqual(
+          (await refreshed(['update-ref', 'refs/remotes/origin/side', side]))
+            ?.total,
+          3,
+        );
         assert.strictEqual(listed, 0);
       } finally {
         await store.update(soloKey, {});
@@ -2150,9 +2163,9 @@ suite('View', function () {
     });
 
     test('shows a detached HEAD as a bubble on its commit', async () => {
+      page.clear();
       await repository.git('checkout', '--detach', fixture.b);
       try {
-        page.clear();
         await connection.refresh();
         const info = page.last('repository');
         assert.strictEqual(info?.head, undefined);
@@ -2207,13 +2220,21 @@ suite('View', function () {
 
     test('checks out one target at a time, in the order asked for', async () => {
       const held = gate();
-      let holding = true;
-      stubMethod(fastforward, 'showHead', async (original, ...args) => {
-        if (holding) {
-          holding = false;
+      let asked = 0;
+      let started = 0;
+      const steps: string[] = [];
+      stubMethod(fastforward, 'checkout', (original, ...args) => {
+        asked++;
+        return original(...args);
+      });
+      stubMethod(fastforward, 'checkoutNow', async (original, ...args) => {
+        const checkout = ++started;
+        steps.push(`start ${checkout}`);
+        if (checkout === 1) {
           await held.opened;
         }
-        return original(...args);
+        await original(...args);
+        steps.push(`end ${checkout}`);
       });
       try {
         const first = connection.receive({
@@ -2221,22 +2242,16 @@ suite('View', function () {
           root: repository.root,
           target: { kind: 'branch', name: 'feature' },
         });
-        await waitFor(() => !holding, 'the first checkout');
+        await waitFor(() => started === 1, 'the first checkout');
         const second = connection.receive({
           type: 'checkout',
           root: repository.root,
           target: { kind: 'commit', hash: fixture.a },
         });
-        const waited = await Promise.race([
-          second.then(() => 'checked out'),
-          new Promise<string>((resolve) =>
-            setTimeout(() => resolve('waiting'), 1000),
-          ),
-        ]);
-        assert.strictEqual(waited, 'waiting');
-        assert.deepStrictEqual(await repository.resolve('HEAD'), [fixture.f2]);
+        await waitFor(() => asked === 2, 'the second checkout to be asked for');
         held.open();
         await Promise.all([first, second]);
+        assert.deepStrictEqual(steps, ['start 1', 'end 1', 'start 2', 'end 2']);
         const info = page.last('repository');
         assert.strictEqual(info?.head, undefined);
         assert.strictEqual(info?.headCommit, fixture.a);
@@ -4261,34 +4276,6 @@ suite('Fetch', function () {
     } finally {
       opened.connection.dispose();
       fs.rmSync(path.join(repository.root, 'watched.txt'), { force: true });
-    }
-  });
-
-  test('leaves ignored files changing alone', async () => {
-    page.clear();
-    fs.writeFileSync(
-      path.join(repository.root, '.git', 'info', 'exclude'),
-      'build/\n',
-    );
-    fs.mkdirSync(path.join(repository.root, 'build'));
-    await waitFor(
-      () => page.last('workingTree') !== undefined,
-      'the refresh the changed exclude file starts',
-    );
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    page.clear();
-    fs.writeFileSync(path.join(repository.root, 'build', 'out.txt'), 'built\n');
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    assert.strictEqual(page.last('workingTree'), undefined);
-    const seen = path.join(repository.root, 'seen.txt');
-    fs.writeFileSync(seen, 'seen\n');
-    try {
-      await waitFor(
-        () => page.last('workingTree')?.files === 1,
-        'a file that is not ignored to show',
-      );
-    } finally {
-      fs.rmSync(seen);
     }
   });
 

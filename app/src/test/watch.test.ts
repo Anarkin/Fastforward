@@ -356,16 +356,22 @@ suite('Watching folders one by one', () => {
     await start();
     const watcher = watchers.get(path.join(root, 'a', 'b'));
     fs.rmSync(path.join(root, 'a', 'b'), { recursive: true });
-    mkdir('a/b');
-    watchers.get(path.join(root, 'a'))?.listener('rename', 'b');
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    mkdir('a/b', 'a/sibling');
+    const parent = watchers.get(path.join(root, 'a'));
+    parent?.listener('rename', 'b');
+    parent?.listener('rename', 'sibling');
+    await waitFor(
+      () => watchers.has(path.join(root, 'a', 'sibling')),
+      'the parent to handle its renames',
+    );
+    assert.strictEqual(watchers.get(path.join(root, 'a', 'b')), watcher);
     watcher?.listener('rename', 'b');
     await waitFor(
       () => watchers.get(path.join(root, 'a', 'b')) !== watcher,
       'the folder created anew',
     );
     assert.strictEqual(watcher?.closed, true);
-    assert.deepStrictEqual(watched(), ['', 'a', 'a/b']);
+    assert.deepStrictEqual(watched(), ['', 'a', 'a/b', 'a/sibling']);
   });
 
   test('stops watching removed folders', async () => {

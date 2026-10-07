@@ -437,30 +437,28 @@ suite('App', function () {
         );
         return atTop?.querySelector('.code')?.textContent?.split(' ')[0];
       });
-    const shownTopLine = async () => {
-      await page.waitForTimeout(100);
-      await waitFor(
-        async () => /^line[1-9]\d*$/.test((await topLine()) ?? ''),
-        'a line at the top',
-      );
-      return topLine();
-    };
-    const reading = await shownTopLine();
-    for (const wrapped of [false, true]) {
-      await page.keyboard.press('w');
-      await page
-        .locator('.diff-view.wrap')
-        .waitFor({ state: wrapped ? 'attached' : 'detached' });
-      assert.strictEqual(await shownTopLine(), reading);
-    }
-    for (const change of [
-      () => page.getByRole('button', { name: 'Side by Side' }).click(),
-      () => page.keyboard.press('w'),
-      () => page.getByRole('button', { name: 'Inline' }).click(),
-      () => page.keyboard.press('w'),
-    ]) {
+    await waitFor(
+      async () => /^line[1-9]\d*$/.test((await topLine()) ?? ''),
+      'a line at the top',
+    );
+    const reading = await topLine();
+    const pressWrap = () => page.keyboard.press('w');
+    const clickView = (name: string) => () =>
+      page.getByRole('button', { name }).click();
+    for (const [change, shown, state] of [
+      [pressWrap, '.diff-view.wrap', 'detached'],
+      [pressWrap, '.diff-view.wrap', 'attached'],
+      [clickView('Side by Side'), '.diff-view.side-by-side', 'attached'],
+      [pressWrap, '.diff-view.wrap', 'detached'],
+      [clickView('Inline'), '.diff-view.side-by-side', 'detached'],
+      [pressWrap, '.diff-view.wrap', 'attached'],
+    ] as const) {
       await change();
-      assert.strictEqual(await shownTopLine(), reading);
+      await page.locator(shown).waitFor({ state });
+      await waitFor(
+        async () => (await topLine()) === reading,
+        `${reading} to stay at the top once ${shown} is ${state}`,
+      );
     }
   });
 
