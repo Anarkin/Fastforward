@@ -74,11 +74,15 @@ suite('Watching a repository', function () {
 
   test('refreshes for a file in a folder created after it started, watching folder by folder', async () => {
     await start();
-    const folder = path.join(repository.root, 'new', 'deep');
-    fs.mkdirSync(folder, { recursive: true });
-    await waitFor(() => changes.length > 0, 'the new folder');
+    let made = 0;
+    let folder = '';
+    await waitFor(() => {
+      folder = path.join(repository.root, `new-${made++}`, 'deep');
+      fs.mkdirSync(folder, { recursive: true });
+      return changes.length > 0;
+    }, 'a new folder');
     changes = [];
-    await keepWriting(path.join('new', 'deep', 'file.txt'), 'the new file');
+    await keepWriting(path.join(folder, 'file.txt'), 'the new file');
     assert.deepStrictEqual(errors, []);
   });
 
@@ -99,8 +103,11 @@ suite('Watching a repository', function () {
 
   test('refreshes for the git folder, watching folder by folder', async () => {
     await start();
-    await repository.git('commit', '--allow-empty', '-m', 'second');
-    await waitFor(() => changes.includes(true), 'the commit');
+    let commits = 0;
+    await waitFor(async () => {
+      await repository.git('commit', '--allow-empty', '-m', `${commits++}`);
+      return changes.includes(true);
+    }, 'a commit');
     assert.deepStrictEqual(errors, []);
   });
 
@@ -285,14 +292,17 @@ suite('Watching a repository', function () {
         },
       );
       try {
-        await repository.git(
-          'worktree',
-          'add',
-          '-q',
-          '--detach',
-          path.join(folder, 'linked'),
-        );
-        await waitFor(() => listed > 0, 'the worktree added');
+        let added = 0;
+        await waitFor(async () => {
+          await repository.git(
+            'worktree',
+            'add',
+            '-q',
+            '--detach',
+            path.join(folder, `linked-${added++}`),
+          );
+          return listed > 0;
+        }, 'a worktree added');
         assert.deepStrictEqual(errors, []);
       } finally {
         await listing.dispose();
