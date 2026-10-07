@@ -195,15 +195,15 @@ export async function withoutTouched(
   changes: readonly RawChange[],
   reverse = false,
 ): Promise<FileChange[]> {
-  const suspects = changes.flatMap(
-    ({ oldMode, newMode, oldId, newId, file }) =>
-      file.status === 'M' &&
+  const suspects = changes.flatMap((change) => {
+    const { oldMode, newMode, oldId, newId, file } = change;
+    return file.status === 'M' &&
       newMode === oldMode &&
       newMode.startsWith('100') &&
       isNullId(reverse ? oldId : newId)
-        ? [{ path: file.path, object: reverse ? newId : oldId }]
-        : [],
-  );
+      ? [{ change, path: file.path, object: reverse ? newId : oldId }]
+      : [];
+  });
   const hashes =
     suspects.length === 0
       ? []
@@ -216,11 +216,11 @@ export async function withoutTouched(
   const touched = new Set(
     suspects
       .filter(({ object }, index) => hashes[index] === object)
-      .map(({ path }) => path),
+      .map(({ change }) => change),
   );
   return changes
-    .map(({ file }) => file)
-    .filter((file) => !touched.has(file.path));
+    .filter((change) => !touched.has(change))
+    .map(({ file }) => file);
 }
 
 function quoted(path: string): string {

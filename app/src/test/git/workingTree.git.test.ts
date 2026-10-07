@@ -352,6 +352,24 @@ suite('A conflicted merge', function () {
     }
   });
 
+  test('lists the conflicted file once its text is back to our side, as it is still not resolved', async () => {
+    const conflict = path.join(conflicted.root, 'conflict.txt');
+    const marked = fs.readFileSync(conflict);
+    try {
+      fs.writeFileSync(conflict, 'b\n');
+      const workingTree = await workingTreeFiles(
+        conflicted.gitPath,
+        conflicted.root,
+      );
+      assert.deepStrictEqual(
+        workingTree.files.map((file) => file.path),
+        ['conflict.txt'],
+      );
+    } finally {
+      fs.writeFileSync(conflict, marked);
+    }
+  });
+
   test('lists the conflicted file once among the files of the working tree', async () => {
     assert.deepStrictEqual(
       await listTree(conflicted.gitPath, conflicted.root, undefined),
