@@ -133,9 +133,13 @@ export async function listHistory(
       '--stdin',
       '--',
     ],
-    { input: tips.map((tip) => `${tip}\n`).join('') },
+    { input: hashLines(tips) },
   );
   return withStashesOnBases(parseHistory(output), tips);
+}
+
+function hashLines(hashes: readonly string[]): string {
+  return hashes.map((hash) => `${hash}\n`).join('');
 }
 
 export function withStashesOnBases(
@@ -236,11 +240,12 @@ export class SearchMatches {
   constructor(
     private readonly query: string,
     private readonly limit = searchLimit,
+    private readonly hidden: ReadonlySet<string> = new Set(),
   ) {}
 
   add(record: string): FoundHashes | undefined {
     const commit = parseSearchedCommit(record);
-    if (!matchesCommit(commit, this.query)) {
+    if (this.hidden.has(commit.hash) || !matchesCommit(commit, this.query)) {
       return undefined;
     }
     if (this.found.length === this.limit) {
@@ -255,15 +260,21 @@ export class SearchMatches {
   }
 }
 
+interface Searched {
+  readonly solo: boolean;
+  readonly stashes: readonly string[];
+  readonly hidden: ReadonlySet<string>;
+}
+
 function streamMatches(
   gitPath: string,
   cwd: string,
   query: string,
-  solo: boolean,
+  { solo, stashes, hidden }: Searched,
   limit: number | undefined,
   signal: AbortSignal | undefined,
 ): Promise<FoundHashes> {
-  const matches = new SearchMatches(query, limit);
+  const matches = new SearchMatches(query, limit, hidden);
   return new Promise((resolve, reject) => {
     if (signal?.aborted) {
       reject(signal.reason);
@@ -285,6 +296,7 @@ function streamMatches(
         ...gitConfigArgs,
         'log',
         ...historyRefs(solo),
+        '--stdin',
         '-z',
         '--format=%H%x00%aN%x00%aE%x00%cN%x00%cE%x00%B',
         '--',
@@ -292,6 +304,8 @@ function streamMatches(
       { cwd, env: gitEnv(), windowsHide: true },
     );
     signal?.addEventListener('abort', abort, { once: true });
+    child.stdin.on('error', () => undefined);
+    child.stdin.end(hashLines(stashes));
     const onRecord = (record: string) => {
       const result = settled ? undefined : matches.add(record);
       if (result !== undefined) {
@@ -338,18 +352,44 @@ export async function searchCommits(
   cwd: string,
   query: string,
   solo: boolean,
+  stashes: readonly string[] = [],
   signal?: AbortSignal,
   limit?: number,
 ): Promise<CommitSearch> {
+  const searched = solo ? [] : stashes;
   const { found, capped } = await streamMatches(
     gitPath,
     cwd,
     query,
-    solo,
+    {
+      solo,
+      stashes: searched,
+      hidden: await stashedParents(gitPath, cwd, searched, signal),
+    },
     limit,
     signal,
   );
   return { commits: await logCommits(gitPath, cwd, found), capped };
+}
+
+async function stashedParents(
+  gitPath: string,
+  cwd: string,
+  stashes: readonly string[],
+  signal: AbortSignal | undefined,
+): Promise<ReadonlySet<string>> {
+  if (stashes.length === 0) {
+    return new Set();
+  }
+  const output = await runGit(
+    gitPath,
+    cwd,
+    ['rev-list', '--no-walk=unsorted', '--parents', '--stdin', '--'],
+    { input: hashLines(stashes), signal },
+  );
+  return new Set(
+    parseHistory(output).flatMap((entry) => entry.parents.slice(1)),
+  );
 }
 
 export function parseHistory(output: string): HistoryEntry[] {

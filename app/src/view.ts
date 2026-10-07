@@ -1379,6 +1379,7 @@ export class FastforwardView {
       context.root,
       query,
       this.storage.soloOf(context.root),
+      [...context.tab.stashes.keys()],
       signal,
     );
   }

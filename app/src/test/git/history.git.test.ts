@@ -341,6 +341,7 @@ suite('Commit search', function () {
       search.root,
       'ada',
       false,
+      [],
       undefined,
       2,
     );
@@ -370,7 +371,7 @@ suite('Commit search', function () {
     const before = new AbortController();
     before.abort();
     await assert.rejects(
-      searchCommits(gitPath, search.root, 'ada', false, before.signal),
+      searchCommits(gitPath, search.root, 'ada', false, [], before.signal),
       (error) => error === before.signal.reason,
     );
     const during = new AbortController();
@@ -379,10 +380,43 @@ suite('Commit search', function () {
       search.root,
       'ada',
       false,
+      [],
       during.signal,
     );
     during.abort();
     await assert.rejects(searching, (error) => error === during.signal.reason);
+  });
+
+  test('searches the stashes and the commits only they keep, without their index and untracked files, unless solo', async () => {
+    const stashed = await tempRepository(tempFolder('stashed'));
+    try {
+      await stashed.commit('base', { 'a.txt': 'one\n' });
+      await stashed.git('switch', '-q', '-c', 'feature');
+      await stashed.commit('only on feature', { 'a.txt': 'two\n' });
+      fs.writeFileSync(path.join(stashed.root, 'a.txt'), 'three\n');
+      fs.writeFileSync(path.join(stashed.root, 'new.txt'), 'new\n');
+      await stashed.git('stash', 'push', '-q', '-u', '-m', 'kept aside');
+      await stashed.git('switch', '-q', 'main');
+      await stashed.git('branch', '-q', '-D', 'feature');
+      const stashes = await stashed.resolve('stash@{0}');
+      const found = async (solo: boolean) =>
+        (
+          await searchCommits(
+            gitPath,
+            stashed.root,
+            'on feature',
+            solo,
+            stashes,
+          )
+        ).commits.map((commit) => commit.subject);
+      assert.deepStrictEqual(await found(false), [
+        'On feature: kept aside',
+        'only on feature',
+      ]);
+      assert.deepStrictEqual(await found(true), []);
+    } finally {
+      removeFolder(stashed.root);
+    }
   });
 
   test('says only what git said when it fails', async () => {
