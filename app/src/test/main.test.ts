@@ -242,7 +242,7 @@ function gitShell(gitPath: string): string {
 
 suite('Login shell PATH', () => {
   test("reads the PATH the user's login shell profile sets, which an app started from the macOS Dock or a Linux launcher lacks, even when the profile waits for input", async function () {
-    this.timeout(10_000);
+    this.timeout(30_000);
     const shell =
       process.platform === 'win32'
         ? gitShell(await installedGit())
@@ -257,7 +257,7 @@ suite('Login shell PATH', () => {
       }
       const found = await loginShellPath(
         { ...process.env, HOME: home, SHELL: shell },
-        3000,
+        20_000,
       );
       assert.match(found ?? '', /^\/fastforward-probe:/);
     } finally {

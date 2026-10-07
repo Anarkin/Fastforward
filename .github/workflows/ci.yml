@@ -9,7 +9,33 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: 1
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run knip
+      - run: npm run check-types
   build:
     strategy:
       fail-fast: false
@@ -30,12 +56,8 @@ jobs:
           cache: npm
           cache-dependency-path: app/package-lock.json
       - run: npm ci
-      - run: npm run format:check
-      - run: npm run lint
-      - run: npm run knip
-      - run: npm run check-types
       - run: npm test
         if: runner.os != 'Linux'
       - run: xvfb-run -a npm test
         if: runner.os == 'Linux'
-      - run: npm run package
+      - run: node esbuild.mjs --production

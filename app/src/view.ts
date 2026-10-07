@@ -101,8 +101,7 @@ import {
   type TabState,
 } from './tabState';
 
-const refreshDelay = 300;
-const refreshMaxDelay = 1500;
+const refreshDelays = { delay: 300, maxDelay: 1500 };
 
 interface Tab extends TabState {
   preloading: Promise<void> | undefined;
@@ -196,6 +195,10 @@ export class FastforwardView {
     private readonly storage: Storage,
     private readonly host: Host,
     timer?: Timer,
+    private readonly delays: {
+      delay: number;
+      maxDelay: number;
+    } = refreshDelays,
   ) {
     this.collapseMerges = storage.collapseMerges;
     this.autoFetch = new AutoFetch(
@@ -1138,8 +1141,7 @@ export class FastforwardView {
 
   private startWatching(context: Context, session: Session): Promise<Watcher> {
     return watchRepository(context.gitPath, context.root, {
-      delay: refreshDelay,
-      maxDelay: refreshMaxDelay,
+      ...this.delays,
       onChange: (gitDirChanged) =>
         void this.run(
           'refresh',

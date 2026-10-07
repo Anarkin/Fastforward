@@ -13,3 +13,5 @@
 - `npm run verify:fast` leaves out the tests that need git repositories, which are named `*.git.test.ts`, and the ones that start the app, which are named `*.electron.test.ts`
 
 - `npm run verify` runs the full test suite
+
+- `npm run coverage` runs the full test suite and writes a coverage report to `app/coverage/`

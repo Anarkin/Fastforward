@@ -24,12 +24,9 @@ export function tempFolder(name: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), `fastforward-${name}-`));
 }
 
-const unremoved: string[] = [];
+const unremoved = new Set<string>();
 
-// On Windows a folder can't be removed while a process a test started still
-// runs in it; that fails the run once all tests are done, as failing the
-// teardown would skip the rest of its suite
-export function removeFolder(folder: string): void {
+function tryRemoving(folder: string): unknown {
   try {
     fs.rmSync(folder, {
       recursive: true,
@@ -37,14 +34,43 @@ export function removeFolder(folder: string): void {
       maxRetries: 5,
       retryDelay: 100,
     });
+    return undefined;
   } catch (error) {
-    unremoved.push(error instanceof Error ? error.message : folder);
+    return error;
   }
 }
 
-suiteTeardown(() => {
-  assert.deepStrictEqual(unremoved.splice(0), [], 'folders left behind');
-});
+// On Windows a folder can't be removed while a process a test started still
+// runs in it, such as a git a cancelled command stops on its own time; that
+// is tried again once the file's tests are done, and fails the run then, as
+// failing the teardown would skip the rest of its suite
+export function removeFolder(folder: string): void {
+  if (tryRemoving(folder) !== undefined) {
+    unremoved.add(folder);
+  }
+}
+
+export async function assertNoFoldersLeft(): Promise<void> {
+  if (templateFolder !== undefined) {
+    removeFolder(templateFolder);
+    templateFolder = undefined;
+    templates.clear();
+  }
+  const left = [...unremoved];
+  unremoved.clear();
+  const failures: string[] = [];
+  for (const folder of left) {
+    let error = tryRemoving(folder);
+    for (let tries = 0; error !== undefined && tries < 20; tries++) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      error = tryRemoving(folder);
+    }
+    if (error !== undefined) {
+      failures.push(error instanceof Error ? error.message : folder);
+    }
+  }
+  assert.deepStrictEqual(failures, [], 'folders left behind');
+}
 
 // The system or global config can turn the ownership check off with
 // safe.directory, as CI runners do for every folder
@@ -93,41 +119,76 @@ export function symlinkOrSkip(
   }
 }
 
+function runGit(cwd: string, date: Date, args: string[]): Promise<string> {
+  const iso = date.toISOString();
+  const env = {
+    ...process.env,
+    // Leaves out the user's config, which may sign commits or run hooks, but
+    // not the system's, whose defaults the app reads too
+    GIT_CONFIG_GLOBAL: '/dev/null',
+    GIT_AUTHOR_DATE: iso,
+    GIT_COMMITTER_DATE: iso,
+  };
+  return fixtureGit().then(
+    (binary) =>
+      new Promise((resolve, reject) => {
+        execFile(
+          binary,
+          [
+            '-c',
+            'user.name=Test',
+            '-c',
+            'user.email=test@example.com',
+            '-c',
+            'maintenance.auto=false',
+            ...args,
+          ],
+          { cwd, env },
+          (error, stdout, stderr) => {
+            if (error) {
+              reject(new Error(`git ${args.join(' ')} failed: ${stderr}`));
+            } else {
+              resolve(stdout);
+            }
+          },
+        );
+      }),
+  );
+}
+
+let templateFolder: string | undefined;
+const templates = new Map<string, Promise<string>>();
+
+// Copying a repository git initialized once is faster than running git init
+// for each one
+function template(branch: string, bare: boolean): Promise<string> {
+  const key = JSON.stringify([branch, bare]);
+  let made = templates.get(key);
+  if (made === undefined) {
+    templateFolder ??= tempFolder('templates');
+    const folder = path.join(templateFolder, String(templates.size));
+    fs.mkdirSync(folder);
+    made = runGit(folder, new Date(0), [
+      'init',
+      '-b',
+      branch,
+      ...(bare ? ['--bare'] : []),
+    ]).then(() => folder);
+    templates.set(key, made);
+  }
+  return made;
+}
+
 export async function tempRepository(
   root: string,
   { branch = 'main', bare = false } = {},
 ): Promise<TempRepository> {
   const gitPath = await installedGit();
   fs.mkdirSync(root, { recursive: true });
-  let minute = 0;
-  const git = (...args: string[]): Promise<string> => {
-    const date = new Date(Date.UTC(2026, 0, 1, 0, minute++)).toISOString();
-    return new Promise((resolve, reject) => {
-      execFile(
-        gitPath,
-        ['-c', 'user.name=Test', '-c', 'user.email=test@example.com', ...args],
-        {
-          cwd: root,
-          env: {
-            ...process.env,
-            // Leaves out the user's config, which may sign commits or run
-            // hooks, but not the system's, whose defaults the app reads too
-            GIT_CONFIG_GLOBAL: '/dev/null',
-            GIT_AUTHOR_DATE: date,
-            GIT_COMMITTER_DATE: date,
-          },
-        },
-        (error, stdout, stderr) => {
-          if (error) {
-            reject(new Error(`git ${args.join(' ')} failed: ${stderr}`));
-          } else {
-            resolve(stdout);
-          }
-        },
-      );
-    });
-  };
-  await git('init', '-b', branch, ...(bare ? ['--bare'] : []));
+  fs.cpSync(await template(branch, bare), root, { recursive: true });
+  let minute = 1;
+  const git = (...args: string[]): Promise<string> =>
+    runGit(root, new Date(Date.UTC(2026, 0, 1, 0, minute++)), args);
   return {
     root,
     gitPath,
@@ -168,4 +229,23 @@ export function installedGit(): Promise<string> {
     return git.path;
   });
   return gitPath;
+}
+
+let realGit: Promise<string> | undefined;
+
+// Git for Windows' launcher on the PATH, which the code under test runs, takes
+// longer to start than the git it starts
+function fixtureGit(): Promise<string> {
+  realGit ??= installedGit().then((launcher) => {
+    const real = path.join(
+      path.dirname(path.dirname(launcher)),
+      'mingw64',
+      'bin',
+      'git.exe',
+    );
+    return process.platform === 'win32' && fs.existsSync(real)
+      ? real
+      : launcher;
+  });
+  return realGit;
 }
