@@ -41,7 +41,7 @@ This file only observes and documents the codebase mainly for human readers; the
 - The login shell's PATH, read on macOS and Linux, is waited for at most 5 seconds, then the app starts with the PATH it was given, so a profile waiting for input does not keep the window from opening
 - `git --version` is waited for at most 10 seconds when the app looks for git, past which git counts as missing
 - Updates are checked for when the app starts and 4 hours after each check ends
-- On Windows, only an app set up by the installer updates itself, not one from the zip, the portable exe or `win-unpacked`
+- On Windows, only an app set up by the installer updates itself, not one run from `win-unpacked`
 - On macOS, an update is only announced, with a link to its release, as Squirrel.Mac installs only updates signed with a Developer ID, and the app is only ad-hoc signed
 - At most 4 notices are shown, dropping the oldest
 - At most 20 recent repositories are kept, dropping the oldest

@@ -98,8 +98,7 @@
     "win": {
       "artifactName": "fastforward-${version}-windows-x64.${ext}",
       "target": [
-        "nsis",
-        "zip"
+        "nsis"
       ],
       "icon": "build/icon.ico"
     },
@@ -107,9 +106,6 @@
       "artifactName": "fastforward-${version}-windows-x64-setup.${ext}",
       "oneClick": true,
       "perMachine": false
-    },
-    "portable": {
-      "artifactName": "fastforward-${version}-windows-x64-portable.${ext}"
     },
     "linux": {
       "artifactName": "fastforward-${version}-linux-x64.${ext}",
