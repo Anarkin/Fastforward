@@ -307,10 +307,23 @@ export class FastforwardView {
       const text = gitErrorText(error);
       this.log.error(strings.log.failed(name));
       this.log.error(error instanceof Error ? error : text);
+      const gone = root !== undefined && (await this.folderGone(root));
       if (root === undefined || this.isActive(root)) {
-        session.post({ type: 'error', message: text });
+        session.post({
+          type: 'error',
+          message: gone ? strings.messages.notRepository(root) : text,
+        });
       }
     }
+  }
+
+  private async folderGone(root: string): Promise<boolean> {
+    const tab = this.tabStates.get(root);
+    if (!tab?.isRepository || (await isFolder(root))) {
+      return false;
+    }
+    tab.isRepository = false;
+    return true;
   }
 
   private async handle(message: ToHost, session: Session): Promise<void> {

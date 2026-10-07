@@ -273,6 +273,38 @@ suite('View of other repositories', function () {
     });
   });
 
+  test('says a repository whose folder is removed while open is not a repository', async () => {
+    const removed = await tempRepository(path.join(folder, 'removed'));
+    await removed.commit('first');
+    await withView(
+      log,
+      [removed.root, repository.root],
+      async (view) => {
+        assert.strictEqual(view.page.last('error'), undefined);
+        await view.connection.receive({
+          type: 'selectTab',
+          root: repository.root,
+        });
+        removeFolder(removed.root);
+        await view.connection.receive({
+          type: 'selectTab',
+          root: removed.root,
+        });
+        assert.match(
+          view.page.last('error')?.message ?? '',
+          /is not a git repository/,
+        );
+      },
+      'unwatched',
+    );
+    takeErrorsLogged(
+      logged,
+      /^Listing the worktrees of .*removed failed$/,
+      /^selectTab failed$/,
+      /^git .* failed: spawn .* ENOENT$/,
+    );
+  });
+
   test('says nothing of a tab that fails to preload until it is opened', async () => {
     const plain = path.join(folder, 'plain');
     fs.mkdirSync(plain);
