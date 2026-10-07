@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import type { SpawnOptions } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { listTree, maxFileSize } from '../../git/files';
@@ -12,6 +13,7 @@ import {
 } from '../../git/workingTree';
 import { isLargeChange } from '../../shared/protocol';
 import { parsePatch } from '../../webview/diff';
+import { waitFor } from '../fixtures';
 import {
   removeFolder,
   symlinkOrSkip,
@@ -19,6 +21,43 @@ import {
   tempRepository,
   type TempRepository,
 } from '../repositories';
+
+function holdingGit(held: (args: readonly string[]) => boolean): {
+  started: (command: string) => boolean;
+  release: () => void;
+} {
+  const childProcess = process.getBuiltinModule('node:child_process');
+  const { spawn } = childProcess;
+  const spawned: (readonly string[])[] = [];
+  const { promise: released, resolve } = Promise.withResolvers<void>();
+  const holding = (
+    command: string,
+    args: readonly string[],
+    options: SpawnOptions,
+  ) => {
+    const child = spawn(command, args, options);
+    spawned.push(args);
+    if (held(args)) {
+      const emit = child.emit.bind(child);
+      child.emit = (event: string | symbol, ...rest: unknown[]) => {
+        if (event !== 'close') {
+          return emit(event, ...rest);
+        }
+        void released.then(() => emit(event, ...rest));
+        return true;
+      };
+    }
+    return child;
+  };
+  Reflect.set(childProcess, 'spawn', holding);
+  return {
+    started: (command) => spawned.some((args) => args.includes(command)),
+    release: () => {
+      Reflect.set(childProcess, 'spawn', spawn);
+      resolve();
+    },
+  };
+}
 
 suite('A repository without commits', function () {
   this.timeout(20_000);
@@ -271,6 +310,31 @@ suite('Staged and unstaged changes', function () {
       ],
     );
     assert.strictEqual(uncommittedCount(workingTree), 5);
+  });
+
+  test('reads the sizes of the unstaged files without waiting for the staged list', async () => {
+    const git = holdingGit((args) => args.includes('--cached'));
+    const listed = workingTreeFiles(repository.gitPath, repository.root);
+    try {
+      await waitFor(() => git.started('cat-file'), 'the sizes to be read');
+    } finally {
+      git.release();
+    }
+    assert.strictEqual((await listed).files.length, 4);
+  });
+
+  test('tells which unstaged files were only touched while reading their sizes', async () => {
+    const git = holdingGit((args) => args.includes('cat-file'));
+    const listed = workingTreeFiles(repository.gitPath, repository.root);
+    try {
+      await waitFor(
+        () => git.started('hash-object'),
+        'the touched files to be told',
+      );
+    } finally {
+      git.release();
+    }
+    assert.strictEqual((await listed).files.length, 4);
   });
 
   test('diffs the staged half of a file against HEAD and its unstaged half against the index', async () => {

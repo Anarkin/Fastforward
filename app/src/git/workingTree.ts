@@ -81,26 +81,17 @@ export async function workingTreeFiles(
   signal?: AbortSignal,
 ): Promise<WorkingTree> {
   const { base, reverse } = diff;
-  const [changes, listed, staged] = await Promise.all([
+  const [trackedChanges, listed, staged] = await Promise.all([
     runGit(gitPath, cwd, [...workingTreeDiff(diff), ...changesArgs], {
       signal,
-    }),
+    }).then((changes) =>
+      trackedFiles(gitPath, cwd, parseRawChanges(changes), reverse),
+    ),
     runGit(gitPath, cwd, ['ls-files', '--others', '--exclude-standard', '-z'], {
       signal,
     }),
     base === undefined ? stagedFiles(gitPath, cwd, signal) : undefined,
   ]);
-  const trackedChanges = onePerPath(
-    await withoutTouched(
-      gitPath,
-      cwd,
-      await withBytes(gitPath, cwd, parseRawChanges(changes), {
-        fromDisk: true,
-        reverse,
-      }),
-      reverse,
-    ),
-  );
   const tracked = new Set(trackedChanges.map((file) => file.path));
   const untracked = splitNul(listed).filter(
     (path) => path && !tracked.has(path),
@@ -150,6 +141,23 @@ async function stagedFiles(
     .filter((file) => file.status !== '?');
 }
 
+async function trackedFiles(
+  gitPath: string,
+  cwd: string,
+  changes: readonly RawChange[],
+  reverse: boolean,
+): Promise<FileChange[]> {
+  const [sized, touched] = await Promise.all([
+    withBytes(gitPath, cwd, changes, { fromDisk: true, reverse }),
+    touchedChanges(gitPath, cwd, changes, reverse),
+  ]);
+  return onePerPath(
+    sized
+      .filter((_, index) => !touched.has(changes[index]))
+      .map(({ file }) => file),
+  );
+}
+
 function onePerPath(files: readonly FileChange[]): FileChange[] {
   const byPath = new Map<string, FileChange>();
   for (const file of files) {
@@ -195,6 +203,18 @@ export async function withoutTouched(
   changes: readonly RawChange[],
   reverse = false,
 ): Promise<FileChange[]> {
+  const touched = await touchedChanges(gitPath, cwd, changes, reverse);
+  return changes
+    .filter((change) => !touched.has(change))
+    .map(({ file }) => file);
+}
+
+async function touchedChanges(
+  gitPath: string,
+  cwd: string,
+  changes: readonly RawChange[],
+  reverse: boolean,
+): Promise<ReadonlySet<RawChange>> {
   const unread = changes.filter(
     ({ oldMode, newMode, oldId, newId, file }) =>
       file.status === 'M' &&
@@ -222,15 +242,12 @@ export async function withoutTouched(
           (output) => output.split('\n'),
           () => [],
         );
-  const touched = new Set([
+  return new Set([
     ...unread.filter(({ linesCounted }) => !linesCounted),
     ...suspects
       .filter(({ object }, index) => hashes[index] === object)
       .map(({ change }) => change),
   ]);
-  return changes
-    .filter((change) => !touched.has(change))
-    .map(({ file }) => file);
 }
 
 function quoted(path: string): string {
