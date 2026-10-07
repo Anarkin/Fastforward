@@ -130,6 +130,24 @@ suite('Watching the git folder', () => {
     }
   });
 
+  test('leaves alone the files of the fsmonitor daemon, which makes and removes a cookie on every git command a refresh runs', () => {
+    for (const file of [
+      'fsmonitor--daemon',
+      'fsmonitor--daemon/cookies',
+      'fsmonitor--daemon\\cookies\\11208-0',
+      'fsmonitor--daemon.ipc',
+      'modules/sub/fsmonitor--daemon',
+      'modules/sub/fsmonitor--daemon/cookies',
+      'modules/sub/fsmonitor--daemon/cookies/11208-0',
+    ]) {
+      assert.strictEqual(affectsWorktree(file, false, isModule), false, file);
+    }
+    assert.strictEqual(
+      watchedFolder('fsmonitor--daemon', false, isModule),
+      false,
+    );
+  });
+
   test('leaves the files of other worktrees alone', () => {
     for (const file of [
       'worktrees/feature/index',

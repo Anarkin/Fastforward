@@ -218,6 +218,33 @@ suite('Watching a repository', function () {
   });
 
   for (const recursive of [true, false]) {
+    test(`stays quiet for the cookies of the fsmonitor daemon, which every refresh would make again, watching ${recursive ? 'recursively' : 'folder by folder'}`, async () => {
+      const cookies = path.join(
+        repository.root,
+        '.git',
+        'fsmonitor--daemon',
+        'cookies',
+      );
+      fs.mkdirSync(cookies, { recursive: true });
+      watcher = await watchRepository(repository.gitPath, repository.root, {
+        delay: 50,
+        maxDelay: 200,
+        recursive,
+        onChange: (gitDirChanged) => changes.push(gitDirChanged),
+        onError: (error) => errors.push(error),
+      });
+      await settled();
+      fs.writeFileSync(path.join(cookies, '1234-0'), '');
+      fs.rmSync(path.join(cookies, '1234-0'));
+      await keepWriting(
+        'file.txt',
+        'the changed file',
+        () => changes.length > 0,
+      );
+      assert.strictEqual(changes.includes(true), false);
+      assert.deepStrictEqual(errors, []);
+    });
+
     test(`refreshes for a commit in a submodule with a folder named like logs in its path, watching ${recursive ? 'recursively' : 'folder by folder'}`, async () => {
       const sub = await tempRepository(
         path.join(repository.root, 'deps', 'logs', 'parser'),

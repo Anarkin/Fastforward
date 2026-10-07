@@ -454,7 +454,13 @@ function isInside(folder: string, file: string): boolean {
   );
 }
 
-const internalEntries = new Set(['objects', 'logs', 'lfs']);
+const internalEntries = new Set([
+  'objects',
+  'logs',
+  'lfs',
+  'fsmonitor--daemon',
+  'fsmonitor--daemon.ipc',
+]);
 
 const stashLog = /^logs[\\/]refs[\\/]stash$/;
 
