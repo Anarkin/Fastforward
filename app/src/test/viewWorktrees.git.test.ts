@@ -4,6 +4,7 @@ import { createServer } from 'node:http';
 import * as path from 'node:path';
 import type { ToWebviewOf } from '../shared/protocol';
 import { shortHash } from '../shared/hashes';
+import { strings } from '../shared/strings';
 import { activeTabKey, bookmarksKey, worktreesKey } from '../storage';
 import { waitFor } from './fixtures';
 import {
@@ -457,7 +458,16 @@ suite('View of worktrees', function () {
         }
         await Promise.all([first, second]);
         assert.strictEqual(requests, 1);
+        assert.strictEqual(
+          view.page.messages.filter((message) => message.type === 'notice')
+            .length,
+          1,
+        );
       });
+      assert.strictEqual(
+        logged.filter((entry) => entry === strings.log.fetchFailed).length,
+        1,
+      );
       takeErrorsLogged(
         logged,
         /^fetch failed$/,

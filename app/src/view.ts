@@ -1192,28 +1192,16 @@ export class FastforwardView {
   ): Promise<boolean> {
     const { repository } = context;
     const { fetches } = this;
-    let fetching = fetches.get(repository);
-    if (!fetching || (interactive && !fetching.interactive)) {
-      const running = fetching?.fetched;
-      const started: Fetching = {
-        fetched: (running
-          ? running.then(() => fetchAll(context, interactive))
-          : fetchAll(context, interactive)
-        ).finally(() => {
-          if (fetches.get(repository) === started) {
-            fetches.delete(repository);
-          }
-        }),
-        interactive,
-      };
-      fetches.set(repository, (fetching = started));
-    }
+    const running = fetches.get(repository);
+    const joined =
+      running !== undefined && (!interactive || running.interactive);
+    const fetching = joined ? running : this.startFetch(context, interactive);
     const result = await fetching.fetched;
     const latest = fetches.get(repository);
     if (!interactive && latest?.interactive) {
       return !(await latest.fetched).failed;
     }
-    if (!interactive && fetching.interactive) {
+    if (joined) {
       return !result.failed;
     }
     const fetched = reportFetched(log, notify, result);
@@ -1223,6 +1211,25 @@ export class FastforwardView {
       this.fetchFailures.add(repository);
     }
     return fetched;
+  }
+
+  private startFetch(context: Context, interactive: boolean): Fetching {
+    const { repository } = context;
+    const { fetches } = this;
+    const running = fetches.get(repository)?.fetched;
+    const started: Fetching = {
+      fetched: (running
+        ? running.then(() => fetchAll(context, interactive))
+        : fetchAll(context, interactive)
+      ).finally(() => {
+        if (fetches.get(repository) === started) {
+          fetches.delete(repository);
+        }
+      }),
+      interactive,
+    };
+    fetches.set(repository, started);
+    return started;
   }
 
   private async fetchInBackground(repository: string): Promise<void> {
