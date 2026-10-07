@@ -1,5 +1,6 @@
-import { type ChildProcess, execFile } from 'node:child_process';
+import { type ChildProcess, execFile, spawn } from 'node:child_process';
 import { join } from 'node:path';
+import type { Readable } from 'node:stream';
 import { strings } from '../shared/strings';
 
 export const gitConfigArgs = [
@@ -96,44 +97,79 @@ export async function runGitBytes(
       reject(signal.reason);
       return;
     }
-    const stop = () => void stopGit(child);
     const child = keptRunning(
-      execFile(
+      spawn(
         gitPath,
         [...(runsHooks ? [] : gitConfigArgs), ...monitor, ...args],
         {
           cwd,
           env: { ...(runsHooks ? hooksEnv() : gitEnv(pathspecMagic)), ...env },
-          maxBuffer: maxOutput,
           ...gitProcessOptions(),
-          encoding: 'buffer',
-        },
-        (error, stdout, stderr) => {
-          signal?.removeEventListener('abort', stop);
-          if (signal?.aborted) {
-            reject(signal.reason);
-          } else if (error && !exitedWith(error, okExitCodes)) {
-            const said = stderr.toString('utf8');
-            reject(
-              Object.assign(
-                new Error(
-                  strings.errors.gitFailed(
-                    args.join(' '),
-                    said || error.message,
-                  ),
-                ),
-                { stderr: said.trim() },
-              ),
-            );
-          } else {
-            resolve(stdout);
-          }
         },
       ),
     );
+    const stop = () => void stopGit(child);
+    let tooLarge = false;
+    const collect = (stream: Readable) => {
+      const chunks: Buffer[] = [];
+      let size = 0;
+      stream.on('data', (chunk: Buffer) => {
+        size += chunk.length;
+        if (size > maxOutput) {
+          tooLarge = true;
+          stop();
+        } else {
+          chunks.push(chunk);
+        }
+      });
+      return chunks;
+    };
+    const stdout = collect(child.stdout);
+    const stderr = collect(child.stderr);
+    let settled = false;
+    const settle = (
+      code: number | null,
+      stoppedBy: NodeJS.Signals | null,
+      error?: Error,
+    ) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      signal?.removeEventListener('abort', stop);
+      if (signal?.aborted) {
+        reject(signal.reason);
+        return;
+      }
+      if (
+        !error &&
+        !tooLarge &&
+        code !== null &&
+        (code === 0 || exitedWith({ code }, okExitCodes))
+      ) {
+        resolve(Buffer.concat(stdout));
+        return;
+      }
+      const said = Buffer.concat(stderr).toString('utf8');
+      const reason =
+        error?.message ??
+        (tooLarge
+          ? strings.errors.gitOutputTooLarge(maxOutput / 1024 / 1024)
+          : stoppedBy !== null
+            ? strings.errors.gitStoppedBy(stoppedBy)
+            : strings.errors.gitExited(code));
+      reject(
+        Object.assign(
+          new Error(strings.errors.gitFailed(args.join(' '), said || reason)),
+          { stderr: said.trim() },
+        ),
+      );
+    };
+    child.on('error', (error) => settle(null, null, error));
+    child.on('close', (code, stoppedBy) => settle(code, stoppedBy));
     signal?.addEventListener('abort', stop, { once: true });
-    child.stdin?.on('error', () => undefined);
-    child.stdin?.end(input);
+    child.stdin.on('error', () => undefined);
+    child.stdin.end(input);
   });
 }
 

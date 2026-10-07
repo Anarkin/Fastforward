@@ -1,5 +1,23 @@
 export const brand = 'Fastforward';
 
+function counted(count: number, unit: string): string {
+  return `${count} ${unit}${count === 1 ? '' : 's'} ago`;
+}
+
+function ago(elapsed: number): string {
+  const minutes = Math.floor(elapsed / 60_000);
+  if (minutes < 1) {
+    return 'just now';
+  }
+  if (minutes < 60) {
+    return counted(minutes, 'minute');
+  }
+  const hours = Math.floor(minutes / 60);
+  return hours < 24
+    ? counted(hours, 'hour')
+    : counted(Math.floor(hours / 24), 'day');
+}
+
 export const strings = {
   app: {
     name: (version: string, development: boolean) =>
@@ -116,6 +134,11 @@ export const strings = {
       forward: 'Forward; hold or right-click for the history',
     },
     fetch: 'Fetch every remote, dropping branches deleted there',
+    fetched: (elapsed: number) => `Fetched ${ago(elapsed)}`,
+    couldNotFetch: (elapsed: number, sinceFetched: number | undefined) =>
+      sinceFetched === undefined
+        ? `Couldn't fetch ${ago(elapsed)}`
+        : `Couldn't fetch ${ago(elapsed)}; last fetched ${ago(sinceFetched)}`,
     fetchEvery: (minutes: number) =>
       minutes === 1 ? 'Fetch Every Minute' : `Fetch Every ${minutes} Minutes`,
     stopFetchingEvery: (minutes: number) =>
@@ -282,6 +305,9 @@ export const strings = {
   errors: {
     gitFailed: (command: string, reason: string) =>
       `git ${command} failed: ${reason}`,
+    gitExited: (code: number | null) => `it exited with code ${code}`,
+    gitStoppedBy: (signal: string) => `it was stopped by ${signal}`,
+    gitOutputTooLarge: (megabytes: number) => `it printed over ${megabytes} MB`,
     fetchTimedOut: (seconds: number) =>
       `git fetch timed out after ${seconds} seconds`,
     outsideRepository: (path: string) => `${path} is outside the repository`,
