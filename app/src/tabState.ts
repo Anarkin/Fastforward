@@ -346,6 +346,9 @@ export function keep(shown: Shown, message: ToWebview): void {
 
 export function replayOf(tab: TabState): ToWebview[] {
   const { shown } = tab;
+  const selected = [shown.files, shown.diff, shown.tree].filter(
+    (message) => message?.hash === tab.hash,
+  );
   return [
     shown.repository,
     shown.fetching,
@@ -358,9 +361,7 @@ export function replayOf(tab: TabState): ToWebview[] {
       scrollTarget: anchorOf(tab) ?? indexTarget(tab.index),
     },
     shown.workingTree,
-    shown.files,
-    shown.diff,
-    shown.tree,
+    ...selected,
   ].filter((message) => message !== undefined);
 }
 

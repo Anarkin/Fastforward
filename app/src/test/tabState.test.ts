@@ -398,6 +398,7 @@ suite('Tab state', () => {
 
   test('replays the files before the diff or whole file that came last', () => {
     const tab = newTabState();
+    select(tab, 'a');
     keep(tab.shown, { type: 'diff', hash: 'a', path: 'x', patch: '' });
     keep(tab.shown, { type: 'files', hash: 'a', files: [] });
     keep(tab.shown, {
@@ -411,6 +412,20 @@ suite('Tab state', () => {
     assert.deepStrictEqual(
       replayOf(tab).map((message) => message.type),
       ['files', 'fileContent'],
+    );
+  });
+
+  test('replays no files, diff or tree of a commit no longer selected', () => {
+    const tab = newTabState();
+    loadHistory(tab, history, undefined, []);
+    select(tab, 'a');
+    keep(tab.shown, { type: 'files', hash: 'a', files: [] });
+    keep(tab.shown, { type: 'diff', hash: 'a', path: 'x', patch: '' });
+    keep(tab.shown, { type: 'tree', hash: 'a', paths: [] });
+    select(tab, 'b');
+    assert.deepStrictEqual(
+      replayOf(tab).map((message) => message.type),
+      [],
     );
   });
 
