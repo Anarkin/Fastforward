@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type RefObject } from 'react';
+import { useCallback, useMemo, useRef, useState, type RefObject } from 'react';
 import {
   deferredChanges,
   type ChangeArea,
@@ -305,9 +305,21 @@ export function Diff({
   const [current, setCurrent] = useState(0);
   const [jump, setJump] = useState(0);
   const input = useRef<HTMLInputElement>(null);
+  const [rendered, setRendered] = useState<ReadonlySet<string>>(new Set());
+  const render = useCallback((file: string, shown: boolean) => {
+    setRendered((all) => {
+      const next = new Set(all);
+      if (shown) {
+        next.add(file);
+      } else {
+        next.delete(file);
+      }
+      return next;
+    });
+  }, []);
   const matches = useMemo(
-    () => findMatches(diffFiles, fileContent, query),
-    [diffFiles, fileContent, query],
+    () => findMatches(diffFiles, fileContent, query, rendered),
+    [diffFiles, fileContent, query, rendered],
   );
   const shown = Math.min(current, Math.max(0, matches.length - 1));
   const goTo = (index: number) => {
@@ -318,6 +330,7 @@ export function Diff({
   const [seen, setSeen] = useState(selection);
   if (seen !== selection) {
     setSeen(selection);
+    setRendered(new Set());
     setCurrent(0);
     setJump((count) => count + 1);
   }
@@ -361,6 +374,8 @@ export function Diff({
         matches={matches}
         current={shown}
         jump={jump}
+        rendered={rendered}
+        onRender={render}
       />
     </Column>
   );

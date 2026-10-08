@@ -1,5 +1,6 @@
 import type { DiffFile } from './diff';
 import type { WholeFile } from './diffView';
+import { previewOf, wholePreviewOf } from './previews';
 import { strings } from '../shared/strings';
 
 export interface FindRange {
@@ -129,15 +130,21 @@ export function findMatches(
   files: readonly DiffFile[],
   whole: WholeFile | undefined,
   query: string,
+  previewed: ReadonlySet<string> = new Set(),
 ): FindMatch[] {
   if (query === '') {
     return [];
   }
   if (whole) {
-    return lineMatches(wholeLines(whole), 0, query);
+    return wholePreviewOf(whole) && previewed.has(whole.path)
+      ? []
+      : lineMatches(wholeLines(whole), 0, query);
   }
   const matches: FindMatch[] = [];
   for (const [index, file] of files.entries()) {
+    if (previewOf(file) && previewed.has(file.path)) {
+      continue;
+    }
     for (const match of fileMatches(file, index, query)) {
       if (matches.length === maxMatches) {
         return matches;

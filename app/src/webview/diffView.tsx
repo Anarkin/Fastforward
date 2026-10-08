@@ -1200,6 +1200,8 @@ export function DiffView({
   sideBySide,
   wordWrap,
   origin,
+  rendered,
+  onRender,
 }: {
   error: React.ReactNode;
   files: readonly DiffFile[];
@@ -1216,6 +1218,8 @@ export function DiffView({
   jump: number;
   sideBySide: boolean;
   wordWrap: boolean;
+  rendered: ReadonlySet<string>;
+  onRender: (path: string, render: boolean) => void;
 }) {
   const list = useRef<HTMLDivElement>(null);
   const [sideways, setSideways] = useState(0);
@@ -1328,7 +1332,6 @@ export function DiffView({
   const [toggled, setToggled] = useState<ReadonlyMap<string, boolean>>(
     new Map(),
   );
-  const [rendered, setRendered] = useState<ReadonlySet<string>>(new Set());
   const skeleton = useSkeleton(loading);
   const rows = useMemo(
     () => diffRows(files, toggled, whole, skeleton, sideBySide, rendered),
@@ -1430,17 +1433,7 @@ export function DiffView({
       whole={whole !== undefined}
       preview={whole ? wholePreviewOf(whole) : previewOf(files[row.file])}
       rendered={rendered.has(row.path)}
-      onRender={(render) =>
-        setRendered((all) => {
-          const next = new Set(all);
-          if (render) {
-            next.add(row.path);
-          } else {
-            next.delete(row.path);
-          }
-          return next;
-        })
-      }
+      onRender={(render) => onRender(row.path, render)}
       onClick={() => {
         if (whole) {
           return;
