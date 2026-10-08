@@ -101,7 +101,7 @@ suite('Updates', () => {
     );
   });
 
-  test('leaves a Windows app it did not install alone, as from the zip or the portable exe, where an update would install a second copy', () => {
+  test('leaves a Windows app it did not install alone, as one run from win-unpacked, where an update would install a second copy', () => {
     assert.strictEqual(
       updateMode(
         false,
