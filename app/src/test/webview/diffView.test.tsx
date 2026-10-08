@@ -38,10 +38,12 @@ import {
   scrollOnToggle,
   showsSideBySide,
   stuckHeader,
+  wholeChangeClass,
   widestColumns,
   type DiffRow,
 } from '../../webview/diffView';
 import { ImageDiff, imagePanes } from '../../webview/imagePreview';
+import type { LineWords } from '../../webview/wordDiff';
 import type { Preview } from '../../webview/previews';
 import { countingReads, fileChange } from '../fixtures';
 
@@ -1017,6 +1019,27 @@ suite('Drawing code', () => {
     assert.strictEqual(again.finds, plain.finds);
     assert.strictEqual(plain.current, undefined);
     assert.strictEqual(plain.wordClass, 'word-added');
+  });
+
+  test('tints the row of a line changed through instead of marking its words', () => {
+    const words = new Map<string, LineWords>([
+      ['0:1', 'whole'],
+      ['0:2', [{ start: 0, end: 1 }]],
+    ]);
+    const marks = {
+      syntax: new Map(),
+      words,
+      finds: new Map(),
+      foundKey: undefined,
+      found: undefined,
+    };
+    assert.deepStrictEqual(codeProps(marks, '0:1', 'x', 'added').words, []);
+    assert.deepStrictEqual(codeProps(marks, '0:2', 'x', 'added').words, [
+      { start: 0, end: 1 },
+    ]);
+    assert.strictEqual(wholeChangeClass(words, '0:1'), 'whole-change');
+    assert.strictEqual(wholeChangeClass(words, '0:2'), '');
+    assert.strictEqual(wholeChangeClass(words, undefined), '');
   });
 
   test('draws the changed words inside the line, with search matches over them', () => {

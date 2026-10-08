@@ -1611,7 +1611,8 @@ body.resizing {
   color: var(--color-syntax-comment);
 }
 
-.diff-line .word-added {
+.diff-line .word-added,
+.diff-line.added.whole-change {
   background: color-mix(
     in srgb,
     var(--color-added) var(--color-added-line),
@@ -1619,7 +1620,8 @@ body.resizing {
   );
 }
 
-.diff-line .word-removed {
+.diff-line .word-removed,
+.diff-line.removed.whole-change {
   background: color-mix(
     in srgb,
     var(--color-deleted) var(--color-deleted-line),

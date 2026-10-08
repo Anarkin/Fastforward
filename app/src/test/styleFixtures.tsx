@@ -361,15 +361,19 @@ export function inlineLine(
     finds = [],
     current,
     marker = false,
+    whole = false,
   }: {
     words?: readonly FindRange[];
     finds?: readonly FindRange[];
     current?: FindRange;
     marker?: boolean;
+    whole?: boolean;
   } = {},
 ): React.ReactElement {
   return diffRow(
-    <div className={`diff-line text-line ${kind}`}>
+    <div
+      className={`diff-line text-line ${kind} ${whole ? 'whole-change' : ''}`}
+    >
       <span className="number">1</span>
       <span className="number">1</span>
       <span className="code">

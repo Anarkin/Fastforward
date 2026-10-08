@@ -47,7 +47,18 @@ export type ChangeBlock =
       readonly added: readonly NumberedLine[];
     };
 
-export function changeBlocks(file: DiffFile): ChangeBlock[][] {
+const blocksOfFile = new WeakMap<DiffFile, readonly ChangeBlock[][]>();
+
+export function changeBlocks(file: DiffFile): readonly ChangeBlock[][] {
+  let blocks = blocksOfFile.get(file);
+  if (!blocks) {
+    blocks = hunkBlocks(file);
+    blocksOfFile.set(file, blocks);
+  }
+  return blocks;
+}
+
+function hunkBlocks(file: DiffFile): ChangeBlock[][] {
   let next = 0;
   return file.hunks.map((hunk) => {
     const blocks: ChangeBlock[] = [];

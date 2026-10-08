@@ -2,17 +2,14 @@ import * as assert from 'node:assert';
 import { parsePatch, type DiffLine } from '../../webview/diff';
 import type { FindRange } from '../../webview/find';
 import {
-  blockWordRanges,
   changedTokens,
+  pairWordRanges,
   tokenize,
-  wholeText,
   wordRanges,
 } from '../../webview/wordDiff';
 
-function pieces(lines: readonly string[], ranges: readonly FindRange[][]) {
-  return lines.map((line, index) =>
-    ranges[index].map((range) => line.slice(range.start, range.end)),
-  );
+function pieces(line: string, ranges: readonly FindRange[]) {
+  return ranges.map((range) => line.slice(range.start, range.end));
 }
 
 suite('Word diff', () => {
@@ -43,56 +40,35 @@ suite('Word diff', () => {
   });
 
   test('marks only the words a change replaced, joining neighbours across spaces', () => {
-    const before = ['const total = a + b;'];
-    const after = ['const sum = a + b + c;'];
-    const ranges = blockWordRanges(before, after);
+    const before = 'const total = a + b;';
+    const after = 'const sum = a + b + c;';
+    const ranges = pairWordRanges(before, after);
     assert.ok(ranges);
-    assert.deepStrictEqual(pieces(before, ranges.removed), [['total']]);
-    assert.deepStrictEqual(pieces(after, ranges.added), [['sum', '+ c']]);
+    assert.deepStrictEqual(pieces(before, ranges.removed), ['total']);
+    assert.deepStrictEqual(pieces(after, ranges.added), ['sum', '+ c']);
   });
 
-  test('keeps what moved to other lines, marking only what is new', () => {
-    const before = ['  <div className="menu" role="menu">'];
-    const after = [
-      '  <div',
-      '    className="menu"',
-      '    role="menu"',
-      '    ref={menu}',
-      '  >',
-    ];
-    const ranges = blockWordRanges(before, after);
-    assert.ok(ranges);
-    assert.deepStrictEqual(pieces(before, ranges.removed), [[]]);
-    assert.deepStrictEqual(pieces(after, ranges.added), [
-      [],
-      [],
-      [],
-      ['ref={menu}'],
-      [],
-    ]);
-  });
-
-  test('marks nothing when the lines share no word, or one side is empty, or the block is too big to compare', () => {
-    assert.strictEqual(blockWordRanges(['foo'], ['bar']), undefined);
-    assert.strictEqual(blockWordRanges([], ['bar']), undefined);
+  test('marks nothing when the lines share no word, or are too long to compare', () => {
+    assert.strictEqual(pairWordRanges('foo', 'bar'), undefined);
+    assert.strictEqual(pairWordRanges('  ', 'bar'), undefined);
     const long = 'x '.repeat(1000);
-    assert.strictEqual(blockWordRanges([long], [long + 'y']), undefined);
+    assert.strictEqual(pairWordRanges(long, long + 'y'), undefined);
   });
 
-  test('gives up on a block too big to compare before splitting its lines into tokens, however long they are', () => {
+  test('gives up on lines too long to compare before splitting them into tokens, however long they are', () => {
     const long = 'x '.repeat(1_000_000);
     const started = performance.now();
-    assert.strictEqual(blockWordRanges([long], [long]), undefined);
+    assert.strictEqual(pairWordRanges(long, long), undefined);
     assert.ok(performance.now() - started < 100);
   });
 
-  test('compares a block of up to 1 million removed by added tokens, spaces and punctuation counting as tokens', () => {
-    const lines = Array<string>(125).fill('let a = b;');
-    assert.ok(blockWordRanges(lines, lines));
-    assert.strictEqual(blockWordRanges(lines, [...lines, 'c']), undefined);
+  test('compares lines of up to 1 million removed by added tokens, spaces and punctuation counting as tokens', () => {
+    const line = 'let a = b;'.repeat(125);
+    assert.ok(pairWordRanges(line, line));
+    assert.strictEqual(pairWordRanges(line, line + 'c'), undefined);
   });
 
-  test('compares each run of removed lines with the added lines after it, keyed as the search keys lines', () => {
+  test('compares each removed line with the added line it is paired with, keyed as the search keys lines, and marks those with no partner or no word in common as changed through', () => {
     const files = parsePatch(
       [
         'diff --git a/a.ts b/a.ts',
@@ -117,9 +93,9 @@ suite('Word diff', () => {
         [{ start: 4, end: 9 }],
         [{ start: 4, end: 7 }],
         undefined,
-        [{ start: 2, end: 11 }],
-        undefined,
-        [{ start: 0, end: 3 }],
+        'whole',
+        'whole',
+        'whole',
         undefined,
       ],
     );
@@ -187,10 +163,22 @@ suite('Word diff', () => {
     assert.strictEqual(moved.get('1:1'), alone.get('0:1'));
   });
 
-  test('marks the whole text of a line changed through, from its first character to its last, and nothing of a blank one', () => {
-    assert.deepStrictEqual(wholeText('  gone  '), [{ start: 2, end: 6 }]);
-    assert.deepStrictEqual(wholeText('x'), [{ start: 0, end: 1 }]);
-    assert.strictEqual(wholeText('   '), undefined);
-    assert.strictEqual(wholeText(''), undefined);
+  test('marks a line with no partner as changed through, though its words are on the line paired with another', () => {
+    const files = parsePatch(
+      [
+        'diff --git a/a.ts b/a.ts',
+        '--- a/a.ts',
+        '+++ b/a.ts',
+        '@@ -1,2 +1,1 @@',
+        '-for i in evenNumbers do',
+        '-for i in 3 .. top do',
+        '+for i in 1 .. top do',
+        '',
+      ].join('\n'),
+    );
+    const ranges = wordRanges(files);
+    assert.strictEqual(ranges.get('0:0'), 'whole');
+    assert.deepStrictEqual(ranges.get('0:1'), [{ start: 9, end: 10 }]);
+    assert.deepStrictEqual(ranges.get('0:2'), [{ start: 9, end: 10 }]);
   });
 });

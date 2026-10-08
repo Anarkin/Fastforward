@@ -1,44 +1,18 @@
-import {
-  changeBlocks,
-  type ChangeBlock,
-  type DiffFile,
-  type NumberedLine,
-} from './diff';
+import { changeBlocks, type ChangeBlock, type DiffFile } from './diff';
 import { keyedLine, type FindRange } from './find';
+import { changePairs, tokenSteps } from './pairing';
 
 const maxTokens = 1_000_000;
 
 const tokenPattern = /[\p{L}\p{N}_]+|\s+|[^\p{L}\p{N}_\s]/gu;
 
-export const wordPattern = /[\p{L}\p{N}_]+|[^\p{L}\p{N}_\s]/gu;
-
 export function tokenize(text: string): string[] {
   return text.match(tokenPattern) ?? [];
 }
 
-export function tokenSteps(
-  lines: readonly string[],
-  pattern: RegExp,
-): () => boolean {
-  const tokens = new RegExp(pattern);
-  let line = 0;
-  return () => {
-    while (line < lines.length) {
-      if (tokens.test(lines[line])) {
-        return true;
-      }
-      line++;
-    }
-    return false;
-  };
-}
-
-function fewEnoughTokens(
-  removed: readonly string[],
-  added: readonly string[],
-): boolean {
-  const nextRemoved = tokenSteps(removed, tokenPattern);
-  const nextAdded = tokenSteps(added, tokenPattern);
+function fewEnoughTokens(removed: string, added: string): boolean {
+  const nextRemoved = tokenSteps([removed], tokenPattern);
+  const nextAdded = tokenSteps([added], tokenPattern);
   let a = 0;
   let b = 0;
   while (a * b <= maxTokens) {
@@ -55,18 +29,15 @@ function fewEnoughTokens(
 
 interface Token {
   readonly text: string;
-  readonly line: number;
   readonly start: number;
 }
 
-function tokensOf(lines: readonly string[]): Token[] {
-  return lines.flatMap((text, line) => {
-    let start = 0;
-    return tokenize(text).map((token) => {
-      const placed = { text: token, line, start };
-      start += token.length;
-      return placed;
-    });
+function tokensOf(text: string): Token[] {
+  let start = 0;
+  return tokenize(text).map((token) => {
+    const placed = { text: token, start };
+    start += token.length;
+    return placed;
   });
 }
 
@@ -107,19 +78,13 @@ export function changedTokens(
   return { a: changedA, b: changedB };
 }
 
-function rangesByLine(
+function changedRanges(
   tokens: readonly Token[],
   changed: readonly boolean[],
-  lines: number,
-): FindRange[][] {
-  const ranges: FindRange[][] = Array.from({ length: lines }, () => []);
-  let line = -1;
+): FindRange[] {
+  const ranges: FindRange[] = [];
   let running = false;
   tokens.forEach((token, index) => {
-    if (token.line !== line) {
-      line = token.line;
-      running = false;
-    }
     if (/^\s+$/.test(token.text)) {
       return;
     }
@@ -128,29 +93,22 @@ function rangesByLine(
       return;
     }
     const end = token.start + token.text.length;
-    const current = ranges[line];
-    const last = current.at(-1);
+    const last = ranges.at(-1);
     if (running && last) {
-      current[current.length - 1] = { start: last.start, end };
+      ranges[ranges.length - 1] = { start: last.start, end };
     } else {
-      current.push({ start: token.start, end });
+      ranges.push({ start: token.start, end });
     }
     running = true;
   });
   return ranges;
 }
 
-export function blockWordRanges(
-  removed: readonly string[],
-  added: readonly string[],
-):
-  | { readonly removed: FindRange[][]; readonly added: FindRange[][] }
-  | undefined {
-  if (
-    removed.length === 0 ||
-    added.length === 0 ||
-    !fewEnoughTokens(removed, added)
-  ) {
+export function pairWordRanges(
+  removed: string,
+  added: string,
+): { readonly removed: FindRange[]; readonly added: FindRange[] } | undefined {
+  if (!fewEnoughTokens(removed, added)) {
     return undefined;
   }
   const before = tokensOf(removed);
@@ -167,15 +125,12 @@ export function blockWordRanges(
     return undefined;
   }
   return {
-    removed: rangesByLine(before, changed.a, removed.length),
-    added: rangesByLine(after, changed.b, added.length),
+    removed: changedRanges(before, changed.a),
+    added: changedRanges(after, changed.b),
   };
 }
 
-export function wholeText(text: string): FindRange[] | undefined {
-  const start = text.search(/\S/);
-  return start === -1 ? undefined : [{ start, end: text.trimEnd().length }];
-}
+export type LineWords = readonly FindRange[] | 'whole';
 
 type Change = Extract<ChangeBlock, { kind: 'change' }>;
 
@@ -200,34 +155,33 @@ function lineChanges(file: DiffFile): ReadonlyMap<number, Change> {
   return changes;
 }
 
-const rangesOfChange = new WeakMap<Change, ReadonlyMap<number, FindRange[]>>();
+const rangesOfChange = new WeakMap<Change, ReadonlyMap<number, LineWords>>();
 
-function changeRanges(change: Change): ReadonlyMap<number, FindRange[]> {
+function changeRanges(change: Change): ReadonlyMap<number, LineWords> {
   let ranges = rangesOfChange.get(change);
   if (!ranges) {
-    const found = blockWordRanges(
-      change.removed.map(({ line }) => line.text),
-      change.added.map(({ line }) => line.text),
-    );
-    const byLine = new Map<number, FindRange[]>();
-    const place = (
-      { line, index }: NumberedLine,
-      words: FindRange[] | undefined,
-    ) => {
-      const marked = words ?? wholeText(line.text);
-      if (marked) {
-        byLine.set(index, marked);
+    const byLine = new Map<number, LineWords>();
+    for (const [left, right] of changePairs(change)) {
+      const removed = left === undefined ? undefined : change.removed[left];
+      const added = right === undefined ? undefined : change.added[right];
+      const found =
+        removed && added
+          ? pairWordRanges(removed.line.text, added.line.text)
+          : undefined;
+      if (removed) {
+        byLine.set(removed.index, found?.removed ?? 'whole');
       }
-    };
-    change.removed.forEach((line, i) => place(line, found?.removed[i]));
-    change.added.forEach((line, i) => place(line, found?.added[i]));
+      if (added) {
+        byLine.set(added.index, found?.added ?? 'whole');
+      }
+    }
     ranges = byLine;
     rangesOfChange.set(change, ranges);
   }
   return ranges;
 }
 
-export type WordRanges = Pick<ReadonlyMap<string, readonly FindRange[]>, 'get'>;
+export type WordRanges = Pick<ReadonlyMap<string, LineWords>, 'get'>;
 
 export function wordRanges(files: readonly DiffFile[]): WordRanges {
   return {

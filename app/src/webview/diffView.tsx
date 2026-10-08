@@ -31,9 +31,9 @@ import {
   type MinimapRow,
 } from './minimap';
 import { columnFocusAttribute } from './activeColumn';
-import { alignLines } from './pairing';
+import { changePairs } from './pairing';
 import { textsToLoad, useSyntax, type SyntaxRange } from './syntax';
-import { wordRanges, type WordRanges } from './wordDiff';
+import { wordRanges, type LineWords, type WordRanges } from './wordDiff';
 import { keymap, wheeled, type Modifiers } from '../shared/keymap';
 import { glideAt, glideBy, glideEnded, type Glide } from './glide';
 import { strings } from '../shared/strings';
@@ -428,11 +428,7 @@ function alignedRows(file: DiffFile, index: number): SplitRow[] {
         continue;
       }
       const { removed, added } = block;
-      const aligned = alignLines(
-        removed.map((cell) => cell.line.text),
-        added.map((cell) => cell.line.text),
-      );
-      for (const [left, right] of aligned) {
+      for (const [left, right] of changePairs(block)) {
         rows.push({
           kind: 'split',
           file: index,
@@ -776,6 +772,21 @@ interface CodeProps {
 
 const unmarked: readonly never[] = [];
 
+function changedWords(
+  words: WordRanges,
+  key: string | undefined,
+): readonly FindRange[] {
+  const found = key === undefined ? undefined : words.get(key);
+  return found === undefined || found === 'whole' ? unmarked : found;
+}
+
+export function wholeChangeClass(
+  words: WordRanges,
+  key: string | undefined,
+): string {
+  return key !== undefined && words.get(key) === 'whole' ? 'whole-change' : '';
+}
+
 export function codeProps(
   marks: LineMarks,
   key: string | undefined,
@@ -787,7 +798,7 @@ export function codeProps(
   return {
     text,
     syntax: of(marks.syntax),
-    words: of(marks.words),
+    words: changedWords(marks.words, key),
     wordClass: kind === 'removed' ? 'word-removed' : 'word-added',
     finds: of(marks.finds),
     current:
@@ -1354,7 +1365,7 @@ export function DiffView({
     [rows, split, wordWrap],
   );
   const words = useMemo(
-    () => (whole ? new Map<string, FindRange[]>() : wordRanges(files)),
+    () => (whole ? new Map<string, LineWords>() : wordRanges(files)),
     [files, whole],
   );
   const open = useMemo(
@@ -1479,7 +1490,7 @@ export function DiffView({
     view && (
       <HiddenChangeMarks
         text={line.text}
-        words={(key !== undefined && words.get(key)) || unmarked}
+        words={changedWords(words, key)}
         kind={line.kind}
         view={view}
         area={area(view)}
@@ -1571,7 +1582,9 @@ export function DiffView({
         return <HunkDivider />;
       case 'line':
         return (
-          <div className={`diff-line text-line ${row.line.kind}`}>
+          <div
+            className={`diff-line text-line ${row.line.kind} ${wholeChangeClass(words, keys[index].at(0))}`}
+          >
             <span className="number">{row.line.oldNumber}</span>
             <span className="number">{row.line.newNumber}</span>
             {code(keys[index].at(0), row.line.text, row.line.kind)}
@@ -1594,7 +1607,7 @@ export function DiffView({
             {[row.left, row.right].map((cell, side) => (
               <div
                 key={side}
-                className={`diff-line text-line split-side ${splitSideClass(cell, side === 0 ? 'removed' : 'added')}`}
+                className={`diff-line text-line split-side ${splitSideClass(cell, side === 0 ? 'removed' : 'added')} ${cell ? wholeChangeClass(words, lineKey(row.file, cell.index)) : ''}`}
               >
                 <span className="number">
                   {side === 0 ? cell?.line.oldNumber : cell?.line.newNumber}

@@ -758,6 +758,35 @@ suite('Style', () => {
     }
   });
 
+  test('tints the whole row of a line changed through as strongly as changed words', () => {
+    for (const [kind, color] of [
+      ['added', 'added'],
+      ['removed', 'deleted'],
+    ] as const) {
+      const tint = {
+        background: `color-mix( in srgb, var(--color-${color}) var(--color-${color}-line), transparent )`,
+      };
+      looks(
+        withClass(diffView({}, inlineLine(kind, { whole: true })), 'text-line'),
+        tint,
+      );
+      looks(
+        withClass(
+          diffView(
+            { sideBySide: true },
+            splitLine(
+              kind === 'removed' ? `${kind} whole-change` : 'filler',
+              kind === 'added' ? `${kind} whole-change` : 'filler',
+            ),
+          ),
+          'split-side',
+          kind,
+        ),
+        tint,
+      );
+    }
+  });
+
   test('draws a menu like the other popups, its separators in the border color and the item under the pointer like a selected row', () => {
     for (const menu of [contextMenu(), historyMenu()]) {
       looks(menu, {

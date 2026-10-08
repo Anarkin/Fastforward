@@ -1,4 +1,4 @@
-import { tokenSteps, wordPattern } from './wordDiff';
+import type { ChangeBlock } from './diff';
 
 export const similarEnough = 0.5;
 
@@ -7,6 +7,25 @@ const maxCells = 40_000;
 const maxComparedWords = 1_000_000;
 
 export type LinePair = readonly [number | undefined, number | undefined];
+
+const wordPattern = /[\p{L}\p{N}_]+|[^\p{L}\p{N}_\s]/gu;
+
+export function tokenSteps(
+  lines: readonly string[],
+  pattern: RegExp,
+): () => boolean {
+  const tokens = new RegExp(pattern);
+  let line = 0;
+  return () => {
+    while (line < lines.length) {
+      if (tokens.test(lines[line])) {
+        return true;
+      }
+      line++;
+    }
+    return false;
+  };
+}
 
 interface Words {
   readonly counts: ReadonlyMap<string, number>;
@@ -132,4 +151,20 @@ export function alignLines(
   }
   closeGap();
   return aligned;
+}
+
+type Change = Extract<ChangeBlock, { kind: 'change' }>;
+
+const pairsOfChange = new WeakMap<Change, readonly LinePair[]>();
+
+export function changePairs(change: Change): readonly LinePair[] {
+  let pairs = pairsOfChange.get(change);
+  if (!pairs) {
+    pairs = alignLines(
+      change.removed.map(({ line }) => line.text),
+      change.added.map(({ line }) => line.text),
+    );
+    pairsOfChange.set(change, pairs);
+  }
+  return pairs;
 }
