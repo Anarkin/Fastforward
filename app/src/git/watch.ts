@@ -354,6 +354,11 @@ export async function watchTree(
       }
       unwatch(file);
     }
+    // An entry named like the folder is told the way the folder's own removal
+    // is, and the root has no parent to watch it again
+    if (file === root) {
+      return isFolder ? [{ path: root, repo: root }] : [];
+    }
     const parent = watched.get(path.dirname(file));
     return parent !== undefined &&
       isFolder &&

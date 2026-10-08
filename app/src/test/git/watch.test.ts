@@ -463,6 +463,18 @@ suite('Watching folders one by one', () => {
     assert.deepStrictEqual(watched(), ['', 'a', 'a/b', 'a/sibling']);
   });
 
+  test('keeps watching a folder told of an entry named like itself, which is told the way its own removal is', async () => {
+    mkdir('a');
+    await start();
+    const named = path.basename(root);
+    fs.writeFileSync(path.join(root, named), '');
+    mkdir('later');
+    watchers.get(root)?.listener('rename', named);
+    watchers.get(root)?.listener('rename', 'later');
+    await waitFor(() => watched().includes('later'), 'the new folder');
+    assert.deepStrictEqual(watched(), ['', 'a', 'later']);
+  });
+
   test('stops watching removed folders', async () => {
     mkdir('a/b/c');
     await start();
