@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { type TabInfo, type UpdateStatus } from '../shared/protocol';
 import { CloseIcon } from './icons';
 import { MenuButton } from './menu';
@@ -17,6 +17,27 @@ export function adjacentTab(
   const index = tabs.findIndex((tab) => tab.root === active);
   const next = index === -1 ? 0 : (index + step + tabs.length) % tabs.length;
   return tabs[next].root;
+}
+
+export class Cycle {
+  private asked: string[] = [];
+  private shown: string | undefined;
+
+  next(
+    active: string | undefined,
+    adjacent: (from: string | undefined) => string | undefined,
+  ): string | undefined {
+    if (active !== this.shown) {
+      this.shown = active;
+      const reached = active === undefined ? -1 : this.asked.indexOf(active);
+      this.asked = reached === -1 ? [] : this.asked.slice(reached + 1);
+    }
+    const next = adjacent(this.asked.at(-1) ?? active);
+    if (next !== undefined) {
+      this.asked.push(next);
+    }
+    return next;
+  }
 }
 
 export function updateLabel(status: UpdateStatus): string {
@@ -114,8 +135,9 @@ export function TabBar({
   const installs = update.kind === 'ready' || update.kind === 'available';
   const add = useRef<HTMLButtonElement>(null);
   useBinding(keymap.openRepository, () => add.current?.click());
+  const [cycle] = useState(() => new Cycle());
   useBinding(keymap.repository, (step) => {
-    const root = adjacentTab(tabs, active, step);
+    const root = cycle.next(active, (from) => adjacentTab(tabs, from, step));
     if (root !== undefined) {
       onSelect(root);
     }

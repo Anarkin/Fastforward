@@ -4,6 +4,7 @@ import { isValidElement } from 'react';
 import type { ContextMenuItem } from '../../webview/contextMenu';
 import {
   adjacentTab,
+  Cycle,
   resting,
   TabBar,
   updateLabel,
@@ -22,6 +23,22 @@ suite('Tab bar', () => {
     assert.strictEqual(adjacentTab(tabs, '/a', -1), '/c');
     assert.strictEqual(adjacentTab(tabs, undefined, 1), '/a');
     assert.strictEqual(adjacentTab(tabs.slice(0, 1), '/a', 1), undefined);
+  });
+
+  test('steps on from the tab it last asked for until that one shows, as a key held down repeats faster than tabs open, and from the one shown once another is picked', () => {
+    let cycle = new Cycle();
+    const next = (active: string) =>
+      cycle.next(active, (from: string | undefined) =>
+        adjacentTab(tabs, from, 1),
+      );
+    assert.strictEqual(next('/a'), '/b');
+    assert.strictEqual(next('/a'), '/c');
+    assert.strictEqual(next('/b'), '/a');
+    assert.strictEqual(next('/c'), '/b');
+    assert.strictEqual(next('/a'), '/c');
+    cycle = new Cycle();
+    assert.strictEqual(next('/a'), '/b');
+    assert.strictEqual(next('/c'), '/a');
   });
 
   test('acts on what the pointer rests on, not on what it only passes over', async () => {
