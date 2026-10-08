@@ -271,26 +271,28 @@ export function FileHeader({
     <div className="file-header" onClick={onClick}>
       {!whole && <Twisty open={open} />}
       <span className="path">{path}</span>
-      {whole && <span className="unchanged">{strings.diff.unchanged}</span>}
-      {preview && onRender && (
-        <button
-          className={`nav-button toggle file-header-button ${rendered ? 'active' : ''}`}
-          title={
-            rendered
-              ? strings.diff.showSource
-              : preview === 'image'
-                ? strings.diff.showImage
-                : strings.diff.showPreview
-          }
-          aria-pressed={rendered}
-          onClick={(event) => {
-            event.stopPropagation();
-            onRender(!rendered);
-          }}
-        >
-          {preview === 'image' ? <ImageIcon /> : <PreviewIcon />}
-        </button>
-      )}
+      <span className="file-header-end">
+        {whole && <span className="unchanged">{strings.diff.unchanged}</span>}
+        {preview && onRender && (
+          <button
+            className={`nav-button toggle file-header-button ${rendered ? 'active' : ''}`}
+            title={
+              rendered
+                ? strings.diff.showSource
+                : preview === 'image'
+                  ? strings.diff.showImage
+                  : strings.diff.showPreview
+            }
+            aria-pressed={rendered}
+            onClick={(event) => {
+              event.stopPropagation();
+              onRender(!rendered);
+            }}
+          >
+            {preview === 'image' ? <ImageIcon /> : <PreviewIcon />}
+          </button>
+        )}
+      </span>
     </div>
   );
 }

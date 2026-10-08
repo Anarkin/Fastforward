@@ -792,6 +792,16 @@ body.resizing {
   user-select: none;
 }
 
+.file-header-end {
+  position: sticky;
+  right: calc(8px + var(--minimap-width));
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-border);
+}
+
 .file-header .path {
   flex: 1;
   min-width: 0;

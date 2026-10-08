@@ -1160,7 +1160,7 @@ suite('Style', () => {
     });
   });
 
-  test('keeps the button of a file header clear of the minimap, within the header', () => {
+  test('keeps the button of a file header clear of the minimap, within the header, and in view however wide the lines make the header', () => {
     const header = withClass(
       diffView(
         {},
@@ -1184,6 +1184,16 @@ suite('Style', () => {
     looks(withClass(header, 'file-header-button'), {
       height: '18px',
       margin: '-2px 0',
+    });
+    const end = withClass(header, 'file-header-end');
+    assert.ok(
+      end.children.some((child) =>
+        child.classes.includes('file-header-button'),
+      ),
+    );
+    looks(end, {
+      position: 'sticky',
+      right: 'calc(8px + var(--minimap-width))',
     });
     assert.strictEqual(
       rowHeight({ kind: 'file', file: 0, path: 'v.svg', open: true }),
