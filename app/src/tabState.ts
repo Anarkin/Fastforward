@@ -47,7 +47,7 @@ export interface TabState {
   headCommit: string | undefined;
   stashes: ReadonlyMap<string, Stash>;
   fingerprint: string;
-  anchor: { hash: string; offset: number } | undefined;
+  anchor: { hash: string; offset: number; report: number } | undefined;
   opened: boolean;
   navigation: Navigation;
   decorated: Set<string>;
@@ -296,11 +296,12 @@ function anchorOf(tab: TabState): ScrollTarget | undefined {
   if (!tab.anchor) {
     return undefined;
   }
-  if (tab.anchor.hash === workingTreeHash) {
-    return { index: workingTreeIndex, offset: 0 };
+  const { hash, offset, report } = tab.anchor;
+  if (hash === workingTreeHash) {
+    return { index: workingTreeIndex, offset: 0, report };
   }
-  const index = tab.positions.get(tab.anchor.hash);
-  return index === undefined ? undefined : { index, offset: tab.anchor.offset };
+  const index = tab.positions.get(hash);
+  return index === undefined ? undefined : { index, offset, report };
 }
 
 function indexTarget(index: number | undefined): ScrollTarget | undefined {

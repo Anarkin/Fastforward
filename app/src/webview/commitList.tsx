@@ -4,6 +4,7 @@ import {
   useEffect,
   useLayoutEffect,
   useRef,
+  useState,
   useSyncExternalStore,
 } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
@@ -269,14 +270,53 @@ export function keptPlace(
   offset: number,
   scrollTop: number,
   reportedTop: number | undefined,
-): { top: number; reportedTop: number } {
-  return {
-    top:
-      start +
-      offset +
-      (reportedTop === undefined ? 0 : scrollTop - reportedTop),
-    reportedTop: start + offset,
-  };
+): number {
+  return (
+    start + offset + (reportedTop === undefined ? 0 : scrollTop - reportedTop)
+  );
+}
+
+let reports = 0;
+
+// The main process keeps the place it was last told, which a history it was
+// already laying out may come with after a later one is told
+export class ReportedPlaces {
+  private readonly tops = new Map<number, number>();
+
+  told(top: number): number {
+    reports += 1;
+    this.tops.set(reports, top);
+    return reports;
+  }
+
+  kept(
+    start: number,
+    offset: number,
+    scrollTop: number,
+    report: number | undefined,
+  ): number {
+    const top = keptPlace(
+      start,
+      offset,
+      scrollTop,
+      report === undefined ? undefined : this.tops.get(report),
+    );
+    if (report !== undefined && this.tops.has(report)) {
+      const moved = top - scrollTop;
+      for (const [told, at] of this.tops) {
+        if (told < report) {
+          this.tops.delete(told);
+        } else {
+          this.tops.set(told, at + moved);
+        }
+      }
+    }
+    return top;
+  }
+
+  forget(): void {
+    this.tops.clear();
+  }
 }
 
 export function CommitBubbles({
@@ -382,7 +422,7 @@ export function Commits({
   history: CommitHistory | undefined;
   opening: boolean;
   scrollTarget: ScrollTarget | undefined;
-  onScrolled: (hash: string, offset: number) => void;
+  onScrolled: (hash: string, offset: number, report: number) => void;
   onLoad: (start: number, generation: number) => void;
   workingTree: number | undefined;
   refsByCommit: ReadonlyMap<string, readonly RefInfo[]>;
@@ -454,12 +494,12 @@ export function Commits({
   }, [history, first, last, onLoad]);
 
   const shown = useRef<ListScrollState>({ target: undefined, offset });
-  const reportedTop = useRef<number>(undefined);
+  const [places] = useState(() => new ReportedPlaces());
   useEffect(() => {
     if (!history) {
-      reportedTop.current = undefined;
+      places.forget();
     }
-  }, [history]);
+  }, [history, places]);
   useEffect(() => {
     const next = { target: history ? scrollTarget : undefined, offset };
     const previous = shown.current;
@@ -487,14 +527,14 @@ export function Commits({
     if (action.target.offset !== undefined) {
       const [start] = virtualizer.getOffsetForIndex(index, 'start') ?? [];
       if (start !== undefined) {
-        const place = keptPlace(
-          start,
-          action.target.offset,
-          scrollTop(list.current),
-          reportedTop.current,
+        virtualizer.scrollToOffset(
+          places.kept(
+            start,
+            action.target.offset,
+            scrollTop(list.current),
+            action.target.report,
+          ),
         );
-        reportedTop.current = place.reportedTop;
-        virtualizer.scrollToOffset(place.top);
       }
       return;
     }
@@ -502,7 +542,7 @@ export function Commits({
       .getVirtualItems()
       .some((row) => row.index === index);
     virtualizer.scrollToIndex(index, { align: onScreen ? 'auto' : 'center' });
-  }, [history, scrollTarget, offset, virtualizer, scrollTop]);
+  }, [history, scrollTarget, offset, virtualizer, scrollTop, places]);
 
   const topUnreported = useRef(false);
   const reportTop = useCallback(() => {
@@ -519,10 +559,9 @@ export function Commits({
     );
     topUnreported.current = top === undefined;
     if (top) {
-      reportedTop.current = scrolled;
-      onScrolled(top.hash, top.offset);
+      onScrolled(top.hash, top.offset, places.told(scrolled));
     }
-  }, [history, offset, onScrolled, virtualizer, scrollTop]);
+  }, [history, offset, onScrolled, virtualizer, scrollTop, places]);
   useEffect(() => {
     const element = list.current;
     if (!element) {

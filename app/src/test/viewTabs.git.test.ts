@@ -149,6 +149,7 @@ suite('View with two tabs', function () {
         root: repository.root,
         hash: fixture.b,
         offset: 7,
+        report: 1,
       });
       await tabs.connection.receive({ type: 'selectTab', root: other });
       tabs.page.clear();
@@ -160,6 +161,7 @@ suite('View with two tabs', function () {
       assert.deepStrictEqual(tabs.page.last('commits')?.scrollTarget, {
         index: 1,
         offset: 7,
+        report: 1,
       });
       assert.ok(tabs.page.last('workingTree'));
     });
@@ -459,6 +461,7 @@ suite('View with two tabs', function () {
         root: repository.root,
         hash: fixture.b,
         offset: 7,
+        report: 1,
       });
       assert.strictEqual(tabs.page.last('files'), undefined);
       assert.strictEqual(tabs.page.last('navigation'), undefined);
@@ -474,7 +477,11 @@ suite('View with two tabs', function () {
       const replayed = tabs.page.messages.find(
         (message) => message.type === 'commits',
       );
-      assert.deepStrictEqual(replayed?.scrollTarget, { index: 1, offset: 7 });
+      assert.deepStrictEqual(replayed?.scrollTarget, {
+        index: 1,
+        offset: 7,
+        report: 1,
+      });
       assert.notStrictEqual(tabs.page.last('files')?.hash, fixture.b);
     });
 

@@ -276,8 +276,8 @@ export function App({ name, post: postToHost, listen }: Props) {
   );
 
   const onScrolled = useCallback(
-    (top: string, offset: number) =>
-      postTab({ type: 'scrolled', hash: top, offset }),
+    (top: string, offset: number, report: number) =>
+      postTab({ type: 'scrolled', hash: top, offset, report }),
     [postTab],
   );
 

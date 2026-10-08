@@ -302,6 +302,7 @@ suite('View updating by itself', function () {
         root: repository.root,
         hash: kept,
         offset: 7,
+        report: 1,
       });
       assert.ok(shown.last('diff')?.patch.includes('+kept'));
       const before = shown.last('commits')?.total ?? 0;
@@ -322,7 +323,11 @@ suite('View updating by itself', function () {
         commits?.commits[index - (commits?.start ?? 0)]?.hash,
         kept,
       );
-      assert.deepStrictEqual(commits?.scrollTarget, { index, offset: 7 });
+      assert.deepStrictEqual(commits?.scrollTarget, {
+        index,
+        offset: 7,
+        report: 1,
+      });
       assert.ok((commits?.total ?? 0) > before);
       for (const type of ['files', 'diff', 'fileContent', 'error'] as const) {
         assert.strictEqual(shown.last(type), undefined, type);

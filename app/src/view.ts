@@ -565,7 +565,11 @@ export class FastforwardView {
       case 'scrolled': {
         const tab = this.tabStates.get(message.root);
         if (tab) {
-          tab.anchor = { hash: message.hash, offset: message.offset };
+          tab.anchor = {
+            hash: message.hash,
+            offset: message.offset,
+            report: message.report,
+          };
         }
         return;
       }

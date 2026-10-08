@@ -281,21 +281,21 @@ suite('Tab state', () => {
 
   test('starts the first page at the page of the commit that keeps its place', () => {
     const tab = laidOut();
-    tab.anchor = { hash: `h${inSecondPage}`, offset: 3 };
+    tab.anchor = { hash: `h${inSecondPage}`, offset: 3, report: 4 };
     assert.deepStrictEqual(firstPage(tab, true), {
       start: commitPageSize,
-      scrollTarget: { index: inSecondPage, offset: 3 },
+      scrollTarget: { index: inSecondPage, offset: 3, report: 4 },
     });
     assert.deepStrictEqual(firstPage(tab, false), {
       start: 0,
       scrollTarget: undefined,
     });
-    tab.anchor = { hash: workingTreeHash, offset: 7 };
+    tab.anchor = { hash: workingTreeHash, offset: 7, report: 5 };
     assert.deepStrictEqual(firstPage(tab, true), {
       start: 0,
-      scrollTarget: { index: -1, offset: 0 },
+      scrollTarget: { index: -1, offset: 0, report: 5 },
     });
-    tab.anchor = { hash: 'gone', offset: 0 };
+    tab.anchor = { hash: 'gone', offset: 0, report: 6 };
     assert.deepStrictEqual(firstPage(tab, true), {
       start: 0,
       scrollTarget: undefined,
@@ -328,12 +328,16 @@ suite('Tab state', () => {
     const tab = laidOut();
     keep(tab.shown, commitsMessage(tab, firstPage(tab, false, 'h0'), []));
     select(tab, 'h5');
-    tab.anchor = { hash: 'h9', offset: 2 };
+    tab.anchor = { hash: 'h9', offset: 2, report: 1 };
     const replayed = replayOf(tab).find(
       (message) => message.type === 'commits',
     );
     assert.strictEqual(replayed?.selectedIndex, 5);
-    assert.deepStrictEqual(replayed.scrollTarget, { index: 9, offset: 2 });
+    assert.deepStrictEqual(replayed.scrollTarget, {
+      index: 9,
+      offset: 2,
+      report: 1,
+    });
   });
 
   test('keeps the working tree selected at index -1 when the history is laid out again', () => {

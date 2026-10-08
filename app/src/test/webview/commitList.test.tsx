@@ -7,6 +7,7 @@ import { workingTreeHash, workingTreeIndex } from '../../shared/protocol';
 import { CommitHistory } from '../../webview/commitHistory';
 import {
   keptPlace,
+  ReportedPlaces,
   settling,
   listKeyPosition,
   keySelection,
@@ -272,22 +273,43 @@ suite('Commit list top', () => {
   });
 
   test('keeps its place by what was scrolled since the place it last told', () => {
-    assert.strictEqual(keptPlace(1000, 7, 400, 400).top, 1007);
-    assert.strictEqual(keptPlace(1000, 7, 900, 400).top, 1507);
-    assert.strictEqual(keptPlace(1000, 7, 900, undefined).top, 1007);
+    assert.strictEqual(keptPlace(1000, 7, 400, 400), 1007);
+    assert.strictEqual(keptPlace(1000, 7, 900, 400), 1507);
+    assert.strictEqual(keptPlace(1000, 7, 900, undefined), 1007);
   });
 
   test('keeps its place only once when another history comes before its own scroll is told', () => {
-    const first = keptPlace(1000, 7, 900, 400);
-    assert.strictEqual(
-      keptPlace(1300, 7, first.top, first.reportedTop).top,
-      1807,
-    );
-    const unscrolled = keptPlace(1000, 7, 0, undefined);
-    assert.strictEqual(
-      keptPlace(1300, 7, unscrolled.top, unscrolled.reportedTop).top,
-      1307,
-    );
+    const places = new ReportedPlaces();
+    const told = places.told(400);
+    const first = places.kept(1000, 7, 900, told);
+    assert.strictEqual(places.kept(1300, 7, first, told), 1807);
+    const unscrolled = places.kept(1000, 7, 0, undefined);
+    assert.strictEqual(places.kept(1300, 7, unscrolled, undefined), 1307);
+  });
+});
+
+suite('Places told', () => {
+  test('keeps its place by what was scrolled since the place a history kept was told, though a later one was told since', () => {
+    const places = new ReportedPlaces();
+    const kept = places.told(400);
+    places.told(2400);
+    assert.strictEqual(places.kept(1000, 7, 2400, kept), 3007);
+  });
+
+  test('moves the places told since by as much as keeping a place scrolled, as the rows above them moved too', () => {
+    const places = new ReportedPlaces();
+    const kept = places.told(400);
+    const later = places.told(2400);
+    places.kept(1000, 7, 2400, kept);
+    assert.strictEqual(places.kept(3307, 0, 3007, later), 3307);
+  });
+
+  test('keeps a place told before it was forgotten, or never told, as it is', () => {
+    const places = new ReportedPlaces();
+    const kept = places.told(400);
+    places.forget();
+    assert.strictEqual(places.kept(1000, 7, 900, kept), 1007);
+    assert.strictEqual(places.kept(1000, 7, 900, undefined), 1007);
   });
 });
 

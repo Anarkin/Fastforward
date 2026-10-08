@@ -733,6 +733,7 @@ suite('View refreshing one repository', function () {
         root: repository.root,
         hash: fixture.b,
         offset: 7,
+        report: 1,
       });
 
       page.clear();
@@ -744,7 +745,11 @@ suite('View refreshing one repository', function () {
         await connection.refresh();
         const commits = page.last('commits');
         assert.strictEqual(commits?.total, 4);
-        assert.deepStrictEqual(commits.scrollTarget, { index: 2, offset: 7 });
+        assert.deepStrictEqual(commits.scrollTarget, {
+          index: 2,
+          offset: 7,
+          report: 1,
+        });
         assert.ok(page.last('repository'));
       } finally {
         await restore();
@@ -757,6 +762,7 @@ suite('View refreshing one repository', function () {
         root: repository.root,
         hash: workingTreeHash,
         offset: 0,
+        report: 1,
       });
       page.clear();
       try {
@@ -764,7 +770,11 @@ suite('View refreshing one repository', function () {
         await connection.refresh();
         const commits = page.last('commits');
         assert.strictEqual(commits?.commits[0]?.subject, 'on top');
-        assert.deepStrictEqual(commits.scrollTarget, { index: -1, offset: 0 });
+        assert.deepStrictEqual(commits.scrollTarget, {
+          index: -1,
+          offset: 0,
+          report: 1,
+        });
       } finally {
         await restore();
       }

@@ -187,6 +187,7 @@ export type Direction = 'back' | 'forward';
 export interface ScrollTarget {
   readonly index: number;
   readonly offset?: number;
+  readonly report?: number;
 }
 
 export interface TextRequest {
@@ -264,6 +265,7 @@ export type TabMessage =
       readonly type: 'scrolled';
       readonly hash: string;
       readonly offset: number;
+      readonly report: number;
     }
   | { readonly type: 'toggleMerge'; readonly hash: string }
   | {
