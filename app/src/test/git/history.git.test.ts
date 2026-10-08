@@ -12,6 +12,7 @@ import {
   logCommits,
   searchCommits,
 } from '../../git/history';
+import { runGit } from '../../git/run';
 import { renamingRepository } from '../gitFixtures';
 import {
   commitText,
@@ -40,24 +41,39 @@ suite('Git history', function () {
 
   suiteTeardown(() => removeFolder(cwd));
 
-  test('lists only the history of HEAD when solo, not a branch off it', async () => {
+  test('lists the history of HEAD, the branches, the remotes and the tags, and only of HEAD when solo', async () => {
     const [first, tree] = await temp.resolve('HEAD~2', 'HEAD^{tree}');
-    const side = (
-      await temp.git('commit-tree', tree, '-p', first, '-m', 'side')
-    ).trim();
-    await temp.git('branch', 'side', side);
+    const refs = [
+      'refs/heads/side',
+      'refs/remotes/origin/side',
+      'refs/tags/side',
+    ];
+    const sides: string[] = [];
+    for (const ref of refs) {
+      const side = (
+        await temp.git('commit-tree', tree, '-p', first, '-m', ref)
+      ).trim();
+      await temp.git('update-ref', ref, side);
+      sides.push(side);
+    }
     try {
       const all = await listHistory(gitPath, cwd);
       const solo = await listHistory(gitPath, cwd, true);
-      assert.ok(all.some((entry) => entry.hash === side));
+      for (const [index, side] of sides.entries()) {
+        assert.ok(
+          all.some((entry) => entry.hash === side),
+          refs[index],
+        );
+      }
       assert.strictEqual(solo.length, 3);
-      assert.ok(!solo.some((entry) => entry.hash === side));
     } finally {
-      await temp.git('branch', '-D', 'side');
+      for (const ref of refs) {
+        await temp.git('update-ref', '-d', ref);
+      }
     }
   });
 
-  test('lists the history, its commits, their files and patches', async () => {
+  test('lists the history, its commits, and the files and patch of its root commit, which has no parent to diff against', async () => {
     const history = await listHistory(gitPath, cwd);
     assert.strictEqual(history.length, 3);
     assert.ok(history.every((entry) => entry.hash.length === 40));
@@ -81,6 +97,22 @@ suite('Git history', function () {
       path: 'first.txt',
     });
     assert.ok(patch.includes('b/first.txt'));
+  });
+
+  test('loads commits without reading the files they change, as counting their lines took 8 s instead of 0.1 s for 300 commits in a large repository', async () => {
+    const [first] = await temp.resolve('HEAD~2');
+    const tree = (
+      await runGit(gitPath, cwd, ['mktree', '--missing'], {
+        input: `100644 blob ${objectId('blob', 'lost\n')}\tlost.txt\n`,
+      })
+    ).trim();
+    const lost = (
+      await temp.git('commit-tree', tree, '-p', first, '-m', 'lost')
+    ).trim();
+    assert.deepStrictEqual(
+      (await logCommits(gitPath, cwd, [lost])).map((commit) => commit.subject),
+      ['lost'],
+    );
   });
 
   test('finds the commits a hash starts with', async () => {

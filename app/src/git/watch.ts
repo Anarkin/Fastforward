@@ -23,6 +23,10 @@ interface WatchOptions {
   readonly ignored?: Ignored;
 }
 
+export function watchesRecursively(platform = process.platform): boolean {
+  return platform !== 'linux';
+}
+
 export async function watchRepository(
   gitPath: string,
   root: string,
@@ -32,7 +36,7 @@ export async function watchRepository(
     onChange,
     onWorktreesChange,
     onError,
-    recursive = process.platform !== 'linux',
+    recursive = watchesRecursively(),
     ignored = (repo, paths) => ignoredPaths(gitPath, repo, paths),
   }: WatchOptions,
 ): Promise<Watcher> {

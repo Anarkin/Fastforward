@@ -411,6 +411,29 @@ suite('View of worktrees', function () {
     });
   });
 
+  test('tells every worktree of a repository when it last fetched, as each worktree has a FETCH_HEAD of its own', async () => {
+    const origin = await tempRepository(path.join(folder, 'fetched-origin'));
+    await origin.commit('a');
+    const fetched = await tempRepository(path.join(folder, 'fetched'));
+    await fetched.commit('a');
+    await fetched.git('remote', 'add', 'origin', origin.root);
+    const linked = path.join(folder, 'fetched.worktrees', 'linked');
+    await fetched.git('worktree', 'add', '-q', '--detach', linked);
+    await withView(log, [fetched.root], async (view) => {
+      const root = worktreeRoot(view, linked);
+      await view.connection.receive({ type: 'selectWorktree', root });
+      await view.connection.receive({ type: 'fetch', root });
+      const succeeded = view.page.last('lastFetch')?.succeeded;
+      assert.ok(succeeded);
+      view.page.clear();
+      await view.connection.receive({
+        type: 'selectWorktree',
+        root: fetched.root,
+      });
+      assert.strictEqual(view.page.last('lastFetch')?.succeeded, succeeded);
+    });
+  });
+
   test('fetches a repository once at a time, also for two of its worktrees', async () => {
     let requests = 0;
     let released = false;

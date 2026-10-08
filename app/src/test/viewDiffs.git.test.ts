@@ -7,7 +7,7 @@ import {
   patchLineBudget,
   workingTreeHash,
 } from '../shared/protocol';
-import { imageUrl } from '../shared/images';
+import { imageUrl, maxImageSize } from '../shared/images';
 import { waitFor } from './fixtures';
 import {
   removeFolder,
@@ -633,27 +633,45 @@ suite('View showing diffs', function () {
       await images.git('commit', '-m', 'images');
     });
 
-    test('serves the images of the repositories open', async () => {
+    test('serves the images of the repositories open, telling one too large to preview from one it cannot serve', async () => {
       const [object] = await images.resolve('HEAD:pixel.png');
       const [data] = await images.resolve('HEAD:data.bin');
-      await withView(log, [images.root], async ({ view }) => {
-        const shown = await view.image(url(images.root, 'pixel.png', object));
-        assert.strictEqual(shown.status, 200);
-        assert.strictEqual(shown.headers.get('content-type'), 'image/png');
-        assert.deepStrictEqual(Buffer.from(await shown.arrayBuffer()), pixel);
-        const onDisk = await view.image(
-          url(images.root, 'pixel.png', 'any', true),
-        );
-        assert.deepStrictEqual(Buffer.from(await onDisk.arrayBuffer()), pixel);
+      const exclude = path.join(images.root, '.git', 'info', 'exclude');
+      fs.mkdirSync(path.dirname(exclude), { recursive: true });
+      fs.appendFileSync(exclude, '/large.png\n');
+      const large = path.join(images.root, 'large.png');
+      fs.writeFileSync(large, '');
+      fs.truncateSync(large, maxImageSize + 1);
+      try {
+        await withView(log, [images.root], async ({ view }) => {
+          const shown = await view.image(url(images.root, 'pixel.png', object));
+          assert.strictEqual(shown.status, 200);
+          assert.strictEqual(shown.headers.get('content-type'), 'image/png');
+          assert.deepStrictEqual(Buffer.from(await shown.arrayBuffer()), pixel);
+          const onDisk = await view.image(
+            url(images.root, 'pixel.png', 'any', true),
+          );
+          assert.deepStrictEqual(
+            Buffer.from(await onDisk.arrayBuffer()),
+            pixel,
+          );
+          assert.strictEqual(
+            (await view.image(url(images.root, 'large.png', 'any', true)))
+              .status,
+            413,
+          );
 
-        for (const unserved of [
-          url(images.root, 'data.bin', data),
-          url(images.root, 'gone.png', 'any', true),
-          url(other, 'pixel.png', object),
-        ]) {
-          assert.strictEqual((await view.image(unserved)).status, 404);
-        }
-      });
+          for (const unserved of [
+            url(images.root, 'data.bin', data),
+            url(images.root, 'gone.png', 'any', true),
+            url(other, 'pixel.png', object),
+          ]) {
+            assert.strictEqual((await view.image(unserved)).status, 404);
+          }
+        });
+      } finally {
+        fs.rmSync(large);
+      }
     });
 
     test('shows a binary file whole again once it changes, staged in full', async () => {

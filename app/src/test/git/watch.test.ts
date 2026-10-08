@@ -9,6 +9,7 @@ import {
   nextFlush,
   watchEach,
   watchedFolder,
+  watchesRecursively,
   watchTree,
   type FolderWatcher,
 } from '../../git/watch';
@@ -517,6 +518,12 @@ suite('Watching folders one by one', () => {
 });
 
 suite('Watching folders recursively', () => {
+  test('watches recursively but on Linux, where Node walks the whole tree synchronously with one inotify watch per file', () => {
+    assert.strictEqual(watchesRecursively('win32'), true);
+    assert.strictEqual(watchesRecursively('darwin'), true);
+    assert.strictEqual(watchesRecursively('linux'), false);
+  });
+
   test('closes the folders it watched when watching a later one fails', () => {
     const watched: FakeWatcher[] = [];
     assert.throws(

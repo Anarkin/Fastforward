@@ -5,6 +5,11 @@ import {
   showFiles,
   showPatch,
 } from '../../git/diff';
+import {
+  stagedPatch,
+  workingTreeFiles,
+  workingTreePatch,
+} from '../../git/workingTree';
 import { parsePatch } from '../../webview/diff';
 import { renamingRepository, submoduleRepository } from '../gitFixtures';
 import {
@@ -13,6 +18,13 @@ import {
   tempRepository,
   type TempRepository,
 } from '../repositories';
+
+function changedLines(patch: string): string[] {
+  return patch
+    .slice(patch.indexOf('@@'))
+    .split('\n')
+    .filter((line) => /^[+-]./.test(line));
+}
 
 suite('Git diff', function () {
   this.timeout(20_000);
@@ -87,7 +99,8 @@ suite('Git diff', function () {
     }
   });
 
-  test('keeps a line as it is when blank lines around it are added and removed', async () => {
+  test('keeps a line as it is when blank lines around it are added and removed, in every diff, whatever the config says', async () => {
+    await temp.git('config', 'diff.algorithm', 'myers');
     try {
       await temp.commit('old', {
         'a.md': [
@@ -125,15 +138,46 @@ suite('Git diff', function () {
           '',
         ].join('\n'),
       });
-      const [hash] = await temp.resolve('HEAD');
-      const patch = await showPatch(gitPath, cwd, hash);
-      const changed = patch
-        .slice(patch.indexOf('@@'))
-        .split('\n')
-        .filter((line) => /^[+-]./.test(line));
-      assert.deepStrictEqual(changed, ['-## B', '-## C'], patch);
+      const [old, hash] = await temp.resolve('HEAD~1', 'HEAD');
+      const removed = ['-## B', '-## C'];
+      assert.deepStrictEqual(
+        changedLines(await showPatch(gitPath, cwd, hash)),
+        removed,
+      );
+      assert.deepStrictEqual(
+        changedLines(await comparePatch(gitPath, cwd, old, hash)),
+        removed,
+      );
+      await temp.git('reset', '--soft', old);
+      assert.deepStrictEqual(
+        changedLines(await stagedPatch(gitPath, cwd)),
+        removed,
+      );
+      await temp.git('reset', old);
+      assert.deepStrictEqual(
+        changedLines(
+          await workingTreePatch(
+            gitPath,
+            cwd,
+            await workingTreeFiles(gitPath, cwd),
+          ),
+        ),
+        removed,
+      );
+      await temp.git('checkout', '--', 'a.md');
+      assert.deepStrictEqual(
+        changedLines(
+          await workingTreePatch(
+            gitPath,
+            cwd,
+            await workingTreeFiles(gitPath, cwd, { base: hash, reverse: true }),
+          ),
+        ),
+        removed,
+      );
     } finally {
       await temp.git('reset', '--hard', rename);
+      await temp.git('config', '--unset', 'diff.algorithm');
     }
   });
 

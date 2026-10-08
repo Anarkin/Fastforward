@@ -684,6 +684,48 @@ suite('App', function () {
   });
 });
 
+suite('App quitting', function () {
+  this.timeout(60_000);
+
+  test('stops the git it still runs, which would outlive it', async () => {
+    const folder = tempFolder('quitting');
+    const profile = path.join(folder, 'profile');
+    const alive = path.join(folder, 'alive').replaceAll('\\', '/');
+    const stop = path.join(folder, 'stop').replaceAll('\\', '/');
+    const repository = await tempRepository(path.join(folder, 'repo'));
+    await repository.commit('first');
+    await repository.git('remote', 'add', 'origin', 'ssh://stalled.invalid/x');
+    await repository.git(
+      'config',
+      'core.sshCommand',
+      `i=0; while [ ! -e '${stop}' ]; do i=$((i + 1)); echo $i > '${alive}'; sleep 0.2; done; false`,
+    );
+    fs.mkdirSync(profile, { recursive: true });
+    fs.writeFileSync(
+      path.join(profile, 'settings.json'),
+      JSON.stringify({ tabs: [repository.root], activeTab: repository.root }),
+    );
+    const app = await _electron.launch({
+      args: [appFolder, `--user-data-dir=${profile}`],
+      cwd: appFolder,
+    });
+    try {
+      const page = await app.firstWindow();
+      await page.locator('.commit', { hasText: 'first' }).waitFor();
+      await page.getByTitle(strings.navigation.fetch, { exact: true }).click();
+      await waitFor(() => fs.existsSync(alive), 'git to fetch');
+      await app.close();
+      const counted = fs.readFileSync(alive, 'utf8');
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      assert.strictEqual(fs.readFileSync(alive, 'utf8'), counted);
+    } finally {
+      fs.writeFileSync(stop, '');
+      await app.close();
+      removeFolder(folder);
+    }
+  });
+});
+
 suite('App without git', function () {
   this.timeout(60_000);
 

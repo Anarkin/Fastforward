@@ -12,6 +12,7 @@ import {
   tokenizing,
   type SyntaxRange,
 } from '../../webview/syntax';
+import { policyOfPage } from '../fixtures';
 
 type Highlighter = Awaited<ReturnType<typeof loadLanguages>>;
 
@@ -62,6 +63,10 @@ suite('Syntax', () => {
       "/** a */ let s = 'x' + `y${1}` + /z/g; // c\nclass C<T> { m(): T[] { return []; } }",
       { lang: 'typescript', theme: highlighter.getLoadedThemes()[0] },
     );
+  });
+
+  test('may run the Oniguruma engine by the page policy, as it is WebAssembly, which the tests run without the policy', () => {
+    assert.ok(policyOfPage().get('script-src')?.includes("'wasm-unsafe-eval'"));
   });
 
   test('knows the language from the file name', () => {

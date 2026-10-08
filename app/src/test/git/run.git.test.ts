@@ -2,7 +2,13 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { gitErrorText } from '../../git/errorText';
-import { switchToBranch } from '../../git/repository';
+import { fastForward } from '../../git/branches';
+import {
+  checkoutNewBranch,
+  fetchAllRemotes,
+  switchToBranch,
+  switchToCommit,
+} from '../../git/repository';
 import { runGit, stopRunningGit } from '../../git/run';
 import { ignoredPaths } from '../../git/watch';
 import { workingTreeFiles, workingTreePatch } from '../../git/workingTree';
@@ -11,6 +17,7 @@ import {
   removeFolder,
   tempFolder,
   tempRepository,
+  withEnv,
   type TempRepository,
 } from '../repositories';
 
@@ -40,31 +47,59 @@ suite('Running git in a repository', function () {
     assert.deepStrictEqual(fs.readFileSync(index), before);
   });
 
-  test("runs hooks without the settings it reads git's output with, as the user's own git would run them", async () => {
+  test("runs the hooks and ssh of every command that has them without the settings it reads git's output with, as the user's own git would run them", async () => {
     const folder = tempFolder('hooked');
     const seen = path.join(folder, 'seen.txt').replaceAll('\\', '/');
+    const record = `echo "[$GIT_LITERAL_PATHSPECS][$GIT_OPTIONAL_LOCKS][$LC_ALL][$GIT_CONFIG_PARAMETERS]" > '${seen}'`;
     const hooks = path.join(cwd, '.git', 'hooks');
-    fs.mkdirSync(hooks, { recursive: true });
-    fs.writeFileSync(
-      path.join(hooks, 'post-checkout'),
-      `#!/bin/sh\necho "[$GIT_LITERAL_PATHSPECS][$GIT_OPTIONAL_LOCKS][$LC_ALL][$GIT_CONFIG_PARAMETERS]" > '${seen}'\n`,
-      { mode: 0o755 },
-    );
+    const [first] = await temp.resolve('HEAD');
+    await temp.git('switch', '-q', '-c', 'ahead');
+    await temp.commit('ahead');
+    await temp.git('switch', '-q', 'main');
     await temp.git('branch', 'hooked');
+    await temp.git('remote', 'add', 'hooked', 'ssh://hooked.invalid/x');
+    await temp.git('config', 'core.sshCommand', `${record}; false`);
+    fs.mkdirSync(hooks, { recursive: true });
+    for (const hook of ['post-checkout', 'post-merge']) {
+      fs.writeFileSync(path.join(hooks, hook), `#!/bin/sh\n${record}\n`, {
+        mode: 0o755,
+      });
+    }
+    const commands = {
+      switchToBranch: () => switchToBranch(gitPath, cwd, 'hooked'),
+      fastForward: () => fastForward(gitPath, cwd, 'ahead'),
+      switchToCommit: () => switchToCommit(gitPath, cwd, first),
+      checkoutNewBranch: () =>
+        checkoutNewBranch(gitPath, cwd, 'tracking', 'main'),
+      fetchAllRemotes: () => assert.rejects(fetchAllRemotes(gitPath, cwd)),
+    };
     try {
-      await switchToBranch(gitPath, cwd, 'hooked');
-      const [, literal, locks, locale, config = ''] =
-        /^\[(.*)\]\[(.*)\]\[(.*)\]\[(.*)\]$/.exec(
-          fs.readFileSync(seen, 'utf8').trim(),
-        ) ?? [];
-      assert.strictEqual(literal, '');
-      assert.strictEqual(locks, '');
-      assert.strictEqual(locale, process.env.LC_ALL ?? '');
-      assert.doesNotMatch(config, /autoRefreshIndex|quotePath/);
+      await withEnv({ LC_ALL: 'en_US.UTF-8' }, async () => {
+        for (const [name, run] of Object.entries(commands)) {
+          fs.rmSync(seen, { force: true });
+          await run();
+          const [, literal, locks, locale, config = ''] =
+            /^\[(.*)\]\[(.*)\]\[(.*)\]\[(.*)\]$/.exec(
+              fs.readFileSync(seen, 'utf8').trim(),
+            ) ?? [];
+          assert.deepStrictEqual(
+            [literal, locks, locale],
+            ['', '', 'en_US.UTF-8'],
+            name,
+          );
+          assert.doesNotMatch(config, /autoRefreshIndex|quotePath/, name);
+        }
+      });
     } finally {
-      fs.rmSync(path.join(hooks, 'post-checkout'));
+      for (const hook of ['post-checkout', 'post-merge']) {
+        fs.rmSync(path.join(hooks, hook));
+      }
+      await temp.git('config', '--unset', 'core.sshCommand');
+      await temp.git('remote', 'remove', 'hooked');
       await temp.git('checkout', '-q', 'main');
-      await temp.git('branch', '-D', 'hooked');
+      for (const branch of ['hooked', 'ahead', 'tracking']) {
+        await temp.git('update-ref', '-d', `refs/heads/${branch}`);
+      }
       removeFolder(folder);
     }
   });
@@ -72,6 +107,7 @@ suite('Running git in a repository', function () {
   test('gives up on a stopped git even while what it started outlives it holding its output, as a stalled ssh would', async () => {
     const folder = tempFolder('outlived');
     const started = path.join(folder, 'started').replaceAll('\\', '/');
+    const escaped = path.join(folder, 'escaped').replaceAll('\\', '/');
     const stopping = new AbortController();
     try {
       const stalled = runGit(
@@ -79,7 +115,7 @@ suite('Running git in a repository', function () {
         cwd,
         [
           '-c',
-          `alias.stall=!(sleep 15 &); echo > '${started}'; sleep 15`,
+          `alias.stall=!((trap '' TERM; exec sleep 15) & echo $! > '${escaped}'); echo > '${started}'; sleep 15`,
           'stall',
         ],
         { signal: stopping.signal },
@@ -90,6 +126,9 @@ suite('Running git in a repository', function () {
       await assert.rejects(stalled);
       assert.ok(performance.now() - stopped < 5000);
     } finally {
+      if (process.platform !== 'win32' && fs.existsSync(escaped)) {
+        process.kill(Number(fs.readFileSync(escaped, 'utf8')), 'SIGKILL');
+      }
       removeFolder(folder);
     }
   });

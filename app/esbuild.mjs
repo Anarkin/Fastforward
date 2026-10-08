@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as esbuild from 'esbuild';
 import electron from 'electron';
+import { webviewOptions } from './esbuild.config.mjs';
 
 const production = process.argv.includes('--production');
 const dev = process.argv.includes('--dev');
@@ -86,16 +87,7 @@ const contexts = await Promise.all([
   }),
   esbuild.context({
     ...shared,
-    entryPoints: { webview: 'src/webview/main.tsx' },
-    format: 'esm',
-    splitting: true,
-    platform: 'browser',
-    outdir: 'dist',
-    chunkNames: 'chunks/[name]-[hash]',
-    jsx: 'automatic',
-    define: {
-      'process.env.NODE_ENV': production ? '"production"' : '"development"',
-    },
+    ...webviewOptions(production),
     plugins: [trackWebview],
   }),
 ]);

@@ -92,7 +92,7 @@ suite('Tab state', () => {
     { hash: 'base', parents: [] },
   ];
 
-  test('expands a pull merge while merges are collapsed, until it is toggled', () => {
+  test('expands a pull merge while merges are collapsed, as collapsing it would hide the merges that landed on the mainline, until it is toggled', () => {
     const tab = newTabState();
     loadHistory(tab, pull, { name: 'main', commit: 'p' }, []);
     layOutHistory(tab, true, 'p');

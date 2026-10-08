@@ -1,6 +1,4 @@
 import * as assert from 'node:assert';
-import * as fs from 'node:fs';
-import * as path from 'node:path';
 import { comparisonOf } from '../../shared/comparisons';
 import { imageSourceOf } from '../../shared/images';
 import { workingTreeHash } from '../../shared/protocol';
@@ -20,6 +18,7 @@ import {
   withUnchangedObjects,
   type ImageOrigin,
 } from '../../webview/images';
+import { policyOfPage } from '../fixtures';
 
 const oldId = '1'.repeat(40);
 const newId = '2'.repeat(40);
@@ -252,21 +251,6 @@ function fakeImages(
 
 const bytes = (size: number) => () =>
   Promise.resolve(new Response(new Uint8Array(size)));
-
-function policyOfPage(): Map<string, string[]> {
-  const page = fs.readFileSync(
-    path.join(__dirname, '../../../src/webview/index.html'),
-    'utf8',
-  );
-  const [, policy = ''] =
-    /http-equiv="Content-Security-Policy"\s+content="([^"]*)"/.exec(page) ?? [];
-  return new Map(
-    policy.split(';').map((directive) => {
-      const [name = '', ...sources] = directive.trim().split(/\s+/);
-      return [name, sources];
-    }),
-  );
-}
 
 const from = (src: string) => documentImagePath('docs/guide/a.md', src);
 
