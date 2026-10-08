@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import {
   columnsClass,
+  showsDiff,
   listError,
   draggedWidths,
   followDrag,
@@ -131,6 +132,13 @@ suite('Columns', () => {
       columnsClass(false, undefined),
       'columns commits-hidden nothing-selected',
     );
+    assert.strictEqual(columnsClass(true, 'a', false), 'columns no-changes');
+  });
+
+  test('shows the diff unless the files list nothing, or while it has an error to show', () => {
+    assert.strictEqual(showsDiff(undefined, false), true);
+    assert.strictEqual(showsDiff(undefined, true), false);
+    assert.strictEqual(showsDiff('Bad object', true), true);
   });
 });
 

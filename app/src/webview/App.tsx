@@ -26,6 +26,7 @@ import { areaKey } from './changesTree';
 import { checkoutCommit, checkoutOptions, checkoutRef } from './checkout';
 import {
   columnsClass,
+  showsDiff,
   listError,
   shownSelection,
   ColumnResizingProvider,
@@ -52,7 +53,7 @@ import {
   type OpenMenu,
 } from './contextMenu';
 import { Diff, DiffOptions, diffSelection } from './diffColumn';
-import { Files, filesTitle, noChangesText } from './filesColumn';
+import { Files, filesTitle, listsNothing, noChangesText } from './filesColumn';
 import { foldersOf } from './fileTree';
 import { compareWith } from '../shared/comparisons';
 import { hasRef } from '../shared/refNames';
@@ -301,17 +302,29 @@ export function App({ name, post: postToHost, listen }: Props) {
     repository && !repository.head ? repository.headCommit : undefined;
   const opening = activeTab !== undefined && history === undefined && !error;
   const layoutSelection = shownSelection(hash, workingTree);
-  const activeShown = shownColumns(commitsShown, layoutSelection).includes(
-    activeColumn,
+  const commitTree = treeOf(tab);
+  const diffShown = showsDiff(
+    error,
+    listsNothing({
+      files,
+      staged,
+      allPaths: showAllFiles ? commitTree : undefined,
+      loading: filesLoading || opening,
+    }),
   );
+  const activeShown = shownColumns(
+    commitsShown,
+    layoutSelection,
+    diffShown,
+  ).includes(activeColumn);
   useEffect(() => {
     if (!activeShown) {
-      const [first] = shownColumns(commitsShown, layoutSelection);
+      const [first] = shownColumns(commitsShown, layoutSelection, diffShown);
       if (first) {
         focusColumn(first);
       }
     }
-  }, [activeShown, commitsShown, layoutSelection, focusColumn]);
+  }, [activeShown, commitsShown, layoutSelection, diffShown, focusColumn]);
 
   const selectCommit = (
     next: string | undefined,
@@ -412,7 +425,6 @@ export function App({ name, post: postToHost, listen }: Props) {
     postTab({ type: 'selectFile', hash, path: next, area: nextArea });
   };
 
-  const commitTree = treeOf(tab);
   const treeNeeded = showAllFiles ? treeToLoad(tab) : undefined;
   useEffect(() => {
     if (treeNeeded) {
@@ -608,7 +620,11 @@ export function App({ name, post: postToHost, listen }: Props) {
             {tabContent(tabs, () => (
               <ColumnResizingProvider value={resizing}>
                 <div
-                  className={columnsClass(commitsShown, layoutSelection)}
+                  className={columnsClass(
+                    commitsShown,
+                    layoutSelection,
+                    diffShown,
+                  )}
                   ref={columnsContainer}
                   style={{ gridTemplateColumns: columnsTemplate }}
                   data-active-column={activeColumn}
@@ -633,7 +649,7 @@ export function App({ name, post: postToHost, listen }: Props) {
                     }
                     const step = columnStep(
                       event,
-                      shownColumns(commitsShown, layoutSelection),
+                      shownColumns(commitsShown, layoutSelection, diffShown),
                       columnOf(target) ?? activeColumn,
                     );
                     if (step?.preventDefault) {

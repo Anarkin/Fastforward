@@ -64,6 +64,25 @@ export function noChangesText(
     : strings.files.noChanges;
 }
 
+export function listsNothing({
+  files,
+  staged,
+  allPaths,
+  loading,
+}: {
+  files: readonly FileChange[];
+  staged: readonly FileChange[] | undefined;
+  allPaths: readonly string[] | undefined;
+  loading: boolean;
+}): boolean {
+  return (
+    !loading &&
+    files.length === 0 &&
+    staged === undefined &&
+    (allPaths ?? []).length === 0
+  );
+}
+
 interface Side {
   readonly area: ChangeArea | undefined;
   readonly files: readonly FileChange[];
@@ -312,8 +331,8 @@ export function Files({
         revealWith={allPaths}
         onKeyDown={onKeyDown}
       />
-      {!loading && listed.count === 0 && noChanges && (
-        <div className="empty-state">{noChanges}</div>
+      {listsNothing({ files, staged, allPaths, loading }) && noChanges && (
+        <div className="row empty">{noChanges}</div>
       )}
     </Column>
   );

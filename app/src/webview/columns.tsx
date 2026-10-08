@@ -30,12 +30,21 @@ export function shownSelection(
 export function columnsClass(
   commitsShown: boolean,
   selected: string | undefined,
+  diffShown = true,
 ): string {
   return [
     'columns',
     ...(commitsShown ? [] : ['commits-hidden']),
     ...(selected === undefined ? ['nothing-selected'] : []),
+    ...(diffShown ? [] : ['no-changes']),
   ].join(' ');
+}
+
+export function showsDiff(
+  error: string | undefined,
+  listsNothing: boolean,
+): boolean {
+  return error !== undefined || !listsNothing;
 }
 
 export function listError(

@@ -7,6 +7,7 @@ import {
   Files,
   filesCursor,
   filesTitle,
+  listsNothing,
   noChangesText,
 } from '../../webview/filesColumn';
 import type { Folders } from '../../webview/viewFolders';
@@ -148,11 +149,29 @@ suite('Files column', () => {
   test('shows that nothing changed only once loaded, while it lists no file', () => {
     assert.strictEqual(
       noChangesShown([], false),
-      '<div class="empty-state">No changes</div>',
+      '<div class="row empty">No changes</div>',
     );
     assert.strictEqual(noChangesShown([], true), '');
     assert.strictEqual(noChangesShown([change('a.ts')], false), '');
     assert.strictEqual(noChangesShown([], false, true), '');
+  });
+
+  test('lists nothing once loaded with no file changed and none to show unchanged, unless staged and unstaged changes are listed apart', () => {
+    const nothing = {
+      files: [],
+      staged: undefined,
+      allPaths: undefined,
+      loading: false,
+    };
+    assert.strictEqual(listsNothing(nothing), true);
+    assert.strictEqual(listsNothing({ ...nothing, allPaths: [] }), true);
+    assert.strictEqual(listsNothing({ ...nothing, loading: true }), false);
+    assert.strictEqual(
+      listsNothing({ ...nothing, files: [change('a.ts')] }),
+      false,
+    );
+    assert.strictEqual(listsNothing({ ...nothing, allPaths: ['a.ts'] }), false);
+    assert.strictEqual(listsNothing({ ...nothing, staged: [] }), false);
   });
 
   test('collapses every folder, or expands every folder shown, the unchanged ones too while all files show', () => {

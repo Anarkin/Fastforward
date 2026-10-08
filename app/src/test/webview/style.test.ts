@@ -215,10 +215,11 @@ const fileHeader = diffRow(
   }),
 );
 
-function columnVisibility(selected: string | undefined) {
-  return allWithClass(columns(columnsClass(true, selected)), 'column').map(
-    (column) => cascaded(column, 'visibility'),
-  );
+function columnVisibility(selected: string | undefined, diffShown = true) {
+  return allWithClass(
+    columns(columnsClass(true, selected, diffShown)),
+    'column',
+  ).map((column) => cascaded(column, 'visibility'));
 }
 
 const bubbleLook = ['color', 'background', 'box-shadow', 'border'];
@@ -886,6 +887,14 @@ suite('Style', () => {
     ]);
   });
 
+  test('hides the diff while the commit selected has no change to show, keeping its place', () => {
+    assert.deepStrictEqual(columnVisibility('a', false), [
+      undefined,
+      undefined,
+      'hidden',
+    ]);
+  });
+
   test('grabs a column edge over the gap between the columns without painting it, even while dragging', () => {
     const resizer = withClass(columns(columnsClass(true, 'a')), 'resizer');
     looks(resizer, {
@@ -1135,7 +1144,7 @@ suite('Style', () => {
     );
   });
 
-  test('shows that nothing changed above the empty list, which still fills the column to take the keys', () => {
+  test('shows that nothing changed as a dimmed row above the empty list, which still fills the column to take the keys', () => {
     const column = rendered(
       renderedBy(Column, {
         children: [
@@ -1145,7 +1154,7 @@ suite('Style', () => {
             renderRow: noop,
             selectedKey: undefined,
           }),
-          createElement('div', { key: 'empty', className: 'empty-state' }),
+          createElement('div', { key: 'empty', className: 'row empty' }),
         ],
       }),
     );
@@ -1153,7 +1162,13 @@ suite('Style', () => {
       display: 'flex',
       'flex-direction': 'column',
     });
-    looks(withClass(column, 'empty-state'), { order: '-1' });
+    looks(withClass(column, 'empty'), {
+      order: '-1',
+      'flex-shrink': '0',
+      height: '22px',
+      padding: '3px 8px',
+      color: 'var(--muted-foreground)',
+    });
     looks(withClass(column, 'virtual-rows-frame'), {
       flex: '1',
       'min-height': '0',

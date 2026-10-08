@@ -10,9 +10,12 @@ export const columnFocusAttribute = 'data-column-focus';
 export function shownColumns(
   commitsShown: boolean,
   selected: string | undefined,
+  diffShown = true,
 ): ColumnName[] {
   return columnOrder.filter((column) =>
-    column === 'commits' ? commitsShown : selected !== undefined,
+    column === 'commits'
+      ? commitsShown
+      : selected !== undefined && (column !== 'diff' || diffShown),
   );
 }
 

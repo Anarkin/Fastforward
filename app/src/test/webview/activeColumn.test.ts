@@ -12,7 +12,7 @@ import { element, keyPress } from '../fixtures';
 suite('Active column', () => {
   const key = keyPress('ArrowRight', { target: element('DIV') });
 
-  test('shows the files and the diff only with a commit selected, and the commits unless hidden', () => {
+  test('shows the files only with a commit selected, the diff only with one that has changes to show, and the commits unless hidden', () => {
     assert.deepStrictEqual(shownColumns(true, 'a'), [
       'commits',
       'files',
@@ -20,6 +20,10 @@ suite('Active column', () => {
     ]);
     assert.deepStrictEqual(shownColumns(true, undefined), ['commits']);
     assert.deepStrictEqual(shownColumns(false, 'a'), ['files', 'diff']);
+    assert.deepStrictEqual(shownColumns(true, 'a', false), [
+      'commits',
+      'files',
+    ]);
   });
 
   test('moves to the next column on Right or Tab, and back on Left or Shift+Tab, telling Tab apart', () => {
