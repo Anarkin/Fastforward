@@ -35,6 +35,7 @@ import { alignLines } from './pairing';
 import { textsToLoad, useSyntax, type SyntaxRange } from './syntax';
 import { wordRanges, type WordRanges } from './wordDiff';
 import { keymap, wheeled, type Modifiers } from '../shared/keymap';
+import { glideAt, glideBy, glideEnded, type Glide } from './glide';
 import { strings } from '../shared/strings';
 import { listMoveOf, type ListMove } from './listMoves';
 import { keyPressed } from './shortcuts';
@@ -277,25 +278,22 @@ export function splitSideClass(
   return cell.line.kind === change ? change : '';
 }
 
-export function sideScroll(
-  scroll: number,
-  deltas: readonly number[],
-  widest: number,
-): number {
-  const within = (scrolled: number) => Math.max(0, Math.min(widest, scrolled));
-  return deltas.reduce(
-    (scrolled, delta) => within(scrolled + delta),
-    within(scroll),
-  );
+export function sideScroll(scroll: number, widest: number): number {
+  return Math.max(0, Math.min(widest, scroll));
 }
+
+export const wheelGlide = 120;
 
 export function wheelSideways(
   event: Modifiers & Pick<WheelEvent, 'deltaX' | 'deltaY'>,
-): number {
+): { delta: number; duration: number } {
   if (wheeled(keymap.wheelSideways, event)) {
-    return event.deltaX || event.deltaY;
+    return { delta: event.deltaX || event.deltaY, duration: wheelGlide };
   }
-  return Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : 0;
+  return {
+    delta: Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : 0,
+    duration: 0,
+  };
 }
 
 type SplitRow = Extract<DiffRow, { kind: 'split' | 'hunk' }>;
@@ -1115,22 +1113,38 @@ export function DiffView({
     if (!element || !scrollsSides) {
       return undefined;
     }
-    let deltas: number[] = [];
+    let glide: Glide | undefined;
+    let frameWidest: number | undefined;
     let frame: number | undefined;
     const scroll = () => {
       frame = undefined;
-      const { widest } = sideRoom(element);
-      const ticks = deltas;
-      deltas = [];
-      setSideways((scrolled) => sideScroll(scrolled, ticks, widest));
+      frameWidest = undefined;
+      if (!glide) {
+        return;
+      }
+      const now = performance.now();
+      setSideways(glideAt(glide, now));
+      if (glideEnded(glide, now)) {
+        glide = undefined;
+      } else {
+        frame = requestAnimationFrame(scroll);
+      }
     };
     const onWheel = (event: WheelEvent) => {
-      const delta = wheelSideways(event);
+      const { delta, duration } = wheelSideways(event);
       if (delta === 0) {
         return;
       }
       event.preventDefault();
-      deltas.push(delta);
+      frameWidest ??= sideRoom(element).widest;
+      glide = glideBy(
+        glide,
+        scrolledSideways.current,
+        performance.now(),
+        delta,
+        duration,
+        frameWidest,
+      );
       frame ??= requestAnimationFrame(scroll);
     };
     element.addEventListener('wheel', onWheel, { passive: false });
@@ -1447,7 +1461,7 @@ export function DiffView({
   useLayoutEffect(() => {
     const element = list.current;
     if (element && scrollsSides && sideways > 0) {
-      const within = sideScroll(sideways, [], sideRoom(element).widest);
+      const within = sideScroll(sideways, sideRoom(element).widest);
       if (within !== sideways) {
         setSideways(within);
       }
