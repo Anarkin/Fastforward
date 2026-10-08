@@ -564,7 +564,7 @@ suite('Large files in a commit diff', () => {
     );
   });
 
-  test('keeps both halves of a file that changed type', () => {
+  test('keeps both halves of a file that changed type, and the blob of each', () => {
     const typeChange = [
       'diff --git a/f b/f',
       'deleted file mode 100644',
@@ -590,6 +590,10 @@ suite('Large files in a commit diff', () => {
       both,
     );
     assert.deepStrictEqual(lines([parseFilePatch('f', typeChange)]), both);
+    assert.deepStrictEqual(parsed[0].blobs, {
+      old: 'ce01362',
+      new: 'eb4e8a8',
+    });
   });
 
   test('keeps files the list lacks, and leaves out small ones the diff lacks', () => {

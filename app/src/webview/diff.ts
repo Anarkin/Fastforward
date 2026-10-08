@@ -188,7 +188,10 @@ export function parsePatch(patch: string): DiffFile[] {
     if (!hunk) {
       const index = indexLine.exec(line);
       if (index) {
-        file.blobs = { old: blob(index[1]), new: blob(index[2]) };
+        file.blobs = {
+          old: blob(index[1]) ?? file.blobs?.old,
+          new: blob(index[2]) ?? file.blobs?.new,
+        };
       } else if (line.startsWith('Binary files ')) {
         file.binary = true;
       } else if (line.startsWith('rename to ') || line.startsWith('copy to ')) {
