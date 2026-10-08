@@ -260,6 +260,8 @@ export const strings = {
     imageTooLarge: (megabytes: number) =>
       `Images over ${megabytes} MB are not previewed`,
     imageFailed: "Couldn't show this image",
+    showImage: 'Show the Image',
+    showSource: 'Show the Source',
     largeFile: 'Large file',
     notLoaded: 'Not loaded',
     largeDiff: (lines: number) =>

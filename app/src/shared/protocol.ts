@@ -141,6 +141,7 @@ export interface FileChange {
   readonly deletions: number;
   readonly bytes?: number;
   readonly tooLargeToCount?: boolean;
+  readonly id?: string;
 }
 
 export interface TabInfo {

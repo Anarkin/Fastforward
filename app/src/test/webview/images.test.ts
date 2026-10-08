@@ -10,7 +10,10 @@ import {
   ImageCache,
   previewsImage,
   previewsWholeImage,
+  rendersImage,
+  rendersWholeImage,
   wholeImageUrl,
+  withUnchangedObjects,
   type ImageOrigin,
 } from '../../webview/images';
 
@@ -43,7 +46,99 @@ const source = (url: string | undefined) =>
     ? undefined
     : imageSourceOf(new URL(url, 'fastforward://app'));
 
+function svgPatch(index: string, binary = false): DiffFile {
+  const [file] = parsePatch(
+    [
+      'diff --git a/v.svg b/v.svg',
+      `index ${index}`,
+      ...(binary
+        ? ['Binary files a/v.svg and b/v.svg differ']
+        : ['--- a/v.svg', '+++ b/v.svg', '@@ -1 +1 @@', '-<svg/>', '+<svg />']),
+    ].join('\n'),
+  );
+  return file;
+}
+
+const change = (file: string, id?: string) => ({
+  path: file,
+  oldPath: undefined,
+  status: 'R' as const,
+  insertions: 0,
+  deletions: 0,
+  ...(id ? { id } : {}),
+});
+
 suite('Image previews', () => {
+  test('previews an image moved or copied unchanged by the object its change names', () => {
+    const [moved, renamedText, edited] = parsePatch(
+      [
+        'diff --git a/resources/a.png b/src/a.png',
+        'similarity index 100%',
+        'rename from resources/a.png',
+        'rename to src/a.png',
+        'diff --git a/a.ts b/b.ts',
+        'similarity index 100%',
+        'rename from a.ts',
+        'rename to b.ts',
+        'diff --git a/c.png b/c.png',
+        `index ${oldId}..${newId}`,
+        'Binary files a/c.png and b/c.png differ',
+      ].join('\n'),
+    );
+    const files = [moved, renamedText, edited];
+    const [image, text, kept] = withUnchangedObjects(files, [
+      change('src/a.png', commit),
+      change('b.ts', commit),
+      change('c.png', commit),
+    ]);
+    assert.strictEqual(previewsImage(moved), false);
+    assert.strictEqual(previewsImage(image), true);
+    assert.deepStrictEqual(
+      [
+        source(diffImageUrl(at(commit), image, 'old')),
+        source(diffImageUrl(at(commit), image, 'new'))?.path,
+      ],
+      [
+        { root: '/repo', path: 'resources/a.png', id: commit, disk: false },
+        'src/a.png',
+      ],
+    );
+    assert.strictEqual(text.binary, false);
+    assert.strictEqual(kept, edited);
+    assert.strictEqual(
+      withUnchangedObjects(files, [change('src/a.png')]),
+      files,
+    );
+  });
+
+  test('renders an SVG from its source, in a diff with either side or whole', () => {
+    const svg = svgPatch(`${oldId}..${newId}`);
+    assert.strictEqual(rendersImage(svg), true);
+    assert.strictEqual(previewsImage(svg), false);
+    assert.strictEqual(source(diffImageUrl(at(commit), svg, 'new'))?.id, newId);
+    assert.strictEqual(
+      rendersImage(svgPatch(`${oldId}..${newId}`, true)),
+      false,
+    );
+    assert.strictEqual(rendersImage({ ...svg, blobs: undefined }), false);
+    assert.strictEqual(
+      rendersImage({ ...svg, placeholder: { lines: 1 } }),
+      false,
+    );
+    assert.strictEqual(rendersImage({ ...modified, binary: false }), false);
+
+    const whole = { path: 'v.svg', content: '<svg>#&</svg>', binary: false };
+    assert.strictEqual(rendersWholeImage(whole), true);
+    assert.strictEqual(rendersWholeImage({ ...whole, path: 'v.xml' }), false);
+    const url = wholeImageUrl(at(commit), whole) ?? '';
+    const prefix = 'data:image/svg+xml;charset=utf-8,';
+    assert.ok(url.startsWith(prefix));
+    assert.strictEqual(
+      decodeURIComponent(url.slice(prefix.length)),
+      whole.content,
+    );
+  });
+
   test('previews a binary image that has either side', () => {
     assert.strictEqual(previewsImage(modified), true);
     assert.strictEqual(
@@ -170,9 +265,10 @@ function policyOfPage(): Map<string, string[]> {
 }
 
 suite('Image cache', () => {
-  test('may fetch the images from the app and show them from memory, by the page policy', () => {
+  test('may fetch the images from the app or from their own text, and show them from memory, by the page policy', () => {
     const policy = policyOfPage();
     assert.ok(policy.get('connect-src')?.includes("'self'"));
+    assert.ok(policy.get('connect-src')?.includes('data:'));
     assert.ok(policy.get('img-src')?.includes('blob:'));
   });
 

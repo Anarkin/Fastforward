@@ -1232,6 +1232,68 @@ suite('Hunk divider', () => {
   });
 });
 
+const svgHeader = (rendered?: boolean) =>
+  renderToStaticMarkup(
+    <FileHeader
+      path="v.svg"
+      open
+      whole={false}
+      onClick={() => {}}
+      rendered={rendered}
+      onRender={() => {}}
+    />,
+  );
+
+suite('Rendered SVGs', () => {
+  const svg = parsePatch(
+    [
+      'diff --git a/v.svg b/v.svg',
+      `index ${'1'.repeat(40)}..${'2'.repeat(40)}`,
+      '--- a/v.svg',
+      '+++ b/v.svg',
+      '@@ -1 +1 @@',
+      '-<svg/>',
+      '+<svg />',
+    ].join('\n'),
+  );
+
+  test('shows an SVG as an image in place of its lines only once asked to', () => {
+    for (const sideBySide of [false, true]) {
+      const rows = (rendered: ReadonlySet<string>) =>
+        kinds(diffRows(svg, new Map(), undefined, false, sideBySide, rendered));
+      assert.ok(rows(new Set()).includes(sideBySide ? 'split' : 'line'));
+      assert.deepStrictEqual(rows(new Set(['v.svg'])), [
+        'error',
+        'file',
+        'image',
+      ]);
+      assert.ok(rows(new Set(['other.svg'])).includes('file'));
+    }
+    const whole = { path: 'v.svg', content: '<svg/>\n', binary: false };
+    assert.deepStrictEqual(
+      kinds(diffRows([], new Map(), whole, false, false, new Set(['v.svg']))),
+      ['error', 'file', 'image'],
+    );
+    assert.deepStrictEqual(kinds(diffRows([], new Map(), whole)), [
+      'error',
+      'file',
+      'wholeLine',
+    ]);
+  });
+
+  test('offers to switch between the source and the image only where the header asks', () => {
+    assert.doesNotMatch(svgHeader(), /<button/);
+    assert.match(
+      svgHeader(false),
+      /title="Show the Image" aria-pressed="false"/,
+    );
+    assert.match(
+      svgHeader(true),
+      /title="Show the Source" aria-pressed="true"/,
+    );
+  });
+});
+
 suite('Diff file header', () => {
   test('labels a file shown entire as unchanged, naming no commit, as it may be in the uncommitted changes or a comparison', () => {
     const html = renderToStaticMarkup(

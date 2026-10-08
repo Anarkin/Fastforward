@@ -786,7 +786,7 @@ body.resizing {
   box-sizing: border-box;
   height: var(--diff-file-height);
   gap: 8px;
-  padding: 4px 8px;
+  padding: 4px calc(8px + var(--minimap-width)) 4px 8px;
   background: var(--color-border);
   border-bottom: 1px solid var(--color-border);
   user-select: none;
@@ -936,6 +936,13 @@ body.resizing {
 
 .merge-dot {
   pointer-events: all;
+}
+
+.file-header .file-header-button {
+  width: 22px;
+  height: 18px;
+  margin: -2px 0;
+  border-radius: 9px;
 }
 
 .file-header .unchanged {

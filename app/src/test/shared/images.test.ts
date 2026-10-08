@@ -15,7 +15,8 @@ suite('Images', () => {
     assert.strictEqual(imageType('photo.JPG'), 'image/jpeg');
     assert.strictEqual(imageType('photo.jpeg'), 'image/jpeg');
     assert.strictEqual(imageType('favicon.ico'), 'image/x-icon');
-    for (const path of ['vector.svg', 'a.bin', 'png', '.png', 'a.png/b']) {
+    assert.strictEqual(imageType('vector.svg'), 'image/svg+xml');
+    for (const path of ['a.bin', 'png', '.png', 'a.png/b']) {
       assert.strictEqual(imageType(path), undefined, path);
     }
   });

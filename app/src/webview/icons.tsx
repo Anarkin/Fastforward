@@ -138,6 +138,16 @@ export function PinIcon() {
   );
 }
 
+export function ImageIcon() {
+  return (
+    <Icon>
+      <rect x="2.5" y="3" width="11" height="10" rx="1.5" />
+      <circle cx="6" cy="6.5" r="1" />
+      <path d="M2.5 11l3.5-3.5 3 3 1.5-1.5 3 3" />
+    </Icon>
+  );
+}
+
 export function InlineIcon() {
   return (
     <Icon>

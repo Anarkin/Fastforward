@@ -91,6 +91,32 @@ suite('Git show parsers', () => {
     );
   });
 
+  test('keeps the object of a file moved or copied unchanged, which its patch leaves out', () => {
+    const id = 'a'.repeat(40);
+    const same = (status: string) => `:100644 100644 ${id} ${id} ${status}`;
+    assert.deepStrictEqual(
+      parseChanges(
+        [
+          same('R100'),
+          'old.png',
+          'new.png',
+          same('C100'),
+          'new.png',
+          'copy.png',
+          raw('R087'),
+          'a.ts',
+          'b.ts',
+          '',
+        ].join('\0'),
+      ).map((change) => [change.path, change.id]),
+      [
+        ['new.png', id],
+        ['copy.png', id],
+        ['b.ts', undefined],
+      ],
+    );
+  });
+
   test('parses copies, type changes and unknown statuses', () => {
     assert.deepStrictEqual(
       parseChanges(

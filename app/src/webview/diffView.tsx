@@ -47,10 +47,13 @@ import {
   sidewaysScroll,
   sidewaysScrollEvent,
 } from './overlayScrollbars';
+import { ImageIcon } from './icons';
 import { ImageDiff, imagePanes, WholeImage } from './imagePreview';
 import {
   previewsImage,
   previewsWholeImage,
+  rendersImage,
+  rendersWholeImage,
   wholeImageUrl,
   type ImageOrigin,
 } from './images';
@@ -241,17 +244,34 @@ export function FileHeader({
   open,
   whole,
   onClick,
+  rendered,
+  onRender,
 }: {
   path: string;
   open: boolean;
   whole: boolean;
   onClick: () => void;
+  rendered?: boolean;
+  onRender?: (rendered: boolean) => void;
 }) {
   return (
     <div className="file-header" onClick={onClick}>
       {!whole && <Twisty open={open} />}
       <span className="path">{path}</span>
       {whole && <span className="unchanged">{strings.diff.unchanged}</span>}
+      {rendered !== undefined && onRender && (
+        <button
+          className={`nav-button toggle file-header-button ${rendered ? 'active' : ''}`}
+          title={rendered ? strings.diff.showSource : strings.diff.showImage}
+          aria-pressed={rendered}
+          onClick={(event) => {
+            event.stopPropagation();
+            onRender(!rendered);
+          }}
+        >
+          <ImageIcon />
+        </button>
+      )}
     </div>
   );
 }
@@ -429,12 +449,15 @@ export function largeDiffText(lines: number | undefined): string {
     : strings.diff.notLoadedLines(lines);
 }
 
+const noneRendered: ReadonlySet<string> = new Set();
+
 export function diffRows(
   files: readonly DiffFile[],
   toggled: ReadonlyMap<string, boolean>,
   whole: WholeFile | undefined,
   loading = false,
   sideBySide = false,
+  rendered: ReadonlySet<string> = noneRendered,
 ): DiffRow[] {
   const rows: DiffRow[] = [{ kind: 'error' }];
   if (loading && files.every((file) => file.placeholder) && !whole) {
@@ -448,6 +471,10 @@ export function diffRows(
         kind: previewsWholeImage(whole) ? 'image' : 'binary',
         file: 0,
       });
+    }
+    if (rendered.has(whole.path) && rendersWholeImage(whole)) {
+      rows.push({ kind: 'image', file: 0 });
+      return rows;
     }
     wholeLines(whole).forEach((text, index) =>
       rows.push({ kind: 'wholeLine', file: 0, number: index + 1, text }),
@@ -468,6 +495,10 @@ export function diffRows(
     }
     if (file.placeholder) {
       rows.push({ kind: 'skeletonLines', file: index });
+      return;
+    }
+    if (rendered.has(file.path) && rendersImage(file)) {
+      rows.push({ kind: 'image', file: index });
       return;
     }
     if (file.binary) {
@@ -1227,10 +1258,11 @@ export function DiffView({
   const [toggled, setToggled] = useState<ReadonlyMap<string, boolean>>(
     new Map(),
   );
+  const [rendered, setRendered] = useState<ReadonlySet<string>>(new Set());
   const skeleton = useSkeleton(loading);
   const rows = useMemo(
-    () => diffRows(files, toggled, whole, skeleton, sideBySide),
-    [files, toggled, whole, skeleton, sideBySide],
+    () => diffRows(files, toggled, whole, skeleton, sideBySide, rendered),
+    [files, toggled, whole, skeleton, sideBySide, rendered],
   );
 
   const virtualizer = useVirtualizer({
@@ -1318,11 +1350,25 @@ export function DiffView({
     }
   }, [files, toggled, diff, onLoad]);
 
+  const renders = (row: FileHeaderRow) =>
+    whole ? rendersWholeImage(whole) : rendersImage(files[row.file]);
   const header = (row: FileHeaderRow, stuck = false) => (
     <FileHeader
       path={row.path}
       open={row.open}
       whole={whole !== undefined}
+      rendered={renders(row) ? rendered.has(row.path) : undefined}
+      onRender={(render) =>
+        setRendered((all) => {
+          const next = new Set(all);
+          if (render) {
+            next.add(row.path);
+          } else {
+            next.delete(row.path);
+          }
+          return next;
+        })
+      }
       onClick={() => {
         if (whole) {
           return;

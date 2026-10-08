@@ -208,6 +208,7 @@ export function parseRawChanges(output: string): RawChange[] {
             path: tokens[i + 2],
             insertions: 0,
             deletions: 0,
+            ...(oldId === newId && !isNullId(newId) ? { id: newId } : {}),
           },
         });
         i += 2;

@@ -1051,6 +1051,37 @@ suite('Style', () => {
     });
   });
 
+  test('keeps the button of a file header clear of the minimap, within the header', () => {
+    const header = withClass(
+      diffView(
+        {},
+        diffRow(
+          createElement(FileHeader, {
+            path: 'v.svg',
+            open: true,
+            whole: false,
+            onClick: noop,
+            rendered: false,
+            onRender: noop,
+          }),
+        ),
+      ),
+      'file-header',
+    );
+    looks(header, {
+      padding: '4px calc(8px + var(--minimap-width)) 4px 8px',
+      height: 'var(--diff-file-height)',
+    });
+    looks(withClass(header, 'file-header-button'), {
+      height: '18px',
+      margin: '-2px 0',
+    });
+    assert.strictEqual(
+      rowHeight({ kind: 'file', file: 0, path: 'v.svg', open: true }),
+      22,
+    );
+  });
+
   test('lets only the diff, errors and notices be selected, not the controls around them', () => {
     looks(body, { 'user-select': 'none' });
     const view = diffView({}, fileHeader);

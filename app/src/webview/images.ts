@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react';
 import { shownSide, workingTreeSide } from '../shared/comparisons';
-import { imageType, imageUrl } from '../shared/images';
-import { workingTreeHash, type ChangeArea } from '../shared/protocol';
+import { imageType, imageUrl, vectorType } from '../shared/images';
+import {
+  workingTreeHash,
+  type ChangeArea,
+  type FileChange,
+} from '../shared/protocol';
 import type { DiffFile } from './diff';
 
 export interface ImageOrigin {
@@ -29,6 +33,45 @@ export function previewsImage(file: DiffFile): boolean {
   return file.binary && sides.some((side) => hasImage(file, side));
 }
 
+function isVector(path: string): boolean {
+  return imageType(path) === vectorType;
+}
+
+export function withUnchangedObjects(
+  files: readonly DiffFile[],
+  changes: readonly FileChange[],
+): readonly DiffFile[] {
+  const ids = new Map(
+    changes.flatMap((change) =>
+      change.id === undefined ? [] : [[change.path, change.id]],
+    ),
+  );
+  if (ids.size === 0) {
+    return files;
+  }
+  return files.map((file) => {
+    const id = ids.get(file.path);
+    if (file.blobs || id === undefined) {
+      return file;
+    }
+    const raster = imageType(file.path) !== undefined && !isVector(file.path);
+    return {
+      ...file,
+      binary: file.binary || raster,
+      blobs: { old: id, new: id },
+    };
+  });
+}
+
+export function rendersImage(file: DiffFile): boolean {
+  return (
+    !file.binary &&
+    file.placeholder === undefined &&
+    isVector(file.path) &&
+    sides.some((side) => hasImage(file, side))
+  );
+}
+
 export function diffImageUrl(
   { root, hash, area }: ImageOrigin,
   file: DiffFile,
@@ -42,13 +85,18 @@ export function diffImageUrl(
   return imageUrl({ root, path: sidePath(file, side), id, disk });
 }
 
-interface BinaryFile {
+interface WholeFile {
   readonly path: string;
+  readonly content: string;
   readonly binary: boolean;
   readonly id?: string;
 }
 
-export function previewsWholeImage(whole: BinaryFile): boolean {
+export function rendersWholeImage(whole: WholeFile): boolean {
+  return !whole.binary && isVector(whole.path);
+}
+
+export function previewsWholeImage(whole: Omit<WholeFile, 'content'>): boolean {
   return (
     whole.binary &&
     whole.id !== undefined &&
@@ -58,8 +106,11 @@ export function previewsWholeImage(whole: BinaryFile): boolean {
 
 export function wholeImageUrl(
   { root, hash }: ImageOrigin,
-  whole: BinaryFile,
+  whole: WholeFile,
 ): string | undefined {
+  if (rendersWholeImage(whole)) {
+    return `data:${vectorType};charset=utf-8,${encodeURIComponent(whole.content)}`;
+  }
   return whole.id === undefined || !previewsWholeImage(whole)
     ? undefined
     : imageUrl({

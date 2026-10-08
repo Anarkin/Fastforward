@@ -10,7 +10,7 @@ import { Column } from './column';
 import { parsePatch, type DiffFile } from './diff';
 import { DiffView, type WholeFile } from './diffView';
 import { findMatches, matchCount, stepMatch, unsearchedFiles } from './find';
-import type { ImageOrigin } from './images';
+import { withUnchangedObjects, type ImageOrigin } from './images';
 import {
   EntireFileIcon,
   IgnoreWhitespaceIcon,
@@ -284,7 +284,10 @@ export function Diff({
   const parsed = useMemo(() => parsePatch(patch), [patch]);
   const diffFiles = useMemo(
     () =>
-      path === undefined ? withLargeFiles(parsed, files, largeFiles) : parsed,
+      withUnchangedObjects(
+        path === undefined ? withLargeFiles(parsed, files, largeFiles) : parsed,
+        files,
+      ),
     [parsed, path, files, largeFiles],
   );
   const errorRow = error && <div className="error-message">{error}</div>;

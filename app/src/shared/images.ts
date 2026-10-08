@@ -9,7 +9,10 @@ const imageTypes: Readonly<Record<string, string>> = {
   avif: 'image/avif',
   bmp: 'image/bmp',
   ico: 'image/x-icon',
+  svg: 'image/svg+xml',
 };
+
+export const vectorType = 'image/svg+xml';
 
 export function imageType(path: string): string | undefined {
   const name = path.slice(path.lastIndexOf('/') + 1);
