@@ -25,14 +25,12 @@ export function imagePanes(
   });
 }
 
-const fillerOf = { old: 'addition', new: 'removal' } as const;
-
 export function ImageDiff({ panes }: { panes: readonly Pane[] }) {
   return (
     <div className="image-diff">
       {panes.map(({ side, url }) =>
         url === undefined ? (
-          <div key={side} className={`image-pane filler ${fillerOf[side]}`}>
+          <div key={side} className="image-pane filler">
             <div className="image-frame" />
           </div>
         ) : (

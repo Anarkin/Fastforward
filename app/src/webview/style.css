@@ -1356,43 +1356,13 @@ body.resizing {
 .markdown-pane.filler {
   background: linear-gradient(
       -45deg,
-      var(--filler-stripe, var(--color-border)) 0 4%,
+      var(--color-border) 0 4%,
       transparent 4% 46%,
-      var(--filler-stripe, var(--color-border)) 46% 54%,
+      var(--color-border) 46% 54%,
       transparent 54% 96%,
-      var(--filler-stripe, var(--color-border)) 96%
+      var(--color-border) 96%
     )
     0 0 / 11px 11px;
-}
-
-.split-side.filler.addition,
-.image-pane.filler.addition .image-frame,
-.markdown-pane.filler.addition {
-  --filler-stripe: color-mix(
-    in srgb,
-    var(--color-added) var(--color-added-line),
-    transparent
-  );
-  background-color: color-mix(
-    in srgb,
-    var(--color-added) var(--color-added-row),
-    transparent
-  );
-}
-
-.split-side.filler.removal,
-.image-pane.filler.removal .image-frame,
-.markdown-pane.filler.removal {
-  --filler-stripe: color-mix(
-    in srgb,
-    var(--color-deleted) var(--color-deleted-line),
-    transparent
-  );
-  background-color: color-mix(
-    in srgb,
-    var(--color-deleted) var(--color-deleted-row),
-    transparent
-  );
 }
 
 .split-code {

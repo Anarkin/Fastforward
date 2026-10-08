@@ -131,7 +131,7 @@ suite('Side-by-side diff', () => {
     );
   });
 
-  test('tints the old side of a change as removed and the new side as added, and an empty side as filler for the change across from it', () => {
+  test('tints the old side of a change as removed and the new side as added, and an empty side as filler', () => {
     const [file] = parsePatch(patch);
     const rows = splitRows(file, 0).filter((row) => row.kind === 'split');
     const classes = rows.map((row) =>
@@ -145,7 +145,7 @@ suite('Side-by-side diff', () => {
     assert.deepStrictEqual(classes.slice(0, 3), [
       ['', ''],
       ['removed', 'added'],
-      ['removed', 'filler removal'],
+      ['removed', 'filler'],
     ]);
   });
 

@@ -215,18 +215,6 @@ const fileHeader = diffRow(
   }),
 );
 
-const lineTint = (change: 'added' | 'removed') =>
-  cascaded(
-    withClass(diffView({}, inlineLine(change)), 'diff-line', change),
-    'background',
-  );
-const lineFiller = (filler: string) =>
-  withClass(
-    diffView({ sideBySide: true }, splitLine(filler, 'added')),
-    'split-side',
-    'filler',
-  );
-
 function columnVisibility(selected: string | undefined) {
   return allWithClass(columns(columnsClass(true, selected)), 'column').map(
     (column) => cascaded(column, 'visibility'),
@@ -1477,48 +1465,6 @@ suite('Style', () => {
     assert.deepStrictEqual(right, left);
   });
 
-  test('tints a side a change lacks like the change, its stripes as strongly as a changed word, for lines, files, images and previews alike', () => {
-    for (const [kind, change] of [
-      ['addition', 'added'],
-      ['removal', 'removed'],
-    ] as const) {
-      const fillers = [
-        lineFiller(`filler ${kind}`),
-        withClass(
-          rendered(
-            createElement('div', {
-              className: `markdown-pane filler ${kind}`,
-            }),
-          ),
-          'markdown-pane',
-        ),
-        withClass(
-          rendered(
-            createElement(
-              'div',
-              { className: `image-pane filler ${kind}` },
-              createElement('div', { className: 'image-frame' }),
-            ),
-          ),
-          'image-frame',
-        ),
-      ];
-      for (const filler of fillers) {
-        assert.strictEqual(
-          cascaded(filler, 'background-color'),
-          lineTint(change),
-        );
-        assert.match(cascaded(filler, 'background') ?? '', /linear-gradient/);
-        assert.strictEqual(
-          cascaded(filler, '--filler-stripe'),
-          change === 'added'
-            ? 'color-mix( in srgb, var(--color-added) var(--color-added-line), transparent )'
-            : 'color-mix( in srgb, var(--color-deleted) var(--color-deleted-line), transparent )',
-        );
-      }
-    }
-  });
-
   test('stripes the empty side of a change in the border color, in tiles that meet across rows', () => {
     const filler =
       cascaded(
@@ -1529,10 +1475,7 @@ suite('Style', () => {
         ),
         'background',
       ) ?? '';
-    assert.match(
-      filler,
-      /linear-gradient\( -45deg, var\(--filler-stripe, var\(--color-border\)\)/,
-    );
+    assert.match(filler, /linear-gradient\( -45deg, var\(--color-border\)/);
     const tile = /\/ (\d+)px (\d+)px$/.exec(filler);
     assert.ok(tile, filler);
     const height = rowHeight({

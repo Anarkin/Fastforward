@@ -193,7 +193,7 @@ suite('Markdown preview', () => {
     );
     assert.strictEqual(
       markup,
-      '<div class="markdown-diff"><div class="markdown-pane filler addition"></div><div class="markdown-pane"><div class="markdown-note">Empty file</div></div></div>',
+      '<div class="markdown-diff"><div class="markdown-pane filler"></div><div class="markdown-pane"><div class="markdown-note">Empty file</div></div></div>',
     );
   });
 });

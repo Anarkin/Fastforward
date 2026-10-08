@@ -110,12 +110,7 @@ export function MarkdownDiff({ sides }: { sides: readonly MarkdownSide[] }) {
     <div className="markdown-diff">
       {sides.map(({ side, text, present, images }) => {
         if (!present) {
-          return (
-            <div
-              key={side}
-              className={`markdown-pane filler ${side === 'old' ? 'addition' : 'removal'}`}
-            />
-          );
+          return <div key={side} className="markdown-pane filler" />;
         }
         return text === '' ? (
           <div key={side} className="markdown-pane">
