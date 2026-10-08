@@ -146,6 +146,47 @@ export async function listHistory(
   return withStashesOnBases(parseHistory(output), tips);
 }
 
+const recentCommits = 5000;
+
+export async function listRecentHistory(
+  gitPath: string,
+  cwd: string,
+  tips: readonly string[],
+  stashes: readonly string[] = [],
+  count = recentCommits,
+  signal?: AbortSignal,
+): Promise<{ history: readonly HistoryEntry[]; whole: boolean }> {
+  const output = await runGit(
+    gitPath,
+    cwd,
+    [
+      'rev-list',
+      '--date-order',
+      '--parents',
+      `--max-count=${count}`,
+      '--ignore-missing',
+      'HEAD',
+      '--stdin',
+      '--',
+    ],
+    { input: hashLines([...tips, ...stashes]), signal },
+  );
+  const history = parseHistory(output);
+  return {
+    history: withStashesOnBases(history, stashes),
+    whole: history.length < count,
+  };
+}
+
+const recentSeconds = 60 * 24 * 60 * 60;
+
+export function recentTips(dates: ReadonlyMap<string, number>): string[] {
+  const newest = Math.max(...dates.values());
+  return [...dates]
+    .filter(([, date]) => newest - date <= recentSeconds)
+    .map(([commit]) => commit);
+}
+
 function hashLines(hashes: readonly string[]): string {
   return hashes.map((hash) => `${hash}\n`).join('');
 }

@@ -29,6 +29,7 @@ This file only observes and documents the codebase mainly for human readers; the
 
 ## History
 
+- A tab opened on a history of over 5000 commits first shows 25 rows from its newest 5000 commits, read from HEAD, the stashes and the refs updated within 60 days of the newest one, leaving out the count of a merge whose merged commits go on past them, until the whole history is read, as that takes seconds in large repositories
 - The graph draws at most 12 lanes, drawing lines past the last lane on it
 - The commit list scrolls through at most 8 million pixels, about 160000 commits, as Chromium can't lay out much taller elements; a longer list's scrollbar moves one to one only over its first and last million pixels and in proportion between them, and scrolling on from a commit jumped to moves the scrollbar back when it reaches either end
 - Collapsing merges hides the commits a mainline of plain commits had when `git pull` merged it into a branch that then became the mainline, as that merge looks just like merging a branch

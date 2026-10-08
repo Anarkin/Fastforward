@@ -171,6 +171,7 @@ export function showHistory(
   history: readonly HistoryEntry[],
   tips: ReadonlySet<string>,
   isExpanded: (hash: string, isPull: boolean) => boolean,
+  partial = false,
 ): ShownEntry[] {
   const links = linksOf(history);
   const { index, starts, parents } = links;
@@ -199,7 +200,7 @@ export function showHistory(
       shown[parents[parent]] = 1;
     }
   }
-  const hidden = countHidden(links, history.length, shown);
+  const hidden = countHidden(links, history.length, shown, partial);
   const result: ShownEntry[] = [];
   for (let at = 0; at < history.length; at++) {
     if (!shown[at]) {
@@ -260,6 +261,7 @@ function countHidden(
   { starts, parents }: Links,
   length: number,
   shown: Uint8Array,
+  partial: boolean,
 ): Int32Array {
   const counted = new Uint8Array(shown.length);
   const counts = new Int32Array(length);
@@ -269,6 +271,7 @@ function countHidden(
       continue;
     }
     let count = 0;
+    let unknown = false;
     for (let parent = starts[at] + 1; parent < starts[at + 1]; parent++) {
       stack.push(parents[parent]);
     }
@@ -282,9 +285,11 @@ function countHidden(
         for (let parent = starts[next]; parent < starts[next + 1]; parent++) {
           stack.push(parents[parent]);
         }
+      } else {
+        unknown = true;
       }
     }
-    counts[at] = count;
+    counts[at] = partial && unknown ? 0 : count;
   }
   return counts;
 }

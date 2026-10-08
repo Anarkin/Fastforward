@@ -300,4 +300,21 @@ suite('Graph', () => {
     assert.strictEqual(describe(graph.workingTreeRow), '0: ');
     assert.deepStrictEqual(graph.rows(0, 1).map(describe), ['0: ']);
   });
+
+  test('leads the working tree down past the first rows of a history still loading, to HEAD below them', () => {
+    const whole = new Graph(
+      [
+        { hash: 'c', parents: ['b'] },
+        { hash: 'h', parents: ['b'] },
+        { hash: 'b', parents: [] },
+      ],
+      { head: 'h' },
+    );
+    const first = new Graph([{ hash: 'c', parents: ['b'] }], {
+      head: 'h',
+      partial: true,
+    });
+    assert.deepStrictEqual(first.workingTreeRow, whole.workingTreeRow);
+    assert.deepStrictEqual(first.rows(0, 1), whole.rows(0, 1));
+  });
 });

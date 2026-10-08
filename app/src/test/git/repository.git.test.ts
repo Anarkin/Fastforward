@@ -61,6 +61,25 @@ suite('Git repository', function () {
     }
   });
 
+  test('reads the date of the commit each ref points at, not of the annotated tag pointing at it', async () => {
+    const [second] = await temp.resolve('HEAD~1');
+    await temp.git('tag', '-a', '-m', 'annotated', 'v1', second);
+    try {
+      const { dates } = await readRefs(gitPath, cwd);
+      const dateOf = async (commit: string) =>
+        Number((await temp.git('log', '-1', '--format=%ct', commit)).trim());
+      assert.deepStrictEqual(
+        dates,
+        new Map([
+          [rename, await dateOf(rename)],
+          [second, await dateOf(second)],
+        ]),
+      );
+    } finally {
+      await temp.git('tag', '-d', 'v1');
+    }
+  });
+
   test('leaves out the tags that point at a tree or a blob', async () => {
     await temp.git('tag', 'tree', 'HEAD^{tree}');
     await temp.git('tag', '-a', '-m', 'blob', 'blob', blob);

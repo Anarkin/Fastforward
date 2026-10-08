@@ -9,6 +9,7 @@ import {
   findCommits,
   headCommit,
   listHistory,
+  listRecentHistory,
   logCommits,
   searchCommits,
 } from '../../git/history';
@@ -71,6 +72,27 @@ suite('Git history', function () {
         await temp.git('update-ref', '-d', ref);
       }
     }
+  });
+
+  test('lists the newest commits of HEAD and of the tips given, as many as asked, in the order of the whole history', async () => {
+    const [first, tree] = await temp.resolve('HEAD~2', 'HEAD^{tree}');
+    const side = (
+      await temp.git('commit-tree', tree, '-p', first, '-m', 'side')
+    ).trim();
+    const solo = await listHistory(gitPath, cwd, true);
+    assert.deepStrictEqual(await listRecentHistory(gitPath, cwd, [], [], 2), {
+      history: solo.slice(0, 2),
+      whole: false,
+    });
+    const { history } = await listRecentHistory(gitPath, cwd, [side], [], 2);
+    assert.deepStrictEqual(
+      history.map((entry) => entry.hash),
+      [side, solo[0].hash],
+    );
+    assert.deepStrictEqual(await listRecentHistory(gitPath, cwd, [], [], 4), {
+      history: solo,
+      whole: true,
+    });
   });
 
   test('lists the history, its commits, and the files and patch of its root commit, which has no parent to diff against', async () => {

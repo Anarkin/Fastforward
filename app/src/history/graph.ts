@@ -146,14 +146,17 @@ export class Graph {
       head,
       stashes = new Set(),
       checkpointEvery = 100,
+      partial = false,
     }: {
       head?: string;
       stashes?: ReadonlySet<string>;
       checkpointEvery?: number;
+      partial?: boolean;
     } = {},
   ) {
     const shown =
-      head !== undefined && history.some((entry) => entry.hash === head);
+      head !== undefined &&
+      (partial || history.some((entry) => entry.hash === head));
     this.entries = [
       { hash: workingTree, parents: shown ? [head] : [] },
       ...history,

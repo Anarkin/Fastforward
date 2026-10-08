@@ -45,6 +45,28 @@ suite('Merges shown', () => {
     ]);
   });
 
+  test('leaves out the count of a merge whose merged commits go on past a history still loading, keeping the counts known', () => {
+    const loading = [
+      { hash: 'm2', parents: ['m1', 'x2'] },
+      { hash: 'x2', parents: ['x1'] },
+      { hash: 'm1', parents: ['a', 'b1'] },
+      { hash: 'b1', parents: ['a'] },
+      { hash: 'a', parents: ['z'] },
+    ];
+    const counts = (partial: boolean) =>
+      showHistory(loading, new Set(['m2']), () => false, partial)
+        .filter((entry) => entry.merge)
+        .map((entry) => [entry.hash, entry.hidden]);
+    assert.deepStrictEqual(counts(true), [
+      ['m2', undefined],
+      ['m1', 1],
+    ]);
+    assert.deepStrictEqual(counts(false), [
+      ['m2', 2],
+      ['m1', 1],
+    ]);
+  });
+
   test('counts a commit merged twice only for the merge that brought it in first', () => {
     const twice = [
       { hash: 'm2', parents: ['m1', 'd2'] },

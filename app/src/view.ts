@@ -16,8 +16,11 @@ import {
   findCommits,
   headCommit,
   listHistory,
+  listRecentHistory,
   logCommits,
+  recentTips,
   searchCommits,
+  type HistoryEntry,
 } from './git/history';
 import {
   isFolder,
@@ -107,6 +110,7 @@ const refreshDelays = { delay: 300, maxDelay: 1500 };
 
 interface Tab extends TabState {
   preloading: Promise<void> | undefined;
+  loadingHistory: Promise<void> | undefined;
   refreshing: boolean;
   refreshAgain: Map<Session | undefined, Context>;
   checkRefsAgain: boolean;
@@ -592,6 +596,10 @@ export class FastforwardView {
       return;
     }
     const picked = context.tab.selection;
+    const { loadingHistory } = context.tab;
+    if (loadingHistory && !aboutShownRows(context.tab, message)) {
+      await loadingHistory;
+    }
     switch (message.type) {
       case 'loadCommits':
         await this.sendCommitPage(context, message.generation, message.start);
@@ -1128,6 +1136,7 @@ export class FastforwardView {
       tab = {
         ...newTabState(),
         preloading: undefined,
+        loadingHistory: undefined,
         refreshing: false,
         refreshAgain: new Map(),
         checkRefsAgain: false,
@@ -1734,23 +1743,97 @@ export class FastforwardView {
     refs: Promise<Refs>,
     keepPlace = false,
   ): Promise<void> {
-    const { head, refs: listed, stashes } = await refs;
-    const fullHistory = await listHistory(
-      context.gitPath,
-      context.root,
-      this.storage.soloOf(context.root),
-      stashes.map((stash) => stash.commit),
-    );
+    const read = await refs;
+    const { head, refs: listed, stashes } = read;
     const { tab } = context;
-    loadHistory(tab, fullHistory, head, listed, stashes);
-    if (tab.hash !== undefined && !stillThere(tab)(tab.hash)) {
-      unselect(tab);
-      context.post({ type: 'unselect', selection: tab.selection });
+    const early =
+      context.session !== undefined && tab.shown.commits === undefined;
+    const loading = new AbortController();
+    const loaded = Promise.withResolvers<void>();
+    if (early) {
+      tab.loadingHistory = loaded.promise;
+      void this.inFlight.track(
+        this.sendRecentHistory(context, read, loading.signal),
+      );
     }
-    await this.sendShownHistory(context, { keepPlace });
+    try {
+      const fullHistory = await this.listFullHistory(
+        context,
+        stashes.map((stash) => stash.commit),
+      );
+      loading.abort();
+      loadHistory(tab, fullHistory, head, listed, stashes);
+      if (tab.hash !== undefined && !stillThere(tab)(tab.hash)) {
+        unselect(tab);
+        context.post({ type: 'unselect', selection: tab.selection });
+      }
+      await this.sendShownHistory(context, { keepPlace: keepPlace || early });
+    } finally {
+      loading.abort();
+      loaded.resolve();
+      if (tab.loadingHistory === loaded.promise) {
+        tab.loadingHistory = undefined;
+      }
+    }
     const { back, forward } = tab.navigation;
     if (back.length + forward.length > 0) {
       await this.sendNavigation(context);
+    }
+  }
+
+  private listFullHistory(
+    context: Context,
+    stashes: readonly string[],
+  ): Promise<readonly HistoryEntry[]> {
+    return listHistory(
+      context.gitPath,
+      context.root,
+      this.storage.soloOf(context.root),
+      stashes,
+    );
+  }
+
+  private async listRecentHistory(
+    context: Context,
+    tips: readonly string[],
+    stashes: readonly string[],
+    signal: AbortSignal,
+    count?: number,
+  ): Promise<readonly HistoryEntry[] | undefined> {
+    const { history, whole } = await listRecentHistory(
+      context.gitPath,
+      context.root,
+      tips,
+      stashes,
+      count,
+      signal,
+    );
+    return whole ? undefined : history;
+  }
+
+  private async sendRecentHistory(
+    context: Context,
+    { head, refs, stashes, dates }: Refs,
+    signal: AbortSignal,
+  ): Promise<void> {
+    const solo = this.storage.soloOf(context.root);
+    try {
+      const recent = await this.listRecentHistory(
+        context,
+        solo ? [] : recentTips(dates),
+        solo ? [] : stashes.map((stash) => stash.commit),
+        signal,
+      );
+      if (recent === undefined || signal.aborted) {
+        return;
+      }
+      loadHistory(context.tab, recent, head, refs, stashes, true);
+      await this.sendShownHistory(context);
+    } catch (error) {
+      if (!signal.aborted) {
+        this.log.error(strings.log.recentHistoryFailed);
+        this.log.error(error);
+      }
     }
   }
 
@@ -2195,6 +2278,26 @@ function workingTreeDiffOf(hash: string): WorkingTreeDiff | undefined {
   return compared.to === workingTreeHash
     ? { base: compared.from, reverse: false }
     : { base: compared.to, reverse: true };
+}
+
+function aboutShownRows(tab: TabState, message: TabMessage): boolean {
+  switch (message.type) {
+    case 'loadCommits':
+    case 'showEntireFile':
+      return true;
+    case 'selectCommit':
+      return (
+        message.hash === undefined ||
+        hiddenSides(tab, message.hash).length === 0
+      );
+    case 'selectFile':
+    case 'loadTree':
+    case 'loadTexts':
+    case 'loadFileDiff':
+      return hiddenSides(tab, message.hash).length === 0;
+    default:
+      return false;
+  }
 }
 
 function areaOf(area: ChangeArea | undefined): { area?: ChangeArea } {

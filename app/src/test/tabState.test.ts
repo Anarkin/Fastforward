@@ -53,6 +53,23 @@ suite('Tab state', () => {
     return tab;
   }
 
+  test('lays out only the first 25 rows of a history still loading, as the whole history lays them out', () => {
+    const head = { commit: 'h40' };
+    const layOut = (entries: typeof long, partial: boolean) => {
+      const tab = newTabState();
+      loadHistory(tab, entries, head, [], [], partial);
+      assert.strictEqual(historyLoaded(tab), !partial);
+      layOutHistory(tab, false, head.commit);
+      return commitsMessage(tab, firstPage(tab, false), page(0, 25));
+    };
+    const first = layOut(long.slice(0, 30), true);
+    const whole = layOut(long, false);
+    assert.strictEqual(first.total, 25);
+    assert.strictEqual(whole.total, long.length);
+    assert.deepStrictEqual(first.graph, whole.graph);
+    assert.deepStrictEqual(first.workingTreeGraph, whole.workingTreeGraph);
+  });
+
   test('lays out the history with merges collapsed, keeping the selection', () => {
     const tab = newTabState();
     loadHistory(tab, history, { name: 'main', commit: 'c' }, []);

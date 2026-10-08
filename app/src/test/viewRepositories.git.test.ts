@@ -10,12 +10,16 @@ import {
   tempRepository,
   type TempRepository,
 } from './repositories';
+import { waitFor } from './fixtures';
 import { recordingLog } from './stub';
 import {
   closeViews,
+  commitsSent,
   failOnErrorsLogged,
   FakeHost,
+  gate,
   savedBookmarks,
+  stubMethod,
   takeErrorsLogged,
   viewRepositories,
   withNotices,
@@ -72,6 +76,81 @@ suite('View of other repositories', function () {
         'collapsed',
       );
     });
+  });
+
+  test('shows the first rows of a long history while the whole of it is read, waiting for it to show a commit further down', async () => {
+    const held = gate();
+    await withView(
+      log,
+      [repository.root],
+      async (view) => {
+        stubMethod(view.view, 'listRecentHistory', (original, ...args) =>
+          original(...args.slice(0, 4), 2),
+        );
+        stubMethod(view.view, 'listFullHistory', async (original, ...args) => {
+          await held.opened;
+          return original(...args);
+        });
+        const ready = view.connection.receive({ type: 'ready' });
+        await waitFor(
+          () => view.page.last('commits') !== undefined,
+          'the first rows',
+        );
+        const first = view.page.last('commits');
+        assert.deepStrictEqual(
+          first?.commits.map((commit) => commit.hash),
+          [fixture.merge, fixture.b],
+        );
+        assert.strictEqual(first.total, 2);
+        assert.strictEqual(first.graph[0]?.hidden, undefined);
+        const selecting = view.connection.receive({
+          type: 'selectCommit',
+          root: repository.root,
+          hash: fixture.a,
+        });
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        held.open();
+        await Promise.all([ready, selecting]);
+        const whole = view.page.last('commits');
+        assert.strictEqual(whole?.total, 3);
+        assert.strictEqual(whole.graph[0]?.hidden, 2);
+        assert.strictEqual(view.page.last('files')?.hash, fixture.a);
+        assert.strictEqual(view.page.last('error'), undefined);
+      },
+      false,
+    );
+  });
+
+  test('shows no first rows apart from the whole history when the first commits read are all of it', async () => {
+    const held = gate();
+    await withView(
+      log,
+      [repository.root],
+      async (view) => {
+        const recent = gate();
+        stubMethod(
+          view.view,
+          'listRecentHistory',
+          async (original, ...args) => {
+            const listed = await original(...args);
+            recent.open();
+            return listed;
+          },
+        );
+        stubMethod(view.view, 'listFullHistory', async (original, ...args) => {
+          await held.opened;
+          return original(...args);
+        });
+        const ready = view.connection.receive({ type: 'ready' });
+        await recent.opened;
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        assert.strictEqual(view.page.last('commits'), undefined);
+        held.open();
+        await ready;
+        assert.strictEqual(commitsSent(view.page.messages), 1);
+      },
+      false,
+    );
   });
 
   test('opens the repositories picked in new tabs, showing the last one', async () => {

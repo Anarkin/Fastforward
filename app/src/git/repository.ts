@@ -16,6 +16,7 @@ export interface Refs {
   readonly head: Head | undefined;
   readonly refs: readonly RefInfo[];
   readonly stashes: readonly Stash[];
+  readonly dates: ReadonlyMap<string, number>;
 }
 
 const noRepository = /not a git repository|must be run in a work tree/;
@@ -63,7 +64,7 @@ export async function sameFolder(a: string, b: string): Promise<boolean> {
 }
 
 export async function readRefs(gitPath: string, root: string): Promise<Refs> {
-  const [head, refs, remotes, stashes] = await Promise.all([
+  const [head, { refs, dates }, remotes, stashes] = await Promise.all([
     readHead(gitPath, root),
     listRefs(gitPath, root),
     runGit(gitPath, root, ['remote']),
@@ -74,6 +75,7 @@ export async function readRefs(gitPath: string, root: string): Promise<Refs> {
     head,
     refs: refs.map((ref) => withRemote(ref, names)),
     stashes,
+    dates,
   };
 }
 
@@ -108,20 +110,26 @@ function withRemote(ref: RefInfo, remotes: readonly string[]): RefInfo {
   return remote === undefined ? ref : { ...ref, remote };
 }
 
-async function listRefs(gitPath: string, root: string): Promise<RefInfo[]> {
+async function listRefs(
+  gitPath: string,
+  root: string,
+): Promise<{ refs: RefInfo[]; dates: Map<string, number> }> {
   const output = await runGit(gitPath, root, [
     'for-each-ref',
-    '--format=%(refname)%00%(objectname)%00%(objecttype)%00%(*objectname)%00%(*objecttype)',
+    '--format=%(refname)%00%(objectname)%00%(objecttype)%00%(*objectname)%00%(*objecttype)%00%(committerdate:unix)%00%(*committerdate:unix)',
     'refs/heads',
     'refs/remotes',
     'refs/tags',
   ]);
-  return output.split('\n').flatMap((line): RefInfo[] => {
-    const [refname, object, type, peeled, peeledType] = splitNul(line);
+  const dates = new Map<string, number>();
+  const refs = output.split('\n').flatMap((line): RefInfo[] => {
+    const [refname, object, type, peeled, peeledType, date, peeledDate] =
+      splitNul(line);
     if (!refname || !object || (peeled ? peeledType : type) !== 'commit') {
       return [];
     }
     const commit = peeled || object;
+    dates.set(commit, Number(peeled ? peeledDate : date));
     if (refname.startsWith('refs/heads/')) {
       return [
         { kind: 'branch', name: refname.slice('refs/heads/'.length), commit },
@@ -133,6 +141,7 @@ async function listRefs(gitPath: string, root: string): Promise<RefInfo[]> {
     }
     return [{ kind: 'tag', name: refname.slice('refs/tags/'.length), commit }];
   });
+  return { refs, dates };
 }
 
 export async function switchToBranch(

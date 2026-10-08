@@ -41,6 +41,7 @@ export interface TabState {
   stagedFiles: Map<string, FileChange>;
   workingTree: WorkingTree | undefined;
   fullHistory: readonly HistoryEntry[];
+  partial: boolean;
   inHistory: Set<string>;
   subjects: Map<string, string>;
   heads: Set<string>;
@@ -75,6 +76,7 @@ interface Shown {
 
 const navigationShown = 20;
 const subjectsKept = 1000;
+const partialRows = 25;
 
 export function newTabState(): TabState {
   return {
@@ -88,6 +90,7 @@ export function newTabState(): TabState {
     stagedFiles: new Map(),
     workingTree: undefined,
     fullHistory: [],
+    partial: false,
     inHistory: new Set(),
     subjects: new Map(),
     heads: new Set(),
@@ -114,11 +117,16 @@ export function loadHistory(
   head: Head | undefined,
   refs: readonly RefInfo[],
   stashes: readonly Stash[] = [],
+  partial = false,
 ): void {
   tab.fullHistory = fullHistory;
+  tab.partial = partial;
   tab.inHistory = new Set(fullHistory.map((entry) => entry.hash));
   tab.heads = headsOf(fullHistory);
   takeRefs(tab, head, refs, stashes);
+  if (partial) {
+    forgetHistory(tab);
+  }
 }
 
 export function takeRefs(
@@ -170,12 +178,19 @@ export function layOutHistory(
   if (head) {
     tips.add(head);
   }
-  const history = showHistory(tab.fullHistory, tips, isExpanded(tab, collapse));
+  const shown = showHistory(
+    tab.fullHistory,
+    tips,
+    isExpanded(tab, collapse),
+    tab.partial,
+  );
+  const history = tab.partial ? shown.slice(0, partialRows) : shown;
   tab.history = history;
   tab.positions = positionsOf(tab.fullHistory, history);
   tab.graph = new Graph(history, {
     head,
     stashes: new Set(tab.stashes.keys()),
+    partial: tab.partial,
   });
   tab.shownStale = false;
   tab.index = positionOf(tab, tab.hash);

@@ -394,6 +394,7 @@ export const strings = {
     preloadingFailed: (root: string) => `Preloading tab ${root} failed`,
     watchingFailed: (root: string) => `Watching ${root} failed`,
     navigationFailed: 'Loading the navigation failed',
+    recentHistoryFailed: 'Listing the newest commits first failed',
     refsKept: 'Refs changed, keeping the history',
     refsReloaded: 'Refs changed, reloading the history',
     laidOut: (shown: number, total: number, milliseconds: number) =>
