@@ -31,6 +31,14 @@ export function shownSide<T extends string | undefined>(
   return comparedOf(selection)?.to ?? selection;
 }
 
+export function workingTreeSide(hash: string): 'old' | 'new' | undefined {
+  const { from, to } = comparedOf(hash) ?? { from: undefined, to: hash };
+  if (to === workingTreeHash) {
+    return 'new';
+  }
+  return from === workingTreeHash ? 'old' : undefined;
+}
+
 export function sidesOf(selection: string | undefined): readonly string[] {
   if (selection === undefined) {
     return [];

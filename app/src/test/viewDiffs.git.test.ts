@@ -7,6 +7,7 @@ import {
   patchLineBudget,
   workingTreeHash,
 } from '../shared/protocol';
+import { imageUrl } from '../shared/images';
 import { waitFor } from './fixtures';
 import {
   removeFolder,
@@ -24,6 +25,9 @@ import {
   viewRepositories,
   withView,
 } from './viewHarness';
+
+const url = (root: string, file: string, id: string, disk = false) =>
+  new URL(imageUrl({ root, path: file, id, disk }), 'fastforward://app');
 
 suite('View showing diffs', function () {
   this.timeout(30_000);
@@ -613,6 +617,80 @@ suite('View showing diffs', function () {
       } finally {
         fs.rmSync(draft, { force: true });
         fs.rmSync(added, { force: true });
+      }
+    });
+  });
+
+  suite('Images', () => {
+    let images: TempRepository;
+    const pixel = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 1]);
+
+    suiteSetup(async () => {
+      images = await tempRepository(path.join(folder, 'images'));
+      fs.writeFileSync(path.join(images.root, 'pixel.png'), pixel);
+      fs.writeFileSync(path.join(images.root, 'data.bin'), pixel);
+      await images.git('add', '.');
+      await images.git('commit', '-m', 'images');
+    });
+
+    test('serves the images of the repositories open', async () => {
+      const [object] = await images.resolve('HEAD:pixel.png');
+      const [data] = await images.resolve('HEAD:data.bin');
+      await withView(log, [images.root], async ({ view }) => {
+        const shown = await view.image(url(images.root, 'pixel.png', object));
+        assert.strictEqual(shown.status, 200);
+        assert.strictEqual(shown.headers.get('content-type'), 'image/png');
+        assert.deepStrictEqual(Buffer.from(await shown.arrayBuffer()), pixel);
+        const onDisk = await view.image(
+          url(images.root, 'pixel.png', 'any', true),
+        );
+        assert.deepStrictEqual(Buffer.from(await onDisk.arrayBuffer()), pixel);
+
+        for (const unserved of [
+          url(images.root, 'data.bin', data),
+          url(images.root, 'gone.png', 'any', true),
+          url(other, 'pixel.png', object),
+        ]) {
+          assert.strictEqual((await view.image(unserved)).status, 404);
+        }
+      });
+    });
+
+    test('shows a binary file whole again once it changes, staged in full', async () => {
+      const file = path.join(images.root, 'pixel.png');
+      try {
+        await withView(
+          log,
+          [images.root],
+          async (view) => {
+            await view.connection.receive({
+              type: 'selectCommit',
+              root: images.root,
+              hash: workingTreeHash,
+            });
+            await view.connection.receive({
+              type: 'selectFile',
+              root: images.root,
+              hash: workingTreeHash,
+              path: 'pixel.png',
+              area: 'unstaged',
+            });
+            const shown = view.page.last('fileContent');
+            assert.strictEqual(shown?.binary, true);
+            assert.ok(shown.id);
+
+            view.page.clear();
+            fs.writeFileSync(file, Buffer.concat([pixel, pixel]));
+            await images.git('add', 'pixel.png');
+            await view.connection.refresh();
+            const changed = view.page.last('fileContent');
+            assert.ok(changed?.id);
+            assert.notStrictEqual(changed.id, shown.id);
+          },
+          'unwatched',
+        );
+      } finally {
+        await images.git('reset', '--hard');
       }
     });
   });

@@ -10,6 +10,7 @@ import { Column } from './column';
 import { parsePatch, type DiffFile } from './diff';
 import { DiffView, type WholeFile } from './diffView';
 import { findMatches, matchCount, stepMatch, unsearchedFiles } from './find';
+import type { ImageOrigin } from './images';
 import {
   EntireFileIcon,
   IgnoreWhitespaceIcon,
@@ -260,6 +261,7 @@ export function Diff({
   changeMarks,
   sideBySide,
   wordWrap,
+  origin,
 }: {
   selection: string;
   path: string | undefined;
@@ -277,6 +279,7 @@ export function Diff({
   changeMarks: boolean;
   sideBySide: boolean;
   wordWrap: boolean;
+  origin: ImageOrigin | undefined;
 }) {
   const parsed = useMemo(() => parsePatch(patch), [patch]);
   const diffFiles = useMemo(
@@ -342,6 +345,7 @@ export function Diff({
         changeMarks={changeMarks}
         sideBySide={sideBySide}
         wordWrap={wordWrap}
+        origin={origin}
         matches={matches}
         current={shown}
         jump={jump}

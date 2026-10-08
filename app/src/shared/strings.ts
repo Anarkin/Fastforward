@@ -18,6 +18,16 @@ function ago(elapsed: number): string {
     : counted(Math.floor(hours / 24), 'day');
 }
 
+function fileSize(bytes: number): string {
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+  const kilobytes = bytes / 1024;
+  return kilobytes < 1024
+    ? `${kilobytes.toFixed(1)} KB`
+    : `${(kilobytes / 1024).toFixed(1)} MB`;
+}
+
 export const strings = {
   app: {
     name: (version: string, development: boolean) =>
@@ -245,6 +255,11 @@ export const strings = {
     show: 'Show',
     binary: 'Binary file',
     binaryOrLarge: 'Binary or very large file',
+    imageDetails: (width: number, height: number, bytes: number) =>
+      `${width} × ${height} · ${fileSize(bytes)}`,
+    imageTooLarge: (megabytes: number) =>
+      `Images over ${megabytes} MB are not previewed`,
+    imageFailed: "Couldn't show this image",
     largeFile: 'Large file',
     notLoaded: 'Not loaded',
     largeDiff: (lines: number) =>

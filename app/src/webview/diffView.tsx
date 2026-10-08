@@ -47,6 +47,13 @@ import {
   sidewaysScroll,
   sidewaysScrollEvent,
 } from './overlayScrollbars';
+import { ImageDiff, imagePanes, WholeImage } from './imagePreview';
+import {
+  previewsImage,
+  previewsWholeImage,
+  wholeImageUrl,
+  type ImageOrigin,
+} from './images';
 import { SkeletonRows, useSkeleton } from './skeleton';
 import { Twisty } from './tree';
 import { tabSize, wrapColumns, wrappedLines } from './wordWrap';
@@ -72,6 +79,7 @@ export interface WholeFile {
   readonly path: string;
   readonly content: string;
   readonly binary: boolean;
+  readonly id?: string;
 }
 
 export function showsSideBySide(
@@ -96,6 +104,7 @@ export type DiffRow =
       readonly lines: number | undefined;
     }
   | { readonly kind: 'binary'; readonly file: number }
+  | { readonly kind: 'image'; readonly file: number }
   | { readonly kind: 'skeleton' }
   | { readonly kind: 'skeletonLines'; readonly file: number }
   | { readonly kind: 'hunk'; readonly file: number }
@@ -123,6 +132,7 @@ const rowHeights: Record<Exclude<DiffRow['kind'], MeasuredKind>, number> = {
   file: uniformHeight,
   large: 36,
   binary: uniformHeight,
+  image: 320,
   hunk: uniformHeight,
   line: uniformHeight,
   split: uniformHeight,
@@ -244,6 +254,12 @@ export function FileHeader({
       {whole && <span className="unchanged">{strings.diff.unchanged}</span>}
     </div>
   );
+}
+
+export function diffRowClass(kind: DiffRow['kind']): string {
+  const extra =
+    kind === 'split' ? 'split-row' : kind === 'image' ? 'image-row' : '';
+  return `virtual-row diff-row ${extra}`;
 }
 
 export function rowHeight(row: DiffRow, wrap = false): number | undefined {
@@ -428,7 +444,10 @@ export function diffRows(
   if (whole) {
     rows.push({ kind: 'file', file: 0, path: whole.path, open: true });
     if (whole.binary) {
-      rows.push({ kind: 'binary', file: 0 });
+      rows.push({
+        kind: previewsWholeImage(whole) ? 'image' : 'binary',
+        file: 0,
+      });
     }
     wholeLines(whole).forEach((text, index) =>
       rows.push({ kind: 'wholeLine', file: 0, number: index + 1, text }),
@@ -452,7 +471,10 @@ export function diffRows(
       return;
     }
     if (file.binary) {
-      rows.push({ kind: 'binary', file: index });
+      rows.push({
+        kind: previewsImage(file) ? 'image' : 'binary',
+        file: index,
+      });
     }
     if (sideBySide) {
       for (const row of splitRows(file, index)) {
@@ -1076,10 +1098,12 @@ export function DiffView({
   jump,
   sideBySide,
   wordWrap,
+  origin,
 }: {
   error: React.ReactNode;
   files: readonly DiffFile[];
   whole: WholeFile | undefined;
+  origin: ImageOrigin | undefined;
   loading: boolean;
   diff: number;
   onLoad: (path: string) => void;
@@ -1375,6 +1399,16 @@ export function DiffView({
             {whole ? strings.diff.binaryOrLarge : strings.diff.binary}
           </div>
         );
+      case 'image': {
+        if (!origin) {
+          return null;
+        }
+        if (whole) {
+          const url = wholeImageUrl(origin, whole);
+          return url && <WholeImage url={url} />;
+        }
+        return <ImageDiff panes={imagePanes(origin, files[row.file], split)} />;
+      }
       case 'skeleton':
         return (
           <div className="diff-skeleton">
@@ -1646,7 +1680,7 @@ export function DiffView({
             return (
               <div
                 key={item.key}
-                className={`virtual-row diff-row ${row.kind === 'split' ? 'split-row' : ''}`}
+                className={diffRowClass(row.kind)}
                 data-index={item.index}
                 ref={height === undefined ? virtualizer.measureElement : null}
                 style={{ height, transform: `translateY(${item.start}px)` }}

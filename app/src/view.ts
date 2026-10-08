@@ -9,7 +9,7 @@ import {
   type PatchScope,
 } from './git/diff';
 import { gitErrorText } from './git/errorText';
-import { listTree, readBlobs, readFile } from './git/files';
+import { listTree, readBlobs, readFile, readImage } from './git/files';
 import { stashFiles, stashPatch } from './git/stashes';
 import {
   findCommit,
@@ -53,8 +53,9 @@ import {
   type RepositoryAt,
 } from './operations';
 import { defaultBookmarks, fingerprint } from './refs';
-import { comparedOf, shownSide } from './shared/comparisons';
+import { comparedOf, shownSide, workingTreeSide } from './shared/comparisons';
 import { isFullHash, shortHash } from './shared/hashes';
+import { imageSourceOf, imageType } from './shared/images';
 import { InFlight } from './shared/inFlight';
 import {
   commitPageSize,
@@ -266,6 +267,38 @@ export class FastforwardView {
 
   idle(): Promise<void> {
     return this.inFlight.settled();
+  }
+
+  image(url: URL): Promise<Response> {
+    return this.inFlight.track(this.readImage(url));
+  }
+
+  private async readImage(url: URL): Promise<Response> {
+    const source = imageSourceOf(url);
+    const type = source && imageType(source.path);
+    if (!source || !type || !this.tabStates.has(source.root)) {
+      return new Response(null, { status: 404 });
+    }
+    try {
+      const read = await readImage(this.gitPath, source.root, source);
+      if (read.kind !== 'image') {
+        return new Response(null, {
+          status: read.kind === 'tooLarge' ? 413 : 404,
+        });
+      }
+      const { buffer, byteOffset, byteLength } = read.bytes;
+      const body =
+        buffer instanceof ArrayBuffer
+          ? new Uint8Array(buffer, byteOffset, byteLength)
+          : new Uint8Array(read.bytes);
+      return new Response(body, {
+        headers: { 'content-type': type, 'cache-control': 'no-store' },
+      });
+    } catch (error) {
+      this.log.error(strings.log.failed('image'));
+      this.log.error(error instanceof Error ? error : gitErrorText(error));
+      return new Response(null, { status: 500 });
+    }
   }
 
   private isActive(root: string): boolean {
@@ -2054,7 +2087,7 @@ export class FastforwardView {
     const changes = changesOf(tab);
     const change = file === undefined ? undefined : changes.get(file);
     if (file !== undefined && !change) {
-      const { content, binary } = await readFile(
+      const { content, binary, id } = await readFile(
         context.gitPath,
         context.root,
         shownCommit(hash),
@@ -2068,7 +2101,8 @@ export class FastforwardView {
         shownDiff.path === file &&
         shownDiff.area === area &&
         shownDiff.content === content &&
-        shownDiff.binary === binary;
+        shownDiff.binary === binary &&
+        shownDiff.id === id;
       if (!stale() && !unchanged) {
         tab.diffOwed = false;
         context.post({
@@ -2078,6 +2112,7 @@ export class FastforwardView {
           ...areaOf(area),
           content,
           binary,
+          ...(id === undefined ? {} : { id }),
         });
       }
       return;
@@ -2138,14 +2173,6 @@ export class FastforwardView {
         ),
     );
   }
-}
-
-function workingTreeSide(hash: string): TextRequest['side'] | undefined {
-  const { from, to } = comparedOf(hash) ?? { from: undefined, to: hash };
-  if (to === workingTreeHash) {
-    return 'new';
-  }
-  return from === workingTreeHash ? 'old' : undefined;
 }
 
 function workingTreeDiffOf(hash: string): WorkingTreeDiff | undefined {

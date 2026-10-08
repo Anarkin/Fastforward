@@ -90,7 +90,7 @@ suite('Patch parser', () => {
     ]);
   });
 
-  test('takes the target of a copy or a rename, quoted or not', () => {
+  test('takes the source and target of a copy or a rename, quoted or not', () => {
     const paths = parsePatch(
       [
         'diff --git a/x b/y b/z',
@@ -101,9 +101,17 @@ suite('Patch parser', () => {
         'similarity index 100%',
         'rename from plain',
         'rename to "tab\\there"',
+        'diff --git "a/tab\\there" b/plain',
+        'similarity index 100%',
+        'rename from "tab\\there"',
+        'rename to plain',
       ].join('\n'),
-    ).map((file) => file.path);
-    assert.deepStrictEqual(paths, ['y b/z', 'tab\there']);
+    ).map((file) => [file.oldPath, file.path]);
+    assert.deepStrictEqual(paths, [
+      ['x', 'y b/z'],
+      ['plain', 'tab\there'],
+      ['tab\there', 'plain'],
+    ]);
   });
 
   test('unquotes paths git quotes', () => {

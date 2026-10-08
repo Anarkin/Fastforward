@@ -1,5 +1,7 @@
+import type { Stats } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import { isAbsolute, join, relative, sep } from 'node:path';
+import { maxImageSize, type ImageSource } from '../shared/images';
 import { strings } from '../shared/strings';
 import { headCommit } from './history';
 import { runGit, runGitBytes, splitNul } from './run';
@@ -30,17 +32,22 @@ const binaryProbe = 8000;
 interface FileContent {
   readonly content: string;
   readonly binary: boolean;
+  readonly id?: string;
 }
 
-const binaryContent: FileContent = { content: '', binary: true };
+const binaryContent = (id: string): FileContent => ({
+  content: '',
+  binary: true,
+  id,
+});
 
 export function isBinary(buffer: Buffer): boolean {
   return buffer.subarray(0, binaryProbe).includes(0);
 }
 
-function toContent(buffer: Buffer): FileContent {
+function toContent(buffer: Buffer, id: string): FileContent {
   return isBinary(buffer)
-    ? binaryContent
+    ? binaryContent(id)
     : { content: buffer.toString('utf8'), binary: false };
 }
 
@@ -118,17 +125,8 @@ export async function readFile(
   path: string,
 ): Promise<FileContent> {
   if (hash === undefined) {
-    const file = join(cwd, path);
-    const [first] = relative(cwd, file).split(sep);
-    if (isAbsolute(path) || first === '..') {
-      throw new Error(strings.errors.outsideRepository(path));
-    }
-    const stats = await fs.lstat(file).catch((error: unknown) => {
-      if (isMissing(error)) {
-        return undefined;
-      }
-      throw error;
-    });
+    const file = repositoryFile(cwd, path);
+    const stats = await lstatIfThere(file);
     if (!stats) {
       return { content: '', binary: false };
     }
@@ -149,9 +147,10 @@ export async function readFile(
         checkedOut ? await headCommit(gitPath, file) : undefined,
       );
     }
+    const id = `${stats.size}-${stats.mtimeMs}`;
     return stats.size > maxFileSize
-      ? binaryContent
-      : toContent(await fs.readFile(file));
+      ? binaryContent(id)
+      : toContent(await fs.readFile(file), id);
   }
   const entry = await runGit(gitPath, cwd, [
     'ls-tree',
@@ -171,6 +170,59 @@ export async function readFile(
     return submoduleContent(object);
   }
   return Number(size) > maxFileSize
-    ? binaryContent
-    : toContent(await runGitBytes(gitPath, cwd, ['cat-file', 'blob', object]));
+    ? binaryContent(object)
+    : toContent(
+        await runGitBytes(gitPath, cwd, ['cat-file', 'blob', object]),
+        object,
+      );
+}
+
+function repositoryFile(cwd: string, path: string): string {
+  const file = join(cwd, path);
+  const [first] = relative(cwd, file).split(sep);
+  if (isAbsolute(path) || first === '..') {
+    throw new Error(strings.errors.outsideRepository(path));
+  }
+  return file;
+}
+
+function lstatIfThere(file: string): Promise<Stats | undefined> {
+  return fs.lstat(file).catch((error: unknown) => {
+    if (isMissing(error)) {
+      return undefined;
+    }
+    throw error;
+  });
+}
+
+export type ImageRead =
+  | { readonly kind: 'image'; readonly bytes: Buffer }
+  | { readonly kind: 'missing' | 'tooLarge' };
+
+export async function readImage(
+  gitPath: string,
+  cwd: string,
+  { path, id, disk }: Omit<ImageSource, 'root'>,
+  limit = maxImageSize,
+): Promise<ImageRead> {
+  if (disk) {
+    const file = repositoryFile(cwd, path);
+    const stats = await lstatIfThere(file);
+    if (!stats?.isFile()) {
+      return { kind: 'missing' };
+    }
+    return stats.size > limit
+      ? { kind: 'tooLarge' }
+      : { kind: 'image', bytes: await fs.readFile(file) };
+  }
+  const size = (await blobSizes(gitPath, cwd, [id])).get(id);
+  if (size === undefined) {
+    return { kind: 'missing' };
+  }
+  return size > limit
+    ? { kind: 'tooLarge' }
+    : {
+        kind: 'image',
+        bytes: await runGitBytes(gitPath, cwd, ['cat-file', 'blob', id]),
+      };
 }

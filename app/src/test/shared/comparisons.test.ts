@@ -6,6 +6,7 @@ import {
   comparisonOf,
   shownSide,
   sidesOf,
+  workingTreeSide,
 } from '../../shared/comparisons';
 import { workingTreeHash } from '../../shared/protocol';
 
@@ -69,5 +70,19 @@ suite('Comparisons', () => {
       comparisonLabel({ from: workingTreeHash, to: from }),
       'uncommitted → 0123456',
     );
+  });
+
+  test('finds the side of a diff the working tree is on, if any', () => {
+    assert.strictEqual(workingTreeSide(workingTreeHash), 'new');
+    assert.strictEqual(
+      workingTreeSide(comparisonOf('a', workingTreeHash)),
+      'new',
+    );
+    assert.strictEqual(
+      workingTreeSide(comparisonOf(workingTreeHash, 'a')),
+      'old',
+    );
+    assert.strictEqual(workingTreeSide(comparisonOf('a', 'b')), undefined);
+    assert.strictEqual(workingTreeSide('a'), undefined);
   });
 });

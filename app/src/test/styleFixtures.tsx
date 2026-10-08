@@ -12,7 +12,7 @@ import { ColumnResizingProvider } from '../webview/columns';
 import { CommitRow, WorkingTreeRow } from '../webview/commitList';
 import { ContextMenu } from '../webview/contextMenu';
 import { DiffFind, DiffOptions } from '../webview/diffColumn';
-import { DiffView, marked } from '../webview/diffView';
+import { diffRowClass, DiffView, marked } from '../webview/diffView';
 import type { FindRange } from '../webview/find';
 import { LocationsPopup } from '../webview/locations';
 import { Minimap } from '../webview/minimap';
@@ -351,11 +351,7 @@ export function diffRow(
   node: React.ReactNode,
   split = false,
 ): React.ReactElement {
-  return (
-    <div className={`virtual-row diff-row ${split ? 'split-row' : ''}`}>
-      {node}
-    </div>
-  );
+  return <div className={diffRowClass(split ? 'split' : 'line')}>{node}</div>;
 }
 
 export function inlineLine(
@@ -416,6 +412,7 @@ export function diffView(
       error={null}
       files={[]}
       whole={undefined}
+      origin={undefined}
       loading={false}
       diff={1}
       onLoad={noop}

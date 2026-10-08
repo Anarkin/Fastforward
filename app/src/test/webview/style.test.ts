@@ -15,11 +15,13 @@ import {
   workingTreeRowHeight,
 } from '../../webview/commitList';
 import {
+  diffRowClass,
   FileHeader,
   HunkDivider,
   layoutVariables,
   rowHeight,
 } from '../../webview/diffView';
+import { ImageDiff } from '../../webview/imagePreview';
 import { Crash } from '../../webview/errorBoundary';
 import { overlayScrollbarClass } from '../../webview/overlayScrollbars';
 import { codePadding, markerWidth, numberWidth } from '../../webview/overflow';
@@ -331,6 +333,59 @@ suite('Style', () => {
         width: 'max-content',
       });
     }
+  });
+
+  test('keeps an image row as wide as the diff, its images in the part scrolled to, side by side and short of the minimap, hatching a side it lacks down to where an image could reach', () => {
+    const view = diffView(
+      {},
+      createElement(
+        'div',
+        { className: diffRowClass('image') },
+        createElement(ImageDiff, {
+          panes: [
+            { side: 'old', url: undefined },
+            { side: 'new', url: 'a.png' },
+          ],
+        }),
+      ),
+    );
+    looks(withClass(view, 'virtual-row', 'image-row'), {
+      'min-width': '0',
+      width: '100%',
+    });
+    looks(withClass(view, 'image-diff'), {
+      display: 'flex',
+      height: '100%',
+      width: '100%',
+      'margin-left': 'var(--visible-left, 0px)',
+    });
+    const panes = allWithClass(view, 'image-pane');
+    for (const pane of panes) {
+      looks(pane, {
+        flex: '0 0 50%',
+        'box-sizing': 'border-box',
+        'min-width': '0',
+      });
+    }
+    assert.strictEqual(diffRowClass('line').includes('image-row'), false);
+    const filler = withClass(view, 'image-pane', 'filler');
+    const frame = withClass(filler, 'image-frame');
+    looks(frame, {
+      flex: '1',
+      'align-self': 'stretch',
+      'margin-right': undefined,
+      'padding-right': undefined,
+    });
+    assert.strictEqual(
+      cascaded(frame, 'background'),
+      cascaded(
+        withClass(
+          diffView({ sideBySide: true }, splitLine('filler', 'added')),
+          'filler',
+        ),
+        'background',
+      ),
+    );
   });
 
   test("opens the search over the commit column's title without moving its field or back button", () => {

@@ -390,6 +390,7 @@ export type ToWebview =
       readonly area?: ChangeArea;
       readonly content: string;
       readonly binary: boolean;
+      readonly id?: string;
     }
   | { readonly type: 'error'; readonly message: string }
   | { readonly type: 'clearError'; readonly message: string }

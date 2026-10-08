@@ -390,6 +390,14 @@ export function App({ name, post: postToHost, listen }: Props) {
     [hash, diffs, postTab],
   );
 
+  const imageOrigin = useMemo(
+    () =>
+      activeTab === undefined || hash === undefined
+        ? undefined
+        : { root: activeTab, hash, ...(area === undefined ? {} : { area }) },
+    [activeTab, hash, area],
+  );
+
   const selectFile = (next: string | undefined, nextArea?: ChangeArea) => {
     if (!hash) {
       return;
@@ -718,6 +726,7 @@ export function App({ name, post: postToHost, listen }: Props) {
                     error={error}
                     sideBySide={diffLayout === 'sideBySide'}
                     wordWrap={wordWrap}
+                    origin={imageOrigin}
                     changeMarks={
                       path !== undefined && (entireFilePinned || entireFile)
                     }

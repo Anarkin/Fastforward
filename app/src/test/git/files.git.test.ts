@@ -2,7 +2,13 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { showPatch } from '../../git/diff';
-import { listTree, maxFileSize, readBlobs, readFile } from '../../git/files';
+import {
+  listTree,
+  maxFileSize,
+  readBlobs,
+  readFile,
+  readImage,
+} from '../../git/files';
 import { parsePatch } from '../../webview/diff';
 import { submoduleRepository } from '../gitFixtures';
 import {
@@ -51,12 +57,22 @@ suite('Repository files', function () {
     await repository.git('add', 'bin.dat', 'late.txt');
     await repository.git('commit', '-m', 'binary');
     try {
-      const binary = { content: '', binary: true };
+      const [object] = await repository.resolve('HEAD:bin.dat');
+      assert.deepStrictEqual(await readFile(gitPath, cwd, 'HEAD', 'bin.dat'), {
+        content: '',
+        binary: true,
+        id: object,
+      });
+      const { size, mtimeMs } = fs.statSync(path.join(cwd, 'bin.dat'));
+      assert.deepStrictEqual(
+        await readFile(gitPath, cwd, undefined, 'bin.dat'),
+        {
+          content: '',
+          binary: true,
+          id: `${size}-${mtimeMs}`,
+        },
+      );
       for (const hash of ['HEAD', undefined]) {
-        assert.deepStrictEqual(
-          await readFile(gitPath, cwd, hash, 'bin.dat'),
-          binary,
-        );
         assert.strictEqual(
           (await readFile(gitPath, cwd, hash, 'late.txt')).binary,
           false,
@@ -162,15 +178,19 @@ suite('Large files and submodules', function () {
   suiteTeardown(() => removeFolder(cwd));
 
   test('shows a file too large to show as binary', async () => {
-    const binary = { content: '', binary: true };
-    assert.deepStrictEqual(
-      await readFile(gitPath, cwd, 'HEAD', 'large.txt'),
-      binary,
-    );
-    assert.deepStrictEqual(
-      await readFile(gitPath, cwd, undefined, 'large.txt'),
-      binary,
-    );
+    for (const hash of ['HEAD', undefined]) {
+      const { content, binary, id } = await readFile(
+        gitPath,
+        cwd,
+        hash,
+        'large.txt',
+      );
+      assert.deepStrictEqual(
+        { content, binary },
+        { content: '', binary: true },
+      );
+      assert.ok(id);
+    }
   });
 
   test('shows a submodule by its commit', async () => {
@@ -234,5 +254,79 @@ suite('Blobs', function () {
     } finally {
       removeFolder(folder);
     }
+  });
+});
+
+suite('Images', function () {
+  this.timeout(20_000);
+  let folder: string;
+  let repository: TempRepository;
+  let gitPath: string;
+  let cwd: string;
+  const pixel = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 1, 2]);
+
+  suiteSetup(async () => {
+    folder = tempFolder('images');
+    repository = await tempRepository(folder);
+    gitPath = repository.gitPath;
+    cwd = repository.root;
+    fs.writeFileSync(path.join(cwd, 'pixel.png'), pixel);
+    fs.writeFileSync(
+      path.join(cwd, 'huge.png'),
+      Buffer.alloc(pixel.length + 1),
+    );
+    await repository.git('add', 'pixel.png', 'huge.png');
+    await repository.git('commit', '-m', 'images');
+  });
+
+  suiteTeardown(() => removeFolder(folder));
+
+  const image = async (id: string, disk: boolean, file = 'pixel.png') =>
+    readImage(gitPath, cwd, { path: file, id, disk }, pixel.length);
+
+  test('reads an image by its object id, or from the working tree', async () => {
+    const [object] = await repository.resolve('HEAD:pixel.png');
+    assert.deepStrictEqual(await image(object, false), {
+      kind: 'image',
+      bytes: pixel,
+    });
+    fs.writeFileSync(path.join(cwd, 'pixel.png'), Buffer.from([0, 9]));
+    try {
+      assert.deepStrictEqual(await image('any', true), {
+        kind: 'image',
+        bytes: Buffer.from([0, 9]),
+      });
+    } finally {
+      fs.writeFileSync(path.join(cwd, 'pixel.png'), pixel);
+    }
+  });
+
+  test('reads no image that is missing or too large to preview', async () => {
+    const [huge] = await repository.resolve('HEAD:huge.png');
+    assert.deepStrictEqual(await image(huge, false), { kind: 'tooLarge' });
+    assert.deepStrictEqual(await image('any', true, 'huge.png'), {
+      kind: 'tooLarge',
+    });
+    const [tree] = await repository.resolve('HEAD^{tree}');
+    for (const id of ['f'.repeat(40), tree]) {
+      assert.deepStrictEqual(await image(id, false), { kind: 'missing' });
+    }
+    fs.mkdirSync(path.join(cwd, 'folder.png'));
+    try {
+      for (const file of ['gone.png', 'folder.png']) {
+        assert.deepStrictEqual(await image('any', true, file), {
+          kind: 'missing',
+        });
+      }
+    } finally {
+      fs.rmdirSync(path.join(cwd, 'folder.png'));
+    }
+  });
+
+  test('reads no image outside the repository', async () => {
+    await assert.rejects(
+      image('any', true, '../outside.png'),
+      /outside the repository/,
+    );
   });
 });

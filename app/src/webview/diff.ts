@@ -18,6 +18,7 @@ interface Blobs {
 
 export interface DiffFile {
   readonly path: string;
+  readonly oldPath?: string;
   readonly binary: boolean;
   readonly hunks: DiffHunk[];
   readonly placeholder?: { readonly lines: number | undefined };
@@ -27,6 +28,7 @@ export interface DiffFile {
 interface ParsedFile {
   header: string;
   path: string;
+  oldPath?: string;
   binary: boolean;
   hunks: DiffHunk[];
   blobs?: Blobs;
@@ -191,6 +193,11 @@ export function parsePatch(patch: string): DiffFile[] {
         file.binary = true;
       } else if (line.startsWith('rename to ') || line.startsWith('copy to ')) {
         file.path = unquotePath(line.slice(line.indexOf(' to ') + 4));
+      } else if (
+        line.startsWith('rename from ') ||
+        line.startsWith('copy from ')
+      ) {
+        file.oldPath = unquotePath(line.slice(line.indexOf(' from ') + 6));
       } else if (line.startsWith('+++ ')) {
         const path = prefixedPath(line.slice(4), 'b/');
         if (path !== undefined) {
@@ -224,7 +231,11 @@ export function parsePatch(patch: string): DiffFile[] {
       });
     }
   }
-  return files.map(({ path, binary, hunks, blobs }) =>
-    blobs ? { path, binary, hunks, blobs } : { path, binary, hunks },
-  );
+  return files.map(({ path, oldPath, binary, hunks, blobs }) => ({
+    path,
+    ...(oldPath === undefined ? {} : { oldPath }),
+    binary,
+    hunks,
+    ...(blobs ? { blobs } : {}),
+  }));
 }

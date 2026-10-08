@@ -17,6 +17,7 @@ import { autoUpdater } from 'electron-updater';
 import { findGit, minimumGitVersion, type GitSearch } from '../git/locate';
 import { stopRunningGit } from '../git/run';
 import { errorLine, fileLog, type Log } from '../log';
+import { imageRoute } from '../shared/images';
 import { appNameSwitch, titleBarHeight } from '../shared/titleBar';
 import { keymap, pressed, pressOfInput } from '../shared/keymap';
 import type { ToHost, ToWebview } from '../shared/protocol';
@@ -111,11 +112,16 @@ async function start(): Promise<void> {
     log.warn(problem);
   }
   const state = new JsonFileStore(path.join(profile, 'state.json'));
+  const views = Promise.withResolvers<FastforwardView>();
   protocol.handle(appScheme, (request) => {
-    if (new URL(request.url).pathname === '/theme.css') {
+    const url = new URL(request.url);
+    if (url.pathname === '/theme.css') {
       return new Response(themeCss(userSettings.settings), {
         headers: { 'content-type': 'text/css', 'cache-control': 'no-store' },
       });
+    }
+    if (url.pathname === imageRoute) {
+      return views.promise.then((view) => view.image(url));
     }
     const file = appFile(dist, request.url);
     return file
@@ -128,7 +134,6 @@ async function start(): Promise<void> {
     userSettings.settings,
     gitSearch.then((git) => git.kind === 'found'),
   );
-  const views = Promise.withResolvers<FastforwardView>();
   let connection: Promise<Connection | undefined> = Promise.resolve(undefined);
   const connect = () => {
     connection = Promise.all([connection, views.promise]).then(

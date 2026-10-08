@@ -13,6 +13,8 @@ This file only observes and documents the codebase mainly for human readers; the
 - A block of over 40000 removed by added lines, or 1 million words and punctuation marks compared, has its lines paired in order instead of by similarity, as pairing compares every removed line with every added one
 - A block of over 1 million removed by added tokens, each word, run of spaces and punctuation mark counting as one, has its lines marked as changed in full, like a block with no word in common, instead of word by word, as the word diff's table grows with both counts
 - Find in a diff stops collecting matches at 10000, and its count then reads 10000+, as each match is marked in the page
+- An image over 192 MB is not previewed, as each image shown is read whole into the page
+- The images previewed are kept in the page up to 256 MB, forgetting the least recently shown
 
 ## Syntax
 

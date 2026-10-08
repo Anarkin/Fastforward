@@ -35,6 +35,7 @@ import {
   widestColumns,
   type DiffRow,
 } from '../../webview/diffView';
+import { ImageDiff, imagePanes } from '../../webview/imagePreview';
 import { countingReads, fileChange } from '../fixtures';
 
 function patch(path: string, added: number): string {
@@ -46,6 +47,15 @@ function patch(path: string, added: number): string {
     ...Array.from({ length: added }, (_, index) => `+line ${index}`),
   ].join('\n');
 }
+
+const binaryOf = (path: string) =>
+  parsePatch(
+    [
+      `diff --git a/${path} b/${path}`,
+      'index 1111111..2222222 100644',
+      `Binary files a/${path} and b/${path} differ`,
+    ].join('\n'),
+  )[0];
 
 const kinds = (rows: ReturnType<typeof diffRows>) =>
   rows.map((row) => row.kind);
@@ -209,25 +219,62 @@ suite('Diff rows', () => {
     );
   });
 
-  test('shows a binary file as such, whole or in a diff', () => {
-    assert.deepStrictEqual(
-      kinds(
-        diffRows([], new Map(), { path: 'a.png', content: '', binary: true }),
-      ),
-      ['error', 'file', 'binary'],
-    );
-    const [binary] = parsePatch(
-      [
-        'diff --git a/a.png b/a.png',
-        'index 1111111..2222222 100644',
-        'Binary files a/a.png and b/a.png differ',
-      ].join('\n'),
-    );
-    assert.deepStrictEqual(kinds(diffRows([binary], new Map(), undefined)), [
+  test('shows a binary file as such, whole or in a diff, and an image as one', () => {
+    const whole = { path: 'a.bin', content: '', binary: true, id: 'a' };
+    assert.deepStrictEqual(kinds(diffRows([], new Map(), whole)), [
       'error',
       'file',
       'binary',
     ]);
+    assert.deepStrictEqual(
+      kinds(diffRows([], new Map(), { ...whole, path: 'a.png' })),
+      ['error', 'file', 'image'],
+    );
+    for (const sideBySide of [false, true]) {
+      assert.deepStrictEqual(
+        kinds(
+          diffRows(
+            [binaryOf('a.bin'), binaryOf('a.png')],
+            new Map(),
+            undefined,
+            false,
+            sideBySide,
+          ),
+        ),
+        ['error', 'file', 'binary', 'file', 'image'],
+      );
+    }
+    assert.strictEqual(rowHeight({ kind: 'image', file: 0 }), 320);
+  });
+
+  test('previews an image on both sides when side by side, hatching the side it lacks, and only on the sides it has inline', () => {
+    const [added] = parsePatch(
+      [
+        'diff --git a/a.png b/a.png',
+        'new file mode 100644',
+        `index ${'0'.repeat(40)}..${'2'.repeat(40)}`,
+        'Binary files /dev/null and b/a.png differ',
+      ].join('\n'),
+    );
+    const origin = { root: '/repo', hash: 'c'.repeat(40) };
+    const shown = (sideBySide: boolean) =>
+      imagePanes(origin, added, sideBySide).map((pane) => [
+        pane.side,
+        pane.url !== undefined,
+      ]);
+    assert.deepStrictEqual(shown(false), [['new', true]]);
+    assert.deepStrictEqual(shown(true), [
+      ['old', false],
+      ['new', true],
+    ]);
+    const markup = renderToStaticMarkup(
+      <ImageDiff panes={imagePanes(origin, added, true)} />,
+    );
+    assert.match(
+      markup,
+      /<div class="image-pane filler"><div class="image-frame"><\/div><\/div>/,
+    );
+    assert.match(markup, /class="image-pane"/);
   });
 });
 
