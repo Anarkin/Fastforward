@@ -32,14 +32,30 @@ suite('Commit history', () => {
     assert.strictEqual(told, 1);
   });
 
-  test('asks for each missing page once', () => {
+  test('asks for each missing page once, up to the last row', () => {
     const history = new CommitHistory(250);
     history.add(0, [commitInfo('a')]);
-    assert.deepStrictEqual(history.takeMissingPages(50, 400), [
-      commitPageSize,
-      2 * commitPageSize,
+    assert.deepStrictEqual(history.takeMissingRuns(50, 400), [
+      { start: commitPageSize, count: 2 * commitPageSize },
     ]);
-    assert.deepStrictEqual(history.takeMissingPages(0, 249), []);
+    assert.deepStrictEqual(history.takeMissingRuns(0, 249), []);
+  });
+
+  test('asks for a page beyond the rows shown on either side, so the next one is there before it is reached', () => {
+    const history = new CommitHistory(1000);
+    assert.deepStrictEqual(history.takeMissingRuns(250, 260), [
+      { start: commitPageSize, count: 3 * commitPageSize },
+    ]);
+  });
+
+  test('asks for the pages next to each other together, at most 4 at once, around the pages loaded', () => {
+    const history = new CommitHistory(2000);
+    history.add(2 * commitPageSize, [commitInfo('a')]);
+    assert.deepStrictEqual(history.takeMissingRuns(0, 799), [
+      { start: 0, count: 2 * commitPageSize },
+      { start: 3 * commitPageSize, count: 4 * commitPageSize },
+      { start: 7 * commitPageSize, count: 2 * commitPageSize },
+    ]);
   });
 
   test('counts both pages a new history comes with as loaded', () => {
@@ -50,23 +66,23 @@ suite('Commit history', () => {
         commitInfo(String(index)),
       ),
     );
-    assert.deepStrictEqual(
-      history.takeMissingPages(0, 3 * commitPageSize - 1),
-      [2 * commitPageSize],
-    );
+    assert.deepStrictEqual(history.takeMissingRuns(0, 2 * commitPageSize - 1), [
+      { start: 2 * commitPageSize, count: commitPageSize },
+    ]);
   });
 
   test('asks for nothing in a history without commits', () => {
-    assert.deepStrictEqual(new CommitHistory(0).takeMissingPages(0, 99), []);
+    assert.deepStrictEqual(new CommitHistory(0).takeMissingRuns(0, 99), []);
   });
 
-  test('asks again for a page that could not be loaded', () => {
-    const history = new CommitHistory(3 * commitPageSize);
-    const page = () =>
-      history.takeMissingPages(commitPageSize, 2 * commitPageSize - 1);
-    assert.deepStrictEqual(page(), [commitPageSize]);
-    history.release(commitPageSize);
-    assert.deepStrictEqual(page(), [commitPageSize]);
+  test('asks again for the pages that could not be loaded', () => {
+    const history = new CommitHistory(5 * commitPageSize);
+    const pages = () =>
+      history.takeMissingRuns(2 * commitPageSize, 2 * commitPageSize);
+    const run = { start: commitPageSize, count: 3 * commitPageSize };
+    assert.deepStrictEqual(pages(), [run]);
+    history.release(run.start, run.count);
+    assert.deepStrictEqual(pages(), [run]);
   });
 });
 

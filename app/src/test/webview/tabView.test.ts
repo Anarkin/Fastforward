@@ -163,6 +163,7 @@ suite('Tab view', () => {
       type: 'commitPage',
       generation: 1,
       start: 1,
+      count: 1,
       commits: [commitInfo('b')],
       graph: [],
     });
@@ -174,6 +175,7 @@ suite('Tab view', () => {
       type: 'commitPage',
       generation: 1,
       start: 2,
+      count: 1,
       commits: [commitInfo('c')],
       graph: [],
     });
@@ -252,11 +254,11 @@ suite('Tab view', () => {
     assert.strictEqual(view.scrollTarget, undefined);
   });
 
-  test('asks again for a page that came back empty', () => {
+  test('asks again for the pages that came back empty', () => {
     const before = reduceTabView(emptyTabView, {
       type: 'commits',
       generation: 1,
-      total: 3 * commitPageSize,
+      total: 4 * commitPageSize,
       decorations: [],
       start: 0,
       commits: [commitInfo('a')],
@@ -265,18 +267,19 @@ suite('Tab view', () => {
       selectedIndex: 0,
       scrollTarget: undefined,
     });
-    const page = () =>
-      before.history?.takeMissingPages(commitPageSize, 2 * commitPageSize - 1);
-    assert.deepStrictEqual(page(), [commitPageSize]);
+    const pages = () =>
+      before.history?.takeMissingRuns(2 * commitPageSize, 2 * commitPageSize);
+    const run = { start: commitPageSize, count: 3 * commitPageSize };
+    assert.deepStrictEqual(pages(), [run]);
     const after = reduceTabView(before, {
       type: 'commitPage',
       generation: 1,
-      start: commitPageSize,
+      ...run,
       commits: [],
       graph: [],
     });
     assert.strictEqual(after, before);
-    assert.deepStrictEqual(page(), [commitPageSize]);
+    assert.deepStrictEqual(pages(), [run]);
   });
 
   test('stops loading the selected commit when an error comes', () => {
@@ -334,6 +337,7 @@ suite('Tab view', () => {
       type: 'commitPage',
       generation: 0,
       start: 1,
+      count: 1,
       commits: [commitInfo('b')],
       graph: [],
     });

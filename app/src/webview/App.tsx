@@ -283,8 +283,8 @@ export function App({ name, post: postToHost, listen }: Props) {
   );
 
   const loadCommits = useCallback(
-    (start: number, generation: number) =>
-      postTab({ type: 'loadCommits', generation, start }),
+    (start: number, count: number, generation: number) =>
+      postTab({ type: 'loadCommits', generation, start, count }),
     [postTab],
   );
 

@@ -77,23 +77,40 @@ export class CommitHistory {
     });
   }
 
-  release(start: number): void {
-    this.requested.delete(start);
+  release(start: number, count: number): void {
+    for (let page = start; page < start + count; page += commitPageSize) {
+      this.requested.delete(page);
+    }
   }
 
-  takeMissingPages(first: number, last: number): number[] {
-    const pages: number[] = [];
-    const end = Math.min(last, this.total - 1);
+  takeMissingRuns(first: number, last: number): PageRun[] {
+    const runs: PageRun[] = [];
+    const end = Math.min(last + commitPageSize, this.total - 1);
+    let run: { start: number; count: number } | undefined;
     for (
-      let start = Math.max(0, pageStart(first));
+      let start = Math.max(0, pageStart(first - commitPageSize));
       start <= end;
       start += commitPageSize
     ) {
-      if (!this.requested.has(start)) {
-        this.requested.add(start);
-        pages.push(start);
+      if (this.requested.has(start)) {
+        run = undefined;
+        continue;
+      }
+      this.requested.add(start);
+      if (run && run.count < pagesAtOnce * commitPageSize) {
+        run.count += commitPageSize;
+      } else {
+        run = { start, count: commitPageSize };
+        runs.push(run);
       }
     }
-    return pages;
+    return runs;
   }
 }
+
+interface PageRun {
+  readonly start: number;
+  readonly count: number;
+}
+
+const pagesAtOnce = 4;

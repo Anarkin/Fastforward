@@ -527,28 +527,31 @@ suite('View of one repository', function () {
       assert.strictEqual(page.last('tree')?.hash, fixture.b);
     });
 
-    test('loads pages of the history as the list asks for them', async () => {
+    test('loads as many rows of the history as the list asks for', async () => {
       const generation = page.last('commits')?.generation ?? -1;
       await connection.receive({
         type: 'loadCommits',
         root: repository.root,
         generation,
         start: 1,
+        count: 1,
       });
       const page2 = page.last('commitPage');
       assert.strictEqual(page2?.start, 1);
+      assert.strictEqual(page2.count, 1);
       assert.strictEqual(page2.generation, generation);
       assert.deepStrictEqual(
         page2.commits.map((commit) => commit.subject),
-        ['b', 'a'],
+        ['b'],
       );
-      assert.strictEqual(page2.graph.length, 2);
+      assert.strictEqual(page2.graph.length, 1);
 
       await connection.receive({
         type: 'loadCommits',
         root: repository.root,
         generation: generation - 1,
         start: 1,
+        count: 1,
       });
       assert.strictEqual(page.last('commitPage'), page2);
     });
@@ -568,9 +571,11 @@ suite('View of one repository', function () {
           root: repository.root,
           generation,
           start: 1,
+          count: 2,
         });
         const failed = page.last('commitPage');
         assert.strictEqual(failed?.start, 1);
+        assert.strictEqual(failed.count, 2);
         assert.strictEqual(failed.generation, generation);
         assert.deepStrictEqual(failed.commits, []);
         assert.ok(page.last('error'));

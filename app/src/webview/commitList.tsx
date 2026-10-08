@@ -341,6 +341,39 @@ export function trailing(
   };
 }
 
+export function atMostEvery(
+  run: () => void,
+  delay: number,
+): { schedule: () => void; cancel: () => void } {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let again = false;
+  const cool = () => {
+    timer = setTimeout(() => {
+      timer = undefined;
+      if (again) {
+        again = false;
+        run();
+        cool();
+      }
+    }, delay);
+  };
+  return {
+    schedule: () => {
+      if (timer === undefined) {
+        run();
+        cool();
+      } else {
+        again = true;
+      }
+    },
+    cancel: () => {
+      clearTimeout(timer);
+      timer = undefined;
+      again = false;
+    },
+  };
+}
+
 export function CommitBubbles({
   hash,
   refs,
@@ -445,7 +478,7 @@ export function Commits({
   opening: boolean;
   scrollTarget: ScrollTarget | undefined;
   onScrolled: (hash: string, offset: number, report: number) => void;
-  onLoad: (start: number, generation: number) => void;
+  onLoad: (start: number, count: number, generation: number) => void;
   workingTree: number | undefined;
   refsByCommit: ReadonlyMap<string, readonly RefInfo[]>;
   stashes: ReadonlySet<string>;
@@ -503,17 +536,30 @@ export function Commits({
   const first = Math.max(0, (rows[0]?.index ?? 0) - offset);
   const last = Math.max(0, (rows.at(-1)?.index ?? 0) - offset);
 
-  useEffect(() => {
-    if (!history) {
-      return undefined;
-    }
-    const timer = setTimeout(() => {
-      for (const start of history.takeMissingPages(first, last)) {
-        onLoad(start, history.generation);
+  const inView = useRef({ history, first, last, onLoad });
+  const [asking] = useState(() =>
+    atMostEvery(() => {
+      const {
+        history: shown,
+        first: top,
+        last: bottom,
+        onLoad: load,
+      } = inView.current;
+      if (!shown) {
+        return;
       }
-    }, loadDelay);
-    return () => clearTimeout(timer);
-  }, [history, first, last, onLoad]);
+      for (const run of shown.takeMissingRuns(top, bottom)) {
+        load(run.start, run.count, shown.generation);
+      }
+    }, loadDelay),
+  );
+  useEffect(() => {
+    inView.current = { history, first, last, onLoad };
+    if (history) {
+      asking.schedule();
+    }
+  }, [history, first, last, onLoad, asking]);
+  useEffect(() => () => asking.cancel(), [asking]);
 
   const shown = useRef<ListScrollState>({ target: undefined, offset });
   const [places] = useState(() => new ReportedPlaces());

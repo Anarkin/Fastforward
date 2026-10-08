@@ -186,7 +186,7 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
         return state;
       }
       if (action.commits.length === 0) {
-        state.history.release(action.start);
+        state.history.release(action.start, action.count);
         return state;
       }
       state.history.add(action.start, action.commits, action.graph);

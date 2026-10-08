@@ -602,7 +602,12 @@ export class FastforwardView {
     }
     switch (message.type) {
       case 'loadCommits':
-        await this.sendCommitPage(context, message.generation, message.start);
+        await this.sendCommitPage(
+          context,
+          message.generation,
+          message.start,
+          message.count,
+        );
         break;
       case 'toggleMerge':
         toggleMerges(context.tab, [message.hash]);
@@ -1888,6 +1893,7 @@ export class FastforwardView {
     context: Context,
     generation: number,
     start: number,
+    count: number,
   ): Promise<void> {
     const { tab } = context;
     const replaced = () => tab.generation !== generation;
@@ -1898,13 +1904,14 @@ export class FastforwardView {
     const commits = await logCommits(
       context.gitPath,
       context.root,
-      history.slice(start, start + commitPageSize).map((entry) => entry.hash),
+      history.slice(start, start + count).map((entry) => entry.hash),
     ).catch((error: unknown) => {
       if (!replaced()) {
         context.post({
           type: 'commitPage',
           generation,
           start,
+          count,
           commits: [],
           graph: [],
         });
@@ -1919,6 +1926,7 @@ export class FastforwardView {
       type: 'commitPage',
       generation,
       start,
+      count,
       commits,
       graph: graph.rows(start, commits.length),
     });
