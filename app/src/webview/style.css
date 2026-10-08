@@ -1561,27 +1561,33 @@ body.resizing {
   );
 }
 
-.diff-line .syntax-keyword {
+.diff-line .syntax-keyword,
+.markdown .syntax-keyword {
   color: var(--color-syntax-keyword);
 }
 
-.diff-line .syntax-type {
+.diff-line .syntax-type,
+.markdown .syntax-type {
   color: var(--color-syntax-type);
 }
 
-.diff-line .syntax-function {
+.diff-line .syntax-function,
+.markdown .syntax-function {
   color: var(--color-syntax-function);
 }
 
-.diff-line .syntax-string {
+.diff-line .syntax-string,
+.markdown .syntax-string {
   color: var(--color-syntax-string);
 }
 
-.diff-line .syntax-number {
+.diff-line .syntax-number,
+.markdown .syntax-number {
   color: var(--color-syntax-number);
 }
 
-.diff-line .syntax-comment {
+.diff-line .syntax-comment,
+.markdown .syntax-comment {
   color: var(--color-syntax-comment);
 }
 

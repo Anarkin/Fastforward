@@ -418,6 +418,50 @@ export async function loadLanguages(
   return highlighter;
 }
 
+const maxCodeLines = 5000;
+
+export async function colorCode(
+  language: string,
+  code: string,
+): Promise<LineRanges | undefined> {
+  const id = languageIds.get(language.toLowerCase());
+  const lines = code.split('\n');
+  if (id === undefined || lines.length > maxCodeLines) {
+    return undefined;
+  }
+  const highlighter = await loadLanguages([id]);
+  return highlighter
+    .codeToTokensBase(code, {
+      lang: id,
+      theme: theme.name,
+      tokenizeMaxLineLength: maxLineLength + 1,
+    })
+    .map(rangesOf);
+}
+
+export interface CodeSegment {
+  readonly text: string;
+  readonly kind?: SyntaxRange['kind'];
+}
+
+export function codeSegments(code: string, lines: LineRanges): CodeSegment[] {
+  return code.split('\n').flatMap((line, index) => {
+    const segments: CodeSegment[] = index === 0 ? [] : [{ text: '\n' }];
+    let at = 0;
+    for (const { start, end, kind } of lines[index] ?? []) {
+      if (start > at) {
+        segments.push({ text: line.slice(at, start) });
+      }
+      segments.push({ text: line.slice(start, end), kind });
+      at = end;
+    }
+    if (at < line.length) {
+      segments.push({ text: line.slice(at) });
+    }
+    return segments;
+  });
+}
+
 const sliceTime = 10;
 const publishTime = 50;
 

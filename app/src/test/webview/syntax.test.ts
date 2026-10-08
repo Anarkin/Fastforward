@@ -1,6 +1,8 @@
 import * as assert from 'node:assert';
 import { parsePatch } from '../../webview/diff';
 import {
+  codeSegments,
+  colorCode,
   languageOf,
   loadLanguages,
   uncachedSources,
@@ -849,6 +851,38 @@ suite('Syntax', () => {
         ({ path, side }) => `${side}:${path}`,
       ),
       ['old:a.ts', 'new:a.ts'],
+    );
+  });
+});
+
+suite('Code in documents', () => {
+  test('colors a code block by its language, named or aliased, and nothing in an unknown one', async () => {
+    const lines = await colorCode('TS', 'const a = 1;\n// done');
+    assert.deepStrictEqual(lines?.[0]?.[0], {
+      start: 0,
+      end: 5,
+      kind: 'keyword',
+    });
+    assert.deepStrictEqual(lines?.[1], [{ start: 0, end: 7, kind: 'comment' }]);
+    assert.strictEqual(await colorCode('no-such-language', 'a'), undefined);
+  });
+
+  test('cuts a code block into the parts each color covers, keeping its lines', () => {
+    assert.deepStrictEqual(
+      codeSegments('let a = 1\nb', [
+        [
+          { start: 0, end: 3, kind: 'keyword' },
+          { start: 8, end: 9, kind: 'number' },
+        ],
+        [],
+      ]),
+      [
+        { text: 'let', kind: 'keyword' },
+        { text: ' a = ' },
+        { text: '1', kind: 'number' },
+        { text: '\n' },
+        { text: 'b' },
+      ],
     );
   });
 });

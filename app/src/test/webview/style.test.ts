@@ -417,6 +417,17 @@ suite('Style', () => {
     ).children;
     looks(links[0], { color: 'var(--color-focus)' });
     looks(links[1], { color: undefined });
+    const keyword = rendered(
+      createElement(
+        'div',
+        { className: 'markdown' },
+        createElement('span', { className: 'syntax-keyword' }, 'const'),
+      ),
+    ).children[0];
+    assert.strictEqual(
+      cascaded(keyword, 'color'),
+      'var(--color-syntax-keyword)',
+    );
   });
 
   test('keeps an image row as wide as the diff, its images in the part scrolled to, side by side and short of the minimap, hatching a side it lacks down to where an image could reach', () => {

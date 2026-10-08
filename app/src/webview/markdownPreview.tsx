@@ -1,7 +1,40 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { documentImageUrl, type DocumentImages } from './images';
 import { markdownRenderer, type Render } from './markdownRender';
 import type { MarkdownSide } from './previews';
+import { codeSegments, colorCode } from './syntax';
+
+const codeLanguage = /(?:^|\s)language-(\S+)/;
+
+function colorCodeBlocks(element: HTMLElement): () => void {
+  let live = true;
+  for (const code of element.querySelectorAll('pre > code')) {
+    const language = codeLanguage.exec(code.className)?.[1];
+    const text = code.textContent;
+    if (language === undefined) {
+      continue;
+    }
+    void colorCode(language, text).then((lines) => {
+      if (!live || !lines || code.textContent !== text) {
+        return;
+      }
+      code.replaceChildren(
+        ...codeSegments(text, lines).map(({ text: part, kind }) => {
+          if (kind === undefined) {
+            return part;
+          }
+          const span = document.createElement('span');
+          span.className = `syntax-${kind}`;
+          span.textContent = part;
+          return span;
+        }),
+      );
+    });
+  }
+  return () => {
+    live = false;
+  };
+}
 
 let loading: Promise<Render> | undefined;
 let loaded: Render | undefined;
@@ -58,9 +91,15 @@ function MarkdownPane({
             documentImageUrl({ root, document, revision, version }, src);
     return { __html: render(text, image) };
   }, [render, text, root, document, revision, version]);
+  const content = useRef<HTMLDivElement>(null);
+  useEffect(
+    () =>
+      content.current && html ? colorCodeBlocks(content.current) : undefined,
+    [html],
+  );
   return (
     <div className="markdown-pane">
-      <div className="markdown" dangerouslySetInnerHTML={html} />
+      <div ref={content} className="markdown" dangerouslySetInnerHTML={html} />
     </div>
   );
 }
