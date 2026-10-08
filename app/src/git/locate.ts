@@ -42,6 +42,7 @@ export function onPath(
     Object.keys(env).find((key) => key.toUpperCase() === 'PATH') ?? 'PATH';
   const folders = (env[pathKey] ?? '')
     .split(windows ? ';' : ':')
+    .map((folder) => (windows ? folder.replaceAll('"', '') : folder))
     .filter(Boolean);
   const extensions = windows
     ? (env.PATHEXT ?? '.EXE;.COM')

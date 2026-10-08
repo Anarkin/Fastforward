@@ -44,6 +44,14 @@ suite('Finding git', () => {
     );
   });
 
+  test('finds a command in a quoted folder of the Windows Path, as Windows itself does', () => {
+    const found = executable('git.exe');
+    assert.strictEqual(
+      onPath('git', { Path: `C:\\missing;"${folder}"` }, 'win32'),
+      found,
+    );
+  });
+
   test('skips a folder named like the command', () => {
     fs.mkdirSync(path.join(folder, git));
     assert.strictEqual(
