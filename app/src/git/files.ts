@@ -202,7 +202,13 @@ export type ImageRead =
 export async function readImage(
   gitPath: string,
   cwd: string,
-  { path, id, disk, revision }: Omit<ImageSource, 'root'>,
+  {
+    path,
+    id,
+    disk,
+    revision,
+    untracked,
+  }: Omit<ImageSource, 'root'> & { readonly untracked?: string },
   limit = maxImageSize,
 ): Promise<ImageRead> {
   if (disk) {
@@ -215,10 +221,13 @@ export async function readImage(
       ? { kind: 'tooLarge' }
       : { kind: 'image', bytes: await fs.readFile(file) };
   }
-  const [object, size] =
+  let [object, size] =
     revision === undefined
       ? [id, (await blobSizes(gitPath, cwd, [id])).get(id)]
       : await blobAt(gitPath, cwd, `${revision}:${path}`);
+  if (size === undefined && untracked !== undefined) {
+    [object, size] = await blobAt(gitPath, cwd, `${untracked}:${path}`);
+  }
   if (size === undefined) {
     return { kind: 'missing' };
   }

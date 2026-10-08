@@ -674,6 +674,33 @@ suite('View showing diffs', function () {
       }
     });
 
+    test('serves the images a stash keeps among its untracked files, as a document it keeps links them', async () => {
+      fs.writeFileSync(path.join(images.root, 'shot.png'), pixel);
+      fs.writeFileSync(path.join(images.root, 'doc.md'), '![](shot.png)\n');
+      await images.git('stash', '-u');
+      try {
+        const [stash] = await images.resolve('stash@{0}');
+        await withView(log, [images.root], async ({ view }) => {
+          const shown = await view.image(
+            new URL(
+              imageUrl({
+                root: images.root,
+                path: 'shot.png',
+                id: stash,
+                disk: false,
+                revision: stash,
+              }),
+              'fastforward://app',
+            ),
+          );
+          assert.strictEqual(shown.status, 200);
+          assert.deepStrictEqual(Buffer.from(await shown.arrayBuffer()), pixel);
+        });
+      } finally {
+        await images.git('stash', 'drop');
+      }
+    });
+
     test('shows a binary file whole again once it changes, staged in full', async () => {
       const file = path.join(images.root, 'pixel.png');
       try {

@@ -276,11 +276,19 @@ export class FastforwardView {
   private async readImage(url: URL): Promise<Response> {
     const source = imageSourceOf(url);
     const type = source && imageType(source.path);
-    if (!source || !type || !this.tabStates.has(source.root)) {
+    const tab = source && this.tabStates.get(source.root);
+    if (!source || !type || !tab) {
       return new Response(null, { status: 404 });
     }
+    const stash =
+      source.revision === undefined
+        ? undefined
+        : tab.stashes.get(source.revision);
     try {
-      const read = await readImage(this.gitPath, source.root, source);
+      const read = await readImage(this.gitPath, source.root, {
+        ...source,
+        untracked: stash?.untracked,
+      });
       if (read.kind !== 'image') {
         return new Response(null, {
           status: read.kind === 'tooLarge' ? 413 : 404,
