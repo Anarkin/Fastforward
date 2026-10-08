@@ -1400,15 +1400,15 @@ suite('Binary files', () => {
     );
     assert.strictEqual(
       binaryMarkup('added', true),
-      '<div class="split-line"><div class="file-note split-side filler"></div><div class="file-note split-side added">Binary file</div></div>',
+      '<div class="split-line note-line"><div class="file-note split-side filler"></div><div class="file-note split-side added">Binary file</div></div>',
     );
     assert.strictEqual(
       binaryMarkup('removed', true),
-      '<div class="split-line"><div class="file-note split-side removed">Binary file</div><div class="file-note split-side filler"></div></div>',
+      '<div class="split-line note-line"><div class="file-note split-side removed">Binary file</div><div class="file-note split-side filler"></div></div>',
     );
     assert.strictEqual(
       binaryMarkup(undefined, true),
-      '<div class="split-line"><div class="file-note split-side ">Binary file</div><div class="file-note split-side ">Binary file</div></div>',
+      '<div class="split-line note-line"><div class="file-note split-side ">Binary file</div><div class="file-note split-side ">Binary file</div></div>',
     );
   });
 });

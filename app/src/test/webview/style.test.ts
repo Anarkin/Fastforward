@@ -337,7 +337,7 @@ suite('Style', () => {
     }
   });
 
-  test('tints a binary file added or deleted like such a line, and hatches the side it lacks like one', () => {
+  test('tints a binary file added or deleted like such a line, and hatches the side it lacks like one, both halves as tall as the row', () => {
     for (const change of ['added', 'removed'] as const) {
       assert.strictEqual(
         cascaded(
@@ -376,6 +376,10 @@ suite('Style', () => {
         'background',
       ),
     );
+    for (const side of allWithClass(split, 'file-note')) {
+      looks(side, { height: '100%' });
+    }
+    looks(withClass(split, 'split-line'), { height: '100%' });
   });
 
   test('previews Markdown as wide as the diff, in halves side by side, hatching the half a file lacks', () => {

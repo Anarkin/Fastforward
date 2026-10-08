@@ -1339,6 +1339,10 @@ body.resizing {
   min-width: 0;
 }
 
+.split-line.note-line {
+  height: 100%;
+}
+
 .diff-view.side-by-side::after {
   content: '';
   position: absolute;

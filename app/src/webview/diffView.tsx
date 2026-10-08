@@ -320,7 +320,7 @@ export function FileNote({
     return <div className={`file-note ${change ?? ''}`}>{text}</div>;
   }
   return (
-    <div className="split-line">
+    <div className="split-line note-line">
       {(['removed', 'added'] as const).map((side) =>
         change === undefined || change === side ? (
           <div key={side} className={`file-note split-side ${change ?? ''}`}>
