@@ -68,6 +68,7 @@ interface RunOptions {
 }
 
 const maxOutput = 256 * 1024 * 1024;
+const drainTime = 200;
 
 export async function runGit(
   gitPath: string,
@@ -168,6 +169,22 @@ export async function runGitBytes(
     };
     child.on('error', (error) => settle(null, null, error));
     child.on('close', (code, stoppedBy) => settle(code, stoppedBy));
+    child.on('exit', () => {
+      // What a hook started in the background can hold the pipes open long
+      // after git exits, so they are closed once they stop bringing output
+      let quiet: NodeJS.Timeout | undefined;
+      const wait = () => {
+        clearTimeout(quiet);
+        quiet = setTimeout(() => {
+          child.stdout.destroy();
+          child.stderr.destroy();
+        }, drainTime);
+      };
+      child.stdout.on('data', wait);
+      child.stderr.on('data', wait);
+      child.once('close', () => clearTimeout(quiet));
+      wait();
+    });
     signal?.addEventListener('abort', stop, { once: true });
     child.stdin.on('error', () => undefined);
     child.stdin.end(input);

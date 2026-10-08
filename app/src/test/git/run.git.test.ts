@@ -133,6 +133,28 @@ suite('Running git in a repository', function () {
     }
   });
 
+  test("is done once git exits, though what a hook left running holds its output, as the user's own git would be", async () => {
+    const folder = tempFolder('outlived');
+    const escaped = path.join(folder, 'escaped').replaceAll('\\', '/');
+    try {
+      const started = performance.now();
+      assert.strictEqual(
+        await runGit(gitPath, cwd, [
+          '-c',
+          `alias.leave=!(sleep 10 & echo $! > '${escaped}'); echo done`,
+          'leave',
+        ]),
+        'done\n',
+      );
+      assert.ok(performance.now() - started < 5000);
+    } finally {
+      if (process.platform !== 'win32' && fs.existsSync(escaped)) {
+        process.kill(Number(fs.readFileSync(escaped, 'utf8')), 'SIGKILL');
+      }
+      removeFolder(folder);
+    }
+  });
+
   test('stops what git started too, even what outlived the process that started it', async function () {
     if (process.platform === 'win32') {
       this.skip();
