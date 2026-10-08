@@ -292,6 +292,45 @@ export function FileHeader({
   );
 }
 
+type Change = 'added' | 'removed';
+
+export function binaryChange(file: DiffFile): Change | undefined {
+  if (!file.blobs) {
+    return undefined;
+  }
+  if (file.blobs.old === undefined) {
+    return 'added';
+  }
+  return file.blobs.new === undefined ? 'removed' : undefined;
+}
+
+export function BinaryFile({
+  change,
+  split,
+}: {
+  change: Change | undefined;
+  split: boolean;
+}) {
+  if (!split) {
+    return (
+      <div className={`binary-file ${change ?? ''}`}>{strings.diff.binary}</div>
+    );
+  }
+  return (
+    <div className="split-line">
+      {(['removed', 'added'] as const).map((side) =>
+        change === undefined || change === side ? (
+          <div key={side} className={`binary-file split-side ${change ?? ''}`}>
+            {strings.diff.binary}
+          </div>
+        ) : (
+          <div key={side} className="binary-file split-side filler" />
+        ),
+      )}
+    </div>
+  );
+}
+
 export function diffRowClass(kind: DiffRow['kind']): string {
   const extra =
     kind === 'split'
@@ -1466,10 +1505,10 @@ export function DiffView({
           </div>
         );
       case 'binary':
-        return (
-          <div className="binary-file">
-            {whole ? strings.diff.binaryOrLarge : strings.diff.binary}
-          </div>
+        return whole ? (
+          <div className="binary-file">{strings.diff.binaryOrLarge}</div>
+        ) : (
+          <BinaryFile change={binaryChange(files[row.file])} split={split} />
         );
       case 'image': {
         if (!origin) {

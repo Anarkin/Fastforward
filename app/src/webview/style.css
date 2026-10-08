@@ -1552,7 +1552,8 @@ body.resizing {
   background-color: var(--scrollbar-active-background);
 }
 
-.diff-line.added {
+.diff-line.added,
+.binary-file.added {
   background: color-mix(
     in srgb,
     var(--color-added) var(--color-added-row),
@@ -1600,7 +1601,8 @@ body.resizing {
   );
 }
 
-.diff-line.removed {
+.diff-line.removed,
+.binary-file.removed {
   background: color-mix(
     in srgb,
     var(--color-deleted) var(--color-deleted-row),

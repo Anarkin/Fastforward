@@ -17,6 +17,8 @@ import {
   diffRows,
   diffScrollLeft,
   diffScrollTop,
+  BinaryFile,
+  binaryChange,
   FileHeader,
   foundScroll,
   HunkDivider,
@@ -48,6 +50,15 @@ function patch(path: string, added: number): string {
     ...Array.from({ length: added }, (_, index) => `+line ${index}`),
   ].join('\n');
 }
+
+const binaryOfIndex = (index: string) =>
+  parsePatch(
+    [
+      'diff --git a/a.bin b/a.bin',
+      `index ${index}`,
+      'Binary files a/a.bin and b/a.bin differ',
+    ].join('\n'),
+  )[0];
 
 const binaryOf = (path: string) =>
   parsePatch(
@@ -1296,6 +1307,49 @@ suite('Rendered SVGs', () => {
     assert.match(
       previewHeader('image', true),
       /title="Show the Source" aria-pressed="true"/,
+    );
+  });
+});
+
+const changeOf = (index: string) => binaryChange(binaryOfIndex(index));
+
+const binaryMarkup = (
+  change: 'added' | 'removed' | undefined,
+  split: boolean,
+) => renderToStaticMarkup(<BinaryFile change={change} split={split} />);
+
+suite('Binary files', () => {
+  test('tells a binary file added or deleted by the side it lacks', () => {
+    assert.strictEqual(
+      changeOf(`${'0'.repeat(40)}..${'2'.repeat(40)}`),
+      'added',
+    );
+    assert.strictEqual(
+      changeOf(`${'1'.repeat(40)}..${'0'.repeat(40)}`),
+      'removed',
+    );
+    assert.strictEqual(
+      changeOf(`${'1'.repeat(40)}..${'2'.repeat(40)}`),
+      undefined,
+    );
+  });
+
+  test('says a file is binary on each side it has, hatching the other side by side, and tints it inline', () => {
+    assert.strictEqual(
+      binaryMarkup('added', false),
+      '<div class="binary-file added">Binary file</div>',
+    );
+    assert.strictEqual(
+      binaryMarkup('added', true),
+      '<div class="split-line"><div class="binary-file split-side filler"></div><div class="binary-file split-side added">Binary file</div></div>',
+    );
+    assert.strictEqual(
+      binaryMarkup('removed', true),
+      '<div class="split-line"><div class="binary-file split-side removed">Binary file</div><div class="binary-file split-side filler"></div></div>',
+    );
+    assert.strictEqual(
+      binaryMarkup(undefined, true),
+      '<div class="split-line"><div class="binary-file split-side ">Binary file</div><div class="binary-file split-side ">Binary file</div></div>',
     );
   });
 });

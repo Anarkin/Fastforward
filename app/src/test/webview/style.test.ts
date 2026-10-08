@@ -15,6 +15,7 @@ import {
   workingTreeRowHeight,
 } from '../../webview/commitList';
 import {
+  BinaryFile,
   diffRowClass,
   FileHeader,
   HunkDivider,
@@ -334,6 +335,37 @@ suite('Style', () => {
         width: 'max-content',
       });
     }
+  });
+
+  test('tints a binary file added or deleted like such a line, and hatches the side it lacks like one', () => {
+    for (const change of ['added', 'removed'] as const) {
+      assert.strictEqual(
+        cascaded(
+          withClass(
+            rendered(createElement(BinaryFile, { change, split: false })),
+            'binary-file',
+          ),
+          'background',
+        ),
+        cascaded(
+          withClass(diffView({}, inlineLine(change)), 'diff-line', change),
+          'background',
+        ),
+      );
+    }
+    const split = rendered(
+      createElement(BinaryFile, { change: 'added', split: true }),
+    );
+    assert.strictEqual(
+      cascaded(withClass(split, 'filler'), 'background'),
+      cascaded(
+        withClass(
+          diffView({ sideBySide: true }, splitLine('filler', 'added')),
+          'filler',
+        ),
+        'background',
+      ),
+    );
   });
 
   test('previews Markdown as wide as the diff, in halves side by side, hatching the half a file lacks', () => {
