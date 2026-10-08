@@ -156,7 +156,7 @@ export function App({ name, post: postToHost, listen }: Props) {
   const [wordWrap, setWordWrap] = useState(false);
   const [autoFetch, setAutoFetch] = useState(false);
   const [autoFetchMinutes, setAutoFetchMinutes] = useState(0);
-  const [diffLayout, setDiffLayout] = useState<DiffLayout>('inline');
+  const [diffLayout, setDiffLayout] = useState<DiffLayout>('sideBySide');
   const [collapseMerges, setCollapseMerges] = useState(false);
   const [solo, setSolo] = useState(false);
   const [showAllFiles, setShowAllFiles] = useState(false);

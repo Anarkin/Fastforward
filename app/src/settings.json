@@ -4,7 +4,7 @@
   "entireFilePinned": true,
   "ignoreWhitespace": true,
   "wordWrap": false,
-  "diffLayout": "inline",
+  "diffLayout": "sideBySide",
   "solo": false,
   "autoFetch": true,
   "autoFetchMinutes": 1,

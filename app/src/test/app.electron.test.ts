@@ -47,6 +47,8 @@ function waitForFocus(locator: Locator, what: string): Promise<void> {
   );
 }
 
+const baseSettings = { diffLayout: 'inline' };
+
 suite('App', function () {
   this.timeout(60_000);
 
@@ -128,20 +130,24 @@ suite('App', function () {
 
   async function resetSettings(): Promise<void> {
     const settings = userSettings();
-    const defaults = defaultSettings();
+    const expected = { ...defaultSettings(), ...baseSettings };
     if (
       typeof settings === 'object' &&
       settings !== null &&
       !(settings instanceof Error) &&
       Object.entries(settings).every(
         ([name, value]) =>
-          JSON.stringify(value) === JSON.stringify(Reflect.get(defaults, name)),
-      )
+          JSON.stringify(value) === JSON.stringify(Reflect.get(expected, name)),
+      ) &&
+      Object.keys(baseSettings).every((name) => name in settings)
     ) {
       return;
     }
     const reloaded = page.waitForEvent('load');
-    fs.writeFileSync(path.join(profile, 'settings.user.json'), '{}\n');
+    fs.writeFileSync(
+      path.join(profile, 'settings.user.json'),
+      `${JSON.stringify(baseSettings)}\n`,
+    );
     await reloaded;
   }
 
@@ -284,7 +290,7 @@ suite('App', function () {
     await waitForCount(page.locator('.find-match'), 0, 'matches');
   });
 
-  test('shows the diff side by side on its button, saving the choice, and inline again on the other', async () => {
+  test('shows the diff side by side on its button, the default, and inline again on the other, saving that choice', async () => {
     await openChangedFile();
     await page.getByRole('button', { name: 'Side by Side' }).click();
     const sides = page.locator('.split-line');
@@ -303,7 +309,7 @@ suite('App', function () {
     assert.strictEqual(await page.locator('.split-side.removed').count(), 1);
     assert.strictEqual(await page.locator('.split-side.added').count(), 1);
     await waitFor(
-      () => savedSetting('diffLayout') === 'sideBySide',
+      () => savedSetting('diffLayout') === undefined,
       'the layout to be saved',
     );
     await page.getByRole('button', { name: 'Inline' }).click();
@@ -314,7 +320,7 @@ suite('App', function () {
     );
     await page.locator('.diff-line.added').first().waitFor();
     await waitFor(
-      () => savedSetting('diffLayout') === undefined,
+      () => savedSetting('diffLayout') === 'inline',
       'the layout to be saved',
     );
   });
@@ -537,7 +543,7 @@ suite('App', function () {
     await waitFor(
       () =>
         savedSetting('wordWrap') === true &&
-        savedSetting('diffLayout') === undefined,
+        savedSetting('diffLayout') === 'inline',
       'the last choices to be saved',
     );
   });
@@ -574,7 +580,7 @@ suite('App', function () {
     await waitFor(
       () =>
         savedSetting('wordWrap') === true &&
-        savedSetting('diffLayout') === undefined,
+        savedSetting('diffLayout') === 'inline',
       'the last choices to be saved',
     );
   });
