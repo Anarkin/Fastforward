@@ -339,7 +339,7 @@ export const minimap = memoized(() =>
         { kind: 'removed', top: 0.2, height: 0.1 },
         { kind: 'match', top: 0.4, height: 0.1 },
       ]}
-      scrollTop={0}
+      scroller={{ current: null }}
       viewport={10}
       total={100}
       onScroll={noop}

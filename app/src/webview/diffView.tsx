@@ -1766,7 +1766,7 @@ export function DiffView({
       {stuck && <div className="diff-stuck-header">{header(stuck, true)}</div>}
       <Minimap
         marks={marks}
-        scrollTop={scrollTop}
+        scroller={list}
         viewport={virtualizer.scrollRect?.height ?? 0}
         total={virtualizer.getTotalSize()}
         onScroll={(top) => virtualizer.scrollToOffset(top)}

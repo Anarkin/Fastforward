@@ -1,4 +1,12 @@
-import { memo, useEffect, useRef, useState } from 'react';
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type RefObject,
+} from 'react';
 import { clicked, keymap, type Modifiers } from '../shared/keymap';
 import { hideAfter } from './overlayScrollbars';
 
@@ -97,6 +105,15 @@ function percent(value: number): string {
   return `${value * 100}%`;
 }
 
+function followScroll(
+  scroller: RefObject<Element | null>,
+  changed: () => void,
+): () => void {
+  const element = scroller.current;
+  element?.addEventListener('scroll', changed, { passive: true });
+  return () => element?.removeEventListener('scroll', changed);
+}
+
 const Marks = memo(function Marks({
   marks,
   scale,
@@ -118,17 +135,23 @@ const Marks = memo(function Marks({
 
 export function Minimap({
   marks,
-  scrollTop,
+  scroller,
   viewport,
   total,
   onScroll,
 }: {
   marks: readonly MinimapMark[];
-  scrollTop: number;
+  scroller: RefObject<Element | null>;
   viewport: number;
   total: number;
   onScroll: (top: number) => void;
 }) {
+  const subscribe = useCallback(
+    (changed: () => void) => followScroll(scroller, changed),
+    [scroller],
+  );
+  const scrolledTo = () => scroller.current?.scrollTop ?? 0;
+  const scrollTop = useSyncExternalStore(subscribe, scrolledTo, scrolledTo);
   const element = useRef<HTMLDivElement>(null);
   const [shown, setShown] = useState(false);
   const [dragging, setDragging] = useState(false);

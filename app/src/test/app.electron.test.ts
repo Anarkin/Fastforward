@@ -28,6 +28,10 @@ const longLines = Array.from(
   (_, index) => `line${index} ${longLine}`,
 );
 const [firstLongLine] = longLines;
+const paragraphs = Array.from(
+  { length: 200 },
+  (_, index) => `Paragraph ${index}`,
+);
 
 function waitForCount(
   locator: Locator,
@@ -66,6 +70,7 @@ suite('App', function () {
       'kept.txt': 'kept\n',
       'long.txt': `${longLines.join('\n')}\n`,
       'changed.txt': 'one\ntwo\nthree\n',
+      'notes.md': `${paragraphs.join('\n\n')}\n`,
     });
     await repository.commit('second', { 'changed.txt': 'one\n2\nthree\n' });
     fs.mkdirSync(profile, { recursive: true });
@@ -583,6 +588,37 @@ suite('App', function () {
         savedSetting('diffLayout') === 'inline',
       'the last choices to be saved',
     );
+  });
+
+  test('keeps the minimap on the part in view while a Markdown preview scrolls, though the preview is one row however tall', async () => {
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await page.locator('.row.file', { hasText: 'notes.md' }).click();
+    await page.getByRole('button', { name: strings.diff.showPreview }).click();
+    await page.locator('.markdown p', { hasText: 'Paragraph 199' }).waitFor();
+    const steps = await page
+      .locator('.diff-view .virtual-rows')
+      .evaluate(async (list) => {
+        const view =
+          list.parentElement?.querySelector<HTMLElement>('.minimap-viewport');
+        if (!view) {
+          throw new Error('No part in view on the minimap');
+        }
+        const seen = [];
+        for (let step = 0; step < 10; step++) {
+          list.scrollTop += 100;
+          await new Promise((drawn) =>
+            requestAnimationFrame(() => requestAnimationFrame(drawn)),
+          );
+          seen.push({
+            scrolled: (100 * list.scrollTop) / list.scrollHeight,
+            marked: parseFloat(view.style.top),
+          });
+        }
+        return seen;
+      });
+    for (const { scrolled, marked } of steps) {
+      assert.ok(Math.abs(scrolled - marked) < 0.1, JSON.stringify(steps));
+    }
   });
 
   test('refreshes by itself when the working tree changes', async () => {

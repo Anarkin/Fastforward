@@ -22,10 +22,12 @@ const line = (kind: 'added' | 'removed' | 'context'): DiffRow => ({
 });
 
 function minimap(viewport: number): string {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  const scroller = { scrollTop: 100 } as unknown as Element;
   return renderToStaticMarkup(
     <Minimap
       marks={[{ kind: 'added', top: 0.25, height: 0.5 }]}
-      scrollTop={100}
+      scroller={{ current: scroller }}
       viewport={viewport}
       total={400}
       onScroll={() => {}}
