@@ -15,6 +15,9 @@ This file only observes and documents the codebase mainly for human readers; the
 - Find in a diff stops collecting matches at 10000, and its count then reads 10000+, as each match is marked in the page
 - An image over 192 MB is not previewed, as each image shown is read whole into the page
 - The images previewed are kept in the page up to 256 MB, forgetting the least recently shown
+- A Markdown preview loads no remote image, so opening a file tells no server, and opens only web and mail links
+- A side of a Markdown file over 2 MB is not read, so its preview stays empty
+- Find in a diff does not search a preview, as it searches the lines of the diff
 
 ## Syntax
 

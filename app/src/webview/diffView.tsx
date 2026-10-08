@@ -47,13 +47,19 @@ import {
   sidewaysScroll,
   sidewaysScrollEvent,
 } from './overlayScrollbars';
-import { ImageIcon } from './icons';
+import { ImageIcon, PreviewIcon } from './icons';
+import { MarkdownDiff } from './markdownPreview';
+import {
+  markdownSides,
+  previewOf,
+  previewTexts,
+  wholePreviewOf,
+  type Preview,
+} from './previews';
 import { ImageDiff, imagePanes, WholeImage } from './imagePreview';
 import {
   previewsImage,
   previewsWholeImage,
-  rendersImage,
-  rendersWholeImage,
   wholeImageUrl,
   type ImageOrigin,
 } from './images';
@@ -108,6 +114,7 @@ export type DiffRow =
     }
   | { readonly kind: 'binary'; readonly file: number }
   | { readonly kind: 'image'; readonly file: number }
+  | { readonly kind: 'markdown'; readonly file: number }
   | { readonly kind: 'skeleton' }
   | { readonly kind: 'skeletonLines'; readonly file: number }
   | { readonly kind: 'hunk'; readonly file: number }
@@ -127,7 +134,7 @@ export type DiffRow =
 
 type FileHeaderRow = Extract<DiffRow, { kind: 'file' }>;
 
-type MeasuredKind = 'error' | 'skeleton' | 'skeletonLines';
+type MeasuredKind = 'error' | 'skeleton' | 'skeletonLines' | 'markdown';
 
 export const uniformHeight = 22;
 
@@ -146,6 +153,7 @@ const measuredEstimates: Record<MeasuredKind, number> = {
   error: 200,
   skeleton: 240,
   skeletonLines: 100,
+  markdown: 400,
 };
 
 function isMeasured(kind: DiffRow['kind']): kind is MeasuredKind {
@@ -244,13 +252,15 @@ export function FileHeader({
   open,
   whole,
   onClick,
-  rendered,
+  preview,
+  rendered = false,
   onRender,
 }: {
   path: string;
   open: boolean;
   whole: boolean;
   onClick: () => void;
+  preview?: Preview;
   rendered?: boolean;
   onRender?: (rendered: boolean) => void;
 }) {
@@ -259,17 +269,23 @@ export function FileHeader({
       {!whole && <Twisty open={open} />}
       <span className="path">{path}</span>
       {whole && <span className="unchanged">{strings.diff.unchanged}</span>}
-      {rendered !== undefined && onRender && (
+      {preview && onRender && (
         <button
           className={`nav-button toggle file-header-button ${rendered ? 'active' : ''}`}
-          title={rendered ? strings.diff.showSource : strings.diff.showImage}
+          title={
+            rendered
+              ? strings.diff.showSource
+              : preview === 'image'
+                ? strings.diff.showImage
+                : strings.diff.showPreview
+          }
           aria-pressed={rendered}
           onClick={(event) => {
             event.stopPropagation();
             onRender(!rendered);
           }}
         >
-          <ImageIcon />
+          {preview === 'image' ? <ImageIcon /> : <PreviewIcon />}
         </button>
       )}
     </div>
@@ -278,7 +294,11 @@ export function FileHeader({
 
 export function diffRowClass(kind: DiffRow['kind']): string {
   const extra =
-    kind === 'split' ? 'split-row' : kind === 'image' ? 'image-row' : '';
+    kind === 'split'
+      ? 'split-row'
+      : kind === 'image' || kind === 'markdown'
+        ? 'preview-row'
+        : '';
   return `virtual-row diff-row ${extra}`;
 }
 
@@ -472,8 +492,9 @@ export function diffRows(
         file: 0,
       });
     }
-    if (rendered.has(whole.path) && rendersWholeImage(whole)) {
-      rows.push({ kind: 'image', file: 0 });
+    const preview = wholePreviewOf(whole);
+    if (preview && rendered.has(whole.path)) {
+      rows.push({ kind: preview, file: 0 });
       return rows;
     }
     wholeLines(whole).forEach((text, index) =>
@@ -483,8 +504,11 @@ export function diffRows(
   }
   files.forEach((file, index) => {
     const lines = changedLines(file);
+    const preview = previewOf(file);
+    const previewed = preview !== undefined && rendered.has(file.path);
     const large =
-      file.placeholder !== undefined || (lines ?? 0) > collapseThreshold;
+      !previewed &&
+      (file.placeholder !== undefined || (lines ?? 0) > collapseThreshold);
     const open = toggled.get(file.path) ?? !large;
     rows.push({ kind: 'file', file: index, path: file.path, open });
     if (!open) {
@@ -497,8 +521,8 @@ export function diffRows(
       rows.push({ kind: 'skeletonLines', file: index });
       return;
     }
-    if (rendered.has(file.path) && rendersImage(file)) {
-      rows.push({ kind: 'image', file: index });
+    if (previewed) {
+      rows.push({ kind: preview, file: index });
       return;
     }
     if (file.binary) {
@@ -1298,11 +1322,14 @@ export function DiffView({
   useEffect(() => {
     const load = whole
       ? []
-      : textsToLoad(files, diff, requestedTexts.current, open);
+      : [
+          ...textsToLoad(files, diff, requestedTexts.current, open),
+          ...previewTexts(files, rendered, diff, requestedTexts.current),
+        ];
     if (load.length > 0) {
       onLoadTexts(load);
     }
-  }, [files, whole, diff, open, onLoadTexts]);
+  }, [files, whole, diff, open, rendered, onLoadTexts]);
   const rangesByLine = useMemo(() => findRangesByLine(matches), [matches]);
   const found = matches.at(current);
   const foundKey = found && lineKey(found.file, found.line);
@@ -1350,14 +1377,13 @@ export function DiffView({
     }
   }, [files, toggled, diff, onLoad]);
 
-  const renders = (row: FileHeaderRow) =>
-    whole ? rendersWholeImage(whole) : rendersImage(files[row.file]);
   const header = (row: FileHeaderRow, stuck = false) => (
     <FileHeader
       path={row.path}
       open={row.open}
       whole={whole !== undefined}
-      rendered={renders(row) ? rendered.has(row.path) : undefined}
+      preview={whole ? wholePreviewOf(whole) : previewOf(files[row.file])}
+      rendered={rendered.has(row.path)}
       onRender={(render) =>
         setRendered((all) => {
           const next = new Set(all);
@@ -1455,6 +1481,16 @@ export function DiffView({
         }
         return <ImageDiff panes={imagePanes(origin, files[row.file], split)} />;
       }
+      case 'markdown':
+        return (
+          <MarkdownDiff
+            sides={
+              whole
+                ? [{ side: 'new', text: whole.content, present: true }]
+                : markdownSides(files[row.file], texts, split)
+            }
+          />
+        );
       case 'skeleton':
         return (
           <div className="diff-skeleton">

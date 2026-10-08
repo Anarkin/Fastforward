@@ -22,6 +22,7 @@ import {
   rowHeight,
 } from '../../webview/diffView';
 import { ImageDiff } from '../../webview/imagePreview';
+import { MarkdownDiff } from '../../webview/markdownPreview';
 import { Crash } from '../../webview/errorBoundary';
 import { overlayScrollbarClass } from '../../webview/overlayScrollbars';
 import { codePadding, markerWidth, numberWidth } from '../../webview/overflow';
@@ -335,6 +336,57 @@ suite('Style', () => {
     }
   });
 
+  test('previews Markdown as wide as the diff, in halves side by side, hatching the half a file lacks', () => {
+    const view = diffView(
+      { sideBySide: true },
+      createElement(
+        'div',
+        { className: diffRowClass('markdown') },
+        createElement(MarkdownDiff, {
+          sides: [
+            { side: 'old', text: undefined, present: false },
+            { side: 'new', text: undefined, present: true },
+          ],
+        }),
+      ),
+    );
+    looks(withClass(view, 'virtual-row', 'preview-row'), {
+      'min-width': '0',
+      width: '100%',
+    });
+    looks(withClass(view, 'markdown-diff'), {
+      display: 'flex',
+      width: '100%',
+      'margin-left': 'var(--visible-left, 0px)',
+    });
+    const [filler, pane] = allWithClass(view, 'markdown-pane');
+    for (const half of [filler, pane]) {
+      looks(half, { flex: '1 1 0', 'min-width': '0' });
+    }
+    assert.ok(filler.classes.includes('filler'));
+    assert.strictEqual(
+      cascaded(filler, 'background'),
+      cascaded(
+        withClass(
+          diffView({ sideBySide: true }, splitLine('filler', 'added')),
+          'filler',
+        ),
+        'background',
+      ),
+    );
+    looks(pane, { 'border-left': '1px solid var(--color-border)' });
+    const links = rendered(
+      createElement(
+        'div',
+        { className: 'markdown' },
+        createElement('a', { href: 'https://example.com' }, 'web'),
+        createElement('a', {}, 'relative'),
+      ),
+    ).children;
+    looks(links[0], { color: 'var(--color-focus)' });
+    looks(links[1], { color: undefined });
+  });
+
   test('keeps an image row as wide as the diff, its images in the part scrolled to, side by side and short of the minimap, hatching a side it lacks down to where an image could reach', () => {
     const view = diffView(
       {},
@@ -349,7 +401,7 @@ suite('Style', () => {
         }),
       ),
     );
-    looks(withClass(view, 'virtual-row', 'image-row'), {
+    looks(withClass(view, 'virtual-row', 'preview-row'), {
       'min-width': '0',
       width: '100%',
     });
@@ -367,7 +419,7 @@ suite('Style', () => {
         'min-width': '0',
       });
     }
-    assert.strictEqual(diffRowClass('line').includes('image-row'), false);
+    assert.strictEqual(diffRowClass('line').includes('preview-row'), false);
     const filler = withClass(view, 'image-pane', 'filler');
     const frame = withClass(filler, 'image-frame');
     looks(frame, {
@@ -1061,7 +1113,7 @@ suite('Style', () => {
             open: true,
             whole: false,
             onClick: noop,
-            rendered: false,
+            preview: 'image',
             onRender: noop,
           }),
         ),
@@ -1123,11 +1175,17 @@ suite('Style', () => {
     });
   });
 
-  test('sizes all text by the font size settings, buttons and inputs included', () => {
+  test('sizes all text by the font size settings, or a multiple of them for the headings of Markdown, buttons and inputs included', () => {
+    const sizes = [...css.matchAll(/font-size: ([^;]+);/g)].map(
+      (match) => match[1],
+    );
     assert.deepStrictEqual(
-      [...css.matchAll(/font-size: ([^;]+);/g)].map((match) => match[1]),
+      [...new Set(sizes.filter((size) => !size.startsWith('calc(')))],
       ['var(--font-size)', 'var(--monospace-font-size)'],
     );
+    for (const scaled of sizes.filter((size) => size.startsWith('calc('))) {
+      assert.match(scaled, /^calc\(var\(--font-size\) \* [\d.]+\)$/);
+    }
     const controls = [
       tabBar(),
       contextMenu(),

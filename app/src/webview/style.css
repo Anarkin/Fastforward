@@ -809,12 +809,13 @@ body.resizing {
   color: var(--muted-foreground);
 }
 
-.virtual-row.diff-row.image-row {
+.virtual-row.diff-row.preview-row {
   width: 100%;
   min-width: 0;
 }
 
-.image-diff {
+.image-diff,
+.markdown-diff {
   display: flex;
   width: 100%;
   height: 100%;
@@ -849,6 +850,177 @@ body.resizing {
       transparent 0 50%
     )
     0 0 / 16px 16px;
+}
+
+.markdown-pane {
+  flex: 1 1 0;
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 16px 24px;
+  overflow-wrap: anywhere;
+}
+
+.markdown-pane + .markdown-pane {
+  border-left: 1px solid var(--color-border);
+}
+
+.markdown {
+  line-height: 1.5;
+}
+
+.markdown > :first-child {
+  margin-top: 0;
+}
+
+.markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown p,
+.markdown ul,
+.markdown ol,
+.markdown blockquote,
+.markdown table,
+.markdown pre,
+.markdown details,
+.markdown dl {
+  margin: 0 0 16px;
+}
+
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4,
+.markdown h5,
+.markdown h6 {
+  margin: 24px 0 16px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.markdown h1,
+.markdown h2 {
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.markdown h1 {
+  font-size: calc(var(--font-size) * 2);
+}
+
+.markdown h2 {
+  font-size: calc(var(--font-size) * 1.5);
+}
+
+.markdown h3 {
+  font-size: calc(var(--font-size) * 1.25);
+}
+
+.markdown h5 {
+  font-size: calc(var(--font-size) * 0.875);
+}
+
+.markdown h6 {
+  font-size: calc(var(--font-size) * 0.85);
+  color: var(--muted-foreground);
+}
+
+.markdown ul,
+.markdown ol {
+  padding-left: 2em;
+}
+
+.markdown ul ul,
+.markdown ul ol,
+.markdown ol ul,
+.markdown ol ol {
+  margin-bottom: 0;
+}
+
+.markdown li:has(> input[type='checkbox']) {
+  list-style: none;
+}
+
+.markdown li > input[type='checkbox'] {
+  margin: 0 0.3em 0.25em -1.4em;
+  vertical-align: middle;
+}
+
+.markdown blockquote {
+  padding: 0 1em;
+  color: var(--muted-foreground);
+  border-left: 0.25em solid var(--color-border);
+}
+
+.markdown code,
+.markdown kbd,
+.markdown samp,
+.markdown tt {
+  font-family: var(--monospace-font-family);
+  font-size: var(--monospace-font-size);
+}
+
+.markdown :not(pre) > code {
+  padding: 0.2em 0.4em;
+  background: var(--color-border);
+  border-radius: 6px;
+}
+
+.markdown kbd {
+  padding: 0.1em 0.4em;
+  border: 1px solid var(--color-border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+}
+
+.markdown pre {
+  padding: 16px;
+  overflow: auto;
+  line-height: 1.45;
+  background: var(--color-border);
+  border-radius: 6px;
+}
+
+.markdown pre code {
+  overflow-wrap: normal;
+  white-space: pre;
+}
+
+.markdown table {
+  display: block;
+  max-width: 100%;
+  overflow: auto;
+  border-collapse: collapse;
+}
+
+.markdown th,
+.markdown td {
+  padding: 6px 13px;
+  border: 1px solid var(--color-border);
+}
+
+.markdown th {
+  font-weight: 600;
+}
+
+.markdown hr {
+  height: 0.25em;
+  margin: 24px 0;
+  background: var(--color-border);
+  border: 0;
+}
+
+.markdown img {
+  max-width: 100%;
+}
+
+.markdown-alt {
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+
+.markdown a[href] {
+  color: var(--color-focus);
 }
 
 .image-note {
@@ -1176,7 +1348,8 @@ body.resizing {
 }
 
 .split-side.filler,
-.image-pane.filler .image-frame {
+.image-pane.filler .image-frame,
+.markdown-pane.filler {
   background: linear-gradient(
       -45deg,
       var(--color-border) 0 4%,

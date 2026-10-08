@@ -36,6 +36,7 @@ import {
   type DiffRow,
 } from '../../webview/diffView';
 import { ImageDiff, imagePanes } from '../../webview/imagePreview';
+import type { Preview } from '../../webview/previews';
 import { countingReads, fileChange } from '../fixtures';
 
 function patch(path: string, added: number): string {
@@ -1232,13 +1233,14 @@ suite('Hunk divider', () => {
   });
 });
 
-const svgHeader = (rendered?: boolean) =>
+const previewHeader = (preview?: Preview, rendered?: boolean) =>
   renderToStaticMarkup(
     <FileHeader
       path="v.svg"
       open
       whole={false}
       onClick={() => {}}
+      preview={preview}
       rendered={rendered}
       onRender={() => {}}
     />,
@@ -1281,14 +1283,18 @@ suite('Rendered SVGs', () => {
     ]);
   });
 
-  test('offers to switch between the source and the image only where the header asks', () => {
-    assert.doesNotMatch(svgHeader(), /<button/);
+  test('offers to switch between the source and its preview only for a file that has one', () => {
+    assert.doesNotMatch(previewHeader(), /<button/);
     assert.match(
-      svgHeader(false),
+      previewHeader('image'),
       /title="Show the Image" aria-pressed="false"/,
     );
     assert.match(
-      svgHeader(true),
+      previewHeader('markdown', false),
+      /title="Show the Preview" aria-pressed="false"/,
+    );
+    assert.match(
+      previewHeader('image', true),
       /title="Show the Source" aria-pressed="true"/,
     );
   });

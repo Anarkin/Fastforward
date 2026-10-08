@@ -261,6 +261,7 @@ export const strings = {
       `Images over ${megabytes} MB are not previewed`,
     imageFailed: "Couldn't show this image",
     showImage: 'Show the Image',
+    showPreview: 'Show the Preview',
     showSource: 'Show the Source',
     largeFile: 'Large file',
     notLoaded: 'Not loaded',
