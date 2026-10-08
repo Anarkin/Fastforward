@@ -66,6 +66,17 @@ suite('Minimap', () => {
     }
   });
 
+  test('marks a diff shorter than the view where its rows are, not stretched over the whole minimap', () => {
+    assert.match(
+      minimap(800),
+      /class="minimap-mark added" style="top:12.5%;height:25%"/,
+    );
+    assert.match(
+      minimap(200),
+      /class="minimap-mark added" style="top:25%;height:50%"/,
+    );
+  });
+
   test('marks each run of added or removed lines where it is in the file', () => {
     const rows = minimapRows([
       { kind: 'file', file: 0, path: 'a', open: true },

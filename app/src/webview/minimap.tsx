@@ -99,14 +99,19 @@ function percent(value: number): string {
 
 const Marks = memo(function Marks({
   marks,
+  scale,
 }: {
   marks: readonly MinimapMark[];
+  scale: number;
 }) {
   return marks.map((mark) => (
     <div
       key={`${mark.kind}:${mark.top}`}
       className={`minimap-mark ${mark.kind}`}
-      style={{ top: percent(mark.top), height: percent(mark.height) }}
+      style={{
+        top: percent(mark.top * scale),
+        height: percent(mark.height * scale),
+      }}
     />
   ));
 });
@@ -175,7 +180,10 @@ export function Minimap({
       onPointerUp={() => setDragging(false)}
       onPointerCancel={() => setDragging(false)}
     >
-      <Marks marks={marks} />
+      <Marks
+        marks={marks}
+        scale={total > 0 && total < viewport ? total / viewport : 1}
+      />
       {total > viewport && (
         <div
           className="minimap-viewport"
