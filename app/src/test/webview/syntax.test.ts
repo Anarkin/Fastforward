@@ -860,6 +860,9 @@ suite('Syntax', () => {
   });
 });
 
+const codeLines = (count: number) =>
+  Array.from({ length: count }, () => 'let a = 1;\n').join('');
+
 suite('Code in documents', () => {
   test('colors a code block by its language, named or aliased, and nothing in an unknown one', async () => {
     const lines = await colorCode('TS', 'const a = 1;\n// done');
@@ -870,6 +873,11 @@ suite('Code in documents', () => {
     });
     assert.deepStrictEqual(lines?.[1], [{ start: 0, end: 7, kind: 'comment' }]);
     assert.strictEqual(await colorCode('no-such-language', 'a'), undefined);
+  });
+
+  test('colors a code block of up to 5000 lines, not counting the line break Markdown ends it with', async () => {
+    assert.strictEqual((await colorCode('ts', codeLines(5000)))?.length, 5001);
+    assert.strictEqual(await colorCode('ts', codeLines(5001)), undefined);
   });
 
   test('cuts a code block into the parts each color covers, keeping its lines', () => {

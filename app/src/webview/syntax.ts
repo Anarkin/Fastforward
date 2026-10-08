@@ -425,7 +425,7 @@ export async function colorCode(
   code: string,
 ): Promise<LineRanges | undefined> {
   const id = languageIds.get(language.toLowerCase());
-  const lines = code.split('\n');
+  const lines = code.replace(/\n$/, '').split('\n');
   if (id === undefined || lines.length > maxCodeLines) {
     return undefined;
   }
