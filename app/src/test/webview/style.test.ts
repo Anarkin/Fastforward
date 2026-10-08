@@ -706,6 +706,29 @@ suite('Style', () => {
     }
   });
 
+  test('draws the bar where words were inserted on the other line across the whole line, as wide as the app makes it, centered on its place and in the color of changed words', () => {
+    for (const [kind, color] of [
+      ['added', 'added'],
+      ['removed', 'deleted'],
+    ] as const) {
+      looks(
+        withClass(
+          diffView({}, inlineLine(kind, { words: [{ start: 1, end: 1 }] })),
+          'word-gap',
+        ),
+        {
+          position: 'absolute',
+          width: 'var(--diff-gap-width)',
+          height: 'var(--diff-line-height)',
+          'margin-left': 'calc(var(--diff-gap-width) / -2)',
+          'padding-top': '0',
+          'padding-bottom': '0',
+          background: `color-mix( in srgb, var(--color-${color}) var(--color-${color}-line), transparent )`,
+        },
+      );
+    }
+  });
+
   test('tints the line numbers of a changed line with its row, and its changed characters as strongly as the theme says, the full height of the line', () => {
     for (const [kind, color, word] of [
       ['added', 'added', 'word-added'],

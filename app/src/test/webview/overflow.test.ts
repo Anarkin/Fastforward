@@ -114,10 +114,13 @@ suite('Overflow', () => {
     assert.strictEqual(shownSideways(measured, false, 0), measured);
   });
 
-  test('marks no empty change, as on a blank line', () => {
+  test('marks a place words were inserted on the other line, though it has no width', () => {
+    const text = 'x'.repeat(20);
+    const left = { start: 1, end: 1 };
+    const right = { start: 15, end: 15 };
     assert.deepStrictEqual(
-      hiddenChanges('', [{ start: 0, end: 0 }], { first: 2, last: 10 }),
-      { left: undefined, right: undefined },
+      hiddenChanges(text, [left, right], { first: 2, last: 10 }),
+      { left, right },
     );
   });
 

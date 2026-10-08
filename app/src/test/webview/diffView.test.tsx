@@ -22,6 +22,7 @@ import {
   diffScrollLeft,
   diffScrollTop,
   firstChangeTop,
+  gapWidth,
   wordPadding,
   FileNote,
   sideChange,
@@ -1092,6 +1093,43 @@ suite('Drawing code', () => {
       html,
       'let <span class="word-added">s</span><span class="word-added"><mark class="find-match current">um</mark></span><mark class="find-match current"> =</mark> 1',
     );
+  });
+
+  test('draws a place words were inserted on the other line as a bar of no width between the characters, at the end too', () => {
+    const html = renderToStaticMarkup(
+      <>
+        {marked(
+          'abc',
+          [{ start: 0, end: 2, kind: 'keyword' }],
+          [
+            { start: 1, end: 1 },
+            { start: 3, end: 3 },
+          ],
+          'word-removed',
+          [],
+          undefined,
+        )}
+      </>,
+    );
+    assert.strictEqual(
+      html,
+      '<span class="syntax-keyword">a</span><span class="word-gap word-removed"></span><span class="syntax-keyword">b</span>c<span class="word-gap word-removed"></span>',
+    );
+  });
+
+  test('makes the bar where words were inserted 2 pixels wide, a whole number of screen pixels at any scale so it stays sharp', () => {
+    for (const [scale, pixels] of [
+      [1, 2],
+      [1.25, 3],
+      [1.5, 3],
+      [1.75, 4],
+      [2, 4],
+    ]) {
+      assert.deepStrictEqual(layoutSteps(gapWidth(scale), scale), [
+        pixels * 64,
+        pixels * 64,
+      ]);
+    }
   });
 
   test('marks a line dense with colors, changed words and matches piece by piece in one pass', () => {

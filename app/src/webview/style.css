@@ -1642,6 +1642,15 @@ body.resizing {
   padding-bottom: var(--diff-word-padding-bottom);
 }
 
+.diff-line .word-gap {
+  position: absolute;
+  width: var(--diff-gap-width);
+  height: var(--diff-line-height);
+  margin-left: calc(var(--diff-gap-width) / -2);
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
 .diff-line .word-removed {
   background: color-mix(
     in srgb,

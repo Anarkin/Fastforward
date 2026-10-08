@@ -104,6 +104,57 @@ function changedRanges(
   return ranges;
 }
 
+const blank = (token: Token) => /^\s+$/.test(token.text);
+
+function insertedPlaces(
+  tokens: readonly Token[],
+  changed: readonly boolean[],
+  other: readonly Token[],
+  otherChanged: readonly boolean[],
+): FindRange[] {
+  const kept = tokens.flatMap((_, index) => (changed[index] ? [] : [index]));
+  const otherKept = other.flatMap((_, index) =>
+    otherChanged[index] ? [] : [index],
+  );
+  const hasWords = (
+    side: readonly Token[],
+    flags: readonly boolean[],
+    from: number,
+    to: number,
+  ) =>
+    side
+      .slice(from + 1, to)
+      .some((token, index) => flags[from + 1 + index] && !blank(token));
+  const places: FindRange[] = [];
+  for (let gap = 0; gap <= kept.length; gap++) {
+    const from = gap === 0 ? -1 : kept[gap - 1];
+    const to = kept.at(gap) ?? tokens.length;
+    const otherFrom = gap === 0 ? -1 : otherKept[gap - 1];
+    const otherTo = otherKept.at(gap) ?? other.length;
+    if (
+      !hasWords(tokens, changed, from, to) &&
+      hasWords(other, otherChanged, otherFrom, otherTo)
+    ) {
+      const at =
+        from === -1 ? 0 : tokens[from].start + tokens[from].text.length;
+      places.push({ start: at, end: at });
+    }
+  }
+  return places;
+}
+
+function markedRanges(
+  tokens: readonly Token[],
+  changed: readonly boolean[],
+  other: readonly Token[],
+  otherChanged: readonly boolean[],
+): FindRange[] {
+  return [
+    ...changedRanges(tokens, changed),
+    ...insertedPlaces(tokens, changed, other, otherChanged),
+  ].toSorted((a, b) => a.start - b.start);
+}
+
 export function pairWordRanges(
   removed: string,
   added: string,
@@ -117,16 +168,12 @@ export function pairWordRanges(
     before.map((token) => token.text),
     after.map((token) => token.text),
   );
-  if (
-    !before.some(
-      (token, index) => !changed.a[index] && !/^\s+$/.test(token.text),
-    )
-  ) {
+  if (!before.some((token, index) => !changed.a[index] && !blank(token))) {
     return undefined;
   }
   return {
-    removed: changedRanges(before, changed.a),
-    added: changedRanges(after, changed.b),
+    removed: markedRanges(before, changed.a, after, changed.b),
+    added: markedRanges(after, changed.b, before, changed.a),
   };
 }
 

@@ -44,8 +44,44 @@ suite('Word diff', () => {
     const after = 'const sum = a + b + c;';
     const ranges = pairWordRanges(before, after);
     assert.ok(ranges);
-    assert.deepStrictEqual(pieces(before, ranges.removed), ['total']);
+    assert.deepStrictEqual(pieces(before, ranges.removed), ['total', '']);
     assert.deepStrictEqual(pieces(after, ranges.added), ['sum', '+ c']);
+  });
+
+  test('marks where the other line has words inserted with no width, between the characters they came between', () => {
+    const inserted = pairWordRanges(
+      '!(picked && active)',
+      '!((picked || named) && active)',
+    );
+    assert.deepStrictEqual(inserted, {
+      removed: [
+        { start: 2, end: 2 },
+        { start: 9, end: 9 },
+      ],
+      added: [
+        { start: 2, end: 3 },
+        { start: 10, end: 19 },
+      ],
+    });
+    assert.deepStrictEqual(pairWordRanges('f(a, b)', 'f(a)'), {
+      removed: [{ start: 3, end: 6 }],
+      added: [{ start: 3, end: 3 }],
+    });
+    assert.deepStrictEqual(pairWordRanges('b;', 'a b;'), {
+      removed: [{ start: 0, end: 0 }],
+      added: [{ start: 0, end: 1 }],
+    });
+    assert.deepStrictEqual(pairWordRanges('other();', 'another();'), {
+      removed: [{ start: 0, end: 5 }],
+      added: [{ start: 0, end: 7 }],
+    });
+  });
+
+  test('marks no place where the other line has only spaces inserted', () => {
+    assert.deepStrictEqual(pairWordRanges('a+b', 'a + b'), {
+      removed: [],
+      added: [],
+    });
   });
 
   test('marks nothing when the lines share no word, or are too long to compare', () => {

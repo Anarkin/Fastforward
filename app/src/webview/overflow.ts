@@ -49,9 +49,6 @@ export function hiddenChanges(
   const columnAt = columnsOf(text);
   let left: FindRange | undefined;
   for (const word of words) {
-    if (word.start === word.end) {
-      continue;
-    }
     const start = columnAt(word.start);
     if (columnAt(word.end) <= first) {
       left = word;

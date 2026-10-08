@@ -462,6 +462,7 @@ declare module 'react' {
     readonly '--diff-marker-width'?: string;
     readonly '--diff-content-width'?: string;
     readonly '--diff-word-padding-top'?: string;
+    readonly '--diff-gap-width'?: string;
     readonly '--diff-word-padding-bottom'?: string;
     readonly '--split-scroll'?: string;
     readonly '--visible-left'?: string;
@@ -735,7 +736,12 @@ export function marked(
   const findAt = covering(finds);
   const tokenAt = covering(syntax);
   const wordAt = covering(words);
-  return edges.slice(0, -1).map((start, index) => {
+  const gaps = new Set(
+    words.flatMap((word) => (word.start === word.end ? [word.start] : [])),
+  );
+  const gap = (at: number) =>
+    gaps.has(at) && <span className={`word-gap ${wordClass}`} />;
+  const pieces = edges.slice(0, -1).map((start, index) => {
     const end = edges[index + 1];
     const piece = text.slice(start, end);
     const find = findAt(start, end);
@@ -754,14 +760,25 @@ export function marked(
     if (token) {
       content = <span className={`syntax-${token.kind}`}>{content}</span>;
     }
-    return wordAt(start, end) ? (
-      <span key={start} className={wordClass}>
-        {content}
-      </span>
-    ) : (
-      <Fragment key={start}>{content}</Fragment>
+    return (
+      <Fragment key={start}>
+        {gap(start)}
+        {wordAt(start, end) ? (
+          <span className={wordClass}>{content}</span>
+        ) : (
+          content
+        )}
+      </Fragment>
     );
   });
+  return gaps.has(text.length) ? (
+    <>
+      {pieces}
+      {gap(text.length)}
+    </>
+  ) : (
+    pieces
+  );
 }
 
 export interface LineMarks {
@@ -1119,6 +1136,10 @@ function onLayoutStep(gap: number, scale: number): number {
   return (steps + 0.25) / (scale * layoutSteps);
 }
 
+export function gapWidth(scale: number): number {
+  return onLayoutStep(Math.max(2, Math.round(2 * scale)) / scale, scale);
+}
+
 export function wordPadding(line: Edges, text: Edges, scale: number): Edges {
   return text.bottom > text.top
     ? {
@@ -1133,7 +1154,7 @@ const unpadded: Edges = { top: 0, bottom: 0 };
 const TextProbe = memo(function TextProbe({
   onMeasure,
 }: {
-  onMeasure: (charWidth: number, padding: Edges) => void;
+  onMeasure: (charWidth: number, padding: Edges, scale: number) => void;
 }) {
   const line = useRef<HTMLDivElement>(null);
   const text = useRef<HTMLSpanElement>(null);
@@ -1149,6 +1170,7 @@ const TextProbe = memo(function TextProbe({
                 devicePixelRatio,
               )
             : unpadded,
+          devicePixelRatio,
         );
       let scale: MediaQueryList | undefined;
       const onScale = () => {
@@ -1302,14 +1324,19 @@ export function DiffView({
   const [columns, setColumns] = useState<WrapColumns>();
   const [charWidth, setCharWidth] = useState(0);
   const [padding, setPadding] = useState(unpadded);
-  const measureText = useCallback((width: number, measured: Edges) => {
-    setCharWidth(width);
-    setPadding((last) =>
-      last.top === measured.top && last.bottom === measured.bottom
-        ? last
-        : measured,
-    );
-  }, []);
+  const [scale, setScale] = useState(1);
+  const measureText = useCallback(
+    (width: number, measured: Edges, measuredScale: number) => {
+      setCharWidth(width);
+      setScale(measuredScale);
+      setPadding((last) =>
+        last.top === measured.top && last.bottom === measured.bottom
+          ? last
+          : measured,
+      );
+    },
+    [],
+  );
   const [measured, setMeasured] = useState<Sideways>();
   const view = measured && shownSideways(measured, scrollsSides, sideways);
   const changeColumns = useCallback(
@@ -1847,6 +1874,7 @@ export function DiffView({
         '--split-scroll': `${sideways}px`,
         '--diff-word-padding-top': `${padding.top}px`,
         '--diff-word-padding-bottom': `${padding.bottom}px`,
+        '--diff-gap-width': `${gapWidth(scale)}px`,
         ...(!split &&
           !wordWrap &&
           charWidth > 0 && {
