@@ -10,8 +10,12 @@ import {
   minimumWindowSize,
   opensExternally,
   restoresMaximized,
+  startsAppPage,
   visibleBounds,
 } from '../../main/files';
+
+const start = (url: string, isMainFrame = true, isSameDocument = false) =>
+  startsAppPage({ url, isMainFrame, isSameDocument });
 
 suite('App files', () => {
   const root = path.resolve('dist');
@@ -61,6 +65,14 @@ suite('App files', () => {
     ]) {
       assert.ok(!isAppUrl(url), url);
     }
+  });
+
+  test('connects anew only once its own page starts loading, not for a navigation it blocks, such as a file dropped on the window', () => {
+    assert.ok(start('fastforward://app/index.html'));
+    assert.ok(!start('file:///C:/Users/me/dropped.txt'));
+    assert.ok(!start('https://example.com/'));
+    assert.ok(!start('fastforward://app/index.html#top', true, true));
+    assert.ok(!start('fastforward://app/index.html', false));
   });
 
   test('opens only https links outside the app', () => {

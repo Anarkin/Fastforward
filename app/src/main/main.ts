@@ -44,6 +44,7 @@ import {
   minimumWidth,
   opensExternally,
   restoresMaximized,
+  startsAppPage,
   visibleBounds,
 } from './files';
 import { profileFolder } from './profile';
@@ -148,7 +149,7 @@ async function start(): Promise<void> {
     );
   };
   window.webContents.on('did-start-navigation', (details) => {
-    if (details.isMainFrame && !details.isSameDocument) {
+    if (startsAppPage(details)) {
       connect();
     }
   });

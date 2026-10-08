@@ -21,6 +21,16 @@ export function isAppUrl(url: string): boolean {
   return parsed !== null && fromApp(parsed);
 }
 
+export function startsAppPage(details: {
+  readonly url: string;
+  readonly isMainFrame: boolean;
+  readonly isSameDocument: boolean;
+}): boolean {
+  return (
+    details.isMainFrame && !details.isSameDocument && isAppUrl(details.url)
+  );
+}
+
 function fromApp(url: URL): boolean {
   return `${url.protocol}//${url.host}` === appOrigin;
 }
