@@ -8,7 +8,11 @@ import {
   patchLineBudget,
   patchPathBudget,
 } from '../../shared/protocol';
-import { diffSelection, withLargeFiles } from '../../webview/diffColumn';
+import {
+  diffSelection,
+  shownFiles,
+  withLargeFiles,
+} from '../../webview/diffColumn';
 import {
   changeScrollTop,
   changeStarts,
@@ -387,6 +391,29 @@ suite('Large files in a commit diff', () => {
     );
     assert.strictEqual(loaded[1].placeholder, undefined);
     assert.strictEqual(loaded[1].hunks[0].lines.length, 3);
+  });
+
+  test('keeps a large file left out even when git diffs it for a kept path it is under, as when a file turns into a folder', () => {
+    const big = fileChange('foo/big.txt', {
+      insertions: collapseThreshold + 1,
+      deletions: 0,
+    });
+    const files = [fileChange('foo'), big];
+    const parsed = parsePatch(`${patch('foo', 1)}\n${patch('foo/big.txt', 3)}`);
+    assert.deepStrictEqual(
+      shownFiles(parsed, undefined, files, new Map()).map((file) => [
+        file.path,
+        file.placeholder,
+      ]),
+      [
+        ['foo', undefined],
+        ['foo/big.txt', { lines: collapseThreshold + 1 }],
+      ],
+    );
+    assert.deepStrictEqual(
+      shownFiles(parsed, 'foo', files, new Map()).map((file) => file.path),
+      ['foo'],
+    );
   });
 
   test('defers each large file, and every file once the diff would grow past its budget', () => {

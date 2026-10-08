@@ -35,9 +35,9 @@ export function withLargeFiles(
   const result: DiffFile[] = [];
   for (const change of files) {
     const file = byPath.get(change.path);
-    if (file) {
+    byPath.delete(change.path);
+    if (file && !deferred.has(change.path)) {
       result.push(file);
-      byPath.delete(change.path);
     } else if (deferred.has(change.path)) {
       result.push(
         largeFiles.get(change.path) ?? {
@@ -54,6 +54,18 @@ export function withLargeFiles(
     }
   }
   return [...result, ...byPath.values()];
+}
+
+// Git takes a path as the folder of the paths under it too
+export function shownFiles(
+  parsed: readonly DiffFile[],
+  path: string | undefined,
+  files: readonly FileChange[],
+  largeFiles: ReadonlyMap<string, DiffFile>,
+): DiffFile[] {
+  return path === undefined
+    ? withLargeFiles(parsed, files, largeFiles)
+    : parsed.filter((file) => file.path === path);
 }
 
 export function DiffOptions({
@@ -284,10 +296,7 @@ export function Diff({
   const parsed = useMemo(() => parsePatch(patch), [patch]);
   const diffFiles = useMemo(
     () =>
-      withUnchangedObjects(
-        path === undefined ? withLargeFiles(parsed, files, largeFiles) : parsed,
-        files,
-      ),
+      withUnchangedObjects(shownFiles(parsed, path, files, largeFiles), files),
     [parsed, path, files, largeFiles],
   );
   const errorRow = error && <div className="error-message">{error}</div>;
