@@ -319,6 +319,27 @@ export class ReportedPlaces {
   }
 }
 
+export function trailing(
+  run: () => void,
+  delay: number,
+): { schedule: () => void; flush: () => void } {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const flush = () => {
+    if (timer !== undefined) {
+      clearTimeout(timer);
+      timer = undefined;
+      run();
+    }
+  };
+  return {
+    schedule: () => {
+      clearTimeout(timer);
+      timer = setTimeout(flush, delay);
+    },
+    flush,
+  };
+}
+
 export function CommitBubbles({
   hash,
   refs,
@@ -568,15 +589,11 @@ export function Commits({
       return undefined;
     }
     topUnreported.current = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const onScroll = () => {
-      clearTimeout(timer);
-      timer = setTimeout(reportTop, scrolledDelay);
-    };
-    element.addEventListener('scroll', onScroll);
+    const report = trailing(reportTop, scrolledDelay);
+    element.addEventListener('scroll', report.schedule);
     return () => {
-      clearTimeout(timer);
-      element.removeEventListener('scroll', onScroll);
+      report.flush();
+      element.removeEventListener('scroll', report.schedule);
     };
   }, [reportTop]);
   useEffect(() => {

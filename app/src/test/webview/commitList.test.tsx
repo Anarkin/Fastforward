@@ -8,6 +8,7 @@ import { CommitHistory } from '../../webview/commitHistory';
 import {
   keptPlace,
   ReportedPlaces,
+  trailing,
   settling,
   listKeyPosition,
   keySelection,
@@ -310,6 +311,24 @@ suite('Places told', () => {
     places.forget();
     assert.strictEqual(places.kept(1000, 7, 900, kept), 1007);
     assert.strictEqual(places.kept(1000, 7, 900, undefined), 1007);
+  });
+});
+
+suite('Telling the place scrolled to', () => {
+  test('tells once scrolling stops, and at once when its list changes before then', async () => {
+    let told = 0;
+    const tell = trailing(() => told++, 10);
+    tell.schedule();
+    tell.schedule();
+    tell.flush();
+    assert.strictEqual(told, 1);
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    assert.strictEqual(told, 1);
+    tell.flush();
+    assert.strictEqual(told, 1);
+    tell.schedule();
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    assert.strictEqual(told, 2);
   });
 });
 
