@@ -284,7 +284,7 @@ suite('Diff rows', () => {
     );
     assert.match(
       markup,
-      /<div class="image-pane filler"><div class="image-frame"><\/div><\/div>/,
+      /<div class="image-pane filler addition"><div class="image-frame"><\/div><\/div>/,
     );
     assert.match(markup, /class="image-pane"/);
   });
@@ -1400,11 +1400,11 @@ suite('Binary files', () => {
     );
     assert.strictEqual(
       binaryMarkup('added', true),
-      '<div class="split-line"><div class="file-note split-side filler"></div><div class="file-note split-side added">Binary file</div></div>',
+      '<div class="split-line"><div class="file-note split-side filler addition"></div><div class="file-note split-side added">Binary file</div></div>',
     );
     assert.strictEqual(
       binaryMarkup('removed', true),
-      '<div class="split-line"><div class="file-note split-side removed">Binary file</div><div class="file-note split-side filler"></div></div>',
+      '<div class="split-line"><div class="file-note split-side removed">Binary file</div><div class="file-note split-side filler removal"></div></div>',
     );
     assert.strictEqual(
       binaryMarkup(undefined, true),

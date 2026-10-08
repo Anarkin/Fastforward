@@ -327,7 +327,10 @@ export function FileNote({
             {text}
           </div>
         ) : (
-          <div key={side} className="file-note split-side filler" />
+          <div
+            key={side}
+            className={`file-note split-side filler ${change === 'added' ? 'addition' : 'removal'}`}
+          />
         ),
       )}
     </div>
@@ -371,7 +374,7 @@ export function splitSideClass(
   change: 'added' | 'removed',
 ): string {
   if (cell === undefined) {
-    return 'filler';
+    return `filler ${change === 'removed' ? 'addition' : 'removal'}`;
   }
   return cell.line.kind === change ? change : '';
 }
