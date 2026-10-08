@@ -42,6 +42,7 @@ This file only observes and documents the codebase mainly for human readers; the
 
 - A git command fails past 256 MB of output, as Node's `maxBuffer` must be set to some limit
 - A fetch is stopped and reported as failed after 5 minutes
+- Quitting stops every git at once but a checkout or fast-forward, which it waits at most 30 seconds for, as stopping one midway can leave the working tree half switched
 - Opening a repository runs the commands its git config names, as git itself does, such as clean filters while reading the working tree and credential helpers or `core.sshCommand` while fetching; only a `core.fsmonitor` hook is never run, while git's built-in fsmonitor daemon still is, read as on or off the first time the app runs git in a folder
 - On Linux, which has no recursive file watching, every folder that is not ignored takes one of the system's inotify watches, and past `fs.inotify.max_user_watches` the rest are not watched and the error is logged
 - The login shell's PATH, read on macOS and Linux, is waited for at most 5 seconds, then the app starts with the PATH it was given, so a profile waiting for input does not keep the window from opening

@@ -81,7 +81,10 @@ export async function fastForward(
   cwd: string,
   ref: string,
 ): Promise<void> {
-  await runGit(gitPath, cwd, ['merge', '--ff-only', ref], { runsHooks: true });
+  await runGit(gitPath, cwd, ['merge', '--ff-only', ref], {
+    runsHooks: true,
+    writes: true,
+  });
 }
 
 export async function remoteDefaultBranches(

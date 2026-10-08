@@ -142,6 +142,7 @@ export async function switchToBranch(
 ): Promise<void> {
   await runGit(gitPath, root, ['switch', '-q', '--end-of-options', branch], {
     runsHooks: true,
+    writes: true,
   });
 }
 
@@ -154,7 +155,7 @@ export async function switchToCommit(
     gitPath,
     root,
     ['switch', '-q', '--detach', '--end-of-options', commit],
-    { runsHooks: true },
+    { runsHooks: true, writes: true },
   );
 }
 
@@ -168,7 +169,7 @@ export async function checkoutNewBranch(
     gitPath,
     root,
     ['switch', '-q', '--track', '-c', branch, '--end-of-options', upstream],
-    { runsHooks: true },
+    { runsHooks: true, writes: true },
   );
 }
 

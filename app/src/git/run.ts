@@ -65,6 +65,7 @@ interface RunOptions {
   readonly signal?: AbortSignal;
   readonly env?: NodeJS.ProcessEnv;
   readonly runsHooks?: boolean;
+  readonly writes?: boolean;
 }
 
 const maxOutput = 256 * 1024 * 1024;
@@ -90,6 +91,7 @@ export async function runGitBytes(
     signal,
     env,
     runsHooks = false,
+    writes = false,
   }: RunOptions = {},
 ): Promise<Buffer> {
   signal?.throwIfAborted();
@@ -109,6 +111,7 @@ export async function runGitBytes(
           ...gitProcessOptions(),
         },
       ),
+      writes,
     );
     const stop = () => void stopGit(child);
     let tooLarge = false;
@@ -198,18 +201,44 @@ export function gitProcessOptions(platform = process.platform): {
   return { windowsHide: true, detached: platform !== 'win32' };
 }
 
-const running = new Set<ChildProcess>();
+const running = new Map<ChildProcess, Promise<void>>();
+const writing = new Set<ChildProcess>();
+const writeTime = 30_000;
 
-export function keptRunning<T extends ChildProcess>(child: T): T {
-  running.add(child);
-  const done = () => running.delete(child);
-  child.once('close', done);
-  child.once('error', done);
+export function keptRunning<T extends ChildProcess>(
+  child: T,
+  writes = false,
+): T {
+  running.set(
+    child,
+    new Promise((resolve) => {
+      const done = () => {
+        running.delete(child);
+        writing.delete(child);
+        resolve();
+      };
+      child.once('close', done);
+      child.once('error', done);
+    }),
+  );
+  if (writes) {
+    writing.add(child);
+  }
   return child;
 }
 
 export async function stopRunningGit(): Promise<void> {
-  await Promise.all([...running].map((child) => stopGit(child)));
+  const writes = [...writing].flatMap((child) => running.get(child) ?? []);
+  await Promise.all([
+    ...[...running.keys()]
+      .filter((child) => !writing.has(child))
+      .map((child) => stopGit(child)),
+    Promise.race([
+      Promise.all(writes),
+      new Promise((resolve) => setTimeout(resolve, writeTime).unref()),
+    ]),
+  ]);
+  await Promise.all([...running.keys()].map((child) => stopGit(child)));
 }
 
 export async function stopGit(
