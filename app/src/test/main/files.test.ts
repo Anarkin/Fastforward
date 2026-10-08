@@ -75,8 +75,9 @@ suite('App files', () => {
     assert.ok(!start('fastforward://app/index.html', false));
   });
 
-  test('opens only https links outside the app', () => {
+  test('opens only https and mail links outside the app', () => {
     assert.ok(opensExternally('https://github.com/Anarkin/Fastforward'));
+    assert.ok(opensExternally('mailto:someone@example.com'));
     for (const url of [
       'http://example.com/',
       'file:///C:/Windows/notepad.exe',

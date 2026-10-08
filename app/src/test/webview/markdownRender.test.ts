@@ -80,13 +80,13 @@ suite('Markdown', () => {
     assert.match(html, /<img src="resolved\/a\.png">/);
   });
 
-  test('loads only the images it is given a source for, and opens only web and mail links', () => {
+  test('loads only the images it is given a source for, and links only https and mail links, the ones the app opens', () => {
     const asked: string[] = [];
     const html = render(
       [
         '![logo](docs/logo.png) ![remote](https://example.com/a.png)',
         '',
-        '[relative](docs/a.md) [web](https://example.com) [mail](mailto:a@b.c)',
+        '[relative](docs/a.md) [web](https://example.com) [mail](mailto:a@b.c) [plain](http://example.com)',
       ].join('\n'),
       (src) => {
         asked.push(src);
@@ -106,6 +106,10 @@ suite('Markdown', () => {
     );
     assert.match(html, /<a href="https:\/\/example\.com"[^>]*>web<\/a>/);
     assert.match(html, /<a href="mailto:a@b\.c"[^>]*>mail<\/a>/);
+    assert.match(
+      html,
+      /<a target="_blank" rel="noopener noreferrer">plain<\/a>/,
+    );
   });
 
   test('keeps the language of a code block, and no other class', () => {

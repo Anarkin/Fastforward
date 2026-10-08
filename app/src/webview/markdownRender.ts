@@ -172,7 +172,7 @@ export function markdownRenderer(
   purify.addHook('afterSanitizeAttributes', (node) => {
     if (node.tagName === 'A') {
       const href = node.getAttribute('href');
-      if (href !== null && !/^(?:https?|mailto):/i.test(href)) {
+      if (href !== null && !/^(?:https|mailto):/i.test(href)) {
         node.removeAttribute('href');
       }
       node.setAttribute('target', '_blank');

@@ -36,7 +36,8 @@ function fromApp(url: URL): boolean {
 }
 
 export function opensExternally(url: string): boolean {
-  return URL.parse(url)?.protocol === 'https:';
+  const protocol = URL.parse(url)?.protocol;
+  return protocol === 'https:' || protocol === 'mailto:';
 }
 
 export const minimumWindowSize = { width: 1280, height: 720 };
