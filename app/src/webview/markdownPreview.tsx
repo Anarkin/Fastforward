@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { documentImageUrl, type DocumentImages } from './images';
 import { markdownRenderer, type Render } from './markdownRender';
+import { strings } from '../shared/strings';
 import type { MarkdownSide } from './previews';
 import { codeSegments, colorCode } from './syntax';
 
@@ -107,13 +108,18 @@ function MarkdownPane({
 export function MarkdownDiff({ sides }: { sides: readonly MarkdownSide[] }) {
   return (
     <div className="markdown-diff">
-      {sides.map(({ side, text, present, images }) =>
-        present ? (
-          <MarkdownPane key={side} text={text} images={images} />
+      {sides.map(({ side, text, present, images }) => {
+        if (!present) {
+          return <div key={side} className="markdown-pane filler" />;
+        }
+        return text === '' ? (
+          <div key={side} className="markdown-pane">
+            <div className="markdown-note">{strings.diff.emptyFile}</div>
+          </div>
         ) : (
-          <div key={side} className="markdown-pane filler" />
-        ),
-      )}
+          <MarkdownPane key={side} text={text} images={images} />
+        );
+      })}
     </div>
   );
 }

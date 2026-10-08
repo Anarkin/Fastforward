@@ -1,6 +1,8 @@
 import * as assert from 'node:assert';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { parsePatch, textKey, type DiffFile } from '../../webview/diff';
 import { diffRows } from '../../webview/diffView';
+import { MarkdownDiff } from '../../webview/markdownPreview';
 import {
   markdownSides,
   previewOf,
@@ -175,6 +177,23 @@ suite('Previews', () => {
     assert.deepStrictEqual(
       kinds(diffRows([], new Map(), whole, false, false, shown)),
       ['error', 'file', 'markdown'],
+    );
+  });
+});
+
+suite('Markdown preview', () => {
+  test('says a side of the preview is empty, rather than leaving it blank', () => {
+    const markup = renderToStaticMarkup(
+      <MarkdownDiff
+        sides={[
+          { side: 'old', text: undefined, present: false },
+          { side: 'new', text: '', present: true },
+        ]}
+      />,
+    );
+    assert.strictEqual(
+      markup,
+      '<div class="markdown-diff"><div class="markdown-pane filler"></div><div class="markdown-pane"><div class="markdown-note">Empty file</div></div></div>',
     );
   });
 });

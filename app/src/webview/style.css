@@ -800,7 +800,7 @@ body.resizing {
   white-space: nowrap;
 }
 
-.binary-file {
+.file-note {
   display: flex;
   align-items: center;
   box-sizing: border-box;
@@ -1012,6 +1012,10 @@ body.resizing {
 
 .markdown img {
   max-width: 100%;
+}
+
+.markdown-note {
+  color: var(--muted-foreground);
 }
 
 .markdown-alt {
@@ -1553,7 +1557,7 @@ body.resizing {
 }
 
 .diff-line.added,
-.binary-file.added {
+.file-note.added {
   background: color-mix(
     in srgb,
     var(--color-added) var(--color-added-row),
@@ -1608,7 +1612,7 @@ body.resizing {
 }
 
 .diff-line.removed,
-.binary-file.removed {
+.file-note.removed {
   background: color-mix(
     in srgb,
     var(--color-deleted) var(--color-deleted-row),

@@ -114,6 +114,7 @@ export type DiffRow =
       readonly lines: number | undefined;
     }
   | { readonly kind: 'binary'; readonly file: number }
+  | { readonly kind: 'empty'; readonly file: number }
   | { readonly kind: 'image'; readonly file: number }
   | { readonly kind: 'markdown'; readonly file: number }
   | { readonly kind: 'skeleton' }
@@ -143,6 +144,7 @@ const rowHeights: Record<Exclude<DiffRow['kind'], MeasuredKind>, number> = {
   file: uniformHeight,
   large: 36,
   binary: uniformHeight,
+  empty: uniformHeight,
   image: 320,
   hunk: uniformHeight,
   line: uniformHeight,
@@ -295,7 +297,7 @@ export function FileHeader({
 
 type Change = 'added' | 'removed';
 
-export function binaryChange(file: DiffFile): Change | undefined {
+export function sideChange(file: DiffFile): Change | undefined {
   if (!file.blobs) {
     return undefined;
   }
@@ -305,27 +307,27 @@ export function binaryChange(file: DiffFile): Change | undefined {
   return file.blobs.new === undefined ? 'removed' : undefined;
 }
 
-export function BinaryFile({
+export function FileNote({
+  text,
   change,
   split,
 }: {
+  text: string;
   change: Change | undefined;
   split: boolean;
 }) {
   if (!split) {
-    return (
-      <div className={`binary-file ${change ?? ''}`}>{strings.diff.binary}</div>
-    );
+    return <div className={`file-note ${change ?? ''}`}>{text}</div>;
   }
   return (
     <div className="split-line">
       {(['removed', 'added'] as const).map((side) =>
         change === undefined || change === side ? (
-          <div key={side} className={`binary-file split-side ${change ?? ''}`}>
-            {strings.diff.binary}
+          <div key={side} className={`file-note split-side ${change ?? ''}`}>
+            {text}
           </div>
         ) : (
-          <div key={side} className="binary-file split-side filler" />
+          <div key={side} className="file-note split-side filler" />
         ),
       )}
     </div>
@@ -570,6 +572,8 @@ export function diffRows(
         kind: previewsImage(file) ? 'image' : 'binary',
         file: index,
       });
+    } else if (file.hunks.length === 0 && sideChange(file)) {
+      rows.push({ kind: 'empty', file: index });
     }
     if (sideBySide) {
       for (const row of splitRows(file, index)) {
@@ -1507,9 +1511,21 @@ export function DiffView({
         );
       case 'binary':
         return whole ? (
-          <div className="binary-file">{strings.diff.binaryOrLarge}</div>
+          <div className="file-note">{strings.diff.binaryOrLarge}</div>
         ) : (
-          <BinaryFile change={binaryChange(files[row.file])} split={split} />
+          <FileNote
+            text={strings.diff.binary}
+            change={sideChange(files[row.file])}
+            split={split}
+          />
+        );
+      case 'empty':
+        return (
+          <FileNote
+            text={strings.diff.emptyFile}
+            change={sideChange(files[row.file])}
+            split={split}
+          />
         );
       case 'image': {
         if (!origin) {

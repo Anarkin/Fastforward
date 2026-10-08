@@ -15,7 +15,7 @@ import {
   workingTreeRowHeight,
 } from '../../webview/commitList';
 import {
-  BinaryFile,
+  FileNote,
   diffRowClass,
   FileHeader,
   HunkDivider,
@@ -342,8 +342,14 @@ suite('Style', () => {
       assert.strictEqual(
         cascaded(
           withClass(
-            rendered(createElement(BinaryFile, { change, split: false })),
-            'binary-file',
+            rendered(
+              createElement(FileNote, {
+                text: 'Binary file',
+                change,
+                split: false,
+              }),
+            ),
+            'file-note',
           ),
           'background',
         ),
@@ -354,7 +360,11 @@ suite('Style', () => {
       );
     }
     const split = rendered(
-      createElement(BinaryFile, { change: 'added', split: true }),
+      createElement(FileNote, {
+        text: 'Binary file',
+        change: 'added',
+        split: true,
+      }),
     );
     assert.strictEqual(
       cascaded(withClass(split, 'filler'), 'background'),

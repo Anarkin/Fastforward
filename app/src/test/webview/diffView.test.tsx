@@ -17,8 +17,8 @@ import {
   diffRows,
   diffScrollLeft,
   diffScrollTop,
-  BinaryFile,
-  binaryChange,
+  FileNote,
+  sideChange,
   FileHeader,
   foundScroll,
   HunkDivider,
@@ -1311,14 +1311,73 @@ suite('Rendered SVGs', () => {
   });
 });
 
-const changeOf = (index: string) => binaryChange(binaryOfIndex(index));
+const changeOf = (index: string) => sideChange(binaryOfIndex(index));
 
 const binaryMarkup = (
   change: 'added' | 'removed' | undefined,
   split: boolean,
-) => renderToStaticMarkup(<BinaryFile change={change} split={split} />);
+) =>
+  renderToStaticMarkup(
+    <FileNote text="Binary file" change={change} split={split} />,
+  );
+
+const emptyFile = (index: string, mode: string) =>
+  parsePatch(
+    ['diff --git a/e.md b/e.md', mode, `index ${index}`].join('\n'),
+  )[0];
 
 suite('Binary files', () => {
+  test('notes an empty file added or deleted, which has no lines to show, but nothing for one only changed in mode', () => {
+    const empty = 'e69de29bb2d1d6434b8b29ae775ad8c2e48c5391';
+    for (const sideBySide of [false, true]) {
+      assert.deepStrictEqual(
+        kinds(
+          diffRows(
+            [emptyFile(`${'0'.repeat(40)}..${empty}`, 'new file mode 100644')],
+            new Map(),
+            undefined,
+            false,
+            sideBySide,
+          ),
+        ),
+        ['error', 'file', 'empty'],
+      );
+    }
+    assert.deepStrictEqual(
+      kinds(
+        diffRows(
+          [
+            emptyFile(
+              `${empty}..${'0'.repeat(40)}`,
+              'deleted file mode 100644',
+            ),
+          ],
+          new Map(),
+          undefined,
+        ),
+      ),
+      ['error', 'file', 'empty'],
+    );
+    assert.deepStrictEqual(
+      kinds(
+        diffRows(
+          [
+            parsePatch(
+              [
+                'diff --git a/s.sh b/s.sh',
+                'old mode 100644',
+                'new mode 100755',
+              ].join('\n'),
+            )[0],
+          ],
+          new Map(),
+          undefined,
+        ),
+      ),
+      ['error', 'file'],
+    );
+  });
+
   test('tells a binary file added or deleted by the side it lacks', () => {
     assert.strictEqual(
       changeOf(`${'0'.repeat(40)}..${'2'.repeat(40)}`),
@@ -1337,19 +1396,19 @@ suite('Binary files', () => {
   test('says a file is binary on each side it has, hatching the other side by side, and tints it inline', () => {
     assert.strictEqual(
       binaryMarkup('added', false),
-      '<div class="binary-file added">Binary file</div>',
+      '<div class="file-note added">Binary file</div>',
     );
     assert.strictEqual(
       binaryMarkup('added', true),
-      '<div class="split-line"><div class="binary-file split-side filler"></div><div class="binary-file split-side added">Binary file</div></div>',
+      '<div class="split-line"><div class="file-note split-side filler"></div><div class="file-note split-side added">Binary file</div></div>',
     );
     assert.strictEqual(
       binaryMarkup('removed', true),
-      '<div class="split-line"><div class="binary-file split-side removed">Binary file</div><div class="binary-file split-side filler"></div></div>',
+      '<div class="split-line"><div class="file-note split-side removed">Binary file</div><div class="file-note split-side filler"></div></div>',
     );
     assert.strictEqual(
       binaryMarkup(undefined, true),
-      '<div class="split-line"><div class="binary-file split-side ">Binary file</div><div class="binary-file split-side ">Binary file</div></div>',
+      '<div class="split-line"><div class="file-note split-side ">Binary file</div><div class="file-note split-side ">Binary file</div></div>',
     );
   });
 });
