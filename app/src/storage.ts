@@ -74,7 +74,7 @@ export class JsonFileStore implements Store {
 function readJson(file: string): Record<string, unknown> | undefined {
   let text: string;
   try {
-    text = fs.readFileSync(file, 'utf8');
+    text = fs.readFileSync(file, 'utf8').replace(/^﻿/, '');
   } catch (error) {
     return isMissing(error) ? {} : undefined;
   }

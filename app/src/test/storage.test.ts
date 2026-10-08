@@ -259,6 +259,12 @@ suite('State file', () => {
     assert.strictEqual(reopened.get('missing'), undefined);
   });
 
+  test('reads a file saved with a byte order mark, as Notepad saved UTF-8 before Windows 10 1903', () => {
+    fs.writeFileSync(file, '﻿{"solo": true}');
+    assert.strictEqual(new JsonFileStore(file).get('solo'), true);
+    assert.ok(!fs.existsSync(`${file}.corrupt`));
+  });
+
   test('forgets a value set to nothing', async () => {
     const store = new JsonFileStore(file);
     await store.update('activeTab', '/a');
