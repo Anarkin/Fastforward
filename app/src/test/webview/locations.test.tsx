@@ -480,6 +480,23 @@ suite('Locations tree', () => {
     assert.match(html, /100 more; type to narrow them down/);
   });
 
+  test('marks a stash a search finds among the commits as a stash, which offers no menu', () => {
+    const html = popup('abcd', found(['abcd1', 'abcd2']), {
+      repository: {
+        head: undefined,
+        headCommit: undefined,
+        refs: [],
+        stashes: [
+          { name: 'stash@{0}', commit: 'abcd1', message: 'On main: wip' },
+        ],
+      },
+    });
+    assert.strictEqual(
+      [...html.matchAll(/<span class="badge stash">stash<\/span>/g)].length,
+      1,
+    );
+  });
+
   test('lists the stashes newest first with their messages, those a search finds, and no group without any', () => {
     const stashes = [
       { name: 'stash@{0}', commit: 'a', message: 'On main: With new.txt' },

@@ -250,6 +250,7 @@ function CommitResultsSection({
   query,
   active,
   refsByCommit,
+  stashCommits,
   headCommit,
   onJump,
 }: {
@@ -262,6 +263,7 @@ function CommitResultsSection({
   query: string;
   active: string | undefined;
   refsByCommit: ReadonlyMap<string, readonly RefInfo[]>;
+  stashCommits: ReadonlySet<string>;
   headCommit: string | undefined;
   onJump: (commit: string) => void;
 }) {
@@ -291,6 +293,7 @@ function CommitResultsSection({
             selected={active}
             headCommit={headCommit}
             refs={refsByCommit.get(commit.hash) ?? []}
+            stash={stashCommits.has(commit.hash)}
             detached={detached === commit.hash}
             indent={commitIndent}
             onSelect={onJump}
@@ -400,6 +403,10 @@ export function LocationsPopup({
   const index = useMemo(() => indexRefs(refs), [refs]);
   const search = useMemo(() => searchRefs(index, query), [index, query]);
   const stashes = useMemo(() => repository?.stashes ?? [], [repository]);
+  const stashCommits = useMemo(
+    () => new Set(stashes.map((stash) => stash.commit)),
+    [stashes],
+  );
   const stashSearch = useMemo(
     () => searchStashes(stashes, query),
     [stashes, query],
@@ -522,6 +529,7 @@ export function LocationsPopup({
               activeItem?.kind === 'commit' ? activeItem.commit.hash : undefined
             }
             refsByCommit={refsByCommit}
+            stashCommits={stashCommits}
             headCommit={repository?.headCommit}
             onJump={jump}
           />
