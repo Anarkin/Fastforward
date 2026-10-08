@@ -20,6 +20,8 @@ export const gitConfigArgs = [
   'i18n.logOutputEncoding=UTF-8',
   '-c',
   'diff.autoRefreshIndex=false',
+  '-c',
+  'core.disambiguate=none',
 ];
 
 export function gitEnv(pathspecMagic = false): NodeJS.ProcessEnv {

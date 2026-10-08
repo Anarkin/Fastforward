@@ -181,7 +181,7 @@ suite('Git history', function () {
     }
   });
 
-  test('finds the one commit among other objects sharing its prefix, or says how many share it', async () => {
+  test('finds the one commit among other objects sharing its prefix, whatever kind of object the repository prefers, or says how many share it', async () => {
     const blobText = '476\n';
     const [found, other] = ['76', '2116'].map((message) =>
       commitText(emptyTree, message),
@@ -204,6 +204,12 @@ suite('Git history', function () {
         kind: 'found',
         hash,
       });
+      await temp.git('config', 'core.disambiguate', 'blob');
+      assert.deepStrictEqual(await findCommit(gitPath, cwd, prefix), {
+        kind: 'found',
+        hash,
+      });
+      await temp.git('config', '--unset', 'core.disambiguate');
       await write('commit', other);
       assert.deepStrictEqual(await findCommit(gitPath, cwd, prefix), {
         kind: 'ambiguous',
