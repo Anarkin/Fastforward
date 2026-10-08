@@ -21,8 +21,6 @@
 - Diffs use `--histogram`, as git's default Myers algorithm matches blank lines over unique ones, showing a line moved past blank lines as removed and added again
 - Collapsing merges keeps expanded a merge whose first parent reaches the second parent's first-parent chain through commits only, and the second parent through merges only, as `git pull` leaves that on a mainline of merges with the mainline as the second parent, which would hide the merges that landed on it
 - Auto-fetch fetches the open repositories one at a time, the active one first, and waits the interval from the end of a round, so slow remotes never overlap; a failing repository is reported once until a fetch of it succeeds
-- Image previews are fetched by the page from the app's own protocol by object id rather than sent as messages, so they are never base64-encoded and the page can tell an image too large from one that failed; the working tree side is read from disk, as git diffs name it by the id it would have without storing it
-- Markdown is rendered with markdown-it, which VS Code's preview uses too, and its HTML is cut down to what GitHub keeps with DOMPurify; both load only once a preview is first shown
 - When a repository last fetched is recorded by the app rather than read from `FETCH_HEAD`, as git rewrites `FETCH_HEAD` even when every remote fails, and each worktree has its own, so fetches made outside the app are not counted
 
 ### Syntax
@@ -30,3 +28,8 @@
 - Use Shiki with its Oniguruma engine, the TextMate grammars and engine VS Code uses, so scope rules carry over from VS Code; semantic tokens are left out, as they need a language server
 - A side of a diff with lines hidden before a hunk is tokenized from its whole text, which the diff asks for by the blob ids `--full-index` puts in the patch, read in one `git cat-file --batch`, the working tree side from disk; until it comes, or when it does not match the hunks, the side is tokenized from its hunks alone
 - The webview is built as ES modules split into chunks, so each language's grammar loads only when a file needs it
+
+### Previews
+
+- Image previews are fetched by the page from the app's own protocol by object id rather than sent as messages, so they are never base64-encoded and the page can tell an image too large from one that failed; the working tree side is read from disk, as git diffs name it by the id it would have without storing it
+- Markdown is rendered with markdown-it, which VS Code's preview uses too, and its HTML is cut down to what GitHub keeps with DOMPurify; both load only once a preview is first shown
