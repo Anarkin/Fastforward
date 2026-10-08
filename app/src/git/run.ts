@@ -68,6 +68,7 @@ interface RunOptions {
   readonly env?: NodeJS.ProcessEnv;
   readonly runsHooks?: boolean;
   readonly writes?: boolean;
+  readonly onOutput?: (chunk: Buffer) => void;
 }
 
 const maxOutput = 256 * 1024 * 1024;
@@ -94,6 +95,7 @@ export async function runGitBytes(
     env,
     runsHooks = false,
     writes = false,
+    onOutput,
   }: RunOptions = {},
 ): Promise<Buffer> {
   signal?.throwIfAborted();
@@ -117,7 +119,7 @@ export async function runGitBytes(
     );
     const stop = () => void stopGit(child);
     let tooLarge = false;
-    const collect = (stream: Readable) => {
+    const collect = (stream: Readable, take?: (chunk: Buffer) => void) => {
       const chunks: Buffer[] = [];
       let size = 0;
       stream.on('data', (chunk: Buffer) => {
@@ -125,13 +127,15 @@ export async function runGitBytes(
         if (size > maxOutput) {
           tooLarge = true;
           stop();
+        } else if (take) {
+          take(chunk);
         } else {
           chunks.push(chunk);
         }
       });
       return chunks;
     };
-    const stdout = collect(child.stdout);
+    const stdout = collect(child.stdout, onOutput);
     const stderr = collect(child.stderr);
     let settled = false;
     const settle = (

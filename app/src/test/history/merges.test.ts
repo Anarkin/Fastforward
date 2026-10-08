@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import type { HistoryEntry } from '../../git/history';
 import {
   headsOf,
+  linkHistory,
   mergesHiding,
   positionsOf,
   showHistory,
@@ -23,6 +24,8 @@ const pull = [
   { hash: 'd1', parents: ['base'] },
   { hash: 'base', parents: [] },
 ];
+
+const expandedIfPull = (_: string, isPull: boolean) => isPull;
 
 function pulled(entries: readonly HistoryEntry[]): string[] {
   const found: string[] = [];
@@ -65,6 +68,30 @@ suite('Merges shown', () => {
       ['m2', 2],
       ['m1', 1],
     ]);
+  });
+
+  test('links a long history a slice at a time, letting other work run between them, and lays it out as if linked at once', async () => {
+    const long = Array.from({ length: 20_000 }, (_, at) => ({
+      hash: `c${at}`,
+      parents: at % 7 === 0 ? [`c${at + 1}`, `c${at + 3}`] : [`c${at + 1}`],
+    }));
+    const linked = long.map((entry) => ({ ...entry }));
+    let ran = false;
+    setImmediate(() => {
+      ran = true;
+    });
+    await linkHistory(
+      linked,
+      new Map(linked.map((entry, at) => [entry.hash, at])),
+      0,
+    );
+    assert.ok(ran);
+    const tips = new Set(['c0']);
+    assert.deepStrictEqual(
+      showHistory(linked, tips, expandedIfPull),
+      showHistory(long, tips, expandedIfPull),
+    );
+    assert.deepStrictEqual(headsOf(linked), headsOf(long));
   });
 
   test('counts a commit merged twice only for the merge that brought it in first', () => {

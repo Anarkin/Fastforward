@@ -129,7 +129,7 @@ function childrenOf(
 }
 
 interface Links {
-  readonly index: ReadonlyMap<string, number>;
+  readonly index: Map<string, number>;
   readonly starts: Int32Array;
   readonly parents: Int32Array;
 }
@@ -142,17 +142,61 @@ function linksOf(history: readonly HistoryEntry[]): Links {
     return known;
   }
   const index = new Map<string, number>();
+  history.forEach((entry, at) => index.set(entry.hash, at));
+  const links = newLinks(history, index);
+  link(history, links, 0, history.length);
+  knownLinks.set(history, links);
+  return links;
+}
+
+const linkedAtOnce = 4096;
+
+export async function linkHistory(
+  history: readonly HistoryEntry[],
+  index: Map<string, number>,
+  sliceTime = 10,
+): Promise<void> {
+  const links = newLinks(history, index);
+  let at = 0;
+  while (at < history.length) {
+    const until = performance.now() + sliceTime;
+    do {
+      const to = Math.min(at + linkedAtOnce, history.length);
+      link(history, links, at, to);
+      at = to;
+    } while (at < history.length && performance.now() < until);
+    if (at < history.length) {
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+  }
+  knownLinks.set(history, links);
+}
+
+function newLinks(
+  history: readonly HistoryEntry[],
+  index: Map<string, number>,
+): Links {
   let count = 0;
-  history.forEach((entry, at) => {
-    index.set(entry.hash, at);
+  for (const entry of history) {
     count += entry.parents.length;
-  });
-  const starts = new Int32Array(history.length + 1);
-  const parents = new Int32Array(count);
-  let next = 0;
-  history.forEach((entry, at) => {
+  }
+  return {
+    index,
+    starts: new Int32Array(history.length + 1),
+    parents: new Int32Array(count),
+  };
+}
+
+function link(
+  history: readonly HistoryEntry[],
+  { index, starts, parents }: Links,
+  from: number,
+  to: number,
+): void {
+  let next = starts[from];
+  for (let at = from; at < to; at++) {
     starts[at] = next;
-    for (const parent of entry.parents) {
+    for (const parent of history[at].parents) {
       let parentAt = index.get(parent);
       if (parentAt === undefined) {
         parentAt = index.size;
@@ -160,11 +204,16 @@ function linksOf(history: readonly HistoryEntry[]): Links {
       }
       parents[next++] = parentAt;
     }
-  });
-  starts[history.length] = next;
-  const result = { index, starts, parents };
-  knownLinks.set(history, result);
-  return result;
+  }
+  starts[to] = next;
+}
+
+export function inHistory(
+  history: readonly HistoryEntry[],
+  hash: string,
+): boolean {
+  const at = linksOf(history).index.get(hash);
+  return at !== undefined && at < history.length;
 }
 
 export function showHistory(

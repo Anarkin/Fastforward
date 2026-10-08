@@ -5,6 +5,7 @@ import type { WorkingTree } from './git/workingTree';
 import { Graph } from './history/graph';
 import {
   headsOf,
+  inHistory,
   mergeExpanded,
   mergesHiding,
   positionsOf,
@@ -42,7 +43,6 @@ export interface TabState {
   workingTree: WorkingTree | undefined;
   fullHistory: readonly HistoryEntry[];
   partial: boolean;
-  inHistory: Set<string>;
   subjects: Map<string, string>;
   heads: Set<string>;
   headCommit: string | undefined;
@@ -91,7 +91,6 @@ export function newTabState(): TabState {
     workingTree: undefined,
     fullHistory: [],
     partial: false,
-    inHistory: new Set(),
     subjects: new Map(),
     heads: new Set(),
     headCommit: undefined,
@@ -121,7 +120,6 @@ export function loadHistory(
 ): void {
   tab.fullHistory = fullHistory;
   tab.partial = partial;
-  tab.inHistory = new Set(fullHistory.map((entry) => entry.hash));
   tab.heads = headsOf(fullHistory);
   takeRefs(tab, head, refs, stashes);
   if (partial) {
@@ -156,7 +154,7 @@ export function refsKeepHistory(
   }
   return (
     historyLoaded(tab) &&
-    [...tips].every((tip) => tab.inHistory.has(tip)) &&
+    [...tips].every((tip) => inHistory(tab.fullHistory, tip)) &&
     [...tab.heads].every((commit) => tips.has(commit))
   );
 }
@@ -237,7 +235,7 @@ function keysFrom(tab: TabState): number | undefined {
   if (
     tab.index !== undefined ||
     hash === undefined ||
-    !tab.inHistory.has(hash)
+    !inHistory(tab.fullHistory, hash)
   ) {
     return undefined;
   }
@@ -384,7 +382,7 @@ export function replayOf(tab: TabState): ToWebview[] {
 export function stillThere(tab: TabState): (hash: string) => boolean {
   return (hash) =>
     sidesOf(hash).every(
-      (side) => side === workingTreeHash || tab.inHistory.has(side),
+      (side) => side === workingTreeHash || inHistory(tab.fullHistory, side),
     );
 }
 
