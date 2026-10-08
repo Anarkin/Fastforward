@@ -1554,18 +1554,12 @@ export function DiffView({
                           root: origin.root,
                           document: whole.path,
                           revision: wholeRevision(origin),
-                          version: String(diff),
+                          version: origin.version ?? '',
                         },
                       }),
                     },
                   ]
-                : markdownSides(
-                    files[row.file],
-                    texts,
-                    split,
-                    origin,
-                    String(diff),
-                  )
+                : markdownSides(files[row.file], texts, split, origin)
             }
           />
         );

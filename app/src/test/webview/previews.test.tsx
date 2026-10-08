@@ -109,13 +109,11 @@ suite('Previews', () => {
       ].join('\n'),
     );
     assert.deepStrictEqual(
-      markdownSides(
-        renamed,
-        new Map(),
-        true,
-        { root: '/r', hash: commit },
-        '3',
-      ).map(({ images }) => images),
+      markdownSides(renamed, new Map(), true, {
+        root: '/r',
+        hash: commit,
+        version: '3',
+      }).map(({ images }) => images),
       [
         {
           root: '/r',

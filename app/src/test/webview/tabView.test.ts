@@ -310,6 +310,24 @@ suite('Tab view', () => {
     );
   });
 
+  test('counts the refreshes of a working tree shown, so the images its documents link load again, still counting once another tab is open', () => {
+    const shown = reduceTabView(openTab(emptyTabView, 'one'), {
+      type: 'showCommit',
+      hash: comparisonOf('c'.repeat(40), workingTreeHash),
+    });
+    const once = reduceTabView(shown, { type: 'workingTree', files: 2 });
+    const twice = reduceTabView(once, { type: 'workingTree', files: 2 });
+    assert.strictEqual(twice.refreshes, once.refreshes + 1);
+    const other = openTab(twice, 'two');
+    assert.strictEqual(other.refreshes, twice.refreshes);
+    const commit = reduceTabView(other, { type: 'showCommit', hash: 'c' });
+    const refreshed = reduceTabView(commit, { type: 'workingTree', files: 2 });
+    assert.strictEqual(
+      reduceTabView(refreshed, { type: 'workingTree', files: 2 }),
+      refreshed,
+    );
+  });
+
   test('drops a page of a history laid out before the current one', () => {
     const before = busyTab();
     const after = reduceTabView(before, {

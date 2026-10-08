@@ -140,6 +140,7 @@ export function App({ name, post: postToHost, listen }: Props) {
     entireFile,
     patch,
     diffs,
+    refreshes,
     fileContent,
     largeFiles,
     texts,
@@ -394,8 +395,13 @@ export function App({ name, post: postToHost, listen }: Props) {
     () =>
       activeTab === undefined || hash === undefined
         ? undefined
-        : { root: activeTab, hash, ...(area === undefined ? {} : { area }) },
-    [activeTab, hash, area],
+        : {
+            root: activeTab,
+            hash,
+            ...(area === undefined ? {} : { area }),
+            version: `${diffs}.${refreshes}`,
+          },
+    [activeTab, hash, area, diffs, refreshes],
   );
 
   const selectFile = (next: string | undefined, nextArea?: ChangeArea) => {

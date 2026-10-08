@@ -1,4 +1,4 @@
-import { shownSide } from '../shared/comparisons';
+import { shownSide, workingTreeSide } from '../shared/comparisons';
 import type {
   ChangeArea,
   FileChange,
@@ -30,6 +30,7 @@ export interface TabView {
   readonly entireFile: boolean;
   readonly patch: string;
   readonly diffs: number;
+  readonly refreshes: number;
   readonly fileContent: WholeFile | undefined;
   readonly largeFiles: ReadonlyMap<string, DiffFile>;
   readonly texts: ReadonlyMap<string, string>;
@@ -62,6 +63,7 @@ export const emptyTabView: TabView = {
   entireFile: false,
   patch: '',
   diffs: 0,
+  refreshes: 0,
   fileContent: undefined,
   largeFiles: new Map(),
   texts: new Map(),
@@ -135,7 +137,11 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
     case 'tabs':
       return action.worktree === state.root
         ? state
-        : { ...emptyTabView, root: action.worktree };
+        : {
+            ...emptyTabView,
+            root: action.worktree,
+            refreshes: state.refreshes,
+          };
     case 'showCommit':
       return { ...selected(state, action.hash), selection: action.selection };
     case 'showEntireFile':
@@ -201,6 +207,13 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
         scrollTarget: { index: action.index },
       };
     case 'workingTree':
+      if (state.hash !== undefined && workingTreeSide(state.hash)) {
+        return {
+          ...state,
+          workingTree: action.files,
+          refreshes: state.refreshes + 1,
+        };
+      }
       return action.files === state.workingTree
         ? state
         : { ...state, workingTree: action.files };

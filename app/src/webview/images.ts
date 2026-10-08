@@ -12,6 +12,7 @@ export interface ImageOrigin {
   readonly root: string;
   readonly hash: string;
   readonly area?: ChangeArea;
+  readonly version?: string;
 }
 
 export type Side = 'old' | 'new';

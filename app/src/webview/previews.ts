@@ -79,7 +79,6 @@ export function markdownSides(
   texts: ReadonlyMap<string, string>,
   sideBySide: boolean,
   origin?: ImageOrigin,
-  version = '',
 ): MarkdownSide[] {
   const all = sides.map((side) => ({
     side,
@@ -90,7 +89,7 @@ export function markdownSides(
         root: origin.root,
         document: side === 'old' ? (file.oldPath ?? file.path) : file.path,
         revision: sideRevision(origin, side),
-        version,
+        version: origin.version ?? '',
       },
     }),
   }));
