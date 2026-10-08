@@ -271,6 +271,7 @@ export function Diff({
   error,
   options,
   changeMarks,
+  entire,
   sideBySide,
   wordWrap,
   origin,
@@ -289,6 +290,7 @@ export function Diff({
   error: string | undefined;
   options: React.ReactNode;
   changeMarks: boolean;
+  entire: boolean;
   sideBySide: boolean;
   wordWrap: boolean;
   origin: ImageOrigin | undefined;
@@ -327,12 +329,23 @@ export function Diff({
     setJump((count) => count + 1);
   };
   const step = (by: 1 | -1) => goTo(stepMatch(shown, matches.length, by));
+  const [firstChange, setFirstChange] = useState(0);
+  const [entireSeen, setEntireSeen] = useState(entire);
+  const [awaitedDiff, setAwaitedDiff] = useState<number>();
   const [seen, setSeen] = useState(selection);
   if (seen !== selection) {
     setSeen(selection);
     setRendered(new Set());
     setCurrent(0);
     setJump((count) => count + 1);
+    setEntireSeen(entire);
+    setAwaitedDiff(undefined);
+  } else if (entireSeen !== entire) {
+    setEntireSeen(entire);
+    setAwaitedDiff(diffs);
+  } else if (awaitedDiff !== undefined && diffs > awaitedDiff) {
+    setAwaitedDiff(undefined);
+    setFirstChange((count) => count + 1);
   }
   useBinding(keymap.find, () => {
     input.current?.focus();
@@ -374,6 +387,7 @@ export function Diff({
         matches={matches}
         current={shown}
         jump={jump}
+        firstChange={path === undefined ? undefined : firstChange}
         rendered={rendered}
         onRender={render}
       />

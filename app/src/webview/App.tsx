@@ -752,6 +752,7 @@ export function App({ name, post: postToHost, listen }: Props) {
                     changeMarks={
                       path !== undefined && (entireFilePinned || entireFile)
                     }
+                    entire={entireFilePinned || entireFile}
                     options={
                       <DiffOptions
                         entire={entireFile}

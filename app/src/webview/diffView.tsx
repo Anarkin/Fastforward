@@ -665,6 +665,14 @@ export function changeScrollTop(
   return target;
 }
 
+export function firstChangeTop(
+  starts: readonly number[],
+  margin = changeMargin,
+): number | undefined {
+  const [first] = starts;
+  return first === undefined ? undefined : Math.max(0, first - margin);
+}
+
 export function lineKeys(rows: readonly DiffRow[]): string[][] {
   const next = new Map<number, number>();
   return rows.map((row) => {
@@ -1209,6 +1217,7 @@ export function DiffView({
   matches,
   current,
   jump,
+  firstChange,
   sideBySide,
   wordWrap,
   origin,
@@ -1228,6 +1237,7 @@ export function DiffView({
   matches: readonly FindMatch[];
   current: number;
   jump: number;
+  firstChange: number | undefined;
   sideBySide: boolean;
   wordWrap: boolean;
   rendered: ReadonlySet<string>;
@@ -1425,6 +1435,29 @@ export function DiffView({
       }
     }
   }, [jump, found, foundKey, loading, rows, keys, virtualizer]);
+
+  const changeJumped = useRef<number>(undefined);
+  useEffect(() => {
+    if (
+      firstChange === undefined ||
+      changeJumped.current === firstChange ||
+      loading
+    ) {
+      return;
+    }
+    changeJumped.current = firstChange;
+    if (found !== undefined) {
+      return;
+    }
+    const top = firstChangeTop(
+      changeStarts(rows).map(
+        (index) => virtualizer.measurementsCache[index]?.start ?? 0,
+      ),
+    );
+    if (top !== undefined) {
+      virtualizer.scrollToOffset(top);
+    }
+  }, [firstChange, loading, found, rows, virtualizer]);
 
   const requested = useRef(new Map<string, number>());
   useEffect(() => {

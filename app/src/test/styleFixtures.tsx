@@ -426,6 +426,7 @@ export function diffView(
       matches={[]}
       current={0}
       jump={0}
+      firstChange={undefined}
       sideBySide={sideBySide}
       wordWrap={wordWrap}
       rendered={new Set()}

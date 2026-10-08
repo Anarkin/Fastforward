@@ -21,6 +21,7 @@ import {
   diffRows,
   diffScrollLeft,
   diffScrollTop,
+  firstChangeTop,
   FileNote,
   sideChange,
   FileHeader,
@@ -1219,6 +1220,12 @@ suite('Jumping between changes', () => {
         },
       ],
     );
+  });
+
+  test('scrolls to the first change below the header and some context, as J would from above it, and nowhere without a change', () => {
+    assert.strictEqual(firstChangeTop([100, 500], 60), 40);
+    assert.strictEqual(firstChangeTop([30, 500], 60), 0);
+    assert.strictEqual(firstChangeTop([], 60), undefined);
   });
 
   test('scrolls to the next or previous change below the header and some context, and no further at either end', () => {

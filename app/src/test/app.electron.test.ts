@@ -689,6 +689,59 @@ suite('App', function () {
     await stash.waitFor({ state: 'detached' });
   });
 
+  test('jumps to the first change of a file once selected, and again once shown entire or not, landing where J would', async () => {
+    const file = path.join(repository.root, 'long.txt');
+    fs.writeFileSync(
+      file,
+      `${longLines.map((line, index) => (index === 150 ? 'changed far down' : line)).join('\n')}\n`,
+    );
+    const change = page.locator('.diff-line.removed', {
+      hasText: 'line150 word0',
+    });
+    const belowTop = () =>
+      change.evaluate((element) => {
+        const list = element.closest('.virtual-rows');
+        if (!list) {
+          throw new Error('No diff list');
+        }
+        return Math.round(
+          element.getBoundingClientRect().top -
+            list.getBoundingClientRect().top,
+        );
+      });
+    try {
+      await page.locator('.commit', { hasText: 'second' }).click();
+      await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
+      await page
+        .locator('.commit.working-tree', { hasText: '1 uncommitted change' })
+        .click();
+      await page.locator('.row.file', { hasText: 'long.txt' }).click();
+      await change.waitFor();
+      assert.strictEqual(await belowTop(), 66);
+      await page.getByRole('button', { name: 'Unpin Entire Files' }).click();
+      await page
+        .getByRole('button', { name: 'Show the Entire File' })
+        .waitFor();
+      await waitFor(
+        async () =>
+          (await page.locator('.diff-line').count()) < 20 &&
+          (await belowTop()) === 88,
+        'only the changes to be shown, too few to scroll',
+      );
+      await page.getByRole('button', { name: 'Show the Entire File' }).click();
+      await page
+        .getByRole('button', { name: 'Show Only the Changes' })
+        .waitFor();
+      await waitFor(
+        async () => (await belowTop()) === 66,
+        'the entire file to be shown at its change',
+      );
+    } finally {
+      await repository.git('checkout', '-q', 'HEAD', '--', 'long.txt');
+    }
+    await page.locator('.commit.working-tree.empty').waitFor();
+  });
+
   test('shows the staged and unstaged halves of a file apart, the staged one first', async () => {
     const file = path.join(repository.root, 'changed.txt');
     fs.writeFileSync(file, 'one\nstaged\nthree\n');
