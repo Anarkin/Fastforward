@@ -16,6 +16,7 @@ export class CappedScroll {
   anchor: ScrollAnchor = { real: 0, base: 0 };
   private drawn = 0;
   private redraw = () => {};
+  private refit = () => {};
 
   drawnAt(shift: number): void {
     this.drawn = shift;
@@ -23,6 +24,16 @@ export class CappedScroll {
 
   redrawWith(redraw: () => void): void {
     this.redraw = redraw;
+  }
+
+  fitWith(refit: () => void): void {
+    this.refit = refit;
+  }
+
+  // A list that gets shorter scrolls only once the browser clamps its top
+  fit(): boolean {
+    this.refit();
+    return this.anchor.base !== this.drawn;
   }
 
   moved(): void {
@@ -59,7 +70,7 @@ export function cappedScrolling<T extends Element>(scroll: CappedScroll) {
               realHeight(total)
           : 0;
       });
-      return observeElementOffset(instance, (real, isScrolling) => {
+      const follow = (real: number, isScrolling: boolean) => {
         const element = instance.scrollElement;
         if (!element) {
           return;
@@ -70,6 +81,17 @@ export function cappedScrolling<T extends Element>(scroll: CappedScroll) {
           element.scrollTop = next.real;
         }
         report(next.real + next.base, isScrolling);
+      };
+      let total = instance.getTotalSize();
+      scroll.fitWith(() => {
+        const element = instance.scrollElement;
+        if (element && instance.getTotalSize() !== total) {
+          total = instance.getTotalSize();
+          follow(element.scrollTop, false);
+        }
+      });
+      return observeElementOffset(instance, (real, isScrolling) => {
+        follow(real, isScrolling);
         scroll.moved();
       });
     },
@@ -115,5 +137,10 @@ export function useCappedScroll<T extends Element>() {
   useLayoutEffect(() => {
     scroll.drawnAt(shift);
   });
-  return { scrolling, shift, scrollTop };
+  const [fit] = useState(() => () => {
+    if (scroll.fit()) {
+      redraw();
+    }
+  });
+  return { scrolling, shift, scrollTop, fit };
 }

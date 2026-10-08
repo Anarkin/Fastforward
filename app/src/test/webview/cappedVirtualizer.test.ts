@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import { Virtualizer } from '@tanstack/react-virtual';
+import { Virtualizer, type VirtualizerOptions } from '@tanstack/react-virtual';
 import { realHeight, scrollCap } from '../../webview/cappedScroll';
 import { CappedScroll, cappedScrolling } from '../../webview/cappedVirtualizer';
 
@@ -71,7 +71,7 @@ function list(count: number) {
     redrawn++;
     scroll.drawnAt(scroll.anchor.base);
   });
-  const virtualizer = new Virtualizer<Element, Element>({
+  const options: VirtualizerOptions<Element, Element> = {
     count,
     estimateSize: () => rowHeight,
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
@@ -81,10 +81,19 @@ function list(count: number) {
     },
     overscan: 10,
     ...cappedScrolling<Element>(scroll),
-  });
+  };
+  const virtualizer = new Virtualizer<Element, Element>(options);
   // oxlint-disable-next-line no-underscore-dangle
   virtualizer._willUpdate();
   scroller.scrollHeight = realHeight(virtualizer.getTotalSize());
+  const resize = (rows: number) => {
+    virtualizer.setOptions({ ...options, count: rows });
+    scroller.scrollHeight = realHeight(virtualizer.getTotalSize());
+    scroller.scrollTop = Math.min(
+      scroller.scrollTop,
+      scroller.scrollHeight - viewport,
+    );
+  };
   const shown = () =>
     virtualizer
       .getVirtualItems()
@@ -94,7 +103,14 @@ function list(count: number) {
           row.end - scroll.anchor.base <= scroller.scrollTop + viewport,
       )
       .map((row) => row.index);
-  return { scroller, scroll, virtualizer, shown, redrawn: () => redrawn };
+  return {
+    scroller,
+    scroll,
+    virtualizer,
+    shown,
+    resize,
+    redrawn: () => redrawn,
+  };
 }
 
 suite('Capped virtualizer', () => {
@@ -128,6 +144,27 @@ suite('Capped virtualizer', () => {
     assert.strictEqual(virtualizer.scrollOffset, 700_002 * rowHeight);
     assert.strictEqual(shown()[0], 700_002);
     assert.strictEqual(redrawn(), 1);
+  });
+
+  test('keeps drawing the rows in view when a list too long to lay out gets shorter without scrolling, as a new history does', () => {
+    for (const rows of [100_000, 200_000]) {
+      const { scroller, scroll, virtualizer, shown, resize } = list(1_300_000);
+      virtualizer.scrollToIndex(700_000, { align: 'start' });
+      scroller.frame();
+      resize(rows);
+      assert.ok(scroll.fit());
+      scroller.frame();
+      const first = shown()[0];
+      assert.strictEqual(
+        first,
+        Math.ceil((virtualizer.scrollOffset ?? 0) / rowHeight),
+        String(rows),
+      );
+      scroller.scrollTop += 2 * rowHeight;
+      scroller.frame();
+      assert.strictEqual(shown()[0], first + 2, String(rows));
+      assert.ok(!scroll.fit());
+    }
   });
 
   test('scrolls a list short enough to lay out as it is', () => {

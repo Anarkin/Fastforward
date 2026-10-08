@@ -2,6 +2,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useSyncExternalStore,
 } from 'react';
@@ -424,7 +425,8 @@ export function Commits({
     (index: number) => rowKeyOf(history, offset, index),
     [history, offset],
   );
-  const { scrolling, shift, scrollTop } = useCappedScroll<HTMLDivElement>();
+  const { scrolling, shift, scrollTop, fit } =
+    useCappedScroll<HTMLDivElement>();
   const virtualizer = useVirtualizer({
     count,
     getScrollElement: () => list.current,
@@ -433,6 +435,8 @@ export function Commits({
     overscan: 10,
     ...scrolling,
   });
+  const totalSize = virtualizer.getTotalSize();
+  useLayoutEffect(fit, [fit, totalSize]);
   const rows = virtualizer.getVirtualItems();
   const first = Math.max(0, (rows[0]?.index ?? 0) - offset);
   const last = Math.max(0, (rows.at(-1)?.index ?? 0) - offset);
