@@ -285,6 +285,17 @@ suite('Locations search', () => {
     assert.strictEqual(enterTarget(' AB12 ', undefined, branch), 'ab12');
   });
 
+  test('jumps on Enter to the ref named as typed, though its name may be a hash not looked up yet', () => {
+    const [tag] = resultItems(
+      [],
+      searchRefs(
+        indexRefs([{ kind: 'tag', name: '2024', commit: 'e' }]),
+        '2024',
+      ),
+    );
+    assert.strictEqual(enterTarget(' 2024 ', undefined, tag), 'e');
+  });
+
   test('jumps on Enter to the result picked with the arrows, though the typed text may be a hash not looked up yet', () => {
     const [branch] = resultItems([], searchRefs(indexRefs([refs[3]]), 'a'));
     assert.strictEqual(

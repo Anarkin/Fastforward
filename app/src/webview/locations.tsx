@@ -226,7 +226,8 @@ export function enterTarget(
   picked = false,
 ): string | undefined {
   const hash = hashQuery(query);
-  if (hash && found === undefined && !(picked && active)) {
+  const named = active?.kind === 'ref' && active.ref.name === query.trim();
+  if (hash && found === undefined && !((picked || named) && active)) {
     return hash;
   }
   if (!query.trim() || !active) {
