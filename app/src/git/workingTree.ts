@@ -87,15 +87,13 @@ export async function workingTreeFiles(
     }).then((changes) =>
       trackedFiles(gitPath, cwd, parseRawChanges(changes), reverse),
     ),
-    runGit(gitPath, cwd, ['ls-files', '--others', '--exclude-standard', '-z'], {
-      signal,
-    }),
+    runGit(gitPath, cwd, untrackedListing().args, { signal }),
     base === undefined ? stagedFiles(gitPath, cwd, signal) : undefined,
   ]);
   const tracked = new Set(trackedChanges.map((file) => file.path));
-  const untracked = splitNul(listed).filter(
-    (path) => path && !tracked.has(path),
-  );
+  const untracked = untrackedListing()
+    .paths(listed)
+    .filter((path) => !tracked.has(path));
   const untrackedFiles = await Promise.all(
     untracked.map(async (path, index): Promise<FileChange> => {
       const file = join(cwd, path);
@@ -122,6 +120,34 @@ export async function workingTreeFiles(
     files: [...trackedChanges, ...untrackedFiles],
     untracked,
     staged,
+  };
+}
+
+export function untrackedListing(platform = process.platform): {
+  readonly args: readonly string[];
+  readonly paths: (output: string) => string[];
+} {
+  if (platform !== 'win32') {
+    return {
+      args: ['ls-files', '--others', '--exclude-standard', '-z'],
+      paths: (output) => splitNul(output).filter(Boolean),
+    };
+  }
+  return {
+    args: [
+      '-c',
+      'core.fscache=true',
+      'status',
+      '--porcelain=v2',
+      '-z',
+      '--untracked-files=all',
+      '--ignore-submodules=all',
+      '--no-renames',
+    ],
+    paths: (output) =>
+      splitNul(output).flatMap((record) =>
+        record.startsWith('? ') ? [record.slice(2)] : [],
+      ),
   };
 }
 

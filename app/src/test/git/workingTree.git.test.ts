@@ -505,6 +505,51 @@ suite('Uncommitted changes', function () {
     );
   });
 
+  test('lists the untracked files git lists as untracked and not ignored, in its order', async () => {
+    const repository = await tempRepository(tempFolder('untracked'));
+    const { root } = repository;
+    try {
+      await repository.commit('initial', {
+        '.gitignore': '*.log\n!keep.log\nignored/\n',
+        'removed.txt': 'kept on disk\n',
+      });
+      await repository.git('rm', '-q', '--cached', 'removed.txt');
+      const files = {
+        'a b ü.txt': 'spaces and more\n',
+        'deep/er/new.txt': 'new\n',
+        'x.log': 'ignored\n',
+        'keep.log': 'kept\n',
+        'ignored/f.txt': 'ignored\n',
+        '-dash.txt': 'dash\n',
+      };
+      for (const [file, content] of Object.entries(files)) {
+        fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+        fs.writeFileSync(path.join(root, file), content);
+      }
+      fs.mkdirSync(path.join(root, 'empty'));
+      await tempRepository(path.join(root, 'nested'));
+      const listed = (
+        await repository.git('ls-files', '--others', '--exclude-standard', '-z')
+      )
+        .split('\0')
+        .filter(Boolean);
+      assert.deepStrictEqual(
+        (await workingTreeFiles(gitPath, root)).untracked,
+        listed,
+      );
+      assert.deepStrictEqual(listed.toSorted(), [
+        '-dash.txt',
+        'a b ü.txt',
+        'deep/er/new.txt',
+        'keep.log',
+        'nested/',
+        'removed.txt',
+      ]);
+    } finally {
+      removeFolder(root);
+    }
+  });
+
   test('counts the bytes of the old and new text of each changed file', async () => {
     const { files } = await workingTreeFiles(gitPath, cwd);
     assert.deepStrictEqual(
