@@ -475,6 +475,33 @@ suite('Watching folders one by one', () => {
     assert.deepStrictEqual(watched(), ['', 'a', 'later']);
   });
 
+  test('asks again whether the folders under a .gitignore are ignored once it changes', async () => {
+    mkdir('a/build/deep', 'a/kept', 'other/build');
+    const ignoring = new Set(['build']);
+    await watchTree(root, {
+      skip: () => false,
+      ignored: (_repo, folders) =>
+        Promise.resolve(
+          folders.filter((folder) => ignoring.has(path.basename(folder))),
+        ),
+      onEvent: () => {},
+      onError: (error) => errors.push(error),
+      watch: fakeWatch,
+    });
+    assert.deepStrictEqual(watched(), ['', 'a', 'a/kept', 'other']);
+    ignoring.clear();
+    watchers.get(path.join(root, 'a'))?.listener('change', '.gitignore');
+    await waitFor(() => watched().includes('a/build/deep'), 'the folders');
+    assert.deepStrictEqual(watched(), [
+      '',
+      'a',
+      'a/build',
+      'a/build/deep',
+      'a/kept',
+      'other',
+    ]);
+  });
+
   test('stops watching removed folders', async () => {
     mkdir('a/b/c');
     await start();

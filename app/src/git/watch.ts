@@ -245,6 +245,19 @@ export async function watchTree(
     }
   };
 
+  const ignoredFolders = new Map<string, Folder>();
+  const ignoresChanged = (folder: string) => {
+    const under = [...ignoredFolders.values()].filter((skipped) =>
+      isInside(folder, skipped.path),
+    );
+    for (const skipped of under) {
+      ignoredFolders.delete(skipped.path);
+    }
+    if (under.length > 0) {
+      void inFlight.track(add(under));
+    }
+  };
+
   const unwatch = (folder: string) => {
     const entry = watched.get(folder);
     if (entry === undefined) {
@@ -272,6 +285,11 @@ export async function watchTree(
                   asked.map((folder) => folder.path),
                 ),
           );
+          for (const folder of inRepo) {
+            if (skipped.has(folder.path)) {
+              ignoredFolders.set(folder.path, folder);
+            }
+          }
           return inRepo.filter((folder) => !skipped.has(folder.path));
         } catch (error) {
           report(error);
@@ -295,6 +313,9 @@ export async function watchTree(
     try {
       const watcher = watch(folder.path, (event, file) => {
         onEvent(folder.path, file);
+        if (file === '.gitignore') {
+          ignoresChanged(folder.path);
+        }
         if (file && event === 'rename') {
           if (entry && file === path.basename(folder.path)) {
             entry.gone = true;
