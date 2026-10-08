@@ -134,6 +134,27 @@ suite('Git worktrees', function () {
     assert.ok(location.worktrees[0].bare);
   });
 
+  test('names the work tree of a repository whose git folder is elsewhere as the repository and its main worktree', async () => {
+    const separate = path.join(folder, 'separate');
+    const work = path.join(separate, 'work');
+    await repository.git(
+      'clone',
+      '-q',
+      '--separate-git-dir',
+      path.join(separate, 'store.git'),
+      repository.root,
+      work,
+    );
+    const location = await locateRepository(repository.gitPath, work);
+    assert.strictEqual(location?.repository, work);
+    assert.strictEqual(location.worktrees[0].path, work);
+    assert.strictEqual(
+      (await locateRepository(repository.gitPath, location.repository))
+        ?.repository,
+      work,
+    );
+  });
+
   test('finds no repository in a plain folder', async () => {
     const plain = path.join(folder, 'plain');
     fs.mkdirSync(plain);
