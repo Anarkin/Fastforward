@@ -24,6 +24,10 @@ suite('Running git', () => {
     assert.strictEqual(gitEnv().GIT_TERMINAL_PROMPT, '0');
   });
 
+  test('lets git fill its output buffer instead of flushing it after every commit', () => {
+    assert.strictEqual(gitEnv().GIT_FLUSH, '0');
+  });
+
   test('takes paths literally unless asked for pathspec magic', () => {
     assert.strictEqual(gitEnv().GIT_LITERAL_PATHSPECS, '1');
     assert.strictEqual(gitEnv(true).GIT_LITERAL_PATHSPECS, '0');

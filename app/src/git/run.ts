@@ -29,6 +29,7 @@ export function gitEnv(pathspecMagic = false): NodeJS.ProcessEnv {
     ...process.env,
     GIT_OPTIONAL_LOCKS: '0',
     LC_ALL: 'C',
+    GIT_FLUSH: '0',
     GIT_TERMINAL_PROMPT: '0',
     GIT_LITERAL_PATHSPECS: pathspecMagic ? '0' : '1',
   };
