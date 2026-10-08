@@ -39,6 +39,7 @@ import {
 import { SoloIcon } from './icons';
 import { useCappedScroll } from './cappedVirtualizer';
 import { realHeight } from './cappedScroll';
+import { rowPlace } from './rowPlace';
 
 export const commitRowHeight = 50;
 export const workingTreeRowHeight = 30;
@@ -777,10 +778,7 @@ export function Commits({
                 ref={
                   height === undefined ? virtualizer.measureElement : undefined
                 }
-                style={{
-                  height,
-                  transform: `translateY(${row.start - shift}px)`,
-                }}
+                style={rowPlace(row.start - shift, height)}
               >
                 {renderGraph(row.index, row.size)}
                 {renderRow(row.index)}

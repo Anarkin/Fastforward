@@ -3,6 +3,7 @@ import { useEffect, useEffectEvent, useRef } from 'react';
 import { columnFocusAttribute } from './activeColumn';
 import { uniformHeight } from './diffView';
 import { fullyVisible, type VisibleRows } from './listMoves';
+import { rowPlace } from './rowPlace';
 
 const estimateSize = () => uniformHeight;
 
@@ -209,7 +210,7 @@ export function VirtualRows({
               className="virtual-row"
               data-index={item.index}
               ref={virtualizer.measureElement}
-              style={{ transform: `translateY(${item.start}px)` }}
+              style={rowPlace(item.start, undefined)}
             >
               {renderRow(item.index)}
             </div>

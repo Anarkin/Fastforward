@@ -31,6 +31,7 @@ import {
   type MinimapRow,
 } from './minimap';
 import { columnFocusAttribute } from './activeColumn';
+import { rowPlace } from './rowPlace';
 import { changePairs } from './pairing';
 import { textsToLoad, useSyntax, type SyntaxRange } from './syntax';
 import { wordRanges, type LineWords, type WordRanges } from './wordDiff';
@@ -1843,7 +1844,7 @@ export function DiffView({
                 className={diffRowClass(row.kind)}
                 data-index={item.index}
                 ref={height === undefined ? virtualizer.measureElement : null}
-                style={{ height, transform: `translateY(${item.start}px)` }}
+                style={rowPlace(item.start, height)}
               >
                 {renderRow(row, item.index)}
               </div>
