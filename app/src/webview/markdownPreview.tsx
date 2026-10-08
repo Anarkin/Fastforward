@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { documentImageUrl, type DocumentImages } from './images';
 import { markdownRenderer, type Render } from './markdownRender';
 import type { MarkdownSide } from './previews';
 
@@ -37,15 +38,26 @@ function useRenderer(): Render | undefined {
 
 const noImages = () => undefined;
 
-function MarkdownPane({ text }: { text: string | undefined }) {
+function MarkdownPane({
+  text,
+  images,
+}: {
+  text: string | undefined;
+  images: DocumentImages | undefined;
+}) {
   const render = useRenderer();
-  const html = useMemo(
-    () =>
-      render && text !== undefined
-        ? { __html: render(text, noImages) }
-        : undefined,
-    [render, text],
-  );
+  const { root, document, revision, version } = images ?? {};
+  const html = useMemo(() => {
+    if (!render || text === undefined) {
+      return undefined;
+    }
+    const image =
+      root === undefined || document === undefined || version === undefined
+        ? noImages
+        : (src: string) =>
+            documentImageUrl({ root, document, revision, version }, src);
+    return { __html: render(text, image) };
+  }, [render, text, root, document, revision, version]);
   return (
     <div className="markdown-pane">
       <div className="markdown" dangerouslySetInnerHTML={html} />
@@ -56,9 +68,9 @@ function MarkdownPane({ text }: { text: string | undefined }) {
 export function MarkdownDiff({ sides }: { sides: readonly MarkdownSide[] }) {
   return (
     <div className="markdown-diff">
-      {sides.map(({ side, text, present }) =>
+      {sides.map(({ side, text, present, images }) =>
         present ? (
-          <MarkdownPane key={side} text={text} />
+          <MarkdownPane key={side} text={text} images={images} />
         ) : (
           <div key={side} className="markdown-pane filler" />
         ),

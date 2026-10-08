@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { shownSide, workingTreeSide } from '../shared/comparisons';
+import { comparedOf, shownSide, workingTreeSide } from '../shared/comparisons';
 import { imageType, imageUrl, vectorType } from '../shared/images';
 import {
   workingTreeHash,
@@ -119,6 +119,84 @@ export function wholeImageUrl(
         id: whole.id,
         disk: shownSide(hash) === workingTreeHash,
       });
+}
+
+export function sideRevision(
+  { hash, area }: ImageOrigin,
+  side: Side,
+): string | undefined {
+  const compared = comparedOf(hash);
+  if (compared) {
+    const at = side === 'old' ? compared.from : compared.to;
+    return at === workingTreeHash ? undefined : at;
+  }
+  if (hash === workingTreeHash) {
+    if (side === 'new') {
+      return area === 'staged' ? '' : undefined;
+    }
+    return area === 'unstaged' ? '' : 'HEAD';
+  }
+  return side === 'old' ? `${hash}^` : hash;
+}
+
+export function wholeRevision({ hash }: ImageOrigin): string | undefined {
+  const shown = shownSide(hash);
+  return shown === workingTreeHash ? undefined : shown;
+}
+
+const scheme = /^[a-z][a-z\d+.-]*:/i;
+
+export function documentImagePath(
+  document: string,
+  src: string,
+): string | undefined {
+  if (scheme.test(src) || src.startsWith('//')) {
+    return undefined;
+  }
+  let target: string;
+  try {
+    target = decodeURIComponent(src.split(/[?#]/)[0] ?? '');
+  } catch {
+    return undefined;
+  }
+  const parts = target.startsWith('/') ? [] : document.split('/').slice(0, -1);
+  for (const part of target.split('/')) {
+    if (part === '..') {
+      if (parts.length === 0) {
+        return undefined;
+      }
+      parts.pop();
+    } else if (part !== '' && part !== '.') {
+      parts.push(part);
+    }
+  }
+  return parts.length === 0 ? undefined : parts.join('/');
+}
+
+export interface DocumentImages {
+  readonly root: string;
+  readonly document: string;
+  readonly revision: string | undefined;
+  readonly version: string;
+}
+
+const fixedRevision = /^(?:[0-9a-f]{40}|[0-9a-f]{64})\^?$/;
+
+export function documentImageUrl(
+  { root, document, revision, version }: DocumentImages,
+  src: string,
+): string | undefined {
+  const path = documentImagePath(document, src);
+  if (path === undefined || imageType(path) === undefined) {
+    return undefined;
+  }
+  const id =
+    revision !== undefined && fixedRevision.test(revision) ? revision : version;
+  return imageUrl(
+    revision === undefined
+      ? { root, path, id, disk: true }
+      : { root, path, id, disk: false, revision },
+  );
 }
 
 export type LoadedImage =

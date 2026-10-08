@@ -7,12 +7,16 @@ import { workingTreeHash } from '../../shared/protocol';
 import { parsePatch, type DiffFile } from '../../webview/diff';
 import {
   diffImageUrl,
+  documentImagePath,
+  documentImageUrl,
   ImageCache,
   previewsImage,
   previewsWholeImage,
   rendersImage,
   rendersWholeImage,
+  sideRevision,
   wholeImageUrl,
+  wholeRevision,
   withUnchangedObjects,
   type ImageOrigin,
 } from '../../webview/images';
@@ -263,6 +267,85 @@ function policyOfPage(): Map<string, string[]> {
     }),
   );
 }
+
+const from = (src: string) => documentImagePath('docs/guide/a.md', src);
+
+suite('Images in documents', () => {
+  test('reads each side at the revision it shows', () => {
+    const revisions = (hash: string, area?: ImageOrigin['area']) => [
+      sideRevision(at(hash, area), 'old'),
+      sideRevision(at(hash, area), 'new'),
+    ];
+    assert.deepStrictEqual(revisions(commit), [`${commit}^`, commit]);
+    assert.deepStrictEqual(revisions(comparisonOf(oldId, newId)), [
+      oldId,
+      newId,
+    ]);
+    assert.deepStrictEqual(revisions(comparisonOf(workingTreeHash, commit)), [
+      undefined,
+      commit,
+    ]);
+    assert.deepStrictEqual(revisions(workingTreeHash), ['HEAD', undefined]);
+    assert.deepStrictEqual(revisions(workingTreeHash, 'unstaged'), [
+      '',
+      undefined,
+    ]);
+    assert.deepStrictEqual(revisions(workingTreeHash, 'staged'), ['HEAD', '']);
+    assert.strictEqual(wholeRevision(at(commit)), commit);
+    assert.strictEqual(
+      wholeRevision(at(comparisonOf(commit, workingTreeHash))),
+      undefined,
+    );
+  });
+
+  test('finds an image by its path from the document, or from the root as GitHub does, never outside the repository', () => {
+    assert.strictEqual(from('shot.png'), 'docs/guide/shot.png');
+    assert.strictEqual(
+      from('./img/shot.png?raw=1#x'),
+      'docs/guide/img/shot.png',
+    );
+    assert.strictEqual(from('../../logo.png'), 'logo.png');
+    assert.strictEqual(from('/assets/my%20logo.png'), 'assets/my logo.png');
+    for (const outside of [
+      '../../../up.png',
+      'https://example.com/a.png',
+      '//example.com/a.png',
+      'data:image/png;base64,AA',
+      'C:/a.png',
+      '%E0%A4%A.png',
+      '/',
+    ]) {
+      assert.strictEqual(from(outside), undefined, outside);
+    }
+    assert.strictEqual(documentImagePath('README.md', 'a.png'), 'a.png');
+  });
+
+  test('reads an image in a document at its revision, and only an image', () => {
+    const images = {
+      root: '/repo',
+      document: 'docs/a.md',
+      revision: 'HEAD',
+      version: '7',
+    };
+    assert.deepStrictEqual(source(documentImageUrl(images, 'b.png')), {
+      root: '/repo',
+      path: 'docs/b.png',
+      id: '7',
+      disk: false,
+      revision: 'HEAD',
+    });
+    assert.strictEqual(
+      source(documentImageUrl({ ...images, revision: `${commit}^` }, 'b.png'))
+        ?.id,
+      `${commit}^`,
+    );
+    assert.deepStrictEqual(
+      source(documentImageUrl({ ...images, revision: undefined }, 'b.png')),
+      { root: '/repo', path: 'docs/b.png', id: '7', disk: true },
+    );
+    assert.strictEqual(documentImageUrl(images, 'notes.txt'), undefined);
+  });
+});
 
 suite('Image cache', () => {
   test('may fetch the images from the app or from their own text, and show them from memory, by the page policy', () => {

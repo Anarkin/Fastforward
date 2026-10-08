@@ -323,6 +323,45 @@ suite('Images', function () {
     }
   });
 
+  test('reads an image at a revision: a commit, its parent or the index', async () => {
+    const at = (revision: string, file = 'pixel.png') =>
+      readImage(
+        gitPath,
+        cwd,
+        { path: file, id: '1', disk: false, revision },
+        pixel.length,
+      );
+    fs.writeFileSync(path.join(cwd, 'pixel.png'), Buffer.from([0, 7]));
+    await repository.git('commit', '-am', 'changed');
+    fs.writeFileSync(path.join(cwd, 'pixel.png'), Buffer.from([0, 8]));
+    await repository.git('add', 'pixel.png');
+    try {
+      const [head] = await repository.resolve('HEAD');
+      assert.deepStrictEqual(await at('HEAD'), {
+        kind: 'image',
+        bytes: Buffer.from([0, 7]),
+      });
+      assert.deepStrictEqual(await at(`${head}^`), {
+        kind: 'image',
+        bytes: pixel,
+      });
+      assert.deepStrictEqual(await at(''), {
+        kind: 'image',
+        bytes: Buffer.from([0, 8]),
+      });
+      assert.deepStrictEqual(await at('HEAD', 'huge.png'), {
+        kind: 'tooLarge',
+      });
+      for (const missing of ['gone.png', '']) {
+        assert.deepStrictEqual(await at('HEAD', missing || '.'), {
+          kind: 'missing',
+        });
+      }
+    } finally {
+      await repository.git('reset', '--hard', 'HEAD~1');
+    }
+  });
+
   test('reads no image outside the repository', async () => {
     await assert.rejects(
       image('any', true, '../outside.png'),

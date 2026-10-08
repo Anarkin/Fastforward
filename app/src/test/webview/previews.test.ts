@@ -95,6 +95,37 @@ suite('Previews', () => {
     );
   });
 
+  test('loads the images of each side from where that side of the document is, at its revision', () => {
+    const commit = 'c'.repeat(40);
+    const [renamed] = parsePatch(
+      [
+        'diff --git a/old/a.md b/new/a.md',
+        'similarity index 90%',
+        'rename from old/a.md',
+        'rename to new/a.md',
+        `index ${oldId}..${newId}`,
+      ].join('\n'),
+    );
+    assert.deepStrictEqual(
+      markdownSides(
+        renamed,
+        new Map(),
+        true,
+        { root: '/r', hash: commit },
+        '3',
+      ).map(({ images }) => images),
+      [
+        {
+          root: '/r',
+          document: 'old/a.md',
+          revision: `${commit}^`,
+          version: '3',
+        },
+        { root: '/r', document: 'new/a.md', revision: commit, version: '3' },
+      ],
+    );
+  });
+
   test('shows Markdown as a preview in place of its lines once asked to, in a diff or whole', () => {
     const shown = new Set(['README.md']);
     assert.deepStrictEqual(

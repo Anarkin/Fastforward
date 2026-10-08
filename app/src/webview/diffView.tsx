@@ -61,6 +61,7 @@ import {
   previewsImage,
   previewsWholeImage,
   wholeImageUrl,
+  wholeRevision,
   type ImageOrigin,
 } from './images';
 import { SkeletonRows, useSkeleton } from './skeleton';
@@ -1525,8 +1526,28 @@ export function DiffView({
           <MarkdownDiff
             sides={
               whole
-                ? [{ side: 'new', text: whole.content, present: true }]
-                : markdownSides(files[row.file], texts, split)
+                ? [
+                    {
+                      side: 'new',
+                      text: whole.content,
+                      present: true,
+                      ...(origin && {
+                        images: {
+                          root: origin.root,
+                          document: whole.path,
+                          revision: wholeRevision(origin),
+                          version: String(diff),
+                        },
+                      }),
+                    },
+                  ]
+                : markdownSides(
+                    files[row.file],
+                    texts,
+                    split,
+                    origin,
+                    String(diff),
+                  )
             }
           />
         );

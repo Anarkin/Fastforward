@@ -202,7 +202,7 @@ export type ImageRead =
 export async function readImage(
   gitPath: string,
   cwd: string,
-  { path, id, disk }: Omit<ImageSource, 'root'>,
+  { path, id, disk, revision }: Omit<ImageSource, 'root'>,
   limit = maxImageSize,
 ): Promise<ImageRead> {
   if (disk) {
@@ -215,7 +215,10 @@ export async function readImage(
       ? { kind: 'tooLarge' }
       : { kind: 'image', bytes: await fs.readFile(file) };
   }
-  const size = (await blobSizes(gitPath, cwd, [id])).get(id);
+  const [object, size] =
+    revision === undefined
+      ? [id, (await blobSizes(gitPath, cwd, [id])).get(id)]
+      : await blobAt(gitPath, cwd, `${revision}:${path}`);
   if (size === undefined) {
     return { kind: 'missing' };
   }
@@ -223,6 +226,18 @@ export async function readImage(
     ? { kind: 'tooLarge' }
     : {
         kind: 'image',
-        bytes: await runGitBytes(gitPath, cwd, ['cat-file', 'blob', id]),
+        bytes: await runGitBytes(gitPath, cwd, ['cat-file', 'blob', object]),
       };
+}
+
+async function blobAt(
+  gitPath: string,
+  cwd: string,
+  name: string,
+): Promise<[string, number | undefined]> {
+  const checked = await runGit(gitPath, cwd, ['cat-file', '--batch-check'], {
+    input: batchInput([name]),
+  });
+  const [object = '', type, size] = checked.trim().split(' ');
+  return [object, type === 'blob' ? Number(size) : undefined];
 }

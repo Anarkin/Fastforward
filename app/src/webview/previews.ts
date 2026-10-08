@@ -1,6 +1,13 @@
 import type { TextRequest } from '../shared/protocol';
 import { textKey, type DiffFile } from './diff';
-import { rendersImage, rendersWholeImage, type Side } from './images';
+import {
+  rendersImage,
+  rendersWholeImage,
+  sideRevision,
+  type DocumentImages,
+  type ImageOrigin,
+  type Side,
+} from './images';
 
 export type Preview = 'image' | 'markdown';
 
@@ -64,17 +71,28 @@ export interface MarkdownSide {
   readonly side: Side;
   readonly text: string | undefined;
   readonly present: boolean;
+  readonly images?: DocumentImages;
 }
 
 export function markdownSides(
   file: DiffFile,
   texts: ReadonlyMap<string, string>,
   sideBySide: boolean,
+  origin?: ImageOrigin,
+  version = '',
 ): MarkdownSide[] {
   const all = sides.map((side) => ({
     side,
     text: texts.get(textKey(file.path, side)),
     present: file.blobs?.[side] !== undefined,
+    ...(origin && {
+      images: {
+        root: origin.root,
+        document: side === 'old' ? (file.oldPath ?? file.path) : file.path,
+        revision: sideRevision(origin, side),
+        version,
+      },
+    }),
   }));
   if (sideBySide) {
     return all;

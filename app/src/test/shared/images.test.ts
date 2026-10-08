@@ -31,6 +31,56 @@ suite('Images', () => {
     }
   });
 
+  test('reads back an image at a revision: a commit, its first parent, HEAD or the index', () => {
+    for (const revision of [blob, `${blob}^`, 'HEAD', '']) {
+      const source = {
+        root: '/r',
+        path: 'a.png',
+        id: '3',
+        disk: false,
+        revision,
+      };
+      assert.deepStrictEqual(parse(imageUrl(source)), source);
+    }
+    for (const revision of [
+      '--batch',
+      'HEAD~1',
+      'main',
+      `${blob}:x`,
+      `${blob}^^`,
+    ]) {
+      assert.strictEqual(
+        parse(
+          imageUrl({
+            root: '/r',
+            path: 'a.png',
+            id: '3',
+            disk: false,
+            revision,
+          }),
+        ),
+        undefined,
+        revision,
+      );
+    }
+    assert.strictEqual(
+      parse(
+        imageUrl({
+          root: '/r',
+          path: 'a.png',
+          id: '3',
+          disk: true,
+          revision: 'HEAD',
+        }),
+      ),
+      undefined,
+    );
+    assert.strictEqual(
+      parse(imageUrl({ root: '/r', path: 'a\nb.png', id: blob, disk: false })),
+      undefined,
+    );
+  });
+
   test('takes only a full hash as an object to read from git', () => {
     const source = { root: '/repo', path: 'a.png', disk: false };
     assert.strictEqual(
