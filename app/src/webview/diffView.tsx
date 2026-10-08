@@ -461,6 +461,8 @@ declare module 'react' {
     readonly '--diff-code-padding'?: string;
     readonly '--diff-marker-width'?: string;
     readonly '--diff-content-width'?: string;
+    readonly '--diff-word-padding-top'?: string;
+    readonly '--diff-word-padding-bottom'?: string;
     readonly '--split-scroll'?: string;
     readonly '--visible-left'?: string;
     readonly '--visible-right'?: string;
@@ -1105,29 +1107,78 @@ const WrapProbe = memo(function WrapProbe({
   );
 });
 
-const CharProbe = memo(function CharProbe({
-  onWidth,
+interface Edges {
+  readonly top: number;
+  readonly bottom: number;
+}
+
+const layoutSteps = 64;
+
+function onLayoutStep(gap: number, scale: number): number {
+  const steps = Math.round(Math.max(0, gap) * scale * layoutSteps);
+  return (steps + 0.25) / (scale * layoutSteps);
+}
+
+export function wordPadding(line: Edges, text: Edges, scale: number): Edges {
+  return text.bottom > text.top
+    ? {
+        top: onLayoutStep(text.top - line.top, scale),
+        bottom: onLayoutStep(line.bottom - text.bottom, scale),
+      }
+    : { top: 0, bottom: 0 };
+}
+
+const unpadded: Edges = { top: 0, bottom: 0 };
+
+const TextProbe = memo(function TextProbe({
+  onMeasure,
 }: {
-  onWidth: (width: number) => void;
+  onMeasure: (charWidth: number, padding: Edges) => void;
 }) {
+  const line = useRef<HTMLDivElement>(null);
+  const text = useRef<HTMLSpanElement>(null);
   const observe = useCallback(
     (sample: HTMLSpanElement) => {
       const measure = () =>
-        onWidth(sample.getBoundingClientRect().width / wrapSample.length);
+        onMeasure(
+          sample.getBoundingClientRect().width / wrapSample.length,
+          line.current && text.current
+            ? wordPadding(
+                line.current.getBoundingClientRect(),
+                text.current.getBoundingClientRect(),
+                devicePixelRatio,
+              )
+            : unpadded,
+        );
+      let scale: MediaQueryList | undefined;
+      const onScale = () => {
+        measure();
+        watchScale();
+      };
+      const watchScale = () => {
+        scale?.removeEventListener('change', onScale);
+        scale = matchMedia(`(resolution: ${devicePixelRatio}dppx)`);
+        scale.addEventListener('change', onScale);
+      };
       measure();
+      watchScale();
       const observer = new ResizeObserver(measure);
       observer.observe(sample);
-      return () => observer.disconnect();
+      return () => {
+        observer.disconnect();
+        scale?.removeEventListener('change', onScale);
+      };
     },
-    [onWidth],
+    [onMeasure],
   );
   return (
     <div className="wrap-probe" aria-hidden>
-      <div className="diff-line">
+      <div className="diff-line" ref={line}>
         <span className="code">
           <span className="wrap-sample" ref={observe}>
             {wrapSample}
           </span>
+          <span ref={text}>{wrapSample}</span>
         </span>
       </div>
     </div>
@@ -1250,6 +1301,15 @@ export function DiffView({
   const scrollsSides = split && !wordWrap;
   const [columns, setColumns] = useState<WrapColumns>();
   const [charWidth, setCharWidth] = useState(0);
+  const [padding, setPadding] = useState(unpadded);
+  const measureText = useCallback((width: number, measured: Edges) => {
+    setCharWidth(width);
+    setPadding((last) =>
+      last.top === measured.top && last.bottom === measured.bottom
+        ? last
+        : measured,
+    );
+  }, []);
   const [measured, setMeasured] = useState<Sideways>();
   const view = measured && shownSideways(measured, scrollsSides, sideways);
   const changeColumns = useCallback(
@@ -1785,6 +1845,8 @@ export function DiffView({
       style={{
         ...layoutVariables,
         '--split-scroll': `${sideways}px`,
+        '--diff-word-padding-top': `${padding.top}px`,
+        '--diff-word-padding-bottom': `${padding.bottom}px`,
         ...(!split &&
           !wordWrap &&
           charWidth > 0 && {
@@ -1859,7 +1921,7 @@ export function DiffView({
           className="virtual-spacer"
           style={{ height: virtualizer.getTotalSize() }}
         >
-          {!wordWrap && <CharProbe onWidth={setCharWidth} />}
+          <TextProbe onMeasure={measureText} />
           {wordWrap && (
             <WrapProbe
               key={split ? 'split' : whole ? 'whole' : 'inline'}

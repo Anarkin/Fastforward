@@ -99,6 +99,9 @@ function pixels(value: string | undefined): number {
     .reduce((sum, term) => sum + term, 0);
 }
 
+const compact = (value: string | undefined) =>
+  value?.replace(/\(\s+/g, '(').replace(/\s+\)/g, ')');
+
 function looks(
   element: MarkupElement | undefined,
   expected: Readonly<Record<string, string | undefined>>,
@@ -703,7 +706,7 @@ suite('Style', () => {
     }
   });
 
-  test('tints the line numbers of a changed line with its row, and its changed characters as strongly as the theme says', () => {
+  test('tints the line numbers of a changed line with its row, and its changed characters as strongly as the theme says, the full height of the line', () => {
     for (const [kind, color, word] of [
       ['added', 'added', 'word-added'],
       ['removed', 'deleted', 'word-removed'],
@@ -713,6 +716,8 @@ suite('Style', () => {
       );
       looks(withClass(inline, word), {
         background: `color-mix( in srgb, var(--color-${color}) var(--color-${color}-line), transparent )`,
+        'padding-top': 'var(--diff-word-padding-top)',
+        'padding-bottom': 'var(--diff-word-padding-bottom)',
       });
       const split = shownRow(
         diffView(
@@ -758,19 +763,15 @@ suite('Style', () => {
     }
   });
 
-  test('tints the whole row of a line changed through as strongly as changed words', () => {
+  test('tints the whole row of a line changed through like changed words on a changed row, their tint over the row tint', () => {
     for (const [kind, color] of [
       ['added', 'added'],
       ['removed', 'deleted'],
     ] as const) {
-      const tint = {
-        background: `color-mix( in srgb, var(--color-${color}) var(--color-${color}-line), transparent )`,
-      };
-      looks(
+      const word = `color-mix(in srgb, var(--color-${color}) var(--color-${color}-line), transparent)`;
+      const tint = `linear-gradient(${word}, ${word}), color-mix(in srgb, var(--color-${color}) var(--color-${color}-row), transparent)`;
+      for (const row of [
         withClass(diffView({}, inlineLine(kind, { whole: true })), 'text-line'),
-        tint,
-      );
-      looks(
         withClass(
           diffView(
             { sideBySide: true },
@@ -782,8 +783,9 @@ suite('Style', () => {
           'split-side',
           kind,
         ),
-        tint,
-      );
+      ]) {
+        assert.strictEqual(compact(cascaded(row, 'background')), tint);
+      }
     }
   });
 

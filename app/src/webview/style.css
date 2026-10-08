@@ -1611,8 +1611,7 @@ body.resizing {
   color: var(--color-syntax-comment);
 }
 
-.diff-line .word-added,
-.diff-line.added.whole-change {
+.diff-line .word-added {
   background: color-mix(
     in srgb,
     var(--color-added) var(--color-added-line),
@@ -1620,13 +1619,56 @@ body.resizing {
   );
 }
 
-.diff-line .word-removed,
-.diff-line.removed.whole-change {
+.diff-line.added.whole-change {
+  background:
+    linear-gradient(
+      color-mix(
+        in srgb,
+        var(--color-added) var(--color-added-line),
+        transparent
+      ),
+      color-mix(
+        in srgb,
+        var(--color-added) var(--color-added-line),
+        transparent
+      )
+    ),
+    color-mix(in srgb, var(--color-added) var(--color-added-row), transparent);
+}
+
+.diff-line .word-added,
+.diff-line .word-removed {
+  padding-top: var(--diff-word-padding-top);
+  padding-bottom: var(--diff-word-padding-bottom);
+}
+
+.diff-line .word-removed {
   background: color-mix(
     in srgb,
     var(--color-deleted) var(--color-deleted-line),
     transparent
   );
+}
+
+.diff-line.removed.whole-change {
+  background:
+    linear-gradient(
+      color-mix(
+        in srgb,
+        var(--color-deleted) var(--color-deleted-line),
+        transparent
+      ),
+      color-mix(
+        in srgb,
+        var(--color-deleted) var(--color-deleted-line),
+        transparent
+      )
+    ),
+    color-mix(
+      in srgb,
+      var(--color-deleted) var(--color-deleted-row),
+      transparent
+    );
 }
 
 .diff-line.removed,
