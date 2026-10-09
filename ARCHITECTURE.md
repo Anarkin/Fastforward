@@ -23,6 +23,7 @@
 ### Syntax
 
 - Use Shiki with its Oniguruma engine, the TextMate grammars and engine VS Code uses, so scope rules carry over from VS Code; semantic tokens are left out, as they need a language server
+- Syntax is colored in a module worker, which loads the grammars and the WebAssembly, as tokenizing on the page kept its main thread busy for 0.47 s of each commit selected on vscode in a release build, against 0.06 s now
 
 ### Previews
 

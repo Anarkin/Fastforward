@@ -68,6 +68,7 @@ suite('App', function () {
     repository = await tempRepository(path.join(folder, 'repo'));
     await repository.commit('first', {
       'kept.txt': 'kept\n',
+      'code.ts': 'export const answer = 42;\n',
       'long.txt': `${longLines.join('\n')}\n`,
       'changed.txt': 'one\ntwo\nthree\n',
       'notes.md': `${paragraphs.join('\n\n')}\n`,
@@ -260,6 +261,13 @@ suite('App', function () {
       ['one', 'two', '2', 'three'],
     );
     await page.locator('.diff-minimap').waitFor();
+  });
+
+  test('colors code away from the page', async () => {
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await page.locator('.row.file', { hasText: 'code.ts' }).click();
+    await page.locator('.syntax-keyword', { hasText: 'export' }).waitFor();
+    await page.locator('.syntax-number', { hasText: '42' }).waitFor();
   });
 
   test('finds in the diff on Ctrl+F, stepping on Enter and clearing on Esc', async () => {

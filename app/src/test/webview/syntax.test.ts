@@ -2,17 +2,24 @@ import * as assert from 'node:assert';
 import { parsePatch } from '../../webview/diff';
 import {
   codeSegments,
-  colorCode,
+  colorerOf,
   languageOf,
-  loadLanguages,
-  uncachedSources,
-  startColoring,
   syntaxSources,
   textsToLoad,
-  tokenizing,
-  type SyntaxRange,
+  type SyntaxPort,
 } from '../../webview/syntax';
-import { policyOfPage } from '../fixtures';
+import {
+  colorCode,
+  loadLanguages,
+  serveColoring,
+  startColoring,
+  tokenizing,
+  uncachedSources,
+  type FromSyntax,
+  type SyntaxRange,
+  type ToSyntax,
+} from '../../webview/syntaxEngine';
+import { policyOfPage, waitFor } from '../fixtures';
 
 type Highlighter = Awaited<ReturnType<typeof loadLanguages>>;
 
@@ -896,6 +903,130 @@ suite('Code in documents', () => {
         { text: '\n' },
         { text: 'b' },
       ],
+    );
+  });
+});
+
+function served() {
+  const posted: FromSyntax[] = [];
+  const slices: (() => void)[] = [];
+  const serve = serveColoring(
+    (message) => posted.push(message),
+    (slice) => slices.push(slice),
+  );
+  const run = () => {
+    while (slices.length > 0) {
+      slices.shift()?.();
+    }
+  };
+  return { posted, serve, run };
+}
+
+suite('Coloring away from the page', () => {
+  test('sends the colors of a job by the keys the page gave its lines, and nothing more once it is stopped', async () => {
+    const highlighter = await loadLanguages(['typescript']);
+    const sent = {
+      language: 'typescript',
+      lines: ['let sent = 1;', 'sent;'],
+      keys: ['0:0', undefined],
+    };
+    const { posted, serve, run } = served();
+    serve({ type: 'color', job: 1, sources: [sent] });
+    serve({
+      type: 'color',
+      job: 2,
+      sources: [
+        { language: 'typescript', lines: ['let stopped = 2;'], keys: ['1:0'] },
+      ],
+    });
+    serve({ type: 'stop', job: 2 });
+    run();
+    assert.deepStrictEqual(posted, [
+      {
+        type: 'colors',
+        job: 1,
+        ranges: [...syntaxRanges(highlighter, [sent])],
+      },
+    ]);
+  });
+
+  test('colors a code block by its language, and nothing in one it does not know', async () => {
+    const { posted, serve } = served();
+    serve({ type: 'code', job: 3, language: 'TS', code: 'const a = 1;' });
+    serve({ type: 'code', job: 4, language: 'no-such-language', code: 'a' });
+    await waitFor(() => posted.length === 2, 'the code blocks');
+    const lines = new Map(
+      posted.flatMap((message) =>
+        message.type === 'code' ? [[message.job, message.lines] as const] : [],
+      ),
+    );
+    assert.deepStrictEqual(lines.get(3)?.[0]?.[0], {
+      start: 0,
+      end: 5,
+      kind: 'keyword',
+    });
+    assert.ok(lines.has(4));
+    assert.strictEqual(lines.get(4), undefined);
+  });
+
+  test('hands each job of the page the colors of its own lines, and a code block its own, dropping a job stopped', async () => {
+    await loadLanguages(['typescript']);
+    const slices: (() => void)[] = [];
+    let received: ((message: FromSyntax) => void) | undefined;
+    const port: SyntaxPort = {
+      post: (message: ToSyntax) => serve(message),
+      listen: (listener) => {
+        received = listener;
+      },
+    };
+    const serve = serveColoring(
+      (message) => received?.(message),
+      (slice) => slices.push(slice),
+    );
+    const colorer = colorerOf(port);
+    const kept: string[] = [];
+    const dropped: string[] = [];
+    colorer.color(
+      [{ language: 'typescript', lines: ['let kept = 3;'], keys: ['0:0'] }],
+      (ranges) => kept.push(...ranges.map(([key]) => key)),
+    );
+    const stop = colorer.color(
+      [{ language: 'typescript', lines: ['let dropped = 4;'], keys: ['1:0'] }],
+      (ranges) => dropped.push(...ranges.map(([key]) => key)),
+    );
+    stop();
+    while (slices.length > 0) {
+      slices.shift()?.();
+    }
+    assert.deepStrictEqual([kept, dropped], [['0:0'], []]);
+    assert.deepStrictEqual((await colorer.code('ts', 'let a;'))?.[0]?.[0], {
+      start: 0,
+      end: 3,
+      kind: 'keyword',
+    });
+  });
+
+  test('reports on the page what failed away from it', () => {
+    let received: ((message: FromSyntax) => void) | undefined;
+    colorerOf({
+      post: () => undefined,
+      listen: (listener) => {
+        received = listener;
+      },
+    });
+    const reported: unknown[] = [];
+    const had: unknown = Reflect.get(globalThis, 'reportError');
+    Reflect.set(globalThis, 'reportError', (error: unknown) =>
+      reported.push(error),
+    );
+    try {
+      received?.({ type: 'failed', message: 'grammar failed to load' });
+    } finally {
+      Reflect.set(globalThis, 'reportError', had);
+    }
+    assert.deepStrictEqual(
+      reported.map((error) => (error instanceof Error ? error.message : error)),
+      ['grammar failed to load'],
     );
   });
 });
