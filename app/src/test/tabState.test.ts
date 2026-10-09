@@ -22,7 +22,9 @@ import {
   stillThere,
   toggleMerges,
 } from '../tabState';
+import { Commits } from '../history/commits';
 import { commitInfo } from './fixtures';
+import { rowsOf } from './history/historyFixtures';
 
 const at = (commit: string) => ({
   kind: 'branch' as const,
@@ -48,7 +50,7 @@ suite('Tab state', () => {
 
   function laidOut(entries = long) {
     const tab = newTabState();
-    loadHistory(tab, entries, undefined, []);
+    loadHistory(tab, Commits.of(entries), undefined, []);
     layOutHistory(tab, false, undefined);
     return tab;
   }
@@ -57,7 +59,7 @@ suite('Tab state', () => {
     const head = { commit: 'h40' };
     const layOut = (entries: typeof long, partial: boolean) => {
       const tab = newTabState();
-      loadHistory(tab, entries, head, [], [], partial);
+      loadHistory(tab, Commits.of(entries), head, [], [], partial);
       assert.strictEqual(historyLoaded(tab), !partial);
       layOutHistory(tab, false, head.commit);
       return commitsMessage(tab, firstPage(tab, false), page(0, 25));
@@ -72,11 +74,11 @@ suite('Tab state', () => {
 
   test('lays out the history with merges collapsed, keeping the selection', () => {
     const tab = newTabState();
-    loadHistory(tab, history, { name: 'main', commit: 'c' }, []);
+    loadHistory(tab, Commits.of(history), { name: 'main', commit: 'c' }, []);
     tab.hash = 'a';
     const generation = layOutHistory(tab, true, 'c');
     assert.deepStrictEqual(
-      tab.history.map((entry) => entry.hash),
+      rowsOf(tab.history).map((entry) => entry.hash),
       ['c', 'a'],
     );
     assert.strictEqual(tab.index, 1);
@@ -86,17 +88,17 @@ suite('Tab state', () => {
 
   test('keeps a merged branch in its collapsed merge though a ref points at it, unless HEAD is there', () => {
     const tab = newTabState();
-    loadHistory(tab, history, { name: 'main', commit: 'c' }, [
+    loadHistory(tab, Commits.of(history), { name: 'main', commit: 'c' }, [
       { kind: 'branch', name: 'feature', commit: 'b' },
     ]);
     layOutHistory(tab, true, 'c');
     assert.deepStrictEqual(
-      tab.history.map((entry) => entry.hash),
+      rowsOf(tab.history).map((entry) => entry.hash),
       ['c', 'a'],
     );
     layOutHistory(tab, true, 'b');
     assert.deepStrictEqual(
-      tab.history.map((entry) => entry.hash),
+      rowsOf(tab.history).map((entry) => entry.hash),
       ['c', 'b', 'a'],
     );
   });
@@ -111,23 +113,23 @@ suite('Tab state', () => {
 
   test('expands a pull merge while merges are collapsed, as collapsing it would hide the merges that landed on the mainline, until it is toggled', () => {
     const tab = newTabState();
-    loadHistory(tab, pull, { name: 'main', commit: 'p' }, []);
+    loadHistory(tab, Commits.of(pull), { name: 'main', commit: 'p' }, []);
     layOutHistory(tab, true, 'p');
     assert.deepStrictEqual(
-      tab.history.map((entry) => entry.hash),
+      rowsOf(tab.history).map((entry) => entry.hash),
       ['p', 'd', 'm', 'base'],
     );
     toggleMerges(tab, ['p']);
     layOutHistory(tab, true, 'p');
     assert.deepStrictEqual(
-      tab.history.map((entry) => entry.hash),
+      rowsOf(tab.history).map((entry) => entry.hash),
       ['p', 'd', 'base'],
     );
   });
 
   test('expands the merges hiding a commit, though a pull merge among them was collapsed by hand', () => {
     const tab = newTabState();
-    loadHistory(tab, pull, { name: 'main', commit: 'p' }, []);
+    loadHistory(tab, Commits.of(pull), { name: 'main', commit: 'p' }, []);
     toggleMerges(tab, ['p']);
     layOutHistory(tab, true, 'p');
     expandMerges(tab, mergesHidingCommit(tab, 'f'), true);
@@ -139,14 +141,14 @@ suite('Tab state', () => {
     const tab = newTabState();
     loadHistory(
       tab,
-      [
+      Commits.of([
         { hash: 'outer', parents: ['a', 'inner'] },
         { hash: 'a', parents: ['base'] },
         { hash: 'inner', parents: ['b', 'x'] },
         { hash: 'b', parents: ['base'] },
         { hash: 'x', parents: ['base'] },
         { hash: 'base', parents: [] },
-      ],
+      ]),
       { name: 'main', commit: 'outer' },
       [],
     );
@@ -161,7 +163,7 @@ suite('Tab state', () => {
   test('knows whether the history is loaded, until it is forgotten', () => {
     const tab = newTabState();
     assert.strictEqual(historyLoaded(tab), false);
-    loadHistory(tab, history, { name: 'main', commit: 'c' }, []);
+    loadHistory(tab, Commits.of(history), { name: 'main', commit: 'c' }, []);
     assert.strictEqual(historyLoaded(tab), true);
     forgetHistory(tab);
     assert.strictEqual(historyLoaded(tab), false);
@@ -171,7 +173,7 @@ suite('Tab state', () => {
     const tab = newTabState();
     const main = { name: 'main', commit: 'c' };
     assert.strictEqual(refsKeepHistory(tab, main, [], false), false);
-    loadHistory(tab, history, main, [at('c')]);
+    loadHistory(tab, Commits.of(history), main, [at('c')]);
     assert.strictEqual(
       refsKeepHistory(tab, main, [at('c'), at('b')], false),
       true,
@@ -200,15 +202,18 @@ suite('Tab state', () => {
       message: 'On main: kept',
       untracked: undefined,
     };
-    loadHistory(tab, [{ hash: 's', parents: ['c'] }, ...history], main, [
-      at('c'),
-    ]);
+    loadHistory(
+      tab,
+      Commits.of([{ hash: 's', parents: ['c'] }, ...history]),
+      main,
+      [at('c')],
+    );
     assert.strictEqual(
       refsKeepHistory(tab, main, [at('c')], false, [stash]),
       true,
     );
     assert.strictEqual(refsKeepHistory(tab, main, [at('c')], false), false);
-    loadHistory(tab, history, main, [at('c')]);
+    loadHistory(tab, Commits.of(history), main, [at('c')]);
     assert.strictEqual(
       refsKeepHistory(tab, main, [at('c')], false, [stash]),
       false,
@@ -223,7 +228,7 @@ suite('Tab state', () => {
     const tab = newTabState();
     loadHistory(
       tab,
-      [{ hash: 's', parents: ['c'] }, ...history],
+      Commits.of([{ hash: 's', parents: ['c'] }, ...history]),
       { name: 'main', commit: 'c' },
       [at('c')],
       [
@@ -258,7 +263,7 @@ suite('Tab state', () => {
 
   test('finds the first parent of the selected commit, past the commits its merge brought in', () => {
     const tab = newTabState();
-    loadHistory(tab, history, { name: 'main', commit: 'c' }, []);
+    loadHistory(tab, Commits.of(history), { name: 'main', commit: 'c' }, []);
     layOutHistory(tab, false, 'c');
     const parent = (selection: string) => {
       select(tab, selection);
@@ -359,7 +364,7 @@ suite('Tab state', () => {
 
   test('keeps the working tree selected at index -1 when the history is laid out again', () => {
     const tab = newTabState();
-    loadHistory(tab, history, { name: 'main', commit: 'c' }, []);
+    loadHistory(tab, Commits.of(history), { name: 'main', commit: 'c' }, []);
     tab.hash = workingTreeHash;
     layOutHistory(tab, true, 'c');
     assert.strictEqual(tab.index, -1);
@@ -367,7 +372,7 @@ suite('Tab state', () => {
 
   test('lets the keys go on from the merge that collapsing hides the selected commit in', () => {
     const tab = newTabState();
-    loadHistory(tab, history, { name: 'main', commit: 'c' }, []);
+    loadHistory(tab, Commits.of(history), { name: 'main', commit: 'c' }, []);
     tab.hash = 'b';
     layOutHistory(tab, true, 'c');
     assert.strictEqual(tab.index, undefined);
@@ -383,7 +388,7 @@ suite('Tab state', () => {
 
   test('lets the keys go on from the merge that collapsing hides the commit compared to in', () => {
     const tab = newTabState();
-    loadHistory(tab, pull, { name: 'main', commit: 'p' }, []);
+    loadHistory(tab, Commits.of(pull), { name: 'main', commit: 'p' }, []);
     layOutHistory(tab, false, 'p');
     select(tab, comparisonOf('base', 'f'));
     toggleMerges(tab, ['p']);
@@ -438,7 +443,7 @@ suite('Tab state', () => {
 
   test('replays no files, diff or tree of a commit no longer selected', () => {
     const tab = newTabState();
-    loadHistory(tab, history, undefined, []);
+    loadHistory(tab, Commits.of(history), undefined, []);
     select(tab, 'a');
     keep(tab.shown, { type: 'files', hash: 'a', files: [] });
     keep(tab.shown, { type: 'diff', hash: 'a', path: 'x', patch: '' });
@@ -452,7 +457,7 @@ suite('Tab state', () => {
 
   test('lists no step to the commit shown in the dropdowns', () => {
     const tab = newTabState();
-    loadHistory(tab, history, undefined, []);
+    loadHistory(tab, Commits.of(history), undefined, []);
     tab.hash = 'a';
     tab.navigation = { back: ['b', 'a'], forward: [] };
     assert.deepStrictEqual(nearestSteps(tab), { back: ['b'], forward: [] });

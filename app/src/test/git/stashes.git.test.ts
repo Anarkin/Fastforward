@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { listHistory } from '../../git/history';
 import { listStashes, stashFiles, stashPatch } from '../../git/stashes';
+import { entriesOf } from '../history/historyFixtures';
 import {
   removeFolder,
   tempFolder,
@@ -54,7 +55,9 @@ suite('Git stashes', function () {
     const stashes = (await listStashes(temp.gitPath, temp.root)).map(
       (stash) => stash.commit,
     );
-    const history = await listHistory(temp.gitPath, temp.root, false, stashes);
+    const history = entriesOf(
+      await listHistory(temp.gitPath, temp.root, false, stashes),
+    );
     assert.deepStrictEqual(
       new Map(history.map((entry) => [entry.hash, entry.parents])),
       new Map([
@@ -64,7 +67,7 @@ suite('Git stashes', function () {
       ]),
     );
     assert.deepStrictEqual(
-      await listHistory(temp.gitPath, temp.root, true, stashes),
+      entriesOf(await listHistory(temp.gitPath, temp.root, true, stashes)),
       [{ hash: base, parents: [] }],
     );
   });

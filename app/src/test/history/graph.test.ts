@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import { Graph } from '../../history/graph';
+import { graphOf } from './historyFixtures';
 import { graphColors, maxLanes, type GraphRow } from '../../shared/protocol';
 
 function describe(row: GraphRow): string {
@@ -31,7 +31,7 @@ function colors(row: GraphRow): string[] {
 }
 
 function lanesReached(tips: number): number {
-  const [row] = new Graph([
+  const [row] = graphOf([
     ...Array.from({ length: tips }, (_, index) => ({
       hash: `t${index}`,
       parents: ['c'],
@@ -55,7 +55,7 @@ const laidOutBefore = (end: number) =>
 
 suite('Graph', () => {
   test('keeps a straight history in one lane', () => {
-    const graph = new Graph([
+    const graph = graphOf([
       { hash: 'c', parents: ['b'] },
       { hash: 'b', parents: ['a'] },
       { hash: 'a', parents: [] },
@@ -69,7 +69,7 @@ suite('Graph', () => {
   });
 
   test('opens a lane for a merged branch and joins it at the fork', () => {
-    const graph = new Graph([
+    const graph = graphOf([
       { hash: 'm', parents: ['a', 'b'] },
       { hash: 'a', parents: ['c'] },
       { hash: 'b', parents: ['c'] },
@@ -85,7 +85,7 @@ suite('Graph', () => {
   });
 
   test("keeps each lane's color, and draws a branch joining at the fork in its own color", () => {
-    const rows = new Graph([
+    const rows = graphOf([
       { hash: 'm', parents: ['a', 'b'] },
       { hash: 'a', parents: ['c'] },
       { hash: 'b', parents: ['c'] },
@@ -100,7 +100,7 @@ suite('Graph', () => {
   });
 
   test('starts a lane for a branch tip nothing is waiting for', () => {
-    const graph = new Graph([
+    const graph = graphOf([
       { hash: 'a', parents: ['c'] },
       { hash: 'b', parents: ['c'] },
       { hash: 'c', parents: [] },
@@ -113,7 +113,7 @@ suite('Graph', () => {
   });
 
   test('joins a merge to the lane already waiting for its parent', () => {
-    const graph = new Graph([
+    const graph = graphOf([
       { hash: 'm', parents: ['a', 'b'] },
       { hash: 'n', parents: ['a', 'b'] },
       { hash: 'a', parents: ['c'] },
@@ -131,7 +131,7 @@ suite('Graph', () => {
   });
 
   test('draws an octopus merge to a lane per parent', () => {
-    const graph = new Graph([
+    const graph = graphOf([
       { hash: 'o', parents: ['a', 'b', 'c'] },
       { hash: 'a', parents: ['d'] },
       { hash: 'b', parents: ['d'] },
@@ -143,7 +143,7 @@ suite('Graph', () => {
   });
 
   test('answers a page past the end with no rows', () => {
-    const graph = new Graph([
+    const graph = graphOf([
       { hash: 'c', parents: ['b'] },
       { hash: 'b', parents: ['a'] },
       { hash: 'a', parents: [] },
@@ -162,15 +162,15 @@ suite('Graph', () => {
             ? [`c${index + 1}`, `c${index + 3}`]
             : [`c${index + 1}`],
     }));
-    const full = new Graph(history, { checkpointEvery: 1000 }).rows(0, 50);
-    const paged = new Graph(history, { checkpointEvery: 7 });
+    const full = graphOf(history, { checkpointEvery: 1000 }).rows(0, 50);
+    const paged = graphOf(history, { checkpointEvery: 7 });
     assert.deepStrictEqual(paged.rows(0, 50), full);
     assert.deepStrictEqual(paged.rows(23, 10), full.slice(23, 33));
   });
 
   test('lays out no row past the page asked for', () => {
-    assert.strictEqual(new Graph(laidOutBefore(100)).rows(0, 100).length, 100);
-    const graph = new Graph(laidOutBefore(199));
+    assert.strictEqual(graphOf(laidOutBefore(100)).rows(0, 100).length, 100);
+    const graph = graphOf(laidOutBefore(199));
     assert.strictEqual(graph.rows(0, 100).length, 100);
     assert.strictEqual(graph.rows(99, 100).length, 100);
   });
@@ -180,7 +180,7 @@ suite('Graph', () => {
       hash: `t${index}`,
       parents: ['c'],
     }));
-    const row = new Graph([...tips, { hash: 'c', parents: [] }]).rows(39, 1)[0];
+    const row = graphOf([...tips, { hash: 'c', parents: [] }]).rows(39, 1)[0];
     assert.strictEqual(row.lane, 39);
     assert.ok(
       row.lines.every((line) => line.from < maxLanes && line.to < maxLanes),
@@ -210,7 +210,7 @@ suite('Graph', () => {
       hash: `t${index}`,
       parents: ['c'],
     }));
-    const row = new Graph([...tips, { hash: 'c', parents: [] }]).rows(19, 1)[0];
+    const row = graphOf([...tips, { hash: 'c', parents: [] }]).rows(19, 1)[0];
     const folded = row.lines.filter(
       (line) => line.bottom && line.from === maxLanes - 1,
     );
@@ -226,7 +226,7 @@ suite('Graph', () => {
   });
 
   test('leads the working tree to HEAD, moving what is built on it aside', () => {
-    const graph = new Graph(
+    const graph = graphOf(
       [
         { hash: 'b', parents: ['a'] },
         { hash: 'a', parents: [] },
@@ -241,7 +241,7 @@ suite('Graph', () => {
   });
 
   test('draws a stash like the working tree, dashed down to its base', () => {
-    const graph = new Graph(
+    const graph = graphOf(
       [
         { hash: 's', parents: ['b'] },
         { hash: 'b', parents: ['a'] },
@@ -262,7 +262,7 @@ suite('Graph', () => {
   });
 
   test('keeps a merge of HEAD out of the dashed line leading the working tree to it', () => {
-    const graph = new Graph(
+    const graph = graphOf(
       [
         { hash: 'm', parents: ['p', 'h'] },
         { hash: 'h', parents: ['b'] },
@@ -278,7 +278,7 @@ suite('Graph', () => {
   });
 
   test('keeps a merge of a stash base out of the dashed line leading the stash to it', () => {
-    const graph = new Graph(
+    const graph = graphOf(
       [
         { hash: 's', parents: ['b'] },
         { hash: 'm', parents: ['a', 'b'] },
@@ -296,13 +296,13 @@ suite('Graph', () => {
   });
 
   test('leaves the working tree alone when HEAD is not shown', () => {
-    const graph = new Graph([{ hash: 'a', parents: [] }], { head: 'x' });
+    const graph = graphOf([{ hash: 'a', parents: [] }], { head: 'x' });
     assert.strictEqual(describe(graph.workingTreeRow), '0: ');
     assert.deepStrictEqual(graph.rows(0, 1).map(describe), ['0: ']);
   });
 
   test('leads the working tree down past the first rows of a history still loading, to HEAD below them', () => {
-    const whole = new Graph(
+    const whole = graphOf(
       [
         { hash: 'c', parents: ['b'] },
         { hash: 'h', parents: ['b'] },
@@ -310,7 +310,7 @@ suite('Graph', () => {
       ],
       { head: 'h' },
     );
-    const first = new Graph([{ hash: 'c', parents: ['b'] }], {
+    const first = graphOf([{ hash: 'c', parents: ['b'] }], {
       head: 'h',
       partial: true,
     });

@@ -1,12 +1,13 @@
 import * as assert from 'node:assert';
 import type { HistoryEntry } from '../../git/history';
+import { Commits } from '../../history/commits';
 import {
   headsOf,
-  linkHistory,
   mergesHiding,
-  positionsOf,
   showHistory,
+  type ShownEntry,
 } from '../../history/merges';
+import { rowsOf } from './historyFixtures';
 
 const history = [
   { hash: 'm', parents: ['a', 'b2'] },
@@ -25,11 +26,18 @@ const pull = [
   { hash: 'base', parents: [] },
 ];
 
-const expandedIfPull = (_: string, isPull: boolean) => isPull;
+function shownOf(
+  entries: readonly HistoryEntry[],
+  tips: ReadonlySet<string>,
+  isExpanded: (hash: string, isPull: boolean) => boolean,
+  partial?: boolean,
+): ShownEntry[] {
+  return rowsOf(showHistory(Commits.of(entries), tips, isExpanded, partial));
+}
 
 function pulled(entries: readonly HistoryEntry[]): string[] {
   const found: string[] = [];
-  showHistory(entries, new Set([entries[0].hash]), (hash, isPull) => {
+  shownOf(entries, new Set([entries[0].hash]), (hash, isPull) => {
     if (isPull) {
       found.push(hash);
     }
@@ -40,7 +48,7 @@ function pulled(entries: readonly HistoryEntry[]): string[] {
 
 suite('Merges shown', () => {
   test('hides what a collapsed merge brought in', () => {
-    const shown = showHistory(history, new Set(['m']), () => false);
+    const shown = shownOf(history, new Set(['m']), () => false);
     assert.deepStrictEqual(shown, [
       { hash: 'm', parents: ['a'], merge: 'collapsed', hidden: 2 },
       { hash: 'a', parents: ['c'] },
@@ -57,7 +65,7 @@ suite('Merges shown', () => {
       { hash: 'a', parents: ['z'] },
     ];
     const counts = (partial: boolean) =>
-      showHistory(loading, new Set(['m2']), () => false, partial)
+      shownOf(loading, new Set(['m2']), () => false, partial)
         .filter((entry) => entry.merge)
         .map((entry) => [entry.hash, entry.hidden]);
     assert.deepStrictEqual(counts(true), [
@@ -70,30 +78,6 @@ suite('Merges shown', () => {
     ]);
   });
 
-  test('links a long history a slice at a time, letting other work run between them, and lays it out as if linked at once', async () => {
-    const long = Array.from({ length: 20_000 }, (_, at) => ({
-      hash: `c${at}`,
-      parents: at % 7 === 0 ? [`c${at + 1}`, `c${at + 3}`] : [`c${at + 1}`],
-    }));
-    const linked = long.map((entry) => ({ ...entry }));
-    let ran = false;
-    setImmediate(() => {
-      ran = true;
-    });
-    await linkHistory(
-      linked,
-      new Map(linked.map((entry, at) => [entry.hash, at])),
-      0,
-    );
-    assert.ok(ran);
-    const tips = new Set(['c0']);
-    assert.deepStrictEqual(
-      showHistory(linked, tips, expandedIfPull),
-      showHistory(long, tips, expandedIfPull),
-    );
-    assert.deepStrictEqual(headsOf(linked), headsOf(long));
-  });
-
   test('counts a commit merged twice only for the merge that brought it in first', () => {
     const twice = [
       { hash: 'm2', parents: ['m1', 'd2'] },
@@ -102,7 +86,7 @@ suite('Merges shown', () => {
       { hash: 'd1', parents: ['base'] },
       { hash: 'base', parents: [] },
     ];
-    const shown = showHistory(twice, new Set(['m2']), () => false);
+    const shown = shownOf(twice, new Set(['m2']), () => false);
     assert.deepStrictEqual(
       shown.map((entry) => [entry.hash, entry.merge, entry.hidden]),
       [
@@ -114,7 +98,7 @@ suite('Merges shown', () => {
   });
 
   test('shows the merged branch of an expanded merge', () => {
-    const shown = showHistory(history, new Set(['m']), (hash) => hash === 'm');
+    const shown = shownOf(history, new Set(['m']), (hash) => hash === 'm');
     assert.deepStrictEqual(
       shown.map((entry) => entry.hash),
       ['m', 'b2', 'a', 'b1', 'c'],
@@ -166,7 +150,7 @@ suite('Merges shown', () => {
   });
 
   test('shows every tip it is given', () => {
-    const shown = showHistory(history, new Set(['m', 'b1']), () => false);
+    const shown = shownOf(history, new Set(['m', 'b1']), () => false);
     assert.deepStrictEqual(
       shown.map((entry) => entry.hash),
       ['m', 'a', 'b1', 'c'],
@@ -179,14 +163,14 @@ suite('Merges shown', () => {
       { hash: 'a', parents: ['y'] },
     ];
     assert.deepStrictEqual(
-      showHistory(partial, new Set(['m']), () => false),
+      shownOf(partial, new Set(['m']), () => false),
       [
         { hash: 'm', parents: ['a'], merge: 'collapsed', hidden: 1 },
         { hash: 'a', parents: ['y'] },
       ],
     );
     assert.deepStrictEqual(
-      showHistory(partial, new Set(['m']), () => true)[0].parents,
+      shownOf(partial, new Set(['m']), () => true)[0].parents,
       ['a', 'x'],
     );
   });
@@ -194,8 +178,11 @@ suite('Merges shown', () => {
 
 suite('Positions shown', () => {
   test('places each shown commit, and none hidden or outside the history', () => {
-    const shown = showHistory(history, new Set(['m']), () => false);
-    const positions = positionsOf(history, shown);
+    const { positions } = showHistory(
+      Commits.of(history),
+      new Set(['m']),
+      () => false,
+    );
     assert.deepStrictEqual(
       ['m', 'a', 'c', 'b1', 'z'].map((hash) => positions.get(hash)),
       [0, 1, 2, undefined, undefined],
@@ -207,7 +194,9 @@ suite('Positions shown', () => {
 
 suite('Branch heads', () => {
   test('finds unmerged tips, not the tips of merged branches', () => {
-    const heads = headsOf([{ hash: 'u', parents: ['c'] }, ...history]);
+    const heads = headsOf(
+      Commits.of([{ hash: 'u', parents: ['c'] }, ...history]),
+    );
     assert.deepStrictEqual([...heads].toSorted(), ['m', 'u']);
   });
 });
@@ -215,12 +204,14 @@ suite('Branch heads', () => {
 suite('Merges hiding a commit', () => {
   test('finds the merge that brought a hidden commit in', () => {
     const shown = new Set(['m', 'a', 'c']);
-    assert.deepStrictEqual(mergesHiding(history, shown, 'b1'), ['m']);
+    assert.deepStrictEqual(mergesHiding(Commits.of(history), shown, 'b1'), [
+      'm',
+    ]);
   });
 
   test('finds nothing for a shown commit', () => {
     const shown = new Set(['m', 'a', 'c']);
-    assert.deepStrictEqual(mergesHiding(history, shown, 'a'), []);
+    assert.deepStrictEqual(mergesHiding(Commits.of(history), shown, 'a'), []);
   });
 
   test('finds nested merges on the way', () => {
@@ -230,9 +221,9 @@ suite('Merges hiding a commit', () => {
       ...history,
     ];
     const shown = new Set(['n', 'x', 'c']);
-    assert.deepStrictEqual(mergesHiding(nested, shown, 'b1').toSorted(), [
-      'm',
-      'n',
-    ]);
+    assert.deepStrictEqual(
+      mergesHiding(Commits.of(nested), shown, 'b1').toSorted(),
+      ['m', 'n'],
+    );
   });
 });

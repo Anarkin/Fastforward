@@ -16,6 +16,7 @@
 - On Linux, the working tree and the git folder are watched folder by folder, as Node's recursive `fs.watch` there walks the whole tree synchronously, with one inotify watch per file
 - The commit list is read whole up front with `git rev-list` and kept by the main process per worktree, so the list knows its full size and locations can jump to any commit's position; it took 0.5 s for 190k commits
 - The commit list is parsed while git sends it and linked a slice at a time, as the main process also passes the window's input on to the page, so working on 1.5 million commits at once froze the whole window for 2.4 s
+- The commit list keeps its hashes as bytes in one buffer with a hash table of its own, and its parents and shown rows as numbers, rather than an object and strings per commit, as those took 693 MB for 1.5 million commits against 98 MB
 - When a repository last fetched, or failed to, is recorded by the app for the repository and all its worktrees, rather than read from `FETCH_HEAD`, as git rewrites `FETCH_HEAD` even when every remote fails, and each worktree has a `FETCH_HEAD` of its own; fetches made outside the app are not counted
 
 ### Syntax

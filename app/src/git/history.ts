@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { StringDecoder } from 'node:string_decoder';
-import { linkHistory } from '../history/merges';
+import { Commits, CommitsBuilder } from '../history/commits';
 import { isHashPrefix } from '../shared/hashes';
 import type {
   CommitInfo,
@@ -130,9 +130,9 @@ export async function listHistory(
   cwd: string,
   solo = false,
   stashes: readonly string[] = [],
-): Promise<readonly HistoryEntry[]> {
+): Promise<Commits> {
   const tips = solo ? [] : stashes;
-  const reader = new HistoryReader(tips);
+  const reader = new CommitsBuilder(tips);
   await runGitBytes(
     gitPath,
     cwd,
@@ -146,9 +146,7 @@ export async function listHistory(
     ],
     { input: hashLines(tips), onOutput: (chunk) => reader.add(chunk) },
   );
-  const history = reader.end();
-  await linkHistory(history, reader.index);
-  return history;
+  return reader.finish();
 }
 
 const recentCommits = 5000;
@@ -160,8 +158,8 @@ export async function listRecentHistory(
   stashes: readonly string[] = [],
   count = recentCommits,
   signal?: AbortSignal,
-): Promise<{ history: readonly HistoryEntry[]; whole: boolean }> {
-  const reader = new HistoryReader(stashes);
+): Promise<{ history: Commits; whole: boolean }> {
+  const reader = new CommitsBuilder(stashes);
   await runGitBytes(
     gitPath,
     cwd,
@@ -181,7 +179,7 @@ export async function listRecentHistory(
       onOutput: (chunk) => reader.add(chunk),
     },
   );
-  return { history: reader.end(), whole: reader.read < count };
+  return { history: reader.finishNow(), whole: reader.read < count };
 }
 
 const recentSeconds = 60 * 24 * 60 * 60;
@@ -195,58 +193,6 @@ export function recentTips(dates: ReadonlyMap<string, number>): string[] {
 
 function hashLines(hashes: readonly string[]): string {
   return hashes.map((hash) => `${hash}\n`).join('');
-}
-
-export class HistoryReader {
-  readonly index = new Map<string, number>();
-  read = 0;
-  private readonly history: HistoryEntry[] = [];
-  private readonly stashes: ReadonlySet<string>;
-  private readonly hidden = new Set<string>();
-  private readonly decoder = new StringDecoder('utf8');
-  private pending = '';
-
-  constructor(stashes: readonly string[] = []) {
-    this.stashes = new Set(stashes);
-  }
-
-  add(chunk: Buffer): void {
-    const text = this.pending + this.decoder.write(chunk);
-    const end = text.lastIndexOf('\n');
-    if (end === -1) {
-      this.pending = text;
-      return;
-    }
-    this.pending = text.slice(end + 1);
-    for (const line of text.slice(0, end).split('\n')) {
-      this.addLine(line);
-    }
-  }
-
-  end(): HistoryEntry[] {
-    this.addLine(this.pending + this.decoder.end());
-    this.pending = '';
-    return this.history;
-  }
-
-  private addLine(line: string): void {
-    if (!line) {
-      return;
-    }
-    this.read++;
-    const [hash, ...parents] = line.split(' ');
-    if (this.hidden.has(hash)) {
-      return;
-    }
-    if (this.stashes.has(hash)) {
-      for (const parent of parents.slice(1)) {
-        this.hidden.add(parent);
-      }
-      parents.length = Math.min(parents.length, 1);
-    }
-    this.index.set(hash, this.history.length);
-    this.history.push({ hash, parents });
-  }
 }
 
 function historyRefs(solo: boolean): string[] {

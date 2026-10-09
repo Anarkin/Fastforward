@@ -15,6 +15,7 @@ import {
 } from '../../git/history';
 import { runGit } from '../../git/run';
 import { renamingRepository } from '../gitFixtures';
+import { entriesOf } from '../history/historyFixtures';
 import {
   commitText,
   objectId,
@@ -58,8 +59,8 @@ suite('Git history', function () {
       sides.push(side);
     }
     try {
-      const all = await listHistory(gitPath, cwd);
-      const solo = await listHistory(gitPath, cwd, true);
+      const all = entriesOf(await listHistory(gitPath, cwd));
+      const solo = entriesOf(await listHistory(gitPath, cwd, true));
       for (const [index, side] of sides.entries()) {
         assert.ok(
           all.some((entry) => entry.hash === side),
@@ -79,24 +80,34 @@ suite('Git history', function () {
     const side = (
       await temp.git('commit-tree', tree, '-p', first, '-m', 'side')
     ).trim();
-    const solo = await listHistory(gitPath, cwd, true);
-    assert.deepStrictEqual(await listRecentHistory(gitPath, cwd, [], [], 2), {
+    const solo = entriesOf(await listHistory(gitPath, cwd, true));
+    const recent = async (tips: string[], count: number) => {
+      const { history, whole } = await listRecentHistory(
+        gitPath,
+        cwd,
+        tips,
+        [],
+        count,
+      );
+      return { history: entriesOf(history), whole };
+    };
+    assert.deepStrictEqual(await recent([], 2), {
       history: solo.slice(0, 2),
       whole: false,
     });
-    const { history } = await listRecentHistory(gitPath, cwd, [side], [], 2);
+    const { history } = await recent([side], 2);
     assert.deepStrictEqual(
       history.map((entry) => entry.hash),
       [side, solo[0].hash],
     );
-    assert.deepStrictEqual(await listRecentHistory(gitPath, cwd, [], [], 4), {
+    assert.deepStrictEqual(await recent([], 4), {
       history: solo,
       whole: true,
     });
   });
 
   test('lists the history, its commits, and the files and patch of its root commit, which has no parent to diff against', async () => {
-    const history = await listHistory(gitPath, cwd);
+    const history = entriesOf(await listHistory(gitPath, cwd));
     assert.strictEqual(history.length, 3);
     assert.ok(history.every((entry) => entry.hash.length === 40));
 
@@ -317,7 +328,7 @@ suite('Git history of a repository without commits', function () {
 
   test('has no HEAD and an empty history', async () => {
     assert.strictEqual(await headCommit(gitPath, cwd), undefined);
-    assert.deepStrictEqual(await listHistory(gitPath, cwd), []);
+    assert.deepStrictEqual(entriesOf(await listHistory(gitPath, cwd)), []);
   });
 });
 

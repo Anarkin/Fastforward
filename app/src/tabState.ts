@@ -1,17 +1,15 @@
-import type { HistoryEntry } from './git/history';
 import type { Head } from './git/repository';
 import type { Stash } from './git/stashes';
 import type { WorkingTree } from './git/workingTree';
+import { Commits } from './history/commits';
 import { Graph } from './history/graph';
 import {
   headsOf,
-  inHistory,
   mergeExpanded,
   mergesHiding,
-  positionsOf,
   showHistory,
   type Positions,
-  type ShownEntry,
+  type Shown as ShownHistory,
 } from './history/merges';
 import { noNavigation, reachable, type Navigation } from './history/navigation';
 import { decoratedCommits, decorations, fingerprint } from './refs';
@@ -41,7 +39,7 @@ export interface TabState {
   changedFiles: Map<string, FileChange>;
   stagedFiles: Map<string, FileChange>;
   workingTree: WorkingTree | undefined;
-  fullHistory: readonly HistoryEntry[];
+  fullHistory: Commits;
   partial: boolean;
   subjects: Map<string, string>;
   heads: Set<string>;
@@ -53,7 +51,7 @@ export interface TabState {
   navigation: Navigation;
   decorated: Set<string>;
   toggledMerges: Set<string>;
-  history: readonly ShownEntry[];
+  history: ShownHistory;
   positions: Positions;
   generation: number;
   graph: Graph;
@@ -89,7 +87,7 @@ export function newTabState(): TabState {
     changedFiles: new Map(),
     stagedFiles: new Map(),
     workingTree: undefined,
-    fullHistory: [],
+    fullHistory: noCommits,
     partial: false,
     subjects: new Map(),
     heads: new Set(),
@@ -100,19 +98,22 @@ export function newTabState(): TabState {
     opened: false,
     decorated: new Set(),
     toggledMerges: new Set(),
-    history: [],
-    positions: new Map(),
+    history: noneShown,
+    positions: noneShown.positions,
     generation: 0,
-    graph: new Graph([]),
+    graph: new Graph(noneShown),
     shownStale: false,
     shown: {},
     navigation: noNavigation,
   };
 }
 
+const noCommits = Commits.of([]);
+const noneShown = showHistory(noCommits, new Set(), () => false);
+
 export function loadHistory(
   tab: TabState,
-  fullHistory: readonly HistoryEntry[],
+  fullHistory: Commits,
   head: Head | undefined,
   refs: readonly RefInfo[],
   stashes: readonly Stash[] = [],
@@ -154,7 +155,7 @@ export function refsKeepHistory(
   }
   return (
     historyLoaded(tab) &&
-    [...tips].every((tip) => inHistory(tab.fullHistory, tip)) &&
+    [...tips].every((tip) => tab.fullHistory.has(tip)) &&
     [...tab.heads].every((commit) => tips.has(commit))
   );
 }
@@ -182,12 +183,18 @@ export function layOutHistory(
     isExpanded(tab, collapse),
     tab.partial,
   );
-  const history = tab.partial ? shown.slice(0, partialRows) : shown;
+  const history = tab.partial ? shown.firstRows(partialRows) : shown;
   tab.history = history;
-  tab.positions = positionsOf(tab.fullHistory, history);
+  tab.positions = history.positions;
+  const commits = tab.fullHistory;
   tab.graph = new Graph(history, {
-    head,
-    stashes: new Set(tab.stashes.keys()),
+    head:
+      head === undefined
+        ? undefined
+        : (commits.indexOf(head) ?? (tab.partial ? commits.size : undefined)),
+    stashes: new Set(
+      [...tab.stashes.keys()].flatMap((stash) => commits.indexOf(stash) ?? []),
+    ),
     partial: tab.partial,
   });
   tab.shownStale = false;
@@ -235,7 +242,7 @@ function keysFrom(tab: TabState): number | undefined {
   if (
     tab.index !== undefined ||
     hash === undefined ||
-    !inHistory(tab.fullHistory, hash)
+    !tab.fullHistory.has(hash)
   ) {
     return undefined;
   }
@@ -299,9 +306,12 @@ export function parentOf(tab: TabState): string | undefined {
   if (tab.hash === workingTreeHash) {
     return tab.headCommit;
   }
-  const entry = tab.index === undefined ? undefined : tab.history[tab.index];
-  return entry !== undefined && entry.hash === tab.hash
-    ? entry.parents[0]
+  const row = tab.index;
+  return row !== undefined &&
+    row >= 0 &&
+    row < tab.history.length &&
+    tab.history.hashAt(row) === tab.hash
+    ? tab.history.firstParent(row)
     : undefined;
 }
 
@@ -382,7 +392,7 @@ export function replayOf(tab: TabState): ToWebview[] {
 export function stillThere(tab: TabState): (hash: string) => boolean {
   return (hash) =>
     sidesOf(hash).every(
-      (side) => side === workingTreeHash || inHistory(tab.fullHistory, side),
+      (side) => side === workingTreeHash || tab.fullHistory.has(side),
     );
 }
 

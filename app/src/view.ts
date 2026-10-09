@@ -25,8 +25,8 @@ import {
   logCommits,
   recentTips,
   searchCommits,
-  type HistoryEntry,
 } from './git/history';
+import type { Commits } from './history/commits';
 import {
   isFolder,
   readRefs,
@@ -1796,7 +1796,7 @@ export class FastforwardView {
   private listFullHistory(
     context: Context,
     stashes: readonly string[],
-  ): Promise<readonly HistoryEntry[]> {
+  ): Promise<Commits> {
     return listHistory(
       context.gitPath,
       context.root,
@@ -1811,7 +1811,7 @@ export class FastforwardView {
     stashes: readonly string[],
     signal: AbortSignal,
     count?: number,
-  ): Promise<readonly HistoryEntry[] | undefined> {
+  ): Promise<Commits | undefined> {
     const { history, whole } = await listRecentHistory(
       context.gitPath,
       context.root,
@@ -1863,9 +1863,7 @@ export class FastforwardView {
     const commits = await logCommits(
       context.gitPath,
       context.root,
-      tab.history
-        .slice(page.start, page.start + 2 * commitPageSize)
-        .map((entry) => entry.hash),
+      tab.history.hashes(page.start, page.start + 2 * commitPageSize),
     ).catch((error: unknown) => {
       if (tab.generation === generation) {
         tab.shownStale = true;
@@ -1911,7 +1909,7 @@ export class FastforwardView {
     const commits = await logCommits(
       context.gitPath,
       context.root,
-      history.slice(start, start + count).map((entry) => entry.hash),
+      history.hashes(start, start + count),
     ).catch((error: unknown) => {
       if (!replaced()) {
         context.post({

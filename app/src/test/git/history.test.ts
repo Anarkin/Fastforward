@@ -1,6 +1,5 @@
 import * as assert from 'node:assert';
 import {
-  HistoryReader,
   matchesCommit,
   parseHistory,
   parseLog,
@@ -62,44 +61,6 @@ suite('Git rev-list parser', () => {
       { hash: 'aaa', parents: ['bbb', 'ccc'] },
       { hash: 'bbb', parents: [] },
     ]);
-  });
-});
-
-function read(chunks: readonly string[], stashes?: readonly string[]) {
-  const reader = new HistoryReader(stashes);
-  for (const chunk of chunks) {
-    reader.add(Buffer.from(chunk));
-  }
-  return reader.end();
-}
-
-suite('Git rev-list reader', () => {
-  test('reads each commit and its parents as git sends them, in chunks split anywhere', () => {
-    const output = 'aaa bbb ccc\nbbb\nccc bbb\n';
-    for (let split = 0; split <= output.length; split++) {
-      assert.deepStrictEqual(
-        read([output.slice(0, split), output.slice(split)]),
-        [
-          { hash: 'aaa', parents: ['bbb', 'ccc'] },
-          { hash: 'bbb', parents: [] },
-          { hash: 'ccc', parents: ['bbb'] },
-        ],
-      );
-    }
-    assert.deepStrictEqual(read(['aaa\nbbb']), [
-      { hash: 'aaa', parents: [] },
-      { hash: 'bbb', parents: [] },
-    ]);
-  });
-
-  test('keeps each stash on its base alone, leaving out the commits git keeps its index and untracked files in', () => {
-    const output = 's b i u\ni b\nu\nb a\na\n';
-    assert.deepStrictEqual(read([output], ['s']), [
-      { hash: 's', parents: ['b'] },
-      { hash: 'b', parents: ['a'] },
-      { hash: 'a', parents: [] },
-    ]);
-    assert.strictEqual(read([output]).length, 5);
   });
 });
 

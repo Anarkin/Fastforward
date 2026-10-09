@@ -4,10 +4,24 @@ import {
   type GraphLine,
   type GraphRow,
 } from '../shared/protocol';
-import type { ShownEntry } from './merges';
+
+export interface GraphSource {
+  readonly length: number;
+  key(row: number): number;
+  parents(row: number): readonly number[];
+  merge(row: number): 'collapsed' | 'expanded' | undefined;
+  hidden(row: number): number | undefined;
+}
+
+interface GraphEntry {
+  readonly key: number;
+  readonly parents: readonly number[];
+  readonly merge?: 'collapsed' | 'expanded';
+  readonly hidden?: number;
+}
 
 interface Lanes {
-  readonly hashes: (string | undefined)[];
+  readonly keys: (number | undefined)[];
   readonly colors: number[];
   readonly dashed: boolean[];
   nextColor: number;
@@ -15,21 +29,21 @@ interface Lanes {
 
 function copy(lanes: Lanes): Lanes {
   return {
-    hashes: [...lanes.hashes],
+    keys: [...lanes.keys],
     colors: [...lanes.colors],
     dashed: [...lanes.dashed],
     nextColor: lanes.nextColor,
   };
 }
 
-const workingTree = '';
+const workingTree = -1;
 
-function allocate(lanes: Lanes, hash: string): number {
-  let lane = lanes.hashes.indexOf(undefined);
+function allocate(lanes: Lanes, key: number): number {
+  let lane = lanes.keys.indexOf(undefined);
   if (lane === -1) {
-    lane = lanes.hashes.length;
+    lane = lanes.keys.length;
   }
-  lanes.hashes[lane] = hash;
+  lanes.keys[lane] = key;
   lanes.colors[lane] = lanes.nextColor++;
   lanes.dashed[lane] = false;
   return lane;
@@ -37,8 +51,8 @@ function allocate(lanes: Lanes, hash: string): number {
 
 function step(
   lanes: Lanes,
-  entry: ShownEntry,
-  stashes: ReadonlySet<string>,
+  entry: GraphEntry,
+  stashes: ReadonlySet<number>,
   drawLines = true,
 ): GraphRow {
   const lines = new Map<string, GraphLine>();
@@ -61,35 +75,35 @@ function step(
     );
   };
 
-  let lane = lanes.hashes.indexOf(entry.hash);
+  let lane = lanes.keys.indexOf(entry.key);
   const opened = lane === -1;
   if (opened) {
-    lane = allocate(lanes, entry.hash);
+    lane = allocate(lanes, entry.key);
   }
   const color = lanes.colors[lane];
 
-  for (let from = 0; from < lanes.hashes.length; from++) {
-    const hash = lanes.hashes[from];
-    if (hash === entry.hash) {
+  for (let from = 0; from < lanes.keys.length; from++) {
+    const key = lanes.keys[from];
+    if (key === entry.key) {
       if (drawLines && !opened) {
         line(from, lane, lanes.colors[from], false);
       }
       if (from !== lane) {
-        lanes.hashes[from] = undefined;
+        lanes.keys[from] = undefined;
       }
-    } else if (drawLines && hash !== undefined) {
+    } else if (drawLines && key !== undefined) {
       line(from, from, lanes.colors[from], false);
     }
   }
 
   const [first, ...others] = entry.parents;
-  const stash = stashes.has(entry.hash);
-  lanes.hashes[lane] = first;
-  lanes.dashed[lane] = entry.hash === workingTree || stash;
+  const stash = stashes.has(entry.key);
+  lanes.keys[lane] = first;
+  lanes.dashed[lane] = entry.key === workingTree || stash;
   const started = new Set<number>();
   for (const parent of others) {
-    let to = lanes.hashes.findIndex(
-      (hash, index) => hash === parent && !lanes.dashed[index],
+    let to = lanes.keys.findIndex(
+      (key, index) => key === parent && !lanes.dashed[index],
     );
     if (to === -1) {
       to = allocate(lanes, parent);
@@ -100,22 +114,22 @@ function step(
     }
   }
   if (drawLines) {
-    lanes.hashes.forEach((hash, from) => {
-      if (hash !== undefined && !started.has(from)) {
+    lanes.keys.forEach((key, from) => {
+      if (key !== undefined && !started.has(from)) {
         line(from, from, lanes.colors[from], true);
       }
     });
   }
 
   while (
-    lanes.hashes.length > 0 &&
-    lanes.hashes[lanes.hashes.length - 1] === undefined
+    lanes.keys.length > 0 &&
+    lanes.keys[lanes.keys.length - 1] === undefined
   ) {
-    lanes.hashes.pop();
+    lanes.keys.pop();
     lanes.colors.pop();
     lanes.dashed.pop();
   }
-  return entry.hash === workingTree
+  return entry.key === workingTree
     ? { lane, color, lines: [...lines.values()], workingTree: true }
     : {
         lane,
@@ -128,49 +142,56 @@ function step(
 }
 
 function noLanes(): Lanes {
-  return { hashes: [], colors: [], dashed: [], nextColor: 0 };
+  return { keys: [], colors: [], dashed: [], nextColor: 0 };
+}
+
+function hasKey(source: GraphSource, key: number): boolean {
+  for (let row = 0; row < source.length; row++) {
+    if (source.key(row) === key) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export class Graph {
   private readonly checkpoints: Lanes[] = [];
-  private readonly entries: readonly ShownEntry[];
   private readonly checkpointEvery: number;
   private readonly lanes = noLanes();
   private reached = 0;
-  private readonly stashes: ReadonlySet<string>;
+  private readonly stashes: ReadonlySet<number>;
+  private readonly workingTreeEntry: GraphEntry;
   readonly workingTreeRow: GraphRow;
 
   constructor(
-    history: readonly ShownEntry[],
+    private readonly source: GraphSource,
     {
       head,
       stashes = new Set(),
       checkpointEvery = 100,
       partial = false,
     }: {
-      head?: string;
-      stashes?: ReadonlySet<string>;
+      head?: number;
+      stashes?: ReadonlySet<number>;
       checkpointEvery?: number;
       partial?: boolean;
     } = {},
   ) {
-    const shown =
-      head !== undefined &&
-      (partial || history.some((entry) => entry.hash === head));
-    this.entries = [
-      { hash: workingTree, parents: shown ? [head] : [] },
-      ...history,
-    ];
+    const shown = head !== undefined && (partial || hasKey(source, head));
+    this.workingTreeEntry = {
+      key: workingTree,
+      parents: shown ? [head] : [],
+    };
     this.checkpointEvery = checkpointEvery;
     this.stashes = stashes;
-    this.workingTreeRow = step(noLanes(), this.entries[0], stashes);
+    this.workingTreeRow = step(noLanes(), this.workingTreeEntry, stashes);
   }
 
   rows(start: number, count: number): GraphRow[] {
     const first = start + 1;
-    const end = Math.min(first + count, this.entries.length);
+    const end = Math.min(first + count, this.source.length + 1);
     const checkpoint = Math.floor(first / this.checkpointEvery);
-    this.layOutTo(Math.min(first + 1, this.entries.length));
+    this.layOutTo(Math.min(first + 1, this.source.length + 1));
     const from = this.checkpoints[checkpoint];
     if (!from) {
       return [];
@@ -178,7 +199,7 @@ export class Graph {
     const lanes = copy(from);
     const rows: GraphRow[] = [];
     for (let index = checkpoint * this.checkpointEvery; index < end; index++) {
-      const row = step(lanes, this.entries[index], this.stashes);
+      const row = step(lanes, this.entry(index), this.stashes);
       if (index >= first) {
         rows.push(row);
       }
@@ -186,12 +207,26 @@ export class Graph {
     return rows;
   }
 
+  private entry(index: number): GraphEntry {
+    if (index === 0) {
+      return this.workingTreeEntry;
+    }
+    const row = index - 1;
+    const { source } = this;
+    return {
+      key: source.key(row),
+      parents: source.parents(row),
+      merge: source.merge(row),
+      hidden: source.hidden(row),
+    };
+  }
+
   private layOutTo(end: number): void {
     for (; this.reached < end; this.reached++) {
       if (this.reached % this.checkpointEvery === 0) {
         this.checkpoints.push(copy(this.lanes));
       }
-      step(this.lanes, this.entries[this.reached], this.stashes, false);
+      step(this.lanes, this.entry(this.reached), this.stashes, false);
     }
   }
 }
