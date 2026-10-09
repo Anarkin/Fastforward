@@ -330,6 +330,7 @@ export function watchSettings(
       }
     }),
   );
+  timer = setTimeout(onChange, delay);
   return () => {
     clearTimeout(timer);
     for (const watcher of watchers) {

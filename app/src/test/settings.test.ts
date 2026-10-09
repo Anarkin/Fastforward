@@ -258,6 +258,18 @@ suite('User settings file', () => {
     });
   });
 
+  test('checks the file once as it starts watching, as it may have changed since it was read, as while the app looks for git', async () => {
+    let checks = 0;
+    const stop = watchSettings(file, () => (checks += 1), 10);
+    try {
+      await waitFor(() => checks > 0, 'the first check');
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      assert.strictEqual(checks, 1);
+    } finally {
+      stop();
+    }
+  });
+
   test('notices a change to the file it was given as the one the settings resolve to, in another folder, as an editor writes to the file a symlink points to', async function () {
     this.timeout(20_000);
     const target = path.join(folder, 'dotfiles', 'settings.json');
