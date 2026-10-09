@@ -5,6 +5,8 @@ import * as path from 'node:path';
 import {
   affectsWorktree,
   affectsWorktreeList,
+  changesRefsAlone,
+  gitDirChanged,
   isInternal,
   nextFlush,
   watchEach,
@@ -37,7 +39,6 @@ suite('Watching the git folder', () => {
       'HEAD',
       'index',
       'packed-refs',
-      'FETCH_HEAD',
       'refs/heads/main',
       'refs\\remotes\\origin\\main',
       'modules/sub/HEAD',
@@ -131,6 +132,12 @@ suite('Watching the git folder', () => {
     }
   });
 
+  test('leaves alone FETCH_HEAD, which every fetch writes though it brings nothing, as the app records its fetches itself', () => {
+    for (const file of ['FETCH_HEAD', 'modules/sub/FETCH_HEAD']) {
+      assert.strictEqual(isInternal(file, isModule), true, file);
+    }
+  });
+
   test('leaves alone the files of the fsmonitor daemon, which makes and removes a cookie on every git command a refresh runs', () => {
     for (const file of [
       'fsmonitor--daemon',
@@ -212,6 +219,31 @@ suite('Watching the git folder', () => {
       assert.strictEqual(affectsWorktree(file, false, isModule), true, file);
     }
   });
+  test('refreshes refs alone for remote branches and tags, which a fetch writes and which leave the working tree as it was', () => {
+    for (const file of [
+      'refs/remotes/origin/main',
+      'refs\\remotes\\origin\\feature\\x',
+      'refs/tags/v1',
+      'refs/tags/release/v1',
+    ]) {
+      assert.strictEqual(changesRefsAlone(file), true, file);
+    }
+    for (const file of [
+      'HEAD',
+      'index',
+      'packed-refs',
+      'config',
+      'refs/heads/main',
+      'refs/stash',
+      'logs/refs/stash',
+      'refs/remotes',
+      'refs/tags',
+      'reftable/tables.list',
+      'modules/sub/refs/remotes/origin/main',
+    ]) {
+      assert.strictEqual(changesRefsAlone(file), false, file);
+    }
+  });
 });
 
 suite('Debouncing changes', () => {
@@ -263,6 +295,25 @@ suite('Debouncing changes', () => {
         1500,
       ),
       { at: 400, gitDir: true },
+    );
+  });
+
+  test('refreshes refs alone only while every change to the git folder since the last flush changed refs alone', () => {
+    const remote = gitDirChanged({}, 100, true);
+    assert.deepStrictEqual(remote, { lastGitDir: 100, refsAlone: true });
+    assert.deepStrictEqual(gitDirChanged(remote, 200, true), {
+      lastGitDir: 200,
+      refsAlone: true,
+    });
+    const index = gitDirChanged(remote, 200, false);
+    assert.deepStrictEqual(index, { lastGitDir: 200, refsAlone: false });
+    assert.deepStrictEqual(gitDirChanged(index, 300, true), {
+      lastGitDir: 300,
+      refsAlone: false,
+    });
+    assert.deepStrictEqual(
+      gitDirChanged({ firstWorkTree: 0, lastWorkTree: 50 }, 100, true),
+      { firstWorkTree: 0, lastWorkTree: 50, lastGitDir: 100, refsAlone: true },
     );
   });
 

@@ -205,6 +205,32 @@ suite('Git repository', function () {
     }
   });
 
+  test('tells whether a fetch changed any ref: moved, made or pruned', async () => {
+    const folder = tempFolder('fetched');
+    try {
+      const upstream = await tempRepository(path.join(folder, 'upstream'));
+      await upstream.commit('one');
+      await upstream.git('branch', 'gone');
+      const local = await tempRepository(path.join(folder, 'local'));
+      await local.git('remote', 'add', 'origin', upstream.root);
+      const fetched = () => fetchAllRemotes(gitPath, local.root);
+      assert.strictEqual(await fetched(), true, 'the first fetch');
+      assert.strictEqual(await fetched(), false, 'nothing new');
+      for (const [what, change] of Object.entries({
+        'a commit': () => upstream.commit('two'),
+        'a tag': () => upstream.git('tag', 'v1'),
+        'a branch': () => upstream.git('branch', 'feature'),
+        'a branch deleted': () => upstream.git('branch', '-D', 'gone'),
+      })) {
+        await change();
+        assert.strictEqual(await fetched(), true, what);
+        assert.strictEqual(await fetched(), false, `nothing after ${what}`);
+      }
+    } finally {
+      removeFolder(folder);
+    }
+  });
+
   test('gives up on a fetch that stalls', async () => {
     await temp.git('remote', 'add', 'stalled', 'ssh://stalled.invalid/x');
     await temp.git('config', 'core.sshCommand', "sh -c 'sleep 15' --");

@@ -43,7 +43,9 @@ suite('View updating by itself', function () {
     takeErrorsLogged(
       logged,
       /^fetch failed$/,
-      new RegExp(`^git fetch --all --prune failed: fatal: ${reason.source}`),
+      new RegExp(
+        `^git fetch --all --prune --porcelain failed: fatal: ${reason.source}`,
+      ),
     );
   }
 

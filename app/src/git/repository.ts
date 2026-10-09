@@ -190,18 +190,24 @@ const neverAsk = {
   SSH_ASKPASS_REQUIRE: 'never',
 };
 
+const unchangedRef = new Set(['=', '!']);
+
 export async function fetchAllRemotes(
   gitPath: string,
   root: string,
   { timeout = fetchTimeout, interactive = true } = {},
-): Promise<void> {
+): Promise<boolean> {
   const signal = AbortSignal.timeout(timeout);
   try {
-    await runGit(gitPath, root, ['fetch', '--all', '--prune'], {
-      signal,
-      env: interactive ? {} : neverAsk,
-      runsHooks: true,
-    });
+    const output = await runGit(
+      gitPath,
+      root,
+      ['fetch', '--all', '--prune', '--porcelain'],
+      { signal, env: interactive ? {} : neverAsk, runsHooks: true },
+    );
+    return output
+      .split('\n')
+      .some((line) => line !== '' && !unchangedRef.has(line[0]));
   } catch (error) {
     if (signal.aborted) {
       throw new Error(

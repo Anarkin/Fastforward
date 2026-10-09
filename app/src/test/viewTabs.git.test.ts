@@ -127,7 +127,7 @@ suite('View with two tabs', function () {
       takeErrorsLogged(
         logged,
         /^fetch failed$/,
-        /^git fetch --all --prune failed: fatal: repository '.*' not found/,
+        /^git fetch --all --prune --porcelain failed: fatal: repository '.*' not found/,
       );
     } finally {
       await new Promise((resolve) => server.close(resolve));

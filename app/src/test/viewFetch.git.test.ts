@@ -13,6 +13,7 @@ import { recordingLog } from './stub';
 import {
   closeViews,
   failOnErrorsLogged,
+  gate,
   type FakePage,
   lockedRepository,
   openView,
@@ -38,7 +39,9 @@ suite('View fetching', function () {
     takeErrorsLogged(
       logged,
       /^fetch failed$/,
-      new RegExp(`^git fetch --all --prune failed: fatal: ${reason.source}`),
+      new RegExp(
+        `^git fetch --all --prune --porcelain failed: fatal: ${reason.source}`,
+      ),
     );
   }
 
@@ -89,6 +92,109 @@ suite('View fetching', function () {
       assert.strictEqual(page.last('fetching')?.running, false);
     } finally {
       await repository.git('remote', 'remove', 'upstream');
+    }
+  });
+
+  test('refreshes nothing after a fetch that brings nothing, and refs alone after one that brings some, whether asked for or in the background', async () => {
+    const rounds: (() => void)[] = [];
+    const opened = await openView(
+      log,
+      [repository.root],
+      'unwatched',
+      undefined,
+      (run) => {
+        rounds.push(run);
+        return () => undefined;
+      },
+    );
+    const refreshed: unknown[] = [];
+    stubMethod(opened.view, 'refreshOnce', async (original, ...args) => {
+      refreshed.push(args[1]);
+      await original(...args);
+    });
+    let workingTreeReads = 0;
+    stubMethod(opened.view, 'sendWorkingTree', async (original, ...args) => {
+      workingTreeReads++;
+      return original(...args);
+    });
+    const refsAlone = { refs: true, workingTree: false };
+    const fetched = (name: string) =>
+      opened.page.last('repository')?.refs.some((ref) => ref.name === name);
+    try {
+      await opened.connection.receive({ type: 'fetch', root: repository.root });
+      refreshed.length = 0;
+      workingTreeReads = 0;
+      await opened.connection.receive({ type: 'fetch', root: repository.root });
+      assert.deepStrictEqual(refreshed, [], 'asked for, bringing nothing');
+      await opened.connection.receive({ type: 'setAutoFetch', on: true });
+      await waitFor(() => rounds.length === 1, 'the round to end');
+      assert.deepStrictEqual(refreshed, [], 'in the background, nothing');
+      await remote.git('branch', 'brought', 'main');
+      await opened.connection.receive({ type: 'fetch', root: repository.root });
+      assert.deepStrictEqual(refreshed, [refsAlone], 'asked for, a branch');
+      assert.ok(fetched('origin/brought'));
+      refreshed.length = 0;
+      await remote.git('branch', 'brought-later', 'main');
+      rounds.shift()?.();
+      await waitFor(() => rounds.length === 1, 'the next round to end');
+      assert.deepStrictEqual(refreshed, [refsAlone], 'in the background');
+      assert.ok(fetched('origin/brought-later'));
+      assert.strictEqual(workingTreeReads, 0);
+    } finally {
+      for (const branch of ['brought', 'brought-later']) {
+        await remote.git('update-ref', '-d', `refs/heads/${branch}`);
+      }
+      opened.connection.dispose();
+    }
+  });
+
+  test('runs the refreshes asked for while one runs as one, reading the working tree again only when one of them asks to', async () => {
+    const opened = await openView(log, [repository.root], 'unwatched');
+    const ran: unknown[] = [];
+    let held = gate();
+    stubMethod(opened.view, 'refreshOnce', async (original, ...args) => {
+      ran.push(args[1]);
+      if (ran.length === 1) {
+        await held.opened;
+      }
+      await original(...args);
+    });
+    let queued = 0;
+    stubMethod(opened.view, 'queueRefresh', (original, ...args) => {
+      queued++;
+      return original(...args);
+    });
+    const everything = { refs: true, workingTree: true };
+    const refsAlone = { refs: true, workingTree: false };
+    try {
+      for (const [branch, alsoAsked, merged] of [
+        ['fetched-alone', false, refsAlone],
+        ['fetched-with-more', true, everything],
+      ] as const) {
+        ran.length = 0;
+        queued = 0;
+        held = gate();
+        const first = opened.connection.refresh();
+        await waitFor(() => ran.length === 1, 'the first refresh');
+        await remote.git('branch', branch, 'main');
+        const asked = alsoAsked ? opened.connection.refresh() : undefined;
+        const fetching = opened.connection.receive({
+          type: 'fetch',
+          root: repository.root,
+        });
+        await waitFor(
+          () => queued === (alsoAsked ? 3 : 2),
+          'the fetch to ask for a refresh',
+        );
+        held.open();
+        await Promise.all([first, fetching, asked]);
+        assert.deepStrictEqual(ran, [everything, merged], branch);
+      }
+    } finally {
+      for (const branch of ['fetched-alone', 'fetched-with-more']) {
+        await remote.git('update-ref', '-d', `refs/heads/${branch}`);
+      }
+      opened.connection.dispose();
     }
   });
 
@@ -319,13 +425,14 @@ suite('View fetching', function () {
     }
   });
 
-  test('says so when a fetch fails, and stops fetching', async () => {
+  test('says so when a fetch fails, and stops fetching, showing the refs the remotes that answered brought', async () => {
     await repository.git(
       'remote',
       'add',
       'broken',
       path.join(folder, 'missing'),
     );
+    await remote.git('branch', 'answered', 'main');
     try {
       await withNotices(page, 'error', async (messages) => {
         page.clear();
@@ -333,10 +440,15 @@ suite('View fetching', function () {
         assert.strictEqual(messages.length, 1);
         assert.match(messages[0] ?? '', /^Couldn't fetch\./);
         assert.strictEqual(page.last('fetching')?.running, false);
-        assert.ok(page.last('workingTree'));
+        assert.ok(
+          page
+            .last('repository')
+            ?.refs.some((ref) => ref.name === 'origin/answered'),
+        );
       });
       takeFetchFailures(/'.*' does not appear to be a git repository/);
     } finally {
+      await remote.git('branch', '-D', 'answered');
       await repository.git('remote', 'remove', 'broken');
     }
   });

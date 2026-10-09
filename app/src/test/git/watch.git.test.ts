@@ -1,7 +1,12 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { ignoredPaths, watchRepository, type Watcher } from '../../git/watch';
+import {
+  ignoredPaths,
+  watchRepository,
+  type Changed,
+  type Watcher,
+} from '../../git/watch';
 import { waitFor } from '../fixtures';
 import {
   removeFolder,
@@ -41,7 +46,7 @@ suite('Watching a repository', function () {
       delay: 50,
       maxDelay: 200,
       recursive: false,
-      onChange: (gitDirChanged) => changes.push(gitDirChanged),
+      onChange: ({ refs }) => changes.push(refs),
       onError: (error) => errors.push(error),
     });
   };
@@ -128,9 +133,9 @@ suite('Watching a repository', function () {
       delay: 0,
       maxDelay: 0,
       recursive: false,
-      onChange: (gitDirChanged) => {
+      onChange: ({ refs }) => {
         if (disposing) {
-          quiet.push(gitDirChanged);
+          quiet.push(refs);
         }
       },
       onError: (error) => errors.push(error),
@@ -175,7 +180,7 @@ suite('Watching a repository', function () {
         delay: 50,
         maxDelay: 200,
         recursive: true,
-        onChange: (gitDirChanged) => seen.push(gitDirChanged),
+        onChange: ({ refs }) => seen.push(refs),
         onError: (error) => errors.push(error),
         ignored: async (repo, paths) => {
           const found = await ignoredPaths(repository.gitPath, repo, paths);
@@ -208,7 +213,7 @@ suite('Watching a repository', function () {
         delay: 50,
         maxDelay: 200,
         recursive: true,
-        onChange: (gitDirChanged) => seen.push(gitDirChanged),
+        onChange: ({ refs }) => seen.push(refs),
         onError: (error) => errors.push(error),
         ignored: (_repo, paths) =>
           paths.includes(file)
@@ -237,7 +242,7 @@ suite('Watching a repository', function () {
         delay: 50,
         maxDelay: 200,
         recursive,
-        onChange: (gitDirChanged) => changes.push(gitDirChanged),
+        onChange: ({ refs }) => changes.push(refs),
         onError: (error) => errors.push(error),
       });
       await settled();
@@ -267,13 +272,76 @@ suite('Watching a repository', function () {
         delay: 50,
         maxDelay: 200,
         recursive,
-        onChange: (gitDirChanged) => changes.push(gitDirChanged),
+        onChange: ({ refs }) => changes.push(refs),
         onError: (error) => errors.push(error),
       });
       await settled();
       await sub.commit('second');
       await waitFor(() => changes.includes(true), 'the commit');
       assert.deepStrictEqual(errors, []);
+    });
+
+    test(`stays quiet for a fetch that brings nothing, and refreshes refs alone for one that brings commits, a tag or a branch, watching ${recursive ? 'recursively' : 'folder by folder'}`, async () => {
+      const upstream = await tempRepository(tempFolder('upstream'));
+      await upstream.commit('one');
+      await repository.git('remote', 'add', 'origin', upstream.root);
+      await repository.git('fetch', '-q', 'origin');
+      const seen: Changed[] = [];
+      watcher = await watchRepository(repository.gitPath, repository.root, {
+        delay: 50,
+        maxDelay: 200,
+        recursive,
+        onChange: (change) => seen.push(change),
+        onError: (error) => errors.push(error),
+      });
+      try {
+        let last = seen.length;
+        let since = Date.now();
+        await waitFor(() => {
+          if (seen.length !== last) {
+            last = seen.length;
+            since = Date.now();
+          }
+          return Date.now() - since > 500;
+        }, 'the folders read while starting to be told');
+        seen.length = 0;
+        await repository.git('fetch', '--all', '--prune');
+        await keepWriting(
+          'file.txt',
+          'the changed file',
+          () => seen.length > 0,
+        );
+        assert.deepStrictEqual(
+          seen.filter((change) => change.refs),
+          [],
+          'the fetch that brought nothing',
+        );
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        for (const change of [
+          () => upstream.commit('two'),
+          () => upstream.git('tag', 'v1'),
+          () => upstream.git('branch', 'feature'),
+        ]) {
+          await change();
+          seen.length = 0;
+          await repository.git('fetch', '--all', '--prune');
+          await waitFor(() => seen.length > 0, 'the fetch');
+          await new Promise((resolve) => setTimeout(resolve, 300));
+          assert.ok(
+            seen.every((told) => told.refs && !told.workingTree),
+            JSON.stringify(seen),
+          );
+        }
+        seen.length = 0;
+        await repository.git('commit', '--allow-empty', '-m', 'local');
+        await waitFor(
+          () => seen.some((told) => told.refs && told.workingTree),
+          'a commit',
+        );
+        assert.deepStrictEqual(errors, []);
+      } finally {
+        removeFolder(upstream.root);
+      }
     });
 
     test(`tells when a worktree is added, watching ${recursive ? 'recursively' : 'folder by folder'}`, async () => {
@@ -356,7 +424,7 @@ suite('Watching a repository', function () {
         delay: 50,
         maxDelay: 200,
         recursive,
-        onChange: (gitDirChanged) => seen.push(gitDirChanged),
+        onChange: ({ refs }) => seen.push(refs),
         onError: (error) => errors.push(error),
       });
       try {

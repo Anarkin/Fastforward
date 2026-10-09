@@ -35,7 +35,7 @@ import {
   sameFolder,
   type Refs,
 } from './git/repository';
-import { watchRepository, type Watcher } from './git/watch';
+import { watchRepository, type Changed, type Watcher } from './git/watch';
 import {
   stagedPatch,
   uncommittedCount,
@@ -116,13 +116,16 @@ import {
 } from './tabState';
 
 const refreshDelays = { delay: 300, maxDelay: 1500 };
+const everything: Changed = { refs: true, workingTree: true };
+const nothing: Changed = { refs: false, workingTree: false };
+const refsAlone: Changed = { refs: true, workingTree: false };
 
 interface Tab extends TabState {
   preloading: Promise<void> | undefined;
   loadingHistory: Promise<void> | undefined;
   refreshing: boolean;
   refreshAgain: Map<Session | undefined, Context>;
-  checkRefsAgain: boolean;
+  changedAgain: Changed;
   refreshedAgain: PromiseWithResolvers<void> | undefined;
   loadsAgain: Refresh[];
   refreshError: string | undefined;
@@ -1153,7 +1156,7 @@ export class FastforwardView {
         loadingHistory: undefined,
         refreshing: false,
         refreshAgain: new Map(),
-        checkRefsAgain: false,
+        changedAgain: nothing,
         refreshedAgain: undefined,
         loadsAgain: [],
         refreshError: undefined,
@@ -1237,11 +1240,11 @@ export class FastforwardView {
   private startWatching(context: Context, session: Session): Promise<Watcher> {
     return watchRepository(context.gitPath, context.root, {
       ...this.delays,
-      onChange: (gitDirChanged) =>
+      onChange: (change) =>
         void this.run(
           'refresh',
           session,
-          () => this.refresh(context, undefined, gitDirChanged),
+          () => this.refresh(context, undefined, change),
           context.root,
         ),
       onWorktreesChange: () =>
@@ -1282,12 +1285,15 @@ export class FastforwardView {
 
   private async fetch(context: Context): Promise<void> {
     context.post({ type: 'fetching', running: true });
+    let fetched: Fetched;
     try {
-      await this.fetchRemotes(context);
+      fetched = await this.fetchRemotes(context);
     } finally {
       context.post({ type: 'fetching', running: false });
     }
-    await this.refresh(context);
+    if (fetched.failed || fetched.changed) {
+      await this.refresh(context, undefined, refsAlone);
+    }
   }
 
   private async fetchRemotes(
@@ -1295,7 +1301,7 @@ export class FastforwardView {
     log: Log = this.log,
     notify: Notify = this.notify(context),
     interactive = true,
-  ): Promise<boolean> {
+  ): Promise<Fetched> {
     const { repository } = context;
     const { fetches } = this;
     const running = fetches.get(repository);
@@ -1305,10 +1311,10 @@ export class FastforwardView {
     const result = await fetching.fetched;
     const latest = fetches.get(repository);
     if (!interactive && latest?.interactive) {
-      return !(await latest.fetched).failed;
+      return latest.fetched;
     }
     if (joined) {
-      return !result.failed;
+      return result;
     }
     const fetched = reportFetched(log, notify, result);
     if (fetched) {
@@ -1320,7 +1326,7 @@ export class FastforwardView {
     if (this.page && this.isActiveRepository(repository)) {
       this.postLastFetch(this.page, repository);
     }
-    return fetched;
+    return result;
   }
 
   private postLastFetch(
@@ -1372,14 +1378,20 @@ export class FastforwardView {
     const notify: Notify = reported
       ? this.noticesOf(session, repository)
       : silent;
-    if (!(await this.fetchRemotes(context, log, notify, false))) {
+    const fetched = await this.fetchRemotes(context, log, notify, false);
+    if (fetched.failed || !fetched.changed) {
       return;
     }
     const page = this.page;
     const shown =
       page && this.isActive(root) ? await this.context(page, root) : undefined;
     if (page && shown) {
-      await this.run('refresh', page, () => this.refresh(shown), root);
+      await this.run(
+        'refresh',
+        page,
+        () => this.refresh(shown, undefined, refsAlone),
+        root,
+      );
     }
   }
 
@@ -1621,11 +1633,11 @@ export class FastforwardView {
   private async refresh(
     context: Context,
     load?: () => Promise<void>,
-    checkRefs = true,
+    change: Changed = everything,
   ): Promise<void> {
     const { tab } = context;
     try {
-      await this.queueRefresh(context, load, checkRefs);
+      await this.queueRefresh(context, load, change);
     } catch (error) {
       tab.refreshError = gitErrorText(error);
       throw error;
@@ -1639,10 +1651,10 @@ export class FastforwardView {
   private queueRefresh(
     context: Context,
     load: (() => Promise<void>) | undefined,
-    checkRefs: boolean,
+    change: Changed,
   ): Promise<void> {
     const { tab } = context;
-    const run = load ?? (() => this.refreshOnce(context, checkRefs));
+    const run = load ?? (() => this.refreshOnce(context, change));
     if (!tab.refreshing) {
       const done = Promise.withResolvers<void>();
       tab.refreshing = true;
@@ -1655,7 +1667,10 @@ export class FastforwardView {
       return done.promise;
     }
     tab.refreshAgain.set(context.session, context);
-    tab.checkRefsAgain ||= checkRefs;
+    tab.changedAgain = {
+      refs: tab.changedAgain.refs || change.refs,
+      workingTree: tab.changedAgain.workingTree || change.workingTree,
+    };
     tab.refreshedAgain ??= Promise.withResolvers();
     return tab.refreshedAgain.promise;
   }
@@ -1680,34 +1695,37 @@ export class FastforwardView {
     if (!again || !done) {
       return undefined;
     }
-    const checkRefs = tab.checkRefsAgain;
+    const change = tab.changedAgain;
     tab.refreshAgain.clear();
-    tab.checkRefsAgain = false;
+    tab.changedAgain = nothing;
     tab.refreshedAgain = undefined;
-    return { run: () => this.refreshOnce(again, checkRefs), done };
+    return { run: () => this.refreshOnce(again, change), done };
   }
 
   private async refreshOnce(
     context: Context,
-    checkRefs: boolean,
+    { refs, workingTree }: Changed,
   ): Promise<void> {
     await allSettled([
-      this.sendWorkingTree(context).then(async (workingTree) => {
-        const { hash } = context.tab;
-        if (hash !== undefined && workingTreeSide(hash)) {
-          await this.sendCommit(context, workingTree);
-          if (
-            context.tab.shown.tree?.hash === hash &&
-            shownCommit(hash) === undefined
-          ) {
-            await this.sendTree(context, hash, workingTree);
-          }
-        }
-      }),
-      checkRefs || context.tab.shownStale
+      workingTree ? this.refreshWorkingTree(context) : Promise.resolve(),
+      refs || context.tab.shownStale
         ? this.refreshHistory(context)
         : Promise.resolve(),
     ]);
+  }
+
+  private async refreshWorkingTree(context: Context): Promise<void> {
+    const workingTree = await this.sendWorkingTree(context);
+    const { hash } = context.tab;
+    if (hash !== undefined && workingTreeSide(hash)) {
+      await this.sendCommit(context, workingTree);
+      if (
+        context.tab.shown.tree?.hash === hash &&
+        shownCommit(hash) === undefined
+      ) {
+        await this.sendTree(context, hash, workingTree);
+      }
+    }
   }
 
   private async refreshHistory(context: Context): Promise<void> {

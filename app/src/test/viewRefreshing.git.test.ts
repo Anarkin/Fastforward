@@ -274,7 +274,10 @@ suite('View refreshing one repository', function () {
 
     test('ends the fetch on a page opened again while it ran', async () => {
       const held = gate();
-      stubMethod(fastforward, 'fetchRemotes', () => held.opened);
+      stubMethod(fastforward, 'fetchRemotes', async () => {
+        await held.opened;
+        return { failed: false, changed: false };
+      });
       {
         const fetching = connection.receive({
           type: 'fetch',

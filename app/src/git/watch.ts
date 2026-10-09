@@ -13,10 +13,15 @@ type Ignored = (
   paths: readonly string[],
 ) => Promise<readonly string[]>;
 
+export interface Changed {
+  readonly refs: boolean;
+  readonly workingTree: boolean;
+}
+
 interface WatchOptions {
   readonly delay: number;
   readonly maxDelay: number;
-  readonly onChange: (gitDirChanged: boolean) => void;
+  readonly onChange: (change: Changed) => void;
   readonly onWorktreesChange?: () => void;
   readonly onError: (error: unknown) => void;
   readonly recursive?: boolean;
@@ -59,15 +64,18 @@ export async function watchRepository(
     timer = undefined;
     const files = [...changedFiles];
     changedFiles.clear();
+    const refsAlone = withGitDir && pending.refsAlone === true;
     pending =
       withGitDir || pending.lastGitDir === undefined
         ? {}
-        : { lastGitDir: pending.lastGitDir };
+        : { lastGitDir: pending.lastGitDir, refsAlone: pending.refsAlone };
     schedule();
     try {
-      const notify = withGitDir || (await anyNotIgnored(ignored, root, files));
-      if (notify && !disposed) {
-        onChange(withGitDir);
+      const workingTree =
+        (withGitDir && !refsAlone) ||
+        (await anyNotIgnored(ignored, root, files));
+      if ((withGitDir || workingTree) && !disposed) {
+        onChange({ refs: withGitDir, workingTree });
       }
     } catch (error) {
       if (!disposed) {
@@ -85,8 +93,8 @@ export async function watchRepository(
         Math.max(0, next.at - Date.now()),
       );
   };
-  const gitDirChanged = () => {
-    pending = { ...pending, lastGitDir: Date.now() };
+  const changedGitDir = (refsAlone = false) => {
+    pending = gitDirChanged(pending, Date.now(), refsAlone);
     schedule();
   };
   const worktreesChanged = () => {
@@ -97,10 +105,15 @@ export async function watchRepository(
       }
     }, delay);
   };
-  const changed = (file: string) => {
+  const changed = (file: string, event: string) => {
     const inGitDir = gitDirs.find((dir) => isInside(dir, file));
     if (inGitDir !== undefined) {
       const inside = path.relative(inGitDir, file);
+      // Windows tells a folder changed along with each entry made or removed
+      // in it, as a fetch does for a lock on the remote's HEAD
+      if (event === 'change' && isExistingFolder(file)) {
+        return;
+      }
       if (
         affectsWorktree(
           inside,
@@ -108,7 +121,7 @@ export async function watchRepository(
           isGitDirIn(inGitDir),
         )
       ) {
-        gitDirChanged();
+        changedGitDir(changesRefsAlone(inside));
       }
       if (affectsWorktreeList(inside)) {
         worktreesChanged();
@@ -125,19 +138,19 @@ export async function watchRepository(
     }
   };
 
-  const onEvent = (folder: string, file: string | null) => {
+  const onEvent = (folder: string, file: string | null, event: string) => {
     if (file) {
-      changed(path.join(folder, file));
+      changed(path.join(folder, file), event);
     } else {
-      gitDirChanged();
+      changedGitDir();
     }
   };
   let watchers: Watcher[];
   if (recursive) {
     const folders = [root, ...gitDirs.filter((dir) => !isInside(root, dir))];
     watchers = watchEach(folders, (folder) => {
-      const watcher = fs.watch(folder, { recursive: true }, (_event, file) =>
-        onEvent(folder, file),
+      const watcher = fs.watch(folder, { recursive: true }, (event, file) =>
+        onEvent(folder, file, event),
       );
       watcher.on('error', onError);
       return watcher;
@@ -210,7 +223,11 @@ export function watchEach(
 interface TreeOptions {
   readonly skip: (folder: string) => boolean;
   readonly ignored: Ignored;
-  readonly onEvent: (folder: string, file: string | null) => void;
+  readonly onEvent: (
+    folder: string,
+    file: string | null,
+    event: string,
+  ) => void;
   readonly onError: (error: unknown) => void;
   readonly watch: (
     folder: string,
@@ -312,7 +329,7 @@ export async function watchTree(
     let entry: WatchedFolder | undefined;
     try {
       const watcher = watch(folder.path, (event, file) => {
-        onEvent(folder.path, file);
+        onEvent(folder.path, file, event);
         if (file === '.gitignore') {
           ignoresChanged(folder.path);
         }
@@ -453,6 +470,21 @@ interface PendingChanges {
   readonly firstWorkTree?: number;
   readonly lastWorkTree?: number;
   readonly lastGitDir?: number;
+  readonly refsAlone?: boolean;
+}
+
+export function gitDirChanged(
+  pending: PendingChanges,
+  at: number,
+  refsAlone: boolean,
+): PendingChanges {
+  return {
+    ...pending,
+    lastGitDir: at,
+    refsAlone:
+      refsAlone &&
+      (pending.lastGitDir === undefined || pending.refsAlone === true),
+  };
 }
 
 export function nextFlush(
@@ -485,6 +517,7 @@ function isInside(folder: string, file: string): boolean {
 }
 
 const internalEntries = new Set([
+  'FETCH_HEAD',
   'objects',
   'logs',
   'lfs',
@@ -528,6 +561,10 @@ function isInternalIn(
   return false;
 }
 
+function isExistingFolder(file: string): boolean {
+  return fs.statSync(file, { throwIfNoEntry: false })?.isDirectory() === true;
+}
+
 function isGitDirIn(gitDir: string): IsGitDir {
   return (inGitDir) => {
     try {
@@ -565,6 +602,15 @@ export function affectsWorktree(
     first === 'packed-refs' ||
     first === 'reftable' ||
     first === 'config'
+  );
+}
+
+export function changesRefsAlone(inGitDir: string): boolean {
+  const [first, kind, ...rest] = inGitDir.split(/[\\/]/);
+  return (
+    first === 'refs' &&
+    (kind === 'remotes' || kind === 'tags') &&
+    rest.length > 0
   );
 }
 

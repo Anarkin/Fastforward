@@ -138,7 +138,7 @@ async function catchUp(
 }
 
 export type Fetched =
-  | { readonly failed: false }
+  | { readonly failed: false; readonly changed: boolean }
   | { readonly failed: true; readonly error: unknown };
 
 export async function fetchAll(
@@ -146,8 +146,10 @@ export async function fetchAll(
   interactive = true,
 ): Promise<Fetched> {
   try {
-    await fetchAllRemotes(gitPath, root, { interactive });
-    return { failed: false };
+    return {
+      failed: false,
+      changed: await fetchAllRemotes(gitPath, root, { interactive }),
+    };
   } catch (error) {
     return { failed: true, error };
   }
