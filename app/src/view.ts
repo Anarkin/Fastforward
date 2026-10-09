@@ -1891,6 +1891,8 @@ export class FastforwardView {
         Math.round(performance.now() - started),
       ),
     );
+    const { graph } = tab;
+    void this.inFlight.track(graph.walkAhead(() => tab.graph === graph));
     return generation;
   }
 

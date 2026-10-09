@@ -27,15 +27,6 @@ interface Lanes {
   nextColor: number;
 }
 
-function copy(lanes: Lanes): Lanes {
-  return {
-    keys: [...lanes.keys],
-    colors: [...lanes.colors],
-    dashed: [...lanes.dashed],
-    nextColor: lanes.nextColor,
-  };
-}
-
 const workingTree = -1;
 
 function allocate(lanes: Lanes, key: number): number {
@@ -53,7 +44,6 @@ function step(
   lanes: Lanes,
   entry: GraphEntry,
   stashes: ReadonlySet<number>,
-  drawLines = true,
 ): GraphRow {
   const lines = new Map<string, GraphLine>();
   const line = (
@@ -85,13 +75,13 @@ function step(
   for (let from = 0; from < lanes.keys.length; from++) {
     const key = lanes.keys[from];
     if (key === entry.key) {
-      if (drawLines && !opened) {
+      if (!opened) {
         line(from, lane, lanes.colors[from], false);
       }
       if (from !== lane) {
         lanes.keys[from] = undefined;
       }
-    } else if (drawLines && key !== undefined) {
+    } else if (key !== undefined) {
       line(from, from, lanes.colors[from], false);
     }
   }
@@ -109,17 +99,13 @@ function step(
       to = allocate(lanes, parent);
       started.add(to);
     }
-    if (drawLines) {
-      line(lane, to, lanes.colors[to], true);
+    line(lane, to, lanes.colors[to], true);
+  }
+  lanes.keys.forEach((key, from) => {
+    if (key !== undefined && !started.has(from)) {
+      line(from, from, lanes.colors[from], true);
     }
-  }
-  if (drawLines) {
-    lanes.keys.forEach((key, from) => {
-      if (key !== undefined && !started.has(from)) {
-        line(from, from, lanes.colors[from], true);
-      }
-    });
-  }
+  });
 
   while (
     lanes.keys.length > 0 &&
@@ -154,10 +140,184 @@ function hasKey(source: GraphSource, key: number): boolean {
   return false;
 }
 
+const emptyLane = -0x80000000;
+
+interface Checkpoint {
+  readonly keys: Int32Array;
+  readonly colors: Int32Array;
+  readonly dashed: Uint8Array;
+  readonly nextColor: number;
+}
+
+class LaneWalk {
+  private readonly lanesOf = new Map<number, number[]>();
+  private readonly empty: number[] = [];
+
+  constructor(private readonly lanes: Lanes = noLanes()) {
+    lanes.keys.forEach((key, lane) => {
+      if (key === undefined) {
+        this.pushEmpty(lane);
+      } else {
+        this.hold(key, lane);
+      }
+    });
+  }
+
+  static from(checkpoint: Checkpoint): LaneWalk {
+    return new LaneWalk({
+      keys: Array.from(checkpoint.keys, (key) =>
+        key === emptyLane ? undefined : key,
+      ),
+      colors: Array.from(checkpoint.colors),
+      dashed: Array.from(checkpoint.dashed, Boolean),
+      nextColor: checkpoint.nextColor,
+    });
+  }
+
+  get current(): Lanes {
+    return this.lanes;
+  }
+
+  checkpoint(): Checkpoint {
+    const { keys, colors, dashed, nextColor } = this.lanes;
+    const saved = {
+      keys: new Int32Array(keys.length),
+      colors: new Int32Array(colors),
+      dashed: new Uint8Array(dashed.length),
+      nextColor,
+    };
+    for (let lane = 0; lane < keys.length; lane++) {
+      saved.keys[lane] = keys[lane] ?? emptyLane;
+      saved.dashed[lane] = dashed[lane] ? 1 : 0;
+    }
+    return saved;
+  }
+
+  advance(
+    key: number,
+    parents: readonly number[],
+    stashes: ReadonlySet<number>,
+  ) {
+    const holding = this.lanesOf.get(key);
+    let lane: number;
+    if (holding && holding.length > 0) {
+      lane = Math.min(...holding);
+      for (const merged of holding.filter((other) => other !== lane)) {
+        this.set(merged, undefined);
+      }
+    } else {
+      lane = this.allocate(key);
+    }
+    const [first, ...others] = parents;
+    this.set(lane, first);
+    this.lanes.dashed[lane] = key === workingTree || stashes.has(key);
+    for (const parent of others) {
+      const found = this.lanesOf
+        .get(parent)
+        ?.some((other) => !this.lanes.dashed[other]);
+      if (!found) {
+        this.allocate(parent);
+      }
+    }
+    const { keys, colors, dashed } = this.lanes;
+    while (keys.length > 0 && keys[keys.length - 1] === undefined) {
+      keys.pop();
+      colors.pop();
+      dashed.pop();
+    }
+  }
+
+  private allocate(key: number): number {
+    const { keys, colors, dashed } = this.lanes;
+    let lane = this.popEmpty();
+    if (lane === undefined) {
+      lane = keys.length;
+      keys.push(undefined);
+      colors.push(0);
+      dashed.push(false);
+    }
+    this.set(lane, key);
+    colors[lane] = this.lanes.nextColor++;
+    dashed[lane] = false;
+    return lane;
+  }
+
+  private set(lane: number, key: number | undefined): void {
+    const old = this.lanes.keys[lane];
+    if (old !== undefined) {
+      const holding = this.lanesOf.get(old) ?? [];
+      holding.splice(holding.indexOf(lane), 1);
+      if (holding.length === 0) {
+        this.lanesOf.delete(old);
+      }
+    }
+    this.lanes.keys[lane] = key;
+    if (key === undefined) {
+      this.pushEmpty(lane);
+    } else {
+      this.hold(key, lane);
+    }
+  }
+
+  private hold(key: number, lane: number): void {
+    const holding = this.lanesOf.get(key);
+    if (holding) {
+      holding.push(lane);
+    } else {
+      this.lanesOf.set(key, [lane]);
+    }
+  }
+
+  private pushEmpty(lane: number): void {
+    const { empty } = this;
+    empty.push(lane);
+    for (let at = empty.length - 1; at > 0;) {
+      const parent = (at - 1) >> 1;
+      if (empty[parent] <= empty[at]) {
+        break;
+      }
+      [empty[parent], empty[at]] = [empty[at], empty[parent]];
+      at = parent;
+    }
+  }
+
+  private popEmpty(): number | undefined {
+    const { empty } = this;
+    const { keys } = this.lanes;
+    while (empty.length > 0) {
+      const lane = empty[0];
+      const last = empty.pop() ?? lane;
+      if (empty.length > 0) {
+        empty[0] = last;
+        for (let at = 0; ;) {
+          const left = 2 * at + 1;
+          const right = left + 1;
+          let smallest = at;
+          if (left < empty.length && empty[left] < empty[smallest]) {
+            smallest = left;
+          }
+          if (right < empty.length && empty[right] < empty[smallest]) {
+            smallest = right;
+          }
+          if (smallest === at) {
+            break;
+          }
+          [empty[smallest], empty[at]] = [empty[at], empty[smallest]];
+          at = smallest;
+        }
+      }
+      if (lane < keys.length && keys[lane] === undefined) {
+        return lane;
+      }
+    }
+    return undefined;
+  }
+}
+
 export class Graph {
-  private readonly checkpoints: Lanes[] = [];
+  private readonly checkpoints: Checkpoint[] = [];
   private readonly checkpointEvery: number;
-  private readonly lanes = noLanes();
+  private readonly walk = new LaneWalk();
   private reached = 0;
   private readonly stashes: ReadonlySet<number>;
   private readonly workingTreeEntry: GraphEntry;
@@ -168,7 +328,7 @@ export class Graph {
     {
       head,
       stashes = new Set(),
-      checkpointEvery = 100,
+      checkpointEvery = 1000,
       partial = false,
     }: {
       head?: number;
@@ -196,15 +356,32 @@ export class Graph {
     if (!from) {
       return [];
     }
-    const lanes = copy(from);
+    const walk = LaneWalk.from(from);
+    for (
+      let index = checkpoint * this.checkpointEvery;
+      index < first;
+      index++
+    ) {
+      this.advance(walk, index);
+    }
+    const lanes = walk.current;
     const rows: GraphRow[] = [];
-    for (let index = checkpoint * this.checkpointEvery; index < end; index++) {
-      const row = step(lanes, this.entry(index), this.stashes);
-      if (index >= first) {
-        rows.push(row);
-      }
+    for (let index = first; index < end; index++) {
+      rows.push(step(lanes, this.entry(index), this.stashes));
     }
     return rows;
+  }
+
+  private advance(walk: LaneWalk, index: number): void {
+    if (index === 0) {
+      walk.advance(workingTree, this.workingTreeEntry.parents, this.stashes);
+    } else {
+      walk.advance(
+        this.source.key(index - 1),
+        this.source.parents(index - 1),
+        this.stashes,
+      );
+    }
   }
 
   private entry(index: number): GraphEntry {
@@ -221,12 +398,25 @@ export class Graph {
     };
   }
 
+  async walkAhead(shown: () => boolean, sliceTime = 10): Promise<void> {
+    const end = this.source.length + 1;
+    while (this.reached < end && shown()) {
+      const until = performance.now() + sliceTime;
+      do {
+        this.layOutTo(Math.min(this.reached + walkedAtOnce, end));
+      } while (this.reached < end && performance.now() < until);
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+  }
+
   private layOutTo(end: number): void {
     for (; this.reached < end; this.reached++) {
       if (this.reached % this.checkpointEvery === 0) {
-        this.checkpoints.push(copy(this.lanes));
+        this.checkpoints.push(this.walk.checkpoint());
       }
-      step(this.lanes, this.entry(this.reached), this.stashes, false);
+      this.advance(this.walk, this.reached);
     }
   }
 }
+
+const walkedAtOnce = 256;

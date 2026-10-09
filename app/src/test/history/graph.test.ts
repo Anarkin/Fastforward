@@ -168,6 +168,78 @@ suite('Graph', () => {
     assert.deepStrictEqual(paged.rows(23, 10), full.slice(23, 33));
   });
 
+  test('computes any page the same as a full walk through hundreds of lanes, merges, stashes and parents outside the history', () => {
+    const count = 3000;
+    const history = Array.from({ length: count }, (_, index) => {
+      const later = (step: number) => `c${index + step}`;
+      const parents =
+        index % 97 === 0
+          ? []
+          : index % 3 === 0
+            ? [later(1), later(5 + (index % 400))]
+            : index % 7 === 0
+              ? [later(2 + (index % 300)), later(1), later(9)]
+              : [later(1 + (index % 4))];
+      return { hash: `c${index}`, parents };
+    });
+    const options = {
+      head: 'c4',
+      stashes: new Set(['c10', 'c2001']),
+      checkpointEvery: 64,
+    };
+    const full = graphOf(history, { ...options, checkpointEvery: count * 2 });
+    const whole = full.rows(0, count);
+    assert.ok(
+      Math.max(...whole.map((row) => row.lines.length)) > 12,
+      'the history reaches past the lanes drawn',
+    );
+    for (const start of [0, 1, 63, 64, 65, 500, 1234, 2950]) {
+      assert.deepStrictEqual(
+        graphOf(history, options).rows(start, 100),
+        whole.slice(start, start + 100),
+        `page at ${start}`,
+      );
+    }
+    const paged = graphOf(history, options);
+    for (const start of [2950, 10, 1500, 1501]) {
+      assert.deepStrictEqual(
+        paged.rows(start, 50),
+        whole.slice(start, start + 50),
+        `page at ${start} after others`,
+      );
+    }
+    assert.deepStrictEqual(
+      graphOf(history, options).workingTreeRow,
+      full.workingTreeRow,
+    );
+  });
+
+  test('walks ahead through the rest of the rows a slice at a time, letting other work run, until it is no longer shown', async () => {
+    const count = 5000;
+    let read = 0;
+    const history = Array.from({ length: count }, (_, index) => ({
+      hash: `c${index}`,
+      get parents() {
+        read++;
+        return index < count - 1 ? [`c${index + 1}`] : [];
+      },
+    }));
+    const replaced = graphOf(history, { checkpointEvery: 100 });
+    await replaced.walkAhead(() => false, 0);
+    assert.strictEqual(read, 0);
+
+    const graph = graphOf(history, { checkpointEvery: 100 });
+    let ran = false;
+    setImmediate(() => {
+      ran = true;
+    });
+    await graph.walkAhead(() => true, 0);
+    assert.ok(ran);
+    read = 0;
+    assert.strictEqual(graph.rows(count - 10, 10).length, 10);
+    assert.ok(read <= 100 + 10, `${read} rows walked for the last page`);
+  });
+
   test('lays out no row past the page asked for', () => {
     assert.strictEqual(graphOf(laidOutBefore(100)).rows(0, 100).length, 100);
     const graph = graphOf(laidOutBefore(199));
