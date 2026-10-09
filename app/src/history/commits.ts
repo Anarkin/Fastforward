@@ -6,7 +6,50 @@ export class Commits {
     readonly starts: Int32Array,
     readonly parents: Int32Array,
     private readonly hashes: HashTable,
+    readonly times?: Int32Array,
   ) {}
+
+  static replacingTop(top: Commits, older: Commits, dropped: number): Commits {
+    const count = top.length;
+    const hashes = HashTable.replacingTop(
+      top.hashes,
+      count,
+      older.hashes,
+      dropped,
+    );
+    const index = new Int32Array(top.size);
+    for (let at = 0; at < top.size; at++) {
+      if (at < count) {
+        index[at] = at;
+      } else {
+        const bytes = top.hashes.bytesOf(at);
+        index[at] =
+          hashes.findBytes(bytes, 0, bytes.length) ??
+          hashes.add(bytes, 0, bytes.length);
+      }
+    }
+    hashes.trim();
+    const shift = top.parents.length - older.starts[dropped];
+    const kept = older.length - dropped;
+    const starts = new Int32Array(count + kept + 1);
+    starts.set(top.starts.subarray(0, count));
+    for (let at = 0; at <= kept; at++) {
+      starts[count + at] = older.starts[dropped + at] + shift;
+    }
+    const parents = new Int32Array(starts[count + kept]);
+    for (let parent = 0; parent < top.parents.length; parent++) {
+      parents[parent] = index[top.parents[parent]];
+    }
+    const moved = count - dropped;
+    for (
+      let parent = older.starts[dropped];
+      parent < older.parents.length;
+      parent++
+    ) {
+      parents[parent + shift] = older.parents[parent] + moved;
+    }
+    return new Commits(count + kept, starts, parents, hashes);
+  }
 
   static of(entries: readonly HistoryEntry[]): Commits {
     const builder = new CommitsBuilder();
@@ -40,6 +83,64 @@ class HashTable {
   private offsets = new Int32Array(64);
   private slots = new Int32Array(128);
   size = 0;
+
+  static replacingTop(
+    top: HashTable,
+    count: number,
+    older: HashTable,
+    dropped: number,
+  ): HashTable {
+    const table = new HashTable();
+    const topUsed = top.offsets[count];
+    const olderFrom = older.offsets[dropped];
+    table.used = topUsed + older.used - olderFrom;
+    table.bytes = new Uint8Array(table.used);
+    table.bytes.set(top.bytes.subarray(0, topUsed));
+    table.bytes.set(older.bytes.subarray(olderFrom, older.used), topUsed);
+    table.size = count + older.size - dropped;
+    table.offsets = new Int32Array(table.size + 1);
+    table.offsets.set(top.offsets.subarray(0, count));
+    for (let at = dropped; at <= older.size; at++) {
+      table.offsets[count + at - dropped] =
+        older.offsets[at] - olderFrom + topUsed;
+    }
+    if (table.size * 2 <= older.slots.length) {
+      table.slots = older.slots.slice();
+      const emptied: number[] = [];
+      for (let slot = 0; slot < table.slots.length; slot++) {
+        const value = table.slots[slot];
+        if (value === 0) {
+          continue;
+        }
+        if (value - 1 < dropped) {
+          table.slots[slot] = 0;
+          emptied.push(slot);
+        } else {
+          table.slots[slot] = value - dropped + count;
+        }
+      }
+      for (const slot of emptied) {
+        table.closeGap(slot);
+      }
+      for (let at = 0; at < count; at++) {
+        table.place(at);
+      }
+    } else {
+      let slots = older.slots.length;
+      while (table.size * 2 > slots) {
+        slots *= 2;
+      }
+      table.slots = new Int32Array(slots);
+      for (let at = 0; at < table.size; at++) {
+        table.place(at);
+      }
+    }
+    return table;
+  }
+
+  bytesOf(at: number): Uint8Array {
+    return this.bytes.subarray(this.offsets[at], this.offsets[at + 1]);
+  }
 
   add(source: Uint8Array, start: number, end: number): number {
     const length = end - start;
@@ -127,6 +228,19 @@ class HashTable {
     this.slots[slot] = at + 1;
   }
 
+  private closeGap(emptied: number): void {
+    const mask = this.slots.length - 1;
+    for (
+      let slot = (emptied + 1) & mask;
+      this.slots[slot] !== 0;
+      slot = (slot + 1) & mask
+    ) {
+      const value = this.slots[slot];
+      this.slots[slot] = 0;
+      this.place(value - 1);
+    }
+  }
+
   private rehash(): void {
     this.slots = new Int32Array(this.slots.length * 2);
     for (let at = 0; at < this.size; at++) {
@@ -170,8 +284,12 @@ export class CommitsBuilder {
   private pending = new Uint8Array(0);
   private readonly stashes: ReadonlySet<string>;
   private readonly hidden = new Set<string>();
+  private times = new Int32Array(64);
 
-  constructor(stashes: readonly string[] = []) {
+  constructor(
+    stashes: readonly string[] = [],
+    private readonly timestamped = false,
+  ) {
     this.stashes = new Set(stashes);
   }
 
@@ -228,7 +346,13 @@ export class CommitsBuilder {
     this.parentBytes = new Uint8Array(0);
     this.parentOffsets = new Int32Array(0);
     this.hashes.trim();
-    return new Commits(this.count, starts, parents, this.hashes);
+    return new Commits(
+      this.count,
+      starts,
+      parents,
+      this.hashes,
+      this.timestamped ? this.times.slice(0, this.count) : undefined,
+    );
   }
 
   private resolve(parents: Int32Array, from: number, to: number): void {
@@ -252,6 +376,13 @@ export class CommitsBuilder {
       return;
     }
     this.read++;
+    let time = 0;
+    if (this.timestamped) {
+      for (; start < end && text[start] !== space; start++) {
+        time = time * 10 + text[start] - 0x30;
+      }
+      start++;
+    }
     let hashEnd = text.indexOf(space, start);
     if (hashEnd === -1 || hashEnd > end) {
       hashEnd = end;
@@ -284,7 +415,9 @@ export class CommitsBuilder {
     this.hashes.add(text, start, hashEnd);
     if (this.count + 2 > this.starts.length) {
       this.starts = grownInts(this.starts);
+      this.times = grownInts(this.times);
     }
+    this.times[this.count] = time;
     this.starts[this.count++] = this.parentCount;
     let kept = 0;
     for (let from = hashEnd + 1; from < end && kept < keptParents;) {

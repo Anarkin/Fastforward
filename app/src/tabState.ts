@@ -147,17 +147,27 @@ export function refsKeepHistory(
   solo: boolean,
   stashes: readonly Stash[] = [],
 ): boolean {
+  const tips = tipsOf(head, refs, solo, stashes);
+  return (
+    historyLoaded(tab) &&
+    [...tips].every((tip) => tab.fullHistory.has(tip)) &&
+    [...tab.heads].every((commit) => tips.has(commit))
+  );
+}
+
+export function tipsOf(
+  head: Head | undefined,
+  refs: readonly RefInfo[],
+  solo: boolean,
+  stashes: readonly Stash[] = [],
+): Set<string> {
   const tips = new Set(
     solo ? [] : [...refs, ...stashes].map((ref) => ref.commit),
   );
   if (head?.commit) {
     tips.add(head.commit);
   }
-  return (
-    historyLoaded(tab) &&
-    [...tips].every((tip) => tab.fullHistory.has(tip)) &&
-    [...tab.heads].every((commit) => tips.has(commit))
-  );
+  return tips;
 }
 
 export function historyLoaded(tab: TabState): boolean {

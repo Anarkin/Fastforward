@@ -1,5 +1,7 @@
 import * as assert from 'node:assert';
+import * as path from 'node:path';
 import {
+  extendedHistory,
   matchesCommit,
   parseHistory,
   parseLog,
@@ -8,6 +10,7 @@ import {
   SearchMatches,
   takeRecords,
 } from '../../git/history';
+import { Commits } from '../../history/commits';
 
 suite('Git log parser', () => {
   test('parses only what the commit list shows of each commit', () => {
@@ -79,6 +82,27 @@ suite('Recent tips', () => {
 
   test('picks nothing without refs', () => {
     assert.deepStrictEqual(recentTips(new Map()), []);
+  });
+});
+
+suite('Extending a history', () => {
+  test('leaves it to be read whole without running git when no tip is new, as only new commits can build on the old tips', async () => {
+    const older = Commits.of([
+      { hash: 'c1', parents: ['c0'] },
+      { hash: 'c0', parents: [] },
+    ]);
+    assert.strictEqual(
+      await extendedHistory(
+        path.resolve('no-such-git'),
+        path.resolve('.'),
+        older,
+        new Set(['c1']),
+        new Set(['c0']),
+        [],
+        new Map(),
+      ),
+      undefined,
+    );
   });
 });
 

@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { workingTreeHash } from '../shared/protocol';
+import { strings } from '../shared/strings';
 import { soloKey } from '../storage';
 import type { Connection, FastforwardView } from '../view';
 import type { FakeStore } from './fakeStore';
@@ -40,7 +41,7 @@ suite('View refreshing one repository', function () {
   let repository: TempRepository;
   let fixture: ViewRepositories['fixture'];
 
-  const { log, error: logged } = recordingLog();
+  const { log, info, error: logged } = recordingLog();
   failOnErrorsLogged(logged);
 
   suiteSetup(async () => {
@@ -631,7 +632,7 @@ suite('View refreshing one repository', function () {
       }
     });
 
-    test('lists the history again only for refs that change its commits, whatever solo leaves out', async () => {
+    test('lists the history again only for refs that change its commits other than by adding some, whatever solo leaves out', async () => {
       let listed = 0;
       stubMethod(fastforward, 'sendCommits', async (original, ...args) => {
         listed++;
@@ -673,12 +674,12 @@ suite('View refreshing one repository', function () {
         assert.ok(
           page.last('repository')?.refs.some((ref) => ref.name === 'side'),
         );
-        assert.strictEqual(listed, 1);
+        assert.strictEqual(listed, 0);
         assert.strictEqual(
           (await refreshed(['branch', '-D', 'side']))?.total,
           3,
         );
-        assert.strictEqual(listed, 2);
+        assert.strictEqual(listed, 1);
         await connection.receive({
           type: 'setSolo',
           root: repository.root,
@@ -693,6 +694,7 @@ suite('View refreshing one repository', function () {
         assert.strictEqual(listed, 0);
       } finally {
         await store.update(soloKey, {});
+        await repository.git('update-ref', '-d', 'refs/heads/side');
         await repository.git('update-ref', '-d', 'refs/remotes/origin/side');
         await restore();
       }
@@ -727,7 +729,7 @@ suite('View refreshing one repository', function () {
       }
     });
 
-    test('reloads when a ref moves, keeping the top commit in place', async () => {
+    test('keeps the top commit in place when a ref moves', async () => {
       await connection.receive({
         type: 'scrolled',
         root: repository.root,
@@ -751,6 +753,33 @@ suite('View refreshing one repository', function () {
           report: 1,
         });
         assert.ok(page.last('repository'));
+      } finally {
+        await restore();
+      }
+    });
+
+    test('adds the commits refs bring to the history without listing it whole, and lists it once a commit is gone', async () => {
+      let listed = 0;
+      stubMethod(fastforward, 'sendCommits', async (original, ...args) => {
+        listed++;
+        await original(...args);
+      });
+      try {
+        page.clear();
+        await repository.commit('c');
+        await connection.refresh();
+        const added = page.last('commits');
+        assert.strictEqual(added?.total, 4);
+        assert.strictEqual(added.commits[0]?.subject, 'c');
+        assert.strictEqual(listed, 0);
+        assert.ok(info.includes(strings.log.refsExtended(1)));
+        page.clear();
+        await repository.git('reset', '-q', '--hard', 'HEAD~1');
+        await connection.refresh();
+        const gone = page.last('commits');
+        assert.strictEqual(gone?.total, 3);
+        assert.notStrictEqual(gone.commits[0]?.subject, 'c');
+        assert.strictEqual(listed, 1);
       } finally {
         await restore();
       }

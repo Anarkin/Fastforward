@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { StringDecoder } from 'node:string_decoder';
 import { Commits, CommitsBuilder } from '../history/commits';
+import { extendHistory, keepsHistory, regionHistory } from '../history/extend';
 import { isHashPrefix } from '../shared/hashes';
 import type {
   CommitInfo,
@@ -147,6 +148,136 @@ export async function listHistory(
     { input: hashLines(tips), onOutput: (chunk) => reader.add(chunk) },
   );
   return reader.finish();
+}
+
+export async function extendedHistory(
+  gitPath: string,
+  cwd: string,
+  older: Commits,
+  oldHeads: ReadonlySet<string>,
+  tips: ReadonlySet<string>,
+  stashes: readonly string[],
+  dates: ReadonlyMap<string, number>,
+): Promise<Commits | undefined> {
+  const fresh = [...tips].filter((tip) => !older.has(tip));
+  if (fresh.length === 0) {
+    return undefined;
+  }
+  const heads = [...oldHeads];
+  const [newer, oldTimes] = await Promise.all([
+    listNewHistory(gitPath, cwd, fresh, stashes, heads),
+    commitTimes(gitPath, cwd, heads),
+  ]);
+  const extension = { older, oldHeads, oldTimes, newer, tips };
+  const extended = extendHistory(extension);
+  const { times } = newer;
+  if (extended || !times || !keepsHistory(extension)) {
+    return extended;
+  }
+  const since = times.reduce((oldest, time) => Math.min(oldest, time));
+  const timeOf = (tip: string) => {
+    const at = newer.indexOf(tip) ?? newer.length;
+    return at < newer.length
+      ? times[at]
+      : (dates.get(tip) ?? oldTimes.get(tip) ?? since);
+  };
+  const region = await listSince(
+    gitPath,
+    cwd,
+    [...tips].filter((tip) => timeOf(tip) >= since),
+    stashes,
+    since,
+  );
+  const below: string[] = [];
+  for (let at = region.length; at < region.size; at++) {
+    below.push(region.hashAt(at));
+  }
+  return regionHistory({
+    ...extension,
+    region,
+    since,
+    belowTimes: await commitTimes(gitPath, cwd, below),
+  });
+}
+
+async function listSince(
+  gitPath: string,
+  cwd: string,
+  tips: readonly string[],
+  stashes: readonly string[],
+  since: number,
+): Promise<Commits> {
+  const reader = new CommitsBuilder(stashes, true);
+  await runGitBytes(
+    gitPath,
+    cwd,
+    [
+      'rev-list',
+      '--date-order',
+      '--parents',
+      '--timestamp',
+      `--max-age=${since}`,
+      '--stdin',
+      '--',
+    ],
+    { input: hashLines(tips), onOutput: (chunk) => reader.add(chunk) },
+  );
+  return reader.finishNow();
+}
+
+async function listNewHistory(
+  gitPath: string,
+  cwd: string,
+  tips: readonly string[],
+  stashes: readonly string[],
+  oldHeads: readonly string[],
+): Promise<Commits> {
+  const reader = new CommitsBuilder(stashes, true);
+  await runGitBytes(
+    gitPath,
+    cwd,
+    // With the commit-graph, git walks down to the oldest head left out
+    [
+      '-c',
+      'core.commitGraph=false',
+      'rev-list',
+      '--date-order',
+      '--parents',
+      '--timestamp',
+      '--stdin',
+      '--',
+    ],
+    {
+      input: hashLines(tips) + oldHeads.map((head) => `^${head}\n`).join(''),
+      onOutput: (chunk) => reader.add(chunk),
+    },
+  );
+  return reader.finishNow();
+}
+
+async function commitTimes(
+  gitPath: string,
+  cwd: string,
+  hashes: readonly string[],
+): Promise<Map<string, number>> {
+  if (hashes.length === 0) {
+    return new Map();
+  }
+  const output = await runGit(
+    gitPath,
+    cwd,
+    ['rev-list', '--no-walk=unsorted', '--timestamp', '--stdin', '--'],
+    { input: hashLines(hashes) },
+  );
+  return new Map(
+    output
+      .split('\n')
+      .filter(Boolean)
+      .map((line) => {
+        const [time, hash] = line.split(' ');
+        return [hash, Number(time)];
+      }),
+  );
 }
 
 const recentCommits = 5000;

@@ -397,6 +397,10 @@ export const strings = {
     recentHistoryFailed: 'Listing the newest commits first failed',
     refsKept: 'Refs changed, keeping the history',
     refsReloaded: 'Refs changed, reloading the history',
+    refsExtended: (count: number) =>
+      count === 1
+        ? 'Refs changed, adding 1 new commit to the history'
+        : `Refs changed, adding ${count} new commits to the history`,
     laidOut: (shown: number, total: number, milliseconds: number) =>
       `Graph of ${shown} of ${total} commits laid out in ${milliseconds} ms`,
     checkedOut: (kind: string, name: string) => `Checked out ${kind} ${name}`,

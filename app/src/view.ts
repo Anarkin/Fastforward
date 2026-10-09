@@ -20,6 +20,7 @@ import {
   findCommit,
   findCommits,
   headCommit,
+  extendedHistory,
   listHistory,
   listRecentHistory,
   logCommits,
@@ -108,6 +109,7 @@ import {
   select,
   stillThere,
   takeRefs,
+  tipsOf,
   toggleMerges,
   unselect,
   type TabState,
@@ -1737,11 +1739,44 @@ export class FastforwardView {
       ]);
       return;
     }
+    const extended = historyLoaded(tab)
+      ? await this.extendedHistory(context, refs)
+      : undefined;
+    if (extended) {
+      this.log.info(
+        strings.log.refsExtended(extended.length - tab.fullHistory.length),
+      );
+      loadHistory(tab, extended, head, listed, stashes);
+      await Promise.all([
+        this.sendRepository(context, known),
+        this.sendShownHistory(context, { keepPlace: true }),
+      ]);
+      return;
+    }
     this.log.info(strings.log.refsReloaded);
     await Promise.all([
       this.sendRepository(context, known),
       this.sendCommits(context, known, true),
     ]);
+  }
+
+  private async extendedHistory(
+    context: Context,
+    { head, refs, stashes, dates }: Refs,
+  ): Promise<Commits | undefined> {
+    const { tab, gitPath, root } = context;
+    const solo = this.storage.soloOf(root);
+    const older = tab.fullHistory;
+    const extended = await extendedHistory(
+      gitPath,
+      root,
+      older,
+      tab.heads,
+      tipsOf(head, refs, solo, stashes),
+      solo ? [] : stashes.map((stash) => stash.commit),
+      dates,
+    );
+    return tab.fullHistory === older ? extended : undefined;
   }
 
   private async sendWorkingTree(context: Context): Promise<WorkingTree> {
