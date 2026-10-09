@@ -4,7 +4,13 @@ import { once } from 'node:events';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createInterface } from 'node:readline';
-import { exitedWith, gitEnv, gitProcessOptions, stopGit } from '../../git/run';
+import {
+  exitedWith,
+  gitEnv,
+  gitProcessOptions,
+  realGit,
+  stopGit,
+} from '../../git/run';
 import { waitFor } from '../fixtures';
 import { removeFolder, tempFolder, withEnv } from '../repositories';
 
@@ -58,6 +64,87 @@ suite('Running git', () => {
       process.kill = kill;
     }
     assert.deepStrictEqual(killed, [[-4321, 'SIGTERM']]);
+  });
+
+  test("runs the real git Git for Windows' launcher starts, with the MSYSTEM and the PATH the launcher gives it", () => {
+    const root = 'C:\\Program Files\\Git';
+    const present = new Set([
+      `${root}\\usr\\bin\\sh.exe`,
+      `${root}\\ucrt64\\bin\\git.exe`,
+      `${root}\\mingw64\\bin\\git.exe`,
+    ]);
+    const exists = (file: string) => present.has(file);
+    assert.deepStrictEqual(
+      realGit(
+        `${root}\\cmd\\git.exe`,
+        { Path: 'C:\\Windows', USERPROFILE: 'C:\\Users\\me' },
+        'win32',
+        exists,
+      ),
+      {
+        command: `${root}\\ucrt64\\bin\\git.exe`,
+        env: {
+          MSYSTEM: 'UCRT64',
+          Path: `${root}\\ucrt64\\bin;${root}\\usr\\bin;C:\\Users\\me\\bin;C:\\Windows`,
+        },
+      },
+    );
+    present.add('H:\\home');
+    assert.strictEqual(
+      realGit(
+        `${root}\\cmd\\git.exe`,
+        {
+          Path: 'C:\\Windows',
+          HOMEDRIVE: 'H:',
+          HOMEPATH: '\\home',
+          USERPROFILE: 'C:\\Users\\me',
+        },
+        'win32',
+        exists,
+      )?.env.Path,
+      `${root}\\ucrt64\\bin;${root}\\usr\\bin;H:\\home\\bin;C:\\Windows`,
+    );
+    present.delete(`${root}\\ucrt64\\bin\\git.exe`);
+    assert.deepStrictEqual(
+      realGit(
+        `${root}\\CMD\\Git.exe`,
+        { PATH: 'C:\\Windows', HOME: 'D:\\home', MSYSTEM: 'MINGW32' },
+        'win32',
+        exists,
+      ),
+      {
+        command: `${root}\\mingw64\\bin\\git.exe`,
+        env: {
+          MSYSTEM: 'MINGW32',
+          PATH: `${root}\\mingw64\\bin;${root}\\usr\\bin;D:\\home\\bin;C:\\Windows`,
+        },
+      },
+    );
+  });
+
+  test('runs git as found when it is no launcher of a Git for Windows it knows, or outside Windows', () => {
+    const root = 'C:\\Program Files\\Git';
+    assert.strictEqual(
+      realGit(`${root}\\bin\\git.exe`, {}, 'win32', () => true),
+      undefined,
+    );
+    assert.strictEqual(
+      realGit(`${root}\\cmd\\git.exe`, {}, 'win32', () => false),
+      undefined,
+    );
+    assert.strictEqual(
+      realGit(
+        `${root}\\cmd\\git.exe`,
+        {},
+        'win32',
+        (file) => !file.endsWith('sh.exe'),
+      ),
+      undefined,
+    );
+    assert.strictEqual(
+      realGit('/usr/bin/git', {}, 'linux', () => true),
+      undefined,
+    );
   });
 
   test("stops what git started too, as the real git outlives Git for Windows' launcher being killed", async function () {

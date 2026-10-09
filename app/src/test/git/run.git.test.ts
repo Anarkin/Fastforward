@@ -231,6 +231,43 @@ suite('Running git in a repository', function () {
     }
   });
 
+  test("runs the real git behind Git for Windows' launcher, its shell seeing what the launcher would give it, but the launcher for commands that run hooks", async function () {
+    const bin = path.dirname(gitPath);
+    const root =
+      path.basename(bin).toLowerCase() === 'cmd'
+        ? path.dirname(bin)
+        : path.dirname(path.dirname(bin));
+    const launcher = path.join(root, 'cmd', 'git.exe');
+    if (process.platform !== 'win32' || !fs.existsSync(launcher)) {
+      this.skip();
+    }
+    const childProcess = process.getBuiltinModule('node:child_process');
+    const { spawn } = childProcess;
+    const started: string[] = [];
+    const seen = ['-c', 'alias.seen=!echo "$MSYSTEM $PATH"', 'seen'];
+    Reflect.set(childProcess, 'spawn', (...args: Parameters<typeof spawn>) => {
+      const [command, gitArgs] = args;
+      if (gitArgs.includes('seen')) {
+        started.push(command);
+      }
+      return spawn(...args);
+    });
+    let direct: string;
+    let hooked: string;
+    try {
+      direct = await runGit(launcher, cwd, seen);
+      hooked = await runGit(launcher, cwd, seen, { runsHooks: true });
+    } finally {
+      Reflect.set(childProcess, 'spawn', spawn);
+    }
+    assert.strictEqual(direct, hooked);
+    assert.match(
+      started[0] ?? '',
+      /\\(ucrt64|mingw64|clangarm64)\\bin\\git\.exe$/i,
+    );
+    assert.strictEqual(started[1], launcher);
+  });
+
   test('runs its own commands in the C locale, sparing git setting up translations each time it starts', async () => {
     const locale = await runGit(gitPath, cwd, [
       '-c',

@@ -1,5 +1,6 @@
 import { type ChildProcess, execFile, spawn } from 'node:child_process';
-import { join } from 'node:path';
+import { existsSync } from 'node:fs';
+import { join, win32 } from 'node:path';
 import type { Readable } from 'node:stream';
 import { strings } from '../shared/strings';
 
@@ -39,17 +40,84 @@ function hooksEnv(): NodeJS.ProcessEnv {
   return { ...process.env, GIT_TERMINAL_PROMPT: '0' };
 }
 
+export interface GitCommand {
+  readonly command: string;
+  readonly env: NodeJS.ProcessEnv;
+}
+
+const msystems = ['ucrt64', 'clangarm64', 'mingw64', 'mingw32'];
+
+// Git for Windows' launcher in its cmd folder only sets MSYSTEM and puts the
+// real git's folders on the PATH before starting it, which costs a process
+export function realGit(
+  launcher: string,
+  env: NodeJS.ProcessEnv = process.env,
+  platform = process.platform,
+  exists: (file: string) => boolean = existsSync,
+): GitCommand | undefined {
+  const { dir, base } = win32.parse(launcher);
+  const root = win32.dirname(dir);
+  const msystem = msystems.find((name) =>
+    exists(win32.join(root, name, 'bin', 'git.exe')),
+  );
+  if (
+    platform !== 'win32' ||
+    base.toLowerCase() !== 'git.exe' ||
+    win32.basename(dir).toLowerCase() !== 'cmd' ||
+    !exists(win32.join(root, 'usr', 'bin', 'sh.exe')) ||
+    msystem === undefined
+  ) {
+    return undefined;
+  }
+  const pathKey =
+    Object.keys(env).find((key) => key.toUpperCase() === 'PATH') ?? 'PATH';
+  const drive =
+    env.HOMEDRIVE === undefined || env.HOMEPATH === undefined
+      ? undefined
+      : env.HOMEDRIVE + env.HOMEPATH;
+  const home =
+    env.HOME ??
+    (drive !== undefined && exists(drive) ? drive : env.USERPROFILE);
+  return {
+    command: win32.join(root, msystem, 'bin', 'git.exe'),
+    env: {
+      MSYSTEM: env.MSYSTEM ?? msystem.toUpperCase(),
+      [pathKey]: [
+        win32.join(root, msystem, 'bin'),
+        win32.join(root, 'usr', 'bin'),
+        ...(home === undefined ? [] : [win32.join(home, 'bin')]),
+        ...(env[pathKey] === undefined ? [] : [env[pathKey]]),
+      ].join(';'),
+    },
+  };
+}
+
+const realGits = new Map<string, GitCommand>();
+
+export function gitCommand(gitPath: string, runsHooks = false): GitCommand {
+  if (runsHooks) {
+    return { command: gitPath, env: {} };
+  }
+  let found = realGits.get(gitPath);
+  if (found === undefined) {
+    found = realGit(gitPath) ?? { command: gitPath, env: {} };
+    realGits.set(gitPath, found);
+  }
+  return found;
+}
+
 const monitors = new Map<string, Promise<string[]>>();
 
 function monitorArgs(gitPath: string, cwd: string): Promise<string[]> {
   const key = `${gitPath}\0${cwd}`;
   let args = monitors.get(key);
   if (args === undefined) {
+    const { command, env } = gitCommand(gitPath);
     args = new Promise((resolve) => {
       execFile(
-        gitPath,
+        command,
         ['config', '--type=bool', '--get', 'core.fsmonitor'],
-        { cwd, env: gitEnv(), windowsHide: true },
+        { cwd, env: { ...gitEnv(), ...env }, windowsHide: true },
         (error, stdout) => {
           const daemon = !error && stdout.trim() === 'true';
           resolve(['-c', `core.fsmonitor=${daemon}`]);
@@ -106,13 +174,18 @@ export async function runGitBytes(
       reject(signal.reason);
       return;
     }
+    const started = gitCommand(gitPath, runsHooks);
     const child = keptRunning(
       spawn(
-        gitPath,
+        started.command,
         [...(runsHooks ? [] : gitConfigArgs), ...monitor, ...args],
         {
           cwd,
-          env: { ...(runsHooks ? hooksEnv() : gitEnv(pathspecMagic)), ...env },
+          env: {
+            ...(runsHooks ? hooksEnv() : gitEnv(pathspecMagic)),
+            ...started.env,
+            ...env,
+          },
           ...gitProcessOptions(),
         },
       ),

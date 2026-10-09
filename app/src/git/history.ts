@@ -10,6 +10,7 @@ import type {
 } from '../shared/protocol';
 import { strings } from '../shared/strings';
 import {
+  gitCommand,
   gitConfigArgs,
   gitEnv,
   gitProcessOptions,
@@ -452,9 +453,10 @@ function streamMatches(
       }
     };
     const abort = () => finish(() => reject(signal?.reason));
+    const { command, env } = gitCommand(gitPath);
     const child = keptRunning(
       spawn(
-        gitPath,
+        command,
         [
           ...gitConfigArgs,
           'log',
@@ -464,7 +466,7 @@ function streamMatches(
           '--format=%H%x00%aN%x00%aE%x00%cN%x00%cE%x00%B',
           '--',
         ],
-        { cwd, env: gitEnv(), ...gitProcessOptions() },
+        { cwd, env: { ...gitEnv(), ...env }, ...gitProcessOptions() },
       ),
     );
     signal?.addEventListener('abort', abort, { once: true });
