@@ -203,7 +203,7 @@ suite('Watching a repository', function () {
     }
   });
 
-  test('asks git once whether a file saved again and again is ignored, until a .gitignore changes, watching recursively', async () => {
+  test('asks git no more whether a file saved again and again is ignored once told, until a .gitignore changes, watching recursively', async () => {
     const file = path.join(repository.root, 'file.txt');
     const asked: string[] = [];
     const seen: boolean[] = [];
@@ -228,9 +228,11 @@ suite('Watching a repository', function () {
     };
     try {
       await saved('the first save');
+      assert.ok(asked.includes(file));
+      asked.length = 0;
       await saved('the second save');
       await saved('the third save');
-      assert.strictEqual(asked.filter((one) => one === file).length, 1);
+      assert.ok(!asked.includes(file));
       fs.writeFileSync(
         path.join(repository.root, '.gitignore'),
         'ignored/\n/build\n/file.txt\n',
