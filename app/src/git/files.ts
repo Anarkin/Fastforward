@@ -82,29 +82,77 @@ export async function blobSizes(
   return sizes;
 }
 
+type ObjectRead =
+  | {
+      readonly kind: 'object';
+      readonly id: string;
+      readonly type: string;
+      readonly content: Buffer;
+    }
+  | { readonly kind: 'tooLarge'; readonly id: string }
+  | { readonly kind: 'missing' };
+
+async function readObjects(
+  gitPath: string,
+  cwd: string,
+  names: readonly string[],
+  limit: number,
+): Promise<ObjectRead[]> {
+  if (names.length === 0) {
+    return [];
+  }
+  const output = await runGitBytes(
+    gitPath,
+    cwd,
+    ['cat-file', '--batch', `--filter=blob:limit=${limit + 1}`],
+    { input: batchInput(names) },
+  );
+  const read: ObjectRead[] = [];
+  let at = 0;
+  while (at < output.length && read.length < names.length) {
+    const end = output.indexOf(10, at);
+    const header = output.subarray(at, end).toString('utf8');
+    at = end + 1;
+    if (header.endsWith(' missing') || header.endsWith(' ambiguous')) {
+      read.push({ kind: 'missing' });
+      continue;
+    }
+    const [id = '', type = '', size] = header.split(' ');
+    if (type === 'excluded') {
+      read.push({ kind: 'tooLarge', id });
+      continue;
+    }
+    const length = Number(size);
+    read.push({
+      kind: 'object',
+      id,
+      type,
+      content: output.subarray(at, at + length),
+    });
+    at += length + 1;
+  }
+  return read;
+}
+
+function blobOf(
+  read: ObjectRead | undefined,
+): Exclude<ObjectRead, { kind: 'missing' }> | undefined {
+  return read?.kind === 'tooLarge' ||
+    (read?.kind === 'object' && read.type === 'blob')
+    ? read
+    : undefined;
+}
+
 export async function readBlobs(
   gitPath: string,
   cwd: string,
   ids: readonly string[],
 ): Promise<Map<string, string>> {
   const texts = new Map<string, string>();
-  const small = [...(await blobSizes(gitPath, cwd, ids))].flatMap(
-    ([id, size]) => (size <= maxFileSize ? [id] : []),
-  );
-  if (small.length === 0) {
-    return texts;
-  }
-  const output = await runGitBytes(gitPath, cwd, ['cat-file', '--batch'], {
-    input: batchInput(small),
-  });
-  let at = 0;
-  while (at < output.length) {
-    const end = output.indexOf(10, at);
-    const [id, , size] = output.subarray(at, end).toString('utf8').split(' ');
-    const content = output.subarray(end + 1, end + 1 + Number(size));
-    at = end + 2 + Number(size);
-    if (!isBinary(content)) {
-      texts.set(id, content.toString('utf8'));
+  for (const read of await readObjects(gitPath, cwd, ids, maxFileSize)) {
+    const blob = blobOf(read);
+    if (blob?.kind === 'object' && !isBinary(blob.content)) {
+      texts.set(blob.id, blob.content.toString('utf8'));
     }
   }
   return texts;
@@ -151,6 +199,20 @@ export async function readFile(
     return stats.size > maxFileSize
       ? binaryContent(id)
       : toContent(await fs.readFile(file), id);
+  }
+  if (!path.includes('\n')) {
+    const [read] = await readObjects(
+      gitPath,
+      cwd,
+      [`${hash}:${path}`],
+      maxFileSize,
+    );
+    const blob = blobOf(read);
+    if (blob) {
+      return blob.kind === 'tooLarge'
+        ? binaryContent(blob.id)
+        : toContent(blob.content, blob.id);
+    }
   }
   const entry = await runGit(gitPath, cwd, [
     'ls-tree',
@@ -221,32 +283,17 @@ export async function readImage(
       ? { kind: 'tooLarge' }
       : { kind: 'image', bytes: await fs.readFile(file) };
   }
-  let [object, size] =
-    revision === undefined
-      ? [id, (await blobSizes(gitPath, cwd, [id])).get(id)]
-      : await blobAt(gitPath, cwd, `${revision}:${path}`);
-  if (size === undefined && untracked !== undefined) {
-    [object, size] = await blobAt(gitPath, cwd, `${untracked}:${path}`);
-  }
-  if (size === undefined) {
+  const blobNamed = async (name: string) =>
+    blobOf((await readObjects(gitPath, cwd, [name], limit))[0]);
+  const blob =
+    (await blobNamed(revision === undefined ? id : `${revision}:${path}`)) ??
+    (untracked === undefined
+      ? undefined
+      : await blobNamed(`${untracked}:${path}`));
+  if (!blob) {
     return { kind: 'missing' };
   }
-  return size > limit
+  return blob.kind === 'tooLarge'
     ? { kind: 'tooLarge' }
-    : {
-        kind: 'image',
-        bytes: await runGitBytes(gitPath, cwd, ['cat-file', 'blob', object]),
-      };
-}
-
-async function blobAt(
-  gitPath: string,
-  cwd: string,
-  name: string,
-): Promise<[string, number | undefined]> {
-  const checked = await runGit(gitPath, cwd, ['cat-file', '--batch-check'], {
-    input: batchInput([name]),
-  });
-  const [object = '', type, size] = checked.trim().split(' ');
-  return [object, type === 'blob' ? Number(size) : undefined];
+    : { kind: 'image', bytes: blob.content };
 }

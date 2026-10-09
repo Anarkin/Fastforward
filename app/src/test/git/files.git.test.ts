@@ -19,6 +19,23 @@ import {
   type TempRepository,
 } from '../repositories';
 
+async function gitsStarted<T>(
+  run: () => Promise<T>,
+): Promise<{ readonly result: T; readonly gits: number }> {
+  const childProcess = process.getBuiltinModule('node:child_process');
+  const { spawn } = childProcess;
+  let gits = 0;
+  Reflect.set(childProcess, 'spawn', (...args: Parameters<typeof spawn>) => {
+    gits++;
+    return spawn(...args);
+  });
+  try {
+    return { result: await run(), gits };
+  } finally {
+    Reflect.set(childProcess, 'spawn', spawn);
+  }
+}
+
 suite('Repository files', function () {
   this.timeout(20_000);
   let parent: string;
@@ -93,6 +110,15 @@ suite('Repository files', function () {
     await assert.rejects(
       readFile(gitPath, cwd, 'HEAD', 'missing.txt'),
       /missing.txt is not in HEAD/,
+    );
+  });
+
+  test('reads a file at a commit with one git', async () => {
+    assert.deepStrictEqual(
+      await gitsStarted(() =>
+        readFile(gitPath, cwd, 'HEAD', 'src/tracked.txt'),
+      ),
+      { result: { content: 'one\n', binary: false }, gits: 1 },
     );
   });
 
@@ -251,6 +277,10 @@ suite('Blobs', function () {
       assert.deepStrictEqual([...texts.values()], ['one\n', 'two\n']);
       assert.strictEqual(texts.get(a?.new ?? ''), 'two\n');
       assert.deepStrictEqual(await readBlobs(gitPath, root, []), new Map());
+      const { gits } = await gitsStarted(() =>
+        readBlobs(gitPath, root, [a?.new ?? '', large?.new ?? '']),
+      );
+      assert.strictEqual(gits, 1);
     } finally {
       removeFolder(folder);
     }
@@ -359,6 +389,20 @@ suite('Images', function () {
       }
     } finally {
       await repository.git('reset', '--hard', 'HEAD~1');
+    }
+  });
+
+  test('reads an image with one git, by its object id or at a revision', async () => {
+    const [object] = await repository.resolve('HEAD:pixel.png');
+    for (const source of [
+      { path: 'pixel.png', id: object, disk: false },
+      { path: 'pixel.png', id: '1', disk: false, revision: 'HEAD' },
+      { path: 'huge.png', id: '1', disk: false, revision: 'HEAD' },
+    ]) {
+      const { gits } = await gitsStarted(() =>
+        readImage(gitPath, cwd, source, pixel.length),
+      );
+      assert.strictEqual(gits, 1, JSON.stringify(source));
     }
   });
 

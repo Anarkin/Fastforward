@@ -14,6 +14,7 @@ import {
   type ReadPatch,
 } from './git/diff';
 import { gitErrorText } from './git/errorText';
+import { BlobTexts } from './git/blobTexts';
 import { listTree, readBlobs, readFile, readImage } from './git/files';
 import { stashFiles, stashPatch } from './git/stashes';
 import {
@@ -115,6 +116,7 @@ import {
   type TabState,
 } from './tabState';
 
+const maxKeptTextChars = 16_000_000;
 const refreshDelays = { delay: 100, gitDirDelay: 300, maxDelay: 1500 };
 const everything: Changed = { refs: true, workingTree: true };
 const nothing: Changed = { refs: false, workingTree: false };
@@ -203,6 +205,7 @@ function toAll(contexts: readonly Context[]): Context | undefined {
 
 export class FastforwardView {
   private readonly tabStates = new Map<string, Tab>();
+  private readonly blobTexts = new BlobTexts(maxKeptTextChars);
   private readonly repositories = new Map<string, string>();
   private readonly worktreeLists = new Map<string, readonly WorktreeInfo[]>();
   private grouped: Promise<void> | undefined;
@@ -2183,10 +2186,9 @@ export class FastforwardView {
     const { gitPath, root } = context;
     const fromDisk = (request: TextRequest) =>
       context.tab.area !== 'staged' && request.side === workingTreeSide(hash);
-    const blobs = await readBlobs(
-      gitPath,
-      root,
+    const blobs = await this.blobTexts.read(
       texts.filter((request) => !fromDisk(request)).map(({ blob }) => blob),
+      (ids) => readBlobs(gitPath, root, ids),
     );
     const read = await Promise.all(
       texts.map(async (request) => {

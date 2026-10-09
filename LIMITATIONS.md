@@ -27,6 +27,7 @@ This file only observes and documents the codebase mainly for human readers; the
 - A line over `2000` characters is not colored, through Shiki's `tokenizeMaxLineLength`, as minified lines take long to tokenize
 - A code block in a Markdown preview over `5000` lines is not colored, for the same reason as a side of a diff
 - The colors kept are bounded at `100000` lines or `8 million` characters, forgetting the least recently used texts, and a text over `2 million` characters is never kept, bounding the webview's memory
+- The texts of committed files read for colors are kept by the main process up to `16 million` characters, forgetting the least recently used, so a diff shown again reads none from git
 
 ## History
 

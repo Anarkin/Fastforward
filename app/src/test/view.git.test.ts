@@ -762,6 +762,48 @@ suite('View of one repository', function () {
       }
     });
 
+    test('sends the texts of blobs asked for again without reading them from git again', async () => {
+      const file = path.join(repository.root, 'kept.ts');
+      fs.writeFileSync(file, 'kept\n');
+      const childProcess = process.getBuiltinModule('node:child_process');
+      const { spawn } = childProcess;
+      try {
+        const blob = (await repository.git('hash-object', '-w', file)).trim();
+        await connection.receive({
+          type: 'selectCommit',
+          root: repository.root,
+          hash: fixture.merge,
+        });
+        let gits = 0;
+        Reflect.set(
+          childProcess,
+          'spawn',
+          (...args: Parameters<typeof spawn>) => {
+            gits++;
+            return spawn(...args);
+          },
+        );
+        for (const diff of [1, 2]) {
+          page.clear();
+          await connection.receive({
+            type: 'loadTexts',
+            root: repository.root,
+            hash: fixture.merge,
+            diff,
+            texts: [{ path: 'kept.ts', side: 'new', blob }],
+          });
+          assert.deepStrictEqual(
+            page.last('texts')?.texts.map(({ text }) => text),
+            ['kept\n'],
+          );
+        }
+        assert.strictEqual(gits, 1);
+      } finally {
+        Reflect.set(childProcess, 'spawn', spawn);
+        fs.rmSync(file, { force: true });
+      }
+    });
+
     test('shows what git said when a request fails', async () => {
       stubMethod(fastforward, 'sendTree', () =>
         runGit(repository.gitPath, repository.root, ['ls-tree', 'no-tree']),
