@@ -84,6 +84,9 @@ suite('App', function () {
       cwd: appFolder,
     });
     page = await app.firstWindow();
+    // The app watches its settings only once it has found git, so the first
+    // settings written before then would go unnoticed
+    await page.locator('.commit', { hasText: 'second' }).waitFor();
   });
 
   suiteTeardown(async () => {
@@ -706,8 +709,12 @@ suite('App', function () {
     const change = page.locator('.diff-line.removed', {
       hasText: 'line150 word0',
     });
+    // A row found can be drawn anew before the function runs on it
     const belowTop = () =>
       change.evaluate((element) => {
+        if (!element.isConnected) {
+          return undefined;
+        }
         const list = element.closest('.virtual-rows');
         if (!list) {
           throw new Error('No diff list');
@@ -725,7 +732,10 @@ suite('App', function () {
         .click();
       await page.locator('.row.file', { hasText: 'long.txt' }).click();
       await change.waitFor();
-      assert.strictEqual(await belowTop(), 66);
+      await waitFor(
+        async () => (await belowTop()) === 66,
+        'the change to be shown at its place',
+      );
       await page.getByRole('button', { name: 'Unpin Entire Files' }).click();
       await page
         .getByRole('button', { name: 'Show the Entire File' })
