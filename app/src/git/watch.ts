@@ -21,6 +21,7 @@ export interface Changed {
 interface WatchOptions {
   readonly delay: number;
   readonly maxDelay: number;
+  readonly gitDirDelay?: number;
   readonly onChange: (change: Changed) => void;
   readonly onWorktreesChange?: () => void;
   readonly onError: (error: unknown) => void;
@@ -38,6 +39,7 @@ export async function watchRepository(
   {
     delay,
     maxDelay,
+    gitDirDelay = delay,
     onChange,
     onWorktreesChange,
     onError,
@@ -59,6 +61,7 @@ export async function watchRepository(
   let worktreesTimer: NodeJS.Timeout | undefined;
   let pending: PendingChanges = {};
   const changedFiles = new Set<string>();
+  const notIgnored = new NotIgnored();
 
   const flush = async (withGitDir: boolean) => {
     timer = undefined;
@@ -73,7 +76,7 @@ export async function watchRepository(
     try {
       const workingTree =
         (withGitDir && !refsAlone) ||
-        (await anyNotIgnored(ignored, root, files));
+        (await notIgnored.any(ignored, root, files));
       if ((withGitDir || workingTree) && !disposed) {
         onChange({ refs: withGitDir, workingTree });
       }
@@ -85,7 +88,7 @@ export async function watchRepository(
   };
   const schedule = () => {
     clearTimeout(timer);
-    const next = nextFlush(pending, delay, maxDelay);
+    const next = nextFlush(pending, delay, maxDelay, gitDirDelay);
     timer =
       next &&
       setTimeout(
@@ -94,6 +97,7 @@ export async function watchRepository(
       );
   };
   const changedGitDir = (refsAlone = false) => {
+    notIgnored.forget();
     pending = gitDirChanged(pending, Date.now(), refsAlone);
     schedule();
   };
@@ -128,6 +132,9 @@ export async function watchRepository(
       }
     } else if (isInside(root, file)) {
       changedFiles.add(file);
+      if (path.basename(file) === '.gitignore') {
+        notIgnored.forget();
+      }
       const now = Date.now();
       pending = {
         ...pending,
@@ -491,12 +498,14 @@ export function nextFlush(
   { firstWorkTree, lastWorkTree, lastGitDir }: PendingChanges,
   delay: number,
   maxDelay: number,
+  gitDirDelay = delay,
 ): { readonly at: number; readonly gitDir: boolean } | undefined {
   const workTreeAt =
     firstWorkTree === undefined || lastWorkTree === undefined
       ? undefined
       : Math.min(lastWorkTree + delay, firstWorkTree + maxDelay);
-  const gitDirAt = lastGitDir === undefined ? undefined : lastGitDir + delay;
+  const gitDirAt =
+    lastGitDir === undefined ? undefined : lastGitDir + gitDirDelay;
   if (
     gitDirAt !== undefined &&
     (workTreeAt === undefined || gitDirAt <= workTreeAt)
@@ -640,19 +649,46 @@ export function watchedFolder(
   );
 }
 
-async function anyNotIgnored(
-  ignored: Ignored,
-  root: string,
-  files: readonly string[],
-): Promise<boolean> {
-  if (files.length === 0) {
-    return false;
+const maxKnownNotIgnored = 10_000;
+
+// Only answers of not ignored are kept, so one gone stale costs a refresh, not
+// a change missed
+class NotIgnored {
+  private readonly known = new Set<string>();
+  private generation = 0;
+
+  forget(): void {
+    this.known.clear();
+    this.generation++;
   }
-  let found: ReadonlySet<string>;
-  try {
-    found = new Set(await ignored(root, files));
-  } catch {
-    return true;
+
+  async any(
+    ignored: Ignored,
+    root: string,
+    files: readonly string[],
+  ): Promise<boolean> {
+    if (files.length === 0) {
+      return false;
+    }
+    if (files.some((file) => this.known.has(file))) {
+      return true;
+    }
+    const { generation } = this;
+    let found: ReadonlySet<string>;
+    try {
+      found = new Set(await ignored(root, files));
+    } catch {
+      return true;
+    }
+    const kept = files.filter((file) => !found.has(file));
+    if (generation === this.generation) {
+      if (this.known.size + kept.length > maxKnownNotIgnored) {
+        this.known.clear();
+      }
+      for (const file of kept) {
+        this.known.add(file);
+      }
+    }
+    return kept.length > 0;
   }
-  return files.some((file) => !found.has(file));
 }

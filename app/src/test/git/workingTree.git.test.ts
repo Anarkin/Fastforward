@@ -892,6 +892,41 @@ suite('Comparing a commit with the working tree', function () {
 
   suiteTeardown(() => removeFolder(repository.root));
 
+  test('lists the comparison from the untracked files a listing of the working tree found, without asking git for them again, as listing it anew would', async () => {
+    await repository.git('rm', '-q', '--cached', 'kept.txt');
+    try {
+      const listing = await workingTreeFiles(
+        repository.gitPath,
+        repository.root,
+      );
+      for (const reverse of [false, true]) {
+        const diff = { base: first, reverse };
+        const fresh = await workingTreeFiles(
+          repository.gitPath,
+          repository.root,
+          diff,
+        );
+        const recording = holdingGit(() => false);
+        try {
+          const reused = await workingTreeFiles(
+            repository.gitPath,
+            repository.root,
+            diff,
+            undefined,
+            listing.listedUntracked,
+          );
+          assert.deepStrictEqual(reused, fresh);
+          assert.ok(!recording.started('--untracked-files=all'));
+          assert.ok(!recording.started('--others'));
+        } finally {
+          recording.release();
+        }
+      }
+    } finally {
+      await repository.git('reset', '-q', '--', 'kept.txt');
+    }
+  });
+
   test('diffs from the commit to the files on disk', async () => {
     const workingTree = await workingTreeFiles(
       repository.gitPath,

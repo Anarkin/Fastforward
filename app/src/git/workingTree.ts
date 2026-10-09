@@ -24,6 +24,7 @@ export interface WorkingTreeDiff {
 export interface WorkingTree extends WorkingTreeDiff {
   readonly files: readonly FileChange[];
   readonly untracked: readonly string[];
+  readonly listedUntracked: readonly string[];
   readonly staged: readonly FileChange[] | undefined;
 }
 
@@ -79,21 +80,20 @@ export async function workingTreeFiles(
   cwd: string,
   diff = againstIndex,
   signal?: AbortSignal,
+  knownUntracked?: readonly string[],
 ): Promise<WorkingTree> {
   const { base, reverse } = diff;
-  const [trackedChanges, listed, staged] = await Promise.all([
+  const [trackedChanges, listedUntracked, staged] = await Promise.all([
     runGit(gitPath, cwd, [...workingTreeDiff(diff), ...changesArgs], {
       signal,
     }).then((changes) =>
       trackedFiles(gitPath, cwd, parseRawChanges(changes), reverse),
     ),
-    runGit(gitPath, cwd, untrackedListing().args, { signal }),
+    knownUntracked ?? listUntracked(gitPath, cwd, signal),
     base === undefined ? stagedFiles(gitPath, cwd, signal) : undefined,
   ]);
   const tracked = new Set(trackedChanges.map((file) => file.path));
-  const untracked = untrackedListing()
-    .paths(listed)
-    .filter((path) => !tracked.has(path));
+  const untracked = listedUntracked.filter((path) => !tracked.has(path));
   const untrackedFiles = await Promise.all(
     untracked.map(async (path, index): Promise<FileChange> => {
       const file = join(cwd, path);
@@ -119,8 +119,18 @@ export async function workingTreeFiles(
     ...diff,
     files: [...trackedChanges, ...untrackedFiles],
     untracked,
+    listedUntracked,
     staged,
   };
+}
+
+async function listUntracked(
+  gitPath: string,
+  cwd: string,
+  signal?: AbortSignal,
+): Promise<readonly string[]> {
+  const { args, paths } = untrackedListing();
+  return paths(await runGit(gitPath, cwd, args, { signal }));
 }
 
 export function untrackedListing(platform = process.platform): {

@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { comparisonOf } from '../shared/comparisons';
 import { workingTreeHash } from '../shared/protocol';
 import { strings } from '../shared/strings';
 import { soloKey } from '../storage';
@@ -555,6 +556,44 @@ suite('View refreshing one repository', function () {
           ),
           name,
         );
+      }
+    });
+
+    test('lists the untracked files once per refresh while a commit is compared with the working tree, showing one made since', async () => {
+      const childProcess = process.getBuiltinModule('node:child_process');
+      const { spawn } = childProcess;
+      let listings = 0;
+      const made = path.join(repository.root, 'made.txt');
+      try {
+        await connection.receive({
+          type: 'selectCommit',
+          root: repository.root,
+          hash: comparisonOf(fixture.a, workingTreeHash),
+        });
+        fs.writeFileSync(made, 'made\n');
+        Reflect.set(
+          childProcess,
+          'spawn',
+          (...args: Parameters<typeof spawn>) => {
+            const [, gitArgs] = args;
+            if (
+              gitArgs.includes('--untracked-files=all') ||
+              gitArgs.includes('--others')
+            ) {
+              listings++;
+            }
+            return spawn(...args);
+          },
+        );
+        page.clear();
+        await connection.refresh();
+        assert.strictEqual(listings, 1);
+        assert.ok(
+          page.last('files')?.files.some((file) => file.path === 'made.txt'),
+        );
+      } finally {
+        Reflect.set(childProcess, 'spawn', spawn);
+        fs.rmSync(made, { force: true });
       }
     });
 

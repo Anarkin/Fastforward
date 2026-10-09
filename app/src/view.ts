@@ -115,7 +115,7 @@ import {
   type TabState,
 } from './tabState';
 
-const refreshDelays = { delay: 300, maxDelay: 1500 };
+const refreshDelays = { delay: 100, gitDirDelay: 300, maxDelay: 1500 };
 const everything: Changed = { refs: true, workingTree: true };
 const nothing: Changed = { refs: false, workingTree: false };
 const refsAlone: Changed = { refs: true, workingTree: false };
@@ -224,6 +224,7 @@ export class FastforwardView {
     private readonly delays: {
       delay: number;
       maxDelay: number;
+      gitDirDelay?: number;
     } = refreshDelays,
   ) {
     this.collapseMerges = storage.collapseMerges;
@@ -2025,6 +2026,7 @@ export class FastforwardView {
             context.root,
             workingTreeDiffOf(hash),
             signal,
+            knownWorkingTree?.listedUntracked,
           ));
         files = workingTree.files;
         staged = workingTree.staged;

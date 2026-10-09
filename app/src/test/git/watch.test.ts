@@ -317,6 +317,26 @@ suite('Debouncing changes', () => {
     );
   });
 
+  test('waits longer after the git folder changes than after files do, as an editor writes a file at once while git keeps writing its folder', () => {
+    assert.deepStrictEqual(
+      nextFlush({ firstWorkTree: 0, lastWorkTree: 0 }, 100, 1500, 300),
+      { at: 100, gitDir: false },
+    );
+    assert.deepStrictEqual(nextFlush({ lastGitDir: 0 }, 100, 1500, 300), {
+      at: 300,
+      gitDir: true,
+    });
+    assert.deepStrictEqual(
+      nextFlush(
+        { firstWorkTree: 0, lastWorkTree: 0, lastGitDir: 0 },
+        100,
+        1500,
+        300,
+      ),
+      { at: 100, gitDir: false },
+    );
+  });
+
   test('has nothing to flush without changes', () => {
     assert.strictEqual(nextFlush({}, 300, 1500), undefined);
   });

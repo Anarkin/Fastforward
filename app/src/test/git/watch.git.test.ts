@@ -203,6 +203,61 @@ suite('Watching a repository', function () {
     }
   });
 
+  test('asks git once whether a file saved again and again is ignored, until a .gitignore changes, watching recursively', async () => {
+    const file = path.join(repository.root, 'file.txt');
+    const asked: string[] = [];
+    const seen: boolean[] = [];
+    const watching = await watchRepository(
+      repository.gitPath,
+      repository.root,
+      {
+        delay: 50,
+        maxDelay: 200,
+        recursive: true,
+        onChange: ({ refs }) => seen.push(refs),
+        onError: (error) => errors.push(error),
+        ignored: (repo, paths) => {
+          asked.push(...paths);
+          return ignoredPaths(repository.gitPath, repo, paths);
+        },
+      },
+    );
+    const saved = async (what: string) => {
+      seen.length = 0;
+      await keepWriting(file, what, () => seen.includes(false));
+    };
+    try {
+      await saved('the first save');
+      await saved('the second save');
+      await saved('the third save');
+      assert.strictEqual(asked.filter((one) => one === file).length, 1);
+      fs.writeFileSync(
+        path.join(repository.root, '.gitignore'),
+        'ignored/\n/build\n/file.txt\n',
+      );
+      await waitFor(() => seen.includes(false), 'the .gitignore');
+      let last = seen.length;
+      let since = Date.now();
+      await waitFor(() => {
+        if (seen.length !== last) {
+          last = seen.length;
+          since = Date.now();
+        }
+        return Date.now() - since > 300;
+      }, 'the .gitignore to be told');
+      asked.length = 0;
+      seen.length = 0;
+      await keepWriting(file, 'the file now ignored', () =>
+        asked.includes(file),
+      );
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      assert.ok(!seen.includes(false), 'the file now ignored');
+      assert.deepStrictEqual(errors, []);
+    } finally {
+      await watching.dispose();
+    }
+  });
+
   test('refreshes for a changed file when telling whether it is ignored fails, watching recursively', async () => {
     const file = path.join(repository.root, 'file.txt');
     const seen: boolean[] = [];
