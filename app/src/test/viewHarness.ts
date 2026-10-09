@@ -2,11 +2,12 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import { createServer } from 'node:http';
 import * as path from 'node:path';
-import type {
-  ToWebview,
-  ToWebviewOf,
-  Bookmark,
-  UpdateStatus,
+import {
+  collapseThreshold,
+  type ToWebview,
+  type ToWebviewOf,
+  type Bookmark,
+  type UpdateStatus,
 } from '../shared/protocol';
 import type { Timer } from '../autoFetch';
 import type { Log } from '../log';
@@ -200,9 +201,10 @@ export function workingTreesSent(messages: readonly ToWebview[]): number {
 }
 
 export function numberedLines(text: string): string {
-  return Array.from({ length: 2000 }, (_, index) => `${text} ${index}\n`).join(
-    '',
-  );
+  return Array.from(
+    { length: collapseThreshold + 1 },
+    (_, index) => `${text} ${index}\n`,
+  ).join('');
 }
 
 const gates = new Set<() => void>();

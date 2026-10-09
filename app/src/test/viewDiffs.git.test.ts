@@ -353,9 +353,8 @@ suite('View showing diffs', function () {
 
   test('leaves large files out of a commit diff until one is asked for', async () => {
     const large = await tempRepository(path.join(folder, 'large'));
-    const lines = Array.from({ length: 2000 }, (_, index) => `line ${index}`);
     await large.commit('large', {
-      'large.txt': lines.join('\n'),
+      'large.txt': numberedLines('line'),
       'small.txt': 'small\n',
     });
     const [hash] = await large.resolve('HEAD');
@@ -370,7 +369,7 @@ suite('View showing diffs', function () {
       assert.ok(patch.includes('b/small.txt'), patch);
       assert.ok(!patch.includes('large.txt'), patch);
       assert.deepStrictEqual(diff?.leftOut, [
-        { path: 'large.txt', lines: 2000 },
+        { path: 'large.txt', lines: collapseThreshold + 1 },
       ]);
       await view.connection.receive({
         type: 'loadFileDiff',
@@ -381,7 +380,7 @@ suite('View showing diffs', function () {
       });
       const fileDiff = view.page.last('fileDiff');
       assert.strictEqual(fileDiff?.path, 'large.txt');
-      assert.ok(fileDiff?.patch.includes('+line 1999'));
+      assert.ok(fileDiff?.patch.includes(`+line ${collapseThreshold}`));
       assert.strictEqual(fileDiff.diff, 1);
     });
   });
@@ -411,7 +410,11 @@ suite('View showing diffs', function () {
           path: 'large.txt',
           diff: 1,
         });
-        assert.ok(view.page.last('fileDiff')?.patch.includes('+first 1999'));
+        assert.ok(
+          view.page
+            .last('fileDiff')
+            ?.patch.includes(`+first ${collapseThreshold}`),
+        );
         view.page.clear();
         await view.connection.refresh();
         assert.strictEqual(view.page.last('fileDiff'), undefined);
@@ -420,7 +423,7 @@ suite('View showing diffs', function () {
         assert.strictEqual(view.page.last('diff'), undefined);
         const fileDiff = view.page.last('fileDiff');
         assert.strictEqual(fileDiff?.diff, 1);
-        assert.ok(fileDiff.patch.includes('+second 1999'));
+        assert.ok(fileDiff.patch.includes(`+second ${collapseThreshold}`));
       },
       'unwatched',
     );
@@ -428,8 +431,9 @@ suite('View showing diffs', function () {
 
   test('leaves the files past the budget out of a commit diff', async () => {
     const many = await tempRepository(path.join(folder, 'many'));
-    const files = Math.ceil(patchLineBudget / collapseThreshold);
-    const text = 'line\n'.repeat(collapseThreshold);
+    const lines = Math.min(collapseThreshold, Math.ceil(patchLineBudget / 2));
+    const files = Math.floor(patchLineBudget / lines) + 1;
+    const text = 'line\n'.repeat(lines);
     await many.commit(
       'many',
       Object.fromEntries(

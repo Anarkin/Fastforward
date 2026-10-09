@@ -22,7 +22,7 @@ export interface NavigationEntry {
   readonly subject: string | undefined;
 }
 
-export const collapseThreshold = 1500;
+export const collapseThreshold = 25_000;
 
 export function isLargeChange(file: {
   readonly insertions: number;
@@ -35,7 +35,7 @@ export function isLargeChange(file: {
   );
 }
 
-export const patchLineBudget = 20_000;
+export const patchLineBudget = 25_000;
 
 export const patchByteBudget = 16 * 1024 * 1024;
 

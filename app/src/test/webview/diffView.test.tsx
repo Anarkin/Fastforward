@@ -454,14 +454,14 @@ suite('Large files in a commit diff', () => {
   });
 
   test('defers each large file, and every file once the diff would grow past its budget', () => {
-    const fitting = Array.from(
-      { length: Math.floor(patchLineBudget / collapseThreshold) },
-      (_, index) =>
-        fileChange(`${index}.ts`, {
-          insertions: collapseThreshold,
-          deletions: 0,
-        }),
-    );
+    const fitting = [];
+    for (let left = patchLineBudget - 3; left > 0;) {
+      const insertions = Math.min(collapseThreshold, left);
+      fitting.push(
+        fileChange(`${fitting.length}.ts`, { insertions, deletions: 0 }),
+      );
+      left -= insertions;
+    }
     const files = [
       ...fitting,
       large,

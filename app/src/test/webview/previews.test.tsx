@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { collapseThreshold } from '../../shared/protocol';
 import { parsePatch, textKey, type DiffFile } from '../../webview/diff';
 import { diffRows } from '../../webview/diffView';
 import { MarkdownDiff } from '../../webview/markdownPreview';
@@ -141,7 +142,7 @@ suite('Previews', () => {
       ...readme,
       hunks: [
         {
-          lines: Array.from({ length: 2000 }, (_, index) => ({
+          lines: Array.from({ length: collapseThreshold + 1 }, (_, index) => ({
             kind: 'added' as const,
             oldNumber: undefined,
             newNumber: index + 1,
