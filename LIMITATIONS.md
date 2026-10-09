@@ -6,8 +6,9 @@ This file only observes and documents the codebase mainly for human readers; the
 
 - A file over 1500 changed lines is left out of a commit's patch and loads when opened, as the webview would freeze laying it out
 - Once a commit's patch would pass 20000 changed lines, every later file is left out and loads when opened, for the same reason
-- Once the old and new text of a commit's files would pass 16 MB, every later file is left out and loads when opened, as a minified file counts as one line however long
-- Once the paths of a commit's patch would pass 16000 characters, every later file is left out and loads when opened; git is passed the files kept rather than those left out, so the command line stays under the 32767 characters Windows allows
+- Once a commit's patch would pass 16 MB, or the old and new text of the uncommitted files would, every later file is left out and loads when opened, as a minified file counts as one line however long
+- A commit's patch is read only up to where it passes 20000 changed lines or 16 MB, so the files left out after that show no count of their changed lines
+- Once the paths of the uncommitted changes' patch would pass 16000 characters, every later file is left out and loads when opened; git is passed the files kept rather than those left out, so the command line stays under the 32767 characters Windows allows
 - A file over 2 MB has its whole text shown as binary and not used for colors, and an untracked one's patch is diffed again on every refresh
 - Only the first 50 untracked files get line counts and are part of the All Changes or Unstaged patch, as each one is read on its own to count its lines and diffed on its own with `git diff --no-index`
 - A block of over 40000 removed by added lines, or 1 million words and punctuation marks compared, has its lines paired in order instead of by similarity, as pairing compares every removed line with every added one

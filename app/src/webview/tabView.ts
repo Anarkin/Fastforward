@@ -2,6 +2,7 @@ import { shownSide, workingTreeSide } from '../shared/comparisons';
 import type {
   ChangeArea,
   FileChange,
+  LeftOut,
   NavigationEntry,
   RepositoryState,
   ScrollTarget,
@@ -29,6 +30,7 @@ export interface TabView {
   readonly area: ChangeArea | undefined;
   readonly entireFile: boolean;
   readonly patch: string;
+  readonly leftOut: readonly LeftOut[];
   readonly diffs: number;
   readonly refreshes: number;
   readonly fileContent: WholeFile | undefined;
@@ -62,6 +64,7 @@ export const emptyTabView: TabView = {
   area: undefined,
   entireFile: false,
   patch: '',
+  leftOut: [],
   diffs: 0,
   refreshes: 0,
   fileContent: undefined,
@@ -106,6 +109,7 @@ function selected(state: TabView, hash: string | undefined): TabView {
     area: undefined,
     entireFile: false,
     patch: '',
+    leftOut: [],
     fileContent: undefined,
     largeFiles: new Map(),
     texts: new Map(),
@@ -158,6 +162,7 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
         selectionKnown: true,
         patchLoading: state.hash !== undefined,
         patch: '',
+        leftOut: [],
         fileContent: undefined,
         largeFiles: new Map(),
         texts: new Map(),
@@ -238,6 +243,7 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
         path: action.path,
         area: action.area,
         patch: action.patch,
+        leftOut: action.leftOut ?? [],
         diffs: state.diffs + 1,
         patchLoading: false,
         fileContent: undefined,
@@ -278,6 +284,7 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
         path: action.path,
         area: action.area,
         patch: '',
+        leftOut: [],
         patchLoading: false,
         fileContent: action,
       };

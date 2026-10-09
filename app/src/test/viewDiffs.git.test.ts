@@ -318,28 +318,35 @@ suite('View showing diffs', function () {
     });
   });
 
-  test('reads a commit diff while reading its files, only once when no file is left out', async () => {
-    const [first] = await long.resolve('HEAD~1');
-    await withView(log, [long.root], async (view) => {
+  test('reads a commit diff while reading its files, only once, also when it leaves a file out', async () => {
+    const large = await tempRepository(path.join(folder, 'read-once'));
+    await large.commit('large', {
+      'large.txt': numberedLines('line'),
+      'small.txt': 'small\n',
+    });
+    const [hash] = await large.resolve('HEAD');
+    await withView(log, [large.root], async (view) => {
       const held = gate();
       stubMethod(view.view, 'commitFiles', async (original, ...args) => {
         await held.opened;
         return original(...args);
       });
       let patches = 0;
-      stubMethod(view.view, 'patchOf', (original, ...args) => {
-        patches += 1;
-        return original(...args);
-      });
+      for (const name of ['patchOf', 'budgetedPatch']) {
+        stubMethod(view.view, name, (original, ...args) => {
+          patches += 1;
+          return original(...args);
+        });
+      }
       const selected = view.connection.receive({
         type: 'selectCommit',
-        root: long.root,
-        hash: first,
+        root: large.root,
+        hash,
       });
       await waitFor(() => patches > 0, 'the diff to be read');
       held.open();
       await selected;
-      assert.ok(view.page.last('diff')?.patch.includes('b/a.txt'));
+      assert.ok(view.page.last('diff')?.patch.includes('b/small.txt'));
       assert.strictEqual(patches, 1);
     });
   });
@@ -358,9 +365,13 @@ suite('View showing diffs', function () {
         root: large.root,
         hash,
       });
-      const patch = view.page.last('diff')?.patch ?? '';
+      const diff = view.page.last('diff');
+      const patch = diff?.patch ?? '';
       assert.ok(patch.includes('b/small.txt'), patch);
       assert.ok(!patch.includes('large.txt'), patch);
+      assert.deepStrictEqual(diff?.leftOut, [
+        { path: 'large.txt', lines: 2000 },
+      ]);
       await view.connection.receive({
         type: 'loadFileDiff',
         root: large.root,

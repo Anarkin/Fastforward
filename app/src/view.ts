@@ -4,9 +4,14 @@ import { readUpstream, remoteDefaultBranches } from './git/branches';
 import {
   compareFiles,
   comparePatch,
+  comparePatchArgs,
+  leftOutOf,
+  readPatch,
   showFiles,
   showPatch,
+  showPatchArgs,
   type PatchScope,
+  type ReadPatch,
 } from './git/diff';
 import { gitErrorText } from './git/errorText';
 import { listTree, readBlobs, readFile, readImage } from './git/files';
@@ -63,12 +68,14 @@ import { InFlight } from './shared/inFlight';
 import {
   commitPageSize,
   deferredChanges,
+  leftOutChanges,
   workingTreeHash,
   type ChangeArea,
   type CheckoutTarget,
   type CommitSearch,
   type Direction,
   type FileChange,
+  type LeftOut,
   type TabInfo,
   type TabMessage,
   type TextRequest,
@@ -161,7 +168,7 @@ interface Refresh {
 }
 
 interface EarlyPatch {
-  readonly patch: Promise<string | undefined>;
+  readonly patch: Promise<ReadPatch | undefined>;
   readonly loading: AbortController;
 }
 
@@ -2006,17 +2013,7 @@ export class FastforwardView {
         ...(staged === undefined ? {} : { staged }),
       });
     }
-    const whole =
-      tab.path === undefined && includedChanges(files) === undefined;
-    if (!whole) {
-      early?.loading.abort();
-    }
-    await this.sendDiff(
-      context,
-      hash,
-      refreshing,
-      whole ? early?.patch : undefined,
-    );
+    await this.sendDiff(context, hash, refreshing, early?.patch);
   }
 
   private earlyPatch(
@@ -2028,13 +2025,62 @@ export class FastforwardView {
       return undefined;
     }
     const loading = new AbortController();
-    const patch = this.patchOf(
+    const patch = this.budgetedPatch(
       context,
       hash,
-      { ignoreWhitespace: this.storage.ignoreWhitespace },
       AbortSignal.any([signal, loading.signal]),
     ).catch(() => undefined);
     return { patch, loading };
+  }
+
+  private budgetedPatch(
+    context: Context,
+    hash: string,
+    signal: AbortSignal,
+  ): Promise<ReadPatch> {
+    const scope = { ignoreWhitespace: this.storage.ignoreWhitespace };
+    const compared = comparedOf(hash);
+    const stash = context.tab.stashes.get(hash);
+    return readPatch(
+      context.gitPath,
+      context.root,
+      compared
+        ? [comparePatchArgs(compared.from, compared.to, scope)]
+        : stash
+          ? [
+              showPatchArgs(stash.commit, scope),
+              ...(stash.untracked === undefined
+                ? []
+                : [showPatchArgs(stash.untracked, scope)]),
+            ]
+          : [showPatchArgs(hash, scope)],
+      signal,
+    );
+  }
+
+  private async wholePatch(
+    context: Context,
+    hash: string,
+    files: readonly FileChange[],
+    early: Promise<ReadPatch | undefined> | undefined,
+    signal: AbortSignal,
+  ): Promise<{ patch: string; leftOut: readonly LeftOut[] }> {
+    if (workingTreeSide(hash)) {
+      const patch = await this.patchOf(
+        context,
+        hash,
+        {
+          include: includedChanges(files),
+          ignoreWhitespace: this.storage.ignoreWhitespace,
+        },
+        signal,
+      );
+      return { patch, leftOut: leftOutChanges(files) };
+    }
+    const read =
+      (await early) ?? (await this.budgetedPatch(context, hash, signal));
+    void this.inFlight.track(read.exited);
+    return { patch: read.patch, leftOut: leftOutOf(read, files) };
   }
 
   private commitFiles(
@@ -2171,7 +2217,7 @@ export class FastforwardView {
     context: Context,
     hash: string,
     refreshing = false,
-    early?: Promise<string | undefined>,
+    early?: Promise<ReadPatch | undefined>,
   ): Promise<void> {
     const { tab } = context;
     const { path: file, area } = tab;
@@ -2220,23 +2266,30 @@ export class FastforwardView {
       }
       return;
     }
-    const scope =
-      file === undefined
-        ? {
-            include: includedChanges([...changes.values()]),
-            ignoreWhitespace: this.storage.ignoreWhitespace,
-          }
-        : {
+    let patch: string;
+    let leftOut: readonly LeftOut[] | undefined;
+    try {
+      if (file === undefined) {
+        ({ patch, leftOut } = await this.wholePatch(
+          context,
+          hash,
+          [...changes.values()],
+          early,
+          loading.signal,
+        ));
+      } else {
+        patch = await this.patchOf(
+          context,
+          hash,
+          {
             path: file,
             oldPath: change?.oldPath,
             entireFile: context.tab.entireFile || this.storage.entireFilePinned,
             ignoreWhitespace: this.storage.ignoreWhitespace,
-          };
-    let patch: string;
-    try {
-      patch =
-        (await early) ??
-        (await this.patchOf(context, hash, scope, loading.signal));
+          },
+          loading.signal,
+        );
+      }
     } catch (error) {
       if (loading.signal.aborted) {
         return;
@@ -2250,13 +2303,21 @@ export class FastforwardView {
       shownDiff.hash === hash &&
       shownDiff.path === file &&
       shownDiff.area === area &&
-      shownDiff.patch === patch;
+      shownDiff.patch === patch &&
+      JSON.stringify(shownDiff.leftOut) === JSON.stringify(leftOut);
     if (stale()) {
       return;
     }
     if (!unchanged) {
       tab.diffOwed = false;
-      context.post({ type: 'diff', hash, path: file, ...areaOf(area), patch });
+      context.post({
+        type: 'diff',
+        hash,
+        path: file,
+        ...areaOf(area),
+        patch,
+        ...(leftOut === undefined ? {} : { leftOut }),
+      });
     } else if (file === undefined) {
       await this.sendFileDiffsAgain(context, hash);
     }

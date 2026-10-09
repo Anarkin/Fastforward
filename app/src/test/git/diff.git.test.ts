@@ -1,10 +1,16 @@
 import * as assert from 'node:assert';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import {
   compareFiles,
   comparePatch,
+  leftOutOf,
+  readPatch,
   showFiles,
   showPatch,
+  showPatchArgs,
 } from '../../git/diff';
+import { collapseThreshold } from '../../shared/protocol';
 import {
   stagedPatch,
   workingTreeFiles,
@@ -181,25 +187,47 @@ suite('Git diff', function () {
     }
   });
 
-  test('counts the bytes of the old and new text of each file whose lines changed', async () => {
+  test('lists the files of a commit without reading their sizes', async () => {
+    const files = await showFiles(gitPath, cwd, rename);
+    assert.strictEqual(files[0]?.bytes, undefined);
+  });
+
+  test('finds the file of each section of a patch, also of paths git quotes or that hold " b/"', async () => {
+    const names = [
+      'x"y.txt',
+      'tab\there.txt',
+      'back\\slash.txt',
+      'a b/c.txt',
+      'ü.txt',
+      'new\nline.txt',
+    ];
+    const large = path.join(cwd, 'large.txt');
+    fs.writeFileSync(large, 'line\n'.repeat(collapseThreshold + 1));
     try {
-      await temp.commit('old', { 'a.txt': 'one\n', 'b.txt': 'gone\n' });
-      await temp.git('mv', 'b.txt', 'moved.txt');
-      await temp.commit('new', { 'a.txt': 'three\n', 'c.txt': 'added\n' });
+      const blob = (await temp.git('hash-object', '-w', 'large.txt')).trim();
+      for (const name of names) {
+        await temp.git(
+          '-c',
+          'core.protectNTFS=false',
+          'update-index',
+          '--add',
+          '--cacheinfo',
+          `100644,${blob},${name}`,
+        );
+      }
+      await temp.git('-c', 'core.protectNTFS=false', 'commit', '-m', 'odd');
       const [hash] = await temp.resolve('HEAD');
+      const files = await showFiles(gitPath, cwd, hash);
+      const read = await readPatch(gitPath, cwd, [showPatchArgs(hash, {})]);
       assert.deepStrictEqual(
-        (await showFiles(gitPath, cwd, hash)).map((file) => [
-          file.path,
-          file.bytes,
-        ]),
-        [
-          ['a.txt', 10],
-          ['c.txt', 6],
-          ['moved.txt', undefined],
-        ],
+        leftOutOf(read, files)
+          .map((file) => file.path)
+          .toSorted(),
+        names.toSorted(),
       );
     } finally {
-      await temp.git('reset', '--hard', rename);
+      fs.rmSync(large);
+      await temp.git('-c', 'core.protectNTFS=false', 'reset', '--hard', rename);
     }
   });
 
@@ -288,16 +316,11 @@ suite('Comparing two commits', function () {
       main,
     );
     assert.deepStrictEqual(
-      files.map((file) => [
-        file.status,
-        file.path,
-        file.insertions,
-        file.deletions,
-      ]),
+      files.map((file) => [file.status, file.path]),
       [
-        ['D', 'feature.txt', 0, 1],
-        ['A', 'main.txt', 1, 0],
-        ['M', 'shared.txt', 1, 1],
+        ['D', 'feature.txt'],
+        ['A', 'main.txt'],
+        ['M', 'shared.txt'],
       ],
     );
   });

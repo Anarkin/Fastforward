@@ -510,7 +510,7 @@ suite('View refreshing one repository', function () {
     });
 
     test('stops reading the files and diff of a commit selected before another', async () => {
-      for (const name of ['commitFiles', 'patchOf']) {
+      for (const name of ['commitFiles', 'budgetedPatch']) {
         const held = gate();
         const signals: AbortSignal[] = [];
         stubMethod(fastforward, name, async (original, ...args) => {

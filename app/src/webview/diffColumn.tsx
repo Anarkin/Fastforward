@@ -1,9 +1,9 @@
 import { useCallback, useMemo, useRef, useState, type RefObject } from 'react';
 import {
-  deferredChanges,
   type ChangeArea,
   type DiffLayout,
   type FileChange,
+  type LeftOut,
   type TextRequest,
 } from '../shared/protocol';
 import { Column } from './column';
@@ -28,10 +28,11 @@ import { keyPressed, useBinding } from './shortcuts';
 export function withLargeFiles(
   parsed: readonly DiffFile[],
   files: readonly FileChange[],
+  leftOut: readonly LeftOut[],
   largeFiles: ReadonlyMap<string, DiffFile>,
 ): DiffFile[] {
   const byPath = new Map(parsed.map((file) => [file.path, file]));
-  const deferred = deferredChanges(files);
+  const deferred = new Map(leftOut.map(({ path, lines }) => [path, lines]));
   const result: DiffFile[] = [];
   for (const change of files) {
     const file = byPath.get(change.path);
@@ -44,11 +45,7 @@ export function withLargeFiles(
           path: change.path,
           binary: false,
           hunks: [],
-          placeholder: {
-            lines: change.tooLargeToCount
-              ? undefined
-              : change.insertions + change.deletions,
-          },
+          placeholder: { lines: deferred.get(change.path) },
         },
       );
     }
@@ -61,10 +58,11 @@ export function shownFiles(
   parsed: readonly DiffFile[],
   path: string | undefined,
   files: readonly FileChange[],
+  leftOut: readonly LeftOut[],
   largeFiles: ReadonlyMap<string, DiffFile>,
 ): DiffFile[] {
   return path === undefined
-    ? withLargeFiles(parsed, files, largeFiles)
+    ? withLargeFiles(parsed, files, leftOut, largeFiles)
     : parsed.filter((file) => file.path === path);
 }
 
@@ -262,6 +260,7 @@ export function Diff({
   loading,
   files,
   patch,
+  leftOut,
   diffs,
   largeFiles,
   onLoadFile,
@@ -281,6 +280,7 @@ export function Diff({
   loading: boolean;
   files: readonly FileChange[];
   patch: string;
+  leftOut: readonly LeftOut[];
   diffs: number;
   largeFiles: ReadonlyMap<string, DiffFile>;
   onLoadFile: (path: string) => void;
@@ -298,8 +298,11 @@ export function Diff({
   const parsed = useMemo(() => parsePatch(patch), [patch]);
   const diffFiles = useMemo(
     () =>
-      withUnchangedObjects(shownFiles(parsed, path, files, largeFiles), files),
-    [parsed, path, files, largeFiles],
+      withUnchangedObjects(
+        shownFiles(parsed, path, files, leftOut, largeFiles),
+        files,
+      ),
+    [parsed, path, files, leftOut, largeFiles],
   );
   const errorRow = error && <div className="error-message">{error}</div>;
 

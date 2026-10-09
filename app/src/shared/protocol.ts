@@ -68,6 +68,23 @@ export function deferredChanges(
   return deferred;
 }
 
+export interface LeftOut {
+  readonly path: string;
+  readonly lines: number | undefined;
+}
+
+export function leftOutChanges(files: readonly FileChange[]): LeftOut[] {
+  const deferred = deferredChanges(files);
+  return files
+    .filter((file) => deferred.has(file.path))
+    .map((file) => ({
+      path: file.path,
+      lines: file.tooLargeToCount
+        ? undefined
+        : file.insertions + file.deletions,
+    }));
+}
+
 export const commitPageSize = 100;
 
 export function pageStart(index: number): number {
@@ -367,6 +384,7 @@ export type ToWebview =
       readonly path: string | undefined;
       readonly area?: ChangeArea;
       readonly patch: string;
+      readonly leftOut?: readonly LeftOut[];
     }
   | {
       readonly type: 'fileDiff';

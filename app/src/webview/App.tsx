@@ -140,6 +140,7 @@ export function App({ name, post: postToHost, listen }: Props) {
     area,
     entireFile,
     patch,
+    leftOut,
     diffs,
     refreshes,
     fileContent,
@@ -743,6 +744,7 @@ export function App({ name, post: postToHost, listen }: Props) {
                     onLoadTexts={loadTexts}
                     files={area === 'staged' ? (staged ?? []) : files}
                     patch={patch}
+                    leftOut={leftOut}
                     diffs={diffs}
                     fileContent={fileContent}
                     error={error}

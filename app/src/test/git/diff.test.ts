@@ -1,5 +1,132 @@
 import * as assert from 'node:assert';
-import { parseChanges, pathspecs } from '../../git/diff';
+import {
+  leftOutOf,
+  parseChanges,
+  PatchBudget,
+  pathspecs,
+} from '../../git/diff';
+import {
+  collapseThreshold,
+  patchByteBudget,
+  patchLineBudget,
+  type FileChange,
+} from '../../shared/protocol';
+import { fileChange } from '../fixtures';
+
+function section(path: string, lines: number, oldPath = path): string {
+  return [
+    `diff --git a/${oldPath} b/${path}`,
+    'index 1111111..2222222 100644',
+    `--- a/${oldPath}`,
+    `+++ b/${path}`,
+    `@@ -1,${lines} +1,${lines} @@`,
+    ' context',
+    ...Array.from({ length: lines }, (_, index) =>
+      index % 2 ? `+--- added ${index}` : `-+++ removed ${index}`,
+    ),
+    '\\ No newline at end of file',
+    '',
+  ].join('\n');
+}
+
+function read(chunks: readonly string[]) {
+  const budget = new PatchBudget();
+  for (const chunk of chunks) {
+    budget.add(Buffer.from(chunk));
+  }
+  return budget.end();
+}
+
+suite('Patch budget', () => {
+  test('keeps each file within the budget and leaves out one over 1500 changed lines with its count, counting only the changed lines of its hunks, from output split anywhere', () => {
+    const output =
+      section('a.ts', 2) +
+      section('large.json', collapseThreshold + 1) +
+      section('b.ts', 3);
+    for (const split of [0, 10, output.indexOf('large.json') + 3, 2000]) {
+      const read2 = read([output.slice(0, split), output.slice(split)]);
+      assert.strictEqual(read2.patch, section('a.ts', 2) + section('b.ts', 3));
+      assert.deepStrictEqual(read2.sections, [
+        { header: 'diff --git a/a.ts b/a.ts', lines: 2, kept: true },
+        {
+          header: 'diff --git a/large.json b/large.json',
+          lines: collapseThreshold + 1,
+          kept: false,
+        },
+        { header: 'diff --git a/b.ts b/b.ts', lines: 3, kept: true },
+      ]);
+      assert.strictEqual(read2.stopped, false);
+    }
+  });
+
+  test('leaves out the file that takes the patch past 20000 lines and stops there', () => {
+    const crossing = Math.floor(patchLineBudget / collapseThreshold);
+    const budget = new PatchBudget();
+    let stoppedAt: number | undefined;
+    for (let index = 0; index < crossing + 2; index++) {
+      if (budget.add(Buffer.from(section(`${index}.txt`, collapseThreshold)))) {
+        stoppedAt ??= index;
+      }
+    }
+    const { sections, stopped } = budget.end();
+    assert.strictEqual(stopped, true);
+    assert.strictEqual(stoppedAt, crossing + 1);
+    assert.deepStrictEqual(
+      sections.map(({ kept }) => kept),
+      [...Array.from({ length: crossing }, () => true), false],
+    );
+  });
+
+  test('stops at a file of over 16 MB, leaving it out uncounted', () => {
+    const budget = new PatchBudget();
+    budget.add(Buffer.from(section('a.ts', 1)));
+    const huge = `diff --git a/min.js b/min.js\n@@ -0,0 +1 @@\n+${'x'.repeat(patchByteBudget)}`;
+    assert.strictEqual(budget.add(Buffer.from(huge)), true);
+    assert.deepStrictEqual(budget.end().sections, [
+      { header: 'diff --git a/a.ts b/a.ts', lines: 1, kept: true },
+      { header: 'diff --git a/min.js b/min.js', lines: undefined, kept: false },
+    ]);
+  });
+});
+
+suite('Files left out of a patch', () => {
+  const files: FileChange[] = [
+    fileChange('a.ts'),
+    fileChange('spaces only.ts'),
+    { ...fileChange('new.ts'), status: 'R', oldPath: 'old.ts' },
+    fileChange('large.json'),
+    fileChange('b.ts'),
+    fileChange('c.ts'),
+  ];
+
+  test('names the files whose sections were left out, matching each section to its file by its header, past files with none, as whitespace-only ones', () => {
+    const output =
+      section('a.ts', 1) +
+      section('new.ts', 1, 'old.ts') +
+      section('large.json', collapseThreshold + 1) +
+      section('b.ts', 1) +
+      section('c.ts', 1);
+    assert.deepStrictEqual(leftOutOf(read([output]), files), [
+      { path: 'large.json', lines: collapseThreshold + 1 },
+    ]);
+  });
+
+  test('leaves out every file after the one the patch stopped at, uncounted', () => {
+    const budget = new PatchBudget();
+    budget.add(Buffer.from(section('a.ts', 1)));
+    budget.add(
+      Buffer.from(
+        `diff --git a/old.ts b/new.ts\n@@ -0,0 +1 @@\n+${'x'.repeat(patchByteBudget)}`,
+      ),
+    );
+    assert.deepStrictEqual(leftOutOf(budget.end(), files), [
+      { path: 'new.ts', lines: undefined },
+      { path: 'large.json', lines: 0 },
+      { path: 'b.ts', lines: 0 },
+      { path: 'c.ts', lines: 0 },
+    ]);
+  });
+});
 
 suite('Pathspecs', () => {
   test('narrows to a path, or to the files given', () => {

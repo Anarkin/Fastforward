@@ -4,6 +4,7 @@ import { parseFilePatch, parsePatch, type DiffFile } from '../../webview/diff';
 import {
   collapseThreshold,
   deferredChanges,
+  leftOutChanges,
   patchByteBudget,
   patchLineBudget,
   patchPathBudget,
@@ -374,10 +375,35 @@ suite('Large files in a commit diff', () => {
     deletions: 1,
   });
 
+  test('puts each file the app left out of the diff in its place, with the count it sent', () => {
+    const files = [fileChange('a.ts'), fileChange('b.ts'), fileChange('c.ts')];
+    assert.deepStrictEqual(
+      withLargeFiles(
+        parsePatch(patch('a.ts', 1)),
+        files,
+        [
+          { path: 'b.ts', lines: undefined },
+          { path: 'c.ts', lines: 0 },
+        ],
+        new Map(),
+      ).map((file) => [file.path, file.placeholder]),
+      [
+        ['a.ts', undefined],
+        ['b.ts', { lines: undefined }],
+        ['c.ts', { lines: 0 }],
+      ],
+    );
+  });
+
   test('puts a large file the diff left out in its place, until it loads', () => {
     const files = [fileChange('a.ts'), large, fileChange('b.ts')];
     const parsed = parsePatch(`${patch('b.ts', 1)}\n${patch('a.ts', 1)}`);
-    const placeholder = withLargeFiles(parsed, files, new Map());
+    const placeholder = withLargeFiles(
+      parsed,
+      files,
+      leftOutChanges(files),
+      new Map(),
+    );
     assert.deepStrictEqual(
       placeholder.map((file) => [file.path, file.placeholder]),
       [
@@ -390,6 +416,7 @@ suite('Large files in a commit diff', () => {
     const loaded = withLargeFiles(
       parsed,
       files,
+      leftOutChanges(files),
       new Map([
         ['large.json', parseFilePatch('large.json', patch('large.json', 3))],
       ]),
@@ -406,17 +433,22 @@ suite('Large files in a commit diff', () => {
     const files = [fileChange('foo'), big];
     const parsed = parsePatch(`${patch('foo', 1)}\n${patch('foo/big.txt', 3)}`);
     assert.deepStrictEqual(
-      shownFiles(parsed, undefined, files, new Map()).map((file) => [
-        file.path,
-        file.placeholder,
-      ]),
+      shownFiles(
+        parsed,
+        undefined,
+        files,
+        leftOutChanges(files),
+        new Map(),
+      ).map((file) => [file.path, file.placeholder]),
       [
         ['foo', undefined],
         ['foo/big.txt', { lines: collapseThreshold + 1 }],
       ],
     );
     assert.deepStrictEqual(
-      shownFiles(parsed, 'foo', files, new Map()).map((file) => file.path),
+      shownFiles(parsed, 'foo', files, leftOutChanges(files), new Map()).map(
+        (file) => file.path,
+      ),
       ['foo'],
     );
   });
@@ -522,9 +554,11 @@ suite('Large files in a commit diff', () => {
 
   test('puts a file deferred for the budget in its place, collapsed until asked for', () => {
     const deferred = 'x'.repeat(patchPathBudget);
+    const files = [fileChange('a.ts'), fileChange(deferred)];
     const diff = withLargeFiles(
       parsePatch(patch('a.ts', 1)),
-      [fileChange('a.ts'), fileChange(deferred)],
+      files,
+      leftOutChanges(files),
       new Map(),
     );
     assert.deepStrictEqual(diff[1].placeholder, { lines: 3 });
@@ -548,7 +582,7 @@ suite('Large files in a commit diff', () => {
       tooLargeToCount: true,
     });
     assert.deepStrictEqual([...deferredChanges([huge])], ['huge.log']);
-    const diff = withLargeFiles([], [huge], new Map());
+    const diff = withLargeFiles([], [huge], leftOutChanges([huge]), new Map());
     assert.deepStrictEqual(diff[0].placeholder, { lines: undefined });
     const rows = diffRows(diff, new Map(), undefined);
     assert.deepStrictEqual(rows[2], {
@@ -591,7 +625,7 @@ suite('Large files in a commit diff', () => {
     const parsed = parsePatch(typeChange);
     assert.deepStrictEqual(lines(parsed), both);
     assert.deepStrictEqual(
-      lines(withLargeFiles(parsed, [fileChange('f')], new Map())),
+      lines(withLargeFiles(parsed, [fileChange('f')], [], new Map())),
       both,
     );
     assert.deepStrictEqual(lines([parseFilePatch('f', typeChange)]), both);
@@ -604,7 +638,7 @@ suite('Large files in a commit diff', () => {
   test('keeps files the list lacks, and leaves out small ones the diff lacks', () => {
     const parsed = parsePatch(patch('extra.ts', 1));
     assert.deepStrictEqual(
-      withLargeFiles(parsed, [fileChange('a.ts')], new Map()).map(
+      withLargeFiles(parsed, [fileChange('a.ts')], [], new Map()).map(
         (file) => file.path,
       ),
       ['extra.ts'],
