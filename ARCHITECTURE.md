@@ -2,6 +2,10 @@
 
 ## Decisions
 
+### Layers
+
+- Put all text people read, logs included, in the i18n dictionary, `app/src/shared/strings.ts`, as whole sentences, to support localization and globalization
+
 ### Tooling
 
 - Use Oxlint instead of ESLint, because typescript-eslint does not support TypeScript 7 yet
