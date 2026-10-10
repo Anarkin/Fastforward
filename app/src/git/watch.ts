@@ -677,7 +677,8 @@ export function affectsWorktree(
     stashLog.test(inGitDir) ||
     first === 'packed-refs' ||
     first === 'reftable' ||
-    first === 'config'
+    first === 'config' ||
+    first === 'shallow'
   );
 }
 

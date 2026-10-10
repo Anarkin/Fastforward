@@ -8,7 +8,12 @@ import { soloKey } from '../storage';
 import type { Connection, FastforwardView } from '../view';
 import type { FakeStore } from './fakeStore';
 import { waitFor } from './fixtures';
-import { removeFolder, tempFolder, type TempRepository } from './repositories';
+import {
+  removeFolder,
+  tempFolder,
+  tempRepository,
+  type TempRepository,
+} from './repositories';
 import { recordingLog } from './stub';
 import {
   attach,
@@ -208,6 +213,31 @@ suite('View refreshing one repository', function () {
     } finally {
       own.connection.dispose();
     }
+  });
+
+  test('reads the history whole once a shallow clone is deepened, as the commits it ended at gain their parents', async () => {
+    const shallow = await tempRepository(path.join(folder, 'shallow'));
+    for (const message of ['c0', 'c1', 'c2']) {
+      await shallow.commit(message);
+    }
+    const [c1, c2] = await shallow.resolve('HEAD~1', 'HEAD');
+    const boundary = path.join(shallow.root, '.git', 'shallow');
+    fs.writeFileSync(boundary, `${c2}\n`);
+    await withView(
+      log,
+      [shallow.root],
+      async ({ page, connection }) => {
+        assert.strictEqual(page.last('commits')?.total, 1);
+        fs.writeFileSync(boundary, `${c1}\n`);
+        await connection.refresh();
+        assert.strictEqual(page.last('commits')?.total, 2);
+        fs.rmSync(boundary);
+        await shallow.commit('c3');
+        await connection.refresh();
+        assert.strictEqual(page.last('commits')?.total, 4);
+      },
+      'unwatched',
+    );
   });
 
   suite('with its tab open', () => {

@@ -46,6 +46,7 @@ export interface TabState {
   headCommit: string | undefined;
   stashes: ReadonlyMap<string, Stash>;
   fingerprint: string;
+  shallow: string;
   anchor: { hash: string; offset: number; report: number } | undefined;
   opened: boolean;
   navigation: Navigation;
@@ -94,6 +95,7 @@ export function newTabState(): TabState {
     headCommit: undefined,
     stashes: new Map(),
     fingerprint: '',
+    shallow: '',
     anchor: undefined,
     opened: false,
     decorated: new Set(),

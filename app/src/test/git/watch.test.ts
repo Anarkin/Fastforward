@@ -238,6 +238,12 @@ suite('Watching the git folder', () => {
       assert.strictEqual(affectsWorktree(file, false, isModule), true, file);
     }
   });
+
+  test('refreshes a linked worktree for the shallow file it shares, which deepening a shallow clone rewrites', () => {
+    assert.strictEqual(affectsWorktree('shallow', true, isModule), true);
+    assert.strictEqual(affectsWorktree('shallow.lock', true, isModule), false);
+  });
+
   test('refreshes refs alone for remote branches and tags, which a fetch writes and which leave the working tree as it was', () => {
     for (const file of [
       'refs/remotes/origin/main',

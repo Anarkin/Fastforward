@@ -1880,7 +1880,10 @@ export class FastforwardView {
   private async refreshHistory(context: Context): Promise<void> {
     const refs = await this.refsOf(context);
     const { tab } = context;
-    const { head, refs: listed, stashes } = refs;
+    const { head, refs: listed, stashes, shallow } = refs;
+    if (shallow !== tab.shallow) {
+      forgetHistory(tab);
+    }
     if (fingerprint(head, listed, stashes) === tab.fingerprint) {
       if (tab.shownStale) {
         await this.sendShownHistory(context, { keepPlace: true });
@@ -1981,6 +1984,7 @@ export class FastforwardView {
       );
       loading.abort();
       loadHistory(tab, fullHistory, head, listed, stashes);
+      tab.shallow = read.shallow;
       if (this.storage.soloOf(context.root) !== solo) {
         forgetHistory(tab);
       }
