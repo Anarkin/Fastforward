@@ -95,7 +95,7 @@ type ObjectRead =
       readonly type: string;
       readonly content: Buffer;
     }
-  | { readonly kind: 'tooLarge'; readonly id: string }
+  | { readonly kind: 'tooLarge' }
   | { readonly kind: 'missing' };
 
 async function readObjects(
@@ -123,11 +123,11 @@ async function readObjects(
       read.push({ kind: 'missing' });
       continue;
     }
-    const [id = '', type = '', size] = header.split(' ');
-    if (type === 'excluded') {
-      read.push({ kind: 'tooLarge', id });
+    if (header.endsWith(' excluded')) {
+      read.push({ kind: 'tooLarge' });
       continue;
     }
+    const [id = '', type = '', size] = header.split(' ');
     const length = Number(size);
     read.push({
       kind: 'object',
@@ -214,10 +214,8 @@ export async function readFile(
       maxFileSize,
     );
     const blob = blobOf(read);
-    if (blob) {
-      return blob.kind === 'tooLarge'
-        ? binaryContent(blob.id)
-        : toContent(blob.content, blob.id);
+    if (blob?.kind === 'object') {
+      return toContent(blob.content, blob.id);
     }
   }
   const entry = await runGit(gitPath, cwd, [

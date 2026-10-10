@@ -188,12 +188,12 @@ suite('Repository files', function () {
 
 suite('Large files and submodules', function () {
   this.timeout(20_000);
+  let repository: TempRepository;
   let gitPath: string;
   let cwd: string;
   let inner: string;
 
   suiteSetup(async () => {
-    let repository: TempRepository;
     ({ repository, inner } = await submoduleRepository('large', {
       'large.txt': 'x'.repeat(3 * 1024 * 1024),
     }));
@@ -203,19 +203,18 @@ suite('Large files and submodules', function () {
 
   suiteTeardown(() => removeFolder(cwd));
 
-  test('shows a file too large to show as binary', async () => {
-    for (const hash of ['HEAD', undefined]) {
-      const { content, binary, id } = await readFile(
-        gitPath,
-        cwd,
-        hash,
-        'large.txt',
-      );
-      assert.deepStrictEqual(
-        { content, binary },
-        { content: '', binary: true },
-      );
-      assert.ok(id);
+  test('shows a file too large to show as binary, by its object id at a commit', async () => {
+    const [object] = await repository.resolve('HEAD:large.txt');
+    const { size, mtimeMs } = fs.statSync(path.join(cwd, 'large.txt'));
+    for (const [hash, id] of [
+      ['HEAD', object],
+      [undefined, `${size}-${mtimeMs}`],
+    ]) {
+      assert.deepStrictEqual(await readFile(gitPath, cwd, hash, 'large.txt'), {
+        content: '',
+        binary: true,
+        id,
+      });
     }
   });
 
