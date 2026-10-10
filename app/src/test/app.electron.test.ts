@@ -318,6 +318,40 @@ suite('App', function () {
     }
   });
 
+  test('shows the commit column while searching with the commit list hidden, hiding it again once the popup closes, the keyboard going to the files', async () => {
+    const popup = page.locator('.locations-popup');
+    const field = page.locator('.locations-search');
+    const hidden = page.locator('.columns.commits-hidden');
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await page.keyboard.press('c');
+    await hidden.waitFor();
+    try {
+      await page.keyboard.press('s');
+      await waitForFocus(field, 'the search field');
+      assert.ok(await popup.isVisible());
+      assert.strictEqual(await hidden.count(), 0);
+      await field.fill('main');
+      await popup.locator('.row.result[title="main"]').waitFor();
+      await page.keyboard.press('Enter');
+      await popup.waitFor({ state: 'detached' });
+      await page
+        .locator('.commit.selected', { hasText: 'second' })
+        .waitFor({ state: 'attached' });
+      await hidden.waitFor();
+      await waitForFocus(
+        page.locator('.columns > .column:nth-child(2) [data-column-focus]'),
+        'the files',
+      );
+    } finally {
+      if ((await popup.count()) > 0) {
+        await page.keyboard.press('Escape');
+        await popup.waitFor({ state: 'detached' });
+      }
+      await page.keyboard.press('c');
+      await hidden.waitFor({ state: 'detached' });
+    }
+  });
+
   test('gives the keyboard back to the commit list once the Fetch button it is on is disabled while fetching', async () => {
     const stop = path.join(folder, 'stop-fetch').replaceAll('\\', '/');
     const fetchButton = page.locator('.pin-pair > .nav-button').first();

@@ -193,7 +193,11 @@ export function App({ name, post: postToHost, listen }: Props) {
   const [commitsShown, setCommitsShown] = useState(true);
   const [searching, setSearching] = useState(false);
   useBinding(keymap.commits, () => setCommitsShown((shown) => !shown));
-  const hiddenColumns = useMemo(() => [!commitsShown, false], [commitsShown]);
+  const commitColumnShown = commitsShown || searching;
+  const hiddenColumns = useMemo(
+    () => [!commitColumnShown, false],
+    [commitColumnShown],
+  );
   const {
     container: columnsContainer,
     template: columnsTemplate,
@@ -333,18 +337,22 @@ export function App({ name, post: postToHost, listen }: Props) {
     }),
   );
   const activeShown = shownColumns(
-    commitsShown,
+    commitColumnShown,
     layoutSelection,
     diffShown,
   ).includes(activeColumn);
   useEffect(() => {
     if (!activeShown) {
-      const [first] = shownColumns(commitsShown, layoutSelection, diffShown);
+      const [first] = shownColumns(
+        commitColumnShown,
+        layoutSelection,
+        diffShown,
+      );
       if (first) {
         focusColumn(first);
       }
     }
-  }, [activeShown, commitsShown, layoutSelection, diffShown, focusColumn]);
+  }, [activeShown, commitColumnShown, layoutSelection, diffShown, focusColumn]);
 
   const selectCommit = (
     next: string | undefined,
@@ -644,7 +652,7 @@ export function App({ name, post: postToHost, listen }: Props) {
               <ColumnResizingProvider value={resizing}>
                 <div
                   className={columnsClass(
-                    commitsShown,
+                    commitColumnShown,
                     layoutSelection,
                     diffShown,
                   )}
@@ -672,7 +680,11 @@ export function App({ name, post: postToHost, listen }: Props) {
                     }
                     const step = columnStep(
                       event,
-                      shownColumns(commitsShown, layoutSelection, diffShown),
+                      shownColumns(
+                        commitColumnShown,
+                        layoutSelection,
+                        diffShown,
+                      ),
                       columnOf(target) ?? activeColumn,
                     );
                     if (step?.preventDefault) {
