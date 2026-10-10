@@ -61,12 +61,15 @@ export async function watchRepository(
   let worktreesTimer: NodeJS.Timeout | undefined;
   let pending: PendingChanges = {};
   const changedFiles = new Set<string>();
+  const renamedFiles = new Set<string>();
   const notIgnored = new NotIgnored();
 
   const flush = async (withGitDir: boolean) => {
     timer = undefined;
     const files = [...changedFiles];
+    const renamed = new Set(renamedFiles);
     changedFiles.clear();
+    renamedFiles.clear();
     const refsAlone = withGitDir && pending.refsAlone === true;
     pending =
       withGitDir || pending.lastGitDir === undefined
@@ -76,7 +79,7 @@ export async function watchRepository(
     try {
       const workingTree =
         (withGitDir && !refsAlone) ||
-        (await notIgnored.any(ignored, root, files));
+        (await notIgnored.any(ignored, root, files, renamed));
       if ((withGitDir || workingTree) && !disposed) {
         onChange({ refs: withGitDir, workingTree });
       }
@@ -139,6 +142,9 @@ export async function watchRepository(
       }
     } else if (isInside(root, file)) {
       changedFiles.add(file);
+      if (event === 'rename') {
+        renamedFiles.add(file);
+      }
       if (path.basename(file) === '.gitignore') {
         notIgnored.forget();
       }
@@ -682,6 +688,7 @@ class NotIgnored {
     ignored: Ignored,
     root: string,
     files: readonly string[],
+    renamed: ReadonlySet<string>,
   ): Promise<boolean> {
     if (files.length === 0) {
       return false;
@@ -697,17 +704,15 @@ class NotIgnored {
       return true;
     }
     const kept = files.filter((file) => !found.has(file));
-    // Git takes a missing path for a file, which a pattern for folders alone
-    // does not ignore, so its answer would not hold once a folder is made there
-    const present = await Promise.all(
-      kept.map((file) =>
-        fs.promises.lstat(file).then(
-          () => true,
-          () => false,
-        ),
-      ),
+    const stats = await Promise.all(
+      kept.map((file) => fs.promises.lstat(file).catch(() => undefined)),
     );
-    const known = kept.filter((_file, index) => present[index]);
+    // Git takes a missing path for a file, which a pattern for folders alone
+    // does not ignore, so its answer would not hold once a folder is made
+    // there, and a folder known would count each time Windows tells it changed
+    const known = kept.filter(
+      (_file, index) => stats[index]?.isDirectory() === false,
+    );
     if (generation === this.generation) {
       if (this.known.size + known.length > maxKnownNotIgnored) {
         this.known.clear();
@@ -716,7 +721,12 @@ class NotIgnored {
         this.known.add(file);
       }
     }
-    return kept.length > 0;
+    // Windows tells a folder changed along with each entry made or removed in
+    // it, which it tells of on its own
+    return kept.some(
+      (file, index) =>
+        renamed.has(file) || stats[index]?.isDirectory() !== true,
+    );
   }
 }
 

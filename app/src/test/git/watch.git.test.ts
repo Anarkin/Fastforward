@@ -125,34 +125,6 @@ suite('Watching a repository', function () {
     assert.deepStrictEqual(errors, []);
   });
 
-  test('asks a submodule whether a file changed in it is ignored, staying quiet for one its own .gitignore ignores and refreshing for one it tracks, watching folder by folder', async () => {
-    const library = await tempRepository(path.join(repository.root, 'sub'));
-    await library.commit('library', { '.gitignore': '*.o\n', 'lib.c': '' });
-    await repository.git('add', '--no-warn-embedded-repo', 'sub');
-    const built = path.join(library.root, 'lib.o');
-    fs.writeFileSync(built, '');
-    const checked: string[] = [];
-    watcher = await watchRepository(repository.gitPath, repository.root, {
-      delay: 50,
-      maxDelay: 200,
-      recursive: false,
-      onChange: ({ refs }) => changes.push(refs),
-      onError: (error) => errors.push(error),
-      ignored: (repo, paths) => {
-        checked.push(...paths);
-        return ignoredPaths(repository.gitPath, repo, paths);
-      },
-    });
-    await settled();
-    await keepWriting(built, 'the ignored file in the submodule', () =>
-      checked.includes(built),
-    );
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    assert.ok(!changes.includes(false), 'the ignored file in the submodule');
-    await keepWriting(path.join('sub', 'lib.c'), 'the file in the submodule');
-    assert.deepStrictEqual(errors, []);
-  });
-
   test('stays quiet when stopped while telling whether the changed files are ignored, and stops once told, watching folder by folder', async () => {
     const answers: ((ignored: readonly string[]) => void)[] = [];
     let disposing = false;
@@ -369,6 +341,67 @@ suite('Watching a repository', function () {
   });
 
   for (const recursive of [true, false]) {
+    test(`asks a submodule whether a file changed in it is ignored, staying quiet for one its own .gitignore ignores and refreshing for one it tracks, watching ${recursive ? 'recursively' : 'folder by folder'}`, async () => {
+      const library = await tempRepository(path.join(repository.root, 'sub'));
+      await library.commit('library', { '.gitignore': '*.o\n', 'lib.c': '' });
+      await repository.git('add', '--no-warn-embedded-repo', 'sub');
+      const built = path.join(library.root, 'lib.o');
+      fs.writeFileSync(built, '');
+      const checked: string[] = [];
+      watcher = await watchRepository(repository.gitPath, repository.root, {
+        delay: 50,
+        maxDelay: 200,
+        recursive,
+        onChange: ({ refs }) => changes.push(refs),
+        onError: (error) => errors.push(error),
+        ignored: (repo, paths) => {
+          checked.push(...paths);
+          return ignoredPaths(repository.gitPath, repo, paths);
+        },
+      });
+      await settled();
+      await keepWriting(built, 'the ignored file in the submodule', () =>
+        checked.includes(built),
+      );
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      assert.ok(!changes.includes(false), 'the ignored file in the submodule');
+      await keepWriting(path.join('sub', 'lib.c'), 'the file in the submodule');
+      assert.deepStrictEqual(errors, []);
+    });
+
+    test(`stays quiet for ignored files made and removed in a folder that is not ignored, which Windows tells changed along with them, watching ${recursive ? 'recursively' : 'folder by folder'}`, async () => {
+      fs.appendFileSync(path.join(repository.root, '.gitignore'), '*.tmp\n');
+      const folder = path.join(repository.root, 'src');
+      fs.mkdirSync(folder);
+      fs.writeFileSync(path.join(folder, 'kept.txt'), '');
+      const checked: string[] = [];
+      watcher = await watchRepository(repository.gitPath, repository.root, {
+        delay: 50,
+        maxDelay: 200,
+        recursive,
+        onChange: ({ refs }) => changes.push(refs),
+        onError: (error) => errors.push(error),
+        ignored: (repo, paths) => {
+          checked.push(...paths);
+          return ignoredPaths(repository.gitPath, repo, paths);
+        },
+      });
+      await settled();
+      for (let made = 0; made < 3; made++) {
+        const file = path.join(folder, `x${made}.tmp`);
+        fs.writeFileSync(file, '');
+        await waitFor(
+          () => checked.includes(file) || changes.length > 0,
+          'the ignored file made',
+        );
+        fs.rmSync(file);
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      assert.ok(!changes.includes(false), 'the ignored files');
+      assert.deepStrictEqual(errors, []);
+    });
+
     test(`stays quiet for an ignored folder made again, which git tells is not ignored while it is missing, watching ${recursive ? 'recursively' : 'folder by folder'}`, async () => {
       const folder = path.join(repository.root, 'ignored');
       const checked: string[] = [];
