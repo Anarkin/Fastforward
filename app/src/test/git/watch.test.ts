@@ -497,6 +497,28 @@ suite('Watching folders one by one', () => {
     assert.deepStrictEqual(errors, []);
   });
 
+  test('stops walking the tree once watching it is called off, as walking a large one takes seconds', async () => {
+    mkdir('a/b/c');
+    const watching = new AbortController();
+    const tree = await watchTree(root, {
+      skip: () => false,
+      ignored: () => Promise.resolve([]),
+      onEvent: () => {},
+      onError: (error) => errors.push(error),
+      signal: watching.signal,
+      watch: (folder, listener) => {
+        if (path.basename(folder) === 'a') {
+          watching.abort();
+        }
+        return fakeWatch(folder, listener);
+      },
+    });
+    assert.deepStrictEqual(watched(), ['', 'a']);
+    await tree.dispose();
+    assert.deepStrictEqual(watched(), []);
+    assert.deepStrictEqual(errors, []);
+  });
+
   test('keeps watching a folder it already watches when told of it again', async () => {
     mkdir('a/b');
     await start();

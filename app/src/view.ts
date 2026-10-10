@@ -161,6 +161,7 @@ export interface Connection {
 interface Session {
   readonly post: (message: ToWebview) => void;
   watcher: Watcher | undefined;
+  watching: AbortController | undefined;
   disposed: boolean;
 }
 
@@ -261,6 +262,7 @@ export class FastforwardView {
         }
       },
       watcher: undefined,
+      watching: undefined,
       disposed: false,
     };
     return {
@@ -1220,8 +1222,14 @@ export class FastforwardView {
 
   private async watch(context: Context, session: Session): Promise<void> {
     this.stopWatching(session);
-    const watcher = await this.startWatching(context, session);
+    const watching = new AbortController();
+    session.watching = watching;
+    const watcher = await this.startWatching(context, session, watching.signal);
+    if (session.watching === watching) {
+      session.watching = undefined;
+    }
     if (
+      watching.signal.aborted ||
       session.disposed ||
       session.watcher !== undefined ||
       !this.isActive(context.root) ||
@@ -1234,6 +1242,8 @@ export class FastforwardView {
   }
 
   private stopWatching(session: Session): void {
+    session.watching?.abort();
+    session.watching = undefined;
     const { watcher } = session;
     session.watcher = undefined;
     if (watcher) {
@@ -1241,9 +1251,14 @@ export class FastforwardView {
     }
   }
 
-  private startWatching(context: Context, session: Session): Promise<Watcher> {
+  private startWatching(
+    context: Context,
+    session: Session,
+    signal: AbortSignal,
+  ): Promise<Watcher> {
     return watchRepository(context.gitPath, context.root, {
       ...this.delays,
+      signal,
       onChange: (change) =>
         void this.run(
           'refresh',

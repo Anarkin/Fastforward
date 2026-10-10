@@ -223,6 +223,39 @@ suite('View updating by itself', function () {
     }
   });
 
+  test('calls off starting the watcher of a tab switched away from, as on Linux it walks the whole tree first', async () => {
+    const second = await tempRepository(path.join(folder, 'second-switched'));
+    await second.commit('second');
+    const opened = await openView(log, [repository.root, second.root], false);
+    const signals: unknown[] = [];
+    const held = gate();
+    stubMethod(opened.view, 'startWatching', async (original, ...args) => {
+      signals.push(args[2]);
+      const watcher = await original(...args);
+      await held.opened;
+      return watcher;
+    });
+    try {
+      const ready = opened.connection.receive({ type: 'ready' });
+      await waitFor(() => signals.length === 1, 'the first watcher');
+      const selected = opened.connection.receive({
+        type: 'selectTab',
+        root: second.root,
+      });
+      await waitFor(() => signals.length === 2, "the next tab's watcher");
+      assert.deepStrictEqual(
+        signals.map(
+          (signal) => signal instanceof AbortSignal && signal.aborted,
+        ),
+        [true, false],
+      );
+      held.open();
+      await Promise.all([ready, selected]);
+    } finally {
+      opened.connection.dispose();
+    }
+  });
+
   test('fetches every open repository while pinned, telling of a failure once until one succeeds', async () => {
     const broken = await tempRepository(path.join(folder, 'broken'));
     await broken.commit('a');

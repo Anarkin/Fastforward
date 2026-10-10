@@ -27,6 +27,7 @@ interface WatchOptions {
   readonly onError: (error: unknown) => void;
   readonly recursive?: boolean;
   readonly ignored?: Ignored;
+  readonly signal?: AbortSignal;
 }
 
 export function watchesRecursively(platform = process.platform): boolean {
@@ -45,6 +46,7 @@ export async function watchRepository(
     onError,
     recursive = watchesRecursively(),
     ignored = (repo, paths) => ignoredPaths(gitPath, repo, paths),
+    signal,
   }: WatchOptions,
 ): Promise<Watcher> {
   const [gitDir, commonDir] = (
@@ -200,6 +202,7 @@ export async function watchRepository(
         ignored,
         onEvent,
         onError,
+        signal,
         watch: watchOneFolder,
       }),
       ...gitDirs.map((gitDirTree) =>
@@ -213,6 +216,7 @@ export async function watchRepository(
           ignored: () => Promise.resolve([]),
           onEvent: onGitDirEvent,
           onError,
+          signal,
           watch: watchOneFolder,
         }),
       ),
@@ -267,6 +271,7 @@ interface TreeOptions {
     event: string,
   ) => void;
   readonly onError: (error: unknown) => void;
+  readonly signal?: AbortSignal;
   readonly watch: (
     folder: string,
     listener: (event: string, file: string | null) => void,
@@ -287,10 +292,11 @@ interface WatchedFolder {
 
 export async function watchTree(
   root: string,
-  { skip, ignored, onEvent, onError, watch }: TreeOptions,
+  { skip, ignored, onEvent, onError, signal, watch }: TreeOptions,
 ): Promise<Watcher> {
   const watched = new Map<string, WatchedFolder>();
   let disposed = false;
+  const stopped = () => disposed || signal?.aborted === true;
   const inFlight = new InFlight();
   const reported = new Set<unknown>();
   const report = (error: unknown) => {
@@ -369,7 +375,7 @@ export async function watchTree(
   const watchFolder = async (folder: Folder): Promise<Folder[]> => {
     const parent = watched.get(path.dirname(folder.path));
     if (
-      disposed ||
+      stopped() ||
       watched.has(folder.path) ||
       (folder.path !== root && parent === undefined)
     ) {
@@ -432,7 +438,7 @@ export async function watchTree(
   const add = async (folders: readonly Folder[]) => {
     let level = folders;
     while (level.length > 0) {
-      if (disposed) {
+      if (stopped()) {
         return;
       }
       const kept = await notIgnored(level);
