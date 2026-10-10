@@ -260,6 +260,27 @@ suite('User settings file', () => {
     });
   });
 
+  test('saves to the file a symlink points to while that file is missing, keeping the symlink', async function () {
+    const target = path.join(folder, 'dotfiles', 'settings.json');
+    fs.mkdirSync(path.dirname(target));
+    symlinkOrSkip(this, path.join('dotfiles', 'settings.json'), file);
+    const user = new UserSettings(defaults, file);
+    assert.deepStrictEqual(user.problems, []);
+    await user.set('solo', true);
+    assert.ok(fs.lstatSync(file).isSymbolicLink());
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(target, 'utf8')), {
+      solo: true,
+    });
+  });
+
+  test('neither replaces a symlink nor makes the folder it points into while that folder is missing', async function () {
+    const target = path.join(folder, 'dotfiles', 'settings.json');
+    symlinkOrSkip(this, target, file);
+    await assert.rejects(writeAtomically(file, '{}'), { code: 'ENOENT' });
+    assert.ok(fs.lstatSync(file).isSymbolicLink());
+    assert.ok(!fs.existsSync(path.dirname(target)));
+  });
+
   test('checks the file once as it starts watching, as it may have changed since it was read, as while the app looks for git', async () => {
     let checks = 0;
     const stop = watchSettings(file, () => (checks += 1), 10);

@@ -354,15 +354,28 @@ export async function writeAtomically(
   text: string,
   retryDelays: readonly number[] = renameRetryDelays,
 ): Promise<void> {
-  const target = await fs.promises.realpath(file).catch(() => file);
+  const target = await linkedFile(file);
   const temporary = `${target}.tmp`;
-  await fs.promises.mkdir(path.dirname(target), { recursive: true });
+  await fs.promises.mkdir(path.dirname(file), { recursive: true });
   try {
     await fs.promises.writeFile(temporary, text);
     await renameRetrying(temporary, target, retryDelays);
   } catch (error) {
     await fs.promises.rm(temporary, { force: true }).catch(() => undefined);
     throw error;
+  }
+}
+
+async function linkedFile(file: string): Promise<string> {
+  try {
+    return await fs.promises.realpath(file);
+  } catch (error) {
+    const link = isMissing(error)
+      ? await fs.promises.readlink(file).catch(() => undefined)
+      : undefined;
+    return link === undefined
+      ? file
+      : linkedFile(path.resolve(path.dirname(file), link));
   }
 }
 
