@@ -1,5 +1,5 @@
 import * as path from 'node:path';
-import { isFolder, repositoryRoot, sameFolder } from './repository';
+import { isFolder, repositoryRoot, spellingOf } from './repository';
 import { runGit, splitNul } from './run';
 
 export interface Worktree {
@@ -94,20 +94,6 @@ export async function listWorktrees(
         (!worktree.bare && !(await isFolder(worktree.path))),
     })),
   );
-}
-
-async function spellingOf(
-  folder: string,
-  known: readonly string[],
-): Promise<string> {
-  const same = known.find((spelling) => path.relative(spelling, folder) === '');
-  if (same !== undefined) {
-    return same;
-  }
-  const real = await Promise.all(
-    known.map((spelling) => sameFolder(spelling, folder)),
-  );
-  return known[real.indexOf(true)] ?? folder;
 }
 
 export function parseWorktrees(output: string): Worktree[] {

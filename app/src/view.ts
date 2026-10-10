@@ -40,7 +40,7 @@ import {
   isFolder,
   readRefs,
   repositoryRoot,
-  sameFolder,
+  spellingOf,
   type Refs,
 } from './git/repository';
 import {
@@ -847,7 +847,7 @@ export class FastforwardView {
         });
         continue;
       }
-      const repository = await knownFolder(location.repository, storage.tabs);
+      const repository = await spellingOf(location.repository, storage.tabs);
       const usable = this.takeWorktrees(repository, location.worktrees).filter(
         (worktree) => !worktree.bare && !worktree.missing,
       );
@@ -855,7 +855,7 @@ export class FastforwardView {
       const picked =
         reopened || location.worktree === undefined
           ? undefined
-          : await knownFolder(
+          : await spellingOf(
               location.worktree,
               usable.map((other) => other.path),
             );
@@ -965,7 +965,7 @@ export class FastforwardView {
       const repository =
         location === undefined
           ? root
-          : await knownFolder(location.repository, [
+          : await spellingOf(location.repository, [
               root,
               ...unlocated,
               ...grouped,
@@ -2639,18 +2639,4 @@ function worktreeInfos(worktrees: readonly Worktree[]): WorktreeInfo[] {
       main: main && index === 0,
       missing: worktree.missing,
     }));
-}
-
-async function knownFolder(
-  folder: string,
-  known: readonly string[],
-): Promise<string> {
-  const same = known.find((spelling) => sameRoot(spelling, folder));
-  if (same !== undefined) {
-    return same;
-  }
-  const real = await Promise.all(
-    known.map((spelling) => sameFolder(spelling, folder)),
-  );
-  return known[real.indexOf(true)] ?? folder;
 }
