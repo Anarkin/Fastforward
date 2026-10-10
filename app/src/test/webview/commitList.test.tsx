@@ -509,6 +509,21 @@ suite('Commit list keys', () => {
     assert.deepStrictEqual(sent, ['select b', 'switch tab', 'load tree']);
   });
 
+  test('sends what does not wait on a selection, such as the pages scrolled to, at once, still holding a selection made by a held key until the key settles', async () => {
+    const sent: string[] = [];
+    const { settle, pass } = settling(
+      (message: string) => sent.push(message),
+      0,
+    );
+    settle('select b', true);
+    pass('load page');
+    settle('select c', true);
+    pass('load next page');
+    assert.deepStrictEqual(sent, ['load page', 'load next page']);
+    await settled();
+    assert.deepStrictEqual(sent, ['load page', 'load next page', 'select c']);
+  });
+
   test('holds what follows a selection made by a held key with it, dropping it when the key moves on', async () => {
     const sent: string[] = [];
     const { settle, follow } = settling(

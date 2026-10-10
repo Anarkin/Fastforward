@@ -299,17 +299,25 @@ export function App({ name, post: postToHost, listen }: Props) {
     },
     [post, activeTab],
   );
+  const passTab = useCallback(
+    (message: TabMessage) => {
+      if (activeTab !== undefined) {
+        outbox.pass({ ...message, root: activeTab });
+      }
+    },
+    [outbox, activeTab],
+  );
 
   const onScrolled = useCallback(
     (top: string, offset: number, report: number) =>
-      postTab({ type: 'scrolled', hash: top, offset, report }),
-    [postTab],
+      passTab({ type: 'scrolled', hash: top, offset, report }),
+    [passTab],
   );
 
   const loadCommits = useCallback(
     (start: number, count: number, generation: number) =>
-      postTab({ type: 'loadCommits', generation, start, count }),
-    [postTab],
+      passTab({ type: 'loadCommits', generation, start, count }),
+    [passTab],
   );
 
   const refs = repository?.refs ?? [];

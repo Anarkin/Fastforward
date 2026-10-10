@@ -66,6 +66,7 @@ export function settling<T>(
   settle: (value: T, repeat: boolean) => void;
   send: (value: T) => void;
   follow: (value: T) => void;
+  pass: (value: T) => void;
 } {
   let timer: ReturnType<typeof setTimeout> | undefined;
   let pending: { value: T; followers: T[] } | undefined;
@@ -100,6 +101,7 @@ export function settling<T>(
         post(value);
       }
     },
+    pass: post,
   };
 }
 
