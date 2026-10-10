@@ -222,6 +222,13 @@ function toAll(contexts: readonly Context[]): Context | undefined {
   };
 }
 
+class OpeningFailed {
+  constructor(
+    readonly root: string,
+    readonly error: unknown,
+  ) {}
+}
+
 export class FastforwardView {
   private readonly tabStates = new Map<string, Tab>();
   private readonly blobTexts = new BlobTexts(maxKeptTextChars);
@@ -394,11 +401,15 @@ export class FastforwardView {
     name: string,
     session: Session,
     action: () => Promise<void>,
-    root?: string,
+    asked?: string,
   ): Promise<void> {
     try {
       await action();
-    } catch (error) {
+    } catch (thrown) {
+      const { root, error } =
+        thrown instanceof OpeningFailed
+          ? thrown
+          : { root: asked, error: thrown };
       const text = gitErrorText(error);
       this.log.error(strings.log.failed(name));
       this.log.error(error instanceof Error ? error : text);
@@ -858,10 +869,14 @@ export class FastforwardView {
     }
     const worktree = this.storage.worktreeOf(active);
     this.repositories.set(worktree, active);
-    await allSettled([
-      this.loadWorktrees(session, active),
-      this.openWorktree(session, worktree),
-    ]);
+    try {
+      await allSettled([
+        this.loadWorktrees(session, active),
+        this.openWorktree(session, worktree),
+      ]);
+    } catch (error) {
+      throw new OpeningFailed(worktree, error);
+    }
   }
 
   private async openWorktree(session: Session, root: string): Promise<void> {

@@ -13,6 +13,7 @@ import {
   closeViews,
   commitsSent,
   failOnErrorsLogged,
+  FakeHost,
   gate,
   openView,
   reopen,
@@ -214,6 +215,75 @@ suite('View with two tabs', function () {
       },
       'unwatched',
     );
+  });
+
+  test('shows no error of the tab the page opens as it loads that failed after it was left', async () => {
+    await withView(
+      log,
+      [repository.root, other],
+      async (own) => {
+        stubMethod(own.view, 'watch', () => Promise.resolve());
+        const load = failingLoad(own, repository.root);
+        const ready = own.connection.receive({ type: 'ready' });
+        await waitFor(load.loading, 'the tab to load');
+        await own.connection.receive({ type: 'selectTab', root: other });
+        own.page.clear();
+        load.fail();
+        await ready;
+        assert.strictEqual(own.page.last('error'), undefined);
+      },
+      false,
+    );
+    takeErrorsLogged(logged, /^ready failed$/, /^loading failed$/);
+  });
+
+  test('shows no error of the tab opened after one is closed that failed after it was left', async () => {
+    const third = await tempRepository(path.join(folder, 'after-closed'));
+    await third.commit('third');
+    await withView(
+      log,
+      [other, repository.root, third.root],
+      async (own) => {
+        const load = failingLoad(own, repository.root);
+        const closing = own.connection.receive({
+          type: 'closeTab',
+          root: other,
+        });
+        await waitFor(load.loading, 'the next tab to load');
+        await own.connection.receive({ type: 'selectTab', root: third.root });
+        own.page.clear();
+        load.fail();
+        await closing;
+        assert.strictEqual(own.page.last('error'), undefined);
+      },
+      'unwatched',
+    );
+    takeErrorsLogged(logged, /^closeTab failed$/, /^loading failed$/);
+  });
+
+  test('shows no error of the tab of a repository picked that failed after it was left', async () => {
+    const host = new FakeHost();
+    host.folders = [other];
+    await withView(
+      log,
+      [repository.root],
+      async (own) => {
+        const load = failingLoad(own, other);
+        const browsing = own.connection.receive({ type: 'browseRepositories' });
+        await waitFor(load.loading, 'the tab picked to load');
+        await own.connection.receive({
+          type: 'selectTab',
+          root: repository.root,
+        });
+        own.page.clear();
+        load.fail();
+        await browsing;
+        assert.strictEqual(own.page.last('error'), undefined);
+      },
+      'unwatched',
+      host,
+    );
+    takeErrorsLogged(logged, /^browseRepositories failed$/, /^loading failed$/);
   });
 
   suite('open', () => {
@@ -676,3 +746,20 @@ suite('View with two tabs', function () {
     });
   });
 });
+
+function failingLoad(
+  own: OpenView,
+  root: string,
+): { loading: () => boolean; fail: () => void } {
+  const held = gate();
+  let loading = false;
+  stubMethod(own.view, 'loadTab', async (original, ...args) => {
+    if (!sameRoot(rootOf(args[0]) ?? '', root)) {
+      return original(...args);
+    }
+    loading = true;
+    await held.opened;
+    throw new Error('loading failed');
+  });
+  return { loading: () => loading, fail: held.open };
+}
