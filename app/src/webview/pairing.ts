@@ -8,7 +8,8 @@ const maxComparedWords = 1_000_000;
 
 export type LinePair = readonly [number | undefined, number | undefined];
 
-const wordPattern = /[\p{L}\p{N}_]+|[^\p{L}\p{N}_\s]/gu;
+const wordPattern =
+  /[\p{L}\p{M}\p{N}_\u200c\u200d]+|\p{RI}{2}|[^\p{L}\p{M}\p{N}_\s][\p{M}\p{EMod}\u{e0020}-\u{e007f}]*(?:\u200d[^\p{L}\p{M}\p{N}_\s][\p{M}\p{EMod}\u{e0020}-\u{e007f}]*)*/gu;
 
 export function tokenSteps(
   lines: readonly string[],

@@ -62,6 +62,21 @@ suite('Line similarity', () => {
     assert.strictEqual(lineSimilarity('Total', 'total'), 0);
     assert.strictEqual(lineSimilarity('f(x)', 'f[x]'), 0.5);
   });
+
+  test('takes a letter with its marks and joiners, and an emoji, as one with them, so words sharing only those score 0', () => {
+    assert.strictEqual(lineSimilarity('किताब', 'कविता'), 0);
+    assert.strictEqual(lineSimilarity('cafe\u0301', 'cafe'), 0);
+    assert.strictEqual(lineSimilarity('می\u200cخواهم', 'می'), 0);
+    assert.strictEqual(lineSimilarity('👍🏻', '👍🏽'), 0);
+    assert.strictEqual(lineSimilarity('👨\u200d👩\u200d👧', '👨'), 0);
+    assert.strictEqual(
+      lineSimilarity(
+        '🏴\u{e0067}\u{e0062}\u{e0065}\u{e006e}\u{e0067}\u{e007f}',
+        '🏴\u{e0067}\u{e0062}\u{e0073}\u{e0063}\u{e0074}\u{e007f}',
+      ),
+      0,
+    );
+  });
 });
 
 suite('Aligning a change side by side', () => {

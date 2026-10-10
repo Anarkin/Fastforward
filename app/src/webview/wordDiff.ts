@@ -9,7 +9,8 @@ import { changePairs, tokenSteps } from './pairing';
 
 const maxTokens = 1_000_000;
 
-const tokenPattern = /[\p{L}\p{N}_]+|\s+|[^\p{L}\p{N}_\s]/gu;
+const tokenPattern =
+  /[\p{L}\p{M}\p{N}_\u200c\u200d]+|\s+|\p{RI}{2}|[^\p{L}\p{M}\p{N}_\s][\p{M}\p{EMod}\u{e0020}-\u{e007f}]*(?:\u200d[^\p{L}\p{M}\p{N}_\s][\p{M}\p{EMod}\u{e0020}-\u{e007f}]*)*/gu;
 
 export function tokenize(text: string): string[] {
   return text.match(tokenPattern) ?? [];

@@ -32,6 +32,35 @@ suite('Word diff', () => {
     ]);
   });
 
+  test('keeps a letter with its marks and joiners, and an emoji, whole, so no token ends inside what is drawn as one character', () => {
+    assert.deepStrictEqual(tokenize('मैंने किताब'), ['मैंने', ' ', 'किताब']);
+    assert.deepStrictEqual(tokenize('ฉันกินข้าว'), ['ฉันกินข้าว']);
+    assert.deepStrictEqual(tokenize('cafe\u0301!'), ['cafe\u0301', '!']);
+    assert.deepStrictEqual(tokenize('می\u200cخواهم'), ['می\u200cخواهم']);
+    const england = '🏴\u{e0067}\u{e0062}\u{e0065}\u{e006e}\u{e0067}\u{e007f}';
+    assert.deepStrictEqual(
+      tokenize(`👍🏽👨\u200d👩\u200d👧🇭🇺${england}#\ufe0f\u20e3?\u0301`),
+      ['👍🏽', '👨\u200d👩\u200d👧', '🇭🇺', england, '#\ufe0f\u20e3', '?\u0301'],
+    );
+  });
+
+  test('marks the word a change replaced, rather than the pieces of it written differently', () => {
+    const before = 'मैंने किताब पढ़ी';
+    const after = 'मैंने कविता पढ़ी';
+    const ranges = pairWordRanges(before, after);
+    assert.ok(ranges);
+    assert.deepStrictEqual(pieces(before, ranges.removed), ['किताब']);
+    assert.deepStrictEqual(pieces(after, ranges.added), ['कविता']);
+    assert.deepStrictEqual(pairWordRanges('cafe\u0301 ok', 'cafe ok'), {
+      removed: [{ start: 0, end: 5 }],
+      added: [{ start: 0, end: 4 }],
+    });
+    assert.deepStrictEqual(pairWordRanges('ok 👍🏻', 'ok 👍🏽'), {
+      removed: [{ start: 3, end: 7 }],
+      added: [{ start: 3, end: 7 }],
+    });
+  });
+
   test('marks the tokens two sequences do not share', () => {
     assert.deepStrictEqual(changedTokens(['a', 'b', 'c'], ['a', 'x', 'c']), {
       a: [false, true, false],
