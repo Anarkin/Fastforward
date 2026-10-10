@@ -340,6 +340,31 @@ suite('Extending the history read from git', function () {
     assert.deepStrictEqual(extended, reloaded);
   });
 
+  test('leaves the history to be read whole once a fetch builds on one of two remote branches of the same second, as git takes the other first', async () => {
+    const repo = await repository('extend-tied-fetch');
+    const [main] = await repo.resolve('main');
+    const time = Number(
+      (await repo.git('log', '-1', '--format=%ct', main)).trim(),
+    );
+    const p = await commitAtTime(repo, main, time + 1, 'p');
+    const a = await commitAtTime(repo, main, time + 1, 'a');
+    await repo.git('update-ref', 'refs/remotes/origin/aa', p);
+    await repo.git('update-ref', 'refs/remotes/origin/bb', a);
+    const { extended, reloaded, added } = await across(repo, async () => {
+      const [tree] = await repo.resolve('main^{tree}');
+      const n = (
+        await repo.git('commit-tree', tree, '-p', p, '-m', 'n')
+      ).trim();
+      await repo.git('update-ref', 'refs/remotes/origin/aa', n);
+    });
+    assert.strictEqual(added, 1);
+    assert.deepStrictEqual(
+      reloaded.slice(1, 3).map(({ hash }) => hash),
+      [a, p],
+    );
+    assert.strictEqual(extended, undefined);
+  });
+
   test('adds a branch started from an older commit and tagged at its tip, as reading it whole would', async () => {
     const repo = await repository('extend-branch');
     const { extended, reloaded, added } = await across(repo, async () => {

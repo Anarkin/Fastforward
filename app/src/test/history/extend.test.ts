@@ -260,4 +260,39 @@ suite('Extending a history among its newest commits', () => {
       undefined,
     );
   });
+
+  test('leaves it to be read again when an old tip just below the newest is built on and shares its time with another old tip, as git queues it only once the commit on it is out', () => {
+    const builtOn = {
+      older: Commits.of([
+        { hash: 'p', parents: ['c0'] },
+        { hash: 'a', parents: ['c0'] },
+        { hash: 'c0', parents: [] },
+      ]),
+      oldHeads: new Set(['p', 'a']),
+      newer: newerOf('20 n p\n'),
+      tips: new Set(['c0', 'n', 'a']),
+      region: newerOf('20 n p\n'),
+      since: 20,
+      belowTimes: new Map([['p', 10]]),
+    };
+    assert.ok(
+      regionHistory({
+        ...builtOn,
+        oldTimes: new Map([
+          ['p', 10],
+          ['a', 9],
+        ]),
+      }),
+    );
+    assert.strictEqual(
+      regionHistory({
+        ...builtOn,
+        oldTimes: new Map([
+          ['p', 10],
+          ['a', 10],
+        ]),
+      }),
+      undefined,
+    );
+  });
 });

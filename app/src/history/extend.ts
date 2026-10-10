@@ -23,20 +23,7 @@ export function extendHistory({
   if (!times || !keepsHistory({ older, oldHeads, newer, tips })) {
     return undefined;
   }
-  const builtOn = (head: string) => isBuiltOn(newer, head);
-  const headTimes = [...oldHeads].map((head) => oldTimes.get(head));
-  if (headTimes.some((time) => time === undefined)) {
-    return undefined;
-  }
-  const counts = new Map<number | undefined, number>();
-  for (const time of headTimes) {
-    counts.set(time, (counts.get(time) ?? 0) + 1);
-  }
-  if (
-    [...oldHeads].some(
-      (head) => builtOn(head) && (counts.get(oldTimes.get(head)) ?? 0) > 1,
-    )
-  ) {
+  if (!builtOnUntied({ oldHeads, oldTimes, newer })) {
     return undefined;
   }
   for (let at = 0; at < newer.length; at++) {
@@ -52,6 +39,25 @@ export function extendHistory({
     return undefined;
   }
   return Commits.replacingTop(newer, older, 0);
+}
+
+function builtOnUntied({
+  oldHeads,
+  oldTimes,
+  newer,
+}: Pick<Extension, 'oldHeads' | 'oldTimes' | 'newer'>): boolean {
+  const headTimes = [...oldHeads].map((head) => oldTimes.get(head));
+  if (headTimes.some((time) => time === undefined)) {
+    return false;
+  }
+  const counts = new Map<number | undefined, number>();
+  for (const time of headTimes) {
+    counts.set(time, (counts.get(time) ?? 0) + 1);
+  }
+  return ![...oldHeads].some(
+    (head) =>
+      isBuiltOn(newer, head) && (counts.get(oldTimes.get(head)) ?? 0) > 1,
+  );
 }
 
 export function ranksOf(tips: Iterable<string>): Map<string, number> {
@@ -135,8 +141,9 @@ export interface Region extends Extension {
 // Git's date order puts the commits since the oldest new one first, in the
 // order git gives them read alone, and the older ones below as before, when
 // those since are the top of the old list, those below are all older, and no
-// tie of times among them or among those just below lets git queue them
-// differently than when reading the whole history
+// tie of times among them, among those just below, or of an old tip built on
+// with another lets git queue them differently than when reading the whole
+// history
 export function regionHistory({
   older,
   oldHeads,
@@ -151,6 +158,7 @@ export function regionHistory({
   if (
     !times ||
     !keepsHistory({ older, oldHeads, newer, tips }) ||
+    !builtOnUntied({ oldHeads, oldTimes, newer }) ||
     !keepsTiedOldTips({ older, oldHeads, oldTimes, newer, tips })
   ) {
     return undefined;
