@@ -11,15 +11,55 @@ export interface HiddenChanges {
   readonly right: FindRange | undefined;
 }
 
-function columnsOf(text: string): (index: number) => number {
+export interface TextWidths {
+  readonly char: number;
+  readonly of: (cluster: string) => number;
+}
+
+const graphemes = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+
+function columnsOf(
+  text: string,
+  widths: TextWidths | undefined,
+): (index: number) => number {
+  const special = widths ? /[^ -~]/g : /\t/g;
+  let clusters: Intl.Segments | undefined;
+  const clusterAt = (index: number) => {
+    if (!widths || text[index] === '\t') {
+      return undefined;
+    }
+    clusters ??= graphemes.segment(text);
+    const cluster = clusters.containing(index);
+    return (
+      cluster && {
+        start: cluster.index,
+        end: cluster.index + cluster.segment.length,
+        columns: widths.of(cluster.segment) / widths.char,
+      }
+    );
+  };
+  const specialFrom = (index: number) => {
+    special.lastIndex = index;
+    return special.exec(text)?.index ?? Infinity;
+  };
   let at = 0;
   let column = 0;
-  let tab = text.indexOf('\t');
+  let next = specialFrom(0);
   return (index) => {
-    while (tab !== -1 && tab < index) {
-      column = tabStop(column + tab - at);
-      at = tab + 1;
-      tab = text.indexOf('\t', at);
+    while (next < index) {
+      column += next - at;
+      at = next;
+      const cluster = clusterAt(at);
+      if (!cluster) {
+        column = tabStop(column);
+        at += 1;
+      } else if (cluster.end > index) {
+        return column;
+      } else {
+        column += cluster.columns - (at - cluster.start);
+        at = cluster.end;
+      }
+      next = specialFrom(at);
     }
     column += index - at;
     at = index;
@@ -27,8 +67,12 @@ function columnsOf(text: string): (index: number) => number {
   };
 }
 
-export function textColumn(text: string, index: number): number {
-  return columnsOf(text)(index);
+export function textColumn(
+  text: string,
+  index: number,
+  widths?: TextWidths,
+): number {
+  return columnsOf(text, widths)(index);
 }
 
 export function visibleColumns(
@@ -45,8 +89,9 @@ export function hiddenChanges(
   text: string,
   words: readonly FindRange[],
   { first, last }: Columns,
+  widths: TextWidths,
 ): HiddenChanges {
-  const columnAt = columnsOf(text);
+  const columnAt = columnsOf(text, widths);
   let left: FindRange | undefined;
   for (const word of words) {
     const start = columnAt(word.start);
@@ -140,12 +185,12 @@ function textSpan(
   area: TextArea,
   text: string,
   range: FindRange,
-  charWidth: number,
+  widths: TextWidths,
 ): { start: number; end: number } {
-  const columnAt = columnsOf(text);
+  const columnAt = columnsOf(text, widths);
   return {
-    start: area.origin + columnAt(range.start) * charWidth,
-    end: area.origin + columnAt(range.end) * charWidth,
+    start: area.origin + columnAt(range.start) * widths.char,
+    end: area.origin + columnAt(range.end) * widths.char,
   };
 }
 
@@ -154,9 +199,9 @@ export function revealChange(
   area: TextArea,
   text: string,
   word: FindRange,
-  charWidth: number,
+  widths: TextWidths,
 ): number {
-  const { start, end } = textSpan(area, text, word, charWidth);
+  const { start, end } = textSpan(area, text, word, widths);
   return revealScroll(start, end, area.visible, view.room);
 }
 
@@ -165,9 +210,9 @@ export function revealFound(
   area: TextArea,
   text: string,
   found: FindRange,
-  charWidth: number,
+  widths: TextWidths,
 ): number {
-  const { start, end } = textSpan(area, text, found, charWidth);
+  const { start, end } = textSpan(area, text, found, widths);
   return start >= view.scrolled && end <= view.scrolled + area.visible
     ? view.scrolled
     : revealScroll(start, end, area.visible, view.room);

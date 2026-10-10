@@ -13,7 +13,24 @@ import {
   sideArea,
   textColumn,
   visibleColumns,
+  type TextWidths,
 } from '../../webview/overflow';
+
+const monospace = (char: number): TextWidths => ({
+  char,
+  of: (cluster) => assert.fail(`measured ${cluster}`),
+});
+
+const drawn: ReadonlyMap<string, number> = new Map([
+  ['中', 14],
+  ['e\u0301', 8],
+  ['👨\u200d👩\u200d👧', 16],
+]);
+
+const drawnWidths: TextWidths = {
+  char: 8,
+  of: (cluster) => drawn.get(cluster) ?? assert.fail(`measured ${cluster}`),
+};
 
 suite('Overflow', () => {
   test('counts the columns before an index, a tab reaching the next stop of 4', () => {
@@ -55,31 +72,31 @@ suite('Overflow', () => {
       { start: 20, end: 24 },
     ];
     assert.deepStrictEqual(
-      hiddenChanges(text, words, { first: 10, last: 15 }),
+      hiddenChanges(text, words, { first: 10, last: 15 }, monospace(1)),
       { left: words[1], right: words[3] },
     );
     assert.deepStrictEqual(
-      hiddenChanges(text, words, { first: 12, last: 17 }),
+      hiddenChanges(text, words, { first: 12, last: 17 }, monospace(1)),
       { left: words[1], right: words[4] },
     );
-    assert.deepStrictEqual(hiddenChanges(text, words, { first: 0, last: 30 }), {
-      left: undefined,
-      right: undefined,
-    });
-    assert.deepStrictEqual(hiddenChanges(text, [], { first: 10, last: 15 }), {
-      left: undefined,
-      right: undefined,
-    });
+    assert.deepStrictEqual(
+      hiddenChanges(text, words, { first: 0, last: 30 }, monospace(1)),
+      { left: undefined, right: undefined },
+    );
+    assert.deepStrictEqual(
+      hiddenChanges(text, [], { first: 10, last: 15 }, monospace(1)),
+      { left: undefined, right: undefined },
+    );
   });
 
   test('counts a tab before a change in its columns', () => {
     const words = [{ start: 2, end: 3 }];
     assert.deepStrictEqual(
-      hiddenChanges('\t\tx', words, { first: 0, last: 8 }),
+      hiddenChanges('\t\tx', words, { first: 0, last: 8 }, monospace(1)),
       { left: undefined, right: words[0] },
     );
     assert.deepStrictEqual(
-      hiddenChanges('\t\tx', words, { first: 0, last: 9 }),
+      hiddenChanges('\t\tx', words, { first: 0, last: 9 }, monospace(1)),
       { left: undefined, right: undefined },
     );
   });
@@ -91,10 +108,62 @@ suite('Overflow', () => {
       end: 5 + index * 30,
     }));
     const started = performance.now();
-    const hidden = hiddenChanges(text, words, {
-      first: 200_000,
-      last: 210_000,
-    });
+    const hidden = hiddenChanges(
+      text,
+      words,
+      { first: 200_000, last: 210_000 },
+      monospace(1),
+    );
+    assert.ok(performance.now() - started < 1000);
+    assert.deepStrictEqual(hidden, { left: words[3333], right: words[3500] });
+  });
+
+  test('counts a cluster other than printable ASCII as the columns it is drawn across, such as a CJK character, a letter with its accent or an emoji, a place within one counting as its start', () => {
+    assert.strictEqual(textColumn('中中x', 2, drawnWidths), 3.5);
+    assert.strictEqual(textColumn('中中x', 3, drawnWidths), 4.5);
+    const text = 'e\u0301 👨\u200d👩\u200d👧 x';
+    assert.strictEqual(textColumn(text, text.length - 1, drawnWidths), 5);
+    assert.strictEqual(textColumn(text, 5, drawnWidths), 2);
+  });
+
+  test('takes a tab after text drawn across part of a column to the stop after next when the next is less than half a column away, as Chromium does', () => {
+    assert.strictEqual(textColumn('中中\tx', 3, drawnWidths), 4);
+    assert.strictEqual(textColumn('中中中\tx', 4, drawnWidths), 8);
+    assert.strictEqual(textColumn(`${'中'.repeat(9)}\tx`, 10, drawnWidths), 20);
+  });
+
+  test('marks a change hidden past the edge after text drawn wider than its characters count, scrolling to where it is drawn', () => {
+    const text = `${'中'.repeat(120)} word`;
+    const word = { start: 121, end: 125 };
+    assert.deepStrictEqual(
+      hiddenChanges(text, [word], { first: 0, last: 150 }, drawnWidths),
+      { left: undefined, right: word },
+    );
+    const view = { scrolled: 0, width: 600, room: 3000, minimap: 40 };
+    const area = inlineArea(view, 2);
+    assert.strictEqual(
+      revealChange(view, area, text, word, drawnWidths),
+      118 + 211 * 8 + 16 - 280,
+    );
+    assert.strictEqual(
+      revealFound(view, area, text, word, drawnWidths),
+      118 + 211 * 8 + 16 - 280,
+    );
+  });
+
+  test('finds the hidden changes of a long line of wide characters in one pass over it', () => {
+    const text = '\t中'.repeat(100_000);
+    const words = Array.from({ length: 6000 }, (_, index) => ({
+      start: 1 + index * 30,
+      end: 5 + index * 30,
+    }));
+    const started = performance.now();
+    const hidden = hiddenChanges(
+      text,
+      words,
+      { first: 200_000, last: 210_000 },
+      drawnWidths,
+    );
     assert.ok(performance.now() - started < 1000);
     assert.deepStrictEqual(hidden, { left: words[3333], right: words[3500] });
   });
@@ -119,7 +188,7 @@ suite('Overflow', () => {
     const left = { start: 1, end: 1 };
     const right = { start: 15, end: 15 };
     assert.deepStrictEqual(
-      hiddenChanges(text, [left, right], { first: 2, last: 10 }),
+      hiddenChanges(text, [left, right], { first: 2, last: 10 }, monospace(1)),
       { left, right },
     );
   });
@@ -161,7 +230,7 @@ suite('Overflow', () => {
         inlineArea(view, 2),
         'a'.repeat(100),
         { start: 80, end: 84 },
-        10,
+        monospace(10),
       ),
       118 + 820 - 280,
     );
@@ -172,7 +241,13 @@ suite('Overflow', () => {
     const text = 'a'.repeat(400);
     const reveal = (scrolled: number, start: number, end: number) => {
       const shown = { ...view, scrolled };
-      return revealFound(shown, inlineArea(shown, 2), text, { start, end }, 8);
+      return revealFound(
+        shown,
+        inlineArea(shown, 2),
+        text,
+        { start, end },
+        monospace(8),
+      );
     };
     assert.strictEqual(reveal(0, 300, 304), 118 + 2416 - 280);
     assert.strictEqual(reveal(2000, 0, 4), 0);

@@ -84,6 +84,7 @@ import {
   textColumn,
   type Sideways,
   type TextArea,
+  type TextWidths,
 } from './overflow';
 
 export interface WholeFile {
@@ -1013,7 +1014,7 @@ export function foundScroll(
   row: DiffRow,
   found: FindMatch,
   view: Sideways,
-  charWidth: number,
+  widths: TextWidths,
 ): number | undefined {
   switch (row.kind) {
     case 'line':
@@ -1022,22 +1023,16 @@ export function foundScroll(
         inlineArea(view, 2),
         row.line.text,
         found,
-        charWidth,
+        widths,
       );
     case 'wholeLine':
-      return revealFound(view, inlineArea(view, 1), row.text, found, charWidth);
+      return revealFound(view, inlineArea(view, 1), row.text, found, widths);
     case 'split': {
       const right = row.right?.index === found.line;
       const cell = right ? row.right : row.left;
       return (
         cell &&
-        revealFound(
-          view,
-          sideArea(view, right),
-          cell.line.text,
-          found,
-          charWidth,
-        )
+        revealFound(view, sideArea(view, right), cell.line.text, found, widths)
       );
     }
     default:
@@ -1160,10 +1155,47 @@ export function wordPadding(line: Edges, text: Edges, scale: number): Edges {
 
 const unpadded: Edges = { top: 0, bottom: 0 };
 
+function fontOf(element: HTMLElement): string {
+  const { fontStyle, fontWeight, fontSize, fontFamily } =
+    getComputedStyle(element);
+  return `${fontStyle} ${fontWeight} ${fontSize} ${fontFamily}`;
+}
+
+function textWidths(char: number, font: string): TextWidths {
+  const drawn = new Map<string, number>();
+  let context: OffscreenCanvasRenderingContext2D | null | undefined;
+  const measure = (cluster: string) => {
+    if (context === undefined) {
+      context = new OffscreenCanvas(0, 0).getContext('2d');
+      if (context) {
+        context.font = font;
+      }
+    }
+    return context ? context.measureText(cluster).width : cluster.length * char;
+  };
+  return {
+    char,
+    of: (cluster) => {
+      const known = drawn.get(cluster);
+      if (known !== undefined) {
+        return known;
+      }
+      const width = measure(cluster);
+      drawn.set(cluster, width);
+      return width;
+    },
+  };
+}
+
 const TextProbe = memo(function TextProbe({
   onMeasure,
 }: {
-  onMeasure: (charWidth: number, padding: Edges, scale: number) => void;
+  onMeasure: (
+    charWidth: number,
+    font: string,
+    padding: Edges,
+    scale: number,
+  ) => void;
 }) {
   const line = useRef<HTMLDivElement>(null);
   const text = useRef<HTMLSpanElement>(null);
@@ -1172,6 +1204,7 @@ const TextProbe = memo(function TextProbe({
       const measure = () =>
         onMeasure(
           sample.getBoundingClientRect().width / wrapSample.length,
+          fontOf(sample),
           line.current && text.current
             ? wordPadding(
                 line.current.getBoundingClientRect(),
@@ -1244,7 +1277,7 @@ function HiddenChangeMarks({
   kind,
   view,
   area,
-  charWidth,
+  widths,
   place,
   onReveal,
 }: {
@@ -1253,15 +1286,15 @@ function HiddenChangeMarks({
   kind: DiffLine['kind'];
   view: Sideways;
   area: TextArea;
-  charWidth: number;
+  widths: TextWidths;
   place: (edge: 'left' | 'right') => React.CSSProperties;
   onReveal: (scrolled: number) => void;
 }) {
-  const columns = areaColumns(view, area, charWidth);
+  const columns = areaColumns(view, area, widths.char);
   if (!columns || words.length === 0 || kind === 'context') {
     return null;
   }
-  const hidden = hiddenChanges(text, words, columns);
+  const hidden = hiddenChanges(text, words, columns, widths);
   return (['left', 'right'] as const).map((edge) => {
     const word = hidden[edge];
     return (
@@ -1273,9 +1306,7 @@ function HiddenChangeMarks({
           tabIndex={-1}
           style={place(edge)}
           onMouseDown={(event) => event.preventDefault()}
-          onClick={() =>
-            onReveal(revealChange(view, area, text, word, charWidth))
-          }
+          onClick={() => onReveal(revealChange(view, area, text, word, widths))}
         >
           {edge === 'left'
             ? strings.symbols.hiddenLeft
@@ -1332,11 +1363,19 @@ export function DiffView({
   const scrollsSides = split && !wordWrap;
   const [columns, setColumns] = useState<WrapColumns>();
   const [charWidth, setCharWidth] = useState(0);
+  const [font, setFont] = useState('');
+  const widths = useMemo(() => textWidths(charWidth, font), [charWidth, font]);
   const [padding, setPadding] = useState(unpadded);
   const [scale, setScale] = useState(1);
   const measureText = useCallback(
-    (width: number, measured: Edges, measuredScale: number) => {
+    (
+      width: number,
+      measuredFont: string,
+      measured: Edges,
+      measuredScale: number,
+    ) => {
       setCharWidth(width);
+      setFont(measuredFont);
       setScale(measuredScale);
       setPadding((last) =>
         last.top === measured.top && last.bottom === measured.bottom
@@ -1624,7 +1663,7 @@ export function DiffView({
         kind={line.kind}
         view={view}
         area={area(view)}
-        charWidth={charWidth}
+        widths={widths}
         place={place}
         onReveal={reveal}
       />
@@ -1823,7 +1862,7 @@ export function DiffView({
       return;
     }
     setRevealing(undefined);
-    if (!found || index === -1 || wordWrap || charWidth === 0) {
+    if (!found || index === -1 || wordWrap || widths.char === 0) {
       return;
     }
     const shown = shownSideways(
@@ -1831,7 +1870,7 @@ export function DiffView({
       scrollsSides,
       sideways,
     );
-    const scrolled = foundScroll(rows[index], found, shown, charWidth);
+    const scrolled = foundScroll(rows[index], found, shown, widths);
     if (scrolled !== undefined && scrolled !== shown.scrolled) {
       reveal(scrolled);
     }
@@ -1843,7 +1882,7 @@ export function DiffView({
     items,
     rows,
     wordWrap,
-    charWidth,
+    widths,
     scrollsSides,
     sideways,
     reveal,

@@ -1,7 +1,8 @@
 export const tabSize = 4;
 
 export function tabStop(column: number): number {
-  return column + tabSize - (column % tabSize);
+  const next = column + tabSize - (column % tabSize);
+  return next - column < 0.5 ? next + tabSize : next;
 }
 
 export function wrappedLines(text: string, columns: number): number {
