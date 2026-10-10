@@ -165,7 +165,7 @@ export function pairWordRanges(
   removed: string,
   added: string,
 ): { readonly removed: FindRange[]; readonly added: FindRange[] } | undefined {
-  if (!fewEnoughTokens(removed, added)) {
+  if (removed === '' || added === '' || !fewEnoughTokens(removed, added)) {
     return undefined;
   }
   const before = tokensOf(removed);

@@ -127,6 +127,14 @@ suite('Word diff', () => {
     assert.ok(performance.now() - started < 100);
   });
 
+  test('gives up at once on an empty line, which shares no word, however long the line it is paired with', () => {
+    const long = 'x '.repeat(1_000_000);
+    const started = performance.now();
+    assert.strictEqual(pairWordRanges('', long), undefined);
+    assert.strictEqual(pairWordRanges(long, ''), undefined);
+    assert.ok(performance.now() - started < 100);
+  });
+
   test('compares lines of up to 1 million removed by added tokens, spaces and punctuation counting as tokens', () => {
     const line = 'let a = b;'.repeat(125);
     assert.ok(pairWordRanges(line, line));
