@@ -51,4 +51,34 @@ suite('Texts of blobs', () => {
     await kept.read(['a', 'b', 'c', 'huge'], read);
     assert.deepStrictEqual(asked, [['b', 'huge']]);
   });
+
+  test('returns each text it knew when asked, though keeping those read with it, or by another read meanwhile, forgets it', async () => {
+    const kept = new BlobTexts(10);
+    const { read } = reader({
+      a: 'aaaa',
+      b: 'bbbb',
+      c: 'cccc',
+      e: 'eeee',
+      f: 'ffff',
+    });
+    await kept.read(['a', 'b'], read);
+    assert.deepStrictEqual(
+      await kept.read(['c', 'a'], read),
+      new Map([
+        ['c', 'cccc'],
+        ['a', 'aaaa'],
+      ]),
+    );
+    const slow = Promise.withResolvers<ReadonlyMap<string, string>>();
+    const reading = kept.read(['c', 'd'], () => slow.promise);
+    await kept.read(['e', 'f'], read);
+    slow.resolve(new Map([['d', 'dddd']]));
+    assert.deepStrictEqual(
+      await reading,
+      new Map([
+        ['c', 'cccc'],
+        ['d', 'dddd'],
+      ]),
+    );
+  });
 });

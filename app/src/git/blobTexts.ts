@@ -9,11 +9,20 @@ export class BlobTexts {
     ids: readonly string[],
     read: (ids: readonly string[]) => Promise<ReadonlyMap<string, string>>,
   ): Promise<Map<string, string>> {
-    const unknown = [...new Set(ids)].filter((id) => !this.texts.has(id));
+    const known = new Map<string, string>();
+    const unknown: string[] = [];
+    for (const id of new Set(ids)) {
+      const text = this.texts.get(id);
+      if (text === undefined) {
+        unknown.push(id);
+      } else {
+        known.set(id, text);
+      }
+    }
     const fresh = unknown.length === 0 ? new Map() : await read(unknown);
     const found = new Map<string, string>();
     for (const id of ids) {
-      const text = this.texts.get(id) ?? fresh.get(id);
+      const text = known.get(id) ?? fresh.get(id);
       if (text !== undefined) {
         found.set(id, text);
         this.keep(id, text);
