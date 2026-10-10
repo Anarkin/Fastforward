@@ -8,7 +8,11 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react';
-import { useVirtualizer } from '@tanstack/react-virtual';
+import {
+  useVirtualizer,
+  type VirtualItem,
+  type Virtualizer,
+} from '@tanstack/react-virtual';
 import { comparedOf, shownSide, sidesOf } from '../shared/comparisons';
 import {
   workingTreeHash,
@@ -119,6 +123,25 @@ export function rowKeyOf(
   return index < offset
     ? workingTreeHash
     : (history?.at(index - offset)?.hash ?? index);
+}
+
+export function drawnRows(
+  virtualizer: Pick<
+    Virtualizer<Element, Element>,
+    'getVirtualItems' | 'itemSizeCache'
+  >,
+  keyOf: (index: number) => VirtualItem['key'],
+): VirtualItem[] {
+  const rows = virtualizer.getVirtualItems();
+  // A row laid out before its commit loaded keeps its estimate until laid out
+  // again, while measuring it compares with the height kept for its commit
+  for (const row of rows) {
+    const key = keyOf(row.index);
+    if (row.key !== key) {
+      virtualizer.itemSizeCache.delete(key);
+    }
+  }
+  return rows;
 }
 
 export function fixedRowHeight(
@@ -535,7 +558,7 @@ export function Commits({
   });
   const totalSize = virtualizer.getTotalSize();
   useLayoutEffect(fit, [fit, totalSize]);
-  const rows = virtualizer.getVirtualItems();
+  const rows = drawnRows(virtualizer, rowKey);
   const first = Math.max(0, (rows[0]?.index ?? 0) - offset);
   const last = Math.max(0, (rows.at(-1)?.index ?? 0) - offset);
 

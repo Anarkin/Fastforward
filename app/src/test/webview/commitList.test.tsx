@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import { listMoveOf } from '../../webview/listMoves';
 import { isValidElement } from 'react';
+import { Virtualizer } from '@tanstack/react-virtual';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { comparisonOf } from '../../shared/comparisons';
 import { workingTreeHash, workingTreeIndex } from '../../shared/protocol';
@@ -19,6 +20,7 @@ import {
   CommitBubbles,
   CommitRow,
   commitClass,
+  drawnRows,
   estimatedRowHeight,
   fixedRowHeight,
   isCompareClick,
@@ -33,6 +35,53 @@ import {
 } from '../../webview/commitList';
 import { formatDateTime } from '../../webview/dates';
 import { commitInfo, keyPress, noModifiers, renderedBy } from '../fixtures';
+
+function laidOut() {
+  const scroller = { clientHeight: 500, ownerDocument: { defaultView: null } };
+  const scrolling = {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    getScrollElement: () => scroller as unknown as Element,
+    observeElementRect: (
+      _instance: unknown,
+      report: (rect: { width: number; height: number }) => void,
+    ) => {
+      report({ width: 300, height: scroller.clientHeight });
+      return noop;
+    },
+    observeElementOffset: () => noop,
+    scrollToFn: noop,
+  };
+  const virtualizer = new Virtualizer<Element, Element>({
+    ...scrolling,
+    count: 0,
+    estimateSize: () => commitRowHeight,
+  });
+  // oxlint-disable-next-line no-underscore-dangle
+  virtualizer._willUpdate();
+  const drawn = () => drawnRows(virtualizer, virtualizer.options.getItemKey);
+  return {
+    lay: (history: CommitHistory) => {
+      virtualizer.setOptions({
+        ...scrolling,
+        count: history.total,
+        estimateSize: (index) => estimatedRowHeight(history, 0, index),
+        getItemKey: (index) => rowKeyOf(history, 0, index),
+      });
+      drawn();
+    },
+    draw: (index: number, height: number) => {
+      drawn();
+      const row = {
+        getAttribute: () => String(index),
+        isConnected: true,
+        offsetHeight: height,
+      };
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      virtualizer.measureElement(row as unknown as Element);
+      return virtualizer.getVirtualItems();
+    },
+  };
+}
 
 suite('Commit list rows', () => {
   test('starts a row with bubbles at one line of them', () => {
@@ -65,6 +114,19 @@ suite('Commit list rows', () => {
     assert.strictEqual(fixedRowHeight(history, 1, 1, 30), undefined);
     assert.strictEqual(fixedRowHeight(history, 1, 2, 30), 30);
     assert.strictEqual(fixedRowHeight(undefined, 0, 0, 30), 30);
+  });
+
+  test('lays a commit out at the height drawn once its page loads, though that height was measured in an earlier history', () => {
+    const wrapped = commitRowHeight + 2 * bubbleLineHeight;
+    const { lay, draw } = laidOut();
+    const earlier = new CommitHistory(2, [0]);
+    earlier.add(0, [commitInfo('a'), commitInfo('b')]);
+    lay(earlier);
+    assert.strictEqual(draw(0, wrapped)[1].start, wrapped);
+    const later = new CommitHistory(2, [0]);
+    lay(later);
+    later.add(0, [commitInfo('a'), commitInfo('b')]);
+    assert.strictEqual(draw(0, wrapped)[1].start, wrapped);
   });
 
   test("puts a commit's bubbles on one line that can break between them", () => {
