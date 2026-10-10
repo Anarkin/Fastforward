@@ -178,6 +178,49 @@ suite('Word diff', () => {
     assert.ok(read > 0);
   });
 
+  test('compares the words of only the pair a drawn line is in, as a block can be a whole file changed through', () => {
+    const count = 201;
+    const [file] = parsePatch(
+      [
+        'diff --git a/a.ts b/a.ts',
+        '--- a/a.ts',
+        '+++ b/a.ts',
+        `@@ -1,${count} +1,${count} @@`,
+        ...Array.from({ length: count }, (_, i) => `-let total${i} = 1;`),
+        ...Array.from({ length: count }, (_, i) => `+let sum${i} = 1;`),
+        '',
+      ].join('\n'),
+    );
+    const read = new Set<number>();
+    const ranges = wordRanges([
+      {
+        ...file,
+        hunks: [
+          {
+            lines: file.hunks[0].lines.map((line, index) => ({
+              kind: line.kind,
+              oldNumber: line.oldNumber,
+              newNumber: line.newNumber,
+              get text() {
+                read.add(index);
+                return line.text;
+              },
+            })),
+          },
+        ],
+      },
+    ]);
+    assert.deepStrictEqual(ranges.get('0:5'), [{ start: 4, end: 10 }]);
+    read.clear();
+    assert.deepStrictEqual(ranges.get(`0:${count + 7}`), [
+      { start: 4, end: 8 },
+    ]);
+    assert.deepStrictEqual([...read], [7, count + 7]);
+    read.clear();
+    assert.deepStrictEqual(ranges.get('0:7'), [{ start: 4, end: 10 }]);
+    assert.deepStrictEqual([...read], []);
+  });
+
   test('pairs the words of each file once, keeping them as the file moves among the others', () => {
     const [file] = parsePatch(
       [

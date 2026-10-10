@@ -1,4 +1,9 @@
-import { changeBlocks, type ChangeBlock, type DiffFile } from './diff';
+import {
+  changeBlocks,
+  type ChangeBlock,
+  type DiffFile,
+  type NumberedLine,
+} from './diff';
 import { keyedLine, type FindRange } from './find';
 import { changePairs, tokenSteps } from './pairing';
 
@@ -202,28 +207,51 @@ function lineChanges(file: DiffFile): ReadonlyMap<number, Change> {
   return changes;
 }
 
-const rangesOfChange = new WeakMap<Change, ReadonlyMap<number, LineWords>>();
+interface Pair {
+  readonly removed: NumberedLine | undefined;
+  readonly added: NumberedLine | undefined;
+}
 
-function changeRanges(change: Change): ReadonlyMap<number, LineWords> {
-  let ranges = rangesOfChange.get(change);
-  if (!ranges) {
-    const byLine = new Map<number, LineWords>();
+const pairsOfChange = new WeakMap<Change, ReadonlyMap<number, Pair>>();
+
+function linePairs(change: Change): ReadonlyMap<number, Pair> {
+  let pairs = pairsOfChange.get(change);
+  if (!pairs) {
+    const byLine = new Map<number, Pair>();
     for (const [left, right] of changePairs(change)) {
-      const removed = left === undefined ? undefined : change.removed[left];
-      const added = right === undefined ? undefined : change.added[right];
-      const found =
-        removed && added
-          ? pairWordRanges(removed.line.text, added.line.text)
-          : undefined;
-      if (removed) {
-        byLine.set(removed.index, found?.removed ?? 'whole');
-      }
-      if (added) {
-        byLine.set(added.index, found?.added ?? 'whole');
+      const pair = {
+        removed: left === undefined ? undefined : change.removed[left],
+        added: right === undefined ? undefined : change.added[right],
+      };
+      for (const side of [pair.removed, pair.added]) {
+        if (side) {
+          byLine.set(side.index, pair);
+        }
       }
     }
-    ranges = byLine;
-    rangesOfChange.set(change, ranges);
+    pairs = byLine;
+    pairsOfChange.set(change, pairs);
+  }
+  return pairs;
+}
+
+const rangesOfPair = new WeakMap<
+  Pair,
+  { readonly removed: LineWords; readonly added: LineWords }
+>();
+
+function pairRanges(pair: Pair) {
+  let ranges = rangesOfPair.get(pair);
+  if (!ranges) {
+    const found =
+      pair.removed && pair.added
+        ? pairWordRanges(pair.removed.line.text, pair.added.line.text)
+        : undefined;
+    ranges = {
+      removed: found?.removed ?? 'whole',
+      added: found?.added ?? 'whole',
+    };
+    rangesOfPair.set(pair, ranges);
   }
   return ranges;
 }
@@ -236,7 +264,11 @@ export function wordRanges(files: readonly DiffFile[]): WordRanges {
       const [file, line] = keyedLine(key);
       const diffFile = files.at(file);
       const change = diffFile && lineChanges(diffFile).get(line);
-      return change && changeRanges(change).get(line);
+      const pair = change && linePairs(change).get(line);
+      return (
+        pair &&
+        pairRanges(pair)[pair.removed?.index === line ? 'removed' : 'added']
+      );
     },
   };
 }
