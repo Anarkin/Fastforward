@@ -42,6 +42,30 @@ suite('Commits read from git', () => {
     assert.strictEqual(read([output]).length, 5);
   });
 
+  test('looks for the stashes and the commits they leave out without decoding a hash of each commit, as that made reading 1.5 million commits with a stash take a fifth longer', () => {
+    const builder = new CommitsBuilder(['s']);
+    const decode = Buffer.prototype.toString;
+    let decoded = 0;
+    Buffer.prototype.toString = function (
+      this: Buffer,
+      ...args: Parameters<typeof decode>
+    ) {
+      decoded++;
+      return decode.apply(this, args);
+    };
+    try {
+      builder.add(Buffer.from('s b i u\ni b\nu\nb a\na\n'));
+    } finally {
+      Buffer.prototype.toString = decode;
+    }
+    assert.strictEqual(decoded, 0);
+    assert.deepStrictEqual(entriesOf(builder.finishNow()), [
+      { hash: 's', parents: ['b'] },
+      { hash: 'b', parents: ['a'] },
+      { hash: 'a', parents: [] },
+    ]);
+  });
+
   test('finds a commit by its hash, and numbers the parents outside the history after its commits', () => {
     const commits = Commits.of([
       { hash: 'm', parents: ['a', 'x'] },

@@ -282,15 +282,19 @@ export class CommitsBuilder {
   private parentCount = 0;
   private count = 0;
   private pending = new Uint8Array(0);
-  private readonly stashes: ReadonlySet<string>;
-  private readonly hidden = new Set<string>();
+  // The stashes first, then the commits they leave out
+  private readonly marked = new HashTable();
+  private readonly stashCount: number;
   private times = new Int32Array(64);
 
   constructor(
     stashes: readonly string[] = [],
     private readonly timestamped = false,
   ) {
-    this.stashes = new Set(stashes);
+    for (const stash of stashes) {
+      this.mark(Buffer.from(stash, 'latin1'), 0, stash.length);
+    }
+    this.stashCount = this.marked.size;
   }
 
   add(chunk: Uint8Array): void {
@@ -387,31 +391,14 @@ export class CommitsBuilder {
     if (hashEnd === -1 || hashEnd > end) {
       hashEnd = end;
     }
-    let keptParents = Infinity;
-    if (this.stashes.size > 0 || this.hidden.size > 0) {
-      const hash = Buffer.from(
-        text.buffer,
-        text.byteOffset + start,
-        hashEnd - start,
-      ).toString('latin1');
-      if (this.hidden.has(hash)) {
-        return;
-      }
-      if (this.stashes.has(hash)) {
-        keptParents = 1;
-        const parents = Buffer.from(
-          text.buffer,
-          text.byteOffset + hashEnd,
-          end - hashEnd,
-        )
-          .toString('latin1')
-          .split(' ')
-          .filter(Boolean);
-        for (const parent of parents.slice(1)) {
-          this.hidden.add(parent);
-        }
-      }
+    const marked =
+      this.marked.size > 0
+        ? this.marked.findBytes(text, start, hashEnd)
+        : undefined;
+    if (marked !== undefined && marked >= this.stashCount) {
+      return;
     }
+    const keptParents = marked === undefined ? Infinity : 1;
     this.hashes.add(text, start, hashEnd);
     if (this.count + 2 > this.starts.length) {
       this.starts = grownInts(this.starts);
@@ -420,16 +407,26 @@ export class CommitsBuilder {
     this.times[this.count] = time;
     this.starts[this.count++] = this.parentCount;
     let kept = 0;
-    for (let from = hashEnd + 1; from < end && kept < keptParents;) {
+    for (let from = hashEnd + 1; from < end;) {
       let to = text.indexOf(space, from);
       if (to === -1 || to > end) {
         to = end;
       }
       if (to > from) {
-        this.addParent(text, from, to);
-        kept++;
+        if (kept < keptParents) {
+          this.addParent(text, from, to);
+          kept++;
+        } else {
+          this.mark(text, from, to);
+        }
       }
       from = to + 1;
+    }
+  }
+
+  private mark(text: Uint8Array, start: number, end: number): void {
+    if (this.marked.findBytes(text, start, end) === undefined) {
+      this.marked.add(text, start, end);
     }
   }
 
