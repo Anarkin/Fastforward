@@ -87,6 +87,36 @@ suite('Patch budget', () => {
       { header: 'diff --git a/min.js b/min.js', lines: undefined, kept: false },
     ]);
   });
+
+  test('counts the bytes git sends rather than their characters, from output split anywhere', () => {
+    const header = 'diff --git a/zh.txt b/zh.txt\n@@ -0,0 +1 @@\n+';
+    const wide = Buffer.from(
+      header + '中'.repeat(Math.ceil(patchByteBudget / 3)),
+    );
+    for (const end of ['', '\n']) {
+      const output = Buffer.concat([wide, Buffer.from(end)]);
+      for (const split of [header.length + 1, output.length - 1]) {
+        const budget = new PatchBudget();
+        budget.add(output.subarray(0, split));
+        budget.add(output.subarray(split));
+        assert.deepStrictEqual(budget.end().sections, [
+          {
+            header: 'diff --git a/zh.txt b/zh.txt',
+            lines: undefined,
+            kept: false,
+          },
+        ]);
+      }
+    }
+    const undecodable = new PatchBudget();
+    undecodable.add(
+      Buffer.from('diff --git a/latin1.txt b/latin1.txt\n@@ -0,0 +1 @@\n+'),
+    );
+    undecodable.add(Buffer.alloc(patchByteBudget / 2, 0xe9));
+    assert.deepStrictEqual(undecodable.end().sections, [
+      { header: 'diff --git a/latin1.txt b/latin1.txt', lines: 1, kept: true },
+    ]);
+  });
 });
 
 suite('Files left out of a patch', () => {

@@ -106,6 +106,7 @@ export class PatchBudget {
   private readonly sections: PatchSection[] = [];
   private readonly decoder = new StringDecoder('utf8');
   private pending = '';
+  private pendingBytes = 0;
   private section: OpenSection | undefined;
   private keptLines = 0;
   private keptBytes = 0;
@@ -117,16 +118,22 @@ export class PatchBudget {
     const text = this.pending + this.decoder.write(chunk);
     const end = text.lastIndexOf('\n');
     this.pending = text.slice(end + 1);
+    let from = 0;
     if (end !== -1) {
       for (const line of text.slice(0, end).split('\n')) {
-        if (this.addLine(line, true)) {
+        const at = chunk.indexOf(0x0a, from);
+        const bytes = this.pendingBytes + at + 1 - from;
+        this.pendingBytes = 0;
+        from = at + 1;
+        if (this.addLine(line, bytes, true)) {
           return true;
         }
       }
     }
+    this.pendingBytes += chunk.length - from;
     if (
       this.section &&
-      this.section.bytes + this.pending.length > patchByteBudget
+      this.section.bytes + this.pendingBytes > patchByteBudget
     ) {
       this.stop(this.section, undefined);
     }
@@ -137,7 +144,7 @@ export class PatchBudget {
     if (!this.stopped) {
       const rest = this.pending + this.decoder.end();
       if (rest) {
-        this.addLine(rest, false);
+        this.addLine(rest, this.pendingBytes, false);
       }
       this.close();
     }
@@ -148,7 +155,7 @@ export class PatchBudget {
     };
   }
 
-  private addLine(line: string, newline: boolean): boolean {
+  private addLine(line: string, bytes: number, newline: boolean): boolean {
     if (line.startsWith('diff --git ')) {
       if (this.close()) {
         return true;
@@ -167,7 +174,7 @@ export class PatchBudget {
       this.kept.push(text);
       return false;
     }
-    section.bytes += text.length;
+    section.bytes += bytes;
     if (line.startsWith('@@')) {
       section.inHunk = true;
     } else if (section.inHunk && (line[0] === '+' || line[0] === '-')) {
