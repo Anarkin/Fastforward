@@ -369,6 +369,36 @@ suite('Watching a repository', function () {
   });
 
   for (const recursive of [true, false]) {
+    test(`stays quiet for an ignored folder made again, which git tells is not ignored while it is missing, watching ${recursive ? 'recursively' : 'folder by folder'}`, async () => {
+      const folder = path.join(repository.root, 'ignored');
+      const checked: string[] = [];
+      watcher = await watchRepository(repository.gitPath, repository.root, {
+        delay: 50,
+        maxDelay: 200,
+        recursive,
+        onChange: ({ refs }) => changes.push(refs),
+        onError: (error) => errors.push(error),
+        ignored: (repo, paths) => {
+          checked.push(...paths);
+          return ignoredPaths(repository.gitPath, repo, paths);
+        },
+      });
+      await settled();
+      fs.rmSync(folder, { recursive: true });
+      await waitFor(() => checked.includes(folder), 'the folder removed');
+      await settled();
+      checked.length = 0;
+      fs.mkdirSync(folder);
+      fs.writeFileSync(path.join(folder, 'out.txt'), '');
+      await waitFor(
+        () => checked.includes(folder) || changes.length > 0,
+        'the folder made again',
+      );
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      assert.ok(!changes.includes(false), 'the folder made again');
+      assert.deepStrictEqual(errors, []);
+    });
+
     test(`stays quiet for the cookies of the fsmonitor daemon, which every refresh would make again, watching ${recursive ? 'recursively' : 'folder by folder'}`, async () => {
       const cookies = path.join(
         repository.root,

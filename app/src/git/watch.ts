@@ -697,11 +697,22 @@ class NotIgnored {
       return true;
     }
     const kept = files.filter((file) => !found.has(file));
+    // Git takes a missing path for a file, which a pattern for folders alone
+    // does not ignore, so its answer would not hold once a folder is made there
+    const present = await Promise.all(
+      kept.map((file) =>
+        fs.promises.lstat(file).then(
+          () => true,
+          () => false,
+        ),
+      ),
+    );
+    const known = kept.filter((_file, index) => present[index]);
     if (generation === this.generation) {
-      if (this.known.size + kept.length > maxKnownNotIgnored) {
+      if (this.known.size + known.length > maxKnownNotIgnored) {
         this.known.clear();
       }
-      for (const file of kept) {
+      for (const file of known) {
         this.known.add(file);
       }
     }
