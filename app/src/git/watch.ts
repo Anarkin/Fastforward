@@ -692,7 +692,7 @@ class NotIgnored {
     const { generation } = this;
     let found: ReadonlySet<string>;
     try {
-      found = new Set(await ignored(root, files));
+      found = new Set(await ignoredInRepositories(ignored, root, files));
     } catch {
       return true;
     }
@@ -707,4 +707,60 @@ class NotIgnored {
     }
     return kept.length > 0;
   }
+}
+
+// Git refuses to tell whether a path inside a submodule is ignored, so a path
+// is asked of the repository holding it, and that repository's folder of the
+// one around it, which may ignore the whole folder
+async function ignoredInRepositories(
+  ignored: Ignored,
+  root: string,
+  files: readonly string[],
+): Promise<string[]> {
+  const holding = new Map<string, Promise<string>>();
+  const repoHolding = (folder: string): Promise<string> => {
+    if (folder === root || !isInside(root, folder)) {
+      return Promise.resolve(root);
+    }
+    let repo = holding.get(folder);
+    if (repo === undefined) {
+      repo = fs.promises.lstat(path.join(folder, '.git')).then(
+        () => folder,
+        () => repoHolding(path.dirname(folder)),
+      );
+      holding.set(folder, repo);
+    }
+    return repo;
+  };
+  const repoOf = new Map<string, string>();
+  let level = files;
+  while (level.length > 0) {
+    const repos = await Promise.all(
+      level.map((file) => repoHolding(path.dirname(file))),
+    );
+    for (const [index, file] of level.entries()) {
+      repoOf.set(file, repos[index]);
+    }
+    level = [...new Set(repos)].filter(
+      (repo) => repo !== root && !repoOf.has(repo),
+    );
+  }
+  const byRepo = Map.groupBy(repoOf, ([, repo]) => repo);
+  const found = new Set(
+    (
+      await Promise.all(
+        [...byRepo].map(([repo, inRepo]) =>
+          ignored(
+            repo,
+            inRepo.map(([file]) => file),
+          ),
+        ),
+      )
+    ).flat(),
+  );
+  const isIgnored = (file: string): boolean => {
+    const repo = repoOf.get(file) ?? root;
+    return found.has(file) || (repo !== root && isIgnored(repo));
+  };
+  return files.filter(isIgnored);
 }

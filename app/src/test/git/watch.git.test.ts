@@ -125,11 +125,30 @@ suite('Watching a repository', function () {
     assert.deepStrictEqual(errors, []);
   });
 
-  test('refreshes for a file changed inside a submodule, which git cannot tell is ignored or not, watching folder by folder', async () => {
+  test('asks a submodule whether a file changed in it is ignored, staying quiet for one its own .gitignore ignores and refreshing for one it tracks, watching folder by folder', async () => {
     const library = await tempRepository(path.join(repository.root, 'sub'));
-    await library.commit('library', { 'lib.c': 'lib\n' });
+    await library.commit('library', { '.gitignore': '*.o\n', 'lib.c': '' });
     await repository.git('add', '--no-warn-embedded-repo', 'sub');
-    await start();
+    const built = path.join(library.root, 'lib.o');
+    fs.writeFileSync(built, '');
+    const checked: string[] = [];
+    watcher = await watchRepository(repository.gitPath, repository.root, {
+      delay: 50,
+      maxDelay: 200,
+      recursive: false,
+      onChange: ({ refs }) => changes.push(refs),
+      onError: (error) => errors.push(error),
+      ignored: (repo, paths) => {
+        checked.push(...paths);
+        return ignoredPaths(repository.gitPath, repo, paths);
+      },
+    });
+    await settled();
+    await keepWriting(built, 'the ignored file in the submodule', () =>
+      checked.includes(built),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    assert.ok(!changes.includes(false), 'the ignored file in the submodule');
     await keepWriting(path.join('sub', 'lib.c'), 'the file in the submodule');
     assert.deepStrictEqual(errors, []);
   });
@@ -321,6 +340,32 @@ suite('Watching a repository', function () {
       await watching.dispose();
       removeFolder(folder);
     }
+  });
+
+  test('stays quiet for a file changed in a repository inside an ignored folder, though that repository does not ignore it, watching recursively', async () => {
+    const vendored = await tempRepository(
+      path.join(repository.root, 'ignored', 'vendored'),
+    );
+    const file = path.join(vendored.root, 'file.txt');
+    fs.writeFileSync(file, '');
+    const checked: string[] = [];
+    watcher = await watchRepository(repository.gitPath, repository.root, {
+      delay: 50,
+      maxDelay: 200,
+      recursive: true,
+      onChange: ({ refs }) => changes.push(refs),
+      onError: (error) => errors.push(error),
+      ignored: (repo, paths) => {
+        checked.push(...paths);
+        return ignoredPaths(repository.gitPath, repo, paths);
+      },
+    });
+    await keepWriting(file, 'the file in the ignored folder', () =>
+      checked.includes(file),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    assert.ok(!changes.includes(false), 'the file in the ignored folder');
+    assert.deepStrictEqual(errors, []);
   });
 
   for (const recursive of [true, false]) {
