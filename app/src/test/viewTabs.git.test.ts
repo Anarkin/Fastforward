@@ -15,6 +15,7 @@ import {
   failOnErrorsLogged,
   gate,
   openView,
+  reopen,
   rootOf,
   savedBookmarks,
   stubMethod,
@@ -132,6 +133,87 @@ suite('View with two tabs', function () {
     } finally {
       await new Promise((resolve) => server.close(resolve));
     }
+  });
+
+  test('shows the first rows of a long history of a tab opened while it preloads, before the whole of it is read', async () => {
+    await withView(
+      log,
+      [other, repository.root],
+      async (own) => {
+        stubMethod(own.view, 'listRecentHistory', (original, ...args) =>
+          original(...args.slice(0, 4), 2),
+        );
+        const held = gate();
+        let reading = false;
+        stubMethod(own.view, 'listFullHistory', async (original, ...args) => {
+          if (rootOf(args[0]) === repository.root) {
+            reading = true;
+            await held.opened;
+          }
+          return original(...args);
+        });
+        const preloading = own.connection.receive({
+          type: 'preloadTab',
+          root: repository.root,
+        });
+        await waitFor(() => reading, 'the preload to read the history');
+        own.page.clear();
+        const opening = own.connection.receive({
+          type: 'selectTab',
+          root: repository.root,
+        });
+        await waitFor(
+          () => own.page.last('commits') !== undefined,
+          'the first rows',
+        );
+        assert.strictEqual(own.page.last('commits')?.total, 2);
+        held.open();
+        await Promise.all([preloading, opening]);
+        assert.strictEqual(own.page.last('commits')?.total, 3);
+        assert.strictEqual(
+          own.page.last('repository')?.headCommit,
+          fixture.merge,
+        );
+      },
+      'unwatched',
+    );
+  });
+
+  test('sends the whole history of a tab opened while it preloads to the page loaded again before the preload is done', async () => {
+    await withView(
+      log,
+      [other, repository.root],
+      async (own) => {
+        const held = gate();
+        let reading = false;
+        stubMethod(own.view, 'listFullHistory', async (original, ...args) => {
+          if (rootOf(args[0]) === repository.root) {
+            reading = true;
+            await held.opened;
+          }
+          return original(...args);
+        });
+        const preloading = own.connection.receive({
+          type: 'preloadTab',
+          root: repository.root,
+        });
+        await waitFor(() => reading, 'the preload to read the history');
+        const opening = own.connection.receive({
+          type: 'selectTab',
+          root: repository.root,
+        });
+        own.connection.dispose();
+        const reloaded = reopen(own.view);
+        await waitFor(
+          () => reloaded.page.last('tabs') !== undefined,
+          'the page to load again',
+        );
+        held.open();
+        await Promise.all([preloading, opening, reloaded.ready]);
+        assert.strictEqual(reloaded.page.last('commits')?.total, 3);
+      },
+      'unwatched',
+    );
   });
 
   suite('open', () => {

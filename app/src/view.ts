@@ -861,14 +861,14 @@ export class FastforwardView {
 
   private async openWorktree(session: Session, root: string): Promise<void> {
     const tab = this.tabState(root);
+    this.page = session;
+    for (const message of replayOf(tab)) {
+      session.post(message);
+    }
     await tab.preloading;
     if (!this.isActive(root)) {
       return;
     }
-    for (const message of replayOf(tab)) {
-      session.post(message);
-    }
-    this.page = session;
     this.stopWatching(session);
     const context = await this.context(session);
     if (!context || session.disposed || !this.isActive(context.root)) {
@@ -1238,7 +1238,7 @@ export class FastforwardView {
       session: live ? session : undefined,
       post: (message) => {
         keep(tab.shown, message);
-        if (live && this.isActive(root) && this.tabStates.get(root) === tab) {
+        if (this.isActive(root) && this.tabStates.get(root) === tab) {
           (session.disposed ? this.page : session)?.post(message);
         }
       },
@@ -1897,8 +1897,7 @@ export class FastforwardView {
     const read = await refs;
     const { head, refs: listed, stashes } = read;
     const { tab } = context;
-    const early =
-      context.session !== undefined && tab.shown.commits === undefined;
+    const early = tab.shown.commits === undefined;
     const loading = new AbortController();
     const loaded = Promise.withResolvers<void>();
     if (early) {
