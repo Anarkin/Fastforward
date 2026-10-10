@@ -162,6 +162,8 @@ suite('User settings file', () => {
       target,
     );
     try {
+      await waitFor(() => changes > 0, 'the first check');
+      changes = 0;
       await waitFor(() => {
         fs.writeFileSync(changed, JSON.stringify({ solo: true }));
         return changes > 0;
