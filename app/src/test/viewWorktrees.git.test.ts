@@ -460,6 +460,62 @@ suite('View of worktrees', function () {
     });
   });
 
+  test('fetches a repository in the background though the worktree its tab showed last is gone, also once the app starts again', async () => {
+    const origin = await tempRepository(path.join(folder, 'removed-origin'));
+    await origin.commit('a');
+    const fetched = await tempRepository(path.join(folder, 'removed'));
+    await fetched.commit('a');
+    await fetched.git('remote', 'add', 'origin', origin.root);
+    const linked = path.join(folder, 'removed.worktrees', 'linked');
+    await fetched.git('worktree', 'add', '-q', '--detach', linked);
+    const rounds: (() => void)[] = [];
+    const timer = (run: () => void) => {
+      rounds.push(run);
+      return () => undefined;
+    };
+    const brought = async (message: string) => {
+      await origin.commit(message);
+      const [head] = await origin.resolve('main');
+      return head;
+    };
+    const opened = await openView(
+      log,
+      [fetched.root, other],
+      'unwatched',
+      undefined,
+      timer,
+    );
+    try {
+      const root = worktreeRoot(opened, linked);
+      await opened.connection.receive({ type: 'selectWorktree', root });
+      await opened.connection.receive({ type: 'selectTab', root: other });
+      await fetched.git('worktree', 'remove', '--force', linked);
+      const head = await brought('b');
+      await opened.connection.receive({ type: 'setAutoFetch', on: true });
+      await waitFor(() => rounds.length === 1, 'the round to end');
+      assert.deepStrictEqual(await fetched.resolve('origin/main'), [head]);
+    } finally {
+      opened.connection.dispose();
+    }
+    const started = await openView(
+      log,
+      [other, fetched.root],
+      false,
+      undefined,
+      timer,
+    );
+    try {
+      await started.store.update(worktreesKey, { [fetched.root]: linked });
+      await started.connection.receive({ type: 'ready' });
+      const head = await brought('c');
+      await started.connection.receive({ type: 'setAutoFetch', on: true });
+      await waitFor(() => rounds.length === 2, 'the next round to end');
+      assert.deepStrictEqual(await fetched.resolve('origin/main'), [head]);
+    } finally {
+      started.connection.dispose();
+    }
+  });
+
   test('fetches a repository once at a time, also for two of its worktrees', async () => {
     let requests = 0;
     let released = false;

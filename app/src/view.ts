@@ -195,8 +195,11 @@ interface EarlyPatch {
   readonly loading: AbortController;
 }
 
-interface Context extends RepositoryAt {
+interface Fetchable extends RepositoryAt {
   readonly repository: string;
+}
+
+interface Context extends Fetchable {
   readonly tab: Tab;
   readonly session: Session | undefined;
   readonly post: (message: ToWebview) => void;
@@ -1338,7 +1341,11 @@ export class FastforwardView {
     context.post({ type: 'fetching', running: true });
     let fetched: Fetched;
     try {
-      fetched = await this.fetchRemotes(context);
+      fetched = await this.fetchRemotes(
+        context,
+        this.log,
+        this.notify(context),
+      );
     } finally {
       context.post({ type: 'fetching', running: false });
     }
@@ -1348,17 +1355,17 @@ export class FastforwardView {
   }
 
   private async fetchRemotes(
-    context: Context,
-    log: Log = this.log,
-    notify: Notify = this.notify(context),
+    at: Fetchable,
+    log: Log,
+    notify: Notify,
     interactive = true,
   ): Promise<Fetched> {
-    const { repository } = context;
+    const { repository } = at;
     const { fetches } = this;
     const running = fetches.get(repository);
     const joined =
       running !== undefined && (!interactive || running.interactive);
-    const fetching = joined ? running : this.startFetch(context, interactive);
+    const fetching = joined ? running : this.startFetch(at, interactive);
     const result = await fetching.fetched;
     const latest = fetches.get(repository);
     if (!interactive && latest?.interactive) {
@@ -1390,14 +1397,14 @@ export class FastforwardView {
     });
   }
 
-  private startFetch(context: Context, interactive: boolean): Fetching {
-    const { repository } = context;
+  private startFetch(at: Fetchable, interactive: boolean): Fetching {
+    const { repository } = at;
     const { fetches } = this;
     const running = fetches.get(repository)?.fetched;
     const started: Fetching = {
       fetched: (running
-        ? running.then(() => fetchAll(context, interactive))
-        : fetchAll(context, interactive)
+        ? running.then(() => fetchAll(at, interactive))
+        : fetchAll(at, interactive)
       ).finally(() => {
         if (fetches.get(repository) === started) {
           fetches.delete(repository);
@@ -1411,13 +1418,11 @@ export class FastforwardView {
 
   private async fetchInBackground(repository: string): Promise<void> {
     const session = this.page;
-    if (!session || !this.storage.hasTab(repository)) {
-      return;
-    }
-    const root = this.storage.worktreeOf(repository);
-    this.repositories.set(root, repository);
-    const context = await this.context(session, root, this.isActive(root));
-    if (!context) {
+    if (
+      !session ||
+      !this.storage.hasTab(repository) ||
+      !(await isFolder(repository))
+    ) {
       return;
     }
     const reported = !this.fetchFailures.has(repository);
@@ -1429,10 +1434,17 @@ export class FastforwardView {
     const notify: Notify = reported
       ? this.noticesOf(session, repository)
       : silent;
-    const fetched = await this.fetchRemotes(context, log, notify, false);
+    const fetched = await this.fetchRemotes(
+      { gitPath: this.gitPath, root: repository, repository },
+      log,
+      notify,
+      false,
+    );
     if (fetched.failed || !fetched.changed) {
       return;
     }
+    const root = this.storage.worktreeOf(repository);
+    this.repositories.set(root, repository);
     const page = this.page;
     const shown =
       page && this.isActive(root) ? await this.context(page, root) : undefined;
