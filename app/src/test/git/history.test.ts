@@ -83,6 +83,13 @@ suite('Recent tips', () => {
   test('picks nothing without refs', () => {
     assert.deepStrictEqual(recentTips(new Map()), []);
   });
+
+  test('picks among more refs than a call takes arguments', () => {
+    const dates = new Map(
+      Array.from({ length: 500_000 }, (_, index) => [`c${index}`, index]),
+    );
+    assert.strictEqual(recentTips(dates).length, 500_000);
+  });
 });
 
 suite('Extending a history', () => {

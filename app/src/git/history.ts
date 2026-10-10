@@ -313,7 +313,10 @@ export async function listRecentHistory(
 const recentSeconds = 60 * 24 * 60 * 60;
 
 export function recentTips(dates: ReadonlyMap<string, number>): string[] {
-  const newest = Math.max(...dates.values());
+  let newest = -Infinity;
+  for (const date of dates.values()) {
+    newest = Math.max(newest, date);
+  }
   return [...dates]
     .filter(([, date]) => newest - date <= recentSeconds)
     .map(([commit]) => commit);
