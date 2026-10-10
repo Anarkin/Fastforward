@@ -299,7 +299,7 @@ async function touchedChanges(
       isNullId(reverse ? oldId : newId),
   );
   const suspects = unread.flatMap((change) =>
-    change.linesCounted
+    change.linesCounted && change.file.insertions + change.file.deletions === 0
       ? [
           {
             change,

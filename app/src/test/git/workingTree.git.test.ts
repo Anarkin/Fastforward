@@ -324,17 +324,33 @@ suite('Staged and unstaged changes', function () {
   });
 
   test('tells which unstaged files were only touched while reading their sizes', async () => {
-    const git = holdingGit((args) => args.includes('cat-file'));
-    const listed = workingTreeFiles(repository.gitPath, repository.root);
+    const binary = path.join(repository.root, 'unstaged.txt');
+    fs.writeFileSync(binary, '\0y\n');
     try {
-      await waitFor(
-        () => git.started('hash-object'),
-        'the touched files to be told',
-      );
+      const git = holdingGit((args) => args.includes('cat-file'));
+      const listed = workingTreeFiles(repository.gitPath, repository.root);
+      try {
+        await waitFor(
+          () => git.started('hash-object'),
+          'the touched files to be told',
+        );
+      } finally {
+        git.release();
+      }
+      assert.strictEqual((await listed).files.length, 4);
+    } finally {
+      fs.writeFileSync(binary, 'y\n');
+    }
+  });
+
+  test('reads no file again to tell whether it was only touched once git counted lines changed in it', async () => {
+    const git = holdingGit(() => false);
+    try {
+      await workingTreeFiles(repository.gitPath, repository.root);
     } finally {
       git.release();
     }
-    assert.strictEqual((await listed).files.length, 4);
+    assert.ok(!git.started('hash-object'));
   });
 
   test('diffs the staged half of a file against HEAD and its unstaged half against the index', async () => {
