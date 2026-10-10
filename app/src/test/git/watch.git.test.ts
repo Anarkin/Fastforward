@@ -668,6 +668,48 @@ suite('Watching a repository', function () {
       }
     });
 
+    test(`tells when a linked worktree or the main one switches branch under the reftable ref format, which leaves each HEAD file as it was, watching ${recursive ? 'recursively' : 'folder by folder'}`, async () => {
+      await repository.git('refs', 'migrate', '--ref-format=reftable');
+      const folder = tempFolder('reftable');
+      const linked = path.join(folder, 'linked');
+      await repository.git('worktree', 'add', '-q', '--detach', linked);
+      let listed = 0;
+      const listing = await watchRepository(
+        repository.gitPath,
+        repository.root,
+        {
+          delay: 50,
+          maxDelay: 200,
+          recursive,
+          onChange: () => undefined,
+          onWorktreesChange: () => listed++,
+          onError: (error) => errors.push(error),
+        },
+      );
+      const switched = async (where: string, what: string) => {
+        let last = listed;
+        let since = Date.now();
+        await waitFor(() => {
+          if (listed !== last) {
+            last = listed;
+            since = Date.now();
+          }
+          return Date.now() - since > 500;
+        }, 'the worktrees listed to be told');
+        listed = 0;
+        await repository.git('-C', where, 'switch', '-q', '-c', what);
+        await waitFor(() => listed > 0, what);
+      };
+      try {
+        await switched(linked, 'linked-switched');
+        await switched(repository.root, 'main-switched');
+        assert.deepStrictEqual(errors, []);
+      } finally {
+        await listing.dispose();
+        removeFolder(folder);
+      }
+    });
+
     test(`refreshes a linked worktree for a branch made in the main one, watching ${recursive ? 'recursively' : 'folder by folder'}`, async () => {
       const folder = tempFolder('linked');
       const linked = path.join(folder, 'linked');

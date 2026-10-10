@@ -199,6 +199,25 @@ suite('Watching the git folder', () => {
     }
   });
 
+  test('lists the worktrees again for a table of refs written, which holds HEAD, and the folders on the way to it, under the reftable ref format', () => {
+    for (const file of [
+      'reftable/tables.list',
+      'worktrees/feature/reftable',
+      'worktrees\\feature\\reftable\\tables.list',
+    ]) {
+      assert.strictEqual(affectsWorktreeList(file), true, file);
+      assert.strictEqual(watchedFolder(file, false, isModule), true, file);
+    }
+    for (const file of [
+      'reftable/tables.list.lock',
+      'reftable/0x000000000002-0x000000000002-1a2b3c4d.ref',
+      'worktrees/feature/reftable/tables.list.lock',
+      'worktrees/feature/reftable/0x000000000002-0x000000000002-1a2b3c4d.ref',
+    ]) {
+      assert.strictEqual(affectsWorktreeList(file), false, file);
+    }
+  });
+
   test('refreshes a linked worktree for the refs it shares', () => {
     for (const file of [
       'refs/heads/main',

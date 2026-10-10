@@ -689,10 +689,16 @@ export function affectsWorktreeList(inGitDir: string): boolean {
   if (first === 'HEAD') {
     return name === undefined;
   }
+  // The reftable ref format keeps HEAD in the table of refs, leaving the HEAD
+  // file as it was
+  if (first === 'reftable') {
+    return name === 'tables.list' && entry === undefined;
+  }
   return (
     first === 'worktrees' &&
     (entry === undefined ||
-      ((entry === 'HEAD' || entry === 'gitdir') && rest.length === 0))
+      ((entry === 'HEAD' || entry === 'gitdir') && rest.length === 0) ||
+      (entry === 'reftable' && ['', 'tables.list'].includes(rest.join('/'))))
   );
 }
 
