@@ -725,6 +725,39 @@ suite('Files whose changes are all whitespace', () => {
   });
 });
 
+suite('Newline at the end of a file', () => {
+  test('notes below the lines of a file that only one side lacks the newline at its end, as lines that differ only in it look the same', () => {
+    const files = parsePatch(
+      [
+        'diff --git a/a.md b/a.md',
+        'index 1111111..2222222 100644',
+        '--- a/a.md',
+        '+++ b/a.md',
+        '@@ -1 +1 @@',
+        '-last',
+        '\\ No newline at end of file',
+        '+last',
+        '',
+      ].join('\n'),
+    );
+    assert.deepStrictEqual(kinds(diffRows(files, new Map(), undefined)), [
+      'error',
+      'file',
+      'line',
+      'line',
+      'noNewline',
+    ]);
+    assert.deepStrictEqual(
+      kinds(diffRows(files, new Map(), undefined, false, true)),
+      ['error', 'file', 'split', 'noNewline'],
+    );
+    assert.deepStrictEqual(
+      kinds(diffRows(files, new Map([['a.md', false]]), undefined)),
+      ['error', 'file'],
+    );
+  });
+});
+
 const placeholder = (path: string) => ({
   path,
   binary: false,

@@ -24,6 +24,7 @@ export interface DiffFile {
   readonly placeholder?: { readonly lines: number | undefined };
   readonly blobs?: Blobs;
   readonly whitespaceOnly?: boolean;
+  readonly noNewlineAtEnd?: 'old' | 'new';
 }
 
 interface ParsedFile {
@@ -33,6 +34,8 @@ interface ParsedFile {
   binary: boolean;
   hunks: DiffHunk[];
   blobs?: Blobs;
+  addedOrDeleted: boolean;
+  lacksNewline: Record<'old' | 'new', boolean>;
 }
 
 export interface NumberedLine {
@@ -193,6 +196,8 @@ export function parsePatch(patch: string): DiffFile[] {
         path: headerPath(line.slice('diff --git '.length)),
         binary: false,
         hunks: [],
+        addedOrDeleted: false,
+        lacksNewline: { old: false, new: false },
       };
       files.push(file);
       continue;
@@ -217,6 +222,11 @@ export function parsePatch(patch: string): DiffFile[] {
         };
       } else if (line.startsWith('Binary files ')) {
         file.binary = true;
+      } else if (
+        line.startsWith('new file mode ') ||
+        line.startsWith('deleted file mode ')
+      ) {
+        file.addedOrDeleted = true;
       } else if (line.startsWith('rename to ') || line.startsWith('copy to ')) {
         file.path = unquotePath(line.slice(line.indexOf(' to ') + 4));
       } else if (
@@ -255,13 +265,30 @@ export function parsePatch(patch: string): DiffFile[] {
         newNumber: newNumber++,
         text,
       });
+    } else if (marker === '\\') {
+      const kind = hunk.lines.at(-1)?.kind;
+      file.lacksNewline.old ||= kind === 'removed' || kind === 'context';
+      file.lacksNewline.new ||= kind === 'added' || kind === 'context';
     }
   }
-  return files.map(({ path, oldPath, binary, hunks, blobs }) => ({
-    path,
-    ...(oldPath === undefined ? {} : { oldPath }),
-    binary,
-    hunks,
-    ...(blobs ? { blobs } : {}),
-  }));
+  return files.map(
+    ({
+      path,
+      oldPath,
+      binary,
+      hunks,
+      blobs,
+      addedOrDeleted,
+      lacksNewline,
+    }) => ({
+      path,
+      ...(oldPath === undefined ? {} : { oldPath }),
+      binary,
+      hunks,
+      ...(blobs ? { blobs } : {}),
+      ...(addedOrDeleted || lacksNewline.old === lacksNewline.new
+        ? {}
+        : { noNewlineAtEnd: lacksNewline.old ? 'old' : 'new' }),
+    }),
+  );
 }

@@ -117,6 +117,7 @@ export type DiffRow =
   | { readonly kind: 'binary'; readonly file: number }
   | { readonly kind: 'empty'; readonly file: number }
   | { readonly kind: 'whitespace'; readonly file: number }
+  | { readonly kind: 'noNewline'; readonly file: number }
   | { readonly kind: 'image'; readonly file: number }
   | { readonly kind: 'markdown'; readonly file: number }
   | { readonly kind: 'skeleton' }
@@ -148,6 +149,7 @@ const rowHeights: Record<Exclude<DiffRow['kind'], MeasuredKind>, number> = {
   binary: uniformHeight,
   empty: uniformHeight,
   whitespace: uniformHeight,
+  noNewline: uniformHeight,
   image: 320,
   hunk: uniformHeight,
   line: uniformHeight,
@@ -585,15 +587,18 @@ export function diffRows(
       for (const row of splitRows(file, index)) {
         rows.push(row);
       }
-      return;
+    } else {
+      for (const [number, hunk] of file.hunks.entries()) {
+        if (number > 0) {
+          rows.push({ kind: 'hunk', file: index });
+        }
+        for (const line of hunk.lines) {
+          rows.push({ kind: 'line', file: index, line });
+        }
+      }
     }
-    for (const [number, hunk] of file.hunks.entries()) {
-      if (number > 0) {
-        rows.push({ kind: 'hunk', file: index });
-      }
-      for (const line of hunk.lines) {
-        rows.push({ kind: 'line', file: index, line });
-      }
+    if (file.noNewlineAtEnd) {
+      rows.push({ kind: 'noNewline', file: index });
     }
   });
   return rows;
@@ -1663,6 +1668,16 @@ export function DiffView({
           <FileNote
             text={strings.diff.onlyWhitespace}
             change={undefined}
+            split={split}
+          />
+        );
+      case 'noNewline':
+        return (
+          <FileNote
+            text={strings.diff.noNewlineAtEnd}
+            change={
+              files[row.file].noNewlineAtEnd === 'old' ? 'removed' : 'added'
+            }
             split={split}
           />
         );

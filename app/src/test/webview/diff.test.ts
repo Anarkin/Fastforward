@@ -1,6 +1,20 @@
 import * as assert from 'node:assert';
 import { parsePatch, unquotePath } from '../../webview/diff';
 
+const lacking = (header: readonly string[], ...lines: string[]) =>
+  parsePatch(
+    [
+      'diff --git a/a.md b/a.md',
+      ...header,
+      '--- a/a.md',
+      '+++ b/a.md',
+      '@@ -1,2 +1,2 @@',
+      ' first',
+      ...lines,
+      '',
+    ].join('\n'),
+  )[0].noNewlineAtEnd;
+
 suite('Patch parser', () => {
   test('numbers context, removed and added lines', () => {
     const files = parsePatch(
@@ -56,6 +70,38 @@ suite('Patch parser', () => {
         { old: '3333333', new: undefined },
         undefined,
       ],
+    );
+  });
+
+  test('tells which side of a changed file alone lacks the newline at its end, leaving out a file added or deleted', () => {
+    const modified = ['index 1111111..2222222 100644'];
+    const noNewline = '\\ No newline at end of file';
+    assert.strictEqual(lacking(modified, '-last', noNewline, '+last'), 'old');
+    assert.strictEqual(
+      lacking(modified, '-last', '+last', noNewline, '+more'),
+      'new',
+    );
+    assert.strictEqual(lacking(modified, ' last', noNewline), undefined);
+    assert.strictEqual(
+      lacking(modified, '-last', noNewline, '+next', noNewline),
+      undefined,
+    );
+    assert.strictEqual(lacking(modified, '-last', '+next'), undefined);
+    assert.strictEqual(
+      lacking(
+        ['new file mode 100644', 'index 0000000..2222222'],
+        '+last',
+        noNewline,
+      ),
+      undefined,
+    );
+    assert.strictEqual(
+      lacking(
+        ['deleted file mode 120000', 'index 1111111..0000000'],
+        '-target',
+        noNewline,
+      ),
+      undefined,
     );
   });
 

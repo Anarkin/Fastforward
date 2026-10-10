@@ -257,6 +257,7 @@ export const strings = {
     binaryOrLarge: 'Binary or very large file',
     emptyFile: 'Empty file',
     onlyWhitespace: 'Only whitespace changed',
+    noNewlineAtEnd: 'No newline at end of file',
     imageDetails: (width: number, height: number, bytes: number) =>
       `${width} × ${height} · ${fileSize(bytes)}`,
     imageTooLarge: (megabytes: number) =>
