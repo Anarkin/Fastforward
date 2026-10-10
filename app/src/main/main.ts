@@ -186,6 +186,10 @@ async function start(): Promise<void> {
     Promise.all([state.saved(), userSettings.saved(), stopRunningGit()]),
   );
   const loading = window.loadURL(`${appOrigin}/index.html`);
+  void loading.catch((error: unknown) => {
+    log.error(strings.log.pageNotLoaded);
+    log.error(error);
+  });
 
   const git = await gitSearch;
   if (git.kind !== 'found') {
@@ -283,7 +287,7 @@ async function start(): Promise<void> {
       }),
     );
   }
-  void loading.then(() => updates.start());
+  updates.startAfter(loading);
 }
 
 async function searchGit(): Promise<GitSearch> {

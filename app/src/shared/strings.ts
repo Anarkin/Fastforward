@@ -374,6 +374,7 @@ export const strings = {
     updateFailed: 'Updating failed',
     openingFileFailed: (file: string, reason: string) =>
       `Opening ${file} failed: ${reason}`,
+    pageNotLoaded: 'The page did not finish loading',
     webview: (message: string) => `Webview: ${message}`,
     layout: (
       width: number,

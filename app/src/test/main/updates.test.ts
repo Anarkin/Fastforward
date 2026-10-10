@@ -146,6 +146,28 @@ suite('Updates', () => {
     ]);
   });
 
+  test('starts checking once the first load of the page ends, also when a reload cut it short, as the settings changing while the app starts reload the page', async () => {
+    const loaded = withUpdates();
+    const load = Promise.withResolvers<void>();
+    loaded.updates.startAfter(load.promise);
+    await settle();
+    assert.strictEqual(loaded.updater.checks.length, 0);
+    load.resolve();
+    await settle();
+    assert.strictEqual(loaded.updater.checks.length, 1);
+    const aborted = withUpdates();
+    aborted.updates.startAfter(
+      Promise.reject(
+        Object.assign(
+          new Error("ERR_ABORTED (-3) loading 'fastforward://app/index.html'"),
+          { code: 'ERR_ABORTED', errno: -3 },
+        ),
+      ),
+    );
+    await settle();
+    assert.strictEqual(aborted.updater.checks.length, 1);
+  });
+
   test('downloads an update it finds, showing how far it got, then says it is ready and stops checking', async () => {
     const { updates, updater, waiting, notices } = withUpdates();
     assert.strictEqual(updater.autoDownload, true);

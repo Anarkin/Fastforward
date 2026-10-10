@@ -99,6 +99,11 @@ export class Updates {
     this.check(false);
   }
 
+  startAfter(load: Promise<unknown>): void {
+    const start = () => this.start();
+    void load.then(start, start);
+  }
+
   check(asked: boolean): void {
     if (this.mode === 'off') {
       if (asked) {
