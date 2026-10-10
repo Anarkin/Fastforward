@@ -50,6 +50,7 @@ This file only observes and documents the codebase mainly for human readers; the
 - Quitting stops every git at once but a checkout or fast-forward, which it waits at most `30 seconds` for, as stopping one midway can leave the working tree half switched
 - Opening a repository runs the commands its git config names, as git itself does, such as clean filters while reading the working tree and credential helpers or `core.sshCommand` while fetching; only a `core.fsmonitor` hook is never run, while git's built-in fsmonitor daemon still is, read as on or off the first time the app runs git in a folder
 - On Linux, which has no recursive file watching, every folder that is not ignored takes one of the system's inotify watches, and past `fs.inotify.max_user_watches` the rest are not watched and the error is logged
+- On Windows, the folders that hold the shown worktree, or its git folders kept outside it, as a linked worktree's are, can't be renamed or moved, as Windows keeps the folders above a watched one from being renamed
 - The login shell's PATH, read on macOS and Linux, is waited for at most `5 seconds`, then the app starts with the PATH it was given, so a profile waiting for input does not keep the window from opening
 - `git --version` is waited for at most `10 seconds` when the app looks for git, past which git counts as missing
 - Updates are checked for when the app starts and `4 hours` after each check ends, until one is downloaded, after which none is checked for until the app restarts
