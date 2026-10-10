@@ -318,6 +318,59 @@ suite('App', function () {
     }
   });
 
+  test('keeps the place a worktree was scrolled to when another is shown right after the scroll, rather than its top', async () => {
+    const worktree = path.join(folder, 'scrolled');
+    const worktrees = page.locator('.worktrees .tab');
+    const main = page.locator('.worktrees .tab.active', { hasText: 'main' });
+    const other = page.locator('.worktrees .tab.active', {
+      hasText: 'scrolled',
+    });
+    const list = page.locator('.virtual-rows.list');
+    const scrolledTo = 600;
+    await repository.git('worktree', 'add', '-q', '-b', 'scrolled', worktree);
+    try {
+      for (let index = 0; index < 40; index++) {
+        await repository.git(
+          '-C',
+          worktree,
+          'commit',
+          '-q',
+          '--allow-empty',
+          '-m',
+          `scrolled ${index}`,
+        );
+      }
+      await waitForCount(worktrees, 2, 'worktrees');
+      await page.locator('.commit', { hasText: 'scrolled 39' }).waitFor();
+      await list.evaluate(
+        (element, top) =>
+          new Promise((resolve) => {
+            element.addEventListener('scroll', resolve, { once: true });
+            element.scrollTop = top;
+          }),
+        scrolledTo,
+      );
+      await page.keyboard.press('Control+PageDown');
+      await other.waitFor();
+      await page.keyboard.press('Control+PageUp');
+      await main.waitFor();
+      await waitFor(
+        async () =>
+          (await list.evaluate((element) => element.scrollTop)) === scrolledTo,
+        `the list to be scrolled to ${scrolledTo}`,
+        5000,
+      );
+    } finally {
+      if ((await other.count()) > 0) {
+        await page.keyboard.press('Control+PageUp');
+        await main.waitFor();
+      }
+      await repository.git('worktree', 'remove', '--force', worktree);
+      await repository.git('branch', '-q', '-D', 'scrolled');
+      await waitForCount(worktrees, 1, 'worktrees');
+    }
+  });
+
   test('shows the commit column while searching with the commit list hidden, hiding it again once the popup closes, the keyboard going to the files', async () => {
     const popup = page.locator('.locations-popup');
     const field = page.locator('.locations-search');

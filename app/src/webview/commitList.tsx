@@ -639,10 +639,10 @@ export function Commits({
   }, [history, scrollTarget, offset, virtualizer, scrollTop, places]);
 
   const topUnreported = useRef(false);
-  const reportTop = useCallback(() => {
+  const topNow = useCallback(() => {
     const element = list.current;
-    if (!element) {
-      return;
+    if (!element || !history) {
+      return undefined;
     }
     const scrolled = scrollTop(element);
     const top = listTop(
@@ -651,29 +651,41 @@ export function Commits({
       history,
       offset,
     );
-    topUnreported.current = top === undefined;
-    if (top) {
-      onScrolled(top.hash, top.offset, places.told(scrolled));
-    }
+    return () => {
+      topUnreported.current = top === undefined;
+      if (top) {
+        onScrolled(top.hash, top.offset, places.told(scrolled));
+      }
+    };
   }, [history, offset, onScrolled, virtualizer, scrollTop, places]);
-  useEffect(() => {
+  // Replaced as the list is drawn, so the scroll a list emptied or replaced
+  // makes never reaches the listener of the history it showed before
+  useLayoutEffect(() => {
     const element = list.current;
     if (!element) {
       return undefined;
     }
     topUnreported.current = false;
-    const report = trailing(reportTop, scrolledDelay);
-    element.addEventListener('scroll', report.schedule);
+    let reportTop = () => {};
+    const report = trailing(() => reportTop(), scrolledDelay);
+    const scrolled = () => {
+      const top = topNow();
+      if (top) {
+        reportTop = top;
+        report.schedule();
+      }
+    };
+    element.addEventListener('scroll', scrolled);
     return () => {
       report.flush();
-      element.removeEventListener('scroll', report.schedule);
+      element.removeEventListener('scroll', scrolled);
     };
-  }, [reportTop]);
+  }, [topNow]);
   useEffect(() => {
     if (topUnreported.current) {
-      reportTop();
+      topNow()?.();
     }
-  }, [version, reportTop]);
+  }, [version, topNow]);
 
   const pending = useRef<{ history: CommitHistory; position: number }>(
     undefined,
