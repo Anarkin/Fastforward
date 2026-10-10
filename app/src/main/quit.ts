@@ -4,6 +4,7 @@ interface QuittingApp {
     listener: (event: { preventDefault(): void }) => void,
   ): unknown;
   quit(): void;
+  releaseSingleInstanceLock(): void;
 }
 
 export async function exitOnFailure(
@@ -25,6 +26,7 @@ export async function exitOnFailure(
 export function flushBeforeQuit(
   app: QuittingApp,
   saved: () => Promise<unknown>,
+  stopped: () => Promise<unknown>,
 ): void {
   let flushed = false;
   app.on('will-quit', (event) => {
@@ -32,7 +34,10 @@ export function flushBeforeQuit(
       return;
     }
     event.preventDefault();
-    void saved().finally(() => {
+    void Promise.all([
+      saved().then(() => app.releaseSingleInstanceLock()),
+      stopped(),
+    ]).finally(() => {
       flushed = true;
       app.quit();
     });

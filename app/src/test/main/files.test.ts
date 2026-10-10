@@ -10,6 +10,7 @@ import {
   minimumWindowSize,
   opensExternally,
   restoresMaximized,
+  showAgain,
   startsAppPage,
   visibleBounds,
 } from '../../main/files';
@@ -160,6 +161,29 @@ suite('Window bounds', () => {
     assert.strictEqual(restores(), false);
     minimized = true;
     assert.strictEqual(restoresMaximized(window, true)(), true);
+  });
+
+  test('brings the window to the front when the app is started again, restoring it once minimized, but leaves one closed as the app quits, as that threw', () => {
+    const calls: string[] = [];
+    let minimized = true;
+    let destroyed = false;
+    const window = {
+      isDestroyed: () => destroyed,
+      isMinimized: () => {
+        if (destroyed) {
+          throw new TypeError('Object has been destroyed');
+        }
+        return minimized;
+      },
+      restore: () => calls.push('restore'),
+      focus: () => calls.push('focus'),
+    };
+    showAgain(window);
+    minimized = false;
+    showAgain(window);
+    destroyed = true;
+    showAgain(window);
+    assert.deepStrictEqual(calls, ['restore', 'focus', 'focus']);
   });
 
   test('opens a first window at 1400 by 900, or only as large as the work area of a smaller screen', () => {

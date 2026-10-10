@@ -890,6 +890,61 @@ suite('App quitting', function () {
       removeFolder(folder);
     }
   });
+
+  test('starts again while it waits for a checkout to end as it quits', async () => {
+    const folder = tempFolder('quitting-checkout');
+    const profile = path.join(folder, 'profile');
+    const hooks = path.join(folder, 'hooks');
+    const alive = path.join(folder, 'alive').replaceAll('\\', '/');
+    const stop = path.join(folder, 'stop').replaceAll('\\', '/');
+    const repository = await tempRepository(path.join(folder, 'repo'));
+    await repository.commit('first');
+    await repository.commit('second');
+    await repository.git('branch', 'other', 'HEAD~1');
+    fs.mkdirSync(hooks);
+    fs.writeFileSync(
+      path.join(hooks, 'post-checkout'),
+      `#!/bin/sh\nwhile [ ! -e '${stop}' ]; do echo > '${alive}'; sleep 0.2; done\n`,
+      { mode: 0o755 },
+    );
+    await repository.git('config', 'core.hooksPath', hooks);
+    fs.mkdirSync(profile, { recursive: true });
+    fs.writeFileSync(
+      path.join(profile, 'state.json'),
+      JSON.stringify({ tabs: [repository.root], activeTab: repository.root }),
+    );
+    const launch = () =>
+      _electron.launch({
+        args: [appFolder, `--user-data-dir=${profile}`],
+        cwd: appFolder,
+      });
+    const app = await launch();
+    let again: ElectronApplication | undefined;
+    try {
+      const page = await app.firstWindow();
+      await page
+        .locator('.commit .badge.branch', { hasText: 'other' })
+        .click({ button: 'right' });
+      await page
+        .locator('.context-menu .menu-item', {
+          hasText: strings.commits.checkout,
+        })
+        .click();
+      await waitFor(() => fs.existsSync(alive), 'the checkout to run');
+      await app.evaluate(({ BrowserWindow }) =>
+        BrowserWindow.getAllWindows()[0].close(),
+      );
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      again = await launch();
+      const shown = await again.firstWindow();
+      await shown.locator('.commit', { hasText: 'second' }).waitFor();
+    } finally {
+      fs.writeFileSync(stop, '');
+      await again?.close();
+      await app.close();
+      removeFolder(folder);
+    }
+  });
 });
 
 suite('App whose page is gone', function () {

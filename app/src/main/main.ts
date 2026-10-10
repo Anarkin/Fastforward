@@ -44,6 +44,7 @@ import {
   minimumWidth,
   opensExternally,
   restoresMaximized,
+  showAgain,
   startsAppPage,
   visibleBounds,
 } from './files';
@@ -177,15 +178,12 @@ async function start(): Promise<void> {
     'closed',
     () => void connection.then((current) => current?.dispose()),
   );
-  app.on('second-instance', () => {
-    if (window.isMinimized()) {
-      window.restore();
-    }
-    window.focus();
-  });
+  app.on('second-instance', () => showAgain(window));
   app.on('window-all-closed', () => app.quit());
-  flushBeforeQuit(app, () =>
-    Promise.all([state.saved(), userSettings.saved(), stopRunningGit()]),
+  flushBeforeQuit(
+    app,
+    () => Promise.all([state.saved(), userSettings.saved()]),
+    stopRunningGit,
   );
   const loading = window.loadURL(`${appOrigin}/index.html`);
   void loading.catch((error: unknown) => {
