@@ -273,6 +273,37 @@ suite('View refreshing one repository', function () {
       }
     });
 
+    test('sends a refresh asked for by both the page and the one it was loaded again from once', async () => {
+      const held = gate();
+      let calls = 0;
+      stubMethod(fastforward, 'refreshOnce', async (original, ...args) => {
+        calls++;
+        if (calls === 1) {
+          await held.opened;
+        }
+        await original(...args);
+      });
+      let queued = 0;
+      stubMethod(fastforward, 'queueRefresh', (original, ...args) => {
+        queued += args[1] === undefined ? 1 : 0;
+        return original(...args);
+      });
+      const running = connection.refresh();
+      const asked = connection.refresh();
+      connection.dispose();
+      const reopened = reopen(fastforward);
+      try {
+        await waitFor(() => queued === 3, 'the reloaded page to ask');
+        reopened.page.clear();
+        held.open();
+        await Promise.all([running, asked, reopened.ready]);
+        assert.strictEqual(calls, 2);
+        assert.strictEqual(workingTreesSent(reopened.page.messages), 2);
+      } finally {
+        reopened.connection.dispose();
+      }
+    });
+
     test('ends the fetch on a page opened again while it ran', async () => {
       const held = gate();
       stubMethod(fastforward, 'fetchRemotes', async () => {

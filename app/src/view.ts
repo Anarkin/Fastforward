@@ -1771,7 +1771,12 @@ export class FastforwardView {
   }
 
   private queuedRefresh(tab: Tab): Refresh | undefined {
-    const again = toAll([...tab.refreshAgain.values()]);
+    const pages = new Map<Session | undefined, Context>();
+    for (const [session, context] of tab.refreshAgain) {
+      const page = session?.disposed ? (this.page ?? session) : session;
+      pages.set(page, pages.get(page) ?? context);
+    }
+    const again = toAll([...pages.values()]);
     const done = tab.refreshedAgain;
     if (!again || !done) {
       return undefined;
