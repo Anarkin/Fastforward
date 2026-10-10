@@ -47,7 +47,7 @@ This file only observes and documents the codebase mainly for human readers; the
 ## Other
 
 - A git command fails past `256 MB` of output, bounding the memory its output takes, the commit list's included though it is parsed while git sends it, so a history of over about `3 million` commits fails to load
-- A path that is not valid UTF-8, such as a Latin-1 name made on Linux, is read with `�` in place of each part that isn't, a name git and the disk know no file by, as the app can pass git a path only as UTF-8; such a file shows its changes only in the patch of all of a commit's files, none when selected on its own or opened after being left out of that patch, and its whole text can't be read
+- A path that is not valid UTF-8, such as a Latin-1 name made on Linux, is read with `�` in place of each part that isn't, a name git and the disk know no file by, as the app can pass git a path only as UTF-8; such a file shows its changes only in the patch of all of a commit's files, or of all the uncommitted changes if it is tracked and no file is left out of it, none when selected on its own or opened after being left out of a patch, and its whole text can't be read, nor an untracked one's lines counted
 - A fetch is stopped and reported as failed after `5 minutes`, but not the one git makes by itself in a partial clone for the objects a read needs, such as an old commit's files
 - Fetching in the background waits at most `35791` minutes between rounds, about `25 days`, however long `autoFetchMinutes` sets, as a timer can't wait longer
 - Quitting stops every git at once but a checkout or fast-forward, which it waits at most `30 seconds` for, as stopping one midway can leave the working tree half switched
