@@ -115,7 +115,7 @@ suite('Running git', () => {
       {
         command: `${root}\\mingw64\\bin\\git.exe`,
         env: {
-          MSYSTEM: 'MINGW32',
+          MSYSTEM: 'MINGW64',
           PATH: `${root}\\mingw64\\bin;${root}\\usr\\bin;D:\\home\\bin;C:\\Windows`,
         },
       },

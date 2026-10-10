@@ -81,7 +81,7 @@ export function realGit(
   return {
     command: win32.join(root, msystem, 'bin', 'git.exe'),
     env: {
-      MSYSTEM: env.MSYSTEM ?? msystem.toUpperCase(),
+      MSYSTEM: msystem.toUpperCase(),
       [pathKey]: [
         win32.join(root, msystem, 'bin'),
         win32.join(root, 'usr', 'bin'),
