@@ -243,6 +243,7 @@ async function start(): Promise<void> {
     updateStatus: () => updates.status,
   });
   views.resolve(view);
+  app.on('before-quit', () => view.quit());
   const applySettings = () => {
     log.info(strings.log.settingsChanged);
     for (const problem of userSettings.problems) {

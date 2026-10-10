@@ -144,11 +144,12 @@ export type Fetched =
 export async function fetchAll(
   { gitPath, root }: RepositoryAt,
   interactive = true,
+  stop?: AbortSignal,
 ): Promise<Fetched> {
   try {
     return {
       failed: false,
-      changed: await fetchAllRemotes(gitPath, root, { interactive }),
+      changed: await fetchAllRemotes(gitPath, root, { interactive, stop }),
     };
   } catch (error) {
     return { failed: true, error };

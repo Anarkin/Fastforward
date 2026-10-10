@@ -1,5 +1,7 @@
 import * as assert from 'node:assert';
+import { createServer } from 'node:http';
 import * as path from 'node:path';
+import { lastFetchesKey } from '../storage';
 import type { Connection } from '../view';
 import { waitFor } from './fixtures';
 import {
@@ -422,6 +424,62 @@ suite('View fetching', function () {
     } finally {
       opened.connection.dispose();
       await close();
+    }
+  });
+
+  test('neither tells of nor records a background fetch stopped as the app quits, fetching no other tab', async () => {
+    let requests = 0;
+    const waiting: (() => void)[] = [];
+    const server = createServer((_request, response) => {
+      requests += 1;
+      waiting.push(() => {
+        response.writeHead(404);
+        response.end();
+      });
+    });
+    await new Promise<void>((resolve) =>
+      server.listen(0, '127.0.0.1', resolve),
+    );
+    const address = server.address();
+    assert.ok(typeof address === 'object' && address !== null);
+    const stalled = await tempRepository(path.join(folder, 'stalled'));
+    await stalled.commit('a');
+    await stalled.git(
+      'remote',
+      'add',
+      'origin',
+      `http://127.0.0.1:${address.port}/x`,
+    );
+    const next = await tempRepository(path.join(folder, 'next'));
+    await next.commit('a');
+    await next.git('remote', 'add', 'origin', remote.root);
+    const rounds: (() => void)[] = [];
+    const opened = await openView(
+      log,
+      [stalled.root, next.root],
+      'unwatched',
+      undefined,
+      (run) => {
+        rounds.push(run);
+        return () => undefined;
+      },
+    );
+    try {
+      await withNotices(opened.page, 'error', async (messages) => {
+        await opened.connection.receive({ type: 'setAutoFetch', on: true });
+        await waitFor(() => requests === 1, 'the fetch to reach the remote');
+        opened.view.quit();
+        for (const answer of waiting) {
+          answer();
+        }
+        await waitFor(() => rounds.length === 1, 'the round to end');
+        assert.deepStrictEqual(messages, []);
+      });
+      assert.strictEqual(opened.store.get(lastFetchesKey), undefined);
+      assert.strictEqual(await next.git('branch', '--remotes'), '');
+    } finally {
+      opened.connection.dispose();
+      await new Promise((resolve) => server.close(resolve));
     }
   });
 

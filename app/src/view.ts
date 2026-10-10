@@ -235,6 +235,7 @@ export class FastforwardView {
   private page: Session | undefined;
   private readonly inFlight = new InFlight();
   private readonly autoFetch: AutoFetch;
+  private readonly quitting = new AbortController();
   private collapseMerges: boolean;
 
   constructor(
@@ -257,6 +258,10 @@ export class FastforwardView {
       timer,
     );
     this.autoFetch.update();
+  }
+
+  quit(): void {
+    this.quitting.abort();
   }
 
   reloadSettings(): void {
@@ -1367,6 +1372,9 @@ export class FastforwardView {
       running !== undefined && (!interactive || running.interactive);
     const fetching = joined ? running : this.startFetch(at, interactive);
     const result = await fetching.fetched;
+    if (this.quitting.signal.aborted) {
+      return result;
+    }
     const latest = fetches.get(repository);
     if (!interactive && latest?.interactive) {
       return latest.fetched;
@@ -1403,8 +1411,8 @@ export class FastforwardView {
     const running = fetches.get(repository)?.fetched;
     const started: Fetching = {
       fetched: (running
-        ? running.then(() => fetchAll(at, interactive))
-        : fetchAll(at, interactive)
+        ? running.then(() => fetchAll(at, interactive, this.quitting.signal))
+        : fetchAll(at, interactive, this.quitting.signal)
       ).finally(() => {
         if (fetches.get(repository) === started) {
           fetches.delete(repository);

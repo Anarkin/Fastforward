@@ -195,21 +195,29 @@ const unchangedRef = new Set(['=', '!']);
 export async function fetchAllRemotes(
   gitPath: string,
   root: string,
-  { timeout = fetchTimeout, interactive = true } = {},
+  {
+    timeout = fetchTimeout,
+    interactive = true,
+    stop = new AbortController().signal,
+  } = {},
 ): Promise<boolean> {
-  const signal = AbortSignal.timeout(timeout);
+  const timedOut = AbortSignal.timeout(timeout);
   try {
     const output = await runGit(
       gitPath,
       root,
       ['fetch', '--all', '--prune', '--porcelain'],
-      { signal, env: interactive ? {} : neverAsk, runsHooks: true },
+      {
+        signal: AbortSignal.any([timedOut, stop]),
+        env: interactive ? {} : neverAsk,
+        runsHooks: true,
+      },
     );
     return output
       .split('\n')
       .some((line) => line !== '' && !unchangedRef.has(line[0]));
   } catch (error) {
-    if (signal.aborted) {
+    if (timedOut.aborted) {
       throw new Error(
         strings.errors.fetchTimedOut(Math.round(timeout / 1000)),
         { cause: error },

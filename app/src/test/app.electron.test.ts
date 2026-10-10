@@ -831,6 +831,65 @@ suite('App quitting', function () {
       removeFolder(folder);
     }
   });
+
+  test('stops a round of background fetches, starting no other fetch and not saying the one it stopped failed', async () => {
+    const folder = tempFolder('quitting-round');
+    const profile = path.join(folder, 'profile');
+    const stop = path.join(folder, 'stop').replaceAll('\\', '/');
+    const alive = (name: string) =>
+      path.join(folder, `${name}-alive`).replaceAll('\\', '/');
+    const roots: string[] = [];
+    for (const name of ['first', 'second']) {
+      const repository = await tempRepository(path.join(folder, name));
+      await repository.commit(name);
+      await repository.git(
+        'remote',
+        'add',
+        'origin',
+        'ssh://stalled.invalid/x',
+      );
+      await repository.git(
+        'config',
+        'core.sshCommand',
+        `while [ ! -e '${stop}' ]; do echo > '${alive(name)}'; sleep 0.2; done; false`,
+      );
+      roots.push(repository.root);
+    }
+    fs.mkdirSync(profile, { recursive: true });
+    fs.writeFileSync(
+      path.join(profile, 'state.json'),
+      JSON.stringify({ tabs: roots, activeTab: roots[0] }),
+    );
+    fs.writeFileSync(
+      path.join(profile, 'settings.user.json'),
+      JSON.stringify({ autoFetch: false }),
+    );
+    const app = await _electron.launch({
+      args: [appFolder, `--user-data-dir=${profile}`],
+      cwd: appFolder,
+    });
+    try {
+      const page = await app.firstWindow();
+      await page.locator('.commit', { hasText: 'first' }).waitFor();
+      await page
+        .getByTitle(
+          strings.navigation.fetchEvery(defaultSettings().autoFetchMinutes),
+        )
+        .click();
+      await waitFor(() => fs.existsSync(alive('first')), 'git to fetch');
+      await app.close();
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      assert.ok(!fs.existsSync(alive('second')));
+      assert.doesNotMatch(
+        fs.readFileSync(path.join(profile, 'logs', 'Fastforward.log'), 'utf8'),
+        new RegExp(strings.log.fetchFailed),
+      );
+    } finally {
+      fs.writeFileSync(stop, '');
+      await app.close();
+      removeFolder(folder);
+    }
+  });
 });
 
 suite('App without git', function () {
