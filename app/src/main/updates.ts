@@ -62,6 +62,7 @@ export class Updates {
   private running = false;
   private asked = false;
   private cancel: (() => void) | undefined;
+  private installing: Promise<void> | undefined;
 
   constructor(
     private readonly mode: UpdateMode,
@@ -70,6 +71,7 @@ export class Updates {
     private readonly post: (message: ToWebview) => void,
     log: Log,
     private readonly open: (url: string) => void,
+    private readonly writesEnded: () => Promise<unknown>,
     private readonly timer: Timer = realTimer,
   ) {
     if (mode === 'off') {
@@ -119,7 +121,10 @@ export class Updates {
 
   install(): void {
     if (this.current.kind === 'ready') {
-      this.updater.quitAndInstall(true, true);
+      this.installing ??= this.writesEnded().then(() => {
+        this.installing = undefined;
+        this.updater.quitAndInstall(true, true);
+      });
     } else if (this.current.kind === 'available') {
       this.open(`${releases}/tag/v${this.current.version}`);
     }

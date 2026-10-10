@@ -306,16 +306,32 @@ function keptRunning<T extends ChildProcess>(child: T, writes = false): T {
   return child;
 }
 
+export async function writesEnded(): Promise<void> {
+  let timer: NodeJS.Timeout | undefined;
+  const late = new Promise<'late'>((resolve) => {
+    timer = setTimeout(() => resolve('late'), writeTime).unref();
+  });
+  try {
+    while (writing.size > 0) {
+      const ended = await Promise.race([
+        Promise.all([...writing].flatMap((child) => running.get(child) ?? [])),
+        late,
+      ]);
+      if (ended === 'late') {
+        return;
+      }
+    }
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function stopRunningGit(): Promise<void> {
-  const writes = [...writing].flatMap((child) => running.get(child) ?? []);
   await Promise.all([
+    writesEnded(),
     ...[...running.keys()]
       .filter((child) => !writing.has(child))
       .map((child) => stopGit(child)),
-    Promise.race([
-      Promise.all(writes),
-      new Promise((resolve) => setTimeout(resolve, writeTime).unref()),
-    ]),
   ]);
   await Promise.all([...running.keys()].map((child) => stopGit(child)));
 }

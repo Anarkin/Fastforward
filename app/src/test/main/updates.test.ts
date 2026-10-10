@@ -44,7 +44,10 @@ function found(downloaded: Promise<unknown> | null): UpdateCheck {
   };
 }
 
-function withUpdates(mode: UpdateMode = 'install') {
+function withUpdates(
+  mode: UpdateMode = 'install',
+  writesEnded: () => Promise<unknown> = () => Promise.resolve(),
+) {
   const updater = new FakeUpdater();
   const posted: ToWebview[] = [];
   const opened: string[] = [];
@@ -57,6 +60,7 @@ function withUpdates(mode: UpdateMode = 'install') {
     (message) => posted.push(message),
     log,
     (url) => opened.push(url),
+    writesEnded,
     timer,
   );
   return {
@@ -200,12 +204,48 @@ suite('Updates', () => {
   test('restarts into a downloaded update silently, starting the app again', async () => {
     const { updates, updater } = withUpdates();
     updates.install();
+    await settle();
     assert.deepStrictEqual(updater.installs, []);
     updates.start();
     updater.checks[0].resolve(found(Promise.resolve([])));
     await settle();
     updates.install();
+    await settle();
     assert.deepStrictEqual(updater.installs, [[true, true]]);
+  });
+
+  test('starts the installer once a checkout or fast-forward running is done, as the installer kills the app about a second after it starts, and with it a git the app started directly, while quitting waits for them', async () => {
+    const written = Promise.withResolvers<void>();
+    const { updates, updater } = withUpdates('install', () => written.promise);
+    updates.start();
+    updater.checks[0].resolve(found(Promise.resolve([])));
+    await settle();
+    updates.install();
+    await settle();
+    assert.deepStrictEqual(updater.installs, []);
+    written.resolve();
+    await settle();
+    assert.deepStrictEqual(updater.installs, [[true, true]]);
+  });
+
+  test('starts the installer once when restarting into the update is asked for again while it waits, as the updater called twice installs again as the app quits, but again when asked once it started, as one that failed to start leaves the app running', async () => {
+    const written = Promise.withResolvers<void>();
+    const { updates, updater } = withUpdates('install', () => written.promise);
+    updates.start();
+    updater.checks[0].resolve(found(Promise.resolve([])));
+    await settle();
+    updates.install();
+    updates.install();
+    await settle();
+    written.resolve();
+    await settle();
+    assert.deepStrictEqual(updater.installs, [[true, true]]);
+    updates.install();
+    await settle();
+    assert.deepStrictEqual(updater.installs, [
+      [true, true],
+      [true, true],
+    ]);
   });
 
   test('answers a check from the menu with a notice, also when it joins a check already running', async () => {

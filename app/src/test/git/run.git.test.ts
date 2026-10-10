@@ -9,7 +9,7 @@ import {
   switchToBranch,
   switchToCommit,
 } from '../../git/repository';
-import { runGit, stopRunningGit } from '../../git/run';
+import { runGit, stopRunningGit, writesEnded } from '../../git/run';
 import { ignoredPaths } from '../../git/watch';
 import { workingTreeFiles, workingTreePatch } from '../../git/workingTree';
 import { waitFor } from '../fixtures';
@@ -230,6 +230,88 @@ suite('Running git in a repository', function () {
       fs.rmSync(hook);
       await temp.git('checkout', '-q', 'main');
       await temp.git('branch', '-D', 'finishing');
+      removeFolder(folder);
+    }
+  });
+
+  test('waits for a checkout or fast-forward running, leaving the other gits running, as an update waits for them before it restarts the app', async () => {
+    const folder = tempFolder('installing');
+    const reading = path.join(folder, 'reading').replaceAll('\\', '/');
+    const started = path.join(folder, 'started').replaceAll('\\', '/');
+    const done = path.join(folder, 'done').replaceAll('\\', '/');
+    const hooks = path.join(cwd, '.git', 'hooks');
+    const hook = path.join(hooks, 'post-checkout');
+    fs.mkdirSync(hooks, { recursive: true });
+    fs.writeFileSync(
+      hook,
+      `#!/bin/sh\necho > '${started}'\nsleep 1\necho > '${done}'\n`,
+      { mode: 0o755 },
+    );
+    await temp.git('branch', 'finishing');
+    try {
+      let read = false;
+      const stalled = runGit(gitPath, cwd, [
+        '-c',
+        `alias.stall=!echo > '${reading}'; sleep 15`,
+        'stall',
+      ]).finally(() => {
+        read = true;
+      });
+      const stopped = assert.rejects(stalled);
+      await waitFor(() => fs.existsSync(reading), 'git to start');
+      const switching = switchToBranch(gitPath, cwd, 'finishing');
+      await waitFor(() => fs.existsSync(started), 'the checkout to start');
+      await writesEnded();
+      assert.ok(fs.existsSync(done));
+      assert.strictEqual(read, false);
+      await switching;
+      await stopRunningGit();
+      await stopped;
+    } finally {
+      fs.rmSync(hook);
+      await temp.git('checkout', '-q', 'main');
+      await temp.git('branch', '-D', 'finishing');
+      removeFolder(folder);
+    }
+  });
+
+  test('waits too for a checkout or fast-forward started while it waits, as an update would otherwise start its installer while one runs in another tab', async () => {
+    const folder = tempFolder('installing-twice');
+    const other = await tempRepository(tempFolder('installing-other'));
+    await other.commit('first', { 'a.txt': 'a\n' });
+    const marks = (name: string) => ({
+      started: path.join(folder, `${name}-started`).replaceAll('\\', '/'),
+      done: path.join(folder, `${name}-done`).replaceAll('\\', '/'),
+    });
+    const first = marks('first');
+    const second = marks('second');
+    const hookIn = (root: string, mark: typeof first, seconds: number) => {
+      const hooks = path.join(root, '.git', 'hooks');
+      fs.mkdirSync(hooks, { recursive: true });
+      fs.writeFileSync(
+        path.join(hooks, 'post-checkout'),
+        `#!/bin/sh\necho > '${mark.started}'\nsleep ${seconds}\necho > '${mark.done}'\n`,
+        { mode: 0o755 },
+      );
+    };
+    hookIn(cwd, first, 2);
+    hookIn(other.root, second, 3);
+    await temp.git('branch', 'finishing');
+    await other.git('branch', 'finishing');
+    try {
+      const switching = switchToBranch(gitPath, cwd, 'finishing');
+      await waitFor(() => fs.existsSync(first.started), 'the first to start');
+      const ended = writesEnded();
+      const switchingOther = switchToBranch(gitPath, other.root, 'finishing');
+      await waitFor(() => fs.existsSync(second.started), 'the second to start');
+      await ended;
+      assert.ok(fs.existsSync(second.done));
+      await Promise.all([switching, switchingOther]);
+    } finally {
+      fs.rmSync(path.join(cwd, '.git', 'hooks', 'post-checkout'));
+      await temp.git('checkout', '-q', 'main');
+      await temp.git('branch', '-D', 'finishing');
+      removeFolder(other.root);
       removeFolder(folder);
     }
   });

@@ -15,7 +15,7 @@ import {
 } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import { findGit, minimumGitVersion, type GitSearch } from '../git/locate';
-import { stopRunningGit } from '../git/run';
+import { stopRunningGit, writesEnded } from '../git/run';
 import { errorLine, fileLog, type Log } from '../log';
 import { imageRoute } from '../shared/images';
 import { appNameSwitch, titleBarHeight } from '../shared/titleBar';
@@ -211,6 +211,7 @@ async function start(): Promise<void> {
     },
     log,
     (url) => void shell.openExternal(url),
+    writesEnded,
   );
   autoUpdater.logger = {
     info: (message: unknown) => log.info(strings.log.updater(String(message))),
