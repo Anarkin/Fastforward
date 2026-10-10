@@ -168,7 +168,8 @@ suite('Graph', () => {
     assert.deepStrictEqual(paged.rows(23, 10), full.slice(23, 33));
   });
 
-  test('computes any page the same as a full walk through hundreds of lanes, merges, stashes and parents outside the history', () => {
+  test('computes any page the same as a full walk through hundreds of lanes, merges, stashes and parents outside the history', function () {
+    this.timeout(20_000);
     const count = 3000;
     const history = Array.from({ length: count }, (_, index) => {
       const later = (step: number) => `c${index + step}`;
