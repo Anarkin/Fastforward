@@ -2,12 +2,17 @@ import * as assert from 'node:assert';
 import { EventEmitter } from 'node:events';
 import { PassThrough } from 'node:stream';
 import {
+  loginShellOptions,
   mergePaths,
   pathFromOutput,
   pathFromShell,
 } from '../../main/shellPath';
 
 suite('Login shell PATH', () => {
+  test('starts the shell in a session of its own, away from the terminal the app may have been started from, as an interactive shell in the background stops its whole process group with SIGTTIN, the app included, and one in the foreground takes the terminal over, keeping it once killed', () => {
+    assert.strictEqual(loginShellOptions({}).detached, true);
+  });
+
   test('gives up on a shell that never prints the PATH, killing it for good, as an interactive shell ignores SIGTERM', async () => {
     const signals: unknown[] = [];
     const stdout = new PassThrough();

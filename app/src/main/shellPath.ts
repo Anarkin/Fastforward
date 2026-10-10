@@ -1,4 +1,10 @@
-import { type ChildProcess, spawn } from 'node:child_process';
+import {
+  type ChildProcess,
+  type SpawnOptionsWithStdioTuple,
+  type StdioNull,
+  type StdioPipe,
+  spawn,
+} from 'node:child_process';
 import type { EventEmitter } from 'node:events';
 
 const marker = '__FASTFORWARD_PATH__';
@@ -10,9 +16,15 @@ export async function loginShellPath(
   const shell = spawn(
     env.SHELL || '/bin/sh',
     ['-ilc', `printf '%s' "${marker}" "$PATH" "${marker}"`],
-    { env, stdio: ['ignore', 'pipe', 'ignore'] },
+    loginShellOptions(env),
   );
   return pathFromShell(shell, timeout);
+}
+
+export function loginShellOptions(
+  env: NodeJS.ProcessEnv,
+): SpawnOptionsWithStdioTuple<StdioNull, StdioPipe, StdioNull> {
+  return { env, stdio: ['ignore', 'pipe', 'ignore'], detached: true };
 }
 
 export function pathFromShell(
