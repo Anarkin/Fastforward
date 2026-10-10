@@ -171,7 +171,8 @@ export function documentImagePath(
       parts.push(part);
     }
   }
-  return parts.length === 0 ? undefined : parts.join('/');
+  const path = parts.join('/');
+  return imageType(path) === undefined ? undefined : path;
 }
 
 export interface DocumentImages {
@@ -184,13 +185,9 @@ export interface DocumentImages {
 const fixedRevision = /^(?:[0-9a-f]{40}|[0-9a-f]{64})\^?$/;
 
 export function documentImageUrl(
-  { root, document, revision, version }: DocumentImages,
-  src: string,
-): string | undefined {
-  const path = documentImagePath(document, src);
-  if (path === undefined || imageType(path) === undefined) {
-    return undefined;
-  }
+  { root, revision, version }: Omit<DocumentImages, 'document'>,
+  path: string,
+): string {
   const id =
     revision !== undefined && fixedRevision.test(revision) ? revision : version;
   return imageUrl(

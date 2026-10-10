@@ -2,6 +2,9 @@ import * as assert from 'node:assert';
 import createDOMPurify from 'dompurify';
 import { JSDOM } from 'jsdom';
 import markdownIt from 'markdown-it';
+import { imageSourceOf } from '../../shared/images';
+import { documentImagePath, documentImageUrl } from '../../webview/images';
+import { showImages } from '../../webview/markdownPreview';
 import { markdownRenderer } from '../../webview/markdownRender';
 
 const { window } = new JSDOM('');
@@ -77,10 +80,10 @@ suite('Markdown', () => {
     assert.deepStrictEqual(html.match(/<input[^>]*>/g), [
       '<input type="checkbox" disabled="">',
     ]);
-    assert.match(html, /<img src="resolved\/a\.png">/);
+    assert.match(html, /<img data-path="resolved\/a\.png">/);
   });
 
-  test('loads only the images it is given a source for, and links only https and mail links, the ones the app opens', () => {
+  test('keeps only the images it is given a path for, by that path, leaving loading them to the page, and links only https and mail links, the ones the app opens', () => {
     const asked: string[] = [];
     const html = render(
       [
@@ -90,16 +93,17 @@ suite('Markdown', () => {
       ].join('\n'),
       (src) => {
         asked.push(src);
-        return src.startsWith('https:') ? undefined : `/image/${src}`;
+        return src.startsWith('https:') ? undefined : `repo/${src}`;
       },
     );
     assert.deepStrictEqual(asked, [
       'docs/logo.png',
       'https://example.com/a.png',
     ]);
-    assert.match(html, /<img src="\/image\/docs\/logo\.png" alt="logo">/);
+    assert.match(html, /<img alt="logo" data-path="repo\/docs\/logo\.png">/);
     assert.match(html, /<span class="markdown-alt">remote<\/span>/);
-    assert.doesNotMatch(html, /<img alt=/);
+    assert.doesNotMatch(html, /<img alt="remote"/);
+    assert.doesNotMatch(html, /src=/);
     assert.match(
       html,
       /<a target="_blank" rel="noopener noreferrer">relative<\/a>/,
@@ -110,6 +114,50 @@ suite('Markdown', () => {
       html,
       /<a target="_blank" rel="noopener noreferrer">plain<\/a>/,
     );
+  });
+
+  test('keeps no path a document gives an image itself, so it loads only the images it links by their source', () => {
+    const html = render(
+      [
+        '<img src="https://example.com/a.png" data-path="secret.png" alt="remote">',
+        '<img data-path="secret.png" alt="none">',
+        '<img src="a.png" data-path="secret.png">',
+      ].join('\n'),
+      (src) => (src.startsWith('https:') ? undefined : `repo/${src}`),
+    );
+    assert.doesNotMatch(html, /secret/);
+    assert.match(html, /<span class="markdown-alt">remote<\/span>/);
+    assert.match(html, /<span class="markdown-alt">none<\/span>/);
+    assert.match(html, /<img data-path="repo\/a\.png">/);
+  });
+
+  test('loads the images of a document again in place for each version of the working tree, its text left as it is, so an image stays shown until it loads again', () => {
+    const page = window.document.createElement('div');
+    page.innerHTML = render(
+      ['![shot](../shot.png)', '', '```ts', 'const a = 1;', '```'].join('\n'),
+      (src) => documentImagePath('docs/a.md', src),
+    );
+    const [image] = page.querySelectorAll('img');
+    const text = page.querySelector('pre');
+    const show = (version: string) =>
+      showImages(page, (path) =>
+        documentImageUrl({ root: '/r', revision: undefined, version }, path),
+      );
+    const source = () =>
+      imageSourceOf(
+        new URL(image.getAttribute('src') ?? '', 'fastforward://app'),
+      );
+    show('1.1');
+    assert.deepStrictEqual(source(), {
+      root: '/r',
+      path: 'shot.png',
+      id: '1.1',
+      disk: true,
+    });
+    show('1.2');
+    assert.strictEqual(page.querySelector('img'), image);
+    assert.strictEqual(page.querySelector('pre'), text);
+    assert.strictEqual(source()?.id, '1.2');
   });
 
   test('keeps the language of a code block, and no other class', () => {

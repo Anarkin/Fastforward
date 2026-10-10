@@ -1,6 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { documentImageUrl, type DocumentImages } from './images';
-import { markdownRenderer, type Render } from './markdownRender';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  documentImagePath,
+  documentImageUrl,
+  type DocumentImages,
+} from './images';
+import { imagePath, markdownRenderer, type Render } from './markdownRender';
 import { strings } from '../shared/strings';
 import type { MarkdownSide } from './previews';
 import { codeSegments, colorCode } from './syntax';
@@ -35,6 +39,18 @@ function colorCodeBlocks(element: HTMLElement): () => void {
   return () => {
     live = false;
   };
+}
+
+export function showImages(
+  element: ParentNode,
+  url: (path: string) => string,
+): void {
+  for (const image of element.querySelectorAll(`img[${imagePath}]`)) {
+    const src = url(image.getAttribute(imagePath) ?? '');
+    if (image.getAttribute('src') !== src) {
+      image.setAttribute('src', src);
+    }
+  }
 }
 
 let loading: Promise<Render> | undefined;
@@ -85,22 +101,42 @@ function MarkdownPane({
     if (!render || text === undefined) {
       return undefined;
     }
-    const image =
-      root === undefined || document === undefined || version === undefined
+    return render(
+      text,
+      document === undefined
         ? noImages
-        : (src: string) =>
-            documentImageUrl({ root, document, revision, version }, src);
-    return { __html: render(text, image) };
-  }, [render, text, root, document, revision, version]);
+        : (src: string) => documentImagePath(document, src),
+    );
+  }, [render, text, document]);
   const content = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (
+      content.current &&
+      html !== undefined &&
+      root !== undefined &&
+      version !== undefined
+    ) {
+      showImages(content.current, (path) =>
+        documentImageUrl({ root, revision, version }, path),
+      );
+    }
+  }, [html, root, revision, version]);
   useEffect(
     () =>
-      content.current && html ? colorCodeBlocks(content.current) : undefined,
+      content.current && html !== undefined
+        ? colorCodeBlocks(content.current)
+        : undefined,
     [html],
   );
   return (
     <div className="markdown-pane">
-      <div ref={content} className="markdown" dangerouslySetInnerHTML={html} />
+      <div
+        ref={content}
+        className="markdown"
+        dangerouslySetInnerHTML={
+          html === undefined ? undefined : { __html: html }
+        }
+      />
     </div>
   );
 }

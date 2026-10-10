@@ -282,7 +282,7 @@ suite('Images in documents', () => {
     );
   });
 
-  test('finds an image by its path from the document, or from the root as GitHub does, never outside the repository', () => {
+  test('finds an image by its path from the document, or from the root as GitHub does, never outside the repository, and only an image', () => {
     assert.strictEqual(from('shot.png'), 'docs/guide/shot.png');
     assert.strictEqual(
       from('./img/shot.png?raw=1#x'),
@@ -302,16 +302,12 @@ suite('Images in documents', () => {
       assert.strictEqual(from(outside), undefined, outside);
     }
     assert.strictEqual(documentImagePath('README.md', 'a.png'), 'a.png');
+    assert.strictEqual(from('notes.txt'), undefined);
   });
 
-  test('reads an image in a document at its revision, and only an image', () => {
-    const images = {
-      root: '/repo',
-      document: 'docs/a.md',
-      revision: 'HEAD',
-      version: '7',
-    };
-    assert.deepStrictEqual(source(documentImageUrl(images, 'b.png')), {
+  test('reads an image in a document at its revision', () => {
+    const images = { root: '/repo', revision: 'HEAD', version: '7' };
+    assert.deepStrictEqual(source(documentImageUrl(images, 'docs/b.png')), {
       root: '/repo',
       path: 'docs/b.png',
       id: '7',
@@ -319,15 +315,17 @@ suite('Images in documents', () => {
       revision: 'HEAD',
     });
     assert.strictEqual(
-      source(documentImageUrl({ ...images, revision: `${commit}^` }, 'b.png'))
-        ?.id,
+      source(
+        documentImageUrl({ ...images, revision: `${commit}^` }, 'docs/b.png'),
+      )?.id,
       `${commit}^`,
     );
     assert.deepStrictEqual(
-      source(documentImageUrl({ ...images, revision: undefined }, 'b.png')),
+      source(
+        documentImageUrl({ ...images, revision: undefined }, 'docs/b.png'),
+      ),
       { root: '/repo', path: 'docs/b.png', id: '7', disk: true },
     );
-    assert.strictEqual(documentImageUrl(images, 'notes.txt'), undefined);
   });
 });
 

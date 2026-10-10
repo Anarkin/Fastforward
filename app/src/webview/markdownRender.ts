@@ -147,6 +147,8 @@ function taskLists(state: StateCore): void {
   }
 }
 
+export const imagePath = 'data-path';
+
 type ImageResolver = (src: string) => string | undefined;
 
 const noImages: ImageResolver = () => undefined;
@@ -179,11 +181,11 @@ export function markdownRenderer(
       node.setAttribute('rel', 'noopener noreferrer');
     } else if (node.tagName === 'IMG') {
       const src = node.getAttribute('src');
-      const resolved = src === null ? undefined : resolve(src);
-      if (resolved === undefined) {
-        node.removeAttribute('src');
-      } else {
-        node.setAttribute('src', resolved);
+      const path = src === null ? undefined : resolve(src);
+      node.removeAttribute('src');
+      node.removeAttribute(imagePath);
+      if (path !== undefined) {
+        node.setAttribute(imagePath, path);
       }
     }
   });
@@ -209,7 +211,7 @@ export function markdownRenderer(
         input.remove();
       }
     }
-    for (const img of fragment.querySelectorAll('img:not([src])')) {
+    for (const img of fragment.querySelectorAll(`img:not([${imagePath}])`)) {
       const alt = document.createElement('span');
       alt.className = 'markdown-alt';
       alt.textContent = img.getAttribute('alt');
