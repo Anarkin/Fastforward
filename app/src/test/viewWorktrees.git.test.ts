@@ -481,7 +481,7 @@ suite('View of worktrees', function () {
     }
     takeErrorsLogged(
       logged,
-      /^refresh failed$/,
+      /^Refreshing the tab failed$/,
       /^git .* failed: spawn .* ENOENT$/,
     );
   });
@@ -515,7 +515,7 @@ suite('View of worktrees', function () {
     }
     takeErrorsLogged(
       logged,
-      /^refresh failed$/,
+      /^Refreshing the tab failed$/,
       /^git .* failed: spawn .* ENOENT$/,
     );
   });
@@ -730,7 +730,7 @@ suite('View of worktrees', function () {
       );
       takeErrorsLogged(
         logged,
-        /^fetch failed$/,
+        /^Fetching every remote failed$/,
         /^git fetch --all --prune --porcelain failed: fatal: repository '.*' not found/,
       );
     } finally {

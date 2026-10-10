@@ -354,7 +354,11 @@ suite('View refreshing one repository', function () {
         await Promise.all([failing, queued]);
         assert.ok(newer.last('workingTree'));
         assert.match(page.last('error')?.message ?? '', /refresh failed/);
-        takeErrorsLogged(logged, /^refresh failed$/);
+        takeErrorsLogged(
+          logged,
+          /^Refreshing the tab failed$/,
+          /^refresh failed$/,
+        );
       } finally {
         newerConnection.dispose();
       }
@@ -378,7 +382,11 @@ suite('View refreshing one repository', function () {
       page.clear();
       await connection.refresh();
       assert.strictEqual(page.last('clearError'), undefined);
-      takeErrorsLogged(logged, /^refresh failed$/);
+      takeErrorsLogged(
+        logged,
+        /^Refreshing the tab failed$/,
+        /^refresh failed$/,
+      );
     });
 
     test('refreshes again only once the history is read, though the working tree failed to be', async () => {
@@ -411,7 +419,11 @@ suite('View refreshing one repository', function () {
       await Promise.all([failed, queued]);
       assert.strictEqual(most, 1);
       assert.match(page.last('error')?.message ?? '', /working tree failed/);
-      takeErrorsLogged(logged, /^refresh failed$/, /^working tree failed$/);
+      takeErrorsLogged(
+        logged,
+        /^Refreshing the tab failed$/,
+        /^working tree failed$/,
+      );
     });
 
     test('applies Solo and ends a refresh while refreshes keep being asked for', async () => {
@@ -932,7 +944,7 @@ suite('View refreshing one repository', function () {
         assert.ok((page.last('commits')?.generation ?? -1) > before);
         takeErrorsLogged(
           logged,
-          /^refresh failed$/,
+          /^Refreshing the tab failed$/,
           /^git log .* failed: fatal: not a git repository/,
         );
       } finally {
@@ -974,7 +986,7 @@ suite('View refreshing one repository', function () {
         assert.strictEqual(shown.total, 5);
         takeErrorsLogged(
           logged,
-          /^toggleMerge failed$/,
+          /^Handling toggleMerge from the page failed$/,
           /^git log .* failed: fatal: not a git repository/,
         );
       } finally {

@@ -37,6 +37,7 @@ export async function checkout(
       const local = localBranchOf(refs, target.name);
       if (hasRef(refs, { kind: 'branch', name: local })) {
         await switchToBranch(gitPath, root, local);
+        log.info(strings.log.checkedOut.branch(local));
         await catchUp(log, notify, at, local, target.name);
       } else {
         await checkoutNewBranch(
@@ -45,17 +46,19 @@ export async function checkout(
           local,
           `refs/remotes/${target.name}`,
         );
+        log.info(strings.log.checkedOutNewBranch(local, target.name));
       }
     } else if (target.kind === 'branch') {
       await switchToBranch(gitPath, root, target.name);
+      log.info(strings.log.checkedOut.branch(target.name));
     } else {
       await switchToCommit(
         gitPath,
         root,
         target.kind === 'commit' ? target.hash : `refs/tags/${target.name}`,
       );
+      log.info(strings.log.checkedOut[target.kind](label));
     }
-    log.info(strings.log.checkedOut(target.kind, label));
     const detached = detachedHead(before);
     if (detached) {
       await sayLeftBehind(log, notify, at, detached);
@@ -65,7 +68,7 @@ export async function checkout(
     reportFailure(
       log,
       notify,
-      strings.log.checkoutFailed(target.kind, label),
+      strings.log.checkoutFailed[target.kind](label),
       (reason) =>
         strings.messages.couldNotCheckOut(
           target.kind === 'commit' ? shortHash(label) : label,

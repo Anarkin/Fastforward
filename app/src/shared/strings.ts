@@ -384,7 +384,9 @@ export const strings = {
       list: number,
     ) =>
       `layout: window ${width}x${height}, dpr ${ratio}, body ${body}, tab bar ${bar}, tab list ${list}`,
-    failed: (name: string) => `${name} failed`,
+    handlingFailed: (type: string) => `Handling ${type} from the page failed`,
+    refreshingFailed: 'Refreshing the tab failed',
+    readingImageFailed: (path: string) => `Reading the image ${path} failed`,
     openingFailed: (folder: string) => `Opening ${folder} failed`,
     tabOpen: (root: string) => `Tab ${root} is open`,
     tabShownAsLeft: (root: string) => `Tab ${root} is shown as it was left`,
@@ -405,9 +407,19 @@ export const strings = {
         : `Refs changed, adding ${count} new commits to the history`,
     laidOut: (shown: number, total: number, milliseconds: number) =>
       `Graph of ${shown} of ${total} commits laid out in ${milliseconds} ms`,
-    checkedOut: (kind: string, name: string) => `Checked out ${kind} ${name}`,
-    checkoutFailed: (kind: string, name: string) =>
-      `Checking out ${kind} ${name} failed`,
+    checkedOut: {
+      branch: (name: string) => `Checked out branch ${name}`,
+      tag: (name: string) => `Checked out tag ${name}`,
+      commit: (hash: string) => `Checked out commit ${hash}`,
+    },
+    checkedOutNewBranch: (name: string, remote: string) =>
+      `Checked out new branch ${name} tracking ${remote}`,
+    checkoutFailed: {
+      branch: (name: string) => `Checking out branch ${name} failed`,
+      remote: (name: string) => `Checking out remote branch ${name} failed`,
+      tag: (name: string) => `Checking out tag ${name} failed`,
+      commit: (hash: string) => `Checking out commit ${hash} failed`,
+    },
     listingLeftBehindFailed:
       'Listing the commits a checkout left behind failed',
     diverged: (local: string, remote: string) =>
@@ -419,6 +431,6 @@ export const strings = {
     fastForwardFailed: (local: string, remote: string) =>
       `Fast-forwarding ${local} to ${remote} failed`,
     fetched: 'Fetched every remote',
-    fetchFailed: 'fetch failed',
+    fetchFailed: 'Fetching every remote failed',
   },
 };

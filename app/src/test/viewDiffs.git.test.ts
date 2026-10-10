@@ -22,6 +22,7 @@ import {
   gate,
   numberedLines,
   stubMethod,
+  takeErrorsLogged,
   viewRepositories,
   withView,
 } from './viewHarness';
@@ -687,6 +688,32 @@ suite('View showing diffs', function () {
       } finally {
         fs.rmSync(large);
       }
+    });
+
+    test('logs which image it failed to read', async () => {
+      const gone = await tempRepository(path.join(folder, 'gone-images'));
+      fs.writeFileSync(path.join(gone.root, 'pixel.png'), pixel);
+      await gone.git('add', '.');
+      await gone.git('commit', '-m', 'images');
+      const [object] = await gone.resolve('HEAD:pixel.png');
+      await withView(
+        log,
+        [gone.root],
+        async ({ view }) => {
+          await view.idle();
+          fs.rmSync(gone.root, { recursive: true, force: true });
+          assert.strictEqual(
+            (await view.image(url(gone.root, 'pixel.png', object))).status,
+            500,
+          );
+        },
+        'unwatched',
+      );
+      takeErrorsLogged(
+        logged,
+        /^Reading the image pixel\.png failed$/,
+        /ENOENT/,
+      );
     });
 
     test('serves the images a stash keeps among its untracked files, as a document it keeps links them', async () => {

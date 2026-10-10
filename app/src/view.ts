@@ -298,13 +298,13 @@ export class FastforwardView {
     return {
       receive: (message) =>
         this.run(
-          message.type,
+          strings.log.handlingFailed(message.type),
           session,
           () => this.handle(message, session),
           this.worktreeAsked(message),
         ),
       refresh: () =>
-        this.run('refresh', session, async () => {
+        this.run(strings.log.refreshingFailed, session, async () => {
           const context = await this.context(session);
           if (context) {
             await this.refresh(context);
@@ -355,7 +355,7 @@ export class FastforwardView {
         headers: { 'content-type': type, 'cache-control': 'no-store' },
       });
     } catch (error) {
-      this.log.error(strings.log.failed('image'));
+      this.log.error(strings.log.readingImageFailed(source.path));
       this.log.error(error instanceof Error ? error : gitErrorText(error));
       return new Response(null, { status: 500 });
     }
@@ -398,16 +398,16 @@ export class FastforwardView {
   }
 
   private run(
-    name: string,
+    failed: string,
     session: Session,
     action: () => Promise<void>,
     root?: string,
   ): Promise<void> {
-    return this.inFlight.track(this.runNow(name, session, action, root));
+    return this.inFlight.track(this.runNow(failed, session, action, root));
   }
 
   private async runNow(
-    name: string,
+    failed: string,
     session: Session,
     action: () => Promise<void>,
     asked?: string,
@@ -420,7 +420,7 @@ export class FastforwardView {
           ? thrown
           : { root: asked, error: thrown };
       const text = gitErrorText(error);
-      this.log.error(strings.log.failed(name));
+      this.log.error(failed);
       this.log.error(error instanceof Error ? error : text);
       const gone = root !== undefined && (await this.folderGone(root));
       if (root === undefined || this.isActive(root)) {
@@ -1358,7 +1358,7 @@ export class FastforwardView {
       signal,
       onChange: (change) =>
         void this.run(
-          'refresh',
+          strings.log.refreshingFailed,
           session,
           () => this.refresh(context, undefined, change),
           context.root,
@@ -1515,7 +1515,7 @@ export class FastforwardView {
       page && this.isActive(root) ? await this.context(page, root) : undefined;
     if (page && shown) {
       await this.run(
-        'refresh',
+        strings.log.refreshingFailed,
         page,
         () => this.refresh(shown, undefined, refsAlone),
         root,

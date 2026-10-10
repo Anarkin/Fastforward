@@ -443,7 +443,7 @@ suite('View of other repositories', function () {
     takeErrorsLogged(
       logged,
       /^Listing the worktrees of .*other failed$/,
-      /^selectTab failed$/,
+      /^Handling selectTab from the page failed$/,
       /^git .* failed: fatal: detected dubious ownership/,
     );
   });
@@ -515,7 +515,7 @@ suite('View of other repositories', function () {
     takeErrorsLogged(
       logged,
       /^Listing the worktrees of .*removed failed$/,
-      /^selectTab failed$/,
+      /^Handling selectTab from the page failed$/,
       /^git .* failed: spawn .* ENOENT$/,
     );
   });

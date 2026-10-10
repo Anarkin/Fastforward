@@ -128,7 +128,7 @@ suite('View with two tabs', function () {
       });
       takeErrorsLogged(
         logged,
-        /^fetch failed$/,
+        /^Fetching every remote failed$/,
         /^git fetch --all --prune --porcelain failed: fatal: repository '.*' not found/,
       );
     } finally {
@@ -234,7 +234,11 @@ suite('View with two tabs', function () {
       },
       false,
     );
-    takeErrorsLogged(logged, /^ready failed$/, /^loading failed$/);
+    takeErrorsLogged(
+      logged,
+      /^Handling ready from the page failed$/,
+      /^loading failed$/,
+    );
   });
 
   test('shows no error of the tab opened after one is closed that failed after it was left', async () => {
@@ -258,7 +262,11 @@ suite('View with two tabs', function () {
       },
       'unwatched',
     );
-    takeErrorsLogged(logged, /^closeTab failed$/, /^loading failed$/);
+    takeErrorsLogged(
+      logged,
+      /^Handling closeTab from the page failed$/,
+      /^loading failed$/,
+    );
   });
 
   test('shows no error of the tab of a repository picked that failed after it was left', async () => {
@@ -283,7 +291,11 @@ suite('View with two tabs', function () {
       'unwatched',
       host,
     );
-    takeErrorsLogged(logged, /^browseRepositories failed$/, /^loading failed$/);
+    takeErrorsLogged(
+      logged,
+      /^Handling browseRepositories from the page failed$/,
+      /^loading failed$/,
+    );
   });
 
   suite('open', () => {
@@ -528,7 +540,11 @@ suite('View with two tabs', function () {
       held.open();
       await loading;
       assert.strictEqual(tabs.page.last('error'), undefined);
-      takeErrorsLogged(logged, /^loadTree failed$/, /^tree failed$/);
+      takeErrorsLogged(
+        logged,
+        /^Handling loadTree from the page failed$/,
+        /^tree failed$/,
+      );
     });
 
     test('preloads nothing for the shown tab, or one opened before', async () => {
@@ -663,7 +679,11 @@ suite('View with two tabs', function () {
       });
       assert.strictEqual(tabs.page.last('tabs')?.active, other);
       assert.match(tabs.page.last('error')?.message ?? '', /next tab failed/);
-      takeErrorsLogged(logged, /^closeTab failed$/, /^next tab failed$/);
+      takeErrorsLogged(
+        logged,
+        /^Handling closeTab from the page failed$/,
+        /^next tab failed$/,
+      );
     });
 
     test('sorts, solos, closes and opens tabs though the state fails to be written', async () => {

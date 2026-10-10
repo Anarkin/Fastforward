@@ -40,7 +40,7 @@ suite('View fetching', function () {
   function takeFetchFailures(reason: RegExp): void {
     takeErrorsLogged(
       logged,
-      /^fetch failed$/,
+      /^Fetching every remote failed$/,
       new RegExp(
         `^git fetch --all --prune --porcelain failed: fatal: ${reason.source}`,
       ),

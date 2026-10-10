@@ -15,6 +15,7 @@ interface CheckedOut {
   checkedOut: boolean;
   notices: (readonly ['info' | 'error', string])[];
   errors: string[];
+  logged: string[];
 }
 
 suite('Operations checking out', function () {
@@ -55,15 +56,16 @@ suite('Operations checking out', function () {
       errors: recording.error.map((entry) =>
         entry instanceof Error ? entry.message : String(entry),
       ),
+      logged: recording.info,
     };
   };
 
   const checkedOutQuietly = async (target: CheckoutTarget): Promise<void> => {
-    assert.deepStrictEqual(await checkOut(target), {
-      checkedOut: true,
-      notices: [],
-      errors: [],
-    });
+    const { checkedOut, notices, errors } = await checkOut(target);
+    assert.deepStrictEqual(
+      { checkedOut, notices, errors },
+      { checkedOut: true, notices: [], errors: [] },
+    );
   };
 
   const head = async (): Promise<string> =>
@@ -80,6 +82,45 @@ suite('Operations checking out', function () {
       await repository.git('checkout', '-f', 'main');
       await repository.git('tag', '-d', 'same');
       await repository.git('branch', '-D', 'same');
+    }
+  });
+
+  test('logs what it checked out by name, a remote branch as the local branch it switched to or made', async () => {
+    await repository.git('tag', 'v1', a);
+    await repository.git('branch', 'kept', 'main');
+    await repository.git('update-ref', 'refs/remotes/origin/kept', 'main');
+    await repository.git('update-ref', 'refs/remotes/origin/made', 'main');
+    try {
+      const logged = async (target: CheckoutTarget) =>
+        (await checkOut(target)).logged;
+      assert.deepStrictEqual(await logged({ kind: 'tag', name: 'v1' }), [
+        'Checked out tag v1',
+      ]);
+      assert.deepStrictEqual(await logged({ kind: 'commit', hash: b }), [
+        `Checked out commit ${b}`,
+      ]);
+      assert.deepStrictEqual(await logged({ kind: 'branch', name: 'main' }), [
+        'Checked out branch main',
+      ]);
+      assert.deepStrictEqual(
+        await logged({ kind: 'remote', name: 'origin/kept' }),
+        ['Checked out branch kept'],
+      );
+      assert.deepStrictEqual(
+        await logged({ kind: 'remote', name: 'origin/made' }),
+        ['Checked out new branch made tracking origin/made'],
+      );
+      assert.deepStrictEqual(
+        (await checkOut({ kind: 'remote', name: 'origin/gone' })).errors[0],
+        'Checking out remote branch origin/gone failed',
+      );
+    } finally {
+      await repository.git('checkout', '-f', 'main');
+      await repository.git('tag', '-d', 'v1');
+      await repository.git('branch', '-D', 'kept');
+      await repository.git('branch', '-D', 'made').catch(() => '');
+      await repository.git('update-ref', '-d', 'refs/remotes/origin/kept');
+      await repository.git('update-ref', '-d', 'refs/remotes/origin/made');
     }
   });
 

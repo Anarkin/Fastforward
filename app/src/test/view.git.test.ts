@@ -683,7 +683,7 @@ suite('View of one repository', function () {
         assert.ok(page.last('error'));
         takeErrorsLogged(
           logged,
-          /^loadCommits failed$/,
+          /^Handling loadCommits from the page failed$/,
           /^git log .* failed: fatal: not a git repository/,
         );
       } finally {
@@ -953,7 +953,7 @@ suite('View of one repository', function () {
       assert.match(page.last('error')?.message ?? '', /^fatal: .*no-tree$/);
       takeErrorsLogged(
         logged,
-        /^loadTree failed$/,
+        /^Handling loadTree from the page failed$/,
         /^git ls-tree no-tree failed: /,
       );
     });
