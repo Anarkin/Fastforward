@@ -2043,6 +2043,9 @@ export class FastforwardView {
     const { tab } = context;
     const replaced = () => tab.generation !== generation;
     if (replaced()) {
+      if (tab.shownStale) {
+        await this.sendShownHistory(context, { keepPlace: true });
+      }
       return;
     }
     const { history, graph } = tab;

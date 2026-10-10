@@ -910,6 +910,47 @@ suite('View refreshing one repository', function () {
       }
     });
 
+    test('sends the history again for rows asked of the layout it failed to replace', async () => {
+      const generation = page.last('commits')?.generation;
+      assert.ok(generation !== undefined);
+      let failed = false;
+      const elsewhere = tempFolder('not-a-repository');
+      stubMethod(fastforward, 'sendShownHistory', (original, ...args) => {
+        const [context, ...rest] = args;
+        if (failed || typeof context !== 'object') {
+          return original(...args);
+        }
+        failed = true;
+        return original({ ...context, root: elsewhere }, ...rest);
+      });
+      try {
+        await connection.receive({
+          type: 'toggleMerge',
+          root: repository.root,
+          hash: fixture.merge,
+        });
+        assert.ok(failed);
+        page.clear();
+        await connection.receive({
+          type: 'loadCommits',
+          root: repository.root,
+          generation,
+          start: 0,
+          count: 100,
+        });
+        const shown = page.last('commits');
+        assert.ok(shown && shown.generation > generation);
+        assert.strictEqual(shown.total, 5);
+        takeErrorsLogged(
+          logged,
+          /^toggleMerge failed$/,
+          /^git log .* failed: fatal: not a git repository/,
+        );
+      } finally {
+        removeFolder(elsewhere);
+      }
+    });
+
     test('keeps the top commit in place when a ref moves', async () => {
       await connection.receive({
         type: 'scrolled',
