@@ -109,8 +109,15 @@ export async function watchRepository(
       }
     }, delay);
   };
+  // A worktree added inside its bare repository is inside the common git dir,
+  // whose watcher then tells the worktree's changes too
+  const gitDirHolding = (file: string) =>
+    gitDirs.find(
+      (dir) =>
+        isInside(dir, file) && (isInside(root, dir) || !isInside(root, file)),
+    );
   const changed = (file: string, event: string) => {
-    const inGitDir = gitDirs.find((dir) => isInside(dir, file));
+    const inGitDir = gitDirHolding(file);
     if (inGitDir !== undefined) {
       const inside = path.relative(inGitDir, file);
       // Windows tells a folder changed along with each entry made or removed
@@ -152,12 +159,21 @@ export async function watchRepository(
       changedGitDir();
     }
   };
+  const onGitDirEvent = (
+    folder: string,
+    file: string | null,
+    event: string,
+  ) => {
+    if (!file || gitDirHolding(path.join(folder, file)) !== undefined) {
+      onEvent(folder, file, event);
+    }
+  };
   let watchers: Watcher[];
   if (recursive) {
     const folders = [root, ...gitDirs.filter((dir) => !isInside(root, dir))];
     watchers = watchEach(folders, (folder) => {
       const watcher = fs.watch(folder, { recursive: true }, (event, file) =>
-        onEvent(folder, file, event),
+        (folder === root ? onEvent : onGitDirEvent)(folder, file, event),
       );
       watcher.on('error', onError);
       return watcher;
@@ -165,7 +181,7 @@ export async function watchRepository(
   } else {
     watchers = await Promise.all([
       watchTree(root, {
-        skip: (folder) => gitDirs.some((dir) => isInside(dir, folder)),
+        skip: (folder) => gitDirHolding(folder) !== undefined,
         ignored,
         onEvent,
         onError,
@@ -180,7 +196,7 @@ export async function watchRepository(
               isGitDirIn(gitDirTree),
             ),
           ignored: () => Promise.resolve([]),
-          onEvent,
+          onEvent: onGitDirEvent,
           onError,
           watch: watchOneFolder,
         }),

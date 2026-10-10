@@ -64,6 +64,15 @@ suite('Watching a repository', function () {
     }, what);
   };
 
+  const worktreeInBareRepository = async () => {
+    const folder = tempFolder('bare');
+    const bare = path.join(folder, 'project.git');
+    await repository.git('clone', '-q', '--bare', repository.root, bare);
+    const worktree = path.join(bare, 'main');
+    await repository.git('-C', bare, 'worktree', 'add', '-q', worktree, 'main');
+    return { folder, worktree };
+  };
+
   const settled = async () => {
     let last = changes.length;
     let since = Date.now();
@@ -286,6 +295,34 @@ suite('Watching a repository', function () {
     }
   });
 
+  test("stays quiet for an ignored folder made in a worktree inside its bare repository's folder, watching recursively", async () => {
+    const { folder, worktree } = await worktreeInBareRepository();
+    const built = path.join(worktree, 'build');
+    const checked: string[] = [];
+    const seen: boolean[] = [];
+    const watching = await watchRepository(repository.gitPath, worktree, {
+      delay: 50,
+      maxDelay: 200,
+      recursive: true,
+      onChange: ({ refs }) => seen.push(refs),
+      onError: (error) => errors.push(error),
+      ignored: (repo, paths) => {
+        checked.push(...paths);
+        return ignoredPaths(repository.gitPath, repo, paths);
+      },
+    });
+    try {
+      fs.mkdirSync(built);
+      await waitFor(() => checked.includes(built), 'the ignored folder');
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      assert.ok(!seen.includes(false), JSON.stringify(checked));
+      assert.deepStrictEqual(errors, []);
+    } finally {
+      await watching.dispose();
+      removeFolder(folder);
+    }
+  });
+
   for (const recursive of [true, false]) {
     test(`stays quiet for the cookies of the fsmonitor daemon, which every refresh would make again, watching ${recursive ? 'recursively' : 'folder by folder'}`, async () => {
       const cookies = path.join(
@@ -493,6 +530,28 @@ suite('Watching a repository', function () {
         assert.deepStrictEqual(errors, []);
       } finally {
         await linkedWatcher.dispose();
+        removeFolder(folder);
+      }
+    });
+
+    test(`refreshes a worktree inside its bare repository's folder for a file changed two folders down, watching ${recursive ? 'recursively' : 'folder by folder'}`, async () => {
+      const { folder, worktree } = await worktreeInBareRepository();
+      const file = path.join(worktree, 'src', 'deep', 'file.txt');
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, '');
+      const seen: boolean[] = [];
+      const watching = await watchRepository(repository.gitPath, worktree, {
+        delay: 50,
+        maxDelay: 200,
+        recursive,
+        onChange: ({ refs }) => seen.push(refs),
+        onError: (error) => errors.push(error),
+      });
+      try {
+        await keepWriting(file, 'the changed file', () => seen.includes(false));
+        assert.deepStrictEqual(errors, []);
+      } finally {
+        await watching.dispose();
         removeFolder(folder);
       }
     });
