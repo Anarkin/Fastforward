@@ -184,6 +184,31 @@ suite('Repository files', function () {
       fs.rmSync(link);
     }
   });
+
+  test('reads no file or image through a linked folder, as git sees none there, so a link leads nowhere outside the repository', async () => {
+    const outside = path.join(parent, 'linked');
+    fs.mkdirSync(outside);
+    fs.writeFileSync(path.join(outside, 'secret.png'), 'secret\n');
+    const link = path.join(cwd, 'assets');
+    fs.symlinkSync(outside, link, 'junction');
+    try {
+      assert.deepStrictEqual(
+        await readFile(gitPath, cwd, undefined, 'assets/secret.png'),
+        { content: '', binary: false },
+      );
+      assert.deepStrictEqual(
+        await readImage(gitPath, cwd, {
+          path: 'assets/secret.png',
+          id: 'any',
+          disk: true,
+        }),
+        { kind: 'missing' },
+      );
+    } finally {
+      fs.rmSync(link);
+      fs.rmSync(outside, { recursive: true });
+    }
+  });
 });
 
 suite('Large files and submodules', function () {

@@ -19,6 +19,7 @@ This file only observes and documents the codebase mainly for human readers; the
 - An image over `192 MB` is not previewed, as each image shown is read whole into the page
 - The images previewed are kept in the page up to `256 MB`, forgetting the least recently shown
 - A Markdown preview loads no remote image, so opening a file tells no server, and opens only https and mail links
+- A Markdown preview shows no image whose path passes through a symlink, as git sees no file there, so a link can't lead it outside the repository or to a server
 - A side of a Markdown file over `2 MB` is not read, so its preview stays empty
 - Find in a diff does not search a preview, as it searches the lines of the diff
 

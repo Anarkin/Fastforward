@@ -1,6 +1,6 @@
 import type { Stats } from 'node:fs';
 import * as fs from 'node:fs/promises';
-import { isAbsolute, join, relative, sep } from 'node:path';
+import { dirname, isAbsolute, join, relative, sep } from 'node:path';
 import { maxImageSize, type ImageSource } from '../shared/images';
 import { strings } from '../shared/strings';
 import { headCommit } from './history';
@@ -180,7 +180,7 @@ export async function readFile(
 ): Promise<FileContent> {
   if (hash === undefined) {
     const file = repositoryFile(cwd, path);
-    const stats = await lstatIfThere(file);
+    const stats = await lstatFollowingNoLink(cwd, file);
     if (!stats) {
       return { content: '', binary: false };
     }
@@ -261,6 +261,22 @@ function lstatIfThere(file: string): Promise<Stats | undefined> {
   });
 }
 
+async function lstatFollowingNoLink(
+  cwd: string,
+  file: string,
+): Promise<Stats | undefined> {
+  let folder = cwd;
+  for (const name of relative(cwd, dirname(file)).split(sep)) {
+    if (name) {
+      folder = join(folder, name);
+      if (!(await lstatIfThere(folder))?.isDirectory()) {
+        return undefined;
+      }
+    }
+  }
+  return lstatIfThere(file);
+}
+
 export type ImageRead =
   | { readonly kind: 'image'; readonly bytes: Buffer }
   | { readonly kind: 'missing' | 'tooLarge' };
@@ -279,7 +295,7 @@ export async function readImage(
 ): Promise<ImageRead> {
   if (disk) {
     const file = repositoryFile(cwd, path);
-    const stats = await lstatIfThere(file);
+    const stats = await lstatFollowingNoLink(cwd, file);
     if (!stats?.isFile()) {
       return { kind: 'missing' };
     }
