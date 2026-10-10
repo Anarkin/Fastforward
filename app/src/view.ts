@@ -561,10 +561,10 @@ export class FastforwardView {
         this.log[message.level](strings.log.webview(message.message));
         return;
       case 'setColumnWidths':
-        await storage.setColumnWidths(message.widths);
+        this.save(storage.setColumnWidths(message.widths));
         return;
       case 'setShowAllFiles':
-        await storage.setShowAllFiles(message.show);
+        this.save(storage.setShowAllFiles(message.show));
         return;
       case 'setCollapseMerges': {
         this.save(storage.setCollapseMerges(message.collapse));
@@ -593,10 +593,10 @@ export class FastforwardView {
         this.autoFetch.update(message.on);
         return;
       case 'setDiffLayout':
-        await storage.setDiffLayout(message.layout);
+        this.save(storage.setDiffLayout(message.layout));
         return;
       case 'setWordWrap':
-        await storage.setWordWrap(message.wrap);
+        this.save(storage.setWordWrap(message.wrap));
         return;
       case 'setIgnoreWhitespace': {
         this.save(storage.setIgnoreWhitespace(message.ignore));
@@ -628,9 +628,11 @@ export class FastforwardView {
         return;
       }
       case 'setBookmarks':
-        await storage.setBookmarks(
-          this.repositoryOf(message.root),
-          message.bookmarks,
+        this.save(
+          storage.setBookmarks(
+            this.repositoryOf(message.root),
+            message.bookmarks,
+          ),
         );
         return;
       case 'scrolled': {
@@ -1212,7 +1214,7 @@ export class FastforwardView {
     ]);
     const bookmarks = defaultBookmarks(listed, defaults);
     if (head?.commit !== undefined) {
-      await this.storage.setBookmarks(context.repository, bookmarks);
+      this.save(this.storage.setBookmarks(context.repository, bookmarks));
     }
     context.post({ type: 'bookmarks', bookmarks });
   }

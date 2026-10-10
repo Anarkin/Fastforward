@@ -209,6 +209,78 @@ suite('View of one repository', function () {
     }
   });
 
+  test('keeps the layout and bookmarks the page changes though they fail to be written, saying so only in the log', async () => {
+    const own = await openView(log, [repository.root]);
+    const set = own.settings.set.bind(own.settings);
+    own.settings.set = (key, value) => {
+      void set(key, value);
+      return Promise.reject(new Error('settings not written'));
+    };
+    own.store.update = (key, value) => {
+      own.store.values.set(key, value);
+      return Promise.reject(new Error('state not written'));
+    };
+    try {
+      await own.connection.receive({
+        type: 'setColumnWidths',
+        widths: [300, 400],
+      });
+      await own.connection.receive({ type: 'setShowAllFiles', show: true });
+      await own.connection.receive({
+        type: 'setDiffLayout',
+        layout: 'sideBySide',
+      });
+      await own.connection.receive({ type: 'setWordWrap', wrap: true });
+      await own.connection.receive({
+        type: 'setBookmarks',
+        root: repository.root,
+        bookmarks: [],
+      });
+      assert.strictEqual(own.page.last('error'), undefined);
+      const { layout } = new Storage(own.settings, own.store);
+      assert.deepStrictEqual(
+        [
+          layout.columnWidths,
+          layout.showAllFiles,
+          layout.diffLayout,
+          layout.wordWrap,
+        ],
+        [[300, 400], true, 'sideBySide', true],
+      );
+      assert.deepStrictEqual(savedBookmarks(own.store, repository.root), []);
+      takeErrorsLogged(
+        logged,
+        /^Saving the state failed$/,
+        /^settings not written$/,
+        /^state not written$/,
+      );
+    } finally {
+      own.connection.dispose();
+    }
+  });
+
+  test('shows the bookmarks made for a repository opened for the first time though they fail to be written', async () => {
+    const own = await openView(log, [repository.root], false);
+    own.store.update = (key, value) => {
+      own.store.values.set(key, value);
+      return Promise.reject(new Error('state not written'));
+    };
+    try {
+      await own.connection.receive({ type: 'ready' });
+      assert.deepStrictEqual(own.page.last('bookmarks')?.bookmarks, [
+        { kind: 'branch', name: 'main' },
+      ]);
+      assert.strictEqual(own.page.last('error'), undefined);
+      takeErrorsLogged(
+        logged,
+        /^Saving the state failed$/,
+        /^state not written$/,
+      );
+    } finally {
+      own.connection.dispose();
+    }
+  });
+
   test('keeps a folder spelled two ways as one tab', async function () {
     if (process.platform !== 'win32') {
       this.skip();

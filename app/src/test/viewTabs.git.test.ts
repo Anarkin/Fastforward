@@ -691,10 +691,10 @@ suite('View with two tabs', function () {
         root: repository.root,
       });
       assert.strictEqual(tabs.page.last('tabs')?.active, repository.root);
+      assert.strictEqual(tabs.page.last('error'), undefined);
       takeErrorsLogged(
         logged,
         /^Saving the state failed$/,
-        /^closeTab failed$/,
         /^state not written$/,
       );
     });
