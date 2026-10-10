@@ -192,6 +192,7 @@ suite('Operations checking out', function () {
       });
       assert.strictEqual(checkedOut, true);
       assert.strictEqual(await head(), 'blocked');
+      assert.strictEqual(fs.readFileSync(clash, 'utf8'), 'mine');
       assert.strictEqual(notices.length, 1);
       assert.strictEqual(notices[0][0], 'error');
       assert.match(
@@ -327,6 +328,77 @@ suite('Operations checking out', function () {
       await repository.git('rebase', '--abort').catch(() => undefined);
       await repository.git('checkout', '-f', 'main');
       await repository.git('branch', '-D', 'onto', 'paused');
+    }
+  });
+
+  test('checks out nothing over uncommitted changes it would overwrite, keeping them', async () => {
+    const edited = path.join(repository.root, 'edited');
+    const added = path.join(repository.root, 'added');
+    await repository.git('checkout', '-b', 'kept', 'main');
+    try {
+      await repository.commit('kept', { edited: 'base' });
+      await repository.git('checkout', '-b', 'changed');
+      await repository.commit('changed', { edited: 'theirs', added: 'theirs' });
+      const [changed] = await repository.resolve('HEAD');
+      await repository.git('tag', 'changed-tag');
+      await repository.git(
+        'update-ref',
+        'refs/remotes/origin/changing',
+        'HEAD',
+      );
+      await repository.git('checkout', 'kept');
+      const targets: CheckoutTarget[] = [
+        { kind: 'branch', name: 'changed' },
+        { kind: 'tag', name: 'changed-tag' },
+        { kind: 'commit', hash: changed },
+        { kind: 'remote', name: 'origin/changing' },
+      ];
+      for (const file of [edited, added]) {
+        fs.writeFileSync(file, 'mine');
+        for (const target of targets) {
+          const { checkedOut, notices } = await checkOut(target);
+          assert.strictEqual(checkedOut, false);
+          assert.strictEqual(notices.length, 1);
+          assert.strictEqual(notices[0][0], 'error');
+          assert.match(notices[0][1], /would be overwritten by checkout/);
+          assert.strictEqual(await head(), 'kept');
+          assert.strictEqual(fs.readFileSync(file, 'utf8'), 'mine');
+        }
+        await repository.git('checkout', '--', 'edited');
+      }
+    } finally {
+      await repository.git('checkout', '-f', 'main');
+      fs.rmSync(added, { force: true });
+      await repository.git('branch', '-D', 'kept', 'changed');
+      await repository.git('branch', '-D', 'changing').catch(() => '');
+      await repository.git('tag', '-d', 'changed-tag');
+      await repository.git('update-ref', '-d', 'refs/remotes/origin/changing');
+    }
+  });
+
+  test('carries uncommitted changes over to a checkout that leaves their files alone', async () => {
+    const same = path.join(repository.root, 'same');
+    const loose = path.join(repository.root, 'loose');
+    await repository.git('checkout', '-b', 'kept', 'main');
+    try {
+      await repository.commit('kept', { edited: 'base', same: 'base' });
+      await repository.git('checkout', '-b', 'changed');
+      await repository.commit('changed', { edited: 'theirs' });
+      await repository.git('checkout', 'kept');
+      fs.writeFileSync(same, 'mine');
+      fs.writeFileSync(loose, 'mine');
+      await checkedOutQuietly({ kind: 'branch', name: 'changed' });
+      assert.strictEqual(await head(), 'changed');
+      assert.strictEqual(fs.readFileSync(same, 'utf8'), 'mine');
+      assert.strictEqual(fs.readFileSync(loose, 'utf8'), 'mine');
+      assert.strictEqual(
+        await repository.git('status', '--porcelain'),
+        ' M same\n?? loose\n',
+      );
+    } finally {
+      await repository.git('checkout', '-f', 'main');
+      fs.rmSync(loose, { force: true });
+      await repository.git('branch', '-D', 'kept', 'changed');
     }
   });
 });
