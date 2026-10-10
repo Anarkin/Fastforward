@@ -47,6 +47,7 @@ import {
   startsAppPage,
   visibleBounds,
 } from './files';
+import { reloadWhenGone } from './pageGone';
 import { profileFolder } from './profile';
 import { exitOnFailure, flushBeforeQuit } from './quit';
 import { reloadOnRebuild } from './rebuild';
@@ -153,6 +154,7 @@ async function start(): Promise<void> {
       connect();
     }
   });
+  reloadWhenGone(window, log);
   ipcMain.on('message', (event, message: ToHost) => {
     if (
       event.sender === window.webContents &&

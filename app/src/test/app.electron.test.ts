@@ -892,6 +892,66 @@ suite('App quitting', function () {
   });
 });
 
+suite('App whose page is gone', function () {
+  this.timeout(60_000);
+
+  test('loads the page again once its process is gone, such as killed or out of memory, saying so in the log, as the window stayed blank', async () => {
+    const folder = tempFolder('page-gone');
+    const profile = path.join(folder, 'profile');
+    const log = path.join(profile, 'logs', 'Fastforward.log');
+    const repository = await tempRepository(path.join(folder, 'repo'));
+    await repository.commit('first');
+    fs.mkdirSync(profile, { recursive: true });
+    fs.writeFileSync(
+      path.join(profile, 'state.json'),
+      JSON.stringify({ tabs: [repository.root], activeTab: repository.root }),
+    );
+    const app = await _electron.launch({
+      args: [appFolder, `--user-data-dir=${profile}`],
+      cwd: appFolder,
+    });
+    try {
+      const page = await app.firstWindow();
+      await page.locator('.commit', { hasText: 'first' }).waitFor();
+      const gone = await app.evaluate(({ BrowserWindow }) => {
+        const contents = BrowserWindow.getAllWindows()[0].webContents;
+        const went = new Promise<{ reason: string; exitCode: number }>(
+          (resolve) =>
+            contents.once('render-process-gone', (_event, details) =>
+              resolve(details),
+            ),
+        );
+        contents.forcefullyCrashRenderer();
+        return went;
+      });
+      await waitFor(
+        () =>
+          fs
+            .readFileSync(log, 'utf8')
+            .includes(strings.log.pageGone(gone.reason, gone.exitCode)),
+        'the page going to be logged',
+      );
+      // Playwright's page stays crashed though the window loads it again
+      await waitFor(
+        () =>
+          app.evaluate(async ({ BrowserWindow }) => {
+            const contents = BrowserWindow.getAllWindows()[0].webContents;
+            return (
+              !contents.isCrashed() &&
+              (await contents.executeJavaScript(
+                "[...document.querySelectorAll('.commit')].some((row) => row.textContent.includes('first'))",
+              )) === true
+            );
+          }),
+        'the page to show the history again',
+      );
+    } finally {
+      await app.close();
+      removeFolder(folder);
+    }
+  });
+});
+
 suite('App without git', function () {
   this.timeout(60_000);
 

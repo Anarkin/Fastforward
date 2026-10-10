@@ -375,6 +375,10 @@ export const strings = {
     openingFileFailed: (file: string, reason: string) =>
       `Opening ${file} failed: ${reason}`,
     pageNotLoaded: 'The page did not finish loading',
+    pageGone: (reason: string, exitCode: number) =>
+      `The page's process is gone (${reason}, exit code ${exitCode}), loading the page again`,
+    pageGoneAgain: (reason: string, exitCode: number) =>
+      `The page's process is gone again (${reason}, exit code ${exitCode}) within a minute of loading the page again, so it is left blank`,
     webview: (message: string) => `Webview: ${message}`,
     layout: (
       width: number,

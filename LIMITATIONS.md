@@ -51,6 +51,7 @@ This file only observes and documents the codebase mainly for human readers; the
 - A fetch is stopped and reported as failed after `5 minutes`, but not the one git makes by itself in a partial clone for the objects a read needs, such as an old commit's files
 - Fetching in the background waits at most `35791` minutes between rounds, about `25 days`, however long `autoFetchMinutes` sets, as a timer can't wait longer
 - Quitting stops every git at once but a checkout or fast-forward, which it waits at most `30 seconds` for, as stopping one midway can leave the working tree half switched
+- A page whose process is gone, such as killed or out of memory, is loaded again, but not when it goes again within `1 minute` of that, leaving the window blank, as a page that goes as it loads would go again and again
 - Opening a repository runs the commands its git config names, as git itself does, such as clean filters while reading the working tree and credential helpers or `core.sshCommand` while fetching; only a `core.fsmonitor` hook is never run, while git's built-in fsmonitor daemon still is, read as on or off the first time the app runs git in a folder
 - On Linux, which has no recursive file watching, every folder that is not ignored takes one of the system's inotify watches, and past `fs.inotify.max_user_watches` the rest are not watched and the error is logged
 - On Windows and macOS, a worktree whose folder, or a git folder kept outside it, can't be watched shows no change made outside the app until it is opened again, and a notice says so
