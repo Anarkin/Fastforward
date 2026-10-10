@@ -1,5 +1,10 @@
 import { errorText } from './errors';
-import { serveColoring, type FromSyntax, type ToSyntax } from './syntaxEngine';
+import {
+  sendUncaught,
+  serveColoring,
+  type FromSyntax,
+  type ToSyntax,
+} from './syntaxEngine';
 
 interface WorkerScope {
   postMessage(message: FromSyntax): void;
@@ -31,9 +36,7 @@ function promptly(): (run: () => void) => void {
 const post = (message: FromSyntax) => scope.postMessage(message);
 const serve = serveColoring(post, promptly());
 scope.addEventListener('message', (event) => serve(event.data));
-scope.addEventListener('error', (event) =>
-  post({ type: 'failed', message: errorText(event.error ?? event.message) }),
-);
+scope.addEventListener('error', sendUncaught(post));
 scope.addEventListener('unhandledrejection', (event) =>
   post({ type: 'failed', message: errorText(event.reason) }),
 );

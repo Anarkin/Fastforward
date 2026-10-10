@@ -6,11 +6,13 @@ import {
   languageOf,
   syntaxSources,
   textsToLoad,
+  workerPort,
   type SyntaxPort,
 } from '../../webview/syntax';
 import {
   colorCode,
   loadLanguages,
+  sendUncaught,
   serveColoring,
   startColoring,
   tokenizing,
@@ -1027,6 +1029,38 @@ suite('Coloring away from the page', () => {
     assert.deepStrictEqual(
       reported.map((error) => (error instanceof Error ? error.message : error)),
       ['grammar failed to load'],
+    );
+  });
+
+  test('sends the page an error left uncaught in the worker, with its stack, taking it as handled so the browser does not report it on the page again', () => {
+    const posted: FromSyntax[] = [];
+    const error = new Error('grammar failed');
+    const uncaught = Object.assign(new Event('error', { cancelable: true }), {
+      error,
+      message: 'Uncaught Error: grammar failed',
+    });
+    sendUncaught((message) => posted.push(message))(uncaught);
+    assert.ok(uncaught.defaultPrevented);
+    assert.deepStrictEqual(posted, [{ type: 'failed', message: error.stack }]);
+  });
+
+  test('reports a failure the worker could not send, such as one as it loads, once, taking it as handled so the browser does not report it again', () => {
+    const worker = Object.assign(new EventTarget(), {
+      postMessage: () => undefined,
+    });
+    const failures: unknown[] = [];
+    workerPort(worker).listen(
+      () => undefined,
+      (error) => failures.push(error),
+    );
+    const uncaught = Object.assign(new Event('error', { cancelable: true }), {
+      error: null,
+      message: 'Uncaught Error: grammar failed',
+    });
+    assert.strictEqual(worker.dispatchEvent(uncaught), false);
+    assert.deepStrictEqual(
+      failures.map((error) => (error instanceof Error ? error.message : error)),
+      ['Uncaught Error: grammar failed'],
     );
   });
 });

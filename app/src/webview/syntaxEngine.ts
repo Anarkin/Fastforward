@@ -7,6 +7,7 @@ import {
 } from 'shiki/core';
 import { createOnigurumaEngine } from 'shiki/engine/oniguruma';
 import { bundledLanguagesInfo } from 'shiki/langs';
+import { errorText } from './errors';
 import type { FindRange } from './find';
 import { languageIds } from './languages';
 
@@ -399,5 +400,14 @@ export function serveColoring(
         },
       );
     }
+  };
+}
+
+export function sendUncaught(
+  post: (message: FromSyntax) => void,
+): (event: Pick<ErrorEvent, 'error' | 'message' | 'preventDefault'>) => void {
+  return (event) => {
+    post({ type: 'failed', message: errorText(event.error ?? event.message) });
+    event.preventDefault();
   };
 }

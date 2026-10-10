@@ -229,16 +229,19 @@ export function colorerOf(port: SyntaxPort): Colorer {
 
 let shared: Colorer | undefined;
 
-function workerPort(worker: Worker): SyntaxPort {
+export function workerPort(
+  worker: Pick<Worker, 'postMessage' | 'addEventListener'>,
+): SyntaxPort {
   return {
     post: (message) => worker.postMessage(message),
     listen: (received, failed) => {
       worker.addEventListener('message', (event: MessageEvent<FromSyntax>) =>
         received(event.data),
       );
-      worker.addEventListener('error', (event) =>
-        failed(event.error ?? new Error(event.message)),
-      );
+      worker.addEventListener('error', (event) => {
+        failed(event.error ?? new Error(event.message));
+        event.preventDefault();
+      });
     },
   };
 }
