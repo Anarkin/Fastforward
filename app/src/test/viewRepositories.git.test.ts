@@ -559,6 +559,29 @@ suite('View of other repositories', function () {
       /^git worktree list .* failed: fatal: not a git repository/,
     );
   });
+
+  test('opens the tab shown again when it is clicked once its folder, missing as it opened, is a repository', async () => {
+    const later = path.join(folder, 'later');
+    await withView(log, [later], async (view) => {
+      const shown = view.page.last('error')?.message;
+      assert.match(shown ?? '', /is not a git repository/);
+      const made = await tempRepository(later);
+      await made.commit('first');
+      await view.connection.receive({ type: 'selectTab', root: later });
+      assert.strictEqual(view.page.last('commits')?.total, 1);
+      assert.strictEqual(view.page.last('clearError')?.message, shown);
+      await made.commit('second');
+      await waitFor(
+        () => view.page.last('commits')?.total === 2,
+        'the watcher to see the commit',
+      );
+    });
+    takeErrorsLogged(
+      logged,
+      /^Listing the worktrees of .*later failed$/,
+      /^git worktree list .* failed: spawn .* ENOENT$/,
+    );
+  });
 });
 
 suite('View upstream', function () {

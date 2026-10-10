@@ -491,6 +491,29 @@ suite('View of worktrees', function () {
     );
   });
 
+  test('opens the worktree shown again when it is clicked once its folder, missing as it opened, is back', async () => {
+    const own = await tempRepository(path.join(folder, 'returning'));
+    await own.commit('a');
+    const linked = path.join(folder, 'returning.worktrees', 'linked');
+    const moved = `${linked}-moved`;
+    await own.git('worktree', 'add', '-q', '-b', 'linked', linked);
+    fs.renameSync(linked, moved);
+    const view = await openView(log, [own.root], false);
+    try {
+      await view.store.update(worktreesKey, { [own.root]: linked });
+      await view.connection.receive({ type: 'ready' });
+      const shown = view.page.last('error')?.message;
+      assert.match(shown ?? '', /is not a git repository/);
+      await view.view.idle();
+      fs.renameSync(moved, linked);
+      await view.connection.receive({ type: 'selectWorktree', root: linked });
+      assert.strictEqual(view.page.last('repository')?.head, 'linked');
+      assert.strictEqual(view.page.last('clearError')?.message, shown);
+    } finally {
+      view.connection.dispose();
+    }
+  });
+
   test('updates the worktrees when another one switches branch', async () => {
     await withView(log, [repository.root], async (view) => {
       await repository.git('-C', review, 'switch', '-q', '-c', 'reviewing');

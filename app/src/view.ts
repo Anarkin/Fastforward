@@ -145,7 +145,7 @@ interface Tab extends TabState {
   refreshedAgain: PromiseWithResolvers<void> | undefined;
   loadsAgain: Refresh[];
   refreshError: string | undefined;
-  isRepository: boolean;
+  isRepository: boolean | undefined;
   selection: number | undefined;
   navigating: Promise<void>;
   checkingOut: Promise<void>;
@@ -366,6 +366,15 @@ export class FastforwardView {
     return active !== undefined && sameRoot(active, root);
   }
 
+  private showsActiveTab(session: Session): boolean {
+    const active = this.storage.activeWorktree;
+    return (
+      this.page === session &&
+      active !== undefined &&
+      this.tabStates.get(active)?.isRepository !== false
+    );
+  }
+
   private isActiveRepository(repository: string): boolean {
     const active = this.storage.activeTab;
     return active !== undefined && sameRoot(active, repository);
@@ -464,7 +473,10 @@ export class FastforwardView {
         this.host.installUpdate();
         return;
       case 'selectTab':
-        if (this.page === session && this.isActiveRepository(message.root)) {
+        if (
+          this.isActiveRepository(message.root) &&
+          this.showsActiveTab(session)
+        ) {
           return;
         }
         await this.openTab(session, message.root);
@@ -474,7 +486,7 @@ export class FastforwardView {
         if (
           repository === undefined ||
           !sameRoot(this.repositoryOf(message.root), repository) ||
-          (this.page === session && this.isActive(message.root))
+          (this.isActive(message.root) && this.showsActiveTab(session))
         ) {
           return;
         }
@@ -1218,7 +1230,7 @@ export class FastforwardView {
         refreshedAgain: undefined,
         loadsAgain: [],
         refreshError: undefined,
-        isRepository: false,
+        isRepository: undefined,
         selection: undefined,
         navigating: Promise.resolve(),
         checkingOut: Promise.resolve(),
@@ -1251,10 +1263,8 @@ export class FastforwardView {
       (await repositoryRoot(this.gitPath, root)) !== undefined;
     if (!tab.isRepository) {
       if (live && this.isActive(root)) {
-        session.post({
-          type: 'error',
-          message: strings.messages.notRepository(root),
-        });
+        tab.refreshError = strings.messages.notRepository(root);
+        session.post({ type: 'error', message: tab.refreshError });
       }
       return undefined;
     }
