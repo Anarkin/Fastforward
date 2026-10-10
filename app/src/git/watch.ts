@@ -292,10 +292,11 @@ export async function watchTree(
   const watched = new Map<string, WatchedFolder>();
   let disposed = false;
   const inFlight = new InFlight();
-  let reported = false;
+  const reported = new Set<unknown>();
   const report = (error: unknown) => {
-    if (!isMissing(error) && !reported && !disposed) {
-      reported = true;
+    const kind = error instanceof Error && 'code' in error ? error.code : '';
+    if (!isMissing(error) && !reported.has(kind) && !disposed) {
+      reported.add(kind);
       onError(error);
     }
   };
@@ -310,6 +311,16 @@ export async function watchTree(
     }
     if (under.length > 0) {
       void inFlight.track(add(under));
+    }
+  };
+
+  const moveRepo = (folder: string, from: string, to: string) => {
+    const entry = watched.get(folder);
+    if (entry?.repo === from && from !== to) {
+      entry.repo = to;
+      for (const child of entry.children) {
+        moveRepo(child, from, to);
+      }
     }
   };
 
@@ -375,6 +386,15 @@ export async function watchTree(
           if (entry && file === path.basename(folder.path)) {
             entry.gone = true;
             renamed(folder.path);
+          }
+          if (entry && file === '.git') {
+            moveRepo(
+              folder.path,
+              entry.repo,
+              fs.existsSync(path.join(folder.path, file))
+                ? folder.path
+                : folder.repo,
+            );
           }
           renamed(path.join(folder.path, file));
         }

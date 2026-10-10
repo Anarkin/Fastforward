@@ -594,6 +594,48 @@ suite('Watching folders one by one', () => {
     assert.deepStrictEqual(errors, [failure]);
   });
 
+  test('asks a repository made in a watched folder, and none once it is gone, whether the folders made in it and in its subfolders are ignored', async () => {
+    mkdir('sub/a');
+    await start();
+    const tell = async (folder: string) => {
+      ignoredCalls = [];
+      mkdir(folder);
+      watchers
+        .get(path.join(root, path.dirname(folder)))
+        ?.listener('rename', path.basename(folder));
+      await waitFor(() => watched().includes(folder), folder);
+      return ignoredCalls;
+    };
+    mkdir('sub/.git');
+    watchers.get(path.join(root, 'sub'))?.listener('rename', '.git');
+    assert.deepStrictEqual(await tell('sub/new'), [['sub', ['sub/new']]]);
+    assert.deepStrictEqual(await tell('sub/a/new'), [['sub', ['sub/a/new']]]);
+    fs.rmSync(path.join(root, 'sub', '.git'), { recursive: true });
+    watchers.get(path.join(root, 'sub'))?.listener('rename', '.git');
+    assert.deepStrictEqual(await tell('sub/a/other'), [['', ['sub/a/other']]]);
+  });
+
+  test('reports the first failure of each kind, so failing to tell ignored folders hides no failed watch', async () => {
+    mkdir('repo/.git', 'repo/inner', 'b/c');
+    const failure = Object.assign(new Error('ENOSPC'), { code: 'ENOSPC' });
+    const told = new Error('check-ignore failed');
+    await watchTree(root, {
+      skip: () => false,
+      ignored: (repo) =>
+        repo === root ? Promise.resolve([]) : Promise.reject(told),
+      onEvent: () => {},
+      onError: (error) => errors.push(error),
+      watch: (folder, listener) => {
+        if (path.basename(folder) === 'c') {
+          throw failure;
+        }
+        return fakeWatch(folder, listener);
+      },
+    });
+    assert.deepStrictEqual(watched(), ['', 'b', 'repo']);
+    assert.deepStrictEqual(errors, [told, failure]);
+  });
+
   test('leaves alone folders removed before they are watched', async () => {
     mkdir('a');
     await start((folder) => {

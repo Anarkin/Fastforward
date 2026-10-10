@@ -125,6 +125,30 @@ suite('Watching a repository', function () {
     assert.deepStrictEqual(errors, []);
   });
 
+  test('refreshes for a file in a folder made in a submodule set up after it started, which its superproject refuses to tell ignored folders in, watching folder by folder', async () => {
+    const library = await tempRepository(path.join(repository.root, 'sub'));
+    await library.commit('library', { 'lib.c': '' });
+    await repository.git('add', '--no-warn-embedded-repo', 'sub');
+    const store = tempFolder('module');
+    const moduleDir = path.join(store, '.git');
+    fs.renameSync(path.join(library.root, '.git'), moduleDir);
+    fs.rmSync(path.join(library.root, 'lib.c'));
+    try {
+      await start();
+      await settled();
+      fs.renameSync(moduleDir, path.join(library.root, '.git'));
+      fs.mkdirSync(path.join(library.root, 'src'));
+      await settled();
+      await keepWriting(
+        path.join('sub', 'src', 'file.txt'),
+        'the file in the folder made in the submodule',
+      );
+      assert.deepStrictEqual(errors, []);
+    } finally {
+      removeFolder(store);
+    }
+  });
+
   test('stays quiet when stopped while telling whether the changed files are ignored, and stops once told, watching folder by folder', async () => {
     const answers: ((ignored: readonly string[]) => void)[] = [];
     let disposing = false;
