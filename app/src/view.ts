@@ -1755,9 +1755,11 @@ export class FastforwardView {
   }
 
   private async refreshWorkingTree(context: Context): Promise<void> {
-    const workingTree = await this.sendWorkingTree(context);
+    const measured = context.tab.hash === workingTreeHash;
+    const workingTree = await this.sendWorkingTree(context, measured);
     const { hash } = context.tab;
-    if (hash !== undefined && workingTreeSide(hash)) {
+    const unmeasured = hash === workingTreeHash && !measured;
+    if (hash !== undefined && workingTreeSide(hash) && !unmeasured) {
       await this.sendCommit(context, workingTree);
       if (
         context.tab.shown.tree?.hash === hash &&
@@ -1837,8 +1839,18 @@ export class FastforwardView {
     return tab.fullHistory === older ? extended : undefined;
   }
 
-  private async sendWorkingTree(context: Context): Promise<WorkingTree> {
-    const workingTree = await workingTreeFiles(context.gitPath, context.root);
+  private async sendWorkingTree(
+    context: Context,
+    measured = false,
+  ): Promise<WorkingTree> {
+    const workingTree = await workingTreeFiles(
+      context.gitPath,
+      context.root,
+      undefined,
+      undefined,
+      undefined,
+      measured,
+    );
     context.post({ type: 'workingTree', files: uncommittedCount(workingTree) });
     return workingTree;
   }

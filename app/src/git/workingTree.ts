@@ -121,16 +121,19 @@ export async function workingTreeFiles(
   diff = againstIndex,
   signal?: AbortSignal,
   knownUntracked?: readonly string[],
+  measured = true,
 ): Promise<WorkingTree> {
   const { base, reverse } = diff;
   const [trackedChanges, listedUntracked, staged] = await Promise.all([
     runGit(gitPath, cwd, [...workingTreeDiff(diff), ...changesArgs], {
       signal,
     }).then((changes) =>
-      trackedFiles(gitPath, cwd, parseRawChanges(changes), reverse),
+      trackedFiles(gitPath, cwd, parseRawChanges(changes), reverse, measured),
     ),
     knownUntracked ?? listUntracked(gitPath, cwd, signal),
-    base === undefined ? stagedFiles(gitPath, cwd, signal) : undefined,
+    base === undefined
+      ? stagedFiles(gitPath, cwd, measured, signal)
+      : undefined,
   ]);
   const tracked = new Set(trackedChanges.map((file) => file.path));
   const untracked = listedUntracked.filter((path) => !tracked.has(path));
@@ -138,7 +141,7 @@ export async function workingTreeFiles(
     untracked.map(async (path, index): Promise<FileChange> => {
       const file = join(cwd, path);
       const added =
-        index < maxUntrackedPatches && !path.endsWith('/')
+        measured && index < maxUntrackedPatches && !path.endsWith('/')
           ? await addedLines(file)
           : 0;
       const lines = added === 'tooLarge' ? 0 : added;
@@ -204,6 +207,7 @@ export function untrackedListing(platform = process.platform): {
 async function stagedFiles(
   gitPath: string,
   cwd: string,
+  measured: boolean,
   signal?: AbortSignal,
 ): Promise<FileChange[]> {
   const output = await runGit(
@@ -212,7 +216,8 @@ async function stagedFiles(
     ['diff', '--cached', '-M', ...diffArgs, ...changesArgs],
     { signal },
   );
-  return (await withBytes(gitPath, cwd, parseRawChanges(output)))
+  const changes = parseRawChanges(output);
+  return (measured ? await withBytes(gitPath, cwd, changes) : changes)
     .map(({ file }) => file)
     .filter((file) => file.status !== '?');
 }
@@ -222,9 +227,12 @@ async function trackedFiles(
   cwd: string,
   changes: readonly RawChange[],
   reverse: boolean,
+  measured: boolean,
 ): Promise<FileChange[]> {
   const [sized, touched] = await Promise.all([
-    withBytes(gitPath, cwd, changes, { fromDisk: true, reverse }),
+    measured
+      ? withBytes(gitPath, cwd, changes, { fromDisk: true, reverse })
+      : changes,
     touchedChanges(gitPath, cwd, changes, reverse),
   ]);
   return onePerPath(

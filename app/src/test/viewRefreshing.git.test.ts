@@ -597,6 +597,54 @@ suite('View refreshing one repository', function () {
       }
     });
 
+    test('reads neither the sizes of the uncommitted changes nor the untracked files while a commit is selected, as only their count is shown', async () => {
+      const childProcess = process.getBuiltinModule('node:child_process');
+      const { spawn } = childProcess;
+      const fileSystem = process.getBuiltinModule('node:fs');
+      const { createReadStream } = fileSystem;
+      const read: string[] = [];
+      const untracked = path.join(repository.root, 'untracked.txt');
+      await repository.commit('sized', { 'sized.txt': 'one\n' });
+      try {
+        await connection.refresh();
+        await connection.receive({
+          type: 'selectCommit',
+          root: repository.root,
+          hash: fixture.b,
+        });
+        fs.writeFileSync(path.join(repository.root, 'sized.txt'), 'two\n');
+        fs.writeFileSync(untracked, 'new\n');
+        Reflect.set(
+          childProcess,
+          'spawn',
+          (...args: Parameters<typeof spawn>) => {
+            const [, gitArgs] = args;
+            if (gitArgs.includes('cat-file')) {
+              read.push(gitArgs.join(' '));
+            }
+            return spawn(...args);
+          },
+        );
+        Reflect.set(
+          fileSystem,
+          'createReadStream',
+          (...args: Parameters<typeof createReadStream>) => {
+            read.push(String(args[0]));
+            return createReadStream(...args);
+          },
+        );
+        page.clear();
+        await connection.refresh();
+        assert.strictEqual(page.last('workingTree')?.files, 2);
+        assert.deepStrictEqual(read, []);
+      } finally {
+        Reflect.set(childProcess, 'spawn', spawn);
+        Reflect.set(fileSystem, 'createReadStream', createReadStream);
+        fs.rmSync(untracked, { force: true });
+        await restore();
+      }
+    });
+
     test('shows a selected uncommitted file deleted since, without failing the refresh', async () => {
       const added = path.join(repository.root, 'added.txt');
       fs.writeFileSync(added, 'added\n');
