@@ -425,7 +425,7 @@ export class FastforwardView {
 
   private async folderGone(root: string): Promise<boolean> {
     const tab = this.tabStates.get(root);
-    if (!tab?.isRepository || (await isFolder(root))) {
+    if (!tab || (await isFolder(root))) {
       return false;
     }
     tab.isRepository = false;

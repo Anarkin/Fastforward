@@ -457,6 +457,40 @@ suite('View of worktrees', function () {
     );
   });
 
+  test('says a worktree whose folder is removed while shown is not a repository on each refresh that fails, rather than that git could not start', async () => {
+    const own = await tempRepository(path.join(folder, 'deleted'));
+    await own.commit('a');
+    const linked = path.join(folder, 'deleted.worktrees', 'linked');
+    await own.git('worktree', 'add', '-q', '-b', 'linked', linked);
+    const view = await openView(log, [own.root], false);
+    try {
+      await view.store.update(worktreesKey, { [own.root]: linked });
+      await view.connection.receive({ type: 'ready' });
+      await view.view.idle();
+      removeFolder(linked);
+      for (const branch of ['one', 'two']) {
+        await view.view.idle();
+        view.page.clear();
+        await own.git('branch', branch);
+        await waitFor(
+          () => view.page.last('error') !== undefined,
+          'the refresh to fail',
+        );
+        assert.match(
+          view.page.last('error')?.message ?? '',
+          /is not a git repository/,
+        );
+      }
+    } finally {
+      view.connection.dispose();
+    }
+    takeErrorsLogged(
+      logged,
+      /^refresh failed$/,
+      /^git .* failed: spawn .* ENOENT$/,
+    );
+  });
+
   test('updates the worktrees when another one switches branch', async () => {
     await withView(log, [repository.root], async (view) => {
       await repository.git('-C', review, 'switch', '-q', '-c', 'reviewing');
