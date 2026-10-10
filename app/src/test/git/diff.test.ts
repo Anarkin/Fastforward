@@ -117,6 +117,23 @@ suite('Patch budget', () => {
       { header: 'diff --git a/latin1.txt b/latin1.txt', lines: 1, kept: true },
     ]);
   });
+
+  test('reads a long line git sends in many chunks in one pass over it', () => {
+    const line = Buffer.alloc(patchByteBudget - 1024, 'x');
+    const budget = new PatchBudget();
+    const started = performance.now();
+    budget.add(Buffer.from('diff --git a/min.js b/min.js\n@@ -0,0 +1 @@\n+'));
+    for (let at = 0; at < line.length; at += 65536) {
+      budget.add(line.subarray(at, at + 65536));
+    }
+    budget.add(Buffer.from('\n'));
+    const { patch, sections } = budget.end();
+    assert.ok(performance.now() - started < 300);
+    assert.strictEqual(patch.length, 45 + line.length);
+    assert.deepStrictEqual(sections, [
+      { header: 'diff --git a/min.js b/min.js', lines: 1, kept: true },
+    ]);
+  });
 });
 
 suite('Files left out of a patch', () => {

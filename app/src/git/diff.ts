@@ -115,12 +115,15 @@ export class PatchBudget {
     if (this.stopped) {
       return true;
     }
-    const text = this.pending + this.decoder.write(chunk);
-    const end = text.lastIndexOf('\n');
-    this.pending = text.slice(end + 1);
+    const decoded = this.decoder.write(chunk);
+    const end = decoded.lastIndexOf('\n');
     let from = 0;
-    if (end !== -1) {
-      for (const line of text.slice(0, end).split('\n')) {
+    if (end === -1) {
+      this.pending += decoded;
+    } else {
+      const text = this.pending + decoded.slice(0, end);
+      this.pending = decoded.slice(end + 1);
+      for (const line of text.split('\n')) {
         const at = chunk.indexOf(0x0a, from);
         const bytes = this.pendingBytes + at + 1 - from;
         this.pendingBytes = 0;
