@@ -155,6 +155,35 @@ suite('View of worktrees', function () {
     );
   });
 
+  test('opens the main worktree of a tab picked by another path to its folder as that main worktree, not a linked one', async () => {
+    const link = path.join(folder, 'app.link');
+    fs.symlinkSync(repository.root, link, 'junction');
+    const host = new FakeHost();
+    host.folders = [link];
+    try {
+      await withView(
+        log,
+        [repository.root, other],
+        async (view) => {
+          await view.connection.receive({ type: 'browseRepositories' });
+          const shown = view.page.last('tabs');
+          assert.deepStrictEqual(
+            shown?.tabs.map((tab) => tab.name),
+            ['app', 'other'],
+          );
+          assert.strictEqual(shown.active, repository.root);
+          assert.strictEqual(shown.worktree, repository.root);
+          assert.strictEqual(shown.worktrees?.[0]?.root, repository.root);
+          assert.deepStrictEqual(view.store.get(worktreesKey), {});
+        },
+        true,
+        host,
+      );
+    } finally {
+      fs.rmSync(link);
+    }
+  });
+
   test('switches between the worktrees of a tab, coming back to the one shown last', async () => {
     await withView(log, [repository.root, other], async (view) => {
       assert.strictEqual(view.page.last('repository')?.head, 'main');

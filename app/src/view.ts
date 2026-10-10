@@ -842,8 +842,15 @@ export class FastforwardView {
         (worktree) => !worktree.bare && !worktree.missing,
       );
       const saved = storage.worktreeOf(repository);
+      const picked =
+        reopened || location.worktree === undefined
+          ? undefined
+          : await knownFolder(
+              location.worktree,
+              usable.map((other) => other.path),
+            );
       const worktree =
-        (reopened ? undefined : location.worktree) ??
+        picked ??
         usable.find((other) => sameRoot(other.path, saved))?.path ??
         usable[0]?.path;
       if (worktree !== undefined) {
