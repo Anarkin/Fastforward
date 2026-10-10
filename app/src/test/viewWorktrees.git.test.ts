@@ -411,6 +411,32 @@ suite('View of worktrees', function () {
     });
   });
 
+  test('checks out in the worktree shown, leaving the main worktree on its branch', async () => {
+    const own = await tempRepository(path.join(folder, 'checking-out'));
+    await own.commit('a');
+    await own.git('branch', 'target');
+    const linked = path.join(folder, 'checking-out.worktrees', 'linked');
+    await own.git('worktree', 'add', '-q', '-b', 'linked', linked);
+    await withView(log, [own.root], async (view) => {
+      const root = worktreeRoot(view, linked);
+      await view.connection.receive({ type: 'selectWorktree', root });
+      await view.connection.receive({
+        type: 'checkout',
+        root,
+        target: { kind: 'branch', name: 'target' },
+      });
+      assert.strictEqual(view.page.last('repository')?.head, 'target');
+    });
+    assert.strictEqual(
+      (await own.git('-C', linked, 'symbolic-ref', 'HEAD')).trim(),
+      'refs/heads/target',
+    );
+    assert.strictEqual(
+      (await own.git('symbolic-ref', 'HEAD')).trim(),
+      'refs/heads/main',
+    );
+  });
+
   test('tells every worktree of a repository when it last fetched, as each worktree has a FETCH_HEAD of its own', async () => {
     const origin = await tempRepository(path.join(folder, 'fetched-origin'));
     await origin.commit('a');
