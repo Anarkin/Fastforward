@@ -2,6 +2,7 @@ import type { Head } from './git/repository';
 import type { Stash } from './git/stashes';
 import type { WorkingTree } from './git/workingTree';
 import { Commits } from './history/commits';
+import { keepsTiedOrder, ranksOf } from './history/extend';
 import { Graph } from './history/graph';
 import {
   headsOf,
@@ -43,6 +44,7 @@ export interface TabState {
   partial: boolean;
   subjects: Map<string, string>;
   heads: Set<string>;
+  ranks: ReadonlyMap<string, number>;
   headCommit: string | undefined;
   stashes: ReadonlyMap<string, Stash>;
   fingerprint: string;
@@ -92,6 +94,7 @@ export function newTabState(): TabState {
     partial: false,
     subjects: new Map(),
     heads: new Set(),
+    ranks: new Map(),
     headCommit: undefined,
     stashes: new Map(),
     fingerprint: '',
@@ -119,12 +122,13 @@ export function loadHistory(
   head: Head | undefined,
   refs: readonly RefInfo[],
   stashes: readonly Stash[] = [],
+  dates: ReadonlyMap<string, number> = new Map(),
   partial = false,
 ): void {
   tab.fullHistory = fullHistory;
   tab.partial = partial;
   tab.heads = headsOf(fullHistory);
-  takeRefs(tab, head, refs, stashes);
+  takeRefs(tab, head, refs, stashes, dates);
   if (partial) {
     forgetHistory(tab);
   }
@@ -135,9 +139,11 @@ export function takeRefs(
   head: Head | undefined,
   refs: readonly RefInfo[],
   stashes: readonly Stash[] = [],
+  dates: ReadonlyMap<string, number> = new Map(),
 ): void {
   tab.headCommit = head?.commit;
   tab.stashes = new Map(stashes.map((stash) => [stash.commit, stash]));
+  tab.ranks = ranksOf(tipsOf(head, refs, false, stashes, dates));
   tab.fingerprint = fingerprint(head, refs, stashes);
   tab.decorated = decoratedCommits(refs, head, stashes);
 }
@@ -148,26 +154,44 @@ export function refsKeepHistory(
   refs: readonly RefInfo[],
   solo: boolean,
   stashes: readonly Stash[] = [],
+  dates: ReadonlyMap<string, number> = new Map(),
 ): boolean {
-  const tips = tipsOf(head, refs, solo, stashes);
+  const tips = tipsOf(head, refs, solo, stashes, dates);
+  const ranks = ranksOf(tips);
   return (
     historyLoaded(tab) &&
     [...tips].every((tip) => tab.fullHistory.has(tip)) &&
-    [...tab.heads].every((commit) => tips.has(commit))
+    [...tab.heads].every((commit) => tips.has(commit)) &&
+    keepsTiedOrder(
+      tab.heads,
+      (commit) => dates.get(commit),
+      (commit) => tab.ranks.get(commit),
+      (commit) => ranks.get(commit),
+    )
   );
 }
 
+// In the order git takes them, which it gives heads of the same time in:
+// HEAD, the refs as for-each-ref lists them in dates, counting the remote
+// HEADs refs leave out, then the stashes
 export function tipsOf(
   head: Head | undefined,
   refs: readonly RefInfo[],
   solo: boolean,
   stashes: readonly Stash[] = [],
+  dates: ReadonlyMap<string, number> = new Map(),
 ): Set<string> {
-  const tips = new Set(
-    solo ? [] : [...refs, ...stashes].map((ref) => ref.commit),
-  );
+  const tips = new Set<string>();
   if (head?.commit) {
     tips.add(head.commit);
+  }
+  if (!solo) {
+    for (const tip of [
+      ...dates.keys(),
+      ...[...refs, ...stashes].map((ref) => ref.commit),
+    ]) {
+      tips.add(tip);
+    }
   }
   return tips;
 }

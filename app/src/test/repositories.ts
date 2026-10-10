@@ -246,6 +246,30 @@ export function commitText(tree: string, message: string): string {
   return `tree ${tree}\nauthor ${person}\ncommitter ${person}\n\n${message}\n`;
 }
 
+// As each command the repository runs is a minute later, a commit of a given
+// time is written whole
+export async function commitAtTime(
+  repository: TempRepository,
+  parent: string,
+  time: number,
+  message: string,
+): Promise<string> {
+  const [tree] = await repository.resolve(`${parent}^{tree}`);
+  const person = `Test <test@example.com> ${time} +0000`;
+  const file = `${repository.root}-${message}`;
+  fs.writeFileSync(
+    file,
+    `tree ${tree}\nparent ${parent}\nauthor ${person}\ncommitter ${person}\n\n${message}\n`,
+  );
+  try {
+    return (
+      await repository.git('hash-object', '-t', 'commit', '-w', file)
+    ).trim();
+  } finally {
+    fs.rmSync(file);
+  }
+}
+
 let gitPath: Promise<string> | undefined;
 
 export function installedGit(): Promise<string> {

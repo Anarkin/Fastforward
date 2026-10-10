@@ -59,7 +59,7 @@ suite('Tab state', () => {
     const head = { commit: 'h40' };
     const layOut = (entries: typeof long, partial: boolean) => {
       const tab = newTabState();
-      loadHistory(tab, Commits.of(entries), head, [], [], partial);
+      loadHistory(tab, Commits.of(entries), head, [], [], new Map(), partial);
       assert.strictEqual(historyLoaded(tab), !partial);
       layOutHistory(tab, false, head.commit);
       return commitsMessage(tab, firstPage(tab, false), page(0, 25));
@@ -207,6 +207,7 @@ suite('Tab state', () => {
       Commits.of([{ hash: 's', parents: ['c'] }, ...history]),
       main,
       [at('c')],
+      [stash],
     );
     assert.strictEqual(
       refsKeepHistory(tab, main, [at('c')], false, [stash]),
@@ -221,6 +222,67 @@ suite('Tab state', () => {
     assert.strictEqual(
       refsKeepHistory(tab, main, [at('c')], true, [stash]),
       true,
+    );
+  });
+
+  test('keeps the history only while git takes its tips of the same time in the order it has them, as HEAD moving or a ref renamed can swap them', () => {
+    const tied = [
+      { hash: 'a', parents: ['x'] },
+      { hash: 'c', parents: ['x'] },
+      { hash: 'x', parents: [] },
+    ];
+    const main = { name: 'main', commit: 'a' };
+    const aaa = { name: 'aaa', commit: 'c' };
+    const refs = [at('c'), { ...at('a'), name: 'main' }];
+    const sameTime = new Map([
+      ['c', 10],
+      ['a', 10],
+    ]);
+    const tab = newTabState();
+    loadHistory(tab, Commits.of(tied), main, refs, [], sameTime);
+    assert.strictEqual(
+      refsKeepHistory(tab, main, refs, false, [], sameTime),
+      true,
+    );
+    assert.strictEqual(
+      refsKeepHistory(tab, aaa, refs, false, [], sameTime),
+      false,
+    );
+    assert.strictEqual(refsKeepHistory(tab, aaa, refs, false), false);
+    assert.strictEqual(
+      refsKeepHistory(
+        tab,
+        aaa,
+        refs,
+        false,
+        [],
+        new Map([
+          ['c', 10],
+          ['a', 20],
+        ]),
+      ),
+      true,
+    );
+    const detached = { commit: 'x' };
+    const [a, c, x] = tied;
+    loadHistory(tab, Commits.of([c, a, x]), detached, refs, [], sameTime);
+    const renamed = [
+      { ...at('a'), name: 'main' },
+      { ...at('c'), name: 'zzz' },
+    ];
+    assert.strictEqual(
+      refsKeepHistory(
+        tab,
+        detached,
+        renamed,
+        false,
+        [],
+        new Map([
+          ['a', 10],
+          ['c', 10],
+        ]),
+      ),
+      false,
     );
   });
 

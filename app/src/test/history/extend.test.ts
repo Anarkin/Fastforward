@@ -98,6 +98,16 @@ suite('Extending a history', () => {
     );
   });
 
+  test('leaves it to be read again when git takes old tips of the same time in another order than the history has them, as once HEAD moves from one to the other', () => {
+    const tied = { c2: 30, s1: 30 };
+    assert.ok(extended('40 b1 c1\n', ['b1', 'c2', 's1'], tied));
+    assert.strictEqual(
+      extended('40 b1 c1\n', ['b1', 's1', 'c2'], tied),
+      undefined,
+    );
+    assert.ok(extended('40 b1 c1\n', ['b1', 's1', 'c2']));
+  });
+
   test('leaves it to be read again when new commits of the same time are on different lines, as git could put either first', () => {
     assert.strictEqual(
       extended('40 n1 c2\n40 n2 s1\n', ['n1', 'n2']),
@@ -140,6 +150,7 @@ suite('Extending a history among its newest commits', () => {
     return regionHistory({
       older: Commits.of(line),
       oldHeads: new Set(['c2']),
+      oldTimes: new Map([['c2', 30]]),
       newer: newerOf(newer),
       tips: new Set(tips),
       region: newerOf(region),
@@ -220,6 +231,32 @@ suite('Extending a history among its newest commits', () => {
   test('leaves it to be read again when an old tip is neither kept nor built on', () => {
     assert.strictEqual(
       amongNewest('35 m c1 f1\n15 f1 c0\n', '35 m c1 f1\n20 c1 c0\n15 f1 c0\n'),
+      undefined,
+    );
+  });
+
+  test('leaves it to be read again when git takes old tips of the same time below the newest in another order than the history has them', () => {
+    const below = {
+      older: Commits.of([
+        { hash: 'h', parents: ['c0'] },
+        { hash: 'p', parents: ['c0'] },
+        { hash: 'q', parents: ['c0'] },
+        { hash: 'c0', parents: [] },
+      ]),
+      oldHeads: new Set(['h', 'p', 'q']),
+      oldTimes: new Map([
+        ['h', 30],
+        ['p', 10],
+        ['q', 10],
+      ]),
+      newer: newerOf('20 n c0\n'),
+      region: newerOf('30 h c0\n20 n c0\n'),
+      since: 20,
+      belowTimes: new Map([['c0', 5]]),
+    };
+    assert.ok(regionHistory({ ...below, tips: new Set(['h', 'n', 'p', 'q']) }));
+    assert.strictEqual(
+      regionHistory({ ...below, tips: new Set(['h', 'n', 'q', 'p']) }),
       undefined,
     );
   });

@@ -6,6 +6,7 @@ import { readRefs } from '../../git/repository';
 import { headsOf } from '../../history/merges';
 import { tipsOf } from '../../tabState';
 import {
+  commitAtTime,
   removeFolder,
   tempFolder,
   tempRepository,
@@ -47,7 +48,7 @@ async function across(
     root,
     older,
     headsOf(older),
-    tipsOf(after.head, after.refs, solo, after.stashes),
+    tipsOf(after.head, after.refs, solo, after.stashes, after.dates),
     solo ? [] : stashes,
     after.dates,
   );
@@ -286,6 +287,57 @@ suite('Extending the history read from git', function () {
       }
     }
     assert.ok(extendedCount >= 3, `${extendedCount} rounds extended`);
+  });
+
+  test('leaves the history to be read whole once HEAD leaves one of two tips of the same second for a commit on another branch, as git then takes the other first', async () => {
+    const repo = await repository('extend-tied-tips');
+    const [main] = await repo.resolve('main');
+    const time = Number(
+      (await repo.git('log', '-1', '--format=%ct', main)).trim(),
+    );
+    const a = await commitAtTime(repo, main, time + 1, 'a');
+    const c = await commitAtTime(repo, main, time + 1, 'c');
+    await repo.git('update-ref', 'refs/heads/main', a);
+    await repo.git('branch', 'aaa', c);
+    const { extended, reloaded, added } = await across(repo, async () => {
+      await repo.git('checkout', '-q', 'side');
+      await repo.commit('s2', { 's.txt': 'two\n' });
+    });
+    assert.strictEqual(added, 1);
+    assert.deepStrictEqual(
+      reloaded.slice(1, 3).map(({ hash }) => hash),
+      [c, a],
+    );
+    assert.strictEqual(extended, undefined);
+  });
+
+  test("adds a commit beside two remote branches of the same second, which git takes in the order their remote's HEAD puts them in, as reading it whole would", async () => {
+    const repo = await repository('extend-remote-head');
+    const [main] = await repo.resolve('main');
+    const time = Number(
+      (await repo.git('log', '-1', '--format=%ct', main)).trim(),
+    );
+    for (const [branch, message] of [
+      ['zmain', 'a'],
+      ['aaa', 'c'],
+    ]) {
+      await repo.git(
+        'update-ref',
+        `refs/remotes/origin/${branch}`,
+        await commitAtTime(repo, main, time + 1, message),
+      );
+    }
+    await repo.git(
+      'symbolic-ref',
+      'refs/remotes/origin/HEAD',
+      'refs/remotes/origin/zmain',
+    );
+    const { extended, reloaded, added } = await across(repo, () =>
+      repo.commit('c2', { 'a.txt': 'two\n' }),
+    );
+    assert.strictEqual(added, 1);
+    assert.ok(extended);
+    assert.deepStrictEqual(extended, reloaded);
   });
 
   test('adds a branch started from an older commit and tagged at its tip, as reading it whole would', async () => {

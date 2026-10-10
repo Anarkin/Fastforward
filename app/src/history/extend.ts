@@ -45,12 +45,68 @@ export function extendHistory({
     }
   }
   if (
+    !keepsTiedOldTips({ older, oldHeads, oldTimes, newer, tips }) ||
     !aboveOldTips(newer, times, oldHeads, oldTimes) ||
     !inOneLineByTime(newer, times)
   ) {
     return undefined;
   }
   return Commits.replacingTop(newer, older, 0);
+}
+
+export function ranksOf(tips: Iterable<string>): Map<string, number> {
+  return new Map(Array.from(tips, (tip, rank) => [tip, rank]));
+}
+
+// Git gives heads of the same time in the order it is given them as tips, so
+// a list keeps its order only while each tie keeps its own; a head of unknown
+// time has to keep its order to every other head
+export function keepsTiedOrder(
+  heads: Iterable<string>,
+  timeOf: (head: string) => number | undefined,
+  before: (head: string) => number | undefined,
+  after: (head: string) => number | undefined,
+): boolean {
+  const ranked: { time: number | undefined; was: number; is: number }[] = [];
+  for (const head of heads) {
+    const was = before(head);
+    const is = after(head);
+    if (was === undefined || is === undefined) {
+      return false;
+    }
+    ranked.push({ time: timeOf(head), was, is });
+  }
+  ranked.sort((a, b) => a.was - b.was);
+  const lastOfTime = new Map<number, number>();
+  for (const { time, is } of ranked) {
+    if (time !== undefined) {
+      if ((lastOfTime.get(time) ?? -1) > is) {
+        return false;
+      }
+      lastOfTime.set(time, is);
+    }
+  }
+  return ranked.every(
+    (head) =>
+      head.time !== undefined ||
+      ranked.every((other) => other.was < head.was === other.is < head.is),
+  );
+}
+
+function keepsTiedOldTips({
+  older,
+  oldHeads,
+  oldTimes,
+  newer,
+  tips,
+}: Extension): boolean {
+  const ranks = ranksOf(tips);
+  return keepsTiedOrder(
+    [...oldHeads].filter((head) => !isBuiltOn(newer, head)),
+    (head) => oldTimes.get(head),
+    (head) => older.indexOf(head),
+    (head) => ranks.get(head),
+  );
 }
 
 export function keepsHistory({
@@ -70,7 +126,7 @@ function isBuiltOn(newer: Commits, head: string): boolean {
   return (newer.indexOf(head) ?? 0) >= newer.length;
 }
 
-export interface Region extends Omit<Extension, 'oldTimes'> {
+export interface Region extends Extension {
   readonly region: Commits;
   readonly since: number;
   readonly belowTimes: ReadonlyMap<string, number>;
@@ -84,6 +140,7 @@ export interface Region extends Omit<Extension, 'oldTimes'> {
 export function regionHistory({
   older,
   oldHeads,
+  oldTimes,
   newer,
   tips,
   region,
@@ -91,7 +148,11 @@ export function regionHistory({
   belowTimes,
 }: Region): Commits | undefined {
   const { times } = region;
-  if (!times || !keepsHistory({ older, oldHeads, newer, tips })) {
+  if (
+    !times ||
+    !keepsHistory({ older, oldHeads, newer, tips }) ||
+    !keepsTiedOldTips({ older, oldHeads, oldTimes, newer, tips })
+  ) {
     return undefined;
   }
   for (let at = 0; at < newer.length; at++) {

@@ -9,6 +9,7 @@ import type { Connection, FastforwardView } from '../view';
 import type { FakeStore } from './fakeStore';
 import { waitFor } from './fixtures';
 import {
+  commitAtTime,
   removeFolder,
   tempFolder,
   tempRepository,
@@ -235,6 +236,32 @@ suite('View refreshing one repository', function () {
         await shallow.commit('c3');
         await connection.refresh();
         assert.strictEqual(page.last('commits')?.total, 4);
+      },
+      'unwatched',
+    );
+  });
+
+  test('reads the history whole for a checkout of a tip made in the same second as the one left, as git takes the one checked out first', async () => {
+    const tied = await tempRepository(path.join(folder, 'tied'));
+    await tied.commit('x');
+    const [x] = await tied.resolve('HEAD');
+    const time = Number((await tied.git('log', '-1', '--format=%ct')).trim());
+    await tied.git(
+      'update-ref',
+      'refs/heads/main',
+      await commitAtTime(tied, x, time + 1, 'a'),
+    );
+    await tied.git('branch', 'aaa', await commitAtTime(tied, x, time + 1, 'c'));
+    await withView(
+      log,
+      [tied.root],
+      async ({ page, connection }) => {
+        const subjects = () =>
+          page.last('commits')?.commits.map((commit) => commit.subject);
+        assert.deepStrictEqual(subjects(), ['a', 'c', 'x']);
+        await tied.git('checkout', '-q', 'aaa');
+        await connection.refresh();
+        assert.deepStrictEqual(subjects(), ['c', 'a', 'x']);
       },
       'unwatched',
     );

@@ -1880,7 +1880,7 @@ export class FastforwardView {
   private async refreshHistory(context: Context): Promise<void> {
     const refs = await this.refsOf(context);
     const { tab } = context;
-    const { head, refs: listed, stashes, shallow } = refs;
+    const { head, refs: listed, stashes, dates, shallow } = refs;
     if (shallow !== tab.shallow) {
       forgetHistory(tab);
     }
@@ -1892,10 +1892,10 @@ export class FastforwardView {
     }
     const known = Promise.resolve(refs);
     const solo = this.storage.soloOf(context.root);
-    if (refsKeepHistory(tab, head, listed, solo, stashes)) {
+    if (refsKeepHistory(tab, head, listed, solo, stashes, dates)) {
       this.log.info(strings.log.refsKept);
       const layOut = tab.shownStale || tab.headCommit !== head?.commit;
-      takeRefs(tab, head, listed, stashes);
+      takeRefs(tab, head, listed, stashes, dates);
       await Promise.all([
         this.sendRepository(context, known),
         this.sendShownHistory(context, { keepPlace: true, layOut }),
@@ -1909,7 +1909,7 @@ export class FastforwardView {
       this.log.info(
         strings.log.refsExtended(extended.length - tab.fullHistory.length),
       );
-      loadHistory(tab, extended, head, listed, stashes);
+      loadHistory(tab, extended, head, listed, stashes, dates);
       await Promise.all([
         this.sendRepository(context, known),
         this.sendShownHistory(context, { keepPlace: true }),
@@ -1935,7 +1935,7 @@ export class FastforwardView {
       root,
       older,
       tab.heads,
-      tipsOf(head, refs, solo, stashes),
+      tipsOf(head, refs, solo, stashes, dates),
       solo ? [] : stashes.map((stash) => stash.commit),
       dates,
     );
@@ -1983,7 +1983,7 @@ export class FastforwardView {
         stashes.map((stash) => stash.commit),
       );
       loading.abort();
-      loadHistory(tab, fullHistory, head, listed, stashes);
+      loadHistory(tab, fullHistory, head, listed, stashes, read.dates);
       tab.shallow = read.shallow;
       if (this.storage.soloOf(context.root) !== solo) {
         forgetHistory(tab);
@@ -2048,7 +2048,7 @@ export class FastforwardView {
       if (recent === undefined || signal.aborted) {
         return;
       }
-      loadHistory(context.tab, recent, head, refs, stashes, true);
+      loadHistory(context.tab, recent, head, refs, stashes, dates, true);
       await this.sendShownHistory(context);
     } catch (error) {
       if (!signal.aborted) {
