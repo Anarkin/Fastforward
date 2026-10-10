@@ -429,6 +429,9 @@ export class FastforwardView {
       return false;
     }
     tab.isRepository = false;
+    if (tab.refreshError !== undefined) {
+      tab.refreshError = strings.messages.notRepository(root);
+    }
     return true;
   }
 

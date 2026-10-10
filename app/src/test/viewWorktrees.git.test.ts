@@ -420,6 +420,43 @@ suite('View of worktrees', function () {
     }
   });
 
+  test('takes back saying a worktree whose folder went away is not a repository once a refresh succeeds with it back', async () => {
+    const own = await tempRepository(path.join(folder, 'away'));
+    await own.commit('a');
+    const linked = path.join(folder, 'away.worktrees', 'linked');
+    const moved = `${linked}-moved`;
+    await own.git('worktree', 'add', '-q', '-b', 'linked', linked);
+    const view = await openView(log, [own.root], false);
+    try {
+      await view.store.update(worktreesKey, { [own.root]: linked });
+      await view.connection.receive({ type: 'ready' });
+      await view.view.idle();
+      fs.renameSync(linked, moved);
+      await own.git('branch', 'while-away');
+      await waitFor(
+        () => view.page.last('error') !== undefined,
+        'the refresh to fail',
+      );
+      const shown = view.page.last('error')?.message;
+      assert.match(shown ?? '', /is not a git repository/);
+      await view.view.idle();
+      fs.renameSync(moved, linked);
+      await own.git('branch', 'back');
+      await waitFor(
+        () => view.page.last('clearError') !== undefined,
+        'the refresh to succeed',
+      );
+      assert.strictEqual(view.page.last('clearError')?.message, shown);
+    } finally {
+      view.connection.dispose();
+    }
+    takeErrorsLogged(
+      logged,
+      /^refresh failed$/,
+      /^git .* failed: spawn .* ENOENT$/,
+    );
+  });
+
   test('updates the worktrees when another one switches branch', async () => {
     await withView(log, [repository.root], async (view) => {
       await repository.git('-C', review, 'switch', '-q', '-c', 'reviewing');
