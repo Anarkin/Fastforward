@@ -11,6 +11,7 @@ This file only observes and documents the codebase mainly for human readers; the
 - Once the paths of the uncommitted changes' patch would pass `16000` characters, every later file is left out and loads when opened; git is passed the files kept rather than those left out, so the command line stays under the `32767` characters Windows allows
 - A file over `2 MB` has its whole text shown as binary and not used for colors, and an untracked one's patch is diffed again on every refresh
 - Only the first `50` untracked files get line counts and are part of the All Changes or Unstaged patch, as each one is read on its own to count its lines and diffed on its own with `git diff --no-index`
+- An untracked text file over `2 MB` gets no line count and is left out of the All Changes or Unstaged patch, loading when opened, rather than being read whole to count its lines
 - A block of over `40000` removed by added lines, or `1 million` words and punctuation marks compared, has its lines paired in order instead of by similarity, as pairing compares every removed line with every added one
 - A removed and an added line paired up with over `1 million` tokens of one by those of the other, each word, run of spaces and punctuation mark counting as one, are marked as changed in full, like lines with no word in common, instead of word by word, as the word diff's table grows with both counts
 - Find in a diff stops collecting matches at `10000`, and its count then reads `10000+`, as each match is marked in the page
