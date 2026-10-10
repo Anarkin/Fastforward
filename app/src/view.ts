@@ -880,10 +880,16 @@ export class FastforwardView {
   }
 
   private groupTabs(): Promise<void> {
-    this.grouped ??= this.groupTabsNow().catch((error: unknown) => {
-      this.log.error(strings.log.groupingFailed);
-      this.log.error(error);
-    });
+    const { storage } = this;
+    this.grouped ??= storage.tabsGrouped
+      ? Promise.resolve()
+      : this.groupTabsNow().then(
+          () => this.save(storage.setTabsGrouped()),
+          (error: unknown) => {
+            this.log.error(strings.log.groupingFailed);
+            this.log.error(error);
+          },
+        );
     return this.grouped;
   }
 

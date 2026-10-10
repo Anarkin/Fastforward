@@ -259,6 +259,38 @@ suite('View of worktrees', function () {
     }
   });
 
+  test('merges the tabs stored for worktrees only once, so later starts show a tab without waiting on the folders of the others', async () => {
+    const offline = path.join(folder, 'offline');
+    const first = await openView(log, [repository.root, offline], 'unwatched');
+    first.connection.dispose();
+    const started = await openView(log, [], false);
+    try {
+      for (const [key, value] of first.store.values) {
+        await started.store.update(key, value);
+      }
+      const held = gate();
+      stubMethod(started.view, 'locateSavedTab', async (original, ...args) => {
+        if (args[0] === offline) {
+          await held.opened;
+        }
+        return original(...args);
+      });
+      const ready = started.connection.receive({ type: 'ready' });
+      await waitFor(
+        () => started.page.last('commits') !== undefined,
+        'the shown tab',
+      );
+      assert.deepStrictEqual(
+        started.page.last('tabs')?.tabs.map((tab) => tab.name),
+        ['app', 'offline'],
+      );
+      held.open();
+      await ready;
+    } finally {
+      started.connection.dispose();
+    }
+  });
+
   test('opens a bare repository by the folder holding it at its first worktree, with no main worktree', async () => {
     const layout = path.join(folder, 'bare-layout');
     const bare = await tempRepository(path.join(layout, '.bare'), {

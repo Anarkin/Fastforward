@@ -23,6 +23,7 @@ export const soloKey = 'solo';
 export const bookmarksKey = 'bookmarks';
 export const worktreesKey = 'activeWorktrees';
 export const lastFetchesKey = 'lastFetches';
+const tabsGroupedKey = 'tabsGrouped';
 
 export interface Store {
   get(key: string): unknown;
@@ -144,6 +145,14 @@ export class Storage {
       this.state.update(tabsKey, uniqueRoots(tabs)),
       this.state.update(activeTabKey, active),
     ]);
+  }
+
+  get tabsGrouped(): boolean {
+    return this.state.get(tabsGroupedKey) === true;
+  }
+
+  async setTabsGrouped(): Promise<void> {
+    await this.state.update(tabsGroupedKey, true);
   }
 
   get recent(): string[] {
