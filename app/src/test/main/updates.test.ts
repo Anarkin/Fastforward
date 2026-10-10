@@ -86,7 +86,8 @@ function withUpdates(
 suite('Updates', () => {
   const installed = 'C:\\Users\\a\\AppData\\Local\\Programs\\fastforward';
   const exists = (file: string) =>
-    file === `${installed}\\Uninstall Fastforward.exe`;
+    file === `${installed}\\Uninstall Fastforward.exe` ||
+    file === '/opt/Fastforward/resources/package-type';
 
   test('installs updates only in an installed app on Windows or Linux, and on macOS only says one is out, as Squirrel.Mac installs only updates signed with a Developer ID, and the macOS app is only ad-hoc signed', () => {
     const executable = `${installed}\\Fastforward.exe`;
@@ -95,7 +96,13 @@ suite('Updates', () => {
       'install',
     );
     assert.strictEqual(
-      updateMode(false, 'linux', '/opt/Fastforward/fastforward', exists),
+      updateMode(false, 'linux', '/opt/Fastforward/fastforward', exists, {}),
+      'install',
+    );
+    assert.strictEqual(
+      updateMode(false, 'linux', '/tmp/.mount_FastfoXy12/fastforward', exists, {
+        APPIMAGE: '/home/a/Applications/Fastforward.AppImage',
+      }),
       'install',
     );
     assert.strictEqual(updateMode(true, 'win32', executable, exists), 'off');
@@ -121,6 +128,19 @@ suite('Updates', () => {
         'win32',
         'C:\\Users\\a\\AppData\\Local\\Temp\\2abc\\Fastforward.exe',
         exists,
+      ),
+      'off',
+    );
+  });
+
+  test('leaves a Linux app run neither as an AppImage nor from the deb alone, as an extracted AppImage, which the updater checks nothing for, so a check said it was up to date', () => {
+    assert.strictEqual(
+      updateMode(
+        false,
+        'linux',
+        '/home/a/squashfs-root/fastforward',
+        exists,
+        {},
       ),
       'off',
     );

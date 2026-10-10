@@ -33,6 +33,7 @@ export function updateMode(
   platform: NodeJS.Platform,
   executable: string,
   exists: (file: string) => boolean = fs.existsSync,
+  env: NodeJS.ProcessEnv = process.env,
 ): UpdateMode {
   if (development) {
     return 'off';
@@ -40,15 +41,23 @@ export function updateMode(
   if (platform === 'darwin') {
     return 'notify';
   }
-  return platform !== 'win32' ||
-    exists(
-      path.win32.join(
-        path.win32.dirname(executable),
-        'Uninstall Fastforward.exe',
-      ),
-    )
-    ? 'install'
-    : 'off';
+  const installed =
+    platform === 'win32'
+      ? exists(
+          path.win32.join(
+            path.win32.dirname(executable),
+            'Uninstall Fastforward.exe',
+          ),
+        )
+      : env.APPIMAGE !== undefined ||
+        exists(
+          path.posix.join(
+            path.posix.dirname(executable),
+            'resources',
+            'package-type',
+          ),
+        );
+  return installed ? 'install' : 'off';
 }
 
 function firstLine(error: unknown): string {

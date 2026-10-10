@@ -60,6 +60,7 @@ This file only observes and documents the codebase mainly for human readers; the
 - `git --version` is waited for at most `10 seconds` when the app looks for git, past which git counts as missing
 - Updates are checked for when the app starts and `4 hours` after each check ends, until one is downloaded, after which none is checked for until the app restarts
 - On Windows, only an app set up by the installer updates itself, not one run from `win-unpacked`
+- On Linux, only an app run as an AppImage, or one with the `package-type` file the deb build adds to its `resources` folder, updates itself, not an AppImage extracted with `--appimage-extract`, as the updater replaces the AppImage it was started from
 - On macOS, an update is only announced, with a link to its release, as Squirrel.Mac installs only updates signed with a Developer ID, and the app is only ad-hoc signed
 - At most `4` notices are shown, dropping the oldest
 - At most `20` recent repositories are kept, dropping the oldest
