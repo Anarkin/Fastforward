@@ -255,6 +255,62 @@ suite('App', function () {
     await waitForFocus(page.locator('.virtual-rows.list'), 'the commit list');
   });
 
+  test('gives the keyboard back to the commit list once the search popup closes on Esc or a jump, by key or click', async () => {
+    const list = page.locator('.virtual-rows.list');
+    const field = page.locator('.locations-search');
+    const popup = page.locator('.locations-popup');
+    await page.keyboard.press('s');
+    await waitForFocus(field, 'the search field');
+    await page.keyboard.press('Escape');
+    await popup.waitFor({ state: 'detached' });
+    await waitForFocus(list, 'the commit list');
+    await page.keyboard.press('s');
+    await waitForFocus(field, 'the search field');
+    await field.fill('second');
+    await popup.locator('.commit', { hasText: 'second' }).waitFor();
+    await page.keyboard.press('Enter');
+    await popup.waitFor({ state: 'detached' });
+    await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
+    await waitForFocus(list, 'the commit list');
+    await page.keyboard.press('ArrowDown');
+    await page.locator('.commit.selected', { hasText: 'first' }).waitFor();
+    await page.keyboard.press('s');
+    await waitForFocus(field, 'the search field');
+    await field.fill('main');
+    await popup.locator('.row.result[title="main"]').click();
+    await popup.waitFor({ state: 'detached' });
+    await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
+    await waitForFocus(list, 'the commit list');
+    await page.keyboard.press('ArrowDown');
+    await page.locator('.commit.selected', { hasText: 'first' }).waitFor();
+  });
+
+  test('gives the keyboard back to the commit list once the Fetch button it is on is disabled while fetching', async () => {
+    const stop = path.join(folder, 'stop-fetch').replaceAll('\\', '/');
+    const fetchButton = page.locator('.pin-pair > .nav-button').first();
+    await repository.git('remote', 'add', 'origin', 'ssh://stalled.invalid/x');
+    await repository.git(
+      'config',
+      'core.sshCommand',
+      `while [ ! -e '${stop}' ]; do sleep 0.2; done; false`,
+    );
+    try {
+      await fetchButton.click();
+      await page.locator('.pin-pair > .nav-button.running').waitFor();
+      await waitForFocus(page.locator('.virtual-rows.list'), 'the commit list');
+      await page.keyboard.press('ArrowDown');
+      await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
+    } finally {
+      fs.writeFileSync(stop, '');
+      await page
+        .locator('.pin-pair > .nav-button.running')
+        .waitFor({ state: 'detached' });
+      await repository.git('remote', 'remove', 'origin');
+      await repository.git('config', '--unset', 'core.sshCommand');
+      fs.rmSync(stop);
+    }
+  });
+
   test('lists the history and shows a commit entire, with its change', async () => {
     await page.locator('.commit', { hasText: 'second' }).click();
     await page.locator('.row.file', { hasText: 'changed.txt' }).click();
@@ -304,6 +360,22 @@ suite('App', function () {
     await field.press('Escape');
     await count.waitFor({ state: 'detached' });
     await waitForCount(page.locator('.find-match'), 0, 'matches');
+  });
+
+  test('gives the keyboard back to the diff once Esc leaves the empty find field', async () => {
+    await openChangedFile();
+    await page.keyboard.press('Control+F');
+    await waitForFocus(page.locator('.diff-find-input'), 'the find field');
+    await page.keyboard.press('Escape');
+    await waitForFocus(page.locator('.diff-view .virtual-rows'), 'the diff');
+  });
+
+  test('keeps the keyboard in the diff once it is drawn anew for a commit selected from there, such as on Alt+Down', async () => {
+    await openChangedFile();
+    await page.locator('.diff-view .virtual-rows').focus();
+    await page.keyboard.press('Alt+ArrowDown');
+    await page.locator('.commit.selected', { hasText: 'first' }).waitFor();
+    await waitForFocus(page.locator('.diff-view .virtual-rows'), 'the diff');
   });
 
   test('shows the diff side by side on its button, the default, and inline again on the other, saving that choice', async () => {

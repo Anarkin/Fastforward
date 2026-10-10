@@ -6,6 +6,7 @@ import {
   type LeftOut,
   type TextRequest,
 } from '../shared/protocol';
+import { columnFocusOf } from './activeColumn';
 import { Column } from './column';
 import { parsePatch, type DiffFile } from './diff';
 import { DiffView, type WholeFile } from './diffView';
@@ -218,7 +219,7 @@ export function DiffFind({
             if (query) {
               onQuery('');
             } else {
-              event.currentTarget.blur();
+              columnFocusOf(event.currentTarget)?.focus();
             }
           }
         }}

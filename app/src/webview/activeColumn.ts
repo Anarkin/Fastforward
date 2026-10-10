@@ -67,6 +67,22 @@ export function columnStep(
   return { next, preventDefault: move.tab || next !== undefined };
 }
 
+export function columnFocusOf(
+  element: { closest(selector: string): ParentNode | null } | null,
+): HTMLElement | null | undefined {
+  return element
+    ?.closest('.column')
+    ?.querySelector<HTMLElement>(`[${columnFocusAttribute}]`);
+}
+
+export function keyboardDropped(
+  lost: { readonly isConnected: boolean; matches(selector: string): boolean },
+  focused: unknown,
+  body: unknown,
+): boolean {
+  return focused === body && (!lost.isConnected || lost.matches(':disabled'));
+}
+
 interface ColumnElement {
   readonly parentElement: { readonly children: ArrayLike<unknown> } | null;
 }

@@ -21,6 +21,7 @@ import { findRef } from '../shared/refNames';
 import { pinnedRefs } from './bookmarks';
 import { byName } from './byName';
 import { BackIcon } from './icons';
+import { columnFocusOf } from './activeColumn';
 import {
   CommitBubble,
   DetachedHead,
@@ -406,6 +407,14 @@ export function LocationsPopup({
   const height = usePopupHeight(popup);
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => input.current?.select(), []);
+  useEffect(
+    () => () => {
+      if (document.activeElement === document.body) {
+        columnFocusOf(anchor.current)?.focus();
+      }
+    },
+    [anchor],
+  );
   const refs = useMemo(() => repository?.refs ?? [], [repository]);
   const refsByCommit = useMemo(
     () => Map.groupBy(refs, (ref) => ref.commit),

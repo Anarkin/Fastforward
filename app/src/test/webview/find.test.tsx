@@ -327,10 +327,16 @@ suite('Find in diff', () => {
     ]);
   });
 
-  test('steps with Enter and Shift+Enter, and clears on Esc before letting go', () => {
+  test('steps with Enter and Shift+Enter, and clears on Esc before giving the keyboard to the diff', () => {
     const steps: number[] = [];
     const queries: string[] = [];
-    let blurred = false;
+    let left = false;
+    const column = {
+      querySelector: (selector: string) =>
+        selector === '[data-column-focus]'
+          ? { focus: () => (left = true) }
+          : null,
+    };
     const field = (query: string) => {
       const element = DiffFind({
         query,
@@ -346,7 +352,7 @@ suite('Find in diff', () => {
               onKeyDown: (
                 event: ReturnType<typeof keyPress> & {
                   preventDefault: () => void;
-                  currentTarget: { blur: () => void };
+                  currentTarget: { closest: (selector: string) => unknown };
                 },
               ) => void;
             }>,
@@ -360,16 +366,19 @@ suite('Find in diff', () => {
       field(query).props.children[0].props.onKeyDown({
         ...keyPress(key, { shiftKey }),
         preventDefault: noop,
-        currentTarget: { blur: () => (blurred = true) },
+        currentTarget: {
+          closest: (selector: string) =>
+            selector === '.column' ? column : null,
+        },
       });
     press('x', 'Enter');
     press('x', 'Enter', true);
     press('x', 'Escape');
     assert.deepStrictEqual(steps, [1, -1]);
     assert.deepStrictEqual(queries, ['']);
-    assert.ok(!blurred);
+    assert.ok(!left);
     press('', 'Escape');
-    assert.ok(blurred);
+    assert.ok(left);
     const html = renderToStaticMarkup(field('x'));
     assert.match(html, /placeholder="Search…"/);
     assert.match(

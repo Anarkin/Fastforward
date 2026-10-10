@@ -38,6 +38,7 @@ import {
   columnOrder,
   columnStep,
   forwardedColumn,
+  keyboardDropped,
   shownColumns,
   type ColumnName,
 } from './activeColumn';
@@ -209,6 +210,22 @@ export function App({ name, post: postToHost, listen }: Props) {
     },
     [columnsContainer],
   );
+  useEffect(() => {
+    const onFocusOut = ({ target }: FocusEvent) => {
+      if (
+        target instanceof Element &&
+        columnsContainer.current?.contains(target)
+      ) {
+        queueMicrotask(() => {
+          if (keyboardDropped(target, document.activeElement, document.body)) {
+            focusColumn(activeColumn);
+          }
+        });
+      }
+    };
+    document.addEventListener('focusout', onFocusOut);
+    return () => document.removeEventListener('focusout', onFocusOut);
+  }, [columnsContainer, focusColumn, activeColumn]);
 
   useEffect(() => {
     const onMessage = (message: ToWebview) => {

@@ -5,9 +5,15 @@ import {
   columnOf,
   columnStep,
   forwardedColumn,
+  keyboardDropped,
   shownColumns,
 } from '../../webview/activeColumn';
 import { element, keyPress } from '../fixtures';
+
+const lost = (isConnected: boolean, disabled = false) => ({
+  isConnected,
+  matches: (selector: string) => selector === ':disabled' && disabled,
+});
 
 suite('Active column', () => {
   const key = keyPress('ArrowRight', { target: element('DIV') });
@@ -113,6 +119,15 @@ suite('Active column', () => {
     assert.strictEqual(columnOf(inColumn(2)), 'diff');
     assert.strictEqual(columnOf({ closest: () => null }), undefined);
     assert.strictEqual(columnOf(null), undefined);
+  });
+
+  test('takes the keyboard back once what had it is removed or disabled, but not from what took it instead, nor after a click on what takes no focus, which would lose the text the click selects', () => {
+    const body = {};
+    assert.strictEqual(keyboardDropped(lost(false), body, body), true);
+    assert.strictEqual(keyboardDropped(lost(true, true), body, body), true);
+    assert.strictEqual(keyboardDropped(lost(false), {}, body), false);
+    assert.strictEqual(keyboardDropped(lost(true, true), {}, body), false);
+    assert.strictEqual(keyboardDropped(lost(true), body, body), false);
   });
 });
 
