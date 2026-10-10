@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import type { ChildProcess, SpawnOptions } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { gitErrorText } from '../../git/errorText';
@@ -26,6 +27,30 @@ import {
 } from '../repositories';
 
 const emptyTree = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
+
+type Spawn = (
+  command: string,
+  args: readonly string[],
+  options: SpawnOptions,
+) => ChildProcess;
+
+async function searchingWith(
+  start: (spawn: Spawn, ...git: Parameters<Spawn>) => ChildProcess,
+  search: () => Promise<void>,
+): Promise<void> {
+  const childProcess = process.getBuiltinModule('node:child_process');
+  const { spawn } = childProcess;
+  const starting: Spawn = (command, args, options) =>
+    args.some((arg) => arg.startsWith('--format=%H%x00'))
+      ? start(spawn, command, args, options)
+      : spawn(command, args, options);
+  Reflect.set(childProcess, 'spawn', starting);
+  try {
+    await search();
+  } finally {
+    Reflect.set(childProcess, 'spawn', spawn);
+  }
+}
 
 suite('Git history', function () {
   this.timeout(20_000);
@@ -497,12 +522,64 @@ suite('Commit search', function () {
         searchCommits(gitPath, outside, 'ada', false),
         (error) => {
           assert.match(gitErrorText(error), /^fatal: not a git repository/);
-          assert.match(String(error), /git log failed/);
+          assert.match(String(error), /git log .+ failed/);
           return true;
         },
       );
     } finally {
       removeFolder(outside);
     }
+  });
+
+  test('says why git stopped when it said nothing', async () => {
+    await searchingWith(
+      (spawn, ...git) => {
+        const child = spawn(...git);
+        child.kill();
+        return child;
+      },
+      () =>
+        assert.rejects(
+          searchCommits(gitPath, search.root, 'ada', false),
+          (error) => {
+            assert.match(gitErrorText(error), /it was stopped by SIGTERM$/);
+            return true;
+          },
+        ),
+    );
+  });
+
+  test('searches every commit, however much git prints', async () => {
+    const [head] = await search.resolve('HEAD');
+    const printing = `
+      const skipped = '${'0'.repeat(40)}\\0a\\0b\\0c\\0d\\0' + 'x'.repeat(65536) + '\\0';
+      let left = 4200;
+      const write = () => {
+        while (left-- > 0) {
+          if (!process.stdout.write(skipped)) {
+            process.stdout.once('drain', write);
+            return;
+          }
+        }
+        process.stdout.end('${head}\\0a\\0b\\0c\\0d\\0needle\\0');
+      };
+      write();
+    `;
+    await searchingWith(
+      (spawn, _command, _args, options) =>
+        spawn(process.execPath, ['-e', printing], options),
+      async () => {
+        const found = await searchCommits(
+          gitPath,
+          search.root,
+          'needle',
+          false,
+        );
+        assert.deepStrictEqual(
+          found.commits.map((commit) => commit.hash),
+          [head],
+        );
+      },
+    );
   });
 });

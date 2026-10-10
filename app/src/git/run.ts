@@ -4,7 +4,7 @@ import { join, win32 } from 'node:path';
 import type { Readable } from 'node:stream';
 import { strings } from '../shared/strings';
 
-export const gitConfigArgs = [
+const gitConfigArgs = [
   '-c',
   'core.quotePath=false',
   '-c',
@@ -94,7 +94,7 @@ export function realGit(
 
 const realGits = new Map<string, GitCommand>();
 
-export function gitCommand(gitPath: string, runsHooks = false): GitCommand {
+function gitCommand(gitPath: string, runsHooks = false): GitCommand {
   if (runsHooks) {
     return { command: gitPath, env: {} };
   }
@@ -138,6 +138,7 @@ interface RunOptions {
   readonly runsHooks?: boolean;
   readonly writes?: boolean;
   readonly onOutput?: (chunk: Buffer) => void;
+  readonly unbounded?: boolean;
 }
 
 const maxOutput = 256 * 1024 * 1024;
@@ -165,6 +166,7 @@ export async function runGitBytes(
     runsHooks = false,
     writes = false,
     onOutput,
+    unbounded = false,
   }: RunOptions = {},
 ): Promise<Buffer> {
   signal?.throwIfAborted();
@@ -198,7 +200,7 @@ export async function runGitBytes(
       let size = 0;
       stream.on('data', (chunk: Buffer) => {
         size += chunk.length;
-        if (size > maxOutput) {
+        if (!unbounded && size > maxOutput) {
           tooLarge = true;
           stop();
         } else if (take) {
@@ -285,10 +287,7 @@ const running = new Map<ChildProcess, Promise<void>>();
 const writing = new Set<ChildProcess>();
 const writeTime = 30_000;
 
-export function keptRunning<T extends ChildProcess>(
-  child: T,
-  writes = false,
-): T {
+function keptRunning<T extends ChildProcess>(child: T, writes = false): T {
   running.set(
     child,
     new Promise((resolve) => {

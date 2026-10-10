@@ -1,4 +1,3 @@
-import { spawn } from 'node:child_process';
 import { StringDecoder } from 'node:string_decoder';
 import { Commits, CommitsBuilder } from '../history/commits';
 import { extendHistory, keepsHistory, regionHistory } from '../history/extend';
@@ -8,18 +7,7 @@ import type {
   CommitResults,
   CommitSearch,
 } from '../shared/protocol';
-import { strings } from '../shared/strings';
-import {
-  gitCommand,
-  gitConfigArgs,
-  gitEnv,
-  gitProcessOptions,
-  keptRunning,
-  runGit,
-  runGitBytes,
-  splitNul,
-  stopGit,
-} from './run';
+import { runGit, runGitBytes, splitNul } from './run';
 
 export async function headCommit(
   gitPath: string,
@@ -438,79 +426,45 @@ function streamMatches(
   signal: AbortSignal | undefined,
 ): Promise<FoundHashes> {
   const matches = new SearchMatches(query, limit, hidden);
-  return new Promise((resolve, reject) => {
-    if (signal?.aborted) {
-      reject(signal.reason);
-      return;
+  const stopping = new AbortController();
+  const capped = Promise.withResolvers<FoundHashes>();
+  const add = (record: string) => {
+    const result = stopping.signal.aborted ? undefined : matches.add(record);
+    if (result !== undefined) {
+      stopping.abort();
+      capped.resolve(result);
     }
-    let settled = false;
-    const finish = (settle: () => void) => {
-      if (!settled) {
-        settled = true;
-        signal?.removeEventListener('abort', abort);
-        void stopGit(child);
-        settle();
-      }
-    };
-    const abort = () => finish(() => reject(signal?.reason));
-    const { command, env } = gitCommand(gitPath);
-    const child = keptRunning(
-      spawn(
-        command,
-        [
-          ...gitConfigArgs,
-          'log',
-          ...historyRefs(solo),
-          '--stdin',
-          '-z',
-          '--format=%H%x00%aN%x00%aE%x00%cN%x00%cE%x00%B',
-          '--',
-        ],
-        { cwd, env: { ...gitEnv(), ...env }, ...gitProcessOptions() },
-      ),
-    );
-    signal?.addEventListener('abort', abort, { once: true });
-    child.stdin.on('error', () => undefined);
-    child.stdin.end(hashLines(stashes));
-    const onRecord = (record: string) => {
-      const result = settled ? undefined : matches.add(record);
-      if (result !== undefined) {
-        finish(() => resolve(result));
-      }
-    };
-    const decoder = new StringDecoder('utf8');
-    let pending = '';
-    let stderr = '';
-    child.stdout.on('data', (chunk: Buffer) => {
-      if (settled) {
-        return;
-      }
-      const { records, rest } = takeRecords(pending + decoder.write(chunk));
-      records.forEach(onRecord);
-      pending = rest;
-    });
-    child.stderr.on('data', (chunk: Buffer) => {
-      stderr += chunk.toString('utf8');
-    });
-    child.on('error', (error) => finish(() => reject(error)));
-    child.on('close', (code) => {
-      if (code !== 0) {
-        finish(() =>
-          reject(
-            Object.assign(new Error(strings.errors.gitFailed('log', stderr)), {
-              stderr: stderr.trim(),
-            }),
-          ),
-        );
-        return;
-      }
-      pending += decoder.end();
-      if (pending.length > 0) {
-        onRecord(pending);
-      }
-      finish(() => resolve(matches.end()));
-    });
+  };
+  const decoder = new StringDecoder('utf8');
+  let pending = '';
+  const searching = runGitBytes(
+    gitPath,
+    cwd,
+    [
+      'log',
+      ...historyRefs(solo),
+      '--stdin',
+      '-z',
+      '--format=%H%x00%aN%x00%aE%x00%cN%x00%cE%x00%B',
+      '--',
+    ],
+    {
+      input: hashLines(stashes),
+      signal: signal
+        ? AbortSignal.any([signal, stopping.signal])
+        : stopping.signal,
+      unbounded: true,
+      onOutput: (chunk) => {
+        const { records, rest } = takeRecords(pending + decoder.write(chunk));
+        pending = rest;
+        records.forEach(add);
+      },
+    },
+  ).then(() => {
+    const last = pending + decoder.end();
+    return (last.length > 0 ? matches.add(last) : undefined) ?? matches.end();
   });
+  return Promise.race([searching, capped.promise]);
 }
 
 export async function searchCommits(
