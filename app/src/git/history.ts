@@ -233,6 +233,7 @@ async function listNewHistory(
       '--date-order',
       '--parents',
       '--timestamp',
+      '--ignore-missing',
       '--stdin',
       '--',
     ],
@@ -255,7 +256,14 @@ async function commitTimes(
   const output = await runGit(
     gitPath,
     cwd,
-    ['rev-list', '--no-walk=unsorted', '--timestamp', '--stdin', '--'],
+    [
+      'rev-list',
+      '--no-walk=unsorted',
+      '--timestamp',
+      '--ignore-missing',
+      '--stdin',
+      '--',
+    ],
     { input: hashLines(hashes) },
   );
   return new Map(

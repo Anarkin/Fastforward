@@ -368,4 +368,17 @@ suite('Extending the history read from git', function () {
       assert.strictEqual(extended, undefined, name);
     }
   });
+
+  test('leaves the history to be read whole, rather than failing, once a tip it had is pruned from the repository along with its branch', async () => {
+    const repo = await repository('extend-pruned');
+    await repo.git('update-ref', '-d', 'refs/remotes/origin/side');
+    const { extended, gone } = await across(repo, async () => {
+      await repo.git('branch', '-q', '-D', 'side');
+      await repo.git('reflog', 'expire', '--expire=now', '--all');
+      await repo.git('gc', '-q', '--prune=now');
+      await repo.commit('c2', { 'a.txt': 'two\n' });
+    });
+    assert.strictEqual(gone, 1);
+    assert.strictEqual(extended, undefined);
+  });
 });
