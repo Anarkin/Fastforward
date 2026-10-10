@@ -176,7 +176,16 @@ export async function watchRepository(
   };
   let watchers: Watcher[];
   if (recursive) {
-    const folders = [root, ...gitDirs.filter((dir) => !isInside(root, dir))];
+    const realRoot = await realPath(root);
+    // Watching a folder recursively does not follow the links in it, such as
+    // a .git linked to a folder elsewhere
+    const apart = await Promise.all(
+      gitDirs.map(
+        async (dir) =>
+          !isInside(root, dir) || !isInside(realRoot, await realPath(dir)),
+      ),
+    );
+    const folders = [root, ...gitDirs.filter((_dir, index) => apart[index])];
     watchers = watchEach(folders, (folder) => {
       const watcher = fs.watch(folder, { recursive: true }, (event, file) =>
         (folder === root ? onEvent : onGitDirEvent)(folder, file, event),
@@ -590,6 +599,10 @@ function isInternalIn(
     }
   }
   return false;
+}
+
+function realPath(file: string): Promise<string> {
+  return fs.promises.realpath(file).catch(() => file);
 }
 
 function isExistingFolder(file: string): boolean {

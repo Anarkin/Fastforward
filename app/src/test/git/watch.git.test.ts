@@ -483,6 +483,33 @@ suite('Watching a repository', function () {
       assert.deepStrictEqual(errors, []);
     });
 
+    test(`refreshes for a commit when .git links to a folder elsewhere, which watching the folder it is in does not follow, watching ${recursive ? 'recursively' : 'folder by folder'}`, async () => {
+      const store = tempFolder('store');
+      const gitDir = path.join(store, 'project.git');
+      fs.renameSync(path.join(repository.root, '.git'), gitDir);
+      fs.symlinkSync(gitDir, path.join(repository.root, '.git'), 'junction');
+      try {
+        watcher = await watchRepository(repository.gitPath, repository.root, {
+          delay: 50,
+          maxDelay: 200,
+          recursive,
+          onChange: ({ refs }) => changes.push(refs),
+          onError: (error) => errors.push(error),
+        });
+        await settled();
+        let commits = 0;
+        await waitFor(async () => {
+          await repository.git('commit', '--allow-empty', '-m', `${commits++}`);
+          return changes.includes(true);
+        }, 'a commit');
+        assert.deepStrictEqual(errors, []);
+      } finally {
+        await watcher?.dispose();
+        watcher = undefined;
+        removeFolder(store);
+      }
+    });
+
     test(`stays quiet for a fetch that brings nothing, and refreshes refs alone for one that brings commits, a tag or a branch, watching ${recursive ? 'recursively' : 'folder by folder'}`, async () => {
       const upstream = await tempRepository(tempFolder('upstream'));
       await upstream.commit('one');
