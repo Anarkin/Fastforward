@@ -360,8 +360,8 @@ function createWindow(
     window,
     bounds ?? { ...window.getNormalBounds(), ...size },
   );
-  window.on('resized', kept.changed);
-  window.on('moved', kept.changed);
+  window.on('resized', kept.resized);
+  window.on('moved', kept.moved);
   const reportsUserMoves = process.platform !== 'linux';
   window.on('close', () => {
     void store.update(
