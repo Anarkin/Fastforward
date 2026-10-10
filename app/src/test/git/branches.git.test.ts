@@ -76,6 +76,23 @@ suite('Git branches', function () {
     }
   });
 
+  test('reads the default branch of a remote with a slash in its name', async () => {
+    await temp.git('update-ref', 'refs/remotes/team/fork/develop', 'HEAD');
+    try {
+      await temp.git(
+        'symbolic-ref',
+        'refs/remotes/team/fork/HEAD',
+        'refs/remotes/team/fork/develop',
+      );
+      assert.deepStrictEqual(await remoteDefaultBranches(gitPath, cwd), [
+        'team/fork/develop',
+      ]);
+    } finally {
+      await temp.git('symbolic-ref', '-d', 'refs/remotes/team/fork/HEAD');
+      await temp.git('update-ref', '-d', 'refs/remotes/team/fork/develop');
+    }
+  });
+
   test('counts the commits a branch is ahead and behind another', async () => {
     const [tree] = await temp.resolve('HEAD^{tree}');
     const extra = (

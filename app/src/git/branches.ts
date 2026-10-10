@@ -93,13 +93,15 @@ export async function remoteDefaultBranches(
 ): Promise<string[]> {
   const output = await runGit(gitPath, cwd, [
     'for-each-ref',
-    '--format=%(symref)',
-    'refs/remotes/*/HEAD',
+    '--format=%(refname)%00%(symref)',
+    'refs/remotes/',
   ]);
-  return output
-    .split('\n')
-    .filter((line) => line.startsWith('refs/remotes/'))
-    .map((line) => line.slice('refs/remotes/'.length));
+  return output.split('\n').flatMap((line) => {
+    const [refname, symref] = splitNul(line);
+    return refname?.endsWith('/HEAD') && symref?.startsWith('refs/remotes/')
+      ? [symref.slice('refs/remotes/'.length)]
+      : [];
+  });
 }
 
 export async function onNoRef(
