@@ -744,11 +744,14 @@ suite('View of one repository', function () {
         },
         { type: 'selectFile', root: repository.root, hash, path: 'a' },
         { type: 'loadTree', root: repository.root, hash },
+        { type: 'selectCommit', root: repository.root, hash },
       ] as const) {
         page.clear();
         await connection.receive(message);
         assert.match(page.last('error')?.message ?? '', /not in the history/);
       }
+      await connection.receive({ type: 'setIgnoreWhitespace', ignore: true });
+      assert.strictEqual(page.last('diff'), undefined);
       assert.ok(!fs.existsSync(written));
     });
 

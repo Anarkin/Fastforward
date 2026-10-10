@@ -703,12 +703,12 @@ export class FastforwardView {
           unselect(context.tab);
           break;
         }
-        this.visit(context, message.hash, message.replace);
-        select(context.tab, message.hash);
         if (hiddenSides(context.tab, message.hash).length > 0) {
           this.notInHistory(context, message.hash);
           break;
         }
+        this.visit(context, message.hash, message.replace);
+        select(context.tab, message.hash);
         await this.sendCommit(context);
         break;
       case 'selectFile':
