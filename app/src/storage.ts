@@ -7,8 +7,8 @@ import type {
   RefKind,
 } from './shared/protocol';
 import {
-  isMissing,
   isObject,
+  readText,
   writeAtomically,
   type Settings,
   type UserSettings,
@@ -73,11 +73,12 @@ export class JsonFileStore implements Store {
 }
 
 function readJson(file: string): Record<string, unknown> | undefined {
-  let text: string;
-  try {
-    text = fs.readFileSync(file, 'utf8').replace(/^﻿/, '');
-  } catch (error) {
-    return isMissing(error) ? {} : undefined;
+  const text = readText(file);
+  if (text === undefined) {
+    return {};
+  }
+  if (text instanceof Error) {
+    return undefined;
   }
   try {
     const parsed: unknown = JSON.parse(text);

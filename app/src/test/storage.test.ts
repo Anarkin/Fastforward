@@ -260,7 +260,7 @@ suite('State file', () => {
   });
 
   test('reads a file saved with a byte order mark, as Notepad saved UTF-8 before Windows 10 1903', () => {
-    fs.writeFileSync(file, '﻿{"solo": true}');
+    fs.writeFileSync(file, '\uFEFF{"solo": true}');
     assert.strictEqual(new JsonFileStore(file).get('solo'), true);
     assert.ok(!fs.existsSync(`${file}.corrupt`));
   });

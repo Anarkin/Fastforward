@@ -299,7 +299,7 @@ function writtenIn(file: string): Json | undefined {
   }
 }
 
-function readText(file: string): string | Error | undefined {
+export function readText(file: string): string | Error | undefined {
   try {
     return fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, '');
   } catch (error) {
@@ -311,7 +311,7 @@ function readText(file: string): string | Error | undefined {
   }
 }
 
-export function isMissing(error: unknown): boolean {
+function isMissing(error: unknown): boolean {
   return error instanceof Error && 'code' in error && error.code === 'ENOENT';
 }
 
