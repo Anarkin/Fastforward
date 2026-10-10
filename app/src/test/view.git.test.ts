@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { comparisonOf } from '../shared/comparisons';
 import { workingTreeHash, type BookmarkRef } from '../shared/protocol';
 import { strings } from '../shared/strings';
 import { activeTabKey, recentKey, Storage, tabsKey } from '../storage';
@@ -636,6 +637,33 @@ suite('View of one repository', function () {
       assert.strictEqual(commits?.total, 3);
       assert.strictEqual(commits.selectedIndex, undefined);
       assert.strictEqual(commits.keysFrom, 0);
+    });
+
+    test('compares the selected commit a collapse hides with another commit', async () => {
+      const toggle = () =>
+        connection.receive({
+          type: 'toggleMerge',
+          root: repository.root,
+          hash: fixture.merge,
+        });
+      await toggle();
+      await connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: fixture.f2,
+      });
+      await toggle();
+      page.clear();
+      const hash = comparisonOf(fixture.f2, fixture.b);
+      await connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash,
+      });
+      assert.strictEqual(page.last('error'), undefined);
+      assert.strictEqual(page.last('files')?.hash, hash);
+      assert.strictEqual(page.last('diff')?.hash, hash);
+      assert.strictEqual(commitsSent(page.messages), 0);
     });
 
     test('loads the files of a selected commit a collapsed merge hides once the page loads again with settings changed by hand', async () => {

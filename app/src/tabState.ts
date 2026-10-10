@@ -412,6 +412,11 @@ export function hiddenSides(tab: TabState, selection: string): string[] {
   );
 }
 
+export function pickable(tab: TabState, selection: string): boolean {
+  const selected = sidesOf(tab.hash);
+  return hiddenSides(tab, selection).every((side) => selected.includes(side));
+}
+
 export function nearestSteps(
   tab: TabState,
   current = tab.hash,

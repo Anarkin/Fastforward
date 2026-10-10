@@ -117,6 +117,7 @@ import {
   nearestSteps,
   newTabState,
   parentOf,
+  pickable,
   refsKeepHistory,
   replayOf,
   select,
@@ -703,7 +704,7 @@ export class FastforwardView {
           unselect(context.tab);
           break;
         }
-        if (hiddenSides(context.tab, message.hash).length > 0) {
+        if (!pickable(context.tab, message.hash)) {
           this.notInHistory(context, message.hash);
           break;
         }
