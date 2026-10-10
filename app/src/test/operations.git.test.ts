@@ -301,6 +301,70 @@ suite('Operations checking out', function () {
     }
   });
 
+  test('says a checkout succeeded though listing the commits it left behind fails', async () => {
+    await repository.git('checkout', '--detach', a);
+    await repository.commit('stray');
+    const junk = path.join(repository.root, '.git', 'refs', 'heads', 'junk');
+    fs.writeFileSync(junk, 'garbage\n');
+    try {
+      const { checkedOut, notices, errors } = await checkOut({
+        kind: 'branch',
+        name: 'main',
+      });
+      assert.strictEqual(checkedOut, true);
+      assert.strictEqual(await head(), 'main');
+      assert.deepStrictEqual(notices, []);
+      assert.strictEqual(errors.length, 2);
+      assert.strictEqual(
+        errors[0],
+        'Listing the commits a checkout left behind failed',
+      );
+      assert.match(errors[1], /^git rev-list .* failed: .*bad object junk/);
+    } finally {
+      fs.rmSync(junk, { force: true });
+      await repository.git('checkout', '-f', 'main');
+    }
+  });
+
+  test("says a checkout of a remote branch succeeded but couldn't fast-forward when HEAD can't be read after it", async () => {
+    await repository.git('branch', 'behind', 'main~1');
+    await repository.git('update-ref', 'refs/remotes/origin/behind', 'main');
+    const hooks = path.join(folder, 'hooks');
+    fs.mkdirSync(hooks, { recursive: true });
+    fs.writeFileSync(
+      path.join(hooks, 'post-checkout'),
+      "#!/bin/sh\nprintf 'ref: refs/heads/a..b\\n' > .git/HEAD\n",
+      { mode: 0o755 },
+    );
+    await repository.git('config', 'core.hooksPath', hooks);
+    try {
+      const { checkedOut, notices, errors } = await checkOut({
+        kind: 'remote',
+        name: 'origin/behind',
+      });
+      assert.strictEqual(checkedOut, true);
+      assert.strictEqual(notices.length, 1);
+      assert.strictEqual(notices[0][0], 'error');
+      assert.match(
+        notices[0][1],
+        /^Switched to behind, but couldn't fast-forward it to origin\/behind\. /,
+      );
+      assert.strictEqual(
+        errors[0],
+        'Fast-forwarding behind to origin/behind failed',
+      );
+    } finally {
+      fs.writeFileSync(
+        path.join(repository.root, '.git', 'HEAD'),
+        'ref: refs/heads/main\n',
+      );
+      await repository.git('config', '--unset', 'core.hooksPath');
+      await repository.git('checkout', '-f', 'main');
+      await repository.git('branch', '-D', 'behind');
+      await repository.git('update-ref', '-d', 'refs/remotes/origin/behind');
+    }
+  });
+
   test('refuses to check out anything while a rebase is paused', async () => {
     await repository.git('checkout', '-b', 'onto', a);
     await repository.commit('onto');

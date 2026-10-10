@@ -408,6 +408,8 @@ export const strings = {
     checkedOut: (kind: string, name: string) => `Checked out ${kind} ${name}`,
     checkoutFailed: (kind: string, name: string) =>
       `Checking out ${kind} ${name} failed`,
+    listingLeftBehindFailed:
+      'Listing the commits a checkout left behind failed',
     diverged: (local: string, remote: string) =>
       `${local} and ${remote} have diverged, not fast-forwarding`,
     notCheckedOut: (local: string) =>

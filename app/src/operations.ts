@@ -85,7 +85,14 @@ async function sayLeftBehind(
   { gitPath, root }: RepositoryAt,
   commit: string,
 ): Promise<void> {
-  const left = await onNoRef(gitPath, root, commit);
+  let left: string[];
+  try {
+    left = await onNoRef(gitPath, root, commit);
+  } catch (error) {
+    log.error(strings.log.listingLeftBehindFailed);
+    log.error(error);
+    return;
+  }
   if (left.length === 0) {
     return;
   }
@@ -119,11 +126,11 @@ async function catchUp(
     notify('info', strings.messages.diverged(local, remote));
     return;
   }
-  if ((await readHead(gitPath, root))?.name !== local) {
-    log.info(strings.log.notCheckedOut(local));
-    return;
-  }
   try {
+    if ((await readHead(gitPath, root))?.name !== local) {
+      log.info(strings.log.notCheckedOut(local));
+      return;
+    }
     await fastForward(gitPath, root, `refs/remotes/${remote}`);
     log.info(strings.log.fastForwarded(local, remote));
   } catch (error) {
