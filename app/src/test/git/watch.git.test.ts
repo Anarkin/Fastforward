@@ -86,7 +86,7 @@ suite('Watching a repository', function () {
       fs.mkdirSync(folder, { recursive: true });
       return changes.length > 0;
     }, 'a new folder');
-    changes = [];
+    await settled();
     await keepWriting(path.join(folder, 'file.txt'), 'the new file');
     assert.deepStrictEqual(errors, []);
   });
