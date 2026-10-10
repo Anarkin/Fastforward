@@ -34,6 +34,12 @@ export function watchesRecursively(platform = process.platform): boolean {
   return platform !== 'linux';
 }
 
+export function isWatchFailure(error: unknown): boolean {
+  return (
+    error instanceof Error && 'syscall' in error && error.syscall === 'watch'
+  );
+}
+
 export async function watchRepository(
   gitPath: string,
   root: string,

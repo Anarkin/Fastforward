@@ -353,30 +353,28 @@ suite('View of other repositories', function () {
     });
   });
 
-  test('says a repository whose folder is removed while open is not a repository', async () => {
+  test("says a repository whose folder is removed while open is not a repository, rather than that it can't be watched", async () => {
     const removed = await tempRepository(path.join(folder, 'removed'));
     await removed.commit('first');
-    await withView(
-      log,
-      [removed.root, repository.root],
-      async (view) => {
-        assert.strictEqual(view.page.last('error'), undefined);
-        await view.connection.receive({
-          type: 'selectTab',
-          root: repository.root,
-        });
-        removeFolder(removed.root);
+    await withView(log, [removed.root, repository.root], async (view) => {
+      assert.strictEqual(view.page.last('error'), undefined);
+      await view.connection.receive({
+        type: 'selectTab',
+        root: repository.root,
+      });
+      removeFolder(removed.root);
+      await withNotices(view.page, 'error', async (notices) => {
         await view.connection.receive({
           type: 'selectTab',
           root: removed.root,
         });
-        assert.match(
-          view.page.last('error')?.message ?? '',
-          /is not a git repository/,
-        );
-      },
-      'unwatched',
-    );
+        assert.deepStrictEqual(notices, []);
+      });
+      assert.match(
+        view.page.last('error')?.message ?? '',
+        /is not a git repository/,
+      );
+    });
     takeErrorsLogged(
       logged,
       /^Listing the worktrees of .*removed failed$/,

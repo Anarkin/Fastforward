@@ -289,6 +289,8 @@ export const strings = {
       `Couldn't open ${folder}. ${reason}`,
     notInRepository: (folder: string) => `${folder} is not in a git repository`,
     notRepository: (root: string) => `${root} is not a git repository`,
+    couldNotWatch: (root: string) =>
+      `Couldn't watch ${root}, so changes made outside ${brand} won't show until it is opened again`,
     couldNotCheckOut: (name: string, reason: string) =>
       `Couldn't check out ${name}. ${reason}`,
     leftBehind: (count: number, hashes: string, more: number) =>

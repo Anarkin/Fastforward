@@ -36,7 +36,12 @@ import {
   sameFolder,
   type Refs,
 } from './git/repository';
-import { watchRepository, type Changed, type Watcher } from './git/watch';
+import {
+  isWatchFailure,
+  watchRepository,
+  type Changed,
+  type Watcher,
+} from './git/watch';
 import {
   stagedPatch,
   uncommittedCount,
@@ -1224,7 +1229,22 @@ export class FastforwardView {
     this.stopWatching(session);
     const watching = new AbortController();
     session.watching = watching;
-    const watcher = await this.startWatching(context, session, watching.signal);
+    let watcher: Watcher;
+    try {
+      watcher = await this.startWatching(context, session, watching.signal);
+    } catch (error) {
+      if (!isWatchFailure(error)) {
+        throw error;
+      }
+      this.log.error(strings.log.watchingFailed(context.root));
+      this.log.error(error);
+      context.post({
+        type: 'notice',
+        level: 'error',
+        message: strings.messages.couldNotWatch(context.root),
+      });
+      return;
+    }
     if (session.watching === watching) {
       session.watching = undefined;
     }

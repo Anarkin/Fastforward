@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { workingTreeHash, type BookmarkRef } from '../shared/protocol';
+import { strings } from '../shared/strings';
 import { activeTabKey, recentKey, Storage, tabsKey } from '../storage';
 import { runGit } from '../git/run';
 import { FastforwardView, type Connection } from '../view';
@@ -29,6 +30,7 @@ import {
   takeErrorsLogged,
   viewRepositories,
   viewSettings,
+  withNotices,
   withView,
   type ViewRepositories,
 } from './viewHarness';
@@ -97,6 +99,33 @@ suite('View of one repository', function () {
       );
       started.open();
       await ready;
+    } finally {
+      opened.connection.dispose();
+    }
+  });
+
+  test("shows a tab whose folder can't be watched, saying changes made outside the app won't show", async () => {
+    const opened = await openView(log, [repository.root], false);
+    stubMethod(opened.view, 'startWatching', () =>
+      Promise.reject(
+        Object.assign(
+          new Error(
+            `EISDIR: illegal operation on a directory, watch '${repository.root}'`,
+          ),
+          { code: 'EISDIR', syscall: 'watch', path: repository.root },
+        ),
+      ),
+    );
+    try {
+      await withNotices(opened.page, 'error', async (notices) => {
+        await opened.connection.receive({ type: 'ready' });
+        assert.deepStrictEqual(notices, [
+          strings.messages.couldNotWatch(repository.root),
+        ]);
+      });
+      assert.strictEqual(opened.page.last('error'), undefined);
+      assert.notStrictEqual(opened.page.last('commits'), undefined);
+      takeErrorsLogged(logged, /^Watching .* failed$/, /^EISDIR: /);
     } finally {
       opened.connection.dispose();
     }
