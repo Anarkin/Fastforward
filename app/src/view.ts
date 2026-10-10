@@ -65,6 +65,7 @@ import {
   type Worktree,
 } from './git/worktrees';
 import { step, visit } from './history/navigation';
+import { ImageReads } from './imageReads';
 import type { Log } from './log';
 import {
   checkout,
@@ -241,6 +242,7 @@ export class FastforwardView {
   private readonly hashLookups = new Map<string, number>();
   private page: Session | undefined;
   private readonly inFlight = new InFlight();
+  private readonly imageReads = new ImageReads();
   private readonly autoFetch: AutoFetch;
   private readonly quitting = new AbortController();
   private collapseMerges: boolean;
@@ -337,10 +339,14 @@ export class FastforwardView {
         ? undefined
         : tab.stashes.get(source.revision);
     try {
-      const read = await readImage(this.gitPath, source.root, {
-        ...source,
-        untracked: stash?.untracked,
-      });
+      const read = await this.imageReads.read(source, (limit) =>
+        readImage(
+          this.gitPath,
+          source.root,
+          { ...source, untracked: stash?.untracked },
+          limit,
+        ),
+      );
       if (read.kind !== 'image') {
         return new Response(null, {
           status: read.kind === 'tooLarge' ? 413 : 404,
