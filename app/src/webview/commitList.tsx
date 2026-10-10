@@ -12,6 +12,7 @@ import {
   useVirtualizer,
   type VirtualItem,
   type Virtualizer,
+  type VirtualizerOptions,
 } from '@tanstack/react-virtual';
 import { comparedOf, shownSide, sidesOf } from '../shared/comparisons';
 import {
@@ -339,9 +340,25 @@ export class ReportedPlaces {
     return top;
   }
 
+  moved(by: number): void {
+    for (const [told, at] of this.tops) {
+      this.tops.set(told, at + by);
+    }
+  }
+
   forget(): void {
     this.tops.clear();
   }
+}
+
+export function movingPlaces<T extends Element>(
+  places: ReportedPlaces,
+  scrollToFn: VirtualizerOptions<T, Element>['scrollToFn'],
+): VirtualizerOptions<T, Element>['scrollToFn'] {
+  return (offset, options, instance) => {
+    places.moved(options.adjustments ?? 0);
+    scrollToFn(offset, options, instance);
+  };
 }
 
 export function trailing(
@@ -548,6 +565,10 @@ export function Commits({
   );
   const { scrolling, shift, scrollTop, fit } =
     useCappedScroll<HTMLDivElement>();
+  const [places] = useState(() => new ReportedPlaces());
+  const [scrollToFn] = useState(() =>
+    movingPlaces(places, scrolling.scrollToFn),
+  );
   const virtualizer = useVirtualizer({
     count,
     getScrollElement: () => list.current,
@@ -555,6 +576,7 @@ export function Commits({
     getItemKey: rowKey,
     overscan: 10,
     ...scrolling,
+    scrollToFn,
   });
   const totalSize = virtualizer.getTotalSize();
   useLayoutEffect(fit, [fit, totalSize]);
@@ -588,7 +610,6 @@ export function Commits({
   useEffect(() => () => asking.cancel(), [asking]);
 
   const shown = useRef<ListScrollState>({ target: undefined, offset });
-  const [places] = useState(() => new ReportedPlaces());
   useEffect(() => {
     if (!history) {
       places.forget();
@@ -607,12 +628,14 @@ export function Commits({
       if (!element) {
         return;
       }
+      const top = scrollTop(element);
       const shifted = workingTreeShift(
-        scrollTop(element),
+        top,
         action.shiftBy,
         workingTreeRowHeight,
       );
       if (shifted !== undefined) {
+        places.moved(shifted - top);
         virtualizer.scrollToOffset(shifted);
       }
       return;

@@ -27,6 +27,7 @@ import {
   listScroll,
   listTop,
   mergeToToggle,
+  movingPlaces,
   rowKeyOf,
   SoloButton,
   WorkingTreeRow,
@@ -374,6 +375,56 @@ suite('Places told', () => {
     places.forget();
     assert.strictEqual(places.kept(1000, 7, 900, kept), 1007);
     assert.strictEqual(places.kept(1000, 7, 900, undefined), 1007);
+  });
+
+  test('keeps its place by what was scrolled since the place told, not by the list moving the rows in view down as the working tree row appears above them', () => {
+    const places = new ReportedPlaces();
+    const told = places.told(1000);
+    const shifted = workingTreeShift(1000, 1, workingTreeRowHeight) ?? 0;
+    places.moved(shifted - 1000);
+    const start = workingTreeRowHeight + 20 * commitRowHeight;
+    assert.strictEqual(places.kept(start, 0, shifted, told), shifted);
+    const later = places.told(shifted + 200);
+    places.moved(bubbleLineHeight);
+    assert.strictEqual(
+      places.kept(start + 200, 0, shifted + 200 + bubbleLineHeight, later),
+      start + 200,
+    );
+  });
+
+  test('keeps its place by what was scrolled since the place told, not by the list keeping its rows in view as one above them is measured taller', () => {
+    const places = new ReportedPlaces();
+    const scroller = {
+      clientHeight: 500,
+      scrollTop: 1000,
+      ownerDocument: { defaultView: null },
+    };
+    const virtualizer = new Virtualizer<Element, Element>({
+      count: 100,
+      estimateSize: () => commitRowHeight,
+      initialOffset: scroller.scrollTop,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      getScrollElement: () => scroller as unknown as Element,
+      observeElementRect: (_instance, report) => {
+        report({ width: 300, height: scroller.clientHeight });
+        return noop;
+      },
+      observeElementOffset: () => noop,
+      scrollToFn: movingPlaces(places, (offset, { adjustments = 0 }) => {
+        scroller.scrollTop = offset + adjustments;
+      }),
+    });
+    // oxlint-disable-next-line no-underscore-dangle
+    virtualizer._willUpdate();
+    virtualizer.getVirtualItems();
+    const told = places.told(scroller.scrollTop);
+    virtualizer.resizeItem(5, commitRowHeight + bubbleLineHeight);
+    assert.strictEqual(scroller.scrollTop, 1000 + bubbleLineHeight);
+    const start = 20 * commitRowHeight + bubbleLineHeight;
+    assert.strictEqual(
+      places.kept(start, 0, scroller.scrollTop, told),
+      scroller.scrollTop,
+    );
   });
 });
 
