@@ -784,6 +784,7 @@ export class FastforwardView {
     reopened = false,
   ): Promise<void> {
     const { storage } = this;
+    const page = () => (session.disposed ? (this.page ?? session) : session);
     const repositories: string[] = [];
     for (const folder of folders) {
       let location: Location | undefined;
@@ -792,7 +793,7 @@ export class FastforwardView {
       } catch (error) {
         this.log.error(strings.log.openingFailed(folder));
         this.log.error(error instanceof Error ? error : String(error));
-        session.post({
+        page().post({
           type: 'notice',
           level: 'error',
           message: strings.messages.couldNotOpen(folder, gitErrorText(error)),
@@ -801,7 +802,7 @@ export class FastforwardView {
       }
       if (!location) {
         this.save(storage.removeRecent(folder));
-        session.post({
+        page().post({
           type: 'notice',
           level: 'error',
           message: strings.messages.notInRepository(folder),
@@ -832,9 +833,9 @@ export class FastforwardView {
     this.save(storage.setTabs([...storage.tabs, ...added], storage.activeTab));
     const last = repositories.at(-1);
     if (last) {
-      await this.openTab(session, last);
+      await this.openTab(page(), last);
     } else {
-      this.postTabs(session);
+      this.postTabs(page());
     }
   }
 
@@ -846,6 +847,10 @@ export class FastforwardView {
     const active =
       (repository && tabs.find((tab) => sameRoot(tab, repository))) ?? tabs[0];
     this.save(this.storage.setTabs(tabs, active));
+    if (session.disposed) {
+      return;
+    }
+    this.page = session;
     this.postTabs(session);
     if (active === undefined) {
       this.stopWatching(session);
@@ -861,7 +866,6 @@ export class FastforwardView {
 
   private async openWorktree(session: Session, root: string): Promise<void> {
     const tab = this.tabState(root);
-    this.page = session;
     for (const message of replayOf(tab)) {
       session.post(message);
     }

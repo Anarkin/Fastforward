@@ -283,6 +283,44 @@ suite('View of other repositories', function () {
     );
   });
 
+  for (const [opened, tabs] of [
+    ['a tab', () => [repository.root]],
+    ['no tab', () => []],
+  ] as const) {
+    test(`opens the repository picked in the page loaded again while the folder dialog was open, with ${opened} shown`, async () => {
+      const picked = Promise.withResolvers<readonly string[]>();
+      const host = new FakeHost();
+      host.chooseFolders = () => picked.promise;
+      await withView(
+        log,
+        tabs(),
+        async (view) => {
+          const browsing = view.connection.receive({
+            type: 'browseRepositories',
+          });
+          view.connection.dispose();
+          const reloaded = reopen(view.view);
+          try {
+            await reloaded.ready;
+            picked.resolve([other]);
+            await browsing;
+            const shown = reloaded.page.last('tabs');
+            assert.ok(shown?.active && sameRoot(shown.active, other));
+            assert.strictEqual(
+              reloaded.page.last('repository')?.headCommit,
+              otherHead,
+            );
+            assert.strictEqual(reloaded.page.last('commits')?.total, 1);
+          } finally {
+            reloaded.connection.dispose();
+          }
+        },
+        'unwatched',
+        host,
+      );
+    });
+  }
+
   test('logs what the page sends at its level, marked as from the webview', async () => {
     const recording = recordingLog();
     await withView(recording.log, [], async (view) => {
