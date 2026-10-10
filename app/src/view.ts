@@ -45,9 +45,9 @@ import {
 import {
   stagedPatch,
   uncommittedCount,
+  UntrackedPatches,
   workingTreeFiles,
   workingTreePatch,
-  type UntrackedPatches,
   type WorkingTree,
   type WorkingTreeDiff,
 } from './git/workingTree';
@@ -122,6 +122,7 @@ import {
 } from './tabState';
 
 const maxKeptTextChars = 16_000_000;
+const maxKeptUntrackedChars = 32_000_000;
 const refreshDelays = { delay: 100, gitDirDelay: 300, maxDelay: 1500 };
 const everything: Changed = { refs: true, workingTree: true };
 const nothing: Changed = { refs: false, workingTree: false };
@@ -1179,7 +1180,7 @@ export class FastforwardView {
         diffOwed: false,
         loadingFiles: new AbortController(),
         loadingDiff: new AbortController(),
-        untrackedPatches: new Map(),
+        untrackedPatches: new UntrackedPatches(maxKeptUntrackedChars),
       };
       this.tabStates.set(root, tab);
     }

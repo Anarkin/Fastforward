@@ -6,10 +6,10 @@ import { listTree, maxFileSize } from '../../git/files';
 import {
   stagedPatch,
   uncommittedCount,
+  UntrackedPatches,
   withoutTouched,
   workingTreeFiles,
   workingTreePatch,
-  type UntrackedPatches,
 } from '../../git/workingTree';
 import { isLargeChange } from '../../shared/protocol';
 import { parsePatch } from '../../webview/diff';
@@ -732,7 +732,7 @@ suite('Uncommitted changes', function () {
     const draft = path.join(cwd, 'draft.txt');
     fs.writeFileSync(draft, 'first\n');
     try {
-      const patches: UntrackedPatches = new Map();
+      const patches = new UntrackedPatches(Infinity);
       const workingTree = await workingTreeFiles(gitPath, cwd);
       const first = await workingTreePatch(
         gitPath,
@@ -742,7 +742,7 @@ suite('Uncommitted changes', function () {
         patches,
       );
       assert.ok(first.includes('+first'), first);
-      for (const [file, { stamp }] of patches) {
+      for (const [file, { stamp }] of new Map(patches)) {
         patches.set(file, { stamp, patch: `kept ${file}\n` });
       }
       const kept = await workingTreePatch(
@@ -784,7 +784,7 @@ suite('Uncommitted changes', function () {
     const draft = path.join(cwd, 'draft.txt');
     fs.writeFileSync(draft, 'draft\n');
     try {
-      const patches: UntrackedPatches = new Map();
+      const patches = new UntrackedPatches(Infinity);
       const workingTree = await workingTreeFiles(gitPath, cwd);
       await workingTreePatch(gitPath, cwd, workingTree, {}, patches);
       assert.ok(patches.has('draft.txt'));
@@ -808,7 +808,7 @@ suite('Uncommitted changes', function () {
 `,
     );
     try {
-      const patches: UntrackedPatches = new Map();
+      const patches = new UntrackedPatches(Infinity);
       const workingTree = await workingTreeFiles(gitPath, cwd);
       const patch = await workingTreePatch(
         gitPath,
@@ -821,6 +821,34 @@ suite('Uncommitted changes', function () {
       assert.ok(!patches.has('large.log'));
     } finally {
       fs.rmSync(large);
+    }
+  });
+
+  test('forgets the patches of the untracked files used least recently once they pass its size', async () => {
+    const files = ['kept-a.txt', 'kept-b.txt', 'kept-c.txt'];
+    for (const file of files) {
+      fs.writeFileSync(path.join(cwd, file), 'same\n');
+    }
+    try {
+      const workingTree = await workingTreeFiles(gitPath, cwd);
+      const alone = (file: string, patches?: UntrackedPatches) =>
+        workingTreePatch(gitPath, cwd, workingTree, { path: file }, patches);
+      const patches = new UntrackedPatches(
+        (await alone('kept-a.txt')).length * 2,
+      );
+      for (const file of [
+        'kept-a.txt',
+        'kept-b.txt',
+        'kept-a.txt',
+        'kept-c.txt',
+      ]) {
+        await alone(file, patches);
+      }
+      assert.deepStrictEqual([...patches.keys()], ['kept-a.txt', 'kept-c.txt']);
+    } finally {
+      for (const file of files) {
+        fs.rmSync(path.join(cwd, file));
+      }
     }
   });
 
@@ -864,11 +892,11 @@ suite('Uncommitted changes', function () {
       { path: 'tracked.txt' },
       { path: 'untracked.txt' },
     ]) {
-      const patches: UntrackedPatches = new Map();
+      const patches = new UntrackedPatches(Infinity);
       await assert.rejects(
         workingTreePatch(gitPath, cwd, workingTree, scope, patches, signal),
       );
-      assert.deepStrictEqual(patches, new Map());
+      assert.strictEqual(patches.size, 0);
     }
   });
 });
@@ -998,7 +1026,7 @@ suite('Comparing a commit with the working tree', function () {
   });
 
   test('diffs an untracked file again when the direction changes, not reusing the patch kept', async () => {
-    const patches: UntrackedPatches = new Map();
+    const patches = new UntrackedPatches(Infinity);
     const patchOf = async (reverse: boolean) =>
       workingTreePatch(
         repository.gitPath,

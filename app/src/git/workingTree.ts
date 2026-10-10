@@ -30,10 +30,50 @@ export interface WorkingTree extends WorkingTreeDiff {
 
 const againstIndex: WorkingTreeDiff = { base: undefined, reverse: false };
 
-export type UntrackedPatches = Map<
-  string,
-  { readonly stamp: string; readonly patch: string }
->;
+interface UntrackedPatch {
+  readonly stamp: string;
+  readonly patch: string;
+}
+
+export class UntrackedPatches extends Map<string, UntrackedPatch> {
+  private chars = 0;
+
+  constructor(private readonly maxChars: number) {
+    super();
+  }
+
+  override get(file: string): UntrackedPatch | undefined {
+    const kept = super.get(file);
+    if (kept) {
+      this.set(file, kept);
+    }
+    return kept;
+  }
+
+  override set(file: string, kept: UntrackedPatch): this {
+    this.delete(file);
+    if (kept.patch.length > this.maxChars) {
+      return this;
+    }
+    super.set(file, kept);
+    this.chars += kept.patch.length;
+    for (const oldest of this.keys()) {
+      if (this.chars <= this.maxChars) {
+        break;
+      }
+      this.delete(oldest);
+    }
+    return this;
+  }
+
+  override delete(file: string): boolean {
+    const kept = super.get(file);
+    if (kept) {
+      this.chars -= kept.patch.length;
+    }
+    return super.delete(file);
+  }
+}
 
 const maxUntrackedPatches = 50;
 
@@ -316,7 +356,7 @@ export async function workingTreePatch(
   cwd: string,
   workingTree: WorkingTree,
   scope: PatchScope = {},
-  kept: UntrackedPatches = new Map(),
+  kept = new UntrackedPatches(0),
   signal?: AbortSignal,
 ): Promise<string> {
   const untrackedPatch = async (file: string) => {
