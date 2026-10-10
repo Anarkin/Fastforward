@@ -710,6 +710,51 @@ suite('Watching a repository', function () {
       }
     });
 
+    test(`tells when a linked worktree switches branch among more changes than Windows tells at once, which it drops, telling only that something changed, watching ${recursive ? 'recursively' : 'folder by folder'}`, async () => {
+      const folder = tempFolder('dropped');
+      const linked = path.join(folder, 'linked');
+      await repository.git('worktree', 'add', '-q', '--detach', linked);
+      await repository.git('branch', 'switched');
+      const linkedGitDir = path.join(repository.root, '.git/worktrees/linked');
+      let listed = 0;
+      const listing = await watchRepository(
+        repository.gitPath,
+        repository.root,
+        {
+          delay: 50,
+          maxDelay: 200,
+          recursive,
+          onChange: () => undefined,
+          onWorktreesChange: () => listed++,
+          onError: (error) => errors.push(error),
+        },
+      );
+      try {
+        let last = listed;
+        let since = Date.now();
+        await waitFor(() => {
+          if (listed !== last) {
+            last = listed;
+            since = Date.now();
+          }
+          return Date.now() - since > 500;
+        }, 'the worktree added to be told');
+        listed = 0;
+        for (let file = 0; file < 300; file++) {
+          fs.writeFileSync(path.join(linkedGitDir, `written-${file}`), '');
+        }
+        fs.writeFileSync(
+          path.join(linkedGitDir, 'HEAD'),
+          'ref: refs/heads/switched\n',
+        );
+        await waitFor(() => listed > 0, 'the branch switched to');
+        assert.deepStrictEqual(errors, []);
+      } finally {
+        await listing.dispose();
+        removeFolder(folder);
+      }
+    });
+
     test(`refreshes a linked worktree for a branch made in the main one, watching ${recursive ? 'recursively' : 'folder by folder'}`, async () => {
       const folder = tempFolder('linked');
       const linked = path.join(folder, 'linked');

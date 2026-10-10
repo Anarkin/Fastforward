@@ -170,7 +170,10 @@ export async function watchRepository(
     if (file) {
       changed(path.join(folder, file), event);
     } else {
+      // Windows names no file once it drops the changes past what a watcher
+      // holds at once
       changedGitDir();
+      worktreesChanged();
     }
   };
   const onGitDirEvent = (
