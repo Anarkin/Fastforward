@@ -70,7 +70,7 @@ suite('Git rev-list parser', () => {
 suite('Recent tips', () => {
   const day = 24 * 60 * 60;
 
-  test('picks the commits of the refs updated within 60 days of the newest one, however long ago that was', () => {
+  test('picks the commits of the refs committed within 60 days of the newest of them, however long ago that was', () => {
     const newest = 1_000_000_000;
     const dates = new Map([
       ['old', newest - 61 * day],
