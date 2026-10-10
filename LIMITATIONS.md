@@ -18,7 +18,7 @@ This file only observes and documents the codebase mainly for human readers; the
 - Find in a diff stops collecting matches at `10000`, and its count then reads `10000+`, as each match is marked in the page
 - An image over `192 MB` is not previewed, as each image shown is read whole into the page
 - At most `8` images up to `8 MB` and `2` larger ones are read at once, the rest waiting their turn, as each is read whole by the app too, and a Markdown preview asks for every image it links at once; an image is found to be larger by first reading it only up to `8 MB`, so a larger committed one takes a second git
-- The images previewed are kept in the page up to `256 MB`, forgetting the least recently shown
+- The images previewed are kept in the page up to `256 MB`, or as many as are shown when those take more, forgetting the least recently shown
 - A Markdown preview loads no remote image, so opening a file tells no server, and opens only https and mail links
 - A Markdown preview shows no image whose path passes through a symlink, as git sees no file there, so a link can't lead it outside the repository or to a server
 - A side of a Markdown file over `2 MB` is not read, so its preview stays empty

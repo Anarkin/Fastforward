@@ -387,4 +387,23 @@ suite('Image cache', () => {
     assert.deepStrictEqual(revoked, ['blob:2', 'blob:1', 'blob:3']);
     assert.ok(cache.peek('huge'));
   });
+
+  test('keeps an image a preview holds though the images pass its size, as one handed to a preview may not be shown yet, forgetting it once let go', async () => {
+    const { cache, revoked } = fakeImages({ a: bytes(6), b: bytes(6) }, 10);
+    const a = cache.hold('a');
+    const b = cache.hold('b');
+    assert.deepStrictEqual(await a.loading, {
+      kind: 'loaded',
+      url: 'blob:1',
+      bytes: 6,
+    });
+    await b.loading;
+    assert.deepStrictEqual(revoked, []);
+    assert.ok(cache.peek('a'));
+    a.release();
+    assert.deepStrictEqual(revoked, ['blob:1']);
+    assert.strictEqual(cache.peek('a'), undefined);
+    b.release();
+    assert.ok(cache.peek('b'));
+  });
 });

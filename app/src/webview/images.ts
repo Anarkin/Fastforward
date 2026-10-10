@@ -209,6 +209,12 @@ interface ObjectUrls {
 interface Entry {
   readonly loading: Promise<LoadedImage>;
   settled?: LoadedImage;
+  holders: number;
+}
+
+interface Held {
+  readonly loading: Promise<LoadedImage>;
+  release(): void;
 }
 
 const cachedBytes = 256 * 1024 * 1024;
@@ -232,13 +238,30 @@ export class ImageCache {
   }
 
   load(url: string): Promise<LoadedImage> {
+    return this.entry(url).loading;
+  }
+
+  hold(url: string): Held {
+    const entry = this.entry(url);
+    entry.holders++;
+    return {
+      loading: entry.loading,
+      release: () => {
+        entry.holders--;
+        this.evict();
+      },
+    };
+  }
+
+  private entry(url: string): Entry {
     const cached = this.entries.get(url);
     if (cached) {
       this.entries.delete(url);
       this.entries.set(url, cached);
-      return cached.loading;
+      return cached;
     }
     const entry: Entry = {
+      holders: 0,
       loading: this.fetchNow(url).then((image) => {
         if (image.kind === 'failed') {
           this.entries.delete(url);
@@ -253,7 +276,7 @@ export class ImageCache {
       }),
     };
     this.entries.set(url, entry);
-    return entry.loading;
+    return entry;
   }
 
   private async fetchNow(url: string): Promise<LoadedImage> {
@@ -272,12 +295,16 @@ export class ImageCache {
     }
   }
 
-  private evict(kept: string): void {
+  private evict(kept?: string): void {
     for (const [url, entry] of this.entries) {
       if (this.bytes <= this.limit) {
         return;
       }
-      if (url !== kept && entry.settled?.kind === 'loaded') {
+      if (
+        url !== kept &&
+        entry.holders === 0 &&
+        entry.settled?.kind === 'loaded'
+      ) {
         this.entries.delete(url);
         this.bytes -= entry.settled.bytes;
         this.urls.revoke(entry.settled.url);
@@ -301,13 +328,15 @@ export function useLoadedImage(
       return undefined;
     }
     let live = true;
-    void cache.load(url).then((image) => {
+    const held = cache.hold(url);
+    void held.loading.then((image) => {
       if (live) {
         setShown({ url, image });
       }
     });
     return () => {
       live = false;
+      held.release();
     };
   }, [url, cache]);
   return shown.url === url ? shown.image : undefined;
