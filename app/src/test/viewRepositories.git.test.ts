@@ -18,6 +18,8 @@ import {
   failOnErrorsLogged,
   FakeHost,
   gate,
+  reopen,
+  restoreRepository,
   savedBookmarks,
   stubMethod,
   takeErrorsLogged,
@@ -76,6 +78,103 @@ suite('View of other repositories', function () {
         'collapsed',
       );
     });
+  });
+
+  test('reads the history again once the settings turn solo on while it is read', async () => {
+    const [tree] = await repository.resolve('HEAD^{tree}');
+    const side = (
+      await repository.git('commit-tree', tree, '-p', fixture.a, '-m', 'side')
+    ).trim();
+    await repository.git('branch', 'side', side);
+    try {
+      await withView(
+        log,
+        [repository.root],
+        async (view) => {
+          const held = gate();
+          let reading = false;
+          stubMethod(
+            view.view,
+            'listFullHistory',
+            async (original, ...args) => {
+              const listed = await original(...args);
+              if (!reading) {
+                reading = true;
+                await held.opened;
+              }
+              return listed;
+            },
+          );
+          const ready = view.connection.receive({ type: 'ready' });
+          await waitFor(() => reading, 'the history to be read');
+          await view.settings.set('solo', true);
+          view.view.reloadSettings();
+          view.connection.dispose();
+          const reloaded = reopen(view.view);
+          await waitFor(
+            () => reloaded.page.last('tabs') !== undefined,
+            'the page to load again',
+          );
+          held.open();
+          await Promise.all([ready, reloaded.ready]);
+          assert.strictEqual(reloaded.page.last('solo')?.solo, true);
+          assert.strictEqual(reloaded.page.last('commits')?.total, 3);
+        },
+        false,
+      );
+    } finally {
+      await repository.git('branch', '-D', 'side');
+    }
+  });
+
+  test('reads the history again once the settings turn solo on while a refresh extends it', async () => {
+    const [tree] = await repository.resolve('HEAD^{tree}');
+    const side = (
+      await repository.git('commit-tree', tree, '-p', fixture.a, '-m', 'side')
+    ).trim();
+    await repository.git('branch', 'side', side);
+    try {
+      await withView(
+        log,
+        [repository.root],
+        async (view) => {
+          assert.strictEqual(view.page.last('commits')?.total, 4);
+          const held = gate();
+          let extending = false;
+          stubMethod(
+            view.view,
+            'extendedHistory',
+            async (original, ...args) => {
+              const extended = await original(...args);
+              extending = true;
+              await held.opened;
+              return extended;
+            },
+          );
+          await repository.commit('c');
+          const [c] = await repository.resolve('main');
+          const refreshing = view.connection.refresh();
+          await waitFor(() => extending, 'the history to be extended');
+          await view.settings.set('solo', true);
+          view.view.reloadSettings();
+          view.connection.dispose();
+          const reloaded = reopen(view.view);
+          await waitFor(
+            () => reloaded.page.last('tabs') !== undefined,
+            'the page to load again',
+          );
+          held.open();
+          await Promise.all([refreshing, reloaded.ready]);
+          const shown = reloaded.page.last('commits');
+          assert.strictEqual(shown?.total, 4);
+          assert.strictEqual(shown.commits[0]?.hash, c);
+        },
+        'unwatched',
+      );
+    } finally {
+      await restoreRepository(repository, fixture.merge);
+      await repository.git('branch', '-D', 'side');
+    }
   });
 
   test('shows the first rows of a long history while the whole of it is read, waiting for it to show a commit further down', async () => {

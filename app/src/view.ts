@@ -1821,15 +1821,8 @@ export class FastforwardView {
       return;
     }
     const known = Promise.resolve(refs);
-    if (
-      refsKeepHistory(
-        tab,
-        head,
-        listed,
-        this.storage.soloOf(context.root),
-        stashes,
-      )
-    ) {
+    const solo = this.storage.soloOf(context.root);
+    if (refsKeepHistory(tab, head, listed, solo, stashes)) {
       this.log.info(strings.log.refsKept);
       const layOut = tab.shownStale || tab.headCommit !== head?.commit;
       takeRefs(tab, head, listed, stashes);
@@ -1840,9 +1833,9 @@ export class FastforwardView {
       return;
     }
     const extended = historyLoaded(tab)
-      ? await this.extendedHistory(context, refs)
+      ? await this.extendedHistory(context, refs, solo)
       : undefined;
-    if (extended) {
+    if (extended && this.storage.soloOf(context.root) === solo) {
       this.log.info(
         strings.log.refsExtended(extended.length - tab.fullHistory.length),
       );
@@ -1863,9 +1856,9 @@ export class FastforwardView {
   private async extendedHistory(
     context: Context,
     { head, refs, stashes, dates }: Refs,
+    solo: boolean,
   ): Promise<Commits | undefined> {
     const { tab, gitPath, root } = context;
-    const solo = this.storage.soloOf(root);
     const older = tab.fullHistory;
     const extended = await extendedHistory(
       gitPath,
@@ -1913,12 +1906,17 @@ export class FastforwardView {
       );
     }
     try {
+      const solo = this.storage.soloOf(context.root);
       const fullHistory = await this.listFullHistory(
         context,
+        solo,
         stashes.map((stash) => stash.commit),
       );
       loading.abort();
       loadHistory(tab, fullHistory, head, listed, stashes);
+      if (this.storage.soloOf(context.root) !== solo) {
+        forgetHistory(tab);
+      }
       if (tab.hash !== undefined && !stillThere(tab)(tab.hash)) {
         unselect(tab);
         context.post({ type: 'unselect', selection: tab.selection });
@@ -1939,14 +1937,10 @@ export class FastforwardView {
 
   private listFullHistory(
     context: Context,
+    solo: boolean,
     stashes: readonly string[],
   ): Promise<Commits> {
-    return listHistory(
-      context.gitPath,
-      context.root,
-      this.storage.soloOf(context.root),
-      stashes,
-    );
+    return listHistory(context.gitPath, context.root, solo, stashes);
   }
 
   private async listRecentHistory(
