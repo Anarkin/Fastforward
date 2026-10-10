@@ -4,8 +4,9 @@ import { rebuilt } from '../../main/files';
 import { reloadOnRebuild } from '../../main/rebuild';
 
 suite('Rebuilding while the app runs', () => {
-  test('reloads the page for its script and its HTML, and the defaults for the settings', () => {
+  test('reloads the page for its scripts and its HTML, and the defaults for the settings, as an edit to the syntax worker alone rebuilds only its script', () => {
     assert.strictEqual(rebuilt('webview.js'), 'page');
+    assert.strictEqual(rebuilt('syntaxWorker.js'), 'page');
     assert.strictEqual(rebuilt('webview.css'), 'page');
     assert.strictEqual(rebuilt('index.html'), 'page');
     assert.strictEqual(rebuilt('settings.json'), 'defaults');

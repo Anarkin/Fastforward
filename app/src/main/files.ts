@@ -172,7 +172,11 @@ export function keptBounds(
 }
 
 export function rebuilt(file: string | null): 'page' | 'defaults' | undefined {
-  if (file?.startsWith('webview.') || file === 'index.html') {
+  if (
+    file?.startsWith('webview.') ||
+    file?.startsWith('syntaxWorker.') ||
+    file === 'index.html'
+  ) {
     return 'page';
   }
   return file === 'settings.json' ? 'defaults' : undefined;
