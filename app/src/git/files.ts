@@ -10,20 +10,26 @@ export async function listTree(
   gitPath: string,
   cwd: string,
   hash: string | undefined,
-  untracked?: readonly string[],
 ): Promise<string[]> {
   const output = await runGit(
     gitPath,
     cwd,
     hash !== undefined
       ? ['ls-tree', '-r', '-z', '--name-only', hash]
-      : untracked !== undefined
-        ? ['ls-files', '-z', '--cached']
-        : ['ls-files', '-z', '--cached', '--others', '--exclude-standard'],
+      : ['ls-files', '-z', '--cached', '--others', '--exclude-standard'],
   );
-  return [...new Set([...(untracked ?? []), ...splitNul(output)])].filter(
-    Boolean,
-  );
+  return uniquePaths(splitNul(output));
+}
+
+export async function listIndex(
+  gitPath: string,
+  cwd: string,
+): Promise<string[]> {
+  return splitNul(await runGit(gitPath, cwd, ['ls-files', '-z', '--cached']));
+}
+
+export function uniquePaths(...lists: (readonly string[])[]): string[] {
+  return [...new Set(lists.flat())].filter(Boolean);
 }
 
 export const maxFileSize = 2 * 1024 * 1024;

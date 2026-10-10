@@ -15,7 +15,14 @@ import {
 } from './git/diff';
 import { gitErrorText } from './git/errorText';
 import { BlobTexts } from './git/blobTexts';
-import { listTree, readBlobs, readFile, readImage } from './git/files';
+import {
+  listIndex,
+  listTree,
+  readBlobs,
+  readFile,
+  readImage,
+  uniquePaths,
+} from './git/files';
 import { stashFiles, stashPatch } from './git/stashes';
 import {
   findCommit,
@@ -146,6 +153,7 @@ interface Tab extends TabState {
   loadingFiles: AbortController;
   loadingDiff: AbortController;
   untrackedPatches: UntrackedPatches;
+  indexPaths: readonly string[] | undefined;
 }
 
 export interface Host {
@@ -1043,8 +1051,9 @@ export class FastforwardView {
     const refs = this.refsOf(context);
     await allSettled([
       this.addDefaultBookmarks(context, refs),
-      this.refresh(context, () =>
-        allSettled([
+      this.refresh(context, () => {
+        context.tab.indexPaths = undefined;
+        return allSettled([
           (async () => {
             if (!historyLoaded(context.tab)) {
               await this.sendCommits(context, refs);
@@ -1052,8 +1061,8 @@ export class FastforwardView {
             await this.sendCommit(context);
           })(),
           this.sendWorkingTree(context),
-        ]),
-      ),
+        ]);
+      }),
       this.sendRepository(context, refs),
     ]);
   }
@@ -1181,6 +1190,7 @@ export class FastforwardView {
         loadingFiles: new AbortController(),
         loadingDiff: new AbortController(),
         untrackedPatches: new UntrackedPatches(maxKeptUntrackedChars),
+        indexPaths: undefined,
       };
       this.tabStates.set(root, tab);
     }
@@ -1746,6 +1756,9 @@ export class FastforwardView {
     context: Context,
     { refs, workingTree }: Changed,
   ): Promise<void> {
+    if (refs) {
+      context.tab.indexPaths = undefined;
+    }
     await allSettled([
       workingTree ? this.refreshWorkingTree(context) : Promise.resolve(),
       refs || context.tab.shownStale
@@ -2298,12 +2311,15 @@ export class FastforwardView {
     hash: string,
     refreshed?: WorkingTree,
   ): Promise<void> {
-    const paths = await listTree(
-      context.gitPath,
-      context.root,
-      shownCommit(hash),
-      refreshed?.untracked,
-    );
+    const { gitPath, root } = context;
+    const commit = shownCommit(hash);
+    let paths: string[];
+    if (refreshed === undefined || commit !== undefined) {
+      paths = await listTree(gitPath, root, commit);
+    } else {
+      context.tab.indexPaths ??= await listIndex(gitPath, root);
+      paths = uniquePaths(refreshed.untracked, context.tab.indexPaths);
+    }
     if (context.tab.hash !== hash) {
       return;
     }

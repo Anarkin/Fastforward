@@ -645,6 +645,97 @@ suite('View refreshing one repository', function () {
       }
     });
 
+    test('lists the index again for the tree of the working tree only once the git folder changed, as a change to the files alone leaves it as it was', async () => {
+      const childProcess = process.getBuiltinModule('node:child_process');
+      const { spawn } = childProcess;
+      let listings = 0;
+      let change = { refs: false, workingTree: true };
+      const staged = path.join(repository.root, 'staged.txt');
+      const made = path.join(repository.root, 'made.txt');
+      fs.writeFileSync(staged, 'staged\n');
+      await repository.git('add', 'staged.txt');
+      fs.rmSync(staged);
+      try {
+        await connection.receive({
+          type: 'selectCommit',
+          root: repository.root,
+          hash: workingTreeHash,
+        });
+        await connection.receive({
+          type: 'loadTree',
+          root: repository.root,
+          hash: workingTreeHash,
+        });
+        await connection.refresh();
+        stubMethod(fastforward, 'refreshOnce', (original, context) =>
+          original(context, change),
+        );
+        Reflect.set(
+          childProcess,
+          'spawn',
+          (...args: Parameters<typeof spawn>) => {
+            const [, gitArgs] = args;
+            if (gitArgs.includes('ls-files') && gitArgs.includes('--cached')) {
+              listings++;
+            }
+            return spawn(...args);
+          },
+        );
+        fs.writeFileSync(made, 'made\n');
+        await connection.refresh();
+        assert.strictEqual(listings, 0);
+        assert.deepStrictEqual(page.last('tree')?.paths.toSorted(), [
+          'made.txt',
+          'staged.txt',
+        ]);
+        await repository.git('rm', '-q', '--cached', 'staged.txt');
+        change = { refs: true, workingTree: true };
+        await connection.refresh();
+        assert.strictEqual(listings, 1);
+        assert.deepStrictEqual(page.last('tree')?.paths, ['made.txt']);
+      } finally {
+        Reflect.set(childProcess, 'spawn', spawn);
+        fs.rmSync(made, { force: true });
+        await restore();
+      }
+    });
+
+    test('lists the index again for the tree of the working tree once its tab loads afresh, as the index may have changed while nothing watched it', async () => {
+      const gone = path.join(repository.root, 'gone.txt');
+      const made = path.join(repository.root, 'made.txt');
+      const showTree = async () => {
+        await connection.receive({
+          type: 'selectCommit',
+          root: repository.root,
+          hash: workingTreeHash,
+        });
+        await connection.receive({
+          type: 'loadTree',
+          root: repository.root,
+          hash: workingTreeHash,
+        });
+      };
+      fs.writeFileSync(gone, 'gone\n');
+      await repository.git('add', 'gone.txt');
+      try {
+        await showTree();
+        await connection.refresh();
+        fastforward.reloadSettings();
+        await repository.git('rm', '-q', '-f', 'gone.txt');
+        await connection.receive({ type: 'ready' });
+        await showTree();
+        stubMethod(fastforward, 'refreshOnce', (original, context) =>
+          original(context, { refs: false, workingTree: true }),
+        );
+        fs.writeFileSync(made, 'made\n');
+        await connection.refresh();
+        assert.deepStrictEqual(page.last('tree')?.paths, ['made.txt']);
+      } finally {
+        fs.rmSync(made, { force: true });
+        await restore();
+      }
+    });
+
     test('shows a selected uncommitted file deleted since, without failing the refresh', async () => {
       const added = path.join(repository.root, 'added.txt');
       fs.writeFileSync(added, 'added\n');
