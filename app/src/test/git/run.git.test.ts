@@ -209,20 +209,23 @@ suite('Running git in a repository', function () {
 
   test('lets a checkout or fast-forward finish when asked to stop every git, as stopping one midway can leave the working tree half switched', async () => {
     const folder = tempFolder('quitting');
+    const started = path.join(folder, 'started').replaceAll('\\', '/');
     const done = path.join(folder, 'done').replaceAll('\\', '/');
     const hooks = path.join(cwd, '.git', 'hooks');
     const hook = path.join(hooks, 'post-checkout');
     fs.mkdirSync(hooks, { recursive: true });
-    fs.writeFileSync(hook, `#!/bin/sh\nsleep 1\necho > '${done}'\n`, {
-      mode: 0o755,
-    });
+    fs.writeFileSync(
+      hook,
+      `#!/bin/sh\necho > '${started}'\nsleep 1\necho > '${done}'\n`,
+      { mode: 0o755 },
+    );
     await temp.git('branch', 'finishing');
     try {
       const switching = switchToBranch(gitPath, cwd, 'finishing');
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      await waitFor(() => fs.existsSync(started), 'the checkout to start');
       await stopRunningGit();
-      await switching;
       assert.ok(fs.existsSync(done));
+      await switching;
     } finally {
       fs.rmSync(hook);
       await temp.git('checkout', '-q', 'main');
