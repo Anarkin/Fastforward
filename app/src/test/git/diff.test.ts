@@ -1,9 +1,11 @@
 import * as assert from 'node:assert';
 import {
   leftOutOf,
+  newSideUnchanged,
   parseChanges,
   PatchBudget,
   pathspecs,
+  whitespaceOnlyChanges,
 } from '../../git/diff';
 import {
   collapseThreshold,
@@ -200,6 +202,70 @@ suite('Files left out of a patch', () => {
       { path: 'link', lines: undefined },
       { path: 'b.ts', lines: 0 },
     ]);
+  });
+});
+
+suite('Whitespace ignored', () => {
+  test('names the modified files a patch ignoring whitespace has no section for, but no untracked or other file it lacks', () => {
+    const patch = section('a.ts', 1) + section('new.ts', 1, 'old.ts');
+    assert.deepStrictEqual(
+      whitespaceOnlyChanges(patch, [
+        fileChange('a.ts'),
+        fileChange('b.ts'),
+        fileChange('new.ts', { status: 'R', oldPath: 'old.ts' }),
+        fileChange('new.txt', { status: 'U' }),
+        fileChange('gone.ts', { status: 'D' }),
+        fileChange('c d.ts'),
+      ]),
+      ['b.ts', 'c d.ts'],
+    );
+    assert.deepStrictEqual(
+      whitespaceOnlyChanges('diff --git a/c d.ts b/c d.ts', [
+        fileChange('c d.ts'),
+      ]),
+      [],
+    );
+    assert.deepStrictEqual(whitespaceOnlyChanges('', [fileChange('a.ts')]), [
+      'a.ts',
+    ]);
+  });
+
+  test('turns the patch of a whole file into its new lines unchanged, keeping the mark of a missing newline only on them', () => {
+    const header = [
+      'diff --git a/a.ts b/a.ts',
+      'index 1111111..2222222 100644',
+      '--- a/a.ts',
+      '+++ b/a.ts',
+    ];
+    const patch = (...lines: string[]) =>
+      [...header, '@@ -1,3 +1,3 @@', ...lines, ''].join('\n');
+    assert.strictEqual(
+      newSideUnchanged(
+        patch(
+          ' first',
+          '-second',
+          '+  second',
+          '-last',
+          '\\ No newline at end of file',
+          '+last',
+        ),
+      ),
+      [...header, '@@ -1,3 +1,3 @@', ' first', '   second', ' last', ''].join(
+        '\n',
+      ),
+    );
+    assert.strictEqual(
+      newSideUnchanged(
+        patch('-only', '+only\r', '\\ No newline at end of file'),
+      ),
+      [
+        ...header,
+        '@@ -1 +1 @@',
+        ' only\r',
+        '\\ No newline at end of file',
+        '',
+      ].join('\n'),
+    );
   });
 });
 

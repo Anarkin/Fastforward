@@ -253,6 +253,53 @@ export function leftOutOf(
   return leftOut;
 }
 
+const sectionStart = 'diff --git ';
+
+export function whitespaceOnlyChanges(
+  patch: string,
+  files: readonly FileChange[],
+): string[] {
+  const headers = new Set<string>();
+  for (let at = 0; at !== -1;) {
+    if (patch.startsWith(sectionStart, at)) {
+      const end = patch.indexOf('\n', at);
+      headers.add(patch.slice(at, end === -1 ? undefined : end));
+    }
+    const next = patch.indexOf(`\n${sectionStart}`, at);
+    at = next === -1 ? -1 : next + 1;
+  }
+  return files
+    .filter((file) => file.status === 'M' && !headers.has(headerOf(file)))
+    .map(({ path }) => path);
+}
+
+export function newSideUnchanged(patch: string): string {
+  const hunk = patch.indexOf('\n@@ ');
+  if (hunk === -1) {
+    return patch;
+  }
+  const lines: string[] = [];
+  let count = 0;
+  let kept = false;
+  for (const line of patch
+    .slice(patch.indexOf('\n', hunk + 1) + 1)
+    .split('\n')) {
+    if (line.startsWith('\\')) {
+      if (kept) {
+        lines.push(`${line}\n`);
+      }
+      continue;
+    }
+    kept = line.startsWith(' ') || line.startsWith('+');
+    if (kept) {
+      lines.push(` ${line.slice(1)}\n`);
+      count++;
+    }
+  }
+  const range = count === 1 ? '1' : `1,${count}`;
+  return `${patch.slice(0, hunk + 1)}@@ -${range} +${range} @@\n${lines.join('')}`;
+}
+
 function headerOf(file: FileChange): string {
   return `diff --git ${quoted(`a/${file.oldPath ?? file.path}`)} ${quoted(`b/${file.path}`)}`;
 }
@@ -269,7 +316,13 @@ const escapes: Readonly<Record<string, string>> = {
   '\r': '\\r',
 };
 
+// oxlint-disable-next-line no-control-regex
+const quotedCharacter = /["\\\x00-\x1f\x7f]/;
+
 function quoted(name: string): string {
+  if (!quotedCharacter.test(name)) {
+    return name;
+  }
   let escaped = '';
   for (const character of name) {
     const code = character.charCodeAt(0);

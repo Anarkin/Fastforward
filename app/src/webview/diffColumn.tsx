@@ -30,6 +30,7 @@ export function withLargeFiles(
   files: readonly FileChange[],
   leftOut: readonly LeftOut[],
   largeFiles: ReadonlyMap<string, DiffFile>,
+  whitespaceOnly: ReadonlySet<string> = new Set(),
 ): DiffFile[] {
   const byPath = new Map(parsed.map((file) => [file.path, file]));
   const deferred = new Map(leftOut.map(({ path, lines }) => [path, lines]));
@@ -48,9 +49,15 @@ export function withLargeFiles(
           placeholder: { lines: deferred.get(change.path) },
         },
       );
+    } else if (whitespaceOnly.has(change.path)) {
+      result.push(whitespaceOnlyFile(change.path));
     }
   }
   return [...result, ...byPath.values()];
+}
+
+function whitespaceOnlyFile(path: string): DiffFile {
+  return { path, binary: false, hunks: [], whitespaceOnly: true };
 }
 
 // Git takes a path as the folder of the paths under it too
@@ -60,10 +67,24 @@ export function shownFiles(
   files: readonly FileChange[],
   leftOut: readonly LeftOut[],
   largeFiles: ReadonlyMap<string, DiffFile>,
+  whitespaceOnly: readonly string[] = [],
 ): DiffFile[] {
-  return path === undefined
-    ? withLargeFiles(parsed, files, leftOut, largeFiles)
-    : parsed.filter((file) => file.path === path);
+  if (path === undefined) {
+    return withLargeFiles(
+      parsed,
+      files,
+      leftOut,
+      largeFiles,
+      new Set(whitespaceOnly),
+    );
+  }
+  const shown = parsed.filter((file) => file.path === path);
+  if (!whitespaceOnly.includes(path)) {
+    return shown;
+  }
+  return shown.length === 0
+    ? [whitespaceOnlyFile(path)]
+    : shown.map((file) => ({ ...file, whitespaceOnly: true }));
 }
 
 export function DiffOptions({
@@ -261,6 +282,7 @@ export function Diff({
   files,
   patch,
   leftOut,
+  whitespaceOnly,
   diffs,
   largeFiles,
   onLoadFile,
@@ -281,6 +303,7 @@ export function Diff({
   files: readonly FileChange[];
   patch: string;
   leftOut: readonly LeftOut[];
+  whitespaceOnly: readonly string[];
   diffs: number;
   largeFiles: ReadonlyMap<string, DiffFile>;
   onLoadFile: (path: string) => void;
@@ -299,10 +322,10 @@ export function Diff({
   const diffFiles = useMemo(
     () =>
       withUnchangedObjects(
-        shownFiles(parsed, path, files, leftOut, largeFiles),
+        shownFiles(parsed, path, files, leftOut, largeFiles, whitespaceOnly),
         files,
       ),
-    [parsed, path, files, leftOut, largeFiles],
+    [parsed, path, files, leftOut, largeFiles, whitespaceOnly],
   );
   const errorRow = error && <div className="error-message">{error}</div>;
 

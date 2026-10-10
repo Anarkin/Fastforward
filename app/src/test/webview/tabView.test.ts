@@ -567,6 +567,46 @@ suite('Tab view', () => {
     assert.strictEqual(diff.fileContent, undefined);
   });
 
+  test('keeps the files a diff names as only changed in whitespace until the next diff or selection, and notes a large file loaded so', () => {
+    const view = reduceTabView(busyTab(), {
+      type: 'diff',
+      hash: 'a',
+      path: undefined,
+      patch: '',
+      whitespaceOnly: ['x.ts'],
+    });
+    assert.deepStrictEqual(view.whitespaceOnly, ['x.ts']);
+    for (const action of [
+      { type: 'diff', hash: 'a', path: undefined, patch: 'saved' },
+      { type: 'showFile', path: 'y.ts' },
+      { type: 'showCommit', hash: 'b' },
+      {
+        type: 'fileContent',
+        hash: 'a',
+        path: 'y.ts',
+        content: 'y',
+        binary: false,
+      },
+    ] as const) {
+      assert.deepStrictEqual(
+        reduceTabView(view, action).whitespaceOnly,
+        [],
+        action.type,
+      );
+    }
+    const loaded = (whitespaceOnly?: boolean) =>
+      reduceTabView(view, {
+        type: 'fileDiff',
+        hash: 'a',
+        path: 'big.json',
+        patch: '',
+        diff: view.diffs,
+        ...(whitespaceOnly ? { whitespaceOnly } : {}),
+      }).largeFiles.get('big.json')?.whitespaceOnly;
+    assert.strictEqual(loaded(true), true);
+    assert.strictEqual(loaded(), undefined);
+  });
+
   test('counts the diffs, which the large files are fetched again for', () => {
     const view = reduceTabView(busyTab(), {
       type: 'fileDiff',

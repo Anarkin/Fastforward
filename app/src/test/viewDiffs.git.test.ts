@@ -250,6 +250,149 @@ suite('View showing diffs', function () {
     });
   });
 
+  test('names the files whose changes ignoring whitespace leaves out of a diff, showing one entire as its new lines unchanged', async () => {
+    await withView(log, [spaced.root], async (view) => {
+      const diff = () => view.page.last('diff');
+      await view.connection.receive({ type: 'pinEntireFile', pinned: false });
+      await view.connection.receive({
+        type: 'selectCommit',
+        root: spaced.root,
+        hash: indent,
+      });
+      assert.strictEqual(diff()?.patch, '');
+      assert.deepStrictEqual(diff()?.whitespaceOnly, ['a.txt']);
+      await view.connection.receive({
+        type: 'selectFile',
+        root: spaced.root,
+        hash: indent,
+        path: 'a.txt',
+      });
+      assert.strictEqual(diff()?.patch, '');
+      assert.deepStrictEqual(diff()?.whitespaceOnly, ['a.txt']);
+
+      await view.connection.receive({
+        type: 'showEntireFile',
+        root: spaced.root,
+        entire: true,
+      });
+      assert.match(
+        diff()?.patch ?? '',
+        /^diff --git a\/a\.txt b\/a\.txt\n(?:(?!@@).*\n)*@@ -1,2 \+1,2 @@\n {3}one\n two\n$/,
+      );
+      assert.deepStrictEqual(diff()?.whitespaceOnly, ['a.txt']);
+
+      await view.connection.receive({
+        type: 'setIgnoreWhitespace',
+        ignore: false,
+      });
+      assert.match(diff()?.patch ?? '', /^-one\n\+ {2}one$/m);
+      assert.strictEqual(diff()?.whitespaceOnly, undefined);
+    });
+  });
+
+  test('names the staged and unstaged files whose changes are all whitespace, also once one becomes so, showing a staged one entire as staged', async () => {
+    const edited = await tempRepository(path.join(folder, 'spaced-edited'));
+    await edited.commit('first', {
+      'a.txt': 'one\n',
+      'b.txt': 'one\n',
+      'c.txt': 'one\n',
+      'd.txt': 'one\n',
+    });
+    const write = (file: string, text: string) =>
+      fs.writeFileSync(path.join(edited.root, file), text);
+    write('a.txt', '  one\n');
+    write('b.txt', 'two\n');
+    write('c.txt', '\tone\n');
+    await edited.git('add', 'c.txt');
+    write('c.txt', '\tone\nmore\n');
+    await withView(
+      log,
+      [edited.root],
+      async (view) => {
+        const diff = () => view.page.last('diff');
+        await view.connection.receive({
+          type: 'pinEntireFile',
+          pinned: false,
+        });
+        await view.connection.receive({
+          type: 'selectCommit',
+          root: edited.root,
+          hash: workingTreeHash,
+        });
+        assert.strictEqual(diff()?.area, 'staged');
+        assert.deepStrictEqual(diff()?.whitespaceOnly, ['c.txt']);
+        await view.connection.receive({
+          type: 'selectFile',
+          root: edited.root,
+          hash: workingTreeHash,
+          path: undefined,
+          area: 'unstaged',
+        });
+        assert.deepStrictEqual(diff()?.whitespaceOnly, ['a.txt']);
+
+        write('d.txt', 'one  \n');
+        await view.connection.refresh();
+        assert.deepStrictEqual(diff()?.whitespaceOnly, ['a.txt', 'd.txt']);
+
+        await view.connection.receive({
+          type: 'pinEntireFile',
+          pinned: true,
+        });
+        await view.connection.receive({
+          type: 'selectFile',
+          root: edited.root,
+          hash: workingTreeHash,
+          path: 'c.txt',
+          area: 'staged',
+        });
+        assert.match(diff()?.patch ?? '', /^@@ -1 \+1 @@\n \tone\n$/m);
+        assert.deepStrictEqual(diff()?.whitespaceOnly, ['c.txt']);
+      },
+      'unwatched',
+    );
+  });
+
+  test('names a file left out of a diff that loads with all its changes whitespace', async () => {
+    const large = await tempRepository(path.join(folder, 'spaced-large'));
+    await large.commit('first', {
+      'large.txt': numberedLines('line'),
+      'small.txt': 'one\n',
+    });
+    fs.writeFileSync(
+      path.join(large.root, 'large.txt'),
+      numberedLines('line').replaceAll('\n', ' \n'),
+    );
+    fs.writeFileSync(path.join(large.root, 'small.txt'), 'two\n');
+    await withView(
+      log,
+      [large.root],
+      async (view) => {
+        await view.connection.receive({
+          type: 'selectCommit',
+          root: large.root,
+          hash: workingTreeHash,
+        });
+        const diff = view.page.last('diff');
+        assert.deepStrictEqual(
+          diff?.leftOut?.map((file) => file.path),
+          ['large.txt'],
+        );
+        assert.strictEqual(diff.whitespaceOnly, undefined);
+        await view.connection.receive({
+          type: 'loadFileDiff',
+          root: large.root,
+          hash: workingTreeHash,
+          path: 'large.txt',
+          diff: 1,
+        });
+        const fileDiff = view.page.last('fileDiff');
+        assert.strictEqual(fileDiff?.patch, '');
+        assert.strictEqual(fileDiff.whitespaceOnly, true);
+      },
+      'unwatched',
+    );
+  });
+
   test('shows the diff anew with settings changed by hand once the page loads again', async () => {
     await withView(log, [spaced.root], async (view) => {
       const changed = () =>

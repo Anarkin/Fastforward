@@ -386,6 +386,7 @@ export type ToWebview =
       readonly area?: ChangeArea;
       readonly patch: string;
       readonly leftOut?: readonly LeftOut[];
+      readonly whitespaceOnly?: readonly string[];
     }
   | {
       readonly type: 'fileDiff';
@@ -393,6 +394,7 @@ export type ToWebview =
       readonly path: string;
       readonly patch: string;
       readonly diff: number;
+      readonly whitespaceOnly?: boolean;
     }
   | {
       readonly type: 'texts';

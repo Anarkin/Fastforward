@@ -116,6 +116,7 @@ export type DiffRow =
     }
   | { readonly kind: 'binary'; readonly file: number }
   | { readonly kind: 'empty'; readonly file: number }
+  | { readonly kind: 'whitespace'; readonly file: number }
   | { readonly kind: 'image'; readonly file: number }
   | { readonly kind: 'markdown'; readonly file: number }
   | { readonly kind: 'skeleton' }
@@ -146,6 +147,7 @@ const rowHeights: Record<Exclude<DiffRow['kind'], MeasuredKind>, number> = {
   large: 36,
   binary: uniformHeight,
   empty: uniformHeight,
+  whitespace: uniformHeight,
   image: 320,
   hunk: uniformHeight,
   line: uniformHeight,
@@ -576,6 +578,8 @@ export function diffRows(
       });
     } else if (file.hunks.length === 0 && sideChange(file)) {
       rows.push({ kind: 'empty', file: index });
+    } else if (file.whitespaceOnly) {
+      rows.push({ kind: 'whitespace', file: index });
     }
     if (sideBySide) {
       for (const row of splitRows(file, index)) {
@@ -1651,6 +1655,14 @@ export function DiffView({
           <FileNote
             text={strings.diff.emptyFile}
             change={sideChange(files[row.file])}
+            split={split}
+          />
+        );
+      case 'whitespace':
+        return (
+          <FileNote
+            text={strings.diff.onlyWhitespace}
+            change={undefined}
             split={split}
           />
         );

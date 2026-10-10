@@ -31,6 +31,7 @@ export interface TabView {
   readonly entireFile: boolean;
   readonly patch: string;
   readonly leftOut: readonly LeftOut[];
+  readonly whitespaceOnly: readonly string[];
   readonly diffs: number;
   readonly refreshes: number;
   readonly fileContent: WholeFile | undefined;
@@ -65,6 +66,7 @@ export const emptyTabView: TabView = {
   entireFile: false,
   patch: '',
   leftOut: [],
+  whitespaceOnly: [],
   diffs: 0,
   refreshes: 0,
   fileContent: undefined,
@@ -110,6 +112,7 @@ function selected(state: TabView, hash: string | undefined): TabView {
     entireFile: false,
     patch: '',
     leftOut: [],
+    whitespaceOnly: [],
     fileContent: undefined,
     largeFiles: new Map(),
     texts: new Map(),
@@ -163,6 +166,7 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
         patchLoading: state.hash !== undefined,
         patch: '',
         leftOut: [],
+        whitespaceOnly: [],
         fileContent: undefined,
         largeFiles: new Map(),
         texts: new Map(),
@@ -244,6 +248,7 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
         area: action.area,
         patch: action.patch,
         leftOut: action.leftOut ?? [],
+        whitespaceOnly: action.whitespaceOnly ?? [],
         diffs: state.diffs + 1,
         patchLoading: false,
         fileContent: undefined,
@@ -256,7 +261,7 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
             ...state,
             largeFiles: new Map(state.largeFiles).set(
               action.path,
-              parseFilePatch(action.path, action.patch),
+              parseFilePatch(action.path, action.patch, action.whitespaceOnly),
             ),
           }
         : state;
@@ -285,6 +290,7 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
         area: action.area,
         patch: '',
         leftOut: [],
+        whitespaceOnly: [],
         patchLoading: false,
         fileContent: action,
       };

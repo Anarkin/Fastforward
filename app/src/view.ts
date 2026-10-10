@@ -6,10 +6,12 @@ import {
   comparePatch,
   comparePatchArgs,
   leftOutOf,
+  newSideUnchanged,
   readPatch,
   showFiles,
   showPatch,
   showPatchArgs,
+  whitespaceOnlyChanges,
   type PatchScope,
   type ReadPatch,
 } from './git/diff';
@@ -2330,13 +2332,25 @@ export class FastforwardView {
     shownPatch?: string,
   ): Promise<void> {
     const change = changesOf(context.tab).get(file);
+    const { ignoreWhitespace } = this.storage;
     const patch = await this.patchOf(context, hash, {
       path: file,
       oldPath: change?.oldPath,
-      ignoreWhitespace: this.storage.ignoreWhitespace,
+      ignoreWhitespace,
     });
+    const whitespaceOnly =
+      ignoreWhitespace &&
+      change !== undefined &&
+      whitespaceOnlyChanges(patch, [change]).length > 0;
     if (context.tab.hash === hash && patch !== shownPatch) {
-      context.post({ type: 'fileDiff', hash, path: file, patch, diff });
+      context.post({
+        type: 'fileDiff',
+        hash,
+        path: file,
+        patch,
+        diff,
+        ...(whitespaceOnly ? { whitespaceOnly } : {}),
+      });
     }
   }
 
@@ -2487,9 +2501,15 @@ export class FastforwardView {
       }
       return;
     }
+    const { ignoreWhitespace } = this.storage;
     let patch: string;
     let leftOut: readonly LeftOut[] | undefined;
+    let whitespaceOnly: string[] = [];
     try {
+      const scope = { path: file, oldPath: change?.oldPath };
+      const entireFile =
+        file !== undefined &&
+        (context.tab.entireFile || this.storage.entireFilePinned);
       if (file === undefined) {
         ({ patch, leftOut } = await this.wholePatch(
           context,
@@ -2502,13 +2522,27 @@ export class FastforwardView {
         patch = await this.patchOf(
           context,
           hash,
-          {
-            path: file,
-            oldPath: change?.oldPath,
-            entireFile: context.tab.entireFile || this.storage.entireFilePinned,
-            ignoreWhitespace: this.storage.ignoreWhitespace,
-          },
+          { ...scope, entireFile, ignoreWhitespace },
           loading.signal,
+        );
+      }
+      if (ignoreWhitespace) {
+        const deferred = new Set(leftOut?.map((out) => out.path));
+        whitespaceOnly = whitespaceOnlyChanges(
+          patch,
+          (change ? [change] : [...changes.values()]).filter(
+            (shown) => !deferred.has(shown.path),
+          ),
+        );
+      }
+      if (entireFile && whitespaceOnly.length > 0) {
+        patch = newSideUnchanged(
+          await this.patchOf(
+            context,
+            hash,
+            { ...scope, entireFile },
+            loading.signal,
+          ),
         );
       }
     } catch (error) {
@@ -2525,7 +2559,9 @@ export class FastforwardView {
       shownDiff.path === file &&
       shownDiff.area === area &&
       shownDiff.patch === patch &&
-      JSON.stringify(shownDiff.leftOut) === JSON.stringify(leftOut);
+      JSON.stringify(shownDiff.leftOut) === JSON.stringify(leftOut) &&
+      JSON.stringify(shownDiff.whitespaceOnly ?? []) ===
+        JSON.stringify(whitespaceOnly);
     if (stale()) {
       return;
     }
@@ -2538,6 +2574,7 @@ export class FastforwardView {
         ...areaOf(area),
         patch,
         ...(leftOut === undefined ? {} : { leftOut }),
+        ...(whitespaceOnly.length === 0 ? {} : { whitespaceOnly }),
       });
     } else if (file === undefined) {
       await this.sendFileDiffsAgain(context, hash);

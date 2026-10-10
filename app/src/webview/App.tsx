@@ -141,6 +141,7 @@ export function App({ name, post: postToHost, listen }: Props) {
     entireFile,
     patch,
     leftOut,
+    whitespaceOnly,
     diffs,
     refreshes,
     fileContent,
@@ -748,6 +749,7 @@ export function App({ name, post: postToHost, listen }: Props) {
                     files={area === 'staged' ? (staged ?? []) : files}
                     patch={patch}
                     leftOut={leftOut}
+                    whitespaceOnly={whitespaceOnly}
                     diffs={diffs}
                     fileContent={fileContent}
                     error={error}

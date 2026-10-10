@@ -23,6 +23,7 @@ export interface DiffFile {
   readonly hunks: DiffHunk[];
   readonly placeholder?: { readonly lines: number | undefined };
   readonly blobs?: Blobs;
+  readonly whitespaceOnly?: boolean;
 }
 
 interface ParsedFile {
@@ -159,8 +160,19 @@ function headerPath(rest: string): string {
   return split === -1 ? rest : rest.slice(split + 3);
 }
 
-export function parseFilePatch(path: string, patch: string): DiffFile {
-  return parsePatch(patch)[0] ?? { path, binary: false, hunks: [] };
+export function parseFilePatch(
+  path: string,
+  patch: string,
+  whitespaceOnly = false,
+): DiffFile {
+  return (
+    parsePatch(patch)[0] ?? {
+      path,
+      binary: false,
+      hunks: [],
+      ...(whitespaceOnly ? { whitespaceOnly } : {}),
+    }
+  );
 }
 
 export function parsePatch(patch: string): DiffFile[] {
