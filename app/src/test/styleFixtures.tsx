@@ -291,7 +291,7 @@ function locationsPopupElement(query: string): React.ReactElement {
       lookup={undefined}
       onLookup={noop}
       commitSearch={undefined}
-      onSearchCommits={noop}
+      onSearchCommits={() => noop}
       onJump={noop}
       onClose={noop}
       query={query}
@@ -312,7 +312,7 @@ export const addressBar = memoized(() =>
       hashLookup={undefined}
       onLookupHash={noop}
       commitSearch={undefined}
-      onSearchCommits={noop}
+      onSearchCommits={() => noop}
       onJump={noop}
       bookmarks={[]}
     />,

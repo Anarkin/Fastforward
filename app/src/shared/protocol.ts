@@ -268,6 +268,7 @@ export type TabMessage =
   | { readonly type: 'fetch' }
   | { readonly type: 'lookupHash'; readonly query: string }
   | { readonly type: 'searchCommits'; readonly query: string }
+  | { readonly type: 'stopCommitSearch' }
   | {
       readonly type: 'navigate';
       readonly direction: Direction;

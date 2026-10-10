@@ -267,7 +267,7 @@ export function AddressBar({
   hashLookup: ToWebviewOf<'hashLookup'> | undefined;
   onLookupHash: (query: string) => void;
   commitSearch: ToWebviewOf<'commitSearch'> | undefined;
-  onSearchCommits: (query: string) => void;
+  onSearchCommits: (query: string) => () => void;
   repository: RepositoryState | undefined;
   onJump: (commit: string) => void;
 }) {

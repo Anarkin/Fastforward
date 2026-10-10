@@ -194,6 +194,54 @@ suite('View navigating the history', function () {
     assert.strictEqual(page.last('error'), undefined);
   });
 
+  test('stops a commit search the page asks to stop, posting nothing for it', async () => {
+    const held = gate();
+    let searching: AbortSignal | undefined;
+    stubMethod(fastforward, 'commitsMatching', async (original, ...args) => {
+      const [, , signal] = args;
+      assert.ok(signal instanceof AbortSignal);
+      searching = signal;
+      await held.opened;
+      return original(...args);
+    });
+    page.clear();
+    const stopped = connection.receive({
+      type: 'searchCommits',
+      root: repository.root,
+      query: 'test',
+    });
+    await waitFor(() => searching !== undefined, 'the search');
+    await connection.receive({
+      type: 'stopCommitSearch',
+      root: repository.root,
+    });
+    assert.strictEqual(searching?.aborted, true);
+    held.open();
+    await stopped;
+    assert.strictEqual(page.last('commitSearch'), undefined);
+    assert.strictEqual(page.last('error'), undefined);
+  });
+
+  test('runs no commit search the page asks to stop before it starts', async () => {
+    let searched = false;
+    stubMethod(fastforward, 'commitsMatching', (original, ...args) => {
+      searched = true;
+      return original(...args);
+    });
+    page.clear();
+    await Promise.all([
+      connection.receive({
+        type: 'searchCommits',
+        root: repository.root,
+        query: 'test',
+      }),
+      connection.receive({ type: 'stopCommitSearch', root: repository.root }),
+    ]);
+    assert.strictEqual(searched, false);
+    assert.strictEqual(page.last('commitSearch'), undefined);
+    assert.strictEqual(page.last('error'), undefined);
+  });
+
   test('jumps to a commit by a short hash', async () => {
     await connection.receive({
       type: 'jump',

@@ -52,7 +52,7 @@ suite('Navigation bar', () => {
         hashLookup={undefined}
         onLookupHash={noop}
         commitSearch={undefined}
-        onSearchCommits={noop}
+        onSearchCommits={() => noop}
         onJump={noop}
       />,
     );

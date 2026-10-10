@@ -197,6 +197,17 @@ const hashLookupDelay = 150;
 
 const commitSearchDelay = 250;
 
+export function startAfter(delay: number, start: () => () => void): () => void {
+  let stop: (() => void) | undefined;
+  const timer = setTimeout(() => {
+    stop = start();
+  }, delay);
+  return () => {
+    clearTimeout(timer);
+    stop?.();
+  };
+}
+
 const minSearchLength = 3;
 
 const commitIndent = 8;
@@ -385,7 +396,7 @@ export function LocationsPopup({
   lookup: ToWebviewOf<'hashLookup'> | undefined;
   onLookup: (query: string) => void;
   commitSearch: ToWebviewOf<'commitSearch'> | undefined;
-  onSearchCommits: (query: string) => void;
+  onSearchCommits: (query: string) => () => void;
   onJump: (commit: string) => void;
   onClose: () => void;
   query: string;
@@ -428,8 +439,7 @@ export function LocationsPopup({
     if (!text) {
       return undefined;
     }
-    const timer = setTimeout(() => onSearchCommits(text), commitSearchDelay);
-    return () => clearTimeout(timer);
+    return startAfter(commitSearchDelay, () => onSearchCommits(text));
   }, [text, onSearchCommits]);
   const textFound =
     text && commitSearch?.query === text ? commitSearch.result : undefined;

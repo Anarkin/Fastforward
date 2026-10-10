@@ -359,7 +359,10 @@ export function App({ name, post: postToHost, listen }: Props) {
     [postTab],
   );
   const searchCommits = useCallback(
-    (query: string) => postTab({ type: 'searchCommits', query }),
+    (query: string) => {
+      postTab({ type: 'searchCommits', query });
+      return () => postTab({ type: 'stopCommitSearch' });
+    },
     [postTab],
   );
   const navigate = useCallback(

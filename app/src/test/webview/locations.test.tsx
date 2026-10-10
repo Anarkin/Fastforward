@@ -18,6 +18,7 @@ import {
   searchRefs,
   searchStashes,
   shownChildren,
+  startAfter,
   type Highlighted,
   stickyRowHeight,
 } from '../../webview/locations';
@@ -422,7 +423,7 @@ const popup = (
       lookup={result}
       onLookup={noop}
       commitSearch={undefined}
-      onSearchCommits={noop}
+      onSearchCommits={() => noop}
       onJump={noop}
       onClose={noop}
       query={query}
@@ -615,6 +616,22 @@ suite('Commit results', () => {
     assert.match(popup('pa'), /No matches/);
   });
 
+  test('searches commits after a pause, stopping the search once the text changes or the popup closes, unless it never started', async () => {
+    const asked: string[] = [];
+    const search = () => {
+      asked.push('search');
+      return () => asked.push('stop');
+    };
+    startAfter(0, search)();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    assert.deepStrictEqual(asked, []);
+    const cleanUp = startAfter(0, search);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    assert.deepStrictEqual(asked, ['search']);
+    cleanUp();
+    assert.deepStrictEqual(asked, ['search', 'stop']);
+  });
+
   test('offers nothing for what is no hash, or too short', () => {
     assert.doesNotMatch(popup('ab'), /hash-suggestion|Commits/);
     assert.doesNotMatch(popup('abc'), /Looking for commit|Commits/);
@@ -649,7 +666,7 @@ suite('Search', () => {
       lookup: undefined,
       onLookup: noop,
       commitSearch: undefined,
-      onSearchCommits: noop,
+      onSearchCommits: () => noop,
       onJump: noop,
       onClose: () => closed++,
       query: '',

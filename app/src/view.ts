@@ -646,6 +646,12 @@ export class FastforwardView {
         }
         return;
       }
+      case 'searchCommits':
+        await this.searchCommits(session, message.root, message.query);
+        return;
+      case 'stopCommitSearch':
+        this.commitSearches.get(message.root)?.abort();
+        return;
       default:
         if (this.isActive(message.root)) {
           await this.handleTab(message, session);
@@ -656,7 +662,14 @@ export class FastforwardView {
   private async handleTab(
     message: Exclude<
       TabMessage,
-      { type: 'setBookmarks' | 'setSolo' | 'scrolled' }
+      {
+        type:
+          | 'setBookmarks'
+          | 'setSolo'
+          | 'scrolled'
+          | 'searchCommits'
+          | 'stopCommitSearch';
+      }
     >,
     session: Session,
   ): Promise<void> {
@@ -730,9 +743,6 @@ export class FastforwardView {
         break;
       case 'lookupHash':
         await this.lookupHash(context, message.query);
-        break;
-      case 'searchCommits':
-        await this.searchCommits(context, message.query);
         break;
       case 'selectCommit':
         context.tab.selection = message.selection;
@@ -1578,11 +1588,22 @@ export class FastforwardView {
     });
   }
 
-  private async searchCommits(context: Context, query: string): Promise<void> {
-    this.commitSearches.get(context.root)?.abort();
+  private async searchCommits(
+    session: Session,
+    root: string,
+    query: string,
+  ): Promise<void> {
+    this.commitSearches.get(root)?.abort();
     const search = new AbortController();
-    this.commitSearches.set(context.root, search);
+    this.commitSearches.set(root, search);
     try {
+      const context = this.isActive(root)
+        ? await this.context(session)
+        : undefined;
+      await context?.tab.loadingHistory;
+      if (!context || search.signal.aborted) {
+        return;
+      }
       const result = await this.commitsMatching(context, query, search.signal);
       if (!search.signal.aborted) {
         context.post({ type: 'commitSearch', query, result });
@@ -1592,8 +1613,8 @@ export class FastforwardView {
         throw error;
       }
     } finally {
-      if (this.commitSearches.get(context.root) === search) {
-        this.commitSearches.delete(context.root);
+      if (this.commitSearches.get(root) === search) {
+        this.commitSearches.delete(root);
       }
     }
   }
