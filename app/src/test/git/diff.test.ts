@@ -173,6 +173,34 @@ suite('Files left out of a patch', () => {
       { path: 'c.ts', lines: 0 },
     ]);
   });
+
+  test('takes both sections of a type change, the old file deleted and the new one added under the same header, for one file, counting the lines of both', () => {
+    const typeChanged = [
+      fileChange('a.ts'),
+      fileChange('link', { status: 'T' }),
+      fileChange('b.ts'),
+    ];
+    const symlink = section('link', 1);
+    const large = section('link', collapseThreshold);
+    for (const halves of [symlink + large, large + symlink]) {
+      const output = section('a.ts', 1) + halves + section('b.ts', 1);
+      const read2 = read([output]);
+      assert.strictEqual(read2.patch, section('a.ts', 1) + section('b.ts', 1));
+      assert.deepStrictEqual(leftOutOf(read2, typeChanged), [
+        { path: 'link', lines: collapseThreshold + 1 },
+      ]);
+    }
+    const budget = new PatchBudget();
+    budget.add(
+      Buffer.from(
+        `${section('a.ts', 1)}${symlink}diff --git a/link b/link\n@@ -0,0 +1 @@\n+${'x'.repeat(patchByteBudget)}`,
+      ),
+    );
+    assert.deepStrictEqual(leftOutOf(budget.end(), typeChanged), [
+      { path: 'link', lines: undefined },
+      { path: 'b.ts', lines: 0 },
+    ]);
+  });
 });
 
 suite('Pathspecs', () => {

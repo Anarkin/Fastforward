@@ -159,7 +159,9 @@ export class PatchBudget {
   }
 
   private addLine(line: string, bytes: number, newline: boolean): boolean {
-    if (line.startsWith('diff --git ')) {
+    if (line === this.section?.header) {
+      this.section.inHunk = false;
+    } else if (line.startsWith('diff --git ')) {
       if (this.close()) {
         return true;
       }
