@@ -46,6 +46,8 @@ suite('Navigation bar', () => {
   test('says Search… in the search field, and what it searches in its tooltip', () => {
     const html = renderToStaticMarkup(
       <AddressBar
+        open={false}
+        onOpen={noop}
         root="/repo"
         bookmarks={[]}
         repository={undefined}

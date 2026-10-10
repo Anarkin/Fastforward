@@ -285,6 +285,39 @@ suite('App', function () {
     await page.locator('.commit.selected', { hasText: 'first' }).waitFor();
   });
 
+  test('keeps the search popup open in the worktree switched to with it open, its field keeping the keyboard', async () => {
+    const worktree = path.join(folder, 'other');
+    const worktrees = page.locator('.worktrees .tab');
+    const popup = page.locator('.locations-popup');
+    const field = page.locator('.locations-search');
+    await repository.git('worktree', 'add', '-q', '-b', 'other', worktree);
+    try {
+      await waitForCount(worktrees, 2, 'worktrees');
+      await page.keyboard.press('s');
+      await waitForFocus(field, 'the search field');
+      await page.keyboard.press('Control+PageDown');
+      await page
+        .locator('.commit .badge.branch.checked-out', { hasText: 'other' })
+        .waitFor();
+      assert.strictEqual(await popup.count(), 1);
+      assert.ok(
+        await field.evaluate((element) => element === document.activeElement),
+      );
+    } finally {
+      if ((await popup.count()) > 0) {
+        await page.keyboard.press('Escape');
+        await popup.waitFor({ state: 'detached' });
+      }
+      await page.keyboard.press('Control+PageUp');
+      await page
+        .locator('.commit .badge.branch.checked-out', { hasText: 'main' })
+        .waitFor();
+      await repository.git('worktree', 'remove', '--force', worktree);
+      await repository.git('branch', '-q', '-D', 'other');
+      await waitForCount(worktrees, 1, 'worktrees');
+    }
+  });
+
   test('gives the keyboard back to the commit list once the Fetch button it is on is disabled while fetching', async () => {
     const stop = path.join(folder, 'stop-fetch').replaceAll('\\', '/');
     const fetchButton = page.locator('.pin-pair > .nav-button').first();

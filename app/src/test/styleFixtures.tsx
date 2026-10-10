@@ -307,6 +307,8 @@ export const locationsPopup = memoized((query) =>
 export const addressBar = memoized(() =>
   rendered(
     <AddressBar
+      open={false}
+      onOpen={noop}
       root="/a"
       repository={undefined}
       hashLookup={undefined}

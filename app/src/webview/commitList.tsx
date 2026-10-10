@@ -2,6 +2,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useEffectEvent,
   useLayoutEffect,
   useRef,
   useState,
@@ -472,6 +473,7 @@ export function Commits({
   navigation,
   search,
   focusKey,
+  searching = false,
   error,
 }: {
   history: CommitHistory | undefined;
@@ -499,6 +501,7 @@ export function Commits({
   navigation?: React.ReactNode;
   search?: React.ReactNode;
   focusKey?: string;
+  searching?: boolean;
   error?: string;
 }) {
   const version = useSyncExternalStore(
@@ -664,9 +667,14 @@ export function Commits({
       }
     }
   });
+  const takeKeyboard = useEffectEvent(() => {
+    if (!searching) {
+      list.current?.focus({ preventScroll: true });
+    }
+  });
   useEffect(() => {
     if (focusKey !== undefined) {
-      list.current?.focus({ preventScroll: true });
+      takeKeyboard();
     }
   }, [focusKey]);
 

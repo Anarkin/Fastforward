@@ -191,6 +191,7 @@ export function App({ name, post: postToHost, listen }: Props) {
     [post],
   );
   const [commitsShown, setCommitsShown] = useState(true);
+  const [searching, setSearching] = useState(false);
   useBinding(keymap.commits, () => setCommitsShown((shown) => !shown));
   const hiddenColumns = useMemo(() => [!commitsShown, false], [commitsShown]);
   const {
@@ -702,6 +703,7 @@ export function App({ name, post: postToHost, listen }: Props) {
                     solo={solo}
                     headCommit={repository?.headCommit}
                     focusKey={activeTab}
+                    searching={searching}
                     error={listError(error, layoutSelection)}
                     applyingSolo={applyingSolo}
                     onSolo={changeSolo}
@@ -723,6 +725,8 @@ export function App({ name, post: postToHost, listen }: Props) {
                     }
                     search={
                       <AddressBar
+                        open={searching}
+                        onOpen={setSearching}
                         root={activeTab}
                         bookmarks={bookmarks}
                         repository={repository}

@@ -253,6 +253,8 @@ export function locationsPopupKey(
 }
 
 export function AddressBar({
+  open,
+  onOpen,
   root,
   repository,
   hashLookup,
@@ -262,6 +264,8 @@ export function AddressBar({
   onJump,
   bookmarks,
 }: {
+  open: boolean;
+  onOpen: (open: boolean) => void;
   root: string | undefined;
   bookmarks: readonly Bookmark[];
   hashLookup: ToWebviewOf<'hashLookup'> | undefined;
@@ -271,11 +275,10 @@ export function AddressBar({
   repository: RepositoryState | undefined;
   onJump: (commit: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const close = useCallback(() => setOpen(false), []);
+  const close = useCallback(() => onOpen(false), [onOpen]);
   const [searches, setSearches] = useState(0);
   useBinding(keymap.search, () => {
-    setOpen(true);
+    onOpen(true);
     setSearches((count) => count + 1);
   });
   const [queries, setQueries] = useState<ReadonlyMap<string, string>>(
@@ -291,7 +294,7 @@ export function AddressBar({
       <button
         className="address-bar"
         title={strings.actions.search}
-        onClick={() => setOpen(true)}
+        onClick={() => onOpen(true)}
       >
         <span className="address-text empty">{strings.search.placeholder}</span>
       </button>
