@@ -43,7 +43,7 @@ This file only observes and documents the codebase mainly for human readers; the
 
 ## Other
 
-- A git command fails past `256 MB` of output, as Node's `maxBuffer` must be set to some limit
+- A git command fails past `256 MB` of output, bounding the memory its output takes, the commit list's included though it is parsed while git sends it, so a history of over about `3 million` commits fails to load
 - A fetch is stopped and reported as failed after `5 minutes`
 - Quitting stops every git at once but a checkout or fast-forward, which it waits at most `30 seconds` for, as stopping one midway can leave the working tree half switched
 - Opening a repository runs the commands its git config names, as git itself does, such as clean filters while reading the working tree and credential helpers or `core.sshCommand` while fetching; only a `core.fsmonitor` hook is never run, while git's built-in fsmonitor daemon still is, read as on or off the first time the app runs git in a folder
