@@ -15,7 +15,9 @@ export function fileLog(file: string, echo = false): Log {
   const descriptor = fs.openSync(file, 'a');
   const write = (level: string, text: string) => {
     const line = `${new Date().toISOString()} [${level}] ${text}\n`;
-    fs.writeSync(descriptor, line);
+    try {
+      fs.writeSync(descriptor, line);
+    } catch {}
     if (echo) {
       process.stdout.write(line);
     }

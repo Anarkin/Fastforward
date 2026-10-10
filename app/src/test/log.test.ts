@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import * as fs from 'node:fs';
+import fs from 'node:fs';
 import * as path from 'node:path';
 import { fileLog } from '../log';
 import { removeFolder, tempFolder } from './repositories';
@@ -25,6 +25,27 @@ suite('Log file', () => {
     assert.match(lines, /\[warn\] careful$/m);
     assert.match(lines, /\[error\] Error: broke\n\s+at /);
     assert.match(lines, /\[error\] plain$/m);
+  });
+
+  test('drops a line it cannot write, such as on a full disk, rather than throwing into what logged it, as the handlers of uncaught errors log too, so the next failure crashed the app', () => {
+    const file = path.join(folder, 'Fastforward.log');
+    const log = fileLog(file);
+    const write = fs.writeSync;
+    Reflect.set(fs, 'writeSync', () => {
+      throw Object.assign(new Error('ENOSPC: no space left on device, write'), {
+        code: 'ENOSPC',
+      });
+    });
+    try {
+      log.info('lost');
+      log.error(new Error('lost too'));
+    } finally {
+      Reflect.set(fs, 'writeSync', write);
+    }
+    log.info('written once there is space');
+    const lines = fs.readFileSync(file, 'utf8');
+    assert.doesNotMatch(lines, /lost/);
+    assert.match(lines, /\[info\] written once there is space$/m);
   });
 
   test('keeps the log of the run before as the previous log', () => {
