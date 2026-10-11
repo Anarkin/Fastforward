@@ -44,11 +44,13 @@ import {
   stuckHeader,
   wholeChangeClass,
   widestColumns,
+  splitPairs,
   type DiffRow,
 } from '../../webview/diffView';
 import { ImageDiff, imagePanes } from '../../webview/imagePreview';
 import { sideBySideWords } from '../../webview/pairing';
-import type { LineWords } from '../../webview/wordDiff';
+import { wordRanges, type LineWords } from '../../webview/wordDiff';
+import { lineKey } from '../../webview/find';
 import type { TextWidths } from '../../webview/overflow';
 import type { Preview } from '../../webview/previews';
 import { countingReads, fileChange } from '../fixtures';
@@ -90,45 +92,94 @@ const lines = (files: readonly DiffFile[]) =>
     file.hunks.flatMap((hunk) => hunk.lines.map((line) => line.text)),
   ]);
 
+function budgetedFiles() {
+  const lineCount = 150;
+  const wordCount = 20;
+  const line = (name: string) =>
+    Array.from({ length: wordCount }, (_, word) => `${name}w${word}`).join(' ');
+  const removed = Array.from({ length: lineCount }, (_, index) =>
+    line(`l${index}`),
+  );
+  const added = [line('inserted'), ...removed];
+  const files = parsePatch(
+    Array.from({ length: 8 }, (_, file) =>
+      [
+        `diff --git a/${file}.txt b/${file}.txt`,
+        `--- a/${file}.txt`,
+        `+++ b/${file}.txt`,
+        `@@ -1,${removed.length} +1,${added.length} @@`,
+        ...removed.map((text) => `-${text}`),
+        ...added.map((text) => `+${text}`),
+      ].join('\n'),
+    ).join('\n'),
+  );
+  const perChange =
+    removed.length * wordCount * added.length +
+    added.length * wordCount * removed.length;
+  return { files, aligned: Math.floor(sideBySideWords / perChange) };
+}
+
+function filesStartingAligned(
+  files: readonly DiffFile[],
+  rows: readonly DiffRow[],
+): boolean[] {
+  return files.map((_, file) => {
+    const first = rows.find((row) => row.kind === 'split' && row.file === file);
+    return first?.kind === 'split' && first.left === undefined;
+  });
+}
+
 suite('Diff rows', () => {
   test('lines up the changes of a side by side diff by their words only until comparing them passes a limit for the whole diff, pairing the rest in order, so a diff of many changes lays out at once', () => {
-    const lineCount = 150;
-    const wordCount = 20;
-    const line = (name: string) =>
-      Array.from({ length: wordCount }, (_, word) => `${name}w${word}`).join(
-        ' ',
-      );
-    const removed = Array.from({ length: lineCount }, (_, index) =>
-      line(`l${index}`),
-    );
-    const added = [line('inserted'), ...removed];
-    const files = parsePatch(
-      Array.from({ length: 8 }, (_, file) =>
-        [
-          `diff --git a/${file}.txt b/${file}.txt`,
-          `--- a/${file}.txt`,
-          `+++ b/${file}.txt`,
-          `@@ -1,${removed.length} +1,${added.length} @@`,
-          ...removed.map((text) => `-${text}`),
-          ...added.map((text) => `+${text}`),
-        ].join('\n'),
-      ).join('\n'),
-    );
-    const perChange =
-      removed.length * wordCount * added.length +
-      added.length * wordCount * removed.length;
+    const { files, aligned } = budgetedFiles();
     const rows = diffRows(files, new Map(), undefined, false, true);
-    const startsAligned = files.map((_, file) => {
-      const first = rows.find(
-        (row) => row.kind === 'split' && row.file === file,
-      );
-      return first?.kind === 'split' && first.left === undefined;
-    });
-    const aligned = Math.floor(sideBySideWords / perChange);
     assert.ok(aligned > 0 && aligned < 8);
     assert.deepStrictEqual(
-      startsAligned,
+      filesStartingAligned(files, rows),
       Array.from({ length: 8 }, (_, file) => file < aligned),
+    );
+  });
+
+  test('lays a side by side diff out the same each time, counting the changes lined up before toward the limit, so laying it out again, as for a file toggled, moves no rows', () => {
+    const { files, aligned } = budgetedFiles();
+    const expected = Array.from({ length: 8 }, (_, file) => file < aligned);
+    const first = diffRows(files, new Map(), undefined, false, true);
+    const again = diffRows(files, new Map(), undefined, false, true);
+    const toggled = diffRows(
+      files,
+      new Map([[files[0].path, true]]),
+      undefined,
+      false,
+      true,
+    );
+    assert.deepStrictEqual(filesStartingAligned(files, first), expected);
+    assert.deepStrictEqual(filesStartingAligned(files, again), expected);
+    assert.deepStrictEqual(filesStartingAligned(files, toggled), expected);
+  });
+
+  test('lays a side by side diff out by the limit after its words were marked, and marks them as the lines it lays out are paired', () => {
+    const { files, aligned } = budgetedFiles();
+    const last = files.length - 1;
+    const words = wordRanges(files);
+    words.get(lineKey(last, 0));
+    const rows = diffRows(files, new Map(), undefined, false, true);
+    assert.deepStrictEqual(
+      filesStartingAligned(files, rows),
+      Array.from({ length: 8 }, (_, file) => file < aligned),
+    );
+    const wordsLaidOut = wordRanges(files, splitPairs(rows));
+    const [firstRow] = rows.filter(
+      (row) => row.kind === 'split' && row.file === last,
+    );
+    assert.ok(firstRow?.kind === 'split' && firstRow.left && firstRow.right);
+    assert.strictEqual(firstRow.right.line.text.startsWith('inserted'), true);
+    assert.strictEqual(
+      wordsLaidOut.get(lineKey(last, firstRow.left.index)),
+      'whole',
+    );
+    assert.strictEqual(
+      wordsLaidOut.get(lineKey(last, firstRow.right.index)),
+      'whole',
     );
   });
 

@@ -208,7 +208,7 @@ function lineChanges(file: DiffFile): ReadonlyMap<number, Change> {
   return changes;
 }
 
-interface Pair {
+export interface Pair {
   readonly removed: NumberedLine | undefined;
   readonly added: NumberedLine | undefined;
 }
@@ -236,36 +236,54 @@ function linePairs(change: Change): ReadonlyMap<number, Pair> {
   return pairs;
 }
 
+interface PairRanges {
+  readonly removed: LineWords;
+  readonly added: LineWords;
+}
+
+const unpaired: PairRanges = { removed: 'whole', added: 'whole' };
+
 const rangesOfPair = new WeakMap<
-  Pair,
-  { readonly removed: LineWords; readonly added: LineWords }
+  NumberedLine,
+  WeakMap<NumberedLine, PairRanges>
 >();
 
-function pairRanges(pair: Pair) {
-  let ranges = rangesOfPair.get(pair);
+function pairRanges({ removed, added }: Pair): PairRanges {
+  if (!removed || !added) {
+    return unpaired;
+  }
+  let withRemoved = rangesOfPair.get(removed);
+  if (!withRemoved) {
+    withRemoved = new WeakMap();
+    rangesOfPair.set(removed, withRemoved);
+  }
+  let ranges = withRemoved.get(added);
   if (!ranges) {
-    const found =
-      pair.removed && pair.added
-        ? pairWordRanges(pair.removed.line.text, pair.added.line.text)
-        : undefined;
+    const found = pairWordRanges(removed.line.text, added.line.text);
     ranges = {
       removed: found?.removed ?? 'whole',
       added: found?.added ?? 'whole',
     };
-    rangesOfPair.set(pair, ranges);
+    withRemoved.set(added, ranges);
   }
   return ranges;
 }
 
 export type WordRanges = Pick<ReadonlyMap<string, LineWords>, 'get'>;
 
-export function wordRanges(files: readonly DiffFile[]): WordRanges {
+export function wordRanges(
+  files: readonly DiffFile[],
+  laidOut?: ReadonlyMap<string, Pair>,
+): WordRanges {
   return {
     get: (key) => {
       const [file, line] = keyedLine(key);
-      const diffFile = files.at(file);
-      const change = diffFile && lineChanges(diffFile).get(line);
-      const pair = change && linePairs(change).get(line);
+      let pair = laidOut?.get(key);
+      if (!laidOut) {
+        const diffFile = files.at(file);
+        const change = diffFile && lineChanges(diffFile).get(line);
+        pair = change && linePairs(change).get(line);
+      }
       return (
         pair &&
         pairRanges(pair)[pair.removed?.index === line ? 'removed' : 'added']

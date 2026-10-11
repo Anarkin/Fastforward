@@ -34,7 +34,12 @@ import { columnFocusAttribute } from './activeColumn';
 import { rowPlace } from './rowPlace';
 import { changePairs, pairingBudget, type PairingBudget } from './pairing';
 import { textsToLoad, useSyntax, type SyntaxRange } from './syntax';
-import { wordRanges, type LineWords, type WordRanges } from './wordDiff';
+import {
+  wordRanges,
+  type LineWords,
+  type Pair,
+  type WordRanges,
+} from './wordDiff';
 import { keymap, wheeled, type Modifiers } from '../shared/keymap';
 import { glideAt, glideBy, glideEnded, type Glide } from './glide';
 import { strings } from '../shared/strings';
@@ -404,18 +409,26 @@ export function wheelSideways(
 
 type SplitRow = Extract<DiffRow, { kind: 'split' | 'hunk' }>;
 
-const splitRowsOfFile = new WeakMap<DiffFile, readonly SplitRow[]>();
+const splitRowsOfFile = new WeakMap<
+  DiffFile,
+  { readonly rows: readonly SplitRow[]; readonly words: number }
+>();
 
 export function splitRows(
   file: DiffFile,
   index: number,
   budget = pairingBudget(),
 ): readonly SplitRow[] {
-  let rows = splitRowsOfFile.get(file);
-  if (!rows) {
+  const known = splitRowsOfFile.get(file);
+  let rows: readonly SplitRow[];
+  if (known && !budget.spent && known.words <= budget.words) {
+    budget.words -= known.words;
+    rows = known.rows;
+  } else {
+    const before = budget.words;
     rows = alignedRows(file, index, budget);
     if (!budget.spent) {
-      splitRowsOfFile.set(file, rows);
+      splitRowsOfFile.set(file, { rows, words: before - budget.words });
     }
   }
   return rows[0]?.file === index
@@ -695,6 +708,24 @@ export function firstChangeTop(
 ): number | undefined {
   const [first] = starts;
   return first === undefined ? undefined : Math.max(0, first - margin);
+}
+
+export function splitPairs(
+  rows: readonly DiffRow[],
+): ReadonlyMap<string, Pair> {
+  const pairs = new Map<string, Pair>();
+  for (const row of rows) {
+    if (row.kind !== 'split' || row.left === row.right) {
+      continue;
+    }
+    const pair = { removed: row.left, added: row.right };
+    for (const side of [row.left, row.right]) {
+      if (side) {
+        pairs.set(lineKey(row.file, side.index), pair);
+      }
+    }
+  }
+  return pairs;
 }
 
 export function lineKeys(rows: readonly DiffRow[]): string[][] {
@@ -1522,8 +1553,11 @@ export function DiffView({
     [rows, split, wordWrap],
   );
   const words = useMemo(
-    () => (whole ? new Map<string, LineWords>() : wordRanges(files)),
-    [files, whole],
+    () =>
+      whole
+        ? new Map<string, LineWords>()
+        : wordRanges(files, split ? splitPairs(rows) : undefined),
+    [files, whole, split, rows],
   );
   const open = useMemo(
     () =>

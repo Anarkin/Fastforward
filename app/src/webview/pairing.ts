@@ -108,6 +108,31 @@ export function alignLines(
   added: readonly string[],
   budget?: PairingBudget,
 ): LinePair[] {
+  return alignment(removed, added, budget).pairs;
+}
+
+function charged(budget: PairingBudget | undefined, words: number): boolean {
+  if (!budget) {
+    return true;
+  }
+  if (budget.spent || words > budget.words) {
+    budget.spent = true;
+    return false;
+  }
+  budget.words -= words;
+  return true;
+}
+
+interface Aligned {
+  readonly pairs: LinePair[];
+  readonly words: number;
+}
+
+function alignment(
+  removed: readonly string[],
+  added: readonly string[],
+  budget: PairingBudget | undefined,
+): Aligned {
   const rows = removed.length;
   const columns = added.length;
   const compared =
@@ -115,15 +140,20 @@ export function alignLines(
       ? undefined
       : comparedWords(removed, added);
   if (compared === undefined) {
-    return inOrder(range(rows), range(columns));
+    return { pairs: inOrder(range(rows), range(columns)), words: 0 };
   }
-  if (budget) {
-    if (compared > budget.words) {
-      budget.spent = true;
-      return inOrder(range(rows), range(columns));
-    }
-    budget.words -= compared;
+  if (!charged(budget, compared)) {
+    return { pairs: inOrder(range(rows), range(columns)), words: compared };
   }
+  return { pairs: similarPairs(removed, added), words: compared };
+}
+
+function similarPairs(
+  removed: readonly string[],
+  added: readonly string[],
+): LinePair[] {
+  const rows = removed.length;
+  const columns = added.length;
   const removedWords = removed.map(wordsOf);
   const addedWords = added.map(wordsOf);
   const similarity = removedWords.map((before) =>
@@ -176,22 +206,25 @@ export function alignLines(
 
 type Change = Extract<ChangeBlock, { kind: 'change' }>;
 
-const pairsOfChange = new WeakMap<Change, readonly LinePair[]>();
+const pairsOfChange = new WeakMap<Change, Aligned>();
 
 export function changePairs(
   change: Change,
   budget?: PairingBudget,
 ): readonly LinePair[] {
-  let pairs = pairsOfChange.get(change);
-  if (!pairs) {
-    pairs = alignLines(
-      change.removed.map(({ line }) => line.text),
-      change.added.map(({ line }) => line.text),
-      budget,
-    );
-    if (!budget?.spent) {
-      pairsOfChange.set(change, pairs);
-    }
+  const known = pairsOfChange.get(change);
+  if (known) {
+    return charged(budget, known.words)
+      ? known.pairs
+      : inOrder(range(change.removed.length), range(change.added.length));
   }
-  return pairs;
+  const made = alignment(
+    change.removed.map(({ line }) => line.text),
+    change.added.map(({ line }) => line.text),
+    budget,
+  );
+  if (!budget?.spent) {
+    pairsOfChange.set(change, made);
+  }
+  return made.pairs;
 }
