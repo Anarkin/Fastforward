@@ -151,12 +151,13 @@ export function documentImagePath(
   document: string,
   src: string,
 ): string | undefined {
-  if (scheme.test(src) || src.startsWith('//')) {
+  const slashed = src.replaceAll('\\', '/');
+  if (scheme.test(slashed) || slashed.startsWith('//')) {
     return undefined;
   }
   let target: string;
   try {
-    target = decodeURIComponent(src.split(/[?#]/)[0] ?? '');
+    target = decodeURIComponent(slashed.split(/[?#]/)[0] ?? '');
   } catch {
     return undefined;
   }

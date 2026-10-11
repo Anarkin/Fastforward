@@ -305,6 +305,15 @@ suite('Images in documents', () => {
     assert.strictEqual(from('notes.txt'), undefined);
   });
 
+  test('takes a backslash in an image path for a slash, as browsers do, so a path written on Windows finds the image on both sides and never leaves the repository', () => {
+    assert.strictEqual(from('img\\shot.png'), 'docs/guide/img/shot.png');
+    assert.strictEqual(from('..\\..\\logo.png'), 'logo.png');
+    assert.strictEqual(from('\\assets\\a.png'), 'assets/a.png');
+    for (const outside of ['..\\..\\..\\up.png', '\\\\example.com\\a.png']) {
+      assert.strictEqual(from(outside), undefined, outside);
+    }
+  });
+
   test('reads an image in a document at its revision', () => {
     const images = { root: '/repo', revision: 'HEAD', version: '7' };
     assert.deepStrictEqual(source(documentImageUrl(images, 'docs/b.png')), {
