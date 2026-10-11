@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
   ignoredPaths,
+  watchesRecursively,
   watchRepository,
   type Changed,
   type Watcher,
@@ -33,6 +34,15 @@ suite('Watching a repository', function () {
     await repository.git('commit', '-m', 'first');
     changes = [];
     errors = [];
+  });
+
+  setup(function () {
+    if (
+      !watchesRecursively() &&
+      this.currentTest?.title.endsWith('watching recursively')
+    ) {
+      this.skip();
+    }
   });
 
   teardown(async () => {
