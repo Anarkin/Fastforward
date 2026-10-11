@@ -76,7 +76,7 @@ import {
 import { emptyTabView, reduceTabView, treeOf, treeToLoad } from './tabView';
 import { bookmarkOptions, toggleBookmark } from './bookmarks';
 import { addNotice, Notices, type Notice } from './notices';
-import { repositoryMenuItems } from './repositoryMenu';
+import { repositoryMenuItems, repositoryMenuTrigger } from './repositoryMenu';
 
 export function tabContent(
   tabs: readonly TabInfo[] | undefined,
@@ -590,6 +590,10 @@ export function App({ name, post: postToHost, listen }: Props) {
   };
 
   const openRepository = (event: React.MouseEvent) => {
+    if (menu?.trigger === repositoryMenuTrigger) {
+      setMenu(undefined);
+      return;
+    }
     if (recent.length === 0) {
       post({ type: 'browseRepositories' });
       return;
@@ -605,6 +609,7 @@ export function App({ name, post: postToHost, listen }: Props) {
           (root) => post({ type: 'openRepository', root }),
           () => post({ type: 'browseRepositories' }),
         ),
+        trigger: repositoryMenuTrigger,
       },
     });
   };

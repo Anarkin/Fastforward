@@ -2,6 +2,8 @@ import type { TabInfo } from '../shared/protocol';
 import { strings } from '../shared/strings';
 import type { ContextMenuItem } from './contextMenu';
 
+export const repositoryMenuTrigger = '.tab-add';
+
 export function repositoryMenuItems(
   recent: readonly TabInfo[],
   onOpen: (root: string) => void,

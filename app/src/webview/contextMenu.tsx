@@ -47,6 +47,7 @@ export interface OpenMenu {
   readonly x: number;
   readonly y: number;
   readonly items: readonly ContextMenuItem[];
+  readonly trigger?: string;
 }
 
 export function ContextMenu({
@@ -76,7 +77,7 @@ export function ContextMenu({
     });
   }, [menu]);
 
-  useDismiss(element, onClose, { onScroll: true });
+  useDismiss(element, onClose, { onScroll: true, ignore: menu.trigger });
   useMenuFocus(element);
 
   return (

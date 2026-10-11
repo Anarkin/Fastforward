@@ -77,7 +77,11 @@ suite('App', function () {
     fs.mkdirSync(profile, { recursive: true });
     fs.writeFileSync(
       path.join(profile, 'settings.json'),
-      JSON.stringify({ tabs: [repository.root], activeTab: repository.root }),
+      JSON.stringify({
+        tabs: [repository.root],
+        activeTab: repository.root,
+        recentRepositories: [path.join(folder, 'other')],
+      }),
     );
     app = await _electron.launch({
       args: [appFolder, `--user-data-dir=${profile}`],
@@ -253,6 +257,19 @@ suite('App', function () {
     await page.keyboard.press('Escape');
     await page.locator('.context-menu').waitFor({ state: 'detached' });
     await waitForFocus(page.locator('.virtual-rows.list'), 'the commit list');
+  });
+
+  test('closes the menu of recent repositories when + is clicked again, or on Ctrl+T again', async () => {
+    const add = page.locator('.tab-add');
+    const menu = page.locator('.context-menu', { hasText: 'other' });
+    await add.click();
+    await menu.waitFor();
+    await add.click();
+    assert.strictEqual(await menu.count(), 0);
+    await page.keyboard.press('ControlOrMeta+T');
+    await menu.waitFor();
+    await page.keyboard.press('ControlOrMeta+T');
+    assert.strictEqual(await menu.count(), 0);
   });
 
   test('gives the keyboard back to the commit list once the search popup closes on Esc or a jump, by key or click', async () => {
