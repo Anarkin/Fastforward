@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type RefObject,
 } from 'react';
 import {
   useVirtualizer,
@@ -436,6 +437,42 @@ export function trailing(
   };
 }
 
+export function useScrollReports(
+  list: RefObject<HTMLElement | null>,
+  topNow: () => (() => boolean) | undefined,
+): () => void {
+  const topUnreported = useRef(false);
+  useLayoutEffect(() => {
+    const element = list.current;
+    if (!element) {
+      return undefined;
+    }
+    topUnreported.current = false;
+    let reportTop = () => true;
+    const report = trailing(() => {
+      topUnreported.current = !reportTop();
+    }, scrolledDelay);
+    const scrolled = () => {
+      const top = topNow();
+      if (top) {
+        reportTop = top;
+        report.schedule();
+      }
+    };
+    element.addEventListener('scroll', scrolled);
+    return () => {
+      report.flush();
+      element.removeEventListener('scroll', scrolled);
+    };
+  }, [list, topNow]);
+  return useCallback(() => {
+    const reportTop = topUnreported.current ? topNow() : undefined;
+    if (reportTop) {
+      topUnreported.current = !reportTop();
+    }
+  }, [topNow]);
+}
+
 export function atMostEvery(
   run: () => void,
   delay: number,
@@ -716,7 +753,6 @@ export function Commits({
     virtualizer.scrollToIndex(index, { align: onScreen ? 'auto' : 'center' });
   }, [history, scrollTarget, offset, virtualizer, scrollTop, places]);
 
-  const topUnreported = useRef(false);
   const topNow = useCallback(() => {
     const element = list.current;
     if (!element || !history) {
@@ -730,40 +766,14 @@ export function Commits({
       offset,
     );
     return () => {
-      topUnreported.current = top === undefined;
       if (top) {
         onScrolled(top.hash, top.offset, places.told(scrolled));
       }
+      return top !== undefined;
     };
   }, [history, offset, onScrolled, virtualizer, scrollTop, places]);
-  // Replaced as the list is drawn, so the scroll a list emptied or replaced
-  // makes never reaches the listener of the history it showed before
-  useLayoutEffect(() => {
-    const element = list.current;
-    if (!element) {
-      return undefined;
-    }
-    topUnreported.current = false;
-    let reportTop = () => {};
-    const report = trailing(() => reportTop(), scrolledDelay);
-    const scrolled = () => {
-      const top = topNow();
-      if (top) {
-        reportTop = top;
-        report.schedule();
-      }
-    };
-    element.addEventListener('scroll', scrolled);
-    return () => {
-      report.flush();
-      element.removeEventListener('scroll', scrolled);
-    };
-  }, [topNow]);
-  useEffect(() => {
-    if (topUnreported.current) {
-      topNow()?.();
-    }
-  }, [version, topNow]);
+  const reportUntold = useScrollReports(list, topNow);
+  useEffect(reportUntold, [version, reportUntold]);
 
   const pending = useRef<PendingKey>(undefined);
   useEffect(() => {

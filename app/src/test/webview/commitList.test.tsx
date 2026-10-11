@@ -1,6 +1,13 @@
 import * as assert from 'node:assert';
 import { listMoveOf } from '../../webview/listMoves';
-import { isValidElement } from 'react';
+import {
+  act,
+  isValidElement,
+  useCallback,
+  useLayoutEffect,
+  useRef,
+} from 'react';
+import { JSDOM } from 'jsdom';
 import { Virtualizer } from '@tanstack/react-virtual';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { comparisonOf } from '../../shared/comparisons';
@@ -15,6 +22,7 @@ import {
   keptPlace,
   ReportedPlaces,
   trailing,
+  useScrollReports,
   atMostEvery,
   settling,
   listKeyPosition,
@@ -500,6 +508,62 @@ suite('Telling the place scrolled to', () => {
     tell.schedule();
     await new Promise((resolve) => setTimeout(resolve, 30));
     assert.strictEqual(told, 2);
+  });
+
+  test('tells a scroll made as another history is drawn as a place in that history, as the browser scrolls a list emptied or replaced before effects run, which told the place as one in the history shown before', async () => {
+    const dom = new JSDOM('<!doctype html><main></main>');
+    const globals = {
+      window: dom.window,
+      document: dom.window.document,
+      IS_REACT_ACT_ENVIRONMENT: true,
+    };
+    const before = Object.fromEntries(
+      Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
+    );
+    Object.assign(globalThis, globals);
+    try {
+      const { createRoot } = await import('react-dom/client');
+      const told: string[] = [];
+      const listOf = () => dom.window.document.querySelector('main > div');
+      function List({ history }: { history: string }) {
+        const list = useRef<HTMLDivElement>(null);
+        const topNow = useCallback(
+          () => () => {
+            told.push(history);
+            return true;
+          },
+          [history],
+        );
+        useScrollReports(list, topNow);
+        return <div ref={list} />;
+      }
+      function ScrolledAsDrawn() {
+        useLayoutEffect(() => {
+          listOf()?.dispatchEvent(new dom.window.Event('scroll'));
+        }, []);
+        return null;
+      }
+      const main = dom.window.document.querySelector('main');
+      assert.ok(main);
+      const root = createRoot(main);
+      await act(async () => {
+        root.render(<List history="before" />);
+      });
+      await act(async () => {
+        root.render(
+          <>
+            <List history="after" />
+            <ScrolledAsDrawn />
+          </>,
+        );
+      });
+      await act(async () => {
+        root.unmount();
+      });
+      assert.deepStrictEqual(told, ['after']);
+    } finally {
+      Object.assign(globalThis, before);
+    }
   });
 });
 
