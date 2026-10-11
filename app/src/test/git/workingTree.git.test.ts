@@ -171,14 +171,14 @@ suite('Files touched but unchanged', function () {
     assert.deepStrictEqual(files, []);
   });
 
-  test('keeps every file as modified when one is gone before it is read', async () => {
+  test('keeps a file gone before it is read as modified, still leaving out the touched ones', async () => {
     const files = await withoutTouched(repository.gitPath, repository.root, [
       modified('a.txt', blob),
       modified('gone.txt', blob),
     ]);
     assert.deepStrictEqual(
       files.map((file) => file.path),
-      ['a.txt', 'gone.txt'],
+      ['gone.txt'],
     );
   });
 
@@ -193,7 +193,7 @@ suite('Files touched but unchanged', function () {
     );
   });
 
-  test('keeps every file as modified when the first of many is gone, which git stops reading at', async () => {
+  test('keeps many files gone before they are read as modified, which git would stop reading at, still leaving out the touched ones', async () => {
     const many = Array.from({ length: 20_000 }, (_, i) =>
       modified(`gone/${i}.txt`, blob),
     );
@@ -201,7 +201,8 @@ suite('Files touched but unchanged', function () {
       ...many,
       modified('a.txt', blob),
     ]);
-    assert.strictEqual(files.length, many.length + 1);
+    assert.strictEqual(files.length, many.length);
+    assert.ok(!files.some((file) => file.path === 'a.txt'));
   });
 });
 

@@ -320,11 +320,10 @@ async function touchedChanges(
   const hashes =
     suspects.length === 0
       ? []
-      : await runGit(gitPath, cwd, ['hash-object', '--stdin-paths'], {
-          input: suspects.map(({ path }) => `${quoted(path)}\n`).join(''),
-        }).then(
-          (output) => output.split('\n'),
-          () => [],
+      : await fileHashes.of(
+          gitPath,
+          cwd,
+          suspects.map(({ path }) => path),
         );
   return new Set([
     ...unread.filter(({ linesCounted }) => !linesCounted),
@@ -333,6 +332,91 @@ async function touchedChanges(
       .map(({ change }) => change),
   ]);
 }
+
+type Hasher = (
+  gitPath: string,
+  cwd: string,
+  files: readonly string[],
+) => Promise<readonly string[]>;
+
+const hashObjects: Hasher = (gitPath, cwd, files) =>
+  runGit(gitPath, cwd, ['hash-object', '--stdin-paths'], {
+    input: files.map((file) => `${quoted(file)}\n`).join(''),
+  }).then(
+    (output) => output.split('\n'),
+    () => [],
+  );
+
+export class FileHashes {
+  private readonly known = new Map<
+    string,
+    { readonly stamp: string; readonly hash: string }
+  >();
+
+  constructor(
+    private readonly maxFiles: number,
+    private readonly hash: Hasher = hashObjects,
+  ) {}
+
+  async of(
+    gitPath: string,
+    cwd: string,
+    files: readonly string[],
+  ): Promise<(string | undefined)[]> {
+    const stamps = await Promise.all(
+      files.map((file) =>
+        lstat(join(cwd, file)).then(
+          (stats) => stampOf(stats, false),
+          () => undefined,
+        ),
+      ),
+    );
+    const unknown = files.flatMap((file, index) => {
+      const stamp = stamps[index];
+      return stamp !== undefined &&
+        this.known.get(join(cwd, file))?.stamp !== stamp
+        ? [{ file, stamp }]
+        : [];
+    });
+    const hashed =
+      unknown.length === 0
+        ? []
+        : await this.hash(
+            gitPath,
+            cwd,
+            unknown.map(({ file }) => file),
+          );
+    for (const [index, { file, stamp }] of unknown.entries()) {
+      if (hashed[index]) {
+        this.remember(join(cwd, file), { stamp, hash: hashed[index] });
+      }
+    }
+    return files.map((file, index) => {
+      const known = this.known.get(join(cwd, file));
+      if (known === undefined || known.stamp !== stamps[index]) {
+        return undefined;
+      }
+      this.remember(join(cwd, file), known);
+      return known.hash;
+    });
+  }
+
+  private remember(
+    key: string,
+    known: { readonly stamp: string; readonly hash: string },
+  ): void {
+    this.known.delete(key);
+    this.known.set(key, known);
+    for (const oldest of this.known.keys()) {
+      if (this.known.size <= this.maxFiles) {
+        break;
+      }
+      this.known.delete(oldest);
+    }
+  }
+}
+
+const fileHashes = new FileHashes(10_000);
 
 function quoted(path: string): string {
   // oxlint-disable-next-line no-control-regex
