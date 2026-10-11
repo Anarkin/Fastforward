@@ -42,6 +42,17 @@ suite('Commits read from git', () => {
     assert.strictEqual(read([output]).length, 5);
   });
 
+  test('keeps a commit a stash keeps its index or untracked files in when a ref points at it, as git lists it among the history then', () => {
+    const builder = new CommitsBuilder(['s'], false, ['u']);
+    builder.add(Buffer.from('s b i u\ni b\nu\nb a\na\n'));
+    assert.deepStrictEqual(entriesOf(builder.finishNow()), [
+      { hash: 's', parents: ['b'] },
+      { hash: 'u', parents: [] },
+      { hash: 'b', parents: ['a'] },
+      { hash: 'a', parents: [] },
+    ]);
+  });
+
   test('looks for the stashes and the commits they leave out without decoding a hash of each commit, as that made reading 1.5 million commits with a stash take a fifth longer', () => {
     const builder = new CommitsBuilder(['s']);
     const decode = Buffer.prototype.toString;

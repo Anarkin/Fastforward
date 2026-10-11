@@ -290,12 +290,17 @@ export class CommitsBuilder {
   private pending = new Uint8Array(0);
   private readonly stashesThenCommitsLeftOut = new HashTable();
   private readonly stashCount: number;
+  private readonly tips = new HashTable();
   private times = new Float64Array(64);
 
   constructor(
     stashes: readonly string[] = [],
     private readonly timestamped = false,
+    tips: Iterable<string> = [],
   ) {
+    for (const tip of tips) {
+      this.tips.add(Buffer.from(tip, 'latin1'), 0, tip.length);
+    }
     for (const stash of stashes) {
       this.addStashOrCommitLeftOut(
         Buffer.from(stash, 'latin1'),
@@ -404,10 +409,16 @@ export class CommitsBuilder {
       this.stashesThenCommitsLeftOut.size > 0
         ? this.stashesThenCommitsLeftOut.findBytes(text, start, hashEnd)
         : undefined;
-    if (this.isLeftOutByAStash(stashOrLeftOut)) {
+    if (
+      this.isLeftOutByAStash(stashOrLeftOut) &&
+      this.tips.findBytes(text, start, hashEnd) === undefined
+    ) {
       return;
     }
-    const keptParents = stashOrLeftOut === undefined ? Infinity : 1;
+    const keptParents =
+      stashOrLeftOut !== undefined && stashOrLeftOut < this.stashCount
+        ? 1
+        : Infinity;
     this.hashes.add(text, start, hashEnd);
     if (this.count + 2 > this.starts.length) {
       this.starts = grownInts(this.starts);

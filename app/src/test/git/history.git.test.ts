@@ -14,7 +14,9 @@ import {
   logCommits,
   searchCommits,
 } from '../../git/history';
+import { readRefs } from '../../git/repository';
 import { runGit } from '../../git/run';
+import { tipsInGitOrder } from '../../tabState';
 import { renamingRepository } from '../gitFixtures';
 import { entriesOf } from '../history/historyFixtures';
 import {
@@ -97,6 +99,33 @@ suite('Git history', function () {
       for (const ref of refs) {
         await temp.git('update-ref', '-d', ref);
       }
+    }
+  });
+
+  test('lists the commits a stash keeps its index and untracked files in when a ref points at them, as their tips missing from the history read it whole again on every refresh', async () => {
+    const folder = tempFolder('stashTips');
+    try {
+      const repository = await tempRepository(folder);
+      await repository.commit('a', { 'a.txt': 'a\n' });
+      fs.writeFileSync(path.join(folder, 'a.txt'), 'changed\n');
+      fs.writeFileSync(path.join(folder, 'new.txt'), 'new\n');
+      await repository.git('stash', 'push', '-q', '--include-untracked');
+      await repository.git('tag', 'index', 'stash@{0}^2');
+      await repository.git('branch', 'untracked', 'stash@{0}^3');
+      const [index, untracked] = await repository.resolve('index', 'untracked');
+      const { head, refs, stashes } = await readRefs(gitPath, folder);
+      const history = await listHistory(
+        gitPath,
+        folder,
+        false,
+        stashes.map((stash) => stash.commit),
+        undefined,
+        tipsInGitOrder(head, refs, false, stashes),
+      );
+      assert.ok(history.has(index));
+      assert.ok(history.has(untracked));
+    } finally {
+      removeFolder(folder);
     }
   });
 

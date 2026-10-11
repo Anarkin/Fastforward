@@ -121,9 +121,10 @@ export async function listHistory(
   solo = false,
   stashes: readonly string[] = [],
   signal?: AbortSignal,
+  tips: Iterable<string> = [],
 ): Promise<Commits> {
-  const tips = solo ? [] : stashes;
-  const reader = new CommitsBuilder(tips);
+  const shownStashes = solo ? [] : stashes;
+  const reader = new CommitsBuilder(shownStashes, false, tips);
   await runGitBytes(
     gitPath,
     cwd,
@@ -135,7 +136,11 @@ export async function listHistory(
       '--stdin',
       '--',
     ],
-    { input: hashLines(tips), signal, onOutput: (chunk) => reader.add(chunk) },
+    {
+      input: hashLines(shownStashes),
+      signal,
+      onOutput: (chunk) => reader.add(chunk),
+    },
   );
   return reader.finish();
 }
@@ -210,7 +215,7 @@ async function listSince(
   maxRegion: number,
   signal: AbortSignal | undefined,
 ): Promise<Commits | undefined> {
-  const reader = new CommitsBuilder(stashes, true);
+  const reader = new CommitsBuilder(stashes, true, tips);
   await runGitBytes(
     gitPath,
     cwd,
@@ -240,7 +245,7 @@ async function listNewHistory(
   oldHeads: readonly string[],
   signal: AbortSignal | undefined,
 ): Promise<Commits> {
-  const reader = new CommitsBuilder(stashes, true);
+  const reader = new CommitsBuilder(stashes, true, tips);
   await runGitBytes(
     gitPath,
     cwd,
@@ -306,7 +311,7 @@ export async function listRecentHistory(
   count = recentCommits,
   signal?: AbortSignal,
 ): Promise<{ history: Commits; whole: boolean }> {
-  const reader = new CommitsBuilder(stashes);
+  const reader = new CommitsBuilder(stashes, false, tips);
   await runGitBytes(
     gitPath,
     cwd,

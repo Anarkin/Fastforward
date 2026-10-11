@@ -2082,6 +2082,7 @@ export class FastforwardView {
         context,
         solo,
         stashes.map((stash) => stash.commit),
+        tipsInGitOrder(head, listed, solo, stashes),
       ).catch((error: unknown) => {
         if (tab.closed.signal.aborted) {
           return undefined;
@@ -2119,6 +2120,7 @@ export class FastforwardView {
     context: Context,
     solo: boolean,
     stashes: readonly string[],
+    tips: Iterable<string>,
   ): Promise<Commits> {
     return listHistory(
       context.gitPath,
@@ -2126,6 +2128,7 @@ export class FastforwardView {
       solo,
       stashes,
       context.tab.closed.signal,
+      tips,
     );
   }
 
