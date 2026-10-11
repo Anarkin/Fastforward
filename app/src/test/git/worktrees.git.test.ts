@@ -155,6 +155,40 @@ suite('Git worktrees', function () {
     );
   });
 
+  test('names the work tree of a submodule as its main worktree from a linked worktree of it too, as the submodule records it', async () => {
+    const superproject = await tempRepository(path.join(folder, 'super'));
+    const library = await tempRepository(path.join(folder, 'library'));
+    await library.commit('library');
+    await superproject.git(
+      '-c',
+      'protocol.file.allow=always',
+      'submodule',
+      'add',
+      '-q',
+      library.root,
+      'lib',
+    );
+    const lib = path.join(superproject.root, 'lib');
+    const linked = path.join(folder, 'lib.worktrees', 'linked');
+    await superproject.git(
+      '-C',
+      lib,
+      'worktree',
+      'add',
+      '-q',
+      '--detach',
+      linked,
+    );
+    const fromMain = await locateRepository(repository.gitPath, lib);
+    const fromLinked = await locateRepository(repository.gitPath, linked);
+    assert.strictEqual(fromMain?.repository, lib);
+    assert.strictEqual(fromLinked?.repository, lib);
+    assert.deepStrictEqual(
+      fromLinked.worktrees.map((worktree) => worktree.path),
+      [lib, linked],
+    );
+  });
+
   test('finds no repository in a plain folder', async () => {
     const plain = path.join(folder, 'plain');
     fs.mkdirSync(plain);

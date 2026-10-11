@@ -26,7 +26,7 @@ export async function locateRepository(
   }
   const [listed, main] = await Promise.all([
     listWorktrees(gitPath, root ?? folder, root === undefined ? [] : [root]),
-    root !== undefined && isMainWorktree(gitPath, root),
+    root === undefined ? undefined : mainWorktree(gitPath, root),
   ]);
   const [first, ...rest] = listed;
   if (!first) {
@@ -35,14 +35,17 @@ export async function locateRepository(
   // Git names the git folder as the main worktree when it is not the work
   // tree's .git, as with submodules and --separate-git-dir
   const worktrees =
-    main && root !== undefined && !first.bare
-      ? [{ ...first, path: root }, ...rest]
+    main !== undefined && !first.bare
+      ? [{ ...first, path: await spellingOf(main, [root ?? main]) }, ...rest]
       : listed;
   return { repository: worktrees[0].path, worktree: root, worktrees };
 }
 
-async function isMainWorktree(gitPath: string, root: string): Promise<boolean> {
-  const [gitDir, commonDir] = (
+async function mainWorktree(
+  gitPath: string,
+  root: string,
+): Promise<string | undefined> {
+  const [gitDir = '', commonDir = ''] = (
     await runGit(gitPath, root, [
       'rev-parse',
       '--path-format=absolute',
@@ -50,7 +53,18 @@ async function isMainWorktree(gitPath: string, root: string): Promise<boolean> {
       '--git-common-dir',
     ])
   ).split('\n');
-  return path.relative(gitDir, commonDir) === '';
+  if (path.relative(gitDir, commonDir) === '') {
+    return root;
+  }
+  const configured = (
+    await runGit(
+      gitPath,
+      root,
+      ['config', '--file', path.join(commonDir, 'config'), 'core.worktree'],
+      { okExitCodes: [0, 1] },
+    )
+  ).trim();
+  return configured ? path.resolve(commonDir, configured) : undefined;
 }
 
 async function isBareRepository(
