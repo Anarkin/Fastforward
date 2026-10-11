@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { App, menuIn, tabContent } from '../../webview/App';
+import { App, menuIn, nextMenu, tabContent } from '../../webview/App';
 import { noop, tagsWith } from '../fixtures';
 
 const columns = () => 'columns';
@@ -33,11 +33,22 @@ suite('Window', () => {
 
   test('closes a menu once another worktree is shown, as its items act on the one it opened in', () => {
     const menu = { x: 1, y: 2, items: [] };
-    const opened = { root: '/a', menu };
+    const opened = { root: '/a', menu, id: 1 };
     assert.strictEqual(menuIn(opened, '/a'), menu);
     assert.strictEqual(menuIn(opened, '/b'), undefined);
     assert.strictEqual(menuIn(opened, undefined), undefined);
-    assert.strictEqual(menuIn({ root: undefined, menu }, undefined), menu);
+    assert.strictEqual(
+      menuIn({ root: undefined, menu, id: 1 }, undefined),
+      menu,
+    );
     assert.strictEqual(menuIn(undefined, '/a'), undefined);
+  });
+
+  test('opens each menu anew, so one opened over another, as the repositories over a commit menu, takes the focus and none of its submenus', () => {
+    const menu = { x: 1, y: 2, items: [] };
+    const first = nextMenu(undefined, '/a', menu);
+    const second = nextMenu(first, '/a', menu);
+    assert.notStrictEqual(first.id, second.id);
+    assert.notStrictEqual(nextMenu(undefined, '/a', menu).id, second.id);
   });
 });

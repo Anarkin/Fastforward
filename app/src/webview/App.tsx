@@ -95,6 +95,15 @@ export function tabContent(
 interface TabMenu {
   readonly root: string | undefined;
   readonly menu: OpenMenu;
+  readonly id: number;
+}
+
+export function nextMenu(
+  previous: TabMenu | undefined,
+  root: string | undefined,
+  menu: OpenMenu,
+): TabMenu {
+  return { root, menu, id: (previous?.id ?? 0) + 1 };
 }
 
 export function menuIn(
@@ -599,9 +608,8 @@ export function App({ name, post: postToHost, listen }: Props) {
       return;
     }
     const button = event.currentTarget.getBoundingClientRect();
-    setMenu({
-      root: activeTab,
-      menu: {
+    setMenu((previous) =>
+      nextMenu(previous, activeTab, {
         x: button.left,
         y: button.bottom,
         items: repositoryMenuItems(
@@ -610,17 +618,20 @@ export function App({ name, post: postToHost, listen }: Props) {
           () => post({ type: 'browseRepositories' }),
         ),
         trigger: repositoryMenuTrigger,
-      },
-    });
+      }),
+    );
   };
 
   const openMenu = (event: React.MouseEvent, target: MenuTarget) => {
     event.stopPropagation();
     event.preventDefault();
-    setMenu({
-      root: activeTab,
-      menu: { x: event.clientX, y: event.clientY, items: menuItems(target) },
-    });
+    setMenu((previous) =>
+      nextMenu(previous, activeTab, {
+        x: event.clientX,
+        y: event.clientY,
+        items: menuItems(target),
+      }),
+    );
   };
 
   return (
@@ -653,7 +664,13 @@ export function App({ name, post: postToHost, listen }: Props) {
               onSelect={(root) => post({ type: 'selectWorktree', root })}
               onPreload={(root) => post({ type: 'preloadWorktree', root })}
             />
-            {menu && <ContextMenu menu={menu} onClose={closeMenu} />}
+            {menu && openedMenu && (
+              <ContextMenu
+                key={openedMenu.id}
+                menu={menu}
+                onClose={closeMenu}
+              />
+            )}
             {shortcutsShown && (
               <ShortcutsPopup
                 mac={document.documentElement.dataset.platform === 'darwin'}
