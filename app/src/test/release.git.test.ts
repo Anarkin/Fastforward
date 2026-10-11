@@ -60,8 +60,8 @@ suite('Release', function () {
 
   teardown(() => removeFolder(folder));
 
-  const release = () =>
-    new Promise<boolean>((resolve) => {
+  const releasing = () =>
+    new Promise<{ released: boolean; said: string }>((resolve) => {
       execFile(
         process.execPath,
         [script, '7.0.0'],
@@ -69,9 +69,12 @@ suite('Release', function () {
           cwd: local.root,
           env: { ...process.env, npm_execpath: path.join(folder, 'npm.js') },
         },
-        (error) => resolve(error === null),
+        (error, _stdout, stderr) =>
+          resolve({ released: error === null, said: stderr }),
       );
     });
+
+  const release = async () => (await releasing()).released;
 
   const assertUndone = async () => {
     assert.deepStrictEqual(await local.resolve('HEAD'), [start]);
@@ -99,6 +102,35 @@ suite('Release', function () {
     await local.git('push', '-q', '-u', 'origin', 'feature');
     assert.strictEqual(await release(), false);
     await assertUndone();
+    assert.strictEqual(await remote.git('tag', '--list'), '');
+  });
+
+  test('refuses to release over uncommitted changes, leaving them as they were, as the undo would discard them', async () => {
+    const readme = path.join(local.root, 'README.md');
+    fs.writeFileSync(readme, 'edited\n');
+    await local.git('add', 'README.md');
+    fs.writeFileSync(readme, 'edited again\n');
+    assert.strictEqual(await release(), false);
+    assert.deepStrictEqual(await local.resolve('HEAD'), [start]);
+    assert.strictEqual(fs.readFileSync(readme, 'utf8'), 'edited again\n');
+    assert.strictEqual(
+      await local.git('diff', '--cached', '--name-only'),
+      'README.md\n',
+    );
+    assert.strictEqual(await remote.git('tag', '--list'), '');
+  });
+
+  test('refuses to release behind the commits on the remote, leaving everything as it was', async () => {
+    await local.commit('pushed from elsewhere');
+    await local.git('push', '-q', 'origin', 'main');
+    const [pushed] = await local.resolve('HEAD');
+    await local.git('reset', '-q', '--hard', start);
+    assert.deepStrictEqual(await releasing(), {
+      released: false,
+      said: 'Pull the commits on the remote before releasing.\n',
+    });
+    await assertUndone();
+    assert.deepStrictEqual(await remote.resolve('main'), [pushed]);
     assert.strictEqual(await remote.git('tag', '--list'), '');
   });
 
