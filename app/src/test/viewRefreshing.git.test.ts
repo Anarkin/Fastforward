@@ -34,8 +34,7 @@ import {
   type ViewRepositories,
 } from './viewHarness';
 
-// Long enough for a refresh that skipped the queue to have started
-async function someTurns(): Promise<void> {
+async function letARefreshThatSkippedTheQueueStart(): Promise<void> {
   for (let turn = 0; turn < 3; turn++) {
     await new Promise((resolve) => setImmediate(resolve));
   }
@@ -206,7 +205,7 @@ suite('View refreshing one repository', function () {
       const again = own.connection.refresh();
       await waitFor(() => loaded, 'the history to load');
       await waitFor(() => queued, 'the refresh to be queued');
-      await someTurns();
+      await letARefreshThatSkippedTheQueueStart();
       held.open();
       await Promise.all([first, again]);
       assert.strictEqual(most, 1);
@@ -471,7 +470,7 @@ suite('View refreshing one repository', function () {
       const failed = connection.refresh();
       const queued = connection.refresh();
       await waitFor(() => running > 0, 'the history to be read');
-      await someTurns();
+      await letARefreshThatSkippedTheQueueStart();
       held.open();
       await Promise.all([failed, queued]);
       assert.strictEqual(most, 1);

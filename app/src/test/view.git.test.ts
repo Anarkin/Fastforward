@@ -27,10 +27,10 @@ import {
   idleOnlyOnceOpened,
   openView,
   savedBookmarks,
+  settingsWithAutoFetchOff,
   stubMethod,
   takeErrorsLogged,
   viewRepositories,
-  viewSettings,
   withNotices,
   withView,
   type ViewRepositories,
@@ -66,7 +66,7 @@ suite('View of one repository', function () {
     const view = new FastforwardView(
       log,
       await installedGit(),
-      new Storage(viewSettings(), state),
+      new Storage(settingsWithAutoFetchOff(), state),
       new FakeHost(),
     );
     const opened = attach(view);

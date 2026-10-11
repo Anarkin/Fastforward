@@ -105,8 +105,13 @@ function percent(value: number): string {
   return `${value * 100}%`;
 }
 
+type Scroller = Pick<
+  Element,
+  'scrollTop' | 'addEventListener' | 'removeEventListener'
+>;
+
 function followScroll(
-  scroller: RefObject<Element | null>,
+  scroller: RefObject<Scroller | null>,
   changed: () => void,
 ): () => void {
   const element = scroller.current;
@@ -141,7 +146,7 @@ export function Minimap({
   onScroll,
 }: {
   marks: readonly MinimapMark[];
-  scroller: RefObject<Element | null>;
+  scroller: RefObject<Scroller | null>;
   viewport: number;
   total: number;
   onScroll: (top: number) => void;

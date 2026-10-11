@@ -5,10 +5,11 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { findGit } from '../git/locate';
+import { type GitCommand, realGit } from '../git/run';
 
-// The code under test, and the app the tests start, run git with the tests'
-// environment, so they leave out the user's config as tempRepository does
-process.env.GIT_CONFIG_GLOBAL = '/dev/null';
+const withoutTheUsersGitConfig = { GIT_CONFIG_GLOBAL: '/dev/null' };
+
+Object.assign(process.env, withoutTheUsersGitConfig);
 
 export interface TempRepository {
   readonly root: string;
@@ -18,8 +19,6 @@ export interface TempRepository {
   resolve(...revisions: string[]): Promise<string[]>;
 }
 
-// Repositories go in here rather than in another repository, where they would
-// be untracked files for the view to diff on every refresh
 export function tempFolder(name: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), `fastforward-${name}-`));
 }
@@ -40,12 +39,11 @@ function tryRemoving(folder: string, maxRetries = 5): unknown {
   }
 }
 
-// On Windows a folder can't be removed while a process a test started still
-// runs in it, such as a git a cancelled command stops on its own time; that
-// is tried again once the file's tests are done, and fails the run then, as
-// failing the teardown would skip the rest of its suite
-export function removeFolder(folder: string): void {
-  if (tryRemoving(folder) !== undefined) {
+export function removeFolder(
+  folder: string,
+  remove: (folder: string) => unknown = tryRemoving,
+): void {
+  if (remove(folder) !== undefined) {
     unremoved.add(folder);
   }
 }
@@ -85,12 +83,14 @@ export async function foldersLeft(
   );
 }
 
-// The system or global config can turn the ownership check off with
-// safe.directory, as CI runners do for every folder
+const withoutConfigThatMayTrustEveryFolder = {
+  GIT_CONFIG_NOSYSTEM: '1',
+  ...withoutTheUsersGitConfig,
+};
+
 const ownedByAnother = {
   GIT_TEST_ASSUME_DIFFERENT_OWNER: '1',
-  GIT_CONFIG_NOSYSTEM: '1',
-  GIT_CONFIG_GLOBAL: '/dev/null',
+  ...withoutConfigThatMayTrustEveryFolder,
 };
 
 export function savedEnv(names: readonly string[]): () => void {
@@ -125,6 +125,23 @@ export function asIfOwnedByAnother(run: () => Promise<void>): Promise<void> {
   return withEnv(ownedByAnother, run);
 }
 
+export async function gitsStarted<T>(
+  run: () => Promise<T>,
+): Promise<{ readonly result: T; readonly gits: number }> {
+  const childProcess = process.getBuiltinModule('node:child_process');
+  const { spawn } = childProcess;
+  let gits = 0;
+  Reflect.set(childProcess, 'spawn', (...args: Parameters<typeof spawn>) => {
+    gits++;
+    return spawn(...args);
+  });
+  try {
+    return { result: await run(), gits };
+  } finally {
+    Reflect.set(childProcess, 'spawn', spawn);
+  }
+}
+
 export function symlinkOrSkip(
   context: Mocha.Context,
   target: string,
@@ -146,19 +163,11 @@ export function symlinkOrSkip(
 
 function runGit(cwd: string, date: Date, args: string[]): Promise<string> {
   const iso = date.toISOString();
-  const env = {
-    ...process.env,
-    // Leaves out the user's config, which may sign commits or run hooks, but
-    // not the system's, whose defaults the app reads too
-    GIT_CONFIG_GLOBAL: '/dev/null',
-    GIT_AUTHOR_DATE: iso,
-    GIT_COMMITTER_DATE: iso,
-  };
   return fixtureGit().then(
-    (binary) =>
+    ({ command, env: realEnv }) =>
       new Promise((resolve, reject) => {
         execFile(
-          binary,
+          command,
           [
             '-c',
             'user.name=Test',
@@ -168,7 +177,16 @@ function runGit(cwd: string, date: Date, args: string[]): Promise<string> {
             'maintenance.auto=false',
             ...args,
           ],
-          { cwd, env },
+          {
+            cwd,
+            env: {
+              ...process.env,
+              ...realEnv,
+              ...withoutTheUsersGitConfig,
+              GIT_AUTHOR_DATE: iso,
+              GIT_COMMITTER_DATE: iso,
+            },
+          },
           (error, stdout, stderr) => {
             if (error) {
               reject(new Error(`git ${args.join(' ')} failed: ${stderr}`));
@@ -184,8 +202,6 @@ function runGit(cwd: string, date: Date, args: string[]): Promise<string> {
 let templateFolder: string | undefined;
 const templates = new Map<string, Promise<string>>();
 
-// Copying a repository git initialized once is faster than running git init
-// for each one
 function template(branch: string, bare: boolean): Promise<string> {
   const key = JSON.stringify([branch, bare]);
   let made = templates.get(key);
@@ -246,28 +262,22 @@ export function commitText(tree: string, message: string): string {
   return `tree ${tree}\nauthor ${person}\ncommitter ${person}\n\n${message}\n`;
 }
 
-// As each command the repository runs is a minute later, a commit of a given
-// time is written whole
 export async function commitAtTime(
   repository: TempRepository,
   parent: string,
   time: number,
   message: string,
 ): Promise<string> {
-  const [tree] = await repository.resolve(`${parent}^{tree}`);
-  const person = `Test <test@example.com> ${time} +0000`;
-  const file = `${repository.root}-${message}`;
-  fs.writeFileSync(
-    file,
-    `tree ${tree}\nparent ${parent}\nauthor ${person}\ncommitter ${person}\n\n${message}\n`,
-  );
-  try {
-    return (
-      await repository.git('hash-object', '-t', 'commit', '-w', file)
-    ).trim();
-  } finally {
-    fs.rmSync(file);
-  }
+  return (
+    await runGit(repository.root, new Date(time * 1000), [
+      'commit-tree',
+      `${parent}^{tree}`,
+      '-p',
+      parent,
+      '-m',
+      message,
+    ])
+  ).trim();
 }
 
 let gitPath: Promise<string> | undefined;
@@ -280,21 +290,11 @@ export function installedGit(): Promise<string> {
   return gitPath;
 }
 
-let realGit: Promise<string> | undefined;
+let fixtureGitCommand: Promise<GitCommand> | undefined;
 
-// Git for Windows' launcher on the PATH, which the code under test runs, takes
-// longer to start than the git it starts
-function fixtureGit(): Promise<string> {
-  realGit ??= installedGit().then((launcher) => {
-    const real = path.join(
-      path.dirname(path.dirname(launcher)),
-      'mingw64',
-      'bin',
-      'git.exe',
-    );
-    return process.platform === 'win32' && fs.existsSync(real)
-      ? real
-      : launcher;
-  });
-  return realGit;
+function fixtureGit(): Promise<GitCommand> {
+  fixtureGitCommand ??= installedGit().then(
+    (launcher) => realGit(launcher) ?? { command: launcher, env: {} },
+  );
+  return fixtureGitCommand;
 }

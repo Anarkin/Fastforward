@@ -1,4 +1,9 @@
-import { type ChildProcess, execFile, spawn } from 'node:child_process';
+import {
+  type ChildProcess,
+  type ChildProcessWithoutNullStreams,
+  execFile,
+  spawn,
+} from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { lstat, readFile, rm } from 'node:fs/promises';
 import { isAbsolute, join, win32 } from 'node:path';
@@ -67,8 +72,6 @@ export interface GitCommand {
 
 const msystems = ['ucrt64', 'clangarm64', 'mingw64', 'mingw32'];
 
-// Git for Windows' launcher in its cmd folder only sets MSYSTEM and puts the
-// real git's folders on the PATH before starting it, which costs a process
 export function realGit(
   launcher: string,
   env: NodeJS.ProcessEnv = process.env,
@@ -162,7 +165,7 @@ interface RunOptions {
 }
 
 const maxOutput = 256 * 1024 * 1024;
-const drainTime = 200;
+const quietTimeBeforeClosingOutput = 200;
 
 export async function runGit(
   gitPath: string,
@@ -278,26 +281,26 @@ export async function runGitBytes(
     };
     child.on('error', (error) => settle(null, null, error));
     child.on('close', (code, stoppedBy) => settle(code, stoppedBy));
-    child.on('exit', () => {
-      // What a hook started in the background can hold the pipes open long
-      // after git exits, so they are closed once they stop bringing output
-      let quiet: NodeJS.Timeout | undefined;
-      const wait = () => {
-        clearTimeout(quiet);
-        quiet = setTimeout(() => {
-          child.stdout.destroy();
-          child.stderr.destroy();
-        }, drainTime);
-      };
-      child.stdout.on('data', wait);
-      child.stderr.on('data', wait);
-      child.once('close', () => clearTimeout(quiet));
-      wait();
-    });
+    child.on('exit', () => closeOutputHeldPastExit(child));
     signal?.addEventListener('abort', stop, { once: true });
     child.stdin.on('error', () => undefined);
     child.stdin.end(input);
   });
+}
+
+function closeOutputHeldPastExit(child: ChildProcessWithoutNullStreams): void {
+  let closing: NodeJS.Timeout | undefined;
+  const closeOnceQuiet = () => {
+    clearTimeout(closing);
+    closing = setTimeout(() => {
+      child.stdout.destroy();
+      child.stderr.destroy();
+    }, quietTimeBeforeClosingOutput);
+  };
+  child.stdout.on('data', closeOnceQuiet);
+  child.stderr.on('data', closeOnceQuiet);
+  child.once('close', () => clearTimeout(closing));
+  closeOnceQuiet();
 }
 
 export function gitProcessOptions(platform = process.platform): {

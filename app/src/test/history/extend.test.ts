@@ -1,6 +1,11 @@
 import * as assert from 'node:assert';
 import { Commits, CommitsBuilder } from '../../history/commits';
-import { extendHistory, regionHistory } from '../../history/extend';
+import {
+  extendHistory,
+  keepsTiedOrder,
+  ranksOf,
+  regionHistory,
+} from '../../history/extend';
 import { entriesOf } from './historyFixtures';
 
 const older = [
@@ -294,5 +299,45 @@ suite('Extending a history among its newest commits', () => {
       }),
       undefined,
     );
+  });
+});
+
+function keepsOrder(
+  times: Readonly<Record<string, number>>,
+  heads: readonly string[],
+  before: readonly string[],
+  after: readonly string[],
+) {
+  const rankBefore = ranksOf(before);
+  const rankAfter = ranksOf(after);
+  return keepsTiedOrder(
+    heads,
+    (head) => times[head],
+    (head) => rankBefore.get(head),
+    (head) => rankAfter.get(head),
+  );
+}
+
+suite('Keeping the order of heads git takes by time', () => {
+  test('keeps the order while heads of the same time keep theirs, as git takes a tie in the order it is given the tips, though heads of different times may swap', () => {
+    const times = { a: 10, c: 10, b: 20 };
+    const heads = ['a', 'c', 'b'];
+    assert.strictEqual(keepsOrder(times, heads, heads, ['b', 'a', 'c']), true);
+    assert.strictEqual(keepsOrder(times, heads, heads, ['c', 'a', 'b']), false);
+  });
+
+  test('keeps the order of a head of unknown time only while it keeps its place to every other head, as its time could tie with any of them', () => {
+    const times = { a: 10, b: 20 };
+    const heads = ['a', 'b', 'u'];
+    assert.strictEqual(keepsOrder(times, heads, heads, ['b', 'a', 'u']), true);
+    assert.strictEqual(keepsOrder(times, heads, heads, ['u', 'a', 'b']), false);
+  });
+
+  test('does not keep the order when a head has no rank before or after', () => {
+    const times = { a: 10, b: 20 };
+    const heads = ['a', 'b'];
+    assert.strictEqual(keepsOrder(times, heads, heads, heads), true);
+    assert.strictEqual(keepsOrder(times, heads, ['a'], heads), false);
+    assert.strictEqual(keepsOrder(times, heads, heads, ['a']), false);
   });
 });

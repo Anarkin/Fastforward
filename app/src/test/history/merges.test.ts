@@ -149,6 +149,21 @@ suite('Merges shown', () => {
     assert.deepStrictEqual(pulled(stacked), []);
   });
 
+  test('tells a merge a pull when its chains meet at a commit outside the history', () => {
+    assert.deepStrictEqual(pulled(pull.slice(0, -1)), ['p']);
+  });
+
+  test('tells no merge a pull when its chains reach different commits outside the history', () => {
+    const apart = [
+      { hash: 'p', parents: ['d2', 'm1'] },
+      { hash: 'd2', parents: ['d1'] },
+      { hash: 'm1', parents: ['base', 'f1'] },
+      { hash: 'f1', parents: ['base'] },
+      { hash: 'd1', parents: ['other'] },
+    ];
+    assert.deepStrictEqual(pulled(apart), []);
+  });
+
   test('shows every tip it is given', () => {
     const shown = shownOf(history, new Set(['m', 'b1']), () => false);
     assert.deepStrictEqual(

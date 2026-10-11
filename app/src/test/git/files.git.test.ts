@@ -12,29 +12,13 @@ import {
 import { parsePatch } from '../../webview/diff';
 import { submoduleRepository } from '../gitFixtures';
 import {
+  gitsStarted,
   removeFolder,
   symlinkOrSkip,
   tempFolder,
   tempRepository,
   type TempRepository,
 } from '../repositories';
-
-async function gitsStarted<T>(
-  run: () => Promise<T>,
-): Promise<{ readonly result: T; readonly gits: number }> {
-  const childProcess = process.getBuiltinModule('node:child_process');
-  const { spawn } = childProcess;
-  let gits = 0;
-  Reflect.set(childProcess, 'spawn', (...args: Parameters<typeof spawn>) => {
-    gits++;
-    return spawn(...args);
-  });
-  try {
-    return { result: await run(), gits };
-  } finally {
-    Reflect.set(childProcess, 'spawn', spawn);
-  }
-}
 
 suite('Repository files', function () {
   this.timeout(20_000);

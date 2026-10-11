@@ -75,32 +75,33 @@ const choices = new Map<string, readonly string[]>([
   ['diffLayout', diffLayouts],
 ]);
 
-function merge(
-  defaults: Json,
+function merge<T extends object>(
+  defaults: T,
   overrides: Json,
   prefix: string,
   problems: string[],
-): Json {
-  const merged: Json = { ...defaults };
+): T {
+  const fallbacks: Json = Object.fromEntries(Object.entries(defaults));
+  const accepted: Json = {};
   for (const [key, value] of Object.entries(overrides)) {
     const name = `${prefix}${key}`;
-    if (!Object.hasOwn(defaults, key)) {
+    if (!Object.hasOwn(fallbacks, key)) {
       problems.push(strings.settings.unknown(name));
       continue;
     }
-    const fallback = defaults[key];
+    const fallback = fallbacks[key];
     const allowed = choices.get(name);
     if (!sameKind(fallback, value)) {
       problems.push(wrongKind(name, fallback));
     } else if (allowed && !allowed.some((choice) => choice === value)) {
       problems.push(strings.settings.shouldBeOneOf(name, allowed));
     } else if (isObject(fallback) && isObject(value)) {
-      merged[key] = merge(fallback, value, `${name}.`, problems);
+      accepted[key] = merge(fallback, value, `${name}.`, problems);
     } else {
-      merged[key] = value;
+      accepted[key] = value;
     }
   }
-  return merged;
+  return { ...defaults, ...accepted };
 }
 
 export function mergeSettings<T extends object>(
@@ -114,13 +115,7 @@ export function mergeSettings<T extends object>(
       problems: [strings.settings.notObject],
     };
   }
-  const settings = merge(
-    Object.fromEntries(Object.entries(defaults)),
-    overrides,
-    '',
-    problems,
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  ) as T;
+  const settings = merge(defaults, overrides, '', problems);
   return { settings, problems };
 }
 

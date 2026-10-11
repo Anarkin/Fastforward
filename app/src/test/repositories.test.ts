@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
-import { foldersLeft } from './repositories';
+import * as fs from 'node:fs';
+import { foldersLeft, removeFolder, tempFolder } from './repositories';
 
 suite('Folders left behind', () => {
   test('tries the folders again until its time is up, then names each one still there with why, rather than outlasting the hook', async () => {
@@ -19,5 +20,13 @@ suite('Folders left behind', () => {
     assert.strictEqual(tries.get('b'), 2);
     assert.ok((tries.get('c') ?? 0) > 2);
     assert.ok(Date.now() - started < 1500);
+  });
+
+  test("leaves a folder it can't remove, such as one a git still runs in on Windows, for after the file's tests rather than failing the teardown, which would skip the rest of its suite", () => {
+    const folder = tempFolder('busy');
+    assert.doesNotThrow(() =>
+      removeFolder(folder, () => new Error('EBUSY: resource busy or locked')),
+    );
+    assert.ok(fs.existsSync(folder));
   });
 });

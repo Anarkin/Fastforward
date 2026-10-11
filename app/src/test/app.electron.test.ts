@@ -106,9 +106,7 @@ suite('App', function () {
       cwd: appFolder,
     });
     page = await app.firstWindow();
-    // The app watches its settings only once it has found git, so the first
-    // settings written before then would go unnoticed
-    await page.locator('.commit', { hasText: 'second' }).waitFor();
+    await waitForSettingsToBeWatched();
   });
 
   suiteTeardown(async () => {
@@ -141,6 +139,10 @@ suite('App', function () {
     await page.keyboard.press('Home');
     await page.locator('.commit.working-tree.selected').waitFor();
   });
+
+  function waitForSettingsToBeWatched(): Promise<void> {
+    return page.locator('.commit', { hasText: 'second' }).waitFor();
+  }
 
   function userSettings(): unknown {
     try {
@@ -936,10 +938,10 @@ suite('App', function () {
     const change = page.locator('.diff-line.removed', {
       hasText: 'line150 word0',
     });
-    // A row found can be drawn anew before the function runs on it
     const belowTop = () =>
       change.evaluate((element) => {
-        if (!element.isConnected) {
+        const drawnAnewSinceFound = !element.isConnected;
+        if (drawnAnewSinceFound) {
           return undefined;
         }
         const list = element.closest('.virtual-rows');
@@ -1315,18 +1317,18 @@ suite('App whose page is gone', function () {
             .includes(strings.log.pageGone(gone.reason, gone.exitCode)),
         'the page going to be logged',
       );
-      // Playwright's page stays crashed though the window loads it again
+      const windowShowsTheHistoryAgain = () =>
+        app.evaluate(async ({ BrowserWindow }) => {
+          const contents = BrowserWindow.getAllWindows()[0].webContents;
+          return (
+            !contents.isCrashed() &&
+            (await contents.executeJavaScript(
+              "[...document.querySelectorAll('.commit')].some((row) => row.textContent.includes('first'))",
+            )) === true
+          );
+        });
       await waitFor(
-        () =>
-          app.evaluate(async ({ BrowserWindow }) => {
-            const contents = BrowserWindow.getAllWindows()[0].webContents;
-            return (
-              !contents.isCrashed() &&
-              (await contents.executeJavaScript(
-                "[...document.querySelectorAll('.commit')].some((row) => row.textContent.includes('first'))",
-              )) === true
-            );
-          }),
+        windowShowsTheHistoryAgain,
         'the page to show the history again',
       );
     } finally {
@@ -1361,9 +1363,8 @@ suite('App without git', function () {
           return false;
         }
       }, 'the missing git to be logged');
-      // On macOS the alert about git is app-modal without a window shown,
-      // holding the main process until it is answered
-      if (process.platform !== 'darwin') {
+      const gitAlertHoldsTheMainProcess = process.platform === 'darwin';
+      if (!gitAlertHoldsTheMainProcess) {
         const page = await app.firstWindow();
         await page.waitForLoadState('load');
         await new Promise((resolve) => setTimeout(resolve, 500));

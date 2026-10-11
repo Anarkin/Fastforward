@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { extendedHistory, listHistory } from '../../git/history';
 import { readRefs } from '../../git/repository';
 import { headsOf } from '../../history/merges';
-import { tipsOf } from '../../tabState';
+import { tipsInGitOrder } from '../../tabState';
 import {
   commitAtTime,
   removeFolder,
@@ -48,7 +48,7 @@ async function across(
     root,
     older,
     headsOf(older),
-    tipsOf(after.head, after.refs, solo, after.stashes, after.dates),
+    tipsInGitOrder(after.head, after.refs, solo, after.stashes, after.dates),
     solo ? [] : stashes,
     after.dates,
   );

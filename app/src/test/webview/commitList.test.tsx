@@ -49,12 +49,12 @@ import {
   renderedBy,
   withMacKeys,
 } from '../fixtures';
+import { laidOutElement } from '../elementFixtures';
 
 function laidOut() {
-  const scroller = { clientHeight: 500, ownerDocument: { defaultView: null } };
+  const scroller = laidOutElement({ clientHeight: 500 });
   const scrolling = {
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    getScrollElement: () => scroller as unknown as Element,
+    getScrollElement: () => scroller,
     observeElementRect: (
       _instance: unknown,
       report: (rect: { width: number; height: number }) => void,
@@ -70,7 +70,6 @@ function laidOut() {
     count: 0,
     estimateSize: () => commitRowHeight,
   });
-  // oxlint-disable-next-line no-underscore-dangle
   virtualizer._willUpdate();
   const drawn = () => drawnRows(virtualizer, virtualizer.options.getItemKey);
   return {
@@ -85,13 +84,9 @@ function laidOut() {
     },
     draw: (index: number, height: number) => {
       drawn();
-      const row = {
-        getAttribute: () => String(index),
-        isConnected: true,
-        offsetHeight: height,
-      };
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-      virtualizer.measureElement(row as unknown as Element);
+      virtualizer.measureElement(
+        laidOutElement({ offsetHeight: height }, index),
+      );
       return virtualizer.getVirtualItems();
     },
   };
@@ -462,17 +457,12 @@ suite('Places told', () => {
 
   test('keeps its place by what was scrolled since the place told, not by the list keeping its rows in view as one above them is measured taller', () => {
     const places = new ReportedPlaces();
-    const scroller = {
-      clientHeight: 500,
-      scrollTop: 1000,
-      ownerDocument: { defaultView: null },
-    };
+    const scroller = laidOutElement({ clientHeight: 500, scrollTop: 1000 });
     const virtualizer = new Virtualizer<Element, Element>({
       count: 100,
       estimateSize: () => commitRowHeight,
       initialOffset: scroller.scrollTop,
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-      getScrollElement: () => scroller as unknown as Element,
+      getScrollElement: () => scroller,
       observeElementRect: (_instance, report) => {
         report({ width: 300, height: scroller.clientHeight });
         return noop;
@@ -482,7 +472,6 @@ suite('Places told', () => {
         scroller.scrollTop = offset + adjustments;
       }),
     });
-    // oxlint-disable-next-line no-underscore-dangle
     virtualizer._willUpdate();
     virtualizer.getVirtualItems();
     const told = places.told(scroller.scrollTop);

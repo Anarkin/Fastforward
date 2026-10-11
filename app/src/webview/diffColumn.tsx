@@ -61,7 +61,6 @@ function whitespaceOnlyFile(path: string): DiffFile {
   return { path, binary: false, hunks: [], whitespaceOnly: true };
 }
 
-// Git takes a path as the folder of the paths under it too
 export function shownFiles(
   parsed: readonly DiffFile[],
   path: string | undefined,

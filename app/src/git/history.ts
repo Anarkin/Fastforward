@@ -215,6 +215,8 @@ async function listSince(
   return reader.finish();
 }
 
+const stopAtOldHeadsArgs = ['-c', 'core.commitGraph=false'];
+
 async function listNewHistory(
   gitPath: string,
   cwd: string,
@@ -226,10 +228,8 @@ async function listNewHistory(
   await runGitBytes(
     gitPath,
     cwd,
-    // With the commit-graph, git walks down to the oldest head left out
     [
-      '-c',
-      'core.commitGraph=false',
+      ...stopAtOldHeadsArgs,
       'rev-list',
       '--date-order',
       '--parents',

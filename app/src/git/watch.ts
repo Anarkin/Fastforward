@@ -120,12 +120,11 @@ export async function watchRepository(
       }
     }, delay);
   };
-  // A worktree added inside its bare repository is inside the common git dir,
-  // whose watcher then tells the worktree's changes too
+  const inWorktreeInsideGitDir = (dir: string, file: string) =>
+    isInside(root, file) && !isInside(root, dir);
   const gitDirHolding = (file: string) =>
     gitDirs.find(
-      (dir) =>
-        isInside(dir, file) && (isInside(root, dir) || !isInside(root, file)),
+      (dir) => isInside(dir, file) && !inWorktreeInsideGitDir(dir, file),
     );
   const changed = (file: string, event: string) => {
     const inGitDir = gitDirHolding(file);
@@ -137,12 +136,7 @@ export async function watchRepository(
         isGitDirIn(inGitDir),
       );
       const listed = affectsWorktreeList(inside);
-      // Windows tells a folder changed along with each entry made or removed
-      // in it, as a fetch does for a lock on the remote's HEAD
-      if (
-        (!affects && !listed) ||
-        (event === 'change' && isExistingFolder(file))
-      ) {
+      if ((!affects && !listed) || isFolderChangedForItsEntries(event, file)) {
         return;
       }
       if (affects) {
@@ -179,14 +173,15 @@ export async function watchRepository(
     }
   };
 
+  const changesDropped = () => {
+    changedGitDir();
+    worktreesChanged();
+  };
   const onEvent = (folder: string, file: string | null, event: string) => {
     if (file) {
       changed(path.join(folder, file), event);
     } else {
-      // Windows names no file once it drops the changes past what a watcher
-      // holds at once
-      changedGitDir();
-      worktreesChanged();
+      changesDropped();
     }
   };
   const onGitDirEvent = (
@@ -202,15 +197,16 @@ export async function watchRepository(
   let rootTree: TreeWatcher | undefined;
   if (recursive) {
     const realRoot = await realPath(root);
-    // Watching a folder recursively does not follow the links in it, such as
-    // a .git linked to a folder elsewhere
-    const apart = await Promise.all(
+    const missedByRootWatcher = await Promise.all(
       gitDirs.map(
         async (dir) =>
           !isInside(root, dir) || !isInside(realRoot, await realPath(dir)),
       ),
     );
-    const folders = [root, ...gitDirs.filter((_dir, index) => apart[index])];
+    const folders = [
+      root,
+      ...gitDirs.filter((_dir, index) => missedByRootWatcher[index]),
+    ];
     watchers = watchEach(folders, (folder) => {
       const watcher = fs.watch(folder, { recursive: true }, (event, file) =>
         (folder === root ? onEvent : onGitDirEvent)(folder, file, event),
@@ -523,8 +519,6 @@ export async function watchTree(
       }
       unwatch(file);
     }
-    // An entry named like the folder is told the way the folder's own removal
-    // is, and the root has no parent to watch it again
     if (file === root) {
       return isFolder ? [{ path: root, repo: root }] : [];
     }
@@ -669,8 +663,6 @@ export function isInternal(inGitDir: string, isGitDir: IsGitDir): boolean {
   );
 }
 
-// Git refuses to put a submodule's git folder inside another's, so the first
-// git folder on the path is the submodule's, however its name looks
 function isInternalIn(
   gitDir: readonly string[],
   inside: readonly string[],
@@ -726,8 +718,11 @@ function realPath(file: string): Promise<string> {
   return fs.promises.realpath(file).catch(() => file);
 }
 
-function isExistingFolder(file: string): boolean {
-  return fs.statSync(file, { throwIfNoEntry: false })?.isDirectory() === true;
+function isFolderChangedForItsEntries(event: string, file: string): boolean {
+  return (
+    event === 'change' &&
+    fs.statSync(file, { throwIfNoEntry: false })?.isDirectory() === true
+  );
 }
 
 function isGitDirIn(gitDir: string): IsGitDir {
@@ -786,8 +781,6 @@ export function affectsWorktreeList(inGitDir: string): boolean {
   if (first === 'HEAD') {
     return name === undefined;
   }
-  // The reftable ref format keeps HEAD in the table of refs, leaving the HEAD
-  // file as it was
   if (first === 'reftable') {
     return name === 'tables.list' && entry === undefined;
   }
@@ -815,8 +808,6 @@ export function watchedFolder(
 
 const maxKnownNotIgnored = 10_000;
 
-// Only answers of not ignored are kept, so one gone stale costs a refresh, not
-// a change missed
 class NotIgnored {
   private readonly known = new Set<string>();
   private generation = 0;
@@ -849,32 +840,23 @@ class NotIgnored {
     const stats = await Promise.all(
       kept.map((file) => fs.promises.lstat(file).catch(() => undefined)),
     );
-    // Git takes a missing path for a file, which a pattern for folders alone
-    // does not ignore, so its answer would not hold once a folder is made
-    // there, and a folder known would count each time Windows tells it changed
-    const known = kept.filter(
+    const existingFiles = kept.filter(
       (_file, index) => stats[index]?.isDirectory() === false,
     );
     if (generation === this.generation) {
-      if (this.known.size + known.length > maxKnownNotIgnored) {
+      if (this.known.size + existingFiles.length > maxKnownNotIgnored) {
         this.known.clear();
       }
-      for (const file of known) {
+      for (const file of existingFiles) {
         this.known.add(file);
       }
     }
-    // Windows tells a folder changed along with each entry made or removed in
-    // it, which it tells of on its own
-    return kept.some(
-      (file, index) =>
-        renamed.has(file) || stats[index]?.isDirectory() !== true,
-    );
+    const changedItself = (file: string, index: number) =>
+      renamed.has(file) || stats[index]?.isDirectory() !== true;
+    return kept.some(changedItself);
   }
 }
 
-// Git refuses to tell whether a path inside a submodule is ignored, so a path
-// is asked of the repository holding it, and that repository's folder of the
-// one around it, which may ignore the whole folder
 async function ignoredInRepositories(
   ignored: Ignored,
   root: string,

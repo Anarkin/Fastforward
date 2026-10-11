@@ -6,6 +6,7 @@ import {
   changesArgs,
   diffOptionArgs,
   diffArgs,
+  gitQuoted,
   isNullId,
   parseRawChanges,
   pathspecs,
@@ -377,7 +378,7 @@ type Hasher = (
 
 const hashObjects: Hasher = (gitPath, cwd, files) =>
   runGit(gitPath, cwd, ['hash-object', '--stdin-paths'], {
-    input: files.map((file) => `${quoted(file)}\n`).join(''),
+    input: files.map((file) => `${gitQuoted(file)}\n`).join(''),
   }).then(
     (output) => output.split('\n'),
     () => [],
@@ -453,16 +454,6 @@ export class FileHashes {
 }
 
 const fileHashes = new FileHashes(10_000);
-
-function quoted(path: string): string {
-  // oxlint-disable-next-line no-control-regex
-  const escaped = path.replace(/[\\"\x00-\x1f]/g, (char) =>
-    char === '\\' || char === '"'
-      ? `\\${char}`
-      : `\\${char.charCodeAt(0).toString(8).padStart(3, '0')}`,
-  );
-  return `"${escaped}"`;
-}
 
 function workingTreeDiff({ base, reverse }: WorkingTreeDiff): string[] {
   const against = base === undefined ? ['--ours'] : [base];

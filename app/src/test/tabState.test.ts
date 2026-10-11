@@ -20,6 +20,7 @@ import {
   replayOf,
   select,
   stillThere,
+  tipsInGitOrder,
   toggleMerges,
 } from '../tabState';
 import { Commits } from '../history/commits';
@@ -283,6 +284,34 @@ suite('Tab state', () => {
         ]),
       ),
       false,
+    );
+  });
+
+  test('lists its tips in the order git takes them: HEAD, the refs as for-each-ref lists them, a remote HEAD in its own place though refs leave it out, then the stashes', () => {
+    const head = { name: 'main', commit: 'h' };
+    const refs = [
+      { kind: 'remote' as const, name: 'origin/aaa', commit: 'a' },
+      { kind: 'remote' as const, name: 'origin/main', commit: 'm' },
+    ];
+    const dates = new Map([
+      ['m', 1],
+      ['a', 1],
+    ]);
+    const stashes = [
+      {
+        name: 'stash@{0}',
+        commit: 's',
+        message: 'On main: kept',
+        untracked: undefined,
+      },
+    ];
+    assert.deepStrictEqual(
+      [...tipsInGitOrder(head, refs, false, stashes, dates)],
+      ['h', 'm', 'a', 's'],
+    );
+    assert.deepStrictEqual(
+      [...tipsInGitOrder(head, refs, true, stashes, dates)],
+      ['h'],
     );
   });
 

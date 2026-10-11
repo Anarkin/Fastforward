@@ -83,6 +83,11 @@ export function element(
   return target;
 }
 
+export function posingAsElement(fake: object): Element {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return fake as unknown as Element;
+}
+
 export async function waitFor(
   condition: () => boolean | Promise<boolean>,
   what: string,

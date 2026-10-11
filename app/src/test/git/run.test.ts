@@ -178,7 +178,7 @@ suite('Running git', () => {
       outlivesKilledLauncher(),
       stopsWhatItStarted(),
     ]);
-    assert.ok(outlived);
+    assert.ok(outlived, 'what the launcher started to outlive it');
   });
 
   test('stops git with the system taskkill, not one in the current folder', async function () {
@@ -235,9 +235,7 @@ async function outlivesKilledLauncher(): Promise<boolean> {
   }
 }
 
-// Node stops the children it did not detach when it exits, which Git for
-// Windows' launcher does not
-const launcherScript = `
+const launcherOutlivedByWhatItStarts = `
 const child = require('node:child_process').spawn(
   process.execPath,
   ['-e', 'setInterval(() => {}, 60_000)'],
@@ -251,9 +249,13 @@ async function startLauncher(): Promise<{
   launcher: ChildProcess;
   started: number;
 }> {
-  const launcher = spawn(process.execPath, ['-e', launcherScript], {
-    windowsHide: true,
-  });
+  const launcher = spawn(
+    process.execPath,
+    ['-e', launcherOutlivedByWhatItStarts],
+    {
+      windowsHide: true,
+    },
+  );
   const line = await new Promise<string>((resolve) =>
     createInterface(launcher.stdout).once('line', resolve),
   );

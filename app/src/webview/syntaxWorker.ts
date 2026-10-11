@@ -21,8 +21,7 @@ interface WorkerScope {
 
 const scope: WorkerScope = Reflect.get(globalThis, 'self');
 
-// setTimeout waits at least 4 ms once nested, a third of a slice
-function promptly(): (run: () => void) => void {
+function laterWithoutTimerClamping(): (run: () => void) => void {
   const channel = new MessageChannel();
   const queued: (() => void)[] = [];
   channel.port1.addEventListener('message', () => queued.shift()?.());
@@ -34,7 +33,7 @@ function promptly(): (run: () => void) => void {
 }
 
 const post = (message: FromSyntax) => scope.postMessage(message);
-const serve = serveColoring(post, promptly());
+const serve = serveColoring(post, laterWithoutTimerClamping());
 scope.addEventListener('message', (event) => serve(event.data));
 scope.addEventListener('error', sendUncaught(post));
 scope.addEventListener('unhandledrejection', (event) =>

@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as esbuild from 'esbuild';
 import electron from 'electron';
+import { quitApp } from './devApp.mjs';
 import { webviewOptions } from './esbuild.config.mjs';
 
 const production = process.argv.includes('--production');
@@ -40,19 +41,8 @@ const restartApp = {
         return;
       }
       if (app) {
-        const old = app;
-        old.removeAllListeners('exit');
-        if (old.exitCode === null && old.signalCode === null) {
-          const exited = new Promise((resolve) => old.once('exit', resolve));
-          // Killing skips the app's close and will-quit handlers on Windows,
-          // so it is asked to quit first
-          if (old.connected) {
-            old.disconnect();
-          }
-          const killing = setTimeout(() => old.kill(), 5000);
-          await exited;
-          clearTimeout(killing);
-        }
+        app.removeAllListeners('exit');
+        await quitApp(app);
       }
       await webviewBuild.promise;
       app = spawn(electron, ['.'], {

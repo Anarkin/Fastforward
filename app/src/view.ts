@@ -126,7 +126,7 @@ import {
   select,
   stillThere,
   takeRefs,
-  tipsOf,
+  tipsInGitOrder,
   toggleMerges,
   unselect,
   type TabState,
@@ -134,7 +134,7 @@ import {
 
 const maxKeptTextChars = 16_000_000;
 const maxKeptUntrackedChars = 32_000_000;
-const refreshDelays = { delay: 100, gitDirDelay: 300, maxDelay: 1500 };
+export const refreshDelays = { delay: 100, gitDirDelay: 300, maxDelay: 1500 };
 const everything: Changed = { refs: true, workingTree: true };
 const nothing: Changed = { refs: false, workingTree: false };
 const refsAlone: Changed = { refs: true, workingTree: false };
@@ -1971,7 +1971,7 @@ export class FastforwardView {
       root,
       older,
       tab.heads,
-      tipsOf(head, refs, solo, stashes, dates),
+      tipsInGitOrder(head, refs, solo, stashes, dates),
       solo ? [] : stashes.map((stash) => stash.commit),
       dates,
     );

@@ -334,6 +334,42 @@ suite('Watching a repository', function () {
     }
   });
 
+  test('asks git again each time an ignored file changes, so one that comes to stop being ignored without a .gitignore changing, as through core.excludesFile, refreshes, watching recursively', async () => {
+    const file = path.join(repository.root, 'file.txt');
+    const asked: string[] = [];
+    const seen: boolean[] = [];
+    let ignoring = true;
+    const watching = await watchRepository(
+      repository.gitPath,
+      repository.root,
+      {
+        delay: 50,
+        maxDelay: 200,
+        recursive: true,
+        onChange: ({ refs }) => seen.push(refs),
+        onError: (error) => errors.push(error),
+        ignored: (_repo, paths) => {
+          asked.push(...paths);
+          return Promise.resolve(
+            ignoring ? paths.filter((asking) => asking === file) : [],
+          );
+        },
+      },
+    );
+    try {
+      await keepWriting(file, 'the ignored file', () => asked.includes(file));
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      assert.ok(!seen.includes(false), 'the ignored file');
+      ignoring = false;
+      await keepWriting(file, 'the file no longer ignored', () =>
+        seen.includes(false),
+      );
+      assert.deepStrictEqual(errors, []);
+    } finally {
+      await watching.dispose();
+    }
+  });
+
   test('refreshes for a changed file when telling whether it is ignored fails, watching recursively', async () => {
     const file = path.join(repository.root, 'file.txt');
     const seen: boolean[] = [];
@@ -415,7 +451,7 @@ suite('Watching a repository', function () {
   });
 
   for (const recursive of [true, false]) {
-    test(`asks a submodule whether a file changed in it is ignored, staying quiet for one its own .gitignore ignores and refreshing for one it tracks, watching ${recursive ? 'recursively' : 'folder by folder'}`, async () => {
+    test(`asks a submodule whether a file changed in it is ignored, as its superproject refuses to tell, staying quiet for one its own .gitignore ignores and refreshing for one it tracks, watching ${recursive ? 'recursively' : 'folder by folder'}`, async () => {
       const library = await tempRepository(path.join(repository.root, 'sub'));
       await library.commit('library', { '.gitignore': '*.o\n', 'lib.c': '' });
       await repository.git('add', '--no-warn-embedded-repo', 'sub');
@@ -612,7 +648,7 @@ suite('Watching a repository', function () {
       }
     });
 
-    test(`stays quiet for a fetch that brings nothing, and refreshes refs alone for one that brings commits, a tag or a branch, watching ${recursive ? 'recursively' : 'folder by folder'}`, async () => {
+    test(`stays quiet for a fetch that brings nothing, though Windows tells the remote's folder changed for the lock it makes on its HEAD, and refreshes refs alone for one that brings commits, a tag or a branch, watching ${recursive ? 'recursively' : 'folder by folder'}`, async () => {
       const upstream = await tempRepository(tempFolder('upstream'));
       await upstream.commit('one');
       await repository.git('remote', 'add', 'origin', upstream.root);

@@ -43,7 +43,7 @@ suite('Markdown', () => {
     assert.match(html, /<li>plain<\/li>/);
   });
 
-  test('keeps the HTML GitHub keeps, and nothing that runs or restyles the page', () => {
+  test('keeps the HTML GitHub keeps, and no form, nothing that loads another document, and nothing that runs or restyles the page', () => {
     const html = render(
       [
         '<p align="center" style="position:fixed" class="x">kept</p>',
@@ -52,7 +52,16 @@ suite('Markdown', () => {
         '',
         '<script>alert(1)</script>',
         '<iframe src="https://example.com"></iframe>',
+        '<object data="https://example.com/a.html"></object>',
+        '<embed src="https://example.com/a.swf">',
+        '<link rel="stylesheet" href="https://example.com/a.css">',
+        '<meta http-equiv="refresh" content="0;url=https://example.com">',
+        '<base href="https://example.com/">',
+        '<video src="https://example.com/a.mp4"></video>',
+        '<audio src="https://example.com/a.mp3"></audio>',
+        '<picture><source srcset="https://example.com/a.png"></picture>',
         '<form action="https://example.com"><input type="text" name="q" value="v"></form>',
+        '<button>b</button><select><option>o</option></select><textarea>t</textarea>',
         '<input type="checkbox" value="v">',
         '',
         '<img src="a.png" onerror="alert(1)">',
@@ -66,7 +75,18 @@ suite('Markdown', () => {
     for (const gone of [
       /<script/,
       /<iframe/,
+      /<object/,
+      /<embed/,
+      /<link/,
+      /<meta/,
+      /<base/,
+      /<video/,
+      /<audio/,
+      /<source/,
       /<form/,
+      /<button/,
+      /<select/,
+      /<textarea/,
       /onerror/,
       /style=/,
       /class=/,

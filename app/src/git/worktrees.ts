@@ -24,24 +24,28 @@ export async function locateRepository(
   if (root === undefined && !(await isBareRepository(gitPath, folder))) {
     return undefined;
   }
-  const [listed, main] = await Promise.all([
+  const [listed, mainPath] = await Promise.all([
     listWorktrees(gitPath, root ?? folder, root === undefined ? [] : [root]),
-    root === undefined ? undefined : mainWorktree(gitPath, root),
+    root === undefined ? undefined : mainWorktreePath(gitPath, root),
   ]);
-  const [first, ...rest] = listed;
-  if (!first) {
+  const [listedMain, ...rest] = listed;
+  if (!listedMain) {
     return undefined;
   }
-  // Git names the git folder as the main worktree when it is not the work
-  // tree's .git, as with submodules and --separate-git-dir
   const worktrees =
-    main !== undefined && !first.bare
-      ? [{ ...first, path: await spellingOf(main, [root ?? main]) }, ...rest]
+    mainPath !== undefined && !listedMain.bare
+      ? [
+          {
+            ...listedMain,
+            path: await spellingOf(mainPath, [root ?? mainPath]),
+          },
+          ...rest,
+        ]
       : listed;
   return { repository: worktrees[0].path, worktree: root, worktrees };
 }
 
-async function mainWorktree(
+async function mainWorktreePath(
   gitPath: string,
   root: string,
 ): Promise<string | undefined> {

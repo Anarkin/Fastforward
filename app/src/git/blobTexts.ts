@@ -1,4 +1,3 @@
-// Kept by blob id, as a blob's text never changes, bounded by characters
 export class BlobTexts {
   private readonly texts = new Map<string, string>();
   private chars = 0;
@@ -6,12 +5,12 @@ export class BlobTexts {
   constructor(private readonly maxChars: number) {}
 
   async read(
-    ids: readonly string[],
-    read: (ids: readonly string[]) => Promise<ReadonlyMap<string, string>>,
+    blobIds: readonly string[],
+    read: (blobIds: readonly string[]) => Promise<ReadonlyMap<string, string>>,
   ): Promise<Map<string, string>> {
     const known = new Map<string, string>();
     const unknown: string[] = [];
-    for (const id of new Set(ids)) {
+    for (const id of new Set(blobIds)) {
       const text = this.texts.get(id);
       if (text === undefined) {
         unknown.push(id);
@@ -21,7 +20,7 @@ export class BlobTexts {
     }
     const fresh = unknown.length === 0 ? new Map() : await read(unknown);
     const found = new Map<string, string>();
-    for (const id of ids) {
+    for (const id of blobIds) {
       const text = known.get(id) ?? fresh.get(id);
       if (text !== undefined) {
         found.set(id, text);

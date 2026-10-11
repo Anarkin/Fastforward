@@ -84,6 +84,12 @@
           }
         ]
       }
+    },
+    {
+      "files": ["src/test/**"],
+      "rules": {
+        "no-underscore-dangle": ["error", { "allow": ["_willUpdate"] }]
+      }
     }
   ],
   "ignorePatterns": ["dist", "out", "release"]

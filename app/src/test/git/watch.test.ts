@@ -100,7 +100,7 @@ suite('Watching the git folder', () => {
     assert.strictEqual(watchedFolder('worktrees/other', false, isModule), true);
   });
 
-  test('tells a submodule named like the folders it leaves alone by where its git folder is', () => {
+  test("tells a submodule named like the folders it leaves alone by the first git folder on its path, as git puts no submodule's git folder inside another's", () => {
     for (const file of [
       'modules/vendor/lfs',
       'modules/vendor/lfs/HEAD',
@@ -641,6 +641,23 @@ suite('Watching folders one by one', () => {
       kept,
     );
     assert.ok(kept.every((watcher) => watcher?.closed === false));
+  });
+
+  test('watches the root again once it is removed and made anew, as no folder above it is watched to tell of it', async () => {
+    mkdir('a');
+    await start();
+    const before = [root, path.join(root, 'a')].map((folder) =>
+      watchers.get(folder),
+    );
+    fs.rmSync(root, { recursive: true });
+    mkdir('a');
+    before[0]?.listener('rename', path.basename(root));
+    await waitFor(
+      () => watchers.get(path.join(root, 'a')) !== before[1],
+      'the root made anew',
+    );
+    assert.ok(before.every((watcher) => watcher?.closed === true));
+    assert.deepStrictEqual(watched(), ['', 'a']);
   });
 
   test('asks again whether the folders under a .gitignore are ignored once it changes', async () => {

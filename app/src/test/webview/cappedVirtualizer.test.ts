@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import { Virtualizer, type VirtualizerOptions } from '@tanstack/react-virtual';
 import { realHeight, scrollCap } from '../../webview/cappedScroll';
 import { CappedScroll, cappedScrolling } from '../../webview/cappedVirtualizer';
+import { posingAsElement } from '../fixtures';
 
 const rowHeight = 50;
 const viewport = 500;
@@ -74,8 +75,7 @@ function list(count: number) {
   const options: VirtualizerOptions<Element, Element> = {
     count,
     estimateSize: () => rowHeight,
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    getScrollElement: () => scroller as unknown as Element,
+    getScrollElement: () => posingAsElement(scroller),
     observeElementRect: (_instance, report) => {
       report({ width: 300, height: viewport });
     },
@@ -83,7 +83,6 @@ function list(count: number) {
     ...cappedScrolling<Element>(scroll),
   };
   const virtualizer = new Virtualizer<Element, Element>(options);
-  // oxlint-disable-next-line no-underscore-dangle
   virtualizer._willUpdate();
   scroller.scrollHeight = realHeight(virtualizer.getTotalSize());
   const resize = (rows: number) => {
@@ -146,13 +145,13 @@ suite('Capped virtualizer', () => {
     assert.strictEqual(redrawn(), 1);
   });
 
-  test('keeps drawing the rows in view when a list too long to lay out gets shorter without scrolling, as a new history does', () => {
+  test('keeps drawing the rows in view when a list too long to lay out gets shorter, which the browser scrolls only once it clamps its top, as a new history does', () => {
     for (const rows of [100_000, 200_000]) {
       const { scroller, scroll, virtualizer, shown, resize } = list(1_300_000);
       virtualizer.scrollToIndex(700_000, { align: 'start' });
       scroller.frame();
       resize(rows);
-      assert.ok(scroll.fit());
+      assert.ok(scroll.resized());
       scroller.frame();
       const first = shown()[0];
       assert.strictEqual(
@@ -163,7 +162,7 @@ suite('Capped virtualizer', () => {
       scroller.scrollTop += 2 * rowHeight;
       scroller.frame();
       assert.strictEqual(shown()[0], first + 2, String(rows));
-      assert.ok(!scroll.fit());
+      assert.ok(!scroll.resized());
     }
   });
 

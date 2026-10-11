@@ -12,7 +12,12 @@ import {
 import type { Timer } from '../autoFetch';
 import type { Log } from '../log';
 import { activeTabKey, Storage, tabsKey } from '../storage';
-import { FastforwardView, type Connection, type Host } from '../view';
+import {
+  FastforwardView,
+  refreshDelays,
+  type Connection,
+  type Host,
+} from '../view';
 import { UserSettings } from '../settings';
 import { FakeStore } from './fakeStore';
 import { defaultSettings } from './fixtures';
@@ -109,14 +114,11 @@ export async function withNotices(
   }
 }
 
-// Each test that fetches in the background turns it on, with a fake timer
-export function viewSettings(): UserSettings {
+export function settingsWithAutoFetchOff(): UserSettings {
   return new UserSettings({ ...defaultSettings(), autoFetch: false });
 }
 
-// Shorter than the app's, so waiting for the watcher takes less, but long
-// enough that one change still makes one refresh
-const refreshDelays = { delay: 100, maxDelay: 500 };
+const quickerRefreshDelays = { delay: refreshDelays.delay, maxDelay: 500 };
 
 export async function openView(
   log: Log,
@@ -129,14 +131,14 @@ export async function openView(
   const store = new FakeStore();
   await store.update(tabsKey, tabs);
   await store.update(activeTabKey, tabs[0]);
-  const settings = viewSettings();
+  const settings = settingsWithAutoFetchOff();
   const view = new FastforwardView(
     log,
     gitPath ?? (await installedGit()),
     new Storage(settings, store),
     host,
     timer,
-    refreshDelays,
+    quickerRefreshDelays,
   );
   const { page, connection } = attach(view);
   if (ready === 'unwatched') {
@@ -166,19 +168,17 @@ export async function withView(
   }
 }
 
-// Windows can't remove a folder git still runs in, so the suites wait for
-// every view they opened before removing their repositories
-const views = new Set<FastforwardView>();
-const connections = new Set<Connection>();
+const openedViews = new Set<FastforwardView>();
+const openedConnections = new Set<Connection>();
 
 export async function closeViews(): Promise<void> {
-  for (const connection of connections) {
+  for (const connection of openedConnections) {
     connection.dispose();
   }
-  connections.clear();
+  openedConnections.clear();
   openGates();
-  await Promise.all([...views].map((view) => view.idle()));
-  views.clear();
+  await Promise.all([...openedViews].map((view) => view.idle()));
+  openedViews.clear();
 }
 
 export function attach(view: FastforwardView): {
@@ -187,8 +187,8 @@ export function attach(view: FastforwardView): {
 } {
   const page = new FakePage();
   const connection = view.connect((message) => page.receive(message));
-  views.add(view);
-  connections.add(connection);
+  openedViews.add(view);
+  openedConnections.add(connection);
   return { page, connection };
 }
 

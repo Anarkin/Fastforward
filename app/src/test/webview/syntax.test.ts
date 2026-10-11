@@ -64,16 +64,17 @@ async function colored(
 }
 
 suite('Syntax', () => {
-  // Shiki gives up on a line past 500 ms, leaving the rest of it one token,
-  // which the first lines a cold grammar tokenizes took on a slow runner
-  suiteSetup(async function () {
-    this.timeout(30_000);
-    const highlighter = await loadLanguages(['typescript']);
-    highlighter.codeToTokensBase(
-      "/** a */ let s = 'x' + `y${1}` + /z/g; // c\nclass C<T> { m(): T[] { return []; } }",
-      { lang: 'typescript', theme: highlighter.getLoadedThemes()[0] },
-    );
-  });
+  suiteSetup(
+    'warms the TypeScript grammar up, as Shiki gives up on a line past 500 ms, leaving the rest of it one token, which the first lines a cold grammar tokenizes took on a slow runner',
+    async function () {
+      this.timeout(30_000);
+      const highlighter = await loadLanguages(['typescript']);
+      highlighter.codeToTokensBase(
+        "/** a */ let s = 'x' + `y${1}` + /z/g; // c\nclass C<T> { m(): T[] { return []; } }",
+        { lang: 'typescript', theme: highlighter.getLoadedThemes()[0] },
+      );
+    },
+  );
 
   test('may run the Oniguruma engine by the page policy, as it is WebAssembly, which the tests run without the policy', () => {
     assert.ok(policyOfPage().get('script-src')?.includes("'wasm-unsafe-eval'"));

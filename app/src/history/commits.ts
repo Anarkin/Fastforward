@@ -282,8 +282,7 @@ export class CommitsBuilder {
   private parentCount = 0;
   private count = 0;
   private pending = new Uint8Array(0);
-  // The stashes first, then the commits they leave out
-  private readonly marked = new HashTable();
+  private readonly stashesThenCommitsLeftOut = new HashTable();
   private readonly stashCount: number;
   private times = new Int32Array(64);
 
@@ -292,9 +291,13 @@ export class CommitsBuilder {
     private readonly timestamped = false,
   ) {
     for (const stash of stashes) {
-      this.mark(Buffer.from(stash, 'latin1'), 0, stash.length);
+      this.addStashOrCommitLeftOut(
+        Buffer.from(stash, 'latin1'),
+        0,
+        stash.length,
+      );
     }
-    this.stashCount = this.marked.size;
+    this.stashCount = this.stashesThenCommitsLeftOut.size;
   }
 
   add(chunk: Uint8Array): void {
@@ -391,14 +394,14 @@ export class CommitsBuilder {
     if (hashEnd === -1 || hashEnd > end) {
       hashEnd = end;
     }
-    const marked =
-      this.marked.size > 0
-        ? this.marked.findBytes(text, start, hashEnd)
+    const stashOrLeftOut =
+      this.stashesThenCommitsLeftOut.size > 0
+        ? this.stashesThenCommitsLeftOut.findBytes(text, start, hashEnd)
         : undefined;
-    if (marked !== undefined && marked >= this.stashCount) {
+    if (this.isLeftOutByAStash(stashOrLeftOut)) {
       return;
     }
-    const keptParents = marked === undefined ? Infinity : 1;
+    const keptParents = stashOrLeftOut === undefined ? Infinity : 1;
     this.hashes.add(text, start, hashEnd);
     if (this.count + 2 > this.starts.length) {
       this.starts = grownInts(this.starts);
@@ -417,16 +420,26 @@ export class CommitsBuilder {
           this.addParent(text, from, to);
           kept++;
         } else {
-          this.mark(text, from, to);
+          this.addStashOrCommitLeftOut(text, from, to);
         }
       }
       from = to + 1;
     }
   }
 
-  private mark(text: Uint8Array, start: number, end: number): void {
-    if (this.marked.findBytes(text, start, end) === undefined) {
-      this.marked.add(text, start, end);
+  private isLeftOutByAStash(at: number | undefined): boolean {
+    return at !== undefined && at >= this.stashCount;
+  }
+
+  private addStashOrCommitLeftOut(
+    text: Uint8Array,
+    start: number,
+    end: number,
+  ): void {
+    if (
+      this.stashesThenCommitsLeftOut.findBytes(text, start, end) === undefined
+    ) {
+      this.stashesThenCommitsLeftOut.add(text, start, end);
     }
   }
 

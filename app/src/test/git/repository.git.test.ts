@@ -12,6 +12,7 @@ import { gitErrorText } from '../../git/errorText';
 import { renamingRepository } from '../gitFixtures';
 import {
   asIfOwnedByAnother,
+  gitsStarted,
   removeFolder,
   savedEnv,
   tempFolder,
@@ -115,6 +116,25 @@ suite('Git repository', function () {
       });
     } finally {
       await temp.git('checkout', '-q', 'main');
+    }
+  });
+
+  test("reads the refs with one git each for HEAD's branch, HEAD's commit together with the shallow file, the refs, the remotes and the stashes", async () => {
+    const folder = tempFolder('repository');
+    try {
+      const shallow = await tempRepository(path.join(folder, 'shallow'));
+      await shallow.commit('one');
+      await shallow.commit('two');
+      const [head] = await shallow.resolve('HEAD');
+      fs.writeFileSync(path.join(shallow.root, '.git', 'shallow'), `${head}\n`);
+      await readRefs(gitPath, shallow.root);
+      const { result, gits } = await gitsStarted(() =>
+        readRefs(gitPath, shallow.root),
+      );
+      assert.strictEqual(result.shallow, `${head}\n`);
+      assert.strictEqual(gits, 5);
+    } finally {
+      removeFolder(folder);
     }
   });
 

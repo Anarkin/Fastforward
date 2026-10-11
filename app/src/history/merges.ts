@@ -276,8 +276,6 @@ export function showHistory(
   return new Shown(commits, rows, shown, merges, hiddenCounts, rowOf);
 }
 
-// Walks both first-parent chains to where they meet, which works as parents
-// always come after their children, also those outside the history
 function isPull({ length, starts, parents }: Commits, at: number) {
   const parentCount = (commit: number) =>
     commit < length ? starts[commit + 1] - starts[commit] : 0;
@@ -288,7 +286,8 @@ function isPull({ length, starts, parents }: Commits, at: number) {
     return false;
   }
   while (first !== second) {
-    if (first < second) {
+    const firstIsAbove = first < second;
+    if (firstIsAbove) {
       if (parentCount(first) !== 1) {
         return false;
       }

@@ -8,10 +8,6 @@ export interface Extension {
   readonly tips: ReadonlySet<string>;
 }
 
-// Git's date order puts the newer commits above the older ones only when each
-// is newer than every old tip, the only old commits waiting beside them, and
-// no tie of times lets git take either first, as it queues the tips given
-// apart from the history in another order than when given them all
 export function extendHistory({
   older,
   oldHeads,
@@ -23,13 +19,11 @@ export function extendHistory({
   if (!times || !keepsHistory({ older, oldHeads, newer, tips })) {
     return undefined;
   }
-  if (!builtOnUntied({ oldHeads, oldTimes, newer })) {
+  if (
+    !tipsBuiltOnUntied({ oldHeads, oldTimes, newer }) ||
+    !noneIn(newer, older)
+  ) {
     return undefined;
-  }
-  for (let at = 0; at < newer.length; at++) {
-    if (older.has(newer.hashAt(at))) {
-      return undefined;
-    }
   }
   if (
     !keepsTiedOldTips({ older, oldHeads, oldTimes, newer, tips }) ||
@@ -41,7 +35,7 @@ export function extendHistory({
   return Commits.replacingTop(newer, older, 0);
 }
 
-function builtOnUntied({
+function tipsBuiltOnUntied({
   oldHeads,
   oldTimes,
   newer,
@@ -64,23 +58,20 @@ export function ranksOf(tips: Iterable<string>): Map<string, number> {
   return new Map(Array.from(tips, (tip, rank) => [tip, rank]));
 }
 
-// Git gives heads of the same time in the order it is given them as tips, so
-// a list keeps its order only while each tie keeps its own; a head of unknown
-// time has to keep its order to every other head
 export function keepsTiedOrder(
   heads: Iterable<string>,
-  timeOf: (head: string) => number | undefined,
-  before: (head: string) => number | undefined,
-  after: (head: string) => number | undefined,
+  timeOfHead: (head: string) => number | undefined,
+  rankBefore: (head: string) => number | undefined,
+  rankAfter: (head: string) => number | undefined,
 ): boolean {
   const ranked: { time: number | undefined; was: number; is: number }[] = [];
   for (const head of heads) {
-    const was = before(head);
-    const is = after(head);
+    const was = rankBefore(head);
+    const is = rankAfter(head);
     if (was === undefined || is === undefined) {
       return false;
     }
-    ranked.push({ time: timeOf(head), was, is });
+    ranked.push({ time: timeOfHead(head), was, is });
   }
   ranked.sort((a, b) => a.was - b.was);
   const lastOfTime = new Map<number, number>();
@@ -138,12 +129,6 @@ export interface Region extends Extension {
   readonly belowTimes: ReadonlyMap<string, number>;
 }
 
-// Git's date order puts the commits since the oldest new one first, in the
-// order git gives them read alone, and the older ones below as before, when
-// those since are the top of the old list, those below are all older, and no
-// tie of times among them, among those just below, or of an old tip built on
-// with another lets git queue them differently than when reading the whole
-// history
 export function regionHistory({
   older,
   oldHeads,
@@ -158,40 +143,81 @@ export function regionHistory({
   if (
     !times ||
     !keepsHistory({ older, oldHeads, newer, tips }) ||
-    !builtOnUntied({ oldHeads, oldTimes, newer }) ||
+    !tipsBuiltOnUntied({ oldHeads, oldTimes, newer }) ||
     !keepsTiedOldTips({ older, oldHeads, oldTimes, newer, tips })
   ) {
     return undefined;
   }
-  for (let at = 0; at < newer.length; at++) {
-    if (!region.has(newer.hashAt(at))) {
-      return undefined;
+  if (!allIn(newer, region)) {
+    return undefined;
+  }
+  const dropped = countIn(region, older);
+  if (
+    !oldOnesTopOf(older, region, dropped) ||
+    !belowOlderAndUntied(region, since, belowTimes) ||
+    !inOneLineByTime(region, times)
+  ) {
+    return undefined;
+  }
+  return Commits.replacingTop(region, older, dropped);
+}
+
+function noneIn(commits: Commits, list: Commits): boolean {
+  for (let at = 0; at < commits.length; at++) {
+    if (list.has(commits.hashAt(at))) {
+      return false;
     }
   }
-  let dropped = 0;
-  for (let at = 0; at < region.length; at++) {
-    if (older.has(region.hashAt(at))) {
-      dropped++;
+  return true;
+}
+
+function allIn(commits: Commits, list: Commits): boolean {
+  for (let at = 0; at < commits.length; at++) {
+    if (!list.has(commits.hashAt(at))) {
+      return false;
     }
   }
+  return true;
+}
+
+function countIn(commits: Commits, list: Commits): number {
+  let count = 0;
+  for (let at = 0; at < commits.length; at++) {
+    if (list.has(commits.hashAt(at))) {
+      count++;
+    }
+  }
+  return count;
+}
+
+function oldOnesTopOf(
+  older: Commits,
+  region: Commits,
+  dropped: number,
+): boolean {
   for (let at = 0; at < region.length; at++) {
     const old = older.indexOf(region.hashAt(at)) ?? older.length;
     if (old < older.length && old >= dropped) {
-      return undefined;
+      return false;
     }
   }
+  return true;
+}
+
+function belowOlderAndUntied(
+  region: Commits,
+  since: number,
+  belowTimes: ReadonlyMap<string, number>,
+): boolean {
   const below = new Set<number>();
   for (let at = region.length; at < region.size; at++) {
     const time = belowTimes.get(region.hashAt(at));
     if (time === undefined || time >= since || below.has(time)) {
-      return undefined;
+      return false;
     }
     below.add(time);
   }
-  if (!inOneLineByTime(region, times)) {
-    return undefined;
-  }
-  return Commits.replacingTop(region, older, dropped);
+  return true;
 }
 
 function aboveOldTips(
@@ -256,8 +282,6 @@ function inOneLineByTime(commits: Commits, times: Int32Array): boolean {
   return true;
 }
 
-// A parent comes after its children in git's date order, so no commit past
-// the ancestor can lead to it
 function descendsFrom(
   { length, starts, parents }: Commits,
   child: number,
@@ -270,7 +294,8 @@ function descendsFrom(
     if (at === ancestor) {
       return true;
     }
-    if (at > ancestor || at >= length || seen[at] === search) {
+    const listedBelowAncestor = at > ancestor;
+    if (listedBelowAncestor || at >= length || seen[at] === search) {
       continue;
     }
     seen[at] = search;

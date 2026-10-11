@@ -143,7 +143,7 @@ export function takeRefs(
 ): void {
   tab.headCommit = head?.commit;
   tab.stashes = new Map(stashes.map((stash) => [stash.commit, stash]));
-  tab.ranks = ranksOf(tipsOf(head, refs, false, stashes, dates));
+  tab.ranks = ranksOf(tipsInGitOrder(head, refs, false, stashes, dates));
   tab.fingerprint = fingerprint(head, refs, stashes);
   tab.decorated = decoratedCommits(refs, head, stashes);
 }
@@ -156,7 +156,7 @@ export function refsKeepHistory(
   stashes: readonly Stash[] = [],
   dates: ReadonlyMap<string, number> = new Map(),
 ): boolean {
-  const tips = tipsOf(head, refs, solo, stashes, dates);
+  const tips = tipsInGitOrder(head, refs, solo, stashes, dates);
   const ranks = ranksOf(tips);
   return (
     historyLoaded(tab) &&
@@ -171,10 +171,7 @@ export function refsKeepHistory(
   );
 }
 
-// In the order git takes them, which it gives heads of the same time in:
-// HEAD, the refs as for-each-ref lists them in dates, counting the remote
-// HEADs refs leave out, then the stashes
-export function tipsOf(
+export function tipsInGitOrder(
   head: Head | undefined,
   refs: readonly RefInfo[],
   solo: boolean,

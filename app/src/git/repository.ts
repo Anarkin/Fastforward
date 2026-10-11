@@ -99,27 +99,25 @@ export async function readHead(
   gitPath: string,
   root: string,
 ): Promise<Head | undefined> {
-  return (await headAt(gitPath, root)).head;
+  return (await headAndShallowFile(gitPath, root)).head;
 }
 
 async function readHeadAndShallow(
   gitPath: string,
   root: string,
 ): Promise<{ head: Head | undefined; shallow: string }> {
-  const { head, shallowFile } = await headAt(gitPath, root);
+  const { head, shallowFile } = await headAndShallowFile(gitPath, root);
   const shallow = await fs
     .readFile(path.resolve(root, shallowFile), 'utf8')
     .catch(() => '');
   return { head, shallow };
 }
 
-// The rev-parse reading HEAD finds the shallow file too, as a git of its own
-// made each read of the refs 6 ms slower
-async function headAt(
+async function headAndShallowFile(
   gitPath: string,
   root: string,
 ): Promise<{ head: Head | undefined; shallowFile: string }> {
-  const [branch, revParse] = await Promise.all([
+  const [branch, shallowFileAndHash] = await Promise.all([
     runGit(gitPath, root, ['symbolic-ref', '-q', 'HEAD'], {
       okExitCodes: [0, 1],
     }),
@@ -130,7 +128,7 @@ async function headAt(
       { okExitCodes: [0, 1] },
     ),
   ]);
-  const [shallowFile, hash] = revParse.trim().split('\n');
+  const [shallowFile, hash] = shallowFileAndHash.trim().split('\n');
   const ref = branch.trim();
   const name = ref.startsWith('refs/heads/')
     ? ref.slice('refs/heads/'.length)

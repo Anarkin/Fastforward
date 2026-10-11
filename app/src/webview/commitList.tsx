@@ -138,6 +138,19 @@ export function rowKeyOf(
     : (history?.at(index - offset)?.hash ?? index);
 }
 
+function remeasureRowsLaidOutBeforeTheirCommitLoaded(
+  rows: readonly VirtualItem[],
+  heights: Virtualizer<Element, Element>['itemSizeCache'],
+  keyOf: (index: number) => VirtualItem['key'],
+): void {
+  for (const row of rows) {
+    const key = keyOf(row.index);
+    if (row.key !== key) {
+      heights.delete(key);
+    }
+  }
+}
+
 export function drawnRows(
   virtualizer: Pick<
     Virtualizer<Element, Element>,
@@ -146,14 +159,11 @@ export function drawnRows(
   keyOf: (index: number) => VirtualItem['key'],
 ): VirtualItem[] {
   const rows = virtualizer.getVirtualItems();
-  // A row laid out before its commit loaded keeps its estimate until laid out
-  // again, while measuring it compares with the height kept for its commit
-  for (const row of rows) {
-    const key = keyOf(row.index);
-    if (row.key !== key) {
-      virtualizer.itemSizeCache.delete(key);
-    }
-  }
+  remeasureRowsLaidOutBeforeTheirCommitLoaded(
+    rows,
+    virtualizer.itemSizeCache,
+    keyOf,
+  );
   return rows;
 }
 
@@ -350,8 +360,6 @@ export function keptPlace(
 
 let reports = 0;
 
-// The main process keeps the place it was last told, which a history it was
-// already laying out may come with after a later one is told
 export class ReportedPlaces {
   private readonly tops = new Map<number, number>();
 
@@ -610,7 +618,7 @@ export function Commits({
     (index: number) => rowKeyOf(history, offset, index),
     [history, offset],
   );
-  const { scrolling, shift, scrollTop, fit } =
+  const { scrolling, shift, scrollTop, resized } =
     useCappedScroll<HTMLDivElement>();
   const [places] = useState(() => new ReportedPlaces());
   const [scrollToFn] = useState(() =>
@@ -626,7 +634,7 @@ export function Commits({
     scrollToFn,
   });
   const totalSize = virtualizer.getTotalSize();
-  useLayoutEffect(fit, [fit, totalSize]);
+  useLayoutEffect(resized, [resized, totalSize]);
   const rows = drawnRows(virtualizer, rowKey);
   const first = Math.max(0, (rows[0]?.index ?? 0) - offset);
   const last = Math.max(0, (rows.at(-1)?.index ?? 0) - offset);

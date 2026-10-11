@@ -194,9 +194,7 @@ export function useColumnWidths(
                 parseFloat(style.columnGap) * startWidths.length
             : 0,
         );
-        const onMove = (move: PointerEvent) => {
-          // Straight on the grid while dragging, so the columns' contents
-          // don't re-render on every move, only once it ends
+        const resizeGridWithoutRerendering = (move: PointerEvent) => {
           current.current = draggedWidths(
             startWidths,
             index,
@@ -210,7 +208,7 @@ export function useColumnWidths(
             );
           }
         };
-        followDrag(window, onMove, () => {
+        followDrag(window, resizeGridWithoutRerendering, () => {
           document.body.classList.remove('resizing');
           update(current.current);
           save(current.current);

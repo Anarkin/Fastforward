@@ -496,6 +496,15 @@ suite('Large files in a commit diff', () => {
     );
   });
 
+  test('shows only the selected file when git diffs the paths under it too, as when a file turns into a folder', () => {
+    const files = [fileChange('foo'), fileChange('foo/bar.txt')];
+    const parsed = parsePatch(`${patch('foo', 1)}\n${patch('foo/bar.txt', 1)}`);
+    assert.deepStrictEqual(
+      shownFiles(parsed, 'foo', files, [], new Map()).map((file) => file.path),
+      ['foo'],
+    );
+  });
+
   test('defers each large file, and every file once the diff would grow past its budget', () => {
     const fitting = [];
     for (let left = patchLineBudget - 3; left > 0;) {

@@ -2,9 +2,7 @@ import type { DOMPurify } from 'dompurify';
 import type MarkdownIt from 'markdown-it';
 import type { StateCore } from 'markdown-it';
 
-// What GitHub keeps of the HTML in Markdown, after its html-pipeline
-// sanitization filter, leaving out forms and what loads other documents
-const allowedTags = [
+const tagsGitHubKeeps = [
   'h1',
   'h2',
   'h3',
@@ -69,7 +67,7 @@ const allowedTags = [
   'input',
 ];
 
-const allowedAttributes = [
+const attributesGitHubKeeps = [
   'href',
   'src',
   'alt',
@@ -194,8 +192,8 @@ export function markdownRenderer(
     let fragment: DocumentFragment;
     try {
       fragment = purify.sanitize(markdown.render(text), {
-        ALLOWED_TAGS: allowedTags,
-        ALLOWED_ATTR: allowedAttributes,
+        ALLOWED_TAGS: tagsGitHubKeeps,
+        ALLOWED_ATTR: attributesGitHubKeeps,
         ALLOWED_URI_REGEXP: allowedUris,
         RETURN_DOM_FRAGMENT: true,
       });

@@ -298,7 +298,7 @@ export function newSideUnchanged(patch: string): string {
 }
 
 function headerOf(file: FileChange): string {
-  return `diff --git ${quoted(`a/${file.oldPath ?? file.path}`)} ${quoted(`b/${file.path}`)}`;
+  return `diff --git ${gitQuoted(`a/${file.oldPath ?? file.path}`)} ${gitQuoted(`b/${file.path}`)}`;
 }
 
 const escapes: Readonly<Record<string, string>> = {
@@ -313,13 +313,7 @@ const escapes: Readonly<Record<string, string>> = {
   '\r': '\\r',
 };
 
-// oxlint-disable-next-line no-control-regex
-const quotedCharacter = /["\\\x00-\x1f\x7f]/;
-
-function quoted(name: string): string {
-  if (!quotedCharacter.test(name)) {
-    return name;
-  }
+export function gitQuoted(name: string): string {
   let escaped = '';
   for (const character of name) {
     const code = character.charCodeAt(0);
@@ -477,7 +471,7 @@ export function withoutFilesInside(
       ]),
     ),
   ].map((folder) => {
-    const name = quoted(`${folder}/x`);
+    const name = gitQuoted(`${folder}/x`);
     return `${sectionStart}${name.slice(0, name.endsWith('"') ? -2 : -1)}`;
   });
   return patch
