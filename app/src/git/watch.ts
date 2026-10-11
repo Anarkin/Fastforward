@@ -767,7 +767,8 @@ export function affectsWorktree(
     first === 'packed-refs' ||
     first === 'reftable' ||
     first === 'config' ||
-    first === 'shallow'
+    first === 'shallow' ||
+    first === 'info'
   );
 }
 

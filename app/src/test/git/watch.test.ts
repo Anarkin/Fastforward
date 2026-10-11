@@ -270,6 +270,13 @@ suite('Watching the git folder', () => {
     }
   });
 
+  test('refreshes a linked worktree for the excludes and attributes it shares, which change what it ignores and how it diffs, watching the folder they are in', () => {
+    for (const file of ['info/exclude', 'info\\attributes']) {
+      assert.strictEqual(affectsWorktree(file, true, isModule), true, file);
+    }
+    assert.strictEqual(watchedFolder('info', true, isModule), true);
+  });
+
   test('refreshes a linked worktree for the shallow file it shares, which deepening a shallow clone rewrites', () => {
     assert.strictEqual(affectsWorktree('shallow', true, isModule), true);
     assert.strictEqual(affectsWorktree('shallow.lock', true, isModule), false);
