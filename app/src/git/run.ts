@@ -26,9 +26,28 @@ const gitConfigArgs = [
   'core.disambiguate=none',
 ];
 
+const elsewhere = [
+  'GIT_DIR',
+  'GIT_WORK_TREE',
+  'GIT_INDEX_FILE',
+  'GIT_OBJECT_DIRECTORY',
+  'GIT_COMMON_DIR',
+  'GIT_GLOB_PATHSPECS',
+  'GIT_NOGLOB_PATHSPECS',
+  'GIT_ICASE_PATHSPECS',
+];
+
+function inheritedEnv(): NodeJS.ProcessEnv {
+  const env = { ...process.env };
+  for (const name of elsewhere) {
+    delete env[name];
+  }
+  return env;
+}
+
 export function gitEnv(pathspecMagic = false): NodeJS.ProcessEnv {
   return {
-    ...process.env,
+    ...inheritedEnv(),
     GIT_OPTIONAL_LOCKS: '0',
     LC_ALL: 'C',
     GIT_FLUSH: '0',
@@ -38,7 +57,7 @@ export function gitEnv(pathspecMagic = false): NodeJS.ProcessEnv {
 }
 
 function hooksEnv(): NodeJS.ProcessEnv {
-  return { ...process.env, GIT_TERMINAL_PROMPT: '0' };
+  return { ...inheritedEnv(), GIT_TERMINAL_PROMPT: '0' };
 }
 
 export interface GitCommand {

@@ -36,6 +36,35 @@ suite('Running git in a repository', function () {
 
   suiteTeardown(() => removeFolder(cwd));
 
+  test('reads and switches the repository it was given, though the environment names another', async () => {
+    const other = await tempRepository(tempFolder('other'));
+    try {
+      await other.commit('other');
+      await temp.git('branch', 'elsewhere');
+      await withEnv(
+        {
+          GIT_DIR: path.join(other.root, '.git'),
+          GIT_WORK_TREE: other.root,
+        },
+        async () => {
+          assert.deepStrictEqual(
+            (await runGit(gitPath, cwd, ['log', '-1', '--format=%s'])).trim(),
+            'first',
+          );
+          await switchToBranch(gitPath, cwd, 'elsewhere');
+        },
+      );
+      assert.strictEqual(
+        (await temp.git('branch', '--show-current')).trim(),
+        'elsewhere',
+      );
+    } finally {
+      await temp.git('switch', '-q', 'main');
+      await temp.git('branch', '-D', 'elsewhere');
+      removeFolder(other.root);
+    }
+  });
+
   test('reads the status and the changes without rewriting the index, even for a file touched since it was staged', async () => {
     const later = new Date(Date.now() + 60_000);
     fs.utimesSync(path.join(cwd, 'a.txt'), later, later);

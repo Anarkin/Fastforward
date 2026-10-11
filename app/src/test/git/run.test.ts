@@ -39,6 +39,28 @@ suite('Running git', () => {
     assert.strictEqual(gitEnv(true).GIT_LITERAL_PATHSPECS, '0');
   });
 
+  test('leaves out the pathspec settings and the repository the environment names, as git refuses them with literal paths and the app reads the repository it opened', async () => {
+    const inherited = {
+      GIT_GLOB_PATHSPECS: '1',
+      GIT_NOGLOB_PATHSPECS: '1',
+      GIT_ICASE_PATHSPECS: '1',
+      GIT_DIR: 'elsewhere',
+      GIT_WORK_TREE: 'elsewhere',
+      GIT_INDEX_FILE: 'elsewhere',
+      GIT_OBJECT_DIRECTORY: 'elsewhere',
+      GIT_COMMON_DIR: 'elsewhere',
+    };
+    await withEnv(inherited, () => {
+      for (const env of [gitEnv(), gitEnv(true)]) {
+        assert.deepStrictEqual(
+          Object.keys(inherited).filter((name) => name in env),
+          [],
+        );
+      }
+      return Promise.resolve();
+    });
+  });
+
   test('starts git in a process group of its own outside Windows and stops the whole group, as git leaves running the ssh or https helper it started', async () => {
     assert.strictEqual(gitProcessOptions('win32').detached, false);
     assert.strictEqual(gitProcessOptions('linux').detached, true);
