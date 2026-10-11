@@ -248,7 +248,7 @@ export class ImageCache {
       loading: entry.loading,
       release: () => {
         entry.holders--;
-        this.evict();
+        queueMicrotask(() => this.evict());
       },
     };
   }

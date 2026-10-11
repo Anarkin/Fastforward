@@ -401,9 +401,26 @@ suite('Image cache', () => {
     assert.deepStrictEqual(revoked, []);
     assert.ok(cache.peek('a'));
     a.release();
+    await Promise.resolve();
     assert.deepStrictEqual(revoked, ['blob:1']);
     assert.strictEqual(cache.peek('a'), undefined);
     b.release();
+    await Promise.resolve();
     assert.ok(cache.peek('b'));
+  });
+
+  test('keeps an image let go and held again at once, as a pane moving to another row lets go of it just before the new one holds it', async () => {
+    const { cache, revoked } = fakeImages({ a: bytes(6), b: bytes(6) }, 10);
+    const a = cache.hold('a');
+    const b = cache.hold('b');
+    await Promise.all([a.loading, b.loading]);
+    const shown = cache.peek('a');
+    a.release();
+    const again = cache.hold('a');
+    await Promise.resolve();
+    assert.deepStrictEqual(revoked, []);
+    assert.strictEqual(cache.peek('a'), shown);
+    again.release();
+    b.release();
   });
 });
