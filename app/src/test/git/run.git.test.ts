@@ -234,6 +234,39 @@ suite('Running git in a repository', function () {
     }
   });
 
+  test('leaves the index unlocked when it stops a checkout that would not finish in time, as Windows stops git with no chance to remove its lock', async () => {
+    const folder = tempFolder('stopping-checkout');
+    const started = path.join(folder, 'started').replaceAll('\\', '/');
+    const stuck = await tempRepository(tempFolder('stuck'));
+    try {
+      await stuck.commit('first', {
+        '.gitattributes': '*.txt filter=slow\n',
+        'a.txt': 'a\n',
+      });
+      await stuck.git('switch', '-q', '-c', 'slow');
+      await stuck.commit('slow', { 'a.txt': 'b\n' });
+      await stuck.git('switch', '-q', 'main');
+      await stuck.git(
+        'config',
+        'filter.slow.smudge',
+        `echo > '${started}'; sleep 15; cat`,
+      );
+      const switching = assert.rejects(
+        switchToBranch(gitPath, stuck.root, 'slow'),
+      );
+      await waitFor(() => fs.existsSync(started), 'the checkout to start');
+      await stopRunningGit(0);
+      await switching;
+      assert.strictEqual(
+        fs.existsSync(path.join(stuck.root, '.git', 'index.lock')),
+        false,
+      );
+    } finally {
+      removeFolder(stuck.root);
+      removeFolder(folder);
+    }
+  });
+
   test('waits for a checkout or fast-forward running, leaving the other gits running, as an update waits for them before it restarts the app', async () => {
     const folder = tempFolder('installing');
     const reading = path.join(folder, 'reading').replaceAll('\\', '/');

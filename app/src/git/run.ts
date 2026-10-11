@@ -1,6 +1,7 @@
 import { type ChildProcess, execFile, spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { join, win32 } from 'node:path';
+import { lstat, readFile, rm } from 'node:fs/promises';
+import { isAbsolute, join, win32 } from 'node:path';
 import type { Readable } from 'node:stream';
 import { strings } from '../shared/strings';
 
@@ -191,7 +192,7 @@ export async function runGitBytes(
           ...gitProcessOptions(),
         },
       ),
-      writes,
+      writes ? { cwd, since: Date.now() } : undefined,
     );
     const stop = () => void stopGit(child);
     let tooLarge = false;
@@ -283,11 +284,16 @@ export function gitProcessOptions(platform = process.platform): {
   return { windowsHide: true, detached: platform !== 'win32' };
 }
 
+interface Write {
+  readonly cwd: string;
+  readonly since: number;
+}
+
 const running = new Map<ChildProcess, Promise<void>>();
-const writing = new Set<ChildProcess>();
+const writing = new Map<ChildProcess, Write>();
 const writeTime = 30_000;
 
-function keptRunning<T extends ChildProcess>(child: T, writes = false): T {
+function keptRunning<T extends ChildProcess>(child: T, write?: Write): T {
   running.set(
     child,
     new Promise((resolve) => {
@@ -300,21 +306,23 @@ function keptRunning<T extends ChildProcess>(child: T, writes = false): T {
       child.once('error', done);
     }),
   );
-  if (writes) {
-    writing.add(child);
+  if (write) {
+    writing.set(child, write);
   }
   return child;
 }
 
-export async function writesEnded(): Promise<void> {
+export async function writesEnded(waitTime = writeTime): Promise<void> {
   let timer: NodeJS.Timeout | undefined;
   const late = new Promise<'late'>((resolve) => {
-    timer = setTimeout(() => resolve('late'), writeTime).unref();
+    timer = setTimeout(() => resolve('late'), waitTime).unref();
   });
   try {
     while (writing.size > 0) {
       const ended = await Promise.race([
-        Promise.all([...writing].flatMap((child) => running.get(child) ?? [])),
+        Promise.all(
+          [...writing.keys()].flatMap((child) => running.get(child) ?? []),
+        ),
         late,
       ]);
       if (ended === 'late') {
@@ -326,14 +334,39 @@ export async function writesEnded(): Promise<void> {
   }
 }
 
-export async function stopRunningGit(): Promise<void> {
+export async function stopRunningGit(waitTime = writeTime): Promise<void> {
   await Promise.all([
-    writesEnded(),
+    writesEnded(waitTime),
     ...[...running.keys()]
       .filter((child) => !writing.has(child))
       .map((child) => stopGit(child)),
   ]);
+  const unfinished = [...writing.values()];
   await Promise.all([...running.keys()].map((child) => stopGit(child)));
+  if (process.platform === 'win32') {
+    await Promise.all(unfinished.map(removeIndexLock));
+  }
+}
+
+async function removeIndexLock({ cwd, since }: Write): Promise<void> {
+  const dotGit = join(cwd, '.git');
+  const stats = await lstat(dotGit).catch(() => undefined);
+  const gitDir = stats?.isFile()
+    ? /^gitdir: (.*)$/m
+        .exec(await readFile(dotGit, 'utf8').catch(() => ''))?.[1]
+        ?.trim()
+    : dotGit;
+  if (gitDir === undefined) {
+    return;
+  }
+  const lock = join(
+    isAbsolute(gitDir) ? gitDir : join(cwd, gitDir),
+    'index.lock',
+  );
+  const locked = await lstat(lock).catch(() => undefined);
+  if (locked !== undefined && locked.mtimeMs >= since - 1000) {
+    await rm(lock, { force: true, maxRetries: 10 }).catch(() => undefined);
+  }
 }
 
 export async function stopGit(
