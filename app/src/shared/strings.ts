@@ -263,7 +263,6 @@ export const strings = {
   },
   files: {
     title: 'Files',
-    compared: (comparison: string) => `Files: ${comparison}`,
     noChanges: 'No changes',
     noDifferences: 'No differences, both have the same files',
     showAll: 'Show All Files',

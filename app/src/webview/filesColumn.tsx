@@ -1,6 +1,11 @@
 import { useMemo, useState } from 'react';
 import { comparedOf, comparisonLabel } from '../shared/comparisons';
-import type { ChangeArea, FileChange } from '../shared/protocol';
+import { shortHash } from '../shared/hashes';
+import {
+  workingTreeHash,
+  type ChangeArea,
+  type FileChange,
+} from '../shared/protocol';
 import {
   areaKey,
   changesTree,
@@ -61,10 +66,16 @@ export function filesReveal(
 }
 
 export function filesTitle(selection: string | undefined): string {
+  if (selection === undefined) {
+    return strings.files.title;
+  }
   const compared = comparedOf(selection);
-  return compared
-    ? strings.files.compared(comparisonLabel(compared))
-    : strings.files.title;
+  if (compared) {
+    return comparisonLabel(compared);
+  }
+  return selection === workingTreeHash
+    ? strings.commits.uncommitted
+    : shortHash(selection);
 }
 
 export function noChangesText(

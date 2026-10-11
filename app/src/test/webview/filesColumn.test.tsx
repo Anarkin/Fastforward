@@ -183,13 +183,14 @@ suite('Files column', () => {
     }
   });
 
-  test('titles itself with the commits compared', () => {
+  test('titles itself with the commit shown or the two compared, as the history names them, and as Files while none is', () => {
     const hash = '0123456789abcdef0123456789abcdef01234567';
     assert.strictEqual(filesTitle(undefined), 'Files');
-    assert.strictEqual(filesTitle(hash), 'Files');
+    assert.strictEqual(filesTitle(hash), '0123456');
+    assert.strictEqual(filesTitle(workingTreeHash), 'Uncommitted changes');
     assert.strictEqual(
       filesTitle(comparisonOf(hash, workingTreeHash)),
-      'Files: 0123456 → uncommitted',
+      '0123456 → uncommitted',
     );
   });
 

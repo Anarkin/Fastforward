@@ -1562,7 +1562,7 @@ suite('Style', () => {
     const title = withClass(
       rendered(
         renderedBy(Column, {
-          title: 'Files: 0123456 → 89abcde',
+          title: '0123456 → 89abcde',
           start: createElement('div', { className: 'nav-buttons all-files' }),
           children: null,
         }),
