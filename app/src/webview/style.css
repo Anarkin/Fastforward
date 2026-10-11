@@ -267,7 +267,7 @@ body {
   padding: 4px;
   color: var(--color-foreground);
   background: var(--color-panel-background);
-  border-radius: 6px;
+  border-radius: var(--card-radius);
   box-shadow: var(--popup-shadow);
 }
 
@@ -392,14 +392,16 @@ body {
 
 .notices {
   position: fixed;
-  right: 16px;
-  bottom: 16px;
+  right: 0;
+  bottom: 0;
   z-index: 20;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-width: min(480px, calc(100vw - 32px));
-  max-height: calc(100vh - 32px);
+  padding: 32px 16px 16px 32px;
+  max-width: min(528px, 100vw);
+  max-height: 100vh;
   overflow-y: auto;
   pointer-events: none;
 }
@@ -408,27 +410,26 @@ body {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  padding: 8px 8px 8px 12px;
+  padding: 4px;
   color: var(--color-foreground);
-  background: var(--popup-background);
-  border-left: 3px solid var(--color-focus);
+  background: var(--color-panel-background);
   border-radius: var(--card-radius);
   box-shadow: var(--popup-shadow);
   pointer-events: auto;
 }
 
-.notice.error {
-  border-left-color: var(--color-error-foreground);
-}
-
 .notice-message {
   flex: 1;
   min-width: 0;
-  padding-top: 2px;
+  padding: 2px 0 2px 10px;
   max-height: 50vh;
   overflow-y: auto;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
+}
+
+.notice.error .notice-message {
+  color: var(--color-error-foreground);
 }
 
 .notice-close {

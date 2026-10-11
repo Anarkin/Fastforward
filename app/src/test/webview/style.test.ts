@@ -146,6 +146,12 @@ function bodyVariable(name: string): string | undefined {
   return cascaded(body, `--${name}`);
 }
 
+function paddingOf(element: MarkupElement) {
+  const values = (cascaded(element, 'padding') ?? '0').split(' ');
+  const [top, right = top, bottom = top, left = right] = values;
+  return { top, right, bottom, left };
+}
+
 function layer(element: MarkupElement, states?: States): number {
   return Number(cascaded(element, 'z-index', states));
 }
@@ -945,7 +951,7 @@ suite('Style', () => {
     }
   });
 
-  test('draws the button that shows a large diff, and the edge of a notice, in the solid focus color', () => {
+  test('draws the button that shows a large diff in the solid focus color', () => {
     looks(
       withClass(
         rendered(
@@ -963,9 +969,6 @@ suite('Style', () => {
           'linear-gradient(var(--color-focus), var(--color-focus)), var(--color-panel-background)',
       },
     );
-    looks(withClass(notices('info'), 'notice'), {
-      'border-left': '3px solid var(--color-focus)',
-    });
   });
 
   test('fills the checked-out bubble with its own colors, and no bubble changes under the pointer', () => {
@@ -1406,7 +1409,8 @@ suite('Style', () => {
   test('keeps the notices within the window, scrolling a long message within its notice, so a checkout listing hundreds of files leaves its close button in reach', () => {
     const shown = notices();
     looks(withClass(shown, 'notices'), {
-      'max-height': 'calc(100vh - 32px)',
+      'box-sizing': 'border-box',
+      'max-height': '100vh',
       'overflow-y': 'auto',
     });
     looks(withClass(shown, 'notice-message'), {
@@ -1415,16 +1419,65 @@ suite('Style', () => {
     });
   });
 
-  test('draws an error notice by the notice rules alone, like any other notice but for its edge', () => {
-    const rules = matchingRules(withClass(notices(), 'notice'));
-    assert.deepStrictEqual(
-      rules.map((rule) => rule.selector),
-      ['.notice', '.notice.error'],
+  test('draws a notice like a context menu, its message inset like a menu item and its close button as far from the edge as a hovered item', () => {
+    const menu = contextMenu();
+    const item = withClass(menu, 'menu-item');
+    assert.ok(item);
+    for (const level of ['info', 'error']) {
+      const shown = notices(level);
+      looks(
+        withClass(shown, 'notice'),
+        Object.fromEntries(
+          ['background', 'border-radius', 'box-shadow', 'padding'].map(
+            (property) => [property, cascaded(menu, property)],
+          ),
+        ),
+      );
+      looks(withClass(shown, 'notice'), {
+        border: undefined,
+        'border-left': undefined,
+      });
+      const message = withClass(shown, 'notice-message');
+      assert.ok(message);
+      assert.strictEqual(paddingOf(message).left, paddingOf(item).left);
+    }
+  });
+
+  test('pads the notices for the shadow of a popup, which their scrolling would clip, keeping them 16px from the corner of the window', () => {
+    const shadows = [
+      ...(bodyVariable('popup-shadow') ?? '').matchAll(
+        /(?<!inset )0 (\d+)px (\d+)px rgba/g,
+      ),
+    ].map(([, y, blur]) => ({ y: Number(y), blur: Number(blur) }));
+    assert.ok(shadows.length > 0);
+    const container = withClass(notices(), 'notices');
+    assert.ok(container);
+    const padding = paddingOf(container);
+    assert.ok(
+      Number.parseInt(padding.top) >=
+        Math.max(...shadows.map((s) => s.blur - s.y)),
     );
-    assert.deepStrictEqual(
-      [...(rules.at(-1)?.declarations.keys() ?? [])],
-      ['border-left-color'],
+    assert.ok(
+      Number.parseInt(padding.left) >= Math.max(...shadows.map((s) => s.blur)),
     );
+    assert.deepStrictEqual([padding.right, padding.bottom], ['16px', '16px']);
+    looks(container, { right: '0', bottom: '0' });
+  });
+
+  test('draws an error notice like any other notice but for the color of its message', () => {
+    assert.deepStrictEqual(
+      matchingRules(withClass(notices(), 'notice')).map(
+        (rule) => rule.selector,
+      ),
+      ['.notice'],
+    );
+    const rules = matchingRules(withClass(notices(), 'notice-message'));
+    assert.strictEqual(rules.at(-1)?.selector, '.notice.error .notice-message');
+    assert.deepStrictEqual(
+      [...(rules.at(-1)?.declarations.entries() ?? [])],
+      [['color', 'var(--color-error-foreground)']],
+    );
+    looks(withClass(notices('info'), 'notice-message'), { color: undefined });
   });
 
   test('strikes a deleted file through, in the text color like the other changes', () => {
