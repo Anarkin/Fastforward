@@ -85,6 +85,19 @@ export function maxWidth(
   );
 }
 
+export function drawnWidths(
+  widths: readonly number[],
+  hidden: readonly boolean[],
+  tracks: string,
+): number[] {
+  const drawn = tracks.split(' ').map(parseFloat);
+  return widths.map((width, i) =>
+    hidden[i] || drawn[i] > width - 0.5
+      ? width
+      : Math.max(minColumnWidths[i], Math.floor(drawn[i])),
+  );
+}
+
 export function draggedWidths(
   start: readonly number[],
   index: number,
@@ -165,9 +178,11 @@ export function useColumnWidths(
         event.preventDefault();
         event.currentTarget.setPointerCapture(event.pointerId);
         const startX = event.clientX;
-        const startWidths = current.current;
         const grid = container.current;
         const style = grid ? getComputedStyle(grid) : undefined;
+        const startWidths = style
+          ? drawnWidths(current.current, hidden, style.gridTemplateColumns)
+          : current.current;
         const max = maxWidth(
           startWidths,
           hidden,

@@ -4,6 +4,7 @@ import {
   showsDiff,
   listError,
   draggedWidths,
+  drawnWidths,
   followDrag,
   maxWidth,
   minColumnWidths,
@@ -92,6 +93,52 @@ suite('Columns', () => {
       [400, 500],
     );
     assert.deepStrictEqual(draggedWidths([400, 250], 0, 10.6, 500), [411, 250]);
+  });
+
+  test('drags a column from the widths the window draws them at, narrower than those saved', () => {
+    const start = drawnWidths(
+      [700, 500],
+      [false, false],
+      '574.5px 449.5px 240px',
+    );
+    assert.deepStrictEqual(start, [574, 449]);
+    assert.deepStrictEqual(
+      draggedWidths(start, 0, 1, maxWidth(start, [false, false], 0, 1280, 16)),
+      [575, 449],
+    );
+    assert.deepStrictEqual(
+      draggedWidths(start, 1, 1, maxWidth(start, [false, false], 1, 1280, 16)),
+      [574, 450],
+    );
+  });
+
+  test('keeps the widths saved for columns drawn at them, which scales like 110% or 133% read a hair narrower, so a drag takes no pixel off them', () => {
+    assert.deepStrictEqual(
+      drawnWidths([400, 275], [false, false], '399.991px 274.991px 1230.01px'),
+      [400, 275],
+    );
+    assert.deepStrictEqual(
+      drawnWidths([301, 250], [false, false], '300.994px 250px 1354.02px'),
+      [301, 250],
+    );
+    assert.deepStrictEqual(
+      drawnWidths([275, 150], [false, false], '274.991px 149.991px 1480.01px'),
+      [275, 150],
+    );
+  });
+
+  test('drags no column from below its least width, which a column squeezed to it reads a hair under at scales like 133%', () => {
+    assert.deepStrictEqual(
+      drawnWidths([700, 500], [false, false], '274.992px 149.988px 239.988px'),
+      [275, 150],
+    );
+  });
+
+  test('keeps the width saved for a hidden column, which is drawn with none', () => {
+    assert.deepStrictEqual(
+      drawnWidths([700, 500], [true, false], '0px 449.5px 815px'),
+      [700, 449],
+    );
   });
 
   test('resets only the column asked', () => {
