@@ -23,15 +23,19 @@ export class Cycle {
   private asked: string[] = [];
   private shown: string | undefined;
 
+  seen(shown: string | undefined): void {
+    if (shown !== this.shown) {
+      this.shown = shown;
+      const reached = shown === undefined ? -1 : this.asked.indexOf(shown);
+      this.asked = reached === -1 ? [] : this.asked.slice(reached + 1);
+    }
+  }
+
   next(
     active: string | undefined,
     adjacent: (from: string | undefined) => string | undefined,
   ): string | undefined {
-    if (active !== this.shown) {
-      this.shown = active;
-      const reached = active === undefined ? -1 : this.asked.indexOf(active);
-      this.asked = reached === -1 ? [] : this.asked.slice(reached + 1);
-    }
+    this.seen(active);
     const next = adjacent(this.asked.at(-1) ?? active);
     if (next !== undefined) {
       this.asked.push(next);
@@ -136,6 +140,7 @@ export function TabBar({
   const add = useRef<HTMLButtonElement>(null);
   useBinding(keymap.openRepository, () => add.current?.click());
   const [cycle] = useState(() => new Cycle());
+  useEffect(() => cycle.seen(active), [cycle, active]);
   useBinding(keymap.repository, (step) => {
     const root = cycle.next(active, (from) => adjacentTab(tabs, from, step));
     if (root !== undefined) {

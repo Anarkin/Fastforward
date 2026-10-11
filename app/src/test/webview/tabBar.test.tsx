@@ -41,6 +41,21 @@ suite('Tab bar', () => {
     assert.strictEqual(next('/c'), '/a');
   });
 
+  test('steps on from the tab shown once the one asked for shows and another is picked, though it is the one shown at the last press', () => {
+    for (const shown of [tabs, tabs.slice(0, 2)]) {
+      const cycle = new Cycle();
+      const next = (active: string) =>
+        cycle.next(active, (from: string | undefined) =>
+          adjacentTab(shown, from, 1),
+        );
+      cycle.seen('/a');
+      assert.strictEqual(next('/a'), '/b');
+      cycle.seen('/b');
+      cycle.seen('/a');
+      assert.strictEqual(next('/a'), '/b');
+    }
+  });
+
   test('acts on what the pointer rests on, not on what it only passes over', async () => {
     const done: string[] = [];
     const rest = resting(10);

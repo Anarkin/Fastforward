@@ -36,6 +36,7 @@ export function WorktreeBar({
   useEffect(() => rest.cancel, [rest]);
 
   const [cycle] = useState(() => new Cycle());
+  useEffect(() => cycle.seen(active), [cycle, active]);
   useBinding(keymap.worktree, (step) => {
     const root = cycle.next(active, (from) =>
       adjacentWorktree(worktrees ?? [], from, step),
