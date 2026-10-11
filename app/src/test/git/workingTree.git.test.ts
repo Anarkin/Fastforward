@@ -11,7 +11,7 @@ import {
   workingTreeFiles,
   workingTreePatch,
 } from '../../git/workingTree';
-import { isLargeChange } from '../../shared/protocol';
+import { isLargeChange, leftOutChanges } from '../../shared/protocol';
 import { parsePatch } from '../../webview/diff';
 import { waitFor } from '../fixtures';
 import {
@@ -688,10 +688,10 @@ suite('Uncommitted changes', function () {
         changes.find((change) => change.path === file),
       );
       assert.ok(text && isLargeChange(text));
-      assert.strictEqual(text.tooLargeToCount, true);
+      assert.strictEqual(text.uncounted, true);
       assert.strictEqual(text.insertions, 0);
       assert.strictEqual(binary?.insertions, 0);
-      assert.strictEqual(binary?.tooLargeToCount, undefined);
+      assert.strictEqual(binary?.uncounted, undefined);
     } finally {
       for (const file of Object.keys(files)) {
         fs.rmSync(path.join(cwd, file));
@@ -716,7 +716,7 @@ suite('Uncommitted changes', function () {
     }
   });
 
-  test('counts and diffs only the first 50 untracked files, unless one is asked for alone', async () => {
+  test('counts and diffs only the first 50 untracked files, leaving the rest out of the patch to load when opened', async () => {
     const many = path.join(cwd, 'many');
     fs.mkdirSync(many);
     for (let i = 0; i <= 50; i++) {
@@ -731,6 +731,12 @@ suite('Uncommitted changes', function () {
         workingTree.files.find((change) => change.path === file)?.insertions;
       assert.strictEqual(insertions('many/f49.txt'), 1);
       assert.strictEqual(insertions('many/f50.txt'), 0);
+      assert.deepStrictEqual(
+        leftOutChanges(workingTree.files).filter((file) =>
+          file.path.startsWith('many/'),
+        ),
+        [{ path: 'many/f50.txt', lines: undefined }],
+      );
       const patch = await workingTreePatch(gitPath, cwd, workingTree, {
         include: ['many/f49.txt', 'many/f50.txt'],
       });

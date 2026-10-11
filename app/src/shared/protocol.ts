@@ -27,10 +27,10 @@ export const collapseThreshold = 25_000;
 export function isLargeChange(file: {
   readonly insertions: number;
   readonly deletions: number;
-  readonly tooLargeToCount?: boolean;
+  readonly uncounted?: boolean;
 }): boolean {
   return (
-    file.tooLargeToCount === true ||
+    file.uncounted === true ||
     file.insertions + file.deletions > collapseThreshold
   );
 }
@@ -79,9 +79,7 @@ export function leftOutChanges(files: readonly FileChange[]): LeftOut[] {
     .filter((file) => deferred.has(file.path))
     .map((file) => ({
       path: file.path,
-      lines: file.tooLargeToCount
-        ? undefined
-        : file.insertions + file.deletions,
+      lines: file.uncounted ? undefined : file.insertions + file.deletions,
     }));
 }
 
@@ -158,7 +156,7 @@ export interface FileChange {
   readonly insertions: number;
   readonly deletions: number;
   readonly bytes?: number;
-  readonly tooLargeToCount?: boolean;
+  readonly uncounted?: boolean;
   readonly id?: string;
 }
 

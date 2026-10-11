@@ -177,8 +177,9 @@ export async function workingTreeFiles(
   const untrackedFiles = await Promise.all(
     untracked.map(async (path, index): Promise<FileChange> => {
       const file = join(cwd, path);
+      const countable = measured && !path.endsWith('/');
       const added =
-        measured && index < maxUntrackedPatches && !path.endsWith('/')
+        countable && index < maxUntrackedPatches
           ? await untrackedLines.of(file)
           : 0;
       const lines = added === 'tooLarge' ? 0 : added;
@@ -191,7 +192,9 @@ export async function workingTreeFiles(
         insertions: reverse ? 0 : lines,
         deletions: reverse ? lines : 0,
         ...(bytes ? { bytes } : {}),
-        ...(added === 'tooLarge' ? { tooLargeToCount: true } : {}),
+        ...(added === 'tooLarge' || (countable && index >= maxUntrackedPatches)
+          ? { uncounted: true }
+          : {}),
       };
     }),
   );

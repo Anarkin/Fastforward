@@ -682,7 +682,7 @@ suite('Large files in a commit diff', () => {
     const huge = fileChange('huge.log', {
       insertions: 0,
       deletions: 0,
-      tooLargeToCount: true,
+      uncounted: true,
     });
     assert.deepStrictEqual([...deferredChanges([huge])], ['huge.log']);
     const diff = withLargeFiles([], [huge], leftOutChanges([huge]), new Map());
