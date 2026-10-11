@@ -22,6 +22,7 @@ import {
   gate,
   idleOnlyOnceOpened,
   openView,
+  reopen,
   stubMethod,
   takeErrorsLogged,
   withView,
@@ -137,6 +138,40 @@ suite('View of worktrees', function () {
       held.open();
       await opened.view.idle();
       assert.strictEqual(worktreesOf(opened).length, 1);
+    } finally {
+      opened.connection.dispose();
+    }
+  });
+
+  test('keeps showing the worktrees listed last when listing them again fails', async () => {
+    const own = await tempRepository(path.join(folder, 'unlisted'));
+    await own.commit('a');
+    const linked = path.join(folder, 'unlisted.worktrees', 'linked');
+    await own.git('worktree', 'add', '-q', '--detach', linked);
+    const opened = await openView(log, [own.root]);
+    let failed = false;
+    stubMethod(opened.view, 'worktreesOf', () => {
+      failed = true;
+      return Promise.reject(new Error('fatal: unable to read worktrees'));
+    });
+    stubMethod(opened.view, 'refresh', () => Promise.resolve());
+    try {
+      assert.strictEqual(worktreesOf(opened).length, 2);
+      opened.page.clear();
+      await own.git('-C', linked, 'switch', '-q', '-c', 'switched');
+      await waitFor(() => failed, 'the worktrees to be listed again');
+      await opened.view.idle();
+      assert.strictEqual(opened.page.last('tabs'), undefined);
+      opened.connection.dispose();
+      const reloaded = reopen(opened.view);
+      await reloaded.ready;
+      assert.strictEqual(reloaded.page.last('tabs')?.worktrees?.length, 2);
+      reloaded.connection.dispose();
+      takeErrorsLogged(
+        logged,
+        /^Listing the worktrees of .* failed$/,
+        /^fatal: unable to read worktrees$/,
+      );
     } finally {
       opened.connection.dispose();
     }

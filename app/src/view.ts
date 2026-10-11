@@ -1093,7 +1093,10 @@ export class FastforwardView {
     const listing = (this.worktreeListings.get(repository) ?? 0) + 1;
     this.worktreeListings.set(repository, listing);
     const worktrees = await this.listedWorktrees(repository);
-    if (this.worktreeListings.get(repository) !== listing) {
+    if (
+      worktrees === undefined ||
+      this.worktreeListings.get(repository) !== listing
+    ) {
       return;
     }
     const shown = JSON.stringify(this.worktreeLists.get(repository));
@@ -1109,7 +1112,9 @@ export class FastforwardView {
     }
   }
 
-  private async listedWorktrees(repository: string): Promise<Worktree[]> {
+  private async listedWorktrees(
+    repository: string,
+  ): Promise<Worktree[] | undefined> {
     const known = [
       repository,
       this.storage.worktreeOf(repository),
@@ -1118,12 +1123,19 @@ export class FastforwardView {
       ),
     ];
     try {
-      return await listWorktrees(this.gitPath, repository, known);
+      return await this.worktreesOf(repository, known);
     } catch (error) {
       this.log.error(strings.log.listingWorktreesFailed(repository));
       this.log.error(error);
-      return [];
+      return undefined;
     }
+  }
+
+  private worktreesOf(
+    repository: string,
+    known: readonly string[],
+  ): Promise<Worktree[]> {
+    return listWorktrees(this.gitPath, repository, known);
   }
 
   private staleDiffs(
