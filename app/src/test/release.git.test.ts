@@ -19,14 +19,17 @@ for (const file of ['package.json', 'package-lock.json']) {
 }
 `;
 
-function failingHook(repository: string, name: string): void {
-  fs.writeFileSync(
-    path.join(repository, 'hooks', name),
-    '#!/bin/sh\nexit 1\n',
-    {
-      mode: 0o755,
-    },
-  );
+async function failingHook(
+  repository: TempRepository,
+  gitDir: string,
+  name: string,
+): Promise<void> {
+  const hooks = path.join(gitDir, 'hooks');
+  fs.mkdirSync(hooks, { recursive: true });
+  fs.writeFileSync(path.join(hooks, name), '#!/bin/sh\nexit 1\n', {
+    mode: 0o755,
+  });
+  await repository.git('config', 'core.hooksPath', hooks);
 }
 
 suite('Release', function () {
@@ -92,7 +95,7 @@ suite('Release', function () {
   });
 
   test('undoes the version bump when the commit fails', async () => {
-    failingHook(path.join(local.root, '.git'), 'pre-commit');
+    await failingHook(local, path.join(local.root, '.git'), 'pre-commit');
     assert.strictEqual(await release(), false);
     await assertUndone();
   });
@@ -105,7 +108,7 @@ suite('Release', function () {
   });
 
   test('undoes the release commit and its tag when the push fails', async () => {
-    failingHook(remote.root, 'pre-receive');
+    await failingHook(remote, remote.root, 'pre-receive');
     assert.strictEqual(await release(), false);
     await assertUndone();
     assert.strictEqual(await local.git('tag', '--list'), '');
