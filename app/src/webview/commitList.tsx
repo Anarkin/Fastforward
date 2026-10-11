@@ -26,13 +26,22 @@ import {
 import { DetachedHead, HeadBubble, RefBubble, StashBubble } from './bubbles';
 import { Column } from './column';
 import { CommitHistory } from './commitHistory';
-import { commitMenuTarget, OpenContextMenu } from './contextMenu';
+import {
+  commitMenuTarget,
+  OpenContextMenu,
+  type MenuTarget,
+} from './contextMenu';
 import { GraphCell, graphWidth, rowLanes } from './graph';
 import { formatDateTime } from './dates';
 import { MenuButton } from './menu';
 import { useSkeleton } from './skeleton';
 import { Highlight } from './highlight';
-import { clicked, keymap, type Click } from '../shared/keymap';
+import {
+  clicked,
+  keymap,
+  menuFromKeyboard,
+  type Click,
+} from '../shared/keymap';
 import { keyPressed } from './shortcuts';
 import { strings } from '../shared/strings';
 import { columnFocusAttribute } from './activeColumn';
@@ -223,6 +232,16 @@ export function mergeToToggle(
   return position !== undefined && history.graphAt(position)?.merge
     ? selected
     : undefined;
+}
+
+export function keyboardMenuTarget(
+  selected: string | undefined,
+  stashes: ReadonlySet<string>,
+): MenuTarget | undefined {
+  const hash = shownSide(selected);
+  return hash === undefined || hash === workingTreeHash || stashes.has(hash)
+    ? undefined
+    : commitMenuTarget(hash);
 }
 
 export function withoutWorkingTreeLink(
@@ -578,6 +597,7 @@ export function Commits({
   const list = useRef<HTMLDivElement>(null);
   const detached = useContext(DetachedHead);
   const hasWorkingTree = workingTree !== undefined;
+  const openMenu = useContext(OpenContextMenu);
   const offset = hasWorkingTree ? 1 : 0;
   const skeleton = useSkeleton(opening);
   const count = offset + (history?.total ?? (skeleton ? openingRows : 0));
@@ -906,6 +926,29 @@ export function Commits({
         tabIndex={0}
         {...{ [columnFocusAttribute]: '' }}
         onKeyDown={onKeyDown}
+        onContextMenu={(event) => {
+          const target = keyboardMenuTarget(selected, stashes);
+          if (
+            event.target !== event.currentTarget ||
+            !menuFromKeyboard(event) ||
+            !target
+          ) {
+            return;
+          }
+          const box = (
+            event.currentTarget.querySelector('.commit.selected') ??
+            event.currentTarget
+          ).getBoundingClientRect();
+          openMenu(
+            {
+              stopPropagation: () => event.stopPropagation(),
+              preventDefault: () => event.preventDefault(),
+              clientX: box.left,
+              clientY: box.bottom,
+            },
+            target,
+          );
+        }}
       >
         <div
           className="virtual-spacer"

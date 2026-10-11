@@ -404,8 +404,13 @@ function Submenu({
   );
 }
 
+export type MenuEvent = Pick<
+  React.MouseEvent,
+  'stopPropagation' | 'preventDefault' | 'clientX' | 'clientY'
+>;
+
 export const OpenContextMenu = createContext<
-  (event: React.MouseEvent, target: MenuTarget) => void
+  (event: MenuEvent, target: MenuTarget) => void
 >(() => {});
 
 export function useContextMenu(target: MenuTarget) {

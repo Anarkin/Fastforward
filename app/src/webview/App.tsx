@@ -49,6 +49,7 @@ import { ShortcutsPopup } from './shortcutsPopup';
 import {
   ContextMenu,
   OpenContextMenu,
+  type MenuEvent,
   type ContextMenuItem,
   type MenuTarget,
   type OpenMenu,
@@ -622,7 +623,7 @@ export function App({ name, post: postToHost, listen }: Props) {
     );
   };
 
-  const openMenu = (event: React.MouseEvent, target: MenuTarget) => {
+  const openMenu = (event: MenuEvent, target: MenuTarget) => {
     event.stopPropagation();
     event.preventDefault();
     setMenu((previous) =>

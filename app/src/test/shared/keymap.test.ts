@@ -5,6 +5,7 @@ import {
   clicked,
   keyLabels,
   keymap,
+  menuFromKeyboard,
   pressed,
   pressOfInput,
   released,
@@ -263,6 +264,11 @@ suite('Keymap', () => {
       wheeled(keymap.wheelSideways, { ...noModifiers, shiftKey: true }),
       true,
     );
+  });
+
+  test('tells a menu opened from the keyboard from one opened by the right button', () => {
+    assert.ok(menuFromKeyboard({ button: 0 }));
+    assert.ok(!menuFromKeyboard({ button: 2 }));
   });
 
   test('ends a drag once no button is held', () => {

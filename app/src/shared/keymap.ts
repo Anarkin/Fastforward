@@ -311,6 +311,12 @@ export function wheeled<Value>(
   return undefined;
 }
 
+const rightButton = 2;
+
+export function menuFromKeyboard(event: { readonly button: number }): boolean {
+  return event.button !== rightButton;
+}
+
 export function released(pointer: { readonly buttons: number }): boolean {
   return pointer.buttons === 0;
 }

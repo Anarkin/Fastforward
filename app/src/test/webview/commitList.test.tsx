@@ -19,6 +19,7 @@ import {
   settling,
   listKeyPosition,
   keySelection,
+  keyboardMenuTarget,
   pendingSelection,
   withoutWorkingTreeLink,
   bubbleLineHeight,
@@ -210,6 +211,26 @@ function workingTreeHtml(selection: string): string {
     />,
   );
 }
+
+suite('Commit list menu from the keyboard', () => {
+  test('opens the menu of the selected commit on the menu key, as rows open theirs on a right click, but none for the working tree or a stash', () => {
+    const stashes = new Set(['s']);
+    assert.deepStrictEqual(keyboardMenuTarget('a', stashes), {
+      kind: 'commit',
+      hash: 'a',
+    });
+    assert.deepStrictEqual(
+      keyboardMenuTarget(comparisonOf('a', 'b'), stashes),
+      {
+        kind: 'commit',
+        hash: 'b',
+      },
+    );
+    assert.strictEqual(keyboardMenuTarget(workingTreeHash, stashes), undefined);
+    assert.strictEqual(keyboardMenuTarget('s', stashes), undefined);
+    assert.strictEqual(keyboardMenuTarget(undefined, stashes), undefined);
+  });
+});
 
 const graphRow = (lane: number, ...lines: GraphLine[]): GraphRow => ({
   lane,
