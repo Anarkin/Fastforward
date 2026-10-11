@@ -6,6 +6,17 @@ const maxCells = 40_000;
 
 const maxComparedWords = 1_000_000;
 
+export const sideBySideWords = 4_000_000;
+
+export interface PairingBudget {
+  words: number;
+  spent: boolean;
+}
+
+export function pairingBudget(): PairingBudget {
+  return { words: sideBySideWords, spent: false };
+}
+
 export type LinePair = readonly [number | undefined, number | undefined];
 
 const wordPattern =
@@ -70,10 +81,10 @@ function inOrder(
   );
 }
 
-function fewEnoughWords(
+function comparedWords(
   removed: readonly string[],
   added: readonly string[],
-): boolean {
+): number | undefined {
   let compared = 0;
   const count = (lines: readonly string[], comparisons: number) => {
     const next = tokenSteps(lines, wordPattern);
@@ -85,7 +96,9 @@ function fewEnoughWords(
     }
     return true;
   };
-  return count(removed, added.length) && count(added, removed.length);
+  return count(removed, added.length) && count(added, removed.length)
+    ? compared
+    : undefined;
 }
 
 const range = (length: number) => Array.from({ length }, (_, index) => index);
@@ -93,16 +106,23 @@ const range = (length: number) => Array.from({ length }, (_, index) => index);
 export function alignLines(
   removed: readonly string[],
   added: readonly string[],
+  budget?: PairingBudget,
 ): LinePair[] {
   const rows = removed.length;
   const columns = added.length;
-  if (
-    rows === 0 ||
-    columns === 0 ||
-    rows * columns > maxCells ||
-    !fewEnoughWords(removed, added)
-  ) {
+  const compared =
+    rows === 0 || columns === 0 || rows * columns > maxCells || budget?.spent
+      ? undefined
+      : comparedWords(removed, added);
+  if (compared === undefined) {
     return inOrder(range(rows), range(columns));
+  }
+  if (budget) {
+    if (compared > budget.words) {
+      budget.spent = true;
+      return inOrder(range(rows), range(columns));
+    }
+    budget.words -= compared;
   }
   const removedWords = removed.map(wordsOf);
   const addedWords = added.map(wordsOf);
@@ -158,14 +178,20 @@ type Change = Extract<ChangeBlock, { kind: 'change' }>;
 
 const pairsOfChange = new WeakMap<Change, readonly LinePair[]>();
 
-export function changePairs(change: Change): readonly LinePair[] {
+export function changePairs(
+  change: Change,
+  budget?: PairingBudget,
+): readonly LinePair[] {
   let pairs = pairsOfChange.get(change);
   if (!pairs) {
     pairs = alignLines(
       change.removed.map(({ line }) => line.text),
       change.added.map(({ line }) => line.text),
+      budget,
     );
-    pairsOfChange.set(change, pairs);
+    if (!budget?.spent) {
+      pairsOfChange.set(change, pairs);
+    }
   }
   return pairs;
 }

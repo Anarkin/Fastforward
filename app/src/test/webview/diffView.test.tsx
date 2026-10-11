@@ -47,6 +47,7 @@ import {
   type DiffRow,
 } from '../../webview/diffView';
 import { ImageDiff, imagePanes } from '../../webview/imagePreview';
+import { sideBySideWords } from '../../webview/pairing';
 import type { LineWords } from '../../webview/wordDiff';
 import type { TextWidths } from '../../webview/overflow';
 import type { Preview } from '../../webview/previews';
@@ -90,6 +91,47 @@ const lines = (files: readonly DiffFile[]) =>
   ]);
 
 suite('Diff rows', () => {
+  test('lines up the changes of a side by side diff by their words only until comparing them passes a limit for the whole diff, pairing the rest in order, so a diff of many changes lays out at once', () => {
+    const lineCount = 150;
+    const wordCount = 20;
+    const line = (name: string) =>
+      Array.from({ length: wordCount }, (_, word) => `${name}w${word}`).join(
+        ' ',
+      );
+    const removed = Array.from({ length: lineCount }, (_, index) =>
+      line(`l${index}`),
+    );
+    const added = [line('inserted'), ...removed];
+    const files = parsePatch(
+      Array.from({ length: 8 }, (_, file) =>
+        [
+          `diff --git a/${file}.txt b/${file}.txt`,
+          `--- a/${file}.txt`,
+          `+++ b/${file}.txt`,
+          `@@ -1,${removed.length} +1,${added.length} @@`,
+          ...removed.map((text) => `-${text}`),
+          ...added.map((text) => `+${text}`),
+        ].join('\n'),
+      ).join('\n'),
+    );
+    const perChange =
+      removed.length * wordCount * added.length +
+      added.length * wordCount * removed.length;
+    const rows = diffRows(files, new Map(), undefined, false, true);
+    const startsAligned = files.map((_, file) => {
+      const first = rows.find(
+        (row) => row.kind === 'split' && row.file === file,
+      );
+      return first?.kind === 'split' && first.left === undefined;
+    });
+    const aligned = Math.floor(sideBySideWords / perChange);
+    assert.ok(aligned > 0 && aligned < 8);
+    assert.deepStrictEqual(
+      startsAligned,
+      Array.from({ length: 8 }, (_, file) => file < aligned),
+    );
+  });
+
   test('lays a file shown entire out inline, even with the side by side layout chosen', () => {
     const whole = { path: 'a.ts', content: 'a', binary: false };
     assert.strictEqual(showsSideBySide(true, undefined), true);

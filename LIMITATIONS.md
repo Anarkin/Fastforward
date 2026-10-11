@@ -14,6 +14,7 @@ This file only observes and documents the codebase mainly for human readers; the
 - An untracked text file over `2 MB` gets no line count and is left out of the All Changes or Unstaged patch, loading when opened, rather than being read whole to count its lines
 - The patches of untracked files are kept by the main process up to `32 million` characters for each tab, forgetting the least recently used, so a refresh diffs only those changed since
 - A block of over `40000` removed by added lines, or `1 million` words and punctuation marks compared, has its lines paired in order instead of by similarity, as pairing compares every removed line with every added one
+- Side by side, once the blocks of a diff take `4 million` words and punctuation marks compared, the blocks after them have their lines paired in order, as side by side pairs every block before the diff is drawn
 - A removed and an added line paired up with over `1 million` tokens of one by those of the other, each word, run of spaces and punctuation mark counting as one, are marked as changed in full, like lines with no word in common, instead of word by word, as the word diff's table grows with both counts
 - Find in a diff stops collecting matches at `10000`, and its count then reads `10000+`, as each match is marked in the page
 - An image over `192 MB` is not previewed, as each image shown is read whole into the page

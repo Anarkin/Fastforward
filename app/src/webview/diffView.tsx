@@ -32,7 +32,7 @@ import {
 } from './minimap';
 import { columnFocusAttribute } from './activeColumn';
 import { rowPlace } from './rowPlace';
-import { changePairs } from './pairing';
+import { changePairs, pairingBudget, type PairingBudget } from './pairing';
 import { textsToLoad, useSyntax, type SyntaxRange } from './syntax';
 import { wordRanges, type LineWords, type WordRanges } from './wordDiff';
 import { keymap, wheeled, type Modifiers } from '../shared/keymap';
@@ -406,18 +406,28 @@ type SplitRow = Extract<DiffRow, { kind: 'split' | 'hunk' }>;
 
 const splitRowsOfFile = new WeakMap<DiffFile, readonly SplitRow[]>();
 
-export function splitRows(file: DiffFile, index: number): readonly SplitRow[] {
+export function splitRows(
+  file: DiffFile,
+  index: number,
+  budget = pairingBudget(),
+): readonly SplitRow[] {
   let rows = splitRowsOfFile.get(file);
   if (!rows) {
-    rows = alignedRows(file, index);
-    splitRowsOfFile.set(file, rows);
+    rows = alignedRows(file, index, budget);
+    if (!budget.spent) {
+      splitRowsOfFile.set(file, rows);
+    }
   }
   return rows[0]?.file === index
     ? rows
     : rows.map((row) => ({ ...row, file: index }));
 }
 
-function alignedRows(file: DiffFile, index: number): SplitRow[] {
+function alignedRows(
+  file: DiffFile,
+  index: number,
+  budget: PairingBudget,
+): SplitRow[] {
   const rows: SplitRow[] = [];
   for (const [number, blocks] of changeBlocks(file).entries()) {
     if (number > 0) {
@@ -434,7 +444,7 @@ function alignedRows(file: DiffFile, index: number): SplitRow[] {
         continue;
       }
       const { removed, added } = block;
-      for (const [left, right] of changePairs(block)) {
+      for (const [left, right] of changePairs(block, budget)) {
         rows.push({
           kind: 'split',
           file: index,
@@ -529,6 +539,7 @@ export function diffRows(
   rendered: ReadonlySet<string> = noneRendered,
 ): DiffRow[] {
   const rows: DiffRow[] = [{ kind: 'error' }];
+  const budget = pairingBudget();
   if (loading && files.every((file) => file.placeholder) && !whole) {
     rows.push({ kind: 'skeleton' });
     return rows;
@@ -585,7 +596,7 @@ export function diffRows(
       rows.push({ kind: 'whitespace', file: index });
     }
     if (sideBySide) {
-      for (const row of splitRows(file, index)) {
+      for (const row of splitRows(file, index, budget)) {
         rows.push(row);
       }
     } else {
