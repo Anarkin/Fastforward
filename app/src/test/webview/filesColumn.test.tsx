@@ -12,7 +12,7 @@ import {
 } from '../../webview/filesColumn';
 import type { VisibleRows } from '../../webview/listMoves';
 import type { Folders } from '../../webview/viewFolders';
-import type { ListedRows } from '../../webview/virtualRows';
+import { revealAgain, type ListedRows } from '../../webview/virtualRows';
 import { clickFile, type RowProps } from '../componentFixtures';
 import {
   fileChange as change,
@@ -52,22 +52,37 @@ function changesRows(overrides: Partial<FilesProps>) {
       rows: ListedRows;
       renderRow: (index: number) => React.ReactElement<RowProps>;
       selectedKey: string | undefined;
+      revealWith: unknown;
       onKeyDown: (
         event: ReturnType<typeof keyPress> & { preventDefault: () => void },
         visible: VisibleRows,
       ) => void;
     }>(list),
   );
-  const { rows, renderRow, selectedKey, onKeyDown } = list.props;
+  const { rows, renderRow, selectedKey, revealWith, onKeyDown } = list.props;
   return {
     keys: Array.from({ length: rows.count }, (_, index) => rows.keyOf(index)),
     rows: Array.from({ length: rows.count }, (_, index) => renderRow(index)),
     selectedKey,
+    revealWith,
     press: (key: string) =>
       onKeyDown(
         { ...keyPress(key), preventDefault: noop },
         { first: 0, last: rows.count - 1 },
       ),
+  };
+}
+
+function reveal(tree: string[] | undefined, showAll = true, view = 'one') {
+  return {
+    key: 'file:b.ts',
+    rows: changesRows({
+      showAll,
+      files: [change('b.ts')],
+      tree,
+      selected: 'b.ts',
+      view,
+    }).revealWith,
   };
 }
 
@@ -342,5 +357,15 @@ suite('Files column', () => {
     assert.match(collapsed.rows[1].props.className, /\bselected\b/);
     collapsed.press('ArrowDown');
     assert.deepStrictEqual(picked, ['z.ts']);
+  });
+
+  test('scrolls to the cursor again once all files load or show for a commit or tab, but not as they are listed again, as untracked files come and go in the working tree', () => {
+    const loaded = reveal(['a.ts', 'b.ts']);
+    assert.ok(!revealAgain(loaded, reveal(['a.ts', 'b.ts'])));
+    assert.ok(!revealAgain(loaded, reveal(['a.ts', 'b.ts', 'c.ts'])));
+    assert.ok(revealAgain(reveal(undefined), loaded));
+    assert.ok(revealAgain(reveal(['a.ts', 'b.ts'], false), loaded));
+    assert.ok(revealAgain(loaded, reveal(['a.ts', 'b.ts'], false)));
+    assert.ok(revealAgain(loaded, reveal(['a.ts', 'b.ts'], true, 'two')));
   });
 });

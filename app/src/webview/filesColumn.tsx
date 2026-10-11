@@ -338,7 +338,7 @@ export function Files({
         }}
         ancestorsOf={(index) => filesAncestors(rows, index)}
         selectedKey={cursor}
-        revealWith={allPaths}
+        revealWith={allPaths === undefined ? undefined : view}
         onKeyDown={onKeyDown}
       />
       {listsNothing({ files, staged, allPaths, loading }) && noChanges && (
