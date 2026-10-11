@@ -6,6 +6,21 @@ import { replaceBuiltin } from './builtins';
 import { fileLog } from '../log';
 import { removeFolder, tempFolder } from './repositories';
 
+const megabyte = 1024 * 1024;
+
+function oldLines(bytes: number): string {
+  const lines: string[] = [];
+  let size = 0;
+  for (let index = 0; bytes - size >= 100; index++) {
+    const line = `2026-01-01T00:00:00.000Z [info] old line ${index}\n`;
+    lines.push(line);
+    size += line.length;
+  }
+  const last = '2026-01-01T00:00:00.000Z [info] last old line ';
+  lines.push(last.padEnd(bytes - size - 1, 'x') + '\n');
+  return lines.join('');
+}
+
 suite('Log file', () => {
   let folder: string;
 
@@ -50,17 +65,44 @@ suite('Log file', () => {
     assert.match(lines, /\[info\] written once there is space$/m);
   });
 
-  test('keeps the log of the run before as the previous log', () => {
+  test('keeps every run in the one file, oldest first', () => {
     const file = path.join(folder, 'Fastforward.log');
     fileLog(file).info('first run');
     fileLog(file).info('second run');
-    assert.match(
-      fs.readFileSync(path.join(folder, 'Fastforward.previous.log'), 'utf8'),
-      /first run/,
+    assert.match(fs.readFileSync(file, 'utf8'), /first run[^]*second run/);
+  });
+
+  test('cuts the log down to about its newest 5 MB, from a line on, when a run starts with it over 10 MB, so it stays small enough to send', () => {
+    const file = path.join(folder, 'Fastforward.log');
+    const old = oldLines(10 * megabyte + 1);
+    fs.writeFileSync(file, old);
+    fileLog(file).info('next run');
+    const kept = fs.readFileSync(file, 'utf8');
+    const keptOld = kept.slice(0, kept.lastIndexOf('\n', kept.length - 2) + 1);
+    assert.ok(old.endsWith(keptOld));
+    assert.ok(keptOld.length <= 5 * megabyte, `kept ${keptOld.length} bytes`);
+    assert.ok(
+      keptOld.length > 5 * megabyte - 100,
+      `kept ${keptOld.length} bytes`,
     );
-    const current = fs.readFileSync(file, 'utf8');
-    assert.match(current, /second run/);
-    assert.doesNotMatch(current, /first run/);
+    assert.match(keptOld, /^2026-01-01T00:00:00\.000Z \[info\] old line \d+\n/);
+    assert.match(kept, /\[info\] next run\n$/);
+  });
+
+  test('leaves a log of 10 MB as it is', () => {
+    const file = path.join(folder, 'Fastforward.log');
+    const old = oldLines(10 * megabyte);
+    fs.writeFileSync(file, old);
+    fileLog(file).info('next run');
+    assert.ok(fs.readFileSync(file, 'utf8').startsWith(old));
+  });
+
+  test('removes the previous log that older versions kept beside it', () => {
+    const file = path.join(folder, 'Fastforward.log');
+    const previous = path.join(folder, 'Fastforward.previous.log');
+    fs.writeFileSync(previous, 'older version');
+    fileLog(file).info('next run');
+    assert.ok(!fs.existsSync(previous));
   });
 
   test('logs to no file when its file cannot be made or opened, rather than keeping the app from starting', () => {

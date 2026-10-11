@@ -27,16 +27,37 @@ export function fileLog(file: string, echo = false): Log {
   };
 }
 
+const megabyte = 1024 * 1024;
+const largestLog = 10 * megabyte;
+const keptOnCut = 5 * megabyte;
+
 function openLogFile(file: string): number | undefined {
   try {
     fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.rmSync(file.replace(/\.log$/, '.previous.log'), { force: true });
     try {
-      fs.renameSync(file, file.replace(/\.log$/, '.previous.log'));
+      cutToNewest(file);
     } catch {}
     return fs.openSync(file, 'a');
   } catch {
     return undefined;
   }
+}
+
+function cutToNewest(file: string): void {
+  const descriptor = fs.openSync(file, 'r');
+  let newest: Buffer;
+  try {
+    const { size } = fs.fstatSync(descriptor);
+    if (size <= largestLog) {
+      return;
+    }
+    newest = Buffer.alloc(keptOnCut);
+    fs.readSync(descriptor, newest, 0, keptOnCut, size - keptOnCut);
+  } finally {
+    fs.closeSync(descriptor);
+  }
+  fs.writeFileSync(file, newest.subarray(newest.indexOf('\n') + 1));
 }
 
 export function errorLine(error: unknown): string {
