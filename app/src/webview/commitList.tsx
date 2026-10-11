@@ -19,6 +19,7 @@ import {
   workingTreeHash,
   workingTreeIndex,
   type CommitInfo,
+  type GraphRow,
   type RefInfo,
   type ScrollTarget,
 } from '../shared/protocol';
@@ -222,6 +223,20 @@ export function mergeToToggle(
   return position !== undefined && history.graphAt(position)?.merge
     ? selected
     : undefined;
+}
+
+export function withoutWorkingTreeLink(
+  row: GraphRow,
+  position: number,
+  headPosition: number | undefined,
+): GraphRow {
+  if (headPosition !== undefined && position > headPosition) {
+    return row;
+  }
+  return {
+    ...row,
+    lines: row.lines.filter((line) => !(line.dashed && line.from === 0)),
+  };
 }
 
 interface PendingKey {
@@ -789,10 +804,15 @@ export function Commits({
     virtualizer.scrollToIndex(offset + position, { align: 'auto' });
   };
 
-  const graphOf = (index: number) =>
-    hasWorkingTree && index === 0
-      ? history?.workingTreeGraph
-      : history?.graphAt(index - offset);
+  const graphOf = (index: number) => {
+    if (hasWorkingTree && index === 0) {
+      return history?.workingTreeGraph;
+    }
+    const row = history?.graphAt(index - offset);
+    return row && !hasWorkingTree && headCommit !== undefined
+      ? withoutWorkingTreeLink(row, index, history?.positionOf(headCommit))
+      : row;
+  };
 
   const renderGraph = (index: number, height: number) => {
     const graphRow = graphOf(index);
