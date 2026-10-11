@@ -12,6 +12,7 @@ import {
   filesRows,
   folderRowKey,
   listedFilesRows,
+  shownFileKey,
   treeFolders,
   treeRowOf,
 } from './changesTree';
@@ -37,13 +38,14 @@ export function filesCursor(
   selectedKey: string | undefined,
   view: string,
   keys: Pick<ListedRows, 'indexOf'>,
+  shownKey = selectedKey,
 ): string | undefined {
   return moved !== undefined &&
     moved.from === selectedKey &&
     moved.view === view &&
     keys.indexOf(moved.key) !== -1
     ? moved.key
-    : selectedKey;
+    : shownKey;
 }
 
 export function filesTitle(selection: string | undefined): string {
@@ -212,7 +214,15 @@ export function Files({
         ? headerKey
         : undefined;
   const [moved, setMoved] = useState<MovedCursor>();
-  const cursor = filesCursor(moved, selectedKey, view, listed);
+  const cursor = filesCursor(
+    moved,
+    selectedKey,
+    view,
+    listed,
+    selected !== undefined
+      ? shownFileKey(selection.area, selected, listed)
+      : selectedKey,
+  );
   const select = (path: string | undefined, side?: ChangeArea) => {
     setMoved(undefined);
     if (path !== selection.path || side !== selection.area) {

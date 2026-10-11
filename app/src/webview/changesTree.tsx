@@ -1,5 +1,5 @@
 import type { ChangeArea, FileChange } from '../shared/protocol';
-import { buildFileTree, type FolderNode } from './fileTree';
+import { buildFileTree, foldersOf, type FolderNode } from './fileTree';
 import { byName } from './byName';
 import { moveInList, type ListMove, type VisibleRows } from './listMoves';
 import { FileRow, fileRowKey, FolderRow } from './tree';
@@ -173,6 +173,18 @@ export function listedFilesRows(rows: readonly FilesRow[]): ListedRows {
 export interface FileSelection {
   readonly area: ChangeArea | undefined;
   readonly path: string | undefined;
+}
+
+export function shownFileKey(
+  area: ChangeArea | undefined,
+  path: string,
+  listed: Pick<ListedRows, 'indexOf'>,
+): string {
+  const keys = [
+    fileRowKey(path),
+    ...foldersOf(path).toReversed().map(folderRowKey),
+  ].map((key) => areaKey(area, key));
+  return keys.find((key) => listed.indexOf(key) !== -1) ?? keys[0];
 }
 
 export type FilesKeyAction =

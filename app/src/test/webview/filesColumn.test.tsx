@@ -10,10 +10,17 @@ import {
   listsNothing,
   noChangesText,
 } from '../../webview/filesColumn';
+import type { VisibleRows } from '../../webview/listMoves';
 import type { Folders } from '../../webview/viewFolders';
 import type { ListedRows } from '../../webview/virtualRows';
 import { clickFile, type RowProps } from '../componentFixtures';
-import { fileChange as change, noop, renderedBy, tagWith } from '../fixtures';
+import {
+  fileChange as change,
+  keyPress,
+  noop,
+  renderedBy,
+  tagWith,
+} from '../fixtures';
 
 type FilesProps = Parameters<typeof Files>[0];
 
@@ -45,13 +52,22 @@ function changesRows(overrides: Partial<FilesProps>) {
       rows: ListedRows;
       renderRow: (index: number) => React.ReactElement<RowProps>;
       selectedKey: string | undefined;
+      onKeyDown: (
+        event: ReturnType<typeof keyPress> & { preventDefault: () => void },
+        visible: VisibleRows,
+      ) => void;
     }>(list),
   );
-  const { rows, renderRow, selectedKey } = list.props;
+  const { rows, renderRow, selectedKey, onKeyDown } = list.props;
   return {
     keys: Array.from({ length: rows.count }, (_, index) => rows.keyOf(index)),
     rows: Array.from({ length: rows.count }, (_, index) => renderRow(index)),
     selectedKey,
+    press: (key: string) =>
+      onKeyDown(
+        { ...keyPress(key), preventDefault: noop },
+        { first: 0, last: rows.count - 1 },
+      ),
   };
 }
 
@@ -294,5 +310,37 @@ suite('Files column', () => {
     assert.doesNotMatch(unmarked.props.className, /\bselected\b/);
     unmarked.props.onClick();
     assert.deepStrictEqual(picked, [undefined]);
+  });
+
+  test('puts the cursor on the nearest folder shown of a selected file a closed folder hides, going on from there with the keys', () => {
+    const picked: (string | undefined)[] = [];
+    const shown = (closed: string[], area?: 'unstaged') =>
+      changesRows({
+        files: [
+          change('src/app/a.ts'),
+          change('src/app/b.ts'),
+          change('src/lib/c.ts'),
+          change('z.ts'),
+        ],
+        ...(area ? { staged: [change('y.ts')], area } : {}),
+        selected: 'src/app/a.ts',
+        closedFolders: new Set(closed),
+        onSelect: (path) => picked.push(path),
+      });
+    assert.strictEqual(shown(['src/app']).selectedKey, 'folder:src/app');
+    assert.strictEqual(
+      shown(['unstaged:src'], 'unstaged').selectedKey,
+      'unstaged:folder:src',
+    );
+    const collapsed = shown(['src', 'src/app', 'src/lib']);
+    assert.deepStrictEqual(collapsed.keys, [
+      'changes',
+      'folder:src',
+      'file:z.ts',
+    ]);
+    assert.strictEqual(collapsed.selectedKey, 'folder:src');
+    assert.match(collapsed.rows[1].props.className, /\bselected\b/);
+    collapsed.press('ArrowDown');
+    assert.deepStrictEqual(picked, ['z.ts']);
   });
 });
