@@ -357,7 +357,7 @@ function anchorOf(tab: TabState): ScrollTarget | undefined {
   }
   const { hash, offset, report } = tab.anchor;
   if (hash === workingTreeHash) {
-    return { index: workingTreeIndex, offset: 0, report };
+    return { index: workingTreeIndex, offset, report };
   }
   const index = tab.positions.get(hash);
   return index === undefined ? undefined : { index, offset, report };

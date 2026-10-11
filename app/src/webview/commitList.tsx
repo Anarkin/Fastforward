@@ -172,7 +172,7 @@ export function listTop(
     return undefined;
   }
   if (row.index < offset) {
-    return { hash: workingTreeHash, offset: 0 };
+    return { hash: workingTreeHash, offset: scrollTop - row.start };
   }
   const commit = history?.at(row.index - offset);
   return commit && { hash: commit.hash, offset: scrollTop - row.start };

@@ -377,7 +377,7 @@ suite('Tab state', () => {
     tab.anchor = { hash: workingTreeHash, offset: 7, report: 5 };
     assert.deepStrictEqual(firstPage(tab, true), {
       start: 0,
-      scrollTarget: { index: -1, offset: 0, report: 5 },
+      scrollTarget: { index: -1, offset: 7, report: 5 },
     });
     tab.anchor = { hash: 'gone', offset: 0, report: 6 };
     assert.deepStrictEqual(firstPage(tab, true), {

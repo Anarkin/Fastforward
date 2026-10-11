@@ -320,11 +320,16 @@ suite('Commit list top', () => {
     });
   });
 
-  test('is the working tree all the way up and within its row', () => {
+  test('is the working tree all the way up and within its row, as far into it as it is scrolled, so a new history keeps that place', () => {
     const history = new CommitHistory(2);
-    const top = { hash: workingTreeHash, offset: 0 };
-    assert.deepStrictEqual(listTop(rows, 0, history, 1), top);
-    assert.deepStrictEqual(listTop(rows, 10, history, 1), top);
+    assert.deepStrictEqual(listTop(rows, 0, history, 1), {
+      hash: workingTreeHash,
+      offset: 0,
+    });
+    assert.deepStrictEqual(listTop(rows, 10, history, 1), {
+      hash: workingTreeHash,
+      offset: 10,
+    });
   });
 
   test('is the row a scroll ends exactly at, a first commit without a working tree, and nothing past the rows', () => {
