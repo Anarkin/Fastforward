@@ -50,7 +50,7 @@ import {
 } from './files';
 import { reloadWhenGone } from './pageGone';
 import { profileFolder } from './profile';
-import { exitOnFailure, flushBeforeQuit } from './quit';
+import { exitOnFailure, flushBeforeQuit, whileWindowOpen } from './quit';
 import { reloadOnRebuild } from './rebuild';
 import { loginShellPath, mergePaths } from './shellPath';
 import { updateMode, Updates } from './updates';
@@ -258,11 +258,15 @@ async function start(): Promise<void> {
     window.webContents.reloadIgnoringCache();
   };
   tryWatching(log, strings.log.watchingSettingsFailed, () =>
-    watchSettings(userSettingsFile, () => {
-      if (userSettings.reload()) {
-        applySettings();
-      }
-    }),
+    whileWindowOpen(window, (ifOpen) =>
+      watchSettings(userSettingsFile, () =>
+        ifOpen(() => {
+          if (userSettings.reload()) {
+            applySettings();
+          }
+        }),
+      ),
+    ),
   );
 
   if (development && process.env.FASTFORWARD_DEV) {
