@@ -18,6 +18,7 @@ import {
   searchRefs,
   searchStashes,
   shownChildren,
+  shownStashes,
   startAfter,
   type Highlighted,
   stickyRowHeight,
@@ -264,6 +265,22 @@ suite('Locations search', () => {
     assert.deepStrictEqual(found('stash@{1}'), [['stash@{1}'], 0]);
     assert.deepStrictEqual(found('on main', 1), [['stash@{0}'], 2]);
     assert.deepStrictEqual(found(''), [[], 0]);
+  });
+
+  test('draws at most 200 stashes before anything is typed too, counting the rest', () => {
+    const stashes = Array.from({ length: 250 }, (_, index) => ({
+      name: `stash@{${index}}`,
+      commit: `s${index}`,
+      message: 'On main: wip',
+    }));
+    assert.deepStrictEqual(shownStashes(stashes, ''), {
+      stashes: stashes.slice(0, 200),
+      more: 50,
+    });
+    assert.deepStrictEqual(
+      shownStashes(stashes, 'wip'),
+      searchStashes(stashes, 'wip'),
+    );
   });
 
   test('lists the matching stashes after the refs, jumping to one on Enter', () => {

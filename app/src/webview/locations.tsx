@@ -118,9 +118,26 @@ export function searchStashes(
       text.toLowerCase().includes(needle),
     ),
   );
+  return cappedStashes(found, limit);
+}
+
+export function shownStashes(
+  stashes: readonly StashInfo[],
+  query: string,
+  limit = maxResults,
+): StashSearch {
+  return query.trim()
+    ? searchStashes(stashes, query, limit)
+    : cappedStashes(stashes, limit);
+}
+
+function cappedStashes(
+  stashes: readonly StashInfo[],
+  limit: number,
+): StashSearch {
   return {
-    stashes: found.slice(0, limit),
-    more: Math.max(0, found.length - limit),
+    stashes: stashes.slice(0, limit),
+    more: Math.max(0, stashes.length - limit),
   };
 }
 
@@ -431,6 +448,10 @@ export function LocationsPopup({
     () => searchStashes(stashes, query),
     [stashes, query],
   );
+  const drawnStashes = useMemo(
+    () => shownStashes(stashes, query),
+    [stashes, query],
+  );
   const hasQuery = query.trim() !== '';
   const detached = useContext(DetachedHead);
   const pinned = pinnedRefs(bookmarks, refs, repository?.head, detached, query);
@@ -597,8 +618,8 @@ export function LocationsPopup({
           ),
         )}
         <StashesSection
-          stashes={hasQuery ? stashSearch.stashes : stashes}
-          more={hasQuery ? stashSearch.more : 0}
+          stashes={drawnStashes.stashes}
+          more={drawnStashes.more}
           query={query}
           active={activeItem?.kind === 'stash' ? activeItem.stash : undefined}
           onJump={jump}
