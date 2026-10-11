@@ -245,7 +245,9 @@ export function leftOutOf(
     }
   }
   if (stopped) {
-    leftOut.push(...files.slice(next).map(({ path }) => ({ path, lines: 0 })));
+    for (const { path } of files.slice(next)) {
+      leftOut.push({ path, lines: 0 });
+    }
   }
   return leftOut;
 }

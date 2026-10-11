@@ -204,6 +204,19 @@ suite('Files left out of a patch', () => {
     ]);
   });
 
+  test('leaves out more files after the one the patch stopped at than a call can take arguments', () => {
+    const many = Array.from({ length: 200_000 }, (_, i) =>
+      fileChange(`${i}.ts`),
+    );
+    const budget = new PatchBudget();
+    budget.add(
+      Buffer.from(
+        `diff --git a/0.ts b/0.ts\n@@ -0,0 +1 @@\n+${'x'.repeat(patchByteBudget)}`,
+      ),
+    );
+    assert.strictEqual(leftOutOf(budget.end(), many).length, 200_000);
+  });
+
   test('takes both sections of a type change, the old file deleted and the new one added under the same header, for one file, counting the lines of both', () => {
     const typeChanged = [
       fileChange('a.ts'),
