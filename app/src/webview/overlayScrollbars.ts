@@ -47,6 +47,18 @@ export function followedScroller<T>(
   return dragging ? current : hovered;
 }
 
+export function scrolledScroller<T>(
+  current: T | null,
+  shown: boolean,
+  scrolled: unknown,
+  scrollerOfScrolled: () => T | null,
+): T | null | undefined {
+  if (current === scrolled) {
+    return current;
+  }
+  return shown ? undefined : scrollerOfScrolled();
+}
+
 export type Axis = 'vertical' | 'horizontal';
 
 function scrollsAlong(element: Element, axis: Axis): boolean {
@@ -237,7 +249,7 @@ class Bar {
   private timer: number | undefined;
   private dragging = false;
 
-  constructor(private readonly axis: Axis) {
+  constructor(readonly axis: Axis) {
     this.element.className = `${overlayScrollbarClass} ${axis}`;
     this.element.addEventListener('pointerdown', this.onPointerDown);
     this.element.addEventListener('pointerenter', () =>
@@ -280,6 +292,13 @@ class Bar {
   hide(): void {
     window.clearTimeout(this.timer);
     this.element.classList.remove('shown');
+  }
+
+  get shown(): boolean {
+    return (
+      this.element.classList.contains('shown') &&
+      this.scroller?.isConnected === true
+    );
   }
 
   private hideLater(): void {
@@ -337,14 +356,14 @@ export function installOverlayScrollbars(): void {
   document.addEventListener('pointermove', (event) => showFor(event.target), {
     passive: true,
   });
-  const onScroll = (event: Event) => {
+  const onScroll = ({ target }: Event) => {
     for (const bar of bars) {
-      if (bar.scroller === event.target) {
-        bar.show(bar.scroller);
+      const scroller = scrolledScroller(bar.scroller, bar.shown, target, () =>
+        scrollerOf(target, bar.axis),
+      );
+      if (scroller !== undefined) {
+        bar.show(scroller);
       }
-    }
-    if (!bars.some((bar) => bar.scroller === event.target)) {
-      showFor(event.target);
     }
   };
   for (const type of ['scroll', sidewaysScrollEvent]) {

@@ -4,6 +4,7 @@ import {
   draggedScroll,
   drawsOverlay,
   followedScroller,
+  scrolledScroller,
   thumbBox,
   scrollPerPixel,
   sidewaysMetrics,
@@ -11,6 +12,8 @@ import {
   thumbOf,
 } from '../../webview/overlayScrollbars';
 import { stylesheet } from '../fixtures';
+
+const none = () => null;
 
 suite('Overlay scrollbars', () => {
   test('shows no thumb when everything fits', () => {
@@ -50,6 +53,21 @@ suite('Overlay scrollbars', () => {
     assert.strictEqual(followedScroller(true, 'list', 'diff'), 'list');
     assert.strictEqual(followedScroller(true, 'list', null), 'list');
     assert.strictEqual(followedScroller(false, 'list', 'diff'), 'diff');
+  });
+
+  test('shows a scrollbar for an area scrolled while it shows nothing, but leaves one showing for another area where it is, as the pointer may be on it', () => {
+    assert.strictEqual(scrolledScroller('list', true, 'list', none), 'list');
+    assert.strictEqual(scrolledScroller('list', false, 'list', none), 'list');
+    assert.strictEqual(
+      scrolledScroller('list', false, 'diff', () => 'diff'),
+      'diff',
+    );
+    assert.strictEqual(scrolledScroller('list', false, 'diff', none), null);
+    assert.strictEqual(
+      scrolledScroller('list', true, 'diff', () => 'diff'),
+      undefined,
+    );
+    assert.strictEqual(scrolledScroller('list', true, 'diff', none), undefined);
   });
 
   test('leaves only the vertical scrollbar to an area with its own, like the minimap', () => {

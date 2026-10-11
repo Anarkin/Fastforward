@@ -1021,8 +1021,12 @@ suite('App', function () {
 suite('App with lists longer than their columns', function () {
   this.timeout(60_000);
 
-  test('scrolls on the wheel over the folders pinned atop the files and the file header stuck atop the diff, which stays in place sideways, showing the scrollbar of the files over them', async () => {
-    const folder = tempFolder('stuck');
+  let folder: string;
+  let app: ElectronApplication;
+  let page: Page;
+
+  suiteSetup(async () => {
+    folder = tempFolder('long-lists');
     const profile = path.join(folder, 'profile');
     const repository = await tempRepository(path.join(folder, 'repo'));
     await repository.commit('first', {
@@ -1043,46 +1047,76 @@ suite('App with lists longer than their columns', function () {
       path.join(profile, 'settings.user.json'),
       JSON.stringify(baseSettings),
     );
-    const app = await _electron.launch({
+    app = await _electron.launch({
       args: [appFolder, `--user-data-dir=${profile}`],
       cwd: appFolder,
     });
-    try {
-      const page = await app.firstWindow();
-      await page.locator('.commit', { hasText: 'first' }).click();
-      await page.locator('.row.file', { hasText: 'file0.txt' }).waitFor();
-      const files = page.locator('.column').nth(1).locator('.virtual-rows');
-      const pinned = page.locator('.pinned-rows');
-      await scrollsOnWheelOver(page, files, pinned);
-      await pinned.hover();
-      assert.strictEqual(
-        await page.locator('.overlay-scrollbar.vertical.shown').count(),
-        1,
-      );
-
-      await files.evaluate((element) => {
+    page = await app.firstWindow();
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await page.locator('.row.file', { hasText: 'file0.txt' }).waitFor();
+    await page
+      .locator('.column')
+      .nth(1)
+      .locator('.virtual-rows')
+      .evaluate((element) => {
         element.scrollTop = element.scrollHeight;
       });
-      await page.locator('.row.file', { hasText: 'long.txt' }).click();
-      await page.locator('.diff-line', { hasText: firstLongLine }).waitFor();
-      const diff = page.locator('.diff-view .virtual-rows');
-      const stuck = page.locator('.diff-stuck-header');
-      await scrollsOnWheelOver(page, diff, stuck);
-      await diff.evaluate((element) => {
-        element.scrollLeft = 300;
-      });
-      await waitFor(
-        async () => (await diff.evaluate((element) => element.scrollLeft)) > 0,
-        'the diff to scroll sideways',
-      );
-      const header = await stuck.locator('.file-header').boundingBox();
-      const view = await page.locator('.diff-view').boundingBox();
-      assert.ok(header && view, 'the header or the diff has no box');
-      assert.strictEqual(header.x, view.x);
-    } finally {
-      await app.close();
-      removeFolder(folder);
-    }
+    await page.locator('.row.file', { hasText: 'long.txt' }).click();
+    await page.locator('.diff-line', { hasText: firstLongLine }).waitFor();
+  });
+
+  suiteTeardown(async () => {
+    await app?.close();
+    removeFolder(folder);
+  });
+
+  test('scrolls on the wheel over the folders pinned atop the files and the file header stuck atop the diff, which stays in place sideways, showing the scrollbar of the files over them', async () => {
+    const files = page.locator('.column').nth(1).locator('.virtual-rows');
+    const pinned = page.locator('.pinned-rows');
+    await scrollsOnWheelOver(page, files, pinned);
+    await pinned.hover();
+    assert.strictEqual(
+      await page.locator('.overlay-scrollbar.vertical.shown').count(),
+      1,
+    );
+
+    const diff = page.locator('.diff-view .virtual-rows');
+    const stuck = page.locator('.diff-stuck-header');
+    await scrollsOnWheelOver(page, diff, stuck);
+    await diff.evaluate((element) => {
+      element.scrollLeft = 300;
+    });
+    await waitFor(
+      async () => (await diff.evaluate((element) => element.scrollLeft)) > 0,
+      'the diff to scroll sideways',
+    );
+    const header = await stuck.locator('.file-header').boundingBox();
+    const view = await page.locator('.diff-view').boundingBox();
+    assert.ok(header && view, 'the header or the diff has no box');
+    assert.strictEqual(header.x, view.x);
+  });
+
+  test('keeps the scrollbar the pointer rests on where it is while another list scrolls, as the diff on the keys', async () => {
+    const bar = page.locator('.overlay-scrollbar.vertical');
+    await page.locator('.column').nth(1).locator('.virtual-rows').hover();
+    await bar.hover();
+    const shown = await bar.boundingBox();
+    const diff = page.locator('.diff-view .virtual-rows');
+    const top = await diff.evaluate((element) => element.scrollTop);
+    await diff.focus();
+    await page.keyboard.press('PageDown');
+    await waitFor(
+      async () => (await diff.evaluate((element) => element.scrollTop)) > top,
+      'the diff to scroll',
+    );
+    await page.evaluate(
+      () =>
+        new Promise((drawn) =>
+          requestAnimationFrame(() => requestAnimationFrame(drawn)),
+        ),
+    );
+    assert.ok(await bar.evaluate((element) => element.matches('.shown')));
+    assert.deepStrictEqual(await bar.boundingBox(), shown);
   });
 });
 
