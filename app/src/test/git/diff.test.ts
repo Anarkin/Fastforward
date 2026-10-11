@@ -1,8 +1,10 @@
 import * as assert from 'node:assert';
 import {
+  blobsToSize,
   leftOutOf,
   newSideUnchanged,
   parseChanges,
+  parseRawChanges,
   PatchBudget,
   pathspecs,
   whitespaceOnlyChanges,
@@ -317,6 +319,36 @@ suite('Pathspecs', () => {
 function raw(status: string): string {
   return `:100644 100644 1111111 2222222 ${status}`;
 }
+
+const blob = (digit: string) => digit.repeat(40);
+
+suite('Sizes of the changed files', () => {
+  test('sizes the blobs of the files with changed lines, not the commit a submodule points to, which a partial clone would try to fetch', () => {
+    const changes = parseRawChanges(
+      [
+        `:100644 100644 ${blob('1')} ${blob('2')} M`,
+        'a.ts',
+        `:160000 160000 ${blob('3')} ${blob('4')} M`,
+        'lib',
+        `:000000 100644 ${blob('0')} ${blob('5')} A`,
+        'new.ts',
+        `:100644 160000 ${blob('6')} ${blob('7')} T`,
+        'vendor',
+        '1\t1\ta.ts',
+        '2\t2\tlib',
+        '1\t0\tnew.ts',
+        '1\t1\tvendor',
+        '',
+      ].join('\0'),
+    );
+    assert.deepStrictEqual(blobsToSize(changes), [
+      blob('1'),
+      blob('2'),
+      blob('5'),
+      blob('6'),
+    ]);
+  });
+});
 
 suite('Git show parsers', () => {
   test('parses raw and numstat output with renames and binary files', () => {

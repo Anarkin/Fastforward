@@ -389,15 +389,7 @@ export async function withBytes(
   changes: readonly RawChange[],
   { fromDisk = false, reverse = false } = {},
 ): Promise<RawChange[]> {
-  const counted = ({ file }: RawChange) => file.insertions + file.deletions > 0;
-  const sizes = await blobSizes(gitPath, cwd, [
-    ...new Set(
-      changes
-        .filter(counted)
-        .flatMap(({ oldId, newId }) => [oldId, newId])
-        .filter((id) => !isNullId(id)),
-    ),
-  ]);
+  const sizes = await blobSizes(gitPath, cwd, blobsToSize(changes));
   const sizeOnDisk = async (path: string) => {
     if (!fromDisk) {
       return 0;
@@ -407,7 +399,7 @@ export async function withBytes(
   };
   return Promise.all(
     changes.map(async (change) => {
-      if (!counted(change)) {
+      if (!linesChanged(change)) {
         return change;
       }
       const { oldId, newId, file } = change;
@@ -420,6 +412,25 @@ export async function withBytes(
       return { ...change, file: { ...file, bytes } };
     }),
   );
+}
+
+const linesChanged = ({ file }: RawChange) =>
+  file.insertions + file.deletions > 0;
+
+const gitlinkMode = '160000';
+
+export function blobsToSize(changes: readonly RawChange[]): string[] {
+  return [
+    ...new Set(
+      changes
+        .filter(linesChanged)
+        .flatMap(({ oldMode, newMode, oldId, newId }) => [
+          ...(oldMode === gitlinkMode ? [] : [oldId]),
+          ...(newMode === gitlinkMode ? [] : [newId]),
+        ])
+        .filter((id) => !isNullId(id)),
+    ),
+  ];
 }
 
 export function isNullId(id: string): boolean {
