@@ -94,6 +94,14 @@ suite('Release', function () {
     );
   });
 
+  test('refuses to release from a branch other than main, leaving everything as it was', async () => {
+    await local.git('switch', '-q', '-c', 'feature');
+    await local.git('push', '-q', '-u', 'origin', 'feature');
+    assert.strictEqual(await release(), false);
+    await assertUndone();
+    assert.strictEqual(await remote.git('tag', '--list'), '');
+  });
+
   test('undoes the version bump when the commit fails', async () => {
     await failingHook(local, path.join(local.root, '.git'), 'pre-commit');
     assert.strictEqual(await release(), false);

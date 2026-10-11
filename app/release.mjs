@@ -18,10 +18,18 @@ if (changes) {
   process.exit(1);
 }
 
+const branch = execFileSync('git', ['branch', '--show-current'], {
+  encoding: 'utf8',
+}).trim();
+if (branch !== 'main') {
+  console.error('Switch to the main branch before releasing.');
+  process.exit(1);
+}
+
 run('git', ['fetch', 'origin']);
 const behind = execFileSync(
   'git',
-  ['rev-list', '--count', 'HEAD..@{upstream}'],
+  ['rev-list', '--count', 'HEAD..refs/remotes/origin/main'],
   { encoding: 'utf8' },
 );
 if (Number(behind) > 0) {
@@ -45,7 +53,7 @@ try {
   undos.push(() => run('git', ['reset', '--keep', 'HEAD~1']));
   run('git', ['tag', '-a', tag, '-m', version]);
   undos.push(() => run('git', ['tag', '-d', tag]));
-  run('git', ['push', '--atomic', 'origin', 'HEAD', tag]);
+  run('git', ['push', '--atomic', 'origin', 'HEAD:refs/heads/main', tag]);
 } catch {
   for (const undo of undos.toReversed()) {
     undo();
