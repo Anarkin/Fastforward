@@ -707,12 +707,19 @@ suite('Commit list keys', () => {
     assert.strictEqual(press('ArrowDown', history, 'c', true), 501);
   });
 
-  test('selects a row a key went to once it loads, but not in a history laid out anew meanwhile', () => {
+  test('selects a row a key went to once it loads, held back like the key while it is held down, but not in a history laid out anew meanwhile', () => {
     const history = new CommitHistory(10);
-    const pending = { history, position: 9 };
+    const pending = { history, position: 9, repeat: true };
     assert.strictEqual(pendingSelection(pending, history, 'a'), null);
     history.add(9, [commitInfo('last')]);
-    assert.strictEqual(pendingSelection(pending, history, 'a'), 'last');
+    assert.deepStrictEqual(pendingSelection(pending, history, 'a'), {
+      hash: 'last',
+      repeat: true,
+    });
+    assert.deepStrictEqual(
+      pendingSelection({ ...pending, repeat: false }, history, 'a'),
+      { hash: 'last', repeat: false },
+    );
     assert.strictEqual(
       pendingSelection(
         pending,
@@ -739,7 +746,11 @@ suite('Commit list keys', () => {
     );
     history.add(9, [commitInfo('last')]);
     assert.strictEqual(
-      pendingSelection({ history, position: 9 }, history, 'last'),
+      pendingSelection(
+        { history, position: 9, repeat: false },
+        history,
+        'last',
+      ),
       undefined,
     );
   });

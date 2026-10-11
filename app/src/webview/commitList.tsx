@@ -224,14 +224,24 @@ export function mergeToToggle(
     : undefined;
 }
 
+interface PendingKey {
+  readonly history: CommitHistory;
+  readonly position: number;
+  readonly repeat: boolean;
+}
+
 export function pendingSelection(
-  pending: { history: CommitHistory; position: number } | undefined,
+  pending: PendingKey | undefined,
   history: CommitHistory | undefined,
   selected: string | undefined,
-): string | null | undefined {
-  return pending && pending.history === history
-    ? keySelection(history, pending.position, selected)
-    : null;
+): { readonly hash: string; readonly repeat: boolean } | null | undefined {
+  if (!pending || pending.history !== history) {
+    return null;
+  }
+  const hash = keySelection(history, pending.position, selected);
+  return hash === null || hash === undefined
+    ? hash
+    : { hash, repeat: pending.repeat };
 }
 
 export function listKeyPosition(
@@ -712,18 +722,16 @@ export function Commits({
     }
   }, [version, topNow]);
 
-  const pending = useRef<{ history: CommitHistory; position: number }>(
-    undefined,
-  );
+  const pending = useRef<PendingKey>(undefined);
   useEffect(() => {
     pending.current = undefined;
   }, [selected, history]);
   useEffect(() => {
-    const hash = pendingSelection(pending.current, history, selected);
-    if (hash !== null) {
+    const selection = pendingSelection(pending.current, history, selected);
+    if (selection !== null) {
       pending.current = undefined;
-      if (hash !== undefined) {
-        onSelect(hash, true);
+      if (selection !== undefined) {
+        onSelect(selection.hash, true, selection.repeat);
       }
     }
   });
@@ -773,7 +781,8 @@ export function Commits({
       return;
     }
     const hash = keySelection(history, position, selected);
-    pending.current = hash === null ? { history, position } : undefined;
+    pending.current =
+      hash === null ? { history, position, repeat: event.repeat } : undefined;
     if (hash) {
       onSelect(hash, true, event.repeat);
     }
