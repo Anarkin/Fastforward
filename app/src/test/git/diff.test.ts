@@ -8,6 +8,7 @@ import {
   PatchBudget,
   pathspecs,
   whitespaceOnlyChanges,
+  withoutFilesInside,
 } from '../../git/diff';
 import {
   collapseThreshold,
@@ -327,6 +328,32 @@ suite('Pathspecs', () => {
       '--',
       '[ab].md',
     ]);
+  });
+
+  test('drops the files inside a folder named like the file, whether git quotes their names or not', () => {
+    const inside = section('dist/main.js', 1);
+    const quoted = [
+      'diff --git "a/dist/a\\"b.js" "b/dist/a\\"b.js"',
+      'deleted file mode 100644',
+      '',
+    ].join('\n');
+    const file = section('dist', 1);
+    assert.strictEqual(
+      withoutFilesInside(inside + quoted + file, { path: 'dist' }),
+      file,
+    );
+  });
+
+  test('keeps the file renamed from inside the folder it replaced', () => {
+    const renamed = section('dist', 1, 'dist/main.js');
+    const inside = section('dist/other.js', 1);
+    assert.strictEqual(
+      withoutFilesInside(renamed + inside, {
+        path: 'dist',
+        oldPath: 'dist/main.js',
+      }),
+      renamed,
+    );
   });
 });
 

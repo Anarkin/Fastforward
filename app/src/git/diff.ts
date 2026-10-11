@@ -299,7 +299,7 @@ export function newSideUnchanged(patch: string): string {
   return `${patch.slice(0, hunk + 1)}@@ -${range} +${range} @@\n${lines.join('')}`;
 }
 
-function headerOf(file: FileChange): string {
+function headerOf(file: Pick<FileChange, 'path' | 'oldPath'>): string {
   return `diff --git ${gitQuoted(`a/${file.oldPath ?? file.path}`)} ${gitQuoted(`b/${file.path}`)}`;
 }
 
@@ -315,17 +315,22 @@ const escapes: Readonly<Record<string, string>> = {
   '\r': '\\r',
 };
 
-export function gitQuoted(name: string): string {
-  let escaped = '';
+function escaped(name: string): string {
+  let result = '';
   for (const character of name) {
     const code = character.charCodeAt(0);
-    escaped +=
+    result +=
       escapes[character] ??
       (code < 0x20 || code === 0x7f
         ? `\\${code.toString(8).padStart(3, '0')}`
         : character);
   }
-  return escaped === name ? name : `"${escaped}"`;
+  return result;
+}
+
+export function gitQuoted(name: string): string {
+  const result = escaped(name);
+  return result === name ? name : `"${result}"`;
 }
 
 export interface ReadPatch extends BudgetedPatch {
@@ -465,20 +470,18 @@ export function withoutFilesInside(
   if (path === undefined) {
     return patch;
   }
-  const insides = [
-    ...new Set(
-      [path, oldPath ?? path].flatMap((folder) => [
-        `a/${folder}`,
-        `b/${folder}`,
-      ]),
-    ),
-  ].map((folder) => {
-    const name = gitQuoted(`${folder}/x`);
-    return `${sectionStart}${name.slice(0, name.endsWith('"') ? -2 : -1)}`;
-  });
+  const own = `${headerOf({ path, oldPath })}\n`;
+  const insides = [...new Set([path, oldPath ?? path])].flatMap((folder) => [
+    `${sectionStart}a/${folder}/`,
+    `${sectionStart}"a/${escaped(folder)}/`,
+  ]);
   return patch
     .split(/^(?=diff --git )/m)
-    .filter((section) => !insides.some((inside) => section.startsWith(inside)))
+    .filter(
+      (section) =>
+        section.startsWith(own) ||
+        !insides.some((inside) => section.startsWith(inside)),
+    )
     .join('');
 }
 

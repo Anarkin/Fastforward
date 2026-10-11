@@ -105,6 +105,31 @@ suite('Git diff', function () {
     }
   });
 
+  test('diffs a file renamed from inside the folder it replaced, committed or staged', async () => {
+    const replaced = await tempRepository(tempFolder('renamedOut'));
+    const content = 'main\n'.repeat(20);
+    try {
+      await replaced.commit('folder', { 'dist/main.js': content });
+      await replaced.git('rm', '-q', 'dist/main.js');
+      fs.writeFileSync(path.join(replaced.root, 'dist'), content);
+      await replaced.git('add', 'dist');
+      const scope = { path: 'dist', oldPath: 'dist/main.js' };
+      const header = ['diff --git a/dist/main.js b/dist'];
+      assert.deepStrictEqual(
+        headers(await stagedPatch(gitPath, replaced.root, scope)),
+        header,
+      );
+      await replaced.git('commit', '-q', '-m', 'file');
+      const [hash] = await replaced.resolve('HEAD');
+      assert.deepStrictEqual(
+        headers(await showPatch(gitPath, replaced.root, hash, scope)),
+        header,
+      );
+    } finally {
+      removeFolder(replaced.root);
+    }
+  });
+
   test('takes a path like [ab].md literally, not as a pattern', async () => {
     try {
       await temp.commit('add', { 'a.md': '1\n', '[ab].md': '1\n' });
