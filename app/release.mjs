@@ -54,6 +54,9 @@ try {
   run('git', ['tag', '-a', tag, '-m', version]);
   undos.push(() => run('git', ['tag', '-d', tag]));
   run('git', ['push', '--atomic', 'origin', 'HEAD:refs/heads/main', tag]);
+  console.log(
+    `Pushed ${tag}. GitHub Actions builds its installers into a draft release, which installed apps update to once you publish it.`,
+  );
 } catch {
   for (const undo of undos.toReversed()) {
     undo();

@@ -60,18 +60,20 @@ suite('Release', () => {
   afterEach(() => removeFolder(folder));
 
   const releasing = () =>
-    new Promise<{ released: boolean; said: string }>((resolve) => {
-      execFile(
-        process.execPath,
-        [script, '7.0.0'],
-        {
-          cwd: local.root,
-          env: { ...process.env, npm_execpath: path.join(folder, 'npm.js') },
-        },
-        (error, _stdout, stderr) =>
-          resolve({ released: error === null, said: stderr }),
-      );
-    });
+    new Promise<{ released: boolean; said: string; told: string }>(
+      (resolve) => {
+        execFile(
+          process.execPath,
+          [script, '7.0.0'],
+          {
+            cwd: local.root,
+            env: { ...process.env, npm_execpath: path.join(folder, 'npm.js') },
+          },
+          (error, stdout, stderr) =>
+            resolve({ released: error === null, said: stderr, told: stdout }),
+        );
+      },
+    );
 
   const release = async () => (await releasing()).released;
 
@@ -94,6 +96,11 @@ suite('Release', () => {
       await remote.resolve('v7.0.0^{commit}'),
       await local.resolve('HEAD'),
     );
+  });
+
+  test('says that installed apps update to the release only once its draft is published', async () => {
+    const { told } = await releasing();
+    assert.match(told, /v7\.0\.0[^]*draft release[^]*publish/);
   });
 
   test('refuses to release from a branch other than main, leaving everything as it was', async () => {
@@ -124,10 +131,14 @@ suite('Release', () => {
     await local.git('push', '-q', 'origin', 'main');
     const [pushed] = await local.resolve('HEAD');
     await local.git('reset', '-q', '--hard', start);
-    assert.deepStrictEqual(await releasing(), {
-      released: false,
-      said: 'Pull the commits on the remote before releasing.\n',
-    });
+    const { released, said } = await releasing();
+    assert.deepStrictEqual(
+      { released, said },
+      {
+        released: false,
+        said: 'Pull the commits on the remote before releasing.\n',
+      },
+    );
     await assertUndone();
     assert.deepStrictEqual(await remote.resolve('main'), [pushed]);
     assert.strictEqual(await remote.git('tag', '--list'), '');
