@@ -462,6 +462,30 @@ export function pathspecs({ path, oldPath, include }: PatchScope): string[] {
   return include ? ['--', ...include] : [];
 }
 
+export function withoutFilesInside(
+  patch: string,
+  { path, oldPath }: PatchScope,
+): string {
+  if (path === undefined) {
+    return patch;
+  }
+  const insides = [
+    ...new Set(
+      [path, oldPath ?? path].flatMap((folder) => [
+        `a/${folder}`,
+        `b/${folder}`,
+      ]),
+    ),
+  ].map((folder) => {
+    const name = quoted(`${folder}/x`);
+    return `${sectionStart}${name.slice(0, name.endsWith('"') ? -2 : -1)}`;
+  });
+  return patch
+    .split(/^(?=diff --git )/m)
+    .filter((section) => !insides.some((inside) => section.startsWith(inside)))
+    .join('');
+}
+
 export function showPatch(
   gitPath: string,
   cwd: string,
@@ -499,7 +523,7 @@ function patchOf(
     cwd,
     [...args, ...diffOptionArgs(scope), ...revisions, ...pathspecs(scope)],
     { signal },
-  );
+  ).then((patch) => withoutFilesInside(patch, scope));
 }
 
 const simpleStatuses = ['A', 'M', 'D', 'T'] as const;

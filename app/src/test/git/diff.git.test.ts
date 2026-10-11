@@ -25,6 +25,10 @@ import {
   type TempRepository,
 } from '../repositories';
 
+function headers(patch: string): string[] {
+  return patch.split('\n').filter((line) => line.startsWith('diff --git'));
+}
+
 function changedLines(patch: string): string[] {
   return patch
     .slice(patch.indexOf('@@'))
@@ -61,6 +65,43 @@ suite('Git diff', function () {
       await temp.git('reset', '--hard', rename);
       await temp.git('config', '--unset', 'core.quotePath');
       await temp.git('config', '--unset', 'diff.suppressBlankEmpty');
+    }
+  });
+
+  test('diffs a file alone, not the files in a folder named like it, committed, staged or in the working tree', async () => {
+    const replaced = await tempRepository(tempFolder('replaced'));
+    try {
+      await replaced.commit('file', { dist: 'built\n' });
+      fs.rmSync(path.join(replaced.root, 'dist'));
+      await replaced.commit('folder', { 'dist/main.js': 'main\n' });
+      const [hash] = await replaced.resolve('HEAD');
+      assert.deepStrictEqual(
+        headers(
+          await showPatch(gitPath, replaced.root, hash, { path: 'dist' }),
+        ),
+        ['diff --git a/dist b/dist'],
+      );
+      fs.writeFileSync(path.join(replaced.root, 'dist', 'main.js'), 'staged\n');
+      await replaced.git('add', 'dist/main.js');
+      fs.writeFileSync(
+        path.join(replaced.root, 'dist', 'main.js'),
+        'changed\n',
+      );
+      assert.deepStrictEqual(
+        headers(await stagedPatch(gitPath, replaced.root, { path: 'dist' })),
+        [],
+      );
+      const workingTree = await workingTreeFiles(gitPath, replaced.root);
+      assert.deepStrictEqual(
+        headers(
+          await workingTreePatch(gitPath, replaced.root, workingTree, {
+            path: 'dist',
+          }),
+        ),
+        [],
+      );
+    } finally {
+      removeFolder(replaced.root);
     }
   });
 

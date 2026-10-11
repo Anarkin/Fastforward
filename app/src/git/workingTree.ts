@@ -12,6 +12,7 @@ import {
   type PatchScope,
   type RawChange,
   withBytes,
+  withoutFilesInside,
 } from './diff';
 import { isBinary, maxFileSize } from './files';
 import { runGit, splitNul } from './run';
@@ -278,7 +279,7 @@ export function stagedPatch(
       ...pathspecs(scope),
     ],
     { signal },
-  );
+  ).then((patch) => withoutFilesInside(patch, scope));
 }
 
 export async function withoutTouched(
@@ -496,7 +497,7 @@ export async function workingTreePatch(
     { signal },
   );
   if (path !== undefined) {
-    return tracked;
+    return withoutFilesInside(await tracked, scope);
   }
   const listed = new Set(untracked);
   for (const file of kept.keys()) {
