@@ -2284,7 +2284,7 @@ export class FastforwardView {
         ...(staged === undefined ? {} : { staged }),
       });
     }
-    await this.sendDiff(context, hash, refreshing, early?.patch);
+    await this.sendDiff(context, hash, refreshing, early);
   }
 
   private earlyPatch(
@@ -2502,7 +2502,7 @@ export class FastforwardView {
     context: Context,
     hash: string,
     refreshing = false,
-    early?: Promise<ReadPatch | undefined>,
+    early?: EarlyPatch,
   ): Promise<void> {
     const { tab } = context;
     const { path: file, area } = tab;
@@ -2513,6 +2513,15 @@ export class FastforwardView {
     tab.loadingDiff.abort();
     const loading = new AbortController();
     tab.loadingDiff = loading;
+    if (early) {
+      if (file === undefined) {
+        loading.signal.addEventListener('abort', () => early.loading.abort(), {
+          once: true,
+        });
+      } else {
+        early.loading.abort();
+      }
+    }
     const stale = () =>
       tab.diffRequest !== request ||
       tab.hash !== hash ||
@@ -2565,7 +2574,7 @@ export class FastforwardView {
           context,
           hash,
           [...changes.values()],
-          early,
+          early?.patch,
           loading.signal,
         ));
       } else {

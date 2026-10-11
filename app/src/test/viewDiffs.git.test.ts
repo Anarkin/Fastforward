@@ -66,6 +66,54 @@ suite('View showing diffs', function () {
     removeFolder(folder);
   });
 
+  test('stops reading the patch of every file of a commit once a file of it is selected', async () => {
+    const childProcess = process.getBuiltinModule('node:child_process');
+    const { spawn } = childProcess;
+    let reading: ReturnType<typeof spawn> | undefined;
+    Reflect.set(
+      childProcess,
+      'spawn',
+      (command: string, args: readonly string[], options: object) => {
+        if (
+          args.includes('--patch') &&
+          !args.includes('--') &&
+          reading === undefined
+        ) {
+          reading = spawn(
+            process.execPath,
+            ['-e', 'setTimeout(() => {}, 30000)'],
+            options,
+          );
+          return reading;
+        }
+        return spawn(command, args, options);
+      },
+    );
+    try {
+      await withView(log, [long.root, other], async (view) => {
+        const selected = view.connection.receive({
+          type: 'selectCommit',
+          root: long.root,
+          hash: second,
+        });
+        await waitFor(() => reading !== undefined, 'the patch to be read');
+        await view.connection.receive({
+          type: 'selectFile',
+          root: long.root,
+          hash: second,
+          path: 'a.txt',
+        });
+        await waitFor(
+          () => reading?.exitCode !== null || reading.signalCode !== null,
+          'the read to stop',
+        );
+        await selected;
+      });
+    } finally {
+      Reflect.set(childProcess, 'spawn', spawn);
+    }
+  });
+
   test('shows a file entire until it is left, or always when pinned', async () => {
     await withView(log, [long.root, other], async (view) => {
       const select = (file: string | undefined) =>
