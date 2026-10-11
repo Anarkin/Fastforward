@@ -1,4 +1,6 @@
 import * as assert from 'node:assert';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import {
   aheadBehind,
   readUpstream,
@@ -129,6 +131,31 @@ suite('Git branches', function () {
       );
     } finally {
       await temp.git('update-ref', '-d', 'refs/remotes/origin/main');
+    }
+  });
+
+  test('fails to count the commits of a branch git cannot read, rather than taking it to be up to date', async () => {
+    const broken = path.join(
+      cwd,
+      '.git',
+      'refs',
+      'remotes',
+      'origin',
+      'broken',
+    );
+    fs.mkdirSync(path.dirname(broken), { recursive: true });
+    fs.writeFileSync(broken, `${'a'.repeat(40)}\n`);
+    try {
+      await assert.rejects(
+        aheadBehind(
+          gitPath,
+          cwd,
+          'refs/heads/main',
+          'refs/remotes/origin/broken',
+        ),
+      );
+    } finally {
+      fs.rmSync(broken);
     }
   });
 });

@@ -406,6 +406,50 @@ suite('Operations checking out', function () {
     }
   });
 
+  test("says a checkout of a remote branch succeeded but couldn't fast-forward when the commits it is behind can't be counted, rather than taking it to be up to date", async () => {
+    await repository.git('branch', 'unread', 'main~1');
+    await repository.git('update-ref', 'refs/remotes/origin/unread', 'main');
+    const hooks = path.join(folder, 'hooks');
+    fs.mkdirSync(hooks, { recursive: true });
+    fs.writeFileSync(
+      path.join(hooks, 'post-checkout'),
+      `#!/bin/sh\nprintf '${'a'.repeat(40)}\\n' > .git/refs/remotes/origin/unread\n`,
+      { mode: 0o755 },
+    );
+    await repository.git('config', 'core.hooksPath', hooks);
+    try {
+      const { checkedOut, notices, errors } = await checkOut({
+        kind: 'remote',
+        name: 'origin/unread',
+      });
+      assert.strictEqual(checkedOut, true);
+      assert.strictEqual(notices.length, 1);
+      assert.strictEqual(notices[0][0], 'error');
+      assert.match(
+        notices[0][1],
+        /^Switched to unread, but couldn't fast-forward it to origin\/unread\. /,
+      );
+      assert.strictEqual(
+        errors[0],
+        'Fast-forwarding unread to origin/unread failed',
+      );
+    } finally {
+      await repository.git('config', '--unset', 'core.hooksPath');
+      fs.rmSync(
+        path.join(
+          repository.root,
+          '.git',
+          'refs',
+          'remotes',
+          'origin',
+          'unread',
+        ),
+      );
+      await repository.git('checkout', '-f', 'main');
+      await repository.git('branch', '-D', 'unread');
+    }
+  });
+
   test('refuses to check out anything while a rebase is paused', async () => {
     await repository.git('checkout', '-b', 'onto', a);
     await repository.commit('onto');

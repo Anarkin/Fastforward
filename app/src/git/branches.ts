@@ -61,19 +61,30 @@ export async function aheadBehind(
   ref: string,
   upstream: string,
 ): Promise<{ ahead: number; behind: number }> {
+  let output: string;
   try {
-    const output = await runGit(gitPath, cwd, [
+    output = await runGit(gitPath, cwd, [
       'rev-list',
       '--left-right',
       '--count',
       `${ref}...${upstream}`,
       '--',
     ]);
-    const [ahead, behind] = output.trim().split(/\s+/).map(Number);
-    return { ahead: ahead || 0, behind: behind || 0 };
-  } catch {
+  } catch (error) {
+    const exist = await Promise.all(
+      [ref, upstream].map((name) =>
+        runGit(gitPath, cwd, ['rev-parse', '--verify', '--quiet', name], {
+          okExitCodes: [0, 1],
+        }).then((hash) => hash.trim() !== ''),
+      ),
+    );
+    if (exist.every(Boolean)) {
+      throw error;
+    }
     return { ahead: 0, behind: 0 };
   }
+  const [ahead, behind] = output.trim().split(/\s+/).map(Number);
+  return { ahead: ahead || 0, behind: behind || 0 };
 }
 
 export async function fastForward(

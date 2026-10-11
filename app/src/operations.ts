@@ -115,21 +115,21 @@ async function catchUp(
   local: string,
   remote: string,
 ): Promise<void> {
-  const { ahead, behind } = await aheadBehind(
-    gitPath,
-    root,
-    `refs/heads/${local}`,
-    `refs/remotes/${remote}`,
-  );
-  if (behind === 0) {
-    return;
-  }
-  if (ahead > 0) {
-    log.info(strings.log.diverged(local, remote));
-    notify('info', strings.messages.diverged(local, remote));
-    return;
-  }
   try {
+    const { ahead, behind } = await aheadBehind(
+      gitPath,
+      root,
+      `refs/heads/${local}`,
+      `refs/remotes/${remote}`,
+    );
+    if (behind === 0) {
+      return;
+    }
+    if (ahead > 0) {
+      log.info(strings.log.diverged(local, remote));
+      notify('info', strings.messages.diverged(local, remote));
+      return;
+    }
     if ((await readHead(gitPath, root))?.name !== local) {
       log.info(strings.log.notCheckedOut(local));
       return;
