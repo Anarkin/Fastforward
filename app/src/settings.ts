@@ -358,7 +358,13 @@ export async function writeAtomically(
   const temporary = `${target}.tmp`;
   await fs.promises.mkdir(path.dirname(file), { recursive: true });
   try {
-    await fs.promises.writeFile(temporary, text);
+    const handle = await fs.promises.open(temporary, 'w');
+    try {
+      await handle.writeFile(text);
+      await handle.sync();
+    } finally {
+      await handle.close();
+    }
     await renameRetrying(temporary, target, retryDelays);
   } catch (error) {
     await fs.promises.rm(temporary, { force: true }).catch(() => undefined);

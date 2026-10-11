@@ -498,3 +498,43 @@ suite('Moving to settings and state', () => {
     }
   });
 });
+
+suite('Writing a file whole', () => {
+  test('flushes the new text to the disk before putting it in place, so a crash leaves the old file or the new one, not an empty one', async () => {
+    const folder = tempFolder('flushed');
+    const file = path.join(folder, 'state.json');
+    const nodeFs = process.getBuiltinModule('node:fs');
+    const { open, rename } = nodeFs.promises;
+    const steps: string[] = [];
+    Reflect.set(
+      nodeFs.promises,
+      'open',
+      async (...args: Parameters<typeof open>) => {
+        const handle = await open(...args);
+        const sync = handle.sync.bind(handle);
+        Reflect.set(handle, 'sync', () => {
+          steps.push('sync');
+          return sync();
+        });
+        return handle;
+      },
+    );
+    Reflect.set(
+      nodeFs.promises,
+      'rename',
+      (...args: Parameters<typeof rename>) => {
+        steps.push('rename');
+        return rename(...args);
+      },
+    );
+    try {
+      await writeAtomically(file, '{"a":1}');
+      assert.deepStrictEqual(steps, ['sync', 'rename']);
+      assert.strictEqual(fs.readFileSync(file, 'utf8'), '{"a":1}');
+    } finally {
+      Reflect.set(nodeFs.promises, 'open', open);
+      Reflect.set(nodeFs.promises, 'rename', rename);
+      removeFolder(folder);
+    }
+  });
+});
