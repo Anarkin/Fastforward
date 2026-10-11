@@ -201,6 +201,9 @@ export async function readFile(
         checkedOut ? await headCommit(gitPath, file) : undefined,
       );
     }
+    if (!stats.isFile()) {
+      return { content: '', binary: false };
+    }
     const id = `${stats.size}-${stats.mtimeMs}`;
     return stats.size > maxFileSize
       ? binaryContent(id)

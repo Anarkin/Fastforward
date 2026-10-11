@@ -185,6 +185,23 @@ suite('Repository files', function () {
     }
   });
 
+  test('reads a named pipe in the working tree as empty, rather than waiting on it', async function () {
+    if (process.platform === 'win32') {
+      this.skip();
+    }
+    const fifo = path.join(cwd, 'pipe');
+    const { execFileSync } = process.getBuiltinModule('node:child_process');
+    execFileSync('mkfifo', [fifo]);
+    try {
+      assert.deepStrictEqual(await readFile(gitPath, cwd, undefined, 'pipe'), {
+        content: '',
+        binary: false,
+      });
+    } finally {
+      fs.rmSync(fifo);
+    }
+  });
+
   test('reads a file at a commit with one git', async () => {
     assert.deepStrictEqual(
       await gitsStarted(() =>
