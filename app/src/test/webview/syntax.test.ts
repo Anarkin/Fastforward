@@ -12,7 +12,6 @@ import {
 import {
   colorCode,
   loadLanguages,
-  onceMade,
   sendUncaught,
   serveColoring,
   startColoring,
@@ -22,6 +21,7 @@ import {
   type SyntaxRange,
   type ToSyntax,
 } from '../../webview/syntaxEngine';
+import { onceMade } from '../../webview/onceMade';
 import { policyOfPage, waitFor } from '../fixtures';
 
 type Highlighter = Awaited<ReturnType<typeof loadLanguages>>;

@@ -7,6 +7,7 @@ import {
 import { imagePath, markdownRenderer, type Render } from './markdownRender';
 import { strings } from '../shared/strings';
 import type { MarkdownSide } from './previews';
+import { onceMade } from './onceMade';
 import { codeSegments, colorCode } from './syntax';
 
 const codeLanguage = /(?:^|\s)language-(\S+)/;
@@ -51,19 +52,17 @@ export function showImages(
   }
 }
 
-let loading: Promise<Render> | undefined;
 let loaded: Render | undefined;
 
-function loadRenderer(): Promise<Render> {
-  loading ??= Promise.all([import('dompurify'), import('markdown-it')]).then(
+const loadRenderer = onceMade(() =>
+  Promise.all([import('dompurify'), import('markdown-it')]).then(
     ([{ default: purify }, { default: markdownIt }]) => {
       const render = markdownRenderer(purify, markdownIt);
       loaded = render;
       return render;
     },
-  );
-  return loading;
-}
+  ),
+);
 
 function useRenderer(): Render | undefined {
   const [render, setRender] = useState(() => loaded);
@@ -72,11 +71,11 @@ function useRenderer(): Render | undefined {
       return undefined;
     }
     let live = true;
-    void loadRenderer().then((ready) => {
+    loadRenderer().then((ready) => {
       if (live) {
         setRender(() => ready);
       }
-    });
+    }, reportError);
     return () => {
       live = false;
     };
