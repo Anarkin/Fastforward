@@ -64,5 +64,6 @@ This file only observes and documents the codebase mainly for human readers; the
 - On Windows, only an app set up by the installer updates itself, not one run from `win-unpacked`
 - On Linux, only an app run as an AppImage, or one with the `package-type` file the deb build adds to its `resources` folder, updates itself, not an AppImage extracted with `--appimage-extract`, as the updater replaces the AppImage it was started from
 - On macOS, an update is only announced, with a link to its release, as Squirrel.Mac installs only updates signed with a Developer ID, and the app is only ad-hoc signed
+- The window can't be made smaller than `1280` by `720` pixels, or the smallest screen's work area when that is smaller, so the commit list and the columns beside it keep their least widths
 - At most `4` notices are shown, dropping the oldest
 - At most `20` recent repositories are kept, dropping the oldest
