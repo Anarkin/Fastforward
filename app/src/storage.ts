@@ -35,6 +35,7 @@ export class JsonFileStore implements Store {
   readonly problems: readonly string[];
   private values: Record<string, unknown>;
   private unreadable: boolean;
+  private readonly removedUnread = new Set<string>();
   private writing: Promise<void> = Promise.resolve();
   private waiting = false;
 
@@ -54,13 +55,21 @@ export class JsonFileStore implements Store {
       const { values } = readJson(this.file);
       if (values !== undefined) {
         this.values = { ...values, ...this.values };
+        for (const removed of this.removedUnread) {
+          delete this.values[removed];
+        }
+        this.removedUnread.clear();
         this.unreadable = false;
       }
     }
     if (value === undefined) {
       delete this.values[key];
+      if (this.unreadable) {
+        this.removedUnread.add(key);
+      }
     } else {
       this.values[key] = value;
+      this.removedUnread.delete(key);
     }
     if (!this.waiting && !this.unreadable) {
       this.waiting = true;

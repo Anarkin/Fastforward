@@ -334,6 +334,22 @@ suite('State file', () => {
     assert.strictEqual(reopened.get('solo'), true);
   });
 
+  test('forgets a value set to nothing while the file could not be read, once it can be', async () => {
+    fs.mkdirSync(file);
+    const store = new JsonFileStore(file);
+    await store.update('activeTab', undefined);
+    fs.rmdirSync(file);
+    fs.writeFileSync(
+      file,
+      JSON.stringify({ tabs: ['/old'], activeTab: '/old' }),
+    );
+    await store.update('solo', true);
+    assert.strictEqual(store.get('activeTab'), undefined);
+    const reopened = new JsonFileStore(file);
+    assert.strictEqual(reopened.get('activeTab'), undefined);
+    assert.deepStrictEqual(reopened.get('tabs'), ['/old']);
+  });
+
   test('says why the file could not be read', () => {
     fs.mkdirSync(file);
     const [problem] = new JsonFileStore(file).problems;
