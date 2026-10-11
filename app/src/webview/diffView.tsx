@@ -1953,7 +1953,6 @@ export function DiffView({
           }),
       }}
     >
-      {stuck && <div className="diff-stuck-header">{header(stuck, true)}</div>}
       <Minimap
         marks={marks}
         scroller={list}
@@ -2011,6 +2010,9 @@ export function DiffView({
           }
         }}
       >
+        {stuck && (
+          <div className="diff-stuck-header">{header(stuck, true)}</div>
+        )}
         <div
           className="virtual-spacer"
           style={{ height: virtualizer.getTotalSize() }}

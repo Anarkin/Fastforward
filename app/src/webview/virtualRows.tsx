@@ -171,55 +171,53 @@ export function VirtualRows({
   );
 
   return (
-    <div className="virtual-rows-frame">
-      {pinned.length > 0 && (
-        <div className="pinned-rows">
-          {pinned.map((index) => (
-            <div key={rows.keyOf(index)}>{renderRow(index)}</div>
-          ))}
-        </div>
-      )}
-      <div
-        className="virtual-rows"
-        ref={list}
-        {...(onKeyDown
-          ? {
-              tabIndex: 0,
-              [columnFocusAttribute]: '',
-              onKeyDown: (event: React.KeyboardEvent) => {
-                const covered = pinned.reduce(
-                  (sum, index) => sum + heightOf(index),
+    <div
+      className="virtual-rows"
+      ref={list}
+      {...(onKeyDown
+        ? {
+            tabIndex: 0,
+            [columnFocusAttribute]: '',
+            onKeyDown: (event: React.KeyboardEvent) => {
+              const covered = pinned.reduce(
+                (sum, index) => sum + heightOf(index),
+                0,
+              );
+              onKeyDown(
+                event,
+                fullyVisible(
+                  virtualizer.getVirtualItems(),
+                  (list.current?.scrollTop ?? 0) + covered,
+                  (list.current?.clientHeight ?? 0) - covered,
                   0,
-                );
-                onKeyDown(
-                  event,
-                  fullyVisible(
-                    virtualizer.getVirtualItems(),
-                    (list.current?.scrollTop ?? 0) + covered,
-                    (list.current?.clientHeight ?? 0) - covered,
-                    0,
-                  ),
-                );
-              },
-            }
-          : {})}
+                ),
+              );
+            },
+          }
+        : {})}
+    >
+      <div
+        className="virtual-spacer"
+        style={{ height: virtualizer.getTotalSize() }}
       >
-        <div
-          className="virtual-spacer"
-          style={{ height: virtualizer.getTotalSize() }}
-        >
-          {virtualizer.getVirtualItems().map((item) => (
-            <div
-              key={item.key}
-              className="virtual-row"
-              data-index={item.index}
-              ref={virtualizer.measureElement}
-              style={rowPlace(item.start, undefined)}
-            >
-              {renderRow(item.index)}
-            </div>
-          ))}
-        </div>
+        {pinned.length > 0 && (
+          <div className="pinned-rows">
+            {pinned.map((index) => (
+              <div key={rows.keyOf(index)}>{renderRow(index)}</div>
+            ))}
+          </div>
+        )}
+        {virtualizer.getVirtualItems().map((item) => (
+          <div
+            key={item.key}
+            className="virtual-row"
+            data-index={item.index}
+            ref={virtualizer.measureElement}
+            style={rowPlace(item.start, undefined)}
+          >
+            {renderRow(item.index)}
+          </div>
+        ))}
       </div>
     </div>
   );

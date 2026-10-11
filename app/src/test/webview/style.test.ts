@@ -1237,7 +1237,7 @@ suite('Style', () => {
       padding: '3px 8px',
       color: 'var(--muted-foreground)',
     });
-    looks(withClass(column, 'virtual-rows-frame'), {
+    looks(withClass(column, 'virtual-rows'), {
       flex: '1',
       'min-height': '0',
     });

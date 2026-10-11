@@ -51,6 +51,24 @@ function waitForFocus(locator: Locator, what: string): Promise<void> {
   );
 }
 
+async function scrollsOnWheelOver(
+  page: Page,
+  list: Locator,
+  band: Locator,
+): Promise<void> {
+  await list.evaluate((element) => {
+    element.scrollTop = 200;
+  });
+  const box = await band.boundingBox();
+  assert.ok(box, 'nothing stuck atop the list');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.wheel(0, 100);
+  await waitFor(
+    async () => (await list.evaluate((element) => element.scrollTop)) > 200,
+    'the list to scroll',
+  );
+}
+
 const baseSettings = { diffLayout: 'inline' };
 
 suite('App', function () {
@@ -997,6 +1015,74 @@ suite('App', function () {
       await repository.git('checkout', '-q', 'HEAD', '--', 'changed.txt');
     }
     await page.locator('.commit.working-tree.empty').waitFor();
+  });
+});
+
+suite('App with lists longer than their columns', function () {
+  this.timeout(60_000);
+
+  test('scrolls on the wheel over the folders pinned atop the files and the file header stuck atop the diff, which stays in place sideways, showing the scrollbar of the files over them', async () => {
+    const folder = tempFolder('stuck');
+    const profile = path.join(folder, 'profile');
+    const repository = await tempRepository(path.join(folder, 'repo'));
+    await repository.commit('first', {
+      ...Object.fromEntries(
+        Array.from({ length: 60 }, (_, index) => [
+          `src/file${index}.txt`,
+          `${index}\n`,
+        ]),
+      ),
+      'long.txt': `${longLines.join('\n')}\n`,
+    });
+    fs.mkdirSync(profile, { recursive: true });
+    fs.writeFileSync(
+      path.join(profile, 'state.json'),
+      JSON.stringify({ tabs: [repository.root], activeTab: repository.root }),
+    );
+    fs.writeFileSync(
+      path.join(profile, 'settings.user.json'),
+      JSON.stringify(baseSettings),
+    );
+    const app = await _electron.launch({
+      args: [appFolder, `--user-data-dir=${profile}`],
+      cwd: appFolder,
+    });
+    try {
+      const page = await app.firstWindow();
+      await page.locator('.commit', { hasText: 'first' }).click();
+      await page.locator('.row.file', { hasText: 'file0.txt' }).waitFor();
+      const files = page.locator('.column').nth(1).locator('.virtual-rows');
+      const pinned = page.locator('.pinned-rows');
+      await scrollsOnWheelOver(page, files, pinned);
+      await pinned.hover();
+      assert.strictEqual(
+        await page.locator('.overlay-scrollbar.vertical.shown').count(),
+        1,
+      );
+
+      await files.evaluate((element) => {
+        element.scrollTop = element.scrollHeight;
+      });
+      await page.locator('.row.file', { hasText: 'long.txt' }).click();
+      await page.locator('.diff-line', { hasText: firstLongLine }).waitFor();
+      const diff = page.locator('.diff-view .virtual-rows');
+      const stuck = page.locator('.diff-stuck-header');
+      await scrollsOnWheelOver(page, diff, stuck);
+      await diff.evaluate((element) => {
+        element.scrollLeft = 300;
+      });
+      await waitFor(
+        async () => (await diff.evaluate((element) => element.scrollLeft)) > 0,
+        'the diff to scroll sideways',
+      );
+      const header = await stuck.locator('.file-header').boundingBox();
+      const view = await page.locator('.diff-view').boundingBox();
+      assert.ok(header && view, 'the header or the diff has no box');
+      assert.strictEqual(header.x, view.x);
+    } finally {
+      await app.close();
+      removeFolder(folder);
+    }
   });
 });
 

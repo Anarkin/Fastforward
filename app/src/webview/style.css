@@ -1082,7 +1082,7 @@ body.resizing {
   color: var(--muted-foreground);
 }
 
-.column-body:has(> .row.empty) > .virtual-rows-frame {
+.column-body:has(> .row.empty) > .virtual-rows {
   flex: 1;
   min-height: 0;
 }
@@ -1704,11 +1704,11 @@ body.resizing {
 }
 
 .diff-stuck-header {
-  position: absolute;
+  position: sticky;
   top: 0;
   left: 0;
-  right: 0;
   z-index: 5;
+  height: 0;
 }
 
 .large-diff {
@@ -1744,16 +1744,9 @@ body.resizing {
   text-overflow: ellipsis;
 }
 
-.virtual-rows-frame {
-  position: relative;
-  height: 100%;
-}
-
 .pinned-rows {
-  position: absolute;
+  position: sticky;
   top: 0;
-  left: 0;
-  right: 0;
   z-index: 3;
   background: var(--color-panel-background);
   box-shadow: 0 1px 0 var(--color-border);
