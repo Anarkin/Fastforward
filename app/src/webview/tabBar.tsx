@@ -49,15 +49,13 @@ export function updateLabel(status: UpdateStatus): string {
     case 'idle':
       return strings.tabs.checkForUpdates;
     case 'checking':
-      return strings.tabs.checkForUpdatesWith(strings.tabs.checking);
+      return strings.tabs.checkingForUpdates;
     case 'upToDate':
-      return strings.tabs.checkForUpdatesWith(strings.tabs.upToDate);
+      return strings.tabs.upToDate;
     case 'downloading':
-      return strings.tabs.checkForUpdatesWith(
-        strings.tabs.downloading(status.version, status.percent),
-      );
+      return strings.tabs.downloading(status.version, status.percent);
     case 'failed':
-      return strings.tabs.checkForUpdatesWith(strings.tabs.failed);
+      return strings.tabs.checkFailed;
     case 'ready':
       return strings.tabs.restartToUpdate(status.version);
     case 'available':

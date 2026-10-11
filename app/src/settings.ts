@@ -48,13 +48,13 @@ function jsonKind(value: unknown): 'boolean' | 'number' | 'string' | 'object' {
   }
 }
 
-function kindOf(value: unknown): string {
-  if (Array.isArray(value)) {
-    return value.length > 0
-      ? strings.settings.listsOf[jsonKind(value[0])]
-      : strings.settings.kinds.list;
+function wrongKind(name: string, fallback: unknown): string {
+  if (Array.isArray(fallback)) {
+    return fallback.length > 0
+      ? strings.settings.shouldBeListOf[jsonKind(fallback[0])](name)
+      : strings.settings.shouldBe.list(name);
   }
-  return strings.settings.kinds[jsonKind(value)];
+  return strings.settings.shouldBe[jsonKind(fallback)](name);
 }
 
 function sameKind(fallback: unknown, value: unknown): boolean {
@@ -91,7 +91,7 @@ function merge(
     const fallback = defaults[key];
     const allowed = choices.get(name);
     if (!sameKind(fallback, value)) {
-      problems.push(strings.settings.shouldBe(name, kindOf(fallback)));
+      problems.push(wrongKind(name, fallback));
     } else if (allowed && !allowed.some((choice) => choice === value)) {
       problems.push(strings.settings.shouldBeOneOf(name, allowed));
     } else if (isObject(fallback) && isObject(value)) {

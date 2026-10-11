@@ -116,12 +116,11 @@ export const strings = {
     openUserSettings: 'Open User Settings',
     keyboardShortcuts: 'Keyboard Shortcuts',
     checkForUpdates: 'Check for Updates',
-    checkForUpdatesWith: (status: string) => `Check for Updates (${status})`,
-    checking: 'checking...',
-    upToDate: 'up to date',
+    checkingForUpdates: 'Check for Updates (checking...)',
+    upToDate: 'Check for Updates (up to date)',
     downloading: (version: string, percent: number) =>
-      `downloading ${version}, ${percent}%`,
-    failed: 'failed',
+      `Check for Updates (downloading ${version}, ${percent}%)`,
+    checkFailed: 'Check for Updates (failed)',
     restartToUpdate: (version: string) => `Restart to Update to ${version}`,
     download: (version: string) => `Download ${version}`,
   },
@@ -343,8 +342,8 @@ export const strings = {
       `Couldn't watch ${root}, so changes made outside ${brand} won't show until it is opened again`,
     couldNotCheckOut: (name: string, reason: string) =>
       `Couldn't check out ${name}. ${reason}`,
-    leftBehind: (count: number, hashes: string, more: number) =>
-      `Left ${count === 1 ? '1 commit' : `${count} commits`} behind on no branch or tag: ${hashes}${more > 0 ? ` and ${more} more` : ''}`,
+    leftBehind: (count: number, hashes: readonly string[], more: number) =>
+      `Left ${count === 1 ? '1 commit' : `${count} commits`} behind on no branch or tag: ${hashes.join(' ')}${more > 0 ? ` and ${more} more` : ''}`,
     diverged: (local: string, remote: string) =>
       `Switched to ${local}, which has diverged from ${remote}; pull to combine them.`,
     couldNotFastForward: (local: string, remote: string, reason: string) =>
@@ -376,22 +375,21 @@ export const strings = {
     invalid: (reason: string) =>
       `The user settings are not valid JSON: ${reason}`,
     unknown: (name: string) => `Unknown setting "${name}"`,
-    shouldBe: (name: string, kind: string) => `"${name}" should be ${kind}`,
+    shouldBe: {
+      boolean: (name: string) => `"${name}" should be a boolean`,
+      number: (name: string) => `"${name}" should be a number`,
+      string: (name: string) => `"${name}" should be a string`,
+      object: (name: string) => `"${name}" should be an object`,
+      list: (name: string) => `"${name}" should be a list`,
+    },
+    shouldBeListOf: {
+      boolean: (name: string) => `"${name}" should be a list of booleans`,
+      number: (name: string) => `"${name}" should be a list of numbers`,
+      string: (name: string) => `"${name}" should be a list of strings`,
+      object: (name: string) => `"${name}" should be a list of objects`,
+    },
     shouldBeOneOf: (name: string, choices: readonly string[]) =>
       `"${name}" should be ${choices.map((choice) => `"${choice}"`).join(' or ')}`,
-    kinds: {
-      boolean: 'a boolean',
-      number: 'a number',
-      string: 'a string',
-      object: 'an object',
-      list: 'a list',
-    },
-    listsOf: {
-      boolean: 'a list of booleans',
-      number: 'a list of numbers',
-      string: 'a list of strings',
-      object: 'a list of objects',
-    },
   },
   errors: {
     gitFailed: (command: string, said: string) =>

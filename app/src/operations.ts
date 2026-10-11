@@ -101,7 +101,7 @@ async function sayLeftBehind(
   }
   const message = strings.messages.leftBehind(
     left.length,
-    left.slice(0, namedLeftBehind).map(shortHash).join(' '),
+    left.slice(0, namedLeftBehind).map(shortHash),
     left.length - namedLeftBehind,
   );
   log.info(message);
