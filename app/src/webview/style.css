@@ -1508,8 +1508,8 @@ body.resizing {
   overflow-wrap: anywhere;
 }
 
-.diff-line:not(.split-side) .code,
-.split-side:last-child .code {
+.diff-view:not(.wrap) .diff-line:not(.split-side) .code,
+.diff-view:not(.wrap) .split-side:last-child .code {
   padding-right: calc(var(--diff-code-padding) + var(--minimap-width));
 }
 

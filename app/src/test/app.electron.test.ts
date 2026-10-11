@@ -681,7 +681,7 @@ suite('App', function () {
     );
   });
 
-  test('wraps long lines on its button or W, each row as tall as the lines the app expects its text to wrap to, clear of the minimap, keeping the line at the top in place, saving the choice', async () => {
+  test('wraps long lines on its button or W, each row as tall as the lines the app expects its text to wrap to, keeping the line at the top in place, saving the choice', async () => {
     await page.locator('.commit', { hasText: 'first' }).click();
     await page.locator('.row.file', { hasText: 'long.txt' }).click();
     const row = page.locator('.diff-row', {
@@ -702,9 +702,8 @@ suite('App', function () {
     );
     const laidOut = await row.evaluate((element) => {
       const code = element.querySelector('.code');
-      const minimap = document.querySelector('.diff-minimap');
-      if (!code || !minimap) {
-        throw new Error('No code or minimap');
+      if (!code) {
+        throw new Error('No code');
       }
       const style = getComputedStyle(code);
       const sample = document.createElement('span');
@@ -714,18 +713,6 @@ suite('App', function () {
       document.body.append(sample);
       const char = sample.getBoundingClientRect().width / 100;
       sample.remove();
-      let right = 0;
-      const walker = document.createTreeWalker(code, NodeFilter.SHOW_TEXT);
-      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-        const glyph = document.createRange();
-        for (let index = 0; index < (node.textContent ?? '').length; index++) {
-          if (!/\s/.test(node.textContent?.[index] ?? '')) {
-            glyph.setStart(node, index);
-            glyph.setEnd(node, index + 1);
-            right = Math.max(right, glyph.getBoundingClientRect().right);
-          }
-        }
-      }
       return {
         height: element.getBoundingClientRect().height,
         width:
@@ -733,8 +720,6 @@ suite('App', function () {
           parseFloat(style.paddingLeft) -
           parseFloat(style.paddingRight),
         char,
-        right,
-        minimap: minimap.getBoundingClientRect().left,
       };
     });
     assert.strictEqual(
@@ -742,7 +727,6 @@ suite('App', function () {
       wrappedLines(firstLongLine, wrapColumns(laidOut.width, laidOut.char)) *
         22,
     );
-    assert.ok(laidOut.right <= laidOut.minimap, JSON.stringify(laidOut));
     await waitFor(
       () => savedSetting('wordWrap') === true,
       'the choice to be saved',

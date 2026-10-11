@@ -553,9 +553,11 @@ suite('Style', () => {
     }
   });
 
-  test('ends the lines that reach the right edge before the minimap, wrapped or scrolled sideways, keeping their rows tinted under it', () => {
-    const clear = 'calc(var(--diff-code-padding) + var(--minimap-width))';
+  test('ends the lines scrolled sideways before the minimap, keeping their rows tinted under it, but wraps lines under it, as text goes under the scrollbars everywhere else, so both sides wrap alike', () => {
     for (const wordWrap of [false, true]) {
+      const clear = wordWrap
+        ? undefined
+        : 'calc(var(--diff-code-padding) + var(--minimap-width))';
       looks(
         withClass(
           shownRow(diffView({ wordWrap }, inlineLine('added'))),
