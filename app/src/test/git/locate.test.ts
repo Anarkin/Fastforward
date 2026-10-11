@@ -57,18 +57,20 @@ suite('Finding git', () => {
     fs.mkdirSync(inner);
     executable(path.join('inner', git));
     const found = executable(git);
-    assert.strictEqual(
-      onPath(
-        'git',
-        {
-          PATH: [path.relative(process.cwd(), inner), folder].join(
-            path.delimiter,
-          ),
-        },
-        process.platform,
-      ),
-      found,
-    );
+    const cwd = process.cwd();
+    process.chdir(folder);
+    try {
+      assert.strictEqual(
+        onPath(
+          'git',
+          { PATH: ['inner', folder].join(path.delimiter) },
+          process.platform,
+        ),
+        found,
+      );
+    } finally {
+      process.chdir(cwd);
+    }
   });
 
   test('skips a folder named like the command', () => {
