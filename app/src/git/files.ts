@@ -304,7 +304,11 @@ export async function readImage(
   const blobNamed = async (name: string) =>
     blobOf((await readObjects(gitPath, cwd, [name], limit))[0]);
   const blob =
-    (await blobNamed(revision === undefined ? id : `${revision}:${path}`)) ??
+    (await blobNamed(
+      revision === undefined
+        ? id
+        : `${revision === '' ? ':0' : revision}:${path}`,
+    )) ??
     (untracked === undefined
       ? undefined
       : await blobNamed(`${untracked}:${path}`));

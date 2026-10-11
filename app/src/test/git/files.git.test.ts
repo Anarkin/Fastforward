@@ -151,6 +151,40 @@ suite('Repository files', function () {
     }
   });
 
+  test('reads an image in the index whose name looks like a stage, rather than the stage it names', async function () {
+    if (process.platform === 'win32') {
+      this.skip();
+    }
+    const staged = await tempRepository(tempFolder('stage-names'));
+    try {
+      fs.writeFileSync(path.join(staged.root, 'content'), 'image');
+      const [blob] = (await staged.git('hash-object', '-w', 'content')).split(
+        '\n',
+      );
+      await staged.git(
+        '-c',
+        'core.protectNTFS=false',
+        'update-index',
+        '--add',
+        '--cacheinfo',
+        `100644,${blob},1:x.png`,
+      );
+      const read = await readImage(gitPath, staged.root, {
+        path: '1:x.png',
+        id: '0'.repeat(40),
+        disk: false,
+        revision: '',
+      });
+      assert.strictEqual(read.kind, 'image');
+      assert.strictEqual(
+        read.kind === 'image' && read.bytes.toString(),
+        'image',
+      );
+    } finally {
+      removeFolder(staged.root);
+    }
+  });
+
   test('reads a file at a commit with one git', async () => {
     assert.deepStrictEqual(
       await gitsStarted(() =>
