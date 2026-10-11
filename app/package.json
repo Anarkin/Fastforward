@@ -70,6 +70,13 @@
       "output": "release",
       "buildResources": "build"
     },
+    "electronFuses": {
+      "runAsNode": false,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "onlyLoadAppFromAsar": true,
+      "resetAdHocDarwinSignature": true
+    },
     "files": [
       "dist/**/*",
       "!dist/**/*.map",
