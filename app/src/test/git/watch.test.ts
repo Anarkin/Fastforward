@@ -663,6 +663,39 @@ suite('Watching folders one by one', () => {
     ]);
   });
 
+  test('stops watching the folders under a .gitignore that it comes to ignore, as each takes one of the inotify watches', async () => {
+    mkdir('a/node_modules/x/y', 'a/kept', 'other/node_modules');
+    const ignoring = new Set<string>();
+    await watchTree(root, {
+      skip: () => false,
+      ignored: (_repo, folders) =>
+        Promise.resolve(
+          folders.filter((folder) => ignoring.has(path.basename(folder))),
+        ),
+      onEvent: () => {},
+      onError: (error) => errors.push(error),
+      watch: fakeWatch,
+    });
+    const before = watched();
+    ignoring.add('node_modules');
+    watchers.get(path.join(root, 'a'))?.listener('change', '.gitignore');
+    await waitFor(
+      () => !watched().includes('a/node_modules'),
+      'the folder now ignored',
+    );
+    assert.deepStrictEqual(
+      watched(),
+      before.filter((folder) => !folder.startsWith('a/node_modules')),
+    );
+    ignoring.clear();
+    watchers.get(path.join(root, 'a'))?.listener('change', '.gitignore');
+    await waitFor(
+      () => watched().includes('a/node_modules/x/y'),
+      'the folder ignored no more',
+    );
+    assert.deepStrictEqual(watched(), before);
+  });
+
   test('stops watching removed folders', async () => {
     mkdir('a/b/c');
     await start();

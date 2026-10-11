@@ -336,9 +336,41 @@ export async function watchTree(
     for (const skipped of under) {
       ignoredFolders.delete(skipped.path);
     }
-    if (under.length > 0) {
-      void inFlight.track(add(under));
-    }
+    const watchedUnder = [...watched]
+      .filter(([inside]) => inside !== folder && isInside(folder, inside))
+      .map(([inside, { repo }]) => ({ path: inside, repo }));
+    void inFlight.track(unwatchIgnored(watchedUnder).then(() => add(under)));
+  };
+
+  const unwatchIgnored = async (folders: readonly Folder[]) => {
+    const byRepo = Map.groupBy(
+      folders.filter((folder) => folder.path !== folder.repo),
+      (folder) => folder.repo,
+    );
+    await Promise.all(
+      [...byRepo].map(async ([repo, inRepo]) => {
+        let now: ReadonlySet<string>;
+        try {
+          now = new Set(
+            await ignored(
+              repo,
+              inRepo.map((folder) => folder.path),
+            ),
+          );
+        } catch (error) {
+          report(error);
+          return;
+        }
+        for (const folder of inRepo.toSorted(
+          (a, b) => a.path.length - b.path.length,
+        )) {
+          if (now.has(folder.path) && watched.has(folder.path)) {
+            unwatch(folder.path);
+            ignoredFolders.set(folder.path, folder);
+          }
+        }
+      }),
+    );
   };
 
   const moveRepo = (folder: string, from: string, to: string) => {
