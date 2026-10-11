@@ -335,7 +335,18 @@ export async function watchTree(
   };
 
   const ignoredFolders = new Map<string, Folder>();
+  let ignoresGeneration = 0;
+  const askIgnored = async (repo: string, paths: readonly string[]) => {
+    for (;;) {
+      const asked = ignoresGeneration;
+      const answer = await ignored(repo, paths);
+      if (asked === ignoresGeneration || stopped()) {
+        return answer;
+      }
+    }
+  };
   const ignoresChanged = (folder: string) => {
+    ignoresGeneration++;
     const under = [...ignoredFolders.values()].filter((skipped) =>
       isInside(folder, skipped.path),
     );
@@ -358,7 +369,7 @@ export async function watchTree(
         let now: ReadonlySet<string>;
         try {
           now = new Set(
-            await ignored(
+            await askIgnored(
               repo,
               inRepo.map((folder) => folder.path),
             ),
@@ -411,7 +422,7 @@ export async function watchTree(
           const skipped = new Set(
             asked.length === 0
               ? []
-              : await ignored(
+              : await askIgnored(
                   repo,
                   asked.map((folder) => folder.path),
                 ),

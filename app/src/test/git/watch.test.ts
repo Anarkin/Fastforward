@@ -417,6 +417,27 @@ class FakeWatcher extends EventEmitter implements FolderWatcher {
   }
 }
 
+function heldIgnores() {
+  const ignoring = new Set<string>();
+  const held = {
+    holding: false,
+    release: undefined as (() => void) | undefined,
+  };
+  const ignored = (_repo: string, folders: readonly string[]) => {
+    const answer = folders.filter((folder) =>
+      ignoring.has(path.basename(folder)),
+    );
+    if (!held.holding) {
+      return Promise.resolve(answer);
+    }
+    held.holding = false;
+    return new Promise<readonly string[]>((resolve) => {
+      held.release = () => resolve(answer);
+    });
+  };
+  return { ignoring, held, ignored };
+}
+
 suite('Watching folders one by one', () => {
   let root: string;
   let watchers: Map<string, FakeWatcher>;
@@ -718,6 +739,52 @@ suite('Watching folders one by one', () => {
       'the folder ignored no more',
     );
     assert.deepStrictEqual(watched(), before);
+  });
+
+  test('keeps watching a folder the ignores came to leave alone again while git was asked whether they ignored it', async () => {
+    mkdir('a/build', 'a/kept');
+    const { ignoring, held, ignored } = heldIgnores();
+    await watchTree(root, {
+      skip: () => false,
+      ignored,
+      onEvent: () => {},
+      onError: (error) => errors.push(error),
+      watch: fakeWatch,
+    });
+    const gitignore = watchers.get(path.join(root, 'a'));
+    ignoring.add('build');
+    held.holding = true;
+    gitignore?.listener('change', '.gitignore');
+    await waitFor(() => held.release !== undefined, 'git to be asked');
+    ignoring.clear();
+    gitignore?.listener('change', '.gitignore');
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    held.release?.();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.deepStrictEqual(watched(), ['', 'a', 'a/build', 'a/kept']);
+  });
+
+  test('watches a folder made while ignored once the ignores leave it alone, even when they change while git is asked about it', async () => {
+    mkdir('a');
+    const { ignoring, held, ignored } = heldIgnores();
+    await watchTree(root, {
+      skip: () => false,
+      ignored,
+      onEvent: () => {},
+      onError: (error) => errors.push(error),
+      watch: fakeWatch,
+    });
+    const parent = watchers.get(path.join(root, 'a'));
+    ignoring.add('out');
+    held.holding = true;
+    mkdir('a/out');
+    parent?.listener('rename', 'out');
+    await waitFor(() => held.release !== undefined, 'git to be asked');
+    ignoring.clear();
+    parent?.listener('change', '.gitignore');
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    held.release?.();
+    await waitFor(() => watched().includes('a/out'), 'the folder');
   });
 
   test('asks again whether any folder is ignored when told the ignores of the whole repository changed, as for .git/info/exclude', async () => {
