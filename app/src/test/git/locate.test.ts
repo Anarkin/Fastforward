@@ -52,6 +52,25 @@ suite('Finding git', () => {
     );
   });
 
+  test('skips a relative folder of the PATH, which each git would resolve inside the repository it runs in', () => {
+    const inner = path.join(folder, 'inner');
+    fs.mkdirSync(inner);
+    executable(path.join('inner', git));
+    const found = executable(git);
+    assert.strictEqual(
+      onPath(
+        'git',
+        {
+          PATH: [path.relative(process.cwd(), inner), folder].join(
+            path.delimiter,
+          ),
+        },
+        process.platform,
+      ),
+      found,
+    );
+  });
+
   test('skips a folder named like the command', () => {
     fs.mkdirSync(path.join(folder, git));
     assert.strictEqual(

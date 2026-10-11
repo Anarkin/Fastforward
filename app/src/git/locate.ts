@@ -43,7 +43,7 @@ export function onPath(
   const folders = (env[pathKey] ?? '')
     .split(windows ? ';' : ':')
     .map((folder) => (windows ? folder.replaceAll('"', '') : folder))
-    .filter(Boolean);
+    .filter((folder) => (windows ? path.win32 : path.posix).isAbsolute(folder));
   const extensions = windows
     ? (env.PATHEXT ?? '.EXE;.COM')
         .split(';')
