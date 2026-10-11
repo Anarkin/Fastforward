@@ -8,15 +8,13 @@ export interface Log {
 }
 
 export function fileLog(file: string, echo = false): Log {
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  try {
-    fs.renameSync(file, file.replace(/\.log$/, '.previous.log'));
-  } catch {}
-  const descriptor = fs.openSync(file, 'a');
+  const descriptor = openLogFile(file);
   const write = (level: string, text: string) => {
     const line = `${new Date().toISOString()} [${level}] ${text}\n`;
     try {
-      fs.writeSync(descriptor, line);
+      if (descriptor !== undefined) {
+        fs.writeSync(descriptor, line);
+      }
     } catch {}
     if (echo) {
       process.stdout.write(line);
@@ -27,6 +25,18 @@ export function fileLog(file: string, echo = false): Log {
     warn: (message) => write('warn', message),
     error: (error) => write('error', errorLine(error)),
   };
+}
+
+function openLogFile(file: string): number | undefined {
+  try {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    try {
+      fs.renameSync(file, file.replace(/\.log$/, '.previous.log'));
+    } catch {}
+    return fs.openSync(file, 'a');
+  } catch {
+    return undefined;
+  }
 }
 
 export function errorLine(error: unknown): string {

@@ -60,4 +60,15 @@ suite('Log file', () => {
     assert.match(current, /second run/);
     assert.doesNotMatch(current, /first run/);
   });
+
+  test('logs to no file when its file cannot be made or opened, rather than keeping the app from starting', () => {
+    const blocked = path.join(folder, 'blocked');
+    fs.writeFileSync(blocked, '');
+    const log = fileLog(path.join(blocked, 'logs', 'Fastforward.log'));
+    log.info('still running');
+    log.error(new Error('still running'));
+    const inUse = path.join(folder, 'inUse.log');
+    fs.mkdirSync(inUse);
+    fileLog(inUse).warn('still running');
+  });
 });
