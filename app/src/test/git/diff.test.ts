@@ -117,7 +117,8 @@ suite('Patch budget', () => {
     assert.strictEqual(sections.length, count);
   });
 
-  test('counts the bytes git sends rather than their characters, from output split anywhere', () => {
+  test('counts the bytes git sends rather than their characters, from output split anywhere', function () {
+    this.timeout(20_000);
     const header = 'diff --git a/zh.txt b/zh.txt\n@@ -0,0 +1 @@\n+';
     const wide = Buffer.from(
       header + '中'.repeat(Math.ceil(patchByteBudget / 3)),

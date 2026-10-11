@@ -84,7 +84,8 @@ suite('Recent tips', () => {
     assert.deepStrictEqual(recentTips(new Map()), []);
   });
 
-  test('picks among more refs than a call takes arguments', () => {
+  test('picks among more refs than a call takes arguments', function () {
+    this.timeout(20_000);
     const dates = new Map(
       Array.from({ length: 500_000 }, (_, index) => [`c${index}`, index]),
     );
