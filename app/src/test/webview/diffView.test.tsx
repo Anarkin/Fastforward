@@ -1049,6 +1049,27 @@ suite('Diff row heights', () => {
     );
   });
 
+  test('measures the widest line of an inline diff by how wide its characters are drawn, as a line of wide characters reached past its count of them and the view jumped once it left the drawn rows', () => {
+    const files = parsePatch(
+      [
+        'diff --git a/a.ts b/a.ts',
+        '--- a/a.ts',
+        '+++ b/a.ts',
+        '@@ -1 +1 @@',
+        '-abcd',
+        '+中中中',
+      ].join('\n'),
+    );
+    const wide: TextWidths = {
+      char: 8,
+      of: (cluster) => (cluster === '中' ? 16 : 8),
+    };
+    assert.strictEqual(
+      widestColumns(diffRows(files, new Map(), undefined), wide),
+      6,
+    );
+  });
+
   test("keys a row by its kind too, so a row of fixed height doesn't take the measured height of a placeholder that was in its place", () => {
     const loading = diffRows([], new Map(), undefined, true);
     const loaded = diffRows(parsePatch(patch('a.ts', 1)), new Map(), undefined);

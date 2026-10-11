@@ -509,12 +509,15 @@ export const layoutVariables: React.CSSProperties = {
   '--diff-marker-width': `${markerWidth}px`,
 };
 
-export function widestColumns(rows: readonly DiffRow[]): number {
+export function widestColumns(
+  rows: readonly DiffRow[],
+  widths?: TextWidths,
+): number {
   let widest = 0;
   for (const row of rows) {
     if (row.kind === 'line' || row.kind === 'wholeLine') {
       const text = row.kind === 'line' ? row.line.text : row.text;
-      widest = Math.max(widest, textColumn(text, text.length));
+      widest = Math.max(widest, textColumn(text, text.length, widths));
     }
   }
   return widest;
@@ -1551,8 +1554,11 @@ export function DiffView({
 
   const keys = useMemo(() => lineKeys(rows), [rows]);
   const widest = useMemo(
-    () => (split || wordWrap ? 0 : widestColumns(rows)),
-    [rows, split, wordWrap],
+    () =>
+      split || wordWrap
+        ? 0
+        : widestColumns(rows, widths.char > 0 ? widths : undefined),
+    [rows, split, wordWrap, widths],
   );
   const words = useMemo(
     () =>
