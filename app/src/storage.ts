@@ -31,8 +31,8 @@ export interface Store {
 }
 
 export class JsonFileStore implements Store {
-  private readonly values: Record<string, unknown>;
-  private readonly unreadable: boolean;
+  private values: Record<string, unknown>;
+  private unreadable: boolean;
   private writing: Promise<void> = Promise.resolve();
   private waiting = false;
 
@@ -47,6 +47,13 @@ export class JsonFileStore implements Store {
   }
 
   update(key: string, value: unknown): Promise<void> {
+    if (this.unreadable) {
+      const values = readJson(this.file);
+      if (values !== undefined) {
+        this.values = { ...values, ...this.values };
+        this.unreadable = false;
+      }
+    }
     if (value === undefined) {
       delete this.values[key];
     } else {

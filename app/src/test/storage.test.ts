@@ -316,6 +316,23 @@ suite('State file', () => {
     assert.ok(!fs.existsSync(`${file}.tmp`));
   });
 
+  test('saves again once a file that could not be read at first can be, keeping what it held under the changes made since', async () => {
+    fs.mkdirSync(file);
+    const store = new JsonFileStore(file);
+    await store.update('tabs', ['/a']);
+    fs.rmdirSync(file);
+    fs.writeFileSync(
+      file,
+      JSON.stringify({ tabs: ['/old'], activeTab: '/old' }),
+    );
+    await store.update('solo', true);
+    assert.deepStrictEqual(store.get('activeTab'), '/old');
+    const reopened = new JsonFileStore(file);
+    assert.deepStrictEqual(reopened.get('tabs'), ['/a']);
+    assert.strictEqual(reopened.get('activeTab'), '/old');
+    assert.strictEqual(reopened.get('solo'), true);
+  });
+
   test('starts afresh from a broken file, keeping a copy of it', () => {
     fs.writeFileSync(file, '{ broken');
     const store = new JsonFileStore(file);
