@@ -1,6 +1,14 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  suite,
+  test,
+} from 'vitest';
 import { workingTreeHash } from '../shared/protocol';
 import { comparisonOf } from '../shared/comparisons';
 import type { Connection } from '../view';
@@ -18,9 +26,7 @@ import {
   openView,
 } from './viewHarness';
 
-suite('View comparing', function () {
-  this.timeout(30_000);
-
+suite('View comparing', () => {
   let repository: TempRepository;
   let page: FakePage;
   let connection: Connection;
@@ -31,7 +37,7 @@ suite('View comparing', function () {
   const { log, error: logged } = recordingLog();
   failOnErrorsLogged(logged);
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     repository = await tempRepository(tempFolder('view-compare'));
     await repository.commit('root', { 'shared.txt': 'one\ntwo\n' });
     await repository.git('checkout', '-b', 'feature');
@@ -45,12 +51,12 @@ suite('View comparing', function () {
     );
   });
 
-  suiteTeardown(async () => {
+  afterAll(async () => {
     await closeViews();
     removeFolder(repository.root);
   });
 
-  setup(async () => {
+  beforeEach(async () => {
     ({ page, connection } = await openView(
       log,
       [repository.root],
@@ -58,7 +64,7 @@ suite('View comparing', function () {
     ));
   });
 
-  teardown(() => connection.dispose());
+  afterEach(() => connection.dispose());
 
   const select = (hash: string) =>
     connection.receive({ type: 'selectCommit', root: repository.root, hash });

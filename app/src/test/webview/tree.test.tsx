@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { suite, test } from 'vitest';
 import type { FileChange } from '../../shared/protocol';
 import { FileRow, twistyWidth } from '../../webview/tree';
 import { fileChange as change, noop, stylesheetPx, tagWith } from '../fixtures';

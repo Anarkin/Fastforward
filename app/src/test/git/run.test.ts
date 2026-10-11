@@ -4,6 +4,7 @@ import { once } from 'node:events';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createInterface } from 'node:readline';
+import { suite, test } from 'vitest';
 import {
   exitedWith,
   gitEnv,
@@ -169,44 +170,50 @@ suite('Running git', () => {
     );
   });
 
-  test("stops what git started too, as the real git outlives Git for Windows' launcher being killed", async function () {
-    if (process.platform !== 'win32') {
-      this.skip();
-    }
-    this.timeout(20_000);
-    const [outlived] = await Promise.all([
-      outlivesKilledLauncher(),
-      stopsWhatItStarted(),
-    ]);
-    assert.ok(outlived, 'what the launcher started to outlive it');
-  });
+  test(
+    "stops what git started too, as the real git outlives Git for Windows' launcher being killed",
+    { timeout: 20_000 },
+    async (context) => {
+      if (process.platform !== 'win32') {
+        context.skip();
+      }
+      const [outlived] = await Promise.all([
+        outlivesKilledLauncher(),
+        stopsWhatItStarted(),
+      ]);
+      assert.ok(outlived, 'what the launcher started to outlive it');
+    },
+  );
 
-  test('stops git with the system taskkill, not one in the current folder', async function () {
-    if (process.platform !== 'win32') {
-      this.skip();
-    }
-    this.timeout(20_000);
-    const folder = tempFolder('run');
-    fs.copyFileSync(
-      path.join(
-        process.env.SystemRoot ?? 'C:\\Windows',
-        'System32',
-        'hostname.exe',
-      ),
-      path.join(folder, 'taskkill.exe'),
-    );
-    const cwd = process.cwd();
-    process.chdir(folder);
-    try {
-      await withEnv(
-        { NoDefaultCurrentDirectoryInExePath: undefined },
-        stopsWhatItStarted,
+  test(
+    'stops git with the system taskkill, not one in the current folder',
+    { timeout: 20_000 },
+    async (context) => {
+      if (process.platform !== 'win32') {
+        context.skip();
+      }
+      const folder = tempFolder('run');
+      fs.copyFileSync(
+        path.join(
+          process.env.SystemRoot ?? 'C:\\Windows',
+          'System32',
+          'hostname.exe',
+        ),
+        path.join(folder, 'taskkill.exe'),
       );
-    } finally {
-      process.chdir(cwd);
-      removeFolder(folder);
-    }
-  });
+      const cwd = process.cwd();
+      process.chdir(folder);
+      try {
+        await withEnv(
+          { NoDefaultCurrentDirectoryInExePath: undefined },
+          stopsWhatItStarted,
+        );
+      } finally {
+        process.chdir(cwd);
+        removeFolder(folder);
+      }
+    },
+  );
 });
 
 async function stopsWhatItStarted(): Promise<void> {

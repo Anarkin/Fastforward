@@ -92,5 +92,5 @@
       }
     }
   ],
-  "ignorePatterns": ["dist", "out", "release"]
+  "ignorePatterns": ["dist", "release"]
 }

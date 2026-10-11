@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { afterAll, beforeAll, suite, test } from 'vitest';
 import { showPatch } from '../../git/diff';
 import {
   listTree,
@@ -20,14 +21,13 @@ import {
   type TempRepository,
 } from '../repositories';
 
-suite('Repository files', function () {
-  this.timeout(20_000);
+suite('Repository files', () => {
   let parent: string;
   let gitPath: string;
   let repository: TempRepository;
   let cwd: string;
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     parent = tempFolder('files');
     repository = await tempRepository(path.join(parent, 'repository'));
     gitPath = repository.gitPath;
@@ -37,7 +37,7 @@ suite('Repository files', function () {
     fs.writeFileSync(path.join(cwd, 'untracked.txt'), 'new\n');
   });
 
-  suiteTeardown(() => removeFolder(parent));
+  afterAll(() => removeFolder(parent));
 
   test('lists the files at a commit and in the working tree', async () => {
     assert.deepStrictEqual(await listTree(gitPath, cwd, 'HEAD'), [
@@ -135,9 +135,9 @@ suite('Repository files', function () {
     }
   });
 
-  test('reads an image in the index whose name looks like a stage, rather than the stage it names', async function () {
+  test('reads an image in the index whose name looks like a stage, rather than the stage it names', async (context) => {
     if (process.platform === 'win32') {
-      this.skip();
+      context.skip();
     }
     const staged = await tempRepository(tempFolder('stage-names'));
     try {
@@ -169,9 +169,9 @@ suite('Repository files', function () {
     }
   });
 
-  test('reads a named pipe in the working tree as empty, rather than waiting on it', async function () {
+  test('reads a named pipe in the working tree as empty, rather than waiting on it', async (context) => {
     if (process.platform === 'win32') {
-      this.skip();
+      context.skip();
     }
     const fifo = path.join(cwd, 'pipe');
     const { execFileSync } = process.getBuiltinModule('node:child_process');
@@ -245,9 +245,9 @@ suite('Repository files', function () {
     }
   });
 
-  test('reads a symlink in the working tree by its target, as git does', async function () {
+  test('reads a symlink in the working tree by its target, as git does', async (context) => {
     const link = path.join(cwd, 'link');
-    symlinkOrSkip(this, 'src/tracked.txt', link);
+    symlinkOrSkip(context, 'src/tracked.txt', link);
     try {
       assert.deepStrictEqual(await readFile(gitPath, cwd, undefined, 'link'), {
         content: 'src/tracked.txt',
@@ -284,14 +284,13 @@ suite('Repository files', function () {
   });
 });
 
-suite('Large files and submodules', function () {
-  this.timeout(20_000);
+suite('Large files and submodules', () => {
   let repository: TempRepository;
   let gitPath: string;
   let cwd: string;
   let inner: string;
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     ({ repository, inner } = await submoduleRepository('large', {
       'large.txt': 'x'.repeat(2 * 1024 * 1024 + 1),
       'exact.txt': 'x'.repeat(2 * 1024 * 1024),
@@ -300,7 +299,7 @@ suite('Large files and submodules', function () {
     cwd = repository.root;
   });
 
-  suiteTeardown(() => removeFolder(cwd));
+  afterAll(() => removeFolder(cwd));
 
   test('shows a file over 2 MB as binary, by its object id at a commit, and one of exactly 2 MB as text', async () => {
     const [object] = await repository.resolve('HEAD:large.txt');
@@ -348,9 +347,7 @@ suite('Large files and submodules', function () {
   });
 });
 
-suite('Blobs', function () {
-  this.timeout(20_000);
-
+suite('Blobs', () => {
   test('reads both sides of the files a patch changes by their full ids, leaving out what is missing, binary or too large', async () => {
     const folder = tempFolder('blobs');
     try {
@@ -388,15 +385,14 @@ suite('Blobs', function () {
   });
 });
 
-suite('Images', function () {
-  this.timeout(20_000);
+suite('Images', () => {
   let folder: string;
   let repository: TempRepository;
   let gitPath: string;
   let cwd: string;
   const pixel = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 1, 2]);
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     folder = tempFolder('images');
     repository = await tempRepository(folder);
     gitPath = repository.gitPath;
@@ -410,7 +406,7 @@ suite('Images', function () {
     await repository.git('commit', '-m', 'images');
   });
 
-  suiteTeardown(() => removeFolder(folder));
+  afterAll(() => removeFolder(folder));
 
   const image = async (id: string, disk: boolean, file = 'pixel.png') =>
     readImage(gitPath, cwd, { path: file, id, disk }, pixel.length);
@@ -514,12 +510,12 @@ suite('Images', function () {
     );
   });
 
-  test('reads no image in the working tree that is itself a symlink, as git sees no image there, so a link leads nowhere outside the repository', async function () {
+  test('reads no image in the working tree that is itself a symlink, as git sees no image there, so a link leads nowhere outside the repository', async (context) => {
     const outside = tempFolder('outside-image');
     fs.writeFileSync(path.join(outside, 'secret.png'), pixel);
     const link = path.join(cwd, 'link.png');
     try {
-      symlinkOrSkip(this, path.join(outside, 'secret.png'), link);
+      symlinkOrSkip(context, path.join(outside, 'secret.png'), link);
       assert.deepStrictEqual(await image('any', true, 'link.png'), {
         kind: 'missing',
       });

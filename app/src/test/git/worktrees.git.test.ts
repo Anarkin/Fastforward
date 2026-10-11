@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { afterAll, beforeAll, suite, test } from 'vitest';
 import { listWorktrees, locateRepository } from '../../git/worktrees';
 import {
   removeFolder,
@@ -36,8 +37,7 @@ async function submoduleWithLinkedWorktree(where: string) {
   return { lib, linked };
 }
 
-suite('Git worktrees', function () {
-  this.timeout(20_000);
+suite('Git worktrees', () => {
   let folder: string;
   let repository: TempRepository;
   let feature: string;
@@ -45,7 +45,7 @@ suite('Git worktrees', function () {
   let gone: string;
   let head: string;
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     folder = tempFolder('worktrees');
     repository = await tempRepository(path.join(folder, 'app'));
     await repository.commit('first');
@@ -60,7 +60,7 @@ suite('Git worktrees', function () {
     fs.rmSync(gone, { recursive: true, force: true });
   });
 
-  suiteTeardown(() => removeFolder(folder));
+  afterAll(() => removeFolder(folder));
 
   let links = 0;
   const linkTo = (target: string) => {

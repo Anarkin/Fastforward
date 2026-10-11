@@ -1,6 +1,15 @@
 import * as assert from 'node:assert';
 import { createServer } from 'node:http';
 import * as path from 'node:path';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  suite,
+  test,
+} from 'vitest';
+import { replaceBuiltin } from './builtins';
 import { sameRoot, soloKey } from '../storage';
 import { waitFor } from './fixtures';
 import {
@@ -27,9 +36,7 @@ import {
   type ViewRepositories,
 } from './viewHarness';
 
-suite('View with two tabs', function () {
-  this.timeout(30_000);
-
+suite('View with two tabs', () => {
   let folder: string;
   let repository: TempRepository;
   let fixture: ViewRepositories['fixture'];
@@ -39,12 +46,12 @@ suite('View with two tabs', function () {
   const { log, error: logged } = recordingLog();
   failOnErrorsLogged(logged);
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     ({ folder, repository, fixture, other, otherHead } =
       await viewRepositories());
   });
 
-  suiteTeardown(async () => {
+  afterAll(async () => {
     await closeViews();
     removeFolder(folder);
   });
@@ -68,7 +75,7 @@ suite('View with two tabs', function () {
     const childProcess = process.getBuiltinModule('node:child_process');
     const { spawn } = childProcess;
     let reading: ReturnType<typeof spawn> | undefined;
-    Reflect.set(
+    replaceBuiltin(
       childProcess,
       'spawn',
       (command: string, args: readonly string[], options: object) => {
@@ -104,7 +111,7 @@ suite('View with two tabs', function () {
         false,
       );
     } finally {
-      Reflect.set(childProcess, 'spawn', spawn);
+      replaceBuiltin(childProcess, 'spawn', spawn);
     }
   });
 
@@ -345,11 +352,11 @@ suite('View with two tabs', function () {
   suite('open', () => {
     let tabs: OpenView;
 
-    setup(async () => {
+    beforeEach(async () => {
       tabs = await openView(log, [repository.root, other], 'unwatched');
     });
 
-    teardown(() => tabs.connection.dispose());
+    afterEach(() => tabs.connection.dispose());
 
     test('comes back to a tab as it was, without reloading its history', async () => {
       await tabs.connection.receive({

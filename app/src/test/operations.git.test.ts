@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { afterAll, beforeAll, suite, test } from 'vitest';
 import { checkout } from '../operations';
 import type { CheckoutTarget } from '../shared/protocol';
 import {
@@ -18,16 +19,14 @@ interface CheckedOut {
   logged: string[];
 }
 
-suite('Operations checking out', function () {
-  this.timeout(30_000);
-
+suite('Operations checking out', () => {
   let folder: string;
   let repository: TempRepository;
   let a: string;
   let b: string;
   let c: string;
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     folder = tempFolder('operations');
     repository = await tempRepository(path.join(folder, 'app'));
     await repository.commit('a');
@@ -37,7 +36,7 @@ suite('Operations checking out', function () {
     await repository.git('remote', 'add', 'origin', repository.root);
   });
 
-  suiteTeardown(() => {
+  afterAll(() => {
     removeFolder(folder);
   });
 

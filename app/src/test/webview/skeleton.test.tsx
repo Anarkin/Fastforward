@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { suite, test } from 'vitest';
 import { SkeletonRows } from '../../webview/skeleton';
 import { tagsWith } from '../fixtures';
 

@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import { EventEmitter } from 'node:events';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { afterEach, beforeEach, suite, test } from 'vitest';
 import {
   affectsWorktree,
   affectsWorktreeList,
@@ -482,7 +483,7 @@ suite('Watching folders one by one', () => {
       },
     });
 
-  setup(() => {
+  beforeEach(() => {
     root = tempFolder('tree');
     watchers = new Map();
     ignoredCalls = [];
@@ -490,7 +491,7 @@ suite('Watching folders one by one', () => {
     errors = [];
   });
 
-  teardown(() => removeFolder(root));
+  afterEach(() => removeFolder(root));
 
   test('watches every folder but skipped and ignored ones and their subfolders', async () => {
     mkdir('a/b', 'a/skipped/c', 'ignored/d', 'e');

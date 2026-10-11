@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import { setTimeout as delay } from 'node:timers/promises';
+import { suite, test } from 'vitest';
 import { rebuilt } from '../../main/files';
 import { reloadOnRebuild } from '../../main/rebuild';
 

@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import { EventEmitter } from 'node:events';
 import { PassThrough } from 'node:stream';
+import { suite, test } from 'vitest';
 import {
   loginShellOptions,
   mergePaths,

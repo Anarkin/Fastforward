@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { afterEach, beforeEach, suite, test } from 'vitest';
 import {
   FileHashes,
   LineCounts,
@@ -34,11 +35,11 @@ suite('Untracked files', () => {
 suite('Hashes of files touched', () => {
   let folder: string;
 
-  setup(() => {
+  beforeEach(() => {
     folder = tempFolder('hashes');
   });
 
-  teardown(() => removeFolder(folder));
+  afterEach(() => removeFolder(folder));
 
   test('hashes a file again only once it changes on disk, as a large binary takes seconds to hash on every refresh', async () => {
     fs.writeFileSync(path.join(folder, 'a.bin'), 'a');
@@ -80,11 +81,11 @@ suite('Hashes of files touched', () => {
 suite('Lines of untracked files', () => {
   let folder: string;
 
-  setup(() => {
+  beforeEach(() => {
     folder = tempFolder('line-counts');
   });
 
-  teardown(() => removeFolder(folder));
+  afterEach(() => removeFolder(folder));
 
   test('counts the lines of a file again only once it changes on disk, as each refresh would read every one whole', async () => {
     const file = path.join(folder, 'new.txt');

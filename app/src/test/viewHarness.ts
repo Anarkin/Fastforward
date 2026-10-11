@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import { createServer } from 'node:http';
 import * as path from 'node:path';
+import { afterEach } from 'vitest';
 import {
   collapseThreshold,
   type ToWebview,
@@ -259,7 +260,7 @@ export function stubMethod(
 }
 
 export function failOnErrorsLogged(logged: unknown[]): void {
-  teardown(() => {
+  afterEach(() => {
     assert.deepStrictEqual(logged.splice(0), []);
   });
 }

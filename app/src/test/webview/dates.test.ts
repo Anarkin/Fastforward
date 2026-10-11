@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { suite, test } from 'vitest';
 import { formatDateTime } from '../../webview/dates';
 
 suite('Dates', () => {

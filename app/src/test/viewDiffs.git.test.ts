@@ -1,6 +1,8 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { afterAll, beforeAll, suite, test } from 'vitest';
+import { replaceBuiltin } from './builtins';
 import {
   collapseThreshold,
   patchByteBudget,
@@ -30,9 +32,7 @@ import {
 const url = (root: string, file: string, id: string, disk = false) =>
   new URL(imageUrl({ root, path: file, id, disk }), 'fastforward://app');
 
-suite('View showing diffs', function () {
-  this.timeout(30_000);
-
+suite('View showing diffs', () => {
   let folder: string;
   let other: string;
   let long: TempRepository;
@@ -43,7 +43,7 @@ suite('View showing diffs', function () {
   const { log, error: logged } = recordingLog();
   failOnErrorsLogged(logged);
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     ({ folder, other } = await viewRepositories());
     long = await tempRepository(path.join(folder, 'long'));
     await long.commit('first', {
@@ -61,7 +61,7 @@ suite('View showing diffs', function () {
     [indent] = await spaced.resolve('HEAD');
   });
 
-  suiteTeardown(async () => {
+  afterAll(async () => {
     await closeViews();
     removeFolder(folder);
   });
@@ -70,7 +70,7 @@ suite('View showing diffs', function () {
     const childProcess = process.getBuiltinModule('node:child_process');
     const { spawn } = childProcess;
     let reading: ReturnType<typeof spawn> | undefined;
-    Reflect.set(
+    replaceBuiltin(
       childProcess,
       'spawn',
       (command: string, args: readonly string[], options: object) => {
@@ -110,7 +110,7 @@ suite('View showing diffs', function () {
         await selected;
       });
     } finally {
-      Reflect.set(childProcess, 'spawn', spawn);
+      replaceBuiltin(childProcess, 'spawn', spawn);
     }
   });
 
@@ -738,7 +738,7 @@ suite('View showing diffs', function () {
     let kept: string;
     let changed: string;
 
-    suiteSetup(async () => {
+    beforeAll(async () => {
       files = await tempRepository(path.join(folder, 'files'));
       await files.commit('kept', { 'kept.txt': 'kept\n' });
       await files.commit('changed', { 'changed.txt': 'changed\n' });
@@ -832,7 +832,7 @@ suite('View showing diffs', function () {
     let images: TempRepository;
     const pixel = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 1]);
 
-    suiteSetup(async () => {
+    beforeAll(async () => {
       images = await tempRepository(path.join(folder, 'images'));
       fs.writeFileSync(path.join(images.root, 'pixel.png'), pixel);
       fs.writeFileSync(path.join(images.root, 'data.bin'), pixel);

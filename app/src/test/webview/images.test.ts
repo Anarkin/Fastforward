@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { suite, test } from 'vitest';
 import { comparisonOf } from '../../shared/comparisons';
 import { imageSourceOf } from '../../shared/images';
 import { workingTreeHash } from '../../shared/protocol';

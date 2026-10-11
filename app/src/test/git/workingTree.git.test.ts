@@ -2,6 +2,8 @@ import * as assert from 'node:assert';
 import type { SpawnOptions } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { afterAll, beforeAll, suite, test } from 'vitest';
+import { replaceBuiltin } from '../builtins';
 import { listTree } from '../../git/files';
 import {
   stagedPatch,
@@ -49,22 +51,21 @@ function holdingGit(held: (args: readonly string[]) => boolean): {
     }
     return child;
   };
-  Reflect.set(childProcess, 'spawn', holding);
+  replaceBuiltin(childProcess, 'spawn', holding);
   return {
     started: (command) => spawned.some((args) => args.includes(command)),
     release: () => {
-      Reflect.set(childProcess, 'spawn', spawn);
+      replaceBuiltin(childProcess, 'spawn', spawn);
       resolve();
     },
   };
 }
 
-suite('A repository without commits', function () {
-  this.timeout(20_000);
+suite('A repository without commits', () => {
   let gitPath: string;
   let cwd: string;
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     const repository = await tempRepository(tempFolder('empty'));
     gitPath = repository.gitPath;
     cwd = repository.root;
@@ -73,7 +74,7 @@ suite('A repository without commits', function () {
     fs.writeFileSync(path.join(cwd, 'untracked.txt'), 'new\n');
   });
 
-  suiteTeardown(() => removeFolder(cwd));
+  afterAll(() => removeFolder(cwd));
 
   test('lists staged files as added, and untracked ones', async () => {
     const workingTree = await workingTreeFiles(gitPath, cwd);
@@ -90,8 +91,7 @@ suite('A repository without commits', function () {
   });
 });
 
-suite('Files touched but unchanged', function () {
-  this.timeout(20_000);
+suite('Files touched but unchanged', () => {
   let repository: TempRepository;
   let gitPath: string;
   let cwd: string;
@@ -113,7 +113,7 @@ suite('Files touched but unchanged', function () {
     },
   });
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     repository = await tempRepository(tempFolder('touched'));
     gitPath = repository.gitPath;
     cwd = repository.root;
@@ -134,7 +134,7 @@ suite('Files touched but unchanged', function () {
     }
   });
 
-  suiteTeardown(() => removeFolder(cwd));
+  afterAll(() => removeFolder(cwd));
 
   test('lists and diffs only the changed file, leaving the index for a commit made meanwhile to lock', async () => {
     const before = fs.readFileSync(index);
@@ -151,9 +151,9 @@ suite('Files touched but unchanged', function () {
     assert.ok(fs.readFileSync(index).equals(before));
   });
 
-  test('leaves out files only touched, whatever their names hold', async function () {
+  test('leaves out files only touched, whatever their names hold', async (context) => {
     if (process.platform === 'win32') {
-      this.skip();
+      context.skip();
     }
     const names = ['"notes".md', 'Icon\r', 'two\nlines', 'back\\slash'];
     for (const name of names) {
@@ -208,9 +208,7 @@ suite('Files touched but unchanged', function () {
 
 suite(
   'Files touched but unchanged, committed with CRLF before autocrlf was on',
-  function () {
-    this.timeout(20_000);
-
+  () => {
     test('leaves out the touched file, which git does not count as changed, but keeps a changed binary file, whose lines git does not count', async () => {
       const repository = await tempRepository(tempFolder('touched-crlf'));
       const cwd = repository.root;
@@ -238,9 +236,7 @@ suite(
   },
 );
 
-suite('A file renamed and edited', function () {
-  this.timeout(20_000);
-
+suite('A file renamed and edited', () => {
   test('counts the bytes of its new text on disk', async () => {
     const repository = await tempRepository(tempFolder('renamed'));
     const cwd = repository.root;
@@ -263,11 +259,10 @@ suite('A file renamed and edited', function () {
   });
 });
 
-suite('Staged and unstaged changes', function () {
-  this.timeout(20_000);
+suite('Staged and unstaged changes', () => {
   let repository: TempRepository;
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     repository = await tempRepository(tempFolder('staged'));
     await repository.commit('initial', {
       'both.txt': 'one\n',
@@ -286,7 +281,7 @@ suite('Staged and unstaged changes', function () {
     write('new.txt', 'new\n');
   });
 
-  suiteTeardown(() => removeFolder(repository.root));
+  afterAll(() => removeFolder(repository.root));
 
   test('lists the staged changes apart from the unstaged ones, which it diffs against the index', async () => {
     const workingTree = await workingTreeFiles(
@@ -396,11 +391,10 @@ suite('Staged and unstaged changes', function () {
   });
 });
 
-suite('A conflicted merge', function () {
-  this.timeout(20_000);
+suite('A conflicted merge', () => {
   let conflicted: TempRepository;
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     conflicted = await tempRepository(tempFolder('conflicted'));
     await conflicted.commit('initial');
     await conflicted.git('checkout', '-q', '-b', 'side');
@@ -410,7 +404,7 @@ suite('A conflicted merge', function () {
     await assert.rejects(conflicted.git('merge', 'side'));
   });
 
-  suiteTeardown(() => removeFolder(conflicted.root));
+  afterAll(() => removeFolder(conflicted.root));
 
   test('lists the conflicted file once, with the unstaged changes', async () => {
     const workingTree = await workingTreeFiles(
@@ -492,12 +486,11 @@ suite('A conflicted merge', function () {
   });
 });
 
-suite('Uncommitted changes', function () {
-  this.timeout(20_000);
+suite('Uncommitted changes', () => {
   let gitPath: string;
   let cwd: string;
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     const repository = await tempRepository(tempFolder('changes'));
     gitPath = repository.gitPath;
     cwd = repository.root;
@@ -508,7 +501,7 @@ suite('Uncommitted changes', function () {
     fs.writeFileSync(path.join(nested.root, 'inner.txt'), 'inner\n');
   });
 
-  suiteTeardown(() => removeFolder(cwd));
+  afterAll(() => removeFolder(cwd));
 
   test('lists modified and untracked files', async () => {
     const { files } = await workingTreeFiles(gitPath, cwd);
@@ -703,10 +696,10 @@ suite('Uncommitted changes', function () {
     }
   });
 
-  test('counts an untracked symlink as the one line git diffs it as, its target', async function () {
+  test('counts an untracked symlink as the one line git diffs it as, its target', async (context) => {
     const target = path.join(cwd, 'target.txt');
     const link = path.join(cwd, 'link');
-    symlinkOrSkip(this, 'target.txt', link);
+    symlinkOrSkip(context, 'target.txt', link);
     fs.writeFileSync(target, 'a\nb\n');
     try {
       const { files } = await workingTreeFiles(gitPath, cwd);
@@ -942,12 +935,11 @@ suite('Uncommitted changes', function () {
   });
 });
 
-suite('Comparing a commit with the working tree', function () {
-  this.timeout(20_000);
+suite('Comparing a commit with the working tree', () => {
   let repository: TempRepository;
   let first: string;
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     repository = await tempRepository(tempFolder('compare-working-tree'));
     await repository.commit('first', { 'kept.txt': 'one\n' });
     await repository.commit('second', {
@@ -959,7 +951,7 @@ suite('Comparing a commit with the working tree', function () {
     fs.writeFileSync(path.join(repository.root, 'new.txt'), 'new\n');
   });
 
-  suiteTeardown(() => removeFolder(repository.root));
+  afterAll(() => removeFolder(repository.root));
 
   test('lists the comparison from the untracked files a listing of the working tree found, without asking git for them again, as listing it anew would', async () => {
     await repository.git('rm', '-q', '--cached', 'kept.txt');

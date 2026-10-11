@@ -1,17 +1,19 @@
 import * as assert from 'node:assert';
 import fs from 'node:fs';
 import * as path from 'node:path';
+import { afterEach, beforeEach, suite, test } from 'vitest';
+import { replaceBuiltin } from './builtins';
 import { fileLog } from '../log';
 import { removeFolder, tempFolder } from './repositories';
 
 suite('Log file', () => {
   let folder: string;
 
-  setup(() => {
+  beforeEach(() => {
     folder = tempFolder('log');
   });
 
-  teardown(() => removeFolder(folder));
+  afterEach(() => removeFolder(folder));
 
   test('writes each line to disk as soon as it is logged, with its time and level, errors with their stack, as an alert holding the main process or a crash can come next', () => {
     const file = path.join(folder, 'logs', 'Fastforward.log');
@@ -31,7 +33,7 @@ suite('Log file', () => {
     const file = path.join(folder, 'Fastforward.log');
     const log = fileLog(file);
     const write = fs.writeSync;
-    Reflect.set(fs, 'writeSync', () => {
+    replaceBuiltin(fs, 'writeSync', () => {
       throw Object.assign(new Error('ENOSPC: no space left on device, write'), {
         code: 'ENOSPC',
       });
@@ -40,7 +42,7 @@ suite('Log file', () => {
       log.info('lost');
       log.error(new Error('lost too'));
     } finally {
-      Reflect.set(fs, 'writeSync', write);
+      replaceBuiltin(fs, 'writeSync', write);
     }
     log.info('written once there is space');
     const lines = fs.readFileSync(file, 'utf8');

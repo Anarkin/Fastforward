@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { suite, test } from 'vitest';
 import { gitErrorText } from '../../git/errorText';
 
 suite('Git error text', () => {

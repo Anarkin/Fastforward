@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import { Virtualizer, type VirtualizerOptions } from '@tanstack/react-virtual';
+import { suite, test } from 'vitest';
 import { realHeight, scrollCap } from '../../webview/cappedScroll';
 import { CappedScroll, cappedScrolling } from '../../webview/cappedVirtualizer';
 import { posingAsElement } from '../fixtures';

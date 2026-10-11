@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import createDOMPurify from 'dompurify';
 import { JSDOM } from 'jsdom';
 import markdownIt from 'markdown-it';
+import { afterAll, suite, test } from 'vitest';
 import { imageSourceOf } from '../../shared/images';
 import { documentImagePath, documentImageUrl } from '../../webview/images';
 import { showImages } from '../../webview/markdownPreview';
@@ -12,7 +13,7 @@ const render = markdownRenderer(createDOMPurify(window), markdownIt);
 const noImages = () => undefined;
 
 suite('Markdown', () => {
-  suiteTeardown(() => window.close());
+  afterAll(() => window.close());
 
   test('renders what GitHub renders: tables, strikethrough, links and task lists', () => {
     const html = render(

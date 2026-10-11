@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import { execFile } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { afterEach, beforeEach, suite, test } from 'vitest';
 import {
   removeFolder,
   tempFolder,
@@ -32,15 +33,13 @@ async function failingHook(
   await repository.git('config', 'core.hooksPath', hooks);
 }
 
-suite('Release', function () {
-  this.timeout(30_000);
-
+suite('Release', () => {
   let folder: string;
   let remote: TempRepository;
   let local: TempRepository;
   let start: string;
 
-  setup(async () => {
+  beforeEach(async () => {
     folder = tempFolder('release');
     remote = await tempRepository(path.join(folder, 'remote.git'), {
       bare: true,
@@ -58,7 +57,7 @@ suite('Release', function () {
     fs.writeFileSync(path.join(folder, 'npm.js'), fakeNpm);
   });
 
-  teardown(() => removeFolder(folder));
+  afterEach(() => removeFolder(folder));
 
   const releasing = () =>
     new Promise<{ released: boolean; said: string }>((resolve) => {

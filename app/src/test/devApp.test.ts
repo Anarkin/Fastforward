@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import { EventEmitter } from 'node:events';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { suite, test } from 'vitest';
 
 const appFolder = path.join(__dirname, '..', '..');
 

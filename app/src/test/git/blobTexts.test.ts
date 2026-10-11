@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { suite, test } from 'vitest';
 import { BlobTexts } from '../../git/blobTexts';
 
 function reader(texts: Readonly<Record<string, string>>) {

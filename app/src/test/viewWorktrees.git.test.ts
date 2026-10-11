@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import { createServer } from 'node:http';
 import * as path from 'node:path';
+import { afterAll, beforeAll, suite, test } from 'vitest';
 import type { ToWebviewOf } from '../shared/protocol';
 import { shortHash } from '../shared/hashes';
 import { strings } from '../shared/strings';
@@ -51,8 +52,7 @@ function worktreeRoot(view: OpenView, root: string): string {
   return found.root;
 }
 
-suite('View of worktrees', function () {
-  this.timeout(30_000);
+suite('View of worktrees', () => {
   const { log, error: logged } = recordingLog();
   failOnErrorsLogged(logged);
   let folder: string;
@@ -62,7 +62,7 @@ suite('View of worktrees', function () {
   let other: string;
   let reviewHead: string;
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     folder = tempFolder('worktree-view');
     repository = await tempRepository(path.join(folder, 'app'));
     await repository.commit('a');
@@ -81,7 +81,7 @@ suite('View of worktrees', function () {
     other = second.root;
   });
 
-  suiteTeardown(async () => {
+  afterAll(async () => {
     await closeViews();
     removeFolder(folder);
   });

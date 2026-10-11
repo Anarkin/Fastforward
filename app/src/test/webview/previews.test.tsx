@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { suite, test } from 'vitest';
 import { collapseThreshold } from '../../shared/protocol';
 import { parsePatch, textKey, type DiffFile } from '../../webview/diff';
 import { diffRows } from '../../webview/diffView';

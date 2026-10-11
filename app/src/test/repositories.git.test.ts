@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { suite, test } from 'vitest';
 import {
   removeFolder,
   tempFolder,
@@ -8,9 +9,7 @@ import {
   withEnv,
 } from './repositories';
 
-suite('Test repository', function () {
-  this.timeout(20_000);
-
+suite('Test repository', () => {
   test("commits whatever the user's own git config says, which may sign commits or run hooks", async () => {
     const folder = tempFolder('own-config');
     const config = path.join(folder, '.gitconfig');

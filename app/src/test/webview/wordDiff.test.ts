@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { suite, test } from 'vitest';
 import { parsePatch, type DiffLine } from '../../webview/diff';
 import type { FindRange } from '../../webview/find';
 import {

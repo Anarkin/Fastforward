@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import * as path from 'node:path';
+import { suite, test } from 'vitest';
 import {
   appFile,
   firstWindowSize,

@@ -2,12 +2,11 @@ import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import * as esbuild from 'esbuild';
+import { suite, test } from 'vitest';
 
 const appFolder = path.join(__dirname, '..', '..', '..');
 
-suite('Webview bundle', function () {
-  this.timeout(30_000);
-
+suite('Webview bundle', { timeout: 30_000 }, () => {
   test('loads the grammars, the WebAssembly of the Oniguruma engine, markdown-it and DOMPurify only once a file or preview needs them', async () => {
     const {
       webviewOptions,

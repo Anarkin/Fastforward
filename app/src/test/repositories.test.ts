@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
+import { suite, test } from 'vitest';
 import { foldersLeft, removeFolder, tempFolder } from './repositories';
 
 suite('Folders left behind', () => {

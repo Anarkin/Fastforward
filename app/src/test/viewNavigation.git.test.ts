@@ -1,6 +1,14 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  suite,
+  test,
+} from 'vitest';
 import { workingTreeHash } from '../shared/protocol';
 import type { Connection, FastforwardView } from '../view';
 import { waitFor } from './fixtures';
@@ -23,9 +31,7 @@ import {
   type ViewRepositories,
 } from './viewHarness';
 
-suite('View navigating the history', function () {
-  this.timeout(30_000);
-
+suite('View navigating the history', () => {
   let folder: string;
   let repository: TempRepository;
   let fixture: ViewRepositories['fixture'];
@@ -33,11 +39,11 @@ suite('View navigating the history', function () {
   const { log, error: logged } = recordingLog();
   failOnErrorsLogged(logged);
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     ({ folder, repository, fixture } = await viewRepositories());
   });
 
-  suiteTeardown(async () => {
+  afterAll(async () => {
     await closeViews();
     removeFolder(folder);
   });
@@ -46,7 +52,7 @@ suite('View navigating the history', function () {
   let page: FakePage;
   let connection: Connection;
 
-  setup(async () => {
+  beforeEach(async () => {
     ({
       view: fastforward,
       page,
@@ -54,7 +60,7 @@ suite('View navigating the history', function () {
     } = await openView(log, [repository.root], 'unwatched'));
   });
 
-  teardown(() => connection.dispose());
+  afterEach(() => connection.dispose());
 
   test('reports a jump to a commit outside the history as a notice', async () => {
     await withNotices(page, 'error', async (messages) => {

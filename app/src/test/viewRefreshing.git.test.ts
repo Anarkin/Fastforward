@@ -1,6 +1,15 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  suite,
+  test,
+} from 'vitest';
+import { replaceBuiltin } from './builtins';
 import { comparisonOf } from '../shared/comparisons';
 import { workingTreeHash } from '../shared/protocol';
 import { strings } from '../shared/strings';
@@ -40,9 +49,7 @@ async function letARefreshThatSkippedTheQueueStart(): Promise<void> {
   }
 }
 
-suite('View refreshing one repository', function () {
-  this.timeout(30_000);
-
+suite('View refreshing one repository', () => {
   let folder: string;
   let repository: TempRepository;
   let fixture: ViewRepositories['fixture'];
@@ -50,11 +57,11 @@ suite('View refreshing one repository', function () {
   const { log, info, error: logged } = recordingLog();
   failOnErrorsLogged(logged);
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     ({ folder, repository, fixture } = await viewRepositories());
   });
 
-  suiteTeardown(async () => {
+  afterAll(async () => {
     await closeViews();
     removeFolder(folder);
   });
@@ -272,7 +279,7 @@ suite('View refreshing one repository', function () {
     let connection: Connection;
     let store: FakeStore;
 
-    setup(async () => {
+    beforeEach(async () => {
       ({
         view: fastforward,
         page,
@@ -281,7 +288,7 @@ suite('View refreshing one repository', function () {
       } = await openView(log, [repository.root], 'unwatched'));
     });
 
-    teardown(() => connection.dispose());
+    afterEach(() => connection.dispose());
 
     test('refreshes once more for a page that asks while a refresh runs', async () => {
       let calls = 0;
@@ -670,7 +677,7 @@ suite('View refreshing one repository', function () {
           hash: comparisonOf(fixture.a, workingTreeHash),
         });
         fs.writeFileSync(made, 'made\n');
-        Reflect.set(
+        replaceBuiltin(
           childProcess,
           'spawn',
           (...args: Parameters<typeof spawn>) => {
@@ -691,7 +698,7 @@ suite('View refreshing one repository', function () {
           page.last('files')?.files.some((file) => file.path === 'made.txt'),
         );
       } finally {
-        Reflect.set(childProcess, 'spawn', spawn);
+        replaceBuiltin(childProcess, 'spawn', spawn);
         fs.rmSync(made, { force: true });
       }
     });
@@ -713,7 +720,7 @@ suite('View refreshing one repository', function () {
         });
         fs.writeFileSync(path.join(repository.root, 'sized.txt'), 'two\n');
         fs.writeFileSync(untracked, 'new\n');
-        Reflect.set(
+        replaceBuiltin(
           childProcess,
           'spawn',
           (...args: Parameters<typeof spawn>) => {
@@ -724,7 +731,7 @@ suite('View refreshing one repository', function () {
             return spawn(...args);
           },
         );
-        Reflect.set(
+        replaceBuiltin(
           fileSystem,
           'createReadStream',
           (...args: Parameters<typeof createReadStream>) => {
@@ -737,8 +744,8 @@ suite('View refreshing one repository', function () {
         assert.strictEqual(page.last('workingTree')?.files, 2);
         assert.deepStrictEqual(read, []);
       } finally {
-        Reflect.set(childProcess, 'spawn', spawn);
-        Reflect.set(fileSystem, 'createReadStream', createReadStream);
+        replaceBuiltin(childProcess, 'spawn', spawn);
+        replaceBuiltin(fileSystem, 'createReadStream', createReadStream);
         fs.rmSync(untracked, { force: true });
         await restore();
       }
@@ -769,7 +776,7 @@ suite('View refreshing one repository', function () {
         stubMethod(fastforward, 'refreshOnce', (original, context) =>
           original(context, change),
         );
-        Reflect.set(
+        replaceBuiltin(
           childProcess,
           'spawn',
           (...args: Parameters<typeof spawn>) => {
@@ -793,7 +800,7 @@ suite('View refreshing one repository', function () {
         assert.strictEqual(listings, 1);
         assert.deepStrictEqual(page.last('tree')?.paths, ['made.txt']);
       } finally {
-        Reflect.set(childProcess, 'spawn', spawn);
+        replaceBuiltin(childProcess, 'spawn', spawn);
         fs.rmSync(made, { force: true });
         await restore();
       }

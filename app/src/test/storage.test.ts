@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { afterEach, beforeEach, suite, test } from 'vitest';
 import { UserSettings } from '../settings';
 import { strings } from '../shared/strings';
 import {
@@ -246,12 +247,12 @@ suite('State file', () => {
   let folder: string;
   let file: string;
 
-  setup(() => {
+  beforeEach(() => {
     folder = tempFolder('state');
     file = path.join(folder, 'state.json');
   });
 
-  teardown(() => removeFolder(folder));
+  afterEach(() => removeFolder(folder));
 
   test('keeps what was saved for the next start', async () => {
     const store = new JsonFileStore(file);

@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { afterAll, suite, test } from 'vitest';
 import { activeTabKey } from '../storage';
 import { tabName } from '../view';
 import { waitFor } from './fixtures';
@@ -36,7 +37,7 @@ suite('View with no tab open', () => {
   const { log, error: logged } = recordingLog();
   failOnErrorsLogged(logged);
 
-  suiteTeardown(closeViews);
+  afterAll(closeViews);
 
   test('opens the settings files through the app', async () => {
     const host = new FakeHost();
@@ -139,7 +140,7 @@ suite('View fetching by itself', () => {
   const { log, error: logged } = recordingLog();
   failOnErrorsLogged(logged);
 
-  suiteTeardown(closeViews);
+  afterAll(closeViews);
 
   test('fetches the active repository first, then the rest in tab order', async () => {
     const [first, second, third] = ['first', 'second', 'third'].map((name) =>

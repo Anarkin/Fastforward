@@ -1,6 +1,15 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  suite,
+  test,
+} from 'vitest';
+import { replaceBuiltin } from './builtins';
 import { comparisonOf } from '../shared/comparisons';
 import { workingTreeHash, type BookmarkRef } from '../shared/protocol';
 import { strings } from '../shared/strings';
@@ -39,9 +48,7 @@ import {
 } from './viewHarness';
 import { watchesRecursively } from '../git/watch';
 
-suite('View of one repository', function () {
-  this.timeout(30_000);
-
+suite('View of one repository', () => {
   let folder: string;
   let repository: TempRepository;
   let fixture: ViewRepositories['fixture'];
@@ -49,11 +56,11 @@ suite('View of one repository', function () {
   const { log, error: logged } = recordingLog();
   failOnErrorsLogged(logged);
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     ({ folder, repository, fixture } = await viewRepositories());
   });
 
-  suiteTeardown(async () => {
+  afterAll(async () => {
     await closeViews();
     removeFolder(folder);
   });
@@ -176,14 +183,14 @@ suite('View of one repository', function () {
     }
   });
 
-  test("says changes made outside the app won't show once a folder it watches recursively stops being watched", async function () {
+  test("says changes made outside the app won't show once a folder it watches recursively stops being watched", async (context) => {
     if (!watchesRecursively()) {
-      this.skip();
+      context.skip();
     }
     const nodeFs = process.getBuiltinModule('node:fs');
     const { watch } = nodeFs;
     const made: fs.FSWatcher[] = [];
-    Reflect.set(nodeFs, 'watch', (...args: Parameters<typeof watch>) => {
+    replaceBuiltin(nodeFs, 'watch', (...args: Parameters<typeof watch>) => {
       const real = watch(...args);
       made.push(real);
       return real;
@@ -192,7 +199,7 @@ suite('View of one repository', function () {
     try {
       opened = await openView(log, [repository.root]);
     } finally {
-      Reflect.set(nodeFs, 'watch', watch);
+      replaceBuiltin(nodeFs, 'watch', watch);
     }
     try {
       await withNotices(opened.page, 'error', (notices) => {
@@ -397,9 +404,9 @@ suite('View of one repository', function () {
     }
   });
 
-  test('keeps a folder spelled two ways as one tab', async function () {
+  test('keeps a folder spelled two ways as one tab', async (context) => {
     if (process.platform !== 'win32') {
-      this.skip();
+      context.skip();
     }
     const respelled = repository.root.replace(/^[a-z]/i, (drive) =>
       drive === drive.toUpperCase() ? drive.toLowerCase() : drive.toUpperCase(),
@@ -419,7 +426,7 @@ suite('View of one repository', function () {
     let connection: Connection;
     let store: FakeStore;
 
-    setup(async () => {
+    beforeEach(async () => {
       ({
         view: fastforward,
         page,
@@ -428,7 +435,7 @@ suite('View of one repository', function () {
       } = await openView(log, [repository.root], 'unwatched'));
     });
 
-    teardown(() => connection.dispose());
+    afterEach(() => connection.dispose());
 
     test('shows the history with merges collapsed', () => {
       const commits = page.last('commits');
@@ -1045,7 +1052,7 @@ suite('View of one repository', function () {
           hash: fixture.merge,
         });
         let gits = 0;
-        Reflect.set(
+        replaceBuiltin(
           childProcess,
           'spawn',
           (...args: Parameters<typeof spawn>) => {
@@ -1069,7 +1076,7 @@ suite('View of one repository', function () {
         }
         assert.strictEqual(gits, 1);
       } finally {
-        Reflect.set(childProcess, 'spawn', spawn);
+        replaceBuiltin(childProcess, 'spawn', spawn);
         fs.rmSync(file, { force: true });
       }
     });

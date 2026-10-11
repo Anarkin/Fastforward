@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { afterAll, suite, test } from 'vitest';
 import { extendedHistory, listHistory } from '../../git/history';
 import { readRefs } from '../../git/repository';
 import { headsOf } from '../../history/merges';
@@ -86,8 +87,7 @@ async function mergedOlderBranch(repo: TempRepository) {
   };
 }
 
-suite('Extending the history read from git', function () {
-  this.timeout(120_000);
+suite('Extending the history read from git', { timeout: 120_000 }, () => {
   const made: string[] = [];
 
   async function repository(name: string): Promise<TempRepository> {
@@ -96,11 +96,11 @@ suite('Extending the history read from git', function () {
     return made1;
   }
 
-  suiteTeardown(() => {
+  afterAll(() => {
     for (const root of made) {
       removeFolder(root);
     }
-  });
+  }, 120_000);
 
   test('adds a commit on the branch checked out as reading the history whole would', async () => {
     const repo = await repository('extend-commit');

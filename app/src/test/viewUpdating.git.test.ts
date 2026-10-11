@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { afterAll, beforeAll, suite, test } from 'vitest';
 import type { Connection } from '../view';
 import { waitFor } from './fixtures';
 import {
@@ -24,9 +25,7 @@ import {
   withNotices,
 } from './viewHarness';
 
-suite('View updating by itself', function () {
-  this.timeout(30_000);
-
+suite('View updating by itself', () => {
   let folder: string;
   let repository: TempRepository;
   let remote: TempRepository;
@@ -49,7 +48,7 @@ suite('View updating by itself', function () {
     );
   }
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     restoreEnv = savedEnv(['GCM_INTERACTIVE']);
     delete process.env.GCM_INTERACTIVE;
     folder = tempFolder('fetch');
@@ -67,7 +66,7 @@ suite('View updating by itself', function () {
     ({ page, connection } = await openView(log, [repository.root]));
   });
 
-  suiteTeardown(async () => {
+  afterAll(async () => {
     restoreEnv();
     await closeViews();
     removeFolder(folder);

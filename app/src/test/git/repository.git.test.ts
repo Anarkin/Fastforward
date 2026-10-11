@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import { createServer } from 'node:http';
 import * as path from 'node:path';
+import { afterAll, beforeAll, suite, test } from 'vitest';
 import {
   fetchAllRemotes,
   readHead,
@@ -20,21 +21,20 @@ import {
   type TempRepository,
 } from '../repositories';
 
-suite('Git repository', function () {
-  this.timeout(20_000);
+suite('Git repository', () => {
   let gitPath: string;
   let temp: TempRepository;
   let cwd: string;
   let rename: string;
   let blob: string;
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     ({ temp, rename, blob } = await renamingRepository('repository'));
     gitPath = temp.gitPath;
     cwd = temp.root;
   });
 
-  suiteTeardown(() => removeFolder(cwd));
+  afterAll(() => removeFolder(cwd));
 
   test("lists branches, remote branches and tags, but not a remote's HEAD, though a branch on it may be named HEAD", async () => {
     await temp.git('update-ref', 'refs/remotes/origin/main', 'HEAD');

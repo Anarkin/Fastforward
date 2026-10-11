@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import { createElement } from 'react';
+import { suite, test } from 'vitest';
 import {
   columnFocusAttribute,
   type ColumnName,

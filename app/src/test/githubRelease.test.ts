@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { suite, test } from 'vitest';
 
 type Gh = (args: readonly string[]) => string;
 

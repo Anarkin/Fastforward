@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { suite, test } from 'vitest';
 import { fetchStatus } from '../../webview/fetchStatus';
 
 const minute = 60_000;

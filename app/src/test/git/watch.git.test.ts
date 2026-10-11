@@ -2,6 +2,15 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  suite,
+  test,
+} from 'vitest';
+import { replaceBuiltin } from '../builtins';
+import {
   ignoredPaths,
   watchesRecursively,
   watchRepository,
@@ -16,14 +25,13 @@ import {
   type TempRepository,
 } from '../repositories';
 
-suite('Watching a repository', function () {
-  this.timeout(20_000);
+suite('Watching a repository', () => {
   let repository: TempRepository;
   let watcher: Watcher | undefined;
   let changes: boolean[];
   let errors: unknown[];
 
-  setup(async () => {
+  beforeEach(async () => {
     repository = await tempRepository(tempFolder('watch'));
     fs.writeFileSync(
       path.join(repository.root, '.gitignore'),
@@ -36,16 +44,16 @@ suite('Watching a repository', function () {
     errors = [];
   });
 
-  setup(function () {
+  beforeEach((context) => {
     if (
       !watchesRecursively() &&
-      this.currentTest?.title.endsWith('watching recursively')
+      context.task.name.endsWith('watching recursively')
     ) {
-      this.skip();
+      context.skip();
     }
   });
 
-  teardown(async () => {
+  afterEach(async () => {
     await watcher?.dispose();
     watcher = undefined;
     removeFolder(repository.root);
@@ -116,9 +124,9 @@ suite('Watching a repository', function () {
     assert.deepStrictEqual(errors, []);
   });
 
-  test('refreshes for a file named like pathspec magic, though the file it names is ignored, watching folder by folder', async function () {
+  test('refreshes for a file named like pathspec magic, though the file it names is ignored, watching folder by folder', async (context) => {
     if (process.platform === 'win32') {
-      this.skip();
+      context.skip();
     }
     await start();
     await keepWriting(':build', 'the file');
@@ -179,10 +187,14 @@ suite('Watching a repository', function () {
     const statted: string[] = [];
     const nodeFs = process.getBuiltinModule('node:fs');
     const { statSync } = nodeFs;
-    Reflect.set(nodeFs, 'statSync', (...args: Parameters<typeof statSync>) => {
-      statted.push(String(args[0]));
-      return statSync(...args);
-    });
+    replaceBuiltin(
+      nodeFs,
+      'statSync',
+      (...args: Parameters<typeof statSync>) => {
+        statted.push(String(args[0]));
+        return statSync(...args);
+      },
+    );
     try {
       watcher = await watchRepository(repository.gitPath, repository.root, {
         delay: 50,
@@ -205,7 +217,7 @@ suite('Watching a repository', function () {
         [],
       );
     } finally {
-      Reflect.set(nodeFs, 'statSync', statSync);
+      replaceBuiltin(nodeFs, 'statSync', statSync);
     }
   });
 
@@ -213,7 +225,7 @@ suite('Watching a repository', function () {
     const nodeFs = process.getBuiltinModule('node:fs');
     const { watch } = nodeFs;
     const made: fs.FSWatcher[] = [];
-    Reflect.set(nodeFs, 'watch', (...args: Parameters<typeof watch>) => {
+    replaceBuiltin(nodeFs, 'watch', (...args: Parameters<typeof watch>) => {
       const real = watch(...args);
       made.push(real);
       return real;
@@ -229,7 +241,7 @@ suite('Watching a repository', function () {
         onStopped: (error) => stopped.push(error),
       });
     } finally {
-      Reflect.set(nodeFs, 'watch', watch);
+      replaceBuiltin(nodeFs, 'watch', watch);
     }
     const failure = Object.assign(new Error('EPERM: operation not permitted'), {
       code: 'EPERM',
@@ -250,7 +262,7 @@ suite('Watching a repository', function () {
       onError: (error) => errors.push(error),
     });
     await settled();
-    Reflect.set(nodeFs, 'statSync', () => {
+    replaceBuiltin(nodeFs, 'statSync', () => {
       throw Object.assign(new Error('EACCES: permission denied'), {
         code: 'EACCES',
       });
@@ -265,7 +277,7 @@ suite('Watching a repository', function () {
         changes.includes(true),
       );
     } finally {
-      Reflect.set(nodeFs, 'statSync', statSync);
+      replaceBuiltin(nodeFs, 'statSync', statSync);
       process.removeListener('uncaughtException', onUncaught);
       for (const listener of listeners) {
         process.on('uncaughtException', listener);
@@ -1027,11 +1039,10 @@ suite('Watching a repository', function () {
   }
 });
 
-suite('Telling the ignored paths', function () {
-  this.timeout(20_000);
+suite('Telling the ignored paths', () => {
   let repository: TempRepository;
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     repository = await tempRepository(tempFolder('ignored'));
     fs.writeFileSync(
       path.join(repository.root, '.gitignore'),
@@ -1040,7 +1051,7 @@ suite('Telling the ignored paths', function () {
     fs.mkdirSync(path.join(repository.root, 'ignored'));
   });
 
-  suiteTeardown(() => removeFolder(repository.root));
+  afterAll(() => removeFolder(repository.root));
 
   test('tells the ignored folders', async () => {
     const kept = path.join(repository.root, 'kept');

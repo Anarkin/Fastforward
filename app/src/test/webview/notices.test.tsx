@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { suite, test } from 'vitest';
 import { addNotice } from '../../shared/notices';
 import { fading, Notices, type Notice } from '../../webview/notices';
 import { renderedBy } from '../fixtures';

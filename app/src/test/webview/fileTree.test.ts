@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { suite, test } from 'vitest';
 import { buildFileTree, foldersOf } from '../../webview/fileTree';
 import { fileChange } from '../fixtures';
 

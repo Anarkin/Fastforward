@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { suite, test } from 'vitest';
 import {
   blobsToSize,
   leftOutOf,
@@ -134,36 +135,43 @@ suite('Patch budget', () => {
     assert.strictEqual(sections.length, count);
   });
 
-  test('counts the bytes git sends rather than their characters, from output split anywhere', function () {
-    this.timeout(20_000);
-    const header = 'diff --git a/zh.txt b/zh.txt\n@@ -0,0 +1 @@\n+';
-    const wide = Buffer.from(
-      header + '中'.repeat(Math.ceil(patchByteBudget / 3)),
-    );
-    for (const end of ['', '\n']) {
-      const output = Buffer.concat([wide, Buffer.from(end)]);
-      for (const split of [header.length + 1, output.length - 1]) {
-        const budget = new PatchBudget();
-        budget.add(output.subarray(0, split));
-        budget.add(output.subarray(split));
-        assert.deepStrictEqual(budget.end().sections, [
-          {
-            header: 'diff --git a/zh.txt b/zh.txt',
-            lines: undefined,
-            kept: false,
-          },
-        ]);
+  test(
+    'counts the bytes git sends rather than their characters, from output split anywhere',
+    { timeout: 20_000 },
+    () => {
+      const header = 'diff --git a/zh.txt b/zh.txt\n@@ -0,0 +1 @@\n+';
+      const wide = Buffer.from(
+        header + '中'.repeat(Math.ceil(patchByteBudget / 3)),
+      );
+      for (const end of ['', '\n']) {
+        const output = Buffer.concat([wide, Buffer.from(end)]);
+        for (const split of [header.length + 1, output.length - 1]) {
+          const budget = new PatchBudget();
+          budget.add(output.subarray(0, split));
+          budget.add(output.subarray(split));
+          assert.deepStrictEqual(budget.end().sections, [
+            {
+              header: 'diff --git a/zh.txt b/zh.txt',
+              lines: undefined,
+              kept: false,
+            },
+          ]);
+        }
       }
-    }
-    const undecodable = new PatchBudget();
-    undecodable.add(
-      Buffer.from('diff --git a/latin1.txt b/latin1.txt\n@@ -0,0 +1 @@\n+'),
-    );
-    undecodable.add(Buffer.alloc(patchByteBudget / 2, 0xe9));
-    assert.deepStrictEqual(undecodable.end().sections, [
-      { header: 'diff --git a/latin1.txt b/latin1.txt', lines: 1, kept: true },
-    ]);
-  });
+      const undecodable = new PatchBudget();
+      undecodable.add(
+        Buffer.from('diff --git a/latin1.txt b/latin1.txt\n@@ -0,0 +1 @@\n+'),
+      );
+      undecodable.add(Buffer.alloc(patchByteBudget / 2, 0xe9));
+      assert.deepStrictEqual(undecodable.end().sections, [
+        {
+          header: 'diff --git a/latin1.txt b/latin1.txt',
+          lines: 1,
+          kept: true,
+        },
+      ]);
+    },
+  );
 
   test('reads a long line git sends in many chunks in one pass over it', () => {
     const line = Buffer.alloc(patchByteBudget - 1024, 'x');

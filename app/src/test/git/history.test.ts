@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import * as path from 'node:path';
+import { suite, test } from 'vitest';
 import {
   extendedHistory,
   matchesCommit,
@@ -84,13 +85,16 @@ suite('Recent tips', () => {
     assert.deepStrictEqual(recentTips(new Map()), []);
   });
 
-  test('picks among more refs than a call takes arguments', function () {
-    this.timeout(20_000);
-    const dates = new Map(
-      Array.from({ length: 500_000 }, (_, index) => [`c${index}`, index]),
-    );
-    assert.strictEqual(recentTips(dates).length, 500_000);
-  });
+  test(
+    'picks among more refs than a call takes arguments',
+    { timeout: 20_000 },
+    () => {
+      const dates = new Map(
+        Array.from({ length: 500_000 }, (_, index) => [`c${index}`, index]),
+      );
+      assert.strictEqual(recentTips(dates).length, 500_000);
+    },
+  );
 });
 
 suite('Extending a history', () => {

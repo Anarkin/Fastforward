@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { suite, test } from 'vitest';
 import { themeCss } from '../theme';
 import { defaultSettings } from './fixtures';
 

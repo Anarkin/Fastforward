@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { beforeAll, suite, test } from 'vitest';
 import {
   alignLines,
   lineSimilarity,
@@ -376,7 +377,7 @@ suite('Aligning random changes', () => {
     aligned: LinePair[];
   }[] = [];
 
-  suiteSetup(() => {
+  beforeAll(() => {
     const next = random(20261001);
     cases = Array.from({ length: 500 }, () => {
       const removed = block(next, Math.floor(next() * 8));

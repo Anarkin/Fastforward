@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { suite, test } from 'vitest';
 import { rowPlace } from '../../webview/rowPlace';
 
 suite('Row place', () => {

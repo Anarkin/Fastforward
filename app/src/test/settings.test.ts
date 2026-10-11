@@ -1,6 +1,8 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { afterEach, beforeEach, suite, test } from 'vitest';
+import { replaceBuiltin } from './builtins';
 import {
   mergeSettings,
   migrate,
@@ -142,15 +144,17 @@ function watchersMade(run: () => void): fs.FSWatcher[] {
   const nodeFs = process.getBuiltinModule('node:fs');
   const { watch } = nodeFs;
   const made: fs.FSWatcher[] = [];
-  Reflect.set(nodeFs, 'watch', (...args: Parameters<typeof watch>) => {
+  replaceBuiltin(nodeFs, 'watch', (...args: Parameters<typeof watch>) => {
     const real = watch(...args);
     made.push(real);
     return real;
   });
+  process.getBuiltinModule('node:module').syncBuiltinESMExports();
   try {
     run();
   } finally {
-    Reflect.set(nodeFs, 'watch', watch);
+    replaceBuiltin(nodeFs, 'watch', watch);
+    process.getBuiltinModule('node:module').syncBuiltinESMExports();
   }
   return made;
 }
@@ -159,12 +163,12 @@ suite('User settings file', () => {
   let folder: string;
   let file: string;
 
-  setup(() => {
+  beforeEach(() => {
     folder = tempFolder('settings');
     file = path.join(folder, 'settings.user.json');
   });
 
-  teardown(() => removeFolder(folder));
+  afterEach(() => removeFolder(folder));
 
   const written = (): unknown => JSON.parse(fs.readFileSync(file, 'utf8'));
 
@@ -265,10 +269,10 @@ suite('User settings file', () => {
     assert.ok(!fs.existsSync(`${file}.tmp`));
   });
 
-  test('saves to the file a symlink points to, keeping the symlink', async function () {
+  test('saves to the file a symlink points to, keeping the symlink', async (context) => {
     const target = path.join(folder, 'dotfiles.json');
     fs.writeFileSync(target, '{}');
-    symlinkOrSkip(this, target, file);
+    symlinkOrSkip(context, target, file);
     const user = new UserSettings(defaults, file);
     await user.set('solo', true);
     assert.ok(fs.lstatSync(file).isSymbolicLink());
@@ -277,10 +281,10 @@ suite('User settings file', () => {
     });
   });
 
-  test('saves to the file a symlink points to while that file is missing, keeping the symlink', async function () {
+  test('saves to the file a symlink points to while that file is missing, keeping the symlink', async (context) => {
     const target = path.join(folder, 'dotfiles', 'settings.json');
     fs.mkdirSync(path.dirname(target));
-    symlinkOrSkip(this, path.join('dotfiles', 'settings.json'), file);
+    symlinkOrSkip(context, path.join('dotfiles', 'settings.json'), file);
     const user = new UserSettings(defaults, file);
     assert.deepStrictEqual(user.problems, []);
     await user.set('solo', true);
@@ -290,9 +294,9 @@ suite('User settings file', () => {
     });
   });
 
-  test('neither replaces a symlink nor makes the folder it points into while that folder is missing', async function () {
+  test('neither replaces a symlink nor makes the folder it points into while that folder is missing', async (context) => {
     const target = path.join(folder, 'dotfiles', 'settings.json');
-    symlinkOrSkip(this, target, file);
+    symlinkOrSkip(context, target, file);
     await assert.rejects(writeAtomically(file, '{}'), { code: 'ENOENT' });
     assert.ok(fs.lstatSync(file).isSymbolicLink());
     assert.ok(!fs.existsSync(path.dirname(target)));
@@ -332,43 +336,52 @@ suite('User settings file', () => {
     }
   });
 
-  test('stops watching the folder of the file a symlink points to once that folder is removed, as Windows then tells of changes in it without end', async function () {
-    this.timeout(20_000);
-    const target = path.join(folder, 'dotfiles', 'settings.json');
-    fs.mkdirSync(path.dirname(target));
-    fs.writeFileSync(target, '{}');
-    let stop: (() => void) | undefined;
-    const made = watchersMade(() => {
-      stop = watchSettings(file, () => {}, 10, target);
-    });
-    try {
-      const closed = new Set<fs.FSWatcher>();
-      for (const watcher of made) {
-        watcher.on('close', () => closed.add(watcher));
+  test(
+    'stops watching the folder of the file a symlink points to once that folder is removed, as Windows then tells of changes in it without end',
+    { timeout: 20_000 },
+    async () => {
+      const target = path.join(folder, 'dotfiles', 'settings.json');
+      fs.mkdirSync(path.dirname(target));
+      fs.writeFileSync(target, '{}');
+      let stop: (() => void) | undefined;
+      const made = watchersMade(() => {
+        stop = watchSettings(file, () => {}, 10, target);
+      });
+      try {
+        const closed = new Set<fs.FSWatcher>();
+        for (const watcher of made) {
+          watcher.on('close', () => closed.add(watcher));
+        }
+        fs.rmSync(path.dirname(target), { recursive: true });
+        await waitFor(() => closed.size === 1, 'the watcher to stop');
+        assert.strictEqual(closed.has(made[0]), false);
+      } finally {
+        stop?.();
       }
-      fs.rmSync(path.dirname(target), { recursive: true });
-      await waitFor(() => closed.size === 1, 'the watcher to stop');
-      assert.strictEqual(closed.has(made[0]), false);
-    } finally {
-      stop?.();
-    }
-  });
+    },
+  );
 
-  test('notices a change to the file it was given as the one the settings resolve to, in another folder, as an editor writes to the file a symlink points to', async function () {
-    this.timeout(20_000);
-    const target = path.join(folder, 'dotfiles', 'settings.json');
-    fs.mkdirSync(path.dirname(target));
-    await noticed(target, target);
-  });
+  test(
+    'notices a change to the file it was given as the one the settings resolve to, in another folder, as an editor writes to the file a symlink points to',
+    { timeout: 20_000 },
+    async () => {
+      const target = path.join(folder, 'dotfiles', 'settings.json');
+      fs.mkdirSync(path.dirname(target));
+      await noticed(target, target);
+    },
+  );
 
-  test('finds the file a symlink points to for watching', async function () {
-    this.timeout(20_000);
-    const target = path.join(folder, 'dotfiles', 'settings.json');
-    fs.mkdirSync(path.dirname(target));
-    fs.writeFileSync(target, '{}');
-    symlinkOrSkip(this, target, file);
-    await noticed(target);
-  });
+  test(
+    'finds the file a symlink points to for watching',
+    { timeout: 20_000 },
+    async (context) => {
+      const target = path.join(folder, 'dotfiles', 'settings.json');
+      fs.mkdirSync(path.dirname(target));
+      fs.writeFileSync(target, '{}');
+      symlinkOrSkip(context, target, file);
+      await noticed(target);
+    },
+  );
 
   test('saves once the file is let go, as Windows refuses to replace a file antivirus or the indexer holds for a moment', async () => {
     for (const code of ['EPERM', 'EACCES', 'EBUSY']) {

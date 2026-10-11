@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { afterAll, beforeAll, suite, test } from 'vitest';
 import {
   aheadBehind,
   readUpstream,
@@ -9,19 +10,18 @@ import {
 import { renamingRepository } from '../gitFixtures';
 import { removeFolder, type TempRepository } from '../repositories';
 
-suite('Git branches', function () {
-  this.timeout(20_000);
+suite('Git branches', () => {
   let gitPath: string;
   let temp: TempRepository;
   let cwd: string;
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     ({ temp } = await renamingRepository('branches'));
     gitPath = temp.gitPath;
     cwd = temp.root;
   });
 
-  suiteTeardown(() => removeFolder(cwd));
+  afterAll(() => removeFolder(cwd));
 
   test('reads the upstream of the checked-out branch, or why it has none', async () => {
     await temp.git('remote', 'add', 'origin', 'https://example.com/x.git');

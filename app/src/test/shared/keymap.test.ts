@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { suite, test } from 'vitest';
 import {
   clicked,
   keyLabels,

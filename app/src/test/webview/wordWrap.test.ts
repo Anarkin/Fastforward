@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { suite, test } from 'vitest';
 import { wrapColumns, wrappedLines } from '../../webview/wordWrap';
 
 suite('Word wrap', () => {

@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { afterAll, beforeAll, suite, test } from 'vitest';
 import {
   compareFiles,
   comparePatch,
@@ -38,20 +39,19 @@ function changedLines(patch: string): string[] {
     .filter((line) => /^[+-]./.test(line));
 }
 
-suite('Git diff', function () {
-  this.timeout(20_000);
+suite('Git diff', () => {
   let gitPath: string;
   let temp: TempRepository;
   let cwd: string;
   let rename: string;
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     ({ temp, rename } = await renamingRepository('diff'));
     gitPath = temp.gitPath;
     cwd = temp.root;
   });
 
-  suiteTeardown(() => removeFolder(cwd));
+  afterAll(() => removeFolder(cwd));
 
   test('reads non-ASCII paths and blank context lines the same whatever the config says', async () => {
     await temp.git('config', 'core.quotePath', 'true');
@@ -435,21 +435,20 @@ suite('Git diff', function () {
   });
 });
 
-suite('Git diff of a submodule', function () {
-  this.timeout(20_000);
+suite('Git diff of a submodule', () => {
   let gitPath: string;
   let cwd: string;
   let inner: string;
   let repository: TempRepository;
   let sub: TempRepository;
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     ({ repository, sub, inner } = await submoduleRepository('submodule'));
     gitPath = repository.gitPath;
     cwd = repository.root;
   });
 
-  suiteTeardown(() => removeFolder(cwd));
+  afterAll(() => removeFolder(cwd));
 
   test('diffs a submodule by its commits, whatever the config says', async () => {
     await sub.commit('moved');
@@ -467,14 +466,13 @@ suite('Git diff of a submodule', function () {
   });
 });
 
-suite('Comparing two commits', function () {
-  this.timeout(20_000);
+suite('Comparing two commits', () => {
   let repository: TempRepository;
   let feature: string;
   let main: string;
   let unrelated: string;
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     repository = await tempRepository(tempFolder('compare'));
     await repository.commit('root', { 'shared.txt': 'one\ntwo\n' });
     await repository.git('checkout', '-b', 'feature');
@@ -495,7 +493,7 @@ suite('Comparing two commits', function () {
     );
   });
 
-  suiteTeardown(() => removeFolder(repository.root));
+  afterAll(() => removeFolder(repository.root));
 
   test('lists every file whose content differs between commits on different branches', async () => {
     const files = await compareFiles(

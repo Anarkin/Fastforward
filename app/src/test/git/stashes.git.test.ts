@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { afterAll, beforeAll, suite, test } from 'vitest';
 import { listHistory } from '../../git/history';
 import { listStashes, stashFiles, stashPatch } from '../../git/stashes';
 import { entriesOf } from '../history/historyFixtures';
@@ -11,13 +12,12 @@ import {
   type TempRepository,
 } from '../repositories';
 
-suite('Git stashes', function () {
-  this.timeout(20_000);
+suite('Git stashes', () => {
   let folder: string;
   let temp: TempRepository;
   let base: string;
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     folder = tempFolder('stashes');
     temp = await tempRepository(path.join(folder, 'repository'));
     await temp.commit('base', { 'tracked.txt': 'one\n' });
@@ -29,7 +29,7 @@ suite('Git stashes', function () {
     await temp.git('stash', 'push', '-q', '-u', '-m', 'with new');
   });
 
-  suiteTeardown(() => removeFolder(folder));
+  afterAll(() => removeFolder(folder));
 
   test('lists the stashes newest first, with their messages and the commit of their untracked files', async () => {
     const stashes = await listStashes(temp.gitPath, temp.root);

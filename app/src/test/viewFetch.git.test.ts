@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import { createServer } from 'node:http';
 import * as path from 'node:path';
+import { afterAll, beforeAll, suite, test } from 'vitest';
 import { lastFetchesKey } from '../storage';
 import type { Connection } from '../view';
 import { waitFor } from './fixtures';
@@ -24,9 +25,7 @@ import {
   withNotices,
 } from './viewHarness';
 
-suite('View fetching', function () {
-  this.timeout(30_000);
-
+suite('View fetching', () => {
   let folder: string;
   let repository: TempRepository;
   let remote: TempRepository;
@@ -47,7 +46,7 @@ suite('View fetching', function () {
     );
   }
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     restoreEnv = savedEnv(['GCM_INTERACTIVE']);
     delete process.env.GCM_INTERACTIVE;
     folder = tempFolder('fetch');
@@ -65,7 +64,7 @@ suite('View fetching', function () {
     ));
   });
 
-  suiteTeardown(async () => {
+  afterAll(async () => {
     restoreEnv();
     await closeViews();
     removeFolder(folder);

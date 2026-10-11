@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { suite, test } from 'vitest';
 import { keymap } from '../../shared/keymap';
 import { appKeyPressed, keyPressed } from '../../webview/shortcuts';
 import { element, keyPress, withMacKeys } from '../fixtures';

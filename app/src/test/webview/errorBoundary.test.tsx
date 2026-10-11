@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { suite, test } from 'vitest';
 import { Crash, ErrorBoundary } from '../../webview/errorBoundary';
 import { renderedBy } from '../fixtures';
 

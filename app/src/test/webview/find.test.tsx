@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { suite, test } from 'vitest';
 import { parsePatch, type DiffFile } from '../../webview/diff';
 import { DiffFind, FindActions } from '../../webview/diffColumn';
 import {

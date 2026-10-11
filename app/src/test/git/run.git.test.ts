@@ -1,6 +1,8 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { afterAll, beforeAll, suite, test } from 'vitest';
+import { replaceBuiltin } from '../builtins';
 import { gitErrorText } from '../../git/errorText';
 import { fastForward } from '../../git/branches';
 import {
@@ -44,7 +46,7 @@ async function printing300MB(run: () => Promise<unknown>): Promise<void> {
     };
     write();
   `;
-  Reflect.set(
+  replaceBuiltin(
     childProcess,
     'spawn',
     (command: string, args: readonly string[], options: object) =>
@@ -62,7 +64,7 @@ async function printing300MB(run: () => Promise<unknown>): Promise<void> {
       return true;
     });
   } finally {
-    Reflect.set(childProcess, 'spawn', spawn);
+    replaceBuiltin(childProcess, 'spawn', spawn);
   }
 }
 
@@ -106,20 +108,19 @@ async function stuckWriting(
   }
 }
 
-suite('Running git in a repository', function () {
-  this.timeout(20_000);
+suite('Running git in a repository', () => {
   let gitPath: string;
   let temp: TempRepository;
   let cwd: string;
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     temp = await tempRepository(tempFolder('run'));
     gitPath = temp.gitPath;
     cwd = temp.root;
     await temp.commit('first', { 'a.txt': 'a\n' });
   });
 
-  suiteTeardown(() => removeFolder(cwd));
+  afterAll(() => removeFolder(cwd));
 
   test('says git printed over 256 MB, bounding the memory its output takes, though it warned of something first, as the warning would hide why it was stopped', async () => {
     await printing300MB(() => runGit(gitPath, cwd, ['printing']));
@@ -286,9 +287,9 @@ suite('Running git in a repository', function () {
     }
   });
 
-  test('stops what git started too, even what outlived the process that started it', async function () {
+  test('stops what git started too, even what outlived the process that started it', async (context) => {
     if (process.platform === 'win32') {
-      this.skip();
+      context.skip();
     }
     const folder = tempFolder('outlived');
     const started = path.join(folder, 'started');
@@ -531,7 +532,7 @@ suite('Running git in a repository', function () {
     }
   });
 
-  test("runs the real git behind Git for Windows' launcher, its shell seeing what the launcher would give it, but the launcher for commands that run hooks", async function () {
+  test("runs the real git behind Git for Windows' launcher, its shell seeing what the launcher would give it, but the launcher for commands that run hooks", async (context) => {
     const bin = path.dirname(gitPath);
     const root =
       path.basename(bin).toLowerCase() === 'cmd'
@@ -539,26 +540,30 @@ suite('Running git in a repository', function () {
         : path.dirname(path.dirname(bin));
     const launcher = path.join(root, 'cmd', 'git.exe');
     if (process.platform !== 'win32' || !fs.existsSync(launcher)) {
-      this.skip();
+      context.skip();
     }
     const childProcess = process.getBuiltinModule('node:child_process');
     const { spawn } = childProcess;
     const started: string[] = [];
     const seen = ['-c', 'alias.seen=!echo "$MSYSTEM $PATH"', 'seen'];
-    Reflect.set(childProcess, 'spawn', (...args: Parameters<typeof spawn>) => {
-      const [command, gitArgs] = args;
-      if (gitArgs.includes('seen')) {
-        started.push(command);
-      }
-      return spawn(...args);
-    });
+    replaceBuiltin(
+      childProcess,
+      'spawn',
+      (...args: Parameters<typeof spawn>) => {
+        const [command, gitArgs] = args;
+        if (gitArgs.includes('seen')) {
+          started.push(command);
+        }
+        return spawn(...args);
+      },
+    );
     let direct: string;
     let hooked: string;
     try {
       direct = await runGit(launcher, cwd, seen);
       hooked = await runGit(launcher, cwd, seen, { runsHooks: true });
     } finally {
-      Reflect.set(childProcess, 'spawn', spawn);
+      replaceBuiltin(childProcess, 'spawn', spawn);
     }
     assert.strictEqual(direct, hooked);
     assert.match(
@@ -616,9 +621,7 @@ function running(pid: number): boolean {
   }
 }
 
-suite('A file system monitor the repository sets', function () {
-  this.timeout(20_000);
-
+suite('A file system monitor the repository sets', () => {
   test('is never run when it is a command, which git would run on every read of the index', async () => {
     const folder = tempFolder('monitored');
     try {

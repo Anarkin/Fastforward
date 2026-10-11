@@ -1,13 +1,13 @@
 import * as assert from 'node:assert';
-import { mock } from 'node:test';
 import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { afterEach, suite, test, vi } from 'vitest';
 import { adjacentWorktree, WorktreeBar } from '../../webview/worktreeBar';
 import { rested } from '../componentFixtures';
 import { noop, renderedBy, tagsWith } from '../fixtures';
 
 suite('Worktree bar', () => {
-  teardown(() => mock.timers.reset());
+  afterEach(() => vi.useRealTimers());
 
   type Worktree = {
     title: string;
@@ -110,7 +110,7 @@ suite('Worktree bar', () => {
   });
 
   test('opens and preloads a worktree, but neither a missing one', () => {
-    mock.timers.enable({ apis: ['setTimeout'] });
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     const selected: string[] = [];
     const preloaded: string[] = [];
     const [, gone, feature] = worktreesOf(selected, preloaded);

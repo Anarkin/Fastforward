@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import { EventEmitter } from 'node:events';
+import { suite, test } from 'vitest';
 import type { ToWebview, UpdateStatus } from '../../shared/protocol';
 import { strings } from '../../shared/strings';
 import {

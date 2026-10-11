@@ -1,4 +1,12 @@
 import * as assert from 'node:assert';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  suite,
+  test,
+} from 'vitest';
 import type { Connection, FastforwardView } from '../view';
 import { waitFor } from './fixtures';
 import { removeFolder, type TempRepository } from './repositories';
@@ -17,9 +25,7 @@ import {
   type ViewRepositories,
 } from './viewHarness';
 
-suite('View checking out', function () {
-  this.timeout(30_000);
-
+suite('View checking out', () => {
   let folder: string;
   let repository: TempRepository;
   let fixture: ViewRepositories['fixture'];
@@ -27,11 +33,11 @@ suite('View checking out', function () {
   const { log, error: logged } = recordingLog();
   failOnErrorsLogged(logged);
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     ({ folder, repository, fixture } = await viewRepositories());
   });
 
-  suiteTeardown(async () => {
+  afterAll(async () => {
     await closeViews();
     removeFolder(folder);
   });
@@ -42,7 +48,7 @@ suite('View checking out', function () {
   let page: FakePage;
   let connection: Connection;
 
-  setup(async () => {
+  beforeEach(async () => {
     ({
       view: fastforward,
       page,
@@ -50,7 +56,7 @@ suite('View checking out', function () {
     } = await openView(log, [repository.root], 'unwatched'));
   });
 
-  teardown(() => connection.dispose());
+  afterEach(() => connection.dispose());
 
   test('shows a detached HEAD as a bubble on its commit', async () => {
     page.clear();

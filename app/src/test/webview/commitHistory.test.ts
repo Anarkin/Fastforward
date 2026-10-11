@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { suite, test } from 'vitest';
 import { commitPageSize, pageStart } from '../../shared/protocol';
 import { CommitHistory } from '../../webview/commitHistory';
 import { commitInfo } from '../fixtures';

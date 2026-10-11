@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { suite, test } from 'vitest';
 import { strings } from '../../shared/strings';
 import { TitleBar, windowTitle } from '../../webview/titleBar';
 import { stylesheet, stylesheetPx } from '../fixtures';

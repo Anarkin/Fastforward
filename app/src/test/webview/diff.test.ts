@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { suite, test } from 'vitest';
 import { parsePatch, unquotePath } from '../../webview/diff';
 
 const lacking = (header: readonly string[], ...lines: string[]) =>

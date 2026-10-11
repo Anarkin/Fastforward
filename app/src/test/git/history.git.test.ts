@@ -2,6 +2,8 @@ import * as assert from 'node:assert';
 import type { ChildProcess, SpawnOptions } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { afterAll, beforeAll, suite, test } from 'vitest';
+import { replaceBuiltin } from '../builtins';
 import { gitErrorText } from '../../git/errorText';
 import { showFiles, showPatch } from '../../git/diff';
 import {
@@ -46,11 +48,11 @@ async function searchingWith(
     args.some((arg) => arg.startsWith('--format=%H%x00'))
       ? start(spawn, command, args, options)
       : spawn(command, args, options);
-  Reflect.set(childProcess, 'spawn', starting);
+  replaceBuiltin(childProcess, 'spawn', starting);
   try {
     await search();
   } finally {
-    Reflect.set(childProcess, 'spawn', spawn);
+    replaceBuiltin(childProcess, 'spawn', spawn);
   }
 }
 
@@ -61,21 +63,20 @@ const fastImported = (count: number, from: string) =>
       `commit refs/heads/main\ncommitter Test <test@example.com> ${index + 1} +0000\ndata 0\n${index === 0 ? from : ''}\n`,
   ).join('');
 
-suite('Git history', function () {
-  this.timeout(20_000);
+suite('Git history', () => {
   let gitPath: string;
   let temp: TempRepository;
   let cwd: string;
   let rename: string;
   let blob: string;
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     ({ temp, rename, blob } = await renamingRepository('history'));
     gitPath = temp.gitPath;
     cwd = temp.root;
   });
 
-  suiteTeardown(() => removeFolder(cwd));
+  afterAll(() => removeFolder(cwd));
 
   test('lists the history of HEAD, the branches, the remotes and the tags, and only of HEAD when solo', async () => {
     const [first, tree] = await temp.resolve('HEAD~2', 'HEAD^{tree}');
@@ -409,18 +410,17 @@ suite('Git history', function () {
   });
 });
 
-suite('Git history of a repository without commits', function () {
-  this.timeout(20_000);
+suite('Git history of a repository without commits', () => {
   let gitPath: string;
   let cwd: string;
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     const repository = await tempRepository(tempFolder('empty'));
     gitPath = repository.gitPath;
     cwd = repository.root;
   });
 
-  suiteTeardown(() => removeFolder(cwd));
+  afterAll(() => removeFolder(cwd));
 
   test('has no HEAD and an empty history', async () => {
     assert.strictEqual(await headCommit(gitPath, cwd), undefined);
@@ -428,12 +428,11 @@ suite('Git history of a repository without commits', function () {
   });
 });
 
-suite('Commit search', function () {
-  this.timeout(60000);
+suite('Commit search', { timeout: 60000 }, () => {
   let search: TempRepository;
   let gitPath: string;
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     search = await tempRepository(tempFolder('search'));
     gitPath = search.gitPath;
     await search.git(
@@ -480,9 +479,9 @@ suite('Commit search', function () {
       path.join(search.root, '.mailmap'),
       'New Name <old@example.com>\n',
     );
-  });
+  }, 60000);
 
-  suiteTeardown(() => removeFolder(search.root));
+  afterAll(() => removeFolder(search.root));
 
   const subjectsFound = async (query: string) =>
     (await searchCommits(gitPath, search.root, query, false)).commits.map(

@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { suite, test } from 'vitest';
 import type { HistoryEntry } from '../../git/history';
 import { Commits } from '../../history/commits';
 import {

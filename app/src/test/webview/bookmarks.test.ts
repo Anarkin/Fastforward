@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { suite, test } from 'vitest';
 import type { RefInfo, Bookmark, BookmarkRef } from '../../shared/protocol';
 import {
   compareBookmarks,

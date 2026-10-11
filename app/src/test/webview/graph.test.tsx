@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { suite, test } from 'vitest';
 import type { GraphRow } from '../../shared/protocol';
 import { GraphCell, graphWidth, rowLanes } from '../../webview/graph';
 import { noop } from '../fixtures';

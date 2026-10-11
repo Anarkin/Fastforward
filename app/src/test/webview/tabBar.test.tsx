@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
-import { mock } from 'node:test';
 import { isValidElement } from 'react';
+import { afterEach, suite, test, vi } from 'vitest';
 import type { ContextMenuItem } from '../../webview/contextMenu';
 import {
   adjacentTab,
@@ -13,7 +13,7 @@ import { rested } from '../componentFixtures';
 import { noModifiers, noop, renderedBy } from '../fixtures';
 
 suite('Tab bar', () => {
-  teardown(() => mock.timers.reset());
+  afterEach(() => vi.useRealTimers());
 
   const tabs = ['a', 'b', 'c'].map((name) => ({ root: `/${name}`, name }));
 
@@ -253,7 +253,7 @@ suite('Tab bar', () => {
   });
 
   test('preloads only a tab not shown that the pointer rests on, and closes one only by its button or the middle button', () => {
-    mock.timers.enable({ apis: ['setTimeout'] });
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     const preloaded: string[] = [];
     const closed: string[] = [];
     const nav = renderedBy(TabBar, {

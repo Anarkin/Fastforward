@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { suite, test } from 'vitest';
 import { App, menuIn, nextMenu, tabContent } from '../../webview/App';
 import { noop, tagsWith } from '../fixtures';
 

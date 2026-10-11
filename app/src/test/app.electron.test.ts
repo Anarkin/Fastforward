@@ -8,6 +8,7 @@ import {
   type Locator,
   type Page,
 } from 'playwright-core';
+import { afterAll, beforeAll, beforeEach, suite, test } from 'vitest';
 import { strings } from '../shared/strings';
 import { defaultSettings, waitFor } from './fixtures';
 import {
@@ -71,16 +72,14 @@ async function scrollsOnWheelOver(
 
 const baseSettings = { diffLayout: 'inline' };
 
-suite('App', function () {
-  this.timeout(60_000);
-
+suite('App', () => {
   let folder: string;
   let profile: string;
   let repository: TempRepository;
   let app: ElectronApplication;
   let page: Page;
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     folder = tempFolder('app');
     profile = path.join(folder, 'profile');
     repository = await tempRepository(path.join(folder, 'repo'));
@@ -109,12 +108,12 @@ suite('App', function () {
     await waitForSettingsToBeWatched();
   });
 
-  suiteTeardown(async () => {
+  afterAll(async () => {
     await app?.close();
     removeFolder(folder);
   });
 
-  setup(async () => {
+  beforeEach(async () => {
     await resetSettings();
     await page.locator('.commit', { hasText: 'second' }).waitFor();
     for (const [popup, focused] of [
@@ -1004,14 +1003,12 @@ suite('App', function () {
   });
 });
 
-suite('App with lists longer than their columns', function () {
-  this.timeout(60_000);
-
+suite('App with lists longer than their columns', () => {
   let folder: string;
   let app: ElectronApplication;
   let page: Page;
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     folder = tempFolder('long-lists');
     const profile = path.join(folder, 'profile');
     const repository = await tempRepository(path.join(folder, 'repo'));
@@ -1051,7 +1048,7 @@ suite('App with lists longer than their columns', function () {
     await page.locator('.diff-line', { hasText: firstLongLine }).waitFor();
   });
 
-  suiteTeardown(async () => {
+  afterAll(async () => {
     await app?.close();
     removeFolder(folder);
   });
@@ -1106,9 +1103,7 @@ suite('App with lists longer than their columns', function () {
   });
 });
 
-suite('App quitting', function () {
-  this.timeout(60_000);
-
+suite('App quitting', () => {
   test('stops the git it still runs, which would outlive it', async () => {
     const folder = tempFolder('quitting');
     const profile = path.join(folder, 'profile');
@@ -1262,9 +1257,7 @@ suite('App quitting', function () {
   });
 });
 
-suite('App whose page is gone', function () {
-  this.timeout(60_000);
-
+suite('App whose page is gone', () => {
   test('loads the page again once its process is gone, such as killed or out of memory, saying so in the log, as the window stayed blank', async () => {
     const folder = tempFolder('page-gone');
     const profile = path.join(folder, 'profile');
@@ -1322,9 +1315,7 @@ suite('App whose page is gone', function () {
   });
 });
 
-suite('App without git', function () {
-  this.timeout(60_000);
-
+suite('App without git', () => {
   test('says it needs git, showing no window', async () => {
     const folder = tempFolder('no-git');
     const profile = path.join(folder, 'profile');

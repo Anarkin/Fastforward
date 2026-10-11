@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
-import { mock } from 'node:test';
 import { isValidElement } from 'react';
+import { vi } from 'vitest';
 import { preloadDelay } from '../webview/tabBar';
 import { FileRow } from '../webview/tree';
 
@@ -17,4 +17,4 @@ export function clickFile(row: React.ReactElement) {
   drawn.props.onClick();
 }
 
-export const rested = () => mock.timers.tick(preloadDelay);
+export const rested = () => vi.advanceTimersByTime(preloadDelay);

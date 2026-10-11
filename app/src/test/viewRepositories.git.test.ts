@@ -1,6 +1,8 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { afterAll, beforeAll, suite, test } from 'vitest';
+import { replaceBuiltin } from './builtins';
 import { workingTreeHash } from '../shared/protocol';
 import { recentKey, sameRoot } from '../storage';
 import {
@@ -29,9 +31,7 @@ import {
   type ViewRepositories,
 } from './viewHarness';
 
-suite('View of other repositories', function () {
-  this.timeout(30_000);
-
+suite('View of other repositories', () => {
   let folder: string;
   let repository: TempRepository;
   let fixture: ViewRepositories['fixture'];
@@ -41,12 +41,12 @@ suite('View of other repositories', function () {
   const { log, error: logged } = recordingLog();
   failOnErrorsLogged(logged);
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     ({ folder, repository, fixture, other, otherHead } =
       await viewRepositories());
   });
 
-  suiteTeardown(async () => {
+  afterAll(async () => {
     await closeViews();
     removeFolder(folder);
   });
@@ -56,7 +56,7 @@ suite('View of other repositories', function () {
       const childProcess = process.getBuiltinModule('node:child_process');
       const { spawn } = childProcess;
       let reads = 0;
-      Reflect.set(
+      replaceBuiltin(
         childProcess,
         'spawn',
         (command: string, args: readonly string[], options: object) => {
@@ -84,7 +84,7 @@ suite('View of other repositories', function () {
         await reload();
         assert.strictEqual(reads, 1);
       } finally {
-        Reflect.set(childProcess, 'spawn', spawn);
+        replaceBuiltin(childProcess, 'spawn', spawn);
         await view.settings.set('collapseMerges', true);
         await view.settings.set('solo', false);
       }
@@ -649,15 +649,14 @@ suite('View of other repositories', function () {
   });
 });
 
-suite('View upstream', function () {
-  this.timeout(30_000);
+suite('View upstream', () => {
   const { log, error: logged } = recordingLog();
   failOnErrorsLogged(logged);
   let folder: string;
   let repository: TempRepository;
   let upstream: string;
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     folder = tempFolder('upstream');
     repository = await tempRepository(path.join(folder, 'app'));
     await repository.commit('a');
@@ -671,7 +670,7 @@ suite('View upstream', function () {
     await repository.git('branch', '--set-upstream-to=origin/main');
   });
 
-  suiteTeardown(async () => {
+  afterAll(async () => {
     await closeViews();
     removeFolder(folder);
   });
@@ -739,15 +738,14 @@ suite('View upstream', function () {
   });
 });
 
-suite('View stashes', function () {
-  this.timeout(30_000);
+suite('View stashes', () => {
   const { log, error: logged } = recordingLog();
   failOnErrorsLogged(logged);
   let folder: string;
   let repository: TempRepository;
   let stash: string;
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     folder = tempFolder('stash');
     repository = await tempRepository(path.join(folder, 'app'));
     await repository.commit('a', { 'tracked.txt': 'one\n' });
@@ -758,7 +756,7 @@ suite('View stashes', function () {
     [stash] = await repository.resolve('stash@{0}');
   });
 
-  suiteTeardown(async () => {
+  afterAll(async () => {
     await closeViews();
     removeFolder(folder);
   });
@@ -830,14 +828,13 @@ suite('View stashes', function () {
   });
 });
 
-suite('View staged and unstaged changes', function () {
-  this.timeout(30_000);
+suite('View staged and unstaged changes', () => {
   const { log, error: logged } = recordingLog();
   failOnErrorsLogged(logged);
   let folder: string;
   let repository: TempRepository;
 
-  suiteSetup(async () => {
+  beforeAll(async () => {
     folder = tempFolder('staging');
     repository = await tempRepository(path.join(folder, 'app'));
     await repository.commit('a', { 'both.txt': 'one\n' });
@@ -846,7 +843,7 @@ suite('View staged and unstaged changes', function () {
     fs.writeFileSync(path.join(repository.root, 'both.txt'), 'three\n');
   });
 
-  suiteTeardown(async () => {
+  afterAll(async () => {
     await closeViews();
     removeFolder(folder);
   });

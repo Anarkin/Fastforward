@@ -4,6 +4,8 @@ import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import type { TestContext } from 'vitest';
+import { replaceBuiltin } from './builtins';
 import { findGit } from '../git/locate';
 import { type GitCommand, realGit } from '../git/run';
 
@@ -131,19 +133,19 @@ export async function gitsStarted<T>(
   const childProcess = process.getBuiltinModule('node:child_process');
   const { spawn } = childProcess;
   let gits = 0;
-  Reflect.set(childProcess, 'spawn', (...args: Parameters<typeof spawn>) => {
+  replaceBuiltin(childProcess, 'spawn', (...args: Parameters<typeof spawn>) => {
     gits++;
     return spawn(...args);
   });
   try {
     return { result: await run(), gits };
   } finally {
-    Reflect.set(childProcess, 'spawn', spawn);
+    replaceBuiltin(childProcess, 'spawn', spawn);
   }
 }
 
 export function symlinkOrSkip(
-  context: Mocha.Context,
+  context: TestContext,
   target: string,
   link: string,
 ): void {

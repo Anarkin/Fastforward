@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { afterEach, beforeEach, suite, test } from 'vitest';
 import {
   findGit,
   isSupported,
@@ -14,11 +15,11 @@ suite('Finding git', () => {
   let folder: string;
   const git = process.platform === 'win32' ? 'git.exe' : 'git';
 
-  setup(() => {
+  beforeEach(() => {
     folder = tempFolder('locate');
   });
 
-  teardown(() => removeFolder(folder));
+  afterEach(() => removeFolder(folder));
 
   function executable(name: string): string {
     const file = path.join(folder, name);
@@ -87,9 +88,9 @@ suite('Finding git', () => {
     );
   });
 
-  test('skips a file it cannot run', function () {
+  test('skips a file it cannot run', (context) => {
     if (process.platform === 'win32') {
-      this.skip();
+      context.skip();
     }
     fs.writeFileSync(path.join(folder, 'git'), '', { mode: 0o644 });
     assert.strictEqual(onPath('git', { PATH: folder }, 'linux'), undefined);
