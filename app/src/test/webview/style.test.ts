@@ -405,6 +405,22 @@ suite('Style', () => {
     }
   });
 
+  test('keeps the line breaks of an error git wrote over several lines, wrapping a long one anywhere', () => {
+    looks(
+      withClass(
+        rendered(
+          createElement(Crash, {
+            title: 'Fastforward',
+            error: new Error('boom'),
+            onReload: noop,
+          }),
+        ),
+        'error-message',
+      ),
+      { 'white-space': 'pre-wrap', 'overflow-wrap': 'anywhere' },
+    );
+  });
+
   test('previews Markdown as wide as the diff, in halves side by side, hatching the half a file lacks', () => {
     const view = diffView(
       { sideBySide: true },

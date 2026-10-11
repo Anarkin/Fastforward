@@ -1063,6 +1063,8 @@ body.resizing {
 
 .error-message {
   padding: 8px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
   color: var(--color-error-foreground);
 }
 
