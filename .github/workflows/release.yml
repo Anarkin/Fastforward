@@ -29,10 +29,13 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Create the draft release once, so the builds upload to it instead of each creating one
-        run: |
-          gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1 ||
-            gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft --verify-tag --title "${GITHUB_REF_NAME#v}"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: app/githubRelease.mjs
+          sparse-checkout-cone-mode: false
+      - name: Create the draft release once, so the builds upload to it instead of each creating one, refusing a release already published
+        run: node app/githubRelease.mjs draft "$GITHUB_REF_NAME"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   build:
@@ -76,12 +79,17 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: app/githubRelease.mjs
+          sparse-checkout-cone-mode: false
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: release-*
           merge-multiple: true
           path: release
-      - name: Upload the installers and update files to the draft release, without installing any package while holding a write token
-        run: gh release upload "$GITHUB_REF_NAME" release/* --repo "$GITHUB_REPOSITORY" --clobber
+      - name: Upload the installers and update files to the draft release, refusing a release already published, without installing any package while holding a write token
+        run: node app/githubRelease.mjs upload "$GITHUB_REF_NAME" release/*
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
