@@ -1011,7 +1011,19 @@ export class FastforwardView {
         await storage.setWorktree(repository, worktree);
       }
     }
-    await storage.setTabs(grouped, active);
+    const added = storage.tabs.filter(
+      (tab) =>
+        !tabs.some((before) => sameRoot(before, tab)) &&
+        !grouped.some((repository) => sameRoot(repository, tab)),
+    );
+    const activeNow = storage.activeTab;
+    const switched =
+      activeNow !== undefined &&
+      (activeTab === undefined || !sameRoot(activeNow, activeTab));
+    await storage.setTabs(
+      [...grouped, ...added],
+      switched ? activeNow : active,
+    );
   }
 
   private async locateSavedTab(root: string): Promise<Location | undefined> {

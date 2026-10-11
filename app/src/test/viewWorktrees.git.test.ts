@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import type { ToWebviewOf } from '../shared/protocol';
 import { shortHash } from '../shared/hashes';
 import { strings } from '../shared/strings';
-import { activeTabKey, bookmarksKey, worktreesKey } from '../storage';
+import { activeTabKey, bookmarksKey, tabsKey, worktreesKey } from '../storage';
 import { waitFor } from './fixtures';
 import {
   removeFolder,
@@ -315,6 +315,36 @@ suite('View of worktrees', function () {
       );
       held.open();
       await ready;
+    } finally {
+      started.connection.dispose();
+    }
+  });
+
+  test('keeps a tab opened while it merges the tabs stored for worktrees', async () => {
+    const offline = path.join(folder, 'offline-again');
+    const started = await openView(log, [feature, offline], false);
+    try {
+      const held = gate();
+      let locating = false;
+      stubMethod(started.view, 'locateSavedTab', async (original, ...args) => {
+        if (args[0] === offline) {
+          locating = true;
+          await held.opened;
+        }
+        return original(...args);
+      });
+      const ready = started.connection.receive({ type: 'ready' });
+      await waitFor(() => locating, 'the tabs to be merged');
+      await started.connection.receive({ type: 'openRepository', root: other });
+      held.open();
+      await ready;
+      const stored = started.store.get(tabsKey);
+      assert.ok(Array.isArray(stored));
+      assert.deepStrictEqual(
+        stored.map((root) => path.basename(String(root))),
+        ['app', 'offline-again', 'other'],
+      );
+      assert.ok(sameRealFolder(String(started.store.get(activeTabKey)), other));
     } finally {
       started.connection.dispose();
     }
