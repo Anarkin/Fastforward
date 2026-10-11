@@ -182,7 +182,11 @@ export interface Colorer {
       ranges: readonly (readonly [string, readonly SyntaxRange[]])[],
     ) => void,
   ): () => void;
-  code(language: string, code: string): Promise<LineRanges | undefined>;
+  code(
+    language: string,
+    code: string,
+    signal?: AbortSignal,
+  ): Promise<LineRanges | undefined>;
 }
 
 export function colorerOf(port: SyntaxPort): Colorer {
@@ -212,15 +216,25 @@ export function colorerOf(port: SyntaxPort): Colorer {
         port.post({ type: 'stop', job });
       };
     },
-    code(language, code) {
+    code(language, code, signal) {
+      if (signal?.aborted) {
+        return Promise.resolve(undefined);
+      }
       const job = (jobs += 1);
       return new Promise((resolve) => {
+        const stop = () => {
+          waiting.delete(job);
+          port.post({ type: 'stop', job });
+          resolve(undefined);
+        };
         waiting.set(job, (message) => {
           if (message.type === 'code') {
             waiting.delete(job);
+            signal?.removeEventListener('abort', stop);
             resolve(message.lines);
           }
         });
+        signal?.addEventListener('abort', stop, { once: true });
         port.post({ type: 'code', job, language, code });
       });
     },
@@ -260,8 +274,9 @@ function colorer(): Colorer {
 export function colorCode(
   language: string,
   code: string,
+  signal?: AbortSignal,
 ): Promise<LineRanges | undefined> {
-  return colorer().code(language, code);
+  return colorer().code(language, code, signal);
 }
 
 const noRanges: ReadonlyMap<string, readonly SyntaxRange[]> = new Map();

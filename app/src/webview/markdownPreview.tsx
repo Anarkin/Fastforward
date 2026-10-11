@@ -12,15 +12,15 @@ import { codeSegments, colorCode } from './syntax';
 const codeLanguage = /(?:^|\s)language-(\S+)/;
 
 function colorCodeBlocks(element: HTMLElement): () => void {
-  let live = true;
+  const leaving = new AbortController();
   for (const code of element.querySelectorAll('pre > code')) {
     const language = codeLanguage.exec(code.className)?.[1];
     const text = code.textContent;
     if (language === undefined) {
       continue;
     }
-    void colorCode(language, text).then((lines) => {
-      if (!live || !lines || code.textContent !== text) {
+    void colorCode(language, text, leaving.signal).then((lines) => {
+      if (leaving.signal.aborted || !lines || code.textContent !== text) {
         return;
       }
       code.replaceChildren(
@@ -36,9 +36,7 @@ function colorCodeBlocks(element: HTMLElement): () => void {
       );
     });
   }
-  return () => {
-    live = false;
-  };
+  return () => leaving.abort();
 }
 
 export function showImages(

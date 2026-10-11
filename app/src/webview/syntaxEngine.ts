@@ -273,6 +273,7 @@ const maxCodeLines = 5000;
 export async function colorCode(
   language: string,
   code: string,
+  stopped: () => boolean = () => false,
 ): Promise<LineRanges | undefined> {
   const id = languageIds.get(language.toLowerCase());
   const lines = code.replace(/\n$/, '').split('\n');
@@ -280,13 +281,20 @@ export async function colorCode(
     return undefined;
   }
   const highlighter = await loadLanguages([id]);
-  return highlighter
+  const key = `${id}\n${code}`;
+  const found = cached(key);
+  if (found !== undefined || stopped()) {
+    return found;
+  }
+  const ranges = highlighter
     .codeToTokensBase(code, {
       lang: id,
       theme: theme.name,
       tokenizeMaxLineLength: maxLineLength + 1,
     })
     .map(rangesOf);
+  store(key, ranges);
+  return ranges;
 }
 
 const sliceTime = 10;
@@ -404,9 +412,19 @@ export function serveColoring(
       };
       jobs.set(job, startColoring(message.sources, ranges, publish, later));
     } else {
-      void colorCode(message.language, message.code).then(
-        (lines) => post({ type: 'code', job, lines }),
+      let stopped = false;
+      jobs.set(job, () => {
+        stopped = true;
+      });
+      void colorCode(message.language, message.code, () => stopped).then(
+        (lines) => {
+          jobs.delete(job);
+          if (!stopped) {
+            post({ type: 'code', job, lines });
+          }
+        },
         (error: unknown) => {
+          jobs.delete(job);
           post({ type: 'code', job, lines: undefined });
           throw error;
         },

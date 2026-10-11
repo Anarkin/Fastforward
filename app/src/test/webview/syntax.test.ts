@@ -890,6 +890,13 @@ suite('Code in documents', () => {
     assert.strictEqual(await colorCode('ts', codeLines(5001)), undefined);
   });
 
+  test('keeps the colors of a code block, so a preview shown again colors none of its blocks again', async () => {
+    const code = 'const kept = 1;';
+    const first = await colorCode('ts', code);
+    assert.ok(first);
+    assert.strictEqual(await colorCode('typescript', code), first);
+  });
+
   test('cuts a code block into the parts each color covers, keeping its lines', () => {
     assert.deepStrictEqual(
       codeSegments('let a = 1\nb', [
@@ -1007,6 +1014,30 @@ suite('Coloring away from the page', () => {
       end: 3,
       kind: 'keyword',
     });
+  });
+
+  test('drops a code block stopped before it is colored, telling the page nothing of it, as a preview left would keep the worker from the diffs', async () => {
+    const posted: FromSyntax[] = [];
+    let received: ((message: FromSyntax) => void) | undefined;
+    const serve = serveColoring((message) => {
+      posted.push(message);
+      received?.(message);
+    });
+    const colorer = colorerOf({
+      post: (message: ToSyntax) => serve(message),
+      listen: (listener) => {
+        received = listener;
+      },
+    });
+    const stopping = new AbortController();
+    const dropped = colorer.code('ts', 'let dropped = 5;', stopping.signal);
+    stopping.abort();
+    assert.strictEqual(await dropped, undefined);
+    assert.ok(await colorer.code('ts', 'let kept = 6;'));
+    assert.deepStrictEqual(
+      posted.map((message) => message.type === 'code' && message.job),
+      [2],
+    );
   });
 
   test('reports on the page what failed away from it', () => {
