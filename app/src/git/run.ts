@@ -318,6 +318,7 @@ interface Write {
 const running = new Map<ChildProcess, Promise<void>>();
 const writing = new Map<ChildProcess, Write>();
 const writeTime = 30_000;
+let writesDeadline: number | undefined;
 
 function keptRunning<T extends ChildProcess>(child: T, write?: Write): T {
   running.set(
@@ -325,7 +326,9 @@ function keptRunning<T extends ChildProcess>(child: T, write?: Write): T {
     new Promise((resolve) => {
       const done = () => {
         running.delete(child);
-        writing.delete(child);
+        if (writing.delete(child) && writing.size === 0) {
+          writesDeadline = undefined;
+        }
         resolve();
       };
       child.once('close', done);
@@ -339,9 +342,20 @@ function keptRunning<T extends ChildProcess>(child: T, write?: Write): T {
 }
 
 export async function writesEnded(waitTime = writeTime): Promise<void> {
+  if (writing.size === 0) {
+    return;
+  }
+  const deadline = Math.min(
+    writesDeadline ?? Infinity,
+    performance.now() + waitTime,
+  );
+  writesDeadline = deadline;
   let timer: NodeJS.Timeout | undefined;
   const late = new Promise<'late'>((resolve) => {
-    timer = setTimeout(() => resolve('late'), waitTime).unref();
+    timer = setTimeout(
+      () => resolve('late'),
+      Math.max(0, deadline - performance.now()),
+    ).unref();
   });
   try {
     while (writing.size > 0) {

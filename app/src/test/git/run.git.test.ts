@@ -418,6 +418,38 @@ suite('Running git in a repository', function () {
     }
   });
 
+  test('gives no new time to a checkout or fast-forward that outlived the wait before, as restarting into an update waits for them, then quits, which waits again', async () => {
+    const folder = tempFolder('outliving');
+    const started = path.join(folder, 'started').replaceAll('\\', '/');
+    const stuck = await tempRepository(tempFolder('outlived'));
+    try {
+      await stuck.commit('first', {
+        '.gitattributes': '*.txt filter=slow\n',
+        'a.txt': 'a\n',
+      });
+      await stuck.git('switch', '-q', '-c', 'slow');
+      await stuck.commit('slow', { 'a.txt': 'b\n' });
+      await stuck.git('switch', '-q', 'main');
+      await stuck.git(
+        'config',
+        'filter.slow.smudge',
+        `echo > '${started}'; sleep 15; cat`,
+      );
+      const switching = assert.rejects(
+        switchToBranch(gitPath, stuck.root, 'slow'),
+      );
+      await waitFor(() => fs.existsSync(started), 'the checkout to start');
+      await writesEnded(1000);
+      const stopping = performance.now();
+      await stopRunningGit(3000);
+      assert.ok(performance.now() - stopping < 2000);
+      await switching;
+    } finally {
+      removeFolder(stuck.root);
+      removeFolder(folder);
+    }
+  });
+
   test("runs the real git behind Git for Windows' launcher, its shell seeing what the launcher would give it, but the launcher for commands that run hooks", async function () {
     const bin = path.dirname(gitPath);
     const root =
