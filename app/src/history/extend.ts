@@ -222,7 +222,7 @@ function belowOlderAndUntied(
 
 function aboveOldTips(
   newer: Commits,
-  times: Int32Array,
+  times: Float64Array,
   oldHeads: ReadonlySet<string>,
   oldTimes: ReadonlyMap<string, number>,
 ): boolean {
@@ -265,7 +265,7 @@ function descendantsOf(
   return descends;
 }
 
-function inOneLineByTime(commits: Commits, times: Int32Array): boolean {
+function inOneLineByTime(commits: Commits, times: Float64Array): boolean {
   const last = new Map<number, number>();
   const seen = new Int32Array(commits.length);
   let search = 0;

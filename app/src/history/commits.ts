@@ -6,7 +6,7 @@ export class Commits {
     readonly starts: Int32Array,
     readonly parents: Int32Array,
     private readonly hashes: HashTable,
-    readonly times?: Int32Array,
+    readonly times?: Float64Array,
   ) {}
 
   static replacingTop(top: Commits, older: Commits, dropped: number): Commits {
@@ -269,6 +269,12 @@ function grownInts(array: Int32Array): Int32Array<ArrayBuffer> {
   return bigger;
 }
 
+function grownTimes(array: Float64Array): Float64Array<ArrayBuffer> {
+  const bigger = new Float64Array(array.length * 2);
+  bigger.set(array);
+  return bigger;
+}
+
 const space = 0x20;
 const newline = 0x0a;
 
@@ -284,7 +290,7 @@ export class CommitsBuilder {
   private pending = new Uint8Array(0);
   private readonly stashesThenCommitsLeftOut = new HashTable();
   private readonly stashCount: number;
-  private times = new Int32Array(64);
+  private times = new Float64Array(64);
 
   constructor(
     stashes: readonly string[] = [],
@@ -405,7 +411,7 @@ export class CommitsBuilder {
     this.hashes.add(text, start, hashEnd);
     if (this.count + 2 > this.starts.length) {
       this.starts = grownInts(this.starts);
-      this.times = grownInts(this.times);
+      this.times = grownTimes(this.times);
     }
     this.times[this.count] = time;
     this.starts[this.count++] = this.parentCount;

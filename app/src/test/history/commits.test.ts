@@ -95,6 +95,15 @@ suite('Commits read from git', () => {
     assert.deepStrictEqual([...(commits.times ?? [])], [200, 100]);
   });
 
+  test('reads a timestamp past January 2038, as a commit dated there, whose seconds pass 32 bits, made the history read whole again on every change', () => {
+    const builder = new CommitsBuilder([], true);
+    builder.add(Buffer.from('4102444800 b a\n2147483648 a\n'));
+    assert.deepStrictEqual(
+      [...(builder.finishNow().times ?? [])],
+      [4102444800, 2147483648],
+    );
+  });
+
   test('replaces the top commits of a history with others, the same as reading them all at once, whether or not its lookup grows', () => {
     const older = Array.from({ length: 120 }, (_, at) => ({
       hash: `c${at}`,
