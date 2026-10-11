@@ -202,16 +202,13 @@ export function Files({
       ),
     [sides, trees, closedFolders, openedFolders],
   );
-  const folders = useMemo(() => {
-    const all = { changed: [] as string[], unchanged: [] as string[] };
-    sides.forEach((side, index) => {
-      const { changed, unchanged } = treeFolders(trees[index]);
-      const keyed = (folder: string) => areaKey(side.area, folder);
-      all.changed.push(...changed.map(keyed));
-      all.unchanged.push(...unchanged.map(keyed));
-    });
-    return all;
-  }, [sides, trees]);
+  const folders = useMemo(
+    () =>
+      treeFolders(
+        sides.map((side, index) => ({ area: side.area, tree: trees[index] })),
+      ),
+    [sides, trees],
+  );
   const noFolders =
     folders.changed.length === 0 && folders.unchanged.length === 0;
   const listed = listedFilesRows(rows);

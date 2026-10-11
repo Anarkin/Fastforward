@@ -93,18 +93,24 @@ export function changesTreeRows(
   return rows;
 }
 
-export function treeFolders(tree: ChangesFolder): {
+export function treeFolders(
+  sides: readonly { area: ChangeArea | undefined; tree: ChangesFolder }[],
+): {
   changed: string[];
   unchanged: string[];
 } {
   const folders = { changed: [] as string[], unchanged: [] as string[] };
-  const add = (node: ChangesFolder) => {
+  const add = (node: ChangesFolder, area: ChangeArea | undefined) => {
     for (const child of node.folders) {
-      folders[child.changed ? 'changed' : 'unchanged'].push(child.path);
-      add(child);
+      folders[child.changed ? 'changed' : 'unchanged'].push(
+        areaKey(area, child.path),
+      );
+      add(child, area);
     }
   };
-  add(tree);
+  for (const { area, tree } of sides) {
+    add(tree, area);
+  }
   return folders;
 }
 

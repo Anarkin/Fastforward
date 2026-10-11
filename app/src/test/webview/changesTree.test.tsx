@@ -165,10 +165,33 @@ suite('Changes tree', () => {
       [fileChange('src/lib/a.ts')],
       ['src/lib/a.ts', 'src/b.ts', 'docs/api/c.md', 'docs/api/d.md'],
     );
-    assert.deepStrictEqual(treeFolders(tree), {
+    assert.deepStrictEqual(treeFolders([{ area: undefined, tree }]), {
       changed: ['src', 'src/lib'],
       unchanged: ['docs/api'],
     });
+  });
+
+  test('keys the folders of the staged and unstaged trees by their side', () => {
+    assert.deepStrictEqual(
+      treeFolders([
+        { area: 'staged', tree: changesTree([fileChange('src/a.ts')]) },
+        {
+          area: 'unstaged',
+          tree: changesTree([fileChange('lib/b.ts')], ['lib/b.ts', 'docs/c']),
+        },
+      ]),
+      {
+        changed: ['staged:src', 'unstaged:lib'],
+        unchanged: ['unstaged:docs'],
+      },
+    );
+  });
+
+  test('lists the folders of a tree with more folders than a call can take arguments', () => {
+    const paths = Array.from({ length: 200_000 }, (_, i) => `f${i}/a`);
+    const tree = changesTree([fileChange('f0/a')], paths);
+    const { changed, unchanged } = treeFolders([{ area: 'unstaged', tree }]);
+    assert.strictEqual(changed.length + unchanged.length, 200_000);
   });
 
   test('lists the folders of the rows of a large folder once, then finds those of a row without reading the rows before it', () => {
