@@ -35,6 +35,7 @@ export default defineConfig({
         test: {
           name: 'electron',
           include: [electron],
+          setupFiles: ['src/test/electronSetup.ts'],
           testTimeout: 60_000,
           hookTimeout: 60_000,
         },
