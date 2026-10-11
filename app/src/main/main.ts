@@ -121,6 +121,9 @@ async function start(): Promise<void> {
     log.warn(problem);
   }
   const state = new JsonFileStore(path.join(profile, 'state.json'));
+  for (const problem of state.problems) {
+    log.warn(problem);
+  }
   const views = Promise.withResolvers<FastforwardView>();
   protocol.handle(appScheme, (request) => {
     const url = new URL(request.url);

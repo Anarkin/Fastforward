@@ -368,6 +368,14 @@ export const strings = {
     upstreamHidden: (upstream: string) =>
       `${upstream} is not in the history while Solo shows only that of the checked-out commit`,
   },
+  state: {
+    unreadable: (reason: string) =>
+      `The saved state could not be read, so changes to it are kept until it can be: ${reason}`,
+    putAside: (copy: string) =>
+      `The saved state was broken, so it was put aside as ${copy} and starts afresh`,
+    notPutAside: (reason: string) =>
+      `The saved state was broken and could not be put aside, so it starts afresh: ${reason}`,
+  },
   settings: {
     notObject: 'The user settings are not a JSON object',
     unreadable: (reason: string) =>

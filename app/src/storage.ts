@@ -14,6 +14,7 @@ import {
   type UserSettings,
 } from './settings';
 import * as path from 'node:path';
+import { strings } from './shared/strings';
 
 export const tabsKey = 'tabs';
 export const activeTabKey = 'activeTab';
@@ -31,15 +32,17 @@ export interface Store {
 }
 
 export class JsonFileStore implements Store {
+  readonly problems: readonly string[];
   private values: Record<string, unknown>;
   private unreadable: boolean;
   private writing: Promise<void> = Promise.resolve();
   private waiting = false;
 
   constructor(private readonly file: string) {
-    const values = readJson(file);
+    const { values, problem } = readJson(file);
     this.values = values ?? {};
     this.unreadable = values === undefined;
+    this.problems = problem === undefined ? [] : [problem];
   }
 
   get(key: string): unknown {
@@ -48,7 +51,7 @@ export class JsonFileStore implements Store {
 
   update(key: string, value: unknown): Promise<void> {
     if (this.unreadable) {
-      const values = readJson(this.file);
+      const { values } = readJson(this.file);
       if (values !== undefined) {
         this.values = { ...values, ...this.values };
         this.unreadable = false;
@@ -79,22 +82,38 @@ export class JsonFileStore implements Store {
   }
 }
 
-function readJson(file: string): Record<string, unknown> | undefined {
+function readJson(file: string): {
+  values: Record<string, unknown> | undefined;
+  problem?: string;
+} {
   const text = readText(file);
   if (text === undefined) {
-    return {};
+    return { values: {} };
   }
   if (text instanceof Error) {
-    return undefined;
+    return {
+      values: undefined,
+      problem: strings.state.unreadable(text.message),
+    };
   }
   try {
     const parsed: unknown = JSON.parse(text);
     if (isObject(parsed)) {
-      return { ...parsed };
+      return { values: { ...parsed } };
     }
   } catch {}
-  fs.copyFileSync(file, `${file}.corrupt`);
-  return {};
+  const copy = `${file}.corrupt`;
+  try {
+    fs.copyFileSync(file, copy);
+  } catch (error) {
+    return {
+      values: {},
+      problem: strings.state.notPutAside(
+        error instanceof Error ? error.message : String(error),
+      ),
+    };
+  }
+  return { values: {}, problem: strings.state.putAside(copy) };
 }
 
 const maxAutoFetchMinutes = Math.floor((2 ** 31 - 1) / 60_000);
@@ -110,7 +129,7 @@ export class Storage {
   }
 
   get tabs(): string[] {
-    return uniqueRoots(strings(this.state.get(tabsKey)));
+    return uniqueRoots(stringsIn(this.state.get(tabsKey)));
   }
 
   get activeTab(): string | undefined {
@@ -145,7 +164,9 @@ export class Storage {
   }
 
   hasTab(root: string): boolean {
-    return strings(this.state.get(tabsKey)).some((tab) => sameRoot(tab, root));
+    return stringsIn(this.state.get(tabsKey)).some((tab) =>
+      sameRoot(tab, root),
+    );
   }
 
   async setTabs(tabs: string[], active: string | undefined): Promise<void> {
@@ -164,7 +185,7 @@ export class Storage {
   }
 
   get recent(): string[] {
-    return strings(this.state.get(recentKey));
+    return stringsIn(this.state.get(recentKey));
   }
 
   async addRecent(root: string): Promise<void> {
@@ -341,7 +362,7 @@ function uniqueRoots(roots: readonly string[]): string[] {
   );
 }
 
-function strings(value: unknown): string[] {
+function stringsIn(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter((item) => typeof item === 'string')
     : [];

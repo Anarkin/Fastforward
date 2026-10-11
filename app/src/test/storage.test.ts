@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { UserSettings } from '../settings';
+import { strings } from '../shared/strings';
 import {
   activeTabKey,
   bookmarksKey,
@@ -333,10 +334,36 @@ suite('State file', () => {
     assert.strictEqual(reopened.get('solo'), true);
   });
 
-  test('starts afresh from a broken file, keeping a copy of it', () => {
+  test('says why the file could not be read', () => {
+    fs.mkdirSync(file);
+    const [problem] = new JsonFileStore(file).problems;
+    assert.match(
+      problem,
+      /^The saved state could not be read, so changes to it are kept until it can be: /,
+    );
+  });
+
+  test('starts afresh from a broken file, keeping a copy of it, and says so', () => {
     fs.writeFileSync(file, '{ broken');
     const store = new JsonFileStore(file);
     assert.strictEqual(store.get('tabs'), undefined);
     assert.strictEqual(fs.readFileSync(`${file}.corrupt`, 'utf8'), '{ broken');
+    assert.deepStrictEqual(store.problems, [
+      strings.state.putAside(`${file}.corrupt`),
+    ]);
+  });
+
+  test('starts afresh from a broken file it cannot keep a copy of, saying why, rather than failing to start', async () => {
+    fs.writeFileSync(file, '{ broken');
+    fs.mkdirSync(`${file}.corrupt`);
+    const store = new JsonFileStore(file);
+    assert.strictEqual(store.get('tabs'), undefined);
+    const [problem] = store.problems;
+    assert.match(
+      problem,
+      /^The saved state was broken and could not be put aside, so it starts afresh: /,
+    );
+    await store.update('solo', true);
+    assert.strictEqual(new JsonFileStore(file).get('solo'), true);
   });
 });
