@@ -6,6 +6,7 @@ import {
   keyLabels,
   keymap,
   menuFromKeyboard,
+  pressedAlone,
   pressed,
   pressOfInput,
   released,
@@ -269,6 +270,14 @@ suite('Keymap', () => {
   test('tells a menu opened from the keyboard from one opened by the right button', () => {
     assert.ok(menuFromKeyboard({ button: 0 }));
     assert.ok(!menuFromKeyboard({ button: 2 }));
+  });
+
+  test('tells a key pressed alone, or with Shift, from one pressed with Ctrl, Cmd or Alt', () => {
+    assert.ok(pressedAlone(noModifiers));
+    assert.ok(pressedAlone({ ...noModifiers, shiftKey: true }));
+    for (const held of ['ctrlKey', 'metaKey', 'altKey']) {
+      assert.ok(!pressedAlone({ ...noModifiers, [held]: true }), held);
+    }
   });
 
   test('ends a drag once no button is held', () => {

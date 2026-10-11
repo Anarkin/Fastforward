@@ -1,12 +1,18 @@
 import * as assert from 'node:assert';
 import { keymap } from '../../shared/keymap';
-import { keyPressed } from '../../webview/shortcuts';
+import { appKeyPressed, keyPressed } from '../../webview/shortcuts';
 import { element, keyPress, withMacKeys } from '../fixtures';
 
 type KeyEvent = Parameters<typeof keyPressed>[1];
 
 const shortcuts = (key: string, extra: Partial<KeyEvent> = {}) =>
   keyPressed(keymap.shortcuts, keyPress(key, extra)) === true;
+
+const within = (inMenu: boolean) =>
+  Object.assign(element('BUTTON'), {
+    closest: (selector: string) =>
+      inMenu && selector === '.menu' ? element('DIV') : null,
+  });
 
 suite('Keyboard shortcuts', () => {
   test('shows the shortcuts on F1, even in a field, or on ? outside one', () => {
@@ -35,6 +41,28 @@ suite('Keyboard shortcuts', () => {
     }
     assert.strictEqual(
       keyPressed(keymap.commits, keyPress('c', { target: element('BUTTON') })),
+      true,
+    );
+  });
+
+  test('leaves the keys pressed alone in an open menu to the menu, rather than acting on the app behind it, as C hid the commit list from a context menu, but not those pressed with Ctrl, Cmd or Alt, as Ctrl+T closes the menu it opened', () => {
+    assert.strictEqual(
+      appKeyPressed(keymap.commits, keyPress('c', { target: within(true) })),
+      undefined,
+    );
+    assert.strictEqual(
+      appKeyPressed(keymap.shortcuts, keyPress('F1', { target: within(true) })),
+      undefined,
+    );
+    assert.strictEqual(
+      appKeyPressed(keymap.commits, keyPress('c', { target: within(false) })),
+      true,
+    );
+    assert.strictEqual(
+      appKeyPressed(
+        keymap.find,
+        keyPress('f', { code: 'KeyF', ctrlKey: true, target: within(true) }),
+      ),
       true,
     );
   });

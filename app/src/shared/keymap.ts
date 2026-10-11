@@ -317,6 +317,10 @@ export function menuFromKeyboard(event: { readonly button: number }): boolean {
   return event.button !== rightButton;
 }
 
+export function pressedAlone(press: Modifiers): boolean {
+  return !press.ctrlKey && !press.metaKey && !press.altKey;
+}
+
 export function released(pointer: { readonly buttons: number }): boolean {
   return pointer.buttons === 0;
 }

@@ -1,5 +1,10 @@
 import { useEffect, useEffectEvent } from 'react';
-import { pressed, type Binding, type KeyPress } from '../shared/keymap';
+import {
+  pressed,
+  pressedAlone,
+  type Binding,
+  type KeyPress,
+} from '../shared/keymap';
 
 type KeyEvent = KeyPress & { readonly target: EventTarget | null };
 
@@ -35,12 +40,23 @@ function useWindowKeyDown(handler: (event: KeyboardEvent) => void): void {
   }, []);
 }
 
+export function appKeyPressed<Value>(
+  binding: Binding<Value>,
+  event: KeyEvent,
+): Value | undefined {
+  return pressedAlone(event) &&
+    isElement(event.target) &&
+    event.target.closest('.menu') !== null
+    ? undefined
+    : keyPressed(binding, event);
+}
+
 export function useBinding<Value>(
   binding: Binding<Value>,
   action: (value: Value) => void,
 ): void {
   useWindowKeyDown((event) => {
-    const value = keyPressed(binding, event);
+    const value = appKeyPressed(binding, event);
     if (value !== undefined) {
       event.preventDefault();
       action(value);
