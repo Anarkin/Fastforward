@@ -702,7 +702,7 @@ export class FastforwardView {
     }
     const picked = context.tab.selection;
     const { loadingHistory } = context.tab;
-    if (loadingHistory && !aboutShownRows(context.tab, message)) {
+    if (loadingHistory && !needsNoWholeHistory(context.tab, message)) {
       await loadingHistory;
     }
     switch (message.type) {
@@ -1501,6 +1501,7 @@ export class FastforwardView {
       return;
     }
     await this.refresh(context);
+    await context.tab.loadingHistory;
     await this.showHead(context, picked);
   }
 
@@ -2767,10 +2768,12 @@ function workingTreeDiffOf(hash: string): WorkingTreeDiff | undefined {
     : { base: compared.to, reverse: true };
 }
 
-function aboutShownRows(tab: TabState, message: TabMessage): boolean {
+function needsNoWholeHistory(tab: TabState, message: TabMessage): boolean {
   switch (message.type) {
     case 'loadCommits':
     case 'showEntireFile':
+    case 'fetch':
+    case 'checkout':
       return true;
     case 'selectCommit':
       return (

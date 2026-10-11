@@ -71,6 +71,36 @@ suite('View fetching', function () {
     removeFolder(folder);
   });
 
+  test('starts a fetch asked for while the history is first read, rather than waiting for it, as that takes seconds in large repositories', async () => {
+    const held = gate();
+    const opened = await openView(log, [repository.root], false);
+    let reading = false;
+    stubMethod(opened.view, 'watch', () => Promise.resolve());
+    stubMethod(opened.view, 'listFullHistory', async (original, ...args) => {
+      reading = true;
+      await held.opened;
+      return original(...args);
+    });
+    try {
+      const ready = opened.connection.receive({ type: 'ready' });
+      await waitFor(() => reading, 'the history to be read');
+      const fetching = opened.connection.receive({
+        type: 'fetch',
+        root: repository.root,
+      });
+      await waitFor(
+        () => opened.page.last('fetching')?.running !== undefined,
+        'the fetch to start',
+      );
+      held.open();
+      await Promise.all([ready, fetching]);
+      assert.strictEqual(opened.page.last('fetching')?.running, false);
+    } finally {
+      held.open();
+      opened.connection.dispose();
+    }
+  });
+
   test('fetches every remote, dropping branches deleted there', async () => {
     const upstream = await tempRepository(path.join(folder, 'upstream'), {
       bare: true,

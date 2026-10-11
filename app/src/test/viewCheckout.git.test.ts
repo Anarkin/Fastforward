@@ -89,6 +89,41 @@ suite('View checking out', function () {
     }
   });
 
+  test('checks out a branch asked for while the history is first read, revealing its commit once the history is read', async () => {
+    const held = gate();
+    const opened = await openView(log, [repository.root], false);
+    let reading = false;
+    stubMethod(opened.view, 'watch', () => Promise.resolve());
+    stubMethod(opened.view, 'listFullHistory', async (original, ...args) => {
+      reading = true;
+      await held.opened;
+      return original(...args);
+    });
+    try {
+      const ready = opened.connection.receive({ type: 'ready' });
+      await waitFor(() => reading, 'the history to be read');
+      const checkingOut = opened.connection.receive({
+        type: 'checkout',
+        root: repository.root,
+        target: { kind: 'branch', name: 'feature' },
+      });
+      await waitFor(
+        async () =>
+          (await repository.git('symbolic-ref', '--short', 'HEAD')).trim() ===
+          'feature',
+        'the branch to be checked out',
+      );
+      held.open();
+      await Promise.all([ready, checkingOut]);
+      assert.strictEqual(opened.page.last('repository')?.head, 'feature');
+      assert.strictEqual(opened.page.last('reveal')?.hash, fixture.f2);
+    } finally {
+      held.open();
+      opened.connection.dispose();
+      await restore();
+    }
+  });
+
   test('checks out one target at a time, in the order asked for', async () => {
     const held = gate();
     let asked = 0;
