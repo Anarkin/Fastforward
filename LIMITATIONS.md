@@ -43,7 +43,7 @@ This file only observes and documents the codebase mainly for human readers; the
 - A commit search stops at `50` matches and asks to narrow it down, and needs at least `3` characters to search commit messages, authors and committers, as each search walks every commit
 - A hash needs at least `4` hex digits to be looked up, so `3` only search commit messages, authors and committers
 - A hash prefix lists at most `20` commits
-- The ref search draws at most `200` refs per group, and the ref tree at most `200` folders and refs under a folder, counting the rest, as repositories can have thousands of refs
+- The ref search draws at most `200` refs per group and `200` stashes, and the ref tree at most `200` folders and refs under a folder, counting the rest, as repositories can have thousands of refs
 - Back keeps at most `100` steps, showing `20` in its menu
 
 ## Other
