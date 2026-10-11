@@ -1358,13 +1358,7 @@ export class FastforwardView {
       if (!isWatchFailure(error)) {
         throw error;
       }
-      this.log.error(strings.log.watchingFailed(context.root));
-      this.log.error(error);
-      context.post({
-        type: 'notice',
-        level: 'error',
-        message: strings.messages.couldNotWatch(context.root),
-      });
+      this.couldNotWatch(context, error);
       return;
     }
     if (session.watching === watching) {
@@ -1381,6 +1375,16 @@ export class FastforwardView {
       return;
     }
     session.watcher = watcher;
+  }
+
+  private couldNotWatch(context: Context, error: unknown): void {
+    this.log.error(strings.log.watchingFailed(context.root));
+    this.log.error(error);
+    context.post({
+      type: 'notice',
+      level: 'error',
+      message: strings.messages.couldNotWatch(context.root),
+    });
   }
 
   private stopWatching(session: Session): void {
@@ -1416,6 +1420,7 @@ export class FastforwardView {
         this.log.error(strings.log.watchingFailed(context.root));
         this.log.error(error);
       },
+      onStopped: (error) => this.couldNotWatch(context, error),
     });
   }
 

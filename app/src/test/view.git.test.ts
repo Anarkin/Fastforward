@@ -33,8 +33,10 @@ import {
   viewRepositories,
   withNotices,
   withView,
+  type OpenView,
   type ViewRepositories,
 } from './viewHarness';
+import { watchesRecursively } from '../git/watch';
 
 suite('View of one repository', function () {
   this.timeout(30_000);
@@ -127,6 +129,43 @@ suite('View of one repository', function () {
       assert.strictEqual(opened.page.last('error'), undefined);
       assert.notStrictEqual(opened.page.last('commits'), undefined);
       takeErrorsLogged(logged, /^Watching .* failed$/, /^EISDIR: /);
+    } finally {
+      opened.connection.dispose();
+    }
+  });
+
+  test("says changes made outside the app won't show once a folder it watches recursively stops being watched", async function () {
+    if (!watchesRecursively()) {
+      this.skip();
+    }
+    const nodeFs = process.getBuiltinModule('node:fs');
+    const { watch } = nodeFs;
+    const made: fs.FSWatcher[] = [];
+    Reflect.set(nodeFs, 'watch', (...args: Parameters<typeof watch>) => {
+      const real = watch(...args);
+      made.push(real);
+      return real;
+    });
+    let opened: OpenView;
+    try {
+      opened = await openView(log, [repository.root]);
+    } finally {
+      Reflect.set(nodeFs, 'watch', watch);
+    }
+    try {
+      await withNotices(opened.page, 'error', (notices) => {
+        made[0].emit(
+          'error',
+          Object.assign(new Error('EPERM: operation not permitted'), {
+            code: 'EPERM',
+          }),
+        );
+        assert.deepStrictEqual(notices, [
+          strings.messages.couldNotWatch(repository.root),
+        ]);
+        return Promise.resolve();
+      });
+      takeErrorsLogged(logged, /^Watching .* failed$/, /^EPERM: /);
     } finally {
       opened.connection.dispose();
     }

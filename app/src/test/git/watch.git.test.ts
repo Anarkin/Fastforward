@@ -175,6 +175,36 @@ suite('Watching a repository', function () {
     }
   });
 
+  test('tells when a folder it watches recursively stops being watched, as when a network share drops, apart from its other failures, watching recursively', async () => {
+    const nodeFs = process.getBuiltinModule('node:fs');
+    const { watch } = nodeFs;
+    const made: fs.FSWatcher[] = [];
+    Reflect.set(nodeFs, 'watch', (...args: Parameters<typeof watch>) => {
+      const real = watch(...args);
+      made.push(real);
+      return real;
+    });
+    const stopped: unknown[] = [];
+    try {
+      watcher = await watchRepository(repository.gitPath, repository.root, {
+        delay: 50,
+        maxDelay: 200,
+        recursive: true,
+        onChange: ({ refs }) => changes.push(refs),
+        onError: (error) => errors.push(error),
+        onStopped: (error) => stopped.push(error),
+      });
+    } finally {
+      Reflect.set(nodeFs, 'watch', watch);
+    }
+    const failure = Object.assign(new Error('EPERM: operation not permitted'), {
+      code: 'EPERM',
+    });
+    made[0].emit('error', failure);
+    assert.deepStrictEqual(stopped, [failure]);
+    assert.deepStrictEqual(errors, []);
+  });
+
   test('refreshes for a change in the git folder to an entry it cannot tell is a folder, as when it is denied access, rather than throwing out of the watcher, watching recursively', async () => {
     const nodeFs = process.getBuiltinModule('node:fs');
     const { statSync } = nodeFs;

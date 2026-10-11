@@ -25,6 +25,7 @@ interface WatchOptions {
   readonly onChange: (change: Changed) => void;
   readonly onWorktreesChange?: () => void;
   readonly onError: (error: unknown) => void;
+  readonly onStopped?: (error: unknown) => void;
   readonly recursive?: boolean;
   readonly ignored?: Ignored;
   readonly signal?: AbortSignal;
@@ -50,6 +51,7 @@ export async function watchRepository(
     onChange,
     onWorktreesChange,
     onError,
+    onStopped = onError,
     recursive = watchesRecursively(),
     ignored = (repo, paths) => ignoredPaths(gitPath, repo, paths),
     signal,
@@ -211,7 +213,11 @@ export async function watchRepository(
       const watcher = fs.watch(folder, { recursive: true }, (event, file) =>
         (folder === root ? onEvent : onGitDirEvent)(folder, file, event),
       );
-      watcher.on('error', onError);
+      watcher.on('error', (error) => {
+        if (!disposed) {
+          onStopped(error);
+        }
+      });
       return watcher;
     });
   } else {
