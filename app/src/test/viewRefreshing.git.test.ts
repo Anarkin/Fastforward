@@ -874,6 +874,44 @@ suite('View refreshing one repository', function () {
       assert.strictEqual(page.last('commits'), undefined, 'reloaded');
     });
 
+    test('stops reading the history for Solo once it is toggled again, showing only the history asked for last, as the first was read whole and laid out first', async () => {
+      const held = gate();
+      const signals: AbortSignal[] = [];
+      stubMethod(fastforward, 'listFullHistory', async (original, ...args) => {
+        const signal = args.find((arg) => arg instanceof AbortSignal);
+        assert.ok(signal instanceof AbortSignal);
+        signals.push(signal);
+        if (signals.length === 1) {
+          await Promise.race([
+            held.opened,
+            new Promise((resolve) => signal.addEventListener('abort', resolve)),
+          ]);
+        }
+        return original(...args);
+      });
+      page.clear();
+      try {
+        const on = connection.receive({
+          type: 'setSolo',
+          root: repository.root,
+          solo: true,
+        });
+        await waitFor(() => signals.length === 1, 'the history to be read');
+        const off = connection.receive({
+          type: 'setSolo',
+          root: repository.root,
+          solo: false,
+        });
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        held.open();
+        await Promise.all([on, off]);
+        assert.strictEqual(signals[0].aborted, true);
+        assert.strictEqual(commitsSent(page.messages), 1);
+      } finally {
+        await store.update(soloKey, {});
+      }
+    });
+
     test('shows only the history of the checked-out commit when solo, and every branch again after', async () => {
       const [tree] = await repository.resolve('HEAD^{tree}');
       const side = (

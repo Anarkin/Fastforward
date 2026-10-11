@@ -144,6 +144,7 @@ const refsAlone: Changed = { refs: true, workingTree: false };
 interface Tab extends TabState {
   preloading: Promise<void> | undefined;
   loadingHistory: Promise<void> | undefined;
+  readingHistory: AbortController | undefined;
   refreshing: boolean;
   refreshAgain: Map<Session | undefined, Context>;
   changedAgain: Changed;
@@ -638,6 +639,7 @@ export class FastforwardView {
         context.post({ type: 'applyingSolo', running: true });
         try {
           forgetHistory(context.tab);
+          context.tab.readingHistory?.abort();
           if (this.isActive(message.root)) {
             await this.refresh(context, () =>
               this.sendCommits(context, this.refsOf(context), true),
@@ -1330,6 +1332,7 @@ export class FastforwardView {
         ...newTabState(),
         preloading: undefined,
         loadingHistory: undefined,
+        readingHistory: undefined,
         refreshing: false,
         refreshAgain: new Map(),
         changedAgain: nothing,
@@ -2099,6 +2102,8 @@ export class FastforwardView {
         );
       }
     }
+    const reading = new AbortController();
+    tab.readingHistory = reading;
     try {
       const solo = this.storage.soloOf(context.root);
       const fullHistory = await this.listFullHistory(
@@ -2106,8 +2111,9 @@ export class FastforwardView {
         solo,
         stashes.map((stash) => stash.commit),
         tipsInGitOrder(head, listed, solo, stashes),
+        AbortSignal.any([tab.closed.signal, reading.signal]),
       ).catch((error: unknown) => {
-        if (tab.closed.signal.aborted) {
+        if (tab.closed.signal.aborted || reading.signal.aborted) {
           return undefined;
         }
         throw error;
@@ -2127,6 +2133,9 @@ export class FastforwardView {
       }
       await this.sendShownHistory(context, { keepPlace: keepPlace || early });
     } finally {
+      if (tab.readingHistory === reading) {
+        tab.readingHistory = undefined;
+      }
       loading.abort();
       loaded.resolve();
       if (tab.loadingHistory === loaded.promise) {
@@ -2144,13 +2153,14 @@ export class FastforwardView {
     solo: boolean,
     stashes: readonly string[],
     tips: Iterable<string>,
+    signal: AbortSignal,
   ): Promise<Commits> {
     return listHistory(
       context.gitPath,
       context.root,
       solo,
       stashes,
-      context.tab.closed.signal,
+      signal,
       tips,
     );
   }
