@@ -1351,6 +1351,7 @@ export class FastforwardView {
     this.stopWatching(session);
     const watching = new AbortController();
     session.watching = watching;
+    const started = performance.now();
     let watcher: Watcher;
     try {
       watcher = await this.startWatching(context, session, watching.signal);
@@ -1375,6 +1376,14 @@ export class FastforwardView {
       return;
     }
     session.watcher = watcher;
+    if (performance.now() - started > this.delays.delay) {
+      void this.run(
+        strings.log.refreshingFailed,
+        session,
+        () => this.refresh(context),
+        context.root,
+      );
+    }
   }
 
   private couldNotWatch(context: Context, error: unknown): void {

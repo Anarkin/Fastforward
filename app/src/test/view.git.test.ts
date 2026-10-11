@@ -134,6 +134,35 @@ suite('View of one repository', function () {
     }
   });
 
+  test('refreshes once its watcher has started when starting took longer than a change waits to be told, as no watcher was there to tell of the changes made meanwhile', async () => {
+    const started = gate();
+    const opened = await openView(log, [repository.root], false);
+    stubMethod(opened.view, 'startWatching', async (original, ...args) => {
+      await started.opened;
+      return original(...args);
+    });
+    const file = path.join(repository.root, 'made-while-watching-starts.txt');
+    try {
+      const ready = opened.connection.receive({ type: 'ready' });
+      await waitFor(
+        () => opened.page.last('workingTree') !== undefined,
+        'the working tree',
+      );
+      const before = opened.page.last('workingTree')?.files ?? 0;
+      fs.writeFileSync(file, 'new\n');
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      started.open();
+      await ready;
+      await waitFor(
+        () => opened.page.last('workingTree')?.files === before + 1,
+        'the file made while the watcher started',
+      );
+    } finally {
+      opened.connection.dispose();
+      fs.rmSync(file, { force: true });
+    }
+  });
+
   test("says changes made outside the app won't show once a folder it watches recursively stops being watched", async function () {
     if (!watchesRecursively()) {
       this.skip();
