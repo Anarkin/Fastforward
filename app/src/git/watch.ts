@@ -407,7 +407,11 @@ export async function watchTree(
           ignoresChanged(folder.path);
         }
         if (file && event === 'rename') {
-          if (entry && file === path.basename(folder.path)) {
+          if (
+            entry &&
+            file === path.basename(folder.path) &&
+            !fs.existsSync(path.join(folder.path, file))
+          ) {
             entry.gone = true;
             renamed(folder.path);
           }

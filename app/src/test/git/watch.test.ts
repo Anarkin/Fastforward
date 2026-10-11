@@ -613,15 +613,27 @@ suite('Watching folders one by one', () => {
   });
 
   test('keeps watching a folder told of an entry named like itself, which is told the way its own removal is', async () => {
-    mkdir('a');
+    mkdir('a/a/deep');
     await start();
     const named = path.basename(root);
+    const kept = [root, path.join(root, 'a'), path.join(root, 'a', 'a')].map(
+      (folder) => watchers.get(folder),
+    );
     fs.writeFileSync(path.join(root, named), '');
+    fs.writeFileSync(path.join(root, 'a', 'a', 'a'), '');
     mkdir('later');
     watchers.get(root)?.listener('rename', named);
+    watchers.get(path.join(root, 'a', 'a'))?.listener('rename', 'a');
     watchers.get(root)?.listener('rename', 'later');
     await waitFor(() => watched().includes('later'), 'the new folder');
-    assert.deepStrictEqual(watched(), ['', 'a', 'later']);
+    assert.deepStrictEqual(watched(), ['', 'a', 'a/a', 'a/a/deep', 'later']);
+    assert.deepStrictEqual(
+      [root, path.join(root, 'a'), path.join(root, 'a', 'a')].map((folder) =>
+        watchers.get(folder),
+      ),
+      kept,
+    );
+    assert.ok(kept.every((watcher) => watcher?.closed === false));
   });
 
   test('asks again whether the folders under a .gitignore are ignored once it changes', async () => {
