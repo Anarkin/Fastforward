@@ -15,6 +15,7 @@ import {
   shownFileKey,
   treeFolders,
   treeRowOf,
+  type FilesRow,
 } from './changesTree';
 import { Column } from './column';
 import { AllFilesIcon, CollapseAllIcon, ExpandAllIcon } from './icons';
@@ -46,6 +47,17 @@ export function filesCursor(
     keys.indexOf(moved.key) !== -1
     ? moved.key
     : shownKey;
+}
+
+export function filesReveal(
+  rows: readonly FilesRow[],
+  cursor: string | undefined,
+  treeView: string | undefined,
+): readonly unknown[] {
+  const index =
+    cursor === undefined ? -1 : listedFilesRows(rows).indexOf(cursor);
+  const row = index === -1 ? undefined : treeRowOf(rows[index]);
+  return [treeView, row?.kind === 'folder' ? row.open : undefined];
 }
 
 export function filesTitle(selection: string | undefined): string {
@@ -338,7 +350,11 @@ export function Files({
         }}
         ancestorsOf={(index) => filesAncestors(rows, index)}
         selectedKey={cursor}
-        revealWith={allPaths === undefined ? undefined : view}
+        revealWith={filesReveal(
+          rows,
+          cursor,
+          allPaths === undefined ? undefined : view,
+        )}
         onKeyDown={onKeyDown}
       />
       {listsNothing({ files, staged, allPaths, loading }) && noChanges && (

@@ -4,8 +4,14 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { comparisonOf } from '../../shared/comparisons';
 import { workingTreeHash } from '../../shared/protocol';
 import {
+  changesTree,
+  changesTreeRows,
+  filesRows,
+} from '../../webview/changesTree';
+import {
   Files,
   filesCursor,
+  filesReveal,
   filesTitle,
   listsNothing,
   noChangesText,
@@ -52,7 +58,7 @@ function changesRows(overrides: Partial<FilesProps>) {
       rows: ListedRows;
       renderRow: (index: number) => React.ReactElement<RowProps>;
       selectedKey: string | undefined;
-      revealWith: unknown;
+      revealWith: readonly unknown[];
       onKeyDown: (
         event: ReturnType<typeof keyPress> & { preventDefault: () => void },
         visible: VisibleRows,
@@ -83,6 +89,26 @@ function reveal(tree: string[] | undefined, showAll = true, view = 'one') {
       selected: 'b.ts',
       view,
     }).revealWith,
+  };
+}
+
+function revealAt(closed: string[], cursor: string) {
+  return {
+    key: cursor,
+    rows: filesReveal(
+      filesRows([
+        {
+          area: undefined,
+          header: true,
+          rows: changesTreeRows(
+            changesTree([change('src/a.ts'), change('b.ts')]),
+            new Set(closed),
+          ),
+        },
+      ]),
+      cursor,
+      'one',
+    ),
   };
 }
 
@@ -367,5 +393,16 @@ suite('Files column', () => {
     assert.ok(revealAgain(reveal(['a.ts', 'b.ts'], false), loaded));
     assert.ok(revealAgain(loaded, reveal(['a.ts', 'b.ts'], false)));
     assert.ok(revealAgain(loaded, reveal(['a.ts', 'b.ts'], true, 'two')));
+  });
+
+  test('scrolls to the cursor again once the folder it is on opens or closes, as a folder closed from its pinned row is left above the view', () => {
+    const open = revealAt([], 'folder:src');
+    const closed = revealAt(['src'], 'folder:src');
+    assert.ok(revealAgain(open, closed));
+    assert.ok(revealAgain(closed, open));
+    assert.ok(!revealAgain(open, revealAt([], 'folder:src')));
+    assert.ok(
+      !revealAgain(revealAt([], 'file:b.ts'), revealAt(['src'], 'file:b.ts')),
+    );
   });
 });

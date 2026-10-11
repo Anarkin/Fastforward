@@ -32,6 +32,27 @@ suite('Virtual rows', () => {
     );
   });
 
+  test('compares the values it reveals with one by one, so the same values given anew reveal nothing', () => {
+    assert.ok(
+      !revealAgain(
+        { key: 'b', rows: ['one', true] },
+        { key: 'b', rows: ['one', true] },
+      ),
+    );
+    assert.ok(
+      revealAgain(
+        { key: 'b', rows: ['one', true] },
+        { key: 'b', rows: ['one', false] },
+      ),
+    );
+    assert.ok(
+      revealAgain(
+        { key: 'b', rows: ['one', true] },
+        { key: 'b', rows: ['two', true] },
+      ),
+    );
+  });
+
   test('draws only the rows in view of a long list, not every row', () => {
     const drawn: number[] = [];
     const keys = Array.from({ length: 10_000 }, (_, index) => `row:${index}`);

@@ -24,13 +24,15 @@ export function scrollTarget(
 
 interface Reveal {
   readonly key: string | undefined;
-  readonly rows: unknown;
+  readonly rows: readonly unknown[];
 }
 
 export function revealAgain(before: Reveal | undefined, now: Reveal): boolean {
   return (
     now.key !== undefined &&
-    (before?.key !== now.key || before.rows !== now.rows)
+    (before?.key !== now.key ||
+      before.rows.length !== now.rows.length ||
+      now.rows.some((value, index) => value !== before.rows[index]))
   );
 }
 
@@ -103,11 +105,13 @@ export function revealOffset(
 
 const noAncestors = () => [];
 
+const noValues: readonly unknown[] = [];
+
 export function VirtualRows({
   rows,
   renderRow,
   selectedKey,
-  revealWith,
+  revealWith = noValues,
   ancestorsOf = noAncestors,
   onKeyDown,
   initialRect,
@@ -115,7 +119,7 @@ export function VirtualRows({
   rows: ListedRows;
   renderRow: (index: number) => React.ReactNode;
   selectedKey: string | undefined;
-  revealWith?: unknown;
+  revealWith?: readonly unknown[];
   ancestorsOf?: (index: number) => readonly number[];
   onKeyDown?: (event: React.KeyboardEvent, visible: VisibleRows) => void;
   initialRect?: Rect;
