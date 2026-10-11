@@ -1306,6 +1306,18 @@ suite('Style', () => {
     looks(withClass(view, 'file-header'), { 'user-select': 'none' });
   });
 
+  test('keeps the notices within the window, scrolling a long message within its notice, so a checkout listing hundreds of files leaves its close button in reach', () => {
+    const shown = notices();
+    looks(withClass(shown, 'notices'), {
+      'max-height': 'calc(100vh - 32px)',
+      'overflow-y': 'auto',
+    });
+    looks(withClass(shown, 'notice-message'), {
+      'max-height': '50vh',
+      'overflow-y': 'auto',
+    });
+  });
+
   test('draws an error notice by the notice rules alone, like any other notice but for its edge', () => {
     const rules = matchingRules(withClass(notices(), 'notice'));
     assert.deepStrictEqual(
