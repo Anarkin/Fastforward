@@ -1190,7 +1190,7 @@ body.resizing {
   margin: 0;
   padding: 0 12px;
   color: var(--color-foreground);
-  background: var(--color-panel-background);
+  background: var(--color-border);
   border: 1px solid var(--color-border);
   border-radius: calc(var(--search-height) / 2);
   outline: none;
@@ -1199,6 +1199,19 @@ body.resizing {
 .locations-search::placeholder {
   color: var(--muted-foreground);
   opacity: 1;
+}
+
+.locations-search:hover {
+  background:
+    linear-gradient(var(--hover-background), var(--hover-background)),
+    var(--color-border);
+  border-color: transparent;
+}
+
+.locations-search.active,
+.locations-search:focus {
+  background: var(--color-panel-background);
+  border-color: var(--color-border);
 }
 
 .locations-search:focus {

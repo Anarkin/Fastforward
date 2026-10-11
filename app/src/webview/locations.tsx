@@ -526,7 +526,7 @@ export function LocationsPopup({
           <BackIcon />
         </button>
         <input
-          className="locations-search"
+          className={`locations-search ${query ? 'active' : ''}`}
           placeholder={strings.search.placeholder}
           ref={input}
           autoFocus

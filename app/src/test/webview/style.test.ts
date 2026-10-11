@@ -646,20 +646,48 @@ suite('Style', () => {
     });
   });
 
-  test("edges the popup's search box in the border color, and tints the hovered search field like anything else hovered, its edge included", () => {
-    looks(withClass(locationsPopup(''), 'locations-search'), {
-      background: 'var(--color-panel-background)',
+  test('tints the hovered search field like anything else hovered, its edge included', () => {
+    for (const field of [
+      withClass(addressBar(), 'address-bar'),
+      withClass(locationsPopup(''), 'locations-search'),
+    ]) {
+      looks(
+        field,
+        {
+          background:
+            'linear-gradient(var(--hover-background), var(--hover-background)), var(--color-border)',
+          'border-color': 'transparent',
+        },
+        hovered,
+      );
+    }
+  });
+
+  test("fills and edges the popup's search box in the border color like the other search fields until it is focused or holds a query, then in the panel's", () => {
+    const empty = withClass(locationsPopup(''), 'locations-search');
+    looks(empty, {
+      background: 'var(--color-border)',
       border: '1px solid var(--color-border)',
     });
     looks(
-      withClass(addressBar(), 'address-bar'),
+      empty,
       {
-        background:
-          'linear-gradient(var(--hover-background), var(--hover-background)), var(--color-border)',
-        'border-color': 'transparent',
+        background: 'var(--color-panel-background)',
+        'border-color': 'var(--color-focus)',
       },
-      hovered,
+      focused,
     );
+    const searched = withClass(locationsPopup('main'), 'locations-search');
+    for (const states of [{}, hovered]) {
+      looks(
+        searched,
+        {
+          background: 'var(--color-panel-background)',
+          'border-color': 'var(--color-border)',
+        },
+        states,
+      );
+    }
   });
 
   test('draws the scrollbars and the minimap viewport in the one scrollbar color, as see-through as the theme says at rest, hovered and dragged', () => {
