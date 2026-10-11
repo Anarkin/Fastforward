@@ -18,23 +18,27 @@ const titles = (html: string) =>
   [...html.matchAll(/<title>([^<]*)<\/title>/g)].map((match) => match[1]);
 
 suite('Graph cell', () => {
-  test('draws lines to the foot of the row, curving between lanes, dashed where asked', () => {
+  test('draws solid lines from 1 px above the row, over the ends of the lines of the row above, so rows meeting within a device pixel at scales like 125% leave no seam, and dashed ones from its top, keeping their dashes in step with those of the row above, to the foot of the row, curving between lanes', () => {
     const html = cell(
       {
         lane: 0,
         color: 0,
         lines: [
           { from: 0, to: 0, color: 0, bottom: false },
-          { from: 0, to: 1, color: 1, bottom: false, dashed: true },
+          { from: 0, to: 1, color: 1, bottom: false },
+          { from: 1, to: 1, color: 2, bottom: false, dashed: true },
+          { from: 1, to: 0, color: 2, bottom: false, dashed: true },
           { from: 0, to: 0, color: 0, bottom: true },
-          { from: 0, to: 1, color: 1, bottom: true },
+          { from: 0, to: 1, color: 1, bottom: true, dashed: true },
         ],
       },
       50,
     );
     assert.deepStrictEqual(attributes(html, 'path', 'd'), [
-      'M 9 0 V 15',
-      'M 9 0 C 9 7.5 21 7.5 21 15',
+      'M 9 -1 V 15',
+      'M 9 -1 V 0 C 9 7.5 21 7.5 21 15',
+      'M 21 0 V 15',
+      'M 21 0 C 21 7.5 9 7.5 9 15',
       'M 9 15 V 50',
       'M 9 15 C 9 25 21 25 21 35 V 50',
     ]);
@@ -42,7 +46,7 @@ suite('Graph cell', () => {
       [...html.matchAll(/<path[^>]*>/g)].map((match) =>
         match[0].includes('stroke-dasharray="2 3"'),
       ),
-      [false, true, false, false],
+      [false, false, true, true, false, true],
     );
   });
 

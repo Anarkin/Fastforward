@@ -5,6 +5,7 @@ import {
   type ColumnName,
 } from '../../webview/activeColumn';
 import { RefBubble } from '../../webview/bubbles';
+import { GraphCell } from '../../webview/graph';
 import { listedFilesRows } from '../../webview/changesTree';
 import { Column } from '../../webview/column';
 import { columnsClass } from '../../webview/columns';
@@ -1037,6 +1038,19 @@ suite('Style', () => {
       'line-height': `${bubbleLineHeight}px`,
     });
     assert.strictEqual(bubbleLineHeight, line);
+  });
+
+  test('lets the graph of a row draw past its edges, so its lines can reach over the ends of those of the row above', () => {
+    looks(
+      rendered(
+        createElement(GraphCell, {
+          row: { lane: 0, color: 0, lines: [] },
+          height: commitRowHeight,
+          onToggleMerge: noop,
+        }),
+      ),
+      { overflow: 'visible' },
+    );
   });
 
   test('draws bubbles as text in the flow of their line, starting where the other lines start, their pill around it taking no room', () => {

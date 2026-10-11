@@ -10,6 +10,7 @@ const laneWidth = 12;
 const dotY = 15;
 const dotRadius = 4;
 const turn = 20;
+const overlap = 1;
 
 const colors = [
   'var(--color-chart-blue)',
@@ -40,9 +41,10 @@ function path(line: GraphLine, height: number): string {
   const from = x(line.from);
   const to = x(line.to);
   if (!line.bottom) {
+    const top = line.dashed ? 0 : -overlap;
     return from === to
-      ? `M ${from} 0 V ${dotY}`
-      : `M ${from} 0 C ${from} ${dotY / 2} ${to} ${dotY / 2} ${to} ${dotY}`;
+      ? `M ${from} ${top} V ${dotY}`
+      : `M ${from} ${top}${top < 0 ? ' V 0' : ''} C ${from} ${dotY / 2} ${to} ${dotY / 2} ${to} ${dotY}`;
   }
   return from === to
     ? `M ${from} ${dotY} V ${height}`
