@@ -56,6 +56,7 @@ export function Notices({
           <button
             className="notice-close"
             title={strings.messages.dismiss}
+            onMouseDown={(event) => event.preventDefault()}
             onClick={() => onDismiss(notice.id)}
           >
             <CloseIcon />

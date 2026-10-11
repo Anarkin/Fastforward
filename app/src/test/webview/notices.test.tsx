@@ -51,7 +51,7 @@ suite('Notices', () => {
     assert.match(html, /class="notice info"[^>]*><span[^>]*>fyi</);
   });
 
-  test('dismisses a notice by its close button', () => {
+  test('dismisses a notice by its close button, which takes no focus, as it goes and would leave the keys with nothing', () => {
     const dismissed: number[] = [];
     const shown = renderedBy(Notices, {
       notices: [notice(1), notice(2)],
@@ -61,7 +61,15 @@ suite('Notices', () => {
     const second = shown.props.children[1];
     assert.ok(isValidElement<{ children: React.ReactElement[] }>(second));
     const close = second.props.children[1];
-    assert.ok(isValidElement<{ onClick: () => void }>(close));
+    assert.ok(
+      isValidElement<{
+        onClick: () => void;
+        onMouseDown: (event: { preventDefault: () => void }) => void;
+      }>(close),
+    );
+    let prevented = 0;
+    close.props.onMouseDown({ preventDefault: () => prevented++ });
+    assert.strictEqual(prevented, 1);
     close.props.onClick();
     assert.deepStrictEqual(dismissed, [2]);
   });

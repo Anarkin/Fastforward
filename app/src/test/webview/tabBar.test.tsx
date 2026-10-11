@@ -219,6 +219,39 @@ suite('Tab bar', () => {
     assert.deepStrictEqual(closed, ['/repo']);
   });
 
+  test('closes a tab by its button without the button taking focus, as it goes and would leave the keys with nothing', () => {
+    const nav = renderedBy(TabBar, {
+      tabs: [{ root: '/repo', name: 'repo' }],
+      active: '/repo',
+      onSelect: noop,
+      onPreload: noop,
+      onClose: noop,
+      onAdd: noop,
+      onSort: noop,
+      onOpenSettings: noop,
+      onOpenDefaultSettings: noop,
+      onShowShortcuts: noop,
+      update: { kind: 'idle' },
+      onCheckForUpdates: noop,
+      onInstallUpdate: noop,
+      onLog: noop,
+    });
+    assert.ok(isValidElement<{ children: React.ReactElement[] }>(nav));
+    const list = nav.props.children[0];
+    assert.ok(isValidElement<{ children: React.ReactElement[][] }>(list));
+    const tab = list.props.children[0][0];
+    assert.ok(isValidElement<{ children: React.ReactElement[] }>(tab));
+    const close = tab.props.children[1];
+    assert.ok(
+      isValidElement<{
+        onMouseDown: (event: { preventDefault: () => void }) => void;
+      }>(close),
+    );
+    let prevented = 0;
+    close.props.onMouseDown({ preventDefault: () => prevented++ });
+    assert.strictEqual(prevented, 1);
+  });
+
   test('preloads only a tab not shown that the pointer rests on, and closes one only by its button or the middle button', () => {
     mock.timers.enable({ apis: ['setTimeout'] });
     const preloaded: string[] = [];

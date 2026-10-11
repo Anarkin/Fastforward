@@ -175,6 +175,7 @@ export function TabBar({
             <button
               className="tab-close"
               title={strings.common.close}
+              onMouseDown={(event) => event.preventDefault()}
               onClick={(event) => {
                 event.stopPropagation();
                 onClose(tab.root);
