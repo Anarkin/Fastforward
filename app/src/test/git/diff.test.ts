@@ -44,7 +44,7 @@ function read(chunks: readonly string[]) {
 const numbered = (index: number) => `${String(index).padStart(3, '0')}.json`;
 
 suite('Patch budget', () => {
-  test('keeps each file within the budget and leaves out one over 1500 changed lines with its count, counting only the changed lines of its hunks, from output split anywhere', () => {
+  test('keeps each file within the budget and leaves out one over 25000 changed lines with its count, counting only the changed lines of its hunks, from output split anywhere', () => {
     const output =
       section('a.ts', 2) +
       section('large.json', collapseThreshold + 1) +
@@ -65,7 +65,7 @@ suite('Patch budget', () => {
     }
   });
 
-  test('leaves out the file that takes the patch past 20000 lines and stops there', () => {
+  test('leaves out the file that takes the patch past 25000 lines and stops there', () => {
     const crossing = Math.floor(patchLineBudget / collapseThreshold);
     const budget = new PatchBudget();
     let stoppedAt: number | undefined;
