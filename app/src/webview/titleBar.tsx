@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
+import { strings } from '../shared/strings';
 import { titleBarHeight } from '../shared/titleBar';
 
 export function windowTitle(root: string | undefined, app: string): string {
-  return root === undefined ? app : `${root} - ${app}`;
+  return root === undefined ? app : strings.app.windowTitle(root, app);
 }
 
 function Dot({ cx, color }: { cx: number; color: string }) {

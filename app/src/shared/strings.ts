@@ -32,6 +32,7 @@ export const strings = {
   app: {
     name: (version: string, development: boolean) =>
       `${brand} ${version}${development ? ' Dev' : ''}`,
+    windowTitle: (root: string, app: string) => `${root} - ${app}`,
     couldNotStart: (error: string) => `${brand} couldn't start.\n\n${error}`,
     needsGit: `${brand} needs git`,
     installGit: (needed: string) =>

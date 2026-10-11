@@ -16,6 +16,20 @@ suite('Title bar', () => {
     );
   });
 
+  test('names the open repository in the format the dictionary gives, so a translation reaches the title', () => {
+    const { app } = strings;
+    const format = app.windowTitle;
+    app.windowTitle = (root, name) => `${name} | ${root}`;
+    try {
+      assert.strictEqual(
+        windowTitle('/code/app', 'Fastforward'),
+        'Fastforward | /code/app',
+      );
+    } finally {
+      app.windowTitle = format;
+    }
+  });
+
   test('names the app with its version, marking a run from the source', () => {
     assert.strictEqual(strings.app.name('1.2.3', false), 'Fastforward 1.2.3');
     assert.strictEqual(
