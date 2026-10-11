@@ -113,6 +113,44 @@ suite('Repository files', function () {
     );
   });
 
+  test('reads the file at a commit whose name ends in a carriage return or holds a newline, not the one named without them', async () => {
+    const odd = await tempRepository(tempFolder('odd-names'));
+    try {
+      await odd.commit('plain', { 'a.txt': 'plain\n' });
+      for (const [name, content] of [
+        ['a.txt\r', 'with a carriage return\n'],
+        ['a.txt\nb', 'with a newline\n'],
+      ]) {
+        fs.writeFileSync(path.join(odd.root, 'content'), content);
+        const [blob] = (await odd.git('hash-object', '-w', 'content')).split(
+          '\n',
+        );
+        await odd.git(
+          '-c',
+          'core.protectNTFS=false',
+          'update-index',
+          '--add',
+          '--cacheinfo',
+          `100644,${blob},${name}`,
+        );
+      }
+      await odd.git('commit', '-q', '-m', 'odd');
+      const [hash] = await odd.resolve('HEAD');
+      for (const [name, content] of [
+        ['a.txt\r', 'with a carriage return\n'],
+        ['a.txt\nb', 'with a newline\n'],
+        ['a.txt', 'plain\n'],
+      ]) {
+        assert.strictEqual(
+          (await readFile(gitPath, odd.root, hash, name)).content,
+          content,
+        );
+      }
+    } finally {
+      removeFolder(odd.root);
+    }
+  });
+
   test('reads a file at a commit with one git', async () => {
     assert.deepStrictEqual(
       await gitsStarted(() =>

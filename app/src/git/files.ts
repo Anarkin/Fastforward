@@ -110,13 +110,13 @@ async function readObjects(
   const output = await runGitBytes(
     gitPath,
     cwd,
-    ['cat-file', '--batch', `--filter=blob:limit=${limit + 1}`],
-    { input: batchInput(names) },
+    ['cat-file', '--batch', '-Z', `--filter=blob:limit=${limit + 1}`],
+    { input: names.map((name) => `${name}\0`).join('') },
   );
   const read: ObjectRead[] = [];
   let at = 0;
   while (at < output.length && read.length < names.length) {
-    const end = output.indexOf(10, at);
+    const end = output.indexOf(0, at);
     const header = output.subarray(at, end).toString('utf8');
     at = end + 1;
     if (header.endsWith(' missing') || header.endsWith(' ambiguous')) {
@@ -206,17 +206,15 @@ export async function readFile(
       ? binaryContent(id)
       : toContent(await fs.readFile(file), id);
   }
-  if (!path.includes('\n')) {
-    const [read] = await readObjects(
-      gitPath,
-      cwd,
-      [`${hash}:${path}`],
-      maxFileSize,
-    );
-    const blob = blobOf(read);
-    if (blob?.kind === 'object') {
-      return toContent(blob.content, blob.id);
-    }
+  const [read] = await readObjects(
+    gitPath,
+    cwd,
+    [`${hash}:${path}`],
+    maxFileSize,
+  );
+  const blob = blobOf(read);
+  if (blob?.kind === 'object') {
+    return toContent(blob.content, blob.id);
   }
   const entry = await runGit(gitPath, cwd, [
     'ls-tree',
