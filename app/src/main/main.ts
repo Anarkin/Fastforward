@@ -19,7 +19,12 @@ import { stopRunningGit, writesEnded } from '../git/run';
 import { errorLine, fileLog, type Log } from '../log';
 import { imageRoute } from '../shared/images';
 import { appNameSwitch, titleBarHeight } from '../shared/titleBar';
-import { keymap, pressed, pressOfInput } from '../shared/keymap';
+import {
+  keymap,
+  pressed,
+  pressOfInput,
+  setKeyPlatform,
+} from '../shared/keymap';
 import type { ToHost, ToWebview } from '../shared/protocol';
 import { brand, strings } from '../shared/strings';
 import {
@@ -86,6 +91,7 @@ if (app.requestSingleInstanceLock()) {
 }
 
 async function start(): Promise<void> {
+  setKeyPlatform(process.platform);
   const gitSearch = searchGit();
   await app.whenReady();
   const log = fileLog(

@@ -35,7 +35,13 @@ import {
   workingTreeShift,
 } from '../../webview/commitList';
 import { formatDateTime } from '../../webview/dates';
-import { commitInfo, keyPress, noModifiers, renderedBy } from '../fixtures';
+import {
+  commitInfo,
+  keyPress,
+  noModifiers,
+  renderedBy,
+  withMacKeys,
+} from '../fixtures';
 
 function laidOut() {
   const scroller = { clientHeight: 500, ownerDocument: { defaultView: null } };
@@ -244,13 +250,14 @@ suite('Commit list working tree row', () => {
     assert.deepStrictEqual(clickedHash(3), { selected: workingTreeHash });
   });
 
-  test('compares with the working tree when clicked with Ctrl, or Cmd', () => {
+  test('compares with the working tree when clicked with Ctrl, or Cmd on macOS', () => {
     assert.deepStrictEqual(clickedHash(3, { ...plainClick, ctrlKey: true }), {
       compared: workingTreeHash,
     });
-    assert.deepStrictEqual(clickedHash(0, { ...plainClick, metaKey: true }), {
-      compared: workingTreeHash,
-    });
+    assert.deepStrictEqual(
+      withMacKeys(() => clickedHash(0, { ...plainClick, metaKey: true })),
+      { compared: workingTreeHash },
+    );
   });
 
   test('shows the working tree selected as either side of a comparison', () => {
@@ -802,14 +809,21 @@ suite('Commit row', () => {
     assert.strictEqual(commitClass('c', selection, undefined), 'commit');
   });
 
-  test('compares only on a click with Ctrl, or Cmd, alone', () => {
+  test('compares only on a click with Ctrl, or Cmd on macOS, alone', () => {
     assert.ok(isCompareClick({ ...plainClick, ctrlKey: true }));
-    assert.ok(isCompareClick({ ...plainClick, metaKey: true }));
+    assert.ok(
+      withMacKeys(() => isCompareClick({ ...plainClick, metaKey: true })),
+    );
+    assert.ok(!isCompareClick({ ...plainClick, metaKey: true }));
     assert.ok(!isCompareClick(plainClick));
     assert.ok(
       !isCompareClick({ ...plainClick, ctrlKey: true, shiftKey: true }),
     );
-    assert.ok(!isCompareClick({ ...plainClick, metaKey: true, altKey: true }));
+    assert.ok(
+      !withMacKeys(() =>
+        isCompareClick({ ...plainClick, metaKey: true, altKey: true }),
+      ),
+    );
   });
 
   test('shows the subject, author, the date it was last committed and bubbles, but no file count', () => {

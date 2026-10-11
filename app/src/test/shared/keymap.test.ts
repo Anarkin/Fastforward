@@ -8,10 +8,11 @@ import {
   pressed,
   pressOfInput,
   released,
+  setKeyPlatform,
   wheeled,
   type KeyPress,
 } from '../../shared/keymap';
-import { keyPress, noModifiers } from '../fixtures';
+import { keyPress, noModifiers, withMacKeys } from '../fixtures';
 
 const worktreeStep = (extra: Partial<KeyPress>) =>
   pressed(
@@ -84,16 +85,34 @@ suite('Keymap', () => {
     );
   });
 
-  test('takes Mod as Ctrl or Cmd, but Ctrl only as Ctrl', () => {
+  test('takes Mod as Cmd on macOS and Ctrl elsewhere, leaving Ctrl+T and Ctrl+F to the text fields of macOS, but Ctrl only as Ctrl', () => {
     const t = keyPress('t', { code: 'KeyT' });
-    assert.strictEqual(
-      pressed(keymap.openRepository, { ...t, ctrlKey: true }, false),
-      true,
-    );
-    assert.strictEqual(
-      pressed(keymap.openRepository, { ...t, metaKey: true }, false),
-      true,
-    );
+    try {
+      setKeyPlatform('linux');
+      assert.strictEqual(
+        pressed(keymap.openRepository, { ...t, ctrlKey: true }, false),
+        true,
+      );
+      assert.strictEqual(
+        pressed(keymap.openRepository, { ...t, metaKey: true }, false),
+        undefined,
+      );
+      setKeyPlatform('darwin');
+      assert.strictEqual(
+        pressed(keymap.openRepository, { ...t, metaKey: true }, false),
+        true,
+      );
+      assert.strictEqual(
+        pressed(keymap.openRepository, { ...t, ctrlKey: true }, true),
+        undefined,
+      );
+      assert.strictEqual(
+        clicked(keymap.compare, { button: 0, ...noModifiers, ctrlKey: true }),
+        undefined,
+      );
+    } finally {
+      setKeyPlatform('linux');
+    }
     assert.strictEqual(pressed(keymap.openRepository, t, false), undefined);
     const tab = keyPress('Tab', { ctrlKey: true });
     assert.strictEqual(pressed(keymap.repository, tab, false), 1);
@@ -224,7 +243,7 @@ suite('Keymap', () => {
     );
     assert.strictEqual(
       clicked(keymap.compare, { ...click, metaKey: true }),
-      true,
+      undefined,
     );
     assert.strictEqual(clicked(keymap.drag, click), true);
     assert.strictEqual(
@@ -251,7 +270,7 @@ suite('Keymap', () => {
     assert.ok(!released({ buttons: 1 }));
   });
 
-  test('reads the keys Electron reports before the page sees them', () => {
+  test('reads the keys Electron reports before the page sees them, with Cmd for Mod on macOS', () => {
     const input = {
       key: 'I',
       code: 'KeyI',
@@ -266,10 +285,12 @@ suite('Keymap', () => {
       true,
     );
     assert.strictEqual(
-      pressed(
-        keymap.devTools,
-        pressOfInput({ ...input, control: false, meta: true }),
-        false,
+      withMacKeys(() =>
+        pressed(
+          keymap.devTools,
+          pressOfInput({ ...input, control: false, meta: true }),
+          false,
+        ),
       ),
       true,
     );

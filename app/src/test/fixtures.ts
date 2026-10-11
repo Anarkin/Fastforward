@@ -4,7 +4,11 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import type { KeyPress, Modifiers } from '../shared/keymap';
+import {
+  setKeyPlatform,
+  type KeyPress,
+  type Modifiers,
+} from '../shared/keymap';
 import type { CommitInfo, FileChange } from '../shared/protocol';
 
 export const noModifiers: Modifiers = {
@@ -162,4 +166,13 @@ export function tagWith(
   const found = tagsWith(html, ...classes).filter((tag) => tag.includes(text));
   assert.strictEqual(found.length, 1, `${classes.join(' ')} with ${text}`);
   return found[0];
+}
+
+export function withMacKeys<T>(run: () => T): T {
+  setKeyPlatform('darwin');
+  try {
+    return run();
+  } finally {
+    setKeyPlatform('linux');
+  }
 }

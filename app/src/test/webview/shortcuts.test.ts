@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { keymap } from '../../shared/keymap';
 import { keyPressed } from '../../webview/shortcuts';
-import { element, keyPress } from '../fixtures';
+import { element, keyPress, withMacKeys } from '../fixtures';
 
 type KeyEvent = Parameters<typeof keyPressed>[1];
 
@@ -39,12 +39,16 @@ suite('Keyboard shortcuts', () => {
     );
   });
 
-  test('opens find in the diff on Ctrl+F, or Cmd+F, whatever the keyboard layout', () => {
+  test('opens find in the diff on Ctrl+F, or Cmd+F on macOS, whatever the keyboard layout', () => {
     const key = keyPress('f', { code: 'KeyF', ctrlKey: true });
     const isFindShortcut = (event: typeof key) =>
       keyPressed(keymap.find, event) === true;
     assert.ok(isFindShortcut(key));
-    assert.ok(isFindShortcut({ ...key, ctrlKey: false, metaKey: true }));
+    assert.ok(
+      withMacKeys(() =>
+        isFindShortcut({ ...key, ctrlKey: false, metaKey: true }),
+      ),
+    );
     assert.ok(isFindShortcut({ ...key, key: 'ф' }));
     assert.ok(!isFindShortcut({ ...key, ctrlKey: false }));
     assert.ok(!isFindShortcut({ ...key, shiftKey: true }));

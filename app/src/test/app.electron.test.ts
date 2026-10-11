@@ -486,7 +486,7 @@ suite('App', function () {
 
   test('finds in the diff on Ctrl+F, stepping on Enter and clearing on Esc', async () => {
     await openChangedFile();
-    await page.keyboard.press('Control+F');
+    await page.keyboard.press('ControlOrMeta+F');
     const field = page.locator('.diff-find-input');
     await waitForFocus(field, 'the find field');
     await field.fill('T');
@@ -519,7 +519,7 @@ suite('App', function () {
 
   test('gives the keyboard back to the diff once Esc leaves the empty find field', async () => {
     await openChangedFile();
-    await page.keyboard.press('Control+F');
+    await page.keyboard.press('ControlOrMeta+F');
     await waitForFocus(page.locator('.diff-find-input'), 'the find field');
     await page.keyboard.press('Escape');
     await waitForFocus(page.locator('.diff-view .virtual-rows'), 'the diff');

@@ -219,9 +219,17 @@ function shiftMatters(key: string): boolean {
   return isLetter(key) || key.length > 1;
 }
 
+let macKeys = false;
+
+export function setKeyPlatform(platform: string): void {
+  macKeys = platform === 'darwin';
+}
+
 function modifiersMatch(combo: Combo, held: Modifiers): boolean {
   const ctrl = combo.mod
-    ? held.ctrlKey || held.metaKey
+    ? macKeys
+      ? held.metaKey && !held.ctrlKey
+      : held.ctrlKey && !held.metaKey
     : combo.ctrl
       ? held.ctrlKey && !held.metaKey
       : !held.ctrlKey && !held.metaKey;

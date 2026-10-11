@@ -1,5 +1,6 @@
 import { createRoot } from 'react-dom/client';
 import type { Bridge } from '../shared/bridge';
+import { setKeyPlatform } from '../shared/keymap';
 import type { ToHost, ToWebview } from '../shared/protocol';
 import { App } from './App';
 import { ErrorBoundary } from './errorBoundary';
@@ -15,6 +16,7 @@ declare global {
 
 const { fastforward } = window;
 document.documentElement.dataset.platform = fastforward.platform;
+setKeyPlatform(fastforward.platform);
 
 const followTheme = () =>
   fastforward.setWindowButtonColor(
