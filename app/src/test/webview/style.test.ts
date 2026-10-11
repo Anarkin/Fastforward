@@ -1496,6 +1496,31 @@ suite('Style', () => {
     looks(diffFind(), { 'min-width': '100px' });
   });
 
+  test('keeps the title of the Files column on one line after its buttons, centered while it fits beside the room they take mirrored on the right, then cut off with an ellipsis', () => {
+    const title = withClass(
+      rendered(
+        renderedBy(Column, {
+          title: 'Files: 0123456 → 89abcde',
+          start: createElement('div', { className: 'nav-buttons all-files' }),
+          children: null,
+        }),
+      ),
+      'column-title',
+    );
+    looks(withClass(title, 'column-name'), {
+      flex: 'none',
+      'max-width': '100%',
+      overflow: 'hidden',
+      'white-space': 'nowrap',
+      'text-overflow': 'ellipsis',
+    });
+    assert.strictEqual(
+      pixels(cascaded(title, 'width', after)) +
+        parseFloat(cascaded(title, 'padding-right') ?? ''),
+      pixels(cascaded(title, 'padding-left')),
+    );
+  });
+
   test('fills a pinned pair as one undimmed switched-on toggle, and lifts the chosen and the hovered layout button onto the panel inside their ring', () => {
     const pinned = rendered(diffOptions({ pinned: true }));
     const pair = withClass(pinned, 'pin-pair');

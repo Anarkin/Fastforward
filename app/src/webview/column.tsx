@@ -17,7 +17,11 @@ export function Column({
     <section className="column">
       <header className="column-title">
         {start && <div className="column-start">{start}</div>}
-        {title}
+        {typeof title === 'string' ? (
+          <span className="column-name">{title}</span>
+        ) : (
+          title
+        )}
         {actions && <div className="column-actions">{actions}</div>}
       </header>
       <div className="column-body">{children}</div>

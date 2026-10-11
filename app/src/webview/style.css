@@ -541,7 +541,20 @@ body.resizing {
 
 .column-title:has(.all-files) {
   padding-left: calc(4px + 3 * 26px + 2 * 2px + 8px);
-  padding-right: calc(4px + 3 * 26px + 2 * 2px + 8px);
+  padding-right: 8px;
+}
+
+.column-title:has(.all-files)::after {
+  content: '';
+  width: calc(4px + 3 * 26px + 2 * 2px);
+}
+
+.column-name {
+  flex: none;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .column-title:has(.diff-options) {
