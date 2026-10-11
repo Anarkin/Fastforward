@@ -211,7 +211,7 @@ async function listSince(
     ],
     { input: hashLines(tips), onOutput: (chunk) => reader.add(chunk) },
   );
-  return reader.finishNow();
+  return reader.finish();
 }
 
 async function listNewHistory(
@@ -242,7 +242,7 @@ async function listNewHistory(
       onOutput: (chunk) => reader.add(chunk),
     },
   );
-  return reader.finishNow();
+  return reader.finish();
 }
 
 async function commitTimes(
