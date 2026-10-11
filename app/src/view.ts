@@ -527,11 +527,7 @@ export class FastforwardView {
         const rest = tabs.filter((tab) => !sameRoot(tab, message.root));
         for (const [root, tab] of this.tabStates) {
           if (sameRoot(this.repositoryOf(root), message.root)) {
-            this.tabStates.delete(root);
-            tab.closed.abort();
-            tab.loadingFiles.abort();
-            tab.loadingDiff.abort();
-            this.commitSearches.get(root)?.abort();
+            this.forgetTab(root, tab);
           }
         }
         const active =
@@ -1100,7 +1096,10 @@ export class FastforwardView {
       return;
     }
     const shown = JSON.stringify(this.worktreeLists.get(repository));
-    this.takeWorktrees(repository, worktrees);
+    this.forgetRemovedWorktrees(
+      repository,
+      this.takeWorktrees(repository, worktrees),
+    );
     if (
       JSON.stringify(this.worktreeLists.get(repository)) !== shown &&
       this.isActiveRepository(repository)
@@ -1110,6 +1109,30 @@ export class FastforwardView {
         this.sendTabs(page);
       }
     }
+  }
+
+  private forgetRemovedWorktrees(
+    repository: string,
+    listed: readonly Worktree[],
+  ): void {
+    const active = this.storage.activeWorktree;
+    for (const [root, tab] of this.tabStates) {
+      if (
+        sameRoot(this.repositoryOf(root), repository) &&
+        !listed.some((worktree) => sameRoot(worktree.path, root)) &&
+        (active === undefined || !sameRoot(active, root))
+      ) {
+        this.forgetTab(root, tab);
+      }
+    }
+  }
+
+  private forgetTab(root: string, tab: Tab): void {
+    this.tabStates.delete(root);
+    tab.closed.abort();
+    tab.loadingFiles.abort();
+    tab.loadingDiff.abort();
+    this.commitSearches.get(root)?.abort();
   }
 
   private async listedWorktrees(

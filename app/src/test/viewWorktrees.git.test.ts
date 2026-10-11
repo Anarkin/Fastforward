@@ -143,6 +143,43 @@ suite('View of worktrees', function () {
     }
   });
 
+  test('forgets what it kept of a worktree once it is removed, stopping what it read for it, as its history and patches stayed until the tab closed', async () => {
+    const own = await tempRepository(path.join(folder, 'forgotten'));
+    await own.commit('a');
+    const linked = path.join(folder, 'forgotten.worktrees', 'linked');
+    await own.git('worktree', 'add', '-q', '--detach', linked);
+    const opened = await openView(log, [own.root]);
+    try {
+      const linkedRoot = worktreeRoot(opened, linked);
+      await opened.connection.receive({
+        type: 'selectWorktree',
+        root: linkedRoot,
+      });
+      await opened.connection.receive({
+        type: 'selectWorktree',
+        root: own.root,
+      });
+      const tabStates: unknown = Reflect.get(opened.view, 'tabStates');
+      assert.ok(tabStates instanceof Map);
+      const kept: unknown = tabStates.get(linkedRoot);
+      assert.ok(
+        typeof kept === 'object' &&
+          kept !== null &&
+          'closed' in kept &&
+          kept.closed instanceof AbortController,
+      );
+      await own.git('worktree', 'remove', '--force', linked);
+      await waitFor(
+        () => !tabStates.has(linkedRoot),
+        'the removed worktree to be forgotten',
+      );
+      assert.strictEqual(kept.closed.signal.aborted, true);
+      assert.ok(tabStates.has(own.root));
+    } finally {
+      opened.connection.dispose();
+    }
+  });
+
   test('keeps showing the worktrees listed last when listing them again fails', async () => {
     const own = await tempRepository(path.join(folder, 'unlisted'));
     await own.commit('a');
