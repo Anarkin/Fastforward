@@ -39,6 +39,8 @@ function read(chunks: readonly string[]) {
   return budget.end();
 }
 
+const numbered = (index: number) => `${String(index).padStart(3, '0')}.json`;
+
 suite('Patch budget', () => {
   test('keeps each file within the budget and leaves out one over 1500 changed lines with its count, counting only the changed lines of its hunks, from output split anywhere', () => {
     const output =
@@ -88,6 +90,29 @@ suite('Patch budget', () => {
       { header: 'diff --git a/a.ts b/a.ts', lines: 1, kept: true },
       { header: 'diff --git a/min.js b/min.js', lines: undefined, kept: false },
     ]);
+  });
+
+  test('counts the bytes of the files left out for their lines toward the 16 MB, so many of them stop the read before git sends them all', () => {
+    const large = (index: number) =>
+      section(numbered(index), collapseThreshold + 1);
+    const count = Math.ceil(patchByteBudget / large(0).length);
+    const budget = new PatchBudget();
+    let stoppedAt: number | undefined;
+    for (let index = 0; index < count + 1; index++) {
+      if (budget.add(Buffer.from(large(index)))) {
+        stoppedAt ??= index;
+      }
+    }
+    budget.add(Buffer.from(section('a.ts', 1)));
+    const { sections, stopped } = budget.end();
+    assert.strictEqual(stopped, true);
+    assert.strictEqual(stoppedAt, count - 1);
+    assert.deepStrictEqual(sections.at(-1), {
+      header: `diff --git a/${numbered(count - 1)} b/${numbered(count - 1)}`,
+      lines: undefined,
+      kept: false,
+    });
+    assert.strictEqual(sections.length, count);
   });
 
   test('counts the bytes git sends rather than their characters, from output split anywhere', () => {

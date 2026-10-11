@@ -109,7 +109,7 @@ export class PatchBudget {
   private pendingBytes = 0;
   private section: OpenSection | undefined;
   private keptLines = 0;
-  private keptBytes = 0;
+  private readBytes = 0;
 
   add(chunk: Buffer): boolean {
     if (this.stopped) {
@@ -136,7 +136,7 @@ export class PatchBudget {
     this.pendingBytes += chunk.length - from;
     if (
       this.section &&
-      this.section.bytes + this.pendingBytes > patchByteBudget
+      this.readBytes + this.section.bytes + this.pendingBytes > patchByteBudget
     ) {
       this.stop(this.section, undefined);
     }
@@ -188,7 +188,7 @@ export class PatchBudget {
     if (section.lines <= collapseThreshold) {
       section.text.push(text);
     }
-    if (section.bytes > patchByteBudget) {
+    if (this.readBytes + section.bytes > patchByteBudget) {
       this.stop(section, undefined);
       return true;
     }
@@ -202,19 +202,16 @@ export class PatchBudget {
       return false;
     }
     const { header, lines, bytes } = section;
+    this.readBytes += bytes;
     if (lines > collapseThreshold) {
       this.sections.push({ header, lines, kept: false });
       return false;
     }
-    if (
-      this.keptLines + lines > patchLineBudget ||
-      this.keptBytes + bytes > patchByteBudget
-    ) {
+    if (this.keptLines + lines > patchLineBudget) {
       this.stop(section, lines);
       return true;
     }
     this.keptLines += lines;
-    this.keptBytes += bytes;
     this.kept.push(section.text.join(''));
     this.sections.push({ header, lines, kept: true });
     return false;
