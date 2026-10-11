@@ -225,18 +225,30 @@ export function tokenizing(
   };
 }
 
-let created: Promise<HighlighterCore> | undefined;
+export function onceMade<T>(make: () => Promise<T>): () => Promise<T> {
+  let made: Promise<T> | undefined;
+  return () => {
+    made ??= make().catch((error: unknown) => {
+      made = undefined;
+      throw error;
+    });
+    return made;
+  };
+}
+
+const highlighterMade = onceMade(() =>
+  createHighlighterCore({
+    themes: [theme],
+    engine: createOnigurumaEngine(import('shiki/wasm')),
+  }),
+);
 let ready: HighlighterCore | undefined;
 let grammars = 0;
 
 export async function loadLanguages(
   languages: readonly string[],
 ): Promise<HighlighterCore> {
-  created ??= createHighlighterCore({
-    themes: [theme],
-    engine: createOnigurumaEngine(import('shiki/wasm')),
-  });
-  const highlighter = await created;
+  const highlighter = await highlighterMade();
   const loaded = highlighter.getLoadedLanguages();
   const added = await Promise.all(
     bundledLanguagesInfo

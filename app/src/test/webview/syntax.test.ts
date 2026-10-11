@@ -12,6 +12,7 @@ import {
 import {
   colorCode,
   loadLanguages,
+  onceMade,
   sendUncaught,
   serveColoring,
   startColoring,
@@ -1062,5 +1063,21 @@ suite('Coloring away from the page', () => {
       failures.map((error) => (error instanceof Error ? error.message : error)),
       ['Uncaught Error: grammar failed'],
     );
+  });
+});
+
+suite('Making the highlighter', () => {
+  test('makes it once, but again after it failed to be made, as one failed instantiation would leave every later diff uncolored', async () => {
+    let made = 0;
+    const highlighter = onceMade(() => {
+      made++;
+      return made === 1
+        ? Promise.reject(new Error('out of memory'))
+        : Promise.resolve(made);
+    });
+    await assert.rejects(highlighter(), /out of memory/);
+    assert.strictEqual(await highlighter(), 2);
+    assert.strictEqual(await highlighter(), 2);
+    assert.strictEqual(made, 2);
   });
 });
