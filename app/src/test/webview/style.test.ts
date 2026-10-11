@@ -1419,28 +1419,41 @@ suite('Style', () => {
     });
   });
 
-  test('draws a notice like a context menu, its message inset like a menu item and its close button as far from the edge as a hovered item', () => {
+  test('draws a notice like a context menu, but with twice the room around its message, as it is read rather than scanned', () => {
     const menu = contextMenu();
-    const item = withClass(menu, 'menu-item');
-    assert.ok(item);
     for (const level of ['info', 'error']) {
       const shown = notices(level);
       looks(
         withClass(shown, 'notice'),
         Object.fromEntries(
-          ['background', 'border-radius', 'box-shadow', 'padding'].map(
-            (property) => [property, cascaded(menu, property)],
-          ),
+          ['background', 'border-radius', 'box-shadow'].map((property) => [
+            property,
+            cascaded(menu, property),
+          ]),
         ),
       );
       looks(withClass(shown, 'notice'), {
+        padding: '8px',
         border: undefined,
         'border-left': undefined,
       });
-      const message = withClass(shown, 'notice-message');
-      assert.ok(message);
-      assert.strictEqual(paddingOf(message).left, paddingOf(item).left);
+      looks(withClass(shown, 'notice-message'), {
+        padding: '6px 0 6px 12px',
+      });
     }
+  });
+
+  test("sets a notice's close button in as far as the message's first line, as it is shorter than the message's padding and line", () => {
+    const shown = notices();
+    const message = withClass(shown, 'notice-message');
+    const close = withClass(shown, 'notice-close');
+    assert.ok(message && close);
+    const marginTop = (cascaded(close, 'margin') ?? '0').split(' ')[0];
+    assert.strictEqual(
+      Number.parseInt(marginTop) + 2,
+      Number.parseInt(paddingOf(message).top),
+    );
+    looks(close, { height: '20px' });
   });
 
   test('pads the notices for the shadow of a popup, which their scrolling would clip, keeping them 16px from the corner of the window', () => {

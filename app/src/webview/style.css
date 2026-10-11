@@ -410,7 +410,7 @@ body {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  padding: 4px;
+  padding: 8px;
   color: var(--color-foreground);
   background: var(--color-panel-background);
   border-radius: var(--card-radius);
@@ -421,7 +421,7 @@ body {
 .notice-message {
   flex: 1;
   min-width: 0;
-  padding: 2px 0 2px 10px;
+  padding: 6px 0 6px 12px;
   max-height: 50vh;
   overflow-y: auto;
   overflow-wrap: anywhere;
@@ -439,6 +439,7 @@ body {
   justify-content: center;
   width: 20px;
   height: 20px;
+  margin: 4px;
   padding: 0;
   color: inherit;
   background: none;
