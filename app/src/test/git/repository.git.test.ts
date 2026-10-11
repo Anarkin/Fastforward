@@ -35,8 +35,9 @@ suite('Git repository', function () {
 
   suiteTeardown(() => removeFolder(cwd));
 
-  test("lists branches, remote branches and tags, but not a remote's HEAD", async () => {
+  test("lists branches, remote branches and tags, but not a remote's HEAD, though a branch on it may be named HEAD", async () => {
     await temp.git('update-ref', 'refs/remotes/origin/main', 'HEAD');
+    await temp.git('update-ref', 'refs/remotes/origin/feature/HEAD', 'HEAD');
     await temp.git(
       'symbolic-ref',
       'refs/remotes/origin/HEAD',
@@ -48,7 +49,13 @@ suite('Git repository', function () {
       const { refs } = await readRefs(gitPath, cwd);
       assert.deepStrictEqual(
         refs.map(({ kind, name }) => `${kind} ${name}`).toSorted(),
-        ['branch main', 'remote origin/main', 'tag v1', 'tag v2'],
+        [
+          'branch main',
+          'remote origin/feature/HEAD',
+          'remote origin/main',
+          'tag v1',
+          'tag v2',
+        ],
       );
       assert.deepStrictEqual(
         new Set(refs.map((ref) => ref.commit)),
@@ -57,6 +64,7 @@ suite('Git repository', function () {
     } finally {
       await temp.git('symbolic-ref', '-d', 'refs/remotes/origin/HEAD');
       await temp.git('update-ref', '-d', 'refs/remotes/origin/main');
+      await temp.git('update-ref', '-d', 'refs/remotes/origin/feature/HEAD');
       await temp.git('tag', '-d', 'v1', 'v2');
     }
   });

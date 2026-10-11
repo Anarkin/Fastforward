@@ -161,15 +161,23 @@ async function listRefs(
 ): Promise<{ refs: RefInfo[]; dates: Map<string, number> }> {
   const output = await runGit(gitPath, root, [
     'for-each-ref',
-    '--format=%(refname)%00%(objectname)%00%(objecttype)%00%(*objectname)%00%(*objecttype)%00%(committerdate:unix)%00%(*committerdate:unix)',
+    '--format=%(refname)%00%(objectname)%00%(objecttype)%00%(*objectname)%00%(*objecttype)%00%(committerdate:unix)%00%(*committerdate:unix)%00%(symref)',
     'refs/heads',
     'refs/remotes',
     'refs/tags',
   ]);
   const dates = new Map<string, number>();
   const refs = output.split('\n').flatMap((line): RefInfo[] => {
-    const [refname, object, type, peeled, peeledType, date, peeledDate] =
-      splitNul(line);
+    const [
+      refname,
+      object,
+      type,
+      peeled,
+      peeledType,
+      date,
+      peeledDate,
+      symref,
+    ] = splitNul(line);
     if (!refname || !object || (peeled ? peeledType : type) !== 'commit') {
       return [];
     }
@@ -182,7 +190,7 @@ async function listRefs(
     }
     if (refname.startsWith('refs/remotes/')) {
       const name = refname.slice('refs/remotes/'.length);
-      return name.endsWith('/HEAD') ? [] : [{ kind: 'remote', name, commit }];
+      return symref ? [] : [{ kind: 'remote', name, commit }];
     }
     return [{ kind: 'tag', name: refname.slice('refs/tags/'.length), commit }];
   });
