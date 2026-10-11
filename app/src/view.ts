@@ -248,6 +248,7 @@ export class FastforwardView {
   private readonly autoFetch: AutoFetch;
   private readonly quitting = new AbortController();
   private collapseMerges: boolean;
+  private soloDefault: boolean;
 
   constructor(
     private readonly log: Log,
@@ -262,6 +263,7 @@ export class FastforwardView {
     } = refreshDelays,
   ) {
     this.collapseMerges = storage.collapseMerges;
+    this.soloDefault = storage.soloDefault;
     this.autoFetch = new AutoFetch(
       () => storage.autoFetchMinutes,
       () => fetchOrder(storage.tabs, storage.activeTab),
@@ -278,9 +280,15 @@ export class FastforwardView {
   reloadSettings(): void {
     this.autoFetch.update();
     const collapseChanged = this.storage.collapseMerges !== this.collapseMerges;
+    const soloChanged = this.storage.soloDefault !== this.soloDefault;
     this.collapseMerges = this.storage.collapseMerges;
+    this.soloDefault = this.storage.soloDefault;
     for (const tab of this.tabStates.values()) {
-      forgetHistory(tab);
+      if (soloChanged) {
+        forgetHistory(tab);
+      } else {
+        tab.shownStale = true;
+      }
       tab.opened = false;
       if (collapseChanged) {
         tab.toggledMerges.clear();
@@ -1133,6 +1141,8 @@ export class FastforwardView {
           (async () => {
             if (!historyLoaded(context.tab)) {
               await this.sendCommits(context, refs);
+            } else if (context.tab.shownStale) {
+              await this.sendShownHistory(context, { keepPlace: true });
             }
             await this.sendCommit(context);
           })(),

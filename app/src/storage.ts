@@ -293,6 +293,10 @@ export class Storage {
     await this.userSettings.set('showAllFiles', show);
   }
 
+  get soloDefault(): boolean {
+    return this.settings.solo;
+  }
+
   soloOf(root: string): boolean {
     const all = this.soloByRoot;
     const solo = all[keyOf(all, root)];

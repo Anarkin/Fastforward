@@ -51,6 +51,46 @@ suite('View of other repositories', function () {
     removeFolder(folder);
   });
 
+  test('reads the history again when the settings change by hand only once they show other commits, as reading it takes seconds in large repositories', async () => {
+    await withView(log, [repository.root], async (view) => {
+      const childProcess = process.getBuiltinModule('node:child_process');
+      const { spawn } = childProcess;
+      let reads = 0;
+      Reflect.set(
+        childProcess,
+        'spawn',
+        (command: string, args: readonly string[], options: object) => {
+          if (args.includes('rev-list') && args.includes('--parents')) {
+            reads++;
+          }
+          return spawn(command, args, options);
+        },
+      );
+      try {
+        const reload = async () => {
+          view.view.reloadSettings();
+          view.page.clear();
+          await view.connection.receive({ type: 'ready' });
+        };
+        await reload();
+        await view.settings.set('collapseMerges', false);
+        await reload();
+        assert.strictEqual(reads, 0);
+        assert.notStrictEqual(
+          view.page.last('commits')?.graph[0]?.merge,
+          'collapsed',
+        );
+        await view.settings.set('solo', true);
+        await reload();
+        assert.strictEqual(reads, 1);
+      } finally {
+        Reflect.set(childProcess, 'spawn', spawn);
+        await view.settings.set('collapseMerges', true);
+        await view.settings.set('solo', false);
+      }
+    });
+  });
+
   test('expands every merge once collapsing them is turned off by hand, also one expanded before', async () => {
     await withView(log, [repository.root], async (view) => {
       await view.connection.receive({
