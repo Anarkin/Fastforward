@@ -109,6 +109,26 @@ suite('Active column', () => {
     );
   });
 
+  test('leaves Tab to move between the controls of a column, taking it only from its list, so the keyboard reaches every button', () => {
+    const all = shownColumns(true, 'a');
+    assert.strictEqual(
+      columnStep({ ...key, key: 'Tab' }, all, 'commits', false),
+      undefined,
+    );
+    assert.strictEqual(
+      columnStep({ ...key, key: 'Tab', shiftKey: true }, all, 'files', false),
+      undefined,
+    );
+    assert.deepStrictEqual(columnStep(key, all, 'commits', false), {
+      next: 'files',
+      preventDefault: true,
+    });
+    assert.deepStrictEqual(
+      columnStep({ ...key, key: 'Tab' }, all, 'commits', true),
+      { next: 'files', preventDefault: true },
+    );
+  });
+
   test('tells which column an element is in by its place among the columns', () => {
     const container: { children: unknown[] } = { children: [] };
     const columns = [0, 1, 2].map(() => ({ parentElement: container }));

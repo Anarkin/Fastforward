@@ -56,11 +56,12 @@ export function columnStep(
   event: Parameters<typeof keyPressed>[1],
   shown: readonly ColumnName[],
   current: ColumnName | undefined,
+  onList = true,
 ):
   | { readonly next: ColumnName | undefined; readonly preventDefault: boolean }
   | undefined {
   const move = columnMove(event);
-  if (move === undefined) {
+  if (move === undefined || (move.tab && !onList)) {
     return undefined;
   }
   const next = adjacentColumn(shown, current, move.step);

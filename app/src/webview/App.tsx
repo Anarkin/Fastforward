@@ -699,6 +699,7 @@ export function App({ name, post: postToHost, listen }: Props) {
                         diffShown,
                       ),
                       columnOf(target) ?? activeColumn,
+                      target?.hasAttribute(columnFocusAttribute) ?? true,
                     );
                     if (step?.preventDefault) {
                       event.preventDefault();
