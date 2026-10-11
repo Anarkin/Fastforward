@@ -2077,16 +2077,20 @@ export class FastforwardView {
     const { tab } = context;
     const generation = layOut ? this.layOut(tab) : ++tab.generation;
     const page = firstPage(tab, keepPlace, scrollTo);
-    const commits = await logCommits(
-      context.gitPath,
-      context.root,
-      tab.history.hashes(page.start, page.start + 2 * commitPageSize),
-    ).catch((error: unknown) => {
-      if (tab.generation === generation) {
-        tab.shownStale = true;
-      }
-      throw error;
-    });
+    const { graph } = tab;
+    const [commits] = await Promise.all([
+      logCommits(
+        context.gitPath,
+        context.root,
+        tab.history.hashes(page.start, page.start + 2 * commitPageSize),
+      ).catch((error: unknown) => {
+        if (tab.generation === generation) {
+          tab.shownStale = true;
+        }
+        throw error;
+      }),
+      graph.walkTo(page.start, () => tab.graph === graph),
+    ]);
     keepSubjects(tab, commits);
     if (tab.generation !== generation) {
       return;
@@ -2128,6 +2132,7 @@ export class FastforwardView {
       return;
     }
     const { history, graph } = tab;
+    const walked = graph.walkTo(start, () => tab.graph === graph);
     const commits = await logCommits(
       context.gitPath,
       context.root,
@@ -2146,6 +2151,7 @@ export class FastforwardView {
       throw error;
     });
     keepSubjects(tab, commits);
+    await walked;
     if (replaced()) {
       return;
     }

@@ -398,8 +398,16 @@ export class Graph {
     };
   }
 
-  async walkAhead(shown: () => boolean, sliceTime = 10): Promise<void> {
-    const end = this.source.length + 1;
+  walkAhead(shown: () => boolean, sliceTime = 10): Promise<void> {
+    return this.walkTo(Infinity, shown, sliceTime);
+  }
+
+  async walkTo(
+    start: number,
+    shown: () => boolean,
+    sliceTime = 10,
+  ): Promise<void> {
+    const end = Math.min(start + 2, this.source.length + 1);
     while (this.reached < end && shown()) {
       const until = performance.now() + sliceTime;
       do {

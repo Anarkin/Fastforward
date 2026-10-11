@@ -241,6 +241,29 @@ suite('Graph', () => {
     assert.ok(read <= 100 + 10, `${read} rows walked for the last page`);
   });
 
+  test('walks to a page deep in the history a slice at a time, letting other work run, then lays it out without walking there again', async () => {
+    const count = 5000;
+    let read = 0;
+    const history = Array.from({ length: count }, (_, index) => ({
+      hash: `c${index}`,
+      get parents() {
+        read++;
+        return index < count - 1 ? [`c${index + 1}`] : [];
+      },
+    }));
+    const graph = graphOf(history, { checkpointEvery: 100 });
+    let ran = false;
+    setImmediate(() => {
+      ran = true;
+    });
+    await graph.walkTo(3000, () => true, 0);
+    assert.ok(ran);
+    assert.ok(read < count, `${read} rows walked to row 3000`);
+    read = 0;
+    assert.strictEqual(graph.rows(3000, 10).length, 10);
+    assert.ok(read <= 100 + 10, `${read} rows walked for the page`);
+  });
+
   test('lays out no row past the page asked for', () => {
     assert.strictEqual(graphOf(laidOutBefore(100)).rows(0, 100).length, 100);
     const graph = graphOf(laidOutBefore(199));
