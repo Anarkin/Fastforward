@@ -234,15 +234,19 @@ export class Storage {
       diffLayout: settings.diffLayout,
       showAllFiles: settings.showAllFiles,
       autoFetch: settings.autoFetch,
-      autoFetchMinutes: settings.autoFetchMinutes,
+      autoFetchMinutes: this.fetchMinutes,
     };
   }
 
+  private get fetchMinutes(): number {
+    return Math.min(
+      Math.max(0, this.settings.autoFetchMinutes),
+      maxAutoFetchMinutes,
+    );
+  }
+
   get autoFetchMinutes(): number {
-    const { autoFetch, autoFetchMinutes } = this.settings;
-    return autoFetch
-      ? Math.min(Math.max(0, autoFetchMinutes), maxAutoFetchMinutes)
-      : 0;
+    return this.settings.autoFetch ? this.fetchMinutes : 0;
   }
 
   async setAutoFetch(on: boolean): Promise<void> {

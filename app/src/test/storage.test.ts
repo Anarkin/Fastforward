@@ -47,7 +47,7 @@ suite('Storage', () => {
     });
   });
 
-  test('fetches at most as seldom as a timer can wait', () => {
+  test('fetches at most as seldom as a timer can wait, and tells the page so, as it says how often it fetches and when a fetch is late by it', () => {
     const storage = new Storage(
       new UserSettings({
         ...defaultSettings(),
@@ -58,6 +58,10 @@ suite('Storage', () => {
     );
     assert.ok(storage.autoFetchMinutes * 60_000 <= 2 ** 31 - 1);
     assert.ok(storage.autoFetchMinutes > 35_000);
+    assert.strictEqual(
+      storage.layout.autoFetchMinutes,
+      storage.autoFetchMinutes,
+    );
   });
 
   test('keeps solo per repository in the state, only where it differs from the default', async () => {
