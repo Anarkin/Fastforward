@@ -69,8 +69,9 @@ export function filesTitle(selection: string | undefined): string {
 
 export function noChangesText(
   selection: string | undefined,
+  error: string | undefined,
 ): string | undefined {
-  if (selection === undefined) {
+  if (selection === undefined || error !== undefined) {
     return undefined;
   }
   return comparedOf(selection)

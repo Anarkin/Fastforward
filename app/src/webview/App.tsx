@@ -765,7 +765,7 @@ export function App({ name, post: postToHost, listen }: Props) {
                   />
                   <Files
                     title={filesTitle(hash)}
-                    noChanges={noChangesText(hash)}
+                    noChanges={noChangesText(hash, error)}
                     showAll={showAllFiles}
                     onShowAll={changeShowAllFiles}
                     closedFolders={closedFolders}
