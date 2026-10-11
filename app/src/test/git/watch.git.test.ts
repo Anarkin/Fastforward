@@ -115,6 +115,22 @@ suite('Watching a repository', function () {
     assert.deepStrictEqual(errors, []);
   });
 
+  test('refreshes for a file in a folder .git/info/exclude ignored until it changed, watching folder by folder', async () => {
+    const exclude = path.join(repository.root, '.git', 'info', 'exclude');
+    fs.mkdirSync(path.dirname(exclude), { recursive: true });
+    fs.writeFileSync(exclude, 'generated/\n');
+    fs.mkdirSync(path.join(repository.root, 'generated'));
+    await start();
+    await settled();
+    fs.writeFileSync(exclude, '');
+    await waitFor(() => changes.includes(true), 'the exclude file');
+    await keepWriting(
+      path.join('generated', 'file.txt'),
+      'the file excluded no more',
+    );
+    assert.deepStrictEqual(errors, []);
+  });
+
   test('checks no file git writes into its objects, watching recursively', async () => {
     const statted: string[] = [];
     const nodeFs = process.getBuiltinModule('node:fs');

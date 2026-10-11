@@ -147,6 +147,9 @@ export async function watchRepository(
       }
       if (affects) {
         changedGitDir(changesRefsAlone(inside));
+        if (/^info(?:[\\/]exclude)?$/.test(inside)) {
+          rootTree?.ignoresChanged(root);
+        }
       }
       if (listed) {
         worktreesChanged();
@@ -196,6 +199,7 @@ export async function watchRepository(
     }
   };
   let watchers: Watcher[];
+  let rootTree: TreeWatcher | undefined;
   if (recursive) {
     const realRoot = await realPath(root);
     // Watching a folder recursively does not follow the links in it, such as
@@ -215,7 +219,7 @@ export async function watchRepository(
       return watcher;
     });
   } else {
-    watchers = await Promise.all([
+    const trees = await Promise.all([
       watchTree(root, {
         skip: (folder) =>
           gitDirHolding(folder) !== undefined ||
@@ -242,6 +246,8 @@ export async function watchRepository(
         }),
       ),
     ]);
+    [rootTree] = trees;
+    watchers = trees;
   }
 
   return {
@@ -299,6 +305,10 @@ interface TreeOptions {
   ) => FolderWatcher;
 }
 
+export interface TreeWatcher extends Watcher {
+  ignoresChanged(folder: string): void;
+}
+
 interface Folder {
   readonly path: string;
   readonly repo: string;
@@ -314,7 +324,7 @@ interface WatchedFolder {
 export async function watchTree(
   root: string,
   { skip, ignored, onEvent, onError, signal, watch }: TreeOptions,
-): Promise<Watcher> {
+): Promise<TreeWatcher> {
   const watched = new Map<string, WatchedFolder>();
   let disposed = false;
   const stopped = () => disposed || signal?.aborted === true;
@@ -543,6 +553,7 @@ export async function watchTree(
   await add([{ path: root, repo: root }]);
 
   return {
+    ignoresChanged,
     dispose: async () => {
       disposed = true;
       for (const { watcher } of watched.values()) {

@@ -696,6 +696,30 @@ suite('Watching folders one by one', () => {
     assert.deepStrictEqual(watched(), before);
   });
 
+  test('asks again whether any folder is ignored when told the ignores of the whole repository changed, as for .git/info/exclude', async () => {
+    mkdir('a/gen', 'b');
+    const ignoring = new Set(['gen']);
+    const tree = await watchTree(root, {
+      skip: () => false,
+      ignored: (_repo, folders) =>
+        Promise.resolve(
+          folders.filter((folder) => ignoring.has(path.basename(folder))),
+        ),
+      onEvent: () => {},
+      onError: (error) => errors.push(error),
+      watch: fakeWatch,
+    });
+    assert.deepStrictEqual(watched(), ['', 'a', 'b']);
+    ignoring.clear();
+    ignoring.add('b');
+    tree.ignoresChanged(root);
+    await waitFor(
+      () => watched().includes('a/gen') && !watched().includes('b'),
+      'the folders asked again',
+    );
+    assert.deepStrictEqual(watched(), ['', 'a', 'a/gen']);
+  });
+
   test('stops watching removed folders', async () => {
     mkdir('a/b/c');
     await start();
