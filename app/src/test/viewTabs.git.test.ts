@@ -64,6 +64,50 @@ suite('View with two tabs', function () {
     });
   });
 
+  test('stops reading the history of a tab closed while it reads it, as reading a large one takes seconds', async () => {
+    const childProcess = process.getBuiltinModule('node:child_process');
+    const { spawn } = childProcess;
+    let reading: ReturnType<typeof spawn> | undefined;
+    Reflect.set(
+      childProcess,
+      'spawn',
+      (command: string, args: readonly string[], options: object) => {
+        if (
+          args.includes('--parents') &&
+          !args.some((arg) => arg.startsWith('--max-count')) &&
+          reading === undefined
+        ) {
+          reading = spawn(
+            process.execPath,
+            ['-e', 'setTimeout(() => {}, 30000)'],
+            options,
+          );
+          return reading;
+        }
+        return spawn(command, args, options);
+      },
+    );
+    try {
+      await withView(
+        log,
+        [other, repository.root],
+        async (own) => {
+          const ready = own.connection.receive({ type: 'ready' });
+          await waitFor(() => reading !== undefined, 'the history to be read');
+          await own.connection.receive({ type: 'closeTab', root: other });
+          await waitFor(
+            () => reading?.exitCode !== null || reading.signalCode !== null,
+            'the read to stop',
+          );
+          await ready;
+        },
+        false,
+      );
+    } finally {
+      Reflect.set(childProcess, 'spawn', spawn);
+    }
+  });
+
   test('opens the tab before the shown one when that closes last in the list', async () => {
     const last = await tempRepository(path.join(folder, 'last'));
     await last.commit('last');

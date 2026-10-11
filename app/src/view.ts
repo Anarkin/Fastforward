@@ -156,6 +156,7 @@ interface Tab extends TabState {
   diffOwed: boolean;
   loadingFiles: AbortController;
   loadingDiff: AbortController;
+  readonly closed: AbortController;
   untrackedPatches: UntrackedPatches;
   indexPaths: readonly string[] | undefined;
 }
@@ -520,9 +521,13 @@ export class FastforwardView {
         const { tabs, activeTab } = storage;
         const index = tabs.findIndex((tab) => sameRoot(tab, message.root));
         const rest = tabs.filter((tab) => !sameRoot(tab, message.root));
-        for (const root of this.tabStates.keys()) {
+        for (const [root, tab] of this.tabStates) {
           if (sameRoot(this.repositoryOf(root), message.root)) {
             this.tabStates.delete(root);
+            tab.closed.abort();
+            tab.loadingFiles.abort();
+            tab.loadingDiff.abort();
+            this.commitSearches.get(root)?.abort();
           }
         }
         const active =
@@ -1287,6 +1292,7 @@ export class FastforwardView {
         diffOwed: false,
         loadingFiles: new AbortController(),
         loadingDiff: new AbortController(),
+        closed: new AbortController(),
         untrackedPatches: new UntrackedPatches(maxKeptUntrackedChars),
         indexPaths: undefined,
       };
@@ -2011,7 +2017,15 @@ export class FastforwardView {
         context,
         solo,
         stashes.map((stash) => stash.commit),
-      );
+      ).catch((error: unknown) => {
+        if (tab.closed.signal.aborted) {
+          return undefined;
+        }
+        throw error;
+      });
+      if (fullHistory === undefined) {
+        return;
+      }
       loading.abort();
       loadHistory(tab, fullHistory, head, listed, stashes, read.dates);
       tab.shallow = read.shallow;
@@ -2041,7 +2055,13 @@ export class FastforwardView {
     solo: boolean,
     stashes: readonly string[],
   ): Promise<Commits> {
-    return listHistory(context.gitPath, context.root, solo, stashes);
+    return listHistory(
+      context.gitPath,
+      context.root,
+      solo,
+      stashes,
+      context.tab.closed.signal,
+    );
   }
 
   private async listRecentHistory(
@@ -2135,7 +2155,9 @@ export class FastforwardView {
       ),
     );
     const { graph } = tab;
-    void this.inFlight.track(graph.walkAhead(() => tab.graph === graph));
+    void this.inFlight.track(
+      graph.walkAhead(() => tab.graph === graph && !tab.closed.signal.aborted),
+    );
     return generation;
   }
 

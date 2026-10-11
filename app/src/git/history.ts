@@ -120,6 +120,7 @@ export async function listHistory(
   cwd: string,
   solo = false,
   stashes: readonly string[] = [],
+  signal?: AbortSignal,
 ): Promise<Commits> {
   const tips = solo ? [] : stashes;
   const reader = new CommitsBuilder(tips);
@@ -134,7 +135,7 @@ export async function listHistory(
       '--stdin',
       '--',
     ],
-    { input: hashLines(tips), onOutput: (chunk) => reader.add(chunk) },
+    { input: hashLines(tips), signal, onOutput: (chunk) => reader.add(chunk) },
   );
   return reader.finish();
 }
