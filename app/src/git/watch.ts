@@ -149,6 +149,13 @@ export async function watchRepository(
         worktreesChanged();
       }
     } else if (isInside(root, file)) {
+      const nested = nestedGitDir(root, file);
+      if (
+        nested !== undefined &&
+        isInternal(nested.inside, isGitDirIn(nested.gitDir))
+      ) {
+        return;
+      }
       changedFiles.add(file);
       if (event === 'rename') {
         renamedFiles.add(file);
@@ -207,7 +214,9 @@ export async function watchRepository(
   } else {
     watchers = await Promise.all([
       watchTree(root, {
-        skip: (folder) => gitDirHolding(folder) !== undefined,
+        skip: (folder) =>
+          gitDirHolding(folder) !== undefined ||
+          leftAloneInGitDir(root, folder),
         ignored,
         onEvent,
         onError,
@@ -436,7 +445,7 @@ export async function watchTree(
       entry.repo = folder.path;
     }
     return entries
-      .filter((child) => child.isDirectory() && child.name !== '.git')
+      .filter((child) => child.isDirectory())
       .map((child) => ({
         path: path.join(folder.path, child.name),
         repo: entry.repo,
@@ -471,10 +480,7 @@ export async function watchTree(
       return isFolder ? [{ path: root, repo: root }] : [];
     }
     const parent = watched.get(path.dirname(file));
-    return parent !== undefined &&
-      isFolder &&
-      path.basename(file) !== '.git' &&
-      !skip(file)
+    return parent !== undefined && isFolder && !skip(file)
       ? [{ path: file, repo: parent.repo }]
       : [];
   };
@@ -634,6 +640,36 @@ function isInternalIn(
     }
   }
   return false;
+}
+
+function nestedGitDir(
+  root: string,
+  file: string,
+): { readonly gitDir: string; readonly inside: string } | undefined {
+  const parts = path.relative(root, file).split(path.sep);
+  const at = parts.indexOf('.git');
+  return at === -1 || at === parts.length - 1
+    ? undefined
+    : {
+        gitDir: path.join(root, ...parts.slice(0, at + 1)),
+        inside: parts.slice(at + 1).join(path.sep),
+      };
+}
+
+export function leftAloneInGitDir(
+  root: string,
+  folder: string,
+  isGitDir: (gitDir: string) => IsGitDir = isGitDirIn,
+): boolean {
+  if (path.relative(root, folder) === '.git') {
+    return true;
+  }
+  const nested = nestedGitDir(root, folder);
+  return (
+    nested !== undefined &&
+    (path.relative(root, nested.gitDir) === '.git' ||
+      !watchedFolder(nested.inside, false, isGitDir(nested.gitDir)))
+  );
 }
 
 function realPath(file: string): Promise<string> {

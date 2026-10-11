@@ -507,6 +507,34 @@ suite('Watching a repository', function () {
       assert.deepStrictEqual(errors, []);
     });
 
+    test(`refreshes for a commit in a repository whose git folder is inside the working tree, but stays quiet while only its objects are written, as a fetch or gc there does, watching ${recursive ? 'recursively' : 'folder by folder'}`, async () => {
+      const nested = await tempRepository(path.join(repository.root, 'lib'));
+      await nested.commit('library', { 'lib.c': '' });
+      await repository.git('add', '--no-warn-embedded-repo', 'lib');
+      watcher = await watchRepository(repository.gitPath, repository.root, {
+        delay: 50,
+        maxDelay: 200,
+        recursive,
+        onChange: ({ refs }) => changes.push(refs),
+        onError: (error) => errors.push(error),
+      });
+      await settled();
+      const pack = path.join(nested.root, '.git', 'objects', 'pack');
+      const until = Date.now() + 600;
+      for (let written = 0; Date.now() < until; written++) {
+        fs.writeFileSync(path.join(pack, `tmp_pack_${written}`), 'pack');
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      assert.deepStrictEqual(changes, []);
+      let commits = 0;
+      await waitFor(async () => {
+        await nested.commit(`${commits++}`);
+        return changes.includes(false);
+      }, 'a commit in the nested repository');
+      assert.deepStrictEqual(errors, []);
+    });
+
     test(`refreshes for a commit when .git links to a folder elsewhere, which watching the folder it is in does not follow, watching ${recursive ? 'recursively' : 'folder by folder'}`, async () => {
       const store = tempFolder('store');
       const gitDir = path.join(store, 'project.git');

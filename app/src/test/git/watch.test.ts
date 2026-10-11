@@ -8,6 +8,7 @@ import {
   changesRefsAlone,
   gitDirChanged,
   isInternal,
+  leftAloneInGitDir,
   nextFlush,
   watchEach,
   watchedFolder,
@@ -33,6 +34,36 @@ suite('Watching the git folder', () => {
   ]);
   const isModule = (inGitDir: string) =>
     modules.has(inGitDir.split(/[\\/]/).join('/'));
+
+  test('watches the folders of a git folder inside the working tree that it refreshes for, but none in the git folder of the repository itself', () => {
+    const root = path.resolve('repo');
+    const leftAlone = (folder: string) =>
+      leftAloneInGitDir(
+        root,
+        path.join(root, ...folder.split('/')),
+        () => () => false,
+      );
+    assert.deepStrictEqual(
+      [
+        '.git',
+        '.git/refs',
+        'lib',
+        'lib/.git',
+        'lib/.git/refs/heads',
+        'lib/.git/objects',
+        'lib/.git/objects/pack',
+        'lib/.git/logs/refs',
+        'a/b/.git/lfs',
+      ].filter(leftAlone),
+      [
+        '.git',
+        '.git/refs',
+        'lib/.git/objects',
+        'lib/.git/objects/pack',
+        'a/b/.git/lfs',
+      ],
+    );
+  });
 
   test('refreshes for HEAD, the index and refs', () => {
     for (const file of [
@@ -408,7 +439,7 @@ suite('Watching folders one by one', () => {
   };
   const start = (before: (folder: string) => void = () => {}) =>
     watchTree(root, {
-      skip: (folder) => path.basename(folder) === 'skipped',
+      skip: (folder) => ['skipped', '.git'].includes(path.basename(folder)),
       ignored: (repo, folders) => {
         ignoredCalls.push([relative(repo), folders.map(relative).toSorted()]);
         return Promise.resolve(
