@@ -138,6 +138,23 @@ suite('Settings', () => {
   });
 });
 
+function watchersMade(run: () => void): fs.FSWatcher[] {
+  const nodeFs = process.getBuiltinModule('node:fs');
+  const { watch } = nodeFs;
+  const made: fs.FSWatcher[] = [];
+  Reflect.set(nodeFs, 'watch', (...args: Parameters<typeof watch>) => {
+    const real = watch(...args);
+    made.push(real);
+    return real;
+  });
+  try {
+    run();
+  } finally {
+    Reflect.set(nodeFs, 'watch', watch);
+  }
+  return made;
+}
+
 suite('User settings file', () => {
   let folder: string;
   let file: string;
@@ -290,6 +307,50 @@ suite('User settings file', () => {
       assert.strictEqual(checks, 1);
     } finally {
       stop();
+    }
+  });
+
+  test('stops watching a folder whose watcher fails, rather than throwing into the main process', async () => {
+    let stop: (() => void) | undefined;
+    const [watcher] = watchersMade(() => {
+      stop = watchSettings(file, () => {}, 10);
+    });
+    try {
+      let closed = false;
+      watcher.on('close', () => {
+        closed = true;
+      });
+      watcher.emit(
+        'error',
+        Object.assign(new Error('EPERM: operation not permitted, watch'), {
+          code: 'EPERM',
+        }),
+      );
+      await waitFor(() => closed, 'the watcher to stop');
+    } finally {
+      stop?.();
+    }
+  });
+
+  test('stops watching the folder of the file a symlink points to once that folder is removed, as Windows then tells of changes in it without end', async function () {
+    this.timeout(20_000);
+    const target = path.join(folder, 'dotfiles', 'settings.json');
+    fs.mkdirSync(path.dirname(target));
+    fs.writeFileSync(target, '{}');
+    let stop: (() => void) | undefined;
+    const made = watchersMade(() => {
+      stop = watchSettings(file, () => {}, 10, target);
+    });
+    try {
+      const closed = new Set<fs.FSWatcher>();
+      for (const watcher of made) {
+        watcher.on('close', () => closed.add(watcher));
+      }
+      fs.rmSync(path.dirname(target), { recursive: true });
+      await waitFor(() => closed.size === 1, 'the watcher to stop');
+      assert.strictEqual(closed.has(made[0]), false);
+    } finally {
+      stop?.();
     }
   });
 

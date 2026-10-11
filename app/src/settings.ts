@@ -317,14 +317,21 @@ export function watchSettings(
   target = realPath(file),
 ): () => void {
   let timer: NodeJS.Timeout | undefined;
-  const watchers = [...new Set([file, target])].map((watched) =>
-    fs.watch(path.dirname(watched), (_event, name) => {
+  const watchers = [...new Set([file, target])].map((watched) => {
+    const folder = path.dirname(watched);
+    const watcher = fs.watch(folder, (_event, name) => {
+      if (!fs.existsSync(folder)) {
+        watcher.close();
+        return;
+      }
       if (name === path.basename(watched)) {
         clearTimeout(timer);
         timer = setTimeout(onChange, delay);
       }
-    }),
-  );
+    });
+    watcher.on('error', () => watcher.close());
+    return watcher;
+  });
   timer = setTimeout(onChange, delay);
   return () => {
     clearTimeout(timer);
