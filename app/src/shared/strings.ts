@@ -1,22 +1,68 @@
 export const brand = 'Fastforward';
 
-function counted(count: number, unit: string): string {
-  return `${count} ${unit}${count === 1 ? '' : 's'} ago`;
+interface ElapsedSentences {
+  readonly now: string;
+  readonly minutes: (count: number) => string;
+  readonly hours: (count: number) => string;
+  readonly days: (count: number) => string;
 }
 
-function ago(elapsed: number): string {
+function byElapsed(elapsed: number, sentences: ElapsedSentences): string {
   const minutes = Math.floor(elapsed / 60_000);
   if (minutes < 1) {
-    return 'just now';
+    return sentences.now;
   }
   if (minutes < 60) {
-    return counted(minutes, 'minute');
+    return sentences.minutes(minutes);
   }
   const hours = Math.floor(minutes / 60);
   return hours < 24
-    ? counted(hours, 'hour')
-    : counted(Math.floor(hours / 24), 'day');
+    ? sentences.hours(hours)
+    : sentences.days(Math.floor(hours / 24));
 }
+
+const fetchedAgo = (elapsed: number) =>
+  byElapsed(elapsed, {
+    now: 'Fetched just now',
+    minutes: (count) =>
+      count === 1 ? 'Fetched 1 minute ago' : `Fetched ${count} minutes ago`,
+    hours: (count) =>
+      count === 1 ? 'Fetched 1 hour ago' : `Fetched ${count} hours ago`,
+    days: (count) =>
+      count === 1 ? 'Fetched 1 day ago' : `Fetched ${count} days ago`,
+  });
+
+const couldNotFetchAgo = (elapsed: number) =>
+  byElapsed(elapsed, {
+    now: "Couldn't fetch just now",
+    minutes: (count) =>
+      count === 1
+        ? "Couldn't fetch 1 minute ago"
+        : `Couldn't fetch ${count} minutes ago`,
+    hours: (count) =>
+      count === 1
+        ? "Couldn't fetch 1 hour ago"
+        : `Couldn't fetch ${count} hours ago`,
+    days: (count) =>
+      count === 1
+        ? "Couldn't fetch 1 day ago"
+        : `Couldn't fetch ${count} days ago`,
+  });
+
+const lastFetchedAgo = (elapsed: number) =>
+  byElapsed(elapsed, {
+    now: 'Last fetched just now',
+    minutes: (count) =>
+      count === 1
+        ? 'Last fetched 1 minute ago'
+        : `Last fetched ${count} minutes ago`,
+    hours: (count) =>
+      count === 1
+        ? 'Last fetched 1 hour ago'
+        : `Last fetched ${count} hours ago`,
+    days: (count) =>
+      count === 1 ? 'Last fetched 1 day ago' : `Last fetched ${count} days ago`,
+  });
 
 function fileSize(bytes: number): string {
   if (bytes < 1024) {
@@ -154,11 +200,12 @@ export const strings = {
       forward: 'Forward; hold or right-click for the history',
     },
     fetch: 'Fetch every remote, dropping branches deleted there',
-    fetched: (elapsed: number) => `Fetched ${ago(elapsed)}`,
-    couldNotFetch: (elapsed: number, sinceFetched: number | undefined) =>
+    fetchedTitle: (elapsed: number) =>
+      `Fetch every remote, dropping branches deleted there\n${fetchedAgo(elapsed)}`,
+    couldNotFetchTitle: (elapsed: number, sinceFetched: number | undefined) =>
       sinceFetched === undefined
-        ? `Couldn't fetch ${ago(elapsed)}`
-        : `Couldn't fetch ${ago(elapsed)}; last fetched ${ago(sinceFetched)}`,
+        ? `Fetch every remote, dropping branches deleted there\n${couldNotFetchAgo(elapsed)}`
+        : `Fetch every remote, dropping branches deleted there\n${couldNotFetchAgo(elapsed)}\n${lastFetchedAgo(sinceFetched)}`,
     fetchEvery: (minutes: number) =>
       minutes === 1 ? 'Fetch Every Minute' : `Fetch Every ${minutes} Minutes`,
     stopFetchingEvery: (minutes: number) =>

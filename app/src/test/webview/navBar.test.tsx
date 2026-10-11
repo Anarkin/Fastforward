@@ -123,7 +123,7 @@ suite('Navigation bar', () => {
     tagWith(html, '', 'fetch-mark', 'failed');
     tagWith(
       html,
-      'Couldn&#x27;t fetch 1 minute ago; last fetched 2 hours ago"',
+      'Couldn&#x27;t fetch 1 minute ago\nLast fetched 2 hours ago"',
       'nav-button',
     );
     tagWith(

@@ -26,21 +26,21 @@ function autoFetchTitle(on: boolean, minutes: number): string {
     : strings.navigation.fetchEvery(minutes);
 }
 
-function lastFetchText(
+function fetchTitle(
   { succeeded, failed }: LastFetch,
   failing: boolean,
   now: number,
-): string | undefined {
+): string {
   const since = (time: number) => now - time;
   if (failing && failed !== undefined) {
-    return strings.navigation.couldNotFetch(
+    return strings.navigation.couldNotFetchTitle(
       since(failed),
       succeeded === undefined ? undefined : since(succeeded),
     );
   }
   return succeeded === undefined
-    ? undefined
-    : strings.navigation.fetched(since(succeeded));
+    ? strings.navigation.fetch
+    : strings.navigation.fetchedTitle(since(succeeded));
 }
 
 function useNow(): number {
@@ -79,7 +79,7 @@ export function NavButtons({
     lastFetch.failed ?? 0,
   );
   const status = fetchStatus(lastFetch, autoFetch ? autoFetchMinutes : 0, now);
-  const fetchedText = lastFetchText(lastFetch, status === 'failed', now);
+  const title = fetchTitle(lastFetch, status === 'failed', now);
   return (
     <div className="nav-buttons">
       <HistoryButton direction="back" entries={back} onNavigate={onNavigate} />
@@ -93,11 +93,7 @@ export function NavButtons({
       >
         <button
           className={`nav-button ${fetching ? 'running' : ''}`}
-          title={
-            fetchedText === undefined
-              ? strings.navigation.fetch
-              : `${strings.navigation.fetch}\n${fetchedText}`
-          }
+          title={title}
           disabled={fetching}
           onClick={onFetch}
         >
