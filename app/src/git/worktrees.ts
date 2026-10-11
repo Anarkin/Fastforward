@@ -1,5 +1,10 @@
 import * as path from 'node:path';
-import { isFolder, repositoryRoot, spellingOf } from './repository';
+import {
+  isFolder,
+  repositoryRoot,
+  spelledFrom,
+  spellingOf,
+} from './repository';
 import { runGit, splitNul } from './run';
 
 export interface Worktree {
@@ -68,7 +73,9 @@ async function mainWorktreePath(
       { okExitCodes: [0, 1] },
     )
   ).trim();
-  return configured ? path.resolve(commonDir, configured) : undefined;
+  return configured
+    ? spelledFrom(root, path.resolve(commonDir, configured))
+    : undefined;
 }
 
 async function isBareRepository(

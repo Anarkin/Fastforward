@@ -9,6 +9,33 @@ import {
   type TempRepository,
 } from '../repositories';
 
+async function submoduleWithLinkedWorktree(where: string) {
+  const superproject = await tempRepository(path.join(where, 'super'));
+  const library = await tempRepository(path.join(where, 'library'));
+  await library.commit('library');
+  await superproject.git(
+    '-c',
+    'protocol.file.allow=always',
+    'submodule',
+    'add',
+    '-q',
+    library.root,
+    'lib',
+  );
+  const lib = path.join(superproject.root, 'lib');
+  const linked = path.join(where, 'lib.worktrees', 'linked');
+  await superproject.git(
+    '-C',
+    lib,
+    'worktree',
+    'add',
+    '-q',
+    '--detach',
+    linked,
+  );
+  return { lib, linked };
+}
+
 suite('Git worktrees', function () {
   this.timeout(20_000);
   let folder: string;
@@ -156,32 +183,25 @@ suite('Git worktrees', function () {
   });
 
   test('names the work tree of a submodule as its main worktree from a linked worktree of it too, as the submodule records it', async () => {
-    const superproject = await tempRepository(path.join(folder, 'super'));
-    const library = await tempRepository(path.join(folder, 'library'));
-    await library.commit('library');
-    await superproject.git(
-      '-c',
-      'protocol.file.allow=always',
-      'submodule',
-      'add',
-      '-q',
-      library.root,
-      'lib',
-    );
-    const lib = path.join(superproject.root, 'lib');
-    const linked = path.join(folder, 'lib.worktrees', 'linked');
-    await superproject.git(
-      '-C',
-      lib,
-      'worktree',
-      'add',
-      '-q',
-      '--detach',
-      linked,
-    );
+    const { lib, linked } = await submoduleWithLinkedWorktree(folder);
     const fromMain = await locateRepository(repository.gitPath, lib);
     const fromLinked = await locateRepository(repository.gitPath, linked);
     assert.strictEqual(fromMain?.repository, lib);
+    assert.strictEqual(fromLinked?.repository, lib);
+    assert.deepStrictEqual(
+      fromLinked.worktrees.map((worktree) => worktree.path),
+      [lib, linked],
+    );
+  });
+
+  test('names the work tree of a submodule from a linked worktree of it reached through a link as spelled through the link, as git names it by its real folder, as macOS links its temporary folders', async () => {
+    const real = path.join(folder, 'through-link');
+    fs.mkdirSync(real);
+    await submoduleWithLinkedWorktree(real);
+    const spelled = linkTo(real);
+    const lib = path.join(spelled, 'super', 'lib');
+    const linked = path.join(spelled, 'lib.worktrees', 'linked');
+    const fromLinked = await locateRepository(repository.gitPath, linked);
     assert.strictEqual(fromLinked?.repository, lib);
     assert.deepStrictEqual(
       fromLinked.worktrees.map((worktree) => worktree.path),

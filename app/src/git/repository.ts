@@ -77,6 +77,17 @@ export async function spellingOf(
   return known[real.indexOf(true)] ?? folder;
 }
 
+export async function spelledFrom(
+  spelling: string,
+  folder: string,
+): Promise<string> {
+  const reached = path.resolve(
+    spelling,
+    path.relative(await fs.realpath(spelling), folder),
+  );
+  return (await sameFolder(reached, folder)) ? reached : folder;
+}
+
 export async function readRefs(gitPath: string, root: string): Promise<Refs> {
   const [{ head, shallow }, { refs, dates }, remotes, stashes] =
     await Promise.all([
