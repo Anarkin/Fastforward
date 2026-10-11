@@ -49,7 +49,7 @@ export function updateMode(
             'Uninstall Fastforward.exe',
           ),
         )
-      : env.APPIMAGE !== undefined ||
+      : runsAsAppImage(executable, env) ||
         exists(
           path.posix.join(
             path.posix.dirname(executable),
@@ -58,6 +58,20 @@ export function updateMode(
           ),
         );
   return installed ? 'install' : 'off';
+}
+
+function runsAsAppImage(executable: string, env: NodeJS.ProcessEnv): boolean {
+  const { APPIMAGE, APPDIR } = env;
+  if (APPIMAGE === undefined || APPDIR === undefined) {
+    return false;
+  }
+  const inside = path.posix.relative(APPDIR, executable);
+  return (
+    inside !== '' &&
+    inside !== '..' &&
+    !inside.startsWith('../') &&
+    !path.posix.isAbsolute(inside)
+  );
 }
 
 function firstLine(error: unknown): string {

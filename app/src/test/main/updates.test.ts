@@ -102,6 +102,7 @@ suite('Updates', () => {
     assert.strictEqual(
       updateMode(false, 'linux', '/tmp/.mount_FastfoXy12/fastforward', exists, {
         APPIMAGE: '/home/a/Applications/Fastforward.AppImage',
+        APPDIR: '/tmp/.mount_FastfoXy12',
       }),
       'install',
     );
@@ -141,6 +142,39 @@ suite('Updates', () => {
         '/home/a/squashfs-root/fastforward',
         exists,
         {},
+      ),
+      'off',
+    );
+  });
+
+  test("leaves a Linux app alone that was started from inside another AppImage, as it inherits that one's APPIMAGE, which the updater would delete to put the update in its place", () => {
+    const inherited = {
+      APPIMAGE: '/home/a/Applications/SomeIDE.AppImage',
+      APPDIR: '/tmp/.mount_SomeIDqW3e',
+    };
+    assert.strictEqual(
+      updateMode(
+        false,
+        'linux',
+        '/home/a/squashfs-root/fastforward',
+        exists,
+        inherited,
+      ),
+      'off',
+    );
+    assert.strictEqual(
+      updateMode(false, 'linux', '/home/a/squashfs-root/fastforward', exists, {
+        APPIMAGE: inherited.APPIMAGE,
+      }),
+      'off',
+    );
+    assert.strictEqual(
+      updateMode(
+        false,
+        'linux',
+        '/tmp/.mount_SomeIDqW3e2/fastforward',
+        exists,
+        inherited,
       ),
       'off',
     );
