@@ -131,21 +131,24 @@ export async function watchRepository(
     const inGitDir = gitDirHolding(file);
     if (inGitDir !== undefined) {
       const inside = path.relative(inGitDir, file);
+      const affects = affectsWorktree(
+        inside,
+        inGitDir === commonDir && commonDir !== gitDir,
+        isGitDirIn(inGitDir),
+      );
+      const listed = affectsWorktreeList(inside);
       // Windows tells a folder changed along with each entry made or removed
       // in it, as a fetch does for a lock on the remote's HEAD
-      if (event === 'change' && isExistingFolder(file)) {
+      if (
+        (!affects && !listed) ||
+        (event === 'change' && isExistingFolder(file))
+      ) {
         return;
       }
-      if (
-        affectsWorktree(
-          inside,
-          inGitDir === commonDir && commonDir !== gitDir,
-          isGitDirIn(inGitDir),
-        )
-      ) {
+      if (affects) {
         changedGitDir(changesRefsAlone(inside));
       }
-      if (affectsWorktreeList(inside)) {
+      if (listed) {
         worktreesChanged();
       }
     } else if (isInside(root, file)) {

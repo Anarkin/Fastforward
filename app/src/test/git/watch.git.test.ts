@@ -115,6 +115,40 @@ suite('Watching a repository', function () {
     assert.deepStrictEqual(errors, []);
   });
 
+  test('checks no file git writes into its objects, watching recursively', async () => {
+    const statted: string[] = [];
+    const nodeFs = process.getBuiltinModule('node:fs');
+    const { statSync } = nodeFs;
+    Reflect.set(nodeFs, 'statSync', (...args: Parameters<typeof statSync>) => {
+      statted.push(String(args[0]));
+      return statSync(...args);
+    });
+    try {
+      watcher = await watchRepository(repository.gitPath, repository.root, {
+        delay: 50,
+        maxDelay: 200,
+        recursive: true,
+        onChange: ({ refs }) => changes.push(refs),
+        onError: (error) => errors.push(error),
+      });
+      await settled();
+      const objects = path.join(repository.root, '.git', 'objects', 'ab');
+      fs.mkdirSync(objects, { recursive: true });
+      for (let written = 0; written < 20; written++) {
+        fs.writeFileSync(path.join(objects, `${written}`), 'object');
+        fs.appendFileSync(path.join(objects, `${written}`), 'more');
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      assert.deepStrictEqual(
+        statted.filter((file) => file.includes(`${path.sep}objects`)),
+        [],
+      );
+    } finally {
+      Reflect.set(nodeFs, 'statSync', statSync);
+    }
+  });
+
   test('refreshes for the git folder, watching folder by folder', async () => {
     await start();
     let commits = 0;
