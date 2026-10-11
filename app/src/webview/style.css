@@ -1235,6 +1235,12 @@ body.resizing {
   right: auto;
 }
 
+.menu.context-menu.scrolls {
+  box-sizing: border-box;
+  max-height: 100vh;
+  overflow-y: auto;
+}
+
 .locations-groups {
   flex: 1;
   min-height: 0;

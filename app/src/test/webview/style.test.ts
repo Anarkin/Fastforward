@@ -25,6 +25,7 @@ import {
 } from '../../webview/diffView';
 import { ImageDiff } from '../../webview/imagePreview';
 import { MarkdownDiff } from '../../webview/markdownPreview';
+import { ContextMenu } from '../../webview/contextMenu';
 import { Crash } from '../../webview/errorBoundary';
 import { overlayScrollbarClass } from '../../webview/overlayScrollbars';
 import { codePadding, markerWidth, numberWidth } from '../../webview/overflow';
@@ -1313,6 +1314,30 @@ suite('Style', () => {
       margin: 'auto',
       height: 'fit-content',
     });
+  });
+
+  test('keeps a context menu within the window, scrolling one taller than it, as the repositories may be, unless it opens submenus, which scrolling would cut off', () => {
+    looks(withClass(contextMenu(), 'context-menu'), {
+      'box-sizing': 'border-box',
+      'max-height': '100vh',
+      'overflow-y': 'auto',
+    });
+    looks(
+      withClass(
+        rendered(
+          createElement(ContextMenu, {
+            menu: {
+              x: 0,
+              y: 0,
+              items: [{ label: 'Bookmark', submenu: [{ label: 'main' }] }],
+            },
+            onClose: noop,
+          }),
+        ),
+        'context-menu',
+      ),
+      { 'max-height': undefined, 'overflow-y': undefined },
+    );
   });
 
   test('keeps the notices within the window, scrolling a long message within its notice, so a checkout listing hundreds of files leaves its close button in reach', () => {

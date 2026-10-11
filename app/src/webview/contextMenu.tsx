@@ -83,7 +83,7 @@ export function ContextMenu({
   return (
     <div
       ref={element}
-      className="menu context-menu"
+      className={`menu context-menu${scrolls(menu.items) ? ' scrolls' : ''}`}
       role="menu"
       style={position}
       onContextMenu={(event) => event.preventDefault()}
@@ -92,6 +92,10 @@ export function ContextMenu({
       <MenuItems items={menu.items} onClose={onClose} />
     </div>
   );
+}
+
+function scrolls(items: readonly ContextMenuItem[]): boolean {
+  return items.every((item) => 'separator' in item || !item.submenu);
 }
 
 export interface DismissOptions {
