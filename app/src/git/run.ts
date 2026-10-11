@@ -257,19 +257,23 @@ export async function runGitBytes(
         resolve(Buffer.concat(stdout));
         return;
       }
-      const said = Buffer.concat(stderr).toString('utf8');
-      const reason =
-        error?.message ??
-        (tooLarge
-          ? strings.errors.gitOutputTooLarge(maxOutput / 1024 / 1024)
+      const said = Buffer.concat(stderr).toString('utf8').trim();
+      const stopped = tooLarge || stoppedBy !== null;
+      const command = args.join(' ');
+      const reason = error
+        ? strings.errors.gitFailed(command, error.message)
+        : tooLarge
+          ? strings.errors.gitOutputTooLarge(command, maxOutput / 1024 / 1024)
           : stoppedBy !== null
-            ? strings.errors.gitStoppedBy(stoppedBy)
-            : strings.errors.gitExited(code));
+            ? strings.errors.gitStoppedBy(command, stoppedBy)
+            : strings.errors.gitExited(command, code);
+      const message = !said
+        ? reason
+        : stopped
+          ? `${reason}\n${said}`
+          : strings.errors.gitFailed(command, said);
       reject(
-        Object.assign(
-          new Error(strings.errors.gitFailed(args.join(' '), said || reason)),
-          { stderr: said.trim() },
-        ),
+        Object.assign(new Error(message), { stderr: stopped ? message : said }),
       );
     };
     child.on('error', (error) => settle(null, null, error));

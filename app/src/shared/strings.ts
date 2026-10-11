@@ -347,11 +347,14 @@ export const strings = {
     },
   },
   errors: {
-    gitFailed: (command: string, reason: string) =>
-      `git ${command} failed: ${reason}`,
-    gitExited: (code: number | null) => `it exited with code ${code}`,
-    gitStoppedBy: (signal: string) => `it was stopped by ${signal}`,
-    gitOutputTooLarge: (megabytes: number) => `it printed over ${megabytes} MB`,
+    gitFailed: (command: string, said: string) =>
+      `git ${command} failed: ${said}`,
+    gitExited: (command: string, code: number | null) =>
+      `git ${command} failed: it exited with code ${code}`,
+    gitStoppedBy: (command: string, signal: string) =>
+      `git ${command} failed: it was stopped by ${signal}`,
+    gitOutputTooLarge: (command: string, megabytes: number) =>
+      `git ${command} failed: it printed over ${megabytes} MB`,
     fetchTimedOut: (seconds: number) =>
       `git fetch timed out after ${seconds} seconds`,
     outsideRepository: (path: string) => `${path} is outside the repository`,

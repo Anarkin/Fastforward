@@ -36,6 +36,46 @@ suite('Running git in a repository', function () {
 
   suiteTeardown(() => removeFolder(cwd));
 
+  test('says git printed too much though it warned of something first, as the warning would hide why it was stopped', async () => {
+    const childProcess = process.getBuiltinModule('node:child_process');
+    const { spawn } = childProcess;
+    const printing = `
+      process.stderr.write('warning: ignoring broken ref refs/heads/broken\\n');
+      const chunk = 'x'.repeat(1 << 20);
+      let left = 300;
+      const write = () => {
+        while (left-- > 0) {
+          if (!process.stdout.write(chunk)) {
+            process.stdout.once('drain', write);
+            return;
+          }
+        }
+        process.stdout.end();
+      };
+      write();
+    `;
+    Reflect.set(
+      childProcess,
+      'spawn',
+      (command: string, args: readonly string[], options: object) =>
+        args.includes('printing')
+          ? spawn(process.execPath, ['-e', printing], options)
+          : spawn(command, args, options),
+    );
+    try {
+      await assert.rejects(runGit(gitPath, cwd, ['printing']), (error) => {
+        assert.match(
+          gitErrorText(error),
+          /^git printing failed: it printed over 256 MB$/m,
+        );
+        assert.match(gitErrorText(error), /ignoring broken ref/);
+        return true;
+      });
+    } finally {
+      Reflect.set(childProcess, 'spawn', spawn);
+    }
+  });
+
   test('reads and switches the repository it was given, though the environment names another', async () => {
     const other = await tempRepository(tempFolder('other'));
     try {
