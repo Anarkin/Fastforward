@@ -752,10 +752,14 @@ function realPath(file: string): Promise<string> {
 }
 
 function isFolderChangedForItsEntries(event: string, file: string): boolean {
-  return (
-    event === 'change' &&
-    fs.statSync(file, { throwIfNoEntry: false })?.isDirectory() === true
-  );
+  if (event !== 'change') {
+    return false;
+  }
+  try {
+    return fs.statSync(file, { throwIfNoEntry: false })?.isDirectory() === true;
+  } catch {
+    return false;
+  }
 }
 
 function isGitDirIn(gitDir: string): IsGitDir {

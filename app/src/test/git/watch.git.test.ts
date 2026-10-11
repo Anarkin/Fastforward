@@ -175,6 +175,41 @@ suite('Watching a repository', function () {
     }
   });
 
+  test('refreshes for a change in the git folder to an entry it cannot tell is a folder, as when it is denied access, rather than throwing out of the watcher, watching recursively', async () => {
+    const nodeFs = process.getBuiltinModule('node:fs');
+    const { statSync } = nodeFs;
+    watcher = await watchRepository(repository.gitPath, repository.root, {
+      delay: 50,
+      maxDelay: 200,
+      recursive: true,
+      onChange: ({ refs }) => changes.push(refs),
+      onError: (error) => errors.push(error),
+    });
+    await settled();
+    Reflect.set(nodeFs, 'statSync', () => {
+      throw Object.assign(new Error('EACCES: permission denied'), {
+        code: 'EACCES',
+      });
+    });
+    const uncaught: unknown[] = [];
+    const onUncaught = (error: unknown) => uncaught.push(error);
+    const listeners = process.listeners('uncaughtException');
+    process.removeAllListeners('uncaughtException');
+    process.on('uncaughtException', onUncaught);
+    try {
+      await keepWriting('.git/description', 'the change to refresh', () =>
+        changes.includes(true),
+      );
+    } finally {
+      Reflect.set(nodeFs, 'statSync', statSync);
+      process.removeListener('uncaughtException', onUncaught);
+      for (const listener of listeners) {
+        process.on('uncaughtException', listener);
+      }
+    }
+    assert.deepStrictEqual(uncaught, []);
+  });
+
   test('refreshes for the git folder, watching folder by folder', async () => {
     await start();
     let commits = 0;
