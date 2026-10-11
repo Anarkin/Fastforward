@@ -2031,7 +2031,13 @@ export class FastforwardView {
       tipsInGitOrder(head, refs, solo, stashes, dates),
       solo ? [] : stashes.map((stash) => stash.commit),
       dates,
-    );
+      { signal: tab.closed.signal },
+    ).catch((error: unknown) => {
+      if (tab.closed.signal.aborted) {
+        return undefined;
+      }
+      throw error;
+    });
     return tab.fullHistory === older ? extended : undefined;
   }
 

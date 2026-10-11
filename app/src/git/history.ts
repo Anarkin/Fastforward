@@ -148,6 +148,10 @@ export async function extendedHistory(
   tips: ReadonlySet<string>,
   stashes: readonly string[],
   dates: ReadonlyMap<string, number>,
+  {
+    signal,
+    maxRegion = maxRegionCommits,
+  }: { signal?: AbortSignal; maxRegion?: number } = {},
 ): Promise<Commits | undefined> {
   const fresh = [...tips].filter((tip) => !older.has(tip));
   if (fresh.length === 0) {
@@ -155,8 +159,8 @@ export async function extendedHistory(
   }
   const heads = [...oldHeads];
   const [newer, oldTimes] = await Promise.all([
-    listNewHistory(gitPath, cwd, fresh, stashes, heads),
-    commitTimes(gitPath, cwd, heads),
+    listNewHistory(gitPath, cwd, fresh, stashes, heads, signal),
+    commitTimes(gitPath, cwd, heads, signal),
   ]);
   const extension = { older, oldHeads, oldTimes, newer, tips };
   const extended = extendHistory(extension);
@@ -177,7 +181,12 @@ export async function extendedHistory(
     [...tips].filter((tip) => timeOf(tip) >= since),
     stashes,
     since,
+    maxRegion,
+    signal,
   );
+  if (region === undefined) {
+    return undefined;
+  }
   const below: string[] = [];
   for (let at = region.length; at < region.size; at++) {
     below.push(region.hashAt(at));
@@ -186,9 +195,11 @@ export async function extendedHistory(
     ...extension,
     region,
     since,
-    belowTimes: await commitTimes(gitPath, cwd, below),
+    belowTimes: await commitTimes(gitPath, cwd, below, signal),
   });
 }
+
+const maxRegionCommits = 100_000;
 
 async function listSince(
   gitPath: string,
@@ -196,7 +207,9 @@ async function listSince(
   tips: readonly string[],
   stashes: readonly string[],
   since: number,
-): Promise<Commits> {
+  maxRegion: number,
+  signal: AbortSignal | undefined,
+): Promise<Commits | undefined> {
   const reader = new CommitsBuilder(stashes, true);
   await runGitBytes(
     gitPath,
@@ -207,12 +220,14 @@ async function listSince(
       '--parents',
       '--timestamp',
       `--max-age=${since}`,
+      `--max-count=${maxRegion + 1}`,
       '--stdin',
       '--',
     ],
-    { input: hashLines(tips), onOutput: (chunk) => reader.add(chunk) },
+    { input: hashLines(tips), signal, onOutput: (chunk) => reader.add(chunk) },
   );
-  return reader.finish();
+  const region = await reader.finish();
+  return region.length > maxRegion ? undefined : region;
 }
 
 const stopAtOldHeadsArgs = ['-c', 'core.commitGraph=false'];
@@ -223,6 +238,7 @@ async function listNewHistory(
   tips: readonly string[],
   stashes: readonly string[],
   oldHeads: readonly string[],
+  signal: AbortSignal | undefined,
 ): Promise<Commits> {
   const reader = new CommitsBuilder(stashes, true);
   await runGitBytes(
@@ -240,6 +256,7 @@ async function listNewHistory(
     ],
     {
       input: hashLines(tips) + oldHeads.map((head) => `^${head}\n`).join(''),
+      signal,
       onOutput: (chunk) => reader.add(chunk),
     },
   );
@@ -250,6 +267,7 @@ async function commitTimes(
   gitPath: string,
   cwd: string,
   hashes: readonly string[],
+  signal?: AbortSignal,
 ): Promise<Map<string, number>> {
   if (hashes.length === 0) {
     return new Map();
@@ -265,7 +283,7 @@ async function commitTimes(
       '--stdin',
       '--',
     ],
-    { input: hashLines(hashes) },
+    { input: hashLines(hashes), signal },
   );
   return new Map(
     output

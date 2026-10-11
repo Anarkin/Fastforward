@@ -31,6 +31,7 @@ async function across(
   repository: TempRepository,
   change: () => Promise<unknown>,
   solo = false,
+  options?: { signal?: AbortSignal; maxRegion?: number },
 ) {
   const { gitPath, root } = repository;
   const before = await readRefs(gitPath, root);
@@ -51,6 +52,7 @@ async function across(
     tipsInGitOrder(after.head, after.refs, solo, after.stashes, after.dates),
     solo ? [] : stashes,
     after.dates,
+    options,
   );
   const reloaded = await listHistory(gitPath, root, solo, stashes);
   return {
@@ -64,6 +66,24 @@ async function across(
 async function onlyOnMain(repository: TempRepository): Promise<void> {
   await repository.git('tag', '-d', 'v1');
   await repository.git('update-ref', '-d', 'refs/remotes/origin/main');
+}
+
+async function mergedOlderBranch(repo: TempRepository) {
+  const [base, tree] = await repo.resolve('main', 'main^{tree}');
+  let topic = base;
+  for (const message of ['t1', 't2']) {
+    topic = (
+      await repo.git('commit-tree', tree, '-p', topic, '-m', message)
+    ).trim();
+  }
+  await repo.commit('c2', { 'a.txt': 'two\n' });
+  return async () => {
+    const main = (await repo.resolve('main'))[0];
+    const merge = (
+      await repo.git('commit-tree', tree, '-p', main, '-p', topic, '-m', 'm')
+    ).trim();
+    await repo.git('update-ref', 'refs/heads/main', merge);
+  };
 }
 
 suite('Extending the history read from git', function () {
@@ -186,6 +206,24 @@ suite('Extending the history read from git', function () {
     assert.strictEqual(added, 3);
     assert.ok(extended);
     assert.deepStrictEqual(extended, reloaded);
+  });
+
+  test('leaves the history to be read whole rather than read again more of its newest commits than it may to place commits among the old ones, as that region can be most of the history', async () => {
+    const repo = await repository('extend-region-cap');
+    const merge = await mergedOlderBranch(repo);
+    const { extended } = await across(repo, merge, false, { maxRegion: 2 });
+    assert.strictEqual(extended, undefined);
+  });
+
+  test('stops reading the history again to place new commits once called off, as when its tab closes', async () => {
+    const repo = await repository('extend-region-stopped');
+    const merge = await mergedOlderBranch(repo);
+    const stopping = new AbortController();
+    stopping.abort();
+    await assert.rejects(
+      across(repo, merge, false, { signal: stopping.signal }),
+      { name: 'AbortError' },
+    );
   });
 
   test('adds a remote branch moved onto a commit older than the tip checked out, among the old commits, as reading it whole would', async () => {
