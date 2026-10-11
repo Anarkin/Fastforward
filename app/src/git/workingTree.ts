@@ -116,6 +116,41 @@ async function addedLines(file: string): Promise<number | 'tooLarge'> {
   return last === 0x0a ? lines : lines + 1;
 }
 
+type Counted = number | 'tooLarge';
+
+export class LineCounts {
+  private readonly known = new Map<
+    string,
+    { readonly stamp: string; readonly lines: Counted }
+  >();
+
+  constructor(
+    private readonly maxFiles: number,
+    private readonly count: (file: string) => Promise<Counted> = addedLines,
+  ) {}
+
+  async of(file: string): Promise<Counted> {
+    const stats = await lstat(file).catch(() => undefined);
+    if (stats === undefined) {
+      return this.count(file);
+    }
+    const stamp = stampOf(stats, false);
+    const known = this.known.get(file);
+    const lines = known?.stamp === stamp ? known.lines : await this.count(file);
+    this.known.delete(file);
+    this.known.set(file, { stamp, lines });
+    for (const oldest of this.known.keys()) {
+      if (this.known.size <= this.maxFiles) {
+        break;
+      }
+      this.known.delete(oldest);
+    }
+    return lines;
+  }
+}
+
+const untrackedLines = new LineCounts(10_000);
+
 export async function workingTreeFiles(
   gitPath: string,
   cwd: string,
@@ -143,7 +178,7 @@ export async function workingTreeFiles(
       const file = join(cwd, path);
       const added =
         measured && index < maxUntrackedPatches && !path.endsWith('/')
-          ? await addedLines(file)
+          ? await untrackedLines.of(file)
           : 0;
       const lines = added === 'tooLarge' ? 0 : added;
       const bytes =

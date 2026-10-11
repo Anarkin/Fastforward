@@ -1,7 +1,11 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { FileHashes, untrackedListing } from '../../git/workingTree';
+import {
+  FileHashes,
+  LineCounts,
+  untrackedListing,
+} from '../../git/workingTree';
 import { removeFolder, tempFolder } from '../repositories';
 
 suite('Untracked files', () => {
@@ -70,5 +74,32 @@ suite('Hashes of files touched', () => {
       await hashes.of('git', folder, [file]);
     }
     assert.deepStrictEqual(asked, ['a', 'b', 'c', 'b']);
+  });
+});
+
+suite('Lines of untracked files', () => {
+  let folder: string;
+
+  setup(() => {
+    folder = tempFolder('line-counts');
+  });
+
+  teardown(() => removeFolder(folder));
+
+  test('counts the lines of a file again only once it changes on disk, as each refresh would read every one whole', async () => {
+    const file = path.join(folder, 'new.txt');
+    fs.writeFileSync(file, 'one\n');
+    const counted: string[] = [];
+    const counts = new LineCounts(10, (counting) => {
+      counted.push(counting);
+      return Promise.resolve(
+        fs.readFileSync(counting, 'utf8').split('\n').length - 1,
+      );
+    });
+    assert.strictEqual(await counts.of(file), 1);
+    assert.strictEqual(await counts.of(file), 1);
+    fs.writeFileSync(file, 'one\ntwo\n');
+    assert.strictEqual(await counts.of(file), 2);
+    assert.deepStrictEqual(counted, [file, file]);
   });
 });
