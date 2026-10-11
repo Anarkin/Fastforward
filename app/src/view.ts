@@ -238,6 +238,7 @@ export class FastforwardView {
   private readonly blobTexts = new BlobTexts(maxKeptTextChars);
   private readonly repositories = new Map<string, string>();
   private readonly worktreeLists = new Map<string, readonly WorktreeInfo[]>();
+  private readonly worktreeListings = new Map<string, number>();
   private grouped: Promise<void> | undefined;
   private readonly fetches = new Map<string, Fetching>();
   private readonly fetchFailures = new Set<string>();
@@ -1081,20 +1082,11 @@ export class FastforwardView {
     session: Session,
     repository: string,
   ): Promise<void> {
-    const known = [
-      repository,
-      this.storage.worktreeOf(repository),
-      ...(this.worktreeLists.get(repository) ?? []).map(
-        (worktree) => worktree.root,
-      ),
-    ];
-    let worktrees: Worktree[];
-    try {
-      worktrees = await listWorktrees(this.gitPath, repository, known);
-    } catch (error) {
-      this.log.error(strings.log.listingWorktreesFailed(repository));
-      this.log.error(error);
-      worktrees = [];
+    const listing = (this.worktreeListings.get(repository) ?? 0) + 1;
+    this.worktreeListings.set(repository, listing);
+    const worktrees = await this.listedWorktrees(repository);
+    if (this.worktreeListings.get(repository) !== listing) {
+      return;
     }
     const shown = JSON.stringify(this.worktreeLists.get(repository));
     this.takeWorktrees(repository, worktrees);
@@ -1106,6 +1098,23 @@ export class FastforwardView {
       if (page) {
         this.sendTabs(page);
       }
+    }
+  }
+
+  private async listedWorktrees(repository: string): Promise<Worktree[]> {
+    const known = [
+      repository,
+      this.storage.worktreeOf(repository),
+      ...(this.worktreeLists.get(repository) ?? []).map(
+        (worktree) => worktree.root,
+      ),
+    ];
+    try {
+      return await listWorktrees(this.gitPath, repository, known);
+    } catch (error) {
+      this.log.error(strings.log.listingWorktreesFailed(repository));
+      this.log.error(error);
+      return [];
     }
   }
 

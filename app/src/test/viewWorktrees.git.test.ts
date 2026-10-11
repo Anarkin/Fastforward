@@ -107,6 +107,41 @@ suite('View of worktrees', function () {
     }
   });
 
+  test('shows the worktrees as listed last though a listing begun before ends after it, as one begun while git removed a worktree went on showing it', async () => {
+    const own = await tempRepository(path.join(folder, 'relisted'));
+    await own.commit('a');
+    const linked = path.join(folder, 'relisted.worktrees', 'linked');
+    await own.git('worktree', 'add', '-q', '--detach', linked);
+    const opened = await openView(log, [own.root]);
+    const held = gate();
+    let listings = 0;
+    let firstListed = false;
+    stubMethod(opened.view, 'listedWorktrees', async (original, ...args) => {
+      const listed = await original(...args);
+      if (listings++ === 0) {
+        firstListed = true;
+        await held.opened;
+      }
+      return listed;
+    });
+    stubMethod(opened.view, 'refresh', () => Promise.resolve());
+    try {
+      assert.strictEqual(worktreesOf(opened).length, 2);
+      await own.git('-C', linked, 'switch', '-q', '-c', 'switched');
+      await waitFor(() => firstListed, 'the worktrees to be listed');
+      await own.git('worktree', 'remove', '--force', linked);
+      await waitFor(
+        () => worktreesOf(opened).length === 1,
+        'the removed worktree to be left out',
+      );
+      held.open();
+      await opened.view.idle();
+      assert.strictEqual(worktreesOf(opened).length, 1);
+    } finally {
+      opened.connection.dispose();
+    }
+  });
+
   test('opens a folder in a linked worktree in the tab of its repository, listing its worktrees with the main one first', async () => {
     const host = new FakeHost();
     const inner = path.join(feature, 'inner');
