@@ -48,9 +48,6 @@ export function Notices({
     return () => timers.forEach(clearTimeout);
   }, [notices, onDismiss]);
 
-  if (notices.length === 0) {
-    return null;
-  }
   return (
     <div className="notices" role="status">
       {notices.map((notice) => (

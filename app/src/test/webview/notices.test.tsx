@@ -83,10 +83,10 @@ suite('Notices', () => {
     assert.deepStrictEqual(fading([info(1, 0)], 9000), [{ id: 1, after: 0 }]);
   });
 
-  test('shows nothing without notices', () => {
+  test('keeps its live region, empty, while it shows no notice, as a screen reader announces nothing a region comes with', () => {
     assert.strictEqual(
       renderToStaticMarkup(<Notices notices={[]} onDismiss={() => {}} />),
-      '',
+      '<div class="notices" role="status"></div>',
     );
   });
 });
