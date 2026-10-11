@@ -128,6 +128,7 @@ export interface CommitInfo {
 }
 
 export const maxLanes = 12;
+export const maxNotices = 4;
 export const graphColors = 8;
 
 export interface GraphLine {

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { CloseIcon } from './icons';
+import { maxNotices } from '../shared/protocol';
 import { strings } from '../shared/strings';
 
 export interface Notice {
@@ -9,7 +10,6 @@ export interface Notice {
   readonly shownAt: number;
 }
 
-const maxNotices = 4;
 const infoShownFor = 8000;
 
 export function addNotice(

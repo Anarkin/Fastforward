@@ -26,6 +26,7 @@ import {
   gate,
   idleOnlyOnceOpened,
   openView,
+  reopen,
   savedBookmarks,
   settingsWithAutoFetchOff,
   stubMethod,
@@ -197,6 +198,41 @@ suite('View of one repository', function () {
       takeErrorsLogged(logged, /^Watching .* failed$/, /^EPERM: /);
     } finally {
       opened.connection.dispose();
+    }
+  });
+
+  test('shows a notice posted while the page loads again once the page is back, as one saved settings or a crash reloads it', async () => {
+    const failing = gate();
+    const opened = await openView(log, [repository.root], false);
+    let starts = 0;
+    stubMethod(opened.view, 'startWatching', async () => {
+      starts++;
+      if (starts > 1) {
+        return { dispose: () => Promise.resolve() };
+      }
+      await failing.opened;
+      throw Object.assign(
+        new Error(`EPERM: operation not permitted, watch '${repository.root}'`),
+        { code: 'EPERM', syscall: 'watch', path: repository.root },
+      );
+    });
+    const ready = opened.connection.receive({ type: 'ready' });
+    await waitFor(() => starts === 1, 'the watcher to start');
+    opened.connection.dispose();
+    failing.open();
+    await ready;
+    const reloaded = reopen(opened.view);
+    try {
+      await reloaded.ready;
+      assert.deepStrictEqual(
+        reloaded.page.messages
+          .filter((message) => message.type === 'notice')
+          .map((message) => message.message),
+        [strings.messages.couldNotWatch(repository.root)],
+      );
+      takeErrorsLogged(logged, /^Watching .* failed$/, /^EPERM: /);
+    } finally {
+      reloaded.connection.dispose();
     }
   });
 

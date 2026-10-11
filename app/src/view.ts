@@ -86,6 +86,7 @@ import {
   commitPageSize,
   deferredChanges,
   leftOutChanges,
+  maxNotices,
   workingTreeHash,
   type ChangeArea,
   type CheckoutTarget,
@@ -98,6 +99,7 @@ import {
   type TextRequest,
   type ToHost,
   type ToWebview,
+  type ToWebviewOf,
   type UpdateStatus,
   type WorktreeInfo,
 } from './shared/protocol';
@@ -245,6 +247,7 @@ export class FastforwardView {
   private readonly commitSearches = new Map<string, AbortController>();
   private readonly hashLookups = new Map<string, number>();
   private page: Session | undefined;
+  private unsentNotices: readonly ToWebviewOf<'notice'>[] = [];
   private readonly inFlight = new InFlight();
   private readonly imageReads = new ImageReads();
   private readonly autoFetch: AutoFetch;
@@ -919,6 +922,11 @@ export class FastforwardView {
     }
     this.page = session;
     this.postTabs(session);
+    const unsent = this.unsentNotices;
+    this.unsentNotices = [];
+    for (const notice of unsent) {
+      session.post(notice);
+    }
     if (active === undefined) {
       this.stopWatching(session);
       return;
@@ -1341,7 +1349,7 @@ export class FastforwardView {
       post: (message) => {
         keep(tab.shown, message);
         if (this.isActive(root) && this.tabStates.get(root) === tab) {
-          (session.disposed ? this.page : session)?.post(message);
+          this.postToPage(session, message);
         }
       },
     };
@@ -1597,11 +1605,25 @@ export class FastforwardView {
   private noticesOf(session: Session, repository: string): Notify {
     return (level, message) =>
       this.storage.hasTab(repository) &&
-      (session.disposed ? this.page : session)?.post({
+      this.postToPage(session, {
         type: 'notice',
         level,
         message: strings.messages.inTab(tabName(repository), message),
       });
+  }
+
+  private postToPage(session: Session, message: ToWebview): void {
+    const page = session.disposed ? this.page : session;
+    if (message.type === 'notice' && (page === undefined || page.disposed)) {
+      this.unsentNotices = [
+        ...this.unsentNotices.filter(
+          (unsent) => unsent.message !== message.message,
+        ),
+        message,
+      ].slice(-maxNotices);
+      return;
+    }
+    page?.post(message);
   }
 
   private visit(context: Context, hash: string, replace = false): void {
