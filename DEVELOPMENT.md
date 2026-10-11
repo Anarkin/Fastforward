@@ -1,6 +1,6 @@
 # DEVELOPMENT
 
-- Developing needs Node 24, and the tests need git 2.52 or later on the PATH, as the app does; on Linux, the tests that start the app need a display, which `xvfb-run -a npm test` gives them
+- On Linux, the tests that start the app need a display, which `xvfb-run -a npm test` gives them
 
 - Run the npm commands in `app/`, starting with `npm install`
 

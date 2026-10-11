@@ -6,7 +6,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import type { TestContext } from 'vitest';
 import { replaceBuiltin } from './builtins';
-import { findGit } from '../git/locate';
+import { findGit, minimumGitVersion } from '../git/locate';
 import { type GitCommand, realGit } from '../git/run';
 
 const withoutTheUsersGitConfig = { GIT_CONFIG_GLOBAL: '/dev/null' };
@@ -286,7 +286,10 @@ let gitPath: Promise<string> | undefined;
 
 export function installedGit(): Promise<string> {
   gitPath ??= findGit().then((git) => {
-    assert.ok(git.kind === 'found', 'git 2.52 or later is not installed');
+    assert.ok(
+      git.kind === 'found',
+      `git ${minimumGitVersion.join('.')} or later is not installed`,
+    );
     return git.path;
   });
   return gitPath;
