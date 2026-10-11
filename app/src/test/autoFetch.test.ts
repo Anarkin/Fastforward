@@ -3,20 +3,22 @@ import { AutoFetch } from '../autoFetch';
 import { fakeTimer } from './fakeTimer';
 
 suite('Auto fetch', () => {
-  test('fetches the repositories one after another, the interval after the last one ends', async () => {
+  test('fetches the repositories one after another, the next round the interval after this one started, so the first is fetched every interval however long the others take', async () => {
     const { timer, waiting, fire } = fakeTimer();
+    let now = 0;
     const fetched: string[] = [];
     const active = Promise.withResolvers<void>();
+    const other = Promise.withResolvers<void>();
     const auto = new AutoFetch(
       () => 2,
       () => ['active', 'other'],
       async (root) => {
         fetched.push(`${root} started`);
-        if (root === 'active') {
-          await active.promise;
-        }
+        await (root === 'active' ? active : other).promise;
         fetched.push(`${root} done`);
       },
+      timer,
+      () => now,
       timer,
     );
     auto.update();
@@ -26,8 +28,11 @@ suite('Auto fetch', () => {
     );
     await fire();
     assert.deepStrictEqual(fetched, ['active started']);
-    assert.strictEqual(waiting().length, 0);
+    now = 10_000;
     active.resolve();
+    await new Promise((resolve) => setImmediate(resolve));
+    now = 70_000;
+    other.resolve();
     await new Promise((resolve) => setImmediate(resolve));
     assert.deepStrictEqual(fetched, [
       'active started',
@@ -37,8 +42,48 @@ suite('Auto fetch', () => {
     ]);
     assert.deepStrictEqual(
       waiting().map((entry) => entry.ms),
-      [120_000],
+      [50_000],
     );
+  });
+
+  test('moves on from a repository whose fetch outlasts the interval, skipping it in later rounds until it ends, so one hanging remote holds back no other', async () => {
+    const { timer, waiting, fire } = fakeTimer();
+    const fetched: string[] = [];
+    const hanging = Promise.withResolvers<void>();
+    const auto = new AutoFetch(
+      () => 1,
+      () => ['hanging', 'other'],
+      async (root) => {
+        fetched.push(root);
+        if (root === 'hanging') {
+          await hanging.promise;
+        }
+      },
+      timer,
+      () => 0,
+      timer,
+    );
+    auto.update();
+    await fire();
+    assert.deepStrictEqual(fetched, ['hanging']);
+    assert.deepStrictEqual(
+      waiting().map((entry) => entry.ms),
+      [60_000],
+    );
+    await fire();
+    assert.deepStrictEqual(fetched, ['hanging', 'other']);
+    await fire();
+    assert.deepStrictEqual(fetched, ['hanging', 'other', 'other']);
+    hanging.resolve();
+    await new Promise((resolve) => setImmediate(resolve));
+    await fire();
+    assert.deepStrictEqual(fetched, [
+      'hanging',
+      'other',
+      'other',
+      'hanging',
+      'other',
+    ]);
   });
 
   test('leaves the next round to the one running when the settings change meanwhile, so rounds never double up', async () => {

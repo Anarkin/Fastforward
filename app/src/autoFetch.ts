@@ -20,12 +20,15 @@ export function fetchOrder(
 export class AutoFetch {
   private cancel: (() => void) | undefined;
   private running = false;
+  private readonly fetching = new Set<string>();
 
   constructor(
     private readonly minutes: () => number,
     private readonly roots: () => readonly string[],
     private readonly fetch: (root: string) => Promise<void>,
     private readonly timer: Timer = realTimer,
+    private readonly now: () => number = Date.now,
+    private readonly deadline: Timer = realTimer,
   ) {}
 
   update(now = false): void {
@@ -38,10 +41,14 @@ export class AutoFetch {
     }
   }
 
-  private schedule(): void {
+  private schedule(roundStarted?: number): void {
     const minutes = this.minutes();
     if (minutes > 0 && !this.running) {
-      this.cancel = this.timer(() => void this.round(), minutes * 60_000);
+      const since = roundStarted === undefined ? 0 : this.now() - roundStarted;
+      this.cancel = this.timer(
+        () => void this.round(),
+        Math.max(0, minutes * 60_000 - since),
+      );
     }
   }
 
@@ -50,16 +57,34 @@ export class AutoFetch {
       return;
     }
     this.running = true;
+    const started = this.now();
     try {
       for (const root of this.roots()) {
-        if (this.minutes() <= 0) {
+        const minutes = this.minutes();
+        if (minutes <= 0) {
           break;
         }
-        await this.fetch(root).catch(() => undefined);
+        if (!this.fetching.has(root)) {
+          await this.fetchAtMost(root, minutes * 60_000);
+        }
       }
     } finally {
       this.running = false;
-      this.schedule();
+      this.schedule(started);
     }
+  }
+
+  private fetchAtMost(root: string, ms: number): Promise<void> {
+    this.fetching.add(root);
+    const fetched = this.fetch(root)
+      .catch(() => undefined)
+      .finally(() => this.fetching.delete(root));
+    return new Promise((resolve) => {
+      const cancel = this.deadline(resolve, ms);
+      void fetched.then(() => {
+        cancel();
+        resolve();
+      });
+    });
   }
 }
