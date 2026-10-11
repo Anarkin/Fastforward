@@ -345,8 +345,7 @@ export async function watchTree(
       }
     }
   };
-  const ignoresChanged = (folder: string) => {
-    ignoresGeneration++;
+  const recheckIgnored = (folder: string) => {
     const under = [...ignoredFolders.values()].filter((skipped) =>
       isInside(folder, skipped.path),
     );
@@ -357,6 +356,29 @@ export async function watchTree(
       .filter(([inside]) => inside !== folder && isInside(folder, inside))
       .map(([inside, { repo }]) => ({ path: inside, repo }));
     void inFlight.track(unwatchIgnored(watchedUnder).then(() => add(under)));
+  };
+  let ignoresChangedIn = new Set<string>();
+  const ignoresChanged = (folder: string) => {
+    ignoresGeneration++;
+    if (ignoresChangedIn.size === 0) {
+      setImmediate(() => {
+        const folders = [...ignoresChangedIn];
+        ignoresChangedIn = new Set();
+        if (stopped()) {
+          return;
+        }
+        for (const changed of folders) {
+          if (
+            !folders.some(
+              (other) => other !== changed && isInside(other, changed),
+            )
+          ) {
+            recheckIgnored(changed);
+          }
+        }
+      });
+    }
+    ignoresChangedIn.add(folder);
   };
 
   const unwatchIgnored = async (folders: readonly Folder[]) => {

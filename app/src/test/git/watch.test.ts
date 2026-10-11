@@ -787,6 +787,18 @@ suite('Watching folders one by one', () => {
     await waitFor(() => watched().includes('a/out'), 'the folder');
   });
 
+  test('asks git once about the folders under a .gitignore that changes several times at once, as an editor saving it does', async () => {
+    mkdir('a/b');
+    await start();
+    ignoredCalls = [];
+    const gitignore = watchers.get(path.join(root, 'a'));
+    gitignore?.listener('rename', '.gitignore');
+    gitignore?.listener('rename', '.gitignore');
+    gitignore?.listener('change', '.gitignore');
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.deepStrictEqual(ignoredCalls, [['', ['a/b']]]);
+  });
+
   test('asks again whether any folder is ignored when told the ignores of the whole repository changed, as for .git/info/exclude', async () => {
     mkdir('a/gen', 'b');
     const ignoring = new Set(['gen']);
