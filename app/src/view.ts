@@ -2016,9 +2016,11 @@ export class FastforwardView {
     const loaded = Promise.withResolvers<void>();
     if (early) {
       tab.loadingHistory = loaded.promise;
-      void this.inFlight.track(
-        this.sendRecentHistory(context, read, loading.signal),
-      );
+      if (read.commitGraph) {
+        void this.inFlight.track(
+          this.sendRecentHistory(context, read, loading.signal),
+        );
+      }
     }
     try {
       const solo = this.storage.soloOf(context.root);

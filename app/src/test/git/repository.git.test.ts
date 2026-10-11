@@ -138,6 +138,36 @@ suite('Git repository', function () {
     }
   });
 
+  test('tells whether the repository has a commit-graph, in one file or split, from a linked worktree too, as without one git sorts the whole history to read its newest commits', async () => {
+    const folder = tempFolder('commitGraph');
+    try {
+      const repository = await tempRepository(path.join(folder, 'main'));
+      await repository.commit('one');
+      const linked = path.join(folder, 'linked');
+      await repository.git('worktree', 'add', '-q', '--detach', linked);
+      assert.strictEqual(
+        (await readRefs(gitPath, repository.root)).commitGraph,
+        false,
+      );
+      await repository.git('commit-graph', 'write', '--reachable');
+      assert.strictEqual(
+        (await readRefs(gitPath, repository.root)).commitGraph,
+        true,
+      );
+      assert.strictEqual((await readRefs(gitPath, linked)).commitGraph, true);
+      fs.rmSync(
+        path.join(repository.root, '.git', 'objects', 'info', 'commit-graph'),
+      );
+      await repository.git('commit-graph', 'write', '--reachable', '--split');
+      assert.strictEqual(
+        (await readRefs(gitPath, repository.root)).commitGraph,
+        true,
+      );
+    } finally {
+      removeFolder(folder);
+    }
+  });
+
   test('tells which remote a remote branch is of, even one with a slash in its name', async () => {
     await temp.git('remote', 'add', 'team/fork', cwd);
     await temp.git('update-ref', 'refs/remotes/team/fork/main', 'HEAD');

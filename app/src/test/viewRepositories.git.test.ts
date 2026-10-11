@@ -292,6 +292,24 @@ suite('View of other repositories', function () {
     );
   });
 
+  test('reads no first rows apart from the whole history of a repository without a commit-graph, as git would sort the whole history to find its newest commits', async () => {
+    await withView(
+      log,
+      [other],
+      async (view) => {
+        let recentReads = 0;
+        stubMethod(view.view, 'listRecentHistory', (original, ...args) => {
+          recentReads++;
+          return original(...args);
+        });
+        await view.connection.receive({ type: 'ready' });
+        assert.strictEqual(view.page.last('commits')?.total, 1);
+        assert.strictEqual(recentReads, 0);
+      },
+      false,
+    );
+  });
+
   test('opens the repositories picked in new tabs, showing the last one', async () => {
     const third = await tempRepository(path.join(folder, 'third'));
     await third.commit('third');

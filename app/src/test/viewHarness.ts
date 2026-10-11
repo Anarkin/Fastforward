@@ -378,6 +378,7 @@ export async function viewRepositories(): Promise<ViewRepositories> {
     'feature',
     'main',
   );
+  await repository.git('commit-graph', 'write', '--reachable');
 
   const second = await tempRepository(path.join(folder, 'other'));
   await second.commit('other');
