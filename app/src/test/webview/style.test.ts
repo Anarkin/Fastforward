@@ -1306,6 +1306,15 @@ suite('Style', () => {
     looks(withClass(view, 'file-header'), { 'user-select': 'none' });
   });
 
+  test('centers the shortcuts by layout rather than a transform, which would place their edges between device pixels', () => {
+    looks(withClass(shortcutsPopup(), 'shortcuts-popup'), {
+      transform: undefined,
+      inset: '0',
+      margin: 'auto',
+      height: 'fit-content',
+    });
+  });
+
   test('keeps the notices within the window, scrolling a long message within its notice, so a checkout listing hundreds of files leaves its close button in reach', () => {
     const shown = notices();
     looks(withClass(shown, 'notices'), {
