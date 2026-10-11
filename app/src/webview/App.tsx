@@ -76,7 +76,8 @@ import {
 } from './viewFolders';
 import { emptyTabView, reduceTabView, treeOf, treeToLoad } from './tabView';
 import { bookmarkOptions, toggleBookmark } from './bookmarks';
-import { addNotice, Notices, type Notice } from './notices';
+import { addNotice } from '../shared/notices';
+import { Notices, type Notice } from './notices';
 import { repositoryMenuItems, repositoryMenuTrigger } from './repositoryMenu';
 
 export function tabContent(

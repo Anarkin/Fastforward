@@ -252,6 +252,16 @@ function fakeImages(
 const bytes = (size: number) => () =>
   Promise.resolve(new Response(new Uint8Array(size)));
 
+const sized = (size: number) => () => {
+  const blob = new Blob();
+  Object.defineProperty(blob, 'size', { value: size });
+  const response = new Response();
+  Object.defineProperty(response, 'blob', {
+    value: () => Promise.resolve(blob),
+  });
+  return Promise.resolve(response);
+};
+
 const from = (src: string) => documentImagePath('docs/guide/a.md', src);
 
 suite('Images in documents', () => {
@@ -282,7 +292,7 @@ suite('Images in documents', () => {
     );
   });
 
-  test('finds an image by its path from the document, or from the root as GitHub does, never outside the repository, and only an image', () => {
+  test('finds an image by its path from the document, or from the root as GitHub does, never outside the repository nor on a server, so opening a document tells no server, and only an image', () => {
     assert.strictEqual(from('shot.png'), 'docs/guide/shot.png');
     assert.strictEqual(
       from('./img/shot.png?raw=1#x'),
@@ -339,11 +349,10 @@ suite('Images in documents', () => {
 });
 
 suite('Image cache', () => {
-  test('may fetch the images from the app or from their own text, and show them from memory, by the page policy', () => {
+  test('may fetch the images from the app or from their own text, and show them from memory, by the page policy, which allows no remote source, so opening a document tells no server', () => {
     const policy = policyOfPage();
-    assert.ok(policy.get('connect-src')?.includes("'self'"));
-    assert.ok(policy.get('connect-src')?.includes('data:'));
-    assert.ok(policy.get('img-src')?.includes('blob:'));
+    assert.deepStrictEqual(policy.get('connect-src'), ["'self'", 'data:']);
+    assert.deepStrictEqual(policy.get('img-src'), ["'self'", 'data:', 'blob:']);
   });
 
   test('fetches each image once, and knows it once loaded', async () => {
@@ -378,6 +387,17 @@ suite('Image cache', () => {
       'broken',
       'broken',
     ]);
+  });
+
+  test('keeps up to 256 MB of images, forgetting the ones used longest ago past them, never the one just loaded', async () => {
+    const half = 128 * 1024 * 1024;
+    const kept = fakeImages({ a: sized(half), b: sized(half), c: sized(1) });
+    await kept.cache.load('a');
+    await kept.cache.load('b');
+    assert.deepStrictEqual(kept.revoked, []);
+    await kept.cache.load('c');
+    assert.deepStrictEqual(kept.revoked, ['blob:1']);
+    assert.ok(kept.cache.peek('b'));
   });
 
   test('forgets the images used longest ago past its size, never the one just loaded', async () => {

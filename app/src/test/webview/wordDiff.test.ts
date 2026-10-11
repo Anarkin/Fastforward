@@ -135,10 +135,16 @@ suite('Word diff', () => {
     assert.ok(performance.now() - started < 100);
   });
 
-  test('compares lines of up to 1 million removed by added tokens, spaces and punctuation counting as tokens', () => {
-    const line = 'let a = b;'.repeat(125);
+  test("compares lines of up to 1 million removed tokens times added tokens, spaces and punctuation counting as tokens, as the word diff's table grows with both counts", () => {
+    const short = 'let a = b;';
+    const line = short.repeat(125);
     assert.ok(pairWordRanges(line, line));
     assert.strictEqual(pairWordRanges(line, line + 'c'), undefined);
+    const long = short.repeat(15_625);
+    assert.ok(pairWordRanges(short, long));
+    assert.ok(pairWordRanges(long, short));
+    assert.strictEqual(pairWordRanges(short, long + 'c'), undefined);
+    assert.strictEqual(pairWordRanges(long + 'c', short), undefined);
   });
 
   test('compares each removed line with the added line it is paired with, keyed as the search keys lines, and marks those with no partner or no word in common as changed through', () => {

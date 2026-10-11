@@ -141,6 +141,40 @@ suite('Watching a repository', function () {
     assert.deepStrictEqual(errors, []);
   });
 
+  test('asks the folders again whether they are ignored when .git/info/exclude changes, but not when the file core.excludesFile names does, watching folder by folder', async () => {
+    const folder = tempFolder('excludes');
+    const excludes = path.join(folder, 'excludes');
+    fs.writeFileSync(excludes, 'generated/\n');
+    await repository.git(
+      'config',
+      'core.excludesFile',
+      excludes.replaceAll('\\', '/'),
+    );
+    fs.mkdirSync(path.join(repository.root, 'generated'));
+    const file = path.join(repository.root, 'generated', 'file.txt');
+    try {
+      await start();
+      await settled();
+      fs.writeFileSync(excludes, '');
+      for (let line = 1; line <= 5; line++) {
+        fs.writeFileSync(file, 'line\n'.repeat(line));
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      assert.deepStrictEqual(changes, []);
+      const exclude = path.join(repository.root, '.git', 'info', 'exclude');
+      fs.mkdirSync(path.dirname(exclude), { recursive: true });
+      fs.writeFileSync(exclude, '# nothing\n');
+      await waitFor(() => changes.includes(true), 'the exclude file');
+      await keepWriting(
+        path.join('generated', 'file.txt'),
+        'the file excluded no more',
+      );
+      assert.deepStrictEqual(errors, []);
+    } finally {
+      removeFolder(folder);
+    }
+  });
+
   test('checks no file git writes into its objects, watching recursively', async () => {
     const statted: string[] = [];
     const nodeFs = process.getBuiltinModule('node:fs');

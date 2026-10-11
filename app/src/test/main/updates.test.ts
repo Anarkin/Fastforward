@@ -3,7 +3,6 @@ import { EventEmitter } from 'node:events';
 import type { ToWebview, UpdateStatus } from '../../shared/protocol';
 import { strings } from '../../shared/strings';
 import {
-  updateCheckHours,
   updateMode,
   Updates,
   type UpdateCheck,
@@ -180,7 +179,7 @@ suite('Updates', () => {
     );
   });
 
-  test('checks on start and again some hours after each check ends, quietly while nothing is new', async () => {
+  test('checks on start and again 4 hours after each check ends, quietly while nothing is new', async () => {
     const { updates, updater, waiting, fire, notices, statuses } =
       withUpdates();
     updates.start();
@@ -192,7 +191,7 @@ suite('Updates', () => {
     assert.deepStrictEqual(updates.status, { kind: 'upToDate' });
     assert.deepStrictEqual(
       waiting().map((entry) => entry.ms),
-      [updateCheckHours * 3_600_000],
+      [4 * 3_600_000],
     );
     await fire();
     assert.strictEqual(updater.checks.length, 2);

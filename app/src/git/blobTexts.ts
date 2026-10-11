@@ -2,7 +2,7 @@ export class BlobTexts {
   private readonly texts = new Map<string, string>();
   private chars = 0;
 
-  constructor(private readonly maxChars: number) {}
+  constructor(private readonly maxChars = 16_000_000) {}
 
   async read(
     blobIds: readonly string[],

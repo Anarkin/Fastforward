@@ -126,7 +126,7 @@ suite('Locations search', () => {
     assert.deepStrictEqual([remotes.refs.length, remotes.more], [1, 1]);
   });
 
-  test('draws 200 refs per group unless told another limit', () => {
+  test('draws 200 refs per group unless told another limit, as repositories can have thousands of refs', () => {
     assert.deepStrictEqual(refsDrawn(200), [200, 0]);
     assert.deepStrictEqual(refsDrawn(201), [200, 1]);
   });
@@ -267,7 +267,7 @@ suite('Locations search', () => {
     assert.deepStrictEqual(found(''), [[], 0]);
   });
 
-  test('draws at most 200 stashes before anything is typed too, counting the rest', () => {
+  test('draws at most 200 stashes, searched or not, counting the rest', () => {
     const stashes = Array.from({ length: 250 }, (_, index) => ({
       name: `stash@{${index}}`,
       commit: `s${index}`,
@@ -277,10 +277,10 @@ suite('Locations search', () => {
       stashes: stashes.slice(0, 200),
       more: 50,
     });
-    assert.deepStrictEqual(
-      shownStashes(stashes, 'wip'),
-      searchStashes(stashes, 'wip'),
-    );
+    assert.deepStrictEqual(shownStashes(stashes, 'wip'), {
+      stashes: stashes.slice(0, 200),
+      more: 50,
+    });
   });
 
   test('lists the matching stashes after the refs, jumping to one on Enter', () => {
@@ -616,7 +616,7 @@ suite('Commit results', () => {
     );
   });
 
-  test('searches commits by text from three characters, saying so until the results come, and only then that nothing matches', () => {
+  test('searches commits by text only from three characters, as each search walks every commit, saying so until the results come, and only then that nothing matches', () => {
     assert.match(popup('parser'), /Searching commits…/);
     assert.doesNotMatch(popup('parser'), /No matches/);
     const none = popup('parser', undefined, {
@@ -649,9 +649,10 @@ suite('Commit results', () => {
     assert.deepStrictEqual(asked, ['search', 'stop']);
   });
 
-  test('offers nothing for what is no hash, or too short', () => {
+  test('looks up no hash shorter than 4 hex digits, searching 3 only by text, and offers nothing for what is no hash', () => {
     assert.doesNotMatch(popup('ab'), /hash-suggestion|Commits/);
     assert.doesNotMatch(popup('abc'), /Looking for commit|Commits/);
+    assert.match(popup('abc'), /Searching commits…/);
     assert.doesNotMatch(popup('feature'), /Looking for commit|Commits/);
   });
 });

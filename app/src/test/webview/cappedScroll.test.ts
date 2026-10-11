@@ -54,8 +54,8 @@ suite('Capped scroll', () => {
     assert.strictEqual(homeReal(1234, range), 1234);
   });
 
-  test('caps the height a long list scrolls through, below what Chromium can lay out', () => {
-    assert.strictEqual(realHeight(long.total), scrollCap);
+  test("caps the height a long list scrolls through at 8 million pixels, as Chromium can't lay out much taller elements", () => {
+    assert.strictEqual(realHeight(long.total), 8_000_000);
     assert.ok(scrollCap * 4 < 2 ** 31 / 64);
   });
 
@@ -102,7 +102,16 @@ suite('Capped scroll', () => {
     assert.strictEqual(paged.real, wheeled.real - viewport);
   });
 
-  test('follows the scrollbar dragged along a long list in proportion, to either end', () => {
+  test('follows the scrollbar dragged along a long list one to one over its first and last million pixels, and in proportion between them, to either end', () => {
+    assert.strictEqual(homeVirtual(1_000_000, long), 1_000_000);
+    assert.strictEqual(virtualOf(scrolled(top, 900_000, long)), 900_000);
+    assert.strictEqual(
+      homeVirtual(realMax - 1_000_000, long),
+      virtualMax - 1_000_000,
+    );
+    assert.ok(
+      homeVirtual(1_100_000, long) - homeVirtual(1_000_000, long) > 1_000_000,
+    );
     const middle = scrolled(top, realMax / 2, long);
     assert.strictEqual(middle.real, realMax / 2);
     assert.strictEqual(virtualOf(middle), homeVirtual(realMax / 2, long));

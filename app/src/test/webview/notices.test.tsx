@@ -1,7 +1,8 @@
 import * as assert from 'node:assert';
 import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { addNotice, fading, Notices, type Notice } from '../../webview/notices';
+import { addNotice } from '../../shared/notices';
+import { fading, Notices, type Notice } from '../../webview/notices';
 import { renderedBy } from '../fixtures';
 
 const notice = (id: number, message = `notice ${id}`): Notice => ({
@@ -18,7 +19,7 @@ const info = (id: number, shownAt: number): Notice => ({
 });
 
 suite('Notices', () => {
-  test('keeps the four newest, newest last', () => {
+  test('keeps the 4 newest, newest last, dropping the oldest, also while the page loads again', () => {
     let shown: readonly Notice[] = [];
     for (let id = 1; id <= 5; id++) {
       shown = addNotice(shown, notice(id));

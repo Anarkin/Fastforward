@@ -217,7 +217,7 @@ suite('View of other repositories', function () {
     }
   });
 
-  test('shows the first rows of a long history while the whole of it is read, waiting for it to show a commit further down', async () => {
+  test('shows the first rows of a long history while the whole of it is read, waiting for it to show a commit further down, as reading it whole takes seconds in large repositories', async () => {
     const held = gate();
     await withView(
       log,
@@ -430,17 +430,24 @@ suite('View of other repositories', function () {
     });
   });
 
-  test('offers the recent repositories that are not open in a tab', async () => {
+  test('offers the recent repositories that are not open in a tab, out of the 20 kept, which count those that are', async () => {
     await withView(log, [repository.root], async (view) => {
       await view.store.update(recentKey, [other, repository.root]);
       await view.connection.receive({ type: 'sortTabs' });
       assert.deepStrictEqual(view.page.last('tabs')?.recent, [
         { root: other, name: 'other' },
       ]);
+      const older = Array.from({ length: 19 }, (_, index) =>
+        path.join(folder, `older-${index}`),
+      );
+      await view.store.update(recentKey, [repository.root, ...older]);
       await view.connection.receive({ type: 'openRepository', root: other });
       const shown = view.page.last('tabs');
       assert.ok(shown?.active && sameRoot(shown.active, other));
-      assert.deepStrictEqual(shown.recent, []);
+      assert.deepStrictEqual(
+        shown.recent.map((recent) => recent.root),
+        older.slice(0, 18),
+      );
     });
   });
 

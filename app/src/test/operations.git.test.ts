@@ -317,7 +317,7 @@ suite('Operations checking out', function () {
     }
   });
 
-  test('names only the newest few commits a checkout leaves behind', async () => {
+  test('names only the newest 5 commits a checkout leaves behind, counting the rest', async () => {
     await repository.git('checkout', '--detach', a);
     for (const stray of ['1', '2', '3', '4', '5', '6']) {
       await repository.commit(stray);

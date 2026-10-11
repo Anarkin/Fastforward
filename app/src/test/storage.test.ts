@@ -48,7 +48,7 @@ suite('Storage', () => {
     });
   });
 
-  test('fetches at most as seldom as a timer can wait, and tells the page so, as it says how often it fetches and when a fetch is late by it', () => {
+  test('fetches at most every 35791 minutes, as seldom as a timer can wait, and tells the page so, as it says how often it fetches and when a fetch is late by it', () => {
     const storage = new Storage(
       new UserSettings({
         ...defaultSettings(),
@@ -57,8 +57,7 @@ suite('Storage', () => {
       }),
       new FakeStore(),
     );
-    assert.ok(storage.autoFetchMinutes * 60_000 <= 2 ** 31 - 1);
-    assert.ok(storage.autoFetchMinutes > 35_000);
+    assert.strictEqual(storage.autoFetchMinutes, 35_791);
     assert.strictEqual(
       storage.layout.autoFetchMinutes,
       storage.autoFetchMinutes,

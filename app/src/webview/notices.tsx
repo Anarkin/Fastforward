@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { CloseIcon } from './icons';
-import { maxNotices } from '../shared/protocol';
 import { strings } from '../shared/strings';
 
 export interface Notice {
@@ -11,16 +10,6 @@ export interface Notice {
 }
 
 const infoShownFor = 8000;
-
-export function addNotice(
-  notices: readonly Notice[],
-  notice: Notice,
-): readonly Notice[] {
-  return [
-    ...notices.filter((shown) => shown.message !== notice.message),
-    notice,
-  ].slice(-maxNotices);
-}
 
 export function fading(
   notices: readonly Notice[],

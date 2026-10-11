@@ -7,7 +7,7 @@ import { strings } from '../shared/strings';
 
 export type UpdateMode = 'install' | 'notify' | 'off';
 
-export const updateCheckHours = 4;
+const updateCheckHours = 4;
 
 const releases = 'https://github.com/Anarkin/Fastforward/releases';
 

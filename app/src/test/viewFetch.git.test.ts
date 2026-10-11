@@ -343,7 +343,7 @@ suite('View fetching', function () {
     }
   });
 
-  test('lets only a fetch asked for, not one in the background, ask for credentials', async () => {
+  test('lets only a fetch asked for, not one in the background, ask for credentials, as no one may be there to answer one in the background', async () => {
     const {
       repository: locked,
       asked,

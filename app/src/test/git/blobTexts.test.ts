@@ -81,4 +81,19 @@ suite('Texts of blobs', () => {
       ]),
     );
   });
+
+  test('keeps the texts it reads up to 16 million characters in all, as a diff shown again then reads none from git', async () => {
+    const kept = new BlobTexts();
+    const { asked, read } = reader({
+      a: 'a'.repeat(8_000_000),
+      b: 'b'.repeat(8_000_000),
+      c: 'c',
+    });
+    await kept.read(['a', 'b'], read);
+    await kept.read(['a', 'b'], read);
+    assert.deepStrictEqual(asked, [['a', 'b']]);
+    await kept.read(['c'], read);
+    await kept.read(['b', 'a'], read);
+    assert.deepStrictEqual(asked, [['a', 'b'], ['c'], ['a']]);
+  });
 });

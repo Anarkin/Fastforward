@@ -2,11 +2,10 @@ import * as assert from 'node:assert';
 import type { ImageRead } from '../git/files';
 import {
   ImageReads,
-  largeImagesReadAtOnce,
   smallImageSize,
   smallImagesReadAtOnce,
 } from '../imageReads';
-import { maxImageSize, type ImageSource } from '../shared/images';
+import type { ImageSource } from '../shared/images';
 
 interface Reading {
   readonly path: string;
@@ -60,42 +59,52 @@ const onDisk = (path: string, id = '1.0'): ImageSource => ({
 });
 
 suite('Image reads', () => {
-  test('reads many small images at once but only a few large ones, found large by a first read that stops at a small size, as each image is read whole into memory and a document can link any number', async () => {
+  test('reads at most 8 images of up to 8 MB and 2 larger ones at once, the rest waiting their turn, found larger by a first read that stops at 8 MB, as each image is read whole into memory and a document can link any number', async () => {
     const images = new ImageReads();
     const { read, shown, finish, finishAll } = heldReads();
     const large = Array.from({ length: 4 }, (_, at) => `large${at}.png`);
     const small = Array.from({ length: 10 }, (_, at) => `small${at}.png`);
     const served = [
       ...large.map((path) =>
-        images.read(onDisk(path), read(path, smallImageSize + 1)),
+        images.read(onDisk(path), read(path, 8 * 1024 * 1024 + 1)),
       ),
       ...small.map((path) =>
-        images.read(onDisk(path), read(path, smallImageSize)),
+        images.read(onDisk(path), read(path, 8 * 1024 * 1024)),
       ),
     ];
     await settle();
     assert.deepStrictEqual(
       shown(),
-      [...large, ...small.slice(0, smallImagesReadAtOnce - large.length)]
-        .map((path) => `${path} ${smallImageSize}`)
+      [...large, ...small.slice(0, 8 - large.length)]
+        .map((path) => `${path} ${8 * 1024 * 1024}`)
         .toSorted(),
     );
     await finish(large);
     assert.deepStrictEqual(
       shown(),
       [
-        ...small
-          .slice(0, smallImagesReadAtOnce)
-          .map((path) => `${path} ${smallImageSize}`),
-        ...large
-          .slice(0, largeImagesReadAtOnce)
-          .map((path) => `${path} ${maxImageSize}`),
+        ...small.slice(0, 8).map((path) => `${path} ${8 * 1024 * 1024}`),
+        ...large.slice(0, 2).map((path) => `${path} ${192 * 1024 * 1024}`),
       ].toSorted(),
     );
     await finishAll();
     assert.deepStrictEqual(
       (await Promise.all(served)).map(({ kind }) => kind),
       Array.from(served, () => 'image'),
+    );
+  });
+
+  test('previews an image of up to 192 MB, reading a larger one as too large, as each image shown is read whole into the page', async () => {
+    const images = new ImageReads();
+    const { read, finishAll } = heldReads();
+    const served = [192 * 1024 * 1024, 192 * 1024 * 1024 + 1].map((size) =>
+      images.read(onDisk(`${size}.png`), read(`${size}.png`, size)),
+    );
+    await settle();
+    await finishAll();
+    assert.deepStrictEqual(
+      (await Promise.all(served)).map(({ kind }) => kind),
+      ['image', 'tooLarge'],
     );
   });
 

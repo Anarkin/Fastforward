@@ -9,7 +9,12 @@ import {
   switchToBranch,
   switchToCommit,
 } from '../../git/repository';
-import { runGit, stopRunningGit, writesEnded } from '../../git/run';
+import {
+  runGit,
+  runGitBytes,
+  stopRunningGit,
+  writesEnded,
+} from '../../git/run';
 import { ignoredPaths } from '../../git/watch';
 import { workingTreeFiles, workingTreePatch } from '../../git/workingTree';
 import { waitFor } from '../fixtures';
@@ -20,6 +25,86 @@ import {
   withEnv,
   type TempRepository,
 } from '../repositories';
+
+async function printing300MB(run: () => Promise<unknown>): Promise<void> {
+  const childProcess = process.getBuiltinModule('node:child_process');
+  const { spawn } = childProcess;
+  const printing = `
+    process.stderr.write('warning: ignoring broken ref refs/heads/broken\\n');
+    const chunk = 'x'.repeat(1 << 20);
+    let left = 300;
+    const write = () => {
+      while (left-- > 0) {
+        if (!process.stdout.write(chunk)) {
+          process.stdout.once('drain', write);
+          return;
+        }
+      }
+      process.stdout.end();
+    };
+    write();
+  `;
+  Reflect.set(
+    childProcess,
+    'spawn',
+    (command: string, args: readonly string[], options: object) =>
+      args.includes('printing')
+        ? spawn(process.execPath, ['-e', printing], options)
+        : spawn(command, args, options),
+  );
+  try {
+    await assert.rejects(run(), (error) => {
+      assert.match(
+        gitErrorText(error),
+        /^git printing failed: it printed over 256 MB$/m,
+      );
+      assert.match(gitErrorText(error), /ignoring broken ref/);
+      return true;
+    });
+  } finally {
+    Reflect.set(childProcess, 'spawn', spawn);
+  }
+}
+
+async function stoppedAtOnce(writing: Promise<void>): Promise<void> {
+  await stopRunningGit(0);
+  await writing;
+}
+
+async function stuckWriting(
+  name: string,
+  write: (root: string) => Promise<unknown>,
+  stuckWhile: (writing: Promise<void>) => Promise<void>,
+): Promise<void> {
+  const folder = tempFolder(`${name}-marks`);
+  const started = path.join(folder, 'started').replaceAll('\\', '/');
+  const stuck = await tempRepository(tempFolder(name));
+  try {
+    await stuck.commit('first', {
+      '.gitattributes': '*.txt filter=slow\n',
+      'a.txt': 'a\n',
+    });
+    await stuck.git('switch', '-q', '-c', 'slow');
+    await stuck.commit('slow', { 'a.txt': 'b\n' });
+    await stuck.git('switch', '-q', 'main');
+    await stuck.git(
+      'config',
+      'filter.slow.smudge',
+      `echo > '${started}'; sleep 15; cat`,
+    );
+    const writing = assert.rejects(write(stuck.root));
+    await waitFor(() => fs.existsSync(started), `the ${name} to start`);
+    await stuckWhile(writing);
+    assert.strictEqual(
+      fs.existsSync(path.join(stuck.root, '.git', 'index.lock')),
+      false,
+      name,
+    );
+  } finally {
+    removeFolder(stuck.root);
+    removeFolder(folder);
+  }
+}
 
 suite('Running git in a repository', function () {
   this.timeout(20_000);
@@ -36,44 +121,21 @@ suite('Running git in a repository', function () {
 
   suiteTeardown(() => removeFolder(cwd));
 
-  test('says git printed too much though it warned of something first, as the warning would hide why it was stopped', async () => {
-    const childProcess = process.getBuiltinModule('node:child_process');
-    const { spawn } = childProcess;
-    const printing = `
-      process.stderr.write('warning: ignoring broken ref refs/heads/broken\\n');
-      const chunk = 'x'.repeat(1 << 20);
-      let left = 300;
-      const write = () => {
-        while (left-- > 0) {
-          if (!process.stdout.write(chunk)) {
-            process.stdout.once('drain', write);
-            return;
-          }
-        }
-        process.stdout.end();
-      };
-      write();
-    `;
-    Reflect.set(
-      childProcess,
-      'spawn',
-      (command: string, args: readonly string[], options: object) =>
-        args.includes('printing')
-          ? spawn(process.execPath, ['-e', printing], options)
-          : spawn(command, args, options),
+  test('says git printed over 256 MB, bounding the memory its output takes, though it warned of something first, as the warning would hide why it was stopped', async () => {
+    await printing300MB(() => runGit(gitPath, cwd, ['printing']));
+  });
+
+  test('stops git past 256 MB even when its output is taken as git sends it, as the commit list is', async () => {
+    let taken = 0;
+    await printing300MB(() =>
+      runGitBytes(gitPath, cwd, ['printing'], {
+        onOutput: (chunk) => {
+          taken += chunk.length;
+        },
+      }),
     );
-    try {
-      await assert.rejects(runGit(gitPath, cwd, ['printing']), (error) => {
-        assert.match(
-          gitErrorText(error),
-          /^git printing failed: it printed over 256 MB$/m,
-        );
-        assert.match(gitErrorText(error), /ignoring broken ref/);
-        return true;
-      });
-    } finally {
-      Reflect.set(childProcess, 'spawn', spawn);
-    }
+    assert.ok(taken <= 256 * 1024 * 1024, `${taken}`);
+    assert.ok(taken > 255 * 1024 * 1024, `${taken}`);
   });
 
   test('reads and switches the repository it was given, though the environment names another', async () => {
@@ -281,59 +343,78 @@ suite('Running git in a repository', function () {
     const started = path.join(folder, 'started').replaceAll('\\', '/');
     const done = path.join(folder, 'done').replaceAll('\\', '/');
     const hooks = path.join(cwd, '.git', 'hooks');
-    const hook = path.join(hooks, 'post-checkout');
     fs.mkdirSync(hooks, { recursive: true });
-    fs.writeFileSync(
-      hook,
-      `#!/bin/sh\necho > '${started}'\nsleep 1\necho > '${done}'\n`,
-      { mode: 0o755 },
-    );
+    const [main] = await temp.resolve('main');
+    const ahead = (
+      await temp.git('commit-tree', 'main^{tree}', '-p', 'main', '-m', 'ahead')
+    ).trim();
     await temp.git('branch', 'finishing');
+    const writes = {
+      'post-checkout': () => switchToBranch(gitPath, cwd, 'finishing'),
+      'post-merge': () => fastForward(gitPath, cwd, ahead),
+    };
     try {
-      const switching = switchToBranch(gitPath, cwd, 'finishing');
-      await waitFor(() => fs.existsSync(started), 'the checkout to start');
-      await stopRunningGit();
-      assert.ok(fs.existsSync(done));
-      await switching;
+      for (const [hook, write] of Object.entries(writes)) {
+        fs.rmSync(started, { force: true });
+        fs.rmSync(done, { force: true });
+        fs.writeFileSync(
+          path.join(hooks, hook),
+          `#!/bin/sh\necho > '${started}'\nsleep 1\necho > '${done}'\n`,
+          { mode: 0o755 },
+        );
+        const writing = write();
+        await waitFor(() => fs.existsSync(started), `the ${hook} to start`);
+        await stopRunningGit();
+        assert.ok(fs.existsSync(done), hook);
+        await writing;
+      }
     } finally {
-      fs.rmSync(hook);
+      for (const hook of Object.keys(writes)) {
+        fs.rmSync(path.join(hooks, hook), { force: true });
+      }
       await temp.git('checkout', '-q', 'main');
+      await temp.git('reset', '-q', '--hard', main);
       await temp.git('branch', '-D', 'finishing');
       removeFolder(folder);
     }
   });
 
-  test('leaves the index unlocked when it stops a checkout that would not finish in time, as Windows stops git with no chance to remove its lock', async () => {
-    const folder = tempFolder('stopping-checkout');
-    const started = path.join(folder, 'started').replaceAll('\\', '/');
-    const stuck = await tempRepository(tempFolder('stuck'));
-    try {
-      await stuck.commit('first', {
-        '.gitattributes': '*.txt filter=slow\n',
-        'a.txt': 'a\n',
-      });
-      await stuck.git('switch', '-q', '-c', 'slow');
-      await stuck.commit('slow', { 'a.txt': 'b\n' });
-      await stuck.git('switch', '-q', 'main');
-      await stuck.git(
-        'config',
-        'filter.slow.smudge',
-        `echo > '${started}'; sleep 15; cat`,
-      );
-      const switching = assert.rejects(
-        switchToBranch(gitPath, stuck.root, 'slow'),
-      );
-      await waitFor(() => fs.existsSync(started), 'the checkout to start');
-      await stopRunningGit(0);
-      await switching;
-      assert.strictEqual(
-        fs.existsSync(path.join(stuck.root, '.git', 'index.lock')),
-        false,
-      );
-    } finally {
-      removeFolder(stuck.root);
-      removeFolder(folder);
-    }
+  test('leaves the index unlocked when it stops a checkout or fast-forward that would not finish in time, as Windows stops git with no chance to remove its lock', async () => {
+    await stuckWriting(
+      'checkout',
+      (root) => switchToBranch(gitPath, root, 'slow'),
+      stoppedAtOnce,
+    );
+    await stuckWriting(
+      'fast-forward',
+      (root) => fastForward(gitPath, root, 'slow'),
+      stoppedAtOnce,
+    );
+  });
+
+  test('waits at most 30 seconds in all for a checkout or fast-forward, as stopping one midway can leave the working tree half switched', async () => {
+    await stuckWriting(
+      'checkout',
+      (root) => switchToBranch(gitPath, root, 'slow'),
+      async (writing) => {
+        const { setTimeout } = globalThis;
+        const delays: number[] = [];
+        Reflect.set(globalThis, 'setTimeout', (run: () => void, ms: number) => {
+          delays.push(ms);
+          return setTimeout(run, ms);
+        });
+        let ended: Promise<void>;
+        try {
+          ended = writesEnded();
+        } finally {
+          Reflect.set(globalThis, 'setTimeout', setTimeout);
+        }
+        assert.strictEqual(delays.length, 1);
+        assert.ok(delays[0] > 29_000 && delays[0] <= 30_000, `${delays[0]}`);
+        await stopRunningGit(0);
+        await Promise.all([ended, writing]);
+      },
+    );
   });
 
   test('waits for a checkout or fast-forward running, leaving the other gits running, as an update waits for them before it restarts the app', async () => {
@@ -570,6 +651,22 @@ suite('A file system monitor the repository sets', function () {
         'core.fsmonitor',
       ]);
       assert.strictEqual(monitor.trim(), 'true');
+    } finally {
+      removeFolder(repository.root);
+    }
+  });
+
+  test("reads whether git's own monitor is on only the first time it runs git in a folder, as reading it takes a git of its own", async () => {
+    const repository = await tempRepository(tempFolder('daemon-later'));
+    try {
+      const run = (...args: string[]) =>
+        runGit(repository.gitPath, repository.root, args);
+      await run('status');
+      await repository.git('config', 'core.fsmonitor', 'true');
+      assert.strictEqual(
+        (await run('config', 'core.fsmonitor')).trim(),
+        'false',
+      );
     } finally {
       removeFolder(repository.root);
     }

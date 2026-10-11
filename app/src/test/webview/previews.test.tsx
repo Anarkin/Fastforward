@@ -195,4 +195,16 @@ suite('Markdown preview', () => {
       '<div class="markdown-diff"><div class="markdown-pane filler"></div><div class="markdown-pane"><div class="markdown-note">Empty file</div></div></div>',
     );
   });
+
+  test('leaves the preview of a side not read, as one over 2 MB, empty, rather than saying the file is empty', () => {
+    const markup = renderToStaticMarkup(
+      <MarkdownDiff
+        sides={[{ side: 'new', text: undefined, present: true }]}
+      />,
+    );
+    assert.strictEqual(
+      markup,
+      '<div class="markdown-diff"><div class="markdown-pane"><div class="markdown"></div></div></div>',
+    );
+  });
 });

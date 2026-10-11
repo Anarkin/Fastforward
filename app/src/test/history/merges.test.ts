@@ -111,7 +111,7 @@ suite('Merges shown', () => {
     assert.deepStrictEqual(pulled(pull), ['p']);
   });
 
-  test('tells no merge of a branch of commits a pull', () => {
+  test('tells no merge of a branch of plain commits a pull, though git pull leaves one when the mainline it took in had only plain commits, as that merge looks just like merging a branch', () => {
     assert.deepStrictEqual(pulled(history), []);
   });
 

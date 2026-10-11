@@ -166,7 +166,7 @@ suite('Commit search stream', () => {
     });
   });
 
-  test('stops at 50 matches unless told another limit', () => {
+  test('stops at 50 matches unless told another limit, as each search walks every commit', () => {
     const matches = new SearchMatches('ada');
     for (let i = 0; i < 50; i++) {
       assert.strictEqual(matches.add(`h${i}\0Ada\0a@x\0B\0b@x\0`), undefined);

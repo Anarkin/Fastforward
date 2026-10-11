@@ -70,7 +70,7 @@ suite('Git repository', function () {
     }
   });
 
-  test('reads the date of the commit each ref points at, not of the annotated tag pointing at it', async () => {
+  test('reads the date of the commit each ref points at, not of the annotated tag pointing at it, nor of when the ref was made or moved', async () => {
     const [second] = await temp.resolve('HEAD~1');
     await temp.git('tag', '-a', '-m', 'annotated', 'v1', second);
     try {
@@ -289,17 +289,26 @@ suite('Git repository', function () {
     }
   });
 
-  test('gives up on a fetch that stalls', async () => {
+  test('gives up on a fetch that stalls after 5 minutes, saying it failed', async () => {
     await temp.git('remote', 'add', 'stalled', 'ssh://stalled.invalid/x');
     await temp.git('config', 'core.sshCommand', "sh -c 'sleep 15' --");
+    const original: unknown = Reflect.get(AbortSignal, 'timeout');
+    const timeout = AbortSignal.timeout.bind(AbortSignal);
+    const waits: number[] = [];
+    AbortSignal.timeout = (ms) => {
+      waits.push(ms);
+      return timeout(500);
+    };
     try {
       const started = performance.now();
       await assert.rejects(
-        fetchAllRemotes(gitPath, cwd, { timeout: 500 }),
-        /git fetch timed out/,
+        fetchAllRemotes(gitPath, cwd),
+        /git fetch timed out after 300 seconds/,
       );
       assert.ok(performance.now() - started < 5000);
+      assert.deepStrictEqual(waits, [300_000]);
     } finally {
+      Reflect.set(AbortSignal, 'timeout', original);
       await temp.git('config', '--unset', 'core.sshCommand');
       await temp.git('remote', 'remove', 'stalled');
     }

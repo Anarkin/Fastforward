@@ -11,6 +11,8 @@ import {
   showPatchArgs,
 } from '../../git/diff';
 import { collapseThreshold } from '../../shared/protocol';
+import { listTree, readFile } from '../../git/files';
+import { runGit } from '../../git/run';
 import {
   stagedPatch,
   workingTreeFiles,
@@ -65,6 +67,127 @@ suite('Git diff', function () {
       await temp.git('reset', '--hard', rename);
       await temp.git('config', '--unset', 'core.quotePath');
       await temp.git('config', '--unset', 'diff.suppressBlankEmpty');
+    }
+  });
+
+  test('reads a path that is not valid UTF-8 with U+FFFD in place of each part that is not, showing its changes only in the patch of all the files, as the app can pass git a path only as UTF-8', async () => {
+    const latin1 = await tempRepository(tempFolder('latin1'));
+    try {
+      await latin1.commit('first', { 'a.txt': 'a\n' });
+      const blob = (
+        await runGit(gitPath, latin1.root, ['hash-object', '-w', '--stdin'], {
+          input: 'café\n',
+        })
+      ).trim();
+      const info = path.join(latin1.root, '.git', 'index-info');
+      fs.writeFileSync(
+        info,
+        Buffer.from(`100644 ${blob}\tcaf\xe9.md\n`, 'latin1'),
+      );
+      await latin1.git(
+        '-c',
+        `alias.addinfo=!git update-index --add --index-info < '${info.replaceAll('\\', '/')}'`,
+        'addinfo',
+      );
+      await latin1.git('commit', '-q', '-m', 'latin1');
+      const [hash] = await latin1.resolve('HEAD');
+      const name = 'caf�.md';
+      assert.deepStrictEqual(
+        (await showFiles(gitPath, latin1.root, hash)).map((file) => file.path),
+        [name],
+      );
+      assert.ok(
+        (await listTree(gitPath, latin1.root, hash)).includes(name),
+        'the tree',
+      );
+      assert.ok(
+        (await showPatch(gitPath, latin1.root, hash)).includes(`b/${name}`),
+        'the patch of all the files',
+      );
+      assert.strictEqual(
+        await showPatch(gitPath, latin1.root, hash, { path: name }),
+        '',
+      );
+      await assert.rejects(
+        readFile(gitPath, latin1.root, hash, name),
+        /is not in/,
+      );
+    } finally {
+      removeFolder(latin1.root);
+    }
+  });
+
+  test("diffs as git computes it, running no external diff or textconv the config names, committed, compared, staged or in the working tree, as the diff shown is git's own", async () => {
+    const configured = await tempRepository(tempFolder('external'));
+    const folder = tempFolder('external-marks');
+    const ran = path.join(folder, 'ran').replaceAll('\\', '/');
+    try {
+      await configured.commit('first', {
+        '.gitattributes': '*.txt diff=marked\n',
+        'a.txt': 'one\n',
+      });
+      await configured.commit('second', { 'a.txt': 'one\ntwo\n' });
+      await configured.git('config', 'diff.external', `echo > '${ran}'; true`);
+      await configured.git(
+        'config',
+        'diff.marked.textconv',
+        `echo > '${ran}'; echo marked; true`,
+      );
+      const { root } = configured;
+      const [old, hash] = await configured.resolve('HEAD~1', 'HEAD');
+      const added = ['+two'];
+      assert.deepStrictEqual(
+        changedLines(await showPatch(gitPath, root, hash)),
+        added,
+      );
+      assert.deepStrictEqual(
+        changedLines(await comparePatch(gitPath, root, old, hash)),
+        added,
+      );
+      await configured.git('reset', '-q', '--soft', old);
+      assert.deepStrictEqual(
+        changedLines(await stagedPatch(gitPath, root)),
+        added,
+      );
+      await configured.git('reset', '-q', old);
+      assert.deepStrictEqual(
+        changedLines(
+          await workingTreePatch(
+            gitPath,
+            root,
+            await workingTreeFiles(gitPath, root),
+          ),
+        ),
+        added,
+      );
+      assert.strictEqual(fs.existsSync(ran), false);
+    } finally {
+      removeFolder(configured.root);
+      removeFolder(folder);
+    }
+  });
+
+  test('diffs a file in the working tree through the clean filter its attributes name, as git itself does', async () => {
+    const filtered = await tempRepository(tempFolder('clean'));
+    try {
+      await filtered.git('config', 'filter.upper.clean', 'tr a-z A-Z');
+      await filtered.commit('first', {
+        '.gitattributes': '*.txt filter=upper\n',
+        'a.txt': 'one\n',
+      });
+      fs.writeFileSync(path.join(filtered.root, 'a.txt'), 'one\ntwo\n');
+      assert.deepStrictEqual(
+        changedLines(
+          await workingTreePatch(
+            gitPath,
+            filtered.root,
+            await workingTreeFiles(gitPath, filtered.root),
+          ),
+        ),
+        ['+TWO'],
+      );
+    } finally {
+      removeFolder(filtered.root);
     }
   });
 

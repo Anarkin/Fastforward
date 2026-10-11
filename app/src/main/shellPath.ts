@@ -6,19 +6,30 @@ import {
   spawn,
 } from 'node:child_process';
 import type { EventEmitter } from 'node:events';
+import { realTimer, type Timer } from '../autoFetch';
 
 const marker = '__FASTFORWARD_PATH__';
 
+export async function withLoginShellPath(
+  platform: NodeJS.Platform,
+  env: NodeJS.ProcessEnv,
+  readLoginShellPath: typeof loginShellPath = loginShellPath,
+): Promise<void> {
+  if (platform !== 'win32') {
+    env.PATH = mergePaths(await readLoginShellPath(env), env.PATH, ':');
+  }
+}
+
 export async function loginShellPath(
   env: NodeJS.ProcessEnv = process.env,
-  timeout = 5000,
+  timer: Timer = realTimer,
 ): Promise<string | undefined> {
   const shell = spawn(
     env.SHELL || '/bin/sh',
     ['-ilc', `printf '%s' "${marker}" "$PATH" "${marker}"`],
     loginShellOptions(env),
   );
-  return pathFromShell(shell, timeout);
+  return pathFromShell(shell, timer);
 }
 
 export function loginShellOptions(
@@ -29,19 +40,19 @@ export function loginShellOptions(
 
 export function pathFromShell(
   shell: Pick<ChildProcess, 'stdout' | 'kill'> & EventEmitter,
-  timeout: number,
+  timer: Timer = realTimer,
 ): Promise<string | undefined> {
   return new Promise((resolve) => {
     let output = '';
     const finish = (found: string | undefined) => {
-      clearTimeout(timer);
+      cancel();
       shell.stdout?.destroy();
       resolve(found);
     };
-    const timer = setTimeout(() => {
+    const cancel = timer(() => {
       shell.kill('SIGKILL');
       finish(undefined);
-    }, timeout);
+    }, 5000);
     shell.on('error', () => finish(undefined));
     shell.on('close', () => finish(undefined));
     shell.stdout?.setEncoding('utf8').on('data', (chunk: string) => {

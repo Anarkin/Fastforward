@@ -68,6 +68,19 @@ export function deferredChanges(
   return deferred;
 }
 
+export function includedChanges(
+  files: readonly FileChange[],
+): string[] | undefined {
+  const deferred = deferredChanges(files);
+  return deferred.size === 0
+    ? undefined
+    : files
+        .filter((file) => !deferred.has(file.path))
+        .flatMap((file) =>
+          file.oldPath ? [file.oldPath, file.path] : [file.path],
+        );
+}
+
 export interface LeftOut {
   readonly path: string;
   readonly lines: number | undefined;

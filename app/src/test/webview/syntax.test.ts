@@ -63,6 +63,27 @@ async function colored(
   );
 }
 
+const linesColored = (far: number) => {
+  const text = Array.from({ length: far + 1 }, (_, index) =>
+    index === far - 1 ? 'new = 2;' : 'x;',
+  ).join('\n');
+  const farPatch = [
+    'diff --git a/a.ts b/a.ts',
+    'index 1111111111111111111111111111111111111111..2222222222222222222222222222222222222222 100644',
+    '--- a/a.ts',
+    '+++ b/a.ts',
+    `@@ -${far},1 +${far},1 @@`,
+    '-old = 1;',
+    '+new = 2;',
+    '',
+  ].join('\n');
+  return syntaxSources(
+    parsePatch(farPatch),
+    undefined,
+    new Map([['new:a.ts', text]]),
+  ).map((source) => source.lines);
+};
+
 suite('Syntax', () => {
   suiteSetup(
     'warms the TypeScript grammar up, as Shiki gives up on a line past 500 ms, leaving the rest of it one token, which the first lines a cold grammar tokenizes took on a slow runner',
@@ -288,30 +309,12 @@ suite('Syntax', () => {
     );
   });
 
-  test('colors a side from its hunks alone when they are too far into its whole text', () => {
-    const far = 5001;
-    const text = Array.from({ length: far + 1 }, (_, index) =>
-      index === far - 1 ? 'new = 2;' : 'x;',
-    ).join('\n');
-    const farPatch = [
-      'diff --git a/a.ts b/a.ts',
-      'index 1111111111111111111111111111111111111111..2222222222222222222222222222222222222222 100644',
-      '--- a/a.ts',
-      '+++ b/a.ts',
-      `@@ -${far},1 +${far},1 @@`,
-      '-old = 1;',
-      '+new = 2;',
-      '',
-    ].join('\n');
-    const sources = syntaxSources(
-      parsePatch(farPatch),
-      undefined,
-      new Map([['new:a.ts', text]]),
-    );
+  test('colors a side from its hunks alone when they show a line past its 5000th, as tokenizing is sequential, so a late line costs every line before it', () => {
     assert.deepStrictEqual(
-      sources.map((source) => source.lines),
-      [['old = 1;'], ['new = 2;']],
+      linesColored(5000).map((lines) => lines.length),
+      [1, 5000],
     );
+    assert.deepStrictEqual(linesColored(5001), [['old = 1;'], ['new = 2;']]);
   });
 
   test('colors only the first 5000 lines of a file shown entire, or of a side shown from its hunks alone', () => {
@@ -341,7 +344,7 @@ suite('Syntax', () => {
     assert.strictEqual(added.keys.length, 5000);
   });
 
-  test('colors a line of 2000 characters, but not one over 2000', async () => {
+  test('colors a line of 2000 characters, but not one over 2000, as minified lines take long to tokenize', async () => {
     assert.deepStrictEqual(
       await colored([], {
         path: 'a.ts',
@@ -722,7 +725,7 @@ suite('Syntax', () => {
     assert.deepStrictEqual(ranges, syntaxRanges(highlighter, [text]));
   });
 
-  test('keeps the colors of texts of at most 8 million characters in all, forgetting the least recently used, and of none longer than 2 million', async () => {
+  test('keeps the colors of texts of at most 8 million characters in all, forgetting the least recently used, and of none longer than 2 million, bounding the memory of the page', async () => {
     const highlighter = await loadLanguages(['typescript']);
     const tokenized: string[] = [];
     const counting = {
@@ -821,6 +824,27 @@ suite('Syntax', () => {
       ({ path, side }) => `${side}:${path}`,
     );
 
+  const requestsAfter = (count: number) =>
+    textsToLoad(
+      [
+        ...parsePatch(
+          [
+            'diff --git a/added.ts b/added.ts',
+            'new file mode 100644',
+            'index 0000000000000000000000000000000000000000..3333333333333333333333333333333333333333',
+            '--- /dev/null',
+            '+++ b/added.ts',
+            `@@ -0,0 +1,${count} @@`,
+            ...Array.from({ length: count }, () => '+x;'),
+            '',
+          ].join('\n'),
+        ),
+        ...farFiles,
+      ],
+      1,
+      new Set(),
+    ).map(({ path, side }) => `${side}:${path}`);
+
   test('colors sides from their hunks alone once the sides before take 20000 lines', () => {
     const filler = Array.from({ length: 4999 }, () => 'x;');
     const texts = new Map(
@@ -849,25 +873,19 @@ suite('Syntax', () => {
     assert.deepStrictEqual(farRequests(new Set([2])), ['old:c.ts', 'new:c.ts']);
   });
 
-  test('counts a side colored from its hunks alone by at most the 5000 lines it colors', () => {
-    const added = parsePatch(
-      [
-        'diff --git a/added.ts b/added.ts',
-        'new file mode 100644',
-        'index 0000000000000000000000000000000000000000..3333333333333333333333333333333333333333',
-        '--- /dev/null',
-        '+++ b/added.ts',
-        '@@ -0,0 +1,20000 @@',
-        ...Array.from({ length: 20_000 }, () => '+x;'),
-        '',
-      ].join('\n'),
-    );
-    assert.deepStrictEqual(
-      textsToLoad([...added, ...farFiles.slice(0, 1)], 1, new Set()).map(
-        ({ path, side }) => `${side}:${path}`,
-      ),
-      ['old:a.ts', 'new:a.ts'],
-    );
+  test('asks for whole texts only until the sides before take 20000 lines, counting a side colored from its hunks alone by its lines shown up to the 5000 it colors, as each whole text is read in full and tokenized up to its last line shown', () => {
+    assert.deepStrictEqual(requestsAfter(4999), [
+      'old:a.ts',
+      'new:a.ts',
+      'old:b.ts',
+      'new:b.ts',
+    ]);
+    assert.deepStrictEqual(requestsAfter(5000), [
+      'old:a.ts',
+      'new:a.ts',
+      'old:b.ts',
+    ]);
+    assert.deepStrictEqual(requestsAfter(20_000), requestsAfter(5000));
   });
 });
 
@@ -886,9 +904,18 @@ suite('Code in documents', () => {
     assert.strictEqual(await colorCode('no-such-language', 'a'), undefined);
   });
 
-  test('colors a code block of up to 5000 lines, not counting the line break Markdown ends it with', async () => {
+  test('colors a code block of up to 5000 lines, not counting the line break Markdown ends it with, as tokenizing is sequential, so a late line costs every line before it', async () => {
     assert.strictEqual((await colorCode('ts', codeLines(5000)))?.length, 5001);
     assert.strictEqual(await colorCode('ts', codeLines(5001)), undefined);
+  });
+
+  test('colors a line of a code block of 2000 characters, but not one over 2000, as minified lines take long to tokenize', async () => {
+    const lines = await colorCode(
+      'ts',
+      `a = ${'1'.repeat(1996)}\na = ${'1'.repeat(1997)}`,
+    );
+    assert.strictEqual(lines?.[0]?.length, 2);
+    assert.deepStrictEqual(lines[1], []);
   });
 
   test('keeps the colors of a code block, so a preview shown again colors none of its blocks again', async () => {

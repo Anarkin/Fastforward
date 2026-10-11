@@ -4,7 +4,7 @@ import { Slots } from './shared/slots';
 
 export const smallImageSize = 8 * 1024 * 1024;
 export const smallImagesReadAtOnce = 8;
-export const largeImagesReadAtOnce = 2;
+const largeImagesReadAtOnce = 2;
 
 const readOf = ({ root, path, id, disk, revision }: ImageSource) =>
   JSON.stringify([

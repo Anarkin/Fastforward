@@ -57,7 +57,7 @@ import { reloadWhenGone } from './pageGone';
 import { profileFolder } from './profile';
 import { exitOnFailure, flushBeforeQuit, whileWindowOpen } from './quit';
 import { reloadOnRebuild } from './rebuild';
-import { loginShellPath, mergePaths } from './shellPath';
+import { withLoginShellPath } from './shellPath';
 import { updateMode, Updates } from './updates';
 
 const dist = __dirname;
@@ -305,13 +305,7 @@ async function start(): Promise<void> {
 }
 
 async function searchGit(): Promise<GitSearch> {
-  if (process.platform !== 'win32') {
-    process.env.PATH = mergePaths(
-      await loginShellPath(),
-      process.env.PATH,
-      path.delimiter,
-    );
-  }
+  await withLoginShellPath(process.platform, process.env);
   return findGit();
 }
 

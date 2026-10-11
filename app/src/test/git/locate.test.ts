@@ -1,7 +1,13 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { findGit, isSupported, onPath, parseVersion } from '../../git/locate';
+import {
+  findGit,
+  isSupported,
+  onPath,
+  parseVersion,
+  versionOutput,
+} from '../../git/locate';
 import { removeFolder, tempFolder } from '../repositories';
 
 suite('Finding git', () => {
@@ -138,6 +144,23 @@ suite('Finding git', () => {
     assert.deepStrictEqual(await findGit({ PATH: folder }), {
       kind: 'missing',
     });
+  });
+
+  test('waits at most 10 seconds for git --version, counting a git that answers no sooner as missing', async () => {
+    executable(git);
+    const timeouts: number[] = [];
+    const search = await findGit(
+      { PATH: folder },
+      process.platform,
+      (gitPath) =>
+        versionOutput(gitPath, (_file, args, { timeout }, callback) => {
+          assert.deepStrictEqual(args, ['--version']);
+          timeouts.push(timeout);
+          callback(Object.assign(new Error('killed'), { killed: true }), '');
+        }),
+    );
+    assert.deepStrictEqual(timeouts, [10_000]);
+    assert.deepStrictEqual(search, { kind: 'missing' });
   });
 
   test('reads the version of git, Windows builds included', () => {

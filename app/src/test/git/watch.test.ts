@@ -832,7 +832,7 @@ suite('Watching folders one by one', () => {
     assert.deepStrictEqual(watched(), ['', 'a']);
   });
 
-  test('reports the first failed watch and keeps watching the rest', async () => {
+  test('reports the first watch the system refuses, as past fs.inotify.max_user_watches, and keeps watching the rest', async () => {
     mkdir('a', 'b', 'c');
     const failure = Object.assign(new Error('ENOSPC'), { code: 'ENOSPC' });
     await start((folder) => {

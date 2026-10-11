@@ -82,11 +82,11 @@ import { comparedOf, shownSide, workingTreeSide } from './shared/comparisons';
 import { isFullHash, shortHash } from './shared/hashes';
 import { imageSourceOf, imageType } from './shared/images';
 import { InFlight } from './shared/inFlight';
+import { addNotice } from './shared/notices';
 import {
   commitPageSize,
-  deferredChanges,
+  includedChanges,
   leftOutChanges,
-  maxNotices,
   workingTreeHash,
   type ChangeArea,
   type CheckoutTarget,
@@ -134,7 +134,6 @@ import {
   type TabState,
 } from './tabState';
 
-const maxKeptTextChars = 16_000_000;
 const maxKeptUntrackedChars = 32_000_000;
 export const refreshDelays = { delay: 100, gitDirDelay: 300, maxDelay: 1500 };
 const everything: Changed = { refs: true, workingTree: true };
@@ -238,7 +237,7 @@ class OpeningFailed {
 
 export class FastforwardView {
   private readonly tabStates = new Map<string, Tab>();
-  private readonly blobTexts = new BlobTexts(maxKeptTextChars);
+  private readonly blobTexts = new BlobTexts();
   private readonly repositories = new Map<string, string>();
   private readonly worktreeLists = new Map<string, readonly WorktreeInfo[]>();
   private readonly worktreeListings = new Map<string, number>();
@@ -1654,12 +1653,7 @@ export class FastforwardView {
   private postToPage(session: Session, message: ToWebview): void {
     const page = session.disposed ? this.page : session;
     if (message.type === 'notice' && (page === undefined || page.disposed)) {
-      this.unsentNotices = [
-        ...this.unsentNotices.filter(
-          (unsent) => unsent.message !== message.message,
-        ),
-        message,
-      ].slice(-maxNotices);
+      this.unsentNotices = addNotice(this.unsentNotices, message);
       return;
     }
     page?.post(message);
@@ -2797,17 +2791,6 @@ function areaOf(area: ChangeArea | undefined): { area?: ChangeArea } {
 function shownCommit(hash: string): string | undefined {
   const shown = shownSide(hash);
   return shown === workingTreeHash ? undefined : shown;
-}
-
-function includedChanges(files: readonly FileChange[]): string[] | undefined {
-  const deferred = deferredChanges(files);
-  return deferred.size === 0
-    ? undefined
-    : files
-        .filter((file) => !deferred.has(file.path))
-        .flatMap((file) =>
-          file.oldPath ? [file.oldPath, file.path] : [file.path],
-        );
 }
 
 async function allSettled(

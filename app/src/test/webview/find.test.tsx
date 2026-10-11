@@ -168,13 +168,20 @@ suite('Find in diff', () => {
     );
   });
 
-  test('counts the large files not loaded yet as not searched', () => {
+  test('counts the files left out of a patch as not searched until they load, as their lines are not in the page', () => {
     const files: DiffFile[] = [
       ...parsePatch(patch),
-      { path: 'big.ts', binary: false, hunks: [], placeholder: { lines: 9 } },
+      { path: 'find.ts', binary: false, hunks: [], placeholder: { lines: 9 } },
     ];
     assert.strictEqual(unsearchedFiles(files, undefined), 1);
     assert.strictEqual(unsearchedFiles(files, whole), 0);
+    const searched = new Set(
+      findMatches(files, undefined, 'find').map(({ file }) => file),
+    );
+    assert.deepStrictEqual(
+      [...searched].toSorted((a, b) => a - b),
+      [0, 1],
+    );
   });
 
   test('says which match is shown of how many, or that there are none', () => {

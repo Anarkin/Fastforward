@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import type { SpawnOptions } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { listTree, maxFileSize } from '../../git/files';
+import { listTree } from '../../git/files';
 import {
   stagedPatch,
   uncommittedCount,
@@ -674,9 +674,10 @@ suite('Uncommitted changes', function () {
     }
   });
 
-  test('counts a huge untracked text file as a large change too large to count, and a huge binary one as no lines', async () => {
+  test('counts an untracked text file over 2 MB as a large change too large to count, rather than reading it whole to count its lines, and a huge binary one as no lines', async () => {
     const files: Record<string, string | Buffer> = {
-      'huge.txt': 'x\n'.repeat(1024 * 1024 + 1),
+      'huge.txt': 'x\n'.repeat(1024 * 1024) + 'x',
+      'exact.txt': 'x\n'.repeat(1024 * 1024),
       'huge.dat': Buffer.alloc(3 * 1024 * 1024),
     };
     for (const [file, content] of Object.entries(files)) {
@@ -692,6 +693,9 @@ suite('Uncommitted changes', function () {
       assert.strictEqual(text.insertions, 0);
       assert.strictEqual(binary?.insertions, 0);
       assert.strictEqual(binary?.uncounted, undefined);
+      const exact = changes.find((change) => change.path === 'exact.txt');
+      assert.strictEqual(exact?.insertions, 1024 * 1024);
+      assert.strictEqual(exact?.uncounted, undefined);
     } finally {
       for (const file of Object.keys(files)) {
         fs.rmSync(path.join(cwd, file));
@@ -716,7 +720,7 @@ suite('Uncommitted changes', function () {
     }
   });
 
-  test('counts and diffs only the first 50 untracked files, leaving the rest out of the patch to load when opened', async () => {
+  test('counts and diffs only the first 50 untracked files, against the index or a commit either way, leaving the rest out of the patch to load when opened, as each one is read on its own to count its lines and diffed by a git of its own', async () => {
     const many = path.join(cwd, 'many');
     fs.mkdirSync(many);
     for (let i = 0; i <= 50; i++) {
@@ -726,26 +730,34 @@ suite('Uncommitted changes', function () {
       );
     }
     try {
-      const workingTree = await workingTreeFiles(gitPath, cwd);
-      const insertions = (file: string) =>
-        workingTree.files.find((change) => change.path === file)?.insertions;
-      assert.strictEqual(insertions('many/f49.txt'), 1);
-      assert.strictEqual(insertions('many/f50.txt'), 0);
-      assert.deepStrictEqual(
-        leftOutChanges(workingTree.files).filter((file) =>
-          file.path.startsWith('many/'),
-        ),
-        [{ path: 'many/f50.txt', lines: undefined }],
-      );
-      const patch = await workingTreePatch(gitPath, cwd, workingTree, {
-        include: ['many/f49.txt', 'many/f50.txt'],
-      });
-      assert.ok(patch.includes('+many49'), patch);
-      assert.ok(!patch.includes('+many50'), patch);
-      const alone = await workingTreePatch(gitPath, cwd, workingTree, {
-        path: 'many/f50.txt',
-      });
-      assert.ok(alone.includes('+many50'), alone);
+      for (const diff of [
+        undefined,
+        { base: 'HEAD', reverse: false },
+        { base: 'HEAD', reverse: true },
+      ]) {
+        const workingTree = await workingTreeFiles(gitPath, cwd, diff);
+        const lines = (file: string) => {
+          const change = workingTree.files.find((one) => one.path === file);
+          return change && change.insertions + change.deletions;
+        };
+        assert.strictEqual(lines('many/f49.txt'), 1);
+        assert.strictEqual(lines('many/f50.txt'), 0);
+        assert.deepStrictEqual(
+          leftOutChanges(workingTree.files).filter((file) =>
+            file.path.startsWith('many/'),
+          ),
+          [{ path: 'many/f50.txt', lines: undefined }],
+        );
+        const patch = await workingTreePatch(gitPath, cwd, workingTree, {
+          include: ['many/f49.txt', 'many/f50.txt'],
+        });
+        assert.ok(patch.includes('many49'), patch);
+        assert.ok(!patch.includes('many50'), patch);
+        const alone = await workingTreePatch(gitPath, cwd, workingTree, {
+          path: 'many/f50.txt',
+        });
+        assert.ok(alone.includes('many50'), alone);
+      }
     } finally {
       fs.rmSync(many, { recursive: true });
     }
@@ -823,27 +835,33 @@ suite('Uncommitted changes', function () {
     }
   });
 
-  test('keeps no patch of an untracked file too large to show whole', async () => {
-    const large = path.join(cwd, 'large.log');
-    fs.writeFileSync(
-      large,
-      `${'x'.repeat(maxFileSize)}
-`,
-    );
+  test('keeps no patch of an untracked file over 2 MB, diffing it again on every refresh, but keeps that of one of exactly 2 MB', async () => {
+    const files = {
+      'large.log': `${'x'.repeat(2 * 1024 * 1024)}\n`,
+      'exact.log': `${'x'.repeat(2 * 1024 * 1024 - 1)}\n`,
+    };
+    for (const [file, content] of Object.entries(files)) {
+      fs.writeFileSync(path.join(cwd, file), content);
+    }
     try {
       const patches = new UntrackedPatches(Infinity);
       const workingTree = await workingTreeFiles(gitPath, cwd);
-      const patch = await workingTreePatch(
-        gitPath,
-        cwd,
-        workingTree,
-        { path: 'large.log' },
-        patches,
-      );
-      assert.ok(patch.includes('+xxx'));
+      for (const file of Object.keys(files)) {
+        const patch = await workingTreePatch(
+          gitPath,
+          cwd,
+          workingTree,
+          { path: file },
+          patches,
+        );
+        assert.ok(patch.includes('+xxx'));
+      }
       assert.ok(!patches.has('large.log'));
+      assert.ok(patches.has('exact.log'));
     } finally {
-      fs.rmSync(large);
+      for (const file of Object.keys(files)) {
+        fs.rmSync(path.join(cwd, file));
+      }
     }
   });
 

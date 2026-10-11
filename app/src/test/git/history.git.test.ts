@@ -54,6 +54,13 @@ async function searchingWith(
   }
 }
 
+const fastImported = (count: number, from: string) =>
+  Array.from(
+    { length: count },
+    (_, index) =>
+      `commit refs/heads/main\ncommitter Test <test@example.com> ${index + 1} +0000\ndata 0\n${index === 0 ? from : ''}\n`,
+  ).join('');
+
 suite('Git history', function () {
   this.timeout(20_000);
   let gitPath: string;
@@ -129,18 +136,25 @@ suite('Git history', function () {
     }
   });
 
-  test('lists the newest commits of HEAD and of the tips given, as many as asked, in the order of the whole history', async () => {
+  test('lists the newest commits of HEAD, of the stashes and of the tips given, as many as asked, in the order of the whole history, read whole only when it has fewer', async () => {
     const [first, tree] = await temp.resolve('HEAD~2', 'HEAD^{tree}');
     const side = (
       await temp.git('commit-tree', tree, '-p', first, '-m', 'side')
     ).trim();
+    const stash = (
+      await temp.git('commit-tree', tree, '-p', first, '-m', 'stash')
+    ).trim();
     const solo = entriesOf(await listHistory(gitPath, cwd, true));
-    const recent = async (tips: string[], count: number) => {
+    const recent = async (
+      tips: string[],
+      count: number,
+      stashes: string[] = [],
+    ) => {
       const { history, whole } = await listRecentHistory(
         gitPath,
         cwd,
         tips,
-        [],
+        stashes,
         count,
       );
       return { history: entriesOf(history), whole };
@@ -154,10 +168,38 @@ suite('Git history', function () {
       history.map((entry) => entry.hash),
       [side, solo[0].hash],
     );
+    const { history: stashed } = await recent([side], 2, [stash]);
+    assert.deepStrictEqual(
+      stashed.map((entry) => entry.hash),
+      [stash, side],
+    );
+    assert.deepStrictEqual(await recent([], 3), {
+      history: solo,
+      whole: false,
+    });
     assert.deepStrictEqual(await recent([], 4), {
       history: solo,
       whole: true,
     });
+  });
+
+  test('lists at most the newest 5000 commits unless asked for more, as reading the whole history takes seconds in large repositories', async () => {
+    const folder = tempFolder('recent5000');
+    try {
+      const repository = await tempRepository(folder);
+      await runGit(repository.gitPath, folder, ['fast-import', '--quiet'], {
+        input: fastImported(4999, ''),
+      });
+      const recent = () => listRecentHistory(repository.gitPath, folder, []);
+      assert.strictEqual((await recent()).whole, true);
+      await runGit(repository.gitPath, folder, ['fast-import', '--quiet'], {
+        input: fastImported(1, 'from refs/heads/main^0\n'),
+      });
+      const { history, whole } = await recent();
+      assert.deepStrictEqual([history.size, whole], [5000, false]);
+    } finally {
+      removeFolder(folder);
+    }
   });
 
   test('lists the history, its commits, and the files and patch of its root commit, which has no parent to diff against', async () => {
@@ -578,7 +620,7 @@ suite('Commit search', function () {
     );
   });
 
-  test('searches every commit, however much git prints', async () => {
+  test('searches every commit, however much git prints, as it keeps only its matches', async () => {
     const [head] = await search.resolve('HEAD');
     const printing = `
       const skipped = '${'0'.repeat(40)}\\0a\\0b\\0c\\0d\\0' + 'x'.repeat(65536) + '\\0';

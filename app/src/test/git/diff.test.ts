@@ -13,7 +13,6 @@ import {
 import {
   collapseThreshold,
   patchByteBudget,
-  patchLineBudget,
   type FileChange,
 } from '../../shared/protocol';
 import { fileChange } from '../fixtures';
@@ -45,11 +44,9 @@ function read(chunks: readonly string[]) {
 const numbered = (index: number) => `${String(index).padStart(3, '0')}.json`;
 
 suite('Patch budget', () => {
-  test('keeps each file within the budget and leaves out one over 25000 changed lines with its count, counting only the changed lines of its hunks, from output split anywhere', () => {
+  test('keeps each file within the budget and leaves out one over 25000 changed lines with its count, counting only the changed lines of its hunks, from output split anywhere, as the page would freeze laying it out', () => {
     const output =
-      section('a.ts', 2) +
-      section('large.json', collapseThreshold + 1) +
-      section('b.ts', 3);
+      section('a.ts', 2) + section('large.json', 25_001) + section('b.ts', 3);
     for (const split of [0, 10, output.indexOf('large.json') + 3, 2000]) {
       const read2 = read([output.slice(0, split), output.slice(split)]);
       assert.strictEqual(read2.patch, section('a.ts', 2) + section('b.ts', 3));
@@ -57,45 +54,64 @@ suite('Patch budget', () => {
         { header: 'diff --git a/a.ts b/a.ts', lines: 2, kept: true },
         {
           header: 'diff --git a/large.json b/large.json',
-          lines: collapseThreshold + 1,
+          lines: 25_001,
           kept: false,
         },
         { header: 'diff --git a/b.ts b/b.ts', lines: 3, kept: true },
       ]);
       assert.strictEqual(read2.stopped, false);
     }
+    assert.deepStrictEqual(read([section('exact.json', 25_000)]).sections, [
+      {
+        header: 'diff --git a/exact.json b/exact.json',
+        lines: 25_000,
+        kept: true,
+      },
+    ]);
   });
 
-  test('leaves out the file that takes the patch past 25000 lines and stops there', () => {
-    const crossing = Math.floor(patchLineBudget / collapseThreshold);
+  test('keeps up to 25000 changed lines in all, leaving out the file that takes the patch past them with its count and stopping there, as the page would freeze laying them out', () => {
     const budget = new PatchBudget();
-    let stoppedAt: number | undefined;
-    for (let index = 0; index < crossing + 2; index++) {
-      if (budget.add(Buffer.from(section(`${index}.txt`, collapseThreshold)))) {
-        stoppedAt ??= index;
-      }
-    }
+    const stops = [12_500, 12_500, 1, 1].map((lines, index) =>
+      budget.add(Buffer.from(section(`${index}.txt`, lines))),
+    );
     const { sections, stopped } = budget.end();
     assert.strictEqual(stopped, true);
-    assert.strictEqual(stoppedAt, crossing + 1);
+    assert.deepStrictEqual(stops, [false, false, false, true]);
     assert.deepStrictEqual(
-      sections.map(({ kept }) => kept),
-      [...Array.from({ length: crossing }, () => true), false],
+      sections.map(({ lines, kept }) => [lines, kept]),
+      [
+        [12_500, true],
+        [12_500, true],
+        [1, false],
+      ],
     );
   });
 
-  test('stops at a file of over 16 MB, leaving it out uncounted', () => {
+  test('keeps a patch of up to 16 MB, stopping at the file that takes it past them and leaving that file out uncounted, as a minified file counts as one line however long', () => {
+    const small = section('a.ts', 1);
+    const header = 'diff --git a/min.js b/min.js\n@@ -0,0 +1 @@\n+';
+    const minified = (patchBytes: number) =>
+      `${header}${'x'.repeat(patchBytes - small.length - header.length - 1)}\n`;
+    const within = read([small, minified(16 * 1024 * 1024)]);
+    assert.strictEqual(within.stopped, false);
+    assert.deepStrictEqual(within.sections, [
+      { header: 'diff --git a/a.ts b/a.ts', lines: 1, kept: true },
+      { header: 'diff --git a/min.js b/min.js', lines: 1, kept: true },
+    ]);
     const budget = new PatchBudget();
-    budget.add(Buffer.from(section('a.ts', 1)));
-    const huge = `diff --git a/min.js b/min.js\n@@ -0,0 +1 @@\n+${'x'.repeat(patchByteBudget)}`;
-    assert.strictEqual(budget.add(Buffer.from(huge)), true);
+    budget.add(Buffer.from(small));
+    assert.strictEqual(
+      budget.add(Buffer.from(minified(16 * 1024 * 1024 + 1))),
+      true,
+    );
     assert.deepStrictEqual(budget.end().sections, [
       { header: 'diff --git a/a.ts b/a.ts', lines: 1, kept: true },
       { header: 'diff --git a/min.js b/min.js', lines: undefined, kept: false },
     ]);
   });
 
-  test('counts the bytes of the files left out for their lines toward the 16 MB, so many of them stop the read before git sends them all', () => {
+  test('counts the bytes of the files left out for their lines toward the 16 MB, as git still sends them, so many of them stop the read before git sends them all', () => {
     const large = (index: number) =>
       section(numbered(index), collapseThreshold + 1);
     const count = Math.ceil(patchByteBudget / large(0).length);

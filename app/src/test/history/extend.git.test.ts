@@ -208,7 +208,7 @@ suite('Extending the history read from git', function () {
     assert.deepStrictEqual(extended, reloaded);
   });
 
-  test('leaves the history to be read whole rather than read again more of its newest commits than it may to place commits among the old ones, as that region can be most of the history', async () => {
+  test('leaves the history to be read whole rather than read again more of its newest commits than it may to place commits among the old ones, as that region can be most of the history, and placing them works through each commit read on the main process', async () => {
     const repo = await repository('extend-region-cap');
     const merge = await mergedOlderBranch(repo);
     const { extended } = await across(repo, merge, false, { maxRegion: 2 });

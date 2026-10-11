@@ -293,7 +293,8 @@ suite('Large files and submodules', function () {
 
   suiteSetup(async () => {
     ({ repository, inner } = await submoduleRepository('large', {
-      'large.txt': 'x'.repeat(3 * 1024 * 1024),
+      'large.txt': 'x'.repeat(2 * 1024 * 1024 + 1),
+      'exact.txt': 'x'.repeat(2 * 1024 * 1024),
     }));
     gitPath = repository.gitPath;
     cwd = repository.root;
@@ -301,7 +302,7 @@ suite('Large files and submodules', function () {
 
   suiteTeardown(() => removeFolder(cwd));
 
-  test('shows a file too large to show as binary, by its object id at a commit', async () => {
+  test('shows a file over 2 MB as binary, by its object id at a commit, and one of exactly 2 MB as text', async () => {
     const [object] = await repository.resolve('HEAD:large.txt');
     const { size, mtimeMs } = fs.statSync(path.join(cwd, 'large.txt'));
     for (const [hash, id] of [
@@ -313,6 +314,9 @@ suite('Large files and submodules', function () {
         binary: true,
         id,
       });
+      const exact = await readFile(gitPath, cwd, hash, 'exact.txt');
+      assert.strictEqual(exact.binary, false);
+      assert.strictEqual(exact.content.length, 2 * 1024 * 1024);
     }
   });
 
@@ -508,5 +512,20 @@ suite('Images', function () {
       image('any', true, '../outside.png'),
       /outside the repository/,
     );
+  });
+
+  test('reads no image in the working tree that is itself a symlink, as git sees no image there, so a link leads nowhere outside the repository', async function () {
+    const outside = tempFolder('outside-image');
+    fs.writeFileSync(path.join(outside, 'secret.png'), pixel);
+    const link = path.join(cwd, 'link.png');
+    try {
+      symlinkOrSkip(this, path.join(outside, 'secret.png'), link);
+      assert.deepStrictEqual(await image('any', true, 'link.png'), {
+        kind: 'missing',
+      });
+    } finally {
+      fs.rmSync(link, { force: true });
+      removeFolder(outside);
+    }
   });
 });

@@ -75,10 +75,20 @@ function isExecutable(file: string, windows: boolean): boolean {
   }
 }
 
-function versionOutput(gitPath: string): Promise<string> {
+type RunFile = (
+  file: string,
+  args: readonly string[],
+  options: { windowsHide: boolean; timeout: number },
+  callback: (error: Error | null, stdout: string) => void,
+) => void;
+
+export function versionOutput(
+  gitPath: string,
+  run: RunFile = execFile,
+): Promise<string> {
   return new Promise((resolve) => {
     try {
-      execFile(
+      run(
         gitPath,
         ['--version'],
         { windowsHide: true, timeout: 10_000 },

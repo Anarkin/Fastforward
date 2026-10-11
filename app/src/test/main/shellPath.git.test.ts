@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { realTimer } from '../../autoFetch';
 import { loginShellPath } from '../../main/shellPath';
 import { installedGit, removeFolder, tempFolder } from '../repositories';
 
@@ -31,7 +32,7 @@ suite('Login shell PATH', () => {
       }
       const found = await loginShellPath(
         { ...process.env, HOME: home, SHELL: shell },
-        20_000,
+        (run) => realTimer(run, 20_000),
       );
       assert.match(found ?? '', /^\/fastforward-probe:/);
     } finally {

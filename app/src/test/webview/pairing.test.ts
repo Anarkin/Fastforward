@@ -2,11 +2,16 @@ import * as assert from 'node:assert';
 import {
   alignLines,
   lineSimilarity,
+  pairingBudget,
   similarEnough,
   type LinePair,
+  type PairingBudget,
 } from '../../webview/pairing';
 
 const u = undefined;
+
+const small = (budget: PairingBudget) =>
+  alignLines(['a b'], ['c', 'a b'], budget);
 
 function shown(removed: readonly string[], added: readonly string[]): string[] {
   return alignLines(removed, added).map(
@@ -260,7 +265,7 @@ suite('Aligning a change side by side', () => {
     );
   });
 
-  test('falls back to the plain order for a block of over 40000 removed by added lines', () => {
+  test('falls back to the plain order for a block of over 40000 removed by added lines, as pairing compares every removed line with every added one', () => {
     const removed = Array.from({ length: 200 }, (_, i) => `line ${i}`);
     const added = ['inserted', ...removed];
     const aligned = alignLines(removed, added);
@@ -269,17 +274,16 @@ suite('Aligning a change side by side', () => {
     assert.strictEqual(aligned.length, 201);
   });
 
-  test('falls back to the plain order for a few lines with too many words to compare', () => {
-    const long = Array.from({ length: 300_000 }, (_, i) => `w${i % 7}`).join(
-      ' ',
-    );
-    assert.deepStrictEqual(
-      alignLines([long, 'alpha one'], ['alpha one', long]),
-      [
-        [0, 0],
-        [1, 1],
-      ],
-    );
+  test('lines up a block of up to 1 million words and punctuation marks compared, each counting once for every line on the other side, falling back to the plain order past them, as pairing compares every removed line with every added one', () => {
+    const long = `${'x;'.repeat(166_666)}x`;
+    assert.deepStrictEqual(alignLines([long], ['other', long]), [
+      [u, 0],
+      [0, 1],
+    ]);
+    assert.deepStrictEqual(alignLines([long], ['other one', long]), [
+      [0, 0],
+      [u, 1],
+    ]);
   });
 
   test('falls back to the plain order before splitting into words a line with too many of them to compare', () => {
@@ -290,6 +294,33 @@ suite('Aligning a change side by side', () => {
     assert.ok(performance.now() - started < 100);
     assert.deepStrictEqual(aligned[0], [0, 0]);
     assert.strictEqual(aligned.length, 100);
+  });
+
+  test('lines up the blocks of a diff by their words up to 4 million words compared in all, pairing the block that passes them and every one after it in order, as side by side pairs every block before the diff is drawn', () => {
+    const long = `${'x;'.repeat(166_666)}x`;
+    const big = (budget: PairingBudget) =>
+      alignLines([long], ['other', long], budget);
+    const paired = [
+      [u, 0],
+      [0, 1],
+    ];
+    const inOrder = [
+      [0, 0],
+      [u, 1],
+    ];
+    const filled = pairingBudget();
+    for (let blocks = 0; blocks < 4; blocks++) {
+      assert.deepStrictEqual(big(filled), paired);
+    }
+    assert.strictEqual(filled.words, 0);
+    assert.deepStrictEqual(small(filled), inOrder);
+    const passed = pairingBudget();
+    for (let blocks = 0; blocks < 3; blocks++) {
+      big(passed);
+    }
+    assert.deepStrictEqual(small(passed), paired);
+    assert.deepStrictEqual(big(passed), inOrder);
+    assert.deepStrictEqual(small(passed), inOrder);
   });
 
   test('lines up a block of 40000 removed by added lines, even with insertions', () => {

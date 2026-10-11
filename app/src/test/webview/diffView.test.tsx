@@ -4,6 +4,7 @@ import { parseFilePatch, parsePatch, type DiffFile } from '../../webview/diff';
 import {
   collapseThreshold,
   deferredChanges,
+  includedChanges,
   leftOutChanges,
   patchByteBudget,
   patchLineBudget,
@@ -86,6 +87,11 @@ const binaryOf = (path: string) =>
 const kinds = (rows: ReturnType<typeof diffRows>) =>
   rows.map((row) => row.kind);
 
+const filesChanging = (...counts: readonly number[]) =>
+  counts.map((insertions, index) =>
+    fileChange(`${index}.ts`, { insertions, deletions: 0 }),
+  );
+
 const lines = (files: readonly DiffFile[]) =>
   files.map((file) => [
     file.path,
@@ -130,7 +136,7 @@ function filesStartingAligned(
 }
 
 suite('Diff rows', () => {
-  test('lines up the changes of a side by side diff by their words only until comparing them passes a limit for the whole diff, pairing the rest in order, so a diff of many changes lays out at once', () => {
+  test('lines up the changes of a side by side diff by their words only until comparing them passes a limit for the whole diff, pairing the rest in order, as side by side pairs every block before the diff is drawn', () => {
     const { files, aligned } = budgetedFiles();
     const rows = diffRows(files, new Map(), undefined, false, true);
     assert.ok(aligned > 0 && aligned < 8);
@@ -556,7 +562,7 @@ suite('Large files in a commit diff', () => {
     );
   });
 
-  test('defers each large file, and every file once the diff would grow past its budget', () => {
+  test('defers each file over 25000 changed lines, and every file once the diff would grow past its budget, as the page would freeze laying them out', () => {
     const fitting = [];
     for (let left = patchLineBudget - 3; left > 0;) {
       const insertions = Math.min(collapseThreshold, left);
@@ -579,27 +585,24 @@ suite('Large files in a commit diff', () => {
       [...deferredChanges([...fitting, large, fileChange('b.ts')])],
       ['large.json'],
     );
+    assert.deepStrictEqual(
+      [...deferredChanges(filesChanging(25_000, 1))],
+      ['1.ts'],
+    );
+    assert.deepStrictEqual(
+      [...deferredChanges(filesChanging(25_001, 1))],
+      ['0.ts'],
+    );
   });
 
-  test('keeps a diff of exactly the 20000 changed lines of its budget whole, deferring from the file that passes it', () => {
-    const fitting = Array.from(
-      { length: Math.floor(patchLineBudget / collapseThreshold) },
-      (_, index) =>
-        fileChange(`${index}.ts`, {
-          insertions: collapseThreshold,
-          deletions: 0,
-        }),
-    );
-    const rest = patchLineBudget - fitting.length * collapseThreshold;
-    const files = (insertions: number) => [
-      ...fitting,
-      fileChange('a.ts', { insertions, deletions: 0 }),
-      fileChange('b.ts', { insertions: 0, deletions: 0 }),
-    ];
-    assert.deepStrictEqual([...deferredChanges(files(rest))], []);
+  test('keeps a diff of exactly the 25000 changed lines of its budget whole, deferring from the file that passes it', () => {
     assert.deepStrictEqual(
-      [...deferredChanges(files(rest + 1))],
-      ['a.ts', 'b.ts'],
+      [...deferredChanges(filesChanging(20_000, 5_000, 0))],
+      [],
+    );
+    assert.deepStrictEqual(
+      [...deferredChanges(filesChanging(20_000, 5_001, 0))],
+      ['1.ts', '2.ts'],
     );
   });
 
@@ -615,7 +618,7 @@ suite('Large files in a commit diff', () => {
   });
 
   test('keeps the paths of a diff of exactly the 16000 characters of its budget whole, deferring from the file that passes it', () => {
-    const half = patchPathBudget / 2;
+    const half = 8_000;
     const files = (last: string) => [
       fileChange('x'.repeat(half)),
       fileChange('y'.repeat(half - 2), { oldPath: 'z' }),
@@ -642,7 +645,7 @@ suite('Large files in a commit diff', () => {
   });
 
   test('keeps a diff of exactly the 16 MB of its budget whole, deferring from the file that passes it', () => {
-    const half = patchByteBudget / 2;
+    const half = 8 * 1024 * 1024;
     const files = (bytes: number) => [
       fileChange('a.min.js', { bytes: half }),
       fileChange('b.min.js', { bytes }),
@@ -653,6 +656,45 @@ suite('Large files in a commit diff', () => {
       [...deferredChanges(files(half + 1))],
       ['b.min.js', 'c.ts'],
     );
+  });
+
+  test('counts toward the bytes of its budget only the files it keeps, not one left out for its lines', () => {
+    const files = [
+      fileChange('huge.json', {
+        insertions: 0,
+        deletions: 0,
+        uncounted: true,
+        bytes: patchByteBudget,
+      }),
+      fileChange('a.ts', { bytes: patchByteBudget }),
+      fileChange('b.ts'),
+    ];
+    assert.deepStrictEqual([...deferredChanges(files)], ['huge.json']);
+  });
+
+  test('passes git no paths when it leaves out no file, and only the paths of the files it keeps, both of a rename, once it leaves out any', () => {
+    const files = [
+      fileChange('a.ts'),
+      fileChange('new.ts', { status: 'R', oldPath: 'old.ts' }),
+    ];
+    assert.strictEqual(includedChanges(files), undefined);
+    assert.deepStrictEqual(includedChanges([...files, large]), [
+      'a.ts',
+      'old.ts',
+      'new.ts',
+    ]);
+  });
+
+  test('passes git the paths of the files it keeps rather than those it leaves out, so the command line stays under the 32767 characters Windows allows', () => {
+    const files = Array.from({ length: 4000 }, (_, index) =>
+      fileChange(`a b/${index}.ts`, {
+        status: 'R',
+        oldPath: `c d/${index}.ts`,
+      }),
+    );
+    const included = includedChanges(files) ?? [];
+    assert.ok(included.length > 0);
+    assert.ok(included.map((file) => `"${file}"`).join(' ').length < 32_767);
   });
 
   test('puts a file deferred for the budget in its place, collapsed until asked for', () => {

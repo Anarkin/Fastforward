@@ -108,18 +108,22 @@ suite('View of one repository', function () {
     }
   });
 
-  test("shows a tab whose folder can't be watched, saying changes made outside the app won't show", async () => {
+  test("shows a tab whose folder can't be watched, saying changes made outside the app won't show until it is opened again, which watches it anew", async () => {
     const opened = await openView(log, [repository.root], false);
-    stubMethod(opened.view, 'startWatching', () =>
-      Promise.reject(
-        Object.assign(
-          new Error(
-            `EISDIR: illegal operation on a directory, watch '${repository.root}'`,
-          ),
-          { code: 'EISDIR', syscall: 'watch', path: repository.root },
-        ),
-      ),
-    );
+    let starts = 0;
+    stubMethod(opened.view, 'startWatching', (original, ...args) => {
+      starts++;
+      return starts > 1
+        ? original(...args)
+        : Promise.reject(
+            Object.assign(
+              new Error(
+                `EISDIR: illegal operation on a directory, watch '${repository.root}'`,
+              ),
+              { code: 'EISDIR', syscall: 'watch', path: repository.root },
+            ),
+          );
+    });
     try {
       await withNotices(opened.page, 'error', async (notices) => {
         await opened.connection.receive({ type: 'ready' });
@@ -132,6 +136,14 @@ suite('View of one repository', function () {
       takeErrorsLogged(logged, /^Watching .* failed$/, /^EISDIR: /);
     } finally {
       opened.connection.dispose();
+    }
+    const reloaded = reopen(opened.view);
+    try {
+      await reloaded.ready;
+      assert.strictEqual(starts, 2);
+      assert.strictEqual(reloaded.page.last('notice'), undefined);
+    } finally {
+      reloaded.connection.dispose();
     }
   });
 
@@ -959,7 +971,7 @@ suite('View of one repository', function () {
       assert.ok(!fs.existsSync(written));
     });
 
-    test('sends the texts a diff asks for, an uncommitted new side read from disk', async () => {
+    test('sends the texts a diff asks for, an uncommitted new side read from disk, and none of a side over 2 MB, from git or from disk', async () => {
       const file = path.join(repository.root, 'texts.ts');
       fs.writeFileSync(file, 'old\n');
       try {
@@ -993,6 +1005,28 @@ suite('View of one repository', function () {
           ],
         );
         assert.strictEqual(page.last('texts')?.diff, 3);
+        fs.writeFileSync(file, 'x'.repeat(2 * 1024 * 1024 + 1));
+        const [large] = await repository.resolve(
+          (await repository.git('hash-object', '-w', file)).trim(),
+        );
+        page.clear();
+        await connection.receive({
+          type: 'loadTexts',
+          root: repository.root,
+          hash: workingTreeHash,
+          diff: 4,
+          texts: [
+            { path: 'texts.ts', side: 'old', blob: large },
+            { path: 'texts.ts', side: 'new', blob: large },
+          ],
+        });
+        assert.deepStrictEqual(
+          page.last('texts')?.texts.map(({ side, text }) => [side, text]),
+          [
+            ['old', undefined],
+            ['new', undefined],
+          ],
+        );
       } finally {
         fs.rmSync(file, { force: true });
       }

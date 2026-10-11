@@ -7,7 +7,6 @@ import {
   keptBounds,
   minimumHeight,
   minimumWidth,
-  minimumWindowSize,
   opensExternally,
   restoresMaximized,
   showAgain,
@@ -129,16 +128,18 @@ suite('Window bounds', () => {
     );
   });
 
-  test('lowers the least height of a window to fit the shortest screen, as a 1080p screen at 150% has 672 pixels above its taskbar', () => {
-    assert.strictEqual(minimumHeight(screens), minimumWindowSize.height);
+  const large = { x: 0, y: 0, width: 3840, height: 2160 };
+
+  test('keeps a window at least 720 pixels high, lowering that to fit the shortest screen, as a 1080p screen at 150% has 672 pixels above its taskbar', () => {
+    assert.strictEqual(minimumHeight([large]), 720);
     assert.strictEqual(
       minimumHeight([...screens, { x: 3200, y: 0, width: 1280, height: 672 }]),
       672,
     );
   });
 
-  test('lowers the least width of a window to fit the narrowest screen, as the window could not be narrowed to fit a 1366 by 768 screen at 125%', () => {
-    assert.strictEqual(minimumWidth(screens), minimumWindowSize.width);
+  test('keeps a window at least 1280 pixels wide, lowering that to fit the narrowest screen, as the window could not be narrowed to fit a 1366 by 768 screen at 125%', () => {
+    assert.strictEqual(minimumWidth([large]), 1280);
     assert.strictEqual(
       minimumWidth([...screens, { x: 3200, y: 0, width: 1093, height: 728 }]),
       1093,
