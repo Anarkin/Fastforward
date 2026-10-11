@@ -388,6 +388,23 @@ suite('Style', () => {
     looks(withClass(split, 'split-line'), { height: '100%' });
   });
 
+  test('lays an error over the diff out as wide as the view, so a long one wraps rather than running past what can be scrolled to', () => {
+    for (const sideBySide of [false, true]) {
+      const view = diffView(
+        { sideBySide },
+        createElement(
+          'div',
+          { className: diffRowClass('error') },
+          createElement('div', { className: 'error-message' }, 'fatal: x'),
+        ),
+      );
+      looks(withClass(view, 'virtual-row', 'error-row'), {
+        'min-width': '0',
+        width: '100%',
+      });
+    }
+  });
+
   test('previews Markdown as wide as the diff, in halves side by side, hatching the half a file lacks', () => {
     const view = diffView(
       { sideBySide: true },

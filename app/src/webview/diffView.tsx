@@ -353,7 +353,9 @@ export function diffRowClass(kind: DiffRow['kind']): string {
       ? 'split-row'
       : kind === 'image' || kind === 'markdown'
         ? 'preview-row'
-        : '';
+        : kind === 'error'
+          ? 'error-row'
+          : '';
   return `virtual-row diff-row ${extra}`;
 }
 

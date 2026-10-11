@@ -837,7 +837,8 @@ body.resizing {
   color: var(--muted-foreground);
 }
 
-.virtual-row.diff-row.preview-row {
+.virtual-row.diff-row.preview-row,
+.virtual-row.diff-row.error-row {
   width: 100%;
   min-width: 0;
 }
