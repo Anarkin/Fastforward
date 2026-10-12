@@ -1,6 +1,7 @@
 import {
   aheadBehind,
   fastForward,
+  moveBranch,
   onNoRef,
   readUpstream,
   type Upstream,
@@ -188,9 +189,10 @@ export async function canPull(
   log: Log,
   notify: Notify,
   { gitPath, root }: RepositoryAt,
+  branchNamed?: string,
 ): Promise<boolean> {
   try {
-    const upstream = await readUpstream(gitPath, root);
+    const upstream = await readUpstream(gitPath, root, branchNamed);
     if (upstream.kind === 'detached' || upstream.kind === 'none') {
       foundUpstream(notify, upstream);
       return false;
@@ -206,9 +208,13 @@ export async function fastForwardToUpstream(
   log: Log,
   notify: Notify,
   { gitPath, root }: RepositoryAt,
+  branchNamed?: string,
 ): Promise<boolean> {
   try {
-    const upstream = foundUpstream(notify, await readUpstream(gitPath, root));
+    const upstream = foundUpstream(
+      notify,
+      await readUpstream(gitPath, root, branchNamed),
+    );
     if (!upstream) {
       return false;
     }
@@ -233,7 +239,11 @@ export async function fastForwardToUpstream(
       say(log, notify, strings.messages.cannotFastForward(branch, name));
       return false;
     }
-    await fastForward(gitPath, root, commit);
+    if (branchNamed === undefined) {
+      await fastForward(gitPath, root, commit);
+    } else {
+      await moveBranch(gitPath, root, branchNamed, commit);
+    }
     log.info(strings.log.fastForwarded(branch, name));
     return true;
   } catch (error) {
@@ -251,9 +261,10 @@ export async function pushToUpstream(
   notify: Notify,
   { gitPath, root }: RepositoryAt,
   stop: AbortSignal,
+  branchNamed?: string,
 ): Promise<Pushed> {
   try {
-    const upstream = await readUpstream(gitPath, root);
+    const upstream = await readUpstream(gitPath, root, branchNamed);
     if (upstream.kind === 'none') {
       return await publish(
         log,

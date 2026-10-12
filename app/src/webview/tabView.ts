@@ -43,6 +43,8 @@ export interface TabView {
   readonly pulling: boolean;
   readonly pushing: boolean;
   readonly pushingTag: string | undefined;
+  readonly pullingBranch: string | undefined;
+  readonly pushingBranch: string | undefined;
   readonly applyingSolo: boolean;
   readonly back: readonly NavigationEntry[];
   readonly forward: readonly NavigationEntry[];
@@ -81,6 +83,8 @@ export const emptyTabView: TabView = {
   pulling: false,
   pushing: false,
   pushingTag: undefined,
+  pullingBranch: undefined,
+  pushingBranch: undefined,
   applyingSolo: false,
   back: [],
   forward: [],
@@ -314,6 +318,10 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
       return { ...state, pushing: action.running };
     case 'pushingTag':
       return { ...state, pushingTag: action.name };
+    case 'pullingBranch':
+      return { ...state, pullingBranch: action.name };
+    case 'pushingBranch':
+      return { ...state, pushingBranch: action.name };
     case 'applyingSolo':
       return { ...state, applyingSolo: action.running };
     case 'navigation':

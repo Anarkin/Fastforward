@@ -753,6 +753,12 @@ export class FastforwardView {
       case 'pushTag':
         await this.pushTag(context, message.name);
         break;
+      case 'pullBranch':
+        await this.pullBranch(context, message.name, picked);
+        break;
+      case 'pushBranch':
+        await this.pushBranch(context, message.name);
+        break;
       case 'loadTree':
         if (this.isSelected(context, message.hash)) {
           await this.sendTree(context, message.hash);
@@ -1634,6 +1640,77 @@ export class FastforwardView {
         this.quitting.signal,
       ),
     );
+  }
+
+  private async pullBranch(
+    context: Context,
+    name: string,
+    picked: number | undefined,
+  ): Promise<void> {
+    const { refs, head } = await this.refsOf(context);
+    if (!refs.some((ref) => ref.kind === 'branch' && ref.name === name)) {
+      return;
+    }
+    if (head?.name === name) {
+      await this.pull(context, picked);
+      return;
+    }
+    const notify = this.notify(context);
+    const worktrees = await listWorktrees(context.gitPath, context.root);
+    if (
+      worktrees.some(
+        (worktree) =>
+          worktree.branch === name && !sameRoot(worktree.path, context.root),
+      )
+    ) {
+      notify('info', strings.messages.checkedOutElsewhere(name));
+      return;
+    }
+    context.post({ type: 'pullingBranch', name });
+    let fetched: Fetched | undefined;
+    let moved = false;
+    try {
+      if (await canPull(this.log, notify, context, name)) {
+        fetched = await this.fetchShown(context);
+        moved =
+          !fetched.failed &&
+          (await fastForwardToUpstream(this.log, notify, context, name));
+      }
+    } finally {
+      context.post({ type: 'pullingBranch', name: undefined });
+    }
+    if (moved) {
+      await this.refresh(context, undefined, refsAlone);
+    } else if (fetched) {
+      await this.refreshFetched(context, fetched);
+    }
+  }
+
+  private async pushBranch(context: Context, name: string): Promise<void> {
+    const { refs } = await this.refsOf(context);
+    if (!refs.some((ref) => ref.kind === 'branch' && ref.name === name)) {
+      return;
+    }
+    context.post({ type: 'pushingBranch', name });
+    let pushed: Pushed;
+    try {
+      pushed = await this.afterRemoteWork(context.repository, () =>
+        pushToUpstream(
+          this.log,
+          this.notify(context),
+          context,
+          this.quitting.signal,
+          name,
+        ),
+      );
+    } finally {
+      context.post({ type: 'pushingBranch', name: undefined });
+    }
+    if (pushed === 'pushed') {
+      await this.refresh(context, undefined, refsAlone);
+    } else if (pushed === 'rejected') {
+      await this.fetch(context);
+    }
   }
 
   private async pushTag(context: Context, name: string): Promise<void> {
@@ -3018,6 +3095,8 @@ function needsNoWholeHistory(tab: TabState, message: TabMessage): boolean {
     case 'pull':
     case 'push':
     case 'pushTag':
+    case 'pullBranch':
+    case 'pushBranch':
     case 'checkout':
       return true;
     case 'selectCommit':

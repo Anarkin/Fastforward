@@ -16,12 +16,16 @@ export type Upstream =
 export async function readUpstream(
   gitPath: string,
   cwd: string,
+  named?: string,
 ): Promise<Upstream> {
-  const ref = (
-    await runGit(gitPath, cwd, ['symbolic-ref', '-q', 'HEAD'], {
-      okExitCodes: [0, 1],
-    })
-  ).trim();
+  const ref =
+    named === undefined
+      ? (
+          await runGit(gitPath, cwd, ['symbolic-ref', '-q', 'HEAD'], {
+            okExitCodes: [0, 1],
+          })
+        ).trim()
+      : `refs/heads/${named}`;
   if (!ref.startsWith('refs/heads/')) {
     return { kind: 'detached' };
   }
@@ -98,6 +102,32 @@ export async function fastForward(
     runsHooks: true,
     writes: true,
   });
+}
+
+export async function moveBranch(
+  gitPath: string,
+  cwd: string,
+  branch: string,
+  to: string,
+): Promise<void> {
+  const ref = `refs/heads/${branch}`;
+  const from = (
+    await runGit(gitPath, cwd, [
+      'rev-parse',
+      '--verify',
+      '--end-of-options',
+      ref,
+    ])
+  ).trim();
+  await runGit(gitPath, cwd, [
+    'update-ref',
+    '-m',
+    'pull: Fast-forward',
+    '--end-of-options',
+    ref,
+    to,
+    from,
+  ]);
 }
 
 export async function remoteDefaultBranches(

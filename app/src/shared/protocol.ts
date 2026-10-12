@@ -300,6 +300,8 @@ export type TabMessage =
   | { readonly type: 'pull' }
   | { readonly type: 'push' }
   | { readonly type: 'pushTag'; readonly name: string }
+  | { readonly type: 'pullBranch'; readonly name: string }
+  | { readonly type: 'pushBranch'; readonly name: string }
   | { readonly type: 'lookupHash'; readonly query: string }
   | { readonly type: 'searchCommits'; readonly query: string }
   | { readonly type: 'stopCommitSearch' }
@@ -355,6 +357,8 @@ export type ToWebview =
   | { readonly type: 'pulling'; readonly running: boolean }
   | { readonly type: 'pushing'; readonly running: boolean }
   | { readonly type: 'pushingTag'; readonly name: string | undefined }
+  | { readonly type: 'pullingBranch'; readonly name: string | undefined }
+  | { readonly type: 'pushingBranch'; readonly name: string | undefined }
   | { readonly type: 'update'; readonly status: UpdateStatus }
   | ({ readonly type: 'about' } & AboutInfo)
   | ({ readonly type: 'lastFetch' } & LastFetch)

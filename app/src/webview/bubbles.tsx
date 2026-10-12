@@ -35,6 +35,18 @@ export const TagActions = createContext<TagActionsOf | undefined>(undefined);
 
 export const HideDimmedButtons = createContext(false);
 
+export interface OtherBranchActionsOf {
+  readonly pulling: string | undefined;
+  readonly pushing: string | undefined;
+  readonly onPull: (branch: string) => void;
+  readonly onPush: (branch: string) => void;
+  readonly elsewhere: ReadonlySet<string>;
+}
+
+export const OtherBranchActions = createContext<
+  OtherBranchActionsOf | undefined
+>(undefined);
+
 export function useCheckedOut(ref: BookmarkRef): boolean {
   const checkedOutBranch = useContext(CheckedOutBranch);
   return ref.kind === 'branch' && ref.name === checkedOutBranch;
@@ -66,22 +78,28 @@ export function RefBubble({
   info,
   missing = false,
   actions = false,
+  tracking,
 }: {
   info: BookmarkRef;
   missing?: boolean;
   actions?: boolean;
+  tracking?: Tracking;
 }) {
   const menu = useContextMenu(refMenuTarget(info));
   const checkedOut = useCheckedOut(info);
   const branchActions = useContext(BranchActions);
+  const otherActions = useContext(OtherBranchActions);
   const tagActions = useContext(TagActions);
   const hideDimmed = useContext(HideDimmedButtons);
-  const branchItems =
-    actions && checkedOut && branchActions !== undefined
-      ? branchActionItems(branchActions).filter(
-          (item) => !hideDimmed || !item.idle,
-        )
-      : [];
+  const branchItems = (
+    !actions
+      ? []
+      : checkedOut && branchActions !== undefined
+        ? branchActionItems(branchActions)
+        : !checkedOut && info.kind === 'branch' && otherActions !== undefined
+          ? otherBranchItems(info.name, tracking, otherActions)
+          : []
+  ).filter((item) => !hideDimmed || !item.idle);
   const tagIdle =
     tagActions?.remote === undefined || tagActions.onRemote.has(info.name);
   const tagShown =
@@ -188,6 +206,37 @@ function branchActionItems({
       idle: (tracking !== undefined && ahead === 0) || diverged,
     },
   ];
+}
+
+function otherBranchItems(
+  name: string,
+  tracking: Tracking | undefined,
+  actions: OtherBranchActionsOf,
+): Action[] {
+  const [pull, push] = branchActionItems({
+    pulling: actions.pulling === name,
+    pushing: actions.pushing === name,
+    onPull: () => actions.onPull(name),
+    onPush: () => actions.onPush(name),
+    tracking,
+  });
+  return [{ ...pull, idle: pull.idle || actions.elsewhere.has(name) }, push];
+}
+
+export function OtherBranchButtons({
+  name,
+  tracking,
+  actions,
+}: {
+  name: string;
+  tracking: Tracking | undefined;
+  actions: OtherBranchActionsOf;
+}) {
+  return (
+    <span className="bubble-actions">
+      {otherBranchItems(name, tracking, actions).map(actionButton)}
+    </span>
+  );
 }
 
 export function BubbleActions(actions: BranchActionsOf) {

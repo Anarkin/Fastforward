@@ -380,6 +380,8 @@ export const strings = {
     cannotFastForward: (local: string, upstream: string) =>
       `${local} has diverged from ${upstream}, so it can't be fast-forwarded`,
     couldNotPull: (reason: string) => `Couldn't pull. ${reason}`,
+    checkedOutElsewhere: (branch: string) =>
+      `${branch} is checked out in another worktree, so pull it there`,
     pushed: (local: string, upstream: string) =>
       `Pushed ${local} to ${upstream}`,
     published: (local: string, upstream: string) =>

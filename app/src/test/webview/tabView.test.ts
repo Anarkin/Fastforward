@@ -52,6 +52,8 @@ function busyTab(): TabView {
   view = reduceTabView(view, { type: 'pulling', running: true });
   view = reduceTabView(view, { type: 'pushing', running: true });
   view = reduceTabView(view, { type: 'pushingTag', name: 'v1' });
+  view = reduceTabView(view, { type: 'pullingBranch', name: 'side' });
+  view = reduceTabView(view, { type: 'pushingBranch', name: 'other' });
   view = reduceTabView(view, { type: 'applyingSolo', running: true });
   return reduceTabView(view, { type: 'error', message: 'failed' });
 }
@@ -157,6 +159,8 @@ suite('Tab view', () => {
     assert.strictEqual(view.pulling, true);
     assert.strictEqual(view.pushing, true);
     assert.strictEqual(view.pushingTag, 'v1');
+    assert.strictEqual(view.pullingBranch, 'side');
+    assert.strictEqual(view.pushingBranch, 'other');
   });
 
   test('clears the error when selecting another file', () => {

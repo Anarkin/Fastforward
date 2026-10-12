@@ -7,6 +7,8 @@ import {
   type BranchActionsOf,
   BubbleActions,
   HideDimmedButtons,
+  OtherBranchActions,
+  OtherBranchButtons,
   TagActions,
   TagPushAction,
   CheckedOutBranch,
@@ -46,6 +48,44 @@ function tagged(
         <RefBubble info={{ kind: 'tag', name }} actions />
       </TagActions.Provider>
     </HideDimmedButtons.Provider>,
+  );
+}
+
+function otherBranch(
+  name: string,
+  tracking: BranchActionsOf['tracking'],
+  {
+    hideDimmed = false,
+    elsewhere = [] as string[],
+    pulling = undefined as string | undefined,
+  } = {},
+): string {
+  return renderToStaticMarkup(
+    <HideDimmedButtons.Provider value={hideDimmed}>
+      <OtherBranchActions.Provider
+        value={{
+          pulling,
+          pushing: undefined,
+          onPull: noop,
+          onPush: noop,
+          elsewhere: new Set(elsewhere),
+        }}
+      >
+        <CheckedOutBranch.Provider value="main">
+          <RefBubble
+            info={{ kind: 'branch', name }}
+            tracking={tracking}
+            actions
+          />
+        </CheckedOutBranch.Provider>
+      </OtherBranchActions.Provider>
+    </HideDimmedButtons.Provider>,
+  );
+}
+
+function idleIn(markup: string, title: string): boolean {
+  return classesOf(tagWith(markup, `title="${title}`, 'bubble-action')).has(
+    'idle',
   );
 }
 
@@ -308,6 +348,113 @@ suite('Bubbles', () => {
         </TagActions.Provider>,
       ),
       /bubble-action/,
+    );
+  });
+
+  test('puts down and up arrows on every local branch that is not checked out, with its counts, bright by its state like the blue bubble', () => {
+    const behind = otherBranch('side', {
+      upstream: 'origin/side',
+      ahead: 0,
+      behind: 2,
+    });
+    tagWith(behind, '', 'badge', 'branch', 'with-actions');
+    assert.ok(
+      !classesOf(tagWith(behind, '', 'badge', 'branch')).has('checked-out'),
+    );
+    assert.match(
+      behind,
+      /title="Pull:[^"]*"[^>]*><svg.*?<\/svg><span class="bubble-count">2<\/span>/,
+    );
+    assert.ok(!idleIn(behind, 'Pull:'));
+    assert.ok(idleIn(behind, 'Push:'));
+    const ahead = otherBranch('side', {
+      upstream: 'origin/side',
+      ahead: 1,
+      behind: 0,
+    });
+    assert.ok(idleIn(ahead, 'Pull:') && !idleIn(ahead, 'Push:'));
+    for (const quiet of [
+      otherBranch('side', { upstream: 'origin/side', ahead: 1, behind: 2 }),
+      otherBranch('side', { upstream: 'origin/side', gone: true }),
+      otherBranch('side', { upstream: 'origin/side', ahead: 0, behind: 0 }),
+    ]) {
+      assert.ok(idleIn(quiet, 'Pull:') && idleIn(quiet, 'Push:'));
+    }
+    const unpublished = otherBranch('side', undefined);
+    assert.ok(idleIn(unpublished, 'Pull:') && !idleIn(unpublished, 'Push:'));
+    const elsewhere = otherBranch(
+      'side',
+      { upstream: 'origin/side', ahead: 0, behind: 2 },
+      { elsewhere: ['side'] },
+    );
+    assert.ok(idleIn(elsewhere, 'Pull:'));
+    assert.doesNotMatch(
+      otherBranch(
+        'side',
+        { upstream: 'origin/side', ahead: 0, behind: 0 },
+        { hideDimmed: true },
+      ),
+      /bubble-action|with-actions/,
+    );
+    assert.doesNotMatch(
+      renderToStaticMarkup(
+        <OtherBranchActions.Provider
+          value={{
+            pulling: undefined,
+            pushing: undefined,
+            onPull: noop,
+            onPush: noop,
+            elsewhere: new Set(),
+          }}
+        >
+          <RefBubble info={{ kind: 'remote', name: 'origin/side' }} actions />
+          <RefBubble info={{ kind: 'branch', name: 'side' }} />
+        </OtherBranchActions.Provider>,
+      ),
+      /bubble-action/,
+    );
+  });
+
+  test('pulls and pushes the branch of its bubble, marking only the arrow of that branch as running', () => {
+    const pulled: string[] = [];
+    const action = renderedBy(OtherBranchButtons, {
+      name: 'side',
+      tracking: { upstream: 'origin/side', ahead: 0, behind: 2 },
+      actions: {
+        pulling: undefined,
+        pushing: undefined,
+        onPull: (name) => pulled.push(`pull ${name}`),
+        onPush: (name) => pulled.push(`push ${name}`),
+        elsewhere: new Set<string>(),
+      },
+    });
+    assert.ok(isValidElement<{ children: React.ReactElement[] }>(action));
+    for (const button of action.props.children) {
+      assert.ok(
+        isValidElement<{
+          onClick: (event: { stopPropagation: () => void }) => void;
+        }>(button),
+      );
+      button.props.onClick({ stopPropagation: noop });
+    }
+    assert.deepStrictEqual(pulled, ['pull side', 'push side']);
+    const busy = otherBranch(
+      'side',
+      { upstream: 'origin/side', ahead: 0, behind: 2 },
+      { pulling: 'side' },
+    );
+    assert.match(
+      tagWith(busy, 'title="Pull:', 'bubble-action', 'running'),
+      /disabled=""/,
+    );
+    const calm = otherBranch(
+      'other',
+      { upstream: 'origin/other', ahead: 0, behind: 2 },
+      { pulling: 'side' },
+    );
+    assert.doesNotMatch(
+      tagWith(calm, 'title="Pull:', 'bubble-action'),
+      /running|disabled/,
     );
   });
 

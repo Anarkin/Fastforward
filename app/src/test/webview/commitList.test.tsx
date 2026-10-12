@@ -51,7 +51,11 @@ import {
   workingTreeShift,
 } from '../../webview/commitList';
 import { formatDateTime } from '../../webview/dates';
-import { BranchActions, CheckedOutBranch } from '../../webview/bubbles';
+import {
+  BranchActions,
+  CheckedOutBranch,
+  OtherBranchActions,
+} from '../../webview/bubbles';
 import {
   commitInfo,
   keyPress,
@@ -220,6 +224,39 @@ suite('Commit list rows', () => {
         ([, name]) => name,
       ),
       ['main', 'v1', 'origin/v1', 'second/v1', 'v2', 'origin/v3'],
+    );
+  });
+
+  test('offers pull and push on the bubble of a branch that is not checked out, with the counts of that branch', () => {
+    const html = renderToStaticMarkup(
+      <OtherBranchActions.Provider
+        value={{
+          pulling: undefined,
+          pushing: undefined,
+          onPull: noop,
+          onPush: noop,
+          elsewhere: new Set(),
+        }}
+      >
+        <CheckedOutBranch.Provider value="main">
+          <CommitBubbles
+            hash={'a'.repeat(40)}
+            refs={[
+              {
+                kind: 'branch',
+                name: 'side',
+                commit: 'a'.repeat(40),
+                tracking: { upstream: 'origin/side', ahead: 3, behind: 0 },
+              },
+            ]}
+            detached={false}
+          />
+        </CheckedOutBranch.Provider>
+      </OtherBranchActions.Provider>,
+    );
+    assert.match(
+      html,
+      /title="Push:[^"]*"[^>]*><svg.*?<\/svg><span class="bubble-count">3<\/span>/,
     );
   });
 

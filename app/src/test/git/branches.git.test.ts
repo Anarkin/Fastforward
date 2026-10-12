@@ -88,6 +88,34 @@ suite('Git branches', () => {
     }
   });
 
+  test('reads the upstream of a branch named, wherever HEAD is, and none for a branch without one', async () => {
+    await temp.git('remote', 'add', 'origin', 'https://example.com/x.git');
+    await temp.git('update-ref', 'refs/remotes/origin/side', 'HEAD~1');
+    const [behind] = await temp.resolve('HEAD~1');
+    await temp.git('branch', 'side', 'HEAD');
+    await temp.git('branch', '--set-upstream-to=origin/side', 'side');
+    await temp.git('branch', 'alone', 'HEAD');
+    await temp.git('switch', '-q', '--detach');
+    try {
+      assert.deepStrictEqual(await readUpstream(gitPath, cwd, 'side'), {
+        kind: 'found',
+        branch: 'side',
+        name: 'origin/side',
+        commit: behind,
+        remote: 'origin',
+        remoteRef: 'refs/heads/side',
+      });
+      assert.deepStrictEqual(await readUpstream(gitPath, cwd, 'alone'), {
+        kind: 'none',
+        branch: 'alone',
+      });
+    } finally {
+      await temp.git('switch', '-q', 'main');
+      await temp.git('branch', '-D', 'side', 'alone');
+      await temp.git('remote', 'remove', 'origin');
+    }
+  });
+
   test("reads a remote's default branch", async () => {
     assert.deepStrictEqual(await remoteDefaultBranches(gitPath, cwd), []);
     await temp.git('update-ref', 'refs/remotes/origin/main', 'HEAD');
