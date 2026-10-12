@@ -1297,12 +1297,16 @@ suite('App whose page is gone', () => {
       const windowShowsTheHistoryAgain = () =>
         app.evaluate(async ({ BrowserWindow }) => {
           const contents = BrowserWindow.getAllWindows()[0].webContents;
-          return (
-            !contents.isCrashed() &&
-            (await contents.executeJavaScript(
+          if (contents.isCrashed() || contents.isLoading()) {
+            return false;
+          }
+          const shown: unknown = await Promise.race([
+            contents.executeJavaScript(
               "[...document.querySelectorAll('.commit')].some((row) => row.textContent.includes('first'))",
-            )) === true
-          );
+            ),
+            new Promise((resolve) => setTimeout(() => resolve(false), 1000)),
+          ]);
+          return shown === true;
         });
       await waitFor(
         windowShowsTheHistoryAgain,

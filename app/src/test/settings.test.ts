@@ -344,14 +344,28 @@ suite('User settings file', () => {
       fs.mkdirSync(path.dirname(target));
       fs.writeFileSync(target, '{}');
       let stop: (() => void) | undefined;
+      let changes = 0;
       const made = watchersMade(() => {
-        stop = watchSettings(file, () => {}, 10, target);
+        stop = watchSettings(
+          file,
+          () => {
+            changes += 1;
+          },
+          10,
+          target,
+        );
       });
       try {
         const closed = new Set<fs.FSWatcher>();
         for (const watcher of made) {
           watcher.on('close', () => closed.add(watcher));
         }
+        await waitFor(() => changes > 0, 'the first check');
+        changes = 0;
+        await waitFor(() => {
+          fs.writeFileSync(target, JSON.stringify({ solo: true }));
+          return changes > 0;
+        }, 'the watcher of the folder to start');
         fs.rmSync(path.dirname(target), { recursive: true });
         await waitFor(() => closed.size === 1, 'the watcher to stop');
         assert.strictEqual(closed.has(made[0]), false);
