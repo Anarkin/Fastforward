@@ -47,6 +47,20 @@ suite('Fingerprint', () => {
     );
   });
 
+  test('changes when a branch takes another upstream or loses it, though no commit moves, so the page learns of it', () => {
+    const head = { name: 'main', commit: 'a' };
+    const tracking = (main: RefInfo['tracking']) =>
+      fingerprint(head, [{ ...refs[0], tracking: main }, ...refs.slice(1)]);
+    const before = tracking({ upstream: 'origin/main', ahead: 0, behind: 0 });
+    for (const after of [
+      undefined,
+      { upstream: 'upstream/main', ahead: 0, behind: 0 },
+      { upstream: 'origin/main', gone: true as const },
+    ]) {
+      assert.notStrictEqual(tracking(after), before);
+    }
+  });
+
   test('changes when a stash comes, goes or takes another place', () => {
     const head = { name: 'main', commit: 'a' };
     const stashes = [

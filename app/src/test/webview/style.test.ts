@@ -5,7 +5,7 @@ import {
   columnFocusAttribute,
   type ColumnName,
 } from '../../webview/activeColumn';
-import { RefBubble, TagActions } from '../../webview/bubbles';
+import { BubbleActions, RefBubble, TagActions } from '../../webview/bubbles';
 import { GraphCell } from '../../webview/graph';
 import { listedFilesRows } from '../../webview/changesTree';
 import { Column } from '../../webview/column';
@@ -1032,6 +1032,24 @@ suite('Style', () => {
     );
     looks(tag, { 'padding-right': '14px' });
     looks(withClass(tag, 'bubble-action'), { 'border-radius': '0' });
+  });
+
+  test('dims an arrow of the blue bubble with nothing to do, and counts in figures of one width, so the bubble keeps its size as the counts change', () => {
+    const actions = rendered(
+      createElement(BubbleActions, {
+        pulling: false,
+        pushing: false,
+        onPull: noop,
+        onPush: noop,
+        tracking: { upstream: 'origin/main', ahead: 0, behind: 12 },
+      }),
+    );
+    looks(withClass(actions, 'bubble-action', 'idle'), {
+      opacity: 'var(--muted-opacity)',
+    });
+    looks(withClass(actions, 'bubble-count'), {
+      'font-variant-numeric': 'tabular-nums',
+    });
   });
 
   test('fills the checked-out bubble with its own colors, and no bubble changes under the pointer', () => {

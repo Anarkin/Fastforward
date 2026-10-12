@@ -28,6 +28,7 @@ import {
   TagActions,
 } from './bubbles';
 import { tagsOnRemote } from './tagPushes';
+import { trackingOf } from './tracking';
 import { areaKey } from './changesTree';
 import { checkoutCommit, checkoutOptions, checkoutRef } from './checkout';
 import {
@@ -347,8 +348,9 @@ export function App({ name, post: postToHost, listen }: Props) {
       pushing,
       onPull: () => postTab({ type: 'pull' }),
       onPush: () => postTab({ type: 'push' }),
+      tracking: trackingOf(repository?.refs ?? [], repository?.head),
     }),
-    [pulling, pushing, postTab],
+    [pulling, pushing, postTab, repository],
   );
   const tagRemote = repository?.tagRemote;
   const repositoryRefs = repository?.refs;

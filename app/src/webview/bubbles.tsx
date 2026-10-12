@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react';
 import { shortHash } from '../shared/hashes';
-import type { BookmarkRef } from '../shared/protocol';
+import type { BookmarkRef, Tracking } from '../shared/protocol';
 import { strings } from '../shared/strings';
 import {
   commitBookmarkTarget,
@@ -17,6 +17,7 @@ export interface BranchActionsOf {
   readonly pushing: boolean;
   readonly onPull: () => void;
   readonly onPush: () => void;
+  readonly tracking?: Tracking;
 }
 
 export const BranchActions = createContext<BranchActionsOf | undefined>(
@@ -110,13 +111,23 @@ interface Action {
   readonly running: boolean;
   readonly act: () => void;
   readonly icon: React.ReactNode;
+  readonly count?: number;
+  readonly idle?: boolean;
 }
 
-function actionButton({ key, title, running, act, icon }: Action) {
+function actionButton({
+  key,
+  title,
+  running,
+  act,
+  icon,
+  count = 0,
+  idle = false,
+}: Action) {
   return (
     <button
       key={key}
-      className={`bubble-action ${key} ${running ? 'running' : ''}`}
+      className={`bubble-action ${key} ${running ? 'running' : ''} ${idle ? 'idle' : ''}`}
       title={title}
       tabIndex={-1}
       disabled={running}
@@ -127,6 +138,7 @@ function actionButton({ key, title, running, act, icon }: Action) {
       }}
     >
       {icon}
+      {count > 0 && <span className="bubble-count">{count}</span>}
     </button>
   );
 }
@@ -136,7 +148,12 @@ export function BubbleActions({
   pushing,
   onPull,
   onPush,
+  tracking,
 }: BranchActionsOf) {
+  const counted = tracking !== undefined && !('gone' in tracking);
+  const behind = counted ? tracking.behind : 0;
+  const ahead = counted ? tracking.ahead : 0;
+  const diverged = ahead > 0 && behind > 0;
   return (
     <span className="bubble-actions">
       {[
@@ -146,6 +163,8 @@ export function BubbleActions({
           running: pulling,
           act: onPull,
           icon: <PullIcon />,
+          count: behind,
+          idle: behind === 0 || diverged,
         },
         {
           key: 'push',
@@ -153,6 +172,8 @@ export function BubbleActions({
           running: pushing,
           act: onPush,
           icon: <PushIcon />,
+          count: ahead,
+          idle: (tracking !== undefined && ahead === 0) || diverged,
         },
       ].map(actionButton)}
     </span>

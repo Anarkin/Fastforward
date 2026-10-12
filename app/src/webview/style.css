@@ -1177,6 +1177,20 @@ body.resizing {
   border-radius: 0 3px 3px 0;
 }
 
+.bubble-action:has(.bubble-count) {
+  width: auto;
+  gap: 1px;
+  padding: 0 4px 0 3px;
+}
+
+.bubble-count {
+  font-variant-numeric: tabular-nums;
+}
+
+.bubble-action.idle {
+  opacity: var(--muted-opacity);
+}
+
 .bubble-line .badge.tag.with-actions {
   padding-right: 14px;
 }

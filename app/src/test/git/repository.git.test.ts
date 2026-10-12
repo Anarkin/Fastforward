@@ -70,6 +70,67 @@ suite('Git repository', () => {
     }
   });
 
+  test('reads how far each branch is ahead of and behind its upstream, or that the upstream is gone, and nothing for a branch without one', async () => {
+    const [base] = await temp.resolve('HEAD~1');
+    const tree = (await temp.git('rev-parse', 'HEAD~1^{tree}')).trim();
+    const apart = (
+      await temp.git('commit-tree', tree, '-p', base, '-m', 'apart')
+    ).trim();
+    await temp.git('remote', 'add', 'origin', 'https://example.com/x.git');
+    await temp.git('update-ref', 'refs/remotes/origin/main', base);
+    await temp.git('update-ref', 'refs/remotes/origin/next', 'HEAD');
+    const tracking = async (
+      branch: string,
+      start: string,
+      upstream?: string,
+    ) => {
+      await temp.git('branch', branch, start);
+      if (upstream) {
+        await temp.git('branch', `--set-upstream-to=${upstream}`, branch);
+      }
+    };
+    try {
+      await temp.git('branch', '--set-upstream-to=origin/main', 'main');
+      await tracking('lagging', base, 'origin/next');
+      await tracking('apart', apart, 'origin/next');
+      await tracking('even', 'HEAD', 'origin/next');
+      await tracking('alone', 'HEAD');
+      await tracking('follower', base, 'main');
+      await tracking('orphaned', 'HEAD', 'origin/next');
+      await temp.git('config', 'branch.orphaned.merge', 'refs/heads/deleted');
+      const { refs } = await readRefs(gitPath, cwd);
+      assert.deepStrictEqual(
+        Object.fromEntries(
+          refs
+            .filter((ref) => ref.kind === 'branch')
+            .map((ref) => [ref.name, ref.tracking]),
+        ),
+        {
+          alone: undefined,
+          apart: { upstream: 'origin/next', ahead: 1, behind: 1 },
+          even: { upstream: 'origin/next', ahead: 0, behind: 0 },
+          follower: { upstream: 'main', ahead: 0, behind: 1 },
+          lagging: { upstream: 'origin/next', ahead: 0, behind: 1 },
+          main: { upstream: 'origin/main', ahead: 1, behind: 0 },
+          orphaned: { upstream: 'origin/deleted', gone: true },
+        },
+      );
+    } finally {
+      await temp.git('branch', '--unset-upstream', 'main');
+      await temp.git(
+        'branch',
+        '-D',
+        'lagging',
+        'apart',
+        'even',
+        'alone',
+        'follower',
+        'orphaned',
+      );
+      await temp.git('remote', 'remove', 'origin');
+    }
+  });
+
   test('reads the date of the commit each ref points at, not of the annotated tag pointing at it, nor of when the ref was made or moved', async () => {
     const [second] = await temp.resolve('HEAD~1');
     await temp.git('tag', '-a', '-m', 'annotated', 'v1', second);

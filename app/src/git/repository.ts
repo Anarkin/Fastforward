@@ -1,6 +1,6 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import type { RefInfo } from '../shared/protocol';
+import type { RefInfo, Tracking } from '../shared/protocol';
 import { strings } from '../shared/strings';
 import { gitErrorText } from './errorText';
 import { runGit, splitNul } from './run';
@@ -203,7 +203,7 @@ async function listRefs(
 ): Promise<{ refs: RefInfo[]; dates: Map<string, number> }> {
   const output = await runGit(gitPath, root, [
     'for-each-ref',
-    '--format=%(refname)%00%(objectname)%00%(objecttype)%00%(*objectname)%00%(*objecttype)%00%(committerdate:unix)%00%(*committerdate:unix)%00%(symref)',
+    '--format=%(refname)%00%(objectname)%00%(objecttype)%00%(*objectname)%00%(*objecttype)%00%(committerdate:unix)%00%(*committerdate:unix)%00%(symref)%00%(upstream:short)%00%(upstream:track,nobracket)',
     'refs/heads',
     'refs/remotes',
     'refs/tags',
@@ -219,6 +219,8 @@ async function listRefs(
       date,
       peeledDate,
       symref,
+      upstream,
+      track,
     ] = splitNul(line);
     if (!refname || !object || (peeled ? peeledType : type) !== 'commit') {
       return [];
@@ -226,8 +228,16 @@ async function listRefs(
     const commit = peeled || object;
     dates.set(commit, Number(peeled ? peeledDate : date));
     if (refname.startsWith('refs/heads/')) {
+      const name = refname.slice('refs/heads/'.length);
       return [
-        { kind: 'branch', name: refname.slice('refs/heads/'.length), commit },
+        upstream
+          ? {
+              kind: 'branch',
+              name,
+              commit,
+              tracking: trackingOf(upstream, track),
+            }
+          : { kind: 'branch', name, commit },
       ];
     }
     if (refname.startsWith('refs/remotes/')) {
@@ -237,6 +247,18 @@ async function listRefs(
     return [{ kind: 'tag', name: refname.slice('refs/tags/'.length), commit }];
   });
   return { refs, dates };
+}
+
+function trackingOf(upstream: string, track = ''): Tracking {
+  if (track === 'gone') {
+    return { upstream, gone: true };
+  }
+  const count = (pattern: RegExp) => Number(pattern.exec(track)?.[1] ?? 0);
+  return {
+    upstream,
+    ahead: count(/ahead (\d+)/),
+    behind: count(/behind (\d+)/),
+  };
 }
 
 export async function switchToBranch(

@@ -102,11 +102,20 @@ export function pageStart(index: number): number {
   return index - (index % commitPageSize);
 }
 
+export type Tracking =
+  | {
+      readonly upstream: string;
+      readonly ahead: number;
+      readonly behind: number;
+    }
+  | { readonly upstream: string; readonly gone: true };
+
 export interface RefInfo {
   readonly kind: RefKind;
   readonly name: string;
   readonly commit: string;
   readonly remote?: string;
+  readonly tracking?: Tracking;
 }
 
 export interface StashInfo {

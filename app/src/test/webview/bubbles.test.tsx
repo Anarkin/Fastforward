@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import {
   BranchActions,
+  type BranchActionsOf,
   BubbleActions,
   TagActions,
   TagPushAction,
@@ -38,6 +39,10 @@ function tagged(name: string, onRemote: string[]): string {
       <RefBubble info={{ kind: 'tag', name }} actions />
     </TagActions.Provider>,
   );
+}
+
+function actionsWith(tracking: BranchActionsOf['tracking']): string {
+  return renderToStaticMarkup(<BubbleActions {...idle} tracking={tracking} />);
 }
 
 suite('Bubbles', () => {
@@ -147,6 +152,74 @@ suite('Bubbles', () => {
       'row left alone',
       'push',
     ]);
+  });
+
+  test('counts on the bubble the commits there are to pull and to push since the last fetch, dimming an arrow with nothing to do, both when the branch has diverged, though they stay clickable as a fetch may find more', () => {
+    const behind = actionsWith({
+      upstream: 'origin/main',
+      ahead: 0,
+      behind: 2,
+    });
+    assert.match(
+      behind,
+      /title="Pull:[^"]*"[^>]*><svg.*?<\/svg><span class="bubble-count">2<\/span><\/button>/,
+    );
+    assert.ok(
+      !classesOf(tagWith(behind, 'title="Pull:', 'bubble-action')).has('idle'),
+    );
+    tagWith(behind, 'title="Push:', 'bubble-action', 'idle');
+    const ahead = actionsWith({ upstream: 'origin/main', ahead: 1, behind: 0 });
+    assert.match(
+      ahead,
+      /title="Push:[^"]*"[^>]*><svg.*?<\/svg><span class="bubble-count">1<\/span><\/button>/,
+    );
+    assert.ok(
+      !classesOf(tagWith(ahead, 'title="Push:', 'bubble-action')).has('idle'),
+    );
+    tagWith(ahead, 'title="Pull:', 'bubble-action', 'idle');
+    const diverged = actionsWith({
+      upstream: 'origin/main',
+      ahead: 1,
+      behind: 2,
+    });
+    for (const [title, count] of [
+      ['Pull:', 2],
+      ['Push:', 1],
+    ] as const) {
+      assert.match(
+        diverged,
+        new RegExp(
+          `title="${title}[^"]*"[^>]*><svg.*?</svg><span class="bubble-count">${count}</span></button>`,
+        ),
+      );
+      assert.doesNotMatch(
+        tagWith(diverged, `title="${title}`, 'bubble-action', 'idle'),
+        /disabled/,
+      );
+    }
+    for (const quiet of [
+      { upstream: 'origin/main', ahead: 0, behind: 0 },
+      { upstream: 'origin/main', gone: true as const },
+    ]) {
+      const markup = actionsWith(quiet);
+      for (const title of ['Pull:', 'Push:']) {
+        const button = tagWith(
+          markup,
+          `title="${title}`,
+          'bubble-action',
+          'idle',
+        );
+        assert.doesNotMatch(button, /disabled/);
+      }
+      assert.doesNotMatch(markup, /bubble-count/);
+    }
+    const unpublished = actionsWith(undefined);
+    tagWith(unpublished, 'title="Pull:', 'bubble-action', 'idle');
+    assert.ok(
+      !classesOf(tagWith(unpublished, 'title="Push:', 'bubble-action')).has(
+        'idle',
+      ),
+    );
   });
 
   test('disables pull and push on the bubble while each runs, marking it as running', () => {

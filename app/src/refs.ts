@@ -10,9 +10,23 @@ export function fingerprint(
 ): string {
   return [
     `HEAD ${head?.name ?? ''} ${head?.commit ?? ''}`,
-    ...refs.map((ref) => `${ref.kind} ${ref.name} ${ref.commit}`).toSorted(),
+    ...refs
+      .map(
+        (ref) =>
+          `${ref.kind} ${ref.name} ${ref.commit}${trackingKey(ref.tracking)}`,
+      )
+      .toSorted(),
     ...stashes.map((stash) => `stash ${stash.name} ${stash.commit}`),
   ].join('\n');
+}
+
+function trackingKey(tracking: RefInfo['tracking']): string {
+  if (tracking === undefined) {
+    return '';
+  }
+  return 'gone' in tracking
+    ? ` ${tracking.upstream} gone`
+    : ` ${tracking.upstream}`;
 }
 
 export function decoratedCommits(
