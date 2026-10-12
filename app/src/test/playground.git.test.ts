@@ -166,11 +166,13 @@ suite('Playground', () => {
       'in-worktree',
     );
     assert.strictEqual(
-      path.resolve(
-        worktree,
-        await git(worktree, 'rev-parse', '--git-common-dir'),
+      fs.realpathSync.native(
+        path.resolve(
+          worktree,
+          await git(worktree, 'rev-parse', '--git-common-dir'),
+        ),
       ),
-      path.join(local, '.git'),
+      fs.realpathSync.native(path.join(local, '.git')),
     );
   });
 
@@ -637,6 +639,28 @@ suite('Playground', () => {
       }
     },
     builds,
+  );
+
+  test(
+    'makes the playground anew in a folder reached through a link, whose real path git reports, as temporary folders are on macOS, and on Windows by their short names',
+    async () => {
+      const real = tempFolder('playground-real');
+      const linked = path.join(
+        path.dirname(real),
+        `${path.basename(real)}-link`,
+      );
+      fs.symlinkSync(real, linked, 'junction');
+      try {
+        for (const round of ['first', 'again']) {
+          const ran = await playground(linked);
+          assert.strictEqual(ran.code, 0, `${round}: ${ran.output}`);
+        }
+      } finally {
+        fs.rmSync(linked, { recursive: true, force: true });
+        removeFolder(real);
+      }
+    },
+    builds * 2,
   );
 
   test('leaves alone a folder of any of its names that it did not make, saying so', async () => {

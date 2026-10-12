@@ -48,7 +48,15 @@ const git = (cwd, args, input) =>
     stdio: ['pipe', 'pipe', 'inherit'],
   });
 
-const samePath = (a, b) => path.relative(a, b) === '';
+const realPath = (where) => {
+  try {
+    return fs.realpathSync.native(where);
+  } catch {
+    return path.resolve(where);
+  }
+};
+
+const samePath = (a, b) => path.relative(realPath(a), realPath(b)) === '';
 
 const madeHere = (repository, commonDir) => {
   try {
