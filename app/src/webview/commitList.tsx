@@ -523,7 +523,7 @@ export function CommitBubbles({
   const bubbles = [
     ...(detached ? [<HeadBubble key="HEAD" hash={hash} />] : []),
     ...refs.map((ref) => (
-      <RefBubble key={`${ref.kind}:${ref.name}`} info={ref} />
+      <RefBubble key={`${ref.kind}:${ref.name}`} info={ref} actions />
     )),
     ...(stash ? [<StashBubble key="stash" />] : []),
   ];

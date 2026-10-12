@@ -205,8 +205,8 @@ export const strings = {
       sinceFetched === undefined
         ? `Fetch every remote, dropping branches deleted there\n${couldNotFetchAgo(elapsed)}`
         : `Fetch every remote, dropping branches deleted there\n${couldNotFetchAgo(elapsed)}\n${lastFetchedAgo(sinceFetched)}`,
-    pull: 'Pull: fetch every remote, then fast-forward the checked-out branch to its upstream',
-    push: 'Push: send the commits of the checked-out branch to its upstream, or publish it to the only remote when it has none',
+    pull: 'Pull: fetch every remote, then fast-forward to the upstream',
+    push: 'Push: send the new commits to the upstream, or publish to the only remote when there is none',
     fetchEvery: (minutes: number) =>
       minutes === 1 ? 'Fetch Every Minute' : `Fetch Every ${minutes} Minutes`,
     stopFetchingEvery: (minutes: number) =>

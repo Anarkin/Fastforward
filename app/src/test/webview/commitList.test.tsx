@@ -51,6 +51,7 @@ import {
   workingTreeShift,
 } from '../../webview/commitList';
 import { formatDateTime } from '../../webview/dates';
+import { BranchActions, CheckedOutBranch } from '../../webview/bubbles';
 import {
   commitInfo,
   keyPress,
@@ -163,6 +164,24 @@ suite('Commit list rows', () => {
       html,
       /^<div class="bubble-line"><span class="badge head[^>]*>HEAD aaaaaaa<\/span><wbr\/><span class="badge branch[^>]*>main<\/span><wbr\/><span class="badge remote[^>]*>origin\/main<\/span><\/div>$/,
     );
+  });
+
+  test("offers pull and push on the checked-out branch's bubble in a commit's row", () => {
+    const html = renderToStaticMarkup(
+      <BranchActions.Provider
+        value={{ pulling: false, pushing: false, onPull: noop, onPush: noop }}
+      >
+        <CheckedOutBranch.Provider value="main">
+          <CommitBubbles
+            hash={'a'.repeat(40)}
+            refs={[{ kind: 'branch', name: 'main', commit: 'a'.repeat(40) }]}
+            detached={false}
+          />
+        </CheckedOutBranch.Provider>
+      </BranchActions.Provider>,
+    );
+    assert.match(html, /class="bubble-action[^"]*" title="Pull:/);
+    assert.match(html, /class="bubble-action[^"]*" title="Push:/);
   });
 
   test('marks a detached HEAD on a commit without refs', () => {

@@ -242,7 +242,7 @@ suite('Style', () => {
     const title = commitColumnTitle(0);
     assert.strictEqual(
       pixels(cascaded(title, 'padding-left')),
-      buttonsWidth(5),
+      buttonsWidth(3),
     );
     assert.strictEqual(
       pixels(cascaded(title, 'padding-right')),
@@ -250,7 +250,7 @@ suite('Style', () => {
     );
     assert.strictEqual(
       pixels(cascaded(commitColumnTitle(5), 'padding-left')),
-      buttonsWidth(6),
+      buttonsWidth(4),
     );
   });
 

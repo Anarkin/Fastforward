@@ -1,14 +1,27 @@
 import * as assert from 'node:assert';
+import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import {
+  BranchActions,
+  BubbleActions,
   CheckedOutBranch,
   CommitBubble,
   HeadBubble,
   RefBubble,
 } from '../../webview/bubbles';
 import { OpenContextMenu, type MenuTarget } from '../../webview/contextMenu';
-import { classesOf, tagWith } from '../fixtures';
+import { classesOf, noop, renderedBy, tagWith } from '../fixtures';
+
+const idle = { pulling: false, pushing: false, onPull: noop, onPush: noop };
+
+function onMain(node: React.ReactNode): string {
+  return renderToStaticMarkup(
+    <BranchActions.Provider value={idle}>
+      <CheckedOutBranch.Provider value="main">{node}</CheckedOutBranch.Provider>
+    </BranchActions.Provider>,
+  );
+}
 
 suite('Bubbles', () => {
   test('marks a commit bubble apart from the commit rows', () => {
@@ -42,6 +55,101 @@ suite('Bubbles', () => {
       html,
       new RegExp(`title="Commit ${'b'.repeat(40)}">bbbbbbb</span>`),
     );
+  });
+
+  test('puts pull and push on the bubble of the checked-out branch where asked, and on no other bubble', () => {
+    const withActions = onMain(
+      <RefBubble info={{ kind: 'branch', name: 'main' }} actions />,
+    );
+    const bubble = tagWith(
+      withActions,
+      '',
+      'badge',
+      'checked-out',
+      'with-actions',
+    );
+    assert.match(bubble, /title="main, checked out"/);
+    assert.match(
+      withActions,
+      /^<span[^>]*>main<span class="bubble-actions"><button class="bubble-action[^"]*" title="Pull:[^"]*" tabindex="-1">.*?<\/button><button class="bubble-action[^"]*" title="Push:[^"]*" tabindex="-1">.*?<\/button><\/span><\/span>$/,
+    );
+    for (const without of [
+      <RefBubble key="a" info={{ kind: 'branch', name: 'main' }} />,
+      <RefBubble key="b" info={{ kind: 'branch', name: 'feature' }} actions />,
+      <RefBubble
+        key="c"
+        info={{ kind: 'remote', name: 'origin/main' }}
+        actions
+      />,
+    ]) {
+      assert.doesNotMatch(onMain(without), /bubble-action|with-actions/);
+    }
+  });
+
+  test('names what pull and push do without naming the branch, as they sit on its bubble', () => {
+    const html = renderToStaticMarkup(<BubbleActions {...idle} />);
+    tagWith(
+      html,
+      'title="Pull: fetch every remote, then fast-forward to the upstream"',
+      'bubble-action',
+    );
+    tagWith(
+      html,
+      'title="Push: send the new commits to the upstream, or publish to the only remote when there is none"',
+      'bubble-action',
+    );
+  });
+
+  test('pulls and pushes from the bubble without selecting its row or taking the keys from the list', () => {
+    const calls: string[] = [];
+    const actions = renderedBy(BubbleActions, {
+      ...idle,
+      onPull: () => calls.push('pull'),
+      onPush: () => calls.push('push'),
+    });
+    assert.ok(isValidElement<{ children: React.ReactElement[] }>(actions));
+    for (const button of actions.props.children) {
+      assert.ok(
+        isValidElement<{
+          onClick: (event: { stopPropagation: () => void }) => void;
+          onMouseDown: (event: { preventDefault: () => void }) => void;
+        }>(button),
+      );
+      button.props.onMouseDown({
+        preventDefault: () => calls.push('kept focus'),
+      });
+      button.props.onClick({
+        stopPropagation: () => calls.push('row left alone'),
+      });
+    }
+    assert.deepStrictEqual(calls, [
+      'kept focus',
+      'row left alone',
+      'pull',
+      'kept focus',
+      'row left alone',
+      'push',
+    ]);
+  });
+
+  test('disables pull and push on the bubble while each runs, marking it as running', () => {
+    for (const [running, title] of [
+      [{ pulling: true }, 'Pull:'],
+      [{ pushing: true }, 'Push:'],
+    ] as const) {
+      const html = renderToStaticMarkup(
+        <BubbleActions {...idle} {...running} />,
+      );
+      const busy = tagWith(html, `title="${title}`, 'bubble-action', 'running');
+      assert.match(busy, /disabled=""/);
+      const other = tagWith(
+        html,
+        `title="${title === 'Pull:' ? 'Push:' : 'Pull:'}`,
+        'bubble-action',
+      );
+      assert.ok(!classesOf(other).has('running'));
+      assert.doesNotMatch(other, /disabled/);
+    }
   });
 
   test('offers the menu of a detached HEAD commit', () => {
