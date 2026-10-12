@@ -577,6 +577,9 @@ export function App({ name, post: postToHost, listen }: Props) {
   const checkout = (target: CheckoutTarget) =>
     postTab({ type: 'checkout', target });
 
+  const bookmarking = (ref: Bookmark): ContextMenuItem[] =>
+    ref.kind === 'remote-tag' ? [] : [{ separator: true }, bookmarkItem(ref)];
+
   const menuItems = (target: MenuTarget): ContextMenuItem[] => {
     const head = repository?.head;
     if (target.kind === 'commit') {
@@ -606,8 +609,7 @@ export function App({ name, post: postToHost, listen }: Props) {
         disabled: option.disabled,
         onClick: () => checkout(option.target),
       },
-      { separator: true },
-      bookmarkItem(target.ref),
+      ...bookmarking(target.ref),
     ];
   };
 

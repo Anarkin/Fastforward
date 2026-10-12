@@ -12,6 +12,7 @@ const kindOrder: Record<BookmarkRef['kind'], number> = {
   branch: 0,
   remote: 1,
   tag: 2,
+  'remote-tag': 3,
 };
 
 type SortedBookmark = Bookmark & { readonly remote?: string };

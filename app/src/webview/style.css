@@ -1120,7 +1120,9 @@ body.resizing {
 }
 
 .badge.tag,
-.bubble-line .badge.tag {
+.badge.remote-tag,
+.bubble-line .badge.tag,
+.bubble-line .badge.remote-tag {
   padding-right: 17px;
   clip-path: shape(
     from 0 0,

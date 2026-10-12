@@ -25,6 +25,7 @@
 - When refs only add commits, the list is extended with them rather than read whole again, as long as git would put them above or among its newest commits, in the order it would; this took 0.36 s instead of 2.6 s in the linux repository
 - The commit list is parsed while git sends it and linked a slice at a time, as the main process also passes the window's input on to the page, so working on 1.5 million commits at once froze the whole window for 2.4 s
 - The commit list keeps its hashes as bytes in one buffer with a hash table of its own, and its parents and shown rows as numbers, rather than an object and strings per commit, as those took 693 MB for 1.5 million commits against 98 MB
+- The tags of each remote are listed with `git ls-remote --tags` after each fetch and kept in the app's state rather than as refs, as git keeps no remote-tracking refs for tags, and refs would show up in other tools; the listing cost one more connection per remote, about 0.35–0.8 s in the background, in the linux and vscode repositories
 - The time a repository last fetched, or last failed to, is recorded by the app for the repository and all its worktrees, rather than read from `FETCH_HEAD`, as git rewrites `FETCH_HEAD` even when every remote fails, and each worktree has a `FETCH_HEAD` of its own; fetches made outside the app are not counted
 
 ### Syntax

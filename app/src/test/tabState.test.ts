@@ -316,6 +316,22 @@ suite('Tab state', () => {
     );
   });
 
+  test("takes no remote's tag as a tip, as its commit may be missing here and git keeps no ref for it", () => {
+    const refs = [
+      { kind: 'tag' as const, name: 'v1', commit: 't' },
+      {
+        kind: 'remote-tag' as const,
+        name: 'origin/v2',
+        commit: 'r',
+        remote: 'origin',
+      },
+    ];
+    assert.deepStrictEqual(
+      [...tipsInGitOrder({ name: 'main', commit: 'h' }, refs, false)],
+      ['h', 't'],
+    );
+  });
+
   test('draws its stashes like the working tree', () => {
     const tab = newTabState();
     loadHistory(

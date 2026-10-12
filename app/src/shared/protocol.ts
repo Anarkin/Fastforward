@@ -1,7 +1,7 @@
 export const workingTreeHash = 'working-tree';
 export const workingTreeIndex = -1;
 
-export type RefKind = 'branch' | 'remote' | 'tag';
+export type RefKind = 'branch' | 'remote' | 'tag' | 'remote-tag';
 
 export interface CommitResults {
   readonly commits: readonly CommitInfo[];
@@ -116,7 +116,7 @@ export interface StashInfo {
 }
 
 export type CheckoutTarget =
-  | { readonly kind: RefKind; readonly name: string }
+  | { readonly kind: Exclude<RefKind, 'remote-tag'>; readonly name: string }
   | { readonly kind: 'commit'; readonly hash: string };
 
 export interface BookmarkRef {

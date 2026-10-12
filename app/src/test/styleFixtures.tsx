@@ -274,6 +274,7 @@ export const repository: RepositoryState = {
     { kind: 'branch', name: 'main', commit: 'a' },
     { kind: 'remote', name: 'origin/main', commit: 'a' },
     { kind: 'tag', name: 'v1', commit: 'a' },
+    { kind: 'remote-tag', name: 'origin/v1', commit: 'a', remote: 'origin' },
   ],
   stashes: [{ name: 'stash@{0}', commit: 'b', message: 'WIP on main' }],
 };

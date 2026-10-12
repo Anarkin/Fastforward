@@ -184,6 +184,45 @@ suite('Commit list rows', () => {
     assert.match(html, /class="bubble-action[^"]*" title="Push:/);
   });
 
+  test("puts each remote's tag right after the local tag of its name, and the tags only on a remote after the rest", () => {
+    const at = 'a'.repeat(40);
+    const html = renderToStaticMarkup(
+      <CommitBubbles
+        hash={at}
+        refs={[
+          { kind: 'branch', name: 'main', commit: at },
+          { kind: 'tag', name: 'v1', commit: at },
+          { kind: 'tag', name: 'v2', commit: at },
+          {
+            kind: 'remote-tag',
+            name: 'origin/v1',
+            commit: at,
+            remote: 'origin',
+          },
+          {
+            kind: 'remote-tag',
+            name: 'origin/v3',
+            commit: at,
+            remote: 'origin',
+          },
+          {
+            kind: 'remote-tag',
+            name: 'second/v1',
+            commit: at,
+            remote: 'second',
+          },
+        ]}
+        detached={false}
+      />,
+    );
+    assert.deepStrictEqual(
+      [...html.matchAll(/class="badge [^"]*"[^>]*>([^<]+)</g)].map(
+        ([, name]) => name,
+      ),
+      ['main', 'v1', 'origin/v1', 'second/v1', 'v2', 'origin/v3'],
+    );
+  });
+
   test('marks a detached HEAD on a commit without refs', () => {
     assert.match(
       renderToStaticMarkup(

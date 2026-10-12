@@ -937,7 +937,8 @@ suite('Style', () => {
     const all = bubbles().filter(
       (bubble) =>
         !bubble.classes.includes('checked-out') &&
-        !bubble.classes.includes('tag'),
+        !bubble.classes.includes('tag') &&
+        !bubble.classes.includes('remote-tag'),
     );
     for (const kind of ['branch', 'remote', 'stash', 'hash', 'missing']) {
       assert.ok(
@@ -976,8 +977,16 @@ suite('Style', () => {
   });
 
   test('shapes a tag like a tag icon, pointed at the right end with the corners of the point rounded by about a pixel and a round hole by the point that shows the row through it, leaving room for both after the name, so it stands apart from the branches, which move on as tags never do', () => {
-    const tags = bubbles().filter((bubble) => bubble.classes.includes('tag'));
-    assert.ok(tags.length > 0);
+    const tags = bubbles().filter(
+      (bubble) =>
+        bubble.classes.includes('tag') || bubble.classes.includes('remote-tag'),
+    );
+    for (const kind of ['tag', 'remote-tag']) {
+      assert.ok(
+        tags.some((tag) => tag.classes.includes(kind)),
+        kind,
+      );
+    }
     for (const tag of tags) {
       assert.strictEqual(
         unwrapped(cascaded(tag, 'background')),

@@ -14,6 +14,7 @@ import {
   type UserSettings,
 } from './settings';
 import * as path from 'node:path';
+import { isFullHash } from './shared/hashes';
 import { strings } from './shared/strings';
 
 export const tabsKey = 'tabs';
@@ -24,6 +25,7 @@ export const soloKey = 'solo';
 export const bookmarksKey = 'bookmarks';
 export const worktreesKey = 'activeWorktrees';
 export const lastFetchesKey = 'lastFetches';
+export const remoteTagsKey = 'remoteTags';
 const tabsGroupedKey = 'tabsGrouped';
 
 export interface Store {
@@ -256,6 +258,63 @@ export class Storage {
 
   private get lastFetches(): Record<string, unknown> {
     return recordOf(this.state.get(lastFetchesKey));
+  }
+
+  remoteTagsOf(repository: string): Map<string, Map<string, string>> {
+    const all = this.allRemoteTags;
+    return new Map(
+      Object.entries(recordOf(all[keyOf(all, repository)])).flatMap(
+        ([remote, tags]): [string, Map<string, string>][] =>
+          isObject(tags)
+            ? [
+                [
+                  remote,
+                  new Map(
+                    Object.entries(tags).filter(
+                      (tag): tag is [string, string] =>
+                        typeof tag[1] === 'string' && isFullHash(tag[1]),
+                    ),
+                  ),
+                ],
+              ]
+            : [],
+      ),
+    );
+  }
+
+  async setRemoteTags(
+    repository: string,
+    remote: string,
+    tags: ReadonlyMap<string, string>,
+  ): Promise<void> {
+    const all = this.allRemoteTags;
+    const key = keyOf(all, repository);
+    await this.state.update(remoteTagsKey, {
+      ...all,
+      [key]: { ...recordOf(all[key]), [remote]: Object.fromEntries(tags) },
+    });
+  }
+
+  async keepRemoteTags(
+    repository: string,
+    remotes: readonly string[],
+  ): Promise<void> {
+    const all = this.allRemoteTags;
+    const key = keyOf(all, repository);
+    const kept = Object.entries(recordOf(all[key])).filter(([remote]) =>
+      remotes.includes(remote),
+    );
+    if (kept.length === Object.keys(recordOf(all[key])).length) {
+      return;
+    }
+    await this.state.update(remoteTagsKey, {
+      ...all,
+      [key]: Object.fromEntries(kept),
+    });
+  }
+
+  private get allRemoteTags(): Record<string, unknown> {
+    return recordOf(this.state.get(remoteTagsKey));
   }
 
   get layout(): ToWebviewOf<'layout'> {

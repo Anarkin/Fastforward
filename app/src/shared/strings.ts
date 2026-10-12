@@ -525,5 +525,9 @@ export const strings = {
     fetchFailed: 'Fetching every remote failed',
     pullFailed: 'Pulling failed',
     pushFailed: 'Pushing failed',
+    listingRemoteTagsFailed: (reason: string) =>
+      `Listing the remotes to read their tags failed: ${reason}`,
+    listingTagsOfRemoteFailed: (remote: string, reason: string) =>
+      `Listing the tags of ${remote} failed: ${reason}`,
   },
 };

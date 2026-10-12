@@ -40,6 +40,8 @@ import {
 import type { Commits } from './history/commits';
 import {
   isFolder,
+  listRemoteTags,
+  listRemotes,
   readRefs,
   repositoryRoot,
   spellingOf,
@@ -82,7 +84,7 @@ import {
   type Notify,
   type RepositoryAt,
 } from './operations';
-import { defaultBookmarks, fingerprint } from './refs';
+import { defaultBookmarks, fingerprint, remoteTagRefs, sameTags } from './refs';
 import { comparedOf, shownSide, workingTreeSide } from './shared/comparisons';
 import { isFullHash, shortHash } from './shared/hashes';
 import { imageSourceOf, imageType } from './shared/images';
@@ -1367,8 +1369,18 @@ export class FastforwardView {
     return tab;
   }
 
-  private refsOf(context: Context): Promise<Refs> {
-    return readRefs(context.gitPath, context.root);
+  private async refsOf(context: Context): Promise<Refs> {
+    const refs = await readRefs(context.gitPath, context.root);
+    return {
+      ...refs,
+      refs: [
+        ...refs.refs,
+        ...remoteTagRefs(
+          this.storage.remoteTagsOf(context.repository),
+          refs.remotes,
+        ),
+      ],
+    };
   }
 
   private async context(
@@ -1651,7 +1663,63 @@ export class FastforwardView {
     if (this.page && this.isActiveRepository(repository)) {
       this.postLastFetch(this.page, repository);
     }
+    if (fetched) {
+      void this.inFlight.track(this.listTagsOfRemotes(at, interactive));
+    }
     return result;
+  }
+
+  private async listTagsOfRemotes(
+    { gitPath, root, repository }: Fetchable,
+    interactive: boolean,
+  ): Promise<void> {
+    let remotes: string[];
+    try {
+      remotes = await listRemotes(gitPath, root);
+      await this.storage.keepRemoteTags(repository, remotes);
+    } catch (error) {
+      this.log.warn(strings.log.listingRemoteTagsFailed(gitErrorText(error)));
+      return;
+    }
+    let changed = false;
+    for (const remote of remotes) {
+      try {
+        const tags = await listRemoteTags(gitPath, root, remote, {
+          interactive,
+          stop: this.quitting.signal,
+        });
+        const known = this.storage.remoteTagsOf(repository).get(remote);
+        if (!sameTags(known, tags)) {
+          await this.storage.setRemoteTags(repository, remote, tags);
+          changed ||= !sameTags(known ?? new Map(), tags);
+        }
+      } catch (error) {
+        if (this.quitting.signal.aborted) {
+          return;
+        }
+        this.log.warn(
+          strings.log.listingTagsOfRemoteFailed(remote, gitErrorText(error)),
+        );
+      }
+    }
+    if (changed) {
+      await this.refreshRefsShown(repository);
+    }
+  }
+
+  private async refreshRefsShown(repository: string): Promise<void> {
+    const root = this.storage.worktreeOf(repository);
+    const page = this.page;
+    const shown =
+      page && this.isActive(root) ? await this.context(page, root) : undefined;
+    if (page && shown) {
+      await this.run(
+        strings.log.refreshingFailed,
+        page,
+        () => this.refresh(shown, undefined, refsAlone),
+        root,
+      );
+    }
   }
 
   private postLastFetch(
@@ -1710,19 +1778,8 @@ export class FastforwardView {
     if (fetched.failed || !fetched.changed) {
       return;
     }
-    const root = this.storage.worktreeOf(repository);
-    this.repositories.set(root, repository);
-    const page = this.page;
-    const shown =
-      page && this.isActive(root) ? await this.context(page, root) : undefined;
-    if (page && shown) {
-      await this.run(
-        strings.log.refreshingFailed,
-        page,
-        () => this.refresh(shown, undefined, refsAlone),
-        root,
-      );
-    }
+    this.repositories.set(this.storage.worktreeOf(repository), repository);
+    await this.refreshRefsShown(repository);
   }
 
   private notify(context: Context): Notify {

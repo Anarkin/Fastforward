@@ -14,6 +14,7 @@ export interface Head {
 export interface Refs {
   readonly head: Head | undefined;
   readonly refs: readonly RefInfo[];
+  readonly remotes: readonly string[];
   readonly stashes: readonly Stash[];
   readonly dates: ReadonlyMap<string, number>;
   readonly shallow: string;
@@ -100,6 +101,7 @@ export async function readRefs(gitPath: string, root: string): Promise<Refs> {
   return {
     head,
     refs: refs.map((ref) => withRemote(ref, remotes)),
+    remotes,
     stashes,
     dates,
     shallow,
@@ -325,6 +327,42 @@ export async function fetchAllRemotes(
     }
     throw error;
   }
+}
+
+export async function listRemoteTags(
+  gitPath: string,
+  root: string,
+  remote: string,
+  {
+    interactive = true,
+    timeout = remoteTimeout,
+    stop = new AbortController().signal,
+  } = {},
+): Promise<Map<string, string>> {
+  const output = await runGit(
+    gitPath,
+    root,
+    ['ls-remote', '--tags', '--end-of-options', remote],
+    {
+      signal: AbortSignal.any([AbortSignal.timeout(timeout), stop]),
+      env: interactive ? {} : neverAsk,
+      runsHooks: true,
+    },
+  );
+  const tags = new Map<string, string>();
+  for (const line of output.split('\n')) {
+    const [commit, ref] = line.split('\t');
+    if (!commit || !ref?.startsWith('refs/tags/')) {
+      continue;
+    }
+    const name = ref.slice('refs/tags/'.length);
+    if (name.endsWith('^{}')) {
+      tags.set(name.slice(0, -'^{}'.length), commit);
+    } else if (!tags.has(name)) {
+      tags.set(name, commit);
+    }
+  }
+  return tags;
 }
 
 export async function pushBranch(

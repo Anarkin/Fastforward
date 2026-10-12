@@ -1,6 +1,6 @@
 import { shortHash } from '../shared/hashes';
 import type { CheckoutTarget, RefInfo, BookmarkRef } from '../shared/protocol';
-import { findRef, localBranchOf, refOf } from '../shared/refNames';
+import { findRef, localBranchOf } from '../shared/refNames';
 import { byName } from './byName';
 
 export interface CheckoutOption {
@@ -15,10 +15,17 @@ export function checkoutRef(
   head: string | undefined,
   detachedHead: string | undefined,
 ): CheckoutOption {
-  const target = refOf(ref);
+  if (ref.kind === 'remote-tag') {
+    const commit = findRef(refs, ref)?.commit;
+    return {
+      label: ref.name,
+      target: { kind: 'commit', hash: commit ?? '' },
+      disabled: commit === undefined || commit === detachedHead,
+    };
+  }
   return {
     label: ref.name,
-    target,
+    target: { kind: ref.kind, name: ref.name },
     disabled: cannotCheckOut(ref, refs, head, detachedHead),
   };
 }

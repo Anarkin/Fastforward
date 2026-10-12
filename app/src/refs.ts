@@ -70,3 +70,28 @@ export function defaultBookmarks(
   ];
   return candidates.filter(exists);
 }
+
+export function remoteTagRefs(
+  lists: ReadonlyMap<string, ReadonlyMap<string, string>>,
+  remotes: readonly string[],
+): RefInfo[] {
+  return remotes.flatMap((remote) =>
+    [...(lists.get(remote) ?? [])].map(([tag, commit]): RefInfo => ({
+      kind: 'remote-tag',
+      name: `${remote}/${tag}`,
+      commit,
+      remote,
+    })),
+  );
+}
+
+export function sameTags(
+  a: ReadonlyMap<string, string> | undefined,
+  b: ReadonlyMap<string, string>,
+): boolean {
+  return (
+    a !== undefined &&
+    a.size === b.size &&
+    [...b].every(([tag, commit]) => a.get(tag) === commit)
+  );
+}

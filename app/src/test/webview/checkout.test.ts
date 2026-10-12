@@ -105,6 +105,32 @@ suite('Checkout options', () => {
     assert.strictEqual(checkoutCommit('cccccccc', 'cccccccc').disabled, true);
   });
 
+  test("checks out a remote's tag as its commit, as git keeps no ref for it, offering it only from its own bubble", () => {
+    const withRemoteTag: RefInfo[] = [
+      ...refs,
+      {
+        kind: 'remote-tag',
+        name: 'origin/v1',
+        remote: 'origin',
+        commit: 'aaaaaaaa',
+      },
+    ];
+    const ref = { kind: 'remote-tag' as const, name: 'origin/v1' };
+    assert.deepStrictEqual(checkoutRef(ref, withRemoteTag, 'main', undefined), {
+      label: 'origin/v1',
+      target: { kind: 'commit', hash: 'aaaaaaaa' },
+      disabled: false,
+    });
+    assert.strictEqual(
+      checkoutRef(ref, withRemoteTag, undefined, 'aaaaaaaa').disabled,
+      true,
+    );
+    assert.deepStrictEqual(
+      labels(checkoutOptions('aaaaaaaa', withRemoteTag, 'main', undefined)),
+      labels(checkoutOptions('aaaaaaaa', refs, 'main', undefined)),
+    );
+  });
+
   test('greys out a tag on the detached HEAD, as checking it out changes nothing', () => {
     assert.deepStrictEqual(
       labels(checkoutOptions('aaaaaaaa', refs, undefined, 'aaaaaaaa')).filter(

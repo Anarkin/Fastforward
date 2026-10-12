@@ -187,7 +187,9 @@ export function tipsInGitOrder(
   if (!solo) {
     for (const tip of [
       ...dates.keys(),
-      ...[...refs, ...stashes].map((ref) => ref.commit),
+      ...[...refs.filter((ref) => ref.kind !== 'remote-tag'), ...stashes].map(
+        (ref) => ref.commit,
+      ),
     ]) {
       tips.add(tip);
     }

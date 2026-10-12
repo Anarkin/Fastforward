@@ -10,6 +10,7 @@ import {
   JsonFileStore,
   lastFetchesKey,
   recentKey,
+  remoteTagsKey,
   soloKey,
   Storage,
   tabsKey,
@@ -88,6 +89,38 @@ suite('Storage', () => {
       failed: 3,
     });
     assert.deepStrictEqual(storage.lastFetchOf(path.resolve('other')), {});
+  });
+
+  test('keeps the tags each remote of a repository had when last listed, for the next start, dropping remotes no longer there', async () => {
+    const state = new FakeStore();
+    const storage = storageOf(state);
+    const root = path.resolve('r');
+    const [a, b] = ['a', 'b'].map((digit) => digit.repeat(40));
+    assert.deepStrictEqual(storage.remoteTagsOf(root), new Map());
+    await storage.setRemoteTags(root, 'origin', new Map([['v1', a]]));
+    await storage.setRemoteTags(root, 'upstream', new Map([['v2', b]]));
+    await storage.keepRemoteTags(root, ['origin']);
+    assert.deepStrictEqual(
+      storageOf(state).remoteTagsOf(root),
+      new Map([['origin', new Map([['v1', a]])]]),
+    );
+    assert.deepStrictEqual(
+      storage.remoteTagsOf(path.resolve('other')),
+      new Map(),
+    );
+  });
+
+  test('reads remote tags of the wrong shape, as a hand edit can leave them, leaving out what is not a tag and its commit', async () => {
+    const state = new FakeStore();
+    const root = path.resolve('r');
+    const c = 'c'.repeat(40);
+    await state.update(remoteTagsKey, {
+      [root]: { origin: { v1: 5, v2: c, v3: 'not a hash' }, junk: 'x' },
+    });
+    assert.deepStrictEqual(
+      storageOf(state).remoteTagsOf(root),
+      new Map([['origin', new Map([['v2', c]])]]),
+    );
   });
 
   test('reads state of the wrong shape, as a hand edit can leave it, as never saved', async () => {
