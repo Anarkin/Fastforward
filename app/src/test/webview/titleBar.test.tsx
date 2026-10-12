@@ -47,6 +47,22 @@ suite('Title bar', () => {
     assert.match(html, />\/code\/app - Fastforward<\/span>/);
   });
 
+  test("puts the app's menu between the icon and the title, kept out of the area that drags the window, opening to the right", () => {
+    const html = renderToStaticMarkup(
+      <TitleBar title="Fastforward" menu={<button className="app-menu" />} />,
+    );
+    assert.match(
+      html,
+      /<svg class="title-bar-icon"[^]*<\/svg><button class="app-menu"><\/button><span class="title-bar-text">Fastforward<\/span>/,
+    );
+    const css = stylesheet();
+    assert.match(
+      css,
+      /\.title-bar \.menu-button \{[^}]*-webkit-app-region: no-drag;/,
+    );
+    assert.match(css, /\.title-bar \.menu \{[^}]*left: 0;[^}]*right: auto;/);
+  });
+
   test('drags the window, and keeps clear of the window buttons', () => {
     const css = stylesheet();
     assert.match(css, /\.title-bar \{[^}]*-webkit-app-region: drag;/);

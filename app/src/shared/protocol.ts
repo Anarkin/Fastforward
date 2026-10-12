@@ -208,6 +208,13 @@ export interface LastFetch {
   readonly failed?: number;
 }
 
+export interface AboutInfo {
+  readonly version: string;
+  readonly development: boolean;
+  readonly git: string;
+  readonly system: string;
+}
+
 export type UpdateStatus =
   | { readonly kind: 'idle' }
   | { readonly kind: 'checking' }
@@ -241,6 +248,7 @@ export type ToHost =
   | { readonly type: 'openRepository'; readonly root: string }
   | { readonly type: 'browseRepositories' }
   | { readonly type: 'forgetRecent'; readonly root: string }
+  | { readonly type: 'copyText'; readonly text: string }
   | { readonly type: 'openSettings' }
   | { readonly type: 'openDefaultSettings' }
   | { readonly type: 'closeTab'; readonly root: string }
@@ -348,6 +356,7 @@ export type ToWebview =
   | { readonly type: 'pushing'; readonly running: boolean }
   | { readonly type: 'pushingTag'; readonly name: string | undefined }
   | { readonly type: 'update'; readonly status: UpdateStatus }
+  | ({ readonly type: 'about' } & AboutInfo)
   | ({ readonly type: 'lastFetch' } & LastFetch)
   | { readonly type: 'applyingSolo'; readonly running: boolean }
   | {

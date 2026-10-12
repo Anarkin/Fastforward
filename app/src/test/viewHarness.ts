@@ -9,6 +9,7 @@ import {
   type ToWebviewOf,
   type Bookmark,
   type UpdateStatus,
+  type AboutInfo,
 } from '../shared/protocol';
 import type { Timer } from '../autoFetch';
 import type { Log } from '../log';
@@ -93,6 +94,19 @@ export class FakeHost implements Host {
 
   updateStatus(): UpdateStatus {
     return this.update;
+  }
+
+  about(): AboutInfo {
+    return {
+      version: '1.2.3',
+      development: true,
+      git: '2.52.0',
+      system: 'Windows 11, build 26300, x64',
+    };
+  }
+
+  copyText(text: string): void {
+    this.opened.push(`copy ${text}`);
   }
 }
 

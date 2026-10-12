@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { type TabInfo, type UpdateStatus } from '../shared/protocol';
+import { type TabInfo } from '../shared/protocol';
 import { CloseIcon } from './icons';
-import { MenuButton } from './menu';
 import { clicked, keymap } from '../shared/keymap';
 import { strings } from '../shared/strings';
 import { useBinding } from './shortcuts';
@@ -44,27 +43,6 @@ export class Cycle {
   }
 }
 
-export function updateLabel(status: UpdateStatus): string {
-  switch (status.kind) {
-    case 'idle':
-      return strings.tabs.checkForUpdates;
-    case 'checking':
-      return strings.tabs.checkingForUpdates;
-    case 'upToDate':
-      return strings.tabs.upToDate;
-    case 'downloading':
-      return strings.tabs.downloading(status.version, status.percent);
-    case 'failed':
-      return strings.tabs.checkFailed;
-    case 'ready':
-      return strings.tabs.restartToUpdate(status.version);
-    case 'available':
-      return strings.tabs.download(status.version);
-    default:
-      return status satisfies never;
-  }
-}
-
 export const preloadDelay = 200;
 
 export function resting(delay: number): {
@@ -89,13 +67,6 @@ export function TabBar({
   onPreload,
   onClose,
   onAdd,
-  onSort,
-  onOpenSettings,
-  onOpenDefaultSettings,
-  onShowShortcuts,
-  update,
-  onCheckForUpdates,
-  onInstallUpdate,
   onLog,
 }: {
   tabs: readonly TabInfo[];
@@ -104,13 +75,6 @@ export function TabBar({
   onPreload: (root: string) => void;
   onClose: (root: string) => void;
   onAdd: (event: React.MouseEvent) => void;
-  onSort: () => void;
-  onOpenSettings: () => void;
-  onOpenDefaultSettings: () => void;
-  onShowShortcuts: () => void;
-  update: UpdateStatus;
-  onCheckForUpdates: () => void;
-  onInstallUpdate: () => void;
   onLog: (message: string) => void;
 }) {
   const bar = useRef<HTMLElement>(null);
@@ -134,7 +98,6 @@ export function TabBar({
   const rest = useMemo(() => resting(preloadDelay), []);
   useEffect(() => rest.cancel, [rest]);
 
-  const installs = update.kind === 'ready' || update.kind === 'available';
   const add = useRef<HTMLButtonElement>(null);
   useBinding(keymap.openRepository, () => add.current?.click());
   const [cycle] = useState(() => new Cycle());
@@ -192,26 +155,6 @@ export function TabBar({
           {strings.symbols.add}
         </button>
       </div>
-      <MenuButton
-        title={strings.tabs.settings}
-        marked={installs}
-        items={[
-          { label: strings.tabs.sort, onClick: onSort },
-          { separator: true },
-          {
-            label: strings.tabs.openDefaultSettings,
-            onClick: onOpenDefaultSettings,
-          },
-          { label: strings.tabs.openUserSettings, onClick: onOpenSettings },
-          { separator: true },
-          { label: strings.tabs.keyboardShortcuts, onClick: onShowShortcuts },
-          { separator: true },
-          {
-            label: updateLabel(update),
-            onClick: installs ? onInstallUpdate : onCheckForUpdates,
-          },
-        ]}
-      />
     </nav>
   );
 }

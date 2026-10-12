@@ -125,13 +125,6 @@ export const tabBar = memoized(() =>
       onPreload={noop}
       onClose={noop}
       onAdd={noop}
-      onSort={noop}
-      onOpenSettings={noop}
-      onOpenDefaultSettings={noop}
-      onShowShortcuts={noop}
-      update={{ kind: 'idle' }}
-      onCheckForUpdates={noop}
-      onInstallUpdate={noop}
       onLog={noop}
     />,
   ),

@@ -1,9 +1,11 @@
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
   app,
   BrowserWindow,
+  clipboard,
   dialog,
   ipcMain,
   Menu,
@@ -15,6 +17,7 @@ import {
 } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import { findGit, minimumGitVersion, type GitSearch } from '../git/locate';
+import { prettyName, systemOf } from './system';
 import { stopRunningGit, writesEnded } from '../git/run';
 import { errorLine, fileLog, type Log } from '../log';
 import { imageRoute } from '../shared/images';
@@ -229,6 +232,13 @@ async function start(): Promise<void> {
       log.error(strings.log.updater(String(message))),
     debug: () => {},
   };
+  const system = systemOf({
+    platform: process.platform,
+    release: os.release(),
+    arch: process.arch,
+    systemVersion: process.getSystemVersion(),
+    distribution: process.platform === 'linux' ? distributionName() : undefined,
+  });
   const view = new FastforwardView(log, git.path, storage, {
     chooseFolders: async () => {
       const chosen = await dialog.showOpenDialog(window, {
@@ -255,6 +265,15 @@ async function start(): Promise<void> {
     checkForUpdates: () => updates.check(true),
     installUpdate: () => updates.install(),
     updateStatus: () => updates.status,
+    about: () => ({
+      version: app.getVersion(),
+      development,
+      git: git.version,
+      system,
+    }),
+    copyText: (text) => {
+      void clipboard.writeText(text);
+    },
   });
   views.resolve(view);
   app.on('before-quit', () => view.quit());
@@ -302,6 +321,14 @@ async function start(): Promise<void> {
     );
   }
   updates.startAfter(loading);
+}
+
+function distributionName(): string | undefined {
+  try {
+    return prettyName(fs.readFileSync('/etc/os-release', 'utf8'));
+  } catch {
+    return undefined;
+  }
 }
 
 async function searchGit(): Promise<GitSearch> {

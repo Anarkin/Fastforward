@@ -13,6 +13,7 @@ export interface MarkupElement {
 export interface States {
   readonly hover?: true | MarkupElement;
   readonly focus?: true | MarkupElement;
+  readonly active?: true | MarkupElement;
   readonly pseudoElement?: string;
 }
 
@@ -20,6 +21,7 @@ interface Context {
   readonly hovered: ReadonlySet<MarkupElement>;
   readonly focused: MarkupElement | undefined;
   readonly focusedWithin: ReadonlySet<MarkupElement>;
+  readonly activated: ReadonlySet<MarkupElement>;
 }
 
 function selfAndAncestors(element: MarkupElement | undefined): MarkupElement[] {
@@ -38,6 +40,7 @@ function contextOf(element: MarkupElement, states: States): Context {
     hovered: new Set(selfAndAncestors(target(states.hover))),
     focused,
     focusedWithin: new Set(selfAndAncestors(focused)),
+    activated: new Set(selfAndAncestors(target(states.active))),
   };
 }
 
@@ -221,6 +224,8 @@ function matchesSimple(
       return context.focused === element;
     case ':focus-within':
       return context.focusedWithin.has(element);
+    case ':active':
+      return context.activated.has(element);
     case ':root':
       return false;
   }

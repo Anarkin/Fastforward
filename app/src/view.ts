@@ -110,6 +110,7 @@ import {
   type ToWebview,
   type ToWebviewOf,
   type UpdateStatus,
+  type AboutInfo,
   type WorktreeInfo,
 } from './shared/protocol';
 import { strings } from './shared/strings';
@@ -180,6 +181,8 @@ export interface Host {
   checkForUpdates(): void;
   installUpdate(): void;
   updateStatus(): UpdateStatus;
+  about(): AboutInfo;
+  copyText(text: string): void;
 }
 
 export interface Connection {
@@ -481,6 +484,7 @@ export class FastforwardView {
       case 'ready':
         session.post(storage.layout);
         session.post({ type: 'update', status: this.host.updateStatus() });
+        session.post({ type: 'about', ...this.host.about() });
         for (const problem of this.host.settingsProblems()) {
           session.post({
             type: 'notice',
@@ -502,6 +506,9 @@ export class FastforwardView {
         return;
       case 'installUpdate':
         this.host.installUpdate();
+        return;
+      case 'copyText':
+        this.host.copyText(message.text);
         return;
       case 'selectTab':
         if (

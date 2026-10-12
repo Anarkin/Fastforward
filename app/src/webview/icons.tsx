@@ -1,7 +1,13 @@
-function Icon({ children }: { children: React.ReactNode }) {
+function Icon({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
     <svg
-      className="icon"
+      className={className === undefined ? 'icon' : `icon ${className}`}
       width="16"
       height="16"
       viewBox="0 0 16 16"
@@ -84,6 +90,14 @@ export function SoloIcon() {
       <circle cx="6" cy="4.5" r="1.7" />
       <circle cx="6" cy="11.5" r="1.7" />
       <path d="M6 8.3c3 0 5-1.5 5-4.5V2" opacity="0.35" />
+    </Icon>
+  );
+}
+
+export function MenuIcon() {
+  return (
+    <Icon className="menu-icon">
+      <path d="M2.5 4h11M2.5 8h11M2.5 12h11" />
     </Icon>
   );
 }

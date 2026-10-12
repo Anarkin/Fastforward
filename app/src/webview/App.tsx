@@ -18,6 +18,7 @@ import {
   type DiffLayout,
   type LastFetch,
   type UpdateStatus,
+  type AboutInfo,
   type TextRequest,
   type WorktreeInfo,
 } from '../shared/protocol';
@@ -54,6 +55,8 @@ import { Commits, settling } from './commitList';
 import { clicked, keymap } from '../shared/keymap';
 import { useBinding } from './shortcuts';
 import { ShortcutsPopup } from './shortcutsPopup';
+import { AboutPopup } from './aboutPopup';
+import { AppMenu } from './appMenu';
 import {
   ContextMenu,
   OpenContextMenu,
@@ -222,6 +225,9 @@ export function App({ name, post: postToHost, listen }: Props) {
   const closeMenu = useCallback(() => setMenu(undefined), []);
   const [shortcutsShown, setShortcutsShown] = useState(false);
   const closeShortcuts = useCallback(() => setShortcutsShown(false), []);
+  const [aboutShown, setAboutShown] = useState(false);
+  const closeAbout = useCallback(() => setAboutShown(false), []);
+  const [about, setAbout] = useState<AboutInfo>();
   useBinding(keymap.shortcuts, () => setShortcutsShown((shown) => !shown));
   const saveColumnWidths = useCallback(
     (widths: readonly number[]) => post({ type: 'setColumnWidths', widths }),
@@ -314,6 +320,9 @@ export function App({ name, post: postToHost, listen }: Props) {
           break;
         case 'update':
           setUpdate(message.status);
+          break;
+        case 'about':
+          setAbout(message);
           break;
         default:
           dispatch(message);
@@ -693,7 +702,25 @@ export function App({ name, post: postToHost, listen }: Props) {
             <HideDimmedButtons.Provider value={hideDimmed}>
               <DetachedHead.Provider value={detached}>
                 <div className="app">
-                  <TitleBar title={windowTitle(activeTab, name)} />
+                  <TitleBar
+                    title={windowTitle(activeTab, name)}
+                    menu={
+                      <AppMenu
+                        update={update}
+                        onSort={() => post({ type: 'sortTabs' })}
+                        onOpenSettings={() => post({ type: 'openSettings' })}
+                        onOpenDefaultSettings={() =>
+                          post({ type: 'openDefaultSettings' })
+                        }
+                        onShowShortcuts={() => setShortcutsShown(true)}
+                        onCheckForUpdates={() =>
+                          post({ type: 'checkForUpdates' })
+                        }
+                        onInstallUpdate={() => post({ type: 'installUpdate' })}
+                        onShowAbout={() => setAboutShown(true)}
+                      />
+                    }
+                  />
                   <TabBar
                     tabs={tabs ?? []}
                     active={activeRepository}
@@ -701,15 +728,6 @@ export function App({ name, post: postToHost, listen }: Props) {
                     onPreload={(root) => post({ type: 'preloadTab', root })}
                     onClose={(root) => post({ type: 'closeTab', root })}
                     onAdd={openRepository}
-                    onSort={() => post({ type: 'sortTabs' })}
-                    onOpenSettings={() => post({ type: 'openSettings' })}
-                    onOpenDefaultSettings={() =>
-                      post({ type: 'openDefaultSettings' })
-                    }
-                    onShowShortcuts={() => setShortcutsShown(true)}
-                    update={update}
-                    onCheckForUpdates={() => post({ type: 'checkForUpdates' })}
-                    onInstallUpdate={() => post({ type: 'installUpdate' })}
                     onLog={log}
                   />
                   <WorktreeBar
@@ -733,6 +751,13 @@ export function App({ name, post: postToHost, listen }: Props) {
                         document.documentElement.dataset.platform === 'darwin'
                       }
                       onClose={closeShortcuts}
+                    />
+                  )}
+                  {aboutShown && about && (
+                    <AboutPopup
+                      about={about}
+                      onCopy={(text) => post({ type: 'copyText', text })}
+                      onClose={closeAbout}
                     />
                   )}
                   <Notices notices={notices} onDismiss={dismissNotice} />

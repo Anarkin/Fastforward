@@ -26,6 +26,7 @@ import {
 } from '../../webview/diffView';
 import { ImageDiff } from '../../webview/imagePreview';
 import { MarkdownDiff } from '../../webview/markdownPreview';
+import { AboutPopup, CopyButton } from '../../webview/aboutPopup';
 import { ContextMenu } from '../../webview/contextMenu';
 import { Crash } from '../../webview/errorBoundary';
 import { overlayScrollbarClass } from '../../webview/overlayScrollbars';
@@ -165,6 +166,21 @@ function commitColumnTitle(autoFetchMinutes: number): MarkupElement {
   return columnTitle(navButtons({ autoFetchMinutes }));
 }
 
+function aboutPopup(): MarkupElement {
+  return rendered(
+    createElement(AboutPopup, {
+      about: {
+        version: '1.0.0',
+        development: false,
+        git: '2.52.0',
+        system: 'Linux 6.8.0, x64',
+      },
+      onCopy: noop,
+      onClose: noop,
+    }),
+  );
+}
+
 function shortcutsPopup(): MarkupElement {
   return rendered(createElement(ShortcutsPopup, { mac: false, onClose: noop }));
 }
@@ -261,7 +277,7 @@ suite('Style', () => {
     );
   });
 
-  test('wraps the repository and worktree tabs onto more rows rather than scrolling them sideways, keeping the settings button by the first row', () => {
+  test('wraps the repository and worktree tabs onto more rows rather than scrolling them sideways', () => {
     for (const bar of [tabBar(), worktreeBar([worktree('a')])]) {
       looks(withClass(bar, 'tab-list'), {
         'flex-wrap': 'wrap',
@@ -269,7 +285,6 @@ suite('Style', () => {
         'overflow-x': undefined,
       });
     }
-    looks(withClass(tabBar(), 'menu-button'), { 'align-self': 'flex-start' });
   });
 
   test('keeps the worktree row as tall while its worktrees are listed, or when it has none, as with them', () => {
@@ -1495,13 +1510,36 @@ suite('Style', () => {
     looks(withClass(view, 'file-header'), { 'user-select': 'none' });
   });
 
-  test('centers the shortcuts by layout rather than a transform, which would place their edges between device pixels', () => {
-    looks(withClass(shortcutsPopup(), 'shortcuts-popup'), {
-      transform: undefined,
-      inset: '0',
-      margin: 'auto',
-      height: 'fit-content',
+  test('centers the shortcuts and the About by layout rather than a transform, which would place their edges between device pixels, drawing the About like the shortcuts but narrower', () => {
+    for (const popup of [shortcutsPopup(), aboutPopup()]) {
+      looks(withClass(popup, 'shortcuts-popup'), {
+        transform: undefined,
+        inset: '0',
+        margin: 'auto',
+        height: 'fit-content',
+      });
+    }
+    looks(withClass(aboutPopup(), 'about-popup'), {
+      width: 'min(420px, calc(100vw - 32px))',
     });
+  });
+
+  test("tints the About's copy button more on hovering, and fills it with the focus color while pressed and once it copied", () => {
+    const copy = withClass(aboutPopup(), 'about-copy');
+    looks(copy, { background: 'var(--color-background)' });
+    looks(copy, { background: 'var(--selection-background)' }, hovered);
+    const filled = {
+      color: 'var(--color-focus-foreground)',
+      background: 'var(--color-focus)',
+    };
+    looks(copy, filled, { active: true });
+    looks(
+      withClass(
+        rendered(createElement(CopyButton, { copied: true, onClick: noop })),
+        'about-copy',
+      ),
+      filled,
+    );
   });
 
   test('keeps a context menu within the window, scrolling one taller than it, as the repositories may be, unless it opens submenus, which scrolling would cut off', () => {

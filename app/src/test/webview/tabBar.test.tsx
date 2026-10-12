@@ -1,14 +1,7 @@
 import * as assert from 'node:assert';
 import { isValidElement } from 'react';
 import { afterEach, suite, test, vi } from 'vitest';
-import type { ContextMenuItem } from '../../webview/contextMenu';
-import {
-  adjacentTab,
-  Cycle,
-  resting,
-  TabBar,
-  updateLabel,
-} from '../../webview/tabBar';
+import { adjacentTab, Cycle, resting, TabBar } from '../../webview/tabBar';
 import { rested } from '../componentFixtures';
 import { noModifiers, noop, renderedBy } from '../fixtures';
 
@@ -69,115 +62,6 @@ suite('Tab bar', () => {
     assert.deepStrictEqual(done, ['b']);
   });
 
-  test('offers sorting the tabs, opening the settings files, showing the shortcuts and checking for updates in its menu', () => {
-    const picked: string[] = [];
-    const nav = renderedBy(TabBar, {
-      tabs: [],
-      active: undefined,
-      onSelect: noop,
-      onPreload: noop,
-      onClose: noop,
-      onAdd: noop,
-      onSort: () => picked.push('sort'),
-      onOpenSettings: () => picked.push('settings'),
-      onOpenDefaultSettings: () => picked.push('defaults'),
-      onShowShortcuts: () => picked.push('shortcuts'),
-      update: { kind: 'idle' },
-      onCheckForUpdates: () => picked.push('update'),
-      onInstallUpdate: noop,
-      onLog: noop,
-    });
-    assert.ok(isValidElement<{ children: React.ReactElement[] }>(nav));
-    const menu = nav.props.children[1];
-    assert.ok(isValidElement<{ items: readonly ContextMenuItem[] }>(menu));
-    const items = menu.props.items.flatMap((item) =>
-      'separator' in item ? [] : [item],
-    );
-    assert.deepStrictEqual(
-      items.map((item) => item.label),
-      [
-        'Sort A-Z',
-        'Open Default Settings',
-        'Open User Settings',
-        'Keyboard Shortcuts',
-        'Check for Updates',
-      ],
-    );
-    for (const item of items) {
-      item.onClick?.();
-    }
-    assert.deepStrictEqual(picked, [
-      'sort',
-      'defaults',
-      'settings',
-      'shortcuts',
-      'update',
-    ]);
-  });
-
-  test('names the update item after how far updating got', () => {
-    assert.deepStrictEqual(
-      (
-        [
-          { kind: 'idle' },
-          { kind: 'checking' },
-          { kind: 'upToDate' },
-          { kind: 'downloading', version: '7.0.0', percent: 42 },
-          { kind: 'failed' },
-          { kind: 'ready', version: '7.0.0' },
-          { kind: 'available', version: '7.0.0' },
-        ] as const
-      ).map(updateLabel),
-      [
-        'Check for Updates',
-        'Check for Updates (checking...)',
-        'Check for Updates (up to date)',
-        'Check for Updates (downloading 7.0.0, 42%)',
-        'Check for Updates (failed)',
-        'Restart to Update to 7.0.0',
-        'Download 7.0.0',
-      ],
-    );
-  });
-
-  test('checks for updates from its menu until one is ready, then installs it from there, marking the menu button', () => {
-    for (const [update, action, marked] of [
-      [{ kind: 'downloading', version: '7.0.0', percent: 42 }, 'check', false],
-      [{ kind: 'ready', version: '7.0.0' }, 'install', true],
-      [{ kind: 'available', version: '7.0.0' }, 'install', true],
-    ] as const) {
-      const picked: string[] = [];
-      const nav = renderedBy(TabBar, {
-        tabs: [],
-        active: undefined,
-        onSelect: noop,
-        onPreload: noop,
-        onClose: noop,
-        onAdd: noop,
-        onSort: noop,
-        onOpenSettings: noop,
-        onOpenDefaultSettings: noop,
-        onShowShortcuts: noop,
-        update,
-        onCheckForUpdates: () => picked.push('check'),
-        onInstallUpdate: () => picked.push('install'),
-        onLog: noop,
-      });
-      assert.ok(isValidElement<{ children: React.ReactElement[] }>(nav));
-      const menu = nav.props.children[1];
-      assert.ok(
-        isValidElement<{ items: readonly ContextMenuItem[]; marked: boolean }>(
-          menu,
-        ),
-      );
-      assert.strictEqual(menu.props.marked, marked);
-      const item = menu.props.items.at(-1);
-      assert.ok(item && !('separator' in item));
-      item.onClick?.();
-      assert.deepStrictEqual(picked, [action]);
-    }
-  });
-
   test('stops the middle button from autoscrolling, so a middle click closes the tab', () => {
     const closed: string[] = [];
     const nav = renderedBy(TabBar, {
@@ -187,17 +71,10 @@ suite('Tab bar', () => {
       onPreload: noop,
       onClose: (root) => closed.push(root),
       onAdd: noop,
-      onSort: noop,
-      onOpenSettings: noop,
-      onOpenDefaultSettings: noop,
-      onShowShortcuts: noop,
-      update: { kind: 'idle' },
-      onCheckForUpdates: noop,
-      onInstallUpdate: noop,
       onLog: noop,
     });
-    assert.ok(isValidElement<{ children: React.ReactElement[] }>(nav));
-    const list = nav.props.children[0];
+    assert.ok(isValidElement<{ children: React.ReactElement }>(nav));
+    const list = nav.props.children;
     assert.ok(isValidElement<{ children: React.ReactElement[][] }>(list));
     const tab = list.props.children[0][0];
     assert.ok(
@@ -227,17 +104,10 @@ suite('Tab bar', () => {
       onPreload: noop,
       onClose: noop,
       onAdd: noop,
-      onSort: noop,
-      onOpenSettings: noop,
-      onOpenDefaultSettings: noop,
-      onShowShortcuts: noop,
-      update: { kind: 'idle' },
-      onCheckForUpdates: noop,
-      onInstallUpdate: noop,
       onLog: noop,
     });
-    assert.ok(isValidElement<{ children: React.ReactElement[] }>(nav));
-    const list = nav.props.children[0];
+    assert.ok(isValidElement<{ children: React.ReactElement }>(nav));
+    const list = nav.props.children;
     assert.ok(isValidElement<{ children: React.ReactElement[][] }>(list));
     const tab = list.props.children[0][0];
     assert.ok(isValidElement<{ children: React.ReactElement[] }>(tab));
@@ -266,17 +136,10 @@ suite('Tab bar', () => {
       onPreload: (root) => preloaded.push(root),
       onClose: (root) => closed.push(root),
       onAdd: noop,
-      onSort: noop,
-      onOpenSettings: noop,
-      onOpenDefaultSettings: noop,
-      onShowShortcuts: noop,
-      update: { kind: 'idle' },
-      onCheckForUpdates: noop,
-      onInstallUpdate: noop,
       onLog: noop,
     });
-    assert.ok(isValidElement<{ children: React.ReactElement[] }>(nav));
-    const list = nav.props.children[0];
+    assert.ok(isValidElement<{ children: React.ReactElement }>(nav));
+    const list = nav.props.children;
     assert.ok(isValidElement<{ children: React.ReactElement[][] }>(list));
     const [a, b] = list.props.children[0];
     type Tab = {

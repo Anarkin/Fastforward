@@ -12,10 +12,12 @@ export function MenuButton({
   title,
   items,
   marked = false,
+  icon = <MoreIcon />,
 }: {
   title: string;
   items: readonly ContextMenuItem[];
   marked?: boolean;
+  icon?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const container = useRef<HTMLDivElement>(null);
@@ -28,7 +30,7 @@ export function MenuButton({
         title={title}
         onClick={() => setOpen(!open)}
       >
-        <MoreIcon />
+        {icon}
         {marked && <span className="menu-mark" />}
       </button>
       {open && <Dropdown container={container} items={items} onClose={close} />}

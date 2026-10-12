@@ -56,7 +56,13 @@ function AppIcon() {
   );
 }
 
-export function TitleBar({ title }: { title: string }) {
+export function TitleBar({
+  title,
+  menu,
+}: {
+  title: string;
+  menu?: React.ReactNode;
+}) {
   useEffect(() => {
     document.title = title;
   }, [title]);
@@ -64,6 +70,7 @@ export function TitleBar({ title }: { title: string }) {
     <header className="title-bar" style={{ height: titleBarHeight }}>
       <div className="title-bar-content">
         <AppIcon />
+        {menu}
         <span className="title-bar-text">{title}</span>
       </div>
     </header>

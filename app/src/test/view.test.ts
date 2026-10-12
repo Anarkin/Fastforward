@@ -95,6 +95,28 @@ suite('View with no tab open', () => {
     );
   });
 
+  test('sends the version of the app and of git when the page loads, for its About, and copies what the page asks to', async () => {
+    const host = new FakeHost();
+    await withView(
+      log,
+      [],
+      async (view) => {
+        assert.deepStrictEqual(view.page.last('about'), {
+          type: 'about',
+          version: '1.2.3',
+          development: true,
+          git: '2.52.0',
+          system: 'Windows 11, build 26300, x64',
+        });
+        await view.connection.receive({ type: 'copyText', text: 'copied' });
+        assert.deepStrictEqual(host.opened, ['copy copied']);
+      },
+      true,
+      host,
+      noGit,
+    );
+  });
+
   test('saves the layout and sends it when the page loads', async () => {
     await withView(
       log,

@@ -108,11 +108,31 @@ export const strings = {
     hiddenLeft: '‹',
     hiddenRight: '›',
   },
+  about: {
+    title: 'About',
+    version: (version: string, development: boolean) =>
+      `Version ${version}${development ? ' Dev' : ''}`,
+    git: (version: string) => `git ${version}`,
+    windows: (version: string, build: string, arch: string) =>
+      `Windows ${version}, build ${build}, ${arch}`,
+    macos: (version: string, arch: string) => `macOS ${version}, ${arch}`,
+    linux: (distribution: string | undefined, kernel: string, arch: string) =>
+      distribution === undefined
+        ? `Linux ${kernel}, ${arch}`
+        : `${distribution}, Linux ${kernel}, ${arch}`,
+    otherSystem: (platform: string, release: string, arch: string) =>
+      `${platform} ${release}, ${arch}`,
+    address: 'https://github.com/Anarkin/Fastforward',
+    copy: 'Copy',
+    copied: 'Copied',
+    copyTitle: 'Copy these lines, as for a bug report',
+  },
   tabs: {
     browse: 'Browse...',
     removeRecent: (name: string) => `Remove ${name} from this list`,
     settings: 'Settings',
-    sort: 'Sort A-Z',
+    sort: 'Sort Tabs A-Z',
+    about: 'About',
     openDefaultSettings: 'Open Default Settings',
     openUserSettings: 'Open User Settings',
     keyboardShortcuts: 'Keyboard Shortcuts',
