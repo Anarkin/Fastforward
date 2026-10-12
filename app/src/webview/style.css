@@ -1177,6 +1177,14 @@ body.resizing {
   border-radius: 0 3px 3px 0;
 }
 
+.bubble-line .badge.tag.with-actions {
+  padding-right: 14px;
+}
+
+.badge.tag .bubble-action:last-child {
+  border-radius: 0;
+}
+
 .bubble-action:hover:not(:disabled) {
   background: color-mix(in srgb, currentColor 22%, transparent);
 }

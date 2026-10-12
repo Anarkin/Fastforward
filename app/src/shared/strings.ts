@@ -235,6 +235,7 @@ export const strings = {
     none: 'None',
   },
   commits: {
+    pushTag: (tag: string, remote: string) => `Push ${tag} to ${remote}`,
     uncommitted: 'Uncommitted changes',
     uncommittedSide: 'uncommitted',
     uncommittedChanges: (count: number) =>
@@ -374,6 +375,14 @@ export const strings = {
     localUpstream: (local: string, upstream: string) =>
       `${local} tracks the local branch ${upstream}, so it has no remote to push to`,
     couldNotPush: (reason: string) => `Couldn't push. ${reason}`,
+    pushedTag: (tag: string, remote: string) =>
+      `Pushed tag ${tag} to ${remote}`,
+    tagElsewhere: (tag: string, remote: string) =>
+      `${remote} already has a tag ${tag} on another commit, so it wasn't pushed`,
+    noTagRemote: (tag: string, branch: string | undefined) =>
+      branch === undefined
+        ? `With several remotes, and no branch checked out, it's unclear where to push ${tag}`
+        : `With several remotes, and ${branch} tracking none of them, it's unclear where to push ${tag}`,
     upToDate: (version: string) => `${brand} ${version} is up to date`,
     downloadingUpdate: (version: string) => `Downloading ${brand} ${version}`,
     updateReady: (version: string) =>

@@ -10,7 +10,7 @@ import {
   checkoutNewBranch,
   fetchAllRemotes,
   listRemotes,
-  pushBranch,
+  pushRef,
   readHead,
   readRefs,
   switchToBranch,
@@ -293,7 +293,9 @@ export async function pushToUpstream(
       return 'unchanged';
     }
     try {
-      await pushBranch(gitPath, root, remote, branch, remoteRef, { stop });
+      await pushRef(gitPath, root, remote, `refs/heads/${branch}`, remoteRef, {
+        stop,
+      });
     } catch (error) {
       if (remoteMovedOn.test(gitErrorText(error))) {
         say(log, notify, strings.messages.remoteMovedOn(branch, name));
@@ -333,12 +335,77 @@ async function publish(
     );
     return 'unchanged';
   }
-  await pushBranch(gitPath, root, remote, branch, `refs/heads/${branch}`, {
-    publish: true,
-    stop,
-  });
+  await pushRef(
+    gitPath,
+    root,
+    remote,
+    `refs/heads/${branch}`,
+    `refs/heads/${branch}`,
+    {
+      publish: true,
+      stop,
+    },
+  );
   say(log, notify, strings.messages.published(branch, `${remote}/${branch}`));
   return 'pushed';
+}
+
+export async function tagRemoteOf(
+  gitPath: string,
+  root: string,
+  remotes: readonly string[],
+): Promise<string | undefined> {
+  if (remotes.length <= 1) {
+    return remotes[0];
+  }
+  const upstream = await readUpstream(gitPath, root);
+  return upstream.kind === 'found' && upstream.remote !== '.'
+    ? upstream.remote
+    : undefined;
+}
+
+const tagElsewhere = /\[rejected\][^\n]*\(already exists\)/;
+
+export async function pushTag(
+  log: Log,
+  notify: Notify,
+  { gitPath, root }: RepositoryAt,
+  tag: string,
+  stop: AbortSignal,
+): Promise<string | undefined> {
+  try {
+    const remote = await tagRemoteOf(
+      gitPath,
+      root,
+      await listRemotes(gitPath, root),
+    );
+    if (remote === undefined) {
+      const head = await readHead(gitPath, root);
+      notify('info', strings.messages.noTagRemote(tag, head?.name));
+      return undefined;
+    }
+    const ref = `refs/tags/${tag}`;
+    try {
+      await pushRef(gitPath, root, remote, ref, ref, { stop });
+    } catch (error) {
+      if (tagElsewhere.test(gitErrorText(error))) {
+        say(log, notify, strings.messages.tagElsewhere(tag, remote));
+        return undefined;
+      }
+      throw error;
+    }
+    say(log, notify, strings.messages.pushedTag(tag, remote));
+    return remote;
+  } catch (error) {
+    reportFailure(
+      log,
+      notify,
+      strings.log.pushFailed,
+      strings.messages.couldNotPush,
+      error,
+    );
+    return undefined;
+  }
 }
 
 function reportPullFailure(log: Log, notify: Notify, error: unknown): void {

@@ -191,6 +191,7 @@ export interface RepositoryState {
   readonly headCommit: string | undefined;
   readonly refs: readonly RefInfo[];
   readonly stashes: readonly StashInfo[];
+  readonly tagRemote?: string;
 }
 
 export interface LastFetch {
@@ -280,6 +281,7 @@ export type TabMessage =
   | { readonly type: 'fetch' }
   | { readonly type: 'pull' }
   | { readonly type: 'push' }
+  | { readonly type: 'pushTag'; readonly name: string }
   | { readonly type: 'lookupHash'; readonly query: string }
   | { readonly type: 'searchCommits'; readonly query: string }
   | { readonly type: 'stopCommitSearch' }
@@ -333,6 +335,7 @@ export type ToWebview =
   | { readonly type: 'fetching'; readonly running: boolean }
   | { readonly type: 'pulling'; readonly running: boolean }
   | { readonly type: 'pushing'; readonly running: boolean }
+  | { readonly type: 'pushingTag'; readonly name: string | undefined }
   | { readonly type: 'update'; readonly status: UpdateStatus }
   | ({ readonly type: 'lastFetch' } & LastFetch)
   | { readonly type: 'applyingSolo'; readonly running: boolean }

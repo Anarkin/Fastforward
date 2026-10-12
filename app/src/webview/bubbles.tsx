@@ -23,6 +23,15 @@ export const BranchActions = createContext<BranchActionsOf | undefined>(
   undefined,
 );
 
+export interface TagActionsOf {
+  readonly remote: string;
+  readonly onRemote: ReadonlySet<string>;
+  readonly pushing: string | undefined;
+  readonly onPush: (tag: string) => void;
+}
+
+export const TagActions = createContext<TagActionsOf | undefined>(undefined);
+
 export function useCheckedOut(ref: BookmarkRef): boolean {
   const checkedOutBranch = useContext(CheckedOutBranch);
   return ref.kind === 'branch' && ref.name === checkedOutBranch;
@@ -62,10 +71,16 @@ export function RefBubble({
   const menu = useContextMenu(refMenuTarget(info));
   const checkedOut = useCheckedOut(info);
   const branchActions = useContext(BranchActions);
-  const withActions = actions && checkedOut && branchActions !== undefined;
+  const tagActions = useContext(TagActions);
+  const branchShown = actions && checkedOut && branchActions !== undefined;
+  const tagShown =
+    actions &&
+    info.kind === 'tag' &&
+    tagActions !== undefined &&
+    !tagActions.onRemote.has(info.name);
   return (
     <span
-      className={`badge ${info.kind} ${checkedOut ? 'checked-out' : ''} ${missing ? 'missing' : ''} ${withActions ? 'with-actions' : ''}`}
+      className={`badge ${info.kind} ${checkedOut ? 'checked-out' : ''} ${missing ? 'missing' : ''} ${branchShown || tagShown ? 'with-actions' : ''}`}
       title={
         missing
           ? strings.common.gone(info.name)
@@ -76,8 +91,43 @@ export function RefBubble({
       {...menu}
     >
       {info.name}
-      {withActions && <BubbleActions {...branchActions} />}
+      {branchShown && <BubbleActions {...branchActions} />}
+      {tagShown && (
+        <TagPushAction
+          tag={info.name}
+          remote={tagActions.remote}
+          running={tagActions.pushing === info.name}
+          onPush={tagActions.onPush}
+        />
+      )}
     </span>
+  );
+}
+
+interface Action {
+  readonly key: string;
+  readonly title: string;
+  readonly running: boolean;
+  readonly act: () => void;
+  readonly icon: React.ReactNode;
+}
+
+function actionButton({ key, title, running, act, icon }: Action) {
+  return (
+    <button
+      key={key}
+      className={`bubble-action ${key} ${running ? 'running' : ''}`}
+      title={title}
+      tabIndex={-1}
+      disabled={running}
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={(event) => {
+        event.stopPropagation();
+        act();
+      }}
+    >
+      {icon}
+    </button>
   );
 }
 
@@ -104,22 +154,31 @@ export function BubbleActions({
           act: onPush,
           icon: <PushIcon />,
         },
-      ].map(({ key, title, running, act, icon }) => (
-        <button
-          key={key}
-          className={`bubble-action ${key} ${running ? 'running' : ''}`}
-          title={title}
-          tabIndex={-1}
-          disabled={running}
-          onMouseDown={(event) => event.preventDefault()}
-          onClick={(event) => {
-            event.stopPropagation();
-            act();
-          }}
-        >
-          {icon}
-        </button>
-      ))}
+      ].map(actionButton)}
+    </span>
+  );
+}
+
+export function TagPushAction({
+  tag,
+  remote,
+  running,
+  onPush,
+}: {
+  tag: string;
+  remote: string;
+  running: boolean;
+  onPush: (tag: string) => void;
+}) {
+  return (
+    <span className="bubble-actions">
+      {actionButton({
+        key: 'push',
+        title: strings.commits.pushTag(tag, remote),
+        running,
+        act: () => onPush(tag),
+        icon: <PushIcon />,
+      })}
     </span>
   );
 }

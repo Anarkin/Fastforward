@@ -549,14 +549,15 @@ suite('Tab state', () => {
     );
   });
 
-  test('replays whether it is fetching, pulling and pushing, so a tab shown again keeps saying so', () => {
+  test('replays whether it is fetching, pulling and pushing, a tag too, so a tab shown again keeps saying so', () => {
     const tab = newTabState();
+    keep(tab.shown, { type: 'pushingTag', name: 'v1' });
     keep(tab.shown, { type: 'pushing', running: true });
     keep(tab.shown, { type: 'pulling', running: true });
     keep(tab.shown, { type: 'fetching', running: true });
     assert.deepStrictEqual(
       replayOf(tab).map((message) => message.type),
-      ['fetching', 'pulling', 'pushing'],
+      ['fetching', 'pulling', 'pushing', 'pushingTag'],
     );
   });
 

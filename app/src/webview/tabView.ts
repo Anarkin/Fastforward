@@ -42,6 +42,7 @@ export interface TabView {
   readonly fetching: boolean;
   readonly pulling: boolean;
   readonly pushing: boolean;
+  readonly pushingTag: string | undefined;
   readonly applyingSolo: boolean;
   readonly back: readonly NavigationEntry[];
   readonly forward: readonly NavigationEntry[];
@@ -79,6 +80,7 @@ export const emptyTabView: TabView = {
   fetching: false,
   pulling: false,
   pushing: false,
+  pushingTag: undefined,
   applyingSolo: false,
   back: [],
   forward: [],
@@ -310,6 +312,8 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
       return { ...state, pulling: action.running };
     case 'pushing':
       return { ...state, pushing: action.running };
+    case 'pushingTag':
+      return { ...state, pushingTag: action.name };
     case 'applyingSolo':
       return { ...state, applyingSolo: action.running };
     case 'navigation':

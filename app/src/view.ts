@@ -77,7 +77,9 @@ import {
   fastForwardToUpstream,
   fetchAll,
   foundUpstream,
+  pushTag,
   pushToUpstream,
+  tagRemoteOf,
   reportFetched,
   type Fetched,
   type Pushed,
@@ -250,7 +252,7 @@ export class FastforwardView {
   private readonly worktreeListings = new Map<string, number>();
   private grouped: Promise<void> | undefined;
   private readonly fetches = new Map<string, Fetching>();
-  private readonly pushes = new Map<string, Promise<Pushed>>();
+  private readonly pushes = new Map<string, Promise<unknown>>();
   private readonly fetchFailures = new Set<string>();
   private readonly commitSearches = new Map<string, AbortController>();
   private readonly hashLookups = new Map<string, number>();
@@ -736,6 +738,9 @@ export class FastforwardView {
         break;
       case 'push':
         await this.push(context);
+        break;
+      case 'pushTag':
+        await this.pushTag(context, message.name);
         break;
       case 'loadTree':
         if (this.isSelected(context, message.hash)) {
@@ -1271,12 +1276,21 @@ export class FastforwardView {
     context: Context,
     refs: Promise<Refs>,
   ): Promise<void> {
-    const { head, refs: listed, stashes } = await refs;
+    const { head, refs: listed, remotes, stashes } = await refs;
+    const tagRemote = await tagRemoteOf(
+      context.gitPath,
+      context.root,
+      remotes,
+    ).catch(() => undefined);
     context.post({
       type: 'repository',
       head: head?.name,
       headCommit: head?.commit,
       refs: listed,
+      ...(tagRemote !== undefined &&
+        this.storage.remoteTagsOf(context.repository).has(tagRemote) && {
+          tagRemote,
+        }),
       stashes: stashes.map(({ name, commit, message }) => ({
         name,
         commit,
@@ -1600,17 +1614,60 @@ export class FastforwardView {
     }
   }
 
-  private async pushAfterRemoteWork(context: Context): Promise<Pushed> {
-    const { repository } = context;
-    const { pushes } = this;
-    const pushing = (this.remoteWork(repository) ?? Promise.resolve()).then(
-      () =>
-        pushToUpstream(
+  private pushAfterRemoteWork(context: Context): Promise<Pushed> {
+    return this.afterRemoteWork(context.repository, () =>
+      pushToUpstream(
+        this.log,
+        this.notify(context),
+        context,
+        this.quitting.signal,
+      ),
+    );
+  }
+
+  private async pushTag(context: Context, name: string): Promise<void> {
+    const { refs } = await this.refsOf(context);
+    const tag = refs.find((ref) => ref.kind === 'tag' && ref.name === name);
+    if (!tag) {
+      return;
+    }
+    context.post({ type: 'pushingTag', name });
+    let pushedTo: string | undefined;
+    try {
+      pushedTo = await this.afterRemoteWork(context.repository, () =>
+        pushTag(
           this.log,
           this.notify(context),
           context,
+          name,
           this.quitting.signal,
         ),
+      );
+    } finally {
+      context.post({ type: 'pushingTag', name: undefined });
+    }
+    const known =
+      pushedTo === undefined
+        ? undefined
+        : this.storage.remoteTagsOf(context.repository).get(pushedTo);
+    if (pushedTo === undefined || known === undefined) {
+      return;
+    }
+    await this.storage.setRemoteTags(
+      context.repository,
+      pushedTo,
+      new Map([...known, [name, tag.commit]]),
+    );
+    await this.refresh(context, undefined, refsAlone);
+  }
+
+  private async afterRemoteWork<T>(
+    repository: string,
+    work: () => Promise<T>,
+  ): Promise<T> {
+    const { pushes } = this;
+    const pushing = (this.remoteWork(repository) ?? Promise.resolve()).then(
+      work,
     );
     pushes.set(repository, pushing);
     try {
@@ -1682,6 +1739,7 @@ export class FastforwardView {
       return;
     }
     let changed = false;
+    let newlyKnown = false;
     for (const remote of remotes) {
       try {
         const tags = await listRemoteTags(gitPath, root, remote, {
@@ -1692,6 +1750,7 @@ export class FastforwardView {
         if (!sameTags(known, tags)) {
           await this.storage.setRemoteTags(repository, remote, tags);
           changed ||= !sameTags(known ?? new Map(), tags);
+          newlyKnown ||= known === undefined;
         }
       } catch (error) {
         if (this.quitting.signal.aborted) {
@@ -1704,6 +1763,23 @@ export class FastforwardView {
     }
     if (changed) {
       await this.refreshRefsShown(repository);
+    } else if (newlyKnown) {
+      await this.resendRepositoryShown(repository);
+    }
+  }
+
+  private async resendRepositoryShown(repository: string): Promise<void> {
+    const root = this.storage.worktreeOf(repository);
+    const page = this.page;
+    const shown =
+      page && this.isActive(root) ? await this.context(page, root) : undefined;
+    if (page && shown) {
+      await this.run(
+        strings.log.refreshingFailed,
+        page,
+        () => this.sendRepository(shown, this.refsOf(shown)),
+        root,
+      );
     }
   }
 
@@ -2914,6 +2990,7 @@ function needsNoWholeHistory(tab: TabState, message: TabMessage): boolean {
     case 'fetch':
     case 'pull':
     case 'push':
+    case 'pushTag':
     case 'checkout':
       return true;
     case 'selectCommit':

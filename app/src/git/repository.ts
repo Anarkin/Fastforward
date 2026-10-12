@@ -365,11 +365,11 @@ export async function listRemoteTags(
   return tags;
 }
 
-export async function pushBranch(
+export async function pushRef(
   gitPath: string,
   root: string,
   remote: string,
-  branch: string,
+  localRef: string,
   remoteRef: string,
   {
     publish = false,
@@ -387,7 +387,7 @@ export async function pushBranch(
         ...(publish ? ['--set-upstream'] : []),
         '--end-of-options',
         remote,
-        `refs/heads/${branch}:${remoteRef}`,
+        `${localRef}:${remoteRef}`,
       ],
       { signal: AbortSignal.any([timedOut, stop]), runsHooks: true },
     );

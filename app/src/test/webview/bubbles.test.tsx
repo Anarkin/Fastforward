@@ -5,6 +5,8 @@ import { suite, test } from 'vitest';
 import {
   BranchActions,
   BubbleActions,
+  TagActions,
+  TagPushAction,
   CheckedOutBranch,
   CommitBubble,
   HeadBubble,
@@ -20,6 +22,21 @@ function onMain(node: React.ReactNode): string {
     <BranchActions.Provider value={idle}>
       <CheckedOutBranch.Provider value="main">{node}</CheckedOutBranch.Provider>
     </BranchActions.Provider>,
+  );
+}
+
+function tagged(name: string, onRemote: string[]): string {
+  return renderToStaticMarkup(
+    <TagActions.Provider
+      value={{
+        remote: 'origin',
+        onRemote: new Set(onRemote),
+        pushing: undefined,
+        onPush: noop,
+      }}
+    >
+      <RefBubble info={{ kind: 'tag', name }} actions />
+    </TagActions.Provider>,
   );
 }
 
@@ -150,6 +167,81 @@ suite('Bubbles', () => {
       assert.ok(!classesOf(other).has('running'));
       assert.doesNotMatch(other, /disabled/);
     }
+  });
+
+  test('puts a push button on a tag missing from the remote it would go to, naming both, and none on a tag already there or without that remote known', () => {
+    const missing = tagged('v1', ['v0']);
+    tagWith(missing, '', 'badge', 'tag', 'with-actions');
+    tagWith(missing, 'title="Push v1 to origin"', 'bubble-action', 'push');
+    assert.doesNotMatch(tagged('v1', ['v1']), /bubble-action|with-actions/);
+    assert.doesNotMatch(
+      renderToStaticMarkup(
+        <RefBubble info={{ kind: 'tag', name: 'v1' }} actions />,
+      ),
+      /bubble-action/,
+    );
+    assert.doesNotMatch(
+      renderToStaticMarkup(
+        <TagActions.Provider
+          value={{
+            remote: 'origin',
+            onRemote: new Set(),
+            pushing: undefined,
+            onPush: noop,
+          }}
+        >
+          <RefBubble info={{ kind: 'tag', name: 'v1' }} />
+          <RefBubble info={{ kind: 'remote-tag', name: 'origin/v1' }} actions />
+        </TagActions.Provider>,
+      ),
+      /bubble-action/,
+    );
+  });
+
+  test('pushes the tag of its bubble without selecting its row or taking the keys from the list, marking only that tag as running while it pushes', () => {
+    const calls: string[] = [];
+    const action = renderedBy(TagPushAction, {
+      tag: 'v1',
+      remote: 'origin',
+      running: false,
+      onPush: (name) => calls.push(`push ${name}`),
+    });
+    assert.ok(isValidElement<{ children: React.ReactElement }>(action));
+    const button = action.props.children;
+    assert.ok(
+      isValidElement<{
+        onClick: (event: { stopPropagation: () => void }) => void;
+        onMouseDown: (event: { preventDefault: () => void }) => void;
+      }>(button),
+    );
+    button.props.onMouseDown({
+      preventDefault: () => calls.push('kept focus'),
+    });
+    button.props.onClick({
+      stopPropagation: () => calls.push('row left alone'),
+    });
+    assert.deepStrictEqual(calls, ['kept focus', 'row left alone', 'push v1']);
+    const html = renderToStaticMarkup(
+      <TagActions.Provider
+        value={{
+          remote: 'origin',
+          onRemote: new Set(),
+          pushing: 'v1',
+          onPush: noop,
+        }}
+      >
+        <RefBubble info={{ kind: 'tag', name: 'v1' }} actions />
+        <RefBubble info={{ kind: 'tag', name: 'v2' }} actions />
+      </TagActions.Provider>,
+    );
+    assert.match(
+      tagWith(html, 'title="Push v1 to origin"', 'bubble-action', 'running'),
+      /disabled=""/,
+    );
+    assert.doesNotMatch(
+      tagWith(html, 'title="Push v2 to origin"', 'bubble-action'),
+      /disabled|running/,
+    );
   });
 
   test('offers the menu of a detached HEAD commit', () => {

@@ -5,7 +5,7 @@ import {
   columnFocusAttribute,
   type ColumnName,
 } from '../../webview/activeColumn';
-import { RefBubble } from '../../webview/bubbles';
+import { RefBubble, TagActions } from '../../webview/bubbles';
 import { GraphCell } from '../../webview/graph';
 import { listedFilesRows } from '../../webview/changesTree';
 import { Column } from '../../webview/column';
@@ -1003,6 +1003,35 @@ suite('Style', () => {
         border: undefined,
       });
     }
+  });
+
+  test("keeps a tag's hole and point clear of the push button on it, which squares off, as the tag goes on past it", () => {
+    const tag = withClass(
+      rendered(
+        createElement(
+          TagActions.Provider,
+          {
+            value: {
+              remote: 'origin',
+              onRemote: new Set<string>(),
+              pushing: undefined,
+              onPush: noop,
+            },
+          },
+          createElement(
+            'div',
+            { className: 'bubble-line' },
+            createElement(RefBubble, {
+              info: { kind: 'tag', name: 'v1' },
+              actions: true,
+            }),
+          ),
+        ),
+      ),
+      'badge',
+    );
+    looks(tag, { 'padding-right': '14px' });
+    looks(withClass(tag, 'bubble-action'), { 'border-radius': '0' });
   });
 
   test('fills the checked-out bubble with its own colors, and no bubble changes under the pointer', () => {
