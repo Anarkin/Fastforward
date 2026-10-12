@@ -279,6 +279,19 @@ body {
   gap: 4px 8px;
 }
 
+.shortcut-keys::after {
+  content: '';
+  flex: 1 0 0;
+  align-self: center;
+  height: 1px;
+  background: linear-gradient(
+      to right,
+      var(--color-background) 1px,
+      transparent 1px
+    )
+    0 0 / 3px 1px repeat-x;
+}
+
 .shortcut-combo {
   white-space: nowrap;
 }
