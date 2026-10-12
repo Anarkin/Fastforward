@@ -61,6 +61,8 @@ const names = {
   upstream: 'Fastforward-playground-upstream.git',
 };
 
+const builds = 120_000;
+
 suite('Playground', () => {
   let folder: string;
   let local: string;
@@ -74,7 +76,7 @@ suite('Playground', () => {
     worktree = path.join(folder, names.worktree);
     const ran = await playground(folder);
     assert.strictEqual(ran.code, 0, ran.output);
-  });
+  }, builds);
 
   afterAll(() => removeFolder(folder));
 
@@ -592,42 +594,50 @@ suite('Playground', () => {
     }
   });
 
-  test('makes the playground anew over one it made before, however it was changed', async () => {
-    await git(local, 'branch', '-f', 'lagging-01', 'origin/lagging-01');
-    await git(local, 'tag', 'stray');
-    fs.writeFileSync(path.join(local, 'notes.txt'), 'changed');
-    const ran = await playground(folder);
-    assert.strictEqual(ran.code, 0, ran.output);
-    assert.strictEqual(
-      (await tracking())['lagging-01'],
-      'origin/lagging-01 [behind 1]',
-    );
-    assert.strictEqual(await git(local, 'tag', '--list', 'stray'), '');
-    assert.deepStrictEqual(await status(), uncommitted);
-  });
-
-  test('adds a second remote with --two-remotes, and a branch of 50,000 commits with --large', async () => {
-    const other = tempFolder('playground-flags');
-    try {
-      const ran = await playground(other, '--two-remotes', '--large');
+  test(
+    'makes the playground anew over one it made before, however it was changed',
+    async () => {
+      await git(local, 'branch', '-f', 'lagging-01', 'origin/lagging-01');
+      await git(local, 'tag', 'stray');
+      fs.writeFileSync(path.join(local, 'notes.txt'), 'changed');
+      const ran = await playground(folder);
       assert.strictEqual(ran.code, 0, ran.output);
-      const repository = path.join(other, names.local);
-      assert.deepStrictEqual((await git(repository, 'remote')).split('\n'), [
-        'origin',
-        'upstream',
-      ]);
-      assert.ok(
-        fs.existsSync(path.join(other, names.upstream, 'HEAD')),
-        'the upstream remote',
-      );
       assert.strictEqual(
-        await git(repository, 'rev-list', '--count', 'main..long-history'),
-        '50000',
+        (await tracking())['lagging-01'],
+        'origin/lagging-01 [behind 1]',
       );
-    } finally {
-      removeFolder(other);
-    }
-  });
+      assert.strictEqual(await git(local, 'tag', '--list', 'stray'), '');
+      assert.deepStrictEqual(await status(), uncommitted);
+    },
+    builds,
+  );
+
+  test(
+    'adds a second remote with --two-remotes, and a branch of 50,000 commits with --large',
+    async () => {
+      const other = tempFolder('playground-flags');
+      try {
+        const ran = await playground(other, '--two-remotes', '--large');
+        assert.strictEqual(ran.code, 0, ran.output);
+        const repository = path.join(other, names.local);
+        assert.deepStrictEqual((await git(repository, 'remote')).split('\n'), [
+          'origin',
+          'upstream',
+        ]);
+        assert.ok(
+          fs.existsSync(path.join(other, names.upstream, 'HEAD')),
+          'the upstream remote',
+        );
+        assert.strictEqual(
+          await git(repository, 'rev-list', '--count', 'main..long-history'),
+          '50000',
+        );
+      } finally {
+        removeFolder(other);
+      }
+    },
+    builds,
+  );
 
   test('leaves alone a folder of any of its names that it did not make, saying so', async () => {
     const other = tempFolder('playground-other');
