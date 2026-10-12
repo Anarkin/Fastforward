@@ -206,6 +206,7 @@ export const strings = {
         ? `Fetch every remote, dropping branches deleted there\n${couldNotFetchAgo(elapsed)}`
         : `Fetch every remote, dropping branches deleted there\n${couldNotFetchAgo(elapsed)}\n${lastFetchedAgo(sinceFetched)}`,
     pull: 'Pull: fetch every remote, then fast-forward the checked-out branch to its upstream',
+    push: 'Push: send the commits of the checked-out branch to its upstream, or publish it to the only remote when it has none',
     fetchEvery: (minutes: number) =>
       minutes === 1 ? 'Fetch Every Minute' : `Fetch Every ${minutes} Minutes`,
     stopFetchingEvery: (minutes: number) =>
@@ -356,6 +357,23 @@ export const strings = {
     cannotFastForward: (local: string, upstream: string) =>
       `${local} has diverged from ${upstream}, so it can't be fast-forwarded`,
     couldNotPull: (reason: string) => `Couldn't pull. ${reason}`,
+    pushed: (local: string, upstream: string) =>
+      `Pushed ${local} to ${upstream}`,
+    published: (local: string, upstream: string) =>
+      `Published ${local} as ${upstream}`,
+    behind: (local: string, upstream: string) =>
+      `${local} is behind ${upstream}, with nothing to push`,
+    cannotPushDiverged: (local: string, upstream: string) =>
+      `${local} has diverged from ${upstream}, so pushing it would drop commits there`,
+    remoteMovedOn: (local: string, upstream: string) =>
+      `${upstream} has new commits on the remote that ${local} lacks, so it wasn't pushed`,
+    noRemote: (local: string) =>
+      `${local} has no upstream, and there's no remote to push it to`,
+    severalRemotes: (local: string) =>
+      `${local} has no upstream, and with several remotes, it's unclear which to push it to`,
+    localUpstream: (local: string, upstream: string) =>
+      `${local} tracks the local branch ${upstream}, so it has no remote to push to`,
+    couldNotPush: (reason: string) => `Couldn't push. ${reason}`,
     upToDate: (version: string) => `${brand} ${version} is up to date`,
     downloadingUpdate: (version: string) => `Downloading ${brand} ${version}`,
     updateReady: (version: string) =>
@@ -415,6 +433,8 @@ export const strings = {
       `git ${command} failed: it was stopped by ${signal}`,
     gitOutputTooLarge: (command: string, megabytes: number) =>
       `git ${command} failed: it printed over ${megabytes} MB`,
+    pushTimedOut: (seconds: number) =>
+      `git push timed out after ${seconds} seconds`,
     fetchTimedOut: (seconds: number) =>
       `git fetch timed out after ${seconds} seconds`,
     outsideRepository: (path: string) => `${path} is outside the repository`,
@@ -504,5 +524,6 @@ export const strings = {
     fetched: 'Fetched every remote',
     fetchFailed: 'Fetching every remote failed',
     pullFailed: 'Pulling failed',
+    pushFailed: 'Pushing failed',
   },
 };

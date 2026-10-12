@@ -94,13 +94,12 @@ export async function readRefs(gitPath: string, root: string): Promise<Refs> {
     await Promise.all([
       readHeadAndShallow(gitPath, root),
       listRefs(gitPath, root),
-      runGit(gitPath, root, ['remote']),
+      listRemotes(gitPath, root),
       listStashes(gitPath, root),
     ]);
-  const names = remotes.split('\n').filter(Boolean);
   return {
     head,
-    refs: refs.map((ref) => withRemote(ref, names)),
+    refs: refs.map((ref) => withRemote(ref, remotes)),
     stashes,
     dates,
     shallow,
@@ -276,7 +275,14 @@ export async function checkoutNewBranch(
   );
 }
 
-const fetchTimeout = 5 * 60_000;
+export async function listRemotes(
+  gitPath: string,
+  root: string,
+): Promise<string[]> {
+  return (await runGit(gitPath, root, ['remote'])).split('\n').filter(Boolean);
+}
+
+const remoteTimeout = 5 * 60_000;
 
 const neverAsk = {
   GCM_INTERACTIVE: 'never',
@@ -290,7 +296,7 @@ export async function fetchAllRemotes(
   gitPath: string,
   root: string,
   {
-    timeout = fetchTimeout,
+    timeout = remoteTimeout,
     interactive = true,
     stop = new AbortController().signal,
   } = {},
@@ -316,6 +322,42 @@ export async function fetchAllRemotes(
         strings.errors.fetchTimedOut(Math.round(timeout / 1000)),
         { cause: error },
       );
+    }
+    throw error;
+  }
+}
+
+export async function pushBranch(
+  gitPath: string,
+  root: string,
+  remote: string,
+  branch: string,
+  remoteRef: string,
+  {
+    publish = false,
+    timeout = remoteTimeout,
+    stop = new AbortController().signal,
+  } = {},
+): Promise<void> {
+  const timedOut = AbortSignal.timeout(timeout);
+  try {
+    await runGit(
+      gitPath,
+      root,
+      [
+        'push',
+        ...(publish ? ['--set-upstream'] : []),
+        '--end-of-options',
+        remote,
+        `refs/heads/${branch}:${remoteRef}`,
+      ],
+      { signal: AbortSignal.any([timedOut, stop]), runsHooks: true },
+    );
+  } catch (error) {
+    if (timedOut.aborted) {
+      throw new Error(strings.errors.pushTimedOut(Math.round(timeout / 1000)), {
+        cause: error,
+      });
     }
     throw error;
   }

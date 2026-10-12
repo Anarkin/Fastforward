@@ -9,6 +9,8 @@ export type Upstream =
       readonly branch: string;
       readonly name: string;
       readonly commit: string;
+      readonly remote: string;
+      readonly remoteRef: string;
     };
 
 export async function readUpstream(
@@ -24,11 +26,11 @@ export async function readUpstream(
     return { kind: 'detached' };
   }
   const branch = ref.slice('refs/heads/'.length);
-  const [upstream = '', name = ''] = splitNul(
+  const [upstream = '', name = '', remote = '', remoteRef = ''] = splitNul(
     (
       await runGit(gitPath, cwd, [
         'for-each-ref',
-        '--format=%(upstream)%00%(upstream:short)',
+        '--format=%(upstream)%00%(upstream:short)%00%(upstream:remotename)%00%(upstream:remoteref)',
         ref,
       ])
     ).trim(),
@@ -51,7 +53,7 @@ export async function readUpstream(
     )
   ).trim();
   return commit
-    ? { kind: 'found', branch, name, commit }
+    ? { kind: 'found', branch, name, commit, remote, remoteRef }
     : { kind: 'gone', branch, name };
 }
 

@@ -279,6 +279,7 @@ export type TabMessage =
   | { readonly type: 'checkout'; readonly target: CheckoutTarget }
   | { readonly type: 'fetch' }
   | { readonly type: 'pull' }
+  | { readonly type: 'push' }
   | { readonly type: 'lookupHash'; readonly query: string }
   | { readonly type: 'searchCommits'; readonly query: string }
   | { readonly type: 'stopCommitSearch' }
@@ -331,6 +332,7 @@ export type ToWebview =
   | { readonly type: 'solo'; readonly solo: boolean }
   | { readonly type: 'fetching'; readonly running: boolean }
   | { readonly type: 'pulling'; readonly running: boolean }
+  | { readonly type: 'pushing'; readonly running: boolean }
   | { readonly type: 'update'; readonly status: UpdateStatus }
   | ({ readonly type: 'lastFetch' } & LastFetch)
   | { readonly type: 'applyingSolo'; readonly running: boolean }

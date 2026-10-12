@@ -59,6 +59,15 @@ export function PullIcon() {
   );
 }
 
+export function PushIcon() {
+  return (
+    <Icon>
+      <path d="M8 13.5v-8M4.5 9L8 5.5 11.5 9" />
+      <path d="M3 2.5h10" />
+    </Icon>
+  );
+}
+
 export function SoloIcon() {
   return (
     <Icon>

@@ -82,6 +82,8 @@ export function navButtons(
       lastFetch={{}}
       pulling={false}
       onPull={noop}
+      pushing={false}
+      onPush={noop}
       {...props}
     />
   );

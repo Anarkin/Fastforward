@@ -9,7 +9,14 @@ import type {
   ToWebviewOf,
 } from '../shared/protocol';
 import { onMenuKeyDown, useDismiss, useMenuFocus } from './contextMenu';
-import { BackIcon, ForwardIcon, PinIcon, PullIcon, RefreshIcon } from './icons';
+import {
+  BackIcon,
+  ForwardIcon,
+  PinIcon,
+  PullIcon,
+  PushIcon,
+  RefreshIcon,
+} from './icons';
 import { fetchStatus } from './fetchStatus';
 import { LocationsPopup } from './locations';
 import { keymap } from '../shared/keymap';
@@ -64,6 +71,8 @@ export function NavButtons({
   lastFetch,
   pulling,
   onPull,
+  pushing,
+  onPush,
 }: {
   back: readonly NavigationEntry[];
   forward: readonly NavigationEntry[];
@@ -76,6 +85,8 @@ export function NavButtons({
   lastFetch: LastFetch;
   pulling: boolean;
   onPull: () => void;
+  pushing: boolean;
+  onPush: () => void;
 }) {
   const now = Math.max(
     useNow(),
@@ -126,6 +137,14 @@ export function NavButtons({
         onClick={onPull}
       >
         <PullIcon />
+      </button>
+      <button
+        className={`nav-button ${pushing ? 'running' : ''}`}
+        title={strings.navigation.push}
+        disabled={pushing}
+        onClick={onPush}
+      >
+        <PushIcon />
       </button>
     </div>
   );

@@ -38,6 +38,8 @@ suite('Git branches', () => {
         branch: 'main',
         name: 'origin/main',
         commit: behind,
+        remote: 'origin',
+        remoteRef: 'refs/heads/main',
       });
       await temp.git('update-ref', '-d', 'refs/remotes/origin/main');
       assert.deepStrictEqual(await readUpstream(gitPath, cwd), {
@@ -51,6 +53,37 @@ suite('Git branches', () => {
       });
     } finally {
       await temp.git('switch', '-q', 'main');
+      await temp.git('remote', 'remove', 'origin');
+    }
+  });
+
+  test('reads an upstream on a remote under another name, and one that is a local branch', async () => {
+    await temp.git('remote', 'add', 'origin', 'https://example.com/x.git');
+    await temp.git('update-ref', 'refs/remotes/origin/trunk', 'HEAD');
+    const [head] = await temp.resolve('HEAD');
+    try {
+      await temp.git('branch', '--set-upstream-to=origin/trunk');
+      assert.deepStrictEqual(await readUpstream(gitPath, cwd), {
+        kind: 'found',
+        branch: 'main',
+        name: 'origin/trunk',
+        commit: head,
+        remote: 'origin',
+        remoteRef: 'refs/heads/trunk',
+      });
+      await temp.git('switch', '-q', '-c', 'follower', '--track', 'main');
+      assert.deepStrictEqual(await readUpstream(gitPath, cwd), {
+        kind: 'found',
+        branch: 'follower',
+        name: 'main',
+        commit: head,
+        remote: '.',
+        remoteRef: 'refs/heads/main',
+      });
+    } finally {
+      await temp.git('switch', '-q', 'main');
+      await temp.git('branch', '-D', 'follower');
+      await temp.git('branch', '--unset-upstream');
       await temp.git('remote', 'remove', 'origin');
     }
   });

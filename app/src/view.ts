@@ -75,8 +75,10 @@ import {
   fastForwardToUpstream,
   fetchAll,
   foundUpstream,
+  pushToUpstream,
   reportFetched,
   type Fetched,
+  type Pushed,
   type Notify,
   type RepositoryAt,
 } from './operations';
@@ -246,6 +248,7 @@ export class FastforwardView {
   private readonly worktreeListings = new Map<string, number>();
   private grouped: Promise<void> | undefined;
   private readonly fetches = new Map<string, Fetching>();
+  private readonly pushes = new Map<string, Promise<Pushed>>();
   private readonly fetchFailures = new Set<string>();
   private readonly commitSearches = new Map<string, AbortController>();
   private readonly hashLookups = new Map<string, number>();
@@ -728,6 +731,9 @@ export class FastforwardView {
         break;
       case 'pull':
         await this.pull(context, picked);
+        break;
+      case 'push':
+        await this.push(context);
         break;
       case 'loadTree':
         if (this.isSelected(context, message.hash)) {
@@ -1566,6 +1572,52 @@ export class FastforwardView {
     }
   }
 
+  private async push(context: Context): Promise<void> {
+    await context.tab.movingHead;
+    context.post({ type: 'pushing', running: true });
+    let pushed: Pushed;
+    try {
+      pushed = await this.pushAfterRemoteWork(context);
+    } finally {
+      context.post({ type: 'pushing', running: false });
+    }
+    if (pushed === 'pushed') {
+      await this.refresh(context, undefined, refsAlone);
+    } else if (pushed === 'rejected') {
+      await this.fetch(context);
+    }
+  }
+
+  private async pushAfterRemoteWork(context: Context): Promise<Pushed> {
+    const { repository } = context;
+    const { pushes } = this;
+    const pushing = (this.remoteWork(repository) ?? Promise.resolve()).then(
+      () =>
+        pushToUpstream(
+          this.log,
+          this.notify(context),
+          context,
+          this.quitting.signal,
+        ),
+    );
+    pushes.set(repository, pushing);
+    try {
+      return await pushing;
+    } finally {
+      if (pushes.get(repository) === pushing) {
+        pushes.delete(repository);
+      }
+    }
+  }
+
+  private remoteWork(repository: string): Promise<unknown> | undefined {
+    const running = [
+      this.fetches.get(repository)?.fetched,
+      this.pushes.get(repository),
+    ].filter((work) => work !== undefined);
+    return running.length === 0 ? undefined : Promise.all(running);
+  }
+
   private async fetchRemotes(
     at: Fetchable,
     log: Log,
@@ -1615,7 +1667,7 @@ export class FastforwardView {
   private startFetch(at: Fetchable, interactive: boolean): Fetching {
     const { repository } = at;
     const { fetches } = this;
-    const running = fetches.get(repository)?.fetched;
+    const running = this.remoteWork(repository);
     const started: Fetching = {
       fetched: (running
         ? running.then(() => fetchAll(at, interactive, this.quitting.signal))
@@ -2804,6 +2856,7 @@ function needsNoWholeHistory(tab: TabState, message: TabMessage): boolean {
     case 'showEntireFile':
     case 'fetch':
     case 'pull':
+    case 'push':
     case 'checkout':
       return true;
     case 'selectCommit':

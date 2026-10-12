@@ -29,6 +29,8 @@ const buttons = (props: Partial<Parameters<typeof NavButtons>[0]>) =>
       lastFetch={{}}
       pulling={false}
       onPull={noop}
+      pushing={false}
+      onPush={noop}
       {...props}
     />,
   );
@@ -174,6 +176,8 @@ suite('Navigation bar', () => {
         lastFetch: {},
         pulling: false,
         onPull: noop,
+        pushing: false,
+        onPush: noop,
       });
       assert.ok(isValidElement<{ children: React.ReactElement[] }>(bar));
       const pair = bar.props.children[2];
@@ -197,7 +201,7 @@ suite('Navigation bar', () => {
     }
   });
 
-  test('pulls on a button after the fetch button and its pin', () => {
+  test('pulls and pushes on buttons after the fetch button and its pin', () => {
     const clicked: string[] = [];
     const bar = renderedBy(NavButtons, {
       back: [],
@@ -211,15 +215,18 @@ suite('Navigation bar', () => {
       lastFetch: {},
       pulling: false,
       onPull: () => clicked.push('pull'),
+      pushing: false,
+      onPush: () => clicked.push('push'),
     });
     assert.ok(isValidElement<{ children: React.ReactElement[] }>(bar));
-    const pull = bar.props.children[3];
-    assert.ok(isValidElement<{ onClick: () => void }>(pull));
-    pull.props.onClick();
-    assert.deepStrictEqual(clicked, ['pull']);
+    for (const button of bar.props.children.slice(3)) {
+      assert.ok(isValidElement<{ onClick: () => void }>(button));
+      button.props.onClick();
+    }
+    assert.deepStrictEqual(clicked, ['pull', 'push']);
     assert.match(
       buttons({}),
-      /<\/span><button class="nav-button[^"]*"[^>]*title="Pull: fetch every remote, then fast-forward the checked-out branch to its upstream"[^>]*>.*?<\/button><\/div>$/,
+      /<\/span><button class="nav-button[^"]*"[^>]*title="Pull: fetch every remote, then fast-forward the checked-out branch to its upstream"[^>]*>.*?<\/button><button class="nav-button[^"]*"[^>]*title="Push: send the commits of the checked-out branch to its upstream, or publish it to the only remote when it has none"[^>]*>.*?<\/button><\/div>$/,
     );
   });
 
@@ -232,6 +239,19 @@ suite('Navigation bar', () => {
     );
     assert.match(pulling, /disabled=""/);
     const idle = tagWith(buttons({}), 'title="Pull:', 'nav-button');
+    assert.ok(!classesOf(idle).has('running'));
+    assert.doesNotMatch(idle, /disabled/);
+  });
+
+  test('disables the push button while pushing, marking it as running', () => {
+    const pushing = tagWith(
+      buttons({ pushing: true }),
+      'title="Push:',
+      'nav-button',
+      'running',
+    );
+    assert.match(pushing, /disabled=""/);
+    const idle = tagWith(buttons({}), 'title="Push:', 'nav-button');
     assert.ok(!classesOf(idle).has('running'));
     assert.doesNotMatch(idle, /disabled/);
   });

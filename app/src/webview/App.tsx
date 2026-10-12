@@ -161,6 +161,7 @@ export function App({ name, post: postToHost, listen }: Props) {
     texts,
     fetching,
     pulling,
+    pushing,
     applyingSolo,
     back,
     forward,
@@ -769,6 +770,8 @@ export function App({ name, post: postToHost, listen }: Props) {
                         lastFetch={lastFetch}
                         pulling={pulling}
                         onPull={() => postTab({ type: 'pull' })}
+                        pushing={pushing}
+                        onPush={() => postTab({ type: 'push' })}
                       />
                     }
                     search={

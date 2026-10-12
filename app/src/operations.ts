@@ -9,6 +9,8 @@ import { gitErrorText } from './git/errorText';
 import {
   checkoutNewBranch,
   fetchAllRemotes,
+  listRemotes,
+  pushBranch,
   readHead,
   readRefs,
   switchToBranch,
@@ -238,6 +240,105 @@ export async function fastForwardToUpstream(
     reportPullFailure(log, notify, error);
     return false;
   }
+}
+
+export type Pushed = 'pushed' | 'rejected' | 'unchanged';
+
+const remoteMovedOn = /\[rejected\][^\n]*\((fetch first|non-fast-forward)\)/;
+
+export async function pushToUpstream(
+  log: Log,
+  notify: Notify,
+  { gitPath, root }: RepositoryAt,
+  stop: AbortSignal,
+): Promise<Pushed> {
+  try {
+    const upstream = await readUpstream(gitPath, root);
+    if (upstream.kind === 'none') {
+      return await publish(
+        log,
+        notify,
+        { gitPath, root },
+        upstream.branch,
+        stop,
+      );
+    }
+    const found = foundUpstream(notify, upstream);
+    if (!found) {
+      return 'unchanged';
+    }
+    const { branch, name, commit, remote, remoteRef } = found;
+    if (remote === '.') {
+      notify('info', strings.messages.localUpstream(branch, name));
+      return 'unchanged';
+    }
+    const { ahead, behind } = await aheadBehind(
+      gitPath,
+      root,
+      `refs/heads/${branch}`,
+      commit,
+    );
+    if (ahead === 0) {
+      say(
+        log,
+        notify,
+        behind === 0
+          ? strings.messages.upToDateWith(branch, name)
+          : strings.messages.behind(branch, name),
+      );
+      return 'unchanged';
+    }
+    if (behind > 0) {
+      say(log, notify, strings.messages.cannotPushDiverged(branch, name));
+      return 'unchanged';
+    }
+    try {
+      await pushBranch(gitPath, root, remote, branch, remoteRef, { stop });
+    } catch (error) {
+      if (remoteMovedOn.test(gitErrorText(error))) {
+        say(log, notify, strings.messages.remoteMovedOn(branch, name));
+        return 'rejected';
+      }
+      throw error;
+    }
+    say(log, notify, strings.messages.pushed(branch, name));
+    return 'pushed';
+  } catch (error) {
+    reportFailure(
+      log,
+      notify,
+      strings.log.pushFailed,
+      strings.messages.couldNotPush,
+      error,
+    );
+    return 'unchanged';
+  }
+}
+
+async function publish(
+  log: Log,
+  notify: Notify,
+  { gitPath, root }: RepositoryAt,
+  branch: string,
+  stop: AbortSignal,
+): Promise<Pushed> {
+  const remotes = await listRemotes(gitPath, root);
+  const [remote] = remotes;
+  if (remote === undefined || remotes.length > 1) {
+    notify(
+      'info',
+      remote === undefined
+        ? strings.messages.noRemote(branch)
+        : strings.messages.severalRemotes(branch),
+    );
+    return 'unchanged';
+  }
+  await pushBranch(gitPath, root, remote, branch, `refs/heads/${branch}`, {
+    publish: true,
+    stop,
+  });
+  say(log, notify, strings.messages.published(branch, `${remote}/${branch}`));
+  return 'pushed';
 }
 
 function reportPullFailure(log: Log, notify: Notify, error: unknown): void {
