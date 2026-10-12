@@ -15,5 +15,6 @@ export function laidOutElement(
   for (const [name, value] of Object.entries(sizes)) {
     Object.defineProperty(element, name, { value, writable: true });
   }
+  document.body.append(element);
   return element;
 }
