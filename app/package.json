@@ -33,7 +33,8 @@
     "lint": "oxlint --type-aware --deny-warnings",
     "knip": "knip",
     "dist": "npm run package && electron-builder --publish never",
-    "release": "node release.mjs"
+    "release": "node release.mjs",
+    "playground": "node playground.mjs"
   },
   "devDependencies": {
     "@tanstack/react-virtual": "^3.14.15",
