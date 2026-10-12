@@ -1419,7 +1419,7 @@ suite('Style', () => {
     const shown = notices();
     looks(withClass(shown, 'notices'), {
       'box-sizing': 'border-box',
-      'max-height': '100vh',
+      bottom: '0',
       'overflow-y': 'auto',
     });
     looks(withClass(shown, 'notice-message'), {
@@ -1428,20 +1428,21 @@ suite('Style', () => {
     });
   });
 
-  test('draws a notice like a context menu, but with twice the room around its message, as it is read rather than scanned', () => {
+  test('draws a notice like a context menu, but on a background of its own, so it stands apart from the panels it floats over, and with twice the room around its message, as it is read rather than scanned', () => {
     const menu = contextMenu();
     for (const level of ['info', 'error']) {
       const shown = notices(level);
       looks(
         withClass(shown, 'notice'),
         Object.fromEntries(
-          ['background', 'border-radius', 'box-shadow'].map((property) => [
+          ['border-radius', 'box-shadow'].map((property) => [
             property,
             cascaded(menu, property),
           ]),
         ),
       );
       looks(withClass(shown, 'notice'), {
+        background: 'var(--color-notice-background)',
         padding: '8px',
         border: undefined,
         'border-left': undefined,
@@ -1465,7 +1466,28 @@ suite('Style', () => {
     looks(close, { height: '20px' });
   });
 
-  test('pads the notices for the shadow of a popup, which their scrolling would clip, keeping them 16px from the corner of the window', () => {
+  test('centers the notices under the column titles, or under the text saying no repository is open, so they show near the controls rather than in a far corner', () => {
+    looks(withClass(notices(), 'notices'), {
+      position: 'fixed',
+      top: 'anchor(--notices bottom, 0px)',
+      left: '0',
+      right: '0',
+      'flex-direction': 'column',
+      'align-items': 'center',
+    });
+    looks(withClass(notices(), 'notice'), {
+      'box-sizing': 'border-box',
+      'max-width': '480px',
+    });
+    for (const anchor of [
+      commitColumnTitle(0),
+      rendered(createElement('div', { className: 'empty-state' })),
+    ]) {
+      looks(anchor, { 'anchor-name': '--notices' });
+    }
+  });
+
+  test('pads the notices for the shadow of a popup, which their scrolling would clip, keeping them 16px from the bottom of the window', () => {
     const shadows = [
       ...(bodyVariable('popup-shadow') ?? '').matchAll(
         /(?<!inset )0 (\d+)px (\d+)px rgba/g,
@@ -1479,11 +1501,12 @@ suite('Style', () => {
       Number.parseInt(padding.top) >=
         Math.max(...shadows.map((s) => s.blur - s.y)),
     );
-    assert.ok(
-      Number.parseInt(padding.left) >= Math.max(...shadows.map((s) => s.blur)),
-    );
-    assert.deepStrictEqual([padding.right, padding.bottom], ['16px', '16px']);
-    looks(container, { right: '0', bottom: '0' });
+    for (const side of [padding.left, padding.right]) {
+      assert.ok(
+        Number.parseInt(side) >= Math.max(...shadows.map((s) => s.blur)),
+      );
+    }
+    assert.strictEqual(padding.bottom, '16px');
   });
 
   test('draws an error notice like any other notice but for the color of its message', () => {

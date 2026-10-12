@@ -378,6 +378,7 @@ body {
 }
 
 .empty-state {
+  anchor-name: --notices;
   padding: 24px;
   color: var(--muted-foreground);
 }
@@ -392,27 +393,30 @@ body {
 
 .notices {
   position: fixed;
+  top: anchor(--notices bottom, 0px);
+  left: 0;
   right: 0;
   bottom: 0;
   z-index: 20;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 8px;
-  padding: 32px 16px 16px 32px;
-  max-width: min(528px, 100vw);
-  max-height: 100vh;
+  padding: 20px 32px 16px;
   overflow-y: auto;
   pointer-events: none;
 }
 
 .notice {
+  box-sizing: border-box;
+  max-width: 480px;
   display: flex;
   align-items: flex-start;
   gap: 8px;
   padding: 8px;
   color: var(--color-foreground);
-  background: var(--color-panel-background);
+  background: var(--color-notice-background);
   border-radius: var(--card-radius);
   box-shadow: var(--popup-shadow);
   pointer-events: auto;
@@ -523,6 +527,7 @@ body.resizing {
 }
 
 .column-title {
+  anchor-name: --notices;
   position: relative;
   flex: none;
   display: flex;

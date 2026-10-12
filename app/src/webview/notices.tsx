@@ -39,7 +39,7 @@ export function Notices({
 
   return (
     <div className="notices" role="status">
-      {notices.map((notice) => (
+      {notices.toReversed().map((notice) => (
         <div key={notice.id} className={`notice ${notice.level}`}>
           <span className="notice-message">{notice.message}</span>
           <button

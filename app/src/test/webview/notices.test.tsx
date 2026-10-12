@@ -42,6 +42,13 @@ suite('Notices', () => {
     );
   });
 
+  test('shows the newest notice on top, nearest the controls above', () => {
+    const html = renderToStaticMarkup(
+      <Notices notices={[notice(1), notice(2)]} onDismiss={() => undefined} />,
+    );
+    assert.ok(html.indexOf('notice 2') < html.indexOf('notice 1'));
+  });
+
   test('marks errors apart from information', () => {
     const html = renderToStaticMarkup(
       <Notices
@@ -60,9 +67,9 @@ suite('Notices', () => {
       onDismiss: (id) => dismissed.push(id),
     });
     assert.ok(isValidElement<{ children: React.ReactElement[] }>(shown));
-    const second = shown.props.children[1];
-    assert.ok(isValidElement<{ children: React.ReactElement[] }>(second));
-    const close = second.props.children[1];
+    const older = shown.props.children[1];
+    assert.ok(isValidElement<{ children: React.ReactElement[] }>(older));
+    const close = older.props.children[1];
     assert.ok(
       isValidElement<{
         onClick: () => void;
@@ -73,7 +80,7 @@ suite('Notices', () => {
     close.props.onMouseDown({ preventDefault: () => prevented++ });
     assert.strictEqual(prevented, 1);
     close.props.onClick();
-    assert.deepStrictEqual(dismissed, [2]);
+    assert.deepStrictEqual(dismissed, [1]);
   });
 
   test('lets information fade by itself, but keeps errors until dismissed', () => {

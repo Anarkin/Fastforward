@@ -28,6 +28,7 @@
 
       "background": "#ddd",
       "panel-background": "#fff",
+      "notice-background": "#ffd",
 
       "border": "#eee",
 
@@ -84,6 +85,7 @@
 
       "background": "#111",
       "panel-background": "#2a2a2a",
+      "notice-background": "#3d3a26",
 
       "border": "#111",
 
