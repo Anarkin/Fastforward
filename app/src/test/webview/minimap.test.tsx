@@ -85,7 +85,7 @@ suite('Minimap', () => {
 
   test('marks each run of added or removed lines where it is in the file', () => {
     const rows = minimapRows([
-      { kind: 'file', file: 0, path: 'a', open: true },
+      { kind: 'file', file: 0, path: 'a', open: true, collapsible: true },
       line('context'),
       line('removed'),
       line('added'),
@@ -109,7 +109,7 @@ suite('Minimap', () => {
     const rows = minimapRows(
       [
         { kind: 'error' },
-        { kind: 'file', file: 0, path: 'a', open: true },
+        { kind: 'file', file: 0, path: 'a', open: true, collapsible: true },
         line('added'),
       ],
       (index) => (index === 0 ? 40 : undefined),

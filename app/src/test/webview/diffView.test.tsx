@@ -88,6 +88,9 @@ const binaryOf = (path: string) =>
 const kinds = (rows: ReturnType<typeof diffRows>) =>
   rows.map((row) => row.kind);
 
+const headers = (rows: ReturnType<typeof diffRows>) =>
+  rows.flatMap((row) => (row.kind === 'file' ? [row.collapsible] : []));
+
 const filesChanging = (...counts: readonly number[]) =>
   counts.map((insertions, index) =>
     fileChange(`${index}.ts`, { insertions, deletions: 0 }),
@@ -236,8 +239,16 @@ suite('Diff rows', () => {
     const opened = diffRows(files, new Map([['graph.json', true]]), undefined);
     assert.strictEqual(opened.length, 2 + collapseThreshold + 1);
 
-    const closed = diffRows(files, new Map([['graph.json', false]]), undefined);
-    assert.deepStrictEqual(kinds(closed), ['error', 'file']);
+    const closed = diffRows(
+      parsePatch(
+        [patch('graph.json', collapseThreshold + 1), patch('a.ts', 1)].join(
+          '\n',
+        ),
+      ),
+      new Map([['graph.json', false]]),
+      undefined,
+    );
+    assert.deepStrictEqual(kinds(closed), ['error', 'file', 'file', 'line']);
   });
 
   test('counts only changed lines toward collapsing a file', () => {
@@ -252,9 +263,47 @@ suite('Diff rows', () => {
   });
 
   test('closes a small file when asked', () => {
-    const files = parsePatch(patch('a.ts', 2));
+    const files = parsePatch([patch('a.ts', 2), patch('b.ts', 1)].join('\n'));
     const rows = diffRows(files, new Map([['a.ts', false]]), undefined);
-    assert.deepStrictEqual(kinds(rows), ['error', 'file']);
+    assert.deepStrictEqual(kinds(rows), ['error', 'file', 'file', 'line']);
+  });
+
+  test('lets a file collapse only among others, as a file shown alone has nothing to make room for', () => {
+    const pair = parsePatch([patch('a.ts', 1), patch('b.ts', 1)].join('\n'));
+    assert.deepStrictEqual(headers(diffRows(pair, new Map(), undefined)), [
+      true,
+      true,
+    ]);
+    assert.deepStrictEqual(
+      headers(diffRows(pair.slice(0, 1), new Map(), undefined)),
+      [false],
+    );
+    assert.deepStrictEqual(
+      headers(
+        diffRows([], new Map(), {
+          path: 'README.md',
+          content: 'a\n',
+          binary: false,
+        }),
+      ),
+      [false],
+    );
+  });
+
+  test('keeps a file shown alone open though it was closed among others, as alone it has no way to open again', () => {
+    const files = parsePatch(patch('a.ts', 2));
+    assert.deepStrictEqual(
+      kinds(diffRows(files, new Map([['a.ts', false]]), undefined)),
+      ['error', 'file', 'line', 'line'],
+    );
+  });
+
+  test('still offers to show a large file shown alone that was closed among others', () => {
+    const files = parsePatch(patch('graph.json', collapseThreshold + 1));
+    assert.deepStrictEqual(
+      kinds(diffRows(files, new Map([['graph.json', false]]), undefined)),
+      ['error', 'file', 'large'],
+    );
   });
 
   test('lays out a whole file line by line', () => {
@@ -898,8 +947,14 @@ suite('Newline at the end of a file', () => {
       ['error', 'file', 'split', 'noNewline'],
     );
     assert.deepStrictEqual(
-      kinds(diffRows(files, new Map([['a.md', false]]), undefined)),
-      ['error', 'file'],
+      kinds(
+        diffRows(
+          [...files, ...parsePatch(patch('b.ts', 1))],
+          new Map([['a.md', false]]),
+          undefined,
+        ),
+      ),
+      ['error', 'file', 'file', 'line'],
     );
   });
 });
@@ -1704,6 +1759,7 @@ const previewHeader = (preview?: Preview, rendered?: boolean) =>
       path="v.svg"
       open
       whole={false}
+      collapsible
       onClick={() => {}}
       preview={preview}
       rendered={rendered}
@@ -1867,18 +1923,46 @@ suite('Binary files', () => {
   });
 });
 
+const collapsibleHeader = (collapsible: boolean) =>
+  renderToStaticMarkup(
+    <FileHeader
+      path="a.ts"
+      open
+      whole={false}
+      collapsible={collapsible}
+      onClick={() => {}}
+    />,
+  );
+
 suite('Diff file header', () => {
   test('labels a file shown entire as unchanged, naming no commit, as it may be in the uncommitted changes or a comparison', () => {
     const html = renderToStaticMarkup(
-      <FileHeader path="a.ts" open whole onClick={() => {}} />,
+      <FileHeader
+        path="a.ts"
+        open
+        whole
+        collapsible={false}
+        onClick={() => {}}
+      />,
     );
     assert.match(html, /<span class="unchanged">Unchanged<\/span>/);
     assert.doesNotMatch(html, /commit/);
     assert.doesNotMatch(
       renderToStaticMarkup(
-        <FileHeader path="a.ts" open whole={false} onClick={() => {}} />,
+        <FileHeader
+          path="a.ts"
+          open
+          whole={false}
+          collapsible
+          onClick={() => {}}
+        />,
       ),
       /unchanged/,
     );
+  });
+
+  test('draws the twisty only on a header that can collapse', () => {
+    assert.match(collapsibleHeader(true), /twisty/);
+    assert.doesNotMatch(collapsibleHeader(false), /twisty/);
   });
 });

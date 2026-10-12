@@ -163,7 +163,7 @@ suite('Previews', () => {
     assert.deepStrictEqual(
       kinds(
         diffRows(
-          [large],
+          [large, { ...large, path: 'b.md' }],
           new Map([['README.md', false]]),
           undefined,
           false,
@@ -171,7 +171,7 @@ suite('Previews', () => {
           shown,
         ),
       ),
-      ['error', 'file'],
+      ['error', 'file', 'file', 'large'],
     );
     const whole = { path: 'README.md', content: '# a\n', binary: false };
     assert.deepStrictEqual(

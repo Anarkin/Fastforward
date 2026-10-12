@@ -223,6 +223,7 @@ const fileHeader = diffRow(
     path: 'a',
     open: true,
     whole: false,
+    collapsible: true,
     onClick: noop,
   }),
 );
@@ -1320,6 +1321,7 @@ suite('Style', () => {
             path: 'v.svg',
             open: true,
             whole: false,
+            collapsible: true,
             onClick: noop,
             preview: 'image',
             onRender: noop,
@@ -1347,7 +1349,13 @@ suite('Style', () => {
       right: 'calc(8px + var(--minimap-width))',
     });
     assert.strictEqual(
-      rowHeight({ kind: 'file', file: 0, path: 'v.svg', open: true }),
+      rowHeight({
+        kind: 'file',
+        file: 0,
+        path: 'v.svg',
+        open: true,
+        collapsible: true,
+      }),
       22,
     );
   });

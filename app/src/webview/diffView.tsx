@@ -113,6 +113,7 @@ export type DiffRow =
       readonly file: number;
       readonly path: string;
       readonly open: boolean;
+      readonly collapsible: boolean;
     }
   | {
       readonly kind: 'large';
@@ -265,6 +266,7 @@ export function FileHeader({
   path,
   open,
   whole,
+  collapsible,
   onClick,
   preview,
   rendered = false,
@@ -273,6 +275,7 @@ export function FileHeader({
   path: string;
   open: boolean;
   whole: boolean;
+  collapsible: boolean;
   onClick: () => void;
   preview?: Preview;
   rendered?: boolean;
@@ -280,7 +283,7 @@ export function FileHeader({
 }) {
   return (
     <div className="file-header" onClick={onClick}>
-      {!whole && <Twisty open={open} />}
+      {collapsible && <Twisty open={open} />}
       <span className="path">{path}</span>
       <span className="file-header-end">
         {whole && <span className="unchanged">{strings.diff.unchanged}</span>}
@@ -563,7 +566,13 @@ export function diffRows(
     return rows;
   }
   if (whole) {
-    rows.push({ kind: 'file', file: 0, path: whole.path, open: true });
+    rows.push({
+      kind: 'file',
+      file: 0,
+      path: whole.path,
+      open: true,
+      collapsible: false,
+    });
     if (whole.binary) {
       rows.push({
         kind: previewsWholeImage(whole) ? 'image' : 'binary',
@@ -580,6 +589,7 @@ export function diffRows(
     );
     return rows;
   }
+  const collapsible = files.length > 1;
   files.forEach((file, index) => {
     const lines = changedLines(file);
     const preview = previewOf(file);
@@ -587,10 +597,19 @@ export function diffRows(
     const large =
       !previewed &&
       (file.placeholder !== undefined || (lines ?? 0) > collapseThreshold);
-    const open = toggled.get(file.path) ?? !large;
-    rows.push({ kind: 'file', file: index, path: file.path, open });
+    const chosen = collapsible
+      ? toggled.get(file.path)
+      : toggled.get(file.path) || undefined;
+    const open = chosen ?? !large;
+    rows.push({
+      kind: 'file',
+      file: index,
+      path: file.path,
+      open,
+      collapsible,
+    });
     if (!open) {
-      if (large && !toggled.has(file.path)) {
+      if (large && chosen === undefined) {
         rows.push({ kind: 'large', file: index, path: file.path, lines });
       }
       return;
@@ -1664,11 +1683,12 @@ export function DiffView({
       path={row.path}
       open={row.open}
       whole={whole !== undefined}
+      collapsible={row.collapsible}
       preview={whole ? wholePreviewOf(whole) : previewOf(files[row.file])}
       rendered={rendered.has(row.path)}
       onRender={(render) => onRender(row.path, render)}
       onClick={() => {
-        if (whole) {
+        if (!row.collapsible) {
           return;
         }
         toggle(row.path, row.open);
