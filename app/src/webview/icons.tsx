@@ -50,6 +50,15 @@ export function RefreshIcon() {
   );
 }
 
+export function HomeIcon() {
+  return (
+    <Icon>
+      <path d="M2.5 7.5L8 2.5l5.5 5" />
+      <path d="M4 6.5v7h3v-4h2v4h3v-7" />
+    </Icon>
+  );
+}
+
 export function PullIcon() {
   return (
     <Icon>

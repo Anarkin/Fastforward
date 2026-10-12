@@ -74,6 +74,7 @@ export function navButtons(
       back={[]}
       forward={[]}
       onNavigate={noop}
+      onHome={noop}
       fetching={false}
       onFetch={noop}
       autoFetch={false}

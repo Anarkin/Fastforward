@@ -9,7 +9,7 @@ import type {
   ToWebviewOf,
 } from '../shared/protocol';
 import { onMenuKeyDown, useDismiss, useMenuFocus } from './contextMenu';
-import { BackIcon, ForwardIcon, PinIcon, RefreshIcon } from './icons';
+import { BackIcon, ForwardIcon, HomeIcon, PinIcon, RefreshIcon } from './icons';
 import { fetchStatus } from './fetchStatus';
 import { LocationsPopup } from './locations';
 import { keymap } from '../shared/keymap';
@@ -56,6 +56,7 @@ export function NavButtons({
   back,
   forward,
   onNavigate,
+  onHome,
   fetching,
   onFetch,
   autoFetch,
@@ -66,6 +67,7 @@ export function NavButtons({
   back: readonly NavigationEntry[];
   forward: readonly NavigationEntry[];
   onNavigate: (direction: Direction, steps: number) => void;
+  onHome: (() => void) | undefined;
   fetching: boolean;
   onFetch: () => void;
   autoFetch: boolean;
@@ -88,6 +90,14 @@ export function NavButtons({
         entries={forward}
         onNavigate={onNavigate}
       />
+      <button
+        className="nav-button"
+        title={strings.actions.head}
+        disabled={onHome === undefined}
+        onClick={onHome}
+      >
+        <HomeIcon />
+      </button>
       <span
         className={`pin-pair ${autoFetch && autoFetchMinutes > 0 ? 'pinned' : ''}`}
       >

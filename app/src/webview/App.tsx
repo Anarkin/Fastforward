@@ -774,6 +774,11 @@ export function App({ name, post: postToHost, listen }: Props) {
                           back={back}
                           forward={forward}
                           onNavigate={navigate}
+                          onHome={
+                            repository?.headCommit === undefined
+                              ? undefined
+                              : () => jump(repository.headCommit)
+                          }
                           fetching={fetching}
                           onFetch={() => postTab({ type: 'fetch' })}
                           autoFetch={autoFetch}

@@ -21,6 +21,7 @@ const buttons = (props: Partial<Parameters<typeof NavButtons>[0]>) =>
       back={[]}
       forward={[]}
       onNavigate={noop}
+      onHome={noop}
       fetching={false}
       onFetch={noop}
       autoFetch={false}
@@ -164,6 +165,7 @@ suite('Navigation bar', () => {
         back: [],
         forward: [],
         onNavigate: noop,
+        onHome: noop,
         fetching: false,
         onFetch: () => clicked.push('fetch'),
         autoFetch,
@@ -172,7 +174,7 @@ suite('Navigation bar', () => {
         lastFetch: {},
       });
       assert.ok(isValidElement<{ children: React.ReactElement[] }>(bar));
-      const pair = bar.props.children[2];
+      const pair = bar.props.children[3];
       assert.ok(isValidElement<{ children: React.ReactElement[] }>(pair));
       for (const button of pair.props.children) {
         assert.ok(isValidElement<{ onClick: () => void }>(button));
@@ -191,6 +193,35 @@ suite('Navigation bar', () => {
         ),
       );
     }
+  });
+
+  test('selects the checked-out commit on a home button after forward, as H does, disabled while there is none', () => {
+    const clicked: string[] = [];
+    const bar = renderedBy(NavButtons, {
+      back: [],
+      forward: [],
+      onNavigate: noop,
+      onHome: () => clicked.push('home'),
+      fetching: false,
+      onFetch: noop,
+      autoFetch: false,
+      autoFetchMinutes: 1,
+      onAutoFetch: noop,
+      lastFetch: {},
+    });
+    assert.ok(isValidElement<{ children: React.ReactElement[] }>(bar));
+    const home = bar.props.children[2];
+    assert.ok(isValidElement<{ onClick: () => void }>(home));
+    home.props.onClick();
+    assert.deepStrictEqual(clicked, ['home']);
+    assert.match(
+      buttons({}),
+      /title="Forward[^"]*"[^>]*>.*?<\/button><\/div><button class="nav-button" title="Select the checked-out commit">/,
+    );
+    assert.match(
+      buttons({ onHome: undefined }),
+      /title="Select the checked-out commit" disabled=""/,
+    );
   });
 });
 
