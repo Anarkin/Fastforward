@@ -235,6 +235,13 @@ function columnVisibility(selected: string | undefined, diffShown = true) {
   ).map((column) => cascaded(column, 'visibility'));
 }
 
+function unwrapped(value: string | undefined): string {
+  return (value ?? '')
+    .replaceAll(/\(\s+/g, '(')
+    .replaceAll(/\s+\)/g, ')')
+    .replaceAll(/\s+/g, ' ');
+}
+
 const bubbleLook = ['color', 'background', 'box-shadow', 'border'];
 
 suite('Style', () => {
@@ -926,18 +933,13 @@ suite('Style', () => {
     looks(withClass(workingTreeRow(1), 'subject'), { opacity: undefined });
   });
 
-  test('draws every bubble but the checked-out one alike, in the bubble colors, ringed inside in the bubble border color to stand apart from a selected row', () => {
+  test('draws every bubble but the checked-out one and tags alike, in the bubble colors, ringed inside in the bubble border color to stand apart from a selected row', () => {
     const all = bubbles().filter(
-      (bubble) => !bubble.classes.includes('checked-out'),
+      (bubble) =>
+        !bubble.classes.includes('checked-out') &&
+        !bubble.classes.includes('tag'),
     );
-    for (const kind of [
-      'branch',
-      'remote',
-      'tag',
-      'stash',
-      'hash',
-      'missing',
-    ]) {
+    for (const kind of ['branch', 'remote', 'stash', 'hash', 'missing']) {
       assert.ok(
         all.some((bubble) => bubble.classes.includes(kind)),
         kind,
@@ -971,6 +973,27 @@ suite('Style', () => {
           'linear-gradient(var(--color-focus), var(--color-focus)), var(--color-panel-background)',
       },
     );
+  });
+
+  test('shapes a tag like a tag icon, pointed at the right end with the corners of the point rounded by about a pixel and a round hole by the point that shows the row through it, leaving room for both after the name, so it stands apart from the branches, which move on as tags never do', () => {
+    const tags = bubbles().filter((bubble) => bubble.classes.includes('tag'));
+    assert.ok(tags.length > 0);
+    for (const tag of tags) {
+      assert.strictEqual(
+        unwrapped(cascaded(tag, 'background')),
+        'radial-gradient(circle at calc(100% - 9px) 50%, transparent 2px, var(--color-bubble) 2.5px)',
+      );
+      assert.strictEqual(
+        unwrapped(cascaded(tag, 'clip-path')),
+        'shape(from 0 0, hline to calc(100% - 8px), curve to calc(100% - 6.4px) 0.8px with calc(100% - 7px) 0, line to calc(100% - 0.8px) calc(50% - 1px), curve to calc(100% - 0.8px) calc(50% + 1px) with 100% 50%, line to calc(100% - 6.4px) calc(100% - 0.8px), curve to calc(100% - 8px) 100% with calc(100% - 7px) 100%, hline to 0, close)',
+      );
+      looks(tag, {
+        color: 'var(--color-bubble-foreground)',
+        'box-shadow': 'inset 0 0 0 1px var(--color-bubble-border)',
+        'padding-right': '17px',
+        border: undefined,
+      });
+    }
   });
 
   test('fills the checked-out bubble with its own colors, and no bubble changes under the pointer', () => {

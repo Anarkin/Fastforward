@@ -1119,6 +1119,27 @@ body.resizing {
   box-decoration-break: clone;
 }
 
+.badge.tag,
+.bubble-line .badge.tag {
+  padding-right: 17px;
+  clip-path: shape(
+    from 0 0,
+    hline to calc(100% - 8px),
+    curve to calc(100% - 6.4px) 0.8px with calc(100% - 7px) 0,
+    line to calc(100% - 0.8px) calc(50% - 1px),
+    curve to calc(100% - 0.8px) calc(50% + 1px) with 100% 50%,
+    line to calc(100% - 6.4px) calc(100% - 0.8px),
+    curve to calc(100% - 8px) 100% with calc(100% - 7px) 100%,
+    hline to 0,
+    close
+  );
+  background: radial-gradient(
+    circle at calc(100% - 9px) 50%,
+    transparent 2px,
+    var(--color-bubble) 2.5px
+  );
+}
+
 .bubble-line .badge.with-actions {
   display: inline-flex;
   align-items: center;
