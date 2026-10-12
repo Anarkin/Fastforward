@@ -25,6 +25,29 @@ const worktreeStep = (extra: Partial<KeyPress>) =>
   );
 
 suite('Keymap', () => {
+  test('opens the main menu with Alt+F, or Option+F though it types ƒ, but not with F alone, nor in a text field', () => {
+    assert.strictEqual(
+      pressed(keymap.mainMenu, keyPress('f', { altKey: true }), false),
+      true,
+    );
+    assert.strictEqual(
+      pressed(
+        keymap.mainMenu,
+        keyPress('ƒ', { code: 'KeyF', altKey: true }),
+        false,
+      ),
+      true,
+    );
+    assert.strictEqual(
+      pressed(keymap.mainMenu, keyPress('f'), false),
+      undefined,
+    );
+    assert.strictEqual(
+      pressed(keymap.mainMenu, keyPress('f', { altKey: true }), true),
+      undefined,
+    );
+  });
+
   test('takes a letter typed, with Caps Lock on, or on the key of another layout', () => {
     assert.strictEqual(pressed(keymap.head, keyPress('h'), false), true);
     assert.strictEqual(pressed(keymap.head, keyPress('H'), false), true);

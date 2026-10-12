@@ -1,7 +1,10 @@
+import { useRef } from 'react';
+import { keymap } from '../shared/keymap';
 import type { UpdateStatus } from '../shared/protocol';
 import { strings } from '../shared/strings';
 import { MenuIcon } from './icons';
 import { MenuButton } from './menu';
+import { useBinding } from './shortcuts';
 
 export function updateLabel(status: UpdateStatus): string {
   switch (status.kind) {
@@ -44,8 +47,11 @@ export function AppMenu({
   onShowAbout: () => void;
 }) {
   const installs = update.kind === 'ready' || update.kind === 'available';
+  const trigger = useRef<HTMLButtonElement>(null);
+  useBinding(keymap.mainMenu, () => trigger.current?.click());
   return (
     <MenuButton
+      trigger={trigger}
       title={strings.tabs.settings}
       icon={<MenuIcon />}
       marked={installs}

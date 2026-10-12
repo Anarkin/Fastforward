@@ -168,6 +168,7 @@ export const strings = {
     find: 'Find',
     match: 'Next or previous match',
     stopFinding: 'Stop finding',
+    mainMenu: 'Open the main menu',
     shortcuts: 'Show these shortcuts',
     devTools: 'Developer tools',
     close: 'Close a menu or popup',

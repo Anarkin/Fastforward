@@ -115,6 +115,7 @@ export const keymap = {
     { Escape: true },
     { fields: true },
   ),
+  mainMenu: bind('App', strings.actions.mainMenu, { 'Alt+F': true }),
   shortcuts: bind('App', strings.actions.shortcuts, { F1: true, '?': true }),
   devTools: bind('App', strings.actions.devTools, { 'Mod+Shift+I': true }),
   close: bind(

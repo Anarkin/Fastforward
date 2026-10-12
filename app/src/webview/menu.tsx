@@ -13,11 +13,13 @@ export function MenuButton({
   items,
   marked = false,
   icon = <MoreIcon />,
+  trigger,
 }: {
   title: string;
   items: readonly ContextMenuItem[];
   marked?: boolean;
   icon?: React.ReactNode;
+  trigger?: React.Ref<HTMLButtonElement>;
 }) {
   const [open, setOpen] = useState(false);
   const container = useRef<HTMLDivElement>(null);
@@ -26,6 +28,7 @@ export function MenuButton({
   return (
     <div className="menu-button" ref={container}>
       <button
+        ref={trigger}
         className={`nav-button menu-button-trigger ${open ? 'open' : ''}`}
         title={title}
         onClick={() => setOpen(!open)}
