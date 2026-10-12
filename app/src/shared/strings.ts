@@ -110,6 +110,7 @@ export const strings = {
   },
   tabs: {
     browse: 'Browse...',
+    removeRecent: (name: string) => `Remove ${name} from this list`,
     settings: 'Settings',
     sort: 'Sort A-Z',
     openDefaultSettings: 'Open Default Settings',
@@ -152,6 +153,7 @@ export const strings = {
     devTools: 'Developer tools',
     close: 'Close a menu or popup',
     menuItem: 'Move in a menu',
+    removeItem: 'Remove a recent repository from the menu',
     submenu: 'Open a submenu, or go back from it',
     result: 'Move in the search results',
     go: 'Go to the search result',

@@ -531,6 +531,10 @@ export class FastforwardView {
       case 'browseRepositories':
         await this.openRepositories(session, await this.host.chooseFolders());
         return;
+      case 'forgetRecent':
+        await this.storage.removeRecent(message.root);
+        this.sendTabs(session);
+        return;
       case 'closeTab': {
         const { tabs, activeTab } = storage;
         const index = tabs.findIndex((tab) => sameRoot(tab, message.root));

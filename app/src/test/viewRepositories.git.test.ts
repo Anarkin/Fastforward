@@ -341,6 +341,20 @@ suite('View of other repositories', () => {
     );
   });
 
+  test('forgets a recent repository on asking, telling the page the list without it', async () => {
+    const gone = path.join(folder, 'gone-for-good');
+    await withView(log, [repository.root], async (view) => {
+      await view.store.update(recentKey, [gone, repository.root]);
+      await view.connection.receive({ type: 'forgetRecent', root: gone });
+      assert.deepStrictEqual(view.store.get(recentKey), [repository.root]);
+      assert.ok(
+        view.page
+          .last('tabs')
+          ?.recent.every((shown) => !sameRoot(shown.root, gone)),
+      );
+    });
+  });
+
   for (const [opened, tabs] of [
     ['a tab', () => [repository.root]],
     ['no tab', () => []],

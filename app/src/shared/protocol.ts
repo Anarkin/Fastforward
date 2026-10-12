@@ -240,6 +240,7 @@ export type ToHost =
   | { readonly type: 'selectTab'; readonly root: string }
   | { readonly type: 'openRepository'; readonly root: string }
   | { readonly type: 'browseRepositories' }
+  | { readonly type: 'forgetRecent'; readonly root: string }
   | { readonly type: 'openSettings' }
   | { readonly type: 'openDefaultSettings' }
   | { readonly type: 'closeTab'; readonly root: string }

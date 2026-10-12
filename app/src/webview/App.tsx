@@ -199,7 +199,21 @@ export function App({ name, post: postToHost, listen }: Props) {
   const [lastFetch, setLastFetch] = useState<LastFetch>({});
   const [update, setUpdate] = useState<UpdateStatus>({ kind: 'idle' });
   const [openedMenu, setMenu] = useState<TabMenu>();
-  const menu = menuIn(openedMenu, activeTab);
+  const repositoryItems = () =>
+    repositoryMenuItems(
+      recent,
+      (root) => post({ type: 'openRepository', root }),
+      () => post({ type: 'browseRepositories' }),
+      (root) => {
+        setRecent((shown) => shown.filter((other) => other.root !== root));
+        post({ type: 'forgetRecent', root });
+      },
+    );
+  const openedIn = menuIn(openedMenu, activeTab);
+  const menu =
+    openedIn?.trigger === repositoryMenuTrigger
+      ? { ...openedIn, items: repositoryItems() }
+      : openedIn;
   if (openedMenu && !menu) {
     setMenu(undefined);
   }
@@ -650,11 +664,7 @@ export function App({ name, post: postToHost, listen }: Props) {
       nextMenu(previous, activeTab, {
         x: button.left,
         y: button.bottom,
-        items: repositoryMenuItems(
-          recent,
-          (root) => post({ type: 'openRepository', root }),
-          () => post({ type: 'browseRepositories' }),
-        ),
+        items: repositoryItems(),
         trigger: repositoryMenuTrigger,
       }),
     );

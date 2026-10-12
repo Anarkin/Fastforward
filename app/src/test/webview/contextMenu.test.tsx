@@ -235,6 +235,56 @@ suite('Menu items', () => {
     assert.deepStrictEqual(log, ['close', 'a']);
   });
 
+  test('removes an item by its X or the Delete key, without running it or closing the menu, and keeps the focus in the menu', () => {
+    const log: string[] = [];
+    const items = renderedBy(MenuItems, {
+      items: [
+        {
+          label: 'a',
+          onClick: () => log.push('a'),
+          onRemove: () => log.push('remove'),
+          removeTitle: 'Remove a',
+        },
+      ],
+      onClose: () => log.push('close'),
+    });
+    assert.ok(isValidElement<{ children: React.ReactElement[] }>(items));
+    const [entry] = items.props.children;
+    assert.ok(isValidElement<{ children: React.ReactNode[] }>(entry));
+    const [button, remove] = entry.props.children;
+    assert.ok(
+      isValidElement<{
+        onClick: (event: { stopPropagation: () => void }) => void;
+        onMouseDown: (event: { preventDefault: () => void }) => void;
+        title: string;
+      }>(remove),
+    );
+    assert.strictEqual(remove.props.title, 'Remove a');
+    remove.props.onMouseDown({ preventDefault: () => log.push('kept focus') });
+    remove.props.onClick({ stopPropagation: () => log.push('kept to itself') });
+    assert.ok(
+      isValidElement<{
+        onKeyDown: (
+          event: ReturnType<typeof keyPress> & { preventDefault: () => void },
+        ) => void;
+      }>(button),
+    );
+    button.props.onKeyDown({ ...keyPress('Delete'), preventDefault: noop });
+    button.props.onKeyDown({ ...keyPress('a'), preventDefault: noop });
+    assert.deepStrictEqual(log, [
+      'kept focus',
+      'kept to itself',
+      'remove',
+      'remove',
+    ]);
+    assert.doesNotMatch(
+      renderToStaticMarkup(
+        <MenuItems items={[{ label: 'b', onClick: noop }]} onClose={noop} />,
+      ),
+      /menu-remove/,
+    );
+  });
+
   test('opens a submenu in place of running it, focusing its first item only on a click from the keyboard', () => {
     const submenu = [{ label: 'x', onClick: noop }];
     assert.deepStrictEqual(openedSubmenu({ submenu }, 0), {

@@ -129,6 +129,7 @@ export const keymap = {
     { ArrowDown: 'next', ArrowUp: 'previous', Home: 'first', End: 'last' },
     { repeats: true },
   ),
+  removeItem: bind(undefined, strings.actions.removeItem, { Delete: true }),
   submenu: bind(undefined, strings.actions.submenu, {
     ArrowRight: 'open',
     ArrowLeft: 'back',

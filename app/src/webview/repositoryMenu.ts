@@ -8,14 +8,19 @@ export function repositoryMenuItems(
   recent: readonly TabInfo[],
   onOpen: (root: string) => void,
   onBrowse: () => void,
+  onRemove?: (root: string) => void,
 ): readonly ContextMenuItem[] {
   return [
     ...recent.map((repository) => ({
       label: repository.name,
       title: repository.root,
       onClick: () => onOpen(repository.root),
+      ...(onRemove && {
+        onRemove: () => onRemove(repository.root),
+        removeTitle: strings.tabs.removeRecent(repository.name),
+      }),
     })),
-    { separator: true },
+    ...(recent.length > 0 ? [{ separator: true } as const] : []),
     { label: strings.tabs.browse, onClick: onBrowse },
   ];
 }

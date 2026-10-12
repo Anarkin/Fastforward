@@ -1406,6 +1406,38 @@ body.resizing {
   position: relative;
 }
 
+.menu-entry:has(> .menu-remove) > .menu-item {
+  padding-right: 32px;
+}
+
+.menu-remove {
+  position: absolute;
+  top: 0;
+  right: 4px;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin: auto 0;
+  padding: 0;
+  color: inherit;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  opacity: var(--muted-opacity);
+}
+
+.menu-entry:not(:hover):not(:focus-within) > .menu-remove {
+  visibility: hidden;
+}
+
+.menu-remove:hover {
+  opacity: 1;
+  background: var(--hover-background);
+}
+
 .menu-item.has-submenu {
   display: flex;
   align-items: center;

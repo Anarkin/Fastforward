@@ -7,6 +7,7 @@ import {
   useState,
 } from 'react';
 import { keymap } from '../shared/keymap';
+import { CloseIcon } from './icons';
 import { isKeyPress, keyPressed } from './shortcuts';
 import type { Bookmark, BookmarkRef } from '../shared/protocol';
 import { refOf } from '../shared/refNames';
@@ -40,6 +41,8 @@ export type ContextMenuItem =
       readonly submenu?: readonly ContextMenuItem[];
       readonly disabled?: boolean;
       readonly checked?: boolean;
+      readonly onRemove?: () => void;
+      readonly removeTitle?: string;
     }
   | { readonly separator: true };
 
@@ -290,6 +293,17 @@ export function MenuItems({
   const [openSubmenu, setOpenSubmenu] = useState<number>();
   const [submenuByKey, setSubmenuByKey] = useState(false);
   const entries = useRef<(HTMLButtonElement | null)[]>([]);
+  const removedAt = useRef<number>(undefined);
+  useLayoutEffect(() => {
+    const removed = removedAt.current;
+    removedAt.current = undefined;
+    if (removed !== undefined) {
+      entries.current
+        .slice(0, removed + 1)
+        .findLast((entry) => entry?.isConnected)
+        ?.focus();
+    }
+  });
   return (
     <>
       {items.map((item, index) =>
@@ -317,6 +331,13 @@ export function MenuItems({
               title={item.title}
               aria-haspopup={item.submenu ? 'menu' : undefined}
               disabled={item.disabled}
+              onKeyDown={(event) => {
+                if (item.onRemove && keyPressed(keymap.removeItem, event)) {
+                  event.preventDefault();
+                  removedAt.current = index;
+                  item.onRemove();
+                }
+              }}
               onClick={(event) => {
                 const opened = openedSubmenu(item, event.detail);
                 if (opened) {
@@ -338,6 +359,20 @@ export function MenuItems({
                 <span className="submenu-arrow">{strings.symbols.submenu}</span>
               )}
             </button>
+            {item.onRemove && (
+              <button
+                className="menu-remove"
+                title={item.removeTitle}
+                tabIndex={-1}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  item.onRemove?.();
+                }}
+              >
+                <CloseIcon />
+              </button>
+            )}
             {item.submenu && openSubmenu === index && (
               <Submenu
                 items={item.submenu}

@@ -694,6 +694,40 @@ suite('Style', () => {
     });
   });
 
+  test("puts a removable item's X at the right end of its entry, drawn like a tab's X and shown only on hovering or reaching the entry, keeping the label clear of it", () => {
+    const menu = rendered(
+      createElement(ContextMenu, {
+        menu: {
+          x: 0,
+          y: 0,
+          items: [{ label: 'app', onRemove: noop, removeTitle: 'Remove app' }],
+        },
+        onClose: noop,
+      }),
+    );
+    const entry = withClass(menu, 'menu-entry');
+    const remove = withClass(menu, 'menu-remove');
+    const tabClose = withClass(tabBar(), 'tab-close');
+    looks(
+      remove,
+      Object.fromEntries(
+        ['width', 'height', 'opacity', 'border-radius'].map((property) => [
+          property,
+          cascaded(tabClose, property),
+        ]),
+      ),
+    );
+    looks(remove, { position: 'absolute', right: '4px', visibility: 'hidden' });
+    looks(remove, { visibility: undefined }, { hover: entry });
+    looks(
+      remove,
+      { visibility: undefined },
+      { focus: withClass(menu, 'menu-item') },
+    );
+    looks(remove, { background: 'var(--hover-background)' }, hovered);
+    looks(withClass(menu, 'menu-item'), { 'padding-right': '32px' });
+  });
+
   test('tints the hovered search field like anything else hovered, its edge included', () => {
     for (const field of [
       withClass(addressBar(), 'address-bar'),
