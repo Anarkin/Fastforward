@@ -40,6 +40,7 @@ export interface TabView {
   readonly tree: ToWebviewOf<'tree'> | undefined;
   readonly treeRequested: string | undefined;
   readonly fetching: boolean;
+  readonly pulling: boolean;
   readonly applyingSolo: boolean;
   readonly back: readonly NavigationEntry[];
   readonly forward: readonly NavigationEntry[];
@@ -75,6 +76,7 @@ export const emptyTabView: TabView = {
   tree: undefined,
   treeRequested: undefined,
   fetching: false,
+  pulling: false,
   applyingSolo: false,
   back: [],
   forward: [],
@@ -302,6 +304,8 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
       return { ...state, treeRequested: action.hash };
     case 'fetching':
       return { ...state, fetching: action.running };
+    case 'pulling':
+      return { ...state, pulling: action.running };
     case 'applyingSolo':
       return { ...state, applyingSolo: action.running };
     case 'navigation':

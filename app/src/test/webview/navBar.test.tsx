@@ -27,6 +27,8 @@ const buttons = (props: Partial<Parameters<typeof NavButtons>[0]>) =>
       autoFetchMinutes={1}
       onAutoFetch={noop}
       lastFetch={{}}
+      pulling={false}
+      onPull={noop}
       {...props}
     />,
   );
@@ -170,6 +172,8 @@ suite('Navigation bar', () => {
         autoFetchMinutes: 1,
         onAutoFetch: (on) => clicked.push(`pin ${on}`),
         lastFetch: {},
+        pulling: false,
+        onPull: noop,
       });
       assert.ok(isValidElement<{ children: React.ReactElement[] }>(bar));
       const pair = bar.props.children[2];
@@ -187,10 +191,49 @@ suite('Navigation bar', () => {
       assert.match(
         buttons({ autoFetch }),
         new RegExp(
-          `<span class="pin-pair ${autoFetch ? 'pinned' : ''}"><button[^>]*title="Fetch[^"]*"[^>]*>.*?</button><button[^>]*title="${autoFetch ? 'Stop Fetching' : 'Fetch'} Every Minute"[^>]*>.*?</button></span></div>$`,
+          `<span class="pin-pair ${autoFetch ? 'pinned' : ''}"><button[^>]*title="Fetch[^"]*"[^>]*>.*?</button><button[^>]*title="${autoFetch ? 'Stop Fetching' : 'Fetch'} Every Minute"[^>]*>.*?</button></span>`,
         ),
       );
     }
+  });
+
+  test('pulls on a button after the fetch button and its pin', () => {
+    const clicked: string[] = [];
+    const bar = renderedBy(NavButtons, {
+      back: [],
+      forward: [],
+      onNavigate: noop,
+      fetching: false,
+      onFetch: noop,
+      autoFetch: false,
+      autoFetchMinutes: 1,
+      onAutoFetch: noop,
+      lastFetch: {},
+      pulling: false,
+      onPull: () => clicked.push('pull'),
+    });
+    assert.ok(isValidElement<{ children: React.ReactElement[] }>(bar));
+    const pull = bar.props.children[3];
+    assert.ok(isValidElement<{ onClick: () => void }>(pull));
+    pull.props.onClick();
+    assert.deepStrictEqual(clicked, ['pull']);
+    assert.match(
+      buttons({}),
+      /<\/span><button class="nav-button[^"]*"[^>]*title="Pull: fetch every remote, then fast-forward the checked-out branch to its upstream"[^>]*>.*?<\/button><\/div>$/,
+    );
+  });
+
+  test('disables the pull button while pulling, marking it as running', () => {
+    const pulling = tagWith(
+      buttons({ pulling: true }),
+      'title="Pull:',
+      'nav-button',
+      'running',
+    );
+    assert.match(pulling, /disabled=""/);
+    const idle = tagWith(buttons({}), 'title="Pull:', 'nav-button');
+    assert.ok(!classesOf(idle).has('running'));
+    assert.doesNotMatch(idle, /disabled/);
   });
 });
 

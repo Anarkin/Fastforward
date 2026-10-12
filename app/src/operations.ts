@@ -1,4 +1,10 @@
-import { aheadBehind, fastForward, onNoRef } from './git/branches';
+import {
+  aheadBehind,
+  fastForward,
+  onNoRef,
+  readUpstream,
+  type Upstream,
+} from './git/branches';
 import { gitErrorText } from './git/errorText';
 import {
   checkoutNewBranch,
@@ -99,11 +105,18 @@ async function sayLeftBehind(
   if (left.length === 0) {
     return;
   }
-  const message = strings.messages.leftBehind(
-    left.length,
-    left.slice(0, namedLeftBehind).map(shortHash),
-    left.length - namedLeftBehind,
+  say(
+    log,
+    notify,
+    strings.messages.leftBehind(
+      left.length,
+      left.slice(0, namedLeftBehind).map(shortHash),
+      left.length - namedLeftBehind,
+    ),
   );
+}
+
+function say(log: Log, notify: Notify, message: string): void {
   log.info(message);
   notify('info', message);
 }
@@ -145,6 +158,96 @@ async function catchUp(
       error,
     );
   }
+}
+
+type FoundUpstream = Extract<Upstream, { kind: 'found' }>;
+
+export function foundUpstream(
+  notify: Notify,
+  upstream: Upstream,
+): FoundUpstream | undefined {
+  if (upstream.kind === 'found') {
+    return upstream;
+  }
+  notify('info', missingUpstream(upstream));
+  return undefined;
+}
+
+function missingUpstream(upstream: Exclude<Upstream, FoundUpstream>): string {
+  if (upstream.kind === 'detached') {
+    return strings.messages.detachedUpstream;
+  }
+  return upstream.kind === 'none'
+    ? strings.messages.noUpstream(upstream.branch)
+    : strings.messages.upstreamGone(upstream.name, upstream.branch);
+}
+
+export async function canPull(
+  log: Log,
+  notify: Notify,
+  { gitPath, root }: RepositoryAt,
+): Promise<boolean> {
+  try {
+    const upstream = await readUpstream(gitPath, root);
+    if (upstream.kind === 'detached' || upstream.kind === 'none') {
+      foundUpstream(notify, upstream);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    reportPullFailure(log, notify, error);
+    return false;
+  }
+}
+
+export async function fastForwardToUpstream(
+  log: Log,
+  notify: Notify,
+  { gitPath, root }: RepositoryAt,
+): Promise<boolean> {
+  try {
+    const upstream = foundUpstream(notify, await readUpstream(gitPath, root));
+    if (!upstream) {
+      return false;
+    }
+    const { branch, name, commit } = upstream;
+    const { ahead, behind } = await aheadBehind(
+      gitPath,
+      root,
+      `refs/heads/${branch}`,
+      commit,
+    );
+    if (behind === 0) {
+      say(
+        log,
+        notify,
+        ahead === 0
+          ? strings.messages.upToDateWith(branch, name)
+          : strings.messages.aheadOf(branch, name),
+      );
+      return false;
+    }
+    if (ahead > 0) {
+      say(log, notify, strings.messages.cannotFastForward(branch, name));
+      return false;
+    }
+    await fastForward(gitPath, root, commit);
+    log.info(strings.log.fastForwarded(branch, name));
+    return true;
+  } catch (error) {
+    reportPullFailure(log, notify, error);
+    return false;
+  }
+}
+
+function reportPullFailure(log: Log, notify: Notify, error: unknown): void {
+  reportFailure(
+    log,
+    notify,
+    strings.log.pullFailed,
+    strings.messages.couldNotPull,
+    error,
+  );
 }
 
 export type Fetched =

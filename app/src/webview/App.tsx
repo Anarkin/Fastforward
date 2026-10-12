@@ -160,6 +160,7 @@ export function App({ name, post: postToHost, listen }: Props) {
     largeFiles,
     texts,
     fetching,
+    pulling,
     applyingSolo,
     back,
     forward,
@@ -766,6 +767,8 @@ export function App({ name, post: postToHost, listen }: Props) {
                           post({ type: 'setAutoFetch', on });
                         }}
                         lastFetch={lastFetch}
+                        pulling={pulling}
+                        onPull={() => postTab({ type: 'pull' })}
                       />
                     }
                     search={

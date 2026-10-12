@@ -50,6 +50,15 @@ export function RefreshIcon() {
   );
 }
 
+export function PullIcon() {
+  return (
+    <Icon>
+      <path d="M8 2.5v8M4.5 7L8 10.5 11.5 7" />
+      <path d="M3 13.5h10" />
+    </Icon>
+  );
+}
+
 export function SoloIcon() {
   return (
     <Icon>

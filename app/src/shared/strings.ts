@@ -205,6 +205,7 @@ export const strings = {
       sinceFetched === undefined
         ? `Fetch every remote, dropping branches deleted there\n${couldNotFetchAgo(elapsed)}`
         : `Fetch every remote, dropping branches deleted there\n${couldNotFetchAgo(elapsed)}\n${lastFetchedAgo(sinceFetched)}`,
+    pull: 'Pull: fetch every remote, then fast-forward the checked-out branch to its upstream',
     fetchEvery: (minutes: number) =>
       minutes === 1 ? 'Fetch Every Minute' : `Fetch Every ${minutes} Minutes`,
     stopFetchingEvery: (minutes: number) =>
@@ -348,6 +349,13 @@ export const strings = {
     couldNotFastForward: (local: string, remote: string, reason: string) =>
       `Switched to ${local}, but couldn't fast-forward it to ${remote}. ${reason}`,
     couldNotFetch: (reason: string) => `Couldn't fetch. ${reason}`,
+    upToDateWith: (local: string, upstream: string) =>
+      `${local} is up to date with ${upstream}`,
+    aheadOf: (local: string, upstream: string) =>
+      `${local} is ahead of ${upstream}, with nothing to pull`,
+    cannotFastForward: (local: string, upstream: string) =>
+      `${local} has diverged from ${upstream}, so it can't be fast-forwarded`,
+    couldNotPull: (reason: string) => `Couldn't pull. ${reason}`,
     upToDate: (version: string) => `${brand} ${version} is up to date`,
     downloadingUpdate: (version: string) => `Downloading ${brand} ${version}`,
     updateReady: (version: string) =>
@@ -495,5 +503,6 @@ export const strings = {
       `Fast-forwarding ${local} to ${remote} failed`,
     fetched: 'Fetched every remote',
     fetchFailed: 'Fetching every remote failed',
+    pullFailed: 'Pulling failed',
   },
 };

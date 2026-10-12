@@ -533,6 +533,16 @@ suite('Tab state', () => {
     );
   });
 
+  test('replays whether it is fetching and pulling, so a tab shown again keeps saying so', () => {
+    const tab = newTabState();
+    keep(tab.shown, { type: 'pulling', running: true });
+    keep(tab.shown, { type: 'fetching', running: true });
+    assert.deepStrictEqual(
+      replayOf(tab).map((message) => message.type),
+      ['fetching', 'pulling'],
+    );
+  });
+
   test('replays no files, diff or tree of a commit no longer selected', () => {
     const tab = newTabState();
     loadHistory(tab, Commits.of(history), undefined, []);

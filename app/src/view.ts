@@ -70,8 +70,11 @@ import { step, visit } from './history/navigation';
 import { ImageReads } from './imageReads';
 import type { Log } from './log';
 import {
+  canPull,
   checkout,
+  fastForwardToUpstream,
   fetchAll,
+  foundUpstream,
   reportFetched,
   type Fetched,
   type Notify,
@@ -153,7 +156,7 @@ interface Tab extends TabState {
   isRepository: boolean | undefined;
   selection: number | undefined;
   navigating: Promise<void>;
-  checkingOut: Promise<void>;
+  movingHead: Promise<void>;
   diffRequest: number;
   diffOwed: boolean;
   loadingFiles: AbortController;
@@ -722,6 +725,9 @@ export class FastforwardView {
         break;
       case 'fetch':
         await this.fetch(context);
+        break;
+      case 'pull':
+        await this.pull(context, picked);
         break;
       case 'loadTree':
         if (this.isSelected(context, message.hash)) {
@@ -1341,7 +1347,7 @@ export class FastforwardView {
         isRepository: undefined,
         selection: undefined,
         navigating: Promise.resolve(),
-        checkingOut: Promise.resolve(),
+        movingHead: Promise.resolve(),
         diffRequest: 0,
         diffOwed: false,
         loadingFiles: new AbortController(),
@@ -1484,10 +1490,10 @@ export class FastforwardView {
     picked: number | undefined,
   ): Promise<void> {
     const { tab } = context;
-    const checkingOut = tab.checkingOut.then(() =>
+    const checkingOut = tab.movingHead.then(() =>
       this.checkoutNow(context, target, picked),
     );
-    tab.checkingOut = checkingOut.catch(() => undefined);
+    tab.movingHead = checkingOut.catch(() => undefined);
     return checkingOut;
   }
 
@@ -1505,19 +1511,58 @@ export class FastforwardView {
   }
 
   private async fetch(context: Context): Promise<void> {
+    await this.refreshFetched(context, await this.fetchShown(context));
+  }
+
+  private async fetchShown(context: Context): Promise<Fetched> {
     context.post({ type: 'fetching', running: true });
-    let fetched: Fetched;
     try {
-      fetched = await this.fetchRemotes(
-        context,
-        this.log,
-        this.notify(context),
-      );
+      return await this.fetchRemotes(context, this.log, this.notify(context));
     } finally {
       context.post({ type: 'fetching', running: false });
     }
+  }
+
+  private async refreshFetched(
+    context: Context,
+    fetched: Fetched,
+  ): Promise<void> {
     if (fetched.failed || fetched.changed) {
       await this.refresh(context, undefined, refsAlone);
+    }
+  }
+
+  private pull(context: Context, picked: number | undefined): Promise<void> {
+    const { tab } = context;
+    const pulling = tab.movingHead.then(() => this.pullNow(context, picked));
+    tab.movingHead = pulling.catch(() => undefined);
+    return pulling;
+  }
+
+  private async pullNow(
+    context: Context,
+    picked: number | undefined,
+  ): Promise<void> {
+    const notify = this.notify(context);
+    context.post({ type: 'pulling', running: true });
+    let fetched: Fetched | undefined;
+    let pulled = false;
+    try {
+      if (await canPull(this.log, notify, context)) {
+        fetched = await this.fetchShown(context);
+        pulled =
+          !fetched.failed &&
+          (await fastForwardToUpstream(this.log, notify, context));
+      }
+    } finally {
+      context.post({ type: 'pulling', running: false });
+    }
+    if (pulled) {
+      await this.refresh(context);
+      await context.tab.loadingHistory;
+      await this.showHead(context, picked);
+    } else if (fetched) {
+      await this.refreshFetched(context, fetched);
     }
   }
 
@@ -1846,31 +1891,22 @@ export class FastforwardView {
     context: Context,
     picked: number | undefined,
   ): Promise<void> {
-    const upstream = await readUpstream(context.gitPath, context.root);
     const notify = this.notify(context);
-    switch (upstream.kind) {
-      case 'detached':
-        notify('info', strings.messages.detachedUpstream);
-        return;
-      case 'none':
-        notify('info', strings.messages.noUpstream(upstream.branch));
-        return;
-      case 'gone':
-        notify(
-          'info',
-          strings.messages.upstreamGone(upstream.name, upstream.branch),
-        );
-        return;
-      case 'found':
-        if (
-          this.storage.soloOf(context.root) &&
-          !stillThere(context.tab)(upstream.commit)
-        ) {
-          notify('info', strings.messages.upstreamHidden(upstream.name));
-          return;
-        }
-        await this.showCommit(context, upstream.commit, picked);
+    const upstream = foundUpstream(
+      notify,
+      await readUpstream(context.gitPath, context.root),
+    );
+    if (!upstream) {
+      return;
     }
+    if (
+      this.storage.soloOf(context.root) &&
+      !stillThere(context.tab)(upstream.commit)
+    ) {
+      notify('info', strings.messages.upstreamHidden(upstream.name));
+      return;
+    }
+    await this.showCommit(context, upstream.commit, picked);
   }
 
   private async showHead(
@@ -2767,6 +2803,7 @@ function needsNoWholeHistory(tab: TabState, message: TabMessage): boolean {
     case 'loadCommits':
     case 'showEntireFile':
     case 'fetch':
+    case 'pull':
     case 'checkout':
       return true;
     case 'selectCommit':
