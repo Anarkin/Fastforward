@@ -25,6 +25,14 @@ suite('Shortcuts popup', () => {
     assert.ok(bindings.some((binding) => binding.group === undefined));
   });
 
+  test('takes its title from the menu entry that opens it, so both name it alike', () => {
+    const html = renderToStaticMarkup(
+      <ShortcutsPopup mac={false} onClose={noop} />,
+    );
+    assert.match(html, /aria-label="Keyboard Shortcuts"/);
+    assert.match(html, /<span>Keyboard Shortcuts<\/span>/);
+  });
+
   test('draws each group under its heading, every key in a key cap', () => {
     const html = renderToStaticMarkup(
       <ShortcutsPopup mac={false} onClose={noop} />,

@@ -135,7 +135,6 @@ export const strings = {
     about: 'About',
     openDefaultSettings: 'Open Default Settings',
     openUserSettings: 'Open User Settings',
-    keyboardShortcuts: 'Keyboard Shortcuts',
     checkForUpdates: 'Check for Updates',
     checkingForUpdates: 'Check for Updates (checking...)',
     upToDate: 'Check for Updates (up to date)',
@@ -180,7 +179,7 @@ export const strings = {
     drag: 'Drag a scrollbar or the minimap',
   },
   shortcuts: {
-    title: 'Shortcuts',
+    title: 'Keyboard Shortcuts',
     joiner: '+',
     groups: {
       Tabs: 'Tabs',

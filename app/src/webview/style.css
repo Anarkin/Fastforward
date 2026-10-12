@@ -122,7 +122,7 @@ body {
   height: 100%;
   margin-left: env(titlebar-area-x, 0);
   padding: 0 12px 0 var(--title-bar-inset);
-  color: var(--muted-foreground);
+  color: var(--color-foreground);
 }
 
 :root[data-platform='darwin'] .title-bar-content {

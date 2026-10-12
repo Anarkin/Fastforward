@@ -58,7 +58,7 @@ export function AppMenu({
         },
         { label: strings.tabs.openUserSettings, onClick: onOpenSettings },
         { separator: true },
-        { label: strings.tabs.keyboardShortcuts, onClick: onShowShortcuts },
+        { label: strings.shortcuts.title, onClick: onShowShortcuts },
         { separator: true },
         {
           label: updateLabel(update),

@@ -246,7 +246,7 @@ suite('App', () => {
   });
 
   test('shows the shortcuts on F1 or ?, closing them on Esc or F1', async () => {
-    const shortcuts = page.getByRole('dialog', { name: 'Shortcuts' });
+    const shortcuts = page.getByRole('dialog', { name: 'Keyboard Shortcuts' });
     await page.keyboard.press('F1');
     await shortcuts.waitFor();
     await page.keyboard.press('Escape');

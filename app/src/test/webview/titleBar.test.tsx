@@ -63,6 +63,13 @@ suite('Title bar', () => {
     assert.match(css, /\.title-bar \.menu \{[^}]*left: 0;[^}]*right: auto;/);
   });
 
+  test("writes the title at full strength, as it names the window, and draws the app's menu beside it alike", () => {
+    assert.match(
+      stylesheet(),
+      /\.title-bar-content \{[^}]*color: var\(--color-foreground\);/,
+    );
+  });
+
   test('drags the window, and keeps clear of the window buttons', () => {
     const css = stylesheet();
     assert.match(css, /\.title-bar \{[^}]*-webkit-app-region: drag;/);
