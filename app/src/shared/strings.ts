@@ -345,7 +345,7 @@ export const strings = {
     leftBehind: (count: number, hashes: readonly string[], more: number) =>
       `Left ${count === 1 ? '1 commit' : `${count} commits`} behind on no branch or tag: ${hashes.join(' ')}${more > 0 ? ` and ${more} more` : ''}`,
     diverged: (local: string, remote: string) =>
-      `Switched to ${local}, which has diverged from ${remote}; pull to combine them.`,
+      `Switched to ${local}, which has diverged from ${remote}, so it couldn't be fast-forwarded`,
     couldNotFastForward: (local: string, remote: string, reason: string) =>
       `Switched to ${local}, but couldn't fast-forward it to ${remote}. ${reason}`,
     couldNotFetch: (reason: string) => `Couldn't fetch. ${reason}`,

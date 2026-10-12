@@ -284,9 +284,9 @@ suite('Operations checking out', () => {
       assert.strictEqual(await head(), 'apart');
       assert.strictEqual(notices.length, 1);
       assert.strictEqual(notices[0][0], 'info');
-      assert.match(
+      assert.strictEqual(
         notices[0][1],
-        /apart, which has diverged from origin\/apart/,
+        "Switched to apart, which has diverged from origin/apart, so it couldn't be fast-forwarded",
       );
       assert.deepStrictEqual(errors, []);
     } finally {
