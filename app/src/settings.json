@@ -8,6 +8,7 @@
   "solo": false,
   "autoFetch": true,
   "autoFetchMinutes": 1,
+  "hideDimmedButtons": false,
   "columnWidths": [400, 275],
   "fonts": {
     "family": "-apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif",

@@ -13,6 +13,7 @@ export interface Settings {
   readonly solo: boolean;
   readonly autoFetch: boolean;
   readonly autoFetchMinutes: number;
+  readonly hideDimmedButtons: boolean;
   readonly columnWidths: readonly number[];
   readonly fonts: {
     readonly family: string;

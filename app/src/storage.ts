@@ -331,6 +331,7 @@ export class Storage {
       showAllFiles: settings.showAllFiles,
       autoFetch: settings.autoFetch,
       autoFetchMinutes: this.fetchMinutes,
+      hideDimmedButtons: settings.hideDimmedButtons,
     };
   }
 

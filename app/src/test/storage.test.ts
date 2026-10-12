@@ -47,6 +47,7 @@ suite('Storage', () => {
       showAllFiles: defaults.showAllFiles,
       autoFetch: defaults.autoFetch,
       autoFetchMinutes: defaults.autoFetchMinutes,
+      hideDimmedButtons: false,
     });
   });
 

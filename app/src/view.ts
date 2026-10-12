@@ -1630,9 +1630,25 @@ export class FastforwardView {
   }
 
   private async pushTag(context: Context, name: string): Promise<void> {
-    const { refs } = await this.refsOf(context);
+    const { refs, remotes } = await this.refsOf(context);
     const tag = refs.find((ref) => ref.kind === 'tag' && ref.name === name);
     if (!tag) {
+      return;
+    }
+    const remote = await tagRemoteOf(
+      context.gitPath,
+      context.root,
+      remotes,
+    ).catch(() => undefined);
+    if (
+      remote !== undefined &&
+      this.storage.remoteTagsOf(context.repository).get(remote)?.get(name) ===
+        tag.commit
+    ) {
+      this.notify(context)(
+        'info',
+        strings.messages.tagAlreadyOnRemote(name, remote),
+      );
       return;
     }
     context.post({ type: 'pushingTag', name });

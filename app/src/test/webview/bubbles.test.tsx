@@ -6,6 +6,7 @@ import {
   BranchActions,
   type BranchActionsOf,
   BubbleActions,
+  HideDimmedButtons,
   TagActions,
   TagPushAction,
   CheckedOutBranch,
@@ -26,18 +27,40 @@ function onMain(node: React.ReactNode): string {
   );
 }
 
-function tagged(name: string, onRemote: string[]): string {
+function tagged(
+  name: string,
+  onRemote: string[],
+  remote: string | undefined,
+  hideDimmed = false,
+): string {
   return renderToStaticMarkup(
-    <TagActions.Provider
-      value={{
-        remote: 'origin',
-        onRemote: new Set(onRemote),
-        pushing: undefined,
-        onPush: noop,
-      }}
-    >
-      <RefBubble info={{ kind: 'tag', name }} actions />
-    </TagActions.Provider>,
+    <HideDimmedButtons.Provider value={hideDimmed}>
+      <TagActions.Provider
+        value={{
+          remote,
+          onRemote: new Set(onRemote),
+          pushing: undefined,
+          onPush: noop,
+        }}
+      >
+        <RefBubble info={{ kind: 'tag', name }} actions />
+      </TagActions.Provider>
+    </HideDimmedButtons.Provider>,
+  );
+}
+
+function checkedOut(
+  tracking: BranchActionsOf['tracking'],
+  hideDimmed: boolean,
+): string {
+  return renderToStaticMarkup(
+    <HideDimmedButtons.Provider value={hideDimmed}>
+      <BranchActions.Provider value={{ ...idle, tracking }}>
+        <CheckedOutBranch.Provider value="main">
+          <RefBubble info={{ kind: 'branch', name: 'main' }} actions />
+        </CheckedOutBranch.Provider>
+      </BranchActions.Provider>
+    </HideDimmedButtons.Provider>,
   );
 }
 
@@ -242,11 +265,28 @@ suite('Bubbles', () => {
     }
   });
 
-  test('puts a push button on a tag missing from the remote it would go to, naming both, and none on a tag already there or without that remote known', () => {
-    const missing = tagged('v1', ['v0']);
+  test('puts a push button on every local tag, as a tag can only be pushed, bright where the remote it would go to lacks it and dimmed where it has it or that remote is unknown, but on no remote tag', () => {
+    const missing = tagged('v1', ['v0'], 'origin');
     tagWith(missing, '', 'badge', 'tag', 'with-actions');
-    tagWith(missing, 'title="Push v1 to origin"', 'bubble-action', 'push');
-    assert.doesNotMatch(tagged('v1', ['v1']), /bubble-action|with-actions/);
+    const bright = tagWith(
+      missing,
+      'title="Push v1 to origin"',
+      'bubble-action',
+      'push',
+    );
+    assert.ok(!classesOf(bright).has('idle'));
+    tagWith(
+      tagged('v1', ['v1'], 'origin'),
+      'title="Push v1 to origin"',
+      'bubble-action',
+      'idle',
+    );
+    tagWith(
+      tagged('v1', [], undefined),
+      'title="Push v1"',
+      'bubble-action',
+      'idle',
+    );
     assert.doesNotMatch(
       renderToStaticMarkup(
         <RefBubble info={{ kind: 'tag', name: 'v1' }} actions />,
@@ -269,6 +309,33 @@ suite('Bubbles', () => {
       ),
       /bubble-action/,
     );
+  });
+
+  test('hides the dimmed buttons when asked, leaving a bubble without any its plain look', () => {
+    tagWith(
+      tagged('v1', [], 'origin', true),
+      'title="Push v1 to origin"',
+      'bubble-action',
+    );
+    for (const markup of [
+      tagged('v1', ['v1'], 'origin', true),
+      tagged('v1', [], undefined, true),
+      checkedOut({ upstream: 'origin/main', ahead: 0, behind: 0 }, true),
+    ]) {
+      assert.doesNotMatch(markup, /bubble-action|with-actions/);
+    }
+    const behind = checkedOut(
+      { upstream: 'origin/main', ahead: 0, behind: 2 },
+      true,
+    );
+    tagWith(behind, 'title="Pull:', 'bubble-action', 'pull');
+    assert.doesNotMatch(behind, /title="Push:/);
+    const shown = checkedOut(
+      { upstream: 'origin/main', ahead: 0, behind: 0 },
+      false,
+    );
+    tagWith(shown, 'title="Pull:', 'bubble-action', 'idle');
+    tagWith(shown, 'title="Push:', 'bubble-action', 'idle');
   });
 
   test('pushes the tag of its bubble without selecting its row or taking the keys from the list, marking only that tag as running while it pushes', () => {

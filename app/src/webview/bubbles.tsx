@@ -25,13 +25,15 @@ export const BranchActions = createContext<BranchActionsOf | undefined>(
 );
 
 export interface TagActionsOf {
-  readonly remote: string;
+  readonly remote: string | undefined;
   readonly onRemote: ReadonlySet<string>;
   readonly pushing: string | undefined;
   readonly onPush: (tag: string) => void;
 }
 
 export const TagActions = createContext<TagActionsOf | undefined>(undefined);
+
+export const HideDimmedButtons = createContext(false);
 
 export function useCheckedOut(ref: BookmarkRef): boolean {
   const checkedOutBranch = useContext(CheckedOutBranch);
@@ -73,12 +75,21 @@ export function RefBubble({
   const checkedOut = useCheckedOut(info);
   const branchActions = useContext(BranchActions);
   const tagActions = useContext(TagActions);
-  const branchShown = actions && checkedOut && branchActions !== undefined;
+  const hideDimmed = useContext(HideDimmedButtons);
+  const branchItems =
+    actions && checkedOut && branchActions !== undefined
+      ? branchActionItems(branchActions).filter(
+          (item) => !hideDimmed || !item.idle,
+        )
+      : [];
+  const tagIdle =
+    tagActions?.remote === undefined || tagActions.onRemote.has(info.name);
   const tagShown =
     actions &&
     info.kind === 'tag' &&
     tagActions !== undefined &&
-    !tagActions.onRemote.has(info.name);
+    !(hideDimmed && tagIdle);
+  const branchShown = branchItems.length > 0;
   return (
     <span
       className={`badge ${info.kind} ${checkedOut ? 'checked-out' : ''} ${missing ? 'missing' : ''} ${branchShown || tagShown ? 'with-actions' : ''}`}
@@ -92,12 +103,15 @@ export function RefBubble({
       {...menu}
     >
       {info.name}
-      {branchShown && <BubbleActions {...branchActions} />}
+      {branchShown && (
+        <span className="bubble-actions">{branchItems.map(actionButton)}</span>
+      )}
       {tagShown && (
         <TagPushAction
           tag={info.name}
           remote={tagActions.remote}
           running={tagActions.pushing === info.name}
+          idle={tagIdle}
           onPush={tagActions.onPush}
         />
       )}
@@ -143,39 +157,43 @@ function actionButton({
   );
 }
 
-export function BubbleActions({
+function branchActionItems({
   pulling,
   pushing,
   onPull,
   onPush,
   tracking,
-}: BranchActionsOf) {
+}: BranchActionsOf): Action[] {
   const counted = tracking !== undefined && !('gone' in tracking);
   const behind = counted ? tracking.behind : 0;
   const ahead = counted ? tracking.ahead : 0;
   const diverged = ahead > 0 && behind > 0;
+  return [
+    {
+      key: 'pull',
+      title: strings.navigation.pull,
+      running: pulling,
+      act: onPull,
+      icon: <PullIcon />,
+      count: behind,
+      idle: behind === 0 || diverged,
+    },
+    {
+      key: 'push',
+      title: strings.navigation.push,
+      running: pushing,
+      act: onPush,
+      icon: <PushIcon />,
+      count: ahead,
+      idle: (tracking !== undefined && ahead === 0) || diverged,
+    },
+  ];
+}
+
+export function BubbleActions(actions: BranchActionsOf) {
   return (
     <span className="bubble-actions">
-      {[
-        {
-          key: 'pull',
-          title: strings.navigation.pull,
-          running: pulling,
-          act: onPull,
-          icon: <PullIcon />,
-          count: behind,
-          idle: behind === 0 || diverged,
-        },
-        {
-          key: 'push',
-          title: strings.navigation.push,
-          running: pushing,
-          act: onPush,
-          icon: <PushIcon />,
-          count: ahead,
-          idle: (tracking !== undefined && ahead === 0) || diverged,
-        },
-      ].map(actionButton)}
+      {branchActionItems(actions).map(actionButton)}
     </span>
   );
 }
@@ -184,11 +202,13 @@ export function TagPushAction({
   tag,
   remote,
   running,
+  idle = false,
   onPush,
 }: {
   tag: string;
-  remote: string;
+  remote: string | undefined;
   running: boolean;
+  idle?: boolean;
   onPush: (tag: string) => void;
 }) {
   return (
@@ -199,6 +219,7 @@ export function TagPushAction({
         running,
         act: () => onPush(tag),
         icon: <PushIcon />,
+        idle,
       })}
     </span>
   );

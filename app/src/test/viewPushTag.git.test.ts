@@ -140,6 +140,24 @@ suite('View pushing tags', () => {
     assert.strictEqual(await onRemote('v2'), b);
   });
 
+  test('says a tag is already on the remote, on the same commit, rather than push it again', async () => {
+    await repository.git('tag', 'v5', a);
+    await repository.git('push', 'origin', 'v5');
+    await connection.receive({ type: 'fetch', root: repository.root });
+    await waitFor(
+      () =>
+        page
+          .last('repository')
+          ?.refs.some((ref) => ref.name === 'origin/v5') === true,
+      'the tags of origin to be listed again',
+    );
+    page.clear();
+    assert.deepStrictEqual(await pushedWith('info', 'v5'), [
+      'v5 is already on origin',
+    ]);
+    assert.deepStrictEqual(page.messages.flatMap(pushingTag), []);
+  });
+
   test('pushes no tag the repository lacks, as the page may ask for any name', async () => {
     assert.deepStrictEqual(await pushedWith('info', 'nowhere'), []);
     assert.deepStrictEqual(await pushedWith('error', '--mirror'), []);
