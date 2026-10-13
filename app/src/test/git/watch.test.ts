@@ -540,6 +540,19 @@ suite('Watching folders one by one', () => {
     assert.deepStrictEqual(watched(), ['', 'a', 'a/new', 'a/new/deep']);
   });
 
+  test('tells of a folder created later once it and its subfolders are watched, as files written into them before then go untold', async () => {
+    mkdir('a');
+    await start();
+    mkdir('a/new/deep');
+    watchers.get(path.join(root, 'a'))?.listener('rename', 'new');
+    await waitFor(() => events.length === 2, 'the new folder to be told of');
+    assert.deepStrictEqual(watched(), ['', 'a', 'a/new', 'a/new/deep']);
+    assert.deepStrictEqual(events, [
+      ['a', 'new'],
+      ['a', 'new'],
+    ]);
+  });
+
   test('asks once whether the folders created at once are ignored, as asking git costs a process', async () => {
     mkdir('a');
     await start();
@@ -903,6 +916,54 @@ suite('Watching folders one by one', () => {
     const failure = new Error('failed');
     watchers.get(root)?.emit('error', failure);
     assert.deepStrictEqual(errors, [failure]);
+  });
+
+  test('tells running out of watches and failing to watch the root apart from failing to watch a subfolder or to tell ignored folders, as only the first stop it from refreshing', async () => {
+    mkdir('repo/.git', 'repo/inner', 'b', 'c');
+    const exhausted = Object.assign(new Error('ENOSPC'), { code: 'ENOSPC' });
+    const denied = Object.assign(new Error('EACCES'), { code: 'EACCES' });
+    const forbidden = Object.assign(new Error('EPERM'), { code: 'EPERM' });
+    const rootDenied = Object.assign(new Error('EACCES'), { code: 'EACCES' });
+    const told = new Error('check-ignore failed');
+    const stopped: unknown[] = [];
+    await watchTree(root, {
+      skip: () => false,
+      ignored: (repo) =>
+        repo === root ? Promise.resolve([]) : Promise.reject(told),
+      onEvent: () => {},
+      onError: (error) => errors.push(error),
+      onStopped: (error) => stopped.push(error),
+      watch: (folder, listener) => {
+        if (path.basename(folder) === 'b') {
+          throw exhausted;
+        }
+        if (path.basename(folder) === 'c') {
+          throw denied;
+        }
+        return fakeWatch(folder, listener);
+      },
+    });
+    watchers.get(path.join(root, 'repo'))?.emit('error', forbidden);
+    watchers.get(root)?.emit('error', rootDenied);
+    assert.deepStrictEqual(errors, [denied, told, forbidden]);
+    assert.deepStrictEqual(stopped, [exhausted, rootDenied]);
+  });
+
+  test('tells failing to watch the root as stopping it from refreshing, whatever the failure', async () => {
+    const denied = Object.assign(new Error('EACCES'), { code: 'EACCES' });
+    const stopped: unknown[] = [];
+    await watchTree(root, {
+      skip: () => false,
+      ignored: () => Promise.resolve([]),
+      onEvent: () => {},
+      onError: (error) => errors.push(error),
+      onStopped: (error) => stopped.push(error),
+      watch: () => {
+        throw denied;
+      },
+    });
+    assert.deepStrictEqual(errors, []);
+    assert.deepStrictEqual(stopped, [denied]);
   });
 
   test('reports a failure to tell ignored folders', async () => {

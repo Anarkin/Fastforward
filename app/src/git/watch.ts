@@ -35,6 +35,17 @@ export function watchesRecursively(platform = process.platform): boolean {
   return platform !== 'linux';
 }
 
+const exhaustion = new Set(['ENOSPC', 'EMFILE', 'ENFILE']);
+
+function outOfWatches(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    'code' in error &&
+    typeof error.code === 'string' &&
+    exhaustion.has(error.code)
+  );
+}
+
 export function isWatchFailure(error: unknown): boolean {
   return (
     error instanceof Error && 'syscall' in error && error.syscall === 'watch'
@@ -51,7 +62,7 @@ export async function watchRepository(
     onChange,
     onWorktreesChange,
     onError,
-    onStopped = onError,
+    onStopped: onFirstStop = onError,
     recursive = watchesRecursively(),
     ignored = (repo, paths) => ignoredPaths(gitPath, repo, paths),
     signal,
@@ -66,6 +77,11 @@ export async function watchRepository(
   const gitDirs = [...new Set([gitDir, commonDir])];
 
   let disposed = false;
+  let stopTold = false;
+  const onStopped = (error: unknown) => {
+    (stopTold ? onError : onFirstStop)(error);
+    stopTold = true;
+  };
   const inFlight = new InFlight();
   let timer: NodeJS.Timeout | undefined;
   let worktreesTimer: NodeJS.Timeout | undefined;
@@ -229,6 +245,7 @@ export async function watchRepository(
         ignored,
         onEvent,
         onError,
+        onStopped,
         signal,
         watch: watchOneFolder,
       }),
@@ -243,6 +260,7 @@ export async function watchRepository(
           ignored: () => Promise.resolve([]),
           onEvent: onGitDirEvent,
           onError,
+          onStopped,
           signal,
           watch: watchOneFolder,
         }),
@@ -300,6 +318,7 @@ interface TreeOptions {
     event: string,
   ) => void;
   readonly onError: (error: unknown) => void;
+  readonly onStopped?: (error: unknown) => void;
   readonly signal?: AbortSignal;
   readonly watch: (
     folder: string,
@@ -325,20 +344,31 @@ interface WatchedFolder {
 
 export async function watchTree(
   root: string,
-  { skip, ignored, onEvent, onError, signal, watch }: TreeOptions,
+  {
+    skip,
+    ignored,
+    onEvent,
+    onError,
+    onStopped = onError,
+    signal,
+    watch,
+  }: TreeOptions,
 ): Promise<TreeWatcher> {
   const watched = new Map<string, WatchedFolder>();
   let disposed = false;
   const stopped = () => disposed || signal?.aborted === true;
   const inFlight = new InFlight();
   const reported = new Set<unknown>();
-  const report = (error: unknown) => {
-    const kind = error instanceof Error && 'code' in error ? error.code : '';
+  const report = (error: unknown, to = onError) => {
+    const code = error instanceof Error && 'code' in error ? error.code : '';
+    const kind = to === onError ? code : `stopped ${String(code)}`;
     if (!isMissing(error) && !reported.has(kind) && !disposed) {
       reported.add(kind);
-      onError(error);
+      to(error);
     }
   };
+  const watchFailed = (folder: string) => (error: unknown) =>
+    report(error, folder === root || outOfWatches(error) ? onStopped : onError);
 
   const ignoredFolders = new Map<string, Folder>();
   let ignoresGeneration = 0;
@@ -509,10 +539,10 @@ export async function watchTree(
       });
       entry = { watcher, repo: folder.repo, children: new Set(), gone: false };
     } catch (error) {
-      report(error);
+      watchFailed(folder.path)(error);
       return [];
     }
-    entry.watcher.on('error', report);
+    entry.watcher.on('error', watchFailed(folder.path));
     watched.set(folder.path, entry);
     parent?.children.add(folder.path);
     let entries: fs.Dirent[];
@@ -574,9 +604,19 @@ export async function watchTree(
         const files = [...renames];
         renames = new Set();
         void inFlight.track(
-          Promise.all(files.map(created)).then((folders) =>
-            add(folders.flat()),
-          ),
+          Promise.all(files.map(created)).then(async (folders) => {
+            const made = folders.flat();
+            await add(made);
+            for (const folder of made) {
+              if (!stopped() && watched.has(folder.path)) {
+                onEvent(
+                  path.dirname(folder.path),
+                  path.basename(folder.path),
+                  'rename',
+                );
+              }
+            }
+          }),
         );
       });
     }

@@ -251,6 +251,73 @@ suite('Watching a repository', () => {
     assert.deepStrictEqual(errors, []);
   });
 
+  test('tells once when the system refuses to watch folders, as past fs.inotify.max_user_watches, apart from its other failures, watching folder by folder', async () => {
+    fs.mkdirSync(path.join(repository.root, 'src'));
+    const nodeFs = process.getBuiltinModule('node:fs');
+    const { watch } = nodeFs;
+    const failure = Object.assign(
+      new Error('ENOSPC: no space left on device'),
+      {
+        code: 'ENOSPC',
+        syscall: 'watch',
+      },
+    );
+    replaceBuiltin(nodeFs, 'watch', (...args: Parameters<typeof watch>) => {
+      if (
+        args[0] === path.join(repository.root, 'src') ||
+        args[0] === path.join(repository.root, '.git', 'refs')
+      ) {
+        throw failure;
+      }
+      return watch(...args);
+    });
+    const stopped: unknown[] = [];
+    try {
+      watcher = await watchRepository(repository.gitPath, repository.root, {
+        delay: 50,
+        maxDelay: 200,
+        recursive: false,
+        onChange: ({ refs }) => changes.push(refs),
+        onError: (error) => errors.push(error),
+        onStopped: (error) => stopped.push(error),
+      });
+    } finally {
+      replaceBuiltin(nodeFs, 'watch', watch);
+    }
+    assert.deepStrictEqual(stopped, [failure]);
+    assert.deepStrictEqual(errors, [failure]);
+  });
+
+  test('tells when a folder it watches stops being watched, apart from its other failures, watching folder by folder', async () => {
+    const nodeFs = process.getBuiltinModule('node:fs');
+    const { watch } = nodeFs;
+    const made = new Map<unknown, fs.FSWatcher>();
+    replaceBuiltin(nodeFs, 'watch', (...args: Parameters<typeof watch>) => {
+      const real = watch(...args);
+      made.set(args[0], real);
+      return real;
+    });
+    const stopped: unknown[] = [];
+    try {
+      watcher = await watchRepository(repository.gitPath, repository.root, {
+        delay: 50,
+        maxDelay: 200,
+        recursive: false,
+        onChange: ({ refs }) => changes.push(refs),
+        onError: (error) => errors.push(error),
+        onStopped: (error) => stopped.push(error),
+      });
+    } finally {
+      replaceBuiltin(nodeFs, 'watch', watch);
+    }
+    const failure = Object.assign(new Error('EACCES: permission denied'), {
+      code: 'EACCES',
+    });
+    made.get(repository.root)?.emit('error', failure);
+    assert.deepStrictEqual(stopped, [failure]);
+    assert.deepStrictEqual(errors, []);
+  });
+
   test('refreshes for a change in the git folder to an entry it cannot tell is a folder, as when it is denied access, rather than throwing out of the watcher, watching recursively', async () => {
     const nodeFs = process.getBuiltinModule('node:fs');
     const { statSync } = nodeFs;
