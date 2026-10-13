@@ -129,8 +129,12 @@ export async function withNotices(
   }
 }
 
-export function settingsWithAutoFetchOff(): UserSettings {
-  return new UserSettings({ ...defaultSettings(), autoFetch: false });
+export function settingsForViews(): UserSettings {
+  return new UserSettings({
+    ...defaultSettings(),
+    autoFetch: false,
+    autoSortTabs: false,
+  });
 }
 
 const quickerRefreshDelays = { delay: refreshDelays.delay, maxDelay: 500 };
@@ -146,7 +150,7 @@ export async function openView(
   const store = new FakeStore();
   await store.update(tabsKey, tabs);
   await store.update(activeTabKey, tabs[0]);
-  const settings = settingsWithAutoFetchOff();
+  const settings = settingsForViews();
   const view = new FastforwardView(
     log,
     gitPath ?? (await installedGit()),

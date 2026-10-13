@@ -29,6 +29,8 @@ export function updateLabel(status: UpdateStatus): string {
 
 export function AppMenu({
   update,
+  autoSortTabs,
+  onAutoSortTabs,
   onSort,
   onOpenSettings,
   onOpenDefaultSettings,
@@ -38,6 +40,8 @@ export function AppMenu({
   onShowAbout,
 }: {
   update: UpdateStatus;
+  autoSortTabs: boolean;
+  onAutoSortTabs: (on: boolean) => void;
   onSort: () => void;
   onOpenSettings: () => void;
   onOpenDefaultSettings: () => void;
@@ -56,7 +60,14 @@ export function AppMenu({
       icon={<MenuIcon />}
       marked={installs}
       items={[
-        { label: strings.tabs.sort, onClick: onSort },
+        {
+          label: strings.tabs.sortAutomatically,
+          checked: autoSortTabs,
+          onClick: () => onAutoSortTabs(!autoSortTabs),
+        },
+        ...(autoSortTabs
+          ? []
+          : [{ label: strings.tabs.sort, onClick: onSort }]),
         { separator: true },
         {
           label: strings.tabs.openDefaultSettings,

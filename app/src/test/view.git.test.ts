@@ -43,7 +43,7 @@ import {
   openView,
   reopen,
   savedBookmarks,
-  settingsWithAutoFetchOff,
+  settingsForViews,
   stubMethod,
   takeErrorsLogged,
   viewRepositories,
@@ -82,7 +82,7 @@ suite('View of one repository', () => {
     const view = new FastforwardView(
       log,
       await installedGit(),
-      new Storage(settingsWithAutoFetchOff(), state),
+      new Storage(settingsForViews(), state),
       new FakeHost(),
     );
     const opened = attach(view);
@@ -109,7 +109,7 @@ suite('View of one repository', () => {
     const view = new FastforwardView(
       log,
       await installedGit(),
-      new Storage(settingsWithAutoFetchOff(), store),
+      new Storage(settingsForViews(), store),
       new FakeHost(),
     );
     const opened = attach(view);

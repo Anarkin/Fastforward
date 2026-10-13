@@ -56,6 +56,36 @@ suite('View with two tabs', () => {
     removeFolder(folder);
   });
 
+  test('sorts the tabs at once when sorting automatically is turned on, and keeps them sorted as repositories open, saving the setting', async () => {
+    const zeta = await tempRepository(path.join(folder, 'Zeta'));
+    await zeta.commit('zeta');
+    const beta = await tempRepository(path.join(folder, 'beta'));
+    await beta.commit('beta');
+    const host = new FakeHost();
+    await withView(
+      log,
+      [zeta.root, other],
+      async (own) => {
+        const names = () =>
+          (own.page.last('tabs')?.tabs ?? []).map((tab) => tab.name);
+        const open = async (root: string) => {
+          host.folders = [root];
+          await own.connection.receive({ type: 'browseRepositories' });
+        };
+        await own.connection.receive({ type: 'setAutoSortTabs', on: true });
+        assert.deepStrictEqual(names(), ['other', 'Zeta']);
+        assert.strictEqual(own.settings.settings.autoSortTabs, true);
+        await open(beta.root);
+        assert.deepStrictEqual(names(), ['beta', 'other', 'Zeta']);
+        await own.connection.receive({ type: 'setAutoSortTabs', on: false });
+        await open(repository.root);
+        assert.deepStrictEqual(names(), ['beta', 'other', 'Zeta', 'main']);
+      },
+      true,
+      host,
+    );
+  });
+
   test('sorts tabs by name and closes one, opening the next', async () => {
     const zeta = await tempRepository(path.join(folder, 'Zeta'));
     await zeta.commit('zeta');

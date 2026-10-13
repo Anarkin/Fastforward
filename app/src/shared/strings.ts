@@ -139,6 +139,7 @@ export const strings = {
       folder === undefined ? name : `${name} (${folder})`,
     settings: 'Settings',
     sort: 'Sort Tabs A-Z',
+    sortAutomatically: 'Sort Tabs A-Z Automatically',
     about: 'About',
     openDefaultSettings: 'Open Default Settings',
     openUserSettings: 'Open User Settings',

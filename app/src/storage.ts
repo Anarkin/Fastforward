@@ -340,6 +340,7 @@ export class Storage {
       autoFetch: settings.autoFetch,
       autoFetchMinutes: this.fetchMinutes,
       hideDimmedButtons: settings.hideDimmedButtons,
+      autoSortTabs: settings.autoSortTabs,
     };
   }
 
@@ -356,6 +357,14 @@ export class Storage {
 
   async setAutoFetch(on: boolean): Promise<void> {
     await this.userSettings.set('autoFetch', on);
+  }
+
+  get autoSortTabs(): boolean {
+    return this.settings.autoSortTabs;
+  }
+
+  async setAutoSortTabs(on: boolean): Promise<void> {
+    await this.userSettings.set('autoSortTabs', on);
   }
 
   get collapseMerges(): boolean {

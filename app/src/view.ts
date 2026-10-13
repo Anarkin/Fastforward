@@ -597,22 +597,19 @@ export class FastforwardView {
         }
         return;
       }
-      case 'sortTabs': {
-        const labels = new Map(
-          tabInfos(storage.tabs).map((tab) => [
-            tab.root,
-            strings.tabs.label(tab.name, tab.folder),
-          ]),
-        );
-        const tabs = storage.tabs.toSorted((a, b) =>
-          (labels.get(a) ?? a).localeCompare(labels.get(b) ?? b, undefined, {
-            sensitivity: 'base',
-          }),
-        );
-        this.save(storage.setTabs(tabs, storage.activeTab));
+      case 'sortTabs':
+        this.save(storage.setTabs(sortedTabs(storage.tabs), storage.activeTab));
         this.postTabs(session);
         return;
-      }
+      case 'setAutoSortTabs':
+        this.save(storage.setAutoSortTabs(message.on));
+        if (message.on) {
+          this.save(
+            storage.setTabs(sortedTabs(storage.tabs), storage.activeTab),
+          );
+          this.postTabs(session);
+        }
+        return;
       case 'log':
         this.log[message.level](strings.log.webview(message.message));
         return;
@@ -953,13 +950,22 @@ export class FastforwardView {
         repositories.findIndex((other) => sameRoot(other, repository)) ===
           index,
     );
-    this.save(storage.setTabs([...storage.tabs, ...added], storage.activeTab));
+    this.save(
+      storage.setTabs(
+        this.ordered([...storage.tabs, ...added]),
+        storage.activeTab,
+      ),
+    );
     const last = repositories.at(-1);
     if (last) {
       await this.openTab(page(), last);
     } else {
       this.postTabs(page());
     }
+  }
+
+  private ordered(tabs: string[]): string[] {
+    return this.storage.autoSortTabs ? sortedTabs(tabs) : tabs;
   }
 
   private async openTab(
@@ -1088,7 +1094,7 @@ export class FastforwardView {
       activeNow !== undefined &&
       (activeTab === undefined || !sameRoot(activeNow, activeTab));
     await storage.setTabs(
-      [...grouped, ...added],
+      this.ordered([...grouped, ...added]),
       switched ? activeNow : active,
     );
   }
@@ -3319,6 +3325,20 @@ export function tabInfos(
     );
     return { root, name, folder: paths.join(...folders) };
   });
+}
+
+function sortedTabs(tabs: readonly string[]): string[] {
+  const labels = new Map(
+    tabInfos(tabs).map((tab) => [
+      tab.root,
+      strings.tabs.label(tab.name, tab.folder),
+    ]),
+  );
+  return tabs.toSorted((a, b) =>
+    (labels.get(a) ?? a).localeCompare(labels.get(b) ?? b, undefined, {
+      sensitivity: 'base',
+    }),
+  );
 }
 
 function namedFolder(root: string, paths: path.PlatformPath): string {

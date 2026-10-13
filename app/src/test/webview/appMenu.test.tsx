@@ -10,9 +10,12 @@ import { noop, renderedBy } from '../fixtures';
 function menuOf(
   update: UpdateStatus,
   picked: string[],
+  autoSortTabs = true,
 ): { items: readonly ContextMenuItem[]; marked: boolean } {
   const menu = renderedBy(AppMenu, {
     update,
+    autoSortTabs,
+    onAutoSortTabs: (on) => picked.push(`sort automatically ${on}`),
     onSort: () => picked.push('sort'),
     onOpenSettings: () => picked.push('settings'),
     onOpenDefaultSettings: () => picked.push('defaults'),
@@ -32,12 +35,13 @@ function menuOf(
 suite('App menu', () => {
   test('offers sorting the tabs, opening the settings files, showing the shortcuts, checking for updates and the About', () => {
     const picked: string[] = [];
-    const items = menuOf({ kind: 'idle' }, picked).items.flatMap((item) =>
-      'separator' in item ? [] : [item],
+    const items = menuOf({ kind: 'idle' }, picked, false).items.flatMap(
+      (item) => ('separator' in item ? [] : [item]),
     );
     assert.deepStrictEqual(
       items.map((item) => item.label),
       [
+        'Sort Tabs A-Z Automatically',
         'Sort Tabs A-Z',
         'Open Default Settings',
         'Open User Settings',
@@ -50,6 +54,7 @@ suite('App menu', () => {
       item.onClick?.();
     }
     assert.deepStrictEqual(picked, [
+      'sort automatically true',
       'sort',
       'defaults',
       'settings',
@@ -59,11 +64,36 @@ suite('App menu', () => {
     ]);
   });
 
+  test('leaves out sorting the tabs once while they are sorted automatically', () => {
+    const labels = menuOf({ kind: 'idle' }, []).items.flatMap((item) =>
+      'separator' in item ? [] : [item.label],
+    );
+    assert.ok(labels.includes('Sort Tabs A-Z Automatically'));
+    assert.ok(!labels.includes('Sort Tabs A-Z'));
+  });
+
+  test('checks sorting the tabs automatically while it is on, turning it the other way when picked', () => {
+    for (const on of [true, false]) {
+      const picked: string[] = [];
+      const item = menuOf({ kind: 'idle' }, picked, on).items.find(
+        (entry) =>
+          !('separator' in entry) &&
+          entry.label === 'Sort Tabs A-Z Automatically',
+      );
+      assert.ok(item && !('separator' in item));
+      assert.strictEqual(item.checked, on);
+      item.onClick?.();
+      assert.deepStrictEqual(picked, [`sort automatically ${!on}`]);
+    }
+  });
+
   test('opens from a button of three lines, as the menu of the whole app', () => {
     assert.match(
       renderToStaticMarkup(
         <AppMenu
           update={{ kind: 'idle' }}
+          autoSortTabs
+          onAutoSortTabs={noop}
           onSort={noop}
           onOpenSettings={noop}
           onOpenDefaultSettings={noop}

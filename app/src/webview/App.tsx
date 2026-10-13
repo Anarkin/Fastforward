@@ -189,6 +189,7 @@ export function App({ name, post: postToHost, listen }: Props) {
   const [wordWrap, setWordWrap] = useState(false);
   const [showWhitespace, setShowWhitespace] = useState(false);
   const [autoFetch, setAutoFetch] = useState(false);
+  const [autoSortTabs, setAutoSortTabs] = useState(false);
   const [autoFetchMinutes, setAutoFetchMinutes] = useState(0);
   const [hideDimmed, setHideDimmed] = useState(false);
   const [diffLayout, setDiffLayout] = useState<DiffLayout>('sideBySide');
@@ -294,6 +295,7 @@ export function App({ name, post: postToHost, listen }: Props) {
           setAutoFetch(message.autoFetch);
           setAutoFetchMinutes(message.autoFetchMinutes);
           setHideDimmed(message.hideDimmedButtons);
+          setAutoSortTabs(message.autoSortTabs);
           break;
         case 'solo':
           setSolo(message.solo);
@@ -742,6 +744,11 @@ export function App({ name, post: postToHost, listen }: Props) {
                       menu={
                         <AppMenu
                           update={update}
+                          autoSortTabs={autoSortTabs}
+                          onAutoSortTabs={(on) => {
+                            setAutoSortTabs(on);
+                            post({ type: 'setAutoSortTabs', on });
+                          }}
                           onSort={() => post({ type: 'sortTabs' })}
                           onOpenSettings={() => post({ type: 'openSettings' })}
                           onOpenDefaultSettings={() =>

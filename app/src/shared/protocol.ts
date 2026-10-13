@@ -266,6 +266,7 @@ export type ToHost =
   | { readonly type: 'setDiffLayout'; readonly layout: DiffLayout }
   | { readonly type: 'setShowAllFiles'; readonly show: boolean }
   | { readonly type: 'setAutoFetch'; readonly on: boolean }
+  | { readonly type: 'setAutoSortTabs'; readonly on: boolean }
   | { readonly type: 'checkForUpdates' }
   | { readonly type: 'installUpdate' }
   | {
@@ -353,6 +354,7 @@ export type ToWebview =
       readonly autoFetch: boolean;
       readonly autoFetchMinutes: number;
       readonly hideDimmedButtons: boolean;
+      readonly autoSortTabs: boolean;
     }
   | { readonly type: 'bookmarks'; readonly bookmarks: readonly Bookmark[] }
   | { readonly type: 'solo'; readonly solo: boolean }

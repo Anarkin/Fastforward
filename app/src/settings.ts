@@ -15,6 +15,7 @@ export interface Settings {
   readonly autoFetch: boolean;
   readonly autoFetchMinutes: number;
   readonly hideDimmedButtons: boolean;
+  readonly autoSortTabs: boolean;
   readonly columnWidths: readonly number[];
   readonly fonts: {
     readonly family: string;
