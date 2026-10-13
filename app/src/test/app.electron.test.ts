@@ -56,6 +56,49 @@ function waitForFocus(locator: Locator, what: string): Promise<void> {
   );
 }
 
+function wrappedRows(
+  line: Locator,
+): Promise<{ last: string; follows: boolean }[]> {
+  return line.evaluate((element) => {
+    const code = element.querySelector('.code');
+    if (!code) {
+      throw new Error('No code');
+    }
+    const text = code.textContent ?? '';
+    const walker = document.createTreeWalker(code, NodeFilter.SHOW_TEXT);
+    const node = walker.nextNode();
+    if (!(node instanceof Text) || node.length !== text.length) {
+      throw new Error('Not one text node');
+    }
+    const range = document.createRange();
+    const ends = new Map<number, { right: number; last: string }>();
+    for (let offset = 0; offset < text.length; offset++) {
+      range.setStart(node, offset);
+      range.setEnd(node, offset + 1);
+      const rect = range.getBoundingClientRect();
+      ends.set(Math.round(rect.top), {
+        right: rect.right,
+        last: text[offset],
+      });
+    }
+    const marks = Array.from(
+      element.querySelectorAll('.wrap-break'),
+      (mark) => mark.getBoundingClientRect().left,
+    );
+    return [...ends.values()].slice(0, -1).map(({ right, last }, index) => ({
+      last,
+      follows: Math.abs((marks[index] ?? Infinity) - right) < 1,
+    }));
+  });
+}
+
+async function marksFollowRows(line: Locator): Promise<boolean> {
+  const rows = await wrappedRows(line);
+  return (
+    rows.length > 1 && rows.every((row) => row.last === '-' && row.follows)
+  );
+}
+
 async function scrollsOnWheelOver(
   page: Page,
   list: Locator,
@@ -788,41 +831,45 @@ suite('App', () => {
       .locator('.diff-line', { has: page.locator('.wrap-break') })
       .first();
     await line.waitFor();
-    const rows = await line.evaluate((element) => {
-      const code = element.querySelector('.code');
-      if (!code) {
-        throw new Error('No code');
-      }
-      const text = code.textContent ?? '';
-      const walker = document.createTreeWalker(code, NodeFilter.SHOW_TEXT);
-      const node = walker.nextNode();
-      if (!(node instanceof Text) || node.length !== text.length) {
-        throw new Error('Not one text node');
-      }
-      const range = document.createRange();
-      const ends = new Map<number, { right: number; last: string }>();
-      for (let offset = 0; offset < text.length; offset++) {
-        range.setStart(node, offset);
-        range.setEnd(node, offset + 1);
-        const rect = range.getBoundingClientRect();
-        ends.set(Math.round(rect.top), {
-          right: rect.right,
-          last: text[offset],
-        });
-      }
-      const marks = Array.from(
-        element.querySelectorAll('.wrap-break'),
-        (mark) => mark.getBoundingClientRect().left,
-      );
-      return [...ends.values()].slice(0, -1).map(({ right, last }, index) => ({
-        last,
-        follows: Math.abs((marks[index] ?? Infinity) - right) < 1,
-      }));
-    });
+    const rows = await wrappedRows(line);
     assert.ok(rows.length > 1, `${rows.length} rows`);
     assert.deepStrictEqual(
       rows,
       rows.map(() => ({ last: '-', follows: true })),
+    );
+  });
+
+  test('moves the marks of a wrapped line along once the browser breaks it elsewhere, as it does when it gets a few pixels narrower, though the app estimates as many characters to a row', async () => {
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await page.locator('.row.file', { hasText: 'hyphenated.txt' }).click();
+    await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
+    const line = page
+      .locator('.diff-line', { has: page.locator('.wrap-break') })
+      .first();
+    await line.waitFor();
+    await waitFor(() => marksFollowRows(line), 'the marks to follow the rows');
+    const before = await line
+      .locator('.wrap-break')
+      .evaluateAll((marks) =>
+        marks.map((mark) => mark.getBoundingClientRect().left),
+      );
+    await line.evaluate((element) => {
+      const code = element.querySelector<HTMLElement>('.code');
+      if (code) {
+        code.style.paddingRight = 'calc(2 * var(--diff-code-padding) + 9ch)';
+      }
+    });
+    await waitFor(
+      () => marksFollowRows(line),
+      'the marks to follow the rows broken elsewhere',
+    );
+    assert.notDeepStrictEqual(
+      await line
+        .locator('.wrap-break')
+        .evaluateAll((marks) =>
+          marks.map((mark) => mark.getBoundingClientRect().left),
+        ),
+      before,
     );
   });
 

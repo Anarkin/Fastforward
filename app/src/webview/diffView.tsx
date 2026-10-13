@@ -253,11 +253,16 @@ export function WrapMarks({
   const [breaks, setBreaks] = useState(noBreaks);
   useLayoutEffect(() => {
     const code = marks.current?.parentElement?.querySelector('.code');
-    setBreaks(
-      columns === undefined || !(code instanceof HTMLElement)
-        ? noBreaks
-        : rowBreaksAt(text, laidOutRowStarts(code), columns),
-    );
+    if (columns === undefined || !(code instanceof HTMLElement)) {
+      setBreaks(noBreaks);
+      return undefined;
+    }
+    const measure = () =>
+      setBreaks(rowBreaksAt(text, laidOutRowStarts(code), columns));
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(code);
+    return () => observer.disconnect();
   }, [text, columns]);
   if (columns === undefined) {
     return null;
