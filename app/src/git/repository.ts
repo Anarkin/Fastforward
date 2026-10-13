@@ -266,10 +266,12 @@ export async function switchToBranch(
   root: string,
   branch: string,
 ): Promise<void> {
-  await runGit(gitPath, root, ['switch', '-q', '--end-of-options', branch], {
-    runsHooks: true,
-    writes: true,
-  });
+  await runGit(
+    gitPath,
+    root,
+    ['switch', '-q', '--no-guess', '--end-of-options', branch],
+    { runsHooks: true, writes: true },
+  );
 }
 
 export async function switchToCommit(

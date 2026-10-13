@@ -1010,6 +1010,14 @@ suite('View of one repository', () => {
         { type: 'selectFile', root: repository.root, hash, path: 'a' },
         { type: 'loadTree', root: repository.root, hash },
         { type: 'selectCommit', root: repository.root, hash },
+        ...[hash, 'HEAD~1', ':/b', fixture.a.toUpperCase()].map(
+          (target) =>
+            ({
+              type: 'checkout',
+              root: repository.root,
+              target: { kind: 'commit', hash: target },
+            }) as const,
+        ),
       ] as const) {
         page.clear();
         await connection.receive(message);
@@ -1018,6 +1026,55 @@ suite('View of one repository', () => {
       await connection.receive({ type: 'setIgnoreWhitespace', ignore: true });
       assert.strictEqual(page.last('diff'), undefined);
       assert.ok(!fs.existsSync(written));
+      assert.strictEqual(
+        (await repository.git('symbolic-ref', 'HEAD')).trim(),
+        'refs/heads/main',
+      );
+    });
+
+    test('checks out only refs of the repository named by the page, saying a ref it lacks is gone', async () => {
+      let switches = 0;
+      const childProcess = process.getBuiltinModule('node:child_process');
+      const { spawn } = childProcess;
+      replaceBuiltin(
+        childProcess,
+        'spawn',
+        (...args: Parameters<typeof spawn>) => {
+          if (args[1]?.includes('switch')) {
+            switches += 1;
+          }
+          return spawn(...args);
+        },
+      );
+      try {
+        await withNotices(page, 'error', async (messages) => {
+          for (const target of [
+            { kind: 'branch', name: 'main~1' },
+            { kind: 'branch', name: 'no-such-branch' },
+            { kind: 'tag', name: 'no-such-tag' },
+            { kind: 'remote', name: 'origin/no-such-branch' },
+          ] as const) {
+            await connection.receive({
+              type: 'checkout',
+              root: repository.root,
+              target,
+            });
+          }
+          assert.deepStrictEqual(messages, [
+            "main~1 doesn't exist, so it wasn't checked out",
+            "no-such-branch doesn't exist, so it wasn't checked out",
+            "no-such-tag doesn't exist, so it wasn't checked out",
+            "origin/no-such-branch doesn't exist, so it wasn't checked out",
+          ]);
+        });
+      } finally {
+        replaceBuiltin(childProcess, 'spawn', spawn);
+      }
+      assert.strictEqual(switches, 0);
+      assert.strictEqual(
+        (await repository.git('symbolic-ref', 'HEAD')).trim(),
+        'refs/heads/main',
+      );
     });
 
     test('sends the texts a diff asks for, an uncommitted new side read from disk, and none of a side over 2 MB, from git or from disk', async () => {

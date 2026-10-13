@@ -367,6 +367,8 @@ export const strings = {
       `Couldn't watch ${root}, so changes made outside ${brand} won't show until it is opened again`,
     couldNotCheckOut: (name: string, reason: string) =>
       `Couldn't check out ${name}. ${reason}`,
+    noRefToCheckOut: (name: string) =>
+      `${name} doesn't exist, so it wasn't checked out`,
     leftBehind: (count: number, hashes: readonly string[], more: number) =>
       `Left ${count === 1 ? '1 commit' : `${count} commits`} behind on no branch or tag: ${hashes.join(' ')}${more > 0 ? ` and ${more} more` : ''}`,
     diverged: (local: string, remote: string) =>

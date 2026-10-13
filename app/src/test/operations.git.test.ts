@@ -84,6 +84,25 @@ suite('Operations checking out', () => {
     }
   });
 
+  test('makes no branch from a remote branch of the same name when asked for a branch', async () => {
+    await repository.git('update-ref', 'refs/remotes/origin/guessed', 'main');
+    try {
+      const { checkedOut } = await checkOut({
+        kind: 'branch',
+        name: 'guessed',
+      });
+      assert.strictEqual(checkedOut, false);
+      assert.strictEqual(
+        await repository.git('branch', '--list', 'guessed'),
+        '',
+      );
+    } finally {
+      await repository.git('checkout', '-f', 'main');
+      await repository.git('branch', '-D', 'guessed').catch(() => '');
+      await repository.git('update-ref', '-d', 'refs/remotes/origin/guessed');
+    }
+  });
+
   test('logs what it checked out by name, a remote branch as the local branch it switched to or made', async () => {
     await repository.git('tag', 'v1', a);
     await repository.git('branch', 'kept', 'main');

@@ -89,6 +89,7 @@ import {
 import { defaultBookmarks, fingerprint, remoteTagRefs, sameTags } from './refs';
 import { comparedOf, shownSide, workingTreeSide } from './shared/comparisons';
 import { isFullHash, shortHash } from './shared/hashes';
+import { hasRef } from './shared/refNames';
 import { imageSourceOf, imageType } from './shared/images';
 import { InFlight } from './shared/inFlight';
 import { addNotice } from './shared/notices';
@@ -1553,12 +1554,37 @@ export class FastforwardView {
     target: CheckoutTarget,
     picked: number | undefined,
   ): Promise<void> {
-    if (!(await checkout(this.log, this.notify(context), context, target))) {
+    if (
+      !(await this.checkable(context, target)) ||
+      !(await checkout(this.log, this.notify(context), context, target))
+    ) {
       return;
     }
     await this.refresh(context);
     await context.tab.loadingHistory;
     await this.showHead(context, picked);
+  }
+
+  private async checkable(
+    context: Context,
+    target: CheckoutTarget,
+  ): Promise<boolean> {
+    if (target.kind === 'commit') {
+      if (isFullHash(target.hash) && context.tab.fullHistory.has(target.hash)) {
+        return true;
+      }
+      this.notInHistory(context, target.hash);
+      return false;
+    }
+    const { refs } = await readRefs(context.gitPath, context.root);
+    if (hasRef(refs, target)) {
+      return true;
+    }
+    this.notify(context)(
+      'error',
+      strings.messages.noRefToCheckOut(target.name),
+    );
+    return false;
   }
 
   private async fetch(context: Context): Promise<void> {
@@ -3136,8 +3162,12 @@ function needsNoWholeHistory(tab: TabState, message: TabMessage): boolean {
     case 'pushTag':
     case 'pullBranch':
     case 'pushBranch':
-    case 'checkout':
       return true;
+    case 'checkout':
+      return (
+        message.target.kind !== 'commit' ||
+        tab.fullHistory.has(message.target.hash)
+      );
     case 'selectCommit':
       return (
         message.hash === undefined ||

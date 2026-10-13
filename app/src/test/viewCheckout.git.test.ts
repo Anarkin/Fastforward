@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import * as path from 'node:path';
 import {
   afterAll,
   afterEach,
@@ -92,6 +93,34 @@ suite('View checking out', () => {
       assert.strictEqual(info?.headCommit, fixture.a);
     } finally {
       await restore();
+    }
+  });
+
+  test('checks out a tag, and a remote branch as a new branch tracking it', async () => {
+    await repository.git('tag', 'checked', fixture.b);
+    await repository.git('remote', 'add', 'origin', repository.root);
+    await repository.git('update-ref', 'refs/remotes/origin/topic', fixture.a);
+    try {
+      await connection.refresh();
+      await connection.receive({
+        type: 'checkout',
+        root: repository.root,
+        target: { kind: 'tag', name: 'checked' },
+      });
+      assert.strictEqual(page.last('repository')?.headCommit, fixture.b);
+
+      await connection.receive({
+        type: 'checkout',
+        root: repository.root,
+        target: { kind: 'remote', name: 'origin/topic' },
+      });
+      assert.strictEqual(page.last('repository')?.head, 'topic');
+      assert.strictEqual(page.last('repository')?.headCommit, fixture.a);
+    } finally {
+      await restore();
+      await repository.git('branch', '-D', 'topic').catch(() => '');
+      await repository.git('remote', 'remove', 'origin');
+      await repository.git('tag', '-d', 'checked');
     }
   });
 
@@ -206,29 +235,35 @@ suite('View checking out', () => {
   });
 
   test('reports what git said when it refuses a checkout, logging the command too', async () => {
-    await withNotices(page, 'error', async (messages) => {
-      await connection.receive({
-        type: 'checkout',
-        root: repository.root,
-        target: { kind: 'branch', name: 'no-such-branch' },
+    const elsewhere = path.join(folder, 'elsewhere');
+    await repository.git('worktree', 'add', elsewhere, 'feature');
+    try {
+      await withNotices(page, 'error', async (messages) => {
+        await connection.receive({
+          type: 'checkout',
+          root: repository.root,
+          target: { kind: 'branch', name: 'feature' },
+        });
+        assert.strictEqual(messages.length, 1);
+        assert.match(
+          messages[0],
+          /^Couldn't check out feature\. fatal: 'feature' is already used by worktree at /,
+        );
       });
-      assert.strictEqual(messages.length, 1);
-      assert.match(
-        messages[0],
-        /^Couldn't check out no-such-branch\. fatal: invalid reference: no-such-branch$/,
-      );
-    });
+    } finally {
+      await repository.git('worktree', 'remove', '--force', elsewhere);
+    }
     assert.ok(
       logged.some(
         (entry) =>
           entry instanceof Error &&
-          /^git .*switch .*no-such-branch failed: /.test(entry.message),
+          /^git .*switch .*feature failed: /.test(entry.message),
       ),
     );
     takeErrorsLogged(
       logged,
-      /^Checking out branch no-such-branch failed$/,
-      /^git .*switch .*no-such-branch failed: /,
+      /^Checking out branch feature failed$/,
+      /^git .*switch .*feature failed: /,
     );
   });
 
