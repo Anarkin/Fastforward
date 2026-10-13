@@ -1687,6 +1687,27 @@ suite('Style', () => {
     });
   });
 
+  test("heads the shortcuts and the About with a band in the window's grey, holding their title and close button, rounded with the popup's top corners and set apart from what follows", () => {
+    for (const popup of [shortcutsPopup(), aboutPopup()]) {
+      const header = withClass(popup, 'shortcuts-title');
+      looks(header, {
+        background: 'var(--color-background)',
+        'border-radius': 'var(--card-radius) var(--card-radius) 0 0',
+        padding: '4px 4px 4px 16px',
+      });
+      assert.ok(withClass(header, 'nav-button'));
+    }
+    looks(withClass(shortcutsPopup(), 'shortcuts-groups'), {
+      padding: '0 16px 16px',
+    });
+    looks(withClass(shortcutsPopup(), 'shortcuts-heading'), {
+      padding: '12px 0 6px',
+    });
+    looks(withClass(aboutPopup(), 'about-body'), {
+      padding: '12px 16px 16px',
+    });
+  });
+
   test("tints the About's copy button more on hovering, and fills it with the focus color while pressed and once it copied", () => {
     const copy = withClass(aboutPopup(), 'about-copy');
     looks(copy, { background: 'var(--color-background)' });
