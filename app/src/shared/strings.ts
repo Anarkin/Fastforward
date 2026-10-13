@@ -91,7 +91,8 @@ export const strings = {
     open: 'Open',
     crashed: (error: string) => `Something went wrong: ${error}`,
     reload: 'Reload',
-    noRepository: 'No repository is open. Use + to open one.',
+    noRepository:
+      'No repository is open. Use + to open one. The app menu is at the top right.',
   },
   common: {
     close: 'Close',

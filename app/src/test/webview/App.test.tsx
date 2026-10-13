@@ -16,7 +16,7 @@ suite('Window', () => {
     assert.strictEqual(tabContent(undefined, columns), null);
     assert.strictEqual(
       renderToStaticMarkup(<>{tabContent([], columns)}</>),
-      '<div class="empty-state">No repository is open. Use + to open one.</div>',
+      '<div class="empty-state">No repository is open. Use + to open one. The app menu is at the top right.</div>',
     );
     assert.strictEqual(
       tabContent([{ root: '/repo', name: 'repo' }], columns),
