@@ -172,6 +172,7 @@ export const strings = {
     sideways: 'Scroll sideways',
     wheelSideways: 'Scroll sideways with the wheel',
     wrap: 'Wrap long lines',
+    showWhitespace: 'Show whitespace',
     find: 'Find',
     match: 'Next or previous match',
     stopFinding: 'Stop finding',

@@ -604,6 +604,9 @@ export function App({ name, post: postToHost, listen }: Props) {
     setShowWhitespace(show);
     post({ type: 'setShowWhitespace', show });
   };
+  useBinding(keymap.showWhitespace, () =>
+    changeShowWhitespace(!showWhitespace),
+  );
   const changeDiffLayout = (layout: DiffLayout) => {
     setDiffLayout(layout);
     post({ type: 'setDiffLayout', layout });

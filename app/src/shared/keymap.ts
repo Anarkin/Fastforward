@@ -103,6 +103,7 @@ export const keymap = {
     'Shift+Wheel': true,
   }),
   wrap: bind('Diff', strings.actions.wrap, { W: true }),
+  showWhitespace: bind('Diff', strings.actions.showWhitespace, { '.': true }),
   find: bind('Diff', strings.actions.find, { 'Mod+F': true }),
   match: bind(
     'Diff',

@@ -9,6 +9,9 @@ type KeyEvent = Parameters<typeof keyPressed>[1];
 const shortcuts = (key: string, extra: Partial<KeyEvent> = {}) =>
   keyPressed(keymap.shortcuts, keyPress(key, extra)) === true;
 
+const showsWhitespace = (extra: Partial<KeyEvent> = {}) =>
+  keyPressed(keymap.showWhitespace, keyPress('.', extra)) === true;
+
 const within = (inMenu: boolean) =>
   Object.assign(element('BUTTON'), {
     closest: (selector: string) =>
@@ -99,6 +102,15 @@ suite('Keyboard shortcuts', () => {
       appKeyPressed(keymap.shortcuts, keyPress('?', { target: inDialog })),
       true,
     );
+  });
+
+  test('shows whitespace on ., the dot it draws for a space, outside a field', () => {
+    assert.ok(showsWhitespace());
+    assert.ok(!showsWhitespace({ target: element('INPUT') }));
+    assert.ok(!showsWhitespace({ ctrlKey: true }));
+    assert.ok(!showsWhitespace({ altKey: true }));
+    assert.ok(!showsWhitespace({ repeat: true }));
+    assert.ok(keyPressed(keymap.showWhitespace, keyPress(',')) === undefined);
   });
 
   test('opens find in the diff on Ctrl+F, or Cmd+F on macOS, whatever the keyboard layout', () => {
