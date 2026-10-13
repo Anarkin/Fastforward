@@ -231,8 +231,8 @@ suite('Commit list rows', () => {
     const html = renderToStaticMarkup(
       <OtherBranchActions.Provider
         value={{
-          pulling: undefined,
-          pushing: undefined,
+          pulling: [],
+          pushing: [],
           onPull: noop,
           onPush: noop,
           elsewhere: new Set(),

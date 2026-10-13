@@ -51,9 +51,9 @@ function busyTab(): TabView {
   view = reduceTabView(view, { type: 'fetching', running: true });
   view = reduceTabView(view, { type: 'pulling', running: true });
   view = reduceTabView(view, { type: 'pushing', running: true });
-  view = reduceTabView(view, { type: 'pushingTag', name: 'v1' });
-  view = reduceTabView(view, { type: 'pullingBranch', name: 'side' });
-  view = reduceTabView(view, { type: 'pushingBranch', name: 'other' });
+  view = reduceTabView(view, { type: 'pushingTag', names: ['v1'] });
+  view = reduceTabView(view, { type: 'pullingBranch', names: ['side'] });
+  view = reduceTabView(view, { type: 'pushingBranch', names: ['other'] });
   view = reduceTabView(view, { type: 'applyingSolo', running: true });
   return reduceTabView(view, { type: 'error', message: 'failed' });
 }
@@ -158,9 +158,23 @@ suite('Tab view', () => {
     assert.strictEqual(view.fetching, true);
     assert.strictEqual(view.pulling, true);
     assert.strictEqual(view.pushing, true);
-    assert.strictEqual(view.pushingTag, 'v1');
-    assert.strictEqual(view.pullingBranch, 'side');
-    assert.strictEqual(view.pushingBranch, 'other');
+    assert.deepStrictEqual(view.pushingTag, ['v1']);
+    assert.deepStrictEqual(view.pullingBranch, ['side']);
+    assert.deepStrictEqual(view.pushingBranch, ['other']);
+  });
+
+  test('keeps a name running while another one finishes', () => {
+    let view = emptyTabView;
+    for (const type of [
+      'pushingTag',
+      'pullingBranch',
+      'pushingBranch',
+    ] as const) {
+      view = reduceTabView(view, { type, names: ['a'] });
+      view = reduceTabView(view, { type, names: ['a', 'b'] });
+      view = reduceTabView(view, { type, names: ['b'] });
+      assert.deepStrictEqual(view[type], ['b']);
+    }
   });
 
   test('clears the error when selecting another file', () => {

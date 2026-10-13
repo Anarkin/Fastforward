@@ -24,7 +24,7 @@ import {
 
 function running(message: ToWebview): string[] {
   return message.type === 'pullingBranch' || message.type === 'pushingBranch'
-    ? [`${message.type} ${message.name}`]
+    ? [`${message.type} ${message.names.join(' ')}`.trim()]
     : [];
 }
 
@@ -149,7 +149,7 @@ suite('View pulling and pushing other branches', () => {
     );
     assert.deepStrictEqual(page.messages.flatMap(running), [
       'pullingBranch side',
-      'pullingBranch undefined',
+      'pullingBranch',
     ]);
     fs.writeFileSync(path.join(repository.root, 'shared'), 'a');
   });
@@ -323,7 +323,7 @@ suite('View pulling and pushing other branches', () => {
     assert.strictEqual(await onRemote('ahead'), ahead);
     assert.deepStrictEqual(page.messages.flatMap(running), [
       'pushingBranch ahead',
-      'pushingBranch undefined',
+      'pushingBranch',
     ]);
     await repository.git('branch', 'fresh', 'main');
     assert.deepStrictEqual(await send('pushBranch', 'fresh'), [
@@ -334,6 +334,39 @@ suite('View pulling and pushing other branches', () => {
       (await repository.git('symbolic-ref', '--short', 'HEAD')).trim(),
       'main',
     );
+  });
+
+  test('keeps a branch pushing while another one finishes, so both stay disabled until each is done', async () => {
+    await repository.git('branch', 'first', 'main');
+    await repository.git('branch', 'second', 'main');
+    const held = gate();
+    let calls = 0;
+    const restore = Reflect.get(view, 'afterRemoteWork');
+    stubMethod(view, 'afterRemoteWork', async (original, ...args) => {
+      calls += 1;
+      if (calls === 1) {
+        await held.opened;
+      }
+      return original(...args);
+    });
+    try {
+      page.clear();
+      const first = send('pushBranch', 'first');
+      await waitFor(() => calls === 1, 'the first push to start');
+      await send('pushBranch', 'second');
+      held.open();
+      await first;
+    } finally {
+      Reflect.set(view, 'afterRemoteWork', restore);
+    }
+    assert.deepStrictEqual(page.messages.flatMap(running), [
+      'pushingBranch first',
+      'pushingBranch first second',
+      'pushingBranch first',
+      'pushingBranch',
+    ]);
+    assert.ok(await onRemote('first'));
+    assert.ok(await onRemote('second'));
   });
 
   test('pulls and pushes no branch the repository lacks, as the page may ask for any name', async () => {

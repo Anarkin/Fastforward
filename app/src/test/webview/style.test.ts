@@ -1063,7 +1063,7 @@ suite('Style', () => {
             value: {
               remote: 'origin',
               onRemote: new Set<string>(),
-              pushing: undefined,
+              pushing: [],
               onPush: noop,
             },
           },

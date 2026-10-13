@@ -356,9 +356,9 @@ export type ToWebview =
   | { readonly type: 'fetching'; readonly running: boolean }
   | { readonly type: 'pulling'; readonly running: boolean }
   | { readonly type: 'pushing'; readonly running: boolean }
-  | { readonly type: 'pushingTag'; readonly name: string | undefined }
-  | { readonly type: 'pullingBranch'; readonly name: string | undefined }
-  | { readonly type: 'pushingBranch'; readonly name: string | undefined }
+  | { readonly type: 'pushingTag'; readonly names: readonly string[] }
+  | { readonly type: 'pullingBranch'; readonly names: readonly string[] }
+  | { readonly type: 'pushingBranch'; readonly names: readonly string[] }
   | { readonly type: 'update'; readonly status: UpdateStatus }
   | ({ readonly type: 'about' } & AboutInfo)
   | ({ readonly type: 'lastFetch' } & LastFetch)

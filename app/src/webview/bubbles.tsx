@@ -27,7 +27,7 @@ export const BranchActions = createContext<BranchActionsOf | undefined>(
 export interface TagActionsOf {
   readonly remote: string | undefined;
   readonly onRemote: ReadonlySet<string>;
-  readonly pushing: string | undefined;
+  readonly pushing: readonly string[];
   readonly onPush: (tag: string) => void;
 }
 
@@ -36,8 +36,8 @@ export const TagActions = createContext<TagActionsOf | undefined>(undefined);
 export const HideDimmedButtons = createContext(false);
 
 export interface OtherBranchActionsOf {
-  readonly pulling: string | undefined;
-  readonly pushing: string | undefined;
+  readonly pulling: readonly string[];
+  readonly pushing: readonly string[];
   readonly onPull: (branch: string) => void;
   readonly onPush: (branch: string) => void;
   readonly elsewhere: ReadonlySet<string>;
@@ -128,7 +128,7 @@ export function RefBubble({
         <TagPushAction
           tag={info.name}
           remote={tagActions.remote}
-          running={tagActions.pushing === info.name}
+          running={tagActions.pushing.includes(info.name)}
           idle={tagIdle}
           onPush={tagActions.onPush}
         />
@@ -214,8 +214,8 @@ function otherBranchItems(
   actions: OtherBranchActionsOf,
 ): Action[] {
   const [pull, push] = branchActionItems({
-    pulling: actions.pulling === name,
-    pushing: actions.pushing === name,
+    pulling: actions.pulling.includes(name),
+    pushing: actions.pushing.includes(name),
     onPull: () => actions.onPull(name),
     onPush: () => actions.onPush(name),
     tracking,

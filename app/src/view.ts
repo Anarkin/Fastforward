@@ -153,6 +153,8 @@ const everything: Changed = { refs: true, workingTree: true };
 const nothing: Changed = { refs: false, workingTree: false };
 const refsAlone: Changed = { refs: true, workingTree: false };
 
+type RunningOn = 'pushingTag' | 'pullingBranch' | 'pushingBranch';
+
 interface Tab extends TabState {
   preloading: Promise<void> | undefined;
   loadingHistory: Promise<void> | undefined;
@@ -167,6 +169,7 @@ interface Tab extends TabState {
   selection: number | undefined;
   navigating: Promise<void>;
   movingHead: Promise<void>;
+  runningOn: Record<RunningOn, Set<string>>;
   diffRequest: number;
   diffOwed: boolean;
   loadingFiles: AbortController;
@@ -1395,6 +1398,11 @@ export class FastforwardView {
         selection: undefined,
         navigating: Promise.resolve(),
         movingHead: Promise.resolve(),
+        runningOn: {
+          pushingTag: new Set(),
+          pullingBranch: new Set(),
+          pushingBranch: new Set(),
+        },
         diffRequest: 0,
         diffOwed: false,
         loadingFiles: new AbortController(),
@@ -1677,8 +1685,7 @@ export class FastforwardView {
     const notify = this.notify(context);
     let fetched: Fetched | undefined;
     let moved = false;
-    context.post({ type: 'pullingBranch', name });
-    try {
+    await this.runningOn(context, 'pullingBranch', name, async () => {
       const { refs, head } = await this.refsOf(context);
       if (!refs.some((ref) => ref.kind === 'branch' && ref.name === name)) {
         return;
@@ -1705,9 +1712,7 @@ export class FastforwardView {
             this.moveToUpstream(context, name, picked),
           ));
       }
-    } finally {
-      context.post({ type: 'pullingBranch', name: undefined });
-    }
+    });
     if (!moved && fetched) {
       await this.refreshFetched(context, fetched);
     }
@@ -1758,10 +1763,8 @@ export class FastforwardView {
     if (!refs.some((ref) => ref.kind === 'branch' && ref.name === name)) {
       return;
     }
-    context.post({ type: 'pushingBranch', name });
-    let pushed: Pushed;
-    try {
-      pushed = await this.afterRemoteWork(context.repository, () =>
+    const pushed = await this.runningOn(context, 'pushingBranch', name, () =>
+      this.afterRemoteWork(context.repository, () =>
         pushToUpstream(
           this.log,
           this.notify(context),
@@ -1769,10 +1772,8 @@ export class FastforwardView {
           this.quitting.signal,
           name,
         ),
-      );
-    } finally {
-      context.post({ type: 'pushingBranch', name: undefined });
-    }
+      ),
+    );
     if (pushed === 'pushed') {
       await this.refresh(context, undefined, refsAlone);
     } else if (pushed === 'rejected') {
@@ -1802,10 +1803,8 @@ export class FastforwardView {
       );
       return;
     }
-    context.post({ type: 'pushingTag', name });
-    let pushedTo: string | undefined;
-    try {
-      pushedTo = await this.afterRemoteWork(context.repository, () =>
+    const pushedTo = await this.runningOn(context, 'pushingTag', name, () =>
+      this.afterRemoteWork(context.repository, () =>
         pushTag(
           this.log,
           this.notify(context),
@@ -1813,10 +1812,8 @@ export class FastforwardView {
           name,
           this.quitting.signal,
         ),
-      );
-    } finally {
-      context.post({ type: 'pushingTag', name: undefined });
-    }
+      ),
+    );
     const known =
       pushedTo === undefined
         ? undefined
@@ -1830,6 +1827,23 @@ export class FastforwardView {
       new Map([...known, [name, tag.commit]]),
     );
     await this.refresh(context, undefined, refsAlone);
+  }
+
+  private async runningOn<T>(
+    context: Context,
+    type: RunningOn,
+    name: string,
+    work: () => Promise<T>,
+  ): Promise<T> {
+    const names = context.tab.runningOn[type];
+    names.add(name);
+    context.post({ type, names: [...names] });
+    try {
+      return await work();
+    } finally {
+      names.delete(name);
+      context.post({ type, names: [...names] });
+    }
   }
 
   private async afterRemoteWork<T>(

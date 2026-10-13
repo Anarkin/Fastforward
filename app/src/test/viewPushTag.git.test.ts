@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { afterAll, afterEach, beforeAll, suite, test } from 'vitest';
 import type { ToWebview } from '../shared/protocol';
-import type { Connection } from '../view';
+import type { Connection, FastforwardView } from '../view';
 import { waitFor } from './fixtures';
 import {
   removeFolder,
@@ -15,18 +15,21 @@ import {
   closeViews,
   failOnErrorsLogged,
   type FakePage,
+  gate,
   openView,
+  stubMethod,
   withNotices,
 } from './viewHarness';
 
 function pushingTag(message: ToWebview): string[] {
-  return message.type === 'pushingTag' ? [`${message.name}`] : [];
+  return message.type === 'pushingTag' ? [message.names.join(' ')] : [];
 }
 
 suite('View pushing tags', () => {
   let folder: string;
   let repository: TempRepository;
   let remote: TempRepository;
+  let view: FastforwardView;
   let page: FakePage;
   let connection: Connection;
   let a: string;
@@ -46,7 +49,7 @@ suite('View pushing tags', () => {
     [a, b] = await repository.resolve('main~1', 'main');
     await repository.git('remote', 'add', 'origin', remote.root);
     await repository.git('push', '-u', 'origin', 'main');
-    ({ page, connection } = await openView(
+    ({ view, page, connection } = await openView(
       log,
       [repository.root],
       'unwatched',
@@ -124,10 +127,41 @@ suite('View pushing tags', () => {
         .map((ref) => [ref.name, ref.commit]),
       [['origin/v1', a]],
     );
+    assert.deepStrictEqual(page.messages.flatMap(pushingTag), ['v1', '']);
+  });
+
+  test('keeps a tag pushing while another one finishes, so both stay disabled until each is done', async () => {
+    await repository.git('tag', 'v6', a);
+    await repository.git('tag', 'v7', b);
+    await connection.refresh();
+    const held = gate();
+    let calls = 0;
+    const restore = Reflect.get(view, 'afterRemoteWork');
+    stubMethod(view, 'afterRemoteWork', async (original, ...args) => {
+      calls += 1;
+      if (calls === 1) {
+        await held.opened;
+      }
+      return original(...args);
+    });
+    try {
+      page.clear();
+      const first = pushedWith('info', 'v6');
+      await waitFor(() => calls === 1, 'the first push to start');
+      await pushedWith('info', 'v7');
+      held.open();
+      await first;
+    } finally {
+      Reflect.set(view, 'afterRemoteWork', restore);
+    }
     assert.deepStrictEqual(page.messages.flatMap(pushingTag), [
-      'v1',
-      'undefined',
+      'v6',
+      'v6 v7',
+      'v6',
+      '',
     ]);
+    assert.strictEqual(await onRemote('v6'), a);
+    assert.strictEqual(await onRemote('v7'), b);
   });
 
   test('pushes nothing over a tag of the same name the remote has on another commit, saying so', async () => {

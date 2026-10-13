@@ -41,7 +41,7 @@ function tagged(
         value={{
           remote,
           onRemote: new Set(onRemote),
-          pushing: undefined,
+          pushing: [],
           onPush: noop,
         }}
       >
@@ -57,7 +57,7 @@ function otherBranch(
   {
     hideDimmed = false,
     elsewhere = [] as string[],
-    pulling = undefined as string | undefined,
+    pulling = [] as readonly string[],
   } = {},
 ): string {
   return renderToStaticMarkup(
@@ -65,7 +65,7 @@ function otherBranch(
       <OtherBranchActions.Provider
         value={{
           pulling,
-          pushing: undefined,
+          pushing: [],
           onPull: noop,
           onPush: noop,
           elsewhere: new Set(elsewhere),
@@ -339,7 +339,7 @@ suite('Bubbles', () => {
           value={{
             remote: 'origin',
             onRemote: new Set(),
-            pushing: undefined,
+            pushing: [],
             onPush: noop,
           }}
         >
@@ -400,8 +400,8 @@ suite('Bubbles', () => {
       renderToStaticMarkup(
         <OtherBranchActions.Provider
           value={{
-            pulling: undefined,
-            pushing: undefined,
+            pulling: [],
+            pushing: [],
             onPull: noop,
             onPush: noop,
             elsewhere: new Set(),
@@ -421,8 +421,8 @@ suite('Bubbles', () => {
       name: 'side',
       tracking: { upstream: 'origin/side', ahead: 0, behind: 2 },
       actions: {
-        pulling: undefined,
-        pushing: undefined,
+        pulling: [],
+        pushing: [],
         onPull: (name) => pulled.push(`pull ${name}`),
         onPush: (name) => pulled.push(`push ${name}`),
         elsewhere: new Set<string>(),
@@ -441,7 +441,7 @@ suite('Bubbles', () => {
     const busy = otherBranch(
       'side',
       { upstream: 'origin/side', ahead: 0, behind: 2 },
-      { pulling: 'side' },
+      { pulling: ['other', 'side'] },
     );
     assert.match(
       tagWith(busy, 'title="Pull:', 'bubble-action', 'running'),
@@ -450,7 +450,7 @@ suite('Bubbles', () => {
     const calm = otherBranch(
       'other',
       { upstream: 'origin/other', ahead: 0, behind: 2 },
-      { pulling: 'side' },
+      { pulling: ['side'] },
     );
     assert.doesNotMatch(
       tagWith(calm, 'title="Pull:', 'bubble-action'),
@@ -513,7 +513,7 @@ suite('Bubbles', () => {
         value={{
           remote: 'origin',
           onRemote: new Set(),
-          pushing: 'v1',
+          pushing: ['v0', 'v1'],
           onPush: noop,
         }}
       >
