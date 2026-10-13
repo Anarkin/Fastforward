@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { type WorktreeInfo } from '../shared/protocol';
-import { useSkeleton } from './skeleton';
 import { keymap } from '../shared/keymap';
 import { strings } from '../shared/strings';
 import { useBinding } from './shortcuts';
@@ -31,7 +30,6 @@ export function WorktreeBar({
   onSelect: (root: string) => void;
   onPreload: (root: string) => void;
 }) {
-  const skeleton = useSkeleton(worktrees === undefined);
   const rest = useMemo(() => resting(preloadDelay), []);
   useEffect(() => rest.cancel, [rest]);
 
@@ -46,6 +44,10 @@ export function WorktreeBar({
     }
   });
 
+  if (worktrees === undefined || worktrees.length < 2) {
+    return null;
+  }
+
   return (
     <nav className="worktrees">
       <div
@@ -53,15 +55,7 @@ export function WorktreeBar({
         role="tablist"
         aria-label={strings.tabs.worktrees}
       >
-        {worktrees === undefined && (
-          <div
-            className={`tab skeleton-tab ${skeleton ? '' : 'waiting'}`}
-            aria-busy="true"
-          >
-            <span className="bar" />
-          </div>
-        )}
-        {worktrees?.map((worktree) => (
+        {worktrees.map((worktree) => (
           <div
             key={worktree.root}
             role="tab"

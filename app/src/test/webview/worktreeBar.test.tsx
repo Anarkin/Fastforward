@@ -3,9 +3,24 @@ import { JSDOM } from 'jsdom';
 import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, suite, test, vi } from 'vitest';
+import { type WorktreeInfo } from '../../shared/protocol';
 import { adjacentWorktree, WorktreeBar } from '../../webview/worktreeBar';
 import { rested } from '../componentFixtures';
 import { noop, renderedBy, tagsWith } from '../fixtures';
+
+function rowsShown(worktrees: WorktreeInfo[] | undefined): number {
+  return tagsWith(
+    renderToStaticMarkup(
+      <WorktreeBar
+        worktrees={worktrees}
+        active="/a"
+        onSelect={noop}
+        onPreload={noop}
+      />,
+    ),
+    'worktrees',
+  ).length;
+}
 
 suite('Worktree bar', () => {
   afterEach(() => vi.useRealTimers());
@@ -46,12 +61,8 @@ suite('Worktree bar', () => {
     });
     assert.ok(isValidElement<{ children: React.ReactElement }>(nav));
     const list = nav.props.children;
-    assert.ok(
-      isValidElement<{ children: [false, React.ReactElement[]] }>(list),
-    );
-    const [placeholder, worktrees] = list.props.children;
-    assert.strictEqual(placeholder, false);
-    return worktrees.map((worktree) => {
+    assert.ok(isValidElement<{ children: React.ReactElement[] }>(list));
+    return list.props.children.map((worktree) => {
       assert.ok(isValidElement<Worktree>(worktree));
       return worktree;
     });
@@ -95,19 +106,23 @@ suite('Worktree bar', () => {
     assert.strictEqual(gone.props.children[1], false);
   });
 
-  test('holds the place of the worktrees with a placeholder tab while they are listed, drawing its bar only after a moment', () => {
-    const html = renderToStaticMarkup(
-      <WorktreeBar
-        worktrees={undefined}
-        active="/a"
-        onSelect={noop}
-        onPreload={noop}
-      />,
+  test('shows no row while the worktrees are listed or the main clone is the only one, but does beside a worktree whose folder is gone', () => {
+    const main = {
+      root: '/a',
+      name: 'main',
+      folder: 'a',
+      main: true,
+      missing: false,
+    };
+    assert.strictEqual(rowsShown(undefined), 0);
+    assert.strictEqual(rowsShown([main]), 0);
+    assert.strictEqual(
+      rowsShown([
+        main,
+        { root: '/b', name: 'b', folder: 'b', main: false, missing: true },
+      ]),
+      1,
     );
-    const [placeholder] = tagsWith(html, 'tab', 'skeleton-tab', 'waiting');
-    assert.ok(placeholder, html);
-    assert.match(placeholder, /aria-busy="true"/);
-    assert.strictEqual(tagsWith(html, 'bar').length, 1);
   });
 
   test('opens and preloads a worktree, but neither a missing one', () => {

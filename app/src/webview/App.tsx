@@ -759,16 +759,6 @@ export function App({ name, post: postToHost, listen }: Props) {
                       onAdd={openRepository}
                       onLog={log}
                     />
-                    <WorktreeBar
-                      worktrees={worktrees}
-                      active={activeTab}
-                      onSelect={(root) =>
-                        post({ type: 'selectWorktree', root })
-                      }
-                      onPreload={(root) =>
-                        post({ type: 'preloadWorktree', root })
-                      }
-                    />
                     {menu && openedMenu && (
                       <ContextMenu
                         key={openedMenu.id}
@@ -792,193 +782,208 @@ export function App({ name, post: postToHost, listen }: Props) {
                       />
                     )}
                     <Notices notices={notices} onDismiss={dismissNotice} />
-                    {tabContent(tabs, () => (
-                      <ColumnResizingProvider value={resizing}>
-                        <div
-                          className={columnsClass(
-                            commitColumnShown,
-                            layoutSelection,
-                            diffShown,
-                          )}
-                          ref={columnsContainer}
-                          style={{ gridTemplateColumns: columnsTemplate }}
-                          data-active-column={activeColumn}
-                          onFocus={(event) => {
-                            const column = columnOf(
-                              event.target instanceof Element
-                                ? event.target
-                                : null,
-                            );
-                            if (column) {
-                              setActiveColumn(column);
-                            }
-                          }}
-                          onKeyDown={(event) => {
-                            const target =
-                              event.target instanceof HTMLElement
-                                ? event.target
-                                : null;
-                            const forwarded = forwardedColumn(
-                              columnOf(target),
-                              event,
-                            );
-                            if (forwarded) {
-                              event.preventDefault();
-                              focusColumn(forwarded)?.dispatchEvent(
-                                new KeyboardEvent('keydown', event.nativeEvent),
-                              );
-                              return;
-                            }
-                            const step = columnStep(
-                              event,
-                              shownColumns(
-                                commitColumnShown,
-                                layoutSelection,
-                                diffShown,
-                              ),
-                              columnOf(target) ?? activeColumn,
-                              target?.hasAttribute(columnFocusAttribute) ??
-                                true,
-                            );
-                            if (step?.preventDefault) {
-                              event.preventDefault();
-                            }
-                            if (step?.next) {
-                              focusColumn(step.next);
-                            }
-                          }}
-                        >
-                          <Commits
-                            history={history}
-                            opening={opening}
-                            scrollTarget={scrollTarget}
-                            onScrolled={onScrolled}
-                            onLoad={loadCommits}
-                            workingTree={workingTree}
-                            refsByCommit={refsByCommit}
-                            stashes={stashes}
-                            selected={hash}
-                            onSelect={selectCommit}
-                            onCompare={compareCommit}
-                            onToggleMerge={(merge) =>
-                              postTab({ type: 'toggleMerge', hash: merge })
-                            }
-                            collapseMerges={collapseMerges}
-                            onCollapseMerges={changeCollapseMerges}
-                            solo={solo}
-                            headCommit={repository?.headCommit}
-                            focusKey={activeTab}
-                            searching={searching}
-                            error={listError(error, layoutSelection)}
-                            applyingSolo={applyingSolo}
-                            onSolo={changeSolo}
-                            navigation={
-                              <NavButtons
-                                back={back}
-                                forward={forward}
-                                onNavigate={navigate}
-                                onHome={
-                                  repository?.headCommit === undefined
-                                    ? undefined
-                                    : () => jump(repository.headCommit)
-                                }
-                                fetching={fetching}
-                                onFetch={() => postTab({ type: 'fetch' })}
-                                autoFetch={autoFetch}
-                                autoFetchMinutes={autoFetchMinutes}
-                                onAutoFetch={(on) => {
-                                  setAutoFetch(on);
-                                  post({ type: 'setAutoFetch', on });
-                                }}
-                                lastFetch={lastFetch}
-                              />
-                            }
-                            search={
-                              <AddressBar
-                                open={searching}
-                                onOpen={setSearching}
-                                root={activeTab}
-                                bookmarks={bookmarks}
-                                repository={repository}
-                                hashLookup={hashLookup}
-                                onLookupHash={lookupHash}
-                                commitSearch={commitSearch}
-                                onSearchCommits={searchCommits}
-                                onJump={jump}
-                              />
-                            }
-                          />
-                          <Files
-                            title={filesTitle(hash)}
-                            noChanges={noChangesText(hash, error)}
-                            showAll={showAllFiles}
-                            onShowAll={changeShowAllFiles}
-                            closedFolders={closedFolders}
-                            onToggleClosedFolder={toggleClosedFolder}
-                            files={files}
-                            staged={staged}
-                            loading={filesLoading || opening}
-                            tree={commitTree}
-                            openedFolders={openedFolders}
-                            onToggleOpenFolder={toggleOpenFolder}
-                            onReplaceFolders={(shown) =>
-                              setFolders(replaceFolders(folderView, shown))
-                            }
-                            selected={path}
-                            area={area}
-                            onSelect={selectFile}
-                            view={folderView}
-                          />
-                          <Diff
-                            selection={diffSelection(
-                              activeTab,
-                              hash,
-                              path,
-                              area,
+                    <div className="repository">
+                      <WorktreeBar
+                        worktrees={worktrees}
+                        active={activeTab}
+                        onSelect={(root) =>
+                          post({ type: 'selectWorktree', root })
+                        }
+                        onPreload={(root) =>
+                          post({ type: 'preloadWorktree', root })
+                        }
+                      />
+                      {tabContent(tabs, () => (
+                        <ColumnResizingProvider value={resizing}>
+                          <div
+                            className={columnsClass(
+                              commitColumnShown,
+                              layoutSelection,
+                              diffShown,
                             )}
-                            path={path}
-                            loading={patchLoading || opening}
-                            largeFiles={largeFiles}
-                            onLoadFile={loadFileDiff}
-                            texts={texts}
-                            onLoadTexts={loadTexts}
-                            files={area === 'staged' ? (staged ?? []) : files}
-                            patch={patch}
-                            leftOut={leftOut}
-                            whitespaceOnly={whitespaceOnly}
-                            diffs={diffs}
-                            fileContent={fileContent}
-                            error={error}
-                            sideBySide={diffLayout === 'sideBySide'}
-                            wordWrap={wordWrap}
-                            showWhitespace={showWhitespace}
-                            origin={imageOrigin}
-                            changeMarks={
-                              path !== undefined &&
-                              (entireFilePinned || entireFile)
-                            }
-                            entire={entireFilePinned || entireFile}
-                            options={
-                              <DiffOptions
-                                entire={entireFile}
-                                pinned={entireFilePinned}
-                                canShow={path !== undefined}
-                                onEntire={showEntireFile}
-                                onPin={pinEntireFile}
-                                showWhitespace={showWhitespace}
-                                onShowWhitespace={changeShowWhitespace}
-                                ignoreWhitespace={ignoreWhitespace}
-                                onIgnoreWhitespace={changeIgnoreWhitespace}
-                                wordWrap={wordWrap}
-                                onWordWrap={changeWordWrap}
-                                layout={diffLayout}
-                                onLayout={changeDiffLayout}
-                              />
-                            }
-                          />
-                        </div>
-                      </ColumnResizingProvider>
-                    ))}
+                            ref={columnsContainer}
+                            style={{ gridTemplateColumns: columnsTemplate }}
+                            data-active-column={activeColumn}
+                            onFocus={(event) => {
+                              const column = columnOf(
+                                event.target instanceof Element
+                                  ? event.target
+                                  : null,
+                              );
+                              if (column) {
+                                setActiveColumn(column);
+                              }
+                            }}
+                            onKeyDown={(event) => {
+                              const target =
+                                event.target instanceof HTMLElement
+                                  ? event.target
+                                  : null;
+                              const forwarded = forwardedColumn(
+                                columnOf(target),
+                                event,
+                              );
+                              if (forwarded) {
+                                event.preventDefault();
+                                focusColumn(forwarded)?.dispatchEvent(
+                                  new KeyboardEvent(
+                                    'keydown',
+                                    event.nativeEvent,
+                                  ),
+                                );
+                                return;
+                              }
+                              const step = columnStep(
+                                event,
+                                shownColumns(
+                                  commitColumnShown,
+                                  layoutSelection,
+                                  diffShown,
+                                ),
+                                columnOf(target) ?? activeColumn,
+                                target?.hasAttribute(columnFocusAttribute) ??
+                                  true,
+                              );
+                              if (step?.preventDefault) {
+                                event.preventDefault();
+                              }
+                              if (step?.next) {
+                                focusColumn(step.next);
+                              }
+                            }}
+                          >
+                            <Commits
+                              history={history}
+                              opening={opening}
+                              scrollTarget={scrollTarget}
+                              onScrolled={onScrolled}
+                              onLoad={loadCommits}
+                              workingTree={workingTree}
+                              refsByCommit={refsByCommit}
+                              stashes={stashes}
+                              selected={hash}
+                              onSelect={selectCommit}
+                              onCompare={compareCommit}
+                              onToggleMerge={(merge) =>
+                                postTab({ type: 'toggleMerge', hash: merge })
+                              }
+                              collapseMerges={collapseMerges}
+                              onCollapseMerges={changeCollapseMerges}
+                              solo={solo}
+                              headCommit={repository?.headCommit}
+                              focusKey={activeTab}
+                              searching={searching}
+                              error={listError(error, layoutSelection)}
+                              applyingSolo={applyingSolo}
+                              onSolo={changeSolo}
+                              navigation={
+                                <NavButtons
+                                  back={back}
+                                  forward={forward}
+                                  onNavigate={navigate}
+                                  onHome={
+                                    repository?.headCommit === undefined
+                                      ? undefined
+                                      : () => jump(repository.headCommit)
+                                  }
+                                  fetching={fetching}
+                                  onFetch={() => postTab({ type: 'fetch' })}
+                                  autoFetch={autoFetch}
+                                  autoFetchMinutes={autoFetchMinutes}
+                                  onAutoFetch={(on) => {
+                                    setAutoFetch(on);
+                                    post({ type: 'setAutoFetch', on });
+                                  }}
+                                  lastFetch={lastFetch}
+                                />
+                              }
+                              search={
+                                <AddressBar
+                                  open={searching}
+                                  onOpen={setSearching}
+                                  root={activeTab}
+                                  bookmarks={bookmarks}
+                                  repository={repository}
+                                  hashLookup={hashLookup}
+                                  onLookupHash={lookupHash}
+                                  commitSearch={commitSearch}
+                                  onSearchCommits={searchCommits}
+                                  onJump={jump}
+                                />
+                              }
+                            />
+                            <Files
+                              title={filesTitle(hash)}
+                              noChanges={noChangesText(hash, error)}
+                              showAll={showAllFiles}
+                              onShowAll={changeShowAllFiles}
+                              closedFolders={closedFolders}
+                              onToggleClosedFolder={toggleClosedFolder}
+                              files={files}
+                              staged={staged}
+                              loading={filesLoading || opening}
+                              tree={commitTree}
+                              openedFolders={openedFolders}
+                              onToggleOpenFolder={toggleOpenFolder}
+                              onReplaceFolders={(shown) =>
+                                setFolders(replaceFolders(folderView, shown))
+                              }
+                              selected={path}
+                              area={area}
+                              onSelect={selectFile}
+                              view={folderView}
+                            />
+                            <Diff
+                              selection={diffSelection(
+                                activeTab,
+                                hash,
+                                path,
+                                area,
+                              )}
+                              path={path}
+                              loading={patchLoading || opening}
+                              largeFiles={largeFiles}
+                              onLoadFile={loadFileDiff}
+                              texts={texts}
+                              onLoadTexts={loadTexts}
+                              files={area === 'staged' ? (staged ?? []) : files}
+                              patch={patch}
+                              leftOut={leftOut}
+                              whitespaceOnly={whitespaceOnly}
+                              diffs={diffs}
+                              fileContent={fileContent}
+                              error={error}
+                              sideBySide={diffLayout === 'sideBySide'}
+                              wordWrap={wordWrap}
+                              showWhitespace={showWhitespace}
+                              origin={imageOrigin}
+                              changeMarks={
+                                path !== undefined &&
+                                (entireFilePinned || entireFile)
+                              }
+                              entire={entireFilePinned || entireFile}
+                              options={
+                                <DiffOptions
+                                  entire={entireFile}
+                                  pinned={entireFilePinned}
+                                  canShow={path !== undefined}
+                                  onEntire={showEntireFile}
+                                  onPin={pinEntireFile}
+                                  showWhitespace={showWhitespace}
+                                  onShowWhitespace={changeShowWhitespace}
+                                  ignoreWhitespace={ignoreWhitespace}
+                                  onIgnoreWhitespace={changeIgnoreWhitespace}
+                                  wordWrap={wordWrap}
+                                  onWordWrap={changeWordWrap}
+                                  layout={diffLayout}
+                                  onLayout={changeDiffLayout}
+                                />
+                              }
+                            />
+                          </div>
+                        </ColumnResizingProvider>
+                      ))}
+                    </div>
                   </div>
                 </DetachedHead.Provider>
               </HideDimmedButtons.Provider>

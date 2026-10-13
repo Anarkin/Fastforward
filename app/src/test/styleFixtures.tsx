@@ -140,11 +140,14 @@ export const worktree = (name: string): WorktreeInfo => ({
   missing: false,
 });
 
-export function worktreeBar(worktrees: readonly WorktreeInfo[] | undefined) {
+export function worktreeBar(
+  worktrees: readonly WorktreeInfo[] | undefined,
+  active?: string,
+) {
   return rendered(
     <WorktreeBar
       worktrees={worktrees}
-      active={undefined}
+      active={active}
       onSelect={noop}
       onPreload={noop}
     />,

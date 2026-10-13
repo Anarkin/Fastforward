@@ -24,12 +24,11 @@ suite('Window', () => {
     );
   });
 
-  test('holds the place of the worktree row before the host says which tabs are open', () => {
+  test('shows no worktree row before the host says which worktrees there are', () => {
     const html = renderToStaticMarkup(
       <App name="Fastforward" post={noop} listen={() => noop} />,
     );
-    assert.strictEqual(tagsWith(html, 'worktrees').length, 1);
-    assert.strictEqual(tagsWith(html, 'skeleton-tab').length, 1);
+    assert.strictEqual(tagsWith(html, 'worktrees').length, 0);
   });
 
   test('closes a menu once another worktree is shown, as its items act on the one it opened in', () => {

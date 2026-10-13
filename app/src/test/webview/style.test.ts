@@ -278,7 +278,7 @@ suite('Style', () => {
   });
 
   test('wraps the repository and worktree tabs onto more rows rather than scrolling them sideways', () => {
-    for (const bar of [tabBar(), worktreeBar([worktree('a')])]) {
+    for (const bar of [tabBar(), worktreeBar([worktree('a'), worktree('b')])]) {
       looks(withClass(bar, 'tab-list'), {
         'flex-wrap': 'wrap',
         overflow: undefined,
@@ -287,17 +287,139 @@ suite('Style', () => {
     }
   });
 
-  test('keeps the worktree row as tall while its worktrees are listed, or when it has none, as with them', () => {
-    const height = 'calc(1lh + 6px)';
-    looks(withClass(worktreeBar([worktree('a')]), 'tab'), { height });
-    looks(withClass(worktreeBar([]), 'tab-list'), { 'min-height': height });
-    const waiting = withClass(
-      worktreeBar(undefined),
-      'skeleton-tab',
-      'waiting',
+  test('joins the active repository tab to the white sheet under it, which holds the worktrees and the columns', () => {
+    const tab = withClass(tabBar(), 'tab', 'active');
+    looks(tab, {
+      '--sheet': 'var(--repository-background)',
+      background: 'var(--sheet)',
+      'border-radius': 'var(--card-radius) var(--card-radius) 0 0',
+    });
+    for (const pseudoElement of ['::before', '::after']) {
+      assert.match(
+        cascaded(tab, 'box-shadow', { pseudoElement }) ?? '',
+        /var\(--sheet\)$/,
+      );
+    }
+    assert.strictEqual(
+      bodyVariable('repository-background'),
+      'var(--color-panel-background)',
     );
-    looks(waiting, { height });
-    looks(withClass(waiting, 'bar'), { visibility: 'hidden' });
+    looks(
+      withClass(
+        rendered(createElement('div', { className: 'repository' })),
+        'repository',
+      ),
+      { background: 'var(--repository-background)' },
+    );
+  });
+
+  test('curves the active repository tab out into its sheet, white on white without an outline', () => {
+    const tab = withClass(tabBar(), 'tab', 'active');
+    looks(tab, {
+      border: '1px solid transparent',
+      'border-bottom-color': undefined,
+      'margin-bottom': '-1px',
+    });
+    const size = 'calc(2 * var(--card-radius))';
+    const corner = 'var(--card-radius)';
+    looks(
+      tab,
+      {
+        right: 'calc(100% + 1px)',
+        bottom: '0',
+        width: size,
+        height: size,
+        'border-right': undefined,
+        'border-bottom': undefined,
+        'border-bottom-right-radius': corner,
+        'box-shadow': `${corner} ${corner} 0 0 var(--sheet)`,
+        'clip-path': `inset(${corner} -1px -1px ${corner})`,
+      },
+      { pseudoElement: '::before' },
+    );
+    looks(
+      tab,
+      {
+        left: 'calc(100% + 1px)',
+        bottom: '0',
+        width: size,
+        height: size,
+        'border-left': undefined,
+        'border-bottom': undefined,
+        'border-bottom-left-radius': corner,
+        'box-shadow': `calc(-1 * ${corner}) ${corner} 0 0 var(--sheet)`,
+        'clip-path': `inset(${corner} ${corner} -1px -1px)`,
+      },
+      { pseudoElement: '::after' },
+    );
+    looks(
+      withClass(
+        rendered(createElement('div', { className: 'repository' })),
+        'repository',
+      ),
+      { border: undefined },
+    );
+    assert.strictEqual(bodyVariable('sheet-border'), undefined);
+  });
+
+  test("leaves a straight run of the sheet's edge between its rounded corner and the curve out of its first tab", () => {
+    const resolved = (value: string | undefined) =>
+      (value ?? '').replace(
+        /var\(--([\w-]+)\)/g,
+        (_, name: string) => bodyVariable(name) ?? '',
+      );
+    const gutter = parseFloat(resolved('var(--gutter-width)'));
+    const radius = parseFloat(resolved('var(--card-radius)'));
+    const run =
+      pixels(resolved(bodyVariable('tab-inset'))) - gutter - 2 * radius;
+    assert.ok(run >= gutter, String(run));
+  });
+
+  test('shows the worktrees as grey chips rather than tabs, the active one in the selection color, with nothing joining it to the columns', () => {
+    const bar = worktreeBar([worktree('a'), worktree('b')], '/a');
+    const [active, other] = allWithClass(bar, 'tab');
+    assert.ok(active.classes.includes('active'));
+    for (const chip of [active, other]) {
+      looks(chip, {
+        border: '1px solid transparent',
+        'border-radius': 'var(--card-radius)',
+        'margin-bottom': undefined,
+      });
+    }
+    looks(active, { background: 'var(--selection-background)' });
+    for (const pseudoElement of ['::before', '::after']) {
+      looks(active, { content: undefined }, { pseudoElement });
+    }
+    looks(other, { background: 'var(--color-border)' });
+    looks(
+      withClass(
+        worktreeBar([{ ...worktree('a'), missing: true }, worktree('b')]),
+        'tab',
+      ),
+      { background: 'var(--color-border)' },
+      hovered,
+    );
+    looks(
+      allWithClass(tabBar(), 'tab').find(
+        (tab) => !tab.classes.includes('active'),
+      ),
+      { background: 'transparent' },
+    );
+    looks(columns(columnsClass(true, 'a')), {
+      margin: undefined,
+      border: undefined,
+      background: undefined,
+      'border-radius': undefined,
+    });
+  });
+
+  test('makes every worktree chip as tall, the active one too, so the row keeps its height when another is opened', () => {
+    for (const tab of allWithClass(
+      worktreeBar([worktree('a'), worktree('b')], '/a'),
+      'tab',
+    )) {
+      looks(tab, { height: 'calc(1lh + 4px)', 'margin-bottom': undefined });
+    }
   });
 
   test('shades a round button on hover over whatever fill it has, so an active toggle or a pinned pair changes too', () => {
@@ -709,7 +831,6 @@ suite('Style', () => {
       allWithClass(tabBar(), 'tab').find(
         (tab) => !tab.classes.includes('active'),
       ),
-      withClass(worktreeBar([worktree('a')]), 'tab'),
       fileRow(fileChange('src/a.ts')),
       folderRow(),
       rendered(commitRow()),
@@ -770,20 +891,23 @@ suite('Style', () => {
     looks(withClass(menu, 'menu-item'), { 'padding-right': '32px' });
   });
 
-  test('tints the hovered search field like anything else hovered, its edge included', () => {
-    for (const field of [
+  test('fills the search fields and the worktree chips alike, and tints them alike when hovered, the edges of the fields included', () => {
+    const fields = [
       withClass(addressBar(), 'address-bar'),
       withClass(locationsPopup(''), 'locations-search'),
-    ]) {
-      looks(
-        field,
-        {
-          background:
-            'linear-gradient(var(--hover-background), var(--hover-background)), var(--color-border)',
-          'border-color': 'transparent',
-        },
-        hovered,
-      );
+    ];
+    const chip = allWithClass(
+      worktreeBar([worktree('a'), worktree('b')], '/a'),
+      'tab',
+    ).find((tab) => !tab.classes.includes('active'));
+    const tinted =
+      'linear-gradient(var(--hover-background), var(--hover-background)), var(--color-border)';
+    for (const field of [...fields, chip]) {
+      looks(field, { background: 'var(--color-border)' });
+      looks(field, { background: tinted }, hovered);
+    }
+    for (const field of fields) {
+      looks(field, { 'border-color': 'transparent' }, hovered);
     }
   });
 
@@ -1363,7 +1487,6 @@ suite('Style', () => {
       skeletonRow('diff-line'),
       rendered(createElement('div', { className: 'commit placeholder' })),
       withClass(locationsPopup('abcd'), 'hash-suggestion', 'empty'),
-      withClass(worktreeBar(undefined), 'skeleton-tab'),
     ]) {
       looks(placeholder, { background: 'none' }, hovered);
     }
@@ -1749,13 +1872,17 @@ suite('Style', () => {
     });
   });
 
-  test('keeps one gutter at the left edge when the commits are hidden, the gap after their empty column', () => {
+  test('pads the columns from the sheet by a gutter, sharing the one above them with the worktree row and keeping one gutter at the left edge when the commits are hidden, the gap after their empty column', () => {
     looks(columns(columnsClass(true, 'a')), {
-      padding: '0 var(--gutter-width) var(--gutter-width)',
+      padding: 'var(--gutter-width)',
       'padding-left': undefined,
+      'margin-left': undefined,
       gap: 'var(--gutter-width)',
     });
     looks(columns(columnsClass(false, 'a')), { 'padding-left': '0' });
+    looks(withClass(worktreeBar([worktree('a'), worktree('b')]), 'worktrees'), {
+      padding: 'var(--gutter-width) var(--gutter-width) 0',
+    });
   });
 
   test('keeps the arrow cursor of a desktop app, but for resizing and typing', () => {
@@ -2063,7 +2190,7 @@ suite('Style', () => {
     looks(withClass(notices(), 'notice'), { 'pointer-events': 'auto' });
   });
 
-  test('edges the active column in the focus color, over its contents but letting the pointer through, and outlines nothing in it', () => {
+  test('edges the active column in the focus color and the others in the border color, over their contents but letting the pointer through, and outlines nothing in them', () => {
     const names: readonly ColumnName[] = ['commits', 'files', 'diff'];
     for (const active of names) {
       const edges = allWithClass(
@@ -2075,12 +2202,12 @@ suite('Style', () => {
         looks(
           edges[index],
           {
-            content: shown ? "''" : undefined,
-            position: shown ? 'absolute' : undefined,
+            content: "''",
+            position: 'absolute',
             'box-shadow': shown
               ? 'inset 0 0 0 2px var(--color-focus)'
-              : undefined,
-            'pointer-events': shown ? 'none' : undefined,
+              : 'inset 0 0 0 2px var(--color-border)',
+            'pointer-events': 'none',
           },
           after,
         );

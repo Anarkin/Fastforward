@@ -56,9 +56,10 @@ body {
     transparent
   );
   --toolbar-background: var(--color-panel-background);
-  --gutter: var(--color-background);
+  --repository-background: var(--color-panel-background);
+  --tab-inset: calc(2 * var(--gutter-width) + 2 * var(--card-radius));
   --gutter-width: 4px;
-  --title-bar-inset: 16px;
+  --title-bar-inset: calc(var(--tab-inset) + 12px);
   --card-radius: 6px;
   --popup-background: var(--color-background);
   --popup-shadow:
@@ -111,6 +112,17 @@ body {
   display: flex;
   flex-direction: column;
   height: 100%;
+  background: var(--color-background);
+}
+
+.repository {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0 var(--gutter-width) var(--gutter-width);
+  background: var(--repository-background);
+  border-radius: var(--card-radius);
 }
 
 .title-bar {
@@ -163,15 +175,14 @@ body {
   flex: none;
   display: flex;
   align-items: stretch;
-  padding: 4px 0 var(--gutter-width) 4px;
+  padding: 4px var(--gutter-width) 0 var(--tab-inset);
   background: var(--color-background);
 }
 
 .worktrees {
   flex: none;
   display: flex;
-  padding: 0 4px var(--gutter-width) 4px;
-  background: var(--color-background);
+  padding: var(--gutter-width) var(--gutter-width) 0;
 }
 
 .tab-list {
@@ -180,7 +191,7 @@ body {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: 2px;
+  gap: 2px var(--card-radius);
 }
 
 .menu-button {
@@ -358,6 +369,7 @@ body {
   padding: 5px 4px 5px 12px;
   white-space: nowrap;
   background: transparent;
+  border: 1px solid transparent;
   border-radius: var(--card-radius);
 }
 
@@ -365,27 +377,56 @@ body {
   background: var(--hover-background);
 }
 
-.tab.active {
-  background: var(--toolbar-background);
-}
-
-.worktrees .tab-list {
-  min-height: calc(1lh + 6px);
+.tabs .tab {
+  --sheet: var(--repository-background);
 }
 
 .worktrees .tab {
   box-sizing: border-box;
-  height: calc(1lh + 6px);
+  height: calc(1lh + 4px);
   padding: 0 12px;
+  background: var(--color-border);
 }
 
-.skeleton-tab .bar {
-  width: 80px;
-  margin: 0;
+.worktrees .tab:hover {
+  background:
+    linear-gradient(var(--hover-background), var(--hover-background)),
+    var(--color-border);
 }
 
-.skeleton-tab.waiting .bar {
-  visibility: hidden;
+.worktrees .tab.active {
+  background: var(--selection-background);
+}
+
+.tabs .tab.active {
+  position: relative;
+  margin-bottom: -1px;
+  background: var(--sheet);
+  border-radius: var(--card-radius) var(--card-radius) 0 0;
+}
+
+.tabs .tab.active::before,
+.tabs .tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  width: calc(2 * var(--card-radius));
+  height: calc(2 * var(--card-radius));
+  pointer-events: none;
+}
+
+.tabs .tab.active::before {
+  right: calc(100% + 1px);
+  border-bottom-right-radius: var(--card-radius);
+  box-shadow: var(--card-radius) var(--card-radius) 0 0 var(--sheet);
+  clip-path: inset(var(--card-radius) -1px -1px var(--card-radius));
+}
+
+.tabs .tab.active::after {
+  left: calc(100% + 1px);
+  border-bottom-left-radius: var(--card-radius);
+  box-shadow: calc(-1 * var(--card-radius)) var(--card-radius) 0 0 var(--sheet);
+  clip-path: inset(var(--card-radius) var(--card-radius) -1px -1px);
 }
 
 .tab-folder {
@@ -397,7 +438,7 @@ body {
 }
 
 .tab.missing:hover {
-  background: transparent;
+  background: var(--color-border);
 }
 
 .tab:not(.active):not(:hover) .tab-close {
@@ -524,8 +565,7 @@ body {
   display: grid;
   grid-template-rows: minmax(0, 1fr);
   gap: var(--gutter-width);
-  padding: 0 var(--gutter-width) var(--gutter-width);
-  background: var(--gutter);
+  padding: var(--gutter-width);
 }
 
 .columns > .column {
@@ -533,16 +573,20 @@ body {
   border-radius: var(--card-radius);
 }
 
-.columns[data-active-column='commits'] > .column:nth-child(1)::after,
-.columns[data-active-column='files'] > .column:nth-child(2)::after,
-.columns[data-active-column='diff'] > .column:nth-child(3)::after {
+.columns > .column::after {
   content: '';
   position: absolute;
   inset: 0;
   z-index: 16;
   border-radius: var(--card-radius);
-  box-shadow: inset 0 0 0 2px var(--color-focus);
+  box-shadow: inset 0 0 0 2px var(--color-border);
   pointer-events: none;
+}
+
+.columns[data-active-column='commits'] > .column:nth-child(1)::after,
+.columns[data-active-column='files'] > .column:nth-child(2)::after,
+.columns[data-active-column='diff'] > .column:nth-child(3)::after {
+  box-shadow: inset 0 0 0 2px var(--color-focus);
 }
 
 [data-column-focus] {
@@ -2036,8 +2080,7 @@ body.resizing {
 
 .skeleton-row:hover,
 .commit.placeholder:hover,
-.hash-suggestion.empty:hover,
-.tab.skeleton-tab:hover {
+.hash-suggestion.empty:hover {
   background: none;
 }
 

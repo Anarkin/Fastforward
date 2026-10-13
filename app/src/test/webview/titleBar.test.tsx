@@ -84,10 +84,13 @@ suite('Title bar', () => {
   });
 
   test('starts the icon where the tab names start', () => {
+    assert.match(
+      stylesheet(),
+      /\n\.tabs \{[^}]*padding: \S+ \S+ \S+ var\(--tab-inset\);/,
+    );
     assert.strictEqual(
-      stylesheetPx(/--title-bar-inset: (\d+)px;/),
-      stylesheetPx(/\n\.tabs \{[^}]*padding: \S+ \S+ \S+ (\d+)px;/) +
-        stylesheetPx(/\n\.tab \{[^}]*padding: \S+ \S+ \S+ (\d+)px;/),
+      stylesheetPx(/--title-bar-inset: calc\(var\(--tab-inset\) \+ (\d+)px\);/),
+      stylesheetPx(/\n\.tab \{[^}]*padding: \S+ \S+ \S+ (\d+)px;/),
     );
   });
 });
