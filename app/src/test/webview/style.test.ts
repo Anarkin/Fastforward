@@ -167,22 +167,28 @@ function commitColumnTitle(autoFetchMinutes: number): MarkupElement {
 }
 
 function aboutPopup(): MarkupElement {
-  return rendered(
-    createElement(AboutPopup, {
-      about: {
-        version: '1.0.0',
-        development: false,
-        git: '2.52.0',
-        system: 'Linux 6.8.0, x64',
-      },
-      onCopy: noop,
-      onClose: noop,
-    }),
+  return withClass(
+    rendered(
+      createElement(AboutPopup, {
+        about: {
+          version: '1.0.0',
+          development: false,
+          git: '2.52.0',
+          system: 'Linux 6.8.0, x64',
+        },
+        onCopy: noop,
+        onClose: noop,
+      }),
+    ),
+    'shortcuts-popup',
   );
 }
 
 function shortcutsPopup(): MarkupElement {
-  return rendered(createElement(ShortcutsPopup, { mac: false, onClose: noop }));
+  return withClass(
+    rendered(createElement(ShortcutsPopup, { mac: false, onClose: noop })),
+    'shortcuts-popup',
+  );
 }
 
 function overlayScrollbar(classes = ''): MarkupElement {
@@ -1685,6 +1691,29 @@ suite('Style', () => {
     looks(withClass(aboutPopup(), 'about-popup'), {
       width: 'min(420px, calc(100vw - 32px))',
     });
+  });
+
+  test('dims the whole window behind the shortcuts and the About with a backdrop that takes the pointer from the app, under them', () => {
+    for (const popup of [shortcutsPopup(), aboutPopup()]) {
+      const backdrop = popup.parent;
+      assert.ok(backdrop?.classes.includes('backdrop'));
+      looks(backdrop, {
+        position: 'fixed',
+        inset: '0',
+        'z-index': '25',
+        background: 'var(--backdrop)',
+        'pointer-events': undefined,
+      });
+    }
+    assert.strictEqual(bodyVariable('backdrop'), 'rgba(0, 0, 0, 0.2)');
+  });
+
+  test('keeps the shortcuts and the About from dragging the window when moved over the tab row, which does', () => {
+    for (const popup of [shortcutsPopup(), aboutPopup()]) {
+      looks(withClass(popup, 'shortcuts-popup'), {
+        '-webkit-app-region': 'no-drag',
+      });
+    }
   });
 
   test("heads the shortcuts and the About with a band in the window's grey, holding their title and close button, rounded with the popup's top corners and set apart from what follows", () => {

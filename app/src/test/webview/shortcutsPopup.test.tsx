@@ -60,8 +60,10 @@ suite('Shortcuts popup', () => {
       mac: false,
       onClose: () => closed++,
     });
-    assert.ok(isValidElement<{ children: React.ReactElement[] }>(popup));
-    const title = popup.props.children[0];
+    assert.ok(isValidElement<{ children: React.ReactElement }>(popup));
+    const dialog = popup.props.children;
+    assert.ok(isValidElement<{ children: React.ReactElement[] }>(dialog));
+    const title = dialog.props.children[0];
     assert.ok(isValidElement<{ children: React.ReactElement[] }>(title));
     const close = title.props.children[1];
     assert.ok(isValidElement<{ title: string; onClick: () => void }>(close));

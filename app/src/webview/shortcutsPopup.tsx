@@ -3,7 +3,7 @@ import { groups, keyLabels, keymap } from '../shared/keymap';
 import { strings } from '../shared/strings';
 import { useDismiss } from './contextMenu';
 import { CloseIcon } from './icons';
-import { useModalDialog } from './modalDialog';
+import { useDialogDrag, useModalDialog } from './modalDialog';
 
 export const shortcutGroups = groups.map((group) => ({
   title: strings.shortcuts.groups[group],
@@ -18,50 +18,59 @@ export function ShortcutsPopup({
   onClose: () => void;
 }) {
   const popup = useRef<HTMLDivElement>(null);
-  useDismiss(popup, onClose);
+  useDismiss(popup, onClose, { byKeyOnly: true });
   const dialog = useModalDialog(popup);
+  const drag = useDialogDrag(popup);
   return (
     <div
-      className="shortcuts-popup"
-      ref={popup}
-      {...dialog}
-      aria-label={strings.shortcuts.title}
+      className="backdrop"
+      onMouseDown={(event) =>
+        event.target === event.currentTarget && event.preventDefault()
+      }
     >
-      <div className="shortcuts-title">
-        <span>{strings.shortcuts.title}</span>
-        <button
-          className="nav-button"
-          title={strings.common.close}
-          onClick={onClose}
-        >
-          <CloseIcon />
-        </button>
-      </div>
-      <div className="shortcuts-groups">
-        {shortcutGroups.map((group) => (
-          <section key={group.title} className="shortcuts-group">
-            <div className="shortcuts-heading">{group.title}</div>
-            <div className="shortcuts-list">
-              {group.bindings.map((binding) => (
-                <Fragment key={binding.action}>
-                  <span className="shortcut-keys">
-                    {Object.keys(binding.keys).map((keys) => (
-                      <span key={keys} className="shortcut-combo">
-                        {keyLabels(keys, mac).map((label, place) => (
-                          <Fragment key={place}>
-                            {place > 0 && strings.shortcuts.joiner}
-                            <kbd>{label}</kbd>
-                          </Fragment>
-                        ))}
-                      </span>
-                    ))}
-                  </span>
-                  <span>{binding.action}</span>
-                </Fragment>
-              ))}
-            </div>
-          </section>
-        ))}
+      <div
+        className="shortcuts-popup"
+        ref={popup}
+        {...dialog}
+        style={drag.style}
+        aria-label={strings.shortcuts.title}
+      >
+        <div className="shortcuts-title" onPointerDown={drag.onPointerDown}>
+          <span>{strings.shortcuts.title}</span>
+          <button
+            className="nav-button"
+            title={strings.common.close}
+            onClick={onClose}
+          >
+            <CloseIcon />
+          </button>
+        </div>
+        <div className="shortcuts-groups">
+          {shortcutGroups.map((group) => (
+            <section key={group.title} className="shortcuts-group">
+              <div className="shortcuts-heading">{group.title}</div>
+              <div className="shortcuts-list">
+                {group.bindings.map((binding) => (
+                  <Fragment key={binding.action}>
+                    <span className="shortcut-keys">
+                      {Object.keys(binding.keys).map((keys) => (
+                        <span key={keys} className="shortcut-combo">
+                          {keyLabels(keys, mac).map((label, place) => (
+                            <Fragment key={place}>
+                              {place > 0 && strings.shortcuts.joiner}
+                              <kbd>{label}</kbd>
+                            </Fragment>
+                          ))}
+                        </span>
+                      ))}
+                    </span>
+                    <span>{binding.action}</span>
+                  </Fragment>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
       </div>
     </div>
   );

@@ -104,6 +104,7 @@ function scrolls(items: readonly ContextMenuItem[]): boolean {
 export interface DismissOptions {
   readonly onScroll?: boolean;
   readonly ignore?: string;
+  readonly byKeyOnly?: boolean;
 }
 
 const layers: object[] = [];
@@ -120,7 +121,7 @@ export function listenForDismiss(
   target: EventTarget,
   element: { readonly current: Pick<Node, 'contains'> | null },
   onClose: () => void,
-  { onScroll = false, ignore }: DismissOptions = {},
+  { onScroll = false, ignore, byKeyOnly = false }: DismissOptions = {},
 ): () => void {
   const layer = {};
   layers.push(layer);
@@ -153,9 +154,11 @@ export function listenForDismiss(
       onClose();
     }
   };
-  target.addEventListener('pointerdown', onPointerDown, { capture: true });
   target.addEventListener('keydown', onKeyDown, { capture: true });
-  target.addEventListener('blur', onClose);
+  if (!byKeyOnly) {
+    target.addEventListener('pointerdown', onPointerDown, { capture: true });
+    target.addEventListener('blur', onClose);
+  }
   if (onScroll) {
     target.addEventListener('wheel', onWheel, { capture: true });
   }
@@ -268,11 +271,16 @@ export function claimsMenuKey(
 export function useDismiss(
   element: React.RefObject<HTMLElement | null>,
   onClose: () => void,
-  { onScroll = false, ignore }: DismissOptions = {},
+  { onScroll = false, ignore, byKeyOnly = false }: DismissOptions = {},
 ): void {
   useEffect(
-    () => listenForDismiss(window, element, onClose, { onScroll, ignore }),
-    [element, onClose, onScroll, ignore],
+    () =>
+      listenForDismiss(window, element, onClose, {
+        onScroll,
+        ignore,
+        byKeyOnly,
+      }),
+    [element, onClose, onScroll, ignore, byKeyOnly],
   );
 }
 

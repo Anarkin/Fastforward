@@ -54,9 +54,13 @@ suite('Theme', () => {
     assert.deepStrictEqual(colors(dark), colors(light));
   });
 
-  test("uses no color from outside the theme but the logo's own, the shadows of popups and the colors that only tell syntax apart", () => {
+  test("uses no color from outside the theme but the logo's own, the shadows of popups, the dimming behind them and the colors that only tell syntax apart", () => {
     const allowed: Readonly<Record<string, readonly string[]>> = {
-      'style.css': ['rgba(0, 0, 0, 0.22)', 'rgba(0, 0, 0, 0.16)'],
+      'style.css': [
+        'rgba(0, 0, 0, 0.22)',
+        'rgba(0, 0, 0, 0.16)',
+        'rgba(0, 0, 0, 0.2)',
+      ],
       'syntaxEngine.ts': ['#000000', '#ffffff'],
       'titleBar.tsx': ['#4285F4', '#EA4335', '#FBBC04', '#34A853'],
     };

@@ -3,6 +3,7 @@ import { JSDOM } from 'jsdom';
 import { act } from 'react';
 import { suite, test } from 'vitest';
 import { AboutPopup } from '../../webview/aboutPopup';
+import { draggedTo } from '../../webview/modalDialog';
 import { ShortcutsPopup } from '../../webview/shortcutsPopup';
 import { noop } from '../fixtures';
 
@@ -68,6 +69,108 @@ async function inPage(
 }
 
 suite('Modal dialogs', () => {
+  test('move as far as the pointer, onto whole device pixels', () => {
+    const view = { width: 1000, height: 800, ratio: 1.25 };
+    const size = { width: 400, height: 300 };
+    assert.deepStrictEqual(
+      draggedTo({ x: 100, y: 100 }, { x: 10.3, y: -20.5 }, size, view),
+      { x: 110.4, y: 79.2 },
+    );
+  });
+
+  test('stay wholly within the window, sticking to its top left when larger than it', () => {
+    const view = { width: 1000, height: 800, ratio: 1 };
+    const size = { width: 400, height: 300 };
+    assert.deepStrictEqual(
+      draggedTo({ x: 100, y: 100 }, { x: -2000, y: -2000 }, size, view),
+      { x: 0, y: 0 },
+    );
+    assert.deepStrictEqual(
+      draggedTo({ x: 100, y: 100 }, { x: 2000, y: 2000 }, size, view),
+      { x: 600, y: 500 },
+    );
+    assert.deepStrictEqual(
+      draggedTo(
+        { x: 0, y: 0 },
+        { x: 50, y: 50 },
+        { width: 1200, height: 900 },
+        view,
+      ),
+      { x: 0, y: 0 },
+    );
+  });
+
+  test('move by dragging their header but not its close button, closing only by it or Escape, not by a click outside or the window losing focus, and a click on the backdrop leaving the keyboard with it', async () => {
+    await inPage(async ({ document, before, show }) => {
+      const window = document.defaultView;
+      assert.ok(window);
+      for (const shown of [
+        (onClose: () => void) => (
+          <AboutPopup about={about} onCopy={noop} onClose={onClose} />
+        ),
+        (onClose: () => void) => (
+          <ShortcutsPopup mac={false} onClose={onClose} />
+        ),
+      ]) {
+        let closed = 0;
+        await show(shown(() => closed++));
+        const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
+        const header = dialog?.querySelector('.shortcuts-title');
+        const close = header?.querySelector('button');
+        assert.ok(dialog && header && close);
+        const pointer = (
+          type: string,
+          target: EventTarget,
+          clientX: number,
+          clientY: number,
+        ) =>
+          act(async () => {
+            target.dispatchEvent(
+              new window.MouseEvent(type, {
+                bubbles: true,
+                button: 0,
+                clientX,
+                clientY,
+              }),
+            );
+          });
+        await pointer('pointerdown', close, 10, 10);
+        await pointer('pointermove', window, 50, 50);
+        await pointer('pointerup', window, 50, 50);
+        assert.strictEqual(dialog.style.left, '');
+        await pointer('pointerdown', header, 10, 10);
+        await pointer('pointermove', window, 60, 50);
+        await pointer('pointerup', window, 60, 50);
+        await pointer('pointermove', window, 90, 90);
+        assert.deepStrictEqual(
+          [dialog.style.left, dialog.style.top, dialog.style.margin],
+          ['50px', '40px', '0px'],
+        );
+        const backdrop = dialog.parentElement;
+        assert.ok(backdrop);
+        assert.ok(backdrop.classList.contains('backdrop'));
+        const press = new window.MouseEvent('mousedown', {
+          bubbles: true,
+          cancelable: true,
+        });
+        backdrop.dispatchEvent(press);
+        assert.strictEqual(press.defaultPrevented, true);
+        await pointer('pointerdown', before, 0, 0);
+        await act(async () => {
+          window.dispatchEvent(new window.Event('blur'));
+        });
+        assert.strictEqual(closed, 0);
+        await act(async () => {
+          window.dispatchEvent(
+            new window.KeyboardEvent('keydown', { key: 'Escape' }),
+          );
+        });
+        assert.strictEqual(closed, 1);
+        await show(null);
+      }
+    });
+  });
+
   test('take the keyboard as they open, telling assistive technology the app behind waits, and give it back as they close', async () => {
     await inPage(async ({ document, before, show }) => {
       for (const popup of [

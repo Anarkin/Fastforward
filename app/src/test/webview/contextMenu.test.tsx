@@ -93,6 +93,20 @@ suite('Dismissing menus and popups', () => {
     }
   });
 
+  test('closes only on Escape when asked, staying open on a click outside or the window losing focus', () => {
+    const window = new EventTarget();
+    const { menu, stop } = open(window, { byKeyOnly: true });
+    try {
+      window.dispatchEvent(pointerDown(element('elsewhere')));
+      window.dispatchEvent(new Event('blur'));
+      assert.strictEqual(menu.closed, 0);
+      window.dispatchEvent(keyDown('Escape'));
+      assert.strictEqual(menu.closed, 1);
+    } finally {
+      stop();
+    }
+  });
+
   test('closes when the window loses focus, and on scrolling when asked', () => {
     const window = new EventTarget();
     const { menu, stop } = open(window);
