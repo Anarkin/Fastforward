@@ -25,6 +25,23 @@ import {
   type TempRepository,
 } from '../repositories';
 
+const untilQuiet = async (
+  told: () => number,
+  busy: () => boolean,
+  what: string,
+  quietFor = 300,
+) => {
+  let last = told();
+  let since = Date.now();
+  await waitFor(() => {
+    if (told() !== last || busy()) {
+      last = told();
+      since = Date.now();
+    }
+    return Date.now() - since > quietFor;
+  }, what);
+};
+
 suite('Watching a repository', () => {
   let repository: TempRepository;
   let watcher: Watcher | undefined;
@@ -59,13 +76,35 @@ suite('Watching a repository', () => {
     removeFolder(repository.root);
   });
 
-  const start = async () => {
+  const askingGit = () => {
+    const asked: string[] = [];
+    const answered: string[] = [];
+    let asking = 0;
+    return {
+      asked,
+      answered,
+      busy: () => asking > 0,
+      ignored: async (repo: string, paths: readonly string[]) => {
+        asked.push(...paths);
+        asking++;
+        try {
+          return await ignoredPaths(repository.gitPath, repo, paths);
+        } finally {
+          asking--;
+          answered.push(...paths);
+        }
+      },
+    };
+  };
+
+  const start = async (git = askingGit()) => {
     watcher = await watchRepository(repository.gitPath, repository.root, {
       delay: 50,
       maxDelay: 200,
       recursive: false,
       onChange: ({ refs }) => changes.push(refs),
       onError: (error) => errors.push(error),
+      ignored: git.ignored,
     });
   };
 
@@ -91,16 +130,13 @@ suite('Watching a repository', () => {
     return { folder, worktree };
   };
 
-  const settled = async () => {
-    let last = changes.length;
-    let since = Date.now();
-    await waitFor(() => {
-      if (changes.length !== last) {
-        last = changes.length;
-        since = Date.now();
-      }
-      return Date.now() - since > 500;
-    }, 'the folders read while starting to be told');
+  const settled = async (busy = () => false) => {
+    await untilQuiet(
+      () => changes.length,
+      busy,
+      'the folders read while starting to be told',
+      500,
+    );
     changes = [];
   };
 
@@ -371,12 +407,21 @@ suite('Watching a repository', () => {
     const moduleDir = path.join(store, '.git');
     fs.renameSync(path.join(library.root, '.git'), moduleDir);
     fs.rmSync(path.join(library.root, 'lib.c'));
+    const git = askingGit();
+    const made = path.join(library.root, 'src');
     try {
-      await start();
-      await settled();
+      await start(git);
+      await settled(git.busy);
       fs.renameSync(moduleDir, path.join(library.root, '.git'));
-      fs.mkdirSync(path.join(library.root, 'src'));
-      await settled();
+      await waitFor(() => {
+        if (git.asked.includes(made)) {
+          return true;
+        }
+        fs.rmSync(made, { recursive: true, force: true });
+        fs.mkdirSync(made);
+        return false;
+      }, 'the folder made in the submodule to be checked');
+      await settled(git.busy);
       await keepWriting(
         path.join('sub', 'src', 'file.txt'),
         'the file in the folder made in the submodule',
@@ -467,8 +512,11 @@ suite('Watching a repository', () => {
 
   test('asks git no more whether a file saved again and again is ignored once told, until a .gitignore changes, watching recursively', async () => {
     const file = path.join(repository.root, 'file.txt');
-    const asked: string[] = [];
+    const gitignore = path.join(repository.root, '.gitignore');
+    const git = askingGit();
+    const { asked, answered } = git;
     const seen: boolean[] = [];
+    const answersBeforeTold: number[] = [];
     const watching = await watchRepository(
       repository.gitPath,
       repository.root,
@@ -476,12 +524,12 @@ suite('Watching a repository', () => {
         delay: 50,
         maxDelay: 200,
         recursive: true,
-        onChange: ({ refs }) => seen.push(refs),
-        onError: (error) => errors.push(error),
-        ignored: (repo, paths) => {
-          asked.push(...paths);
-          return ignoredPaths(repository.gitPath, repo, paths);
+        onChange: ({ refs }) => {
+          seen.push(refs);
+          answersBeforeTold.push(answered.length);
         },
+        onError: (error) => errors.push(error),
+        ignored: git.ignored,
       },
     );
     const saved = async (what: string) => {
@@ -495,26 +543,28 @@ suite('Watching a repository', () => {
       await saved('the second save');
       await saved('the third save');
       assert.ok(!asked.includes(file));
-      fs.writeFileSync(
-        path.join(repository.root, '.gitignore'),
-        'ignored/\n/build\n/file.txt\n',
-      );
-      await waitFor(() => seen.includes(false), 'the .gitignore');
-      let last = seen.length;
-      let since = Date.now();
+      answered.length = 0;
+      answersBeforeTold.length = 0;
+      fs.writeFileSync(gitignore, 'ignored/\n/build\n/file.txt\n');
       await waitFor(() => {
-        if (seen.length !== last) {
-          last = seen.length;
-          since = Date.now();
-        }
-        return Date.now() - since > 300;
-      }, 'the .gitignore to be told');
+        const answer = answered.indexOf(gitignore);
+        return answer !== -1 && answersBeforeTold.some((told) => told > answer);
+      }, 'the .gitignore');
+      await untilQuiet(
+        () => seen.length,
+        git.busy,
+        'the .gitignore to be told',
+      );
       asked.length = 0;
       seen.length = 0;
       await keepWriting(file, 'the file now ignored', () =>
         asked.includes(file),
       );
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      await untilQuiet(
+        () => seen.length,
+        git.busy,
+        'the file now ignored to be told',
+      );
       assert.ok(!seen.includes(false), 'the file now ignored');
       assert.deepStrictEqual(errors, []);
     } finally {
@@ -587,7 +637,7 @@ suite('Watching a repository', () => {
   test("stays quiet for an ignored folder made in a worktree inside its bare repository's folder, watching recursively", async () => {
     const { folder, worktree } = await worktreeInBareRepository();
     const built = path.join(worktree, 'build');
-    const checked: string[] = [];
+    const git = askingGit();
     const seen: boolean[] = [];
     const watching = await watchRepository(repository.gitPath, worktree, {
       delay: 50,
@@ -595,16 +645,23 @@ suite('Watching a repository', () => {
       recursive: true,
       onChange: ({ refs }) => seen.push(refs),
       onError: (error) => errors.push(error),
-      ignored: (repo, paths) => {
-        checked.push(...paths);
-        return ignoredPaths(repository.gitPath, repo, paths);
-      },
+      ignored: git.ignored,
     });
     try {
-      fs.mkdirSync(built);
-      await waitFor(() => checked.includes(built), 'the ignored folder');
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      assert.ok(!seen.includes(false), JSON.stringify(checked));
+      await waitFor(() => {
+        if (git.asked.includes(built)) {
+          return true;
+        }
+        fs.rmSync(built, { recursive: true, force: true });
+        fs.mkdirSync(built);
+        return false;
+      }, 'the ignored folder');
+      await untilQuiet(
+        () => seen.length,
+        git.busy,
+        'the ignored folder to be told',
+      );
+      assert.ok(!seen.includes(false), JSON.stringify(git.asked));
       assert.deepStrictEqual(errors, []);
     } finally {
       await watching.dispose();
@@ -702,30 +759,28 @@ suite('Watching a repository', () => {
 
     test(`stays quiet for an ignored folder made again, which git tells is not ignored while it is missing, watching ${recursive ? 'recursively' : 'folder by folder'}`, async () => {
       const folder = path.join(repository.root, 'ignored');
-      const checked: string[] = [];
+      const git = askingGit();
       watcher = await watchRepository(repository.gitPath, repository.root, {
         delay: 50,
         maxDelay: 200,
         recursive,
         onChange: ({ refs }) => changes.push(refs),
         onError: (error) => errors.push(error),
-        ignored: (repo, paths) => {
-          checked.push(...paths);
-          return ignoredPaths(repository.gitPath, repo, paths);
-        },
+        ignored: git.ignored,
       });
-      await settled();
+      await settled(git.busy);
+      git.answered.length = 0;
       fs.rmSync(folder, { recursive: true });
-      await waitFor(() => checked.includes(folder), 'the folder removed');
-      await settled();
-      checked.length = 0;
+      await waitFor(() => git.answered.includes(folder), 'the folder removed');
+      await settled(git.busy);
+      git.asked.length = 0;
       fs.mkdirSync(folder);
       fs.writeFileSync(path.join(folder, 'out.txt'), '');
       await waitFor(
-        () => checked.includes(folder) || changes.length > 0,
+        () => git.asked.includes(folder) || changes.length > 0,
         'the folder made again',
       );
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      await untilQuiet(() => changes.length, git.busy, 'the folder made again');
       assert.ok(!changes.includes(false), 'the folder made again');
       assert.deepStrictEqual(errors, []);
     });
