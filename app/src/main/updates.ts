@@ -34,12 +34,18 @@ export function updateMode(
   executable: string,
   exists: (file: string) => boolean = fs.existsSync,
   env: NodeJS.ProcessEnv = process.env,
+  writable: (folder: string) => boolean = canWrite,
 ): UpdateMode {
   if (development) {
     return 'off';
   }
   if (platform === 'darwin') {
     return 'notify';
+  }
+  if (platform !== 'win32' && runsAsAppImage(executable, env)) {
+    return writable(path.posix.dirname(env.APPIMAGE ?? ''))
+      ? 'install'
+      : 'notify';
   }
   const installed =
     platform === 'win32'
@@ -49,8 +55,7 @@ export function updateMode(
             'Uninstall Fastforward.exe',
           ),
         )
-      : runsAsAppImage(executable, env) ||
-        exists(
+      : exists(
           path.posix.join(
             path.posix.dirname(executable),
             'resources',
@@ -58,6 +63,15 @@ export function updateMode(
           ),
         );
   return installed ? 'install' : 'off';
+}
+
+function canWrite(folder: string): boolean {
+  try {
+    fs.accessSync(folder, fs.constants.W_OK);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function runsAsAppImage(executable: string, env: NodeJS.ProcessEnv): boolean {
@@ -86,6 +100,7 @@ export class Updates {
   private asked = false;
   private cancel: (() => void) | undefined;
   private installing: Promise<void> | undefined;
+  private installStarted = false;
 
   constructor(
     private readonly mode: UpdateMode,
@@ -113,6 +128,9 @@ export class Updates {
     updater.on('error', (error) => {
       log.error(strings.log.updateFailed);
       log.error(error);
+      if (this.installStarted && this.current.kind === 'ready') {
+        this.installFailed(this.current.version, error);
+      }
     });
   }
 
@@ -146,6 +164,7 @@ export class Updates {
     if (this.current.kind === 'ready') {
       this.installing ??= this.writesEnded().then(() => {
         this.installing = undefined;
+        this.installStarted = true;
         this.updater.quitAndInstall(true, true);
       });
     } else if (this.current.kind === 'available') {
@@ -202,17 +221,31 @@ export class Updates {
       this.running = false;
       this.asked = false;
       if (this.current.kind !== 'ready') {
-        this.cancel = this.timer(
-          () => this.check(false),
-          updateCheckHours * 3_600_000,
-        );
+        this.scheduleCheck();
       }
     }
+  }
+
+  private installFailed(version: string, error: unknown): void {
+    this.installStarted = false;
+    this.set({ kind: 'failed' });
+    this.notice(
+      'error',
+      strings.messages.couldNotInstallUpdate(version, firstLine(error)),
+    );
+    this.scheduleCheck();
   }
 
   private set(status: UpdateStatus): void {
     this.current = status;
     this.post({ type: 'update', status });
+  }
+
+  private scheduleCheck(): void {
+    this.cancel = this.timer(
+      () => this.check(false),
+      updateCheckHours * 3_600_000,
+    );
   }
 
   private noticeAsked(message: string): void {

@@ -424,6 +424,8 @@ export const strings = {
       `Couldn't check for updates. ${reason}`,
     couldNotDownloadUpdate: (version: string, reason: string) =>
       `Couldn't download ${brand} ${version}. ${reason}`,
+    couldNotInstallUpdate: (version: string, reason: string) =>
+      `Couldn't install ${brand} ${version}. ${reason}`,
     cannotUpdate: `Only a copy of ${brand} set up by its installer can update itself`,
     detachedUpstream:
       'The checked-out commit is on no branch, so it has no upstream',

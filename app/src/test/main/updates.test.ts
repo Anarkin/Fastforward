@@ -31,6 +31,8 @@ class FakeUpdater extends EventEmitter implements Updater {
 
 const settle = () => new Promise((resolve) => setImmediate(resolve));
 
+const writable = (folder: string) => folder !== '/opt/apps';
+
 const upToDate: UpdateCheck = {
   isUpdateAvailable: false,
   updateInfo: { version: '6.0.0' },
@@ -100,16 +102,52 @@ suite('Updates', () => {
       'install',
     );
     assert.strictEqual(
-      updateMode(false, 'linux', '/tmp/.mount_FastfoXy12/fastforward', exists, {
-        APPIMAGE: '/home/a/Applications/Fastforward.AppImage',
-        APPDIR: '/tmp/.mount_FastfoXy12',
-      }),
+      updateMode(
+        false,
+        'linux',
+        '/tmp/.mount_FastfoXy12/fastforward',
+        exists,
+        {
+          APPIMAGE: '/home/a/Applications/Fastforward.AppImage',
+          APPDIR: '/tmp/.mount_FastfoXy12',
+        },
+        () => true,
+      ),
       'install',
     );
     assert.strictEqual(updateMode(true, 'win32', executable, exists), 'off');
     assert.strictEqual(
       updateMode(false, 'darwin', '/Applications/x', exists),
       'notify',
+    );
+  });
+
+  test('only says an update is out for an AppImage in a folder it cannot write to, as the updater deletes the AppImage before moving the update into its folder, so the move failing left no app', () => {
+    const appImage = {
+      APPIMAGE: '/opt/apps/Fastforward.AppImage',
+      APPDIR: '/tmp/.mount_FastfoXy12',
+    };
+    assert.strictEqual(
+      updateMode(
+        false,
+        'linux',
+        '/tmp/.mount_FastfoXy12/fastforward',
+        exists,
+        appImage,
+        writable,
+      ),
+      'notify',
+    );
+    assert.strictEqual(
+      updateMode(
+        false,
+        'linux',
+        '/opt/Fastforward/fastforward',
+        exists,
+        {},
+        writable,
+      ),
+      'install',
     );
   });
 
@@ -300,6 +338,34 @@ suite('Updates', () => {
       [true, true],
       [true, true],
     ]);
+  });
+
+  test('reports an update that failed to install, as the updater only emits an error and leaves the app running, such as when the deb asks for a password and it is canceled', async () => {
+    const { updates, updater, waiting, notices } = withUpdates();
+    updates.start();
+    updater.checks[0].resolve(found(Promise.resolve([])));
+    await settle();
+    updates.install();
+    await settle();
+    updater.emit(
+      'error',
+      new Error('Command failed: pkexec\n    at spawnSyncLog'),
+    );
+    assert.deepStrictEqual(updates.status, { kind: 'failed' });
+    assert.deepStrictEqual(notices().slice(1), [
+      `error: ${strings.messages.couldNotInstallUpdate('7.0.0', 'Command failed: pkexec')}`,
+    ]);
+    assert.strictEqual(waiting().length, 1);
+  });
+
+  test('keeps an update ready when an error comes before restarting into it was asked for', async () => {
+    const { updates, updater, notices } = withUpdates();
+    updates.start();
+    updater.checks[0].resolve(found(Promise.resolve([])));
+    await settle();
+    updater.emit('error', new Error('late'));
+    assert.deepStrictEqual(updates.status, { kind: 'ready', version: '7.0.0' });
+    assert.strictEqual(notices().length, 1);
   });
 
   test('answers a check from the menu with a notice, also when it joins a check already running', async () => {
