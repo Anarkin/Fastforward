@@ -29,6 +29,10 @@ const longLines = Array.from(
   (_, index) => `line${index} ${longLine}`,
 );
 const [firstLongLine] = longLines;
+const hyphenatedLine = Array.from(
+  { length: 60 },
+  (_, index) => `part${index}`,
+).join('-');
 const paragraphs = Array.from(
   { length: 200 },
   (_, index) => `Paragraph ${index}`,
@@ -87,6 +91,7 @@ suite('App', () => {
       'kept.txt': 'kept\n',
       'code.ts': 'export const answer = 42;\n',
       'long.txt': `${longLines.join('\n')}\n`,
+      'hyphenated.txt': `${hyphenatedLine}\n`,
       'changed.txt': 'one\ntwo\nthree\n',
       'notes.md': `${paragraphs.join('\n\n')}\n`,
     });
@@ -772,6 +777,52 @@ suite('App', () => {
     await waitFor(
       () => wrapsSaved() && savedSetting('diffLayout') === 'inline',
       'the last choices to be saved',
+    );
+  });
+
+  test('marks where each wrapped row ends right after its text, where the browser broke it, after punctuation too, rather than where the app estimates', async () => {
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await page.locator('.row.file', { hasText: 'hyphenated.txt' }).click();
+    await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
+    const line = page
+      .locator('.diff-line', { has: page.locator('.wrap-break') })
+      .first();
+    await line.waitFor();
+    const rows = await line.evaluate((element) => {
+      const code = element.querySelector('.code');
+      if (!code) {
+        throw new Error('No code');
+      }
+      const text = code.textContent ?? '';
+      const walker = document.createTreeWalker(code, NodeFilter.SHOW_TEXT);
+      const node = walker.nextNode();
+      if (!(node instanceof Text) || node.length !== text.length) {
+        throw new Error('Not one text node');
+      }
+      const range = document.createRange();
+      const ends = new Map<number, { right: number; last: string }>();
+      for (let offset = 0; offset < text.length; offset++) {
+        range.setStart(node, offset);
+        range.setEnd(node, offset + 1);
+        const rect = range.getBoundingClientRect();
+        ends.set(Math.round(rect.top), {
+          right: rect.right,
+          last: text[offset],
+        });
+      }
+      const marks = Array.from(
+        element.querySelectorAll('.wrap-break'),
+        (mark) => mark.getBoundingClientRect().left,
+      );
+      return [...ends.values()].slice(0, -1).map(({ right, last }, index) => ({
+        last,
+        follows: Math.abs((marks[index] ?? Infinity) - right) < 1,
+      }));
+    });
+    assert.ok(rows.length > 1, `${rows.length} rows`);
+    assert.deepStrictEqual(
+      rows,
+      rows.map(() => ({ last: '-', follows: true })),
     );
   });
 

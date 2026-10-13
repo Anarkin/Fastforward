@@ -12,24 +12,24 @@ function space(column: number) {
 }
 
 suite('Word wrap', () => {
-  test('keeps a line that fits on one row', () => {
+  test('estimates a line that fits on one row as one row', () => {
     assert.strictEqual(wrappedLines('', 10), 1);
     assert.strictEqual(wrappedLines('0123456789', 10), 1);
   });
 
-  test('wraps before the word that does not fit, the spaces before it hanging at the end of the row', () => {
+  test('estimates a line wrapped before the word that does not fit, the spaces before it hanging at the end of the row', () => {
     assert.strictEqual(wrappedLines('one two three', 7), 2);
     assert.strictEqual(wrappedLines('one two three', 6), 3);
     assert.strictEqual(wrappedLines('one       ', 3), 1);
     assert.strictEqual(wrappedLines('        one', 4), 2);
   });
 
-  test('breaks a word longer than a row anywhere, starting it on a row of its own', () => {
+  test('estimates a word longer than a row broken anywhere, starting it on a row of its own', () => {
     assert.strictEqual(wrappedLines('abcdefghij', 4), 3);
     assert.strictEqual(wrappedLines('a abcdefgh', 4), 3);
   });
 
-  test('wraps only at spaces and tabs, not at a non-breaking space', () => {
+  test('estimates a line wrapped only at spaces and tabs, not at a non-breaking space, though the browser breaks after punctuation too', () => {
     assert.strictEqual(wrappedLines('ab\u00a0cd', 2), 3);
     assert.strictEqual(wrappedLines('one\ttwo', 4), 2);
   });
@@ -71,7 +71,7 @@ suite('Word wrap', () => {
     assert.deepStrictEqual(rowBreaksAt('one', [0], 7), []);
   });
 
-  test('finds the first character of each row by where the characters are laid out, reading few of them', () => {
+  test('finds the first character of each row by where the browser laid the characters out, reading few of them', () => {
     const laidOut = [0, 0, 0, 1, 1, 2];
     assert.deepStrictEqual(
       rowStarts(6, 3, (offset) => laidOut[offset]),

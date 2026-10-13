@@ -1336,6 +1336,9 @@ suite('Diff row heights', () => {
       ),
       '',
     );
+  });
+
+  test('draws no marks on a wrapped line until the browser has laid it out, as they follow its breaks rather than the estimate', () => {
     assert.strictEqual(
       renderToStaticMarkup(
         <WrapMarks text="one two three" columns={7} numbers={2} />,
