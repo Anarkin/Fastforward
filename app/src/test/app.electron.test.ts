@@ -241,17 +241,14 @@ suite('App', () => {
     await page.locator('.diff-line.added', { hasText: '2' }).waitFor();
   }
 
-  test('opens the saved tab, titling the window after its repository', async () => {
+  test('opens the saved tab, titling the window after its repository, showing no worktree row for its only worktree', async () => {
     await page.locator('.tabs .tab.active').waitFor();
     assert.strictEqual(
       await page.locator('.tabs .tab.active .tab-name').textContent(),
       'repo',
     );
-    await page.locator('.worktrees .tab.active').waitFor();
-    assert.strictEqual(
-      await page.locator('.worktrees .tab.active .tab-name').textContent(),
-      'main',
-    );
+    await page.locator('.commit', { hasText: 'second' }).waitFor();
+    assert.strictEqual(await page.locator('.worktrees').count(), 0);
     const version = await app.evaluate((electron) => electron.app.getVersion());
     assert.strictEqual(
       await page.title(),
@@ -402,7 +399,7 @@ suite('App', () => {
         .waitFor();
       await repository.git('worktree', 'remove', '--force', worktree);
       await repository.git('branch', '-q', '-D', 'other');
-      await waitForCount(worktrees, 1, 'worktrees');
+      await waitForCount(worktrees, 0, 'worktrees');
     }
   });
 
@@ -455,7 +452,7 @@ suite('App', () => {
       }
       await repository.git('worktree', 'remove', '--force', worktree);
       await repository.git('branch', '-q', '-D', 'scrolled');
-      await waitForCount(worktrees, 1, 'worktrees');
+      await waitForCount(worktrees, 0, 'worktrees');
     }
   });
 
