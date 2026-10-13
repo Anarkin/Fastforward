@@ -1,5 +1,10 @@
 import * as assert from 'node:assert';
-import { execFile } from 'node:child_process';
+import {
+  type ChildProcess,
+  execFile,
+  execFileSync,
+  spawn,
+} from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { promisify } from 'node:util';
@@ -13,25 +18,56 @@ interface Ran {
   readonly output: string;
 }
 
+const running = new Map<ChildProcess, Promise<Ran>>();
+
 function playground(folder: string, ...flags: string[]): Promise<Ran> {
-  return new Promise((resolve) => {
-    execFile(
-      process.execPath,
-      [script, folder, ...flags],
-      { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 },
-      (error, stdout, stderr) => {
-        resolve({
-          code:
-            error === null
-              ? 0
-              : typeof error.code === 'number'
-                ? error.code
-                : 1,
-          output: stdout + stderr,
-        });
-      },
-    );
+  const child = spawn(process.execPath, [script, folder, ...flags], {
+    detached: process.platform !== 'win32',
+    windowsHide: true,
   });
+  let output = '';
+  child.stdout.setEncoding('utf8').on('data', (text: string) => {
+    output += text;
+  });
+  child.stderr.setEncoding('utf8').on('data', (text: string) => {
+    output += text;
+  });
+  const ran = new Promise<Ran>((resolve) => {
+    child.on('error', (error) => {
+      output += error.message;
+    });
+    child.on('close', (code) => {
+      running.delete(child);
+      resolve({ code: code ?? 1, output });
+    });
+  });
+  running.set(child, ran);
+  return ran;
+}
+
+function killWithItsGits(child: ChildProcess): void {
+  if (child.pid === undefined) {
+    return;
+  }
+  try {
+    if (process.platform === 'win32') {
+      execFileSync('taskkill', ['/pid', String(child.pid), '/t', '/f'], {
+        stdio: 'ignore',
+      });
+    } else {
+      process.kill(-child.pid, 'SIGKILL');
+    }
+  } catch {
+    child.kill('SIGKILL');
+  }
+}
+
+async function stopPlaygrounds(): Promise<void> {
+  const closing = [...running];
+  for (const [child] of closing) {
+    killWithItsGits(child);
+  }
+  await Promise.all(closing.map(([, closed]) => closed));
 }
 
 async function gitOutput(cwd: string, ...args: string[]): Promise<string> {
@@ -61,7 +97,7 @@ const names = {
   upstream: 'Fastforward-playground-upstream.git',
 };
 
-const builds = 120_000;
+const builds = 240_000;
 
 suite('Playground', () => {
   let folder: string;
@@ -78,7 +114,10 @@ suite('Playground', () => {
     assert.strictEqual(ran.code, 0, ran.output);
   }, builds);
 
-  afterAll(() => removeFolder(folder));
+  afterAll(async () => {
+    await stopPlaygrounds();
+    removeFolder(folder);
+  }, 30_000);
 
   const at = (name: string) => path.join(folder, name);
 

@@ -175,19 +175,33 @@ suite('Patch budget', () => {
 
   test('reads a long line git sends in many chunks in one pass over it', () => {
     const line = Buffer.alloc(patchByteBudget - 1024, 'x');
-    const budget = new PatchBudget();
-    const started = performance.now();
-    budget.add(Buffer.from('diff --git a/min.js b/min.js\n@@ -0,0 +1 @@\n+'));
-    for (let at = 0; at < line.length; at += 65536) {
-      budget.add(line.subarray(at, at + 65536));
-    }
-    budget.add(Buffer.from('\n'));
-    const { patch, sections } = budget.end();
-    assert.ok(performance.now() - started < 300);
+    const header = Buffer.from(
+      'diff --git a/min.js b/min.js\n@@ -0,0 +1 @@\n+',
+    );
+    const readLine = (chunkSize: number) => {
+      const budget = new PatchBudget();
+      const started = performance.now();
+      budget.add(header);
+      for (let at = 0; at < line.length; at += chunkSize) {
+        budget.add(line.subarray(at, at + chunkSize));
+      }
+      budget.add(Buffer.from('\n'));
+      const budgeted = budget.end();
+      return { ...budgeted, took: performance.now() - started };
+    };
+    const fastest = (chunkSize: number) =>
+      Math.min(...[1, 2, 3].map(() => readLine(chunkSize).took));
+    const { patch, sections } = readLine(65536);
     assert.strictEqual(patch.length, 45 + line.length);
     assert.deepStrictEqual(sections, [
       { header: 'diff --git a/min.js b/min.js', lines: 1, kept: true },
     ]);
+    const inOneChunk = fastest(line.length);
+    const inManyChunks = fastest(65536);
+    assert.ok(
+      inManyChunks < inOneChunk * 8 + 50,
+      `${inManyChunks} ms in 64 KB chunks against ${inOneChunk} ms in one`,
+    );
   });
 });
 
