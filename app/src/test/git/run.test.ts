@@ -89,7 +89,7 @@ suite('Running git', () => {
     assert.deepStrictEqual(killed, [[-4321, 'SIGTERM']]);
   });
 
-  test("runs the real git Git for Windows' launcher starts, with the MSYSTEM and the PATH the launcher gives it", () => {
+  test("runs the real git Git for Windows' launcher starts, with the MSYSTEM and the PATH the launcher gives it, as the launcher's own process slowed each git's start", () => {
     const root = 'C:\\Program Files\\Git';
     const present = new Set([
       `${root}\\usr\\bin\\sh.exe`,

@@ -1,4 +1,7 @@
 import * as assert from 'node:assert';
+import { createHash } from 'node:crypto';
+import * as v8 from 'node:v8';
+import * as vm from 'node:vm';
 import { suite, test } from 'vitest';
 import { Commits, CommitsBuilder } from '../../history/commits';
 import { entriesOf } from './historyFixtures';
@@ -9,6 +12,30 @@ function read(chunks: readonly string[], stashes?: readonly string[]) {
     builder.add(Buffer.from(chunk));
   }
   return builder.finishNow();
+}
+
+function sha1(at: number): string {
+  return createHash('sha1').update(String(at)).digest('hex');
+}
+
+function isCallable(value: unknown): value is () => void {
+  return typeof value === 'function';
+}
+
+function memoryKeptBy(make: () => unknown): number {
+  v8.setFlagsFromString('--expose-gc');
+  const collectGarbage: unknown = vm.runInNewContext('gc');
+  assert.ok(isCallable(collectGarbage));
+  const used = () => {
+    collectGarbage();
+    const { heapUsed, arrayBuffers } = process.memoryUsage();
+    return heapUsed + arrayBuffers;
+  };
+  const before = used();
+  const kept = make();
+  const after = used();
+  assert.ok(kept);
+  return after - before;
 }
 
 suite('Commits read from git', () => {
@@ -164,7 +191,7 @@ suite('Commits read from git', () => {
     }
   });
 
-  test('links a long history a slice at a time, letting other work run between them, the same as at once', async () => {
+  test("links a long history a slice at a time, letting other work run between them, the same as at once, as the main process also passes the window's input on to the page", async () => {
     const output = Array.from(
       { length: 20_000 },
       (_, at) => `c${at} c${at + 1}${at % 7 === 0 ? ` c${at + 3}` : ''}\n`,
@@ -178,5 +205,15 @@ suite('Commits read from git', () => {
     const commits = await sliced.finish(0);
     assert.ok(ran);
     assert.deepStrictEqual(entriesOf(commits), entriesOf(read([output])));
+  });
+
+  test('keeps a commit in under 100 bytes, its hash as bytes in one buffer and its parents as numbers, as an object and strings per commit took seven times the memory', () => {
+    const count = 200_000;
+    const output = Array.from(
+      { length: count },
+      (_, at) => `${sha1(at)} ${sha1(at + 1)}\n`,
+    ).join('');
+    const kept = memoryKeptBy(() => read([output]));
+    assert.ok(kept < count * 100, `${kept / count} bytes per commit`);
   });
 });

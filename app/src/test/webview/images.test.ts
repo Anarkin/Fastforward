@@ -162,7 +162,7 @@ suite('Image previews', () => {
     assert.strictEqual(previewsImage({ ...modified, binary: false }), false);
   });
 
-  test('reads the working tree side of an image from disk, and the rest from git', () => {
+  test('reads the working tree side of an image from disk, and the rest from git, as git diffs give the working tree side the id its blob would have without storing the blob', () => {
     const disk = (origin: ImageOrigin) => [
       source(diffImageUrl(origin, modified, 'old'))?.disk,
       source(diffImageUrl(origin, modified, 'new'))?.disk,

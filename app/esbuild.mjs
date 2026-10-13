@@ -3,17 +3,10 @@ import * as fs from 'node:fs';
 import * as esbuild from 'esbuild';
 import electron from 'electron';
 import { quitApp } from './devApp.mjs';
-import { webviewOptions } from './esbuild.config.mjs';
+import { mainOptions, webviewOptions } from './esbuild.config.mjs';
 
 const production = process.argv.includes('--production');
 const dev = process.argv.includes('--dev');
-
-const shared = {
-  bundle: true,
-  sourcemap: !production,
-  sourcesContent: false,
-  logLevel: 'info',
-};
 
 let webviewBuild = Promise.withResolvers();
 const trackWebview = {
@@ -64,20 +57,13 @@ fs.copyFileSync('src/settings.json', 'dist/settings.json');
 
 const contexts = await Promise.all([
   esbuild.context({
-    ...shared,
-    entryPoints: {
-      main: 'src/main/main.ts',
-      preload: 'src/main/preload.ts',
-    },
-    format: 'cjs',
-    platform: 'node',
-    outdir: 'dist',
-    external: ['electron', 'electron-updater'],
+    ...mainOptions(production),
+    logLevel: 'info',
     plugins: [restartApp],
   }),
   esbuild.context({
-    ...shared,
     ...webviewOptions(production),
+    logLevel: 'info',
     plugins: [trackWebview],
   }),
 ]);

@@ -16,7 +16,6 @@ suite('Webview bundle', { timeout: 30_000 }, () => {
       );
     const { metafile } = await esbuild.build({
       ...webviewOptions(true),
-      bundle: true,
       absWorkingDir: appFolder,
       write: false,
       metafile: true,

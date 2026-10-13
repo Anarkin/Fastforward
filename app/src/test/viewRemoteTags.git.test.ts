@@ -126,6 +126,16 @@ suite('View remote tags', () => {
     );
   });
 
+  test('writes no ref for the tags of a remote, keeping them itself, as git keeps no remote-tracking refs for tags and other tools would show refs it wrote', async () => {
+    await repository.git('config', 'remote.origin.tagOpt', '--no-tags');
+    await other.git('tag', 'listed', a);
+    await other.git('push', 'origin', 'listed');
+    const refs = () => repository.git('for-each-ref', '--format=%(refname)');
+    const before = await refs();
+    await fetchedShows([remoteTag('origin', 'listed', a)]);
+    assert.strictEqual(await refs(), before);
+  });
+
   test('shows the tags of each remote apart, under its name', async () => {
     const second = await tempRepository(path.join(folder, 'second'), {
       bare: true,

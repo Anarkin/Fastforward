@@ -996,7 +996,7 @@ suite('View of one repository', () => {
       assert.strictEqual(page.last('diff')?.hash, fixture.merge);
     });
 
-    test('takes only hashes of the history from the page', async () => {
+    test('takes only hashes of the history from the page, as it shows repository content, and a hash such as --output=<file> made git write a file', async () => {
       const written = path.join(folder, 'written.txt');
       const hash = `--output=${written}`;
       for (const message of [

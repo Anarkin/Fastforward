@@ -623,7 +623,7 @@ suite('Running git in a repository', () => {
     }
   });
 
-  test('runs its own commands in the C locale, sparing git setting up translations each time it starts', async () => {
+  test('runs its own commands in the C locale, so the messages it reads, such as a folder not being a repository, are in English, sparing git setting up translations each time it starts', async () => {
     const locale = await runGit(gitPath, cwd, [
       '-c',
       'alias.locale=!echo "[$LC_ALL]"',

@@ -229,7 +229,7 @@ suite('View fetching', () => {
     }
   });
 
-  test('tells the page when the repository of its tab last fetched and last failed to', async () => {
+  test('tells the page when the repository of its tab last fetched and last failed to, recording it itself, as git rewrites FETCH_HEAD even when every remote fails', async () => {
     const before = Date.now();
     await connection.receive({ type: 'fetch', root: repository.root });
     const succeeded = page.last('lastFetch')?.succeeded ?? 0;
@@ -263,6 +263,21 @@ suite('View fetching', () => {
         type: 'selectTab',
         root: repository.root,
       });
+      assert.deepStrictEqual(opened.page.last('lastFetch'), {
+        type: 'lastFetch',
+      });
+    } finally {
+      opened.connection.dispose();
+    }
+  });
+
+  test('counts no fetch made outside the app, as it records its fetches itself', async () => {
+    const outside = await tempRepository(path.join(folder, 'outside'));
+    await outside.commit('a');
+    await outside.git('remote', 'add', 'origin', remote.root);
+    await outside.git('fetch', 'origin');
+    const opened = await openView(log, [outside.root], 'unwatched');
+    try {
       assert.deepStrictEqual(opened.page.last('lastFetch'), {
         type: 'lastFetch',
       });
