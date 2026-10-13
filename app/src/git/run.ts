@@ -380,6 +380,7 @@ export async function stopRunningGit(waitTime = writeTime): Promise<void> {
   ]);
   const unfinished = [...writing.values()];
   await Promise.all([...running.keys()].map((child) => stopGit(child)));
+  await Promise.all(stopping.values());
   if (process.platform === 'win32') {
     await Promise.all(unfinished.map(removeIndexLock));
   }
@@ -406,12 +407,28 @@ async function removeIndexLock({ cwd, since }: Write): Promise<void> {
   }
 }
 
-export async function stopGit(
-  child: Pick<
-    ChildProcess,
-    'pid' | 'exitCode' | 'signalCode' | 'stdout' | 'stderr' | 'kill'
-  >,
+type StoppableGit = Pick<
+  ChildProcess,
+  'pid' | 'exitCode' | 'signalCode' | 'stdout' | 'stderr' | 'kill'
+>;
+
+const stopping = new Map<StoppableGit, Promise<void>>();
+
+export function stopGit(
+  child: StoppableGit,
   platform = process.platform,
+): Promise<void> {
+  let stopped = stopping.get(child);
+  if (stopped === undefined) {
+    stopped = endGit(child, platform).finally(() => stopping.delete(child));
+    stopping.set(child, stopped);
+  }
+  return stopped;
+}
+
+async function endGit(
+  child: StoppableGit,
+  platform: NodeJS.Platform,
 ): Promise<void> {
   child.stdout?.destroy();
   child.stderr?.destroy();

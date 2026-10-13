@@ -339,6 +339,57 @@ suite('Running git in a repository', () => {
     }
   });
 
+  test('is done stopping every git only once a git it was already stopping is stopped, though that git has exited, as Windows may end it before what it started, and the app quit with its ssh still running', async (context) => {
+    if (process.platform !== 'win32') {
+      context.skip();
+    }
+    const childProcess = process.getBuiltinModule('node:child_process');
+    const { execFile } = childProcess;
+    const folder = tempFolder('stopping');
+    const started = path.join(folder, 'started').replaceAll('\\', '/');
+    const stopping = new AbortController();
+    const done: string[] = [];
+    let first = true;
+    replaceBuiltin(
+      childProcess,
+      'execFile',
+      (
+        file: string,
+        args: readonly string[],
+        options: object,
+        callback: () => void,
+      ) => {
+        if (!first || !file.endsWith('taskkill.exe')) {
+          return execFile(file, args, options, callback);
+        }
+        first = false;
+        return execFile(file, args, options, () => {
+          setTimeout(() => {
+            done.push('stopping git');
+            callback();
+          }, 500);
+        });
+      },
+    );
+    try {
+      const stalled = runGit(
+        gitPath,
+        cwd,
+        ['-c', `alias.stall=!echo > '${started}'; sleep 15`, 'stall'],
+        { signal: stopping.signal },
+      );
+      await waitFor(() => fs.existsSync(started), 'git to start');
+      stopping.abort();
+      await assert.rejects(stalled);
+      await stopRunningGit();
+      done.push('stopping every git');
+      assert.deepStrictEqual(done, ['stopping git', 'stopping every git']);
+    } finally {
+      replaceBuiltin(childProcess, 'execFile', execFile);
+      removeFolder(folder);
+    }
+  });
+
   test('lets a checkout or fast-forward finish when asked to stop every git, as stopping one midway can leave the working tree half switched', async () => {
     const folder = tempFolder('quitting');
     const started = path.join(folder, 'started').replaceAll('\\', '/');

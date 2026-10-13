@@ -72,6 +72,14 @@ async function closeOrKill(app: ElectronApplication): Promise<void> {
   }
 }
 
+function holdsStartLock(profile: string): boolean {
+  return ['lockfile', 'SingletonLock'].some(
+    (name) =>
+      fs.lstatSync(path.join(profile, name), { throwIfNoEntry: false }) !==
+      undefined,
+  );
+}
+
 function waitForFocus(locator: Locator, what: string): Promise<void> {
   return waitFor(
     () => locator.evaluate((element) => element === document.activeElement),
@@ -1246,13 +1254,13 @@ suite('App quitting', () => {
       await page.locator('.commit', { hasText: 'first' }).waitFor();
       await page.getByTitle(strings.navigation.fetch, { exact: true }).click();
       await waitFor(() => fs.existsSync(alive), 'git to fetch');
-      await app.close();
+      await within(app.close(), 'the app to close');
       const counted = fs.readFileSync(alive, 'utf8');
       await new Promise((resolve) => setTimeout(resolve, 1000));
       assert.strictEqual(fs.readFileSync(alive, 'utf8'), counted);
     } finally {
       fs.writeFileSync(stop, '');
-      await app.close();
+      await closeOrKill(app);
       removeFolder(folder);
     }
   });
@@ -1302,7 +1310,7 @@ suite('App quitting', () => {
         )
         .click();
       await waitFor(() => fs.existsSync(alive('first')), 'git to fetch');
-      await app.close();
+      await within(app.close(), 'the app to close');
       await new Promise((resolve) => setTimeout(resolve, 1000));
       assert.ok(!fs.existsSync(alive('second')));
       assert.doesNotMatch(
@@ -1311,7 +1319,7 @@ suite('App quitting', () => {
       );
     } finally {
       fs.writeFileSync(stop, '');
-      await app.close();
+      await closeOrKill(app);
       removeFolder(folder);
     }
   });
@@ -1356,17 +1364,23 @@ suite('App quitting', () => {
         })
         .click();
       await waitFor(() => fs.existsSync(alive), 'the checkout to run');
+      assert.ok(holdsStartLock(profile));
       await app.evaluate(({ BrowserWindow }) =>
         BrowserWindow.getAllWindows()[0].close(),
       );
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await waitFor(
+        () => !holdsStartLock(profile),
+        'the app to let another start',
+      );
       again = await launch();
       const shown = await again.firstWindow();
       await shown.locator('.commit', { hasText: 'second' }).waitFor();
     } finally {
       fs.writeFileSync(stop, '');
-      await again?.close();
-      await app.close();
+      if (again) {
+        await closeOrKill(again);
+      }
+      await closeOrKill(app);
       removeFolder(folder);
     }
   });
