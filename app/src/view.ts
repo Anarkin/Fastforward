@@ -359,7 +359,7 @@ export class FastforwardView {
     const source = imageSourceOf(url);
     const type = source && imageType(source.path);
     const tab = source && this.tabStates.get(source.root);
-    if (!source || !type || !tab) {
+    if (!source || !type || tab?.isRepository !== true) {
       return new Response(null, { status: 404 });
     }
     const stash =
@@ -533,7 +533,9 @@ export class FastforwardView {
         return;
       }
       case 'openRepository':
-        await this.openRepositories(session, [message.root], true);
+        if (storage.recent.some((root) => sameRoot(root, message.root))) {
+          await this.openRepositories(session, [message.root], true);
+        }
         return;
       case 'browseRepositories':
         await this.openRepositories(session, await this.host.chooseFolders());
@@ -650,6 +652,9 @@ export class FastforwardView {
         return;
       }
       case 'setSolo': {
+        if (!storage.hasTab(this.repositoryOf(message.root))) {
+          return;
+        }
         const context = await this.context(session, message.root);
         this.save(storage.setSolo(message.root, message.solo));
         if (!context) {

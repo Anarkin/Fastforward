@@ -454,7 +454,7 @@ suite('View of other repositories', () => {
       const older = Array.from({ length: 19 }, (_, index) =>
         path.join(folder, `older-${index}`),
       );
-      await view.store.update(recentKey, [repository.root, ...older]);
+      await view.store.update(recentKey, [repository.root, ...older, other]);
       await view.connection.receive({ type: 'openRepository', root: other });
       const shown = view.page.last('tabs');
       assert.ok(shown?.active && sameRoot(shown.active, other));
@@ -462,6 +462,18 @@ suite('View of other repositories', () => {
         shown.recent.map((recent) => recent.root),
         older.slice(0, 18),
       );
+    });
+  });
+
+  test('opens only the recent repositories the page names', async () => {
+    await withView(log, [repository.root], async (view) => {
+      await view.store.update(recentKey, []);
+      await view.connection.receive({ type: 'openRepository', root: other });
+      assert.deepStrictEqual(
+        view.page.last('tabs')?.tabs.map((tab) => tab.name),
+        ['main'],
+      );
+      assert.deepStrictEqual(view.store.get(recentKey), []);
     });
   });
 

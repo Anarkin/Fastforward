@@ -10,6 +10,7 @@ import {
   workingTreeHash,
 } from '../shared/protocol';
 import { imageUrl, maxImageSize } from '../shared/images';
+import { soloKey } from '../storage';
 import { waitFor } from './fixtures';
 import {
   removeFolder,
@@ -878,6 +879,32 @@ suite('View showing diffs', () => {
         });
       } finally {
         fs.rmSync(large);
+      }
+    });
+
+    test('serves no images from folders the page names that are not open, even after the page sets their Solo', async () => {
+      const plain = path.join(folder, 'plain-images');
+      fs.mkdirSync(plain, { recursive: true });
+      fs.writeFileSync(path.join(plain, 'pixel.png'), pixel);
+      const unopened = path.join(other, 'pixel.png');
+      fs.writeFileSync(unopened, pixel);
+      try {
+        await withView(
+          log,
+          [images.root],
+          async ({ view, connection, store }) => {
+            for (const root of [plain, other]) {
+              await connection.receive({ type: 'setSolo', root, solo: true });
+              assert.strictEqual(
+                (await view.image(url(root, 'pixel.png', 'any', true))).status,
+                404,
+              );
+            }
+            assert.deepStrictEqual(store.get(soloKey) ?? {}, {});
+          },
+        );
+      } finally {
+        fs.rmSync(unopened);
       }
     });
 

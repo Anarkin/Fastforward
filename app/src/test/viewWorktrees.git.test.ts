@@ -6,7 +6,13 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import type { ToWebviewOf } from '../shared/protocol';
 import { shortHash } from '../shared/hashes';
 import { strings } from '../shared/strings';
-import { activeTabKey, bookmarksKey, tabsKey, worktreesKey } from '../storage';
+import {
+  activeTabKey,
+  bookmarksKey,
+  recentKey,
+  tabsKey,
+  worktreesKey,
+} from '../storage';
 import { waitFor } from './fixtures';
 import {
   removeFolder,
@@ -442,6 +448,7 @@ suite('View of worktrees', () => {
       });
       const ready = started.connection.receive({ type: 'ready' });
       await waitFor(() => locating, 'the tabs to be merged');
+      await started.store.update(recentKey, [other]);
       await started.connection.receive({ type: 'openRepository', root: other });
       held.open();
       await ready;
