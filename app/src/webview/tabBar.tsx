@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { type TabInfo } from '../shared/protocol';
 import { CloseIcon } from './icons';
+import { AppIcon } from './titleBar';
+import { titleBarHeight } from '../shared/titleBar';
 import { clicked, keymap } from '../shared/keymap';
 import { strings } from '../shared/strings';
 import { useBinding } from './shortcuts';
@@ -68,6 +70,7 @@ export function TabBar({
   onClose,
   onAdd,
   onLog,
+  menu,
 }: {
   tabs: readonly TabInfo[];
   active: string | undefined;
@@ -76,6 +79,7 @@ export function TabBar({
   onClose: (root: string) => void;
   onAdd: (event: React.MouseEvent) => void;
   onLog: (message: string) => void;
+  menu?: React.ReactNode;
 }) {
   const bar = useRef<HTMLElement>(null);
   const list = useRef<HTMLDivElement>(null);
@@ -110,7 +114,8 @@ export function TabBar({
   });
 
   return (
-    <nav className="tabs" ref={bar}>
+    <nav className="tabs" ref={bar} style={{ minHeight: titleBarHeight }}>
+      <AppIcon />
       <div
         className="tab-list"
         ref={list}
@@ -165,6 +170,7 @@ export function TabBar({
           {strings.symbols.add}
         </button>
       </div>
+      {menu}
     </nav>
   );
 }

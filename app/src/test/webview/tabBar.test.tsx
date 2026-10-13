@@ -75,8 +75,8 @@ suite('Tab bar', () => {
       onAdd: noop,
       onLog: noop,
     });
-    assert.ok(isValidElement<{ children: React.ReactElement }>(nav));
-    const list = nav.props.children;
+    assert.ok(isValidElement<{ children: React.ReactElement[] }>(nav));
+    const list = nav.props.children[1];
     assert.ok(isValidElement<{ children: React.ReactElement[][] }>(list));
     const tab = list.props.children[0][0];
     assert.ok(
@@ -108,8 +108,8 @@ suite('Tab bar', () => {
       onAdd: noop,
       onLog: noop,
     });
-    assert.ok(isValidElement<{ children: React.ReactElement }>(nav));
-    const list = nav.props.children;
+    assert.ok(isValidElement<{ children: React.ReactElement[] }>(nav));
+    const list = nav.props.children[1];
     assert.ok(isValidElement<{ children: React.ReactElement[][] }>(list));
     const tab = list.props.children[0][0];
     assert.ok(isValidElement<{ children: React.ReactElement[] }>(tab));
@@ -140,8 +140,8 @@ suite('Tab bar', () => {
       onAdd: noop,
       onLog: noop,
     });
-    assert.ok(isValidElement<{ children: React.ReactElement }>(nav));
-    const list = nav.props.children;
+    assert.ok(isValidElement<{ children: React.ReactElement[] }>(nav));
+    const list = nav.props.children[1];
     assert.ok(isValidElement<{ children: React.ReactElement[][] }>(list));
     const [a, b] = list.props.children[0];
     type Tab = {

@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { strings } from '../../shared/strings';
 import { TitleBar, windowTitle } from '../../webview/titleBar';
-import { stylesheet, stylesheetPx } from '../fixtures';
+import { stylesheet } from '../fixtures';
 
 suite('Title bar', () => {
   test('names the open repository, or only the app without one', () => {
@@ -83,14 +83,20 @@ suite('Title bar', () => {
     );
   });
 
-  test('starts the icon where the tab names start', () => {
+  test('drags the window by the tab row, clear of the window buttons, but not by its tabs and buttons', () => {
+    const css = stylesheet();
+    assert.match(css, /\n\.tabs \{[^}]*-webkit-app-region: drag;/);
     assert.match(
-      stylesheet(),
-      /\n\.tabs \{[^}]*padding: \S+ \S+ \S+ var\(--tab-inset\);/,
+      css,
+      /\n\.tabs \{[^}]*100vw - env\(titlebar-area-x, 0px\) - env\(titlebar-area-width, 100vw\)[^}]*calc\(env\(titlebar-area-x, 0px\) \+ var\(--tab-inset\)\);/,
     );
-    assert.strictEqual(
-      stylesheetPx(/--title-bar-inset: calc\(var\(--tab-inset\) \+ (\d+)px\);/),
-      stylesheetPx(/\n\.tab \{[^}]*padding: \S+ \S+ \S+ (\d+)px;/),
+    assert.match(
+      css,
+      /:root\[data-platform='darwin'\] \.tabs \{[^}]*padding-left: 78px;/,
+    );
+    assert.match(
+      css,
+      /\.tabs \.tab,\n\.tabs \.tab-add,\n\.tabs \.menu-button \{[^}]*-webkit-app-region: no-drag;/,
     );
   });
 });

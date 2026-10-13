@@ -175,8 +175,30 @@ body {
   flex: none;
   display: flex;
   align-items: stretch;
-  padding: 4px var(--gutter-width) 0 var(--tab-inset);
+  gap: 8px;
+  box-sizing: border-box;
+  padding: 5px
+    calc(
+      100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) +
+        var(--gutter-width)
+    )
+    0 calc(env(titlebar-area-x, 0px) + var(--tab-inset));
   background: var(--color-background);
+  -webkit-app-region: drag;
+}
+
+:root[data-platform='darwin'] .tabs {
+  padding-left: 78px;
+}
+
+.tabs .title-bar-icon {
+  align-self: center;
+}
+
+.tabs .tab,
+.tabs .tab-add,
+.tabs .menu-button {
+  -webkit-app-region: no-drag;
 }
 
 .worktrees {

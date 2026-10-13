@@ -24,6 +24,17 @@ suite('Window', () => {
     );
   });
 
+  test("tops the window with the tab row, starting with the app's icon and ending with its menu, and shows no title bar", () => {
+    const html = renderToStaticMarkup(
+      <App name="Fastforward" post={noop} listen={() => noop} />,
+    );
+    assert.strictEqual(tagsWith(html, 'title-bar').length, 0);
+    assert.match(
+      html,
+      /^<div class="app"><nav class="tabs"[^>]*><svg class="title-bar-icon"[^]*<\/svg><div class="tab-list"[^]*<\/div><div class="menu-button"[^]*<\/nav>/,
+    );
+  });
+
   test('shows no worktree row before the host says which worktrees there are', () => {
     const html = renderToStaticMarkup(
       <App name="Fastforward" post={noop} listen={() => noop} />,

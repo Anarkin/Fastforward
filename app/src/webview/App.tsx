@@ -75,7 +75,7 @@ import { strings } from '../shared/strings';
 import { AddressBar, NavButtons } from './navBar';
 import { TabBar } from './tabBar';
 import { WorktreeBar } from './worktreeBar';
-import { TitleBar, windowTitle } from './titleBar';
+import { useWindowTitle, windowTitle } from './titleBar';
 import {
   noFolders,
   openFolders,
@@ -720,6 +720,8 @@ export function App({ name, post: postToHost, listen }: Props) {
     );
   };
 
+  useWindowTitle(windowTitle(activeTab, name));
+
   return (
     <OpenContextMenu.Provider value={openMenu}>
       <CheckedOutBranch.Provider value={repository?.head}>
@@ -729,8 +731,14 @@ export function App({ name, post: postToHost, listen }: Props) {
               <HideDimmedButtons.Provider value={hideDimmed}>
                 <DetachedHead.Provider value={detached}>
                   <div className="app">
-                    <TitleBar
-                      title={windowTitle(activeTab, name)}
+                    <TabBar
+                      tabs={tabs ?? []}
+                      active={activeRepository}
+                      onSelect={(root) => post({ type: 'selectTab', root })}
+                      onPreload={(root) => post({ type: 'preloadTab', root })}
+                      onClose={(root) => post({ type: 'closeTab', root })}
+                      onAdd={openRepository}
+                      onLog={log}
                       menu={
                         <AppMenu
                           update={update}
@@ -749,15 +757,6 @@ export function App({ name, post: postToHost, listen }: Props) {
                           onShowAbout={() => setAboutShown(true)}
                         />
                       }
-                    />
-                    <TabBar
-                      tabs={tabs ?? []}
-                      active={activeRepository}
-                      onSelect={(root) => post({ type: 'selectTab', root })}
-                      onPreload={(root) => post({ type: 'preloadTab', root })}
-                      onClose={(root) => post({ type: 'closeTab', root })}
-                      onAdd={openRepository}
-                      onLog={log}
                     />
                     {menu && openedMenu && (
                       <ContextMenu

@@ -19,7 +19,7 @@ function Dot({ cx, color }: { cx: number; color: string }) {
   );
 }
 
-function AppIcon() {
+export function AppIcon() {
   const blue = '#4285F4';
   return (
     <svg className="title-bar-icon" viewBox="104 168 310 190" aria-hidden>
@@ -56,6 +56,12 @@ function AppIcon() {
   );
 }
 
+export function useWindowTitle(title: string): void {
+  useEffect(() => {
+    document.title = title;
+  }, [title]);
+}
+
 export function TitleBar({
   title,
   menu,
@@ -63,9 +69,7 @@ export function TitleBar({
   title: string;
   menu?: React.ReactNode;
 }) {
-  useEffect(() => {
-    document.title = title;
-  }, [title]);
+  useWindowTitle(title);
   return (
     <header className="title-bar" style={{ height: titleBarHeight }}>
       <div className="title-bar-content">
