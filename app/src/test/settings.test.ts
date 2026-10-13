@@ -447,6 +447,20 @@ suite('User settings file', () => {
     assert.strictEqual(user.settings.solo, true);
   });
 
+  test('takes a change made to the file while its own change is still being saved', async () => {
+    const user = new UserSettings(defaults, file);
+    await user.set('collapseMerges', false);
+    const saving = user.set('solo', true);
+    fs.writeFileSync(file, JSON.stringify({ wordWrap: !defaults.wordWrap }));
+    assert.strictEqual(user.reload(), true);
+    assert.strictEqual(user.settings.wordWrap, !defaults.wordWrap);
+    assert.strictEqual(user.settings.solo, true);
+    await saving;
+    assert.strictEqual(user.reload(), false);
+    assert.strictEqual(user.settings.wordWrap, !defaults.wordWrap);
+    assert.strictEqual(user.settings.solo, true);
+  });
+
   test('keeps a change made to the file since it was read when saving its own', async () => {
     const user = new UserSettings(defaults, file);
     fs.writeFileSync(file, JSON.stringify({ solo: true }));

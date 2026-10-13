@@ -158,7 +158,10 @@ export class UserSettings {
   private broken = false;
   private issues: readonly string[] = [];
   private writing: Promise<void> = Promise.resolve();
-  private pending = 0;
+  private readonly unsaved = new Map<
+    keyof Settings,
+    { readonly value: unknown; readonly saves: number }
+  >();
 
   constructor(
     private base: Settings,
@@ -188,9 +191,6 @@ export class UserSettings {
   }
 
   reload(): boolean {
-    if (this.pending > 0) {
-      return false;
-    }
     const before = JSON.stringify([this.current, this.issues]);
     this.read();
     return JSON.stringify([this.current, this.issues]) !== before;
@@ -211,7 +211,7 @@ export class UserSettings {
       return;
     }
     if (text === undefined || text.trim() === '') {
-      this.current = this.base;
+      this.current = this.withUnsaved(this.base);
       this.issues = [];
       return;
     }
@@ -228,7 +228,7 @@ export class UserSettings {
       return;
     }
     const { settings, problems } = mergeSettings(this.base, parsed);
-    this.current = settings;
+    this.current = this.withUnsaved(settings);
     this.broken = !isObject(parsed);
     this.issues = problems;
   }
@@ -243,7 +243,10 @@ export class UserSettings {
     if (this.broken) {
       return Promise.resolve();
     }
-    this.pending += 1;
+    this.unsaved.set(key, {
+      value,
+      saves: (this.unsaved.get(key)?.saves ?? 0) + 1,
+    });
     this.writing = this.writing
       .catch(() => undefined)
       .then(() => {
@@ -257,9 +260,23 @@ export class UserSettings {
         );
       })
       .finally(() => {
-        this.pending -= 1;
+        const unsaved = this.unsaved.get(key);
+        if (unsaved === undefined || unsaved.saves <= 1) {
+          this.unsaved.delete(key);
+        } else {
+          this.unsaved.set(key, { ...unsaved, saves: unsaved.saves - 1 });
+        }
       });
     return this.writing;
+  }
+
+  private withUnsaved(settings: Settings): Settings {
+    return {
+      ...settings,
+      ...Object.fromEntries(
+        [...this.unsaved].map(([key, { value }]) => [key, value]),
+      ),
+    };
   }
 
   saved(): Promise<void> {
