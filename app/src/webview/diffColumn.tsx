@@ -15,6 +15,7 @@ import { withUnchangedObjects, type ImageOrigin } from './images';
 import {
   EntireFileIcon,
   IgnoreWhitespaceIcon,
+  ShowWhitespaceIcon,
   InlineIcon,
   NextIcon,
   PinIcon,
@@ -105,10 +106,12 @@ export function DiffOptions({
   entire,
   pinned,
   canShow,
+  showWhitespace,
   ignoreWhitespace,
   wordWrap,
   onEntire,
   onPin,
+  onShowWhitespace,
   onIgnoreWhitespace,
   onWordWrap,
   layout,
@@ -117,10 +120,12 @@ export function DiffOptions({
   entire: boolean;
   pinned: boolean;
   canShow: boolean;
+  showWhitespace: boolean;
   ignoreWhitespace: boolean;
   wordWrap: boolean;
   onEntire: (entire: boolean) => void;
   onPin: (pinned: boolean) => void;
+  onShowWhitespace: (show: boolean) => void;
   onIgnoreWhitespace: (ignore: boolean) => void;
   onWordWrap: (wrap: boolean) => void;
   layout: DiffLayout;
@@ -156,10 +161,22 @@ export function DiffOptions({
       </span>
       <span className="nav-button-space" />
       <button
+        className={`nav-button toggle ${showWhitespace ? 'active' : ''}`}
+        title={
+          showWhitespace
+            ? strings.diff.hideWhitespace
+            : strings.diff.showWhitespace
+        }
+        aria-pressed={showWhitespace}
+        onClick={() => onShowWhitespace(!showWhitespace)}
+      >
+        <ShowWhitespaceIcon />
+      </button>
+      <button
         className={`nav-button toggle ${ignoreWhitespace ? 'active' : ''}`}
         title={
           ignoreWhitespace
-            ? strings.diff.showWhitespace
+            ? strings.diff.showWhitespaceChanges
             : strings.diff.ignoreWhitespace
         }
         aria-pressed={ignoreWhitespace}
@@ -309,6 +326,7 @@ export function Diff({
   entire,
   sideBySide,
   wordWrap,
+  showWhitespace,
   origin,
 }: {
   selection: string;
@@ -330,6 +348,7 @@ export function Diff({
   entire: boolean;
   sideBySide: boolean;
   wordWrap: boolean;
+  showWhitespace: boolean;
   origin: ImageOrigin | undefined;
 }) {
   const parsed = useMemo(() => parsePatch(patch), [patch]);
@@ -423,6 +442,7 @@ export function Diff({
         changeMarks={changeMarks}
         sideBySide={sideBySide}
         wordWrap={wordWrap}
+        showWhitespace={showWhitespace}
         origin={origin}
         matches={matches}
         current={shown}

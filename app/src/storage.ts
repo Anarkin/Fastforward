@@ -334,6 +334,7 @@ export class Storage {
       entireFilePinned: settings.entireFilePinned,
       ignoreWhitespace: settings.ignoreWhitespace,
       wordWrap: settings.wordWrap,
+      showWhitespace: settings.showWhitespace,
       diffLayout: settings.diffLayout,
       showAllFiles: settings.showAllFiles,
       autoFetch: settings.autoFetch,
@@ -387,6 +388,10 @@ export class Storage {
 
   async setWordWrap(wrap: boolean): Promise<void> {
     await this.userSettings.set('wordWrap', wrap);
+  }
+
+  async setShowWhitespace(show: boolean): Promise<void> {
+    await this.userSettings.set('showWhitespace', show);
   }
 
   async setDiffLayout(layout: DiffLayout): Promise<void> {

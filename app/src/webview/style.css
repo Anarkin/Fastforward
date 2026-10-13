@@ -630,7 +630,7 @@ body.resizing {
 }
 
 .column-title:has(.diff-options) {
-  padding-left: calc(4px + 8 * 26px + 7 * 2px + 8px);
+  padding-left: calc(4px + 9 * 26px + 8 * 2px + 8px);
   padding-right: calc(4px + 2 * 26px + 2px + 8px);
 }
 
@@ -1727,6 +1727,40 @@ body.resizing {
   min-width: 0;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+  padding-right: calc(2 * var(--diff-code-padding) + 2ch);
+}
+
+.wrap-marks {
+  pointer-events: none;
+  user-select: none;
+  color: var(--muted-foreground);
+}
+
+.blank {
+  position: relative;
+}
+
+.blank::before {
+  position: absolute;
+  left: 0;
+  width: 1ch;
+  text-align: center;
+  pointer-events: none;
+  user-select: none;
+  content: attr(data-glyph);
+  color: var(--muted-foreground);
+}
+
+.show-whitespace .wrap-blank {
+  display: none;
+}
+
+.wrap-blank,
+.wrap-break {
+  position: absolute;
+  width: 1ch;
+  height: var(--diff-line-height);
+  text-align: center;
 }
 
 .diff-view:not(.wrap) .diff-line:not(.split-side) .code,

@@ -70,7 +70,7 @@ async function scrollsOnWheelOver(
   );
 }
 
-const baseSettings = { diffLayout: 'inline' };
+const baseSettings = { diffLayout: 'inline', wordWrap: false };
 
 suite('App', () => {
   let folder: string;
@@ -158,6 +158,10 @@ suite('App', () => {
     return typeof settings === 'object' && settings !== null
       ? Reflect.get(settings, name)
       : undefined;
+  }
+
+  function wrapsSaved(): boolean {
+    return (savedSetting('wordWrap') ?? defaultSettings().wordWrap) === true;
   }
 
   async function resetSettings(): Promise<void> {
@@ -726,10 +730,7 @@ suite('App', () => {
       wrappedLines(firstLongLine, wrapColumns(laidOut.width, laidOut.char)) *
         22,
     );
-    await waitFor(
-      () => savedSetting('wordWrap') === true,
-      'the choice to be saved',
-    );
+    await waitFor(() => wrapsSaved(), 'the choice to be saved');
     const list = page.locator('.diff-view .virtual-rows');
     await list.evaluate((element) => {
       element.scrollTop = element.scrollHeight / 2;
@@ -769,9 +770,7 @@ suite('App', () => {
       );
     }
     await waitFor(
-      () =>
-        savedSetting('wordWrap') === true &&
-        savedSetting('diffLayout') === 'inline',
+      () => wrapsSaved() && savedSetting('diffLayout') === 'inline',
       'the last choices to be saved',
     );
   });
@@ -806,9 +805,7 @@ suite('App', () => {
     assert.strictEqual(await bar.count(), 0);
     await page.getByRole('button', { name: 'Inline' }).click();
     await waitFor(
-      () =>
-        savedSetting('wordWrap') === true &&
-        savedSetting('diffLayout') === 'inline',
+      () => wrapsSaved() && savedSetting('diffLayout') === 'inline',
       'the last choices to be saved',
     );
   });

@@ -43,6 +43,7 @@ suite('Storage', () => {
       entireFilePinned: defaults.entireFilePinned,
       ignoreWhitespace: defaults.ignoreWhitespace,
       wordWrap: defaults.wordWrap,
+      showWhitespace: defaults.showWhitespace,
       diffLayout: defaults.diffLayout,
       showAllFiles: defaults.showAllFiles,
       autoFetch: defaults.autoFetch,

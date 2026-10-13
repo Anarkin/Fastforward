@@ -187,6 +187,7 @@ export function App({ name, post: postToHost, listen }: Props) {
   const [entireFilePinned, setEntireFilePinned] = useState(false);
   const [ignoreWhitespace, setIgnoreWhitespace] = useState(false);
   const [wordWrap, setWordWrap] = useState(false);
+  const [showWhitespace, setShowWhitespace] = useState(false);
   const [autoFetch, setAutoFetch] = useState(false);
   const [autoFetchMinutes, setAutoFetchMinutes] = useState(0);
   const [hideDimmed, setHideDimmed] = useState(false);
@@ -287,6 +288,7 @@ export function App({ name, post: postToHost, listen }: Props) {
           setEntireFilePinned(message.entireFilePinned);
           setIgnoreWhitespace(message.ignoreWhitespace);
           setWordWrap(message.wordWrap);
+          setShowWhitespace(message.showWhitespace);
           setDiffLayout(message.diffLayout);
           setShowAllFiles(message.showAllFiles);
           setAutoFetch(message.autoFetch);
@@ -598,6 +600,10 @@ export function App({ name, post: postToHost, listen }: Props) {
     post({ type: 'setWordWrap', wrap });
   };
   useBinding(keymap.wrap, () => changeWordWrap(!wordWrap));
+  const changeShowWhitespace = (show: boolean) => {
+    setShowWhitespace(show);
+    post({ type: 'setShowWhitespace', show });
+  };
   const changeDiffLayout = (layout: DiffLayout) => {
     setDiffLayout(layout);
     post({ type: 'setDiffLayout', layout });
@@ -942,6 +948,7 @@ export function App({ name, post: postToHost, listen }: Props) {
                             error={error}
                             sideBySide={diffLayout === 'sideBySide'}
                             wordWrap={wordWrap}
+                            showWhitespace={showWhitespace}
                             origin={imageOrigin}
                             changeMarks={
                               path !== undefined &&
@@ -955,6 +962,8 @@ export function App({ name, post: postToHost, listen }: Props) {
                                 canShow={path !== undefined}
                                 onEntire={showEntireFile}
                                 onPin={pinEntireFile}
+                                showWhitespace={showWhitespace}
+                                onShowWhitespace={changeShowWhitespace}
                                 ignoreWhitespace={ignoreWhitespace}
                                 onIgnoreWhitespace={changeIgnoreWhitespace}
                                 wordWrap={wordWrap}

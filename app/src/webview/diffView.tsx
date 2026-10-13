@@ -72,7 +72,14 @@ import {
 } from './images';
 import { SkeletonRows, useSkeleton } from './skeleton';
 import { Twisty } from './tree';
-import { tabSize, wrapColumns, wrappedLines } from './wordWrap';
+import {
+  rowBreaksAt,
+  rowStarts,
+  tabSize,
+  wrapColumns,
+  wrappedLines,
+  type RowBreak,
+} from './wordWrap';
 import {
   areaColumns,
   codePadding,
@@ -200,6 +207,98 @@ function wrappedHeight(row: CodeRow, columns: WrapColumns): number {
           columns.left,
         );
   return lines * rowHeights.line;
+}
+
+function laidOutRowStarts(code: HTMLElement): number[] {
+  const box = code.getBoundingClientRect();
+  const rows = Math.round(box.height / rowHeights.line);
+  if (rows < 2) {
+    return [0];
+  }
+  const texts: { readonly node: Text; readonly start: number }[] = [];
+  const walker = document.createTreeWalker(code, NodeFilter.SHOW_TEXT);
+  let length = 0;
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (node instanceof Text) {
+      texts.push({ node, start: length });
+      length += node.length;
+    }
+  }
+  const range = document.createRange();
+  const rowOf = (offset: number) => {
+    const at = texts.findLast((text) => text.start <= offset);
+    if (!at) {
+      return 0;
+    }
+    range.setStart(at.node, offset - at.start);
+    range.setEnd(at.node, Math.min(offset - at.start + 1, at.node.length));
+    const rect = range.getBoundingClientRect();
+    return Math.floor((rect.top + rect.height / 2 - box.top) / rowHeights.line);
+  };
+  return rowStarts(length, rows, rowOf);
+}
+
+const noBreaks: readonly RowBreak[] = [];
+
+export function WrapMarks({
+  text,
+  columns,
+  numbers,
+}: {
+  text: string;
+  columns: number | undefined;
+  numbers: number;
+}) {
+  const marks = useRef<HTMLSpanElement>(null);
+  const [breaks, setBreaks] = useState(noBreaks);
+  useLayoutEffect(() => {
+    const code = marks.current?.parentElement?.querySelector('.code');
+    setBreaks(
+      columns === undefined || !(code instanceof HTMLElement)
+        ? noBreaks
+        : rowBreaksAt(text, laidOutRowStarts(code), columns),
+    );
+  }, [text, columns]);
+  if (columns === undefined) {
+    return null;
+  }
+  return (
+    <span className="wrap-marks" aria-hidden ref={marks}>
+      <BreakMarks breaks={breaks} numbers={numbers} />
+    </span>
+  );
+}
+
+export function BreakMarks({
+  breaks,
+  numbers,
+}: {
+  breaks: readonly RowBreak[];
+  numbers: number;
+}) {
+  if (breaks.length === 0) {
+    return null;
+  }
+  const at = (row: number, column: number) => ({
+    top: row * rowHeights.line,
+    left: `calc(${numbers * numberWidth}px + var(--diff-code-padding) + ${column}ch)`,
+  });
+  return (
+    <>
+      {breaks.map(({ end, blanks }, row) => (
+        <Fragment key={row}>
+          {blanks.map(({ column, tab }) => (
+            <span key={column} className="wrap-blank" style={at(row, column)}>
+              {tab ? strings.symbols.tab : strings.symbols.space}
+            </span>
+          ))}
+          <span className="wrap-break" style={at(row, end)}>
+            {strings.symbols.breaks}
+          </span>
+        </Fragment>
+      ))}
+    </>
+  );
 }
 
 export function diffRowKey(row: DiffRow, index: number): string {
@@ -788,6 +887,25 @@ function covering<T extends FindRange>(
   };
 }
 
+function blanksShown(text: string): React.ReactNode {
+  if (!/[ \t]/.test(text)) {
+    return text;
+  }
+  return Array.from(text.matchAll(/[ \t]|[^ \t]+/g), ([part], index) =>
+    part === ' ' || part === '\t' ? (
+      <span
+        key={index}
+        className="blank"
+        data-glyph={part === '\t' ? strings.symbols.tab : strings.symbols.space}
+      >
+        {part}
+      </span>
+    ) : (
+      part
+    ),
+  );
+}
+
 export function marked(
   text: string,
   syntax: readonly SyntaxRange[],
@@ -795,9 +913,11 @@ export function marked(
   wordClass: string,
   finds: readonly FindRange[],
   current: FindRange | undefined,
+  whitespace = false,
 ): React.ReactNode {
+  const shown = whitespace ? blanksShown : (piece: string) => piece;
   if (words.length === 0 && syntax.length === 0 && finds.length === 0) {
-    return text;
+    return shown(text);
   }
   const edges = [
     ...new Set([
@@ -827,10 +947,10 @@ export function marked(
       current.end === find.end;
     let content: React.ReactNode = find ? (
       <mark className={`find-match ${isCurrent ? 'current' : ''}`}>
-        {piece}
+        {shown(piece)}
       </mark>
     ) : (
-      piece
+      shown(piece)
     );
     const token = tokenAt(start, end);
     if (token) {
@@ -863,6 +983,7 @@ export interface LineMarks {
   readonly finds: ReadonlyMap<string, readonly FindRange[]>;
   readonly foundKey: string | undefined;
   readonly found: FindRange | undefined;
+  readonly whitespace: boolean;
 }
 
 interface CodeProps {
@@ -872,6 +993,7 @@ interface CodeProps {
   readonly wordClass: string;
   readonly finds: readonly FindRange[];
   readonly current: FindRange | undefined;
+  readonly whitespace: boolean;
 }
 
 const unmarked: readonly never[] = [];
@@ -907,6 +1029,7 @@ export function codeProps(
     finds: of(marks.finds),
     current:
       key !== undefined && key === marks.foundKey ? marks.found : undefined,
+    whitespace: marks.whitespace,
   };
 }
 
@@ -917,10 +1040,11 @@ const Code = memo(function Code({
   wordClass,
   finds,
   current,
+  whitespace,
 }: CodeProps) {
   return (
     <span className="code">
-      {marked(text, syntax, words, wordClass, finds, current)}
+      {marked(text, syntax, words, wordClass, finds, current, whitespace)}
     </span>
   );
 });
@@ -1399,6 +1523,7 @@ export function DiffView({
   firstChange,
   sideBySide,
   wordWrap,
+  showWhitespace = false,
   origin,
   rendered,
   onRender,
@@ -1419,6 +1544,7 @@ export function DiffView({
   firstChange: number | undefined;
   sideBySide: boolean;
   wordWrap: boolean;
+  showWhitespace?: boolean;
   rendered: ReadonlySet<string>;
   onRender: (path: string, render: boolean) => void;
 }) {
@@ -1561,6 +1687,7 @@ export function DiffView({
     [files, toggled, whole, skeleton, sideBySide, rendered],
   );
 
+  const wrapping = wordWrap ? columns : undefined;
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => list.current,
@@ -1706,6 +1833,7 @@ export function DiffView({
     finds: rangesByLine,
     foundKey,
     found,
+    whitespace: showWhitespace,
   };
   const code = (
     key: string | undefined,
@@ -1848,6 +1976,11 @@ export function DiffView({
             <span className="number">{row.line.oldNumber}</span>
             <span className="number">{row.line.newNumber}</span>
             {code(keys[index].at(0), row.line.text, row.line.kind)}
+            <WrapMarks
+              text={row.line.text}
+              columns={wrapping?.left}
+              numbers={2}
+            />
             {hiddenMarks(
               keys[index].at(0),
               row.line,
@@ -1880,6 +2013,13 @@ export function DiffView({
                       cell.line.kind,
                     )}
                 </span>
+                {cell && (
+                  <WrapMarks
+                    text={cell.line.text}
+                    columns={side === 0 ? wrapping?.left : wrapping?.right}
+                    numbers={1}
+                  />
+                )}
                 {cell &&
                   hiddenMarks(
                     lineKey(row.file, cell.index),
@@ -1904,6 +2044,7 @@ export function DiffView({
           <div className="diff-line text-line">
             <span className="number">{row.number}</span>
             {code(keys[index].at(0), row.text, undefined)}
+            <WrapMarks text={row.text} columns={wrapping?.left} numbers={1} />
           </div>
         );
       default:
@@ -2007,7 +2148,7 @@ export function DiffView({
 
   return (
     <div
-      className={`diff-view ${split ? 'side-by-side' : ''} ${wordWrap ? 'wrap' : ''}`}
+      className={`diff-view ${split ? 'side-by-side' : ''} ${wordWrap ? 'wrap' : ''} ${showWhitespace ? 'show-whitespace' : ''}`}
       style={{
         ...layoutVariables,
         '--split-scroll': `${sideways}px`,

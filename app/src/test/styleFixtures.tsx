@@ -94,10 +94,12 @@ export function diffOptions(
       entire={false}
       pinned={false}
       canShow
+      showWhitespace={false}
       ignoreWhitespace={false}
       wordWrap={false}
       onEntire={noop}
       onPin={noop}
+      onShowWhitespace={noop}
       onIgnoreWhitespace={noop}
       onWordWrap={noop}
       layout="inline"

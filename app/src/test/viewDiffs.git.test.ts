@@ -469,13 +469,23 @@ suite('View showing diffs', () => {
     });
   });
 
-  test('wraps no long lines by default, and wraps them once asked, remembering that', async () => {
+  test('wraps long lines by default, and stops once asked, remembering that', async () => {
     await withView(log, [], async (view) => {
-      assert.strictEqual(view.page.last('layout')?.wordWrap, false);
-      await view.connection.receive({ type: 'setWordWrap', wrap: true });
-      assert.strictEqual(view.settings.settings.wordWrap, true);
-      await view.connection.receive({ type: 'ready' });
       assert.strictEqual(view.page.last('layout')?.wordWrap, true);
+      await view.connection.receive({ type: 'setWordWrap', wrap: false });
+      assert.strictEqual(view.settings.settings.wordWrap, false);
+      await view.connection.receive({ type: 'ready' });
+      assert.strictEqual(view.page.last('layout')?.wordWrap, false);
+    });
+  });
+
+  test('shows no whitespace by default, and shows it once asked, remembering that', async () => {
+    await withView(log, [], async (view) => {
+      assert.strictEqual(view.page.last('layout')?.showWhitespace, false);
+      await view.connection.receive({ type: 'setShowWhitespace', show: true });
+      assert.strictEqual(view.settings.settings.showWhitespace, true);
+      await view.connection.receive({ type: 'ready' });
+      assert.strictEqual(view.page.last('layout')?.showWhitespace, true);
     });
   });
 

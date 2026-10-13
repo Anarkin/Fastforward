@@ -1,6 +1,15 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { wrapColumns, wrappedLines } from '../../webview/wordWrap';
+import {
+  rowBreaksAt,
+  rowStarts,
+  wrapColumns,
+  wrappedLines,
+} from '../../webview/wordWrap';
+
+function space(column: number) {
+  return { column, tab: false };
+}
 
 suite('Word wrap', () => {
   test('keeps a line that fits on one row', () => {
@@ -28,6 +37,59 @@ suite('Word wrap', () => {
   test('draws a tab to the next stop of four columns', () => {
     assert.strictEqual(wrappedLines('\tab', 6), 1);
     assert.strictEqual(wrappedLines('a\tbcd', 6), 2);
+  });
+
+  test('finds where each row a line is broken into ends, after the spaces and tabs hanging at its end, up to one past the edge of a full row', () => {
+    assert.deepStrictEqual(rowBreaksAt('one two three', [0, 8], 9), [
+      { end: 8, blanks: [space(7)] },
+    ]);
+    assert.deepStrictEqual(rowBreaksAt('one  two', [0, 5], 5), [
+      { end: 5, blanks: [space(3), space(4)] },
+    ]);
+    assert.deepStrictEqual(rowBreaksAt('one two three', [0, 8], 7), [
+      { end: 8, blanks: [space(7)] },
+    ]);
+    assert.deepStrictEqual(rowBreaksAt('one two   three', [0, 10], 7), [
+      { end: 8, blanks: [space(7)] },
+    ]);
+    assert.deepStrictEqual(rowBreaksAt('a\tbcd', [0, 2], 6), [
+      { end: 4, blanks: [{ column: 1, tab: true }] },
+    ]);
+    assert.deepStrictEqual(rowBreaksAt('        one', [0, 8], 4), [
+      { end: 5, blanks: [space(0), space(1), space(2), space(3), space(4)] },
+    ]);
+  });
+
+  test('ends a row where the browser broke it, between punctuation or inside a word too, and finds no breaks in a line on one row', () => {
+    assert.deepStrictEqual(rowBreaksAt('a[] }>(list));', [0, 6], 7), [
+      { end: 6, blanks: [] },
+    ]);
+    assert.deepStrictEqual(rowBreaksAt('a abcdefgh', [0, 2, 6], 4), [
+      { end: 2, blanks: [space(1)] },
+      { end: 4, blanks: [] },
+    ]);
+    assert.deepStrictEqual(rowBreaksAt('one', [0], 7), []);
+  });
+
+  test('finds the first character of each row by where the characters are laid out, reading few of them', () => {
+    const laidOut = [0, 0, 0, 1, 1, 2];
+    assert.deepStrictEqual(
+      rowStarts(6, 3, (offset) => laidOut[offset]),
+      [0, 3, 5],
+    );
+    assert.deepStrictEqual(
+      rowStarts(3, 1, () => 0),
+      [0],
+    );
+    let reads = 0;
+    assert.deepStrictEqual(
+      rowStarts(1000, 10, (offset) => {
+        reads++;
+        return Math.floor(offset / 100);
+      }),
+      [0, 100, 200, 300, 400, 500, 600, 700, 800, 900],
+    );
+    assert.ok(reads < 100, `${reads} reads`);
   });
 
   test('fits as many whole characters in a row as its width holds, and at least one', () => {

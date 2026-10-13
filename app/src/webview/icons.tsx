@@ -163,6 +163,14 @@ export function IgnoreWhitespaceIcon() {
   );
 }
 
+export function ShowWhitespaceIcon() {
+  return (
+    <Icon>
+      <path d="M3 5.5h.01M6 5.5h.01M9 5.5h.01M12 5.5h.01M3 10.5h9M10 8.5l2 2-2 2" />
+    </Icon>
+  );
+}
+
 export function WordWrapIcon() {
   return (
     <Icon>

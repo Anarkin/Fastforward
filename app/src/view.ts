@@ -654,6 +654,9 @@ export class FastforwardView {
       case 'setWordWrap':
         this.save(storage.setWordWrap(message.wrap));
         return;
+      case 'setShowWhitespace':
+        this.save(storage.setShowWhitespace(message.show));
+        return;
       case 'setIgnoreWhitespace': {
         this.save(storage.setIgnoreWhitespace(message.ignore));
         const context = await this.context(session);

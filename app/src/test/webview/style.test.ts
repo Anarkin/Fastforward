@@ -616,10 +616,10 @@ suite('Style', () => {
     }
   });
 
-  test('ends the lines scrolled sideways before the minimap, keeping their rows tinted under it, but wraps lines under it, as text goes under the scrollbars everywhere else, so both sides wrap alike', () => {
+  test('ends the lines scrolled sideways before the minimap, keeping their rows tinted under it, but wraps lines under it, as text goes under the scrollbars everywhere else, with room for the sign of a break, so both sides wrap alike', () => {
     for (const wordWrap of [false, true]) {
       const clear = wordWrap
-        ? undefined
+        ? 'calc(2 * var(--diff-code-padding) + 2ch)'
         : 'calc(var(--diff-code-padding) + var(--minimap-width))';
       looks(
         withClass(
@@ -632,7 +632,11 @@ suite('Style', () => {
         shownRow(diffView({ sideBySide: true, wordWrap }, splitLine('', ''))),
         'split-side',
       ).map((side) => withClass(side, 'code'));
-      looks(left, { 'padding-right': undefined });
+      looks(left, {
+        'padding-right': wordWrap
+          ? 'calc(2 * var(--diff-code-padding) + 2ch)'
+          : undefined,
+      });
       looks(right, { 'padding-right': clear });
     }
   });

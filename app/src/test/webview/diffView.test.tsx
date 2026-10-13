@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
+import { strings } from '../../shared/strings';
 import { parseFilePatch, parsePatch, type DiffFile } from '../../webview/diff';
 import {
   collapseThreshold,
@@ -38,6 +39,8 @@ import {
   marked,
   rowHeight,
   rowMeasures,
+  BreakMarks,
+  WrapMarks,
   anchoredScrollTop,
   rowAnchors,
   scrollAnchor,
@@ -1076,6 +1079,17 @@ suite('Large files fetched', () => {
   });
 });
 
+function wrapMarkAt(top: string, column: number): string {
+  return `top:${top};left:calc(112px + var(--diff-code-padding) + ${column}ch)`;
+}
+
+function wrapMarksOf(html: string): string[][] {
+  return Array.from(
+    html.matchAll(/class="(wrap-[a-z]+)" style="([^"]*)">([^<]*)</g),
+    ([, kind, style, glyph]) => [kind, style, glyph],
+  );
+}
+
 suite('Diff row heights', () => {
   test('gives every row but the error, a large file and placeholders the same fixed height, that of a row of the other columns, so the columns line up', () => {
     const rows = diffRows(
@@ -1282,6 +1296,54 @@ suite('Diff row heights', () => {
     );
   });
 
+  test('marks where each row a line is broken into ends, right after its text, and the spaces and tabs hanging there, leaving lines on one row unmarked', () => {
+    const html = renderToStaticMarkup(
+      <BreakMarks
+        breaks={[
+          { end: 4, blanks: [{ column: 3, tab: false }] },
+          { end: 4, blanks: [{ column: 3, tab: true }] },
+        ]}
+        numbers={2}
+      />,
+    );
+    assert.deepStrictEqual(wrapMarksOf(html), [
+      ['wrap-blank', wrapMarkAt('0', 3), strings.symbols.space],
+      ['wrap-break', wrapMarkAt('0', 4), strings.symbols.breaks],
+      ['wrap-blank', wrapMarkAt('22px', 3), strings.symbols.tab],
+      ['wrap-break', wrapMarkAt('22px', 4), strings.symbols.breaks],
+    ]);
+    assert.deepStrictEqual(
+      wrapMarksOf(
+        renderToStaticMarkup(
+          <BreakMarks breaks={[{ end: 6, blanks: [] }]} numbers={1} />,
+        ),
+      ),
+      [
+        [
+          'wrap-break',
+          'top:0;left:calc(56px + var(--diff-code-padding) + 6ch)',
+          strings.symbols.breaks,
+        ],
+      ],
+    );
+    assert.strictEqual(
+      renderToStaticMarkup(<BreakMarks breaks={[]} numbers={2} />),
+      '',
+    );
+    assert.strictEqual(
+      renderToStaticMarkup(
+        <WrapMarks text="one two three" columns={undefined} numbers={2} />,
+      ),
+      '',
+    );
+    assert.strictEqual(
+      renderToStaticMarkup(
+        <WrapMarks text="one two three" columns={7} numbers={2} />,
+      ),
+      '<span class="wrap-marks" aria-hidden="true"></span>',
+    );
+  });
+
   test('keys the rows of code again when the rows or the width they wrap in change, so they are measured again, but no other row', () => {
     const rows = diffRows(wrapping, new Map(), undefined);
     const same = diffRows(wrapping, new Map(), undefined);
@@ -1425,6 +1487,7 @@ suite('Drawing code', () => {
       finds: new Map([['0:1', matched]]),
       foundKey: '0:1',
       found: match,
+      whitespace: false,
     });
     const before = codeProps(marks(), '0:1', 'let sum', 'removed');
     const after = codeProps(marks(), '0:1', 'let sum', 'removed');
@@ -1460,6 +1523,7 @@ suite('Drawing code', () => {
       finds: new Map(),
       foundKey: undefined,
       found: undefined,
+      whitespace: false,
     };
     assert.deepStrictEqual(codeProps(marks, '0:1', 'x', 'added').words, []);
     assert.deepStrictEqual(codeProps(marks, '0:2', 'x', 'added').words, [
@@ -1468,6 +1532,55 @@ suite('Drawing code', () => {
     assert.strictEqual(wholeChangeClass(words, '0:1'), 'whole-change');
     assert.strictEqual(wholeChangeClass(words, '0:2'), '');
     assert.strictEqual(wholeChangeClass(words, undefined), '');
+  });
+
+  test('shows each space and tab as a sign over it when asked, inside the colors and matches, keeping the text as it is', () => {
+    const space = `<span class="blank" data-glyph="${strings.symbols.space}"> </span>`;
+    const tab = `<span class="blank" data-glyph="${strings.symbols.tab}">\t</span>`;
+    assert.strictEqual(
+      renderToStaticMarkup(
+        <>{marked('a b\tc', [], [], 'word-added', [], undefined, true)}</>,
+      ),
+      `a${space}b${tab}c`,
+    );
+    assert.strictEqual(
+      renderToStaticMarkup(
+        <>
+          {marked(
+            'let  x',
+            [{ start: 0, end: 4, kind: 'keyword' }],
+            [],
+            'word-added',
+            [{ start: 4, end: 6 }],
+            undefined,
+            true,
+          )}
+        </>,
+      ),
+      `<span class="syntax-keyword">let${space}</span><mark class="find-match ">${space}x</mark>`,
+    );
+    assert.strictEqual(
+      renderToStaticMarkup(
+        <>{marked('a b', [], [], 'word-added', [], undefined, false)}</>,
+      ),
+      'a b',
+    );
+    const marks = {
+      syntax: new Map(),
+      words: new Map(),
+      finds: new Map(),
+      foundKey: undefined,
+      found: undefined,
+    };
+    assert.strictEqual(
+      codeProps({ ...marks, whitespace: true }, '0:1', 'x', 'added').whitespace,
+      true,
+    );
+    assert.strictEqual(
+      codeProps({ ...marks, whitespace: false }, '0:1', 'x', 'added')
+        .whitespace,
+      false,
+    );
   });
 
   test('draws the changed words inside the line, with search matches over them', () => {
