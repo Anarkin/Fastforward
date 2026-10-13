@@ -7,11 +7,13 @@ import {
   comparePatchArgs,
   leftOutOf,
   newSideUnchanged,
+  pathspecs,
   readPatch,
   showFiles,
   showPatch,
   showPatchArgs,
   whitespaceOnlyChanges,
+  withoutFilesInside,
   type PatchScope,
   type ReadPatch,
 } from './git/diff';
@@ -2794,25 +2796,42 @@ export class FastforwardView {
     context: Context,
     hash: string,
     signal: AbortSignal,
+    scope: PatchScope = { ignoreWhitespace: this.storage.ignoreWhitespace },
   ): Promise<ReadPatch> {
-    const scope = { ignoreWhitespace: this.storage.ignoreWhitespace };
     const compared = comparedOf(hash);
     const stash = context.tab.stashes.get(hash);
+    const commands = compared
+      ? [comparePatchArgs(compared.from, compared.to, scope)]
+      : stash
+        ? [
+            showPatchArgs(stash.commit, scope),
+            ...(stash.untracked === undefined
+              ? []
+              : [showPatchArgs(stash.untracked, scope)]),
+          ]
+        : [showPatchArgs(hash, scope)];
     return readPatch(
       context.gitPath,
       context.root,
-      compared
-        ? [comparePatchArgs(compared.from, compared.to, scope)]
-        : stash
-          ? [
-              showPatchArgs(stash.commit, scope),
-              ...(stash.untracked === undefined
-                ? []
-                : [showPatchArgs(stash.untracked, scope)]),
-            ]
-          : [showPatchArgs(hash, scope)],
+      commands.map((args) => [...args, ...pathspecs(scope)]),
       signal,
     );
+  }
+
+  private async budgetedFilePatch(
+    context: Context,
+    hash: string,
+    change: FileChange,
+    scope: PatchScope,
+    signal: AbortSignal,
+  ): Promise<{ patch: string; leftOut: readonly LeftOut[] | undefined }> {
+    const read = await this.budgetedPatch(context, hash, signal, scope);
+    void this.inFlight.track(read.exited);
+    const leftOut = leftOutOf(read, [change]);
+    return {
+      patch: withoutFilesInside(read.patch, scope),
+      leftOut: leftOut.length === 0 ? undefined : leftOut,
+    };
   }
 
   private async wholePatch(
@@ -2869,15 +2888,22 @@ export class FastforwardView {
   ): Promise<void> {
     const change = changesOf(context.tab).get(file);
     const { ignoreWhitespace } = this.storage;
-    const patch = await this.patchOf(context, hash, {
+    const scope = {
       path: file,
       oldPath: change?.oldPath,
+      entireFile: this.showsEntire(context, file),
+    };
+    let patch = await this.patchOf(context, hash, {
+      ...scope,
       ignoreWhitespace,
     });
     const whitespaceOnly =
       ignoreWhitespace &&
       change !== undefined &&
       whitespaceOnlyChanges(patch, [change]).length > 0;
+    if (scope.entireFile && whitespaceOnly) {
+      patch = newSideUnchanged(await this.patchOf(context, hash, scope));
+    }
     if (context.tab.hash === hash && patch !== shownPatch) {
       context.post({
         type: 'fileDiff',
@@ -2888,6 +2914,14 @@ export class FastforwardView {
         ...(whitespaceOnly ? { whitespaceOnly } : {}),
       });
     }
+  }
+
+  private showsEntire(context: Context, file: string | undefined): boolean {
+    return (
+      file !== undefined &&
+      file === context.tab.path &&
+      (context.tab.entireFile || this.storage.entireFilePinned)
+    );
   }
 
   private async sendTexts(
@@ -3052,15 +3086,25 @@ export class FastforwardView {
     let whitespaceOnly: string[] = [];
     try {
       const scope = { path: file, oldPath: change?.oldPath };
-      const entireFile =
-        file !== undefined &&
-        (context.tab.entireFile || this.storage.entireFilePinned);
+      const entireFile = this.showsEntire(context, file);
+      const selectedLeftOut = change ? leftOutWhenSelected(change) : [];
       if (file === undefined) {
         ({ patch, leftOut } = await this.wholePatch(
           context,
           hash,
           [...changes.values()],
           early?.patch,
+          loading.signal,
+        ));
+      } else if (selectedLeftOut.length > 0) {
+        patch = '';
+        leftOut = selectedLeftOut;
+      } else if (change && !workingTreeSide(hash)) {
+        ({ patch, leftOut } = await this.budgetedFilePatch(
+          context,
+          hash,
+          change,
+          { ...scope, entireFile, ignoreWhitespace },
           loading.signal,
         ));
       } else {
@@ -3121,7 +3165,7 @@ export class FastforwardView {
         ...(leftOut === undefined ? {} : { leftOut }),
         ...(whitespaceOnly.length === 0 ? {} : { whitespaceOnly }),
       });
-    } else if (file === undefined) {
+    } else {
       await this.sendFileDiffsAgain(context, hash);
     }
   }
@@ -3140,6 +3184,11 @@ export class FastforwardView {
         ),
     );
   }
+}
+
+function leftOutWhenSelected(change: FileChange): LeftOut[] {
+  const measured = !change.uncounted || change.bytes !== undefined;
+  return measured ? leftOutChanges([change]) : [];
 }
 
 function workingTreeDiffOf(hash: string): WorkingTreeDiff | undefined {

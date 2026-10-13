@@ -603,6 +603,32 @@ suite('Large files in a commit diff', () => {
     );
   });
 
+  test('puts a selected large file the app left out in its place, until it loads', () => {
+    const files = [fileChange('a.ts'), large];
+    assert.deepStrictEqual(
+      shownFiles(
+        [],
+        'large.json',
+        files,
+        leftOutChanges([large]),
+        new Map(),
+      ).map((file) => [file.path, file.placeholder]),
+      [['large.json', { lines: collapseThreshold + 1 }]],
+    );
+    const loaded = shownFiles(
+      [],
+      'large.json',
+      files,
+      leftOutChanges([large]),
+      new Map([
+        ['large.json', parseFilePatch('large.json', patch('large.json', 3))],
+      ]),
+    );
+    assert.strictEqual(loaded.length, 1);
+    assert.strictEqual(loaded[0].placeholder, undefined);
+    assert.strictEqual(loaded[0].hunks[0].lines.length, 3);
+  });
+
   test('shows only the selected file when git diffs the paths under it too, as when a file turns into a folder', () => {
     const files = [fileChange('foo'), fileChange('foo/bar.txt')];
     const parsed = parsePatch(`${patch('foo', 1)}\n${patch('foo/bar.txt', 1)}`);

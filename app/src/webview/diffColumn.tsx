@@ -43,18 +43,28 @@ export function withLargeFiles(
       result.push(file);
     } else if (deferred.has(change.path)) {
       result.push(
-        largeFiles.get(change.path) ?? {
-          path: change.path,
-          binary: false,
-          hunks: [],
-          placeholder: { lines: deferred.get(change.path) },
-        },
+        deferredFile(change.path, deferred.get(change.path), largeFiles),
       );
     } else if (whitespaceOnly.has(change.path)) {
       result.push(whitespaceOnlyFile(change.path));
     }
   }
   return [...result, ...byPath.values()];
+}
+
+function deferredFile(
+  path: string,
+  lines: number | undefined,
+  largeFiles: ReadonlyMap<string, DiffFile>,
+): DiffFile {
+  return (
+    largeFiles.get(path) ?? {
+      path,
+      binary: false,
+      hunks: [],
+      placeholder: { lines },
+    }
+  );
 }
 
 function whitespaceOnlyFile(path: string): DiffFile {
@@ -77,6 +87,10 @@ export function shownFiles(
       largeFiles,
       new Set(whitespaceOnly),
     );
+  }
+  const deferred = leftOut.find((file) => file.path === path);
+  if (deferred) {
+    return [deferredFile(path, deferred.lines, largeFiles)];
   }
   const shown = parsed.filter((file) => file.path === path);
   if (!whitespaceOnly.includes(path)) {

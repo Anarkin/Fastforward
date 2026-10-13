@@ -9,6 +9,7 @@ import {
   patchLineBudget,
   workingTreeHash,
 } from '../shared/protocol';
+import { maxFileSize } from '../git/files';
 import { imageUrl, maxImageSize } from '../shared/images';
 import { soloKey } from '../storage';
 import { waitFor } from './fixtures';
@@ -29,6 +30,9 @@ import {
   viewRepositories,
   withView,
 } from './viewHarness';
+
+const longLines = (text: string) =>
+  `${text} ${'x'.repeat(1024)}\n`.repeat(maxFileSize / 1024 + 1);
 
 const url = (root: string, file: string, id: string, disk = false) =>
   new URL(imageUrl({ root, path: file, id, disk }), 'fastforward://app');
@@ -247,19 +251,23 @@ suite('View showing diffs', () => {
       });
       const held = gate();
       let waiting = false;
-      stubMethod(view.view, 'patchOf', async (original, ...args) => {
-        const [, , scope] = args;
-        if (
-          typeof scope === 'object' &&
-          scope !== null &&
-          'entireFile' in scope &&
-          scope.entireFile === true
-        ) {
-          waiting = true;
-          await held.opened;
-        }
-        return original(...args);
-      });
+      for (const name of ['patchOf', 'budgetedPatch']) {
+        stubMethod(view.view, name, async (original, ...args) => {
+          if (
+            args.some(
+              (scope) =>
+                typeof scope === 'object' &&
+                scope !== null &&
+                'entireFile' in scope &&
+                scope.entireFile === true,
+            )
+          ) {
+            waiting = true;
+            await held.opened;
+          }
+          return original(...args);
+        });
+      }
       const shown = view.connection.receive({
         type: 'showEntireFile',
         root: long.root,
@@ -617,6 +625,137 @@ suite('View showing diffs', () => {
         const fileDiff = view.page.last('fileDiff');
         assert.strictEqual(fileDiff?.diff, 1);
         assert.ok(fileDiff.patch.includes(`+second ${collapseThreshold}`));
+      },
+      'unwatched',
+    );
+  });
+
+  test('leaves a selected large file of a commit out of its diff until it is asked for', async () => {
+    const large = await tempRepository(path.join(folder, 'large-selected'));
+    await large.commit('large', {
+      'large.txt': numberedLines('line'),
+      'small.txt': 'small\n',
+    });
+    const [hash] = await large.resolve('HEAD');
+    await withView(log, [large.root], async (view) => {
+      await view.connection.receive({
+        type: 'selectCommit',
+        root: large.root,
+        hash,
+      });
+      await view.connection.receive({
+        type: 'selectFile',
+        root: large.root,
+        hash,
+        path: 'large.txt',
+      });
+      const diff = view.page.last('diff');
+      assert.strictEqual(diff?.path, 'large.txt');
+      assert.strictEqual(diff.patch, '');
+      assert.deepStrictEqual(diff.leftOut, [
+        { path: 'large.txt', lines: collapseThreshold + 1 },
+      ]);
+      await view.connection.receive({
+        type: 'loadFileDiff',
+        root: large.root,
+        hash,
+        path: 'large.txt',
+        diff: 2,
+      });
+      assert.ok(
+        view.page
+          .last('fileDiff')
+          ?.patch.includes(`+line ${collapseThreshold}`),
+      );
+    });
+  });
+
+  test('shows a file of a commit too large to send entire once it is asked for, when only a line of it changed', async () => {
+    const huge = await tempRepository(path.join(folder, 'huge-entire'));
+    const lines = Array.from(
+      { length: patchByteBudget / 1024 + 1 },
+      (_, index) => `line ${index} ${'x'.repeat(1024)}\n`,
+    );
+    await huge.commit('first', { 'huge.txt': lines.join('') });
+    lines[7] = 'changed\n';
+    await huge.commit('second', { 'huge.txt': lines.join('') });
+    const [hash] = await huge.resolve('HEAD');
+    await withView(log, [huge.root], async (view) => {
+      await view.connection.receive({ type: 'pinEntireFile', pinned: true });
+      await view.connection.receive({
+        type: 'selectCommit',
+        root: huge.root,
+        hash,
+      });
+      await view.connection.receive({
+        type: 'selectFile',
+        root: huge.root,
+        hash,
+        path: 'huge.txt',
+      });
+      assert.deepStrictEqual(view.page.last('diff')?.leftOut, [
+        { path: 'huge.txt', lines: undefined },
+      ]);
+      await view.connection.receive({
+        type: 'loadFileDiff',
+        root: huge.root,
+        hash,
+        path: 'huge.txt',
+        diff: 2,
+      });
+      const patch = view.page.last('fileDiff')?.patch ?? '';
+      assert.match(patch, /^\+changed$/m);
+      assert.ok(patch.includes(` ${lines.at(-1)}`));
+    });
+  });
+
+  test('reads a selected untracked file too large to count only once it is asked for, and again once it changed on disk', async () => {
+    const large = await tempRepository(path.join(folder, 'large-untracked'));
+    await large.commit('first', { 'small.txt': 'small\n' });
+    const file = path.join(large.root, 'big.log');
+    fs.writeFileSync(file, longLines('first'));
+    await withView(
+      log,
+      [large.root],
+      async (view) => {
+        let reads = 0;
+        stubMethod(view.view, 'patchOf', (original, ...args) => {
+          reads += 1;
+          return original(...args);
+        });
+        await view.connection.receive({
+          type: 'selectCommit',
+          root: large.root,
+          hash: workingTreeHash,
+        });
+        reads = 0;
+        await view.connection.receive({
+          type: 'selectFile',
+          root: large.root,
+          hash: workingTreeHash,
+          path: 'big.log',
+        });
+        const diff = view.page.last('diff');
+        assert.strictEqual(diff?.path, 'big.log');
+        assert.strictEqual(diff.patch, '');
+        assert.deepStrictEqual(diff.leftOut, [
+          { path: 'big.log', lines: undefined },
+        ]);
+        await view.connection.refresh();
+        assert.strictEqual(reads, 0);
+        await view.connection.receive({
+          type: 'loadFileDiff',
+          root: large.root,
+          hash: workingTreeHash,
+          path: 'big.log',
+          diff: 2,
+        });
+        assert.ok(view.page.last('fileDiff')?.patch.includes('+first x'));
+        view.page.clear();
+        fs.writeFileSync(file, longLines('second'));
+        await view.connection.refresh();
+        assert.strictEqual(view.page.last('diff'), undefined);
+        assert.ok(view.page.last('fileDiff')?.patch.includes('+second x'));
       },
       'unwatched',
     );
