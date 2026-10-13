@@ -95,7 +95,7 @@ export function diffOptions(
       pinned={false}
       canShow
       showWhitespace={false}
-      ignoreWhitespace={false}
+      ignoreWhitespace
       wordWrap={false}
       onEntire={noop}
       onPin={noop}

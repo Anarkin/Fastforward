@@ -15,7 +15,7 @@ function diffOptionsProps(
     pinned: false,
     canShow: true,
     showWhitespace: false,
-    ignoreWhitespace: false,
+    ignoreWhitespace: true,
     wordWrap: false,
     onEntire: noop,
     onPin: noop,
@@ -51,7 +51,7 @@ function entireFileButtons(
   entire: boolean,
   pinned: boolean,
   canShow = true,
-  ignoreWhitespace = false,
+  ignoreWhitespace = true,
   wordWrap = false,
   showWhitespace = false,
 ) {
@@ -112,9 +112,9 @@ suite('Diff options', () => {
     ]);
   });
 
-  test('shows whitespace, ignores whitespace changes and wraps long lines on their own toggles, set apart from the others on both sides', () => {
+  test('shows whitespace, shows whitespace changes and wraps long lines on their own toggles, pressed while on, the two for whitespace apart from wrapping, and all of them apart from the others on both sides', () => {
     assert.deepStrictEqual(
-      entireFileButtons(false, false, true, false, false, true),
+      entireFileButtons(false, false, true, true, false, true),
       [
         'off enabled',
         'off enabled',
@@ -123,14 +123,14 @@ suite('Diff options', () => {
         'off enabled',
       ],
     );
-    assert.deepStrictEqual(entireFileButtons(false, false, true, true), [
+    assert.deepStrictEqual(entireFileButtons(false, false, true, false), [
       'off enabled',
       'off enabled',
       'off enabled',
       'on enabled',
       'off enabled',
     ]);
-    assert.deepStrictEqual(entireFileButtons(false, false, true, false, true), [
+    assert.deepStrictEqual(entireFileButtons(false, false, true, true, true), [
       'off enabled',
       'off enabled',
       'off enabled',
@@ -140,7 +140,7 @@ suite('Diff options', () => {
     const html = renderToStaticMarkup(<DiffOptions {...diffOptionsProps()} />);
     assert.match(
       html,
-      /<\/button><\/span><span class="nav-button-space"><\/span><button[^>]*title="Show Whitespace"[^>]*>.*?<\/button><button[^>]*title="Ignore Whitespace Changes"[^>]*>.*?<\/button><button[^>]*title="Wrap Long Lines"[^>]*>.*?<\/button><span class="nav-button-space"><\/span><div class="segmented"/,
+      /<\/button><\/span><span class="nav-button-space"><\/span><button[^>]*title="Show Whitespace"[^>]*>.*?<\/button><button[^>]*title="Show Whitespace Changes"[^>]*>.*?<\/button><span class="nav-button-space"><\/span><button[^>]*title="Wrap Long Lines"[^>]*>.*?<\/button><span class="nav-button-space"><\/span><div class="segmented"/,
     );
   });
 
@@ -152,38 +152,38 @@ suite('Diff options', () => {
       assert.match(
         html,
         new RegExp(
-          `^<div[^>]*><span class="pin-pair ${pinned ? 'pinned' : ''}"><button[^>]*title="${pinned ? 'Pinned to Show Entire Files' : 'Show the Entire File'}"[^>]*>.*?</button><button[^>]*title="${pinned ? 'Unpin' : 'Pin'} Entire Files"[^>]*>.*?</button></span>`,
+          `^<div[^>]*><span class="pin-pair ${pinned ? 'pinned' : ''}"><button[^>]*title="Show the Entire File"[^>]*>.*?</button><button[^>]*title="Pin Entire Files"[^>]*>.*?</button></span>`,
         ),
       );
     }
   });
 
-  test('names each toggle by what a click does, flipping as it switches', () => {
+  test('names each toggle by what it does while pressed, keeping the name whether it is pressed or not', () => {
     assert.deepStrictEqual(diffOptionTitles({}).slice(0, 5), [
       'Show the Entire File',
       'Pin Entire Files',
       'Show Whitespace',
-      'Ignore Whitespace Changes',
+      'Show Whitespace Changes',
       'Wrap Long Lines',
     ]);
     assert.deepStrictEqual(
       diffOptionTitles({
         entire: true,
         showWhitespace: true,
-        ignoreWhitespace: true,
+        ignoreWhitespace: false,
         wordWrap: true,
       }).slice(0, 5),
       [
-        'Show Only the Changes',
+        'Show the Entire File',
         'Pin Entire Files',
-        'Hide Whitespace',
+        'Show Whitespace',
         'Show Whitespace Changes',
-        'Unwrap Long Lines',
+        'Wrap Long Lines',
       ],
     );
     assert.deepStrictEqual(diffOptionTitles({ pinned: true }).slice(0, 2), [
-      'Pinned to Show Entire Files',
-      'Unpin Entire Files',
+      'Show the Entire File',
+      'Pin Entire Files',
     ]);
   });
 
@@ -195,7 +195,7 @@ suite('Diff options', () => {
     );
   });
 
-  test('shows the entire file, pins it, shows whitespace, ignores whitespace changes and wraps long lines on their toggles, and stops on them again', () => {
+  test('shows the entire file, pins it, shows whitespace, shows whitespace changes and wraps long lines on their toggles, and stops on them again', () => {
     for (const on of [false, true]) {
       const flipped: boolean[] = [];
       const flip = (value: boolean) => {
@@ -205,7 +205,10 @@ suite('Diff options', () => {
         { entire: on, onEntire: flip },
         { pinned: on, onPin: flip },
         { showWhitespace: on, onShowWhitespace: flip },
-        { ignoreWhitespace: on, onIgnoreWhitespace: flip },
+        {
+          ignoreWhitespace: !on,
+          onIgnoreWhitespace: (ignore: boolean) => flip(!ignore),
+        },
         { wordWrap: on, onWordWrap: flip },
       ];
       toggles.forEach((overrides, index) => {

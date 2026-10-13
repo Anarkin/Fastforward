@@ -1958,7 +1958,7 @@ suite('Rendered SVGs', () => {
     );
     assert.match(
       previewHeader('image', true),
-      /title="Show the Source" aria-pressed="true"/,
+      /title="Show the Image" aria-pressed="true"/,
     );
   });
 });

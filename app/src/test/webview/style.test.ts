@@ -306,7 +306,7 @@ suite('Style', () => {
     );
     const enabled = [
       pinned,
-      rendered(diffOptions({ ignoreWhitespace: true })),
+      rendered(diffOptions({ ignoreWhitespace: false })),
     ].flatMap((root) =>
       allWithClass(root, 'nav-button').filter(
         (button) => !button.attributes.has('disabled'),

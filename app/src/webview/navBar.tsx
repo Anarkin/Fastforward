@@ -20,12 +20,6 @@ const holdDelay = 400;
 
 const clockTick = 30_000;
 
-function autoFetchTitle(on: boolean, minutes: number): string {
-  return on
-    ? strings.navigation.stopFetchingEvery(minutes)
-    : strings.navigation.fetchEvery(minutes);
-}
-
 function fetchTitle(
   { succeeded, failed }: LastFetch,
   failing: boolean,
@@ -117,7 +111,7 @@ export function NavButtons({
         {autoFetchMinutes > 0 && (
           <button
             className={`nav-button toggle ${autoFetch ? 'active' : ''}`}
-            title={autoFetchTitle(autoFetch, autoFetchMinutes)}
+            title={strings.navigation.fetchEvery(autoFetchMinutes)}
             aria-pressed={autoFetch}
             onClick={() => onAutoFetch(!autoFetch)}
           >

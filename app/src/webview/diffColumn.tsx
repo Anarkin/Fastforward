@@ -14,7 +14,7 @@ import { findMatches, matchCount, stepMatch, unsearchedFiles } from './find';
 import { withUnchangedObjects, type ImageOrigin } from './images';
 import {
   EntireFileIcon,
-  IgnoreWhitespaceIcon,
+  WhitespaceChangesIcon,
   ShowWhitespaceIcon,
   InlineIcon,
   NextIcon,
@@ -137,13 +137,7 @@ export function DiffOptions({
       <span className={`pin-pair ${pinned ? 'pinned' : ''}`}>
         <button
           className={`nav-button toggle ${shown ? 'active' : ''}`}
-          title={
-            pinned
-              ? strings.diff.pinnedEntire
-              : entire
-                ? strings.diff.showOnlyChanges
-                : strings.diff.showEntireFile
-          }
+          title={strings.diff.showEntireFile}
           aria-pressed={shown}
           disabled={!canShow || pinned}
           onClick={() => onEntire(!entire)}
@@ -152,7 +146,7 @@ export function DiffOptions({
         </button>
         <button
           className={`nav-button toggle ${pinned ? 'active' : ''}`}
-          title={pinned ? strings.diff.unpinEntire : strings.diff.pinEntire}
+          title={strings.diff.pinEntire}
           aria-pressed={pinned}
           onClick={() => onPin(!pinned)}
         >
@@ -162,31 +156,24 @@ export function DiffOptions({
       <span className="nav-button-space" />
       <button
         className={`nav-button toggle ${showWhitespace ? 'active' : ''}`}
-        title={
-          showWhitespace
-            ? strings.diff.hideWhitespace
-            : strings.diff.showWhitespace
-        }
+        title={strings.diff.showWhitespace}
         aria-pressed={showWhitespace}
         onClick={() => onShowWhitespace(!showWhitespace)}
       >
         <ShowWhitespaceIcon />
       </button>
       <button
-        className={`nav-button toggle ${ignoreWhitespace ? 'active' : ''}`}
-        title={
-          ignoreWhitespace
-            ? strings.diff.showWhitespaceChanges
-            : strings.diff.ignoreWhitespace
-        }
-        aria-pressed={ignoreWhitespace}
+        className={`nav-button toggle ${ignoreWhitespace ? '' : 'active'}`}
+        title={strings.diff.showWhitespaceChanges}
+        aria-pressed={!ignoreWhitespace}
         onClick={() => onIgnoreWhitespace(!ignoreWhitespace)}
       >
-        <IgnoreWhitespaceIcon />
+        <WhitespaceChangesIcon />
       </button>
+      <span className="nav-button-space" />
       <button
         className={`nav-button toggle ${wordWrap ? 'active' : ''}`}
-        title={wordWrap ? strings.diff.unwrap : strings.diff.wrap}
+        title={strings.diff.wrap}
         aria-pressed={wordWrap}
         onClick={() => onWordWrap(!wordWrap)}
       >

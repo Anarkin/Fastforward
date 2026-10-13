@@ -154,11 +154,10 @@ export function EntireFileIcon() {
   );
 }
 
-export function IgnoreWhitespaceIcon() {
+export function WhitespaceChangesIcon() {
   return (
     <Icon>
       <path d="M2.5 8.5v2.5h11V8.5" />
-      <path d="M3 3l10 10" />
     </Icon>
   );
 }

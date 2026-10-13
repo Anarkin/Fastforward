@@ -146,7 +146,7 @@ suite('Navigation bar', () => {
     tagWith(buttons({}), 'title="Fetch Every Minute"');
     const on = tagWith(
       buttons({ autoFetch: true, autoFetchMinutes: 5 }),
-      'title="Stop Fetching Every 5 Minutes"',
+      'title="Fetch Every 5 Minutes"',
       'nav-button',
       'toggle',
       'active',
@@ -154,7 +154,7 @@ suite('Navigation bar', () => {
     assert.match(on, /aria-pressed="true"/);
     assert.doesNotMatch(
       buttons({ autoFetch: true, autoFetchMinutes: 0 }),
-      /Fetch(ing)? Every/,
+      /Fetch Every/,
     );
   });
 
@@ -189,7 +189,7 @@ suite('Navigation bar', () => {
       assert.match(
         buttons({ autoFetch }),
         new RegExp(
-          `<span class="pin-pair ${autoFetch ? 'pinned' : ''}"><button[^>]*title="Fetch[^"]*"[^>]*>.*?</button><button[^>]*title="${autoFetch ? 'Stop Fetching' : 'Fetch'} Every Minute"[^>]*>.*?</button></span></div>$`,
+          `<span class="pin-pair ${autoFetch ? 'pinned' : ''}"><button[^>]*title="Fetch[^"]*"[^>]*>.*?</button><button[^>]*title="Fetch Every Minute"[^>]*>.*?</button></span></div>$`,
         ),
       );
     }

@@ -390,11 +390,9 @@ export function FileHeader({
           <button
             className={`nav-button toggle file-header-button ${rendered ? 'active' : ''}`}
             title={
-              rendered
-                ? strings.diff.showSource
-                : preview === 'image'
-                  ? strings.diff.showImage
-                  : strings.diff.showPreview
+              preview === 'image'
+                ? strings.diff.showImage
+                : strings.diff.showPreview
             }
             aria-pressed={rendered}
             onClick={(event) => {

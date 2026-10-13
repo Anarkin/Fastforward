@@ -996,9 +996,9 @@ suite('App', () => {
         async () => (await belowTop()) === 66,
         'the change to be shown at its place',
       );
-      await page.getByRole('button', { name: 'Unpin Entire Files' }).click();
+      await page.getByRole('button', { name: 'Pin Entire Files' }).click();
       await page
-        .getByRole('button', { name: 'Show the Entire File' })
+        .getByRole('button', { name: 'Show the Entire File', pressed: false })
         .waitFor();
       await waitFor(
         async () =>
@@ -1008,7 +1008,7 @@ suite('App', () => {
       );
       await page.getByRole('button', { name: 'Show the Entire File' }).click();
       await page
-        .getByRole('button', { name: 'Show Only the Changes' })
+        .getByRole('button', { name: 'Show the Entire File', pressed: true })
         .waitFor();
       await waitFor(
         async () => (await belowTop()) === 66,

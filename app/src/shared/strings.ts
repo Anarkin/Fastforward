@@ -239,10 +239,6 @@ export const strings = {
     push: 'Push: send the new commits to the upstream, or publish to the only remote when there is none',
     fetchEvery: (minutes: number) =>
       minutes === 1 ? 'Fetch Every Minute' : `Fetch Every ${minutes} Minutes`,
-    stopFetchingEvery: (minutes: number) =>
-      minutes === 1
-        ? 'Stop Fetching Every Minute'
-        : `Stop Fetching Every ${minutes} Minutes`,
   },
   search: {
     placeholder: 'Search…',
@@ -320,17 +316,11 @@ export const strings = {
     change: (status: string, path: string) => `${status}: ${path}`,
   },
   diff: {
-    pinnedEntire: 'Pinned to Show Entire Files',
-    showOnlyChanges: 'Show Only the Changes',
     showEntireFile: 'Show the Entire File',
     pinEntire: 'Pin Entire Files',
-    unpinEntire: 'Unpin Entire Files',
     showWhitespace: 'Show Whitespace',
-    hideWhitespace: 'Hide Whitespace',
     showWhitespaceChanges: 'Show Whitespace Changes',
-    ignoreWhitespace: 'Ignore Whitespace Changes',
     wrap: 'Wrap Long Lines',
-    unwrap: 'Unwrap Long Lines',
     layout: 'Layout',
     inline: 'Inline',
     sideBySide: 'Side by Side',
@@ -349,7 +339,6 @@ export const strings = {
     imageFailed: "Couldn't show this image",
     showImage: 'Show the Image',
     showPreview: 'Show the Preview',
-    showSource: 'Show the Source',
     largeFile: 'Large file',
     notLoaded: 'Not loaded',
     largeDiff: (lines: number) =>
