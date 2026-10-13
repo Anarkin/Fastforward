@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import {
   aheadBehind,
+  moveBranch,
   readUpstream,
   remoteDefaultBranches,
 } from '../../git/branches';
@@ -192,6 +193,39 @@ suite('Git branches', () => {
       );
     } finally {
       await temp.git('update-ref', '-d', 'refs/remotes/origin/main');
+    }
+  });
+
+  test('moves a branch forward to a commit, but not back, nor while it is checked out, even if fetches prune', async () => {
+    const [first, second, third] = await temp.resolve(
+      'HEAD~2',
+      'HEAD~1',
+      'HEAD',
+    );
+    await temp.git('branch', 'moved', first);
+    await temp.git('config', 'fetch.prune', 'true');
+    try {
+      assert.strictEqual(
+        await moveBranch(gitPath, cwd, 'moved', second),
+        'moved',
+      );
+      assert.deepStrictEqual(await temp.resolve('moved'), [second]);
+      assert.strictEqual(
+        await moveBranch(gitPath, cwd, 'moved', first),
+        'movedOn',
+      );
+      assert.strictEqual(
+        await moveBranch(gitPath, cwd, 'main', third),
+        'inUse',
+      );
+      assert.deepStrictEqual(await temp.resolve('moved', 'main'), [
+        second,
+        third,
+      ]);
+      assert.ok(!fs.existsSync(path.join(cwd, '.git', 'FETCH_HEAD')));
+    } finally {
+      await temp.git('config', '--unset', 'fetch.prune');
+      await temp.git('branch', '-D', 'moved');
     }
   });
 

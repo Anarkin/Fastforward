@@ -383,6 +383,8 @@ export const strings = {
     couldNotPull: (reason: string) => `Couldn't pull. ${reason}`,
     checkedOutElsewhere: (branch: string) =>
       `${branch} is checked out in another worktree, so pull it there`,
+    branchInUse: (branch: string) =>
+      `${branch} is checked out, or being rebased or bisected, in a worktree, so it wasn't pulled`,
     pushed: (local: string, upstream: string) =>
       `Pushed ${local} to ${upstream}`,
     published: (local: string, upstream: string) =>

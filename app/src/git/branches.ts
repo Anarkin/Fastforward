@@ -1,3 +1,4 @@
+import { gitErrorText } from './errorText';
 import { runGit, splitNul } from './run';
 
 export type Upstream =
@@ -104,30 +105,46 @@ export async function fastForward(
   });
 }
 
+export type MovedBranch = 'moved' | 'inUse' | 'movedOn';
+
+const branchInUse = /^fatal: refusing to fetch into branch /m;
+
+const branchMovedOn = /\[rejected\][^\n]*\(non-fast-forward\)/;
+
 export async function moveBranch(
   gitPath: string,
   cwd: string,
   branch: string,
   to: string,
-): Promise<void> {
-  const ref = `refs/heads/${branch}`;
-  const from = (
-    await runGit(gitPath, cwd, [
-      'rev-parse',
-      '--verify',
-      '--end-of-options',
-      ref,
-    ])
-  ).trim();
-  await runGit(gitPath, cwd, [
-    'update-ref',
-    '-m',
-    'pull: Fast-forward',
-    '--end-of-options',
-    ref,
-    to,
-    from,
-  ]);
+): Promise<MovedBranch> {
+  try {
+    await runGit(
+      gitPath,
+      cwd,
+      [
+        'fetch',
+        '--no-write-fetch-head',
+        '--no-tags',
+        '--no-prune',
+        '--no-recurse-submodules',
+        '--no-auto-maintenance',
+        '--end-of-options',
+        '.',
+        `${to}:refs/heads/${branch}`,
+      ],
+      { writes: true },
+    );
+    return 'moved';
+  } catch (error) {
+    const said = gitErrorText(error);
+    if (branchInUse.test(said)) {
+      return 'inUse';
+    }
+    if (branchMovedOn.test(said)) {
+      return 'movedOn';
+    }
+    throw error;
+  }
 }
 
 export async function remoteDefaultBranches(

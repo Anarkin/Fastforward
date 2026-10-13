@@ -3,7 +3,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, afterEach, beforeAll, suite, test } from 'vitest';
 import type { ToWebview } from '../shared/protocol';
-import type { Connection } from '../view';
+import type { Connection, FastforwardView } from '../view';
+import { waitFor } from './fixtures';
 import {
   removeFolder,
   tempFolder,
@@ -15,7 +16,9 @@ import {
   closeViews,
   failOnErrorsLogged,
   type FakePage,
+  gate,
   openView,
+  stubMethod,
   withNotices,
 } from './viewHarness';
 
@@ -30,6 +33,7 @@ suite('View pulling and pushing other branches', () => {
   let repository: TempRepository;
   let other: TempRepository;
   let remote: TempRepository;
+  let view: FastforwardView;
   let page: FakePage;
   let connection: Connection;
 
@@ -47,7 +51,7 @@ suite('View pulling and pushing other branches', () => {
     await repository.git('push', '-u', 'origin', 'main');
     other = await tempRepository(path.join(folder, 'other'));
     await other.git('remote', 'add', 'origin', remote.root);
-    ({ page, connection } = await openView(
+    ({ view, page, connection } = await openView(
       log,
       [repository.root],
       'unwatched',
@@ -185,6 +189,116 @@ suite('View pulling and pushing other branches', () => {
     } finally {
       await repository.git('worktree', 'remove', '--force', tree);
     }
+  });
+
+  test('pulls nothing into a branch checked out in another worktree while fetching, as that worktree would fall out of step', async () => {
+    const start = await tracked('meanwhile');
+    await moveOnRemote('meanwhile');
+    const tree = path.join(folder, 'meanwhile');
+    await repository.git('config', 'fetch.prune', 'true');
+    const restore = Reflect.get(view, 'fetchRemotes');
+    stubMethod(view, 'fetchRemotes', async (original, ...args) => {
+      const fetched = await original(...args);
+      await repository.git('worktree', 'add', tree, 'meanwhile');
+      return fetched;
+    });
+    try {
+      assert.deepStrictEqual(await send('pullBranch', 'meanwhile'), [
+        "meanwhile is checked out, or being rebased or bisected, in a worktree, so it wasn't pulled",
+      ]);
+      assert.deepStrictEqual(await repository.resolve('meanwhile'), [start]);
+    } finally {
+      Reflect.set(view, 'fetchRemotes', restore);
+      await repository.git('config', '--unset', 'fetch.prune');
+      await repository.git('worktree', 'remove', '--force', tree);
+    }
+  });
+
+  test('pulls nothing into a branch being rebased, as the rebase could no longer finish on it', async () => {
+    const start = await tracked('rebased');
+    await moveOnRemote('rebased');
+    await repository.git('checkout', 'rebased');
+    await repository.git('rebase', '--root', '--exec', 'false').catch(() => '');
+    try {
+      assert.deepStrictEqual(await send('pullBranch', 'rebased'), [
+        "rebased is checked out, or being rebased or bisected, in a worktree, so it wasn't pulled",
+      ]);
+      assert.deepStrictEqual(await repository.resolve('rebased'), [start]);
+    } finally {
+      await repository.git('rebase', '--abort');
+    }
+  });
+
+  test('moves a branch pulled only once a checkout started before it is done, pulling it as the checked-out branch if the checkout chose it', async () => {
+    await tracked('next');
+    const pushed = await moveOnRemote('next');
+    const held = gate();
+    let checkingOut = false;
+    const restore = Reflect.get(view, 'checkoutNow');
+    stubMethod(view, 'checkoutNow', async (original, ...args) => {
+      checkingOut = true;
+      await held.opened;
+      return original(...args);
+    });
+    try {
+      page.clear();
+      const checkedOut = connection.receive({
+        type: 'checkout',
+        root: repository.root,
+        target: { kind: 'branch', name: 'next' },
+      });
+      await waitFor(() => checkingOut, 'the checkout to start');
+      const pulled = send('pullBranch', 'next');
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      assert.deepStrictEqual(page.messages.flatMap(running), [
+        'pullingBranch next',
+      ]);
+      assert.strictEqual(
+        (await repository.git('symbolic-ref', '--short', 'HEAD')).trim(),
+        'main',
+      );
+      held.open();
+      await checkedOut;
+      assert.deepStrictEqual(await pulled, []);
+    } finally {
+      Reflect.set(view, 'checkoutNow', restore);
+    }
+    assert.deepStrictEqual(await repository.resolve('HEAD'), [pushed]);
+    assert.ok(fs.existsSync(path.join(repository.root, 'next.txt')));
+  });
+
+  test('lets a checkout asked for while a branch pull fetches go ahead without waiting for the fetch', async () => {
+    const start = await tracked('fetching');
+    const pushed = await moveOnRemote('fetching');
+    await repository.git('branch', 'elsewhere', 'main');
+    const held = gate();
+    let fetching = false;
+    const restore = Reflect.get(view, 'fetchRemotes');
+    stubMethod(view, 'fetchRemotes', async (original, ...args) => {
+      fetching = true;
+      await held.opened;
+      return original(...args);
+    });
+    try {
+      page.clear();
+      const pulled = send('pullBranch', 'fetching');
+      await waitFor(() => fetching, 'the fetch to start');
+      await connection.receive({
+        type: 'checkout',
+        root: repository.root,
+        target: { kind: 'branch', name: 'elsewhere' },
+      });
+      assert.strictEqual(
+        (await repository.git('symbolic-ref', '--short', 'HEAD')).trim(),
+        'elsewhere',
+      );
+      assert.deepStrictEqual(await repository.resolve('fetching'), [start]);
+      held.open();
+      assert.deepStrictEqual(await pulled, []);
+    } finally {
+      Reflect.set(view, 'fetchRemotes', restore);
+    }
+    assert.deepStrictEqual(await repository.resolve('fetching'), [pushed]);
   });
 
   test('pulls the checked-out branch as the blue bubble does, if the branch asked for turns out to be it', async () => {

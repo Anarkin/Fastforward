@@ -1543,12 +1543,9 @@ export class FastforwardView {
     target: CheckoutTarget,
     picked: number | undefined,
   ): Promise<void> {
-    const { tab } = context;
-    const checkingOut = tab.movingHead.then(() =>
+    return this.queueHeadMove(context, () =>
       this.checkoutNow(context, target, picked),
     );
-    tab.movingHead = checkingOut.catch(() => undefined);
-    return checkingOut;
   }
 
   private async checkoutNow(
@@ -1587,10 +1584,7 @@ export class FastforwardView {
   }
 
   private pull(context: Context, picked: number | undefined): Promise<void> {
-    const { tab } = context;
-    const pulling = tab.movingHead.then(() => this.pullNow(context, picked));
-    tab.movingHead = pulling.catch(() => undefined);
-    return pulling;
+    return this.queueHeadMove(context, () => this.pullNow(context, picked));
   }
 
   private async pullNow(
@@ -1652,43 +1646,83 @@ export class FastforwardView {
     name: string,
     picked: number | undefined,
   ): Promise<void> {
-    const { refs, head } = await this.refsOf(context);
-    if (!refs.some((ref) => ref.kind === 'branch' && ref.name === name)) {
-      return;
-    }
-    if (head?.name === name) {
-      await this.pull(context, picked);
-      return;
-    }
     const notify = this.notify(context);
-    const worktrees = await listWorktrees(context.gitPath, context.root);
-    if (
-      worktrees.some(
-        (worktree) =>
-          worktree.branch === name && !sameRoot(worktree.path, context.root),
-      )
-    ) {
-      notify('info', strings.messages.checkedOutElsewhere(name));
-      return;
-    }
-    context.post({ type: 'pullingBranch', name });
     let fetched: Fetched | undefined;
     let moved = false;
+    context.post({ type: 'pullingBranch', name });
     try {
+      const { refs, head } = await this.refsOf(context);
+      if (!refs.some((ref) => ref.kind === 'branch' && ref.name === name)) {
+        return;
+      }
+      if (head?.name === name) {
+        await this.pull(context, picked);
+        return;
+      }
+      const worktrees = await listWorktrees(context.gitPath, context.root);
+      if (
+        worktrees.some(
+          (worktree) =>
+            worktree.branch === name && !sameRoot(worktree.path, context.root),
+        )
+      ) {
+        notify('info', strings.messages.checkedOutElsewhere(name));
+        return;
+      }
       if (await canPull(this.log, notify, context, name)) {
         fetched = await this.fetchShown(context);
         moved =
           !fetched.failed &&
-          (await fastForwardToUpstream(this.log, notify, context, name));
+          (await this.queueHeadMove(context, () =>
+            this.moveToUpstream(context, name, picked),
+          ));
       }
     } finally {
       context.post({ type: 'pullingBranch', name: undefined });
     }
-    if (moved) {
-      await this.refresh(context, undefined, refsAlone);
-    } else if (fetched) {
+    if (!moved && fetched) {
       await this.refreshFetched(context, fetched);
     }
+  }
+
+  private async moveToUpstream(
+    context: Context,
+    name: string,
+    picked: number | undefined,
+  ): Promise<boolean> {
+    const { head } = await readRefs(context.gitPath, context.root);
+    const checkedOut = head?.name === name;
+    if (
+      !(await fastForwardToUpstream(
+        this.log,
+        this.notify(context),
+        context,
+        checkedOut ? undefined : name,
+      ))
+    ) {
+      return false;
+    }
+    if (checkedOut) {
+      await this.refresh(context);
+      await context.tab.loadingHistory;
+      await this.showHead(context, picked);
+    } else {
+      await this.refresh(context, undefined, refsAlone);
+    }
+    return true;
+  }
+
+  private queueHeadMove<T>(
+    context: Context,
+    work: () => Promise<T>,
+  ): Promise<T> {
+    const { tab } = context;
+    const moving = tab.movingHead.then(work);
+    tab.movingHead = moving.then(
+      () => undefined,
+      () => undefined,
+    );
+    return moving;
   }
 
   private async pushBranch(context: Context, name: string): Promise<void> {

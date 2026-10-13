@@ -242,7 +242,17 @@ export async function fastForwardToUpstream(
     if (branchNamed === undefined) {
       await fastForward(gitPath, root, commit);
     } else {
-      await moveBranch(gitPath, root, branchNamed, commit);
+      const moved = await moveBranch(gitPath, root, branchNamed, commit);
+      if (moved !== 'moved') {
+        say(
+          log,
+          notify,
+          moved === 'inUse'
+            ? strings.messages.branchInUse(branch)
+            : strings.messages.cannotFastForward(branch, name),
+        );
+        return false;
+      }
     }
     log.info(strings.log.fastForwarded(branch, name));
     return true;
