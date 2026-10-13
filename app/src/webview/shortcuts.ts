@@ -44,9 +44,10 @@ export function appKeyPressed<Value>(
   binding: Binding<Value>,
   event: KeyEvent,
 ): Value | undefined {
-  return pressedAlone(event) &&
-    isElement(event.target) &&
-    event.target.closest('.menu') !== null
+  return isElement(event.target) &&
+    ((!binding.dialogs &&
+      event.target.closest("[aria-modal='true']") !== null) ||
+      (pressedAlone(event) && event.target.closest('.menu') !== null))
     ? undefined
     : keyPressed(binding, event);
 }

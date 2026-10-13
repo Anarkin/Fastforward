@@ -673,6 +673,29 @@ suite('Style', () => {
     );
   });
 
+  test('rings a button or link the keyboard reached in the focus color, in whole pixels inside its edge like the active column, so nothing around it clips it, but not a menu item, which it tints instead, nor a popup taking the keyboard', () => {
+    const ring = {
+      outline: '2px solid var(--color-focus)',
+      'outline-offset': '-2px',
+    };
+    const about = aboutPopup();
+    for (const control of [
+      withClass(tabBar(), 'tab-add'),
+      withClass(tabBar(), 'tab-close'),
+      withClass(notices(), 'notice-close'),
+      withClass(rendered(navButtons()), 'nav-button'),
+      withClass(about, 'about-copy'),
+      withClass(about, 'nav-button'),
+      about.children[1]?.children.find((child) => child.tag === 'a'),
+    ]) {
+      looks(control, ring, { focus: control });
+    }
+    looks(withClass(tabBar(), 'tab-add'), { outline: undefined });
+    const item = withClass(contextMenu(), 'menu-item');
+    looks(item, { outline: 'none' }, { focus: item });
+    looks(about, { outline: 'none' }, { focus: about });
+  });
+
   test('tints a row under the pointer with a see-through touch of the focus color, over whatever lies under it', () => {
     assert.strictEqual(
       bodyVariable('hover-background'),

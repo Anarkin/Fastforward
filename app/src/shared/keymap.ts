@@ -17,15 +17,16 @@ export interface Binding<Value> {
   readonly keys: Readonly<Record<string, Value>>;
   readonly repeats: boolean;
   readonly fields: boolean;
+  readonly dialogs: boolean;
 }
 
 function bind<const Value>(
   group: Group | undefined,
   action: string,
   keys: Readonly<Record<string, Value>>,
-  { repeats = false, fields = false } = {},
+  { repeats = false, fields = false, dialogs = false } = {},
 ): Binding<Value> {
-  return { group, action, keys, repeats, fields };
+  return { group, action, keys, repeats, fields, dialogs };
 }
 
 export const keymap = {
@@ -116,13 +117,24 @@ export const keymap = {
     { fields: true },
   ),
   mainMenu: bind('App', strings.actions.mainMenu, { 'Alt+F': true }),
-  shortcuts: bind('App', strings.actions.shortcuts, { F1: true, '?': true }),
+  shortcuts: bind(
+    'App',
+    strings.actions.shortcuts,
+    { F1: true, '?': true },
+    { dialogs: true },
+  ),
   devTools: bind('App', strings.actions.devTools, { 'Mod+Shift+I': true }),
   close: bind(
     undefined,
     strings.actions.close,
     { Escape: true },
     { fields: true },
+  ),
+  dialogFocus: bind(
+    undefined,
+    strings.actions.dialogFocus,
+    { Tab: 1, 'Shift+Tab': -1 },
+    { repeats: true, fields: true },
   ),
   menuItem: bind(
     undefined,

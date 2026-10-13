@@ -3,6 +3,7 @@ import type { AboutInfo } from '../shared/protocol';
 import { brand, strings } from '../shared/strings';
 import { useDismiss } from './contextMenu';
 import { CloseIcon } from './icons';
+import { useModalDialog } from './modalDialog';
 
 const copiedFor = 1500;
 
@@ -50,6 +51,7 @@ export function AboutPopup({
 }) {
   const popup = useRef<HTMLDivElement>(null);
   useDismiss(popup, onClose);
+  const dialog = useModalDialog(popup);
   const [copied, setCopied] = useState(false);
   useEffect(() => {
     if (!copied) {
@@ -62,7 +64,7 @@ export function AboutPopup({
     <div
       className="shortcuts-popup about-popup"
       ref={popup}
-      role="dialog"
+      {...dialog}
       aria-label={strings.about.title}
     >
       <div className="shortcuts-title">

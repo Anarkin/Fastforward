@@ -3,6 +3,7 @@ import { groups, keyLabels, keymap } from '../shared/keymap';
 import { strings } from '../shared/strings';
 import { useDismiss } from './contextMenu';
 import { CloseIcon } from './icons';
+import { useModalDialog } from './modalDialog';
 
 export const shortcutGroups = groups.map((group) => ({
   title: strings.shortcuts.groups[group],
@@ -18,11 +19,12 @@ export function ShortcutsPopup({
 }) {
   const popup = useRef<HTMLDivElement>(null);
   useDismiss(popup, onClose);
+  const dialog = useModalDialog(popup);
   return (
     <div
       className="shortcuts-popup"
       ref={popup}
-      role="dialog"
+      {...dialog}
       aria-label={strings.shortcuts.title}
     >
       <div className="shortcuts-title">

@@ -12,6 +12,12 @@ input {
   font: inherit;
 }
 
+button:not(.menu-item):focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
+}
+
 body {
   --muted-opacity: var(--color-foreground-muted);
   --selection-background: color-mix(
@@ -200,6 +206,7 @@ body {
   background: var(--color-panel-background);
   border-radius: var(--card-radius);
   box-shadow: var(--popup-shadow);
+  outline: none;
 }
 
 .about-popup {

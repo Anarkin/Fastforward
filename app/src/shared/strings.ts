@@ -172,6 +172,7 @@ export const strings = {
     shortcuts: 'Show these shortcuts',
     devTools: 'Developer tools',
     close: 'Close a menu or popup',
+    dialogFocus: 'Move between the controls of a popup',
     menuItem: 'Move in a menu',
     removeItem: 'Remove a recent repository from the menu',
     submenu: 'Open a submenu, or go back from it',

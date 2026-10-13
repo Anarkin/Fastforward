@@ -221,6 +221,7 @@ function matchesSimple(
     case ':hover':
       return context.hovered.has(element);
     case ':focus':
+    case ':focus-visible':
       return context.focused === element;
     case ':focus-within':
       return context.focusedWithin.has(element);

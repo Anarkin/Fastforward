@@ -1,0 +1,110 @@
+import * as assert from 'node:assert';
+import { JSDOM } from 'jsdom';
+import { act } from 'react';
+import { suite, test } from 'vitest';
+import { AboutPopup } from '../../webview/aboutPopup';
+import { ShortcutsPopup } from '../../webview/shortcutsPopup';
+import { noop } from '../fixtures';
+
+const about = {
+  version: '16.0.0',
+  development: false,
+  git: '2.56.0',
+  system: 'Windows 11, build 26300, x64',
+};
+
+async function inPage(
+  check: (page: {
+    readonly document: Document;
+    readonly before: HTMLElement;
+    readonly show: (popup: React.ReactNode) => Promise<void>;
+    readonly press: (target: Element, shiftKey?: boolean) => boolean;
+  }) => Promise<void>,
+): Promise<void> {
+  const dom = new JSDOM(
+    '<!doctype html><button id="before">Before</button><main></main>',
+  );
+  const globals = {
+    window: dom.window,
+    document: dom.window.document,
+    HTMLElement: dom.window.HTMLElement,
+    IS_REACT_ACT_ENVIRONMENT: true,
+  };
+  const saved = Object.fromEntries(
+    Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
+  );
+  Object.assign(globalThis, globals);
+  try {
+    const { createRoot } = await import('react-dom/client');
+    const { document } = dom.window;
+    const before = document.querySelector<HTMLElement>('#before');
+    const main = document.querySelector('main');
+    assert.ok(before && main);
+    before.focus();
+    const root = createRoot(main);
+    await check({
+      document,
+      before,
+      show: (popup) =>
+        act(async () => {
+          root.render(popup);
+        }),
+      press: (target, shiftKey = false) =>
+        target.dispatchEvent(
+          new dom.window.KeyboardEvent('keydown', {
+            key: 'Tab',
+            shiftKey,
+            bubbles: true,
+            cancelable: true,
+          }),
+        ),
+    });
+    await act(async () => {
+      root.unmount();
+    });
+  } finally {
+    Object.assign(globalThis, saved);
+  }
+}
+
+suite('Modal dialogs', () => {
+  test('take the keyboard as they open, telling assistive technology the app behind waits, and give it back as they close', async () => {
+    await inPage(async ({ document, before, show }) => {
+      for (const popup of [
+        <AboutPopup key="about" about={about} onCopy={noop} onClose={noop} />,
+        <ShortcutsPopup key="shortcuts" mac={false} onClose={noop} />,
+      ]) {
+        await show(popup);
+        const dialog = document.querySelector('[role="dialog"]');
+        assert.ok(dialog);
+        assert.ok(document.activeElement === dialog);
+        assert.strictEqual(dialog.getAttribute('aria-modal'), 'true');
+        await show(null);
+        assert.ok(document.activeElement === before);
+      }
+    });
+  });
+
+  test('keep Tab and Shift+Tab among their own controls, going round from the last to the first and back', async () => {
+    await inPage(async ({ document, show, press }) => {
+      await show(<AboutPopup about={about} onCopy={noop} onClose={noop} />);
+      const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
+      assert.ok(dialog);
+      const stops = Array.from(
+        dialog.querySelectorAll<HTMLElement>('button, a'),
+      );
+      const first = stops[0];
+      const last = stops.at(-1);
+      assert.ok(first && last && stops.length === 3);
+      assert.strictEqual(press(dialog, true), false);
+      assert.ok(document.activeElement === last);
+      assert.strictEqual(press(last), false);
+      assert.ok(document.activeElement === first);
+      assert.strictEqual(press(first, true), false);
+      assert.ok(document.activeElement === last);
+      stops[1]?.focus();
+      assert.strictEqual(press(stops[1]), true);
+      assert.strictEqual(press(stops[1], true), true);
+    });
+  });
+});

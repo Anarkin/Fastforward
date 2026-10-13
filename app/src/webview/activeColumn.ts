@@ -65,7 +65,7 @@ export function columnStep(
     return undefined;
   }
   const next = adjacentColumn(shown, current, move.step);
-  return { next, preventDefault: move.tab || next !== undefined };
+  return { next, preventDefault: next !== undefined };
 }
 
 export function columnFocusOf(

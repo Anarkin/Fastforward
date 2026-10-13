@@ -86,7 +86,7 @@ suite('Active column', () => {
     );
   });
 
-  test('keeps Tab from leaving the columns past either end, letting the arrows go there', () => {
+  test('lets Tab and the arrows go on past either end, so Tab reaches the buttons around the columns', () => {
     const all = shownColumns(true, 'a');
     assert.deepStrictEqual(columnStep(key, all, 'commits'), {
       next: 'files',
@@ -98,11 +98,19 @@ suite('Active column', () => {
     });
     assert.deepStrictEqual(columnStep({ ...key, key: 'Tab' }, all, 'diff'), {
       next: undefined,
-      preventDefault: true,
+      preventDefault: false,
     });
     assert.deepStrictEqual(
       columnStep({ ...key, key: 'Tab', shiftKey: true }, all, 'commits'),
-      { next: undefined, preventDefault: true },
+      { next: undefined, preventDefault: false },
+    );
+    assert.deepStrictEqual(
+      columnStep(
+        { ...key, key: 'Tab' },
+        shownColumns(true, undefined),
+        'commits',
+      ),
+      { next: undefined, preventDefault: false },
     );
     assert.strictEqual(
       columnStep({ ...key, key: 'ArrowDown' }, all, 'commits'),

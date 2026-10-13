@@ -68,6 +68,39 @@ suite('Keyboard shortcuts', () => {
     );
   });
 
+  test('leaves every key pressed in a modal dialog to the dialog, rather than acting on the app behind it, as C hid the commit list behind the About popup', () => {
+    const inDialog = Object.assign(element('BUTTON'), {
+      closest: (selector: string) =>
+        selector === "[aria-modal='true']" ? element('DIV') : null,
+    });
+    assert.strictEqual(
+      appKeyPressed(keymap.commits, keyPress('c', { target: inDialog })),
+      undefined,
+    );
+    assert.strictEqual(
+      appKeyPressed(
+        keymap.find,
+        keyPress('f', { code: 'KeyF', ctrlKey: true, target: inDialog }),
+      ),
+      undefined,
+    );
+  });
+
+  test('closes the shortcuts with F1 or ? pressed inside their own dialog, as they opened', () => {
+    const inDialog = Object.assign(element('DIV'), {
+      closest: (selector: string) =>
+        selector === "[aria-modal='true']" ? element('DIV') : null,
+    });
+    assert.strictEqual(
+      appKeyPressed(keymap.shortcuts, keyPress('F1', { target: inDialog })),
+      true,
+    );
+    assert.strictEqual(
+      appKeyPressed(keymap.shortcuts, keyPress('?', { target: inDialog })),
+      true,
+    );
+  });
+
   test('opens find in the diff on Ctrl+F, or Cmd+F on macOS, whatever the keyboard layout', () => {
     const key = keyPress('f', { code: 'KeyF', ctrlKey: true });
     const isFindShortcut = (event: typeof key) =>
