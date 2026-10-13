@@ -330,6 +330,24 @@ suite('Menu items', () => {
     );
   });
 
+  test('leaves room for a check before every item, whether it can be checked or not, so the labels of every menu line up alike', () => {
+    const html = renderToStaticMarkup(
+      <MenuItems
+        items={[
+          { label: 'Open', onClick: noop },
+          { separator: true },
+          { label: 'Collapse', checked: true, onClick: noop },
+        ]}
+        onClose={noop}
+      />,
+    );
+    assert.match(
+      html,
+      /role="menuitem"><span class="menu-check"><\/span>Open<\/button>/,
+    );
+    assert.strictEqual(tagsWith(html, 'menu-check').length, 2);
+  });
+
   test('separates groups and greys out what cannot run', () => {
     const html = renderToStaticMarkup(
       <MenuItems
@@ -342,6 +360,9 @@ suite('Menu items', () => {
       />,
     );
     assert.strictEqual(tagsWith(html, 'menu-separator').length, 1);
-    assert.match(html, /role="menuitem"[^>]*disabled=""[^>]*>Checkout/);
+    assert.match(
+      html,
+      /role="menuitem"[^>]*disabled=""[^>]*><span class="menu-check"><\/span>Checkout/,
+    );
   });
 });

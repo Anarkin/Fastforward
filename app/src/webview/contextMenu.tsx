@@ -357,11 +357,9 @@ export function MenuItems({
                 }
               }}
             >
-              {item.checked !== undefined && (
-                <span className="menu-check">
-                  {item.checked ? strings.symbols.checked : ''}
-                </span>
-              )}
+              <span className="menu-check">
+                {item.checked ? strings.symbols.checked : ''}
+              </span>
               {item.label}
               {item.submenu && (
                 <span className="submenu-arrow">{strings.symbols.submenu}</span>

@@ -236,6 +236,7 @@ export function HistoryMenu({
             onMouseEnter={(event) => event.currentTarget.focus()}
             onClick={() => onPick(index + 1)}
           >
+            <span className="menu-check" />
             <span className="history-hash">{historyLabel(entry.hash)}</span>
             {entry.subject}
           </button>

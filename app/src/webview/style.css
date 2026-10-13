@@ -1573,11 +1573,11 @@ body.resizing {
 .menu-item.has-submenu {
   display: flex;
   align-items: center;
-  gap: 16px;
 }
 
 .submenu-arrow {
   margin-left: auto;
+  padding-left: 16px;
   color: var(--muted-foreground);
 }
 

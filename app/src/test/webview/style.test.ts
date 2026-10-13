@@ -876,6 +876,26 @@ suite('Style', () => {
     });
   });
 
+  test('starts the label of an item with a submenu where the others start, keeping its gap only before the arrow', () => {
+    const menu = rendered(
+      createElement(ContextMenu, {
+        menu: {
+          x: 0,
+          y: 0,
+          items: [
+            { label: 'Checkout', submenu: [{ label: 'main', onClick: noop }] },
+          ],
+        },
+        onClose: noop,
+      }),
+    );
+    looks(withClass(menu, 'menu-item', 'has-submenu'), { gap: undefined });
+    looks(withClass(menu, 'submenu-arrow'), {
+      'margin-left': 'auto',
+      'padding-left': '16px',
+    });
+  });
+
   test("puts a removable item's X at the right end of its entry, drawn like a tab's X and shown only on hovering or reaching the entry, keeping the label clear of it", () => {
     const menu = rendered(
       createElement(ContextMenu, {

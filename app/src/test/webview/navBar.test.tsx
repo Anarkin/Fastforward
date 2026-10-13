@@ -267,7 +267,7 @@ suite('History buttons', () => {
     assert.deepStrictEqual(picked, [1, 3]);
   });
 
-  test('hold each entry the way other menus do, so the keys move between them alike', () => {
+  test('hold each entry the way other menus do, so the keys move between them alike, leaving room for a check before it as they do', () => {
     const menu = renderToStaticMarkup(
       <HistoryMenu
         container={{ current: null }}
@@ -278,7 +278,7 @@ suite('History buttons', () => {
     );
     assert.match(
       menu,
-      /^<div class="menu history-menu" role="menu"><div class="menu-entry"><button class="menu-item history-item"/,
+      /^<div class="menu history-menu" role="menu"><div class="menu-entry"><button class="menu-item history-item"[^>]*><span class="menu-check"><\/span><span class="history-hash">/,
     );
   });
 
