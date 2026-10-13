@@ -381,6 +381,16 @@ suite('Style', () => {
     );
   });
 
+  test('keeps the tab row as tall with no repository open as with tabs in it, which their name or close button makes as tall as the taller, so it does not jump as the first opens', () => {
+    const [tab] = allWithClass(tabBar(), 'tab');
+    const { top, bottom } = paddingOf(tab);
+    const border = parseFloat(cascaded(tab, 'border') ?? '0');
+    const close = cascaded(withClass(tab, 'tab-close'), 'height');
+    looks(withClass(tabBar(), 'tab-list'), {
+      'min-height': `calc(max(1lh, ${close}) + ${parseFloat(top) + parseFloat(bottom) + 2 * border}px)`,
+    });
+  });
+
   test("leaves a straight run of the sheet's edge between its rounded corner and the curve out of its first tab", () => {
     const resolved = (value: string | undefined) =>
       (value ?? '').replace(

@@ -192,6 +192,10 @@ body {
   padding-left: 78px;
 }
 
+.tabs .tab-list {
+  min-height: calc(max(1lh, 20px) + 12px);
+}
+
 .tabs .title-bar-icon {
   align-self: center;
 }
