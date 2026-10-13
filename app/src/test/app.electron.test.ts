@@ -49,6 +49,29 @@ function waitForCount(
   );
 }
 
+function within<T>(promise: Promise<T>, what: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => {
+      timer = setTimeout(
+        () => reject(new Error(`Timed out waiting for ${what}`)),
+        10_000,
+      );
+    }),
+  ]).finally(() => clearTimeout(timer));
+}
+
+async function closeOrKill(app: ElectronApplication): Promise<void> {
+  const closing = app.close();
+  try {
+    await within(closing, 'the app to close');
+  } catch {
+    app.process().kill('SIGKILL');
+    closing.catch(() => undefined);
+  }
+}
+
 function waitForFocus(locator: Locator, what: string): Promise<void> {
   return waitFor(
     () => locator.evaluate((element) => element === document.activeElement),
@@ -1368,17 +1391,20 @@ suite('App whose page is gone', () => {
     try {
       const page = await app.firstWindow();
       await page.locator('.commit', { hasText: 'first' }).waitFor();
-      const gone = await app.evaluate(({ BrowserWindow }) => {
-        const contents = BrowserWindow.getAllWindows()[0].webContents;
-        const went = new Promise<{ reason: string; exitCode: number }>(
-          (resolve) =>
-            contents.once('render-process-gone', (_event, details) =>
-              resolve(details),
-            ),
-        );
-        contents.forcefullyCrashRenderer();
-        return went;
-      });
+      const gone = await within(
+        app.evaluate(({ BrowserWindow }) => {
+          const contents = BrowserWindow.getAllWindows()[0].webContents;
+          const went = new Promise<{ reason: string; exitCode: number }>(
+            (resolve) =>
+              contents.once('render-process-gone', (_event, details) =>
+                resolve(details),
+              ),
+          );
+          contents.forcefullyCrashRenderer();
+          return went;
+        }),
+        'the page to go',
+      );
       await waitFor(
         () =>
           fs
@@ -1405,7 +1431,7 @@ suite('App whose page is gone', () => {
         'the page to show the history again',
       );
     } finally {
-      await app.close();
+      await closeOrKill(app);
       removeFolder(folder);
     }
   });
