@@ -887,7 +887,7 @@ suite('Style', () => {
     looks(
       remove,
       Object.fromEntries(
-        ['width', 'height', 'opacity', 'border-radius'].map((property) => [
+        ['width', 'height', 'border-radius'].map((property) => [
           property,
           cascaded(tabClose, property),
         ]),
@@ -1944,9 +1944,17 @@ suite('Style', () => {
     });
   });
 
+  test('shows the X of every repository tab at full strength, not only on the one open or hovered', () => {
+    for (const tab of allWithClass(tabBar(), 'tab')) {
+      looks(withClass(tab, 'tab-close'), {
+        opacity: undefined,
+        visibility: undefined,
+      });
+    }
+  });
+
   test('dims close buttons, disabled controls and a gone bubble like muted text, keeping its own fade only for the loading placeholder', () => {
     for (const dimmed of [
-      withClass(tabBar(), 'tab-close'),
       withClass(notices(), 'notice-close'),
       withClass(locationsPopup(''), 'badge', 'missing'),
       allWithClass(contextMenu(), 'menu-item').find((item) =>

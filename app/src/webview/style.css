@@ -466,10 +466,6 @@ body {
   background: var(--color-border);
 }
 
-.tab:not(.active):not(:hover) .tab-close {
-  visibility: hidden;
-}
-
 .tab-close,
 .tab-add {
   display: flex;
@@ -487,7 +483,6 @@ body {
   flex: none;
   width: 20px;
   height: 20px;
-  opacity: var(--muted-opacity);
 }
 
 .tab-close:hover,
