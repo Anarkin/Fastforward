@@ -31,6 +31,14 @@ export function CloseIcon() {
   );
 }
 
+export function AddIcon() {
+  return (
+    <Icon>
+      <path d="M8 3.5v9M3.5 8h9" />
+    </Icon>
+  );
+}
+
 export function BackIcon() {
   return (
     <Icon>

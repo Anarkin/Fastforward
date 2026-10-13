@@ -99,7 +99,6 @@ export const strings = {
     fromTo: (from: string, to: string) => `${from} → ${to}`,
   },
   symbols: {
-    add: '+',
     checked: '✓',
     submenu: '▸',
     open: '▾',

@@ -3,6 +3,7 @@ import { JSDOM } from 'jsdom';
 import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, suite, test, vi } from 'vitest';
+import { strings } from '../../shared/strings';
 import { adjacentTab, Cycle, resting, TabBar } from '../../webview/tabBar';
 import { rested } from '../componentFixtures';
 import { noModifiers, noop, renderedBy } from '../fixtures';
@@ -208,6 +209,37 @@ suite('Tab bar for assistive technology', () => {
         ['a', 'false'],
         ['b', 'true'],
       ],
+    );
+  });
+
+  test("draws the button that opens a repository as a plus, straight lines as the close button's cross, named by what it does", () => {
+    const document = new JSDOM(
+      renderToStaticMarkup(
+        <TabBar
+          tabs={[{ root: '/a', name: 'a' }]}
+          active="/a"
+          onSelect={noop}
+          onPreload={noop}
+          onClose={noop}
+          onAdd={noop}
+          onLog={noop}
+        />,
+      ),
+    ).window.document;
+    const add = document.querySelector('.tab-add');
+    const close = document.querySelector('.tab-close');
+    assert.strictEqual(add?.textContent, '');
+    assert.strictEqual(
+      add.getAttribute('title'),
+      strings.actions.openRepository,
+    );
+    assert.strictEqual(
+      add.querySelector('svg path')?.getAttribute('d'),
+      'M8 3.5v9M3.5 8h9',
+    );
+    assert.strictEqual(
+      add.querySelector('svg')?.getAttribute('stroke-width'),
+      close?.querySelector('svg')?.getAttribute('stroke-width'),
     );
   });
 

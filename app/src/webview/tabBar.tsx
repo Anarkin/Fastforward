@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { type TabInfo } from '../shared/protocol';
-import { CloseIcon } from './icons';
+import { AddIcon, CloseIcon } from './icons';
 import { AppIcon } from './titleBar';
 import { titleBarHeight } from '../shared/titleBar';
 import { clicked, keymap } from '../shared/keymap';
@@ -167,7 +167,7 @@ export function TabBar({
           title={strings.actions.openRepository}
           onClick={onAdd}
         >
-          {strings.symbols.add}
+          <AddIcon />
         </button>
       </div>
       {menu}
