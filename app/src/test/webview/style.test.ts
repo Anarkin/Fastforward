@@ -362,6 +362,19 @@ suite('Style', () => {
     assert.strictEqual(bodyVariable('sheet-border'), undefined);
   });
 
+  test('keeps the name of a repository tab where it was once the tab is opened, though the tab reaches a pixel further down into its sheet', () => {
+    const [active, other] = allWithClass(tabBar(), 'tab');
+    assert.ok(active.classes.includes('active'));
+    const reach = -parseFloat(cascaded(active, 'margin-bottom') ?? '0');
+    assert.strictEqual(reach, 1);
+    assert.strictEqual(
+      parseFloat(
+        cascaded(active, 'padding-bottom') ?? paddingOf(active).bottom,
+      ) - parseFloat(paddingOf(other).bottom),
+      reach,
+    );
+  });
+
   test("leaves a straight run of the sheet's edge between its rounded corner and the curve out of its first tab", () => {
     const resolved = (value: string | undefined) =>
       (value ?? '').replace(

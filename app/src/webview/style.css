@@ -401,6 +401,7 @@ body {
 .tabs .tab.active {
   position: relative;
   margin-bottom: -1px;
+  padding-bottom: 6px;
   background: var(--sheet);
   border-radius: var(--card-radius) var(--card-radius) 0 0;
 }
