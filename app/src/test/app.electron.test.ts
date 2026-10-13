@@ -1400,7 +1400,7 @@ suite('App whose page is gone', () => {
                 resolve(details),
               ),
           );
-          contents.forcefullyCrashRenderer();
+          process.kill(contents.getOSProcessId(), 'SIGKILL');
           return went;
         }),
         'the page to go',
