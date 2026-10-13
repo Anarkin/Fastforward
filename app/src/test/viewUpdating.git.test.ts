@@ -304,6 +304,7 @@ suite('View updating by itself', () => {
   });
 
   test('keeps the selected commit, its files and diff, and the place in the list as a background fetch brings commits and branches', async () => {
+    const [pushed] = await repository.resolve('HEAD');
     await repository.commit('kept', { 'kept.txt': 'kept\n' });
     const [kept] = await repository.resolve('HEAD');
     await push('newer', ['main:main', 'main:brand-new']);
@@ -368,6 +369,7 @@ suite('View updating by itself', () => {
       }
     } finally {
       open.dispose();
+      await repository.git('reset', '--hard', pushed);
     }
   });
 

@@ -72,6 +72,9 @@ suite('View pushing tags', () => {
         await remote.git('tag', '-d', tag);
       }
     }
+    await connection.receive({ type: 'fetch', root: repository.root });
+    await view.idle();
+    await connection.refresh();
   });
 
   afterAll(async () => {

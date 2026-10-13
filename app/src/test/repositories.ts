@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import { execFile } from 'node:child_process';
+import { execFile, type SpawnOptions } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -123,8 +123,40 @@ export async function withEnv(
   }
 }
 
-export function asIfOwnedByAnother(run: () => Promise<void>): Promise<void> {
-  return withEnv(ownedByAnother, run);
+function isInside(folder: string, cwd: unknown): boolean {
+  if (typeof cwd !== 'string') {
+    return false;
+  }
+  const relative = path.relative(folder, cwd);
+  return !relative.startsWith('..') && !path.isAbsolute(relative);
+}
+
+export async function asIfOwnedByAnother(
+  folder: string,
+  run: () => Promise<void>,
+): Promise<void> {
+  const childProcess = process.getBuiltinModule('node:child_process');
+  const { spawn } = childProcess;
+  replaceBuiltin(
+    childProcess,
+    'spawn',
+    (command: string, args: readonly string[], options: SpawnOptions) =>
+      spawn(
+        command,
+        args,
+        isInside(folder, options.cwd)
+          ? {
+              ...options,
+              env: { ...(options.env ?? process.env), ...ownedByAnother },
+            }
+          : options,
+      ),
+  );
+  try {
+    await run();
+  } finally {
+    replaceBuiltin(childProcess, 'spawn', spawn);
+  }
 }
 
 export async function gitsStarted<T>(

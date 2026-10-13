@@ -303,7 +303,7 @@ suite('Git repository', () => {
   });
 
   test('says what git said when it refuses a repository, not that there is none', async () => {
-    await asIfOwnedByAnother(() =>
+    await asIfOwnedByAnother(cwd, () =>
       assert.rejects(repositoryRoot(gitPath, cwd), (error) => {
         assert.match(gitErrorText(error), /^fatal: detected dubious ownership/);
         return true;

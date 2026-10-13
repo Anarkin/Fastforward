@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { afterAll, beforeAll, suite, test } from 'vitest';
+import { afterAll, beforeAll, beforeEach, suite, test } from 'vitest';
 import { replaceBuiltin } from './builtins';
 import { workingTreeHash } from '../shared/protocol';
 import { recentKey, sameRoot } from '../storage';
@@ -501,7 +501,7 @@ suite('View of other repositories', () => {
   test('keeps a recent repository git refuses to open, and says what git said', async () => {
     await withView(log, [repository.root], async (view) => {
       await view.store.update(recentKey, [other]);
-      await asIfOwnedByAnother(() =>
+      await asIfOwnedByAnother(other, () =>
         view.connection.receive({ type: 'openRepository', root: other }),
       );
       assert.match(
@@ -523,7 +523,7 @@ suite('View of other repositories', () => {
 
   test('says what git said of a tab it refuses to open', async () => {
     await withView(log, [repository.root, other], async (view) => {
-      await asIfOwnedByAnother(() =>
+      await asIfOwnedByAnother(other, () =>
         view.connection.receive({ type: 'selectTab', root: other }),
       );
       assert.match(
@@ -864,6 +864,9 @@ suite('View staged and unstaged changes', () => {
     folder = tempFolder('staging');
     repository = await tempRepository(path.join(folder, 'app'));
     await repository.commit('a', { 'both.txt': 'one\n' });
+  });
+
+  beforeEach(async () => {
     fs.writeFileSync(path.join(repository.root, 'both.txt'), 'two\n');
     await repository.git('add', 'both.txt');
     fs.writeFileSync(path.join(repository.root, 'both.txt'), 'three\n');
