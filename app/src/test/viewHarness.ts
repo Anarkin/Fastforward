@@ -165,6 +165,7 @@ export async function openView(
   }
   if (ready) {
     await connection.receive({ type: 'ready' });
+    await view.idle();
   }
   return { view, page, connection, store, settings };
 }

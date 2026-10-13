@@ -177,6 +177,34 @@ export async function runGitBytes(
   gitPath: string,
   cwd: string,
   args: readonly string[],
+  options: RunOptions = {},
+): Promise<Buffer> {
+  options.signal?.throwIfAborted();
+  const monitor = await monitorArgs(gitPath, cwd);
+  for (let attempt = 1; ; attempt++) {
+    const ran = await runGitOnce(
+      gitPath,
+      cwd,
+      monitor,
+      args,
+      options,
+      attempt < startAttempts,
+    );
+    if (ran !== notStarted) {
+      return ran;
+    }
+  }
+}
+
+const processNotInitialized = 0xc0000142;
+const startAttempts = 3;
+const notStarted = Symbol('notStarted');
+
+function runGitOnce(
+  gitPath: string,
+  cwd: string,
+  monitor: readonly string[],
+  args: readonly string[],
   {
     okExitCodes = [0],
     input,
@@ -187,10 +215,9 @@ export async function runGitBytes(
     writes = false,
     onOutput,
     unbounded = false,
-  }: RunOptions = {},
-): Promise<Buffer> {
-  signal?.throwIfAborted();
-  const monitor = await monitorArgs(gitPath, cwd);
+  }: RunOptions,
+  startsAgain: boolean,
+): Promise<Buffer | typeof notStarted> {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) {
       reject(signal.reason);
@@ -215,10 +242,12 @@ export async function runGitBytes(
     );
     const stop = () => void stopGit(child);
     let tooLarge = false;
+    let printed = false;
     const collect = (stream: Readable, take?: (chunk: Buffer) => void) => {
       const chunks: Buffer[] = [];
       let size = 0;
       stream.on('data', (chunk: Buffer) => {
+        printed = true;
         size += chunk.length;
         if (!unbounded && size > maxOutput) {
           tooLarge = true;
@@ -255,6 +284,10 @@ export async function runGitBytes(
         (code === 0 || exitedWith({ code }, okExitCodes))
       ) {
         resolve(Buffer.concat(stdout));
+        return;
+      }
+      if (startsAgain && code === processNotInitialized && !printed) {
+        resolve(notStarted);
         return;
       }
       const said = Buffer.concat(stderr).toString('utf8').trim();

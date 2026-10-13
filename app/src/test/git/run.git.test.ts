@@ -646,6 +646,68 @@ suite('Running git in a repository', () => {
     );
   });
 
+  test('starts git again when Windows could not initialize its process, as it fails now and then on a loaded machine before git runs at all', async (context) => {
+    if (process.platform !== 'win32') {
+      context.skip();
+    }
+    const childProcess = process.getBuiltinModule('node:child_process');
+    const { spawn } = childProcess;
+    let started = 0;
+    replaceBuiltin(
+      childProcess,
+      'spawn',
+      (command: string, args: readonly string[], options: object) => {
+        if (!args.includes('rev-parse')) {
+          return spawn(command, args, options);
+        }
+        started += 1;
+        return started < 3
+          ? spawn(process.execPath, ['-e', 'process.exit(0xc0000142)'], options)
+          : spawn(command, args, options);
+      },
+    );
+    try {
+      const head = await runGit(gitPath, cwd, ['rev-parse', 'HEAD']);
+      assert.match(head.trim(), /^[0-9a-f]{40,64}$/);
+      assert.strictEqual(started, 3);
+    } finally {
+      replaceBuiltin(childProcess, 'spawn', spawn);
+    }
+  });
+
+  test('gives up starting git once Windows could not initialize its process three times', async (context) => {
+    if (process.platform !== 'win32') {
+      context.skip();
+    }
+    const childProcess = process.getBuiltinModule('node:child_process');
+    const { spawn } = childProcess;
+    let started = 0;
+    replaceBuiltin(
+      childProcess,
+      'spawn',
+      (command: string, args: readonly string[], options: object) => {
+        if (!args.includes('rev-parse')) {
+          return spawn(command, args, options);
+        }
+        started += 1;
+        return spawn(
+          process.execPath,
+          ['-e', 'process.exit(0xc0000142)'],
+          options,
+        );
+      },
+    );
+    try {
+      await assert.rejects(
+        runGit(gitPath, cwd, ['rev-parse', 'HEAD']),
+        /git rev-parse HEAD failed: it exited with code 3221225794/,
+      );
+      assert.strictEqual(started, 3);
+    } finally {
+      replaceBuiltin(childProcess, 'spawn', spawn);
+    }
+  });
+
   test('says what git said when it exits before reading all its input', async () => {
     await assert.rejects(
       runGit(gitPath, cwd, ['rev-parse', '--verify', 'no-such-ref'], {
