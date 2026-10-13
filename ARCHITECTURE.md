@@ -18,7 +18,7 @@
 
 - Use the installed git CLI for everything, without bundling one; it needs git 2.52 or later on the PATH
 - On Windows, the git found on the PATH is usually Git for Windows' `cmd\git.exe` launcher; the app's own commands skip it and start the real git it would start, with the `MSYSTEM` and PATH the launcher would give it for hooks, shell aliases and credential helpers, as the launcher's extra process added about 17 ms to each git's start
-- Commands that run hooks or fetch still go through the launcher, as does a git not laid out like Git for Windows, though in a partial clone the app's reads fetch the objects the clone left out through the real git
+- Commands that run hooks or fetch still go through the launcher, as does a git not laid out like Git for Windows, though in a partial clone the app's reads fetch the objects the clone left out through the real git, and a branch pulled without checking it out is moved by a fetch from the repository itself through the real git, as it needs no credentials and git's refusals are read in English
 - The app's own git commands, all but those that run hooks or fetch, run with `LC_ALL=C`, so the messages the app reads, such as a folder not being a repository, are in English, and as setting up translations took a third of each git's start on Windows, about 24 ms, though Git for Windows ships none
 - On Linux, the working tree and the git folder are watched folder by folder, as Node's recursive `fs.watch` there walks the whole tree synchronously, with one inotify watch per file
 - The commit list is read whole up front with `git rev-list` and kept by the main process per worktree, so the list knows its full size and locations can jump to any commit's position; it took 0.5 s for 190k commits
