@@ -1,5 +1,7 @@
 import * as assert from 'node:assert';
+import { JSDOM } from 'jsdom';
 import { isValidElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, suite, test, vi } from 'vitest';
 import { adjacentTab, Cycle, resting, TabBar } from '../../webview/tabBar';
 import { rested } from '../componentFixtures';
@@ -175,5 +177,37 @@ suite('Tab bar', () => {
     close.props.onClick({ stopPropagation: () => stopped++ });
     assert.strictEqual(stopped, 1);
     assert.deepStrictEqual(closed, ['/a']);
+  });
+});
+
+suite('Tab bar for assistive technology', () => {
+  test('tells that the tabs form a tab list, and which tab is open', () => {
+    const document = new JSDOM(
+      renderToStaticMarkup(
+        <TabBar
+          tabs={['a', 'b'].map((name) => ({ root: `/${name}`, name }))}
+          active="/b"
+          onSelect={noop}
+          onPreload={noop}
+          onClose={noop}
+          onAdd={noop}
+          onLog={noop}
+        />,
+      ),
+    ).window.document;
+    assert.strictEqual(
+      document.querySelector('[role="tablist"]')?.getAttribute('aria-label'),
+      'Repositories',
+    );
+    assert.deepStrictEqual(
+      Array.from(document.querySelectorAll('[role="tab"]'), (tab) => [
+        tab.querySelector('.tab-name')?.textContent,
+        tab.getAttribute('aria-selected'),
+      ]),
+      [
+        ['a', 'false'],
+        ['b', 'true'],
+      ],
+    );
   });
 });

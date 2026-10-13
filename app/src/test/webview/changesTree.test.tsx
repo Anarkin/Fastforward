@@ -11,6 +11,7 @@ import {
   filesAncestors,
   filesKey,
   filesRows,
+  filesTreeItem,
   folderRowKey,
   listedFilesRows,
   treeFolders,
@@ -466,5 +467,48 @@ suite('Changes tree rows', () => {
       }
     }
     assert.deepStrictEqual(toggled, ['docs false', 'src true', 'src/lib true']);
+  });
+});
+
+suite('Files tree for assistive technology', () => {
+  const folder: ChangesTreeRow = {
+    kind: 'folder',
+    name: 'a',
+    path: 'a',
+    depth: 0,
+    open: true,
+    changed: true,
+  };
+  const closed: ChangesTreeRow = { ...folder, path: 'c', open: false };
+  const file: ChangesTreeRow = {
+    kind: 'file',
+    name: 'b',
+    path: 'a/b',
+    change: undefined,
+    depth: 1,
+  };
+
+  test('tells how deep each row lies, under the header of its side when it has one, and whether a folder is open', () => {
+    const sides = filesRows([
+      { area: 'staged', header: true, rows: [folder, file] },
+      { area: 'unstaged', header: true, rows: [closed] },
+    ]);
+    assert.deepStrictEqual(
+      sides.map((_, index) => filesTreeItem(sides, index)),
+      [
+        { level: 1 },
+        { level: 2, expanded: true },
+        { level: 3 },
+        { level: 1 },
+        { level: 2, expanded: false },
+      ],
+    );
+    const alone = filesRows([
+      { area: undefined, header: false, rows: [folder, file] },
+    ]);
+    assert.deepStrictEqual(
+      alone.map((_, index) => filesTreeItem(alone, index)),
+      [{ level: 1, expanded: true }, { level: 2 }],
+    );
   });
 });

@@ -27,6 +27,7 @@ export function FolderRow({
   className,
   style,
   onToggle,
+  itemProps,
   children,
 }: {
   path: string;
@@ -36,10 +37,12 @@ export function FolderRow({
   className: string;
   style?: React.CSSProperties;
   onToggle: (folder: string) => void;
+  itemProps?: React.HTMLAttributes<HTMLDivElement>;
   children: React.ReactNode;
 }) {
   return (
     <div
+      {...itemProps}
       className={`row tree-row folder ${className}`}
       style={{ paddingLeft: treeIndent(depth), ...style }}
       title={title}

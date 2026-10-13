@@ -111,10 +111,17 @@ export function TabBar({
 
   return (
     <nav className="tabs" ref={bar}>
-      <div className="tab-list" ref={list}>
+      <div
+        className="tab-list"
+        ref={list}
+        role="tablist"
+        aria-label={strings.tabs.repositories}
+      >
         {tabs.map((tab) => (
           <div
             key={tab.root}
+            role="tab"
+            aria-selected={tab.root === active}
             className={`tab ${tab.root === active ? 'active' : ''}`}
             title={tab.root}
             onClick={() => {

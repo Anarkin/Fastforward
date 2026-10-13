@@ -31,6 +31,8 @@ export function MenuButton({
         ref={trigger}
         className={`nav-button menu-button-trigger ${open ? 'open' : ''}`}
         title={title}
+        aria-haspopup="menu"
+        aria-expanded={open}
         onClick={() => setOpen(!open)}
       >
         {icon}

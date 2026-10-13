@@ -128,6 +128,8 @@ export const strings = {
     copyTitle: 'Copy these lines, as for a bug report',
   },
   tabs: {
+    repositories: 'Repositories',
+    worktrees: 'Worktrees',
     browse: 'Browse...',
     removeRecent: (name: string) => `Remove ${name} from this list`,
     settings: 'Settings',
@@ -239,6 +241,7 @@ export const strings = {
   },
   search: {
     placeholder: 'Search…',
+    locations: 'Locations',
     localBranches: 'Local branches',
     remoteBranches: 'Remote branches',
     tags: 'Tags',
@@ -268,6 +271,7 @@ export const strings = {
         : count === 1
           ? '1 uncommitted change'
           : `${count} uncommitted changes`,
+    list: 'Commits',
     settings: 'Commit list settings',
     collapseMerges: 'Collapse merge commits',
     solo: 'Solo: show only the history of the checked-out commit',

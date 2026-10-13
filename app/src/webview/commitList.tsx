@@ -3,6 +3,7 @@ import {
   useContext,
   useEffect,
   useEffectEvent,
+  useId,
   useLayoutEffect,
   useRef,
   useState,
@@ -58,6 +59,7 @@ import { SoloIcon } from './icons';
 import { useCappedScroll } from './cappedVirtualizer';
 import { realHeight } from './cappedScroll';
 import { rowPlace } from './rowPlace';
+import { activeDescendant, rowId } from './virtualRows';
 
 export const commitRowHeight = 50;
 export const workingTreeRowHeight = 30;
@@ -576,6 +578,40 @@ function selectionClasses(hash: string, selection: string | undefined) {
     : ['selected'];
 }
 
+export function commitOption(
+  list: string,
+  key: VirtualItem['key'],
+  index: number,
+  count: number,
+  selection: string | undefined,
+) {
+  return {
+    id: rowId(list, key),
+    role: 'option',
+    'aria-selected':
+      typeof key === 'string' && sidesOf(selection).includes(key),
+    'aria-setsize': count,
+    'aria-posinset': index + 1,
+  };
+}
+
+export function commitListbox(
+  list: string,
+  drawn: readonly { readonly key: VirtualItem['key'] }[],
+  selection: string | undefined,
+) {
+  return {
+    role: 'listbox',
+    'aria-label': strings.commits.list,
+    'aria-multiselectable': comparedOf(selection) !== undefined,
+    'aria-activedescendant': activeDescendant(
+      list,
+      shownSide(selection),
+      drawn,
+    ),
+  };
+}
+
 export function WorkingTreeRow({
   count,
   selection,
@@ -667,6 +703,7 @@ export function Commits({
     history?.getVersion ?? noVersion,
   );
   const list = useRef<HTMLDivElement>(null);
+  const listId = useId();
   const detached = useContext(DetachedHead);
   const hasWorkingTree = workingTree !== undefined;
   const openMenu = useContext(OpenContextMenu);
@@ -970,6 +1007,7 @@ export function Commits({
         ref={list}
         tabIndex={0}
         {...{ [columnFocusAttribute]: '' }}
+        {...commitListbox(listId, rows, selected)}
         onKeyDown={onKeyDown}
         onContextMenu={(event) => {
           const target = keyboardMenuTarget(selected, stashes);
@@ -1004,6 +1042,7 @@ export function Commits({
             return (
               <div
                 key={row.key}
+                {...commitOption(listId, row.key, row.index, count, selected)}
                 className="virtual-row"
                 data-index={row.index}
                 ref={
@@ -1069,6 +1108,7 @@ export function CommitRow({
   onSelect,
   onCompare,
   highlight = '',
+  itemProps,
 }: {
   commit: CommitInfo;
   selected: string | undefined;
@@ -1080,10 +1120,12 @@ export function CommitRow({
   onSelect: (hash: string) => void;
   onCompare?: (hash: string) => void;
   highlight?: string;
+  itemProps?: React.HTMLAttributes<HTMLDivElement>;
 }) {
   const openMenu = useContext(OpenContextMenu);
   return (
     <div
+      {...itemProps}
       className={commitClass(commit.hash, selected, headCommit)}
       style={{ paddingLeft: indent }}
       onClick={(event: Click) =>

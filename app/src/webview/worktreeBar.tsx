@@ -48,7 +48,11 @@ export function WorktreeBar({
 
   return (
     <nav className="worktrees">
-      <div className="tab-list">
+      <div
+        className="tab-list"
+        role="tablist"
+        aria-label={strings.tabs.worktrees}
+      >
         {worktrees === undefined && (
           <div
             className={`tab skeleton-tab ${skeleton ? '' : 'waiting'}`}
@@ -60,6 +64,9 @@ export function WorktreeBar({
         {worktrees?.map((worktree) => (
           <div
             key={worktree.root}
+            role="tab"
+            aria-selected={worktree.root === active}
+            aria-disabled={worktree.missing || undefined}
             className={`tab ${worktree.root === active ? 'active' : ''} ${worktree.missing ? 'missing' : ''}`}
             title={
               worktree.missing

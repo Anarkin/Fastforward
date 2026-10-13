@@ -15,6 +15,7 @@ import {
   filesAncestors,
   filesKey,
   filesRows,
+  filesTreeItem,
   folderRowKey,
   listedFilesRows,
   shownFileKey,
@@ -358,6 +359,8 @@ export function Files({
             : header(row.area);
         }}
         ancestorsOf={(index) => filesAncestors(rows, index)}
+        treeItemOf={(index) => filesTreeItem(rows, index)}
+        label={title}
         selectedKey={cursor}
         revealWith={filesReveal(
           rows,

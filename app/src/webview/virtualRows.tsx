@@ -1,11 +1,29 @@
 import { useVirtualizer, type Rect } from '@tanstack/react-virtual';
-import { useEffect, useEffectEvent, useRef } from 'react';
+import { useEffect, useEffectEvent, useId, useRef } from 'react';
 import { columnFocusAttribute } from './activeColumn';
 import { uniformHeight } from './diffView';
 import { fullyVisible, type VisibleRows } from './listMoves';
 import { rowPlace } from './rowPlace';
 
 const estimateSize = () => uniformHeight;
+
+export const rowId = (list: string, key: React.Key) =>
+  `${list}${encodeURIComponent(String(key))}`;
+
+export function activeDescendant(
+  list: string,
+  key: React.Key | undefined,
+  drawn: readonly { readonly key: React.Key }[],
+): string | undefined {
+  return key !== undefined && drawn.some((row) => row.key === key)
+    ? rowId(list, key)
+    : undefined;
+}
+
+export interface TreeItem {
+  readonly level: number;
+  readonly expanded?: boolean;
+}
 
 export interface ListedRows {
   readonly count: number;
@@ -115,6 +133,8 @@ export function VirtualRows({
   ancestorsOf = noAncestors,
   onKeyDown,
   initialRect,
+  label,
+  treeItemOf,
 }: {
   rows: ListedRows;
   renderRow: (index: number) => React.ReactNode;
@@ -123,8 +143,11 @@ export function VirtualRows({
   ancestorsOf?: (index: number) => readonly number[];
   onKeyDown?: (event: React.KeyboardEvent, visible: VisibleRows) => void;
   initialRect?: Rect;
+  label?: string;
+  treeItemOf?: (index: number) => TreeItem;
 }) {
   const list = useRef<HTMLDivElement>(null);
+  const listId = useId();
   const virtualizer = useVirtualizer({
     count: rows.count,
     getScrollElement: () => list.current,
@@ -170,10 +193,25 @@ export function VirtualRows({
     ancestorsOf,
   );
 
+  const drawn = virtualizer.getVirtualItems();
+  const itemProps = (index: number, key: React.Key) => {
+    const item = treeItemOf?.(index);
+    return {
+      id: rowId(listId, key),
+      role: treeItemOf ? 'treeitem' : 'option',
+      'aria-selected': key === selectedKey,
+      'aria-level': item?.level,
+      'aria-expanded': item?.expanded,
+    };
+  };
+
   return (
     <div
       className="virtual-rows"
       ref={list}
+      role={treeItemOf ? 'tree' : 'listbox'}
+      aria-label={label}
+      aria-activedescendant={activeDescendant(listId, selectedKey, drawn)}
       {...(onKeyDown
         ? {
             tabIndex: 0,
@@ -207,9 +245,10 @@ export function VirtualRows({
             ))}
           </div>
         )}
-        {virtualizer.getVirtualItems().map((item) => (
+        {drawn.map((item) => (
           <div
             key={item.key}
+            {...itemProps(item.index, item.key)}
             className="virtual-row"
             data-index={item.index}
             ref={virtualizer.measureElement}

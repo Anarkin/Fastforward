@@ -1400,7 +1400,8 @@ body.resizing {
   padding-bottom: 4px;
 }
 
-.locations-list .row.result.active {
+.locations-list .row.result.active,
+.locations-list .row.tree-row.active {
   color: var(--color-foreground);
   background: var(--selection-background);
 }

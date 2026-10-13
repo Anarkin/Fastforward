@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { JSDOM } from 'jsdom';
 import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, suite, test, vi } from 'vitest';
@@ -122,5 +123,43 @@ suite('Worktree bar', () => {
     rested();
     feature.props.onClick?.();
     assert.deepStrictEqual([selected, preloaded], [['/c'], ['/c']]);
+  });
+});
+
+suite('Worktree bar for assistive technology', () => {
+  test('tells that the worktrees form a tab list, which one is open, and which are gone', () => {
+    const document = new JSDOM(
+      renderToStaticMarkup(
+        <WorktreeBar
+          worktrees={[
+            {
+              root: '/a',
+              name: 'main',
+              folder: 'a',
+              main: true,
+              missing: false,
+            },
+            { root: '/b', name: 'b', folder: 'b', main: false, missing: true },
+          ]}
+          active="/a"
+          onSelect={noop}
+          onPreload={noop}
+        />,
+      ),
+    ).window.document;
+    assert.strictEqual(
+      document.querySelector('[role="tablist"]')?.getAttribute('aria-label'),
+      'Worktrees',
+    );
+    assert.deepStrictEqual(
+      Array.from(document.querySelectorAll('[role="tab"]'), (tab) => [
+        tab.getAttribute('aria-selected'),
+        tab.getAttribute('aria-disabled'),
+      ]),
+      [
+        ['true', null],
+        ['false', 'true'],
+      ],
+    );
   });
 });

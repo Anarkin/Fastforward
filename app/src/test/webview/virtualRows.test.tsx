@@ -1,15 +1,17 @@
 import * as assert from 'node:assert';
+import { JSDOM } from 'jsdom';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { uniformHeight } from '../../webview/diffView';
 import {
+  activeDescendant,
   pinnedRows,
   revealAgain,
   revealOffset,
   scrollTarget,
   VirtualRows,
 } from '../../webview/virtualRows';
-import { countingReads } from '../fixtures';
+import { countingReads, noop } from '../fixtures';
 
 suite('Virtual rows', () => {
   test('scrolls to the selected row again once it arrives, as a tree loads after its file was selected', () => {
@@ -154,5 +156,87 @@ suite('Revealing a row', () => {
 
   test('scrolls a row below the view up to its bottom', () => {
     assert.strictEqual(revealOffset(row, 0, 150, 40), 70);
+  });
+});
+
+suite('Virtual rows for assistive technology', () => {
+  const keys = ['folder:a', 'file:a/b', 'file:c'];
+  const listed = {
+    count: keys.length,
+    keyOf: (index: number) => keys[index],
+    indexOf: (key: string) => keys.indexOf(key),
+  };
+  const drawn = (selectedKey: string, tree: boolean) =>
+    new JSDOM(
+      renderToStaticMarkup(
+        <VirtualRows
+          rows={listed}
+          renderRow={(index) => keys[index]}
+          selectedKey={selectedKey}
+          label="Files"
+          treeItemOf={
+            tree
+              ? (index) =>
+                  index === 0
+                    ? { level: 1, expanded: true }
+                    : { level: index === 1 ? 2 : 1 }
+              : undefined
+          }
+          onKeyDown={noop}
+          initialRect={{ width: 400, height: 240 }}
+        />,
+      ),
+    ).window.document;
+
+  test('tells that the rows form a tree, how deep each lies, whether a folder is open, and which row is picked', () => {
+    const document = drawn('file:a/b', true);
+    const tree = document.querySelector('[role="tree"]');
+    assert.strictEqual(tree?.getAttribute('aria-label'), 'Files');
+    assert.deepStrictEqual(
+      Array.from(document.querySelectorAll('[role="treeitem"]'), (item) => [
+        item.textContent,
+        item.getAttribute('aria-level'),
+        item.getAttribute('aria-expanded'),
+        item.getAttribute('aria-selected'),
+      ]),
+      [
+        ['folder:a', '1', 'true', 'false'],
+        ['file:a/b', '2', null, 'true'],
+        ['file:c', '1', null, 'false'],
+      ],
+    );
+    assert.strictEqual(
+      document.getElementById(tree.getAttribute('aria-activedescendant') ?? '')
+        ?.textContent,
+      'file:a/b',
+    );
+  });
+
+  test('tells that the rows form a list without levels', () => {
+    const document = drawn('file:c', false);
+    const list = document.querySelector('[role="listbox"]');
+    assert.ok(list);
+    assert.strictEqual(document.querySelectorAll('[role="option"]').length, 3);
+    assert.strictEqual(
+      document
+        .getElementById(list.getAttribute('aria-activedescendant') ?? '')
+        ?.getAttribute('aria-selected'),
+      'true',
+    );
+  });
+
+  test('points at the picked row only while it is drawn, as the row it points at must exist', () => {
+    const items = [{ key: 'a' }, { key: 2 }];
+    assert.strictEqual(activeDescendant('list-', 'a', items), 'list-a');
+    assert.strictEqual(activeDescendant('list-', 2, items), 'list-2');
+    assert.strictEqual(activeDescendant('list-', 'b', items), undefined);
+    assert.strictEqual(activeDescendant('list-', undefined, items), undefined);
+  });
+
+  test('gives a row whose path holds spaces an id without them, as aria-activedescendant takes no spaces, keeping it apart from the ids of other paths', () => {
+    const items = [{ key: 'file:a b' }, { key: 'file:a%20b' }];
+    const ids = items.map(({ key }) => activeDescendant('list-', key, items));
+    assert.ok(ids.every((id) => id !== undefined && !/\s/.test(id)));
+    assert.strictEqual(new Set(ids).size, 2);
   });
 });

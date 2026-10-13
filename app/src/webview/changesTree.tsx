@@ -3,7 +3,7 @@ import { buildFileTree, foldersOf, type FolderNode } from './fileTree';
 import { byName } from './byName';
 import { moveInList, type ListMove, type VisibleRows } from './listMoves';
 import { FileRow, fileRowKey, FolderRow } from './tree';
-import type { ListedRows } from './virtualRows';
+import type { ListedRows, TreeItem } from './virtualRows';
 
 export type ChangesTreeRow =
   | {
@@ -291,6 +291,20 @@ export function filesAncestors(
         (ancestor) => ancestor + index - row.index,
       )
     : [];
+}
+
+export function filesTreeItem(
+  rows: readonly FilesRow[],
+  index: number,
+): TreeItem {
+  const row = rows[index];
+  const tree = treeRowOf(row);
+  if (row?.kind !== 'tree' || !tree) {
+    return { level: 1 };
+  }
+  const level =
+    tree.depth + (rows[index - row.index - 1]?.kind === 'header' ? 2 : 1);
+  return tree.kind === 'folder' ? { level, expanded: tree.open } : { level };
 }
 
 export function changesTreeElement(

@@ -1,6 +1,7 @@
 import {
   useContext,
   useEffect,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -18,7 +19,7 @@ import type {
   ToWebviewOf,
 } from '../shared/protocol';
 import { findRef } from '../shared/refNames';
-import { pinnedRefs } from './bookmarks';
+import { pinnedRefs, type PinnedRefs } from './bookmarks';
 import { byName } from './byName';
 import { BackIcon } from './icons';
 import { columnFocusOf } from './activeColumn';
@@ -176,13 +177,118 @@ export function resultItems(
   ];
 }
 
+const commitKey = (hash: string) => `commit:${hash}`;
+
+const stashKey = (stash: StashInfo) => `stash:${stash.name}`;
+
+const refKey = (ref: RefInfo) => `${ref.kind}:${ref.name}`;
+
+const pinnedKey = (section: string, item: Bookmark) =>
+  `pinned:${section}:${item.kind}:${item.name}`;
+
+const folderKey = (kind: RefKind, path: string) => `folder:${kind}:${path}`;
+
 export function itemKey(item: ResultItem): string {
   return item.kind === 'commit'
-    ? `commit:${item.commit.hash}`
+    ? commitKey(item.commit.hash)
     : item.kind === 'stash'
-      ? `stash:${item.stash.name}`
-      : `${item.ref.kind}:${item.ref.name}`;
+      ? stashKey(item.stash)
+      : refKey(item.ref);
 }
+
+type BrowseRow =
+  | {
+      readonly kind: 'jump';
+      readonly key: string;
+      readonly commit: string | undefined;
+    }
+  | { readonly kind: 'folder'; readonly key: string };
+
+function folderOpen(
+  toggled: ReadonlySet<string>,
+  key: string,
+  depth: number,
+  siblings: number,
+): boolean {
+  return (depth === 0 && siblings === 1) !== toggled.has(key);
+}
+
+function treeRows(
+  node: TreeNode,
+  kind: RefKind,
+  toggled: ReadonlySet<string>,
+  depth = 0,
+  prefix = '',
+): BrowseRow[] {
+  return shownChildren(node.children).shown.flatMap((child): BrowseRow[] => {
+    const path = `${prefix}${child.name}`;
+    if (child.children.length === 0) {
+      return child.ref
+        ? [{ kind: 'jump', key: refKey(child.ref), commit: child.ref.commit }]
+        : [];
+    }
+    const key = folderKey(kind, path);
+    return [
+      { kind: 'folder', key },
+      ...(folderOpen(toggled, key, depth, node.children.length)
+        ? treeRows(child, kind, toggled, depth + 1, `${path}/`)
+        : []),
+    ];
+  });
+}
+
+const pinnedCommit = (item: Bookmark, refs: readonly RefInfo[]) =>
+  item.kind === 'commit' ? item.name : findRef(refs, item)?.commit;
+
+const pinnedSections = ['checkedOut', 'bookmarks'] as const;
+
+function browseRows(
+  pinned: PinnedRefs,
+  refs: readonly RefInfo[],
+  trees: readonly { kind: RefKind; tree: TreeNode }[],
+  toggled: ReadonlySet<string>,
+  stashes: readonly StashInfo[],
+): BrowseRow[] {
+  return [
+    ...pinnedSections.flatMap((section) =>
+      pinned[section].map((item): BrowseRow => ({
+        kind: 'jump',
+        key: pinnedKey(section, item),
+        commit: pinnedCommit(item, refs),
+      })),
+    ),
+    ...trees.flatMap(({ kind, tree }) => treeRows(tree, kind, toggled)),
+    ...stashes.map((stash): BrowseRow => ({
+      kind: 'jump',
+      key: stashKey(stash),
+      commit: stash.commit,
+    })),
+  ];
+}
+
+interface Rows {
+  readonly tree: boolean;
+  readonly id: (key: string) => string;
+  readonly active: string | undefined;
+  readonly toggled: ReadonlySet<string>;
+  readonly onToggle: (key: string) => void;
+}
+
+function rowProps(
+  rows: Rows,
+  key: string,
+  level: number,
+): React.HTMLAttributes<HTMLDivElement> {
+  return {
+    id: rows.id(key),
+    role: rows.tree ? 'treeitem' : 'option',
+    'aria-selected': key === rows.active,
+    'aria-level': rows.tree ? level : undefined,
+  };
+}
+
+const activeClass = (rows: Rows, key: string | undefined) =>
+  key !== undefined && key === rows.active ? 'active' : '';
 
 export interface Highlighted {
   readonly query: string;
@@ -204,7 +310,7 @@ export function currentActive(
 }
 
 export function nextActive(
-  items: readonly ResultItem[],
+  items: readonly unknown[],
   active: number,
   step: 1 | -1,
 ): number {
@@ -281,6 +387,7 @@ function CommitResultsSection({
   refsByCommit,
   stashCommits,
   headCommit,
+  rows,
   onJump,
 }: {
   hash: string | undefined;
@@ -294,6 +401,7 @@ function CommitResultsSection({
   refsByCommit: ReadonlyMap<string, readonly RefInfo[]>;
   stashCommits: ReadonlySet<string>;
   headCommit: string | undefined;
+  rows: Rows;
   onJump: (commit: string) => void;
 }) {
   const detached = useContext(DetachedHead);
@@ -309,7 +417,11 @@ function CommitResultsSection({
     ) : null;
   }
   return (
-    <section className="locations-group">
+    <section
+      className="locations-group"
+      role="group"
+      aria-label={strings.search.commits}
+    >
       <GroupHeading
         title={strings.search.commits}
         count={found.length + hashMore}
@@ -327,6 +439,7 @@ function CommitResultsSection({
             indent={commitIndent}
             onSelect={onJump}
             highlight={query}
+            itemProps={rowProps(rows, commitKey(commit.hash), 1)}
           />
         ))}
         {(lookingUp || searching) && (
@@ -389,10 +502,11 @@ export function focusLeaves<
 
 export function popupKeyAction(
   event: Parameters<typeof keyPressed>[1],
-  query: string,
 ): 1 | -1 | 'enter' | undefined {
-  const step = query.trim() ? keyPressed(keymap.result, event) : undefined;
-  return step ?? (keyPressed(keymap.go, event) ? 'enter' : undefined);
+  return (
+    keyPressed(keymap.result, event) ??
+    (keyPressed(keymap.go, event) ? 'enter' : undefined)
+  );
 }
 
 export function LocationsPopup({
@@ -438,6 +552,11 @@ export function LocationsPopup({
     [refs],
   );
   const index = useMemo(() => indexRefs(refs), [refs]);
+  const trees = useMemo(
+    () =>
+      index.map((group) => ({ kind: group.kind, tree: buildTree(group.refs) })),
+    [index],
+  );
   const search = useMemo(() => searchRefs(index, query), [index, query]);
   const stashes = useMemo(() => repository?.stashes ?? [], [repository]);
   const stashCommits = useMemo(
@@ -492,16 +611,41 @@ export function LocationsPopup({
     [commits, search, stashSearch],
   );
   const [highlight, setHighlight] = useState<Highlighted>();
-  const active = currentActive(items, query, highlight);
+  const [toggled, setToggled] = useState<ReadonlySet<string>>(new Set());
+  const browsed = hasQuery
+    ? []
+    : browseRows(pinned, refs, trees, toggled, drawnStashes.stashes);
+  const active = hasQuery
+    ? currentActive(items, query, highlight)
+    : highlight?.query === query
+      ? browsed.findIndex((row) => row.key === highlight.key)
+      : -1;
   const activeItem = hasQuery ? items.at(active) : undefined;
-  const activeKey = activeItem && itemKey(activeItem);
+  const activeRow = active === -1 ? undefined : browsed.at(active);
+  const activeKey = activeItem ? itemKey(activeItem) : activeRow?.key;
+  const baseId = useId();
+  const resultsId = `${baseId}results`;
+  const rows: Rows = {
+    tree: !hasQuery,
+    id: (key) => `${baseId}${key}`,
+    active: activeKey,
+    toggled,
+    onToggle: (key) => {
+      const next = new Set(toggled);
+      if (!next.delete(key)) {
+        next.add(key);
+      }
+      setToggled(next);
+    },
+  };
+  const activeId = activeKey === undefined ? undefined : rows.id(activeKey);
   useEffect(() => {
-    if (activeKey) {
-      popup.current
-        ?.querySelector('.row.result.active, .commit.selected')
+    if (activeId !== undefined) {
+      popup.current?.ownerDocument
+        .getElementById(activeId)
         ?.scrollIntoView({ block: 'nearest' });
     }
-  }, [activeKey]);
+  }, [activeId]);
 
   const jump = (target: string | undefined) => {
     if (target) {
@@ -513,16 +657,25 @@ export function LocationsPopup({
   useDismiss(anchor, onClose, { ignore: contextMenus });
 
   const onKeyDown = (event: React.KeyboardEvent) => {
-    const action = popupKeyAction(event.nativeEvent, query);
+    const action = popupKeyAction(event.nativeEvent);
     if (typeof action === 'number') {
       event.preventDefault();
-      const next = items.at(nextActive(items, active, action));
+      const keys = hasQuery
+        ? items.map(itemKey)
+        : browsed.map((row) => row.key);
+      const next = keys.at(nextActive(keys, active, action));
       if (next) {
-        setHighlight({ query, key: itemKey(next) });
+        setHighlight({ query, key: next });
       }
     } else if (action === 'enter') {
       event.preventDefault();
-      jump(enterTarget(query, found, activeItem, highlight?.query === query));
+      if (activeRow?.kind === 'folder') {
+        rows.onToggle(activeRow.key);
+      } else if (activeRow) {
+        jump(activeRow.commit);
+      } else {
+        jump(enterTarget(query, found, activeItem, highlight?.query === query));
+      }
     }
   };
 
@@ -551,11 +704,21 @@ export function LocationsPopup({
           placeholder={strings.search.placeholder}
           ref={input}
           autoFocus
+          role="combobox"
+          aria-expanded
+          aria-autocomplete="list"
+          aria-controls={resultsId}
+          aria-activedescendant={activeId}
           value={query}
           onChange={(event) => onQuery(event.target.value)}
         />
       </div>
-      <div className="locations-groups">
+      <div
+        className="locations-groups"
+        id={resultsId}
+        role={hasQuery ? 'listbox' : 'tree'}
+        aria-label={strings.search.locations}
+      >
         {(hash || text) && (
           <CommitResultsSection
             hash={hash}
@@ -571,19 +734,24 @@ export function LocationsPopup({
             refsByCommit={refsByCommit}
             stashCommits={stashCommits}
             headCommit={repository?.headCommit}
+            rows={rows}
             onJump={jump}
           />
         )}
         <PinnedSection
           title={strings.search.checkedOut}
+          section="checkedOut"
           items={pinned.checkedOut}
           refs={refs}
+          rows={rows}
           onJump={jump}
         />
         <PinnedSection
           title={strings.search.bookmarks}
+          section="bookmarks"
           items={pinned.bookmarks}
           refs={refs}
+          rows={rows}
           onJump={jump}
         />
         {hasQuery && !hash && nothingFound && (
@@ -591,7 +759,12 @@ export function LocationsPopup({
         )}
         {search.map((group, i) =>
           hasQuery && group.refs.length === 0 ? null : (
-            <section key={group.kind} className="locations-group">
+            <section
+              key={group.kind}
+              className="locations-group"
+              role="group"
+              aria-label={group.title}
+            >
               <GroupHeading
                 title={group.title}
                 count={
@@ -605,13 +778,16 @@ export function LocationsPopup({
                   <SearchResults
                     group={group}
                     query={query}
-                    active={
-                      activeItem?.kind === 'ref' ? activeItem.ref : undefined
-                    }
+                    rows={rows}
                     onJump={jump}
                   />
                 ) : (
-                  <RefTree refs={index[i].refs} onSelect={jump} />
+                  <RefTree
+                    kind={group.kind}
+                    tree={trees[i].tree}
+                    rows={rows}
+                    onSelect={jump}
+                  />
                 )}
               </div>
             </section>
@@ -621,7 +797,7 @@ export function LocationsPopup({
           stashes={drawnStashes.stashes}
           more={drawnStashes.more}
           query={query}
-          active={activeItem?.kind === 'stash' ? activeItem.stash : undefined}
+          rows={rows}
           onJump={jump}
         />
       </div>
@@ -633,20 +809,24 @@ function StashesSection({
   stashes,
   more,
   query,
-  active,
+  rows,
   onJump,
 }: {
   stashes: readonly StashInfo[];
   more: number;
   query: string;
-  active: StashInfo | undefined;
+  rows: Rows;
   onJump: (commit: string) => void;
 }) {
   if (stashes.length === 0) {
     return null;
   }
   return (
-    <section className="locations-group">
+    <section
+      className="locations-group"
+      role="group"
+      aria-label={strings.search.stashes}
+    >
       <GroupHeading
         title={strings.search.stashes}
         count={stashes.length + more}
@@ -655,7 +835,8 @@ function StashesSection({
         {stashes.map((stash) => (
           <div
             key={stash.name}
-            className={`row result ${stash === active ? 'active' : ''}`}
+            {...rowProps(rows, stashKey(stash), 1)}
+            className={`row result ${activeClass(rows, stashKey(stash))}`}
             title={stash.message}
             onClick={() => onJump(stash.commit)}
           >
@@ -686,13 +867,17 @@ function GroupHeading({ title, count }: { title: string; count: number }) {
 
 function PinnedSection({
   title,
+  section,
   items,
   refs,
+  rows,
   onJump,
 }: {
   title: string;
+  section: (typeof pinnedSections)[number];
   items: readonly Bookmark[];
   refs: readonly RefInfo[];
+  rows: Rows;
   onJump: (commit: string) => void;
 }) {
   const detached = useContext(DetachedHead);
@@ -700,16 +885,17 @@ function PinnedSection({
     return null;
   }
   return (
-    <section className="locations-group">
+    <section className="locations-group" role="group" aria-label={title}>
       <GroupHeading title={title} count={items.length} />
       <div className="locations-list">
         {items.map((item) => {
-          const commit =
-            item.kind === 'commit' ? item.name : findRef(refs, item)?.commit;
+          const commit = pinnedCommit(item, refs);
+          const key = pinnedKey(section, item);
           return (
             <div
               key={`${item.kind}:${item.name}`}
-              className="row result pinned"
+              {...rowProps(rows, key, 1)}
+              className={`row result pinned ${activeClass(rows, key)}`}
               onClick={() => commit && onJump(commit)}
             >
               {item.kind !== 'commit' ? (
@@ -730,12 +916,12 @@ function PinnedSection({
 function SearchResults({
   group,
   query,
-  active,
+  rows,
   onJump,
 }: {
   group: SearchGroup;
   query: string;
-  active: RefInfo | undefined;
+  rows: Rows;
   onJump: (commit: string) => void;
 }) {
   const openMenu = useContext(OpenContextMenu);
@@ -744,7 +930,8 @@ function SearchResults({
       {group.refs.map((ref) => (
         <div
           key={ref.name}
-          className={`row result ${ref === active ? 'active' : ''}`}
+          {...rowProps(rows, refKey(ref), 1)}
+          className={`row result ${activeClass(rows, refKey(ref))}`}
           title={ref.name}
           onClick={() => onJump(ref.commit)}
           onContextMenu={(event) => openMenu(event, refMenuTarget(ref))}
@@ -812,26 +999,44 @@ export function shownChildren(
 }
 
 function RefTree({
-  refs,
+  kind,
+  tree,
+  rows,
   onSelect,
 }: {
-  refs: readonly RefInfo[];
+  kind: RefKind;
+  tree: TreeNode;
+  rows: Rows;
   onSelect: (commit: string) => void;
 }) {
-  const tree = useMemo(() => buildTree(refs), [refs]);
-  if (refs.length === 0) {
+  if (tree.children.length === 0) {
     return <div className="locations-empty">{strings.search.none}</div>;
   }
-  return <TreeChildren node={tree} depth={0} onSelect={onSelect} />;
+  return (
+    <TreeChildren
+      kind={kind}
+      node={tree}
+      depth={0}
+      prefix=""
+      rows={rows}
+      onSelect={onSelect}
+    />
+  );
 }
 
 function TreeChildren({
+  kind,
   node,
   depth,
+  prefix,
+  rows,
   onSelect,
 }: {
+  kind: RefKind;
   node: TreeNode;
   depth: number;
+  prefix: string;
+  rows: Rows;
   onSelect: (commit: string) => void;
 }) {
   const openMenu = useContext(OpenContextMenu);
@@ -844,15 +1049,19 @@ function TreeChildren({
         child.children.length > 0 ? (
           <TreeFolder
             key={child.name}
+            kind={kind}
             node={child}
             depth={depth}
+            path={`${prefix}${child.name}`}
+            siblings={children.length}
+            rows={rows}
             onSelect={onSelect}
-            initiallyOpen={depth === 0 && children.length === 1}
           />
         ) : (
           <div
             key={child.name}
-            className="row tree-row leaf"
+            {...(child.ref && rowProps(rows, refKey(child.ref), depth + 1))}
+            className={`row tree-row leaf ${activeClass(rows, child.ref && refKey(child.ref))}`}
             style={{ paddingLeft: leafIndent(depth, withFolders) }}
             title={child.ref?.name}
             onClick={() => child.ref && onSelect(child.ref.commit)}
@@ -881,31 +1090,49 @@ function TreeChildren({
 }
 
 function TreeFolder({
+  kind,
   node,
   depth,
+  path,
+  siblings,
+  rows,
   onSelect,
-  initiallyOpen,
 }: {
+  kind: RefKind;
   node: TreeNode;
   depth: number;
+  path: string;
+  siblings: number;
+  rows: Rows;
   onSelect: (commit: string) => void;
-  initiallyOpen: boolean;
 }) {
-  const [open, setOpen] = useState(initiallyOpen);
+  const key = folderKey(kind, path);
+  const open = folderOpen(rows.toggled, key, depth, siblings);
   return (
     <div className="tree-group">
       <FolderRow
         path={node.name}
         depth={depth}
         open={open}
-        className="sticky"
+        className={`sticky ${activeClass(rows, key)}`}
         style={{ top: depth * stickyRowHeight, zIndex: 100 - depth }}
-        onToggle={() => setOpen(!open)}
+        onToggle={() => rows.onToggle(key)}
+        itemProps={{
+          ...rowProps(rows, key, depth + 1),
+          'aria-expanded': open,
+        }}
       >
         {node.name}
       </FolderRow>
       {open && (
-        <TreeChildren node={node} depth={depth + 1} onSelect={onSelect} />
+        <TreeChildren
+          kind={kind}
+          node={node}
+          depth={depth + 1}
+          prefix={`${path}/`}
+          rows={rows}
+          onSelect={onSelect}
+        />
       )}
     </div>
   );
