@@ -1188,6 +1188,16 @@ export class FastforwardView {
         this.forgetTab(root, tab);
       }
     }
+    for (const [root, owner] of this.repositories) {
+      if (
+        sameRoot(owner, repository) &&
+        !sameRoot(root, repository) &&
+        !listed.some((worktree) => sameRoot(worktree.path, root)) &&
+        (active === undefined || !sameRoot(active, root))
+      ) {
+        this.repositories.delete(root);
+      }
+    }
   }
 
   private forgetTab(root: string, tab: Tab): void {
@@ -1508,6 +1518,7 @@ export class FastforwardView {
     }
     session.watcher = watcher;
     if (performance.now() - started > this.delays.delay) {
+      void this.inFlight.track(this.loadWorktrees(session, context.repository));
       void this.run(
         strings.log.refreshingFailed,
         session,

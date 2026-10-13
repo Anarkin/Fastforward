@@ -186,6 +186,62 @@ suite('View of worktrees', () => {
     }
   });
 
+  test('offers a recent repository again once a worktree at its folder is removed, as it stayed hidden as one of the open tab', async () => {
+    const own = await tempRepository(path.join(folder, 'reused'));
+    await own.commit('a');
+    const linked = path.join(folder, 'reused.worktrees', 'linked');
+    await own.git('worktree', 'add', '-q', '--detach', linked);
+    const opened = await openView(log, [own.root]);
+    try {
+      const linkedRoot = worktreeRoot(opened, linked);
+      await opened.store.update(recentKey, [linkedRoot]);
+      await opened.connection.receive({ type: 'sortTabs' });
+      assert.deepStrictEqual(opened.page.last('tabs')?.recent, []);
+      await own.git('worktree', 'remove', '--force', linked);
+      await waitFor(
+        () => worktreesOf(opened).length === 1,
+        'the removed worktree to be left out',
+      );
+      await opened.connection.receive({ type: 'sortTabs' });
+      assert.deepStrictEqual(
+        opened.page.last('tabs')?.recent.map((recent) => recent.root),
+        [linkedRoot],
+      );
+    } finally {
+      opened.connection.dispose();
+    }
+  });
+
+  test('lists the worktrees again once its watcher has started when starting took longer than a change waits to be told, as a worktree removed meanwhile went on showing', async () => {
+    const own = await tempRepository(path.join(folder, 'slow-watched'));
+    await own.commit('a');
+    const linked = path.join(folder, 'slow-watched.worktrees', 'linked');
+    await own.git('worktree', 'add', '-q', '--detach', linked);
+    const started = gate();
+    const opened = await openView(log, [own.root], false);
+    stubMethod(opened.view, 'startWatching', async (original, ...args) => {
+      await started.opened;
+      return original(...args);
+    });
+    try {
+      const ready = opened.connection.receive({ type: 'ready' });
+      await waitFor(
+        () => worktreesOf(opened).length === 2,
+        'the worktrees to be listed',
+      );
+      await own.git('worktree', 'remove', '--force', linked);
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      started.open();
+      await ready;
+      await waitFor(
+        () => worktreesOf(opened).length === 1,
+        'the worktree removed while the watcher started to be left out',
+      );
+    } finally {
+      opened.connection.dispose();
+    }
+  });
+
   test('keeps showing the worktrees listed last when listing them again fails', async () => {
     const own = await tempRepository(path.join(folder, 'unlisted'));
     await own.commit('a');

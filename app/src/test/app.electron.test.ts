@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { spawnSync, type ChildProcess } from 'node:child_process';
 import { once } from 'node:events';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -67,7 +68,7 @@ async function closeOrKill(app: ElectronApplication): Promise<void> {
   try {
     await within(closing, 'the app to close');
   } catch {
-    app.process().kill('SIGKILL');
+    killWithChildren(app.process());
     closing.catch(() => undefined);
   }
 }
@@ -78,6 +79,14 @@ function holdsStartLock(profile: string): boolean {
       fs.lstatSync(path.join(profile, name), { throwIfNoEntry: false }) !==
       undefined,
   );
+}
+
+function killWithChildren(child: ChildProcess): void {
+  if (process.platform === 'win32' && child.pid !== undefined) {
+    spawnSync('taskkill', ['/pid', String(child.pid), '/t', '/f']);
+    return;
+  }
+  child.kill('SIGKILL');
 }
 
 function waitForFocus(locator: Locator, what: string): Promise<void> {
@@ -241,6 +250,14 @@ suite('App', () => {
 
   function wrapsSaved(): boolean {
     return (savedSetting('wordWrap') ?? defaultSettings().wordWrap) === true;
+  }
+
+  function viewSaved(wordWrap: boolean, diffLayout: string): boolean {
+    const defaults = defaultSettings();
+    return (
+      (savedSetting('wordWrap') ?? defaults.wordWrap) === wordWrap &&
+      (savedSetting('diffLayout') ?? defaults.diffLayout) === diffLayout
+    );
   }
 
   async function resetSettings(): Promise<void> {
@@ -734,12 +751,14 @@ suite('App', () => {
           .getPropertyValue('--color-focus')
           .trim(),
       );
+    const colored = page.waitForEvent('load');
     fs.writeFileSync(
       file,
       JSON.stringify({
         colors: { light: { focus: '#123456' }, dark: { focus: '#123456' } },
       }),
     );
+    await colored;
     await page.waitForFunction(
       () =>
         getComputedStyle(document.documentElement)
@@ -747,11 +766,15 @@ suite('App', () => {
           .trim() === '#123456',
     );
     assert.strictEqual(await focus(), '#123456');
+    const broken = page.waitForEvent('load');
     fs.writeFileSync(file, '{ "showAllFiles": tru');
+    await broken;
     await page
       .locator('.notice.error', { hasText: 'not valid JSON' })
       .waitFor();
+    const emptied = page.waitForEvent('load');
     fs.writeFileSync(file, '{}');
+    await emptied;
     await page.waitForFunction(
       () =>
         getComputedStyle(document.documentElement)
@@ -830,13 +853,25 @@ suite('App', () => {
     const pressWrap = () => page.keyboard.press('w');
     const clickView = (name: string) => () =>
       page.getByRole('button', { name }).click();
-    for (const [change, shown, state] of [
-      [pressWrap, '.diff-view.wrap', 'detached'],
-      [pressWrap, '.diff-view.wrap', 'attached'],
-      [clickView('Side by Side'), '.diff-view.side-by-side', 'attached'],
-      [pressWrap, '.diff-view.wrap', 'detached'],
-      [clickView('Inline'), '.diff-view.side-by-side', 'detached'],
-      [pressWrap, '.diff-view.wrap', 'attached'],
+    for (const [change, shown, state, wraps, layout] of [
+      [pressWrap, '.diff-view.wrap', 'detached', false, 'inline'],
+      [pressWrap, '.diff-view.wrap', 'attached', true, 'inline'],
+      [
+        clickView('Side by Side'),
+        '.diff-view.side-by-side',
+        'attached',
+        true,
+        'sideBySide',
+      ],
+      [pressWrap, '.diff-view.wrap', 'detached', false, 'sideBySide'],
+      [
+        clickView('Inline'),
+        '.diff-view.side-by-side',
+        'detached',
+        false,
+        'inline',
+      ],
+      [pressWrap, '.diff-view.wrap', 'attached', true, 'inline'],
     ] as const) {
       await change();
       await page.locator(shown).waitFor({ state });
@@ -844,11 +879,11 @@ suite('App', () => {
         async () => (await topLine()) === reading,
         `${reading} to stay at the top once ${shown} is ${state}`,
       );
+      await waitFor(
+        () => viewSaved(wraps, layout),
+        `the choice that ${shown} is ${state} to be saved`,
+      );
     }
-    await waitFor(
-      () => wrapsSaved() && savedSetting('diffLayout') === 'inline',
-      'the last choices to be saved',
-    );
   });
 
   test('marks where each wrapped row ends right after its text, where the browser broke it, after punctuation too, rather than where the app estimates', async () => {
@@ -859,12 +894,17 @@ suite('App', () => {
       .locator('.diff-line', { has: page.locator('.wrap-break') })
       .first();
     await line.waitFor();
+    await waitFor(
+      () => marksFollowRows(line).catch(() => false),
+      'the marks to follow the rows',
+    );
     const rows = await wrappedRows(line);
     assert.ok(rows.length > 1, `${rows.length} rows`);
     assert.deepStrictEqual(
       rows,
       rows.map(() => ({ last: '-', follows: true })),
     );
+    await waitFor(() => wrapsSaved(), 'the choice to be saved');
   });
 
   test('moves the marks of a wrapped line along once the browser breaks it elsewhere, as it does when it gets a few pixels narrower, though the app estimates as many characters to a row', async () => {
@@ -899,6 +939,7 @@ suite('App', () => {
         ),
       before,
     );
+    await waitFor(() => wrapsSaved(), 'the choice to be saved');
   });
 
   test('scrolls the two sides of a side by side diff together on a sideways scrollbar, shown while a line is too wide', async () => {
@@ -918,10 +959,14 @@ suite('App', () => {
       steps: 5,
     });
     await page.mouse.up();
-    const after = await code.locator('.code').boundingBox();
-    assert.ok(after && after.x < before.x - 100, JSON.stringify(after));
-    const moved = await bar.boundingBox();
-    assert.ok(moved && moved.x > thumb.x + 90, JSON.stringify(moved));
+    await waitFor(async () => {
+      const after = await code.locator('.code').boundingBox();
+      return after !== null && after.x < before.x - 100;
+    }, 'the code to scroll sideways');
+    await waitFor(async () => {
+      const moved = await bar.boundingBox();
+      return moved !== null && moved.x > thumb.x + 90;
+    }, 'the scrollbar to move along');
 
     await page.keyboard.press('w');
     await page.locator('.diff-view.wrap').waitFor();
@@ -941,6 +986,9 @@ suite('App', () => {
     await page.locator('.row.file', { hasText: 'notes.md' }).click();
     await page.getByRole('button', { name: strings.diff.showPreview }).click();
     await page.locator('.markdown p', { hasText: 'Paragraph 199' }).waitFor();
+    await page
+      .locator('.diff-view .minimap-viewport')
+      .waitFor({ state: 'attached' });
     const steps = await page
       .locator('.diff-view .virtual-rows')
       .evaluate(async (list) => {
@@ -1088,6 +1136,10 @@ suite('App', () => {
       await waitFor(
         async () => (await belowTop()) === 66,
         'the entire file to be shown at its change',
+      );
+      await waitFor(
+        () => savedSetting('entireFilePinned') === false,
+        'the unpinning to be saved',
       );
     } finally {
       await repository.git('checkout', '-q', 'HEAD', '--', 'long.txt');
