@@ -100,7 +100,7 @@ export async function fastForward(
   ref: string,
 ): Promise<void> {
   await runGit(gitPath, cwd, ['merge', '--ff-only', ref], {
-    runsHooks: true,
+    runsUserCode: true,
     writes: true,
   });
 }

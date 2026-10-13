@@ -61,7 +61,7 @@ export function gitEnv(pathspecMagic = false): NodeJS.ProcessEnv {
   };
 }
 
-function hooksEnv(): NodeJS.ProcessEnv {
+function userCodeEnv(): NodeJS.ProcessEnv {
   return { ...inheritedEnv(), GIT_TERMINAL_PROMPT: '0' };
 }
 
@@ -117,10 +117,7 @@ export function realGit(
 
 const realGits = new Map<string, GitCommand>();
 
-function gitCommand(gitPath: string, runsHooks = false): GitCommand {
-  if (runsHooks) {
-    return { command: gitPath, env: {} };
-  }
+function gitCommand(gitPath: string): GitCommand {
   let found = realGits.get(gitPath);
   if (found === undefined) {
     found = realGit(gitPath) ?? { command: gitPath, env: {} };
@@ -158,7 +155,7 @@ interface RunOptions {
   readonly pathspecMagic?: boolean;
   readonly signal?: AbortSignal;
   readonly env?: NodeJS.ProcessEnv;
-  readonly runsHooks?: boolean;
+  readonly runsUserCode?: boolean;
   readonly writes?: boolean;
   readonly onOutput?: (chunk: Buffer) => void;
   readonly unbounded?: boolean;
@@ -186,7 +183,7 @@ export async function runGitBytes(
     pathspecMagic,
     signal,
     env,
-    runsHooks = false,
+    runsUserCode = false,
     writes = false,
     onOutput,
     unbounded = false,
@@ -199,15 +196,15 @@ export async function runGitBytes(
       reject(signal.reason);
       return;
     }
-    const started = gitCommand(gitPath, runsHooks);
+    const started = gitCommand(gitPath);
     const child = keptRunning(
       spawn(
         started.command,
-        [...(runsHooks ? [] : gitConfigArgs), ...monitor, ...args],
+        [...(runsUserCode ? [] : gitConfigArgs), ...monitor, ...args],
         {
           cwd,
           env: {
-            ...(runsHooks ? hooksEnv() : gitEnv(pathspecMagic)),
+            ...(runsUserCode ? userCodeEnv() : gitEnv(pathspecMagic)),
             ...started.env,
             ...env,
           },

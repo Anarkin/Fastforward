@@ -270,7 +270,7 @@ export async function switchToBranch(
     gitPath,
     root,
     ['switch', '-q', '--no-guess', '--end-of-options', branch],
-    { runsHooks: true, writes: true },
+    { runsUserCode: true, writes: true },
   );
 }
 
@@ -283,7 +283,7 @@ export async function switchToCommit(
     gitPath,
     root,
     ['switch', '-q', '--detach', '--end-of-options', commit],
-    { runsHooks: true, writes: true },
+    { runsUserCode: true, writes: true },
   );
 }
 
@@ -297,7 +297,7 @@ export async function checkoutNewBranch(
     gitPath,
     root,
     ['switch', '-q', '--track', '-c', branch, '--end-of-options', upstream],
-    { runsHooks: true, writes: true },
+    { runsUserCode: true, writes: true },
   );
 }
 
@@ -336,7 +336,7 @@ export async function fetchAllRemotes(
       {
         signal: AbortSignal.any([timedOut, stop]),
         env: interactive ? {} : neverAsk,
-        runsHooks: true,
+        runsUserCode: true,
       },
     );
     return output
@@ -370,7 +370,7 @@ export async function listRemoteTags(
     {
       signal: AbortSignal.any([AbortSignal.timeout(timeout), stop]),
       env: interactive ? {} : neverAsk,
-      runsHooks: true,
+      runsUserCode: true,
     },
   );
   const tags = new Map<string, string>();
@@ -413,7 +413,7 @@ export async function pushRef(
         remote,
         `${localRef}:${remoteRef}`,
       ],
-      { signal: AbortSignal.any([timedOut, stop]), runsHooks: true },
+      { signal: AbortSignal.any([timedOut, stop]), runsUserCode: true },
     );
   } catch (error) {
     if (timedOut.aborted) {

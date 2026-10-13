@@ -532,7 +532,7 @@ suite('Running git in a repository', () => {
     }
   });
 
-  test("runs the real git behind Git for Windows' launcher, its shell seeing what the launcher would give it, but the launcher for commands that run hooks", async (context) => {
+  test("runs the real git behind Git for Windows' launcher, its shell seeing what the launcher would give it, for commands that run the user's hooks and credential helpers too", async (context) => {
     const bin = path.dirname(gitPath);
     const root =
       path.basename(bin).toLowerCase() === 'cmd'
@@ -561,16 +561,15 @@ suite('Running git in a repository', () => {
     let hooked: string;
     try {
       direct = await runGit(launcher, cwd, seen);
-      hooked = await runGit(launcher, cwd, seen, { runsHooks: true });
+      hooked = await runGit(launcher, cwd, seen, { runsUserCode: true });
     } finally {
       replaceBuiltin(childProcess, 'spawn', spawn);
     }
     assert.strictEqual(direct, hooked);
-    assert.match(
-      started[0] ?? '',
-      /\\(ucrt64|mingw64|clangarm64)\\bin\\git\.exe$/i,
-    );
-    assert.strictEqual(started[1], launcher);
+    assert.strictEqual(started.length, 2);
+    for (const command of started) {
+      assert.match(command, /\\(ucrt64|mingw64|clangarm64)\\bin\\git\.exe$/i);
+    }
   });
 
   test('runs its own commands in the C locale, sparing git setting up translations each time it starts', async () => {
