@@ -113,7 +113,7 @@ suite('Tab bar', () => {
     assert.ok(isValidElement<{ children: React.ReactElement[][] }>(list));
     const tab = list.props.children[0][0];
     assert.ok(isValidElement<{ children: React.ReactElement[] }>(tab));
-    const close = tab.props.children[1];
+    const close = tab.props.children.at(-1);
     assert.ok(
       isValidElement<{
         onMouseDown: (event: { preventDefault: () => void }) => void;
@@ -167,7 +167,7 @@ suite('Tab bar', () => {
     assert.deepStrictEqual(preloaded, ['/b']);
     b.props.onAuxClick({ button: 2, ...noModifiers });
     assert.deepStrictEqual(closed, []);
-    const close = a.props.children[1];
+    const close = a.props.children.at(-1);
     assert.ok(
       isValidElement<{
         onClick: (event: { stopPropagation: () => void }) => void;
@@ -207,6 +207,37 @@ suite('Tab bar for assistive technology', () => {
       [
         ['a', 'false'],
         ['b', 'true'],
+      ],
+    );
+  });
+
+  test('shows the folder that tells a tab apart dimmed after its name, as worktrees show theirs', () => {
+    const document = new JSDOM(
+      renderToStaticMarkup(
+        <TabBar
+          tabs={[
+            { root: '/code/site', name: 'site', folder: 'code' },
+            { root: '/code/x/site', name: 'site', folder: 'x' },
+            { root: '/app', name: 'app' },
+          ]}
+          active="/app"
+          onSelect={noop}
+          onPreload={noop}
+          onClose={noop}
+          onAdd={noop}
+          onLog={noop}
+        />,
+      ),
+    ).window.document;
+    assert.deepStrictEqual(
+      Array.from(document.querySelectorAll('[role="tab"]'), (tab) => [
+        tab.querySelector('.tab-name')?.textContent,
+        tab.querySelector('.tab-folder')?.textContent,
+      ]),
+      [
+        ['site', 'code'],
+        ['site', 'x'],
+        ['app', undefined],
       ],
     );
   });

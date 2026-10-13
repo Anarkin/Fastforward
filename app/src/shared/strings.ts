@@ -132,6 +132,8 @@ export const strings = {
     worktrees: 'Worktrees',
     browse: 'Browse...',
     removeRecent: (name: string) => `Remove ${name} from this list`,
+    label: (name: string, folder?: string) =>
+      folder === undefined ? name : `${name} (${folder})`,
     settings: 'Settings',
     sort: 'Sort Tabs A-Z',
     about: 'About',

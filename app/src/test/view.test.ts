@@ -3,7 +3,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, suite, test } from 'vitest';
 import { activeTabKey } from '../storage';
-import { tabName } from '../view';
+import { strings } from '../shared/strings';
+import { tabInfos, tabName } from '../view';
 import { waitFor } from './fixtures';
 import { recordingLog } from './stub';
 import {
@@ -14,6 +15,10 @@ import {
   stubMethod,
   withView,
 } from './viewHarness';
+
+function foldersOf(roots: string[], paths = path.posix) {
+  return tabInfos(roots, paths).map((tab) => tab.folder);
+}
 
 suite('View', () => {
   const folder = os.tmpdir();
@@ -28,6 +33,56 @@ suite('View', () => {
     assert.strictEqual(tabName(path.join(folder, 'app.git')), 'app');
     assert.strictEqual(tabName(path.join(folder, 'app', '.bare')), 'app');
     assert.strictEqual(tabName(path.join(folder, 'app', '.git')), 'app');
+  });
+
+  test('tells tabs named the same apart by the nearest folder above them that differs, leaving the others be', () => {
+    assert.deepStrictEqual(
+      foldersOf(['/code/site', '/code/x/site', '/code/app']),
+      ['code', 'x', undefined],
+    );
+    assert.deepStrictEqual(
+      foldersOf(['/work/a/shop/app', '/work/b/shop/app']),
+      ['a', 'b'],
+    );
+  });
+
+  test('names every folder that tells a tab apart from the others named the same, marking those it skips', () => {
+    assert.deepStrictEqual(foldersOf(['/a/x/app', '/b/x/app', '/a/y/app']), [
+      'a/x',
+      'b/x',
+      'y',
+    ]);
+    assert.deepStrictEqual(
+      foldersOf(['/a/s/x/app', '/b/s/x/app', '/a/s/y/app']),
+      ['a/…/x', 'b/…/x', 'y'],
+    );
+  });
+
+  test('tells repositories apart from the folder holding them, whether bare or not', () => {
+    assert.deepStrictEqual(
+      foldersOf(['/a/app/.git', '/b/app.git', '/c/app/.bare']),
+      ['a', 'b', 'c'],
+    );
+  });
+
+  test('ignores case on Windows, and names the drive when nothing else differs', () => {
+    assert.deepStrictEqual(
+      foldersOf(['C:\\One\\Code\\App', 'c:\\Two\\code\\app'], path.win32),
+      ['One', 'Two'],
+    );
+    assert.deepStrictEqual(
+      foldersOf(['C:\\Code\\app', 'D:\\Code\\app'], path.win32),
+      ['C:\\', 'D:\\'],
+    );
+    assert.deepStrictEqual(
+      foldersOf(['C:\\x\\app', 'D:\\x\\app', 'C:\\y\\app'], path.win32),
+      ['C:\\x', 'D:\\x', 'y'],
+    );
+  });
+
+  test('labels a tab with the folder that tells it apart', () => {
+    assert.strictEqual(strings.tabs.label('app', 'x'), 'app (x)');
+    assert.strictEqual(strings.tabs.label('app'), 'app');
   });
 });
 

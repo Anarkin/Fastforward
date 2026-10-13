@@ -59,10 +59,18 @@ suite('View with two tabs', () => {
   test('sorts tabs by name and closes one, opening the next', async () => {
     const zeta = await tempRepository(path.join(folder, 'Zeta'));
     await zeta.commit('zeta');
-    await withView(log, [other, zeta.root, repository.root], async (own) => {
+    const twin = await tempRepository(path.join(folder, 'a', 'main'));
+    await twin.commit('twin');
+    const tabs = [other, zeta.root, repository.root, twin.root];
+    await withView(log, tabs, async (own) => {
       const names = () =>
         (own.page.last('tabs')?.tabs ?? []).map((tab) => tab.name);
       await own.connection.receive({ type: 'sortTabs' });
+      assert.deepStrictEqual(
+        own.page.last('tabs')?.tabs.map((tab) => tab.folder),
+        ['a', path.basename(folder), undefined, undefined],
+      );
+      await own.connection.receive({ type: 'closeTab', root: twin.root });
       assert.deepStrictEqual(names(), ['main', 'other', 'Zeta']);
       await own.connection.receive({ type: 'closeTab', root: other });
       const left = own.page.last('tabs');

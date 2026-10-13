@@ -314,8 +314,8 @@ suite('View fetching', () => {
     }
   });
 
-  test('says a fetch asked for failed after its tab was left, naming its repository', async () => {
-    const left = await tempRepository(path.join(folder, 'left'));
+  test('says a fetch asked for failed after its tab was left, naming its repository and the folder telling it apart from another named the same', async () => {
+    const left = await tempRepository(path.join(folder, 'left', 'local'));
     await left.commit('a');
     await left.git('remote', 'add', 'origin', path.join(folder, 'nowhere'));
     const opened = await openView(
@@ -334,7 +334,7 @@ suite('View fetching', () => {
       await withNotices(opened.page, 'error', async (messages) => {
         await opened.connection.receive({ type: 'fetch', root: left.root });
         assert.strictEqual(messages.length, 1);
-        assert.match(messages[0] ?? '', /^left: Couldn't fetch\./);
+        assert.match(messages[0] ?? '', /^local \(left\): Couldn't fetch\./);
       });
       takeFetchFailures(/'.*' does not appear to be a git repository/);
     } finally {

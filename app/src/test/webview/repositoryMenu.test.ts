@@ -42,6 +42,29 @@ suite('Repository menu', () => {
     assert.strictEqual(browse.onRemove, undefined);
   });
 
+  test('tells recent repositories named the same apart by the folder that differs, in their names and in offering to remove them', () => {
+    const items = repositoryMenuItems(
+      [
+        { root: '/code/site', name: 'site', folder: 'code' },
+        { root: '/code/x/site', name: 'site', folder: 'x' },
+      ],
+      () => undefined,
+      () => undefined,
+      () => undefined,
+    );
+    assert.deepStrictEqual(
+      items.flatMap((item) =>
+        'separator' in item || item.removeTitle === undefined
+          ? []
+          : [[item.label, item.removeTitle]],
+      ),
+      [
+        ['site (code)', 'Remove site (code) from this list'],
+        ['site (x)', 'Remove site (x) from this list'],
+      ],
+    );
+  });
+
   test('leaves out the separator once no recent repository is left', () => {
     assert.deepStrictEqual(
       repositoryMenuItems(

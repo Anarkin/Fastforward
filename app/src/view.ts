@@ -598,8 +598,14 @@ export class FastforwardView {
         return;
       }
       case 'sortTabs': {
+        const labels = new Map(
+          tabInfos(storage.tabs).map((tab) => [
+            tab.root,
+            strings.tabs.label(tab.name, tab.folder),
+          ]),
+        );
         const tabs = storage.tabs.toSorted((a, b) =>
-          tabName(a).localeCompare(tabName(b), undefined, {
+          (labels.get(a) ?? a).localeCompare(labels.get(b) ?? b, undefined, {
             sensitivity: 'base',
           }),
         );
@@ -1347,16 +1353,16 @@ export class FastforwardView {
     const { tabs, activeTab: active, activeWorktree: worktree } = storage;
     session.post({
       type: 'tabs',
-      tabs: tabs.map(tabInfo),
+      tabs: tabInfos(tabs),
       active,
       worktree,
       worktrees: active === undefined ? [] : this.worktreeLists.get(active),
-      recent: storage.recent
-        .filter(
+      recent: tabInfos(
+        storage.recent.filter(
           (root) =>
             !storage.hasTab(root) && !storage.hasTab(this.repositoryOf(root)),
-        )
-        .map(tabInfo),
+        ),
+      ),
     });
   }
 
@@ -2061,8 +2067,15 @@ export class FastforwardView {
       this.postToPage(session, {
         type: 'notice',
         level,
-        message: strings.messages.inTab(tabName(repository), message),
+        message: strings.messages.inTab(this.tabLabel(repository), message),
       });
+  }
+
+  private tabLabel(repository: string): string {
+    const tab = tabInfos(this.storage.tabs).find((info) =>
+      sameRoot(info.root, repository),
+    );
+    return strings.tabs.label(tab?.name ?? tabName(repository), tab?.folder);
   }
 
   private postToPage(session: Session, message: ToWebview): void {
@@ -3266,16 +3279,62 @@ async function allSettled(
   }
 }
 
-function tabInfo(root: string): TabInfo {
-  return { root, name: tabName(root) };
+export function tabInfos(
+  roots: readonly string[],
+  paths: path.PlatformPath = path,
+): TabInfo[] {
+  const same = (name: string) =>
+    paths.sep === '\\' ? name.toLowerCase() : name;
+  const tabs = roots.map((root) => ({
+    root,
+    name: tabName(root, paths),
+    above: foldersAbove(namedFolder(root, paths), paths),
+  }));
+  return tabs.map(({ root, name, above }) => {
+    const levels = new Set<number>();
+    for (const other of tabs) {
+      if (other.root === root || same(other.name) !== same(name)) {
+        continue;
+      }
+      const level = above.findIndex(
+        (folder, index) =>
+          other.above[index] === undefined ||
+          same(other.above[index]) !== same(folder),
+      );
+      if (level !== -1) {
+        levels.add(level);
+      }
+    }
+    if (levels.size === 0) {
+      return { root, name };
+    }
+    const shown = [...levels].toSorted((a, b) => b - a);
+    const folders = shown.flatMap((level, index) =>
+      index > 0 && shown[index - 1] - level > 1
+        ? ['…', above[level]]
+        : [above[level]],
+    );
+    return { root, name, folder: paths.join(...folders) };
+  });
 }
 
-export function tabName(root: string): string {
-  const name = path.basename(root);
-  if (name === '.bare' || name === '.git') {
-    return tabName(path.dirname(root));
-  }
-  return name.replace(/(.)\.git$/, '$1') || root;
+function namedFolder(root: string, paths: path.PlatformPath): string {
+  const name = paths.basename(root);
+  return name === '.bare' || name === '.git'
+    ? namedFolder(paths.dirname(root), paths)
+    : root;
+}
+
+function foldersAbove(folder: string, paths: path.PlatformPath): string[] {
+  const parent = paths.dirname(folder);
+  return parent === folder
+    ? []
+    : [paths.basename(parent) || parent, ...foldersAbove(parent, paths)];
+}
+
+export function tabName(root: string, paths: path.PlatformPath = path): string {
+  const folder = namedFolder(root, paths);
+  return paths.basename(folder).replace(/(.)\.git$/, '$1') || folder;
 }
 
 function worktreeInfos(worktrees: readonly Worktree[]): WorktreeInfo[] {

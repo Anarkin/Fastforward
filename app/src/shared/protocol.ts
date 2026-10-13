@@ -185,6 +185,7 @@ export interface FileChange {
 export interface TabInfo {
   readonly root: string;
   readonly name: string;
+  readonly folder?: string;
 }
 
 export interface WorktreeInfo {

@@ -140,6 +140,9 @@ export function TabBar({
             }
           >
             <span className="tab-name">{tab.name}</span>
+            {tab.folder !== undefined && (
+              <span className="tab-folder">{tab.folder}</span>
+            )}
             <button
               className="tab-close"
               title={strings.common.close}
