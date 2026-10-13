@@ -27,6 +27,7 @@ import {
 import { ImageDiff } from '../../webview/imagePreview';
 import { MarkdownDiff } from '../../webview/markdownPreview';
 import { AboutPopup, CopyButton } from '../../webview/aboutPopup';
+import { TabBar } from '../../webview/tabBar';
 import { ContextMenu } from '../../webview/contextMenu';
 import { Crash } from '../../webview/errorBoundary';
 import { overlayScrollbarClass } from '../../webview/overlayScrollbars';
@@ -181,6 +182,27 @@ function aboutPopup(): MarkupElement {
       }),
     ),
     'shortcuts-popup',
+  );
+}
+
+function tabBarIn(maximized: boolean): MarkupElement {
+  return rendered(
+    createElement(
+      'div',
+      maximized ? { 'data-maximized': '' } : {},
+      createElement(TabBar, {
+        tabs: [
+          { root: '/a', name: 'a' },
+          { root: '/b', name: 'b' },
+        ],
+        active: '/a',
+        onSelect: noop,
+        onPreload: noop,
+        onClose: noop,
+        onAdd: noop,
+        onLog: noop,
+      }),
+    ),
   );
 }
 
@@ -378,6 +400,35 @@ suite('Style', () => {
         cascaded(active, 'padding-bottom') ?? paddingOf(active).bottom,
       ) - parseFloat(paddingOf(other).bottom),
       reach,
+    );
+  });
+
+  test('reaches each tab not open up to the top of a maximized window, so the pointer flung there highlights and picks it, but not while the window is smaller', () => {
+    const before = { pseudoElement: '::before' };
+    const [active, other] = allWithClass(tabBarIn(true), 'tab');
+    looks(
+      other,
+      {
+        content: "''",
+        position: 'absolute',
+        bottom: '100%',
+        left: '-1px',
+        right: '-1px',
+        height: 'calc(var(--tabs-top) + 1px)',
+        '-webkit-app-region': 'no-drag',
+      },
+      before,
+    );
+    looks(other, { position: 'relative' });
+    assert.notStrictEqual(
+      cascaded(active, 'height', before),
+      'calc(var(--tabs-top) + 1px)',
+    );
+    const [, small] = allWithClass(tabBarIn(false), 'tab');
+    looks(small, { content: undefined }, before);
+    assert.match(
+      cascaded(withClass(tabBarIn(true), 'tabs'), 'padding') ?? '',
+      /^var\(--tabs-top\)\s/,
     );
   });
 

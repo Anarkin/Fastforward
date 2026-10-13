@@ -56,6 +56,7 @@ import {
   startsAppPage,
   visibleBounds,
 } from './files';
+import { tellMaximized } from './maximized';
 import { reloadWhenGone } from './pageGone';
 import { profileFolder } from './profile';
 import { exitOnFailure, flushBeforeQuit, whileWindowOpen } from './quit';
@@ -175,6 +176,11 @@ async function start(): Promise<void> {
       isAppUrl(event.senderFrame.url)
     ) {
       void connection.then((current) => current?.receive(message));
+    }
+  });
+  tellMaximized(window, (maximized) => {
+    if (!window.isDestroyed()) {
+      window.webContents.send('maximized', maximized);
     }
   });
   ipcMain.on('windowButtonColor', (event, color: unknown) => {

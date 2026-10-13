@@ -6,4 +6,5 @@ export interface Bridge {
   post(message: ToHost): void;
   setWindowButtonColor(color: string): void;
   listen(handler: (message: ToWebview) => void): () => void;
+  listenMaximized(handler: (maximized: boolean) => void): () => void;
 }

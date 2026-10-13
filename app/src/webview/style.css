@@ -58,6 +58,7 @@ body {
   --toolbar-background: var(--color-panel-background);
   --repository-background: var(--color-panel-background);
   --tab-inset: calc(2 * var(--gutter-width) + 2 * var(--card-radius));
+  --tabs-top: 5px;
   --gutter-width: 4px;
   --title-bar-inset: calc(var(--tab-inset) + 12px);
   --card-radius: 6px;
@@ -178,7 +179,7 @@ body {
   align-items: stretch;
   gap: 8px;
   box-sizing: border-box;
-  padding: 5px
+  padding: var(--tabs-top)
     calc(
       100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) +
         var(--gutter-width)
@@ -416,6 +417,17 @@ body {
 
 .tabs .tab {
   --sheet: var(--repository-background);
+  position: relative;
+}
+
+[data-maximized] .tabs .tab:not(.active)::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: -1px;
+  right: -1px;
+  height: calc(var(--tabs-top) + 1px);
+  -webkit-app-region: no-drag;
 }
 
 .worktrees .tab {

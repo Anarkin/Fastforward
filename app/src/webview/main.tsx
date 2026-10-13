@@ -17,6 +17,9 @@ declare global {
 const { fastforward } = window;
 document.documentElement.dataset.platform = fastforward.platform;
 setKeyPlatform(fastforward.platform);
+fastforward.listenMaximized((maximized) =>
+  document.documentElement.toggleAttribute('data-maximized', maximized),
+);
 
 const followTheme = () =>
   fastforward.setWindowButtonColor(

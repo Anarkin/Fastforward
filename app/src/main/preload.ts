@@ -18,4 +18,10 @@ contextBridge.exposeInMainWorld('fastforward', {
     return () => ipcRenderer.off('message', listener);
   },
   setWindowButtonColor: (color) => ipcRenderer.send('windowButtonColor', color),
+  listenMaximized: (handler) => {
+    const listener = (_event: IpcRendererEvent, maximized: boolean) =>
+      handler(maximized);
+    ipcRenderer.on('maximized', listener);
+    return () => ipcRenderer.off('maximized', listener);
+  },
 } satisfies Bridge);
