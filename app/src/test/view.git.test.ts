@@ -13,7 +13,13 @@ import { replaceBuiltin } from './builtins';
 import { comparisonOf } from '../shared/comparisons';
 import { workingTreeHash, type BookmarkRef } from '../shared/protocol';
 import { strings } from '../shared/strings';
-import { activeTabKey, recentKey, Storage, tabsKey } from '../storage';
+import {
+  activeTabKey,
+  JsonFileStore,
+  recentKey,
+  Storage,
+  tabsKey,
+} from '../storage';
 import { runGit } from '../git/run';
 import { FastforwardView, type Connection } from '../view';
 import { FakeStore } from './fakeStore';
@@ -92,6 +98,42 @@ suite('View of one repository', () => {
       await ready;
     } finally {
       opened.connection.dispose();
+    }
+  });
+
+  test('keeps the saved tabs when the state could not be read at start but can be by the next change saved', async () => {
+    const profile = tempFolder('state');
+    const file = path.join(profile, 'state.json');
+    fs.mkdirSync(file);
+    const store = new JsonFileStore(file);
+    const view = new FastforwardView(
+      log,
+      await installedGit(),
+      new Storage(settingsWithAutoFetchOff(), store),
+      new FakeHost(),
+    );
+    const opened = attach(view);
+    try {
+      await opened.connection.receive({ type: 'ready' });
+      fs.rmdirSync(file);
+      fs.writeFileSync(
+        file,
+        JSON.stringify({
+          [tabsKey]: [repository.root],
+          [activeTabKey]: repository.root,
+        }),
+      );
+      await store.update('windowBounds', { x: 0, y: 0 });
+      assert.deepStrictEqual(new JsonFileStore(file).get(tabsKey), [
+        repository.root,
+      ]);
+      assert.strictEqual(
+        new JsonFileStore(file).get(activeTabKey),
+        repository.root,
+      );
+    } finally {
+      opened.connection.dispose();
+      removeFolder(profile);
     }
   });
 

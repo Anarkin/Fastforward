@@ -181,9 +181,16 @@ export class Storage {
   }
 
   async setTabs(tabs: string[], active: string | undefined): Promise<void> {
+    const unique = uniqueRoots(tabs);
+    const saved = this.tabs;
+    const tabsChanged =
+      unique.length !== saved.length ||
+      unique.some((tab, index) => tab !== saved[index]);
     await Promise.all([
-      this.state.update(tabsKey, uniqueRoots(tabs)),
-      this.state.update(activeTabKey, active),
+      tabsChanged ? this.state.update(tabsKey, unique) : undefined,
+      active === this.activeTab
+        ? undefined
+        : this.state.update(activeTabKey, active),
     ]);
   }
 
