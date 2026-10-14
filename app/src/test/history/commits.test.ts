@@ -22,18 +22,27 @@ function isCallable(value: unknown): value is () => void {
   return typeof value === 'function';
 }
 
-function memoryKeptBy(make: () => unknown): number {
+async function memoryKeptBy(make: () => unknown): Promise<number> {
   v8.setFlagsFromString('--expose-gc');
   const collectGarbage: unknown = vm.runInNewContext('gc');
   assert.ok(isCallable(collectGarbage));
-  const used = () => {
-    collectGarbage();
-    const { heapUsed, arrayBuffers } = process.memoryUsage();
-    return heapUsed + arrayBuffers;
+  const used = async () => {
+    let least = Number.POSITIVE_INFINITY;
+    for (let round = 0; round < 20; round++) {
+      collectGarbage();
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      const { heapUsed, arrayBuffers } = process.memoryUsage();
+      const now = heapUsed + arrayBuffers;
+      if (now >= least) {
+        break;
+      }
+      least = now;
+    }
+    return least;
   };
-  const before = used();
+  const before = await used();
   const kept = make();
-  const after = used();
+  const after = await used();
   assert.ok(kept);
   return after - before;
 }
@@ -207,13 +216,13 @@ suite('Commits read from git', () => {
     assert.deepStrictEqual(entriesOf(commits), entriesOf(read([output])));
   });
 
-  test('keeps a commit in under 100 bytes, its hash as bytes in one buffer and its parents as numbers, as an object and strings per commit took seven times the memory', () => {
+  test('keeps a commit in under 100 bytes, its hash as bytes in one buffer and its parents as numbers, as an object and strings per commit took seven times the memory', async () => {
     const count = 200_000;
     const output = Array.from(
       { length: count },
       (_, at) => `${sha1(at)} ${sha1(at + 1)}\n`,
     ).join('');
-    const kept = memoryKeptBy(() => read([output]));
+    const kept = await memoryKeptBy(() => read([output]));
     assert.ok(kept < count * 100, `${kept / count} bytes per commit`);
   });
 });
