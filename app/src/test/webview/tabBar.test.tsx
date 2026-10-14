@@ -4,9 +4,26 @@ import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, suite, test, vi } from 'vitest';
 import { strings } from '../../shared/strings';
-import { adjacentTab, Cycle, resting, TabBar } from '../../webview/tabBar';
+import {
+  adjacentTab,
+  Cycle,
+  resting,
+  revealingScroll,
+  sidewaysDelta,
+  stripOverflows,
+  TabBar,
+} from '../../webview/tabBar';
 import { rested } from '../componentFixtures';
 import { noModifiers, noop, renderedBy } from '../fixtures';
+
+function tabsOf(nav: React.ReactNode): React.ReactElement[] {
+  assert.ok(isValidElement<{ children: React.ReactElement[] }>(nav));
+  const list = nav.props.children[1];
+  assert.ok(isValidElement<{ children: React.ReactElement[] }>(list));
+  const strip = list.props.children[0];
+  assert.ok(isValidElement<{ children: React.ReactElement[] }>(strip));
+  return strip.props.children;
+}
 
 suite('Tab bar', () => {
   afterEach(() => vi.useRealTimers());
@@ -76,10 +93,7 @@ suite('Tab bar', () => {
       onAdd: noop,
       onLog: noop,
     });
-    assert.ok(isValidElement<{ children: React.ReactElement[] }>(nav));
-    const list = nav.props.children[1];
-    assert.ok(isValidElement<{ children: React.ReactElement[][] }>(list));
-    const tab = list.props.children[0][0];
+    const [tab] = tabsOf(nav);
     assert.ok(
       isValidElement<{
         onMouseDown: (event: {
@@ -109,10 +123,7 @@ suite('Tab bar', () => {
       onAdd: noop,
       onLog: noop,
     });
-    assert.ok(isValidElement<{ children: React.ReactElement[] }>(nav));
-    const list = nav.props.children[1];
-    assert.ok(isValidElement<{ children: React.ReactElement[][] }>(list));
-    const tab = list.props.children[0][0];
+    const [tab] = tabsOf(nav);
     assert.ok(isValidElement<{ children: React.ReactElement[] }>(tab));
     const close = tab.props.children.at(-1);
     assert.ok(
@@ -141,10 +152,7 @@ suite('Tab bar', () => {
       onAdd: noop,
       onLog: noop,
     });
-    assert.ok(isValidElement<{ children: React.ReactElement[] }>(nav));
-    const list = nav.props.children[1];
-    assert.ok(isValidElement<{ children: React.ReactElement[][] }>(list));
-    const [a, b] = list.props.children[0];
+    const [a, b] = tabsOf(nav);
     type Tab = {
       onPointerEnter: () => void;
       onPointerLeave: () => void;
@@ -181,6 +189,41 @@ suite('Tab bar', () => {
   });
 });
 
+suite('Tabs too many for one row', () => {
+  test('scrolls the tabs sideways by how far the wheel turns either way, as the row has nothing to scroll up or down', () => {
+    assert.strictEqual(sidewaysDelta(0, 120), 120);
+    assert.strictEqual(sidewaysDelta(0, -120), -120);
+    assert.strictEqual(sidewaysDelta(40, 0), 40);
+    assert.strictEqual(sidewaysDelta(30, -10), 30);
+  });
+
+  test('takes the tabs for too many once even their narrowest overflow the row, and for few again only once they fit without the room left inside its edges, so it does not flip back and forth', () => {
+    const padding = 12;
+    assert.strictEqual(stripOverflows(false, 1000, 1000, 0), false);
+    assert.strictEqual(stripOverflows(false, 1002, 1000, 0), true);
+    assert.strictEqual(stripOverflows(true, 1024, 1000, padding), false);
+    assert.strictEqual(stripOverflows(true, 1030, 1000, padding), true);
+  });
+
+  test('scrolls the open tab into view by as little as it takes, its curves included, and leaves the row be when it shows already', () => {
+    const view = { scrolled: 100, width: 300 };
+    const reach = 12;
+    assert.strictEqual(
+      revealingScroll(view, { start: 150, end: 250 }, reach),
+      100,
+    );
+    assert.strictEqual(
+      revealingScroll(view, { start: 50, end: 150 }, reach),
+      38,
+    );
+    assert.strictEqual(
+      revealingScroll(view, { start: 380, end: 480 }, reach),
+      192,
+    );
+    assert.strictEqual(revealingScroll(view, { start: 5, end: 105 }, reach), 0);
+  });
+});
+
 suite('Tab bar for assistive technology', () => {
   test('tells that the tabs form a tab list, and which tab is open', () => {
     const document = new JSDOM(
@@ -209,6 +252,30 @@ suite('Tab bar for assistive technology', () => {
         ['a', 'false'],
         ['b', 'true'],
       ],
+    );
+  });
+
+  test('keeps the button that opens a repository outside the tab list, which scrolls, so it stays in view however many tabs are open', () => {
+    const document = new JSDOM(
+      renderToStaticMarkup(
+        <TabBar
+          tabs={[{ root: '/a', name: 'a' }]}
+          active="/a"
+          onSelect={noop}
+          onPreload={noop}
+          onClose={noop}
+          onAdd={noop}
+          onLog={noop}
+        />,
+      ),
+    ).window.document;
+    const list = document.querySelector('[role="tablist"]');
+    assert.ok(list);
+    assert.ok(list.classList.contains('tab-strip'));
+    assert.strictEqual(list.querySelector('.tab-add'), null);
+    assert.strictEqual(
+      document.querySelector('.tab-add')?.parentElement,
+      list.parentElement,
     );
   });
 

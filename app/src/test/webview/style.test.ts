@@ -185,6 +185,25 @@ function aboutPopup(): MarkupElement {
   );
 }
 
+function tabStrip(maximized: boolean, overflowing: boolean): MarkupElement {
+  return withClass(
+    rendered(
+      createElement(
+        'div',
+        maximized ? { 'data-maximized': '' } : {},
+        createElement(
+          'nav',
+          { className: 'tabs' },
+          createElement('div', {
+            className: overflowing ? 'tab-strip overflowing' : 'tab-strip',
+          }),
+        ),
+      ),
+    ),
+    'tab-strip',
+  );
+}
+
 function tabBarIn(maximized: boolean): MarkupElement {
   return rendered(
     createElement(
@@ -305,11 +324,18 @@ suite('Style', () => {
     );
   });
 
-  test('keeps the repository tabs on one row, shrinking them as Chrome does rather than wrapping or scrolling them, down to a letter or two of the name beside the close button', () => {
+  test('keeps the repository tabs on one row, shrinking them as Chrome does rather than wrapping them, down to a letter or two of the name beside the close button', () => {
     looks(withClass(tabBar(), 'tab-list'), {
       'flex-wrap': 'nowrap',
       overflow: undefined,
       'overflow-x': undefined,
+    });
+    looks(withClass(tabBar(), 'tab-strip'), {
+      display: 'flex',
+      'flex-wrap': undefined,
+      'align-items': 'flex-end',
+      'flex-shrink': '1',
+      'min-width': '0',
     });
     const [active, other] = allWithClass(tabBar(), 'tab');
     const gap = cascaded(active, 'gap');
@@ -362,6 +388,42 @@ suite('Style', () => {
       Number(cascaded(withClass(tab, 'tab-folder'), 'flex-shrink')) >
         Number(cascaded(withClass(tab, 'tab-name'), 'flex-shrink') ?? '1'),
     );
+  });
+
+  test('lays the repository tabs out as ever while they fit, cutting nothing off, and never drags the window by them, as the places the window is dragged by would stay put while they scroll', () => {
+    for (const maximized of [false, true]) {
+      looks(tabStrip(maximized, false), {
+        'overflow-x': undefined,
+        'padding-left': undefined,
+        'padding-right': undefined,
+        'padding-top': undefined,
+        'padding-bottom': undefined,
+        margin: undefined,
+        'margin-top': undefined,
+        'margin-bottom': undefined,
+        '-webkit-app-region': 'no-drag',
+      });
+    }
+  });
+
+  test('scrolls the repository tabs sideways without a scrollbar once even their narrowest is too wide, as Chrome does, scrolled by the wheel alone so it gets no overlay scrollbar over the tabs, leaving room inside its edges for the open tab to curve out, join its sheet and, in a maximized window, for a tab to reach up, so none of that is cut off, nor slides under the logo or the button beside', () => {
+    const [active, other] = allWithClass(tabBarIn(true), 'tab');
+    const curve = cascaded(active, 'width', { pseudoElement: '::before' });
+    const reach = cascaded(other, 'height', { pseudoElement: '::before' });
+    const join = cascaded(active, 'margin-bottom');
+    for (const maximized of [false, true]) {
+      looks(tabStrip(maximized, true), {
+        'overflow-x': 'hidden',
+        'padding-left': curve,
+        'padding-right': curve,
+        'margin-left': undefined,
+        'margin-right': undefined,
+        'padding-top': maximized ? reach : undefined,
+        'margin-top': maximized ? `calc(-1 * ${reach})` : undefined,
+        'padding-bottom': join?.replace(/^-/, ''),
+        'margin-bottom': join,
+      });
+    }
   });
 
   test('leaves room beside the repository tabs to drag the window by, however many are open', () => {

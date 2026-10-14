@@ -45,6 +45,86 @@ export class Cycle {
   }
 }
 
+export function sidewaysDelta(deltaX: number, deltaY: number): number {
+  return Math.abs(deltaY) > Math.abs(deltaX) ? deltaY : deltaX;
+}
+
+export function stripOverflows(
+  overflowing: boolean,
+  scrollWidth: number,
+  clientWidth: number,
+  padding: number,
+): boolean {
+  return overflowing
+    ? scrollWidth - 2 * padding > clientWidth + 1
+    : scrollWidth > clientWidth + 1;
+}
+
+function useOverflowing(
+  strip: React.RefObject<HTMLElement | null>,
+  list: React.RefObject<HTMLElement | null>,
+): boolean {
+  const [overflowing, setOverflowing] = useState(false);
+  useEffect(() => {
+    const element = strip.current;
+    if (!element) {
+      return undefined;
+    }
+    const measure = () =>
+      setOverflowing((was) =>
+        stripOverflows(
+          was,
+          element.scrollWidth,
+          element.clientWidth,
+          parseFloat(getComputedStyle(element).paddingLeft) || 0,
+        ),
+      );
+    measure();
+    const resized = new ResizeObserver(measure);
+    resized.observe(element);
+    if (list.current) {
+      resized.observe(list.current);
+    }
+    const changed = new MutationObserver(measure);
+    changed.observe(element, { childList: true, subtree: true });
+    return () => {
+      resized.disconnect();
+      changed.disconnect();
+    };
+  }, [strip, list]);
+  return overflowing;
+}
+
+export function revealingScroll(
+  view: { readonly scrolled: number; readonly width: number },
+  tab: { readonly start: number; readonly end: number },
+  reach: number,
+): number {
+  const start = tab.start - reach;
+  const end = tab.end + reach;
+  if (start < view.scrolled) {
+    return Math.max(0, start);
+  }
+  if (end > view.scrolled + view.width) {
+    return end - view.width;
+  }
+  return view.scrolled;
+}
+
+function revealTab(strip: HTMLElement | null, index: number): void {
+  const tab = strip?.children[index];
+  if (!strip || !tab) {
+    return;
+  }
+  const origin = strip.getBoundingClientRect().left - strip.scrollLeft;
+  const { left, right } = tab.getBoundingClientRect();
+  strip.scrollLeft = revealingScroll(
+    { scrolled: strip.scrollLeft, width: strip.clientWidth },
+    { start: left - origin, end: right - origin },
+    parseFloat(getComputedStyle(strip).paddingLeft) || 0,
+  );
+}
+
 export const preloadDelay = 200;
 
 export function resting(delay: number): {
@@ -83,6 +163,15 @@ export function TabBar({
 }) {
   const bar = useRef<HTMLElement>(null);
   const list = useRef<HTMLDivElement>(null);
+  const strip = useRef<HTMLDivElement>(null);
+
+  const overflowing = useOverflowing(strip, list);
+  const activeIndex = tabs.findIndex((tab) => tab.root === active);
+  useEffect(() => {
+    if (overflowing) {
+      revealTab(strip.current, activeIndex);
+    }
+  }, [overflowing, activeIndex]);
 
   useEffect(() => {
     requestAnimationFrame(() => {
@@ -116,51 +205,59 @@ export function TabBar({
   return (
     <nav className="tabs" ref={bar} style={{ minHeight: titleBarHeight }}>
       <AppIcon />
-      <div
-        className="tab-list"
-        ref={list}
-        role="tablist"
-        aria-label={strings.tabs.repositories}
-      >
-        {tabs.map((tab) => (
-          <div
-            key={tab.root}
-            role="tab"
-            aria-selected={tab.root === active}
-            className={`tab ${tab.root === active ? 'active' : ''}`}
-            title={tab.root}
-            onClick={() => {
-              rest.cancel();
-              onSelect(tab.root);
-            }}
-            onPointerEnter={() =>
-              tab.root !== active && rest.start(() => onPreload(tab.root))
-            }
-            onPointerLeave={rest.cancel}
-            onMouseDown={(event) =>
-              clicked(keymap.closeRepository, event) && event.preventDefault()
-            }
-            onAuxClick={(event) =>
-              clicked(keymap.closeRepository, event) && onClose(tab.root)
-            }
-          >
-            <span className="tab-name">{tab.name}</span>
-            {tab.folder !== undefined && (
-              <span className="tab-folder">{tab.folder}</span>
-            )}
-            <button
-              className="tab-close"
-              title={strings.common.close}
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={(event) => {
-                event.stopPropagation();
-                onClose(tab.root);
+      <div className="tab-list" ref={list}>
+        <div
+          className={overflowing ? 'tab-strip overflowing' : 'tab-strip'}
+          ref={strip}
+          role="tablist"
+          aria-label={strings.tabs.repositories}
+          onWheel={(event) => {
+            event.currentTarget.scrollLeft += sidewaysDelta(
+              event.deltaX,
+              event.deltaY,
+            );
+          }}
+        >
+          {tabs.map((tab) => (
+            <div
+              key={tab.root}
+              role="tab"
+              aria-selected={tab.root === active}
+              className={`tab ${tab.root === active ? 'active' : ''}`}
+              title={tab.root}
+              onClick={() => {
+                rest.cancel();
+                onSelect(tab.root);
               }}
+              onPointerEnter={() =>
+                tab.root !== active && rest.start(() => onPreload(tab.root))
+              }
+              onPointerLeave={rest.cancel}
+              onMouseDown={(event) =>
+                clicked(keymap.closeRepository, event) && event.preventDefault()
+              }
+              onAuxClick={(event) =>
+                clicked(keymap.closeRepository, event) && onClose(tab.root)
+              }
             >
-              <CloseIcon />
-            </button>
-          </div>
-        ))}
+              <span className="tab-name">{tab.name}</span>
+              {tab.folder !== undefined && (
+                <span className="tab-folder">{tab.folder}</span>
+              )}
+              <button
+                className="tab-close"
+                title={strings.common.close}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onClose(tab.root);
+                }}
+              >
+                <CloseIcon />
+              </button>
+            </div>
+          ))}
+        </div>
         <button
           ref={add}
           className="tab-add"

@@ -199,6 +199,29 @@ body {
   padding-right: 32px;
 }
 
+.tab-strip {
+  display: flex;
+  align-items: flex-end;
+  align-self: stretch;
+  flex-shrink: 1;
+  min-width: 0;
+  gap: inherit;
+  -webkit-app-region: no-drag;
+}
+
+.tab-strip.overflowing {
+  overflow-x: hidden;
+  padding-right: calc(2 * var(--card-radius));
+  padding-bottom: 1px;
+  padding-left: calc(2 * var(--card-radius));
+  margin-bottom: -1px;
+}
+
+[data-maximized] .tab-strip.overflowing {
+  padding-top: calc(var(--tabs-top) + 1px);
+  margin-top: calc(-1 * calc(var(--tabs-top) + 1px));
+}
+
 .tabs .title-bar-icon {
   align-self: center;
 }
