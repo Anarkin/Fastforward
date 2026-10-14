@@ -355,6 +355,7 @@ export const strings = {
       `Not loaded: ${lines.toLocaleString()} changed lines`,
   },
   find: {
+    title: 'Search the diff',
     placeholder: 'Search…',
     unsearched: (count: number) =>
       `Large files not shown yet are not searched: ${count}`,

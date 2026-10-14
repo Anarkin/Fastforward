@@ -2275,7 +2275,7 @@ suite('Style', () => {
     }
   });
 
-  test('keeps the titles clear of the three buttons the Files column has on the left, and of the buttons and gaps the Diff column has on the left and the two on the right, its search field never squeezed out', () => {
+  test('keeps the title of the Files column clear of its three buttons on the left, spaces the buttons of the Diff column alike, and never squeezes the search field out', () => {
     const files = columnTitle(
       createElement('div', { className: 'nav-buttons all-files' }),
     );
@@ -2283,21 +2283,7 @@ suite('Style', () => {
       pixels(cascaded(files, 'padding-left')),
       buttonsWidth(3),
     );
-    const options = diffOptions();
-    const slots = allWithClass(rendered(options)).filter(
-      (element) =>
-        element.classes.includes('nav-button') ||
-        element.classes.includes('nav-button-space'),
-    ).length;
-    const diff = columnTitle(options);
-    assert.strictEqual(
-      pixels(cascaded(diff, 'padding-left')),
-      buttonsWidth(slots),
-    );
-    assert.strictEqual(
-      pixels(cascaded(diff, 'padding-right')),
-      buttonsWidth(2),
-    );
+    const diff = columnTitle(diffOptions());
     for (const group of [
       withClass(diff, 'nav-buttons'),
       withClass(diff, 'segmented'),

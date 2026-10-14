@@ -208,15 +208,13 @@ suite('App', () => {
       ['.context-menu', '.context-menu .menu-item'],
       ['.locations-popup', '.locations-search'],
       ['.shortcuts-popup', '.shortcuts-popup'],
+      ['.search-row', '.search-row input'],
     ]) {
       if ((await page.locator(popup).count()) > 0) {
         await page.locator(focused).first().focus();
         await page.keyboard.press('Escape');
         await page.locator(popup).waitFor({ state: 'detached' });
       }
-    }
-    if ((await page.locator('.diff-find.active').count()) > 0) {
-      await page.locator('.diff-find-input').fill('');
     }
     const notice = page.locator('.notice-close').first();
     while ((await notice.count()) > 0) {
@@ -597,7 +595,30 @@ suite('App', () => {
     await waitForCount(page.locator('.find-match'), 0, 'matches');
   });
 
-  test('gives the keyboard back to the diff once Esc leaves the empty find field', async () => {
+  test('opens the diff search from its round button, giving it the header but for going back and stepping between matches, and closes it from the back button', async () => {
+    await openChangedFile();
+    const diff = page.locator('.columns > .column').nth(2);
+    await diff.locator('.column-actions > .search-button').click();
+    const field = page.locator('.diff-find-input');
+    await waitForFocus(field, 'the find field');
+    assert.strictEqual(await diff.locator('.diff-options').count(), 0);
+    assert.deepStrictEqual(
+      await diff
+        .locator('.column-title .nav-button')
+        .evaluateAll((buttons) =>
+          buttons.map((button) => button.getAttribute('title')),
+        ),
+      ['Close', 'Previous Match', 'Next Match'],
+    );
+    await field.fill('T');
+    await page.locator('.diff-line .find-match').first().waitFor();
+    await diff.locator('.search-row > .nav-button').first().click();
+    await field.waitFor({ state: 'detached' });
+    await waitForCount(page.locator('.find-match'), 0, 'matches');
+    await diff.locator('.diff-options').waitFor();
+  });
+
+  test('gives the keyboard back to the diff once Esc closes the find field', async () => {
     await openChangedFile();
     await page.keyboard.press('ControlOrMeta+F');
     await waitForFocus(page.locator('.diff-find-input'), 'the find field');

@@ -335,16 +335,10 @@ suite('Find in diff', () => {
     ]);
   });
 
-  test('steps with Enter and Shift+Enter, and clears on Esc before giving the keyboard to the diff', () => {
+  test('steps with Enter and Shift+Enter, and closes on Esc', () => {
     const steps: number[] = [];
     const queries: string[] = [];
-    let left = false;
-    const column = {
-      querySelector: (selector: string) =>
-        selector === '[data-column-focus]'
-          ? { focus: () => (left = true) }
-          : null,
-    };
+    let closed = 0;
     const field = (query: string) => {
       const element = DiffFind({
         query,
@@ -352,6 +346,7 @@ suite('Find in diff', () => {
         unsearched: 2,
         onQuery: (next) => queries.push(next),
         onStep: (step) => steps.push(step),
+        onClose: () => closed++,
       });
       assert.ok(
         isValidElement<{
@@ -360,7 +355,6 @@ suite('Find in diff', () => {
               onKeyDown: (
                 event: ReturnType<typeof keyPress> & {
                   preventDefault: () => void;
-                  currentTarget: { closest: (selector: string) => unknown };
                 },
               ) => void;
             }>,
@@ -374,19 +368,14 @@ suite('Find in diff', () => {
       field(query).props.children[0].props.onKeyDown({
         ...keyPress(key, { shiftKey }),
         preventDefault: noop,
-        currentTarget: {
-          closest: (selector: string) =>
-            selector === '.column' ? column : null,
-        },
       });
     press('x', 'Enter');
     press('x', 'Enter', true);
+    assert.strictEqual(closed, 0);
     press('x', 'Escape');
     assert.deepStrictEqual(steps, [1, -1]);
-    assert.deepStrictEqual(queries, ['']);
-    assert.ok(!left);
-    press('', 'Escape');
-    assert.ok(left);
+    assert.deepStrictEqual(queries, []);
+    assert.strictEqual(closed, 1);
     const html = renderToStaticMarkup(field('x'));
     assert.match(html, /placeholder="Search…"/);
     assert.match(

@@ -709,6 +709,7 @@ body {
 .column {
   --title-height: 36px;
   --search-height: 26px;
+  --search-gap: 6px;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -772,13 +773,8 @@ body.resizing {
   text-overflow: ellipsis;
 }
 
-.column-title:has(.diff-options) {
-  padding-left: calc(4px + 10 * 26px + 9 * 2px + 8px);
-  padding-right: calc(4px + 2 * 26px + 2px + 8px);
-}
-
 .diff-find {
-  flex: 0 1 280px;
+  flex: 1;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -2322,8 +2318,16 @@ body.resizing {
   color: var(--muted-foreground);
 }
 
-.address {
-  --search-gap: 6px;
+.column-title.searching {
+  padding: 0 var(--search-gap) 0 4px;
+}
+
+.search-row {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .search-button {

@@ -33,6 +33,7 @@ import {
 import { keymap } from '../shared/keymap';
 import { strings } from '../shared/strings';
 import { keyPressed } from './shortcuts';
+import { SearchButton, SearchRow } from './search';
 
 export function withLargeFiles(
   parsed: readonly DiffFile[],
@@ -216,6 +217,7 @@ export function DiffFind({
   input,
   onQuery,
   onStep,
+  onClose,
 }: {
   query: string;
   count: string;
@@ -223,6 +225,7 @@ export function DiffFind({
   input?: RefObject<HTMLInputElement | null>;
   onQuery: (query: string) => void;
   onStep: (step: 1 | -1) => void;
+  onClose: () => void;
 }) {
   return (
     <div className={`diff-find ${query ? 'active' : ''}`}>
@@ -240,11 +243,7 @@ export function DiffFind({
             onStep(step);
           } else if (keyPressed(keymap.stopFinding, event)) {
             event.preventDefault();
-            if (query) {
-              onQuery('');
-            } else {
-              columnFocusOf(event.currentTarget)?.focus();
-            }
+            onClose();
           }
         }}
       />
@@ -402,32 +401,52 @@ export function Diff({
     setAwaitedDiff(undefined);
     setFirstChange((count) => count + 1);
   }
-  const findSeen = useRef(findAsked);
+  const [finding, setFinding] = useState(false);
+  const [focusAsks, setFocusAsks] = useState(0);
+  const openFind = () => {
+    setFinding(true);
+    setFocusAsks((count) => count + 1);
+  };
+  const closeFind = () => {
+    columnFocusOf(input.current)?.focus();
+    setFinding(false);
+    setQuery('');
+  };
+  const [findSeen, setFindSeen] = useState(findAsked);
+  if (findSeen !== findAsked) {
+    setFindSeen(findAsked);
+    openFind();
+  }
   useEffect(() => {
-    if (findSeen.current !== findAsked) {
-      findSeen.current = findAsked;
+    if (focusAsks > 0) {
       input.current?.focus();
       input.current?.select();
     }
-  }, [findAsked]);
+  }, [focusAsks]);
 
   return (
     <Column
-      title={
-        <DiffFind
-          query={query}
-          count={matchCount(query, matches.length, shown)}
-          unsearched={unsearchedFiles(diffFiles, fileContent)}
-          input={input}
-          onQuery={(next) => {
-            setQuery(next);
-            goTo(0);
-          }}
-          onStep={step}
-        />
-      }
       start={options}
-      actions={<FindActions matches={matches.length} onStep={step} />}
+      search={<SearchButton title={strings.find.title} onClick={openFind} />}
+      searching={
+        finding && (
+          <SearchRow onClose={closeFind}>
+            <DiffFind
+              query={query}
+              count={matchCount(query, matches.length, shown)}
+              unsearched={unsearchedFiles(diffFiles, fileContent)}
+              input={input}
+              onQuery={(next) => {
+                setQuery(next);
+                goTo(0);
+              }}
+              onStep={step}
+              onClose={closeFind}
+            />
+            <FindActions matches={matches.length} onStep={step} />
+          </SearchRow>
+        )
+      }
     >
       <DiffView
         key={selection}

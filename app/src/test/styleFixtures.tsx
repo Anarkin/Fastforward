@@ -317,6 +317,7 @@ export const diffFind = memoized((query) =>
       unsearched={0}
       onQuery={noop}
       onStep={noop}
+      onClose={noop}
     />,
   ),
 );
