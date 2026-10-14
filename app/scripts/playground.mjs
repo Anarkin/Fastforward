@@ -10,7 +10,7 @@ const flags = new Set(
 );
 const [given] = process.argv.slice(2).filter((arg) => !arg.startsWith('--'));
 const folder = path.resolve(
-  given ?? path.join(import.meta.dirname, '..', '..'),
+  given ?? path.join(import.meta.dirname, '..', '..', '..'),
 );
 const sibling = (suffix) =>
   path.join(folder, `Fastforward-playground${suffix}`);

@@ -16,7 +16,9 @@ interface GithubRelease {
 
 async function githubRelease(): Promise<GithubRelease> {
   const loaded: GithubRelease = await import(
-    pathToFileURL(path.join(__dirname, '..', '..', 'githubRelease.mjs')).href
+    pathToFileURL(
+      path.join(__dirname, '..', '..', 'scripts', 'githubRelease.mjs'),
+    ).href
   );
   return loaded;
 }

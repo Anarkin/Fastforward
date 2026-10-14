@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as esbuild from 'esbuild';
 import electron from 'electron';
 import { quitApp } from './devApp.mjs';
-import { mainOptions, webviewOptions } from './esbuild.config.mjs';
+import { mainOptions, webviewOptions } from '../esbuild.config.mjs';
 
 const production = process.argv.includes('--production');
 const dev = process.argv.includes('--dev');
