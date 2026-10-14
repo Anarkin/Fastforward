@@ -120,7 +120,7 @@ export const tabBar = memoized(() =>
     <TabBar
       tabs={[
         { root: '/a', name: 'a' },
-        { root: '/b', name: 'b' },
+        { root: '/x/b', name: 'b', folder: 'x' },
       ]}
       active="/a"
       onSelect={noop}

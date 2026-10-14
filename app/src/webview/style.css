@@ -194,7 +194,9 @@ body {
 }
 
 .tabs .tab-list {
+  flex-wrap: nowrap;
   min-height: calc(max(1lh, 20px) + 12px);
+  padding-right: 32px;
 }
 
 .tabs .title-bar-icon {
@@ -418,6 +420,34 @@ body {
 .tabs .tab {
   --sheet: var(--repository-background);
   position: relative;
+  flex-shrink: 1;
+  min-width: calc(2ch + 4px);
+}
+
+.tabs .tab.active {
+  min-width: calc(2ch + 2 * 4px + 20px);
+}
+
+.tabs .tab-name,
+.tabs .tab-folder {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tabs .tab-name {
+  flex-shrink: 1000;
+  min-width: 2ch;
+}
+
+.tabs .tab-folder {
+  flex-shrink: 1000000;
+}
+
+.tabs .tab:not(.active) .tab-close {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 [data-maximized] .tabs .tab:not(.active)::before {
@@ -517,6 +547,7 @@ body {
 }
 
 .tab-add {
+  flex: none;
   align-self: center;
   width: 24px;
   height: 24px;

@@ -305,14 +305,77 @@ suite('Style', () => {
     );
   });
 
-  test('wraps the repository and worktree tabs onto more rows rather than scrolling them sideways', () => {
-    for (const bar of [tabBar(), worktreeBar([worktree('a'), worktree('b')])]) {
-      looks(withClass(bar, 'tab-list'), {
-        'flex-wrap': 'wrap',
-        overflow: undefined,
-        'overflow-x': undefined,
+  test('keeps the repository tabs on one row, shrinking them as Chrome does rather than wrapping or scrolling them, down to a letter or two of the name beside the close button', () => {
+    looks(withClass(tabBar(), 'tab-list'), {
+      'flex-wrap': 'nowrap',
+      overflow: undefined,
+      'overflow-x': undefined,
+    });
+    const [active, other] = allWithClass(tabBar(), 'tab');
+    const gap = cascaded(active, 'gap');
+    const close = cascaded(withClass(active, 'tab-close'), 'width');
+    looks(active, {
+      'flex-shrink': '1',
+      'box-sizing': undefined,
+      'min-width': `calc(2ch + 2 * ${gap} + ${close})`,
+    });
+    looks(other, {
+      'flex-shrink': '1',
+      'min-width': `calc(2ch + ${gap})`,
+    });
+    for (const tab of [active, other]) {
+      looks(withClass(tab, 'tab-name'), {
+        'min-width': '2ch',
+        overflow: 'hidden',
+        'text-overflow': 'ellipsis',
       });
     }
+    for (const button of [
+      withClass(active, 'tab-close'),
+      withClass(tabBar(), 'tab-add'),
+    ]) {
+      looks(button, { flex: 'none' });
+    }
+  });
+
+  test('gives up the close button of a tab not open, as Chrome does, only once its name is down to its first letters, then wholly, as flexbox shrinks items whose factors add up to less than one only partly', () => {
+    const [, other] = allWithClass(tabBar(), 'tab');
+    const close = withClass(other, 'tab-close');
+    looks(close, { 'min-width': '0', overflow: 'hidden' });
+    const closeShrink = Number(cascaded(close, 'flex-shrink'));
+    assert.ok(closeShrink >= 1);
+    assert.ok(
+      closeShrink <
+        Number(cascaded(withClass(other, 'tab-name'), 'flex-shrink') ?? '1') /
+          100,
+    );
+  });
+
+  test("shrinks a repository tab's folder away before its name", () => {
+    const [, tab] = allWithClass(tabBar(), 'tab');
+    looks(withClass(tab, 'tab-folder'), {
+      'min-width': '0',
+      overflow: 'hidden',
+      'text-overflow': 'ellipsis',
+    });
+    assert.ok(
+      Number(cascaded(withClass(tab, 'tab-folder'), 'flex-shrink')) >
+        Number(cascaded(withClass(tab, 'tab-name'), 'flex-shrink') ?? '1'),
+    );
+  });
+
+  test('leaves room beside the repository tabs to drag the window by, however many are open', () => {
+    const list = withClass(tabBar(), 'tab-list');
+    looks(list, { '-webkit-app-region': undefined });
+    assert.ok(parseFloat(cascaded(list, 'padding-right') ?? '0') >= 32);
+  });
+
+  test('wraps the worktrees onto more rows rather than scrolling them sideways', () => {
+    looks(withClass(worktreeBar([worktree('a'), worktree('b')]), 'tab-list'), {
+      'flex-wrap': 'wrap',
+      overflow: undefined,
+      'overflow-x': undefined,
+    });
   });
 
   test('joins the active repository tab to the white sheet under it, which holds the worktrees and the columns', () => {
