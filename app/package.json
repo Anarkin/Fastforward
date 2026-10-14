@@ -18,10 +18,10 @@
   },
   "main": "./dist/main.js",
   "scripts": {
-    "build": "node scripts/esbuild.mjs",
-    "dev": "node scripts/esbuild.mjs --dev",
-    "package": "npm run check-types && node scripts/esbuild.mjs --production",
-    "check-types": "tsc --noEmit && tsc -p tsconfig.main.json && tsc -p tsconfig.webview.json",
+    "build": "node scripts/esbuild.mts",
+    "dev": "node scripts/esbuild.mts --dev",
+    "package": "npm run check-types && node scripts/esbuild.mts --production",
+    "check-types": "tsc --noEmit && tsc -p tsconfig.main.json && tsc -p tsconfig.webview.json && tsc -p tsconfig.scripts.json",
     "pretest": "npm run build",
     "test": "vitest run",
     "test:unit": "vitest run --project unit",
@@ -33,8 +33,8 @@
     "lint": "oxlint --type-aware --deny-warnings",
     "knip": "knip",
     "dist": "npm run package && electron-builder --publish never",
-    "release": "node scripts/release.mjs",
-    "playground": "node scripts/playground.mjs"
+    "release": "node scripts/release.mts",
+    "playground": "node scripts/playground.mts"
   },
   "devDependencies": {
     "@tanstack/react-virtual": "^3.14.15",

@@ -19,7 +19,7 @@ async function loadQuitApp() {
     quitApp,
   }: { quitApp: (app: App, killAfterMs?: number) => Promise<void> } =
     await import(
-      pathToFileURL(path.join(appFolder, 'scripts', 'devApp.mjs')).href
+      pathToFileURL(path.join(appFolder, 'scripts', 'devApp.mts')).href
     );
   return quitApp;
 }

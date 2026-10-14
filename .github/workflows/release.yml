@@ -32,10 +32,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          sparse-checkout: app/scripts/githubRelease.mjs
+          sparse-checkout: app/scripts/githubRelease.mts
           sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
       - name: Create the draft release once, so the builds upload to it instead of each creating one, refusing a release already published
-        run: node app/scripts/githubRelease.mjs draft "$GITHUB_REF_NAME"
+        run: node app/scripts/githubRelease.mts draft "$GITHUB_REF_NAME"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   build:
@@ -81,14 +84,17 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          sparse-checkout: app/scripts/githubRelease.mjs
+          sparse-checkout: app/scripts/githubRelease.mts
           sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: release-*
           merge-multiple: true
           path: release
       - name: Upload the installers and update files to the draft release, refusing a release already published, without installing any package while holding a write token
-        run: node app/scripts/githubRelease.mjs upload "$GITHUB_REF_NAME" release/*
+        run: node app/scripts/githubRelease.mts upload "$GITHUB_REF_NAME" release/*
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -10,7 +10,7 @@ import {
   type TempRepository,
 } from './repositories';
 
-const script = path.join(__dirname, '..', '..', 'scripts', 'release.mjs');
+const script = path.join(__dirname, '..', '..', 'scripts', 'release.mts');
 
 const fakeNpm = `const fs = require('node:fs');
 const version = process.argv[3];

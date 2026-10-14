@@ -12,7 +12,7 @@ suite('Webview bundle', { timeout: 30_000 }, () => {
       webviewOptions,
     }: { webviewOptions: (production: boolean) => esbuild.BuildOptions } =
       await import(
-        pathToFileURL(path.join(appFolder, 'esbuild.config.mjs')).href
+        pathToFileURL(path.join(appFolder, 'esbuild.config.mts')).href
       );
     const { metafile } = await esbuild.build({
       ...webviewOptions(true),

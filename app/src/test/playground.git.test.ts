@@ -11,7 +11,7 @@ import { promisify } from 'node:util';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { removeFolder, tempFolder } from './repositories';
 
-const script = path.join(__dirname, '..', '..', 'scripts', 'playground.mjs');
+const script = path.join(__dirname, '..', '..', 'scripts', 'playground.mts');
 
 interface Ran {
   readonly code: number;

@@ -1,4 +1,6 @@
-function sharedOptions(production) {
+import type { BuildOptions } from 'esbuild';
+
+function sharedOptions(production: boolean): BuildOptions {
   return {
     bundle: true,
     sourcemap: !production,
@@ -6,7 +8,7 @@ function sharedOptions(production) {
   };
 }
 
-export function mainOptions(production) {
+export function mainOptions(production: boolean): BuildOptions {
   return {
     ...sharedOptions(production),
     entryPoints: {
@@ -20,7 +22,7 @@ export function mainOptions(production) {
   };
 }
 
-export function webviewOptions(production) {
+export function webviewOptions(production: boolean): BuildOptions {
   return {
     ...sharedOptions(production),
     entryPoints: {

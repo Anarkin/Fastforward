@@ -1,4 +1,6 @@
-export async function quitApp(app, killAfterMs = 5000) {
+import type { ChildProcess } from 'node:child_process';
+
+export async function quitApp(app: ChildProcess, killAfterMs = 5000) {
   if (app.exitCode !== null || app.signalCode !== null) {
     return;
   }

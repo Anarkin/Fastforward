@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 
 const bump = process.argv[2] ?? 'major';
 
-const run = (command, args) =>
+const run = (command: string, args: readonly string[]) =>
   execFileSync(command, args, { stdio: 'inherit' });
 
 const changes = execFileSync(
@@ -37,15 +37,16 @@ if (Number(behind) > 0) {
   process.exit(1);
 }
 
+const npm = process.env.npm_execpath;
+if (!npm) {
+  console.error('Release with npm run release, which tells it where npm is.');
+  process.exit(1);
+}
+
 const files = ['package.json', 'package-lock.json'];
 const undos = [() => run('git', ['checkout', 'HEAD', '--', ...files])];
 try {
-  run(process.execPath, [
-    process.env.npm_execpath,
-    'version',
-    bump,
-    '--no-git-tag-version',
-  ]);
+  run(process.execPath, [npm, 'version', bump, '--no-git-tag-version']);
   const { version } = JSON.parse(fs.readFileSync('package.json', 'utf8'));
   const tag = `v${version}`;
   run('git', ['add', ...files]);

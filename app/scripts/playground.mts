@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { deflateSync } from 'node:zlib';
-import { images } from './playground-images.mjs';
+import { images } from './playground-images.mts';
 
 const flags = new Set(
   process.argv.slice(2).filter((arg) => arg.startsWith('--')),
@@ -12,7 +12,7 @@ const [given] = process.argv.slice(2).filter((arg) => !arg.startsWith('--'));
 const folder = path.resolve(
   given ?? path.join(import.meta.dirname, '..', '..', '..'),
 );
-const sibling = (suffix) =>
+const sibling = (suffix: string) =>
   path.join(folder, `Fastforward-playground${suffix}`);
 const local = sibling('');
 const remote = sibling('-remote.git');
@@ -38,7 +38,7 @@ const identity = {
   GIT_COMMITTER_DATE: '2026-02-01T00:00:00Z',
 };
 
-const git = (cwd, args, input) =>
+const git = (cwd: string, args: readonly string[], input?: string | Buffer) =>
   execFileSync('git', ['-c', 'core.safecrlf=false', ...args], {
     cwd,
     input,
@@ -48,7 +48,7 @@ const git = (cwd, args, input) =>
     stdio: ['pipe', 'pipe', 'inherit'],
   });
 
-const realPath = (where) => {
+const realPath = (where: string) => {
   try {
     return fs.realpathSync.native(where);
   } catch {
@@ -56,9 +56,10 @@ const realPath = (where) => {
   }
 };
 
-const samePath = (a, b) => path.relative(realPath(a), realPath(b)) === '';
+const samePath = (a: string, b: string) =>
+  path.relative(realPath(a), realPath(b)) === '';
 
-const madeHere = (repository, commonDir) => {
+const madeHere = (repository: string, commonDir: string) => {
   try {
     const common = path.resolve(
       repository,
@@ -96,14 +97,14 @@ for (const [repository] of ours) {
   fs.rmSync(repository, { recursive: true, force: true });
 }
 
-const stream = [];
+const stream: Buffer[] = [];
 let mark = 0;
 let minute = 0;
-const data = (value) => {
+const data = (value: string | Buffer) => {
   const bytes = Buffer.isBuffer(value) ? value : Buffer.from(value);
   return [Buffer.from(`data ${bytes.length}\n`), bytes, Buffer.from('\n')];
 };
-const write = (...parts) => {
+const write = (...parts: (string | Buffer[])[]) => {
   for (const part of parts) {
     if (Array.isArray(part)) {
       stream.push(...part);
@@ -117,10 +118,31 @@ const signature = () => {
   return `Playground <playground@example.com> ${1767225600 + minute * 60} +0000`;
 };
 
-const sourcePath = (file) =>
+const sourcePath = (file: string) =>
   /[ "\\\n]/.test(file) ? JSON.stringify(file) : file;
 
-function commit(ref, { from, merges = [], changes = [], message, author }) {
+type Change =
+  | { readonly delete: string }
+  | { readonly rename: readonly [string, string] }
+  | { readonly copy: readonly [string, string] }
+  | {
+      readonly path: string;
+      readonly content: string | Buffer;
+      readonly mode?: string;
+    };
+
+interface Commit {
+  readonly from?: number;
+  readonly merges?: readonly number[];
+  readonly changes?: readonly Change[];
+  readonly message: string;
+  readonly author?: string;
+}
+
+function commit(
+  ref: string,
+  { from, merges = [], changes = [], message, author }: Commit,
+) {
   mark++;
   write(
     `commit ${ref}\nmark :${mark}\nauthor ${author ?? signature()}\ncommitter ${author ?? signature()}\n`,
@@ -129,11 +151,11 @@ function commit(ref, { from, merges = [], changes = [], message, author }) {
     ...merges.map((other) => `merge :${other}\n`),
   );
   for (const change of changes) {
-    if (change.delete) {
+    if ('delete' in change) {
       write(`D ${change.delete}\n`);
-    } else if (change.rename) {
+    } else if ('rename' in change) {
       write(`R ${sourcePath(change.rename[0])} ${change.rename[1]}\n`);
-    } else if (change.copy) {
+    } else if ('copy' in change) {
       write(`C ${sourcePath(change.copy[0])} ${change.copy[1]}\n`);
     } else {
       write(
@@ -146,12 +168,13 @@ function commit(ref, { from, merges = [], changes = [], message, author }) {
   return mark;
 }
 
-const lightweight = (name, at) =>
+const lightweight = (name: string, at: number) =>
   write(`reset refs/tags/${name}\nfrom :${at}\n\n`);
-const annotated = (name, at, message) =>
+const annotated = (name: string, at: number, message: string) =>
   write(`tag ${name}\nfrom :${at}\ntagger ${signature()}\n`, data(message));
-const pointer = (ref, at) => write(`reset ${ref}\nfrom :${at}\n\n`);
-const searchable = (subject, words) =>
+const pointer = (ref: string, at: number) =>
+  write(`reset ${ref}\nfrom :${at}\n\n`);
+const searchable = (subject: string, words: readonly string[]) =>
   `${subject}\n\nSearch for: ${words.join(', ')}.\n`;
 
 const crcTable = Array.from({ length: 256 }, (_, n) => {
@@ -161,14 +184,14 @@ const crcTable = Array.from({ length: 256 }, (_, n) => {
   }
   return c >>> 0;
 });
-const crc32 = (bytes) => {
+const crc32 = (bytes: Buffer) => {
   let c = 0xffffffff;
   for (const byte of bytes) {
     c = crcTable[(c ^ byte) & 0xff] ^ (c >>> 8);
   }
   return (c ^ 0xffffffff) >>> 0;
 };
-const pngChunk = (type, body) => {
+const pngChunk = (type: string, body: Buffer) => {
   const length = Buffer.alloc(4);
   length.writeUInt32BE(body.length);
   const typed = Buffer.concat([Buffer.from(type), body]);
@@ -176,7 +199,9 @@ const pngChunk = (type, body) => {
   crc.writeUInt32BE(crc32(typed));
   return Buffer.concat([length, typed, crc]);
 };
-const png = (width, height, color) => {
+type Color = (x: number, y: number) => readonly [number, number, number];
+
+const png = (width: number, height: number, color: Color) => {
   const rows = Buffer.alloc((width * 3 + 1) * height);
   for (let y = 0; y < height; y++) {
     const row = y * (width * 3 + 1);
@@ -196,8 +221,8 @@ const png = (width, height, color) => {
     pngChunk('IEND', Buffer.alloc(0)),
   ]);
 };
-const shade = (value) => Math.round(255 * value);
-const binary = (length, seed) => {
+const shade = (value: number) => Math.round(255 * value);
+const binary = (length: number, seed: number) => {
   const bytes = Buffer.alloc(length);
   let state = seed;
   for (let i = 0; i < length; i++) {
@@ -207,7 +232,7 @@ const binary = (length, seed) => {
   return bytes;
 };
 const words = ['fast', 'forward', 'commit', 'branch', 'merge', 'rebase', 'tag'];
-const sentence = (seed, count) =>
+const sentence = (seed: number, count: number) =>
   Array.from(
     { length: count },
     (_, i) => words[(seed + i * 3) % words.length],
@@ -449,7 +474,7 @@ main = commit('refs/heads/main', {
   ]),
 });
 
-const onMain = (message, changes) => {
+const onMain = (message: string, changes: readonly Change[]) => {
   main = commit('refs/heads/main', { from: main, changes, message });
 };
 onMain(
@@ -652,9 +677,9 @@ const languages = {
   Dockerfile: 'FROM alpine\nCMD ["echo", "Hello, world!"]\n',
   Makefile: 'world:\n\techo "Hello, world!"\n',
 };
-const vector = (fill) =>
+const vector = (fill: string) =>
   `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">\n  <rect width="96" height="96" rx="16" fill="#eee"/>\n  <circle cx="48" cy="48" r="32" fill="${fill}"/>\n</svg>\n`;
-const decoded = (text) => Buffer.from(text, 'base64');
+const decoded = (text: string) => Buffer.from(text, 'base64');
 const imageKinds = [
   {
     extension: 'png',
@@ -908,7 +933,7 @@ onMain(
     },
   ],
 );
-const manyLines = (word) =>
+const manyLines = (word: string) =>
   `${Array.from({ length: 30_000 }, (_, i) => `${word} ${i + 1}`).join('\n')}\n`;
 onMain(
   searchable('Add 30,000 lines at once, which collapses the diff', [
@@ -1023,15 +1048,15 @@ onMain(
   ]),
   [{ delete: 'showcase/images/wide.png' }],
 );
-const everyWay = (file) => `showcase/everything/${file}`;
-const numberedLines = (name, count = 12) =>
+const everyWay = (file: string) => `showcase/everything/${file}`;
+const numberedLines = (name: string, count = 12) =>
   Array.from({ length: count }, (_, i) => `line ${i + 1} of ${name}`);
-const numbered = (name) => `${numberedLines(name).join('\n')}\n`;
-const numberedChanged = (name) =>
+const numbered = (name: string) => `${numberedLines(name).join('\n')}\n`;
+const numberedChanged = (name: string) =>
   `${numberedLines(name)
     .map((line, i) => (i === 5 ? `${line}, changed` : line))
     .join('\n')}\n`;
-const guide = (note) =>
+const guide = (note: string) =>
   `# A guide renamed later\n\n${numberedLines('the guide', 10)
     .map((line) => `- ${line}`)
     .join('\n')}\n${note}`;
@@ -1144,7 +1169,7 @@ onMain(
       ['images/pure.png', 'images/pure-renamed.png'],
       ['images/changed.svg', 'images/changed-renamed.svg'],
       ['markdown/guide.md', 'markdown/renamed-guide.md'],
-    ].map(([from, to]) => ({ rename: [everyWay(from), everyWay(to)] })),
+    ].map(([from, to]): Change => ({ rename: [everyWay(from), everyWay(to)] })),
     {
       path: everyWay('moved/changed-renamed.txt'),
       content: numberedChanged('moved/changed.txt'),
@@ -1220,8 +1245,14 @@ for (const entry of ['the merges', 'the samples']) {
 }
 
 const tracked = ['main'];
-const appended = new Map();
-const append = (ref, from, file, k, what) => {
+const appended = new Map<string, string>();
+const append = (
+  ref: string,
+  from: number,
+  file: string,
+  k: number,
+  what: string,
+) => {
   let tip = from;
   let text = appended.get(`${from} ${file}`) ?? '';
   for (let j = 1; j <= k; j++) {
@@ -1235,7 +1266,7 @@ const append = (ref, from, file, k, what) => {
   }
   return tip;
 };
-const start = (name) => {
+const start = (name: string) => {
   const tip = commit(`refs/heads/${name}`, {
     from: main,
     changes: [{ path: `${name}.txt`, content: 'shared\n' }],
@@ -1246,7 +1277,7 @@ const start = (name) => {
   tracked.push(name);
   return tip;
 };
-const lagging = (name, k) =>
+const lagging = (name: string, k: number) =>
   append(
     `refs/playground/${name}`,
     start(name),
@@ -1254,7 +1285,7 @@ const lagging = (name, k) =>
     k,
     `Add work only the remote has to ${name}`,
   );
-const ahead = (name, k) =>
+const ahead = (name: string, k: number) =>
   append(
     `refs/heads/${name}`,
     start(name),
@@ -1349,7 +1380,7 @@ for (const [message, author] of [
     'Commit from long ago, in another odd time zone',
     'Playground <playground@example.com> 86400 -1200',
   ],
-]) {
+] as const) {
   oddText += `${message.split('\n')[0]}\n`;
   odd = commit('refs/heads/odd-commits', {
     from: odd,
@@ -1438,7 +1469,7 @@ fs.writeFileSync(
   ].join('\n'),
   { mode: 0o755 },
 );
-const upstreamOf = (name, remoteName, merge) =>
+const upstreamOf = (name: string, remoteName: string, merge: string) =>
   `[branch "${name}"]\n\tremote = ${remoteName}\n\tmerge = ${merge}\n`;
 fs.appendFileSync(
   path.join(local, '.git', 'config'),
@@ -1474,7 +1505,7 @@ if (flags.has('--two-remotes')) {
 git(local, ['reset', '--quiet', '--hard', 'main']);
 git(local, ['worktree', 'add', '--quiet', worktree, 'in-worktree']);
 
-const stops = (cwd, args) => {
+const stops = (cwd: string, args: readonly string[]) => {
   try {
     execFileSync('git', args, {
       cwd,
@@ -1512,7 +1543,7 @@ for (const repository of [shallow, partial, noRemote, empty]) {
   git(repository, ['config', marker, 'true']);
 }
 
-const edit = (file, content) =>
+const edit = (file: string, content: string) =>
   fs.writeFileSync(path.join(local, file), content);
 edit('notes.txt', `${noteText}a note to stash\n`);
 git(local, ['stash', 'push', '--quiet', '--message', 'Stash a note']);

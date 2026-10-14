@@ -1,16 +1,21 @@
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
-function githubCli(args) {
-  return execFileSync(
-    'gh',
-    [...args, '--repo', process.env.GITHUB_REPOSITORY],
-    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
-  );
+type Gh = (args: readonly string[]) => string;
+
+function githubCli(args: readonly string[]): string {
+  const repository = process.env.GITHUB_REPOSITORY;
+  if (!repository) {
+    throw new Error('GITHUB_REPOSITORY names no repository to release in.');
+  }
+  return execFileSync('gh', [...args, '--repo', repository], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
 }
 
-function stateOf(gh, tag) {
-  let isDraft;
+function stateOf(gh: Gh, tag: string) {
+  let isDraft: string;
   try {
     isDraft = gh([
       'release',
@@ -27,13 +32,13 @@ function stateOf(gh, tag) {
   return isDraft.trim() === 'true' ? 'draft' : 'published';
 }
 
-function refusePublished(tag) {
+function refusePublished(tag: string): never {
   throw new Error(
     `${tag} is already published, so its installers are left as they are.`,
   );
 }
 
-export function draftRelease(gh, tag) {
+export function draftRelease(gh: Gh, tag: string) {
   const state = stateOf(gh, tag);
   if (state === 'published') {
     refusePublished(tag);
@@ -51,7 +56,7 @@ export function draftRelease(gh, tag) {
   }
 }
 
-export function uploadRelease(gh, tag, files) {
+export function uploadRelease(gh: Gh, tag: string, files: readonly string[]) {
   const state = stateOf(gh, tag);
   if (state === 'published') {
     refusePublished(tag);
@@ -71,7 +76,9 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
       uploadRelease(githubCli, tag, files);
     }
   } catch (error) {
-    console.error(`::error::${error.message}`);
+    console.error(
+      `::error::${error instanceof Error ? error.message : String(error)}`,
+    );
     process.exit(1);
   }
 }

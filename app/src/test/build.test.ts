@@ -14,7 +14,7 @@ async function releaseOutput(
   file: string,
 ): Promise<string> {
   const config: Record<typeof options, Options> = await import(
-    pathToFileURL(path.join(appFolder, 'esbuild.config.mjs')).href
+    pathToFileURL(path.join(appFolder, 'esbuild.config.mts')).href
   );
   const { outputFiles } = await esbuild.build({
     ...config[options](true),

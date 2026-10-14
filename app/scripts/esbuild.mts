@@ -1,21 +1,22 @@
-import { spawn } from 'node:child_process';
+import { type ChildProcess, spawn } from 'node:child_process';
 import * as fs from 'node:fs';
+import { createRequire } from 'node:module';
 import * as esbuild from 'esbuild';
-import electron from 'electron';
-import { quitApp } from './devApp.mjs';
-import { mainOptions, webviewOptions } from '../esbuild.config.mjs';
+import { quitApp } from './devApp.mts';
+import { mainOptions, webviewOptions } from '../esbuild.config.mts';
 
 const production = process.argv.includes('--production');
 const dev = process.argv.includes('--dev');
+const electron: string = createRequire(import.meta.url)('electron');
 
-let webviewBuild = Promise.withResolvers();
-const trackWebview = {
+let webviewBuild = Promise.withResolvers<void>();
+const trackWebview: esbuild.Plugin = {
   name: 'track-webview',
   setup(build) {
     let built = false;
     build.onStart(() => {
       if (built) {
-        webviewBuild = Promise.withResolvers();
+        webviewBuild = Promise.withResolvers<void>();
       }
     });
     build.onEnd(() => {
@@ -25,8 +26,8 @@ const trackWebview = {
   },
 };
 
-let app;
-const restartApp = {
+let app: ChildProcess | undefined;
+const restartApp: esbuild.Plugin = {
   name: 'restart-app',
   setup(build) {
     build.onEnd(async (result) => {
@@ -70,8 +71,8 @@ const contexts = await Promise.all([
 
 if (dev) {
   await Promise.all(contexts.map((ctx) => ctx.watch()));
-  const copied = new Map();
-  const copyOnChange = (folder, name) =>
+  const copied = new Map<string, NodeJS.Timeout>();
+  const copyOnChange = (folder: string, name: string) =>
     fs.watch(folder, (_event, file) => {
       if (file === name) {
         clearTimeout(copied.get(name));
