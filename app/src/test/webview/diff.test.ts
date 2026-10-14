@@ -161,6 +161,32 @@ suite('Patch parser', () => {
     ]);
   });
 
+  test('takes the old and new mode of a file whose mode changed, and tells a copy from a rename', () => {
+    const files = parsePatch(
+      [
+        'diff --git a/tool.sh b/tool.sh',
+        'old mode 100644',
+        'new mode 100755',
+        'diff --git a/x b/y',
+        'similarity index 100%',
+        'copy from x',
+        'copy to y',
+        'diff --git a/p b/q',
+        'similarity index 100%',
+        'rename from p',
+        'rename to q',
+      ].join('\n'),
+    );
+    assert.deepStrictEqual(
+      files.map((file) => [file.modeChange, file.copied]),
+      [
+        [{ old: '100644', new: '100755' }, undefined],
+        [undefined, true],
+        [undefined, undefined],
+      ],
+    );
+  });
+
   test('unquotes paths git quotes', () => {
     assert.strictEqual(unquotePath('"back\\\\slash"'), 'back\\slash');
     assert.strictEqual(unquotePath('"a\\tb"'), 'a\tb');

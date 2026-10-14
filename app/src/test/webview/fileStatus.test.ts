@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { changeKind, changeTitle } from '../../webview/fileStatus';
+import { changeKind, changeTitle, renamedPath } from '../../webview/fileStatus';
 import { fileChange as change } from '../fixtures';
 
 suite('File status', () => {
@@ -18,6 +18,34 @@ suite('File status', () => {
         'modified',
         'deleted',
         'renamed',
+      ],
+    );
+  });
+
+  test('shortens a rename to what changed between the folders both paths share, as git does', () => {
+    assert.deepStrictEqual(
+      [
+        ['samples/old-name.txt', 'samples/new-name.txt'],
+        ['moved/to-folder.txt', 'elsewhere/to-folder.txt'],
+        [
+          'showcase/everything/folder/one.txt',
+          'showcase/everything/renamed-folder/one.txt',
+        ],
+        ['a/b/c.txt', 'a/c.txt'],
+        ['a/c.txt', 'a/b/c.txt'],
+        ['moved/Case.txt', 'moved/CASE.txt'],
+        ['old.txt', 'new.txt'],
+        ['ab/c.txt', 'b/c.txt'],
+      ].map(([from, to]) => renamedPath(from, to)),
+      [
+        'samples/{old-name.txt → new-name.txt}',
+        '{moved → elsewhere}/to-folder.txt',
+        'showcase/everything/{folder → renamed-folder}/one.txt',
+        'a/{b → }/c.txt',
+        'a/{ → b}/c.txt',
+        'moved/{Case.txt → CASE.txt}',
+        'old.txt → new.txt',
+        '{ab → b}/c.txt',
       ],
     );
   });

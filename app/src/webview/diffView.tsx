@@ -72,6 +72,7 @@ import {
 } from './images';
 import { SkeletonRows, useSkeleton } from './skeleton';
 import { Twisty } from './tree';
+import { renamedPath } from './fileStatus';
 import {
   rowBreaksAt,
   rowStarts,
@@ -119,6 +120,7 @@ export type DiffRow =
       readonly kind: 'file';
       readonly file: number;
       readonly path: string;
+      readonly oldPath?: string;
       readonly open: boolean;
       readonly collapsible: boolean;
     }
@@ -131,6 +133,8 @@ export type DiffRow =
   | { readonly kind: 'binary'; readonly file: number }
   | { readonly kind: 'empty'; readonly file: number }
   | { readonly kind: 'whitespace'; readonly file: number }
+  | { readonly kind: 'sameContent'; readonly file: number }
+  | { readonly kind: 'mode'; readonly file: number }
   | { readonly kind: 'noNewline'; readonly file: number }
   | { readonly kind: 'image'; readonly file: number }
   | { readonly kind: 'markdown'; readonly file: number }
@@ -163,6 +167,8 @@ const rowHeights: Record<Exclude<DiffRow['kind'], MeasuredKind>, number> = {
   binary: uniformHeight,
   empty: uniformHeight,
   whitespace: uniformHeight,
+  sameContent: uniformHeight,
+  mode: uniformHeight,
   noNewline: uniformHeight,
   image: 320,
   hunk: uniformHeight,
@@ -368,6 +374,7 @@ export function HunkDivider() {
 
 export function FileHeader({
   path,
+  oldPath,
   open,
   whole,
   collapsible,
@@ -377,6 +384,7 @@ export function FileHeader({
   onRender,
 }: {
   path: string;
+  oldPath?: string;
   open: boolean;
   whole: boolean;
   collapsible: boolean;
@@ -388,7 +396,13 @@ export function FileHeader({
   return (
     <div className="file-header" onClick={onClick}>
       {collapsible && <Twisty open={open} />}
-      <span className="path">{path}</span>
+      {oldPath === undefined ? (
+        <span className="path">{path}</span>
+      ) : (
+        <span className="path" title={strings.common.fromTo(oldPath, path)}>
+          {renamedPath(oldPath, path)}
+        </span>
+      )}
       <span className="file-header-end">
         {whole && <span className="unchanged">{strings.diff.unchanged}</span>}
         {preview && onRender && (
@@ -707,6 +721,7 @@ export function diffRows(
       kind: 'file',
       file: index,
       path: file.path,
+      ...(file.oldPath === undefined ? {} : { oldPath: file.oldPath }),
       open,
       collapsible,
     });
@@ -733,6 +748,15 @@ export function diffRows(
       rows.push({ kind: 'empty', file: index });
     } else if (file.whitespaceOnly) {
       rows.push({ kind: 'whitespace', file: index });
+    }
+    if (file.modeChange) {
+      rows.push({ kind: 'mode', file: index });
+    } else if (
+      file.oldPath !== undefined &&
+      !file.binary &&
+      file.hunks.length === 0
+    ) {
+      rows.push({ kind: 'sameContent', file: index });
     }
     if (sideBySide) {
       for (const row of splitRows(file, index, budget)) {
@@ -1811,6 +1835,7 @@ export function DiffView({
   const header = (row: FileHeaderRow, stuck = false) => (
     <FileHeader
       path={row.path}
+      oldPath={row.oldPath}
       open={row.open}
       whole={whole !== undefined}
       collapsible={row.collapsible}
@@ -1906,6 +1931,30 @@ export function DiffView({
             split={split}
           />
         );
+      case 'sameContent':
+        return (
+          <FileNote
+            text={
+              files[row.file].copied
+                ? strings.diff.copiedWithoutChanges
+                : strings.diff.renamedWithoutChanges
+            }
+            change={undefined}
+            split={split}
+          />
+        );
+      case 'mode': {
+        const modes = files[row.file].modeChange;
+        return (
+          modes && (
+            <FileNote
+              text={strings.diff.modeChanged(modes.old, modes.new)}
+              change={undefined}
+              split={split}
+            />
+          )
+        );
+      }
       case 'whitespace':
         return (
           <FileNote

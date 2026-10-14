@@ -98,6 +98,8 @@ export const strings = {
     close: 'Close',
     gone: (name: string) => `${name} doesn't exist anymore`,
     fromTo: (from: string, to: string) => `${from} → ${to}`,
+    fromToWithin: (start: string, from: string, to: string, end: string) =>
+      `${start}{${from} → ${to}}${end}`,
   },
   symbols: {
     checked: '✓',
@@ -334,6 +336,10 @@ export const strings = {
     emptyFile: 'Empty file',
     onlyWhitespace: 'Only whitespace changed',
     noNewlineAtEnd: 'No newline at end of file',
+    renamedWithoutChanges: 'Renamed without changes',
+    copiedWithoutChanges: 'Copied without changes',
+    modeChanged: (from: string, to: string) =>
+      `Mode changed from ${from} to ${to}`,
     imageDetails: (width: number, height: number, bytes: number) =>
       `${width} × ${height} · ${fileSize(bytes)}`,
     imageTooLarge: (megabytes: number) =>

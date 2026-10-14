@@ -25,12 +25,21 @@ export interface DiffFile {
   readonly blobs?: Blobs;
   readonly whitespaceOnly?: boolean;
   readonly noNewlineAtEnd?: 'old' | 'new';
+  readonly modeChange?: ModeChange;
+  readonly copied?: true;
+}
+
+interface ModeChange {
+  readonly old: string;
+  readonly new: string;
 }
 
 interface ParsedFile {
   header: string;
   path: string;
   oldPath?: string;
+  copied: boolean;
+  modes: { old?: string; new?: string };
   binary: boolean;
   hunks: DiffHunk[];
   blobs?: Blobs;
@@ -194,6 +203,8 @@ export function parsePatch(patch: string): DiffFile[] {
       file = {
         header: line,
         path: headerPath(line.slice('diff --git '.length)),
+        copied: false,
+        modes: {},
         binary: false,
         hunks: [],
         addedOrDeleted: false,
@@ -227,6 +238,10 @@ export function parsePatch(patch: string): DiffFile[] {
         line.startsWith('deleted file mode ')
       ) {
         file.addedOrDeleted = true;
+      } else if (line.startsWith('old mode ')) {
+        file.modes.old = line.slice('old mode '.length);
+      } else if (line.startsWith('new mode ')) {
+        file.modes.new = line.slice('new mode '.length);
       } else if (line.startsWith('rename to ') || line.startsWith('copy to ')) {
         file.path = unquotePath(line.slice(line.indexOf(' to ') + 4));
       } else if (
@@ -234,6 +249,7 @@ export function parsePatch(patch: string): DiffFile[] {
         line.startsWith('copy from ')
       ) {
         file.oldPath = unquotePath(line.slice(line.indexOf(' from ') + 6));
+        file.copied = line.startsWith('copy from ');
       } else if (line.startsWith('+++ ')) {
         const path = prefixedPath(line.slice(4), 'b/');
         if (path !== undefined) {
@@ -275,6 +291,8 @@ export function parsePatch(patch: string): DiffFile[] {
     ({
       path,
       oldPath,
+      copied,
+      modes,
       binary,
       hunks,
       blobs,
@@ -283,6 +301,10 @@ export function parsePatch(patch: string): DiffFile[] {
     }) => ({
       path,
       ...(oldPath === undefined ? {} : { oldPath }),
+      ...(copied ? { copied } : {}),
+      ...(modes.old !== undefined && modes.new !== undefined
+        ? { modeChange: { old: modes.old, new: modes.new } }
+        : {}),
       binary,
       hunks,
       ...(blobs ? { blobs } : {}),

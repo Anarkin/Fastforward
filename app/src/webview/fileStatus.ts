@@ -26,6 +26,37 @@ export function changeClass(change: FileChange | undefined): string {
       : 'path';
 }
 
+export function renamedPath(from: string, to: string): string {
+  let start = 0;
+  for (let i = 0; i < from.length && from[i] === to[i]; i++) {
+    if (from[i] === '/') {
+      start = i + 1;
+    }
+  }
+  const floor = start > 0 ? start - 1 : 0;
+  let end = 0;
+  for (
+    let a = from.length - 1, b = to.length - 1;
+    a >= floor && b >= floor && from[a] === to[b];
+    a--, b--
+  ) {
+    if (from[a] === '/') {
+      end = from.length - a;
+    }
+  }
+  if (start + end === 0) {
+    return strings.common.fromTo(from, to);
+  }
+  const middle = (path: string) =>
+    path.slice(start, start + Math.max(0, path.length - start - end));
+  return strings.common.fromToWithin(
+    from.slice(0, start),
+    middle(from),
+    middle(to),
+    from.slice(from.length - end),
+  );
+}
+
 export function changeTitle(change: FileChange): string {
   const path = change.oldPath
     ? strings.common.fromTo(change.oldPath, change.path)

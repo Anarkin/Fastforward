@@ -1979,7 +1979,7 @@ const emptyFile = (index: string, mode: string) =>
   )[0];
 
 suite('Binary files', () => {
-  test('notes an empty file added or deleted, which has no lines to show, but nothing for one only changed in mode', () => {
+  test('notes an empty file added or deleted, which has no lines to show, and the old and new mode of one only changed in mode', () => {
     const empty = 'e69de29bb2d1d6434b8b29ae775ad8c2e48c5391';
     for (const sideBySide of [false, true]) {
       assert.deepStrictEqual(
@@ -2026,7 +2026,11 @@ suite('Binary files', () => {
           undefined,
         ),
       ),
-      ['error', 'file'],
+      ['error', 'file', 'mode'],
+    );
+    assert.strictEqual(
+      strings.diff.modeChanged('100644', '100755'),
+      'Mode changed from 100644 to 100755',
     );
   });
 
@@ -2106,5 +2110,88 @@ suite('Diff file header', () => {
   test('draws the twisty only on a header that can collapse', () => {
     assert.match(collapsibleHeader(true), /twisty/);
     assert.doesNotMatch(collapsibleHeader(false), /twisty/);
+  });
+
+  test('names a renamed file by both its paths, shortened as git does, with both in full in its tooltip', () => {
+    const html = renderToStaticMarkup(
+      <FileHeader
+        path="elsewhere/to-folder.txt"
+        oldPath="moved/to-folder.txt"
+        open
+        whole={false}
+        collapsible
+        onClick={() => {}}
+      />,
+    );
+    assert.match(
+      html,
+      /<span class="path" title="moved\/to-folder\.txt → elsewhere\/to-folder\.txt">\{moved → elsewhere\}\/to-folder\.txt<\/span>/,
+    );
+  });
+});
+
+const renamedFile = (...patchLines: string[]) =>
+  parsePatch(['diff --git a/p.sh b/q.sh', ...patchLines].join('\n'))[0];
+
+suite('Renamed files', () => {
+  const rename = [
+    'similarity index 100%',
+    'rename from p.sh',
+    'rename to q.sh',
+  ];
+
+  test('notes a file renamed or copied without changes, which has no lines to show, keeping its old path on its header', () => {
+    for (const sideBySide of [false, true]) {
+      for (const file of [
+        renamedFile(...rename),
+        renamedFile('similarity index 100%', 'copy from p.sh', 'copy to q.sh'),
+      ]) {
+        const rows = diffRows([file], new Map(), undefined, false, sideBySide);
+        assert.deepStrictEqual(kinds(rows), ['error', 'file', 'sameContent']);
+        assert.deepStrictEqual(rows[1], {
+          kind: 'file',
+          file: 0,
+          path: 'q.sh',
+          oldPath: 'p.sh',
+          open: true,
+          collapsible: false,
+        });
+      }
+    }
+  });
+
+  test('notes the mode of a renamed file changing rather than its content staying, and no note for a rename with changed lines', () => {
+    assert.deepStrictEqual(
+      kinds(
+        diffRows(
+          [renamedFile('old mode 100644', 'new mode 100755', ...rename)],
+          new Map(),
+          undefined,
+        ),
+      ),
+      ['error', 'file', 'mode'],
+    );
+    assert.deepStrictEqual(
+      kinds(
+        diffRows(
+          [
+            renamedFile(
+              'similarity index 90%',
+              'rename from p.sh',
+              'rename to q.sh',
+              'index 1111111..2222222 100644',
+              '--- a/p.sh',
+              '+++ b/q.sh',
+              '@@ -1 +1 @@',
+              '-a',
+              '+b',
+            ),
+          ],
+          new Map(),
+          undefined,
+        ),
+      ),
+      ['error', 'file', 'line', 'line'],
+    );
   });
 });
