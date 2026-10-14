@@ -773,7 +773,8 @@ body.resizing {
   text-overflow: ellipsis;
 }
 
-.diff-find {
+.diff-find,
+.search-field {
   flex: 1;
   display: flex;
   align-items: center;
@@ -787,7 +788,8 @@ body.resizing {
   border-radius: calc(var(--search-height) / 2);
 }
 
-.diff-find:hover {
+.diff-find:hover,
+.search-field:hover {
   background:
     linear-gradient(var(--hover-background), var(--hover-background)),
     var(--color-border);
@@ -795,16 +797,20 @@ body.resizing {
 }
 
 .diff-find.active,
-.diff-find:focus-within {
+.diff-find:focus-within,
+.search-field.active,
+.search-field:focus-within {
   background: var(--color-panel-background);
   border-color: var(--color-border);
 }
 
-.diff-find:focus-within {
+.diff-find:focus-within,
+.search-field:focus-within {
   border-color: var(--color-focus);
 }
 
-.diff-find-input {
+.diff-find-input,
+.search-input {
   flex: 1;
   min-width: 0;
   margin: 0;
@@ -815,7 +821,8 @@ body.resizing {
   outline: none;
 }
 
-.diff-find-input::placeholder {
+.diff-find-input::placeholder,
+.search-input::placeholder {
   color: var(--muted-foreground);
   opacity: 1;
 }
@@ -1566,7 +1573,8 @@ body.resizing {
   background: var(--selection-background);
 }
 
-.locations-list .match {
+.locations-list .match,
+.tree-row .match {
   color: var(--color-search-match-foreground);
   background: var(--color-search-match);
   border-radius: 2px;

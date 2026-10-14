@@ -102,6 +102,12 @@ export const keymap = {
   wrap: bind('Diff', strings.actions.wrap, { W: true }),
   showWhitespace: bind('Diff', strings.actions.showWhitespace, { '.': true }),
   find: bind('Columns', strings.actions.find, { 'Mod+F': true }),
+  toFiles: bind(
+    'Files',
+    strings.actions.toFiles,
+    { Enter: true, ArrowDown: true },
+    { fields: true },
+  ),
   match: bind(
     'Diff',
     strings.actions.match,

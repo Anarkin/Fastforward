@@ -31,10 +31,6 @@ export function columnMove(
       };
 }
 
-export function searchedColumn(column: ColumnName): ColumnName {
-  return column === 'files' ? 'diff' : column;
-}
-
 export function forwardedColumn(
   column: ColumnName | undefined,
   event: Parameters<typeof keyPressed>[1],

@@ -49,7 +49,6 @@ import {
   columnStep,
   forwardedColumn,
   keyboardDropped,
-  searchedColumn,
   shownColumns,
   type ColumnName,
 } from './activeColumn';
@@ -260,11 +259,34 @@ export function App({ name, post: postToHost, listen }: Props) {
     files: 0,
     diff: 0,
   });
+  const [fileFilters, setFileFilters] = useState<ReadonlyMap<string, string>>(
+    new Map(),
+  );
+  const fileFilter =
+    activeTab === undefined ? undefined : fileFilters.get(activeTab);
+  const changeFileFilter = (filter: string | undefined) => {
+    if (activeTab === undefined) {
+      return;
+    }
+    setFileFilters((all) => {
+      const next = new Map(all);
+      if (filter === undefined) {
+        next.delete(activeTab);
+      } else {
+        next.set(activeTab, filter);
+      }
+      return next;
+    });
+  };
   useBinding(keymap.find, () => {
-    const column = searchedColumn(activeColumn);
-    setSearchAsks((asks) => ({ ...asks, [column]: asks[column] + 1 }));
-    if (column === 'commits') {
+    setSearchAsks((asks) => ({
+      ...asks,
+      [activeColumn]: asks[activeColumn] + 1,
+    }));
+    if (activeColumn === 'commits') {
       setSearching(true);
+    } else if (activeColumn === 'files' && fileFilter === undefined) {
+      changeFileFilter('');
     }
   });
   const focusColumn = useCallback(
@@ -959,6 +981,9 @@ export function App({ name, post: postToHost, listen }: Props) {
                               area={area}
                               onSelect={selectFile}
                               view={folderView}
+                              filter={fileFilter}
+                              onFilter={changeFileFilter}
+                              filterAsked={searchAsks.files}
                             />
                             <Diff
                               selection={diffSelection(
@@ -985,6 +1010,7 @@ export function App({ name, post: postToHost, listen }: Props) {
                               showWhitespace={showWhitespace}
                               origin={imageOrigin}
                               findAsked={searchAsks.diff}
+                              filter={fileFilter}
                               changeMarks={
                                 path !== undefined &&
                                 (entireFilePinned || entireFile)

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { comparedOf, comparisonLabel } from '../shared/comparisons';
 import { shortHash } from '../shared/hashes';
 import {
@@ -23,7 +23,10 @@ import {
   treeRowOf,
   type FilesRow,
 } from './changesTree';
+import { columnFocusOf } from './activeColumn';
 import { Column } from './column';
+import { filterWords, matchesFilter } from './fileFilter';
+import { SearchButton, SearchRow } from './search';
 import { AllFilesIcon, CollapseAllIcon, ExpandAllIcon } from './icons';
 import { SkeletonRows, useSkeleton } from './skeleton';
 import { keymap } from '../shared/keymap';
@@ -129,6 +132,65 @@ function sidesOf(
       ];
 }
 
+function filteredSide(side: Side, words: readonly string[]): Side {
+  return words.length === 0
+    ? side
+    : {
+        area: side.area,
+        files: side.files.filter((file) =>
+          matchesFilter(words, file.path, file.oldPath),
+        ),
+        allPaths: side.allPaths?.filter((path) => matchesFilter(words, path)),
+      };
+}
+
+function toggled(folders: ReadonlySet<string>, folder: string): Set<string> {
+  const next = new Set(folders);
+  if (!next.delete(folder)) {
+    next.add(folder);
+  }
+  return next;
+}
+
+const noneClosed: ReadonlySet<string> = new Set();
+
+export function FileFilterField({
+  query,
+  input,
+  onQuery,
+  onLeave,
+  onClose,
+}: {
+  query: string;
+  input?: RefObject<HTMLInputElement | null>;
+  onQuery: (query: string) => void;
+  onLeave: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className={`search-field ${query ? 'active' : ''}`}>
+      <input
+        ref={input}
+        className="search-input"
+        placeholder={strings.find.placeholder}
+        spellCheck={false}
+        autoFocus
+        value={query}
+        onChange={(event) => onQuery(event.target.value)}
+        onKeyDown={(event) => {
+          if (keyPressed(keymap.stopFinding, event)) {
+            event.preventDefault();
+            onClose();
+          } else if (keyPressed(keymap.toFiles, event)) {
+            event.preventDefault();
+            onLeave();
+          }
+        }}
+      />
+    </div>
+  );
+}
+
 function foldersOn(
   folders: ReadonlySet<string>,
   area: ChangeArea | undefined,
@@ -170,6 +232,9 @@ export function Files({
   area,
   onSelect,
   view,
+  filter,
+  onFilter,
+  filterAsked = 0,
 }: {
   title?: string;
   noChanges?: string;
@@ -188,16 +253,45 @@ export function Files({
   area?: ChangeArea;
   onSelect: (path: string | undefined, area?: ChangeArea) => void;
   view: string;
+  filter?: string;
+  onFilter: (filter: string | undefined) => void;
+  filterAsked?: number;
 }) {
   const skeleton = useSkeleton(loading);
   const allPaths = showAll ? tree : undefined;
+  const words = useMemo(() => filterWords(filter ?? ''), [filter]);
+  const filtering = words.length > 0;
   const sides = useMemo(
-    () => sidesOf(files, staged, allPaths),
-    [files, staged, allPaths],
+    () =>
+      sidesOf(files, staged, allPaths).map((side) => filteredSide(side, words)),
+    [files, staged, allPaths, words],
   );
   const trees = useMemo(
     () => sides.map((side) => changesTree(side.files, side.allPaths)),
     [sides],
+  );
+  const folders = useMemo(
+    () =>
+      treeFolders(
+        sides.map((side, index) => ({ area: side.area, tree: trees[index] })),
+      ),
+    [sides, trees],
+  );
+  const searched = words.join(' ');
+  const [folds, setFolds] = useState({ searched, closed: noneClosed });
+  const closedWhileFiltering =
+    folds.searched === searched ? folds.closed : noneClosed;
+  const shownClosed = filtering ? closedWhileFiltering : closedFolders;
+  const shownOpened = useMemo(
+    () =>
+      filtering
+        ? new Set(
+            folders.unchanged.filter(
+              (folder) => !closedWhileFiltering.has(folder),
+            ),
+          )
+        : openedFolders,
+    [filtering, folders, closedWhileFiltering, openedFolders],
   );
   const rows = useMemo(
     () =>
@@ -207,19 +301,12 @@ export function Files({
           header: side.area !== undefined || side.files.length > 0,
           rows: changesTreeRows(
             trees[index],
-            foldersOn(closedFolders, side.area),
-            foldersOn(openedFolders, side.area),
+            foldersOn(shownClosed, side.area),
+            foldersOn(shownOpened, side.area),
           ),
         })),
       ),
-    [sides, trees, closedFolders, openedFolders],
-  );
-  const folders = useMemo(
-    () =>
-      treeFolders(
-        sides.map((side, index) => ({ area: side.area, tree: trees[index] })),
-      ),
-    [sides, trees],
+    [sides, trees, shownClosed, shownOpened],
   );
   const noFolders =
     folders.changed.length === 0 && folders.unchanged.length === 0;
@@ -257,7 +344,9 @@ export function Files({
     changed: boolean,
   ) => {
     const key = areaKey(side, folder);
-    if (changed) {
+    if (filtering) {
+      setFolds({ searched, closed: toggled(closedWhileFiltering, key) });
+    } else if (changed) {
       onToggleClosedFolder(key);
     } else {
       onToggleOpenFolder(key);
@@ -345,9 +434,47 @@ export function Files({
     selected: side === selection.area ? selected : undefined,
     onSelect: (path: string | undefined) => select(path, side),
     cursor,
+    words,
   });
+  const input = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (filterAsked > 0) {
+      input.current?.focus();
+      input.current?.select();
+    }
+  }, [filterAsked]);
+  const toList = () => columnFocusOf(input.current)?.focus();
+  const closeFilter = () => {
+    toList();
+    onFilter(undefined);
+  };
+  const nothingFound =
+    filtering && !loading && !rows.some((row) => row.kind === 'tree');
   return (
-    <Column title={title} index={1} start={start}>
+    <Column
+      title={title}
+      index={1}
+      start={start}
+      search={
+        <SearchButton
+          title={strings.files.search}
+          onClick={() => onFilter(filter ?? '')}
+        />
+      }
+      searching={
+        filter !== undefined && (
+          <SearchRow onClose={closeFilter}>
+            <FileFilterField
+              query={filter}
+              input={input}
+              onQuery={onFilter}
+              onLeave={toList}
+              onClose={closeFilter}
+            />
+          </SearchRow>
+        )
+      }
+    >
       {skeleton && <SkeletonRows count={6} />}
       <VirtualRows
         rows={listed}
@@ -369,8 +496,11 @@ export function Files({
         )}
         onKeyDown={onKeyDown}
       />
-      {listsNothing({ files, staged, allPaths, loading }) && noChanges && (
-        <div className="row empty">{noChanges}</div>
+      {nothingFound ? (
+        <div className="row empty">{strings.files.noMatches}</div>
+      ) : (
+        listsNothing({ files, staged, allPaths, loading }) &&
+        noChanges && <div className="row empty">{noChanges}</div>
       )}
     </Column>
   );

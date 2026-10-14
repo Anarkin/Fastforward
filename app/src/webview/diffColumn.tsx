@@ -17,6 +17,7 @@ import { columnFocusOf } from './activeColumn';
 import { Column } from './column';
 import { parsePatch, type DiffFile } from './diff';
 import { DiffView, type WholeFile } from './diffView';
+import { filterWords, matchesFilter } from './fileFilter';
 import { findMatches, matchCount, stepMatch, unsearchedFiles } from './find';
 import { withUnchangedObjects, type ImageOrigin } from './images';
 import {
@@ -108,6 +109,17 @@ export function shownFiles(
   return shown.length === 0
     ? [whitespaceOnlyFile(path)]
     : shown.map((file) => ({ ...file, whitespaceOnly: true }));
+}
+
+export function filteredDiffFiles(
+  files: readonly DiffFile[],
+  path: string | undefined,
+  filter: string | undefined,
+): readonly DiffFile[] {
+  const words = filterWords(filter ?? '');
+  return path !== undefined || words.length === 0
+    ? files
+    : files.filter((file) => matchesFilter(words, file.path, file.oldPath));
 }
 
 export function DiffOptions({
@@ -322,6 +334,7 @@ export function Diff({
   showWhitespace,
   origin,
   findAsked,
+  filter,
 }: {
   selection: string;
   path: string | undefined;
@@ -345,15 +358,20 @@ export function Diff({
   showWhitespace: boolean;
   origin: ImageOrigin | undefined;
   findAsked: number;
+  filter: string | undefined;
 }) {
   const parsed = useMemo(() => parsePatch(patch), [patch]);
   const diffFiles = useMemo(
     () =>
       withUnchangedObjects(
-        shownFiles(parsed, path, files, leftOut, largeFiles, whitespaceOnly),
+        filteredDiffFiles(
+          shownFiles(parsed, path, files, leftOut, largeFiles, whitespaceOnly),
+          path,
+          filter,
+        ),
         files,
       ),
-    [parsed, path, files, leftOut, largeFiles, whitespaceOnly],
+    [parsed, path, files, leftOut, largeFiles, whitespaceOnly, filter],
   );
   const errorRow = error && <div className="error-message">{error}</div>;
 

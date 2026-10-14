@@ -562,8 +562,9 @@ suite('App', () => {
     await page.locator('.syntax-number', { hasText: '42' }).waitFor();
   });
 
-  test('finds in the diff on Ctrl+F, stepping on Enter and clearing on Esc', async () => {
+  test('finds in the diff on Ctrl+F in the diff, stepping on Enter and clearing on Esc', async () => {
     await openChangedFile();
+    await page.locator('.diff-view .virtual-rows').focus();
     await page.keyboard.press('ControlOrMeta+F');
     const field = page.locator('.diff-find-input');
     await waitForFocus(field, 'the find field');
@@ -618,8 +619,46 @@ suite('App', () => {
     await diff.locator('.diff-options').waitFor();
   });
 
+  test('filters the files from their round button, marking what it found and showing the diffs of only those, keeping the search for another commit, closing it on Esc and opening it again on Ctrl+F in the files', async () => {
+    const files = page.locator('.columns > .column').nth(1);
+    const names = () => files.locator('.row.file .path').allTextContents();
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await files.locator('.row.file', { hasText: 'kept.txt' }).waitFor();
+    await files.locator('.column-actions > .search-button').click();
+    const field = files.locator('.search-input');
+    await waitForFocus(field, 'the files search');
+    await field.fill('txt ch');
+    await waitFor(
+      async () => (await names()).join() === 'changed.txt',
+      'only changed.txt listed',
+    );
+    assert.deepStrictEqual(
+      await files.locator('.tree-row .match').allTextContents(),
+      ['ch', 'txt'],
+    );
+    await waitFor(
+      async () =>
+        (await page.locator('.file-header .path').allTextContents()).join() ===
+        'changed.txt',
+      'only the diff of changed.txt',
+    );
+    await page.locator('.commit', { hasText: 'second' }).click();
+    await files.locator('.row.file', { hasText: 'changed.txt' }).waitFor();
+    assert.strictEqual(await field.inputValue(), 'txt ch');
+    await field.focus();
+    await page.keyboard.press('Escape');
+    await field.waitFor({ state: 'detached' });
+    await waitForFocus(files.locator('[data-column-focus]'), 'the files list');
+    await page.keyboard.press('ControlOrMeta+F');
+    await waitForFocus(files.locator('.search-input'), 'the files search');
+    assert.strictEqual(await files.locator('.search-input').inputValue(), '');
+    await page.keyboard.press('Escape');
+    await files.locator('.search-input').waitFor({ state: 'detached' });
+  });
+
   test('gives the keyboard back to the diff once Esc closes the find field', async () => {
     await openChangedFile();
+    await page.locator('.diff-view .virtual-rows').focus();
     await page.keyboard.press('ControlOrMeta+F');
     await waitForFocus(page.locator('.diff-find-input'), 'the find field');
     await page.keyboard.press('Escape');

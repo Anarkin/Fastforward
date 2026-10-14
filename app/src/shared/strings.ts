@@ -177,6 +177,7 @@ export const strings = {
     wrap: 'Wrap long lines',
     showWhitespace: 'Show whitespace',
     find: 'Search the column you are in',
+    toFiles: 'Go from the search to the files',
     match: 'Next or previous match',
     stopFinding: 'Stop finding',
     mainMenu: 'Open the main menu',
@@ -307,6 +308,8 @@ export const strings = {
     allChanges: 'All Changes',
     staged: 'Staged',
     unstaged: 'Unstaged',
+    search: 'Search files',
+    noMatches: 'No files match',
     statuses: {
       A: 'Added',
       M: 'Modified',

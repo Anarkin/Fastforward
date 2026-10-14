@@ -2,6 +2,7 @@ import type { ChangeArea, FileChange } from '../shared/protocol';
 import { buildFileTree, foldersOf, type FolderNode } from './fileTree';
 import { byName } from './byName';
 import { moveInList, type ListMove, type VisibleRows } from './listMoves';
+import { HighlightWords } from './highlight';
 import { FileRow, fileRowKey, FolderRow } from './tree';
 import type { ListedRows, TreeItem } from './virtualRows';
 
@@ -316,6 +317,7 @@ export function changesTreeElement(
     selected,
     onSelect,
     cursor,
+    words = [],
   }: {
     area?: ChangeArea;
     showsAll: boolean;
@@ -323,6 +325,7 @@ export function changesTreeElement(
     selected: string | undefined;
     onSelect: (path: string | undefined) => void;
     cursor: string | undefined;
+    words?: readonly string[];
   },
 ): React.ReactElement {
   const key = areaKey(area, treeRowKey(row));
@@ -339,7 +342,9 @@ export function changesTreeElement(
       ].join(' ')}
       onToggle={(folder) => onToggle(folder, row.changed)}
     >
-      <span className="path">{row.name}</span>
+      <span className="path">
+        <HighlightWords text={row.name} words={words} />
+      </span>
     </FolderRow>
   ) : (
     <FileRow
@@ -351,6 +356,7 @@ export function changesTreeElement(
       selected={selected}
       marked={cursor === key}
       onSelect={onSelect}
+      words={words}
     />
   );
 }

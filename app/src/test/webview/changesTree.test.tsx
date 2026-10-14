@@ -415,6 +415,33 @@ suite('Changes tree rows', () => {
     assert.ok(!classesOf(a).has('selected'));
   });
 
+  test('marks what the file search found in the names of folders and files', () => {
+    const html = renderToStaticMarkup(
+      <>
+        {changesTreeElements({
+          rows: changesTreeRows(
+            changesTree([fileChange('deals/dealView.ts')]),
+            new Set(),
+          ),
+          showsAll: false,
+          onToggle: noop,
+          selected: undefined,
+          onSelect: noop,
+          cursor: undefined,
+          words: ['deal'],
+        })}
+      </>,
+    );
+    assert.match(
+      html,
+      /<span class="path"><mark class="match">deal<\/mark>s<\/span>/,
+    );
+    assert.match(
+      html,
+      /<span class="path"><mark class="match">deal<\/mark>View\.ts<\/span>/,
+    );
+  });
+
   test('marks the row under the cursor, still deselecting the selected file on a click', () => {
     const picked: (string | undefined)[] = [];
     const elements = changesTreeElements({

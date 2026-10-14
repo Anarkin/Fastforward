@@ -10,6 +10,7 @@ import {
   filesRows,
 } from '../../webview/changesTree';
 import {
+  FileFilterField,
   Files,
   filesCursor,
   filesReveal,
@@ -46,6 +47,7 @@ function filesProps(overrides: Partial<FilesProps> = {}): FilesProps {
     view: 'one',
     selected: undefined,
     onSelect: noop,
+    onFilter: noop,
     ...overrides,
   };
 }
@@ -416,5 +418,116 @@ suite('Files column', () => {
     assert.ok(
       !revealAgain(revealAt([], 'file:b.ts'), revealAt(['src'], 'file:b.ts')),
     );
+  });
+});
+
+suite('Files search', () => {
+  const found = [
+    change('src/deals/DealsView.tsx'),
+    change('src/deals/api.ts'),
+    change('src/leads/LeadsView.tsx'),
+    change('README.md'),
+  ];
+
+  test('lists only the files whose path holds every word searched for, opening every folder holding one, the closed ones too', () => {
+    assert.deepStrictEqual(
+      changesRows({
+        filter: 'view',
+        closedFolders: new Set(['src/deals']),
+        files: found,
+      }).keys,
+      [
+        'changes',
+        'folder:src',
+        'folder:src/deals',
+        'file:src/deals/DealsView.tsx',
+        'folder:src/leads',
+        'file:src/leads/LeadsView.tsx',
+      ],
+    );
+    assert.strictEqual(
+      changesRows({ filter: '  ', files: found }).keys.length,
+      changesRows({ files: found }).keys.length,
+    );
+  });
+
+  test('searches the unchanged files too while all files show, opening their folders', () => {
+    assert.deepStrictEqual(
+      changesRows({
+        filter: 'kept',
+        showAll: true,
+        tree: ['lib/kept.ts', 'lib/other.ts', 'a.ts'],
+        files: [change('a.ts')],
+      }).keys,
+      ['folder:lib', 'file:lib/kept.ts'],
+    );
+  });
+
+  test('says that no file matches the search, rather than showing nothing', () => {
+    const column = renderedBy(
+      Files,
+      filesProps({ noChanges: 'No changes', filter: 'zzz', files: found }),
+    );
+    assert.ok(isValidElement<{ children: React.ReactNode[] }>(column));
+    assert.strictEqual(
+      renderToStaticMarkup(<>{column.props.children[2]}</>),
+      '<div class="row empty">No files match</div>',
+    );
+  });
+
+  test('opens the search from its round magnifier, giving it the header while it is open', () => {
+    const filters: (string | undefined)[] = [];
+    const closed = renderedBy(
+      Files,
+      filesProps({ onFilter: (next) => filters.push(next) }),
+    );
+    assert.ok(
+      isValidElement<{
+        search: React.ReactElement<{ title: string; onClick: () => void }>;
+        searching: unknown;
+      }>(closed),
+    );
+    assert.strictEqual(closed.props.search.props.title, 'Search files');
+    assert.ok(!closed.props.searching);
+    closed.props.search.props.onClick();
+    assert.deepStrictEqual(filters, ['']);
+    const open = renderedBy(Files, filesProps({ filter: 'view' }));
+    assert.ok(isValidElement<{ searching: React.ReactNode }>(open));
+    const html = renderToStaticMarkup(<>{open.props.searching}</>);
+    assert.match(html, /class="search-row"/);
+    assert.match(html, /<input[^>]*placeholder="Search…"[^>]*value="view"/);
+  });
+
+  test('searches as one types, goes to the files on Enter or Down, and closes on Esc', () => {
+    const queries: string[] = [];
+    let left = 0;
+    let closed = 0;
+    const field = FileFilterField({
+      query: 'v',
+      onQuery: (next) => queries.push(next),
+      onLeave: () => left++,
+      onClose: () => closed++,
+    });
+    assert.ok(
+      isValidElement<{
+        children: React.ReactElement<{
+          onChange: (event: { target: { value: string } }) => void;
+          onKeyDown: (
+            event: ReturnType<typeof keyPress> & { preventDefault: () => void },
+          ) => void;
+        }>;
+      }>(field),
+    );
+    const input = field.props.children;
+    input.props.onChange({ target: { value: 'vi' } });
+    assert.deepStrictEqual(queries, ['vi']);
+    for (const key of ['Enter', 'ArrowDown']) {
+      input.props.onKeyDown({ ...keyPress(key), preventDefault: noop });
+    }
+    assert.strictEqual(left, 2);
+    input.props.onKeyDown({ ...keyPress('Escape'), preventDefault: noop });
+    assert.strictEqual(closed, 1);
+    input.props.onKeyDown({ ...keyPress('a'), preventDefault: noop });
+    assert.strictEqual(left + closed, 3);
   });
 });

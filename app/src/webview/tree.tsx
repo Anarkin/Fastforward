@@ -1,6 +1,7 @@
 import type { FileChange } from '../shared/protocol';
 import { strings } from '../shared/strings';
 import { changeTitle, changeClass, changeKind } from './fileStatus';
+import { HighlightWords } from './highlight';
 import { ChangeIcon } from './icons';
 
 const treePadding = 8;
@@ -63,6 +64,7 @@ export function FileRow({
   selected,
   marked,
   onSelect,
+  words = [],
 }: {
   path: string;
   name: string;
@@ -71,6 +73,7 @@ export function FileRow({
   selected: string | undefined;
   marked: boolean;
   onSelect: (path: string | undefined) => void;
+  words?: readonly string[];
 }) {
   return (
     <div
@@ -79,7 +82,9 @@ export function FileRow({
       title={change ? changeTitle(change) : path}
       onClick={() => onSelect(path === selected ? undefined : path)}
     >
-      <span className={changeClass(change)}>{name}</span>
+      <span className={changeClass(change)}>
+        <HighlightWords text={name} words={words} />
+      </span>
       {change && <ChangeIcon kind={changeKind(change)} />}
     </div>
   );
