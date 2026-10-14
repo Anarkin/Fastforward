@@ -48,7 +48,7 @@ suite('Storage', () => {
       showAllFiles: defaults.showAllFiles,
       autoFetch: defaults.autoFetch,
       autoFetchMinutes: defaults.autoFetchMinutes,
-      hideDimmedButtons: false,
+      hideDimmedButtons: true,
       autoSortTabs: true,
     });
     assert.strictEqual(defaults.autoSortTabs, true);

@@ -9,7 +9,7 @@
   "solo": false,
   "autoFetch": true,
   "autoFetchMinutes": 1,
-  "hideDimmedButtons": false,
+  "hideDimmedButtons": true,
   "autoSortTabs": true,
   "columnWidths": [400, 275],
   "fonts": {
