@@ -475,7 +475,7 @@ suite('Files search', () => {
     );
   });
 
-  test('opens the search from its round magnifier, giving it the header while it is open', () => {
+  test('opens the search from its round magnifier, giving it the header while it is open, taking the keyboard only when asked so a tab switched back to keeps it where it was', () => {
     const filters: (string | undefined)[] = [];
     const closed = renderedBy(
       Files,
@@ -495,6 +495,7 @@ suite('Files search', () => {
     assert.ok(isValidElement<{ searching: React.ReactNode }>(open));
     const html = renderToStaticMarkup(<>{open.props.searching}</>);
     assert.match(html, /class="search-row"/);
+    assert.doesNotMatch(html, /autofocus/i);
     assert.match(html, /<input[^>]*placeholder="Search…"[^>]*value="view"/);
   });
 

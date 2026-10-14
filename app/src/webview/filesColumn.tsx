@@ -174,7 +174,6 @@ export function FileFilterField({
         className="search-input"
         placeholder={strings.find.placeholder}
         spellCheck={false}
-        autoFocus
         value={query}
         onChange={(event) => onQuery(event.target.value)}
         onKeyDown={(event) => {
@@ -437,12 +436,13 @@ export function Files({
     words,
   });
   const input = useRef<HTMLInputElement>(null);
+  const [clicked, setClicked] = useState(0);
   useEffect(() => {
-    if (filterAsked > 0) {
+    if (filterAsked + clicked > 0) {
       input.current?.focus();
       input.current?.select();
     }
-  }, [filterAsked]);
+  }, [filterAsked, clicked]);
   const toList = () => columnFocusOf(input.current)?.focus();
   const closeFilter = () => {
     toList();
@@ -458,7 +458,10 @@ export function Files({
       search={
         <SearchButton
           title={strings.files.search}
-          onClick={() => onFilter(filter ?? '')}
+          onClick={() => {
+            onFilter(filter ?? '');
+            setClicked((count) => count + 1);
+          }}
         />
       }
       searching={

@@ -754,9 +754,13 @@ export function diffRows(
     } else if (
       file.oldPath !== undefined &&
       !file.binary &&
+      !file.whitespaceOnly &&
       file.hunks.length === 0
     ) {
-      rows.push({ kind: 'sameContent', file: index });
+      rows.push({
+        kind: file.similarity === 100 ? 'sameContent' : 'whitespace',
+        file: index,
+      });
     }
     if (sideBySide) {
       for (const row of splitRows(file, index, budget)) {

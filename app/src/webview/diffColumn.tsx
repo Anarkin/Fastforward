@@ -52,9 +52,7 @@ export function withLargeFiles(
     if (file && !deferred.has(change.path)) {
       result.push(file);
     } else if (deferred.has(change.path)) {
-      result.push(
-        deferredFile(change.path, deferred.get(change.path), largeFiles),
-      );
+      result.push(deferredFile(change, deferred.get(change.path), largeFiles));
     } else if (whitespaceOnly.has(change.path)) {
       result.push(whitespaceOnlyFile(change.path));
     }
@@ -63,13 +61,14 @@ export function withLargeFiles(
 }
 
 function deferredFile(
-  path: string,
+  { path, oldPath }: Pick<FileChange, 'path' | 'oldPath'>,
   lines: number | undefined,
   largeFiles: ReadonlyMap<string, DiffFile>,
 ): DiffFile {
   return (
     largeFiles.get(path) ?? {
       path,
+      ...(oldPath === undefined ? {} : { oldPath }),
       binary: false,
       hunks: [],
       placeholder: { lines },
@@ -100,7 +99,16 @@ export function shownFiles(
   }
   const deferred = leftOut.find((file) => file.path === path);
   if (deferred) {
-    return [deferredFile(path, deferred.lines, largeFiles)];
+    return [
+      deferredFile(
+        files.find((file) => file.path === path) ?? {
+          path,
+          oldPath: undefined,
+        },
+        deferred.lines,
+        largeFiles,
+      ),
+    ];
   }
   const shown = parsed.filter((file) => file.path === path);
   if (!whitespaceOnly.includes(path)) {
@@ -281,7 +289,7 @@ export function FindActions({
   onStep: (step: 1 | -1) => void;
 }) {
   return (
-    <div className="nav-buttons diff-find-actions">
+    <div className="nav-buttons">
       <button
         className="nav-button"
         title={strings.find.previous}

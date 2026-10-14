@@ -548,6 +548,24 @@ suite('Large files in a commit diff', () => {
     );
   });
 
+  test('keeps the old path of a renamed file left out of the diff, selected or not, so its header and the file search know it until it loads', () => {
+    const renamed = fileChange('new/y.json', {
+      status: 'R',
+      oldPath: 'old/x.json',
+    });
+    const leftOut = [{ path: 'new/y.json', lines: 5 }];
+    assert.deepStrictEqual(
+      [
+        withLargeFiles([], [renamed], leftOut, new Map()),
+        shownFiles([], 'new/y.json', [renamed], leftOut, new Map()),
+      ].map(([file]) => [file.path, file.oldPath]),
+      [
+        ['new/y.json', 'old/x.json'],
+        ['new/y.json', 'old/x.json'],
+      ],
+    );
+  });
+
   test('puts a large file the diff left out in its place, until it loads', () => {
     const files = [fileChange('a.ts'), large, fileChange('b.ts')];
     const parsed = parsePatch(`${patch('b.ts', 1)}\n${patch('a.ts', 1)}`);
@@ -2158,6 +2176,26 @@ suite('Renamed files', () => {
         });
       }
     }
+  });
+
+  test('notes only whitespace changed for a renamed file git found less than wholly alike but shows no lines of, as whitespace changes are hidden', () => {
+    assert.deepStrictEqual(
+      kinds(
+        diffRows(
+          [
+            renamedFile(
+              'similarity index 83%',
+              'rename from p.sh',
+              'rename to q.sh',
+              'index 1111111..2222222 100644',
+            ),
+          ],
+          new Map(),
+          undefined,
+        ),
+      ),
+      ['error', 'file', 'whitespace'],
+    );
   });
 
   test('notes the mode of a renamed file changing rather than its content staying, and no note for a rename with changed lines', () => {

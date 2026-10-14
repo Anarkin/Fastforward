@@ -179,7 +179,7 @@ export const strings = {
     find: 'Search the column you are in',
     toFiles: 'Go from the search to the files',
     match: 'Next or previous match',
-    stopFinding: 'Stop finding',
+    stopFinding: 'Close the search',
     mainMenu: 'Open the main menu',
     shortcuts: 'Show these shortcuts',
     devTools: 'Developer tools',

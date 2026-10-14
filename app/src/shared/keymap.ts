@@ -115,7 +115,7 @@ export const keymap = {
     { repeats: true, fields: true },
   ),
   stopFinding: bind(
-    'Diff',
+    'Columns',
     strings.actions.stopFinding,
     { Escape: true },
     { fields: true },

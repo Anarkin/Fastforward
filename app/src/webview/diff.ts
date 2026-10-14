@@ -27,6 +27,7 @@ export interface DiffFile {
   readonly noNewlineAtEnd?: 'old' | 'new';
   readonly modeChange?: ModeChange;
   readonly copied?: true;
+  readonly similarity?: number;
 }
 
 interface ModeChange {
@@ -39,6 +40,7 @@ interface ParsedFile {
   path: string;
   oldPath?: string;
   copied: boolean;
+  similarity?: number;
   modes: { old?: string; new?: string };
   binary: boolean;
   hunks: DiffHunk[];
@@ -238,6 +240,8 @@ export function parsePatch(patch: string): DiffFile[] {
         line.startsWith('deleted file mode ')
       ) {
         file.addedOrDeleted = true;
+      } else if (line.startsWith('similarity index ')) {
+        file.similarity = parseInt(line.slice('similarity index '.length), 10);
       } else if (line.startsWith('old mode ')) {
         file.modes.old = line.slice('old mode '.length);
       } else if (line.startsWith('new mode ')) {
@@ -292,6 +296,7 @@ export function parsePatch(patch: string): DiffFile[] {
       path,
       oldPath,
       copied,
+      similarity,
       modes,
       binary,
       hunks,
@@ -302,6 +307,7 @@ export function parsePatch(patch: string): DiffFile[] {
       path,
       ...(oldPath === undefined ? {} : { oldPath }),
       ...(copied ? { copied } : {}),
+      ...(similarity === undefined ? {} : { similarity }),
       ...(modes.old !== undefined && modes.new !== undefined
         ? { modeChange: { old: modes.old, new: modes.new } }
         : {}),
