@@ -29,15 +29,50 @@ function changedRow(status: FileChange['status']): string {
 }
 
 suite('File rows', () => {
-  test('shows a change plainly, marking only a deleted file', () => {
-    for (const status of ['A', 'M', 'R', 'U'] as const) {
+  test('ends a changed file with the icon of its kind of change, striking only a deleted name through', () => {
+    for (const [status, kind] of [
+      ['A', 'added'],
+      ['U', 'added'],
+      ['M', 'modified'],
+      ['R', 'renamed'],
+    ] as const) {
       assert.match(
         changedRow(status),
-        /<span class="path">a\.ts<\/span>/,
+        new RegExp(
+          `<span class="path">a\\.ts</span><svg class="icon change-icon ${kind}"`,
+        ),
         status,
       );
     }
-    assert.match(changedRow('D'), /<span class="path deleted">a\.ts<\/span>/);
+    assert.match(
+      changedRow('D'),
+      /<span class="path deleted">a\.ts<\/span><svg class="icon change-icon deleted"/,
+    );
+  });
+
+  test('draws each kind of change as its own sign in the same frame', () => {
+    const signs = (['A', 'M', 'D', 'R'] as const).map((status) =>
+      changedRow(status).replace(/^.*?<svg[^>]*>|<\/svg>.*$/g, ''),
+    );
+    const frames = signs.map((sign) => /<rect[^>]*>/.exec(sign)?.[0]);
+    assert.ok(frames[0]);
+    assert.deepStrictEqual(new Set(frames).size, 1);
+    assert.strictEqual(new Set(signs).size, signs.length);
+  });
+
+  test('gives an unchanged file no icon', () => {
+    const html = renderToStaticMarkup(
+      <FileRow
+        path="a.ts"
+        name="a.ts"
+        depth={0}
+        change={undefined}
+        selected={undefined}
+        marked={false}
+        onSelect={noop}
+      />,
+    );
+    assert.doesNotMatch(html, /<svg/);
   });
 
   test('dims an unchanged file', () => {

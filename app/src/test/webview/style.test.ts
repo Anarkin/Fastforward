@@ -1977,6 +1977,28 @@ suite('Style', () => {
     });
   });
 
+  test('ends a changed file with its icon at the right edge of the row, in the theme color of its kind, as GitHub does', () => {
+    for (const [status, kind] of [
+      ['A', 'added'],
+      ['M', 'modified'],
+      ['D', 'deleted'],
+      ['R', 'renamed'],
+    ] as const) {
+      looks(
+        withClass(
+          fileRow(fileChange('src/a.ts', { status })),
+          'change-icon',
+          kind,
+        ),
+        {
+          color: `var(--color-${kind})`,
+          'margin-left': 'auto',
+          'flex-shrink': '0',
+        },
+      );
+    }
+  });
+
   test('sizes all text by the font size settings, or a multiple of them for the headings of Markdown, buttons and inputs included', () => {
     const sizes = [...css.matchAll(/font-size: ([^;]+);/g)].map(
       (match) => match[1],

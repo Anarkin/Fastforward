@@ -1,6 +1,7 @@
 import type { FileChange } from '../shared/protocol';
 import { strings } from '../shared/strings';
-import { changeTitle, changeClass } from './fileStatus';
+import { changeTitle, changeClass, changeKind } from './fileStatus';
+import { ChangeIcon } from './icons';
 
 const treePadding = 8;
 export const twistyWidth = 10;
@@ -79,6 +80,7 @@ export function FileRow({
       onClick={() => onSelect(path === selected ? undefined : path)}
     >
       <span className={changeClass(change)}>{name}</span>
+      {change && <ChangeIcon kind={changeKind(change)} />}
     </div>
   );
 }

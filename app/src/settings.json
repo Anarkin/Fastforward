@@ -63,6 +63,8 @@
       "deleted-line": "20%",
       "deleted-row": "8%",
       "deleted-minimap": "50%",
+      "modified": "#a70",
+      "renamed": "#06c",
 
       "syntax-keyword": "#00d",
       "syntax-type": "#088",
@@ -120,6 +122,8 @@
       "deleted-line": "20%",
       "deleted-row": "8%",
       "deleted-minimap": "50%",
+      "modified": "#d92",
+      "renamed": "#5af",
 
       "syntax-keyword": "#59c",
       "syntax-type": "#088",

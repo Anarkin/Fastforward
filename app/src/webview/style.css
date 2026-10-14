@@ -949,6 +949,27 @@ body.resizing {
   text-decoration: line-through;
 }
 
+.row .change-icon {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.change-icon.added {
+  color: var(--color-added);
+}
+
+.change-icon.modified {
+  color: var(--color-modified);
+}
+
+.change-icon.deleted {
+  color: var(--color-deleted);
+}
+
+.change-icon.renamed {
+  color: var(--color-renamed);
+}
+
 .row .path.unchanged,
 .row.folder.dimmed .twisty,
 .row.folder.dimmed .path {

@@ -1,3 +1,5 @@
+import type { ChangeKind } from './fileStatus';
+
 function Icon({
   children,
   className,
@@ -20,6 +22,22 @@ function Icon({
     >
       {children}
     </svg>
+  );
+}
+
+const changeSigns: Record<ChangeKind, React.ReactNode> = {
+  added: <path d="M8 5.5v5M5.5 8h5" />,
+  modified: <circle cx="8" cy="8" r="1.6" fill="currentColor" stroke="none" />,
+  deleted: <path d="M5.5 8h5" />,
+  renamed: <path d="M5 8h5.5M8.5 6l2 2-2 2" />,
+};
+
+export function ChangeIcon({ kind }: { kind: ChangeKind }) {
+  return (
+    <Icon className={`change-icon ${kind}`}>
+      <rect x="2.5" y="2.5" width="11" height="11" rx="2" />
+      {changeSigns[kind]}
+    </Icon>
   );
 }
 
