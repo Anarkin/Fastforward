@@ -117,6 +117,9 @@ const signature = () => {
   return `Playground <playground@example.com> ${1767225600 + minute * 60} +0000`;
 };
 
+const sourcePath = (file) =>
+  /[ "\\\n]/.test(file) ? JSON.stringify(file) : file;
+
 function commit(ref, { from, merges = [], changes = [], message, author }) {
   mark++;
   write(
@@ -129,9 +132,9 @@ function commit(ref, { from, merges = [], changes = [], message, author }) {
     if (change.delete) {
       write(`D ${change.delete}\n`);
     } else if (change.rename) {
-      write(`R ${change.rename[0]} ${change.rename[1]}\n`);
+      write(`R ${sourcePath(change.rename[0])} ${change.rename[1]}\n`);
     } else if (change.copy) {
-      write(`C ${change.copy[0]} ${change.copy[1]}\n`);
+      write(`C ${sourcePath(change.copy[0])} ${change.copy[1]}\n`);
     } else {
       write(
         `M ${change.mode ?? '100644'} inline ${change.path}\n`,
@@ -1020,6 +1023,154 @@ onMain(
   ]),
   [{ delete: 'showcase/images/wide.png' }],
 );
+const everyWay = (file) => `showcase/everything/${file}`;
+const numberedLines = (name, count = 12) =>
+  Array.from({ length: count }, (_, i) => `line ${i + 1} of ${name}`);
+const numbered = (name) => `${numberedLines(name).join('\n')}\n`;
+const numberedChanged = (name) =>
+  `${numberedLines(name)
+    .map((line, i) => (i === 5 ? `${line}, changed` : line))
+    .join('\n')}\n`;
+const guide = (note) =>
+  `# A guide renamed later\n\n${numberedLines('the guide', 10)
+    .map((line) => `- ${line}`)
+    .join('\n')}\n${note}`;
+const swapped = {
+  left: 'The left file, swapped with the right later.\n',
+  right: 'The right file, swapped with the left later.\n',
+};
+onMain(
+  searchable('Add files to change in every way at once', [
+    'everything',
+    'every kind',
+    'rename',
+    'delete',
+    'change',
+  ]),
+  [
+    ...[
+      'kept/modified.txt',
+      'kept/deleted.txt',
+      'kept/becomes-link',
+      'moved/pure.txt',
+      'moved/changed.txt',
+      'moved/to-folder.txt',
+      'moved/with spaces.txt',
+      'moved/Case.txt',
+      'moved/rewritten.txt',
+      'chain/a.txt',
+      'chain/b.txt',
+      'copy/source.txt',
+      'folder/one.txt',
+      'folder/two.txt',
+      'folder/three.txt',
+    ].map((file) => ({ path: everyWay(file), content: numbered(file) })),
+    {
+      path: everyWay('kept/tool.sh'),
+      content: '#!/bin/sh\necho "a tool made executable"\n',
+    },
+    {
+      path: everyWay('moved/tool.sh'),
+      content: '#!/bin/sh\necho "a tool renamed and made executable"\n',
+    },
+    {
+      path: everyWay('moved/link'),
+      content: '../../../notes.txt',
+      mode: '120000',
+    },
+    ...Object.entries(swapped).map(([side, content]) => ({
+      path: everyWay(`swap/${side}.txt`),
+      content,
+    })),
+    {
+      path: everyWay('images/pure.png'),
+      content: png(48, 48, (x, y) => [shade(y), 120, shade(x)]),
+    },
+    { path: everyWay('images/changed.svg'), content: vector('#393') },
+    { path: everyWay('markdown/guide.md'), content: guide('') },
+  ],
+);
+onMain(
+  searchable('Change files in every way at once', [
+    'everything',
+    'every kind',
+    'all at once',
+    'rename',
+    'renamed',
+    'move',
+    'moved',
+    'folder',
+    'case',
+    'swap',
+    'add',
+    'delete',
+    'change',
+    'copy',
+    'executable',
+    'symlink',
+    'type change',
+  ]),
+  [
+    { path: everyWay('added.txt'), content: 'A file added.\n' },
+    {
+      path: everyWay('kept/modified.txt'),
+      content: numberedChanged('kept/modified.txt'),
+    },
+    { delete: everyWay('kept/deleted.txt') },
+    {
+      path: everyWay('kept/tool.sh'),
+      content: '#!/bin/sh\necho "a tool made executable"\n',
+      mode: '100755',
+    },
+    {
+      path: everyWay('kept/becomes-link'),
+      content: '../../../README.md',
+      mode: '120000',
+    },
+    ...[
+      ['moved/pure.txt', 'moved/pure-renamed.txt'],
+      ['moved/changed.txt', 'moved/changed-renamed.txt'],
+      ['moved/to-folder.txt', 'elsewhere/to-folder.txt'],
+      ['moved/with spaces.txt', 'moved/ünïcödé – 名前.txt'],
+      ['moved/Case.txt', 'moved/CASE.txt'],
+      ['moved/rewritten.txt', 'moved/rewritten-renamed.txt'],
+      ['moved/tool.sh', 'moved/tool-renamed.sh'],
+      ['moved/link', 'moved/link-renamed'],
+      ['chain/b.txt', 'chain/c.txt'],
+      ['chain/a.txt', 'chain/b.txt'],
+      ['folder/one.txt', 'renamed-folder/one.txt'],
+      ['folder/two.txt', 'renamed-folder/two.txt'],
+      ['folder/three.txt', 'renamed-folder/three.txt'],
+      ['images/pure.png', 'images/pure-renamed.png'],
+      ['images/changed.svg', 'images/changed-renamed.svg'],
+      ['markdown/guide.md', 'markdown/renamed-guide.md'],
+    ].map(([from, to]) => ({ rename: [everyWay(from), everyWay(to)] })),
+    {
+      path: everyWay('moved/changed-renamed.txt'),
+      content: numberedChanged('moved/changed.txt'),
+    },
+    {
+      path: everyWay('moved/rewritten-renamed.txt'),
+      content: 'Rewritten while renamed, so git no longer pairs it.\n',
+    },
+    {
+      path: everyWay('moved/tool-renamed.sh'),
+      content: '#!/bin/sh\necho "a tool renamed and made executable"\n',
+      mode: '100755',
+    },
+    {
+      path: everyWay('images/changed-renamed.svg'),
+      content: vector('#939'),
+    },
+    {
+      path: everyWay('markdown/renamed-guide.md'),
+      content: guide('\nA paragraph added while renamed.\n'),
+    },
+    { copy: [everyWay('copy/source.txt'), everyWay('copy/copied.txt')] },
+    { path: everyWay('swap/left.txt'), content: swapped.right },
+    { path: everyWay('swap/right.txt'), content: swapped.left },
+  ],
+);
 
 let feature = main;
 let featureText = '';
@@ -1237,7 +1388,11 @@ for (const repository of [local, remote]) {
   git(repository, ['config', marker, 'true']);
 }
 git(remote, ['config', 'uploadpack.allowFilter', 'true']);
-git(local, ['fast-import', '--quiet', '--done'], Buffer.concat(stream));
+git(
+  local,
+  ['-c', 'core.ignorecase=false', 'fast-import', '--quiet', '--done'],
+  Buffer.concat(stream),
+);
 git(local, ['branch', '--force', 'follows-main', 'main~2']);
 git(local, ['remote', 'add', 'origin', remote]);
 git(local, [
@@ -1377,6 +1532,26 @@ edit(
 );
 git(local, ['add', 'samples/app.ts']);
 git(local, ['mv', 'samples/data.json', 'samples/settings.json']);
+git(local, ['mv', 'samples/main.py', 'samples/greet.py']);
+edit(
+  'samples/greet.py',
+  `${samples['samples/main.py'][1]}print(greet("staged"))\n`,
+);
+git(local, ['add', 'samples/greet.py']);
+git(local, ['mv', 'samples/lib.rs', 'samples/greet.rs']);
+edit(
+  'samples/greet.rs',
+  `${samples['samples/lib.rs'][1]}\npub const UNSTAGED: bool = true;\n`,
+);
+fs.mkdirSync(path.join(local, 'moved'));
+git(local, ['mv', 'notes with spaces.txt', 'moved/notes with spaces.txt']);
+edit('samples/added.txt', 'A file added and staged.\n');
+git(local, ['add', 'samples/added.txt']);
+git(local, ['rm', '--quiet', 'samples/Program.cs']);
+fs.renameSync(
+  path.join(local, 'samples', 'main.go'),
+  path.join(local, 'samples', 'hello.go'),
+);
 edit(
   'samples/style.css',
   `${samples['samples/style.css'][1]}\n.unstaged {\n  color: red;\n}\n`,

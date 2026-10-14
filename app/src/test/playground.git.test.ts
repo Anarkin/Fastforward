@@ -99,6 +99,11 @@ const names = {
 
 const builds = 240_000;
 
+const everyWay = (file: string) => `showcase/everything/${file}`;
+
+const renamedEveryWay = (similarity: 'R100' | 'R~', from: string, to: string) =>
+  `${similarity} ${everyWay(from)} -> ${everyWay(to)}`;
+
 suite('Playground', () => {
   let folder: string;
   let local: string;
@@ -142,12 +147,51 @@ suite('Playground', () => {
       .toSorted();
 
   const uncommitted = [
+    ' D samples/main.go',
     ' D samples/script.sh',
     ' M samples/style.css',
     '?? draft.md',
+    '?? samples/hello.go',
+    'A  samples/added.txt',
+    'D  samples/Program.cs',
     'M  samples/app.ts',
+    'R  "notes with spaces.txt" -> "moved/notes with spaces.txt"',
     'R  samples/data.json -> samples/settings.json',
+    'R  samples/main.py -> samples/greet.py',
+    'RM samples/lib.rs -> samples/greet.rs',
   ];
+
+  const statusesSeenByTheApp = async (subject: string): Promise<string[]> => {
+    const tokens = (
+      await gitOutput(
+        local,
+        'log',
+        '-1',
+        '--format=',
+        '--name-status',
+        '-z',
+        '-M',
+        `--grep=${subject}`,
+        'main',
+      )
+    )
+      .split('\0')
+      .filter(Boolean);
+    const entries: string[] = [];
+    for (let i = 0; i < tokens.length; i++) {
+      const code = tokens[i];
+      const paired = /^[RC]/.test(code);
+      const paths = tokens.slice(i + 1, i + (paired ? 3 : 2));
+      i += paths.length;
+      const shown = code.startsWith('R')
+        ? code === 'R100'
+          ? 'R100'
+          : 'R~'
+        : code;
+      entries.push(`${shown} ${paths.join(' -> ')}`);
+    }
+    return entries.toSorted();
+  };
 
   test('makes a repository with a remote beside it, holding ten branches lagging behind, ahead of and diverged from their upstreams by 1 to 10 commits, and ten never pushed', async () => {
     const branches = await tracking();
@@ -572,6 +616,59 @@ suite('Playground', () => {
       await statuses('Rename a file and change it'),
       /^R(?!100)\d+/m,
     );
+  });
+
+  test('changes files in every way in one commit, as the app sees it finding renames but not copies', async () => {
+    assert.deepStrictEqual(
+      await statusesSeenByTheApp('Change files in every way at once'),
+      [
+        `A ${everyWay('added.txt')}`,
+        `A ${everyWay('chain/c.txt')}`,
+        `A ${everyWay('copy/copied.txt')}`,
+        `A ${everyWay('moved/rewritten-renamed.txt')}`,
+        `D ${everyWay('chain/a.txt')}`,
+        `D ${everyWay('kept/deleted.txt')}`,
+        `D ${everyWay('moved/rewritten.txt')}`,
+        `M ${everyWay('chain/b.txt')}`,
+        `M ${everyWay('kept/modified.txt')}`,
+        `M ${everyWay('kept/tool.sh')}`,
+        `M ${everyWay('swap/left.txt')}`,
+        `M ${everyWay('swap/right.txt')}`,
+        renamedEveryWay('R100', 'folder/one.txt', 'renamed-folder/one.txt'),
+        renamedEveryWay('R100', 'folder/three.txt', 'renamed-folder/three.txt'),
+        renamedEveryWay('R100', 'folder/two.txt', 'renamed-folder/two.txt'),
+        renamedEveryWay('R100', 'images/pure.png', 'images/pure-renamed.png'),
+        renamedEveryWay('R100', 'moved/Case.txt', 'moved/CASE.txt'),
+        renamedEveryWay('R100', 'moved/link', 'moved/link-renamed'),
+        renamedEveryWay('R100', 'moved/pure.txt', 'moved/pure-renamed.txt'),
+        renamedEveryWay(
+          'R100',
+          'moved/to-folder.txt',
+          'elsewhere/to-folder.txt',
+        ),
+        renamedEveryWay('R100', 'moved/tool.sh', 'moved/tool-renamed.sh'),
+        renamedEveryWay(
+          'R100',
+          'moved/with spaces.txt',
+          'moved/ünïcödé – 名前.txt',
+        ),
+        renamedEveryWay(
+          'R~',
+          'images/changed.svg',
+          'images/changed-renamed.svg',
+        ),
+        renamedEveryWay('R~', 'markdown/guide.md', 'markdown/renamed-guide.md'),
+        renamedEveryWay('R~', 'moved/changed.txt', 'moved/changed-renamed.txt'),
+        `T ${everyWay('kept/becomes-link')}`,
+      ].toSorted(),
+    );
+    const tree = await git(
+      local,
+      'ls-tree',
+      'main',
+      everyWay('moved/tool-renamed.sh'),
+    );
+    assert.match(tree, /^100755 /);
   });
 
   test('lets each kind and case be found by the words people would search for, several words finding the same commit', async () => {
