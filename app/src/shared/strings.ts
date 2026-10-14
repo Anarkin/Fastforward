@@ -176,7 +176,7 @@ export const strings = {
     wheelSideways: 'Scroll sideways with the wheel',
     wrap: 'Wrap long lines',
     showWhitespace: 'Show whitespace',
-    find: 'Find',
+    find: 'Search the column you are in',
     match: 'Next or previous match',
     stopFinding: 'Stop finding',
     mainMenu: 'Open the main menu',

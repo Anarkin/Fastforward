@@ -45,10 +45,11 @@ suite('Navigation bar', () => {
     assert.match(html, /title="Forward[^"]*" disabled=""/);
   });
 
-  test('says Search… in the search field, and what it searches in its tooltip', () => {
+  test('shows nothing of the commit search until it is opened, as the button opening it sits among the buttons of the column', () => {
     const html = renderToStaticMarkup(
       <AddressBar
         open={false}
+        asked={0}
         onOpen={noop}
         root="/repo"
         bookmarks={[]}
@@ -60,12 +61,7 @@ suite('Navigation bar', () => {
         onJump={noop}
       />,
     );
-    tagWith(
-      html,
-      'title="Search branches, remotes, tags and commits"',
-      'address-bar',
-    );
-    assert.match(html, /class="address-text empty">Search…<\/span>/);
+    assert.doesNotMatch(html, /address-bar|Search…|<button/);
   });
 
   test('opens the search popup anew in another tab, so it searches again there for the same query', () => {

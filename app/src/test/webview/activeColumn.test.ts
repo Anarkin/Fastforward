@@ -7,6 +7,7 @@ import {
   columnStep,
   forwardedColumn,
   keyboardDropped,
+  searchedColumn,
   shownColumns,
 } from '../../webview/activeColumn';
 import { element, keyPress } from '../fixtures';
@@ -18,6 +19,13 @@ const lost = (isConnected: boolean, disabled = false) => ({
 
 suite('Active column', () => {
   const key = keyPress('ArrowRight', { target: element('DIV') });
+
+  test('searches the column one is in, and the diff from the files, which have no search of their own yet', () => {
+    assert.deepStrictEqual(
+      (['commits', 'files', 'diff'] as const).map(searchedColumn),
+      ['commits', 'diff', 'diff'],
+    );
+  });
 
   test('shows the files only with a commit selected, the diff only with one that has changes to show, and the commits unless hidden', () => {
     assert.deepStrictEqual(shownColumns(true, 'a'), [

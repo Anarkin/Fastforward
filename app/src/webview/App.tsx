@@ -49,6 +49,7 @@ import {
   columnStep,
   forwardedColumn,
   keyboardDropped,
+  searchedColumn,
   shownColumns,
   type ColumnName,
 } from './activeColumn';
@@ -73,6 +74,7 @@ import { compareWith } from '../shared/comparisons';
 import { hasRef } from '../shared/refNames';
 import { strings } from '../shared/strings';
 import { AddressBar, NavButtons } from './navBar';
+import { SearchButton } from './search';
 import { TabBar } from './tabBar';
 import { WorktreeBar } from './worktreeBar';
 import { useWindowTitle, windowTitle } from './titleBar';
@@ -253,6 +255,18 @@ export function App({ name, post: postToHost, listen }: Props) {
     resizing,
   } = useColumnWidths(saveColumnWidths, hiddenColumns);
   const [activeColumn, setActiveColumn] = useState<ColumnName>('commits');
+  const [searchAsks, setSearchAsks] = useState<Record<ColumnName, number>>({
+    commits: 0,
+    files: 0,
+    diff: 0,
+  });
+  useBinding(keymap.find, () => {
+    const column = searchedColumn(activeColumn);
+    setSearchAsks((asks) => ({ ...asks, [column]: asks[column] + 1 }));
+    if (column === 'commits') {
+      setSearching(true);
+    }
+  });
   const focusColumn = useCallback(
     (column: ColumnName) => {
       const target = columnsContainer.current?.children[
@@ -903,9 +917,16 @@ export function App({ name, post: postToHost, listen }: Props) {
                                   lastFetch={lastFetch}
                                 />
                               }
+                              searchButton={
+                                <SearchButton
+                                  title={strings.actions.search}
+                                  onClick={() => setSearching(true)}
+                                />
+                              }
                               search={
                                 <AddressBar
                                   open={searching}
+                                  asked={searchAsks.commits}
                                   onOpen={setSearching}
                                   root={activeTab}
                                   bookmarks={bookmarks}
@@ -963,6 +984,7 @@ export function App({ name, post: postToHost, listen }: Props) {
                               wordWrap={wordWrap}
                               showWhitespace={showWhitespace}
                               origin={imageOrigin}
+                              findAsked={searchAsks.diff}
                               changeMarks={
                                 path !== undefined &&
                                 (entireFilePinned || entireFile)

@@ -16,7 +16,8 @@ import { diffRowClass, DiffView, marked } from '../webview/diffView';
 import type { FindRange } from '../webview/find';
 import { LocationsPopup } from '../webview/locations';
 import { Minimap } from '../webview/minimap';
-import { AddressBar, HistoryMenu, NavButtons } from '../webview/navBar';
+import { HistoryMenu, NavButtons } from '../webview/navBar';
+import { SearchButton } from '../webview/search';
 import { Notices } from '../webview/notices';
 import { MenuButton } from '../webview/menu';
 import { TabBar } from '../webview/tabBar';
@@ -304,21 +305,8 @@ export const locationsPopup = memoized((query) =>
   rendered(locationsPopupElement(query)),
 );
 
-export const addressBar = memoized(() =>
-  rendered(
-    <AddressBar
-      open={false}
-      onOpen={noop}
-      root="/a"
-      repository={undefined}
-      hashLookup={undefined}
-      onLookupHash={noop}
-      commitSearch={undefined}
-      onSearchCommits={() => noop}
-      onJump={noop}
-      bookmarks={[]}
-    />,
-  ),
+export const searchButton = memoized(() =>
+  rendered(<SearchButton title="Search" onClick={noop} />),
 );
 
 export const diffFind = memoized((query) =>

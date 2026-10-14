@@ -50,9 +50,6 @@ export const keymap = {
   }),
   head: bind('History', strings.actions.head, { H: true }),
   upstream: bind('History', strings.actions.upstream, { U: true }),
-  search: bind('History', strings.actions.search, {
-    S: true,
-  }),
   commits: bind('History', strings.actions.commits, { C: true }),
   move: bind(
     'History',
@@ -104,7 +101,7 @@ export const keymap = {
   }),
   wrap: bind('Diff', strings.actions.wrap, { W: true }),
   showWhitespace: bind('Diff', strings.actions.showWhitespace, { '.': true }),
-  find: bind('Diff', strings.actions.find, { 'Mod+F': true }),
+  find: bind('Columns', strings.actions.find, { 'Mod+F': true }),
   match: bind(
     'Diff',
     strings.actions.match,

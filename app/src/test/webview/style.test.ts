@@ -47,7 +47,7 @@ import {
 } from '../cascade';
 import { fileChange, renderedBy, stylesheet } from '../fixtures';
 import {
-  addressBar,
+  searchButton,
   bubbles,
   columns,
   columnTitle,
@@ -990,10 +990,9 @@ suite('Style', () => {
     });
   });
 
-  test('fills and edges the search field in the border color until it is used, and draws the strip between hunks in it', () => {
-    looks(withClass(addressBar(), 'address-bar'), {
+  test('fills the search button in the border color, as the search fields are until used, and draws the strip between hunks in it', () => {
+    looks(withClass(searchButton(), 'search-button'), {
       background: 'var(--color-border)',
-      border: '1px solid var(--color-border)',
     });
     looks(
       withClass(
@@ -1116,18 +1115,19 @@ suite('Style', () => {
     looks(withClass(menu, 'menu-item'), { 'padding-right': '32px' });
   });
 
-  test('fills the search fields and the worktree chips alike, and tints them alike when hovered, the edges of the fields included', () => {
-    const fields = [
-      withClass(addressBar(), 'address-bar'),
-      withClass(locationsPopup(''), 'locations-search'),
-    ];
+  test('fills the search fields, the search button and the worktree chips alike, and tints them alike when hovered, the edges of the fields included', () => {
+    const fields = [withClass(locationsPopup(''), 'locations-search')];
     const chip = allWithClass(
       worktreeBar([worktree('a'), worktree('b')], '/a'),
       'tab',
     ).find((tab) => !tab.classes.includes('active'));
     const tinted =
       'linear-gradient(var(--hover-background), var(--hover-background)), var(--color-border)';
-    for (const field of [...fields, chip]) {
+    for (const field of [
+      ...fields,
+      withClass(searchButton(), 'search-button'),
+      chip,
+    ]) {
       looks(field, { background: 'var(--color-border)' });
       looks(field, { background: tinted }, hovered);
     }
@@ -2141,7 +2141,7 @@ suite('Style', () => {
       locationsPopup(''),
       diffFind(),
       notices(),
-      addressBar(),
+      searchButton(),
       rendered(navButtons()),
     ].flatMap((root) =>
       allWithClass(root).filter((element) =>
@@ -2152,15 +2152,6 @@ suite('Style', () => {
     for (const control of controls) {
       looks(control, { font: 'inherit' });
     }
-  });
-
-  test("centers the search field's text by its capitals and baseline, whatever the font's own spacing, clipping only sideways so the round tops of letters above the capitals show", () => {
-    looks(withClass(addressBar(), 'address-text'), {
-      'text-box': 'trim-both cap alphabetic',
-      overflow: undefined,
-      'overflow-x': 'clip',
-      'overflow-y': 'visible',
-    });
   });
 
   test('pads the columns from the sheet by a gutter, sharing the one above them with the worktree row and keeping one gutter at the left edge when the commits are hidden, the gap after their empty column', () => {
@@ -2176,14 +2167,14 @@ suite('Style', () => {
     });
   });
 
-  test('keeps the arrow cursor of a desktop app, but for resizing and typing', () => {
+  test('keeps the arrow cursor of a desktop app but for resizing, the fields showing the text cursor of their own', () => {
     assert.deepStrictEqual(
       [
         ...new Set(
           [...css.matchAll(/cursor: ([^;]+);/g)].map((match) => match[1]),
         ),
       ],
-      ['col-resize', 'text'],
+      ['col-resize'],
     );
   });
 
@@ -2446,10 +2437,14 @@ suite('Style', () => {
     for (const field of [
       diffFind(),
       withClass(locationsPopup(''), 'locations-search'),
-      withClass(addressBar(), 'address-bar'),
     ]) {
       looks(field, { height: 'var(--search-height)' });
     }
+    looks(withClass(searchButton(), 'search-button'), {
+      width: 'var(--search-height)',
+      height: 'var(--search-height)',
+      'border-radius': 'calc(var(--search-height) / 2)',
+    });
   });
 
   test('gives the keys of every shortcut group the same share of the width, wrapping a long list of them, so the actions line up', () => {
@@ -2519,8 +2514,8 @@ suite('Style', () => {
     looks(focusable[0], { outline: 'none' }, focused);
   });
 
-  test('mutes the search placeholders like other muted text', () => {
-    looks(withClass(addressBar(), 'address-text', 'empty'), {
+  test('mutes the search placeholders and the magnifier of the search button like other muted text', () => {
+    looks(withClass(searchButton(), 'search-button'), {
       color: 'var(--muted-foreground)',
     });
     for (const field of [

@@ -666,6 +666,7 @@ export function Commits({
   onSolo,
   navigation,
   search,
+  searchButton,
   focusKey,
   searching = false,
   error,
@@ -694,6 +695,7 @@ export function Commits({
   onSolo: (solo: boolean) => void;
   navigation?: React.ReactNode;
   search?: React.ReactNode;
+  searchButton?: React.ReactNode;
   focusKey?: string;
   searching?: boolean;
   error?: string;
@@ -982,7 +984,8 @@ export function Commits({
 
   return (
     <Column
-      title={search}
+      overlay={search}
+      search={searchButton}
       index={0}
       start={navigation}
       actions={

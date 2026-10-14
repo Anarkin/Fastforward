@@ -12,9 +12,7 @@ import { onMenuKeyDown, useDismiss, useMenuFocus } from './contextMenu';
 import { BackIcon, ForwardIcon, HomeIcon, PinIcon, RefreshIcon } from './icons';
 import { fetchStatus } from './fetchStatus';
 import { LocationsPopup } from './locations';
-import { keymap } from '../shared/keymap';
 import { strings } from '../shared/strings';
-import { useBinding } from './shortcuts';
 
 const holdDelay = 400;
 
@@ -255,6 +253,7 @@ export function locationsPopupKey(
 
 export function AddressBar({
   open,
+  asked,
   onOpen,
   root,
   repository,
@@ -266,6 +265,7 @@ export function AddressBar({
   bookmarks,
 }: {
   open: boolean;
+  asked: number;
   onOpen: (open: boolean) => void;
   root: string | undefined;
   bookmarks: readonly Bookmark[];
@@ -277,11 +277,6 @@ export function AddressBar({
   onJump: (commit: string) => void;
 }) {
   const close = useCallback(() => onOpen(false), [onOpen]);
-  const [searches, setSearches] = useState(0);
-  useBinding(keymap.search, () => {
-    onOpen(true);
-    setSearches((count) => count + 1);
-  });
   const [queries, setQueries] = useState<ReadonlyMap<string, string>>(
     new Map(),
   );
@@ -292,16 +287,9 @@ export function AddressBar({
 
   return (
     <div className="address" ref={container}>
-      <button
-        className="address-bar"
-        title={strings.actions.search}
-        onClick={() => onOpen(true)}
-      >
-        <span className="address-text empty">{strings.search.placeholder}</span>
-      </button>
       {open && (
         <LocationsPopup
-          key={locationsPopupKey(searches, root)}
+          key={locationsPopupKey(asked, root)}
           repository={repository}
           anchor={container}
           lookup={hashLookup}

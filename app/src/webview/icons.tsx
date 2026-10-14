@@ -41,6 +41,15 @@ export function ChangeIcon({ kind }: { kind: ChangeKind }) {
   );
 }
 
+export function SearchIcon() {
+  return (
+    <Icon>
+      <circle cx="7" cy="7" r="4.5" />
+      <path d="M10.5 10.5l3 3" />
+    </Icon>
+  );
+}
+
 export function CloseIcon() {
   return (
     <Icon>

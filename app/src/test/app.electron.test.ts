@@ -388,16 +388,32 @@ suite('App', () => {
     assert.strictEqual(await menu.count(), 0);
   });
 
+  test('opens the commit search from the round button at the far right of the commit column', async () => {
+    const commits = page.locator('.columns > .column').first();
+    const button = commits.locator('.column-actions > .search-button');
+    const popup = page.locator('.locations-popup');
+    const [shown, header] = await Promise.all([
+      button.boundingBox(),
+      commits.locator('.column-title').boundingBox(),
+    ]);
+    assert.ok(shown && header);
+    assert.ok(header.x + header.width - (shown.x + shown.width) <= 8);
+    await button.click();
+    await waitForFocus(page.locator('.locations-search'), 'the search field');
+    await page.keyboard.press('Escape');
+    await popup.waitFor({ state: 'detached' });
+  });
+
   test('gives the keyboard back to the commit list once the search popup closes on Esc or a jump, by key or click', async () => {
     const list = page.locator('.virtual-rows.list');
     const field = page.locator('.locations-search');
     const popup = page.locator('.locations-popup');
-    await page.keyboard.press('s');
+    await page.keyboard.press('ControlOrMeta+F');
     await waitForFocus(field, 'the search field');
     await page.keyboard.press('Escape');
     await popup.waitFor({ state: 'detached' });
     await waitForFocus(list, 'the commit list');
-    await page.keyboard.press('s');
+    await page.keyboard.press('ControlOrMeta+F');
     await waitForFocus(field, 'the search field');
     await field.fill('second');
     await popup.locator('.commit', { hasText: 'second' }).waitFor();
@@ -407,7 +423,7 @@ suite('App', () => {
     await waitForFocus(list, 'the commit list');
     await page.keyboard.press('ArrowDown');
     await page.locator('.commit.selected', { hasText: 'first' }).waitFor();
-    await page.keyboard.press('s');
+    await page.keyboard.press('ControlOrMeta+F');
     await waitForFocus(field, 'the search field');
     await field.fill('main');
     await popup.locator('.row.result[title="main"]').click();
@@ -426,7 +442,7 @@ suite('App', () => {
     await repository.git('worktree', 'add', '-q', '-b', 'other', worktree);
     try {
       await waitForCount(worktrees, 2, 'worktrees');
-      await page.keyboard.press('s');
+      await page.keyboard.press('ControlOrMeta+F');
       await waitForFocus(field, 'the search field');
       await page.keyboard.press('Control+PageDown');
       await page
@@ -501,40 +517,6 @@ suite('App', () => {
       await repository.git('worktree', 'remove', '--force', worktree);
       await repository.git('branch', '-q', '-D', 'scrolled');
       await waitForCount(worktrees, 0, 'worktrees');
-    }
-  });
-
-  test('shows the commit column while searching with the commit list hidden, hiding it again once the popup closes, the keyboard going to the files', async () => {
-    const popup = page.locator('.locations-popup');
-    const field = page.locator('.locations-search');
-    const hidden = page.locator('.columns.commits-hidden');
-    await page.locator('.commit', { hasText: 'first' }).click();
-    await page.keyboard.press('c');
-    await hidden.waitFor();
-    try {
-      await page.keyboard.press('s');
-      await waitForFocus(field, 'the search field');
-      assert.ok(await popup.isVisible());
-      assert.strictEqual(await hidden.count(), 0);
-      await field.fill('main');
-      await popup.locator('.row.result[title="main"]').waitFor();
-      await page.keyboard.press('Enter');
-      await popup.waitFor({ state: 'detached' });
-      await page
-        .locator('.commit.selected', { hasText: 'second' })
-        .waitFor({ state: 'attached' });
-      await hidden.waitFor();
-      await waitForFocus(
-        page.locator('.columns > .column:nth-child(2) [data-column-focus]'),
-        'the files',
-      );
-    } finally {
-      if ((await popup.count()) > 0) {
-        await page.keyboard.press('Escape');
-        await popup.waitFor({ state: 'detached' });
-      }
-      await page.keyboard.press('c');
-      await hidden.waitFor({ state: 'detached' });
     }
   });
 
@@ -1066,7 +1048,7 @@ suite('App', () => {
     const stash = page.locator('.commit', { hasText: 'On main: kept aside' });
     try {
       await stash.waitFor();
-      await page.keyboard.press('s');
+      await page.keyboard.press('ControlOrMeta+F');
       await page.locator('.locations-search').fill('kept');
       await page
         .locator('.locations-group', { hasText: 'Stashes' })

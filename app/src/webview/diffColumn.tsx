@@ -1,4 +1,11 @@
-import { useCallback, useMemo, useRef, useState, type RefObject } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from 'react';
 import {
   type ChangeArea,
   type DiffLayout,
@@ -25,7 +32,7 @@ import {
 } from './icons';
 import { keymap } from '../shared/keymap';
 import { strings } from '../shared/strings';
-import { keyPressed, useBinding } from './shortcuts';
+import { keyPressed } from './shortcuts';
 
 export function withLargeFiles(
   parsed: readonly DiffFile[],
@@ -315,6 +322,7 @@ export function Diff({
   wordWrap,
   showWhitespace,
   origin,
+  findAsked,
 }: {
   selection: string;
   path: string | undefined;
@@ -337,6 +345,7 @@ export function Diff({
   wordWrap: boolean;
   showWhitespace: boolean;
   origin: ImageOrigin | undefined;
+  findAsked: number;
 }) {
   const parsed = useMemo(() => parsePatch(patch), [patch]);
   const diffFiles = useMemo(
@@ -393,10 +402,14 @@ export function Diff({
     setAwaitedDiff(undefined);
     setFirstChange((count) => count + 1);
   }
-  useBinding(keymap.find, () => {
-    input.current?.focus();
-    input.current?.select();
-  });
+  const findSeen = useRef(findAsked);
+  useEffect(() => {
+    if (findSeen.current !== findAsked) {
+      findSeen.current = findAsked;
+      input.current?.focus();
+      input.current?.select();
+    }
+  }, [findAsked]);
 
   return (
     <Column

@@ -5,12 +5,16 @@ export function Column({
   index,
   start,
   actions,
+  search,
+  overlay,
   children,
 }: {
   title?: React.ReactNode;
   index?: number;
   start?: React.ReactNode;
   actions?: React.ReactNode;
+  search?: React.ReactNode;
+  overlay?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -22,9 +26,15 @@ export function Column({
         ) : (
           title
         )}
-        {actions && <div className="column-actions">{actions}</div>}
+        {(actions || search) && (
+          <div className="column-actions">
+            {actions}
+            {search}
+          </div>
+        )}
       </header>
       <div className="column-body">{children}</div>
+      {overlay}
       {index !== undefined && <Resizer index={index} />}
     </section>
   );
