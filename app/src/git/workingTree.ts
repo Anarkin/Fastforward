@@ -465,11 +465,11 @@ export class FileHashes {
         ),
       ),
     );
-    const unknown = files.flatMap((file, index) => {
+    const keys = files.map((file) => join(cwd, file));
+    const unknown = files.flatMap((_, index) => {
       const stamp = stamps[index];
-      return stamp !== undefined &&
-        this.known.get(join(cwd, file))?.stamp !== stamp
-        ? [{ file, stamp }]
+      return stamp !== undefined && this.known.get(keys[index])?.stamp !== stamp
+        ? [index]
         : [];
     });
     const hashed =
@@ -478,35 +478,30 @@ export class FileHashes {
         : await this.hash(
             gitPath,
             cwd,
-            unknown.map(({ file }) => file),
+            unknown.map((index) => files[index]),
           );
-    for (const [index, { file, stamp }] of unknown.entries()) {
-      if (hashed[index]) {
-        this.remember(join(cwd, file), { stamp, hash: hashed[index] });
+    const fresh = new Map(unknown.map((index, at) => [index, hashed[at]]));
+    const hashes = files.map((_, index) => {
+      if (fresh.has(index)) {
+        return fresh.get(index) || undefined;
+      }
+      const known = this.known.get(keys[index]);
+      return known?.stamp === stamps[index] ? known?.hash : undefined;
+    });
+    for (const [index, hash] of hashes.entries()) {
+      const stamp = stamps[index];
+      if (hash !== undefined && stamp !== undefined) {
+        this.known.delete(keys[index]);
+        this.known.set(keys[index], { stamp, hash });
       }
     }
-    return files.map((file, index) => {
-      const known = this.known.get(join(cwd, file));
-      if (known === undefined || known.stamp !== stamps[index]) {
-        return undefined;
-      }
-      this.remember(join(cwd, file), known);
-      return known.hash;
-    });
-  }
-
-  private remember(
-    key: string,
-    known: { readonly stamp: string; readonly hash: string },
-  ): void {
-    this.known.delete(key);
-    this.known.set(key, known);
     for (const oldest of this.known.keys()) {
-      if (this.known.size <= this.maxFiles) {
+      if (this.known.size <= Math.max(this.maxFiles, files.length)) {
         break;
       }
       this.known.delete(oldest);
     }
+    return hashes;
   }
 }
 

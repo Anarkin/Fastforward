@@ -76,6 +76,27 @@ suite('Hashes of files touched', () => {
     }
     assert.deepStrictEqual(asked, ['a', 'b', 'c', 'b']);
   });
+
+  test('gives the hash of every file asked for at once, and hashes none of them again while unchanged, though they outnumber its limit', async () => {
+    const files = ['a', 'b', 'c', 'd'];
+    for (const file of files) {
+      fs.writeFileSync(path.join(folder, file), file);
+    }
+    const asked: string[][] = [];
+    const hashes = new FileHashes(2, (_gitPath, _cwd, hashing) => {
+      asked.push([...hashing]);
+      return Promise.resolve(hashing.map((file) => `hash of ${file}`));
+    });
+    for (let round = 0; round < 2; round++) {
+      assert.deepStrictEqual(await hashes.of('git', folder, files), [
+        'hash of a',
+        'hash of b',
+        'hash of c',
+        'hash of d',
+      ]);
+    }
+    assert.deepStrictEqual(asked, [files]);
+  });
 });
 
 suite('Lines of untracked files', () => {
