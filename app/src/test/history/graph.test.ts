@@ -320,6 +320,20 @@ suite('Graph', () => {
     );
   });
 
+  test('lays out a page of a history thousands of lanes wide in a blink, as the lanes past the last one shown are drawn as one per color', () => {
+    const tips = Array.from({ length: 2400 }, (_, index) => ({
+      hash: `t${index}`,
+      parents: ['c'],
+    }));
+    const graph = graphOf([...tips, { hash: 'c', parents: [] }]);
+    graph.rows(1999, 1);
+    const started = performance.now();
+    const rows = graph.rows(2000, 400);
+    const took = performance.now() - started;
+    assert.strictEqual(rows.length, 400);
+    assert.ok(took < 300, `${Math.round(took)} ms`);
+  });
+
   test('draws twelve lanes at most, folding a thirteenth onto the last', () => {
     assert.strictEqual(lanesReached(12), 12);
     assert.strictEqual(lanesReached(13), 12);

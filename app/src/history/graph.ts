@@ -40,12 +40,32 @@ function allocate(lanes: Lanes, key: number): number {
   return lane;
 }
 
+const lineKinds = maxLanes * maxLanes * graphColors * 4;
+const lineStep = new Float64Array(lineKinds);
+const lineOrder = new Int32Array(lineKinds);
+const lineColor = new Float64Array(lineKinds);
+let steps = 0;
+
+function lineOf(key: number): GraphLine {
+  const dashed = (key & 1) === 1;
+  const bottom = (key & 2) === 2;
+  const across = Math.floor(key / 4 / graphColors);
+  const from = Math.floor(across / maxLanes);
+  const to = across % maxLanes;
+  const color = lineColor[key];
+  return dashed
+    ? { from, to, color, bottom, dashed: true }
+    : { from, to, color, bottom };
+}
+
 function step(
   lanes: Lanes,
   entry: GraphEntry,
   stashes: ReadonlySet<number>,
 ): GraphRow {
-  const lines = new Map<string, GraphLine>();
+  const current = ++steps;
+  const drawn: number[] = [];
+  let order = 0;
   const line = (
     lane: number,
     toLane: number,
@@ -54,15 +74,16 @@ function step(
   ) => {
     const from = Math.min(lane, maxLanes - 1);
     const to = Math.min(toLane, maxLanes - 1);
-    const dashed = lanes.dashed[lane];
-    const key = `${from} ${to} ${color % graphColors} ${bottom} ${dashed}`;
-    lines.delete(key);
-    lines.set(
-      key,
-      dashed
-        ? { from, to, color, bottom, dashed: true }
-        : { from, to, color, bottom },
-    );
+    const key =
+      ((from * maxLanes + to) * graphColors + (color % graphColors)) * 4 +
+      (bottom ? 2 : 0) +
+      (lanes.dashed[lane] ? 1 : 0);
+    if (lineStep[key] !== current) {
+      lineStep[key] = current;
+      drawn.push(key);
+    }
+    lineOrder[key] = order++;
+    lineColor[key] = color;
   };
 
   let lane = lanes.keys.indexOf(entry.key);
@@ -115,12 +136,15 @@ function step(
     lanes.colors.pop();
     lanes.dashed.pop();
   }
+  const lines = drawn
+    .toSorted((a, b) => lineOrder[a] - lineOrder[b])
+    .map(lineOf);
   return entry.key === workingTree
-    ? { lane, color, lines: [...lines.values()], workingTree: true }
+    ? { lane, color, lines, workingTree: true }
     : {
         lane,
         color,
-        lines: [...lines.values()],
+        lines,
         merge: entry.merge,
         hidden: entry.hidden,
         stash: stash || undefined,
