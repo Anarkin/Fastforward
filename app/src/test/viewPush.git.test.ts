@@ -280,6 +280,48 @@ suite('View pushing', () => {
     }
   });
 
+  test('pushes a branch whose upstream is on a remote named by its URL, as gh pr checkout sets up, there, rather than publish it to the only remote', async () => {
+    const fork = await tempRepository(path.join(folder, 'pull-request'), {
+      bare: true,
+    });
+    await repository.git('push', fork.root, 'main:fix');
+    await repository.git('checkout', '-b', 'fix');
+    await repository.git('config', 'branch.fix.remote', fork.root);
+    await repository.git('config', 'branch.fix.merge', 'refs/heads/fix');
+    await repository.commit('fix');
+    const [fix] = await repository.resolve('fix');
+    try {
+      assert.deepStrictEqual(await pushedWith('info'), [
+        `Pushed fix to ${fork.root}/fix`,
+      ]);
+      assert.deepStrictEqual(await fork.resolve('fix'), [fix]);
+      assert.strictEqual(await onRemote('fix'), undefined);
+      assert.strictEqual(
+        (await repository.git('config', 'branch.fix.remote')).trim(),
+        fork.root,
+      );
+    } finally {
+      await repository.git('checkout', '-f', 'main');
+      await repository.git('branch', '-D', 'fix');
+    }
+  });
+
+  test("pushes nothing from a branch whose upstream is a pull request's ref, as git push wouldn't either", async () => {
+    await repository.git('checkout', '-b', 'review');
+    await repository.git('config', 'branch.review.remote', 'origin');
+    await repository.git('config', 'branch.review.merge', 'refs/pull/1/head');
+    await repository.commit('review');
+    try {
+      assert.deepStrictEqual(await pushedWith('info'), [
+        "review tracks origin/refs/pull/1/head, which has another name, so it wasn't pushed, as git push wouldn't push it either",
+      ]);
+      assert.strictEqual(await onRemote('review'), undefined);
+    } finally {
+      await repository.git('checkout', '-f', 'main');
+      await repository.git('branch', '-D', 'review');
+    }
+  });
+
   test('pushes nothing to an upstream that is a local branch, saying it has no remote', async () => {
     await repository.git('checkout', '-b', 'follower', '--track', 'main');
     await repository.commit('more');
