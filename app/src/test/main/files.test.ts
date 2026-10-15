@@ -110,6 +110,22 @@ suite('Window bounds', () => {
     );
   });
 
+  test('fits a window into the screen it is mostly on when part of it is off every screen, as one saved on a larger screen opened with its window buttons out of reach', () => {
+    const laptop = [{ x: 0, y: 0, width: 1280, height: 752 }];
+    assert.deepStrictEqual(
+      visibleBounds({ x: 300, y: 200, width: 1800, height: 1100 }, laptop),
+      { x: 0, y: 0, width: 1280, height: 752 },
+    );
+    assert.deepStrictEqual(
+      visibleBounds({ x: 1500, y: 100, width: 800, height: 600 }, [screens[0]]),
+      { x: 1120, y: 100, width: 800, height: 600 },
+    );
+    assert.deepStrictEqual(
+      visibleBounds({ x: 1500, y: 100, width: 800, height: 600 }, screens),
+      { x: 1500, y: 100, width: 800, height: 600 },
+    );
+  });
+
   test('forgets a window left on a screen since removed', () => {
     assert.strictEqual(
       visibleBounds({ x: 3500, y: 100, width: 800, height: 600 }, screens),

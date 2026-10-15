@@ -57,18 +57,54 @@ export function visibleBounds(
     return undefined;
   }
   const minimum = 100;
-  const onScreen = workAreas.some(
-    (area) =>
+  const overlaps = workAreas.map((area) => {
+    const across =
       Math.min(saved.x + saved.width, area.x + area.width) -
-        Math.max(saved.x, area.x) >=
-        minimum &&
+      Math.max(saved.x, area.x);
+    const down =
       Math.min(saved.y + saved.height, area.y + area.height) -
-        Math.max(saved.y, area.y) >=
-        minimum,
+      Math.max(saved.y, area.y);
+    return { area, across, down };
+  });
+  const [mostly] = overlaps
+    .filter(({ across, down }) => across >= minimum && down >= minimum)
+    .toSorted((a, b) => b.across * b.down - a.across * a.down);
+  if (mostly === undefined) {
+    return undefined;
+  }
+  const bounds = {
+    x: saved.x,
+    y: saved.y,
+    width: saved.width,
+    height: saved.height,
+  };
+  const corners = [
+    [bounds.x, bounds.y],
+    [bounds.x + bounds.width, bounds.y],
+    [bounds.x, bounds.y + bounds.height],
+    [bounds.x + bounds.width, bounds.y + bounds.height],
+  ] as const;
+  const shown = corners.every(([x, y]) =>
+    workAreas.some(
+      (area) =>
+        x >= area.x &&
+        x <= area.x + area.width &&
+        y >= area.y &&
+        y <= area.y + area.height,
+    ),
   );
-  return onScreen
-    ? { x: saved.x, y: saved.y, width: saved.width, height: saved.height }
-    : undefined;
+  return shown ? bounds : fitted(bounds, mostly.area);
+}
+
+function fitted(bounds: Bounds, area: Bounds): Bounds {
+  const width = Math.min(bounds.width, area.width);
+  const height = Math.min(bounds.height, area.height);
+  return {
+    x: Math.min(Math.max(bounds.x, area.x), area.x + area.width - width),
+    y: Math.min(Math.max(bounds.y, area.y), area.y + area.height - height),
+    width,
+    height,
+  };
 }
 
 function isBounds(value: unknown): value is Bounds {
