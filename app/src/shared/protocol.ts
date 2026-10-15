@@ -254,6 +254,7 @@ export type ToHost =
   | { readonly type: 'openDefaultSettings' }
   | { readonly type: 'closeTab'; readonly root: string }
   | { readonly type: 'sortTabs' }
+  | { readonly type: 'moveTab'; readonly root: string; readonly index: number }
   | { readonly type: 'preloadTab'; readonly root: string }
   | { readonly type: 'selectWorktree'; readonly root: string }
   | { readonly type: 'preloadWorktree'; readonly root: string }

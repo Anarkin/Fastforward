@@ -1320,6 +1320,72 @@ suite('App with lists longer than their columns', () => {
   });
 });
 
+suite('App with several tabs', () => {
+  test('moves a tab dragged past the middle of the next one while it is still dragged, keeping it under the pointer, opening it, and keeps that order once dropped', async () => {
+    const folder = tempFolder('dragging-tabs');
+    const profile = path.join(folder, 'profile');
+    const roots: string[] = [];
+    for (const name of ['first', 'second', 'third']) {
+      const repository = await tempRepository(path.join(folder, name));
+      await repository.commit(name);
+      roots.push(repository.root);
+    }
+    fs.mkdirSync(profile, { recursive: true });
+    const state = path.join(profile, 'state.json');
+    fs.writeFileSync(
+      state,
+      JSON.stringify({ tabs: roots, activeTab: roots[1] }),
+    );
+    fs.writeFileSync(
+      path.join(profile, 'settings.user.json'),
+      JSON.stringify({ autoFetch: false }),
+    );
+    const app = await _electron.launch({
+      args: [appFolder, `--user-data-dir=${profile}`],
+      cwd: appFolder,
+    });
+    try {
+      const page = await app.firstWindow();
+      await page.locator('.commit', { hasText: 'second' }).waitFor();
+      const names = () =>
+        page.locator('.tabs .tab .tab-name').allTextContents();
+      const dragged = page.locator('.tabs .tab', { hasText: 'first' });
+      const start = await dragged.boundingBox();
+      const next = await page
+        .locator('.tabs .tab', { hasText: 'second' })
+        .boundingBox();
+      assert.ok(start && next);
+      const pitch = next.x - start.x;
+      const grab = 20;
+      const y = start.y + start.height / 2;
+      await page.mouse.move(start.x + grab, y);
+      await page.mouse.down();
+      await page.mouse.move(start.x + grab + pitch / 2 - 8, y, { steps: 8 });
+      assert.deepStrictEqual(await names(), ['first', 'second', 'third']);
+      const pointer = start.x + grab + pitch / 2 + 8;
+      await page.mouse.move(pointer, y, { steps: 4 });
+      assert.deepStrictEqual(await names(), ['second', 'first', 'third']);
+      const held = await dragged.boundingBox();
+      assert.ok(held);
+      assert.ok(Math.abs(held.x - (pointer - grab)) < 1, String(held.x));
+      await page.locator('.commit', { hasText: 'first' }).waitFor();
+      await page.mouse.up();
+      assert.deepStrictEqual(await names(), ['second', 'first', 'third']);
+      await waitFor(() => {
+        const saved: unknown = JSON.parse(fs.readFileSync(state, 'utf8'));
+        return (
+          JSON.stringify(Reflect.get(Object(saved), 'tabs')) ===
+          JSON.stringify([roots[1], roots[0], roots[2]])
+        );
+      }, 'the order to be saved');
+      assert.match((await dragged.getAttribute('class')) ?? '', /\bactive\b/);
+    } finally {
+      await closeOrKill(app);
+      removeFolder(folder);
+    }
+  });
+});
+
 suite('App quitting', () => {
   test('stops the git it still runs, which would outlive it', async () => {
     const folder = tempFolder('quitting');

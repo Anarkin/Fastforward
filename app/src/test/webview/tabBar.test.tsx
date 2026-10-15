@@ -7,9 +7,12 @@ import { strings } from '../../shared/strings';
 import {
   adjacentTab,
   Cycle,
+  movedTab,
+  nearestSlot,
   resting,
   revealingScroll,
   sidewaysDelta,
+  slotLefts,
   stripOverflows,
   TabBar,
 } from '../../webview/tabBar';
@@ -221,6 +224,78 @@ suite('Tabs too many for one row', () => {
       192,
     );
     assert.strictEqual(revealingScroll(view, { start: 5, end: 105 }, reach), 0);
+  });
+});
+
+function roots(tabs: readonly { root: string }[]): string[] {
+  return tabs.map((tab) => tab.root);
+}
+
+function draggable(
+  shown: readonly { root: string; name: string }[],
+  onMove?: (root: string, index: number) => void,
+): boolean[] {
+  return tabsOf(
+    renderedBy(TabBar, {
+      tabs: shown,
+      active: shown[0].root,
+      onSelect: noop,
+      onPreload: noop,
+      onClose: noop,
+      onMove,
+      onAdd: noop,
+      onLog: noop,
+    }),
+  ).map(
+    (tab) =>
+      isValidElement<{ onPointerDown?: unknown }>(tab) &&
+      tab.props.onPointerDown !== undefined,
+  );
+}
+
+suite('Tabs dragged', () => {
+  test('puts a tab dragged in the place its left edge comes nearest, so it takes the place of a tab once it passes its middle, as in Chrome', () => {
+    const lefts = slotLefts([100, 100, 100], 10, 0);
+    assert.deepStrictEqual(lefts, [0, 110, 220]);
+    assert.strictEqual(nearestSlot(lefts, 0), 0);
+    assert.strictEqual(nearestSlot(lefts, 54), 0);
+    assert.strictEqual(nearestSlot(lefts, 56), 1);
+    assert.strictEqual(nearestSlot(lefts, 164), 1);
+    assert.strictEqual(nearestSlot(lefts, 166), 2);
+    assert.strictEqual(nearestSlot(lefts, 400), 2);
+    assert.strictEqual(nearestSlot(lefts, -40), 0);
+  });
+
+  test('places a tab dragged among the others as wide as they are, though it is wider, as the open tab is once the tabs shrink', () => {
+    assert.deepStrictEqual(slotLefts([40, 80, 40], 6, 1), [0, 46, 92]);
+    assert.deepStrictEqual(slotLefts([80, 40, 30], 6, 0), [0, 46, 82]);
+  });
+
+  test('moves a tab to the place it is dropped in, keeping the others in their order', () => {
+    const four = ['a', 'b', 'c', 'd'].map((name) => ({
+      root: `/${name}`,
+      name,
+    }));
+    assert.deepStrictEqual(roots(movedTab(four, '/a', 2)), [
+      '/b',
+      '/c',
+      '/a',
+      '/d',
+    ]);
+    assert.deepStrictEqual(roots(movedTab(four, '/d', 0)), [
+      '/d',
+      '/a',
+      '/b',
+      '/c',
+    ]);
+    assert.deepStrictEqual(roots(movedTab(four, '/x', 0)), roots(four));
+  });
+
+  test('lets a tab be dragged only while the tabs are not sorted automatically, and only with another tab to pass, as a lone tab drags the window', () => {
+    const three = ['a', 'b', 'c'].map((name) => ({ root: `/${name}`, name }));
+    assert.deepStrictEqual(draggable(three, noop), [true, true, true]);
+    assert.deepStrictEqual(draggable(three), [false, false, false]);
+    assert.deepStrictEqual(draggable(three.slice(0, 1), noop), [false]);
   });
 });
 

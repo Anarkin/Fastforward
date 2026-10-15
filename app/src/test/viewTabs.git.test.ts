@@ -10,7 +10,7 @@ import {
   test,
 } from 'vitest';
 import { replaceBuiltin } from './builtins';
-import { sameRoot, soloKey } from '../storage';
+import { sameRoot, soloKey, tabsKey } from '../storage';
 import { waitFor } from './fixtures';
 import {
   removeFolder,
@@ -106,6 +106,58 @@ suite('View with two tabs', () => {
       const left = own.page.last('tabs');
       assert.deepStrictEqual(names(), ['main', 'Zeta']);
       assert.strictEqual(left?.active, zeta.root);
+    });
+  });
+
+  test('moves a tab where it is dropped, keeping the open one open, and saves the order', async () => {
+    const moved = await tempRepository(path.join(folder, 'Moved'));
+    await moved.commit('moved');
+    await withView(log, [repository.root, other, moved.root], async (own) => {
+      const names = () =>
+        (own.page.last('tabs')?.tabs ?? []).map((tab) => tab.name);
+      await own.connection.receive({
+        type: 'moveTab',
+        root: moved.root,
+        index: 0,
+      });
+      assert.deepStrictEqual(names(), ['Moved', 'main', 'other']);
+      assert.strictEqual(own.page.last('tabs')?.active, repository.root);
+      assert.deepStrictEqual(own.store.values.get(tabsKey), [
+        moved.root,
+        repository.root,
+        other,
+      ]);
+      await own.connection.receive({
+        type: 'moveTab',
+        root: moved.root,
+        index: 2,
+      });
+      assert.deepStrictEqual(names(), ['main', 'other', 'Moved']);
+    });
+  });
+
+  test('moves no tab while sorting automatically, nor one not open, nor to a place not in the row, sending the order as it stands so the page drops the one it showed', async () => {
+    await withView(log, [repository.root, other], async (own) => {
+      const roots = () => own.page.last('tabs')?.tabs.map((tab) => tab.root);
+      for (const [root, index] of [
+        [path.join(folder, 'nowhere'), 0],
+        [other, -1],
+        [other, 2],
+        [other, 0.5],
+        [other, Number.NaN],
+      ] as const) {
+        own.page.clear();
+        await own.connection.receive({ type: 'moveTab', root, index });
+        assert.deepStrictEqual(roots(), [repository.root, other]);
+      }
+      await own.connection.receive({ type: 'setAutoSortTabs', on: true });
+      own.page.clear();
+      await own.connection.receive({ type: 'moveTab', root: other, index: 0 });
+      assert.deepStrictEqual(roots(), [repository.root, other]);
+      assert.deepStrictEqual(own.store.values.get(tabsKey), [
+        repository.root,
+        other,
+      ]);
     });
   });
 

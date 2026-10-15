@@ -63,6 +63,7 @@ body {
   --title-bar-inset: calc(var(--tab-inset) + 12px);
   --card-radius: 6px;
   --tab-radius: 10px;
+  --tab-divider: color-mix(in srgb, var(--color-foreground) 12%, transparent);
   --popup-background: var(--color-background);
   --popup-shadow:
     inset 0 0 0 1px var(--color-border), 0 12px 32px rgba(0, 0, 0, 0.22),
@@ -450,6 +451,35 @@ body {
   min-width: calc(2ch + 4px + 12px + 4px + 2 * 1px);
   padding: 3px 4px 3px 12px;
   border-radius: var(--tab-radius);
+  transition: transform 0.15s ease-out;
+}
+
+.tabs .tab.dragging {
+  z-index: 1;
+  transition: none;
+}
+
+.tabs .tab:first-child:last-child {
+  -webkit-app-region: drag;
+}
+
+.tabs .tab-divider {
+  position: absolute;
+  top: 50%;
+  right: -5px;
+  width: 2px;
+  height: 16px;
+  border-radius: 1px;
+  background: var(--tab-divider);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.tabs .tab.active > .tab-divider,
+.tabs .tab:hover > .tab-divider,
+.tabs .tab:has(+ .tab.active) > .tab-divider,
+.tabs .tab:has(+ .tab:hover) > .tab-divider {
+  visibility: hidden;
 }
 
 .tabs .tab:not(.active) {
@@ -487,6 +517,7 @@ body {
 
 .tabs .tab-close {
   margin-left: auto;
+  -webkit-app-region: no-drag;
 }
 
 .tabs .tab:not(.active) .tab-close {

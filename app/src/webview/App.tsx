@@ -74,7 +74,7 @@ import { hasRef } from '../shared/refNames';
 import { strings } from '../shared/strings';
 import { AddressBar, NavButtons } from './navBar';
 import { SearchButton } from './search';
-import { TabBar } from './tabBar';
+import { movedTab, TabBar } from './tabBar';
 import { WorktreeBar } from './worktreeBar';
 import { useWindowTitle, windowTitle } from './titleBar';
 import {
@@ -775,6 +775,17 @@ export function App({ name, post: postToHost, listen }: Props) {
                       onSelect={(root) => post({ type: 'selectTab', root })}
                       onPreload={(root) => post({ type: 'preloadTab', root })}
                       onClose={(root) => post({ type: 'closeTab', root })}
+                      onMove={
+                        autoSortTabs
+                          ? undefined
+                          : (root, index) => {
+                              setTabs(
+                                (shown) =>
+                                  shown && movedTab(shown, root, index),
+                              );
+                              post({ type: 'moveTab', root, index });
+                            }
+                      }
                       onAdd={openRepository}
                       onLog={log}
                       menu={

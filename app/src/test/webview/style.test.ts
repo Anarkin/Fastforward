@@ -225,6 +225,28 @@ function tabBarIn(maximized: boolean): MarkupElement {
   );
 }
 
+function tabRow(count: number, active: string): MarkupElement {
+  return rendered(
+    createElement(TabBar, {
+      tabs: ['a', 'b', 'c'].slice(0, count).map((name) => ({
+        root: `/${name}`,
+        name,
+      })),
+      active,
+      onSelect: noop,
+      onPreload: noop,
+      onClose: noop,
+      onMove: noop,
+      onAdd: noop,
+      onLog: noop,
+    }),
+  );
+}
+
+function divider(tab: MarkupElement): MarkupElement {
+  return withClass(tab, 'tab-divider');
+}
+
 function shortcutsPopup(): MarkupElement {
   return withClass(
     rendered(createElement(ShortcutsPopup, { mac: false, onClose: noop })),
@@ -582,6 +604,74 @@ suite('Style', () => {
       },
       after,
     );
+  });
+
+  test('draws a divider in the middle of the gap after each repository tab, as Chrome does, but none beside the open tab or the one the pointer is on', () => {
+    assert.strictEqual(
+      bodyVariable('tab-divider'),
+      'color-mix(in srgb, var(--color-foreground) 12%, transparent)',
+    );
+    const [a, b, c] = allWithClass(tabRow(3, '/b'), 'tab');
+    const width = 2;
+    const [border] = (cascaded(a, 'border') ?? '').split(' ');
+    const gap = parseFloat(bodyVariable('card-radius') ?? '');
+    looks(divider(a), {
+      position: 'absolute',
+      top: '50%',
+      right: `${-(parseFloat(border) + gap / 2 + width / 2)}px`,
+      width: `${width}px`,
+      height: '16px',
+      'border-radius': '1px',
+      background: 'var(--tab-divider)',
+      transform: 'translateY(-50%)',
+      'pointer-events': 'none',
+    });
+    assert.strictEqual(
+      cascaded(withClass(tabRow(3, '/b'), 'tab-strip'), 'gap'),
+      'inherit',
+    );
+    const shown = (tab: MarkupElement, states?: States) =>
+      cascaded(divider(tab), 'visibility', states) !== 'hidden';
+    assert.deepStrictEqual(
+      [a, b, c].map((tab) => shown(tab)),
+      [false, false, true],
+    );
+    assert.deepStrictEqual(
+      [a, b, c].map((tab) => shown(tab, { hover: c })),
+      [false, false, false],
+    );
+    const [first, second, third] = allWithClass(tabRow(3, '/a'), 'tab');
+    assert.deepStrictEqual(
+      [first, second, third].map((tab) => shown(tab)),
+      [false, true, true],
+    );
+    assert.deepStrictEqual(
+      [first, second, third].map((tab) => shown(tab, { hover: second })),
+      [false, false, true],
+    );
+  });
+
+  test('drags the window by a lone repository tab, as Chrome does, there being no tab to move it past, but not by its close button', () => {
+    const [lone] = allWithClass(tabRow(1, '/a'), 'tab');
+    looks(lone, { '-webkit-app-region': 'drag' });
+    looks(withClass(lone, 'tab-close'), { '-webkit-app-region': 'no-drag' });
+    for (const tab of allWithClass(tabRow(2, '/a'), 'tab')) {
+      looks(tab, { '-webkit-app-region': 'no-drag' });
+    }
+  });
+
+  test('keeps a repository tab dragged over the others and right under the pointer, while the others slide into their places', () => {
+    const row = rendered(
+      createElement(
+        'nav',
+        { className: 'tabs' },
+        createElement('div', { className: 'tab active dragging' }),
+        createElement('div', { className: 'tab' }),
+      ),
+    );
+    const [dragged, other] = allWithClass(row, 'tab');
+    looks(dragged, { 'z-index': '1', transition: 'none' });
+    looks(other, { transition: 'transform 0.15s ease-out' });
   });
 
   test('makes the button opening a repository round like the buttons beside it', () => {

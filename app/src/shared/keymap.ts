@@ -48,6 +48,9 @@ export const keymap = {
   closeRepository: bind('Tabs', strings.actions.closeRepository, {
     MiddleClick: true,
   }),
+  moveRepository: bind('Tabs', strings.actions.moveRepository, {
+    Drag: true,
+  }),
   head: bind('History', strings.actions.head, { H: true }),
   upstream: bind('History', strings.actions.upstream, { U: true }),
   commits: bind('History', strings.actions.commits, { C: true }),
@@ -203,6 +206,7 @@ function comboOf(keys: string): Combo {
 
 const buttons: Readonly<Record<string, number>> = {
   Click: 0,
+  Drag: 0,
   MiddleClick: 1,
   BackButton: 3,
   ForwardButton: 4,

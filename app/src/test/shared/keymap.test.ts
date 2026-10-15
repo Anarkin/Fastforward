@@ -272,6 +272,15 @@ suite('Keymap', () => {
       undefined,
     );
     assert.strictEqual(clicked(keymap.drag, click), true);
+    assert.strictEqual(clicked(keymap.moveRepository, click), true);
+    assert.strictEqual(
+      clicked(keymap.moveRepository, { ...click, ctrlKey: true }),
+      undefined,
+    );
+    assert.strictEqual(
+      clicked(keymap.moveRepository, { ...click, button: 1 }),
+      undefined,
+    );
     assert.strictEqual(
       clicked(keymap.closeRepository, { ...click, button: 1 }),
       true,
@@ -351,6 +360,7 @@ suite('Keymap', () => {
     assert.deepStrictEqual(keyLabels('Alt+ArrowDown', false), ['Alt', '↓']);
     assert.deepStrictEqual(keyLabels('Alt+ArrowDown', true), ['⌥', '↓']);
     assert.deepStrictEqual(keyLabels('MiddleClick', false), ['Middle-click']);
+    assert.deepStrictEqual(keyLabels('Drag', false), ['Drag']);
   });
 
   test('leaves telling keys, modifiers and buttons apart to itself, so the shortcuts screen lists every one', () => {

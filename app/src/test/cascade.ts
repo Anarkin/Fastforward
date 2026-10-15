@@ -204,11 +204,18 @@ function matchesSimple(
         matches(selector, element, context),
       );
     case ':has':
-      return split(argument, ',').some((selector) =>
-        descendants(element).some((descendant) =>
-          matches(selector, descendant, context, element),
-        ),
-      );
+      return split(argument, ',').some((selector) => {
+        const sibling = /^\s*([+~])\s*(.*)$/.exec(selector);
+        if (!sibling) {
+          return descendants(element).some((descendant) =>
+            matches(selector, descendant, context, element),
+          );
+        }
+        const following = siblings.slice(siblings.indexOf(element) + 1);
+        return (sibling[1] === '+' ? following.slice(0, 1) : following).some(
+          (next) => matches(sibling[2], next, context),
+        );
+      });
     case ':nth-child':
       assert.ok(/^\d+$/.test(argument), simple);
       return siblings.indexOf(element) + 1 === Number(argument);

@@ -434,6 +434,7 @@ export class FastforwardView {
   private worktreeAsked(message: ToHost): string | undefined {
     switch (message.type) {
       case 'closeTab':
+      case 'moveTab':
         return undefined;
       case 'selectTab':
       case 'preloadTab':
@@ -608,6 +609,26 @@ export class FastforwardView {
         this.save(storage.setTabs(sortedTabs(storage.tabs), storage.activeTab));
         this.postTabs(session);
         return;
+      case 'moveTab': {
+        const { tabs } = storage;
+        const from = tabs.findIndex((tab) => sameRoot(tab, message.root));
+        if (
+          !storage.autoSortTabs &&
+          from !== -1 &&
+          Number.isInteger(message.index) &&
+          message.index >= 0 &&
+          message.index < tabs.length
+        ) {
+          this.save(
+            storage.setTabs(
+              tabs.toSpliced(from, 1).toSpliced(message.index, 0, tabs[from]),
+              storage.activeTab,
+            ),
+          );
+        }
+        this.sendTabs(session);
+        return;
+      }
       case 'setAutoSortTabs':
         this.save(storage.setAutoSortTabs(message.on));
         if (message.on) {
