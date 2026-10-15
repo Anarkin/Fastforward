@@ -543,6 +543,51 @@ suite('A merge conflicting over a file our side deleted', () => {
   });
 });
 
+suite('Counting uncommitted changes', () => {
+  test('counts them without diffing their lines when only their number is shown, telling a file only touched from one changed by its hash, as each refresh diffed every changed file whole', async () => {
+    const repository = await tempRepository(tempFolder('count-only'));
+    try {
+      await repository.commit('initial', {
+        'changed.txt': 'one\n',
+        'touched.txt': 'same\n',
+        'staged.txt': 'old\n',
+      });
+      const touched = path.join(repository.root, 'touched.txt');
+      fs.writeFileSync(path.join(repository.root, 'changed.txt'), 'two\n');
+      fs.writeFileSync(touched, 'same\n');
+      const later = new Date(Date.now() + 60_000);
+      fs.utimesSync(touched, later, later);
+      fs.writeFileSync(path.join(repository.root, 'staged.txt'), 'new\n');
+      await repository.git('add', 'staged.txt');
+      const gits = holdingGit(() => false);
+      let workingTree: Awaited<ReturnType<typeof workingTreeFiles>>;
+      try {
+        workingTree = await workingTreeFiles(
+          repository.gitPath,
+          repository.root,
+          undefined,
+          undefined,
+          undefined,
+          false,
+        );
+      } finally {
+        gits.release();
+      }
+      assert.strictEqual(gits.started('--numstat'), false);
+      assert.deepStrictEqual(
+        workingTree.files.map((file) => file.path),
+        ['changed.txt'],
+      );
+      assert.deepStrictEqual(
+        workingTree.staged?.map((file) => file.path),
+        ['staged.txt'],
+      );
+    } finally {
+      removeFolder(repository.root);
+    }
+  });
+});
+
 suite('Uncommitted changes', () => {
   let gitPath: string;
   let cwd: string;

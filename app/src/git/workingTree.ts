@@ -8,6 +8,7 @@ import {
   diffArgs,
   gitQuoted,
   isNullId,
+  listArgs,
   parseRawChanges,
   pathspecs,
   type PatchScope,
@@ -163,9 +164,14 @@ export async function workingTreeFiles(
 ): Promise<WorkingTree> {
   const { base, reverse } = diff;
   const [trackedChanges, listedUntracked, staged] = await Promise.all([
-    runGit(gitPath, cwd, [...workingTreeDiff(diff), ...changesArgs], {
-      signal,
-    }).then((changes) =>
+    runGit(
+      gitPath,
+      cwd,
+      [...workingTreeDiff(diff), ...(measured ? changesArgs : listArgs)],
+      {
+        signal,
+      },
+    ).then((changes) =>
       trackedFiles(gitPath, cwd, parseRawChanges(changes), reverse, measured),
     ),
     knownUntracked ?? listUntracked(gitPath, cwd, signal),
@@ -307,7 +313,13 @@ async function stagedFiles(
   const output = await runGit(
     gitPath,
     cwd,
-    ['diff', '--cached', '-M', ...diffArgs, ...changesArgs],
+    [
+      'diff',
+      '--cached',
+      '-M',
+      ...diffArgs,
+      ...(measured ? changesArgs : listArgs),
+    ],
     { signal },
   );
   const changes = parseRawChanges(output);
@@ -327,7 +339,7 @@ async function trackedFiles(
     measured
       ? withBytes(gitPath, cwd, changes, { fromDisk: true, reverse })
       : changes,
-    touchedChanges(gitPath, cwd, changes, reverse),
+    touchedChanges(gitPath, cwd, changes, reverse, measured),
   ]);
   return onePerPath(
     sized
@@ -381,7 +393,7 @@ export async function withoutTouched(
   changes: readonly RawChange[],
   reverse = false,
 ): Promise<FileChange[]> {
-  const touched = await touchedChanges(gitPath, cwd, changes, reverse);
+  const touched = await touchedChanges(gitPath, cwd, changes, reverse, true);
   return changes
     .filter((change) => !touched.has(change))
     .map(({ file }) => file);
@@ -392,6 +404,7 @@ async function touchedChanges(
   cwd: string,
   changes: readonly RawChange[],
   reverse: boolean,
+  counted: boolean,
 ): Promise<ReadonlySet<RawChange>> {
   const unread = changes.filter(
     ({ oldMode, newMode, oldId, newId, file }) =>
@@ -401,7 +414,9 @@ async function touchedChanges(
       isNullId(reverse ? oldId : newId),
   );
   const suspects = unread.flatMap((change) =>
-    change.linesCounted && change.file.insertions + change.file.deletions === 0
+    !counted ||
+    (change.linesCounted &&
+      change.file.insertions + change.file.deletions === 0)
       ? [
           {
             change,
@@ -420,7 +435,7 @@ async function touchedChanges(
           suspects.map(({ path }) => path),
         );
   return new Set([
-    ...unread.filter(({ linesCounted }) => !linesCounted),
+    ...unread.filter(({ linesCounted }) => counted && !linesCounted),
     ...suspects
       .filter(({ object }, index) => hashes[index] === object)
       .map(({ change }) => change),

@@ -31,7 +31,7 @@ const showArgs = [
 
 export const changesArgs = ['--raw', '--numstat', '-z', '--no-abbrev'];
 
-const listArgs = ['--raw', '-z', '--no-abbrev'];
+export const listArgs = ['--raw', '-z', '--no-abbrev'];
 
 const compareArgs = ['diff', '-M', ...diffArgs];
 
