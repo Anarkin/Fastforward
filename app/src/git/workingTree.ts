@@ -27,6 +27,7 @@ export interface WorkingTree extends WorkingTreeDiff {
   readonly files: readonly FileChange[];
   readonly untracked: readonly string[];
   readonly listedUntracked: readonly string[];
+  readonly addedInConflict: readonly string[];
   readonly staged: readonly FileChange[] | undefined;
 }
 
@@ -172,6 +173,15 @@ export async function workingTreeFiles(
       ? stagedFiles(gitPath, cwd, measured, signal)
       : undefined,
   ]);
+  const addedInConflict =
+    base === undefined && trackedChanges.some((file) => file.status === '?')
+      ? await withoutOurSide(gitPath, cwd, signal)
+      : new Set<string>();
+  const changes = await Promise.all(
+    trackedChanges.map(async (file) =>
+      addedInConflict.has(file.path) ? addedOnDisk(file, cwd, measured) : file,
+    ),
+  );
   const tracked = new Set(trackedChanges.map((file) => file.path));
   const untracked = listedUntracked.filter((path) => !tracked.has(path));
   const untrackedFiles = await Promise.all(
@@ -203,10 +213,51 @@ export async function workingTreeFiles(
   );
   return {
     ...diff,
-    files: [...trackedChanges, ...untrackedFiles],
+    files: [...changes, ...untrackedFiles],
     untracked,
     listedUntracked,
+    addedInConflict: [...addedInConflict],
     staged,
+  };
+}
+
+async function withoutOurSide(
+  gitPath: string,
+  cwd: string,
+  signal?: AbortSignal,
+): Promise<Set<string>> {
+  const stages = new Map<string, Set<string>>();
+  for (const entry of splitNul(
+    await runGit(gitPath, cwd, ['ls-files', '-u', '-z'], { signal }),
+  )) {
+    const tab = entry.indexOf('\t');
+    if (tab !== -1) {
+      const path = entry.slice(tab + 1);
+      const [, , stage = ''] = entry.slice(0, tab).split(' ');
+      stages.set(path, (stages.get(path) ?? new Set()).add(stage));
+    }
+  }
+  return new Set(
+    [...stages].filter(([, staged]) => !staged.has('2')).map(([path]) => path),
+  );
+}
+
+async function addedOnDisk(
+  file: FileChange,
+  cwd: string,
+  measured: boolean,
+): Promise<FileChange> {
+  const onDisk = join(cwd, file.path);
+  const added = measured ? await untrackedLines.of(onDisk) : 0;
+  const bytes =
+    added !== 0 ? (await lstat(onDisk).catch(() => undefined))?.size : 0;
+  return {
+    ...file,
+    status: 'A',
+    insertions: added === 'tooLarge' ? 0 : added,
+    deletions: 0,
+    ...(bytes ? { bytes } : {}),
+    ...(added === 'tooLarge' ? { uncounted: true } : {}),
   };
 }
 
@@ -476,6 +527,8 @@ function workingTreeDiff({ base, reverse }: WorkingTreeDiff): string[] {
     : ['diff', ...against, '-M', ...diffArgs];
 }
 
+const unmergedMarks = /^\* Unmerged path .*\n/gm;
+
 export async function workingTreePatch(
   gitPath: string,
   cwd: string,
@@ -511,8 +564,11 @@ export async function workingTreePatch(
     return patch;
   };
   const { path } = scope;
-  const { untracked } = workingTree;
-  if (path !== undefined && untracked.includes(path)) {
+  const { untracked, addedInConflict } = workingTree;
+  if (
+    path !== undefined &&
+    (untracked.includes(path) || addedInConflict.includes(path))
+  ) {
     return untrackedPatch(path);
   }
   if (scope.include?.length === 0) {
@@ -527,11 +583,11 @@ export async function workingTreePatch(
       ...pathspecs(scope),
     ],
     { signal },
-  );
+  ).then((patch) => patch.replace(unmergedMarks, ''));
   if (path !== undefined) {
     return withoutFilesInside(await tracked, scope);
   }
-  const listed = new Set(untracked);
+  const listed = new Set([...untracked, ...addedInConflict]);
   for (const file of kept.keys()) {
     if (!listed.has(file)) {
       kept.delete(file);
@@ -541,8 +597,7 @@ export async function workingTreePatch(
   const [trackedPatch, untrackedPatches] = await Promise.all([
     tracked,
     Promise.allSettled(
-      untracked
-        .slice(0, maxUntrackedPatches)
+      [...addedInConflict, ...untracked.slice(0, maxUntrackedPatches)]
         .filter((file) => !included || included.has(file))
         .map(untrackedPatch),
     ),

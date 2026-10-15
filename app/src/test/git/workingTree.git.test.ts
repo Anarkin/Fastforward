@@ -486,6 +486,63 @@ suite('A conflicted merge', () => {
   });
 });
 
+suite('A merge conflicting over a file our side deleted', () => {
+  let conflicted: TempRepository;
+
+  beforeAll(async () => {
+    conflicted = await tempRepository(tempFolder('deleted-by-us'));
+    await conflicted.commit('initial', { 'kept.txt': 'one\ntwo\n' });
+    await conflicted.git('checkout', '-q', '-b', 'side');
+    await conflicted.commit('side', { 'kept.txt': 'one\ntwo side\nthree\n' });
+    await conflicted.git('checkout', '-q', 'main');
+    await conflicted.git('rm', '-q', 'kept.txt');
+    await conflicted.git('commit', '-q', '-m', 'main');
+    await assert.rejects(conflicted.git('merge', 'side'));
+  });
+
+  afterAll(() => removeFolder(conflicted.root));
+
+  test('lists the file their side changed as added, and diffs it from nothing to what the working tree holds, alone and with the rest, rather than as a change without lines', async () => {
+    const workingTree = await workingTreeFiles(
+      conflicted.gitPath,
+      conflicted.root,
+    );
+    assert.deepStrictEqual(
+      workingTree.files.map((file) => [
+        file.status,
+        file.path,
+        file.insertions,
+        file.deletions,
+      ]),
+      [['A', 'kept.txt', 3, 0]],
+    );
+    for (const scope of [{}, { path: 'kept.txt' }]) {
+      const patch = await workingTreePatch(
+        conflicted.gitPath,
+        conflicted.root,
+        workingTree,
+        scope,
+      );
+      const files = parsePatch(patch);
+      assert.deepStrictEqual(
+        files.map((file) => file.path),
+        ['kept.txt'],
+        patch,
+      );
+      assert.deepStrictEqual(
+        files[0].hunks
+          .flatMap((hunk) => hunk.lines)
+          .map((line) => [line.kind, line.text]),
+        [
+          ['added', 'one'],
+          ['added', 'two side'],
+          ['added', 'three'],
+        ],
+      );
+    }
+  });
+});
+
 suite('Uncommitted changes', () => {
   let gitPath: string;
   let cwd: string;
