@@ -3028,24 +3028,29 @@ export class FastforwardView {
     const fromDisk = (request: TextRequest) =>
       context.tab.area !== 'staged' && request.side === workingTreeSide(hash);
     const blobs = await this.blobTexts.read(
-      texts.filter((request) => !fromDisk(request)).map(({ blob }) => blob),
+      texts
+        .filter((request) => !fromDisk(request) && isFullHash(request.blob))
+        .map(({ blob }) => blob),
       (ids) => readBlobs(gitPath, root, ids),
     );
     const read = await Promise.all(
       texts.map(async (request) => {
         if (!fromDisk(request)) {
-          return { ...request, text: blobs.get(request.blob) };
+          return {
+            ...request,
+            text: isFullHash(request.blob)
+              ? blobs.get(request.blob)
+              : undefined,
+          };
         }
         const onDisk =
-          request.side === 'old'
+          (request.side === 'old'
             ? changesOf(context.tab).get(request.path)?.oldPath
-            : undefined;
-        const file = await readFile(
-          gitPath,
-          root,
-          undefined,
-          onDisk ?? request.path,
-        );
+            : undefined) ?? request.path;
+        if (!(await this.inWorkingTree(context, onDisk))) {
+          return { ...request, text: undefined };
+        }
+        const file = await readFile(gitPath, root, undefined, onDisk);
         return { ...request, text: file.binary ? undefined : file.content };
       }),
     );
@@ -3084,6 +3089,25 @@ export class FastforwardView {
       context.tab.untrackedPatches,
       signal,
     );
+  }
+
+  private async inWorkingTree(
+    context: Context,
+    file: string,
+  ): Promise<boolean> {
+    const { tab } = context;
+    if (
+      [tab.changedFiles, tab.stagedFiles].some((changes) =>
+        [...changes.values()].some(
+          (change) => change.path === file || change.oldPath === file,
+        ),
+      ) ||
+      tab.workingTree?.untracked.includes(file)
+    ) {
+      return true;
+    }
+    tab.indexPaths ??= await listIndex(context.gitPath, context.root);
+    return tab.indexPaths.includes(file);
   }
 
   private async sendTree(
@@ -3146,12 +3170,11 @@ export class FastforwardView {
     const changes = changesOf(tab);
     const change = file === undefined ? undefined : changes.get(file);
     if (file !== undefined && !change) {
-      const { content, binary, id } = await readFile(
-        context.gitPath,
-        context.root,
-        shownCommit(hash),
-        file,
-      );
+      const commit = shownCommit(hash);
+      const { content, binary, id } =
+        commit === undefined && !(await this.inWorkingTree(context, file))
+          ? { content: '', binary: false, id: undefined }
+          : await readFile(context.gitPath, context.root, commit, file);
       const shownDiff = context.tab.shown.diff;
       const unchanged =
         !tab.diffOwed &&

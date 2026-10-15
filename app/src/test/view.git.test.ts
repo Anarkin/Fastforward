@@ -1180,6 +1180,96 @@ suite('View of one repository', () => {
       }
     });
 
+    test('reads from disk only files in the repository, not the git folder nor ignored files, whatever path the page names', async () => {
+      const exclude = path.join(repository.root, '.git', 'info', 'exclude');
+      const excluded = fs.readFileSync(exclude, 'utf8');
+      const secret = path.join(repository.root, 'secret.env');
+      fs.appendFileSync(exclude, '\nsecret.env\n');
+      fs.writeFileSync(secret, 'API_KEY=hunter2\n');
+      const tracked = path.join(repository.root, 'tracked.txt');
+      fs.writeFileSync(tracked, 'tracked\n');
+      await repository.git('add', 'tracked.txt');
+      await connection.refresh();
+      try {
+        await connection.receive({
+          type: 'selectCommit',
+          root: repository.root,
+          hash: workingTreeHash,
+        });
+        const read = async (file: string) => {
+          page.clear();
+          await connection.receive({
+            type: 'selectFile',
+            root: repository.root,
+            hash: workingTreeHash,
+            path: file,
+          });
+          const shown = page.last('fileContent')?.content;
+          page.clear();
+          await connection.receive({
+            type: 'loadTexts',
+            root: repository.root,
+            hash: workingTreeHash,
+            diff: 5,
+            texts: [{ path: file, side: 'new', blob: '0'.repeat(40) }],
+          });
+          return [shown, page.last('texts')?.texts[0]?.text];
+        };
+        assert.deepStrictEqual(await read('.git/config'), ['', undefined]);
+        assert.deepStrictEqual(await read('secret.env'), ['', undefined]);
+        assert.deepStrictEqual(await read('tracked.txt'), [
+          'tracked\n',
+          'tracked\n',
+        ]);
+      } finally {
+        fs.writeFileSync(exclude, excluded);
+        fs.rmSync(secret, { force: true });
+        await repository.git('rm', '-q', '--cached', 'tracked.txt');
+        fs.rmSync(tracked, { force: true });
+        await connection.refresh();
+      }
+    });
+
+    test('asks git for no blob the page names other than by its full object id, as git would take any other name as a revision to look up', async () => {
+      await connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: fixture.merge,
+      });
+      const childProcess = process.getBuiltinModule('node:child_process');
+      const { spawn } = childProcess;
+      let gits = 0;
+      replaceBuiltin(
+        childProcess,
+        'spawn',
+        (...args: Parameters<typeof spawn>) => {
+          gits++;
+          return spawn(...args);
+        },
+      );
+      try {
+        page.clear();
+        await connection.receive({
+          type: 'loadTexts',
+          root: repository.root,
+          hash: fixture.merge,
+          diff: 6,
+          texts: ['HEAD:a.txt', ':/merge', 'HEAD', '-n'].map((blob) => ({
+            path: 'a.txt',
+            side: 'new' as const,
+            blob,
+          })),
+        });
+      } finally {
+        replaceBuiltin(childProcess, 'spawn', spawn);
+      }
+      assert.strictEqual(gits, 0);
+      assert.deepStrictEqual(
+        page.last('texts')?.texts.map(({ text }) => text),
+        [undefined, undefined, undefined, undefined],
+      );
+    });
+
     test('shows what git said when a request fails', async () => {
       stubMethod(fastforward, 'sendTree', () =>
         runGit(repository.gitPath, repository.root, ['ls-tree', 'no-tree']),
