@@ -220,6 +220,66 @@ suite('View pushing', () => {
     }
   });
 
+  test("pushes nothing from a branch whose upstream has another name, as git push wouldn't either, saying so", async () => {
+    await repository.git('checkout', '-b', 'feature', '--track', 'origin/main');
+    await repository.commit('feature');
+    const main = await onRemote('main');
+    try {
+      assert.deepStrictEqual(await pushedWith('info'), [
+        "feature tracks origin/main, which has another name, so it wasn't pushed, as git push wouldn't push it either",
+      ]);
+      assert.strictEqual(await onRemote('main'), main);
+      assert.strictEqual(await onRemote('feature'), undefined);
+    } finally {
+      await repository.git('checkout', '-f', 'main');
+      await repository.git('branch', '-D', 'feature');
+    }
+  });
+
+  test('pushes a branch whose upstream has another name where push.default has git push push it: to its own name, or to its upstream', async () => {
+    await repository.git('checkout', '-b', 'feature', '--track', 'origin/main');
+    await repository.commit('feature');
+    try {
+      await repository.git('config', 'push.default', 'current');
+      assert.deepStrictEqual(await pushedWith('info'), [
+        'Pushed feature to origin/feature',
+      ]);
+      const [feature] = await repository.resolve('feature');
+      assert.strictEqual(await onRemote('feature'), feature);
+      await repository.git('config', 'push.default', 'upstream');
+      assert.deepStrictEqual(await pushedWith('info'), [
+        'Pushed feature to origin/main',
+      ]);
+      assert.strictEqual(await onRemote('main'), feature);
+    } finally {
+      await repository.git('config', '--unset', 'push.default');
+      await repository.git('checkout', '-f', 'main');
+      await repository.git('branch', '-D', 'feature');
+      await repository.git('push', 'origin', '--delete', 'feature');
+    }
+  });
+
+  test('pushes to the remote set to push to, as git push would, rather than to the upstream', async () => {
+    const fork = await tempRepository(path.join(folder, 'fork'), {
+      bare: true,
+    });
+    await repository.git('remote', 'add', 'fork', fork.root);
+    await repository.git('config', 'remote.pushDefault', 'fork');
+    await repository.commit('mine');
+    const [mine] = await repository.resolve('main');
+    const upstream = await onRemote('main');
+    try {
+      assert.deepStrictEqual(await pushedWith('info'), [
+        'Pushed main to fork/main',
+      ]);
+      assert.deepStrictEqual(await fork.resolve('main'), [mine]);
+      assert.strictEqual(await onRemote('main'), upstream);
+    } finally {
+      await repository.git('config', '--unset', 'remote.pushDefault');
+      await repository.git('remote', 'remove', 'fork');
+    }
+  });
+
   test('pushes nothing to an upstream that is a local branch, saying it has no remote', async () => {
     await repository.git('checkout', '-b', 'follower', '--track', 'main');
     await repository.commit('more');

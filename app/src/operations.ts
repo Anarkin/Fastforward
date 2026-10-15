@@ -3,6 +3,7 @@ import {
   fastForward,
   moveBranch,
   onNoRef,
+  readPushTarget,
   readUpstream,
   type Upstream,
 } from './git/branches';
@@ -274,44 +275,52 @@ export async function pushToUpstream(
   branchNamed?: string,
 ): Promise<Pushed> {
   try {
-    const upstream = await readUpstream(gitPath, root, branchNamed);
-    if (upstream.kind === 'none') {
-      return await publish(
-        log,
-        notify,
-        { gitPath, root },
-        upstream.branch,
-        stop,
-      );
+    const target = await readPushTarget(gitPath, root, branchNamed);
+    if (target.kind === 'none') {
+      return await publish(log, notify, { gitPath, root }, target.branch, stop);
     }
-    const found = foundUpstream(notify, upstream);
-    if (!found) {
+    if (target.kind === 'detached' || target.kind === 'gone') {
+      foundUpstream(notify, target);
       return 'unchanged';
     }
-    const { branch, name, commit, remote, remoteRef } = found;
-    if (remote === '.') {
-      notify('info', strings.messages.localUpstream(branch, name));
-      return 'unchanged';
-    }
-    const { ahead, behind } = await aheadBehind(
-      gitPath,
-      root,
-      `refs/heads/${branch}`,
-      commit,
-    );
-    if (ahead === 0) {
-      say(
-        log,
-        notify,
-        behind === 0
-          ? strings.messages.upToDateWith(branch, name)
-          : strings.messages.behind(branch, name),
+    if (target.kind === 'local') {
+      notify(
+        'info',
+        strings.messages.localUpstream(target.branch, target.name),
       );
       return 'unchanged';
     }
-    if (behind > 0) {
-      say(log, notify, strings.messages.cannotPushDiverged(branch, name));
+    if (target.kind === 'refused') {
+      notify(
+        'info',
+        target.why === 'otherName'
+          ? strings.messages.upstreamOtherName(target.branch, target.name)
+          : strings.messages.pushesNothing(target.branch),
+      );
       return 'unchanged';
+    }
+    const { branch, name, commit, remote, remoteRef } = target;
+    if (commit !== undefined) {
+      const { ahead, behind } = await aheadBehind(
+        gitPath,
+        root,
+        `refs/heads/${branch}`,
+        commit,
+      );
+      if (ahead === 0) {
+        say(
+          log,
+          notify,
+          behind === 0
+            ? strings.messages.upToDateWith(branch, name)
+            : strings.messages.behind(branch, name),
+        );
+        return 'unchanged';
+      }
+      if (behind > 0) {
+        say(log, notify, strings.messages.cannotPushDiverged(branch, name));
+        return 'unchanged';
+      }
     }
     try {
       await pushRef(gitPath, root, remote, `refs/heads/${branch}`, remoteRef, {

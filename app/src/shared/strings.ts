@@ -416,6 +416,10 @@ export const strings = {
       `${local} has no upstream, and with several remotes, it's unclear which to push it to`,
     localUpstream: (local: string, upstream: string) =>
       `${local} tracks the local branch ${upstream}, so it has no remote to push to`,
+    upstreamOtherName: (local: string, upstream: string) =>
+      `${local} tracks ${upstream}, which has another name, so it wasn't pushed, as git push wouldn't push it either`,
+    pushesNothing: (local: string) =>
+      `With your push settings, git push wouldn't push ${local}, so it wasn't pushed either`,
     couldNotPush: (reason: string) => `Couldn't push. ${reason}`,
     tagAlreadyOnRemote: (tag: string, remote: string) =>
       `${tag} is already on ${remote}`,
