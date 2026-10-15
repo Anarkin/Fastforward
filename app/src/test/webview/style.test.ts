@@ -340,14 +340,18 @@ suite('Style', () => {
     const [active, other] = allWithClass(tabBar(), 'tab');
     const gap = cascaded(active, 'gap');
     const close = cascaded(withClass(active, 'tab-close'), 'width');
+    const { left, right } = paddingOf(active);
+    const [border] = (cascaded(active, 'border') ?? '').split(' ');
+    const frame = `${left} + ${right} + 2 * ${border}`;
     looks(active, {
       'flex-shrink': '1',
-      'box-sizing': undefined,
-      'min-width': `calc(2ch + 2 * ${gap} + ${close})`,
+      'box-sizing': 'border-box',
+      'min-width': `calc(2ch + 2 * ${gap} + ${close} + ${frame})`,
     });
     looks(other, {
       'flex-shrink': '1',
-      'min-width': `calc(2ch + ${gap})`,
+      'box-sizing': 'border-box',
+      'min-width': `calc(2ch + ${gap} + ${frame})`,
     });
     for (const tab of [active, other]) {
       looks(withClass(tab, 'tab-name'), {
@@ -362,6 +366,34 @@ suite('Style', () => {
     ]) {
       looks(button, { flex: 'none' });
     }
+  });
+
+  test('makes every repository tab as wide as a tab in Chrome, however short or long its name, with its close button at its right edge, sharing the room out alike once they no longer fit, so a short name is not cut down sooner than a long one', () => {
+    for (const tab of allWithClass(tabBar(), 'tab')) {
+      looks(tab, {
+        flex: undefined,
+        'flex-grow': undefined,
+        'flex-basis': '240px',
+        'flex-shrink': '1',
+        'box-sizing': 'border-box',
+        width: undefined,
+        'max-width': undefined,
+      });
+      looks(withClass(tab, 'tab-close'), { 'margin-left': 'auto' });
+    }
+  });
+
+  test("rounds the repository tabs as Chrome does, rounder than the sheet's corners and the worktree chips", () => {
+    assert.strictEqual(bodyVariable('tab-radius'), '10px');
+    assert.ok(
+      parseFloat(bodyVariable('tab-radius') ?? '0') >
+        parseFloat(bodyVariable('card-radius') ?? '0'),
+    );
+    const [active, other] = allWithClass(tabBar(), 'tab');
+    looks(other, { 'border-radius': 'var(--tab-radius)' });
+    looks(active, {
+      'border-radius': 'var(--tab-radius) var(--tab-radius) 0 0',
+    });
   });
 
   test('gives up the close button of a tab not open, as Chrome does, only once its name is down to its first letters, then wholly, as flexbox shrinks items whose factors add up to less than one only partly', () => {
@@ -445,7 +477,7 @@ suite('Style', () => {
     looks(tab, {
       '--sheet': 'var(--repository-background)',
       background: 'var(--sheet)',
-      'border-radius': 'var(--card-radius) var(--card-radius) 0 0',
+      'border-radius': 'var(--tab-radius) var(--tab-radius) 0 0',
     });
     for (const pseudoElement of ['::before', '::after']) {
       assert.match(
@@ -473,8 +505,8 @@ suite('Style', () => {
       'border-bottom-color': undefined,
       'margin-bottom': '-1px',
     });
-    const size = 'calc(2 * var(--card-radius))';
-    const corner = 'var(--card-radius)';
+    const size = 'calc(2 * var(--tab-radius))';
+    const corner = 'var(--tab-radius)';
     looks(
       tab,
       {
@@ -567,16 +599,27 @@ suite('Style', () => {
     });
   });
 
-  test("leaves a straight run of the sheet's edge between its rounded corner and the curve out of its first tab", () => {
+  test("leaves a straight run of the sheet's edge between its rounded corner and the curve out of its first tab, past the app's icon", () => {
     const resolved = (value: string | undefined) =>
       (value ?? '').replace(
         /var\(--([\w-]+)\)/g,
         (_, name: string) => bodyVariable(name) ?? '',
       );
     const gutter = parseFloat(resolved('var(--gutter-width)'));
-    const radius = parseFloat(resolved('var(--card-radius)'));
+    const corner = parseFloat(resolved('var(--card-radius)'));
+    const curve = parseFloat(resolved('var(--tab-radius)'));
+    const bar = tabBar();
+    const icon = parseFloat(
+      cascaded(withClass(bar, 'title-bar-icon'), 'width') ?? '',
+    );
+    const gap = parseFloat(cascaded(withClass(bar, 'tabs'), 'gap') ?? '');
     const run =
-      pixels(resolved(bodyVariable('tab-inset'))) - gutter - 2 * radius;
+      pixels(resolved(bodyVariable('tab-inset'))) +
+      icon +
+      gap -
+      gutter -
+      corner -
+      curve;
     assert.ok(run >= gutter, String(run));
   });
 

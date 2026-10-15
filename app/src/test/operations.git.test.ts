@@ -266,7 +266,7 @@ suite('Operations checking out', () => {
       );
       assert.match(
         errors[1],
-        /^git merge --ff-only refs\/remotes\/origin\/blocked failed: /,
+        /^git merge --ff-only --no-overwrite-ignore refs\/remotes\/origin\/blocked failed: /,
       );
     } finally {
       fs.rmSync(clash, { force: true });
@@ -540,6 +540,56 @@ suite('Operations checking out', () => {
       await repository.git('branch', '-D', 'changing').catch(() => '');
       await repository.git('tag', '-d', 'changed-tag');
       await repository.git('update-ref', '-d', 'refs/remotes/origin/changing');
+    }
+  });
+
+  test('checks out nothing over ignored files and folders it would overwrite, keeping them, as they hold what the user keeps out of the repository', async () => {
+    const secret = path.join(repository.root, 'secret.env');
+    const dataset = path.join(repository.root, 'dataset');
+    const exclude = path.join(repository.root, '.git', 'info', 'exclude');
+    const excluded = fs.readFileSync(exclude, 'utf8');
+    await repository.git('checkout', '-b', 'tracking', 'main');
+    try {
+      await repository.commit('tracking', {
+        'secret.env': 'committed',
+        dataset: 'committed',
+      });
+      const [tracking] = await repository.resolve('HEAD');
+      await repository.git('tag', 'tracking-tag');
+      await repository.git('update-ref', 'refs/remotes/origin/tracked', 'HEAD');
+      await repository.git('checkout', 'main');
+      fs.appendFileSync(exclude, '\nsecret.env\ndataset/\n');
+      fs.writeFileSync(secret, 'mine');
+      fs.mkdirSync(dataset);
+      fs.writeFileSync(path.join(dataset, 'kept.csv'), 'mine');
+      const targets: CheckoutTarget[] = [
+        { kind: 'branch', name: 'tracking' },
+        { kind: 'tag', name: 'tracking-tag' },
+        { kind: 'commit', hash: tracking },
+        { kind: 'remote', name: 'origin/tracked' },
+      ];
+      for (const target of targets) {
+        const { checkedOut, notices } = await checkOut(target);
+        assert.strictEqual(checkedOut, false, JSON.stringify(target));
+        assert.strictEqual(notices.length, 1);
+        assert.strictEqual(notices[0][0], 'error');
+        assert.match(notices[0][1], /would be overwritten by checkout/);
+        assert.strictEqual(await head(), 'main');
+        assert.strictEqual(fs.readFileSync(secret, 'utf8'), 'mine');
+        assert.strictEqual(
+          fs.readFileSync(path.join(dataset, 'kept.csv'), 'utf8'),
+          'mine',
+        );
+      }
+    } finally {
+      fs.writeFileSync(exclude, excluded);
+      await repository.git('checkout', '-f', 'main');
+      fs.rmSync(secret, { force: true });
+      fs.rmSync(dataset, { recursive: true, force: true });
+      await repository.git('branch', '-D', 'tracking');
+      await repository.git('branch', '-D', 'tracked').catch(() => '');
+      await repository.git('tag', '-d', 'tracking-tag');
+      await repository.git('update-ref', '-d', 'refs/remotes/origin/tracked');
     }
   });
 

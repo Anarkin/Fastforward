@@ -232,9 +232,34 @@ suite('View pulling', () => {
       takeErrorsLogged(
         logged,
         /^Pulling failed$/,
-        /^git merge --ff-only [0-9a-f]{40} failed: /,
+        /^git merge --ff-only --no-overwrite-ignore [0-9a-f]{40} failed: /,
       );
       await repository.git('checkout', '--', 'shared');
+    }
+  });
+
+  test('fast-forwards nothing over ignored files it would overwrite, keeping them and saying why', async () => {
+    const exclude = path.join(repository.root, '.git', 'info', 'exclude');
+    const excluded = fs.readFileSync(exclude, 'utf8');
+    const secret = path.join(repository.root, '.env');
+    await pushedElsewhere('b', { '.env': 'template' });
+    const [before] = await repository.resolve('main');
+    fs.appendFileSync(exclude, '\n.env\n');
+    fs.writeFileSync(secret, 'mine');
+    try {
+      const said = await pulledWith('error');
+      assert.strictEqual(said.length, 1);
+      assert.match(said[0] ?? '', /^Couldn't pull\. .*would be overwritten/s);
+      assert.strictEqual(fs.readFileSync(secret, 'utf8'), 'mine');
+      assert.deepStrictEqual(await repository.resolve('main'), [before]);
+      takeErrorsLogged(
+        logged,
+        /^Pulling failed$/,
+        /^git merge --ff-only --no-overwrite-ignore [0-9a-f]{40} failed: /,
+      );
+    } finally {
+      fs.writeFileSync(exclude, excluded);
+      fs.rmSync(secret, { force: true });
     }
   });
 

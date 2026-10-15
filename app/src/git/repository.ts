@@ -269,7 +269,14 @@ export async function switchToBranch(
   await runGit(
     gitPath,
     root,
-    ['switch', '-q', '--no-guess', '--end-of-options', branch],
+    [
+      'switch',
+      '-q',
+      '--no-guess',
+      '--no-overwrite-ignore',
+      '--end-of-options',
+      branch,
+    ],
     { runsUserCode: true, writes: true },
   );
 }
@@ -282,7 +289,14 @@ export async function switchToCommit(
   await runGit(
     gitPath,
     root,
-    ['switch', '-q', '--detach', '--end-of-options', commit],
+    [
+      'switch',
+      '-q',
+      '--detach',
+      '--no-overwrite-ignore',
+      '--end-of-options',
+      commit,
+    ],
     { runsUserCode: true, writes: true },
   );
 }
@@ -296,7 +310,16 @@ export async function checkoutNewBranch(
   await runGit(
     gitPath,
     root,
-    ['switch', '-q', '--track', '-c', branch, '--end-of-options', upstream],
+    [
+      'switch',
+      '-q',
+      '--no-overwrite-ignore',
+      '--track',
+      '-c',
+      branch,
+      '--end-of-options',
+      upstream,
+    ],
     { runsUserCode: true, writes: true },
   );
 }
