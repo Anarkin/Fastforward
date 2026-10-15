@@ -89,6 +89,7 @@ function laidOut() {
   virtualizer._willUpdate();
   const drawn = () => drawnRows(virtualizer, virtualizer.options.getItemKey);
   return {
+    drawn,
     lay: (history: CommitHistory) => {
       virtualizer.setOptions({
         ...scrolling,
@@ -130,6 +131,27 @@ suite('Commit list rows', () => {
     assert.strictEqual(rowKeyOf(history, 1, 2), 'b');
     assert.strictEqual(rowKeyOf(history, 0, 1), 'b');
     assert.strictEqual(rowKeyOf(history, 0, 2), 2);
+  });
+
+  test('keys a drawn row by its commit once the page of it loads, though the list laid it out before, telling screen readers which row is selected', () => {
+    const history = new CommitHistory(3);
+    history.add(0, [commitInfo('a'), commitInfo('b')]);
+    const list = laidOut();
+    list.lay(history);
+    assert.deepStrictEqual(
+      list.drawn().map((row) => row.key),
+      ['a', 'b', 2],
+    );
+    history.add(2, [commitInfo('c')]);
+    const drawn = list.drawn();
+    assert.deepStrictEqual(
+      drawn.map((row) => row.key),
+      ['a', 'b', 'c'],
+    );
+    assert.strictEqual(
+      commitOption('commits', drawn[2].key, 2, 3, 'c')['aria-selected'],
+      true,
+    );
   });
 
   test("keeps a commit not loaded yet at the height it is estimated at, so the list doesn't move when it loads", () => {

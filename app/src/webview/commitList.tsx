@@ -168,7 +168,10 @@ export function drawnRows(
     virtualizer.itemSizeCache,
     keyOf,
   );
-  return rows;
+  return rows.map((row) => {
+    const key = keyOf(row.index);
+    return key === row.key ? row : { ...row, key };
+  });
 }
 
 export function fixedRowHeight(
