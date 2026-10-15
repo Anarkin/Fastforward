@@ -260,7 +260,7 @@ export function TabBar({
         </div>
         <button
           ref={add}
-          className="tab-add"
+          className="nav-button tab-add"
           title={strings.actions.openRepository}
           onClick={onAdd}
         >

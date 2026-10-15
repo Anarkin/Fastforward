@@ -448,7 +448,21 @@ body {
   width: 240px;
   flex-shrink: 1;
   min-width: calc(2ch + 4px + 12px + 4px + 2 * 1px);
+  padding: 3px 4px 3px 12px;
   border-radius: var(--tab-radius);
+}
+
+.tabs .tab:not(.active) {
+  margin-bottom: 4px;
+}
+
+.tabs .tab:not(.active)::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: -1px;
+  right: -1px;
+  height: calc(4px + 1px);
 }
 
 .tabs .tab.active {
@@ -511,7 +525,7 @@ body {
 .tabs .tab.active {
   position: relative;
   margin-bottom: -1px;
-  padding-bottom: 6px;
+  padding-bottom: 8px;
   background: var(--sheet);
   border-radius: var(--tab-radius) var(--tab-radius) 0 0;
 }
@@ -552,8 +566,7 @@ body {
   background: var(--color-border);
 }
 
-.tab-close,
-.tab-add {
+.tab-close {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -571,19 +584,14 @@ body {
   height: 20px;
 }
 
-.tab-close:hover,
-.tab-add:hover {
+.tab-close:hover {
   opacity: 1;
   background: var(--hover-background);
 }
 
 .tab-add {
-  flex: none;
   align-self: center;
-  width: 24px;
-  height: 24px;
   margin: 0 0 2px 4px;
-  color: var(--color-foreground);
 }
 
 .empty-state {

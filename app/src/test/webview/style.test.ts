@@ -552,11 +552,54 @@ suite('Style', () => {
     assert.ok(active.classes.includes('active'));
     const reach = -parseFloat(cascaded(active, 'margin-bottom') ?? '0');
     assert.strictEqual(reach, 1);
+    assert.strictEqual(paddingOf(active).top, paddingOf(other).top);
     assert.strictEqual(
       parseFloat(
         cascaded(active, 'padding-bottom') ?? paddingOf(active).bottom,
       ) - parseFloat(paddingOf(other).bottom),
-      reach,
+      reach + parseFloat(cascaded(other, 'margin-bottom') ?? '0'),
+    );
+  });
+
+  test('highlights a repository tab not open on hover as a pill stopping short of the sheet, as Chrome does, its name and close button in the middle of it, still picking the tab from the gap under it', () => {
+    const other = allWithClass(tabBar(), 'tab').find(
+      (tab) => !tab.classes.includes('active'),
+    );
+    assert.ok(other);
+    const gap = cascaded(other, 'margin-bottom');
+    assert.strictEqual(gap, '4px');
+    assert.strictEqual(paddingOf(other).top, paddingOf(other).bottom);
+    looks(other, { background: 'var(--hover-background)' }, hovered);
+    looks(
+      other,
+      {
+        content: "''",
+        position: 'absolute',
+        top: '100%',
+        left: '-1px',
+        right: '-1px',
+        height: `calc(${gap} + 1px)`,
+      },
+      after,
+    );
+  });
+
+  test('makes the button opening a repository round like the buttons beside it', () => {
+    const add = withClass(tabBar(), 'tab-add');
+    assert.ok(add.classes.includes('nav-button'));
+    looks(add, {
+      width: '26px',
+      height: '26px',
+      'border-radius': '13px',
+      background: 'none',
+    });
+    looks(
+      add,
+      {
+        'box-shadow': 'inset 0 0 0 13px var(--hover-background)',
+        background: 'none',
+      },
+      hovered,
     );
   });
 
@@ -590,12 +633,16 @@ suite('Style', () => {
   });
 
   test('keeps the tab row as tall with no repository open as with tabs in it, which their name or close button makes as tall as the taller, so it does not jump as the first opens', () => {
-    const [tab] = allWithClass(tabBar(), 'tab');
+    const tab = allWithClass(tabBar(), 'tab').find(
+      (each) => !each.classes.includes('active'),
+    );
+    assert.ok(tab);
     const { top, bottom } = paddingOf(tab);
     const border = parseFloat(cascaded(tab, 'border') ?? '0');
+    const gap = parseFloat(cascaded(tab, 'margin-bottom') ?? '0');
     const close = cascaded(withClass(tab, 'tab-close'), 'height');
     looks(withClass(tabBar(), 'tab-list'), {
-      'min-height': `calc(max(1lh, ${close}) + ${parseFloat(top) + parseFloat(bottom) + 2 * border}px)`,
+      'min-height': `calc(max(1lh, ${close}) + ${parseFloat(top) + parseFloat(bottom) + 2 * border + gap}px)`,
     });
   });
 
@@ -1093,7 +1140,6 @@ suite('Style', () => {
       'color-mix( in srgb, var(--color-focus) var(--color-focus-selected), transparent )',
     );
     for (const button of [
-      withClass(tabBar(), 'tab-add'),
       withClass(tabBar(), 'tab-close'),
       withClass(notices(), 'notice-close'),
     ]) {
