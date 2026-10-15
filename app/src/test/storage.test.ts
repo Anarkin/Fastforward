@@ -49,9 +49,9 @@ suite('Storage', () => {
       autoFetch: defaults.autoFetch,
       autoFetchMinutes: defaults.autoFetchMinutes,
       hideDimmedButtons: true,
-      autoSortTabs: true,
+      autoSortTabs: false,
     });
-    assert.strictEqual(defaults.autoSortTabs, true);
+    assert.strictEqual(defaults.autoSortTabs, false);
   });
 
   test('fetches at most every 35791 minutes, as seldom as a timer can wait, and tells the page so, as it says how often it fetches and when a fetch is late by it', () => {
