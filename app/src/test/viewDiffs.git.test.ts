@@ -807,7 +807,7 @@ suite('View showing diffs', () => {
         ]);
         const small = await select('zz-small.txt');
         assert.ok(small?.patch.includes('+little'), small?.patch);
-        assert.strictEqual(small.leftOut, undefined);
+        assert.strictEqual(small?.leftOut, undefined);
       },
       'unwatched',
     );
