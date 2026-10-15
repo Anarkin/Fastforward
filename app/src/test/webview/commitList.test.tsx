@@ -534,6 +534,14 @@ suite('Commit list top', () => {
     assert.strictEqual(keptPlace(1000, 7, 900, undefined), 1007);
   });
 
+  test('keeps its place by what was scrolled since it was told, not by how far the browser pulled a list grown shorter up to its new end', () => {
+    assert.strictEqual(keptPlace(1500, 0, 1500, 2000, 1500), 1500);
+    assert.strictEqual(keptPlace(1500, 0, 1200, 2000, 1500), 700);
+    const places = new ReportedPlaces();
+    const told = places.told(2000);
+    assert.strictEqual(places.kept(1500, 0, 1500, told, 1500), 1500);
+  });
+
   test('keeps its place only once when another history comes before its own scroll is told', () => {
     const places = new ReportedPlaces();
     const told = places.told(400);

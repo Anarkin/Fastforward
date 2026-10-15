@@ -359,9 +359,14 @@ export function keptPlace(
   offset: number,
   scrollTop: number,
   reportedTop: number | undefined,
+  maxTop = Infinity,
 ): number {
+  const pulledUp =
+    reportedTop !== undefined && scrollTop < reportedTop && scrollTop >= maxTop;
   return (
-    start + offset + (reportedTop === undefined ? 0 : scrollTop - reportedTop)
+    start +
+    offset +
+    (reportedTop === undefined || pulledUp ? 0 : scrollTop - reportedTop)
   );
 }
 
@@ -381,12 +386,14 @@ export class ReportedPlaces {
     offset: number,
     scrollTop: number,
     report: number | undefined,
+    maxTop?: number,
   ): number {
     const top = keptPlace(
       start,
       offset,
       scrollTop,
       report === undefined ? undefined : this.tops.get(report),
+      maxTop,
     );
     if (report !== undefined && this.tops.has(report)) {
       const moved = top - scrollTop;
@@ -811,6 +818,7 @@ export function Commits({
             action.target.offset,
             scrollTop(list.current),
             action.target.report,
+            virtualizer.getTotalSize() - (list.current?.clientHeight ?? 0),
           ),
         );
       }
