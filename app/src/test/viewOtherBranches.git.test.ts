@@ -19,6 +19,7 @@ import {
   gate,
   openView,
   stubMethod,
+  takeErrorsLogged,
   withNotices,
 } from './viewHarness';
 
@@ -152,6 +153,25 @@ suite('View pulling and pushing other branches', () => {
       'pullingBranch',
     ]);
     fs.writeFileSync(path.join(repository.root, 'shared'), 'a');
+  });
+
+  test("pulls a branch from its upstream fetched from its own remote when another remote can't be fetched, saying that fetch failed", async () => {
+    await tracked('lagging');
+    const pushed = await moveOnRemote('lagging');
+    await repository.git('remote', 'add', 'gone', path.join(folder, 'gone'));
+    try {
+      const said = await send('pullBranch', 'lagging', 'error');
+      assert.strictEqual(said.length, 1);
+      assert.match(said[0] ?? '', /^Couldn't fetch\. .*could not fetch gone/s);
+      assert.deepStrictEqual(await repository.resolve('lagging'), [pushed]);
+      takeErrorsLogged(
+        logged,
+        /^Fetching every remote failed$/,
+        /^git -c remote\.origin\.prune=true -c remote\.gone\.prune=true fetch --all --porcelain failed: /,
+      );
+    } finally {
+      await repository.git('remote', 'remove', 'gone');
+    }
   });
 
   test('pulls nothing into a branch up to date, ahead, diverged or without an upstream, saying why', async () => {

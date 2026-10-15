@@ -213,6 +213,25 @@ suite('View pulling', () => {
     }
   });
 
+  test("fast-forwards to the upstream fetched from its own remote when another remote can't be fetched, saying that fetch failed", async () => {
+    const pushed = await pushedElsewhere('b');
+    await repository.git('remote', 'add', 'gone', path.join(folder, 'gone'));
+    try {
+      const said = await pulledWith('error');
+      assert.strictEqual(said.length, 1);
+      assert.match(said[0] ?? '', /^Couldn't fetch\. .*could not fetch gone/s);
+      assert.deepStrictEqual(await repository.resolve('main'), [pushed]);
+      assert.strictEqual(page.last('repository')?.headCommit, pushed);
+      takeErrorsLogged(
+        logged,
+        /^Fetching every remote failed$/,
+        /^git -c remote\.origin\.prune=true -c remote\.gone\.prune=true fetch --all --porcelain failed: /,
+      );
+    } finally {
+      await repository.git('remote', 'remove', 'gone');
+    }
+  });
+
   test('fast-forwards nothing over uncommitted changes it would overwrite, keeping them and saying why', async () => {
     await pushedElsewhere('b', { shared: 'theirs', added: 'theirs' });
     const [before] = await repository.resolve('main');

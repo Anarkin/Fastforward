@@ -373,10 +373,10 @@ suite('Style', () => {
       looks(tab, {
         flex: undefined,
         'flex-grow': undefined,
-        'flex-basis': '240px',
+        'flex-basis': undefined,
         'flex-shrink': '1',
         'box-sizing': 'border-box',
-        width: undefined,
+        width: '240px',
         'max-width': undefined,
       });
       looks(withClass(tab, 'tab-close'), { 'margin-left': 'auto' });

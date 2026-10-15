@@ -41,6 +41,7 @@ import {
 } from './git/history';
 import type { Commits } from './history/commits';
 import {
+  fetchRemote,
   isFolder,
   listRemoteTags,
   listRemotes,
@@ -1664,7 +1665,7 @@ export class FastforwardView {
       if (await canPull(this.log, notify, context)) {
         fetched = await this.fetchShown(context);
         pulled =
-          !fetched.failed &&
+          (await this.fetchedForPull(context, fetched)) &&
           (await fastForwardToUpstream(this.log, notify, context));
       }
     } finally {
@@ -1677,6 +1678,35 @@ export class FastforwardView {
     } else if (fetched) {
       await this.refreshFetched(context, fetched);
     }
+  }
+
+  private async fetchedForPull(
+    context: Context,
+    fetched: Fetched,
+    branch?: string,
+  ): Promise<boolean> {
+    if (!fetched.failed) {
+      return true;
+    }
+    const upstream = await readUpstream(
+      context.gitPath,
+      context.root,
+      branch,
+    ).catch(() => undefined);
+    if (upstream?.kind !== 'found') {
+      return false;
+    }
+    return (
+      upstream.remote === '.' ||
+      this.afterRemoteWork(context.repository, () =>
+        fetchRemote(context.gitPath, context.root, upstream.remote, {
+          stop: this.quitting.signal,
+        }),
+      ).then(
+        () => true,
+        () => false,
+      )
+    );
   }
 
   private async push(context: Context): Promise<void> {
@@ -1747,7 +1777,7 @@ export class FastforwardView {
       if (await canPull(this.log, notify, context, name)) {
         fetched = await this.fetchShown(context);
         moved =
-          !fetched.failed &&
+          (await this.fetchedForPull(context, fetched, name)) &&
           (await this.queueHeadMove(context, () =>
             this.moveToUpstream(context, name, picked),
           ));

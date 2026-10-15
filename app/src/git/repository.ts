@@ -387,14 +387,43 @@ async function remotesSafeToPrune(
     .map(([remote]) => remote);
 }
 
-export async function fetchAllRemotes(
+interface FetchOptions {
+  readonly timeout?: number;
+  readonly interactive?: boolean;
+  readonly stop?: AbortSignal;
+}
+
+export function fetchAllRemotes(
   gitPath: string,
   root: string,
+  options: FetchOptions = {},
+): Promise<boolean> {
+  return fetchWith(gitPath, root, ['--all', '--porcelain'], options);
+}
+
+export function fetchRemote(
+  gitPath: string,
+  root: string,
+  remote: string,
+  options: FetchOptions = {},
+): Promise<boolean> {
+  return fetchWith(
+    gitPath,
+    root,
+    ['--porcelain', '--end-of-options', remote],
+    options,
+  );
+}
+
+async function fetchWith(
+  gitPath: string,
+  root: string,
+  fetching: readonly string[],
   {
     timeout = remoteTimeout,
     interactive = true,
     stop = new AbortController().signal,
-  } = {},
+  }: FetchOptions,
 ): Promise<boolean> {
   const timedOut = AbortSignal.timeout(timeout);
   const signal = AbortSignal.any([timedOut, stop]);
@@ -405,7 +434,7 @@ export async function fetchAllRemotes(
     const output = await runGit(
       gitPath,
       root,
-      [...pruning, 'fetch', '--all', '--porcelain'],
+      [...pruning, 'fetch', ...fetching],
       {
         signal,
         env: interactive ? {} : neverAsk,
