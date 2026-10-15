@@ -539,6 +539,32 @@ suite('View of other repositories', () => {
     );
   });
 
+  test('opens a tab git refused to open once it is clicked again, or its worktree is, after git no longer refuses it', async () => {
+    await withView(log, [repository.root, other], async (view) => {
+      for (const again of [
+        () => view.connection.receive({ type: 'selectTab', root: other }),
+        () => view.connection.receive({ type: 'selectWorktree', root: other }),
+      ]) {
+        await asIfOwnedByAnother(other, () =>
+          view.connection.receive({ type: 'selectTab', root: other }),
+        );
+        view.page.clear();
+        await again();
+        assert.ok(view.page.last('repository'), String(again));
+        await view.connection.receive({
+          type: 'selectTab',
+          root: repository.root,
+        });
+      }
+    });
+    takeErrorsLogged(
+      logged,
+      /^Listing the worktrees of .*other failed$/,
+      /^Handling selectTab from the page failed$/,
+      /^git .* failed: fatal: detected dubious ownership/,
+    );
+  });
+
   test('closes the only tab, leaving none shown but offering it again', async () => {
     await withView(log, [repository.root], async (view) => {
       for (const tab of view.page.last('tabs')?.tabs ?? []) {

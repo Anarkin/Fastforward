@@ -170,6 +170,7 @@ interface Tab extends TabState {
   loadsAgain: Refresh[];
   refreshError: string | undefined;
   isRepository: boolean | undefined;
+  refused: boolean;
   selection: number | undefined;
   navigating: Promise<void>;
   movingHead: Promise<void>;
@@ -416,7 +417,8 @@ export class FastforwardView {
     return (
       this.page === session &&
       active !== undefined &&
-      this.tabStates.get(active)?.isRepository !== false
+      this.tabStates.get(active)?.isRepository !== false &&
+      this.tabStates.get(active)?.refused !== true
     );
   }
 
@@ -997,12 +999,15 @@ export class FastforwardView {
     }
     const worktree = this.storage.worktreeOf(active);
     this.repositories.set(worktree, active);
+    const tab = this.tabState(worktree);
     try {
       await allSettled([
         this.loadWorktrees(session, active),
         this.openWorktree(session, worktree),
       ]);
+      tab.refused = false;
     } catch (error) {
+      tab.refused = true;
       throw new OpeningFailed(worktree, error);
     }
   }
@@ -1425,6 +1430,7 @@ export class FastforwardView {
         loadsAgain: [],
         refreshError: undefined,
         isRepository: undefined,
+        refused: false,
         selection: undefined,
         navigating: Promise.resolve(),
         movingHead: Promise.resolve(),
