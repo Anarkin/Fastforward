@@ -103,9 +103,21 @@ suite('Capped scroll', () => {
     assert.strictEqual(paged.real, wheeled.real - viewport);
   });
 
+  test('scrolls a long list by as much as the wheel moves it also in one turn past the whole view, as a stalled page gathers turns into one, but follows the scrollbar dragged however little at a time', () => {
+    const jumped = scrolledTo(top, 26_240_000, long);
+    const wheeled = scrolled(jumped, jumped.real + 950, long);
+    assert.strictEqual(wheeled.base, jumped.base);
+    assert.strictEqual(virtualOf(wheeled), 26_240_950);
+    const edge: ScrollAnchor = { real: 1_000_000, base: 0 };
+    assert.strictEqual(
+      virtualOf(scrolled(edge, 1_000_002, long, true)),
+      homeVirtual(1_000_002, long),
+    );
+  });
+
   test('follows the scrollbar dragged along a long list one to one over its first and last million pixels, and in proportion between them, to either end', () => {
     assert.strictEqual(homeVirtual(1_000_000, long), 1_000_000);
-    assert.strictEqual(virtualOf(scrolled(top, 900_000, long)), 900_000);
+    assert.strictEqual(virtualOf(scrolled(top, 900_000, long, true)), 900_000);
     assert.strictEqual(
       homeVirtual(realMax - 1_000_000, long),
       virtualMax - 1_000_000,
@@ -113,12 +125,15 @@ suite('Capped scroll', () => {
     assert.ok(
       homeVirtual(1_100_000, long) - homeVirtual(1_000_000, long) > 1_000_000,
     );
-    const middle = scrolled(top, realMax / 2, long);
+    const middle = scrolled(top, realMax / 2, long, true);
     assert.strictEqual(middle.real, realMax / 2);
     assert.strictEqual(virtualOf(middle), homeVirtual(realMax / 2, long));
     assert.ok(Math.abs(virtualOf(middle) - virtualMax / 2) < 1);
-    assert.strictEqual(virtualOf(scrolled(middle, realMax, long)), virtualMax);
-    assert.strictEqual(virtualOf(scrolled(middle, 0, long)), 0);
+    assert.strictEqual(
+      virtualOf(scrolled(middle, realMax, long, true)),
+      virtualMax,
+    );
+    assert.strictEqual(virtualOf(scrolled(middle, 0, long, true)), 0);
   });
 
   test('reaches the nearer end of a long list by scrolling on from a place jumped to, moving the scrollbar back at most twice', () => {

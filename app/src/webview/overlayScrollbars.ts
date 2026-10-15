@@ -1,4 +1,5 @@
 import { clicked, keymap } from '../shared/keymap';
+import { thumbDragged } from './cappedScroll';
 import { followDrag } from './columns';
 
 export const overlayScrollbarClass = 'overlay-scrollbar';
@@ -319,12 +320,14 @@ class Bar {
     this.element.setPointerCapture(event.pointerId);
     this.element.classList.add('dragging');
     this.dragging = true;
+    thumbDragged.add(scroller);
     const drag = dragFrom(this.axis, metricsOf(scroller, this.axis), event);
     followDrag(
       this.element,
       (move: PointerEvent) => this.scroll(scroller, drag, move),
       () => {
         this.dragging = false;
+        thumbDragged.delete(scroller);
         this.element.classList.remove('dragging');
         this.hideLater();
       },

@@ -8,6 +8,7 @@ import {
   realHeight,
   scrolled,
   scrolledTo,
+  thumbDragged,
   type ScrollAnchor,
   type ScrollRange,
 } from './cappedScroll';
@@ -74,7 +75,12 @@ export function cappedScrolling<T extends Element>(scroll: CappedScroll) {
         if (!element) {
           return;
         }
-        const next = scrolled(scroll.anchor, real, rangeOf(instance, element));
+        const next = scrolled(
+          scroll.anchor,
+          real,
+          rangeOf(instance, element),
+          thumbDragged.has(element),
+        );
         scroll.anchor = next;
         if (next.real !== real) {
           element.scrollTop = next.real;

@@ -81,16 +81,19 @@ function unstuck(anchor: ScrollAnchor, range: ScrollRange): ScrollAnchor {
   return stuck ? home(anchor.real + anchor.base, range) : anchor;
 }
 
+export const thumbDragged = new WeakSet<Element>();
+
 export function scrolled(
   anchor: ScrollAnchor,
   real: number,
   range: ScrollRange,
+  dragged = false,
 ): ScrollAnchor {
   if (range.total <= scrollCap) {
     return { real, base: 0 };
   }
   const spans = spansOf(range);
-  if (Math.abs(real - anchor.real) > range.viewport) {
+  if (dragged) {
     return { real, base: homeBase(real, spans) };
   }
   const base = Math.min(Math.max(anchor.base, 0), spans.virtual - spans.real);
