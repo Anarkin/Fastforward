@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { JSDOM } from 'jsdom';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { strings } from '../../shared/strings';
@@ -45,6 +46,7 @@ import {
   rowAnchors,
   scrollAnchor,
   scrollOnToggle,
+  selectionSide,
   showsSideBySide,
   stuckHeader,
   wholeChangeClass,
@@ -1557,6 +1559,20 @@ suite('Drawing code', () => {
     assert.strictEqual(wholeChangeClass(words, '0:1'), 'whole-change');
     assert.strictEqual(wholeChangeClass(words, '0:2'), '');
     assert.strictEqual(wholeChangeClass(words, undefined), '');
+  });
+
+  test('tells which side of the side-by-side diff a selection starts on, and none outside the sides', () => {
+    const { document } = new JSDOM(
+      '<div class="split-line"><div class="split-side"><span class="split-code"><span class="code">old</span></span></div><div class="split-side"><span class="split-code"><span class="code">new</span></span></div></div><div class="file-header">a.txt</div>',
+    ).window;
+    const [left, right] = document.querySelectorAll('.code');
+    assert.strictEqual(selectionSide(left), 'left');
+    assert.strictEqual(selectionSide(right), 'right');
+    assert.strictEqual(
+      selectionSide(document.querySelector('.file-header')),
+      undefined,
+    );
+    assert.strictEqual(selectionSide(null), undefined);
   });
 
   test('shows a carriage return, a non-breaking space and the spaces that draw nothing as signs of their own when asked, as a change to line endings or to a pasted space looked like none, but not the joiners inside emoji', () => {

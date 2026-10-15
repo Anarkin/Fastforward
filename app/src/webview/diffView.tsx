@@ -330,6 +330,16 @@ export function BreakMarks({
   );
 }
 
+export function selectionSide(
+  target: Element | null,
+): 'left' | 'right' | undefined {
+  const side = target?.closest('.split-side');
+  if (!side) {
+    return undefined;
+  }
+  return side.parentElement?.firstElementChild === side ? 'left' : 'right';
+}
+
 export function diffRowKey(row: DiffRow, index: number): string {
   return `${index}:${row.kind}`;
 }
@@ -2247,6 +2257,16 @@ export function DiffView({
   return (
     <div
       className={`diff-view ${split ? 'side-by-side' : ''} ${wordWrap ? 'wrap' : ''} ${showWhitespace ? 'show-whitespace' : ''}`}
+      onMouseDown={(event) => {
+        const side = selectionSide(
+          event.target instanceof Element ? event.target : null,
+        );
+        if (side === undefined) {
+          delete event.currentTarget.dataset.selecting;
+        } else {
+          event.currentTarget.dataset.selecting = side;
+        }
+      }}
       style={{
         ...layoutVariables,
         '--split-scroll': `${sideways}px`,

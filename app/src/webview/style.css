@@ -1815,6 +1815,11 @@ body.resizing {
   overflow: hidden;
 }
 
+.diff-view[data-selecting='left'] .split-side:last-child .split-code,
+.diff-view[data-selecting='right'] .split-side:first-child .split-code {
+  user-select: none;
+}
+
 .split-code .code {
   display: inline-block;
   transform: translateX(calc(-1 * var(--split-scroll)));

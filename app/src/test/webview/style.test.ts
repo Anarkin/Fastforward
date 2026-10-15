@@ -1974,6 +1974,24 @@ suite('Style', () => {
     looks(withClass(view, 'file-header'), { 'user-select': 'none' });
   });
 
+  test('lets a selection started on one side of the side-by-side diff take the code of that side only, as copying it took both sides of each row', () => {
+    for (const [selecting, kept, left] of [
+      ['left', 0, 1],
+      ['right', 1, 0],
+    ] as const) {
+      const view = rendered(
+        createElement(
+          'div',
+          { className: 'diff-view side-by-side', 'data-selecting': selecting },
+          splitLine('removed', 'added'),
+        ),
+      );
+      const codes = allWithClass(view, 'split-code');
+      looks(codes[kept], { 'user-select': undefined });
+      looks(codes[left], { 'user-select': 'none' });
+    }
+  });
+
   test('centers the shortcuts and the About by layout rather than a transform, which would place their edges between device pixels, drawing the About like the shortcuts but narrower', () => {
     for (const popup of [shortcutsPopup(), aboutPopup()]) {
       looks(withClass(popup, 'shortcuts-popup'), {
