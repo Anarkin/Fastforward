@@ -425,8 +425,8 @@ async function fetchWith(
     stop = new AbortController().signal,
   }: FetchOptions,
 ): Promise<boolean> {
-  const timedOut = AbortSignal.timeout(timeout);
-  const signal = AbortSignal.any([timedOut, stop]);
+  const quiet = quietFor(timeout);
+  const signal = AbortSignal.any([quiet.stalled, stop]);
   try {
     const pruning = (await remotesSafeToPrune(gitPath, root, signal)).flatMap(
       (remote) => ['-c', `remote.${remote}.prune=true`],
@@ -434,25 +434,44 @@ async function fetchWith(
     const output = await runGit(
       gitPath,
       root,
-      [...pruning, 'fetch', ...fetching],
+      [...pruning, 'fetch', '--progress', ...fetching],
       {
         signal,
         env: interactive ? {} : neverAsk,
         runsUserCode: true,
+        onActivity: quiet.heard,
+        progress: true,
       },
     );
     return output
       .split('\n')
       .some((line) => line !== '' && !unchangedRef.has(line[0]));
   } catch (error) {
-    if (timedOut.aborted) {
-      throw new Error(
-        strings.errors.fetchTimedOut(Math.round(timeout / 1000)),
-        { cause: error },
-      );
+    if (quiet.stalled.aborted) {
+      throw new Error(strings.errors.fetchStalled(Math.round(timeout / 1000)), {
+        cause: error,
+      });
     }
     throw error;
+  } finally {
+    quiet.end();
   }
+}
+
+function quietFor(timeout: number): {
+  readonly stalled: AbortSignal;
+  readonly heard: () => void;
+  readonly end: () => void;
+} {
+  const stalling = new AbortController();
+  const timer = setTimeout(() => stalling.abort(), timeout);
+  return {
+    stalled: stalling.signal,
+    heard: () => {
+      timer.refresh();
+    },
+    end: () => clearTimeout(timer),
+  };
 }
 
 export async function listRemoteTags(
@@ -503,26 +522,34 @@ export async function pushRef(
     stop = new AbortController().signal,
   } = {},
 ): Promise<void> {
-  const timedOut = AbortSignal.timeout(timeout);
+  const quiet = quietFor(timeout);
   try {
     await runGit(
       gitPath,
       root,
       [
         'push',
+        '--progress',
         ...(publish ? ['--set-upstream'] : []),
         '--end-of-options',
         remote,
         `${localRef}:${remoteRef}`,
       ],
-      { signal: AbortSignal.any([timedOut, stop]), runsUserCode: true },
+      {
+        signal: AbortSignal.any([quiet.stalled, stop]),
+        runsUserCode: true,
+        onActivity: quiet.heard,
+        progress: true,
+      },
     );
   } catch (error) {
-    if (timedOut.aborted) {
-      throw new Error(strings.errors.pushTimedOut(Math.round(timeout / 1000)), {
+    if (quiet.stalled.aborted) {
+      throw new Error(strings.errors.pushStalled(Math.round(timeout / 1000)), {
         cause: error,
       });
     }
     throw error;
+  } finally {
+    quiet.end();
   }
 }

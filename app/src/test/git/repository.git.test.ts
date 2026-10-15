@@ -5,6 +5,7 @@ import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import {
   fetchAllRemotes,
+  pushRef,
   readHead,
   readRefs,
   repositoryRoot,
@@ -464,28 +465,98 @@ suite('Git repository', () => {
     }
   });
 
-  test('gives up on a fetch that stalls after 5 minutes, saying it failed', async () => {
+  test('gives up on a fetch that prints nothing for 5 minutes, saying it stalled', async () => {
     await temp.git('remote', 'add', 'stalled', 'ssh://stalled.invalid/x');
     await temp.git('config', 'core.sshCommand', "sh -c 'sleep 15' --");
-    const original: unknown = Reflect.get(AbortSignal, 'timeout');
-    const timeout = AbortSignal.timeout.bind(AbortSignal);
+    const original = globalThis.setTimeout;
     const waits: number[] = [];
-    AbortSignal.timeout = (ms) => {
-      waits.push(ms);
-      return timeout(500);
-    };
+    Reflect.set(
+      globalThis,
+      'setTimeout',
+      (handler: () => void, ms: number, ...rest: unknown[]) => {
+        waits.push(ms);
+        return original(handler, ms === 300_000 ? 500 : ms, ...rest);
+      },
+    );
     try {
       const started = performance.now();
       await assert.rejects(
         fetchAllRemotes(gitPath, cwd),
-        /git fetch timed out after 300 seconds/,
+        /git fetch printed nothing for 300 seconds, so it was stopped/,
       );
       assert.ok(performance.now() - started < 5000);
-      assert.deepStrictEqual(waits, [300_000]);
+      assert.ok(waits.includes(300_000), waits.join(' '));
     } finally {
-      Reflect.set(AbortSignal, 'timeout', original);
+      Reflect.set(globalThis, 'setTimeout', original);
       await temp.git('config', '--unset', 'core.sshCommand');
       await temp.git('remote', 'remove', 'stalled');
+    }
+  });
+
+  test('keeps fetching and pushing while git prints anything, however long that takes, giving up only once it prints nothing for the whole timeout', async () => {
+    const folder = tempFolder('slow-remote');
+    const slowly = (command: string, saying: string): string => {
+      const script = path
+        .join(folder, `${command}-${saying ? 'chatty' : 'quiet'}.sh`)
+        .replaceAll('\\', '/');
+      fs.writeFileSync(
+        script,
+        `#!/bin/sh\ni=0\nwhile [ $i -lt 15 ]; do ${saying}sleep 0.2; i=$((i+1)); done\nexec git ${command} "$@"\n`,
+        { mode: 0o755 },
+      );
+      return script;
+    };
+    try {
+      const upstream = await tempRepository(path.join(folder, 'upstream'), {
+        bare: true,
+      });
+      const local = await tempRepository(path.join(folder, 'local'));
+      await local.commit('one');
+      await local.git('remote', 'add', 'origin', upstream.root);
+      const chatty = 'echo working >&2; ';
+      const options = { timeout: 2000 };
+      const push = () =>
+        pushRef(
+          gitPath,
+          local.root,
+          'origin',
+          'refs/heads/main',
+          'refs/heads/main',
+          options,
+        );
+      await local.git(
+        'config',
+        'remote.origin.receivepack',
+        slowly('receive-pack', chatty),
+      );
+      await push();
+      await local.git(
+        'config',
+        'remote.origin.uploadpack',
+        slowly('upload-pack', chatty),
+      );
+      await assert.doesNotReject(fetchAllRemotes(gitPath, local.root, options));
+      await local.commit('two');
+      await local.git(
+        'config',
+        'remote.origin.receivepack',
+        slowly('receive-pack', ''),
+      );
+      await assert.rejects(
+        push(),
+        /git push printed nothing for 2 seconds, so it was stopped/,
+      );
+      await local.git(
+        'config',
+        'remote.origin.uploadpack',
+        slowly('upload-pack', ''),
+      );
+      await assert.rejects(
+        fetchAllRemotes(gitPath, local.root, options),
+        /git fetch printed nothing for 2 seconds, so it was stopped/,
+      );
+    } finally {
+      removeFolder(folder);
     }
   });
 

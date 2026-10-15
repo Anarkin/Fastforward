@@ -492,10 +492,10 @@ export const strings = {
       `git ${command} failed: it was stopped by ${signal}`,
     gitOutputTooLarge: (command: string, megabytes: number) =>
       `git ${command} failed: it printed over ${megabytes} MB`,
-    pushTimedOut: (seconds: number) =>
-      `git push timed out after ${seconds} seconds`,
-    fetchTimedOut: (seconds: number) =>
-      `git fetch timed out after ${seconds} seconds`,
+    pushStalled: (seconds: number) =>
+      `git push printed nothing for ${seconds} seconds, so it was stopped`,
+    fetchStalled: (seconds: number) =>
+      `git fetch printed nothing for ${seconds} seconds, so it was stopped`,
     outsideRepository: (path: string) => `${path} is outside the repository`,
     notInCommit: (path: string, hash: string) => `${path} is not in ${hash}`,
     notObject: (file: string) => `${file} is not a JSON object`,

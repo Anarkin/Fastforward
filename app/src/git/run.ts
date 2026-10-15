@@ -158,10 +158,24 @@ interface RunOptions {
   readonly runsUserCode?: boolean;
   readonly writes?: boolean;
   readonly onOutput?: (chunk: Buffer) => void;
+  readonly onActivity?: () => void;
+  readonly progress?: boolean;
   readonly unbounded?: boolean;
 }
 
 const maxOutput = 256 * 1024 * 1024;
+
+const progressLine = /\d+% \(\d+\/\d+\)|^(remote: )?[^:]+: \d+, [^,]+\.$/;
+
+function withoutProgress(said: string): string {
+  return said
+    .split('\n')
+    .map((line) => line.slice(line.lastIndexOf('\r') + 1).trimEnd())
+    .filter((line) => !progressLine.test(line))
+    .join('\n')
+    .trim();
+}
+
 const quietTimeBeforeClosingOutput = 200;
 
 export async function runGit(
@@ -214,6 +228,8 @@ function runGitOnce(
     runsUserCode = false,
     writes = false,
     onOutput,
+    onActivity,
+    progress = false,
     unbounded = false,
   }: RunOptions,
   startsAgain: boolean,
@@ -248,6 +264,7 @@ function runGitOnce(
       let size = 0;
       stream.on('data', (chunk: Buffer) => {
         printed = true;
+        onActivity?.();
         size += chunk.length;
         if (!unbounded && size > maxOutput) {
           tooLarge = true;
@@ -290,7 +307,8 @@ function runGitOnce(
         resolve(notStarted);
         return;
       }
-      const said = Buffer.concat(stderr).toString('utf8').trim();
+      const printedErrors = Buffer.concat(stderr).toString('utf8').trim();
+      const said = progress ? withoutProgress(printedErrors) : printedErrors;
       const stopped = tooLarge || stoppedBy !== null;
       const command = args.join(' ');
       const reason = error

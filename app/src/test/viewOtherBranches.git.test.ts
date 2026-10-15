@@ -167,7 +167,7 @@ suite('View pulling and pushing other branches', () => {
       takeErrorsLogged(
         logged,
         /^Fetching every remote failed$/,
-        /^git -c remote\.origin\.prune=true -c remote\.gone\.prune=true fetch --all --porcelain failed: /,
+        /^git -c remote\.origin\.prune=true -c remote\.gone\.prune=true fetch --progress --all --porcelain failed: /,
       );
     } finally {
       await repository.git('remote', 'remove', 'gone');

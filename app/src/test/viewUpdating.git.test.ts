@@ -43,7 +43,7 @@ suite('View updating by itself', () => {
       logged,
       /^Fetching every remote failed$/,
       new RegExp(
-        `^git -c remote\\.origin\\.prune=true fetch --all --porcelain failed: fatal: ${reason.source}`,
+        `^git -c remote\\.origin\\.prune=true fetch --progress --all --porcelain failed: fatal: ${reason.source}`,
       ),
     );
   }
