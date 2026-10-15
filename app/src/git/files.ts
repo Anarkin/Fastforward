@@ -11,21 +11,39 @@ export async function listTree(
   cwd: string,
   hash: string | undefined,
 ): Promise<string[]> {
-  const output = await runGit(
-    gitPath,
-    cwd,
-    hash !== undefined
-      ? ['ls-tree', '-r', '-z', '--name-only', hash]
-      : ['ls-files', '-z', '--cached', '--others', '--exclude-standard'],
-  );
+  if (hash === undefined) {
+    return uniquePaths(
+      await onDisk(gitPath, cwd, [
+        '--cached',
+        '--others',
+        '--exclude-standard',
+      ]),
+    );
+  }
+  const output = await runGit(gitPath, cwd, [
+    'ls-tree',
+    '-r',
+    '-z',
+    '--name-only',
+    hash,
+  ]);
   return uniquePaths(splitNul(output));
 }
 
-export async function listIndex(
+export function listIndex(gitPath: string, cwd: string): Promise<string[]> {
+  return onDisk(gitPath, cwd, ['--cached']);
+}
+
+async function onDisk(
   gitPath: string,
   cwd: string,
+  listed: readonly string[],
 ): Promise<string[]> {
-  return splitNul(await runGit(gitPath, cwd, ['ls-files', '-z', '--cached']));
+  return splitNul(
+    await runGit(gitPath, cwd, ['ls-files', '-z', '-t', ...listed]),
+  ).flatMap((entry) =>
+    entry === '' || entry.startsWith('S ') ? [] : [entry.slice(2)],
+  );
 }
 
 export function uniquePaths(...lists: (readonly string[])[]): string[] {

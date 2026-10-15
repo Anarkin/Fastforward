@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { showPatch } from '../../git/diff';
 import {
+  listIndex,
   listTree,
   maxFileSize,
   readBlobs,
@@ -46,6 +47,29 @@ suite('Repository files', () => {
     assert.deepStrictEqual(
       (await listTree(gitPath, cwd, undefined)).toSorted(),
       ['src/tracked.txt', 'untracked.txt'],
+    );
+  });
+
+  test('lists in the working tree only the files a sparse checkout put there, though the index has them all, and all at a commit', async () => {
+    const sparse = await tempRepository(path.join(parent, 'sparse'));
+    await sparse.commit('initial', {
+      'in/a.txt': 'a\n',
+      'out/b.txt': 'b\n',
+      'top.txt': 'top\n',
+    });
+    await sparse.git('sparse-checkout', 'set', 'in');
+    fs.writeFileSync(path.join(sparse.root, 'new.txt'), 'new\n');
+    assert.deepStrictEqual(
+      (await listTree(gitPath, sparse.root, undefined)).toSorted(),
+      ['in/a.txt', 'new.txt', 'top.txt'],
+    );
+    assert.deepStrictEqual((await listIndex(gitPath, sparse.root)).toSorted(), [
+      'in/a.txt',
+      'top.txt',
+    ]);
+    assert.deepStrictEqual(
+      (await listTree(gitPath, sparse.root, 'HEAD')).toSorted(),
+      ['in/a.txt', 'out/b.txt', 'top.txt'],
     );
   });
 
