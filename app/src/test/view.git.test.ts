@@ -1203,6 +1203,7 @@ suite('View of one repository', () => {
             root: repository.root,
             hash: workingTreeHash,
             path: file,
+            area: 'unstaged',
           });
           const shown = page.last('fileContent')?.content;
           page.clear();

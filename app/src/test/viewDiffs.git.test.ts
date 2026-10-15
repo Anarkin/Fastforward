@@ -372,7 +372,7 @@ suite('View showing diffs', () => {
     });
   });
 
-  test('names the staged and unstaged files whose changes are all whitespace, also once one becomes so, showing a staged one entire as staged', async () => {
+  test('names the files whose changes are all whitespace among all the changes, and among the staged and unstaged ones apart, also once one becomes so, showing a staged one entire as staged', async () => {
     const edited = await tempRepository(path.join(folder, 'spaced-edited'));
     await edited.commit('first', {
       'a.txt': 'one\n',
@@ -401,7 +401,15 @@ suite('View showing diffs', () => {
           root: edited.root,
           hash: workingTreeHash,
         });
-        assert.strictEqual(diff()?.area, 'staged');
+        assert.strictEqual(diff()?.area, undefined);
+        assert.deepStrictEqual(diff()?.whitespaceOnly, ['a.txt']);
+        await view.connection.receive({
+          type: 'selectFile',
+          root: edited.root,
+          hash: workingTreeHash,
+          path: undefined,
+          area: 'staged',
+        });
         assert.deepStrictEqual(diff()?.whitespaceOnly, ['c.txt']);
         await view.connection.receive({
           type: 'selectFile',

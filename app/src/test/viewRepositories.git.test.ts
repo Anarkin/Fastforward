@@ -903,7 +903,7 @@ suite('View staged and unstaged changes', () => {
     removeFolder(folder);
   });
 
-  test('shows the staged and unstaged changes apart, starting with the staged ones, each side read from where it is kept', async () => {
+  test('shows all the changes since HEAD first, and the staged and unstaged ones apart, each side read from where it is kept', async () => {
     await withView(log, [repository.root], async (view) => {
       const root = repository.root;
       assert.strictEqual(view.page.last('workingTree')?.files, 1);
@@ -915,11 +915,24 @@ suite('View staged and unstaged changes', () => {
       const files = view.page.last('files');
       assert.deepStrictEqual(
         [
+          files?.all?.map((file) => file.path),
           files?.staged?.map((file) => file.path),
           files?.files.map((file) => file.path),
         ],
-        [['both.txt'], ['both.txt']],
+        [['both.txt'], ['both.txt'], ['both.txt']],
       );
+      const all = view.page.last('diff');
+      assert.ok(all);
+      assert.strictEqual(all.area, undefined);
+      assert.match(all.patch, /^-one$/m);
+      assert.match(all.patch, /^\+three$/m);
+      await view.connection.receive({
+        type: 'selectFile',
+        root,
+        hash: workingTreeHash,
+        path: undefined,
+        area: 'staged',
+      });
       const staged = view.page.last('diff');
       assert.strictEqual(staged?.area, 'staged');
       assert.match(staged.patch, /^\+two$/m);
@@ -956,10 +969,21 @@ suite('View staged and unstaged changes', () => {
       );
       assert.match(unstaged?.patch ?? '', /^-two$/m);
       assert.match(unstaged?.patch ?? '', /^\+three$/m);
+      await view.connection.receive({
+        type: 'selectFile',
+        root,
+        hash: workingTreeHash,
+        path: undefined,
+      });
+      const again = view.page.last('diff');
+      assert.ok(again);
+      assert.strictEqual(again.area, undefined);
+      assert.doesNotMatch(again.patch, /two/);
+      assert.match(again.patch, /^\+three$/m);
     });
   });
 
-  test('starts with the unstaged changes while nothing is staged', async () => {
+  test('starts with all the changes while nothing is staged too', async () => {
     await repository.git('restore', '--staged', 'both.txt');
     await withView(log, [repository.root], async (view) => {
       await view.connection.receive({
@@ -969,7 +993,8 @@ suite('View staged and unstaged changes', () => {
       });
       assert.deepStrictEqual(view.page.last('files')?.staged, []);
       const diff = view.page.last('diff');
-      assert.strictEqual(diff?.area, 'unstaged');
+      assert.ok(diff);
+      assert.strictEqual(diff.area, undefined);
       assert.match(diff.patch, /^\+three$/m);
     });
   });

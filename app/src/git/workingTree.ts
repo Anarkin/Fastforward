@@ -17,6 +17,7 @@ import {
   withoutFilesInside,
 } from './diff';
 import { isBinary, maxFileSize } from './files';
+import { headCommit } from './history';
 import { runGit, splitNul } from './run';
 
 export interface WorkingTreeDiff {
@@ -30,6 +31,7 @@ export interface WorkingTree extends WorkingTreeDiff {
   readonly listedUntracked: readonly string[];
   readonly addedInConflict: readonly string[];
   readonly staged: readonly FileChange[] | undefined;
+  readonly all: WorkingTree | undefined;
 }
 
 const againstIndex: WorkingTreeDiff = { base: undefined, reverse: false };
@@ -163,7 +165,11 @@ export async function workingTreeFiles(
   measured = true,
 ): Promise<WorkingTree> {
   const { base, reverse } = diff;
-  const [trackedChanges, listedUntracked, staged] = await Promise.all([
+  const listing =
+    knownUntracked === undefined
+      ? listUntracked(gitPath, cwd, signal)
+      : Promise.resolve(knownUntracked);
+  const [trackedChanges, listedUntracked, staged, all] = await Promise.all([
     runGit(
       gitPath,
       cwd,
@@ -174,9 +180,12 @@ export async function workingTreeFiles(
     ).then((changes) =>
       trackedFiles(gitPath, cwd, parseRawChanges(changes), reverse, measured),
     ),
-    knownUntracked ?? listUntracked(gitPath, cwd, signal),
+    listing,
     base === undefined
       ? stagedFiles(gitPath, cwd, measured, signal)
+      : undefined,
+    base === undefined && measured
+      ? sinceHead(gitPath, cwd, listing, signal)
       : undefined,
   ]);
   const addedInConflict =
@@ -224,7 +233,30 @@ export async function workingTreeFiles(
     listedUntracked,
     addedInConflict: [...addedInConflict],
     staged,
+    all,
   };
+}
+
+async function sinceHead(
+  gitPath: string,
+  cwd: string,
+  listing: Promise<readonly string[]>,
+  signal?: AbortSignal,
+): Promise<WorkingTree> {
+  const base =
+    (await headCommit(gitPath, cwd)) ??
+    (
+      await runGit(gitPath, cwd, ['hash-object', '-t', 'tree', '--stdin'], {
+        signal,
+      })
+    ).trim();
+  return workingTreeFiles(
+    gitPath,
+    cwd,
+    { base, reverse: false },
+    signal,
+    await listing,
+  );
 }
 
 async function withoutOurSide(

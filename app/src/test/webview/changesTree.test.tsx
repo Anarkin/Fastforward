@@ -319,15 +319,36 @@ suite('Files column keys', () => {
     );
   });
 
-  test('moves from the staged changes on into the unstaged ones, keying a file in both apart and its folders by their side', () => {
+  test('moves from All Changes into the staged changes and on into the unstaged ones, keying a file in both apart and its folders by their side', () => {
     const sections = filesRows([
+      { area: undefined, header: true, rows: [] },
       { area: 'staged', header: true, rows: tree(['a.ts']) },
       { area: 'unstaged', header: true, rows: tree(['a.ts', 'src/b.ts']) },
     ]);
     const listed = listedFilesRows(sections);
     assert.deepStrictEqual(
+      filesKey('down', sections, 'changes', none, visible),
+      {
+        kind: 'select',
+        key: 'staged:changes',
+        area: 'staged',
+        file: undefined,
+      },
+    );
+    assert.deepStrictEqual(
+      filesKey(
+        'first',
+        sections,
+        'unstaged:file:a.ts',
+        { area: 'unstaged', path: 'a.ts' },
+        visible,
+      ),
+      { kind: 'select', key: 'changes', area: undefined, file: undefined },
+    );
+    assert.deepStrictEqual(
       Array.from({ length: listed.count }, (_, index) => listed.keyOf(index)),
       [
+        'changes',
         'staged:changes',
         'staged:file:a.ts',
         'unstaged:changes',
@@ -376,7 +397,7 @@ suite('Files column keys', () => {
       ),
       { kind: 'toggle', area: 'unstaged', folder: 'src', changed: true },
     );
-    assert.deepStrictEqual(filesAncestors(sections, 4), [3]);
+    assert.deepStrictEqual(filesAncestors(sections, 5), [4]);
   });
 
   test('leaves Left and Right to moving between the columns', () => {

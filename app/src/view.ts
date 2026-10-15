@@ -2975,6 +2975,7 @@ export class FastforwardView {
     const { signal } = tab.loadingFiles;
     let files: readonly FileChange[];
     let staged: readonly FileChange[] | undefined;
+    let all: readonly FileChange[] | undefined;
     let workingTree: WorkingTree | undefined;
     let early: EarlyPatch | undefined;
     try {
@@ -2994,6 +2995,7 @@ export class FastforwardView {
           ));
         files = workingTree.files;
         staged = workingTree.staged;
+        all = workingTree.all?.files;
       } else {
         early = this.earlyPatch(context, hash, signal);
         files = await this.commitFiles(context, hash, signal);
@@ -3013,23 +3015,25 @@ export class FastforwardView {
     context.tab.stagedFiles = new Map(
       (staged ?? []).map((file) => [file.path, file]),
     );
-    if (staged !== undefined && context.tab.area === undefined) {
-      context.tab.area = staged.length > 0 ? 'staged' : 'unstaged';
-    }
+    context.tab.allFiles =
+      all === undefined
+        ? undefined
+        : new Map(all.map((file) => [file.path, file]));
     if (workingTree) {
       context.tab.workingTree = workingTree;
     }
     const shownFiles = context.tab.shown.files;
     const unchanged =
       shownFiles?.hash === hash &&
-      JSON.stringify([shownFiles.files, shownFiles.staged]) ===
-        JSON.stringify([files, staged]);
+      JSON.stringify([shownFiles.files, shownFiles.staged, shownFiles.all]) ===
+        JSON.stringify([files, staged, all]);
     if (!(refreshing && unchanged)) {
       context.post({
         type: 'files',
         hash,
         files,
         ...(staged === undefined ? {} : { staged }),
+        ...(all === undefined ? {} : { all }),
       });
     }
     await this.sendDiff(context, hash, refreshing, early);
@@ -3250,7 +3254,8 @@ export class FastforwardView {
     return workingTreePatch(
       gitPath,
       root,
-      workingTree,
+      (context.tab.area === undefined ? workingTree.all : undefined) ??
+        workingTree,
       scope,
       context.tab.untrackedPatches,
       signal,

@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
+  changesShown,
   emptyTabView,
   reduceTabView,
   treeOf,
@@ -20,6 +21,8 @@ const openTab = (view: TabView, worktree: string) =>
     worktrees: [],
     recent: [],
   });
+
+const paths = (view: TabView) => changesShown(view).map((file) => file.path);
 
 const entire = (view: TabView) =>
   reduceTabView(view, { type: 'showEntireFile', entire: true });
@@ -370,7 +373,7 @@ suite('Tab view', () => {
     assert.strictEqual(after.history?.at(1), undefined);
   });
 
-  test('keeps the staged changes of the working tree apart, taking the side the app starts on, and ignores a late answer for the other side', () => {
+  test('keeps the staged changes of the working tree apart from the unstaged ones and from all of them, starting on all of them, and ignores a late answer for a side no longer picked, All Changes included', () => {
     let view = reduceTabView(busyTab(), {
       type: 'showCommit',
       hash: workingTreeHash,
@@ -380,22 +383,39 @@ suite('Tab view', () => {
       hash: workingTreeHash,
       files: [fileChange('a.ts')],
       staged: [fileChange('b.ts')],
+      all: [fileChange('a.ts'), fileChange('b.ts')],
     });
     assert.deepStrictEqual(
       [
         view.files.map((file) => file.path),
         view.staged?.map((file) => file.path),
+        view.all?.map((file) => file.path),
       ],
-      [['a.ts'], ['b.ts']],
+      [['a.ts'], ['b.ts'], ['a.ts', 'b.ts']],
     );
     view = reduceTabView(view, {
       type: 'diff',
       hash: workingTreeHash,
       path: undefined,
-      area: 'staged',
-      patch: 'staged',
+      patch: 'all',
     });
-    assert.deepStrictEqual([view.area, view.patch], ['staged', 'staged']);
+    assert.deepStrictEqual([view.area, view.patch], [undefined, 'all']);
+    const staged = reduceTabView(view, {
+      type: 'showFile',
+      path: undefined,
+      area: 'staged',
+    });
+    const header = reduceTabView(staged, { type: 'showFile', path: undefined });
+    assert.strictEqual(
+      reduceTabView(header, {
+        type: 'diff',
+        hash: workingTreeHash,
+        path: undefined,
+        area: 'staged',
+        patch: 'late',
+      }),
+      header,
+    );
     const picked = reduceTabView(view, {
       type: 'showFile',
       path: 'a.ts',
@@ -422,7 +442,28 @@ suite('Tab view', () => {
       'a',
     );
     const other = reduceTabView(picked, { type: 'showCommit', hash: 'b' });
-    assert.deepStrictEqual([other.staged, other.area], [undefined, undefined]);
+    assert.deepStrictEqual(
+      [other.staged, other.all, other.area],
+      [undefined, undefined, undefined],
+    );
+  });
+
+  test('shows the diff of the files of the side picked, every one for All Changes, and those of a commit as they are', () => {
+    const workingTree = {
+      ...emptyTabView,
+      files: [fileChange('a.ts')],
+      staged: [fileChange('b.ts')],
+      all: [fileChange('a.ts'), fileChange('b.ts')],
+    };
+    assert.deepStrictEqual(paths(workingTree), ['a.ts', 'b.ts']);
+    assert.deepStrictEqual(paths({ ...workingTree, area: 'staged' }), ['b.ts']);
+    assert.deepStrictEqual(paths({ ...workingTree, area: 'unstaged' }), [
+      'a.ts',
+    ]);
+    assert.deepStrictEqual(
+      paths({ ...emptyTabView, files: [fileChange('c.ts')] }),
+      ['c.ts'],
+    );
   });
 
   test('ignores late answers about the commit or file selected before', () => {

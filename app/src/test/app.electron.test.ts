@@ -1279,7 +1279,7 @@ suite('App', () => {
     await page.locator('.commit.working-tree.empty').waitFor();
   });
 
-  test('shows the staged and unstaged halves of a file apart, the staged one first', async () => {
+  test('shows all the changes of a file first, then its staged and unstaged halves apart', async () => {
     const file = path.join(repository.root, 'changed.txt');
     fs.writeFileSync(file, 'one\nstaged\nthree\n');
     try {
@@ -1291,9 +1291,24 @@ suite('App', () => {
         .locator('.commit.working-tree', { hasText: '1 uncommitted change' })
         .click();
       await page
-        .locator('.row.group.selected', { hasText: /^Staged/ })
+        .locator('.row.group.selected', { hasText: 'All Changes' })
         .waitFor();
-      await page.locator('.diff-line.added', { hasText: 'staged' }).waitFor();
+      await page.locator('.diff-line.added', { hasText: 'unstaged' }).waitFor();
+      assert.deepStrictEqual(
+        await page.locator('.diff-line.added .code').allTextContents(),
+        ['staged', 'unstaged'],
+      );
+      await page.locator('.row.group', { hasText: /^Staged/ }).click();
+      await page
+        .locator('.diff-line.added', { hasText: 'unstaged' })
+        .waitFor({ state: 'detached' });
+      await page
+        .locator('.diff-line.added .code', { hasText: /^staged$/ })
+        .waitFor();
+      assert.deepStrictEqual(
+        await page.locator('.diff-line.added .code').allTextContents(),
+        ['staged'],
+      );
       await page
         .locator('.row.file', { hasText: 'changed.txt' })
         .nth(1)

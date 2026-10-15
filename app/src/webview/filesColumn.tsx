@@ -128,6 +128,7 @@ function sidesOf(
   return staged === undefined
     ? [{ area: undefined, files, allPaths }]
     : [
+        { area: undefined, files: [], allPaths: undefined },
         { area: 'staged', files: staged, allPaths: undefined },
         { area: 'unstaged', files, allPaths },
       ];
@@ -304,7 +305,7 @@ export function Files({
       filesRows(
         sides.map((side, index) => ({
           area: side.area,
-          header: side.area !== undefined || side.files.length > 0,
+          header: staged !== undefined || side.files.length > 0,
           rows: changesTreeRows(
             trees[index],
             foldersOn(shownClosed, side.area),
@@ -312,7 +313,7 @@ export function Files({
           ),
         })),
       ),
-    [sides, trees, shownClosed, shownOpened],
+    [sides, trees, staged, shownClosed, shownOpened],
   );
   const noFolders =
     folders.changed.length === 0 && folders.unchanged.length === 0;

@@ -87,7 +87,13 @@ import {
   type Folders,
   type ViewFolders,
 } from './viewFolders';
-import { emptyTabView, reduceTabView, treeOf, treeToLoad } from './tabView';
+import {
+  changesShown,
+  emptyTabView,
+  reduceTabView,
+  treeOf,
+  treeToLoad,
+} from './tabView';
 import { bookmarkOptions, toggleBookmark } from './bookmarks';
 import { addNotice } from '../shared/notices';
 import { Notices, type Notice } from './notices';
@@ -1018,7 +1024,7 @@ export function App({ name, post: postToHost, listen }: Props) {
                               onLoadFile={loadFileDiff}
                               texts={texts}
                               onLoadTexts={loadTexts}
-                              files={area === 'staged' ? (staged ?? []) : files}
+                              files={changesShown(tab)}
                               patch={patch}
                               leftOut={leftOut}
                               whitespaceOnly={whitespaceOnly}

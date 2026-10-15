@@ -300,7 +300,7 @@ suite('Files column', () => {
     );
   });
 
-  test('shows the staged and unstaged changes of the working tree in sections, with a file in both', () => {
+  test('shows All Changes above the staged and unstaged changes of the working tree, which it shows in sections, with a file in both', () => {
     const picked: [string | undefined, string | undefined][] = [];
     const { keys, rows, selectedKey } = changesRows({
       files: [change('a.ts')],
@@ -309,6 +309,7 @@ suite('Files column', () => {
       onSelect: (path, area) => picked.push([path, area]),
     });
     assert.deepStrictEqual(keys, [
+      'changes',
       'staged:changes',
       'staged:file:a.ts',
       'staged:file:b.ts',
@@ -320,14 +321,27 @@ suite('Files column', () => {
       renderToStaticMarkup(rows[index])
         .replace(/<[^>]*>/g, ' ')
         .trim();
-    assert.strictEqual(header(0), 'Staged');
-    assert.strictEqual(header(3), 'Unstaged');
+    assert.strictEqual(header(0), 'All Changes');
+    assert.strictEqual(header(1), 'Staged');
+    assert.strictEqual(header(4), 'Unstaged');
     rows[0].props.onClick();
-    clickFile(rows[4]);
+    rows[1].props.onClick();
+    clickFile(rows[5]);
     assert.deepStrictEqual(picked, [
+      [undefined, undefined],
       [undefined, 'staged'],
       ['a.ts', 'unstaged'],
     ]);
+  });
+
+  test('marks All Changes of the working tree while no side is picked, keeping its header with nothing changed', () => {
+    const { keys, selectedKey } = changesRows({ files: [], staged: [] });
+    assert.deepStrictEqual(keys, [
+      'changes',
+      'staged:changes',
+      'unstaged:changes',
+    ]);
+    assert.strictEqual(selectedKey, 'changes');
   });
 
   test('deselects the selected file on a click, and selects another', () => {

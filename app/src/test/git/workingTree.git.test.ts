@@ -89,6 +89,22 @@ suite('A repository without commits', () => {
     const patch = await stagedPatch(gitPath, cwd, { path: 'staged.txt' });
     assert.ok(patch.includes('+one'), patch);
   });
+
+  test('lists all the changes against the empty tree, as there is no HEAD yet', async () => {
+    const { all } = await workingTreeFiles(gitPath, cwd);
+    assert.ok(all);
+    assert.deepStrictEqual(
+      all.files.map((file) => [file.status, file.path]),
+      [
+        ['A', 'staged.txt'],
+        ['U', 'untracked.txt'],
+      ],
+    );
+    const patch = await workingTreePatch(gitPath, cwd, all, {
+      path: 'staged.txt',
+    });
+    assert.match(patch, /^\+one$/m);
+  });
 });
 
 suite('Files touched but unchanged', () => {
@@ -365,6 +381,48 @@ suite('Staged and unstaged changes', () => {
     assert.match(unstaged, /^\+three$/m);
   });
 
+  test('lists every change since HEAD too, once a file, a file changed again since it was staged with its whole change, for All Changes', async () => {
+    const { all } = await workingTreeFiles(repository.gitPath, repository.root);
+    assert.ok(all);
+    assert.deepStrictEqual(
+      all.files.map((file) => [file.status, file.path]),
+      [
+        ['M', 'both.txt'],
+        ['M', 'staged.txt'],
+        ['D', 'uncached.txt'],
+        ['M', 'unstaged.txt'],
+        ['U', 'new.txt'],
+      ],
+    );
+    const patch = await workingTreePatch(
+      repository.gitPath,
+      repository.root,
+      all,
+      { path: 'both.txt' },
+    );
+    assert.match(patch, /^-one$/m);
+    assert.match(patch, /^\+three$/m);
+    assert.doesNotMatch(patch, /two/);
+  });
+
+  test('lists no changes since HEAD when only counting the changes, or when comparing the working tree with a commit, as All Changes then shows none or those already listed', async () => {
+    const counted = await workingTreeFiles(
+      repository.gitPath,
+      repository.root,
+      undefined,
+      undefined,
+      undefined,
+      false,
+    );
+    assert.strictEqual(counted.all, undefined);
+    const compared = await workingTreeFiles(
+      repository.gitPath,
+      repository.root,
+      { base: 'HEAD', reverse: false },
+    );
+    assert.strictEqual(compared.all, undefined);
+  });
+
   test('lists a file removed from the index but kept on disk once against HEAD, as deleted, and diffs its deletion', async () => {
     const workingTree = await workingTreeFiles(
       repository.gitPath,
@@ -406,15 +464,17 @@ suite('A conflicted merge', () => {
 
   afterAll(() => removeFolder(conflicted.root));
 
-  test('lists the conflicted file once, with the unstaged changes', async () => {
+  test('lists the conflicted file once, with the unstaged changes and among all of them', async () => {
     const workingTree = await workingTreeFiles(
       conflicted.gitPath,
       conflicted.root,
     );
     assert.deepStrictEqual(workingTree.staged, []);
     assert.deepStrictEqual(
-      workingTree.files.map((file) => file.path),
-      ['conflict.txt'],
+      [workingTree.files, workingTree.all?.files ?? []].map((files) =>
+        files.map((file) => file.path),
+      ),
+      [['conflict.txt'], ['conflict.txt']],
     );
   });
 

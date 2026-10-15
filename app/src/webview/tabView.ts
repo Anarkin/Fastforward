@@ -24,6 +24,7 @@ export interface TabView {
   readonly selection: number | undefined;
   readonly files: readonly FileChange[];
   readonly staged: readonly FileChange[] | undefined;
+  readonly all: readonly FileChange[] | undefined;
   readonly filesLoading: boolean;
   readonly patchLoading: boolean;
   readonly path: string | undefined;
@@ -64,6 +65,7 @@ export const emptyTabView: TabView = {
   selection: undefined,
   files: [],
   staged: undefined,
+  all: undefined,
   filesLoading: false,
   patchLoading: false,
   path: undefined,
@@ -115,6 +117,7 @@ function selected(state: TabView, hash: string | undefined): TabView {
     selectionKnown: true,
     files: [],
     staged: undefined,
+    all: undefined,
     filesLoading: hash !== undefined,
     patchLoading: hash !== undefined,
     path: undefined,
@@ -139,10 +142,20 @@ function isLate(
 ): boolean {
   return (
     state.selectionKnown &&
-    (hash !== state.hash ||
-      path !== state.path ||
-      (state.area !== undefined && area !== state.area))
+    (hash !== state.hash || path !== state.path || area !== state.area)
   );
+}
+
+export function changesShown({
+  area,
+  files,
+  staged,
+  all,
+}: TabView): readonly FileChange[] {
+  if (area === 'staged') {
+    return staged ?? [];
+  }
+  return (area === undefined ? all : undefined) ?? files;
 }
 
 function pickedSince(state: TabView, selection: number | undefined): boolean {
@@ -245,6 +258,7 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
         hash: action.hash,
         files: action.files,
         staged: action.staged,
+        all: action.all,
         filesLoading: false,
       };
     case 'diff':

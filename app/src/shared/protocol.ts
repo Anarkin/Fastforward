@@ -429,6 +429,7 @@ export type ToWebview =
       readonly hash: string;
       readonly files: readonly FileChange[];
       readonly staged?: readonly FileChange[];
+      readonly all?: readonly FileChange[];
     }
   | {
       readonly type: 'diff';

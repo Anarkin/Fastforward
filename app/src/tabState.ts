@@ -39,6 +39,7 @@ export interface TabState {
   diffStale: boolean;
   changedFiles: Map<string, FileChange>;
   stagedFiles: Map<string, FileChange>;
+  allFiles: Map<string, FileChange> | undefined;
   workingTree: WorkingTree | undefined;
   fullHistory: Commits;
   partial: boolean;
@@ -94,6 +95,7 @@ export function newTabState(): TabState {
     diffStale: false,
     changedFiles: new Map(),
     stagedFiles: new Map(),
+    allFiles: undefined,
     workingTree: undefined,
     fullHistory: noCommits,
     partial: false,
@@ -333,7 +335,12 @@ export function select(tab: TabState, hash: string | undefined): void {
 }
 
 export function changesOf(tab: TabState): Map<string, FileChange> {
-  return tab.area === 'staged' ? tab.stagedFiles : tab.changedFiles;
+  if (tab.area === 'staged') {
+    return tab.stagedFiles;
+  }
+  return (
+    (tab.area === undefined ? tab.allFiles : undefined) ?? tab.changedFiles
+  );
 }
 
 export function unselect(tab: TabState): void {
