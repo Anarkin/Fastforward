@@ -560,6 +560,32 @@ suite('Git repository', () => {
     }
   });
 
+  test('says why a fetch failed without the progress git printed before it', async () => {
+    const folder = tempFolder('failing-remote');
+    try {
+      const local = await tempRepository(path.join(folder, 'local'));
+      const failing = path
+        .join(folder, 'failing-upload-pack.sh')
+        .replaceAll('\\', '/');
+      fs.writeFileSync(
+        failing,
+        "#!/bin/sh\nprintf 'remote: Enumerating objects: 2, done.\\nReceiving objects:  50%% (1/2)\\rReceiving objects: 100%% (2/2), done.\\nfatal: the pack broke\\n' >&2\nexit 1\n",
+        { mode: 0o755 },
+      );
+      await local.git('remote', 'add', 'origin', path.join(folder, 'any'));
+      await local.git('config', 'remote.origin.uploadpack', failing);
+      const error: unknown = await fetchAllRemotes(gitPath, local.root).then(
+        () => undefined,
+        (failed: unknown) => failed,
+      );
+      const said = gitErrorText(error);
+      assert.match(said, /^fatal: the pack broke$/m);
+      assert.doesNotMatch(said, /objects/);
+    } finally {
+      removeFolder(folder);
+    }
+  });
+
   test('lets only an interactive fetch ask for credentials with a program the user set, in any of the ways git takes one', async () => {
     let requests = 0;
     const server = createServer((_request, response) => {
