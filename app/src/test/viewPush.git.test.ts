@@ -16,6 +16,7 @@ import {
   closeViews,
   failOnErrorsLogged,
   type FakePage,
+  holdFetches,
   openView,
   takeErrorsLogged,
   withNotices,
@@ -110,6 +111,46 @@ suite('View pushing', () => {
     ]);
     assert.strictEqual(await onRemote('main'), local);
     assert.strictEqual(refOnPage('origin/main'), local);
+  });
+
+  test('pushes the branch checked out when Push was asked for, though another is checked out while the push waits for a fetch', async () => {
+    const held = await holdFetches(repository, 'origin', folder);
+    await repository.git('branch', 'private');
+    await repository.commit('mine');
+    const [mine] = await repository.resolve('main');
+    try {
+      const fetched = connection.receive({
+        type: 'fetch',
+        root: repository.root,
+      });
+      await waitFor(held.reached, 'the fetch to reach the remote');
+      let said: string[] = [];
+      await withNotices(page, 'info', async (messages) => {
+        const pushed = push();
+        await waitFor(
+          () => page.last('pushing')?.running === true,
+          'the push to wait for the fetch',
+        );
+        await connection.receive({
+          type: 'checkout',
+          root: repository.root,
+          target: { kind: 'branch', name: 'private' },
+        });
+        held.release();
+        await Promise.all([pushed, fetched]);
+        said = messages;
+      });
+      assert.deepStrictEqual(said, ['Pushed main to origin/main']);
+      assert.strictEqual(await onRemote('main'), mine);
+      assert.strictEqual(await onRemote('private'), undefined);
+    } finally {
+      await held.restore();
+      await repository.git('checkout', '-f', 'main');
+      await repository.git('branch', '-D', 'private');
+      await repository
+        .git('push', 'origin', '--delete', 'private')
+        .catch(() => '');
+    }
   });
 
   test('says it is pushing while it does, fetching nothing', async () => {

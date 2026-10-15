@@ -396,24 +396,41 @@ export async function tagRemoteOf(
 
 const tagElsewhere = /\[rejected\][^\n]*\(already exists\)/;
 
+export async function pickTagRemote(
+  log: Log,
+  notify: Notify,
+  { gitPath, root }: RepositoryAt,
+  tag: string,
+  remotes: readonly string[],
+): Promise<string | undefined> {
+  try {
+    const remote = await tagRemoteOf(gitPath, root, remotes);
+    if (remote === undefined) {
+      const head = await readHead(gitPath, root);
+      notify('info', strings.messages.noTagRemote(tag, head?.name));
+    }
+    return remote;
+  } catch (error) {
+    reportFailure(
+      log,
+      notify,
+      strings.log.pushFailed,
+      strings.messages.couldNotPush,
+      error,
+    );
+    return undefined;
+  }
+}
+
 export async function pushTag(
   log: Log,
   notify: Notify,
   { gitPath, root }: RepositoryAt,
   tag: string,
+  remote: string,
   stop: AbortSignal,
 ): Promise<string | undefined> {
   try {
-    const remote = await tagRemoteOf(
-      gitPath,
-      root,
-      await listRemotes(gitPath, root),
-    );
-    if (remote === undefined) {
-      const head = await readHead(gitPath, root);
-      notify('info', strings.messages.noTagRemote(tag, head?.name));
-      return undefined;
-    }
     const ref = `refs/tags/${tag}`;
     try {
       await pushRef(gitPath, root, remote, ref, ref, { stop });

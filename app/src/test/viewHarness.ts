@@ -243,6 +243,42 @@ function openGates(): void {
   gates.clear();
 }
 
+export interface HeldFetches {
+  readonly reached: () => boolean;
+  readonly release: () => void;
+  readonly restore: () => Promise<void>;
+}
+
+export async function holdFetches(
+  repository: TempRepository,
+  remote: string,
+  folder: string,
+): Promise<HeldFetches> {
+  const inFolder = (name: string) =>
+    path.join(folder, name).replaceAll('\\', '/');
+  const opened = inFolder(`${remote}-fetch-opened`);
+  const started = inFolder(`${remote}-fetch-started`);
+  const uploadPack = inFolder(`${remote}-held-upload-pack.sh`);
+  fs.writeFileSync(
+    uploadPack,
+    `#!/bin/sh\ntouch '${started}'\nwhile [ ! -e '${opened}' ]; do sleep 0.1; done\nexec git upload-pack "$@"\n`,
+    { mode: 0o755 },
+  );
+  await repository.git('config', `remote.${remote}.uploadpack`, uploadPack);
+  const release = () => fs.writeFileSync(opened, '');
+  return {
+    reached: () => fs.existsSync(started),
+    release,
+    restore: async () => {
+      release();
+      await repository.git('config', '--unset', `remote.${remote}.uploadpack`);
+      for (const file of [opened, started, uploadPack]) {
+        fs.rmSync(file, { force: true });
+      }
+    },
+  };
+}
+
 export async function idleOnlyOnceOpened(
   view: FastforwardView,
   held: { open: () => void },

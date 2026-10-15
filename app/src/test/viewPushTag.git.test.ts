@@ -16,6 +16,7 @@ import {
   failOnErrorsLogged,
   type FakePage,
   gate,
+  holdFetches,
   openView,
   stubMethod,
   withNotices,
@@ -220,6 +221,53 @@ suite('View pushing tags', () => {
     } finally {
       await repository.git('checkout', '-f', 'main');
       await repository.git('branch', '-D', 'loner').catch(() => '');
+      await repository.git('remote', 'remove', 'second');
+    }
+  });
+
+  test('pushes a tag to the remote picked when the push was asked for, though a branch tracking another remote is checked out while it waits for a fetch', async () => {
+    const second = await tempRepository(path.join(folder, 'other-remote'), {
+      bare: true,
+    });
+    await repository.git('remote', 'add', 'second', second.root);
+    await repository.git('push', 'second', 'main:elsewhere');
+    await repository.git('fetch', 'second');
+    await repository.git('branch', '--track', 'elsewhere', 'second/elsewhere');
+    await repository.git('tag', 'v5', a);
+    const held = await holdFetches(repository, 'origin', folder);
+    try {
+      const fetched = connection.receive({
+        type: 'fetch',
+        root: repository.root,
+      });
+      await waitFor(held.reached, 'the fetch to reach the remote');
+      let said: string[] = [];
+      await withNotices(page, 'info', async (messages) => {
+        const pushed = connection.receive({
+          type: 'pushTag',
+          root: repository.root,
+          name: 'v5',
+        });
+        await waitFor(
+          () => page.last('pushingTag')?.names.includes('v5') === true,
+          'the tag push to wait for the fetch',
+        );
+        await connection.receive({
+          type: 'checkout',
+          root: repository.root,
+          target: { kind: 'branch', name: 'elsewhere' },
+        });
+        held.release();
+        await Promise.all([pushed, fetched]);
+        said = messages;
+      });
+      assert.deepStrictEqual(said, ['Pushed tag v5 to origin']);
+      assert.strictEqual(await onRemote('v5'), a);
+      assert.strictEqual((await second.git('tag')).trim(), '');
+    } finally {
+      await held.restore();
+      await repository.git('checkout', '-f', 'main');
+      await repository.git('branch', '-D', 'elsewhere');
       await repository.git('remote', 'remove', 'second');
     }
   });

@@ -44,9 +44,11 @@ import {
   isFolder,
   listRemoteTags,
   listRemotes,
+  readHead,
   readRefs,
   repositoryRoot,
   spellingOf,
+  type Head,
   type Refs,
 } from './git/repository';
 import {
@@ -79,6 +81,7 @@ import {
   fastForwardToUpstream,
   fetchAll,
   foundUpstream,
+  pickTagRemote,
   pushTag,
   pushToUpstream,
   tagRemoteOf,
@@ -1678,10 +1681,13 @@ export class FastforwardView {
 
   private async push(context: Context): Promise<void> {
     await context.tab.movingHead;
+    const head = await readHead(context.gitPath, context.root).catch(
+      () => undefined,
+    );
     context.post({ type: 'pushing', running: true });
     let pushed: Pushed;
     try {
-      pushed = await this.pushAfterRemoteWork(context);
+      pushed = await this.pushAfterRemoteWork(context, head);
     } finally {
       context.post({ type: 'pushing', running: false });
     }
@@ -1692,13 +1698,21 @@ export class FastforwardView {
     }
   }
 
-  private pushAfterRemoteWork(context: Context): Promise<Pushed> {
+  private async pushAfterRemoteWork(
+    context: Context,
+    head: Head | undefined,
+  ): Promise<Pushed> {
+    if (head !== undefined && head.name === undefined) {
+      foundUpstream(this.notify(context), { kind: 'detached' });
+      return 'unchanged';
+    }
     return this.afterRemoteWork(context.repository, () =>
       pushToUpstream(
         this.log,
         this.notify(context),
         context,
         this.quitting.signal,
+        head?.name,
       ),
     );
   }
@@ -1813,15 +1827,19 @@ export class FastforwardView {
     if (!tag) {
       return;
     }
-    const remote = await tagRemoteOf(
-      context.gitPath,
-      context.root,
+    const remote = await pickTagRemote(
+      this.log,
+      this.notify(context),
+      context,
+      name,
       remotes,
-    ).catch(() => undefined);
+    );
+    if (remote === undefined) {
+      return;
+    }
     if (
-      remote !== undefined &&
       this.storage.remoteTagsOf(context.repository).get(remote)?.get(name) ===
-        tag.commit
+      tag.commit
     ) {
       this.notify(context)(
         'info',
@@ -1836,6 +1854,7 @@ export class FastforwardView {
           this.notify(context),
           context,
           name,
+          remote,
           this.quitting.signal,
         ),
       ),
