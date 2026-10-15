@@ -88,14 +88,17 @@ export async function watchRepository(
   let pending: PendingChanges = {};
   const changedFiles = new Set<string>();
   const renamedFiles = new Set<string>();
+  let workTreeLost = false;
   const notIgnored = new NotIgnored();
 
   const flush = async (withGitDir: boolean) => {
     timer = undefined;
     const files = [...changedFiles];
     const renamed = new Set(renamedFiles);
+    const lost = workTreeLost;
     changedFiles.clear();
     renamedFiles.clear();
+    workTreeLost = false;
     const refsAlone = withGitDir && pending.refsAlone === true;
     pending =
       withGitDir || pending.lastGitDir === undefined
@@ -105,6 +108,7 @@ export async function watchRepository(
     try {
       const workingTree =
         (withGitDir && !refsAlone) ||
+        lost ||
         (await notIgnored.any(ignored, root, files, renamed));
       if ((withGitDir || workingTree) && !disposed) {
         onChange({ refs: withGitDir, workingTree });
@@ -191,15 +195,21 @@ export async function watchRepository(
     }
   };
 
-  const changesDropped = () => {
-    changedGitDir();
-    worktreesChanged();
+  const workTreeDropped = () => {
+    workTreeLost = true;
+    const now = Date.now();
+    pending = {
+      ...pending,
+      firstWorkTree: pending.firstWorkTree ?? now,
+      lastWorkTree: now,
+    };
+    schedule();
   };
   const onEvent = (folder: string, file: string | null, event: string) => {
     if (file) {
       changed(path.join(folder, file), event);
     } else {
-      changesDropped();
+      workTreeDropped();
     }
   };
   const onGitDirEvent = (
@@ -207,25 +217,17 @@ export async function watchRepository(
     file: string | null,
     event: string,
   ) => {
-    if (!file || gitDirHolding(path.join(folder, file)) !== undefined) {
-      onEvent(folder, file, event);
+    if (!file) {
+      changedGitDir();
+      worktreesChanged();
+    } else if (gitDirHolding(path.join(folder, file)) !== undefined) {
+      changed(path.join(folder, file), event);
     }
   };
   let watchers: Watcher[];
   let rootTree: TreeWatcher | undefined;
   if (recursive) {
-    const realRoot = await realPath(root);
-    const missedByRootWatcher = await Promise.all(
-      gitDirs.map(
-        async (dir) =>
-          !isInside(root, dir) || !isInside(realRoot, await realPath(dir)),
-      ),
-    );
-    const folders = [
-      root,
-      ...gitDirs.filter((_dir, index) => missedByRootWatcher[index]),
-    ];
-    watchers = watchEach(folders, (folder) => {
+    watchers = watchEach([root, ...gitDirs], (folder) => {
       const watcher = fs.watch(folder, { recursive: true }, (event, file) =>
         (folder === root ? onEvent : onGitDirEvent)(folder, file, event),
       );
@@ -791,10 +793,6 @@ export function leftAloneInGitDir(
     (path.relative(root, nested.gitDir) === '.git' ||
       !watchedFolder(nested.inside, false, isGitDir(nested.gitDir)))
   );
-}
-
-function realPath(file: string): Promise<string> {
-  return fs.promises.realpath(file).catch(() => file);
 }
 
 function isFolderChangedForItsEntries(event: string, file: string): boolean {

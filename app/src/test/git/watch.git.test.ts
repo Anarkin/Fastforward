@@ -257,6 +257,60 @@ suite('Watching a repository', () => {
     }
   });
 
+  test('refreshes only the working tree when the watcher of the working tree drops changes, as Windows does while ignored folders churn, but everything when the watcher of the git folder does, watching recursively', async () => {
+    const nodeFs = process.getBuiltinModule('node:fs');
+    const { watch } = nodeFs;
+    type Listener = (event: string, file: string | null) => void;
+    const listeners = new Map<string, Listener>();
+    replaceBuiltin(
+      nodeFs,
+      'watch',
+      (folder: string, options: object, listener: Listener): fs.FSWatcher => {
+        listeners.set(path.resolve(folder), listener);
+        return watch(folder, options, listener);
+      },
+    );
+    const told: Changed[] = [];
+    let listed = 0;
+    try {
+      watcher = await watchRepository(repository.gitPath, repository.root, {
+        delay: 50,
+        maxDelay: 200,
+        recursive: true,
+        onChange: (change) => told.push(change),
+        onWorktreesChange: () => listed++,
+        onError: (error) => errors.push(error),
+      });
+    } finally {
+      replaceBuiltin(nodeFs, 'watch', watch);
+    }
+    await untilQuiet(
+      () => told.length + listed,
+      () => false,
+      'the watchers to settle',
+    );
+    told.length = 0;
+    listed = 0;
+    listeners.get(path.resolve(repository.root))?.('rename', null);
+    await untilQuiet(
+      () => told.length + listed,
+      () => told.length === 0,
+      'the dropped changes of the working tree',
+    );
+    assert.deepStrictEqual(told, [{ refs: false, workingTree: true }]);
+    assert.strictEqual(listed, 0);
+    told.length = 0;
+    listeners.get(path.resolve(repository.root, '.git'))?.('rename', null);
+    await untilQuiet(
+      () => told.length + listed,
+      () => told.length === 0 || listed === 0,
+      'the dropped changes of the git folder',
+    );
+    assert.deepStrictEqual(told, [{ refs: true, workingTree: true }]);
+    assert.strictEqual(listed, 1);
+    assert.deepStrictEqual(errors, []);
+  });
+
   test('tells when a folder it watches recursively stops being watched, as when a network share drops, apart from its other failures, watching recursively', async () => {
     const nodeFs = process.getBuiltinModule('node:fs');
     const { watch } = nodeFs;
