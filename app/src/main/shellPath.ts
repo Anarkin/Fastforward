@@ -8,28 +8,57 @@ import {
 import type { EventEmitter } from 'node:events';
 import { realTimer, type Timer } from '../autoFetch';
 
-const marker = '__FASTFORWARD_PATH__';
+const marker = '__FASTFORWARD_ENV__';
 
-export async function withLoginShellPath(
+const carried = [
+  'PATH',
+  'SSH_AUTH_SOCK',
+  'SSH_ASKPASS',
+  'GIT_SSH',
+  'GIT_SSH_COMMAND',
+  'GIT_SSH_VARIANT',
+  'GIT_ASKPASS',
+  'GIT_CONFIG_GLOBAL',
+  'XDG_CONFIG_HOME',
+  'GNUPGHOME',
+  'HTTP_PROXY',
+  'HTTPS_PROXY',
+  'ALL_PROXY',
+  'NO_PROXY',
+  'http_proxy',
+  'https_proxy',
+  'all_proxy',
+  'no_proxy',
+];
+
+export type ShellEnv = Readonly<Record<string, string>>;
+
+export async function withLoginShellEnv(
   platform: NodeJS.Platform,
   env: NodeJS.ProcessEnv,
-  readLoginShellPath: typeof loginShellPath = loginShellPath,
+  readLoginShellEnv: typeof loginShellEnv = loginShellEnv,
 ): Promise<void> {
-  if (platform !== 'win32') {
-    env.PATH = mergePaths(await readLoginShellPath(env), env.PATH, ':');
+  if (platform === 'win32') {
+    return;
   }
+  const { PATH, ...rest } = (await readLoginShellEnv(env)) ?? {};
+  Object.assign(env, rest);
+  env.PATH = mergePaths(PATH, env.PATH, ':');
 }
 
-export async function loginShellPath(
+export async function loginShellEnv(
   env: NodeJS.ProcessEnv = process.env,
   timer: Timer = realTimer,
-): Promise<string | undefined> {
+): Promise<ShellEnv | undefined> {
+  const printed = [marker, ...carried.map((name) => `${name}=$${name}`), marker]
+    .map((value) => `"${value}"`)
+    .join(' ');
   const shell = spawn(
     env.SHELL || '/bin/sh',
-    ['-ilc', `printf '%s' "${marker}" "$PATH" "${marker}"`],
+    ['-ilc', `printf '%s\\0' ${printed}`],
     loginShellOptions(env),
   );
-  return pathFromShell(shell, timer);
+  return envFromShell(shell, timer);
 }
 
 export function loginShellOptions(
@@ -38,13 +67,13 @@ export function loginShellOptions(
   return { env, stdio: ['ignore', 'pipe', 'ignore'], detached: true };
 }
 
-export function pathFromShell(
+export function envFromShell(
   shell: Pick<ChildProcess, 'stdout' | 'kill'> & EventEmitter,
   timer: Timer = realTimer,
-): Promise<string | undefined> {
+): Promise<ShellEnv | undefined> {
   return new Promise((resolve) => {
     let output = '';
-    const finish = (found: string | undefined) => {
+    const finish = (found: ShellEnv | undefined) => {
       cancel();
       shell.stdout?.destroy();
       resolve(found);
@@ -57,7 +86,7 @@ export function pathFromShell(
     shell.on('close', () => finish(undefined));
     shell.stdout?.setEncoding('utf8').on('data', (chunk: string) => {
       output += chunk;
-      const found = pathFromOutput(output);
+      const found = envFromOutput(output);
       if (found !== undefined) {
         finish(found);
       }
@@ -65,13 +94,23 @@ export function pathFromShell(
   });
 }
 
-export function pathFromOutput(output: string): string | undefined {
-  const start = output.indexOf(marker);
-  const end = output.indexOf(marker, start + marker.length);
+export function envFromOutput(output: string): ShellEnv | undefined {
+  const opening = `${marker}\0`;
+  const start = output.indexOf(opening);
+  const end = output.indexOf(`\0${marker}\0`, start + opening.length - 1);
   if (start === -1 || end === -1) {
     return undefined;
   }
-  return output.slice(start + marker.length, end) || undefined;
+  return Object.fromEntries(
+    output
+      .slice(start + opening.length, end)
+      .split('\0')
+      .map((entry) => {
+        const equals = entry.indexOf('=');
+        return [entry.slice(0, equals), entry.slice(equals + 1)];
+      })
+      .filter(([name, value]) => carried.includes(name) && value !== ''),
+  );
 }
 
 export function mergePaths(

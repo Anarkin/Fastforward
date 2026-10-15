@@ -61,7 +61,7 @@ import { reloadWhenGone } from './pageGone';
 import { profileFolder } from './profile';
 import { exitOnFailure, flushBeforeQuit, whileWindowOpen } from './quit';
 import { reloadOnRebuild } from './rebuild';
-import { withLoginShellPath } from './shellPath';
+import { withLoginShellEnv } from './shellPath';
 import { updateMode, Updates } from './updates';
 
 const dist = __dirname;
@@ -338,7 +338,7 @@ function distributionName(): string | undefined {
 }
 
 async function searchGit(): Promise<GitSearch> {
-  await withLoginShellPath(process.platform, process.env);
+  await withLoginShellEnv(process.platform, process.env);
   return findGit();
 }
 

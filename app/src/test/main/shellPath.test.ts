@@ -3,27 +3,39 @@ import { EventEmitter } from 'node:events';
 import { PassThrough } from 'node:stream';
 import { suite, test } from 'vitest';
 import {
+  envFromOutput,
+  envFromShell,
   loginShellOptions,
   mergePaths,
-  pathFromOutput,
-  pathFromShell,
-  withLoginShellPath,
+  withLoginShellEnv,
 } from '../../main/shellPath';
 import { fakeTimer } from '../fakeTimer';
 
-const pathOn = (platform: NodeJS.Platform) => {
-  const env: NodeJS.ProcessEnv = { PATH: '/usr/bin' };
-  return withLoginShellPath(platform, env, () =>
-    Promise.resolve('/opt/homebrew/bin'),
-  ).then(() => env.PATH);
+const envOn = async (platform: NodeJS.Platform) => {
+  const env: NodeJS.ProcessEnv = {
+    PATH: '/usr/bin',
+    SSH_AUTH_SOCK: '/launchd/Listeners',
+    EDITOR: 'nano',
+  };
+  await withLoginShellEnv(platform, env, () =>
+    Promise.resolve({
+      PATH: '/opt/homebrew/bin',
+      SSH_AUTH_SOCK: '/agent.sock',
+      HTTPS_PROXY: 'http://proxy:8080',
+    }),
+  );
+  return env;
 };
 
-suite('Login shell PATH', () => {
+const printed = (...entries: string[]) =>
+  ['__FASTFORWARD_ENV__', ...entries, '__FASTFORWARD_ENV__', ''].join('\0');
+
+suite('Login shell environment', () => {
   test('starts the shell in a session of its own, away from the terminal the app may have been started from, as an interactive shell in the background stops its whole process group with SIGTTIN, the app included, and one in the foreground takes the terminal over, keeping it once killed', () => {
     assert.strictEqual(loginShellOptions({}).detached, true);
   });
 
-  test('gives up after 5 seconds on a shell that never prints the PATH, killing it for good, as a profile waiting for input would keep the window from opening, and an interactive shell ignores SIGTERM', async () => {
+  test('gives up after 5 seconds on a shell that never prints its environment, killing it for good, as a profile waiting for input would keep the window from opening, and an interactive shell ignores SIGTERM', async () => {
     const signals: unknown[] = [];
     const stdout = new PassThrough();
     stdout.write('Update now? [y/N] ');
@@ -32,7 +44,7 @@ suite('Login shell PATH', () => {
       kill: (signal: unknown) => signals.push(signal) > 0,
     });
     const { timer, waiting, fire } = fakeTimer();
-    const found = pathFromShell(shell, timer);
+    const found = envFromShell(shell, timer);
     assert.deepStrictEqual(
       waiting().map((entry) => entry.ms),
       [5000],
@@ -43,33 +55,43 @@ suite('Login shell PATH', () => {
     assert.ok(stdout.destroyed);
   });
 
-  test('lets go of the output of a shell once it prints the PATH, which what its profile starts in the background can hold open long after the shell is gone', async () => {
+  test('lets go of the output of a shell once it prints its environment, which what its profile starts in the background can hold open long after the shell is gone', async () => {
     const stdout = new PassThrough();
     const shell = Object.assign(new EventEmitter(), {
       stdout,
       kill: () => true,
     });
-    const found = pathFromShell(shell, fakeTimer().timer);
-    stdout.write('__FASTFORWARD_PATH__/usr/bin__FASTFORWARD_PATH__');
-    assert.strictEqual(await found, '/usr/bin');
+    const found = envFromShell(shell, fakeTimer().timer);
+    stdout.write(printed('PATH=/usr/bin'));
+    assert.deepStrictEqual(await found, { PATH: '/usr/bin' });
     assert.ok(stdout.destroyed);
   });
 
-  test("reads the PATH between the markers, past what the shell's profile prints", () => {
-    assert.strictEqual(
-      pathFromOutput(
-        'Welcome!\n__FASTFORWARD_PATH__/opt/homebrew/bin:/usr/bin__FASTFORWARD_PATH__',
+  test("reads the variables between the markers, past what the shell's profile prints, leaving out those it left empty", () => {
+    assert.deepStrictEqual(
+      envFromOutput(
+        `Welcome!\n${printed('PATH=/opt/homebrew/bin:/usr/bin', 'SSH_AUTH_SOCK=/a=b.sock', 'HTTPS_PROXY=')}`,
       ),
-      '/opt/homebrew/bin:/usr/bin',
+      { PATH: '/opt/homebrew/bin:/usr/bin', SSH_AUTH_SOCK: '/a=b.sock' },
     );
-    assert.strictEqual(pathFromOutput(''), undefined);
-    assert.strictEqual(pathFromOutput('__FASTFORWARD_PATH__'), undefined);
+    assert.strictEqual(envFromOutput(''), undefined);
+    assert.strictEqual(envFromOutput(printed().slice(0, 20)), undefined);
   });
 
-  test('reads the login shell PATH on macOS and Linux only, putting its folders first, as an app started from the Dock or a launcher lacks what the profile sets', async () => {
-    assert.strictEqual(await pathOn('darwin'), '/opt/homebrew/bin:/usr/bin');
-    assert.strictEqual(await pathOn('linux'), '/opt/homebrew/bin:/usr/bin');
-    assert.strictEqual(await pathOn('win32'), '/usr/bin');
+  test("takes on macOS and Linux only what the profile sets for git, ssh and proxies over what the launcher gave, putting the profile's PATH folders first, as an app started from the Dock or a launcher lacks what the profile sets", async () => {
+    for (const platform of ['darwin', 'linux'] as const) {
+      assert.deepStrictEqual(await envOn(platform), {
+        PATH: '/opt/homebrew/bin:/usr/bin',
+        SSH_AUTH_SOCK: '/agent.sock',
+        HTTPS_PROXY: 'http://proxy:8080',
+        EDITOR: 'nano',
+      });
+    }
+    assert.deepStrictEqual(await envOn('win32'), {
+      PATH: '/usr/bin',
+      SSH_AUTH_SOCK: '/launchd/Listeners',
+      EDITOR: 'nano',
+    });
   });
 
   test('puts the shell folders first, without repeating any', () => {
