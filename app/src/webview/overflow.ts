@@ -18,7 +18,7 @@ export interface TextWidths {
 
 const graphemes = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 
-function columnsOf(
+export function columnsOf(
   text: string,
   widths: TextWidths | undefined,
 ): (index: number) => number {

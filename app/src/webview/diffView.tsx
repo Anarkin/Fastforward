@@ -77,6 +77,7 @@ import {
   markedRowStarts,
   rowBreaksAt,
   tabSize,
+  type ColumnsIn,
   wrapColumns,
   wrappedLines,
   type RowBreak,
@@ -84,6 +85,7 @@ import {
 import {
   areaColumns,
   codePadding,
+  columnsOf,
   hiddenChanges,
   inlineArea,
   lineWidth,
@@ -264,10 +266,12 @@ export function WrapMarks({
   text,
   columns,
   numbers,
+  columnsIn,
 }: {
   text: string;
   columns: number | undefined;
   numbers: number;
+  columnsIn?: ColumnsIn;
 }) {
   const marks = useRef<HTMLSpanElement>(null);
   const [breaks, setBreaks] = useState(noBreaks);
@@ -278,12 +282,12 @@ export function WrapMarks({
       return undefined;
     }
     const measure = () =>
-      setBreaks(rowBreaksAt(text, laidOutRowStarts(code), columns));
+      setBreaks(rowBreaksAt(text, laidOutRowStarts(code), columns, columnsIn));
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(code);
     return () => observer.disconnect();
-  }, [text, columns]);
+  }, [text, columns, columnsIn]);
   if (columns === undefined) {
     return null;
   }
@@ -1602,6 +1606,11 @@ export function DiffView({
   const [charWidth, setCharWidth] = useState(0);
   const [font, setFont] = useState('');
   const widths = useMemo(() => textWidths(charWidth, font), [charWidth, font]);
+  const columnsIn = useMemo<ColumnsIn | undefined>(
+    () =>
+      widths.char > 0 ? (row: string) => columnsOf(row, widths) : undefined,
+    [widths],
+  );
   const [padding, setPadding] = useState(unpadded);
   const [scale, setScale] = useState(1);
   const measureText = useCallback(
@@ -2050,6 +2059,7 @@ export function DiffView({
               text={row.line.text}
               columns={wrapping?.left}
               numbers={2}
+              columnsIn={columnsIn}
             />
             {hiddenMarks(
               keys[index].at(0),
@@ -2088,6 +2098,7 @@ export function DiffView({
                     text={cell.line.text}
                     columns={side === 0 ? wrapping?.left : wrapping?.right}
                     numbers={1}
+                    columnsIn={columnsIn}
                   />
                 )}
                 {cell &&
@@ -2114,7 +2125,12 @@ export function DiffView({
           <div className="diff-line text-line">
             <span className="number">{row.number}</span>
             {code(keys[index].at(0), row.text, undefined)}
-            <WrapMarks text={row.text} columns={wrapping?.left} numbers={1} />
+            <WrapMarks
+              text={row.text}
+              columns={wrapping?.left}
+              numbers={1}
+              columnsIn={columnsIn}
+            />
           </div>
         );
       default:

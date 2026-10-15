@@ -121,26 +121,40 @@ function firstOnRow(
   return low;
 }
 
+export type ColumnsIn = (row: string) => (index: number) => number;
+
+function countedColumns(row: string): (index: number) => number {
+  let at = 0;
+  let column = 0;
+  return (index) => {
+    while (at < index) {
+      column = row[at] === '\t' ? tabStop(column) : column + 1;
+      at += (row.codePointAt(at) ?? 0) > 0xffff ? 2 : 1;
+    }
+    return column;
+  };
+}
+
 export function rowBreaksAt(
   text: string,
   starts: readonly number[],
   columns: number,
+  columnsIn: ColumnsIn = countedColumns,
 ): RowBreak[] {
   return starts.slice(1).map((next, index) => {
-    let column = 0;
+    const row = text.slice(starts[index], next);
+    const columnAt = columnsIn(row);
     let blanks: Blank[] = [];
-    for (const character of text.slice(starts[index], next)) {
+    for (let at = 0; at < row.length; at++) {
+      const character = row[at];
       if (character === ' ' || character === '\t') {
-        const tab = character === '\t';
-        blanks.push({ column, tab });
-        column = tab ? tabStop(column) : column + 1;
+        blanks.push({ column: columnAt(at), tab: character === '\t' });
       } else {
         blanks = [];
-        column++;
       }
     }
     return {
-      end: Math.min(column, columns + 1),
+      end: Math.min(columnAt(row.length), columns + 1),
       blanks: blanks.filter((blank) => blank.column <= columns),
     };
   });

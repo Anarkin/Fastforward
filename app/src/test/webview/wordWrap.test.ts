@@ -12,6 +12,16 @@ function space(column: number) {
   return { column, tab: false };
 }
 
+function drawn(row: string): (index: number) => number {
+  return (index) => {
+    let columns = 0;
+    for (let at = 0; at < index; at++) {
+      columns += row.charCodeAt(at) >= 0x3000 ? 2 : 1;
+    }
+    return columns;
+  };
+}
+
 suite('Word wrap', () => {
   test('estimates a line that fits on one row as one row', () => {
     assert.strictEqual(wrappedLines('', 10), 1);
@@ -58,6 +68,12 @@ suite('Word wrap', () => {
     ]);
     assert.deepStrictEqual(rowBreaksAt('        one', [0, 8], 4), [
       { end: 5, blanks: [space(0), space(1), space(2), space(3), space(4)] },
+    ]);
+  });
+
+  test('ends a row and places the blanks hanging at its end by the width its characters are drawn, as a Chinese one takes two columns', () => {
+    assert.deepStrictEqual(rowBreaksAt('中文中文 字', [0, 5], 10, drawn), [
+      { end: 9, blanks: [space(8)] },
     ]);
   });
 
