@@ -307,6 +307,31 @@ suite('View showing diffs', () => {
     });
   });
 
+  test('shows the changes to whitespace of a commit once asked, though asked while its files were still being read', async () => {
+    await withView(log, [spaced.root], async (view) => {
+      const held = gate();
+      let reading = false;
+      stubMethod(view.view, 'commitFiles', async (original, ...args) => {
+        reading = true;
+        await held.opened;
+        return original(...args);
+      });
+      const selected = view.connection.receive({
+        type: 'selectCommit',
+        root: spaced.root,
+        hash: indent,
+      });
+      await waitFor(() => reading, 'the files of the commit to be read');
+      await view.connection.receive({
+        type: 'setIgnoreWhitespace',
+        ignore: false,
+      });
+      held.open();
+      await selected;
+      assert.match(view.page.last('diff')?.patch ?? '', /^-one\n\+ {2}one$/m);
+    });
+  });
+
   test('names the files whose changes ignoring whitespace leaves out of a diff, showing one entire as its new lines unchanged', async () => {
     await withView(log, [spaced.root], async (view) => {
       const diff = () => view.page.last('diff');

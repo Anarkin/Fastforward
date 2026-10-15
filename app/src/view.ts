@@ -221,6 +221,7 @@ interface Refresh {
 interface EarlyPatch {
   readonly patch: Promise<ReadPatch | undefined>;
   readonly loading: AbortController;
+  readonly ignoreWhitespace: boolean;
 }
 
 interface Fetchable extends RepositoryAt {
@@ -2880,12 +2881,14 @@ export class FastforwardView {
       return undefined;
     }
     const loading = new AbortController();
+    const { ignoreWhitespace } = this.storage;
     const patch = this.budgetedPatch(
       context,
       hash,
       AbortSignal.any([signal, loading.signal]),
+      { ignoreWhitespace },
     ).catch(() => undefined);
-    return { patch, loading };
+    return { patch, loading, ignoreWhitespace };
   }
 
   private budgetedPatch(
@@ -3154,7 +3157,10 @@ export class FastforwardView {
     const loading = new AbortController();
     tab.loadingDiff = loading;
     if (early) {
-      if (file === undefined) {
+      if (
+        file === undefined &&
+        early.ignoreWhitespace === this.storage.ignoreWhitespace
+      ) {
         loading.signal.addEventListener('abort', () => early.loading.abort(), {
           once: true,
         });
@@ -3212,7 +3218,9 @@ export class FastforwardView {
           context,
           hash,
           [...changes.values()],
-          early?.patch,
+          early?.ignoreWhitespace === this.storage.ignoreWhitespace
+            ? early.patch
+            : undefined,
           loading.signal,
         ));
       } else if (selectedLeftOut.length > 0) {
