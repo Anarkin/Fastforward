@@ -27,6 +27,7 @@ import { columnFocusOf } from './activeColumn';
 import { Column } from './column';
 import { filterWords, matchesFilter } from './fileFilter';
 import { SearchButton, SearchRow } from './search';
+import { useSettled } from './settled';
 import { AllFilesIcon, CollapseAllIcon, ExpandAllIcon } from './icons';
 import { SkeletonRows, useSkeleton } from './skeleton';
 import { keymap } from '../shared/keymap';
@@ -154,6 +155,8 @@ function toggled(folders: ReadonlySet<string>, folder: string): Set<string> {
 
 const noneClosed: ReadonlySet<string> = new Set();
 
+const settlingPaths = 20_000;
+
 export function FileFilterField({
   query,
   input,
@@ -258,7 +261,11 @@ export function Files({
 }) {
   const skeleton = useSkeleton(loading);
   const allPaths = showAll ? tree : undefined;
-  const words = useMemo(() => filterWords(filter ?? ''), [filter]);
+  const shownFilter = useSettled(
+    filter ?? '',
+    (allPaths?.length ?? 0) > settlingPaths,
+  );
+  const words = useMemo(() => filterWords(shownFilter), [shownFilter]);
   const filtering = words.length > 0;
   const sides = useMemo(
     () =>
