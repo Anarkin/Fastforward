@@ -457,9 +457,10 @@ function CommitResultsSection({
   );
 }
 
-function popupBottomGap(popup: HTMLElement): number {
+function popupBottom(popup: HTMLElement): number {
   return (
-    parseFloat(getComputedStyle(popup).getPropertyValue('--gutter-width')) || 0
+    popup.closest('.column')?.getBoundingClientRect().bottom ??
+    window.innerHeight
   );
 }
 
@@ -472,9 +473,7 @@ function usePopupHeight(
       const element = popup.current;
       if (element) {
         const top = element.getBoundingClientRect().top;
-        setHeight(
-          Math.max(200, window.innerHeight - top - popupBottomGap(element)),
-        );
+        setHeight(Math.max(200, popupBottom(element) - top));
       }
     };
     fit();

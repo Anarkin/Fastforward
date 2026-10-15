@@ -402,6 +402,24 @@ suite('App', () => {
     await popup.waitFor({ state: 'detached' });
   });
 
+  test('ends the search popup where its column ends, showing none of its list in the gap below', async () => {
+    const commits = page.locator('.columns > .column').first();
+    const popup = page.locator('.locations-popup');
+    await page.keyboard.press('ControlOrMeta+F');
+    await waitForFocus(page.locator('.locations-search'), 'the search field');
+    const [shown, column] = await Promise.all([
+      popup.boundingBox(),
+      commits.boundingBox(),
+    ]);
+    assert.ok(shown && column);
+    assert.ok(
+      Math.abs(shown.y + shown.height - (column.y + column.height)) < 1,
+      `the popup ends at ${shown.y + shown.height}, the column at ${column.y + column.height}`,
+    );
+    await page.keyboard.press('Escape');
+    await popup.waitFor({ state: 'detached' });
+  });
+
   test('gives the keyboard back to the commit list once the search popup closes on Esc or a jump, by key or click', async () => {
     const list = page.locator('.virtual-rows.list');
     const field = page.locator('.locations-search');
