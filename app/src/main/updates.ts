@@ -74,7 +74,10 @@ function canWrite(folder: string): boolean {
   }
 }
 
-function runsAsAppImage(executable: string, env: NodeJS.ProcessEnv): boolean {
+export function runsAsAppImage(
+  executable: string,
+  env: NodeJS.ProcessEnv,
+): boolean {
   const { APPIMAGE, APPDIR } = env;
   if (APPIMAGE === undefined || APPDIR === undefined) {
     return false;

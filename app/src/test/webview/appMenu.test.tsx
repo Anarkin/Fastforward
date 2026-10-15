@@ -11,6 +11,7 @@ function menuOf(
   update: UpdateStatus,
   picked: string[],
   autoSortTabs = true,
+  installsCommand = false,
 ): { items: readonly ContextMenuItem[]; marked: boolean } {
   const menu = renderedBy(AppMenu, {
     update,
@@ -23,6 +24,7 @@ function menuOf(
     onCheckForUpdates: () => picked.push('check'),
     onInstallUpdate: () => picked.push('install'),
     onShowAbout: () => picked.push('about'),
+    onInstallCommand: installsCommand ? () => picked.push('ff') : undefined,
   });
   assert.ok(
     isValidElement<{ items: readonly ContextMenuItem[]; marked: boolean }>(
@@ -62,6 +64,20 @@ suite('App menu', () => {
       'check',
       'about',
     ]);
+  });
+
+  test('offers installing ff after the shortcuts where the app installs it itself, on macOS and from an AppImage', () => {
+    const picked: string[] = [];
+    const items = menuOf({ kind: 'idle' }, picked, true, true).items.flatMap(
+      (item) => ('separator' in item ? [] : [item]),
+    );
+    const labels = items.map((item) => item.label);
+    assert.strictEqual(
+      labels[labels.indexOf('Keyboard Shortcuts') + 1],
+      'Install the ff Command',
+    );
+    items.find((item) => item.label === 'Install the ff Command')?.onClick?.();
+    assert.deepStrictEqual(picked, ['ff']);
   });
 
   test('leaves out sorting the tabs once while they are sorted automatically', () => {

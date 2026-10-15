@@ -27,6 +27,7 @@ export const worktreesKey = 'activeWorktrees';
 export const lastFetchesKey = 'lastFetches';
 export const remoteTagsKey = 'remoteTags';
 const tabsGroupedKey = 'tabsGrouped';
+const commandOfferedKey = 'terminalCommandOffered';
 
 export interface Store {
   get(key: string): unknown;
@@ -200,6 +201,14 @@ export class Storage {
 
   async setTabsGrouped(): Promise<void> {
     await this.state.update(tabsGroupedKey, true);
+  }
+
+  get commandOffered(): boolean {
+    return this.state.get(commandOfferedKey) === true;
+  }
+
+  async setCommandOffered(): Promise<void> {
+    await this.state.update(commandOfferedKey, true);
   }
 
   get recent(): string[] {

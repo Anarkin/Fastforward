@@ -38,6 +38,7 @@ export function AppMenu({
   onCheckForUpdates,
   onInstallUpdate,
   onShowAbout,
+  onInstallCommand,
 }: {
   update: UpdateStatus;
   autoSortTabs: boolean;
@@ -49,6 +50,7 @@ export function AppMenu({
   onCheckForUpdates: () => void;
   onInstallUpdate: () => void;
   onShowAbout: () => void;
+  onInstallCommand?: () => void;
 }) {
   const installs = update.kind === 'ready' || update.kind === 'available';
   const trigger = useRef<HTMLButtonElement>(null);
@@ -76,6 +78,9 @@ export function AppMenu({
         { label: strings.tabs.openUserSettings, onClick: onOpenSettings },
         { separator: true },
         { label: strings.shortcuts.title, onClick: onShowShortcuts },
+        ...(onInstallCommand
+          ? [{ label: strings.tabs.installCommand, onClick: onInstallCommand }]
+          : []),
         { separator: true },
         {
           label: updateLabel(update),

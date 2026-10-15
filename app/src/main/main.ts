@@ -17,6 +17,7 @@ import {
 } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import { findGit, minimumGitVersion, type GitSearch } from '../git/locate';
+import { foldersHandedOff, foldersOf, handOff } from './commandLine';
 import { prettyName, systemOf } from './system';
 import { stopRunningGit, writesEnded } from '../git/run';
 import { errorLine, fileLog, type Log } from '../log';
@@ -62,7 +63,15 @@ import { profileFolder } from './profile';
 import { exitOnFailure, flushBeforeQuit, whileWindowOpen } from './quit';
 import { reloadOnRebuild } from './rebuild';
 import { withLoginShellEnv } from './shellPath';
-import { updateMode, Updates } from './updates';
+import {
+  commandFiles,
+  commandPlaceOf,
+  commandState,
+  installCommand,
+  linkAsAdmin,
+  refreshCommand,
+} from './terminalCommand';
+import { runsAsAppImage, updateMode, Updates } from './updates';
 
 const dist = __dirname;
 const development = !app.isPackaged;
@@ -86,15 +95,17 @@ if (userDataDir) {
   app.setPath('logs', path.join(userDataDir, 'logs'));
 }
 
-if (app.requestSingleInstanceLock()) {
-  void exitOnFailure(app, start(), (error) =>
+const askedFolders = foldersOf(process.argv, process.defaultApp, process.cwd());
+
+if (app.requestSingleInstanceLock(handOff(askedFolders))) {
+  void exitOnFailure(app, start(askedFolders), (error) =>
     dialog.showErrorBox(brand, strings.app.couldNotStart(errorLine(error))),
   );
 } else {
   app.quit();
 }
 
-async function start(): Promise<void> {
+async function start(asked: readonly string[]): Promise<void> {
   setKeyPlatform(process.platform);
   const gitSearch = searchGit();
   await app.whenReady();
@@ -196,7 +207,19 @@ async function start(): Promise<void> {
     'closed',
     () => void connection.then((current) => current?.dispose()),
   );
-  app.on('second-instance', () => showAgain(window));
+  app.on(
+    'second-instance',
+    (_event, _argv, _workingDirectory, additionalData) => {
+      showAgain(window);
+      if (process.platform === 'darwin') {
+        app.focus({ steal: true });
+      }
+      const folders = foldersHandedOff(additionalData);
+      if (folders.length > 0) {
+        void views.promise.then((view) => view.openFolders(folders));
+      }
+    },
+  );
   app.on('window-all-closed', () => app.quit());
   flushBeforeQuit(
     app,
@@ -218,6 +241,15 @@ async function start(): Promise<void> {
   }
   log.info(strings.log.usingGit(git.version, git.path));
   const storage = new Storage(userSettings, state);
+  const commandPlace = commandPlaceOf({
+    platform: process.platform,
+    packaged: app.isPackaged,
+    resourcesPath: process.resourcesPath,
+    home: os.homedir(),
+    appImage: runsAsAppImage(process.execPath, process.env)
+      ? process.env.APPIMAGE
+      : undefined,
+  });
   const updates = new Updates(
     updateMode(development, process.platform, process.execPath),
     app.getVersion(),
@@ -280,7 +312,24 @@ async function start(): Promise<void> {
     copyText: (text) => {
       void clipboard.writeText(text);
     },
+    canInstallCommand: () => commandPlace !== undefined,
+    commandState: () =>
+      commandPlace === undefined
+        ? Promise.resolve('taken')
+        : commandState(commandPlace, commandFiles),
+    installCommand: () =>
+      commandPlace === undefined
+        ? Promise.resolve({ kind: 'cancelled' })
+        : installCommand(
+            commandPlace,
+            commandFiles,
+            linkAsAdmin(),
+            (process.env.PATH ?? '').split(path.delimiter),
+          ),
   });
+  if (asked.length > 0) {
+    void view.openFolders(asked);
+  }
   views.resolve(view);
   app.on('before-quit', () => view.quit());
   const applySettings = () => {
@@ -327,6 +376,19 @@ async function start(): Promise<void> {
     );
   }
   updates.startAfter(loading);
+  if (commandPlace !== undefined) {
+    void refreshCommand(commandPlace, commandFiles).then(
+      (pointed) => {
+        if (pointed) {
+          log.info(strings.log.pointedCommand(commandPlace.path));
+        }
+      },
+      (error: unknown) => {
+        log.error(strings.log.pointingCommandFailed);
+        log.error(error);
+      },
+    );
+  }
 }
 
 function distributionName(): string | undefined {

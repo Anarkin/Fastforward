@@ -1,0 +1,31 @@
+#!/bin/sh
+fastforward_appimage=
+[ $# -eq 0 ] && set -- "$PWD"
+for folder do
+  case $folder in
+    /* | [A-Za-z]:*) ;;
+    *) folder=$PWD/$folder ;;
+  esac
+  set -- "$@" "$folder"
+  shift
+done
+script=$0
+while [ -L "$script" ]; do
+  link=$(readlink "$script")
+  case $link in
+    /*) script=$link ;;
+    *) script=$(dirname "$script")/$link ;;
+  esac
+done
+here=$(cd "$(dirname "$script")" && pwd -P)
+case $(uname) in
+  Darwin)
+    exec open -n -a "$(cd "$here/../../.." && pwd -P)" --args -- "$@"
+    ;;
+  MINGW* | MSYS*)
+    "$here/../Fastforward.exe" -- "$@" </dev/null >/dev/null 2>&1 &
+    ;;
+  *)
+    nohup "${fastforward_appimage:-/opt/Fastforward/fastforward}" -- "$@" </dev/null >/dev/null 2>&1 &
+    ;;
+esac

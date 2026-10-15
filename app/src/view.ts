@@ -76,6 +76,7 @@ import {
 import { step, visit } from './history/navigation';
 import { ImageReads } from './imageReads';
 import type { Log } from './log';
+import type { CommandInstall, CommandState } from './main/terminalCommand';
 import {
   canPull,
   checkout,
@@ -194,6 +195,9 @@ export interface Host {
   updateStatus(): UpdateStatus;
   about(): AboutInfo;
   copyText(text: string): void;
+  canInstallCommand(): boolean;
+  commandState(): Promise<CommandState>;
+  installCommand(): Promise<CommandInstall>;
 }
 
 export interface Connection {
@@ -252,6 +256,39 @@ function toAll(contexts: readonly Context[]): Context | undefined {
   };
 }
 
+function commandNotice(
+  installed: CommandInstall,
+): Omit<ToWebviewOf<'notice'>, 'type'> | undefined {
+  switch (installed.kind) {
+    case 'installed':
+      return {
+        level: 'info',
+        message: installed.onPath
+          ? strings.messages.commandInstalled(installed.path)
+          : strings.messages.commandOffPath(
+              installed.path,
+              path.posix.dirname(installed.path),
+            ),
+      };
+    case 'alreadyInstalled':
+      return {
+        level: 'info',
+        message: strings.messages.commandAlreadyInstalled(installed.path),
+      };
+    case 'taken':
+      return {
+        level: 'error',
+        message: strings.messages.commandTaken(installed.path),
+      };
+    case 'notMoved':
+      return { level: 'error', message: strings.messages.commandNotMoved };
+    case 'cancelled':
+      return undefined;
+    default:
+      return installed satisfies never;
+  }
+}
+
 class OpeningFailed {
   constructor(
     readonly root: string,
@@ -272,6 +309,7 @@ export class FastforwardView {
   private readonly commitSearches = new Map<string, AbortController>();
   private readonly hashLookups = new Map<string, number>();
   private page: Session | undefined;
+  private askedFolders: readonly string[] = [];
   private unsentNotices: readonly ToWebviewOf<'notice'>[] = [];
   private readonly inFlight = new InFlight();
   private readonly imageReads = new ImageReads();
@@ -361,6 +399,81 @@ export class FastforwardView {
 
   idle(): Promise<void> {
     return this.inFlight.settled();
+  }
+
+  openFolders(folders: readonly string[]): Promise<void> {
+    this.log.info(strings.log.openingAsked(folders.join(', ')));
+    this.askedFolders = [...this.askedFolders, ...folders];
+    const { page } = this;
+    if (page === undefined || page.disposed) {
+      return Promise.resolve();
+    }
+    return this.run(strings.log.openingAskedFailed, page, () =>
+      this.openAskedFolders(page),
+    );
+  }
+
+  private takeAskedFolders(): readonly string[] {
+    const asked = this.askedFolders;
+    this.askedFolders = [];
+    return asked;
+  }
+
+  private async openAskedFolders(session: Session): Promise<void> {
+    const asked = this.takeAskedFolders();
+    if (asked.length > 0) {
+      await this.openRepositories(session, asked);
+    }
+  }
+
+  private async addAskedRepositories(
+    session: Session,
+  ): Promise<string | undefined> {
+    const asked = this.takeAskedFolders();
+    return asked.length > 0 ? this.addRepositories(session, asked) : undefined;
+  }
+
+  private async offerCommand(session: Session): Promise<void> {
+    let state: CommandState;
+    try {
+      state = await this.host.commandState();
+    } catch (error) {
+      this.log.error(strings.log.checkingCommandFailed);
+      this.log.error(error instanceof Error ? error : String(error));
+      return;
+    }
+    if (state !== 'missing' || this.storage.commandOffered) {
+      return;
+    }
+    this.save(this.storage.setCommandOffered());
+    this.postToPage(session, {
+      type: 'notice',
+      level: 'info',
+      message: strings.messages.offerCommand,
+    });
+  }
+
+  private async installCommand(session: Session): Promise<void> {
+    if (!this.host.canInstallCommand()) {
+      return;
+    }
+    let installed: CommandInstall;
+    try {
+      installed = await this.host.installCommand();
+    } catch (error) {
+      this.log.error(strings.log.installingCommandFailed);
+      this.log.error(error instanceof Error ? error : String(error));
+      this.postToPage(session, {
+        type: 'notice',
+        level: 'error',
+        message: strings.messages.couldNotInstallCommand(gitErrorText(error)),
+      });
+      return;
+    }
+    const notice = commandNotice(installed);
+    if (notice) {
+      this.postToPage(session, { type: 'notice', ...notice });
+    }
   }
 
   image(url: URL): Promise<Response> {
@@ -499,6 +612,13 @@ export class FastforwardView {
         session.post(storage.layout);
         session.post({ type: 'update', status: this.host.updateStatus() });
         session.post({ type: 'about', ...this.host.about() });
+        session.post({
+          type: 'terminalCommand',
+          installable: this.host.canInstallCommand(),
+        });
+        if (this.host.canInstallCommand() && !storage.commandOffered) {
+          void this.inFlight.track(this.offerCommand(session));
+        }
         for (const problem of this.host.settingsProblems()) {
           session.post({
             type: 'notice',
@@ -507,13 +627,20 @@ export class FastforwardView {
           });
         }
         await this.groupTabs();
-        await this.openTab(session, storage.activeTab);
+        await this.openTab(
+          session,
+          (await this.addAskedRepositories(session)) ?? storage.activeTab,
+        );
+        await this.openAskedFolders(session);
         return;
       case 'openSettings':
         await this.host.openSettings();
         return;
       case 'openDefaultSettings':
         await this.host.openDefaultSettings();
+        return;
+      case 'installTerminalCommand':
+        await this.installCommand(session);
         return;
       case 'checkForUpdates':
         this.host.checkForUpdates();
@@ -924,6 +1051,20 @@ export class FastforwardView {
     folders: readonly string[],
     reopened = false,
   ): Promise<void> {
+    const page = () => (session.disposed ? (this.page ?? session) : session);
+    const last = await this.addRepositories(session, folders, reopened);
+    if (last) {
+      await this.openTab(page(), last);
+    } else {
+      this.postTabs(page());
+    }
+  }
+
+  private async addRepositories(
+    session: Session,
+    folders: readonly string[],
+    reopened = false,
+  ): Promise<string | undefined> {
     const { storage } = this;
     const page = () => (session.disposed ? (this.page ?? session) : session);
     const repositories: string[] = [];
@@ -984,12 +1125,7 @@ export class FastforwardView {
         storage.activeTab,
       ),
     );
-    const last = repositories.at(-1);
-    if (last) {
-      await this.openTab(page(), last);
-    } else {
-      this.postTabs(page());
-    }
+    return repositories.at(-1);
   }
 
   private ordered(tabs: string[]): string[] {

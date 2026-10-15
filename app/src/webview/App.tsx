@@ -234,6 +234,7 @@ export function App({ name, post: postToHost, listen }: Props) {
   const [aboutShown, setAboutShown] = useState(false);
   const closeAbout = useCallback(() => setAboutShown(false), []);
   const [about, setAbout] = useState<AboutInfo>();
+  const [installsCommand, setInstallsCommand] = useState(false);
   useBinding(keymap.shortcuts, () => setShortcutsShown((shown) => !shown));
   const saveColumnWidths = useCallback(
     (widths: readonly number[]) => post({ type: 'setColumnWidths', widths }),
@@ -366,6 +367,9 @@ export function App({ name, post: postToHost, listen }: Props) {
           break;
         case 'about':
           setAbout(message);
+          break;
+        case 'terminalCommand':
+          setInstallsCommand(message.installable);
           break;
         default:
           dispatch(message);
@@ -809,6 +813,11 @@ export function App({ name, post: postToHost, listen }: Props) {
                             post({ type: 'installUpdate' })
                           }
                           onShowAbout={() => setAboutShown(true)}
+                          onInstallCommand={
+                            installsCommand
+                              ? () => post({ type: 'installTerminalCommand' })
+                              : undefined
+                          }
                         />
                       }
                     />

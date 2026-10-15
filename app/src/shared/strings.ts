@@ -156,6 +156,7 @@ export const strings = {
     checkFailed: 'Check for Updates (failed)',
     restartToUpdate: (version: string) => `Restart to Update to ${version}`,
     download: (version: string) => `Download ${version}`,
+    installCommand: 'Install the ff Command',
   },
   actions: {
     openRepository: 'Open a repository',
@@ -448,6 +449,19 @@ export const strings = {
       `Couldn't download ${brand} ${version}. ${reason}`,
     couldNotInstallUpdate: (version: string, reason: string) =>
       `Couldn't install ${brand} ${version}. ${reason}`,
+    offerCommand:
+      'Type ff in a terminal to open the repository of the folder you are in. Install it from the menu at the top right.',
+    commandInstalled: (file: string) =>
+      `Installed ff as ${file}. Type ff in a terminal to open the repository of the folder you are in.`,
+    commandOffPath: (file: string, folder: string) =>
+      `Installed ff as ${file}, but ${folder} is not on your PATH, so add it there to type ff in a terminal`,
+    commandAlreadyInstalled: (file: string) =>
+      `ff is already installed as ${file}`,
+    commandTaken: (file: string) =>
+      `${file} is not from ${brand}, so ff was not installed there`,
+    commandNotMoved: `Move ${brand} into the Applications folder and start it from there to install ff, as macOS runs it from a temporary copy now`,
+    couldNotInstallCommand: (reason: string) =>
+      `Couldn't install ff. ${reason}`,
     cannotUpdate: `Only a copy of ${brand} set up by its installer can update itself`,
     detachedUpstream:
       'The checked-out commit is on no branch, so it has no upstream',
@@ -543,6 +557,14 @@ export const strings = {
     refreshingFailed: 'Refreshing the tab failed',
     readingImageFailed: (path: string) => `Reading the image ${path} failed`,
     openingFailed: (folder: string) => `Opening ${folder} failed`,
+    openingAsked: (folders: string) =>
+      `Asked from the command line to open ${folders}`,
+    checkingCommandFailed: 'Checking the ff command failed',
+    installingCommandFailed: 'Installing the ff command failed',
+    pointedCommand: (file: string) => `Pointed ${file} at this AppImage`,
+    pointingCommandFailed: 'Pointing the ff command at this AppImage failed',
+    openingAskedFailed:
+      'Opening the folders asked for from the command line failed',
     tabOpen: (root: string) => `Tab ${root} is open`,
     tabShownAsLeft: (root: string) => `Tab ${root} is shown as it was left`,
     groupingFailed: 'Grouping the tabs by repository failed',

@@ -88,6 +88,12 @@
       "category": "public.app-category.developer-tools",
       "identity": "-",
       "hardenedRuntime": false,
+      "extraResources": [
+        {
+          "from": "build/bin/ff",
+          "to": "bin/ff"
+        }
+      ],
       "target": [
         {
           "target": "dmg",
@@ -111,12 +117,23 @@
       "target": [
         "nsis"
       ],
-      "icon": "build/icon.ico"
+      "icon": "build/icon.ico",
+      "extraFiles": [
+        {
+          "from": "build/bin",
+          "to": "bin",
+          "filter": [
+            "ff",
+            "ff.cmd"
+          ]
+        }
+      ]
     },
     "nsis": {
       "artifactName": "fastforward-${version}-windows-x64-setup.${ext}",
       "oneClick": true,
-      "perMachine": false
+      "perMachine": false,
+      "include": "build/installer.nsh"
     },
     "linux": {
       "artifactName": "fastforward-${version}-linux-x64.${ext}",
@@ -124,7 +141,18 @@
         "AppImage",
         "deb"
       ],
-      "category": "Development"
+      "category": "Development",
+      "extraResources": [
+        {
+          "from": "build/bin/ff",
+          "to": "bin/ff"
+        }
+      ]
+    },
+    "deb": {
+      "fpm": [
+        "build/bin/ff=/usr/bin/ff"
+      ]
     },
     "publish": {
       "provider": "github",

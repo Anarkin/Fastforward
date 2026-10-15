@@ -1458,6 +1458,62 @@ suite('App with several tabs', () => {
   });
 });
 
+suite('App started from a terminal', () => {
+  test('opens the repository of the folder it is started with, then that of a folder another start hands it, showing each rather than the tab left active', async () => {
+    const folder = tempFolder('command-line');
+    const profile = path.join(folder, 'profile');
+    const roots: string[] = [];
+    for (const name of ['first', 'second', 'third']) {
+      const repository = await tempRepository(path.join(folder, name));
+      await repository.commit(name);
+      roots.push(repository.root);
+    }
+    const [first, second, third] = roots;
+    const inner = path.join(second, 'inner');
+    fs.mkdirSync(inner);
+    fs.mkdirSync(profile, { recursive: true });
+    fs.writeFileSync(
+      path.join(profile, 'state.json'),
+      JSON.stringify({ tabs: [first], activeTab: first }),
+    );
+    fs.writeFileSync(
+      path.join(profile, 'settings.user.json'),
+      JSON.stringify({ autoFetch: false }),
+    );
+    const args = (asked: string) => [
+      appFolder,
+      `--user-data-dir=${profile}`,
+      '--',
+      asked,
+    ];
+    const app = await _electron.launch({ args: args(inner), cwd: appFolder });
+    try {
+      const page = await app.firstWindow();
+      const names = () =>
+        page.locator('.tabs .tab .tab-name').allTextContents();
+      await page.locator('.commit', { hasText: 'second' }).waitFor();
+      assert.deepStrictEqual(await names(), ['first', 'second']);
+      const electron = await app.evaluate(() => process.execPath);
+      const handedOff = spawnSync(electron, args(third), {
+        cwd: appFolder,
+        timeout: 30_000,
+      });
+      assert.strictEqual(handedOff.status, 0, String(handedOff.stderr));
+      await page.locator('.commit', { hasText: 'third' }).waitFor();
+      assert.deepStrictEqual(await names(), ['first', 'second', 'third']);
+      assert.match(
+        (await page
+          .locator('.tabs .tab', { hasText: 'third' })
+          .getAttribute('class')) ?? '',
+        /\bactive\b/,
+      );
+    } finally {
+      await closeOrKill(app);
+      removeFolder(folder);
+    }
+  });
+});
+
 suite('App quitting', () => {
   test('stops the git it still runs, which would outlive it', async () => {
     const folder = tempFolder('quitting');

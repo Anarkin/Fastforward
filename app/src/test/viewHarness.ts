@@ -13,6 +13,7 @@ import {
 } from '../shared/protocol';
 import type { Timer } from '../autoFetch';
 import type { Log } from '../log';
+import type { CommandInstall, CommandState } from '../main/terminalCommand';
 import { activeTabKey, Storage, tabsKey } from '../storage';
 import {
   FastforwardView,
@@ -64,7 +65,29 @@ export class FakeHost implements Host {
   folders: readonly string[] = [];
   problems: readonly string[] = [];
   update: UpdateStatus = { kind: 'idle' };
+  commandPlace = false;
+  command: CommandState = 'missing';
+  installs: CommandInstall | Error = {
+    kind: 'installed',
+    path: '/usr/local/bin/ff',
+    onPath: true,
+  };
   readonly opened: string[] = [];
+
+  canInstallCommand(): boolean {
+    return this.commandPlace;
+  }
+
+  commandState(): Promise<CommandState> {
+    return Promise.resolve(this.command);
+  }
+
+  installCommand(): Promise<CommandInstall> {
+    this.opened.push('install command');
+    return this.installs instanceof Error
+      ? Promise.reject(this.installs)
+      : Promise.resolve(this.installs);
+  }
 
   chooseFolders(): Promise<readonly string[]> {
     return Promise.resolve(this.folders);

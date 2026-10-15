@@ -270,6 +270,7 @@ export type ToHost =
   | { readonly type: 'setAutoSortTabs'; readonly on: boolean }
   | { readonly type: 'checkForUpdates' }
   | { readonly type: 'installUpdate' }
+  | { readonly type: 'installTerminalCommand' }
   | {
       readonly type: 'log';
       readonly level: 'info' | 'error';
@@ -367,6 +368,7 @@ export type ToWebview =
   | { readonly type: 'pushingBranch'; readonly names: readonly string[] }
   | { readonly type: 'update'; readonly status: UpdateStatus }
   | ({ readonly type: 'about' } & AboutInfo)
+  | { readonly type: 'terminalCommand'; readonly installable: boolean }
   | ({ readonly type: 'lastFetch' } & LastFetch)
   | { readonly type: 'applyingSolo'; readonly running: boolean }
   | {
