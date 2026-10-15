@@ -771,6 +771,48 @@ suite('View showing diffs', () => {
     );
   });
 
+  test('leaves out a selected untracked file too large to count past the first 50 too, rather than sending its whole patch, while diffing a small one there', async () => {
+    const crowded = await tempRepository(path.join(folder, 'crowded'));
+    await crowded.commit('first', { 'small.txt': 'small\n' });
+    for (let index = 0; index < 50; index++) {
+      fs.writeFileSync(
+        path.join(crowded.root, `a${String(index).padStart(2, '0')}.txt`),
+        `${index}\n`,
+      );
+    }
+    fs.writeFileSync(path.join(crowded.root, 'zz-big.log'), longLines('big'));
+    fs.writeFileSync(path.join(crowded.root, 'zz-small.txt'), 'little\n');
+    await withView(
+      log,
+      [crowded.root],
+      async (view) => {
+        await view.connection.receive({
+          type: 'selectCommit',
+          root: crowded.root,
+          hash: workingTreeHash,
+        });
+        const select = async (file: string) => {
+          await view.connection.receive({
+            type: 'selectFile',
+            root: crowded.root,
+            hash: workingTreeHash,
+            path: file,
+          });
+          return view.page.last('diff');
+        };
+        const big = await select('zz-big.log');
+        assert.strictEqual(big?.patch, '');
+        assert.deepStrictEqual(big.leftOut, [
+          { path: 'zz-big.log', lines: undefined },
+        ]);
+        const small = await select('zz-small.txt');
+        assert.ok(small?.patch.includes('+little'), small?.patch);
+        assert.strictEqual(small.leftOut, undefined);
+      },
+      'unwatched',
+    );
+  });
+
   test('leaves the files past the budget out of a commit diff', async () => {
     const many = await tempRepository(path.join(folder, 'many'));
     const lines = Math.min(collapseThreshold, Math.ceil(patchLineBudget / 2));
