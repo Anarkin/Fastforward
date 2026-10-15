@@ -109,14 +109,17 @@ suite('Watching a repository', () => {
   };
 
   const keepWriting = (
-    file: string,
+    file: string | readonly string[],
     what: string,
     until = () => changes.includes(false),
   ) => {
+    const files = typeof file === 'string' ? [file] : file;
     let lines = '';
     return waitFor(() => {
       lines += 'line\n';
-      fs.writeFileSync(path.resolve(repository.root, file), lines);
+      for (const each of files) {
+        fs.writeFileSync(path.resolve(repository.root, each), lines);
+      }
       return until();
     }, what);
   };
@@ -140,17 +143,18 @@ suite('Watching a repository', () => {
     changes = [];
   };
 
-  test('refreshes for a file in a folder created after it started, watching folder by folder', async () => {
+  test('refreshes for a file in a folder created after it started, watching folder by folder, in whichever of the folders made it saw, as macOS loses what happens while it adds a folder to the one stream it watches them all through', async () => {
     await start();
-    let made = 0;
-    let folder = '';
+    await settled();
+    const made: string[] = [];
     await waitFor(() => {
-      folder = path.join(repository.root, `new-${made++}`, 'deep');
+      const folder = path.join(repository.root, `new-${made.length}`, 'deep');
       fs.mkdirSync(folder, { recursive: true });
+      made.push(path.join(folder, 'file.txt'));
       return changes.length > 0;
     }, 'a new folder');
     await settled();
-    await keepWriting(path.join(folder, 'file.txt'), 'the new file');
+    await keepWriting(made, 'the new file');
     assert.deepStrictEqual(errors, []);
   });
 
