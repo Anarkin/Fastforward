@@ -318,6 +318,52 @@ const neverAsk = {
 
 const unchangedRef = new Set(['=', '!']);
 
+const remoteBranches = 'refs/remotes/';
+
+async function remotesSafeToPrune(
+  gitPath: string,
+  root: string,
+  signal: AbortSignal,
+): Promise<string[]> {
+  const output = await runGit(
+    gitPath,
+    root,
+    [
+      'config',
+      '-z',
+      '--get-regexp',
+      '^(fetch\\.prune|remote\\..+\\.(prune|fetch))$',
+    ],
+    { okExitCodes: [0, 1], signal },
+  );
+  const written = new Map<string, string[]>();
+  const settled = new Set<string>();
+  for (const entry of splitNul(output).filter(Boolean)) {
+    const end = entry.indexOf('\n');
+    const key = end === -1 ? entry : entry.slice(0, end);
+    if (key === 'fetch.prune') {
+      return [];
+    }
+    const remote = key.slice('remote.'.length, key.lastIndexOf('.'));
+    const refspec = end === -1 ? '' : entry.slice(end + 1);
+    if (key.endsWith('.prune')) {
+      settled.add(remote);
+    } else if (!refspec.startsWith('^')) {
+      written.set(remote, [
+        ...(written.get(remote) ?? []),
+        refspec.replace(/^\+/, '').split(':')[1] ?? '',
+      ]);
+    }
+  }
+  return [...written]
+    .filter(
+      ([remote, refs]) =>
+        !settled.has(remote) &&
+        refs.every((ref) => ref.startsWith(remoteBranches)),
+    )
+    .map(([remote]) => remote);
+}
+
 export async function fetchAllRemotes(
   gitPath: string,
   root: string,
@@ -328,13 +374,17 @@ export async function fetchAllRemotes(
   } = {},
 ): Promise<boolean> {
   const timedOut = AbortSignal.timeout(timeout);
+  const signal = AbortSignal.any([timedOut, stop]);
   try {
+    const pruning = (await remotesSafeToPrune(gitPath, root, signal)).flatMap(
+      (remote) => ['-c', `remote.${remote}.prune=true`],
+    );
     const output = await runGit(
       gitPath,
       root,
-      ['fetch', '--all', '--prune', '--porcelain'],
+      [...pruning, 'fetch', '--all', '--porcelain'],
       {
-        signal: AbortSignal.any([timedOut, stop]),
+        signal,
         env: interactive ? {} : neverAsk,
         runsUserCode: true,
       },

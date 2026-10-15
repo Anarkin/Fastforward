@@ -206,7 +206,7 @@ suite('View pulling', () => {
       takeErrorsLogged(
         logged,
         /^Fetching every remote failed$/,
-        /^git fetch --all --prune --porcelain failed: /,
+        /^git -c remote\.origin\.prune=true fetch --all --porcelain failed: /,
       );
     } finally {
       await repository.git('remote', 'set-url', 'origin', remote.root);

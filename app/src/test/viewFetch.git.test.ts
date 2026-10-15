@@ -36,12 +36,15 @@ suite('View fetching', () => {
   failOnErrorsLogged(logged);
   let restoreEnv: () => void;
 
-  function takeFetchFailures(reason: RegExp): void {
+  function takeFetchFailures(reason: RegExp, remotes = ['origin']): void {
+    const pruning = remotes
+      .map((name) => `-c remote\\.${name}\\.prune=true `)
+      .join('');
     takeErrorsLogged(
       logged,
       /^Fetching every remote failed$/,
       new RegExp(
-        `^git fetch --all --prune --porcelain failed: fatal: ${reason.source}`,
+        `^git ${pruning}fetch --all --porcelain failed: fatal: ${reason.source}`,
       ),
     );
   }
@@ -548,7 +551,10 @@ suite('View fetching', () => {
             ?.refs.some((ref) => ref.name === 'origin/answered'),
         );
       });
-      takeFetchFailures(/'.*' does not appear to be a git repository/);
+      takeFetchFailures(/'.*' does not appear to be a git repository/, [
+        'origin',
+        'broken',
+      ]);
     } finally {
       await remote.git('branch', '-D', 'answered');
       await repository.git('remote', 'remove', 'broken');

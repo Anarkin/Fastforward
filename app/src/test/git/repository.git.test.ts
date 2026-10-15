@@ -350,6 +350,120 @@ suite('Git repository', () => {
     }
   });
 
+  test("prunes the remote branches of a remote whose refspecs all write under refs/remotes, but leaves another remote's refspec writing tags to the user's settings, keeping a tag of theirs", async () => {
+    const folder = tempFolder('pruned');
+    try {
+      const upstream = await tempRepository(path.join(folder, 'upstream'));
+      await upstream.commit('one');
+      await upstream.git('branch', 'gone');
+      const local = await tempRepository(path.join(folder, 'local'));
+      for (const remote of ['origin', 'my.fork']) {
+        await local.git('remote', 'add', remote, upstream.root);
+      }
+      await local.git(
+        'config',
+        '--add',
+        'remote.origin.fetch',
+        '+refs/tags/*:refs/tags/*',
+      );
+      await fetchAllRemotes(gitPath, local.root);
+      await local.git('tag', 'mine', 'refs/remotes/origin/main');
+      await upstream.git('branch', '-D', 'gone');
+      await fetchAllRemotes(gitPath, local.root);
+      assert.deepStrictEqual(
+        (
+          await local.git(
+            'for-each-ref',
+            '--format=%(refname)',
+            'refs/remotes/my.fork/gone',
+            'refs/remotes/origin/gone',
+            'refs/tags',
+          )
+        )
+          .trim()
+          .split('\n'),
+        ['refs/remotes/origin/gone', 'refs/tags/mine'],
+      );
+    } finally {
+      removeFolder(folder);
+    }
+  });
+
+  test("keeps the branches and stash of a mirror's worktree, which the mirror's refspec writes to", async () => {
+    const folder = tempFolder('mirror');
+    try {
+      const upstream = await tempRepository(path.join(folder, 'upstream'));
+      await upstream.commit('one');
+      const mirror = path.join(folder, 'mirror.git');
+      const worktree = path.join(folder, 'worktree');
+      await upstream.git('clone', '-q', '--mirror', upstream.root, mirror);
+      await upstream.git(
+        '-C',
+        mirror,
+        'worktree',
+        'add',
+        '-q',
+        '-b',
+        'mine',
+        worktree,
+      );
+      fs.writeFileSync(path.join(worktree, 'work.txt'), 'work\n');
+      await upstream.git('-C', worktree, 'add', 'work.txt');
+      await upstream.git('-C', worktree, 'commit', '-q', '-m', 'work');
+      fs.writeFileSync(path.join(worktree, 'work.txt'), 'more work\n');
+      await upstream.git('-C', worktree, 'stash', '-q');
+      await fetchAllRemotes(gitPath, worktree);
+      assert.deepStrictEqual(
+        (
+          await upstream.git(
+            '-C',
+            worktree,
+            'for-each-ref',
+            '--format=%(refname)',
+            'refs/heads/mine',
+            'refs/stash',
+          )
+        )
+          .trim()
+          .split('\n'),
+        ['refs/heads/mine', 'refs/stash'],
+      );
+    } finally {
+      removeFolder(folder);
+    }
+  });
+
+  test('leaves pruning to the user where they set it for every remote or for one', async () => {
+    const folder = tempFolder('prune-set');
+    try {
+      const upstream = await tempRepository(path.join(folder, 'upstream'));
+      await upstream.commit('one');
+      const local = await tempRepository(path.join(folder, 'local'));
+      await local.git('remote', 'add', 'origin', upstream.root);
+      const gone = async () =>
+        (
+          await local.git(
+            'for-each-ref',
+            '--format=%(refname)',
+            'refs/remotes/origin/gone',
+          )
+        ).trim();
+      for (const setting of ['fetch.prune', 'remote.origin.prune']) {
+        await upstream.git('branch', 'gone');
+        await fetchAllRemotes(gitPath, local.root);
+        await upstream.git('branch', '-D', 'gone');
+        await local.git('config', setting, 'false');
+        await fetchAllRemotes(gitPath, local.root);
+        assert.strictEqual(await gone(), 'refs/remotes/origin/gone', setting);
+        await local.git('config', '--unset', setting);
+        await fetchAllRemotes(gitPath, local.root);
+        assert.strictEqual(await gone(), '', `${setting} unset`);
+      }
+    } finally {
+      removeFolder(folder);
+    }
+  });
+
   test('gives up on a fetch that stalls after 5 minutes, saying it failed', async () => {
     await temp.git('remote', 'add', 'stalled', 'ssh://stalled.invalid/x');
     await temp.git('config', 'core.sshCommand', "sh -c 'sleep 15' --");

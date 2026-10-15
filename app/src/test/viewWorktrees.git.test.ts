@@ -931,7 +931,7 @@ suite('View of worktrees', () => {
       takeErrorsLogged(
         logged,
         /^Fetching every remote failed$/,
-        /^git fetch --all --prune --porcelain failed: fatal: repository '.*' not found/,
+        /^git -c remote\.origin\.prune=true fetch --all --porcelain failed: fatal: repository '.*' not found/,
       );
     } finally {
       await new Promise((resolve) => server.close(resolve));
