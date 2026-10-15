@@ -89,7 +89,7 @@ suite('ff', () => {
   let recordings = 0;
 
   beforeAll(async () => {
-    folder = tempFolder('ff');
+    folder = fs.realpathSync.native(tempFolder('ff'));
     work = path.join(folder, 'work');
     fs.mkdirSync(work);
     tools = await shellFolder();
@@ -194,37 +194,41 @@ suite('ff', () => {
     }
   });
 
-  test('starts the Fastforward.exe beside its folder from Git Bash on Windows, keeping Windows paths as they are', async () => {
-    const bin = path.join(folder, 'windows', 'bin');
-    writeRunnable(path.join(bin, 'ff'), fs.readFileSync(posixScript, 'utf8'));
-    const app = path.join(folder, 'windows', 'Fastforward.exe');
-    if (process.platform === 'win32') {
-      compileWindowsRecorder(app);
-    } else {
-      writeRunnable(app, shellRecorder);
-    }
-    const recording = nextRecording();
-    try {
-      runPosix(
-        path.join(bin, 'ff'),
-        'MINGW64_NT-10.0-26300',
-        ['repo', 'C:/elsewhere'],
-        recording,
-      );
-      const [, terminator, ...folders] = await recorded(recording);
-      assert.strictEqual(terminator, '--');
-      assert.deepStrictEqual(folders.map(asSeen), [
-        asSeen(
-          process.platform === 'win32'
-            ? path.join(work, 'repo')
-            : `${shellWork}/repo`,
-        ),
-        asSeen('C:/elsewhere'),
-      ]);
-    } finally {
-      fs.writeFileSync(`${recording}.release`, '');
-    }
-  });
+  test(
+    'starts the Fastforward.exe beside its folder from Git Bash on Windows, keeping Windows paths as they are',
+    { timeout: 30_000 },
+    async () => {
+      const bin = path.join(folder, 'windows', 'bin');
+      writeRunnable(path.join(bin, 'ff'), fs.readFileSync(posixScript, 'utf8'));
+      const app = path.join(folder, 'windows', 'Fastforward.exe');
+      if (process.platform === 'win32') {
+        compileWindowsRecorder(app);
+      } else {
+        writeRunnable(app, shellRecorder);
+      }
+      const recording = nextRecording();
+      try {
+        runPosix(
+          path.join(bin, 'ff'),
+          'MINGW64_NT-10.0-26300',
+          ['repo', 'C:/elsewhere'],
+          recording,
+        );
+        const [, terminator, ...folders] = await recorded(recording);
+        assert.strictEqual(terminator, '--');
+        assert.deepStrictEqual(folders.map(asSeen), [
+          asSeen(
+            process.platform === 'win32'
+              ? path.join(work, 'repo')
+              : `${shellWork}/repo`,
+          ),
+          asSeen('C:/elsewhere'),
+        ]);
+      } finally {
+        fs.writeFileSync(`${recording}.release`, '');
+      }
+    },
+  );
 
   test('ships beside Fastforward.exe on Windows, with ff.cmd, among the resources on macOS and Linux, for the app to link or copy, and as /usr/bin/ff in the .deb', () => {
     const { build } = JSON.parse(

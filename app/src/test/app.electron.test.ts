@@ -1494,7 +1494,8 @@ suite('App started from a terminal', () => {
       await page.locator('.commit', { hasText: 'second' }).waitFor();
       assert.deepStrictEqual(await names(), ['first', 'second']);
       const electron = await app.evaluate(() => process.execPath);
-      const handedOff = spawnSync(electron, args(third), {
+      const sandbox = process.platform === 'linux' ? ['--no-sandbox'] : [];
+      const handedOff = spawnSync(electron, [...sandbox, ...args(third)], {
         cwd: appFolder,
         timeout: 30_000,
       });
