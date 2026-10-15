@@ -163,7 +163,10 @@ type MeasuredKind = 'error' | 'skeleton' | 'skeletonLines' | 'markdown';
 
 export const uniformHeight = 22;
 
-const rowHeights: Record<Exclude<DiffRow['kind'], MeasuredKind>, number> = {
+const rowHeights: Record<
+  Exclude<DiffRow['kind'], MeasuredKind | CodeRow['kind']>,
+  number
+> = {
   file: uniformHeight,
   large: 36,
   binary: uniformHeight,
@@ -174,9 +177,6 @@ const rowHeights: Record<Exclude<DiffRow['kind'], MeasuredKind>, number> = {
   noNewline: uniformHeight,
   image: 320,
   hunk: uniformHeight,
-  line: uniformHeight,
-  split: uniformHeight,
-  wholeLine: uniformHeight,
 };
 
 const measuredEstimates: Record<MeasuredKind, number> = {
@@ -203,7 +203,11 @@ export interface WrapColumns {
   readonly right: number;
 }
 
-function wrappedHeight(row: CodeRow, columns: WrapColumns): number {
+function wrappedHeight(
+  row: CodeRow,
+  columns: WrapColumns,
+  lineHeight: number,
+): number {
   const lines =
     row.kind === 'split'
       ? Math.max(
@@ -214,12 +218,12 @@ function wrappedHeight(row: CodeRow, columns: WrapColumns): number {
           row.kind === 'line' ? row.line.text : row.text,
           columns.left,
         );
-  return lines * rowHeights.line;
+  return lines * lineHeight;
 }
 
-function laidOutRowStarts(code: HTMLElement): number[] {
+function laidOutRowStarts(code: HTMLElement, lineHeight: number): number[] {
   const box = code.getBoundingClientRect();
-  const rows = Math.round(box.height / rowHeights.line);
+  const rows = Math.round(box.height / lineHeight);
   if (rows < 2) {
     return [0];
   }
@@ -255,7 +259,7 @@ function laidOutRowStarts(code: HTMLElement): number[] {
     range.setStart(at.node, offset - at.start);
     range.setEnd(at.node, Math.min(offset - at.start + 1, at.node.length));
     const rect = range.getBoundingClientRect();
-    return Math.floor((rect.top + rect.height / 2 - box.top) / rowHeights.line);
+    return Math.floor((rect.top + rect.height / 2 - box.top) / lineHeight);
   };
   return markedRowStarts(length, rows, rowOf);
 }
@@ -266,11 +270,13 @@ export function WrapMarks({
   text,
   columns,
   numbers,
+  lineHeight,
   columnsIn,
 }: {
   text: string;
   columns: number | undefined;
   numbers: number;
+  lineHeight: number;
   columnsIn?: ColumnsIn;
 }) {
   const marks = useRef<HTMLSpanElement>(null);
@@ -282,18 +288,25 @@ export function WrapMarks({
       return undefined;
     }
     const measure = () =>
-      setBreaks(rowBreaksAt(text, laidOutRowStarts(code), columns, columnsIn));
+      setBreaks(
+        rowBreaksAt(
+          text,
+          laidOutRowStarts(code, lineHeight),
+          columns,
+          columnsIn,
+        ),
+      );
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(code);
     return () => observer.disconnect();
-  }, [text, columns, columnsIn]);
+  }, [text, columns, columnsIn, lineHeight]);
   if (columns === undefined) {
     return null;
   }
   return (
     <span className="wrap-marks" aria-hidden ref={marks}>
-      <BreakMarks breaks={breaks} numbers={numbers} />
+      <BreakMarks breaks={breaks} numbers={numbers} lineHeight={lineHeight} />
     </span>
   );
 }
@@ -301,15 +314,17 @@ export function WrapMarks({
 export function BreakMarks({
   breaks,
   numbers,
+  lineHeight,
 }: {
   breaks: readonly RowBreak[];
   numbers: number;
+  lineHeight: number;
 }) {
   if (breaks.length === 0) {
     return null;
   }
   const at = (row: number, column: number) => ({
-    top: row * rowHeights.line,
+    top: row * lineHeight,
     left: `calc(${numbers * numberWidth}px + var(--diff-code-padding) + ${column}ch)`,
   });
   return (
@@ -348,6 +363,7 @@ interface RowMeasures {
   readonly estimateSize: (index: number) => number;
   readonly getItemKey: (index: number) => string;
   readonly columns: WrapColumns | undefined;
+  readonly lineHeight: number;
 }
 
 const measuresOfRows = new WeakMap<readonly DiffRow[], RowMeasures>();
@@ -356,14 +372,16 @@ let wrapGeneration = 0;
 export function rowMeasures(
   rows: readonly DiffRow[],
   columns?: WrapColumns,
+  lineHeight = uniformHeight,
 ): RowMeasures {
   let measures = measuresOfRows.get(rows);
   if (
     !measures ||
     measures.columns?.left !== columns?.left ||
-    measures.columns?.right !== columns?.right
+    measures.columns?.right !== columns?.right ||
+    measures.lineHeight !== lineHeight
   ) {
-    measures = measuresOf(rows, columns);
+    measures = measuresOf(rows, columns, lineHeight);
     measuresOfRows.set(rows, measures);
   }
   return measures;
@@ -372,14 +390,17 @@ export function rowMeasures(
 function measuresOf(
   rows: readonly DiffRow[],
   columns: WrapColumns | undefined,
+  lineHeight: number,
 ): RowMeasures {
   const generation = wrapGeneration++;
   const wrapped: number[] = [];
   return {
     estimateSize: (index) => {
       const row = rows[index];
-      if (columns && isCode(row)) {
-        return (wrapped[index] ??= wrappedHeight(row, columns));
+      if (isCode(row)) {
+        return columns
+          ? (wrapped[index] ??= wrappedHeight(row, columns, lineHeight))
+          : lineHeight;
       }
       const kind = row.kind;
       return isMeasured(kind) ? measuredEstimates[kind] : rowHeights[kind];
@@ -389,6 +410,7 @@ function measuresOf(
       return columns && isCode(rows[index]) ? `${key}:${generation}` : key;
     },
     columns,
+    lineHeight,
   };
 }
 
@@ -506,11 +528,16 @@ export function diffRowClass(kind: DiffRow['kind']): string {
   return `virtual-row diff-row ${extra}`;
 }
 
-export function rowHeight(row: DiffRow, wrap = false): number | undefined {
+export function rowHeight(
+  row: DiffRow,
+  wrap = false,
+  lineHeight = uniformHeight,
+): number | undefined {
+  if (isCode(row)) {
+    return wrap ? undefined : lineHeight;
+  }
   const kind = row.kind;
-  return isMeasured(kind) || (wrap && isCode(row))
-    ? undefined
-    : rowHeights[kind];
+  return isMeasured(kind) ? undefined : rowHeights[kind];
 }
 
 function changeOf(row: DiffRow): 'added' | 'removed' | undefined {
@@ -632,7 +659,6 @@ export function minimapRows(
 declare module 'react' {
   interface CSSProperties {
     readonly '--diff-file-height'?: string;
-    readonly '--diff-line-height'?: string;
     readonly '--diff-tab-size'?: string;
     readonly '--diff-number-width'?: string;
     readonly '--diff-code-padding'?: string;
@@ -649,7 +675,6 @@ declare module 'react' {
 
 export const layoutVariables: React.CSSProperties = {
   '--diff-file-height': `${rowHeights.file}px`,
-  '--diff-line-height': `${rowHeights.line}px`,
   '--diff-tab-size': String(tabSize),
   '--diff-number-width': `${numberWidth}px`,
   '--diff-code-padding': `${codePadding}px`,
@@ -832,8 +857,8 @@ export function diffScrollTop(
   scrollTop: number,
   viewport: number,
   total: number,
+  line = uniformHeight,
 ): number | undefined {
-  const line = rowHeights.line;
   const bottom = Math.max(0, total - viewport);
   let target: number;
   switch (move) {
@@ -868,13 +893,15 @@ export function changeStarts(rows: readonly DiffRow[]): number[] {
   );
 }
 
-const changeMargin = rowHeights.file + 2 * rowHeights.line;
+export function changeMargin(lineHeight: number): number {
+  return rowHeights.file + 2 * lineHeight;
+}
 
 export function changeScrollTop(
   starts: readonly number[],
   scrollTop: number,
   step: 1 | -1,
-  margin = changeMargin,
+  margin: number,
 ): number | undefined {
   const targets = starts.map((start) => Math.max(0, start - margin));
   const target =
@@ -886,7 +913,7 @@ export function changeScrollTop(
 
 export function firstChangeTop(
   starts: readonly number[],
-  margin = changeMargin,
+  margin: number,
 ): number | undefined {
   const [first] = starts;
   return first === undefined ? undefined : Math.max(0, first - margin);
@@ -1422,6 +1449,11 @@ function fontOf(element: HTMLElement): string {
   return `${fontStyle} ${fontWeight} ${fontSize} ${fontFamily}`;
 }
 
+function lineHeightOf(line: HTMLElement | null): number {
+  const height = line ? parseFloat(getComputedStyle(line).lineHeight) : NaN;
+  return height > 0 ? height : uniformHeight;
+}
+
 function textWidths(char: number, font: string): TextWidths {
   const drawn = new Map<string, number>();
   let context: OffscreenCanvasRenderingContext2D | null | undefined;
@@ -1456,6 +1488,7 @@ const TextProbe = memo(function TextProbe({
     font: string,
     padding: Edges,
     scale: number,
+    lineHeight: number,
   ) => void;
 }) {
   const line = useRef<HTMLDivElement>(null);
@@ -1474,6 +1507,7 @@ const TextProbe = memo(function TextProbe({
               )
             : unpadded,
           devicePixelRatio,
+          lineHeightOf(line.current),
         );
       let scale: MediaQueryList | undefined;
       const onScale = () => {
@@ -1635,16 +1669,19 @@ export function DiffView({
   );
   const [padding, setPadding] = useState(unpadded);
   const [scale, setScale] = useState(1);
+  const [lineHeight, setLineHeight] = useState(uniformHeight);
   const measureText = useCallback(
     (
       width: number,
       measuredFont: string,
       measured: Edges,
       measuredScale: number,
+      measuredLineHeight: number,
     ) => {
       setCharWidth(width);
       setFont(measuredFont);
       setScale(measuredScale);
+      setLineHeight(measuredLineHeight);
       setPadding((last) =>
         last.top === measured.top && last.bottom === measured.bottom
           ? last
@@ -1767,7 +1804,11 @@ export function DiffView({
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => list.current,
-    ...rowMeasures(rows, wordWrap ? (columns ?? unmeasured) : undefined),
+    ...rowMeasures(
+      rows,
+      wordWrap ? (columns ?? unmeasured) : undefined,
+      lineHeight,
+    ),
     overscan: 30,
   });
 
@@ -1863,11 +1904,12 @@ export function DiffView({
       changeStarts(rows).map(
         (index) => virtualizer.measurementsCache[index]?.start ?? 0,
       ),
+      changeMargin(lineHeight),
     );
     if (top !== undefined) {
       virtualizer.scrollToOffset(top);
     }
-  }, [firstChange, loading, found, rows, virtualizer]);
+  }, [firstChange, loading, found, rows, virtualizer, lineHeight]);
 
   const requested = useRef(new Map<string, number>());
   useEffect(() => {
@@ -2081,6 +2123,7 @@ export function DiffView({
               text={row.line.text}
               columns={wrapping?.left}
               numbers={2}
+              lineHeight={lineHeight}
               columnsIn={columnsIn}
             />
             {hiddenMarks(
@@ -2120,6 +2163,7 @@ export function DiffView({
                     text={cell.line.text}
                     columns={side === 0 ? wrapping?.left : wrapping?.right}
                     numbers={1}
+                    lineHeight={lineHeight}
                     columnsIn={columnsIn}
                   />
                 )}
@@ -2151,6 +2195,7 @@ export function DiffView({
               text={row.text}
               columns={wrapping?.left}
               numbers={1}
+              lineHeight={lineHeight}
               columnsIn={columnsIn}
             />
           </div>
@@ -2328,6 +2373,7 @@ export function DiffView({
                   event.currentTarget.scrollTop,
                   event.currentTarget.clientHeight,
                   virtualizer.getTotalSize(),
+                  lineHeight,
                 )
               : changeScrollTop(
                   changeStarts(rows).map(
@@ -2335,6 +2381,7 @@ export function DiffView({
                   ),
                   event.currentTarget.scrollTop,
                   step,
+                  changeMargin(lineHeight),
                 );
           if (top !== undefined) {
             event.preventDefault();
@@ -2360,7 +2407,7 @@ export function DiffView({
           )}
           {items.map((item) => {
             const row = rows[item.index];
-            const height = rowHeight(row, wordWrap);
+            const height = rowHeight(row, wordWrap, lineHeight);
             return (
               <div
                 key={item.key}

@@ -18,6 +18,7 @@ export function themeCss({ fonts, sizes, colors }: Settings): string {
     `  --font-size: ${fonts.size};`,
     `  --monospace-font-family: ${fonts.monospaceFamily};`,
     `  --monospace-font-size: ${fonts.monospaceSize};`,
+    `  --monospace-line-height: ${fonts.monospaceLineHeight};`,
     `  --scrollbar-size: ${sizes.scrollbar};`,
     `  --minimap-width: ${sizes.minimap};`,
     ...declarations(colors.light, 'color-', '  '),

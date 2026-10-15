@@ -22,6 +22,7 @@ export interface Settings {
     readonly size: string;
     readonly monospaceFamily: string;
     readonly monospaceSize: string;
+    readonly monospaceLineHeight: number;
   };
   readonly sizes: {
     readonly scrollbar: string;

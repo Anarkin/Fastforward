@@ -1096,6 +1096,13 @@ suite('Style', () => {
     });
   });
 
+  test('makes a line of the diff as tall as the font size of code times the line height, rounded to whole pixels, as the app places the rows a whole number of lines apart', () => {
+    assert.strictEqual(
+      compact(cascaded(diffView(), '--diff-line-height')),
+      'round(var(--monospace-font-size) * var(--monospace-line-height), 1px)',
+    );
+  });
+
   test('wraps long lines of code at spaces, breaking a word only where it would not fit, in rows as tall as their lines', () => {
     const inline = shownRow(diffView({ wordWrap: true }, inlineLine('added')));
     looks(inline, { width: '100%' });
@@ -2572,7 +2579,7 @@ suite('Style', () => {
     assert.deepStrictEqual(right, left);
   });
 
-  test('stripes the empty side of a change in the border color, in tiles that meet across rows', () => {
+  test('stripes the empty side of a change in the border color, in tiles as tall as a line, so they meet across rows however tall the lines', () => {
     const filler =
       cascaded(
         withClass(
@@ -2583,16 +2590,10 @@ suite('Style', () => {
         'background',
       ) ?? '';
     assert.match(filler, /linear-gradient\( -45deg, var\(--color-border\)/);
-    const tile = /\/ (\d+)px (\d+)px$/.exec(filler);
-    assert.ok(tile, filler);
-    const height = rowHeight({
-      kind: 'split',
-      file: 0,
-      left: undefined,
-      right: undefined,
-    });
-    assert.ok(height !== undefined);
-    assert.strictEqual(height % Number(tile[2]), 0);
+    assert.match(
+      filler,
+      /\/ var\(--diff-line-height\) var\(--diff-line-height\)$/,
+    );
   });
 
   test('draws no focus outline around the commit list, whose selected row shows where the keys go', () => {

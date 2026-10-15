@@ -1788,6 +1788,10 @@ body.resizing {
 }
 
 .diff-view {
+  --diff-line-height: round(
+    var(--monospace-font-size) * var(--monospace-line-height),
+    1px
+  );
   position: relative;
   height: 100%;
 }
@@ -1831,13 +1835,17 @@ body.resizing {
 .markdown-pane.filler {
   background: linear-gradient(
       -45deg,
-      var(--color-border) 0 4%,
-      transparent 4% 46%,
-      var(--color-border) 46% 54%,
-      transparent 54% 96%,
-      var(--color-border) 96%
+      var(--color-border) 0 2%,
+      transparent 2% 23%,
+      var(--color-border) 23% 27%,
+      transparent 27% 48%,
+      var(--color-border) 48% 52%,
+      transparent 52% 73%,
+      var(--color-border) 73% 77%,
+      transparent 77% 98%,
+      var(--color-border) 98%
     )
-    0 0 / 11px 11px;
+    0 0 / var(--diff-line-height) var(--diff-line-height);
 }
 
 .split-code {

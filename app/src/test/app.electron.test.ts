@@ -832,7 +832,7 @@ suite('App', () => {
       has: page.locator('.code', { hasText: firstLongLine }),
     });
     await row.waitFor();
-    assert.strictEqual((await row.boundingBox())?.height, 22);
+    assert.strictEqual((await row.boundingBox())?.height, 17);
     await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
     await page.locator('.diff-view.wrap').waitFor();
     await page.waitForFunction(
@@ -840,7 +840,7 @@ suite('App', () => {
         [...document.querySelectorAll('.diff-row')].some(
           (wrapped) =>
             wrapped.querySelector('.code')?.textContent === text &&
-            wrapped.getBoundingClientRect().height > 22,
+            wrapped.getBoundingClientRect().height > 17,
         ),
       firstLongLine,
     );
@@ -869,7 +869,7 @@ suite('App', () => {
     assert.strictEqual(
       laidOut.height,
       wrappedLines(firstLongLine, wrapColumns(laidOut.width, laidOut.char)) *
-        22,
+        17,
     );
     await waitFor(() => wrapsSaved(), 'the choice to be saved');
     const list = page.locator('.diff-view .virtual-rows');
@@ -980,6 +980,78 @@ suite('App', () => {
           marks.map((mark) => mark.getBoundingClientRect().left),
         ),
       before,
+    );
+    await waitFor(() => wrapsSaved(), 'the choice to be saved');
+  });
+
+  test('makes each line of the diff as tall as the font size of code times the line height set, rounded to whole pixels, placing the rows and the marks of wrapped ones that far apart, keeping the file header as tall', async () => {
+    const reloaded = page.waitForEvent('load');
+    fs.writeFileSync(
+      path.join(profile, 'settings.user.json'),
+      JSON.stringify({ ...baseSettings, fonts: { monospaceLineHeight: 2.1 } }),
+    );
+    await reloaded;
+    await openChangedFile();
+    const rows = await page
+      .locator('.diff-view .diff-row')
+      .evaluateAll((elements) =>
+        elements.flatMap((element) => {
+          const shown = element.querySelector('.file-header, .diff-line');
+          return shown
+            ? [
+                {
+                  kind: shown.classList.contains('file-header')
+                    ? 'file'
+                    : 'line',
+                  top: element.getBoundingClientRect().top,
+                  height: element.getBoundingClientRect().height,
+                  shown: shown.getBoundingClientRect().height,
+                },
+              ]
+            : [];
+        }),
+      );
+    assert.deepStrictEqual(
+      rows.map(({ kind, height, shown }) => [kind, height, shown]),
+      [
+        ['file', 22, 22],
+        ['line', 25, 25],
+        ['line', 25, 25],
+        ['line', 25, 25],
+        ['line', 25, 25],
+      ],
+    );
+    assert.deepStrictEqual(
+      rows.slice(1).map((row, index) => row.top - rows[index].top),
+      [22, 25, 25, 25],
+    );
+
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await page.locator('.row.file', { hasText: 'long.txt' }).click();
+    await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
+    const line = page
+      .locator('.diff-line', { has: page.locator('.wrap-break') })
+      .first();
+    await line.waitFor();
+    const laidOut = () =>
+      line.evaluate((element) => {
+        const top = element.getBoundingClientRect().top;
+        return {
+          height: element.getBoundingClientRect().height,
+          marks: Array.from(
+            element.querySelectorAll('.wrap-break'),
+            (mark) => mark.getBoundingClientRect().top - top,
+          ),
+        };
+      });
+    await waitFor(async () => {
+      const { height, marks } = await laidOut();
+      return height > 25 && marks.length === height / 25 - 1;
+    }, 'a mark at the end of every 25 pixel row but the last');
+    const { height, marks } = await laidOut();
+    assert.deepStrictEqual(
+      marks,
+      Array.from({ length: height / 25 - 1 }, (_, index) => index * 25),
     );
     await waitFor(() => wrapsSaved(), 'the choice to be saved');
   });
@@ -1158,7 +1230,7 @@ suite('App', () => {
       await page.locator('.row.file', { hasText: 'long.txt' }).click();
       await change.waitFor();
       await waitFor(
-        async () => (await belowTop()) === 66,
+        async () => (await belowTop()) === 56,
         'the change to be shown at its place',
       );
       await page.getByRole('button', { name: 'Pin Entire Files' }).click();
@@ -1168,7 +1240,7 @@ suite('App', () => {
       await waitFor(
         async () =>
           (await page.locator('.diff-line').count()) < 20 &&
-          (await belowTop()) === 88,
+          (await belowTop()) === 73,
         'only the changes to be shown, too few to scroll',
       );
       await page.getByRole('button', { name: 'Show the Entire File' }).click();
@@ -1176,7 +1248,7 @@ suite('App', () => {
         .getByRole('button', { name: 'Show the Entire File', pressed: true })
         .waitFor();
       await waitFor(
-        async () => (await belowTop()) === 66,
+        async () => (await belowTop()) === 56,
         'the entire file to be shown at its change',
       );
       await waitFor(

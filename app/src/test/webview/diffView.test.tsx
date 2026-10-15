@@ -19,6 +19,7 @@ import {
   withLargeFiles,
 } from '../../webview/diffColumn';
 import {
+  changeMargin,
   changeScrollTop,
   changeStarts,
   codeProps,
@@ -1183,6 +1184,60 @@ suite('Diff row heights', () => {
     );
   });
 
+  test('makes the rows of code as tall as the lines of the diff, keeping the file headers, hunk dividers and notes as tall as a row of the other columns', () => {
+    const rows = diffRows(
+      parsePatch(
+        [
+          'diff --git a/a.png b/a.png',
+          'Binary files a/a.png and b/a.png differ',
+          patch('a.ts', 1),
+          '@@ -10,0 +11,1 @@',
+          '+line',
+        ].join('\n'),
+      ),
+      new Map(),
+      undefined,
+    );
+    assert.deepStrictEqual(
+      rows.map((row) => [row.kind, rowHeight(row, false, 17)]),
+      [
+        ['error', undefined],
+        ['file', 22],
+        ['binary', 22],
+        ['file', 22],
+        ['line', 17],
+        ['hunk', 22],
+        ['line', 17],
+      ],
+    );
+    const split = diffRows(
+      parsePatch(patch('a.ts', 1)),
+      new Map(),
+      undefined,
+      false,
+      true,
+    );
+    assert.deepStrictEqual(
+      split.map((row) => rowHeight(row, false, 17)),
+      [undefined, 22, 17],
+    );
+    const whole = diffRows([], new Map(), {
+      path: 'a.ts',
+      content: 'a\n',
+      binary: false,
+    });
+    assert.deepStrictEqual(
+      whole.map((row) => rowHeight(row, false, 17)),
+      [undefined, 22, 17],
+    );
+    assert.deepStrictEqual(
+      rows.map((_, index) =>
+        rowMeasures(rows, undefined, 17).estimateSize(index),
+      ),
+      [200, 22, 22, 22, 17, 22, 17],
+    );
+  });
+
   test('measures how far the widest line of an inline diff reaches, a tab to its next stop, to widen every row to it', () => {
     const files = parsePatch(
       [
@@ -1318,6 +1373,11 @@ suite('Diff row heights', () => {
       split.map((_, index) => sides.estimateSize(index)),
       [200, 22, 22, 88],
     );
+    const taller = rowMeasures(rows, { left: 7, right: 7 }, 17);
+    assert.deepStrictEqual(
+      rows.map((_, index) => taller.estimateSize(index)),
+      [200, 22, 17, 34, 68],
+    );
   });
 
   test('marks where each row a line is broken into ends, right after its text, and the spaces and tabs hanging there, leaving lines on one row unmarked', () => {
@@ -1328,18 +1388,23 @@ suite('Diff row heights', () => {
           { end: 4, blanks: [{ column: 3, tab: true }] },
         ]}
         numbers={2}
+        lineHeight={17}
       />,
     );
     assert.deepStrictEqual(wrapMarksOf(html), [
       ['wrap-blank', wrapMarkAt('0', 3), strings.symbols.space],
       ['wrap-break', wrapMarkAt('0', 4), strings.symbols.breaks],
-      ['wrap-blank', wrapMarkAt('22px', 3), strings.symbols.tab],
-      ['wrap-break', wrapMarkAt('22px', 4), strings.symbols.breaks],
+      ['wrap-blank', wrapMarkAt('17px', 3), strings.symbols.tab],
+      ['wrap-break', wrapMarkAt('17px', 4), strings.symbols.breaks],
     ]);
     assert.deepStrictEqual(
       wrapMarksOf(
         renderToStaticMarkup(
-          <BreakMarks breaks={[{ end: 6, blanks: [] }]} numbers={1} />,
+          <BreakMarks
+            breaks={[{ end: 6, blanks: [] }]}
+            numbers={1}
+            lineHeight={22}
+          />,
         ),
       ),
       [
@@ -1351,12 +1416,19 @@ suite('Diff row heights', () => {
       ],
     );
     assert.strictEqual(
-      renderToStaticMarkup(<BreakMarks breaks={[]} numbers={2} />),
+      renderToStaticMarkup(
+        <BreakMarks breaks={[]} numbers={2} lineHeight={22} />,
+      ),
       '',
     );
     assert.strictEqual(
       renderToStaticMarkup(
-        <WrapMarks text="one two three" columns={undefined} numbers={2} />,
+        <WrapMarks
+          text="one two three"
+          columns={undefined}
+          numbers={2}
+          lineHeight={22}
+        />,
       ),
       '',
     );
@@ -1365,7 +1437,12 @@ suite('Diff row heights', () => {
   test('draws no marks on a wrapped line until the browser has laid it out, as they follow its breaks rather than the estimate', () => {
     assert.strictEqual(
       renderToStaticMarkup(
-        <WrapMarks text="one two three" columns={7} numbers={2} />,
+        <WrapMarks
+          text="one two three"
+          columns={7}
+          numbers={2}
+          lineHeight={22}
+        />,
       ),
       '<span class="wrap-marks" aria-hidden="true"></span>',
     );
@@ -1382,6 +1459,20 @@ suite('Diff row heights', () => {
       assert.notStrictEqual(measures.getItemKey(2), narrow.getItemKey(2));
       assert.strictEqual(measures.getItemKey(1), narrow.getItemKey(1));
     }
+  });
+
+  test('measures the rows again when their lines change height, as the virtualizer keeps its sizes until the key callback changes', () => {
+    const rows = diffRows(wrapping, new Map(), undefined);
+    const unwrapped = rowMeasures(rows);
+    assert.strictEqual(rowMeasures(rows, undefined, 22), unwrapped);
+    assert.notStrictEqual(
+      rowMeasures(rows, undefined, 17).getItemKey,
+      unwrapped.getItemKey,
+    );
+    const wrapped = rowMeasures(rows, { left: 7, right: 7 });
+    const taller = rowMeasures(rows, { left: 7, right: 7 }, 17);
+    assert.strictEqual(rowMeasures(rows, { left: 7, right: 7 }, 17), taller);
+    assert.notStrictEqual(taller.getItemKey(2), wrapped.getItemKey(2));
   });
 });
 
@@ -1811,6 +1902,13 @@ suite('Diff keys', () => {
     assert.strictEqual(diffScrollTop('last', 0, 400, 2000), 1600);
     assert.strictEqual(diffScrollTop('last', 0, 400, 300), 0);
   });
+
+  test('scrolls by lines as tall as those of the diff', () => {
+    assert.strictEqual(diffScrollTop('down', 100, 400, 2000, 17), 151);
+    assert.strictEqual(diffScrollTop('up', 100, 400, 2000, 17), 49);
+    assert.strictEqual(diffScrollTop('pageDown', 100, 400, 2000, 17), 483);
+    assert.strictEqual(diffScrollTop('pageUp', 500, 400, 2000, 17), 117);
+  });
 });
 
 suite('Jumping between changes', () => {
@@ -1875,6 +1973,11 @@ suite('Jumping between changes', () => {
     assert.strictEqual(changeScrollTop(starts, 40, -1, 60), undefined);
     assert.strictEqual(changeScrollTop(starts, 840, 1, 60), undefined);
     assert.strictEqual(changeScrollTop([30], 100, -1, 60), 0);
+  });
+
+  test('leaves room above a change for the file header stuck atop the diff and two lines, however tall the lines', () => {
+    assert.strictEqual(changeMargin(22), 66);
+    assert.strictEqual(changeMargin(17), 56);
   });
 });
 

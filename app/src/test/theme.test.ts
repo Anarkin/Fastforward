@@ -25,7 +25,7 @@ function uses(): Set<string> {
   for (const file of readdirSync(webview)) {
     const source = readFileSync(join(webview, file), 'utf8');
     for (const match of source.matchAll(
-      /var\(\s*(--(?:(?:color|font|monospace-font)-[\w-]+|scrollbar-size|minimap-width))/g,
+      /var\(\s*(--(?:(?:color|font|monospace-font)-[\w-]+|monospace-line-height|scrollbar-size|minimap-width))/g,
     )) {
       names.add(match[1]);
     }
@@ -88,6 +88,7 @@ suite('Theme', () => {
         size: '13px',
         monospaceFamily: 'Mono',
         monospaceSize: '12px',
+        monospaceLineHeight: 1.4,
       },
       sizes: { scrollbar: '25px', minimap: '40px' },
       colors: { light: { foreground: '#000' }, dark: { foreground: '#fff' } },
@@ -101,6 +102,7 @@ suite('Theme', () => {
         '  --font-size: 13px;',
         '  --monospace-font-family: Mono;',
         '  --monospace-font-size: 12px;',
+        '  --monospace-line-height: 1.4;',
         '  --scrollbar-size: 25px;',
         '  --minimap-width: 40px;',
         '  --color-foreground: #000;',
