@@ -112,6 +112,9 @@ export const strings = {
     breaks: '↵',
     space: '·',
     tab: '→',
+    carriageReturn: '␍',
+    nonBreakingSpace: '⍽',
+    invisible: '¤',
   },
   about: {
     title: 'About',

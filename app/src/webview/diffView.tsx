@@ -936,16 +936,28 @@ function covering<T extends FindRange>(
   };
 }
 
+const blankSigns: Readonly<Record<string, string>> = {
+  ' ': strings.symbols.space,
+  '\t': strings.symbols.tab,
+  '\r': strings.symbols.carriageReturn,
+  ' ': strings.symbols.nonBreakingSpace,
+  ' ': strings.symbols.nonBreakingSpace,
+};
+
+const blank = /[ \t\r   -​  ⁠　﻿]/;
+
+const blanksAndText = /[ \t\r   -​  ⁠　﻿]|[^ \t\r   -​  ⁠　﻿]+/g;
+
 function blanksShown(text: string): React.ReactNode {
-  if (!/[ \t]/.test(text)) {
+  if (!blank.test(text)) {
     return text;
   }
-  return Array.from(text.matchAll(/[ \t]|[^ \t]+/g), ([part], index) =>
-    part === ' ' || part === '\t' ? (
+  return Array.from(text.matchAll(blanksAndText), ([part], index) =>
+    blank.test(part) ? (
       <span
         key={index}
         className="blank"
-        data-glyph={part === '\t' ? strings.symbols.tab : strings.symbols.space}
+        data-glyph={blankSigns[part] ?? strings.symbols.invisible}
       >
         {part}
       </span>

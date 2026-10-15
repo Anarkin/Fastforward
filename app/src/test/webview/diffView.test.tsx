@@ -60,6 +60,10 @@ import type { TextWidths } from '../../webview/overflow';
 import type { Preview } from '../../webview/previews';
 import { countingReads, fileChange } from '../fixtures';
 
+function sign(glyph: string, text: string): string {
+  return `<span class="blank" data-glyph="${glyph}">${text}</span>`;
+}
+
 function patch(path: string, added: number): string {
   return [
     `diff --git a/${path} b/${path}`,
@@ -1553,6 +1557,27 @@ suite('Drawing code', () => {
     assert.strictEqual(wholeChangeClass(words, '0:1'), 'whole-change');
     assert.strictEqual(wholeChangeClass(words, '0:2'), '');
     assert.strictEqual(wholeChangeClass(words, undefined), '');
+  });
+
+  test('shows a carriage return, a non-breaking space and the spaces that draw nothing as signs of their own when asked, as a change to line endings or to a pasted space looked like none, but not the joiners inside emoji', () => {
+    assert.strictEqual(
+      renderToStaticMarkup(
+        <>
+          {marked('﻿a b​c　d👍🏽‍\r', [], [], 'word-added', [], undefined, true)}
+        </>,
+      ),
+      [
+        sign(strings.symbols.invisible, '﻿'),
+        'a',
+        sign(strings.symbols.nonBreakingSpace, ' '),
+        'b',
+        sign(strings.symbols.invisible, '​'),
+        'c',
+        sign(strings.symbols.invisible, '　'),
+        'd👍🏽‍',
+        sign(strings.symbols.carriageReturn, '\r'),
+      ].join(''),
+    );
   });
 
   test('shows each space and tab as a sign over it when asked, inside the colors and matches, keeping the text as it is', () => {
