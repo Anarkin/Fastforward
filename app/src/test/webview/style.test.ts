@@ -2579,7 +2579,7 @@ suite('Style', () => {
     assert.deepStrictEqual(right, left);
   });
 
-  test('stripes the empty side of a change in the border color, in tiles as tall as a line, so they meet across rows however tall the lines', () => {
+  test('stripes the empty side of a change in the border color, shifting the stripes of each row up by how far down it is, so they make one pattern across rows however tall the lines', () => {
     const filler =
       cascaded(
         withClass(
@@ -2592,7 +2592,7 @@ suite('Style', () => {
     assert.match(filler, /linear-gradient\( -45deg, var\(--color-border\)/);
     assert.match(
       filler,
-      /\/ var\(--diff-line-height\) var\(--diff-line-height\)$/,
+      /\) 0 calc\(-1 \* var\(--diff-row-top, 0px\)\) \/ 11px 11px$/,
     );
   });
 

@@ -659,6 +659,7 @@ export function minimapRows(
 declare module 'react' {
   interface CSSProperties {
     readonly '--diff-file-height'?: string;
+    readonly '--diff-row-top'?: string;
     readonly '--diff-tab-size'?: string;
     readonly '--diff-number-width'?: string;
     readonly '--diff-code-padding'?: string;
@@ -671,6 +672,13 @@ declare module 'react' {
     readonly '--visible-left'?: string;
     readonly '--visible-right'?: string;
   }
+}
+
+export function diffRowPlace(
+  start: number,
+  height: number | undefined,
+): React.CSSProperties {
+  return { ...rowPlace(start, height), '--diff-row-top': `${start}px` };
 }
 
 export const layoutVariables: React.CSSProperties = {
@@ -2414,7 +2422,7 @@ export function DiffView({
                 className={diffRowClass(row.kind)}
                 data-index={item.index}
                 ref={height === undefined ? virtualizer.measureElement : null}
-                style={rowPlace(item.start, height)}
+                style={diffRowPlace(item.start, height)}
               >
                 {renderRow(row, item.index)}
               </div>

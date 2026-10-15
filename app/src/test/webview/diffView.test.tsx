@@ -24,6 +24,7 @@ import {
   changeStarts,
   codeProps,
   diffRowKey,
+  diffRowPlace,
   diffRows,
   diffScrollLeft,
   diffScrollTop,
@@ -1116,6 +1117,14 @@ function wrapMarksOf(html: string): string[][] {
 }
 
 suite('Diff row heights', () => {
+  test('places a row where it starts, telling its stripes how far down it is', () => {
+    assert.deepStrictEqual(diffRowPlace(40, 17), {
+      height: 17,
+      top: 40,
+      '--diff-row-top': '40px',
+    });
+  });
+
   test('gives every row but the error, a large file and placeholders the same fixed height, that of a row of the other columns, so the columns line up', () => {
     const rows = diffRows(
       parsePatch(
