@@ -74,8 +74,8 @@ import { SkeletonRows, useSkeleton } from './skeleton';
 import { Twisty } from './tree';
 import { renamedPath } from './fileStatus';
 import {
+  markedRowStarts,
   rowBreaksAt,
-  rowStarts,
   tabSize,
   wrapColumns,
   wrappedLines,
@@ -231,8 +231,22 @@ function laidOutRowStarts(code: HTMLElement): number[] {
     }
   }
   const range = document.createRange();
+  const textAt = (offset: number) => {
+    let low = 0;
+    let high = texts.length - 1;
+    while (low < high) {
+      const middle = Math.ceil((low + high) / 2);
+      if (texts[middle].start <= offset) {
+        low = middle;
+      } else {
+        high = middle - 1;
+      }
+    }
+    const found = texts.at(low);
+    return found && found.start <= offset ? found : undefined;
+  };
   const rowOf = (offset: number) => {
-    const at = texts.findLast((text) => text.start <= offset);
+    const at = textAt(offset);
     if (!at) {
       return 0;
     }
@@ -241,7 +255,7 @@ function laidOutRowStarts(code: HTMLElement): number[] {
     const rect = range.getBoundingClientRect();
     return Math.floor((rect.top + rect.height / 2 - box.top) / rowHeights.line);
   };
-  return rowStarts(length, rows, rowOf);
+  return markedRowStarts(length, rows, rowOf);
 }
 
 const noBreaks: readonly RowBreak[] = [];
