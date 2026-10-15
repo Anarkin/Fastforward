@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeEach, suite, test } from 'vitest';
+import { explorerMenuOf } from '../main/explorerMenu';
 
 const appFolder = path.join(__dirname, '..', '..');
 const installer = path.join(appFolder, 'build', 'installer.nsh');
@@ -15,6 +16,15 @@ function pathScript(): string {
     );
   assert.ok(defined, 'no FASTFORWARD_PATH_SCRIPT in installer.nsh');
   return defined[1].replace(/\\\r?\n/g, '').replaceAll('$$', '$');
+}
+
+function uninstallingNotUpdating(): string[] {
+  const uninstalling =
+    /!macro customUnInstall\s+\$\{ifNot\} \$\{isUpdated\}\r?\n((?:(?!\s*\$\{endIf\}).*\r?\n)*)\s*\$\{endIf\}\s+!macroend/.exec(
+      fs.readFileSync(installer, 'utf8'),
+    );
+  assert.ok(uninstalling, 'no customUnInstall skipping updates');
+  return uninstalling[1].split(/\r?\n/).map((line) => line.trim());
 }
 
 function reg(...args: string[]): string {
@@ -164,10 +174,24 @@ suite.skipIf(process.platform !== 'win32')(
         text,
         /!macro customInstall\s+!insertmacro fastforwardPath add\s+!macroend/,
       );
-      assert.match(
-        text,
-        /!macro customUnInstall\s+\$\{ifNot\} \$\{isUpdated\}\s+!insertmacro fastforwardPath remove\s+\$\{endIf\}\s+!macroend/,
+      assert.ok(
+        uninstallingNotUpdating().includes(
+          '!insertmacro fastforwardPath remove',
+        ),
       );
+    });
+
+    test('removes the Explorer menu the app adds on uninstalling but not while updating, so it stays while the new version is installed', () => {
+      const lines = uninstallingNotUpdating();
+      const menu = explorerMenuOf('win32', 'Fastforward.exe', () => true);
+      assert.ok(menu);
+      const keys = new Set(
+        menu.map((value) => value.key.replace(/\\command$/, '')),
+      );
+      assert.strictEqual(keys.size, 2);
+      for (const key of keys) {
+        assert.ok(lines.includes(`DeleteRegKey HKCU "${key}"`), key);
+      }
     });
   },
 );

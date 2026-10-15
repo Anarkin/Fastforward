@@ -71,6 +71,7 @@ import {
   linkAsAdmin,
   refreshCommand,
 } from './terminalCommand';
+import { addExplorerMenu, explorerMenuOf } from './explorerMenu';
 import { runsAsAppImage, updateMode, Updates } from './updates';
 
 const dist = __dirname;
@@ -388,6 +389,13 @@ async function start(asked: readonly string[]): Promise<void> {
         log.error(error);
       },
     );
+  }
+  const explorerMenu = explorerMenuOf(process.platform, process.execPath);
+  if (explorerMenu !== undefined) {
+    void addExplorerMenu(explorerMenu).catch((error: unknown) => {
+      log.error(strings.log.addingExplorerMenuFailed);
+      log.error(error);
+    });
   }
 }
 

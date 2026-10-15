@@ -31,5 +31,7 @@ if ($$env:FASTFORWARD_PATH_CHANGE -eq 'add') { \
 !macro customUnInstall
   ${ifNot} ${isUpdated}
     !insertmacro fastforwardPath remove
+    DeleteRegKey HKCU "Software\Classes\Directory\shell\Fastforward"
+    DeleteRegKey HKCU "Software\Classes\Directory\Background\shell\Fastforward"
   ${endIf}
 !macroend

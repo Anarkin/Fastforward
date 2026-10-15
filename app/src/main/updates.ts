@@ -49,12 +49,7 @@ export function updateMode(
   }
   const installed =
     platform === 'win32'
-      ? exists(
-          path.win32.join(
-            path.win32.dirname(executable),
-            'Uninstall Fastforward.exe',
-          ),
-        )
+      ? installedOnWindows(executable, exists)
       : exists(
           path.posix.join(
             path.posix.dirname(executable),
@@ -63,6 +58,18 @@ export function updateMode(
           ),
         );
   return installed ? 'install' : 'off';
+}
+
+export function installedOnWindows(
+  executable: string,
+  exists: (file: string) => boolean = fs.existsSync,
+): boolean {
+  return exists(
+    path.win32.join(
+      path.win32.dirname(executable),
+      'Uninstall Fastforward.exe',
+    ),
+  );
 }
 
 function canWrite(folder: string): boolean {

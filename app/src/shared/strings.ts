@@ -93,6 +93,7 @@ export const strings = {
     reload: 'Reload',
     noRepository:
       'No repository is open. Use + to open one. The app menu is at the top right.',
+    explorerMenuEntry: `Open in ${brand}`,
   },
   common: {
     close: 'Close',
@@ -563,6 +564,7 @@ export const strings = {
     installingCommandFailed: 'Installing the ff command failed',
     pointedCommand: (file: string) => `Pointed ${file} at this AppImage`,
     pointingCommandFailed: 'Pointing the ff command at this AppImage failed',
+    addingExplorerMenuFailed: `Adding Open in ${brand} to the Explorer menu failed`,
     openingAskedFailed:
       'Opening the folders asked for from the command line failed',
     tabOpen: (root: string) => `Tab ${root} is open`,
