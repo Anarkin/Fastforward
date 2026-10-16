@@ -11,7 +11,7 @@
   "autoFetchMinutes": 1,
   "hideDimmedButtons": true,
   "autoSortTabs": false,
-  "columnWidths": [400, 275],
+  "columnWidths": [300, 250],
   "fonts": {
     "family": "-apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif",
     "size": "12px",
