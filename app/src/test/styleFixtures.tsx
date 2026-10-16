@@ -394,7 +394,7 @@ export function indentedLine(): React.ReactElement {
         wordClass="word-added"
         finds={[]}
         current={undefined}
-        whitespace={false}
+        whitespace
         indent={2}
       />
     </div>,

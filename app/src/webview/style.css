@@ -1974,6 +1974,7 @@ body.resizing {
   left: 0;
   width: 1ch;
   text-align: center;
+  text-indent: 0;
   pointer-events: none;
   user-select: none;
   content: attr(data-glyph);

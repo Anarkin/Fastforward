@@ -1148,6 +1148,14 @@ suite('Style', () => {
     });
   });
 
+  test('shows the sign of each blank of an indented wrapped line on that blank, as the indentation hanging its rows moved the signs aside, squeezing them together', () => {
+    looks(
+      withClass(indented(true), 'blank'),
+      { 'text-indent': '0' },
+      { pseudoElement: '::before' },
+    );
+  });
+
   test('ends the lines scrolled sideways before the minimap, keeping their rows tinted under it, but wraps lines under it, as text goes under the scrollbars everywhere else, with room for the sign of a break, so both sides wrap alike', () => {
     for (const wordWrap of [false, true]) {
       const clear = wordWrap
