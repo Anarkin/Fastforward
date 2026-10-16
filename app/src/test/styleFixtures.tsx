@@ -12,7 +12,7 @@ import { ColumnResizingProvider } from '../webview/columns';
 import { CommitRow, WorkingTreeRow } from '../webview/commitList';
 import { ContextMenu } from '../webview/contextMenu';
 import { DiffFind, DiffOptions } from '../webview/diffColumn';
-import { diffRowClass, DiffView, marked } from '../webview/diffView';
+import { Code, diffRowClass, DiffView, marked } from '../webview/diffView';
 import type { FindRange } from '../webview/find';
 import { LocationsPopup } from '../webview/locations';
 import { Minimap } from '../webview/minimap';
@@ -378,6 +378,25 @@ export function inlineLine(
         )}
       </span>
       {marker && <button className={`hidden-change left ${kind}`} />}
+    </div>,
+  );
+}
+
+export function indentedLine(): React.ReactElement {
+  return diffRow(
+    <div className="diff-line text-line added">
+      <span className="number">1</span>
+      <span className="number">1</span>
+      <Code
+        text="  a"
+        syntax={[]}
+        words={[]}
+        wordClass="word-added"
+        finds={[]}
+        current={undefined}
+        whitespace={false}
+        indent={2}
+      />
     </div>,
   );
 }

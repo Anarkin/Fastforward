@@ -1,10 +1,12 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
+  breakOffsets,
   markedRowStarts,
   rowBreaksAt,
   rowStarts,
   wrapColumns,
+  wrapIndent,
   wrappedLines,
 } from '../../webview/wordWrap';
 
@@ -40,9 +42,41 @@ suite('Word wrap', () => {
     assert.strictEqual(wrappedLines('a abcdefgh', 4), 3);
   });
 
-  test('estimates a line wrapped only at spaces and tabs, not at a non-breaking space, though the browser breaks after punctuation too', () => {
+  test('estimates a line wrapped at spaces and tabs, not at a non-breaking space, though the browser breaks after other punctuation too', () => {
     assert.strictEqual(wrappedLines('ab\u00a0cd', 2), 3);
     assert.strictEqual(wrappedLines('one\ttwo', 4), 2);
+  });
+
+  test('breaks a line where VS Code does, after . , ; ) ] } ? | / & and before ( [ { +, keeping a run of them together, and leaves the breaks at spaces to the browser', () => {
+    assert.deepStrictEqual(breakOffsets('log.info(strings.log)'), [4, 8, 17]);
+    assert.deepStrictEqual(breakOffsets('f(a)), b[0] = {c}'), [1, 8]);
+    assert.deepStrictEqual(breakOffsets('a+b?c|d/e&f;g'), [1, 4, 6, 8, 10, 12]);
+    assert.deepStrictEqual(breakOffsets('((a'), []);
+    assert.deepStrictEqual(breakOffsets('a((b'), [1]);
+    assert.deepStrictEqual(breakOffsets('one two'), []);
+  });
+
+  test('estimates a line broken after the punctuation VS Code breaks at', () => {
+    assert.strictEqual(wrappedLines('log.info(strings.log)', 12), 3);
+  });
+
+  test('indents the rows a line wraps onto as far as the line, as VS Code does, unless not even a wide character would fit after the indentation', () => {
+    assert.strictEqual(wrapIndent('    a', 10), 4);
+    assert.strictEqual(wrapIndent('\t\ta', 20), 8);
+    assert.strictEqual(wrapIndent('a', 10), 0);
+    assert.strictEqual(wrapIndent('    ', 10), 0);
+    assert.strictEqual(wrapIndent('        a', 10), 8);
+    assert.strictEqual(wrapIndent('        a', 9), 0);
+  });
+
+  test('indents no rows of a line indented to a column off the tab stops that has tabs, as the browser counts its tab stops from where the indented rows start', () => {
+    assert.strictEqual(wrapIndent('  a\tb', 10), 0);
+    assert.strictEqual(wrapIndent('    a\tb', 10), 4);
+  });
+
+  test('estimates the rows a line wraps onto as indented as the line, keeping its indentation on the row with the code it indents', () => {
+    assert.strictEqual(wrappedLines('  aaa bbb ccc', 7), 3);
+    assert.strictEqual(wrappedLines('        abcdefgh', 10), 4);
   });
 
   test('draws a tab to the next stop of four columns', () => {
@@ -69,6 +103,23 @@ suite('Word wrap', () => {
     assert.deepStrictEqual(rowBreaksAt('        one', [0, 8], 4), [
       { end: 5, blanks: [space(0), space(1), space(2), space(3), space(4)] },
     ]);
+  });
+
+  test('ends each row a line wraps onto past the indentation it starts at', () => {
+    assert.deepStrictEqual(
+      rowBreaksAt('  aaa bbb ccc', [0, 6, 10], 7, undefined, 2),
+      [
+        { end: 6, blanks: [space(5)] },
+        { end: 6, blanks: [space(5)] },
+      ],
+    );
+    assert.deepStrictEqual(
+      rowBreaksAt('  aa bbbbbbbbbb', [0, 5, 12], 7, undefined, 2),
+      [
+        { end: 5, blanks: [space(4)] },
+        { end: 8, blanks: [] },
+      ],
+    );
   });
 
   test('ends a row and places the blanks hanging at its end by the width its characters are drawn, as a Chinese one takes two columns', () => {

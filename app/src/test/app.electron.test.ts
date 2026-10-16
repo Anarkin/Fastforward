@@ -34,6 +34,10 @@ const hyphenatedLine = Array.from(
   { length: 60 },
   (_, index) => `part${index}`,
 ).join('-');
+const dottedLine = `        ${Array.from(
+  { length: 60 },
+  (_, index) => `part${index}`,
+).join('.')};`;
 const paragraphs = Array.from(
   { length: 200 },
   (_, index) => `Paragraph ${index}`,
@@ -177,6 +181,7 @@ suite('App', () => {
       'hyphenated.txt': `${hyphenatedLine}\n`,
       'changed.txt': 'one\ntwo\nthree\n',
       'notes.md': `${paragraphs.join('\n\n')}\n`,
+      'wrapped.txt': `${dottedLine}\n`,
     });
     await repository.commit('second', { 'changed.txt': 'one\n2\nthree\n' });
     fs.mkdirSync(profile, { recursive: true });
@@ -963,6 +968,91 @@ suite('App', () => {
     assert.deepStrictEqual(
       rows,
       rows.map(() => ({ last: '-', follows: true })),
+    );
+    await waitFor(() => wrapsSaved(), 'the choice to be saved');
+  });
+
+  test('wraps an indented line where VS Code would, after its punctuation, onto rows indented as far as it, as many as the app estimates, never leaving its indentation on a row of its own', async () => {
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await page.locator('.row.file', { hasText: 'wrapped.txt' }).click();
+    await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
+    const line = page.locator('.diff-line', { hasText: 'part0.part1.' });
+    await line.locator('.wrap-break').first().waitFor();
+    const laidOut = () =>
+      line.evaluate((element) => {
+        const code = element.querySelector<HTMLElement>('.code');
+        if (!code) {
+          throw new Error('No code');
+        }
+        const rows = new Map<
+          number,
+          { first: string; start: number; last: string; right: number }
+        >();
+        const range = document.createRange();
+        const walker = document.createTreeWalker(code, NodeFilter.SHOW_TEXT);
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+          if (!(node instanceof Text)) {
+            continue;
+          }
+          for (let offset = 0; offset < node.length; offset++) {
+            range.setStart(node, offset);
+            range.setEnd(node, offset + 1);
+            const rect = range.getBoundingClientRect();
+            const character = node.data[offset];
+            const top = Math.round(rect.top);
+            const row = rows.get(top) ?? {
+              first: character,
+              start: NaN,
+              last: character,
+              right: rect.right,
+            };
+            if (Number.isNaN(row.start) && character !== ' ') {
+              row.start = rect.left;
+            }
+            rows.set(top, { ...row, last: character, right: rect.right });
+          }
+        }
+        const style = getComputedStyle(code);
+        const sample = document.createElement('span');
+        sample.style.font = style.font;
+        sample.style.whiteSpace = 'pre';
+        sample.textContent = '0'.repeat(100);
+        document.body.append(sample);
+        const char = sample.getBoundingClientRect().width / 100;
+        sample.remove();
+        return {
+          text: code.textContent ?? '',
+          rows: [...rows.values()],
+          marks: Array.from(
+            element.querySelectorAll('.wrap-break'),
+            (mark) => mark.getBoundingClientRect().left,
+          ),
+          width:
+            code.getBoundingClientRect().width -
+            parseFloat(style.paddingLeft) -
+            parseFloat(style.paddingRight) -
+            parseFloat(style.textIndent),
+          char,
+        };
+      });
+    await waitFor(async () => {
+      const { rows, marks } = await laidOut();
+      return rows.length > 2 && marks.length === rows.length - 1;
+    }, 'a mark at the end of every row but the last');
+    const { text, rows, marks, width, char } = await laidOut();
+    assert.strictEqual(text, dottedLine);
+    assert.strictEqual(rows[0].first, ' ');
+    assert.deepStrictEqual(
+      rows.map((row) => [row.last, Math.abs(row.start - rows[0].start) < 1]),
+      rows.map((_, index) => [index < rows.length - 1 ? '.' : ';', true]),
+    );
+    assert.deepStrictEqual(
+      marks.map((mark, index) => Math.abs(mark - rows[index].right) < 1),
+      marks.map(() => true),
+    );
+    assert.strictEqual(
+      rows.length,
+      wrappedLines(text, wrapColumns(width, char)),
     );
     await waitFor(() => wrapsSaved(), 'the choice to be saved');
   });

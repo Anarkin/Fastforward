@@ -60,6 +60,7 @@ import {
   fileRow,
   folderRow,
   historyMenu,
+  indentedLine,
   inlineLine,
   locationsPopup,
   minimap,
@@ -88,6 +89,10 @@ function buttonsWidth(count: number): number {
   return (
     titleEdge + count * buttonWidth + (count - 1) * buttonGap + titleClearance
   );
+}
+
+function indented(wordWrap: boolean): MarkupElement {
+  return shownRow(diffView({ wordWrap }, indentedLine()));
 }
 
 function pixels(value: string | undefined): number {
@@ -1128,6 +1133,19 @@ suite('Style', () => {
         'white-space': 'pre-wrap',
       });
     }
+  });
+
+  test('indents the rows a long line wraps onto by its indentation, keeping the indentation on the row with the code it indents', () => {
+    looks(withClass(indented(true), 'code'), {
+      'padding-left':
+        'calc(var(--diff-code-padding) + var(--wrap-indent, 0px))',
+      'text-indent': 'calc(-1 * var(--wrap-indent, 0px))',
+    });
+    looks(withClass(indented(true), 'lead'), { 'white-space': 'pre' });
+    looks(withClass(indented(false), 'code'), {
+      'padding-left': undefined,
+      'text-indent': undefined,
+    });
   });
 
   test('ends the lines scrolled sideways before the minimap, keeping their rows tinted under it, but wraps lines under it, as text goes under the scrollbars everywhere else, with room for the sign of a break, so both sides wrap alike', () => {

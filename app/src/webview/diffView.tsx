@@ -74,11 +74,14 @@ import { SkeletonRows, useSkeleton } from './skeleton';
 import { Twisty } from './tree';
 import { renamedPath } from './fileStatus';
 import {
+  breakOffsets,
+  leadLength,
   markedRowStarts,
   rowBreaksAt,
   tabSize,
   type ColumnsIn,
   wrapColumns,
+  wrapIndent,
   wrappedLines,
   type RowBreak,
 } from './wordWrap';
@@ -294,6 +297,7 @@ export function WrapMarks({
           laidOutRowStarts(code, lineHeight),
           columns,
           columnsIn,
+          wrapIndent(text, columns),
         ),
       );
     measure();
@@ -669,6 +673,7 @@ declare module 'react' {
     readonly '--diff-gap-width'?: string;
     readonly '--diff-word-padding-bottom'?: string;
     readonly '--split-scroll'?: string;
+    readonly '--wrap-indent'?: string;
     readonly '--visible-left'?: string;
     readonly '--visible-right'?: string;
   }
@@ -1012,6 +1017,66 @@ function blanksShown(text: string): React.ReactNode {
   );
 }
 
+function firstFrom(offsets: readonly number[], at: number): number {
+  let low = 0;
+  let high = offsets.length;
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2);
+    if (offsets[middle] < at) {
+      low = middle + 1;
+    } else {
+      high = middle;
+    }
+  }
+  return low;
+}
+
+function breakable(
+  text: string,
+  indent: number | undefined,
+  shown: (piece: string) => React.ReactNode,
+): (piece: string, start: number) => React.ReactNode {
+  if (indent === undefined) {
+    return shown;
+  }
+  const lead = indent > 0 ? leadLength(text) : 0;
+  const breaks = breakOffsets(text);
+  return (piece, start) => {
+    const end = start + piece.length;
+    const parts: React.ReactNode[] = [];
+    let at = start;
+    if (at < lead) {
+      at = Math.min(lead, end);
+      parts.push(
+        <span key="lead" className="lead">
+          {shown(text.slice(start, at))}
+        </span>,
+      );
+    }
+    for (
+      let index = firstFrom(breaks, at);
+      index < breaks.length && breaks[index] < end;
+      index++
+    ) {
+      const offset = breaks[index];
+      if (offset > at) {
+        parts.push(
+          <Fragment key={at}>{shown(text.slice(at, offset))}</Fragment>,
+        );
+      }
+      parts.push(<wbr key={`break:${offset}`} />);
+      at = offset;
+    }
+    if (parts.length === 0) {
+      return shown(piece);
+    }
+    if (at < end) {
+      parts.push(<Fragment key={at}>{shown(text.slice(at, end))}</Fragment>);
+    }
+    return parts;
+  };
+}
+
 export function marked(
   text: string,
   syntax: readonly SyntaxRange[],
@@ -1020,10 +1085,15 @@ export function marked(
   finds: readonly FindRange[],
   current: FindRange | undefined,
   whitespace = false,
+  indent?: number,
 ): React.ReactNode {
-  const shown = whitespace ? blanksShown : (piece: string) => piece;
+  const shown = breakable(
+    text,
+    indent,
+    whitespace ? blanksShown : (piece: string) => piece,
+  );
   if (words.length === 0 && syntax.length === 0 && finds.length === 0) {
-    return shown(text);
+    return shown(text, 0);
   }
   const edges = [
     ...new Set([
@@ -1053,10 +1123,10 @@ export function marked(
       current.end === find.end;
     let content: React.ReactNode = find ? (
       <mark className={`find-match ${isCurrent ? 'current' : ''}`}>
-        {shown(piece)}
+        {shown(piece, start)}
       </mark>
     ) : (
-      shown(piece)
+      shown(piece, start)
     );
     const token = tokenAt(start, end);
     if (token) {
@@ -1100,6 +1170,7 @@ interface CodeProps {
   readonly finds: readonly FindRange[];
   readonly current: FindRange | undefined;
   readonly whitespace: boolean;
+  readonly indent?: number;
 }
 
 const unmarked: readonly never[] = [];
@@ -1139,7 +1210,7 @@ export function codeProps(
   };
 }
 
-const Code = memo(function Code({
+export const Code = memo(function Code({
   text,
   syntax,
   words,
@@ -1147,10 +1218,23 @@ const Code = memo(function Code({
   finds,
   current,
   whitespace,
+  indent,
 }: CodeProps) {
   return (
-    <span className="code">
-      {marked(text, syntax, words, wordClass, finds, current, whitespace)}
+    <span
+      className="code"
+      style={indent ? { '--wrap-indent': `${indent}ch` } : undefined}
+    >
+      {marked(
+        text,
+        syntax,
+        words,
+        wordClass,
+        finds,
+        current,
+        whitespace,
+        indent,
+      )}
     </span>
   );
 });
@@ -1966,7 +2050,13 @@ export function DiffView({
     key: string | undefined,
     text: string,
     kind: DiffLine['kind'] | undefined,
-  ) => <Code {...codeProps(lineMarks, key, text, kind)} />;
+    wrapsAt: number | undefined,
+  ) => (
+    <Code
+      {...codeProps(lineMarks, key, text, kind)}
+      indent={wrapsAt === undefined ? undefined : wrapIndent(text, wrapsAt)}
+    />
+  );
 
   const reveal = useCallback(
     (scrolled: number) => {
@@ -2126,7 +2216,12 @@ export function DiffView({
           >
             <span className="number">{row.line.oldNumber}</span>
             <span className="number">{row.line.newNumber}</span>
-            {code(keys[index].at(0), row.line.text, row.line.kind)}
+            {code(
+              keys[index].at(0),
+              row.line.text,
+              row.line.kind,
+              wrapping?.left,
+            )}
             <WrapMarks
               text={row.line.text}
               columns={wrapping?.left}
@@ -2164,6 +2259,7 @@ export function DiffView({
                       lineKey(row.file, cell.index),
                       cell.line.text,
                       cell.line.kind,
+                      side === 0 ? wrapping?.left : wrapping?.right,
                     )}
                 </span>
                 {cell && (
@@ -2198,7 +2294,7 @@ export function DiffView({
         return (
           <div className="diff-line text-line">
             <span className="number">{row.number}</span>
-            {code(keys[index].at(0), row.text, undefined)}
+            {code(keys[index].at(0), row.text, undefined, wrapping?.left)}
             <WrapMarks
               text={row.text}
               columns={wrapping?.left}

@@ -1950,7 +1950,13 @@ body.resizing {
   min-width: 0;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+  padding-left: calc(var(--diff-code-padding) + var(--wrap-indent, 0px));
   padding-right: calc(2 * var(--diff-code-padding) + 2ch);
+  text-indent: calc(-1 * var(--wrap-indent, 0px));
+}
+
+.diff-view.wrap .code .lead {
+  white-space: pre;
 }
 
 .wrap-marks {

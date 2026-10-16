@@ -22,6 +22,7 @@ import {
   changeMargin,
   changeScrollTop,
   changeStarts,
+  Code,
   codeProps,
   diffRowKey,
   diffRowPlace,
@@ -66,6 +67,28 @@ import { countingReads, fileChange } from '../fixtures';
 
 function sign(glyph: string, text: string): string {
   return `<span class="blank" data-glyph="${glyph}">${text}</span>`;
+}
+
+function wrapMarkup(
+  text: string,
+  indent: number | undefined,
+  syntax: Parameters<typeof marked>[1] = [],
+  whitespace = false,
+): string {
+  return renderToStaticMarkup(
+    <>
+      {marked(
+        text,
+        syntax,
+        [],
+        'word-added',
+        [],
+        undefined,
+        whitespace,
+        indent,
+      )}
+    </>,
+  );
 }
 
 function patch(path: string, added: number): string {
@@ -1742,6 +1765,52 @@ suite('Drawing code', () => {
       codeProps({ ...marks, whitespace: false }, '0:1', 'x', 'added')
         .whitespace,
       false,
+    );
+  });
+
+  test('lets a wrapped line break where VS Code would, inside its colors too, keeping its indentation on the row with the code it indents', () => {
+    const space = `<span class="blank" data-glyph="${strings.symbols.space}"> </span>`;
+    assert.strictEqual(
+      wrapMarkup('    a.b(c)', 4),
+      '<span class="lead">    </span>a.<wbr/>b<wbr/>(c)',
+    );
+    assert.strictEqual(
+      wrapMarkup('a.b(c)', 0, [{ start: 0, end: 2, kind: 'keyword' }]),
+      '<span class="syntax-keyword">a.</span><wbr/>b<wbr/>(c)',
+    );
+    assert.strictEqual(
+      wrapMarkup('a.b(c)', 0, [{ start: 2, end: 3, kind: 'function' }]),
+      'a.<span class="syntax-function"><wbr/>b</span><wbr/>(c)',
+    );
+    assert.strictEqual(
+      wrapMarkup('  a', 2, [], true),
+      `<span class="lead">${space}${space}</span>a`,
+    );
+    assert.strictEqual(wrapMarkup('  a\tb.c', 0), '  a\tb.<wbr/>c');
+    assert.strictEqual(wrapMarkup('    a.b(c)', undefined), '    a.b(c)');
+  });
+
+  test('indents the rows a wrapped line wraps onto by its indentation', () => {
+    const props = {
+      text: '  a',
+      syntax: [],
+      words: [],
+      wordClass: 'word-added',
+      finds: [],
+      current: undefined,
+      whitespace: false,
+    };
+    assert.strictEqual(
+      renderToStaticMarkup(<Code {...props} indent={2} />),
+      '<span class="code" style="--wrap-indent:2ch"><span class="lead">  </span>a</span>',
+    );
+    assert.strictEqual(
+      renderToStaticMarkup(<Code {...props} indent={0} />),
+      '<span class="code">  a</span>',
+    );
+    assert.strictEqual(
+      renderToStaticMarkup(<Code {...props} />),
+      '<span class="code">  a</span>',
     );
   });
 

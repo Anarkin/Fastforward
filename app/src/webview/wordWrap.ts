@@ -15,25 +15,85 @@ export interface RowBreak {
   readonly blanks: readonly Blank[];
 }
 
+const breaksAfter = new Set('})]?|/&.,;');
+const breaksBefore = new Set('([{+');
+const fullWidthColumns = 2;
+
+const isBlank = (character: string | undefined) =>
+  character === ' ' || character === '\t';
+
+export function breakOffsets(text: string): number[] {
+  const offsets: number[] = [];
+  for (let at = 1; at < text.length; at++) {
+    const before = text[at - 1];
+    const after = text[at];
+    if (
+      !isBlank(before) &&
+      !isBlank(after) &&
+      ((breaksAfter.has(before) && !breaksAfter.has(after)) ||
+        (!breaksBefore.has(before) && breaksBefore.has(after)))
+    ) {
+      offsets.push(at);
+    }
+  }
+  return offsets;
+}
+
+export function leadLength(text: string): number {
+  let at = 0;
+  while (isBlank(text[at])) {
+    at++;
+  }
+  return at;
+}
+
+export function wrapIndent(text: string, columns: number): number {
+  const lead = leadLength(text);
+  if (lead === text.length) {
+    return 0;
+  }
+  let indent = 0;
+  for (let at = 0; at < lead; at++) {
+    indent = text[at] === '\t' ? tabStop(indent) : indent + 1;
+  }
+  const offStops = indent % tabSize !== 0 && text.includes('\t');
+  return offStops || indent + fullWidthColumns > columns ? 0 : indent;
+}
+
 export function wrappedLines(text: string, columns: number): number {
   if (text.length <= columns && !text.includes('\t')) {
     return 1;
   }
+  const indent = wrapIndent(text, columns);
+  const breaks = new Set(breakOffsets(text));
   let lines = 1;
   let column = 0;
-  for (const [, word, spaces] of text.matchAll(/([^ \t]*)([ \t]*)/g)) {
-    let length = word.length;
-    if (length > 0 && column > 0 && column + length > columns) {
-      lines++;
-      column = 0;
+  let rowStart = indent;
+  let at = 0;
+  while (at < text.length) {
+    let end = at;
+    while (
+      end < text.length &&
+      !isBlank(text[end]) &&
+      (end === at || !breaks.has(end))
+    ) {
+      end++;
     }
-    while (length > columns) {
-      length -= columns;
+    let length = end - at;
+    if (length > 0 && column > rowStart && column + length > columns) {
       lines++;
+      column = indent;
+      rowStart = indent;
+    }
+    while (column + length > columns) {
+      length -= columns - column;
+      lines++;
+      column = indent;
+      rowStart = indent;
     }
     column += length;
-    for (const space of spaces) {
-      column = space === '\t' ? tabStop(column) : column + 1;
+    for (at = end; isBlank(text[at]); at++) {
+      column = text[at] === '\t' ? tabStop(column) : column + 1;
     }
   }
   return lines;
@@ -140,14 +200,17 @@ export function rowBreaksAt(
   starts: readonly number[],
   columns: number,
   columnsIn: ColumnsIn = countedColumns,
+  indent = 0,
 ): RowBreak[] {
   return starts.slice(1).map((next, index) => {
     const row = text.slice(starts[index], next);
-    const columnAt = columnsIn(row);
+    const start = index === 0 ? 0 : indent;
+    const columnIn = columnsIn(row);
+    const columnAt = (at: number) => start + columnIn(at);
     let blanks: Blank[] = [];
     for (let at = 0; at < row.length; at++) {
       const character = row[at];
-      if (character === ' ' || character === '\t') {
+      if (isBlank(character)) {
         blanks.push({ column: columnAt(at), tab: character === '\t' });
       } else {
         blanks = [];
