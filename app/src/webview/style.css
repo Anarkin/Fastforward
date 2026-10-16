@@ -112,6 +112,10 @@ body {
   background-color: var(--scrollbar-active-background);
 }
 
+body:has(.message-peek) .overlay-scrollbar {
+  opacity: 0;
+}
+
 .app {
   display: flex;
   flex-direction: column;
@@ -1027,6 +1031,66 @@ body.resizing {
 
 .date {
   flex: none;
+}
+
+.message-peek {
+  position: fixed;
+  z-index: 19;
+  box-sizing: border-box;
+  margin-right: var(--gutter-width);
+  background: var(--color-panel-background);
+  border-radius: var(--card-radius);
+  pointer-events: none;
+}
+
+.message-peek::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  box-shadow: var(--popup-shadow);
+}
+
+.message-peek::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px var(--color-border);
+}
+
+.message-peek > .commit {
+  box-sizing: border-box;
+  max-height: inherit;
+  overflow: hidden;
+  border-bottom: none;
+  border-radius: inherit;
+}
+
+.message-peek > .commit:not(.selected) {
+  background: var(--hover-background);
+}
+
+.message-peek .commit-line:not(.secondary) {
+  height: auto;
+}
+
+.message-peek .subject {
+  line-height: 20px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.message-peek .commit-line.secondary {
+  width: var(--peek-row-width);
+}
+
+.message-body {
+  margin-top: 8px;
+  line-height: 20px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .badge {

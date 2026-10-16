@@ -71,6 +71,7 @@ export const keymap = {
   compare: bind('History', strings.actions.compare, {
     'Mod+Click': true,
   }),
+  message: bind('History', strings.actions.message, { 'Alt+Hover': true }),
   navigate: bind('History', strings.actions.navigate, {
     BackButton: 'back',
     ForwardButton: 'forward',
@@ -212,6 +213,10 @@ const buttons: Readonly<Record<string, number>> = {
   ForwardButton: 4,
 };
 
+const pointerKeys = new Set(['Wheel', 'Hover']);
+
+const modifierKeys = new Set(['Alt', 'AltGraph', 'Control', 'Shift', 'Meta']);
+
 const named: Readonly<Record<string, string>> = { Space: ' ' };
 
 const caretKeys = new Set([
@@ -296,7 +301,7 @@ export function pressed<Value>(
     const combo = comboOf(keys);
     if (
       !(combo.key in buttons) &&
-      combo.key !== 'Wheel' &&
+      !pointerKeys.has(combo.key) &&
       keyMatches(combo, press) &&
       modifiersMatch(combo, press) &&
       !(inField && !binding.fields && editsField(combo))
@@ -320,17 +325,36 @@ export function clicked<Value>(
   return undefined;
 }
 
-export function wheeled<Value>(
+function pointed<Value>(
   binding: Binding<Value>,
-  wheel: Modifiers,
+  key: string,
+  held: Modifiers,
 ): Value | undefined {
   for (const [keys, value] of Object.entries(binding.keys)) {
     const combo = comboOf(keys);
-    if (combo.key === 'Wheel' && modifiersMatch(combo, wheel)) {
+    if (combo.key === key && modifiersMatch(combo, held)) {
       return value;
     }
   }
   return undefined;
+}
+
+export function wheeled<Value>(
+  binding: Binding<Value>,
+  wheel: Modifiers,
+): Value | undefined {
+  return pointed(binding, 'Wheel', wheel);
+}
+
+export function hovered<Value>(
+  binding: Binding<Value>,
+  pointer: Modifiers,
+): Value | undefined {
+  return pointed(binding, 'Hover', pointer);
+}
+
+export function modifierKey(press: KeyPress): boolean {
+  return modifierKeys.has(press.key);
 }
 
 const rightButton = 2;

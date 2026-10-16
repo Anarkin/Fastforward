@@ -1159,6 +1159,23 @@ suite('Commit row', () => {
     assert.strictEqual(picked, 'a');
   });
 
+  test('puts what it is given after its bubbles, as the whole message of a commit adds the rest of the message there', () => {
+    const html = renderToStaticMarkup(
+      <CommitRow
+        commit={commitInfo('a')}
+        selected={undefined}
+        headCommit={undefined}
+        refs={[{ kind: 'branch', name: 'main', commit: 'a' }]}
+        detached={false}
+        indent={8}
+        onSelect={() => undefined}
+      >
+        <div className="added" />
+      </CommitRow>,
+    );
+    assert.match(html, />main<.*<div class="added"><\/div><\/div>$/s);
+  });
+
   test('marks a stash with a bubble, not its place among the stashes, which changes as they come and go, and offers no menu, as a stash can be neither checked out nor bookmarked', () => {
     const props = {
       commit: commitInfo('s', { subject: 'On main: kept' }),

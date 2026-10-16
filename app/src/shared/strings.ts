@@ -174,6 +174,7 @@ export const strings = {
     parent: 'Select the first parent',
     merge: 'Expand or collapse a merge',
     compare: 'Compare with the commit selected',
+    message: 'Show the whole message of a commit',
     navigate: 'Back or forward',
     column: 'Next or previous column',
     folder: 'Open or close a folder',
@@ -234,6 +235,7 @@ export const strings = {
     BackButton: 'Mouse Back',
     ForwardButton: 'Mouse Forward',
     Wheel: 'Wheel',
+    Hover: 'Hover',
   },
   navigation: {
     history: {

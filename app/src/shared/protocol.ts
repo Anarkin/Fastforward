@@ -143,6 +143,7 @@ export type Bookmark = BookmarkRef | BookmarkCommit;
 export interface CommitInfo {
   readonly hash: string;
   readonly subject: string;
+  readonly body: string;
   readonly authorName: string;
   readonly commitDate: number;
 }

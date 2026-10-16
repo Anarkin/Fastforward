@@ -4,9 +4,11 @@ import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import {
   clicked,
+  hovered,
   keyLabels,
   keymap,
   menuFromKeyboard,
+  modifierKey,
   pressedAlone,
   pressed,
   pressOfInput,
@@ -300,6 +302,36 @@ suite('Keymap', () => {
     );
   });
 
+  test('shows the whole message of a commit hovered with Alt alone, or Option on macOS, but never on a key press', () => {
+    const alt = { ...noModifiers, altKey: true };
+    assert.strictEqual(hovered(keymap.message, alt), true);
+    assert.strictEqual(
+      withMacKeys(() => hovered(keymap.message, alt)),
+      true,
+    );
+    assert.strictEqual(hovered(keymap.message, noModifiers), undefined);
+    for (const held of ['ctrlKey', 'metaKey', 'shiftKey']) {
+      assert.strictEqual(
+        hovered(keymap.message, { ...alt, [held]: true }),
+        undefined,
+        held,
+      );
+    }
+    assert.strictEqual(
+      pressed(keymap.message, keyPress('Hover', alt), false),
+      undefined,
+    );
+  });
+
+  test('tells a modifier pressed on its own from any other key', () => {
+    for (const key of ['Alt', 'AltGraph', 'Control', 'Shift', 'Meta']) {
+      assert.ok(modifierKey(keyPress(key)), key);
+    }
+    for (const key of ['f', 'F', 'ArrowDown', 'Tab', ' ']) {
+      assert.ok(!modifierKey(keyPress(key, { altKey: true })), key);
+    }
+  });
+
   test('tells a menu opened from the keyboard from one opened by the right button', () => {
     assert.ok(menuFromKeyboard({ button: 0 }));
     assert.ok(!menuFromKeyboard({ button: 2 }));
@@ -359,6 +391,8 @@ suite('Keymap', () => {
     assert.deepStrictEqual(keyLabels('ArrowLeft', false), ['←']);
     assert.deepStrictEqual(keyLabels('Alt+ArrowDown', false), ['Alt', '↓']);
     assert.deepStrictEqual(keyLabels('Alt+ArrowDown', true), ['⌥', '↓']);
+    assert.deepStrictEqual(keyLabels('Alt+Hover', false), ['Alt', 'Hover']);
+    assert.deepStrictEqual(keyLabels('Alt+Hover', true), ['⌥', 'Hover']);
     assert.deepStrictEqual(keyLabels('MiddleClick', false), ['Middle-click']);
     assert.deepStrictEqual(keyLabels('Drag', false), ['Drag']);
   });

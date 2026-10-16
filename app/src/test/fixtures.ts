@@ -38,6 +38,7 @@ export const commitInfo = (
 ): CommitInfo => ({
   hash,
   subject: hash,
+  body: '',
   authorName: 'Test',
   commitDate: 0,
   ...extra,

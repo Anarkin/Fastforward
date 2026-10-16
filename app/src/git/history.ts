@@ -590,12 +590,16 @@ export function parseLog(output: string): CommitInfo[] {
       i++;
       continue;
     }
-    const [hash, authorName, commitTime, body = ''] = tokens.slice(i, i + 4);
+    const [hash, authorName, commitTime, message = ''] = tokens.slice(i, i + 4);
     i += 4;
-    const message = body.replaceAll('\r\n', '\n').trimEnd();
+    const [subject, ...rest] = message
+      .replaceAll('\r\n', '\n')
+      .trimEnd()
+      .split('\n');
     commits.push({
       hash: hash.slice(1),
-      subject: message.split('\n', 1)[0],
+      subject,
+      body: rest.join('\n').replace(/^(?:[ \t]*\n)+/, ''),
       authorName,
       commitDate: Number(commitTime) * 1000,
     });

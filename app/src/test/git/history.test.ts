@@ -14,7 +14,7 @@ import {
 import { Commits } from '../../history/commits';
 
 suite('Git log parser', () => {
-  test('parses only what the commit list shows of each commit', () => {
+  test('parses what the commit list shows of each commit, the rest of its message after the subject included', () => {
     const output = [
       '\x1eaaa\0Ann\0',
       '1700000100\0Subject\n\nBody\n\0',
@@ -25,12 +25,14 @@ suite('Git log parser', () => {
       {
         hash: 'aaa',
         subject: 'Subject',
+        body: 'Body',
         authorName: 'Ann',
         commitDate: 1_700_000_100_000,
       },
       {
         hash: 'bbb',
         subject: 'Root',
+        body: '',
         authorName: 'Bob',
         commitDate: 1_600_000_000_000,
       },
@@ -54,8 +56,16 @@ suite('Git log parser', () => {
   });
 
   test('reads a message written with CRLF line endings', () => {
-    const output = '\x1eaaa\0Ann\x001700000000\0subject\r\n\r\nbody\r\n\0';
+    const output =
+      '\x1eaaa\0Ann\x001700000000\0subject\r\n\r\nbody\r\nmore\r\n\0';
     assert.strictEqual(parseLog(output)[0].subject, 'subject');
+    assert.strictEqual(parseLog(output)[0].body, 'body\nmore');
+  });
+
+  test('keeps the lines and indentation of the rest of a message, dropping only the blank lines before it', () => {
+    const output =
+      '\x1eaaa\0Ann\x001700000000\0Subject\n\n \n  - one\n\n  - two\n\n\0';
+    assert.strictEqual(parseLog(output)[0].body, '  - one\n\n  - two');
   });
 });
 

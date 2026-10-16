@@ -43,6 +43,7 @@ import {
 import { GraphCell, graphWidth, rowLanes } from './graph';
 import { formatDateTime } from './dates';
 import { MenuButton } from './menu';
+import { MessageBody, MessagePeek } from './messagePeek';
 import { useSkeleton } from './skeleton';
 import { Highlight } from './highlight';
 import {
@@ -77,6 +78,8 @@ const keyRepeatDelay = 75;
 
 const noHistory = () => () => {};
 const noVersion = () => 0;
+const noSelect = () => {};
+const rowIndent = 8;
 
 const openingRows = 20;
 
@@ -956,7 +959,8 @@ export function Commits({
     );
   };
 
-  const indent = (index: number) => graphWidth(rowLanes(graphOf(index))) + 8;
+  const indent = (index: number) =>
+    graphWidth(rowLanes(graphOf(index))) + rowIndent;
 
   const renderRow = (index: number) => {
     if (hasWorkingTree && index === 0) {
@@ -1080,6 +1084,27 @@ export function Commits({
           })}
         </div>
       </div>
+      <MessagePeek
+        list={list}
+        commitAt={(index) =>
+          index < offset ? undefined : history?.at(index - offset)
+        }
+        indent={rowIndent}
+        renderRow={(commit) => (
+          <CommitRow
+            commit={commit}
+            selected={selected}
+            headCommit={headCommit}
+            refs={refsByCommit.get(commit.hash) ?? []}
+            stash={stashes.has(commit.hash)}
+            detached={detached === commit.hash}
+            indent={rowIndent}
+            onSelect={noSelect}
+          >
+            <MessageBody text={commit.body} />
+          </CommitRow>
+        )}
+      />
     </Column>
   );
 }
@@ -1132,6 +1157,7 @@ export function CommitRow({
   onCompare,
   highlight = '',
   itemProps,
+  children,
 }: {
   commit: CommitInfo;
   selected: string | undefined;
@@ -1144,6 +1170,7 @@ export function CommitRow({
   onCompare?: (hash: string) => void;
   highlight?: string;
   itemProps?: React.HTMLAttributes<HTMLDivElement>;
+  children?: React.ReactNode;
 }) {
   const openMenu = useContext(OpenContextMenu);
   return (
@@ -1179,6 +1206,7 @@ export function CommitRow({
         stash={stash}
         detached={detached}
       />
+      {children}
     </div>
   );
 }

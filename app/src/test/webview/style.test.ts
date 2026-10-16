@@ -63,6 +63,7 @@ import {
   indentedLine,
   inlineLine,
   locationsPopup,
+  messagePanel,
   minimap,
   menuButton,
   navButtons,
@@ -264,6 +265,22 @@ function overlayScrollbar(classes = ''): MarkupElement {
     createElement('div', {
       className: `${overlayScrollbarClass} vertical ${classes}`,
     }),
+  );
+}
+
+function shownScrollbar(messageUp: boolean): MarkupElement {
+  return withClass(
+    rendered(
+      createElement(
+        'body',
+        null,
+        messageUp && createElement('div', { className: 'message-peek' }),
+        createElement('div', {
+          className: `${overlayScrollbarClass} vertical shown`,
+        }),
+      ),
+    ),
+    overlayScrollbarClass,
   );
 }
 
@@ -1194,12 +1211,94 @@ suite('Style', () => {
     assert.strictEqual(layoutVariables['--diff-tab-size'], String(tabSize));
   });
 
-  test('writes the title of the checked-out commit in bold', () => {
+  test('writes the title of the checked-out commit in bold, in its whole message too', () => {
     looks(withClass(rendered(commitRow({ headCommit: 'a' })), 'subject'), {
       'font-weight': '600',
     });
     looks(withClass(rendered(commitRow({ headCommit: 'b' })), 'subject'), {
       'font-weight': undefined,
+    });
+    looks(withClass(messagePanel({ headCommit: 'a' }), 'subject'), {
+      'font-weight': '600',
+    });
+    looks(withClass(messagePanel({ headCommit: 'b' }), 'subject'), {
+      'font-weight': undefined,
+    });
+  });
+
+  test("pops a commit's row out over itself like the other popups, ringed over the row's tint, letting the pointer through to the rows under it", () => {
+    const panel = messagePanel();
+    looks(panel, {
+      position: 'fixed',
+      'box-sizing': 'border-box',
+      'margin-right': 'var(--gutter-width)',
+      background: 'var(--color-panel-background)',
+      'border-radius': 'var(--card-radius)',
+      'pointer-events': 'none',
+    });
+    looks(
+      panel,
+      {
+        position: 'absolute',
+        inset: '0',
+        'border-radius': 'inherit',
+        'box-shadow': 'inset 0 0 0 1px var(--color-border)',
+      },
+      after,
+    );
+  });
+
+  test("casts the shadow of a popped-out row from behind its text rather than from the row, as a shadow on the text's own layer turns its subpixel antialiasing off, blurring it next to the rows, cutting a long message off inside the row instead, as cutting the popup off would cut its shadow off too", () => {
+    const panel = messagePanel();
+    looks(panel, { overflow: undefined, 'box-shadow': undefined });
+    looks(
+      panel,
+      {
+        content: "''",
+        position: 'absolute',
+        inset: '0',
+        'z-index': '-1',
+        'border-radius': 'inherit',
+        'box-shadow': 'var(--popup-shadow)',
+      },
+      { pseudoElement: '::before' },
+    );
+    looks(withClass(panel, 'commit'), {
+      'box-sizing': 'border-box',
+      'max-height': 'inherit',
+      overflow: 'hidden',
+      'border-radius': 'inherit',
+    });
+  });
+
+  test("extends the popped-out row: tinted as the pointer tints the row under it, or as selected, its subject wrapped in lines as tall as the row's, its author and date as wide as the row, then the rest of the message with its line breaks", () => {
+    const panel = messagePanel();
+    looks(withClass(panel, 'commit'), {
+      'border-bottom': 'none',
+      background: 'var(--hover-background)',
+    });
+    looks(withClass(messagePanel({ selected: 'a' }), 'commit'), {
+      background: 'var(--selection-background)',
+    });
+    const rowLine = cascaded(
+      withClass(rendered(commitRow()), 'commit-line'),
+      'height',
+    );
+    assert.strictEqual(rowLine, '20px');
+    looks(withClass(panel, 'commit-line'), { height: 'auto' });
+    looks(withClass(panel, 'subject'), {
+      'line-height': rowLine,
+      'white-space': 'normal',
+      'overflow-wrap': 'anywhere',
+    });
+    looks(withClass(panel, 'commit-line', 'secondary'), {
+      height: rowLine,
+      width: 'var(--peek-row-width)',
+    });
+    looks(withClass(panel, 'message-body'), {
+      'line-height': rowLine,
+      'white-space': 'pre-wrap',
+      'overflow-wrap': 'anywhere',
     });
   });
 
@@ -2682,6 +2781,23 @@ suite('Style', () => {
     assert.ok(edge > layer(locationsPopup('')));
     for (const above of [contextMenu(), historyMenu(), notices()]) {
       assert.ok(layer(above) > edge, above.classes.join(' '));
+    }
+  });
+
+  test("hides the overlay scrollbars while a commit's whole message is up, as they are drawn over everything and would cut through it", () => {
+    looks(shownScrollbar(true), { opacity: '0' });
+    looks(shownScrollbar(false), { opacity: '1' });
+  });
+
+  test("draws a commit's whole message over the edges of the columns, but under the notices and menus", () => {
+    const edge = layer(
+      withClass(columns(columnsClass(true, 'a'), 'commits'), 'column'),
+      after,
+    );
+    const message = layer(messagePanel());
+    assert.ok(message > edge);
+    for (const above of [contextMenu(), historyMenu(), notices()]) {
+      assert.ok(layer(above) > message, above.classes.join(' '));
     }
   });
 
