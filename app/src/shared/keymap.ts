@@ -66,12 +66,22 @@ export const keymap = {
     { PageUp: 'pageUp', PageDown: 'pageDown', Home: 'first', End: 'last' },
     { repeats: true },
   ),
-  parent: bind('History', strings.actions.parent, { 'Alt+ArrowDown': true }),
+  parent: bind('History', strings.actions.parent, { 'Mod+ArrowDown': true }),
   merge: bind('History', strings.actions.merge, { Space: true }),
   compare: bind('History', strings.actions.compare, {
     'Mod+Click': true,
   }),
   message: bind('History', strings.actions.message, { 'Alt+Hover': true }),
+  pin: bind('History', strings.actions.pin, {
+    'Alt+Click': true,
+    'Alt+Enter': true,
+  }),
+  peekStep: bind(
+    'History',
+    strings.actions.peekStep,
+    { 'Alt+ArrowUp': 'up', 'Alt+ArrowDown': 'down' },
+    { repeats: true },
+  ),
   navigate: bind('History', strings.actions.navigate, {
     BackButton: 'back',
     ForwardButton: 'forward',
@@ -275,12 +285,12 @@ function keyMatches(combo: Combo, press: KeyPress): boolean {
 
 function editsField(combo: Combo): boolean {
   return (
-    !combo.mod &&
     !combo.ctrl &&
-    (isLetter(combo.key) ||
-      combo.key.length === 1 ||
-      combo.key === 'Space' ||
-      caretKeys.has(combo.key))
+    (caretKeys.has(combo.key) ||
+      (!combo.mod &&
+        (isLetter(combo.key) ||
+          combo.key.length === 1 ||
+          combo.key === 'Space')))
   );
 }
 
@@ -353,6 +363,16 @@ export function hovered<Value>(
   return pointed(binding, 'Hover', pointer);
 }
 
+export function shortcutOf(
+  binding: Binding<unknown>,
+  by: 'pointer' | 'keyboard',
+): string | undefined {
+  return Object.keys(binding.keys).find((keys) => {
+    const { key } = comboOf(keys);
+    return (key in buttons || pointerKeys.has(key)) === (by === 'pointer');
+  });
+}
+
 export function modifierKey(press: KeyPress): boolean {
   return modifierKeys.has(press.key);
 }
@@ -391,7 +411,7 @@ export function pressOfInput(input: {
   };
 }
 
-export function keyLabels(keys: string, mac: boolean): string[] {
+export function keyLabels(keys: string, mac = macKeys): string[] {
   const combo = comboOf(keys);
   const names: Readonly<Record<string, string>> = strings.keys;
   return [

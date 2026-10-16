@@ -268,13 +268,19 @@ function overlayScrollbar(classes = ''): MarkupElement {
   );
 }
 
-function shownScrollbar(messageUp: boolean): MarkupElement {
+function keyOf(element: MarkupElement): MarkupElement | undefined {
+  return element.tag === 'kbd'
+    ? element
+    : element.children.map(keyOf).find((key) => key !== undefined);
+}
+
+function shownScrollbar(message?: string): MarkupElement {
   return withClass(
     rendered(
       createElement(
         'body',
         null,
-        messageUp && createElement('div', { className: 'message-peek' }),
+        message !== undefined && createElement('div', { className: message }),
         createElement('div', {
           className: `${overlayScrollbarClass} vertical shown`,
         }),
@@ -1271,14 +1277,13 @@ suite('Style', () => {
     });
   });
 
-  test("extends the popped-out row: tinted as the pointer tints the row under it, or as selected, its subject wrapped in lines as tall as the row's, its author and date as wide as the row, then the rest of the message with its line breaks", () => {
+  test("extends the popped-out row: as white as the other popups, though its row is under the pointer or selected, or the pointer is on it pinned, its subject wrapped in lines as tall as the row's, its author and date as wide as the row, then the rest of the message with its line breaks", () => {
     const panel = messagePanel();
-    looks(withClass(panel, 'commit'), {
-      'border-bottom': 'none',
-      background: 'var(--hover-background)',
-    });
+    const row = withClass(panel, 'commit');
+    looks(row, { 'border-bottom': 'none', background: 'none' });
+    looks(row, { background: 'none' }, hovered);
     looks(withClass(messagePanel({ selected: 'a' }), 'commit'), {
-      background: 'var(--selection-background)',
+      background: 'none',
     });
     const rowLine = cascaded(
       withClass(rendered(commitRow()), 'commit-line'),
@@ -1336,6 +1341,12 @@ suite('Style', () => {
     const item = withClass(contextMenu(), 'menu-item');
     looks(item, { outline: 'none' }, { focus: item });
     looks(about, { outline: 'none' }, { focus: about });
+    const pinned = messagePanel({}, true);
+    const close = withClass(pinned, 'message-close');
+    looks(close, ring, { focus: close });
+    const description = withClass(pinned, 'message-body');
+    looks(pinned, { outline: 'none' }, { focus: pinned });
+    looks(description, { outline: 'none' }, { focus: description });
   });
 
   test('tints a row under the pointer with a see-through touch of the focus color, over whatever lies under it', () => {
@@ -2784,9 +2795,136 @@ suite('Style', () => {
     }
   });
 
-  test("hides the overlay scrollbars while a commit's whole message is up, as they are drawn over everything and would cut through it", () => {
-    looks(shownScrollbar(true), { opacity: '0' });
-    looks(shownScrollbar(false), { opacity: '1' });
+  test("hides the overlay scrollbars while a commit's whole message is peeked at, as they are drawn over everything and would cut through it, but not while one is pinned, which scrolls with them", () => {
+    looks(shownScrollbar('message-peek'), { opacity: '0' });
+    looks(shownScrollbar('message-peek pinned'), { opacity: '1' });
+    looks(shownScrollbar(), { opacity: '1' });
+  });
+
+  test('puts the pin and the keys pinning a message peeked at, or the button closing a pinned one, beside the subject at the top right, on its first line and muted like the author, the keys drawn like the shortcuts screen draws them', () => {
+    const rowLine = cascaded(
+      withClass(rendered(commitRow()), 'commit-line'),
+      'height',
+    );
+    const corner = withClass(messagePanel(), 'message-corner');
+    looks(corner, {
+      flex: 'none',
+      'align-self': 'flex-start',
+      display: 'grid',
+      'align-items': 'center',
+      height: rowLine,
+      color: 'var(--muted-foreground)',
+      'font-size': 'calc(var(--font-size) * 0.85)',
+    });
+    looks(withClass(corner, 'message-hint'), {
+      'grid-area': '1 / 1',
+      display: 'flex',
+      'align-items': 'center',
+      gap: '4px',
+    });
+    const shortcutKey = keyOf(shortcutsPopup());
+    const cornerKey = keyOf(corner);
+    assert.ok(shortcutKey && cornerKey);
+    for (const property of ['border', 'border-radius', 'padding']) {
+      assert.strictEqual(
+        cascaded(cornerKey, property),
+        cascaded(shortcutKey, property),
+        property,
+      );
+    }
+    const close = withClass(messagePanel({}, true), 'message-close');
+    looks(close, {
+      'grid-area': '1 / 1',
+      'justify-self': 'end',
+      display: 'flex',
+      'align-items': 'center',
+      'justify-content': 'center',
+      width: rowLine,
+      height: rowLine,
+      padding: '0',
+      color: 'inherit',
+      background: 'none',
+      border: 'none',
+      'border-radius': '4px',
+    });
+    looks(close, { background: 'var(--hover-background)' }, hovered);
+  });
+
+  test("keeps the corner of a message as wide pinned as peeked at, stacking the pin hint and the close button in one place and hiding whichever doesn't apply, so pinning doesn't change the width", () => {
+    const peeked = messagePanel();
+    const pinned = messagePanel({}, true);
+    looks(withClass(peeked, 'message-hint'), { visibility: undefined });
+    looks(withClass(peeked, 'message-close'), { visibility: 'hidden' });
+    looks(withClass(pinned, 'message-hint'), { visibility: 'hidden' });
+    looks(withClass(pinned, 'message-close'), { visibility: undefined });
+  });
+
+  test('cuts the rest of a message peeked at through the middle of its third line, the half line showing there is more, and shows all of it once pinned', () => {
+    const rowLine = cascaded(
+      withClass(rendered(commitRow()), 'commit-line'),
+      'height',
+    );
+    looks(withClass(messagePanel(), 'message-body'), {
+      'max-height': `calc(2.5 * ${rowLine})`,
+      overflow: 'hidden',
+    });
+    looks(withClass(messagePanel({}, true), 'message-body'), {
+      'max-height': undefined,
+      overflow: undefined,
+    });
+  });
+
+  test('tells how many lines are cut off a message peeked at in small muted type, like the hint at its corner', () => {
+    const rowLine = cascaded(
+      withClass(rendered(commitRow()), 'commit-line'),
+      'height',
+    );
+    looks(rendered(createElement('div', { className: 'message-more' })), {
+      'line-height': rowLine,
+      color: 'var(--muted-foreground)',
+      'font-size': 'calc(var(--font-size) * 0.85)',
+    });
+  });
+
+  test('lets a pinned message take the pointer, its text be selected, and a long one scroll its rest alone, keeping its subject, author, bubbles and close button in place, without scrolling on past its end, its ring and shadow letting the pointer through to the row', () => {
+    looks(messagePanel({}, true), {
+      'pointer-events': 'auto',
+      'user-select': 'text',
+    });
+    for (const pseudoElement of ['::before', '::after']) {
+      looks(
+        messagePanel({}, true),
+        { 'pointer-events': 'none' },
+        { pseudoElement },
+      );
+    }
+    const pinned = messagePanel(
+      { refs: [{ kind: 'branch', name: 'main', commit: 'a' }] },
+      true,
+    );
+    looks(withClass(pinned, 'commit'), {
+      display: 'flex',
+      'flex-direction': 'column',
+      overflow: 'hidden',
+      'overflow-y': undefined,
+    });
+    for (const kept of ['commit-line', 'bubble-line']) {
+      looks(withClass(pinned, kept), { 'flex-shrink': '0' });
+    }
+    looks(withClass(pinned, 'message-body'), {
+      'flex-shrink': undefined,
+      'min-height': '0',
+      'overflow-y': 'auto',
+      'overscroll-behavior': 'contain',
+    });
+    looks(messagePanel(), {
+      'pointer-events': 'none',
+      'user-select': undefined,
+    });
+    looks(withClass(messagePanel(), 'commit'), { display: undefined });
+    looks(withClass(messagePanel(), 'message-body'), {
+      'overflow-y': undefined,
+    });
   });
 
   test("draws a commit's whole message over the edges of the columns, but under the notices and menus", () => {

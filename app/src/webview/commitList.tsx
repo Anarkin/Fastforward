@@ -587,6 +587,12 @@ function inPairs(refs: readonly RefInfo[]): RefInfo[] {
   ];
 }
 
+export function commitMoveOf(
+  event: Parameters<typeof listMoveOf>[0],
+): ListMove | undefined {
+  return listMoveOf(event) ?? keyPressed(keymap.peekStep, event);
+}
+
 export function isCompareClick(event: Click): boolean {
   return clicked(keymap.compare, event) !== undefined;
 }
@@ -897,7 +903,7 @@ export function Commits({
       }
       return;
     }
-    const move = listMoveOf(event);
+    const move = commitMoveOf(event);
     if (!history || move === undefined) {
       return;
     }
@@ -1090,8 +1096,9 @@ export function Commits({
           index < offset ? undefined : history?.at(index - offset)
         }
         indent={rowIndent}
-        renderRow={(commit) => (
+        renderRow={(commit, corner) => (
           <CommitRow
+            corner={corner}
             commit={commit}
             selected={selected}
             headCommit={headCommit}
@@ -1157,6 +1164,7 @@ export function CommitRow({
   onCompare,
   highlight = '',
   itemProps,
+  corner,
   children,
 }: {
   commit: CommitInfo;
@@ -1170,6 +1178,7 @@ export function CommitRow({
   onCompare?: (hash: string) => void;
   highlight?: string;
   itemProps?: React.HTMLAttributes<HTMLDivElement>;
+  corner?: React.ReactNode;
   children?: React.ReactNode;
 }) {
   const openMenu = useContext(OpenContextMenu);
@@ -1193,6 +1202,7 @@ export function CommitRow({
         <span className="subject">
           <Highlight text={commit.subject} query={highlight} />
         </span>
+        {corner}
       </div>
       <div className="commit-line secondary">
         <span className="author">

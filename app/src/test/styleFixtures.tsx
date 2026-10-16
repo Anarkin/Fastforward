@@ -15,7 +15,11 @@ import { DiffFind, DiffOptions } from '../webview/diffColumn';
 import { Code, diffRowClass, DiffView, marked } from '../webview/diffView';
 import type { FindRange } from '../webview/find';
 import { LocationsPopup } from '../webview/locations';
-import { MessageBody, MessagePanel } from '../webview/messagePeek';
+import {
+  MessageBody,
+  MessageCorner,
+  MessagePanel,
+} from '../webview/messagePeek';
 import { Minimap } from '../webview/minimap';
 import { HistoryMenu, NavButtons } from '../webview/navBar';
 import { SearchButton } from '../webview/search';
@@ -175,6 +179,7 @@ export function commitRow(
 
 export function messagePanel(
   props: Partial<Parameters<typeof CommitRow>[0]> = {},
+  pinned = false,
 ): MarkupElement {
   return rendered(
     <MessagePanel
@@ -182,13 +187,14 @@ export function messagePanel(
         left: 0,
         top: 0,
         width: 100,
-        truncated: true,
         room: { top: 0, bottom: 500 },
       }}
       indent={8}
+      onUnpin={pinned ? noop : undefined}
     >
       {commitRow({
         indent: 8,
+        corner: <MessageCorner onUnpin={pinned ? noop : undefined} />,
         children: <MessageBody text="Body" />,
         ...props,
       })}

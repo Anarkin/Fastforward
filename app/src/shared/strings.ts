@@ -175,6 +175,8 @@ export const strings = {
     merge: 'Expand or collapse a merge',
     compare: 'Compare with the commit selected',
     message: 'Show the whole message of a commit',
+    pin: 'Pin the whole message of a commit, to scroll or copy it',
+    peekStep: 'Step through the commits, showing each whole message',
     navigate: 'Back or forward',
     column: 'Next or previous column',
     folder: 'Open or close a folder',
@@ -289,6 +291,8 @@ export const strings = {
     list: 'Commits',
     settings: 'Commit list settings',
     collapseMerges: 'Collapse merge commits',
+    moreLines: (count: number) =>
+      count === 1 ? '1 more line' : `${count} more lines`,
     solo: 'Solo: show only the history of the checked-out commit',
     collapseMerge: 'Collapse merge',
     expandMerge: 'Expand merge',

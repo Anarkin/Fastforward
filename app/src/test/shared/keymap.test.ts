@@ -14,6 +14,7 @@ import {
   pressOfInput,
   released,
   setKeyPlatform,
+  shortcutOf,
   wheeled,
   type KeyPress,
 } from '../../shared/keymap';
@@ -215,9 +216,39 @@ suite('Keymap', () => {
   test('takes Alt only for a key bound with it', () => {
     const down = keyPress('ArrowDown');
     const altDown = keyPress('ArrowDown', { altKey: true });
-    assert.strictEqual(pressed(keymap.parent, altDown, false), true);
-    assert.strictEqual(pressed(keymap.parent, down, false), undefined);
+    assert.strictEqual(pressed(keymap.peekStep, altDown, false), 'down');
+    assert.strictEqual(pressed(keymap.peekStep, down, false), undefined);
     assert.strictEqual(pressed(keymap.move, altDown, false), undefined);
+  });
+
+  test('steps through the commits with Alt+↑ and Alt+↓, held down too, showing each whole message as Alt stays held', () => {
+    assert.strictEqual(
+      pressed(keymap.peekStep, keyPress('ArrowUp', { altKey: true }), false),
+      'up',
+    );
+    assert.strictEqual(
+      pressed(
+        keymap.peekStep,
+        keyPress('ArrowDown', { altKey: true, repeat: true }),
+        false,
+      ),
+      'down',
+    );
+  });
+
+  test('selects the first parent on Ctrl+↓, or Cmd+↓ on macOS, where Ctrl+↓ shows the windows of the app, leaving Alt+↓ to stepping through the commits', () => {
+    const modDown = keyPress('ArrowDown', { ctrlKey: true });
+    assert.strictEqual(pressed(keymap.parent, modDown, false), true);
+    assert.strictEqual(
+      withMacKeys(() =>
+        pressed(keymap.parent, keyPress('ArrowDown', { metaKey: true }), false),
+      ),
+      true,
+    );
+    assert.strictEqual(
+      pressed(keymap.parent, keyPress('ArrowDown', { altKey: true }), false),
+      undefined,
+    );
   });
 
   test('repeats a step held down, but not an action', () => {
@@ -232,7 +263,7 @@ suite('Keymap', () => {
     assert.strictEqual(
       pressed(
         keymap.parent,
-        keyPress('ArrowDown', { altKey: true, repeat: true }),
+        keyPress('ArrowDown', { ctrlKey: true, repeat: true }),
         false,
       ),
       undefined,
@@ -251,8 +282,16 @@ suite('Keymap', () => {
       undefined,
     );
     assert.strictEqual(
-      pressed(keymap.parent, keyPress('ArrowDown', { altKey: true }), true),
+      pressed(keymap.peekStep, keyPress('ArrowDown', { altKey: true }), true),
       undefined,
+    );
+    assert.strictEqual(
+      pressed(keymap.parent, keyPress('ArrowDown', { ctrlKey: true }), true),
+      undefined,
+    );
+    assert.strictEqual(
+      pressed(keymap.worktree, keyPress('PageDown', { ctrlKey: true }), true),
+      1,
     );
     assert.strictEqual(pressed(keymap.column, keyPress('Tab'), true), 'next');
     assert.strictEqual(
@@ -323,6 +362,48 @@ suite('Keymap', () => {
     );
   });
 
+  test('pins the whole message of a commit on a click with Alt alone, or Option on macOS', () => {
+    const click = { button: 0, ...noModifiers, altKey: true };
+    assert.strictEqual(clicked(keymap.pin, click), true);
+    assert.strictEqual(
+      withMacKeys(() => clicked(keymap.pin, click)),
+      true,
+    );
+    assert.strictEqual(
+      clicked(keymap.pin, { ...click, altKey: false }),
+      undefined,
+    );
+    assert.strictEqual(
+      clicked(keymap.pin, { ...click, shiftKey: true }),
+      undefined,
+    );
+    assert.strictEqual(clicked(keymap.pin, { ...click, button: 2 }), undefined);
+  });
+
+  test('tells the keys of a binding done with the pointer from those done on the keyboard, so a hint can name the ones at hand', () => {
+    assert.strictEqual(shortcutOf(keymap.pin, 'pointer'), 'Alt+Click');
+    assert.strictEqual(shortcutOf(keymap.pin, 'keyboard'), 'Alt+Enter');
+    assert.strictEqual(shortcutOf(keymap.message, 'pointer'), 'Alt+Hover');
+    assert.strictEqual(shortcutOf(keymap.head, 'pointer'), undefined);
+  });
+
+  test('pins the whole message of the selected commit on Alt+Enter, or Option+Enter on macOS, but not on Enter alone', () => {
+    const altEnter = keyPress('Enter', { altKey: true });
+    assert.strictEqual(pressed(keymap.pin, altEnter, false), true);
+    assert.strictEqual(
+      withMacKeys(() => pressed(keymap.pin, altEnter, false)),
+      true,
+    );
+    assert.strictEqual(
+      pressed(keymap.pin, keyPress('Enter'), false),
+      undefined,
+    );
+    assert.strictEqual(
+      pressed(keymap.pin, keyPress('Click', { altKey: true }), false),
+      undefined,
+    );
+  });
+
   test('tells a modifier pressed on its own from any other key', () => {
     for (const key of ['Alt', 'AltGraph', 'Control', 'Shift', 'Meta']) {
       assert.ok(modifierKey(keyPress(key)), key);
@@ -380,7 +461,7 @@ suite('Keymap', () => {
     );
   });
 
-  test('names the keys as the keyboard does, Mod as Ctrl, or Cmd on macOS, and Alt as Option there', () => {
+  test('names the keys as the keyboard does, Mod as Ctrl, or Cmd on macOS, and Alt as Option there, on the platform the app runs on unless told', () => {
     assert.deepStrictEqual(keyLabels('Mod+Shift+I', false), [
       'Ctrl',
       'Shift',
@@ -393,6 +474,11 @@ suite('Keymap', () => {
     assert.deepStrictEqual(keyLabels('Alt+ArrowDown', true), ['⌥', '↓']);
     assert.deepStrictEqual(keyLabels('Alt+Hover', false), ['Alt', 'Hover']);
     assert.deepStrictEqual(keyLabels('Alt+Hover', true), ['⌥', 'Hover']);
+    assert.deepStrictEqual(keyLabels('Alt+Click'), ['Alt', 'Click']);
+    assert.deepStrictEqual(
+      withMacKeys(() => keyLabels('Alt+Click')),
+      ['⌥', 'Click'],
+    );
     assert.deepStrictEqual(keyLabels('MiddleClick', false), ['Middle-click']);
     assert.deepStrictEqual(keyLabels('Drag', false), ['Drag']);
   });

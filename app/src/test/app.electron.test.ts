@@ -329,10 +329,10 @@ suite('App', () => {
     await page.locator('.commit.working-tree.empty.selected').waitFor();
   });
 
-  test('selects the first parent on Alt+Down', async () => {
+  test('selects the first parent on Ctrl+Down, or Cmd+Down on macOS', async () => {
     await page.keyboard.press('h');
     await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
-    await page.keyboard.press('Alt+ArrowDown');
+    await page.keyboard.press('ControlOrMeta+ArrowDown');
     await page.locator('.commit.selected', { hasText: 'first' }).waitFor();
     await page.keyboard.press('Home');
     await page.locator('.commit.working-tree.empty.selected').waitFor();
@@ -688,10 +688,10 @@ suite('App', () => {
     await waitForFocus(page.locator('.diff-view .virtual-rows'), 'the diff');
   });
 
-  test('keeps the keyboard in the diff once it is drawn anew for a commit selected from there, such as on Alt+Down', async () => {
+  test('keeps the keyboard in the diff once it is drawn anew for a commit selected from there, such as on Ctrl+Down', async () => {
     await openChangedFile();
     await page.locator('.diff-view .virtual-rows').focus();
-    await page.keyboard.press('Alt+ArrowDown');
+    await page.keyboard.press('ControlOrMeta+ArrowDown');
     await page.locator('.commit.selected', { hasText: 'first' }).waitFor();
     await waitForFocus(page.locator('.diff-view .virtual-rows'), 'the diff');
   });

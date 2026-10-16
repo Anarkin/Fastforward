@@ -1,10 +1,13 @@
 import * as assert from 'node:assert';
+import { JSDOM } from 'jsdom';
 import { suite, test } from 'vitest';
 import {
   dragFrom,
   draggedScroll,
   drawsOverlay,
   followedScroller,
+  installOverlayScrollbars,
+  overlayScrollbarClass,
   scrolledScroller,
   thumbBox,
   scrollPerPixel,
@@ -17,6 +20,46 @@ import { stylesheet } from '../fixtures';
 const none = () => null;
 
 suite('Overlay scrollbars', () => {
+  test('follows what comes under a pointer that stays put, hiding the scrollbar of an area once something with nothing to scroll comes over it there, such as a message pinned by a click', () => {
+    const dom = new JSDOM(
+      '<!doctype html><div id="list" style="overflow-y: auto"></div><div id="pinned"></div>',
+    );
+    const { document } = dom.window;
+    const globals = {
+      window: dom.window,
+      document,
+      Element: dom.window.Element,
+      getComputedStyle: dom.window.getComputedStyle.bind(dom.window),
+    };
+    const saved = Object.fromEntries(
+      Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
+    );
+    Object.assign(globalThis, globals);
+    try {
+      const list = document.getElementById('list');
+      const pinned = document.getElementById('pinned');
+      assert.ok(list && pinned);
+      Object.defineProperties(list, {
+        scrollHeight: { value: 1000 },
+        clientHeight: { value: 100 },
+      });
+      installOverlayScrollbars();
+      const bar = document.querySelector(`.${overlayScrollbarClass}.vertical`);
+      list.dispatchEvent(
+        new dom.window.MouseEvent('pointermove', { bubbles: true }),
+      );
+      assert.ok(bar);
+      assert.ok(bar.classList.contains('shown'));
+      pinned.dispatchEvent(
+        new dom.window.MouseEvent('pointerover', { bubbles: true }),
+      );
+      assert.ok(!bar.classList.contains('shown'));
+    } finally {
+      Object.assign(globalThis, saved);
+      dom.window.close();
+    }
+  });
+
   test('shows no thumb when everything fits', () => {
     assert.strictEqual(thumbOf(500, 500, 0), undefined);
     assert.strictEqual(thumbOf(500.5, 500, 0), undefined);

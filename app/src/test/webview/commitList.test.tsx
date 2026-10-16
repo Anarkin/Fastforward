@@ -38,6 +38,7 @@ import {
   CommitRow,
   commitClass,
   commitListbox,
+  commitMoveOf,
   commitOption,
   drawnRows,
   estimatedRowHeight,
@@ -862,6 +863,23 @@ suite('Commit list keys', () => {
     );
   };
 
+  test('steps with Alt+↑ and Alt+↓ as with the arrows, so holding Alt shows the whole message of each commit stepped to, but takes no step on Ctrl+↓, which selects the parent', () => {
+    assert.strictEqual(commitMoveOf(keyPress('ArrowDown')), 'down');
+    assert.strictEqual(
+      commitMoveOf(keyPress('ArrowDown', { altKey: true })),
+      'down',
+    );
+    assert.strictEqual(
+      commitMoveOf(keyPress('ArrowUp', { altKey: true })),
+      'up',
+    );
+    assert.strictEqual(commitMoveOf(keyPress('End')), 'last');
+    assert.strictEqual(
+      commitMoveOf(keyPress('ArrowDown', { ctrlKey: true })),
+      undefined,
+    );
+  });
+
   test('steps with the arrows from the selected row, and stops at either end', () => {
     const history = loaded('a', 'b');
     assert.strictEqual(press('ArrowDown', history, 'a', true), 1);
@@ -1157,6 +1175,25 @@ suite('Commit row', () => {
     );
     row.props.onClick(plainClick);
     assert.strictEqual(picked, 'a');
+  });
+
+  test('puts a corner it is given on its first line after the subject, as the whole message of a commit puts its pin or close button there', () => {
+    const html = renderToStaticMarkup(
+      <CommitRow
+        commit={commitInfo('a')}
+        selected={undefined}
+        headCommit={undefined}
+        refs={[]}
+        detached={false}
+        indent={8}
+        onSelect={() => undefined}
+        corner={<span className="corner" />}
+      />,
+    );
+    assert.match(
+      html,
+      /^<div class="commit"[^>]*><div class="commit-line"><span class="subject">a<\/span><span class="corner"><\/span><\/div>/,
+    );
   });
 
   test('puts what it is given after its bubbles, as the whole message of a commit adds the rest of the message there', () => {

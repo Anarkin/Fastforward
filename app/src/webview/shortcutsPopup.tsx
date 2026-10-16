@@ -5,6 +5,19 @@ import { useDismiss } from './contextMenu';
 import { CloseIcon } from './icons';
 import { useDialogDrag, useModalDialog } from './modalDialog';
 
+export function KeyCombo({ keys, mac }: { keys: string; mac?: boolean }) {
+  return (
+    <span className="shortcut-combo">
+      {keyLabels(keys, mac).map((label, place) => (
+        <Fragment key={place}>
+          {place > 0 && strings.shortcuts.joiner}
+          <kbd>{label}</kbd>
+        </Fragment>
+      ))}
+    </span>
+  );
+}
+
 export const shortcutGroups = groups.map((group) => ({
   title: strings.shortcuts.groups[group],
   bindings: Object.values(keymap).filter((binding) => binding.group === group),
@@ -54,14 +67,7 @@ export function ShortcutsPopup({
                   <Fragment key={binding.action}>
                     <span className="shortcut-keys">
                       {Object.keys(binding.keys).map((keys) => (
-                        <span key={keys} className="shortcut-combo">
-                          {keyLabels(keys, mac).map((label, place) => (
-                            <Fragment key={place}>
-                              {place > 0 && strings.shortcuts.joiner}
-                              <kbd>{label}</kbd>
-                            </Fragment>
-                          ))}
-                        </span>
+                        <KeyCombo key={keys} keys={keys} mac={mac} />
                       ))}
                     </span>
                     <span>{binding.action}</span>

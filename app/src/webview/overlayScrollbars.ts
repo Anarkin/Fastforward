@@ -356,9 +356,11 @@ export function installOverlayScrollbars(): void {
     bars[0].show(scrollerOf(target, 'vertical'));
     bars[1].show(scrollerOf(target, 'horizontal'));
   };
-  document.addEventListener('pointermove', (event) => showFor(event.target), {
-    passive: true,
-  });
+  for (const type of ['pointermove', 'pointerover']) {
+    document.addEventListener(type, (event) => showFor(event.target), {
+      passive: true,
+    });
+  }
   const onScroll = ({ target }: Event) => {
     for (const bar of bars) {
       const scroller = scrolledScroller(bar.scroller, bar.shown, target, () =>
