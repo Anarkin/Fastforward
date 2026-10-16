@@ -96,7 +96,7 @@ import {
 import { defaultBookmarks, fingerprint, remoteTagRefs, sameTags } from './refs';
 import { comparedOf, shownSide, workingTreeSide } from './shared/comparisons';
 import { isFullHash, shortHash } from './shared/hashes';
-import { hasRef } from './shared/refNames';
+import { bookmarkedCommits, hasRef } from './shared/refNames';
 import { imageSourceOf, imageType } from './shared/images';
 import { InFlight } from './shared/inFlight';
 import { addNotice } from './shared/notices';
@@ -544,6 +544,33 @@ export class FastforwardView {
     return this.repositories.get(root) ?? root;
   }
 
+  private bookmarkedOf(repository: string): Set<string> {
+    return bookmarkedCommits(this.storage.bookmarksOf(repository) ?? []);
+  }
+
+  private async showBookmarked(
+    session: Session,
+    repository: string,
+  ): Promise<void> {
+    for (const [root, tab] of this.tabStates) {
+      if (this.repositoryOf(root) !== repository || !historyLoaded(tab)) {
+        continue;
+      }
+      if (!this.isActive(root)) {
+        tab.shownStale = true;
+        continue;
+      }
+      const context = await this.context(session, root);
+      if (context) {
+        await tab.loadingHistory;
+        await this.sendShownHistory(context, {
+          keepPlace: true,
+          layOut: false,
+        });
+      }
+    }
+  }
+
   private worktreeAsked(message: ToHost): string | undefined {
     switch (message.type) {
       case 'closeTab':
@@ -842,14 +869,19 @@ export class FastforwardView {
         }
         return;
       }
-      case 'setBookmarks':
-        this.save(
-          storage.setBookmarks(
-            this.repositoryOf(message.root),
-            message.bookmarks,
-          ),
-        );
+      case 'setBookmarks': {
+        const repository = this.repositoryOf(message.root);
+        const before = this.bookmarkedOf(repository);
+        this.save(storage.setBookmarks(repository, message.bookmarks));
+        const after = this.bookmarkedOf(repository);
+        if (
+          before.size !== after.size ||
+          [...before].some((hash) => !after.has(hash))
+        ) {
+          await this.showBookmarked(session, repository);
+        }
         return;
+      }
       case 'scrolled': {
         const tab = this.tabStates.get(message.root);
         if (tab) {
@@ -2885,7 +2917,9 @@ export class FastforwardView {
     if (tab.generation !== generation) {
       return;
     }
-    context.post(commitsMessage(tab, page, commits));
+    context.post(
+      commitsMessage(tab, page, commits, this.bookmarkedOf(context.repository)),
+    );
   }
 
   private layOut(tab: Tab): number {

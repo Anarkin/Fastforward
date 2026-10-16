@@ -11,7 +11,11 @@ import {
 } from 'vitest';
 import { replaceBuiltin } from './builtins';
 import { comparisonOf } from '../shared/comparisons';
-import { workingTreeHash, type BookmarkRef } from '../shared/protocol';
+import {
+  workingTreeHash,
+  type Bookmark,
+  type BookmarkRef,
+} from '../shared/protocol';
 import { strings } from '../shared/strings';
 import {
   activeTabKey,
@@ -609,6 +613,46 @@ suite('View of one repository', () => {
         bookmarks: [],
       });
       assert.deepStrictEqual(savedBookmarks(store, repository.root), []);
+    });
+
+    test('sends the history again, in place, with the row of a commit bookmarked or no longer bookmarked by hash as one with bubbles or without', async () => {
+      const main: BookmarkRef = { kind: 'branch', name: 'main' };
+      const setBookmarks = async (bookmarks: readonly Bookmark[]) => {
+        page.clear();
+        await connection.receive({
+          type: 'setBookmarks',
+          root: repository.root,
+          bookmarks,
+        });
+        return page.last('commits');
+      };
+      assert.deepStrictEqual(page.last('commits')?.decorations, [0]);
+      await connection.receive({
+        type: 'scrolled',
+        root: repository.root,
+        hash: fixture.b,
+        offset: 7,
+        report: 1,
+      });
+      const bookmarked = await setBookmarks([
+        main,
+        { kind: 'commit', name: fixture.b },
+      ]);
+      assert.deepStrictEqual(bookmarked?.decorations.toSorted(), [0, 1]);
+      assert.deepStrictEqual(bookmarked.scrollTarget, {
+        index: 1,
+        offset: 7,
+        report: 1,
+      });
+      assert.strictEqual(
+        await setBookmarks([
+          main,
+          { kind: 'commit', name: fixture.b },
+          { kind: 'branch', name: 'feature' },
+        ]),
+        undefined,
+      );
+      assert.deepStrictEqual((await setBookmarks([main]))?.decorations, [0]);
     });
 
     test('refreshes once at a time, without sending an unchanged diff', async () => {

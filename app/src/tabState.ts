@@ -262,13 +262,17 @@ export function commitsMessage(
   tab: TabState,
   page: ReturnType<typeof firstPage>,
   commits: readonly CommitInfo[],
+  bookmarked: ReadonlySet<string> = new Set(),
 ): ToWebviewOf<'commits'> {
   const { start, scrollTarget } = page;
   return {
     type: 'commits',
     generation: tab.generation,
     total: tab.history.length,
-    decorations: decorations(tab.decorated, tab.positions),
+    decorations: decorations(
+      new Set([...tab.decorated, ...bookmarked]),
+      tab.positions,
+    ),
     start,
     commits,
     graph: tab.graph.rows(start, commits.length),

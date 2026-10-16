@@ -17,6 +17,7 @@ import {
   workingTreeIndex,
   type GraphLine,
   type GraphRow,
+  type RefInfo,
 } from '../../shared/protocol';
 import { CommitHistory } from '../../webview/commitHistory';
 import {
@@ -54,6 +55,7 @@ import {
 } from '../../webview/commitList';
 import { formatDateTime } from '../../webview/dates';
 import {
+  BookmarkedCommits,
   BranchActions,
   CheckedOutBranch,
   OtherBranchActions,
@@ -290,6 +292,47 @@ suite('Commit list rows', () => {
         <CommitBubbles hash={'a'.repeat(40)} refs={[]} detached />,
       ),
       /^<div class="bubble-line"><span class="badge head[^>]*>HEAD aaaaaaa<\/span><\/div>$/,
+    );
+  });
+
+  test("marks a bookmarked commit with its hash after its refs and before the stash, as the search's bookmarks show it", () => {
+    const at = 'a'.repeat(40);
+    const bubbles = (refs: RefInfo[], stash: boolean) =>
+      renderToStaticMarkup(
+        <BookmarkedCommits.Provider value={new Set([at])}>
+          <CommitBubbles hash={at} refs={refs} stash={stash} detached={false} />
+        </BookmarkedCommits.Provider>,
+      );
+    assert.match(
+      bubbles([{ kind: 'branch', name: 'main', commit: at }], true),
+      /^<div class="bubble-line"><span class="badge branch[^>]*>main<\/span><wbr\/><span class="badge hash" title="[^"]*aaaaaaaaaa[^"]*">aaaaaaa<\/span><wbr\/><span class="badge stash">[^<]*<\/span><\/div>$/,
+    );
+    assert.match(
+      bubbles([], false),
+      /^<div class="bubble-line"><span class="badge hash"[^>]*>aaaaaaa<\/span><\/div>$/,
+    );
+  });
+
+  test('leaves the hash of a bookmarked commit to its HEAD bubble when HEAD is detached at it', () => {
+    const at = 'a'.repeat(40);
+    assert.match(
+      renderToStaticMarkup(
+        <BookmarkedCommits.Provider value={new Set([at])}>
+          <CommitBubbles hash={at} refs={[]} detached />
+        </BookmarkedCommits.Provider>,
+      ),
+      /^<div class="bubble-line"><span class="badge head[^>]*>HEAD aaaaaaa<\/span><\/div>$/,
+    );
+  });
+
+  test('marks no commit bookmarked but the ones bookmarked', () => {
+    assert.strictEqual(
+      renderToStaticMarkup(
+        <BookmarkedCommits.Provider value={new Set(['b'.repeat(40)])}>
+          <CommitBubbles hash={'a'.repeat(40)} refs={[]} detached={false} />
+        </BookmarkedCommits.Provider>,
+      ),
+      '',
     );
   });
 

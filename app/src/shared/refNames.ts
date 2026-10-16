@@ -34,3 +34,11 @@ export function findRef<T extends Bookmark>(
 export function hasRef(refs: readonly Bookmark[], ref: Bookmark): boolean {
   return findRef(refs, ref) !== undefined;
 }
+
+export function bookmarkedCommits(bookmarks: readonly Bookmark[]): Set<string> {
+  return new Set(
+    bookmarks
+      .filter((bookmark) => bookmark.kind === 'commit')
+      .map((bookmark) => bookmark.name),
+  );
+}

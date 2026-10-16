@@ -11,6 +11,7 @@ import { PullIcon, PushIcon } from './icons';
 
 export const CheckedOutBranch = createContext<string | undefined>(undefined);
 export const DetachedHead = createContext<string | undefined>(undefined);
+export const BookmarkedCommits = createContext<ReadonlySet<string>>(new Set());
 
 export interface BranchActionsOf {
   readonly pulling: boolean;

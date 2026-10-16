@@ -25,7 +25,14 @@ import {
   type RefInfo,
   type ScrollTarget,
 } from '../shared/protocol';
-import { DetachedHead, HeadBubble, RefBubble, StashBubble } from './bubbles';
+import {
+  BookmarkedCommits,
+  CommitBubble,
+  DetachedHead,
+  HeadBubble,
+  RefBubble,
+  StashBubble,
+} from './bubbles';
 import { Column } from './column';
 import { CommitHistory } from './commitHistory';
 import {
@@ -530,7 +537,8 @@ export function CommitBubbles({
   stash?: boolean;
   detached: boolean;
 }) {
-  if (!detached && refs.length === 0 && !stash) {
+  const bookmarked = useContext(BookmarkedCommits).has(hash) && !detached;
+  if (!detached && refs.length === 0 && !stash && !bookmarked) {
     return null;
   }
   const bubbles = [
@@ -543,6 +551,7 @@ export function CommitBubbles({
         actions
       />
     )),
+    ...(bookmarked ? [<CommitBubble key="bookmark" hash={hash} />] : []),
     ...(stash ? [<StashBubble key="stash" />] : []),
   ];
   return (
