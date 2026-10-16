@@ -29,7 +29,7 @@ function changedRow(status: FileChange['status']): string {
 }
 
 suite('File rows', () => {
-  test('ends a changed file with the icon of its kind of change, striking only a deleted name through', () => {
+  test('starts a changed file with the icon of its kind of change, striking only a deleted name through', () => {
     for (const [status, kind] of [
       ['A', 'added'],
       ['U', 'added'],
@@ -39,14 +39,14 @@ suite('File rows', () => {
       assert.match(
         changedRow(status),
         new RegExp(
-          `<span class="path">a\\.ts</span><svg class="icon change-icon ${kind}"`,
+          `<svg class="icon change-icon ${kind}".*?</svg><span class="path">a\\.ts</span>`,
         ),
         status,
       );
     }
     assert.match(
       changedRow('D'),
-      /<span class="path deleted">a\.ts<\/span><svg class="icon change-icon deleted"/,
+      /<svg class="icon change-icon deleted".*?<\/svg><span class="path deleted">a\.ts<\/span>/,
     );
   });
 

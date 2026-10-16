@@ -2306,7 +2306,7 @@ suite('Style', () => {
     });
   });
 
-  test('ends a changed file with its icon at the right edge of the row, in the theme color of its kind, as GitHub does', () => {
+  test('starts a changed file with its icon, spaced from its name, in the theme color of its kind', () => {
     for (const [status, kind] of [
       ['A', 'added'],
       ['M', 'modified'],
@@ -2321,7 +2321,7 @@ suite('Style', () => {
         ),
         {
           color: `var(--color-${kind})`,
-          'margin-left': 'auto',
+          'margin-right': '4px',
           'flex-shrink': '0',
         },
       );

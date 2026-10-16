@@ -1054,7 +1054,7 @@ body.resizing {
 }
 
 .row .change-icon {
-  margin-left: auto;
+  margin-right: 4px;
   flex-shrink: 0;
 }
 

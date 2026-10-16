@@ -82,10 +82,10 @@ export function FileRow({
       title={change ? changeTitle(change) : path}
       onClick={() => onSelect(path === selected ? undefined : path)}
     >
+      {change && <ChangeIcon kind={changeKind(change)} />}
       <span className={changeClass(change)}>
         <HighlightWords text={name} words={words} />
       </span>
-      {change && <ChangeIcon kind={changeKind(change)} />}
     </div>
   );
 }
