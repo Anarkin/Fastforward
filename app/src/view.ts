@@ -714,15 +714,16 @@ export class FastforwardView {
         return;
       case 'closeTab': {
         const { tabs, activeTab } = storage;
-        const index = tabs.findIndex((tab) => sameRoot(tab, message.root));
-        const rest = tabs.filter((tab) => !sameRoot(tab, message.root));
+        const closed = this.repositoryOf(message.root);
+        const index = tabs.findIndex((tab) => sameRoot(tab, closed));
+        const rest = tabs.filter((tab) => !sameRoot(tab, closed));
         for (const [root, tab] of this.tabStates) {
-          if (sameRoot(this.repositoryOf(root), message.root)) {
+          if (sameRoot(this.repositoryOf(root), closed)) {
             this.forgetTab(root, tab);
           }
         }
         const active =
-          activeTab !== undefined && sameRoot(activeTab, message.root)
+          activeTab !== undefined && sameRoot(activeTab, closed)
             ? rest[Math.min(index, rest.length - 1)]
             : activeTab;
         this.save(storage.setTabs(rest, active));

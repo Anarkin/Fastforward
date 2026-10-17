@@ -375,6 +375,19 @@ suite('View of worktrees', () => {
     });
   });
 
+  test('closes the tab of a repository by the worktree it shows, as the page closes the one shown by it', async () => {
+    await withView(log, [repository.root, other], async (view) => {
+      const root = worktreeRoot(view, review);
+      await view.connection.receive({ type: 'selectWorktree', root });
+      await view.connection.receive({ type: 'closeTab', root });
+      assert.deepStrictEqual(
+        view.page.last('tabs')?.tabs.map((tab) => tab.root),
+        [other],
+      );
+      assert.strictEqual(view.page.last('tabs')?.active, other);
+    });
+  });
+
   test('says the worktrees of a tab opened are still being listed until git lists them', async () => {
     await withView(log, [other, repository.root], async (view) => {
       view.page.clear();
