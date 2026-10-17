@@ -107,6 +107,7 @@ import {
   workingTreeHash,
   type ChangeArea,
   type CheckoutTarget,
+  type CommitResults,
   type CommitSearch,
   type Direction,
   type FileChange,
@@ -2412,7 +2413,20 @@ export class FastforwardView {
       if (!context || search.signal.aborted) {
         return;
       }
-      const result = await this.commitsMatching(context, query, search.signal);
+      const result = await this.commitsMatching(
+        context,
+        query,
+        search.signal,
+      ).catch((error: unknown) => {
+        if (!search.signal.aborted) {
+          context.post({
+            type: 'commitSearch',
+            query,
+            result: { commits: [], capped: false },
+          });
+        }
+        throw error;
+      });
       if (!search.signal.aborted) {
         context.post({ type: 'commitSearch', query, result });
       }
@@ -2445,10 +2459,17 @@ export class FastforwardView {
   private async lookupHash(context: Context, query: string): Promise<void> {
     const lookup = (this.hashLookups.get(context.root) ?? 0) + 1;
     this.hashLookups.set(context.root, lookup);
-    const result = await this.commitsStartingWith(context, query);
-    if (this.hashLookups.get(context.root) === lookup) {
-      context.post({ type: 'hashLookup', query, result });
-    }
+    const answer = (result: CommitResults) => {
+      if (this.hashLookups.get(context.root) === lookup) {
+        context.post({ type: 'hashLookup', query, result });
+      }
+    };
+    answer(
+      await this.commitsStartingWith(context, query).catch((error: unknown) => {
+        answer({ commits: [], more: 0 });
+        throw error;
+      }),
+    );
   }
 
   private commitsStartingWith(

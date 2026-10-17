@@ -26,6 +26,7 @@ import {
   gate,
   openView,
   stubMethod,
+  takeErrorsLogged,
   viewRepositories,
   withNotices,
   type ViewRepositories,
@@ -198,6 +199,43 @@ suite('View navigating the history', () => {
     assert.ok(abortedWhenFound);
     assert.strictEqual(page.last('commitSearch')?.query, 'test');
     assert.strictEqual(page.last('error'), undefined);
+  });
+
+  test('answers a commit search and a hash lookup that fail with nothing found, so the page stops saying it is searching', async () => {
+    stubMethod(fastforward, 'commitsMatching', () =>
+      Promise.reject(new Error('the search failed')),
+    );
+    stubMethod(fastforward, 'commitsStartingWith', () =>
+      Promise.reject(new Error('the lookup failed')),
+    );
+    page.clear();
+    await connection.receive({
+      type: 'searchCommits',
+      root: repository.root,
+      query: 'test',
+    });
+    await connection.receive({
+      type: 'lookupHash',
+      root: repository.root,
+      query: 'abcdef',
+    });
+    assert.deepStrictEqual(page.last('commitSearch'), {
+      type: 'commitSearch',
+      query: 'test',
+      result: { commits: [], capped: false },
+    });
+    assert.deepStrictEqual(page.last('hashLookup'), {
+      type: 'hashLookup',
+      query: 'abcdef',
+      result: { commits: [], more: 0 },
+    });
+    takeErrorsLogged(
+      logged,
+      /^Handling searchCommits from the page failed$/,
+      /^the search failed$/,
+      /^Handling lookupHash from the page failed$/,
+      /^the lookup failed$/,
+    );
   });
 
   test('stops a commit search the page asks to stop, posting nothing for it', async () => {
