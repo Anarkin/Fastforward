@@ -475,6 +475,7 @@ const bookmarkKinds: readonly (RefKind | 'commit')[] = [
   'branch',
   'remote',
   'tag',
+  'remote-tag',
   'commit',
 ];
 

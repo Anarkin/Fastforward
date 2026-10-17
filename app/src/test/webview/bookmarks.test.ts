@@ -51,6 +51,31 @@ suite('Bookmark order', () => {
     ]);
   });
 
+  test("puts each remote's tag right after the local tag of its name, as its bubbles are, also of a remote with a slash in its name", () => {
+    const refs: RefInfo[] = [
+      {
+        kind: 'remote-tag',
+        name: 'origin/v20.0.0',
+        remote: 'origin',
+        commit: 'a',
+      },
+      { kind: 'tag', name: 'v20.0.0', commit: 'a' },
+      {
+        kind: 'remote-tag',
+        name: 'team/fork/v1',
+        remote: 'team/fork',
+        commit: 'a',
+      },
+      { kind: 'tag', name: 'v1', commit: 'a' },
+    ];
+    assert.deepStrictEqual(names(refs.toSorted(compareBookmarks)), [
+      'v1',
+      'team/fork/v1',
+      'v20.0.0',
+      'origin/v20.0.0',
+    ]);
+  });
+
   test('puts commits after the refs, in the order they were bookmarked', () => {
     const bookmarks: Bookmark[] = [
       { kind: 'commit', name: 'c1' },
@@ -88,6 +113,22 @@ suite('Bookmark options', () => {
     assert.deepStrictEqual(
       bookmarkOptions('abcdef123', refs).map((option) => option.label),
       ['feature', 'origin/feature', 'v2', 'abcdef1'],
+    );
+  });
+
+  test("offers a commit's tag before the same tag on a remote, then the commit", () => {
+    const refs: RefInfo[] = [
+      {
+        kind: 'remote-tag',
+        name: 'origin/v20.0.0',
+        remote: 'origin',
+        commit: 'abcdef123',
+      },
+      { kind: 'tag', name: 'v20.0.0', commit: 'abcdef123' },
+    ];
+    assert.deepStrictEqual(
+      bookmarkOptions('abcdef123', refs).map((option) => option.label),
+      ['v20.0.0', 'origin/v20.0.0', 'abcdef1'],
     );
   });
 
@@ -134,6 +175,35 @@ suite('Pinned refs of the search', () => {
     const pinned = pinnedRefs(bookmarks, refs, 'main', undefined, '');
     assert.deepStrictEqual(names(pinned.checkedOut), ['main']);
     assert.deepStrictEqual(names(pinned.bookmarks), ['main', 'v1', 'c1']);
+  });
+
+  test('orders a bookmarked remote tag right after the local tag of its name, knowing the remote it is on, also one with a slash in its name', () => {
+    const tagged: RefInfo[] = [
+      { kind: 'tag', name: 'v1', commit: 'a' },
+      {
+        kind: 'remote-tag',
+        name: 'team/fork/v1',
+        remote: 'team/fork',
+        commit: 'a',
+      },
+      { kind: 'tag', name: 'u2', commit: 'a' },
+    ];
+    const pinned = pinnedRefs(
+      [
+        { kind: 'remote-tag', name: 'team/fork/v1' },
+        { kind: 'tag', name: 'v1' },
+        { kind: 'tag', name: 'u2' },
+      ],
+      tagged,
+      undefined,
+      undefined,
+      '',
+    );
+    assert.deepStrictEqual(names(pinned.bookmarks), [
+      'u2',
+      'v1',
+      'team/fork/v1',
+    ]);
   });
 
   test('orders bookmarked remote branches by the remote they are on, also one with a slash in its name', () => {

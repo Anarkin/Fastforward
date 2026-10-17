@@ -17,8 +17,12 @@ const kindOrder: Record<BookmarkRef['kind'], number> = {
 
 type SortedBookmark = Bookmark & { readonly remote?: string };
 
+function onRemote(bookmark: Bookmark): boolean {
+  return bookmark.kind === 'remote' || bookmark.kind === 'remote-tag';
+}
+
 function sortName(bookmark: SortedBookmark): string {
-  return bookmark.kind === 'remote'
+  return onRemote(bookmark)
     ? withoutRemote(bookmark.name, bookmark.remote)
     : bookmark.name;
 }
@@ -99,9 +103,7 @@ export function pinnedRefs(
       .filter(matches)
       .map((bookmark): [Bookmark, SortedBookmark] => [
         bookmark,
-        bookmark.kind === 'remote'
-          ? (findRef(refs, bookmark) ?? bookmark)
-          : bookmark,
+        onRemote(bookmark) ? (findRef(refs, bookmark) ?? bookmark) : bookmark,
       ])
       .toSorted(([, a], [, b]) => compareBookmarks(a, b))
       .map(([bookmark]) => bookmark),

@@ -25,9 +25,12 @@ function storageOf(state = new FakeStore()): Storage {
 }
 
 suite('Storage', () => {
-  test('reads the bookmarks saved in the state', async () => {
+  test("reads the bookmarks saved in the state, a remote's tag among them", async () => {
     const store = new FakeStore();
-    const bookmarks = [{ kind: 'branch', name: 'main' }];
+    const bookmarks = [
+      { kind: 'branch', name: 'main' },
+      { kind: 'remote-tag', name: 'origin/v1' },
+    ];
     await store.update('bookmarks', { '/r': bookmarks });
     const storage = storageOf(store);
     assert.deepStrictEqual(storage.bookmarksOf('/r'), bookmarks);
