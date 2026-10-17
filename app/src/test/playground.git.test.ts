@@ -9,7 +9,11 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { promisify } from 'node:util';
 import { afterAll, beforeAll, suite, test } from 'vitest';
-import { removeFolder, tempFolder } from './repositories';
+import {
+  createsAnewThroughJunctions,
+  removeFolder,
+  tempFolder,
+} from './repositories';
 
 const script = path.join(__dirname, '..', '..', 'scripts', 'playground.mts');
 
@@ -779,7 +783,10 @@ suite('Playground', () => {
 
   test(
     'makes the playground anew in a folder reached through a link, whose real path git reports, as temporary folders are on macOS, and on Windows by their short names',
-    async () => {
+    async (context) => {
+      if (!createsAnewThroughJunctions()) {
+        context.skip();
+      }
       const real = tempFolder('playground-real');
       const linked = path.join(
         path.dirname(real),

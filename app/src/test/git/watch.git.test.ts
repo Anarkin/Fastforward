@@ -19,6 +19,7 @@ import {
 } from '../../git/watch';
 import { waitFor } from '../fixtures';
 import {
+  createsAnewThroughJunctions,
   removeFolder,
   tempFolder,
   tempRepository,
@@ -922,7 +923,10 @@ suite('Watching a repository', () => {
       assert.deepStrictEqual(errors, []);
     });
 
-    test(`refreshes for a commit when .git links to a folder elsewhere, which watching the folder it is in does not follow, watching ${recursive ? 'recursively' : 'folder by folder'}`, async () => {
+    test(`refreshes for a commit when .git links to a folder elsewhere, which watching the folder it is in does not follow, watching ${recursive ? 'recursively' : 'folder by folder'}`, async (context) => {
+      if (!createsAnewThroughJunctions()) {
+        context.skip();
+      }
       const store = tempFolder('store');
       const gitDir = path.join(store, 'project.git');
       fs.renameSync(path.join(repository.root, '.git'), gitDir);
