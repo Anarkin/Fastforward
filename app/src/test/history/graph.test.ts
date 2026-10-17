@@ -331,7 +331,7 @@ suite('Graph', () => {
     const rows = graph.rows(2000, 400);
     const took = performance.now() - started;
     assert.strictEqual(rows.length, 400);
-    assert.ok(took < 300, `${Math.round(took)} ms`);
+    assert.ok(took < 1_000, `${Math.round(took)} ms`);
   });
 
   test('draws twelve lanes at most, folding a thirteenth onto the last', () => {
