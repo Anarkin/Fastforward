@@ -269,6 +269,10 @@ suite('View pulling and pushing other branches', () => {
       });
       await waitFor(() => checkingOut, 'the checkout to start');
       const pulled = send('pullBranch', 'next');
+      await waitFor(
+        () => page.messages.flatMap(running).length > 0,
+        'the pull to start',
+      );
       await new Promise((resolve) => setTimeout(resolve, 50));
       assert.deepStrictEqual(page.messages.flatMap(running), [
         'pullingBranch next',
