@@ -411,7 +411,7 @@ suite('Message peek', () => {
     });
   });
 
-  test('pins the message of a commit clicked with Alt, without selecting it, one at a time, keeping it once Alt is let go while still peeking at others, until Escape, a press outside it, a scroll of the list or the window losing focus', async () => {
+  test('pins the message of a commit clicked with Alt, without selecting it, one at a time, keeping it once Alt is let go while still peeking at others, until Escape, a click on it with Alt, a press outside it, a scroll of the list or the window losing focus', async () => {
     const commits = [
       commitInfo('w', { body: 'Working tree' }),
       commitInfo('a', { subject: 'First', body: 'More of the first' }),
@@ -452,6 +452,23 @@ suite('Message peek', () => {
         assert.ok(pinned());
         await key('keydown', 'Escape', false);
         assert.deepStrictEqual(panels(), []);
+        await click(2, true);
+        const inside = pinned()?.querySelector('.message-body');
+        assert.ok(inside);
+        for (const altKey of [false, true]) {
+          await pressOn(inside);
+          await act(async () => {
+            inside.dispatchEvent(
+              new window.MouseEvent('click', { altKey, bubbles: true }),
+            );
+          });
+          assert.strictEqual(
+            pinned()?.textContent === undefined,
+            altKey,
+            `altKey: ${altKey}`,
+          );
+        }
+        assert.deepStrictEqual(clicked, []);
         await click(2, true);
         const close = pinned()?.querySelector('.message-close');
         assert.ok(close);

@@ -385,6 +385,12 @@ export function MessagePanel({
         maxHeight: anchor.room.bottom - anchor.room.top,
         '--peek-row-width': `${anchor.width}px`,
       }}
+      onClickCapture={(event) => {
+        if (onUnpin && clicked(keymap.pin, event) !== undefined) {
+          event.stopPropagation();
+          onUnpin();
+        }
+      }}
     >
       {children}
     </div>
