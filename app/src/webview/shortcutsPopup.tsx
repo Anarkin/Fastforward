@@ -77,6 +77,7 @@ export function ShortcutsPopup({
             </section>
           ))}
         </div>
+        <div className="shortcuts-note">{strings.shortcuts.note}</div>
       </div>
     </div>
   );

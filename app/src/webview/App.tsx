@@ -243,6 +243,7 @@ export function App({ name, post: postToHost, listen }: Props) {
   const [about, setAbout] = useState<AboutInfo>();
   const [installsCommand, setInstallsCommand] = useState(false);
   useBinding(keymap.shortcuts, () => setShortcutsShown((shown) => !shown));
+  useBinding(keymap.about, () => setAboutShown((shown) => !shown));
   const saveColumnWidths = useCallback(
     (widths: readonly number[]) => post({ type: 'setColumnWidths', widths }),
     [post],
@@ -557,6 +558,12 @@ export function App({ name, post: postToHost, listen }: Props) {
     window.addEventListener('mouseup', onMouseUp);
     return () => window.removeEventListener('mouseup', onMouseUp);
   }, [navigate]);
+  useBinding(keymap.navigate, (direction) => navigate(direction, 1));
+  useBinding(keymap.closeRepository, () => {
+    if (activeTab !== undefined) {
+      post({ type: 'closeTab', root: activeTab });
+    }
+  });
   const jump = (target: string | undefined) => {
     if (target) {
       postTab({ type: 'jump', hash: target });

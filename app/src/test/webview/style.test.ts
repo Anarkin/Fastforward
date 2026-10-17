@@ -2776,6 +2776,14 @@ suite('Style', () => {
     }
   });
 
+  test('sets the note about the keys working everywhere apart under the shortcuts, muted, kept in view as they scroll', () => {
+    looks(withClass(shortcutsPopup(), 'shortcuts-note'), {
+      flex: 'none',
+      color: 'var(--muted-foreground)',
+      'border-top': '1px solid var(--color-border)',
+    });
+  });
+
   test('draws the shortcuts over the notices and menus, but under the overlay scrollbars', () => {
     const shortcuts = layer(shortcutsPopup());
     for (const below of [contextMenu(), historyMenu(), notices()]) {

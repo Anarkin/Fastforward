@@ -20,6 +20,9 @@ import {
 } from '../../shared/keymap';
 import { keyPress, noModifiers, withMacKeys } from '../fixtures';
 
+const altNavigate = (key: string, inField = false) =>
+  pressed(keymap.navigate, keyPress(key, { altKey: true }), inField);
+
 const worktreeStep = (extra: Partial<KeyPress>) =>
   pressed(
     keymap.worktree,
@@ -378,6 +381,47 @@ suite('Keymap', () => {
       undefined,
     );
     assert.strictEqual(clicked(keymap.pin, { ...click, button: 2 }), undefined);
+  });
+
+  test('closes the repository on Ctrl+W, or Cmd+W on macOS, as on a middle click on its tab', () => {
+    assert.strictEqual(
+      pressed(keymap.closeRepository, keyPress('w', { ctrlKey: true }), false),
+      true,
+    );
+    assert.strictEqual(
+      withMacKeys(() =>
+        pressed(
+          keymap.closeRepository,
+          keyPress('w', { metaKey: true }),
+          false,
+        ),
+      ),
+      true,
+    );
+    assert.strictEqual(
+      clicked(keymap.closeRepository, { button: 1, ...noModifiers }),
+      true,
+    );
+    assert.strictEqual(
+      pressed(keymap.closeRepository, keyPress('w'), false),
+      undefined,
+    );
+  });
+
+  test('goes back or forward on Alt+← and Alt+→, as the mouse buttons do, but leaves them to the caret in a field', () => {
+    assert.strictEqual(altNavigate('ArrowLeft'), 'back');
+    assert.strictEqual(altNavigate('ArrowRight'), 'forward');
+    assert.strictEqual(altNavigate('ArrowLeft', true), undefined);
+    assert.strictEqual(
+      clicked(keymap.navigate, { button: 3, ...noModifiers }),
+      'back',
+    );
+  });
+
+  test('names Alt held on its own as the key, or Option on macOS', () => {
+    assert.deepStrictEqual(keyLabels('Alt', false), ['Alt']);
+    assert.deepStrictEqual(keyLabels('Alt', true), ['⌥']);
+    assert.strictEqual(shortcutOf(keymap.message, 'keyboard'), 'Alt');
   });
 
   test('tells the keys of a binding done with the pointer from those done on the keyboard, so a hint can name the ones at hand', () => {

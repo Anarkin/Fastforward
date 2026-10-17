@@ -1,10 +1,20 @@
 import { strings } from './strings';
 
-export type Group = 'Tabs' | 'History' | 'Columns' | 'Files' | 'Diff' | 'App';
+export type Group =
+  | 'Repositories'
+  | 'Moving'
+  | 'Commits'
+  | 'Messages'
+  | 'Columns'
+  | 'Files'
+  | 'Diff'
+  | 'App';
 
 export const groups: readonly Group[] = [
-  'Tabs',
-  'History',
+  'Repositories',
+  'Moving',
+  'Commits',
+  'Messages',
   'Columns',
   'Files',
   'Diff',
@@ -30,62 +40,56 @@ function bind<const Value>(
 }
 
 export const keymap = {
-  openRepository: bind('Tabs', strings.actions.openRepository, {
+  openRepository: bind('Repositories', strings.actions.openRepository, {
     'Mod+T': true,
   }),
   repository: bind(
-    'Tabs',
+    'Repositories',
     strings.actions.repository,
     { 'Ctrl+Tab': 1, 'Ctrl+Shift+Tab': -1 },
     { repeats: true },
   ),
   worktree: bind(
-    'Tabs',
+    'Repositories',
     strings.actions.worktree,
     { 'Ctrl+PageDown': 1, 'Ctrl+PageUp': -1 },
     { repeats: true },
   ),
-  closeRepository: bind('Tabs', strings.actions.closeRepository, {
+  closeRepository: bind('Repositories', strings.actions.closeRepository, {
     MiddleClick: true,
+    'Mod+W': true,
   }),
-  moveRepository: bind('Tabs', strings.actions.moveRepository, {
+  moveRepository: bind('Repositories', strings.actions.moveRepository, {
     Drag: true,
   }),
-  head: bind('History', strings.actions.head, { H: true }),
-  upstream: bind('History', strings.actions.upstream, { U: true }),
-  commits: bind('History', strings.actions.commits, { C: true }),
-  move: bind(
-    'History',
-    strings.actions.move,
-    { ArrowUp: 'up', ArrowDown: 'down' },
-    { repeats: true },
-  ),
-  page: bind(
-    'History',
-    strings.actions.page,
-    { PageUp: 'pageUp', PageDown: 'pageDown', Home: 'first', End: 'last' },
-    { repeats: true },
-  ),
-  parent: bind('History', strings.actions.parent, { 'Mod+ArrowDown': true }),
-  merge: bind('History', strings.actions.merge, { Space: true }),
-  compare: bind('History', strings.actions.compare, {
-    'Mod+Click': true,
+  removeItem: bind('Repositories', strings.actions.removeItem, {
+    Delete: true,
   }),
-  message: bind('History', strings.actions.message, { 'Alt+Hover': true }),
-  pin: bind('History', strings.actions.pin, {
+  head: bind('Moving', strings.actions.head, { H: true }),
+  upstream: bind('Moving', strings.actions.upstream, { U: true }),
+  parent: bind('Moving', strings.actions.parent, { 'Mod+ArrowDown': true }),
+  navigate: bind('Moving', strings.actions.navigate, {
+    BackButton: 'back',
+    ForwardButton: 'forward',
+    'Alt+ArrowLeft': 'back',
+    'Alt+ArrowRight': 'forward',
+  }),
+  merge: bind('Commits', strings.actions.merge, { Space: true }),
+  compare: bind('Commits', strings.actions.compare, { 'Mod+Click': true }),
+  message: bind('Messages', strings.actions.message, {
+    'Alt+Hover': true,
+    Alt: true,
+  }),
+  pin: bind('Messages', strings.actions.pin, {
     'Alt+Click': true,
     'Alt+Enter': true,
   }),
   peekStep: bind(
-    'History',
+    'Messages',
     strings.actions.peekStep,
     { 'Alt+ArrowUp': 'up', 'Alt+ArrowDown': 'down' },
     { repeats: true },
   ),
-  navigate: bind('History', strings.actions.navigate, {
-    BackButton: 'back',
-    ForwardButton: 'forward',
-  }),
   column: bind(
     'Columns',
     strings.actions.column,
@@ -97,7 +101,21 @@ export const keymap = {
     },
     { repeats: true },
   ),
+  commits: bind('Columns', strings.actions.commits, { C: true }),
+  find: bind('Columns', strings.actions.find, { 'Mod+F': true }),
+  stopFinding: bind(
+    'Columns',
+    strings.actions.stopFinding,
+    { Escape: true },
+    { fields: true },
+  ),
   folder: bind('Files', strings.actions.folder, { Space: true }),
+  toFiles: bind(
+    'Files',
+    strings.actions.toFiles,
+    { Enter: true, ArrowDown: true },
+    { fields: true },
+  ),
   change: bind(
     'Diff',
     strings.actions.change,
@@ -115,24 +133,11 @@ export const keymap = {
   }),
   wrap: bind('Diff', strings.actions.wrap, { W: true }),
   showWhitespace: bind('Diff', strings.actions.showWhitespace, { '.': true }),
-  find: bind('Columns', strings.actions.find, { 'Mod+F': true }),
-  toFiles: bind(
-    'Files',
-    strings.actions.toFiles,
-    { Enter: true, ArrowDown: true },
-    { fields: true },
-  ),
   match: bind(
     'Diff',
     strings.actions.match,
     { Enter: 1, 'Shift+Enter': -1 },
     { repeats: true, fields: true },
-  ),
-  stopFinding: bind(
-    'Columns',
-    strings.actions.stopFinding,
-    { Escape: true },
-    { fields: true },
   ),
   mainMenu: bind('App', strings.actions.mainMenu, { 'Alt+F': true }),
   shortcuts: bind(
@@ -141,7 +146,25 @@ export const keymap = {
     { F1: true, '?': true },
     { dialogs: true },
   ),
-  devTools: bind('App', strings.actions.devTools, { 'Mod+Shift+I': true }),
+  about: bind(
+    'App',
+    strings.actions.about,
+    { 'Shift+F1': true },
+    { dialogs: true },
+  ),
+  devTools: bind(undefined, strings.actions.devTools, { 'Mod+Shift+I': true }),
+  move: bind(
+    undefined,
+    strings.actions.move,
+    { ArrowUp: 'up', ArrowDown: 'down' },
+    { repeats: true },
+  ),
+  page: bind(
+    undefined,
+    strings.actions.page,
+    { PageUp: 'pageUp', PageDown: 'pageDown', Home: 'first', End: 'last' },
+    { repeats: true },
+  ),
   close: bind(
     undefined,
     strings.actions.close,
@@ -160,7 +183,6 @@ export const keymap = {
     { ArrowDown: 'next', ArrowUp: 'previous', Home: 'first', End: 'last' },
     { repeats: true },
   ),
-  removeItem: bind(undefined, strings.actions.removeItem, { Delete: true }),
   submenu: bind(undefined, strings.actions.submenu, {
     ArrowRight: 'open',
     ArrowLeft: 'back',
@@ -419,6 +441,6 @@ export function keyLabels(keys: string, mac = macKeys): string[] {
     ...(combo.ctrl ? [strings.keys.Ctrl] : []),
     ...(combo.alt ? [mac ? strings.keys.Option : strings.keys.Alt] : []),
     ...(combo.shift ? [strings.keys.Shift] : []),
-    names[combo.key] ?? combo.key,
+    names[mac && combo.key === 'Alt' ? 'Option' : combo.key] ?? combo.key,
   ];
 }

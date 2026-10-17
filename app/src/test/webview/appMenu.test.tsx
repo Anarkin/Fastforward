@@ -47,7 +47,7 @@ suite('App menu', () => {
         'Sort Tabs A-Z',
         'Open Default Settings',
         'Open User Settings',
-        'Keyboard Shortcuts',
+        'Shortcuts',
         'Check for Updates',
         'About',
       ],
@@ -73,7 +73,7 @@ suite('App menu', () => {
     );
     const labels = items.map((item) => item.label);
     assert.strictEqual(
-      labels[labels.indexOf('Keyboard Shortcuts') + 1],
+      labels[labels.indexOf('Shortcuts') + 1],
       'Install the ff Command',
     );
     items.find((item) => item.label === 'Install the ff Command')?.onClick?.();

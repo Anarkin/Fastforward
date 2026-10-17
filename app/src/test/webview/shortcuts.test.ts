@@ -9,6 +9,9 @@ type KeyEvent = Parameters<typeof keyPressed>[1];
 const shortcuts = (key: string, extra: Partial<KeyEvent> = {}) =>
   keyPressed(keymap.shortcuts, keyPress(key, extra)) === true;
 
+const about = (extra: Partial<KeyEvent> = {}) =>
+  keyPressed(keymap.about, keyPress('F1', extra)) === true;
+
 const showsWhitespace = (extra: Partial<KeyEvent> = {}) =>
   keyPressed(keymap.showWhitespace, keyPress('.', extra)) === true;
 
@@ -29,6 +32,14 @@ suite('Keyboard shortcuts', () => {
     assert.ok(!shortcuts('?', { altKey: true }));
     assert.ok(!shortcuts('F1', { repeat: true }));
     assert.ok(!shortcuts('F2'));
+  });
+
+  test('shows About on Shift+F1, even in a field, but not on F1 alone, which shows the shortcuts', () => {
+    assert.ok(about({ shiftKey: true }));
+    assert.ok(about({ shiftKey: true, target: element('INPUT') }));
+    assert.ok(!about());
+    assert.ok(!about({ shiftKey: true, ctrlKey: true }));
+    assert.ok(!about({ shiftKey: true, repeat: true }));
   });
 
   test('leaves keys typed into a field to the field', () => {

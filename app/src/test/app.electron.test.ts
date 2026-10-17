@@ -346,7 +346,7 @@ suite('App', () => {
   });
 
   test('shows the shortcuts on F1 or ?, closing them on Esc or F1', async () => {
-    const shortcuts = page.getByRole('dialog', { name: 'Keyboard Shortcuts' });
+    const shortcuts = page.getByRole('dialog', { name: 'Shortcuts' });
     await page.keyboard.press('F1');
     await shortcuts.waitFor();
     await page.keyboard.press('Escape');
@@ -355,6 +355,29 @@ suite('App', () => {
     await shortcuts.waitFor();
     await page.keyboard.press('F1');
     await shortcuts.waitFor({ state: 'detached' });
+  });
+
+  test('goes back and forward through the selected commits on Alt+Left and Alt+Right', async () => {
+    await page.keyboard.press('h');
+    await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await page.locator('.commit.selected', { hasText: 'first' }).waitFor();
+    await page.keyboard.press('Alt+ArrowLeft');
+    await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
+    await page.keyboard.press('Alt+ArrowRight');
+    await page.locator('.commit.selected', { hasText: 'first' }).waitFor();
+  });
+
+  test('shows About on Shift+F1, closing it on Esc or Shift+F1', async () => {
+    const about = page.getByRole('dialog', { name: 'About' });
+    await page.keyboard.press('Shift+F1');
+    await about.waitFor();
+    await page.keyboard.press('Escape');
+    await about.waitFor({ state: 'detached' });
+    await page.keyboard.press('Shift+F1');
+    await about.waitFor();
+    await page.keyboard.press('Shift+F1');
+    await about.waitFor({ state: 'detached' });
   });
 
   test('works a menu with the keys, giving the keyboard back when it closes', async () => {
