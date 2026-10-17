@@ -92,6 +92,14 @@ suite('Previews', () => {
     assert.deepStrictEqual(markdownSides(added, texts, false), [
       { side: 'new', text: '# new', present: true },
     ]);
+    assert.deepStrictEqual(
+      markdownSides(
+        readme,
+        new Map([[textKey('README.md', 'new'), undefined]]),
+        false,
+      ),
+      [{ side: 'new', text: undefined, present: true, unreadable: true }],
+    );
     const deleted = textPatch('gone.md', `${oldId}..${none}`);
     assert.deepStrictEqual(
       markdownSides(deleted, texts, false).map(({ side }) => side),
@@ -197,7 +205,21 @@ suite('Markdown preview', () => {
     );
   });
 
-  test('leaves the preview of a side not read, as one over 2 MB, empty, rather than saying the file is empty', () => {
+  test('says a side that could not be read, as one over 2 MB or binary, is binary or very large, rather than leaving it blank', () => {
+    const markup = renderToStaticMarkup(
+      <MarkdownDiff
+        sides={[
+          { side: 'new', text: undefined, present: true, unreadable: true },
+        ]}
+      />,
+    );
+    assert.strictEqual(
+      markup,
+      '<div class="markdown-diff"><div class="markdown-pane"><div class="markdown-note">Binary or very large file</div></div></div>',
+    );
+  });
+
+  test('leaves the preview of a side not read yet empty, rather than saying the file is empty', () => {
     const markup = renderToStaticMarkup(
       <MarkdownDiff
         sides={[{ side: 'new', text: undefined, present: true }]}

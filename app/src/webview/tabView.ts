@@ -37,7 +37,7 @@ export interface TabView {
   readonly refreshes: number;
   readonly fileContent: WholeFile | undefined;
   readonly largeFiles: ReadonlyMap<string, DiffFile>;
-  readonly texts: ReadonlyMap<string, string>;
+  readonly texts: ReadonlyMap<string, string | undefined>;
   readonly tree: ToWebviewOf<'tree'> | undefined;
   readonly treeRequested: string | undefined;
   readonly fetching: boolean;
@@ -295,10 +295,8 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
             ...state,
             texts: new Map([
               ...state.texts,
-              ...action.texts.flatMap(({ path, side, text }) =>
-                text === undefined
-                  ? []
-                  : [[textKey(path, side), text] as const],
+              ...action.texts.map(
+                ({ path, side, text }) => [textKey(path, side), text] as const,
               ),
             ]),
           }

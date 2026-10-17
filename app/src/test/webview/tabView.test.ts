@@ -713,7 +713,7 @@ suite('Tab view', () => {
     );
   });
 
-  test('keeps the texts sent for the current diff, until the next diff', () => {
+  test('keeps the texts sent for the current diff, until the next diff, and which of them could not be read', () => {
     const view = reduceTabView(busyTab(), {
       type: 'diff',
       hash: 'a',
@@ -731,7 +731,13 @@ suite('Tab view', () => {
         ],
       });
     const answered = answer('a', view.diffs);
-    assert.deepStrictEqual(answered.texts, new Map([['old:x.ts', 'old']]));
+    assert.deepStrictEqual(
+      answered.texts,
+      new Map([
+        ['old:x.ts', 'old'],
+        ['new:x.ts', undefined],
+      ]),
+    );
     assert.strictEqual(answer('a', view.diffs - 1), view);
     assert.strictEqual(answer('b', view.diffs), view);
     const next = reduceTabView(answered, {

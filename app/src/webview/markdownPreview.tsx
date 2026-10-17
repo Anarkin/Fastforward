@@ -141,9 +141,16 @@ function MarkdownPane({
 export function MarkdownDiff({ sides }: { sides: readonly MarkdownSide[] }) {
   return (
     <div className="markdown-diff">
-      {sides.map(({ side, text, present, images }) => {
+      {sides.map(({ side, text, present, unreadable, images }) => {
         if (!present) {
           return <div key={side} className="markdown-pane filler" />;
+        }
+        if (unreadable) {
+          return (
+            <div key={side} className="markdown-pane">
+              <div className="markdown-note">{strings.diff.binaryOrLarge}</div>
+            </div>
+          );
         }
         return text === '' ? (
           <div key={side} className="markdown-pane">

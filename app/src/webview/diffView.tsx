@@ -1732,7 +1732,7 @@ export function DiffView({
   loading: boolean;
   diff: number;
   onLoad: (path: string) => void;
-  texts: ReadonlyMap<string, string>;
+  texts: ReadonlyMap<string, string | undefined>;
   onLoadTexts: (texts: TextRequest[]) => void;
   changeMarks: boolean;
   matches: readonly FindMatch[];

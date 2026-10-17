@@ -71,12 +71,13 @@ export interface MarkdownSide {
   readonly side: Side;
   readonly text: string | undefined;
   readonly present: boolean;
+  readonly unreadable?: true;
   readonly images?: DocumentImages;
 }
 
 export function markdownSides(
   file: DiffFile,
-  texts: ReadonlyMap<string, string>,
+  texts: ReadonlyMap<string, string | undefined>,
   sideBySide: boolean,
   origin?: ImageOrigin,
 ): MarkdownSide[] {
@@ -84,6 +85,10 @@ export function markdownSides(
     side,
     text: texts.get(textKey(file.path, side)),
     present: file.blobs?.[side] !== undefined,
+    ...(texts.has(textKey(file.path, side)) &&
+      texts.get(textKey(file.path, side)) === undefined && {
+        unreadable: true as const,
+      }),
     ...(origin && {
       images: {
         root: origin.root,

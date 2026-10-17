@@ -354,7 +354,7 @@ export function Diff({
   diffs: number;
   largeFiles: ReadonlyMap<string, DiffFile>;
   onLoadFile: (path: string) => void;
-  texts: ReadonlyMap<string, string>;
+  texts: ReadonlyMap<string, string | undefined>;
   onLoadTexts: (texts: TextRequest[]) => void;
   fileContent: WholeFile | undefined;
   error: string | undefined;

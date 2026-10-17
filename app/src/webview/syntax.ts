@@ -112,7 +112,7 @@ function sideSource(
 export function syntaxSources(
   files: readonly DiffFile[],
   whole: WholeFile | undefined,
-  texts: ReadonlyMap<string, string> = new Map(),
+  texts: ReadonlyMap<string, string | undefined> = new Map(),
   open?: ReadonlySet<number>,
 ): SyntaxSource[] {
   if (whole) {
@@ -290,7 +290,7 @@ interface Colored {
 export function useSyntax(
   files: readonly DiffFile[],
   whole: WholeFile | undefined,
-  texts: ReadonlyMap<string, string>,
+  texts: ReadonlyMap<string, string | undefined>,
   open: ReadonlySet<number>,
 ): ReadonlyMap<string, readonly SyntaxRange[]> {
   const sources = useMemo(
