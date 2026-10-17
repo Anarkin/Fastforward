@@ -389,6 +389,44 @@ suite('View pulling and pushing other branches', () => {
     assert.ok(await onRemote('second'));
   });
 
+  test('pushes a branch and fetches behind remote work that fails, as the failure is that work alone', async () => {
+    await repository.git('branch', 'behind', 'main');
+    await other.git('fetch', 'origin');
+    await other.git('push', 'origin', 'origin/main:refs/heads/fetched');
+    const held = gate();
+    const afterRemoteWork: unknown = Reflect.get(view, 'afterRemoteWork');
+    assert.ok(typeof afterRemoteWork === 'function');
+    const failing: unknown = Reflect.apply(afterRemoteWork, view, [
+      repository.root,
+      async () => {
+        await held.opened;
+        throw new Error('the remote work before failed');
+      },
+    ]);
+    const failed = Promise.resolve(failing).catch((error: unknown) => error);
+    page.clear();
+    const pushing = connection.receive({
+      type: 'pushBranch',
+      root: repository.root,
+      name: 'behind',
+    });
+    await waitFor(
+      () => page.messages.flatMap(running).includes('pushingBranch behind'),
+      'the push to wait',
+    );
+    const fetching = connection.receive({
+      type: 'fetch',
+      root: repository.root,
+    });
+    held.open();
+    await Promise.all([pushing, fetching]);
+    assert.match(String(await failed), /the remote work before failed/);
+    assert.ok(await onRemote('behind'));
+    assert.ok(
+      (await repository.git('branch', '--remotes')).includes('origin/fetched'),
+    );
+  });
+
   test('pulls and pushes no branch the repository lacks, as the page may ask for any name', async () => {
     assert.deepStrictEqual(await send('pullBranch', 'nowhere'), []);
     assert.deepStrictEqual(await send('pushBranch', '--mirror', 'error'), []);

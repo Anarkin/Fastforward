@@ -2140,7 +2140,7 @@ export class FastforwardView {
       this.fetches.get(repository)?.fetched,
       this.pushes.get(repository),
     ].filter((work) => work !== undefined);
-    return running.length === 0 ? undefined : Promise.all(running);
+    return running.length === 0 ? undefined : Promise.allSettled(running);
   }
 
   private async fetchRemotes(
