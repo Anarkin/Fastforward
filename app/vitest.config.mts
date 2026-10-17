@@ -1,3 +1,4 @@
+import { availableParallelism } from 'node:os';
 import { defineConfig } from 'vitest/config';
 
 const git = 'src/test/**/*.git.test.ts';
@@ -7,6 +8,7 @@ export default defineConfig({
   test: {
     setupFiles: ['src/test/setup.ts'],
     allowOnly: false,
+    maxWorkers: Math.min(8, Math.max(1, availableParallelism() - 1)),
     coverage: {
       include: ['src/**'],
       exclude: ['src/test/**'],
