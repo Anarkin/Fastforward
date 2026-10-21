@@ -3401,9 +3401,9 @@ export class FastforwardView {
     const change = file === undefined ? undefined : changes.get(file);
     if (file !== undefined && !change) {
       const commit = shownCommit(hash);
-      const { content, binary, id } =
+      const { content, binary, id, link } =
         commit === undefined && !(await this.inWorkingTree(context, file))
-          ? { content: '', binary: false, id: undefined }
+          ? { content: '', binary: false, id: undefined, link: undefined }
           : await readFile(context.gitPath, context.root, commit, file);
       const shownDiff = context.tab.shown.diff;
       const unchanged =
@@ -3414,7 +3414,8 @@ export class FastforwardView {
         shownDiff.area === area &&
         shownDiff.content === content &&
         shownDiff.binary === binary &&
-        shownDiff.id === id;
+        shownDiff.id === id &&
+        shownDiff.link === link;
       if (!stale() && !unchanged) {
         tab.diffOwed = false;
         context.post({
@@ -3425,6 +3426,7 @@ export class FastforwardView {
           content,
           binary,
           ...(id === undefined ? {} : { id }),
+          ...(link ? { link } : {}),
         });
       }
       return;

@@ -2,6 +2,7 @@ import type { Stats } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, sep } from 'node:path';
 import { maxImageSize, type ImageSource } from '../shared/images';
+import { linkMode } from '../shared/protocol';
 import { strings } from '../shared/strings';
 import { headCommit } from './history';
 import { runGit, runGitBytes, splitNul } from './run';
@@ -57,6 +58,7 @@ interface FileContent {
   readonly content: string;
   readonly binary: boolean;
   readonly id?: string;
+  readonly link?: true;
 }
 
 const binaryContent = (id: string): FileContent => ({
@@ -64,6 +66,37 @@ const binaryContent = (id: string): FileContent => ({
   binary: true,
   id,
 });
+
+const linkContent = (target: string): FileContent => ({
+  content: target,
+  binary: false,
+  link: true,
+});
+
+const maxLinkTarget = 4096;
+
+async function linkCheckedOutAsFile(
+  gitPath: string,
+  cwd: string,
+  path: string,
+  content: Buffer,
+): Promise<boolean> {
+  if (
+    content.length === 0 ||
+    content.length > maxLinkTarget ||
+    content.includes(0x0a) ||
+    content.includes(0)
+  ) {
+    return false;
+  }
+  const mode = await runGit(
+    gitPath,
+    cwd,
+    ['cat-file', '-Z', '--batch-check=%(objectmode)'],
+    { input: `:0:${path}\0` },
+  );
+  return mode === `${linkMode}\0`;
+}
 
 export function isBinary(buffer: Buffer): boolean {
   return buffer.subarray(0, binaryProbe).includes(0);
@@ -111,6 +144,7 @@ type ObjectRead =
       readonly kind: 'object';
       readonly id: string;
       readonly type: string;
+      readonly mode: string;
       readonly content: Buffer;
     }
   | { readonly kind: 'tooLarge' }
@@ -128,7 +162,12 @@ async function readObjects(
   const output = await runGitBytes(
     gitPath,
     cwd,
-    ['cat-file', '--batch', '-Z', `--filter=blob:limit=${limit + 1}`],
+    [
+      'cat-file',
+      '--batch=%(objectname) %(objecttype) %(objectsize) %(objectmode)',
+      '-Z',
+      `--filter=blob:limit=${limit + 1}`,
+    ],
     { input: names.map((name) => `${name}\0`).join('') },
   );
   const read: ObjectRead[] = [];
@@ -145,12 +184,13 @@ async function readObjects(
       read.push({ kind: 'tooLarge' });
       continue;
     }
-    const [id = '', type = '', size] = header.split(' ');
+    const [id = '', type = '', size, mode = ''] = header.split(' ');
     const length = Number(size);
     read.push({
       kind: 'object',
       id,
       type,
+      mode,
       content: output.subarray(at, at + length),
     });
     at += length + 1;
@@ -204,11 +244,9 @@ export async function readFile(
     }
     if (stats.isSymbolicLink()) {
       const target = await fs.readlink(file);
-      return {
-        content:
-          process.platform === 'win32' ? target.replaceAll('\\', '/') : target,
-        binary: false,
-      };
+      return linkContent(
+        process.platform === 'win32' ? target.replaceAll('\\', '/') : target,
+      );
     }
     if (stats.isDirectory()) {
       const checkedOut = await fs.stat(join(file, '.git')).then(
@@ -223,9 +261,13 @@ export async function readFile(
       return { content: '', binary: false };
     }
     const id = `${stats.size}-${stats.mtimeMs}`;
-    return stats.size > maxFileSize
-      ? binaryContent(id)
-      : toContent(await fs.readFile(file), id);
+    if (stats.size > maxFileSize) {
+      return binaryContent(id);
+    }
+    const content = await fs.readFile(file);
+    return (await linkCheckedOutAsFile(gitPath, cwd, path, content))
+      ? linkContent(content.toString('utf8'))
+      : toContent(content, id);
   }
   const [read] = await readObjects(
     gitPath,
@@ -235,7 +277,9 @@ export async function readFile(
   );
   const blob = blobOf(read);
   if (blob?.kind === 'object') {
-    return toContent(blob.content, blob.id);
+    return blob.mode === linkMode
+      ? linkContent(blob.content.toString('utf8'))
+      : toContent(blob.content, blob.id);
   }
   const entry = await runGit(gitPath, cwd, [
     'ls-tree',

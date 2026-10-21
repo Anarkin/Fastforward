@@ -876,7 +876,7 @@ suite('Large files in a commit diff', () => {
     );
   });
 
-  test('keeps both halves of a file that changed type, and the blob of each', () => {
+  test('keeps both halves of a file that changed type, the lines of the file and the target of the link, and the blob of each', () => {
     const typeChange = [
       'diff --git a/f b/f',
       'deleted file mode 100644',
@@ -894,7 +894,7 @@ suite('Large files in a commit diff', () => {
       '+target',
       '\\ No newline at end of file',
     ].join('\n');
-    const both = [['f', ['hello', 'target']]];
+    const both = [['f', ['hello']]];
     const parsed = parsePatch(typeChange);
     assert.deepStrictEqual(lines(parsed), both);
     assert.deepStrictEqual(
@@ -902,6 +902,9 @@ suite('Large files in a commit diff', () => {
       both,
     );
     assert.deepStrictEqual(lines([parseFilePatch('f', typeChange)]), both);
+    assert.deepStrictEqual(parseFilePatch('f', typeChange).link, {
+      new: 'target',
+    });
     assert.deepStrictEqual(parsed[0].blobs, {
       old: 'ce01362',
       new: 'eb4e8a8',
@@ -2306,6 +2309,132 @@ suite('Binary files', () => {
       binaryMarkup(undefined, true),
       '<div class="split-line note-line"><div class="file-note split-side ">Binary file</div><div class="file-note split-side ">Binary file</div></div>',
     );
+  });
+});
+
+const linkPatch = (...patchLines: string[]) =>
+  parsePatch(['diff --git a/l b/l', ...patchLines].join('\n'))[0];
+
+const noNewline = '\\ No newline at end of file';
+
+const linkRows = (file: DiffFile, sideBySide: boolean) =>
+  diffRows([file], new Map(), undefined, false, sideBySide).flatMap((row) =>
+    row.kind === 'link' ? [row.side] : [row.kind],
+  );
+
+suite('Symbolic links', () => {
+  const added = linkPatch(
+    'new file mode 120000',
+    'index 0000000..1111111',
+    '--- /dev/null',
+    '+++ b/l',
+    '@@ -0,0 +1 @@',
+    '+README',
+    noNewline,
+  );
+  const deleted = linkPatch(
+    'deleted file mode 120000',
+    'index 1111111..0000000',
+    '--- a/l',
+    '+++ /dev/null',
+    '@@ -1 +0,0 @@',
+    '-README',
+    noNewline,
+  );
+  const retargeted = linkPatch(
+    'index 1111111..2222222 120000',
+    '--- a/l',
+    '+++ b/l',
+    '@@ -1 +1 @@',
+    '-README',
+    noNewline,
+    '+docs/README',
+    noNewline,
+  );
+  const fileToLink = linkPatch(
+    'deleted file mode 100644',
+    'index 3333333..0000000',
+    '--- a/l',
+    '+++ /dev/null',
+    '@@ -1 +0,0 @@',
+    '-hello',
+    'diff --git a/l b/l',
+    'new file mode 120000',
+    'index 0000000..1111111',
+    '--- /dev/null',
+    '+++ b/l',
+    '@@ -0,0 +1 @@',
+    '+README',
+    noNewline,
+  );
+  const [renamed] = parsePatch(
+    [
+      'diff --git a/l b/m',
+      'similarity index 50%',
+      'rename from l',
+      'rename to m',
+      'index 1111111..2222222 120000',
+      '--- a/l',
+      '+++ b/m',
+      '@@ -1 +1 @@',
+      '-README',
+      noNewline,
+      '+docs/README',
+      noNewline,
+    ].join('\n'),
+  );
+
+  test('notes the target of each side that is a symbolic link in place of its text, inline and side by side, above the lines of a side that is a file', () => {
+    for (const sideBySide of [false, true]) {
+      assert.deepStrictEqual(linkRows(added, sideBySide), [
+        'error',
+        'file',
+        'new',
+      ]);
+      assert.deepStrictEqual(linkRows(deleted, sideBySide), [
+        'error',
+        'file',
+        'old',
+      ]);
+      assert.deepStrictEqual(linkRows(retargeted, sideBySide), [
+        'error',
+        'file',
+        'old',
+        'new',
+      ]);
+      assert.deepStrictEqual(linkRows(fileToLink, sideBySide), [
+        'error',
+        'file',
+        'new',
+        sideBySide ? 'split' : 'line',
+      ]);
+      assert.deepStrictEqual(linkRows(renamed, sideBySide), [
+        'error',
+        'file',
+        'old',
+        'new',
+      ]);
+    }
+    assert.strictEqual(
+      strings.diff.symbolicLink('docs/README'),
+      'Symbolic link to docs/README',
+    );
+    assert.strictEqual(rowHeight({ kind: 'link', file: 0, side: 'new' }), 22);
+  });
+
+  test('notes a symbolic link shown whole by its target, with no lines and no preview, though its name is that of a document', () => {
+    const whole = {
+      path: 'AGENTS.md',
+      content: 'README',
+      binary: false,
+      link: true as const,
+    };
+    for (const rendered of [new Set<string>(), new Set(['AGENTS.md'])]) {
+      assert.deepStrictEqual(
+        kinds(diffRows([], new Map(), whole, false, false, rendered)),
+        ['error', 'file', 'link'],
+      );
+    }
   });
 });
 

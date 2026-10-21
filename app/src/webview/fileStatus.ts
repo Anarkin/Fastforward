@@ -61,5 +61,8 @@ export function changeTitle(change: FileChange): string {
   const path = change.oldPath
     ? strings.common.fromTo(change.oldPath, change.path)
     : change.path;
-  return strings.files.change(strings.files.statuses[change.status], path);
+  const statuses = change.link
+    ? strings.files.linkStatuses
+    : strings.files.statuses;
+  return strings.files.change(statuses[change.status], path);
 }

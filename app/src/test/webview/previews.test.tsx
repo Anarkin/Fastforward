@@ -63,6 +63,21 @@ suite('Previews', () => {
     );
   });
 
+  test('previews no symbolic link, as its text is the path it points to, whatever its name', () => {
+    for (const file of [
+      { ...readme, link: { new: 'docs/README.md' } },
+      { ...textPatch('v.svg', `${oldId}..${newId}`), link: { old: 'a.svg' } },
+    ]) {
+      assert.strictEqual(previewOf(file), undefined);
+    }
+    for (const path of ['AGENTS.md', 'v.svg']) {
+      assert.strictEqual(
+        wholePreviewOf({ path, content: 'README', binary: false, link: true }),
+        undefined,
+      );
+    }
+  });
+
   test('asks once for the whole text of each side of the Markdown shown as a preview', () => {
     const requested = new Set<string>();
     const shown = new Set(['README.md', 'docs/new.markdown']);

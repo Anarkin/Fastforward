@@ -60,6 +60,26 @@ suite('File rows', () => {
     assert.strictEqual(new Set(signs).size, signs.length);
   });
 
+  test('marks a symbolic link after its name, naming it one in its tooltip, besides its kind of change', () => {
+    const html = renderToStaticMarkup(
+      <FileRow
+        path="AGENTS.md"
+        name="AGENTS.md"
+        depth={0}
+        change={change('AGENTS.md', { status: 'A', link: true })}
+        selected={undefined}
+        marked={false}
+        onSelect={noop}
+      />,
+    );
+    assert.match(
+      html,
+      /<svg class="icon change-icon added".*?<\/svg><span class="path">AGENTS\.md<\/span><svg class="icon link-icon"/,
+    );
+    tagWith(html, 'title="Added symbolic link: AGENTS.md"', 'row', 'tree-row');
+    assert.doesNotMatch(changedRow('A'), /link-icon/);
+  });
+
   test('gives an unchanged file no icon', () => {
     const html = renderToStaticMarkup(
       <FileRow

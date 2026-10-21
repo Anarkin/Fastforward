@@ -875,6 +875,63 @@ suite('Uncommitted changes', () => {
     }
   });
 
+  test('marks an untracked symlink as a link, and no file beside it', async (context) => {
+    const target = path.join(cwd, 'target.txt');
+    const link = path.join(cwd, 'link');
+    symlinkOrSkip(context, 'target.txt', link);
+    fs.writeFileSync(target, 'a\nb\n');
+    try {
+      const { files } = await workingTreeFiles(gitPath, cwd);
+      const linkOf = (file: string) =>
+        files.find((change) => change.path === file)?.link;
+      assert.strictEqual(linkOf('link'), true);
+      assert.strictEqual(linkOf('target.txt'), undefined);
+      assert.ok(files.some((change) => change.path === 'target.txt'));
+    } finally {
+      fs.rmSync(link);
+      fs.rmSync(target);
+    }
+  });
+
+  test('marks a symbolic link changed in the working tree or the index as a link, though checked out as a plain file where git makes no links', async () => {
+    const links = await tempRepository(tempFolder('plain-links'));
+    try {
+      await links.git('config', 'core.symlinks', 'false');
+      const content = path.join(links.root, 'content');
+      fs.writeFileSync(content, 'README');
+      const [blob] = (await links.git('hash-object', '-w', 'content')).split(
+        '\n',
+      );
+      fs.rmSync(content);
+      await links.git(
+        'update-index',
+        '--add',
+        '--cacheinfo',
+        `120000,${blob},AGENTS.md`,
+        '--cacheinfo',
+        `120000,${blob},staged`,
+      );
+      await links.git('commit', '-q', '-m', 'links');
+      await links.git('checkout', '--', 'AGENTS.md', 'staged');
+      fs.writeFileSync(path.join(links.root, 'AGENTS.md'), 'docs/README');
+      fs.writeFileSync(path.join(links.root, 'staged'), 'docs/README');
+      await links.git('add', 'staged');
+      const { files, staged = [] } = await workingTreeFiles(
+        links.gitPath,
+        links.root,
+      );
+      assert.deepStrictEqual(
+        [...files, ...staged].map((change) => [change.path, change.link]),
+        [
+          ['AGENTS.md', true],
+          ['staged', true],
+        ],
+      );
+    } finally {
+      removeFolder(links.root);
+    }
+  });
+
   test('counts and diffs only the first 50 untracked files, against the index or a commit either way, leaving the rest out of the patch to load when opened, as each one is read on its own to count its lines and diffed by a git of its own', async () => {
     const many = path.join(cwd, 'many');
     fs.mkdirSync(many);

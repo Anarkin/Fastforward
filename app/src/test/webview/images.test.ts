@@ -115,6 +115,23 @@ suite('Image previews', () => {
     );
   });
 
+  test('previews no symbolic link moved unchanged, though it is named like an image, as its object is the path it points to', () => {
+    const files = parsePatch(
+      [
+        'diff --git a/resources/a.png b/src/a.png',
+        'similarity index 100%',
+        'rename from resources/a.png',
+        'rename to src/a.png',
+      ].join('\n'),
+    );
+    assert.strictEqual(
+      withUnchangedObjects(files, [
+        { ...change('src/a.png', commit), link: true },
+      ]),
+      files,
+    );
+  });
+
   test('renders an SVG from its source, in a diff with either side or whole', () => {
     const svg = svgPatch(`${oldId}..${newId}`);
     assert.strictEqual(rendersImage(svg), true);

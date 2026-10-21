@@ -44,7 +44,7 @@ export function withUnchangedObjects(
 ): readonly DiffFile[] {
   const ids = new Map(
     changes.flatMap((change) =>
-      change.id === undefined ? [] : [[change.path, change.id]],
+      change.id === undefined || change.link ? [] : [[change.path, change.id]],
     ),
   );
   if (ids.size === 0) {
@@ -67,6 +67,7 @@ export function withUnchangedObjects(
 export function rendersImage(file: DiffFile): boolean {
   return (
     !file.binary &&
+    file.link === undefined &&
     file.placeholder === undefined &&
     isVector(file.path) &&
     sides.some((side) => hasImage(file, side))

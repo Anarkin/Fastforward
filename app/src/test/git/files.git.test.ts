@@ -269,16 +269,48 @@ suite('Repository files', () => {
     }
   });
 
-  test('reads a symlink in the working tree by its target, as git does', async (context) => {
+  test('reads a symlink in the working tree by its target, as git does, marking it a link', async (context) => {
     const link = path.join(cwd, 'link');
     symlinkOrSkip(context, 'src/tracked.txt', link);
     try {
       assert.deepStrictEqual(await readFile(gitPath, cwd, undefined, 'link'), {
         content: 'src/tracked.txt',
         binary: false,
+        link: true,
       });
     } finally {
       fs.rmSync(link);
+    }
+  });
+
+  test('reads a symbolic link at a commit by its target, marking it a link, and in the working tree too where git checks it out as a plain file, as it makes no links there', async () => {
+    const links = await tempRepository(path.join(parent, 'links'));
+    await links.git('config', 'core.symlinks', 'false');
+    await links.commit('files', {
+      README: 'read me\n',
+      'one-line.txt': 'README',
+    });
+    const content = path.join(parent, 'link-content');
+    fs.writeFileSync(content, 'README');
+    const [blob] = (await links.git('hash-object', '-w', content)).split('\n');
+    await links.git(
+      'update-index',
+      '--add',
+      '--cacheinfo',
+      `120000,${blob},AGENTS.md`,
+    );
+    await links.git('commit', '-q', '-m', 'link');
+    await links.git('checkout', '--', 'AGENTS.md');
+    assert.ok(fs.lstatSync(path.join(links.root, 'AGENTS.md')).isFile());
+    for (const hash of ['HEAD', undefined]) {
+      assert.deepStrictEqual(
+        await readFile(gitPath, links.root, hash, 'AGENTS.md'),
+        { content: 'README', binary: false, link: true },
+      );
+      assert.deepStrictEqual(
+        await readFile(gitPath, links.root, hash, 'one-line.txt'),
+        { content: 'README', binary: false },
+      );
     }
   });
 

@@ -14,6 +14,7 @@ import {
   changeBlocks,
   type DiffFile,
   type DiffLine,
+  type LinkTargets,
   type NumberedLine,
 } from './diff';
 import {
@@ -110,6 +111,7 @@ export interface WholeFile {
   readonly content: string;
   readonly binary: boolean;
   readonly id?: string;
+  readonly link?: true;
 }
 
 export function showsSideBySide(
@@ -140,6 +142,11 @@ export type DiffRow =
   | { readonly kind: 'whitespace'; readonly file: number }
   | { readonly kind: 'sameContent'; readonly file: number }
   | { readonly kind: 'mode'; readonly file: number }
+  | {
+      readonly kind: 'link';
+      readonly file: number;
+      readonly side: keyof LinkTargets;
+    }
   | { readonly kind: 'noNewline'; readonly file: number }
   | { readonly kind: 'image'; readonly file: number }
   | { readonly kind: 'markdown'; readonly file: number }
@@ -177,6 +184,7 @@ const rowHeights: Record<
   whitespace: uniformHeight,
   sameContent: uniformHeight,
   mode: uniformHeight,
+  link: uniformHeight,
   noNewline: uniformHeight,
   image: 320,
   hunk: uniformHeight,
@@ -733,6 +741,8 @@ export function largeDiffText(lines: number | undefined): string {
 
 const noneRendered: ReadonlySet<string> = new Set();
 
+const linkSides: readonly (keyof LinkTargets)[] = ['old', 'new'];
+
 export function diffRows(
   files: readonly DiffFile[],
   toggled: ReadonlyMap<string, boolean>,
@@ -755,6 +765,10 @@ export function diffRows(
       open: true,
       collapsible: false,
     });
+    if (whole.link) {
+      rows.push({ kind: 'link', file: 0, side: 'new' });
+      return rows;
+    }
     if (whole.binary) {
       rows.push({
         kind: previewsWholeImage(whole) ? 'image' : 'binary',
@@ -805,7 +819,13 @@ export function diffRows(
       rows.push({ kind: preview, file: index });
       return;
     }
-    if (file.binary) {
+    if (file.link) {
+      for (const side of linkSides) {
+        if (file.link[side] !== undefined) {
+          rows.push({ kind: 'link', file: index, side });
+        }
+      }
+    } else if (file.binary) {
       rows.push({
         kind: previewsImage(file) ? 'image' : 'binary',
         file: index,
@@ -820,6 +840,7 @@ export function diffRows(
     } else if (
       file.oldPath !== undefined &&
       !file.binary &&
+      !file.link &&
       !file.whitespaceOnly &&
       file.hunks.length === 0
     ) {
@@ -2132,6 +2153,20 @@ export function DiffView({
             split={split}
           />
         );
+      case 'link': {
+        const text = strings.diff.symbolicLink(
+          (whole ? whole.content : files[row.file].link?.[row.side]) ?? '',
+        );
+        return whole ? (
+          <div className="file-note">{text}</div>
+        ) : (
+          <FileNote
+            text={text}
+            change={row.side === 'old' ? 'removed' : 'added'}
+            split={split}
+          />
+        );
+      }
       case 'mode': {
         const modes = files[row.file].modeChange;
         return (

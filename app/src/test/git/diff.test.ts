@@ -521,6 +521,43 @@ suite('Git show parsers', () => {
     );
   });
 
+  test('marks a symbolic link by the mode git gives it, a deleted one by the mode it had, and a type change by the mode it ends with', () => {
+    const none = blob('0');
+    const changes = parseChanges(
+      [
+        `:000000 120000 ${none} ${blob('1')} A`,
+        'added',
+        `:120000 000000 ${blob('1')} ${none} D`,
+        'deleted',
+        `:120000 120000 ${blob('1')} ${blob('2')} M`,
+        'retargeted',
+        `:100644 120000 ${blob('1')} ${blob('2')} T`,
+        'now a link',
+        `:120000 100644 ${blob('1')} ${blob('2')} T`,
+        'now a file',
+        `:120000 120000 ${blob('1')} ${blob('1')} R100`,
+        'old',
+        'new',
+        `:100644 100644 ${blob('1')} ${blob('2')} M`,
+        'file',
+        '',
+      ].join('\0'),
+    );
+    assert.deepStrictEqual(
+      changes.map((change) => [change.path, change.link]),
+      [
+        ['added', true],
+        ['deleted', true],
+        ['retargeted', true],
+        ['now a link', true],
+        ['now a file', undefined],
+        ['new', true],
+        ['file', undefined],
+      ],
+    );
+    assert.ok(!('link' in changes[6]));
+  });
+
   test('parses copies, type changes and unknown statuses', () => {
     assert.deepStrictEqual(
       parseChanges(

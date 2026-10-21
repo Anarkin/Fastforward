@@ -2,7 +2,7 @@ import type { FileChange } from '../shared/protocol';
 import { strings } from '../shared/strings';
 import { changeTitle, changeClass, changeKind } from './fileStatus';
 import { HighlightWords } from './highlight';
-import { ChangeIcon } from './icons';
+import { ChangeIcon, LinkIcon } from './icons';
 
 const treePadding = 8;
 export const twistyWidth = 10;
@@ -86,6 +86,7 @@ export function FileRow({
       <span className={changeClass(change)}>
         <HighlightWords text={name} words={words} />
       </span>
+      {change?.link && <LinkIcon />}
     </div>
   );
 }

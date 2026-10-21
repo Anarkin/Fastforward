@@ -60,4 +60,23 @@ suite('File status', () => {
       'Deleted: gone.ts',
     );
   });
+
+  test('names a symbolic link as one in the tooltip, with each status', () => {
+    assert.deepStrictEqual(
+      (['A', 'M', 'D', 'T', 'U'] as const).map((status) =>
+        changeTitle(change('l', { status, link: true })),
+      ),
+      [
+        'Added symbolic link: l',
+        'Modified symbolic link: l',
+        'Deleted symbolic link: l',
+        'Changed to a symbolic link: l',
+        'Untracked symbolic link: l',
+      ],
+    );
+    assert.strictEqual(
+      changeTitle(change('b', { status: 'R', oldPath: 'a', link: true })),
+      'Renamed symbolic link: a → b',
+    );
+  });
 });

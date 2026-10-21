@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
 import {
   collapseThreshold,
+  linkMode,
   patchByteBudget,
   patchLineBudget,
   type FileChange,
@@ -527,6 +528,14 @@ function patchOf(
 
 const simpleStatuses = ['A', 'M', 'D', 'T'] as const;
 
+const noMode = '000000';
+
+function linkOf({ oldMode, newMode }: Pick<RawChange, 'oldMode' | 'newMode'>) {
+  return (newMode === noMode ? oldMode : newMode) === linkMode
+    ? { link: true as const }
+    : {};
+}
+
 export function parseChanges(output: string): FileChange[] {
   return parseRawChanges(output).map(({ file }) => file);
 }
@@ -552,6 +561,7 @@ export function parseRawChanges(output: string): RawChange[] {
             insertions: 0,
             deletions: 0,
             ...(oldId === newId && !isNullId(newId) ? { id: newId } : {}),
+            ...linkOf(sides),
           },
         });
         i += 2;
@@ -564,6 +574,7 @@ export function parseRawChanges(output: string): RawChange[] {
             path: tokens[i + 1],
             insertions: 0,
             deletions: 0,
+            ...linkOf(sides),
           },
         });
         i += 1;

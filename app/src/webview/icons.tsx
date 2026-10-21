@@ -41,6 +41,14 @@ export function ChangeIcon({ kind }: { kind: ChangeKind }) {
   );
 }
 
+export function LinkIcon() {
+  return (
+    <Icon className="link-icon">
+      <path d="M4 4.5v3a2.5 2.5 0 0 0 2.5 2.5H12M9.5 7.5L12 10l-2.5 2.5" />
+    </Icon>
+  );
+}
+
 export function SearchIcon() {
   return (
     <Icon>

@@ -224,4 +224,74 @@ suite('Patch parser', () => {
       ],
     );
   });
+
+  test('takes the text of each side that is a symbolic link for its target, as git stores a link as the path it points to, keeping the lines of a side that is a file', () => {
+    const files = parsePatch(
+      [
+        'diff --git a/AGENTS.md b/AGENTS.md',
+        'new file mode 120000',
+        'index 0000000..100b938',
+        '--- /dev/null',
+        '+++ b/AGENTS.md',
+        '@@ -0,0 +1 @@',
+        '+docs/guides/agents/README.md',
+        '\\ No newline at end of file',
+        'diff --git a/gone b/gone',
+        'deleted file mode 120000',
+        'index 1111111..0000000',
+        '--- a/gone',
+        '+++ /dev/null',
+        '@@ -1 +0,0 @@',
+        '-../../../README',
+        '\\ No newline at end of file',
+        'diff --git a/moved b/moved',
+        'index 1111111..2222222 120000',
+        '--- a/moved',
+        '+++ b/moved',
+        '@@ -1 +1 @@',
+        '-README',
+        '\\ No newline at end of file',
+        '+docs/README',
+        '\\ No newline at end of file',
+        'diff --git a/f b/f',
+        'deleted file mode 100644',
+        'index ce01362..0000000',
+        '--- a/f',
+        '+++ /dev/null',
+        '@@ -1 +0,0 @@',
+        '-hello',
+        'diff --git a/f b/f',
+        'new file mode 120000',
+        'index 0000000..eb4e8a8',
+        '--- /dev/null',
+        '+++ b/f',
+        '@@ -0,0 +1 @@',
+        '+target',
+        '\\ No newline at end of file',
+        'diff --git a/a.ts b/a.ts',
+        'index 1111111..2222222 100644',
+        '--- a/a.ts',
+        '+++ b/a.ts',
+        '@@ -1 +1 @@',
+        '-old',
+        '+new',
+      ].join('\n'),
+    );
+    assert.deepStrictEqual(
+      files.map((file) => [
+        file.path,
+        file.link,
+        file.hunks.flatMap((hunk) => hunk.lines.map((line) => line.text)),
+        file.noNewlineAtEnd,
+      ]),
+      [
+        ['AGENTS.md', { new: 'docs/guides/agents/README.md' }, [], undefined],
+        ['gone', { old: '../../../README' }, [], undefined],
+        ['moved', { old: 'README', new: 'docs/README' }, [], undefined],
+        ['f', { new: 'target' }, ['hello'], undefined],
+        ['a.ts', undefined, ['old', 'new'], undefined],
+      ],
+    );
+    assert.ok(!('link' in files[4]));
+  });
 });

@@ -337,6 +337,16 @@ export const strings = {
       U: 'Untracked',
       '?': 'Changed',
     },
+    linkStatuses: {
+      A: 'Added symbolic link',
+      M: 'Modified symbolic link',
+      D: 'Deleted symbolic link',
+      R: 'Renamed symbolic link',
+      C: 'Copied symbolic link',
+      T: 'Changed to a symbolic link',
+      U: 'Untracked symbolic link',
+      '?': 'Changed symbolic link',
+    },
     change: (status: string, path: string) => `${status}: ${path}`,
   },
   diff: {
@@ -360,6 +370,7 @@ export const strings = {
     copiedWithoutChanges: 'Copied without changes',
     modeChanged: (from: string, to: string) =>
       `Mode changed from ${from} to ${to}`,
+    symbolicLink: (target: string) => `Symbolic link to ${target}`,
     imageDetails: (width: number, height: number, bytes: number) =>
       `${width} × ${height} · ${fileSize(bytes)}`,
     imageTooLarge: (megabytes: number) =>

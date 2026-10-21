@@ -1,3 +1,5 @@
+import { linkMode } from '../shared/protocol';
+
 type LineKind = 'context' | 'added' | 'removed';
 
 export interface DiffLine {
@@ -28,12 +30,20 @@ export interface DiffFile {
   readonly modeChange?: ModeChange;
   readonly copied?: true;
   readonly similarity?: number;
+  readonly link?: LinkTargets;
 }
 
 interface ModeChange {
   readonly old: string;
   readonly new: string;
 }
+
+export interface LinkTargets {
+  readonly old?: string;
+  readonly new?: string;
+}
+
+type Side = keyof LinkTargets;
 
 interface ParsedFile {
   header: string;
@@ -42,6 +52,7 @@ interface ParsedFile {
   copied: boolean;
   similarity?: number;
   modes: { old?: string; new?: string };
+  sideModes: Partial<Record<Side, string>>;
   binary: boolean;
   hunks: DiffHunk[];
   blobs?: Blobs;
@@ -111,7 +122,7 @@ export function textKey(path: string, side: 'old' | 'new'): string {
 
 const hunkHeader = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/;
 
-const indexLine = /^index ([0-9a-f]+)\.\.([0-9a-f]+)/;
+const indexLine = /^index ([0-9a-f]+)\.\.([0-9a-f]+)(?: (\d+))?/;
 
 const blob = (id: string) => (/^0+$/.test(id) ? undefined : id);
 
@@ -207,6 +218,7 @@ export function parsePatch(patch: string): DiffFile[] {
         path: headerPath(line.slice('diff --git '.length)),
         copied: false,
         modes: {},
+        sideModes: {},
         binary: false,
         hunks: [],
         addedOrDeleted: false,
@@ -233,13 +245,18 @@ export function parsePatch(patch: string): DiffFile[] {
           old: blob(index[1]) ?? file.blobs?.old,
           new: blob(index[2]) ?? file.blobs?.new,
         };
+        const mode = index[3];
+        if (mode !== undefined) {
+          file.sideModes = { old: mode, new: mode };
+        }
       } else if (line.startsWith('Binary files ')) {
         file.binary = true;
-      } else if (
-        line.startsWith('new file mode ') ||
-        line.startsWith('deleted file mode ')
-      ) {
+      } else if (line.startsWith('new file mode ')) {
         file.addedOrDeleted = true;
+        file.sideModes.new = line.slice('new file mode '.length);
+      } else if (line.startsWith('deleted file mode ')) {
+        file.addedOrDeleted = true;
+        file.sideModes.old = line.slice('deleted file mode '.length);
       } else if (line.startsWith('similarity index ')) {
         file.similarity = parseInt(line.slice('similarity index '.length), 10);
       } else if (line.startsWith('old mode ')) {
@@ -291,19 +308,20 @@ export function parsePatch(patch: string): DiffFile[] {
       file.lacksNewline.new ||= kind === 'added' || kind === 'context';
     }
   }
-  return files.map(
-    ({
+  return files.map((parsed) => {
+    const {
       path,
       oldPath,
       copied,
       similarity,
       modes,
       binary,
-      hunks,
       blobs,
       addedOrDeleted,
       lacksNewline,
-    }) => ({
+    } = parsed;
+    const link = linkOf(parsed);
+    return {
       path,
       ...(oldPath === undefined ? {} : { oldPath }),
       ...(copied ? { copied } : {}),
@@ -312,11 +330,52 @@ export function parsePatch(patch: string): DiffFile[] {
         ? { modeChange: { old: modes.old, new: modes.new } }
         : {}),
       binary,
-      hunks,
+      hunks: fileLines(parsed.hunks, link),
       ...(blobs ? { blobs } : {}),
       ...(addedOrDeleted || lacksNewline.old === lacksNewline.new
         ? {}
         : { noNewlineAtEnd: lacksNewline.old ? 'old' : 'new' }),
-    }),
-  );
+      ...(link ? { link } : {}),
+    };
+  });
+}
+
+const sideLines: Record<Side, LineKind> = { old: 'removed', new: 'added' };
+
+function linkOf({ hunks, sideModes }: ParsedFile): LinkTargets | undefined {
+  const lines = hunks.flatMap((hunk) => hunk.lines);
+  const target = (side: Side) => {
+    const texts = lines
+      .filter(
+        (line) => line.kind === 'context' || line.kind === sideLines[side],
+      )
+      .map((line) => line.text);
+    return sideModes[side] === linkMode && texts.length > 0
+      ? texts.join('\n')
+      : undefined;
+  };
+  const oldTarget = target('old');
+  const newTarget = target('new');
+  if (oldTarget === undefined && newTarget === undefined) {
+    return undefined;
+  }
+  return {
+    ...(oldTarget === undefined ? {} : { old: oldTarget }),
+    ...(newTarget === undefined ? {} : { new: newTarget }),
+  };
+}
+
+function fileLines(
+  hunks: DiffHunk[],
+  link: LinkTargets | undefined,
+): DiffHunk[] {
+  if (link === undefined) {
+    return hunks;
+  }
+  const ofFile = (line: DiffLine) =>
+    line.kind !== 'context' &&
+    link[line.kind === 'removed' ? 'old' : 'new'] === undefined;
+  return hunks
+    .map((hunk) => ({ lines: hunk.lines.filter(ofFile) }))
+    .filter((hunk) => hunk.lines.length > 0);
 }

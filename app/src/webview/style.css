@@ -1227,6 +1227,12 @@ body.resizing {
   color: var(--color-renamed);
 }
 
+.row .link-icon {
+  margin-left: 4px;
+  flex-shrink: 0;
+  opacity: var(--muted-opacity);
+}
+
 .row .path.unchanged,
 .row.folder.dimmed .twisty,
 .row.folder.dimmed .path {

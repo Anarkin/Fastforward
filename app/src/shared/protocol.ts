@@ -172,6 +172,8 @@ export interface GraphRow {
 
 export type ChangeArea = 'staged' | 'unstaged';
 
+export const linkMode = '120000';
+
 export interface FileChange {
   readonly path: string;
   readonly oldPath: string | undefined;
@@ -181,6 +183,7 @@ export interface FileChange {
   readonly bytes?: number;
   readonly uncounted?: boolean;
   readonly id?: string;
+  readonly link?: true;
 }
 
 export interface TabInfo {
@@ -470,6 +473,7 @@ export type ToWebview =
       readonly content: string;
       readonly binary: boolean;
       readonly id?: string;
+      readonly link?: true;
     }
   | { readonly type: 'error'; readonly message: string }
   | { readonly type: 'clearError'; readonly message: string }

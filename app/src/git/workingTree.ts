@@ -207,10 +207,11 @@ export async function workingTreeFiles(
       const added =
         countable && !unmeasured ? await untrackedLines.of(file) : 0;
       const lines = added === 'tooLarge' ? 0 : added;
-      const size =
-        added !== 0 || unmeasured
-          ? (await lstat(file).catch(() => undefined))?.size
-          : 0;
+      const sized = added !== 0 || unmeasured;
+      const stats = sized
+        ? await lstat(file).catch(() => undefined)
+        : undefined;
+      const size = sized ? stats?.size : 0;
       const bytes =
         unmeasured && size !== undefined && size <= maxFileSize ? 0 : size;
       return {
@@ -223,6 +224,7 @@ export async function workingTreeFiles(
         ...(added === 'tooLarge' || (countable && index >= maxUntrackedPatches)
           ? { uncounted: true }
           : {}),
+        ...(stats?.isSymbolicLink() ? { link: true as const } : {}),
       };
     }),
   );

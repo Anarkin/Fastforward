@@ -18,6 +18,7 @@ const sides: readonly Side[] = ['old', 'new'];
 function rendersMarkdown(file: DiffFile): boolean {
   return (
     !file.binary &&
+    file.link === undefined &&
     file.placeholder === undefined &&
     markdownPath.test(file.path) &&
     sides.some((side) => file.blobs?.[side] !== undefined)
@@ -35,9 +36,13 @@ interface WholeFile {
   readonly path: string;
   readonly content: string;
   readonly binary: boolean;
+  readonly link?: true;
 }
 
 export function wholePreviewOf(whole: WholeFile): Preview | undefined {
+  if (whole.link) {
+    return undefined;
+  }
   if (rendersWholeImage(whole)) {
     return 'image';
   }
