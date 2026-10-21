@@ -109,9 +109,10 @@ export function RefBubble({
     tagActions !== undefined &&
     !(hideDimmed && tagIdle);
   const branchShown = branchItems.length > 0;
+  const withActions = branchShown || tagShown;
   return (
     <span
-      className={`badge ${info.kind} ${checkedOut ? 'checked-out' : ''} ${missing ? 'missing' : ''} ${branchShown || tagShown ? 'with-actions' : ''}`}
+      className={`badge ${info.kind} ${checkedOut ? 'checked-out' : ''} ${missing ? 'missing' : ''} ${withActions ? 'with-actions' : ''}`}
       title={
         missing
           ? strings.common.gone(info.name)
@@ -121,7 +122,11 @@ export function RefBubble({
       }
       {...menu}
     >
-      {info.name}
+      {withActions ? (
+        <span className="bubble-name">{info.name}</span>
+      ) : (
+        info.name
+      )}
       {branchShown && (
         <span className="bubble-actions">{branchItems.map(actionButton)}</span>
       )}

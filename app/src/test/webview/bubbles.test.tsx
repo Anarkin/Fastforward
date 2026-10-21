@@ -156,7 +156,7 @@ suite('Bubbles', () => {
     assert.match(bubble, /title="main, checked out"/);
     assert.match(
       withActions,
-      /^<span[^>]*>main<span class="bubble-actions"><button class="bubble-action[^"]*" title="Pull:[^"]*" tabindex="-1">.*?<\/button><button class="bubble-action[^"]*" title="Push:[^"]*" tabindex="-1">.*?<\/button><\/span><\/span>$/,
+      /^<span[^>]*><span class="bubble-name">main<\/span><span class="bubble-actions"><button class="bubble-action[^"]*" title="Pull:[^"]*" tabindex="-1">.*?<\/button><button class="bubble-action[^"]*" title="Push:[^"]*" tabindex="-1">.*?<\/button><\/span><\/span>$/,
     );
     for (const without of [
       <RefBubble key="a" info={{ kind: 'branch', name: 'main' }} />,

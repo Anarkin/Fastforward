@@ -1539,12 +1539,15 @@ body.resizing {
 }
 
 .bubble-line .badge {
-  display: inline;
-  height: auto;
-  margin: 0 calc(4px + var(--bubble-inset)) 0 calc(-1 * var(--bubble-inset));
-  padding: 1px var(--bubble-inset);
-  line-height: inherit;
-  box-decoration-break: clone;
+  display: inline-block;
+  max-width: calc(100% + var(--bubble-inset));
+  height: 18px;
+  margin: 1px calc(4px + var(--bubble-inset)) 0 calc(-1 * var(--bubble-inset));
+  padding: 0 var(--bubble-inset);
+  overflow: hidden;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  vertical-align: top;
 }
 
 .badge.tag,
@@ -1573,16 +1576,18 @@ body.resizing {
 .bubble-line .badge.with-actions {
   display: inline-flex;
   align-items: center;
-  height: 18px;
-  margin-top: 1px;
   padding: 0 0 0 var(--bubble-inset);
-  line-height: 18px;
-  vertical-align: top;
-  white-space: nowrap;
+}
+
+.bubble-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .bubble-actions {
   display: flex;
+  flex: none;
   align-self: stretch;
   margin-left: var(--bubble-inset);
 }

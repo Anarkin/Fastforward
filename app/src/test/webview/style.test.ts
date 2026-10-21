@@ -5,7 +5,13 @@ import {
   columnFocusAttribute,
   type ColumnName,
 } from '../../webview/activeColumn';
-import { BubbleActions, RefBubble, TagActions } from '../../webview/bubbles';
+import {
+  BranchActions,
+  BubbleActions,
+  CheckedOutBranch,
+  RefBubble,
+  TagActions,
+} from '../../webview/bubbles';
 import { GraphCell } from '../../webview/graph';
 import { listedFilesRows } from '../../webview/changesTree';
 import { Column } from '../../webview/column';
@@ -1781,6 +1787,41 @@ suite('Style', () => {
     looks(withClass(tag, 'bubble-action'), { 'border-radius': '0' });
   });
 
+  test('keeps a bubble with buttons within its line, cutting off its long name with an ellipsis and never its buttons', () => {
+    const line = rendered(
+      createElement(
+        BranchActions.Provider,
+        {
+          value: { pulling: false, pushing: false, onPull: noop, onPush: noop },
+        },
+        createElement(
+          CheckedOutBranch.Provider,
+          { value: 'docs/a-branch-name-longer-than-its-line' },
+          createElement(
+            'div',
+            { className: 'bubble-line' },
+            createElement(RefBubble, {
+              info: {
+                kind: 'branch',
+                name: 'docs/a-branch-name-longer-than-its-line',
+              },
+              actions: true,
+            }),
+          ),
+        ),
+      ),
+    );
+    looks(withClass(line, 'badge', 'with-actions'), {
+      'max-width': 'calc(100% + var(--bubble-inset))',
+    });
+    looks(withClass(line, 'bubble-name'), {
+      overflow: 'hidden',
+      'text-overflow': 'ellipsis',
+      'min-width': '0',
+    });
+    looks(withClass(line, 'bubble-actions'), { flex: 'none' });
+  });
+
   test('dims an arrow of the blue bubble with nothing to do, and counts in figures of one width, so the bubble keeps its size as the counts change', () => {
     const actions = rendered(
       createElement(BubbleActions, {
@@ -1948,16 +1989,20 @@ suite('Style', () => {
     );
   });
 
-  test('draws bubbles as text in the flow of their line, starting where the other lines start, their pill around it taking no room', () => {
+  test('draws bubbles in the flow of their line, starting where the other lines start, each kept within the line, cutting off its long name with an ellipsis', () => {
     const commit = rendered(commitRow({ refs: repository.refs }));
     for (const badge of allWithClass(commit, 'badge')) {
       looks(badge, {
-        display: 'inline',
-        'line-height': 'inherit',
-        'box-decoration-break': 'clone',
+        display: 'inline-block',
+        'max-width': 'calc(100% + var(--bubble-inset))',
+        height: '18px',
+        'line-height': '18px',
+        'vertical-align': 'top',
+        overflow: 'hidden',
+        'text-overflow': 'ellipsis',
         margin:
-          '0 calc(4px + var(--bubble-inset)) 0 calc(-1 * var(--bubble-inset))',
-        padding: '1px var(--bubble-inset)',
+          '1px calc(4px + var(--bubble-inset)) 0 calc(-1 * var(--bubble-inset))',
+        padding: '0 var(--bubble-inset)',
       });
     }
     looks(withClass(commit, 'bubble-line'), {
