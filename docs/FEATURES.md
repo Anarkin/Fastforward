@@ -8,38 +8,6 @@
 
 - The git command is the usual one for the feature; where Fastforward runs another, the notes say so
 
-## Summary
-
-- Fastforward shows most of a repository's history, refs and changes, but changes it only by checking out, fetching, fast-forwarding a branch to its upstream, pushing or publishing a branch, and pushing a tag
-
-| Category | Features | ✅ | 🟡 | ❌ |
-| --- | --- | --- | --- | --- |
-| Repositories | 12 | 6 | 0 | 6 |
-| Working tree | 12 | 3 | 0 | 9 |
-| Committing | 10 | 0 | 0 | 10 |
-| History and graph | 26 | 12 | 4 | 10 |
-| Diffs | 28 | 20 | 3 | 5 |
-| Files | 9 | 3 | 0 | 6 |
-| Branches | 16 | 8 | 1 | 7 |
-| Tags | 10 | 3 | 0 | 7 |
-| Remotes | 19 | 8 | 3 | 8 |
-| Merging and rewriting | 11 | 0 | 0 | 11 |
-| Conflicts | 6 | 0 | 0 | 6 |
-| Stashes | 7 | 2 | 0 | 5 |
-| Worktrees | 6 | 3 | 0 | 3 |
-| Submodules and large files | 6 | 0 | 1 | 5 |
-| More git | 8 | 0 | 0 | 8 |
-| Hosting | 6 | 0 | 0 | 6 |
-| App | 11 | 5 | 2 | 4 |
-| **All** | **203** | **73** | **14** | **116** |
-
-| Tier | Features | ✅ | 🟡 | ❌ |
-| --- | --- | --- | --- | --- |
-| Core | 57 | 27 | 5 | 25 |
-| Common | 83 | 33 | 6 | 44 |
-| Advanced | 48 | 12 | 3 | 33 |
-| Niche | 15 | 1 | 0 | 14 |
-
 ## Repositories
 
 | Feature | What it does | Git command | Tier | Fastforward | Notes |
