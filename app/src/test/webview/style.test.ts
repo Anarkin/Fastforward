@@ -715,13 +715,13 @@ suite('Style', () => {
       width: '26px',
       height: '26px',
       'border-radius': '13px',
-      background: 'none',
+      background: 'var(--button-background)',
     });
     looks(
       add,
       {
         'box-shadow': 'inset 0 0 0 13px var(--hover-background)',
-        background: 'none',
+        background: 'var(--button-background)',
       },
       hovered,
     );
@@ -1324,6 +1324,71 @@ suite('Style', () => {
       ),
       { background: 'var(--color-border)' },
     );
+  });
+
+  test("fills every round button in the border color, but in the color of the tab bar or a popup's title it sits on, showing no circle there, and in the panel's on a file's header, tinting an open menu's button over its fill and ringing a button's dot in it", () => {
+    assert.strictEqual(
+      bodyVariable('button-background'),
+      'var(--color-border)',
+    );
+    for (const bar of [
+      withClass(tabBar(), 'tabs'),
+      withClass(shortcutsPopup(), 'shortcuts-title'),
+      withClass(aboutPopup(), 'shortcuts-title'),
+    ]) {
+      looks(bar, {
+        background: 'var(--color-background)',
+        '--button-background': 'var(--color-background)',
+      });
+    }
+    looks(withClass(diffView({}, fileHeader), 'file-header'), {
+      background: 'var(--color-border)',
+      '--button-background': 'var(--color-panel-background)',
+    });
+    const diff = rendered(diffOptions());
+    const laidOut = allWithClass(withClass(diff, 'segmented'), 'nav-button');
+    for (const button of [
+      ...allWithClass(rendered(navButtons()), 'nav-button'),
+      ...allWithClass(diff, 'nav-button').filter(
+        (option) => !laidOut.includes(option),
+      ),
+      withClass(rendered(menuButton()), 'nav-button'),
+      withClass(shortcutsPopup(), 'nav-button'),
+      withClass(
+        diffView(
+          {},
+          diffRow(
+            createElement(FileHeader, {
+              path: 'v.svg',
+              open: true,
+              whole: false,
+              collapsible: true,
+              onClick: noop,
+              preview: 'image',
+              onRender: noop,
+            }),
+          ),
+        ),
+        'file-header-button',
+      ),
+    ]) {
+      assert.ok(!button.classes.includes('active'));
+      looks(button, { background: 'var(--button-background)' });
+    }
+    looks(
+      rendered(
+        createElement('button', {
+          className: 'nav-button menu-button-trigger open',
+        }),
+      ),
+      {
+        background:
+          'linear-gradient(var(--hover-background), var(--hover-background)), var(--button-background)',
+      },
+    );
+    looks(withClass(rendered(menuButton({ marked: true })), 'menu-mark'), {
+      'box-shadow': '0 0 0 1.5px var(--button-background)',
+    });
   });
 
   test('rings a button or link the keyboard reached in the focus color, in whole pixels inside its edge like the active column, so nothing around it clips it, but not a menu item, which it tints instead, nor a popup taking the keyboard', () => {
@@ -2708,7 +2773,7 @@ suite('Style', () => {
     );
   });
 
-  test('fills a pinned pair as one undimmed switched-on toggle, and lifts the chosen and the hovered layout button onto the panel inside their ring', () => {
+  test('fills a pinned pair as one undimmed switched-on toggle, its buttons unfilled, and fills the layout buttons as one pill, lifting the chosen and the hovered one onto the panel inside it', () => {
     const pinned = rendered(diffOptions({ pinned: true }));
     const pair = withClass(pinned, 'pin-pair');
     looks(pair, { background: 'var(--toggle-on-background)' });
@@ -2716,6 +2781,18 @@ suite('Style', () => {
     assert.ok(entire.attributes.has('disabled'));
     looks(entire, { opacity: '1', background: 'none' });
     looks(pin, { background: 'none' });
+    const fetching = withClass(
+      rendered(navButtons({ autoFetch: true, autoFetchMinutes: 5 })),
+      'pin-pair',
+    );
+    assert.ok(fetching.classes.includes('pinned'));
+    for (const button of allWithClass(fetching, 'nav-button')) {
+      looks(button, { background: 'none' });
+    }
+    looks(withClass(pinned, 'segmented'), {
+      background: 'var(--button-background)',
+      'box-shadow': undefined,
+    });
     for (const button of [
       entire,
       pin,
@@ -2735,6 +2812,7 @@ suite('Style', () => {
       background:
         'linear-gradient(var(--toggle-on-background), var(--toggle-on-background)), var(--color-panel-background)',
     });
+    looks(other, { background: 'none' });
     looks(other, { background: 'var(--color-panel-background)' }, hovered);
   });
 

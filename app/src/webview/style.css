@@ -55,7 +55,7 @@ body {
     var(--color-foreground) var(--color-foreground-muted),
     transparent
   );
-  --toolbar-background: var(--color-panel-background);
+  --button-background: var(--color-border);
   --repository-background: var(--color-panel-background);
   --tab-inset: calc(2 * var(--gutter-width) + 2 * var(--card-radius));
   --tabs-top: 5px;
@@ -191,6 +191,7 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
         var(--gutter-width)
     )
     0 calc(env(titlebar-area-x, 0px) + var(--tab-inset));
+  --button-background: var(--color-background);
   background: var(--color-background);
   -webkit-app-region: drag;
 }
@@ -333,6 +334,7 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
   justify-content: space-between;
   padding: 4px 4px 4px 16px;
   font-weight: 700;
+  --button-background: var(--color-background);
   background: var(--color-background);
   border-radius: var(--card-radius) var(--card-radius) 0 0;
 }
@@ -403,7 +405,9 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
 }
 
 .menu-button-trigger.open {
-  background: var(--hover-background);
+  background:
+    linear-gradient(var(--hover-background), var(--hover-background)),
+    var(--button-background);
 }
 
 .menu {
@@ -936,7 +940,7 @@ body.resizing {
   display: flex;
   gap: 2px;
   border-radius: 13px;
-  box-shadow: inset 0 0 0 2px var(--color-border);
+  background: var(--button-background);
 }
 
 .column-actions {
@@ -1246,6 +1250,7 @@ body.resizing {
   height: var(--diff-file-height);
   gap: 8px;
   padding: 4px calc(8px + var(--minimap-width)) 4px 8px;
+  --button-background: var(--color-panel-background);
   background: var(--color-border);
   border-bottom: 1px solid var(--color-border);
   user-select: none;
@@ -2456,7 +2461,7 @@ body.resizing {
   height: 26px;
   padding: 0;
   color: var(--color-foreground);
-  background: none;
+  background: var(--button-background);
   border: none;
   border-radius: 13px;
 }
@@ -2469,12 +2474,16 @@ body.resizing {
   background: var(--toggle-on-background);
 }
 
-.pin-pair.pinned > .nav-button.toggle.active {
+.pin-pair.pinned > .nav-button {
   background: none;
 }
 
 .pin-pair.pinned > .nav-button:disabled {
   opacity: 1;
+}
+
+.segmented > .nav-button {
+  background: none;
 }
 
 .segmented > .nav-button:hover:not(:disabled) {
@@ -2517,7 +2526,7 @@ body.resizing {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  box-shadow: 0 0 0 1.5px var(--toolbar-background);
+  box-shadow: 0 0 0 1.5px var(--button-background);
 }
 
 .fetch-mark.stale {
