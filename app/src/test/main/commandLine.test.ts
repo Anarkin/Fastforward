@@ -1,7 +1,12 @@
 import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
-import { foldersHandedOff, foldersOf, handOff } from '../../main/commandLine';
+import {
+  foldersHandedOff,
+  foldersOf,
+  handOff,
+  wantsTerminal,
+} from '../../main/commandLine';
 
 suite('Command line', () => {
   const started = path.resolve('work');
@@ -69,5 +74,12 @@ suite('Command line', () => {
     for (const data of [undefined, null, 'folders', {}, { folders: 'a' }]) {
       assert.deepStrictEqual(foldersHandedOff(data), [], JSON.stringify(data));
     }
+  });
+
+  test('runs in the terminal when asked to with --term before the folders, and not for a folder named so', () => {
+    assert.strictEqual(wantsTerminal([app, '--term', '--', '.']), true);
+    assert.strictEqual(wantsTerminal([app, 'repository', '--term']), true);
+    assert.strictEqual(wantsTerminal([app, '--', '--term']), false);
+    assert.strictEqual(wantsTerminal([app, 'repository']), false);
   });
 });

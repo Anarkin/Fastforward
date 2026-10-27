@@ -17,7 +17,12 @@ import {
 } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import { findGit, minimumGitVersion, type GitSearch } from '../git/locate';
-import { foldersHandedOff, foldersOf, handOff } from './commandLine';
+import {
+  foldersHandedOff,
+  foldersOf,
+  handOff,
+  wantsTerminal,
+} from './commandLine';
 import { prettyName, systemOf } from './system';
 import { stopRunningGit, writesEnded } from '../git/run';
 import { errorLine, fileLog, type Log } from '../log';
@@ -58,6 +63,8 @@ import {
   visibleBounds,
 } from './files';
 import { tellMaximized } from './maximized';
+import { openTerminal, stretchIn, type Terminal } from './terminal';
+import { pageSizeOf, type Size } from '../terminal/screen';
 import { reloadWhenGone } from './pageGone';
 import { profileFolder } from './profile';
 import { exitOnFailure, flushBeforeQuit, whileWindowOpen } from './quit';
@@ -97,8 +104,13 @@ if (userDataDir) {
 }
 
 const askedFolders = foldersOf(process.argv, process.defaultApp, process.cwd());
+const inTerminal = wantsTerminal(process.argv);
+if (inTerminal) {
+  app.commandLine.appendSwitch('log-level', '3');
+  app.setPath('sessionData', path.join(app.getPath('userData'), 'Terminal'));
+}
 
-if (app.requestSingleInstanceLock(handOff(askedFolders))) {
+if (inTerminal || app.requestSingleInstanceLock(handOff(askedFolders))) {
   void exitOnFailure(app, start(askedFolders), (error) =>
     dialog.showErrorBox(brand, strings.app.couldNotStart(errorLine(error))),
   );
@@ -109,10 +121,17 @@ if (app.requestSingleInstanceLock(handOff(askedFolders))) {
 async function start(asked: readonly string[]): Promise<void> {
   setKeyPlatform(process.platform);
   const gitSearch = searchGit();
+  const terminal = inTerminal ? await openTerminal() : undefined;
+  if (terminal?.kind === 'failed') {
+    process.stderr.write(`${terminal.problem}
+`);
+    app.exit(1);
+    return;
+  }
   await app.whenReady();
   const log = fileLog(
     path.join(app.getPath('logs'), 'Fastforward.log'),
-    development,
+    development && !inTerminal,
   );
   log.info(
     strings.log.started(
@@ -157,11 +176,19 @@ async function start(asked: readonly string[]): Promise<void> {
       : new Response(strings.errors.notFound, { status: 404 });
   });
   setMenu();
-  const window = createWindow(
-    state,
-    userSettings.settings,
-    gitSearch.then((git) => git.kind === 'found'),
-  );
+  const stretch = terminal
+    ? stretchIn(terminal.size, userSettings.settings.windowsTerminalCellAspect)
+    : 1;
+  const window = terminal
+    ? createTerminalWindow(
+        userSettings.settings,
+        pageSizeOf(terminal.size, stretch),
+      )
+    : createWindow(
+        state,
+        userSettings.settings,
+        gitSearch.then((git) => git.kind === 'found'),
+      );
   let connection: Promise<Connection | undefined> = Promise.resolve(undefined);
   const connect = () => {
     connection = Promise.all([connection, views.promise]).then(
@@ -199,7 +226,8 @@ async function start(asked: readonly string[]): Promise<void> {
     if (
       event.sender === window.webContents &&
       typeof color === 'string' &&
-      process.platform !== 'darwin'
+      process.platform !== 'darwin' &&
+      !inTerminal
     ) {
       window.setTitleBarOverlay({ color: '#00000000', symbolColor: color });
     }
@@ -228,6 +256,9 @@ async function start(asked: readonly string[]): Promise<void> {
     stopRunningGit,
   );
   const loading = window.loadURL(`${appOrigin}/index.html`);
+  if (terminal) {
+    showInTerminal(window, terminal.terminal, stretch);
+  }
   void loading.catch((error: unknown) => {
     log.error(strings.log.pageNotLoaded);
     log.error(error);
@@ -438,16 +469,7 @@ function createWindow(
         ? undefined
         : { color: '#00000000', height: titleBarHeight },
     trafficLightPosition: { x: 12, y: (titleBarHeight - 12) / 2 },
-    webPreferences: {
-      preload: path.join(dist, 'preload.js'),
-      additionalArguments: [
-        appNameSwitch + strings.app.name(app.getVersion(), development),
-      ],
-      contextIsolation: true,
-      sandbox: true,
-      nodeIntegration: false,
-      spellcheck: false,
-    },
+    webPreferences: pagePreferences(),
   });
   const maximized = store.get(maximizedKey) === true;
   window.once(
@@ -480,6 +502,60 @@ function createWindow(
     );
     void store.update(maximizedKey, restores());
   });
+  guardPage(window);
+  return window;
+}
+
+function createTerminalWindow(settings: Settings, size: Size): BrowserWindow {
+  const window = new BrowserWindow({
+    ...size,
+    useContentSize: true,
+    frame: false,
+    show: false,
+    title: brand,
+    backgroundColor: (nativeTheme.shouldUseDarkColors
+      ? settings.colors.dark
+      : settings.colors.light
+    ).background,
+    webPreferences: { ...pagePreferences(), offscreen: true },
+  });
+  guardPage(window);
+  return window;
+}
+
+function showInTerminal(
+  window: BrowserWindow,
+  terminal: Terminal,
+  stretch: number,
+): void {
+  let closed = false;
+  const close = () => {
+    if (!closed) {
+      closed = true;
+      terminal.close();
+    }
+  };
+  app.on('will-quit', close);
+  process.on('exit', close);
+  window.once('ready-to-show', () =>
+    terminal.show(window, stretch, () => app.quit()),
+  );
+}
+
+function pagePreferences(): Electron.WebPreferences {
+  return {
+    preload: path.join(dist, 'preload.js'),
+    additionalArguments: [
+      appNameSwitch + strings.app.name(app.getVersion(), development),
+    ],
+    contextIsolation: true,
+    sandbox: true,
+    nodeIntegration: false,
+    spellcheck: false,
+  };
+}
+
+function guardPage(window: BrowserWindow): void {
   window.webContents.setWindowOpenHandler(({ url }) => {
     if (opensExternally(url)) {
       void shell.openExternal(url);
@@ -500,7 +576,6 @@ function createWindow(
       event.preventDefault();
     }
   });
-  return window;
 }
 
 function setMenu(): void {

@@ -12,6 +12,7 @@
   "hideDimmedButtons": true,
   "autoSortTabs": false,
   "columnWidths": [300, 250],
+  "windowsTerminalCellAspect": 0.44,
   "fonts": {
     "family": "-apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif",
     "size": "12px",

@@ -12,3 +12,4 @@
 - Syntax is colored in a module worker, which loads the grammars and the WebAssembly, keeping tokenizing off the page's main thread
 - Image previews are fetched by the page from the app's own protocol rather than sent as messages, so the page can tell an image too large from one that failed
 - Markdown is rendered with `markdown-it`, which VS Code's preview uses too
+- In a terminal, with `--term`, the page is rendered offscreen and each changed area is sent as a sixel image, quantized to the 256 colors sixel has, with the terminal's mouse and key reports turned into input events; Windows Terminal reports 10 by 20 pixel cells whatever the font and scales each picture to its real cells, so there the page is rendered narrower and stretched to fit, taking the cells to be Cascadia Mono's unless the settings say otherwise; it runs beside a windowed copy without its single-instance lock, so both write the same state

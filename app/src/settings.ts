@@ -17,6 +17,7 @@ export interface Settings {
   readonly hideDimmedButtons: boolean;
   readonly autoSortTabs: boolean;
   readonly columnWidths: readonly number[];
+  readonly windowsTerminalCellAspect: number;
   readonly fonts: {
     readonly family: string;
     readonly size: string;

@@ -95,6 +95,13 @@ export const strings = {
       'No repository is open. Use + to open one. The app menu is at the top right.',
     explorerMenuEntry: `Open in ${brand}`,
   },
+  terminal: {
+    notTerminal: `${brand} --term needs to be started in a terminal, with its input and output attached.`,
+    noPixels:
+      "This terminal didn't say how large its cells are in pixels, so the app can't be drawn in it.",
+    noSixel:
+      "This terminal can't show sixel images. Try Windows Terminal, WezTerm, foot, iTerm2 or xterm.",
+  },
   common: {
     close: 'Close',
     gone: (name: string) => `${name} doesn't exist anymore`,

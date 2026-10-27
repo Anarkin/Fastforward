@@ -1,6 +1,7 @@
 import * as path from 'node:path';
 
 const switchTerminator = '--';
+const terminalSwitch = '--term';
 
 export function foldersOf(
   argv: readonly string[],
@@ -9,8 +10,9 @@ export function foldersOf(
 ): string[] {
   const args = argv.slice(1);
   const terminator = args.indexOf(switchTerminator);
-  const beforeTerminator = terminator === -1 ? args : args.slice(0, terminator);
-  const positional = beforeTerminator.filter((arg) => !arg.startsWith('-'));
+  const positional = beforeTerminator(args).filter(
+    (arg) => !arg.startsWith('-'),
+  );
   const folders = [
     ...(fromSource ? positional.slice(1) : positional),
     ...(terminator === -1 ? [] : args.slice(terminator + 1)),
@@ -35,4 +37,13 @@ export function foldersHandedOff(data: unknown): string[] {
           typeof folder === 'string' && path.isAbsolute(folder),
       )
     : [];
+}
+
+export function wantsTerminal(argv: readonly string[]): boolean {
+  return beforeTerminator(argv.slice(1)).includes(terminalSwitch);
+}
+
+function beforeTerminator(args: readonly string[]): readonly string[] {
+  const terminator = args.indexOf(switchTerminator);
+  return terminator === -1 ? args : args.slice(0, terminator);
 }

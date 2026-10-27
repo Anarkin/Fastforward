@@ -152,6 +152,47 @@ suite('ff', () => {
     ]);
   });
 
+  test('runs the app in the terminal it is run in with --term, waiting for it rather than leaving it in the background, on Linux and macOS', async () => {
+    const launcher = path.join(folder, 'linux-term', 'fastforward.AppImage');
+    writeRunnable(launcher, shellRecorder);
+    const copy = path.join(folder, 'linux-term', 'bin', 'ff');
+    writeRunnable(
+      copy,
+      scriptForAppImage(
+        fs.readFileSync(posixScript, 'utf8'),
+        forShell(launcher),
+      ),
+    );
+    const linux = nextRecording();
+    runPosix(copy, 'Linux', ['--term', 'repo'], linux);
+    assert.deepStrictEqual((await recorded(linux)).slice(1), [
+      '--term',
+      '--',
+      `${shellWork}/repo`,
+    ]);
+    const app = path.join(folder, 'mac-term', 'Fastforward.app');
+    writeRunnable(
+      path.join(app, 'Contents', 'Resources', 'bin', 'ff'),
+      fs.readFileSync(posixScript, 'utf8'),
+    );
+    writeRunnable(
+      path.join(app, 'Contents', 'MacOS', 'Fastforward'),
+      shellRecorder,
+    );
+    const mac = nextRecording();
+    runPosix(
+      path.join(app, 'Contents', 'Resources', 'bin', 'ff'),
+      'Darwin',
+      ['--term'],
+      mac,
+    );
+    assert.deepStrictEqual((await recorded(mac)).slice(1), [
+      '--term',
+      '--',
+      shellWork,
+    ]);
+  });
+
   test('starts the app the .deb installs, at /opt/<product name>/<name>, where electron-builder puts it', () => {
     const { name, productName } = JSON.parse(
       fs.readFileSync(path.join(appFolder, 'package.json'), 'utf8'),
@@ -299,6 +340,30 @@ suite('ff', () => {
           await runCmd('ff "a b" --flag "C:\\Program Files (x86)\\x"'),
           [work, '--', 'a b', '--flag', 'C:\\Program Files (x86)\\x'],
         );
+      });
+
+      test('runs the app in the terminal it is run in with --term, waiting for it, with the folders given after it', async () => {
+        const recording = nextRecording();
+        fs.writeFileSync(`${recording}.release`, '');
+        const ran = spawnSync('cmd.exe', ['/d', '/c', 'ff --term "a b" c'], {
+          cwd: work,
+          env: {
+            ...process.env,
+            PATH: [bin, process.env.PATH].join(path.delimiter),
+            FF_RECORDED: recording,
+          },
+          windowsVerbatimArguments: true,
+          timeout: 10_000,
+        });
+        assert.strictEqual(ran.status, 0, String(ran.stderr));
+        assert.ok(fs.existsSync(recording), 'recorded before ff returned');
+        assert.deepStrictEqual(await recorded(recording), [
+          work,
+          '--term',
+          '--',
+          'a b',
+          'c',
+        ]);
       });
 
       test('keeps its lines ending in CRLF, as cmd misreads some batch files without', () => {

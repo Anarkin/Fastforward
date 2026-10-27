@@ -290,6 +290,7 @@
 | Settings | Change the settings | — | Common | 🟡 Partial | JSON files, applied as saved and checked, no settings page |
 | Notices | Say what happened, and why something wasn't done | — | Core | ✅ Yes | |
 | Updates | Update the app | — | Common | ✅ Yes | Checks on start, every 4 hours and from the menu |
+| In a terminal | Run the app inside a terminal | — | Niche | 🟡 Partial | `ff --term`, drawn as sixel images, with the mouse and keys passed on; needs a terminal that shows sixels and reports its cell size; in Windows Terminal the cells are taken to be Cascadia Mono's, or `windowsTerminalCellAspect`; Ctrl+C quits |
 | Platforms | Run on Windows, macOS and Linux | — | Common | ✅ Yes | Windows x64, macOS on Apple silicon, Linux x64 as AppImage and deb |
 | Screen readers | Name every control to assistive technology | — | Common | 🟡 Partial | Tabs, lists and trees are named; menus only by their role, icon buttons by their tooltip |
 | Languages | Show the app in other languages | — | Common | ❌ No | English only; every sentence is in one dictionary |

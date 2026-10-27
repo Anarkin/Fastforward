@@ -1,5 +1,7 @@
 #!/bin/sh
 fastforward_appimage=
+terminal=
+[ "$1" = --term ] && terminal=--term && shift
 [ $# -eq 0 ] && set -- "$PWD"
 for folder do
   case $folder in
@@ -20,12 +22,17 @@ done
 here=$(cd "$(dirname "$script")" && pwd -P)
 case $(uname) in
   Darwin)
-    exec open -n -a "$(cd "$here/../../.." && pwd -P)" --args -- "$@"
+    app=$(cd "$here/../../.." && pwd -P)
+    [ -n "$terminal" ] && exec "$app/Contents/MacOS/Fastforward" --term -- "$@"
+    exec open -n -a "$app" --args -- "$@"
     ;;
   MINGW* | MSYS*)
+    [ -n "$terminal" ] && exec "$here/../Fastforward.exe" --term -- "$@"
     "$here/../Fastforward.exe" -- "$@" </dev/null >/dev/null 2>&1 &
     ;;
   *)
-    nohup "${fastforward_appimage:-/opt/Fastforward/fastforward}" -- "$@" </dev/null >/dev/null 2>&1 &
+    launcher=${fastforward_appimage:-/opt/Fastforward/fastforward}
+    [ -n "$terminal" ] && exec "$launcher" --term -- "$@"
+    nohup "$launcher" -- "$@" </dev/null >/dev/null 2>&1 &
     ;;
 esac

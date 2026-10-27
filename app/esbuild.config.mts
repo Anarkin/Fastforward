@@ -18,7 +18,7 @@ export function mainOptions(production: boolean): BuildOptions {
     format: 'cjs',
     platform: 'node',
     outdir: 'dist',
-    external: ['electron', 'electron-updater'],
+    external: ['electron', 'electron-updater', 'original-fs'],
   };
 }
 
