@@ -375,9 +375,11 @@ suite('Tab bar for assistive technology', () => {
       add.getAttribute('title'),
       strings.actions.openRepository,
     );
-    assert.strictEqual(
-      add.querySelector('svg path')?.getAttribute('d'),
-      'M8 3.5v9M3.5 8h9',
+    assert.deepStrictEqual(
+      [...add.querySelectorAll('svg path')].map((path) =>
+        path.getAttribute('d'),
+      ),
+      ['M8 3.5v9', 'M3.5 8h9'],
     );
     assert.strictEqual(
       add.querySelector('svg')?.getAttribute('stroke-width'),

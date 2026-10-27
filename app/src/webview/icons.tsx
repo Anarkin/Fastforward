@@ -26,7 +26,12 @@ function Icon({
 }
 
 const changeSigns: Record<ChangeKind, React.ReactNode> = {
-  added: <path d="M8 5.5v5M5.5 8h5" />,
+  added: (
+    <>
+      <path d="M8 5.5v5" />
+      <path d="M5.5 8h5" />
+    </>
+  ),
   modified: <circle cx="8" cy="8" r="1.6" fill="currentColor" stroke="none" />,
   deleted: <path d="M5.5 8h5" />,
   renamed: <path d="M5 8h5.5M8.5 6l2 2-2 2" />,
@@ -61,7 +66,8 @@ export function SearchIcon() {
 export function CloseIcon() {
   return (
     <Icon>
-      <path d="M4 4l8 8M12 4l-8 8" />
+      <path d="M4 4l8 8" />
+      <path d="M12 4l-8 8" />
     </Icon>
   );
 }
@@ -69,7 +75,8 @@ export function CloseIcon() {
 export function AddIcon() {
   return (
     <Icon>
-      <path d="M8 3.5v9M3.5 8h9" />
+      <path d="M8 3.5v9" />
+      <path d="M3.5 8h9" />
     </Icon>
   );
 }
@@ -183,7 +190,8 @@ export function ExpandAllIcon() {
     <Icon>
       <path d="M2.5 11V3.5a1 1 0 0 1 1-1H11" />
       <rect x="4.5" y="4.5" width="9" height="9" rx="1" />
-      <path d="M6.5 9h5M9 6.5v5" />
+      <path d="M6.5 9h5" />
+      <path d="M9 6.5v5" />
     </Icon>
   );
 }
