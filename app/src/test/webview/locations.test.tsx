@@ -15,6 +15,7 @@ import {
   leafIndent,
   LocationsPopup,
   nextActive,
+  pinnedResults,
   popupKeyAction,
   resultItems,
   searchRefs,
@@ -182,25 +183,65 @@ suite('Locations search', () => {
     );
   });
 
-  test('lists the found commits first, then the matching refs group after group', () => {
-    const search = searchRefs(
-      indexRefs([
-        { kind: 'branch', name: 'main', commit: 'a' },
-        { kind: 'tag', name: 'v1-main', commit: 'c' },
-        { kind: 'branch', name: 'feat/main', commit: 'b' },
-      ]),
-      'main',
+  test('lists the pinned rows first, then the matching refs group after group and the stashes, and the found commits last, as they come later and may be many', () => {
+    const matching: RefInfo[] = [
+      { kind: 'branch', name: 'main', commit: 'a' },
+      { kind: 'tag', name: 'v1-main', commit: 'c' },
+      { kind: 'branch', name: 'feat/main', commit: 'b' },
+    ];
+    const stash = { name: 'stash@{0}', commit: 's0', message: 'On main: x' };
+    const pinned = pinnedResults(
+      {
+        checkedOut: [{ kind: 'branch', name: 'main' }],
+        bookmarks: [{ kind: 'tag', name: 'v1-main' }],
+      },
+      matching,
     );
     assert.deepStrictEqual(
-      resultItems([commitInfo('f1'), commitInfo('f2')], search).map(itemKey),
+      resultItems(
+        [commitInfo('f1'), commitInfo('f2')],
+        searchRefs(indexRefs(matching), 'main'),
+        searchStashes([stash], 'main'),
+        pinned,
+      ).map(itemKey),
       [
-        'commit:f1',
-        'commit:f2',
+        'pinned:checkedOut:branch:main',
+        'pinned:bookmarks:tag:v1-main',
         'branch:feat/main',
         'branch:main',
         'tag:v1-main',
+        'stash:stash@{0}',
+        'commit:f1',
+        'commit:f2',
       ],
     );
+  });
+
+  test('jumps on Enter to the commit of a pinned row, or nowhere for a bookmark that is gone', () => {
+    const [main, gone, hash] = pinnedResults(
+      {
+        checkedOut: [{ kind: 'branch', name: 'main' }],
+        bookmarks: [
+          { kind: 'branch', name: 'gone' },
+          { kind: 'commit', name: 'e'.repeat(40) },
+        ],
+      },
+      refs,
+    );
+    assert.strictEqual(enterTarget('main', undefined, main), 'b');
+    assert.strictEqual(enterTarget('gone', undefined, gone), undefined);
+    assert.strictEqual(
+      enterTarget('eeee', undefined, hash, true),
+      'e'.repeat(40),
+    );
+  });
+
+  test('jumps on Enter to the bookmark named as typed, though its name may be a hash not looked up yet', () => {
+    const [bookmark] = pinnedResults(
+      { checkedOut: [], bookmarks: [{ kind: 'tag', name: '2024' }] },
+      [{ kind: 'tag', name: '2024', commit: 'e' }],
+    );
+    assert.strictEqual(enterTarget(' 2024 ', undefined, bookmark), 'e');
   });
 
   test('moves the highlight one result at a time, stopping at either end', () => {
@@ -215,7 +256,7 @@ suite('Locations search', () => {
   });
 
   test('jumps on Enter to the highlighted commit or ref', () => {
-    const [commit, branch] = resultItems(
+    const [branch, commit] = resultItems(
       [commitInfo('b'.repeat(40))],
       searchRefs(indexRefs([refs[3]]), 'feat'),
     );
@@ -326,7 +367,7 @@ suite('Locations search', () => {
     );
     assert.strictEqual(
       currentActive(
-        resultsFor(['a1'], ['alpha', 'main', 'feat/x']),
+        resultsFor(['a1'], ['alpha', 'ab', 'feat/x']),
         'a',
         highlight,
       ),
@@ -459,6 +500,11 @@ const searched = (
 const counts = (html: string) =>
   [...html.matchAll(/class="locations-count">(\d+)</g)].map((match) =>
     Number(match[1]),
+  );
+
+const headings = (html: string) =>
+  [...html.matchAll(/class="locations-heading">([^<]*)</g)].map(
+    (match) => match[1],
   );
 
 suite('Locations tree', () => {
@@ -629,6 +675,54 @@ suite('Commit results', () => {
     assert.deepStrictEqual(asked, ['search']);
     cleanUp();
     assert.deepStrictEqual(asked, ['search', 'stop']);
+  });
+
+  test('lists the commits a search finds after the pinned rows, the refs and the stashes, highlighting the first of those, as the commits come later and may be many', () => {
+    const html = popup('main', undefined, {
+      repository: {
+        head: 'main',
+        headCommit: first,
+        refs: [
+          { kind: 'branch', name: 'main', commit: first },
+          { kind: 'remote', name: 'origin/main', commit: first },
+          { kind: 'tag', name: 'v1-main', commit: first },
+        ],
+        stashes: [{ name: 'stash@{0}', commit: second, message: 'On main' }],
+      },
+      bookmarks: [{ kind: 'tag', name: 'v1-main' }],
+      commitSearch: {
+        type: 'commitSearch',
+        query: 'main',
+        result: {
+          commits: [commitInfo(second, { subject: "Merge branch 'main'" })],
+          capped: false,
+        },
+      },
+    });
+    assert.deepStrictEqual(headings(html), [
+      'Checked out',
+      'Bookmarks',
+      'Local branches',
+      'Remote branches',
+      'Tags',
+      'Stashes',
+      'Commits',
+    ]);
+    const active = tagsWith(html, 'row', 'result', 'active');
+    assert.strictEqual(active.length, 1);
+    assert.match(active[0], /pinned/);
+    assert.strictEqual(tagsWith(html, 'commit', 'selected').length, 0);
+  });
+
+  test('says it is looking for a hash or searching commits below the refs that match', () => {
+    const html = popup('abcd', undefined, {
+      repository: repository(['branch', 'fix/abcd']),
+    });
+    assert.deepStrictEqual(headings(html), ['Local branches']);
+    assert.match(
+      html,
+      /fix\/<mark class="match">abcd<\/mark>.*Looking for commit abcd/,
+    );
   });
 
   test('looks up no hash shorter than 4 hex digits, searching 3 only by text, and offers nothing for what is no hash', () => {
@@ -957,6 +1051,68 @@ suite('Browsing the locations by keyboard', () => {
     assert.match(
       stylesheet(),
       /^\.locations-list \.row\.result\.active,\n\.locations-list \.row\.tree-row\.active \{[^}]*background: var\(--selection-background\)/m,
+    );
+  });
+
+  test('moves through the pinned rows, the refs, the stashes and the commits with the arrows for a search, and jumps to the picked one on Enter', async () => {
+    const jumped: string[] = [];
+    const [main, maint, merge] = ['a', 'b', 'd'].map((c) => c.repeat(40));
+    await browsed(
+      {
+        repository: {
+          head: 'main',
+          headCommit: main,
+          refs: [
+            { kind: 'branch', name: 'main', commit: main },
+            { kind: 'branch', name: 'maint', commit: maint },
+            { kind: 'remote', name: 'o/main', commit: main },
+            { kind: 'tag', name: 'main-1', commit: main },
+          ],
+          stashes: [
+            { name: 'stash@{0}', commit: 'f'.repeat(40), message: 'On main' },
+          ],
+        },
+        bookmarks: [{ kind: 'branch', name: 'maint' }],
+        query: 'main',
+        commitSearch: {
+          type: 'commitSearch',
+          query: 'main',
+          result: {
+            commits: [commitInfo(merge, { subject: "Merge branch 'main'" })],
+            capped: false,
+          },
+        },
+        onJump: (commit) => jumped.push(commit),
+      },
+      async ({ field, press, active }) => {
+        const base = (field.getAttribute('aria-controls') ?? '').replace(
+          /results$/,
+          '',
+        );
+        const seen: (string | undefined)[] = [];
+        for (let step = 0; step < 8; step++) {
+          const row = active();
+          assert.strictEqual(row?.getAttribute('role'), 'option');
+          assert.strictEqual(row.getAttribute('aria-selected'), 'true');
+          seen.push(row.id.slice(base.length));
+          await press('ArrowDown');
+        }
+        assert.deepStrictEqual(seen, [
+          'pinned:checkedOut:branch:main',
+          'pinned:bookmarks:branch:maint',
+          'branch:main',
+          'branch:maint',
+          'remote:o/main',
+          'tag:main-1',
+          'stash:stash@{0}',
+          `commit:${merge}`,
+        ]);
+        for (let step = 0; step < 6; step++) {
+          await press('ArrowUp');
+        }
+        await press('Enter');
+        assert.deepStrictEqual(jumped, [maint]);
+      },
     );
   });
 

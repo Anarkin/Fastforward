@@ -158,22 +158,53 @@ function RefLabel({
   );
 }
 
+const pinnedSections = ['checkedOut', 'bookmarks'] as const;
+
+type PinnedSectionName = (typeof pinnedSections)[number];
+
+export interface PinnedResult {
+  readonly kind: 'pinned';
+  readonly section: PinnedSectionName;
+  readonly bookmark: Bookmark;
+  readonly commit: string | undefined;
+}
+
 export type ResultItem =
   | { readonly kind: 'commit'; readonly commit: CommitInfo }
   | { readonly kind: 'ref'; readonly ref: RefInfo }
-  | { readonly kind: 'stash'; readonly stash: StashInfo };
+  | { readonly kind: 'stash'; readonly stash: StashInfo }
+  | PinnedResult;
+
+const pinnedCommit = (item: Bookmark, refs: readonly RefInfo[]) =>
+  item.kind === 'commit' ? item.name : findRef(refs, item)?.commit;
+
+export function pinnedResults(
+  pinned: PinnedRefs,
+  refs: readonly RefInfo[],
+): PinnedResult[] {
+  return pinnedSections.flatMap((section) =>
+    pinned[section].map((bookmark) => ({
+      kind: 'pinned' as const,
+      section,
+      bookmark,
+      commit: pinnedCommit(bookmark, refs),
+    })),
+  );
+}
 
 export function resultItems(
   commits: readonly CommitInfo[],
   search: readonly SearchGroup[],
   found: StashSearch = noStashes,
+  pinned: readonly PinnedResult[] = [],
 ): ResultItem[] {
   return [
-    ...commits.map((commit) => ({ kind: 'commit' as const, commit })),
+    ...pinned,
     ...search.flatMap((group) =>
       group.refs.map((ref) => ({ kind: 'ref' as const, ref })),
     ),
     ...found.stashes.map((stash) => ({ kind: 'stash' as const, stash })),
+    ...commits.map((commit) => ({ kind: 'commit' as const, commit })),
   ];
 }
 
@@ -193,7 +224,9 @@ export function itemKey(item: ResultItem): string {
     ? commitKey(item.commit.hash)
     : item.kind === 'stash'
       ? stashKey(item.stash)
-      : refKey(item.ref);
+      : item.kind === 'pinned'
+        ? pinnedKey(item.section, item.bookmark)
+        : refKey(item.ref);
 }
 
 type BrowseRow =
@@ -237,26 +270,18 @@ function treeRows(
   });
 }
 
-const pinnedCommit = (item: Bookmark, refs: readonly RefInfo[]) =>
-  item.kind === 'commit' ? item.name : findRef(refs, item)?.commit;
-
-const pinnedSections = ['checkedOut', 'bookmarks'] as const;
-
 function browseRows(
-  pinned: PinnedRefs,
-  refs: readonly RefInfo[],
+  pinned: readonly PinnedResult[],
   trees: readonly { kind: RefKind; tree: TreeNode }[],
   toggled: ReadonlySet<string>,
   stashes: readonly StashInfo[],
 ): BrowseRow[] {
   return [
-    ...pinnedSections.flatMap((section) =>
-      pinned[section].map((item): BrowseRow => ({
-        kind: 'jump',
-        key: pinnedKey(section, item),
-        commit: pinnedCommit(item, refs),
-      })),
-    ),
+    ...pinned.map((item): BrowseRow => ({
+      kind: 'jump',
+      key: itemKey(item),
+      commit: item.commit,
+    })),
     ...trees.flatMap(({ kind, tree }) => treeRows(tree, kind, toggled)),
     ...stashes.map((stash): BrowseRow => ({
       kind: 'jump',
@@ -361,18 +386,32 @@ export function enterTarget(
   picked = false,
 ): string | undefined {
   const hash = hashQuery(query);
-  const named = active?.kind === 'ref' && active.ref.name === query.trim();
+  const named = active !== undefined && resultName(active) === query.trim();
   if (hash && found === undefined && !((picked || named) && active)) {
     return hash;
   }
   if (!query.trim() || !active) {
     return undefined;
   }
-  return active.kind === 'commit'
-    ? active.commit.hash
-    : active.kind === 'stash'
-      ? active.stash.commit
-      : active.ref.commit;
+  return resultCommit(active);
+}
+
+function resultName(item: ResultItem): string | undefined {
+  return item.kind === 'ref'
+    ? item.ref.name
+    : item.kind === 'pinned'
+      ? item.bookmark.name
+      : undefined;
+}
+
+function resultCommit(item: ResultItem): string | undefined {
+  return item.kind === 'commit'
+    ? item.commit.hash
+    : item.kind === 'stash'
+      ? item.stash.commit
+      : item.kind === 'pinned'
+        ? item.commit
+        : item.ref.commit;
 }
 
 function CommitResultsSection({
@@ -572,7 +611,15 @@ export function LocationsPopup({
   );
   const hasQuery = query.trim() !== '';
   const detached = useContext(DetachedHead);
-  const pinned = pinnedRefs(bookmarks, refs, repository?.head, detached, query);
+  const head = repository?.head;
+  const pinned = useMemo(
+    () => pinnedRefs(bookmarks, refs, head, detached, query),
+    [bookmarks, refs, head, detached, query],
+  );
+  const pinnedItems = useMemo(
+    () => pinnedResults(pinned, refs),
+    [pinned, refs],
+  );
   const hash = hashQuery(query);
   useEffect(() => {
     if (!hash) {
@@ -606,14 +653,14 @@ export function LocationsPopup({
     search.every((group) => group.refs.length === 0) &&
     stashSearch.stashes.length === 0;
   const items = useMemo(
-    () => resultItems(commits, search, stashSearch),
-    [commits, search, stashSearch],
+    () => resultItems(commits, search, stashSearch, pinnedItems),
+    [commits, search, stashSearch, pinnedItems],
   );
   const [highlight, setHighlight] = useState<Highlighted>();
   const [toggled, setToggled] = useState<ReadonlySet<string>>(new Set());
   const browsed = hasQuery
     ? []
-    : browseRows(pinned, refs, trees, toggled, drawnStashes.stashes);
+    : browseRows(pinnedItems, trees, toggled, drawnStashes.stashes);
   const active = hasQuery
     ? currentActive(items, query, highlight)
     : highlight?.query === query
@@ -718,25 +765,6 @@ export function LocationsPopup({
         role={hasQuery ? 'listbox' : 'tree'}
         aria-label={strings.search.locations}
       >
-        {(hash || text) && (
-          <CommitResultsSection
-            hash={hash}
-            lookingUp={lookingUp}
-            searching={searching}
-            found={commits}
-            hashMore={found?.more ?? 0}
-            capped={textFound?.capped ?? false}
-            query={query.trim()}
-            active={
-              activeItem?.kind === 'commit' ? activeItem.commit.hash : undefined
-            }
-            refsByCommit={refsByCommit}
-            stashCommits={stashCommits}
-            headCommit={repository?.headCommit}
-            rows={rows}
-            onJump={jump}
-          />
-        )}
         <PinnedSection
           title={strings.search.checkedOut}
           section="checkedOut"
@@ -799,6 +827,25 @@ export function LocationsPopup({
           rows={rows}
           onJump={jump}
         />
+        {(hash || text) && (
+          <CommitResultsSection
+            hash={hash}
+            lookingUp={lookingUp}
+            searching={searching}
+            found={commits}
+            hashMore={found?.more ?? 0}
+            capped={textFound?.capped ?? false}
+            query={query.trim()}
+            active={
+              activeItem?.kind === 'commit' ? activeItem.commit.hash : undefined
+            }
+            refsByCommit={refsByCommit}
+            stashCommits={stashCommits}
+            headCommit={repository?.headCommit}
+            rows={rows}
+            onJump={jump}
+          />
+        )}
       </div>
     </div>
   );
@@ -873,7 +920,7 @@ function PinnedSection({
   onJump,
 }: {
   title: string;
-  section: (typeof pinnedSections)[number];
+  section: PinnedSectionName;
   items: readonly Bookmark[];
   refs: readonly RefInfo[];
   rows: Rows;
