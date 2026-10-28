@@ -1922,6 +1922,7 @@ suite('App without git', () => {
         SHELL: path.join(folder, 'no-shell'),
       },
     });
+    const child = app.process();
     try {
       await waitFor(() => {
         try {
@@ -1941,7 +1942,6 @@ suite('App without git', () => {
         assert.deepStrictEqual(visible, [false]);
       }
     } finally {
-      const child = app.process();
       if (child.exitCode === null && child.signalCode === null) {
         const exited = once(child, 'exit');
         child.kill('SIGKILL');
