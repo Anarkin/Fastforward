@@ -1489,6 +1489,14 @@ body.resizing {
   max-width: 100%;
 }
 
+.markdown-diagram {
+  margin: 0 0 16px;
+}
+
+.markdown-diagram img {
+  height: auto;
+}
+
 .markdown-note {
   color: var(--muted-foreground);
 }

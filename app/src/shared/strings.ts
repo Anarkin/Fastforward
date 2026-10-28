@@ -364,6 +364,8 @@ export const strings = {
     binary: 'Binary file',
     binaryOrLarge: 'Binary or very large file',
     emptyFile: 'Empty file',
+    diagram: 'Diagram',
+    diagramFailed: 'This diagram could not be drawn.',
     onlyWhitespace: 'Only whitespace changed',
     noNewlineAtEnd: 'No newline at end of file',
     renamedWithoutChanges: 'Renamed without changes',

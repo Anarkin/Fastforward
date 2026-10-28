@@ -115,7 +115,7 @@
 | Mode and type changes | Show changes of mode, and files that became links | — | Common | ✅ Yes | |
 | Binary files | Say a file is binary instead of showing a patch | — | Core | ✅ Yes | |
 | Image diff | Show the two sides of an image | — | Common | ✅ Yes | Side by side, with the size in a tooltip; SVG switches between source and image; no swipe or onion skin |
-| Rendered Markdown | Show Markdown rendered | — | Niche | ✅ Yes | `markdown-it`, with the HTML GitHub keeps and the relative images at that revision |
+| Rendered Markdown | Show Markdown rendered | — | Niche | ✅ Yes | `markdown-it`, with the HTML GitHub keeps, the relative images at that revision, and Mermaid diagrams drawn |
 | Large diffs | Stay responsive on huge changes | — | Common | ✅ Yes | Large files load when asked for |
 | Diff algorithm | Choose Myers, patience or histogram | `git diff --diff-algorithm=<name>` | Advanced | 🟡 Partial | Always histogram |
 | External diff tool | Open a diff in another app | `git difftool` | Common | ❌ No | |

@@ -1,4 +1,12 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
+import { mermaidDrawer, showDiagrams } from './diagrams';
 import {
   documentImagePath,
   documentImageUrl,
@@ -85,6 +93,24 @@ function useRenderer(): Render | undefined {
 
 const noImages = () => undefined;
 
+const loadMermaid = onceMade(() =>
+  import('mermaid').then(({ default: mermaid }) => mermaid),
+);
+
+const darkScheme = '(prefers-color-scheme: dark)';
+
+function useDark(): boolean {
+  return useSyncExternalStore(
+    (changed) => {
+      const query = matchMedia(darkScheme);
+      query.addEventListener('change', changed);
+      return () => query.removeEventListener('change', changed);
+    },
+    () => matchMedia(darkScheme).matches,
+    () => false,
+  );
+}
+
 function MarkdownPane({
   text,
   images,
@@ -93,6 +119,7 @@ function MarkdownPane({
   images: DocumentImages | undefined;
 }) {
   const render = useRenderer();
+  const dark = useDark();
   const { root, document, revision, version } = images ?? {};
   const html = useMemo(() => {
     if (!render || text === undefined) {
@@ -125,6 +152,20 @@ function MarkdownPane({
         : undefined,
     [html],
   );
+  useEffect(() => {
+    const element = content.current;
+    if (!element || html === undefined) {
+      return undefined;
+    }
+    return showDiagrams(element, () =>
+      loadMermaid().then((mermaid) =>
+        mermaidDrawer(mermaid, {
+          dark,
+          fontFamily: getComputedStyle(element).fontFamily,
+        }),
+      ),
+    );
+  }, [html, dark]);
   return (
     <div className="markdown-pane">
       <div

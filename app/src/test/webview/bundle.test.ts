@@ -7,7 +7,7 @@ import { suite, test } from 'vitest';
 const appFolder = path.join(__dirname, '..', '..', '..');
 
 suite('Webview bundle', { timeout: 30_000 }, () => {
-  test('loads the grammars, the WebAssembly of the Oniguruma engine, markdown-it and DOMPurify only once a file or preview needs them', async () => {
+  test('loads the grammars, the WebAssembly of the Oniguruma engine, markdown-it, DOMPurify and Mermaid only once a file or preview needs them', async () => {
     const {
       webviewOptions,
     }: { webviewOptions: (production: boolean) => esbuild.BuildOptions } =
@@ -40,6 +40,7 @@ suite('Webview bundle', { timeout: 30_000 }, () => {
       '@shikijs/engine-oniguruma/dist/wasm',
       'markdown-it/',
       'dompurify/',
+      'mermaid/',
     ];
     const bundled = (files: Iterable<string>) =>
       lazy.filter((name) =>

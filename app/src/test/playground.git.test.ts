@@ -558,6 +558,13 @@ suite('Playground', () => {
         extension,
       );
     }
+    const diagrams = await git(
+      local,
+      'show',
+      'main:showcase/markdown/diagrams.md',
+    );
+    assert.ok((diagrams.match(/^```mermaid$/gm)?.length ?? 0) >= 3, diagrams);
+    assert.ok((diagrams.match(/^```text$/gm)?.length ?? 0) >= 2, diagrams);
     assert.ok(
       tree.filter((file) => file.startsWith('showcase/languages/')).length >=
         30,
@@ -719,6 +726,12 @@ suite('Playground', () => {
       'crlf',
       'merge',
       'octopus',
+      'mermaid',
+      'diagram',
+      'flowchart',
+      'sequence',
+      'ascii',
+      'architecture',
     ]) {
       assert.notStrictEqual(
         await git(

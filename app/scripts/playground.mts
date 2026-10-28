@@ -796,6 +796,122 @@ onMain(
     },
   ],
 );
+const fence = '```';
+const diagrams = `# Diagrams
+
+Mermaid diagrams are drawn; plain text diagrams stay as they are.
+
+## A flowchart
+
+${fence}mermaid
+flowchart LR
+  Page[Page] -- asks --> Main[Main process]
+  Main -- checks --> Repository[(Repository)]
+  Main -- runs --> Git{{git}}
+  Git -- reads --> Repository
+  Main -- sends rows --> Page
+  Page -- tokenizes in --> Worker[Syntax worker]
+${fence}
+
+## A sequence diagram
+
+${fence}mermaid
+sequenceDiagram
+  actor Person
+  participant Page
+  participant Main as Main process
+  participant Remote
+  Person->>Page: Pull
+  Page->>Main: pull main
+  Main->>Remote: git fetch --all
+  Remote-->>Main: new commits
+  Main->>Main: git merge --ff-only
+  Main-->>Page: refs changed
+  Page-->>Person: Pulled 3 commits
+${fence}
+
+## A state diagram
+
+${fence}mermaid
+stateDiagram-v2
+  [*] --> Clean
+  Clean --> Changed: edit a file
+  Changed --> Staged: git add
+  Staged --> Clean: git commit
+  Changed --> Clean: git restore
+  Staged --> Changed: git restore --staged
+${fence}
+
+## A diagram that cannot be drawn
+
+${fence}mermaid
+flowchart LR
+  A -->
+${fence}
+
+## Plain text architecture
+
+${fence}text
++--------------------------------------------------+
+|                  Electron window                 |
+|  +--------------------+   +-------------------+  |
+|  |        Page        |   |   Syntax worker   |  |
+|  |  React, markdown,  |-->|  shiki, Oniguruma |  |
+|  |  images, diagrams  |<--|  TextMate grammars|  |
+|  +---------^----------+   +-------------------+  |
++------------|-------------------------------------+
+             | messages, checked on arrival
++------------v-------------------------------------+
+|                   Main process                   |
+|   history per worktree, refs, fetches, settings  |
++------------+--------------------------+----------+
+             |                          |
+        +----v----+               +-----v------+
+        |   git   |-------------->| Repository |
+        +---------+               +------------+
+${fence}
+
+${fence}text
+ local                       origin
+ -----                       ------
+ main  o---o---o---o         main  o---o---o
+                   \\                         \\
+ topic              o---o    topic            o
+                                              ^
+            fetch  <------------------------- |
+            push   -------------------------> |
+${fence}
+
+${fence}
+Request flow, without a language
+
+  [ Pull ] --> page --> main --> git fetch --all
+                                   |
+                                   v
+                              git merge --ff-only
+                                   |
+                                   v
+                     refs changed --> page redraws
+${fence}
+`;
+onMain(
+  searchable(
+    'Add Markdown with Mermaid diagrams and plain text architecture diagrams',
+    [
+      'markdown',
+      'md',
+      'mermaid',
+      'diagram',
+      'flowchart',
+      'sequence',
+      'state',
+      'ascii',
+      'architecture',
+      'preview',
+    ],
+  ),
+  [{ path: 'showcase/markdown/diagrams.md', content: diagrams }],
+);
 for (const { extension, terms, versions } of imageKinds) {
   const [added, changed] = versions();
   const image = `showcase/images/sample.${extension}`;

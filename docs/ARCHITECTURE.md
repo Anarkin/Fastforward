@@ -12,3 +12,4 @@
 - Syntax is colored in a module worker, which loads the grammars and the WebAssembly, keeping tokenizing off the page's main thread
 - Image previews are fetched by the page from the app's own protocol rather than sent as messages, so the page can tell an image too large from one that failed
 - Markdown is rendered with `markdown-it`, which VS Code's preview uses too
+- Mermaid diagrams in Markdown are drawn with `mermaid` on the page's main thread, as VS Code's preview draws them, since it measures text in the DOM and can't run in a worker; each is shown as an image of its SVG, so the styles a document puts in a diagram can't reach the page

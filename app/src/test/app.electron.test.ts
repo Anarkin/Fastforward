@@ -181,6 +181,8 @@ suite('App', () => {
       'hyphenated.txt': `${hyphenatedLine}\n`,
       'changed.txt': 'one\ntwo\nthree\n',
       'notes.md': `${paragraphs.join('\n\n')}\n`,
+      'diagram.md':
+        '# Diagram\n\n```mermaid\ngraph LR\n  Fetch["Fetch<br/>every remote"] --> Merge\n```\n',
       'wrapped.txt': `${dottedLine}\n`,
     });
     await repository.commit('second', { 'changed.txt': 'one\n2\nthree\n' });
@@ -1258,6 +1260,25 @@ suite('App', () => {
     for (const { scrolled, marked } of steps) {
       assert.ok(Math.abs(scrolled - marked) < 0.1, JSON.stringify(steps));
     }
+  });
+
+  test('draws a Mermaid diagram in a Markdown preview as an image of its SVG, its code hidden', async () => {
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await page.locator('.row.file', { hasText: 'diagram.md' }).click();
+    await page.getByRole('button', { name: strings.diff.showPreview }).click();
+    const image = page.locator('.markdown-diagram img');
+    await image.waitFor();
+    const drawn = await image.evaluate(async (img: HTMLImageElement) => {
+      await img.decode();
+      const svg = decodeURIComponent(img.src.split(',')[1]);
+      return {
+        width: img.naturalWidth,
+        labels: ['Fetch', 'Merge'].every((label) => svg.includes(label)),
+      };
+    });
+    assert.ok(drawn.width > 0, JSON.stringify(drawn));
+    assert.ok(drawn.labels, JSON.stringify(drawn));
+    assert.strictEqual(await page.locator('.markdown pre').isHidden(), true);
   });
 
   test('refreshes by itself when the working tree changes', async () => {
