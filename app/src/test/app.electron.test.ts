@@ -2055,14 +2055,31 @@ const windowsNotedIn = (file: string) =>
     '});',
   ].join('\n');
 
+const toolsGtkRunsToLoadIcons = ['bwrap'];
+
+function linkFromPath(names: readonly string[], folder: string): void {
+  const folders = (process.env.PATH ?? '')
+    .split(path.delimiter)
+    .filter(Boolean);
+  for (const name of names) {
+    const found = folders
+      .map((inside) => path.join(inside, name))
+      .find((file) => fs.existsSync(file));
+    if (found !== undefined) {
+      fs.symlinkSync(found, path.join(folder, name));
+    }
+  }
+}
+
 suite('App without git', () => {
-  test('says it needs git, showing no window, whether its alert keeps it running or it quits by itself, as on Ubuntu 26.04 under xvfb', async () => {
+  test('says it needs git, showing no window, whether its alert keeps it running or it quits by itself, with git kept off its PATH but the tools GTK runs to load the icon of the alert left on it, as Ubuntu 26.04 aborts without them', async () => {
     const folder = tempFolder('no-git');
     const profile = path.join(folder, 'profile');
     const log = path.join(profile, 'logs', 'Fastforward.log');
     const windows = path.join(folder, 'windows.txt');
     const noting = path.join(folder, 'noteWindows.cjs');
     fs.writeFileSync(noting, windowsNotedIn(windows));
+    linkFromPath(toolsGtkRunsToLoadIcons, folder);
     const app = await _electron.launch({
       args: ['-r', noting, appFolder, `--user-data-dir=${profile}`],
       cwd: appFolder,
