@@ -1339,6 +1339,85 @@ suite('App', () => {
     assert.strictEqual(await page.locator('.markdown pre').isHidden(), true);
   });
 
+  test('draws the diagrams of a Markdown preview again in the color scheme the system switches to, once', async () => {
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await page.locator('.row.file', { hasText: 'diagram.md' }).click();
+    await page.getByRole('button', { name: strings.diff.showPreview }).click();
+    const image = page.locator('.markdown-diagram img');
+    await image.waitFor();
+    const before = await image.getAttribute('src');
+    const dark = await page.evaluate(
+      () => matchMedia('(prefers-color-scheme: dark)').matches,
+    );
+    try {
+      await page.emulateMedia({ colorScheme: dark ? 'light' : 'dark' });
+      await waitFor(
+        async () => (await image.getAttribute('src')) !== before,
+        'the diagram to be drawn again',
+      );
+      assert.strictEqual(await image.count(), 1);
+      assert.strictEqual(await page.locator('.markdown pre').isHidden(), true);
+    } finally {
+      await page.emulateMedia({ colorScheme: null });
+    }
+  });
+
+  test('keeps what a Markdown preview drew for the blocks an edit leaves alone, its diagrams and colored code, while the working tree changes under it', async () => {
+    const file = path.join(repository.root, 'diagram.md');
+    const committed = fs.readFileSync(file, 'utf8');
+    const edited = (count: number) =>
+      `${committed}\nEdited ${count} times.\n\n\`\`\`ts\nconst kept = 1;\n\`\`\`\n`;
+    const newSide = page.locator('.markdown-pane:last-child > .markdown');
+    fs.writeFileSync(file, edited(1));
+    let watching: JSHandle<{ undrawn: string[]; stop: () => void }> | undefined;
+    try {
+      await page.locator('.row.file', { hasText: 'diagram.md' }).click();
+      await page
+        .getByRole('button', { name: strings.diff.showPreview })
+        .click();
+      await newSide.locator('.markdown-diagram img').waitFor();
+      await newSide.locator('.syntax-keyword', { hasText: 'const' }).waitFor();
+      watching = await page.evaluateHandle(() => {
+        const undrawn: string[] = [];
+        const observer = new MutationObserver(() => {
+          const preview = document.querySelector(
+            '.markdown-pane:last-child > .markdown',
+          );
+          if (!preview?.querySelector('.markdown-diagram img')) {
+            undrawn.push('diagram');
+          }
+          if (preview?.querySelector('pre:not([hidden]) .language-mermaid')) {
+            undrawn.push('diagram code');
+          }
+          if (!preview?.querySelector('.language-ts .syntax-keyword')) {
+            undrawn.push('colored code');
+          }
+        });
+        observer.observe(document.body, {
+          subtree: true,
+          childList: true,
+          characterData: true,
+          attributes: true,
+        });
+        return { undrawn, stop: () => observer.disconnect() };
+      });
+      for (const count of [2, 3, 4]) {
+        fs.writeFileSync(file, edited(count));
+        await newSide
+          .locator('p', { hasText: `Edited ${count} times.` })
+          .waitFor();
+      }
+      assert.deepStrictEqual(
+        await watching.evaluate(({ undrawn }) => undrawn),
+        [],
+      );
+    } finally {
+      await watching?.evaluate(({ stop }) => stop());
+      await repository.git('checkout', '-q', 'HEAD', '--', 'diagram.md');
+    }
+    await page.locator('.commit.working-tree.empty').waitFor();
+  });
+
   test('refreshes by itself when the working tree changes', async () => {
     const file = path.join(repository.root, 'new.txt');
     fs.writeFileSync(file, 'new\n');

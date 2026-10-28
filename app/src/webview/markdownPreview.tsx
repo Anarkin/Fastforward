@@ -20,7 +20,7 @@ import { codeSegments, colorCode } from './syntax';
 
 const codeLanguage = /(?:^|\s)language-(\S+)/;
 
-function colorCodeBlocks(element: HTMLElement): () => void {
+function colorCodeBlocks(element: ParentNode): () => void {
   const leaving = new AbortController();
   for (const code of element.querySelectorAll('pre > code')) {
     const language = codeLanguage.exec(code.className)?.[1];
@@ -46,6 +46,60 @@ function colorCodeBlocks(element: HTMLElement): () => void {
     });
   }
   return () => leaving.abort();
+}
+
+const blockSources = new WeakMap<Node, string>();
+
+function isElement(node: Node): node is Element {
+  return node.nodeType === node.ELEMENT_NODE;
+}
+
+function sourceOf(node: Node): string {
+  return isElement(node) ? node.outerHTML : (node.textContent ?? '');
+}
+
+interface ShownBlocks {
+  readonly added: readonly Element[];
+  readonly removed: readonly Element[];
+}
+
+export function showBlocks(element: Element, html: string): ShownBlocks {
+  const parsed = element.ownerDocument.createElement('template');
+  parsed.innerHTML = html;
+  const kept = new Map<string, Node[][]>();
+  let drawnBefore: Node[] = [];
+  for (const node of element.childNodes) {
+    drawnBefore.push(node);
+    const source = blockSources.get(node);
+    if (source !== undefined) {
+      const same = kept.get(source);
+      if (same) {
+        same.push(drawnBefore);
+      } else {
+        kept.set(source, [drawnBefore]);
+      }
+      drawnBefore = [];
+    }
+  }
+  const added: Element[] = [];
+  const shown = [...parsed.content.childNodes].flatMap((node) => {
+    const source = sourceOf(node);
+    const same = kept.get(source)?.shift();
+    if (same) {
+      return same;
+    }
+    blockSources.set(node, source);
+    if (isElement(node)) {
+      added.push(node);
+    }
+    return [node];
+  });
+  element.replaceChildren(...shown);
+  const removed = [...kept.values()]
+    .flat()
+    .map((nodes) => nodes.at(-1))
+    .filter((node) => node !== undefined && isElement(node));
+  return { added, removed };
 }
 
 export function showImages(
@@ -111,6 +165,13 @@ function useDark(): boolean {
   );
 }
 
+function stopDrawing(blocks: Map<Element, () => void>): void {
+  for (const stop of blocks.values()) {
+    stop();
+  }
+  blocks.clear();
+}
+
 function MarkdownPane({
   text,
   images,
@@ -133,6 +194,47 @@ function MarkdownPane({
     );
   }, [render, text, document]);
   const content = useRef<HTMLDivElement>(null);
+  const drawn = useRef(new Map<Element, () => void>());
+  const drawnDark = useRef(dark);
+  useLayoutEffect(() => {
+    const element = content.current;
+    if (!element || html === undefined) {
+      return;
+    }
+    if (drawnDark.current !== dark) {
+      stopDrawing(drawn.current);
+      element.replaceChildren();
+      drawnDark.current = dark;
+    }
+    const { added, removed } = showBlocks(element, html);
+    for (const block of removed) {
+      drawn.current.get(block)?.();
+      drawn.current.delete(block);
+    }
+    const drawer = () =>
+      loadMermaid().then((mermaid) =>
+        mermaidDrawer(mermaid, {
+          dark,
+          fontFamily: getComputedStyle(element).fontFamily,
+        }),
+      );
+    for (const block of added) {
+      const stopColoring = colorCodeBlocks(block);
+      const stopDiagrams = showDiagrams(block, drawer);
+      drawn.current.set(block, () => {
+        stopColoring();
+        stopDiagrams();
+      });
+    }
+  }, [html, dark]);
+  useEffect(() => {
+    const element = content.current;
+    const blocks = drawn.current;
+    return () => {
+      stopDrawing(blocks);
+      element?.replaceChildren();
+    };
+  }, []);
   useLayoutEffect(() => {
     if (
       content.current &&
@@ -145,36 +247,9 @@ function MarkdownPane({
       );
     }
   }, [html, root, revision, version]);
-  useEffect(
-    () =>
-      content.current && html !== undefined
-        ? colorCodeBlocks(content.current)
-        : undefined,
-    [html],
-  );
-  useEffect(() => {
-    const element = content.current;
-    if (!element || html === undefined) {
-      return undefined;
-    }
-    return showDiagrams(element, () =>
-      loadMermaid().then((mermaid) =>
-        mermaidDrawer(mermaid, {
-          dark,
-          fontFamily: getComputedStyle(element).fontFamily,
-        }),
-      ),
-    );
-  }, [html, dark]);
   return (
     <div className="markdown-pane">
-      <div
-        ref={content}
-        className="markdown"
-        dangerouslySetInnerHTML={
-          html === undefined ? undefined : { __html: html }
-        }
-      />
+      <div ref={content} className="markdown" />
     </div>
   );
 }
