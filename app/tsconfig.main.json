@@ -6,5 +6,5 @@
     "noEmit": true
   },
   "include": ["src"],
-  "exclude": ["src/webview", "src/test"]
+  "exclude": ["src/**/page", "src/ui", "src/test"]
 }

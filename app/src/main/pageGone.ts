@@ -1,4 +1,4 @@
-import type { Log } from '../log';
+import type { Log } from '../shell/main/log';
 import { strings } from '../shared/strings';
 
 interface PageWindow {

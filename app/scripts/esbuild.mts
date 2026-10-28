@@ -52,9 +52,9 @@ fs.mkdirSync('dist', { recursive: true });
 for (const entry of fs.readdirSync('dist')) {
   fs.rmSync(`dist/${entry}`, { recursive: true, force: true });
 }
-fs.copyFileSync('src/webview/index.html', 'dist/index.html');
+fs.copyFileSync('src/shell/page/index.html', 'dist/index.html');
 fs.copyFileSync('build/window-icon.png', 'dist/icon.png');
-fs.copyFileSync('src/settings.json', 'dist/settings.json');
+fs.copyFileSync('src/shell/main/settings.json', 'dist/settings.json');
 
 const contexts = await Promise.all([
   esbuild.context({
@@ -85,8 +85,8 @@ if (dev) {
         );
       }
     });
-  copyOnChange('src', 'settings.json');
-  copyOnChange('src/webview', 'index.html');
+  copyOnChange('src/shell/main', 'settings.json');
+  copyOnChange('src/shell/page', 'index.html');
 } else {
   await Promise.all(contexts.map((ctx) => ctx.rebuild()));
   await Promise.all(contexts.map((ctx) => ctx.dispose()));

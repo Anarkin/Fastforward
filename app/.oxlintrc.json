@@ -18,7 +18,7 @@
   },
   "overrides": [
     {
-      "files": ["src/webview/**"],
+      "files": ["src/shell/page/**", "src/tools/*/page/**", "src/ui/**"],
       "rules": {
         "react/jsx-no-literals": [
           "error",
@@ -39,8 +39,8 @@
             ],
             "patterns": [
               {
-                "group": ["../**", "!../shared/**"],
-                "message": "The webview imports only its own code and shared/"
+                "group": ["**/main/**", "**/main"],
+                "message": "The page imports only page, ui and shared code, as it runs sandboxed"
               }
             ]
           }
@@ -48,7 +48,11 @@
       }
     },
     {
-      "files": ["src/shared/**"],
+      "files": [
+        "src/shared/**",
+        "src/shell/shared/**",
+        "src/tools/*/shared/**"
+      ],
       "rules": {
         "no-restricted-imports": [
           "error",
@@ -61,7 +65,13 @@
             ],
             "patterns": [
               {
-                "group": ["../**", "node:*", "node:*/**"],
+                "group": [
+                  "**/main/**",
+                  "**/page/**",
+                  "**/ui/**",
+                  "node:*",
+                  "node:*/**"
+                ],
                 "message": "shared/ runs in both, so it imports only shared/"
               }
             ]
@@ -70,15 +80,15 @@
       }
     },
     {
-      "files": ["src/*.ts", "src/git/**", "src/history/**", "src/main/**"],
+      "files": ["src/main/**", "src/shell/main/**", "src/tools/*/main/**"],
       "rules": {
         "no-restricted-imports": [
           "error",
           {
             "patterns": [
               {
-                "group": ["**/webview/**", "./webview/**"],
-                "message": "The main process doesn't import the webview's code"
+                "group": ["**/page/**", "**/ui/**"],
+                "message": "The main process doesn't import the page's code"
               }
             ]
           }
@@ -88,7 +98,12 @@
     {
       "files": ["src/test/**"],
       "rules": {
-        "no-underscore-dangle": ["error", { "allow": ["_willUpdate"] }]
+        "no-underscore-dangle": [
+          "error",
+          {
+            "allow": ["_willUpdate"]
+          }
+        ]
       }
     }
   ],

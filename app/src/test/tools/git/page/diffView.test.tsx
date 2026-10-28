@@ -1,0 +1,2593 @@
+import * as assert from 'node:assert';
+import { JSDOM } from 'jsdom';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { suite, test } from 'vitest';
+import { strings } from '../../../../shared/strings';
+import {
+  parseFilePatch,
+  parsePatch,
+  type DiffFile,
+} from '../../../../tools/git/page/diff';
+import {
+  collapseThreshold,
+  deferredChanges,
+  includedChanges,
+  leftOutChanges,
+  patchByteBudget,
+  patchLineBudget,
+  patchPathBudget,
+} from '../../../../tools/git/shared/protocol';
+import {
+  diffSelection,
+  shownFiles,
+  withLargeFiles,
+} from '../../../../tools/git/page/diffColumn';
+import {
+  changeMargin,
+  changeScrollTop,
+  changeStarts,
+  Code,
+  codeProps,
+  diffRowKey,
+  diffRowPlace,
+  diffRows,
+  diffScrollLeft,
+  diffScrollTop,
+  firstChangeTop,
+  gapWidth,
+  wordPadding,
+  FileNote,
+  sideChange,
+  FileHeader,
+  foundScroll,
+  HunkDivider,
+  largeDiffText,
+  largeFilesToLoad,
+  lineKeys,
+  marked,
+  rowHeight,
+  rowMeasures,
+  BreakMarks,
+  WrapMarks,
+  anchoredScrollTop,
+  rowAnchors,
+  scrollAnchor,
+  scrollOnToggle,
+  selectionSide,
+  showsSideBySide,
+  stuckHeader,
+  wholeChangeClass,
+  widestColumns,
+  splitPairs,
+  type DiffRow,
+} from '../../../../tools/git/page/diffView';
+import { ImageDiff, imagePanes } from '../../../../tools/git/page/imagePreview';
+import { sideBySideWords } from '../../../../tools/git/page/pairing';
+import {
+  wordRanges,
+  type LineWords,
+} from '../../../../tools/git/page/wordDiff';
+import { lineKey } from '../../../../tools/git/page/find';
+import type { TextWidths } from '../../../../tools/git/page/overflow';
+import type { Preview } from '../../../../tools/git/page/previews';
+import { countingReads, fileChange } from '../../../fixtures';
+
+function sign(glyph: string, text: string): string {
+  return `<span class="blank" data-glyph="${glyph}">${text}</span>`;
+}
+
+function wrapMarkup(
+  text: string,
+  indent: number | undefined,
+  syntax: Parameters<typeof marked>[1] = [],
+  whitespace = false,
+): string {
+  return renderToStaticMarkup(
+    <>
+      {marked(
+        text,
+        syntax,
+        [],
+        'word-added',
+        [],
+        undefined,
+        whitespace,
+        indent,
+      )}
+    </>,
+  );
+}
+
+function patch(path: string, added: number): string {
+  return [
+    `diff --git a/${path} b/${path}`,
+    `--- a/${path}`,
+    `+++ b/${path}`,
+    `@@ -0,0 +1,${added} @@`,
+    ...Array.from({ length: added }, (_, index) => `+line ${index}`),
+  ].join('\n');
+}
+
+const binaryOfIndex = (index: string) =>
+  parsePatch(
+    [
+      'diff --git a/a.bin b/a.bin',
+      `index ${index}`,
+      'Binary files a/a.bin and b/a.bin differ',
+    ].join('\n'),
+  )[0];
+
+const binaryOf = (path: string) =>
+  parsePatch(
+    [
+      `diff --git a/${path} b/${path}`,
+      'index 1111111..2222222 100644',
+      `Binary files a/${path} and b/${path} differ`,
+    ].join('\n'),
+  )[0];
+
+const kinds = (rows: ReturnType<typeof diffRows>) =>
+  rows.map((row) => row.kind);
+
+const headers = (rows: ReturnType<typeof diffRows>) =>
+  rows.flatMap((row) => (row.kind === 'file' ? [row.collapsible] : []));
+
+const filesChanging = (...counts: readonly number[]) =>
+  counts.map((insertions, index) =>
+    fileChange(`${index}.ts`, { insertions, deletions: 0 }),
+  );
+
+const lines = (files: readonly DiffFile[]) =>
+  files.map((file) => [
+    file.path,
+    file.hunks.flatMap((hunk) => hunk.lines.map((line) => line.text)),
+  ]);
+
+function budgetedFiles() {
+  const lineCount = 150;
+  const wordCount = 20;
+  const line = (name: string) =>
+    Array.from({ length: wordCount }, (_, word) => `${name}w${word}`).join(' ');
+  const removed = Array.from({ length: lineCount }, (_, index) =>
+    line(`l${index}`),
+  );
+  const added = [line('inserted'), ...removed];
+  const files = parsePatch(
+    Array.from({ length: 8 }, (_, file) =>
+      [
+        `diff --git a/${file}.txt b/${file}.txt`,
+        `--- a/${file}.txt`,
+        `+++ b/${file}.txt`,
+        `@@ -1,${removed.length} +1,${added.length} @@`,
+        ...removed.map((text) => `-${text}`),
+        ...added.map((text) => `+${text}`),
+      ].join('\n'),
+    ).join('\n'),
+  );
+  const perChange =
+    removed.length * wordCount * added.length +
+    added.length * wordCount * removed.length;
+  return { files, aligned: Math.floor(sideBySideWords / perChange) };
+}
+
+function filesStartingAligned(
+  files: readonly DiffFile[],
+  rows: readonly DiffRow[],
+): boolean[] {
+  return files.map((_, file) => {
+    const first = rows.find((row) => row.kind === 'split' && row.file === file);
+    return first?.kind === 'split' && first.left === undefined;
+  });
+}
+
+suite('Diff rows', () => {
+  test('lines up the changes of a side by side diff by their words only until comparing them passes a limit for the whole diff, pairing the rest in order, as side by side pairs every block before the diff is drawn', () => {
+    const { files, aligned } = budgetedFiles();
+    const rows = diffRows(files, new Map(), undefined, false, true);
+    assert.ok(aligned > 0 && aligned < 8);
+    assert.deepStrictEqual(
+      filesStartingAligned(files, rows),
+      Array.from({ length: 8 }, (_, file) => file < aligned),
+    );
+  });
+
+  test('lays a side by side diff out the same each time, counting the changes lined up before toward the limit, so laying it out again, as for a file toggled, moves no rows', () => {
+    const { files, aligned } = budgetedFiles();
+    const expected = Array.from({ length: 8 }, (_, file) => file < aligned);
+    const first = diffRows(files, new Map(), undefined, false, true);
+    const again = diffRows(files, new Map(), undefined, false, true);
+    const toggled = diffRows(
+      files,
+      new Map([[files[0].path, true]]),
+      undefined,
+      false,
+      true,
+    );
+    assert.deepStrictEqual(filesStartingAligned(files, first), expected);
+    assert.deepStrictEqual(filesStartingAligned(files, again), expected);
+    assert.deepStrictEqual(filesStartingAligned(files, toggled), expected);
+  });
+
+  test('lays a side by side diff out by the limit after its words were marked, and marks them as the lines it lays out are paired', () => {
+    const { files, aligned } = budgetedFiles();
+    const last = files.length - 1;
+    const words = wordRanges(files);
+    words.get(lineKey(last, 0));
+    const rows = diffRows(files, new Map(), undefined, false, true);
+    assert.deepStrictEqual(
+      filesStartingAligned(files, rows),
+      Array.from({ length: 8 }, (_, file) => file < aligned),
+    );
+    const wordsLaidOut = wordRanges(files, splitPairs(rows));
+    const [firstRow] = rows.filter(
+      (row) => row.kind === 'split' && row.file === last,
+    );
+    assert.ok(firstRow?.kind === 'split' && firstRow.left && firstRow.right);
+    assert.strictEqual(firstRow.right.line.text.startsWith('inserted'), true);
+    assert.strictEqual(
+      wordsLaidOut.get(lineKey(last, firstRow.left.index)),
+      'whole',
+    );
+    assert.strictEqual(
+      wordsLaidOut.get(lineKey(last, firstRow.right.index)),
+      'whole',
+    );
+  });
+
+  test('lays a file shown entire out inline, even with the side by side layout chosen', () => {
+    const whole = { path: 'a.ts', content: 'a', binary: false };
+    assert.strictEqual(showsSideBySide(true, undefined), true);
+    assert.strictEqual(showsSideBySide(true, whole), false);
+    assert.strictEqual(showsSideBySide(false, undefined), false);
+  });
+
+  test('lays out a small file whole', () => {
+    const files = parsePatch(patch('a.ts', 2));
+    assert.deepStrictEqual(kinds(diffRows(files, new Map(), undefined)), [
+      'error',
+      'file',
+      'line',
+      'line',
+    ]);
+  });
+
+  test('divides the changed parts of a file with a plain line, leaving out the function git guesses they are in', () => {
+    const files = parsePatch(
+      [patch('a.ts', 1), '@@ -10,0 +11,1 @@ function f()', '+line'].join('\n'),
+    );
+    const rows = diffRows(files, new Map(), undefined);
+    assert.deepStrictEqual(kinds(rows), [
+      'error',
+      'file',
+      'line',
+      'hunk',
+      'line',
+    ]);
+    assert.deepStrictEqual(rows[3], { kind: 'hunk', file: 0 });
+  });
+
+  test('collapses a large file, and opens it when asked', () => {
+    const files = parsePatch(patch('graph.json', collapseThreshold + 1));
+    const collapsed = diffRows(files, new Map(), undefined);
+    assert.deepStrictEqual(kinds(collapsed), ['error', 'file', 'large']);
+    assert.deepStrictEqual(collapsed[2], {
+      kind: 'large',
+      file: 0,
+      path: 'graph.json',
+      lines: collapseThreshold + 1,
+    });
+
+    const opened = diffRows(files, new Map([['graph.json', true]]), undefined);
+    assert.strictEqual(opened.length, 2 + collapseThreshold + 1);
+
+    const closed = diffRows(
+      parsePatch(
+        [patch('graph.json', collapseThreshold + 1), patch('a.ts', 1)].join(
+          '\n',
+        ),
+      ),
+      new Map([['graph.json', false]]),
+      undefined,
+    );
+    assert.deepStrictEqual(kinds(closed), ['error', 'file', 'file', 'line']);
+  });
+
+  test('counts only changed lines toward collapsing a file', () => {
+    const files = parsePatch(
+      [patch('a.ts', collapseThreshold), ' one', ' two', ' three'].join('\n'),
+    );
+    assert.deepStrictEqual(kinds(diffRows(files, new Map(), undefined)), [
+      'error',
+      'file',
+      ...Array<string>(collapseThreshold + 3).fill('line'),
+    ]);
+  });
+
+  test('closes a small file when asked', () => {
+    const files = parsePatch([patch('a.ts', 2), patch('b.ts', 1)].join('\n'));
+    const rows = diffRows(files, new Map([['a.ts', false]]), undefined);
+    assert.deepStrictEqual(kinds(rows), ['error', 'file', 'file', 'line']);
+  });
+
+  test('lets a file collapse only among others, as a file shown alone has nothing to make room for', () => {
+    const pair = parsePatch([patch('a.ts', 1), patch('b.ts', 1)].join('\n'));
+    assert.deepStrictEqual(headers(diffRows(pair, new Map(), undefined)), [
+      true,
+      true,
+    ]);
+    assert.deepStrictEqual(
+      headers(diffRows(pair.slice(0, 1), new Map(), undefined)),
+      [false],
+    );
+    assert.deepStrictEqual(
+      headers(
+        diffRows([], new Map(), {
+          path: 'README.md',
+          content: 'a\n',
+          binary: false,
+        }),
+      ),
+      [false],
+    );
+  });
+
+  test('keeps a file shown alone open though it was closed among others, as alone it has no way to open again', () => {
+    const files = parsePatch(patch('a.ts', 2));
+    assert.deepStrictEqual(
+      kinds(diffRows(files, new Map([['a.ts', false]]), undefined)),
+      ['error', 'file', 'line', 'line'],
+    );
+  });
+
+  test('still offers to show a large file shown alone that was closed among others', () => {
+    const files = parsePatch(patch('graph.json', collapseThreshold + 1));
+    assert.deepStrictEqual(
+      kinds(diffRows(files, new Map([['graph.json', false]]), undefined)),
+      ['error', 'file', 'large'],
+    );
+  });
+
+  test('lays out a whole file line by line', () => {
+    const rows = diffRows([], new Map(), {
+      path: 'README.md',
+      content: 'one\ntwo\n',
+      binary: false,
+    });
+    assert.deepStrictEqual(kinds(rows), [
+      'error',
+      'file',
+      'wholeLine',
+      'wholeLine',
+    ]);
+    const unterminated = diffRows([], new Map(), {
+      path: 'README.md',
+      content: 'one\ntwo',
+      binary: false,
+    });
+    assert.deepStrictEqual(
+      unterminated.map((row) => row.kind === 'wholeLine' && row.number),
+      [false, false, 1, 2],
+    );
+  });
+
+  test('lays out an empty whole file without lines', () => {
+    const rows = diffRows([], new Map(), {
+      path: '.gitkeep',
+      content: '',
+      binary: false,
+    });
+    assert.deepStrictEqual(kinds(rows), ['error', 'file']);
+  });
+
+  test('keeps what it shows while the next one loads, and shows a placeholder only in place of nothing', () => {
+    assert.deepStrictEqual(
+      kinds(diffRows(parsePatch(patch('a.ts', 1)), new Map(), undefined, true)),
+      ['error', 'file', 'line'],
+    );
+    assert.deepStrictEqual(
+      kinds(
+        diffRows(
+          [],
+          new Map(),
+          { path: 'a', content: 'x\n', binary: false },
+          true,
+        ),
+      ),
+      ['error', 'file', 'wholeLine'],
+    );
+  });
+
+  test('stands in for a diff that loads, and a large file being fetched', () => {
+    assert.deepStrictEqual(kinds(diffRows([], new Map(), undefined, true)), [
+      'error',
+      'skeleton',
+    ]);
+    const large = {
+      path: 'graph.json',
+      binary: false,
+      hunks: [],
+      placeholder: { lines: 5000 },
+    };
+    assert.deepStrictEqual(kinds(diffRows([large], new Map(), undefined)), [
+      'error',
+      'file',
+      'large',
+    ]);
+    assert.deepStrictEqual(
+      kinds(diffRows([large], new Map([['graph.json', true]]), undefined)),
+      ['error', 'file', 'skeletonLines'],
+    );
+  });
+
+  test('stands in for a diff that loads while only its files past the budget are known', () => {
+    const large = {
+      path: 'graph.json',
+      binary: false,
+      hunks: [],
+      placeholder: { lines: 5000 },
+    };
+    assert.deepStrictEqual(
+      kinds(diffRows([large], new Map(), undefined, true)),
+      ['error', 'skeleton'],
+    );
+  });
+
+  test('shows a binary file as such, whole or in a diff, and an image as one', () => {
+    const whole = { path: 'a.bin', content: '', binary: true, id: 'a' };
+    assert.deepStrictEqual(kinds(diffRows([], new Map(), whole)), [
+      'error',
+      'file',
+      'binary',
+    ]);
+    assert.deepStrictEqual(
+      kinds(diffRows([], new Map(), { ...whole, path: 'a.png' })),
+      ['error', 'file', 'image'],
+    );
+    for (const sideBySide of [false, true]) {
+      assert.deepStrictEqual(
+        kinds(
+          diffRows(
+            [binaryOf('a.bin'), binaryOf('a.png')],
+            new Map(),
+            undefined,
+            false,
+            sideBySide,
+          ),
+        ),
+        ['error', 'file', 'binary', 'file', 'image'],
+      );
+    }
+    assert.strictEqual(rowHeight({ kind: 'image', file: 0 }), 320);
+  });
+
+  test('previews an image on both sides when side by side, hatching the side it lacks, and only on the sides it has inline', () => {
+    const [added] = parsePatch(
+      [
+        'diff --git a/a.png b/a.png',
+        'new file mode 100644',
+        `index ${'0'.repeat(40)}..${'2'.repeat(40)}`,
+        'Binary files /dev/null and b/a.png differ',
+      ].join('\n'),
+    );
+    const origin = { root: '/repo', hash: 'c'.repeat(40) };
+    const shown = (sideBySide: boolean) =>
+      imagePanes(origin, added, sideBySide).map((pane) => [
+        pane.side,
+        pane.url !== undefined,
+      ]);
+    assert.deepStrictEqual(shown(false), [['new', true]]);
+    assert.deepStrictEqual(shown(true), [
+      ['old', false],
+      ['new', true],
+    ]);
+    const markup = renderToStaticMarkup(
+      <ImageDiff panes={imagePanes(origin, added, true)} />,
+    );
+    assert.match(
+      markup,
+      /<div class="image-pane filler"><div class="image-frame"><\/div><\/div>/,
+    );
+    assert.match(markup, /class="image-pane"/);
+  });
+});
+
+function sized(...sizes: number[]) {
+  let start = 0;
+  return sizes.map((size) => {
+    const row = { start, size };
+    start += size;
+    return row;
+  });
+}
+
+function laidOut(rows: readonly DiffRow[]) {
+  let start = 0;
+  return rows.map((row, index) => {
+    const item = { index, start, end: start + (rowHeight(row) ?? 100) };
+    start = item.end;
+    return item;
+  });
+}
+
+suite('Stuck file header', () => {
+  const files = parsePatch(`${patch('a.ts', 3)}\n${patch('b.ts', 3)}`);
+  const rows = diffRows(files, new Map(), undefined);
+  const items = laidOut(rows);
+  const start = (index: number) => items[index].start;
+
+  test('sticks the header of the file whose line is on top', () => {
+    assert.deepStrictEqual(kinds(rows), [
+      'error',
+      'file',
+      'line',
+      'line',
+      'line',
+      'file',
+      'line',
+      'line',
+      'line',
+    ]);
+    assert.strictEqual(stuckHeader(rows, items, start(7) + 1), rows[5]);
+    assert.strictEqual(stuckHeader(rows, items, start(5) + 1), rows[5]);
+  });
+
+  test('sticks nothing while a header is whole in its place, or no file is on top', () => {
+    assert.strictEqual(stuckHeader(rows, items, start(5)), undefined);
+    assert.strictEqual(stuckHeader(rows, items, 0), undefined);
+    assert.strictEqual(stuckHeader(rows, items, start(1)), undefined);
+  });
+
+  test('sticks the header of a whole file too', () => {
+    const whole = diffRows([], new Map(), {
+      path: 'README.md',
+      content: 'a\nb\nc\n',
+      binary: false,
+    });
+    const wholeItems = laidOut(whole);
+    assert.strictEqual(
+      stuckHeader(whole, wholeItems, wholeItems[3].start),
+      whole[1],
+    );
+  });
+
+  test('scrolls to the header of a file closed from its stuck header, and nowhere otherwise', () => {
+    const closed = diffRows(files, new Map([['b.ts', false]]), undefined);
+    const closedHeader = closed[5];
+    const openHeader = rows[5];
+    assert.ok(closedHeader.kind === 'file' && openHeader.kind === 'file');
+    assert.strictEqual(scrollOnToggle(closed, closedHeader, true), 5);
+    assert.strictEqual(scrollOnToggle(rows, openHeader, false), undefined);
+  });
+});
+
+suite('Large files in a commit diff', () => {
+  const large = fileChange('large.json', {
+    insertions: collapseThreshold,
+    deletions: 1,
+  });
+
+  test('puts each file the app left out of the diff in its place, with the count it sent', () => {
+    const files = [fileChange('a.ts'), fileChange('b.ts'), fileChange('c.ts')];
+    assert.deepStrictEqual(
+      withLargeFiles(
+        parsePatch(patch('a.ts', 1)),
+        files,
+        [
+          { path: 'b.ts', lines: undefined },
+          { path: 'c.ts', lines: 0 },
+        ],
+        new Map(),
+      ).map((file) => [file.path, file.placeholder]),
+      [
+        ['a.ts', undefined],
+        ['b.ts', { lines: undefined }],
+        ['c.ts', { lines: 0 }],
+      ],
+    );
+  });
+
+  test('keeps the old path of a renamed file left out of the diff, selected or not, so its header and the file search know it until it loads', () => {
+    const renamed = fileChange('new/y.json', {
+      status: 'R',
+      oldPath: 'old/x.json',
+    });
+    const leftOut = [{ path: 'new/y.json', lines: 5 }];
+    assert.deepStrictEqual(
+      [
+        withLargeFiles([], [renamed], leftOut, new Map()),
+        shownFiles([], 'new/y.json', [renamed], leftOut, new Map()),
+      ].map(([file]) => [file.path, file.oldPath]),
+      [
+        ['new/y.json', 'old/x.json'],
+        ['new/y.json', 'old/x.json'],
+      ],
+    );
+  });
+
+  test('puts a large file the diff left out in its place, until it loads', () => {
+    const files = [fileChange('a.ts'), large, fileChange('b.ts')];
+    const parsed = parsePatch(`${patch('b.ts', 1)}\n${patch('a.ts', 1)}`);
+    const placeholder = withLargeFiles(
+      parsed,
+      files,
+      leftOutChanges(files),
+      new Map(),
+    );
+    assert.deepStrictEqual(
+      placeholder.map((file) => [file.path, file.placeholder]),
+      [
+        ['a.ts', undefined],
+        ['large.json', { lines: collapseThreshold + 1 }],
+        ['b.ts', undefined],
+      ],
+    );
+
+    const loaded = withLargeFiles(
+      parsed,
+      files,
+      leftOutChanges(files),
+      new Map([
+        ['large.json', parseFilePatch('large.json', patch('large.json', 3))],
+      ]),
+    );
+    assert.strictEqual(loaded[1].placeholder, undefined);
+    assert.strictEqual(loaded[1].hunks[0].lines.length, 3);
+  });
+
+  test('keeps a large file left out even when git diffs it for a kept path it is under, as when a file turns into a folder', () => {
+    const big = fileChange('foo/big.txt', {
+      insertions: collapseThreshold + 1,
+      deletions: 0,
+    });
+    const files = [fileChange('foo'), big];
+    const parsed = parsePatch(`${patch('foo', 1)}\n${patch('foo/big.txt', 3)}`);
+    assert.deepStrictEqual(
+      shownFiles(
+        parsed,
+        undefined,
+        files,
+        leftOutChanges(files),
+        new Map(),
+      ).map((file) => [file.path, file.placeholder]),
+      [
+        ['foo', undefined],
+        ['foo/big.txt', { lines: collapseThreshold + 1 }],
+      ],
+    );
+    assert.deepStrictEqual(
+      shownFiles(parsed, 'foo', files, leftOutChanges(files), new Map()).map(
+        (file) => file.path,
+      ),
+      ['foo'],
+    );
+  });
+
+  test('puts a selected large file the app left out in its place, until it loads', () => {
+    const files = [fileChange('a.ts'), large];
+    assert.deepStrictEqual(
+      shownFiles(
+        [],
+        'large.json',
+        files,
+        leftOutChanges([large]),
+        new Map(),
+      ).map((file) => [file.path, file.placeholder]),
+      [['large.json', { lines: collapseThreshold + 1 }]],
+    );
+    const loaded = shownFiles(
+      [],
+      'large.json',
+      files,
+      leftOutChanges([large]),
+      new Map([
+        ['large.json', parseFilePatch('large.json', patch('large.json', 3))],
+      ]),
+    );
+    assert.strictEqual(loaded.length, 1);
+    assert.strictEqual(loaded[0].placeholder, undefined);
+    assert.strictEqual(loaded[0].hunks[0].lines.length, 3);
+  });
+
+  test('shows only the selected file when git diffs the paths under it too, as when a file turns into a folder', () => {
+    const files = [fileChange('foo'), fileChange('foo/bar.txt')];
+    const parsed = parsePatch(`${patch('foo', 1)}\n${patch('foo/bar.txt', 1)}`);
+    assert.deepStrictEqual(
+      shownFiles(parsed, 'foo', files, [], new Map()).map((file) => file.path),
+      ['foo'],
+    );
+  });
+
+  test('defers each file over 25000 changed lines, and every file once the diff would grow past its budget, as the page would freeze laying them out', () => {
+    const fitting = [];
+    for (let left = patchLineBudget - 3; left > 0;) {
+      const insertions = Math.min(collapseThreshold, left);
+      fitting.push(
+        fileChange(`${fitting.length}.ts`, { insertions, deletions: 0 }),
+      );
+      left -= insertions;
+    }
+    const files = [
+      ...fitting,
+      large,
+      fileChange('a.ts', { insertions: collapseThreshold, deletions: 0 }),
+      fileChange('b.ts', { insertions: 0, deletions: 0 }),
+    ];
+    assert.deepStrictEqual(
+      [...deferredChanges(files)],
+      ['large.json', 'a.ts', 'b.ts'],
+    );
+    assert.deepStrictEqual(
+      [...deferredChanges([...fitting, large, fileChange('b.ts')])],
+      ['large.json'],
+    );
+    assert.deepStrictEqual(
+      [...deferredChanges(filesChanging(25_000, 1))],
+      ['1.ts'],
+    );
+    assert.deepStrictEqual(
+      [...deferredChanges(filesChanging(25_001, 1))],
+      ['0.ts'],
+    );
+  });
+
+  test('keeps a diff of exactly the 25000 changed lines of its budget whole, deferring from the file that passes it', () => {
+    assert.deepStrictEqual(
+      [...deferredChanges(filesChanging(20_000, 5_000, 0))],
+      [],
+    );
+    assert.deepStrictEqual(
+      [...deferredChanges(filesChanging(20_000, 5_001, 0))],
+      ['1.ts', '2.ts'],
+    );
+  });
+
+  test('defers every file once the paths of the rest would make too long a command line', () => {
+    const long = 'x'.repeat(patchPathBudget / 2);
+    const files = [
+      fileChange(`${long}1`, { oldPath: 'a' }),
+      fileChange('b'),
+      fileChange(`${long}2`),
+      fileChange('c'),
+    ];
+    assert.deepStrictEqual([...deferredChanges(files)], [`${long}2`, 'c']);
+  });
+
+  test('keeps the paths of a diff of exactly the 16000 characters of its budget whole, deferring from the file that passes it', () => {
+    const half = 8_000;
+    const files = (last: string) => [
+      fileChange('x'.repeat(half)),
+      fileChange('y'.repeat(half - 2), { oldPath: 'z' }),
+      fileChange(last),
+    ];
+    assert.deepStrictEqual([...deferredChanges(files('c'))], []);
+    assert.deepStrictEqual(
+      [...deferredChanges([...files('cc'), fileChange('d')])],
+      ['cc', 'd'],
+    );
+  });
+
+  test('defers every file once the old and new text of the files changed would pass the bytes of its budget, however few lines they have', () => {
+    const files = [
+      fileChange('bundle.min.js', { bytes: patchByteBudget / 2 }),
+      fileChange('a.ts', { bytes: 100 }),
+      fileChange('bundle.js.map', { bytes: patchByteBudget / 2 }),
+      fileChange('b.ts'),
+    ];
+    assert.deepStrictEqual(
+      [...deferredChanges(files)],
+      ['bundle.js.map', 'b.ts'],
+    );
+  });
+
+  test('keeps a diff of exactly the 16 MB of its budget whole, deferring from the file that passes it', () => {
+    const half = 8 * 1024 * 1024;
+    const files = (bytes: number) => [
+      fileChange('a.min.js', { bytes: half }),
+      fileChange('b.min.js', { bytes }),
+      fileChange('c.ts'),
+    ];
+    assert.deepStrictEqual([...deferredChanges(files(half))], []);
+    assert.deepStrictEqual(
+      [...deferredChanges(files(half + 1))],
+      ['b.min.js', 'c.ts'],
+    );
+  });
+
+  test('counts toward the bytes of its budget only the files it keeps, not one left out for its lines', () => {
+    const files = [
+      fileChange('huge.json', {
+        insertions: 0,
+        deletions: 0,
+        uncounted: true,
+        bytes: patchByteBudget,
+      }),
+      fileChange('a.ts', { bytes: patchByteBudget }),
+      fileChange('b.ts'),
+    ];
+    assert.deepStrictEqual([...deferredChanges(files)], ['huge.json']);
+  });
+
+  test('passes git no paths when it leaves out no file, and only the paths of the files it keeps, both of a rename, once it leaves out any', () => {
+    const files = [
+      fileChange('a.ts'),
+      fileChange('new.ts', { status: 'R', oldPath: 'old.ts' }),
+    ];
+    assert.strictEqual(includedChanges(files), undefined);
+    assert.deepStrictEqual(includedChanges([...files, large]), [
+      'a.ts',
+      'old.ts',
+      'new.ts',
+    ]);
+  });
+
+  test('passes git the paths of the files it keeps rather than those it leaves out, so the command line stays under the 32767 characters Windows allows', () => {
+    const files = Array.from({ length: 4000 }, (_, index) =>
+      fileChange(`a b/${index}.ts`, {
+        status: 'R',
+        oldPath: `c d/${index}.ts`,
+      }),
+    );
+    const included = includedChanges(files) ?? [];
+    assert.ok(included.length > 0);
+    assert.ok(included.map((file) => `"${file}"`).join(' ').length < 32_767);
+  });
+
+  test('puts a file deferred for the budget in its place, collapsed until asked for', () => {
+    const deferred = 'x'.repeat(patchPathBudget);
+    const files = [fileChange('a.ts'), fileChange(deferred)];
+    const diff = withLargeFiles(
+      parsePatch(patch('a.ts', 1)),
+      files,
+      leftOutChanges(files),
+      new Map(),
+    );
+    assert.deepStrictEqual(diff[1].placeholder, { lines: 3 });
+    assert.deepStrictEqual(kinds(diffRows(diff, new Map(), undefined)), [
+      'error',
+      'file',
+      'line',
+      'file',
+      'large',
+    ]);
+    assert.deepStrictEqual(
+      kinds(diffRows(diff, new Map([[deferred, true]]), undefined)),
+      ['error', 'file', 'line', 'file', 'skeletonLines'],
+    );
+  });
+
+  test('puts a file too large to count the lines of in its place, saying it is large without making up a count', () => {
+    const huge = fileChange('huge.log', {
+      insertions: 0,
+      deletions: 0,
+      uncounted: true,
+    });
+    assert.deepStrictEqual([...deferredChanges([huge])], ['huge.log']);
+    const diff = withLargeFiles([], [huge], leftOutChanges([huge]), new Map());
+    assert.deepStrictEqual(diff[0].placeholder, { lines: undefined });
+    const rows = diffRows(diff, new Map(), undefined);
+    assert.deepStrictEqual(rows[2], {
+      kind: 'large',
+      file: 0,
+      path: 'huge.log',
+      lines: undefined,
+    });
+    assert.strictEqual(largeDiffText(undefined), 'Large file');
+  });
+
+  test('says how many lines a file not loaded changed, or only that it is not loaded when it changed none, as a binary file', () => {
+    assert.strictEqual(largeDiffText(3), 'Not loaded: 3 changed lines');
+    assert.strictEqual(largeDiffText(0), 'Not loaded');
+    assert.strictEqual(
+      largeDiffText(collapseThreshold + 1),
+      `Large diff: ${(collapseThreshold + 1).toLocaleString()} changed lines`,
+    );
+  });
+
+  test('keeps both halves of a file that changed type, the lines of the file and the target of the link, and the blob of each', () => {
+    const typeChange = [
+      'diff --git a/f b/f',
+      'deleted file mode 100644',
+      'index ce01362..0000000',
+      '--- a/f',
+      '+++ /dev/null',
+      '@@ -1 +0,0 @@',
+      '-hello',
+      'diff --git a/f b/f',
+      'new file mode 120000',
+      'index 0000000..eb4e8a8',
+      '--- /dev/null',
+      '+++ b/f',
+      '@@ -0,0 +1 @@',
+      '+target',
+      '\\ No newline at end of file',
+    ].join('\n');
+    const both = [['f', ['hello']]];
+    const parsed = parsePatch(typeChange);
+    assert.deepStrictEqual(lines(parsed), both);
+    assert.deepStrictEqual(
+      lines(withLargeFiles(parsed, [fileChange('f')], [], new Map())),
+      both,
+    );
+    assert.deepStrictEqual(lines([parseFilePatch('f', typeChange)]), both);
+    assert.deepStrictEqual(parseFilePatch('f', typeChange).link, {
+      new: 'target',
+    });
+    assert.deepStrictEqual(parsed[0].blobs, {
+      old: 'ce01362',
+      new: 'eb4e8a8',
+    });
+  });
+
+  test('keeps files the list lacks, and leaves out small ones the diff lacks', () => {
+    const parsed = parsePatch(patch('extra.ts', 1));
+    assert.deepStrictEqual(
+      withLargeFiles(parsed, [fileChange('a.ts')], [], new Map()).map(
+        (file) => file.path,
+      ),
+      ['extra.ts'],
+    );
+  });
+});
+
+suite('Files whose changes are all whitespace', () => {
+  const files = [fileChange('a.ts'), fileChange('b.ts'), fileChange('c.ts')];
+
+  test('puts each file a diff ignoring whitespace left out for it in its place, noting that only whitespace changed', () => {
+    const diff = withLargeFiles(
+      parsePatch(patch('a.ts', 1)),
+      files,
+      [],
+      new Map(),
+      new Set(['b.ts']),
+    );
+    assert.deepStrictEqual(
+      diff.map((file) => [file.path, file.whitespaceOnly]),
+      [
+        ['a.ts', undefined],
+        ['b.ts', true],
+      ],
+    );
+    assert.deepStrictEqual(kinds(diffRows(diff, new Map(), undefined)), [
+      'error',
+      'file',
+      'line',
+      'file',
+      'whitespace',
+    ]);
+  });
+
+  test('notes the same for such a file selected, side by side too, and above its lines when shown entire', () => {
+    for (const sideBySide of [false, true]) {
+      assert.deepStrictEqual(
+        kinds(
+          diffRows(
+            shownFiles([], 'b.ts', files, [], new Map(), ['b.ts']),
+            new Map(),
+            undefined,
+            false,
+            sideBySide,
+          ),
+        ),
+        ['error', 'file', 'whitespace'],
+      );
+    }
+    assert.deepStrictEqual(shownFiles([], 'b.ts', files, [], new Map()), []);
+    const entire = parsePatch(
+      ['diff --git a/b.ts b/b.ts', '@@ -1,2 +1,2 @@', ' one', ' two'].join(
+        '\n',
+      ),
+    );
+    assert.deepStrictEqual(
+      kinds(
+        diffRows(
+          shownFiles(entire, 'b.ts', files, [], new Map(), ['b.ts']),
+          new Map(),
+          undefined,
+        ),
+      ),
+      ['error', 'file', 'whitespace', 'line', 'line'],
+    );
+  });
+
+  test('notes a file left out of the diff that loads with only whitespace changed', () => {
+    const loaded = withLargeFiles(
+      [],
+      [fileChange('large.json')],
+      [{ path: 'large.json', lines: collapseThreshold + 1 }],
+      new Map([['large.json', parseFilePatch('large.json', '', true)]]),
+    );
+    assert.deepStrictEqual(kinds(diffRows(loaded, new Map(), undefined)), [
+      'error',
+      'file',
+      'whitespace',
+    ]);
+    assert.strictEqual(
+      parseFilePatch('large.json', '').whitespaceOnly,
+      undefined,
+    );
+  });
+});
+
+suite('Newline at the end of a file', () => {
+  test('notes below the lines of a file that only one side lacks the newline at its end, as lines that differ only in it look the same', () => {
+    const files = parsePatch(
+      [
+        'diff --git a/a.md b/a.md',
+        'index 1111111..2222222 100644',
+        '--- a/a.md',
+        '+++ b/a.md',
+        '@@ -1 +1 @@',
+        '-last',
+        '\\ No newline at end of file',
+        '+last',
+        '',
+      ].join('\n'),
+    );
+    assert.deepStrictEqual(kinds(diffRows(files, new Map(), undefined)), [
+      'error',
+      'file',
+      'line',
+      'line',
+      'noNewline',
+    ]);
+    assert.deepStrictEqual(
+      kinds(diffRows(files, new Map(), undefined, false, true)),
+      ['error', 'file', 'split', 'noNewline'],
+    );
+    assert.deepStrictEqual(
+      kinds(
+        diffRows(
+          [...files, ...parsePatch(patch('b.ts', 1))],
+          new Map([['a.md', false]]),
+          undefined,
+        ),
+      ),
+      ['error', 'file', 'file', 'line'],
+    );
+  });
+});
+
+const placeholder = (path: string) => ({
+  path,
+  binary: false,
+  hunks: [],
+  placeholder: { lines: collapseThreshold + 1 },
+});
+
+suite('Large files fetched', () => {
+  test('fetches an opened large file once, not again as others come', () => {
+    const requested = new Map<string, number>();
+    const open = new Map([
+      ['a.json', true],
+      ['b.json', true],
+    ]);
+    const files = [placeholder('a.json'), placeholder('b.json')];
+    assert.deepStrictEqual(largeFilesToLoad(files, open, 0, requested), [
+      'a.json',
+      'b.json',
+    ]);
+    const aLoaded = [
+      parseFilePatch('a.json', patch('a.json', 1)),
+      placeholder('b.json'),
+    ];
+    assert.deepStrictEqual(largeFilesToLoad(aLoaded, open, 0, requested), []);
+  });
+
+  test('fetches it again once it is a placeholder again, or reopened', () => {
+    const requested = new Map<string, number>();
+    const open = new Map([['a.json', true]]);
+    largeFilesToLoad([placeholder('a.json')], open, 0, requested);
+    const loaded = [parseFilePatch('a.json', patch('a.json', 1))];
+    largeFilesToLoad(loaded, open, 0, requested);
+    assert.deepStrictEqual(
+      largeFilesToLoad([placeholder('a.json')], open, 0, requested),
+      ['a.json'],
+    );
+
+    const closed = new Map([['a.json', false]]);
+    assert.deepStrictEqual(
+      largeFilesToLoad([placeholder('a.json')], closed, 0, requested),
+      [],
+    );
+    assert.deepStrictEqual(
+      largeFilesToLoad([placeholder('a.json')], open, 0, requested),
+      ['a.json'],
+    );
+  });
+
+  test('fetches it again for a new diff that came before it loaded', () => {
+    const requested = new Map<string, number>();
+    const open = new Map([['a.json', true]]);
+    largeFilesToLoad([placeholder('a.json')], open, 0, requested);
+    assert.deepStrictEqual(
+      largeFilesToLoad([placeholder('a.json')], open, 1, requested),
+      ['a.json'],
+    );
+    assert.deepStrictEqual(
+      largeFilesToLoad([placeholder('a.json')], open, 1, requested),
+      [],
+    );
+  });
+
+  test('takes a file git found no change in as loaded, without lines', () => {
+    const empty = parseFilePatch('a.json', '');
+    assert.deepStrictEqual(empty, { path: 'a.json', binary: false, hunks: [] });
+    assert.deepStrictEqual(
+      largeFilesToLoad([empty], new Map([['a.json', true]]), 0, new Map()),
+      [],
+    );
+  });
+
+  test('starts the requests of a diff over in another tab, though it shows the same commit and file', () => {
+    assert.notStrictEqual(
+      diffSelection('/a', 'working-tree', undefined),
+      diffSelection('/b', 'working-tree', undefined),
+    );
+    assert.strictEqual(
+      diffSelection('/a', 'working-tree', 'a.ts'),
+      diffSelection('/a', 'working-tree', 'a.ts'),
+    );
+    assert.notStrictEqual(
+      diffSelection('/a', 'working-tree', 'a.ts', 'staged'),
+      diffSelection('/a', 'working-tree', 'a.ts', 'unstaged'),
+    );
+    assert.notStrictEqual(
+      diffSelection('/a', 'working-tree', 'a.ts'),
+      diffSelection('/a', 'working-tree', undefined),
+    );
+  });
+});
+
+function wrapMarkAt(top: string, column: number): string {
+  return `top:${top};left:calc(112px + var(--diff-code-padding) + ${column}ch)`;
+}
+
+function wrapMarksOf(html: string): string[][] {
+  return Array.from(
+    html.matchAll(/class="(wrap-[a-z]+)" style="([^"]*)">([^<]*)</g),
+    ([, kind, style, glyph]) => [kind, style, glyph],
+  );
+}
+
+suite('Diff row heights', () => {
+  test('places a row where it starts, telling its stripes how far down it is', () => {
+    assert.deepStrictEqual(diffRowPlace(40, 17), {
+      height: 17,
+      top: 40,
+      '--diff-row-top': '40px',
+    });
+  });
+
+  test('gives every row but the error, a large file and placeholders the same fixed height, that of a row of the other columns, so the columns line up', () => {
+    const rows = diffRows(
+      parsePatch(
+        [
+          'diff --git a/a.png b/a.png',
+          'Binary files a/a.png and b/a.png differ',
+          patch('a.ts', 1),
+          '@@ -10,0 +11,1 @@',
+          '+line',
+        ].join('\n'),
+      ),
+      new Map(),
+      undefined,
+    );
+    assert.deepStrictEqual(
+      rows.map((row) => [row.kind, rowHeight(row)]),
+      [
+        ['error', undefined],
+        ['file', 22],
+        ['binary', 22],
+        ['file', 22],
+        ['line', 22],
+        ['hunk', 22],
+        ['line', 22],
+      ],
+    );
+    const split = diffRows(
+      parsePatch(patch('a.ts', 1)),
+      new Map(),
+      undefined,
+      false,
+      true,
+    );
+    assert.deepStrictEqual(
+      split.map((row) => [row.kind, rowHeight(row)]),
+      [
+        ['error', undefined],
+        ['file', 22],
+        ['split', 22],
+      ],
+    );
+    const whole = diffRows([], new Map(), {
+      path: 'a.ts',
+      content: 'a\n',
+      binary: false,
+    });
+    assert.deepStrictEqual(
+      whole.map((row) => [row.kind, rowHeight(row)]),
+      [
+        ['error', undefined],
+        ['file', 22],
+        ['wholeLine', 22],
+      ],
+    );
+    const [, , large] = diffRows(
+      parsePatch(patch('graph.json', collapseThreshold + 1)),
+      new Map(),
+      undefined,
+    );
+    assert.strictEqual(large.kind, 'large');
+    assert.notStrictEqual(rowHeight(large), 22);
+    const loading = diffRows([], new Map(), undefined, true);
+    assert.deepStrictEqual(
+      loading.map((row) => rowHeight(row)),
+      [undefined, undefined],
+    );
+  });
+
+  test('makes the rows of code as tall as the lines of the diff, keeping the file headers, hunk dividers and notes as tall as a row of the other columns', () => {
+    const rows = diffRows(
+      parsePatch(
+        [
+          'diff --git a/a.png b/a.png',
+          'Binary files a/a.png and b/a.png differ',
+          patch('a.ts', 1),
+          '@@ -10,0 +11,1 @@',
+          '+line',
+        ].join('\n'),
+      ),
+      new Map(),
+      undefined,
+    );
+    assert.deepStrictEqual(
+      rows.map((row) => [row.kind, rowHeight(row, false, 17)]),
+      [
+        ['error', undefined],
+        ['file', 22],
+        ['binary', 22],
+        ['file', 22],
+        ['line', 17],
+        ['hunk', 22],
+        ['line', 17],
+      ],
+    );
+    const split = diffRows(
+      parsePatch(patch('a.ts', 1)),
+      new Map(),
+      undefined,
+      false,
+      true,
+    );
+    assert.deepStrictEqual(
+      split.map((row) => rowHeight(row, false, 17)),
+      [undefined, 22, 17],
+    );
+    const whole = diffRows([], new Map(), {
+      path: 'a.ts',
+      content: 'a\n',
+      binary: false,
+    });
+    assert.deepStrictEqual(
+      whole.map((row) => rowHeight(row, false, 17)),
+      [undefined, 22, 17],
+    );
+    assert.deepStrictEqual(
+      rows.map((_, index) =>
+        rowMeasures(rows, undefined, 17).estimateSize(index),
+      ),
+      [200, 22, 22, 22, 17, 22, 17],
+    );
+  });
+
+  test('measures how far the widest line of an inline diff reaches, a tab to its next stop, to widen every row to it', () => {
+    const files = parsePatch(
+      [
+        'diff --git a/a.ts b/a.ts',
+        '--- a/a.ts',
+        '+++ b/a.ts',
+        '@@ -1,2 +1,2 @@',
+        ' short',
+        '-abcdefghi\tx',
+        '+longer line',
+      ].join('\n'),
+    );
+    assert.strictEqual(
+      widestColumns(diffRows(files, new Map(), undefined)),
+      13,
+    );
+    assert.strictEqual(
+      widestColumns(
+        diffRows([], new Map(), {
+          path: 'a.ts',
+          content: 'a\nbbb\n',
+          binary: false,
+        }),
+      ),
+      3,
+    );
+  });
+
+  test('measures the widest line of an inline diff by how wide its characters are drawn, as a line of wide characters reached past its count of them and the view jumped once it left the drawn rows', () => {
+    const files = parsePatch(
+      [
+        'diff --git a/a.ts b/a.ts',
+        '--- a/a.ts',
+        '+++ b/a.ts',
+        '@@ -1 +1 @@',
+        '-abcd',
+        '+中中中',
+      ].join('\n'),
+    );
+    const wide: TextWidths = {
+      char: 8,
+      of: (cluster) => (cluster === '中' ? 16 : 8),
+    };
+    assert.strictEqual(
+      widestColumns(diffRows(files, new Map(), undefined), wide),
+      6,
+    );
+  });
+
+  test("keys a row by its kind too, so a row of fixed height doesn't take the measured height of a placeholder that was in its place", () => {
+    const loading = diffRows([], new Map(), undefined, true);
+    const loaded = diffRows(parsePatch(patch('a.ts', 1)), new Map(), undefined);
+    assert.strictEqual(rowHeight(loading[1]), undefined);
+    assert.notStrictEqual(rowHeight(loaded[1]), undefined);
+    assert.notStrictEqual(diffRowKey(loading[1], 1), diffRowKey(loaded[1], 1));
+  });
+
+  test('keeps the same size and key callbacks while the rows are the same, so the virtualizer measures only from the first changed row', () => {
+    const rows = diffRows(parsePatch(patch('a.ts', 2)), new Map(), undefined);
+    const same = diffRows(parsePatch(patch('a.ts', 2)), new Map(), undefined);
+    const measures = rowMeasures(rows);
+    assert.strictEqual(rowMeasures(rows), measures);
+    assert.notStrictEqual(rowMeasures(same).getItemKey, measures.getItemKey);
+    assert.deepStrictEqual(
+      rows.map((_, index) => [
+        measures.estimateSize(index),
+        measures.getItemKey(index),
+      ]),
+      [
+        [200, '0:error'],
+        [22, '1:file'],
+        [22, '2:line'],
+        [22, '3:line'],
+      ],
+    );
+    const loading = diffRows([], new Map(), undefined, true);
+    assert.deepStrictEqual(
+      loading.map((_, index) => rowMeasures(loading).estimateSize(index)),
+      [200, 240],
+    );
+  });
+
+  const wrapping = parsePatch(
+    [
+      'diff --git a/a.ts b/a.ts',
+      '--- a/a.ts',
+      '+++ b/a.ts',
+      '@@ -1,2 +1,2 @@',
+      ' one',
+      '-one two three',
+      '+one two three four five',
+    ].join('\n'),
+  );
+
+  test('measures the rows of code while wrapping, keeping the height of the others fixed', () => {
+    const rows = diffRows(wrapping, new Map(), undefined);
+    assert.deepStrictEqual(
+      rows.map((row) => [row.kind, rowHeight(row, true)]),
+      [
+        ['error', undefined],
+        ['file', 22],
+        ['line', undefined],
+        ['line', undefined],
+        ['line', undefined],
+      ],
+    );
+    const split = diffRows(wrapping, new Map(), undefined, false, true);
+    assert.deepStrictEqual(
+      split.map((row) => rowHeight(row, true)),
+      [undefined, 22, undefined, undefined],
+    );
+    const whole = diffRows([], new Map(), {
+      path: 'a.ts',
+      content: 'one\n',
+      binary: false,
+    });
+    assert.deepStrictEqual(
+      whole.map((row) => rowHeight(row, true)),
+      [undefined, 22, undefined],
+    );
+  });
+
+  test('estimates a row of code by the rows its text wraps to, a side by side row by its taller side', () => {
+    const rows = diffRows(wrapping, new Map(), undefined);
+    const measures = rowMeasures(rows, { left: 7, right: 7 });
+    assert.deepStrictEqual(
+      rows.map((_, index) => measures.estimateSize(index)),
+      [200, 22, 22, 44, 88],
+    );
+    const split = diffRows(wrapping, new Map(), undefined, false, true);
+    const sides = rowMeasures(split, { left: 13, right: 7 });
+    assert.deepStrictEqual(
+      split.map((_, index) => sides.estimateSize(index)),
+      [200, 22, 22, 88],
+    );
+    const taller = rowMeasures(rows, { left: 7, right: 7 }, 17);
+    assert.deepStrictEqual(
+      rows.map((_, index) => taller.estimateSize(index)),
+      [200, 22, 17, 34, 68],
+    );
+  });
+
+  test('marks where each row a line is broken into ends, right after its text, and the spaces and tabs hanging there, leaving lines on one row unmarked', () => {
+    const html = renderToStaticMarkup(
+      <BreakMarks
+        breaks={[
+          { end: 4, blanks: [{ column: 3, tab: false }] },
+          { end: 4, blanks: [{ column: 3, tab: true }] },
+        ]}
+        numbers={2}
+        lineHeight={17}
+      />,
+    );
+    assert.deepStrictEqual(wrapMarksOf(html), [
+      ['wrap-blank', wrapMarkAt('0', 3), strings.symbols.space],
+      ['wrap-break', wrapMarkAt('0', 4), strings.symbols.breaks],
+      ['wrap-blank', wrapMarkAt('17px', 3), strings.symbols.tab],
+      ['wrap-break', wrapMarkAt('17px', 4), strings.symbols.breaks],
+    ]);
+    assert.deepStrictEqual(
+      wrapMarksOf(
+        renderToStaticMarkup(
+          <BreakMarks
+            breaks={[{ end: 6, blanks: [] }]}
+            numbers={1}
+            lineHeight={22}
+          />,
+        ),
+      ),
+      [
+        [
+          'wrap-break',
+          'top:0;left:calc(56px + var(--diff-code-padding) + 6ch)',
+          strings.symbols.breaks,
+        ],
+      ],
+    );
+    assert.strictEqual(
+      renderToStaticMarkup(
+        <BreakMarks breaks={[]} numbers={2} lineHeight={22} />,
+      ),
+      '',
+    );
+    assert.strictEqual(
+      renderToStaticMarkup(
+        <WrapMarks
+          text="one two three"
+          columns={undefined}
+          numbers={2}
+          lineHeight={22}
+        />,
+      ),
+      '',
+    );
+  });
+
+  test('draws no marks on a wrapped line until the browser has laid it out, as they follow its breaks rather than the estimate', () => {
+    assert.strictEqual(
+      renderToStaticMarkup(
+        <WrapMarks
+          text="one two three"
+          columns={7}
+          numbers={2}
+          lineHeight={22}
+        />,
+      ),
+      '<span class="wrap-marks" aria-hidden="true"></span>',
+    );
+  });
+
+  test('keys the rows of code again when the rows or the width they wrap in change, so they are measured again, but no other row', () => {
+    const rows = diffRows(wrapping, new Map(), undefined);
+    const same = diffRows(wrapping, new Map(), undefined);
+    const narrow = rowMeasures(rows, { left: 7, right: 7 });
+    const wide = rowMeasures(rows, { left: 8, right: 8 });
+    const other = rowMeasures(same, { left: 7, right: 7 });
+    assert.strictEqual(rowMeasures(rows, { left: 8, right: 8 }), wide);
+    for (const measures of [wide, other, rowMeasures(rows)]) {
+      assert.notStrictEqual(measures.getItemKey(2), narrow.getItemKey(2));
+      assert.strictEqual(measures.getItemKey(1), narrow.getItemKey(1));
+    }
+  });
+
+  test('measures the rows again when their lines change height, as the virtualizer keeps its sizes until the key callback changes', () => {
+    const rows = diffRows(wrapping, new Map(), undefined);
+    const unwrapped = rowMeasures(rows);
+    assert.strictEqual(rowMeasures(rows, undefined, 22), unwrapped);
+    assert.notStrictEqual(
+      rowMeasures(rows, undefined, 17).getItemKey,
+      unwrapped.getItemKey,
+    );
+    const wrapped = rowMeasures(rows, { left: 7, right: 7 });
+    const taller = rowMeasures(rows, { left: 7, right: 7 }, 17);
+    assert.strictEqual(rowMeasures(rows, { left: 7, right: 7 }, 17), taller);
+    assert.notStrictEqual(taller.getItemKey(2), wrapped.getItemKey(2));
+  });
+});
+
+suite('Scroll anchoring', () => {
+  test('finds what the row at the top of the view shows, and how far into it the view starts', () => {
+    const rows = sized(22, 22, 22);
+    const shown = [['a'], ['b', 'c'], ['d']];
+    assert.deepStrictEqual(scrollAnchor(rows, shown, 0), {
+      shows: ['a'],
+      fraction: 0,
+    });
+    assert.deepStrictEqual(scrollAnchor(rows, shown, 33), {
+      shows: ['b', 'c'],
+      fraction: 0.5,
+    });
+    assert.deepStrictEqual(scrollAnchor(rows, shown, 66), {
+      shows: ['d'],
+      fraction: 1,
+    });
+    assert.strictEqual(scrollAnchor([], [], 0), undefined);
+  });
+
+  test('scrolls back to the first row showing what was at the top once the rows change, as far into it as before', () => {
+    const rows = sized(66, 44, 22);
+    const shown = [['a'], ['b'], ['c']];
+    assert.strictEqual(
+      anchoredScrollTop({ shows: ['b', 'c'], fraction: 0.5 }, rows, shown),
+      88,
+    );
+    assert.strictEqual(
+      anchoredScrollTop({ shows: ['a'], fraction: 0 }, rows, shown),
+      0,
+    );
+    assert.strictEqual(
+      anchoredScrollTop({ shows: ['x'], fraction: 0 }, rows, shown),
+      undefined,
+    );
+  });
+
+  test('keeps a pixel of the row that was at the top in view, as a row scrolled nearly past it would leave the next one there once it shrinks', () => {
+    const rows = sized(22, 22, 22);
+    const shown = [['a'], ['b'], ['c']];
+    assert.strictEqual(
+      anchoredScrollTop({ shows: ['b'], fraction: 219.6 / 220 }, rows, shown),
+      22 + 21,
+    );
+    assert.strictEqual(
+      anchoredScrollTop({ shows: ['b'], fraction: 1 }, rows, shown),
+      22 + 21,
+    );
+  });
+
+  test('names a line alike inline and side by side, and the headers and hunk gaps by their file and order', () => {
+    const files = parsePatch(
+      [
+        patch('a.ts', 1),
+        '@@ -10,1 +11,1 @@',
+        '-one two three',
+        '+one two three four five',
+      ].join('\n'),
+    );
+    const inlineRows = diffRows(files, new Map(), undefined);
+    const splitRows = diffRows(files, new Map(), undefined, false, true);
+    const inline = rowAnchors(inlineRows, lineKeys(inlineRows));
+    const split = rowAnchors(splitRows, lineKeys(splitRows));
+    assert.deepStrictEqual(inline, [
+      ['error'],
+      ['0:file'],
+      ['0:0'],
+      ['0:hunk:1'],
+      ['0:1'],
+      ['0:2'],
+    ]);
+    assert.deepStrictEqual(split, [
+      ['error'],
+      ['0:file'],
+      ['0:0'],
+      ['0:hunk:1'],
+      ['0:1', '0:2'],
+    ]);
+    const added = scrollAnchor(sized(22, 22, 22, 22, 22, 22), inline, 115.5);
+    assert.ok(added);
+    assert.strictEqual(
+      anchoredScrollTop(added, sized(22, 22, 22, 22, 44), split),
+      88 + 0.25 * 44,
+    );
+  });
+});
+
+function layoutSteps(padding: number, scale: number): number[] {
+  const exact = padding * scale * 64;
+  return [Math.floor(exact), Math.round(exact)];
+}
+
+suite('Drawing code', () => {
+  test('pads changed words up to the top and down to the bottom of their line, apart as the text sits off center at scales like 125%, and not before the text is measured', () => {
+    const line = { top: 154, bottom: 176 };
+    const even = wordPadding(line, { top: 157, bottom: 173 }, 1);
+    assert.deepStrictEqual(layoutSteps(even.top, 1), [192, 192]);
+    assert.deepStrictEqual(layoutSteps(even.bottom, 1), [192, 192]);
+    const off = wordPadding(
+      line,
+      { top: 154 + 2.4000091552734375, bottom: 176 - 3.5999908447265625 },
+      1.25,
+    );
+    assert.deepStrictEqual(layoutSteps(off.top, 1.25), [192, 192]);
+    assert.deepStrictEqual(layoutSteps(off.bottom, 1.25), [288, 288]);
+    assert.deepStrictEqual(wordPadding(line, { top: 0, bottom: 0 }, 1), {
+      top: 0,
+      bottom: 0,
+    });
+    const over = wordPadding(line, { top: 150, bottom: 180 }, 1);
+    assert.deepStrictEqual(
+      [layoutSteps(over.top, 1), layoutSteps(over.bottom, 1)],
+      [
+        [0, 0],
+        [0, 0],
+      ],
+    );
+  });
+
+  test('gives a line the same inputs to draw it from while its colors, changed words and matches stay, so it is not drawn again', () => {
+    const keyword = [{ start: 0, end: 3, kind: 'keyword' as const }];
+    const changed = [{ start: 4, end: 7 }];
+    const match = { file: 0, line: 1, start: 4, end: 5 };
+    const matched = [match];
+    const marks = () => ({
+      syntax: new Map([['0:1', keyword]]),
+      words: new Map([['0:1', changed]]),
+      finds: new Map([['0:1', matched]]),
+      foundKey: '0:1',
+      found: match,
+      whitespace: false,
+    });
+    const before = codeProps(marks(), '0:1', 'let sum', 'removed');
+    const after = codeProps(marks(), '0:1', 'let sum', 'removed');
+    assert.deepStrictEqual(
+      Object.entries(after).map(([name, value]) => [name, value]),
+      Object.entries(before),
+    );
+    assert.ok(
+      Object.values(after).every(
+        (value, index) => Object.values(before)[index] === value,
+      ),
+    );
+    assert.strictEqual(before.wordClass, 'word-removed');
+    assert.strictEqual(before.current, match);
+    const plain = codeProps(marks(), '0:2', 'x', 'added');
+    const again = codeProps(marks(), undefined, 'x', undefined);
+    assert.deepStrictEqual(plain.syntax, []);
+    assert.strictEqual(again.syntax, plain.syntax);
+    assert.strictEqual(again.words, plain.words);
+    assert.strictEqual(again.finds, plain.finds);
+    assert.strictEqual(plain.current, undefined);
+    assert.strictEqual(plain.wordClass, 'word-added');
+  });
+
+  test('tints the row of a line changed through instead of marking its words', () => {
+    const words = new Map<string, LineWords>([
+      ['0:1', 'whole'],
+      ['0:2', [{ start: 0, end: 1 }]],
+    ]);
+    const marks = {
+      syntax: new Map(),
+      words,
+      finds: new Map(),
+      foundKey: undefined,
+      found: undefined,
+      whitespace: false,
+    };
+    assert.deepStrictEqual(codeProps(marks, '0:1', 'x', 'added').words, []);
+    assert.deepStrictEqual(codeProps(marks, '0:2', 'x', 'added').words, [
+      { start: 0, end: 1 },
+    ]);
+    assert.strictEqual(wholeChangeClass(words, '0:1'), 'whole-change');
+    assert.strictEqual(wholeChangeClass(words, '0:2'), '');
+    assert.strictEqual(wholeChangeClass(words, undefined), '');
+  });
+
+  test('tells which side of the side-by-side diff a selection starts on, and none outside the sides', () => {
+    const { document } = new JSDOM(
+      '<div class="split-line"><div class="split-side"><span class="split-code"><span class="code">old</span></span></div><div class="split-side"><span class="split-code"><span class="code">new</span></span></div></div><div class="file-header">a.txt</div>',
+    ).window;
+    const [left, right] = document.querySelectorAll('.code');
+    assert.strictEqual(selectionSide(left), 'left');
+    assert.strictEqual(selectionSide(right), 'right');
+    assert.strictEqual(
+      selectionSide(document.querySelector('.file-header')),
+      undefined,
+    );
+    assert.strictEqual(selectionSide(null), undefined);
+  });
+
+  test('shows a carriage return, a non-breaking space and the spaces that draw nothing as signs of their own when asked, as a change to line endings or to a pasted space looked like none, but not the joiners inside emoji', () => {
+    assert.strictEqual(
+      renderToStaticMarkup(
+        <>
+          {marked('﻿a b​c　d👍🏽‍\r', [], [], 'word-added', [], undefined, true)}
+        </>,
+      ),
+      [
+        sign(strings.symbols.invisible, '﻿'),
+        'a',
+        sign(strings.symbols.nonBreakingSpace, ' '),
+        'b',
+        sign(strings.symbols.invisible, '​'),
+        'c',
+        sign(strings.symbols.invisible, '　'),
+        'd👍🏽‍',
+        sign(strings.symbols.carriageReturn, '\r'),
+      ].join(''),
+    );
+  });
+
+  test('shows each space and tab as a sign over it when asked, inside the colors and matches, keeping the text as it is', () => {
+    const space = `<span class="blank" data-glyph="${strings.symbols.space}"> </span>`;
+    const tab = `<span class="blank" data-glyph="${strings.symbols.tab}">\t</span>`;
+    assert.strictEqual(
+      renderToStaticMarkup(
+        <>{marked('a b\tc', [], [], 'word-added', [], undefined, true)}</>,
+      ),
+      `a${space}b${tab}c`,
+    );
+    assert.strictEqual(
+      renderToStaticMarkup(
+        <>
+          {marked(
+            'let  x',
+            [{ start: 0, end: 4, kind: 'keyword' }],
+            [],
+            'word-added',
+            [{ start: 4, end: 6 }],
+            undefined,
+            true,
+          )}
+        </>,
+      ),
+      `<span class="syntax-keyword">let${space}</span><mark class="find-match ">${space}x</mark>`,
+    );
+    assert.strictEqual(
+      renderToStaticMarkup(
+        <>{marked('a b', [], [], 'word-added', [], undefined, false)}</>,
+      ),
+      'a b',
+    );
+    const marks = {
+      syntax: new Map(),
+      words: new Map(),
+      finds: new Map(),
+      foundKey: undefined,
+      found: undefined,
+    };
+    assert.strictEqual(
+      codeProps({ ...marks, whitespace: true }, '0:1', 'x', 'added').whitespace,
+      true,
+    );
+    assert.strictEqual(
+      codeProps({ ...marks, whitespace: false }, '0:1', 'x', 'added')
+        .whitespace,
+      false,
+    );
+  });
+
+  test('lets a wrapped line break where VS Code would, inside its colors too, keeping its indentation on the row with the code it indents', () => {
+    const space = `<span class="blank" data-glyph="${strings.symbols.space}"> </span>`;
+    assert.strictEqual(
+      wrapMarkup('    a.b(c)', 4),
+      '<span class="lead">    </span>a.<wbr/>b<wbr/>(c)',
+    );
+    assert.strictEqual(
+      wrapMarkup('a.b(c)', 0, [{ start: 0, end: 2, kind: 'keyword' }]),
+      '<span class="syntax-keyword">a.</span><wbr/>b<wbr/>(c)',
+    );
+    assert.strictEqual(
+      wrapMarkup('a.b(c)', 0, [{ start: 2, end: 3, kind: 'function' }]),
+      'a.<span class="syntax-function"><wbr/>b</span><wbr/>(c)',
+    );
+    assert.strictEqual(
+      wrapMarkup('  a', 2, [], true),
+      `<span class="lead">${space}${space}</span>a`,
+    );
+    assert.strictEqual(wrapMarkup('  a\tb.c', 0), '  a\tb.<wbr/>c');
+    assert.strictEqual(wrapMarkup('    a.b(c)', undefined), '    a.b(c)');
+  });
+
+  test('indents the rows a wrapped line wraps onto by its indentation', () => {
+    const props = {
+      text: '  a',
+      syntax: [],
+      words: [],
+      wordClass: 'word-added',
+      finds: [],
+      current: undefined,
+      whitespace: false,
+    };
+    assert.strictEqual(
+      renderToStaticMarkup(<Code {...props} indent={2} />),
+      '<span class="code" style="--wrap-indent:2ch"><span class="lead">  </span>a</span>',
+    );
+    assert.strictEqual(
+      renderToStaticMarkup(<Code {...props} indent={0} />),
+      '<span class="code">  a</span>',
+    );
+    assert.strictEqual(
+      renderToStaticMarkup(<Code {...props} />),
+      '<span class="code">  a</span>',
+    );
+  });
+
+  test('draws the changed words inside the line, with search matches over them', () => {
+    const html = renderToStaticMarkup(
+      <>
+        {marked(
+          'let sum = 1',
+          [],
+          [{ start: 4, end: 7 }],
+          'word-added',
+          [{ start: 5, end: 9 }],
+          { start: 5, end: 9 },
+        )}
+      </>,
+    );
+    assert.strictEqual(
+      html,
+      'let <span class="word-added">s</span><span class="word-added"><mark class="find-match current">um</mark></span><mark class="find-match current"> =</mark> 1',
+    );
+  });
+
+  test('draws a place words were inserted on the other line as a bar of no width between the characters, at the end too', () => {
+    const html = renderToStaticMarkup(
+      <>
+        {marked(
+          'abc',
+          [{ start: 0, end: 2, kind: 'keyword' }],
+          [
+            { start: 1, end: 1 },
+            { start: 3, end: 3 },
+          ],
+          'word-removed',
+          [],
+          undefined,
+        )}
+      </>,
+    );
+    assert.strictEqual(
+      html,
+      '<span class="syntax-keyword">a</span><span class="word-gap word-removed"></span><span class="syntax-keyword">b</span>c<span class="word-gap word-removed"></span>',
+    );
+  });
+
+  test('makes the bar where words were inserted 2 pixels wide, a whole number of screen pixels at any scale so it stays sharp', () => {
+    for (const [scale, pixels] of [
+      [1, 2],
+      [1.25, 3],
+      [1.5, 3],
+      [1.75, 4],
+      [2, 4],
+    ]) {
+      assert.deepStrictEqual(layoutSteps(gapWidth(scale), scale), [
+        pixels * 64,
+        pixels * 64,
+      ]);
+    }
+  });
+
+  test('marks a line dense with colors, changed words and matches piece by piece in one pass', () => {
+    const pairs = 2000;
+    const text = 'ab'.repeat(pairs);
+    const every = (offset: number) =>
+      Array.from({ length: pairs }, (_, pair) => ({
+        start: 2 * pair + offset,
+        end: 2 * pair + offset + 1,
+      }));
+    const colors = every(0).map((range) => ({
+      ...range,
+      kind: 'keyword' as const,
+    }));
+    const syntax = countingReads(colors);
+    const words = countingReads(every(1));
+    const matches = countingReads(every(1));
+    const drawn = marked(
+      text,
+      syntax.counted,
+      words.counted,
+      'word-added',
+      matches.counted,
+      undefined,
+    );
+    for (const { reads } of [syntax, words, matches]) {
+      assert.ok(reads <= 10 * pairs, `${reads} reads of ${pairs} ranges`);
+    }
+    assert.ok(Array.isArray(drawn));
+    assert.strictEqual(drawn.length, 2 * pairs);
+    assert.strictEqual(
+      renderToStaticMarkup(<>{drawn.slice(-2)}</>),
+      '<span class="syntax-keyword">a</span><span class="word-added"><mark class="find-match ">b</mark></span>',
+    );
+  });
+
+  test('draws the syntax colors inside the changed words, under the search matches', () => {
+    assert.strictEqual(
+      renderToStaticMarkup(
+        <>
+          {marked(
+            'let sum = 1',
+            [
+              { start: 0, end: 3, kind: 'keyword' },
+              { start: 10, end: 11, kind: 'number' },
+            ],
+            [{ start: 0, end: 7 }],
+            'word-added',
+            [{ start: 2, end: 5 }],
+            undefined,
+          )}
+        </>,
+      ),
+      '<span class="word-added"><span class="syntax-keyword">le</span></span>' +
+        '<span class="word-added"><span class="syntax-keyword"><mark class="find-match ">t</mark></span></span>' +
+        '<span class="word-added"><mark class="find-match "> s</mark></span>' +
+        '<span class="word-added">um</span> = <span class="syntax-number">1</span>',
+    );
+  });
+
+  test('marks the matches in a line, the current one apart', () => {
+    const html = renderToStaticMarkup(
+      <>
+        {marked(
+          'find a find',
+          [],
+          [],
+          'word-added',
+          [
+            { start: 0, end: 4 },
+            { start: 7, end: 11 },
+          ],
+          { start: 7, end: 11 },
+        )}
+      </>,
+    );
+    assert.strictEqual(
+      html,
+      '<mark class="find-match ">find</mark> a <mark class="find-match current">find</mark>',
+    );
+    assert.strictEqual(
+      marked('plain', [], [], 'word-added', [], undefined),
+      'plain',
+    );
+  });
+});
+
+suite('Diff keys', () => {
+  test('scrolls back left with the left arrow while scrolled right, leaving it to move between the columns only then', () => {
+    assert.strictEqual(diffScrollLeft(-1, 100), 60);
+    assert.strictEqual(diffScrollLeft(-1, 20), 0);
+    assert.strictEqual(diffScrollLeft(-1, 0), undefined);
+    assert.strictEqual(diffScrollLeft(1, 100), undefined);
+  });
+
+  test('scrolls the sides of a side by side diff right with the right arrow too, no further than the widest line, as nothing else scrolls them', () => {
+    assert.strictEqual(diffScrollLeft(1, 0, 100), 40);
+    assert.strictEqual(diffScrollLeft(1, 80, 100), 100);
+    assert.strictEqual(diffScrollLeft(1, 100, 100), undefined);
+    assert.strictEqual(diffScrollLeft(1, 0, 0), undefined);
+    assert.strictEqual(diffScrollLeft(-1, 100, 100), 60);
+  });
+
+  test('scrolls three lines with the arrows, a screen less a line with the page keys, and to either end', () => {
+    assert.strictEqual(diffScrollTop('down', 100, 400, 2000), 166);
+    assert.strictEqual(diffScrollTop('up', 40, 400, 2000), 0);
+    assert.strictEqual(diffScrollTop('pageDown', 100, 400, 2000), 478);
+    assert.strictEqual(diffScrollTop('pageUp', 500, 400, 2000), 122);
+    assert.strictEqual(diffScrollTop('first', 500, 400, 2000), 0);
+    assert.strictEqual(diffScrollTop('last', 0, 400, 2000), 1600);
+    assert.strictEqual(diffScrollTop('last', 0, 400, 300), 0);
+  });
+
+  test('scrolls by lines as tall as those of the diff', () => {
+    assert.strictEqual(diffScrollTop('down', 100, 400, 2000, 17), 151);
+    assert.strictEqual(diffScrollTop('up', 100, 400, 2000, 17), 49);
+    assert.strictEqual(diffScrollTop('pageDown', 100, 400, 2000, 17), 483);
+    assert.strictEqual(diffScrollTop('pageUp', 500, 400, 2000, 17), 117);
+  });
+});
+
+suite('Jumping between changes', () => {
+  test('finds where each run of added or removed lines starts', () => {
+    const rows = diffRows(
+      parsePatch(
+        [
+          'diff --git a/a.ts b/a.ts',
+          '--- a/a.ts',
+          '+++ b/a.ts',
+          '@@ -1,6 +1,6 @@',
+          ' one',
+          '-two',
+          '+2',
+          ' three',
+          ' four',
+          '+five',
+          '',
+        ].join('\n'),
+      ),
+      new Map(),
+      undefined,
+    );
+    assert.deepStrictEqual(
+      changeStarts(rows).map((index) => rows[index]),
+      [
+        {
+          kind: 'line',
+          file: 0,
+          line: {
+            kind: 'removed',
+            oldNumber: 2,
+            newNumber: undefined,
+            text: 'two',
+          },
+        },
+        {
+          kind: 'line',
+          file: 0,
+          line: {
+            kind: 'added',
+            oldNumber: undefined,
+            newNumber: 5,
+            text: 'five',
+          },
+        },
+      ],
+    );
+  });
+
+  test('scrolls to the first change below the header and some context, as J would from above it, and nowhere without a change', () => {
+    assert.strictEqual(firstChangeTop([100, 500], 60), 40);
+    assert.strictEqual(firstChangeTop([30, 500], 60), 0);
+    assert.strictEqual(firstChangeTop([], 60), undefined);
+  });
+
+  test('scrolls to the next or previous change below the header and some context, and no further at either end', () => {
+    const starts = [100, 500, 900];
+    assert.strictEqual(changeScrollTop(starts, 0, 1, 60), 40);
+    assert.strictEqual(changeScrollTop(starts, 40, 1, 60), 440);
+    assert.strictEqual(changeScrollTop(starts, 440, -1, 60), 40);
+    assert.strictEqual(changeScrollTop(starts, 40, -1, 60), undefined);
+    assert.strictEqual(changeScrollTop(starts, 840, 1, 60), undefined);
+    assert.strictEqual(changeScrollTop([30], 100, -1, 60), 0);
+  });
+
+  test('leaves room above a change for the file header stuck atop the diff and two lines, however tall the lines', () => {
+    assert.strictEqual(changeMargin(22), 66);
+    assert.strictEqual(changeMargin(17), 56);
+  });
+});
+
+const longLine = (kind: 'context' | 'added' | 'removed') => ({
+  kind,
+  oldNumber: 1,
+  newNumber: 1,
+  text: 'a'.repeat(400),
+});
+
+const foundOn = (line: number) => ({ file: 0, line, start: 300, end: 304 });
+
+const monospace: TextWidths = {
+  char: 8,
+  of: (cluster) => assert.fail(`measured ${cluster}`),
+};
+
+suite('Diff sideways scrolling', () => {
+  test('scrolls sideways to a found match hidden past an edge of the side it is on', () => {
+    const view = { scrolled: 0, width: 600, room: 3000, minimap: 40 };
+    const inline: DiffRow = { kind: 'line', file: 0, line: longLine('added') };
+    assert.strictEqual(foundScroll(inline, foundOn(3), view, monospace), 2254);
+    const whole: DiffRow = {
+      kind: 'wholeLine',
+      file: 0,
+      number: 4,
+      text: 'a'.repeat(400),
+    };
+    assert.strictEqual(foundScroll(whole, foundOn(3), view, monospace), 2198);
+    const changed: DiffRow = {
+      kind: 'split',
+      file: 0,
+      left: { index: 2, line: longLine('removed') },
+      right: { index: 3, line: longLine('added') },
+    };
+    assert.strictEqual(foundScroll(changed, foundOn(2), view, monospace), 2122);
+    assert.strictEqual(foundScroll(changed, foundOn(3), view, monospace), 2142);
+    const cell = { index: 3, line: longLine('context') };
+    const context: DiffRow = {
+      kind: 'split',
+      file: 0,
+      left: cell,
+      right: cell,
+    };
+    assert.strictEqual(foundScroll(context, foundOn(3), view, monospace), 2142);
+    assert.strictEqual(
+      foundScroll(
+        inline,
+        { ...foundOn(3), start: 10, end: 14 },
+        view,
+        monospace,
+      ),
+      0,
+    );
+    assert.strictEqual(
+      foundScroll(
+        inline,
+        { ...foundOn(3), start: 0, end: 4 },
+        { ...view, scrolled: 2000 },
+        monospace,
+      ),
+      0,
+    );
+    assert.strictEqual(
+      foundScroll({ kind: 'hunk', file: 0 }, foundOn(3), view, monospace),
+      undefined,
+    );
+  });
+});
+
+suite('Hunk divider', () => {
+  test('marks the lines left out between hunks with dots', () => {
+    assert.strictEqual(
+      renderToStaticMarkup(<HunkDivider />),
+      '<div class="hunk-divider"><span class="hunk-dots">⋯</span></div>',
+    );
+  });
+});
+
+const previewHeader = (preview?: Preview, rendered?: boolean) =>
+  renderToStaticMarkup(
+    <FileHeader
+      path="v.svg"
+      open
+      whole={false}
+      collapsible
+      onClick={() => {}}
+      preview={preview}
+      rendered={rendered}
+      onRender={() => {}}
+    />,
+  );
+
+suite('Rendered SVGs', () => {
+  const svg = parsePatch(
+    [
+      'diff --git a/v.svg b/v.svg',
+      `index ${'1'.repeat(40)}..${'2'.repeat(40)}`,
+      '--- a/v.svg',
+      '+++ b/v.svg',
+      '@@ -1 +1 @@',
+      '-<svg/>',
+      '+<svg />',
+    ].join('\n'),
+  );
+
+  test('shows an SVG as an image in place of its lines only once asked to', () => {
+    for (const sideBySide of [false, true]) {
+      const rows = (rendered: ReadonlySet<string>) =>
+        kinds(diffRows(svg, new Map(), undefined, false, sideBySide, rendered));
+      assert.ok(rows(new Set()).includes(sideBySide ? 'split' : 'line'));
+      assert.deepStrictEqual(rows(new Set(['v.svg'])), [
+        'error',
+        'file',
+        'image',
+      ]);
+      assert.ok(rows(new Set(['other.svg'])).includes('file'));
+    }
+    const whole = { path: 'v.svg', content: '<svg/>\n', binary: false };
+    assert.deepStrictEqual(
+      kinds(diffRows([], new Map(), whole, false, false, new Set(['v.svg']))),
+      ['error', 'file', 'image'],
+    );
+    assert.deepStrictEqual(kinds(diffRows([], new Map(), whole)), [
+      'error',
+      'file',
+      'wholeLine',
+    ]);
+  });
+
+  test('offers to switch between the source and its preview only for a file that has one', () => {
+    assert.doesNotMatch(previewHeader(), /<button/);
+    assert.match(
+      previewHeader('image'),
+      /title="Show the Image" aria-pressed="false"/,
+    );
+    assert.match(
+      previewHeader('markdown', false),
+      /title="Show the Preview" aria-pressed="false"/,
+    );
+    assert.match(
+      previewHeader('image', true),
+      /title="Show the Image" aria-pressed="true"/,
+    );
+  });
+});
+
+const changeOf = (index: string) => sideChange(binaryOfIndex(index));
+
+const binaryMarkup = (
+  change: 'added' | 'removed' | undefined,
+  split: boolean,
+) =>
+  renderToStaticMarkup(
+    <FileNote text="Binary file" change={change} split={split} />,
+  );
+
+const emptyFile = (index: string, mode: string) =>
+  parsePatch(
+    ['diff --git a/e.md b/e.md', mode, `index ${index}`].join('\n'),
+  )[0];
+
+suite('Binary files', () => {
+  test('notes an empty file added or deleted, which has no lines to show, and the old and new mode of one only changed in mode', () => {
+    const empty = 'e69de29bb2d1d6434b8b29ae775ad8c2e48c5391';
+    for (const sideBySide of [false, true]) {
+      assert.deepStrictEqual(
+        kinds(
+          diffRows(
+            [emptyFile(`${'0'.repeat(40)}..${empty}`, 'new file mode 100644')],
+            new Map(),
+            undefined,
+            false,
+            sideBySide,
+          ),
+        ),
+        ['error', 'file', 'empty'],
+      );
+    }
+    assert.deepStrictEqual(
+      kinds(
+        diffRows(
+          [
+            emptyFile(
+              `${empty}..${'0'.repeat(40)}`,
+              'deleted file mode 100644',
+            ),
+          ],
+          new Map(),
+          undefined,
+        ),
+      ),
+      ['error', 'file', 'empty'],
+    );
+    assert.deepStrictEqual(
+      kinds(
+        diffRows(
+          [
+            parsePatch(
+              [
+                'diff --git a/s.sh b/s.sh',
+                'old mode 100644',
+                'new mode 100755',
+              ].join('\n'),
+            )[0],
+          ],
+          new Map(),
+          undefined,
+        ),
+      ),
+      ['error', 'file', 'mode'],
+    );
+    assert.strictEqual(
+      strings.diff.modeChanged('100644', '100755'),
+      'Mode changed from 100644 to 100755',
+    );
+  });
+
+  test('tells a binary file added or deleted by the side it lacks', () => {
+    assert.strictEqual(
+      changeOf(`${'0'.repeat(40)}..${'2'.repeat(40)}`),
+      'added',
+    );
+    assert.strictEqual(
+      changeOf(`${'1'.repeat(40)}..${'0'.repeat(40)}`),
+      'removed',
+    );
+    assert.strictEqual(
+      changeOf(`${'1'.repeat(40)}..${'2'.repeat(40)}`),
+      undefined,
+    );
+  });
+
+  test('says a file is binary on each side it has, hatching the other side by side, and tints it inline', () => {
+    assert.strictEqual(
+      binaryMarkup('added', false),
+      '<div class="file-note added">Binary file</div>',
+    );
+    assert.strictEqual(
+      binaryMarkup('added', true),
+      '<div class="split-line note-line"><div class="file-note split-side filler"></div><div class="file-note split-side added">Binary file</div></div>',
+    );
+    assert.strictEqual(
+      binaryMarkup('removed', true),
+      '<div class="split-line note-line"><div class="file-note split-side removed">Binary file</div><div class="file-note split-side filler"></div></div>',
+    );
+    assert.strictEqual(
+      binaryMarkup(undefined, true),
+      '<div class="split-line note-line"><div class="file-note split-side ">Binary file</div><div class="file-note split-side ">Binary file</div></div>',
+    );
+  });
+});
+
+const linkPatch = (...patchLines: string[]) =>
+  parsePatch(['diff --git a/l b/l', ...patchLines].join('\n'))[0];
+
+const noNewline = '\\ No newline at end of file';
+
+const linkRows = (file: DiffFile, sideBySide: boolean) =>
+  diffRows([file], new Map(), undefined, false, sideBySide).flatMap((row) =>
+    row.kind === 'link' ? [row.side] : [row.kind],
+  );
+
+suite('Symbolic links', () => {
+  const added = linkPatch(
+    'new file mode 120000',
+    'index 0000000..1111111',
+    '--- /dev/null',
+    '+++ b/l',
+    '@@ -0,0 +1 @@',
+    '+README',
+    noNewline,
+  );
+  const deleted = linkPatch(
+    'deleted file mode 120000',
+    'index 1111111..0000000',
+    '--- a/l',
+    '+++ /dev/null',
+    '@@ -1 +0,0 @@',
+    '-README',
+    noNewline,
+  );
+  const retargeted = linkPatch(
+    'index 1111111..2222222 120000',
+    '--- a/l',
+    '+++ b/l',
+    '@@ -1 +1 @@',
+    '-README',
+    noNewline,
+    '+docs/README',
+    noNewline,
+  );
+  const fileToLink = linkPatch(
+    'deleted file mode 100644',
+    'index 3333333..0000000',
+    '--- a/l',
+    '+++ /dev/null',
+    '@@ -1 +0,0 @@',
+    '-hello',
+    'diff --git a/l b/l',
+    'new file mode 120000',
+    'index 0000000..1111111',
+    '--- /dev/null',
+    '+++ b/l',
+    '@@ -0,0 +1 @@',
+    '+README',
+    noNewline,
+  );
+  const [renamed] = parsePatch(
+    [
+      'diff --git a/l b/m',
+      'similarity index 50%',
+      'rename from l',
+      'rename to m',
+      'index 1111111..2222222 120000',
+      '--- a/l',
+      '+++ b/m',
+      '@@ -1 +1 @@',
+      '-README',
+      noNewline,
+      '+docs/README',
+      noNewline,
+    ].join('\n'),
+  );
+
+  test('notes the target of each side that is a symbolic link in place of its text, inline and side by side, above the lines of a side that is a file', () => {
+    for (const sideBySide of [false, true]) {
+      assert.deepStrictEqual(linkRows(added, sideBySide), [
+        'error',
+        'file',
+        'new',
+      ]);
+      assert.deepStrictEqual(linkRows(deleted, sideBySide), [
+        'error',
+        'file',
+        'old',
+      ]);
+      assert.deepStrictEqual(linkRows(retargeted, sideBySide), [
+        'error',
+        'file',
+        'old',
+        'new',
+      ]);
+      assert.deepStrictEqual(linkRows(fileToLink, sideBySide), [
+        'error',
+        'file',
+        'new',
+        sideBySide ? 'split' : 'line',
+      ]);
+      assert.deepStrictEqual(linkRows(renamed, sideBySide), [
+        'error',
+        'file',
+        'old',
+        'new',
+      ]);
+    }
+    assert.strictEqual(
+      strings.diff.symbolicLink('docs/README'),
+      'Symbolic link to docs/README',
+    );
+    assert.strictEqual(rowHeight({ kind: 'link', file: 0, side: 'new' }), 22);
+  });
+
+  test('notes a symbolic link shown whole by its target, with no lines and no preview, though its name is that of a document', () => {
+    const whole = {
+      path: 'AGENTS.md',
+      content: 'README',
+      binary: false,
+      link: true as const,
+    };
+    for (const rendered of [new Set<string>(), new Set(['AGENTS.md'])]) {
+      assert.deepStrictEqual(
+        kinds(diffRows([], new Map(), whole, false, false, rendered)),
+        ['error', 'file', 'link'],
+      );
+    }
+  });
+});
+
+const collapsibleHeader = (collapsible: boolean) =>
+  renderToStaticMarkup(
+    <FileHeader
+      path="a.ts"
+      open
+      whole={false}
+      collapsible={collapsible}
+      onClick={() => {}}
+    />,
+  );
+
+suite('Diff file header', () => {
+  test('labels a file shown entire as unchanged, naming no commit, as it may be in the uncommitted changes or a comparison', () => {
+    const html = renderToStaticMarkup(
+      <FileHeader
+        path="a.ts"
+        open
+        whole
+        collapsible={false}
+        onClick={() => {}}
+      />,
+    );
+    assert.match(html, /<span class="unchanged">Unchanged<\/span>/);
+    assert.doesNotMatch(html, /commit/);
+    assert.doesNotMatch(
+      renderToStaticMarkup(
+        <FileHeader
+          path="a.ts"
+          open
+          whole={false}
+          collapsible
+          onClick={() => {}}
+        />,
+      ),
+      /unchanged/,
+    );
+  });
+
+  test('draws the twisty only on a header that can collapse', () => {
+    assert.match(collapsibleHeader(true), /twisty/);
+    assert.doesNotMatch(collapsibleHeader(false), /twisty/);
+  });
+
+  test('names a renamed file by both its paths, shortened as git does, with both in full in its tooltip', () => {
+    const html = renderToStaticMarkup(
+      <FileHeader
+        path="elsewhere/to-folder.txt"
+        oldPath="moved/to-folder.txt"
+        open
+        whole={false}
+        collapsible
+        onClick={() => {}}
+      />,
+    );
+    assert.match(
+      html,
+      /<span class="path" title="moved\/to-folder\.txt → elsewhere\/to-folder\.txt">\{moved → elsewhere\}\/to-folder\.txt<\/span>/,
+    );
+  });
+});
+
+const renamedFile = (...patchLines: string[]) =>
+  parsePatch(['diff --git a/p.sh b/q.sh', ...patchLines].join('\n'))[0];
+
+suite('Renamed files', () => {
+  const rename = [
+    'similarity index 100%',
+    'rename from p.sh',
+    'rename to q.sh',
+  ];
+
+  test('notes a file renamed or copied without changes, which has no lines to show, keeping its old path on its header', () => {
+    for (const sideBySide of [false, true]) {
+      for (const file of [
+        renamedFile(...rename),
+        renamedFile('similarity index 100%', 'copy from p.sh', 'copy to q.sh'),
+      ]) {
+        const rows = diffRows([file], new Map(), undefined, false, sideBySide);
+        assert.deepStrictEqual(kinds(rows), ['error', 'file', 'sameContent']);
+        assert.deepStrictEqual(rows[1], {
+          kind: 'file',
+          file: 0,
+          path: 'q.sh',
+          oldPath: 'p.sh',
+          open: true,
+          collapsible: false,
+        });
+      }
+    }
+  });
+
+  test('notes only whitespace changed for a renamed file git found less than wholly alike but shows no lines of, as whitespace changes are hidden', () => {
+    assert.deepStrictEqual(
+      kinds(
+        diffRows(
+          [
+            renamedFile(
+              'similarity index 83%',
+              'rename from p.sh',
+              'rename to q.sh',
+              'index 1111111..2222222 100644',
+            ),
+          ],
+          new Map(),
+          undefined,
+        ),
+      ),
+      ['error', 'file', 'whitespace'],
+    );
+  });
+
+  test('notes the mode of a renamed file changing rather than its content staying, and no note for a rename with changed lines', () => {
+    assert.deepStrictEqual(
+      kinds(
+        diffRows(
+          [renamedFile('old mode 100644', 'new mode 100755', ...rename)],
+          new Map(),
+          undefined,
+        ),
+      ),
+      ['error', 'file', 'mode'],
+    );
+    assert.deepStrictEqual(
+      kinds(
+        diffRows(
+          [
+            renamedFile(
+              'similarity index 90%',
+              'rename from p.sh',
+              'rename to q.sh',
+              'index 1111111..2222222 100644',
+              '--- a/p.sh',
+              '+++ b/q.sh',
+              '@@ -1 +1 @@',
+              '-a',
+              '+b',
+            ),
+          ],
+          new Map(),
+          undefined,
+        ),
+      ),
+      ['error', 'file', 'line', 'line'],
+    );
+  });
+});

@@ -1,7 +1,7 @@
 {
   "name": "fastforward",
   "productName": "Fastforward",
-  "description": "A desktop app for git",
+  "description": "A collection of desktop tools",
   "version": "22.0.0",
   "author": {
     "name": "Adam Lengyel",
@@ -20,6 +20,7 @@
   "scripts": {
     "build": "node scripts/esbuild.mts",
     "dev": "node scripts/esbuild.mts --dev",
+    "dev:open": "electron . --",
     "package": "npm run check-types && node scripts/esbuild.mts --production",
     "check-types": "tsc --noEmit && tsc -p tsconfig.main.json && tsc -p tsconfig.webview.json && tsc -p tsconfig.scripts.json",
     "pretest": "npm run build",
@@ -34,7 +35,7 @@
     "knip": "knip",
     "dist": "npm run package && electron-builder --publish never",
     "release": "node scripts/release.mts",
-    "playground": "node scripts/playground.mts"
+    "playground:git": "node scripts/playground/git.mts"
   },
   "devDependencies": {
     "@tanstack/react-virtual": "^3.14.15",

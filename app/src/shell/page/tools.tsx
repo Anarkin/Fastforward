@@ -1,0 +1,77 @@
+import { useCallback } from 'react';
+import { gitGroups, gitKeymap } from '../../tools/git/shared/keymap';
+import type { GitToHost, GitToWebview } from '../../tools/git/shared/protocol';
+import { shortcutGroupsOf, type ShortcutGroup } from '../shared/keymap';
+import type { ToHost } from '../shared/protocol';
+import { strings } from '../../shared/strings';
+import type { ToolId, ToWebviewOfTool } from '../shared/tools';
+import type { ContextMenuItem, OpenMenu } from '../../ui/contextMenu';
+import { FilesTool } from '../../tools/files/page/tool';
+import { TerminalTool } from '../../tools/terminal/page/tool';
+import { GitTool } from '../../tools/git/page/tool';
+
+export type ToolListeners = {
+  readonly [K in ToolId]: Set<(message: ToWebviewOfTool<K>) => void>;
+};
+
+export const toolShortcuts: Readonly<Record<ToolId, readonly ShortcutGroup[]>> =
+  {
+    git: shortcutGroupsOf(gitGroups, strings.shortcuts.groups, gitKeymap),
+    files: [],
+    terminal: [],
+  };
+
+export function ToolViews({
+  active,
+  post,
+  listeners,
+  showMenu,
+  closeMenu,
+  onNewTabItems,
+  onTitle,
+}: {
+  active: ToolId | undefined;
+  post: (message: ToHost) => void;
+  listeners: ToolListeners;
+  showMenu: (menu: OpenMenu) => void;
+  closeMenu: () => void;
+  onNewTabItems: (tool: ToolId, items: readonly ContextMenuItem[]) => void;
+  onTitle: (tool: ToolId, title: string | undefined) => void;
+}) {
+  const postGit = useCallback(
+    (message: GitToHost) => post({ type: 'tool', tool: 'git', message }),
+    [post],
+  );
+  const listenGit = useCallback(
+    (handler: (message: GitToWebview) => void) => {
+      listeners.git.add(handler);
+      return () => {
+        listeners.git.delete(handler);
+      };
+    },
+    [listeners],
+  );
+  const gitItems = useCallback(
+    (items: readonly ContextMenuItem[]) => onNewTabItems('git', items),
+    [onNewTabItems],
+  );
+  const gitTitle = useCallback(
+    (title: string | undefined) => onTitle('git', title),
+    [onTitle],
+  );
+  return (
+    <>
+      <GitTool
+        active={active === 'git'}
+        post={postGit}
+        listen={listenGit}
+        showMenu={showMenu}
+        closeMenu={closeMenu}
+        onNewTabItems={gitItems}
+        onTitle={gitTitle}
+      />
+      <FilesTool active={active === 'files'} />
+      <TerminalTool active={active === 'terminal'} />
+    </>
+  );
+}

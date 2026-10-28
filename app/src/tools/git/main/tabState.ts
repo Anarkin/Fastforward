@@ -1,0 +1,536 @@
+import type { Head } from './cli/repository';
+import type { Stash } from './cli/stashes';
+import type { WorkingTree } from './cli/workingTree';
+import { Commits } from './history/commits';
+import { keepsTiedOrder, ranksOf } from './history/extend';
+import { Graph } from './history/graph';
+import {
+  headsOf,
+  mergeExpanded,
+  mergesHiding,
+  showHistory,
+  type Positions,
+  type Shown as ShownHistory,
+} from './history/merges';
+import { noNavigation, reachable, type Navigation } from './history/navigation';
+import { decoratedCommits, decorations, fingerprint } from './refs';
+import { shownSide, sidesOf } from '../shared/comparisons';
+import {
+  pageStart,
+  workingTreeHash,
+  workingTreeIndex,
+  type ChangeArea,
+  type CommitInfo,
+  type FileChange,
+  type NavigationEntry,
+  type RefInfo,
+  type ScrollTarget,
+  type GitToWebview,
+  type GitToWebviewOf,
+} from '../shared/protocol';
+import { strings } from '../../../shared/strings';
+
+export interface TabState {
+  hash: string | undefined;
+  index: number | undefined;
+  path: string | undefined;
+  area: ChangeArea | undefined;
+  entireFile: boolean;
+  diffStale: boolean;
+  changedFiles: Map<string, FileChange>;
+  stagedFiles: Map<string, FileChange>;
+  allFiles: Map<string, FileChange> | undefined;
+  workingTree: WorkingTree | undefined;
+  fullHistory: Commits;
+  partial: boolean;
+  subjects: Map<string, string>;
+  heads: Set<string>;
+  ranks: ReadonlyMap<string, number>;
+  headCommit: string | undefined;
+  stashes: ReadonlyMap<string, Stash>;
+  fingerprint: string;
+  shallow: string;
+  anchor: { hash: string; offset: number; report: number } | undefined;
+  opened: boolean;
+  navigation: Navigation;
+  decorated: Set<string>;
+  toggledMerges: Set<string>;
+  history: ShownHistory;
+  positions: Positions;
+  generation: number;
+  graph: Graph;
+  shownStale: boolean;
+  shown: Shown;
+}
+
+interface Shown {
+  repository?: GitToWebviewOf<'repository'>;
+  fetching?: GitToWebviewOf<'fetching'>;
+  pulling?: GitToWebviewOf<'pulling'>;
+  pushing?: GitToWebviewOf<'pushing'>;
+  pushingTag?: GitToWebviewOf<'pushingTag'>;
+  pullingBranch?: GitToWebviewOf<'pullingBranch'>;
+  pushingBranch?: GitToWebviewOf<'pushingBranch'>;
+  applyingSolo?: GitToWebviewOf<'applyingSolo'>;
+  navigation?: GitToWebviewOf<'navigation'>;
+  commits?: GitToWebviewOf<'commits'>;
+  workingTree?: GitToWebviewOf<'workingTree'>;
+  files?: GitToWebviewOf<'files'>;
+  diff?: GitToWebviewOf<'diff'> | GitToWebviewOf<'fileContent'>;
+  fileDiffs?: ReadonlyMap<string, GitToWebviewOf<'fileDiff'>>;
+  tree?: GitToWebviewOf<'tree'>;
+}
+
+const navigationShown = 20;
+const subjectsKept = 1000;
+const partialRows = 25;
+
+export function newTabState(): TabState {
+  return {
+    hash: undefined,
+    index: undefined,
+    path: undefined,
+    area: undefined,
+    entireFile: false,
+    diffStale: false,
+    changedFiles: new Map(),
+    stagedFiles: new Map(),
+    allFiles: undefined,
+    workingTree: undefined,
+    fullHistory: noCommits,
+    partial: false,
+    subjects: new Map(),
+    heads: new Set(),
+    ranks: new Map(),
+    headCommit: undefined,
+    stashes: new Map(),
+    fingerprint: '',
+    shallow: '',
+    anchor: undefined,
+    opened: false,
+    decorated: new Set(),
+    toggledMerges: new Set(),
+    history: noneShown,
+    positions: noneShown.positions,
+    generation: 0,
+    graph: new Graph(noneShown),
+    shownStale: false,
+    shown: {},
+    navigation: noNavigation,
+  };
+}
+
+const noCommits = Commits.of([]);
+const noneShown = showHistory(noCommits, new Set(), () => false);
+
+export function loadHistory(
+  tab: TabState,
+  fullHistory: Commits,
+  head: Head | undefined,
+  refs: readonly RefInfo[],
+  stashes: readonly Stash[] = [],
+  dates: ReadonlyMap<string, number> = new Map(),
+  partial = false,
+): void {
+  tab.fullHistory = fullHistory;
+  tab.partial = partial;
+  tab.heads = headsOf(fullHistory);
+  takeRefs(tab, head, refs, stashes, dates);
+  if (partial) {
+    forgetHistory(tab);
+  }
+}
+
+export function takeRefs(
+  tab: TabState,
+  head: Head | undefined,
+  refs: readonly RefInfo[],
+  stashes: readonly Stash[] = [],
+  dates: ReadonlyMap<string, number> = new Map(),
+): void {
+  tab.headCommit = head?.commit;
+  tab.stashes = new Map(stashes.map((stash) => [stash.commit, stash]));
+  tab.ranks = ranksOf(tipsInGitOrder(head, refs, false, stashes, dates));
+  tab.fingerprint = fingerprint(head, refs, stashes);
+  tab.decorated = decoratedCommits(refs, head, stashes);
+}
+
+export function refsKeepHistory(
+  tab: TabState,
+  head: Head | undefined,
+  refs: readonly RefInfo[],
+  solo: boolean,
+  stashes: readonly Stash[] = [],
+  dates: ReadonlyMap<string, number> = new Map(),
+): boolean {
+  const tips = tipsInGitOrder(head, refs, solo, stashes, dates);
+  const ranks = ranksOf(tips);
+  return (
+    historyLoaded(tab) &&
+    [...tips].every((tip) => tab.fullHistory.has(tip)) &&
+    [...tab.heads].every((commit) => tips.has(commit)) &&
+    keepsTiedOrder(
+      tab.heads,
+      (commit) => dates.get(commit),
+      (commit) => tab.ranks.get(commit),
+      (commit) => ranks.get(commit),
+    )
+  );
+}
+
+export function tipsInGitOrder(
+  head: Head | undefined,
+  refs: readonly RefInfo[],
+  solo: boolean,
+  stashes: readonly Stash[] = [],
+  dates: ReadonlyMap<string, number> = new Map(),
+): Set<string> {
+  const tips = new Set<string>();
+  if (head?.commit) {
+    tips.add(head.commit);
+  }
+  if (!solo) {
+    for (const tip of [
+      ...dates.keys(),
+      ...[...refs.filter((ref) => ref.kind !== 'remote-tag'), ...stashes].map(
+        (ref) => ref.commit,
+      ),
+    ]) {
+      tips.add(tip);
+    }
+  }
+  return tips;
+}
+
+export function historyLoaded(tab: TabState): boolean {
+  return tab.fingerprint !== '';
+}
+
+export function forgetHistory(tab: TabState): void {
+  tab.fingerprint = '';
+}
+
+export function layOutHistory(
+  tab: TabState,
+  collapse: boolean,
+  head: string | undefined,
+): number {
+  const tips = new Set(tab.heads);
+  if (head) {
+    tips.add(head);
+  }
+  const shown = showHistory(
+    tab.fullHistory,
+    tips,
+    isExpanded(tab, collapse),
+    tab.partial,
+  );
+  const history = tab.partial ? shown.firstRows(partialRows) : shown;
+  tab.history = history;
+  tab.positions = history.positions;
+  const commits = tab.fullHistory;
+  tab.graph = new Graph(history, {
+    head:
+      head === undefined
+        ? undefined
+        : (commits.indexOf(head) ?? (tab.partial ? commits.size : undefined)),
+    stashes: new Set(
+      [...tab.stashes.keys()].flatMap((stash) => commits.indexOf(stash) ?? []),
+    ),
+    partial: tab.partial,
+  });
+  tab.shownStale = false;
+  tab.index = positionOf(tab, tab.hash);
+  return ++tab.generation;
+}
+
+export function firstPage(
+  tab: TabState,
+  keepPlace: boolean,
+  scrollTo?: string,
+): { start: number; scrollTarget: ScrollTarget | undefined } {
+  const scrollTarget =
+    (keepPlace ? anchorOf(tab) : undefined) ??
+    indexTarget(positionOf(tab, scrollTo) ?? tab.index);
+  const index = scrollTarget?.index;
+  const start =
+    index === undefined || index === workingTreeIndex ? 0 : pageStart(index);
+  return { start, scrollTarget };
+}
+
+export function commitsMessage(
+  tab: TabState,
+  page: ReturnType<typeof firstPage>,
+  commits: readonly CommitInfo[],
+  bookmarked: ReadonlySet<string> = new Set(),
+): GitToWebviewOf<'commits'> {
+  const { start, scrollTarget } = page;
+  return {
+    type: 'commits',
+    generation: tab.generation,
+    total: tab.history.length,
+    decorations: decorations(
+      new Set([...tab.decorated, ...bookmarked]),
+      tab.positions,
+    ),
+    start,
+    commits,
+    graph: tab.graph.rows(start, commits.length),
+    workingTreeGraph: tab.graph.workingTreeRow,
+    selectedIndex: tab.index,
+    keysFrom: keysFrom(tab),
+    scrollTarget,
+  };
+}
+
+function keysFrom(tab: TabState): number | undefined {
+  const hash = shownSide(tab.hash);
+  if (
+    tab.index !== undefined ||
+    hash === undefined ||
+    !tab.fullHistory.has(hash)
+  ) {
+    return undefined;
+  }
+  return mergesHidingCommit(tab, hash)
+    .map((merge) => tab.positions.get(merge))
+    .find((index) => index !== undefined);
+}
+
+export function toggleMerges(tab: TabState, merges: readonly string[]): void {
+  for (const merge of merges) {
+    if (!tab.toggledMerges.delete(merge)) {
+      tab.toggledMerges.add(merge);
+    }
+  }
+}
+
+export function expandMerges(
+  tab: TabState,
+  merges: readonly string[],
+  collapse: boolean,
+): void {
+  const expanded = isExpanded(tab, collapse);
+  for (const merge of merges) {
+    if (!mergeExpanded(tab.fullHistory, merge, expanded)) {
+      toggleMerges(tab, [merge]);
+    }
+  }
+}
+
+function isExpanded(
+  tab: TabState,
+  collapse: boolean,
+): (hash: string, isPull: boolean) => boolean {
+  return (hash, isPull) =>
+    (collapse && !isPull) === tab.toggledMerges.has(hash);
+}
+
+export function mergesHidingCommit(tab: TabState, hash: string): string[] {
+  return mergesHiding(tab.fullHistory, tab.positions, hash);
+}
+
+export function select(tab: TabState, hash: string | undefined): void {
+  tab.hash = hash;
+  tab.index = positionOf(tab, hash);
+  tab.path = undefined;
+  tab.area = undefined;
+  tab.entireFile = false;
+}
+
+export function changesOf(tab: TabState): Map<string, FileChange> {
+  if (tab.area === 'staged') {
+    return tab.stagedFiles;
+  }
+  return (
+    (tab.area === undefined ? tab.allFiles : undefined) ?? tab.changedFiles
+  );
+}
+
+export function unselect(tab: TabState): void {
+  select(tab, undefined);
+  tab.shown.files = undefined;
+  tab.shown.diff = undefined;
+}
+
+export function parentOf(tab: TabState): string | undefined {
+  if (tab.hash === workingTreeHash) {
+    return tab.headCommit;
+  }
+  const row = tab.index;
+  return row !== undefined &&
+    row >= 0 &&
+    row < tab.history.length &&
+    tab.history.hashAt(row) === tab.hash
+    ? tab.history.firstParent(row)
+    : undefined;
+}
+
+function anchorOf(tab: TabState): ScrollTarget | undefined {
+  if (!tab.anchor) {
+    return undefined;
+  }
+  const { hash, offset, report } = tab.anchor;
+  if (hash === workingTreeHash) {
+    return { index: workingTreeIndex, offset, report };
+  }
+  const index = tab.positions.get(hash);
+  return index === undefined ? undefined : { index, offset, report };
+}
+
+function indexTarget(index: number | undefined): ScrollTarget | undefined {
+  return index === undefined ? undefined : { index };
+}
+
+export function keep(shown: Shown, message: GitToWebview): void {
+  switch (message.type) {
+    case 'repository':
+      shown.repository = message;
+      break;
+    case 'fetching':
+      shown.fetching = message;
+      break;
+    case 'pulling':
+      shown.pulling = message;
+      break;
+    case 'pushing':
+      shown.pushing = message;
+      break;
+    case 'pushingTag':
+      shown.pushingTag = message;
+      break;
+    case 'pullingBranch':
+      shown.pullingBranch = message;
+      break;
+    case 'pushingBranch':
+      shown.pushingBranch = message;
+      break;
+    case 'applyingSolo':
+      shown.applyingSolo = message;
+      break;
+    case 'navigation':
+      shown.navigation = message;
+      break;
+    case 'commits':
+      shown.commits = message;
+      break;
+    case 'workingTree':
+      shown.workingTree = message;
+      break;
+    case 'files':
+      shown.files = message;
+      break;
+    case 'diff':
+    case 'fileContent':
+      shown.diff = message;
+      shown.fileDiffs = undefined;
+      break;
+    case 'fileDiff':
+      shown.fileDiffs = new Map(shown.fileDiffs).set(message.path, message);
+      break;
+    case 'tree':
+      shown.tree = message;
+      break;
+  }
+}
+
+export function replayOf(tab: TabState): GitToWebview[] {
+  const { shown } = tab;
+  const selected = [shown.files, shown.diff, shown.tree].filter(
+    (message) => message?.hash === tab.hash,
+  );
+  return [
+    shown.repository,
+    shown.fetching,
+    shown.pulling,
+    shown.pushing,
+    shown.pushingTag,
+    shown.pullingBranch,
+    shown.pushingBranch,
+    shown.applyingSolo,
+    shown.navigation,
+    shown.commits && {
+      ...shown.commits,
+      selectedIndex: tab.index,
+      keysFrom: keysFrom(tab),
+      scrollTarget: anchorOf(tab) ?? indexTarget(tab.index),
+    },
+    shown.workingTree,
+    ...selected,
+  ].filter((message) => message !== undefined);
+}
+
+export function stillThere(tab: TabState): (hash: string) => boolean {
+  return (hash) =>
+    sidesOf(hash).every(
+      (side) => side === workingTreeHash || tab.fullHistory.has(side),
+    );
+}
+
+export function hiddenSides(tab: TabState, selection: string): string[] {
+  return sidesOf(selection).filter(
+    (side) => side !== workingTreeHash && !tab.positions.has(side),
+  );
+}
+
+export function pickable(tab: TabState, selection: string): boolean {
+  const selected = sidesOf(tab.hash);
+  return hiddenSides(tab, selection).every((side) => selected.includes(side));
+}
+
+export function nearestSteps(
+  tab: TabState,
+  current = tab.hash,
+): {
+  back: string[];
+  forward: string[];
+} {
+  const exists = stillThere(tab);
+  const nearest = (steps: readonly string[]) =>
+    reachable(steps, current, exists).toReversed().slice(0, navigationShown);
+  return {
+    back: nearest(tab.navigation.back),
+    forward: nearest(tab.navigation.forward),
+  };
+}
+
+export function navigationEntry(tab: TabState, hash: string): NavigationEntry {
+  return {
+    hash,
+    subject:
+      hash === workingTreeHash
+        ? strings.commits.uncommitted
+        : tab.subjects.get(hash),
+  };
+}
+
+export function keepSubjects(
+  tab: TabState,
+  commits: readonly CommitInfo[],
+): void {
+  if (tab.subjects.size + commits.length > subjectsKept) {
+    const { back, forward } = tab.navigation;
+    const needed = new Set(
+      [...back, ...forward, tab.hash].flatMap((hash) => sidesOf(hash)),
+    );
+    for (const hash of tab.subjects.keys()) {
+      if (!needed.has(hash)) {
+        tab.subjects.delete(hash);
+      }
+    }
+  }
+  for (const commit of commits) {
+    tab.subjects.set(commit.hash, commit.subject);
+  }
+}
+
+function positionOf(
+  tab: TabState,
+  selection: string | undefined,
+): number | undefined {
+  const hash = shownSide(selection);
+  if (hash === workingTreeHash) {
+    return workingTreeIndex;
+  }
+  return hash === undefined ? undefined : tab.positions.get(hash);
+}

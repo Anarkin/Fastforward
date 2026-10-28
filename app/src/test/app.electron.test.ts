@@ -3,6 +3,7 @@ import { spawnSync, type ChildProcess } from 'node:child_process';
 import { once } from 'node:events';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 import {
   _electron,
   type ElectronApplication,
@@ -19,7 +20,7 @@ import {
   tempRepository,
   type TempRepository,
 } from './repositories';
-import { wrapColumns, wrappedLines } from '../webview/wordWrap';
+import { wrapColumns, wrappedLines } from '../ui/wordWrap';
 
 const appFolder = path.join(__dirname, '..', '..');
 
@@ -69,6 +70,20 @@ function within<T>(promise: Promise<T>, what: string): Promise<T> {
       );
     }),
   ]).finally(() => clearTimeout(timer));
+}
+
+async function quitWithoutChromium(
+  app: ElectronApplication,
+  folder: string,
+): Promise<void> {
+  const quit = path.join(folder, 'quit');
+  await app.evaluate(({ app: electronApp }, marker) => {
+    electronApp.once('quit', () =>
+      process.getBuiltinModule('node:fs').writeFileSync(marker, ''),
+    );
+    electronApp.quit();
+  }, quit);
+  await waitFor(() => fs.existsSync(quit), 'the app to quit');
 }
 
 async function closeOrKill(app: ElectronApplication): Promise<void> {
@@ -165,7 +180,23 @@ async function scrollsOnWheelOver(
   );
 }
 
-const baseSettings = { diffLayout: 'inline', wordWrap: false };
+const baseSettings = {
+  tools: { git: { diffLayout: 'inline', wordWrap: false } },
+};
+
+function savedTabs(
+  roots: readonly string[],
+  active: string,
+): { tabs: unknown[]; activeTab: string } {
+  return {
+    tabs: roots.map((root, index) => ({
+      id: String(index + 1),
+      tool: 'git',
+      root,
+    })),
+    activeTab: String(roots.indexOf(active) + 1),
+  };
+}
 
 suite('App', () => {
   let folder: string;
@@ -193,10 +224,9 @@ suite('App', () => {
     await repository.commit('second', { 'changed.txt': 'one\n2\nthree\n' });
     fs.mkdirSync(profile, { recursive: true });
     fs.writeFileSync(
-      path.join(profile, 'settings.json'),
+      path.join(profile, 'state.json'),
       JSON.stringify({
-        tabs: [repository.root],
-        activeTab: repository.root,
+        ...savedTabs([repository.root], repository.root),
         recentRepositories: [path.join(folder, 'other')],
       }),
     );
@@ -253,20 +283,32 @@ suite('App', () => {
 
   function savedSetting(name: string): unknown {
     const settings = userSettings();
-    return typeof settings === 'object' && settings !== null
-      ? Reflect.get(settings, name)
+    const tools: unknown =
+      typeof settings === 'object' && settings !== null
+        ? Reflect.get(settings, 'tools')
+        : undefined;
+    const git: unknown =
+      typeof tools === 'object' && tools !== null
+        ? Reflect.get(tools, 'git')
+        : undefined;
+    return typeof git === 'object' && git !== null
+      ? Reflect.get(git, name)
       : undefined;
   }
 
   function wrapsSaved(): boolean {
-    return (savedSetting('wordWrap') ?? defaultSettings().wordWrap) === true;
+    return (
+      (savedSetting('wordWrap') ?? defaultSettings().tools.git.wordWrap) ===
+      true
+    );
   }
 
   function viewSaved(wordWrap: boolean, diffLayout: string): boolean {
     const defaults = defaultSettings();
     return (
-      (savedSetting('wordWrap') ?? defaults.wordWrap) === wordWrap &&
-      (savedSetting('diffLayout') ?? defaults.diffLayout) === diffLayout
+      (savedSetting('wordWrap') ?? defaults.tools.git.wordWrap) === wordWrap &&
+      (savedSetting('diffLayout') ?? defaults.tools.git.diffLayout) ===
+        diffLayout
     );
   }
 
@@ -277,9 +319,8 @@ suite('App', () => {
       typeof settings === 'object' &&
       settings !== null &&
       !(settings instanceof Error) &&
-      Object.entries(settings).every(
-        ([name, value]) =>
-          JSON.stringify(value) === JSON.stringify(Reflect.get(expected, name)),
+      Object.entries(settings).every(([name, value]) =>
+        isDeepStrictEqual(value, Reflect.get(expected, name)),
       ) &&
       Object.keys(baseSettings).every((name) => name in settings)
     ) {
@@ -408,9 +449,11 @@ suite('App', () => {
     await waitForFocus(page.locator('.virtual-rows.list'), 'the commit list');
   });
 
-  test('closes the menu of recent repositories when + is clicked again, or on Ctrl+T again', async () => {
+  test('closes the + menu when + is clicked again, or on Ctrl+T again', async () => {
     const add = page.locator('.tab-add');
-    const menu = page.locator('.context-menu', { hasText: 'other' });
+    const menu = page.locator('.context-menu', {
+      hasText: strings.tools.files,
+    });
     await add.click();
     await menu.waitFor();
     await add.click();
@@ -868,26 +911,6 @@ suite('App', () => {
     await waitFor(
       () => savedSetting('showAllFiles') === true,
       'the setting to be saved',
-    );
-  });
-
-  test('moved the old settings file into the state, keeping it aside', () => {
-    assert.ok(
-      fs.existsSync(path.join(profile, 'settings.old.json')),
-      'no settings.old.json',
-    );
-    assert.ok(
-      !fs.existsSync(path.join(profile, 'settings.json')),
-      'settings.json is still there',
-    );
-    const state: unknown = JSON.parse(
-      fs.readFileSync(path.join(profile, 'state.json'), 'utf8'),
-    );
-    assert.deepStrictEqual(
-      typeof state === 'object' && state !== null && 'tabs' in state
-        ? state.tabs
-        : undefined,
-      [repository.root],
     );
   });
 
@@ -1617,7 +1640,7 @@ suite('App with lists longer than their columns', () => {
     fs.mkdirSync(profile, { recursive: true });
     fs.writeFileSync(
       path.join(profile, 'state.json'),
-      JSON.stringify({ tabs: [repository.root], activeTab: repository.root }),
+      JSON.stringify(savedTabs([repository.root], repository.root)),
     );
     fs.writeFileSync(
       path.join(profile, 'settings.user.json'),
@@ -1708,13 +1731,10 @@ suite('App with several tabs', () => {
     }
     fs.mkdirSync(profile, { recursive: true });
     const state = path.join(profile, 'state.json');
-    fs.writeFileSync(
-      state,
-      JSON.stringify({ tabs: roots, activeTab: roots[1] }),
-    );
+    fs.writeFileSync(state, JSON.stringify(savedTabs(roots, roots[1])));
     fs.writeFileSync(
       path.join(profile, 'settings.user.json'),
-      JSON.stringify({ autoFetch: false }),
+      JSON.stringify({ tools: { git: { autoFetch: false } } }),
     );
     const app = await _electron.launch({
       args: [appFolder, `--user-data-dir=${profile}`],
@@ -1749,9 +1769,12 @@ suite('App with several tabs', () => {
       assert.deepStrictEqual(await names(), ['second', 'first', 'third']);
       await waitFor(() => {
         const saved: unknown = JSON.parse(fs.readFileSync(state, 'utf8'));
+        const tabs: unknown = Reflect.get(Object(saved), 'tabs');
         return (
-          JSON.stringify(Reflect.get(Object(saved), 'tabs')) ===
-          JSON.stringify([roots[1], roots[0], roots[2]])
+          Array.isArray(tabs) &&
+          JSON.stringify(
+            tabs.map((tab: unknown) => Reflect.get(Object(tab), 'root')),
+          ) === JSON.stringify([roots[1], roots[0], roots[2]])
         );
       }, 'the order to be saved');
       assert.match((await dragged.getAttribute('class')) ?? '', /\bactive\b/);
@@ -1763,7 +1786,7 @@ suite('App with several tabs', () => {
 });
 
 suite('App started from a terminal', () => {
-  test('opens the repository of the folder it is started with, then that of a folder another start hands it, showing each rather than the tab left active', async () => {
+  test('asks which tool opens the folder it is started with, opening its repository on Enter, then that of a folder another start hands it, showing each rather than the tab left active', async () => {
     const folder = tempFolder('command-line');
     const profile = path.join(folder, 'profile');
     const roots: string[] = [];
@@ -1778,11 +1801,11 @@ suite('App started from a terminal', () => {
     fs.mkdirSync(profile, { recursive: true });
     fs.writeFileSync(
       path.join(profile, 'state.json'),
-      JSON.stringify({ tabs: [first], activeTab: first }),
+      JSON.stringify(savedTabs([first], first)),
     );
     fs.writeFileSync(
       path.join(profile, 'settings.user.json'),
-      JSON.stringify({ autoFetch: false }),
+      JSON.stringify({ tools: { git: { autoFetch: false } } }),
     );
     const args = (asked: string) => [
       appFolder,
@@ -1795,6 +1818,17 @@ suite('App started from a terminal', () => {
       const page = await app.firstWindow();
       const names = () =>
         page.locator('.tabs .tab .tab-name').allTextContents();
+      const openWithGit = async () => {
+        const popup = page.locator('.open-with-popup');
+        await popup.waitFor();
+        await waitForFocus(
+          popup.locator('.open-with-tool', { hasText: strings.tools.git }),
+          'Git Manager',
+        );
+        await page.keyboard.press('Enter');
+        await popup.waitFor({ state: 'detached' });
+      };
+      await openWithGit();
       await page.locator('.commit', { hasText: 'second' }).waitFor();
       assert.deepStrictEqual(await names(), ['first', 'second']);
       const electron = await app.evaluate(() => process.execPath);
@@ -1804,6 +1838,7 @@ suite('App started from a terminal', () => {
         timeout: 30_000,
       });
       assert.strictEqual(handedOff.status, 0, String(handedOff.stderr));
+      await openWithGit();
       await page.locator('.commit', { hasText: 'third' }).waitFor();
       assert.deepStrictEqual(await names(), ['first', 'second', 'third']);
       assert.match(
@@ -1820,7 +1855,7 @@ suite('App started from a terminal', () => {
 });
 
 suite('App quitting', () => {
-  test('stops the git it still runs, which would outlive it', async () => {
+  test("stops the git it still runs, which would outlive it, by the end of its own quitting rather than Chromium's, which takes tens of seconds to end its processes on a busy machine", async () => {
     const folder = tempFolder('quitting');
     const profile = path.join(folder, 'profile');
     const alive = path.join(folder, 'alive').replaceAll('\\', '/');
@@ -1835,8 +1870,8 @@ suite('App quitting', () => {
     );
     fs.mkdirSync(profile, { recursive: true });
     fs.writeFileSync(
-      path.join(profile, 'settings.json'),
-      JSON.stringify({ tabs: [repository.root], activeTab: repository.root }),
+      path.join(profile, 'state.json'),
+      JSON.stringify(savedTabs([repository.root], repository.root)),
     );
     const app = await _electron.launch({
       args: [appFolder, `--user-data-dir=${profile}`],
@@ -1847,7 +1882,7 @@ suite('App quitting', () => {
       await page.locator('.commit', { hasText: 'first' }).waitFor();
       await page.getByTitle(strings.navigation.fetch, { exact: true }).click();
       await waitFor(() => fs.existsSync(alive), 'git to fetch');
-      await within(app.close(), 'the app to close');
+      await quitWithoutChromium(app, folder);
       const counted = fs.readFileSync(alive, 'utf8');
       await new Promise((resolve) => setTimeout(resolve, 1000));
       assert.strictEqual(fs.readFileSync(alive, 'utf8'), counted);
@@ -1858,7 +1893,7 @@ suite('App quitting', () => {
     }
   });
 
-  test('stops a round of background fetches, starting no other fetch and not saying the one it stopped failed', async () => {
+  test("stops a round of background fetches, starting no other fetch and not saying the one it stopped failed, by the end of its own quitting rather than Chromium's", async () => {
     const folder = tempFolder('quitting-round');
     const profile = path.join(folder, 'profile');
     const stop = path.join(folder, 'stop').replaceAll('\\', '/');
@@ -1884,11 +1919,11 @@ suite('App quitting', () => {
     fs.mkdirSync(profile, { recursive: true });
     fs.writeFileSync(
       path.join(profile, 'state.json'),
-      JSON.stringify({ tabs: roots, activeTab: roots[0] }),
+      JSON.stringify(savedTabs(roots, roots[0])),
     );
     fs.writeFileSync(
       path.join(profile, 'settings.user.json'),
-      JSON.stringify({ autoFetch: false }),
+      JSON.stringify({ tools: { git: { autoFetch: false } } }),
     );
     const app = await _electron.launch({
       args: [appFolder, `--user-data-dir=${profile}`],
@@ -1899,11 +1934,13 @@ suite('App quitting', () => {
       await page.locator('.commit', { hasText: 'first' }).waitFor();
       await page
         .getByTitle(
-          strings.navigation.fetchEvery(defaultSettings().autoFetchMinutes),
+          strings.navigation.fetchEvery(
+            defaultSettings().tools.git.autoFetchMinutes,
+          ),
         )
         .click();
       await waitFor(() => fs.existsSync(alive('first')), 'git to fetch');
-      await within(app.close(), 'the app to close');
+      await quitWithoutChromium(app, folder);
       await new Promise((resolve) => setTimeout(resolve, 1000));
       assert.ok(!fs.existsSync(alive('second')));
       assert.doesNotMatch(
@@ -1937,7 +1974,7 @@ suite('App quitting', () => {
     fs.mkdirSync(profile, { recursive: true });
     fs.writeFileSync(
       path.join(profile, 'state.json'),
-      JSON.stringify({ tabs: [repository.root], activeTab: repository.root }),
+      JSON.stringify(savedTabs([repository.root], repository.root)),
     );
     const launch = () =>
       _electron.launch({
@@ -1989,7 +2026,7 @@ suite('App whose page is gone', () => {
     fs.mkdirSync(profile, { recursive: true });
     fs.writeFileSync(
       path.join(profile, 'state.json'),
-      JSON.stringify({ tabs: [repository.root], activeTab: repository.root }),
+      JSON.stringify(savedTabs([repository.root], repository.root)),
     );
     const app = await _electron.launch({
       args: [appFolder, `--user-data-dir=${profile}`],

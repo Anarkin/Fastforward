@@ -1,4 +1,4 @@
-import type { Store } from '../storage';
+import type { Store } from '../shell/main/storage';
 
 export class FakeStore implements Store {
   readonly values = new Map<string, unknown>();

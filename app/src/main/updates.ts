@@ -1,8 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { realTimer, type Timer } from '../autoFetch';
-import type { Log } from '../log';
-import type { ToWebview, UpdateStatus } from '../shared/protocol';
+import { realTimer, type Timer } from '../tools/git/main/autoFetch';
+import type { Log } from '../shell/main/log';
+import type { ToWebview, UpdateStatus } from '../shell/shared/protocol';
 import { strings } from '../shared/strings';
 
 export type UpdateMode = 'install' | 'notify' | 'off';

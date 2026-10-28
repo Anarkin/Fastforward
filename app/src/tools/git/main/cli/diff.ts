@@ -1,0 +1,606 @@
+import { lstat } from 'node:fs/promises';
+import { join } from 'node:path';
+import { StringDecoder } from 'node:string_decoder';
+import {
+  collapseThreshold,
+  linkMode,
+  patchByteBudget,
+  patchLineBudget,
+  type FileChange,
+  type LeftOut,
+} from '../../shared/protocol';
+import { blobSizes } from './files';
+import { runGit, runGitBytes, splitNul } from './run';
+
+export const diffArgs = [
+  '--no-color',
+  '--no-ext-diff',
+  '--no-textconv',
+  '--histogram',
+  '--full-index',
+  '--src-prefix=a/',
+  '--dst-prefix=b/',
+];
+
+const showArgs = [
+  'show',
+  '--diff-merges=first-parent',
+  '--format=',
+  '-M',
+  ...diffArgs,
+];
+
+export const changesArgs = ['--raw', '--numstat', '-z', '--no-abbrev'];
+
+export const listArgs = ['--raw', '-z', '--no-abbrev'];
+
+const compareArgs = ['diff', '-M', ...diffArgs];
+
+export function showFiles(
+  gitPath: string,
+  cwd: string,
+  hash: string,
+  signal?: AbortSignal,
+): Promise<FileChange[]> {
+  return changedFiles(gitPath, cwd, [...showArgs, ...listArgs, hash], signal);
+}
+
+export function compareFiles(
+  gitPath: string,
+  cwd: string,
+  from: string,
+  to: string,
+  signal?: AbortSignal,
+): Promise<FileChange[]> {
+  return changedFiles(
+    gitPath,
+    cwd,
+    [...compareArgs, ...listArgs, from, to],
+    signal,
+  );
+}
+
+async function changedFiles(
+  gitPath: string,
+  cwd: string,
+  args: readonly string[],
+  signal: AbortSignal | undefined,
+): Promise<FileChange[]> {
+  return parseChanges(await runGit(gitPath, cwd, args, { signal }));
+}
+
+export function showPatchArgs(hash: string, scope: PatchScope): string[] {
+  return [...showArgs, '--patch', ...diffOptionArgs(scope), hash];
+}
+
+export function comparePatchArgs(
+  from: string,
+  to: string,
+  scope: PatchScope,
+): string[] {
+  return [...compareArgs, ...diffOptionArgs(scope), from, to];
+}
+
+export interface PatchSection {
+  readonly header: string;
+  readonly lines: number | undefined;
+  readonly kept: boolean;
+}
+
+export interface BudgetedPatch {
+  readonly patch: string;
+  readonly sections: readonly PatchSection[];
+  readonly stopped: boolean;
+}
+
+interface OpenSection {
+  readonly header: string;
+  readonly text: string[];
+  lines: number;
+  bytes: number;
+  inHunk: boolean;
+}
+
+export class PatchBudget {
+  stopped = false;
+  private readonly kept: string[] = [];
+  private readonly sections: PatchSection[] = [];
+  private readonly decoder = new StringDecoder('utf8');
+  private pending = '';
+  private pendingBytes = 0;
+  private section: OpenSection | undefined;
+  private keptLines = 0;
+  private readBytes = 0;
+
+  add(chunk: Buffer): boolean {
+    if (this.stopped) {
+      return true;
+    }
+    const decoded = this.decoder.write(chunk);
+    const end = decoded.lastIndexOf('\n');
+    let from = 0;
+    if (end === -1) {
+      this.pending += decoded;
+    } else {
+      const text = this.pending + decoded.slice(0, end);
+      this.pending = decoded.slice(end + 1);
+      for (const line of text.split('\n')) {
+        const at = chunk.indexOf(0x0a, from);
+        const bytes = this.pendingBytes + at + 1 - from;
+        this.pendingBytes = 0;
+        from = at + 1;
+        if (this.addLine(line, bytes, true)) {
+          return true;
+        }
+      }
+    }
+    this.pendingBytes += chunk.length - from;
+    if (
+      this.section &&
+      this.readBytes + this.section.bytes + this.pendingBytes > patchByteBudget
+    ) {
+      this.stop(this.section, undefined);
+    }
+    return this.stopped;
+  }
+
+  end(): BudgetedPatch {
+    if (!this.stopped) {
+      const rest = this.pending + this.decoder.end();
+      if (rest) {
+        this.addLine(rest, this.pendingBytes, false);
+      }
+      this.close();
+    }
+    return {
+      patch: this.kept.join(''),
+      sections: this.sections,
+      stopped: this.stopped,
+    };
+  }
+
+  private addLine(line: string, bytes: number, newline: boolean): boolean {
+    if (line === this.section?.header) {
+      this.section.inHunk = false;
+    } else if (line.startsWith('diff --git ')) {
+      if (this.close()) {
+        return true;
+      }
+      this.section = {
+        header: line,
+        text: [],
+        lines: 0,
+        bytes: 0,
+        inHunk: false,
+      };
+    }
+    const text = newline ? `${line}\n` : line;
+    const { section } = this;
+    if (!section) {
+      this.kept.push(text);
+      return false;
+    }
+    section.bytes += bytes;
+    if (line.startsWith('@@')) {
+      section.inHunk = true;
+    } else if (section.inHunk && (line[0] === '+' || line[0] === '-')) {
+      section.lines++;
+    }
+    if (section.lines <= collapseThreshold) {
+      section.text.push(text);
+    }
+    if (this.readBytes + section.bytes > patchByteBudget) {
+      this.stop(section, undefined);
+      return true;
+    }
+    return false;
+  }
+
+  private close(): boolean {
+    const { section } = this;
+    this.section = undefined;
+    if (!section) {
+      return false;
+    }
+    const { header, lines, bytes } = section;
+    this.readBytes += bytes;
+    if (lines > collapseThreshold) {
+      this.sections.push({ header, lines, kept: false });
+      return false;
+    }
+    if (this.keptLines + lines > patchLineBudget) {
+      this.stop(section, lines);
+      return true;
+    }
+    this.keptLines += lines;
+    this.kept.push(section.text.join(''));
+    this.sections.push({ header, lines, kept: true });
+    return false;
+  }
+
+  private stop(section: OpenSection, lines: number | undefined): void {
+    this.sections.push({ header: section.header, lines, kept: false });
+    this.section = undefined;
+    this.stopped = true;
+  }
+}
+
+export function leftOutOf(
+  { sections, stopped }: BudgetedPatch,
+  files: readonly FileChange[],
+): LeftOut[] {
+  const headers = files.map(headerOf);
+  const leftOut: LeftOut[] = [];
+  let next = 0;
+  for (const { header, lines, kept } of sections) {
+    let at = next;
+    while (at < headers.length && headers[at] !== header) {
+      at++;
+    }
+    if (at === headers.length) {
+      continue;
+    }
+    next = at + 1;
+    if (!kept) {
+      leftOut.push({ path: files[at].path, lines });
+    }
+  }
+  if (stopped) {
+    for (const { path } of files.slice(next)) {
+      leftOut.push({ path, lines: 0 });
+    }
+  }
+  return leftOut;
+}
+
+const sectionStart = 'diff --git ';
+
+export function whitespaceOnlyChanges(
+  patch: string,
+  files: readonly FileChange[],
+): string[] {
+  const headers = new Set<string>();
+  for (let at = 0; at !== -1;) {
+    if (patch.startsWith(sectionStart, at)) {
+      const end = patch.indexOf('\n', at);
+      headers.add(patch.slice(at, end === -1 ? undefined : end));
+    }
+    const next = patch.indexOf(`\n${sectionStart}`, at);
+    at = next === -1 ? -1 : next + 1;
+  }
+  return files
+    .filter((file) => file.status === 'M' && !headers.has(headerOf(file)))
+    .map(({ path }) => path);
+}
+
+export function newSideUnchanged(patch: string): string {
+  const hunk = patch.indexOf('\n@@ ');
+  if (hunk === -1) {
+    return patch;
+  }
+  const lines: string[] = [];
+  let count = 0;
+  let kept = false;
+  for (const line of patch
+    .slice(patch.indexOf('\n', hunk + 1) + 1)
+    .split('\n')) {
+    if (line.startsWith('\\')) {
+      if (kept) {
+        lines.push(`${line}\n`);
+      }
+      continue;
+    }
+    kept = line.startsWith(' ') || line.startsWith('+');
+    if (kept) {
+      lines.push(` ${line.slice(1)}\n`);
+      count++;
+    }
+  }
+  const range = count === 1 ? '1' : `1,${count}`;
+  return `${patch.slice(0, hunk + 1)}@@ -${range} +${range} @@\n${lines.join('')}`;
+}
+
+function headerOf(file: Pick<FileChange, 'path' | 'oldPath'>): string {
+  return `diff --git ${gitQuoted(`a/${file.oldPath ?? file.path}`)} ${gitQuoted(`b/${file.path}`)}`;
+}
+
+const escapes: Readonly<Record<string, string>> = {
+  '"': '\\"',
+  '\\': '\\\\',
+  '\x07': '\\a',
+  '\b': '\\b',
+  '\t': '\\t',
+  '\n': '\\n',
+  '\v': '\\v',
+  '\f': '\\f',
+  '\r': '\\r',
+};
+
+function escaped(name: string): string {
+  let result = '';
+  for (const character of name) {
+    const code = character.charCodeAt(0);
+    result +=
+      escapes[character] ??
+      (code < 0x20 || code === 0x7f
+        ? `\\${code.toString(8).padStart(3, '0')}`
+        : character);
+  }
+  return result;
+}
+
+export function gitQuoted(name: string): string {
+  const result = escaped(name);
+  return result === name ? name : `"${result}"`;
+}
+
+export interface ReadPatch extends BudgetedPatch {
+  readonly exited: Promise<void>;
+}
+
+export async function readPatch(
+  gitPath: string,
+  cwd: string,
+  commands: readonly (readonly string[])[],
+  signal?: AbortSignal,
+): Promise<ReadPatch> {
+  const budget = new PatchBudget();
+  const stopping = new AbortController();
+  const exits: Promise<unknown>[] = [];
+  for (const args of commands) {
+    if (budget.stopped) {
+      break;
+    }
+    const reached = Promise.withResolvers<void>();
+    const running = runGitBytes(gitPath, cwd, args, {
+      signal: signal
+        ? AbortSignal.any([signal, stopping.signal])
+        : stopping.signal,
+      onOutput: (chunk) => {
+        if (budget.add(chunk)) {
+          stopping.abort();
+          reached.resolve();
+        }
+      },
+    });
+    exits.push(running.catch(() => undefined));
+    await Promise.race([running, reached.promise]).catch((error: unknown) => {
+      if (!budget.stopped || signal?.aborted) {
+        throw error;
+      }
+    });
+  }
+  return {
+    ...budget.end(),
+    exited: Promise.all(exits).then(() => undefined),
+  };
+}
+
+export interface RawChange {
+  readonly oldMode: string;
+  readonly newMode: string;
+  readonly oldId: string;
+  readonly newId: string;
+  readonly linesCounted: boolean;
+  readonly file: FileChange;
+}
+
+export async function withBytes(
+  gitPath: string,
+  cwd: string,
+  changes: readonly RawChange[],
+  { fromDisk = false, reverse = false } = {},
+): Promise<RawChange[]> {
+  const sizes = await blobSizes(gitPath, cwd, blobsToSize(changes));
+  const sizeOnDisk = async (path: string) => {
+    if (!fromDisk) {
+      return 0;
+    }
+    const stats = await lstat(join(cwd, path)).catch(() => undefined);
+    return stats?.isFile() ? stats.size : 0;
+  };
+  return Promise.all(
+    changes.map(async (change) => {
+      if (!linesChanged(change)) {
+        return change;
+      }
+      const { oldId, newId, file } = change;
+      const [oldSide, newSide, path] = reverse
+        ? [newId, oldId, file.oldPath ?? file.path]
+        : [oldId, newId, file.path];
+      const bytes =
+        (sizes.get(oldSide) ?? 0) +
+        (sizes.get(newSide) ?? (await sizeOnDisk(path)));
+      return { ...change, file: { ...file, bytes } };
+    }),
+  );
+}
+
+const linesChanged = ({ file }: RawChange) =>
+  file.insertions + file.deletions > 0;
+
+const gitlinkMode = '160000';
+
+export function blobsToSize(changes: readonly RawChange[]): string[] {
+  return [
+    ...new Set(
+      changes
+        .filter(linesChanged)
+        .flatMap(({ oldMode, newMode, oldId, newId }) => [
+          ...(oldMode === gitlinkMode ? [] : [oldId]),
+          ...(newMode === gitlinkMode ? [] : [newId]),
+        ])
+        .filter((id) => !isNullId(id)),
+    ),
+  ];
+}
+
+export function isNullId(id: string): boolean {
+  return /^0+$/.test(id);
+}
+
+export interface PatchScope {
+  readonly path?: string;
+  readonly oldPath?: string;
+  readonly include?: readonly string[];
+  readonly entireFile?: boolean;
+  readonly ignoreWhitespace?: boolean;
+}
+
+export function diffOptionArgs({
+  entireFile,
+  ignoreWhitespace,
+}: PatchScope): string[] {
+  return [
+    ...(entireFile ? ['--unified=2147483647'] : []),
+    ...(ignoreWhitespace ? ['--ignore-all-space'] : []),
+  ];
+}
+
+export function pathspecs({ path, oldPath, include }: PatchScope): string[] {
+  if (path !== undefined) {
+    return oldPath ? ['--', oldPath, path] : ['--', path];
+  }
+  return include ? ['--', ...include] : [];
+}
+
+export function withoutFilesInside(
+  patch: string,
+  { path, oldPath }: PatchScope,
+): string {
+  if (path === undefined) {
+    return patch;
+  }
+  const own = `${headerOf({ path, oldPath })}\n`;
+  const insides = [...new Set([path, oldPath ?? path])].flatMap((folder) => [
+    `${sectionStart}a/${folder}/`,
+    `${sectionStart}"a/${escaped(folder)}/`,
+  ]);
+  return patch
+    .split(/^(?=diff --git )/m)
+    .filter(
+      (section) =>
+        section.startsWith(own) ||
+        !insides.some((inside) => section.startsWith(inside)),
+    )
+    .join('');
+}
+
+export function showPatch(
+  gitPath: string,
+  cwd: string,
+  hash: string,
+  scope: PatchScope = {},
+  signal?: AbortSignal,
+): Promise<string> {
+  return patchOf(gitPath, cwd, [...showArgs, '--patch'], [hash], scope, signal);
+}
+
+export function comparePatch(
+  gitPath: string,
+  cwd: string,
+  from: string,
+  to: string,
+  scope: PatchScope = {},
+  signal?: AbortSignal,
+): Promise<string> {
+  return patchOf(gitPath, cwd, compareArgs, [from, to], scope, signal);
+}
+
+function patchOf(
+  gitPath: string,
+  cwd: string,
+  args: readonly string[],
+  revisions: readonly string[],
+  scope: PatchScope,
+  signal: AbortSignal | undefined,
+): Promise<string> {
+  if (scope.include?.length === 0) {
+    return Promise.resolve('');
+  }
+  return runGit(
+    gitPath,
+    cwd,
+    [...args, ...diffOptionArgs(scope), ...revisions, ...pathspecs(scope)],
+    { signal },
+  ).then((patch) => withoutFilesInside(patch, scope));
+}
+
+const simpleStatuses = ['A', 'M', 'D', 'T'] as const;
+
+const noMode = '000000';
+
+function linkOf({ oldMode, newMode }: Pick<RawChange, 'oldMode' | 'newMode'>) {
+  return (newMode === noMode ? oldMode : newMode) === linkMode
+    ? { link: true as const }
+    : {};
+}
+
+export function parseChanges(output: string): FileChange[] {
+  return parseRawChanges(output).map(({ file }) => file);
+}
+
+export function parseRawChanges(output: string): RawChange[] {
+  const tokens = splitNul(output);
+  const files: Omit<RawChange, 'linesCounted'>[] = [];
+  const stats = new Map<string, { insertions: number; deletions: number }>();
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+    if (token.startsWith(':')) {
+      const [oldMode = '', newMode = '', oldId = '', newId = '', status = ''] =
+        token.slice(1).split(' ');
+      const sides = { oldMode, newMode, oldId, newId };
+      const code = status[0] ?? '';
+      if (code === 'R' || code === 'C') {
+        files.push({
+          ...sides,
+          file: {
+            status: code,
+            oldPath: tokens[i + 1],
+            path: tokens[i + 2],
+            insertions: 0,
+            deletions: 0,
+            ...(oldId === newId && !isNullId(newId) ? { id: newId } : {}),
+            ...linkOf(sides),
+          },
+        });
+        i += 2;
+      } else {
+        files.push({
+          ...sides,
+          file: {
+            status: simpleStatuses.find((known) => known === code) ?? '?',
+            oldPath: undefined,
+            path: tokens[i + 1],
+            insertions: 0,
+            deletions: 0,
+            ...linkOf(sides),
+          },
+        });
+        i += 1;
+      }
+      continue;
+    }
+    const match = /^(-|\d+)\t(-|\d+)\t(.*)$/s.exec(token);
+    if (!match) {
+      continue;
+    }
+    let path = match[3];
+    if (path === '') {
+      path = tokens[i + 2];
+      i += 2;
+    }
+    stats.set(path, {
+      insertions: Number(match[1]) || 0,
+      deletions: Number(match[2]) || 0,
+    });
+  }
+  return files.map((change) => {
+    const counted = stats.get(change.file.path);
+    return {
+      ...change,
+      linesCounted: counted !== undefined,
+      file: { ...change.file, ...counted },
+    };
+  });
+}

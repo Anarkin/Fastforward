@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import { readDefaults, type Settings } from '../settings';
+import { readDefaults, type Settings } from '../shell/main/settings';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createElement } from 'react';
@@ -8,8 +8,8 @@ import {
   setKeyPlatform,
   type KeyPress,
   type Modifiers,
-} from '../shared/keymap';
-import type { CommitInfo, FileChange } from '../shared/protocol';
+} from '../shell/shared/keymap';
+import type { CommitInfo, FileChange } from '../tools/git/shared/protocol';
 
 export const noModifiers: Modifiers = {
   ctrlKey: false,
@@ -104,12 +104,12 @@ export async function waitFor(
 }
 
 export function stylesheet(name = 'style.css'): string {
-  return readFileSync(join(__dirname, '../../src/webview', name), 'utf8');
+  return readFileSync(join(__dirname, '../../src/shell/page', name), 'utf8');
 }
 
 export function policyOfPage(): Map<string, string[]> {
   const page = readFileSync(
-    join(__dirname, '../../src/webview/index.html'),
+    join(__dirname, '../../src/shell/page/index.html'),
     'utf8',
   );
   const [, policy = ''] =
@@ -159,7 +159,7 @@ export function renderedBy<P>(
 }
 
 export function defaultSettings(): Settings {
-  return readDefaults(join(__dirname, '../../src/settings.json'));
+  return readDefaults(join(__dirname, '../../src/shell/main/settings.json'));
 }
 
 export const noop = () => {};

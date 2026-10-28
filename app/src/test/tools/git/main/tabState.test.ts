@@ -1,0 +1,614 @@
+import * as assert from 'node:assert';
+import { suite, test } from 'vitest';
+import { comparisonOf } from '../../../../tools/git/shared/comparisons';
+import {
+  commitPageSize,
+  workingTreeHash,
+} from '../../../../tools/git/shared/protocol';
+import {
+  commitsMessage,
+  expandMerges,
+  firstPage,
+  forgetHistory,
+  historyLoaded,
+  keep,
+  keepSubjects,
+  layOutHistory,
+  loadHistory,
+  mergesHidingCommit,
+  navigationEntry,
+  nearestSteps,
+  newTabState,
+  parentOf,
+  refsKeepHistory,
+  replayOf,
+  select,
+  stillThere,
+  tipsInGitOrder,
+  toggleMerges,
+} from '../../../../tools/git/main/tabState';
+import { Commits } from '../../../../tools/git/main/history/commits';
+import { commitInfo } from '../../../fixtures';
+import { rowsOf } from './history/historyFixtures';
+
+const at = (commit: string) => ({
+  kind: 'branch' as const,
+  name: commit,
+  commit,
+});
+
+const page = (from: number, count: number) =>
+  Array.from({ length: count }, (_, i) => commitInfo(`c${from + i}`));
+
+suite('Tab state', () => {
+  const history = [
+    { hash: 'c', parents: ['a', 'b'] },
+    { hash: 'b', parents: ['a'] },
+    { hash: 'a', parents: [] },
+  ];
+  const long = Array.from({ length: 3 * commitPageSize }, (_, i) => ({
+    hash: `h${i}`,
+    parents: i < 3 * commitPageSize - 1 ? [`h${i + 1}`] : [],
+  }));
+  const inSecondPage = commitPageSize + commitPageSize / 2;
+  const inThirdPage = 2 * commitPageSize + commitPageSize / 5;
+
+  function laidOut(entries = long) {
+    const tab = newTabState();
+    loadHistory(tab, Commits.of(entries), undefined, []);
+    layOutHistory(tab, false, undefined);
+    return tab;
+  }
+
+  test('lays out only the first 25 rows of a history still loading, as the whole history lays them out', () => {
+    const head = { commit: 'h40' };
+    const layOut = (entries: typeof long, partial: boolean) => {
+      const tab = newTabState();
+      loadHistory(tab, Commits.of(entries), head, [], [], new Map(), partial);
+      assert.strictEqual(historyLoaded(tab), !partial);
+      layOutHistory(tab, false, head.commit);
+      return commitsMessage(tab, firstPage(tab, false), page(0, 25));
+    };
+    const first = layOut(long.slice(0, 30), true);
+    const whole = layOut(long, false);
+    assert.strictEqual(first.total, 25);
+    assert.strictEqual(whole.total, long.length);
+    assert.deepStrictEqual(first.graph, whole.graph);
+    assert.deepStrictEqual(first.workingTreeGraph, whole.workingTreeGraph);
+  });
+
+  test('lays out the history with merges collapsed, keeping the selection', () => {
+    const tab = newTabState();
+    loadHistory(tab, Commits.of(history), { name: 'main', commit: 'c' }, []);
+    tab.hash = 'a';
+    const generation = layOutHistory(tab, true, 'c');
+    assert.deepStrictEqual(
+      rowsOf(tab.history).map((entry) => entry.hash),
+      ['c', 'a'],
+    );
+    assert.strictEqual(tab.index, 1);
+    assert.strictEqual(layOutHistory(tab, false, 'c'), generation + 1);
+    assert.strictEqual(tab.index, 2);
+  });
+
+  test('keeps a merged branch in its collapsed merge though a ref points at it, unless HEAD is there', () => {
+    const tab = newTabState();
+    loadHistory(tab, Commits.of(history), { name: 'main', commit: 'c' }, [
+      { kind: 'branch', name: 'feature', commit: 'b' },
+    ]);
+    layOutHistory(tab, true, 'c');
+    assert.deepStrictEqual(
+      rowsOf(tab.history).map((entry) => entry.hash),
+      ['c', 'a'],
+    );
+    layOutHistory(tab, true, 'b');
+    assert.deepStrictEqual(
+      rowsOf(tab.history).map((entry) => entry.hash),
+      ['c', 'b', 'a'],
+    );
+  });
+
+  const pull = [
+    { hash: 'p', parents: ['d', 'm'] },
+    { hash: 'd', parents: ['base'] },
+    { hash: 'm', parents: ['base', 'f'] },
+    { hash: 'f', parents: ['base'] },
+    { hash: 'base', parents: [] },
+  ];
+
+  test('expands a pull merge while merges are collapsed, as collapsing it would hide the merges that landed on the mainline, until it is toggled', () => {
+    const tab = newTabState();
+    loadHistory(tab, Commits.of(pull), { name: 'main', commit: 'p' }, []);
+    layOutHistory(tab, true, 'p');
+    assert.deepStrictEqual(
+      rowsOf(tab.history).map((entry) => entry.hash),
+      ['p', 'd', 'm', 'base'],
+    );
+    toggleMerges(tab, ['p']);
+    layOutHistory(tab, true, 'p');
+    assert.deepStrictEqual(
+      rowsOf(tab.history).map((entry) => entry.hash),
+      ['p', 'd', 'base'],
+    );
+  });
+
+  test('expands the merges hiding a commit, though a pull merge among them was collapsed by hand', () => {
+    const tab = newTabState();
+    loadHistory(tab, Commits.of(pull), { name: 'main', commit: 'p' }, []);
+    toggleMerges(tab, ['p']);
+    layOutHistory(tab, true, 'p');
+    expandMerges(tab, mergesHidingCommit(tab, 'f'), true);
+    layOutHistory(tab, true, 'p');
+    assert.ok(tab.positions.has('f'));
+  });
+
+  test('expands the merges hiding a commit, leaving a merge inside them expanded', () => {
+    const tab = newTabState();
+    loadHistory(
+      tab,
+      Commits.of([
+        { hash: 'outer', parents: ['a', 'inner'] },
+        { hash: 'a', parents: ['base'] },
+        { hash: 'inner', parents: ['b', 'x'] },
+        { hash: 'b', parents: ['base'] },
+        { hash: 'x', parents: ['base'] },
+        { hash: 'base', parents: [] },
+      ]),
+      { name: 'main', commit: 'outer' },
+      [],
+    );
+    toggleMerges(tab, ['outer']);
+    layOutHistory(tab, false, 'outer');
+    expandMerges(tab, mergesHidingCommit(tab, 'x'), false);
+    layOutHistory(tab, false, 'outer');
+    assert.ok(tab.positions.has('x'));
+    assert.deepStrictEqual([...tab.toggledMerges], []);
+  });
+
+  test('knows whether the history is loaded, until it is forgotten', () => {
+    const tab = newTabState();
+    assert.strictEqual(historyLoaded(tab), false);
+    loadHistory(tab, Commits.of(history), { name: 'main', commit: 'c' }, []);
+    assert.strictEqual(historyLoaded(tab), true);
+    forgetHistory(tab);
+    assert.strictEqual(historyLoaded(tab), false);
+  });
+
+  test('keeps the history for refs that reach exactly its commits', () => {
+    const tab = newTabState();
+    const main = { name: 'main', commit: 'c' };
+    assert.strictEqual(refsKeepHistory(tab, main, [], false), false);
+    loadHistory(tab, Commits.of(history), main, [at('c')]);
+    assert.strictEqual(
+      refsKeepHistory(tab, main, [at('c'), at('b')], false),
+      true,
+    );
+    assert.strictEqual(refsKeepHistory(tab, main, [], false), true);
+    assert.strictEqual(refsKeepHistory(tab, main, [at('d')], false), false);
+    assert.strictEqual(
+      refsKeepHistory(tab, { commit: 'b' }, [at('a')], false),
+      false,
+    );
+    assert.strictEqual(refsKeepHistory(tab, main, [at('d')], true), true);
+    assert.strictEqual(
+      refsKeepHistory(tab, { name: 'b', commit: 'b' }, [at('c')], true),
+      false,
+    );
+    forgetHistory(tab);
+    assert.strictEqual(refsKeepHistory(tab, main, [at('c')], false), false);
+  });
+
+  test('keeps the history only while its stashes stay, unless solo leaves them out', () => {
+    const tab = newTabState();
+    const main = { name: 'main', commit: 'c' };
+    const stash = {
+      name: 'stash@{0}',
+      commit: 's',
+      message: 'On main: kept',
+      untracked: undefined,
+    };
+    loadHistory(
+      tab,
+      Commits.of([{ hash: 's', parents: ['c'] }, ...history]),
+      main,
+      [at('c')],
+      [stash],
+    );
+    assert.strictEqual(
+      refsKeepHistory(tab, main, [at('c')], false, [stash]),
+      true,
+    );
+    assert.strictEqual(refsKeepHistory(tab, main, [at('c')], false), false);
+    loadHistory(tab, Commits.of(history), main, [at('c')]);
+    assert.strictEqual(
+      refsKeepHistory(tab, main, [at('c')], false, [stash]),
+      false,
+    );
+    assert.strictEqual(
+      refsKeepHistory(tab, main, [at('c')], true, [stash]),
+      true,
+    );
+  });
+
+  test('keeps the history only while git takes its tips of the same time in the order it has them, as HEAD moving or a ref renamed can swap them', () => {
+    const tied = [
+      { hash: 'a', parents: ['x'] },
+      { hash: 'c', parents: ['x'] },
+      { hash: 'x', parents: [] },
+    ];
+    const main = { name: 'main', commit: 'a' };
+    const aaa = { name: 'aaa', commit: 'c' };
+    const refs = [at('c'), { ...at('a'), name: 'main' }];
+    const sameTime = new Map([
+      ['c', 10],
+      ['a', 10],
+    ]);
+    const tab = newTabState();
+    loadHistory(tab, Commits.of(tied), main, refs, [], sameTime);
+    assert.strictEqual(
+      refsKeepHistory(tab, main, refs, false, [], sameTime),
+      true,
+    );
+    assert.strictEqual(
+      refsKeepHistory(tab, aaa, refs, false, [], sameTime),
+      false,
+    );
+    assert.strictEqual(refsKeepHistory(tab, aaa, refs, false), false);
+    assert.strictEqual(
+      refsKeepHistory(
+        tab,
+        aaa,
+        refs,
+        false,
+        [],
+        new Map([
+          ['c', 10],
+          ['a', 20],
+        ]),
+      ),
+      true,
+    );
+    const detached = { commit: 'x' };
+    const [a, c, x] = tied;
+    loadHistory(tab, Commits.of([c, a, x]), detached, refs, [], sameTime);
+    const renamed = [
+      { ...at('a'), name: 'main' },
+      { ...at('c'), name: 'zzz' },
+    ];
+    assert.strictEqual(
+      refsKeepHistory(
+        tab,
+        detached,
+        renamed,
+        false,
+        [],
+        new Map([
+          ['a', 10],
+          ['c', 10],
+        ]),
+      ),
+      false,
+    );
+  });
+
+  test('lists its tips in the order git takes them: HEAD, the refs as for-each-ref lists them, a remote HEAD in its own place though refs leave it out, then the stashes', () => {
+    const head = { name: 'main', commit: 'h' };
+    const refs = [
+      { kind: 'remote' as const, name: 'origin/aaa', commit: 'a' },
+      { kind: 'remote' as const, name: 'origin/main', commit: 'm' },
+    ];
+    const dates = new Map([
+      ['m', 1],
+      ['a', 1],
+    ]);
+    const stashes = [
+      {
+        name: 'stash@{0}',
+        commit: 's',
+        message: 'On main: kept',
+        untracked: undefined,
+      },
+    ];
+    assert.deepStrictEqual(
+      [...tipsInGitOrder(head, refs, false, stashes, dates)],
+      ['h', 'm', 'a', 's'],
+    );
+    assert.deepStrictEqual(
+      [...tipsInGitOrder(head, refs, true, stashes, dates)],
+      ['h'],
+    );
+  });
+
+  test("takes no remote's tag as a tip, as its commit may be missing here and git keeps no ref for it", () => {
+    const refs = [
+      { kind: 'tag' as const, name: 'v1', commit: 't' },
+      {
+        kind: 'remote-tag' as const,
+        name: 'origin/v2',
+        commit: 'r',
+        remote: 'origin',
+      },
+    ];
+    assert.deepStrictEqual(
+      [...tipsInGitOrder({ name: 'main', commit: 'h' }, refs, false)],
+      ['h', 't'],
+    );
+  });
+
+  test('draws its stashes like the working tree', () => {
+    const tab = newTabState();
+    loadHistory(
+      tab,
+      Commits.of([{ hash: 's', parents: ['c'] }, ...history]),
+      { name: 'main', commit: 'c' },
+      [at('c')],
+      [
+        {
+          name: 'stash@{0}',
+          commit: 's',
+          message: 'On main: kept',
+          untracked: undefined,
+        },
+      ],
+    );
+    layOutHistory(tab, false, 'c');
+    assert.deepStrictEqual(
+      tab.graph.rows(0, 2).map((row) => row.stash ?? false),
+      [true, false],
+    );
+  });
+
+  test('selects a commit at its position, dropping the selected file', () => {
+    const tab = laidOut(history);
+    tab.path = 'x';
+    select(tab, 'b');
+    assert.deepStrictEqual(
+      [tab.hash, tab.index, tab.path],
+      ['b', 1, undefined],
+    );
+    select(tab, workingTreeHash);
+    assert.strictEqual(tab.index, -1);
+    select(tab, undefined);
+    assert.deepStrictEqual([tab.hash, tab.index], [undefined, undefined]);
+  });
+
+  test('finds the first parent of the selected commit, past the commits its merge brought in', () => {
+    const tab = newTabState();
+    loadHistory(tab, Commits.of(history), { name: 'main', commit: 'c' }, []);
+    layOutHistory(tab, false, 'c');
+    const parent = (selection: string) => {
+      select(tab, selection);
+      return parentOf(tab);
+    };
+    assert.strictEqual(parent('c'), 'a');
+    assert.strictEqual(parent('b'), 'a');
+    assert.strictEqual(parent(workingTreeHash), 'c');
+    assert.strictEqual(parent('a'), undefined);
+    assert.strictEqual(parent(comparisonOf('c', 'b')), undefined);
+    layOutHistory(tab, true, 'c');
+    assert.strictEqual(parent('c'), 'a');
+    assert.strictEqual(parent('b'), undefined);
+  });
+
+  test('finds no parent of the working tree without a checked-out commit', () => {
+    const tab = laidOut(history);
+    select(tab, workingTreeHash);
+    assert.strictEqual(parentOf(tab), undefined);
+  });
+
+  test('selects a comparison at the position of the commit compared to', () => {
+    const tab = laidOut(history);
+    select(tab, comparisonOf('c', 'b'));
+    assert.strictEqual(tab.index, 1);
+    select(tab, comparisonOf('b', workingTreeHash));
+    assert.strictEqual(tab.index, -1);
+  });
+
+  test('keeps a comparison while both of its commits are in the history', () => {
+    const exists = stillThere(laidOut(history));
+    assert.ok(exists(comparisonOf('a', 'c')));
+    assert.ok(exists(comparisonOf(workingTreeHash, 'c')));
+    assert.ok(!exists(comparisonOf('a', 'x')));
+    assert.ok(!exists(comparisonOf('x', workingTreeHash)));
+  });
+
+  test('starts the first page at the page of the commit that keeps its place', () => {
+    const tab = laidOut();
+    tab.anchor = { hash: `h${inSecondPage}`, offset: 3, report: 4 };
+    assert.deepStrictEqual(firstPage(tab, true), {
+      start: commitPageSize,
+      scrollTarget: { index: inSecondPage, offset: 3, report: 4 },
+    });
+    assert.deepStrictEqual(firstPage(tab, false), {
+      start: 0,
+      scrollTarget: undefined,
+    });
+    tab.anchor = { hash: workingTreeHash, offset: 7, report: 5 };
+    assert.deepStrictEqual(firstPage(tab, true), {
+      start: 0,
+      scrollTarget: { index: -1, offset: 7, report: 5 },
+    });
+    tab.anchor = { hash: 'gone', offset: 0, report: 6 };
+    assert.deepStrictEqual(firstPage(tab, true), {
+      start: 0,
+      scrollTarget: undefined,
+    });
+  });
+
+  test('starts the first page at the page of the commit to scroll to, or else of the selected one', () => {
+    const tab = laidOut();
+    assert.deepStrictEqual(firstPage(tab, false, `h${inSecondPage}`), {
+      start: commitPageSize,
+      scrollTarget: { index: inSecondPage },
+    });
+    tab.hash = `h${inThirdPage}`;
+    layOutHistory(tab, false, undefined);
+    assert.deepStrictEqual(firstPage(tab, false), {
+      start: 2 * commitPageSize,
+      scrollTarget: { index: inThirdPage },
+    });
+  });
+
+  test('sends the selected commit apart from the one to scroll to', () => {
+    const tab = laidOut(history);
+    select(tab, 'a');
+    const message = commitsMessage(tab, firstPage(tab, false, 'b'), []);
+    assert.strictEqual(message.selectedIndex, 2);
+    assert.deepStrictEqual(message.scrollTarget, { index: 1 });
+  });
+
+  test('replays the commits at the selected commit and the one that keeps its place', () => {
+    const tab = laidOut();
+    keep(tab.shown, commitsMessage(tab, firstPage(tab, false, 'h0'), []));
+    select(tab, 'h5');
+    tab.anchor = { hash: 'h9', offset: 2, report: 1 };
+    const replayed = replayOf(tab).find(
+      (message) => message.type === 'commits',
+    );
+    assert.strictEqual(replayed?.selectedIndex, 5);
+    assert.deepStrictEqual(replayed.scrollTarget, {
+      index: 9,
+      offset: 2,
+      report: 1,
+    });
+  });
+
+  test('keeps the working tree selected at index -1 when the history is laid out again', () => {
+    const tab = newTabState();
+    loadHistory(tab, Commits.of(history), { name: 'main', commit: 'c' }, []);
+    tab.hash = workingTreeHash;
+    layOutHistory(tab, true, 'c');
+    assert.strictEqual(tab.index, -1);
+  });
+
+  test('lets the keys go on from the merge that collapsing hides the selected commit in', () => {
+    const tab = newTabState();
+    loadHistory(tab, Commits.of(history), { name: 'main', commit: 'c' }, []);
+    tab.hash = 'b';
+    layOutHistory(tab, true, 'c');
+    assert.strictEqual(tab.index, undefined);
+    const message = commitsMessage(tab, firstPage(tab, false), []);
+    assert.strictEqual(message.selectedIndex, undefined);
+    assert.strictEqual(message.keysFrom, 0);
+    keep(tab.shown, message);
+    assert.strictEqual(
+      replayOf(tab).find((shown) => shown.type === 'commits')?.keysFrom,
+      0,
+    );
+  });
+
+  test('lets the keys go on from the merge that collapsing hides the commit compared to in', () => {
+    const tab = newTabState();
+    loadHistory(tab, Commits.of(pull), { name: 'main', commit: 'p' }, []);
+    layOutHistory(tab, false, 'p');
+    select(tab, comparisonOf('base', 'f'));
+    toggleMerges(tab, ['p']);
+    layOutHistory(tab, false, 'p');
+    const message = commitsMessage(tab, firstPage(tab, false), []);
+    assert.strictEqual(message.selectedIndex, undefined);
+    assert.strictEqual(message.keysFrom, 0);
+  });
+
+  test('names navigation entries after their subjects', () => {
+    const tab = newTabState();
+    keepSubjects(tab, [commitInfo('b', { subject: 'bee' })]);
+    assert.strictEqual(navigationEntry(tab, 'b').subject, 'bee');
+    assert.strictEqual(
+      navigationEntry(tab, workingTreeHash).subject,
+      'Uncommitted changes',
+    );
+  });
+
+  test('forgets the subjects no step back or forward needs once a thousand are kept', () => {
+    const tab = newTabState();
+    keepSubjects(tab, page(0, 1000));
+    tab.navigation = { back: ['c1'], forward: ['c2'] };
+    tab.hash = 'c3';
+    keepSubjects(tab, page(1000, 1));
+    assert.deepStrictEqual(
+      ['c0', 'c1', 'c2', 'c3', 'c1000'].map(
+        (hash) => navigationEntry(tab, hash).subject,
+      ),
+      [undefined, 'c1', 'c2', 'c3', 'c1000'],
+    );
+  });
+
+  test('replays the files before the diff or whole file that came last', () => {
+    const tab = newTabState();
+    select(tab, 'a');
+    keep(tab.shown, { type: 'diff', hash: 'a', path: 'x', patch: '' });
+    keep(tab.shown, { type: 'files', hash: 'a', files: [] });
+    keep(tab.shown, {
+      type: 'fileContent',
+      hash: 'a',
+      path: 'y',
+      content: '',
+      binary: false,
+    });
+    keep(tab.shown, { type: 'error', message: 'once' });
+    assert.deepStrictEqual(
+      replayOf(tab).map((message) => message.type),
+      ['files', 'fileContent'],
+    );
+  });
+
+  test('replays whether it is fetching, pulling and pushing, a tag too, so a tab shown again keeps saying so', () => {
+    const tab = newTabState();
+    keep(tab.shown, { type: 'pushingBranch', names: ['side'] });
+    keep(tab.shown, { type: 'pullingBranch', names: ['side'] });
+    keep(tab.shown, { type: 'pushingTag', names: ['v1'] });
+    keep(tab.shown, { type: 'pushing', running: true });
+    keep(tab.shown, { type: 'pulling', running: true });
+    keep(tab.shown, { type: 'fetching', running: true });
+    assert.deepStrictEqual(
+      replayOf(tab).map((message) => message.type),
+      [
+        'fetching',
+        'pulling',
+        'pushing',
+        'pushingTag',
+        'pullingBranch',
+        'pushingBranch',
+      ],
+    );
+  });
+
+  test('replays no files, diff or tree of a commit no longer selected', () => {
+    const tab = newTabState();
+    loadHistory(tab, Commits.of(history), undefined, []);
+    select(tab, 'a');
+    keep(tab.shown, { type: 'files', hash: 'a', files: [] });
+    keep(tab.shown, { type: 'diff', hash: 'a', path: 'x', patch: '' });
+    keep(tab.shown, { type: 'tree', hash: 'a', paths: [] });
+    select(tab, 'b');
+    assert.deepStrictEqual(
+      replayOf(tab).map((message) => message.type),
+      [],
+    );
+  });
+
+  test('lists no step to the commit shown in the dropdowns', () => {
+    const tab = newTabState();
+    loadHistory(tab, Commits.of(history), undefined, []);
+    tab.hash = 'a';
+    tab.navigation = { back: ['b', 'a'], forward: [] };
+    assert.deepStrictEqual(nearestSteps(tab), { back: ['b'], forward: [] });
+  });
+
+  test('lists the 20 nearest steps back and forward in the dropdowns, nearest first', () => {
+    const tab = laidOut();
+    tab.hash = 'h24';
+    tab.navigation = {
+      back: Array.from({ length: 24 }, (_, i) => `h${i}`),
+      forward: Array.from({ length: 24 }, (_, i) => `h${i + 30}`),
+    };
+    assert.deepStrictEqual(
+      nearestSteps(tab).back,
+      Array.from({ length: 20 }, (_, i) => `h${23 - i}`),
+    );
+    assert.deepStrictEqual(
+      nearestSteps(tab).forward,
+      Array.from({ length: 20 }, (_, i) => `h${53 - i}`),
+    );
+  });
+});

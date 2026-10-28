@@ -3,31 +3,36 @@ import type {
   FileChange,
   RepositoryState,
   WorktreeInfo,
-} from '../shared/protocol';
-import type { ColumnName } from '../webview/activeColumn';
-import { CheckedOutBranch } from '../webview/bubbles';
-import { changesTreeElement } from '../webview/changesTree';
-import { Column } from '../webview/column';
-import { ColumnResizingProvider } from '../webview/columns';
-import { CommitRow, WorkingTreeRow } from '../webview/commitList';
-import { ContextMenu } from '../webview/contextMenu';
-import { DiffFind, DiffOptions } from '../webview/diffColumn';
-import { Code, diffRowClass, DiffView, marked } from '../webview/diffView';
-import type { FindRange } from '../webview/find';
-import { LocationsPopup } from '../webview/locations';
+} from '../tools/git/shared/protocol';
+import type { ColumnName } from '../tools/git/page/activeColumn';
+import { CheckedOutBranch } from '../tools/git/page/bubbles';
+import { changesTreeElement } from '../tools/git/page/changesTree';
+import { Column } from '../tools/git/page/column';
+import { ColumnResizingProvider } from '../tools/git/page/columns';
+import { CommitRow, WorkingTreeRow } from '../tools/git/page/commitList';
+import { ContextMenu } from '../ui/contextMenu';
+import { DiffFind, DiffOptions } from '../tools/git/page/diffColumn';
+import {
+  Code,
+  diffRowClass,
+  DiffView,
+  marked,
+} from '../tools/git/page/diffView';
+import type { FindRange } from '../tools/git/page/find';
+import { LocationsPopup } from '../tools/git/page/locations';
 import {
   MessageBody,
   MessageCorner,
   MessagePanel,
-} from '../webview/messagePeek';
-import { Minimap } from '../webview/minimap';
-import { HistoryMenu, NavButtons } from '../webview/navBar';
-import { SearchButton } from '../webview/search';
-import { Notices } from '../webview/notices';
-import { MenuButton } from '../webview/menu';
-import { TabBar } from '../webview/tabBar';
-import { FileRow } from '../webview/tree';
-import { WorktreeBar } from '../webview/worktreeBar';
+} from '../tools/git/page/messagePeek';
+import { Minimap } from '../ui/minimap';
+import { HistoryMenu, NavButtons } from '../tools/git/page/navBar';
+import { SearchButton } from '../ui/search';
+import { Notices } from '../shell/page/notices';
+import { MenuButton } from '../ui/menu';
+import { TabBar } from '../shell/page/tabBar';
+import { FileRow } from '../tools/git/page/tree';
+import { WorktreeBar } from '../tools/git/page/worktreeBar';
 import {
   allWithClass,
   rendered,
@@ -125,8 +130,8 @@ export const tabBar = memoized(() =>
   rendered(
     <TabBar
       tabs={[
-        { root: '/a', name: 'a' },
-        { root: '/x/b', name: 'b', folder: 'x' },
+        { id: '/a', tool: 'git', root: '/a', name: 'a' },
+        { id: '/x/b', tool: 'git', root: '/x/b', name: 'b', folder: 'x' },
       ]}
       active="/a"
       onSelect={noop}

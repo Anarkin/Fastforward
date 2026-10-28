@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { isMissing } from '../git/files';
+import { isMissing } from '../tools/git/main/cli/files';
 
 const command = 'ff';
 const appImageLine = /^fastforward_appimage=.*$/m;

@@ -1,0 +1,57 @@
+import { useEffect } from 'react';
+import { CloseIcon } from '../../ui/icons';
+import { strings } from '../../shared/strings';
+
+export interface Notice {
+  readonly id: number;
+  readonly level: 'info' | 'error';
+  readonly message: string;
+  readonly shownAt: number;
+}
+
+const infoShownFor = 8000;
+
+export function fading(
+  notices: readonly Notice[],
+  now: number,
+): { id: number; after: number }[] {
+  return notices
+    .filter((notice) => notice.level === 'info')
+    .map((notice) => ({
+      id: notice.id,
+      after: Math.max(0, notice.shownAt + infoShownFor - now),
+    }));
+}
+
+export function Notices({
+  notices,
+  onDismiss,
+}: {
+  notices: readonly Notice[];
+  onDismiss: (id: number) => void;
+}) {
+  useEffect(() => {
+    const timers = fading(notices, performance.now()).map(({ id, after }) =>
+      setTimeout(() => onDismiss(id), after),
+    );
+    return () => timers.forEach(clearTimeout);
+  }, [notices, onDismiss]);
+
+  return (
+    <div className="notices" role="status">
+      {notices.toReversed().map((notice) => (
+        <div key={notice.id} className={`notice ${notice.level}`}>
+          <span className="notice-message">{notice.message}</span>
+          <button
+            className="notice-close"
+            title={strings.messages.dismiss}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => onDismiss(notice.id)}
+          >
+            <CloseIcon />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}

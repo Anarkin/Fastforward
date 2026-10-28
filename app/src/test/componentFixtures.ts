@@ -1,8 +1,8 @@
 import * as assert from 'node:assert';
 import { isValidElement } from 'react';
 import { vi } from 'vitest';
-import { preloadDelay } from '../webview/tabBar';
-import { FileRow } from '../webview/tree';
+import { preloadDelay } from '../shell/page/tabBar';
+import { FileRow } from '../tools/git/page/tree';
 
 export interface RowProps {
   className: string;

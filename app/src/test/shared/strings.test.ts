@@ -56,7 +56,7 @@ suite('Strings', () => {
     const keys = Object.values(strings.keys).map(escaped).join('|');
     const hint = new RegExp(`\\([^)]*(?<!\\w)(?:${keys}|Cmd)(?!\\w)[^)]*\\)`);
     const texts = textsOf(strings);
-    assert.ok(texts.includes(strings.actions.openRepository));
+    assert.ok(texts.includes(strings.actions.newTab));
     assert.deepStrictEqual(
       texts.filter((text) => hint.test(text)),
       [],

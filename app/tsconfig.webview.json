@@ -4,5 +4,6 @@
     "types": [],
     "noEmit": true
   },
-  "include": ["src/webview", "src/shared"]
+  "include": ["src/**/page", "src/ui", "src/**/shared"],
+  "exclude": ["src/test"]
 }

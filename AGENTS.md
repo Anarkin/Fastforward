@@ -3,7 +3,7 @@
 - @CONTRIBUTING.md
 - @README.md
 - @docs/ARCHITECTURE.md
-- @docs/FEATURES.md
+- @docs/FEATURES-GIT.md
 
 ## Protected files
 

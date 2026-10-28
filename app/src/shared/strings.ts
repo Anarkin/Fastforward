@@ -91,8 +91,8 @@ export const strings = {
     open: 'Open',
     crashed: (error: string) => `Something went wrong: ${error}`,
     reload: 'Reload',
-    noRepository:
-      'No repository is open. Use + to open one. The app menu is at the top right.',
+    noTab:
+      'No tab is open. Use + to open one. The app menu is at the top right.',
     explorerMenuEntry: `Open in ${brand}`,
   },
   common: {
@@ -104,7 +104,6 @@ export const strings = {
   },
   symbols: {
     checked: '✓',
-    submenu: '▸',
     open: '▾',
     closed: '▸',
     hunk: '⋯',
@@ -136,8 +135,17 @@ export const strings = {
     copied: 'Copied',
     copyTitle: 'Copy these lines, as for a bug report',
   },
+  tools: {
+    git: 'Git Manager',
+    files: 'File Manager',
+    terminal: 'Terminal',
+  },
+  openWith: {
+    title: 'Open With',
+  },
   tabs: {
-    repositories: 'Repositories',
+    tabs: 'Tabs',
+    newTab: 'New Tab',
     worktrees: 'Worktrees',
     browse: 'Browse...',
     removeRecent: (name: string) => `Remove ${name} from this list`,
@@ -160,11 +168,11 @@ export const strings = {
     installCommand: 'Install the ff Command',
   },
   actions: {
-    openRepository: 'Open a repository',
-    repository: 'Next or previous repository',
+    newTab: 'Open a new tab',
+    tab: 'Next or previous tab',
     worktree: 'Next or previous worktree',
-    closeRepository: 'Close a repository',
-    moveRepository: 'Move a repository among the tabs',
+    closeTab: 'Close a tab',
+    moveTab: 'Move a tab among the tabs',
     head: 'Select the checked-out commit',
     upstream: 'Select the upstream of the checked-out branch',
     search: 'Search branches, remotes, tags and commits',
@@ -196,7 +204,7 @@ export const strings = {
     close: 'Close a menu or popup',
     dialogFocus: 'Move between the controls of a popup',
     menuItem: 'Move in a menu',
-    removeItem: 'Remove a recent repository from the menu',
+    removeItem: 'Remove a recent item from a menu',
     submenu: 'Open a submenu, or go back from it',
     result: 'Move in the search results',
     go: 'Go to the search result',
@@ -207,7 +215,8 @@ export const strings = {
     joiner: '+',
     note: 'The arrows, PgUp, PgDn, Home, End and Esc work in every list and popup.',
     groups: {
-      Repositories: 'Repositories',
+      Tabs: 'Tabs',
+      Worktrees: 'Worktrees',
       Moving: 'Moving around the commits',
       Commits: 'Commits',
       Messages: 'Commit messages',
@@ -405,6 +414,7 @@ export const strings = {
     couldNotOpen: (folder: string, reason: string) =>
       `Couldn't open ${folder}. ${reason}`,
     notInRepository: (folder: string) => `${folder} is not in a git repository`,
+    noToolOpens: (folder: string) => `${folder} can't be opened`,
     notRepository: (root: string) => `${root} is not a git repository`,
     couldNotWatch: (root: string) =>
       `Couldn't watch ${root}, so changes made outside ${brand} won't show until it is opened again`,
@@ -553,7 +563,6 @@ export const strings = {
     ) => `${brand} ${version} on ${platform} ${arch}, Electron ${electron}`,
     usingGit: (version: string, path: string) =>
       `Using git ${version} at ${path}`,
-    movedSettings: 'Moved the settings into settings.user.json and state.json',
     settingsChanged: 'Settings changed, reloading',
     watchingSettingsFailed: 'Watching the settings failed',
     watchingBuildFailed: 'Watching the build failed',
@@ -591,8 +600,8 @@ export const strings = {
     openingAskedFailed:
       'Opening the folders asked for from the command line failed',
     tabOpen: (root: string) => `Tab ${root} is open`,
+    showingTabFailed: (root: string) => `Showing tab ${root} failed`,
     tabShownAsLeft: (root: string) => `Tab ${root} is shown as it was left`,
-    groupingFailed: 'Grouping the tabs by repository failed',
     listingWorktreesFailed: (repository: string) =>
       `Listing the worktrees of ${repository} failed`,
     savingFailed: 'Saving the state failed',

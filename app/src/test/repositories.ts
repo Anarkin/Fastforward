@@ -6,8 +6,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import type { TestContext } from 'vitest';
 import { replaceBuiltin } from './builtins';
-import { findGit, minimumGitVersion } from '../git/locate';
-import { type GitCommand, realGit } from '../git/run';
+import { findGit, minimumGitVersion } from '../tools/git/main/cli/locate';
+import { type GitCommand, realGit } from '../tools/git/main/cli/run';
 
 const withoutTheUsersGitConfig = { GIT_CONFIG_GLOBAL: '/dev/null' };
 

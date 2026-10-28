@@ -16,32 +16,39 @@ import {
   shell,
 } from 'electron';
 import { autoUpdater } from 'electron-updater';
-import { findGit, minimumGitVersion, type GitSearch } from '../git/locate';
+import {
+  findGit,
+  minimumGitVersion,
+  type GitSearch,
+} from '../tools/git/main/cli/locate';
 import { foldersHandedOff, foldersOf, handOff } from './commandLine';
 import { prettyName, systemOf } from './system';
-import { stopRunningGit, writesEnded } from '../git/run';
-import { errorLine, fileLog, type Log } from '../log';
-import { imageRoute } from '../shared/images';
-import { appNameSwitch, titleBarHeight } from '../shared/titleBar';
+import { stopRunningGit, writesEnded } from '../tools/git/main/cli/run';
+import { errorLine, fileLog, type Log } from '../shell/main/log';
+import { imageRoute } from '../tools/git/shared/images';
+import { appNameSwitch, titleBarHeight } from '../shell/shared/titleBar';
 import {
   keymap,
   pressed,
   pressOfInput,
   setKeyPlatform,
-} from '../shared/keymap';
-import type { ToHost, ToWebview } from '../shared/protocol';
+} from '../shell/shared/keymap';
+import type { ToHost, ToWebview } from '../shell/shared/protocol';
 import { brand, strings } from '../shared/strings';
 import {
-  migrateProfile,
   readDefaults,
   UserSettings,
   watchSettings,
   writeReadOnly,
   type Settings,
-} from '../settings';
-import { JsonFileStore, Storage } from '../storage';
-import { themeCss } from '../theme';
-import { FastforwardView, type Connection } from '../view';
+} from '../shell/main/settings';
+import { JsonFileStore, Storage, toolState } from '../shell/main/storage';
+import { themeCss } from '../shell/main/theme';
+import { FilesTool } from '../tools/files/main/tool';
+import { TerminalTool } from '../tools/terminal/main/tool';
+import { GitStorage } from '../tools/git/main/storage';
+import { GitTool } from '../tools/git/main/tool';
+import { Shell, type Connection } from '../shell/main/shell';
 import {
   appFile,
   appOrigin,
@@ -127,9 +134,6 @@ async function start(asked: readonly string[]): Promise<void> {
 
   const profile = app.getPath('userData');
   const defaults = readDefaults(path.join(dist, 'settings.json'));
-  if (migrateProfile(profile, defaults)) {
-    log.info(strings.log.movedSettings);
-  }
   const userSettingsFile = path.join(profile, 'settings.user.json');
   const defaultSettingsCopy = path.join(profile, 'settings.defaults.json');
   const userSettings = new UserSettings(defaults, userSettingsFile);
@@ -140,7 +144,7 @@ async function start(asked: readonly string[]): Promise<void> {
   for (const problem of state.problems) {
     log.warn(problem);
   }
-  const views = Promise.withResolvers<FastforwardView>();
+  const views = Promise.withResolvers<{ shell: Shell; git: GitTool }>();
   protocol.handle(appScheme, (request) => {
     const url = new URL(request.url);
     if (url.pathname === '/theme.css') {
@@ -149,7 +153,7 @@ async function start(asked: readonly string[]): Promise<void> {
       });
     }
     if (url.pathname === imageRoute) {
-      return views.promise.then((view) => view.image(url));
+      return views.promise.then(({ git }) => git.image(url));
     }
     const file = appFile(dist, request.url);
     return file
@@ -165,7 +169,7 @@ async function start(asked: readonly string[]): Promise<void> {
   let connection: Promise<Connection | undefined> = Promise.resolve(undefined);
   const connect = () => {
     connection = Promise.all([connection, views.promise]).then(
-      ([previous, view]) => {
+      ([previous, { shell: view }]) => {
         previous?.dispose();
         return view.connect((message: ToWebview) => {
           if (!window.isDestroyed()) {
@@ -217,7 +221,7 @@ async function start(asked: readonly string[]): Promise<void> {
       }
       const folders = foldersHandedOff(additionalData);
       if (folders.length > 0) {
-        void views.promise.then((view) => view.openFolders(folders));
+        void views.promise.then(({ shell: view }) => view.openFolders(folders));
       }
     },
   );
@@ -278,60 +282,72 @@ async function start(asked: readonly string[]): Promise<void> {
     systemVersion: process.getSystemVersion(),
     distribution: process.platform === 'linux' ? distributionName() : undefined,
   });
-  const view = new FastforwardView(log, git.path, storage, {
-    chooseFolders: async () => {
-      const chosen = await dialog.showOpenDialog(window, {
-        title: strings.app.openRepositories,
-        buttonLabel: strings.app.open,
-        properties: ['openDirectory', 'multiSelections'],
-      });
-      return chosen.canceled ? [] : chosen.filePaths;
+  const gitTool = new GitTool(
+    log,
+    git.path,
+    new GitStorage(userSettings, toolState(state, 'git')),
+    {
+      chooseFolders: async () => {
+        const chosen = await dialog.showOpenDialog(window, {
+          title: strings.app.openRepositories,
+          buttonLabel: strings.app.open,
+          properties: ['openDirectory', 'multiSelections'],
+        });
+        return chosen.canceled ? [] : chosen.filePaths;
+      },
     },
-    openSettings: async () => {
-      if (!fs.existsSync(userSettingsFile)) {
-        fs.writeFileSync(userSettingsFile, '{}\n');
-      }
-      await openFile(log, userSettingsFile);
+  );
+  const view = new Shell(
+    log,
+    storage,
+    {
+      openSettings: async () => {
+        if (!fs.existsSync(userSettingsFile)) {
+          fs.writeFileSync(userSettingsFile, '{}\n');
+        }
+        await openFile(log, userSettingsFile);
+      },
+      openDefaultSettings: async () => {
+        writeReadOnly(
+          defaultSettingsCopy,
+          fs.readFileSync(path.join(dist, 'settings.json'), 'utf8'),
+        );
+        await openFile(log, defaultSettingsCopy);
+      },
+      settingsProblems: () => userSettings.problems,
+      checkForUpdates: () => updates.check(true),
+      installUpdate: () => updates.install(),
+      updateStatus: () => updates.status,
+      about: () => ({
+        version: app.getVersion(),
+        development,
+        git: git.version,
+        system,
+      }),
+      copyText: (text) => {
+        void clipboard.writeText(text);
+      },
+      canInstallCommand: () => commandPlace !== undefined,
+      commandState: () =>
+        commandPlace === undefined
+          ? Promise.resolve('taken')
+          : commandState(commandPlace, commandFiles),
+      installCommand: () =>
+        commandPlace === undefined
+          ? Promise.resolve({ kind: 'cancelled' })
+          : installCommand(
+              commandPlace,
+              commandFiles,
+              linkAsAdmin(),
+              (process.env.PATH ?? '').split(path.delimiter),
+            ),
     },
-    openDefaultSettings: async () => {
-      writeReadOnly(
-        defaultSettingsCopy,
-        fs.readFileSync(path.join(dist, 'settings.json'), 'utf8'),
-      );
-      await openFile(log, defaultSettingsCopy);
-    },
-    settingsProblems: () => userSettings.problems,
-    checkForUpdates: () => updates.check(true),
-    installUpdate: () => updates.install(),
-    updateStatus: () => updates.status,
-    about: () => ({
-      version: app.getVersion(),
-      development,
-      git: git.version,
-      system,
-    }),
-    copyText: (text) => {
-      void clipboard.writeText(text);
-    },
-    canInstallCommand: () => commandPlace !== undefined,
-    commandState: () =>
-      commandPlace === undefined
-        ? Promise.resolve('taken')
-        : commandState(commandPlace, commandFiles),
-    installCommand: () =>
-      commandPlace === undefined
-        ? Promise.resolve({ kind: 'cancelled' })
-        : installCommand(
-            commandPlace,
-            commandFiles,
-            linkAsAdmin(),
-            (process.env.PATH ?? '').split(path.delimiter),
-          ),
-  });
+    { git: gitTool, files: new FilesTool(), terminal: new TerminalTool() },
+  );
   if (asked.length > 0) {
     void view.openFolders(asked);
   }
-  views.resolve(view);
+  views.resolve({ shell: view, git: gitTool });
   app.on('before-quit', () => view.quit());
   const applySettings = () => {
     log.info(strings.log.settingsChanged);
