@@ -2071,10 +2071,17 @@ suite('App without git', () => {
         PATH: folder,
         Path: folder,
         SHELL: path.join(folder, 'no-shell'),
+        ELECTRON_ENABLE_STACK_DUMPING: 'true',
       },
     });
     const child = app.process();
     const exited = once(child, 'exit');
+    let printed = '';
+    for (const output of [child.stdout, child.stderr]) {
+      output?.on('data', (chunk: Buffer) => {
+        printed += chunk.toString();
+      });
+    }
     try {
       await waitFor(() => {
         try {
@@ -2099,7 +2106,11 @@ suite('App without git', () => {
       }
       assert.strictEqual(fs.readFileSync(windows, 'utf8'), 'created\n');
       if (child.exitCode !== null || child.signalCode !== null) {
-        assert.deepStrictEqual([child.exitCode, child.signalCode], [0, null]);
+        assert.deepStrictEqual(
+          [child.exitCode, child.signalCode],
+          [0, null],
+          `The app quit with ${String(child.exitCode ?? child.signalCode)}, printing:\n${printed}`,
+        );
       }
     } finally {
       if (child.exitCode === null && child.signalCode === null) {
