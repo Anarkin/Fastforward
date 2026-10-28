@@ -1,7 +1,8 @@
 import * as assert from 'node:assert';
 import { beforeAll, suite, test } from 'vitest';
-import { parsePatch } from '../../webview/diff';
+import { parsePatch, type LoadedText } from '../../webview/diff';
 import {
+  carriedRanges,
   codeSegments,
   colorerOf,
   languageOf,
@@ -64,6 +65,21 @@ async function colored(
   );
 }
 
+const blobs = { old: '1'.repeat(40), new: '2'.repeat(40) };
+
+function loadedTexts(
+  texts: readonly (readonly [string, string])[],
+): Map<string, LoadedText> {
+  return new Map(
+    texts.map(([key, text]) => [
+      key,
+      { blob: key.startsWith('old:') ? blobs.old : blobs.new, text },
+    ]),
+  );
+}
+
+const range = (kind: SyntaxRange['kind']) => [{ start: 0, end: 1, kind }];
+
 const linesColored = (far: number) => {
   const text = Array.from({ length: far + 1 }, (_, index) =>
     index === far - 1 ? 'new = 2;' : 'x;',
@@ -81,7 +97,7 @@ const linesColored = (far: number) => {
   return syntaxSources(
     parsePatch(farPatch),
     undefined,
-    new Map([['new:a.ts', text]]),
+    loadedTexts([['new:a.ts', text]]),
   ).map((source) => source.lines);
 };
 
@@ -266,7 +282,7 @@ suite('Syntax', () => {
   ].join('\n');
 
   test('colors a hunk starting inside a comment as the whole text of each side has it', async () => {
-    const texts = new Map([
+    const texts = loadedTexts([
       ['old:a.ts', '/* start\r\nmiddle\r\nold = 1;\r\nend */\r\nlet a;\r\n'],
       ['new:a.ts', '/* start\nmiddle\nnew = 2;\nend */\n'],
     ]);
@@ -292,7 +308,7 @@ suite('Syntax', () => {
       ' end */\r',
       '',
     ].join('\n');
-    const texts = new Map([
+    const texts = loadedTexts([
       ['old:a.ts', '/* start\r\nmiddle\r\nold = 1;\r\nend */\r\n'],
       ['new:a.ts', '/* start\r\nmiddle\r\nnew = 2;\r\nend */\r\n'],
     ]);
@@ -371,7 +387,9 @@ suite('Syntax', () => {
   });
 
   test('colors a side from its hunks alone when its whole text does not match them', async () => {
-    const texts = new Map([['new:a.ts', 'other\ntext\nnew = 3;\nend */\n']]);
+    const texts = loadedTexts([
+      ['new:a.ts', 'other\ntext\nnew = 3;\nend */\n'],
+    ]);
     assert.deepStrictEqual(
       await colored(parsePatch(gappedPatch), undefined, texts),
       {
@@ -379,6 +397,111 @@ suite('Syntax', () => {
         '0:1': ['keyword new', 'keyword =', 'number 2', 'keyword ;'],
         '0:2': ['keyword */'],
       },
+    );
+  });
+
+  test('colors a side whose blob changed once its new whole text comes, rather than from its hunks alone before it, keeping the colors its lines had meanwhile, and a side whose text it has at once', () => {
+    const files = parsePatch(gappedPatch);
+    const oldText = '/* start\nmiddle\nold = 1;\nend */\n';
+    const texts = loadedTexts([['old:a.ts', oldText]]);
+    const sides = (loaded: ReadonlyMap<string, LoadedText>) =>
+      syntaxSources(files, undefined, loaded).map((source) => source.lines);
+    assert.deepStrictEqual(sides(texts), [
+      ['/* start', 'middle', 'old = 1;', 'end */'],
+      ['new = 2;', 'end */'],
+    ]);
+    const changed = new Map(texts).set('new:a.ts', {
+      blob: '3'.repeat(40),
+      text: '/* start\nmiddle\nnew = 3;\nend */\n',
+    });
+    assert.deepStrictEqual(sides(changed), [
+      ['/* start', 'middle', 'old = 1;', 'end */'],
+    ]);
+    const unreadable = new Map(texts).set('new:a.ts', {
+      blob: blobs.new,
+      text: undefined,
+    });
+    assert.deepStrictEqual(sides(unreadable), sides(texts));
+  });
+
+  test('carries the colors of a diff over to the lines the next diff of the same files still shows, finding each by its file and text in the order they come, so they stay colored until colored anew', () => {
+    const before = parsePatch(
+      [
+        'diff --git a/a.ts b/a.ts',
+        '@@ -1,3 +1,3 @@',
+        ' }',
+        '-x = 1;',
+        '+x = 2;',
+        ' }',
+        '',
+      ].join('\n'),
+    );
+    const after = parsePatch(
+      [
+        'diff --git a/a.ts b/a.ts',
+        '@@ -1,3 +1,4 @@',
+        ' }',
+        '-x = 1;',
+        '+x = 3;',
+        '+}',
+        ' }',
+        'diff --git a/b.ts b/b.ts',
+        '@@ -1 +1 @@',
+        '-x = 1;',
+        '+}',
+        '',
+      ].join('\n'),
+    );
+    const ranges = new Map([
+      ['0:0', range('keyword')],
+      ['0:1', range('number')],
+      ['0:2', range('string')],
+      ['0:3', range('comment')],
+    ]);
+    assert.deepStrictEqual(
+      carriedRanges({ files: before, whole: undefined, ranges }, after),
+      new Map([
+        ['0:0', range('keyword')],
+        ['0:1', range('number')],
+        ['0:3', range('comment')],
+        ['0:4', range('comment')],
+      ]),
+    );
+  });
+
+  test('carries the colors of a file shown entire over to its lines once it is shown anew, or as a diff', () => {
+    const whole = { path: 'a.ts', content: 'let a;\nlet b;\n', binary: false };
+    const before = {
+      files: [],
+      whole,
+      ranges: new Map([
+        ['0:0', range('keyword')],
+        ['0:1', range('type')],
+      ]),
+    };
+    assert.deepStrictEqual(
+      carriedRanges(before, [], { ...whole, content: 'let b;\nlet a;\n' }),
+      new Map([
+        ['0:0', range('type')],
+        ['0:1', range('keyword')],
+      ]),
+    );
+    const changed = parsePatch(
+      [
+        'diff --git a/a.ts b/a.ts',
+        '@@ -1,2 +1,2 @@',
+        ' let a;',
+        '-let b;',
+        '+let c;',
+        '',
+      ].join('\n'),
+    );
+    assert.deepStrictEqual(
+      carriedRanges(before, changed),
+      new Map([
+        ['0:0', range('keyword')],
+        ['0:1', range('type')],
+      ]),
     );
   });
 
@@ -391,6 +514,17 @@ suite('Syntax', () => {
     ]);
     assert.deepStrictEqual(textsToLoad(files, 1, requested), []);
     assert.strictEqual(textsToLoad(files, 2, requested).length, 2);
+  });
+
+  test('asks a diff drawn anew only for the whole texts of the sides whose blob changed', () => {
+    const texts = loadedTexts([['old:a.ts', 'old text']]).set('new:a.ts', {
+      blob: '3'.repeat(40),
+      text: 'new text',
+    });
+    assert.deepStrictEqual(
+      textsToLoad(parsePatch(gappedPatch), 2, new Set(), undefined, texts),
+      [{ path: 'a.ts', side: 'new', blob: blobs.new }],
+    );
   });
 
   test('asks for no text of a side shown from its first line on, of a side a file lacks, or of a file it cannot color', () => {
@@ -844,7 +978,7 @@ suite('Syntax', () => {
 
   test('colors sides from their hunks alone once the sides before take 20000 lines', () => {
     const filler = Array.from({ length: 4999 }, () => 'x;');
-    const texts = new Map(
+    const texts = loadedTexts(
       paths.flatMap((path) =>
         ['old', 'new'].map(
           (side) =>

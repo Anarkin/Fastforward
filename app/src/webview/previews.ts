@@ -1,5 +1,5 @@
 import type { TextRequest } from '../shared/protocol';
-import { textKey, type DiffFile } from './diff';
+import { textKey, type DiffFile, type LoadedText } from './diff';
 import {
   rendersImage,
   rendersWholeImage,
@@ -56,13 +56,18 @@ export function previewTexts(
   shown: ReadonlySet<string>,
   diff: number,
   requested: Set<string>,
+  texts: ReadonlyMap<string, LoadedText> = new Map(),
 ): TextRequest[] {
   return files.flatMap((file) =>
     shown.has(file.path) && previewOf(file) === 'markdown'
       ? sides.flatMap((side) => {
           const blob = file.blobs?.[side];
           const key = `${diff}:${textKey(file.path, side)}`;
-          if (blob === undefined || requested.has(key)) {
+          if (
+            blob === undefined ||
+            requested.has(key) ||
+            texts.get(textKey(file.path, side))?.blob === blob
+          ) {
             return [];
           }
           requested.add(key);
@@ -82,27 +87,28 @@ export interface MarkdownSide {
 
 export function markdownSides(
   file: DiffFile,
-  texts: ReadonlyMap<string, string | undefined>,
+  texts: ReadonlyMap<string, LoadedText>,
   sideBySide: boolean,
   origin?: ImageOrigin,
 ): MarkdownSide[] {
-  const all = sides.map((side) => ({
-    side,
-    text: texts.get(textKey(file.path, side)),
-    present: file.blobs?.[side] !== undefined,
-    ...(texts.has(textKey(file.path, side)) &&
-      texts.get(textKey(file.path, side)) === undefined && {
-        unreadable: true as const,
+  const all = sides.map((side) => {
+    const loaded = texts.get(textKey(file.path, side));
+    return {
+      side,
+      text: loaded?.text,
+      present: file.blobs?.[side] !== undefined,
+      ...(loaded !== undefined &&
+        loaded.text === undefined && { unreadable: true as const }),
+      ...(origin && {
+        images: {
+          root: origin.root,
+          document: side === 'old' ? (file.oldPath ?? file.path) : file.path,
+          revision: sideRevision(origin, side),
+          version: origin.version ?? '',
+        },
       }),
-    ...(origin && {
-      images: {
-        root: origin.root,
-        document: side === 'old' ? (file.oldPath ?? file.path) : file.path,
-        revision: sideRevision(origin, side),
-        version: origin.version ?? '',
-      },
-    }),
-  }));
+    };
+  });
   if (sideBySide) {
     return all;
   }

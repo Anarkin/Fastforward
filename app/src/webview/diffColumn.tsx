@@ -15,7 +15,7 @@ import {
 } from '../shared/protocol';
 import { columnFocusOf } from './activeColumn';
 import { Column } from './column';
-import { parsePatch, type DiffFile } from './diff';
+import { parsePatch, type DiffFile, type LoadedText } from './diff';
 import { DiffView, type WholeFile } from './diffView';
 import { filterWords, matchesFilter } from './fileFilter';
 import { findMatches, matchCount, stepMatch, unsearchedFiles } from './find';
@@ -354,7 +354,7 @@ export function Diff({
   diffs: number;
   largeFiles: ReadonlyMap<string, DiffFile>;
   onLoadFile: (path: string) => void;
-  texts: ReadonlyMap<string, string | undefined>;
+  texts: ReadonlyMap<string, LoadedText>;
   onLoadTexts: (texts: TextRequest[]) => void;
   fileContent: WholeFile | undefined;
   error: string | undefined;

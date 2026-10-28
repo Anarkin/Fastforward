@@ -91,10 +91,30 @@ suite('Previews', () => {
     assert.strictEqual(previewTexts(files, shown, 2, requested).length, 3);
   });
 
+  test('asks a diff drawn anew only for the sides of the Markdown shown as a preview whose blob changed', () => {
+    const texts = new Map([
+      [textKey('README.md', 'old'), { blob: oldId, text: '# old' }],
+      [textKey('README.md', 'new'), { blob: '3'.repeat(40), text: '# newer' }],
+    ]);
+    assert.deepStrictEqual(
+      previewTexts([readme], new Set(['README.md']), 2, new Set(), texts),
+      [{ path: 'README.md', side: 'new', blob: newId }],
+    );
+  });
+
+  test('previews the text a side had until its new text comes', () => {
+    const texts = new Map([
+      [textKey('README.md', 'new'), { blob: '3'.repeat(40), text: '# before' }],
+    ]);
+    assert.deepStrictEqual(markdownSides(readme, texts, false), [
+      { side: 'new', text: '# before', present: true },
+    ]);
+  });
+
   test('previews both sides side by side, hatching one a file lacks, and the newest inline', () => {
     const texts = new Map([
-      [textKey('README.md', 'old'), '# old'],
-      [textKey('docs/new.markdown', 'new'), '# new'],
+      [textKey('README.md', 'old'), { blob: oldId, text: '# old' }],
+      [textKey('docs/new.markdown', 'new'), { blob: newId, text: '# new' }],
     ]);
     assert.deepStrictEqual(markdownSides(readme, texts, true), [
       { side: 'old', text: '# old', present: true },
@@ -110,7 +130,9 @@ suite('Previews', () => {
     assert.deepStrictEqual(
       markdownSides(
         readme,
-        new Map([[textKey('README.md', 'new'), undefined]]),
+        new Map([
+          [textKey('README.md', 'new'), { blob: newId, text: undefined }],
+        ]),
         false,
       ),
       [{ side: 'new', text: undefined, present: true, unreadable: true }],

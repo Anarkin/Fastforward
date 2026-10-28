@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { TextRequest } from '../shared/protocol';
-import { textKey, type DiffFile } from './diff';
+import { textKey, type DiffFile, type LoadedText } from './diff';
 import type { WholeFile } from './diffView';
 import { lineKey, wholeLines } from './find';
 import { languageOf } from './languages';
@@ -112,7 +112,7 @@ function sideSource(
 export function syntaxSources(
   files: readonly DiffFile[],
   whole: WholeFile | undefined,
-  texts: ReadonlyMap<string, string | undefined> = new Map(),
+  texts: ReadonlyMap<string, LoadedText> = new Map(),
   open?: ReadonlySet<number>,
 ): SyntaxSource[] {
   if (whole) {
@@ -122,9 +122,14 @@ export function syntaxSources(
       ? [{ language, lines, keys: lines.map((_, index) => lineKey(0, index)) }]
       : [];
   }
-  return sidePlans(files, open).map((plan) =>
-    sideSource(plan, texts.get(textKey(plan.file.path, plan.side))),
-  );
+  return sidePlans(files, open).flatMap((plan) => {
+    const loaded = texts.get(textKey(plan.file.path, plan.side));
+    const awaited =
+      plan.wholeText &&
+      loaded !== undefined &&
+      loaded.blob !== plan.file.blobs?.[plan.side];
+    return awaited ? [] : [sideSource(plan, loaded?.text)];
+  });
 }
 
 export function textsToLoad(
@@ -132,11 +137,17 @@ export function textsToLoad(
   diff: number,
   requested: Set<string>,
   open?: ReadonlySet<number>,
+  texts: ReadonlyMap<string, LoadedText> = new Map(),
 ): TextRequest[] {
   return sidePlans(files, open).flatMap(({ file, side, wholeText }) => {
     const blob = file.blobs?.[side];
     const key = `${diff}:${textKey(file.path, side)}`;
-    if (!wholeText || !blob || requested.has(key)) {
+    if (
+      !wholeText ||
+      !blob ||
+      requested.has(key) ||
+      texts.get(textKey(file.path, side))?.blob === blob
+    ) {
       return [];
     }
     requested.add(key);
@@ -287,10 +298,64 @@ interface Colored {
   readonly ranges: Map<string, readonly SyntaxRange[]>;
 }
 
+function keyedLines(files: readonly DiffFile[], whole: WholeFile | undefined) {
+  if (whole) {
+    return wholeLines(whole).map((text, index) => ({
+      key: lineKey(0, index),
+      path: whole.path,
+      text,
+    }));
+  }
+  return files.flatMap((file, fileIndex) =>
+    file.hunks
+      .flatMap((hunk) => hunk.lines)
+      .map((line, index) => ({
+        key: lineKey(fileIndex, index),
+        path: file.path,
+        text: line.text,
+      })),
+  );
+}
+
+export function carriedRanges(
+  before: Colored,
+  files: readonly DiffFile[],
+  whole?: WholeFile,
+): Map<string, readonly SyntaxRange[]> {
+  const found = new Map<
+    string,
+    { readonly ranges: (readonly SyntaxRange[])[]; next: number }
+  >();
+  for (const { key, path, text } of keyedLines(before.files, before.whole)) {
+    const ranges = before.ranges.get(key);
+    if (ranges !== undefined) {
+      const line = `${path}\n${text}`;
+      const same = found.get(line);
+      if (same) {
+        same.ranges.push(ranges);
+      } else {
+        found.set(line, { ranges: [ranges], next: 0 });
+      }
+    }
+  }
+  const carried = new Map<string, readonly SyntaxRange[]>();
+  for (const { key, path, text } of keyedLines(files, whole)) {
+    const same = found.get(`${path}\n${text}`);
+    if (same) {
+      carried.set(
+        key,
+        same.ranges[Math.min(same.next, same.ranges.length - 1)],
+      );
+      same.next += 1;
+    }
+  }
+  return carried;
+}
+
 export function useSyntax(
   files: readonly DiffFile[],
   whole: WholeFile | undefined,
-  texts: ReadonlyMap<string, string | undefined>,
+  texts: ReadonlyMap<string, LoadedText>,
   open: ReadonlySet<number>,
 ): ReadonlyMap<string, readonly SyntaxRange[]> {
   const sources = useMemo(
@@ -302,9 +367,11 @@ export function useSyntax(
   useLayoutEffect(() => {
     const last = shown.current;
     const ranges =
-      last?.files === files && last.whole === whole
-        ? last.ranges
-        : new Map<string, readonly SyntaxRange[]>();
+      last === undefined
+        ? new Map<string, readonly SyntaxRange[]>()
+        : last.files === files && last.whole === whole
+          ? last.ranges
+          : carriedRanges(last, files, whole);
     const publish = () => {
       shown.current = { files, whole, ranges };
       setColored(shown.current);

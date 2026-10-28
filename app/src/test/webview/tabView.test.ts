@@ -713,7 +713,7 @@ suite('Tab view', () => {
     );
   });
 
-  test('keeps the texts sent for the current diff, until the next diff, and which of them could not be read', () => {
+  test('keeps the texts sent for the current diff with the blob each was read for, and which of them could not be read, through the next diffs of the same file', () => {
     const view = reduceTabView(busyTab(), {
       type: 'diff',
       hash: 'a',
@@ -734,8 +734,8 @@ suite('Tab view', () => {
     assert.deepStrictEqual(
       answered.texts,
       new Map([
-        ['old:x.ts', 'old'],
-        ['new:x.ts', undefined],
+        ['old:x.ts', { blob: '1', text: 'old' }],
+        ['new:x.ts', { blob: '2', text: undefined }],
       ]),
     );
     assert.strictEqual(answer('a', view.diffs - 1), view);
@@ -746,7 +746,14 @@ suite('Tab view', () => {
       path: 'x.ts',
       patch: 'y',
     });
-    assert.deepStrictEqual(next.texts, new Map());
+    assert.strictEqual(next.texts, answered.texts);
+    const other = reduceTabView(answered, {
+      type: 'diff',
+      hash: 'a',
+      path: 'y.ts',
+      patch: 'y',
+    });
+    assert.deepStrictEqual(other.texts, new Map());
   });
 
   test("asks for a commit's tree once, and again after the tab reopens", () => {

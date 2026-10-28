@@ -15,6 +15,7 @@ import {
   type DiffFile,
   type DiffLine,
   type LinkTargets,
+  type LoadedText,
   type NumberedLine,
 } from './diff';
 import {
@@ -1753,7 +1754,7 @@ export function DiffView({
   loading: boolean;
   diff: number;
   onLoad: (path: string) => void;
-  texts: ReadonlyMap<string, string | undefined>;
+  texts: ReadonlyMap<string, LoadedText>;
   onLoadTexts: (texts: TextRequest[]) => void;
   changeMarks: boolean;
   matches: readonly FindMatch[];
@@ -1958,13 +1959,13 @@ export function DiffView({
     const load = whole
       ? []
       : [
-          ...textsToLoad(files, diff, requestedTexts.current, open),
-          ...previewTexts(files, rendered, diff, requestedTexts.current),
+          ...textsToLoad(files, diff, requestedTexts.current, open, texts),
+          ...previewTexts(files, rendered, diff, requestedTexts.current, texts),
         ];
     if (load.length > 0) {
       onLoadTexts(load);
     }
-  }, [files, whole, diff, open, rendered, onLoadTexts]);
+  }, [files, whole, diff, open, rendered, texts, onLoadTexts]);
   const rangesByLine = useMemo(() => findRangesByLine(matches), [matches]);
   const found = matches.at(current);
   const foundKey = found && lineKey(found.file, found.line);

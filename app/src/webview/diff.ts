@@ -120,6 +120,11 @@ export function textKey(path: string, side: 'old' | 'new'): string {
   return `${side}:${path}`;
 }
 
+export interface LoadedText {
+  readonly blob: string;
+  readonly text: string | undefined;
+}
+
 const hunkHeader = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/;
 
 const indexLine = /^index ([0-9a-f]+)\.\.([0-9a-f]+)(?: (\d+))?/;

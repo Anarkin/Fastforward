@@ -6,6 +6,7 @@ import * as path from 'node:path';
 import {
   _electron,
   type ElectronApplication,
+  type JSHandle,
   type Locator,
   type Page,
 } from 'playwright-core';
@@ -21,6 +22,9 @@ import {
 import { wrapColumns, wrappedLines } from '../webview/wordWrap';
 
 const appFolder = path.join(__dirname, '..', '..');
+
+const commented = (answer: number) =>
+  `/* the answer\na\nb\nc\n*/\nexport const answer = ${answer};\n`;
 
 const longLine = Array.from({ length: 80 }, (_, index) => `word${index}`).join(
   ' ',
@@ -177,6 +181,7 @@ suite('App', () => {
     await repository.commit('first', {
       'kept.txt': 'kept\n',
       'code.ts': 'export const answer = 42;\n',
+      'commented.ts': commented(42),
       'long.txt': `${longLines.join('\n')}\n`,
       'hyphenated.txt': `${hyphenatedLine}\n`,
       'changed.txt': 'one\ntwo\nthree\n',
@@ -608,6 +613,59 @@ suite('App', () => {
     await page.locator('.row.file', { hasText: 'code.ts' }).click();
     await page.locator('.syntax-keyword', { hasText: 'export' }).waitFor();
     await page.locator('.syntax-number', { hasText: '42' }).waitFor();
+  });
+
+  test('keeps the lines of a diff colored as the whole text of their side has it while the working tree changes under it', async () => {
+    const file = path.join(repository.root, 'commented.ts');
+    fs.writeFileSync(file, commented(43));
+    let watching:
+      JSHandle<{ uncolored: string[]; stop: () => void }> | undefined;
+    try {
+      await page.locator('.row.file', { hasText: 'commented.ts' }).click();
+      await page
+        .locator('.diff-line .syntax-comment', { hasText: '*/' })
+        .first()
+        .waitFor();
+      watching = await page.evaluateHandle(() => {
+        const expected = new Map([
+          ['b', 'syntax-comment'],
+          ['c', 'syntax-comment'],
+          ['*/', 'syntax-comment'],
+          ['export const answer = 42;', 'syntax-keyword'],
+        ]);
+        const uncolored: string[] = [];
+        const observer = new MutationObserver(() => {
+          for (const code of document.querySelectorAll('.diff-line .code')) {
+            const text = code.textContent ?? '';
+            const kind = expected.get(text);
+            if (kind !== undefined && !code.querySelector(`.${kind}`)) {
+              uncolored.push(text);
+            }
+          }
+        });
+        observer.observe(document.body, {
+          subtree: true,
+          childList: true,
+          characterData: true,
+        });
+        return { uncolored, stop: () => observer.disconnect() };
+      });
+      for (const answer of [44, 45, 46]) {
+        fs.writeFileSync(file, commented(answer));
+        await page
+          .locator('.diff-line .syntax-number', { hasText: String(answer) })
+          .first()
+          .waitFor();
+      }
+      assert.deepStrictEqual(
+        await watching.evaluate(({ uncolored }) => uncolored),
+        [],
+      );
+    } finally {
+      await watching?.evaluate(({ stop }) => stop());
+      await repository.git('checkout', '-q', 'HEAD', '--', 'commented.ts');
+    }
+    await page.locator('.commit.working-tree.empty').waitFor();
   });
 
   test('finds in the diff on Ctrl+F in the diff, stepping on Enter and clearing on Esc', async () => {

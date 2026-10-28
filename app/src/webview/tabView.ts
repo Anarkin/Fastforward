@@ -10,7 +10,12 @@ import type {
   ToWebviewOf,
 } from '../shared/protocol';
 import { CommitHistory } from './commitHistory';
-import { parseFilePatch, textKey, type DiffFile } from './diff';
+import {
+  parseFilePatch,
+  textKey,
+  type DiffFile,
+  type LoadedText,
+} from './diff';
 import type { WholeFile } from './diffView';
 
 export interface TabView {
@@ -37,7 +42,7 @@ export interface TabView {
   readonly refreshes: number;
   readonly fileContent: WholeFile | undefined;
   readonly largeFiles: ReadonlyMap<string, DiffFile>;
-  readonly texts: ReadonlyMap<string, string | undefined>;
+  readonly texts: ReadonlyMap<string, LoadedText>;
   readonly tree: ToWebviewOf<'tree'> | undefined;
   readonly treeRequested: string | undefined;
   readonly fetching: boolean;
@@ -277,7 +282,12 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
         patchLoading: false,
         fileContent: undefined,
         largeFiles: new Map(),
-        texts: new Map(),
+        texts:
+          action.hash === state.hash &&
+          action.path === state.path &&
+          action.area === state.area
+            ? state.texts
+            : new Map(),
       };
     case 'fileDiff':
       return action.hash === state.hash && action.diff === state.diffs
@@ -296,7 +306,8 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
             texts: new Map([
               ...state.texts,
               ...action.texts.map(
-                ({ path, side, text }) => [textKey(path, side), text] as const,
+                ({ path, side, blob, text }) =>
+                  [textKey(path, side), { blob, text }] as const,
               ),
             ]),
           }
