@@ -1965,13 +1965,27 @@ suite('App whose page is gone', () => {
   });
 });
 
+const windowsNotedIn = (file: string) =>
+  [
+    "const { app } = require('electron');",
+    "const { appendFileSync } = require('node:fs');",
+    `const note = (what) => appendFileSync(${JSON.stringify(file)}, what + '\\n');`,
+    "app.on('browser-window-created', (_event, window) => {",
+    "  note(window.isVisible() ? 'shown' : 'created');",
+    "  window.on('show', () => note('shown'));",
+    '});',
+  ].join('\n');
+
 suite('App without git', () => {
-  test('says it needs git, showing no window', async () => {
+  test('says it needs git, showing no window, whether its alert keeps it running or it quits by itself, as on Ubuntu 26.04 under xvfb', async () => {
     const folder = tempFolder('no-git');
     const profile = path.join(folder, 'profile');
     const log = path.join(profile, 'logs', 'Fastforward.log');
+    const windows = path.join(folder, 'windows.txt');
+    const noting = path.join(folder, 'noteWindows.cjs');
+    fs.writeFileSync(noting, windowsNotedIn(windows));
     const app = await _electron.launch({
-      args: [appFolder, `--user-data-dir=${profile}`],
+      args: ['-r', noting, appFolder, `--user-data-dir=${profile}`],
       cwd: appFolder,
       env: {
         ...process.env,
@@ -1981,6 +1995,7 @@ suite('App without git', () => {
       },
     });
     const child = app.process();
+    const exited = once(child, 'exit');
     try {
       await waitFor(() => {
         try {
@@ -1991,17 +2006,24 @@ suite('App without git', () => {
       }, 'the missing git to be logged');
       const gitAlertHoldsTheMainProcess = process.platform === 'darwin';
       if (!gitAlertHoldsTheMainProcess) {
-        const page = await app.firstWindow();
-        await page.waitForLoadState('load');
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        const visible = await app.evaluate(({ BrowserWindow }) =>
-          BrowserWindow.getAllWindows().map((window) => window.isVisible()),
-        );
-        assert.deepStrictEqual(visible, [false]);
+        await Promise.race([
+          app.firstWindow().then(async (page) => {
+            await page.waitForLoadState('load');
+            await new Promise((resolve) => setTimeout(resolve, 500));
+          }),
+          exited,
+        ]).catch(async (error: unknown) => {
+          await within(exited, 'the app to quit').catch(() => {
+            throw error;
+          });
+        });
+      }
+      assert.strictEqual(fs.readFileSync(windows, 'utf8'), 'created\n');
+      if (child.exitCode !== null || child.signalCode !== null) {
+        assert.deepStrictEqual([child.exitCode, child.signalCode], [0, null]);
       }
     } finally {
       if (child.exitCode === null && child.signalCode === null) {
-        const exited = once(child, 'exit');
         child.kill('SIGKILL');
         await exited;
       }
