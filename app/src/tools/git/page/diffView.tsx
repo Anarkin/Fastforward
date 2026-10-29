@@ -340,7 +340,7 @@ export function BreakMarks({
   }
   const at = (row: number, column: number) => ({
     top: row * lineHeight,
-    left: `calc(${numbers * numberWidth}px + var(--diff-code-padding) + ${column}ch)`,
+    left: `calc(${numbers * numberWidth}px + var(--diff-code-padding) + ${column} * var(--diff-advance))`,
   });
   return (
     <>

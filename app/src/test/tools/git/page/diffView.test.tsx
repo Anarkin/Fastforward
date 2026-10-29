@@ -1151,7 +1151,7 @@ suite('Large files fetched', () => {
 });
 
 function wrapMarkAt(top: string, column: number): string {
-  return `top:${top};left:calc(112px + var(--diff-code-padding) + ${column}ch)`;
+  return `top:${top};left:calc(112px + var(--diff-code-padding) + ${column} * var(--diff-advance))`;
 }
 
 function wrapMarksOf(html: string): string[][] {
@@ -1454,7 +1454,7 @@ suite('Diff row heights', () => {
     );
   });
 
-  test('marks where each row a line is broken into ends, right after its text, and the spaces and tabs hanging there, leaving lines on one row unmarked', () => {
+  test('marks where each row a line is broken into ends, right after its text, and the spaces and tabs hanging there, a whole advance of the text per column, leaving lines on one row unmarked', () => {
     const html = renderToStaticMarkup(
       <BreakMarks
         breaks={[
@@ -1484,7 +1484,7 @@ suite('Diff row heights', () => {
       [
         [
           'wrap-break',
-          'top:0;left:calc(56px + var(--diff-code-padding) + 6ch)',
+          'top:0;left:calc(56px + var(--diff-code-padding) + 6 * var(--diff-advance))',
           strings.symbols.breaks,
         ],
       ],
