@@ -161,7 +161,7 @@ suite('Git tool of folders asked for from the command line', () => {
         tabs?.tabs.map(({ tool, name, root }) => ({ tool, name, root })),
         [
           { tool: 'git', name: 'main', root: repository.root },
-          { tool: 'terminal', name: strings.tools.terminal, root: plain },
+          { tool: 'terminal', name: 'plain', root: plain },
         ],
       );
       assert.strictEqual(tabs?.active, tabs?.tabs.at(-1)?.id);

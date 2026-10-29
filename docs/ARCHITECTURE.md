@@ -24,4 +24,5 @@
 
 ### Terminal, `terminal`
 
-- TODO
+- Use `xterm.js` with its WebGL renderer on the page and `node-pty` for the shells, as VS Code does
+- Run the shells in a utility process of their own, so a crash in the native code of `node-pty` or a flood of output can't stop or slow the window and the other tools

@@ -57,6 +57,9 @@ export class FakePage {
   tabs: PageMessageOf<'tabs'> | undefined;
 
   receive(sent: ToWebview): void {
+    if (sent.type === 'tool' && sent.tool !== 'git') {
+      return;
+    }
     const message = sent.type === 'tool' ? sent.message : sent;
     if (message.type === 'tabs') {
       this.tabs = message;
@@ -275,7 +278,13 @@ export function newView(
     new Shell(log, new Storage(settings, store), host, {
       git: view,
       files: new FilesTool(),
-      terminal: new TerminalTool(),
+      terminal: new TerminalTool(
+        log,
+        () => ({ send: () => {}, dispose: () => {} }),
+        () => settings.settings.tools.terminal,
+        () => ({ file: 'sh', args: [], cwd: '/', env: {} }),
+        undefined,
+      ),
     }),
   );
   return view;

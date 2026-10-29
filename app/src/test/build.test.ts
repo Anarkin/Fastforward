@@ -58,7 +58,7 @@ suite('Release build', { timeout: 30_000 }, () => {
     );
   });
 
-  test('loads the grammars, the WebAssembly of the Oniguruma engine, markdown-it, DOMPurify and Mermaid only once a file or preview needs them', async () => {
+  test('loads the grammars, the WebAssembly of the Oniguruma engine, markdown-it, DOMPurify, Mermaid and xterm.js only once a file, preview or terminal needs them', async () => {
     const { outputs } = (await releaseBuild('webviewOptions')).metafile;
     const loaded = new Set<string>();
     const load = (output: string) => {
@@ -79,6 +79,9 @@ suite('Release build', { timeout: 30_000 }, () => {
       'markdown-it/',
       'dompurify/',
       'mermaid/',
+      '@xterm/xterm/lib/',
+      '@xterm/addon-fit/',
+      '@xterm/addon-webgl/',
     ];
     const bundled = (files: Iterable<string>) =>
       lazy.filter((name) =>
@@ -90,6 +93,30 @@ suite('Release build', { timeout: 30_000 }, () => {
       );
     assert.deepStrictEqual(bundled(Object.keys(outputs)), lazy);
     assert.deepStrictEqual(bundled(loaded), []);
+  });
+
+  test('leaves node-pty out of the bundle, unpacked from the asar and not rebuilt, as Electron loads its native modules and runs its helpers only from files on disk, and its prebuilt modules need no rebuild', async () => {
+    const { outputs } = (await releaseBuild('mainOptions')).metafile;
+    assert.deepStrictEqual(
+      Object.values(outputs).flatMap((output) =>
+        Object.keys(output.inputs).filter((input) =>
+          input.startsWith('node_modules/node-pty/'),
+        ),
+      ),
+      [],
+    );
+    assert.ok(
+      outputs['dist/ptyHost.js'].imports.some(
+        (imported) => imported.path === 'node-pty' && imported.external,
+      ),
+    );
+    const { build } = JSON.parse(
+      fs.readFileSync(path.join(appFolder, 'package.json'), 'utf8'),
+    );
+    assert.deepStrictEqual(
+      [build.asarUnpack, build.npmRebuild],
+      [['node_modules/node-pty/**'], false],
+    );
   });
 
   test('turns off running the app as Node, NODE_OPTIONS and the inspector flags, and loads it only from its asar, as anything able to start it could run code in it through them', () => {

@@ -210,6 +210,9 @@ export const strings = {
     result: 'Move in the search results',
     go: 'Go to the search result',
     drag: 'Drag a scrollbar or the minimap',
+    copySelection: 'Copy the selection',
+    paste: 'Paste',
+    leftToApp: 'Leave the key to the app rather than the shell',
   },
   shortcuts: {
     title: 'Shortcuts',
@@ -224,6 +227,7 @@ export const strings = {
       Columns: 'Columns',
       Files: 'Files',
       Diff: 'Diff',
+      Terminal: 'Terminal',
       App: 'App',
     },
   },
@@ -399,6 +403,14 @@ export const strings = {
       lines === 1
         ? 'Not loaded: 1 changed line'
         : `Not loaded: ${lines.toLocaleString()} changed lines`,
+  },
+  terminal: {
+    exited: (code: number) =>
+      `The shell exited with code ${code}. Press Enter to start a new one.`,
+    couldNotStart: (shell: string, reason: string) =>
+      `Couldn't start ${shell}. ${reason} Press Enter to try again.`,
+    stopped:
+      'The terminal process stopped, so the shell did too. Press Enter to start a new one.',
   },
   find: {
     title: 'Search the diff',
@@ -654,6 +666,9 @@ export const strings = {
     fetchFailed: 'Fetching every remote failed',
     pullFailed: 'Pulling failed',
     pushFailed: 'Pushing failed',
+    terminalHostStopped: (code: number) =>
+      `The terminal process stopped with exit code ${code}`,
+    terminalHost: (line: string) => `Terminal process: ${line}`,
     listingRemoteTagsFailed: (reason: string) =>
       `Listing the remotes to read their tags failed: ${reason}`,
     listingTagsOfRemoteFailed: (remote: string, reason: string) =>

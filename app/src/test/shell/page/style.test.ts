@@ -47,6 +47,7 @@ import { ShortcutsPopup } from '../../../shell/page/shortcutsPopup';
 import { SkeletonRows } from '../../../ui/skeleton';
 import { VirtualRows } from '../../../tools/git/page/virtualRows';
 import { tabSize } from '../../../ui/wordWrap';
+import { TerminalTool } from '../../../tools/terminal/page/tool';
 import {
   allWithClass,
   cascaded,
@@ -1219,6 +1220,25 @@ suite('Style', () => {
       'margin-bottom': undefined,
       padding: `0 var(--search-gap) 0 ${edge}`,
     });
+  });
+
+  test('makes a cell of the terminal as tall and as wide as a character of the diff, so code looks the same in both', () => {
+    const panel = rendered(
+      createElement(TerminalTool, {
+        active: true,
+        post: noop,
+        listen: () => noop,
+        onCopy: noop,
+      }),
+    );
+    assert.strictEqual(
+      compact(cascaded(panel, '--terminal-row-height')),
+      compact(cascaded(diffView(), '--diff-line-height')),
+    );
+    assert.strictEqual(
+      compact(cascaded(panel, '--terminal-advance')),
+      compact(cascaded(diffView(), '--diff-advance')),
+    );
   });
 
   test('makes a line of the diff as tall as the font size of code times the line height, rounded to whole device pixels, so every line is drawn alike and the app places the rows a whole number of lines apart', () => {

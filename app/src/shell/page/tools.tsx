@@ -8,6 +8,14 @@ import type { ToolId, ToWebviewOfTool } from '../shared/tools';
 import type { ContextMenuItem, OpenMenu } from '../../ui/contextMenu';
 import { FilesTool } from '../../tools/files/page/tool';
 import { TerminalTool } from '../../tools/terminal/page/tool';
+import {
+  terminalGroups,
+  terminalKeymap,
+} from '../../tools/terminal/shared/keymap';
+import type {
+  TerminalToHost,
+  TerminalToWebview,
+} from '../../tools/terminal/shared/protocol';
 import { GitTool } from '../../tools/git/page/tool';
 
 export type ToolListeners = {
@@ -18,7 +26,11 @@ export const toolShortcuts: Readonly<Record<ToolId, readonly ShortcutGroup[]>> =
   {
     git: shortcutGroupsOf(gitGroups, strings.shortcuts.groups, gitKeymap),
     files: [],
-    terminal: [],
+    terminal: shortcutGroupsOf(
+      terminalGroups,
+      strings.shortcuts.groups,
+      terminalKeymap,
+    ),
   };
 
 export function ToolViews({
@@ -59,6 +71,24 @@ export function ToolViews({
     (title: string | undefined) => onTitle('git', title),
     [onTitle],
   );
+  const postTerminal = useCallback(
+    (message: TerminalToHost) =>
+      post({ type: 'tool', tool: 'terminal', message }),
+    [post],
+  );
+  const listenTerminal = useCallback(
+    (handler: (message: TerminalToWebview) => void) => {
+      listeners.terminal.add(handler);
+      return () => {
+        listeners.terminal.delete(handler);
+      };
+    },
+    [listeners],
+  );
+  const copyText = useCallback(
+    (text: string) => post({ type: 'copyText', text }),
+    [post],
+  );
   return (
     <>
       <GitTool
@@ -71,7 +101,12 @@ export function ToolViews({
         onTitle={gitTitle}
       />
       <FilesTool active={active === 'files'} />
-      <TerminalTool active={active === 'terminal'} />
+      <TerminalTool
+        active={active === 'terminal'}
+        post={postTerminal}
+        listen={listenTerminal}
+        onCopy={copyText}
+      />
     </>
   );
 }

@@ -133,6 +133,22 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
   border-radius: var(--card-radius);
 }
 
+.terminal-panel {
+  --terminal-row-height: round(
+    var(--monospace-font-size) * var(--monospace-line-height),
+    var(--device-pixel, 1px)
+  );
+  --terminal-advance: round(1ch, var(--device-pixel, 1px));
+  position: relative;
+  overflow: hidden;
+  background: var(--color-terminal-background);
+}
+
+.terminal-screen {
+  position: absolute;
+  inset: 6px 4px 6px 10px;
+}
+
 .title-bar {
   flex: none;
   background: var(--color-background);

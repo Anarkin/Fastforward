@@ -100,6 +100,16 @@ suite('Settings', () => {
     ]);
   });
 
+  test('takes any list for a setting whose default list is empty, as no item of it tells the kind', () => {
+    assert.deepStrictEqual(
+      mergeSettings({ list: [] }, { list: ['-l', '-i'] }),
+      {
+        settings: { list: ['-l', '-i'] },
+        problems: [],
+      },
+    );
+  });
+
   test('knows no setting by a name every object has', () => {
     const { settings, problems } = mergeSettings(
       defaults,

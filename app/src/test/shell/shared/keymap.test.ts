@@ -32,6 +32,10 @@ const worktreeStep = (extra: Partial<KeyPress>) =>
     false,
   );
 
+function shifted(key: string) {
+  return keyPress(key, { shiftKey: true });
+}
+
 suite('Keymap', () => {
   test('opens the main menu with Alt+F, or Option+F though it types ƒ, but not with F alone, nor in a text field', () => {
     assert.strictEqual(
@@ -417,6 +421,24 @@ suite('Keymap', () => {
       pressed(keymap.closeTab, keyPress('w'), false),
       undefined,
     );
+  });
+
+  test('opens and closes tabs on Ctrl+Shift+T and Ctrl+Shift+W too, or Cmd+Shift on macOS, even in a field, as a terminal leaves Ctrl+T and Ctrl+W to its shell', () => {
+    assert.strictEqual(
+      pressed(keymap.newTab, { ...shifted('T'), ctrlKey: true }, true),
+      true,
+    );
+    assert.strictEqual(
+      pressed(keymap.closeTab, { ...shifted('W'), ctrlKey: true }, true),
+      true,
+    );
+    assert.strictEqual(
+      withMacKeys(() =>
+        pressed(keymap.closeTab, { ...shifted('W'), metaKey: true }, true),
+      ),
+      true,
+    );
+    assert.strictEqual(pressed(keymap.newTab, shifted('T'), false), undefined);
   });
 
   test('goes back or forward on Alt+← and Alt+→, as the mouse buttons do, but leaves them to the caret in a field', () => {

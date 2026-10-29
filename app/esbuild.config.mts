@@ -14,11 +14,12 @@ export function mainOptions(production: boolean): BuildOptions {
     entryPoints: {
       main: 'src/main/main.ts',
       preload: 'src/main/preload.ts',
+      ptyHost: 'src/tools/terminal/main/ptyHost.ts',
     },
     format: 'cjs',
     platform: 'node',
     outdir: 'dist',
-    external: ['electron', 'electron-updater'],
+    external: ['electron', 'electron-updater', 'node-pty'],
   };
 }
 

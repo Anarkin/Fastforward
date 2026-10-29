@@ -6,7 +6,13 @@ import { themeCss } from '../../../shell/main/theme';
 import { defaultSettings } from '../../fixtures';
 
 const source = join(__dirname, '../../../../src');
-const pageFolders = ['shell/page', 'ui', 'tools/git/page', 'tools/files/page'];
+const pageFolders = [
+  'shell/page',
+  'ui',
+  'tools/git/page',
+  'tools/files/page',
+  'tools/terminal/page',
+];
 
 function pageFiles(): { name: string; text: string }[] {
   return pageFolders.flatMap((folder) =>

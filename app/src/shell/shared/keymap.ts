@@ -44,6 +44,7 @@ export function bind<const Value>(
 export const keymap = {
   newTab: bind('Tabs', strings.actions.newTab, {
     'Mod+T': true,
+    'Mod+Shift+T': true,
   }),
   tab: bind(
     'Tabs',
@@ -54,6 +55,7 @@ export const keymap = {
   closeTab: bind('Tabs', strings.actions.closeTab, {
     MiddleClick: true,
     'Mod+W': true,
+    'Mod+Shift+W': true,
   }),
   moveTab: bind('Tabs', strings.actions.moveTab, {
     Drag: true,

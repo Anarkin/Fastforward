@@ -16,7 +16,11 @@
       "columnWidths": [300, 250]
     },
     "files": {},
-    "terminal": {}
+    "terminal": {
+      "shell": "",
+      "shellArgs": [],
+      "renderer": "webgl"
+    }
   },
   "fonts": {
     "family": "-apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif",
@@ -87,7 +91,27 @@
       "chart-red": "#a00",
       "chart-yellow": "#670",
       "chart-cyan": "#09b",
-      "chart-magenta": "#b0b"
+      "chart-magenta": "#b0b",
+
+      "terminal-background": "#fff",
+      "terminal-foreground": "#000000",
+      "terminal-selection": "#0066cc2e",
+      "terminal-black": "#000000",
+      "terminal-red": "#a00000",
+      "terminal-green": "#00a000",
+      "terminal-yellow": "#a0a000",
+      "terminal-blue": "#0000a0",
+      "terminal-magenta": "#a000a0",
+      "terminal-cyan": "#00a0a0",
+      "terminal-white": "#a0a0a0",
+      "terminal-bright-black": "#a0a0a0",
+      "terminal-bright-red": "#c00000",
+      "terminal-bright-green": "#00c000",
+      "terminal-bright-yellow": "#c0c000",
+      "terminal-bright-blue": "#0000c0",
+      "terminal-bright-magenta": "#c000c0",
+      "terminal-bright-cyan": "#00c0c0",
+      "terminal-bright-white": "#a0a0a0"
     },
     "dark": {
       "foreground": "#ddd",
@@ -146,7 +170,27 @@
       "chart-red": "#e87",
       "chart-yellow": "#eb7",
       "chart-cyan": "#1ac",
-      "chart-magenta": "#b4b"
+      "chart-magenta": "#b4b",
+
+      "terminal-background": "#111",
+      "terminal-foreground": "#c0c0c0",
+      "terminal-selection": "#0066cc59",
+      "terminal-black": "#000000",
+      "terminal-red": "#800000",
+      "terminal-green": "#008000",
+      "terminal-yellow": "#808000",
+      "terminal-blue": "#000080",
+      "terminal-magenta": "#800080",
+      "terminal-cyan": "#008080",
+      "terminal-white": "#c0c0c0",
+      "terminal-bright-black": "#808080",
+      "terminal-bright-red": "#ff0000",
+      "terminal-bright-green": "#00ff00",
+      "terminal-bright-yellow": "#ffff00",
+      "terminal-bright-blue": "#0000ff",
+      "terminal-bright-magenta": "#ff00ff",
+      "terminal-bright-cyan": "#00ffff",
+      "terminal-bright-white": "#ffffff"
     }
   }
 }

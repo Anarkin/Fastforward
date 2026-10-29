@@ -54,7 +54,8 @@ function sameKind(fallback: unknown, value: unknown): boolean {
   if (Array.isArray(fallback)) {
     return (
       Array.isArray(value) &&
-      value.every((item) => typeof item === typeof fallback[0])
+      (fallback.length === 0 ||
+        value.every((item) => typeof item === typeof fallback[0]))
     );
   }
   return (

@@ -45,6 +45,9 @@ import {
 import { JsonFileStore, Storage, toolState } from '../shell/main/storage';
 import { themeCss } from '../shell/main/theme';
 import { FilesTool } from '../tools/files/main/tool';
+import { hostProcess } from '../tools/terminal/main/hostProcess';
+import { shellLaunch } from '../tools/terminal/main/shellLaunch';
+import { windowsPtyOf } from '../tools/terminal/main/windowsPty';
 import { TerminalTool } from '../tools/terminal/main/tool';
 import { GitStorage } from '../tools/git/main/storage';
 import { GitTool } from '../tools/git/main/tool';
@@ -303,6 +306,24 @@ async function start(asked: readonly string[]): Promise<void> {
       },
     },
   );
+  const terminalSettings = () => userSettings.settings.tools.terminal;
+  const terminalTool = new TerminalTool(
+    log,
+    hostProcess(path.join(dist, 'ptyHost.js'), log),
+    terminalSettings,
+    (folder) =>
+      shellLaunch(terminalSettings(), folder, {
+        platform: process.platform,
+        env: process.env,
+        home: os.homedir(),
+        version: app.getVersion(),
+        isFolder: (each) =>
+          fs.statSync(each, { throwIfNoEntry: false })?.isDirectory() === true,
+        isFile: (file) =>
+          fs.statSync(file, { throwIfNoEntry: false })?.isFile() === true,
+      }),
+    windowsPtyOf(process.platform, os.release()),
+  );
   const view = new Shell(
     log,
     storage,
@@ -348,7 +369,7 @@ async function start(asked: readonly string[]): Promise<void> {
               (process.env.PATH ?? '').split(path.delimiter),
             ),
     },
-    { git: gitTool, files: new FilesTool(), terminal: new TerminalTool() },
+    { git: gitTool, files: new FilesTool(), terminal: terminalTool },
   );
   if (asked.length > 0) {
     void view.openFolders(asked);
