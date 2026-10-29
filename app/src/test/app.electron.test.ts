@@ -1135,6 +1135,7 @@ suite('App', () => {
         const style = getComputedStyle(code);
         const sample = document.createElement('span');
         sample.style.font = style.font;
+        sample.style.letterSpacing = style.letterSpacing;
         sample.style.whiteSpace = 'pre';
         sample.textContent = '0'.repeat(100);
         document.body.append(sample);
