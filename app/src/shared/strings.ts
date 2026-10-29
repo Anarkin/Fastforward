@@ -144,6 +144,15 @@ export const strings = {
   openWith: {
     title: 'Open With',
   },
+  confirm: {
+    closeTitle: 'Close Tab',
+    closeTab: (tab: string) => `Are you sure you want to close ${tab}?`,
+    close: 'Close',
+    quitTitle: 'Quit',
+    quitApp: `Are you sure you want to quit ${brand}?`,
+    quit: 'Quit',
+    cancel: 'Cancel',
+  },
   tabs: {
     tabs: 'Tabs',
     newTab: 'New Tab',

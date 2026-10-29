@@ -16,8 +16,14 @@ import type {
   UpdateStatus,
 } from '../shared/protocol';
 import { strings } from '../../shared/strings';
-import { tools, type ToolId, type ToWebviewOfTool } from '../shared/tools';
+import {
+  confirmsClose,
+  tools,
+  type ToolId,
+  type ToWebviewOfTool,
+} from '../shared/tools';
 import { AboutPopup } from './aboutPopup';
+import { ConfirmPopup } from './confirmPopup';
 import { AppMenu } from './appMenu';
 import {
   ContextMenu,
@@ -80,6 +86,29 @@ export function newTabItems(
 
 type Popup = 'shortcuts' | 'about' | 'openWith';
 
+type Confirming =
+  { readonly kind: 'tab'; readonly tab: TabInfo } | { readonly kind: 'quit' };
+
+export function confirmation(confirming: Confirming): {
+  title: string;
+  message: string;
+  confirm: string;
+} {
+  return confirming.kind === 'tab'
+    ? {
+        title: strings.confirm.closeTitle,
+        message: strings.confirm.closeTab(
+          strings.tabs.label(confirming.tab.name, confirming.tab.folder),
+        ),
+        confirm: strings.confirm.close,
+      }
+    : {
+        title: strings.confirm.quitTitle,
+        message: strings.confirm.quitApp,
+        confirm: strings.confirm.quit,
+      };
+}
+
 export function withPopup(
   shown: readonly Popup[],
   popup: Popup,
@@ -140,6 +169,7 @@ export function App({ name, post, listen }: Props) {
   );
   const [openedMenu, setMenu] = useState<TabMenu>();
   const [popups, setPopups] = useState<readonly Popup[]>([]);
+  const [confirming, setConfirming] = useState<Confirming>();
   const showPopup = useCallback(
     (popup: Popup, open: boolean) =>
       setPopups((shown) => withPopup(shown, popup, open)),
@@ -191,6 +221,9 @@ export function App({ name, post, listen }: Props) {
           break;
         case 'terminalCommand':
           setInstallsCommand(message.installable);
+          break;
+        case 'confirmQuit':
+          setConfirming({ kind: 'quit' });
           break;
         case 'chooseTool':
           setChoosing(message);
@@ -258,9 +291,17 @@ export function App({ name, post, listen }: Props) {
 
   useBinding(keymap.shortcuts, () => togglePopup('shortcuts'));
   useBinding(keymap.about, () => togglePopup('about'));
+  const closeTab = (id: string) => {
+    const tab = tabs?.find((each) => each.id === id);
+    if (tab !== undefined && confirmsClose[tab.tool]) {
+      setConfirming({ kind: 'tab', tab });
+    } else {
+      post({ type: 'closeTab', tab: id });
+    }
+  };
   useBinding(keymap.closeTab, () => {
     if (active !== undefined) {
-      post({ type: 'closeTab', tab: active });
+      closeTab(active);
     }
   });
 
@@ -278,7 +319,7 @@ export function App({ name, post, listen }: Props) {
         active={active}
         onSelect={(tab) => post({ type: 'selectTab', tab })}
         onPreload={(tab) => post({ type: 'preloadTab', tab })}
-        onClose={(tab) => post({ type: 'closeTab', tab })}
+        onClose={closeTab}
         onMove={
           autoSortTabs
             ? undefined
@@ -360,6 +401,20 @@ export function App({ name, post, listen }: Props) {
             return popup satisfies never;
         }
       })}
+      {confirming && (
+        <ConfirmPopup
+          {...confirmation(confirming)}
+          onConfirm={() => {
+            setConfirming(undefined);
+            post(
+              confirming.kind === 'tab'
+                ? { type: 'closeTab', tab: confirming.tab.id }
+                : { type: 'quit' },
+            );
+          }}
+          onCancel={() => setConfirming(undefined)}
+        />
+      )}
       <Notices notices={notices} onDismiss={dismissNotice} />
       {emptyState(tabs)}
       <ToolViews

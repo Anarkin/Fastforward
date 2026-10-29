@@ -48,6 +48,7 @@ import { SkeletonRows } from '../../../ui/skeleton';
 import { VirtualRows } from '../../../tools/git/page/virtualRows';
 import { tabSize } from '../../../ui/wordWrap';
 import { TerminalTool } from '../../../tools/terminal/page/tool';
+import { ConfirmPopup } from '../../../shell/page/confirmPopup';
 import {
   allWithClass,
   cascaded,
@@ -1261,6 +1262,26 @@ suite('Style', () => {
         looks(line, { 'letter-spacing': 'calc(var(--diff-advance) - 1ch)' });
       }
     }
+  });
+
+  test('paints the default button of a confirmation in the color of focus, hovered or not, so it shows what Enter does', () => {
+    const popup = rendered(
+      createElement(ConfirmPopup, {
+        title: 'Close Tab',
+        message: 'Are you sure?',
+        confirm: 'Close',
+        onConfirm: noop,
+        onCancel: noop,
+      }),
+    );
+    const blue = {
+      color: 'var(--color-focus-foreground)',
+      background: 'var(--color-focus)',
+    };
+    looks(withClass(popup, 'confirm-button', 'default'), blue);
+    looks(withClass(popup, 'confirm-button', 'default'), blue, {
+      hover: withClass(popup, 'confirm-button', 'default'),
+    });
   });
 
   test('paints the scroller of the diff in the color of its panel, so Chromium keeps the subpixel antialiasing of its text when it composites the scrolling', () => {

@@ -17,6 +17,12 @@ export const tools = ['git', 'files', 'terminal'] as const;
 
 export type ToolId = (typeof tools)[number];
 
+export const confirmsClose: Readonly<Record<ToolId, boolean>> = {
+  git: false,
+  files: false,
+  terminal: true,
+};
+
 export function isTool(value: unknown): value is ToolId {
   return tools.some((tool) => tool === value);
 }

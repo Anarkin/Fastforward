@@ -150,6 +150,10 @@ export class FakeHost implements ShellHost, GitHost {
     this.opened.push('update install');
   }
 
+  quit(): void {
+    this.opened.push('quit');
+  }
+
   updateStatus(): UpdateStatus {
     return this.update;
   }
@@ -290,7 +294,7 @@ export function newView(
   return view;
 }
 
-function shellOf(view: GitTool): Shell {
+export function shellOf(view: GitTool): Shell {
   const shell = shells.get(view);
   assert.ok(shell);
   return shell;
@@ -311,6 +315,7 @@ const shellMessages: Readonly<Record<ToHost['type'], true>> = {
   openDefaultSettings: true,
   checkForUpdates: true,
   installUpdate: true,
+  quit: true,
   installTerminalCommand: true,
   log: true,
   tool: true,

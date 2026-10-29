@@ -11,6 +11,7 @@ import {
   Menu,
   nativeTheme,
   net,
+  powerMonitor,
   protocol,
   screen,
   shell,
@@ -70,6 +71,7 @@ import {
 import { tellMaximized } from './maximized';
 import { reloadWhenGone } from './pageGone';
 import { profileFolder } from './profile';
+import { QuitGuard } from './quitGuard';
 import { exitOnFailure, flushBeforeQuit, whileWindowOpen } from './quit';
 import { reloadOnRebuild } from './rebuild';
 import { withLoginShellEnv } from './shellPath';
@@ -170,6 +172,17 @@ async function start(asked: readonly string[]): Promise<void> {
     userSettings.settings,
     gitSearch.then((git) => git.kind === 'found'),
   );
+  let asking: Shell | undefined;
+  const quitGuard = new QuitGuard(() => asking);
+  window.on('close', (event) => {
+    if (quitGuard.holds(() => app.quit())) {
+      event.preventDefault();
+    }
+  });
+  window.on('query-session-end', () => quitGuard.systemEnding());
+  window.on('unresponsive', () => quitGuard.responsive(false));
+  window.on('responsive', () => quitGuard.responsive(true));
+  powerMonitor.on('shutdown', () => quitGuard.systemEnding());
   let connection: Promise<Connection | undefined> = Promise.resolve(undefined);
   const connect = () => {
     connection = Promise.all([connection, views.promise]).then(
@@ -343,7 +356,15 @@ async function start(asked: readonly string[]): Promise<void> {
       },
       settingsProblems: () => userSettings.problems,
       checkForUpdates: () => updates.check(true),
-      installUpdate: () => updates.install(),
+      installUpdate: () => {
+        if (
+          updates.status.kind !== 'ready' ||
+          !quitGuard.holds(() => updates.install())
+        ) {
+          updates.install();
+        }
+      },
+      quit: () => quitGuard.confirmed(),
       updateStatus: () => updates.status,
       about: () => ({
         version: app.getVersion(),
@@ -375,7 +396,8 @@ async function start(asked: readonly string[]): Promise<void> {
     void view.openFolders(asked);
   }
   views.resolve({ shell: view, git: gitTool });
-  app.on('before-quit', () => view.quit());
+  asking = view;
+  app.on('will-quit', () => view.quit());
   const applySettings = () => {
     log.info(strings.log.settingsChanged);
     for (const problem of userSettings.problems) {
@@ -398,7 +420,10 @@ async function start(asked: readonly string[]): Promise<void> {
 
   if (development && process.env.FASTFORWARD_DEV) {
     if (process.connected) {
-      process.on('disconnect', () => app.quit());
+      process.on('disconnect', () => {
+        quitGuard.allow();
+        app.quit();
+      });
     } else {
       app.quit();
     }

@@ -50,6 +50,7 @@ export type ToHost =
   | { readonly type: 'openDefaultSettings' }
   | { readonly type: 'checkForUpdates' }
   | { readonly type: 'installUpdate' }
+  | { readonly type: 'quit' }
   | { readonly type: 'installTerminalCommand' }
   | {
       readonly type: 'log';
@@ -68,6 +69,7 @@ export type ToWebview =
   | { readonly type: 'update'; readonly status: UpdateStatus }
   | ({ readonly type: 'about' } & AboutInfo)
   | { readonly type: 'terminalCommand'; readonly installable: boolean }
+  | { readonly type: 'confirmQuit' }
   | {
       readonly type: 'chooseTool';
       readonly folders: readonly string[];

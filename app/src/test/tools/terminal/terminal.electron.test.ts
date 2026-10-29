@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { ElectronApplication, Page } from 'playwright-core';
@@ -31,6 +32,24 @@ function contrast(foreground: string, background: string): number {
     luminance(background),
   ].toSorted((a, b) => a - b);
   return ((lighter ?? 0) + 0.05) / ((darker ?? 0) + 0.05);
+}
+
+function runningWith(marker: string): number {
+  if (process.platform === 'win32') {
+    const counted = execFileSync(
+      'powershell.exe',
+      [
+        '-NoProfile',
+        '-Command',
+        `@(Get-CimInstance Win32_Process | Where-Object { $_.ProcessId -ne $PID -and $_.CommandLine -like '*${marker}*' }).Count`,
+      ],
+      { encoding: 'utf8' },
+    );
+    return Number(counted.trim());
+  }
+  return execFileSync('ps', ['-eo', 'args'], { encoding: 'utf8' })
+    .split('\n')
+    .filter((line) => line.includes(marker)).length;
 }
 
 let folder: string;
@@ -134,5 +153,62 @@ suite('Terminal', () => {
     await page.keyboard.press('Enter');
     await run('echo restarted');
     await waitForRow((row) => row === 'restarted', 'the echo of the new shell');
+  });
+
+  test('asks before closing a terminal tab, keeping it on Escape and closing it on Enter, ending what runs in it', async () => {
+    const tabs = page.locator('.tabs .tab');
+    await page.locator('.tab-add').click();
+    await page
+      .locator('.context-menu .menu-item', { hasText: strings.tools.terminal })
+      .click();
+    await waitFor(async () => (await tabs.count()) === 2, 'a second tab');
+    await page.locator('.terminal-screen .xterm-rows').waitFor();
+    const marker = `fastforward-orphan-check-${Date.now()}`;
+    await run(
+      process.platform === 'win32'
+        ? `pwsh -NoLogo -NoProfile -Command "Start-Sleep 600; '${marker}'"`
+        : `sh -c 'sleep 600; echo ${marker}'`,
+    );
+    await waitFor(() => runningWith(marker) > 0, 'the program to run');
+    const popup = page.locator('.confirm-popup');
+    await page.keyboard.press('ControlOrMeta+Shift+W');
+    await popup.waitFor();
+    await page.keyboard.press('Escape');
+    await popup.waitFor({ state: 'detached' });
+    assert.strictEqual(await tabs.count(), 2);
+    await page.locator('.terminal-screen').click();
+    await page.keyboard.press('ControlOrMeta+Shift+W');
+    await popup.waitFor();
+    await page.keyboard.press('Enter');
+    await waitFor(async () => (await tabs.count()) === 1, 'the tab to close');
+    await waitFor(
+      () => runningWith(marker) === 0,
+      'the program in it to end',
+      15_000,
+    );
+  });
+
+  test('asks before quitting while a terminal tab is open, staying open on Cancel and quitting on Enter', async () => {
+    const close = () =>
+      app.evaluate(({ BrowserWindow }) =>
+        BrowserWindow.getAllWindows()[0]?.close(),
+      );
+    const popup = page.locator('.confirm-popup');
+    await close();
+    await popup.waitFor();
+    await popup.locator('.confirm-button', { hasText: 'Cancel' }).click();
+    await popup.waitFor({ state: 'detached' });
+    assert.strictEqual(
+      await app.evaluate(
+        ({ BrowserWindow }) => BrowserWindow.getAllWindows().length,
+      ),
+      1,
+    );
+    const quit = app.waitForEvent('close');
+    await close();
+    await popup.waitFor();
+    const pressed = page.keyboard.press('Enter').catch(() => undefined);
+    await quit;
+    await pressed;
   });
 });

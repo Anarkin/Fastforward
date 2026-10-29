@@ -315,7 +315,8 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
   -webkit-app-region: no-drag;
 }
 
-.about-popup {
+.about-popup,
+.confirm-popup {
   width: min(420px, 100%);
 }
 
@@ -386,8 +387,25 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
   color: var(--color-focus);
 }
 
+.confirm-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 12px 16px 16px;
+}
+
+.confirm-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .about-copy {
   margin-top: 8px;
+}
+
+.about-copy,
+.confirm-button {
   padding: 4px 12px;
   color: inherit;
   background: var(--color-background);
@@ -395,12 +413,15 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
   border-radius: 4px;
 }
 
-.about-copy:hover {
+.about-copy:hover,
+.confirm-button:hover {
   background: var(--selection-background);
 }
 
 .about-copy:active,
-.about-copy.copied {
+.about-copy.copied,
+.confirm-button:active,
+.confirm-button.default {
   color: var(--color-focus-foreground);
   background: var(--color-focus);
 }

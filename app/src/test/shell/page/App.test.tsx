@@ -10,6 +10,7 @@ import {
   App,
   emptyState,
   menuIn,
+  confirmation,
   newTabItems,
   nextMenu,
   withPopup,
@@ -177,6 +178,25 @@ suite('Window', () => {
     } finally {
       Object.assign(globalThis, saved);
     }
+  });
+
+  test('asks whether you are sure, naming the tab to close, or the app to quit', () => {
+    assert.deepStrictEqual(
+      confirmation({
+        kind: 'tab',
+        tab: { id: '1', tool: 'terminal', name: 'repo', folder: 'main' },
+      }),
+      {
+        title: 'Close Tab',
+        message: 'Are you sure you want to close repo (main)?',
+        confirm: 'Close',
+      },
+    );
+    assert.deepStrictEqual(confirmation({ kind: 'quit' }), {
+      title: 'Quit',
+      message: 'Are you sure you want to quit Fastforward?',
+      confirm: 'Quit',
+    });
   });
 
   test('offers every tool in the + menu by name, with its icon, as a submenu where the tool gives one, or opening a new tab of it', () => {

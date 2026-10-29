@@ -10,6 +10,7 @@ import {
   failOnErrorsLogged,
   FakeHost,
   gate,
+  shellOf,
   stubMethod,
   takeErrorsLogged,
   withView,
@@ -128,6 +129,31 @@ suite('Shell with no tab open', () => {
         await view.connection.receive({ type: 'checkForUpdates' });
         await view.connection.receive({ type: 'installUpdate' });
         assert.deepStrictEqual(host.opened, ['update check', 'update install']);
+      },
+      true,
+      host,
+      noGit,
+    );
+  });
+
+  test('asks the page before quitting while a tab of a tool that confirms closing is open, as closing a Terminal ends its shell, leaving quitting to the app once the page confirms', async () => {
+    const host = new FakeHost();
+    await withView(
+      log,
+      [],
+      async (view) => {
+        const shell = shellOf(view.view);
+        assert.strictEqual(shell.asksBeforeQuit(), false);
+        await view.connection.receive({ type: 'newTab', tool: 'terminal' });
+        assert.strictEqual(shell.asksBeforeQuit(), true);
+        shell.askToQuit();
+        assert.deepStrictEqual(view.page.last('confirmQuit'), {
+          type: 'confirmQuit',
+        });
+        await view.connection.receive({ type: 'quit' });
+        assert.deepStrictEqual(host.opened, ['quit']);
+        view.connection.dispose();
+        assert.strictEqual(shell.asksBeforeQuit(), false);
       },
       true,
       host,

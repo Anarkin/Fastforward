@@ -14,6 +14,7 @@ import type {
 } from '../shared/protocol';
 import { strings } from '../../shared/strings';
 import {
+  confirmsClose,
   isTool,
   tools as toolIds,
   type ToHostOf,
@@ -77,6 +78,7 @@ export interface ShellHost {
   settingsProblems(): readonly string[];
   checkForUpdates(): void;
   installUpdate(): void;
+  quit(): void;
   updateStatus(): UpdateStatus;
   about(): AboutInfo;
   copyText(text: string): void;
@@ -245,6 +247,19 @@ export class Shell {
     return this.inFlight.settled();
   }
 
+  asksBeforeQuit(): boolean {
+    const { page } = this;
+    return (
+      page !== undefined &&
+      !page.disposed &&
+      this.storage.savedTabs.some((tab) => confirmsClose[tab.tool])
+    );
+  }
+
+  askToQuit(): void {
+    this.page?.post({ type: 'confirmQuit' });
+  }
+
   private activeTab(): Tab | undefined {
     const { savedTabs, activeTabId } = this.storage;
     return savedTabs.find((tab) => tab.id === activeTabId);
@@ -274,6 +289,9 @@ export class Shell {
         return;
       case 'installUpdate':
         host.installUpdate();
+        return;
+      case 'quit':
+        host.quit();
         return;
       case 'copyText':
         if (typeof message.text === 'string') {
