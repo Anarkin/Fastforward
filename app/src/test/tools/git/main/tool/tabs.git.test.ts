@@ -306,84 +306,74 @@ suite('Git tool with two tabs', () => {
   });
 
   test('shows the first rows of a long history of a tab opened while it preloads, before the whole of it is read', async () => {
-    await withView(
-      log,
-      [other, repository.root],
-      async (own) => {
-        stubMethod(own.view, 'listRecentHistory', (original, ...args) =>
-          original(...args.slice(0, 4), 2),
-        );
-        const held = gate();
-        let reading = false;
-        stubMethod(own.view, 'listFullHistory', async (original, ...args) => {
-          if (rootOf(args[0]) === repository.root) {
-            reading = true;
-            await held.opened;
-          }
-          return original(...args);
-        });
-        const preloading = own.connection.receive({
-          type: 'preloadTab',
-          tab: tabOf(own.page, repository.root),
-        });
-        await waitFor(() => reading, 'the preload to read the history');
-        own.page.clear();
-        const opening = own.connection.receive({
-          type: 'selectTab',
-          tab: tabOf(own.page, repository.root),
-        });
-        await waitFor(
-          () => own.page.last('commits') !== undefined,
-          'the first rows',
-        );
-        assert.strictEqual(own.page.last('commits')?.total, 2);
-        held.open();
-        await Promise.all([preloading, opening]);
-        assert.strictEqual(own.page.last('commits')?.total, 3);
-        assert.strictEqual(
-          own.page.last('repository')?.headCommit,
-          fixture.merge,
-        );
-      },
-      'unwatched',
-    );
+    await withView(log, [other, repository.root], async (own) => {
+      stubMethod(own.view, 'listRecentHistory', (original, ...args) =>
+        original(...args.slice(0, 4), 2),
+      );
+      const held = gate();
+      let reading = false;
+      stubMethod(own.view, 'listFullHistory', async (original, ...args) => {
+        if (rootOf(args[0]) === repository.root) {
+          reading = true;
+          await held.opened;
+        }
+        return original(...args);
+      });
+      const preloading = own.connection.receive({
+        type: 'preloadTab',
+        tab: tabOf(own.page, repository.root),
+      });
+      await waitFor(() => reading, 'the preload to read the history');
+      own.page.clear();
+      const opening = own.connection.receive({
+        type: 'selectTab',
+        tab: tabOf(own.page, repository.root),
+      });
+      await waitFor(
+        () => own.page.last('commits') !== undefined,
+        'the first rows',
+      );
+      assert.strictEqual(own.page.last('commits')?.total, 2);
+      held.open();
+      await Promise.all([preloading, opening]);
+      assert.strictEqual(own.page.last('commits')?.total, 3);
+      assert.strictEqual(
+        own.page.last('repository')?.headCommit,
+        fixture.merge,
+      );
+    });
   });
 
   test('sends the whole history of a tab opened while it preloads to the page loaded again before the preload is done', async () => {
-    await withView(
-      log,
-      [other, repository.root],
-      async (own) => {
-        const held = gate();
-        let reading = false;
-        stubMethod(own.view, 'listFullHistory', async (original, ...args) => {
-          if (rootOf(args[0]) === repository.root) {
-            reading = true;
-            await held.opened;
-          }
-          return original(...args);
-        });
-        const preloading = own.connection.receive({
-          type: 'preloadTab',
-          tab: tabOf(own.page, repository.root),
-        });
-        await waitFor(() => reading, 'the preload to read the history');
-        const opening = own.connection.receive({
-          type: 'selectTab',
-          tab: tabOf(own.page, repository.root),
-        });
-        own.connection.dispose();
-        const reloaded = reopen(own.view);
-        await waitFor(
-          () => shownTabs(reloaded.page) !== undefined,
-          'the page to load again',
-        );
-        held.open();
-        await Promise.all([preloading, opening, reloaded.ready]);
-        assert.strictEqual(reloaded.page.last('commits')?.total, 3);
-      },
-      'unwatched',
-    );
+    await withView(log, [other, repository.root], async (own) => {
+      const held = gate();
+      let reading = false;
+      stubMethod(own.view, 'listFullHistory', async (original, ...args) => {
+        if (rootOf(args[0]) === repository.root) {
+          reading = true;
+          await held.opened;
+        }
+        return original(...args);
+      });
+      const preloading = own.connection.receive({
+        type: 'preloadTab',
+        tab: tabOf(own.page, repository.root),
+      });
+      await waitFor(() => reading, 'the preload to read the history');
+      const opening = own.connection.receive({
+        type: 'selectTab',
+        tab: tabOf(own.page, repository.root),
+      });
+      own.connection.dispose();
+      const reloaded = reopen(own.view);
+      await waitFor(
+        () => shownTabs(reloaded.page) !== undefined,
+        'the page to load again',
+      );
+      held.open();
+      await Promise.all([preloading, opening, reloaded.ready]);
+      assert.strictEqual(reloaded.page.last('commits')?.total, 3);
+    });
   });
 
   test('shows no error of the tab the page opens as it loads that failed after it was left', async () => {
@@ -391,7 +381,6 @@ suite('Git tool with two tabs', () => {
       log,
       [repository.root, other],
       async (own) => {
-        stubMethod(own.view, 'watch', () => Promise.resolve());
         const load = failingLoad(own, repository.root);
         const ready = own.connection.receive({ type: 'ready' });
         await waitFor(load.loading, 'the tab to load');
@@ -412,27 +401,22 @@ suite('Git tool with two tabs', () => {
   test('shows no error of the tab opened after one is closed that failed after it was left', async () => {
     const third = await tempRepository(path.join(folder, 'after-closed'));
     await third.commit('third');
-    await withView(
-      log,
-      [other, repository.root, third.root],
-      async (own) => {
-        const load = failingLoad(own, repository.root);
-        const closing = own.connection.receive({
-          type: 'closeTab',
-          tab: tabOf(own.page, other),
-        });
-        await waitFor(load.loading, 'the next tab to load');
-        await own.connection.receive({
-          type: 'selectTab',
-          tab: tabOf(own.page, third.root),
-        });
-        own.page.clear();
-        load.fail();
-        await closing;
-        assert.strictEqual(own.page.last('error'), undefined);
-      },
-      'unwatched',
-    );
+    await withView(log, [other, repository.root, third.root], async (own) => {
+      const load = failingLoad(own, repository.root);
+      const closing = own.connection.receive({
+        type: 'closeTab',
+        tab: tabOf(own.page, other),
+      });
+      await waitFor(load.loading, 'the next tab to load');
+      await own.connection.receive({
+        type: 'selectTab',
+        tab: tabOf(own.page, third.root),
+      });
+      own.page.clear();
+      load.fail();
+      await closing;
+      assert.strictEqual(own.page.last('error'), undefined);
+    });
     takeErrorsLogged(logged, /^Showing tab .* failed$/, /^loading failed$/);
   });
 
@@ -455,7 +439,7 @@ suite('Git tool with two tabs', () => {
         await browsing;
         assert.strictEqual(own.page.last('error'), undefined);
       },
-      'unwatched',
+      true,
       host,
     );
     takeErrorsLogged(logged, /^Showing tab .* failed$/, /^loading failed$/);
@@ -465,7 +449,7 @@ suite('Git tool with two tabs', () => {
     let tabs: OpenView;
 
     beforeEach(async () => {
-      tabs = await openView(log, [repository.root, other], 'unwatched');
+      tabs = await openView(log, [repository.root, other]);
     });
 
     afterEach(() => tabs.connection.dispose());

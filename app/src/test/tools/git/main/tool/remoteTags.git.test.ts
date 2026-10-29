@@ -15,10 +15,10 @@ import {
 import { recordingLog } from '../../../../stub';
 import {
   closeViews,
+  deleteTags,
   failOnErrorsLogged,
   type FakePage,
   openView,
-  stubMethod,
   takeErrorsLogged,
   gitState,
 } from '../../../../harness';
@@ -30,7 +30,6 @@ function remoteTag(name: string, tag: string, commit: string): RefInfo {
 suite('Git tool remote tags', () => {
   let folder: string;
   let repository: TempRepository;
-  let other: TempRepository;
   let remote: TempRepository;
   let page: FakePage;
   let connection: Connection;
@@ -51,28 +50,12 @@ suite('Git tool remote tags', () => {
     [a, b] = await repository.resolve('main~1', 'main');
     await repository.git('remote', 'add', 'origin', remote.root);
     await repository.git('push', '-u', 'origin', 'main');
-    other = await tempRepository(path.join(folder, 'other'));
-    await other.git('remote', 'add', 'origin', remote.root);
-    await other.git('fetch', 'origin');
-    await other.git('reset', '--hard', 'origin/main');
-    ({ page, connection } = await openView(
-      log,
-      [repository.root],
-      'unwatched',
-    ));
+    ({ page, connection } = await openView(log, [repository.root]));
   });
 
   afterEach(async () => {
-    for (const tag of (await repository.git('tag')).split('\n')) {
-      if (tag) {
-        await repository.git('tag', '-d', tag);
-      }
-    }
-    for (const line of (await remote.git('tag')).split('\n')) {
-      if (line) {
-        await remote.git('tag', '-d', line);
-      }
-    }
+    await deleteTags(repository);
+    await deleteTags(remote);
     await repository
       .git('config', '--unset-all', 'remote.origin.tagOpt')
       .catch(() => '');
@@ -110,17 +93,14 @@ suite('Git tool remote tags', () => {
   test('shows a tag the remote moved on the commit it points at there, apart from the local one', async () => {
     await repository.git('tag', 'moved', a);
     await repository.git('push', 'origin', 'moved');
-    await other.git('fetch', 'origin', '--tags');
-    await other.git('tag', '-f', 'moved', b);
-    await other.git('push', '-f', 'origin', 'moved');
+    await remote.git('tag', '-f', 'moved', b);
     await fetchedShows([remoteTag('origin', 'moved', b)]);
     assert.deepStrictEqual(await repository.resolve('moved'), [a]);
   });
 
   test('shows a tag only on the remote, on a commit here, as when fetches leave tags out', async () => {
     await repository.git('config', 'remote.origin.tagOpt', '--no-tags');
-    await other.git('tag', 'theirs', a);
-    await other.git('push', 'origin', 'theirs');
+    await remote.git('tag', 'theirs', a);
     await fetchedShows([remoteTag('origin', 'theirs', a)]);
     assert.strictEqual(
       (await repository.git('tag', '--list', 'theirs')).trim(),
@@ -130,8 +110,7 @@ suite('Git tool remote tags', () => {
 
   test('writes no ref for the tags of a remote, keeping them itself, as git keeps no remote-tracking refs for tags and other tools would show refs it wrote', async () => {
     await repository.git('config', 'remote.origin.tagOpt', '--no-tags');
-    await other.git('tag', 'listed', a);
-    await other.git('push', 'origin', 'listed');
+    await remote.git('tag', 'listed', a);
     const refs = () => repository.git('for-each-ref', '--format=%(refname)');
     const before = await refs();
     await fetchedShows([remoteTag('origin', 'listed', a)]);
@@ -187,7 +166,6 @@ suite('Git tool remote tags', () => {
 
   test('shows the remote tags listed before the app last quit, without fetching', async () => {
     const opened = await openView(log, [repository.root], false);
-    stubMethod(opened.view, 'watch', () => Promise.resolve());
     await gitState(opened.store).update(remoteTagsKey, {
       [repository.root]: { origin: { saved: a } },
     });
@@ -207,7 +185,6 @@ suite('Git tool remote tags', () => {
   test('reads the history as ever when a remote tag points at a commit missing here, as it starts no walk of the history', async () => {
     const missing = 'f'.repeat(40);
     const opened = await openView(log, [repository.root], false);
-    stubMethod(opened.view, 'watch', () => Promise.resolve());
     await gitState(opened.store).update(remoteTagsKey, {
       [repository.root]: { origin: { elsewhere: missing } },
     });

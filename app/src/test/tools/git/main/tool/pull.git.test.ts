@@ -50,11 +50,7 @@ suite('Git tool pulling', () => {
     await other.git('remote', 'add', 'origin', remote.root);
     await other.git('fetch', 'origin');
     await other.git('reset', '--hard', 'origin/main');
-    ({ page, connection } = await openView(
-      log,
-      [repository.root],
-      'unwatched',
-    ));
+    ({ page, connection } = await openView(log, [repository.root]));
   });
 
   afterEach(async () => {

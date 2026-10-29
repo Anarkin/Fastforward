@@ -55,7 +55,7 @@ suite('Git tool checking out', () => {
       view: fastforward,
       page,
       connection,
-    } = await openView(log, [repository.root], 'unwatched'));
+    } = await openView(log, [repository.root]));
   });
 
   afterEach(() => connection.dispose());
@@ -129,7 +129,6 @@ suite('Git tool checking out', () => {
     const held = gate();
     const opened = await openView(log, [repository.root], false);
     let reading = false;
-    stubMethod(opened.view, 'watch', () => Promise.resolve());
     stubMethod(opened.view, 'listFullHistory', async (original, ...args) => {
       reading = true;
       await held.opened;

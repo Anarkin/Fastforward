@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import { suite, test } from 'vitest';
+import { suite, test, vi } from 'vitest';
 import { listMoveOf } from '../../../../ui/listMoves';
 import {
   act,
@@ -1346,8 +1346,7 @@ const laidOutContent = (element: Element) =>
     ) || 0,
   );
 
-const listSettled = () =>
-  act(() => new Promise((resolve) => setTimeout(resolve, 200)));
+const listSettled = () => act(() => vi.advanceTimersByTimeAsync(200));
 
 async function scrollingList(
   check: (list: {
@@ -1420,8 +1419,9 @@ async function scrollingList(
     Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
   );
   Object.assign(globalThis, globals);
+  const { createRoot } = await import('react-dom/client');
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
   try {
-    const { createRoot } = await import('react-dom/client');
     const main = window.document.querySelector('main');
     assert.ok(main);
     const root = createRoot(main);
@@ -1475,6 +1475,7 @@ async function scrollingList(
       root.unmount();
     });
   } finally {
+    vi.useRealTimers();
     Object.assign(globalThis, saved);
   }
 }

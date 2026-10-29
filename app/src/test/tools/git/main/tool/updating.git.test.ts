@@ -64,7 +64,9 @@ suite('Git tool updating by itself', () => {
     await pusher.git('pull', remote.root, 'main');
     first = await tempRepository(path.join(folder, 'first'));
     await first.commit('first');
-    ({ page, connection } = await openView(log, [repository.root]));
+    ({ page, connection } = await openView(log, [repository.root], {
+      watched: true,
+    }));
   });
 
   afterAll(async () => {
@@ -118,7 +120,7 @@ suite('Git tool updating by itself', () => {
   });
 
   test('reads the refs again by itself only when the git folder changes', async () => {
-    const opened = await openView(log, [repository.root]);
+    const opened = await openView(log, [repository.root], { watched: true });
     let reads = 0;
     stubMethod(opened.view, 'refsOf', (original, ...args) => {
       reads++;
@@ -157,7 +159,7 @@ suite('Git tool updating by itself', () => {
     const opened = await openView(
       log,
       [repository.root],
-      'unwatched',
+      true,
       undefined,
       () => () => undefined,
     );
@@ -179,7 +181,10 @@ suite('Git tool updating by itself', () => {
   test('keeps updating a tab opened again while the watcher of the closed one still starts', async () => {
     const second = await tempRepository(path.join(folder, 'second-watched'));
     await second.commit('second');
-    const opened = await openView(log, [repository.root, second.root], false);
+    const opened = await openView(log, [repository.root, second.root], {
+      ready: false,
+      watched: true,
+    });
     const started: (() => void)[] = [];
     stubMethod(opened.view, 'startWatching', async (original, ...args) => {
       const watcher = await original(...args);
@@ -229,7 +234,10 @@ suite('Git tool updating by itself', () => {
   test('calls off starting the watcher of a tab switched away from, as on Linux it walks the whole tree first', async () => {
     const second = await tempRepository(path.join(folder, 'second-switched'));
     await second.commit('second');
-    const opened = await openView(log, [repository.root, second.root], false);
+    const opened = await openView(log, [repository.root, second.root], {
+      ready: false,
+      watched: true,
+    });
     const signals: unknown[] = [];
     const held = gate();
     stubMethod(opened.view, 'startWatching', async (original, ...args) => {
@@ -270,7 +278,7 @@ suite('Git tool updating by itself', () => {
     const view = await openView(
       log,
       [broken.root, first.root],
-      'unwatched',
+      true,
       undefined,
       (run) => {
         rounds.push(run);
@@ -319,7 +327,7 @@ suite('Git tool updating by itself', () => {
     const view = await openView(
       log,
       [repository.root],
-      'unwatched',
+      true,
       undefined,
       (run) => {
         rounds.push(run);
@@ -386,7 +394,7 @@ suite('Git tool updating by itself', () => {
     const opened = await openView(
       log,
       [first.root, repository.root],
-      'unwatched',
+      true,
       undefined,
       (run) => {
         rounds.push(run);
@@ -427,7 +435,7 @@ suite('Git tool updating by itself', () => {
     const opened = await openView(
       log,
       [first.root, repository.root],
-      'unwatched',
+      true,
       undefined,
       (run) => {
         rounds.push(run);
@@ -461,7 +469,7 @@ suite('Git tool updating by itself', () => {
     const opened = await openView(
       log,
       [first.root, closing.root],
-      'unwatched',
+      true,
       undefined,
       (run) => {
         rounds.push(run);

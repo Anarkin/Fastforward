@@ -65,11 +65,7 @@ suite('Git tool fetching', () => {
     });
     await repository.git('remote', 'add', 'origin', remote.root);
     await repository.git('push', '-u', 'origin', 'main');
-    ({ page, connection } = await openView(
-      log,
-      [repository.root],
-      'unwatched',
-    ));
+    ({ page, connection } = await openView(log, [repository.root]));
   });
 
   afterAll(async () => {
@@ -82,7 +78,6 @@ suite('Git tool fetching', () => {
     const held = gate();
     const opened = await openView(log, [repository.root], false);
     let reading = false;
-    stubMethod(opened.view, 'watch', () => Promise.resolve());
     stubMethod(opened.view, 'listFullHistory', async (original, ...args) => {
       reading = true;
       await held.opened;
@@ -139,7 +134,7 @@ suite('Git tool fetching', () => {
     const opened = await openView(
       log,
       [repository.root],
-      'unwatched',
+      true,
       undefined,
       (run) => {
         rounds.push(run);
@@ -188,7 +183,7 @@ suite('Git tool fetching', () => {
   });
 
   test('runs the refreshes asked for while one runs as one, reading the working tree again only when one of them asks to', async () => {
-    const opened = await openView(log, [repository.root], 'unwatched');
+    const opened = await openView(log, [repository.root]);
     const ran: unknown[] = [];
     let held = gate();
     stubMethod(opened.view, 'refreshOnce', async (original, ...args) => {
@@ -251,11 +246,7 @@ suite('Git tool fetching', () => {
       'origin',
       path.join(folder, 'nowhere at all'),
     );
-    const opened = await openView(
-      log,
-      [unreachable.root, repository.root],
-      'unwatched',
-    );
+    const opened = await openView(log, [unreachable.root, repository.root]);
     try {
       assert.deepStrictEqual(opened.page.last('lastFetch'), {
         type: 'lastFetch',
@@ -284,7 +275,7 @@ suite('Git tool fetching', () => {
     await outside.commit('a');
     await outside.git('remote', 'add', 'origin', remote.root);
     await outside.git('fetch', 'origin');
-    const opened = await openView(log, [outside.root], 'unwatched');
+    const opened = await openView(log, [outside.root]);
     try {
       assert.deepStrictEqual(opened.page.last('lastFetch'), {
         type: 'lastFetch',
@@ -302,7 +293,7 @@ suite('Git tool fetching', () => {
     const opened = await openView(
       log,
       [failing.root],
-      'unwatched',
+      true,
       undefined,
       (run) => {
         rounds.push(run);
@@ -341,11 +332,7 @@ suite('Git tool fetching', () => {
     const left = await tempRepository(path.join(folder, 'left', 'local'));
     await left.commit('a');
     await left.git('remote', 'add', 'origin', path.join(folder, 'nowhere'));
-    const opened = await openView(
-      log,
-      [left.root, repository.root],
-      'unwatched',
-    );
+    const opened = await openView(log, [left.root, repository.root]);
     stubMethod(opened.view, 'fetchRemotes', async (original, ...args) => {
       await opened.connection.receive({
         type: 'selectTab',
@@ -375,7 +362,7 @@ suite('Git tool fetching', () => {
     const opened = await openView(
       log,
       [locked.root],
-      'unwatched',
+      true,
       undefined,
       (run) => {
         rounds.push(run);
@@ -404,7 +391,7 @@ suite('Git tool fetching', () => {
     const opened = await openView(
       log,
       [locked.root],
-      'unwatched',
+      true,
       undefined,
       (run) => {
         rounds.push(run);
@@ -446,7 +433,7 @@ suite('Git tool fetching', () => {
     const opened = await openView(
       log,
       [locked.root],
-      'unwatched',
+      true,
       undefined,
       (run) => {
         rounds.push(run);
@@ -509,7 +496,7 @@ suite('Git tool fetching', () => {
     const opened = await openView(
       log,
       [stalled.root, next.root],
-      'unwatched',
+      true,
       undefined,
       (run) => {
         rounds.push(run);

@@ -93,13 +93,14 @@ export async function waitFor(
   condition: () => boolean | Promise<boolean>,
   what: string,
   timeout = 15_000,
+  interval = 10,
 ): Promise<void> {
   const until = Date.now() + timeout;
   while (!(await condition())) {
     if (Date.now() > until) {
       throw new Error(`Timed out waiting for ${what}`);
     }
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, interval));
   }
 }
 

@@ -397,16 +397,13 @@ suite('Git diff', () => {
     fs.writeFileSync(large, 'line\n'.repeat(collapseThreshold + 1));
     try {
       const blob = (await temp.git('hash-object', '-w', 'large.txt')).trim();
-      for (const name of names) {
-        await temp.git(
-          '-c',
-          'core.protectNTFS=false',
-          'update-index',
-          '--add',
-          '--cacheinfo',
-          `100644,${blob},${name}`,
-        );
-      }
+      await temp.git(
+        '-c',
+        'core.protectNTFS=false',
+        'update-index',
+        '--add',
+        ...names.flatMap((name) => ['--cacheinfo', `100644,${blob},${name}`]),
+      );
       await temp.git('-c', 'core.protectNTFS=false', 'commit', '-m', 'odd');
       const [hash] = await temp.resolve('HEAD');
       const files = await showFiles(gitPath, cwd, hash);

@@ -125,30 +125,30 @@ suite('Repository files', () => {
     const odd = await tempRepository(tempFolder('odd-names'));
     try {
       await odd.commit('plain', { 'a.txt': 'plain\n' });
-      for (const [name, content] of [
+      const named = [
         ['a.txt\r', 'with a carriage return\n'],
         ['a.txt\nb', 'with a newline\n'],
-      ]) {
-        fs.writeFileSync(path.join(odd.root, 'content'), content);
-        const [blob] = (await odd.git('hash-object', '-w', 'content')).split(
-          '\n',
-        );
-        await odd.git(
-          '-c',
-          'core.protectNTFS=false',
-          'update-index',
-          '--add',
+      ];
+      const contents = named.map((_, index) => `content-${index}`);
+      named.forEach(([, content], index) =>
+        fs.writeFileSync(path.join(odd.root, contents[index]), content),
+      );
+      const blobs = (await odd.git('hash-object', '-w', ...contents)).split(
+        '\n',
+      );
+      await odd.git(
+        '-c',
+        'core.protectNTFS=false',
+        'update-index',
+        '--add',
+        ...named.flatMap(([name], index) => [
           '--cacheinfo',
-          `100644,${blob},${name}`,
-        );
-      }
+          `100644,${blobs[index]},${name}`,
+        ]),
+      );
       await odd.git('commit', '-q', '-m', 'odd');
       const [hash] = await odd.resolve('HEAD');
-      for (const [name, content] of [
-        ['a.txt\r', 'with a carriage return\n'],
-        ['a.txt\nb', 'with a newline\n'],
-        ['a.txt', 'plain\n'],
-      ]) {
+      for (const [name, content] of [...named, ['a.txt', 'plain\n']]) {
         assert.strictEqual(
           (await readFile(gitPath, odd.root, hash, name)).content,
           content,

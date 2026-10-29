@@ -59,7 +59,7 @@ suite('Git tool navigating the history', () => {
       view: fastforward,
       page,
       connection,
-    } = await openView(log, [repository.root], 'unwatched'));
+    } = await openView(log, [repository.root]));
   });
 
   afterEach(() => connection.dispose());

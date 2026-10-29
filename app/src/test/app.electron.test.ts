@@ -1,344 +1,52 @@
 import * as assert from 'node:assert';
-import { spawnSync, type ChildProcess } from 'node:child_process';
-import { once } from 'node:events';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { isDeepStrictEqual } from 'node:util';
-import {
-  _electron,
-  type ElectronApplication,
-  type JSHandle,
-  type Locator,
-  type Page,
-} from 'playwright-core';
-import { afterAll, beforeAll, beforeEach, suite, test } from 'vitest';
+import type { JSHandle, Locator } from 'playwright-core';
+import { onTestFinished, suite, test } from 'vitest';
 import { strings } from '../shared/strings';
-import { defaultSettings, waitFor } from './fixtures';
-import {
-  removeFolder,
-  tempFolder,
-  tempRepository,
-  type TempRepository,
-} from './repositories';
 import { wrapColumns, wrappedLines } from '../ui/wordWrap';
+import {
+  app,
+  baseSettings,
+  firstLongLine,
+  folder,
+  longLines,
+  openChangedFile,
+  page,
+  profile,
+  repository,
+  savedSetting,
+  sharedApp,
+  viewSaved,
+  waitForCount,
+  waitForFocus,
+  wrapsSaved,
+} from './appFixtures';
+import { waitFor } from './fixtures';
 
-const appFolder = path.join(__dirname, '..', '..');
-
-const commented = (answer: number) =>
-  `/* the answer\na\nb\nc\n*/\nexport const answer = ${answer};\n`;
-
-const longLine = Array.from({ length: 80 }, (_, index) => `word${index}`).join(
-  ' ',
-);
-const longLines = Array.from(
-  { length: 200 },
-  (_, index) => `line${index} ${longLine}`,
-);
-const [firstLongLine] = longLines;
-const hyphenatedLine = Array.from(
-  { length: 60 },
-  (_, index) => `part${index}`,
-).join('-');
-const dottedLine = `        ${Array.from(
-  { length: 60 },
-  (_, index) => `part${index}`,
-).join('.')};`;
-const paragraphs = Array.from(
-  { length: 200 },
-  (_, index) => `Paragraph ${index}`,
-);
-
-function waitForCount(
-  locator: Locator,
-  count: number,
-  what: string,
-): Promise<void> {
-  return waitFor(
-    async () => (await locator.count()) === count,
-    `${count} ${what}`,
-  );
-}
-
-function within<T>(promise: Promise<T>, what: string): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  return Promise.race([
-    promise,
-    new Promise<never>((_, reject) => {
-      timer = setTimeout(
-        () => reject(new Error(`Timed out waiting for ${what}`)),
-        10_000,
-      );
-    }),
-  ]).finally(() => clearTimeout(timer));
-}
-
-async function quitWithoutChromium(
-  app: ElectronApplication,
-  folder: string,
-): Promise<void> {
-  const quit = path.join(folder, 'quit');
-  await app.evaluate(({ app: electronApp }, marker) => {
-    electronApp.once('quit', () =>
-      process.getBuiltinModule('node:fs').writeFileSync(marker, ''),
-    );
-    electronApp.quit();
-  }, quit);
-  await waitFor(() => fs.existsSync(quit), 'the app to quit');
-}
-
-async function closeOrKill(app: ElectronApplication): Promise<void> {
-  const closing = app.close();
-  try {
-    await within(closing, 'the app to close');
-  } catch {
-    killWithChildren(app.process());
-    closing.catch(() => undefined);
-  }
-}
-
-function holdsStartLock(profile: string): boolean {
-  return ['lockfile', 'SingletonLock'].some(
-    (name) =>
-      fs.lstatSync(path.join(profile, name), { throwIfNoEntry: false }) !==
-      undefined,
-  );
-}
-
-function killWithChildren(child: ChildProcess): void {
-  if (process.platform === 'win32' && child.pid !== undefined) {
-    spawnSync('taskkill', ['/pid', String(child.pid), '/t', '/f']);
-    return;
-  }
-  child.kill('SIGKILL');
-}
-
-function waitForFocus(locator: Locator, what: string): Promise<void> {
-  return waitFor(
-    () => locator.evaluate((element) => element === document.activeElement),
-    `${what} to be focused`,
-  );
-}
-
-function wrappedRows(
-  line: Locator,
-): Promise<{ last: string; follows: boolean }[]> {
-  return line.evaluate((element) => {
-    const code = element.querySelector('.code');
-    if (!code) {
-      throw new Error('No code');
-    }
-    const text = code.textContent ?? '';
-    const walker = document.createTreeWalker(code, NodeFilter.SHOW_TEXT);
-    const node = walker.nextNode();
-    if (!(node instanceof Text) || node.length !== text.length) {
-      throw new Error('Not one text node');
-    }
-    const range = document.createRange();
-    const ends = new Map<number, { right: number; last: string }>();
-    for (let offset = 0; offset < text.length; offset++) {
-      range.setStart(node, offset);
-      range.setEnd(node, offset + 1);
-      const rect = range.getBoundingClientRect();
-      ends.set(Math.round(rect.top), {
-        right: rect.right,
-        last: text[offset],
+async function removeWorktree(worktree: string, branch: string): Promise<void> {
+  await repository
+    .git('worktree', 'remove', '--force', worktree)
+    .catch(async () => {
+      await fs.promises.rm(worktree, {
+        recursive: true,
+        force: true,
+        maxRetries: 10,
+        retryDelay: 100,
       });
-    }
-    const marks = Array.from(
-      element.querySelectorAll('.wrap-break'),
-      (mark) => mark.getBoundingClientRect().left,
-    );
-    return [...ends.values()].slice(0, -1).map(({ right, last }, index) => ({
-      last,
-      follows: Math.abs((marks[index] ?? Infinity) - right) < 1,
-    }));
-  });
+      await repository.git('worktree', 'prune');
+    });
+  await repository.git('branch', '-q', '-D', branch);
 }
 
-async function marksFollowRows(line: Locator): Promise<boolean> {
-  const rows = await wrappedRows(line);
-  return (
-    rows.length > 1 && rows.every((row) => row.last === '-' && row.follows)
-  );
-}
+const focused = () =>
+  page.evaluate(() => document.activeElement?.textContent ?? '');
 
-async function scrollsOnWheelOver(
-  page: Page,
-  list: Locator,
-  band: Locator,
-): Promise<void> {
-  await list.evaluate((element) => {
-    element.scrollTop = 200;
-  });
-  const box = await band.boundingBox();
-  assert.ok(box, 'nothing stuck atop the list');
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await page.mouse.wheel(0, 100);
-  await waitFor(
-    async () => (await list.evaluate((element) => element.scrollTop)) > 200,
-    'the list to scroll',
-  );
-}
-
-const baseSettings = {
-  tools: { git: { diffLayout: 'inline', wordWrap: false } },
-};
-
-function savedTabs(
-  roots: readonly string[],
-  active: string,
-): { tabs: unknown[]; activeTab: string } {
-  return {
-    tabs: roots.map((root, index) => ({
-      id: String(index + 1),
-      tool: 'git',
-      root,
-    })),
-    activeTab: String(roots.indexOf(active) + 1),
-  };
-}
+const active = (column: string) =>
+  page.locator(`.columns[data-active-column="${column}"]`).waitFor();
 
 suite('App', () => {
-  let folder: string;
-  let profile: string;
-  let repository: TempRepository;
-  let app: ElectronApplication;
-  let page: Page;
-
-  beforeAll(async () => {
-    folder = tempFolder('app');
-    profile = path.join(folder, 'profile');
-    repository = await tempRepository(path.join(folder, 'repo'));
-    await repository.commit('first', {
-      'kept.txt': 'kept\n',
-      'code.ts': 'export const answer = 42;\n',
-      'commented.ts': commented(42),
-      'long.txt': `${longLines.join('\n')}\n`,
-      'hyphenated.txt': `${hyphenatedLine}\n`,
-      'changed.txt': 'one\ntwo\nthree\n',
-      'notes.md': `${paragraphs.join('\n\n')}\n`,
-      'diagram.md':
-        '# Diagram\n\n```mermaid\ngraph LR\n  Fetch["Fetch<br/>every remote"] --> Merge\n```\n',
-      'wrapped.txt': `${dottedLine}\n`,
-    });
-    await repository.commit('second', { 'changed.txt': 'one\n2\nthree\n' });
-    fs.mkdirSync(profile, { recursive: true });
-    fs.writeFileSync(
-      path.join(profile, 'state.json'),
-      JSON.stringify({
-        ...savedTabs([repository.root], repository.root),
-        recentRepositories: [path.join(folder, 'other')],
-      }),
-    );
-    app = await _electron.launch({
-      args: [appFolder, `--user-data-dir=${profile}`],
-      cwd: appFolder,
-    });
-    page = await app.firstWindow();
-    await waitForSettingsToBeWatched();
-  });
-
-  afterAll(async () => {
-    await app?.close();
-    removeFolder(folder);
-  });
-
-  beforeEach(async () => {
-    await resetSettings();
-    await page.locator('.commit', { hasText: 'second' }).waitFor();
-    for (const [popup, focused] of [
-      ['.context-menu', '.context-menu .menu-item'],
-      ['.locations-popup', '.locations-search'],
-      ['.shortcuts-popup', '.shortcuts-popup'],
-      ['.search-row', '.search-row input'],
-    ]) {
-      if ((await page.locator(popup).count()) > 0) {
-        await page.locator(focused).first().focus();
-        await page.keyboard.press('Escape');
-        await page.locator(popup).waitFor({ state: 'detached' });
-      }
-    }
-    const notice = page.locator('.notice-close').first();
-    while ((await notice.count()) > 0) {
-      await notice.click({ timeout: 1000 }).catch(() => undefined);
-    }
-    await page.locator('.virtual-rows.list').focus();
-    await page.keyboard.press('Home');
-    await page.locator('.commit.working-tree.selected').waitFor();
-  });
-
-  function waitForSettingsToBeWatched(): Promise<void> {
-    return page.locator('.commit', { hasText: 'second' }).waitFor();
-  }
-
-  function userSettings(): unknown {
-    try {
-      return JSON.parse(
-        fs.readFileSync(path.join(profile, 'settings.user.json'), 'utf8'),
-      );
-    } catch (error) {
-      return error instanceof SyntaxError ? error : {};
-    }
-  }
-
-  function savedSetting(name: string): unknown {
-    const settings = userSettings();
-    const tools: unknown =
-      typeof settings === 'object' && settings !== null
-        ? Reflect.get(settings, 'tools')
-        : undefined;
-    const git: unknown =
-      typeof tools === 'object' && tools !== null
-        ? Reflect.get(tools, 'git')
-        : undefined;
-    return typeof git === 'object' && git !== null
-      ? Reflect.get(git, name)
-      : undefined;
-  }
-
-  function wrapsSaved(): boolean {
-    return (
-      (savedSetting('wordWrap') ?? defaultSettings().tools.git.wordWrap) ===
-      true
-    );
-  }
-
-  function viewSaved(wordWrap: boolean, diffLayout: string): boolean {
-    const defaults = defaultSettings();
-    return (
-      (savedSetting('wordWrap') ?? defaults.tools.git.wordWrap) === wordWrap &&
-      (savedSetting('diffLayout') ?? defaults.tools.git.diffLayout) ===
-        diffLayout
-    );
-  }
-
-  async function resetSettings(): Promise<void> {
-    const settings = userSettings();
-    const expected = { ...defaultSettings(), ...baseSettings };
-    if (
-      typeof settings === 'object' &&
-      settings !== null &&
-      !(settings instanceof Error) &&
-      Object.entries(settings).every(([name, value]) =>
-        isDeepStrictEqual(value, Reflect.get(expected, name)),
-      ) &&
-      Object.keys(baseSettings).every((name) => name in settings)
-    ) {
-      return;
-    }
-    const reloaded = page.waitForEvent('load');
-    fs.writeFileSync(
-      path.join(profile, 'settings.user.json'),
-      `${JSON.stringify(baseSettings)}\n`,
-    );
-    await reloaded;
-  }
-
-  async function openChangedFile(): Promise<void> {
-    await page.locator('.commit', { hasText: 'second' }).click();
-    await page.locator('.row.file', { hasText: 'changed.txt' }).click();
-    await page.locator('.diff-line.added', { hasText: '2' }).waitFor();
-  }
+  sharedApp({ 'kept.txt': 'kept\n' });
 
   test('opens the saved tab, titling the window after its repository, showing no worktree row for its only worktree', async () => {
     await page.locator('.tabs .tab.active').waitFor();
@@ -368,25 +76,23 @@ suite('App', () => {
     await page.locator('.columns.nothing-selected').waitFor();
   });
 
-  test('selects the checked-out commit on H, revealing it', async () => {
+  test('selects the checked-out commit on H, revealing it, and its first parent on Ctrl+Down, or Cmd+Down on macOS, goes back and forward through the selected commits on Alt+Left and Alt+Right, and says on U that the checked-out branch has no upstream to show', async () => {
     await page.locator('.commit', { hasText: 'first' }).click();
     await page.locator('.commit.selected', { hasText: 'first' }).waitFor();
-    await page.keyboard.press('h');
-    await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
-    await page.keyboard.press('Home');
-    await page.locator('.commit.working-tree.empty.selected').waitFor();
-  });
-
-  test('selects the first parent on Ctrl+Down, or Cmd+Down on macOS', async () => {
     await page.keyboard.press('h');
     await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
     await page.keyboard.press('ControlOrMeta+ArrowDown');
     await page.locator('.commit.selected', { hasText: 'first' }).waitFor();
     await page.keyboard.press('Home');
     await page.locator('.commit.working-tree.empty.selected').waitFor();
-  });
-
-  test('says on U that the checked-out branch has no upstream to show', async () => {
+    await page.keyboard.press('h');
+    await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await page.locator('.commit.selected', { hasText: 'first' }).waitFor();
+    await page.keyboard.press('Alt+ArrowLeft');
+    await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
+    await page.keyboard.press('Alt+ArrowRight');
+    await page.locator('.commit.selected', { hasText: 'first' }).waitFor();
     await page.keyboard.press('u');
     await page
       .locator('.notice.info', { hasText: 'main has no upstream' })
@@ -405,17 +111,6 @@ suite('App', () => {
     await shortcuts.waitFor({ state: 'detached' });
   });
 
-  test('goes back and forward through the selected commits on Alt+Left and Alt+Right', async () => {
-    await page.keyboard.press('h');
-    await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
-    await page.locator('.commit', { hasText: 'first' }).click();
-    await page.locator('.commit.selected', { hasText: 'first' }).waitFor();
-    await page.keyboard.press('Alt+ArrowLeft');
-    await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
-    await page.keyboard.press('Alt+ArrowRight');
-    await page.locator('.commit.selected', { hasText: 'first' }).waitFor();
-  });
-
   test('shows About on Shift+F1, closing it on Esc or Shift+F1', async () => {
     const about = page.getByRole('dialog', { name: 'About' });
     await page.keyboard.press('Shift+F1');
@@ -432,8 +127,6 @@ suite('App', () => {
     await page
       .locator('.commit', { hasText: 'first' })
       .click({ button: 'right' });
-    const focused = () =>
-      page.evaluate(() => document.activeElement?.textContent ?? '');
     const first = await page
       .locator('.context-menu .menu-item')
       .first()
@@ -534,19 +227,7 @@ suite('App', () => {
     const popup = page.locator('.locations-popup');
     const field = page.locator('.locations-search');
     await repository.git('worktree', 'add', '-q', '-b', 'other', worktree);
-    try {
-      await waitForCount(worktrees, 2, 'worktrees');
-      await page.keyboard.press('ControlOrMeta+F');
-      await waitForFocus(field, 'the search field');
-      await page.keyboard.press('Control+PageDown');
-      await page
-        .locator('.commit .badge.branch.checked-out', { hasText: 'other' })
-        .waitFor();
-      assert.strictEqual(await popup.count(), 1);
-      assert.ok(
-        await field.evaluate((element) => element === document.activeElement),
-      );
-    } finally {
+    onTestFinished(async () => {
       if ((await popup.count()) > 0) {
         await page.keyboard.press('Escape');
         await popup.waitFor({ state: 'detached' });
@@ -555,10 +236,20 @@ suite('App', () => {
       await page
         .locator('.commit .badge.branch.checked-out', { hasText: 'main' })
         .waitFor();
-      await repository.git('worktree', 'remove', '--force', worktree);
-      await repository.git('branch', '-q', '-D', 'other');
+      await removeWorktree(worktree, 'other');
       await waitForCount(worktrees, 0, 'worktrees');
-    }
+    });
+    await waitForCount(worktrees, 2, 'worktrees');
+    await page.keyboard.press('ControlOrMeta+F');
+    await waitForFocus(field, 'the search field');
+    await page.keyboard.press('Control+PageDown');
+    await page
+      .locator('.commit .badge.branch.checked-out', { hasText: 'other' })
+      .waitFor();
+    assert.strictEqual(await popup.count(), 1);
+    assert.ok(
+      await field.evaluate((element) => element === document.activeElement),
+    );
   });
 
   test('keeps the place a worktree was scrolled to when another is shown right after the scroll, rather than its top', async () => {
@@ -571,47 +262,43 @@ suite('App', () => {
     const list = page.locator('.virtual-rows.list');
     const scrolledTo = 600;
     await repository.git('worktree', 'add', '-q', '-b', 'scrolled', worktree);
-    try {
-      for (let index = 0; index < 40; index++) {
-        await repository.git(
-          '-C',
-          worktree,
-          'commit',
-          '-q',
-          '--allow-empty',
-          '-m',
-          `scrolled ${index}`,
-        );
-      }
-      await waitForCount(worktrees, 2, 'worktrees');
-      await page.locator('.commit', { hasText: 'scrolled 39' }).waitFor();
-      await list.evaluate(
-        (element, top) =>
-          new Promise((resolve) => {
-            element.addEventListener('scroll', resolve, { once: true });
-            element.scrollTop = top;
-          }),
-        scrolledTo,
-      );
-      await page.keyboard.press('Control+PageDown');
-      await other.waitFor();
-      await page.keyboard.press('Control+PageUp');
-      await main.waitFor();
-      await waitFor(
-        async () =>
-          (await list.evaluate((element) => element.scrollTop)) === scrolledTo,
-        `the list to be scrolled to ${scrolledTo}`,
-        5000,
-      );
-    } finally {
+    onTestFinished(async () => {
       if ((await other.count()) > 0) {
         await page.keyboard.press('Control+PageUp');
         await main.waitFor();
       }
-      await repository.git('worktree', 'remove', '--force', worktree);
-      await repository.git('branch', '-q', '-D', 'scrolled');
+      await removeWorktree(worktree, 'scrolled');
       await waitForCount(worktrees, 0, 'worktrees');
-    }
+    });
+    await repository.importCommits(
+      'refs/heads/scrolled',
+      'scrolled',
+      Array.from({ length: 40 }, (_, index) => ({
+        message: `scrolled ${index}`,
+      })),
+    );
+    await waitForCount(worktrees, 2, 'worktrees');
+    await page.locator('.commit', { hasText: 'scrolled 39' }).waitFor();
+    await list.evaluate(
+      (element, top) =>
+        new Promise((resolve) => {
+          element.addEventListener('scroll', resolve, { once: true });
+          element.scrollTop = top;
+        }),
+      scrolledTo,
+    );
+    await page.keyboard.press('Control+PageDown');
+    await other.waitFor();
+    await page.keyboard.press('Control+PageUp');
+    await main.waitFor();
+    await waitFor(
+      async () =>
+        Math.abs(
+          (await list.evaluate((element) => element.scrollTop)) - scrolledTo,
+        ) < 1,
+      `the list to be scrolled to ${scrolledTo}`,
+      5000,
+    );
   });
 
   test('gives the keyboard back to the commit list once the Fetch button it is on is disabled while fetching', async () => {
@@ -640,15 +327,107 @@ suite('App', () => {
     }
   });
 
-  test('lists the history and shows a commit entire, with its change', async () => {
-    await page.locator('.commit', { hasText: 'second' }).click();
-    await page.locator('.row.file', { hasText: 'changed.txt' }).click();
-    await page.locator('.diff-line.added').first().waitFor();
-    assert.deepStrictEqual(
-      await page.locator('.diff-row .diff-line .code').allTextContents(),
-      ['one', 'two', '2', 'three'],
+  test('filters the files from their round button, marking what it found and showing the diffs of only those, keeping the search for another commit, closing it on Esc and opening it again on Ctrl+F in the files', async () => {
+    const files = page.locator('.columns > .column').nth(1);
+    const names = () => files.locator('.row.file .path').allTextContents();
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await files.locator('.row.file', { hasText: 'kept.txt' }).waitFor();
+    await files.locator('.column-actions > .search-button').click();
+    const field = files.locator('.search-input');
+    await waitForFocus(field, 'the files search');
+    await field.fill('txt ch');
+    await waitFor(
+      async () => (await names()).join() === 'changed.txt',
+      'only changed.txt listed',
     );
-    await page.locator('.diff-minimap').waitFor();
+    assert.deepStrictEqual(
+      await files.locator('.tree-row .match').allTextContents(),
+      ['ch', 'txt'],
+    );
+    await waitFor(
+      async () =>
+        (await page.locator('.file-header .path').allTextContents()).join() ===
+        'changed.txt',
+      'only the diff of changed.txt',
+    );
+    await page.locator('.commit', { hasText: 'second' }).click();
+    await files.locator('.row.file', { hasText: 'changed.txt' }).waitFor();
+    assert.strictEqual(await field.inputValue(), 'txt ch');
+    await field.focus();
+    await page.keyboard.press('Escape');
+    await field.waitFor({ state: 'detached' });
+    await waitForFocus(files.locator('[data-column-focus]'), 'the files list');
+    await page.keyboard.press('ControlOrMeta+F');
+    await waitForFocus(files.locator('.search-input'), 'the files search');
+    assert.strictEqual(await files.locator('.search-input').inputValue(), '');
+    await page.keyboard.press('Escape');
+    await files.locator('.search-input').waitFor({ state: 'detached' });
+  });
+
+  test('moves between the columns with the arrows and Tab, the keys working in the one active', async () => {
+    await page.locator('.commit', { hasText: 'second' }).click();
+    await page.locator('.row.group', { hasText: 'All Changes' }).click();
+    await page
+      .locator('.row.group.selected', { hasText: 'All Changes' })
+      .waitFor();
+    await page.locator('.virtual-rows.list').focus();
+    await active('commits');
+    await page.keyboard.press('ArrowRight');
+    await active('files');
+    await page.keyboard.press('ArrowDown');
+    const changedFile = page.locator('.row.file.selected', {
+      hasText: 'changed.txt',
+    });
+    const allChanges = page.locator('.row.group.selected', {
+      hasText: 'All Changes',
+    });
+    await changedFile.waitFor();
+    await page.keyboard.press('Home');
+    await allChanges.waitFor();
+    await page.keyboard.press('End');
+    await changedFile.waitFor();
+    await page.keyboard.press('PageUp');
+    await allChanges.waitFor();
+    await page.keyboard.press('PageDown');
+    await changedFile.waitFor();
+    await page.keyboard.press('ArrowRight');
+    await active('diff');
+    await page.keyboard.press('ArrowLeft');
+    await active('files');
+    await page.keyboard.press('Shift+Tab');
+    await active('commits');
+    await page.keyboard.press('Tab');
+    await active('files');
+    await page.keyboard.press('j');
+    await active('diff');
+  });
+
+  test('shows the unchanged files on the toggle, dimmed, and remembers it', async () => {
+    await page.locator('.commit', { hasText: 'second' }).click();
+    await page.locator('.row.file', { hasText: 'changed.txt' }).waitFor();
+    assert.strictEqual(
+      await page.locator('.row.file', { hasText: 'kept.txt' }).count(),
+      0,
+    );
+    await page.getByRole('button', { name: 'Show All Files' }).click();
+    await page
+      .locator('.row.file .path.unchanged', { hasText: 'kept.txt' })
+      .waitFor();
+    await waitFor(
+      () => savedSetting('showAllFiles') === true,
+      'the setting to be saved',
+    );
+  });
+});
+
+const commented = (answer: number) =>
+  `/* the answer\na\nb\nc\n*/\nexport const answer = ${answer};\n`;
+
+suite('App', () => {
+  sharedApp({
+    'code.ts': 'export const answer = 42;\n',
+    'commented.ts': commented(42),
+    'long.txt': `${longLines.join('\n')}\n`,
   });
 
   test('colors code away from the page', async () => {
@@ -768,43 +547,6 @@ suite('App', () => {
     await diff.locator('.diff-options').waitFor();
   });
 
-  test('filters the files from their round button, marking what it found and showing the diffs of only those, keeping the search for another commit, closing it on Esc and opening it again on Ctrl+F in the files', async () => {
-    const files = page.locator('.columns > .column').nth(1);
-    const names = () => files.locator('.row.file .path').allTextContents();
-    await page.locator('.commit', { hasText: 'first' }).click();
-    await files.locator('.row.file', { hasText: 'kept.txt' }).waitFor();
-    await files.locator('.column-actions > .search-button').click();
-    const field = files.locator('.search-input');
-    await waitForFocus(field, 'the files search');
-    await field.fill('txt ch');
-    await waitFor(
-      async () => (await names()).join() === 'changed.txt',
-      'only changed.txt listed',
-    );
-    assert.deepStrictEqual(
-      await files.locator('.tree-row .match').allTextContents(),
-      ['ch', 'txt'],
-    );
-    await waitFor(
-      async () =>
-        (await page.locator('.file-header .path').allTextContents()).join() ===
-        'changed.txt',
-      'only the diff of changed.txt',
-    );
-    await page.locator('.commit', { hasText: 'second' }).click();
-    await files.locator('.row.file', { hasText: 'changed.txt' }).waitFor();
-    assert.strictEqual(await field.inputValue(), 'txt ch');
-    await field.focus();
-    await page.keyboard.press('Escape');
-    await field.waitFor({ state: 'detached' });
-    await waitForFocus(files.locator('[data-column-focus]'), 'the files list');
-    await page.keyboard.press('ControlOrMeta+F');
-    await waitForFocus(files.locator('.search-input'), 'the files search');
-    assert.strictEqual(await files.locator('.search-input').inputValue(), '');
-    await page.keyboard.press('Escape');
-    await files.locator('.search-input').waitFor({ state: 'detached' });
-  });
-
   test('gives the keyboard back to the diff once Esc closes the find field', async () => {
     await openChangedFile();
     await page.locator('.diff-view .virtual-rows').focus();
@@ -822,8 +564,367 @@ suite('App', () => {
     await waitForFocus(page.locator('.diff-view .virtual-rows'), 'the diff');
   });
 
-  test('shows the diff side by side on its button, the default, and inline again on the other, saving that choice', async () => {
+  test('shows all the changes of a file first, then its staged and unstaged halves apart', async () => {
+    const file = path.join(repository.root, 'changed.txt');
+    fs.writeFileSync(file, 'one\nstaged\nthree\n');
+    try {
+      await page.locator('.commit', { hasText: 'second' }).click();
+      await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
+      await repository.git('add', 'changed.txt');
+      fs.writeFileSync(file, 'one\nstaged\nunstaged\n');
+      await page
+        .locator('.commit.working-tree', { hasText: '1 uncommitted change' })
+        .click();
+      await page
+        .locator('.row.group.selected', { hasText: 'All Changes' })
+        .waitFor();
+      await page.locator('.diff-line.added', { hasText: 'unstaged' }).waitFor();
+      assert.deepStrictEqual(
+        await page.locator('.diff-line.added .code').allTextContents(),
+        ['staged', 'unstaged'],
+      );
+      await page.locator('.row.group', { hasText: /^Staged/ }).click();
+      await page
+        .locator('.diff-line.added', { hasText: 'unstaged' })
+        .waitFor({ state: 'detached' });
+      await page
+        .locator('.diff-line.added .code', { hasText: /^staged$/ })
+        .waitFor();
+      assert.deepStrictEqual(
+        await page.locator('.diff-line.added .code').allTextContents(),
+        ['staged'],
+      );
+      await page
+        .locator('.row.file', { hasText: 'changed.txt' })
+        .nth(1)
+        .click();
+      await page.locator('.diff-line.added', { hasText: 'unstaged' }).waitFor();
+      assert.deepStrictEqual(
+        await page.locator('.diff-line.added .code').allTextContents(),
+        ['unstaged'],
+      );
+    } finally {
+      await repository.git('checkout', '-q', 'HEAD', '--', 'changed.txt');
+    }
+    await page.locator('.commit.working-tree.empty').waitFor();
+  });
+
+  test('jumps to the first change of a file once selected, and again once shown entire or not, landing where J would', async () => {
+    const file = path.join(repository.root, 'long.txt');
+    fs.writeFileSync(
+      file,
+      `${longLines.map((line, index) => (index === 150 ? 'changed far down' : line)).join('\n')}\n`,
+    );
+    const change = page.locator('.diff-line.removed', {
+      hasText: 'line150 word0',
+    });
+    const belowTop = () =>
+      change.evaluate((element) => {
+        const drawnAnewSinceFound = !element.isConnected;
+        if (drawnAnewSinceFound) {
+          return undefined;
+        }
+        const list = element.closest('.virtual-rows');
+        if (!list) {
+          throw new Error('No diff list');
+        }
+        return Math.round(
+          element.getBoundingClientRect().top -
+            list.getBoundingClientRect().top,
+        );
+      });
+    try {
+      await page.locator('.commit', { hasText: 'second' }).click();
+      await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
+      await page
+        .locator('.commit.working-tree', { hasText: '1 uncommitted change' })
+        .click();
+      await page.locator('.row.file', { hasText: 'long.txt' }).click();
+      await change.waitFor();
+      await waitFor(
+        async () => (await belowTop()) === 56,
+        'the change to be shown at its place',
+      );
+      await page.getByRole('button', { name: 'Pin Entire Files' }).click();
+      await page
+        .getByRole('button', { name: 'Show the Entire File', pressed: false })
+        .waitFor();
+      await waitFor(
+        async () =>
+          (await page.locator('.diff-line').count()) < 20 &&
+          (await belowTop()) === 73,
+        'only the changes to be shown, too few to scroll',
+      );
+      await page.getByRole('button', { name: 'Show the Entire File' }).click();
+      await page
+        .getByRole('button', { name: 'Show the Entire File', pressed: true })
+        .waitFor();
+      await waitFor(
+        async () => (await belowTop()) === 56,
+        'the entire file to be shown at its change',
+      );
+      await waitFor(
+        () => savedSetting('entireFilePinned') === false,
+        'the unpinning to be saved',
+      );
+    } finally {
+      await repository.git('checkout', '-q', 'HEAD', '--', 'long.txt');
+    }
+    await page.locator('.commit.working-tree.empty').waitFor();
+  });
+});
+
+const hyphenatedLine = Array.from(
+  { length: 60 },
+  (_, index) => `part${index}`,
+).join('-');
+const dottedLine = `        ${Array.from(
+  { length: 60 },
+  (_, index) => `part${index}`,
+).join('.')};`;
+const paragraphs = Array.from(
+  { length: 200 },
+  (_, index) => `Paragraph ${index}`,
+);
+
+function wrappedRows(
+  line: Locator,
+): Promise<{ last: string; follows: boolean }[]> {
+  return line.evaluate((element) => {
+    const code = element.querySelector('.code');
+    if (!code) {
+      throw new Error('No code');
+    }
+    const text = code.textContent ?? '';
+    const walker = document.createTreeWalker(code, NodeFilter.SHOW_TEXT);
+    const node = walker.nextNode();
+    if (!(node instanceof Text) || node.length !== text.length) {
+      throw new Error('Not one text node');
+    }
+    const range = document.createRange();
+    const ends = new Map<number, { right: number; last: string }>();
+    for (let offset = 0; offset < text.length; offset++) {
+      range.setStart(node, offset);
+      range.setEnd(node, offset + 1);
+      const rect = range.getBoundingClientRect();
+      ends.set(Math.round(rect.top), {
+        right: rect.right,
+        last: text[offset],
+      });
+    }
+    const marks = Array.from(
+      element.querySelectorAll('.wrap-break'),
+      (mark) => mark.getBoundingClientRect().left,
+    );
+    return [...ends.values()].slice(0, -1).map(({ right, last }, index) => ({
+      last,
+      follows: Math.abs((marks[index] ?? Infinity) - right) < 1,
+    }));
+  });
+}
+
+const focusColor = () =>
+  page.evaluate(() =>
+    getComputedStyle(document.documentElement)
+      .getPropertyValue('--color-focus')
+      .trim(),
+  );
+
+const pressWrap = () => page.keyboard.press('w');
+
+const clickView = (name: string) => () =>
+  page.getByRole('button', { name }).click();
+
+async function marksFollowRows(line: Locator): Promise<boolean> {
+  const rows = await wrappedRows(line);
+  return (
+    rows.length > 1 && rows.every((row) => row.last === '-' && row.follows)
+  );
+}
+
+suite('App', () => {
+  sharedApp({
+    'long.txt': `${longLines.join('\n')}\n`,
+    'hyphenated.txt': `${hyphenatedLine}\n`,
+    'notes.md': `${paragraphs.join('\n\n')}\n`,
+    'diagram.md':
+      '# Diagram\n\n```mermaid\ngraph LR\n  Fetch["Fetch<br/>every remote"] --> Merge\n```\n',
+    'wrapped.txt': `${dottedLine}\n`,
+  });
+
+  test('keeps the minimap on the part in view while a Markdown preview scrolls, though the preview is one row however tall', async () => {
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await page.locator('.row.file', { hasText: 'notes.md' }).click();
+    await page.getByRole('button', { name: strings.diff.showPreview }).click();
+    await page.locator('.markdown p', { hasText: 'Paragraph 199' }).waitFor();
+    await page
+      .locator('.diff-view .minimap-viewport')
+      .waitFor({ state: 'attached' });
+    const steps = await page
+      .locator('.diff-view .virtual-rows')
+      .evaluate(async (list) => {
+        const view =
+          list.parentElement?.querySelector<HTMLElement>('.minimap-viewport');
+        if (!view) {
+          throw new Error('No part in view on the minimap');
+        }
+        const seen = [];
+        for (let step = 0; step < 10; step++) {
+          list.scrollTop += 100;
+          await new Promise((drawn) =>
+            requestAnimationFrame(() => requestAnimationFrame(drawn)),
+          );
+          seen.push({
+            scrolled: (100 * list.scrollTop) / list.scrollHeight,
+            marked: parseFloat(view.style.top),
+          });
+        }
+        return seen;
+      });
+    for (const { scrolled, marked } of steps) {
+      assert.ok(Math.abs(scrolled - marked) < 0.1, JSON.stringify(steps));
+    }
+  });
+
+  test('draws a Mermaid diagram in a Markdown preview as an image of its SVG, its code hidden', async () => {
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await page.locator('.row.file', { hasText: 'diagram.md' }).click();
+    await page.getByRole('button', { name: strings.diff.showPreview }).click();
+    const image = page.locator('.markdown-diagram img');
+    await image.waitFor();
+    const drawn = await image.evaluate(async (img: HTMLImageElement) => {
+      await img.decode();
+      const svg = decodeURIComponent(img.src.split(',')[1]);
+      return {
+        width: img.naturalWidth,
+        labels: ['Fetch', 'Merge'].every((label) => svg.includes(label)),
+      };
+    });
+    assert.ok(drawn.width > 0, JSON.stringify(drawn));
+    assert.ok(drawn.labels, JSON.stringify(drawn));
+    assert.strictEqual(await page.locator('.markdown pre').isHidden(), true);
+  });
+
+  test('draws the diagrams of a Markdown preview again in the color scheme the system switches to, once', async () => {
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await page.locator('.row.file', { hasText: 'diagram.md' }).click();
+    await page.getByRole('button', { name: strings.diff.showPreview }).click();
+    const image = page.locator('.markdown-diagram img');
+    await image.waitFor();
+    const before = await image.getAttribute('src');
+    const dark = await page.evaluate(
+      () => matchMedia('(prefers-color-scheme: dark)').matches,
+    );
+    try {
+      await page.emulateMedia({ colorScheme: dark ? 'light' : 'dark' });
+      await waitFor(
+        async () => (await image.getAttribute('src')) !== before,
+        'the diagram to be drawn again',
+      );
+      assert.strictEqual(await image.count(), 1);
+      assert.strictEqual(await page.locator('.markdown pre').isHidden(), true);
+    } finally {
+      await page.emulateMedia({ colorScheme: null });
+    }
+  });
+
+  test('keeps what a Markdown preview drew for the blocks an edit leaves alone, its diagrams and colored code, while the working tree changes under it', async () => {
+    const file = path.join(repository.root, 'diagram.md');
+    const committed = fs.readFileSync(file, 'utf8');
+    const edited = (count: number) =>
+      `${committed}\nEdited ${count} times.\n\n\`\`\`ts\nconst kept = 1;\n\`\`\`\n`;
+    const newSide = page.locator('.markdown-pane:last-child > .markdown');
+    fs.writeFileSync(file, edited(1));
+    let watching: JSHandle<{ undrawn: string[]; stop: () => void }> | undefined;
+    try {
+      await page.locator('.row.file', { hasText: 'diagram.md' }).click();
+      await page
+        .getByRole('button', { name: strings.diff.showPreview })
+        .click();
+      await newSide.locator('.markdown-diagram img').waitFor();
+      await newSide.locator('.syntax-keyword', { hasText: 'const' }).waitFor();
+      watching = await page.evaluateHandle(() => {
+        const undrawn: string[] = [];
+        const observer = new MutationObserver(() => {
+          const preview = document.querySelector(
+            '.markdown-pane:last-child > .markdown',
+          );
+          if (!preview?.querySelector('.markdown-diagram img')) {
+            undrawn.push('diagram');
+          }
+          if (preview?.querySelector('pre:not([hidden]) .language-mermaid')) {
+            undrawn.push('diagram code');
+          }
+          if (!preview?.querySelector('.language-ts .syntax-keyword')) {
+            undrawn.push('colored code');
+          }
+        });
+        observer.observe(document.body, {
+          subtree: true,
+          childList: true,
+          characterData: true,
+          attributes: true,
+        });
+        return { undrawn, stop: () => observer.disconnect() };
+      });
+      for (const count of [2, 3, 4]) {
+        fs.writeFileSync(file, edited(count));
+        await newSide
+          .locator('p', { hasText: `Edited ${count} times.` })
+          .waitFor();
+      }
+      assert.deepStrictEqual(
+        await watching.evaluate(({ undrawn }) => undrawn),
+        [],
+      );
+    } finally {
+      await watching?.evaluate(({ stop }) => stop());
+      await repository.git('checkout', '-q', 'HEAD', '--', 'diagram.md');
+    }
+    await page.locator('.commit.working-tree.empty').waitFor();
+  });
+
+  test('applies settings edited by hand while it runs, and says what is wrong with them', async () => {
+    const file = path.join(profile, 'settings.user.json');
+    const colored = page.waitForEvent('load');
+    fs.writeFileSync(
+      file,
+      JSON.stringify({
+        colors: { light: { focus: '#123456' }, dark: { focus: '#123456' } },
+      }),
+    );
+    await colored;
+    await page.waitForFunction(
+      () =>
+        getComputedStyle(document.documentElement)
+          .getPropertyValue('--color-focus')
+          .trim() === '#123456',
+    );
+    assert.strictEqual(await focusColor(), '#123456');
+    const broken = page.waitForEvent('load');
+    fs.writeFileSync(file, '{ "showAllFiles": tru');
+    await broken;
+    await page
+      .locator('.notice.error', { hasText: 'not valid JSON' })
+      .waitFor();
+    const emptied = page.waitForEvent('load');
+    fs.writeFileSync(file, '{}');
+    await emptied;
+    await page.waitForFunction(
+      () =>
+        getComputedStyle(document.documentElement)
+          .getPropertyValue('--color-focus')
+          .trim() !== '#123456',
+    );
+  });
+
+  test('lists the history and shows a commit entire, with its change, inline, then side by side on its button, the default, and inline again on the other, and wraps long lines on its button or W, each row as tall as the lines the app expects its text to wrap to, keeping the line at the top in place as it wraps and changes layout, saving each choice', async () => {
     await openChangedFile();
+    assert.deepStrictEqual(
+      await page.locator('.diff-row .diff-line .code').allTextContents(),
+      ['one', 'two', '2', 'three'],
+    );
+    await page.locator('.diff-minimap').waitFor();
     await page.getByRole('button', { name: 'Side by Side' }).click();
     const sides = page.locator('.split-line');
     await sides.first().waitFor();
@@ -855,106 +956,7 @@ suite('App', () => {
       () => savedSetting('diffLayout') === 'inline',
       'the layout to be saved',
     );
-  });
 
-  test('moves between the columns with the arrows and Tab, the keys working in the one active', async () => {
-    const active = (column: string) =>
-      page.locator(`.columns[data-active-column="${column}"]`).waitFor();
-    await page.locator('.commit', { hasText: 'second' }).click();
-    await page.locator('.row.group', { hasText: 'All Changes' }).click();
-    await page
-      .locator('.row.group.selected', { hasText: 'All Changes' })
-      .waitFor();
-    await page.locator('.virtual-rows.list').focus();
-    await active('commits');
-    await page.keyboard.press('ArrowRight');
-    await active('files');
-    await page.keyboard.press('ArrowDown');
-    const changedFile = page.locator('.row.file.selected', {
-      hasText: 'changed.txt',
-    });
-    const allChanges = page.locator('.row.group.selected', {
-      hasText: 'All Changes',
-    });
-    await changedFile.waitFor();
-    await page.keyboard.press('Home');
-    await allChanges.waitFor();
-    await page.keyboard.press('End');
-    await changedFile.waitFor();
-    await page.keyboard.press('PageUp');
-    await allChanges.waitFor();
-    await page.keyboard.press('PageDown');
-    await changedFile.waitFor();
-    await page.keyboard.press('ArrowRight');
-    await active('diff');
-    await page.keyboard.press('ArrowLeft');
-    await active('files');
-    await page.keyboard.press('Shift+Tab');
-    await active('commits');
-    await page.keyboard.press('Tab');
-    await active('files');
-    await page.keyboard.press('j');
-    await active('diff');
-  });
-
-  test('shows the unchanged files on the toggle, dimmed, and remembers it', async () => {
-    await page.locator('.commit', { hasText: 'second' }).click();
-    await page.locator('.row.file', { hasText: 'changed.txt' }).waitFor();
-    assert.strictEqual(
-      await page.locator('.row.file', { hasText: 'kept.txt' }).count(),
-      0,
-    );
-    await page.getByRole('button', { name: 'Show All Files' }).click();
-    await page
-      .locator('.row.file .path.unchanged', { hasText: 'kept.txt' })
-      .waitFor();
-    await waitFor(
-      () => savedSetting('showAllFiles') === true,
-      'the setting to be saved',
-    );
-  });
-
-  test('applies settings edited by hand while it runs, and says what is wrong with them', async () => {
-    const file = path.join(profile, 'settings.user.json');
-    const focus = () =>
-      page.evaluate(() =>
-        getComputedStyle(document.documentElement)
-          .getPropertyValue('--color-focus')
-          .trim(),
-      );
-    const colored = page.waitForEvent('load');
-    fs.writeFileSync(
-      file,
-      JSON.stringify({
-        colors: { light: { focus: '#123456' }, dark: { focus: '#123456' } },
-      }),
-    );
-    await colored;
-    await page.waitForFunction(
-      () =>
-        getComputedStyle(document.documentElement)
-          .getPropertyValue('--color-focus')
-          .trim() === '#123456',
-    );
-    assert.strictEqual(await focus(), '#123456');
-    const broken = page.waitForEvent('load');
-    fs.writeFileSync(file, '{ "showAllFiles": tru');
-    await broken;
-    await page
-      .locator('.notice.error', { hasText: 'not valid JSON' })
-      .waitFor();
-    const emptied = page.waitForEvent('load');
-    fs.writeFileSync(file, '{}');
-    await emptied;
-    await page.waitForFunction(
-      () =>
-        getComputedStyle(document.documentElement)
-          .getPropertyValue('--color-focus')
-          .trim() !== '#123456',
-    );
-  });
-
-  test('wraps long lines on its button or W, each row as tall as the lines the app expects its text to wrap to, keeping the line at the top in place, saving the choice', async () => {
     await page.locator('.commit', { hasText: 'first' }).click();
     await page.locator('.row.file', { hasText: 'long.txt' }).click();
     const row = page.locator('.diff-row', {
@@ -1021,9 +1023,6 @@ suite('App', () => {
       'a line at the top',
     );
     const reading = await topLine();
-    const pressWrap = () => page.keyboard.press('w');
-    const clickView = (name: string) => () =>
-      page.getByRole('button', { name }).click();
     for (const [change, shown, state, wraps, layout] of [
       [pressWrap, '.diff-view.wrap', 'detached', false, 'inline'],
       [pressWrap, '.diff-view.wrap', 'attached', true, 'inline'],
@@ -1307,872 +1306,5 @@ suite('App', () => {
       () => wrapsSaved() && savedSetting('diffLayout') === 'inline',
       'the last choices to be saved',
     );
-  });
-
-  test('keeps the minimap on the part in view while a Markdown preview scrolls, though the preview is one row however tall', async () => {
-    await page.locator('.commit', { hasText: 'first' }).click();
-    await page.locator('.row.file', { hasText: 'notes.md' }).click();
-    await page.getByRole('button', { name: strings.diff.showPreview }).click();
-    await page.locator('.markdown p', { hasText: 'Paragraph 199' }).waitFor();
-    await page
-      .locator('.diff-view .minimap-viewport')
-      .waitFor({ state: 'attached' });
-    const steps = await page
-      .locator('.diff-view .virtual-rows')
-      .evaluate(async (list) => {
-        const view =
-          list.parentElement?.querySelector<HTMLElement>('.minimap-viewport');
-        if (!view) {
-          throw new Error('No part in view on the minimap');
-        }
-        const seen = [];
-        for (let step = 0; step < 10; step++) {
-          list.scrollTop += 100;
-          await new Promise((drawn) =>
-            requestAnimationFrame(() => requestAnimationFrame(drawn)),
-          );
-          seen.push({
-            scrolled: (100 * list.scrollTop) / list.scrollHeight,
-            marked: parseFloat(view.style.top),
-          });
-        }
-        return seen;
-      });
-    for (const { scrolled, marked } of steps) {
-      assert.ok(Math.abs(scrolled - marked) < 0.1, JSON.stringify(steps));
-    }
-  });
-
-  test('draws a Mermaid diagram in a Markdown preview as an image of its SVG, its code hidden', async () => {
-    await page.locator('.commit', { hasText: 'first' }).click();
-    await page.locator('.row.file', { hasText: 'diagram.md' }).click();
-    await page.getByRole('button', { name: strings.diff.showPreview }).click();
-    const image = page.locator('.markdown-diagram img');
-    await image.waitFor();
-    const drawn = await image.evaluate(async (img: HTMLImageElement) => {
-      await img.decode();
-      const svg = decodeURIComponent(img.src.split(',')[1]);
-      return {
-        width: img.naturalWidth,
-        labels: ['Fetch', 'Merge'].every((label) => svg.includes(label)),
-      };
-    });
-    assert.ok(drawn.width > 0, JSON.stringify(drawn));
-    assert.ok(drawn.labels, JSON.stringify(drawn));
-    assert.strictEqual(await page.locator('.markdown pre').isHidden(), true);
-  });
-
-  test('draws the diagrams of a Markdown preview again in the color scheme the system switches to, once', async () => {
-    await page.locator('.commit', { hasText: 'first' }).click();
-    await page.locator('.row.file', { hasText: 'diagram.md' }).click();
-    await page.getByRole('button', { name: strings.diff.showPreview }).click();
-    const image = page.locator('.markdown-diagram img');
-    await image.waitFor();
-    const before = await image.getAttribute('src');
-    const dark = await page.evaluate(
-      () => matchMedia('(prefers-color-scheme: dark)').matches,
-    );
-    try {
-      await page.emulateMedia({ colorScheme: dark ? 'light' : 'dark' });
-      await waitFor(
-        async () => (await image.getAttribute('src')) !== before,
-        'the diagram to be drawn again',
-      );
-      assert.strictEqual(await image.count(), 1);
-      assert.strictEqual(await page.locator('.markdown pre').isHidden(), true);
-    } finally {
-      await page.emulateMedia({ colorScheme: null });
-    }
-  });
-
-  test('keeps what a Markdown preview drew for the blocks an edit leaves alone, its diagrams and colored code, while the working tree changes under it', async () => {
-    const file = path.join(repository.root, 'diagram.md');
-    const committed = fs.readFileSync(file, 'utf8');
-    const edited = (count: number) =>
-      `${committed}\nEdited ${count} times.\n\n\`\`\`ts\nconst kept = 1;\n\`\`\`\n`;
-    const newSide = page.locator('.markdown-pane:last-child > .markdown');
-    fs.writeFileSync(file, edited(1));
-    let watching: JSHandle<{ undrawn: string[]; stop: () => void }> | undefined;
-    try {
-      await page.locator('.row.file', { hasText: 'diagram.md' }).click();
-      await page
-        .getByRole('button', { name: strings.diff.showPreview })
-        .click();
-      await newSide.locator('.markdown-diagram img').waitFor();
-      await newSide.locator('.syntax-keyword', { hasText: 'const' }).waitFor();
-      watching = await page.evaluateHandle(() => {
-        const undrawn: string[] = [];
-        const observer = new MutationObserver(() => {
-          const preview = document.querySelector(
-            '.markdown-pane:last-child > .markdown',
-          );
-          if (!preview?.querySelector('.markdown-diagram img')) {
-            undrawn.push('diagram');
-          }
-          if (preview?.querySelector('pre:not([hidden]) .language-mermaid')) {
-            undrawn.push('diagram code');
-          }
-          if (!preview?.querySelector('.language-ts .syntax-keyword')) {
-            undrawn.push('colored code');
-          }
-        });
-        observer.observe(document.body, {
-          subtree: true,
-          childList: true,
-          characterData: true,
-          attributes: true,
-        });
-        return { undrawn, stop: () => observer.disconnect() };
-      });
-      for (const count of [2, 3, 4]) {
-        fs.writeFileSync(file, edited(count));
-        await newSide
-          .locator('p', { hasText: `Edited ${count} times.` })
-          .waitFor();
-      }
-      assert.deepStrictEqual(
-        await watching.evaluate(({ undrawn }) => undrawn),
-        [],
-      );
-    } finally {
-      await watching?.evaluate(({ stop }) => stop());
-      await repository.git('checkout', '-q', 'HEAD', '--', 'diagram.md');
-    }
-    await page.locator('.commit.working-tree.empty').waitFor();
-  });
-
-  test('refreshes by itself when the working tree changes', async () => {
-    const file = path.join(repository.root, 'new.txt');
-    fs.writeFileSync(file, 'new\n');
-    try {
-      await page
-        .locator('.working-tree', { hasText: '1 uncommitted change' })
-        .waitFor();
-    } finally {
-      fs.rmSync(file, { force: true });
-    }
-    await page.locator('.commit.working-tree.empty').waitFor();
-  });
-
-  test('expands and collapses the selected merge on Space', async () => {
-    const [main] = await repository.resolve('main');
-    const merge = page.locator('.commit', { hasText: 'merge topic' });
-    const merged = page.locator('.commit', { hasText: 'topic work' });
-    await repository.git('switch', '-q', '-c', 'topic', 'HEAD~1');
-    try {
-      await repository.commit('topic work');
-      await repository.git('switch', '-q', 'main');
-      await repository.git(
-        'merge',
-        '-q',
-        '--no-ff',
-        '-m',
-        'merge topic',
-        'topic',
-      );
-      await merge.click();
-      await page
-        .locator('.commit.selected', { hasText: 'merge topic' })
-        .waitFor();
-      await page.keyboard.press('Space');
-      await merged.waitFor();
-      await page.keyboard.press('Space');
-      await merged.waitFor({ state: 'detached' });
-    } finally {
-      await repository.git('switch', '-q', 'main');
-      await repository.git('reset', '-q', '--keep', main);
-      await repository.git('branch', '-q', '-D', 'topic');
-    }
-    await merge.waitFor({ state: 'detached' });
-  });
-
-  test('shows a stash in the list, found in the search by its message, with its untracked files', async () => {
-    fs.writeFileSync(path.join(repository.root, 'aside.txt'), 'aside\n');
-    await repository.git('stash', 'push', '-q', '-u', '-m', 'kept aside');
-    const stash = page.locator('.commit', { hasText: 'On main: kept aside' });
-    try {
-      await stash.waitFor();
-      await page.keyboard.press('ControlOrMeta+F');
-      await page.locator('.locations-search').fill('kept');
-      await page
-        .locator('.locations-group', { hasText: 'Stashes' })
-        .locator('.row.result', { hasText: 'stash@{0}' })
-        .waitFor();
-      await page.keyboard.press('Enter');
-      await page
-        .locator('.commit.selected', { hasText: 'kept aside' })
-        .waitFor();
-      await page.locator('.row.file', { hasText: 'aside.txt' }).waitFor();
-    } finally {
-      await repository.git('stash', 'drop', '-q');
-    }
-    await stash.waitFor({ state: 'detached' });
-  });
-
-  test('jumps to the first change of a file once selected, and again once shown entire or not, landing where J would', async () => {
-    const file = path.join(repository.root, 'long.txt');
-    fs.writeFileSync(
-      file,
-      `${longLines.map((line, index) => (index === 150 ? 'changed far down' : line)).join('\n')}\n`,
-    );
-    const change = page.locator('.diff-line.removed', {
-      hasText: 'line150 word0',
-    });
-    const belowTop = () =>
-      change.evaluate((element) => {
-        const drawnAnewSinceFound = !element.isConnected;
-        if (drawnAnewSinceFound) {
-          return undefined;
-        }
-        const list = element.closest('.virtual-rows');
-        if (!list) {
-          throw new Error('No diff list');
-        }
-        return Math.round(
-          element.getBoundingClientRect().top -
-            list.getBoundingClientRect().top,
-        );
-      });
-    try {
-      await page.locator('.commit', { hasText: 'second' }).click();
-      await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
-      await page
-        .locator('.commit.working-tree', { hasText: '1 uncommitted change' })
-        .click();
-      await page.locator('.row.file', { hasText: 'long.txt' }).click();
-      await change.waitFor();
-      await waitFor(
-        async () => (await belowTop()) === 56,
-        'the change to be shown at its place',
-      );
-      await page.getByRole('button', { name: 'Pin Entire Files' }).click();
-      await page
-        .getByRole('button', { name: 'Show the Entire File', pressed: false })
-        .waitFor();
-      await waitFor(
-        async () =>
-          (await page.locator('.diff-line').count()) < 20 &&
-          (await belowTop()) === 73,
-        'only the changes to be shown, too few to scroll',
-      );
-      await page.getByRole('button', { name: 'Show the Entire File' }).click();
-      await page
-        .getByRole('button', { name: 'Show the Entire File', pressed: true })
-        .waitFor();
-      await waitFor(
-        async () => (await belowTop()) === 56,
-        'the entire file to be shown at its change',
-      );
-      await waitFor(
-        () => savedSetting('entireFilePinned') === false,
-        'the unpinning to be saved',
-      );
-    } finally {
-      await repository.git('checkout', '-q', 'HEAD', '--', 'long.txt');
-    }
-    await page.locator('.commit.working-tree.empty').waitFor();
-  });
-
-  test('shows all the changes of a file first, then its staged and unstaged halves apart', async () => {
-    const file = path.join(repository.root, 'changed.txt');
-    fs.writeFileSync(file, 'one\nstaged\nthree\n');
-    try {
-      await page.locator('.commit', { hasText: 'second' }).click();
-      await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
-      await repository.git('add', 'changed.txt');
-      fs.writeFileSync(file, 'one\nstaged\nunstaged\n');
-      await page
-        .locator('.commit.working-tree', { hasText: '1 uncommitted change' })
-        .click();
-      await page
-        .locator('.row.group.selected', { hasText: 'All Changes' })
-        .waitFor();
-      await page.locator('.diff-line.added', { hasText: 'unstaged' }).waitFor();
-      assert.deepStrictEqual(
-        await page.locator('.diff-line.added .code').allTextContents(),
-        ['staged', 'unstaged'],
-      );
-      await page.locator('.row.group', { hasText: /^Staged/ }).click();
-      await page
-        .locator('.diff-line.added', { hasText: 'unstaged' })
-        .waitFor({ state: 'detached' });
-      await page
-        .locator('.diff-line.added .code', { hasText: /^staged$/ })
-        .waitFor();
-      assert.deepStrictEqual(
-        await page.locator('.diff-line.added .code').allTextContents(),
-        ['staged'],
-      );
-      await page
-        .locator('.row.file', { hasText: 'changed.txt' })
-        .nth(1)
-        .click();
-      await page.locator('.diff-line.added', { hasText: 'unstaged' }).waitFor();
-      assert.deepStrictEqual(
-        await page.locator('.diff-line.added .code').allTextContents(),
-        ['unstaged'],
-      );
-    } finally {
-      await repository.git('checkout', '-q', 'HEAD', '--', 'changed.txt');
-    }
-    await page.locator('.commit.working-tree.empty').waitFor();
-  });
-});
-
-suite('App with lists longer than their columns', () => {
-  let folder: string;
-  let app: ElectronApplication;
-  let page: Page;
-
-  beforeAll(async () => {
-    folder = tempFolder('long-lists');
-    const profile = path.join(folder, 'profile');
-    const repository = await tempRepository(path.join(folder, 'repo'));
-    await repository.commit('first', {
-      ...Object.fromEntries(
-        Array.from({ length: 60 }, (_, index) => [
-          `src/file${index}.txt`,
-          `${index}\n`,
-        ]),
-      ),
-      'long.txt': `${longLines.join('\n')}\n`,
-    });
-    fs.mkdirSync(profile, { recursive: true });
-    fs.writeFileSync(
-      path.join(profile, 'state.json'),
-      JSON.stringify(savedTabs([repository.root], repository.root)),
-    );
-    fs.writeFileSync(
-      path.join(profile, 'settings.user.json'),
-      JSON.stringify(baseSettings),
-    );
-    app = await _electron.launch({
-      args: [appFolder, `--user-data-dir=${profile}`],
-      cwd: appFolder,
-    });
-    page = await app.firstWindow();
-    await page.locator('.commit', { hasText: 'first' }).click();
-    await page.locator('.row.file', { hasText: 'file0.txt' }).waitFor();
-    await page
-      .locator('.column')
-      .nth(1)
-      .locator('.virtual-rows')
-      .evaluate((element) => {
-        element.scrollTop = element.scrollHeight;
-      });
-    await page.locator('.row.file', { hasText: 'long.txt' }).click();
-    await page.locator('.diff-line', { hasText: firstLongLine }).waitFor();
-  });
-
-  afterAll(async () => {
-    await app?.close();
-    removeFolder(folder);
-  });
-
-  test('scrolls on the wheel over the folders pinned atop the files and the file header stuck atop the diff, which stays in place sideways, showing the scrollbar of the files over them', async () => {
-    const files = page.locator('.column').nth(1).locator('.virtual-rows');
-    const pinned = page.locator('.pinned-rows');
-    await scrollsOnWheelOver(page, files, pinned);
-    await pinned.hover();
-    assert.strictEqual(
-      await page.locator('.overlay-scrollbar.vertical.shown').count(),
-      1,
-    );
-
-    const diff = page.locator('.diff-view .virtual-rows');
-    const stuck = page.locator('.diff-stuck-header');
-    await scrollsOnWheelOver(page, diff, stuck);
-    await diff.evaluate((element) => {
-      element.scrollLeft = 300;
-    });
-    await waitFor(
-      async () => (await diff.evaluate((element) => element.scrollLeft)) > 0,
-      'the diff to scroll sideways',
-    );
-    const header = await stuck.locator('.file-header').boundingBox();
-    const view = await page.locator('.diff-view').boundingBox();
-    assert.ok(header && view, 'the header or the diff has no box');
-    assert.strictEqual(header.x, view.x);
-  });
-
-  test('keeps the scrollbar the pointer rests on where it is while another list scrolls, as the diff on the keys', async () => {
-    const bar = page.locator('.overlay-scrollbar.vertical');
-    await page.locator('.column').nth(1).locator('.virtual-rows').hover();
-    await bar.hover();
-    const shown = await bar.boundingBox();
-    const diff = page.locator('.diff-view .virtual-rows');
-    const top = await diff.evaluate((element) => element.scrollTop);
-    await diff.focus();
-    await page.keyboard.press('PageDown');
-    await waitFor(
-      async () => (await diff.evaluate((element) => element.scrollTop)) > top,
-      'the diff to scroll',
-    );
-    await page.evaluate(
-      () =>
-        new Promise((drawn) =>
-          requestAnimationFrame(() => requestAnimationFrame(drawn)),
-        ),
-    );
-    assert.ok(await bar.evaluate((element) => element.matches('.shown')));
-    assert.deepStrictEqual(await bar.boundingBox(), shown);
-  });
-});
-
-suite('App with several tabs', () => {
-  test('moves a tab dragged past the middle of the next one while it is still dragged, keeping it under the pointer, opening it, and keeps that order once dropped', async () => {
-    const folder = tempFolder('dragging-tabs');
-    const profile = path.join(folder, 'profile');
-    const roots: string[] = [];
-    for (const name of ['first', 'second', 'third']) {
-      const repository = await tempRepository(path.join(folder, name));
-      await repository.commit(name);
-      roots.push(repository.root);
-    }
-    fs.mkdirSync(profile, { recursive: true });
-    const state = path.join(profile, 'state.json');
-    fs.writeFileSync(state, JSON.stringify(savedTabs(roots, roots[1])));
-    fs.writeFileSync(
-      path.join(profile, 'settings.user.json'),
-      JSON.stringify({ tools: { git: { autoFetch: false } } }),
-    );
-    const app = await _electron.launch({
-      args: [appFolder, `--user-data-dir=${profile}`],
-      cwd: appFolder,
-    });
-    try {
-      const page = await app.firstWindow();
-      await page.locator('.commit', { hasText: 'second' }).waitFor();
-      const names = () =>
-        page.locator('.tabs .tab .tab-name').allTextContents();
-      const dragged = page.locator('.tabs .tab', { hasText: 'first' });
-      const start = await dragged.boundingBox();
-      const next = await page
-        .locator('.tabs .tab', { hasText: 'second' })
-        .boundingBox();
-      assert.ok(start && next);
-      const pitch = next.x - start.x;
-      const grab = 20;
-      const y = start.y + start.height / 2;
-      await page.mouse.move(start.x + grab, y);
-      await page.mouse.down();
-      await page.mouse.move(start.x + grab + pitch / 2 - 8, y, { steps: 8 });
-      assert.deepStrictEqual(await names(), ['first', 'second', 'third']);
-      const pointer = start.x + grab + pitch / 2 + 8;
-      await page.mouse.move(pointer, y, { steps: 4 });
-      assert.deepStrictEqual(await names(), ['second', 'first', 'third']);
-      const held = await dragged.boundingBox();
-      assert.ok(held);
-      assert.ok(Math.abs(held.x - (pointer - grab)) < 1, String(held.x));
-      await page.locator('.commit', { hasText: 'first' }).waitFor();
-      await page.mouse.up();
-      assert.deepStrictEqual(await names(), ['second', 'first', 'third']);
-      await waitFor(() => {
-        const saved: unknown = JSON.parse(fs.readFileSync(state, 'utf8'));
-        const tabs: unknown = Reflect.get(Object(saved), 'tabs');
-        return (
-          Array.isArray(tabs) &&
-          JSON.stringify(
-            tabs.map((tab: unknown) => Reflect.get(Object(tab), 'root')),
-          ) === JSON.stringify([roots[1], roots[0], roots[2]])
-        );
-      }, 'the order to be saved');
-      assert.match((await dragged.getAttribute('class')) ?? '', /\bactive\b/);
-    } finally {
-      await closeOrKill(app);
-      removeFolder(folder);
-    }
-  });
-});
-
-suite('App started from a terminal', () => {
-  test('asks which tool opens the folder it is started with, opening its repository on Enter, then that of a folder another start hands it, showing each rather than the tab left active', async () => {
-    const folder = tempFolder('command-line');
-    const profile = path.join(folder, 'profile');
-    const roots: string[] = [];
-    for (const name of ['first', 'second', 'third']) {
-      const repository = await tempRepository(path.join(folder, name));
-      await repository.commit(name);
-      roots.push(repository.root);
-    }
-    const [first, second, third] = roots;
-    const inner = path.join(second, 'inner');
-    fs.mkdirSync(inner);
-    fs.mkdirSync(profile, { recursive: true });
-    fs.writeFileSync(
-      path.join(profile, 'state.json'),
-      JSON.stringify(savedTabs([first], first)),
-    );
-    fs.writeFileSync(
-      path.join(profile, 'settings.user.json'),
-      JSON.stringify({ tools: { git: { autoFetch: false } } }),
-    );
-    const args = (asked: string) => [
-      appFolder,
-      `--user-data-dir=${profile}`,
-      '--',
-      asked,
-    ];
-    const app = await _electron.launch({ args: args(inner), cwd: appFolder });
-    try {
-      const page = await app.firstWindow();
-      const names = () =>
-        page.locator('.tabs .tab .tab-name').allTextContents();
-      const openWithGit = async () => {
-        const popup = page.locator('.open-with-popup');
-        await popup.waitFor();
-        await waitForFocus(
-          popup.locator('.open-with-tool', { hasText: strings.tools.git }),
-          'Git Manager',
-        );
-        await page.keyboard.press('Enter');
-        await popup.waitFor({ state: 'detached' });
-      };
-      await openWithGit();
-      await page.locator('.commit', { hasText: 'second' }).waitFor();
-      assert.deepStrictEqual(await names(), ['first', 'second']);
-      const electron = await app.evaluate(() => process.execPath);
-      const sandbox = process.platform === 'linux' ? ['--no-sandbox'] : [];
-      const handedOff = spawnSync(electron, [...sandbox, ...args(third)], {
-        cwd: appFolder,
-        timeout: 30_000,
-      });
-      assert.strictEqual(handedOff.status, 0, String(handedOff.stderr));
-      await openWithGit();
-      await page.locator('.commit', { hasText: 'third' }).waitFor();
-      assert.deepStrictEqual(await names(), ['first', 'second', 'third']);
-      assert.match(
-        (await page
-          .locator('.tabs .tab', { hasText: 'third' })
-          .getAttribute('class')) ?? '',
-        /\bactive\b/,
-      );
-    } finally {
-      await closeOrKill(app);
-      removeFolder(folder);
-    }
-  });
-});
-
-suite('App quitting', () => {
-  test("stops the git it still runs, which would outlive it, by the end of its own quitting rather than Chromium's, which takes tens of seconds to end its processes on a busy machine", async () => {
-    const folder = tempFolder('quitting');
-    const profile = path.join(folder, 'profile');
-    const alive = path.join(folder, 'alive').replaceAll('\\', '/');
-    const stop = path.join(folder, 'stop').replaceAll('\\', '/');
-    const repository = await tempRepository(path.join(folder, 'repo'));
-    await repository.commit('first');
-    await repository.git('remote', 'add', 'origin', 'ssh://stalled.invalid/x');
-    await repository.git(
-      'config',
-      'core.sshCommand',
-      `i=0; while [ ! -e '${stop}' ]; do i=$((i + 1)); echo $i > '${alive}'; sleep 0.2; done; false`,
-    );
-    fs.mkdirSync(profile, { recursive: true });
-    fs.writeFileSync(
-      path.join(profile, 'state.json'),
-      JSON.stringify(savedTabs([repository.root], repository.root)),
-    );
-    const app = await _electron.launch({
-      args: [appFolder, `--user-data-dir=${profile}`],
-      cwd: appFolder,
-    });
-    try {
-      const page = await app.firstWindow();
-      await page.locator('.commit', { hasText: 'first' }).waitFor();
-      await page.getByTitle(strings.navigation.fetch, { exact: true }).click();
-      await waitFor(() => fs.existsSync(alive), 'git to fetch');
-      await quitWithoutChromium(app, folder);
-      const counted = fs.readFileSync(alive, 'utf8');
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      assert.strictEqual(fs.readFileSync(alive, 'utf8'), counted);
-    } finally {
-      fs.writeFileSync(stop, '');
-      await closeOrKill(app);
-      removeFolder(folder);
-    }
-  });
-
-  test("stops a round of background fetches, starting no other fetch and not saying the one it stopped failed, by the end of its own quitting rather than Chromium's", async () => {
-    const folder = tempFolder('quitting-round');
-    const profile = path.join(folder, 'profile');
-    const stop = path.join(folder, 'stop').replaceAll('\\', '/');
-    const alive = (name: string) =>
-      path.join(folder, `${name}-alive`).replaceAll('\\', '/');
-    const roots: string[] = [];
-    for (const name of ['first', 'second']) {
-      const repository = await tempRepository(path.join(folder, name));
-      await repository.commit(name);
-      await repository.git(
-        'remote',
-        'add',
-        'origin',
-        'ssh://stalled.invalid/x',
-      );
-      await repository.git(
-        'config',
-        'core.sshCommand',
-        `while [ ! -e '${stop}' ]; do echo > '${alive(name)}'; sleep 0.2; done; false`,
-      );
-      roots.push(repository.root);
-    }
-    fs.mkdirSync(profile, { recursive: true });
-    fs.writeFileSync(
-      path.join(profile, 'state.json'),
-      JSON.stringify(savedTabs(roots, roots[0])),
-    );
-    fs.writeFileSync(
-      path.join(profile, 'settings.user.json'),
-      JSON.stringify({ tools: { git: { autoFetch: false } } }),
-    );
-    const app = await _electron.launch({
-      args: [appFolder, `--user-data-dir=${profile}`],
-      cwd: appFolder,
-    });
-    try {
-      const page = await app.firstWindow();
-      await page.locator('.commit', { hasText: 'first' }).waitFor();
-      await page
-        .getByTitle(
-          strings.navigation.fetchEvery(
-            defaultSettings().tools.git.autoFetchMinutes,
-          ),
-        )
-        .click();
-      await waitFor(() => fs.existsSync(alive('first')), 'git to fetch');
-      await quitWithoutChromium(app, folder);
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      assert.ok(!fs.existsSync(alive('second')));
-      assert.doesNotMatch(
-        fs.readFileSync(path.join(profile, 'logs', 'Fastforward.log'), 'utf8'),
-        new RegExp(strings.log.fetchFailed),
-      );
-    } finally {
-      fs.writeFileSync(stop, '');
-      await closeOrKill(app);
-      removeFolder(folder);
-    }
-  });
-
-  test('starts again while it waits for a checkout to end as it quits', async () => {
-    const folder = tempFolder('quitting-checkout');
-    const profile = path.join(folder, 'profile');
-    const hooks = path.join(folder, 'hooks');
-    const alive = path.join(folder, 'alive').replaceAll('\\', '/');
-    const stop = path.join(folder, 'stop').replaceAll('\\', '/');
-    const repository = await tempRepository(path.join(folder, 'repo'));
-    await repository.commit('first');
-    await repository.commit('second');
-    await repository.git('branch', 'other', 'HEAD~1');
-    fs.mkdirSync(hooks);
-    fs.writeFileSync(
-      path.join(hooks, 'post-checkout'),
-      `#!/bin/sh\nwhile [ ! -e '${stop}' ]; do echo > '${alive}'; sleep 0.2; done\n`,
-      { mode: 0o755 },
-    );
-    await repository.git('config', 'core.hooksPath', hooks);
-    fs.mkdirSync(profile, { recursive: true });
-    fs.writeFileSync(
-      path.join(profile, 'state.json'),
-      JSON.stringify(savedTabs([repository.root], repository.root)),
-    );
-    const launch = () =>
-      _electron.launch({
-        args: [appFolder, `--user-data-dir=${profile}`],
-        cwd: appFolder,
-      });
-    const app = await launch();
-    let again: ElectronApplication | undefined;
-    try {
-      const page = await app.firstWindow();
-      await page
-        .locator('.commit .badge.branch', { hasText: 'other' })
-        .click({ button: 'right' });
-      await page
-        .locator('.context-menu .menu-item', {
-          hasText: strings.commits.checkout,
-        })
-        .click();
-      await waitFor(() => fs.existsSync(alive), 'the checkout to run');
-      assert.ok(holdsStartLock(profile));
-      await app.evaluate(({ BrowserWindow }) =>
-        BrowserWindow.getAllWindows()[0].close(),
-      );
-      await waitFor(
-        () => !holdsStartLock(profile),
-        'the app to let another start',
-      );
-      again = await launch();
-      const shown = await again.firstWindow();
-      await shown.locator('.commit', { hasText: 'second' }).waitFor();
-    } finally {
-      fs.writeFileSync(stop, '');
-      if (again) {
-        await closeOrKill(again);
-      }
-      await closeOrKill(app);
-      removeFolder(folder);
-    }
-  });
-});
-
-suite('App whose page is gone', () => {
-  test('loads the page again once its process is gone, such as killed or out of memory, saying so in the log, as the window stayed blank', async () => {
-    const folder = tempFolder('page-gone');
-    const profile = path.join(folder, 'profile');
-    const log = path.join(profile, 'logs', 'Fastforward.log');
-    const repository = await tempRepository(path.join(folder, 'repo'));
-    await repository.commit('first');
-    fs.mkdirSync(profile, { recursive: true });
-    fs.writeFileSync(
-      path.join(profile, 'state.json'),
-      JSON.stringify(savedTabs([repository.root], repository.root)),
-    );
-    const app = await _electron.launch({
-      args: [appFolder, `--user-data-dir=${profile}`],
-      cwd: appFolder,
-    });
-    try {
-      const page = await app.firstWindow();
-      await page.locator('.commit', { hasText: 'first' }).waitFor();
-      const gone = await within(
-        app.evaluate(({ BrowserWindow }) => {
-          const contents = BrowserWindow.getAllWindows()[0].webContents;
-          const went = new Promise<{ reason: string; exitCode: number }>(
-            (resolve) =>
-              contents.once('render-process-gone', (_event, details) =>
-                resolve(details),
-              ),
-          );
-          process.kill(contents.getOSProcessId(), 'SIGKILL');
-          return went;
-        }),
-        'the page to go',
-      );
-      await waitFor(
-        () =>
-          fs
-            .readFileSync(log, 'utf8')
-            .includes(strings.log.pageGone(gone.reason, gone.exitCode)),
-        'the page going to be logged',
-      );
-      const windowShowsTheHistoryAgain = () =>
-        app.evaluate(async ({ BrowserWindow }) => {
-          const contents = BrowserWindow.getAllWindows()[0].webContents;
-          if (contents.isCrashed() || contents.isLoading()) {
-            return false;
-          }
-          const shown: unknown = await Promise.race([
-            contents.executeJavaScript(
-              "[...document.querySelectorAll('.commit')].some((row) => row.textContent.includes('first'))",
-            ),
-            new Promise((resolve) => setTimeout(() => resolve(false), 1000)),
-          ]);
-          return shown === true;
-        });
-      await waitFor(
-        windowShowsTheHistoryAgain,
-        'the page to show the history again',
-      );
-    } finally {
-      await closeOrKill(app);
-      removeFolder(folder);
-    }
-  });
-});
-
-const windowsNotedIn = (file: string) =>
-  [
-    "const { app } = require('electron');",
-    "const { appendFileSync } = require('node:fs');",
-    `const note = (what) => appendFileSync(${JSON.stringify(file)}, what + '\\n');`,
-    "app.on('browser-window-created', (_event, window) => {",
-    "  note(window.isVisible() ? 'shown' : 'created');",
-    "  window.on('show', () => note('shown'));",
-    '});',
-  ].join('\n');
-
-const toolsGtkRunsToLoadIcons = ['bwrap'];
-
-function linkFromPath(names: readonly string[], folder: string): void {
-  const folders = (process.env.PATH ?? '')
-    .split(path.delimiter)
-    .filter(Boolean);
-  for (const name of names) {
-    const found = folders
-      .map((inside) => path.join(inside, name))
-      .find((file) => fs.existsSync(file));
-    if (found !== undefined) {
-      fs.symlinkSync(found, path.join(folder, name));
-    }
-  }
-}
-
-suite('App without git', () => {
-  test('says it needs git, showing no window, whether its alert keeps it running or it quits by itself, with git kept off its PATH but the tools GTK runs to load the icon of the alert left on it, as Ubuntu 26.04 aborts without them', async () => {
-    const folder = tempFolder('no-git');
-    const profile = path.join(folder, 'profile');
-    const log = path.join(profile, 'logs', 'Fastforward.log');
-    const windows = path.join(folder, 'windows.txt');
-    const noting = path.join(folder, 'noteWindows.cjs');
-    fs.writeFileSync(noting, windowsNotedIn(windows));
-    linkFromPath(toolsGtkRunsToLoadIcons, folder);
-    const app = await _electron.launch({
-      args: ['-r', noting, appFolder, `--user-data-dir=${profile}`],
-      cwd: appFolder,
-      env: {
-        ...process.env,
-        PATH: folder,
-        Path: folder,
-        SHELL: path.join(folder, 'no-shell'),
-        ELECTRON_ENABLE_STACK_DUMPING: 'true',
-      },
-    });
-    const child = app.process();
-    const exited = once(child, 'exit');
-    let printed = '';
-    for (const output of [child.stdout, child.stderr]) {
-      output?.on('data', (chunk: Buffer) => {
-        printed += chunk.toString();
-      });
-    }
-    try {
-      await waitFor(() => {
-        try {
-          return fs.readFileSync(log, 'utf8').includes('Install git');
-        } catch {
-          return false;
-        }
-      }, 'the missing git to be logged');
-      const gitAlertHoldsTheMainProcess = process.platform === 'darwin';
-      if (!gitAlertHoldsTheMainProcess) {
-        await Promise.race([
-          app.firstWindow().then(async (page) => {
-            await page.waitForLoadState('load');
-            await new Promise((resolve) => setTimeout(resolve, 500));
-          }),
-          exited,
-        ]).catch(async (error: unknown) => {
-          await within(exited, 'the app to quit').catch(() => {
-            throw error;
-          });
-        });
-      }
-      assert.strictEqual(fs.readFileSync(windows, 'utf8'), 'created\n');
-      if (child.exitCode !== null || child.signalCode !== null) {
-        assert.deepStrictEqual(
-          [child.exitCode, child.signalCode],
-          [0, null],
-          `The app quit with ${String(child.exitCode ?? child.signalCode)}, printing:\n${printed}`,
-        );
-      }
-    } finally {
-      if (child.exitCode === null && child.signalCode === null) {
-        child.kill('SIGKILL');
-        await exited;
-      }
-      await app.close();
-      removeFolder(folder);
-    }
   });
 });

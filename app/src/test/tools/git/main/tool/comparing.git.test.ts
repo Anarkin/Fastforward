@@ -57,11 +57,7 @@ suite('Git tool comparing', () => {
   });
 
   beforeEach(async () => {
-    ({ page, connection } = await openView(
-      log,
-      [repository.root],
-      'unwatched',
-    ));
+    ({ page, connection } = await openView(log, [repository.root]));
   });
 
   afterEach(() => connection.dispose());

@@ -3,6 +3,12 @@ import { defineConfig } from 'vitest/config';
 
 const git = 'src/test/**/*.git.test.ts';
 const electron = 'src/test/**/*.electron.test.ts';
+const playground = 'src/test/gitPlayground.git.test.ts';
+const packaging = [
+  'src/test/build.test.ts',
+  'src/test/ffScripts.test.ts',
+  'src/test/installer.test.ts',
+];
 
 export default defineConfig({
   test: {
@@ -20,7 +26,14 @@ export default defineConfig({
         test: {
           name: 'unit',
           include: ['src/test/**/*.test.{ts,tsx}'],
-          exclude: [git, electron],
+          exclude: [git, electron, ...packaging],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'packaging',
+          include: packaging,
         },
       },
       {
@@ -28,6 +41,16 @@ export default defineConfig({
         test: {
           name: 'git',
           include: [git],
+          exclude: [playground],
+          testTimeout: 30_000,
+          hookTimeout: 30_000,
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'playground',
+          include: [playground],
           testTimeout: 30_000,
           hookTimeout: 30_000,
         },

@@ -178,43 +178,34 @@ suite('Git tool of other repositories', () => {
     ).trim();
     await repository.git('branch', 'side', side);
     try {
-      await withView(
-        log,
-        [repository.root],
-        async (view) => {
-          assert.strictEqual(view.page.last('commits')?.total, 4);
-          const held = gate();
-          let extending = false;
-          stubMethod(
-            view.view,
-            'extendedHistory',
-            async (original, ...args) => {
-              const extended = await original(...args);
-              extending = true;
-              await held.opened;
-              return extended;
-            },
-          );
-          await repository.commit('c');
-          const [c] = await repository.resolve('main');
-          const refreshing = view.connection.refresh();
-          await waitFor(() => extending, 'the history to be extended');
-          await view.settings.setIn('git', 'solo', true);
-          view.view.reloadSettings();
-          view.connection.dispose();
-          const reloaded = reopen(view.view);
-          await waitFor(
-            () => shownTabs(reloaded.page) !== undefined,
-            'the page to load again',
-          );
-          held.open();
-          await Promise.all([refreshing, reloaded.ready]);
-          const shown = reloaded.page.last('commits');
-          assert.strictEqual(shown?.total, 4);
-          assert.strictEqual(shown.commits[0]?.hash, c);
-        },
-        'unwatched',
-      );
+      await withView(log, [repository.root], async (view) => {
+        assert.strictEqual(view.page.last('commits')?.total, 4);
+        const held = gate();
+        let extending = false;
+        stubMethod(view.view, 'extendedHistory', async (original, ...args) => {
+          const extended = await original(...args);
+          extending = true;
+          await held.opened;
+          return extended;
+        });
+        await repository.commit('c');
+        const [c] = await repository.resolve('main');
+        const refreshing = view.connection.refresh();
+        await waitFor(() => extending, 'the history to be extended');
+        await view.settings.setIn('git', 'solo', true);
+        view.view.reloadSettings();
+        view.connection.dispose();
+        const reloaded = reopen(view.view);
+        await waitFor(
+          () => shownTabs(reloaded.page) !== undefined,
+          'the page to load again',
+        );
+        held.open();
+        await Promise.all([refreshing, reloaded.ready]);
+        const shown = reloaded.page.last('commits');
+        assert.strictEqual(shown?.total, 4);
+        assert.strictEqual(shown.commits[0]?.hash, c);
+      });
     } finally {
       await restoreRepository(repository, fixture.merge);
       await repository.git('branch', '-D', 'side');
@@ -393,7 +384,7 @@ suite('Git tool of other repositories', () => {
             reloaded.connection.dispose();
           }
         },
-        'unwatched',
+        true,
         host,
       );
     });
@@ -535,18 +526,23 @@ suite('Git tool of other repositories', () => {
   });
 
   test('says what git said of a tab it refuses to open', async () => {
-    await withView(log, [repository.root, other], async (view) => {
-      await asIfOwnedByAnother(other, () =>
-        view.connection.receive({
-          type: 'selectTab',
-          tab: tabOf(view.page, other),
-        }),
-      );
-      assert.match(
-        view.page.last('error')?.message ?? '',
-        /^fatal: detected dubious ownership/,
-      );
-    });
+    await withView(
+      log,
+      [repository.root, other],
+      async (view) => {
+        await asIfOwnedByAnother(other, () =>
+          view.connection.receive({
+            type: 'selectTab',
+            tab: tabOf(view.page, other),
+          }),
+        );
+        assert.match(
+          view.page.last('error')?.message ?? '',
+          /^fatal: detected dubious ownership/,
+        );
+      },
+      { watched: true },
+    );
     takeErrorsLogged(
       logged,
       /^Listing the worktrees of .*other failed$/,
@@ -556,30 +552,36 @@ suite('Git tool of other repositories', () => {
   });
 
   test('opens a tab git refused to open once it is clicked again, or its worktree is, after git no longer refuses it', async () => {
-    await withView(log, [repository.root, other], async (view) => {
-      for (const again of [
-        () =>
-          view.connection.receive({
+    await withView(
+      log,
+      [repository.root, other],
+      async (view) => {
+        for (const again of [
+          () =>
+            view.connection.receive({
+              type: 'selectTab',
+              tab: tabOf(view.page, other),
+            }),
+          () =>
+            view.connection.receive({ type: 'selectWorktree', root: other }),
+        ]) {
+          await asIfOwnedByAnother(other, () =>
+            view.connection.receive({
+              type: 'selectTab',
+              tab: tabOf(view.page, other),
+            }),
+          );
+          view.page.clear();
+          await again();
+          assert.ok(view.page.last('repository'), String(again));
+          await view.connection.receive({
             type: 'selectTab',
-            tab: tabOf(view.page, other),
-          }),
-        () => view.connection.receive({ type: 'selectWorktree', root: other }),
-      ]) {
-        await asIfOwnedByAnother(other, () =>
-          view.connection.receive({
-            type: 'selectTab',
-            tab: tabOf(view.page, other),
-          }),
-        );
-        view.page.clear();
-        await again();
-        assert.ok(view.page.last('repository'), String(again));
-        await view.connection.receive({
-          type: 'selectTab',
-          tab: tabOf(view.page, repository.root),
-        });
-      }
-    });
+            tab: tabOf(view.page, repository.root),
+          });
+        }
+      },
+      { watched: true },
+    );
     takeErrorsLogged(
       logged,
       /^Listing the worktrees of .*other failed$/,
@@ -635,25 +637,30 @@ suite('Git tool of other repositories', () => {
   test("says a repository whose folder is removed while open is not a repository, rather than that it can't be watched", async () => {
     const removed = await tempRepository(path.join(folder, 'removed'));
     await removed.commit('first');
-    await withView(log, [removed.root, repository.root], async (view) => {
-      assert.strictEqual(view.page.last('error'), undefined);
-      await view.connection.receive({
-        type: 'selectTab',
-        tab: tabOf(view.page, repository.root),
-      });
-      removeFolder(removed.root);
-      await withNotices(view.page, 'error', async (notices) => {
+    await withView(
+      log,
+      [removed.root, repository.root],
+      async (view) => {
+        assert.strictEqual(view.page.last('error'), undefined);
         await view.connection.receive({
           type: 'selectTab',
-          tab: tabOf(view.page, removed.root),
+          tab: tabOf(view.page, repository.root),
         });
-        assert.deepStrictEqual(notices, []);
-      });
-      assert.match(
-        view.page.last('error')?.message ?? '',
-        /is not a git repository/,
-      );
-    });
+        removeFolder(removed.root);
+        await withNotices(view.page, 'error', async (notices) => {
+          await view.connection.receive({
+            type: 'selectTab',
+            tab: tabOf(view.page, removed.root),
+          });
+          assert.deepStrictEqual(notices, []);
+        });
+        assert.match(
+          view.page.last('error')?.message ?? '',
+          /is not a git repository/,
+        );
+      },
+      { watched: true },
+    );
     takeErrorsLogged(
       logged,
       /^Listing the worktrees of .*removed failed$/,
@@ -664,22 +671,17 @@ suite('Git tool of other repositories', () => {
 
   test('makes the main branch a bookmark once a repository opened without commits has one', async () => {
     const empty = await tempRepository(path.join(folder, 'unborn'));
-    await withView(
-      log,
-      [empty.root],
-      async (view) => {
-        assert.deepStrictEqual(view.page.last('bookmarks')?.bookmarks, []);
-        await empty.commit('first');
-        await view.connection.receive({ type: 'ready' });
-        assert.deepStrictEqual(view.page.last('bookmarks')?.bookmarks, [
-          { kind: 'branch', name: 'main' },
-        ]);
-        assert.deepStrictEqual(savedBookmarks(view.store, empty.root), [
-          { kind: 'branch', name: 'main' },
-        ]);
-      },
-      'unwatched',
-    );
+    await withView(log, [empty.root], async (view) => {
+      assert.deepStrictEqual(view.page.last('bookmarks')?.bookmarks, []);
+      await empty.commit('first');
+      await view.connection.receive({ type: 'ready' });
+      assert.deepStrictEqual(view.page.last('bookmarks')?.bookmarks, [
+        { kind: 'branch', name: 'main' },
+      ]);
+      assert.deepStrictEqual(savedBookmarks(view.store, empty.root), [
+        { kind: 'branch', name: 'main' },
+      ]);
+    });
   });
 
   test('says nothing of a tab that fails to preload until it is opened', async () => {
@@ -710,23 +712,28 @@ suite('Git tool of other repositories', () => {
 
   test('opens the tab shown again when it is clicked once its folder, missing as it opened, is a repository', async () => {
     const later = path.join(folder, 'later');
-    await withView(log, [later], async (view) => {
-      const shown = view.page.last('error')?.message;
-      assert.match(shown ?? '', /is not a git repository/);
-      const made = await tempRepository(later);
-      await made.commit('first');
-      await view.connection.receive({
-        type: 'selectTab',
-        tab: tabOf(view.page, later),
-      });
-      assert.strictEqual(view.page.last('commits')?.total, 1);
-      assert.strictEqual(view.page.last('clearError')?.message, shown);
-      await made.commit('second');
-      await waitFor(
-        () => view.page.last('commits')?.total === 2,
-        'the watcher to see the commit',
-      );
-    });
+    await withView(
+      log,
+      [later],
+      async (view) => {
+        const shown = view.page.last('error')?.message;
+        assert.match(shown ?? '', /is not a git repository/);
+        const made = await tempRepository(later);
+        await made.commit('first');
+        await view.connection.receive({
+          type: 'selectTab',
+          tab: tabOf(view.page, later),
+        });
+        assert.strictEqual(view.page.last('commits')?.total, 1);
+        assert.strictEqual(view.page.last('clearError')?.message, shown);
+        await made.commit('second');
+        await waitFor(
+          () => view.page.last('commits')?.total === 2,
+          'the watcher to see the commit',
+        );
+      },
+      { watched: true },
+    );
     takeErrorsLogged(
       logged,
       /^Listing the worktrees of .*later failed$/,
@@ -772,55 +779,50 @@ suite('Git tool upstream', () => {
   });
 
   test('says why there is no upstream to show', async () => {
-    await withView(
-      log,
-      [repository.root],
-      async (view) => {
-        await withNotices(view.page, 'info', async (messages) => {
-          const ask = () =>
-            view.connection.receive({
-              type: 'showUpstream',
-              root: repository.root,
-            });
-          await repository.git('branch', '--unset-upstream');
-          try {
-            await ask();
-          } finally {
-            await repository.git('branch', '--set-upstream-to=origin/main');
-          }
-          await repository.git('update-ref', '-d', 'refs/remotes/origin/main');
-          try {
-            await ask();
-          } finally {
-            await repository.git(
-              'update-ref',
-              'refs/remotes/origin/main',
-              upstream,
-            );
-          }
-          await repository.git('switch', '-q', '--detach');
-          try {
-            await ask();
-          } finally {
-            await repository.git('switch', '-q', 'main');
-          }
-          await view.connection.receive({
-            type: 'setSolo',
+    await withView(log, [repository.root], async (view) => {
+      await withNotices(view.page, 'info', async (messages) => {
+        const ask = () =>
+          view.connection.receive({
+            type: 'showUpstream',
             root: repository.root,
-            solo: true,
           });
+        await repository.git('branch', '--unset-upstream');
+        try {
           await ask();
-          assert.deepStrictEqual(messages, [
-            'main has no upstream',
-            "origin/main, the upstream of main, doesn't exist anymore",
-            'The checked-out commit is on no branch, so it has no upstream',
-            'origin/main is not in the history while Solo shows only that of the checked-out commit',
-          ]);
-          assert.strictEqual(view.page.last('reveal'), undefined);
+        } finally {
+          await repository.git('branch', '--set-upstream-to=origin/main');
+        }
+        await repository.git('update-ref', '-d', 'refs/remotes/origin/main');
+        try {
+          await ask();
+        } finally {
+          await repository.git(
+            'update-ref',
+            'refs/remotes/origin/main',
+            upstream,
+          );
+        }
+        await repository.git('switch', '-q', '--detach');
+        try {
+          await ask();
+        } finally {
+          await repository.git('switch', '-q', 'main');
+        }
+        await view.connection.receive({
+          type: 'setSolo',
+          root: repository.root,
+          solo: true,
         });
-      },
-      'unwatched',
-    );
+        await ask();
+        assert.deepStrictEqual(messages, [
+          'main has no upstream',
+          "origin/main, the upstream of main, doesn't exist anymore",
+          'The checked-out commit is on no branch, so it has no upstream',
+          'origin/main is not in the history while Solo shows only that of the checked-out commit',
+        ]);
+        assert.strictEqual(view.page.last('reveal'), undefined);
+      });
+    });
   });
 });
 
@@ -889,28 +891,16 @@ suite('Git tool stashes', () => {
   });
 
   test('lists the history again once a stash is dropped', async () => {
-    await withView(
-      log,
-      [repository.root],
-      async (view) => {
-        await repository.git('stash', 'drop', '-q');
-        try {
-          await view.connection.refresh();
-          assert.strictEqual(view.page.last('commits')?.total, 2);
-          assert.deepStrictEqual(view.page.last('repository')?.stashes, []);
-        } finally {
-          await repository.git(
-            'stash',
-            'store',
-            '-q',
-            '-m',
-            'kept aside',
-            stash,
-          );
-        }
-      },
-      'unwatched',
-    );
+    await withView(log, [repository.root], async (view) => {
+      await repository.git('stash', 'drop', '-q');
+      try {
+        await view.connection.refresh();
+        assert.strictEqual(view.page.last('commits')?.total, 2);
+        assert.deepStrictEqual(view.page.last('repository')?.stashes, []);
+      } finally {
+        await repository.git('stash', 'store', '-q', '-m', 'kept aside', stash);
+      }
+    });
   });
 });
 

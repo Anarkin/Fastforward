@@ -232,21 +232,16 @@ suite('Git tool refreshing one repository', () => {
     const [c1, c2] = await shallow.resolve('HEAD~1', 'HEAD');
     const boundary = path.join(shallow.root, '.git', 'shallow');
     fs.writeFileSync(boundary, `${c2}\n`);
-    await withView(
-      log,
-      [shallow.root],
-      async ({ page, connection }) => {
-        assert.strictEqual(page.last('commits')?.total, 1);
-        fs.writeFileSync(boundary, `${c1}\n`);
-        await connection.refresh();
-        assert.strictEqual(page.last('commits')?.total, 2);
-        fs.rmSync(boundary);
-        await shallow.commit('c3');
-        await connection.refresh();
-        assert.strictEqual(page.last('commits')?.total, 4);
-      },
-      'unwatched',
-    );
+    await withView(log, [shallow.root], async ({ page, connection }) => {
+      assert.strictEqual(page.last('commits')?.total, 1);
+      fs.writeFileSync(boundary, `${c1}\n`);
+      await connection.refresh();
+      assert.strictEqual(page.last('commits')?.total, 2);
+      fs.rmSync(boundary);
+      await shallow.commit('c3');
+      await connection.refresh();
+      assert.strictEqual(page.last('commits')?.total, 4);
+    });
   });
 
   test('reads the history whole for a checkout of a tip made in the same second as the one left, as git takes the one checked out first', async () => {
@@ -260,19 +255,14 @@ suite('Git tool refreshing one repository', () => {
       await commitAtTime(tied, x, time + 1, 'a'),
     );
     await tied.git('branch', 'aaa', await commitAtTime(tied, x, time + 1, 'c'));
-    await withView(
-      log,
-      [tied.root],
-      async ({ page, connection }) => {
-        const subjects = () =>
-          page.last('commits')?.commits.map((commit) => commit.subject);
-        assert.deepStrictEqual(subjects(), ['a', 'c', 'x']);
-        await tied.git('checkout', '-q', 'aaa');
-        await connection.refresh();
-        assert.deepStrictEqual(subjects(), ['c', 'a', 'x']);
-      },
-      'unwatched',
-    );
+    await withView(log, [tied.root], async ({ page, connection }) => {
+      const subjects = () =>
+        page.last('commits')?.commits.map((commit) => commit.subject);
+      assert.deepStrictEqual(subjects(), ['a', 'c', 'x']);
+      await tied.git('checkout', '-q', 'aaa');
+      await connection.refresh();
+      assert.deepStrictEqual(subjects(), ['c', 'a', 'x']);
+    });
   });
 
   suite('with its tab open', () => {
@@ -287,7 +277,7 @@ suite('Git tool refreshing one repository', () => {
         page,
         connection,
         store,
-      } = await openView(log, [repository.root], 'unwatched'));
+      } = await openView(log, [repository.root]));
     });
 
     afterEach(() => connection.dispose());

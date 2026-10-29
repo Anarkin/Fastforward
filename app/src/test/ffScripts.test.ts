@@ -106,6 +106,17 @@ suite('ff', () => {
     return path.join(folder, `recorded-${recordings}`);
   }
 
+  let compiledRecorder: string | undefined;
+
+  function placeWindowsRecorder(file: string): void {
+    if (compiledRecorder === undefined) {
+      compiledRecorder = path.join(folder, 'recorder', 'Fastforward.exe');
+      compileWindowsRecorder(compiledRecorder);
+    }
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.copyFileSync(compiledRecorder, file);
+  }
+
   function runPosix(
     script: string,
     system: string,
@@ -202,7 +213,7 @@ suite('ff', () => {
       writeRunnable(path.join(bin, 'ff'), fs.readFileSync(posixScript, 'utf8'));
       const app = path.join(folder, 'windows', 'Fastforward.exe');
       if (process.platform === 'win32') {
-        compileWindowsRecorder(app);
+        placeWindowsRecorder(app);
       } else {
         writeRunnable(app, shellRecorder);
       }
@@ -267,7 +278,7 @@ suite('ff', () => {
         bin = path.join(folder, 'cmd', 'bin');
         fs.mkdirSync(bin, { recursive: true });
         fs.copyFileSync(windowsScript, path.join(bin, 'ff.cmd'));
-        compileWindowsRecorder(path.join(folder, 'cmd', 'Fastforward.exe'));
+        placeWindowsRecorder(path.join(folder, 'cmd', 'Fastforward.exe'));
       });
 
       async function runCmd(line: string, cwd = work): Promise<string[]> {

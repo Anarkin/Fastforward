@@ -116,23 +116,33 @@ const renamedEveryWay = (similarity: 'R100' | 'R~', from: string, to: string) =>
   `${similarity} ${everyWay(from)} -> ${everyWay(to)}`;
 
 suite('Playground', () => {
+  let real: string;
+  let linked: string | undefined;
   let folder: string;
   let local: string;
   let remote: string;
   let worktree: string;
 
   beforeAll(async () => {
-    folder = tempFolder('playground');
+    real = tempFolder('playground');
+    if (createsAnewThroughJunctions()) {
+      linked = `${real}-link`;
+      fs.symlinkSync(real, linked, 'junction');
+    }
+    folder = linked ?? real;
     local = path.join(folder, names.local);
     remote = path.join(folder, names.remote);
     worktree = path.join(folder, names.worktree);
-    const ran = await playground(folder);
+    const ran = await playground(folder, '--two-remotes', '--large');
     assert.strictEqual(ran.code, 0, ran.output);
   }, builds);
 
   afterAll(async () => {
     await stopPlaygrounds();
-    removeFolder(folder);
+    if (linked !== undefined) {
+      fs.rmSync(linked, { recursive: true, force: true });
+    }
+    removeFolder(real);
   }, 30_000);
 
   const at = (name: string) => path.join(folder, name);
@@ -764,8 +774,23 @@ suite('Playground', () => {
     }
   });
 
+  test('adds a second remote with --two-remotes, and a branch of 50,000 commits with --large', async () => {
+    assert.deepStrictEqual((await git(local, 'remote')).split('\n'), [
+      'origin',
+      'upstream',
+    ]);
+    assert.ok(
+      fs.existsSync(path.join(folder, names.upstream, 'HEAD')),
+      'the upstream remote',
+    );
+    assert.strictEqual(
+      await git(local, 'rev-list', '--count', 'main..long-history'),
+      '50000',
+    );
+  });
+
   test(
-    'makes the playground anew over one it made before, however it was changed',
+    'makes the playground anew over one it made before, however it was changed, leaving out what the flags it was made with added',
     async () => {
       await git(local, 'branch', '-f', 'lagging-01', 'origin/lagging-01');
       await git(local, 'tag', 'stray');
@@ -778,61 +803,18 @@ suite('Playground', () => {
       );
       assert.strictEqual(await git(local, 'tag', '--list', 'stray'), '');
       assert.deepStrictEqual(await status(), uncommitted);
+      assert.strictEqual(await git(local, 'remote'), 'origin');
+      assert.ok(!fs.existsSync(path.join(folder, names.upstream)));
     },
     builds,
   );
 
-  test(
-    'adds a second remote with --two-remotes, and a branch of 50,000 commits with --large',
-    async () => {
-      const other = tempFolder('playground-flags');
-      try {
-        const ran = await playground(other, '--two-remotes', '--large');
-        assert.strictEqual(ran.code, 0, ran.output);
-        const repository = path.join(other, names.local);
-        assert.deepStrictEqual((await git(repository, 'remote')).split('\n'), [
-          'origin',
-          'upstream',
-        ]);
-        assert.ok(
-          fs.existsSync(path.join(other, names.upstream, 'HEAD')),
-          'the upstream remote',
-        );
-        assert.strictEqual(
-          await git(repository, 'rev-list', '--count', 'main..long-history'),
-          '50000',
-        );
-      } finally {
-        removeFolder(other);
-      }
-    },
-    builds,
-  );
-
-  test(
-    'makes the playground anew in a folder reached through a link, whose real path git reports, as temporary folders are on macOS, and on Windows by their short names',
-    async (context) => {
-      if (!createsAnewThroughJunctions()) {
-        context.skip();
-      }
-      const real = tempFolder('playground-real');
-      const linked = path.join(
-        path.dirname(real),
-        `${path.basename(real)}-link`,
-      );
-      fs.symlinkSync(real, linked, 'junction');
-      try {
-        for (const round of ['first', 'again']) {
-          const ran = await playground(linked);
-          assert.strictEqual(ran.code, 0, `${round}: ${ran.output}`);
-        }
-      } finally {
-        fs.rmSync(linked, { recursive: true, force: true });
-        removeFolder(real);
-      }
-    },
-    builds * 2,
-  );
+  test('makes the playground, and anew over it, in a folder reached through a link, whose real path git reports, as temporary folders are on macOS, and on Windows by their short names', (context) => {
+    if (linked === undefined) {
+      context.skip();
+    }
+    assert.ok(fs.lstatSync(folder).isSymbolicLink(), folder);
+  });
 
   test('leaves alone a folder of any of its names that it did not make, saying so', async () => {
     const other = tempFolder('playground-other');

@@ -13,6 +13,7 @@ import {
 import { recordingLog } from '../../../../stub';
 import {
   closeViews,
+  deleteTags,
   failOnErrorsLogged,
   type FakePage,
   gate,
@@ -51,11 +52,7 @@ suite('Git tool pushing tags', () => {
     [a, b] = await repository.resolve('main~1', 'main');
     await repository.git('remote', 'add', 'origin', remote.root);
     await repository.git('push', '-u', 'origin', 'main');
-    ({ view, page, connection } = await openView(
-      log,
-      [repository.root],
-      'unwatched',
-    ));
+    ({ view, page, connection } = await openView(log, [repository.root]));
     await connection.receive({ type: 'fetch', root: repository.root });
     await waitFor(
       () => page.last('repository')?.tagRemote === 'origin',
@@ -64,16 +61,8 @@ suite('Git tool pushing tags', () => {
   });
 
   afterEach(async () => {
-    for (const tag of (await repository.git('tag')).split('\n')) {
-      if (tag) {
-        await repository.git('tag', '-d', tag);
-      }
-    }
-    for (const tag of (await remote.git('tag')).split('\n')) {
-      if (tag) {
-        await remote.git('tag', '-d', tag);
-      }
-    }
+    await deleteTags(repository);
+    await deleteTags(remote);
     await connection.receive({ type: 'fetch', root: repository.root });
     await view.idle();
     await connection.refresh();
@@ -108,7 +97,7 @@ suite('Git tool pushing tags', () => {
   };
 
   test('names the remote a tag would be pushed to only once the tags there are known', async () => {
-    const opened = await openView(log, [repository.root], 'unwatched');
+    const opened = await openView(log, [repository.root]);
     try {
       assert.strictEqual(opened.page.last('repository')?.tagRemote, undefined);
     } finally {

@@ -13,12 +13,23 @@ const withoutTheUsersGitConfig = { GIT_CONFIG_GLOBAL: '/dev/null' };
 
 Object.assign(process.env, withoutTheUsersGitConfig);
 
+interface ImportedCommit {
+  readonly message: string;
+  readonly files?: Readonly<Record<string, string>>;
+}
+
 export interface TempRepository {
   readonly root: string;
   readonly gitPath: string;
   git(...args: string[]): Promise<string>;
   commit(message: string, files?: Record<string, string>): Promise<void>;
   resolve(...revisions: string[]): Promise<string[]>;
+  copy(root: string): Promise<TempRepository>;
+  importCommits(
+    ref: string,
+    from: string,
+    commits: readonly ImportedCommit[],
+  ): Promise<string[]>;
 }
 
 export function tempFolder(name: string): string {
@@ -214,12 +225,17 @@ export function symlinkOrSkip(
   }
 }
 
-function runGit(cwd: string, date: Date, args: string[]): Promise<string> {
+function runGit(
+  cwd: string,
+  date: Date,
+  args: string[],
+  input?: string,
+): Promise<string> {
   const iso = date.toISOString();
   return fixtureGit().then(
     ({ command, env: realEnv }) =>
       new Promise((resolve, reject) => {
-        execFile(
+        const child = execFile(
           command,
           [
             '-c',
@@ -248,6 +264,7 @@ function runGit(cwd: string, date: Date, args: string[]): Promise<string> {
             }
           },
         );
+        child.stdin?.end(input);
       }),
   );
 }
@@ -267,7 +284,12 @@ function template(branch: string, bare: boolean): Promise<string> {
       '-b',
       branch,
       ...(bare ? ['--bare'] : []),
-    ]).then(() => folder);
+    ]).then(() => {
+      fs.rmSync(path.join(folder, bare ? '' : '.git', 'hooks'), {
+        recursive: true,
+      });
+      return folder;
+    });
     templates.set(key, made);
   }
   return made;
@@ -280,13 +302,72 @@ export async function tempRepository(
   const gitPath = await installedGit();
   fs.mkdirSync(root, { recursive: true });
   fs.cpSync(await template(branch, bare), root, { recursive: true });
-  let minute = 1;
+  return repositoryAt(root, gitPath, bare, 1);
+}
+
+function data(text: string): string {
+  return `data ${Buffer.byteLength(text)}\n${text}\n`;
+}
+
+function fastImportStream(
+  ref: string,
+  from: string,
+  commits: readonly ImportedCommit[],
+  nextDate: () => Date,
+): string {
+  const made = commits.map(({ message, files = {} }, index) => {
+    const seconds = Math.floor(nextDate().getTime() / 1000);
+    const person = `Test <test@example.com> ${seconds} +0000`;
+    return [
+      `commit ${ref}\n`,
+      `mark :${index + 1}\n`,
+      `author ${person}\n`,
+      `committer ${person}\n`,
+      data(message),
+      index === 0 ? `from ${from}^0\n` : '',
+      ...Object.entries(files).map(
+        ([file, content]) => `M 100644 inline ${file}\n${data(content)}`,
+      ),
+      '\n',
+    ].join('');
+  });
+  const marks = commits.map((_, index) => `get-mark :${index + 1}\n`);
+  return ['feature get-mark\n', ...made, ...marks].join('');
+}
+
+function repositoryAt(
+  root: string,
+  gitPath: string,
+  bare: boolean,
+  firstMinute: number,
+): TempRepository {
+  let minute = firstMinute;
+  const nextDate = () => new Date(Date.UTC(2026, 0, 1, 0, minute++));
   const git = (...args: string[]): Promise<string> =>
-    runGit(root, new Date(Date.UTC(2026, 0, 1, 0, minute++)), args);
+    runGit(root, nextDate(), args);
   return {
     root,
     gitPath,
     git,
+    copy: async (to) => {
+      fs.cpSync(root, to, { recursive: true });
+      const copied = repositoryAt(to, gitPath, bare, minute);
+      if (!bare) {
+        await copied.git('update-index', '-q', '--refresh');
+      }
+      return copied;
+    },
+    importCommits: async (ref, from, commits) =>
+      (
+        await runGit(
+          root,
+          nextDate(),
+          ['fast-import', '--quiet'],
+          fastImportStream(ref, from, commits, nextDate),
+        )
+      )
+        .trim()
+        .split('\n'),
     commit: async (message, files = {}) => {
       for (const [file, content] of Object.entries(files)) {
         fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });

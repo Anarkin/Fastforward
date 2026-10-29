@@ -92,7 +92,7 @@ suite('Git tool of worktrees', () => {
   test('is idle only once it has listed the worktrees again for a change its watcher saw', async () => {
     const own = await tempRepository(path.join(folder, 'idle'));
     await own.commit('a');
-    const opened = await openView(log, [own.root]);
+    const opened = await openView(log, [own.root], { watched: true });
     const held = gate();
     let listing = false;
     stubMethod(opened.view, 'loadWorktrees', async (original, ...args) => {
@@ -116,7 +116,7 @@ suite('Git tool of worktrees', () => {
     await own.commit('a');
     const linked = path.join(folder, 'relisted.worktrees', 'linked');
     await own.git('worktree', 'add', '-q', '--detach', linked);
-    const opened = await openView(log, [own.root]);
+    const opened = await openView(log, [own.root], { watched: true });
     const held = gate();
     let listings = 0;
     let firstListed = false;
@@ -151,7 +151,7 @@ suite('Git tool of worktrees', () => {
     await own.commit('a');
     const linked = path.join(folder, 'forgotten.worktrees', 'linked');
     await own.git('worktree', 'add', '-q', '--detach', linked);
-    const opened = await openView(log, [own.root]);
+    const opened = await openView(log, [own.root], { watched: true });
     try {
       const linkedRoot = worktreeRoot(opened, linked);
       await opened.connection.receive({
@@ -188,7 +188,7 @@ suite('Git tool of worktrees', () => {
     await own.commit('a');
     const linked = path.join(folder, 'reused.worktrees', 'linked');
     await own.git('worktree', 'add', '-q', '--detach', linked);
-    const opened = await openView(log, [own.root]);
+    const opened = await openView(log, [own.root], { watched: true });
     try {
       const linkedRoot = worktreeRoot(opened, linked);
       await gitState(opened.store).update(recentKey, [linkedRoot]);
@@ -215,7 +215,10 @@ suite('Git tool of worktrees', () => {
     const linked = path.join(folder, 'slow-watched.worktrees', 'linked');
     await own.git('worktree', 'add', '-q', '--detach', linked);
     const started = gate();
-    const opened = await openView(log, [own.root], false);
+    const opened = await openView(log, [own.root], {
+      ready: false,
+      watched: true,
+    });
     stubMethod(opened.view, 'startWatching', async (original, ...args) => {
       await started.opened;
       return original(...args);
@@ -244,7 +247,7 @@ suite('Git tool of worktrees', () => {
     await own.commit('a');
     const linked = path.join(folder, 'unlisted.worktrees', 'linked');
     await own.git('worktree', 'add', '-q', '--detach', linked);
-    const opened = await openView(log, [own.root]);
+    const opened = await openView(log, [own.root], { watched: true });
     let failed = false;
     stubMethod(opened.view, 'worktreesOf', () => {
       failed = true;
@@ -580,7 +583,10 @@ suite('Git tool of worktrees', () => {
     const linked = path.join(folder, 'away.worktrees', 'linked');
     const moved = `${linked}-moved`;
     await own.git('worktree', 'add', '-q', '-b', 'linked', linked);
-    const view = await openView(log, [own.root], false);
+    const view = await openView(log, [own.root], {
+      ready: false,
+      watched: true,
+    });
     try {
       await gitState(view.store).update(worktreesKey, { [own.root]: linked });
       await view.connection.receive({ type: 'ready' });
@@ -616,7 +622,10 @@ suite('Git tool of worktrees', () => {
     await own.commit('a');
     const linked = path.join(folder, 'deleted.worktrees', 'linked');
     await own.git('worktree', 'add', '-q', '-b', 'linked', linked);
-    const view = await openView(log, [own.root], false);
+    const view = await openView(log, [own.root], {
+      ready: false,
+      watched: true,
+    });
     try {
       await gitState(view.store).update(worktreesKey, { [own.root]: linked });
       await view.connection.receive({ type: 'ready' });
@@ -669,26 +678,33 @@ suite('Git tool of worktrees', () => {
   });
 
   test('updates the worktrees when another one switches branch', async () => {
-    await withView(log, [repository.root], async (view) => {
-      await repository.git('-C', review, 'switch', '-q', '-c', 'reviewing');
-      try {
-        await waitFor(
-          () =>
-            worktreesOf(view).some((worktree) => worktree.name === 'reviewing'),
-          'the branch switched to',
-        );
-      } finally {
-        await repository.git(
-          '-C',
-          review,
-          'switch',
-          '-q',
-          '--detach',
-          reviewHead,
-        );
-        await repository.git('branch', '-D', 'reviewing');
-      }
-    });
+    await withView(
+      log,
+      [repository.root],
+      async (view) => {
+        await repository.git('-C', review, 'switch', '-q', '-c', 'reviewing');
+        try {
+          await waitFor(
+            () =>
+              worktreesOf(view).some(
+                (worktree) => worktree.name === 'reviewing',
+              ),
+            'the branch switched to',
+          );
+        } finally {
+          await repository.git(
+            '-C',
+            review,
+            'switch',
+            '-q',
+            '--detach',
+            reviewHead,
+          );
+          await repository.git('branch', '-D', 'reviewing');
+        }
+      },
+      { watched: true },
+    );
   });
 
   test('checks out in the worktree shown, leaving the main worktree on its branch', async () => {
@@ -761,7 +777,7 @@ suite('Git tool of worktrees', () => {
     const opened = await openView(
       log,
       [fetched.root, other],
-      'unwatched',
+      true,
       undefined,
       timer,
     );

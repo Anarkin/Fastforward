@@ -198,14 +198,21 @@ export function settingsForViews(): UserSettings {
 
 const quickerRefreshDelays = { delay: refreshDelays.delay, maxDelay: 500 };
 
+export interface Opening {
+  readonly ready?: boolean;
+  readonly watched?: boolean;
+}
+
 export async function openView(
   log: Log,
   tabs: readonly string[],
-  ready: boolean | 'unwatched' = true,
+  opening: boolean | Opening = {},
   host: ShellHost & GitHost = new FakeHost(),
   timer?: Timer,
   gitPath?: string,
 ): Promise<OpenView> {
+  const { ready = true, watched = false } =
+    typeof opening === 'boolean' ? { ready: opening } : opening;
   const store = new FakeStore();
   await saveTabs(store, tabs);
   const settings = settingsForViews();
@@ -218,7 +225,7 @@ export async function openView(
     timer,
   );
   const { page, connection } = attach(view);
-  if (ready === 'unwatched') {
+  if (!watched) {
     stubMethod(view, 'watch', () => Promise.resolve());
   }
   if (ready) {
@@ -343,11 +350,11 @@ export async function withView(
   log: Log,
   tabs: readonly string[],
   run: (view: OpenView) => Promise<void>,
-  ready: boolean | 'unwatched' = true,
+  opening: boolean | Opening = {},
   host?: ShellHost & GitHost,
   gitPath?: string,
 ): Promise<void> {
-  const view = await openView(log, tabs, ready, host, undefined, gitPath);
+  const view = await openView(log, tabs, opening, host, undefined, gitPath);
   try {
     await run(view);
   } finally {
@@ -527,6 +534,15 @@ export function rootOf(context: unknown): string | undefined {
     typeof context.root === 'string'
     ? context.root
     : undefined;
+}
+
+export async function deleteTags(repository: TempRepository): Promise<void> {
+  const tags = (await repository.git('tag'))
+    .split('\n')
+    .filter((tag) => tag !== '');
+  if (tags.length > 0) {
+    await repository.git('tag', '-d', ...tags);
+  }
 }
 
 export async function lockedRepository(root: string): Promise<{

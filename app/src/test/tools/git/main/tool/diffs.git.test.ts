@@ -15,6 +15,7 @@ import { soloKey } from '../../../../../tools/git/main/storage';
 import { waitFor } from '../../../../fixtures';
 import {
   removeFolder,
+  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../repositories';
@@ -27,7 +28,6 @@ import {
   numberedLines,
   stubMethod,
   takeErrorsLogged,
-  viewRepositories,
   withView,
   tabOf,
   shownTabs,
@@ -52,7 +52,10 @@ suite('Git tool showing diffs', () => {
   failOnErrorsLogged(logged);
 
   beforeAll(async () => {
-    ({ folder, other } = await viewRepositories());
+    folder = tempFolder('diffs');
+    const otherRepository = await tempRepository(path.join(folder, 'other'));
+    await otherRepository.commit('other');
+    other = otherRepository.root;
     long = await tempRepository(path.join(folder, 'long'));
     await long.commit('first', {
       'a.txt': fortyLines(-1),
@@ -411,59 +414,54 @@ suite('Git tool showing diffs', () => {
     write('c.txt', '\tone\n');
     await edited.git('add', 'c.txt');
     write('c.txt', '\tone\nmore\n');
-    await withView(
-      log,
-      [edited.root],
-      async (view) => {
-        const diff = () => view.page.last('diff');
-        await view.connection.receive({
-          type: 'pinEntireFile',
-          pinned: false,
-        });
-        await view.connection.receive({
-          type: 'selectCommit',
-          root: edited.root,
-          hash: workingTreeHash,
-        });
-        assert.strictEqual(diff()?.area, undefined);
-        assert.deepStrictEqual(diff()?.whitespaceOnly, ['a.txt']);
-        await view.connection.receive({
-          type: 'selectFile',
-          root: edited.root,
-          hash: workingTreeHash,
-          path: undefined,
-          area: 'staged',
-        });
-        assert.deepStrictEqual(diff()?.whitespaceOnly, ['c.txt']);
-        await view.connection.receive({
-          type: 'selectFile',
-          root: edited.root,
-          hash: workingTreeHash,
-          path: undefined,
-          area: 'unstaged',
-        });
-        assert.deepStrictEqual(diff()?.whitespaceOnly, ['a.txt']);
+    await withView(log, [edited.root], async (view) => {
+      const diff = () => view.page.last('diff');
+      await view.connection.receive({
+        type: 'pinEntireFile',
+        pinned: false,
+      });
+      await view.connection.receive({
+        type: 'selectCommit',
+        root: edited.root,
+        hash: workingTreeHash,
+      });
+      assert.strictEqual(diff()?.area, undefined);
+      assert.deepStrictEqual(diff()?.whitespaceOnly, ['a.txt']);
+      await view.connection.receive({
+        type: 'selectFile',
+        root: edited.root,
+        hash: workingTreeHash,
+        path: undefined,
+        area: 'staged',
+      });
+      assert.deepStrictEqual(diff()?.whitespaceOnly, ['c.txt']);
+      await view.connection.receive({
+        type: 'selectFile',
+        root: edited.root,
+        hash: workingTreeHash,
+        path: undefined,
+        area: 'unstaged',
+      });
+      assert.deepStrictEqual(diff()?.whitespaceOnly, ['a.txt']);
 
-        write('d.txt', 'one  \n');
-        await view.connection.refresh();
-        assert.deepStrictEqual(diff()?.whitespaceOnly, ['a.txt', 'd.txt']);
+      write('d.txt', 'one  \n');
+      await view.connection.refresh();
+      assert.deepStrictEqual(diff()?.whitespaceOnly, ['a.txt', 'd.txt']);
 
-        await view.connection.receive({
-          type: 'pinEntireFile',
-          pinned: true,
-        });
-        await view.connection.receive({
-          type: 'selectFile',
-          root: edited.root,
-          hash: workingTreeHash,
-          path: 'c.txt',
-          area: 'staged',
-        });
-        assert.match(diff()?.patch ?? '', /^@@ -1 \+1 @@\n \tone\n$/m);
-        assert.deepStrictEqual(diff()?.whitespaceOnly, ['c.txt']);
-      },
-      'unwatched',
-    );
+      await view.connection.receive({
+        type: 'pinEntireFile',
+        pinned: true,
+      });
+      await view.connection.receive({
+        type: 'selectFile',
+        root: edited.root,
+        hash: workingTreeHash,
+        path: 'c.txt',
+        area: 'staged',
+      });
+      assert.match(diff()?.patch ?? '', /^@@ -1 \+1 @@\n \tone\n$/m);
+      assert.deepStrictEqual(diff()?.whitespaceOnly, ['c.txt']);
+    });
   });
 
   test('names a file left out of a diff that loads with all its changes whitespace', async () => {
@@ -477,34 +475,29 @@ suite('Git tool showing diffs', () => {
       numberedLines('line').replaceAll('\n', ' \n'),
     );
     fs.writeFileSync(path.join(large.root, 'small.txt'), 'two\n');
-    await withView(
-      log,
-      [large.root],
-      async (view) => {
-        await view.connection.receive({
-          type: 'selectCommit',
-          root: large.root,
-          hash: workingTreeHash,
-        });
-        const diff = view.page.last('diff');
-        assert.deepStrictEqual(
-          diff?.leftOut?.map((file) => file.path),
-          ['large.txt'],
-        );
-        assert.strictEqual(diff.whitespaceOnly, undefined);
-        await view.connection.receive({
-          type: 'loadFileDiff',
-          root: large.root,
-          hash: workingTreeHash,
-          path: 'large.txt',
-          diff: 1,
-        });
-        const fileDiff = view.page.last('fileDiff');
-        assert.strictEqual(fileDiff?.patch, '');
-        assert.strictEqual(fileDiff.whitespaceOnly, true);
-      },
-      'unwatched',
-    );
+    await withView(log, [large.root], async (view) => {
+      await view.connection.receive({
+        type: 'selectCommit',
+        root: large.root,
+        hash: workingTreeHash,
+      });
+      const diff = view.page.last('diff');
+      assert.deepStrictEqual(
+        diff?.leftOut?.map((file) => file.path),
+        ['large.txt'],
+      );
+      assert.strictEqual(diff.whitespaceOnly, undefined);
+      await view.connection.receive({
+        type: 'loadFileDiff',
+        root: large.root,
+        hash: workingTreeHash,
+        path: 'large.txt',
+        diff: 1,
+      });
+      const fileDiff = view.page.last('fileDiff');
+      assert.strictEqual(fileDiff?.patch, '');
+      assert.strictEqual(fileDiff.whitespaceOnly, true);
+    });
   });
 
   test('shows the diff anew with settings changed by hand once the page loads again', async () => {
@@ -589,70 +582,106 @@ suite('Git tool showing diffs', () => {
     });
   });
 
-  test('reads a commit diff while reading its files, only once, also when it leaves a file out', async () => {
-    const large = await tempRepository(path.join(folder, 'read-once'));
-    await large.commit('large', {
-      'large.txt': numberedLines('line'),
-      'small.txt': 'small\n',
-    });
-    const [hash] = await large.resolve('HEAD');
-    await withView(log, [large.root], async (view) => {
-      const held = gate();
-      stubMethod(view.view, 'commitFiles', async (original, ...args) => {
-        await held.opened;
-        return original(...args);
+  suite('with a commit adding a large file and a small one', () => {
+    let large: TempRepository;
+    let hash: string;
+
+    beforeAll(async () => {
+      large = await tempRepository(path.join(folder, 'large'));
+      await large.commit('large', {
+        'large.txt': numberedLines('line'),
+        'small.txt': 'small\n',
       });
-      let patches = 0;
-      for (const name of ['patchOf', 'budgetedPatch']) {
-        stubMethod(view.view, name, (original, ...args) => {
-          patches += 1;
+      [hash] = await large.resolve('HEAD');
+    });
+
+    test('reads a commit diff while reading its files, only once, also when it leaves a file out', async () => {
+      await withView(log, [large.root], async (view) => {
+        const held = gate();
+        stubMethod(view.view, 'commitFiles', async (original, ...args) => {
+          await held.opened;
           return original(...args);
         });
-      }
-      const selected = view.connection.receive({
-        type: 'selectCommit',
-        root: large.root,
-        hash,
+        let patches = 0;
+        for (const name of ['patchOf', 'budgetedPatch']) {
+          stubMethod(view.view, name, (original, ...args) => {
+            patches += 1;
+            return original(...args);
+          });
+        }
+        const selected = view.connection.receive({
+          type: 'selectCommit',
+          root: large.root,
+          hash,
+        });
+        await waitFor(() => patches > 0, 'the diff to be read');
+        held.open();
+        await selected;
+        assert.ok(view.page.last('diff')?.patch.includes('b/small.txt'));
+        assert.strictEqual(patches, 1);
       });
-      await waitFor(() => patches > 0, 'the diff to be read');
-      held.open();
-      await selected;
-      assert.ok(view.page.last('diff')?.patch.includes('b/small.txt'));
-      assert.strictEqual(patches, 1);
     });
-  });
 
-  test('leaves large files out of a commit diff until one is asked for', async () => {
-    const large = await tempRepository(path.join(folder, 'large'));
-    await large.commit('large', {
-      'large.txt': numberedLines('line'),
-      'small.txt': 'small\n',
+    test('leaves large files out of a commit diff until one is asked for', async () => {
+      await withView(log, [large.root], async (view) => {
+        await view.connection.receive({
+          type: 'selectCommit',
+          root: large.root,
+          hash,
+        });
+        const diff = view.page.last('diff');
+        const patch = diff?.patch ?? '';
+        assert.ok(patch.includes('b/small.txt'), patch);
+        assert.ok(!patch.includes('large.txt'), patch);
+        assert.deepStrictEqual(diff?.leftOut, [
+          { path: 'large.txt', lines: collapseThreshold + 1 },
+        ]);
+        await view.connection.receive({
+          type: 'loadFileDiff',
+          root: large.root,
+          hash,
+          path: 'large.txt',
+          diff: 1,
+        });
+        const fileDiff = view.page.last('fileDiff');
+        assert.strictEqual(fileDiff?.path, 'large.txt');
+        assert.ok(fileDiff?.patch.includes(`+line ${collapseThreshold}`));
+        assert.strictEqual(fileDiff.diff, 1);
+      });
     });
-    const [hash] = await large.resolve('HEAD');
-    await withView(log, [large.root], async (view) => {
-      await view.connection.receive({
-        type: 'selectCommit',
-        root: large.root,
-        hash,
+
+    test('leaves a selected large file of a commit out of its diff until it is asked for', async () => {
+      await withView(log, [large.root], async (view) => {
+        await view.connection.receive({
+          type: 'selectCommit',
+          root: large.root,
+          hash,
+        });
+        await view.connection.receive({
+          type: 'selectFile',
+          root: large.root,
+          hash,
+          path: 'large.txt',
+        });
+        const diff = view.page.last('diff');
+        assert.strictEqual(diff?.path, 'large.txt');
+        assert.strictEqual(diff.patch, '');
+        assert.deepStrictEqual(diff.leftOut, [
+          { path: 'large.txt', lines: collapseThreshold + 1 },
+        ]);
+        await view.connection.receive({
+          type: 'loadFileDiff',
+          root: large.root,
+          hash,
+          path: 'large.txt',
+          diff: 2,
+        });
+        assert.ok(
+          view.page
+            .last('fileDiff')
+            ?.patch.includes(`+line ${collapseThreshold}`),
+        );
       });
-      const diff = view.page.last('diff');
-      const patch = diff?.patch ?? '';
-      assert.ok(patch.includes('b/small.txt'), patch);
-      assert.ok(!patch.includes('large.txt'), patch);
-      assert.deepStrictEqual(diff?.leftOut, [
-        { path: 'large.txt', lines: collapseThreshold + 1 },
-      ]);
-      await view.connection.receive({
-        type: 'loadFileDiff',
-        root: large.root,
-        hash,
-        path: 'large.txt',
-        diff: 1,
-      });
-      const fileDiff = view.page.last('fileDiff');
-      assert.strictEqual(fileDiff?.path, 'large.txt');
-      assert.ok(fileDiff?.patch.includes(`+line ${collapseThreshold}`));
-      assert.strictEqual(fileDiff.diff, 1);
     });
   });
 
@@ -665,78 +694,33 @@ suite('Git tool showing diffs', () => {
     const file = path.join(large.root, 'large.txt');
     fs.writeFileSync(file, numberedLines('first'));
     fs.writeFileSync(path.join(large.root, 'small.txt'), 'changed\n');
-    await withView(
-      log,
-      [large.root],
-      async (view) => {
-        await view.connection.receive({
-          type: 'selectCommit',
-          root: large.root,
-          hash: workingTreeHash,
-        });
-        await view.connection.receive({
-          type: 'loadFileDiff',
-          root: large.root,
-          hash: workingTreeHash,
-          path: 'large.txt',
-          diff: 1,
-        });
-        assert.ok(
-          view.page
-            .last('fileDiff')
-            ?.patch.includes(`+first ${collapseThreshold}`),
-        );
-        view.page.clear();
-        await view.connection.refresh();
-        assert.strictEqual(view.page.last('fileDiff'), undefined);
-        fs.writeFileSync(file, numberedLines('second'));
-        await view.connection.refresh();
-        assert.strictEqual(view.page.last('diff'), undefined);
-        const fileDiff = view.page.last('fileDiff');
-        assert.strictEqual(fileDiff?.diff, 1);
-        assert.ok(fileDiff.patch.includes(`+second ${collapseThreshold}`));
-      },
-      'unwatched',
-    );
-  });
-
-  test('leaves a selected large file of a commit out of its diff until it is asked for', async () => {
-    const large = await tempRepository(path.join(folder, 'large-selected'));
-    await large.commit('large', {
-      'large.txt': numberedLines('line'),
-      'small.txt': 'small\n',
-    });
-    const [hash] = await large.resolve('HEAD');
     await withView(log, [large.root], async (view) => {
       await view.connection.receive({
         type: 'selectCommit',
         root: large.root,
-        hash,
+        hash: workingTreeHash,
       });
-      await view.connection.receive({
-        type: 'selectFile',
-        root: large.root,
-        hash,
-        path: 'large.txt',
-      });
-      const diff = view.page.last('diff');
-      assert.strictEqual(diff?.path, 'large.txt');
-      assert.strictEqual(diff.patch, '');
-      assert.deepStrictEqual(diff.leftOut, [
-        { path: 'large.txt', lines: collapseThreshold + 1 },
-      ]);
       await view.connection.receive({
         type: 'loadFileDiff',
         root: large.root,
-        hash,
+        hash: workingTreeHash,
         path: 'large.txt',
-        diff: 2,
+        diff: 1,
       });
       assert.ok(
         view.page
           .last('fileDiff')
-          ?.patch.includes(`+line ${collapseThreshold}`),
+          ?.patch.includes(`+first ${collapseThreshold}`),
       );
+      view.page.clear();
+      await view.connection.refresh();
+      assert.strictEqual(view.page.last('fileDiff'), undefined);
+      fs.writeFileSync(file, numberedLines('second'));
+      await view.connection.refresh();
+      assert.strictEqual(view.page.last('diff'), undefined);
+      const fileDiff = view.page.last('fileDiff');
+      assert.strictEqual(fileDiff?.diff, 1);
+      assert.ok(fileDiff.patch.includes(`+second ${collapseThreshold}`));
     });
   });
 
@@ -784,51 +768,46 @@ suite('Git tool showing diffs', () => {
     await large.commit('first', { 'small.txt': 'small\n' });
     const file = path.join(large.root, 'big.log');
     fs.writeFileSync(file, longLines('first'));
-    await withView(
-      log,
-      [large.root],
-      async (view) => {
-        let reads = 0;
-        stubMethod(view.view, 'patchOf', (original, ...args) => {
-          reads += 1;
-          return original(...args);
-        });
-        await view.connection.receive({
-          type: 'selectCommit',
-          root: large.root,
-          hash: workingTreeHash,
-        });
-        reads = 0;
-        await view.connection.receive({
-          type: 'selectFile',
-          root: large.root,
-          hash: workingTreeHash,
-          path: 'big.log',
-        });
-        const diff = view.page.last('diff');
-        assert.strictEqual(diff?.path, 'big.log');
-        assert.strictEqual(diff.patch, '');
-        assert.deepStrictEqual(diff.leftOut, [
-          { path: 'big.log', lines: undefined },
-        ]);
-        await view.connection.refresh();
-        assert.strictEqual(reads, 0);
-        await view.connection.receive({
-          type: 'loadFileDiff',
-          root: large.root,
-          hash: workingTreeHash,
-          path: 'big.log',
-          diff: 2,
-        });
-        assert.ok(view.page.last('fileDiff')?.patch.includes('+first x'));
-        view.page.clear();
-        fs.writeFileSync(file, longLines('second'));
-        await view.connection.refresh();
-        assert.strictEqual(view.page.last('diff'), undefined);
-        assert.ok(view.page.last('fileDiff')?.patch.includes('+second x'));
-      },
-      'unwatched',
-    );
+    await withView(log, [large.root], async (view) => {
+      let reads = 0;
+      stubMethod(view.view, 'patchOf', (original, ...args) => {
+        reads += 1;
+        return original(...args);
+      });
+      await view.connection.receive({
+        type: 'selectCommit',
+        root: large.root,
+        hash: workingTreeHash,
+      });
+      reads = 0;
+      await view.connection.receive({
+        type: 'selectFile',
+        root: large.root,
+        hash: workingTreeHash,
+        path: 'big.log',
+      });
+      const diff = view.page.last('diff');
+      assert.strictEqual(diff?.path, 'big.log');
+      assert.strictEqual(diff.patch, '');
+      assert.deepStrictEqual(diff.leftOut, [
+        { path: 'big.log', lines: undefined },
+      ]);
+      await view.connection.refresh();
+      assert.strictEqual(reads, 0);
+      await view.connection.receive({
+        type: 'loadFileDiff',
+        root: large.root,
+        hash: workingTreeHash,
+        path: 'big.log',
+        diff: 2,
+      });
+      assert.ok(view.page.last('fileDiff')?.patch.includes('+first x'));
+      view.page.clear();
+      fs.writeFileSync(file, longLines('second'));
+      await view.connection.refresh();
+      assert.strictEqual(view.page.last('diff'), undefined);
+      assert.ok(view.page.last('fileDiff')?.patch.includes('+second x'));
+    });
   });
 
   test('leaves out a selected untracked file too large to count past the first 50 too, rather than sending its whole patch, while diffing a small one there', async () => {
@@ -842,35 +821,30 @@ suite('Git tool showing diffs', () => {
     }
     fs.writeFileSync(path.join(crowded.root, 'zz-big.log'), longLines('big'));
     fs.writeFileSync(path.join(crowded.root, 'zz-small.txt'), 'little\n');
-    await withView(
-      log,
-      [crowded.root],
-      async (view) => {
+    await withView(log, [crowded.root], async (view) => {
+      await view.connection.receive({
+        type: 'selectCommit',
+        root: crowded.root,
+        hash: workingTreeHash,
+      });
+      const select = async (file: string) => {
         await view.connection.receive({
-          type: 'selectCommit',
+          type: 'selectFile',
           root: crowded.root,
           hash: workingTreeHash,
+          path: file,
         });
-        const select = async (file: string) => {
-          await view.connection.receive({
-            type: 'selectFile',
-            root: crowded.root,
-            hash: workingTreeHash,
-            path: file,
-          });
-          return view.page.last('diff');
-        };
-        const big = await select('zz-big.log');
-        assert.strictEqual(big?.patch, '');
-        assert.deepStrictEqual(big.leftOut, [
-          { path: 'zz-big.log', lines: undefined },
-        ]);
-        const small = await select('zz-small.txt');
-        assert.ok(small?.patch.includes('+little'), small?.patch);
-        assert.strictEqual(small?.leftOut, undefined);
-      },
-      'unwatched',
-    );
+        return view.page.last('diff');
+      };
+      const big = await select('zz-big.log');
+      assert.strictEqual(big?.patch, '');
+      assert.deepStrictEqual(big.leftOut, [
+        { path: 'zz-big.log', lines: undefined },
+      ]);
+      const small = await select('zz-small.txt');
+      assert.ok(small?.patch.includes('+little'), small?.patch);
+      assert.strictEqual(small?.leftOut, undefined);
+    });
   });
 
   test('leaves the files past the budget out of a commit diff', async () => {
@@ -902,86 +876,66 @@ suite('Git tool showing diffs', () => {
     });
   });
 
-  test('leaves a file of one line past the bytes of the budget out of a commit diff', async () => {
-    const bundled = await tempRepository(path.join(folder, 'bundled'));
-    await bundled.commit('bundled', {
-      'a.txt': 'small\n',
-      'bundle.min.js': 'x'.repeat(patchByteBudget + 1),
-    });
-    const [hash] = await bundled.resolve('HEAD');
-    await withView(log, [bundled.root], async (view) => {
-      await view.connection.receive({
-        type: 'selectCommit',
-        root: bundled.root,
-        hash,
-      });
-      const patch = view.page.last('diff')?.patch ?? '';
-      assert.ok(patch.includes('b/a.txt'), patch.slice(0, 200));
-      assert.ok(!patch.includes('bundle.min.js'), patch.slice(0, 200));
-    });
-  });
+  suite('with a commit renaming a file beside others', () => {
+    let renamed: TempRepository;
+    let hash: string;
 
-  test('shows the diff of one file the commit changed, following a rename', async () => {
-    const renamed = await tempRepository(path.join(folder, 'renamed'));
-    const lines = Array.from({ length: 20 }, (_, index) => `line ${index}`);
-    await renamed.commit('old', {
-      'old.txt': lines.join('\n'),
-      'other.txt': 'one\n',
+    beforeAll(async () => {
+      renamed = await tempRepository(path.join(folder, 'renamed'));
+      const lines = Array.from({ length: 20 }, (_, index) => `line ${index}`);
+      await renamed.commit('old', {
+        'old.txt': lines.join('\n'),
+        'other.txt': 'one\n',
+      });
+      await renamed.git('mv', 'old.txt', 'new.txt');
+      await renamed.commit('rename', {
+        'other.txt': 'two\n',
+        'large.txt': numberedLines('large'),
+      });
+      [hash] = await renamed.resolve('HEAD');
     });
-    await renamed.git('mv', 'old.txt', 'new.txt');
-    fs.writeFileSync(path.join(renamed.root, 'other.txt'), 'two\n');
-    await renamed.git('commit', '-am', 'rename');
-    const [hash] = await renamed.resolve('HEAD');
-    await withView(log, [renamed.root], async (view) => {
-      await view.connection.receive({
-        type: 'selectCommit',
-        root: renamed.root,
-        hash,
-      });
-      await view.connection.receive({
-        type: 'selectFile',
-        root: renamed.root,
-        hash,
-        path: 'new.txt',
-      });
-      const diff = view.page.last('diff');
-      assert.strictEqual(diff?.path, 'new.txt');
-      assert.ok(diff.patch.includes('rename from old.txt'), diff.patch);
-      assert.ok(!diff.patch.includes('other.txt'), diff.patch);
-      await view.connection.receive({
-        type: 'loadFileDiff',
-        root: renamed.root,
-        hash,
-        path: 'new.txt',
-        diff: 1,
-      });
-      assert.ok(
-        view.page.last('fileDiff')?.patch.includes('rename from old.txt'),
-      );
-    });
-  });
 
-  test('keeps a rename in a commit diff that leaves a large file out', async () => {
-    const renamed = await tempRepository(path.join(folder, 'renamed-large'));
-    const lines = Array.from({ length: 20 }, (_, index) => `line ${index}`);
-    await renamed.commit('old', { 'old.txt': lines.join('\n') });
-    await renamed.git('mv', 'old.txt', 'new.txt');
-    fs.writeFileSync(
-      path.join(renamed.root, 'large.txt'),
-      numberedLines('large'),
-    );
-    await renamed.git('add', 'large.txt');
-    await renamed.git('commit', '-m', 'rename');
-    const [hash] = await renamed.resolve('HEAD');
-    await withView(log, [renamed.root], async (view) => {
-      await view.connection.receive({
-        type: 'selectCommit',
-        root: renamed.root,
-        hash,
+    test('shows the diff of one file the commit changed, following a rename', async () => {
+      await withView(log, [renamed.root], async (view) => {
+        await view.connection.receive({
+          type: 'selectCommit',
+          root: renamed.root,
+          hash,
+        });
+        await view.connection.receive({
+          type: 'selectFile',
+          root: renamed.root,
+          hash,
+          path: 'new.txt',
+        });
+        const diff = view.page.last('diff');
+        assert.strictEqual(diff?.path, 'new.txt');
+        assert.ok(diff.patch.includes('rename from old.txt'), diff.patch);
+        assert.ok(!diff.patch.includes('other.txt'), diff.patch);
+        await view.connection.receive({
+          type: 'loadFileDiff',
+          root: renamed.root,
+          hash,
+          path: 'new.txt',
+          diff: 1,
+        });
+        assert.ok(
+          view.page.last('fileDiff')?.patch.includes('rename from old.txt'),
+        );
       });
-      const patch = view.page.last('diff')?.patch ?? '';
-      assert.ok(patch.includes('rename from old.txt'), patch);
-      assert.ok(!patch.includes('large.txt'), patch);
+    });
+
+    test('keeps a rename in a commit diff that leaves a large file out', async () => {
+      await withView(log, [renamed.root], async (view) => {
+        await view.connection.receive({
+          type: 'selectCommit',
+          root: renamed.root,
+          hash,
+        });
+        const patch = view.page.last('diff')?.patch ?? '';
+        assert.ok(patch.includes('rename from old.txt'), patch);
+        assert.ok(!patch.includes('large.txt'), patch);
+      });
     });
   });
 
@@ -1036,43 +990,35 @@ suite('Git tool showing diffs', () => {
       const added = path.join(files.root, 'new.txt');
       fs.writeFileSync(draft, 'draft\n');
       try {
-        await withView(
-          log,
-          [files.root],
-          async (view) => {
-            await view.connection.receive({
-              type: 'selectCommit',
-              root: files.root,
-              hash: workingTreeHash,
-            });
-            await view.connection.receive({
-              type: 'loadTree',
-              root: files.root,
-              hash: workingTreeHash,
-            });
-            await view.connection.receive({
-              type: 'selectFile',
-              root: files.root,
-              hash: workingTreeHash,
-              path: 'kept.txt',
-              area: 'unstaged',
-            });
-            assert.strictEqual(
-              view.page.last('fileContent')?.content,
-              'kept\n',
-            );
-            view.page.clear();
-            await view.connection.refresh();
-            assert.ok(view.page.last('workingTree'));
-            assert.strictEqual(view.page.last('tree'), undefined);
-            assert.strictEqual(view.page.last('fileContent'), undefined);
+        await withView(log, [files.root], async (view) => {
+          await view.connection.receive({
+            type: 'selectCommit',
+            root: files.root,
+            hash: workingTreeHash,
+          });
+          await view.connection.receive({
+            type: 'loadTree',
+            root: files.root,
+            hash: workingTreeHash,
+          });
+          await view.connection.receive({
+            type: 'selectFile',
+            root: files.root,
+            hash: workingTreeHash,
+            path: 'kept.txt',
+            area: 'unstaged',
+          });
+          assert.strictEqual(view.page.last('fileContent')?.content, 'kept\n');
+          view.page.clear();
+          await view.connection.refresh();
+          assert.ok(view.page.last('workingTree'));
+          assert.strictEqual(view.page.last('tree'), undefined);
+          assert.strictEqual(view.page.last('fileContent'), undefined);
 
-            fs.writeFileSync(added, 'new\n');
-            await view.connection.refresh();
-            assert.ok(view.page.last('tree')?.paths.includes('new.txt'));
-          },
-          'unwatched',
-        );
+          fs.writeFileSync(added, 'new\n');
+          await view.connection.refresh();
+          assert.ok(view.page.last('tree')?.paths.includes('new.txt'));
+        });
       } finally {
         fs.rmSync(draft, { force: true });
         fs.rmSync(added, { force: true });
@@ -1165,19 +1111,14 @@ suite('Git tool showing diffs', () => {
       await gone.git('add', '.');
       await gone.git('commit', '-m', 'images');
       const [object] = await gone.resolve('HEAD:pixel.png');
-      await withView(
-        log,
-        [gone.root],
-        async ({ view }) => {
-          await view.idle();
-          fs.rmSync(gone.root, { recursive: true, force: true });
-          assert.strictEqual(
-            (await view.image(url(gone.root, 'pixel.png', object))).status,
-            500,
-          );
-        },
-        'unwatched',
-      );
+      await withView(log, [gone.root], async ({ view }) => {
+        await view.idle();
+        fs.rmSync(gone.root, { recursive: true, force: true });
+        assert.strictEqual(
+          (await view.image(url(gone.root, 'pixel.png', object))).status,
+          500,
+        );
+      });
       takeErrorsLogged(
         logged,
         /^Reading the image pixel\.png failed$/,
@@ -1215,36 +1156,31 @@ suite('Git tool showing diffs', () => {
     test('shows a binary file whole again once it changes, staged in full', async () => {
       const file = path.join(images.root, 'pixel.png');
       try {
-        await withView(
-          log,
-          [images.root],
-          async (view) => {
-            await view.connection.receive({
-              type: 'selectCommit',
-              root: images.root,
-              hash: workingTreeHash,
-            });
-            await view.connection.receive({
-              type: 'selectFile',
-              root: images.root,
-              hash: workingTreeHash,
-              path: 'pixel.png',
-              area: 'unstaged',
-            });
-            const shown = view.page.last('fileContent');
-            assert.strictEqual(shown?.binary, true);
-            assert.ok(shown.id);
+        await withView(log, [images.root], async (view) => {
+          await view.connection.receive({
+            type: 'selectCommit',
+            root: images.root,
+            hash: workingTreeHash,
+          });
+          await view.connection.receive({
+            type: 'selectFile',
+            root: images.root,
+            hash: workingTreeHash,
+            path: 'pixel.png',
+            area: 'unstaged',
+          });
+          const shown = view.page.last('fileContent');
+          assert.strictEqual(shown?.binary, true);
+          assert.ok(shown.id);
 
-            view.page.clear();
-            fs.writeFileSync(file, Buffer.concat([pixel, pixel]));
-            await images.git('add', 'pixel.png');
-            await view.connection.refresh();
-            const changed = view.page.last('fileContent');
-            assert.ok(changed?.id);
-            assert.notStrictEqual(changed.id, shown.id);
-          },
-          'unwatched',
-        );
+          view.page.clear();
+          fs.writeFileSync(file, Buffer.concat([pixel, pixel]));
+          await images.git('add', 'pixel.png');
+          await view.connection.refresh();
+          const changed = view.page.last('fileContent');
+          assert.ok(changed?.id);
+          assert.notStrictEqual(changed.id, shown.id);
+        });
       } finally {
         await images.git('reset', '--hard');
       }

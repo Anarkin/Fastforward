@@ -2,8 +2,16 @@ import * as assert from 'node:assert';
 import { execFile } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { afterEach, beforeEach, suite, test } from 'vitest';
 import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  suite,
+  test,
+} from 'vitest';
+import {
+  commitAtTime,
   removeFolder,
   tempFolder,
   tempRepository,
@@ -20,41 +28,54 @@ for (const file of ['package.json', 'package-lock.json']) {
 }
 `;
 
-async function failingHook(
-  repository: TempRepository,
-  gitDir: string,
-  name: string,
-): Promise<void> {
+function failingHook(gitDir: string, name: string): void {
   const hooks = path.join(gitDir, 'hooks');
   fs.mkdirSync(hooks, { recursive: true });
   fs.writeFileSync(path.join(hooks, name), '#!/bin/sh\nexit 1\n', {
     mode: 0o755,
   });
-  await repository.git('config', 'core.hooksPath', hooks);
 }
 
+const identity = {
+  GIT_AUTHOR_NAME: 'Test',
+  GIT_AUTHOR_EMAIL: 'test@example.com',
+  GIT_COMMITTER_NAME: 'Test',
+  GIT_COMMITTER_EMAIL: 'test@example.com',
+};
+
 suite('Release', () => {
+  let template: string;
+  let templateRemote: TempRepository;
+  let templateLocal: TempRepository;
+  let npm: string;
+  let start: string;
   let folder: string;
   let remote: TempRepository;
   let local: TempRepository;
-  let start: string;
 
-  beforeEach(async () => {
-    folder = tempFolder('release');
-    remote = await tempRepository(path.join(folder, 'remote.git'), {
+  beforeAll(async () => {
+    template = tempFolder('release');
+    templateRemote = await tempRepository(path.join(template, 'remote.git'), {
       bare: true,
     });
-    local = await tempRepository(path.join(folder, 'local'));
-    await local.commit('start', {
+    templateLocal = await tempRepository(path.join(template, 'local'));
+    await templateLocal.commit('start', {
       'package.json': JSON.stringify({ version: '6.0.0' }),
       'package-lock.json': JSON.stringify({ version: '6.0.0' }),
     });
-    await local.git('config', 'user.name', 'Test');
-    await local.git('config', 'user.email', 'test@example.com');
-    await local.git('remote', 'add', 'origin', remote.root);
-    await local.git('push', '-u', 'origin', 'main');
-    [start] = await local.resolve('HEAD');
-    fs.writeFileSync(path.join(folder, 'npm.js'), fakeNpm);
+    await templateLocal.git('remote', 'add', 'origin', '../remote.git');
+    await templateLocal.git('push', '-u', 'origin', 'main');
+    [start] = await templateLocal.resolve('HEAD');
+    npm = path.join(template, 'npm.js');
+    fs.writeFileSync(npm, fakeNpm);
+  });
+
+  afterAll(() => removeFolder(template));
+
+  beforeEach(async () => {
+    folder = tempFolder('release');
+    remote = await templateRemote.copy(path.join(folder, 'remote.git'));
+    local = await templateLocal.copy(path.join(folder, 'local'));
   });
 
   afterEach(() => removeFolder(folder));
@@ -67,7 +88,7 @@ suite('Release', () => {
           [script, '7.0.0'],
           {
             cwd: local.root,
-            env: { ...process.env, npm_execpath: path.join(folder, 'npm.js') },
+            env: { ...process.env, ...identity, npm_execpath: npm },
           },
           (error, stdout, stderr) =>
             resolve({ released: error === null, said: stderr, told: stdout }),
@@ -86,8 +107,9 @@ suite('Release', () => {
     );
   };
 
-  test('pushes the release commit and its tag', async () => {
-    assert.strictEqual(await release(), true);
+  test('pushes the release commit and its tag, saying that installed apps update to the release only once its draft is published', async () => {
+    const { released, told } = await releasing();
+    assert.strictEqual(released, true);
     assert.strictEqual(
       await remote.git('log', '-1', '--format=%s', 'main'),
       'chore(release): 7.0.0\n',
@@ -96,10 +118,6 @@ suite('Release', () => {
       await remote.resolve('v7.0.0^{commit}'),
       await local.resolve('HEAD'),
     );
-  });
-
-  test('says that installed apps update to the release only once its draft is published', async () => {
-    const { told } = await releasing();
     assert.match(told, /v7\.0\.0[^]*draft release[^]*publish/);
   });
 
@@ -127,10 +145,10 @@ suite('Release', () => {
   });
 
   test('refuses to release behind the commits on the remote, leaving everything as it was', async () => {
-    await local.commit('pushed from elsewhere');
-    await local.git('push', '-q', 'origin', 'main');
-    const [pushed] = await local.resolve('HEAD');
-    await local.git('reset', '-q', '--hard', start);
+    const pushed = await commitAtTime(local, start, 1, 'pushed from elsewhere');
+    await local.git('update-ref', 'refs/remotes/origin/main', pushed);
+    await commitAtTime(remote, start, 1, 'pushed from elsewhere');
+    await remote.git('update-ref', 'refs/heads/main', pushed);
     const { released, said } = await releasing();
     assert.deepStrictEqual(
       { released, said },
@@ -145,7 +163,7 @@ suite('Release', () => {
   });
 
   test('undoes the version bump when the commit fails', async () => {
-    await failingHook(local, path.join(local.root, '.git'), 'pre-commit');
+    failingHook(path.join(local.root, '.git'), 'pre-commit');
     assert.strictEqual(await release(), false);
     await assertUndone();
   });
@@ -158,7 +176,7 @@ suite('Release', () => {
   });
 
   test('undoes the release commit and its tag when the push fails', async () => {
-    await failingHook(remote, remote.root, 'pre-receive');
+    failingHook(remote.root, 'pre-receive');
     assert.strictEqual(await release(), false);
     await assertUndone();
     assert.strictEqual(await local.git('tag', '--list'), '');

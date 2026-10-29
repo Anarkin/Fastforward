@@ -135,7 +135,10 @@ suite('Git tool of one repository', () => {
 
   test('shows a tab while its watcher starts', async () => {
     const started = gate();
-    const opened = await openView(log, [repository.root], false);
+    const opened = await openView(log, [repository.root], {
+      ready: false,
+      watched: true,
+    });
     stubMethod(opened.view, 'watch', async (original, ...args) => {
       await started.opened;
       return original(...args);
@@ -154,7 +157,10 @@ suite('Git tool of one repository', () => {
   });
 
   test("shows a tab whose folder can't be watched, saying changes made outside the app won't show until it is opened again, which watches it anew", async () => {
-    const opened = await openView(log, [repository.root], false);
+    const opened = await openView(log, [repository.root], {
+      ready: false,
+      watched: true,
+    });
     let starts = 0;
     stubMethod(opened.view, 'startWatching', (original, ...args) => {
       starts++;
@@ -194,7 +200,10 @@ suite('Git tool of one repository', () => {
 
   test('refreshes once its watcher has started when starting took longer than a change waits to be told, as no watcher was there to tell of the changes made meanwhile', async () => {
     const started = gate();
-    const opened = await openView(log, [repository.root], false);
+    const opened = await openView(log, [repository.root], {
+      ready: false,
+      watched: true,
+    });
     stubMethod(opened.view, 'startWatching', async (original, ...args) => {
       await started.opened;
       return original(...args);
@@ -235,7 +244,7 @@ suite('Git tool of one repository', () => {
     });
     let opened: OpenView;
     try {
-      opened = await openView(log, [repository.root]);
+      opened = await openView(log, [repository.root], { watched: true });
     } finally {
       replaceBuiltin(nodeFs, 'watch', watch);
     }
@@ -260,7 +269,10 @@ suite('Git tool of one repository', () => {
 
   test('shows a notice posted while the page loads again once the page is back, as one saved settings or a crash reloads it', async () => {
     const failing = gate();
-    const opened = await openView(log, [repository.root], false);
+    const opened = await openView(log, [repository.root], {
+      ready: false,
+      watched: true,
+    });
     let starts = 0;
     stubMethod(opened.view, 'startWatching', async () => {
       starts++;
@@ -295,7 +307,10 @@ suite('Git tool of one repository', () => {
 
   test('is idle only once the watcher of a closed page has stopped', async () => {
     const held = gate();
-    const opened = await openView(log, [repository.root], false);
+    const opened = await openView(log, [repository.root], {
+      ready: false,
+      watched: true,
+    });
     stubMethod(opened.view, 'startWatching', () =>
       Promise.resolve({ dispose: () => held.opened }),
     );
@@ -307,7 +322,10 @@ suite('Git tool of one repository', () => {
   test('is idle only once a watcher started for a page closed meanwhile has stopped', async () => {
     const started = gate();
     const held = gate();
-    const opened = await openView(log, [repository.root], false);
+    const opened = await openView(log, [repository.root], {
+      ready: false,
+      watched: true,
+    });
     stubMethod(opened.view, 'startWatching', async () => {
       await started.opened;
       return { dispose: () => held.opened };
@@ -454,7 +472,7 @@ suite('Git tool of one repository', () => {
         page,
         connection,
         store,
-      } = await openView(log, [repository.root], 'unwatched'));
+      } = await openView(log, [repository.root]));
     });
 
     afterEach(() => connection.dispose());

@@ -71,27 +71,55 @@ async function printing300MB(run: () => Promise<unknown>): Promise<void> {
   }
 }
 
+function heldHook(folder: string, name: string) {
+  const mark = (what: string) =>
+    path.join(folder, `${name}-${what}`).replaceAll('\\', '/');
+  const [started, release, done] = ['started', 'release', 'done'].map(mark);
+  return {
+    started,
+    release,
+    done,
+    script: `#!/bin/sh\necho > '${started}'\nwhile [ ! -e '${release}' ]; do sleep 0.05; done\necho > '${done}'\n`,
+  };
+}
+
+async function settledYet(promise: Promise<unknown>): Promise<boolean> {
+  let settled = false;
+  const settle = () => {
+    settled = true;
+  };
+  promise.then(settle, settle);
+  await new Promise((resolve) => setImmediate(resolve));
+  return settled;
+}
+
 async function stoppedAtOnce(writing: Promise<void>): Promise<void> {
   await stopRunningGit(0);
   await writing;
 }
 
+async function filteredSlowly(): Promise<TempRepository> {
+  const slow = await tempRepository(tempFolder('slow'));
+  await slow.commit('first', {
+    '.gitattributes': '*.txt filter=slow\n',
+    'a.txt': 'a\n',
+  });
+  await slow.git('switch', '-q', '-c', 'slow');
+  await slow.commit('slow', { 'a.txt': 'b\n' });
+  await slow.git('switch', '-q', 'main');
+  return slow;
+}
+
 async function stuckWriting(
+  slow: TempRepository,
   name: string,
   write: (root: string) => Promise<unknown>,
   stuckWhile: (writing: Promise<void>) => Promise<void>,
 ): Promise<void> {
   const folder = tempFolder(`${name}-marks`);
   const started = path.join(folder, 'started').replaceAll('\\', '/');
-  const stuck = await tempRepository(tempFolder(name));
+  const stuck = await slow.copy(tempFolder(name));
   try {
-    await stuck.commit('first', {
-      '.gitattributes': '*.txt filter=slow\n',
-      'a.txt': 'a\n',
-    });
-    await stuck.git('switch', '-q', '-c', 'slow');
-    await stuck.commit('slow', { 'a.txt': 'b\n' });
-    await stuck.git('switch', '-q', 'main');
     await stuck.git(
       'config',
       'filter.slow.smudge',
@@ -115,15 +143,20 @@ suite('Running git in a repository', () => {
   let gitPath: string;
   let temp: TempRepository;
   let cwd: string;
+  let slow: TempRepository;
 
   beforeAll(async () => {
     temp = await tempRepository(tempFolder('run'));
     gitPath = temp.gitPath;
     cwd = temp.root;
     await temp.commit('first', { 'a.txt': 'a\n' });
+    slow = await filteredSlowly();
   });
 
-  afterAll(() => removeFolder(cwd));
+  afterAll(() => {
+    removeFolder(cwd);
+    removeFolder(slow.root);
+  });
 
   test('says git printed over 256 MB, bounding the memory its output takes, though it warned of something first, as the warning would hide why it was stopped', async () => {
     await printing300MB(() => runGit(gitPath, cwd, ['printing']));
@@ -370,7 +403,7 @@ suite('Running git in a repository', () => {
           setTimeout(() => {
             done.push('stopping git');
             callback();
-          }, 500);
+          }, 100);
         });
       },
     );
@@ -395,8 +428,6 @@ suite('Running git in a repository', () => {
 
   test('lets a checkout or fast-forward finish when asked to stop every git, as stopping one midway can leave the working tree half switched', async () => {
     const folder = tempFolder('quitting');
-    const started = path.join(folder, 'started').replaceAll('\\', '/');
-    const done = path.join(folder, 'done').replaceAll('\\', '/');
     const hooks = path.join(cwd, '.git', 'hooks');
     fs.mkdirSync(hooks, { recursive: true });
     const [main] = await temp.resolve('main');
@@ -408,23 +439,62 @@ suite('Running git in a repository', () => {
       'post-checkout': () => switchToBranch(gitPath, cwd, 'finishing'),
       'post-merge': () => fastForward(gitPath, cwd, ahead),
     };
+    const childProcess = process.getBuiltinModule('node:child_process');
+    const { execFile } = childProcess;
+    const stops: Promise<void>[] = [];
+    replaceBuiltin(
+      childProcess,
+      'execFile',
+      (
+        file: string,
+        args: readonly string[],
+        options: object,
+        callback: (...result: unknown[]) => void,
+      ) => {
+        const { promise, resolve } = Promise.withResolvers<void>();
+        stops.push(promise);
+        return execFile(file, args, options, (...result: unknown[]) => {
+          resolve();
+          callback(...result);
+        });
+      },
+    );
     try {
       for (const [hook, write] of Object.entries(writes)) {
-        fs.rmSync(started, { force: true });
-        fs.rmSync(done, { force: true });
-        fs.writeFileSync(
-          path.join(hooks, hook),
-          `#!/bin/sh\necho > '${started}'\nsleep 1\necho > '${done}'\n`,
-          { mode: 0o755 },
-        );
+        const held = heldHook(folder, hook);
+        fs.writeFileSync(path.join(hooks, hook), held.script, { mode: 0o755 });
         const writing = write();
-        await waitFor(() => fs.existsSync(started), `the ${hook} to start`);
-        await stopRunningGit();
-        assert.ok(fs.existsSync(done), hook);
+        await waitFor(
+          () => fs.existsSync(held.started),
+          `the ${hook} to start`,
+        );
+        const { setTimeout } = globalThis;
+        const delays: number[] = [];
+        Reflect.set(globalThis, 'setTimeout', (run: () => void, ms: number) => {
+          delays.push(ms);
+          return setTimeout(run, ms);
+        });
+        let stopping: Promise<void>;
+        try {
+          stopping = stopRunningGit();
+        } finally {
+          Reflect.set(globalThis, 'setTimeout', setTimeout);
+        }
+        assert.ok(
+          delays.some((ms) => ms > 29_000 && ms <= 30_000),
+          `${hook}: ${delays.join(', ')}`,
+        );
+        await new Promise((resolve) => setImmediate(resolve));
+        await Promise.all(stops);
+        fs.writeFileSync(held.release, '');
+        await stopping;
+        assert.ok(fs.existsSync(held.done), hook);
         await writing;
       }
     } finally {
+      replaceBuiltin(childProcess, 'execFile', execFile);
       for (const hook of Object.keys(writes)) {
+        fs.writeFileSync(heldHook(folder, hook).release, '');
         fs.rmSync(path.join(hooks, hook), { force: true });
       }
       await temp.git('checkout', '-q', 'main');
@@ -436,11 +506,13 @@ suite('Running git in a repository', () => {
 
   test('leaves the index unlocked when it stops a checkout or fast-forward that would not finish in time, as Windows stops git with no chance to remove its lock', async () => {
     await stuckWriting(
+      slow,
       'checkout',
       (root) => switchToBranch(gitPath, root, 'slow'),
       stoppedAtOnce,
     );
     await stuckWriting(
+      slow,
       'fast-forward',
       (root) => fastForward(gitPath, root, 'slow'),
       stoppedAtOnce,
@@ -449,6 +521,7 @@ suite('Running git in a repository', () => {
 
   test('waits at most 30 seconds in all for a checkout or fast-forward, as stopping one midway can leave the working tree half switched', async () => {
     await stuckWriting(
+      slow,
       'checkout',
       (root) => switchToBranch(gitPath, root, 'slow'),
       async (writing) => {
@@ -475,16 +548,11 @@ suite('Running git in a repository', () => {
   test('waits for a checkout or fast-forward running, leaving the other gits running, as an update waits for them before it restarts the app', async () => {
     const folder = tempFolder('installing');
     const reading = path.join(folder, 'reading').replaceAll('\\', '/');
-    const started = path.join(folder, 'started').replaceAll('\\', '/');
-    const done = path.join(folder, 'done').replaceAll('\\', '/');
+    const held = heldHook(folder, 'post-checkout');
     const hooks = path.join(cwd, '.git', 'hooks');
     const hook = path.join(hooks, 'post-checkout');
     fs.mkdirSync(hooks, { recursive: true });
-    fs.writeFileSync(
-      hook,
-      `#!/bin/sh\necho > '${started}'\nsleep 1\necho > '${done}'\n`,
-      { mode: 0o755 },
-    );
+    fs.writeFileSync(hook, held.script, { mode: 0o755 });
     await temp.git('branch', 'finishing');
     try {
       let read = false;
@@ -498,14 +566,18 @@ suite('Running git in a repository', () => {
       const stopped = assert.rejects(stalled);
       await waitFor(() => fs.existsSync(reading), 'git to start');
       const switching = switchToBranch(gitPath, cwd, 'finishing');
-      await waitFor(() => fs.existsSync(started), 'the checkout to start');
-      await writesEnded();
-      assert.ok(fs.existsSync(done));
+      await waitFor(() => fs.existsSync(held.started), 'the checkout to start');
+      const ended = writesEnded();
+      assert.strictEqual(await settledYet(ended), false);
+      fs.writeFileSync(held.release, '');
+      await ended;
+      assert.ok(fs.existsSync(held.done));
       assert.strictEqual(read, false);
       await switching;
       await stopRunningGit();
       await stopped;
     } finally {
+      fs.writeFileSync(held.release, '');
       fs.rmSync(hook);
       await temp.git('checkout', '-q', 'main');
       await temp.git('branch', '-D', 'finishing');
@@ -517,23 +589,17 @@ suite('Running git in a repository', () => {
     const folder = tempFolder('installing-twice');
     const other = await tempRepository(tempFolder('installing-other'));
     await other.commit('first', { 'a.txt': 'a\n' });
-    const marks = (name: string) => ({
-      started: path.join(folder, `${name}-started`).replaceAll('\\', '/'),
-      done: path.join(folder, `${name}-done`).replaceAll('\\', '/'),
-    });
-    const first = marks('first');
-    const second = marks('second');
-    const hookIn = (root: string, mark: typeof first, seconds: number) => {
+    const first = heldHook(folder, 'first');
+    const second = heldHook(folder, 'second');
+    const hookIn = (root: string, held: typeof first) => {
       const hooks = path.join(root, '.git', 'hooks');
       fs.mkdirSync(hooks, { recursive: true });
-      fs.writeFileSync(
-        path.join(hooks, 'post-checkout'),
-        `#!/bin/sh\necho > '${mark.started}'\nsleep ${seconds}\necho > '${mark.done}'\n`,
-        { mode: 0o755 },
-      );
+      fs.writeFileSync(path.join(hooks, 'post-checkout'), held.script, {
+        mode: 0o755,
+      });
     };
-    hookIn(cwd, first, 2);
-    hookIn(other.root, second, 3);
+    hookIn(cwd, first);
+    hookIn(other.root, second);
     await temp.git('branch', 'finishing');
     await other.git('branch', 'finishing');
     try {
@@ -542,10 +608,16 @@ suite('Running git in a repository', () => {
       const ended = writesEnded();
       const switchingOther = switchToBranch(gitPath, other.root, 'finishing');
       await waitFor(() => fs.existsSync(second.started), 'the second to start');
+      fs.writeFileSync(first.release, '');
+      await switching;
+      assert.strictEqual(await settledYet(ended), false);
+      fs.writeFileSync(second.release, '');
       await ended;
       assert.ok(fs.existsSync(second.done));
-      await Promise.all([switching, switchingOther]);
+      await switchingOther;
     } finally {
+      fs.writeFileSync(first.release, '');
+      fs.writeFileSync(second.release, '');
       fs.rmSync(path.join(cwd, '.git', 'hooks', 'post-checkout'));
       await temp.git('checkout', '-q', 'main');
       await temp.git('branch', '-D', 'finishing');
@@ -555,35 +627,18 @@ suite('Running git in a repository', () => {
   });
 
   test('gives no new time to a checkout or fast-forward that outlived the wait before, as restarting into an update waits for them, then quits, which waits again', async () => {
-    const folder = tempFolder('outliving');
-    const started = path.join(folder, 'started').replaceAll('\\', '/');
-    const stuck = await tempRepository(tempFolder('outlived'));
-    try {
-      await stuck.commit('first', {
-        '.gitattributes': '*.txt filter=slow\n',
-        'a.txt': 'a\n',
-      });
-      await stuck.git('switch', '-q', '-c', 'slow');
-      await stuck.commit('slow', { 'a.txt': 'b\n' });
-      await stuck.git('switch', '-q', 'main');
-      await stuck.git(
-        'config',
-        'filter.slow.smudge',
-        `echo > '${started}'; sleep 15; cat`,
-      );
-      const switching = assert.rejects(
-        switchToBranch(gitPath, stuck.root, 'slow'),
-      );
-      await waitFor(() => fs.existsSync(started), 'the checkout to start');
-      await writesEnded(1000);
-      const stopping = performance.now();
-      await stopRunningGit(3000);
-      assert.ok(performance.now() - stopping < 2000);
-      await switching;
-    } finally {
-      removeFolder(stuck.root);
-      removeFolder(folder);
-    }
+    await stuckWriting(
+      slow,
+      'checkout',
+      (root) => switchToBranch(gitPath, root, 'slow'),
+      async (writing) => {
+        await writesEnded(200);
+        const stopping = performance.now();
+        await stopRunningGit(3000);
+        assert.ok(performance.now() - stopping < 2000);
+        await writing;
+      },
+    );
   });
 
   test("runs the real git behind Git for Windows' launcher, its shell seeing what the launcher would give it, for commands that run the user's hooks and credential helpers too", async (context) => {

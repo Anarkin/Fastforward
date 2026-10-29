@@ -30,11 +30,31 @@ function running(message: PageMessage): string[] {
     : [];
 }
 
+async function deleteBranches(
+  from: TempRepository,
+  kind: 'refs/heads' | 'refs/remotes',
+  ...kept: string[]
+): Promise<void> {
+  const branches = (
+    await from.git('for-each-ref', '--format=%(refname:lstrip=2)', kind)
+  )
+    .split('\n')
+    .filter((branch) => branch !== '' && !kept.includes(branch));
+  if (branches.length > 0) {
+    await from.git(
+      'branch',
+      '-D',
+      ...(kind === 'refs/remotes' ? ['-r'] : []),
+      ...branches,
+    );
+  }
+}
+
 suite('Git tool pulling and pushing other branches', () => {
   let folder: string;
   let repository: TempRepository;
-  let other: TempRepository;
   let remote: TempRepository;
+  let a: string;
   let view: GitTool;
   let page: FakePage;
   let connection: Connection;
@@ -51,40 +71,20 @@ suite('Git tool pulling and pushing other branches', () => {
     await repository.commit('a', { shared: 'a' });
     await repository.git('remote', 'add', 'origin', remote.root);
     await repository.git('push', '-u', 'origin', 'main');
-    other = await tempRepository(path.join(folder, 'other'));
-    await other.git('remote', 'add', 'origin', remote.root);
-    ({ view, page, connection } = await openView(
-      log,
-      [repository.root],
-      'unwatched',
-    ));
+    [a] = await repository.resolve('main');
+    ({ view, page, connection } = await openView(log, [repository.root]));
   });
 
   afterEach(async () => {
     await repository.git('checkout', '-f', 'main');
-    for (const branch of (
-      await repository.git(
-        'for-each-ref',
-        '--format=%(refname:short)',
-        'refs/heads',
-      )
-    ).split('\n')) {
-      if (branch && branch !== 'main') {
-        await repository.git('branch', '-D', branch);
-      }
-    }
-    for (const branch of (
-      await remote.git(
-        'for-each-ref',
-        '--format=%(refname:short)',
-        'refs/heads',
-      )
-    ).split('\n')) {
-      if (branch && branch !== 'main') {
-        await remote.git('branch', '-D', branch);
-      }
-    }
-    await repository.git('fetch', '--prune', 'origin');
+    await deleteBranches(repository, 'refs/heads', 'main');
+    await deleteBranches(
+      repository,
+      'refs/remotes',
+      'origin/main',
+      'origin/HEAD',
+    );
+    await deleteBranches(remote, 'refs/heads', 'main');
     await connection.refresh();
   });
 
@@ -94,19 +94,31 @@ suite('Git tool pulling and pushing other branches', () => {
   });
 
   const tracked = async (name: string): Promise<string> => {
-    await repository.git('branch', name, 'main');
-    await repository.git('push', '-u', 'origin', name);
-    const [commit] = await repository.resolve(name);
-    return commit;
+    await remote.git('branch', name, a);
+    await repository.git('update-ref', `refs/remotes/origin/${name}`, a);
+    await repository.git('branch', '--track', name, `origin/${name}`);
+    return a;
   };
 
   const moveOnRemote = async (name: string): Promise<string> => {
-    await other.git('fetch', 'origin');
-    await other.git('checkout', '-B', name, `origin/${name}`);
-    await other.commit(`more on ${name}`, { [`${name}.txt`]: 'theirs' });
-    await other.git('push', 'origin', name);
-    const [pushed] = await other.resolve('HEAD');
+    const [pushed] = await remote.importCommits(
+      `refs/heads/${name}`,
+      `refs/heads/${name}`,
+      [{ message: `more on ${name}`, files: { [`${name}.txt`]: 'theirs' } }],
+    );
     return pushed;
+  };
+
+  const committedOn = async (
+    name: string,
+    message: string,
+  ): Promise<string> => {
+    const [commit] = await repository.importCommits(
+      `refs/heads/${name}`,
+      `refs/heads/${name}`,
+      [{ message }],
+    );
+    return commit;
   };
 
   const send = async (
@@ -182,11 +194,7 @@ suite('Git tool pulling and pushing other branches', () => {
     ]);
     await tracked('apart');
     await moveOnRemote('apart');
-    await repository.git('fetch', 'origin');
-    await repository.git('checkout', 'apart');
-    await repository.commit('mine on apart');
-    const [mine] = await repository.resolve('apart');
-    await repository.git('checkout', 'main');
+    const mine = await committedOn('apart', 'mine on apart');
     assert.deepStrictEqual(await send('pullBranch', 'apart'), [
       "apart has diverged from origin/apart, so it can't be fast-forwarded",
     ]);
@@ -337,10 +345,7 @@ suite('Git tool pulling and pushing other branches', () => {
 
   test('pushes a branch ahead of its upstream without checking it out, and publishes one without an upstream', async () => {
     await tracked('ahead');
-    await repository.git('checkout', 'ahead');
-    await repository.commit('unpushed on ahead');
-    const [ahead] = await repository.resolve('ahead');
-    await repository.git('checkout', 'main');
+    const ahead = await committedOn('ahead', 'unpushed on ahead');
     page.clear();
     assert.deepStrictEqual(await send('pushBranch', 'ahead'), [
       'Pushed ahead to origin/ahead',
@@ -396,8 +401,7 @@ suite('Git tool pulling and pushing other branches', () => {
 
   test('pushes a branch and fetches behind remote work that fails, as the failure is that work alone', async () => {
     await repository.git('branch', 'behind', 'main');
-    await other.git('fetch', 'origin');
-    await other.git('push', 'origin', 'origin/main:refs/heads/fetched');
+    await remote.git('branch', 'fetched', a);
     const held = gate();
     const afterRemoteWork: unknown = Reflect.get(view, 'afterRemoteWork');
     assert.ok(typeof afterRemoteWork === 'function');

@@ -12,6 +12,7 @@ import {
   withoutTouched,
   workingTreeFiles,
   workingTreePatch,
+  type WorkingTree,
 } from '../../../../../tools/git/main/cli/workingTree';
 import {
   isLargeChange,
@@ -79,7 +80,7 @@ suite('A repository without commits', () => {
 
   afterAll(() => removeFolder(cwd));
 
-  test('lists staged files as added, and untracked ones', async () => {
+  test('lists staged files as added, and untracked ones, and all the changes against the empty tree, as there is no HEAD yet', async () => {
     const workingTree = await workingTreeFiles(gitPath, cwd);
     assert.deepStrictEqual(
       workingTree.staged?.map((file) => [file.status, file.path]),
@@ -91,10 +92,7 @@ suite('A repository without commits', () => {
     );
     const patch = await stagedPatch(gitPath, cwd, { path: 'staged.txt' });
     assert.ok(patch.includes('+one'), patch);
-  });
-
-  test('lists all the changes against the empty tree, as there is no HEAD yet', async () => {
-    const { all } = await workingTreeFiles(gitPath, cwd);
+    const { all } = workingTree;
     assert.ok(all);
     assert.deepStrictEqual(
       all.files.map((file) => [file.status, file.path]),
@@ -103,10 +101,10 @@ suite('A repository without commits', () => {
         ['U', 'untracked.txt'],
       ],
     );
-    const patch = await workingTreePatch(gitPath, cwd, all, {
+    const allPatch = await workingTreePatch(gitPath, cwd, all, {
       path: 'staged.txt',
     });
-    assert.match(patch, /^\+one$/m);
+    assert.match(allPatch, /^\+one$/m);
   });
 });
 
@@ -280,6 +278,8 @@ suite('A file renamed and edited', () => {
 
 suite('Staged and unstaged changes', () => {
   let repository: TempRepository;
+  let listedAtStart: WorkingTree;
+  let listing: ReturnType<typeof holdingGit>;
 
   beforeAll(async () => {
     repository = await tempRepository(tempFolder('staged'));
@@ -298,17 +298,22 @@ suite('Staged and unstaged changes', () => {
     write('both.txt', 'three\n');
     write('unstaged.txt', 'y\n');
     write('new.txt', 'new\n');
+    listing = holdingGit(() => false);
+    try {
+      listedAtStart = await workingTreeFiles(
+        repository.gitPath,
+        repository.root,
+      );
+    } finally {
+      listing.release();
+    }
   });
 
   afterAll(() => removeFolder(repository.root));
 
-  test('lists the staged changes apart from the unstaged ones, which it diffs against the index', async () => {
-    const workingTree = await workingTreeFiles(
-      repository.gitPath,
-      repository.root,
-    );
+  test('lists the staged changes apart from the unstaged ones, which it diffs against the index', () => {
     assert.deepStrictEqual(
-      workingTree.staged?.map((file) => [file.status, file.path]),
+      listedAtStart.staged?.map((file) => [file.status, file.path]),
       [
         ['M', 'both.txt'],
         ['M', 'staged.txt'],
@@ -316,7 +321,7 @@ suite('Staged and unstaged changes', () => {
       ],
     );
     assert.deepStrictEqual(
-      workingTree.files.map((file) => [file.status, file.path]),
+      listedAtStart.files.map((file) => [file.status, file.path]),
       [
         ['M', 'both.txt'],
         ['M', 'unstaged.txt'],
@@ -324,7 +329,7 @@ suite('Staged and unstaged changes', () => {
         ['U', 'uncached.txt'],
       ],
     );
-    assert.strictEqual(uncommittedCount(workingTree), 5);
+    assert.strictEqual(uncommittedCount(listedAtStart), 5);
   });
 
   test('reads the sizes of the unstaged files without waiting for the staged list', async () => {
@@ -358,14 +363,8 @@ suite('Staged and unstaged changes', () => {
     }
   });
 
-  test('reads no file again to tell whether it was only touched once git counted lines changed in it', async () => {
-    const git = holdingGit(() => false);
-    try {
-      await workingTreeFiles(repository.gitPath, repository.root);
-    } finally {
-      git.release();
-    }
-    assert.ok(!git.started('hash-object'));
+  test('reads no file again to tell whether it was only touched once git counted lines changed in it', () => {
+    assert.ok(!listing.started('hash-object'));
   });
 
   test('diffs the staged half of a file against HEAD and its unstaged half against the index', async () => {
@@ -377,7 +376,7 @@ suite('Staged and unstaged changes', () => {
     const unstaged = await workingTreePatch(
       repository.gitPath,
       repository.root,
-      await workingTreeFiles(repository.gitPath, repository.root),
+      listedAtStart,
       { path: 'both.txt' },
     );
     assert.match(unstaged, /^-two$/m);
@@ -385,7 +384,7 @@ suite('Staged and unstaged changes', () => {
   });
 
   test('lists every change since HEAD too, once a file, a file changed again since it was staged with its whole change, for All Changes', async () => {
-    const { all } = await workingTreeFiles(repository.gitPath, repository.root);
+    const { all } = listedAtStart;
     assert.ok(all);
     assert.deepStrictEqual(
       all.files.map((file) => [file.status, file.path]),
@@ -749,7 +748,7 @@ suite('Uncommitted changes', () => {
 
   afterAll(() => removeFolder(cwd));
 
-  test('lists modified and untracked files', async () => {
+  test('lists modified and untracked files, counting the bytes of the old and new text of each changed file', async () => {
     const { files } = await workingTreeFiles(gitPath, cwd);
     assert.deepStrictEqual(
       files.map((file) => [file.status, file.path]),
@@ -757,6 +756,14 @@ suite('Uncommitted changes', () => {
         ['M', 'tracked.txt'],
         ['U', 'nested/'],
         ['U', 'untracked.txt'],
+      ],
+    );
+    assert.deepStrictEqual(
+      files.map((file) => [file.path, file.bytes]),
+      [
+        ['tracked.txt', 8],
+        ['nested/', undefined],
+        ['untracked.txt', 4],
       ],
     );
   });
@@ -804,18 +811,6 @@ suite('Uncommitted changes', () => {
     } finally {
       removeFolder(root);
     }
-  });
-
-  test('counts the bytes of the old and new text of each changed file', async () => {
-    const { files } = await workingTreeFiles(gitPath, cwd);
-    assert.deepStrictEqual(
-      files.map((file) => [file.path, file.bytes]),
-      [
-        ['tracked.txt', 8],
-        ['nested/', undefined],
-        ['untracked.txt', 4],
-      ],
-    );
   });
 
   test('includes untracked files in the full patch', async () => {
@@ -942,7 +937,7 @@ suite('Uncommitted changes', () => {
     }
   });
 
-  test('counts an untracked symlink as the one line git diffs it as, its target', async (context) => {
+  test('counts an untracked symlink as the one line git diffs it as, its target, and marks it as a link, and no file beside it', async (context) => {
     const target = path.join(cwd, 'target.txt');
     const link = path.join(cwd, 'link');
     symlinkOrSkip(context, 'target.txt', link);
@@ -953,19 +948,6 @@ suite('Uncommitted changes', () => {
         files.find((change) => change.path === 'link')?.insertions,
         1,
       );
-    } finally {
-      fs.rmSync(link);
-      fs.rmSync(target);
-    }
-  });
-
-  test('marks an untracked symlink as a link, and no file beside it', async (context) => {
-    const target = path.join(cwd, 'target.txt');
-    const link = path.join(cwd, 'link');
-    symlinkOrSkip(context, 'target.txt', link);
-    fs.writeFileSync(target, 'a\nb\n');
-    try {
-      const { files } = await workingTreeFiles(gitPath, cwd);
       const linkOf = (file: string) =>
         files.find((change) => change.path === file)?.link;
       assert.strictEqual(linkOf('link'), true);
