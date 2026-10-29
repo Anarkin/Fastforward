@@ -30,6 +30,23 @@ function tabsOf(nav: React.ReactNode): React.ReactElement[] {
   return strip.props.children;
 }
 
+function addButton(adding: boolean): Element | null {
+  return new JSDOM(
+    renderToStaticMarkup(
+      <TabBar
+        tabs={[{ id: '/repo', tool: 'git', root: '/repo', name: 'repo' }]}
+        active="/repo"
+        onSelect={noop}
+        onPreload={noop}
+        onClose={noop}
+        onAdd={noop}
+        onLog={noop}
+        adding={adding}
+      />,
+    ),
+  ).window.document.querySelector('.tab-add');
+}
+
 suite('Tab bar', () => {
   afterEach(() => vi.useRealTimers());
 
@@ -90,6 +107,18 @@ suite('Tab bar', () => {
     rest.cancel();
     await new Promise((resolve) => setTimeout(resolve, 30));
     assert.deepStrictEqual(done, ['b']);
+  });
+
+  test('marks the + button open while its menu is, as the menu button is, telling assistive technology it opens a menu', () => {
+    const open = addButton(true);
+    assert.ok(open);
+    assert.ok(open.classList.contains('open'));
+    assert.strictEqual(open.getAttribute('aria-haspopup'), 'menu');
+    assert.strictEqual(open.getAttribute('aria-expanded'), 'true');
+    const closed = addButton(false);
+    assert.ok(closed);
+    assert.ok(!closed.classList.contains('open'));
+    assert.strictEqual(closed.getAttribute('aria-expanded'), 'false');
   });
 
   test('stops the middle button from autoscrolling, so a middle click closes the tab', () => {

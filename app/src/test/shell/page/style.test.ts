@@ -260,12 +260,13 @@ function tabStrip(maximized: boolean, overflowing: boolean): MarkupElement {
   );
 }
 
-function tabBarIn(maximized: boolean): MarkupElement {
+function tabBarIn(maximized: boolean, adding = false): MarkupElement {
   return rendered(
     createElement(
       'div',
       maximized ? { 'data-maximized': '' } : {},
       createElement(TabBar, {
+        adding,
         tabs: [
           { id: '/a', tool: 'git', root: '/a', name: 'a' },
           { id: '/b', tool: 'git', root: '/b', name: 'b' },
@@ -1498,7 +1499,7 @@ suite('Style', () => {
     );
   });
 
-  test("fills every round button in the border color, but in the color of the tab bar or a popup's title it sits on, showing no circle there, and in the panel's on a file's header, tinting an open menu's button over its fill and ringing a button's dot in it", () => {
+  test("fills every round button in the border color, but in the color of the tab bar or a popup's title it sits on, showing no circle there, and in the panel's on a file's header, tinting the button of an open menu, the + one too, over its fill and ringing a button's dot in it", () => {
     assert.strictEqual(
       bodyVariable('button-background'),
       'var(--color-border)',
@@ -1547,17 +1548,19 @@ suite('Style', () => {
       assert.ok(!button.classes.includes('active'));
       looks(button, { background: 'var(--button-background)' });
     }
-    looks(
+    for (const open of [
       rendered(
         createElement('button', {
           className: 'nav-button menu-button-trigger open',
         }),
       ),
-      {
+      withClass(tabBarIn(false, true), 'tab-add'),
+    ]) {
+      looks(open, {
         background:
           'linear-gradient(var(--hover-background), var(--hover-background)), var(--button-background)',
-      },
-    );
+      });
+    }
     assert.match(
       cascaded(
         withClass(rendered(menuButton({ marked: true })), 'menu-mark'),

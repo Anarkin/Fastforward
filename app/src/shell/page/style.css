@@ -516,7 +516,8 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
   border-radius: 4px;
 }
 
-.menu-button-trigger.open {
+.menu-button-trigger.open,
+.tab-add.open {
   background:
     linear-gradient(var(--hover-background), var(--hover-background)),
     var(--button-background);

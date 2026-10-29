@@ -329,6 +329,7 @@ export function App({ name, post, listen }: Props) {
               }
         }
         onAdd={openNewTab}
+        adding={menu?.trigger === newTabTrigger}
         onLog={log}
         menu={
           <AppMenu

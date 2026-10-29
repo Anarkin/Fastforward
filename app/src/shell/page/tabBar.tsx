@@ -433,6 +433,7 @@ export function TabBar({
   onAdd,
   onLog,
   menu,
+  adding = false,
 }: {
   tabs: readonly TabInfo[];
   active: string | undefined;
@@ -443,6 +444,7 @@ export function TabBar({
   onAdd: (event: React.MouseEvent) => void;
   onLog: (message: string) => void;
   menu?: React.ReactNode;
+  adding?: boolean;
 }) {
   const bar = useRef<HTMLElement>(null);
   const list = useRef<HTMLDivElement>(null);
@@ -551,8 +553,10 @@ export function TabBar({
         </div>
         <button
           ref={add}
-          className="nav-button tab-add"
+          className={`nav-button tab-add ${adding ? 'open' : ''}`}
           title={strings.tabs.newTab}
+          aria-haspopup="menu"
+          aria-expanded={adding}
           onClick={onAdd}
         >
           <AddIcon />
