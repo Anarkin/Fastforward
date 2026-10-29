@@ -7,6 +7,7 @@ import { ErrorBoundary } from './errorBoundary';
 import { windowButtonColor } from './titleBar';
 import { errorText } from '../../ui/errors';
 import { installOverlayScrollbars } from '../../ui/overlayScrollbars';
+import { watchDevicePixels } from '../../ui/devicePixels';
 import './style.css';
 
 declare global {
@@ -51,6 +52,7 @@ window.addEventListener('unhandledrejection', (event) =>
 );
 
 installOverlayScrollbars();
+watchDevicePixels(() => undefined);
 
 const root = document.getElementById('root');
 if (root) {

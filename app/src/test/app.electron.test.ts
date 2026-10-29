@@ -39,6 +39,15 @@ async function removeWorktree(worktree: string, branch: string): Promise<void> {
   await repository.git('branch', '-q', '-D', branch);
 }
 
+async function codeRow(lineHeight = 1.4): Promise<number> {
+  const ratio = await page.evaluate(() => devicePixelRatio);
+  return Math.round(12 * lineHeight * ratio) / ratio;
+}
+
+function near(actual: number | undefined, expected: number): boolean {
+  return actual !== undefined && Math.abs(actual - expected) < 0.01;
+}
+
 const focused = () =>
   page.evaluate(() => document.activeElement?.textContent ?? '');
 
@@ -641,8 +650,9 @@ suite('App', () => {
         .click();
       await page.locator('.row.file', { hasText: 'long.txt' }).click();
       await change.waitFor();
+      const row = await codeRow();
       await waitFor(
-        async () => (await belowTop()) === 56,
+        async () => (await belowTop()) === Math.round(22 + 2 * row),
         'the change to be shown at its place',
       );
       await page.getByRole('button', { name: 'Pin Entire Files' }).click();
@@ -652,7 +662,7 @@ suite('App', () => {
       await waitFor(
         async () =>
           (await page.locator('.diff-line').count()) < 20 &&
-          (await belowTop()) === 73,
+          (await belowTop()) === Math.round(22 + 3 * row),
         'only the changes to be shown, too few to scroll',
       );
       await page.getByRole('button', { name: 'Show the Entire File' }).click();
@@ -660,7 +670,7 @@ suite('App', () => {
         .getByRole('button', { name: 'Show the Entire File', pressed: true })
         .waitFor();
       await waitFor(
-        async () => (await belowTop()) === 56,
+        async () => (await belowTop()) === Math.round(22 + 2 * row),
         'the entire file to be shown at its change',
       );
       await waitFor(
@@ -963,17 +973,19 @@ suite('App', () => {
       has: page.locator('.code', { hasText: firstLongLine }),
     });
     await row.waitFor();
-    assert.strictEqual((await row.boundingBox())?.height, 17);
+    const lineHeight = await codeRow();
+    const unwrapped = (await row.boundingBox())?.height;
+    assert.ok(near(unwrapped, lineHeight), `${unwrapped} is not ${lineHeight}`);
     await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
     await page.locator('.diff-view.wrap').waitFor();
     await page.waitForFunction(
-      (text) =>
+      ([text, height]) =>
         [...document.querySelectorAll('.diff-row')].some(
           (wrapped) =>
             wrapped.querySelector('.code')?.textContent === text &&
-            wrapped.getBoundingClientRect().height > 17,
+            wrapped.getBoundingClientRect().height > height + 0.5,
         ),
-      firstLongLine,
+      [firstLongLine, lineHeight] as const,
     );
     const laidOut = await row.evaluate((element) => {
       const code = element.querySelector('.code');
@@ -983,6 +995,7 @@ suite('App', () => {
       const style = getComputedStyle(code);
       const sample = document.createElement('span');
       sample.style.font = style.font;
+      sample.style.letterSpacing = style.letterSpacing;
       sample.style.whiteSpace = 'pre';
       sample.textContent = '0'.repeat(100);
       document.body.append(sample);
@@ -997,10 +1010,12 @@ suite('App', () => {
         char,
       };
     });
-    assert.strictEqual(
-      laidOut.height,
+    const wrappedHeight =
       wrappedLines(firstLongLine, wrapColumns(laidOut.width, laidOut.char)) *
-        17,
+      lineHeight;
+    assert.ok(
+      near(laidOut.height, wrappedHeight),
+      `${laidOut.height} is not ${wrappedHeight}`,
     );
     await waitFor(() => wrapsSaved(), 'the choice to be saved');
     const list = page.locator('.diff-view .virtual-rows');
@@ -1197,7 +1212,7 @@ suite('App', () => {
     await waitFor(() => wrapsSaved(), 'the choice to be saved');
   });
 
-  test('makes each line of the diff as tall as the font size of code times the line height set, rounded to whole pixels, placing the rows and the marks of wrapped ones that far apart, keeping the file header as tall', async () => {
+  test('makes each line of the diff as tall as the font size of code times the line height set, rounded to whole device pixels, placing the rows and the marks of wrapped ones that far apart, keeping the file header as tall', async () => {
     const reloaded = page.waitForEvent('load');
     fs.writeFileSync(
       path.join(profile, 'settings.user.json'),
@@ -1224,19 +1239,28 @@ suite('App', () => {
             : [];
         }),
       );
+    const tall = await codeRow(2.1);
     assert.deepStrictEqual(
-      rows.map(({ kind, height, shown }) => [kind, height, shown]),
+      rows.map(({ kind, height, shown }) => [
+        kind,
+        near(height, kind === 'file' ? 22 : tall),
+        near(shown, kind === 'file' ? 22 : tall),
+      ]),
       [
-        ['file', 22, 22],
-        ['line', 25, 25],
-        ['line', 25, 25],
-        ['line', 25, 25],
-        ['line', 25, 25],
+        ['file', true, true],
+        ['line', true, true],
+        ['line', true, true],
+        ['line', true, true],
+        ['line', true, true],
       ],
     );
     assert.deepStrictEqual(
-      rows.slice(1).map((row, index) => row.top - rows[index].top),
-      [22, 25, 25, 25],
+      rows
+        .slice(1)
+        .map((row, index) =>
+          near(row.top - rows[index].top, index ? tall : 22),
+        ),
+      [true, true, true, true],
     );
 
     await page.locator('.commit', { hasText: 'first' }).click();
@@ -1259,12 +1283,12 @@ suite('App', () => {
       });
     await waitFor(async () => {
       const { height, marks } = await laidOut();
-      return height > 25 && marks.length === height / 25 - 1;
-    }, 'a mark at the end of every 25 pixel row but the last');
+      return height > tall && marks.length === Math.round(height / tall) - 1;
+    }, 'a mark at the end of every row but the last');
     const { height, marks } = await laidOut();
     assert.deepStrictEqual(
-      marks,
-      Array.from({ length: height / 25 - 1 }, (_, index) => index * 25),
+      marks.map((mark, index) => near(mark, index * tall)),
+      Array.from({ length: Math.round(height / tall) - 1 }, () => true),
     );
     await waitFor(() => wrapsSaved(), 'the choice to be saved');
   });

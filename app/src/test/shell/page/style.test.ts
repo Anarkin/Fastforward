@@ -1221,11 +1221,47 @@ suite('Style', () => {
     });
   });
 
-  test('makes a line of the diff as tall as the font size of code times the line height, rounded to whole pixels, as the app places the rows a whole number of lines apart', () => {
+  test('makes a line of the diff as tall as the font size of code times the line height, rounded to whole device pixels, so every line is drawn alike and the app places the rows a whole number of lines apart', () => {
     assert.strictEqual(
       compact(cascaded(diffView(), '--diff-line-height')),
-      'round(var(--monospace-font-size) * var(--monospace-line-height), 1px)',
+      'round(var(--monospace-font-size) * var(--monospace-line-height), var(--device-pixel, 1px))',
     );
+  });
+
+  test('spaces the characters of code a whole number of device pixels apart, the nearest to their width, so each is drawn alike', () => {
+    assert.strictEqual(
+      compact(cascaded(diffView(), '--diff-advance')),
+      'round(1ch, var(--device-pixel, 1px))',
+    );
+    for (const view of [
+      diffView({}, inlineLine('added')),
+      diffView({ sideBySide: true }, splitLine('removed', 'added')),
+    ]) {
+      for (const line of allWithClass(view, 'diff-line')) {
+        looks(line, { 'letter-spacing': 'calc(var(--diff-advance) - 1ch)' });
+      }
+    }
+  });
+
+  test('paints the scroller of the diff in the color of its panel, so Chromium keeps the subpixel antialiasing of its text when it composites the scrolling', () => {
+    looks(withClass(diffView(), 'virtual-rows'), {
+      background: 'var(--repository-background)',
+    });
+  });
+
+  test('moves each line of code onto whole device pixels by less than one, each side of a side-by-side diff on its own, by layout rather than a transform, which would cost the text its subpixel antialiasing', () => {
+    const inline = shownRow(diffView({}, inlineLine('added')));
+    looks(withClass(inline, 'diff-line'), {
+      'margin-left': 'var(--diff-snap-inline, 0px)',
+    });
+    looks(withClass(inline, 'code'), { translate: undefined });
+    const [left, right] = allWithClass(
+      shownRow(diffView({ sideBySide: true }, splitLine('removed', 'added'))),
+      'split-side',
+    );
+    for (const side of [left, right]) {
+      looks(side, { 'margin-left': 'var(--diff-side-snap, 0px)' });
+    }
   });
 
   test('wraps long lines of code at spaces, breaking a word only where it would not fit, in rows as tall as their lines', () => {

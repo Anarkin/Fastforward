@@ -1374,6 +1374,26 @@ suite('Diff row heights', () => {
     );
   });
 
+  test('measures a wrapped row to whole device pixels rather than CSS pixels, so rows of lines a fraction of a CSS pixel tall follow one another without gaps', () => {
+    const rows = diffRows(parsePatch(patch('a.ts', 2)), new Map(), undefined);
+    const measure = (height: number, ratio: number) =>
+      rowMeasures(rows, { left: 80, right: 80 }, 16.8, ratio).measureElement(
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+        {} as Element,
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+        {
+          borderBoxSize: [{ blockSize: height }],
+        } as unknown as ResizeObserverEntry,
+      );
+    assert.strictEqual(measure(67.2, 1.25), 67.2);
+    assert.strictEqual(measure(67.21, 1.25), 67.2);
+    assert.strictEqual(measure(51.4, 1.5), Math.round(51.4 * 1.5) / 1.5);
+    assert.notStrictEqual(
+      rowMeasures(rows, undefined, 17, 1.25),
+      rowMeasures(rows, undefined, 17, 1.5),
+    );
+  });
+
   const wrapping = parsePatch(
     [
       'diff --git a/a.ts b/a.ts',
@@ -1812,7 +1832,7 @@ suite('Drawing code', () => {
     assert.strictEqual(wrapMarkup('    a.b(c)', undefined), '    a.b(c)');
   });
 
-  test('indents the rows a wrapped line wraps onto by its indentation', () => {
+  test('indents the rows a wrapped line wraps onto by its indentation, in characters as the code spaces them', () => {
     const props = {
       text: '  a',
       syntax: [],
@@ -1824,7 +1844,7 @@ suite('Drawing code', () => {
     };
     assert.strictEqual(
       renderToStaticMarkup(<Code {...props} indent={2} />),
-      '<span class="code" style="--wrap-indent:2ch"><span class="lead">  </span>a</span>',
+      '<span class="code" style="--wrap-indent:calc(2 * var(--diff-advance))"><span class="lead">  </span>a</span>',
     );
     assert.strictEqual(
       renderToStaticMarkup(<Code {...props} indent={0} />),

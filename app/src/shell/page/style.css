@@ -2054,8 +2054,9 @@ body.resizing {
 .diff-view {
   --diff-line-height: round(
     var(--monospace-font-size) * var(--monospace-line-height),
-    1px
+    var(--device-pixel, 1px)
   );
+  --diff-advance: round(1ch, var(--device-pixel, 1px));
   position: relative;
   height: 100%;
 }
@@ -2153,6 +2154,15 @@ body.resizing {
   line-height: var(--diff-line-height);
   font-family: var(--monospace-font-family);
   font-size: var(--monospace-font-size);
+  letter-spacing: calc(var(--diff-advance) - 1ch);
+}
+
+.diff-row > .diff-line:not(.split-side) {
+  margin-left: var(--diff-snap-inline, 0px);
+}
+
+.split-line > .split-side {
+  margin-left: var(--diff-side-snap, 0px);
 }
 
 .diff-line .number {
@@ -2236,7 +2246,7 @@ body.resizing {
 .blank::before {
   position: absolute;
   left: 0;
-  width: 1ch;
+  width: var(--diff-advance);
   text-align: center;
   text-indent: 0;
   pointer-events: none;
@@ -2252,7 +2262,7 @@ body.resizing {
 .wrap-blank,
 .wrap-break {
   position: absolute;
-  width: 1ch;
+  width: var(--diff-advance);
   height: var(--diff-line-height);
   text-align: center;
 }
@@ -2514,6 +2524,10 @@ body.resizing {
 .virtual-rows {
   height: 100%;
   overflow: auto;
+}
+
+.diff-view .virtual-rows {
+  background: var(--repository-background);
 }
 
 .virtual-spacer {

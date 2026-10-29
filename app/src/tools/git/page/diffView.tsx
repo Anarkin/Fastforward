@@ -88,6 +88,7 @@ import {
   wrappedLines,
   type RowBreak,
 } from '../../../ui/wordWrap';
+import { snapOffset, watchDevicePixels } from '../../../ui/devicePixels';
 import {
   areaColumns,
   codePadding,
@@ -376,8 +377,13 @@ export function diffRowKey(row: DiffRow, index: number): string {
 interface RowMeasures {
   readonly estimateSize: (index: number) => number;
   readonly getItemKey: (index: number) => string;
+  readonly measureElement: (
+    element: Element,
+    entry: ResizeObserverEntry | undefined,
+  ) => number;
   readonly columns: WrapColumns | undefined;
   readonly lineHeight: number;
+  readonly ratio: number;
 }
 
 const measuresOfRows = new WeakMap<readonly DiffRow[], RowMeasures>();
@@ -387,15 +393,17 @@ export function rowMeasures(
   rows: readonly DiffRow[],
   columns?: WrapColumns,
   lineHeight = uniformHeight,
+  ratio = 1,
 ): RowMeasures {
   let measures = measuresOfRows.get(rows);
   if (
     !measures ||
     measures.columns?.left !== columns?.left ||
     measures.columns?.right !== columns?.right ||
-    measures.lineHeight !== lineHeight
+    measures.lineHeight !== lineHeight ||
+    measures.ratio !== ratio
   ) {
-    measures = measuresOf(rows, columns, lineHeight);
+    measures = measuresOf(rows, columns, lineHeight, ratio);
     measuresOfRows.set(rows, measures);
   }
   return measures;
@@ -405,6 +413,7 @@ function measuresOf(
   rows: readonly DiffRow[],
   columns: WrapColumns | undefined,
   lineHeight: number,
+  ratio: number,
 ): RowMeasures {
   const generation = wrapGeneration++;
   const wrapped: number[] = [];
@@ -423,8 +432,14 @@ function measuresOf(
       const key = diffRowKey(rows[index], index);
       return columns && isCode(rows[index]) ? `${key}:${generation}` : key;
     },
+    measureElement: (element, entry) =>
+      Math.round(
+        (entry?.borderBoxSize[0]?.blockSize ??
+          element.getBoundingClientRect().height) * ratio,
+      ) / ratio,
     columns,
     lineHeight,
+    ratio,
   };
 }
 
@@ -683,6 +698,10 @@ declare module 'react' {
     readonly '--diff-gap-width'?: string;
     readonly '--diff-word-padding-bottom'?: string;
     readonly '--split-scroll'?: string;
+    readonly '--diff-snap-inline'?: string;
+    readonly '--diff-snap-left'?: string;
+    readonly '--diff-snap-right'?: string;
+    readonly '--diff-side-snap'?: string;
     readonly '--wrap-indent'?: string;
     readonly '--visible-left'?: string;
     readonly '--visible-right'?: string;
@@ -1260,7 +1279,11 @@ export const Code = memo(function Code({
   return (
     <span
       className="code"
-      style={indent ? { '--wrap-indent': `${indent}ch` } : undefined}
+      style={
+        indent
+          ? { '--wrap-indent': `calc(${indent} * var(--diff-advance))` }
+          : undefined
+      }
     >
       {marked(
         text,
@@ -1578,22 +1601,118 @@ function fontOf(element: HTMLElement): string {
   return `${fontStyle} ${fontWeight} ${fontSize} ${fontFamily}`;
 }
 
+function spacingOf(element: HTMLElement): number {
+  const spacing = parseFloat(getComputedStyle(element).letterSpacing);
+  return Number.isFinite(spacing) ? spacing : 0;
+}
+
+const sideSnaps: readonly React.CSSProperties[] = [
+  { '--diff-side-snap': 'var(--diff-snap-left)' },
+  { '--diff-side-snap': 'var(--diff-snap-right)' },
+];
+
+export interface CodeSnap {
+  readonly inline: number;
+  readonly left: number;
+  readonly right: number;
+}
+
+const unsnapped: CodeSnap = { inline: 0, left: 0, right: 0 };
+
+export function codeSnapOf(
+  starts: { readonly [K in keyof CodeSnap]: number | undefined },
+  ratio: number,
+  last: CodeSnap,
+): CodeSnap {
+  const snapped = (side: keyof CodeSnap) => {
+    const start = starts[side];
+    return start === undefined ? last[side] : snapOffset(start, ratio);
+  };
+  return {
+    inline: snapped('inline'),
+    left: snapped('left'),
+    right: snapped('right'),
+  };
+}
+
+function codeStart(
+  line: Element | null | undefined,
+  code: Element | null | undefined,
+  unshifted: number,
+): number | undefined {
+  return line && code
+    ? unshifted +
+        code.getBoundingClientRect().left -
+        line.getBoundingClientRect().left +
+        codePadding
+    : undefined;
+}
+
+function codeStarts(list: HTMLElement): {
+  readonly [K in keyof CodeSnap]: number | undefined;
+} {
+  const row = list.querySelector('.diff-row > .diff-line:not(.split-side)');
+  const split = list.querySelector('.diff-row .split-line');
+  const [left, right] = split
+    ? Array.from(split.children)
+    : [undefined, undefined];
+  const splitLeft = split?.getBoundingClientRect().left ?? 0;
+  const firstTrack = split
+    ? parseFloat(getComputedStyle(split).gridTemplateColumns)
+    : 0;
+  return {
+    inline: codeStart(
+      row,
+      row?.querySelector('.code'),
+      row?.parentElement?.getBoundingClientRect().left ?? 0,
+    ),
+    left: codeStart(left, left?.querySelector('.split-code'), splitLeft),
+    right: codeStart(
+      right,
+      right?.querySelector('.split-code'),
+      splitLeft + firstTrack,
+    ),
+  };
+}
+
+function sameSnap(one: CodeSnap, other: CodeSnap): boolean {
+  return (['inline', 'left', 'right'] as const).every(
+    (side) => Math.abs(one[side] - other[side]) < 1e-3,
+  );
+}
+
 function lineHeightOf(line: HTMLElement | null): number {
   const height = line ? parseFloat(getComputedStyle(line).lineHeight) : NaN;
   return height > 0 ? height : uniformHeight;
 }
 
-function textWidths(char: number, font: string): TextWidths {
+interface TextMeasurer {
+  font: string;
+  measureText(text: string): { readonly width: number };
+}
+
+function canvasMeasurer(): TextMeasurer | null {
+  return new OffscreenCanvas(0, 0).getContext('2d');
+}
+
+export function textWidths(
+  char: number,
+  font: string,
+  spacing: number,
+  measurer: () => TextMeasurer | null = canvasMeasurer,
+): TextWidths {
   const drawn = new Map<string, number>();
-  let context: OffscreenCanvasRenderingContext2D | null | undefined;
+  let context: TextMeasurer | null | undefined;
   const measure = (cluster: string) => {
     if (context === undefined) {
-      context = new OffscreenCanvas(0, 0).getContext('2d');
+      context = measurer();
       if (context) {
         context.font = font;
       }
     }
-    return context ? context.measureText(cluster).width : cluster.length * char;
+    return context
+      ? context.measureText(cluster).width + spacing
+      : cluster.length * char;
   };
   return {
     char,
@@ -1618,6 +1737,7 @@ const TextProbe = memo(function TextProbe({
     padding: Edges,
     scale: number,
     lineHeight: number,
+    spacing: number,
   ) => void;
 }) {
   const line = useRef<HTMLDivElement>(null);
@@ -1637,24 +1757,15 @@ const TextProbe = memo(function TextProbe({
             : unpadded,
           devicePixelRatio,
           lineHeightOf(line.current),
+          spacingOf(sample),
         );
-      let scale: MediaQueryList | undefined;
-      const onScale = () => {
-        measure();
-        watchScale();
-      };
-      const watchScale = () => {
-        scale?.removeEventListener('change', onScale);
-        scale = matchMedia(`(resolution: ${devicePixelRatio}dppx)`);
-        scale.addEventListener('change', onScale);
-      };
       measure();
-      watchScale();
+      const stopWatching = watchDevicePixels(measure);
       const observer = new ResizeObserver(measure);
       observer.observe(sample);
       return () => {
         observer.disconnect();
-        scale?.removeEventListener('change', onScale);
+        stopWatching();
       };
     },
     [onMeasure],
@@ -1790,7 +1901,11 @@ export function DiffView({
   const [columns, setColumns] = useState<WrapColumns>();
   const [charWidth, setCharWidth] = useState(0);
   const [font, setFont] = useState('');
-  const widths = useMemo(() => textWidths(charWidth, font), [charWidth, font]);
+  const [spacing, setSpacing] = useState(0);
+  const widths = useMemo(
+    () => textWidths(charWidth, font, spacing),
+    [charWidth, font, spacing],
+  );
   const columnsIn = useMemo<ColumnsIn | undefined>(
     () =>
       widths.char > 0 ? (row: string) => columnsOf(row, widths) : undefined,
@@ -1806,9 +1921,11 @@ export function DiffView({
       measured: Edges,
       measuredScale: number,
       measuredLineHeight: number,
+      measuredSpacing: number,
     ) => {
       setCharWidth(width);
       setFont(measuredFont);
+      setSpacing(measuredSpacing);
       setScale(measuredScale);
       setLineHeight(measuredLineHeight);
       setPadding((last) =>
@@ -1820,6 +1937,27 @@ export function DiffView({
     [],
   );
   const [measured, setMeasured] = useState<Sideways>();
+  const [snap, setSnap] = useState(unsnapped);
+  const snapCode = useCallback(() => {
+    const element = list.current;
+    if (!element) {
+      return;
+    }
+    setSnap((last) => {
+      const next = codeSnapOf(codeStarts(element), devicePixelRatio, last);
+      return sameSnap(last, next) ? last : next;
+    });
+  }, []);
+  useLayoutEffect(snapCode);
+  useEffect(() => {
+    const element = list.current;
+    if (!element) {
+      return undefined;
+    }
+    const observer = new ResizeObserver(snapCode);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [snapCode]);
   const view = measured && shownSideways(measured, scrollsSides, sideways);
   const changeColumns = useCallback(
     (next: WrapColumns) =>
@@ -1937,6 +2075,7 @@ export function DiffView({
       rows,
       wordWrap ? (columns ?? unmeasured) : undefined,
       lineHeight,
+      scale,
     ),
     overscan: 30,
   });
@@ -2300,6 +2439,7 @@ export function DiffView({
               <div
                 key={side}
                 className={`diff-line text-line split-side ${splitSideClass(cell, side === 0 ? 'removed' : 'added')} ${cell ? wholeChangeClass(words, lineKey(row.file, cell.index)) : ''}`}
+                style={sideSnaps[side]}
               >
                 <span className="number">
                   {side === 0 ? cell?.line.oldNumber : cell?.line.newNumber}
@@ -2469,7 +2609,10 @@ export function DiffView({
       }}
       style={{
         ...layoutVariables,
-        '--split-scroll': `${sideways}px`,
+        '--split-scroll': `${sideways + snapOffset(sideways, scale)}px`,
+        '--diff-snap-inline': `${snap.inline}px`,
+        '--diff-snap-left': `${snap.left}px`,
+        '--diff-snap-right': `${snap.right}px`,
         '--diff-word-padding-top': `${padding.top}px`,
         '--diff-word-padding-bottom': `${padding.bottom}px`,
         '--diff-gap-width': `${gapWidth(scale)}px`,
