@@ -4,8 +4,6 @@ export const maxInputLength = 65_536;
 
 const maxSize = 1000;
 
-export const scrollback = 1000;
-
 export interface WindowsPty {
   readonly backend: 'conpty';
   readonly buildNumber: number;
@@ -32,6 +30,8 @@ export type TerminalToWebview =
   | {
       readonly type: 'settings';
       readonly renderer: Renderer;
+      readonly scrollback: number;
+      readonly minimumContrastRatio: number;
       readonly windowsPty: WindowsPty | undefined;
     }
   | { readonly type: 'show'; readonly tab: string }

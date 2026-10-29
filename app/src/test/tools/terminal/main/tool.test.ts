@@ -79,7 +79,13 @@ function terminal() {
         dispose: () => host.dispose(),
       };
     },
-    () => ({ shell: '', shellArgs: [], renderer: 'dom' }),
+    () => ({
+      shell: '',
+      shellArgs: [],
+      renderer: 'dom',
+      scrollback: 5000,
+      minimumContrastRatio: 30,
+    }),
     launchIn,
     { backend: 'conpty', buildNumber: 26200 },
   );
@@ -111,13 +117,15 @@ function terminal() {
 }
 
 suite('Terminal tool', () => {
-  test('tells the page which renderer to use once it is ready, and which build of Windows runs the shells', () => {
+  test('tells the page which renderer to use and how many lines to keep once it is ready, and which build of Windows runs the shells', () => {
     const { tool, page } = terminal();
     tool.ready(page);
     assert.deepStrictEqual(page.messages, [
       {
         type: 'settings',
         renderer: 'dom',
+        scrollback: 5000,
+        minimumContrastRatio: 21,
         windowsPty: { backend: 'conpty', buildNumber: 26200 },
       },
     ]);

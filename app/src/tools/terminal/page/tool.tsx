@@ -31,6 +31,8 @@ export function TerminalTool({
           case 'settings':
             setSettings({
               renderer: message.renderer,
+              scrollback: message.scrollback,
+              minimumContrastRatio: message.minimumContrastRatio,
               windowsPty: message.windowsPty,
             });
             return;

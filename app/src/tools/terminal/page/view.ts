@@ -1,4 +1,5 @@
 import type { FitAddon } from '@xterm/addon-fit';
+import type { Unicode11Addon } from '@xterm/addon-unicode11';
 import type { WebglAddon } from '@xterm/addon-webgl';
 import type { Terminal } from '@xterm/xterm';
 import { terminalKey } from './keys';
@@ -13,7 +14,6 @@ import {
 } from './theme';
 import {
   inputChunks,
-  scrollback,
   type TerminalToHost,
   type TerminalToWebview,
 } from '../shared/protocol';
@@ -26,6 +26,7 @@ export interface Xterm {
   readonly Terminal: typeof Terminal;
   readonly FitAddon: typeof FitAddon;
   readonly WebglAddon: typeof WebglAddon;
+  readonly Unicode11Addon: typeof Unicode11Addon;
 }
 
 export function loadXterm(): Promise<Xterm> {
@@ -33,10 +34,12 @@ export function loadXterm(): Promise<Xterm> {
     import('@xterm/xterm'),
     import('@xterm/addon-fit'),
     import('@xterm/addon-webgl'),
-  ]).then(([xterm, fit, webgl]) => ({
+    import('@xterm/addon-unicode11'),
+  ]).then(([xterm, fit, webgl, unicode]) => ({
     Terminal: xterm.Terminal,
     FitAddon: fit.FitAddon,
     WebglAddon: webgl.WebglAddon,
+    Unicode11Addon: unicode.Unicode11Addon,
   }));
 }
 
@@ -47,6 +50,8 @@ export function screenMargin(left: number, top: number, ratio: number): string {
 export interface TerminalViewOptions {
   readonly tab: string;
   readonly renderer: Renderer;
+  readonly scrollback: number;
+  readonly minimumContrastRatio: number;
   readonly windowsPty: WindowsPty | undefined;
   readonly post: (message: TerminalToHost) => void;
   readonly onCopy: (text: string) => void;
@@ -74,12 +79,16 @@ export class TerminalView {
     element.append(this.probe);
     this.fit = new xterm.FitAddon();
     this.terminal = new xterm.Terminal({
-      scrollback,
+      allowProposedApi: true,
+      scrollback: options.scrollback,
+      minimumContrastRatio: options.minimumContrastRatio,
       ...this.cells(),
       theme: this.theme(),
       ...(options.windowsPty && { windowsPty: options.windowsPty }),
     });
     this.terminal.loadAddon(this.fit);
+    this.terminal.loadAddon(new xterm.Unicode11Addon());
+    this.terminal.unicode.activeVersion = '11';
     this.terminal.attachCustomKeyEventHandler((event) => this.key(event));
     this.terminal.onData((data) => this.typed(data));
     this.terminal.onResize(() => this.resized());

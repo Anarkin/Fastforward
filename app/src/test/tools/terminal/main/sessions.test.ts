@@ -31,10 +31,23 @@ function host(limits: Partial<FlowLimits> = {}) {
     clock.timer,
   );
   const start = (columns = 80, rows = 24) =>
-    ptyHost.receive({ type: 'spawn', id: '1', launch, columns, rows });
+    ptyHost.receive({
+      type: 'spawn',
+      id: '1',
+      launch,
+      columns,
+      rows,
+      scrollback: 1000,
+    });
   const attach = async (columns = 80, rows = 24) => {
     const before = events.length;
-    ptyHost.receive({ type: 'attach', id: '1', columns, rows });
+    ptyHost.receive({
+      type: 'attach',
+      id: '1',
+      columns,
+      rows,
+      scrollback: 1000,
+    });
     await until(() =>
       events.slice(before).some((event) => event.type === 'screen'),
     );
@@ -93,7 +106,13 @@ suite('Terminal sessions', () => {
   test('holds what the shell prints while the screen is copied for a page, and sends it right after the screen', async () => {
     const { ptyHost, ptys, clock, events, start } = host();
     start();
-    ptyHost.receive({ type: 'attach', id: '1', columns: 80, rows: 24 });
+    ptyHost.receive({
+      type: 'attach',
+      id: '1',
+      columns: 80,
+      rows: 24,
+      scrollback: 1000,
+    });
     ptys.last().print('meanwhile');
     await clock.fire();
     await until(() => events.some((event) => event.type === 'output'));
@@ -110,7 +129,13 @@ suite('Terminal sessions', () => {
   test('sends one screen when a page attaches again before the first screen is copied', async () => {
     const { ptyHost, events, start, attach } = host();
     start();
-    ptyHost.receive({ type: 'attach', id: '1', columns: 80, rows: 24 });
+    ptyHost.receive({
+      type: 'attach',
+      id: '1',
+      columns: 80,
+      rows: 24,
+      scrollback: 1000,
+    });
     await attach();
     await new Promise((resolve) => setTimeout(resolve, 20));
     assert.strictEqual(
@@ -196,24 +221,27 @@ suite('Terminal sessions', () => {
     assert.ok(screen?.type === 'screen' && screen.exited);
   });
 
-  test('starts the shell again in the same screen once it has exited, and leaves a running one be', async () => {
-    const { ptyHost, ptys, clock, start, attach } = host();
-    start();
+  test('starts the shell again once it has exited, on a clean screen with what the old one printed scrolled into the scrollback, as a new ConPTY paints from the top, and leaves a running one be', async () => {
+    const { ptyHost, ptys, clock, start, attach, outputs } = host();
+    start(80, 3);
+    await attach(80, 3);
     ptys.last().print('first shell');
     start();
     assert.strictEqual(ptys.spawned.length, 1);
     ptys.last().exit(0);
-    await clock.fire();
     await clock.fire();
     ptyHost.receive({
       type: 'spawn',
       id: '1',
       launch,
       columns: 80,
-      rows: 24,
+      rows: 3,
+      scrollback: 1000,
     });
+    await clock.fire();
     assert.strictEqual(ptys.spawned.length, 2);
-    const screen = await attach();
+    assert.ok(outputs().at(-1)?.endsWith('\x1b[3;1H\r\n\r\n\r\n\x1b[H'));
+    const screen = await attach(80, 3);
     assert.ok(
       screen?.type === 'screen' &&
         screen.data.includes('first shell') &&
@@ -238,8 +266,15 @@ suite('Terminal sessions', () => {
       launch: { ...launch, file: 'nosh' },
       columns: 80,
       rows: 24,
+      scrollback: 1000,
     });
-    ptyHost.receive({ type: 'attach', id: '1', columns: 80, rows: 24 });
+    ptyHost.receive({
+      type: 'attach',
+      id: '1',
+      columns: 80,
+      rows: 24,
+      scrollback: 1000,
+    });
     await until(() => events.some((event) => event.type === 'screen'));
     const screen = events.find((event) => event.type === 'screen');
     assert.ok(
@@ -254,7 +289,13 @@ suite('Terminal sessions', () => {
     const { ptyHost, ptys, events, start } = host();
     start();
     ptyHost.receive({ type: 'kill', id: '1' });
-    ptyHost.receive({ type: 'attach', id: '1', columns: 80, rows: 24 });
+    ptyHost.receive({
+      type: 'attach',
+      id: '1',
+      columns: 80,
+      rows: 24,
+      scrollback: 1000,
+    });
     ptyHost.receive({ type: 'input', id: '1', data: 'x' });
     await new Promise((resolve) => setTimeout(resolve, 20));
     assert.strictEqual(ptys.last().killed, true);
@@ -265,7 +306,14 @@ suite('Terminal sessions', () => {
   test('kills every shell when it is disposed', () => {
     const { ptyHost, ptys } = host();
     for (const id of ['1', '2']) {
-      ptyHost.receive({ type: 'spawn', id, launch, columns: 80, rows: 24 });
+      ptyHost.receive({
+        type: 'spawn',
+        id,
+        launch,
+        columns: 80,
+        rows: 24,
+        scrollback: 1000,
+      });
     }
     ptyHost.dispose();
     assert.deepStrictEqual(

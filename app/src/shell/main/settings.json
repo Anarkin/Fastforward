@@ -19,7 +19,9 @@
     "terminal": {
       "shell": "",
       "shellArgs": [],
-      "renderer": "webgl"
+      "renderer": "webgl",
+      "scrollback": 10000,
+      "minimumContrastRatio": 4.5
     }
   },
   "fonts": {

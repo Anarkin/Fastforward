@@ -82,6 +82,7 @@ suite('Release build', { timeout: 30_000 }, () => {
       '@xterm/xterm/lib/',
       '@xterm/addon-fit/',
       '@xterm/addon-webgl/',
+      '@xterm/addon-unicode11/',
     ];
     const bundled = (files: Iterable<string>) =>
       lazy.filter((name) =>

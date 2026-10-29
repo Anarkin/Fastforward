@@ -1,3 +1,4 @@
+import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { ElectronApplication, Page } from 'playwright-core';
@@ -11,6 +12,26 @@ const shell =
   process.platform === 'win32'
     ? { shell: '', shellArgs: ['-NoLogo', '-NoProfile'] }
     : { shell: '/bin/sh', shellArgs: [] };
+
+function luminance(color: string): number {
+  const [red = 0, green = 0, blue = 0] = (color.match(/\d+/g) ?? []).map(
+    (channel) => {
+      const value = Number(channel) / 255;
+      return value <= 0.039_28
+        ? value / 12.92
+        : ((value + 0.055) / 1.055) ** 2.4;
+    },
+  );
+  return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+}
+
+function contrast(foreground: string, background: string): number {
+  const [darker, lighter] = [
+    luminance(foreground),
+    luminance(background),
+  ].toSorted((a, b) => a - b);
+  return ((lighter ?? 0) + 0.05) / ((darker ?? 0) + 0.05);
+}
 
 let folder: string;
 let app: ElectronApplication;
@@ -82,6 +103,26 @@ suite('Terminal', () => {
     await waitForRow((row) => row === 'before-reload', 'the restored screen');
     await run('echo after-reload');
     await waitForRow((row) => row === 'after-reload', 'the second echo');
+  });
+
+  test('lightens or darkens text to stay readable on its background, even blue on blue', async () => {
+    await run(
+      process.platform === 'win32'
+        ? `Write-Host "$([char]27)[34;44m$('hid' + 'den')$([char]27)[0m"`
+        : `printf '\\033[34;44m%s%s\\033[0m\\n' hid den`,
+    );
+    const hidden = page.locator('.terminal-screen .xterm-rows span', {
+      hasText: /^hidden$/,
+    });
+    await hidden.waitFor();
+    const painted = await hidden.evaluate((span) => {
+      const style = getComputedStyle(span);
+      return { color: style.color, background: style.backgroundColor };
+    });
+    assert.ok(
+      contrast(painted.color, painted.background) >= 4.5,
+      JSON.stringify(painted),
+    );
   });
 
   test('starts a new shell on Enter once the shell exits', async () => {

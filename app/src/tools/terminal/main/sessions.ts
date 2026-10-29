@@ -1,8 +1,7 @@
-import { SerializeAddon } from '@xterm/addon-serialize';
-import { Terminal } from '@xterm/headless';
 import { Backlog, flowLimits, type FlowLimits } from './flowControl';
 import type { HostCommand, HostEvent, ShellLaunch } from './hostProtocol';
-import { scrollback, type WindowsPty } from '../shared/protocol';
+import { createMirror, type Mirror } from './mirror';
+import type { WindowsPty } from '../shared/protocol';
 import { strings } from '../../../shared/strings';
 
 interface Disposable {
@@ -36,6 +35,10 @@ function line(text: string): string {
   return `\r\n${text}\r\n`;
 }
 
+function cleanScreen(rows: number): string {
+  return `\x1b[${rows};1H${'\r\n'.repeat(rows)}\x1b[H`;
+}
+
 function reasonOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
@@ -43,8 +46,7 @@ function reasonOf(error: unknown): string {
 class Session {
   private pty: Pty | undefined;
   private listeners: Disposable[] = [];
-  private readonly mirror: Terminal;
-  private readonly serializer = new SerializeAddon();
+  private readonly mirror: Mirror;
   private readonly toMirror: Backlog;
   private readonly toPage: Backlog;
   private pending = '';
@@ -55,6 +57,7 @@ class Session {
   private holding = false;
   private paused = false;
   private exited = false;
+  private started = false;
 
   constructor(
     private readonly id: string,
@@ -64,16 +67,10 @@ class Session {
     private readonly post: (event: HostEvent) => void,
     private readonly limits: FlowLimits,
     private readonly timer: Timer,
+    scrollback: number,
     windowsPty: WindowsPty | undefined,
   ) {
-    this.mirror = new Terminal({
-      cols: columns,
-      rows,
-      scrollback,
-      allowProposedApi: true,
-      ...(windowsPty && { windowsPty }),
-    });
-    this.mirror.loadAddon(this.serializer);
+    this.mirror = createMirror({ columns, rows, scrollback, windowsPty });
     this.toMirror = new Backlog(limits);
     this.toPage = new Backlog(limits);
   }
@@ -88,6 +85,10 @@ class Session {
     this.stopListening();
     this.exited = false;
     this.paused = false;
+    if (this.started) {
+      this.take(cleanScreen(this.rows));
+    }
+    this.started = true;
     let pty: Pty;
     try {
       pty = this.spawn(launch, this.columns, this.rows);
@@ -124,23 +125,24 @@ class Session {
     this.columns = columns;
     this.rows = rows;
     this.pty?.resize(columns, rows);
-    this.mirror.resize(columns, rows);
+    this.mirror.terminal.resize(columns, rows);
   }
 
-  attach(columns: number, rows: number): void {
+  attach(columns: number, rows: number, scrollback: number): void {
     this.flush();
     const attachment = ++this.attachment;
     this.attached = false;
     this.holding = true;
     this.resize(columns, rows);
-    this.mirror.write('', () => {
+    this.mirror.scrollback(scrollback);
+    this.mirror.terminal.write('', () => {
       if (attachment !== this.attachment) {
         return;
       }
       this.post({
         type: 'screen',
         id: this.id,
-        data: this.serializer.serialize(),
+        data: this.mirror.serialize(),
         exited: this.exited,
       });
       this.attached = true;
@@ -196,7 +198,7 @@ class Session {
     const data = this.pending;
     this.pending = '';
     this.toMirror.sent(data.length);
-    this.mirror.write(data, () => {
+    this.mirror.terminal.write(data, () => {
       this.toMirror.taken(data.length);
       this.balance();
     });
@@ -259,6 +261,7 @@ export class PtyHost {
             this.post,
             this.limits,
             this.timer,
+            command.scrollback,
             this.windowsPty,
           );
           this.sessions.set(command.id, session);
@@ -269,7 +272,9 @@ export class PtyHost {
         return;
       }
       case 'attach':
-        this.sessions.get(command.id)?.attach(command.columns, command.rows);
+        this.sessions
+          .get(command.id)
+          ?.attach(command.columns, command.rows, command.scrollback);
         return;
       case 'detach':
         this.sessions.get(command.id)?.detach();

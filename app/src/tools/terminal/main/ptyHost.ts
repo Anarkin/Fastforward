@@ -15,6 +15,7 @@ const host = new PtyHost(
       rows,
       cwd: launch.cwd,
       env: { ...launch.env },
+      useConptyDll: process.platform === 'win32',
     }),
   (event) => parent.postMessage(event),
   flowLimits,

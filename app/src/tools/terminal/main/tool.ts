@@ -17,7 +17,11 @@ import {
   type TerminalToWebview,
   type WindowsPty,
 } from '../shared/protocol';
-import type { TerminalSettings } from '../shared/settings';
+import {
+  contrastRatio,
+  scrollbackLines,
+  type TerminalSettings,
+} from '../shared/settings';
 import { strings } from '../../../shared/strings';
 
 export interface HostConnection {
@@ -67,6 +71,8 @@ export class TerminalTool implements Tool<'terminal'> {
     this.post(page, {
       type: 'settings',
       renderer: this.settings().renderer,
+      scrollback: this.scrollback(),
+      minimumContrastRatio: contrastRatio(this.settings().minimumContrastRatio),
       windowsPty: this.windowsPty,
     });
   }
@@ -223,7 +229,12 @@ export class TerminalTool implements Tool<'terminal'> {
       launch: this.launch(root),
       columns,
       rows,
+      scrollback: this.scrollback(),
     });
+  }
+
+  private scrollback(): number {
+    return scrollbackLines(this.settings().scrollback);
   }
 
   private attachTo(shown: Shown): void {
@@ -233,6 +244,7 @@ export class TerminalTool implements Tool<'terminal'> {
       id: shown.tab,
       columns: shown.columns,
       rows: shown.rows,
+      scrollback: this.scrollback(),
     });
   }
 

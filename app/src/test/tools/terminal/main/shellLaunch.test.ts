@@ -10,6 +10,8 @@ const defaults: TerminalSettings = {
   shell: '',
   shellArgs: [],
   renderer: 'webgl',
+  scrollback: 10_000,
+  minimumContrastRatio: 4.5,
 };
 
 function system(overrides: Partial<ShellSystem> = {}): ShellSystem {

@@ -12,12 +12,14 @@ export type HostCommand =
       readonly launch: ShellLaunch;
       readonly columns: number;
       readonly rows: number;
+      readonly scrollback: number;
     }
   | {
       readonly type: 'attach';
       readonly id: string;
       readonly columns: number;
       readonly rows: number;
+      readonly scrollback: number;
     }
   | { readonly type: 'detach'; readonly id: string }
   | { readonly type: 'input'; readonly id: string; readonly data: string }
