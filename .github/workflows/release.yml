@@ -27,6 +27,8 @@ jobs:
           fi
   ci:
     uses: ./.github/workflows/ci.yml
+    with:
+      skip-package: true
   draft:
     needs: [check, ci]
     runs-on: ubuntu-latest
