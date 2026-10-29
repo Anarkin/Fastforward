@@ -40,11 +40,11 @@
       "error-foreground": "#f00",
       "warning-foreground": "#e90",
 
-      "background": "#ddd",
+      "background": "#ccc",
       "panel-background": "#fff",
       "notice-background": "#ffd",
 
-      "border": "#ddd",
+      "border": "#ccc",
 
       "focus": "#06c",
       "focus-foreground": "#fff",
@@ -119,18 +119,18 @@
       "error-foreground": "#f44",
       "warning-foreground": "#fb0",
 
-      "background": "#111",
-      "panel-background": "#2a2a2a",
+      "background": "#2a2a2a",
+      "panel-background": "#111",
       "notice-background": "#3d3a26",
 
-      "border": "#111",
+      "border": "#2a2a2a",
 
       "focus": "#06c",
       "focus-foreground": "#fff",
       "focus-hover": "20%",
       "focus-selected": "35%",
 
-      "bubble": "#111",
+      "bubble": "#444",
       "bubble-foreground": "#ddd",
       "bubble-border": "#ffffff00",
       "bubble-checked-out": "#06c",
