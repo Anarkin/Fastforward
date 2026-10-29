@@ -16,9 +16,9 @@ export function aboutText({
   return [
     brand,
     strings.about.version(version, development),
+    strings.about.address,
     strings.about.git(git),
     system,
-    strings.about.address,
   ].join('\n');
 }
 

@@ -69,15 +69,15 @@ suite('About popup', () => {
     );
   });
 
-  test('copies its lines for a bug report, and closes on its button', () => {
+  test('copies its lines for a bug report in the order it shows them, and closes on its button', () => {
     assert.strictEqual(
       aboutText(about),
       [
         'Fastforward',
         'Version 16.0.0 Dev',
+        'https://github.com/Anarkin/Fastforward',
         'git 2.56.0',
         'Windows 11, build 26300, x64',
-        'https://github.com/Anarkin/Fastforward',
       ].join('\n'),
     );
     const done: string[] = [];
