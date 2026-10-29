@@ -112,21 +112,16 @@ export const keepWriting = (
   const files = typeof file === 'string' ? [file] : file;
   let lines = '';
   let written = -Infinity;
-  return waitFor(
-    () => {
-      if (Date.now() - written >= apart) {
-        written = Date.now();
-        lines += 'line\n';
-        for (const each of files) {
-          fs.writeFileSync(path.resolve(repository.root, each), lines);
-        }
+  return waitFor(() => {
+    if (Date.now() - written >= apart) {
+      written = Date.now();
+      lines += 'line\n';
+      for (const each of files) {
+        fs.writeFileSync(path.resolve(repository.root, each), lines);
       }
-      return until();
-    },
-    what,
-    undefined,
-    50,
-  );
+    }
+    return until();
+  }, what);
 };
 
 export const worktreeInBareRepository = async () => {

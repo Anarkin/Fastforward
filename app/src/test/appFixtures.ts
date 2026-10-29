@@ -99,8 +99,6 @@ export function appArguments(profile: string, ...after: string[]): string[] {
   return [appFolder, `--user-data-dir=${profile}`, ...after];
 }
 
-const sameTimeoutAsWaitFor = 15_000;
-
 export async function launchApp(
   profile: string,
   {
@@ -113,13 +111,11 @@ export async function launchApp(
     readonly env?: Record<string, string>;
   } = {},
 ): Promise<ElectronApplication> {
-  const launched = await _electron.launch({
+  return _electron.launch({
     args: [...before, ...appArguments(profile, ...after)],
     cwd: appFolder,
     ...(env === undefined ? {} : { env }),
   });
-  launched.context().setDefaultTimeout(sameTimeoutAsWaitFor);
-  return launched;
 }
 
 export let folder: string;
