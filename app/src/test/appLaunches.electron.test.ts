@@ -279,8 +279,11 @@ suite('App whose page is gone', () => {
     try {
       const page = await app.firstWindow();
       await page.locator('.commit', { hasText: 'first' }).waitFor();
+      const killed = await app.evaluate(({ BrowserWindow }) =>
+        BrowserWindow.getAllWindows()[0].webContents.getOSProcessId(),
+      );
       const gone = await within(
-        app.evaluate(({ BrowserWindow }) => {
+        app.evaluate(({ BrowserWindow }, pid) => {
           const contents = BrowserWindow.getAllWindows()[0].webContents;
           const went = new Promise<{ reason: string; exitCode: number }>(
             (resolve) =>
@@ -288,11 +291,29 @@ suite('App whose page is gone', () => {
                 resolve(details),
               ),
           );
-          process.kill(contents.getOSProcessId(), 'SIGKILL');
+          process.kill(pid, 'SIGKILL');
           return went;
-        }),
+        }, killed),
         'the page to go',
-      );
+        30_000,
+      ).catch(async (error: unknown) => {
+        const left = await app.evaluate(({ BrowserWindow }, pid) => {
+          let running = true;
+          try {
+            process.kill(pid, 0);
+          } catch {
+            running = false;
+          }
+          return {
+            running,
+            crashed: BrowserWindow.getAllWindows()[0].webContents.isCrashed(),
+          };
+        }, killed);
+        throw new Error(
+          `The page did not go: its process ${killed} ${left.running ? 'still runs' : 'is gone'}, and Electron ${left.crashed ? 'sees' : 'does not see'} it crashed`,
+          { cause: error },
+        );
+      });
       await waitFor(
         () =>
           fs

@@ -39,14 +39,18 @@ export function waitForCount(
   );
 }
 
-export function within<T>(promise: Promise<T>, what: string): Promise<T> {
+export function within<T>(
+  promise: Promise<T>,
+  what: string,
+  timeout = 10_000,
+): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   return Promise.race([
     promise,
     new Promise<never>((_, reject) => {
       timer = setTimeout(
         () => reject(new Error(`Timed out waiting for ${what}`)),
-        10_000,
+        timeout,
       );
     }),
   ]).finally(() => clearTimeout(timer));
