@@ -351,6 +351,47 @@ suite('Watching a repository', () => {
     assert.deepStrictEqual(errors, []);
   });
 
+  test('refreshes once and stops watching the repository once it is removed, as watching folder by folder does, rather than taking the rename Windows then tells for its folder again and again, watching recursively', async (context) => {
+    if (process.platform !== 'win32') {
+      context.skip();
+    }
+    const nodeFs = process.getBuiltinModule('node:fs');
+    const { watch } = nodeFs;
+    type Listener = (event: string, file: string | null) => void;
+    let told = 0;
+    replaceBuiltin(
+      nodeFs,
+      'watch',
+      (folder: string, options: object, listener: Listener): fs.FSWatcher =>
+        watch(folder, options, (event, file) => {
+          told++;
+          listener(event, file);
+        }),
+    );
+    const stopped: unknown[] = [];
+    try {
+      watcher = await watchRepository(repository.gitPath, repository.root, {
+        delay: 50,
+        maxDelay: 200,
+        recursive: true,
+        onChange: ({ refs }) => changes.push(refs),
+        onError: (error) => errors.push(error),
+        onStopped: (error) => stopped.push(error),
+      });
+    } finally {
+      replaceBuiltin(nodeFs, 'watch', watch);
+    }
+    await settled();
+    fs.rmSync(repository.root, { recursive: true, force: true });
+    await waitFor(() => changes.length > 0, 'the refresh');
+    await untilQuiet(
+      () => told,
+      () => false,
+      'the watchers to go quiet',
+    );
+    assert.deepStrictEqual([errors, stopped], [[], []]);
+  });
+
   test('tells once when the system refuses to watch folders, as past fs.inotify.max_user_watches, apart from its other failures, watching folder by folder', async () => {
     fs.mkdirSync(path.join(repository.root, 'src'));
     const nodeFs = process.getBuiltinModule('node:fs');

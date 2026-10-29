@@ -167,6 +167,7 @@ export function refsKeepHistory(
   const ranks = ranksOf(tips);
   return (
     historyLoaded(tab) &&
+    stashesKeepHistory(tab, stashes, solo) &&
     [...tips].every((tip) => tab.fullHistory.has(tip)) &&
     [...tab.heads].every((commit) => tips.has(commit)) &&
     keepsTiedOrder(
@@ -174,6 +175,22 @@ export function refsKeepHistory(
       (commit) => dates.get(commit),
       (commit) => tab.ranks.get(commit),
       (commit) => ranks.get(commit),
+    )
+  );
+}
+
+export function stashesKeepHistory(
+  tab: TabState,
+  stashes: readonly Stash[],
+  solo: boolean,
+): boolean {
+  const now = new Set(stashes.map((stash) => stash.commit));
+  return (
+    solo ||
+    [...tab.stashes.keys(), ...now].every(
+      (commit) =>
+        tab.stashes.has(commit) === now.has(commit) ||
+        !tab.fullHistory.has(commit),
     )
   );
 }

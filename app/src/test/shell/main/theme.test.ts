@@ -71,7 +71,13 @@ suite('Theme', () => {
         'rgba(0, 0, 0, 0.2)',
       ],
       'syntaxEngine.ts': ['#000000', '#ffffff'],
-      'titleBar.tsx': ['#4285F4', '#EA4335', '#FBBC04', '#34A853'],
+      'titleBar.tsx': [
+        '#4285F4',
+        '#EA4335',
+        '#FBBC04',
+        '#34A853',
+        'rgba(${data[0]}, ${data[1]}, ${data[2]}, ${data[3] / 255})',
+      ],
     };
     for (const { name: file, text } of pageFiles()) {
       assert.deepStrictEqual(

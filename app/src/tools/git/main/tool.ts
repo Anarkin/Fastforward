@@ -47,6 +47,7 @@ import {
   listRemotes,
   readHead,
   readRefs,
+  remotesNotFetched,
   repositoryRoot,
   spellingOf,
   type Head,
@@ -127,7 +128,7 @@ import {
 } from '../../../shell/main/shell';
 import { strings } from '../../../shared/strings';
 import { sameRoot } from '../../../shell/main/storage';
-import type { GitStorage } from './storage';
+import { isBookmark, type GitStorage } from './storage';
 import {
   changesOf,
   commitsMessage,
@@ -149,6 +150,7 @@ import {
   refsKeepHistory,
   replayOf,
   select,
+  stashesKeepHistory,
   stillThere,
   takeRefs,
   tipsInGitOrder,
@@ -570,6 +572,16 @@ export class GitTool implements Tool<'git'> {
     return this.repositories.get(root) ?? root;
   }
 
+  private knownRoot(root: string): string {
+    return (
+      [
+        ...this.tabStates.keys(),
+        ...this.repositories.keys(),
+        ...this.repositoryTabs,
+      ].find((known) => sameRoot(known, root)) ?? root
+    );
+  }
+
   private bookmarkedOf(repository: string): Set<string> {
     return bookmarkedCommits(this.storage.bookmarksOf(repository) ?? []);
   }
@@ -658,22 +670,27 @@ export class GitTool implements Tool<'git'> {
     switch (message.type) {
       case 'selectWorktree': {
         const repository = this.activeRepository;
+        const root = this.knownRoot(message.root);
         if (
           repository === undefined ||
-          !sameRoot(this.repositoryOf(message.root), repository) ||
-          (this.isActive(message.root) && this.showsActiveTab(session))
+          !sameRoot(this.repositoryOf(root), repository) ||
+          (this.isActive(root) && this.showsActiveTab(session))
         ) {
           return;
         }
-        this.save(storage.setWorktree(repository, message.root));
+        this.save(storage.setWorktree(repository, root));
         await this.openTab(session, repository);
         return;
       }
-      case 'openRepository':
-        if (storage.recent.some((root) => sameRoot(root, message.root))) {
-          await this.openRepositories(session, [message.root], true);
+      case 'openRepository': {
+        const recent = storage.recent.find((root) =>
+          sameRoot(root, message.root),
+        );
+        if (recent !== undefined) {
+          await this.openRepositories(session, [recent], true);
         }
         return;
+      }
       case 'browseRepositories':
         await this.openRepositories(session, await this.host.chooseFolders());
         return;
@@ -683,12 +700,13 @@ export class GitTool implements Tool<'git'> {
         return;
       case 'preloadWorktree': {
         const repository = this.activeRepository;
+        const root = this.knownRoot(message.root);
         if (
           repository !== undefined &&
-          sameRoot(this.repositoryOf(message.root), repository) &&
-          !this.isActive(message.root)
+          sameRoot(this.repositoryOf(root), repository) &&
+          !this.isActive(root)
         ) {
-          await this.preloadRoot(session, message.root, repository);
+          await this.preloadRoot(session, root, repository);
         }
         return;
       }
@@ -743,11 +761,12 @@ export class GitTool implements Tool<'git'> {
         return;
       }
       case 'setSolo': {
-        if (!this.hasRepository(this.repositoryOf(message.root))) {
+        const root = this.knownRoot(message.root);
+        if (!this.hasRepository(this.repositoryOf(root))) {
           return;
         }
-        const context = await this.context(session, message.root);
-        this.save(storage.setSolo(message.root, message.solo));
+        const context = await this.context(session, root);
+        this.save(storage.setSolo(root, message.solo));
         if (!context) {
           return;
         }
@@ -756,7 +775,7 @@ export class GitTool implements Tool<'git'> {
         try {
           forgetHistory(context.tab);
           context.tab.readingHistory?.abort();
-          if (this.isActive(message.root)) {
+          if (this.isActive(root)) {
             await this.refresh(context, () =>
               this.sendCommits(context, this.refsOf(context), true),
             );
@@ -767,7 +786,14 @@ export class GitTool implements Tool<'git'> {
         return;
       }
       case 'setBookmarks': {
-        const repository = this.repositoryOf(message.root);
+        const repository = this.repositoryOf(this.knownRoot(message.root));
+        if (
+          !this.hasRepository(repository) ||
+          !Array.isArray(message.bookmarks) ||
+          !message.bookmarks.every(isBookmark)
+        ) {
+          return;
+        }
         const before = this.bookmarkedOf(repository);
         this.save(storage.setBookmarks(repository, message.bookmarks));
         const after = this.bookmarkedOf(repository);
@@ -780,7 +806,7 @@ export class GitTool implements Tool<'git'> {
         return;
       }
       case 'scrolled': {
-        const tab = this.tabStates.get(message.root);
+        const tab = this.tabStates.get(this.knownRoot(message.root));
         if (tab) {
           tab.anchor = {
             hash: message.hash,
@@ -791,10 +817,14 @@ export class GitTool implements Tool<'git'> {
         return;
       }
       case 'searchCommits':
-        await this.searchCommits(session, message.root, message.query);
+        await this.searchCommits(
+          session,
+          this.knownRoot(message.root),
+          message.query,
+        );
         return;
       case 'stopCommitSearch':
-        this.commitSearches.get(message.root)?.abort();
+        this.commitSearches.get(this.knownRoot(message.root))?.abort();
         return;
       default:
         if (this.isActive(message.root)) {
@@ -1935,8 +1965,13 @@ export class GitTool implements Tool<'git'> {
     if (this.page && this.isActiveRepository(repository)) {
       this.postLastFetch(this.page, repository);
     }
-    if (fetched) {
-      void this.shell.track(this.listTagsOfRemotes(at, interactive));
+    const notFetched = result.failed
+      ? remotesNotFetched(gitErrorText(result.error))
+      : [];
+    if (fetched || notFetched.length > 0) {
+      void this.shell.track(
+        this.listTagsOfRemotes(at, interactive, notFetched),
+      );
     }
     return result;
   }
@@ -1944,6 +1979,7 @@ export class GitTool implements Tool<'git'> {
   private async listTagsOfRemotes(
     { gitPath, root, repository }: Fetchable,
     interactive: boolean,
+    notFetched: readonly string[] = [],
   ): Promise<void> {
     let remotes: string[];
     try {
@@ -1955,7 +1991,7 @@ export class GitTool implements Tool<'git'> {
     }
     let changed = false;
     let newlyKnown = false;
-    for (const remote of remotes) {
+    for (const remote of remotes.filter((name) => !notFetched.includes(name))) {
       try {
         const tags = await listRemoteTags(gitPath, root, remote, {
           interactive,
@@ -2508,6 +2544,9 @@ export class GitTool implements Tool<'git'> {
     solo: boolean,
   ): Promise<Commits | undefined> {
     const { tab, gitPath, root } = context;
+    if (!stashesKeepHistory(tab, stashes, solo)) {
+      return undefined;
+    }
     const older = tab.fullHistory;
     const extended = await extendedHistory(
       gitPath,
@@ -3007,9 +3046,14 @@ export class GitTool implements Tool<'git'> {
 
   private async sendTexts(
     context: Context,
-    { hash, diff, texts }: Extract<TabMessage, { type: 'loadTexts' }>,
+    { hash, diff, texts: asked }: Extract<TabMessage, { type: 'loadTexts' }>,
   ): Promise<void> {
     const { gitPath, root } = context;
+    const texts = [
+      ...new Map(
+        asked.map((request) => [`${request.side}\0${request.path}`, request]),
+      ).values(),
+    ];
     const fromDisk = (request: TextRequest) =>
       context.tab.area !== 'staged' && request.side === workingTreeSide(hash);
     const blobs = await this.blobTexts.read(
@@ -3396,7 +3440,7 @@ export function tabInfos(
     const shown = [...levels].toSorted((a, b) => b - a);
     const folders = shown.flatMap((level, index) =>
       index > 0 && shown[index - 1] - level > 1
-        ? ['…', above[level]]
+        ? [strings.symbols.foldersLeftOut, above[level]]
         : [above[level]],
     );
     return { root, name, folder: paths.join(...folders) };

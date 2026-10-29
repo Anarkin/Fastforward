@@ -31,6 +31,11 @@ export interface CommandFiles {
   link(file: string, target: string): Promise<void>;
 }
 
+export interface SyncCommandFiles {
+  read(file: string): CommandFile;
+  write(file: string, text: string): void;
+}
+
 export type CommandState = 'installed' | 'missing' | 'outdated' | 'taken';
 
 export type CommandInstall =
@@ -171,6 +176,26 @@ export async function refreshCommand(
   return true;
 }
 
+export function pointCommandAt(
+  place: CommandPlace,
+  appImage: string,
+  files: SyncCommandFiles = syncCommandFiles,
+): boolean {
+  if (place.kind !== 'copy') {
+    return false;
+  }
+  const found = files.read(place.path);
+  if (
+    found.kind !== 'file' ||
+    !appImageLine.test(found.text) ||
+    found.text !== scriptForAppImage(found.text, place.appImage)
+  ) {
+    return false;
+  }
+  files.write(place.path, scriptForAppImage(found.text, appImage));
+  return true;
+}
+
 async function appImageScript(
   place: Extract<CommandPlace, { kind: 'copy' }>,
   files: CommandFiles,
@@ -265,5 +290,28 @@ export const commandFiles: CommandFiles = {
     await fs.promises.mkdir(path.dirname(file), { recursive: true });
     await fs.promises.rm(file, { force: true });
     await fs.promises.symlink(target, file);
+  },
+};
+
+export const syncCommandFiles: SyncCommandFiles = {
+  read(file) {
+    try {
+      const stats = fs.lstatSync(file);
+      if (stats.isSymbolicLink()) {
+        return { kind: 'link', target: fs.readlinkSync(file) };
+      }
+      return {
+        kind: 'file',
+        text: stats.isFile() ? fs.readFileSync(file, 'utf8') : '',
+      };
+    } catch (error) {
+      if (isMissing(error)) {
+        return { kind: 'missing' };
+      }
+      throw error;
+    }
+  },
+  write(file, text) {
+    fs.writeFileSync(file, text);
   },
 };

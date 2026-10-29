@@ -88,9 +88,11 @@ suite('Overlay scrollbars', () => {
     });
   });
 
-  test('scrolls the content as far for each pixel the thumb is dragged as it has room to', () => {
+  test('scrolls the content as far for each pixel the thumb is dragged as it has room to, and not at all when the thumb fills an area too small for it to move', () => {
     assert.strictEqual(scrollPerPixel(1000, 500), 2);
     assert.strictEqual(scrollPerPixel(500, 500), 0);
+    assert.strictEqual(scrollPerPixel(100, 24), 0);
+    assert.strictEqual(scrollPerPixel(100, 10), 0);
   });
 
   test('keeps moving with the area being dragged, whatever the pointer is over', () => {

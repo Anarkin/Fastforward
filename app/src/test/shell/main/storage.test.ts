@@ -224,6 +224,41 @@ suite('State file', () => {
     assert.deepStrictEqual(reopened.get('tabs'), ['/old']);
   });
 
+  test("keeps each tool's state the file held once it can be read, under the changes made to it since, as every tool keeps its state under the one key", async () => {
+    fs.mkdirSync(file);
+    const store = new JsonFileStore(file);
+    const git = toolState(store, 'git');
+    await git.update('lastFetches', { '/a': 1 });
+    await git.update('solo', ['/a']);
+    await git.update('solo', undefined);
+    fs.rmdirSync(file);
+    fs.writeFileSync(
+      file,
+      JSON.stringify({
+        tools: {
+          git: {
+            recentRepositories: ['/old'],
+            bookmarks: { '/old': ['b'] },
+            solo: ['/old'],
+            lastFetches: { '/old': 2 },
+          },
+          files: { recentRepositories: ['/f'] },
+        },
+      }),
+    );
+    await git.update('recentRepositories', ['/new']);
+    const expected = {
+      git: {
+        recentRepositories: ['/new'],
+        bookmarks: { '/old': ['b'] },
+        lastFetches: { '/old': 2, '/a': 1 },
+      },
+      files: { recentRepositories: ['/f'] },
+    };
+    assert.deepStrictEqual(store.get('tools'), expected);
+    assert.deepStrictEqual(new JsonFileStore(file).get('tools'), expected);
+  });
+
   test('says why the file could not be read', () => {
     fs.mkdirSync(file);
     const [problem] = new JsonFileStore(file).problems;

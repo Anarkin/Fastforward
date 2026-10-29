@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
-import { isValidElement } from 'react';
+import { JSDOM } from 'jsdom';
+import { act, isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { comparisonOf } from '../../../../tools/git/shared/comparisons';
@@ -55,8 +56,7 @@ function filesProps(overrides: Partial<FilesProps> = {}): FilesProps {
   };
 }
 
-function changesRows(overrides: Partial<FilesProps>) {
-  const column = renderedBy(Files, filesProps(overrides));
+function listOf(column: React.ReactNode) {
   assert.ok(isValidElement<{ children: React.ReactNode[] }>(column));
   const list = column.props.children[1];
   assert.ok(
@@ -83,6 +83,71 @@ function changesRows(overrides: Partial<FilesProps>) {
         { first: 0, last: rows.count - 1 },
       ),
   };
+}
+
+function changesRows(overrides: Partial<FilesProps>) {
+  return listOf(renderedBy(Files, filesProps(overrides)));
+}
+
+function startButton(column: React.ReactNode, title: string) {
+  assert.ok(
+    isValidElement<{
+      start: React.ReactElement<{
+        children: React.ReactElement<{
+          title: string;
+          disabled?: boolean;
+          onClick: () => void;
+        }>[];
+      }>;
+    }>(column),
+  );
+  const found = column.props.start.props.children.find(
+    (each) => each.props.title === title,
+  );
+  assert.ok(found, title);
+  assert.ok(!found.props.disabled, title);
+  return found;
+}
+
+async function drawing(
+  check: (
+    draw: (overrides: Partial<FilesProps>) => Promise<void>,
+    drawn: () => React.ReactNode,
+  ) => Promise<void>,
+): Promise<void> {
+  const dom = new JSDOM('<!doctype html><main></main>');
+  const globals = {
+    window: dom.window,
+    document: dom.window.document,
+    IS_REACT_ACT_ENVIRONMENT: true,
+  };
+  const saved = Object.fromEntries(
+    Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
+  );
+  Object.assign(globalThis, globals);
+  try {
+    const { createRoot } = await import('react-dom/client');
+    const main = dom.window.document.querySelector('main');
+    assert.ok(main);
+    const root = createRoot(main);
+    let column: React.ReactNode;
+    function Drawn(props: FilesProps) {
+      column = Files(props);
+      return null;
+    }
+    await check(
+      (overrides) =>
+        act(async () => {
+          root.render(<Drawn {...filesProps(overrides)} />);
+        }),
+      () => column,
+    );
+    await act(async () => {
+      root.unmount();
+    });
+  } finally {
+    Object.assign(globalThis, saved);
+  }
 }
 
 function reveal(tree: string[] | undefined, showAll = true, view = 'one') {
@@ -262,26 +327,8 @@ suite('Files column', () => {
           onReplaceFolders: (folders) => replaced.push(folders),
         }),
       );
-      assert.ok(
-        isValidElement<{
-          start: React.ReactElement<{
-            children: React.ReactElement<{
-              title: string;
-              disabled?: boolean;
-              onClick: () => void;
-            }>[];
-          }>;
-        }>(column),
-      );
-      const buttons = column.props.start.props.children;
-      const button = (title: string) => {
-        const found = buttons.find((each) => each.props.title === title);
-        assert.ok(found, title);
-        assert.ok(!found.props.disabled, title);
-        return found;
-      };
-      button('Collapse All').props.onClick();
-      button('Expand All').props.onClick();
+      startButton(column, 'Collapse All').props.onClick();
+      startButton(column, 'Expand All').props.onClick();
       assert.deepStrictEqual(replaced, [
         { open: new Set(), closed: new Set(['src', 'src/app']) },
         {
@@ -478,6 +525,51 @@ suite('Files search', () => {
       }).keys,
       ['folder:lib', 'file:lib/kept.ts'],
     );
+  });
+
+  test('collapses and expands every folder the search shows while it is open, the unchanged ones too while all files show, leaving the folders of the commit as they were', async () => {
+    for (const showAll of [false, true]) {
+      await drawing(async (draw, drawn) => {
+        const replaced: Folders[] = [];
+        await draw({
+          filter: 'view',
+          files: found,
+          showAll,
+          tree: ['lib/old/OldView.tsx', ...found.map(({ path }) => path)],
+          onReplaceFolders: (folders) => replaced.push(folders),
+        });
+        const opened = listOf(drawn()).keys;
+        await act(async () => {
+          startButton(drawn(), 'Collapse All').props.onClick();
+        });
+        assert.deepStrictEqual(
+          listOf(drawn()).keys,
+          showAll
+            ? ['changes', 'folder:lib/old', 'folder:src']
+            : ['changes', 'folder:src'],
+        );
+        await act(async () => {
+          startButton(drawn(), 'Expand All').props.onClick();
+        });
+        assert.deepStrictEqual(listOf(drawn()).keys, opened);
+        assert.deepStrictEqual(replaced, []);
+      });
+    }
+  });
+
+  test('keeps a folder closed while searching only on the commit and tab it was closed on, as the search stays open as they change', async () => {
+    await drawing(async (draw, drawn) => {
+      await draw({ filter: 'view', files: found });
+      const opened = listOf(drawn()).keys;
+      const [, folder] = listOf(drawn()).rows;
+      assert.ok(isValidElement<{ onToggle: (path: string) => void }>(folder));
+      await act(async () => {
+        folder.props.onToggle('src');
+      });
+      assert.deepStrictEqual(listOf(drawn()).keys, ['changes', 'folder:src']);
+      await draw({ filter: 'view', files: found, view: 'two' });
+      assert.deepStrictEqual(listOf(drawn()).keys, opened);
+    });
   });
 
   test('says that no file matches the search, rather than showing nothing', () => {

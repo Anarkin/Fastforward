@@ -4,6 +4,7 @@ import { setKeyPlatform } from '../shared/keymap';
 import type { ToHost, ToWebview } from '../shared/protocol';
 import { App } from './App';
 import { ErrorBoundary } from './errorBoundary';
+import { windowButtonColor } from './titleBar';
 import { errorText } from '../../ui/errors';
 import { installOverlayScrollbars } from '../../ui/overlayScrollbars';
 import './style.css';
@@ -23,9 +24,11 @@ fastforward.listenMaximized((maximized) =>
 
 const followTheme = () =>
   fastforward.setWindowButtonColor(
-    getComputedStyle(document.documentElement)
-      .getPropertyValue('--color-foreground')
-      .trim(),
+    windowButtonColor(
+      getComputedStyle(document.documentElement)
+        .getPropertyValue('--color-foreground')
+        .trim(),
+    ),
   );
 followTheme();
 matchMedia('(prefers-color-scheme: dark)').addEventListener(

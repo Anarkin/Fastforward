@@ -333,11 +333,17 @@ suite('Images in documents', () => {
     assert.strictEqual(from('notes.txt'), undefined);
   });
 
-  test('takes a backslash in an image path for a slash, as browsers do, so a path written on Windows finds the image on both sides and never leaves the repository', () => {
+  test('takes a backslash in an image path for a slash, as browsers do, and an encoded one as well, so a path written on Windows finds the image on both sides and never leaves the repository', () => {
     assert.strictEqual(from('img\\shot.png'), 'docs/guide/img/shot.png');
     assert.strictEqual(from('..\\..\\logo.png'), 'logo.png');
     assert.strictEqual(from('\\assets\\a.png'), 'assets/a.png');
-    for (const outside of ['..\\..\\..\\up.png', '\\\\example.com\\a.png']) {
+    assert.strictEqual(from('img%5Cshot.png'), 'docs/guide/img/shot.png');
+    assert.strictEqual(from('..%5C..%5Clogo.png'), 'logo.png');
+    for (const outside of [
+      '..\\..\\..\\up.png',
+      '\\\\example.com\\a.png',
+      '..%5C..%5C..%5Cup.png',
+    ]) {
       assert.strictEqual(from(outside), undefined, outside);
     }
   });

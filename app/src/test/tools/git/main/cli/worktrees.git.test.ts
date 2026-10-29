@@ -8,6 +8,7 @@ import {
 } from '../../../../../tools/git/main/cli/worktrees';
 import {
   removeFolder,
+  savedEnv,
   tempFolder,
   tempRepository,
   type TempRepository,
@@ -183,6 +184,97 @@ suite('Git worktrees', () => {
         ?.repository,
       work,
     );
+  });
+
+  test('lists the main worktree of a repository whose git folder is elsewhere as missing from a linked worktree, as git does not know where it is, naming the git folder as the repository, which opens again, but not from the main worktree', async () => {
+    const separate = path.join(folder, 'separate-linked');
+    const work = path.join(separate, 'work');
+    const store = path.join(separate, 'store.git');
+    const linked = path.join(separate, 'linked');
+    await repository.git(
+      'clone',
+      '-q',
+      '--separate-git-dir',
+      store,
+      repository.root,
+      work,
+    );
+    await repository.git('-C', work, 'worktree', 'add', '-q', linked);
+    const fromLinked = await locateRepository(repository.gitPath, linked);
+    assert.ok(fromLinked);
+    const reopened = await locateRepository(
+      repository.gitPath,
+      fromLinked.repository,
+    );
+    assert.strictEqual(reopened?.repository, fromLinked.repository);
+    for (const worktrees of [
+      fromLinked.worktrees,
+      reopened.worktrees,
+      await listWorktrees(repository.gitPath, fromLinked.repository),
+    ]) {
+      assert.deepStrictEqual(
+        worktrees.map((worktree) => [
+          fs.realpathSync.native(worktree.path),
+          worktree.missing,
+        ]),
+        [
+          [fs.realpathSync.native(store), true],
+          [fs.realpathSync.native(linked), false],
+        ],
+      );
+    }
+    const fromWork = await locateRepository(repository.gitPath, work);
+    assert.strictEqual(fromWork?.repository, work);
+    for (const worktrees of [
+      fromWork.worktrees,
+      await listWorktrees(repository.gitPath, work),
+    ]) {
+      assert.deepStrictEqual(
+        worktrees.map((worktree) => worktree.missing),
+        [false, false],
+      );
+    }
+  });
+
+  test('finds a bare repository with worktrees beside it and lists them, by its folder too, where git works with a bare repository only when told it is one', async () => {
+    const layout = path.join(folder, 'explicit-layout');
+    const bare = await tempRepository(path.join(layout, '.bare'), {
+      bare: true,
+    });
+    await repository.git('push', '-q', bare.root, 'main');
+    const main = path.join(layout, 'main');
+    await bare.git('worktree', 'add', '-q', main, 'main');
+    const restoreEnv = savedEnv([
+      'GIT_CONFIG_COUNT',
+      'GIT_CONFIG_KEY_0',
+      'GIT_CONFIG_VALUE_0',
+    ]);
+    Object.assign(process.env, {
+      GIT_CONFIG_COUNT: '1',
+      GIT_CONFIG_KEY_0: 'safe.bareRepository',
+      GIT_CONFIG_VALUE_0: 'explicit',
+    });
+    try {
+      const fromMain = await locateRepository(repository.gitPath, main);
+      assert.ok(fromMain);
+      const reopened = await locateRepository(
+        repository.gitPath,
+        fromMain.repository,
+      );
+      assert.strictEqual(reopened?.repository, fromMain.repository);
+      for (const worktrees of [
+        fromMain.worktrees,
+        reopened.worktrees,
+        await listWorktrees(repository.gitPath, fromMain.repository),
+      ]) {
+        assert.deepStrictEqual(
+          worktrees.map((worktree) => worktree.bare),
+          [true, false],
+        );
+      }
+    } finally {
+      restoreEnv();
+    }
   });
 
   test('names the work tree of a submodule as its main worktree from a linked worktree of it too, as the submodule records it', async () => {

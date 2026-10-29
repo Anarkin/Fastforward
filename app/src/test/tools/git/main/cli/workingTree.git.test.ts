@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import type { SpawnOptions } from 'node:child_process';
+import { execFileSync, type SpawnOptions } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
@@ -602,6 +602,87 @@ suite('A merge conflicting over a file our side deleted', () => {
           ['added', 'three'],
         ],
       );
+    }
+  });
+
+  test('lists the file their side changed as still conflicted once it is removed from disk, not as added', async () => {
+    const kept = path.join(conflicted.root, 'kept.txt');
+    const text = fs.readFileSync(kept);
+    try {
+      fs.rmSync(kept);
+      const workingTree = await workingTreeFiles(
+        conflicted.gitPath,
+        conflicted.root,
+      );
+      assert.deepStrictEqual(
+        workingTree.files.map((file) => [file.status, file.path]),
+        [['?', 'kept.txt']],
+      );
+    } finally {
+      fs.writeFileSync(kept, text);
+    }
+  });
+});
+
+function unreadable(file: string): () => void {
+  if (process.platform === 'win32') {
+    execFileSync('icacls', [file, '/deny', '*S-1-1-0:(R)'], {
+      stdio: 'ignore',
+    });
+    return () =>
+      execFileSync('icacls', [file, '/remove:d', '*S-1-1-0'], {
+        stdio: 'ignore',
+      });
+  }
+  fs.chmodSync(file, 0);
+  return () => fs.chmodSync(file, 0o644);
+}
+
+function canRead(file: string): boolean {
+  try {
+    fs.readFileSync(file);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+suite('A changed file that cannot be read', () => {
+  test('lists every changed file without counting their lines, rather than failing, as git stops counting at the file it cannot read', async (context) => {
+    const repository = await tempRepository(tempFolder('unreadable'));
+    try {
+      await repository.commit('initial', {
+        'a.txt': 'one\n',
+        'b.txt': 'one\n',
+      });
+      const locked = path.join(repository.root, 'a.txt');
+      fs.writeFileSync(locked, 'two\n');
+      fs.writeFileSync(path.join(repository.root, 'b.txt'), 'two\n');
+      const readable = unreadable(locked);
+      try {
+        if (canRead(locked)) {
+          context.skip();
+        }
+        for (const base of [undefined, 'HEAD']) {
+          const { files } = await workingTreeFiles(
+            repository.gitPath,
+            repository.root,
+            { base, reverse: false },
+          );
+          assert.deepStrictEqual(
+            files.map((file) => [file.status, file.path, file.uncounted]),
+            [
+              ['M', 'a.txt', true],
+              ['M', 'b.txt', true],
+            ],
+            base,
+          );
+        }
+      } finally {
+        readable();
+      }
+    } finally {
+      removeFolder(repository.root);
     }
   });
 });

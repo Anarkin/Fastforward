@@ -123,23 +123,25 @@ suite('Modal dialogs', () => {
           target: EventTarget,
           clientX: number,
           clientY: number,
+          buttons = 0,
         ) =>
           act(async () => {
             target.dispatchEvent(
               new window.MouseEvent(type, {
                 bubbles: true,
                 button: 0,
+                buttons,
                 clientX,
                 clientY,
               }),
             );
           });
-        await pointer('pointerdown', close, 10, 10);
-        await pointer('pointermove', window, 50, 50);
+        await pointer('pointerdown', close, 10, 10, 1);
+        await pointer('pointermove', window, 50, 50, 1);
         await pointer('pointerup', window, 50, 50);
         assert.strictEqual(dialog.style.left, '');
-        await pointer('pointerdown', header, 10, 10);
-        await pointer('pointermove', window, 60, 50);
+        await pointer('pointerdown', header, 10, 10, 1);
+        await pointer('pointermove', window, 60, 50, 1);
         await pointer('pointerup', window, 60, 50);
         await pointer('pointermove', window, 90, 90);
         assert.deepStrictEqual(
@@ -168,6 +170,46 @@ suite('Modal dialogs', () => {
         assert.strictEqual(closed, 1);
         await show(null);
       }
+    });
+  });
+
+  test('stop following the pointer once a drag ends where no button goes up, as when a touch is taken for a pan or the window loses the mouse', async () => {
+    await inPage(async ({ document, show }) => {
+      const window = document.defaultView;
+      assert.ok(window);
+      await show(<AboutPopup about={about} onCopy={noop} onClose={noop} />);
+      const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
+      const header = dialog?.querySelector('.shortcuts-title');
+      assert.ok(dialog && header);
+      const pointer = (
+        type: string,
+        target: EventTarget,
+        clientX: number,
+        clientY: number,
+        buttons: number,
+      ) =>
+        act(async () => {
+          target.dispatchEvent(
+            new window.MouseEvent(type, {
+              bubbles: true,
+              button: 0,
+              buttons,
+              clientX,
+              clientY,
+            }),
+          );
+        });
+      const place = () => [dialog.style.left, dialog.style.top];
+      await pointer('pointerdown', header, 10, 10, 1);
+      await pointer('pointermove', window, 30, 20, 1);
+      await pointer('pointercancel', window, 30, 20, 0);
+      await pointer('pointermove', window, 90, 90, 1);
+      assert.deepStrictEqual(place(), ['20px', '10px']);
+      await pointer('pointerdown', header, 10, 10, 1);
+      await pointer('pointermove', window, 40, 30, 1);
+      await pointer('pointermove', window, 90, 90, 0);
+      await pointer('pointermove', window, 90, 90, 1);
+      assert.deepStrictEqual(place(), ['30px', '20px']);
     });
   });
 

@@ -236,6 +236,22 @@ suite('User settings file', () => {
     assert.deepStrictEqual(written(), {});
   });
 
+  test('neither saves nor takes a value the settings would not take as written, nor none at all, keeping the one in use, as the page asking for it is not trusted', async () => {
+    const user = new UserSettings(defaults, file);
+    await user.set('autoSortTabs', true);
+    await user.set('autoSortTabs', JSON.parse('{ "evil": "x" }'));
+    await user.set('autoSortTabs', JSON.parse('{}').on);
+    await user.setIn('git', 'diffLayout', JSON.parse('"grid"'));
+    await user.setIn('git', 'columnWidths', JSON.parse('["a", null]'));
+    await user.setIn('git', 'columnWidths', [Number.NaN, 200]);
+    await user.setIn('git', 'autoFetch', JSON.parse('"yes"'));
+    assert.deepStrictEqual(written(), { autoSortTabs: true });
+    assert.strictEqual(user.settings.autoSortTabs, true);
+    assert.deepStrictEqual(user.settings.tools, defaults.tools);
+    assert.strictEqual(user.reload(), false);
+    assert.deepStrictEqual(user.problems, []);
+  });
+
   test('keeps what was written by hand when saving a change, even what it does not know', async () => {
     fs.writeFileSync(file, JSON.stringify({ sollo: true, solo: 'yes' }));
     const user = new UserSettings(defaults, file);
@@ -568,6 +584,14 @@ suite('Default settings', () => {
     assert.strictEqual(user.settings.autoSortTabs, true);
     assert.strictEqual(user.defaults.tools.git.collapseMerges, false);
     assert.strictEqual(user.replaceDefaults(user.defaults), false);
+  });
+
+  test('takes no value the settings would not, keeping the one in use', async () => {
+    const user = new UserSettings(defaults);
+    await user.setIn('git', 'diffLayout', JSON.parse('"grid"'));
+    assert.strictEqual(user.replaceDefaults(user.defaults), false);
+    assert.deepStrictEqual(user.problems, []);
+    assert.deepStrictEqual(user.settings, defaults);
   });
 
   test('writes the reference copy read-only, and can write it again', () => {

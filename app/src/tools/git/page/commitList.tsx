@@ -671,6 +671,7 @@ export function WorkingTreeRow({
 
 export function Commits({
   history,
+  worktree,
   opening,
   scrollTarget,
   onScrolled,
@@ -696,6 +697,7 @@ export function Commits({
   error,
 }: {
   history: CommitHistory | undefined;
+  worktree?: string;
   opening: boolean;
   scrollTarget: ScrollTarget | undefined;
   onScrolled: (hash: string, offset: number, report: number) => void;
@@ -792,11 +794,16 @@ export function Commits({
   useEffect(() => () => asking.cancel(), [asking]);
 
   const shown = useRef<ListScrollState>({ target: undefined, offset });
+  const placesWorktree = useRef(worktree);
   useEffect(() => {
-    if (!history) {
+    if (placesWorktree.current !== worktree) {
+      placesWorktree.current = worktree;
+      places.forget();
+      virtualizer.scrollToOffset(0);
+    } else if (!history) {
       places.forget();
     }
-  }, [history, places]);
+  }, [history, worktree, places, virtualizer]);
   useEffect(() => {
     const next = { target: history ? scrollTarget : undefined, offset };
     const previous = shown.current;

@@ -156,6 +156,7 @@ export class Shell {
   private shownTool: ToolId | undefined;
   private askedFolders: readonly string[] = [];
   private asking: Asking | undefined;
+  private askingFolders: Promise<void> = Promise.resolve();
   private unsentNotices: readonly ToWebviewOf<'notice'>[] = [];
   private readonly inFlight = new InFlight();
 
@@ -275,10 +276,17 @@ export class Shell {
         host.installUpdate();
         return;
       case 'copyText':
-        host.copyText(message.text);
+        if (typeof message.text === 'string') {
+          host.copyText(message.text);
+        }
         return;
       case 'log':
-        this.log[message.level](strings.log.webview(message.message));
+        if (
+          (message.level === 'info' || message.level === 'error') &&
+          typeof message.message === 'string'
+        ) {
+          this.log[message.level](strings.log.webview(message.message));
+        }
         return;
       case 'selectTab': {
         const tab = this.tabOf(message.tab);
@@ -333,6 +341,9 @@ export class Shell {
         return;
       }
       case 'setAutoSortTabs':
+        if (typeof message.on !== 'boolean') {
+          return;
+        }
         this.save(storage.setAutoSortTabs(message.on));
         if (message.on) {
           this.save(
@@ -386,6 +397,12 @@ export class Shell {
     }
     this.page = page;
     this.shownTool = undefined;
+    this.save(
+      storage.setSavedTabs(
+        this.ordered(storage.savedTabs),
+        storage.activeTabId,
+      ),
+    );
     await this.show(page, storage.activeTabId);
     await this.askFolders(page);
   }
@@ -487,7 +504,14 @@ export class Shell {
     await this.show(live, last);
   }
 
-  private async askFolders(page: Page): Promise<void> {
+  private askFolders(page: Page): Promise<void> {
+    this.askingFolders = this.askingFolders
+      .catch(() => undefined)
+      .then(() => this.ask(page));
+    return this.askingFolders;
+  }
+
+  private async ask(page: Page): Promise<void> {
     const folders = [
       ...(this.asking?.question.folders ?? []),
       ...this.askedFolders,

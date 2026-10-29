@@ -1029,6 +1029,49 @@ suite('Git tool refreshing one repository', () => {
       }
     });
 
+    test('reads the history whole once a commit read as a stash, without the commits of its index and untracked files, is a stash no more but stays, kept by a branch or built on', async () => {
+      await connection.receive({ type: 'setCollapseMerges', collapse: false });
+      const before = page.last('commits')?.total ?? 0;
+      const untracked = path.join(repository.root, 'untracked.txt');
+      const branches = ['kept-stash', 'built-on-stash'];
+      try {
+        for (const [index, branch] of branches.entries()) {
+          fs.writeFileSync(untracked, `${branch}\n`);
+          await repository.git('stash', 'push', '-q', '-u');
+          await connection.refresh();
+          const [stash] = await repository.resolve('stash@{0}');
+          await repository.git('branch', branch, stash);
+          await repository.git('stash', 'drop', '-q');
+          if (index > 0) {
+            const built = (
+              await repository.git(
+                'commit-tree',
+                `${stash}^{tree}`,
+                '-p',
+                stash,
+                '-m',
+                'on the stash',
+              )
+            ).trim();
+            await repository.git('branch', '-f', branch, built);
+          }
+          page.clear();
+          await connection.refresh();
+          assert.strictEqual(
+            page.last('commits')?.total,
+            before + 3 * (index + 1) + index,
+            branch,
+          );
+        }
+      } finally {
+        for (const branch of branches) {
+          await repository.git('branch', '-D', branch).catch(() => '');
+        }
+        fs.rmSync(untracked, { force: true });
+        await restore();
+      }
+    });
+
     test('sends the history again on the next refresh after it failed to load', async () => {
       const before = page.last('commits')?.generation ?? -1;
       let failed = false;

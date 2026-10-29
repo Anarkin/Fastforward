@@ -136,7 +136,7 @@ export function findMatches(
     return [];
   }
   if (whole) {
-    return wholePreviewOf(whole) && previewed.has(whole.path)
+    return whole.link || (wholePreviewOf(whole) && previewed.has(whole.path))
       ? []
       : lineMatches(wholeLines(whole), 0, query);
   }

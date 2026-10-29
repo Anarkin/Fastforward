@@ -289,9 +289,13 @@ export function Files({
     [sides, trees],
   );
   const searched = words.join(' ');
-  const [folds, setFolds] = useState({ searched, closed: noneClosed });
+  const [folds, setFolds] = useState({ view, searched, closed: noneClosed });
   const closedWhileFiltering =
-    folds.searched === searched ? folds.closed : noneClosed;
+    folds.view === view && folds.searched === searched
+      ? folds.closed
+      : noneClosed;
+  const foldWhileFiltering = (closed: ReadonlySet<string>) =>
+    setFolds({ view, searched, closed });
   const shownClosed = filtering ? closedWhileFiltering : closedFolders;
   const shownOpened = useMemo(
     () =>
@@ -356,7 +360,7 @@ export function Files({
   ) => {
     const key = areaKey(side, folder);
     if (filtering) {
-      setFolds({ searched, closed: toggled(closedWhileFiltering, key) });
+      foldWhileFiltering(toggled(closedWhileFiltering, key));
     } else if (changed) {
       onToggleClosedFolder(key);
     } else {
@@ -398,10 +402,14 @@ export function Files({
         title={strings.files.collapseAll}
         disabled={noFolders}
         onClick={() =>
-          onReplaceFolders({
-            open: new Set(),
-            closed: new Set(folders.changed),
-          })
+          filtering
+            ? foldWhileFiltering(
+                new Set([...folders.changed, ...folders.unchanged]),
+              )
+            : onReplaceFolders({
+                open: new Set(),
+                closed: new Set(folders.changed),
+              })
         }
       >
         <CollapseAllIcon />
@@ -411,10 +419,12 @@ export function Files({
         title={strings.files.expandAll}
         disabled={noFolders}
         onClick={() =>
-          onReplaceFolders({
-            open: new Set(folders.unchanged),
-            closed: new Set(),
-          })
+          filtering
+            ? foldWhileFiltering(noneClosed)
+            : onReplaceFolders({
+                open: new Set(folders.unchanged),
+                closed: new Set(),
+              })
         }
       >
         <ExpandAllIcon />

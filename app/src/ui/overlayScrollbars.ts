@@ -37,7 +37,8 @@ export function thumbOf(
 
 export function scrollPerPixel(scrollSize: number, clientSize: number): number {
   const thumb = thumbOf(scrollSize, clientSize, 0);
-  return thumb ? (scrollSize - clientSize) / (clientSize - thumb.length) : 0;
+  const room = thumb ? clientSize - thumb.length : 0;
+  return room > 0 ? (scrollSize - clientSize) / room : 0;
 }
 
 export function followedScroller<T>(

@@ -78,6 +78,19 @@ export function newTabItems(
   });
 }
 
+type Popup = 'shortcuts' | 'about' | 'openWith';
+
+export function withPopup(
+  shown: readonly Popup[],
+  popup: Popup,
+  open: boolean,
+): readonly Popup[] {
+  if (shown.includes(popup) === open) {
+    return shown;
+  }
+  return open ? [...shown, popup] : shown.filter((other) => other !== popup);
+}
+
 export function shortcutGroupsFor(tool: ToolId | undefined): ShortcutGroup[] {
   return [
     ...[
@@ -126,10 +139,19 @@ export function App({ name, post, listen }: Props) {
     {},
   );
   const [openedMenu, setMenu] = useState<TabMenu>();
-  const [shortcutsShown, setShortcutsShown] = useState(false);
-  const closeShortcuts = useCallback(() => setShortcutsShown(false), []);
-  const [aboutShown, setAboutShown] = useState(false);
-  const closeAbout = useCallback(() => setAboutShown(false), []);
+  const [popups, setPopups] = useState<readonly Popup[]>([]);
+  const showPopup = useCallback(
+    (popup: Popup, open: boolean) =>
+      setPopups((shown) => withPopup(shown, popup, open)),
+    [],
+  );
+  const togglePopup = (popup: Popup) =>
+    setPopups((shown) => withPopup(shown, popup, !shown.includes(popup)));
+  const closeShortcuts = useCallback(
+    () => showPopup('shortcuts', false),
+    [showPopup],
+  );
+  const closeAbout = useCallback(() => showPopup('about', false), [showPopup]);
   const [listeners] = useState<ToolListeners>(() => ({
     git: new Set(),
     files: new Set(),
@@ -172,6 +194,7 @@ export function App({ name, post, listen }: Props) {
           break;
         case 'chooseTool':
           setChoosing(message);
+          setPopups((shown) => withPopup(shown, 'openWith', true));
           break;
         case 'tool':
           deliver(listeners, message.tool, message.message);
@@ -233,8 +256,8 @@ export function App({ name, post, listen }: Props) {
     });
   };
 
-  useBinding(keymap.shortcuts, () => setShortcutsShown((shown) => !shown));
-  useBinding(keymap.about, () => setAboutShown((shown) => !shown));
+  useBinding(keymap.shortcuts, () => togglePopup('shortcuts'));
+  useBinding(keymap.about, () => togglePopup('about'));
   useBinding(keymap.closeTab, () => {
     if (active !== undefined) {
       post({ type: 'closeTab', tab: active });
@@ -277,10 +300,10 @@ export function App({ name, post, listen }: Props) {
             onSort={() => post({ type: 'sortTabs' })}
             onOpenSettings={() => post({ type: 'openSettings' })}
             onOpenDefaultSettings={() => post({ type: 'openDefaultSettings' })}
-            onShowShortcuts={() => setShortcutsShown(true)}
+            onShowShortcuts={() => showPopup('shortcuts', true)}
             onCheckForUpdates={() => post({ type: 'checkForUpdates' })}
             onInstallUpdate={() => post({ type: 'installUpdate' })}
-            onShowAbout={() => setAboutShown(true)}
+            onShowAbout={() => showPopup('about', true)}
             onInstallCommand={
               installsCommand
                 ? () => post({ type: 'installTerminalCommand' })
@@ -292,33 +315,51 @@ export function App({ name, post, listen }: Props) {
       {menu && openedMenu && (
         <ContextMenu key={openedMenu.id} menu={menu} onClose={closeMenu} />
       )}
-      {shortcutsShown && (
-        <ShortcutsPopup
-          groups={shortcutGroupsFor(activeTool)}
-          mac={document.documentElement.dataset.platform === 'darwin'}
-          onClose={closeShortcuts}
-        />
-      )}
-      {aboutShown && about && (
-        <AboutPopup
-          about={about}
-          onCopy={(text) => post({ type: 'copyText', text })}
-          onClose={closeAbout}
-        />
-      )}
-      {choosing && (
-        <OpenWithPopup
-          choice={choosing}
-          onOpen={(tool) => {
-            setChoosing(undefined);
-            post({ type: 'openWith', tool });
-          }}
-          onClose={() => {
-            setChoosing(undefined);
-            post({ type: 'openWith', tool: undefined });
-          }}
-        />
-      )}
+      {popups.map((popup) => {
+        switch (popup) {
+          case 'shortcuts':
+            return (
+              <ShortcutsPopup
+                key={popup}
+                groups={shortcutGroupsFor(activeTool)}
+                mac={document.documentElement.dataset.platform === 'darwin'}
+                onClose={closeShortcuts}
+              />
+            );
+          case 'about':
+            return (
+              about && (
+                <AboutPopup
+                  key={popup}
+                  about={about}
+                  onCopy={(text) => post({ type: 'copyText', text })}
+                  onClose={closeAbout}
+                />
+              )
+            );
+          case 'openWith':
+            return (
+              choosing && (
+                <OpenWithPopup
+                  key={popup}
+                  choice={choosing}
+                  onOpen={(tool) => {
+                    setChoosing(undefined);
+                    showPopup('openWith', false);
+                    post({ type: 'openWith', tool });
+                  }}
+                  onClose={() => {
+                    setChoosing(undefined);
+                    showPopup('openWith', false);
+                    post({ type: 'openWith', tool: undefined });
+                  }}
+                />
+              )
+            );
+          default:
+            return popup satisfies never;
+        }
+      })}
       <Notices notices={notices} onDismiss={dismissNotice} />
       {emptyState(tabs)}
       <ToolViews

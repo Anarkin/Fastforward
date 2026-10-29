@@ -115,6 +115,7 @@ export const strings = {
     carriageReturn: '␍',
     nonBreakingSpace: '⍽',
     invisible: '¤',
+    foldersLeftOut: '…',
   },
   about: {
     title: 'About',
@@ -238,6 +239,7 @@ export const strings = {
     Space: 'Space',
     Home: 'Home',
     End: 'End',
+    Delete: 'Delete',
     ArrowUp: '↑',
     ArrowDown: '↓',
     ArrowLeft: '←',
@@ -394,7 +396,9 @@ export const strings = {
     largeDiff: (lines: number) =>
       `Large diff: ${lines.toLocaleString()} changed lines`,
     notLoadedLines: (lines: number) =>
-      `Not loaded: ${lines.toLocaleString()} changed lines`,
+      lines === 1
+        ? 'Not loaded: 1 changed line'
+        : `Not loaded: ${lines.toLocaleString()} changed lines`,
   },
   find: {
     title: 'Search the diff',
@@ -572,6 +576,7 @@ export const strings = {
     openingFileFailed: (file: string, reason: string) =>
       `Opening ${file} failed: ${reason}`,
     pageNotLoaded: 'The page did not finish loading',
+    coloringWindowButtonsFailed: 'Coloring the window buttons failed',
     pageGone: (reason: string, exitCode: number) =>
       `The page's process is gone (${reason}, exit code ${exitCode}), loading the page again`,
     pageGoneAgain: (reason: string, exitCode: number) =>
@@ -596,6 +601,10 @@ export const strings = {
     installingCommandFailed: 'Installing the ff command failed',
     pointedCommand: (file: string) => `Pointed ${file} at this AppImage`,
     pointingCommandFailed: 'Pointing the ff command at this AppImage failed',
+    pointedCommandAtUpdate: (file: string) =>
+      `Pointed ${file} at the updated AppImage`,
+    pointingCommandAtUpdateFailed:
+      'Pointing the ff command at the updated AppImage failed',
     addingExplorerMenuFailed: `Adding Open in ${brand} to the Explorer menu failed`,
     openingAskedFailed:
       'Opening the folders asked for from the command line failed',

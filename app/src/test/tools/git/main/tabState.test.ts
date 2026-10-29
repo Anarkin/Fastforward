@@ -230,6 +230,46 @@ suite('Tab state', () => {
     );
   });
 
+  test('keeps no history in which a commit read as a stash is one no more, or one read whole is one now, as a stash is read with its first parent alone', () => {
+    const tab = newTabState();
+    const main = { name: 'main', commit: 'c' };
+    const stash = {
+      name: 'stash@{0}',
+      commit: 's',
+      message: 'On main: kept',
+      untracked: undefined,
+    };
+    loadHistory(
+      tab,
+      Commits.of([{ hash: 's', parents: ['c'] }, ...history]),
+      main,
+      [at('c')],
+      [stash],
+    );
+    assert.strictEqual(
+      refsKeepHistory(tab, main, [at('c'), at('s')], false, [stash]),
+      true,
+    );
+    assert.strictEqual(
+      refsKeepHistory(tab, main, [at('c'), at('s')], false),
+      false,
+    );
+    loadHistory(
+      tab,
+      Commits.of([{ hash: 's', parents: ['c', 'i'] }, ...history]),
+      main,
+      [at('c'), at('s')],
+    );
+    assert.strictEqual(
+      refsKeepHistory(tab, main, [at('c'), at('s')], false),
+      true,
+    );
+    assert.strictEqual(
+      refsKeepHistory(tab, main, [at('c'), at('s')], false, [stash]),
+      false,
+    );
+  });
+
   test('keeps the history only while git takes its tips of the same time in the order it has them, as HEAD moving or a ref renamed can swap them', () => {
     const tied = [
       { hash: 'a', parents: ['x'] },

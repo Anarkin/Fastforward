@@ -1,7 +1,10 @@
+import { lstat } from 'node:fs/promises';
 import * as path from 'node:path';
+import { gitErrorText } from './errorText';
 import {
   isFolder,
   repositoryRoot,
+  sameFolder,
   spelledFrom,
   spellingOf,
 } from './repository';
@@ -26,7 +29,7 @@ export async function locateRepository(
   folder: string,
 ): Promise<Location | undefined> {
   const root = await repositoryRoot(gitPath, folder);
-  if (root === undefined && !(await isBareRepository(gitPath, folder))) {
+  if (root === undefined && !(await isGitFolder(gitPath, folder))) {
     return undefined;
   }
   const [listed, mainPath] = await Promise.all([
@@ -34,7 +37,10 @@ export async function locateRepository(
     root === undefined ? undefined : mainWorktreePath(gitPath, root),
   ]);
   const [listedMain, ...rest] = listed;
-  if (!listedMain) {
+  if (
+    !listedMain ||
+    (root === undefined && !listedMain.bare && !listedMain.missing)
+  ) {
     return undefined;
   }
   const worktrees =
@@ -46,8 +52,38 @@ export async function locateRepository(
           },
           ...rest,
         ]
-      : listed;
+      : [
+          {
+            ...listedMain,
+            missing:
+              listedMain.missing ||
+              (!listedMain.bare && !(await hasGitEntry(listedMain.path))),
+          },
+          ...rest,
+        ];
   return { repository: worktrees[0].path, worktree: root, worktrees };
+}
+
+function hasGitEntry(folder: string): Promise<boolean> {
+  return lstat(path.join(folder, '.git')).then(
+    () => true,
+    () => false,
+  );
+}
+
+async function configuredWorktree(
+  gitPath: string,
+  cwd: string,
+  commonDir: string,
+): Promise<string> {
+  return (
+    await runGit(
+      gitPath,
+      cwd,
+      ['config', '--file', path.join(commonDir, 'config'), 'core.worktree'],
+      { okExitCodes: [0, 1] },
+    )
+  ).trim();
 }
 
 async function mainWorktreePath(
@@ -65,32 +101,53 @@ async function mainWorktreePath(
   if (path.relative(gitDir, commonDir) === '') {
     return root;
   }
-  const configured = (
-    await runGit(
-      gitPath,
-      root,
-      ['config', '--file', path.join(commonDir, 'config'), 'core.worktree'],
-      { okExitCodes: [0, 1] },
-    )
-  ).trim();
+  const configured = await configuredWorktree(gitPath, root, commonDir);
   return configured
     ? spelledFrom(root, path.resolve(commonDir, configured))
     : undefined;
 }
 
-async function isBareRepository(
-  gitPath: string,
-  folder: string,
-): Promise<boolean> {
+async function isGitFolder(gitPath: string, folder: string): Promise<boolean> {
   try {
-    const output = await runGit(gitPath, folder, [
+    const output = await runInGitFolder(gitPath, folder, [
       'rev-parse',
       '--is-bare-repository',
+      '--is-inside-git-dir',
     ]);
-    return output.trim() === 'true';
+    return output.split('\n').includes('true');
   } catch {
     return false;
   }
+}
+
+const refusedBare = /cannot use bare repository/;
+
+async function runInGitFolder(
+  gitPath: string,
+  folder: string,
+  args: readonly string[],
+): Promise<string> {
+  try {
+    return await runGit(gitPath, folder, args);
+  } catch (error) {
+    if (!refusedBare.test(gitErrorText(error))) {
+      throw error;
+    }
+    return runGit(gitPath, folder, [`--git-dir=${folder}`, ...args]);
+  }
+}
+
+async function listsItselfAsMain(
+  gitPath: string,
+  cwd: string,
+  main: Worktree,
+): Promise<boolean> {
+  return (
+    !main.bare &&
+    !(await hasGitEntry(main.path)) &&
+    (await sameFolder(main.path, cwd)) &&
+    !(await configuredWorktree(gitPath, cwd, main.path))
+  );
 }
 
 export async function listWorktrees(
@@ -99,13 +156,21 @@ export async function listWorktrees(
   known: readonly string[] = [],
 ): Promise<Worktree[]> {
   const [first, ...rest] = parseWorktrees(
-    await runGit(gitPath, cwd, ['worktree', 'list', '--porcelain', '-z']),
+    await runInGitFolder(gitPath, cwd, [
+      'worktree',
+      'list',
+      '--porcelain',
+      '-z',
+    ]),
   );
   if (!first) {
     return [];
   }
   const sorted = [
-    first,
+    {
+      ...first,
+      missing: first.missing || (await listsItselfAsMain(gitPath, cwd, first)),
+    },
     ...rest.toSorted((a, b) =>
       a.path.localeCompare(b.path, undefined, { sensitivity: 'base' }),
     ),

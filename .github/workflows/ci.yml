@@ -64,4 +64,4 @@ jobs:
       - run: xvfb-run -a npm test
         if: runner.os == 'Linux'
       - run: node scripts/esbuild.mts --production
-      - run: npx electron-builder --dir --publish never
+      - run: npx electron-builder --publish never

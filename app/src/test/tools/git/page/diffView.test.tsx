@@ -876,6 +876,7 @@ suite('Large files in a commit diff', () => {
 
   test('says how many lines a file not loaded changed, or only that it is not loaded when it changed none, as a binary file', () => {
     assert.strictEqual(largeDiffText(3), 'Not loaded: 3 changed lines');
+    assert.strictEqual(largeDiffText(1), 'Not loaded: 1 changed line');
     assert.strictEqual(largeDiffText(0), 'Not loaded');
     assert.strictEqual(
       largeDiffText(collapseThreshold + 1),
@@ -928,6 +929,14 @@ suite('Large files in a commit diff', () => {
     );
   });
 });
+
+const loadedWhitespaceOnly = (filePatch: string) =>
+  withLargeFiles(
+    [],
+    [fileChange('large.json')],
+    [{ path: 'large.json', lines: collapseThreshold + 1 }],
+    new Map([['large.json', parseFilePatch('large.json', filePatch, true)]]),
+  );
 
 suite('Files whose changes are all whitespace', () => {
   const files = [fileChange('a.ts'), fileChange('b.ts'), fileChange('c.ts')];
@@ -989,18 +998,21 @@ suite('Files whose changes are all whitespace', () => {
     );
   });
 
-  test('notes a file left out of the diff that loads with only whitespace changed', () => {
-    const loaded = withLargeFiles(
-      [],
-      [fileChange('large.json')],
-      [{ path: 'large.json', lines: collapseThreshold + 1 }],
-      new Map([['large.json', parseFilePatch('large.json', '', true)]]),
+  test('notes a file left out of the diff that loads with only whitespace changed, above its lines when shown entire', () => {
+    assert.deepStrictEqual(
+      kinds(diffRows(loadedWhitespaceOnly(''), new Map(), undefined)),
+      ['error', 'file', 'whitespace'],
     );
-    assert.deepStrictEqual(kinds(diffRows(loaded, new Map(), undefined)), [
-      'error',
-      'file',
-      'whitespace',
-    ]);
+    const entire = [
+      'diff --git a/large.json b/large.json',
+      '@@ -1,2 +1,2 @@',
+      ' one',
+      ' two',
+    ].join('\n');
+    assert.deepStrictEqual(
+      kinds(diffRows(loadedWhitespaceOnly(entire), new Map(), undefined)),
+      ['error', 'file', 'whitespace', 'line', 'line'],
+    );
     assert.strictEqual(
       parseFilePatch('large.json', '').whitespaceOnly,
       undefined,
@@ -2329,6 +2341,9 @@ const linkRows = (file: DiffFile, sideBySide: boolean) =>
     row.kind === 'link' ? [row.side] : [row.kind],
   );
 
+const linkNotes = (file: DiffFile, sideBySide: boolean) =>
+  diffRows([file], new Map(), undefined, false, sideBySide).slice(2);
+
 suite('Symbolic links', () => {
   const added = linkPatch(
     'new file mode 120000',
@@ -2427,6 +2442,65 @@ suite('Symbolic links', () => {
       'Symbolic link to docs/README',
     );
     assert.strictEqual(rowHeight({ kind: 'link', file: 0, side: 'new' }), 22);
+  });
+
+  test('notes the side of a file that changed type between a symbolic link and a binary or empty file, on its own side, inline and side by side', () => {
+    const linkLines = [
+      'deleted file mode 120000',
+      'index 1111111..0000000',
+      '--- a/l',
+      '+++ /dev/null',
+      '@@ -1 +0,0 @@',
+      '-README',
+      noNewline,
+      'diff --git a/l b/l',
+      'new file mode 100644',
+    ];
+    const toLink = [
+      'diff --git a/l b/l',
+      'new file mode 120000',
+      'index 0000000..1111111',
+      '--- /dev/null',
+      '+++ b/l',
+      '@@ -0,0 +1 @@',
+      '+README',
+      noNewline,
+    ];
+    const linkToBinary = linkPatch(
+      ...linkLines,
+      'index 0000000..2222222',
+      'Binary files /dev/null and b/l differ',
+    );
+    const linkToEmpty = linkPatch(...linkLines, 'index 0000000..e69de29');
+    const binaryToLink = linkPatch(
+      'deleted file mode 100644',
+      'index 2222222..0000000',
+      'Binary files a/l and /dev/null differ',
+      ...toLink,
+    );
+    const emptyToLink = linkPatch(
+      'deleted file mode 100644',
+      'index e69de29..0000000',
+      ...toLink,
+    );
+    for (const sideBySide of [false, true]) {
+      assert.deepStrictEqual(linkNotes(linkToBinary, sideBySide), [
+        { kind: 'link', file: 0, side: 'old' },
+        { kind: 'binary', file: 0, change: 'added' },
+      ]);
+      assert.deepStrictEqual(linkNotes(linkToEmpty, sideBySide), [
+        { kind: 'link', file: 0, side: 'old' },
+        { kind: 'empty', file: 0, change: 'added' },
+      ]);
+      assert.deepStrictEqual(linkNotes(binaryToLink, sideBySide), [
+        { kind: 'binary', file: 0, change: 'removed' },
+        { kind: 'link', file: 0, side: 'new' },
+      ]);
+      assert.deepStrictEqual(linkNotes(emptyToLink, sideBySide), [
+        { kind: 'empty', file: 0, change: 'removed' },
+        { kind: 'link', file: 0, side: 'new' },
+      ]);
+    }
   });
 
   test('notes a symbolic link shown whole by its target, with no lines and no preview, though its name is that of a document', () => {

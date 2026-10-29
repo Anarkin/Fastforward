@@ -18,6 +18,7 @@ import {
   type GraphLine,
   type GraphRow,
   type RefInfo,
+  type ScrollTarget,
 } from '../../../../tools/git/shared/protocol';
 import { CommitHistory } from '../../../../tools/git/page/commitHistory';
 import {
@@ -36,6 +37,7 @@ import {
   commitRowHeight,
   CommitBubbles,
   CommitRow,
+  Commits,
   commitClass,
   commitListbox,
   commitMoveOf,
@@ -1309,5 +1311,196 @@ suite('Commit list for assistive technology', () => {
       commitListbox('list-', drawn, undefined)['aria-activedescendant'],
       undefined,
     );
+  });
+});
+
+const longHistory = (prefix: string) =>
+  loaded(...Array.from({ length: 1000 }, (_, index) => `${prefix}${index}`));
+
+interface ToldPlace {
+  readonly hash: string;
+  readonly offset: number;
+  readonly report: number;
+}
+
+const placeIn = (history: CommitHistory, place: ToldPlace | undefined) =>
+  place && {
+    index: history.positionOf(place.hash) ?? 0,
+    offset: place.offset,
+    report: place.report,
+  };
+
+const laidOutSize = (element: Element) =>
+  element.classList.contains('list')
+    ? 500
+    : element.classList.contains('virtual-row')
+      ? commitRowHeight
+      : 0;
+
+const laidOutContent = (element: Element) =>
+  Math.max(
+    laidOutSize(element),
+    parseFloat(
+      element.querySelector<HTMLElement>(':scope > .virtual-spacer')?.style
+        .height ?? '',
+    ) || 0,
+  );
+
+const listSettled = () =>
+  act(() => new Promise((resolve) => setTimeout(resolve, 200)));
+
+async function scrollingList(
+  check: (list: {
+    readonly show: (
+      worktree: string,
+      history: CommitHistory | undefined,
+      scrollTarget?: ScrollTarget,
+    ) => Promise<void>;
+    readonly scroll: (top: number) => Promise<void>;
+    readonly top: () => number;
+    readonly told: () => ToldPlace | undefined;
+  }) => Promise<void>,
+): Promise<void> {
+  const dom = new JSDOM('<!doctype html><main></main>', {
+    pretendToBeVisual: true,
+  });
+  const { window } = dom;
+  const tops = new WeakMap<Element, number>();
+  const scrollTo = (element: Element, top: number) => {
+    const next = Math.max(
+      0,
+      Math.min(top, laidOutContent(element) - laidOutSize(element)),
+    );
+    if ((tops.get(element) ?? 0) !== next) {
+      tops.set(element, next);
+      window.setTimeout(() =>
+        element.dispatchEvent(new window.Event('scroll')),
+      );
+    }
+    return next;
+  };
+  Object.defineProperties(window.HTMLElement.prototype, {
+    offsetWidth: { get: () => 300 },
+    offsetHeight: {
+      get(this: HTMLElement) {
+        return laidOutSize(this);
+      },
+    },
+    clientHeight: {
+      get(this: HTMLElement) {
+        return laidOutSize(this);
+      },
+    },
+    scrollHeight: {
+      get(this: HTMLElement) {
+        return laidOutContent(this);
+      },
+    },
+    scrollTop: {
+      get(this: HTMLElement) {
+        return scrollTo(this, tops.get(this) ?? 0);
+      },
+      set(this: HTMLElement, top: number) {
+        scrollTo(this, top);
+      },
+    },
+    scrollTo: {
+      value(this: HTMLElement, { top }: ScrollToOptions) {
+        scrollTo(this, top ?? 0);
+      },
+    },
+  });
+  const globals = {
+    window,
+    document: window.document,
+    HTMLElement: window.HTMLElement,
+    IS_REACT_ACT_ENVIRONMENT: true,
+  };
+  const saved = Object.fromEntries(
+    Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
+  );
+  Object.assign(globalThis, globals);
+  try {
+    const { createRoot } = await import('react-dom/client');
+    const main = window.document.querySelector('main');
+    assert.ok(main);
+    const root = createRoot(main);
+    const told: ToldPlace[] = [];
+    const onScrolled = (hash: string, offset: number, report: number) =>
+      told.push({ hash, offset, report });
+    const list = () => {
+      const found = main.querySelector('.list');
+      assert.ok(found);
+      return found;
+    };
+    await check({
+      show: async (worktree, history, scrollTarget) => {
+        await act(async () => {
+          root.render(
+            <Commits
+              history={history}
+              worktree={worktree}
+              opening={false}
+              scrollTarget={scrollTarget}
+              onScrolled={onScrolled}
+              onLoad={noop}
+              workingTree={undefined}
+              refsByCommit={noRefs}
+              stashes={noStashes}
+              selected={undefined}
+              onSelect={noop}
+              onCompare={noop}
+              onToggleMerge={noop}
+              collapseMerges={false}
+              onCollapseMerges={noop}
+              solo={false}
+              headCommit={undefined}
+              applyingSolo={false}
+              onSolo={noop}
+            />,
+          );
+        });
+        await listSettled();
+      },
+      scroll: async (top) => {
+        list().scrollTop = top;
+        await listSettled();
+        list().dispatchEvent(new window.Event('scroll'));
+        await listSettled();
+      },
+      top: () => list().scrollTop,
+      told: () => told.at(-1),
+    });
+    await act(async () => {
+      root.unmount();
+    });
+  } finally {
+    Object.assign(globalThis, saved);
+  }
+}
+
+const noRefs: ReadonlyMap<string, readonly RefInfo[]> = new Map();
+const noStashes: ReadonlySet<string> = new Set();
+
+suite('Commit list places', () => {
+  test('opens the history of another worktree where it was left, or at its top, also when it is drawn straight after the history it replaces, as the page may take both at once while busy', async () => {
+    await scrollingList(async ({ show, scroll, top, told }) => {
+      await show('a', longHistory('a'));
+      await scroll(10_000);
+      const leftA = told();
+      await show('b', undefined);
+      await show('b', longHistory('b'));
+      assert.strictEqual(top(), 0);
+      await scroll(2_000);
+      const leftB = told();
+      const backToA = longHistory('a');
+      await show('a', backToA, placeIn(backToA, leftA));
+      assert.strictEqual(top(), 10_000);
+      const backToB = longHistory('b');
+      await show('b', backToB, placeIn(backToB, leftB));
+      assert.strictEqual(top(), 2_000);
+      await show('c', longHistory('c'));
+      assert.strictEqual(top(), 0);
+    });
   });
 });

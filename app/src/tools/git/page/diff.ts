@@ -195,14 +195,8 @@ export function parseFilePatch(
   patch: string,
   whitespaceOnly = false,
 ): DiffFile {
-  return (
-    parsePatch(patch)[0] ?? {
-      path,
-      binary: false,
-      hunks: [],
-      ...(whitespaceOnly ? { whitespaceOnly } : {}),
-    }
-  );
+  const file = parsePatch(patch)[0] ?? { path, binary: false, hunks: [] };
+  return whitespaceOnly ? { ...file, whitespaceOnly } : file;
 }
 
 export function parsePatch(patch: string): DiffFile[] {

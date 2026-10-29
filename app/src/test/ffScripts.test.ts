@@ -270,11 +270,11 @@ suite('ff', () => {
         compileWindowsRecorder(path.join(folder, 'cmd', 'Fastforward.exe'));
       });
 
-      async function runCmd(line: string): Promise<string[]> {
+      async function runCmd(line: string, cwd = work): Promise<string[]> {
         const recording = nextRecording();
         try {
           const ran = spawnSync('cmd.exe', ['/d', '/c', line], {
-            cwd: work,
+            cwd,
             env: {
               ...process.env,
               PATH: [bin, process.env.PATH].join(path.delimiter),
@@ -299,6 +299,35 @@ suite('ff', () => {
           await runCmd('ff "a b" --flag "C:\\Program Files (x86)\\x"'),
           [work, '--', 'a b', '--flag', 'C:\\Program Files (x86)\\x'],
         );
+      });
+
+      test('passes the folders as given though they hold what cmd reads as its own, such as & ^ |, as cmd would run what follows an & as a command', async () => {
+        assert.deepStrictEqual(
+          await runCmd('ff "R & echo D" "Q&A" "a^b" "x|y"'),
+          [work, '--', 'R & echo D', 'Q&A', 'a^b', 'x|y'],
+        );
+      });
+
+      test('passes a quoted folder ending in a backslash as that folder, as the app would read the backslash before the quote as a quote', async () => {
+        assert.deepStrictEqual(
+          await runCmd('ff "D:\\" "C:\\My Repo\\" other "C:\\Doubled\\\\"'),
+          [work, '--', 'D:\\.', 'C:\\My Repo\\.', 'other', 'C:\\Doubled\\\\.'],
+        );
+      });
+
+      test('starts the app in the folder it is run in though its name holds [ or ], which Windows PowerShell cannot take as its location', async () => {
+        const bracketed = path.join(folder, 'work [x]');
+        fs.mkdirSync(bracketed);
+        assert.deepStrictEqual(await runCmd('ff', bracketed), [
+          bracketed,
+          '--',
+          '.',
+        ]);
+        assert.deepStrictEqual(await runCmd('ff sub', bracketed), [
+          bracketed,
+          '--',
+          'sub',
+        ]);
       });
 
       test('keeps its lines ending in CRLF, as cmd misreads some batch files without', () => {

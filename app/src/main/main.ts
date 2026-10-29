@@ -76,6 +76,7 @@ import {
   commandState,
   installCommand,
   linkAsAdmin,
+  pointCommandAt,
   refreshCommand,
 } from './terminalCommand';
 import { addExplorerMenu, explorerMenuOf } from './explorerMenu';
@@ -205,7 +206,12 @@ async function start(asked: readonly string[]): Promise<void> {
       typeof color === 'string' &&
       process.platform !== 'darwin'
     ) {
-      window.setTitleBarOverlay({ color: '#00000000', symbolColor: color });
+      try {
+        window.setTitleBarOverlay({ color: '#00000000', symbolColor: color });
+      } catch (error) {
+        log.error(strings.log.coloringWindowButtonsFailed);
+        log.error(error);
+      }
     }
   });
   window.on(
@@ -405,6 +411,16 @@ async function start(asked: readonly string[]): Promise<void> {
         log.error(error);
       },
     );
+    autoUpdater.on('appimage-filename-updated', (updated) => {
+      try {
+        if (pointCommandAt(commandPlace, updated)) {
+          log.info(strings.log.pointedCommandAtUpdate(commandPlace.path));
+        }
+      } catch (error) {
+        log.error(strings.log.pointingCommandAtUpdateFailed);
+        log.error(error);
+      }
+    });
   }
   const explorerMenu = explorerMenuOf(process.platform, process.execPath);
   if (explorerMenu !== undefined) {

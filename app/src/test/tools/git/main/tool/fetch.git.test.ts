@@ -40,7 +40,10 @@ suite('Git tool fetching', () => {
 
   function takeFetchFailures(reason: RegExp, remotes = ['origin']): void {
     const pruning = remotes
-      .map((name) => `-c remote\\.${name}\\.prune=true `)
+      .map(
+        (name) =>
+          `-c remote\\.${name}\\.prune=true -c remote\\.${name}\\.pruneTags=false `,
+      )
       .join('');
     takeErrorsLogged(
       logged,

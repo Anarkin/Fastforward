@@ -44,7 +44,7 @@ suite('Git tool updating by itself', () => {
       logged,
       /^Fetching every remote failed$/,
       new RegExp(
-        `^git -c remote\\.origin\\.prune=true fetch --progress --all --porcelain failed: fatal: ${reason.source}`,
+        `^git -c remote\\.origin\\.prune=true -c remote\\.origin\\.pruneTags=false fetch --progress --all --porcelain failed: fatal: ${reason.source}`,
       ),
     );
   }

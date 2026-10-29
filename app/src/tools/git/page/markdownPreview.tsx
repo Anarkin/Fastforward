@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useEffectEvent,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -123,7 +124,7 @@ let loaded: Render | undefined;
 const loadRenderer = onceMade(() =>
   Promise.all([import('dompurify'), import('markdown-it')]).then(
     ([{ default: purify }, { default: markdownIt }]) => {
-      const render = markdownRenderer(purify, markdownIt);
+      const render = markdownRenderer(purify(window), markdownIt);
       loaded = render;
       return render;
     },
@@ -200,6 +201,13 @@ function MarkdownPane({
   const content = useRef<HTMLDivElement>(null);
   const drawn = useRef(new Map<Element, () => void>());
   const drawnDark = useRef(dark);
+  const showDocumentImages = useEffectEvent((element: ParentNode) => {
+    if (root !== undefined && version !== undefined) {
+      showImages(element, (path) =>
+        documentImageUrl({ root, revision, version }, path),
+      );
+    }
+  });
   useLayoutEffect(() => {
     const element = content.current;
     if (!element || html === undefined) {
@@ -230,6 +238,7 @@ function MarkdownPane({
         stopDiagrams();
       });
     }
+    showDocumentImages(element);
   }, [html, dark]);
   useEffect(() => {
     const element = content.current;

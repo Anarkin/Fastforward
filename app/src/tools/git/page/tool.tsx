@@ -769,6 +769,7 @@ export function GitTool({
                           >
                             <Commits
                               history={history}
+                              worktree={activeTab}
                               opening={opening}
                               scrollTarget={scrollTarget}
                               onScrolled={onScrolled}

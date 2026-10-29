@@ -18,6 +18,7 @@ import {
   wheeled,
   type KeyPress,
 } from '../../../shell/shared/keymap';
+import { strings } from '../../../shared/strings';
 import { gitKeymap } from '../../../tools/git/shared/keymap';
 import { keyPress, noModifiers, withMacKeys } from '../../fixtures';
 
@@ -535,6 +536,18 @@ suite('Keymap', () => {
     );
     assert.deepStrictEqual(keyLabels('MiddleClick', false), ['Middle-click']);
     assert.deepStrictEqual(keyLabels('Drag', false), ['Drag']);
+  });
+
+  test('names every key a binding uses from the dictionary, but letters, symbols and F keys, which name themselves, so a translation reaches the shortcuts screen whole', () => {
+    const named: Readonly<Record<string, string>> = strings.keys;
+    const unnamed = [...Object.values(keymap), ...Object.values(gitKeymap)]
+      .flatMap((binding) => Object.keys(binding.keys))
+      .map((keys) => keys.split('+').at(-1) ?? keys)
+      .filter(
+        (key) =>
+          key.length > 1 && !/^F\d+$/.test(key) && !Object.hasOwn(named, key),
+      );
+    assert.deepStrictEqual(unnamed, []);
   });
 
   test('leaves telling keys, modifiers and buttons apart to itself, so the shortcuts screen lists every one', () => {

@@ -8,11 +8,14 @@ import {
   commandState,
   installCommand,
   linkAsAdmin,
+  pointCommandAt,
   refreshCommand,
   scriptForAppImage,
+  syncCommandFiles,
   type CommandFile,
   type CommandFiles,
   type CommandPlace,
+  type SyncCommandFiles,
 } from '../../main/terminalCommand';
 import { removeFolder, tempFolder } from '../repositories';
 
@@ -316,6 +319,39 @@ suite('Terminal command', () => {
     assert.strictEqual(await commandState(linked, files), 'outdated');
   });
 
+  test('points the copy of ff at the AppImage an update renamed as the app quit, as nothing starts the app again to point it, leaving any other ff alone', () => {
+    const updated = '/home/me/Apps/fastforward-19.0.0-linux-x64.AppImage';
+    const files = new Map<string, CommandFile>();
+    const now: SyncCommandFiles = {
+      read: (file) => files.get(file) ?? { kind: 'missing' },
+      write: (file, text) => {
+        files.set(file, { kind: 'file', text });
+      },
+    };
+    assert.strictEqual(pointCommandAt(copied, updated, now), false);
+    assert.strictEqual(files.size, 0);
+    files.set(copied.path, {
+      kind: 'file',
+      text: scriptForAppImage(script, appImage),
+    });
+    assert.strictEqual(pointCommandAt(copied, updated, now), true);
+    assert.deepStrictEqual(files.get(copied.path), {
+      kind: 'file',
+      text: scriptForAppImage(script, updated),
+    });
+    const others: CommandFile[] = [
+      { kind: 'file', text: scriptForAppImage(script, '/elsewhere.AppImage') },
+      { kind: 'file', text: '#!/bin/sh\n' },
+      { kind: 'link', target: '/usr/bin/ff' },
+    ];
+    for (const other of others) {
+      files.set(copied.path, other);
+      assert.strictEqual(pointCommandAt(copied, updated, now), false);
+      assert.deepStrictEqual(files.get(copied.path), other);
+    }
+    assert.strictEqual(pointCommandAt(linked, updated, now), false);
+  });
+
   test('links ff as an administrator through osascript on macOS, passing the paths as arguments rather than in the script, and tells a cancel from a failure', async () => {
     const ran: (readonly string[])[] = [];
     const asAdmin = linkAsAdmin((file, args) => {
@@ -374,12 +410,24 @@ suite('Terminal command', () => {
         kind: 'file',
         text: 'two',
       });
+      assert.deepStrictEqual(syncCommandFiles.read(`${file}.missing`), {
+        kind: 'missing',
+      });
+      syncCommandFiles.write(file, 'three');
+      assert.deepStrictEqual(syncCommandFiles.read(file), {
+        kind: 'file',
+        text: 'three',
+      });
       if (process.platform !== 'win32') {
         assert.strictEqual(fs.statSync(file).mode & 0o777, 0o755);
         const link = path.join(folder, 'other', 'ff');
         await commandFiles.link(link, '/nowhere/one');
         await commandFiles.link(link, file);
         assert.deepStrictEqual(await commandFiles.read(link), {
+          kind: 'link',
+          target: file,
+        });
+        assert.deepStrictEqual(syncCommandFiles.read(link), {
           kind: 'link',
           target: file,
         });

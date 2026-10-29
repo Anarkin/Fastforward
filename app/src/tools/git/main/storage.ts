@@ -298,7 +298,7 @@ const bookmarkKinds: readonly (RefKind | 'commit')[] = [
   'commit',
 ];
 
-function isBookmark(value: unknown): value is Bookmark {
+export function isBookmark(value: unknown): value is Bookmark {
   return (
     typeof value === 'object' &&
     value !== null &&

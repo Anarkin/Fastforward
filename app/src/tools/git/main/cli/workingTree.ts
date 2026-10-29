@@ -170,16 +170,7 @@ export async function workingTreeFiles(
       ? listUntracked(gitPath, cwd, signal)
       : Promise.resolve(knownUntracked);
   const [trackedChanges, listedUntracked, staged, all] = await Promise.all([
-    runGit(
-      gitPath,
-      cwd,
-      [...workingTreeDiff(diff), ...(measured ? changesArgs : listArgs)],
-      {
-        signal,
-      },
-    ).then((changes) =>
-      trackedFiles(gitPath, cwd, parseRawChanges(changes), reverse, measured),
-    ),
+    trackedListing(gitPath, cwd, diff, measured, signal),
     listing,
     base === undefined
       ? stagedFiles(gitPath, cwd, measured, signal)
@@ -239,6 +230,37 @@ export async function workingTreeFiles(
   };
 }
 
+async function trackedListing(
+  gitPath: string,
+  cwd: string,
+  diff: WorkingTreeDiff,
+  measured: boolean,
+  signal?: AbortSignal,
+): Promise<FileChange[]> {
+  const listed = (args: readonly string[]) =>
+    runGit(gitPath, cwd, [...workingTreeDiff(diff), ...args], { signal });
+  const counted = measured
+    ? await listed(changesArgs).catch(() => undefined)
+    : undefined;
+  if (counted !== undefined) {
+    return trackedFiles(
+      gitPath,
+      cwd,
+      parseRawChanges(counted),
+      diff.reverse,
+      true,
+    );
+  }
+  const files = await trackedFiles(
+    gitPath,
+    cwd,
+    parseRawChanges(await listed(listArgs)),
+    diff.reverse,
+    false,
+  );
+  return measured ? files.map((file) => ({ ...file, uncounted: true })) : files;
+}
+
 async function sinceHead(
   gitPath: string,
   cwd: string,
@@ -288,9 +310,12 @@ async function addedOnDisk(
   measured: boolean,
 ): Promise<FileChange> {
   const onDisk = join(cwd, file.path);
+  const stats = await lstat(onDisk).catch(() => undefined);
+  if (stats === undefined) {
+    return file;
+  }
   const added = measured ? await untrackedLines.of(onDisk) : 0;
-  const bytes =
-    added !== 0 ? (await lstat(onDisk).catch(() => undefined))?.size : 0;
+  const bytes = added !== 0 ? stats.size : 0;
   return {
     ...file,
     status: 'A',

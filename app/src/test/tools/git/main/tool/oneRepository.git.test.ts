@@ -22,7 +22,12 @@ import {
   JsonFileStore,
   tabsKey,
 } from '../../../../../shell/main/storage';
-import { GitStorage, recentKey } from '../../../../../tools/git/main/storage';
+import {
+  bookmarksKey,
+  GitStorage,
+  recentKey,
+  soloKey,
+} from '../../../../../tools/git/main/storage';
 import { runGit } from '../../../../../tools/git/main/cli/run';
 import type { GitTool } from '../../../../../tools/git/main/tool';
 import { type Connection, gitState } from '../../../../harness';
@@ -586,6 +591,49 @@ suite('Git tool of one repository', () => {
       assert.deepStrictEqual(savedBookmarks(store, repository.root), []);
     });
 
+    test('saves no bookmarks the page sets in a shape it does not know, or for a repository not open, and saves those for an open one under its own spelling', async () => {
+      const main: BookmarkRef = { kind: 'branch', name: 'main' };
+      for (const [root, bookmarks] of [
+        [repository.root, 'main'],
+        [repository.root, [main, { kind: 'branch', name: 1 }]],
+        [path.join(folder, 'elsewhere'), [main]],
+        [`${repository.root}${path.sep}.`, [main]],
+      ]) {
+        await connection.receive(
+          JSON.parse(JSON.stringify({ type: 'setBookmarks', root, bookmarks })),
+        );
+      }
+      assert.deepStrictEqual(gitState(store).get(bookmarksKey), {
+        [repository.root]: [main],
+      });
+    });
+
+    test('takes a root the page spells another way as the one of its tab, adding no tab for it', async () => {
+      const spelled = `${repository.root}${path.sep}.`;
+      await connection.receive({ type: 'setSolo', root: spelled, solo: true });
+      try {
+        assert.deepStrictEqual(gitState(store).get(soloKey), {
+          [repository.root]: true,
+        });
+        await connection.receive({
+          type: 'scrolled',
+          root: spelled,
+          hash: fixture.b,
+          offset: 3,
+          report: 1,
+        });
+        page.clear();
+        await connection.receive({
+          type: 'setSolo',
+          root: repository.root,
+          solo: false,
+        });
+        assert.strictEqual(page.last('commits')?.scrollTarget?.offset, 3);
+      } finally {
+        await gitState(store).update(soloKey, {});
+      }
+    });
+
     test('sends the history again, in place, with the row of a commit bookmarked or no longer bookmarked by hash as one with bubbles or without', async () => {
       const main: BookmarkRef = { kind: 'branch', name: 'main' };
       const setBookmarks = async (bookmarks: readonly Bookmark[]) => {
@@ -1092,7 +1140,7 @@ suite('Git tool of one repository', () => {
       );
     });
 
-    test('sends the texts a diff asks for, an uncommitted new side read from disk, and none of a side over 2 MB, from git or from disk', async () => {
+    test('sends the texts a diff asks for, an uncommitted new side read from disk, each side of a file once however often asked for, and none of a side over 2 MB, from git or from disk', async () => {
       const file = path.join(repository.root, 'texts.ts');
       fs.writeFileSync(file, 'old\n');
       try {
@@ -1114,7 +1162,7 @@ suite('Git tool of one repository', () => {
           texts: [
             { path: 'texts.ts', side: 'old', blob },
             { path: 'texts.ts', side: 'new', blob },
-            { path: 'texts.ts', side: 'old', blob: '0'.repeat(39) + '1' },
+            { path: 'other.ts', side: 'old', blob: '0'.repeat(39) + '1' },
           ],
         });
         assert.deepStrictEqual(
@@ -1126,6 +1174,22 @@ suite('Git tool of one repository', () => {
           ],
         );
         assert.strictEqual(page.last('texts')?.diff, 3);
+        page.clear();
+        await connection.receive({
+          type: 'loadTexts',
+          root: repository.root,
+          hash: workingTreeHash,
+          diff: 4,
+          texts: Array.from({ length: 1000 }, (_, at) => ({
+            path: 'texts.ts',
+            side: 'new' as const,
+            blob: `${at}`,
+          })),
+        });
+        assert.deepStrictEqual(
+          page.last('texts')?.texts.map(({ side, text }) => [side, text]),
+          [['new', 'new\n']],
+        );
         fs.writeFileSync(file, 'x'.repeat(2 * 1024 * 1024 + 1));
         const [large] = await repository.resolve(
           (await repository.git('hash-object', '-w', file)).trim(),
@@ -1270,8 +1334,8 @@ suite('Git tool of one repository', () => {
           root: repository.root,
           hash: fixture.merge,
           diff: 6,
-          texts: ['HEAD:a.txt', ':/merge', 'HEAD', '-n'].map((blob) => ({
-            path: 'a.txt',
+          texts: ['HEAD:a.txt', ':/merge', 'HEAD', '-n'].map((blob, at) => ({
+            path: `${at}.txt`,
             side: 'new' as const,
             blob,
           })),

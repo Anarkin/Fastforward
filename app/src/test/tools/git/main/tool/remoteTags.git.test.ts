@@ -19,6 +19,7 @@ import {
   type FakePage,
   openView,
   stubMethod,
+  takeErrorsLogged,
   gitState,
 } from '../../../../harness';
 
@@ -152,6 +153,22 @@ suite('Git tool remote tags', () => {
       ]);
     } finally {
       await repository.git('remote', 'remove', 'second');
+    }
+  });
+
+  test("shows the tags of the remotes that fetched when another can't be fetched", async () => {
+    await repository.git('remote', 'add', 'gone', path.join(folder, 'gone'));
+    try {
+      await repository.git('tag', 'beside-gone', a);
+      await repository.git('push', 'origin', 'beside-gone');
+      await fetchedShows([remoteTag('origin', 'beside-gone', a)]);
+      takeErrorsLogged(
+        logged,
+        /^Fetching every remote failed$/,
+        /^git -c remote\.origin\.prune=true -c remote\.origin\.pruneTags=false -c remote\.gone\.prune=true -c remote\.gone\.pruneTags=false fetch --progress --all --porcelain failed: .*could not fetch gone/s,
+      );
+    } finally {
+      await repository.git('remote', 'remove', 'gone');
     }
   });
 

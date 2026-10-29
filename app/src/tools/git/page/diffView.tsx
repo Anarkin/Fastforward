@@ -139,8 +139,8 @@ export type DiffRow =
       readonly path: string;
       readonly lines: number | undefined;
     }
-  | { readonly kind: 'binary'; readonly file: number }
-  | { readonly kind: 'empty'; readonly file: number }
+  | { readonly kind: 'binary'; readonly file: number; readonly change?: Change }
+  | { readonly kind: 'empty'; readonly file: number; readonly change?: Change }
   | { readonly kind: 'whitespace'; readonly file: number }
   | { readonly kind: 'sameContent'; readonly file: number }
   | { readonly kind: 'mode'; readonly file: number }
@@ -745,6 +745,11 @@ const noneRendered: ReadonlySet<string> = new Set();
 
 const linkSides: readonly (keyof LinkTargets)[] = ['old', 'new'];
 
+const sideChanges: Record<keyof LinkTargets, Change> = {
+  old: 'removed',
+  new: 'added',
+};
+
 export function diffRows(
   files: readonly DiffFile[],
   toggled: ReadonlyMap<string, boolean>,
@@ -825,6 +830,15 @@ export function diffRows(
       for (const side of linkSides) {
         if (file.link[side] !== undefined) {
           rows.push({ kind: 'link', file: index, side });
+        } else if (
+          file.blobs?.[side] !== undefined &&
+          (file.binary || file.hunks.length === 0)
+        ) {
+          rows.push({
+            kind: file.binary ? 'binary' : 'empty',
+            file: index,
+            change: sideChanges[side],
+          });
         }
       }
     } else if (file.binary) {
@@ -2131,7 +2145,7 @@ export function DiffView({
         ) : (
           <FileNote
             text={strings.diff.binary}
-            change={sideChange(files[row.file])}
+            change={row.change ?? sideChange(files[row.file])}
             split={split}
           />
         );
@@ -2139,7 +2153,7 @@ export function DiffView({
         return (
           <FileNote
             text={strings.diff.emptyFile}
-            change={sideChange(files[row.file])}
+            change={row.change ?? sideChange(files[row.file])}
             split={split}
           />
         );

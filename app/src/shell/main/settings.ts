@@ -265,7 +265,18 @@ export class UserSettings {
   }
 
   private update(keys: readonly string[], value: unknown): Promise<void> {
-    this.current = merge(this.current, withValue({}, keys, value), '', []);
+    const written: unknown = JSON.parse(JSON.stringify({ value })).value;
+    const problems: string[] = [];
+    const settings = merge(
+      this.current,
+      withValue({}, keys, written),
+      '',
+      problems,
+    );
+    if (written === undefined || problems.length > 0) {
+      return Promise.resolve();
+    }
+    this.current = settings;
     const file = this.file;
     if (file === undefined) {
       this.inMemory = this.withSetting(this.inMemory, keys, value);

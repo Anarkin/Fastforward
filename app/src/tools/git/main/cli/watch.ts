@@ -228,9 +228,17 @@ export async function watchRepository(
   let rootTree: TreeWatcher | undefined;
   if (recursive) {
     watchers = watchEach([root, ...gitDirs], (folder) => {
-      const watcher = fs.watch(folder, { recursive: true }, (event, file) =>
-        (folder === root ? onEvent : onGitDirEvent)(folder, file, event),
-      );
+      const watcher = fs.watch(folder, { recursive: true }, (event, file) => {
+        const gone = file !== null && path.isAbsolute(file);
+        if (gone) {
+          watcher.close();
+        }
+        (folder === root ? onEvent : onGitDirEvent)(
+          folder,
+          gone ? null : file,
+          event,
+        );
+      });
       watcher.on('error', (error) => {
         if (!disposed) {
           onStopped(error);

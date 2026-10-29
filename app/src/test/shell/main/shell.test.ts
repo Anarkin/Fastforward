@@ -9,10 +9,13 @@ import {
   closeViews,
   failOnErrorsLogged,
   FakeHost,
+  gate,
+  stubMethod,
   takeErrorsLogged,
   withView,
   type FakePage,
 } from '../../harness';
+import { removeFolder, tempFolder } from '../../repositories';
 
 function noticesOf(page: FakePage): (readonly [string, string])[] {
   return page.messages.flatMap((message) =>
@@ -25,7 +28,7 @@ function noticesOf(page: FakePage): (readonly [string, string])[] {
 suite('Shell with no tab open', () => {
   const noGit = path.join(os.tmpdir(), 'fastforward-no-git');
 
-  const { log, error: logged } = recordingLog();
+  const { log, info, warn: warned, error: logged } = recordingLog();
   failOnErrorsLogged(logged);
 
   afterAll(closeViews);
@@ -275,6 +278,112 @@ suite('Shell with no tab open', () => {
       host,
       noGit,
     );
+  });
+
+  test('checks the kind of each value the page sends before acting on it, as the page is not trusted', async () => {
+    const host = new FakeHost();
+    await withView(
+      log,
+      [],
+      async (view) => {
+        await view.connection.receive({ type: 'newTab', tool: 'terminal' });
+        await view.connection.receive({ type: 'newTab', tool: 'files' });
+        const lines = info.length;
+        const warnings = warned.length;
+        for (const message of [
+          '{ "type": "setAutoSortTabs", "on": "yes" }',
+          '{ "type": "copyText", "text": 5 }',
+          '{ "type": "log", "level": "warn", "message": "forged" }',
+          '{ "type": "log", "level": "info", "message": { "forged": true } }',
+        ]) {
+          await view.connection.receive(JSON.parse(message));
+        }
+        assert.deepStrictEqual(
+          view.page.tabs?.tabs.map((tab) => tab.tool),
+          ['terminal', 'files'],
+        );
+        assert.strictEqual(view.settings.settings.autoSortTabs, false);
+        assert.deepStrictEqual(host.opened, []);
+        assert.strictEqual(warned.length, warnings);
+        assert.ok(
+          !info
+            .slice(lines)
+            .some((line) => line.startsWith(strings.log.webview(''))),
+        );
+        await view.connection.receive({
+          type: 'log',
+          level: 'info',
+          message: 'shown',
+        });
+        assert.strictEqual(info.at(-1), strings.log.webview('shown'));
+      },
+      true,
+      host,
+      noGit,
+    );
+  });
+
+  test('sorts the tabs as the page loads once auto-sort is turned on in the settings file, as the page then offers neither sorting nor dragging them', async () => {
+    await withView(
+      log,
+      [],
+      async (view) => {
+        await view.connection.receive({ type: 'newTab', tool: 'terminal' });
+        await view.connection.receive({ type: 'newTab', tool: 'files' });
+        await view.settings.set('autoSortTabs', true);
+        view.shell.reloadSettings();
+        await view.connection.receive({ type: 'ready' });
+        assert.deepStrictEqual(
+          view.page.tabs?.tabs.map((tab) => tab.tool),
+          ['files', 'terminal'],
+        );
+      },
+      true,
+      undefined,
+      noGit,
+    );
+  });
+
+  test('asks about the folders asked for at about the same time in one question, as Explorer starts the app once for each folder picked, each handing its folder over', async () => {
+    const first = tempFolder('first');
+    const second = tempFolder('second');
+    try {
+      await withView(
+        log,
+        [],
+        async (view) => {
+          const held = gate();
+          stubMethod(view.view, 'fits', async (_fits, folder) => {
+            if (folder === first) {
+              await held.opened;
+            }
+            return false;
+          });
+          const asked = [
+            view.shell.openFolders([first]),
+            view.shell.openFolders([second]),
+          ];
+          await new Promise((resolve) => setTimeout(resolve, 50));
+          held.open();
+          await Promise.all(asked);
+          assert.deepStrictEqual(view.page.last('chooseTool')?.folders, [
+            first,
+            second,
+          ]);
+          await view.connection.receive({ type: 'openWith', tool: 'files' });
+          assert.deepStrictEqual(
+            view.page.tabs?.tabs.map((tab) => tab.root),
+            [first, second],
+          );
+        },
+        true,
+        undefined,
+        noGit,
+      );
+    } finally {
+      removeFolder(first);
+      removeFolder(second);
+    }
   });
 
   test('sends the version of the app and of git when the page loads, for its About, and copies what the page asks to', async () => {

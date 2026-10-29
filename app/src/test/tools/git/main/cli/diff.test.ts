@@ -427,6 +427,31 @@ suite('Sizes of the changed files', () => {
       blob('6'),
     ]);
   });
+
+  test('sizes no blob of the side read from disk, whose id git hashed from the file and a partial clone would try to fetch', () => {
+    const changes = parseRawChanges(
+      [
+        `:100644 100644 ${blob('1')} ${blob('2')} R090`,
+        'old.ts',
+        'new.ts',
+        `:100644 100644 ${blob('3')} ${blob('0')} M`,
+        'a.ts',
+        '1\t1\t',
+        'old.ts',
+        'new.ts',
+        '1\t1\ta.ts',
+        '',
+      ].join('\0'),
+    );
+    assert.deepStrictEqual(blobsToSize(changes, { fromDisk: true }), [
+      blob('1'),
+      blob('3'),
+    ]);
+    assert.deepStrictEqual(
+      blobsToSize(changes, { fromDisk: true, reverse: true }),
+      [blob('2')],
+    );
+  });
 });
 
 suite('Git show parsers', () => {

@@ -135,6 +135,17 @@ suite('Commits read from git', () => {
     assert.strictEqual(commits.hashAt(2), 'x');
   });
 
+  test('finds no commit by a string whose characters only share their low bytes with its hash, as the page may send any characters', () => {
+    const hash = sha1(1);
+    const commits = Commits.of([{ hash, parents: [] }]);
+    const forged = hash.replaceAll(/./g, (char) =>
+      String.fromCharCode(char.charCodeAt(0) + 0x100),
+    );
+    assert.strictEqual(commits.indexOf(hash), 0);
+    assert.strictEqual(commits.indexOf(forged), undefined);
+    assert.strictEqual(commits.has(forged), false);
+  });
+
   test('reads the timestamp git writes before each commit when asked for', () => {
     const builder = new CommitsBuilder([], true);
     builder.add(Buffer.from('200 b a\n100 a\n'));

@@ -391,11 +391,12 @@ export async function withBytes(
   changes: readonly RawChange[],
   { fromDisk = false, reverse = false } = {},
 ): Promise<RawChange[]> {
-  const sizes = await blobSizes(gitPath, cwd, blobsToSize(changes));
+  const sizes = await blobSizes(
+    gitPath,
+    cwd,
+    blobsToSize(changes, { fromDisk, reverse }),
+  );
   const sizeOnDisk = async (path: string) => {
-    if (!fromDisk) {
-      return 0;
-    }
     const stats = await lstat(join(cwd, path)).catch(() => undefined);
     return stats?.isFile() ? stats.size : 0;
   };
@@ -410,7 +411,7 @@ export async function withBytes(
         : [oldId, newId, file.path];
       const bytes =
         (sizes.get(oldSide) ?? 0) +
-        (sizes.get(newSide) ?? (await sizeOnDisk(path)));
+        (fromDisk ? await sizeOnDisk(path) : (sizes.get(newSide) ?? 0));
       return { ...change, file: { ...file, bytes } };
     }),
   );
@@ -421,14 +422,17 @@ const linesChanged = ({ file }: RawChange) =>
 
 const gitlinkMode = '160000';
 
-export function blobsToSize(changes: readonly RawChange[]): string[] {
+export function blobsToSize(
+  changes: readonly RawChange[],
+  { fromDisk = false, reverse = false } = {},
+): string[] {
   return [
     ...new Set(
       changes
         .filter(linesChanged)
         .flatMap(({ oldMode, newMode, oldId, newId }) => [
-          ...(oldMode === gitlinkMode ? [] : [oldId]),
-          ...(newMode === gitlinkMode ? [] : [newId]),
+          ...(oldMode === gitlinkMode || (fromDisk && reverse) ? [] : [oldId]),
+          ...(newMode === gitlinkMode || (fromDisk && !reverse) ? [] : [newId]),
         ])
         .filter((id) => !isNullId(id)),
     ),

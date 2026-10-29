@@ -183,7 +183,7 @@ class HashTable {
   }
 
   find(hash: string): number | undefined {
-    const source = Buffer.from(hash, 'latin1');
+    const source = Buffer.from(hash, 'utf8');
     return this.findBytes(source, 0, source.length);
   }
 

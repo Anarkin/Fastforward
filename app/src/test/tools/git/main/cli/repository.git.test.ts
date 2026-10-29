@@ -465,6 +465,42 @@ suite('Git repository', () => {
     }
   });
 
+  test('prunes the remote branches of a remote but keeps a tag of the user, though they set tags to be pruned for every remote or for one, as git prunes tags only once told to prune', async () => {
+    const folder = tempFolder('prune-tags');
+    try {
+      const upstream = await tempRepository(path.join(folder, 'upstream'));
+      await upstream.commit('one');
+      const local = await tempRepository(path.join(folder, 'local'));
+      await local.git('remote', 'add', 'origin', upstream.root);
+      for (const setting of ['fetch.pruneTags', 'remote.origin.pruneTags']) {
+        await upstream.git('branch', 'gone');
+        await fetchAllRemotes(gitPath, local.root);
+        await local.git('tag', 'mine', 'refs/remotes/origin/main');
+        await upstream.git('branch', '-D', 'gone');
+        await local.git('config', setting, 'true');
+        await fetchAllRemotes(gitPath, local.root);
+        assert.deepStrictEqual(
+          (
+            await local.git(
+              'for-each-ref',
+              '--format=%(refname)',
+              'refs/remotes/origin/gone',
+              'refs/tags',
+            )
+          )
+            .trim()
+            .split('\n'),
+          ['refs/tags/mine'],
+          setting,
+        );
+        await local.git('config', '--unset', setting);
+        await local.git('tag', '-d', 'mine');
+      }
+    } finally {
+      removeFolder(folder);
+    }
+  });
+
   test('gives up on a fetch that prints nothing for 5 minutes, saying it stalled', async () => {
     await temp.git('remote', 'add', 'stalled', 'ssh://stalled.invalid/x');
     await temp.git('config', 'core.sshCommand', "sh -c 'sleep 15' --");
@@ -560,7 +596,7 @@ suite('Git repository', () => {
     }
   });
 
-  test('says why a fetch failed without the progress git printed before it', async () => {
+  test('says why a fetch failed without the progress git printed before it, keeping the lines ssh ends with a carriage return', async () => {
     const folder = tempFolder('failing-remote');
     try {
       const local = await tempRepository(path.join(folder, 'local'));
@@ -569,7 +605,7 @@ suite('Git repository', () => {
         .replaceAll('\\', '/');
       fs.writeFileSync(
         failing,
-        "#!/bin/sh\nprintf 'remote: Enumerating objects: 2, done.\\nReceiving objects:  50%% (1/2)\\rReceiving objects: 100%% (2/2), done.\\nfatal: the pack broke\\n' >&2\nexit 1\n",
+        "#!/bin/sh\nprintf 'remote: Enumerating objects: 2, done.\\nReceiving objects:  50%% (1/2)\\rReceiving objects: 100%% (2/2), done.\\nssh: Could not resolve hostname nowhere: Name or service not known\\r\\nfatal: the pack broke\\n' >&2\nexit 1\n",
         { mode: 0o755 },
       );
       await local.git('remote', 'add', 'origin', path.join(folder, 'any'));
@@ -579,6 +615,10 @@ suite('Git repository', () => {
         (failed: unknown) => failed,
       );
       const said = gitErrorText(error);
+      assert.match(
+        said,
+        /^ssh: Could not resolve hostname nowhere: Name or service not known$/m,
+      );
       assert.match(said, /^fatal: the pack broke$/m);
       assert.doesNotMatch(said, /objects/);
     } finally {

@@ -169,6 +169,13 @@ suite('Find in diff', () => {
     );
   });
 
+  test('leaves out a symbolic link shown whole, whose target is noted rather than shown as a line', () => {
+    assert.deepStrictEqual(
+      findMatches([], { ...whole, content: 'find', link: true }, 'find'),
+      [],
+    );
+  });
+
   test('counts the files left out of a patch as not searched until they load, as their lines are not in the page', () => {
     const files: DiffFile[] = [
       ...parsePatch(patch),

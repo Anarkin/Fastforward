@@ -169,7 +169,7 @@ const progressLine = /\d+% \(\d+\/\d+\)|^(remote: )?[^:]+: \d+, [^,]+\.$/;
 
 function withoutProgress(said: string): string {
   return said
-    .split('\n')
+    .split(/\r?\n/)
     .map((line) => line.slice(line.lastIndexOf('\r') + 1).trimEnd())
     .filter((line) => !progressLine.test(line))
     .join('\n')

@@ -21,7 +21,8 @@ export interface Refs {
   readonly commitGraph: boolean;
 }
 
-const noRepository = /not a git repository|must be run in a work tree/;
+const noRepository =
+  /not a git repository|must be run in a work tree|cannot use bare repository/;
 
 export async function repositoryRoot(
   gitPath: string,
@@ -56,7 +57,7 @@ export function isFolder(folder: string): Promise<boolean> {
   );
 }
 
-async function sameFolder(a: string, b: string): Promise<boolean> {
+export async function sameFolder(a: string, b: string): Promise<boolean> {
   try {
     const [realA, realB] = await Promise.all([fs.realpath(a), fs.realpath(b)]);
     return realA === realB;
@@ -387,6 +388,15 @@ async function remotesSafeToPrune(
     .map(([remote]) => remote);
 }
 
+const notFetched =
+  /^(?:error: )?could not fetch (?:'(.+)' \(exit code: -?\d+\)|(.+))$/gm;
+
+export function remotesNotFetched(said: string): string[] {
+  return [...said.matchAll(notFetched)].map(
+    (match) => match[1] ?? match[2] ?? '',
+  );
+}
+
 interface FetchOptions {
   readonly timeout?: number;
   readonly interactive?: boolean;
@@ -429,7 +439,12 @@ async function fetchWith(
   const signal = AbortSignal.any([quiet.stalled, stop]);
   try {
     const pruning = (await remotesSafeToPrune(gitPath, root, signal)).flatMap(
-      (remote) => ['-c', `remote.${remote}.prune=true`],
+      (remote) => [
+        '-c',
+        `remote.${remote}.prune=true`,
+        '-c',
+        `remote.${remote}.pruneTags=false`,
+      ],
     );
     const output = await runGit(
       gitPath,

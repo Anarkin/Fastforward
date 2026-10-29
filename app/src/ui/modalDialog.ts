@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { clicked, keymap } from '../shell/shared/keymap';
+import { clicked, keymap, released } from '../shell/shared/keymap';
 import { keyPressed } from './shortcuts';
+
+const dragEnds = ['pointerup', 'pointercancel'];
 
 const tabStops =
   'button:not(:disabled), a[href], input:not(:disabled), [tabindex]:not([tabindex="-1"])';
@@ -95,7 +97,11 @@ export function useDialogDrag(dialog: React.RefObject<HTMLElement | null>) {
     event.preventDefault();
     const box = element.getBoundingClientRect();
     const from = { x: event.clientX, y: event.clientY };
-    const move = (moved: MouseEvent) =>
+    const move = (moved: MouseEvent) => {
+      if (released(moved)) {
+        end();
+        return;
+      }
       setPlace(
         draggedTo(
           { x: box.left, y: box.top },
@@ -108,14 +114,19 @@ export function useDialogDrag(dialog: React.RefObject<HTMLElement | null>) {
           },
         ),
       );
+    };
     stop.current?.();
     const end = () => {
       view.removeEventListener('pointermove', move);
-      view.removeEventListener('pointerup', end);
+      for (const type of dragEnds) {
+        view.removeEventListener(type, end);
+      }
       stop.current = undefined;
     };
     view.addEventListener('pointermove', move);
-    view.addEventListener('pointerup', end);
+    for (const type of dragEnds) {
+      view.addEventListener(type, end);
+    }
     stop.current = end;
   };
   return {

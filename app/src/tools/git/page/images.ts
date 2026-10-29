@@ -158,7 +158,10 @@ export function documentImagePath(
   }
   let target: string;
   try {
-    target = decodeURIComponent(slashed.split(/[?#]/)[0] ?? '');
+    target = decodeURIComponent(slashed.split(/[?#]/)[0] ?? '').replaceAll(
+      '\\',
+      '/',
+    );
   } catch {
     return undefined;
   }
