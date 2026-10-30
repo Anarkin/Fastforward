@@ -16,6 +16,7 @@ export type ContextMenuItem =
       readonly checked?: boolean;
       readonly onRemove?: () => void;
       readonly removeTitle?: string;
+      readonly accessKey?: string;
     }
   | { readonly separator: true };
 
@@ -199,6 +200,17 @@ export function useMenuFocus(
   }, [menu, focusFirst]);
 }
 
+export function accessKeyOf(
+  press: Pick<KeyboardEvent, 'key' | 'ctrlKey' | 'altKey' | 'metaKey'>,
+): string | undefined {
+  return press.ctrlKey ||
+    press.altKey ||
+    press.metaKey ||
+    !/^[\da-z]$/i.test(press.key)
+    ? undefined
+    : press.key.toUpperCase();
+}
+
 export function onMenuKeyDown(
   event: React.KeyboardEvent<HTMLElement>,
   onBack?: () => void,
@@ -216,7 +228,14 @@ export function onMenuKeyDown(
   const submenu = keyPressed(keymap.submenu, event);
   const next =
     move === undefined ? undefined : nextMenuItem(move, current, items.length);
-  if (next !== undefined) {
+  const accessKey = accessKeyOf(event);
+  const accessed =
+    accessKey === undefined
+      ? undefined
+      : items.find((item) => item.dataset.accessKey === accessKey);
+  if (accessed !== undefined) {
+    accessed.click();
+  } else if (next !== undefined) {
     items[next].focus();
   } else if (submenu === 'open') {
     const item = items[current];
@@ -310,6 +329,7 @@ export function MenuItems({
                 item.checked === undefined ? 'menuitem' : 'menuitemcheckbox'
               }
               aria-checked={item.checked}
+              data-access-key={item.accessKey}
               title={item.title}
               aria-haspopup={item.submenu ? 'menu' : undefined}
               aria-expanded={item.submenu ? openSubmenu === index : undefined}

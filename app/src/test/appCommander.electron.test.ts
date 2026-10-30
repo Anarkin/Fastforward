@@ -107,6 +107,25 @@ suite('App commander', () => {
     );
   });
 
+  test.skipIf(process.platform !== 'win32')(
+    'opens the drive menu of the right side with Alt+F2 and changes the drive by its letter',
+    async () => {
+      await right().locator('.virtual-rows').focus();
+      await page.keyboard.press('Alt+F2');
+      await page.locator('.commander-pane .menu').waitFor();
+      await page.keyboard.press(opened.charAt(0).toLowerCase());
+      await waitFor(
+        async () =>
+          (await right().locator('.column-name').textContent()) ===
+          `${opened.charAt(0).toUpperCase()}:\\`,
+        'the root of the drive of the folder opened',
+      );
+      await page
+        .locator('.commander-pane .menu')
+        .waitFor({ state: 'detached' });
+    },
+  );
+
   test('draws rows as the diff draws lines, in the monospace font and its line height', async () => {
     const row = await right()
       .locator('.commander-row')

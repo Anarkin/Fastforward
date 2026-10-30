@@ -142,6 +142,7 @@ export function Pane({
               trigger={driveTrigger}
               items={drives.map((drive) => ({
                 label: drive,
+                accessKey: drive.charAt(0),
                 checked: drive === current,
                 onClick: () => onDrive(drive),
               }))}

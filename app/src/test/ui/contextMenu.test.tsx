@@ -4,10 +4,12 @@ import { act, isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import {
+  accessKeyOf,
   claimsMenuKey,
   listenForDismiss,
   MenuItems,
   nextMenuItem,
+  onMenuKeyDown,
   openedSubmenu,
   submenuPlacement,
 } from '../../ui/contextMenu';
@@ -263,6 +265,73 @@ suite('Menu items', () => {
         `<span class="submenu-arrow">${renderToStaticMarkup(<SubmenuIcon />)}</span>`,
       ),
     );
+  });
+
+  test('takes a letter or digit alone, of either case, as an access key', () => {
+    const press = (key: string, extra = {}) => ({
+      key,
+      ...noModifiers,
+      ...extra,
+    });
+    assert.strictEqual(accessKeyOf(press('d')), 'D');
+    assert.strictEqual(accessKeyOf(press('X')), 'X');
+    assert.strictEqual(accessKeyOf(press('7')), '7');
+    assert.strictEqual(accessKeyOf(press('d', { ctrlKey: true })), undefined);
+    assert.strictEqual(accessKeyOf(press('d', { altKey: true })), undefined);
+    assert.strictEqual(accessKeyOf(press('d', { metaKey: true })), undefined);
+    assert.strictEqual(accessKeyOf(press('Enter')), undefined);
+    assert.strictEqual(accessKeyOf(press('-')), undefined);
+  });
+
+  test('runs the item of the access key pressed, as the drive of its letter, closing the menu', async () => {
+    const dom = new JSDOM('<!doctype html><main></main>');
+    const globals = {
+      window: dom.window,
+      document: dom.window.document,
+      HTMLElement: dom.window.HTMLElement,
+      Element: dom.window.Element,
+      IS_REACT_ACT_ENVIRONMENT: true,
+    };
+    const saved = Object.fromEntries(
+      Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
+    );
+    Object.assign(globalThis, globals);
+    try {
+      const log: string[] = [];
+      const { createRoot } = await import('react-dom/client');
+      const main = dom.window.document.querySelector('main');
+      assert.ok(main);
+      const root = createRoot(main);
+      await act(async () => {
+        root.render(
+          <div className="menu" onKeyDown={(event) => onMenuKeyDown(event)}>
+            <MenuItems
+              items={[
+                { label: 'C:', accessKey: 'C', onClick: () => log.push('C') },
+                { label: 'D:', accessKey: 'D', onClick: () => log.push('D') },
+              ]}
+              onClose={() => log.push('close')}
+            />
+          </div>,
+        );
+      });
+      const [first] = main.querySelectorAll('.menu-item');
+      assert.ok(first);
+      await act(async () => {
+        first.dispatchEvent(
+          new dom.window.KeyboardEvent('keydown', { key: 'd', bubbles: true }),
+        );
+        first.dispatchEvent(
+          new dom.window.KeyboardEvent('keydown', { key: 'z', bubbles: true }),
+        );
+      });
+      assert.deepStrictEqual(log, ['close', 'D']);
+      await act(async () => {
+        root.unmount();
+      });
+    } finally {
+      Object.assign(globalThis, saved);
+    }
   });
 
   test('keeps the item whose submenu is open marked while the focus is in the submenu, as Windows menus do', async () => {
