@@ -177,14 +177,6 @@ export function SoloIcon() {
   );
 }
 
-export function MenuIcon() {
-  return (
-    <Icon className="menu-icon">
-      <path d="M2.5 4h11M2.5 8h11M2.5 12h11" />
-    </Icon>
-  );
-}
-
 export function MoreIcon() {
   return (
     <Icon>

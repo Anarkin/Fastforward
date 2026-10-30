@@ -30,6 +30,7 @@ import { HistoryMenu, NavButtons } from '../tools/git/page/navBar';
 import { SearchButton } from '../ui/search';
 import { Notices } from '../shell/page/notices';
 import { MenuButton } from '../ui/menu';
+import { AppMenu } from '../shell/page/appMenu';
 import { TabBar } from '../shell/page/tabBar';
 import { FileRow } from '../tools/git/page/tree';
 import { WorktreeBar } from '../tools/git/page/worktreeBar';
@@ -139,6 +140,20 @@ export const tabBar = memoized(() =>
       onClose={noop}
       onAdd={noop}
       onLog={noop}
+      menu={
+        <AppMenu
+          update={{ kind: 'idle' }}
+          autoSortTabs
+          onAutoSortTabs={noop}
+          onSort={noop}
+          onOpenSettings={noop}
+          onOpenDefaultSettings={noop}
+          onShowShortcuts={noop}
+          onCheckForUpdates={noop}
+          onInstallUpdate={noop}
+          onShowAbout={noop}
+        />
+      }
     />,
   ),
 );

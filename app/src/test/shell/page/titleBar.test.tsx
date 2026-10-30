@@ -1,13 +1,32 @@
 import * as assert from 'node:assert';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { strings } from '../../../shared/strings';
 import {
+  AppIcon,
   TitleBar,
   windowButtonColor,
   windowTitle,
 } from '../../../shell/page/titleBar';
 import { stylesheet } from '../../fixtures';
+
+function drawingOf(svg: string) {
+  return {
+    viewBox: /viewBox="([^"]*)"/.exec(svg)?.[1],
+    shapes: [
+      ...svg.matchAll(/<(rect|line|circle|path|polyline)\b([^>]*?)\/?>/g),
+    ].map(([, tag, attributes]) => ({
+      tag,
+      attributes: Object.fromEntries(
+        [...(attributes ?? '').matchAll(/([\w-]+)="([^"]*)"/g)].map(
+          ([, name, value]) => [name, value],
+        ),
+      ),
+    })),
+  };
+}
 
 suite('Title bar', () => {
   test('names the open repository, or only the app without one', () => {
@@ -72,6 +91,15 @@ suite('Title bar', () => {
     assert.match(html, />\/code\/app - Fastforward<\/span>/);
   });
 
+  test('draws the same icon as the taskbar, the mark on its white rounded tile, so it looks alike in both places', () => {
+    assert.deepStrictEqual(
+      drawingOf(renderToStaticMarkup(<AppIcon />)),
+      drawingOf(
+        readFileSync(join(__dirname, '../../../../build/icon.svg'), 'utf8'),
+      ),
+    );
+  });
+
   test("puts the app's menu between the icon and the title, kept out of the area that drags the window, opening to the right", () => {
     const html = renderToStaticMarkup(
       <TitleBar title="Fastforward" menu={<button className="app-menu" />} />,
@@ -113,7 +141,7 @@ suite('Title bar', () => {
     assert.match(css, /\n\.tabs \{[^}]*-webkit-app-region: drag;/);
     assert.match(
       css,
-      /\n\.tabs \{[^}]*100vw - env\(titlebar-area-x, 0px\) - env\(titlebar-area-width, 100vw\)[^}]*calc\(env\(titlebar-area-x, 0px\) \+ var\(--tab-inset\)\);/,
+      /\n\.tabs \{[^}]*100vw - env\(titlebar-area-x, 0px\) - env\(titlebar-area-width, 100vw\)[^}]*calc\(\s*env\(titlebar-area-x, 0px\) \+ var\(--app-icon-margin\) -\s*var\(--app-icon-padding\)\s*\);/,
     );
     assert.match(
       css,

@@ -57,10 +57,12 @@ body {
   );
   --button-background: var(--color-border);
   --repository-background: var(--color-panel-background);
-  --tab-inset: calc(2 * var(--gutter-width) + 2 * var(--card-radius));
   --tabs-top: 5px;
+  --tabs-gap: 8px;
   --gutter-width: 4px;
-  --title-bar-inset: calc(var(--tab-inset) + 12px);
+  --app-icon-size: 20px;
+  --app-icon-margin: 14px;
+  --app-icon-padding: 4px;
   --card-radius: 6px;
   --tab-radius: 10px;
   --tab-divider: color-mix(in srgb, var(--color-foreground) 12%, transparent);
@@ -163,7 +165,7 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
   width: env(titlebar-area-width, 100%);
   height: 100%;
   margin-left: env(titlebar-area-x, 0);
-  padding: 0 12px 0 var(--title-bar-inset);
+  padding: 0 12px 0 var(--app-icon-margin);
   color: var(--color-foreground);
 }
 
@@ -174,8 +176,8 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
 
 .title-bar-icon {
   flex: none;
-  width: 29px;
-  height: 18px;
+  width: var(--app-icon-size);
+  height: var(--app-icon-size);
 }
 
 .title-bar .menu-button {
@@ -199,14 +201,18 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
   flex: none;
   display: flex;
   align-items: stretch;
-  gap: 8px;
+  gap: var(--tabs-gap);
   box-sizing: border-box;
   padding: var(--tabs-top)
     calc(
       100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) +
         var(--gutter-width)
     )
-    0 calc(env(titlebar-area-x, 0px) + var(--tab-inset));
+    0
+    calc(
+      env(titlebar-area-x, 0px) + var(--app-icon-margin) -
+        var(--app-icon-padding)
+    );
   --button-background: var(--color-background);
   background: var(--color-background);
   -webkit-app-region: drag;
@@ -245,8 +251,31 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
   margin-top: calc(-1 * calc(var(--tabs-top) + 1px));
 }
 
-.tabs .title-bar-icon {
-  align-self: center;
+.tabs > .menu-button {
+  align-self: flex-end;
+  height: calc(max(1lh, 20px) + 8px);
+  padding: 0;
+  margin-right: calc(
+    var(--app-icon-margin) - var(--app-icon-padding) - var(--tabs-gap)
+  );
+  margin-bottom: 4px;
+}
+
+.tabs > .menu-button > .nav-button {
+  width: calc(var(--app-icon-size) + 2 * var(--app-icon-padding));
+  height: calc(var(--app-icon-size) + 2 * var(--app-icon-padding));
+  border-radius: var(--card-radius);
+}
+
+.tabs > .menu-button > .nav-button:hover:not(:disabled) {
+  box-shadow: inset 0 0 0
+    calc(0.5 * var(--app-icon-size) + var(--app-icon-padding))
+    var(--hover-background);
+}
+
+.tabs > .menu-button .menu {
+  left: 0;
+  right: auto;
 }
 
 .tabs .tab,

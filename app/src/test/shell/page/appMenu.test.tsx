@@ -5,7 +5,7 @@ import { suite, test } from 'vitest';
 import type { UpdateStatus } from '../../../shell/shared/protocol';
 import { AppMenu, updateLabel } from '../../../shell/page/appMenu';
 import type { ContextMenuItem } from '../../../ui/contextMenu';
-import { noop, renderedBy } from '../../fixtures';
+import { noop, renderedBy, stylesheet } from '../../fixtures';
 
 function menuOf(
   update: UpdateStatus,
@@ -103,7 +103,7 @@ suite('App menu', () => {
     }
   });
 
-  test('opens from a button of three lines, as the menu of the whole app', () => {
+  test("opens from the app's icon, as the menu of the whole app", () => {
     assert.match(
       renderToStaticMarkup(
         <AppMenu
@@ -119,7 +119,14 @@ suite('App menu', () => {
           onShowAbout={noop}
         />,
       ),
-      /<svg class="icon menu-icon"/,
+      /^<div class="menu-button"><button [^>]*title="Settings"[^>]*><svg class="title-bar-icon"[^]*<\/svg><\/button><\/div>$/,
+    );
+  });
+
+  test('drops its menu to the right, from the left end of the tab row', () => {
+    assert.match(
+      stylesheet(),
+      /\.tabs > \.menu-button \.menu \{[^}]*left: 0;[^}]*right: auto;/,
     );
   });
 

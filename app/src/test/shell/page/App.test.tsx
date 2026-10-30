@@ -27,7 +27,7 @@ suite('Window', () => {
     assert.strictEqual(emptyState(undefined), null);
     assert.strictEqual(
       renderToStaticMarkup(<>{emptyState([])}</>),
-      '<div class="empty-state">No tab is open. Use + to open one. The app menu is at the top right.</div>',
+      '<div class="empty-state">No tab is open. Use + to open one, or click the Fastforward icon at the top left for the menu.</div>',
     );
     assert.strictEqual(
       emptyState([
@@ -37,14 +37,15 @@ suite('Window', () => {
     );
   });
 
-  test("tops the window with the tab row, starting with the app's icon and ending with its menu, and shows no title bar", () => {
+  test("tops the window with the tab row, starting with the app's icon, which opens the app's menu, and shows no title bar", () => {
     const html = renderToStaticMarkup(
       <App name="Fastforward" post={noop} listen={() => noop} />,
     );
     assert.strictEqual(tagsWith(html, 'title-bar').length, 0);
+    assert.strictEqual(tagsWith(html, 'menu-button').length, 1);
     assert.match(
       html,
-      /^<div class="app"><nav class="tabs"[^>]*><svg class="title-bar-icon"[^]*<\/svg><div class="tab-list"[^]*<\/div><div class="menu-button"[^]*<\/nav>/,
+      /^<div class="app"><nav class="tabs"[^>]*><div class="menu-button"><button [^>]*aria-haspopup="menu"[^>]*><svg class="title-bar-icon"[^]*?<\/svg><\/button><\/div><div class="tab-list"[^]*<\/div><\/nav>/,
     );
   });
 

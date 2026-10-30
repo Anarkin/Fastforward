@@ -92,8 +92,7 @@ export const strings = {
     open: 'Open',
     crashed: (error: string) => `Something went wrong: ${error}`,
     reload: 'Reload',
-    noTab:
-      'No tab is open. Use + to open one. The app menu is at the top right.',
+    noTab: `No tab is open. Use + to open one, or click the ${brand} icon at the top left for the menu.`,
     explorerMenuEntry: `Open in ${brand}`,
   },
   common: {
@@ -504,17 +503,16 @@ export const strings = {
     upToDate: (version: string) => `${brand} ${version} is up to date`,
     downloadingUpdate: (version: string) => `Downloading ${brand} ${version}`,
     updateReady: (version: string) =>
-      `${brand} ${version} is downloaded. Restart from the menu at the top right to update now, or it updates when you quit.`,
+      `${brand} ${version} is downloaded. Restart from the ${brand} icon at the top left to update now, or it updates when you quit.`,
     updateAvailable: (version: string) =>
-      `${brand} ${version} is out. Download it from the menu at the top right.`,
+      `${brand} ${version} is out. Download it from the ${brand} icon at the top left.`,
     couldNotCheckForUpdates: (reason: string) =>
       `Couldn't check for updates. ${reason}`,
     couldNotDownloadUpdate: (version: string, reason: string) =>
       `Couldn't download ${brand} ${version}. ${reason}`,
     couldNotInstallUpdate: (version: string, reason: string) =>
       `Couldn't install ${brand} ${version}. ${reason}`,
-    offerCommand:
-      'Type ff in a terminal to open the repository of the folder you are in. Install it from the menu at the top right.',
+    offerCommand: `Type ff in a terminal to open the repository of the folder you are in. Install it from the ${brand} icon at the top left.`,
     commandInstalled: (file: string) =>
       `Installed ff as ${file}. Type ff in a terminal to open the repository of the folder you are in.`,
     commandOffPath: (file: string, folder: string) =>

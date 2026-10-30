@@ -2,9 +2,9 @@ import { useRef } from 'react';
 import { keymap } from '../shared/keymap';
 import type { UpdateStatus } from '../shared/protocol';
 import { strings } from '../../shared/strings';
-import { MenuIcon } from '../../ui/icons';
 import { MenuButton } from '../../ui/menu';
 import { useBinding } from '../../ui/shortcuts';
+import { AppIcon } from './titleBar';
 
 export function updateLabel(status: UpdateStatus): string {
   switch (status.kind) {
@@ -59,7 +59,7 @@ export function AppMenu({
     <MenuButton
       trigger={trigger}
       title={strings.tabs.settings}
-      icon={<MenuIcon />}
+      icon={<AppIcon />}
       marked={installs}
       items={[
         {

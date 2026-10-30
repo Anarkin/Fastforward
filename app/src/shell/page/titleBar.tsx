@@ -6,13 +6,15 @@ export function windowTitle(root: string | undefined, app: string): string {
   return root === undefined ? app : strings.app.windowTitle(root, app);
 }
 
+const tile = '#FFFFFF';
+
 function Dot({ cx, color }: { cx: number; color: string }) {
   return (
     <circle
       cx={cx}
       cy="316"
       r="22"
-      fill="var(--color-background)"
+      fill={tile}
       stroke={color}
       strokeWidth="14"
     />
@@ -22,14 +24,14 @@ function Dot({ cx, color }: { cx: number; color: string }) {
 export function AppIcon() {
   const blue = '#4285F4';
   return (
-    <svg className="title-bar-icon" viewBox="104 168 310 190" aria-hidden>
+    <svg className="title-bar-icon" viewBox="50 50 412 412" aria-hidden>
+      <rect x="50" y="50" width="412" height="412" rx="92" fill={tile} />
       <line
         x1="140"
         y1="316"
         x2="372"
         y2="316"
-        stroke="var(--muted-foreground)"
-        strokeOpacity="0.35"
+        stroke="#DADCE0"
         strokeWidth="20"
         strokeLinecap="round"
       />

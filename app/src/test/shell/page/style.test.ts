@@ -203,6 +203,46 @@ function sidesOf(element: MarkupElement, property: string) {
   return { top, right, bottom, left };
 }
 
+function lengthOf(value: string | undefined): number {
+  const resolved = (value ?? '')
+    .replace(/env\([\w-]+, ([^)]*)\)/g, '$1')
+    .replace(
+      /var\(--([\w-]+)\)/g,
+      (_, name: string) => bodyVariable(name) ?? '',
+    );
+  const sum = /^calc\((.*)\)$/s.exec(resolved.trim())?.[1] ?? resolved;
+  return sum
+    .trim()
+    .split(/\s+(?=[+-]\s)/)
+    .map((term) => {
+      const sign = term.startsWith('- ') ? -1 : 1;
+      return (
+        sign *
+        term
+          .replace(/^[+-]\s+/, '')
+          .split('*')
+          .map((factor) => parseFloat(factor))
+          .reduce((product, factor) => product * factor, 1)
+      );
+    })
+    .reduce((total, term) => total + term, 0);
+}
+
+function appIconSpacing() {
+  const bar = tabBar();
+  const menu = withClass(bar, 'menu-button');
+  const button = withClass(menu, 'nav-button');
+  const icon = withClass(menu, 'title-bar-icon');
+  const iconWidth = lengthOf(cascaded(icon, 'width'));
+  const inside = (lengthOf(cascaded(button, 'width')) - iconWidth) / 2;
+  const leading = lengthOf(paddingOf(withClass(bar, 'tabs')).left) + inside;
+  const trailing =
+    inside +
+    lengthOf(cascaded(menu, 'margin-right')) +
+    lengthOf(cascaded(withClass(bar, 'tabs'), 'gap'));
+  return { leading, trailing, tabStart: leading + iconWidth + trailing };
+}
+
 function paddingOf(element: MarkupElement) {
   return sidesOf(element, 'padding');
 }
@@ -886,27 +926,56 @@ suite('Style', () => {
   });
 
   test("leaves a straight run of the sheet's edge between its rounded corner and the curve out of its first tab, past the app's icon", () => {
-    const resolved = (value: string | undefined) =>
-      (value ?? '').replace(
-        /var\(--([\w-]+)\)/g,
-        (_, name: string) => bodyVariable(name) ?? '',
-      );
-    const gutter = parseFloat(resolved('var(--gutter-width)'));
-    const corner = parseFloat(resolved('var(--card-radius)'));
-    const curve = parseFloat(resolved('var(--tab-radius)'));
-    const bar = tabBar();
-    const icon = parseFloat(
-      cascaded(withClass(bar, 'title-bar-icon'), 'width') ?? '',
-    );
-    const gap = parseFloat(cascaded(withClass(bar, 'tabs'), 'gap') ?? '');
-    const run =
-      pixels(resolved(bodyVariable('tab-inset'))) +
-      icon +
-      gap -
-      gutter -
-      corner -
-      curve;
+    const { tabStart } = appIconSpacing();
+    const gutter = lengthOf('var(--gutter-width)');
+    const corner = lengthOf('var(--card-radius)');
+    const curve = lengthOf('var(--tab-radius)');
+    const run = tabStart - gutter - corner - curve;
     assert.ok(run >= gutter, String(run));
+  });
+
+  test("leaves as much room after the app's icon, up to the side of the first tab, as before it, from the edge of the window", () => {
+    const { leading, trailing } = appIconSpacing();
+    assert.ok(leading > 0, String(leading));
+    assert.strictEqual(trailing, leading);
+  });
+
+  test("draws the app's icon square, in a square button rounded like the cards, so it opens the menu and shows it is pressed or hovered like the tabs' other buttons", () => {
+    const menu = withClass(tabBar(), 'menu-button');
+    const button = withClass(menu, 'nav-button');
+    const icon = withClass(menu, 'title-bar-icon');
+    assert.strictEqual(cascaded(icon, 'height'), cascaded(icon, 'width'));
+    assert.strictEqual(cascaded(button, 'height'), cascaded(button, 'width'));
+    assert.ok(
+      lengthOf(cascaded(button, 'width')) > lengthOf(cascaded(icon, 'width')),
+    );
+    looks(button, { 'border-radius': 'var(--card-radius)' });
+    assert.strictEqual(
+      lengthOf(
+        /inset 0 0 0\s+([^]*\S)\s+var\(--hover-background\)/.exec(
+          cascaded(button, 'box-shadow', hovered) ?? '',
+        )?.[1],
+      ),
+      lengthOf(cascaded(button, 'width')) / 2,
+    );
+  });
+
+  test("centers the app's icon on the names of the tabs, its button's box as tall and as far above the sheet as a tab in the back", () => {
+    const bar = tabBar();
+    const tab = allWithClass(bar, 'tab').find(
+      (each) => !each.classes.includes('active'),
+    );
+    assert.ok(tab);
+    const { top, bottom } = paddingOf(tab);
+    const border = parseFloat(cascaded(tab, 'border') ?? '0');
+    const close = cascaded(withClass(tab, 'tab-close'), 'height');
+    looks(withClass(bar, 'menu-button'), {
+      'align-self': 'flex-end',
+      'align-items': 'center',
+      height: `calc(max(1lh, ${close}) + ${parseFloat(top) + parseFloat(bottom) + 2 * border}px)`,
+      padding: '0',
+      'margin-bottom': cascaded(tab, 'margin-bottom'),
+    });
   });
 
   test('shows the worktrees as grey chips rather than tabs, the active one in the selection color, with nothing joining it to the columns', () => {

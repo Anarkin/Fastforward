@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { type TabInfo } from '../shared/protocol';
 import { AddIcon, CloseIcon, ToolIcon } from '../../ui/icons';
-import { AppIcon } from './titleBar';
 import { titleBarHeight } from '../shared/titleBar';
 import { clicked, keymap, released } from '../shared/keymap';
 import { strings } from '../../shared/strings';
@@ -492,7 +491,7 @@ export function TabBar({
 
   return (
     <nav className="tabs" ref={bar} style={{ minHeight: titleBarHeight }}>
-      <AppIcon />
+      {menu}
       <div className="tab-list" ref={list}>
         <div
           className={overflowing ? 'tab-strip overflowing' : 'tab-strip'}
@@ -562,7 +561,6 @@ export function TabBar({
           <AddIcon />
         </button>
       </div>
-      {menu}
     </nav>
   );
 }

@@ -78,7 +78,9 @@ suite('Theme', () => {
       ],
       'syntaxEngine.ts': ['#000000', '#ffffff'],
       'titleBar.tsx': [
+        '#FFFFFF',
         '#4285F4',
+        '#DADCE0',
         '#EA4335',
         '#FBBC04',
         '#34A853',
