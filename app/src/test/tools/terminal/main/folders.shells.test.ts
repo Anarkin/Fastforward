@@ -124,6 +124,9 @@ function isFile(file: string): boolean {
 
 const userVariables = new Set(['ZDOTDIR', 'XDG_CONFIG_HOME', 'PROMPT_COMMAND']);
 
+const cursorQuery = '\x1b[6n';
+const cursorAtTop = '\x1b[1;1R';
+
 let integration: string;
 
 suite('Terminal folders in real shells', () => {
@@ -176,16 +179,25 @@ suite('Terminal folders in real shells', () => {
           },
         );
         const events: HostEvent[] = [];
+        let printed = '';
         const host = new PtyHost(
-          (launched, columns, rows) =>
-            spawn(launched.file, [...launched.args], {
+          (launched, columns, rows) => {
+            const pty = spawn(launched.file, [...launched.args], {
               name: 'xterm-256color',
               cols: columns,
               rows,
               cwd: launched.cwd,
               env: { ...launched.env },
               useConptyDll: windows,
-            }),
+            });
+            pty.onData((data) => {
+              printed += data;
+              if (data.includes(cursorQuery)) {
+                pty.write(cursorAtTop);
+              }
+            });
+            return pty;
+          },
           (event) => events.push(event),
           flowLimits,
           realTimer,
@@ -203,7 +215,7 @@ suite('Terminal folders in real shells', () => {
             );
           } catch {
             assert.fail(
-              `${shell.name} told ${JSON.stringify(told())} rather than ${folder}`,
+              `${shell.name} told ${JSON.stringify(told())} rather than ${folder}, having printed last ${JSON.stringify(printed.slice(-600))}`,
             );
           }
         };
