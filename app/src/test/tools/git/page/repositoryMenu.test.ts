@@ -3,7 +3,7 @@ import { suite, test } from 'vitest';
 import { repositoryMenuItems } from '../../../../tools/git/page/repositoryMenu';
 
 suite('Repository menu', () => {
-  test('lists the recent repositories by name, then Browse...', () => {
+  test('offers Browse... first, then lists the recent repositories by name', () => {
     const opened: string[] = [];
     let browsed = 0;
     const items = repositoryMenuItems(
@@ -15,7 +15,7 @@ suite('Repository menu', () => {
       items.map((item) =>
         'separator' in item ? '-' : `${item.label} ${item.title ?? ''}`,
       ),
-      ['app /code/app', '-', 'Browse... '],
+      ['Browse... ', '-', 'app /code/app'],
     );
     for (const item of items) {
       if (!('separator' in item)) {
@@ -34,7 +34,7 @@ suite('Repository menu', () => {
       () => undefined,
       (root) => removed.push(root),
     );
-    const [app, , browse] = items;
+    const [browse, , app] = items;
     assert.ok(!('separator' in app) && !('separator' in browse));
     assert.strictEqual(app.removeTitle, 'Remove app from this list');
     app.onRemove?.();

@@ -9,6 +9,8 @@ export function repositoryMenuItems(
   onRemove?: (root: string) => void,
 ): readonly ContextMenuItem[] {
   return [
+    { label: strings.tabs.browse, onClick: onBrowse },
+    ...(recent.length > 0 ? [{ separator: true } as const] : []),
     ...recent.map((repository) => {
       const label = strings.tabs.label(repository.name, repository.folder);
       return {
@@ -21,7 +23,5 @@ export function repositoryMenuItems(
         }),
       };
     }),
-    ...(recent.length > 0 ? [{ separator: true } as const] : []),
-    { label: strings.tabs.browse, onClick: onBrowse },
   ];
 }
