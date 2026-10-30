@@ -1680,6 +1680,28 @@ suite('Style', () => {
     assert.ok(parseFloat(cascaded(arrow, 'padding-left') ?? '') > 0);
   });
 
+  test('draws the line between groups of a menu as a border, which Chromium keeps a whole number of screen pixels thick wherever it falls, as a box a pixel tall came out one or two thick at 125%', () => {
+    const menu = rendered(
+      createElement(ContextMenu, {
+        menu: {
+          x: 0,
+          y: 0,
+          items: [
+            { label: 'Browse...', onClick: noop },
+            { separator: true },
+            { label: 'app', onClick: noop },
+          ],
+        },
+        onClose: noop,
+      }),
+    );
+    looks(withClass(menu, 'menu-separator'), {
+      height: '0',
+      'border-top': '1px solid var(--color-border)',
+      background: undefined,
+    });
+  });
+
   test("puts a removable item's X at the right end of its entry, drawn like a tab's X and shown only on hovering or reaching the entry, keeping the label clear of it", () => {
     const menu = rendered(
       createElement(ContextMenu, {
@@ -1931,7 +1953,7 @@ suite('Style', () => {
       });
     }
     looks(withClass(contextMenu(), 'menu-separator'), {
-      background: 'var(--color-border)',
+      'border-top': '1px solid var(--color-border)',
     });
     looks(
       withClass(contextMenu(), 'menu-item'),
