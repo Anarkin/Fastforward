@@ -13,6 +13,7 @@ import {
   shellOf,
   stubMethod,
   takeErrorsLogged,
+  terminalHostOf,
   withView,
   type FakePage,
 } from '../../harness';
@@ -480,6 +481,45 @@ suite('Shell with no tab open', () => {
     } finally {
       removeFolder(work);
     }
+  });
+
+  test('moves a terminal tab to the folder its shell goes to, naming it after that folder, but leaves the tabs where they are while they sort themselves, so a tab never jumps on a cd', async () => {
+    await withView(
+      log,
+      [],
+      async (view) => {
+        await view.settings.set('autoSortTabs', true);
+        view.shell.reloadSettings();
+        await view.connection.receive({ type: 'ready' });
+        await view.connection.receive({ type: 'newTab', tool: 'files' });
+        await view.connection.receive({ type: 'newTab', tool: 'terminal' });
+        const terminal = view.page.tabs?.tabs.find(
+          (tab) => tab.tool === 'terminal',
+        );
+        assert.ok(terminal);
+        await view.connection.receive({
+          type: 'tool',
+          tool: 'terminal',
+          message: { type: 'open', tab: terminal.id, columns: 80, rows: 24 },
+        });
+        const folder = path.join(os.tmpdir(), 'aaa');
+        terminalHostOf(view.view).event({
+          type: 'folder',
+          id: terminal.id,
+          folder,
+        });
+        assert.deepStrictEqual(
+          view.page.tabs?.tabs.map((tab) => [tab.name, tab.root]),
+          [
+            ['File Manager', undefined],
+            ['aaa', folder],
+          ],
+        );
+      },
+      true,
+      undefined,
+      noGit,
+    );
   });
 
   test('says when the active tab does not know its folder, as a terminal whose shell has not told it', async () => {

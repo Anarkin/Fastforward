@@ -291,6 +291,7 @@ export class TerminalTool implements Tool<'terminal'> {
         return;
       case 'folder':
         session.folder = event.folder;
+        this.shell.setRoot(event.id, event.folder);
         return;
       case 'exited':
         session.exited = true;

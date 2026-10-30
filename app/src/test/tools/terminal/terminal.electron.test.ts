@@ -207,6 +207,11 @@ suite('Terminal', () => {
     const popup = page.locator('.open-with-popup');
     const shown = popup.locator('.open-with-folders > span');
     await run('cd inner');
+    await waitFor(
+      async () =>
+        (await tabs.first().locator('.tab-name').textContent()) === 'inner',
+      'the tab to be named after the folder the shell went to',
+    );
     await waitFor(async () => {
       await page.locator('.terminal-screen').click();
       await page.keyboard.press('ControlOrMeta+Shift+O');

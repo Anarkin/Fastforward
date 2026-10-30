@@ -46,6 +46,7 @@ export interface ShellAccess {
     roots: readonly (string | undefined)[],
     reuse: boolean,
   ): Promise<void>;
+  setRoot(tab: string, root: string): void;
   postTabs(page: Page): void;
   notice(page: Page | undefined, notice: Notice): void;
   track<T>(work: Promise<T>): Promise<T>;
@@ -104,6 +105,7 @@ export const unattachedShell: ShellAccess = {
   tabs: () => [],
   active: () => undefined,
   open: () => Promise.resolve(),
+  setRoot: () => undefined,
   postTabs: () => undefined,
   notice: () => undefined,
   track: (work) => work,
@@ -174,6 +176,7 @@ export class Shell {
       tabs: () => this.storage.savedTabs,
       active: () => this.activeTab(),
       open: (page, tool, roots, reuse) => this.open(page, tool, roots, reuse),
+      setRoot: (tab, root) => this.setRoot(tab, root),
       postTabs: (page) => this.postTabs(page),
       notice: (page, notice) => this.notice(page, notice),
       track: (work) => this.inFlight.track(work),
@@ -524,6 +527,23 @@ export class Shell {
       return;
     }
     await this.show(live, last);
+  }
+
+  private setRoot(id: string, root: string): void {
+    const { storage, page } = this;
+    const tabs = storage.savedTabs;
+    if (!tabs.some((tab) => tab.id === id && tab.root !== root)) {
+      return;
+    }
+    this.save(
+      storage.setSavedTabs(
+        tabs.map((tab) => (tab.id === id ? { ...tab, root } : tab)),
+        storage.activeTabId,
+      ),
+    );
+    if (page !== undefined && !page.disposed) {
+      this.postTabs(page);
+    }
   }
 
   private askFolders(page: Page): Promise<void> {

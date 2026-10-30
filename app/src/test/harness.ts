@@ -19,7 +19,7 @@ import type {
 } from '../shell/shared/protocol';
 import type { Timer } from '../tools/git/main/autoFetch';
 import { FilesTool } from '../tools/files/main/tool';
-import { TerminalTool } from '../tools/terminal/main/tool';
+import { TerminalTool, type HostListener } from '../tools/terminal/main/tool';
 import { GitTool, refreshDelays, type GitHost } from '../tools/git/main/tool';
 import type { Log } from '../shell/main/log';
 import type { CommandInstall, CommandState } from '../main/terminalCommand';
@@ -259,6 +259,7 @@ export async function saveTabs(
 }
 
 const shells = new WeakMap<GitTool, Shell>();
+const terminalHosts = new WeakMap<GitTool, HostListener[]>();
 
 export function newView(
   log: Log,
@@ -277,6 +278,8 @@ export function newView(
     timer,
     delays,
   );
+  const hosts: HostListener[] = [];
+  terminalHosts.set(view, hosts);
   shells.set(
     view,
     new Shell(log, new Storage(settings, store), host, {
@@ -284,7 +287,10 @@ export function newView(
       files: new FilesTool(),
       terminal: new TerminalTool(
         log,
-        () => ({ send: () => {}, dispose: () => {} }),
+        (listener) => {
+          hosts.push(listener);
+          return { send: () => {}, dispose: () => {} };
+        },
         () => settings.settings.tools.terminal,
         () => ({ file: 'sh', args: [], cwd: '/', env: {} }),
         undefined,
@@ -298,6 +304,12 @@ export function shellOf(view: GitTool): Shell {
   const shell = shells.get(view);
   assert.ok(shell);
   return shell;
+}
+
+export function terminalHostOf(view: GitTool): HostListener {
+  const host = terminalHosts.get(view)?.at(-1);
+  assert.ok(host, 'no terminal process was started');
+  return host;
 }
 
 const shellMessages: Readonly<Record<ToHost['type'], true>> = {

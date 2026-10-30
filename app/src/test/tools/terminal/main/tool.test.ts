@@ -91,11 +91,13 @@ function terminal() {
     launchIn,
     { backend: 'conpty', buildNumber: 26200 },
   );
+  const moved: (readonly [string, string])[] = [];
   tool.attach({
     page: () => undefined,
     tabs: () => [work, other],
     active: () => undefined,
     open: () => Promise.resolve(),
+    setRoot: (tab, root) => moved.push([tab, root]),
     postTabs: () => {},
     notice: () => {},
     track: (tracked) => tracked,
@@ -115,7 +117,18 @@ function terminal() {
     hosts.at(-1)?.dispose();
     listeners.at(-1)?.stopped(code);
   };
-  return { tool, ptys, clock, errors, listeners, page, send, open, stopHost };
+  return {
+    tool,
+    ptys,
+    clock,
+    errors,
+    listeners,
+    moved,
+    page,
+    send,
+    open,
+    stopHost,
+  };
 }
 
 suite('Terminal tool', () => {
@@ -316,6 +329,15 @@ suite('Terminal tool', () => {
     await clock.fire();
     await send({ type: 'restart', tab: '1' });
     assert.strictEqual(tool.folderOf(work), undefined);
+  });
+
+  test('makes the folder the shell of a tab goes to the folder of the tab, which names it and is where a new shell starts', async () => {
+    const { ptys, clock, moved, open } = terminal();
+    await open(work);
+    ptys.last().print('\x1b]9;9;/work/app\x07');
+    await clock.fire();
+    await until(() => moved.length === 1);
+    assert.deepStrictEqual(moved, [['1', '/work/app']]);
   });
 
   test('names a tab after its folder, or Terminal when it has none', () => {
