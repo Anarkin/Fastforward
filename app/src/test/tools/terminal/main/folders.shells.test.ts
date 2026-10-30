@@ -34,10 +34,10 @@ interface Shell {
   readonly file: string | undefined;
   readonly args: readonly string[];
   readonly userFiles: UserFiles;
-  readonly cd: (folder: string) => string;
+  readonly toWork: string;
 }
 
-const posixCd = (folder: string) => `cd '${folder}'`;
+const posixToWork = 'cd ../work';
 
 const shells: readonly Shell[] = [
   {
@@ -45,21 +45,21 @@ const shells: readonly Shell[] = [
     file: onPath('pwsh'),
     args: ['-NoLogo', '-NoProfile'],
     userFiles: {},
-    cd: (folder) => `Set-Location -LiteralPath '${folder}'`,
+    toWork: 'Set-Location ../work',
   },
   {
     name: 'Windows PowerShell',
     file: windows ? 'powershell.exe' : undefined,
     args: ['-NoLogo', '-NoProfile'],
     userFiles: {},
-    cd: (folder) => `Set-Location -LiteralPath '${folder}'`,
+    toWork: 'Set-Location ../work',
   },
   {
     name: 'the Command Prompt',
     file: windows ? 'cmd.exe' : undefined,
     args: [],
     userFiles: {},
-    cd: (folder) => `cd /d "${folder}"`,
+    toWork: 'cd ..\\work',
   },
   {
     name: 'bash',
@@ -78,7 +78,7 @@ const shells: readonly Shell[] = [
       '.bashrc': (start) =>
         `PROMPT_COMMAND="history -a; $PROMPT_COMMAND"\ncd '${start}'\n`,
     },
-    cd: posixCd,
+    toWork: posixToWork,
   },
   {
     name: 'zsh',
@@ -88,7 +88,7 @@ const shells: readonly Shell[] = [
       '.zshenv': () => 'ZDOTDIR=$HOME/.config/zsh\n',
       '.config/zsh/.zshrc': (start) => `cd '${start}'\n`,
     },
-    cd: posixCd,
+    toWork: posixToWork,
   },
   {
     name: 'fish',
@@ -97,7 +97,7 @@ const shells: readonly Shell[] = [
     userFiles: {
       '.config/fish/config.fish': (start) => `cd '${start}'\n`,
     },
-    cd: posixCd,
+    toWork: posixToWork,
   },
 ];
 
@@ -126,6 +126,7 @@ const userVariables = new Set(['ZDOTDIR', 'XDG_CONFIG_HOME', 'PROMPT_COMMAND']);
 
 const cursorQuery = '\x1b[6n';
 const cursorAtTop = '\x1b[1;1R';
+const settledMilliseconds = 500;
 
 let integration: string;
 
@@ -180,6 +181,7 @@ suite('Terminal folders in real shells', () => {
         );
         const events: HostEvent[] = [];
         let printed = '';
+        let printedAt = Date.now();
         const host = new PtyHost(
           (launched, columns, rows) => {
             const pty = spawn(launched.file, [...launched.args], {
@@ -192,6 +194,7 @@ suite('Terminal folders in real shells', () => {
             });
             pty.onData((data) => {
               printed += data;
+              printedAt = Date.now();
               if (data.includes(cursorQuery)) {
                 pty.write(cursorAtTop);
               }
@@ -229,7 +232,12 @@ suite('Terminal folders in real shells', () => {
             scrollback: 1000,
           });
           await tells(start);
-          host.receive({ type: 'input', id: '1', data: `${shell.cd(work)}\r` });
+          await waitFor(
+            () => Date.now() - printedAt > settledMilliseconds,
+            'the shell to settle at its prompt',
+            20_000,
+          );
+          host.receive({ type: 'input', id: '1', data: `${shell.toWork}\r` });
           await tells(work);
         } finally {
           host.dispose();
