@@ -286,17 +286,18 @@ suite('Commander tool', () => {
   });
 
   test('changes the drive of a side only to a drive there is', async () => {
+    const backup = at('backup');
     const { tool, page, send } = commander(
-      { [root]: [], 'D:\\': [file('backup.zip')] },
-      ['C:\\', 'D:\\'],
+      { [root]: [], [backup]: [file('backup.zip')] },
+      [root, backup],
     );
     await tool.show(page, tab);
 
-    await send({ type: 'drive', tab: '1', side: 'right', drive: 'E:\\' });
-    await send({ type: 'drive', tab: '1', side: 'right', drive: 'D:\\' });
+    await send({ type: 'drive', tab: '1', side: 'right', drive: at('gone') });
+    await send({ type: 'drive', tab: '1', side: 'right', drive: backup });
 
     assert.deepStrictEqual(page.listings().slice(2), [
-      'right D:\\: backup.zip',
+      `right ${backup} ↑: backup.zip`,
     ]);
   });
 
