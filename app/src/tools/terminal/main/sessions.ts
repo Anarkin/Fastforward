@@ -52,6 +52,7 @@ class Session {
   private readonly toMirror: Backlog;
   private readonly toPage: Backlog;
   private pending = '';
+  private readonly pageMissed: boolean[] = [];
   private cancelFlush: (() => void) | undefined;
   private cancelExit: (() => void) | undefined;
   private attachment = 0;
@@ -77,6 +78,11 @@ class Session {
     this.mirror = createMirror({ columns, rows, scrollback, windowsPty });
     this.toMirror = new Backlog(limits);
     this.toPage = new Backlog(limits);
+    this.mirror.terminal.onData((reply) => {
+      if (this.pageMissed[0]) {
+        this.pty?.write(reply);
+      }
+    });
     const { parser } = this.mirror.terminal;
     parser.registerOscHandler(7, (data) =>
       this.reported(folderOfUrl(data, place)),
@@ -212,7 +218,9 @@ class Session {
     const data = this.pending;
     this.pending = '';
     this.toMirror.sent(data.length);
+    this.pageMissed.push(!this.attached);
     this.mirror.terminal.write(data, () => {
+      this.pageMissed.shift();
       this.toMirror.taken(data.length);
       this.balance();
     });

@@ -124,8 +124,6 @@ function isFile(file: string): boolean {
 
 const userVariables = new Set(['ZDOTDIR', 'XDG_CONFIG_HOME', 'PROMPT_COMMAND']);
 
-const cursorQuery = '\x1b[6n';
-const cursorAtTop = '\x1b[1;1R';
 const settledMilliseconds = 500;
 
 let integration: string;
@@ -195,9 +193,6 @@ suite('Terminal folders in real shells', () => {
             pty.onData((data) => {
               printed += data;
               printedAt = Date.now();
-              if (data.includes(cursorQuery)) {
-                pty.write(cursorAtTop);
-              }
             });
             return pty;
           },

@@ -253,6 +253,37 @@ suite('Terminal sessions', () => {
     );
   });
 
+  test('answers where the cursor is when the shell asks while no page is attached, leaving the asking to the page attached, as PowerShell on Linux and macOS waits for the answer until a key is pressed once it has had one', async () => {
+    const { ptyHost, ptys, clock, start, attach } = host();
+    start();
+    ptys.last().print('ab\x1b[6n');
+    await clock.fire();
+    await until(() => ptys.last().written.includes('\x1b[1;3R'));
+    await attach();
+    ptys.last().print('c\x1b[6n');
+    await clock.fire();
+    ptyHost.receive({ type: 'detach', id: '1' });
+    ptys.last().print('d\x1b[6n');
+    await clock.fire();
+    await until(() => ptys.last().written.includes('\x1b[1;5R'));
+    assert.deepStrictEqual(ptys.last().written, ['\x1b[1;3R', '\x1b[1;5R']);
+  });
+
+  test('answers what the page was not sent, though the page attaches before the copy of the screen reads it', async () => {
+    const { ptyHost, ptys, clock, start } = host();
+    start();
+    ptys.last().print('ab\x1b[6n');
+    await clock.fire();
+    ptyHost.receive({
+      type: 'attach',
+      id: '1',
+      columns: 80,
+      rows: 24,
+      scrollback: 1000,
+    });
+    await until(() => ptys.last().written.includes('\x1b[1;3R'));
+  });
+
   test('tells the folder the shell reports each time it reports another, as Windows Terminal or a file URL has it, with no page attached too', async () => {
     const { ptys, clock, start, folders } = host();
     start();
