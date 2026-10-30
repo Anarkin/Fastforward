@@ -47,10 +47,14 @@ suite('Terminal folders', () => {
     }
   });
 
-  test('takes the folder of a file URL on this machine, decoding it', () => {
+  test('takes the folder of a file URL on this machine, decoding it, the semicolons nushell encodes too', () => {
     assert.strictEqual(
       folderOfUrl('file://box/home/me/my%20work', linux),
       '/home/me/my work',
+    );
+    assert.strictEqual(
+      folderOfUrl('file://box/home/me/a%3Bb', linux),
+      '/home/me/a;b',
     );
     assert.strictEqual(folderOfUrl('file:///home/me', linux), '/home/me');
     assert.strictEqual(
