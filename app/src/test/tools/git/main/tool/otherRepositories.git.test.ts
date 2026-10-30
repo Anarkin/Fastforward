@@ -441,7 +441,30 @@ suite('Git tool of other repositories', () => {
     });
   });
 
-  test('offers the recent repositories that are not open in a tab, out of the 20 kept, which count those that are', async () => {
+  test('offers as many recent repositories not open in a tab as the settings say, telling the page again once they change', async () => {
+    await withView(log, [repository.root], async (view) => {
+      const older = Array.from({ length: 19 }, (_, index) =>
+        path.join(folder, `older-${index}`),
+      );
+      await gitState(view.store).update(recentKey, [repository.root, ...older]);
+      await view.connection.receive({
+        type: 'forgetRecent',
+        root: path.join(folder, 'never-recent'),
+      });
+      assert.deepStrictEqual(
+        shownTabs(view.page)?.recent.map((recent) => recent.root),
+        older.slice(0, 15),
+      );
+      await view.settings.set('recentItems', 2);
+      view.shell.reloadSettings();
+      assert.deepStrictEqual(
+        shownTabs(view.page)?.recent.map((recent) => recent.root),
+        older.slice(0, 2),
+      );
+    });
+  });
+
+  test('offers the recent repositories that are not open in a tab, counting only those towards how many it offers', async () => {
     await withView(log, [repository.root], async (view) => {
       await gitState(view.store).update(recentKey, [other, repository.root]);
       await view.connection.receive({
@@ -464,7 +487,7 @@ suite('Git tool of other repositories', () => {
       assert.ok(shown?.active && sameRoot(shown.active, other));
       assert.deepStrictEqual(
         shown.recent.map((recent) => recent.root),
-        older.slice(0, 18),
+        older.slice(0, 15),
       );
     });
   });

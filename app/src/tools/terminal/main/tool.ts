@@ -68,7 +68,6 @@ export interface FolderAccess {
 type ShownMessage = Extract<TerminalToHost, { readonly tab: string }>;
 
 const foldersKey = 'folders';
-const foldersListed = 10;
 
 export class TerminalTool implements Tool<'terminal'> {
   private shell: ShellAccess = unattachedShell;
@@ -265,7 +264,12 @@ export class TerminalTool implements Tool<'terminal'> {
     return this.shell.open(page, 'terminal', [undefined], false);
   }
 
-  reloadSettings(): void {}
+  reloadSettings(): void {
+    const page = this.shell.page();
+    if (page !== undefined) {
+      this.postFolders(page);
+    }
+  }
 
   quit(): void {
     this.quitting = true;
@@ -422,9 +426,10 @@ export class TerminalTool implements Tool<'terminal'> {
 
   private listed(): string[] {
     const { home, isFolder, now } = this.folders;
+    const count = this.shell.recentItems();
     const listed: string[] = [];
     for (const folder of rankedFolders(this.visits(), now())) {
-      if (listed.length === foldersListed) {
+      if (listed.length >= count) {
         break;
       }
       if (!sameRoot(folder, home) && isFolder(folder)) {

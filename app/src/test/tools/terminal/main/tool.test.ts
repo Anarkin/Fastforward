@@ -64,6 +64,7 @@ function terminal(seen: readonly FolderVisits[] = []) {
   const saved = new Map<string, unknown>([['folders', seen]]);
   const chosen: string[] = [];
   const opened: (readonly (string | undefined)[])[] = [];
+  const recent = { items: 10 };
   const visitsOf = (folder: string) =>
     visitsIn(saved.get('folders')).find((entry) => entry.folder === folder)
       ?.visits;
@@ -127,6 +128,7 @@ function terminal(seen: readonly FolderVisits[] = []) {
     },
     setRoot: (tab, root) => moved.push([tab, root]),
     visited: () => {},
+    recentItems: () => recent.items,
     postTabs: () => {},
     notice: () => {},
     track: (tracked) => tracked,
@@ -157,6 +159,7 @@ function terminal(seen: readonly FolderVisits[] = []) {
     saved,
     chosen,
     opened,
+    recent,
     visitsOf,
     listed,
     page,
@@ -421,7 +424,22 @@ suite('Terminal tool', () => {
     );
   });
 
-  test('lists the ten folders it ranks first, those that still exist, leaving out the home folder, which a new terminal opens in anyway', () => {
+  test('lists as many folders as the settings say, telling the page again once they change', () => {
+    const { tool, page, listed, recent } = terminal(
+      ['/a', '/b', '/c', '/d'].map((folder, index) => ({
+        folder,
+        visits: 10 - index,
+        last: 100 * day,
+      })),
+    );
+    tool.ready(page);
+    assert.deepStrictEqual(listed(), ['/a', '/b', '/c', '/d']);
+    recent.items = 2;
+    tool.reloadSettings();
+    assert.deepStrictEqual(listed(), ['/a', '/b']);
+  });
+
+  test('lists the folders it ranks first, those that still exist, leaving out the home folder, which a new terminal opens in anyway', () => {
     const folders = Array.from({ length: 12 }, (_, index) => `/code/${index}`);
     const { tool, page, listed } = terminal([
       { folder: '/home/me', visits: 500, last: 100 * day },

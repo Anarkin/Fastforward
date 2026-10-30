@@ -14,6 +14,7 @@ export const tabsKey = 'tabs';
 export const activeTabKey = 'activeTab';
 const toolsKey = 'tools';
 const commandOfferedKey = 'terminalCommandOffered';
+export const maxRecentItems = 50;
 
 export interface Store {
   get(key: string): unknown;
@@ -229,6 +230,13 @@ export class Storage {
 
   async setAutoSortTabs(on: boolean): Promise<void> {
     await this.userSettings.set('autoSortTabs', on);
+  }
+
+  get recentItems(): number {
+    const count = this.settings.recentItems;
+    return Number.isFinite(count)
+      ? Math.min(maxRecentItems, Math.max(0, Math.round(count)))
+      : 0;
   }
 }
 

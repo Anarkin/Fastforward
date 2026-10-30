@@ -201,14 +201,14 @@ suite('Git storage', () => {
     assert.strictEqual(storage.worktreeOf(repository), repository);
   });
 
-  test('keeps the 20 newest recent repositories, newest first', async () => {
+  test('keeps the 50 newest recent repositories, newest first, as many as the + menu can be set to list', async () => {
     const storage = storageOf();
-    for (let i = 0; i <= 20; i++) {
+    for (let i = 0; i <= 50; i++) {
       await storage.addRecent(path.resolve(`r${i}`));
     }
     assert.deepStrictEqual(
       storage.recent,
-      Array.from({ length: 20 }, (_, i) => path.resolve(`r${20 - i}`)),
+      Array.from({ length: 50 }, (_, i) => path.resolve(`r${50 - i}`)),
     );
   });
 

@@ -20,6 +20,27 @@ function storageOf(state = new FakeStore()): Storage {
 }
 
 suite('Storage', () => {
+  test('takes how many recent items the + menu lists for each tool from the settings, fifteen unless set, as a whole number from none to fifty', () => {
+    assert.strictEqual(storageOf().recentItems, 15);
+    for (const [set, taken] of [
+      [8, 8],
+      [7.6, 8],
+      [-3, 0],
+      [500, 50],
+      [Number.NaN, 0],
+    ]) {
+      const settings = new UserSettings({
+        ...defaultSettings(),
+        recentItems: set,
+      });
+      assert.strictEqual(
+        new Storage(settings, new FakeStore()).recentItems,
+        taken,
+        String(set),
+      );
+    }
+  });
+
   test('reads state of the wrong shape, as a hand edit can leave it, as never saved', async () => {
     const store = new FakeStore();
     await store.update(tabsKey, 5);

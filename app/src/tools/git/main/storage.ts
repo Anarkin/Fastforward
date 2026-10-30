@@ -8,10 +8,13 @@ import type {
 import { isFullHash } from '../shared/hashes';
 import type { GitSettings } from '../shared/settings';
 import { isObject, type UserSettings } from '../../../shell/main/settings';
-import { sameRoot, type Store } from '../../../shell/main/storage';
+import {
+  maxRecentItems,
+  sameRoot,
+  type Store,
+} from '../../../shell/main/storage';
 
 export const recentKey = 'recentRepositories';
-const maxRecent = 20;
 export const soloKey = 'solo';
 export const bookmarksKey = 'bookmarks';
 export const worktreesKey = 'activeWorktrees';
@@ -56,7 +59,7 @@ export class GitStorage {
 
   async addRecent(root: string): Promise<void> {
     const recent = [root, ...this.recent.filter((r) => !sameRoot(r, root))];
-    await this.state.update(recentKey, recent.slice(0, maxRecent));
+    await this.state.update(recentKey, recent.slice(0, maxRecentItems));
   }
 
   async removeRecent(root: string): Promise<void> {

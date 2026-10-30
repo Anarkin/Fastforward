@@ -319,6 +319,10 @@ export class GitTool implements Tool<'git'> {
         tab.toggledMerges.clear();
       }
     }
+    const session = this.page;
+    if (session !== undefined) {
+      this.sendRecent(session);
+    }
   }
 
   attach(shell: ShellAccess): void {
@@ -1373,11 +1377,13 @@ export class GitTool implements Tool<'git'> {
     session.post({
       type: 'recent',
       recent: tabInfos(
-        this.storage.recent.filter(
-          (root) =>
-            !this.hasRepository(root) &&
-            !this.hasRepository(this.repositoryOf(root)),
-        ),
+        this.storage.recent
+          .filter(
+            (root) =>
+              !this.hasRepository(root) &&
+              !this.hasRepository(this.repositoryOf(root)),
+          )
+          .slice(0, this.shell.recentItems()),
       ),
     });
   }
