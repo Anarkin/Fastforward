@@ -52,13 +52,15 @@ jobs:
           - os: macos-latest
             shard: 2/2
           - os: windows-latest
-            shard: 1/4
+            shard: 1/5
           - os: windows-latest
-            shard: 2/4
+            shard: 2/5
           - os: windows-latest
-            shard: 3/4
+            shard: 3/5
           - os: windows-latest
-            shard: 4/4
+            shard: 4/5
+          - os: windows-latest
+            shard: 5/5
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     defaults:
