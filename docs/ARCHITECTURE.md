@@ -11,14 +11,14 @@
 - Markdown is rendered with `markdown-it`, which VS Code's preview uses too
 - Mermaid diagrams in Markdown are drawn with `mermaid` on the page's main thread, as VS Code's preview draws them, since it measures text in the DOM and can't run in a worker; each is shown as an image of its SVG, so the styles a document puts in a diagram can't reach the page
 
-### Git Manager, `git`
+### Git, `git`
 
 - Use the installed `git` CLI for everything, without bundling one; it needs git 2.52 or later on the PATH
 - The git tool checks every hash and path the page sends against the history and the repository
 - The commit list is read whole up front with `git rev-list` and kept by the main process per worktree, so the list knows its full size and locations can jump to any commit's position
 - The tags of each remote are listed with `git ls-remote --tags` after each fetch and kept in the app's state rather than as refs, as git keeps no remote-tracking refs for tags, and refs would show up in other tools; it costs one more connection per remote after each fetch
 
-### File Manager, `files`
+### Commander, `files`
 
 - TODO
 

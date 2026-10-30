@@ -4,7 +4,7 @@ import { confirmsClose, tools } from '../../../shell/shared/tools';
 import { defaultSettings } from '../../fixtures';
 
 suite('Tools', () => {
-  test('orders the tools Terminal, File Manager, Git, as the + menu, the Open With popup and the settings show them', () => {
+  test('orders the tools Terminal, Commander, Git, as the + menu, the Open With popup and the settings show them', () => {
     assert.deepStrictEqual(tools, ['terminal', 'files', 'git']);
     assert.deepStrictEqual(Object.keys(defaultSettings().tools), tools);
   });

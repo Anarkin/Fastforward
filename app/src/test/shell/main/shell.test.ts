@@ -511,7 +511,7 @@ suite('Shell with no tab open', () => {
         assert.deepStrictEqual(
           view.page.tabs?.tabs.map((tab) => [tab.name, tab.root]),
           [
-            ['File Manager', undefined],
+            ['Commander', undefined],
             ['aaa', folder],
           ],
         );

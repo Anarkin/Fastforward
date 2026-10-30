@@ -139,8 +139,8 @@ export const strings = {
   },
   tools: {
     terminal: 'Terminal',
-    files: 'File Manager',
-    git: 'Git Manager',
+    files: 'Commander',
+    git: 'Git',
   },
   openWith: {
     title: 'Open With',

@@ -125,7 +125,7 @@ suite('Git tool of folders asked for from the command line', () => {
     });
   });
 
-  test('turns the git tool off for a folder outside a repository, picking the file manager, and opens a files tab for it', async () => {
+  test('turns the git tool off for a folder outside a repository, picking the Commander, and opens a Commander tab for it', async () => {
     await withView(log, [repository.root], async (view) => {
       await view.shell.openFolders([plain]);
       assert.deepStrictEqual(view.page.last('chooseTool'), {

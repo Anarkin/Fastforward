@@ -231,7 +231,7 @@ suite('App started from a terminal', () => {
         await popup.waitFor();
         await waitForFocus(
           popup.locator('.open-with-tool', { hasText: strings.tools.git }),
-          'Git Manager',
+          'Git',
         );
         await page.keyboard.press('Enter');
         await popup.waitFor({ state: 'detached' });
