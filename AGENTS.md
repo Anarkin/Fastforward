@@ -28,4 +28,6 @@
 - After changing a value or function in a `shared/protocol.ts` or `settings.ts`, run the `.git` and `.electron` files that import it
 - Imports don't pick the tests: `strings.ts` and the shared protocols reach nearly every test file, so `vitest related` and `--changed` select almost all of them
 - Leave the whole suite to CI, which runs it on Windows, macOS and Linux for every push to `main` and every pull request; run it locally only after changing the test harness, the fixtures, `vitest.config.mts` or `package.json`
-- Reproduce a flaky test with `npx vitest run <file> -t '<name>' --repeats 20`, never by rerunning its project
+- After committing to `main`, push it, never by force, and watch the CI run of the pushed commit in the background
+- When CI fails because of one of your commits, read the failed job's log, run what failed locally by path, and fix it in a new commit; a failure only on macOS or Linux may pass here, so fix it from the log
+- Reproduce a flaky test with `npx vitest run <file> -t '<name>' --repeats 20`, never by rerunning its project or its CI run
