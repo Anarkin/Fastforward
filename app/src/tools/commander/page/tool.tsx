@@ -118,6 +118,7 @@ export function CommanderTool({
         {sides.map((side) => (
           <Pane
             key={side}
+            tab={tab}
             side={side}
             pane={view.panes[side]}
             columns={columnWidths}

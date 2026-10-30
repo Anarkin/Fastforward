@@ -29,6 +29,23 @@ suite('App commander', () => {
         ),
       );
 
+  const icons = () =>
+    right()
+      .locator('.commander-row')
+      .evaluateAll((rows) =>
+        rows.map((row) => {
+          const image = row.querySelector<HTMLImageElement>(
+            '.commander-icon img',
+          );
+          return {
+            name: row.querySelector('.commander-name')?.textContent,
+            folder: row.querySelector('.commander-icon .folder-icon') !== null,
+            file: row.querySelector('.commander-icon .file-icon') !== null,
+            loaded: image !== null && image.complete && image.naturalWidth > 0,
+          };
+        }),
+      );
+
   beforeAll(async () => {
     folder = tempFolder('app-commander');
     profile = path.join(folder, 'profile');
@@ -119,6 +136,27 @@ suite('App commander', () => {
       async () => !(await rowNames()).includes('made.log'),
       'the file removed to be dropped',
     );
+  });
+
+  test('draws the system icon of each file, and the folder icon of the app for folders', async () => {
+    await waitFor(
+      async () =>
+        (await icons()).every(
+          (icon) => icon.folder || icon.file || icon.loaded,
+        ),
+      'every row to have its icon',
+    );
+    const drawn = await icons();
+    assert.deepStrictEqual(
+      drawn.filter((icon) => icon.folder).map((icon) => icon.name),
+      ['..', 'src'],
+    );
+    if (process.platform !== 'linux') {
+      assert.ok(
+        drawn.filter((icon) => !icon.folder).every((icon) => icon.loaded),
+        JSON.stringify(drawn),
+      );
+    }
   });
 
   test.skipIf(process.platform !== 'win32')(

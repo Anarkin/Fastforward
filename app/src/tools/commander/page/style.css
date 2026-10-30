@@ -91,6 +91,11 @@
   color: var(--muted-foreground);
 }
 
+.commander-icon .system-icon {
+  width: 16px;
+  height: 16px;
+}
+
 .commander-icon .folder-icon {
   color: var(--color-commander-icon);
 }

@@ -27,6 +27,7 @@ import { prettyName, systemOf } from './system';
 import { stopRunningGit, writesEnded } from '../tools/git/main/cli/run';
 import { errorLine, fileLog, type Log } from '../shell/main/log';
 import { imageRoute } from '../tools/git/shared/images';
+import { iconRoute } from '../tools/commander/shared/icons';
 import { appNameSwitch, titleBarHeight } from '../shell/shared/titleBar';
 import {
   keymap,
@@ -153,7 +154,11 @@ async function start(asked: readonly string[]): Promise<void> {
   for (const problem of state.problems) {
     log.warn(problem);
   }
-  const views = Promise.withResolvers<{ shell: Shell; git: GitTool }>();
+  const views = Promise.withResolvers<{
+    shell: Shell;
+    git: GitTool;
+    commander: CommanderTool;
+  }>();
   protocol.handle(appScheme, (request) => {
     const url = new URL(request.url);
     if (url.pathname === '/theme.css') {
@@ -163,6 +168,9 @@ async function start(asked: readonly string[]): Promise<void> {
     }
     if (url.pathname === imageRoute) {
       return views.promise.then(({ git }) => git.image(url));
+    }
+    if (url.pathname === iconRoute) {
+      return views.promise.then(({ commander }) => commander.icon(url));
     }
     const file = appFile(dist, request.url);
     return file
@@ -385,6 +393,20 @@ async function start(asked: readonly string[]): Promise<void> {
       },
     },
   );
+  const commanderTool = new CommanderTool({
+    fileSystem: () => fileSystemFor(process.platform),
+    settings: () => userSettings.settings.tools.commander,
+    defaultColumns: () => userSettings.defaults.tools.commander.columns,
+    saveShowHidden: (shown) =>
+      userSettings.setIn('commander', 'showHidden', shown),
+    saveColumns: (columns) =>
+      userSettings.setIn('commander', 'columns', columns),
+    watch: watchFolder,
+    fileIcon: async (file) =>
+      (await app.getFileIcon(file, { size: 'normal' })).toPNG(),
+    platform: process.platform,
+    root: rootFolder(process.platform, process.env),
+  });
   const view = new Shell(
     log,
     storage,
@@ -440,24 +462,14 @@ async function start(asked: readonly string[]): Promise<void> {
     },
     {
       terminal: terminalTool,
-      commander: new CommanderTool({
-        fileSystem: () => fileSystemFor(process.platform),
-        settings: () => userSettings.settings.tools.commander,
-        defaultColumns: () => userSettings.defaults.tools.commander.columns,
-        saveShowHidden: (shown) =>
-          userSettings.setIn('commander', 'showHidden', shown),
-        saveColumns: (columns) =>
-          userSettings.setIn('commander', 'columns', columns),
-        watch: watchFolder,
-        root: rootFolder(process.platform, process.env),
-      }),
+      commander: commanderTool,
       git: gitTool,
     },
   );
   if (asked.length > 0) {
     void view.openFolders(asked);
   }
-  views.resolve({ shell: view, git: gitTool });
+  views.resolve({ shell: view, git: gitTool, commander: commanderTool });
   asking = view;
   app.on('will-quit', () => view.quit());
   const applySettings = () => {

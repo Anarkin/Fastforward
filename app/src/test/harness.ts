@@ -329,6 +329,8 @@ export function newView(
         saveShowHidden: () => Promise.resolve(),
         saveColumns: () => Promise.resolve(),
         watch: () => () => {},
+        fileIcon: () => Promise.resolve(new Uint8Array()),
+        platform: process.platform,
         root: os.tmpdir(),
       }),
       git: view,

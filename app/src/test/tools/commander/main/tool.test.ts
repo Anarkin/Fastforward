@@ -15,6 +15,7 @@ import type {
   Entry,
 } from '../../../../tools/commander/shared/protocol';
 import type { ColumnWidths } from '../../../../tools/commander/shared/settings';
+import { iconUrl } from '../../../../tools/commander/shared/icons';
 import { strings } from '../../../../shared/strings';
 import { removeFolder, tempFolder } from '../../../repositories';
 import { waitFor } from '../../../fixtures';
@@ -76,6 +77,7 @@ function commander(
   const notices: Notice[] = [];
   const saved: unknown[] = [];
   const watching: { folder: string; changed: () => void }[] = [];
+  const iconsLoaded: string[] = [];
   const settings = {
     showHidden: true,
     sort: { column: 'extension', descending: false } as const,
@@ -104,6 +106,11 @@ function commander(
       settings.showHidden = shown;
       return Promise.resolve();
     },
+    fileIcon: (iconOf) => {
+      iconsLoaded.push(iconOf);
+      return Promise.resolve(new TextEncoder().encode(`icon of ${iconOf}`));
+    },
+    platform: 'linux',
     watch: (watched, changed) => {
       const watch = { folder: watched, changed };
       watching.push(watch);
@@ -139,7 +146,7 @@ function commander(
     }
     await new Promise((resolve) => setTimeout(resolve, 0));
   };
-  return { tool, page, send, notices, saved, watched, change };
+  return { tool, page, send, notices, saved, watched, change, iconsLoaded };
 }
 
 const tab: Tab = { id: '1', tool: 'commander' };
@@ -385,6 +392,35 @@ suite('Commander tool', () => {
     assert.deepStrictEqual(page.listings().slice(2), [
       `right ${backup} ↑: backup.zip`,
     ]);
+  });
+
+  test('serves the icon of a file a side lists, and nothing else, as folders keep the icon of the app', async () => {
+    const { tool, page, iconsLoaded } = commander({
+      [root]: [folder('Users'), file('notes.txt')],
+    });
+    await tool.show(page, tab);
+    const icon = async (query: Record<string, string>) => {
+      const response = await tool.icon(
+        new URL(
+          `fastforward://app${iconUrl({ tab: '1', side: 'left', folder: root, name: 'notes.txt', ...query })}`,
+        ),
+      );
+      return response.ok
+        ? [response.headers.get('content-type'), await response.text()]
+        : response.status;
+    };
+
+    assert.deepStrictEqual(await icon({}), [
+      'image/png',
+      `icon of ${at('notes.txt')}`,
+    ]);
+    assert.strictEqual(await icon({ name: 'Users' }), 404);
+    assert.strictEqual(await icon({ name: '..' }), 404);
+    assert.strictEqual(await icon({ name: 'secret.txt' }), 404);
+    assert.strictEqual(await icon({ folder: at('Users') }), 404);
+    assert.strictEqual(await icon({ tab: '2' }), 404);
+    assert.strictEqual(await icon({ side: 'middle' }), 404);
+    assert.deepStrictEqual(iconsLoaded, [at('notes.txt')]);
   });
 
   test('lists the drives again when asked, as drives come and go', async () => {

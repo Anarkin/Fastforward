@@ -1,4 +1,5 @@
-import { useContext, useMemo } from 'react';
+import { useContext, useMemo, useState } from 'react';
+import { iconUrl, type IconSource } from '../shared/icons';
 import { commanderKeymap } from '../shared/keymap';
 import { parentFolder, type Side } from '../shared/protocol';
 import { formatSize } from './format';
@@ -33,7 +34,25 @@ export function driveOf(
   );
 }
 
-function RowIcon({ row }: { row: Row }) {
+function RowIcon({
+  row,
+  source,
+}: {
+  row: Row;
+  source: IconSource | undefined;
+}) {
+  const [failed, setFailed] = useState(false);
+  if (source !== undefined && !failed) {
+    return (
+      <img
+        className="system-icon"
+        src={iconUrl(source)}
+        alt=""
+        draggable={false}
+        onError={() => setFailed(true)}
+      />
+    );
+  }
   return row.entry === undefined || row.entry.folder ? (
     <FolderIcon />
   ) : (
@@ -42,6 +61,7 @@ function RowIcon({ row }: { row: Row }) {
 }
 
 export function Pane({
+  tab,
   side,
   pane,
   columns,
@@ -59,6 +79,7 @@ export function Pane({
   onReset,
   resizer,
 }: {
+  tab: string | undefined;
   side: Side;
   pane: PaneView | undefined;
   columns: ColumnWidths;
@@ -103,7 +124,17 @@ export function Pane({
         }}
       >
         <span className="commander-icon">
-          <RowIcon row={row} />
+          <RowIcon
+            row={row}
+            source={
+              tab === undefined ||
+              pane === undefined ||
+              row.entry === undefined ||
+              row.entry.folder
+                ? undefined
+                : { tab, side, folder: pane.folder, name: row.key }
+            }
+          />
         </span>
         <span className="commander-name">{row.base}</span>
         <span className="commander-extension">{row.extension}</span>

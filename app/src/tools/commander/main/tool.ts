@@ -25,6 +25,8 @@ import {
 } from '../shared/settings';
 import type { FileSystem } from './fileSystem';
 import type { WatchFolder } from './watch';
+import { Icons } from './icons';
+import { iconSourceOf } from '../shared/icons';
 
 export interface CommanderAccess {
   readonly fileSystem: () => Promise<FileSystem>;
@@ -33,6 +35,8 @@ export interface CommanderAccess {
   readonly saveShowHidden: (shown: boolean) => Promise<void>;
   readonly saveColumns: (columns: ColumnWidths) => Promise<void>;
   readonly watch: WatchFolder;
+  readonly fileIcon: (file: string) => Promise<Uint8Array>;
+  readonly platform: NodeJS.Platform;
   readonly root: string;
 }
 
@@ -99,8 +103,11 @@ export class CommanderTool implements Tool<'commander'> {
     { readonly folder: string; readonly stop: () => void }
   >();
   private fileSystem: Promise<FileSystem> | undefined;
+  private readonly icons: Icons;
 
-  constructor(private readonly access: CommanderAccess) {}
+  constructor(private readonly access: CommanderAccess) {
+    this.icons = new Icons(access.fileIcon, access.platform);
+  }
 
   attach(shell: ShellAccess): void {
     this.shell = shell;
@@ -211,6 +218,29 @@ export class CommanderTool implements Tool<'commander'> {
 
   quit(): void {
     this.unwatch();
+  }
+
+  async icon(url: URL): Promise<Response> {
+    const source = iconSourceOf(url);
+    const pane = source && this.panes.get(source.tab)?.[source.side];
+    const entry = pane?.entries?.find((each) => each.name === source?.name);
+    if (
+      source === undefined ||
+      pane === undefined ||
+      pane.folder !== source.folder ||
+      entry === undefined ||
+      entry.folder
+    ) {
+      return new Response(null, { status: 404 });
+    }
+    try {
+      const png = await this.icons.of(path.join(pane.folder, entry.name));
+      return new Response(Buffer.from(png), {
+        headers: { 'content-type': 'image/png' },
+      });
+    } catch {
+      return new Response(null, { status: 404 });
+    }
   }
 
   private async start(tab: Tab): Promise<Panes> {
