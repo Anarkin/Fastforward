@@ -111,7 +111,10 @@ suite('Theme', () => {
           ...defaults.tools.git,
           colors: { light: { icon: '#c00' }, dark: { icon: '#f00' } },
         },
-        commander: { colors: { light: {}, dark: {} } },
+        commander: {
+          ...defaults.tools.commander,
+          colors: { light: {}, dark: {} },
+        },
         terminal: {
           ...defaults.tools.terminal,
           colors: { light: { red: '#a00' }, dark: { red: '#e00' } },

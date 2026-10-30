@@ -5,6 +5,14 @@ import {
 } from '../../tools/git/shared/protocol';
 import type { GitSettings } from '../../tools/git/shared/settings';
 import type {
+  CommanderToHost,
+  CommanderToWebview,
+} from '../../tools/commander/shared/protocol';
+import {
+  sortColumns,
+  type CommanderSettings,
+} from '../../tools/commander/shared/settings';
+import type {
   TerminalToHost,
   TerminalToWebview,
 } from '../../tools/terminal/shared/protocol';
@@ -32,7 +40,10 @@ interface ToolMessages {
     readonly toHost: TerminalToHost;
     readonly toWebview: TerminalToWebview;
   };
-  readonly commander: { readonly toHost: never; readonly toWebview: never };
+  readonly commander: {
+    readonly toHost: CommanderToHost;
+    readonly toWebview: CommanderToWebview;
+  };
   readonly git: {
     readonly toHost: GitToHost;
     readonly toWebview: GitToWebview;
@@ -70,7 +81,7 @@ interface Themed {
 
 export interface ToolSettings {
   readonly terminal: TerminalSettings & Themed;
-  readonly commander: Themed;
+  readonly commander: CommanderSettings & Themed;
   readonly git: GitSettings & Themed;
 }
 
@@ -78,4 +89,5 @@ export const toolSettingChoices: ReadonlyMap<string, readonly string[]> =
   new Map<string, readonly string[]>([
     ['tools.git.diffLayout', diffLayouts],
     ['tools.terminal.renderer', renderers],
+    ['tools.commander.sort.column', sortColumns],
   ]);

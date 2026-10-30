@@ -1,6 +1,7 @@
 {
   "autoSortTabs": false,
   "recentItems": 15,
+  "dateFormat": "YYYY-MM-DD HH:mm",
   "fonts": {
     "family": "-apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif",
     "size": "12px",
@@ -69,6 +70,9 @@
       }
     },
     "commander": {
+      "showHidden": true,
+      "sort": { "column": "extension", "descending": false },
+      "columns": { "extension": 10, "size": 15, "date": 16 },
       "colors": {
         "light": {
           "icon": "#1a5fb4"

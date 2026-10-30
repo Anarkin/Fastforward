@@ -19,7 +19,7 @@ export function mainOptions(production: boolean): BuildOptions {
     format: 'cjs',
     platform: 'node',
     outdir: 'dist',
-    external: ['electron', 'electron-updater', 'node-pty'],
+    external: ['electron', 'electron-updater', 'node-pty', 'koffi'],
   };
 }
 

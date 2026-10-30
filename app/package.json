@@ -96,10 +96,15 @@
       "!node_modules/node-pty/{src,third_party,scripts,typings}/**",
       "!node_modules/node-pty/binding.gyp",
       "!node_modules/node-pty/**/*.pdb",
-      "!node_modules/node-addon-api/**"
+      "!node_modules/node-addon-api/**",
+      "!node_modules/koffi/{doc,vendor,lib}/**",
+      "!node_modules/koffi/src/koffi/{src,CMakeLists.txt}",
+      "!node_modules/@koromix/*/*/*.lib"
     ],
     "asarUnpack": [
-      "node_modules/node-pty/**"
+      "node_modules/node-pty/**",
+      "node_modules/koffi/**",
+      "node_modules/@koromix/**"
     ],
     "npmRebuild": false,
     "mac": {

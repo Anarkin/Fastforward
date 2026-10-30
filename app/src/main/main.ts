@@ -45,7 +45,8 @@ import {
 } from '../shell/main/settings';
 import { JsonFileStore, Storage, toolState } from '../shell/main/storage';
 import { themeCss } from '../shell/main/theme';
-import { CommanderTool } from '../tools/commander/main/tool';
+import { fileSystemFor } from '../tools/commander/main/fileSystem';
+import { CommanderTool, rootFolder } from '../tools/commander/main/tool';
 import { hostProcess } from '../tools/terminal/main/hostProcess';
 import { writeShellIntegration } from '../tools/terminal/main/shellIntegration';
 import { shellLaunch } from '../tools/terminal/main/shellLaunch';
@@ -436,7 +437,21 @@ async function start(asked: readonly string[]): Promise<void> {
               (process.env.PATH ?? '').split(path.delimiter),
             ),
     },
-    { terminal: terminalTool, commander: new CommanderTool(), git: gitTool },
+    {
+      terminal: terminalTool,
+      commander: new CommanderTool({
+        fileSystem: () => fileSystemFor(process.platform),
+        settings: () => userSettings.settings.tools.commander,
+        dateFormat: () => userSettings.settings.dateFormat,
+        defaultColumns: () => userSettings.defaults.tools.commander.columns,
+        saveShowHidden: (shown) =>
+          userSettings.setIn('commander', 'showHidden', shown),
+        saveColumns: (columns) =>
+          userSettings.setIn('commander', 'columns', columns),
+        root: rootFolder(process.platform, process.env),
+      }),
+      git: gitTool,
+    },
   );
   if (asked.length > 0) {
     void view.openFolders(asked);

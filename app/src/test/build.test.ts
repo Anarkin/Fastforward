@@ -114,10 +114,33 @@ suite('Release build', { timeout: 30_000 }, () => {
     const { build } = JSON.parse(
       fs.readFileSync(path.join(appFolder, 'package.json'), 'utf8'),
     );
+    assert.ok(build.asarUnpack.includes('node_modules/node-pty/**'));
+    assert.strictEqual(build.npmRebuild, false);
+  });
+
+  test('leaves koffi out of the bundle and unpacked from the asar with the native module of each platform, which it looks for next to itself', async () => {
+    const { outputs } = (await releaseBuild('mainOptions')).metafile;
     assert.deepStrictEqual(
-      [build.asarUnpack, build.npmRebuild],
-      [['node_modules/node-pty/**'], false],
+      Object.values(outputs).flatMap((output) =>
+        Object.keys(output.inputs).filter((input) =>
+          /^node_modules\/(?:koffi|@koromix)\//.test(input),
+        ),
+      ),
+      [],
     );
+    assert.ok(
+      outputs['dist/main.js'].imports.some(
+        (imported) => imported.path === 'koffi' && imported.external,
+      ),
+    );
+    const { build } = JSON.parse(
+      fs.readFileSync(path.join(appFolder, 'package.json'), 'utf8'),
+    );
+    assert.deepStrictEqual(build.asarUnpack, [
+      'node_modules/node-pty/**',
+      'node_modules/koffi/**',
+      'node_modules/@koromix/**',
+    ]);
   });
 
   test('turns off running the app as Node, NODE_OPTIONS and the inspector flags, and loads it only from its asar, as anything able to start it could run code in it through them', () => {

@@ -120,6 +120,8 @@ export const strings = {
     nonBreakingSpace: '⍽',
     invisible: '¤',
     foldersLeftOut: '…',
+    ascending: '▴',
+    descending: '▾',
   },
   about: {
     title: 'About',
@@ -234,6 +236,12 @@ export const strings = {
     copySelection: 'Copy the selection',
     paste: 'Paste',
     leftToApp: 'Leave the key to the app rather than the shell',
+    side: 'Go to the other side',
+    openFolder: 'Open the selected folder',
+    parentFolder: 'Go up to the parent folder',
+    showHidden: 'Show or hide the hidden files',
+    drive: 'Choose the drive of the left or right side',
+    sort: 'Sort by a column, or reverse the order',
   },
   shortcuts: {
     title: 'Shortcuts',
@@ -249,6 +257,7 @@ export const strings = {
       Files: 'Files',
       Diff: 'Diff',
       Terminal: 'Terminal',
+      Commander: 'Commander',
       App: 'App',
     },
   },
@@ -457,6 +466,21 @@ export const strings = {
       `Couldn't start ${shell}. ${reason} Press Enter to try again.`,
     stopped:
       'The terminal process stopped, so the shell did too. Press Enter to start a new one.',
+  },
+  commander: {
+    name: 'Name',
+    extension: 'Ext',
+    size: 'Size',
+    date: 'Date',
+    chooseDrive: 'Choose a drive',
+    sides: {
+      left: 'Left side',
+      right: 'Right side',
+    },
+    couldNotOpen: (folder: string, reason: string) =>
+      `Couldn't open ${folder}. ${reason}`,
+    accessDenied: 'Access is denied.',
+    gone: "It doesn't exist anymore.",
   },
   find: {
     title: 'Search the diff',

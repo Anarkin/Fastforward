@@ -19,6 +19,7 @@ import type {
   UpdateStatus,
 } from '../shell/shared/protocol';
 import type { Timer } from '../tools/git/main/autoFetch';
+import { nodeFileSystem } from '../tools/commander/main/nodeFileSystem';
 import { CommanderTool } from '../tools/commander/main/tool';
 import { TerminalTool, type HostListener } from '../tools/terminal/main/tool';
 import {
@@ -321,7 +322,15 @@ export function newView(
           choose: () => host.chooseFolders(),
         },
       ),
-      commander: new CommanderTool(),
+      commander: new CommanderTool({
+        fileSystem: () => Promise.resolve(nodeFileSystem),
+        settings: () => settings.settings.tools.commander,
+        dateFormat: () => settings.settings.dateFormat,
+        defaultColumns: () => settings.defaults.tools.commander.columns,
+        saveShowHidden: () => Promise.resolve(),
+        saveColumns: () => Promise.resolve(),
+        root: os.tmpdir(),
+      }),
       git: view,
     }),
   );

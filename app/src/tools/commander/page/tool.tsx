@@ -1,3 +1,184 @@
-export function CommanderTool({ active }: { active: boolean }) {
-  return active ? <div className="repository commander" /> : null;
+import { useEffect, useReducer, useRef, useState } from 'react';
+import { commanderKeymap } from '../shared/keymap';
+import {
+  sides,
+  type CommanderToHost,
+  type CommanderToWebview,
+  type Side,
+} from '../shared/protocol';
+import { Pane } from './pane';
+import { emptyView, reduceView } from './view';
+import type { ColumnWidths } from '../shared/settings';
+import { columnFocusAttribute } from '../../../ui/columnFocus';
+import { followDrag } from '../../../ui/followDrag';
+import { useBinding } from '../../../ui/shortcuts';
+
+const minimumShare = 0.15;
+
+export function shareOf(left: number, width: number): number {
+  return width <= 0
+    ? 0.5
+    : Math.min(1 - minimumShare, Math.max(minimumShare, left / width));
+}
+
+export function CommanderTool({
+  active,
+  post,
+  listen,
+}: {
+  active: boolean;
+  post: (message: CommanderToHost) => void;
+  listen: (handler: (message: CommanderToWebview) => void) => () => void;
+}) {
+  const [view, dispatch] = useReducer(reduceView, emptyView);
+  const [drives, setDrives] = useState<readonly string[]>([]);
+  const [share, setShare] = useState(0.5);
+  const [resized, setResized] = useState<{
+    readonly from: ColumnWidths;
+    readonly widths: ColumnWidths;
+  }>();
+  const columnWidths =
+    resized?.from === view.columns ? resized.widths : view.columns;
+  const columns = useRef<HTMLDivElement>(null);
+  const triggers = {
+    left: useRef<HTMLButtonElement>(null),
+    right: useRef<HTMLButtonElement>(null),
+  };
+
+  useEffect(
+    () =>
+      listen((message) => {
+        if (message.type === 'drives') {
+          setDrives(message.drives);
+        } else {
+          dispatch(message);
+        }
+      }),
+    [listen],
+  );
+
+  const shown = active && view.tab !== undefined;
+
+  useEffect(() => {
+    if (!shown) {
+      return;
+    }
+    const index = sides.indexOf(view.active);
+    columns.current?.children[index]
+      ?.querySelector<HTMLElement>(`[${columnFocusAttribute}]`)
+      ?.focus();
+  }, [shown, view.active]);
+
+  useBinding(
+    commanderKeymap.showHidden,
+    () => post({ type: 'showHidden', shown: !view.showHidden }),
+    shown,
+  );
+  useBinding(
+    commanderKeymap.drive,
+    (side) => {
+      dispatch({ type: 'activate', side });
+      triggers[side].current?.click();
+    },
+    shown && drives.length > 0,
+  );
+
+  if (!active) {
+    return null;
+  }
+  const { tab } = view;
+  const resizer = <Resizer columns={columns} onShare={setShare} />;
+  const openIn = (side: Side) => (name: string) => {
+    if (tab !== undefined) {
+      post({ type: 'open', tab, side, name });
+    }
+  };
+
+  return (
+    <div className="repository commander">
+      <div
+        className="columns commander-columns"
+        ref={columns}
+        data-active-side={view.active}
+        style={{
+          gridTemplateColumns: `minmax(0, ${share}fr) minmax(0, ${1 - share}fr)`,
+        }}
+      >
+        {sides.map((side) => (
+          <Pane
+            key={side}
+            side={side}
+            pane={view.panes[side]}
+            dateFormat={view.dateFormat}
+            columns={columnWidths}
+            onResize={(column, width) =>
+              setResized({
+                from: view.columns,
+                widths: { ...columnWidths, [column]: width },
+              })
+            }
+            onResized={(column, width) =>
+              post({
+                type: 'columns',
+                columns: { ...view.columns, [column]: width },
+              })
+            }
+            onReset={(column) => {
+              post({
+                type: 'columns',
+                columns: {
+                  ...view.columns,
+                  [column]: view.defaultColumns[column],
+                },
+              });
+            }}
+            drives={drives}
+            driveTrigger={triggers[side]}
+            onSelect={(key) => dispatch({ type: 'select', side, key })}
+            onOpen={openIn(side)}
+            onSort={(column) => dispatch({ type: 'sort', side, column })}
+            onActivate={() => dispatch({ type: 'activate', side })}
+            onSwitchSide={() => dispatch({ type: 'switchSide' })}
+            onDrive={(drive) => {
+              if (tab !== undefined) {
+                post({ type: 'drive', tab, side, drive });
+              }
+            }}
+            onDrivesOpening={() => post({ type: 'listDrives' })}
+            resizer={side === 'left' && resizer}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Resizer({
+  columns,
+  onShare,
+}: {
+  columns: React.RefObject<HTMLDivElement | null>;
+  onShare: (share: number) => void;
+}) {
+  return (
+    <div
+      className="resizer"
+      onPointerDown={(event) => {
+        event.preventDefault();
+        event.currentTarget.setPointerCapture(event.pointerId);
+        const box = columns.current?.getBoundingClientRect();
+        if (box === undefined) {
+          return;
+        }
+        followDrag(
+          window,
+          (move: PointerEvent) =>
+            onShare(shareOf(move.clientX - box.left, box.width)),
+          () => document.body.classList.remove('resizing'),
+        );
+        document.body.classList.add('resizing');
+      }}
+      onDoubleClick={() => onShare(0.5)}
+    />
+  );
 }

@@ -10,6 +10,7 @@ import { strings } from '../../shared/strings';
 export interface Settings {
   readonly autoSortTabs: boolean;
   readonly recentItems: number;
+  readonly dateFormat: string;
   readonly tools: ToolSettings;
   readonly fonts: {
     readonly family: string;

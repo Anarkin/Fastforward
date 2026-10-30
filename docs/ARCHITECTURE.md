@@ -20,7 +20,8 @@
 
 ### Commander, `commander`
 
-- TODO
+- Folders are listed on Windows with `NtQueryDirectoryFile` through `koffi`, a page of entries at a time off the main thread, as Node can't read the hidden attribute or the size of files the system holds open, such as `pagefile.sys`; elsewhere with Node's `readdir` and `lstat`
+- Native calls go through `koffi` while they are plain C functions; COM or Objective-C would go in an addon of our own
 
 ### Terminal, `terminal`
 

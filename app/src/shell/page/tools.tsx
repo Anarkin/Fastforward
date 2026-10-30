@@ -7,6 +7,14 @@ import { strings } from '../../shared/strings';
 import type { ToolId, ToWebviewOfTool } from '../shared/tools';
 import type { ContextMenuItem, OpenMenu } from '../../ui/contextMenu';
 import { CommanderTool } from '../../tools/commander/page/tool';
+import {
+  commanderGroups,
+  commanderKeymap,
+} from '../../tools/commander/shared/keymap';
+import type {
+  CommanderToHost,
+  CommanderToWebview,
+} from '../../tools/commander/shared/protocol';
 import { TerminalTool } from '../../tools/terminal/page/tool';
 import {
   terminalGroups,
@@ -29,7 +37,11 @@ export const toolShortcuts: Readonly<Record<ToolId, readonly ShortcutGroup[]>> =
       strings.shortcuts.groups,
       terminalKeymap,
     ),
-    commander: [],
+    commander: shortcutGroupsOf(
+      commanderGroups,
+      strings.shortcuts.groups,
+      commanderKeymap,
+    ),
     git: shortcutGroupsOf(gitGroups, strings.shortcuts.groups, gitKeymap),
   };
 
@@ -85,6 +97,20 @@ export function ToolViews({
     },
     [listeners],
   );
+  const postCommander = useCallback(
+    (message: CommanderToHost) =>
+      post({ type: 'tool', tool: 'commander', message }),
+    [post],
+  );
+  const listenCommander = useCallback(
+    (handler: (message: CommanderToWebview) => void) => {
+      listeners.commander.add(handler);
+      return () => {
+        listeners.commander.delete(handler);
+      };
+    },
+    [listeners],
+  );
   const copyText = useCallback(
     (text: string) => post({ type: 'copyText', text }),
     [post],
@@ -102,7 +128,11 @@ export function ToolViews({
         onCopy={copyText}
         onNewTabItems={terminalItems}
       />
-      <CommanderTool active={active === 'commander'} />
+      <CommanderTool
+        active={active === 'commander'}
+        post={postCommander}
+        listen={listenCommander}
+      />
       <GitTool
         active={active === 'git'}
         post={postGit}
