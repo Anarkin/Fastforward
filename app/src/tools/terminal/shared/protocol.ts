@@ -39,6 +39,7 @@ export type TerminalToWebview =
       readonly windowsPty: WindowsPty | undefined;
     }
   | { readonly type: 'show'; readonly tab: string }
+  | { readonly type: 'hide' }
   | {
       readonly type: 'screen';
       readonly tab: string;

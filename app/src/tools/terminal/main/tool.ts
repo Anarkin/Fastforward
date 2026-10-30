@@ -117,6 +117,7 @@ export class TerminalTool implements Tool<'terminal'> {
     if (this.shown?.page === page) {
       this.host?.send({ type: 'detach', id: this.shown.tab });
       this.shown = undefined;
+      this.post(page, { type: 'hide' });
     }
   }
 

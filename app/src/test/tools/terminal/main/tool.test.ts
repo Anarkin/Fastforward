@@ -190,8 +190,24 @@ suite('Terminal tool', () => {
     await tool.show(page, work);
     tool.hide(page);
     tool.closed(page, work);
-    assert.deepStrictEqual(page.messages, [{ type: 'show', tab: '1' }]);
+    assert.deepStrictEqual(page.messages, [
+      { type: 'show', tab: '1' },
+      { type: 'hide' },
+    ]);
     assert.strictEqual(listeners.length, 0);
+  });
+
+  test('tells the page to stop showing its terminal once another tool is shown, in order with the show that comes next, as the page learns which tool is shown from another message', async () => {
+    const { tool, page } = terminal();
+    await tool.show(page, work);
+    tool.hide(page);
+    tool.hide(page);
+    await tool.show(page, work);
+    assert.deepStrictEqual(page.messages, [
+      { type: 'show', tab: '1' },
+      { type: 'hide' },
+      { type: 'show', tab: '1' },
+    ]);
   });
 
   test('starts the shell of a tab in its folder at the size the page asks for, and sends the page its screen', async () => {

@@ -60,6 +60,9 @@ export function TerminalTool({
           case 'show':
             setShown(message.tab);
             return;
+          case 'hide':
+            setShown(undefined);
+            return;
           case 'folders':
             setFolders(message.folders);
             return;
@@ -69,12 +72,6 @@ export function TerminalTool({
       }),
     [listen],
   );
-
-  useEffect(() => {
-    if (!active) {
-      setShown(undefined);
-    }
-  }, [active]);
 
   useEffect(() => {
     const element = screen.current;
