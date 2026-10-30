@@ -56,6 +56,7 @@ suite('Shortcuts popup', () => {
           'Tabs',
           [
             'Open a new tab',
+            'Open the folder of the tab in another tool',
             'Next or previous tab',
             'Close a tab',
             'Move a tab among the tabs',

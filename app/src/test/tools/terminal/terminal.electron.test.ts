@@ -12,7 +12,7 @@ import { removeFolder, tempFolder } from '../../repositories';
 const shell =
   process.platform === 'win32'
     ? { shell: '', shellArgs: ['-NoLogo', '-NoProfile'] }
-    : { shell: '/bin/sh', shellArgs: [] };
+    : { shell: '/bin/bash', shellArgs: ['--norc', '--noprofile'] };
 
 function luminance(color: string): number {
   const [red = 0, green = 0, blue = 0] = (color.match(/\d+/g) ?? []).map(
@@ -50,6 +50,18 @@ function runningWith(marker: string): number {
   return execFileSync('ps', ['-eo', 'args'], { encoding: 'utf8' })
     .split('\n')
     .filter((line) => line.includes(marker)).length;
+}
+
+function sameFolder(told: string, expected: string): boolean {
+  if (!fs.existsSync(told)) {
+    return false;
+  }
+  const [real, wanted] = [told, expected].map((each) =>
+    fs.realpathSync.native(each),
+  );
+  return process.platform === 'win32'
+    ? real?.toLowerCase() === wanted?.toLowerCase()
+    : real === wanted;
 }
 
 let folder: string;
@@ -186,6 +198,46 @@ suite('Terminal', () => {
       'the program in it to end',
       15_000,
     );
+  });
+
+  test('opens the folder the shell is in in another tool on Ctrl+Shift+O, offering every tool but the Terminal', async () => {
+    const inner = path.join(folder, 'work', 'inner');
+    fs.mkdirSync(inner);
+    const tabs = page.locator('.tabs .tab');
+    const popup = page.locator('.open-with-popup');
+    const shown = popup.locator('.open-with-folders > span');
+    await run('cd inner');
+    await waitFor(async () => {
+      await page.locator('.terminal-screen').click();
+      await page.keyboard.press('ControlOrMeta+Shift+O');
+      await popup.waitFor();
+      if (sameFolder((await shown.textContent()) ?? '', inner)) {
+        return true;
+      }
+      await page.keyboard.press('Escape');
+      await popup.waitFor({ state: 'detached' });
+      return false;
+    }, 'the folder the shell went to');
+    assert.deepStrictEqual(
+      await popup
+        .locator('.open-with-tool')
+        .evaluateAll((buttons: HTMLButtonElement[]) =>
+          buttons.map((button) => [button.dataset.tool, button.disabled]),
+        ),
+      [
+        ['git', true],
+        ['files', false],
+        ['terminal', true],
+      ],
+    );
+    await page.keyboard.press('Enter');
+    await waitFor(async () => (await tabs.count()) === 2, 'a second tab');
+    assert.ok(
+      sameFolder((await tabs.nth(1).getAttribute('title')) ?? '', inner),
+    );
+    await page.keyboard.press('ControlOrMeta+Shift+W');
+    await waitFor(async () => (await tabs.count()) === 1, 'the tab to close');
+    await page.locator('.terminal-screen .xterm-rows').waitFor();
   });
 
   test('asks before quitting while a terminal tab is open, staying open on Cancel and quitting on Enter', async () => {

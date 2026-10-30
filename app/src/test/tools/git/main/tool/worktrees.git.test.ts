@@ -378,6 +378,24 @@ suite('Git tool of worktrees', () => {
     });
   });
 
+  test('offers the worktree a tab shows to the other tools, not the main one', async () => {
+    await withView(log, [repository.root, other], async (view) => {
+      const root = worktreeRoot(view, review);
+      await view.connection.receive({ type: 'selectWorktree', root });
+      await view.connection.receive({ type: 'openIn' });
+      assert.deepStrictEqual(view.page.last('chooseTool'), {
+        type: 'chooseTool',
+        folders: [root],
+        choices: [
+          { tool: 'git', fits: false },
+          { tool: 'files', fits: true },
+          { tool: 'terminal', fits: true },
+        ],
+        picked: 'files',
+      });
+    });
+  });
+
   test('closes the tab of a repository while it shows another worktree', async () => {
     await withView(log, [repository.root, other], async (view) => {
       const root = worktreeRoot(view, review);

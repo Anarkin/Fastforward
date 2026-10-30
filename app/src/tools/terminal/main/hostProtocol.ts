@@ -40,4 +40,5 @@ export type HostEvent =
       readonly exited: boolean;
     }
   | { readonly type: 'output'; readonly id: string; readonly data: string }
+  | { readonly type: 'folder'; readonly id: string; readonly folder: string }
   | { readonly type: 'exited'; readonly id: string };

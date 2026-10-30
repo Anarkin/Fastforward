@@ -412,6 +412,96 @@ suite('Shell with no tab open', () => {
     }
   });
 
+  test('offers the folder of the active tab to the other tools it fits, its own tool shown but not offered, and opens it in the one picked', async () => {
+    const work = tempFolder('work');
+    try {
+      await withView(
+        log,
+        [],
+        async (view) => {
+          await view.shell.openFolders([work]);
+          await view.connection.receive({ type: 'openWith', tool: 'files' });
+          await view.connection.receive({ type: 'openIn' });
+          assert.deepStrictEqual(view.page.last('chooseTool'), {
+            type: 'chooseTool',
+            folders: [work],
+            choices: [
+              { tool: 'git', fits: false },
+              { tool: 'files', fits: false },
+              { tool: 'terminal', fits: true },
+            ],
+            picked: 'terminal',
+          });
+          await view.connection.receive({ type: 'openWith', tool: 'files' });
+          assert.strictEqual(view.page.tabs?.tabs.length, 1);
+          await view.connection.receive({ type: 'openIn' });
+          await view.connection.receive({
+            type: 'openWith',
+            tool: 'terminal',
+          });
+          assert.deepStrictEqual(
+            view.page.tabs?.tabs.map((tab) => [tab.tool, tab.root]),
+            [
+              ['files', work],
+              ['terminal', work],
+            ],
+          );
+        },
+        true,
+        undefined,
+        noGit,
+      );
+    } finally {
+      removeFolder(work);
+    }
+  });
+
+  test('says the folder of the active tab cannot be opened when no other tool fits it, offering nothing, as the folder a terminal tells comes from what runs in it, which may name one gone or made up', async () => {
+    const work = tempFolder('work');
+    try {
+      await withView(
+        log,
+        [],
+        async (view) => {
+          await view.shell.openFolders([work]);
+          await view.connection.receive({ type: 'openWith', tool: 'files' });
+          removeFolder(work);
+          view.page.clear();
+          await view.connection.receive({ type: 'openIn' });
+          assert.deepStrictEqual(noticesOf(view.page), [
+            ['error', strings.messages.noToolOpens(work)],
+          ]);
+          assert.strictEqual(view.page.last('chooseTool'), undefined);
+        },
+        true,
+        undefined,
+        noGit,
+      );
+    } finally {
+      removeFolder(work);
+    }
+  });
+
+  test('says when the active tab does not know its folder, as a terminal whose shell has not told it', async () => {
+    await withView(
+      log,
+      [],
+      async (view) => {
+        await view.connection.receive({ type: 'openIn' });
+        assert.deepStrictEqual(noticesOf(view.page), []);
+        await view.connection.receive({ type: 'newTab', tool: 'terminal' });
+        await view.connection.receive({ type: 'openIn' });
+        assert.deepStrictEqual(noticesOf(view.page), [
+          ['info', strings.messages.noFolder(strings.tools.terminal)],
+        ]);
+        assert.strictEqual(view.page.last('chooseTool'), undefined);
+      },
+      true,
+      undefined,
+      noGit,
+    );
+  });
+
   test('sends the version of the app and of git when the page loads, for its About, and copies what the page asks to', async () => {
     const host = new FakeHost();
     await withView(

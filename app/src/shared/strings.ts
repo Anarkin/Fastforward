@@ -179,6 +179,7 @@ export const strings = {
   },
   actions: {
     newTab: 'Open a new tab',
+    openIn: 'Open the folder of the tab in another tool',
     tab: 'Next or previous tab',
     worktree: 'Next or previous worktree',
     closeTab: 'Close a tab',
@@ -440,6 +441,7 @@ export const strings = {
       `Couldn't open ${folder}. ${reason}`,
     notInRepository: (folder: string) => `${folder} is not in a git repository`,
     noToolOpens: (folder: string) => `${folder} can't be opened`,
+    noFolder: (tool: string) => `${tool} doesn't know which folder it's in`,
     notRepository: (root: string) => `${root} is not a git repository`,
     couldNotWatch: (root: string) =>
       `Couldn't watch ${root}, so changes made outside ${brand} won't show until it is opened again`,
@@ -591,6 +593,8 @@ export const strings = {
     settingsChanged: 'Settings changed, reloading',
     watchingSettingsFailed: 'Watching the settings failed',
     watchingBuildFailed: 'Watching the build failed',
+    writingShellIntegrationFailed:
+      'Writing the .zshenv that has zsh tell its folder failed, so zsh starts without it',
     rebuiltDefaultsFailed: 'Reading the rebuilt default settings failed',
     updater: (message: string) => `Updater: ${message}`,
     updateFailed: 'Updating failed',

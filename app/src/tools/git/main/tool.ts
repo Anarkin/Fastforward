@@ -430,6 +430,12 @@ export class GitTool implements Tool<'git'> {
     }
   }
 
+  folderOf(tab: Tab): string | undefined {
+    return tab.root === undefined
+      ? undefined
+      : this.storage.worktreeOf(tab.root);
+  }
+
   open(page: Page, folders: readonly string[]): Promise<void> {
     const session = this.sessionOf(page);
     return this.run(strings.log.openingAskedFailed, session, () =>

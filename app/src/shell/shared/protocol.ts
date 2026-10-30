@@ -45,6 +45,7 @@ export type ToHost =
   | { readonly type: 'setAutoSortTabs'; readonly on: boolean }
   | { readonly type: 'newTab'; readonly tool: ToolId }
   | { readonly type: 'openWith'; readonly tool: ToolId | undefined }
+  | { readonly type: 'openIn' }
   | { readonly type: 'copyText'; readonly text: string }
   | { readonly type: 'openSettings' }
   | { readonly type: 'openDefaultSettings' }

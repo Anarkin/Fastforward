@@ -1,4 +1,6 @@
+import * as os from 'node:os';
 import { Backlog, flowLimits, type FlowLimits } from './flowControl';
+import { folderOfPath, folderOfUrl, type FolderPlace } from './folders';
 import type { HostCommand, HostEvent, ShellLaunch } from './hostProtocol';
 import { createMirror, type Mirror } from './mirror';
 import type { WindowsPty } from '../shared/protocol';
@@ -58,6 +60,7 @@ class Session {
   private paused = false;
   private exited = false;
   private started = false;
+  private folder: string | undefined;
 
   constructor(
     private readonly id: string,
@@ -69,10 +72,20 @@ class Session {
     private readonly timer: Timer,
     scrollback: number,
     windowsPty: WindowsPty | undefined,
+    place: FolderPlace,
   ) {
     this.mirror = createMirror({ columns, rows, scrollback, windowsPty });
     this.toMirror = new Backlog(limits);
     this.toPage = new Backlog(limits);
+    const { parser } = this.mirror.terminal;
+    parser.registerOscHandler(7, (data) =>
+      this.reported(folderOfUrl(data, place)),
+    );
+    parser.registerOscHandler(9, (data) =>
+      this.reported(
+        data.startsWith('9;') ? folderOfPath(data.slice(2), place) : undefined,
+      ),
+    );
   }
 
   get running(): boolean {
@@ -85,6 +98,7 @@ class Session {
     this.stopListening();
     this.exited = false;
     this.paused = false;
+    this.folder = undefined;
     if (this.started) {
       this.take(cleanScreen(this.rows));
     }
@@ -209,6 +223,14 @@ class Session {
     this.balance();
   }
 
+  private reported(folder: string | undefined): boolean {
+    if (folder !== undefined && folder !== this.folder) {
+      this.folder = folder;
+      this.post({ type: 'folder', id: this.id, folder });
+    }
+    return true;
+  }
+
   private end(): void {
     this.flush();
     this.exited = true;
@@ -246,6 +268,10 @@ export class PtyHost {
     private readonly limits: FlowLimits = flowLimits,
     private readonly timer: Timer = realTimer,
     private readonly windowsPty?: WindowsPty,
+    private readonly place: FolderPlace = {
+      platform: process.platform,
+      hostname: os.hostname(),
+    },
   ) {}
 
   receive(command: HostCommand): void {
@@ -263,6 +289,7 @@ export class PtyHost {
             this.timer,
             command.scrollback,
             this.windowsPty,
+            this.place,
           );
           this.sessions.set(command.id, session);
         }

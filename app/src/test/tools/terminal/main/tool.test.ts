@@ -72,6 +72,8 @@ function terminal() {
         (event) => listener.event(event),
         flowLimits,
         clock.timer,
+        undefined,
+        { platform: 'linux', hostname: 'box' },
       );
       hosts.push(host);
       return {
@@ -300,6 +302,20 @@ suite('Terminal tool', () => {
     stopHost(0);
     assert.strictEqual(ptys.last().killed, true);
     assert.deepStrictEqual(errors, []);
+  });
+
+  test('knows the folder the shell of a tab reported last, until the shell starts again', async () => {
+    const { tool, ptys, clock, send, open } = terminal();
+    await open(work);
+    assert.strictEqual(tool.folderOf(work), undefined);
+    ptys.last().print('\x1b]9;9;/work/app\x07');
+    await clock.fire();
+    await until(() => tool.folderOf(work) === '/work/app');
+    assert.strictEqual(tool.folderOf(other), undefined);
+    ptys.last().exit(0);
+    await clock.fire();
+    await send({ type: 'restart', tab: '1' });
+    assert.strictEqual(tool.folderOf(work), undefined);
   });
 
   test('names a tab after its folder, or Terminal when it has none', () => {

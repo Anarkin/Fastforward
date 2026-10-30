@@ -29,6 +29,8 @@ function host(limits: Partial<FlowLimits> = {}) {
     (event) => events.push(event),
     { ...flowLimits, ...limits },
     clock.timer,
+    undefined,
+    { platform: 'linux', hostname: 'box' },
   );
   const start = (columns = 80, rows = 24) =>
     ptyHost.receive({
@@ -55,7 +57,9 @@ function host(limits: Partial<FlowLimits> = {}) {
   };
   const outputs = () =>
     events.flatMap((event) => (event.type === 'output' ? [event.data] : []));
-  return { ptyHost, ptys, clock, events, start, attach, outputs };
+  const folders = () =>
+    events.flatMap((event) => (event.type === 'folder' ? [event.folder] : []));
+  return { ptyHost, ptys, clock, events, start, attach, outputs, folders };
 }
 
 suite('Terminal sessions', () => {
@@ -247,6 +251,43 @@ suite('Terminal sessions', () => {
         screen.data.includes('first shell') &&
         !screen.exited,
     );
+  });
+
+  test('tells the folder the shell reports each time it reports another, as Windows Terminal or a file URL has it, with no page attached too', async () => {
+    const { ptys, clock, start, folders } = host();
+    start();
+    ptys.last().print('\x1b]9;9;/home/me\x07$ ');
+    await clock.fire();
+    await until(() => folders().length === 1);
+    ptys
+      .last()
+      .print(
+        '\x1b]9;9;/home/me\x07$ \x1b]9;4;1;50\x07\x1b]9;9;work\x07\x1b]7;file://box/home/me/work\x1b\\$ ',
+      );
+    await clock.fire();
+    await until(() => folders().length === 2);
+    assert.deepStrictEqual(folders(), ['/home/me', '/home/me/work']);
+  });
+
+  test('tells the folder a new shell reports, though the shell before it was there too', async () => {
+    const { ptyHost, ptys, clock, start, folders } = host();
+    start();
+    ptys.last().print('\x1b]9;9;/home/me\x07');
+    await clock.fire();
+    await until(() => folders().length === 1);
+    ptys.last().exit(0);
+    await clock.fire();
+    ptyHost.receive({
+      type: 'spawn',
+      id: '1',
+      launch,
+      columns: 80,
+      rows: 24,
+      scrollback: 1000,
+    });
+    ptys.last().print('\x1b]9;9;/home/me\x07');
+    await clock.fire();
+    await until(() => folders().length === 2);
   });
 
   test('tells why a shell could not start, as an exit', async () => {

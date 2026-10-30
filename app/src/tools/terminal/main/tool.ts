@@ -46,6 +46,7 @@ interface Shown {
 
 interface Session {
   exited: boolean;
+  folder?: string;
 }
 
 export class TerminalTool implements Tool<'terminal'> {
@@ -204,6 +205,10 @@ export class TerminalTool implements Tool<'terminal'> {
     }
   }
 
+  folderOf(tab: Tab): string | undefined {
+    return this.sessions.get(tab.id)?.folder;
+  }
+
   open(page: Page, folders: readonly string[]): Promise<void> {
     return this.shell.open(page, 'terminal', folders, false);
   }
@@ -283,6 +288,9 @@ export class TerminalTool implements Tool<'terminal'> {
             data: event.data,
           });
         }
+        return;
+      case 'folder':
+        session.folder = event.folder;
         return;
       case 'exited':
         session.exited = true;

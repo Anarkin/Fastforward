@@ -46,6 +46,7 @@ export const keymap = {
     'Mod+T': true,
     'Mod+Shift+T': true,
   }),
+  openIn: bind('Tabs', strings.actions.openIn, { 'Mod+Shift+O': true }),
   tab: bind(
     'Tabs',
     strings.actions.tab,

@@ -310,6 +310,7 @@ const shellMessages: Readonly<Record<ToHost['type'], true>> = {
   setAutoSortTabs: true,
   newTab: true,
   openWith: true,
+  openIn: true,
   copyText: true,
   openSettings: true,
   openDefaultSettings: true,

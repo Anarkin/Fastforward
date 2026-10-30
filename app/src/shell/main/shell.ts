@@ -64,6 +64,7 @@ export interface Tool<K extends ToolId> {
   refreshShown(page: Page): Promise<void>;
   names(tabs: readonly Tab[]): ReadonlyMap<string, TabName>;
   fits(folder: string): Promise<boolean>;
+  folderOf(tab: Tab): string | undefined;
   open(page: Page, folders: readonly string[]): Promise<void>;
   newTab(page: Page): Promise<void>;
   reloadSettings(): void;
@@ -381,6 +382,9 @@ export class Shell {
       case 'openWith':
         await this.openWith(page, message.tool);
         return;
+      case 'openIn':
+        await this.openIn(page);
+        return;
       case 'tool':
         if (isTool(message.tool)) {
           await receiveIn(this.tools, message.tool, page, message.message);
@@ -523,9 +527,27 @@ export class Shell {
   }
 
   private askFolders(page: Page): Promise<void> {
-    this.askingFolders = this.askingFolders
-      .catch(() => undefined)
-      .then(() => this.ask(page));
+    return this.inTurn(() => this.ask(page));
+  }
+
+  private openIn(page: Page): Promise<void> {
+    const tab = this.activeTab();
+    if (tab === undefined) {
+      return Promise.resolve();
+    }
+    const folder = this.tools[tab.tool].folderOf(tab);
+    if (folder === undefined) {
+      this.notice(page, {
+        level: 'info',
+        message: strings.messages.noFolder(strings.tools[tab.tool]),
+      });
+      return Promise.resolve();
+    }
+    return this.inTurn(() => this.choose(page, [folder], tab.tool));
+  }
+
+  private inTurn(asking: () => Promise<void>): Promise<void> {
+    this.askingFolders = this.askingFolders.catch(() => undefined).then(asking);
     return this.askingFolders;
   }
 
@@ -541,12 +563,22 @@ export class Shell {
     if (folders.length === 0) {
       return;
     }
+    await this.choose(page, folders, undefined);
+  }
+
+  private async choose(
+    page: Page,
+    folders: readonly string[],
+    asker: ToolId | undefined,
+  ): Promise<void> {
     const fits = await Promise.all(
       toolIds.map(async (tool) => ({
         tool,
         folders: await Promise.all(
-          folders.map((folder) =>
-            this.tools[tool].fits(folder).catch(() => false),
+          folders.map(
+            async (folder) =>
+              tool !== asker &&
+              (await this.tools[tool].fits(folder).catch(() => false)),
           ),
         ),
       })),

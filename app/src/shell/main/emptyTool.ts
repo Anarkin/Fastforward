@@ -59,6 +59,10 @@ export class EmptyTool<K extends ToolId> implements Tool<K> {
     }
   }
 
+  folderOf(tab: Tab): string | undefined {
+    return tab.root;
+  }
+
   open(page: Page, folders: readonly string[]): Promise<void> {
     return this.shell.open(page, this.id, folders, false);
   }

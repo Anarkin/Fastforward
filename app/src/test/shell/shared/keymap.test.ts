@@ -441,6 +441,23 @@ suite('Keymap', () => {
     assert.strictEqual(pressed(keymap.newTab, shifted('T'), false), undefined);
   });
 
+  test('opens the folder of the tab in another tool on Ctrl+Shift+O, or Cmd+Shift+O on macOS, but not on Ctrl+O, which a shell takes', () => {
+    assert.strictEqual(
+      pressed(keymap.openIn, { ...shifted('O'), ctrlKey: true }, false),
+      true,
+    );
+    assert.strictEqual(
+      withMacKeys(() =>
+        pressed(keymap.openIn, { ...shifted('O'), metaKey: true }, false),
+      ),
+      true,
+    );
+    assert.strictEqual(
+      pressed(keymap.openIn, keyPress('o', { ctrlKey: true }), false),
+      undefined,
+    );
+  });
+
   test('goes back or forward on Alt+← and Alt+→, as the mouse buttons do, but leaves them to the caret in a field', () => {
     assert.strictEqual(altNavigate('ArrowLeft'), 'back');
     assert.strictEqual(altNavigate('ArrowRight'), 'forward');

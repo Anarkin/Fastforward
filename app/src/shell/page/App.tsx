@@ -291,6 +291,7 @@ export function App({ name, post, listen }: Props) {
 
   useBinding(keymap.shortcuts, () => togglePopup('shortcuts'));
   useBinding(keymap.about, () => togglePopup('about'));
+  useBinding(keymap.openIn, () => post({ type: 'openIn' }));
   const closeTab = (id: string) => {
     const tab = tabs?.find((each) => each.id === id);
     if (tab !== undefined && confirmsClose[tab.tool]) {

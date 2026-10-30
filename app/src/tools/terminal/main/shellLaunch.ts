@@ -1,15 +1,14 @@
 import * as path from 'node:path';
 import type { ShellLaunch } from './hostProtocol';
+import { integrated, type IntegrationSystem } from './shellIntegration';
 import type { TerminalSettings } from '../shared/settings';
 import { brand } from '../../../shared/strings';
 
-export interface ShellSystem {
-  readonly platform: NodeJS.Platform;
+export interface ShellSystem extends IntegrationSystem {
   readonly env: NodeJS.ProcessEnv;
   readonly home: string;
   readonly version: string;
   readonly isFolder: (folder: string) => boolean;
-  readonly isFile: (file: string) => boolean;
 }
 
 const leftOut = /^(?:ELECTRON_|FASTFORWARD_)/i;
@@ -20,9 +19,8 @@ export function shellLaunch(
   system: ShellSystem,
 ): ShellLaunch {
   return {
-    ...shellCommand(settings, system),
+    ...integrated(shellCommand(settings, system), shellEnv(system), system),
     cwd: folder !== undefined && system.isFolder(folder) ? folder : system.home,
-    env: shellEnv(system),
   };
 }
 

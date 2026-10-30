@@ -41,6 +41,11 @@ suite('Terminal keys', () => {
     assert.strictEqual(terminalKey(keyPress('w', ctrl), false), 'shell');
   });
 
+  test('leaves opening the folder of the tab in another tool to the app, but Ctrl+O to the shell', () => {
+    assert.strictEqual(terminalKey(keyPress('O', ctrlShift), false), 'app');
+    assert.strictEqual(terminalKey(keyPress('o', ctrl), false), 'shell');
+  });
+
   test('leaves every other key to the shell, the app shortcuts included', () => {
     for (const press of [
       keyPress('F1'),
