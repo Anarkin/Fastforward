@@ -88,6 +88,7 @@ export const strings = {
     downloadGit: 'Download Git',
     quit: 'Quit',
     openRepositories: 'Open Repositories',
+    openInTerminal: 'Open in Terminal',
     open: 'Open',
     crashed: (error: string) => `Something went wrong: ${error}`,
     reload: 'Reload',
@@ -416,6 +417,7 @@ export const strings = {
         : `Not loaded: ${lines.toLocaleString()} changed lines`,
   },
   terminal: {
+    newTab: 'New',
     exited: (code: number) =>
       `The shell exited with code ${code}. Press Enter to start a new one.`,
     couldNotStart: (shell: string, reason: string) =>

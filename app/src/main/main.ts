@@ -350,6 +350,21 @@ async function start(asked: readonly string[]): Promise<void> {
       });
     },
     windowsPtyOf(process.platform, os.release()),
+    {
+      store: toolState(state, 'terminal'),
+      home: os.homedir(),
+      isFolder: (each) =>
+        fs.statSync(each, { throwIfNoEntry: false })?.isDirectory() === true,
+      now: () => Date.now(),
+      choose: async () => {
+        const chosen = await dialog.showOpenDialog(window, {
+          title: strings.app.openInTerminal,
+          buttonLabel: strings.app.open,
+          properties: ['openDirectory', 'multiSelections'],
+        });
+        return chosen.canceled ? [] : chosen.filePaths;
+      },
+    },
   );
   const view = new Shell(
     log,

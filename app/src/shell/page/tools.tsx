@@ -89,6 +89,10 @@ export function ToolViews({
     (text: string) => post({ type: 'copyText', text }),
     [post],
   );
+  const terminalItems = useCallback(
+    (items: readonly ContextMenuItem[]) => onNewTabItems('terminal', items),
+    [onNewTabItems],
+  );
   return (
     <>
       <GitTool
@@ -106,6 +110,7 @@ export function ToolViews({
         post={postTerminal}
         listen={listenTerminal}
         onCopy={copyText}
+        onNewTabItems={terminalItems}
       />
     </>
   );

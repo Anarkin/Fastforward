@@ -47,6 +47,7 @@ export interface ShellAccess {
     reuse: boolean,
   ): Promise<void>;
   setRoot(tab: string, root: string): void;
+  visited(folder: string): void;
   postTabs(page: Page): void;
   notice(page: Page | undefined, notice: Notice): void;
   track<T>(work: Promise<T>): Promise<T>;
@@ -66,6 +67,7 @@ export interface Tool<K extends ToolId> {
   names(tabs: readonly Tab[]): ReadonlyMap<string, TabName>;
   fits(folder: string): Promise<boolean>;
   folderOf(tab: Tab): string | undefined;
+  visited(folder: string): void;
   open(page: Page, folders: readonly string[]): Promise<void>;
   newTab(page: Page): Promise<void>;
   reloadSettings(): void;
@@ -106,6 +108,7 @@ export const unattachedShell: ShellAccess = {
   active: () => undefined,
   open: () => Promise.resolve(),
   setRoot: () => undefined,
+  visited: () => undefined,
   postTabs: () => undefined,
   notice: () => undefined,
   track: (work) => work,
@@ -177,6 +180,11 @@ export class Shell {
       active: () => this.activeTab(),
       open: (page, tool, roots, reuse) => this.open(page, tool, roots, reuse),
       setRoot: (tab, root) => this.setRoot(tab, root),
+      visited: (folder) => {
+        for (const tool of toolIds) {
+          this.tools[tool].visited(folder);
+        }
+      },
       postTabs: (page) => this.postTabs(page),
       notice: (page, notice) => this.notice(page, notice),
       track: (work) => this.inFlight.track(work),

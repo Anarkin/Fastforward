@@ -284,7 +284,7 @@ suite('Terminal sessions', () => {
     await until(() => ptys.last().written.includes('\x1b[1;3R'));
   });
 
-  test('tells the folder the shell reports each time it reports another, as Windows Terminal or a file URL has it, with no page attached too', async () => {
+  test('tells the folder the shell reports at each prompt, the same one again too, as that tells a command ran there, as Windows Terminal or a file URL has it, with no page attached too', async () => {
     const { ptys, clock, start, folders } = host();
     start();
     ptys.last().print('\x1b]9;9;/home/me\x07$ ');
@@ -296,29 +296,12 @@ suite('Terminal sessions', () => {
         '\x1b]9;9;/home/me\x07$ \x1b]9;4;1;50\x07\x1b]9;9;work\x07\x1b]7;file://box/home/me/work\x1b\\$ ',
       );
     await clock.fire();
-    await until(() => folders().length === 2);
-    assert.deepStrictEqual(folders(), ['/home/me', '/home/me/work']);
-  });
-
-  test('tells the folder a new shell reports, though the shell before it was there too', async () => {
-    const { ptyHost, ptys, clock, start, folders } = host();
-    start();
-    ptys.last().print('\x1b]9;9;/home/me\x07');
-    await clock.fire();
-    await until(() => folders().length === 1);
-    ptys.last().exit(0);
-    await clock.fire();
-    ptyHost.receive({
-      type: 'spawn',
-      id: '1',
-      launch,
-      columns: 80,
-      rows: 24,
-      scrollback: 1000,
-    });
-    ptys.last().print('\x1b]9;9;/home/me\x07');
-    await clock.fire();
-    await until(() => folders().length === 2);
+    await until(() => folders().length === 3);
+    assert.deepStrictEqual(folders(), [
+      '/home/me',
+      '/home/me',
+      '/home/me/work',
+    ]);
   });
 
   test('tells why a shell could not start, as an exit', async () => {

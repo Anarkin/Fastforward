@@ -1,7 +1,14 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import {
+  rankedFolders,
+  visitsIn,
+  withVisit,
+  type FolderVisits,
+} from './folderRanks';
 import type { HostCommand, HostEvent, ShellLaunch } from './hostProtocol';
 import type { Log } from '../../../shell/main/log';
+import { sameRoot, type Store } from '../../../shell/main/storage';
 import {
   unattachedShell,
   type Page,
@@ -47,7 +54,21 @@ interface Shown {
 interface Session {
   exited: boolean;
   folder?: string;
+  counted?: boolean;
 }
+
+export interface FolderAccess {
+  readonly store: Store;
+  readonly home: string;
+  readonly isFolder: (folder: string) => boolean;
+  readonly now: () => number;
+  readonly choose: () => Promise<readonly string[]>;
+}
+
+type ShownMessage = Extract<TerminalToHost, { readonly tab: string }>;
+
+const foldersKey = 'folders';
+const foldersListed = 10;
 
 export class TerminalTool implements Tool<'terminal'> {
   private shell: ShellAccess = unattachedShell;
@@ -62,6 +83,7 @@ export class TerminalTool implements Tool<'terminal'> {
     private readonly settings: () => TerminalSettings,
     private readonly launch: (folder: string | undefined) => ShellLaunch,
     private readonly windowsPty: WindowsPty | undefined,
+    private readonly folders: FolderAccess,
   ) {}
 
   attach(shell: ShellAccess): void {
@@ -76,6 +98,7 @@ export class TerminalTool implements Tool<'terminal'> {
       minimumContrastRatio: contrastRatio(this.settings().minimumContrastRatio),
       windowsPty: this.windowsPty,
     });
+    this.postFolders(page);
   }
 
   show(page: Page, tab: Tab): Promise<void> {
@@ -112,6 +135,24 @@ export class TerminalTool implements Tool<'terminal'> {
   }
 
   receive(page: Page, message: TerminalToHost): Promise<void> {
+    switch (message.type) {
+      case 'newTab':
+        return this.newTab(page);
+      case 'openFolder':
+        return this.listed().includes(message.folder)
+          ? this.open(page, [message.folder])
+          : Promise.resolve();
+      case 'browseFolders':
+        return this.browse(page);
+      case 'forgetFolder':
+        this.forget(page, message.folder);
+        return Promise.resolve();
+      default:
+        return this.receiveShown(page, message);
+    }
+  }
+
+  private receiveShown(page: Page, message: ShownMessage): Promise<void> {
     const shown = this.shown;
     if (
       shown === undefined ||
@@ -209,7 +250,14 @@ export class TerminalTool implements Tool<'terminal'> {
     return this.sessions.get(tab.id)?.folder;
   }
 
+  visited(folder: string): void {
+    this.saveFolders(withVisit(this.visits(), folder, this.folders.now()));
+  }
+
   open(page: Page, folders: readonly string[]): Promise<void> {
+    for (const folder of folders) {
+      this.visited(folder);
+    }
     return this.shell.open(page, 'terminal', folders, false);
   }
 
@@ -290,8 +338,14 @@ export class TerminalTool implements Tool<'terminal'> {
         }
         return;
       case 'folder':
-        session.folder = event.folder;
-        this.shell.setRoot(event.id, event.folder);
+        if (session.folder !== event.folder) {
+          session.folder = event.folder;
+          session.counted = false;
+          this.shell.setRoot(event.id, event.folder);
+        } else if (!session.counted) {
+          session.counted = true;
+          this.visited(event.folder);
+        }
         return;
       case 'exited':
         session.exited = true;
@@ -328,6 +382,60 @@ export class TerminalTool implements Tool<'terminal'> {
         exited: true,
       });
     }
+  }
+
+  private async browse(page: Page): Promise<void> {
+    const chosen = await this.folders.choose();
+    if (chosen.length > 0) {
+      await this.open(page, chosen);
+    }
+  }
+
+  private forget(page: Page, folder: unknown): void {
+    if (typeof folder !== 'string') {
+      return;
+    }
+    this.saveFolders(
+      this.visits().filter((entry) => !sameRoot(entry.folder, folder)),
+      page,
+    );
+  }
+
+  private visits(): FolderVisits[] {
+    return visitsIn(this.folders.store.get(foldersKey));
+  }
+
+  private saveFolders(
+    visits: readonly FolderVisits[],
+    page = this.shell.page(),
+  ): void {
+    void this.folders.store
+      .update(foldersKey, visits)
+      .catch((error: unknown) => {
+        this.log.error(strings.log.savingFailed);
+        this.log.error(error);
+      });
+    if (page !== undefined) {
+      this.postFolders(page);
+    }
+  }
+
+  private listed(): string[] {
+    const { home, isFolder, now } = this.folders;
+    const listed: string[] = [];
+    for (const folder of rankedFolders(this.visits(), now())) {
+      if (listed.length === foldersListed) {
+        break;
+      }
+      if (!sameRoot(folder, home) && isFolder(folder)) {
+        listed.push(folder);
+      }
+    }
+    return listed;
+  }
+
+  private postFolders(page: Page): void {
+    this.post(page, { type: 'folders', folders: this.listed() });
   }
 
   private post(page: Page, message: TerminalToWebview): void {

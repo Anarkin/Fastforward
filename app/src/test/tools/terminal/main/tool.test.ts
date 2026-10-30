@@ -4,6 +4,10 @@ import type { Log } from '../../../../shell/main/log';
 import type { Page, Tab } from '../../../../shell/main/shell';
 import type { ToWebview } from '../../../../shell/shared/protocol';
 import { flowLimits } from '../../../../tools/terminal/main/flowControl';
+import {
+  visitsIn,
+  type FolderVisits,
+} from '../../../../tools/terminal/main/folderRanks';
 import type { ShellLaunch } from '../../../../tools/terminal/main/hostProtocol';
 import { PtyHost } from '../../../../tools/terminal/main/sessions';
 import {
@@ -52,9 +56,17 @@ function launchIn(folder: string | undefined): ShellLaunch {
   return { file: 'sh', args: [], cwd: folder ?? '/home/me', env: {} };
 }
 
-function terminal() {
+const day = 24 * 3_600_000;
+
+function terminal(seen: readonly FolderVisits[] = []) {
   const ptys = fakePtys();
   const clock = fakeTimer();
+  const saved = new Map<string, unknown>([['folders', seen]]);
+  const chosen: string[] = [];
+  const opened: (readonly (string | undefined)[])[] = [];
+  const visitsOf = (folder: string) =>
+    visitsIn(saved.get('folders')).find((entry) => entry.folder === folder)
+      ?.visits;
   const errors: unknown[] = [];
   const log: Log = {
     info: () => {},
@@ -90,14 +102,31 @@ function terminal() {
     }),
     launchIn,
     { backend: 'conpty', buildNumber: 26200 },
+    {
+      store: {
+        get: (key) => saved.get(key),
+        update: (key, value) => {
+          saved.set(key, value);
+          return Promise.resolve();
+        },
+      },
+      home: '/home/me',
+      isFolder: (folder) => !folder.startsWith('/gone'),
+      now: () => 100 * day,
+      choose: () => Promise.resolve(chosen),
+    },
   );
   const moved: (readonly [string, string])[] = [];
   tool.attach({
-    page: () => undefined,
+    page: () => page,
     tabs: () => [work, other],
     active: () => undefined,
-    open: () => Promise.resolve(),
+    open: (_page, _tool, roots) => {
+      opened.push(roots);
+      return Promise.resolve();
+    },
     setRoot: (tab, root) => moved.push([tab, root]),
+    visited: () => {},
     postTabs: () => {},
     notice: () => {},
     track: (tracked) => tracked,
@@ -117,6 +146,7 @@ function terminal() {
     hosts.at(-1)?.dispose();
     listeners.at(-1)?.stopped(code);
   };
+  const listed = () => page.of('folders').at(-1)?.folders;
   return {
     tool,
     ptys,
@@ -124,6 +154,11 @@ function terminal() {
     errors,
     listeners,
     moved,
+    saved,
+    chosen,
+    opened,
+    visitsOf,
+    listed,
     page,
     send,
     open,
@@ -132,7 +167,7 @@ function terminal() {
 }
 
 suite('Terminal tool', () => {
-  test('tells the page which renderer to use and how many lines to keep once it is ready, and which build of Windows runs the shells', () => {
+  test('tells the page which renderer to use and how many lines to keep once it is ready, which build of Windows runs the shells, and the folders to offer', () => {
     const { tool, page } = terminal();
     tool.ready(page);
     assert.deepStrictEqual(page.messages, [
@@ -143,6 +178,7 @@ suite('Terminal tool', () => {
         minimumContrastRatio: 21,
         windowsPty: { backend: 'conpty', buildNumber: 26200 },
       },
+      { type: 'folders', folders: [] },
     ]);
   });
 
@@ -331,13 +367,102 @@ suite('Terminal tool', () => {
     assert.strictEqual(tool.folderOf(work), undefined);
   });
 
-  test('makes the folder the shell of a tab goes to the folder of the tab, which names it and is where a new shell starts', async () => {
-    const { ptys, clock, moved, open } = terminal();
+  test('makes the folder the shell of a tab goes to the folder of the tab, which names it and is where a new shell starts, once each time it goes to another', async () => {
+    const { ptys, clock, moved, open, visitsOf } = terminal();
     await open(work);
-    ptys.last().print('\x1b]9;9;/work/app\x07');
+    ptys
+      .last()
+      .print('\x1b]9;9;/work/app\x07\x1b]9;9;/work/app\x07\x1b]9;9;/work\x07');
     await clock.fire();
-    await until(() => moved.length === 1);
-    assert.deepStrictEqual(moved, [['1', '/work/app']]);
+    await until(() => moved.length === 2);
+    await until(() => visitsOf('/work/app') === 1);
+    assert.deepStrictEqual(moved, [
+      ['1', '/work/app'],
+      ['1', '/work'],
+    ]);
+  });
+
+  test('counts a folder once a command has run in it, once each time the shell comes to it, leaving out the folders it only passes through', async () => {
+    const { ptys, clock, open, saved, listed } = terminal();
+    await open(work);
+    ptys
+      .last()
+      .print(
+        [
+          '/code',
+          '/code/app',
+          '/code/app',
+          '/code/app',
+          '/code',
+          '/code/app',
+          '/code/app',
+        ]
+          .map((folder) => `\x1b]9;9;${folder}\x07`)
+          .join(''),
+      );
+    await clock.fire();
+    await until(() => listed()?.length === 1);
+    await until(
+      () =>
+        JSON.stringify(saved.get('folders')) ===
+        JSON.stringify([{ folder: '/code/app', visits: 2, last: 100 * day }]),
+    );
+    assert.deepStrictEqual(listed(), ['/code/app']);
+  });
+
+  test('counts the folders a terminal opens in, and those other tools open', async () => {
+    const { tool, page, opened, visitsOf } = terminal();
+    await tool.open(page, ['/code/site']);
+    tool.visited('/code/repo');
+    assert.deepStrictEqual(opened, [['/code/site']]);
+    assert.deepStrictEqual(
+      [visitsOf('/code/site'), visitsOf('/code/repo')],
+      [1, 1],
+    );
+  });
+
+  test('lists the ten folders it ranks first, those that still exist, leaving out the home folder, which a new terminal opens in anyway', () => {
+    const folders = Array.from({ length: 12 }, (_, index) => `/code/${index}`);
+    const { tool, page, listed } = terminal([
+      { folder: '/home/me', visits: 500, last: 100 * day },
+      { folder: '/gone/away', visits: 400, last: 100 * day },
+      ...folders.map((folder, index) => ({
+        folder,
+        visits: 100 - index,
+        last: 100 * day,
+      })),
+    ]);
+    tool.ready(page);
+    assert.deepStrictEqual(listed(), folders.slice(0, 10));
+  });
+
+  test('opens a folder it listed in a new tab, the folders picked on Browse, and a new tab in the home folder on New, but no folder it did not list', async () => {
+    const { tool, page, send, chosen, opened } = terminal([
+      { folder: '/code/app', visits: 3, last: 100 * day },
+    ]);
+    tool.ready(page);
+    await send({ type: 'openFolder', folder: '/code/app' });
+    await send({ type: 'openFolder', folder: '/elsewhere' });
+    chosen.push('/picked/one', '/picked/two');
+    await send({ type: 'browseFolders' });
+    await send({ type: 'newTab' });
+    assert.deepStrictEqual(opened, [
+      ['/code/app'],
+      ['/picked/one', '/picked/two'],
+      [undefined],
+    ]);
+  });
+
+  test('forgets a folder when asked, its visits counting from nothing should the shell come back to it, rather than barring it', async () => {
+    const { tool, page, send, listed, visitsOf } = terminal([
+      { folder: '/code/app', visits: 50, last: 100 * day },
+      { folder: '/code/site', visits: 10, last: 100 * day },
+    ]);
+    tool.ready(page);
+    await send({ type: 'forgetFolder', folder: '/code/app' });
+    assert.deepStrictEqual(listed(), ['/code/site']);
+    await tool.open(page, ['/code/app']);
+    assert.strictEqual(visitsOf('/code/app'), 1);
   });
 
   test('names a tab after its folder, or Terminal when it has none', () => {

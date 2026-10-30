@@ -173,6 +173,9 @@ suite('Terminal', () => {
     await page
       .locator('.context-menu .menu-item', { hasText: strings.tools.terminal })
       .click();
+    await page
+      .locator('.submenu .menu-item', { hasText: strings.terminal.newTab })
+      .click();
     await waitFor(async () => (await tabs.count()) === 2, 'a second tab');
     await page.locator('.terminal-screen .xterm-rows').waitFor();
     const marker = `fastforward-orphan-check-${Date.now()}`;
@@ -243,6 +246,41 @@ suite('Terminal', () => {
     await page.keyboard.press('ControlOrMeta+Shift+W');
     await waitFor(async () => (await tabs.count()) === 1, 'the tab to close');
     await page.locator('.terminal-screen .xterm-rows').waitFor();
+  });
+
+  test('offers a folder a command ran in under Terminal in the + menu, opening a terminal there', async () => {
+    const inner = path.join(folder, 'work', 'inner');
+    const tabs = page.locator('.tabs .tab');
+    await run('echo counted');
+    await waitForRow((row) => row === 'counted', 'the echo');
+    const offered = page.locator('.submenu .menu-item', {
+      hasText: /inner$/,
+    });
+    await waitFor(async () => {
+      await page.locator('.tab-add').click();
+      await page
+        .locator('.context-menu .menu-item', {
+          hasText: strings.tools.terminal,
+        })
+        .click();
+      await page.locator('.submenu').waitFor();
+      if ((await offered.count()) > 0) {
+        return true;
+      }
+      await page.keyboard.press('Escape');
+      await page.keyboard.press('Escape');
+      return false;
+    }, 'the folder to be offered');
+    await offered.click();
+    await waitFor(async () => (await tabs.count()) === 2, 'a second tab');
+    assert.ok(
+      sameFolder((await tabs.nth(1).getAttribute('title')) ?? '', inner),
+    );
+    const popup = page.locator('.confirm-popup');
+    await page.keyboard.press('ControlOrMeta+Shift+W');
+    await popup.waitFor();
+    await page.keyboard.press('Enter');
+    await waitFor(async () => (await tabs.count()) === 1, 'the tab to close');
   });
 
   test('asks before quitting while a terminal tab is open, staying open on Cancel and quitting on Enter', async () => {

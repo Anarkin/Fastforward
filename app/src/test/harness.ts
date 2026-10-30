@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import { createServer } from 'node:http';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach } from 'vitest';
 import {
@@ -294,6 +295,13 @@ export function newView(
         () => settings.settings.tools.terminal,
         () => ({ file: 'sh', args: [], cwd: '/', env: {} }),
         undefined,
+        {
+          store: toolState(store, 'terminal'),
+          home: os.homedir(),
+          isFolder: () => true,
+          now: () => Date.now(),
+          choose: () => host.chooseFolders(),
+        },
       ),
     }),
   );

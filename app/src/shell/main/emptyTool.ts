@@ -63,6 +63,8 @@ export class EmptyTool<K extends ToolId> implements Tool<K> {
     return tab.root;
   }
 
+  visited(): void {}
+
   open(page: Page, folders: readonly string[]): Promise<void> {
     return this.shell.open(page, this.id, folders, false);
   }

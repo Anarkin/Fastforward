@@ -1257,6 +1257,7 @@ suite('Style', () => {
         post: noop,
         listen: () => noop,
         onCopy: noop,
+        onNewTabItems: noop,
       }),
     );
     assert.strictEqual(

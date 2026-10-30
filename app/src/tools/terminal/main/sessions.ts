@@ -61,8 +61,6 @@ class Session {
   private paused = false;
   private exited = false;
   private started = false;
-  private folder: string | undefined;
-
   constructor(
     private readonly id: string,
     private columns: number,
@@ -104,7 +102,6 @@ class Session {
     this.stopListening();
     this.exited = false;
     this.paused = false;
-    this.folder = undefined;
     if (this.started) {
       this.take(cleanScreen(this.rows));
     }
@@ -232,8 +229,7 @@ class Session {
   }
 
   private reported(folder: string | undefined): boolean {
-    if (folder !== undefined && folder !== this.folder) {
-      this.folder = folder;
+    if (folder !== undefined) {
       this.post({ type: 'folder', id: this.id, folder });
     }
     return true;

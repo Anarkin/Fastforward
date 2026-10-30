@@ -3,7 +3,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { strings } from '../../../../../shared/strings';
-import { sameRoot } from '../../../../../shell/main/storage';
+import { sameRoot, toolState } from '../../../../../shell/main/storage';
+import { visitsIn } from '../../../../../tools/terminal/main/folderRanks';
 import {
   removeFolder,
   tempFolder,
@@ -165,6 +166,23 @@ suite('Git tool of folders asked for from the command line', () => {
         ],
       );
       assert.strictEqual(tabs?.active, tabs?.tabs.at(-1)?.id);
+    });
+  });
+
+  test('counts a repository opened, and a folder opened in a terminal, as visits the terminal ranks the folders it offers by', async () => {
+    await withView(log, [], async (view) => {
+      await view.shell.openFolders([third]);
+      await view.connection.receive({ type: 'openWith', tool: 'git' });
+      await view.shell.openFolders([plain]);
+      await view.connection.receive({ type: 'openWith', tool: 'terminal' });
+      const visited = visitsIn(
+        toolState(view.store, 'terminal').get('folders'),
+      ).map((entry) => entry.folder);
+      assert.ok(
+        visited.some((each) => sameRoot(each, third)) &&
+          visited.some((each) => sameRoot(each, plain)),
+        JSON.stringify(visited),
+      );
     });
   });
 

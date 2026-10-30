@@ -436,6 +436,8 @@ export class GitTool implements Tool<'git'> {
       : this.storage.worktreeOf(tab.root);
   }
 
+  visited(): void {}
+
   open(page: Page, folders: readonly string[]): Promise<void> {
     const session = this.sessionOf(page);
     return this.run(strings.log.openingAskedFailed, session, () =>
@@ -1077,6 +1079,7 @@ export class GitTool implements Tool<'git'> {
       }
       repositories.push(repository);
       this.save(storage.addRecent(repository));
+      this.shell.visited(worktree ?? repository);
     }
     return repositories;
   }

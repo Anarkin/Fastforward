@@ -24,7 +24,11 @@ export type TerminalToHost =
       readonly rows: number;
     }
   | { readonly type: 'ack'; readonly tab: string; readonly chars: number }
-  | { readonly type: 'restart'; readonly tab: string };
+  | { readonly type: 'restart'; readonly tab: string }
+  | { readonly type: 'newTab' }
+  | { readonly type: 'openFolder'; readonly folder: string }
+  | { readonly type: 'browseFolders' }
+  | { readonly type: 'forgetFolder'; readonly folder: string };
 
 export type TerminalToWebview =
   | {
@@ -42,7 +46,8 @@ export type TerminalToWebview =
       readonly exited: boolean;
     }
   | { readonly type: 'output'; readonly tab: string; readonly data: string }
-  | { readonly type: 'exited'; readonly tab: string };
+  | { readonly type: 'exited'; readonly tab: string }
+  | { readonly type: 'folders'; readonly folders: readonly string[] };
 
 export type TerminalToWebviewOf<T extends TerminalToWebview['type']> = Extract<
   TerminalToWebview,
