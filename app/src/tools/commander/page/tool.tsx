@@ -22,6 +22,16 @@ export function shareOf(left: number, width: number): number {
     : Math.min(1 - minimumShare, Math.max(minimumShare, left / width));
 }
 
+export function sideToFocus(
+  column: Element | undefined,
+  focused: Element | null,
+): HTMLElement | undefined {
+  return column === undefined || column.contains(focused)
+    ? undefined
+    : (column.querySelector<HTMLElement>(`[${columnFocusAttribute}]`) ??
+        undefined);
+}
+
 export function CommanderTool({
   active,
   post,
@@ -64,10 +74,10 @@ export function CommanderTool({
     if (!shown) {
       return;
     }
-    const index = sides.indexOf(view.active);
-    columns.current?.children[index]
-      ?.querySelector<HTMLElement>(`[${columnFocusAttribute}]`)
-      ?.focus();
+    sideToFocus(
+      columns.current?.children[sides.indexOf(view.active)],
+      document.activeElement,
+    )?.focus();
   }, [shown, view.active]);
 
   useBinding(

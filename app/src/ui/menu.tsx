@@ -26,7 +26,18 @@ export function MenuButton({
   const close = useCallback(() => setOpen(false), []);
 
   return (
-    <div className="menu-button" ref={container}>
+    <div
+      className="menu-button"
+      ref={container}
+      onBlur={(event) => {
+        if (
+          event.relatedTarget instanceof Node &&
+          !event.currentTarget.contains(event.relatedTarget)
+        ) {
+          close();
+        }
+      }}
+    >
       <button
         ref={trigger}
         className={`nav-button menu-button-trigger ${open ? 'open' : ''}`}

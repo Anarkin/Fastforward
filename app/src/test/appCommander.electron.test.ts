@@ -111,8 +111,15 @@ suite('App commander', () => {
     'opens the drive menu of the right side with Alt+F2 and changes the drive by its letter',
     async () => {
       await right().locator('.virtual-rows').focus();
+      await page.keyboard.press('Alt+F1');
+      await page.locator('.commander-pane').nth(0).locator('.menu').waitFor();
       await page.keyboard.press('Alt+F2');
-      await page.locator('.commander-pane .menu').waitFor();
+      await right().locator('.menu').waitFor();
+      await page
+        .locator('.commander-pane')
+        .nth(0)
+        .locator('.menu')
+        .waitFor({ state: 'detached' });
       await page.keyboard.press(opened.charAt(0).toLowerCase());
       await waitFor(
         async () =>
