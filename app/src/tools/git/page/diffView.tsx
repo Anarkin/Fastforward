@@ -32,7 +32,7 @@ import {
   type MinimapMark,
   type MinimapRow,
 } from '../../../ui/minimap';
-import { columnFocusAttribute } from './activeColumn';
+import { columnFocusAttribute } from '../../../ui/columnFocus';
 import { rowPlace } from '../../../ui/rowPlace';
 import { changePairs, pairingBudget, type PairingBudget } from './pairing';
 import { textsToLoad, useSyntax, type SyntaxRange } from './syntax';

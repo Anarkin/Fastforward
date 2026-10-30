@@ -44,7 +44,6 @@ import {
   useColumnWidths,
 } from './columns';
 import {
-  columnFocusAttribute,
   columnOf,
   columnOrder,
   columnStep,
@@ -53,6 +52,7 @@ import {
   shownColumns,
   type ColumnName,
 } from './activeColumn';
+import { columnFocusAttribute } from '../../../ui/columnFocus';
 import { Commits, settling } from './commitList';
 import { clicked } from '../../../shell/shared/keymap';
 import { useBinding } from '../../../ui/shortcuts';

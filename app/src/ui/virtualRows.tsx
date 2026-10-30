@@ -1,11 +1,12 @@
 import { useVirtualizer, type Rect } from '@tanstack/react-virtual';
 import { useEffect, useEffectEvent, useId, useRef } from 'react';
-import { columnFocusAttribute } from './activeColumn';
-import { uniformHeight } from './diffView';
-import { fullyVisible, type VisibleRows } from '../../../ui/listMoves';
-import { rowPlace } from '../../../ui/rowPlace';
+import { columnFocusAttribute } from './columnFocus';
+import { fullyVisible, type VisibleRows } from './listMoves';
+import { rowPlace } from './rowPlace';
 
-const estimateSize = () => uniformHeight;
+export const estimatedRowHeight = 22;
+
+const estimateSize = () => estimatedRowHeight;
 
 export const rowId = (list: string, key: React.Key) =>
   `${list}${encodeURIComponent(String(key))}`;

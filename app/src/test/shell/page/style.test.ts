@@ -1,10 +1,8 @@
 import * as assert from 'node:assert';
 import { createElement } from 'react';
 import { suite, test } from 'vitest';
-import {
-  columnFocusAttribute,
-  type ColumnName,
-} from '../../../tools/git/page/activeColumn';
+import type { ColumnName } from '../../../tools/git/page/activeColumn';
+import { columnFocusAttribute } from '../../../ui/columnFocus';
 import {
   BranchActions,
   BubbleActions,
@@ -45,7 +43,7 @@ import {
 import { shortcutGroupsFor } from '../../../shell/page/App';
 import { ShortcutsPopup } from '../../../shell/page/shortcutsPopup';
 import { SkeletonRows } from '../../../ui/skeleton';
-import { VirtualRows } from '../../../tools/git/page/virtualRows';
+import { VirtualRows } from '../../../ui/virtualRows';
 import { tabSize } from '../../../ui/wordWrap';
 import { TerminalTool } from '../../../tools/terminal/page/tool';
 import { ConfirmPopup } from '../../../shell/page/confirmPopup';

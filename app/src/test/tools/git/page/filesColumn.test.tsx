@@ -21,10 +21,7 @@ import {
 } from '../../../../tools/git/page/filesColumn';
 import type { VisibleRows } from '../../../../ui/listMoves';
 import type { Folders } from '../../../../tools/git/page/viewFolders';
-import {
-  revealAgain,
-  type ListedRows,
-} from '../../../../tools/git/page/virtualRows';
+import { revealAgain, type ListedRows } from '../../../../ui/virtualRows';
 import { clickFile, type RowProps } from '../../../componentFixtures';
 import {
   fileChange as change,

@@ -23,7 +23,7 @@ import {
   treeRowOf,
   type FilesRow,
 } from './changesTree';
-import { columnFocusOf } from './activeColumn';
+import { columnFocusOf } from '../../../ui/columnFocus';
 import { Column } from './column';
 import { filterWords, matchesFilter } from './fileFilter';
 import { SearchButton, SearchRow } from '../../../ui/search';
@@ -40,7 +40,7 @@ import { listMoveOf, type VisibleRows } from '../../../ui/listMoves';
 import { keyPressed } from '../../../ui/shortcuts';
 import { fileRowKey } from './tree';
 import type { Folders } from './viewFolders';
-import { VirtualRows, type ListedRows } from './virtualRows';
+import { VirtualRows, type ListedRows } from '../../../ui/virtualRows';
 
 interface MovedCursor {
   readonly key: string;

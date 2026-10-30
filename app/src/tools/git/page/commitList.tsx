@@ -51,7 +51,7 @@ import { gitKeymap } from '../shared/keymap';
 import { keyPressed } from '../../../ui/shortcuts';
 import { withoutRemote } from '../shared/refNames';
 import { strings } from '../../../shared/strings';
-import { columnFocusAttribute } from './activeColumn';
+import { columnFocusAttribute } from '../../../ui/columnFocus';
 import {
   fullyVisible,
   listMoveOf,
@@ -63,7 +63,7 @@ import { SoloIcon } from '../../../ui/icons';
 import { useCappedScroll } from '../../../ui/cappedVirtualizer';
 import { realHeight } from '../../../ui/cappedScroll';
 import { rowPlace } from '../../../ui/rowPlace';
-import { activeDescendant, rowId } from './virtualRows';
+import { activeDescendant, rowId } from '../../../ui/virtualRows';
 
 export const commitRowHeight = 50;
 export const workingTreeRowHeight = 30;

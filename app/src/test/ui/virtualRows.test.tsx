@@ -2,16 +2,16 @@ import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
-import { uniformHeight } from '../../../../tools/git/page/diffView';
 import {
   activeDescendant,
+  estimatedRowHeight,
   pinnedRows,
   revealAgain,
   revealOffset,
   scrollTarget,
   VirtualRows,
-} from '../../../../tools/git/page/virtualRows';
-import { countingReads, noop } from '../../../fixtures';
+} from '../../ui/virtualRows';
+import { countingReads, noop } from '../fixtures';
 
 suite('Virtual rows', () => {
   test('scrolls to the selected row again once it arrives, as a tree loads after its file was selected', () => {
@@ -91,7 +91,7 @@ suite('Virtual rows', () => {
         selectedKey={undefined}
       />,
     );
-    const height = 1000 * uniformHeight;
+    const height = 1000 * estimatedRowHeight;
     assert.match(
       html,
       new RegExp(`class="virtual-spacer" style="height:${height}px"`),

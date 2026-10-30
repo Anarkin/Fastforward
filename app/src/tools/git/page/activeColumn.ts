@@ -5,8 +5,6 @@ export type ColumnName = 'commits' | 'files' | 'diff';
 
 export const columnOrder: readonly ColumnName[] = ['commits', 'files', 'diff'];
 
-export const columnFocusAttribute = 'data-column-focus';
-
 export function shownColumns(
   commitsShown: boolean,
   selected: string | undefined,
@@ -66,14 +64,6 @@ export function columnStep(
   }
   const next = adjacentColumn(shown, current, move.step);
   return { next, preventDefault: next !== undefined };
-}
-
-export function columnFocusOf(
-  element: { closest(selector: string): ParentNode | null } | null,
-): HTMLElement | null | undefined {
-  return element
-    ?.closest('.column')
-    ?.querySelector<HTMLElement>(`[${columnFocusAttribute}]`);
 }
 
 export function keyboardDropped(

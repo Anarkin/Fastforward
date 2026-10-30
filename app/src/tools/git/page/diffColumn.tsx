@@ -13,7 +13,7 @@ import {
   type LeftOut,
   type TextRequest,
 } from '../shared/protocol';
-import { columnFocusOf } from './activeColumn';
+import { columnFocusOf } from '../../../ui/columnFocus';
 import { Column } from './column';
 import { parsePatch, type DiffFile, type LoadedText } from './diff';
 import { DiffView, type WholeFile } from './diffView';

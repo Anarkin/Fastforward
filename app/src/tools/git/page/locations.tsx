@@ -22,7 +22,7 @@ import { findRef } from '../shared/refNames';
 import { pinnedRefs, type PinnedRefs } from './bookmarks';
 import { byName } from '../../../ui/byName';
 import { BackIcon } from '../../../ui/icons';
-import { columnFocusOf } from './activeColumn';
+import { columnFocusOf } from '../../../ui/columnFocus';
 import {
   CommitBubble,
   DetachedHead,

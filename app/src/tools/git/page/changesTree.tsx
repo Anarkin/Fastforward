@@ -8,7 +8,7 @@ import {
 } from '../../../ui/listMoves';
 import { HighlightWords } from './highlight';
 import { FileRow, fileRowKey, FolderRow } from './tree';
-import type { ListedRows, TreeItem } from './virtualRows';
+import type { ListedRows, TreeItem } from '../../../ui/virtualRows';
 
 export type ChangesTreeRow =
   | {
