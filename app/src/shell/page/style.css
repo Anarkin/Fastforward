@@ -250,6 +250,10 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
   cursor: col-resize;
 }
 
+.commander .column-start .menu-button {
+  padding: 0;
+}
+
 .commander .column-start .menu {
   left: 0;
   right: auto;
