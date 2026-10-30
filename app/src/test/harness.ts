@@ -328,6 +328,7 @@ export function newView(
         defaultColumns: () => settings.defaults.tools.commander.columns,
         saveShowHidden: () => Promise.resolve(),
         saveColumns: () => Promise.resolve(),
+        watch: () => () => {},
         root: os.tmpdir(),
       }),
       git: view,

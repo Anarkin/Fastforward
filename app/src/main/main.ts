@@ -46,6 +46,7 @@ import {
 import { JsonFileStore, Storage, toolState } from '../shell/main/storage';
 import { themeCss } from '../shell/main/theme';
 import { fileSystemFor } from '../tools/commander/main/fileSystem';
+import { watchFolder } from '../tools/commander/main/watch';
 import { CommanderTool, rootFolder } from '../tools/commander/main/tool';
 import { hostProcess } from '../tools/terminal/main/hostProcess';
 import { writeShellIntegration } from '../tools/terminal/main/shellIntegration';
@@ -447,6 +448,7 @@ async function start(asked: readonly string[]): Promise<void> {
           userSettings.setIn('commander', 'showHidden', shown),
         saveColumns: (columns) =>
           userSettings.setIn('commander', 'columns', columns),
+        watch: watchFolder,
         root: rootFolder(process.platform, process.env),
       }),
       git: gitTool,

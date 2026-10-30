@@ -107,6 +107,20 @@ suite('App commander', () => {
     );
   });
 
+  test('shows a file made in the folder shown at once, and drops it once removed', async () => {
+    const made = path.join(opened, 'made.log');
+    fs.writeFileSync(made, 'made');
+    await waitFor(
+      async () => (await rowNames()).includes('made.log'),
+      'the file made to be listed',
+    );
+    fs.rmSync(made);
+    await waitFor(
+      async () => !(await rowNames()).includes('made.log'),
+      'the file removed to be dropped',
+    );
+  });
+
   test.skipIf(process.platform !== 'win32')(
     'opens the drive menu of the right side with Alt+F2 and changes the drive by its letter',
     async () => {

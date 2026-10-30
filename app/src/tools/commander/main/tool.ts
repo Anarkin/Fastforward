@@ -24,6 +24,7 @@ import {
   type CommanderSettings,
 } from '../shared/settings';
 import type { FileSystem } from './fileSystem';
+import type { WatchFolder } from './watch';
 
 export interface CommanderAccess {
   readonly fileSystem: () => Promise<FileSystem>;
@@ -31,6 +32,7 @@ export interface CommanderAccess {
   readonly defaultColumns: () => ColumnWidths;
   readonly saveShowHidden: (shown: boolean) => Promise<void>;
   readonly saveColumns: (columns: ColumnWidths) => Promise<void>;
+  readonly watch: WatchFolder;
   readonly root: string;
 }
 
@@ -60,6 +62,12 @@ function parentOf(folder: string): string | undefined {
   return parent === folder ? undefined : parent;
 }
 
+function isGone(error: unknown): boolean {
+  const code =
+    error instanceof Error && 'code' in error ? error.code : undefined;
+  return code === 'ENOENT' || code === 'ENOTDIR';
+}
+
 function reasonOf(error: unknown): string {
   const code =
     error instanceof Error && 'code' in error ? error.code : undefined;
@@ -86,6 +94,10 @@ export class CommanderTool implements Tool<'commander'> {
   private shell: ShellAccess = unattachedShell;
   private shown: { readonly page: Page; readonly tab: string } | undefined;
   private readonly panes = new Map<string, Panes>();
+  private readonly watching = new Map<
+    Side,
+    { readonly folder: string; readonly stop: () => void }
+  >();
   private fileSystem: Promise<FileSystem> | undefined;
 
   constructor(private readonly access: CommanderAccess) {}
@@ -99,6 +111,7 @@ export class CommanderTool implements Tool<'commander'> {
   }
 
   async show(page: Page, tab: Tab): Promise<void> {
+    this.unwatch();
     this.shown = { page, tab: tab.id };
     this.post(page, { type: 'show', tab: tab.id });
     const panes = this.panes.get(tab.id) ?? (await this.start(tab));
@@ -118,6 +131,7 @@ export class CommanderTool implements Tool<'commander'> {
   hide(page: Page): void {
     if (this.shown?.page === page) {
       this.shown = undefined;
+      this.unwatch();
       this.post(page, { type: 'hide' });
     }
   }
@@ -130,6 +144,7 @@ export class CommanderTool implements Tool<'commander'> {
     this.panes.delete(tab.id);
     if (this.shown?.tab === tab.id) {
       this.shown = undefined;
+      this.unwatch();
     }
   }
 
@@ -194,7 +209,9 @@ export class CommanderTool implements Tool<'commander'> {
     }
   }
 
-  quit(): void {}
+  quit(): void {
+    this.unwatch();
+  }
 
   private async start(tab: Tab): Promise<Panes> {
     const { root } = this.access;
@@ -272,6 +289,7 @@ export class CommanderTool implements Tool<'commander'> {
     side: Side,
     folder: string,
     selected: string | undefined,
+    refreshing = false,
   ): Promise<void> {
     const pane = this.panes.get(tab)?.[side];
     if (pane === undefined) {
@@ -282,12 +300,23 @@ export class CommanderTool implements Tool<'commander'> {
     try {
       entries = await (await this.files()).list(folder);
     } catch (error) {
-      if (pane.asked === asked) {
+      if (pane.asked !== asked) {
+        return;
+      }
+      if (!refreshing) {
         this.shell.notice(page, {
           level: 'error',
           message: strings.commander.couldNotOpen(folder, reasonOf(error)),
         });
         this.postListing(page, tab, side, pane, undefined);
+      } else if (isGone(error)) {
+        await this.list(
+          page,
+          tab,
+          side,
+          await this.nearestFolder(folder),
+          undefined,
+        );
       }
       return;
     }
@@ -297,6 +326,44 @@ export class CommanderTool implements Tool<'commander'> {
     pane.folder = folder;
     pane.entries = entries;
     this.postListing(page, tab, side, pane, selected);
+    this.watch(page, tab, side, folder);
+  }
+
+  private async nearestFolder(gone: string): Promise<string> {
+    for (
+      let folder = parentOf(gone);
+      folder !== undefined;
+      folder = parentOf(folder)
+    ) {
+      if (await isFolder(folder)) {
+        return folder;
+      }
+    }
+    return this.access.root;
+  }
+
+  private watch(page: Page, tab: string, side: Side, folder: string): void {
+    if (this.shown?.page !== page || this.shown.tab !== tab) {
+      return;
+    }
+    const current = this.watching.get(side);
+    if (current?.folder === folder) {
+      return;
+    }
+    current?.stop();
+    this.watching.set(side, {
+      folder,
+      stop: this.access.watch(folder, () => {
+        void this.list(page, tab, side, folder, undefined, true);
+      }),
+    });
+  }
+
+  private unwatch(): void {
+    for (const { stop } of this.watching.values()) {
+      stop();
+    }
+    this.watching.clear();
   }
 
   private postListing(

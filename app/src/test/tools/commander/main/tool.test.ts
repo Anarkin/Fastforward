@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
 import type { Notice, Page, Tab } from '../../../../shell/main/shell';
@@ -16,6 +17,7 @@ import type {
 import type { ColumnWidths } from '../../../../tools/commander/shared/settings';
 import { strings } from '../../../../shared/strings';
 import { removeFolder, tempFolder } from '../../../repositories';
+import { waitFor } from '../../../fixtures';
 
 class CommanderPage implements Page {
   readonly messages: CommanderToWebview[] = [];
@@ -73,6 +75,7 @@ function commander(
 ) {
   const notices: Notice[] = [];
   const saved: unknown[] = [];
+  const watching: { folder: string; changed: () => void }[] = [];
   const settings = {
     showHidden: true,
     sort: { column: 'extension', descending: false } as const,
@@ -101,6 +104,11 @@ function commander(
       settings.showHidden = shown;
       return Promise.resolve();
     },
+    watch: (watched, changed) => {
+      const watch = { folder: watched, changed };
+      watching.push(watch);
+      return () => watching.splice(watching.indexOf(watch), 1);
+    },
     saveColumns: (columns) => {
       saved.push(columns);
       settings.columns = columns;
@@ -124,7 +132,14 @@ function commander(
   });
   const send = (message: CommanderToHost, from: Page = page) =>
     tool.receive(from, message);
-  return { tool, page, send, notices, saved };
+  const watched = () => watching.map((watch) => watch.folder).toSorted();
+  const change = async (changed: string) => {
+    for (const watch of watching.filter((each) => each.folder === changed)) {
+      watch.changed();
+    }
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  };
+  return { tool, page, send, notices, saved, watched, change };
 }
 
 const tab: Tab = { id: '1', tool: 'commander' };
@@ -160,6 +175,36 @@ suite('Commander tool', () => {
 
     afterEach(() => removeFolder(opened));
 
+    test('moves a side whose folder is gone up to the nearest folder still there, without a word', async () => {
+      const gone = path.join(opened, 'gone', 'deeper');
+      fs.mkdirSync(gone, { recursive: true });
+      const listed: Record<string, Listed> = {
+        [root]: [],
+        [opened]: [file('kept.txt')],
+        [path.join(opened, 'gone')]: [folder('deeper')],
+        [gone]: [file('a.txt')],
+      };
+      const { tool, page, send, notices, watched, change } = commander(listed);
+      await tool.show(page, { ...tab, root: path.join(opened, 'gone') });
+      await send({ type: 'open', tab: '1', side: 'right', name: 'deeper' });
+
+      fs.rmSync(path.join(opened, 'gone'), { recursive: true });
+      delete listed[gone];
+      delete listed[path.join(opened, 'gone')];
+      await change(gone);
+      await waitFor(
+        () => page.listings().at(-1)?.startsWith(`right ${opened} `) === true,
+        'the side to move up',
+      );
+
+      assert.deepStrictEqual(
+        page.listings().at(-1),
+        `right ${opened} ↑: kept.txt`,
+      );
+      assert.deepStrictEqual(notices, []);
+      assert.deepStrictEqual(watched(), [opened, root].toSorted());
+    });
+
     test('lists the folder the tab was opened with on the right, and the root on the left', async () => {
       const { tool, page } = commander({
         [root]: [folder('Users')],
@@ -174,6 +219,48 @@ suite('Commander tool', () => {
       ]);
       assert.strictEqual(tool.folderOf({ ...tab, root: opened }), opened);
     });
+  });
+
+  test('watches the folders of the tab shown, listing a side again when its folder changes', async () => {
+    const listed: Record<string, Listed> = {
+      [root]: [folder('Users')],
+      [at('Users')]: [],
+    };
+    const { tool, page, send, watched, change } = commander(listed);
+    await tool.show(page, tab);
+    assert.deepStrictEqual(watched(), [root, root]);
+
+    await send({ type: 'open', tab: '1', side: 'right', name: 'Users' });
+    assert.deepStrictEqual(watched(), [root, at('Users')].toSorted());
+
+    listed[at('Users')] = [file('new.txt')];
+    await change(at('Users'));
+    assert.deepStrictEqual(
+      page.listings().at(-1),
+      `right ${at('Users')} ↑: new.txt`,
+    );
+
+    tool.hide(page);
+    assert.deepStrictEqual(watched(), []);
+    await tool.show(page, tab);
+    assert.deepStrictEqual(watched(), [root, at('Users')].toSorted());
+    tool.closed(page, tab);
+    assert.deepStrictEqual(watched(), []);
+  });
+
+  test('keeps a side as it was, saying nothing, when its folder changes but can no longer be read', async () => {
+    const listed: Record<string, Listed> = { [root]: [file('a.txt')] };
+    const { tool, page, notices, change } = commander(listed);
+    await tool.show(page, tab);
+
+    listed[root] = Object.assign(new Error('denied'), { code: 'EPERM' });
+    await change(root);
+
+    assert.deepStrictEqual(page.listings(), [
+      `left ${root}: a.txt`,
+      `right ${root}: a.txt`,
+    ]);
+    assert.deepStrictEqual(notices, []);
   });
 
   test('lists the root on the right when the folder the tab was opened with is gone', async () => {
