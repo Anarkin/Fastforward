@@ -184,9 +184,9 @@ export function App({ name, post, listen }: Props) {
   );
   const closeAbout = useCallback(() => showPopup('about', false), [showPopup]);
   const [listeners] = useState<ToolListeners>(() => ({
-    git: new Set(),
-    files: new Set(),
     terminal: new Set(),
+    files: new Set(),
+    git: new Set(),
   }));
 
   const activeTab = tabs?.find((tab) => tab.id === active);

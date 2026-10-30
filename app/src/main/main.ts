@@ -419,7 +419,7 @@ async function start(asked: readonly string[]): Promise<void> {
               (process.env.PATH ?? '').split(path.delimiter),
             ),
     },
-    { git: gitTool, files: new FilesTool(), terminal: terminalTool },
+    { terminal: terminalTool, files: new FilesTool(), git: gitTool },
   );
   if (asked.length > 0) {
     void view.openFolders(asked);

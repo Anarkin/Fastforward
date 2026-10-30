@@ -24,13 +24,13 @@ export type ToolListeners = {
 
 export const toolShortcuts: Readonly<Record<ToolId, readonly ShortcutGroup[]>> =
   {
-    git: shortcutGroupsOf(gitGroups, strings.shortcuts.groups, gitKeymap),
-    files: [],
     terminal: shortcutGroupsOf(
       terminalGroups,
       strings.shortcuts.groups,
       terminalKeymap,
     ),
+    files: [],
+    git: shortcutGroupsOf(gitGroups, strings.shortcuts.groups, gitKeymap),
   };
 
 export function ToolViews({
@@ -95,6 +95,14 @@ export function ToolViews({
   );
   return (
     <>
+      <TerminalTool
+        active={active === 'terminal'}
+        post={postTerminal}
+        listen={listenTerminal}
+        onCopy={copyText}
+        onNewTabItems={terminalItems}
+      />
+      <FilesTool active={active === 'files'} />
       <GitTool
         active={active === 'git'}
         post={postGit}
@@ -103,14 +111,6 @@ export function ToolViews({
         closeMenu={closeMenu}
         onNewTabItems={gitItems}
         onTitle={gitTitle}
-      />
-      <FilesTool active={active === 'files'} />
-      <TerminalTool
-        active={active === 'terminal'}
-        post={postTerminal}
-        listen={listenTerminal}
-        onCopy={copyText}
-        onNewTabItems={terminalItems}
       />
     </>
   );

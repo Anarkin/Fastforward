@@ -138,9 +138,9 @@ export const strings = {
     copyTitle: 'Copy these lines, as for a bug report',
   },
   tools: {
-    git: 'Git Manager',
-    files: 'File Manager',
     terminal: 'Terminal',
+    files: 'File Manager',
+    git: 'Git Manager',
   },
   openWith: {
     title: 'Open With',

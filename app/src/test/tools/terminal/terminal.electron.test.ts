@@ -233,9 +233,9 @@ suite('Terminal', () => {
           buttons.map((button) => [button.dataset.tool, button.disabled]),
         ),
       [
-        ['git', true],
-        ['files', false],
         ['terminal', true],
+        ['files', false],
+        ['git', true],
       ],
     );
     await page.keyboard.press('Enter');

@@ -284,8 +284,6 @@ export function newView(
   shells.set(
     view,
     new Shell(log, new Storage(settings, store), host, {
-      git: view,
-      files: new FilesTool(),
       terminal: new TerminalTool(
         log,
         (listener) => {
@@ -303,6 +301,8 @@ export function newView(
           choose: () => host.chooseFolders(),
         },
       ),
+      files: new FilesTool(),
+      git: view,
     }),
   );
   return view;

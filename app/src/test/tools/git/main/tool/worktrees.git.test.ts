@@ -387,9 +387,9 @@ suite('Git tool of worktrees', () => {
         type: 'chooseTool',
         folders: [root],
         choices: [
-          { tool: 'git', fits: false },
-          { tool: 'files', fits: true },
           { tool: 'terminal', fits: true },
+          { tool: 'files', fits: true },
+          { tool: 'git', fits: false },
         ],
         picked: 'files',
       });

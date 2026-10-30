@@ -86,9 +86,9 @@ suite('Git tool of folders asked for from the command line', () => {
         type: 'chooseTool',
         folders: [third, inner],
         choices: [
-          { tool: 'git', fits: true },
-          { tool: 'files', fits: true },
           { tool: 'terminal', fits: true },
+          { tool: 'files', fits: true },
+          { tool: 'git', fits: true },
         ],
         picked: 'git',
       });
@@ -132,9 +132,9 @@ suite('Git tool of folders asked for from the command line', () => {
         type: 'chooseTool',
         folders: [plain],
         choices: [
-          { tool: 'git', fits: false },
-          { tool: 'files', fits: true },
           { tool: 'terminal', fits: true },
+          { tool: 'files', fits: true },
+          { tool: 'git', fits: false },
         ],
         picked: 'files',
       });

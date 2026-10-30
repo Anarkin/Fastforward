@@ -157,6 +157,8 @@ function commandNotice(installed: CommandInstall): Notice | undefined {
   }
 }
 
+const mostSpecificFirst: readonly ToolId[] = ['git', 'files', 'terminal'];
+
 function reasonOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
@@ -633,10 +635,13 @@ export class Shell {
       tool: fit.tool,
       fits: fit.folders.some(Boolean),
     }));
+    const specificFirst = mostSpecificFirst.flatMap((tool) =>
+      fits.filter((fit) => fit.tool === tool),
+    );
     const picked =
-      fits.find((fit) =>
+      specificFirst.find((fit) =>
         opened.every((folder) => fit.folders[folders.indexOf(folder)]),
-      )?.tool ?? choices.find((choice) => choice.fits)?.tool;
+      )?.tool ?? specificFirst.find((fit) => fit.folders.some(Boolean))?.tool;
     this.asking = {
       question: { type: 'chooseTool', folders: opened, choices, picked },
       fitting: new Set(

@@ -206,9 +206,9 @@ suite('Window', () => {
     const items = newTabItems({ git: recent }, (tool) => opened.push(tool));
     assert.deepStrictEqual(
       items.map((item) => ('label' in item ? item.label : undefined)),
-      [strings.tools.git, strings.tools.files, strings.tools.terminal],
+      [strings.tools.terminal, strings.tools.files, strings.tools.git],
     );
-    const [git, files] = items;
+    const [, files, git] = items;
     assert.ok(git && 'label' in git && files && 'label' in files);
     assert.strictEqual(git.submenu, recent);
     assert.ok(git.icon !== undefined && files.icon !== undefined);

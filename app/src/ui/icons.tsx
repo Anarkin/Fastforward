@@ -75,14 +75,13 @@ export function CloseIcon() {
 }
 
 const toolSigns: Record<ToolId, React.ReactNode> = {
-  git: (
-    <>
-      <circle cx="5" cy="3.5" r="1.5" />
-      <circle cx="5" cy="12.5" r="1.5" />
-      <circle cx="11" cy="5" r="1.5" />
-      <path d="M5 5v6" />
-      <path d="M11 6.5c0 2.5-6 2-6 4.5" />
-    </>
+  terminal: (
+    <path
+      d="M3.5 2.5h9a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2ZM5.495 6.005 7.99 8.5 5.495 10.995A.7.7 0 0 1 4.505 10.005L6.01 8.5 4.505 6.995A.7.7 0 0 1 5.495 6.005ZM8.5 9.8h2.5a.7.7 0 0 1 0 1.4h-2.5a.7.7 0 0 1 0-1.4Z"
+      fill="currentColor"
+      fillRule="evenodd"
+      stroke="none"
+    />
   ),
   files: (
     <path
@@ -91,13 +90,14 @@ const toolSigns: Record<ToolId, React.ReactNode> = {
       stroke="none"
     />
   ),
-  terminal: (
-    <path
-      d="M3.5 2.5h9a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2ZM5.495 6.005 7.99 8.5 5.495 10.995A.7.7 0 0 1 4.505 10.005L6.01 8.5 4.505 6.995A.7.7 0 0 1 5.495 6.005ZM8.5 9.8h2.5a.7.7 0 0 1 0 1.4h-2.5a.7.7 0 0 1 0-1.4Z"
-      fill="currentColor"
-      fillRule="evenodd"
-      stroke="none"
-    />
+  git: (
+    <>
+      <circle cx="5" cy="3.5" r="1.5" />
+      <circle cx="5" cy="12.5" r="1.5" />
+      <circle cx="11" cy="5" r="1.5" />
+      <path d="M5 5v6" />
+      <path d="M11 6.5c0 2.5-6 2-6 4.5" />
+    </>
   ),
 };
 

@@ -427,9 +427,9 @@ suite('Shell with no tab open', () => {
             type: 'chooseTool',
             folders: [work],
             choices: [
-              { tool: 'git', fits: false },
-              { tool: 'files', fits: false },
               { tool: 'terminal', fits: true },
+              { tool: 'files', fits: false },
+              { tool: 'git', fits: false },
             ],
             picked: 'terminal',
           });

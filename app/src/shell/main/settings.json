@@ -13,70 +13,6 @@
     "minimap": "40px"
   },
   "tools": {
-    "git": {
-      "collapseMerges": true,
-      "showAllFiles": false,
-      "entireFilePinned": true,
-      "ignoreWhitespace": true,
-      "wordWrap": true,
-      "showWhitespace": false,
-      "diffLayout": "sideBySide",
-      "solo": false,
-      "autoFetch": true,
-      "autoFetchMinutes": 1,
-      "hideDimmedButtons": true,
-      "columnWidths": [300, 250],
-      "colors": {
-        "light": {
-          "icon": "#c63d1d",
-
-          "bubble": "#ddd",
-          "bubble-foreground": "#000",
-          "bubble-border": "#ffffff00",
-          "bubble-checked-out": "#06c",
-          "bubble-checked-out-foreground": "#fff",
-          "bubble-checked-out-border": "#ffffff00",
-
-          "graph-blue": "#15f",
-          "graph-green": "#383",
-          "graph-orange": "#c81",
-          "graph-purple": "#638",
-          "graph-red": "#a00",
-          "graph-yellow": "#670",
-          "graph-cyan": "#09b",
-          "graph-magenta": "#b0b"
-        },
-        "dark": {
-          "icon": "#f05032",
-
-          "bubble": "#444",
-          "bubble-foreground": "#ddd",
-          "bubble-border": "#ffffff00",
-          "bubble-checked-out": "#06c",
-          "bubble-checked-out-foreground": "#fff",
-          "bubble-checked-out-border": "#ffffff00",
-
-          "graph-blue": "#5af",
-          "graph-green": "#8c8",
-          "graph-orange": "#c82",
-          "graph-purple": "#a8d",
-          "graph-red": "#e87",
-          "graph-yellow": "#eb7",
-          "graph-cyan": "#1ac",
-          "graph-magenta": "#b4b"
-        }
-      }
-    },
-    "files": {
-      "colors": {
-        "light": {
-          "icon": "#1a5fb4"
-        },
-        "dark": {
-          "icon": "#5294e2"
-        }
-      }
-    },
     "terminal": {
       "shell": "",
       "shellArgs": [],
@@ -129,6 +65,70 @@
           "bright-magenta": "#ff00ff",
           "bright-cyan": "#00ffff",
           "bright-white": "#ffffff"
+        }
+      }
+    },
+    "files": {
+      "colors": {
+        "light": {
+          "icon": "#1a5fb4"
+        },
+        "dark": {
+          "icon": "#5294e2"
+        }
+      }
+    },
+    "git": {
+      "collapseMerges": true,
+      "showAllFiles": false,
+      "entireFilePinned": true,
+      "ignoreWhitespace": true,
+      "wordWrap": true,
+      "showWhitespace": false,
+      "diffLayout": "sideBySide",
+      "solo": false,
+      "autoFetch": true,
+      "autoFetchMinutes": 1,
+      "hideDimmedButtons": true,
+      "columnWidths": [300, 250],
+      "colors": {
+        "light": {
+          "icon": "#c63d1d",
+
+          "bubble": "#ddd",
+          "bubble-foreground": "#000",
+          "bubble-border": "#ffffff00",
+          "bubble-checked-out": "#06c",
+          "bubble-checked-out-foreground": "#fff",
+          "bubble-checked-out-border": "#ffffff00",
+
+          "graph-blue": "#15f",
+          "graph-green": "#383",
+          "graph-orange": "#c81",
+          "graph-purple": "#638",
+          "graph-red": "#a00",
+          "graph-yellow": "#670",
+          "graph-cyan": "#09b",
+          "graph-magenta": "#b0b"
+        },
+        "dark": {
+          "icon": "#f05032",
+
+          "bubble": "#444",
+          "bubble-foreground": "#ddd",
+          "bubble-border": "#ffffff00",
+          "bubble-checked-out": "#06c",
+          "bubble-checked-out-foreground": "#fff",
+          "bubble-checked-out-border": "#ffffff00",
+
+          "graph-blue": "#5af",
+          "graph-green": "#8c8",
+          "graph-orange": "#c82",
+          "graph-purple": "#a8d",
+          "graph-red": "#e87",
+          "graph-yellow": "#eb7",
+          "graph-cyan": "#1ac",
+          "graph-magenta": "#b4b"
         }
       }
     }

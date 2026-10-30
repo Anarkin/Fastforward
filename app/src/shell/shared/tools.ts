@@ -13,14 +13,14 @@ import {
   type TerminalSettings,
 } from '../../tools/terminal/shared/settings';
 
-export const tools = ['git', 'files', 'terminal'] as const;
+export const tools = ['terminal', 'files', 'git'] as const;
 
 export type ToolId = (typeof tools)[number];
 
 export const confirmsClose: Readonly<Record<ToolId, boolean>> = {
-  git: false,
-  files: false,
   terminal: true,
+  files: false,
+  git: false,
 };
 
 export function isTool(value: unknown): value is ToolId {
@@ -28,14 +28,14 @@ export function isTool(value: unknown): value is ToolId {
 }
 
 interface ToolMessages {
-  readonly git: {
-    readonly toHost: GitToHost;
-    readonly toWebview: GitToWebview;
-  };
-  readonly files: { readonly toHost: never; readonly toWebview: never };
   readonly terminal: {
     readonly toHost: TerminalToHost;
     readonly toWebview: TerminalToWebview;
+  };
+  readonly files: { readonly toHost: never; readonly toWebview: never };
+  readonly git: {
+    readonly toHost: GitToHost;
+    readonly toWebview: GitToWebview;
   };
 }
 
@@ -69,9 +69,9 @@ interface Themed {
 }
 
 export interface ToolSettings {
-  readonly git: GitSettings & Themed;
-  readonly files: Themed;
   readonly terminal: TerminalSettings & Themed;
+  readonly files: Themed;
+  readonly git: GitSettings & Themed;
 }
 
 export const toolSettingChoices: ReadonlyMap<string, readonly string[]> =
