@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { keymap } from '../shell/shared/keymap';
+import { keymap, pressedAlone, type KeyPress } from '../shell/shared/keymap';
 import { CloseIcon, SubmenuIcon } from './icons';
 import { isKeyPress, keyPressed } from './shortcuts';
 import { strings } from '../shared/strings';
@@ -200,15 +200,10 @@ export function useMenuFocus(
   }, [menu, focusFirst]);
 }
 
-export function accessKeyOf(
-  press: Pick<KeyboardEvent, 'key' | 'ctrlKey' | 'altKey' | 'metaKey'>,
-): string | undefined {
-  return press.ctrlKey ||
-    press.altKey ||
-    press.metaKey ||
-    !/^[\da-z]$/i.test(press.key)
-    ? undefined
-    : press.key.toUpperCase();
+export function accessKeyOf(press: KeyPress): string | undefined {
+  return pressedAlone(press) && /^[\da-z]$/i.test(press.key)
+    ? press.key.toUpperCase()
+    : undefined;
 }
 
 export function onMenuKeyDown(
