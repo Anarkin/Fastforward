@@ -642,15 +642,15 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
 }
 
 .tool-git {
-  color: var(--color-tool-git);
+  color: var(--color-git-icon);
 }
 
 .tool-files {
-  color: var(--color-tool-files);
+  color: var(--color-files-icon);
 }
 
 .tool-terminal {
-  color: var(--color-tool-terminal);
+  color: var(--color-terminal-icon);
 }
 
 .tabs .tab-name {
@@ -1330,16 +1330,16 @@ body.resizing {
   padding: 0 6px;
   font-style: normal;
   white-space: nowrap;
-  color: var(--color-bubble-foreground);
-  background: var(--color-bubble);
+  color: var(--color-git-bubble-foreground);
+  background: var(--color-git-bubble);
   border-radius: 3px;
-  box-shadow: inset 0 0 0 1px var(--color-bubble-border);
+  box-shadow: inset 0 0 0 1px var(--color-git-bubble-border);
 }
 
 .badge.checked-out {
-  color: var(--color-bubble-checked-out-foreground);
-  background: var(--color-bubble-checked-out);
-  box-shadow: inset 0 0 0 1px var(--color-bubble-checked-out-border);
+  color: var(--color-git-bubble-checked-out-foreground);
+  background: var(--color-git-bubble-checked-out);
+  box-shadow: inset 0 0 0 1px var(--color-git-bubble-checked-out-border);
 }
 
 .row .path.deleted {
@@ -1352,19 +1352,19 @@ body.resizing {
 }
 
 .change-icon.added {
-  color: var(--color-added);
+  color: var(--color-change-added);
 }
 
 .change-icon.modified {
-  color: var(--color-modified);
+  color: var(--color-change-modified);
 }
 
 .change-icon.deleted {
-  color: var(--color-deleted);
+  color: var(--color-change-deleted);
 }
 
 .change-icon.renamed {
-  color: var(--color-renamed);
+  color: var(--color-change-renamed);
 }
 
 .row .link-icon {
@@ -1724,7 +1724,7 @@ body.resizing {
   background: radial-gradient(
     circle at calc(100% - 9px) 50%,
     transparent 2px,
-    var(--color-bubble) 2.5px
+    var(--color-git-bubble) 2.5px
   );
 }
 
@@ -2254,11 +2254,11 @@ body.resizing {
 }
 
 .hidden-change.added {
-  background: var(--color-added);
+  background: var(--color-change-added);
 }
 
 .hidden-change.removed {
-  background: var(--color-deleted);
+  background: var(--color-change-deleted);
 }
 
 .diff-view.wrap .virtual-row.diff-row {
@@ -2361,7 +2361,7 @@ body.resizing {
 .minimap-mark.added {
   background: color-mix(
     in srgb,
-    var(--color-added) var(--color-added-minimap),
+    var(--color-change-added) var(--color-change-added-minimap),
     transparent
   );
 }
@@ -2374,7 +2374,7 @@ body.resizing {
 .minimap-mark.removed {
   background: color-mix(
     in srgb,
-    var(--color-deleted) var(--color-deleted-minimap),
+    var(--color-change-deleted) var(--color-change-deleted-minimap),
     transparent
   );
 }
@@ -2409,7 +2409,7 @@ body.resizing {
 .file-note.added {
   background: color-mix(
     in srgb,
-    var(--color-added) var(--color-added-row),
+    var(--color-change-added) var(--color-change-added-row),
     transparent
   );
 }
@@ -2447,7 +2447,7 @@ body.resizing {
 .diff-line .word-added {
   background: color-mix(
     in srgb,
-    var(--color-added) var(--color-added-line),
+    var(--color-change-added) var(--color-change-added-line),
     transparent
   );
 }
@@ -2457,16 +2457,20 @@ body.resizing {
     linear-gradient(
       color-mix(
         in srgb,
-        var(--color-added) var(--color-added-line),
+        var(--color-change-added) var(--color-change-added-line),
         transparent
       ),
       color-mix(
         in srgb,
-        var(--color-added) var(--color-added-line),
+        var(--color-change-added) var(--color-change-added-line),
         transparent
       )
     ),
-    color-mix(in srgb, var(--color-added) var(--color-added-row), transparent);
+    color-mix(
+      in srgb,
+      var(--color-change-added) var(--color-change-added-row),
+      transparent
+    );
 }
 
 .diff-line .word-added,
@@ -2487,7 +2491,7 @@ body.resizing {
 .diff-line .word-removed {
   background: color-mix(
     in srgb,
-    var(--color-deleted) var(--color-deleted-line),
+    var(--color-change-deleted) var(--color-change-deleted-line),
     transparent
   );
 }
@@ -2497,18 +2501,18 @@ body.resizing {
     linear-gradient(
       color-mix(
         in srgb,
-        var(--color-deleted) var(--color-deleted-line),
+        var(--color-change-deleted) var(--color-change-deleted-line),
         transparent
       ),
       color-mix(
         in srgb,
-        var(--color-deleted) var(--color-deleted-line),
+        var(--color-change-deleted) var(--color-change-deleted-line),
         transparent
       )
     ),
     color-mix(
       in srgb,
-      var(--color-deleted) var(--color-deleted-row),
+      var(--color-change-deleted) var(--color-change-deleted-row),
       transparent
     );
 }
@@ -2517,7 +2521,7 @@ body.resizing {
 .file-note.removed {
   background: color-mix(
     in srgb,
-    var(--color-deleted) var(--color-deleted-row),
+    var(--color-change-deleted) var(--color-change-deleted-row),
     transparent
   );
 }

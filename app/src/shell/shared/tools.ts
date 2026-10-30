@@ -59,12 +59,19 @@ export type ToHostOf<K extends ToolId> = ToolMessages[K]['toHost'];
 
 export type ToWebviewOfTool<K extends ToolId> = ToolMessages[K]['toWebview'];
 
-type NoSettings = Readonly<Record<string, never>>;
+export interface ThemeColors {
+  readonly light: Readonly<Record<string, string>>;
+  readonly dark: Readonly<Record<string, string>>;
+}
+
+interface Themed {
+  readonly colors: ThemeColors;
+}
 
 export interface ToolSettings {
-  readonly git: GitSettings;
-  readonly files: NoSettings;
-  readonly terminal: TerminalSettings;
+  readonly git: GitSettings & Themed;
+  readonly files: Themed;
+  readonly terminal: TerminalSettings & Themed;
 }
 
 export const toolSettingChoices: ReadonlyMap<string, readonly string[]> =

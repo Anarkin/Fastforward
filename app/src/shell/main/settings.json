@@ -1,5 +1,16 @@
 {
   "autoSortTabs": false,
+  "fonts": {
+    "family": "-apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif",
+    "size": "12px",
+    "monospaceFamily": "'JetBrains Mono NL', 'JetBrains Mono', ui-monospace, Menlo, Monaco, Consolas, 'Droid Sans Mono', 'Courier New', monospace",
+    "monospaceSize": "12px",
+    "monospaceLineHeight": 1.4
+  },
+  "sizes": {
+    "scrollbar": "20px",
+    "minimap": "40px"
+  },
   "tools": {
     "git": {
       "collapseMerges": true,
@@ -13,27 +24,113 @@
       "autoFetch": true,
       "autoFetchMinutes": 1,
       "hideDimmedButtons": true,
-      "columnWidths": [300, 250]
+      "columnWidths": [300, 250],
+      "colors": {
+        "light": {
+          "icon": "#c63d1d",
+
+          "bubble": "#ddd",
+          "bubble-foreground": "#000",
+          "bubble-border": "#ffffff00",
+          "bubble-checked-out": "#06c",
+          "bubble-checked-out-foreground": "#fff",
+          "bubble-checked-out-border": "#ffffff00",
+
+          "graph-blue": "#15f",
+          "graph-green": "#383",
+          "graph-orange": "#c81",
+          "graph-purple": "#638",
+          "graph-red": "#a00",
+          "graph-yellow": "#670",
+          "graph-cyan": "#09b",
+          "graph-magenta": "#b0b"
+        },
+        "dark": {
+          "icon": "#f05032",
+
+          "bubble": "#444",
+          "bubble-foreground": "#ddd",
+          "bubble-border": "#ffffff00",
+          "bubble-checked-out": "#06c",
+          "bubble-checked-out-foreground": "#fff",
+          "bubble-checked-out-border": "#ffffff00",
+
+          "graph-blue": "#5af",
+          "graph-green": "#8c8",
+          "graph-orange": "#c82",
+          "graph-purple": "#a8d",
+          "graph-red": "#e87",
+          "graph-yellow": "#eb7",
+          "graph-cyan": "#1ac",
+          "graph-magenta": "#b4b"
+        }
+      }
     },
-    "files": {},
+    "files": {
+      "colors": {
+        "light": {
+          "icon": "#1a5fb4"
+        },
+        "dark": {
+          "icon": "#5294e2"
+        }
+      }
+    },
     "terminal": {
       "shell": "",
       "shellArgs": [],
       "renderer": "webgl",
       "scrollback": 10000,
-      "minimumContrastRatio": 4.5
+      "minimumContrastRatio": 4.5,
+      "colors": {
+        "light": {
+          "icon": "#000",
+
+          "background": "#fff",
+          "foreground": "#000000",
+          "selection": "#0066cc2e",
+          "black": "#000000",
+          "red": "#a00000",
+          "green": "#00a000",
+          "yellow": "#a0a000",
+          "blue": "#0000a0",
+          "magenta": "#a000a0",
+          "cyan": "#00a0a0",
+          "white": "#a0a0a0",
+          "bright-black": "#a0a0a0",
+          "bright-red": "#c00000",
+          "bright-green": "#00c000",
+          "bright-yellow": "#c0c000",
+          "bright-blue": "#0000c0",
+          "bright-magenta": "#c000c0",
+          "bright-cyan": "#00c0c0",
+          "bright-white": "#a0a0a0"
+        },
+        "dark": {
+          "icon": "#ddd",
+
+          "background": "#111",
+          "foreground": "#c0c0c0",
+          "selection": "#0066cc59",
+          "black": "#000000",
+          "red": "#800000",
+          "green": "#008000",
+          "yellow": "#808000",
+          "blue": "#000080",
+          "magenta": "#800080",
+          "cyan": "#008080",
+          "white": "#c0c0c0",
+          "bright-black": "#808080",
+          "bright-red": "#ff0000",
+          "bright-green": "#00ff00",
+          "bright-yellow": "#ffff00",
+          "bright-blue": "#0000ff",
+          "bright-magenta": "#ff00ff",
+          "bright-cyan": "#00ffff",
+          "bright-white": "#ffffff"
+        }
+      }
     }
-  },
-  "fonts": {
-    "family": "-apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif",
-    "size": "12px",
-    "monospaceFamily": "'JetBrains Mono NL', 'JetBrains Mono', ui-monospace, Menlo, Monaco, Consolas, 'Droid Sans Mono', 'Courier New', monospace",
-    "monospaceSize": "12px",
-    "monospaceLineHeight": 1.4
-  },
-  "sizes": {
-    "scrollbar": "20px",
-    "minimap": "40px"
   },
   "colors": {
     "light": {
@@ -53,17 +150,6 @@
       "focus-hover": "8%",
       "focus-selected": "18%",
 
-      "tool-git": "#c63d1d",
-      "tool-files": "#1a5fb4",
-      "tool-terminal": "#000",
-
-      "bubble": "#ddd",
-      "bubble-foreground": "#000",
-      "bubble-border": "#ffffff00",
-      "bubble-checked-out": "#06c",
-      "bubble-checked-out-foreground": "#fff",
-      "bubble-checked-out-border": "#ffffff00",
-
       "search-match": "#fe6",
       "search-match-foreground": "#000",
 
@@ -72,52 +158,23 @@
       "scrollbar-hover": "82%",
       "scrollbar-drag": "88%",
 
-      "added": "#0a0",
-      "added-line": "20%",
-      "added-row": "8%",
-      "added-minimap": "50%",
-      "deleted": "#a00",
-      "deleted-line": "20%",
-      "deleted-row": "8%",
-      "deleted-minimap": "50%",
-      "modified": "#a70",
-      "renamed": "#06c",
+      "change-added": "#0a0",
+      "change-added-line": "20%",
+      "change-added-row": "8%",
+      "change-added-minimap": "50%",
+      "change-deleted": "#a00",
+      "change-deleted-line": "20%",
+      "change-deleted-row": "8%",
+      "change-deleted-minimap": "50%",
+      "change-modified": "#a70",
+      "change-renamed": "#06c",
 
       "syntax-keyword": "#00d",
       "syntax-type": "#088",
       "syntax-function": "#a0a",
       "syntax-string": "#d00",
       "syntax-number": "#d00",
-      "syntax-comment": "#080",
-
-      "chart-blue": "#15f",
-      "chart-green": "#383",
-      "chart-orange": "#c81",
-      "chart-purple": "#638",
-      "chart-red": "#a00",
-      "chart-yellow": "#670",
-      "chart-cyan": "#09b",
-      "chart-magenta": "#b0b",
-
-      "terminal-background": "#fff",
-      "terminal-foreground": "#000000",
-      "terminal-selection": "#0066cc2e",
-      "terminal-black": "#000000",
-      "terminal-red": "#a00000",
-      "terminal-green": "#00a000",
-      "terminal-yellow": "#a0a000",
-      "terminal-blue": "#0000a0",
-      "terminal-magenta": "#a000a0",
-      "terminal-cyan": "#00a0a0",
-      "terminal-white": "#a0a0a0",
-      "terminal-bright-black": "#a0a0a0",
-      "terminal-bright-red": "#c00000",
-      "terminal-bright-green": "#00c000",
-      "terminal-bright-yellow": "#c0c000",
-      "terminal-bright-blue": "#0000c0",
-      "terminal-bright-magenta": "#c000c0",
-      "terminal-bright-cyan": "#00c0c0",
-      "terminal-bright-white": "#a0a0a0"
+      "syntax-comment": "#080"
     },
     "dark": {
       "foreground": "#ddd",
@@ -136,17 +193,6 @@
       "focus-hover": "20%",
       "focus-selected": "35%",
 
-      "tool-git": "#f05032",
-      "tool-files": "#5294e2",
-      "tool-terminal": "#ddd",
-
-      "bubble": "#444",
-      "bubble-foreground": "#ddd",
-      "bubble-border": "#ffffff00",
-      "bubble-checked-out": "#06c",
-      "bubble-checked-out-foreground": "#fff",
-      "bubble-checked-out-border": "#ffffff00",
-
       "search-match": "#fc0",
       "search-match-foreground": "#000",
 
@@ -155,52 +201,23 @@
       "scrollbar-hover": "82%",
       "scrollbar-drag": "88%",
 
-      "added": "#0c0",
-      "added-line": "20%",
-      "added-row": "8%",
-      "added-minimap": "50%",
-      "deleted": "#e00",
-      "deleted-line": "20%",
-      "deleted-row": "8%",
-      "deleted-minimap": "50%",
-      "modified": "#d92",
-      "renamed": "#5af",
+      "change-added": "#0c0",
+      "change-added-line": "20%",
+      "change-added-row": "8%",
+      "change-added-minimap": "50%",
+      "change-deleted": "#e00",
+      "change-deleted-line": "20%",
+      "change-deleted-row": "8%",
+      "change-deleted-minimap": "50%",
+      "change-modified": "#d92",
+      "change-renamed": "#5af",
 
       "syntax-keyword": "#59c",
       "syntax-type": "#088",
       "syntax-function": "#da7",
       "syntax-string": "#e75",
       "syntax-number": "#e75",
-      "syntax-comment": "#5a5",
-
-      "chart-blue": "#5af",
-      "chart-green": "#8c8",
-      "chart-orange": "#c82",
-      "chart-purple": "#a8d",
-      "chart-red": "#e87",
-      "chart-yellow": "#eb7",
-      "chart-cyan": "#1ac",
-      "chart-magenta": "#b4b",
-
-      "terminal-background": "#111",
-      "terminal-foreground": "#c0c0c0",
-      "terminal-selection": "#0066cc59",
-      "terminal-black": "#000000",
-      "terminal-red": "#800000",
-      "terminal-green": "#008000",
-      "terminal-yellow": "#808000",
-      "terminal-blue": "#000080",
-      "terminal-magenta": "#800080",
-      "terminal-cyan": "#008080",
-      "terminal-white": "#c0c0c0",
-      "terminal-bright-black": "#808080",
-      "terminal-bright-red": "#ff0000",
-      "terminal-bright-green": "#00ff00",
-      "terminal-bright-yellow": "#ffff00",
-      "terminal-bright-blue": "#0000ff",
-      "terminal-bright-magenta": "#ff00ff",
-      "terminal-bright-cyan": "#00ffff",
-      "terminal-bright-white": "#ffffff"
+      "syntax-comment": "#5a5"
     }
   }
 }

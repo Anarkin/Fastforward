@@ -100,9 +100,21 @@ suite('Theme', () => {
     }
   });
 
-  test("writes the settings out as the page's variables, the dark colors for a dark OS", () => {
+  test("writes the settings out as the page's variables, the colors of each tool named after it, the dark colors for a dark OS", () => {
+    const defaults = defaultSettings();
     const css = themeCss({
-      ...defaultSettings(),
+      ...defaults,
+      tools: {
+        git: {
+          ...defaults.tools.git,
+          colors: { light: { icon: '#c00' }, dark: { icon: '#f00' } },
+        },
+        files: { colors: { light: {}, dark: {} } },
+        terminal: {
+          ...defaults.tools.terminal,
+          colors: { light: { red: '#a00' }, dark: { red: '#e00' } },
+        },
+      },
       fonts: {
         family: 'Sans',
         size: '13px',
@@ -126,12 +138,16 @@ suite('Theme', () => {
         '  --scrollbar-size: 25px;',
         '  --minimap-width: 40px;',
         '  --color-foreground: #000;',
+        '  --color-git-icon: #c00;',
+        '  --color-terminal-red: #a00;',
         '}',
         '',
         '@media (prefers-color-scheme: dark) {',
         '  :root {',
         '    color-scheme: dark;',
         '    --color-foreground: #fff;',
+        '    --color-git-icon: #f00;',
+        '    --color-terminal-red: #e00;',
         '  }',
         '}',
         '',

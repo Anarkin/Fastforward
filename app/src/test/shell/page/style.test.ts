@@ -436,7 +436,7 @@ function widthCap(popup: MarkupElement): { cap: number; room: string } {
 
 function tagHoleReach(tag: MarkupElement): number {
   const hole =
-    /^radial-gradient\(circle at calc\(100% - ([\d.]+)px\) 50%, transparent [\d.]+px, var\(--color-bubble\) ([\d.]+)px\)$/.exec(
+    /^radial-gradient\(circle at calc\(100% - ([\d.]+)px\) 50%, transparent [\d.]+px, var\(--color-git-bubble\) ([\d.]+)px\)$/.exec(
       unwrapped(cascaded(tag, 'background')),
     );
   assert.ok(hole);
@@ -479,9 +479,9 @@ suite('Style', () => {
     assert.deepStrictEqual(
       allWithClass(bar, 'tool-icon').map((icon) => cascaded(icon, 'color')),
       [
-        'var(--color-tool-git)',
-        'var(--color-tool-files)',
-        'var(--color-tool-terminal)',
+        'var(--color-git-icon)',
+        'var(--color-files-icon)',
+        'var(--color-terminal-icon)',
       ],
     );
   });
@@ -1811,7 +1811,7 @@ suite('Style', () => {
     ]) {
       looks(withClass(minimap(), 'minimap-mark', kind), {
         opacity: undefined,
-        background: `color-mix( in srgb, var(--color-${color}) var(--color-${color}-minimap), transparent )`,
+        background: `color-mix( in srgb, var(--color-change-${color}) var(--color-change-${color}-minimap), transparent )`,
       });
     }
   });
@@ -1833,7 +1833,7 @@ suite('Style', () => {
           'margin-left': 'calc(var(--diff-gap-width) / -2)',
           'padding-top': '0',
           'padding-bottom': '0',
-          background: `color-mix( in srgb, var(--color-${color}) var(--color-${color}-line), transparent )`,
+          background: `color-mix( in srgb, var(--color-change-${color}) var(--color-change-${color}-line), transparent )`,
         },
       );
     }
@@ -1848,7 +1848,7 @@ suite('Style', () => {
         diffView({}, inlineLine(kind, { words: [{ start: 0, end: 1 }] })),
       );
       looks(withClass(inline, word), {
-        background: `color-mix( in srgb, var(--color-${color}) var(--color-${color}-line), transparent )`,
+        background: `color-mix( in srgb, var(--color-change-${color}) var(--color-change-${color}-line), transparent )`,
         'padding-top': 'var(--diff-word-padding-top)',
         'padding-bottom': 'var(--diff-word-padding-bottom)',
       });
@@ -1876,7 +1876,7 @@ suite('Style', () => {
       ['removed', 'deleted'],
     ] as const) {
       const tint = {
-        background: `color-mix( in srgb, var(--color-${color}) var(--color-${color}-row), transparent )`,
+        background: `color-mix( in srgb, var(--color-change-${color}) var(--color-change-${color}-row), transparent )`,
       };
       looks(withClass(diffView({}, inlineLine(kind)), 'text-line'), tint);
       looks(
@@ -1901,8 +1901,8 @@ suite('Style', () => {
       ['added', 'added'],
       ['removed', 'deleted'],
     ] as const) {
-      const word = `color-mix(in srgb, var(--color-${color}) var(--color-${color}-line), transparent)`;
-      const tint = `linear-gradient(${word}, ${word}), color-mix(in srgb, var(--color-${color}) var(--color-${color}-row), transparent)`;
+      const word = `color-mix(in srgb, var(--color-change-${color}) var(--color-change-${color}-line), transparent)`;
+      const tint = `linear-gradient(${word}, ${word}), color-mix(in srgb, var(--color-change-${color}) var(--color-change-${color}-row), transparent)`;
       for (const row of [
         withClass(diffView({}, inlineLine(kind, { whole: true })), 'text-line'),
         withClass(
@@ -1978,9 +1978,9 @@ suite('Style', () => {
     }
     for (const bubble of all) {
       looks(bubble, {
-        color: 'var(--color-bubble-foreground)',
-        background: 'var(--color-bubble)',
-        'box-shadow': 'inset 0 0 0 1px var(--color-bubble-border)',
+        color: 'var(--color-git-bubble-foreground)',
+        background: 'var(--color-git-bubble)',
+        'box-shadow': 'inset 0 0 0 1px var(--color-git-bubble-border)',
         border: undefined,
       });
     }
@@ -2020,14 +2020,14 @@ suite('Style', () => {
     for (const tag of tags) {
       assert.strictEqual(
         unwrapped(cascaded(tag, 'background')),
-        'radial-gradient(circle at calc(100% - 9px) 50%, transparent 2px, var(--color-bubble) 2.5px)',
+        'radial-gradient(circle at calc(100% - 9px) 50%, transparent 2px, var(--color-git-bubble) 2.5px)',
       );
       assert.strictEqual(
         unwrapped(cascaded(tag, 'clip-path')),
         'shape(from 0 0, hline to calc(100% - 8px), curve to calc(100% - 6.4px) 0.8px with calc(100% - 7px) 0, line to calc(100% - 0.8px) calc(50% - 1px), curve to calc(100% - 0.8px) calc(50% + 1px) with 100% 50%, line to calc(100% - 6.4px) calc(100% - 0.8px), curve to calc(100% - 8px) 100% with calc(100% - 7px) 100%, hline to 0, close)',
       );
       looks(tag, {
-        color: 'var(--color-bubble-foreground)',
+        color: 'var(--color-git-bubble-foreground)',
         'box-shadow': cascaded(branchBubble(), 'box-shadow'),
         border: undefined,
       });
@@ -2133,13 +2133,13 @@ suite('Style', () => {
       );
     }
     const ring = cascaded(branchBubble(), 'box-shadow')?.replace(
-      'var(--color-bubble-border)',
-      'var(--color-bubble-checked-out-border)',
+      'var(--color-git-bubble-border)',
+      'var(--color-git-bubble-checked-out-border)',
     );
     for (const bubble of checkedOut) {
       looks(bubble, {
-        color: 'var(--color-bubble-checked-out-foreground)',
-        background: 'var(--color-bubble-checked-out)',
+        color: 'var(--color-git-bubble-checked-out-foreground)',
+        background: 'var(--color-git-bubble-checked-out)',
         'box-shadow': ring,
         border: undefined,
       });
@@ -2825,7 +2825,7 @@ suite('Style', () => {
         'change-icon',
         kind,
       );
-      looks(icon, { color: `var(--color-${kind})`, 'flex-shrink': '0' });
+      looks(icon, { color: `var(--color-change-${kind})`, 'flex-shrink': '0' });
       assert.ok(parseFloat(cascaded(icon, 'margin-right') ?? '') > 0);
     }
   });

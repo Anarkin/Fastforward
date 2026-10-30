@@ -1,4 +1,5 @@
 import type { Settings } from './settings';
+import { tools as toolIds } from '../shared/tools';
 
 function declarations(
   values: Readonly<Record<string, string>>,
@@ -10,7 +11,13 @@ function declarations(
   );
 }
 
-export function themeCss({ fonts, sizes, colors }: Settings): string {
+export function themeCss({ fonts, sizes, colors, tools }: Settings): string {
+  const themed = (theme: 'light' | 'dark', indent: string) => [
+    ...declarations(colors[theme], 'color-', indent),
+    ...toolIds.flatMap((tool) =>
+      declarations(tools[tool].colors[theme], `color-${tool}-`, indent),
+    ),
+  ];
   return [
     ':root {',
     '  color-scheme: light;',
@@ -21,13 +28,13 @@ export function themeCss({ fonts, sizes, colors }: Settings): string {
     `  --monospace-line-height: ${fonts.monospaceLineHeight};`,
     `  --scrollbar-size: ${sizes.scrollbar};`,
     `  --minimap-width: ${sizes.minimap};`,
-    ...declarations(colors.light, 'color-', '  '),
+    ...themed('light', '  '),
     '}',
     '',
     '@media (prefers-color-scheme: dark) {',
     '  :root {',
     '    color-scheme: dark;',
-    ...declarations(colors.dark, 'color-', '    '),
+    ...themed('dark', '    '),
     '  }',
     '}',
     '',

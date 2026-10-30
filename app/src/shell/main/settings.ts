@@ -1,6 +1,10 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { toolSettingChoices, type ToolSettings } from '../shared/tools';
+import {
+  toolSettingChoices,
+  type ThemeColors,
+  type ToolSettings,
+} from '../shared/tools';
 import { strings } from '../../shared/strings';
 
 export interface Settings {
@@ -17,10 +21,7 @@ export interface Settings {
     readonly scrollbar: string;
     readonly minimap: string;
   };
-  readonly colors: {
-    readonly light: Readonly<Record<string, string>>;
-    readonly dark: Readonly<Record<string, string>>;
-  };
+  readonly colors: ThemeColors;
 }
 
 type Json = Record<string, unknown>;

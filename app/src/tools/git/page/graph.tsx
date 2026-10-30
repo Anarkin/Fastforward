@@ -13,14 +13,14 @@ const turn = 20;
 const overlap = 1;
 
 const colors = [
-  'var(--color-chart-blue)',
-  'var(--color-chart-green)',
-  'var(--color-chart-orange)',
-  'var(--color-chart-purple)',
-  'var(--color-chart-red)',
-  'var(--color-chart-yellow)',
-  'var(--color-chart-cyan)',
-  'var(--color-chart-magenta)',
+  'var(--color-git-graph-blue)',
+  'var(--color-git-graph-green)',
+  'var(--color-git-graph-orange)',
+  'var(--color-git-graph-purple)',
+  'var(--color-git-graph-red)',
+  'var(--color-git-graph-yellow)',
+  'var(--color-git-graph-cyan)',
+  'var(--color-git-graph-magenta)',
 ];
 
 const margin = 3;

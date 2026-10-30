@@ -74,11 +74,11 @@ suite('Graph cell', () => {
     assert.deepStrictEqual(attributes(html, 'svg', 'width'), ['150']);
     assert.deepStrictEqual(attributes(html, 'circle', 'cx'), ['141']);
     assert.deepStrictEqual(attributes(html, 'circle', 'fill'), [
-      'var(--color-chart-blue)',
+      'var(--color-git-graph-blue)',
     ]);
     assert.deepStrictEqual(attributes(html, 'path', 'd'), ['M 141 15 V 30']);
     assert.deepStrictEqual(attributes(html, 'path', 'stroke'), [
-      'var(--color-chart-green)',
+      'var(--color-git-graph-green)',
     ]);
   });
 
