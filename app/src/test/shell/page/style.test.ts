@@ -460,6 +460,32 @@ suite('Style', () => {
     );
   });
 
+  test('colors the icon of each tool with its own color from the settings, so tabs of different tools for one folder tell apart at a glance', () => {
+    const bar = rendered(
+      createElement(TabBar, {
+        tabs: [
+          { id: '1', tool: 'git', root: '/a', name: 'a' },
+          { id: '2', tool: 'files', root: '/a', name: 'a' },
+          { id: '3', tool: 'terminal', root: '/a', name: 'a' },
+        ],
+        active: '1',
+        onSelect: noop,
+        onPreload: noop,
+        onClose: noop,
+        onAdd: noop,
+        onLog: noop,
+      }),
+    );
+    assert.deepStrictEqual(
+      allWithClass(bar, 'tool-icon').map((icon) => cascaded(icon, 'color')),
+      [
+        'var(--color-tool-git)',
+        'var(--color-tool-files)',
+        'var(--color-tool-terminal)',
+      ],
+    );
+  });
+
   test('keeps the repository tabs on one row, shrinking them as Chrome does rather than wrapping them, down to a letter or two of the name beside the close button', () => {
     looks(withClass(tabBar(), 'tab-list'), {
       'flex-wrap': 'nowrap',

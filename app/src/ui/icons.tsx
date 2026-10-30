@@ -85,24 +85,24 @@ const toolSigns: Record<ToolId, React.ReactNode> = {
     </>
   ),
   files: (
-    <>
-      <path d="M3 2.5h8l2.5 2.5v8a.5.5 0 0 1-.5.5H3a.5.5 0 0 1-.5-.5V3a.5.5 0 0 1 .5-.5Z" />
-      <path d="M5 2.5v3h5.5v-3" />
-      <path d="M8.75 3.5v1" />
-      <path d="M4.5 13.5v-4h7v4" />
-    </>
+    <path
+      d="M2 4.25C2 3.56 2.56 3 3.25 3h3.1c.33 0 .65.13.88.37L8.6 4.75h4.15c.69 0 1.25.56 1.25 1.25v6.25c0 .69-.56 1.25-1.25 1.25h-9.5C2.56 13.5 2 12.94 2 12.25Z"
+      fill="currentColor"
+      stroke="none"
+    />
   ),
   terminal: (
-    <>
-      <rect x="2" y="3" width="12" height="10" rx="1.5" />
-      <path d="M5 6.5 7 8.5 5 10.5" />
-      <path d="M8.5 10.5h2.5" />
-    </>
+    <path
+      d="M3.5 2.5h9a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2ZM5.495 6.005 7.99 8.5 5.495 10.995A.7.7 0 0 1 4.505 10.005L6.01 8.5 4.505 6.995A.7.7 0 0 1 5.495 6.005ZM8.5 9.8h2.5a.7.7 0 0 1 0 1.4h-2.5a.7.7 0 0 1 0-1.4Z"
+      fill="currentColor"
+      fillRule="evenodd"
+      stroke="none"
+    />
   ),
 };
 
 export function ToolIcon({ tool }: { tool: ToolId }) {
-  return <Icon className="tool-icon">{toolSigns[tool]}</Icon>;
+  return <Icon className={`tool-icon tool-${tool}`}>{toolSigns[tool]}</Icon>;
 }
 
 export function AddIcon() {

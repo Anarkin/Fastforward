@@ -641,6 +641,18 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
   width: 16px;
 }
 
+.tool-git {
+  color: var(--color-tool-git);
+}
+
+.tool-files {
+  color: var(--color-tool-files);
+}
+
+.tool-terminal {
+  color: var(--color-tool-terminal);
+}
+
 .tabs .tab-name {
   flex-shrink: 1000;
   min-width: 2ch;

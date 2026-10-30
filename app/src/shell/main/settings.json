@@ -53,6 +53,10 @@
       "focus-hover": "8%",
       "focus-selected": "18%",
 
+      "tool-git": "#c63d1d",
+      "tool-files": "#1a5fb4",
+      "tool-terminal": "#000",
+
       "bubble": "#ddd",
       "bubble-foreground": "#000",
       "bubble-border": "#ffffff00",
@@ -131,6 +135,10 @@
       "focus-foreground": "#fff",
       "focus-hover": "20%",
       "focus-selected": "35%",
+
+      "tool-git": "#f05032",
+      "tool-files": "#5294e2",
+      "tool-terminal": "#ddd",
 
       "bubble": "#444",
       "bubble-foreground": "#ddd",
