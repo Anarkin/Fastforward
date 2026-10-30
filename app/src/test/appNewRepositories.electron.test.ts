@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { strings } from '../shared/strings';
@@ -70,5 +71,31 @@ suite('App making new repositories', () => {
       .click();
     await page.locator('.tabs .tab.active', { hasText: 'nested' }).waitFor();
     assert.ok(fs.statSync(path.join(inside, '.git')).isDirectory());
+  });
+
+  test('clones the repository whose URL is on the clipboard into the folder and name typed, showing it was asked for, and opens it in a tab', async () => {
+    const url = pathToFileURL(repository.root).href;
+    await app.evaluate(({ clipboard }, copied) => {
+      clipboard.readText = () => Promise.resolve(copied);
+    }, url);
+    await chooseFromGitMenu(strings.tabs.clone);
+    const popup = page.locator('.clone-popup');
+    const [address, into, name] = [0, 1, 2].map((index) =>
+      popup.locator('.clone-input').nth(index),
+    );
+    assert.strictEqual(await address.inputValue(), url);
+    assert.strictEqual(await name.getAttribute('placeholder'), 'repo');
+    await into.fill(folder);
+    await popup
+      .getByText(strings.clone.taken(path.join(folder, 'repo')))
+      .waitFor();
+    await name.fill('copy');
+    await popup
+      .getByText(strings.clone.into(path.join(folder, 'copy')))
+      .waitFor();
+    await name.press('Enter');
+    await page.locator('.tabs .tab.active', { hasText: 'copy' }).waitFor();
+    await popup.waitFor({ state: 'detached' });
+    assert.ok(fs.existsSync(path.join(folder, 'copy', '.git')));
   });
 });

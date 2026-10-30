@@ -158,6 +158,7 @@ interface RunOptions {
   readonly runsUserCode?: boolean;
   readonly writes?: boolean;
   readonly onOutput?: (chunk: Buffer) => void;
+  readonly onErrorOutput?: (chunk: Buffer) => void;
   readonly onActivity?: () => void;
   readonly progress?: boolean;
   readonly unbounded?: boolean;
@@ -228,6 +229,7 @@ function runGitOnce(
     runsUserCode = false,
     writes = false,
     onOutput,
+    onErrorOutput,
     onActivity,
     progress = false,
     unbounded = false,
@@ -259,12 +261,17 @@ function runGitOnce(
     const stop = () => void stopGit(child);
     let tooLarge = false;
     let printed = false;
-    const collect = (stream: Readable, take?: (chunk: Buffer) => void) => {
+    const collect = (
+      stream: Readable,
+      take?: (chunk: Buffer) => void,
+      peek?: (chunk: Buffer) => void,
+    ) => {
       const chunks: Buffer[] = [];
       let size = 0;
       stream.on('data', (chunk: Buffer) => {
         printed = true;
         onActivity?.();
+        peek?.(chunk);
         size += chunk.length;
         if (!unbounded && size > maxOutput) {
           tooLarge = true;
@@ -278,7 +285,7 @@ function runGitOnce(
       return chunks;
     };
     const stdout = collect(child.stdout, onOutput);
-    const stderr = collect(child.stderr);
+    const stderr = collect(child.stderr, undefined, onErrorOutput);
     let settled = false;
     const settle = (
       code: number | null,

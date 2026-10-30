@@ -105,7 +105,8 @@ export interface OpenView {
 export class FakeHost implements ShellHost, GitHost {
   folders: readonly string[] = [];
   folder: string | undefined;
-  readonly folderPurposes: FolderPurpose[] = [];
+  readonly foldersAsked: [FolderPurpose, string | undefined][] = [];
+  clipboard = '';
   problems: readonly string[] = [];
   update: UpdateStatus = { kind: 'idle' };
   commandPlace = false;
@@ -136,9 +137,16 @@ export class FakeHost implements ShellHost, GitHost {
     return Promise.resolve(this.folders);
   }
 
-  chooseFolder(purpose: FolderPurpose): Promise<string | undefined> {
-    this.folderPurposes.push(purpose);
+  chooseFolder(
+    purpose: FolderPurpose,
+    from?: string,
+  ): Promise<string | undefined> {
+    this.foldersAsked.push([purpose, from]);
     return Promise.resolve(this.folder);
+  }
+
+  clipboardText(): Promise<string> {
+    return Promise.resolve(this.clipboard);
   }
 
   openSettings(): Promise<void> {

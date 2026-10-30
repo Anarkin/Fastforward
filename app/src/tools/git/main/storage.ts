@@ -20,6 +20,7 @@ export const bookmarksKey = 'bookmarks';
 export const worktreesKey = 'activeWorktrees';
 export const lastFetchesKey = 'lastFetches';
 export const remoteTagsKey = 'remoteTags';
+export const cloneFolderKey = 'cloneFolder';
 const maxAutoFetchMinutes = Math.floor((2 ** 31 - 1) / 60_000);
 
 export class GitStorage {
@@ -67,6 +68,15 @@ export class GitStorage {
       recentKey,
       this.recent.filter((r) => !sameRoot(r, root)),
     );
+  }
+
+  get cloneFolder(): string | undefined {
+    const saved = this.state.get(cloneFolderKey);
+    return typeof saved === 'string' ? saved : undefined;
+  }
+
+  async setCloneFolder(folder: string): Promise<void> {
+    await this.state.update(cloneFolderKey, folder);
   }
 
   bookmarksOf(root: string): readonly Bookmark[] | undefined {

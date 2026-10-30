@@ -59,7 +59,7 @@ suite('Git tool making new repositories', () => {
       [],
       async (view) => {
         await view.connection.receive({ type: 'initRepository' });
-        assert.deepStrictEqual(host.folderPurposes, ['init']);
+        assert.deepStrictEqual(host.foldersAsked, [['init', undefined]]);
         assert.ok(fs.statSync(path.join(picked, '.git')).isDirectory());
         assert.ok(fs.existsSync(path.join(picked, 'kept.txt')));
         const shown = shownTabs(view.page);

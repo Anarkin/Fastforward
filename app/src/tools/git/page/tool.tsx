@@ -87,6 +87,8 @@ import {
 import { bookmarkOptions, toggleBookmark } from './bookmarks';
 import { repositoryMenuItems } from './repositoryMenu';
 import { ConfirmPopup } from '../../../shell/page/confirmPopup';
+import { ClonePopup, type ChosenFolder, type CloneTarget } from './clonePopup';
+import type { CloneAsk, CloneView } from '../shared/clone';
 
 export interface GitToolProps {
   active: boolean;
@@ -112,6 +114,10 @@ export function GitTool({
   const [worktrees, setWorktrees] = useState<readonly WorktreeInfo[]>();
   const [recent, setRecent] = useState<readonly RepositoryInfo[]>([]);
   const [initAsked, setInitAsked] = useState<GitToWebviewOf<'confirmInit'>>();
+  const [cloneView, setCloneView] = useState<CloneView>();
+  const [cloneForm, setCloneForm] = useState(0);
+  const [cloneFolder, setCloneFolder] = useState<ChosenFolder>();
+  const [cloneTarget, setCloneTarget] = useState<CloneTarget>();
   const selections = useRef(0);
   const [tab, dispatch] = useReducer(reduceTabView, emptyTabView);
   const {
@@ -177,6 +183,7 @@ export function GitTool({
         repositoryMenuItems(recent, {
           onOpen: (root) => post({ type: 'openRepository', root }),
           onBrowse: () => post({ type: 'browseRepositories' }),
+          onClone: () => post({ type: 'openClone' }),
           onInit: () => post({ type: 'initRepository' }),
           onRemove: (root) => {
             setRecent((shown) => shown.filter((other) => other.root !== root));
@@ -186,6 +193,15 @@ export function GitTool({
       ),
     [recent, post, onNewTabItems],
   );
+  const checkCloneTarget = useCallback(
+    (folder: string, name: string) =>
+      post({ type: 'checkCloneTarget', folder, name }),
+    [post],
+  );
+  const closeClone = useCallback(() => {
+    setCloneView(undefined);
+    post({ type: 'closeClone' });
+  }, [post]);
   const saveColumnWidths = useCallback(
     (widths: readonly number[]) => post({ type: 'setColumnWidths', widths }),
     [post],
@@ -303,6 +319,19 @@ export function GitTool({
           break;
         case 'confirmInit':
           setInitAsked(message);
+          break;
+        case 'clone':
+          setCloneView(message.view);
+          if (message.view?.kind === 'form') {
+            setCloneForm((shown) => shown + 1);
+            setCloneFolder(undefined);
+          }
+          break;
+        case 'cloneFolder':
+          setCloneFolder({ folder: message.folder });
+          break;
+        case 'cloneTarget':
+          setCloneTarget(message);
           break;
         case 'bookmarks':
           setBookmarks(message.bookmarks);
@@ -690,20 +719,39 @@ export function GitTool({
     });
   };
 
-  const popups = initAsked && (
-    <ConfirmPopup
-      title={strings.confirm.initTitle}
-      message={strings.confirm.initInside(
-        initAsked.folder,
-        initAsked.repository,
+  const popups = (
+    <>
+      {cloneView && (
+        <ClonePopup
+          view={cloneView}
+          formKey={cloneForm}
+          chosenFolder={cloneFolder}
+          checked={cloneTarget}
+          onCheck={checkCloneTarget}
+          onChooseFolder={(folder) =>
+            post({ type: 'chooseCloneFolder', folder })
+          }
+          onClone={(ask: CloneAsk) => post({ type: 'clone', ...ask })}
+          onStop={() => post({ type: 'stopClone' })}
+          onClose={closeClone}
+        />
       )}
-      confirm={strings.confirm.init}
-      onConfirm={() => {
-        setInitAsked(undefined);
-        post({ type: 'initInside', folder: initAsked.folder });
-      }}
-      onCancel={() => setInitAsked(undefined)}
-    />
+      {initAsked && (
+        <ConfirmPopup
+          title={strings.confirm.initTitle}
+          message={strings.confirm.initInside(
+            initAsked.folder,
+            initAsked.repository,
+          )}
+          confirm={strings.confirm.init}
+          onConfirm={() => {
+            setInitAsked(undefined);
+            post({ type: 'initInside', folder: initAsked.folder });
+          }}
+          onCancel={() => setInitAsked(undefined)}
+        />
+      )}
+    </>
   );
 
   if (!active) {

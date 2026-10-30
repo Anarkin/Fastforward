@@ -77,6 +77,7 @@ import {
 } from './cli/worktrees';
 import { step, visit } from './history/navigation';
 import { ImageReads } from './imageReads';
+import { Clones } from './clones';
 import type { Log } from '../../../shell/main/log';
 import {
   canPull,
@@ -193,11 +194,15 @@ interface TabWork extends TabState {
   indexPaths: readonly string[] | undefined;
 }
 
-export type FolderPurpose = 'init';
+export type FolderPurpose = 'init' | 'clone';
 
 export interface GitHost {
   chooseFolders(): Promise<readonly string[]>;
-  chooseFolder(purpose: FolderPurpose): Promise<string | undefined>;
+  chooseFolder(
+    purpose: FolderPurpose,
+    from?: string,
+  ): Promise<string | undefined>;
+  clipboardText(): Promise<string>;
 }
 
 type GitPost = GitToWebview | ToWebviewOf<'notice'>;
@@ -276,6 +281,7 @@ export class GitTool implements Tool<'git'> {
   private readonly imageReads = new ImageReads();
   private readonly autoFetch: AutoFetch;
   private readonly quitting = new AbortController();
+  private readonly clones: Clones;
   private collapseMerges: boolean;
   private soloDefault: boolean;
   private initAsked: string | undefined;
@@ -301,6 +307,27 @@ export class GitTool implements Tool<'git'> {
       timer,
     );
     this.autoFetch.update();
+    this.clones = new Clones(
+      log,
+      gitPath,
+      {
+        post: (message) => this.page?.post(message),
+        open: async (target) => {
+          const session = this.page;
+          if (session !== undefined) {
+            await this.runNow(strings.log.openingFailed(target), session, () =>
+              this.openRepositories(session, [target]),
+            );
+          }
+        },
+        track: (work) => void this.shell.track(work),
+        chooseFolder: (from) => host.chooseFolder('clone', from),
+        clipboardText: () => host.clipboardText(),
+        savedFolder: () => storage.cloneFolder,
+        saveFolder: (folder) => this.save(storage.setCloneFolder(folder)),
+      },
+      this.quitting.signal,
+    );
   }
 
   quit(): void {
@@ -335,6 +362,7 @@ export class GitTool implements Tool<'git'> {
   }
 
   ready(page: Page): void {
+    this.clones.pageLoaded();
     const session = this.sessionOf(page);
     session.post(this.storage.layout);
     this.sendRecent(session);
@@ -726,6 +754,14 @@ export class GitTool implements Tool<'git'> {
         }
         return;
       }
+      case 'openClone':
+      case 'closeClone':
+      case 'chooseCloneFolder':
+      case 'checkCloneTarget':
+      case 'clone':
+      case 'stopClone':
+        await this.clones.receive(message);
+        return;
       case 'forgetRecent':
         await this.storage.removeRecent(message.root);
         this.sendTabs(session);

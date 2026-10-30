@@ -318,14 +318,23 @@ async function start(asked: readonly string[]): Promise<void> {
         });
         return chosen.canceled ? [] : chosen.filePaths;
       },
-      chooseFolder: async () => {
+      chooseFolder: async (purpose, from) => {
         const chosen = await dialog.showOpenDialog(window, {
-          title: strings.app.initRepository,
-          buttonLabel: strings.app.init,
+          ...(purpose === 'init'
+            ? {
+                title: strings.app.initRepository,
+                buttonLabel: strings.app.init,
+              }
+            : {
+                title: strings.app.cloneInto,
+                buttonLabel: strings.app.choose,
+              }),
+          ...(from !== undefined && { defaultPath: from }),
           properties: ['openDirectory', 'createDirectory'],
         });
         return chosen.canceled ? undefined : chosen.filePaths[0];
       },
+      clipboardText: () => clipboard.readText(),
     },
   );
   const terminalSettings = () => userSettings.settings.tools.terminal;

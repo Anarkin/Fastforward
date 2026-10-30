@@ -342,7 +342,7 @@ export async function listRemotes(
   return (await runGit(gitPath, root, ['remote'])).split('\n').filter(Boolean);
 }
 
-const remoteTimeout = 5 * 60_000;
+export const remoteTimeout = 5 * 60_000;
 
 const neverAsk = {
   GCM_INTERACTIVE: 'never',
@@ -483,7 +483,7 @@ async function fetchWith(
   }
 }
 
-function quietFor(timeout: number): {
+export function quietFor(timeout: number): {
   readonly stalled: AbortSignal;
   readonly heard: () => void;
   readonly end: () => void;

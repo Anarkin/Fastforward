@@ -16,7 +16,7 @@
 | Recent repositories | Reopen a repository opened before | — | Core | ✅ Yes | Removed from the list with its X or Delete |
 | Several repositories at once | Keep repositories open side by side | — | Common | ✅ Yes | Tabs, dragged into any order or sorted A-Z, preloaded when the pointer rests on one |
 | Create a repository | Start a repository in a folder | `git init` | Core | ✅ Yes | Init... in the Git menu; opens a folder that is a repository already, and asks first in a folder inside another |
-| Clone | Copy a remote repository | `git clone` | Core | ❌ No | |
+| Clone | Copy a remote repository | `git clone` | Core | ✅ Yes | Clone... in the Git menu: the URL on the clipboard filled in, the last folder cloned into remembered, the name taken from the URL; goes on in the background once the dialog is closed, saying in a notice when it is done |
 | Clone options | Clone shallow, partial, one branch, or with submodules | `git clone --depth`, `--filter`, `--single-branch`, `--recurse-submodules` | Advanced | ❌ No | |
 | Shallow repositories | Show a history cut off at a depth | — | Advanced | ✅ Yes | Reloads the history when the shallow boundary moves |
 | Outside changes | Refresh when git or an editor changes the repository | — | Core | ✅ Yes | Watches the working tree and the git folder of the worktree shown; refs, changes and worktrees refresh on their own, other tabs when shown again |
@@ -191,7 +191,7 @@
 | Force push | Overwrite the remote branch | `git push --force-with-lease` | Common | ❌ No | Refuses to push a diverged branch |
 | Push another branch | Push a branch that isn't checked out | `git push <remote> <branch>` | Advanced | ✅ Yes | Push on any branch's bubble |
 | Sync | Pull, then push, in one step | `git pull`, `git push` | Advanced | ❌ No | |
-| Progress | Show how far a transfer got, and stop it | `--progress` | Common | 🟡 Partial | Shows it running, no progress or stop; a fetch or push silent for 5 minutes is stopped |
+| Progress | Show how far a transfer got, and stop it | `--progress` | Common | 🟡 Partial | A clone shows git's progress and can be stopped; a fetch or push shows it is running, without progress or stop; a fetch, push or clone silent for 5 minutes is stopped |
 | Authentication | Sign in to remotes | credential helpers, SSH agent | Core | 🟡 Partial | Through git's credential helpers and SSH, never a terminal prompt; background fetches never ask |
 | Credentials and keys | Store tokens, make SSH keys | — | Common | ❌ No | |
 

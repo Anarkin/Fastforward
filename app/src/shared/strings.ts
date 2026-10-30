@@ -90,6 +90,8 @@ export const strings = {
     openRepositories: 'Open Repositories',
     initRepository: 'Init a Repository',
     init: 'Init',
+    cloneInto: 'Clone Into',
+    choose: 'Choose',
     openInTerminal: 'Open in Terminal',
     open: 'Open',
     crashed: (error: string) => `Something went wrong: ${error}`,
@@ -165,6 +167,7 @@ export const strings = {
     newTab: 'New Tab',
     worktrees: 'Worktrees',
     browse: 'Browse...',
+    clone: 'Clone...',
     init: 'Init...',
     removeRecent: (name: string) => `Remove ${name} from this list`,
     label: (name: string, folder?: string) =>
@@ -422,6 +425,30 @@ export const strings = {
         ? 'Not loaded: 1 changed line'
         : `Not loaded: ${lines.toLocaleString()} changed lines`,
   },
+  clone: {
+    title: 'Clone a Repository',
+    url: 'URL',
+    folder: 'Folder',
+    name: 'Name',
+    chooseFolder: 'Choose the folder to clone into',
+    into: (target: string) => `Clones into ${target}`,
+    clone: 'Clone',
+    stop: 'Stop',
+    cloning: (url: string) => `Cloning ${url}`,
+    intoTarget: (target: string) => `into ${target}`,
+    connecting: 'Connecting',
+    percent: (percent: number) => `${percent}%`,
+    noUrl: 'Paste the URL of the repository to clone',
+    urlOneLine: 'The URL must be one line',
+    urlDash: "The URL can't start with -",
+    urlExt: "ext:: URLs run commands, so they aren't cloned",
+    noName: 'Name the folder to clone into',
+    badName: (name: string) => `${name} can't be the name of a folder`,
+    notFullPath: (folder: string) => `${folder} is not a full path`,
+    noFolder: (folder: string) => `${folder} is not a folder`,
+    taken: (target: string) =>
+      `${target} already exists and isn't an empty folder`,
+  },
   terminal: {
     newTab: 'New',
     exited: (code: number) =>
@@ -453,6 +480,9 @@ export const strings = {
       `${folder} is a git repository already, so it was opened`,
     couldNotInit: (folder: string, reason: string) =>
       `Couldn't init a repository in ${folder}. ${reason}`,
+    cloned: (url: string, target: string) => `Cloned ${url} into ${target}`,
+    couldNotClone: (url: string, reason: string) =>
+      `Couldn't clone ${url}. ${reason}`,
     noToolOpens: (folder: string) => `${folder} can't be opened`,
     noFolder: (tool: string) => `${tool} doesn't know which folder it's in`,
     notRepository: (root: string) => `${root} is not a git repository`,
@@ -588,6 +618,8 @@ export const strings = {
       `git push printed nothing for ${seconds} seconds, so it was stopped`,
     fetchStalled: (seconds: number) =>
       `git fetch printed nothing for ${seconds} seconds, so it was stopped`,
+    cloneStalled: (seconds: number) =>
+      `git clone printed nothing for ${seconds} seconds, so it was stopped`,
     outsideRepository: (path: string) => `${path} is outside the repository`,
     notInCommit: (path: string, hash: string) => `${path} is not in ${hash}`,
     notObject: (file: string) => `${file} is not a JSON object`,
@@ -634,6 +666,12 @@ export const strings = {
     openingFailed: (folder: string) => `Opening ${folder} failed`,
     initialized: (folder: string) => `Initialized a repository in ${folder}`,
     initFailed: (folder: string) => `Initing a repository in ${folder} failed`,
+    cloning: (url: string, target: string) => `Cloning ${url} into ${target}`,
+    cloned: (url: string, target: string) => `Cloned ${url} into ${target}`,
+    cloneFailed: (url: string) => `Cloning ${url} failed`,
+    cloneStopped: (url: string) => `Stopped cloning ${url}`,
+    removingCloneFailed: (target: string) =>
+      `Removing what was cloned into ${target} failed`,
     openingAsked: (folders: string) =>
       `Asked from the command line to open ${folders}`,
     checkingCommandFailed: 'Checking the ff command failed',

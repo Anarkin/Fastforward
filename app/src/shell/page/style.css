@@ -400,6 +400,127 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
   opacity: var(--muted-opacity);
 }
 
+.clone-popup {
+  width: min(560px, 100%);
+}
+
+.clone-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  padding: 12px 16px 16px;
+}
+
+.clone-fields {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.clone-folder {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.clone-input {
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  height: 28px;
+  margin: 0;
+  padding: 0 8px;
+  color: var(--color-foreground);
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  outline: none;
+}
+
+.clone-input:focus {
+  border-color: var(--color-focus);
+}
+
+.clone-input::placeholder {
+  color: var(--muted-foreground);
+}
+
+.clone-target,
+.clone-running > span,
+.clone-detail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted-foreground);
+}
+
+.clone-running {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.clone-running > span:first-child {
+  color: var(--color-foreground);
+}
+
+.clone-detail {
+  min-height: 1lh;
+}
+
+.clone-problem {
+  overflow: auto;
+  max-height: 10lh;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--color-error-foreground);
+  user-select: text;
+}
+
+.clone-progress {
+  display: grid;
+  grid-template-columns: minmax(0, 12em) minmax(0, 1fr) 4ch;
+  align-items: center;
+  gap: 12px;
+}
+
+.clone-phase {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clone-percent {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.clone-bar {
+  height: 6px;
+  overflow: hidden;
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+.clone-bar-done {
+  height: 100%;
+  background: var(--color-focus);
+}
+
+.confirm-button:disabled {
+  opacity: var(--muted-opacity);
+}
+
+.confirm-button:disabled:hover {
+  background: var(--color-background);
+}
+
+.confirm-button.default:disabled:hover {
+  background: var(--color-focus);
+}
+
 .about-body {
   display: flex;
   flex-direction: column;

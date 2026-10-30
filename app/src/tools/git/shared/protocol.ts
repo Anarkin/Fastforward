@@ -1,3 +1,5 @@
+import type { CloneAsk, CloneView } from './clone';
+
 export const workingTreeHash = 'working-tree';
 export const workingTreeIndex = -1;
 
@@ -231,6 +233,16 @@ export type GitToHost =
   | { readonly type: 'browseRepositories' }
   | { readonly type: 'initRepository' }
   | { readonly type: 'initInside'; readonly folder: string }
+  | { readonly type: 'openClone' }
+  | { readonly type: 'closeClone' }
+  | { readonly type: 'chooseCloneFolder'; readonly folder: string }
+  | {
+      readonly type: 'checkCloneTarget';
+      readonly folder: string;
+      readonly name: string;
+    }
+  | ({ readonly type: 'clone' } & CloneAsk)
+  | { readonly type: 'stopClone' }
   | { readonly type: 'forgetRecent'; readonly root: string }
   | { readonly type: 'selectWorktree'; readonly root: string }
   | { readonly type: 'preloadWorktree'; readonly root: string }
@@ -355,6 +367,14 @@ export type GitToWebview =
       readonly worktrees: readonly WorktreeInfo[] | undefined;
     }
   | { readonly type: 'recent'; readonly recent: readonly RepositoryInfo[] }
+  | { readonly type: 'clone'; readonly view: CloneView | undefined }
+  | { readonly type: 'cloneFolder'; readonly folder: string }
+  | {
+      readonly type: 'cloneTarget';
+      readonly folder: string;
+      readonly name: string;
+      readonly problem?: string;
+    }
   | {
       readonly type: 'confirmInit';
       readonly folder: string;

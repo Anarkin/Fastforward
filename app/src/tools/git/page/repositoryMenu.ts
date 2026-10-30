@@ -5,16 +5,18 @@ import type { ContextMenuItem } from '../../../ui/contextMenu';
 export interface RepositoryMenuActions {
   readonly onOpen: (root: string) => void;
   readonly onBrowse: () => void;
+  readonly onClone: () => void;
   readonly onInit: () => void;
   readonly onRemove?: (root: string) => void;
 }
 
 export function repositoryMenuItems(
   recent: readonly RepositoryInfo[],
-  { onOpen, onBrowse, onInit, onRemove }: RepositoryMenuActions,
+  { onOpen, onBrowse, onClone, onInit, onRemove }: RepositoryMenuActions,
 ): readonly ContextMenuItem[] {
   return [
     { label: strings.tabs.browse, onClick: onBrowse },
+    { label: strings.tabs.clone, onClick: onClone },
     { label: strings.tabs.init, onClick: onInit },
     ...(recent.length > 0 ? [{ separator: true } as const] : []),
     ...recent.map((repository) => {
