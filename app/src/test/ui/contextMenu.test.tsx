@@ -268,19 +268,20 @@ suite('Menu items', () => {
   });
 
   test('takes a letter or digit alone, of either case, as an access key', () => {
-    const press = (key: string, extra = {}) => ({
-      key,
-      ...noModifiers,
-      ...extra,
-    });
-    assert.strictEqual(accessKeyOf(press('d')), 'D');
-    assert.strictEqual(accessKeyOf(press('X')), 'X');
-    assert.strictEqual(accessKeyOf(press('7')), '7');
-    assert.strictEqual(accessKeyOf(press('d', { ctrlKey: true })), undefined);
-    assert.strictEqual(accessKeyOf(press('d', { altKey: true })), undefined);
-    assert.strictEqual(accessKeyOf(press('d', { metaKey: true })), undefined);
-    assert.strictEqual(accessKeyOf(press('Enter')), undefined);
-    assert.strictEqual(accessKeyOf(press('-')), undefined);
+    assert.strictEqual(accessKeyOf(keyPress('d')), 'D');
+    assert.strictEqual(accessKeyOf(keyPress('X')), 'X');
+    assert.strictEqual(accessKeyOf(keyPress('7')), '7');
+    assert.strictEqual(
+      accessKeyOf(keyPress('d', { ctrlKey: true })),
+      undefined,
+    );
+    assert.strictEqual(accessKeyOf(keyPress('d', { altKey: true })), undefined);
+    assert.strictEqual(
+      accessKeyOf(keyPress('d', { metaKey: true })),
+      undefined,
+    );
+    assert.strictEqual(accessKeyOf(keyPress('Enter')), undefined);
+    assert.strictEqual(accessKeyOf(keyPress('-')), undefined);
   });
 
   test('runs the item of the access key pressed, as the drive of its letter, closing the menu', async () => {
