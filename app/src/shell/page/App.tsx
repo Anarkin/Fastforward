@@ -98,6 +98,7 @@ export function confirmation(confirming: Confirming): {
     ? {
         title: strings.confirm.closeTitle,
         message: strings.confirm.closeTab(
+          strings.tools[confirming.tab.tool],
           strings.tabs.label(confirming.tab.name, confirming.tab.folder),
         ),
         confirm: strings.confirm.close,

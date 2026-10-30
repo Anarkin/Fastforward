@@ -146,7 +146,8 @@ export const strings = {
   },
   confirm: {
     closeTitle: 'Close Tab',
-    closeTab: (tab: string) => `Are you sure you want to close ${tab}?`,
+    closeTab: (tool: string, tab: string) =>
+      `Are you sure you want to close the ${tool} tab "${tab}"?`,
     close: 'Close',
     quitTitle: 'Quit',
     quitApp: `Are you sure you want to quit ${brand}?`,
