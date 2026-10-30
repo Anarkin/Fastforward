@@ -70,6 +70,7 @@ export default defineConfig({
           name: 'electron',
           include: [electron],
           setupFiles: ['src/test/electronSetup.ts'],
+          fileParallelism: false,
           testTimeout: 60_000,
           hookTimeout: 60_000,
         },
