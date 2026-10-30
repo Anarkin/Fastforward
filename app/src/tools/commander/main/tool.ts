@@ -28,7 +28,6 @@ import type { FileSystem } from './fileSystem';
 export interface CommanderAccess {
   readonly fileSystem: () => Promise<FileSystem>;
   readonly settings: () => CommanderSettings;
-  readonly dateFormat: () => string;
   readonly defaultColumns: () => ColumnWidths;
   readonly saveShowHidden: (shown: boolean) => Promise<void>;
   readonly saveColumns: (columns: ColumnWidths) => Promise<void>;
@@ -336,7 +335,6 @@ export class CommanderTool implements Tool<'commander'> {
     const { showHidden, sort, columns } = this.access.settings();
     this.post(page, {
       type: 'settings',
-      dateFormat: this.access.dateFormat(),
       showHidden,
       sort,
       columns,

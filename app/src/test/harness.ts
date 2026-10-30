@@ -325,7 +325,6 @@ export function newView(
       commander: new CommanderTool({
         fileSystem: () => Promise.resolve(nodeFileSystem),
         settings: () => settings.settings.tools.commander,
-        dateFormat: () => settings.settings.dateFormat,
         defaultColumns: () => settings.defaults.tools.commander.columns,
         saveShowHidden: () => Promise.resolve(),
         saveColumns: () => Promise.resolve(),

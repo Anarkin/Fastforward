@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useContext, useMemo } from 'react';
 import { commanderKeymap } from '../shared/keymap';
 import { parentFolder, type Side } from '../shared/protocol';
 import { formatSize } from './format';
@@ -6,7 +6,7 @@ import { opens, type Row } from './listing';
 import { ColumnHeader } from './columnHeader';
 import type { ColumnWidths, SizedColumn, SortColumn } from '../shared/settings';
 import type { PaneView } from './view';
-import { formatDate } from '../../../ui/dates';
+import { DateFormat, formatDate } from '../../../ui/dates';
 import { FileIcon, FolderIcon } from '../../../ui/icons';
 import { listMoveOf, moveInList } from '../../../ui/listMoves';
 import { MenuButton } from '../../../ui/menu';
@@ -44,7 +44,6 @@ function RowIcon({ row }: { row: Row }) {
 export function Pane({
   side,
   pane,
-  dateFormat,
   columns,
   drives,
   driveTrigger,
@@ -62,7 +61,6 @@ export function Pane({
 }: {
   side: Side;
   pane: PaneView | undefined;
-  dateFormat: string;
   columns: ColumnWidths;
   drives: readonly string[];
   driveTrigger: React.Ref<HTMLButtonElement>;
@@ -79,6 +77,7 @@ export function Pane({
   resizer: React.ReactNode;
 }) {
   const rows = pane?.rows ?? noRows;
+  const dateFormat = useContext(DateFormat);
   const listed = useMemo(
     () => ({
       count: rows.length,

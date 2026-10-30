@@ -110,7 +110,6 @@ export function CommanderTool({
             key={side}
             side={side}
             pane={view.panes[side]}
-            dateFormat={view.dateFormat}
             columns={columnWidths}
             onResize={(column, width) =>
               setResized({

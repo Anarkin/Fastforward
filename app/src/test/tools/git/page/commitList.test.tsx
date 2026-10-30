@@ -56,7 +56,11 @@ import {
   workingTreeRowHeight,
   workingTreeShift,
 } from '../../../../tools/git/page/commitList';
-import { formatDateTime } from '../../../../ui/dates';
+import {
+  DateFormat,
+  defaultDateFormat,
+  formatDate,
+} from '../../../../ui/dates';
 import {
   BookmarkedCommits,
   BranchActions,
@@ -1166,7 +1170,16 @@ suite('Commit row', () => {
     assert.match(html, /<span class="author">Ann<\/span>/);
     assert.ok(
       html.includes(
-        `<span class="date">${formatDateTime(props.commit.commitDate)}</span>`,
+        `<span class="date">${formatDate(props.commit.commitDate, defaultDateFormat)}</span>`,
+      ),
+    );
+    assert.ok(
+      renderToStaticMarkup(
+        <DateFormat value="DD.MM.YYYY">
+          <CommitRow {...props} />
+        </DateFormat>,
+      ).includes(
+        `<span class="date">${formatDate(props.commit.commitDate, 'DD.MM.YYYY')}</span>`,
       ),
     );
     assert.match(html, />main</);

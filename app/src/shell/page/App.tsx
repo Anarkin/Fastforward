@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { DateFormat } from '../../ui/dates';
 import {
   appGroups,
   keymap,
@@ -161,6 +162,7 @@ export function App({ name, post, listen }: Props) {
   const [about, setAbout] = useState<AboutInfo>();
   const [installsCommand, setInstallsCommand] = useState(false);
   const [autoSortTabs, setAutoSortTabs] = useState(false);
+  const [dateFormat, setDateFormat] = useState(useContext(DateFormat));
   const [choosing, setChoosing] = useState<ToWebviewOf<'chooseTool'>>();
   const [toolItems, setToolItems] = useState<
     Partial<Record<ToolId, readonly ContextMenuItem[]>>
@@ -201,6 +203,9 @@ export function App({ name, post, listen }: Props) {
           break;
         case 'autoSortTabs':
           setAutoSortTabs(message.on);
+          break;
+        case 'dateFormat':
+          setDateFormat(message.format);
           break;
         case 'notice': {
           const id = ++noticeCount.current;
@@ -420,15 +425,17 @@ export function App({ name, post, listen }: Props) {
       )}
       <Notices notices={notices} onDismiss={dismissNotice} />
       {emptyState(tabs)}
-      <ToolViews
-        active={activeTool}
-        post={post}
-        listeners={listeners}
-        showMenu={showMenu}
-        closeMenu={closeMenu}
-        onNewTabItems={onNewTabItems}
-        onTitle={onTitle}
-      />
+      <DateFormat value={dateFormat}>
+        <ToolViews
+          active={activeTool}
+          post={post}
+          listeners={listeners}
+          showMenu={showMenu}
+          closeMenu={closeMenu}
+          onNewTabItems={onNewTabItems}
+          onTitle={onTitle}
+        />
+      </DateFormat>
     </div>
   );
 }

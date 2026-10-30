@@ -67,6 +67,7 @@ export type ToWebview =
       readonly active: string | undefined;
     }
   | { readonly type: 'autoSortTabs'; readonly on: boolean }
+  | { readonly type: 'dateFormat'; readonly format: string }
   | { readonly type: 'update'; readonly status: UpdateStatus }
   | ({ readonly type: 'about' } & AboutInfo)
   | { readonly type: 'terminalCommand'; readonly installable: boolean }

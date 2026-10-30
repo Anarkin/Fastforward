@@ -442,7 +442,6 @@ async function start(asked: readonly string[]): Promise<void> {
       commander: new CommanderTool({
         fileSystem: () => fileSystemFor(process.platform),
         settings: () => userSettings.settings.tools.commander,
-        dateFormat: () => userSettings.settings.dateFormat,
         defaultColumns: () => userSettings.defaults.tools.commander.columns,
         saveShowHidden: (shown) =>
           userSettings.setIn('commander', 'showHidden', shown),

@@ -1,17 +1,22 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { formatDate, formatDateTime } from '../../ui/dates';
+import { defaultDateFormat, formatDate } from '../../ui/dates';
+import { defaultSettings } from '../fixtures';
 
 suite('Dates', () => {
-  test('read like 2022-12-14 16:12, in local time', () => {
+  test('read like 2022-12-14 16:12 by default, in local time, as the settings say too', () => {
     assert.strictEqual(
-      formatDateTime(new Date(2022, 11, 14, 16, 12, 59).getTime()),
+      formatDate(
+        new Date(2022, 11, 14, 16, 12, 59).getTime(),
+        defaultDateFormat,
+      ),
       '2022-12-14 16:12',
     );
     assert.strictEqual(
-      formatDateTime(new Date(2026, 0, 2, 3, 4).getTime()),
+      formatDate(new Date(2026, 0, 2, 3, 4).getTime(), defaultDateFormat),
       '2026-01-02 03:04',
     );
+    assert.strictEqual(defaultSettings().dateFormat, defaultDateFormat);
   });
 
   test('follow a pattern of the year, month, day, hours, minutes and seconds, keeping any other text', () => {

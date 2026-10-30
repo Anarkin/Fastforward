@@ -183,6 +183,22 @@ suite('Shell with no tab open', () => {
     }
   });
 
+  test('tells the page the date format of the settings, which every tool writes its dates in', async () => {
+    await withView(
+      log,
+      [],
+      async (view) => {
+        assert.deepStrictEqual(view.page.last('dateFormat'), {
+          type: 'dateFormat',
+          format: 'YYYY-MM-DD HH:mm',
+        });
+      },
+      true,
+      new FakeHost(),
+      noGit,
+    );
+  });
+
   test('offers ff once, in a notice, where the app installs it and it is not installed, as an update brings it to copies of the app no installer sets up', async () => {
     const host = new FakeHost();
     host.commandPlace = true;

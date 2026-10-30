@@ -224,6 +224,10 @@ export class Storage {
     await this.state.update(commandOfferedKey, true);
   }
 
+  get dateFormat(): string {
+    return this.settings.dateFormat;
+  }
+
   get autoSortTabs(): boolean {
     return this.settings.autoSortTabs;
   }

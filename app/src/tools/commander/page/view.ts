@@ -24,7 +24,6 @@ export interface PaneView {
 
 export interface CommanderView {
   readonly tab: string | undefined;
-  readonly dateFormat: string;
   readonly showHidden: boolean;
   readonly sort: Sort;
   readonly columns: ColumnWidths;
@@ -35,7 +34,6 @@ export interface CommanderView {
 
 export const emptyView: CommanderView = {
   tab: undefined,
-  dateFormat: 'YYYY-MM-DD HH:mm',
   showHidden: true,
   sort: { column: 'extension', descending: false },
   columns: { extension: 10, size: 15, date: 16 },
@@ -116,7 +114,6 @@ export function reduceView(
     case 'settings': {
       const settled = {
         ...view,
-        dateFormat: action.dateFormat,
         showHidden: action.showHidden,
         sort: action.sort,
         columns: action.columns,

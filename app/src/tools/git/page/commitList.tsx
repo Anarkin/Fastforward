@@ -37,7 +37,7 @@ import { Column } from './column';
 import { CommitHistory } from './commitHistory';
 import { commitMenuTarget, OpenContextMenu, type MenuTarget } from './menus';
 import { GraphCell, graphWidth, rowLanes } from './graph';
-import { formatDateTime } from '../../../ui/dates';
+import { DateFormat, formatDate } from '../../../ui/dates';
 import { MenuButton } from '../../../ui/menu';
 import { MessageBody, MessagePeek } from './messagePeek';
 import { useSkeleton } from '../../../ui/skeleton';
@@ -1185,6 +1185,7 @@ export function CommitRow({
   children?: React.ReactNode;
 }) {
   const openMenu = useContext(OpenContextMenu);
+  const dateFormat = useContext(DateFormat);
   return (
     <div
       {...itemProps}
@@ -1211,7 +1212,9 @@ export function CommitRow({
         <span className="author">
           <Highlight text={commit.authorName} query={highlight} />
         </span>
-        <span className="date">{formatDateTime(commit.commitDate)}</span>
+        <span className="date">
+          {formatDate(commit.commitDate, dateFormat)}
+        </span>
       </div>
       <CommitBubbles
         hash={commit.hash}

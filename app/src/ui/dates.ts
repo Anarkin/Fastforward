@@ -1,3 +1,9 @@
+import { createContext } from 'react';
+
+export const defaultDateFormat = 'YYYY-MM-DD HH:mm';
+
+export const DateFormat = createContext(defaultDateFormat);
+
 function pad(value: number, length = 2): string {
   return String(value).padStart(length, '0');
 }
@@ -16,8 +22,4 @@ const fieldPattern = /YYYY|MM|DD|HH|mm|ss/g;
 export function formatDate(time: number, pattern: string): string {
   const date = new Date(time);
   return pattern.replace(fieldPattern, (field) => fields[field](date));
-}
-
-export function formatDateTime(time: number): string {
-  return formatDate(time, 'YYYY-MM-DD HH:mm');
 }

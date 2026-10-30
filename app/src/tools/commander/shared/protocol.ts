@@ -39,7 +39,6 @@ export type CommanderToHost =
 export type CommanderToWebview =
   | {
       readonly type: 'settings';
-      readonly dateFormat: string;
       readonly showHidden: boolean;
       readonly sort: Sort;
       readonly columns: ColumnWidths;

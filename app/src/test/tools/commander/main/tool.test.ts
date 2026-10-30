@@ -95,7 +95,6 @@ function commander(
   const tool = new CommanderTool({
     fileSystem: () => Promise.resolve(fileSystem),
     settings: () => settings,
-    dateFormat: () => 'YYYY-MM-DD HH:mm',
     defaultColumns: () => defaultColumns,
     saveShowHidden: (shown) => {
       saved.push(shown);
@@ -360,7 +359,6 @@ suite('Commander tool', () => {
     ]);
     assert.deepStrictEqual(page.of('settings').at(-1), {
       type: 'settings',
-      dateFormat: 'YYYY-MM-DD HH:mm',
       showHidden: true,
       sort: { column: 'extension', descending: false },
       columns: { extension: 6, size: 12, date: 16 },

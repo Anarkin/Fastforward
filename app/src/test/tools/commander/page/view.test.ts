@@ -82,7 +82,6 @@ suite('Commander view', () => {
       { type: 'select', side: 'left', key: 'cache.tmp' },
       {
         type: 'settings',
-        dateFormat: 'DD.MM.YYYY',
         showHidden: false,
         sort: { column: 'extension', descending: false },
         columns: { extension: 4, size: 15, date: 10 },
@@ -94,7 +93,6 @@ suite('Commander view', () => {
       rows: ['..', 'a.txt', 'z.txt'],
       selected: 'a.txt',
     });
-    assert.strictEqual(view.dateFormat, 'DD.MM.YYYY');
   });
 
   test('sorts a side by a column, keeping the row selected', () => {

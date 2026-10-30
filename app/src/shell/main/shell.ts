@@ -414,6 +414,7 @@ export class Shell {
   private async ready(page: Page): Promise<void> {
     const { storage, host } = this;
     page.post({ type: 'autoSortTabs', on: storage.autoSortTabs });
+    page.post({ type: 'dateFormat', format: storage.dateFormat });
     page.post({ type: 'update', status: host.updateStatus() });
     page.post({ type: 'about', ...host.about() });
     page.post({
