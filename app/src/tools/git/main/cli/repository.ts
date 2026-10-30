@@ -57,6 +57,16 @@ export function isFolder(folder: string): Promise<boolean> {
   );
 }
 
+export async function initRepository(
+  gitPath: string,
+  folder: string,
+): Promise<void> {
+  if (!(await isFolder(folder))) {
+    throw new Error(strings.common.gone(folder));
+  }
+  await runGit(gitPath, folder, ['init', '--quiet']);
+}
+
 export async function sameFolder(a: string, b: string): Promise<boolean> {
   try {
     const [realA, realB] = await Promise.all([fs.realpath(a), fs.realpath(b)]);

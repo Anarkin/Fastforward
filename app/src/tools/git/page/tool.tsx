@@ -14,6 +14,7 @@ import {
   type TabMessage,
   type GitToHost,
   type GitToWebview,
+  type GitToWebviewOf,
   type Bookmark,
   type ChangeArea,
   type DiffLayout,
@@ -85,6 +86,7 @@ import {
 } from './tabView';
 import { bookmarkOptions, toggleBookmark } from './bookmarks';
 import { repositoryMenuItems } from './repositoryMenu';
+import { ConfirmPopup } from '../../../shell/page/confirmPopup';
 
 export interface GitToolProps {
   active: boolean;
@@ -109,6 +111,7 @@ export function GitTool({
   const post = outbox.send;
   const [worktrees, setWorktrees] = useState<readonly WorktreeInfo[]>();
   const [recent, setRecent] = useState<readonly RepositoryInfo[]>([]);
+  const [initAsked, setInitAsked] = useState<GitToWebviewOf<'confirmInit'>>();
   const selections = useRef(0);
   const [tab, dispatch] = useReducer(reduceTabView, emptyTabView);
   const {
@@ -171,15 +174,15 @@ export function GitTool({
   useEffect(
     () =>
       onNewTabItems(
-        repositoryMenuItems(
-          recent,
-          (root) => post({ type: 'openRepository', root }),
-          () => post({ type: 'browseRepositories' }),
-          (root) => {
+        repositoryMenuItems(recent, {
+          onOpen: (root) => post({ type: 'openRepository', root }),
+          onBrowse: () => post({ type: 'browseRepositories' }),
+          onInit: () => post({ type: 'initRepository' }),
+          onRemove: (root) => {
             setRecent((shown) => shown.filter((other) => other.root !== root));
             post({ type: 'forgetRecent', root });
           },
-        ),
+        }),
       ),
     [recent, post, onNewTabItems],
   );
@@ -297,6 +300,9 @@ export function GitTool({
           break;
         case 'recent':
           setRecent(message.recent);
+          break;
+        case 'confirmInit':
+          setInitAsked(message);
           break;
         case 'bookmarks':
           setBookmarks(message.bookmarks);
@@ -684,12 +690,29 @@ export function GitTool({
     });
   };
 
+  const popups = initAsked && (
+    <ConfirmPopup
+      title={strings.confirm.initTitle}
+      message={strings.confirm.initInside(
+        initAsked.folder,
+        initAsked.repository,
+      )}
+      confirm={strings.confirm.init}
+      onConfirm={() => {
+        setInitAsked(undefined);
+        post({ type: 'initInside', folder: initAsked.folder });
+      }}
+      onCancel={() => setInitAsked(undefined)}
+    />
+  );
+
   if (!active) {
-    return null;
+    return popups;
   }
 
   return (
     <OpenContextMenu.Provider value={openMenu}>
+      {popups}
       <CheckedOutBranch.Provider value={repository?.head}>
         <BranchActions.Provider value={branchActions}>
           <OtherBranchActions.Provider value={otherBranchActions}>

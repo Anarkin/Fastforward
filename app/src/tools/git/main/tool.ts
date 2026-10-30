@@ -42,6 +42,7 @@ import {
 import type { Commits } from './history/commits';
 import {
   fetchRemote,
+  initRepository,
   isFolder,
   listRemoteTags,
   listRemotes,
@@ -192,8 +193,11 @@ interface TabWork extends TabState {
   indexPaths: readonly string[] | undefined;
 }
 
+export type FolderPurpose = 'init';
+
 export interface GitHost {
   chooseFolders(): Promise<readonly string[]>;
+  chooseFolder(purpose: FolderPurpose): Promise<string | undefined>;
 }
 
 type GitPost = GitToWebview | ToWebviewOf<'notice'>;
@@ -274,6 +278,7 @@ export class GitTool implements Tool<'git'> {
   private readonly quitting = new AbortController();
   private collapseMerges: boolean;
   private soloDefault: boolean;
+  private initAsked: string | undefined;
 
   constructor(
     private readonly log: Log,
@@ -706,6 +711,21 @@ export class GitTool implements Tool<'git'> {
       case 'browseRepositories':
         await this.openRepositories(session, await this.host.chooseFolders());
         return;
+      case 'initRepository': {
+        const folder = await this.host.chooseFolder('init');
+        if (folder !== undefined) {
+          await this.initIn(session, folder);
+        }
+        return;
+      }
+      case 'initInside': {
+        const asked = this.initAsked;
+        if (asked !== undefined && sameRoot(asked, message.folder)) {
+          this.initAsked = undefined;
+          await this.initAndOpen(session, asked);
+        }
+        return;
+      }
       case 'forgetRecent':
         await this.storage.removeRecent(message.root);
         this.sendTabs(session);
@@ -1026,6 +1046,56 @@ export class GitTool implements Tool<'git'> {
     const repositories = await this.addRepositories(session, folders, reopened);
     this.sendRecent(page());
     await this.shell.open(page().page, 'git', repositories, true);
+  }
+
+  private async initIn(session: Session, folder: string): Promise<void> {
+    let location: Location | undefined;
+    try {
+      location = (await isFolder(folder))
+        ? await locateRepository(this.gitPath, folder)
+        : undefined;
+    } catch (error) {
+      this.initFailed(session, folder, error);
+      return;
+    }
+    if (location === undefined) {
+      await this.initAndOpen(session, folder);
+      return;
+    }
+    const { worktree } = location;
+    if (worktree === undefined || sameRoot(worktree, folder)) {
+      session.post({
+        type: 'notice',
+        level: 'info',
+        message: strings.messages.alreadyRepository(folder),
+      });
+      await this.openRepositories(session, [folder]);
+      return;
+    }
+    this.initAsked = folder;
+    session.post({ type: 'confirmInit', folder, repository: worktree });
+  }
+
+  private async initAndOpen(session: Session, folder: string): Promise<void> {
+    try {
+      await initRepository(this.gitPath, folder);
+    } catch (error) {
+      this.initFailed(session, folder, error);
+      return;
+    }
+    this.log.info(strings.log.initialized(folder));
+    await this.openRepositories(session, [folder]);
+  }
+
+  private initFailed(session: Session, folder: string, error: unknown): void {
+    const text = gitErrorText(error);
+    this.log.error(strings.log.initFailed(folder));
+    this.log.error(error instanceof Error ? error : text);
+    session.post({
+      type: 'notice',
+      level: 'error',
+      message: strings.messages.couldNotInit(folder, text),
+    });
   }
 
   private async addRepositories(

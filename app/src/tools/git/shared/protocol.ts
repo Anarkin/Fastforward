@@ -229,6 +229,8 @@ export interface TextRequest {
 export type GitToHost =
   | { readonly type: 'openRepository'; readonly root: string }
   | { readonly type: 'browseRepositories' }
+  | { readonly type: 'initRepository' }
+  | { readonly type: 'initInside'; readonly folder: string }
   | { readonly type: 'forgetRecent'; readonly root: string }
   | { readonly type: 'selectWorktree'; readonly root: string }
   | { readonly type: 'preloadWorktree'; readonly root: string }
@@ -353,6 +355,11 @@ export type GitToWebview =
       readonly worktrees: readonly WorktreeInfo[] | undefined;
     }
   | { readonly type: 'recent'; readonly recent: readonly RepositoryInfo[] }
+  | {
+      readonly type: 'confirmInit';
+      readonly folder: string;
+      readonly repository: string;
+    }
   | ({ readonly type: 'repository' } & RepositoryState)
   | {
       readonly type: 'commits';

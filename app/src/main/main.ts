@@ -318,6 +318,14 @@ async function start(asked: readonly string[]): Promise<void> {
         });
         return chosen.canceled ? [] : chosen.filePaths;
       },
+      chooseFolder: async () => {
+        const chosen = await dialog.showOpenDialog(window, {
+          title: strings.app.initRepository,
+          buttonLabel: strings.app.init,
+          properties: ['openDirectory', 'createDirectory'],
+        });
+        return chosen.canceled ? undefined : chosen.filePaths[0];
+      },
     },
   );
   const terminalSettings = () => userSettings.settings.tools.terminal;

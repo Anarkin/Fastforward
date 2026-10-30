@@ -15,7 +15,7 @@
 | Open a repository | Open a folder and find the repository it is in | `git rev-parse --show-toplevel` | Core | ✅ Yes | Browse..., `ff` or `ff <folder>` in a terminal, Open in Fastforward in the Windows Explorer menu |
 | Recent repositories | Reopen a repository opened before | — | Core | ✅ Yes | Removed from the list with its X or Delete |
 | Several repositories at once | Keep repositories open side by side | — | Common | ✅ Yes | Tabs, dragged into any order or sorted A-Z, preloaded when the pointer rests on one |
-| Create a repository | Start a repository in a folder | `git init` | Core | ❌ No | |
+| Create a repository | Start a repository in a folder | `git init` | Core | ✅ Yes | Init... in the Git menu; opens a folder that is a repository already, and asks first in a folder inside another |
 | Clone | Copy a remote repository | `git clone` | Core | ❌ No | |
 | Clone options | Clone shallow, partial, one branch, or with submodules | `git clone --depth`, `--filter`, `--single-branch`, `--recurse-submodules` | Advanced | ❌ No | |
 | Shallow repositories | Show a history cut off at a depth | — | Advanced | ✅ Yes | Reloads the history when the shallow boundary moves |

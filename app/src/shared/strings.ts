@@ -88,6 +88,8 @@ export const strings = {
     downloadGit: 'Download Git',
     quit: 'Quit',
     openRepositories: 'Open Repositories',
+    initRepository: 'Init a Repository',
+    init: 'Init',
     openInTerminal: 'Open in Terminal',
     open: 'Open',
     crashed: (error: string) => `Something went wrong: ${error}`,
@@ -152,6 +154,10 @@ export const strings = {
     quitTitle: 'Quit',
     quitApp: `Are you sure you want to quit ${brand}?`,
     quit: 'Quit',
+    initTitle: 'Init',
+    initInside: (folder: string, repository: string) =>
+      `${folder} is inside the repository ${repository}. Are you sure you want to init a repository in it?`,
+    init: 'Init',
     cancel: 'Cancel',
   },
   tabs: {
@@ -159,6 +165,7 @@ export const strings = {
     newTab: 'New Tab',
     worktrees: 'Worktrees',
     browse: 'Browse...',
+    init: 'Init...',
     removeRecent: (name: string) => `Remove ${name} from this list`,
     label: (name: string, folder?: string) =>
       folder === undefined ? name : `${name} (${folder})`,
@@ -442,6 +449,10 @@ export const strings = {
     couldNotOpen: (folder: string, reason: string) =>
       `Couldn't open ${folder}. ${reason}`,
     notInRepository: (folder: string) => `${folder} is not in a git repository`,
+    alreadyRepository: (folder: string) =>
+      `${folder} is a git repository already, so it was opened`,
+    couldNotInit: (folder: string, reason: string) =>
+      `Couldn't init a repository in ${folder}. ${reason}`,
     noToolOpens: (folder: string) => `${folder} can't be opened`,
     noFolder: (tool: string) => `${tool} doesn't know which folder it's in`,
     notRepository: (root: string) => `${root} is not a git repository`,
@@ -621,6 +632,8 @@ export const strings = {
     refreshingFailed: 'Refreshing the tab failed',
     readingImageFailed: (path: string) => `Reading the image ${path} failed`,
     openingFailed: (folder: string) => `Opening ${folder} failed`,
+    initialized: (folder: string) => `Initialized a repository in ${folder}`,
+    initFailed: (folder: string) => `Initing a repository in ${folder} failed`,
     openingAsked: (folders: string) =>
       `Asked from the command line to open ${folders}`,
     checkingCommandFailed: 'Checking the ff command failed',

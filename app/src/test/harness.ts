@@ -21,7 +21,12 @@ import type {
 import type { Timer } from '../tools/git/main/autoFetch';
 import { CommanderTool } from '../tools/commander/main/tool';
 import { TerminalTool, type HostListener } from '../tools/terminal/main/tool';
-import { GitTool, refreshDelays, type GitHost } from '../tools/git/main/tool';
+import {
+  GitTool,
+  refreshDelays,
+  type FolderPurpose,
+  type GitHost,
+} from '../tools/git/main/tool';
 import type { Log } from '../shell/main/log';
 import type { CommandInstall, CommandState } from '../main/terminalCommand';
 import { Shell, type ShellHost } from '../shell/main/shell';
@@ -99,6 +104,8 @@ export interface OpenView {
 
 export class FakeHost implements ShellHost, GitHost {
   folders: readonly string[] = [];
+  folder: string | undefined;
+  readonly folderPurposes: FolderPurpose[] = [];
   problems: readonly string[] = [];
   update: UpdateStatus = { kind: 'idle' };
   commandPlace = false;
@@ -127,6 +134,11 @@ export class FakeHost implements ShellHost, GitHost {
 
   chooseFolders(): Promise<readonly string[]> {
     return Promise.resolve(this.folders);
+  }
+
+  chooseFolder(purpose: FolderPurpose): Promise<string | undefined> {
+    this.folderPurposes.push(purpose);
+    return Promise.resolve(this.folder);
   }
 
   openSettings(): Promise<void> {
