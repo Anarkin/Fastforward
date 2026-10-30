@@ -465,7 +465,7 @@ suite('Style', () => {
       createElement(TabBar, {
         tabs: [
           { id: '1', tool: 'git', root: '/a', name: 'a' },
-          { id: '2', tool: 'files', root: '/a', name: 'a' },
+          { id: '2', tool: 'commander', root: '/a', name: 'a' },
           { id: '3', tool: 'terminal', root: '/a', name: 'a' },
         ],
         active: '1',
@@ -480,7 +480,7 @@ suite('Style', () => {
       allWithClass(bar, 'tool-icon').map((icon) => cascaded(icon, 'color')),
       [
         'var(--color-git-icon)',
-        'var(--color-files-icon)',
+        'var(--color-commander-icon)',
         'var(--color-terminal-icon)',
       ],
     );

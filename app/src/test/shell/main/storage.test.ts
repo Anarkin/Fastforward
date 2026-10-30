@@ -58,8 +58,8 @@ suite('Storage', () => {
       tab,
       root,
       { id: '2', tool: 'x' },
-      { id: 3, tool: 'files' },
-      { id: '4', tool: 'files', root: 4 },
+      { id: 3, tool: 'commander' },
+      { id: '4', tool: 'commander', root: 4 },
     ]);
     assert.deepStrictEqual(storageOf(store).savedTabs, [tab]);
   });
@@ -68,16 +68,16 @@ suite('Storage', () => {
     const store = new FakeStore();
     const git = toolState(store, 'git');
     await git.update('recentRepositories', ['/r']);
-    await toolState(store, 'files').update('recentRepositories', ['/f']);
+    await toolState(store, 'commander').update('recentRepositories', ['/f']);
     assert.deepStrictEqual(git.get('recentRepositories'), ['/r']);
     assert.deepStrictEqual(store.get('tools'), {
       git: { recentRepositories: ['/r'] },
-      files: { recentRepositories: ['/f'] },
+      commander: { recentRepositories: ['/f'] },
     });
     await git.update('recentRepositories', undefined);
     assert.deepStrictEqual(store.get('tools'), {
       git: {},
-      files: { recentRepositories: ['/f'] },
+      commander: { recentRepositories: ['/f'] },
     });
   });
 
@@ -91,7 +91,7 @@ suite('Storage', () => {
     const storage = storageOf(store);
     const tabs = [
       { id: '1', tool: 'git', root: path.resolve('one') },
-      { id: '2', tool: 'files' },
+      { id: '2', tool: 'commander' },
     ] as const;
     const saved = storage.setSavedTabs(tabs, '2');
     assert.deepStrictEqual(storage.savedTabs, tabs);
@@ -102,7 +102,7 @@ suite('Storage', () => {
 
   test('reads the saved tabs once until they change, as every message a tool posts asks which tab is open', async () => {
     const storage = storageOf();
-    await storage.setSavedTabs([{ id: '1', tool: 'files' }], '1');
+    await storage.setSavedTabs([{ id: '1', tool: 'commander' }], '1');
     const read = storage.savedTabs;
     assert.strictEqual(storage.savedTabs, read);
     await storage.setSavedTabs([{ id: '2', tool: 'terminal' }], '2');
@@ -114,7 +114,7 @@ suite('Storage', () => {
     const root = path.resolve('r');
     await store.update(tabsKey, [
       { id: '1', tool: 'git', root },
-      { id: '1', tool: 'files' },
+      { id: '1', tool: 'commander' },
     ]);
     assert.deepStrictEqual(storageOf(store).savedTabs, [
       { id: '1', tool: 'git', root },

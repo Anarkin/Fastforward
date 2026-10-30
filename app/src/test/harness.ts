@@ -19,7 +19,7 @@ import type {
   UpdateStatus,
 } from '../shell/shared/protocol';
 import type { Timer } from '../tools/git/main/autoFetch';
-import { FilesTool } from '../tools/files/main/tool';
+import { CommanderTool } from '../tools/commander/main/tool';
 import { TerminalTool, type HostListener } from '../tools/terminal/main/tool';
 import { GitTool, refreshDelays, type GitHost } from '../tools/git/main/tool';
 import type { Log } from '../shell/main/log';
@@ -301,7 +301,7 @@ export function newView(
           choose: () => host.chooseFolders(),
         },
       ),
-      files: new FilesTool(),
+      commander: new CommanderTool(),
       git: view,
     }),
   );

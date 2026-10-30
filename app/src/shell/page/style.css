@@ -645,8 +645,8 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
   color: var(--color-git-icon);
 }
 
-.tool-files {
-  color: var(--color-files-icon);
+.tool-commander {
+  color: var(--color-commander-icon);
 }
 
 .tool-terminal {

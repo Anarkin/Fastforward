@@ -234,7 +234,7 @@ suite('Terminal', () => {
         ),
       [
         ['terminal', true],
-        ['files', false],
+        ['commander', false],
         ['git', true],
       ],
     );

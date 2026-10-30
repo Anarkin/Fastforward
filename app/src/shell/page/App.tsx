@@ -185,7 +185,7 @@ export function App({ name, post, listen }: Props) {
   const closeAbout = useCallback(() => showPopup('about', false), [showPopup]);
   const [listeners] = useState<ToolListeners>(() => ({
     terminal: new Set(),
-    files: new Set(),
+    commander: new Set(),
     git: new Set(),
   }));
 

@@ -157,7 +157,7 @@ function commandNotice(installed: CommandInstall): Notice | undefined {
   }
 }
 
-const mostSpecificFirst: readonly ToolId[] = ['git', 'files', 'terminal'];
+const mostSpecificFirst: readonly ToolId[] = ['git', 'commander', 'terminal'];
 
 function reasonOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);

@@ -18,7 +18,7 @@
 - The commit list is read whole up front with `git rev-list` and kept by the main process per worktree, so the list knows its full size and locations can jump to any commit's position
 - The tags of each remote are listed with `git ls-remote --tags` after each fetch and kept in the app's state rather than as refs, as git keeps no remote-tracking refs for tags, and refs would show up in other tools; it costs one more connection per remote after each fetch
 
-### Commander, `files`
+### Commander, `commander`
 
 - TODO
 

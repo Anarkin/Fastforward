@@ -83,7 +83,7 @@ const toolSigns: Record<ToolId, React.ReactNode> = {
       stroke="none"
     />
   ),
-  files: (
+  commander: (
     <path
       d="M2 4.25C2 3.56 2.56 3 3.25 3h3.1c.33 0 .65.13.88.37L8.6 4.75h4.15c.69 0 1.25.56 1.25 1.25v6.25c0 .69-.56 1.25-1.25 1.25h-9.5C2.56 13.5 2 12.94 2 12.25Z"
       fill="currentColor"

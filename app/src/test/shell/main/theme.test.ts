@@ -10,7 +10,7 @@ const pageFolders = [
   'shell/page',
   'ui',
   'tools/git/page',
-  'tools/files/page',
+  'tools/commander/page',
   'tools/terminal/page',
 ];
 
@@ -109,7 +109,7 @@ suite('Theme', () => {
           ...defaults.tools.git,
           colors: { light: { icon: '#c00' }, dark: { icon: '#f00' } },
         },
-        files: { colors: { light: {}, dark: {} } },
+        commander: { colors: { light: {}, dark: {} } },
         terminal: {
           ...defaults.tools.terminal,
           colors: { light: { red: '#a00' }, dark: { red: '#e00' } },

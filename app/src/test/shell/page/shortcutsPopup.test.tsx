@@ -15,7 +15,7 @@ function titles(tool: Parameters<typeof shortcutGroupsFor>[0]): string[] {
   return shortcutGroupsFor(tool).map((group) => group.title);
 }
 
-function pinnedRow(tool: 'git' | 'files'): string | undefined {
+function pinnedRow(tool: 'git' | 'commander'): string | undefined {
   return tagsWith(
     renderToStaticMarkup(
       <ShortcutsPopup
@@ -121,7 +121,7 @@ suite('Shortcuts popup', () => {
   });
 
   test("shows the tabs' and the app's shortcuts first, always in the same place, then those of the active tab's tool only", () => {
-    assert.deepStrictEqual(titles('files'), ['Tabs', 'App']);
+    assert.deepStrictEqual(titles('commander'), ['Tabs', 'App']);
     assert.deepStrictEqual(titles(undefined), ['Tabs', 'App']);
     assert.deepStrictEqual(titles('git').slice(0, 3), [
       'Tabs',
@@ -131,7 +131,7 @@ suite('Shortcuts popup', () => {
   });
 
   test('pins the shortcuts of the tabs and the app in a row of their own atop those of the tool, so they stay in place whatever tab is open', () => {
-    for (const tool of ['git', 'files'] as const) {
+    for (const tool of ['git', 'commander'] as const) {
       const html = renderToStaticMarkup(
         <ShortcutsPopup
           groups={shortcutGroupsFor(tool)}
@@ -155,7 +155,7 @@ suite('Shortcuts popup', () => {
 
   test('sets the pinned row apart from the shortcuts of the tool by a line, only when there are some', () => {
     assert.match(pinnedRow('git') ?? '', /\bdivided\b/);
-    assert.doesNotMatch(pinnedRow('files') ?? '', /\bdivided\b/);
+    assert.doesNotMatch(pinnedRow('commander') ?? '', /\bdivided\b/);
   });
 
   test('leaves the developer tools off the screen, as they are for whoever works on the app, though their keys still open them', () => {

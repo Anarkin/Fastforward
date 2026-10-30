@@ -68,7 +68,7 @@
         }
       }
     },
-    "files": {
+    "commander": {
       "colors": {
         "light": {
           "icon": "#1a5fb4"

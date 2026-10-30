@@ -80,8 +80,8 @@ suite('Shell with no tab open', () => {
       log,
       [],
       async (view) => {
-        await view.connection.receive({ type: 'newTab', tool: 'files' });
-        await view.connection.receive({ type: 'newTab', tool: 'files' });
+        await view.connection.receive({ type: 'newTab', tool: 'commander' });
+        await view.connection.receive({ type: 'newTab', tool: 'commander' });
         const [first] = view.page.tabs?.tabs ?? [];
         assert.ok(first);
         view.page.clear();
@@ -314,7 +314,7 @@ suite('Shell with no tab open', () => {
       [],
       async (view) => {
         await view.connection.receive({ type: 'newTab', tool: 'terminal' });
-        await view.connection.receive({ type: 'newTab', tool: 'files' });
+        await view.connection.receive({ type: 'newTab', tool: 'commander' });
         const lines = info.length;
         const warnings = warned.length;
         for (const message of [
@@ -327,7 +327,7 @@ suite('Shell with no tab open', () => {
         }
         assert.deepStrictEqual(
           view.page.tabs?.tabs.map((tab) => tab.tool),
-          ['terminal', 'files'],
+          ['terminal', 'commander'],
         );
         assert.strictEqual(view.settings.settings.autoSortTabs, false);
         assert.deepStrictEqual(host.opened, []);
@@ -356,13 +356,13 @@ suite('Shell with no tab open', () => {
       [],
       async (view) => {
         await view.connection.receive({ type: 'newTab', tool: 'terminal' });
-        await view.connection.receive({ type: 'newTab', tool: 'files' });
+        await view.connection.receive({ type: 'newTab', tool: 'commander' });
         await view.settings.set('autoSortTabs', true);
         view.shell.reloadSettings();
         await view.connection.receive({ type: 'ready' });
         assert.deepStrictEqual(
           view.page.tabs?.tabs.map((tab) => tab.tool),
-          ['files', 'terminal'],
+          ['commander', 'terminal'],
         );
       },
       true,
@@ -397,7 +397,10 @@ suite('Shell with no tab open', () => {
             first,
             second,
           ]);
-          await view.connection.receive({ type: 'openWith', tool: 'files' });
+          await view.connection.receive({
+            type: 'openWith',
+            tool: 'commander',
+          });
           assert.deepStrictEqual(
             view.page.tabs?.tabs.map((tab) => tab.root),
             [first, second],
@@ -421,19 +424,25 @@ suite('Shell with no tab open', () => {
         [],
         async (view) => {
           await view.shell.openFolders([work]);
-          await view.connection.receive({ type: 'openWith', tool: 'files' });
+          await view.connection.receive({
+            type: 'openWith',
+            tool: 'commander',
+          });
           await view.connection.receive({ type: 'openIn' });
           assert.deepStrictEqual(view.page.last('chooseTool'), {
             type: 'chooseTool',
             folders: [work],
             choices: [
               { tool: 'terminal', fits: true },
-              { tool: 'files', fits: false },
+              { tool: 'commander', fits: false },
               { tool: 'git', fits: false },
             ],
             picked: 'terminal',
           });
-          await view.connection.receive({ type: 'openWith', tool: 'files' });
+          await view.connection.receive({
+            type: 'openWith',
+            tool: 'commander',
+          });
           assert.strictEqual(view.page.tabs?.tabs.length, 1);
           await view.connection.receive({ type: 'openIn' });
           await view.connection.receive({
@@ -443,7 +452,7 @@ suite('Shell with no tab open', () => {
           assert.deepStrictEqual(
             view.page.tabs?.tabs.map((tab) => [tab.tool, tab.root]),
             [
-              ['files', work],
+              ['commander', work],
               ['terminal', work],
             ],
           );
@@ -465,7 +474,10 @@ suite('Shell with no tab open', () => {
         [],
         async (view) => {
           await view.shell.openFolders([work]);
-          await view.connection.receive({ type: 'openWith', tool: 'files' });
+          await view.connection.receive({
+            type: 'openWith',
+            tool: 'commander',
+          });
           removeFolder(work);
           view.page.clear();
           await view.connection.receive({ type: 'openIn' });
@@ -491,7 +503,7 @@ suite('Shell with no tab open', () => {
         await view.settings.set('autoSortTabs', true);
         view.shell.reloadSettings();
         await view.connection.receive({ type: 'ready' });
-        await view.connection.receive({ type: 'newTab', tool: 'files' });
+        await view.connection.receive({ type: 'newTab', tool: 'commander' });
         await view.connection.receive({ type: 'newTab', tool: 'terminal' });
         const terminal = view.page.tabs?.tabs.find(
           (tab) => tab.tool === 'terminal',

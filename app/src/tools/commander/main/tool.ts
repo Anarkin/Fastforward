@@ -1,7 +1,7 @@
 import { EmptyTool } from '../../../shell/main/emptyTool';
 
-export class FilesTool extends EmptyTool<'files'> {
+export class CommanderTool extends EmptyTool<'commander'> {
   constructor() {
-    super('files');
+    super('commander');
   }
 }

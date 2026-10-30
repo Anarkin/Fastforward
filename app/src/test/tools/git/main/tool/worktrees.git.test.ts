@@ -388,10 +388,10 @@ suite('Git tool of worktrees', () => {
         folders: [root],
         choices: [
           { tool: 'terminal', fits: true },
-          { tool: 'files', fits: true },
+          { tool: 'commander', fits: true },
           { tool: 'git', fits: false },
         ],
-        picked: 'files',
+        picked: 'commander',
       });
     });
   });

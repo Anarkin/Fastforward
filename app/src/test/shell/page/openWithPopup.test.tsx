@@ -9,14 +9,14 @@ import { noop } from '../../fixtures';
 
 function question(
   folders: readonly string[],
-  picked: 'git' | 'files',
+  picked: 'git' | 'commander',
 ): ToWebviewOf<'chooseTool'> {
   return {
     type: 'chooseTool',
     folders,
     choices: [
       { tool: 'git', fits: picked === 'git' },
-      { tool: 'files', fits: true },
+      { tool: 'commander', fits: true },
       { tool: 'terminal', fits: true },
     ],
     picked,
@@ -45,13 +45,13 @@ suite('Open With popup', () => {
       await act(async () => {
         root.render(
           <OpenWithPopup
-            choice={question(['/plain'], 'files')}
+            choice={question(['/plain'], 'commander')}
             onOpen={noop}
             onClose={noop}
           />,
         );
       });
-      assert.strictEqual(focused(), strings.tools.files);
+      assert.strictEqual(focused(), strings.tools.commander);
       await act(async () => {
         root.render(
           <OpenWithPopup
@@ -103,17 +103,17 @@ suite('Open With popup', () => {
       await act(async () => {
         root.render(
           <OpenWithPopup
-            choice={question(['/plain'], 'files')}
+            choice={question(['/plain'], 'commander')}
             onOpen={noop}
             onClose={noop}
           />,
         );
       });
-      assert.strictEqual(focused(), strings.tools.files);
+      assert.strictEqual(focused(), strings.tools.commander);
       assert.strictEqual(await press('ArrowDown'), strings.tools.terminal);
-      assert.strictEqual(await press('ArrowDown'), strings.tools.files);
+      assert.strictEqual(await press('ArrowDown'), strings.tools.commander);
       assert.strictEqual(await press('ArrowUp'), strings.tools.terminal);
-      assert.strictEqual(await press('Home'), strings.tools.files);
+      assert.strictEqual(await press('Home'), strings.tools.commander);
       assert.strictEqual(await press('End'), strings.tools.terminal);
       await act(async () => {
         root.unmount();

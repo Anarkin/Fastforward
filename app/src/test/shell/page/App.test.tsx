@@ -30,7 +30,9 @@ suite('Window', () => {
       '<div class="empty-state">No tab is open. Use + to open one. The app menu is at the top right.</div>',
     );
     assert.strictEqual(
-      emptyState([{ id: '1', tool: 'files', name: strings.tools.files }]),
+      emptyState([
+        { id: '1', tool: 'commander', name: strings.tools.commander },
+      ]),
       null,
     );
   });
@@ -165,8 +167,8 @@ suite('Window', () => {
         send({
           type: 'chooseTool',
           folders: ['/repo'],
-          choices: [{ tool: 'files', fits: true }],
-          picked: 'files',
+          choices: [{ tool: 'commander', fits: true }],
+          picked: 'commander',
         });
       });
       await press('F1', true);
@@ -206,13 +208,13 @@ suite('Window', () => {
     const items = newTabItems({ git: recent }, (tool) => opened.push(tool));
     assert.deepStrictEqual(
       items.map((item) => ('label' in item ? item.label : undefined)),
-      [strings.tools.terminal, strings.tools.files, strings.tools.git],
+      [strings.tools.terminal, strings.tools.commander, strings.tools.git],
     );
     const [, files, git] = items;
     assert.ok(git && 'label' in git && files && 'label' in files);
     assert.strictEqual(git.submenu, recent);
     assert.ok(git.icon !== undefined && files.icon !== undefined);
     files.onClick?.();
-    assert.deepStrictEqual(opened, ['files']);
+    assert.deepStrictEqual(opened, ['commander']);
   });
 });

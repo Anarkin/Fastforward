@@ -87,7 +87,7 @@ suite('Git tool of folders asked for from the command line', () => {
         folders: [third, inner],
         choices: [
           { tool: 'terminal', fits: true },
-          { tool: 'files', fits: true },
+          { tool: 'commander', fits: true },
           { tool: 'git', fits: true },
         ],
         picked: 'git',
@@ -133,20 +133,20 @@ suite('Git tool of folders asked for from the command line', () => {
         folders: [plain],
         choices: [
           { tool: 'terminal', fits: true },
-          { tool: 'files', fits: true },
+          { tool: 'commander', fits: true },
           { tool: 'git', fits: false },
         ],
-        picked: 'files',
+        picked: 'commander',
       });
       await view.connection.receive({ type: 'openWith', tool: 'git' });
       assert.deepStrictEqual(tabNames(view), ['main']);
-      await view.connection.receive({ type: 'openWith', tool: 'files' });
+      await view.connection.receive({ type: 'openWith', tool: 'commander' });
       const tabs = view.page.last('tabs');
       assert.deepStrictEqual(
         tabs?.tabs.map(({ tool, name, root }) => ({ tool, name, root })),
         [
           { tool: 'git', name: 'main', root: repository.root },
-          { tool: 'files', name: strings.tools.files, root: plain },
+          { tool: 'commander', name: strings.tools.commander, root: plain },
         ],
       );
       assert.strictEqual(tabs?.active, tabs?.tabs.at(-1)?.id);
@@ -199,7 +199,7 @@ suite('Git tool of folders asked for from the command line', () => {
           ),
         [strings.messages.noToolOpens(missing)],
       );
-      await view.connection.receive({ type: 'openWith', tool: 'files' });
+      await view.connection.receive({ type: 'openWith', tool: 'commander' });
       assert.deepStrictEqual(tabNames(view), ['main']);
     });
   });
@@ -222,8 +222,8 @@ suite('Git tool of folders asked for from the command line', () => {
       await view.shell.openFolders([other]);
       await view.shell.openFolders([other, `${other}${path.sep}`]);
       assert.deepStrictEqual(view.page.last('chooseTool')?.folders, [other]);
-      await view.connection.receive({ type: 'openWith', tool: 'files' });
-      assert.deepStrictEqual(tabNames(view), ['main', strings.tools.files]);
+      await view.connection.receive({ type: 'openWith', tool: 'commander' });
+      assert.deepStrictEqual(tabNames(view), ['main', strings.tools.commander]);
     });
   });
 

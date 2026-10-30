@@ -6,7 +6,7 @@ import type { ToHost } from '../shared/protocol';
 import { strings } from '../../shared/strings';
 import type { ToolId, ToWebviewOfTool } from '../shared/tools';
 import type { ContextMenuItem, OpenMenu } from '../../ui/contextMenu';
-import { FilesTool } from '../../tools/files/page/tool';
+import { CommanderTool } from '../../tools/commander/page/tool';
 import { TerminalTool } from '../../tools/terminal/page/tool';
 import {
   terminalGroups,
@@ -29,7 +29,7 @@ export const toolShortcuts: Readonly<Record<ToolId, readonly ShortcutGroup[]>> =
       strings.shortcuts.groups,
       terminalKeymap,
     ),
-    files: [],
+    commander: [],
     git: shortcutGroupsOf(gitGroups, strings.shortcuts.groups, gitKeymap),
   };
 
@@ -102,7 +102,7 @@ export function ToolViews({
         onCopy={copyText}
         onNewTabItems={terminalItems}
       />
-      <FilesTool active={active === 'files'} />
+      <CommanderTool active={active === 'commander'} />
       <GitTool
         active={active === 'git'}
         post={postGit}

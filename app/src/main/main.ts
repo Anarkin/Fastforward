@@ -45,7 +45,7 @@ import {
 } from '../shell/main/settings';
 import { JsonFileStore, Storage, toolState } from '../shell/main/storage';
 import { themeCss } from '../shell/main/theme';
-import { FilesTool } from '../tools/files/main/tool';
+import { CommanderTool } from '../tools/commander/main/tool';
 import { hostProcess } from '../tools/terminal/main/hostProcess';
 import { writeShellIntegration } from '../tools/terminal/main/shellIntegration';
 import { shellLaunch } from '../tools/terminal/main/shellLaunch';
@@ -419,7 +419,7 @@ async function start(asked: readonly string[]): Promise<void> {
               (process.env.PATH ?? '').split(path.delimiter),
             ),
     },
-    { terminal: terminalTool, files: new FilesTool(), git: gitTool },
+    { terminal: terminalTool, commander: new CommanderTool(), git: gitTool },
   );
   if (asked.length > 0) {
     void view.openFolders(asked);

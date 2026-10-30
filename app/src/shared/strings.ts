@@ -139,7 +139,7 @@ export const strings = {
   },
   tools: {
     terminal: 'Terminal',
-    files: 'Commander',
+    commander: 'Commander',
     git: 'Git',
   },
   openWith: {

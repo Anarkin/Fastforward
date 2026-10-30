@@ -136,7 +136,7 @@ suite('App', () => {
   test('closes the + menu when + is clicked again, or on Ctrl+T again', async () => {
     const add = page.locator('.tab-add');
     const menu = page.locator('.context-menu', {
-      hasText: strings.tools.files,
+      hasText: strings.tools.commander,
     });
     await add.click();
     await menu.waitFor();
