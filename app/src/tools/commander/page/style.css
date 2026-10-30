@@ -1,0 +1,105 @@
+.commander-columns[data-active-side='left'] > .column:nth-child(1)::after,
+.commander-columns[data-active-side='right'] > .column:nth-child(2)::after {
+  box-shadow: inset 0 0 0 2px var(--color-focus);
+}
+
+.drive-label {
+  font-size: calc(var(--font-size) * 0.85);
+}
+
+.commander-line {
+  display: grid;
+  grid-template-columns:
+    16px
+    minmax(0, 1fr)
+    calc(var(--commander-extension) * var(--commander-advance))
+    calc(var(--commander-size) * var(--commander-advance))
+    calc(var(--commander-date) * var(--commander-advance));
+  column-gap: var(--commander-advance);
+  align-items: center;
+  box-sizing: border-box;
+  height: var(--commander-row-height);
+  padding: 0 8px;
+  line-height: var(--commander-row-height);
+  font-family: var(--monospace-font-family);
+  font-size: var(--monospace-font-size);
+  letter-spacing: calc(var(--commander-advance) - 1ch);
+}
+
+.commander-header {
+  flex: none;
+  color: var(--muted-foreground);
+  border-bottom: 1px solid var(--color-border);
+  box-sizing: content-box;
+}
+
+.commander-line > * {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.commander-sort {
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  background: none;
+  border: none;
+}
+
+.commander-sort:hover {
+  color: var(--color-foreground);
+}
+
+.commander-line > .commander-size {
+  text-align: right;
+}
+
+.commander-heading {
+  position: relative;
+  display: flex;
+}
+
+.commander-heading > .commander-sort {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.commander-heading.commander-size > .commander-sort {
+  text-align: right;
+}
+
+.column-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1;
+  width: 5px;
+  cursor: col-resize;
+}
+
+.commander-icon {
+  display: flex;
+  align-items: center;
+  color: var(--muted-foreground);
+}
+
+.commander-icon .folder-icon {
+  color: var(--color-commander-icon);
+}
+
+.row.commander-line {
+  height: var(--commander-row-height);
+  padding: 0 8px;
+}
+
+.row.commander-row.hidden {
+  color: var(--muted-foreground);
+}

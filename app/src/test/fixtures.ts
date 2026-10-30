@@ -103,8 +103,17 @@ export async function waitFor(
   }
 }
 
-export function stylesheet(name = 'style.css'): string {
-  return readFileSync(join(__dirname, '../../src/shell/page', name), 'utf8');
+const stylesheets = [
+  'shell/page',
+  'tools/commander/page',
+  'tools/terminal/page',
+  'tools/git/page',
+].map((folder) => `${folder}/style.css`);
+
+export function stylesheet(): string {
+  return stylesheets
+    .map((file) => readFileSync(join(__dirname, '../../src', file), 'utf8'))
+    .join('\n');
 }
 
 export function policyOfPage(): Map<string, string[]> {

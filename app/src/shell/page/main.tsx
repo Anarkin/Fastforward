@@ -1,3 +1,4 @@
+import './style.css';
 import { createRoot } from 'react-dom/client';
 import type { Bridge } from '../shared/bridge';
 import { setKeyPlatform } from '../shared/keymap';
@@ -8,7 +9,6 @@ import { windowButtonColor } from './titleBar';
 import { errorText } from '../../ui/errors';
 import { installOverlayScrollbars } from '../../ui/overlayScrollbars';
 import { watchDevicePixels } from '../../ui/devicePixels';
-import './style.css';
 
 declare global {
   interface Window {

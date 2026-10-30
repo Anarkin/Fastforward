@@ -1,4 +1,5 @@
 import { useEffect, useReducer, useRef, useState } from 'react';
+import './style.css';
 import { commanderKeymap } from '../shared/keymap';
 import {
   sides,

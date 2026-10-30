@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import '@xterm/xterm/css/xterm.css';
+import './style.css';
 import { folderMenuItems } from './folderMenu';
 import { loadXterm, TerminalView } from './view';
 import type {

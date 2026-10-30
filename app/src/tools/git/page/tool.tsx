@@ -1,4 +1,5 @@
 import { gitKeymap } from '../shared/keymap';
+import './style.css';
 import {
   useCallback,
   useEffect,

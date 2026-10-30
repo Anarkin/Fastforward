@@ -22,6 +22,10 @@ function importsOf(file: string): string[] {
   );
 }
 
+function read(file: string): string {
+  return fs.readFileSync(path.join(source, file), 'utf8');
+}
+
 function toolOf(file: string): string | undefined {
   return /^tools\/([^/]+)\//.exec(file)?.[1];
 }
@@ -69,6 +73,26 @@ suite('Architecture', () => {
             .filter((target) => toolOf(target) !== undefined)
             .map((target) => `${file} -> ${target}`),
         ),
+      [],
+    );
+  });
+
+  test("keeps the styles of the shell and of each tool in a sheet of their own, each tool's loaded by its page after the shell's", () => {
+    assert.deepStrictEqual(
+      sourceFiles.filter((file) => file.endsWith('.css')).toSorted(),
+      [
+        'shell/page/style.css',
+        ...tools.map((tool) => `tools/${tool}/page/style.css`),
+      ].toSorted(),
+    );
+    assert.ok(read('shell/page/main.tsx').startsWith("import './style.css';"));
+    assert.deepStrictEqual(
+      tools.filter(
+        (tool) =>
+          !read(`tools/${tool}/page/tool.tsx`).includes(
+            "import './style.css';",
+          ),
+      ),
       [],
     );
   });
