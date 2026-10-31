@@ -32,6 +32,22 @@ export interface CommanderView {
   readonly canElevate: boolean;
   readonly active: Side;
   readonly panes: Readonly<Record<Side, PaneView | undefined>>;
+  readonly kept: ReadonlyMap<string, KeptTab>;
+}
+
+interface KeptTab {
+  readonly active: Side;
+  readonly panes: Readonly<Record<Side, PaneView | undefined>>;
+}
+
+function keptAway(view: CommanderView): ReadonlyMap<string, KeptTab> {
+  if (view.tab === undefined || view.viewing !== undefined) {
+    return view.kept;
+  }
+  return new Map(view.kept).set(view.tab, {
+    active: view.active,
+    panes: view.panes,
+  });
 }
 
 export const emptyView: CommanderView = {
@@ -47,6 +63,7 @@ export const emptyView: CommanderView = {
   canElevate: false,
   active: 'right',
   panes: { left: undefined, right: undefined },
+  kept: new Map(),
 };
 
 export type ViewAction =
@@ -115,22 +132,28 @@ export function reduceView(
   action: ViewAction,
 ): CommanderView {
   switch (action.type) {
-    case 'show':
-      return view.tab === action.tab
-        ? view
-        : {
-            ...view,
-            tab: action.tab,
-            viewing: action.file,
-            active: emptyView.active,
-            panes: emptyView.panes,
-          };
+    case 'show': {
+      if (view.tab === action.tab) {
+        return view;
+      }
+      const kept = keptAway(view);
+      const back = kept.get(action.tab);
+      return {
+        ...view,
+        tab: action.tab,
+        viewing: action.file,
+        active: back?.active ?? emptyView.active,
+        panes: back?.panes ?? emptyView.panes,
+        kept,
+      };
+    }
     case 'hide':
       return {
         ...view,
         tab: undefined,
         viewing: undefined,
         panes: emptyView.panes,
+        kept: keptAway(view),
       };
     case 'settings': {
       const settled = {

@@ -286,7 +286,7 @@ suite('App commander', () => {
     );
   });
 
-  test('views a file in a tab of its own with F3, saved as one, and goes back to the commander with Escape', async () => {
+  test('views a file in a tab of its own with F3, saved as one, and goes back to the commander with Escape, its row still selected', async () => {
     await select('notes');
     await page.keyboard.press('F3');
     await page.locator('.tabs .tab.active', { hasText: 'notes.txt' }).waitFor();
@@ -304,6 +304,10 @@ suite('App commander', () => {
     assert.strictEqual(
       await page.locator('.tabs .tab', { hasText: 'notes.txt' }).count(),
       0,
+    );
+    assert.match(
+      (await right().locator('.commander-row.selected').textContent()) ?? '',
+      /^notes/,
     );
   });
 

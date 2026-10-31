@@ -172,6 +172,28 @@ suite('Commander view', () => {
     );
   });
 
+  test('keeps the selected rows and the active side of a tab while another tab is shown, for when it is shown again', () => {
+    const files = [entry('a.txt'), entry('b.txt')];
+    let view = run(
+      { type: 'show', tab: '1' },
+      listing('/work', files),
+      { type: 'select', side: 'left', key: 'b.txt' },
+      { type: 'activate', side: 'left' },
+      { type: 'show', tab: '2' },
+    );
+    assert.strictEqual(view.panes.left, undefined);
+    assert.strictEqual(view.active, 'right');
+
+    view = reduceView(view, { type: 'show', tab: '3', file: '/work/a.txt' });
+    view = reduceView(view, { type: 'hide' });
+    view = reduceView(view, { type: 'show', tab: '1' });
+    assert.strictEqual(view.active, 'left');
+    assert.deepStrictEqual(shown(view).selected, 'b.txt');
+
+    view = reduceView(view, listing('/work', files));
+    assert.deepStrictEqual(shown(view).selected, 'b.txt');
+  });
+
   test('selects only rows there are', () => {
     const view = run(
       { type: 'show', tab: '1' },
