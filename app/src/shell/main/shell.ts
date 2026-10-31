@@ -21,6 +21,7 @@ import {
   type ToolId,
 } from '../shared/tools';
 import { sameRoot, type SavedTab, type Storage } from './storage';
+import { TabHistory } from './tabHistory';
 
 export interface Page {
   post(message: ToWebview): void;
@@ -171,6 +172,7 @@ export class Shell {
   private askingFolders: Promise<void> = Promise.resolve();
   private unsentNotices: readonly ToWebviewOf<'notice'>[] = [];
   private readonly inFlight = new InFlight();
+  private readonly history = new TabHistory();
 
   constructor(
     private readonly log: Log,
@@ -451,6 +453,9 @@ export class Shell {
     const tabs = storage.savedTabs;
     const active = tabs.find((tab) => tab.id === id) ?? tabs.at(0);
     this.save(storage.setSavedTabs(tabs, active?.id));
+    if (active !== undefined) {
+      this.history.visit(active.id);
+    }
     if (page.disposed) {
       return;
     }
@@ -483,9 +488,8 @@ export class Shell {
     const rest = tabs.toSpliced(index, 1);
     const activeId = this.activeTab()?.id;
     const active =
-      activeId === id
-        ? rest.at(Math.min(index, rest.length - 1))?.id
-        : activeId;
+      activeId === id ? this.history.after(id, rest, index) : activeId;
+    this.history.forget(id);
     this.save(storage.setSavedTabs(rest, active));
     this.tools[closed.tool].closed(page, closed);
     if (active === activeId && active !== undefined) {

@@ -224,7 +224,7 @@ suite('Git tool with two tabs', () => {
     }
   });
 
-  test('opens the tab before the shown one when that closes last in the list', async () => {
+  test('goes back to the tab shown before when the shown one closes, rather than to the one next to it', async () => {
     const last = await tempRepository(path.join(folder, 'last'));
     await last.commit('last');
     await withView(log, [repository.root, other, last.root], async (own) => {
@@ -236,7 +236,7 @@ suite('Git tool with two tabs', () => {
         type: 'closeTab',
         tab: tabOf(own.page, last.root),
       });
-      assert.strictEqual(shownTabs(own.page)?.active, other);
+      assert.strictEqual(shownTabs(own.page)?.active, repository.root);
     });
   });
 
