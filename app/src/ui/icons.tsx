@@ -102,7 +102,11 @@ const toolSigns: Record<ToolId, React.ReactNode> = {
 };
 
 export function FolderIcon() {
-  return <Icon className="folder-icon">{toolSigns.commander}</Icon>;
+  return (
+    <Icon className="folder-icon">
+      <path d="M2.5 4.5a1 1 0 0 1 1-1h3l1.5 1.5h4.5a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1Z" />
+    </Icon>
+  );
 }
 
 export function FileIcon() {

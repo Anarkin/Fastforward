@@ -115,10 +115,6 @@
   height: 16px;
 }
 
-.commander-icon .folder-icon {
-  color: var(--color-commander-icon);
-}
-
 .row.commander-line {
   height: var(--commander-row-height);
   padding: 0 8px;

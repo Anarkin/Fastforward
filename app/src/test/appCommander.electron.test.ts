@@ -138,7 +138,7 @@ suite('App commander', () => {
     );
   });
 
-  test('draws the system icon of each file, and the folder icon of the app for folders', async () => {
+  test('draws the system icon of each file, and an outlined folder for folders', async () => {
     await waitFor(
       async () =>
         (await icons()).every(
