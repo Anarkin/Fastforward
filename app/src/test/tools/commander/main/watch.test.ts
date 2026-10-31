@@ -35,15 +35,20 @@ suite('Watching a folder of the commander', () => {
     assert.ok(changes < 5, String(changes));
   });
 
-  test('tells of the folder removed itself', async () => {
+  test('tells of the folder removed itself, once the watching has started, which macOS does a moment after it is asked', async () => {
     const watched = path.join(folder, 'watched');
     fs.mkdirSync(watched);
     let changes = 0;
     stops.push(watchFolder(watched, () => changes++, 10));
+    await waitFor(() => {
+      fs.writeFileSync(path.join(watched, 'ready.txt'), String(Date.now()));
+      return changes > 0;
+    }, 'the watching to start');
+    const before = changes;
 
     fs.rmSync(watched, { recursive: true });
 
-    await waitFor(() => changes > 0, 'the removal');
+    await waitFor(() => changes > before, 'the removal');
   });
 
   test('tells nothing once stopped, nor for a folder it could not watch', async () => {
