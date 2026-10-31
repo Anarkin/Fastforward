@@ -36,12 +36,38 @@ interface Ask {
   readonly before: number;
   readonly after: number;
   readonly topOf: (anchorIndex: number, count: number) => number;
+  readonly follow?: boolean;
 }
 
 const minThumb = 24;
 
 export function topWithin(top: number, count: number, screen: number): number {
   return Math.max(0, Math.min(top, count - screen));
+}
+
+export function scrolled(
+  loaded: Loaded,
+  by: number,
+  screen: number,
+  size: number,
+): { readonly top: number; readonly refill: boolean } | undefined {
+  const first = loaded.rows[0];
+  const last = loaded.rows.at(-1);
+  if (first === undefined || last === undefined) {
+    return undefined;
+  }
+  const atStart = first.start === 0;
+  const atEnd = last.end >= size;
+  const lastTop = Math.max(0, loaded.rows.length - screen);
+  const wanted = loaded.top + by;
+  if ((wanted < 0 && !atStart) || (wanted > lastTop && !atEnd)) {
+    return undefined;
+  }
+  const top = Math.max(0, Math.min(wanted, lastTop));
+  return {
+    top,
+    refill: (!atStart && top < screen) || (!atEnd && top > lastTop - screen),
+  };
 }
 
 export function thumbOf(
@@ -133,12 +159,19 @@ export function Viewer({
           return;
         }
         asked.current = undefined;
+        const shownStart = current.current.rows[current.current.top]?.start;
+        const shown = pending.ask.follow
+          ? rows.rows.findIndex((row) => row.start === shownStart)
+          : -1;
         setLoaded({
           rows: rows.rows,
-          top: pending.ask.topOf(rows.anchorIndex, rows.rows.length),
+          top:
+            shown === -1
+              ? pending.ask.topOf(rows.anchorIndex, rows.rows.length)
+              : topWithin(shown, rows.rows.length, screen),
         });
       }),
-    [listen, tab],
+    [listen, tab, screen],
   );
 
   useEffect(() => body.current?.focus(), []);
@@ -168,16 +201,34 @@ export function Viewer({
         return;
       }
       showBar();
-      ask({
-        anchor: from.start,
-        exact: true,
-        before: Math.max(0, -by) + screen,
-        after: Math.max(0, by) + screen * 2,
-        topOf: (anchorIndex, count) =>
-          topWithin(anchorIndex + by, count, screen),
-      });
+      const within = scrolled(current.current, by, screen, size ?? 0);
+      if (within === undefined) {
+        ask({
+          anchor: from.start,
+          exact: true,
+          before: Math.max(0, -by) + screen * 2,
+          after: Math.max(0, by) + screen * 3,
+          topOf: (anchorIndex, count) =>
+            topWithin(anchorIndex + by, count, screen),
+        });
+        return;
+      }
+      const moved = { rows, top: within.top };
+      current.current = moved;
+      setLoaded(moved);
+      const shown = rows[within.top];
+      if (within.refill && shown !== undefined) {
+        ask({
+          anchor: shown.start,
+          exact: true,
+          before: screen * 2,
+          after: screen * 3,
+          follow: true,
+          topOf: (anchorIndex, count) => topWithin(anchorIndex, count, screen),
+        });
+      }
     },
-    [ask, screen, showBar],
+    [ask, screen, showBar, size],
   );
 
   const jump = useCallback(
@@ -185,8 +236,8 @@ export function Viewer({
       ask({
         anchor,
         exact: false,
-        before: screen,
-        after: screen * 2,
+        before: screen * 2,
+        after: screen * 3,
         topOf: (anchorIndex, count) => topWithin(anchorIndex, count, screen),
       }),
     [ask, screen],
@@ -200,8 +251,9 @@ export function Viewer({
     ask({
       anchor: from?.start ?? 0,
       exact: from !== undefined,
-      before: screen,
-      after: screen * 2,
+      before: screen * 2,
+      after: screen * 3,
+      follow: true,
       topOf: (anchorIndex, count) => topWithin(anchorIndex, count, screen),
     });
   }, [ask, size, screen]);

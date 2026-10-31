@@ -1,6 +1,10 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { thumbOf, topWithin } from '../../../../tools/commander/page/viewer';
+import {
+  scrolled,
+  thumbOf,
+  topWithin,
+} from '../../../../tools/commander/page/viewer';
 
 const rows = (count: number, length = 10) =>
   Array.from({ length: count }, (_, index) => ({
@@ -38,5 +42,43 @@ suite('Commander viewer', () => {
       top: 0,
       height: 500,
     });
+  });
+
+  test('scrolls within the rows loaded at once, asking for more near their edges, and only past them waits for the file', () => {
+    const middle = {
+      rows: rows(100, 10).map((row) => ({
+        ...row,
+        start: row.start + 5000,
+        end: row.end + 5000,
+      })),
+      top: 40,
+    };
+    assert.deepStrictEqual(scrolled(middle, 3, 10, 1_000_000), {
+      top: 43,
+      refill: false,
+    });
+    assert.deepStrictEqual(scrolled(middle, -35, 10, 1_000_000), {
+      top: 5,
+      refill: true,
+    });
+    assert.deepStrictEqual(scrolled(middle, 45, 10, 1_000_000), {
+      top: 85,
+      refill: true,
+    });
+    assert.strictEqual(scrolled(middle, 60, 10, 1_000_000), undefined);
+    assert.strictEqual(scrolled(middle, -41, 10, 1_000_000), undefined);
+  });
+
+  test('stops at the start and the end of the file, asking for nothing there', () => {
+    const whole = { rows: rows(30), top: 2 };
+    assert.deepStrictEqual(scrolled(whole, -5, 10, 300), {
+      top: 0,
+      refill: false,
+    });
+    assert.deepStrictEqual(scrolled(whole, 50, 10, 300), {
+      top: 20,
+      refill: false,
+    });
+    assert.strictEqual(scrolled({ rows: [], top: 0 }, 1, 10, 0), undefined);
   });
 });

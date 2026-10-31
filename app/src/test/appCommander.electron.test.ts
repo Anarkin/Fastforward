@@ -366,9 +366,17 @@ suite('App commander', () => {
       ),
     );
 
+    for (let press = 0; press < 30; press++) {
+      void page.keyboard.press('ArrowDown');
+    }
+    await waitFor(
+      async () => (await first()) === 'row 30',
+      'every press of a key held down to move a row',
+    );
+
     await page.keyboard.press('PageDown');
     await waitFor(
-      async () => /^row [1-9]/.test((await first()) ?? ''),
+      async () => /^row [4-9]/.test((await first()) ?? ''),
       'a page further down',
     );
     await page.keyboard.press('End');
