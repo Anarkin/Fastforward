@@ -222,4 +222,23 @@ suite('App commander', () => {
       return typeof extension === 'number' && extension > 10;
     }, 'the width of the extension to be saved');
   });
+
+  test('saves the order a header of a side is clicked for to the user settings, for that side', async () => {
+    await right().locator('.commander-sort', { hasText: 'Size' }).click();
+    await waitFor(() => {
+      const file = path.join(profile, 'settings.user.json');
+      if (!fs.existsSync(file)) {
+        return false;
+      }
+      const sort: unknown = JSON.parse(fs.readFileSync(file, 'utf8'))?.tools
+        ?.commander?.sort;
+      return (
+        JSON.stringify(sort) ===
+        JSON.stringify({
+          left: { column: 'extension', descending: false },
+          right: { column: 'size', descending: false },
+        })
+      );
+    }, 'the order of the right side to be saved');
+  });
 });

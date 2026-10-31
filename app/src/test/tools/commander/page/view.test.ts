@@ -41,6 +41,17 @@ const shown = (view: CommanderView) => ({
   selected: view.panes.left?.selected,
 });
 
+const sortedBy = (left: 'name' | 'size'): ViewAction => ({
+  type: 'settings',
+  showHidden: true,
+  sort: {
+    left: { column: left, descending: false },
+    right: { column: 'extension', descending: false },
+  },
+  columns: { extension: 10, size: 15, date: 16 },
+  defaultColumns: { extension: 10, size: 15, date: 16 },
+});
+
 suite('Commander view', () => {
   test('selects the first row of a folder listed, and keeps it selected when the folder is listed again', () => {
     const files = [entry('a.txt'), entry('b.txt')];
@@ -83,7 +94,10 @@ suite('Commander view', () => {
       {
         type: 'settings',
         showHidden: false,
-        sort: { column: 'extension', descending: false },
+        sort: {
+          left: { column: 'extension', descending: false },
+          right: { column: 'extension', descending: false },
+        },
         columns: { extension: 4, size: 15, date: 10 },
         defaultColumns: { extension: 10, size: 15, date: 16 },
       },
@@ -103,8 +117,16 @@ suite('Commander view', () => {
         entry('a.zip', { size: 2 }),
       ]),
       { type: 'select', side: 'left', key: 'a.zip' },
-      { type: 'sort', side: 'left', column: 'size' },
-      { type: 'sort', side: 'left', column: 'size' },
+      {
+        type: 'sort',
+        side: 'left',
+        sort: { column: 'size', descending: false },
+      },
+      {
+        type: 'sort',
+        side: 'left',
+        sort: { column: 'size', descending: true },
+      },
     );
 
     assert.deepStrictEqual(shown(view), {
@@ -115,6 +137,21 @@ suite('Commander view', () => {
       column: 'size',
       descending: true,
     });
+  });
+
+  test('lists a side in the order the settings give it, and sorts it again when they change it', () => {
+    const files = [entry('b.txt', { size: 1 }), entry('a.zip', { size: 2 })];
+    const view = run(
+      sortedBy('name'),
+      { type: 'show', tab: '1' },
+      listing('/work', files),
+    );
+    assert.deepStrictEqual(shown(view).rows, ['..', 'a.zip', 'b.txt']);
+    assert.deepStrictEqual(shown(reduceView(view, sortedBy('size'))).rows, [
+      '..',
+      'b.txt',
+      'a.zip',
+    ]);
   });
 
   test('selects only rows there are', () => {

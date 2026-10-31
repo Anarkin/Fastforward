@@ -71,7 +71,10 @@
     },
     "commander": {
       "showHidden": true,
-      "sort": { "column": "extension", "descending": false },
+      "sort": {
+        "left": { "column": "extension", "descending": false },
+        "right": { "column": "extension", "descending": false }
+      },
       "columns": { "extension": 10, "size": 15, "date": 16 },
       "colors": {
         "light": {

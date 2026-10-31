@@ -20,6 +20,8 @@ import {
 } from '../shared/protocol';
 import {
   isColumnWidths,
+  isSort,
+  type Sorts,
   type ColumnWidths,
   type CommanderSettings,
 } from '../shared/settings';
@@ -34,6 +36,7 @@ export interface CommanderAccess {
   readonly defaultColumns: () => ColumnWidths;
   readonly saveShowHidden: (shown: boolean) => Promise<void>;
   readonly saveColumns: (columns: ColumnWidths) => Promise<void>;
+  readonly saveSorts: (sorts: Sorts) => Promise<void>;
   readonly watch: WatchFolder;
   readonly fileIcon: (file: string) => Promise<Uint8Array>;
   readonly platform: NodeJS.Platform;
@@ -167,6 +170,16 @@ export class CommanderTool implements Tool<'commander'> {
         if (isColumnWidths(message.columns)) {
           const { extension, size, date } = message.columns;
           await this.access.saveColumns({ extension, size, date });
+          this.postSettings(page);
+        }
+        return undefined;
+      case 'sort':
+        if (isSide(message.side) && isSort(message.sort)) {
+          const { column, descending } = message.sort;
+          await this.access.saveSorts({
+            ...this.access.settings().sort,
+            [message.side]: { column, descending },
+          });
           this.postSettings(page);
         }
         return undefined;

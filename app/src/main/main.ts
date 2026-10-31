@@ -401,6 +401,7 @@ async function start(asked: readonly string[]): Promise<void> {
       userSettings.setIn('commander', 'showHidden', shown),
     saveColumns: (columns) =>
       userSettings.setIn('commander', 'columns', columns),
+    saveSorts: (sorts) => userSettings.setIn('commander', 'sort', sorts),
     watch: watchFolder,
     fileIcon: async (file) =>
       (await app.getFileIcon(file, { size: 'normal' })).toPNG(),

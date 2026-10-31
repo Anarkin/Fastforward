@@ -89,5 +89,6 @@ export const toolSettingChoices: ReadonlyMap<string, readonly string[]> =
   new Map<string, readonly string[]>([
     ['tools.git.diffLayout', diffLayouts],
     ['tools.terminal.renderer', renderers],
-    ['tools.commander.sort.column', sortColumns],
+    ['tools.commander.sort.left.column', sortColumns],
+    ['tools.commander.sort.right.column', sortColumns],
   ]);

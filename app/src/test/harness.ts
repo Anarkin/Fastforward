@@ -328,6 +328,7 @@ export function newView(
         defaultColumns: () => settings.defaults.tools.commander.columns,
         saveShowHidden: () => Promise.resolve(),
         saveColumns: () => Promise.resolve(),
+        saveSorts: () => Promise.resolve(),
         watch: () => () => {},
         fileIcon: () => Promise.resolve(new Uint8Array()),
         platform: process.platform,

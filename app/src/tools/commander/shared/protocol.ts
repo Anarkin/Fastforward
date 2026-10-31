@@ -1,4 +1,4 @@
-import type { ColumnWidths, Sort } from './settings';
+import type { ColumnWidths, Sort, Sorts } from './settings';
 
 export interface Entry {
   readonly name: string;
@@ -34,13 +34,14 @@ export type CommanderToHost =
     }
   | { readonly type: 'listDrives' }
   | { readonly type: 'columns'; readonly columns: ColumnWidths }
+  | { readonly type: 'sort'; readonly side: Side; readonly sort: Sort }
   | { readonly type: 'showHidden'; readonly shown: boolean };
 
 export type CommanderToWebview =
   | {
       readonly type: 'settings';
       readonly showHidden: boolean;
-      readonly sort: Sort;
+      readonly sort: Sorts;
       readonly columns: ColumnWidths;
       readonly defaultColumns: ColumnWidths;
     }

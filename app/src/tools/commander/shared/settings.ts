@@ -15,10 +15,21 @@ export type ColumnWidths = Readonly<Record<SizedColumn, number>>;
 
 export const maxColumnWidth = 100;
 
+export type Sorts = Readonly<Record<'left' | 'right', Sort>>;
+
 export interface CommanderSettings {
   readonly showHidden: boolean;
-  readonly sort: Sort;
+  readonly sort: Sorts;
   readonly columns: ColumnWidths;
+}
+
+export function isSort(value: unknown): value is Sort {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    sortColumns.some((column) => column === Reflect.get(value, 'column')) &&
+    typeof Reflect.get(value, 'descending') === 'boolean'
+  );
 }
 
 export function isColumnWidths(value: unknown): value is ColumnWidths {

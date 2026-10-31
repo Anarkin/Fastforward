@@ -14,7 +14,10 @@ import type {
   CommanderToWebview,
   Entry,
 } from '../../../../tools/commander/shared/protocol';
-import type { ColumnWidths } from '../../../../tools/commander/shared/settings';
+import type {
+  ColumnWidths,
+  Sorts,
+} from '../../../../tools/commander/shared/settings';
 import { iconUrl } from '../../../../tools/commander/shared/icons';
 import { strings } from '../../../../shared/strings';
 import { removeFolder, tempFolder } from '../../../repositories';
@@ -80,7 +83,7 @@ function commander(
   const iconsLoaded: string[] = [];
   const settings = {
     showHidden: true,
-    sort: { column: 'extension', descending: false } as const,
+    sort: defaultSorts,
     columns: defaultColumns,
   };
   const fileSystem: FileSystem = {
@@ -115,6 +118,11 @@ function commander(
       const watch = { folder: watched, changed };
       watching.push(watch);
       return () => watching.splice(watching.indexOf(watch), 1);
+    },
+    saveSorts: (sorts) => {
+      saved.push(sorts);
+      settings.sort = sorts;
+      return Promise.resolve();
     },
     saveColumns: (columns) => {
       saved.push(columns);
@@ -152,6 +160,11 @@ function commander(
 const tab: Tab = { id: '1', tool: 'commander' };
 
 const defaultColumns: ColumnWidths = { extension: 10, size: 15, date: 16 };
+
+const defaultSorts: Sorts = {
+  left: { column: 'extension', descending: false },
+  right: { column: 'extension', descending: false },
+};
 
 const forged = (json: string): CommanderToHost => JSON.parse(json);
 
@@ -423,6 +436,39 @@ suite('Commander tool', () => {
     assert.deepStrictEqual(iconsLoaded, [at('notes.txt')]);
   });
 
+  test('saves the order of the side whose header was clicked, keeping the other, and tells the page', async () => {
+    const { tool, page, send, saved } = commander({});
+    tool.ready(page);
+
+    await send({
+      type: 'sort',
+      side: 'right',
+      sort: { column: 'size', descending: true },
+    });
+    await send(
+      forged(
+        '{ "type": "sort", "side": "right", "sort": { "column": "owner", "descending": true } }',
+      ),
+    );
+    await send(
+      forged(
+        '{ "type": "sort", "side": "right", "sort": { "column": "size", "descending": "yes" } }',
+      ),
+    );
+    await send(
+      forged(
+        '{ "type": "sort", "side": "middle", "sort": { "column": "size", "descending": true } }',
+      ),
+    );
+
+    const sorted: Sorts = {
+      left: defaultSorts.left,
+      right: { column: 'size', descending: true },
+    };
+    assert.deepStrictEqual(saved, [sorted]);
+    assert.deepStrictEqual(page.of('settings').at(-1)?.sort, sorted);
+  });
+
   test('lists the drives again when asked, as drives come and go', async () => {
     const { page, send } = commander({}, ['C:\\']);
 
@@ -483,7 +529,7 @@ suite('Commander tool', () => {
     assert.deepStrictEqual(page.of('settings').at(-1), {
       type: 'settings',
       showHidden: true,
-      sort: { column: 'extension', descending: false },
+      sort: defaultSorts,
       columns: { extension: 6, size: 12, date: 16 },
       defaultColumns,
     });

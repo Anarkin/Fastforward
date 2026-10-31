@@ -4,14 +4,8 @@ import {
   type Entry,
   type Side,
 } from '../shared/protocol';
-import type { ColumnWidths, Sort, SortColumn } from '../shared/settings';
-import {
-  nextSort,
-  rowsOf,
-  selectionAfter,
-  type Row,
-  type Selection,
-} from './listing';
+import type { ColumnWidths, Sort, Sorts } from '../shared/settings';
+import { rowsOf, selectionAfter, type Row, type Selection } from './listing';
 
 export interface PaneView {
   readonly folder: string;
@@ -25,7 +19,7 @@ export interface PaneView {
 export interface CommanderView {
   readonly tab: string | undefined;
   readonly showHidden: boolean;
-  readonly sort: Sort;
+  readonly sorts: Sorts;
   readonly columns: ColumnWidths;
   readonly defaultColumns: ColumnWidths;
   readonly active: Side;
@@ -35,7 +29,10 @@ export interface CommanderView {
 export const emptyView: CommanderView = {
   tab: undefined,
   showHidden: true,
-  sort: { column: 'extension', descending: false },
+  sorts: {
+    left: { column: 'extension', descending: false },
+    right: { column: 'extension', descending: false },
+  },
   columns: { extension: 10, size: 15, date: 16 },
   defaultColumns: { extension: 10, size: 15, date: 16 },
   active: 'right',
@@ -52,7 +49,7 @@ export type ViewAction =
       readonly type: 'listing';
     })
   | { readonly type: 'select'; readonly side: Side; readonly key: string }
-  | { readonly type: 'sort'; readonly side: Side; readonly column: SortColumn }
+  | { readonly type: 'sort'; readonly side: Side; readonly sort: Sort }
   | { readonly type: 'activate'; readonly side: Side }
   | { readonly type: 'switchSide' };
 
@@ -66,16 +63,19 @@ function selectionIn(pane: PaneView | undefined): Selection | undefined {
   );
 }
 
+function sameSort(one: Sort, other: Sort): boolean {
+  return one.column === other.column && one.descending === other.descending;
+}
+
 function relisted(
   pane: PaneView | undefined,
-  defaultSort: Sort,
+  sort: Sort,
   folder: string,
   entries: readonly Entry[],
   parent: boolean,
   showHidden: boolean,
   selected: string | undefined,
 ): PaneView {
-  const sort = pane?.sort ?? defaultSort;
   const rows = rowsOf(entries, parent, showHidden, sort);
   return {
     folder,
@@ -115,30 +115,30 @@ export function reduceView(
       const settled = {
         ...view,
         showHidden: action.showHidden,
-        sort: action.sort,
+        sorts: action.sort,
         columns: action.columns,
         defaultColumns: action.defaultColumns,
       };
-      return action.showHidden === view.showHidden
-        ? settled
-        : sides.reduce((next, side) => {
-            const pane = view.panes[side];
-            return pane
-              ? withPane(
-                  next,
-                  side,
-                  relisted(
-                    pane,
-                    pane.sort,
-                    pane.folder,
-                    pane.entries,
-                    pane.parent,
-                    action.showHidden,
-                    undefined,
-                  ),
-                )
-              : next;
-          }, settled);
+      return sides.reduce((next, side) => {
+        const pane = view.panes[side];
+        return pane &&
+          (action.showHidden !== view.showHidden ||
+            !sameSort(pane.sort, action.sort[side]))
+          ? withPane(
+              next,
+              side,
+              relisted(
+                pane,
+                action.sort[side],
+                pane.folder,
+                pane.entries,
+                pane.parent,
+                action.showHidden,
+                undefined,
+              ),
+            )
+          : next;
+      }, settled);
     }
     case 'listing':
       return action.tab === view.tab
@@ -147,7 +147,7 @@ export function reduceView(
             action.side,
             relisted(
               view.panes[action.side],
-              view.sort,
+              view.panes[action.side]?.sort ?? view.sorts[action.side],
               action.folder,
               action.entries,
               action.parent,
@@ -167,11 +167,10 @@ export function reduceView(
       if (pane === undefined) {
         return view;
       }
-      const sort = nextSort(pane.sort, action.column);
       return withPane(view, action.side, {
         ...pane,
-        sort,
-        rows: rowsOf(pane.entries, pane.parent, view.showHidden, sort),
+        sort: action.sort,
+        rows: rowsOf(pane.entries, pane.parent, view.showHidden, action.sort),
       });
     }
     case 'activate':

@@ -9,6 +9,7 @@ import {
 } from '../shared/protocol';
 import { Pane } from './pane';
 import { emptyView, reduceView } from './view';
+import { nextSort } from './listing';
 import type { ColumnWidths } from '../shared/settings';
 import { columnFocusAttribute } from '../../../ui/columnFocus';
 import { followDrag } from '../../../ui/followDrag';
@@ -147,7 +148,14 @@ export function CommanderTool({
             driveTrigger={triggers[side]}
             onSelect={(key) => dispatch({ type: 'select', side, key })}
             onOpen={openIn(side)}
-            onSort={(column) => dispatch({ type: 'sort', side, column })}
+            onSort={(column) => {
+              const sort = nextSort(
+                view.panes[side]?.sort ?? view.sorts[side],
+                column,
+              );
+              dispatch({ type: 'sort', side, sort });
+              post({ type: 'sort', side, sort });
+            }}
             onActivate={() => dispatch({ type: 'activate', side })}
             onSwitchSide={() => dispatch({ type: 'switchSide' })}
             onDrive={(drive) => {
