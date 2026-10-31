@@ -14,6 +14,8 @@ import type { ColumnWidths } from '../shared/settings';
 import { columnFocusAttribute } from '../../../ui/columnFocus';
 import { followDrag } from '../../../ui/followDrag';
 import { useBinding } from '../../../ui/shortcuts';
+import { ConfirmPopup } from '../../../shell/page/confirmPopup';
+import { strings } from '../../../shared/strings';
 
 const minimumShare = 0.15;
 
@@ -44,6 +46,7 @@ export function CommanderTool({
 }) {
   const [view, dispatch] = useReducer(reduceView, emptyView);
   const [drives, setDrives] = useState<readonly string[]>([]);
+  const [noAccess, setNoAccess] = useState<string>();
   const [share, setShare] = useState(0.5);
   const [resized, setResized] = useState<{
     readonly from: ColumnWidths;
@@ -62,6 +65,8 @@ export function CommanderTool({
       listen((message) => {
         if (message.type === 'drives') {
           setDrives(message.drives);
+        } else if (message.type === 'noAccess') {
+          setNoAccess(message.folder);
         } else {
           dispatch(message);
         }
@@ -174,6 +179,16 @@ export function CommanderTool({
           />
         ))}
       </div>
+      {noAccess !== undefined && (
+        <ConfirmPopup
+          title={strings.commander.noAccessTitle}
+          message={strings.commander.noAccess(noAccess)}
+          confirm={strings.confirm.ok}
+          cancel={null}
+          onConfirm={() => setNoAccess(undefined)}
+          onCancel={() => setNoAccess(undefined)}
+        />
+      )}
     </div>
   );
 }

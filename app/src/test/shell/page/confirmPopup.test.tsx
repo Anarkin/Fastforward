@@ -35,6 +35,25 @@ suite('Confirm popup', () => {
     );
   });
 
+  test('tells without asking when there is nothing to cancel, offering its one button', () => {
+    const html = renderToStaticMarkup(
+      <ConfirmPopup
+        title="No Access"
+        message="You don't have access to C:\Config.Msi."
+        confirm="OK"
+        cancel={null}
+        onConfirm={noop}
+        onCancel={noop}
+      />,
+    );
+    assert.deepStrictEqual(
+      [
+        ...html.matchAll(/<button class="confirm-button[^"]*"[^>]*>([^<]*)</g),
+      ].map((match) => match[1]),
+      ['OK'],
+    );
+  });
+
   test('makes confirming its default, the button Enter presses, and no other', () => {
     const html = renderToStaticMarkup(
       <ConfirmPopup {...asked} onConfirm={noop} onCancel={noop} />,

@@ -362,11 +362,14 @@ suite('Commander tool', () => {
     assert.deepStrictEqual(page.listings().slice(2), []);
   });
 
-  test('keeps the folder of a side and says why when another can’t be opened', async () => {
+  test('keeps the folder of a side and asks the page to say there is no access, in a window rather than a notice, when another can’t be read', async () => {
     const { tool, page, send, notices } = commander({
-      [root]: [folder('System Volume Information')],
+      [root]: [folder('System Volume Information'), folder('Config.Msi')],
       [at('System Volume Information')]: Object.assign(new Error('denied'), {
         code: 'EPERM',
+      }),
+      [at('Config.Msi')]: Object.assign(new Error('denied'), {
+        code: 'EACCES',
       }),
     });
     await tool.show(page, tab);
@@ -377,19 +380,40 @@ suite('Commander tool', () => {
       side: 'left',
       name: 'System Volume Information',
     });
+    await send({ type: 'open', tab: '1', side: 'right', name: 'Config.Msi' });
+
+    assert.deepStrictEqual(page.of('noAccess'), [
+      { type: 'noAccess', folder: at('System Volume Information') },
+      { type: 'noAccess', folder: at('Config.Msi') },
+    ]);
+    assert.deepStrictEqual(notices, []);
+    assert.deepStrictEqual(page.listings().slice(2), [
+      `left ${root}: System Volume Information Config.Msi`,
+      `right ${root}: System Volume Information Config.Msi`,
+    ]);
+  });
+
+  test('says why in a notice when a folder can’t be opened for another reason', async () => {
+    const { tool, page, send, notices } = commander({
+      [root]: [folder('busy')],
+      [at('busy')]: Object.assign(new Error('the device is busy'), {
+        code: 'EBUSY',
+      }),
+    });
+    await tool.show(page, tab);
+
+    await send({ type: 'open', tab: '1', side: 'left', name: 'busy' });
 
     assert.deepStrictEqual(notices, [
       {
         level: 'error',
         message: strings.commander.couldNotOpen(
-          at('System Volume Information'),
-          strings.commander.accessDenied,
+          at('busy'),
+          'the device is busy',
         ),
       },
     ]);
-    assert.deepStrictEqual(page.listings().slice(2), [
-      `left ${root}: System Volume Information`,
-    ]);
+    assert.deepStrictEqual(page.of('noAccess'), []);
   });
 
   test('shows the folder opened last on a side, when an earlier one is listed after it', async () => {

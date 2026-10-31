@@ -69,24 +69,25 @@ function parentOf(folder: string): string | undefined {
   return parent === folder ? undefined : parent;
 }
 
+function codeOf(error: unknown): unknown {
+  return error instanceof Error && 'code' in error ? error.code : undefined;
+}
+
 function isGone(error: unknown): boolean {
-  const code =
-    error instanceof Error && 'code' in error ? error.code : undefined;
+  const code = codeOf(error);
   return code === 'ENOENT' || code === 'ENOTDIR';
 }
 
+function isDenied(error: unknown): boolean {
+  const code = codeOf(error);
+  return code === 'EACCES' || code === 'EPERM';
+}
+
 function reasonOf(error: unknown): string {
-  const code =
-    error instanceof Error && 'code' in error ? error.code : undefined;
-  switch (code) {
-    case 'EACCES':
-    case 'EPERM':
-      return strings.commander.accessDenied;
-    case 'ENOENT':
-      return strings.commander.gone;
-    default:
-      return error instanceof Error ? error.message : String(error);
+  if (codeOf(error) === 'ENOENT') {
+    return strings.commander.gone;
   }
+  return error instanceof Error ? error.message : String(error);
 }
 
 async function isFolder(folder: string): Promise<boolean> {
@@ -357,10 +358,14 @@ export class CommanderTool implements Tool<'commander'> {
         return;
       }
       if (!refreshing) {
-        this.shell.notice(page, {
-          level: 'error',
-          message: strings.commander.couldNotOpen(folder, reasonOf(error)),
-        });
+        if (isDenied(error)) {
+          this.post(page, { type: 'noAccess', folder });
+        } else {
+          this.shell.notice(page, {
+            level: 'error',
+            message: strings.commander.couldNotOpen(folder, reasonOf(error)),
+          });
+        }
         this.postListing(page, tab, side, pane, undefined);
       } else if (isGone(error)) {
         await this.list(

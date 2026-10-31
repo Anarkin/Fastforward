@@ -1,8 +1,10 @@
 import * as assert from 'node:assert';
+import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
+import { strings } from '../shared/strings';
 import { waitFor } from './fixtures';
 import { closeOrKill, launchApp, waitForFocus } from './appFixtures';
 import { removeFolder, tempFolder } from './repositories';
@@ -184,6 +186,48 @@ suite('App commander', () => {
       right().locator('.virtual-rows'),
       'the list of the right side',
     );
+  });
+
+  test('says in a window, not a notice, that a folder can’t be read, closing it with Enter', async () => {
+    const locked = path.join(opened, 'locked');
+    fs.mkdirSync(locked);
+    const user = process.env.USERNAME ?? '';
+    if (process.platform === 'win32') {
+      execFileSync('icacls', [locked, '/deny', `${user}:(RX)`]);
+    } else {
+      fs.chmodSync(locked, 0o000);
+    }
+    try {
+      await right().locator('.commander-row', { hasText: 'locked' }).click();
+      await waitFor(
+        async () =>
+          (
+            await right().locator('.commander-row.selected').textContent()
+          )?.includes('locked') === true,
+        'the locked folder to be selected',
+      );
+      await page.keyboard.press('Enter');
+      const popup = page.locator('.confirm-popup');
+      await popup.waitFor();
+      assert.strictEqual(
+        await popup.locator('.confirm-body > span').textContent(),
+        strings.commander.noAccess(locked),
+      );
+      assert.strictEqual(await page.locator('.notice').count(), 0);
+      await page.keyboard.press('Enter');
+      await popup.waitFor({ state: 'detached' });
+      assert.strictEqual(
+        await right().locator('.column-name').textContent(),
+        opened,
+      );
+    } finally {
+      if (process.platform === 'win32') {
+        execFileSync('icacls', [locked, '/remove:d', user]);
+      } else {
+        fs.chmodSync(locked, 0o755);
+      }
+      fs.rmdirSync(locked);
+    }
   });
 
   test.skipIf(process.platform !== 'win32')(

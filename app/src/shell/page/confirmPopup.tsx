@@ -10,12 +10,14 @@ export function ConfirmPopup({
   confirm,
   onConfirm,
   onCancel,
+  cancel = strings.confirm.cancel,
 }: {
   title: string;
   message: string;
   confirm: string;
   onConfirm: () => void;
   onCancel: () => void;
+  cancel?: string | null;
 }) {
   const popup = useRef<HTMLDivElement>(null);
   const confirming = useRef<HTMLButtonElement>(null);
@@ -50,9 +52,11 @@ export function ConfirmPopup({
         <div className="confirm-body">
           <span>{message}</span>
           <div className="confirm-buttons">
-            <button className="confirm-button" onClick={onCancel}>
-              {strings.confirm.cancel}
-            </button>
+            {cancel !== null && (
+              <button className="confirm-button" onClick={onCancel}>
+                {cancel}
+              </button>
+            )}
             <button
               className="confirm-button default"
               ref={confirming}

@@ -49,6 +49,7 @@ export type CommanderToWebview =
   | { readonly type: 'drives'; readonly drives: readonly string[] }
   | { readonly type: 'show'; readonly tab: string }
   | { readonly type: 'hide' }
+  | { readonly type: 'noAccess'; readonly folder: string }
   | {
       readonly type: 'listing';
       readonly tab: string;

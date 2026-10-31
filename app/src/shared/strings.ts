@@ -163,6 +163,7 @@ export const strings = {
       `${folder} is inside the repository ${repository}. Are you sure you want to init a repository in it?`,
     init: 'Init',
     cancel: 'Cancel',
+    ok: 'OK',
   },
   tabs: {
     tabs: 'Tabs',
@@ -480,7 +481,8 @@ export const strings = {
     },
     couldNotOpen: (folder: string, reason: string) =>
       `Couldn't open ${folder}. ${reason}`,
-    accessDenied: 'Access is denied.',
+    noAccessTitle: 'No Access',
+    noAccess: (folder: string) => `You don't have access to ${folder}.`,
     gone: "It doesn't exist anymore.",
   },
   find: {
