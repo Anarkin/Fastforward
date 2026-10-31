@@ -12,6 +12,10 @@ import {
 } from '../../../../tools/commander/main/helper';
 import type { Entry } from '../../../../tools/commander/shared/protocol';
 import { waitFor } from '../../../fixtures';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { watchFolder } from '../../../../tools/commander/main/watch';
+import { removeFolder, tempFolder } from '../../../repositories';
 
 const notes: Entry = {
   name: 'notes.txt',
@@ -66,6 +70,40 @@ suite('The elevated helper of the commander', () => {
 
     elevated.close();
     await waitFor(() => exited, 'the helper to stop');
+  });
+
+  test('watches a folder for the app, telling it of changes until it stops watching', async () => {
+    const folder = tempFolder('helper-watch');
+    try {
+      const elevated = await elevatedFileSystem((address) => {
+        runHelper(
+          address,
+          () => Promise.resolve(files),
+          () => {},
+          (watched, changed) => watchFolder(watched, changed, 10),
+        );
+        return Promise.resolve(true);
+      }, process.platform);
+      assert.ok(elevated);
+      let changes = 0;
+      const stop = elevated.watch(folder, () => changes++);
+
+      let made = 0;
+      await waitFor(() => {
+        fs.writeFileSync(path.join(folder, `made${made++}.txt`), 'x');
+        return changes > 0;
+      }, 'the change to be told');
+
+      stop();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      const told = changes;
+      fs.writeFileSync(path.join(folder, 'later.txt'), 'x');
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      assert.strictEqual(changes, told);
+      elevated.close();
+    } finally {
+      removeFolder(folder);
+    }
   });
 
   test('gives no file system when the user says no, or the helper never comes', async () => {

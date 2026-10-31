@@ -572,6 +572,7 @@ suite('Commander tool', () => {
       list: (each) =>
         Promise.resolve([file(`${path.basename(each)} as admin.txt`)]),
       drives: () => Promise.resolve([]),
+      watch: () => () => {},
       closed: stopped.promise,
       close: () => stopped.resolve(),
     };
@@ -651,6 +652,7 @@ suite('Commander tool', () => {
     const helper: ElevatedFileSystem = {
       list: () => Promise.reject(denied),
       drives: () => Promise.resolve([]),
+      watch: () => () => {},
       closed: new Promise(() => {}),
       close: () => {},
     };
@@ -689,6 +691,50 @@ suite('Commander tool', () => {
         asAdministrator: false,
       },
     ]);
+  });
+
+  test('watches a folder read as administrator through the helper, listing it again as it changes', async () => {
+    const helperWatching: { folder: string; changed: () => void }[] = [];
+    const listed: Record<string, Listed> = {
+      [root]: [folder('Config.Msi')],
+      [at('Config.Msi')]: Object.assign(new Error('denied'), { code: 'EPERM' }),
+    };
+    let inside = [file('a.txt')];
+    const helper: ElevatedFileSystem = {
+      list: () => Promise.resolve(inside),
+      drives: () => Promise.resolve([]),
+      watch: (watched, changed) => {
+        const watch = { folder: watched, changed };
+        helperWatching.push(watch);
+        return () => helperWatching.splice(helperWatching.indexOf(watch), 1);
+      },
+      closed: new Promise(() => {}),
+      close: () => {},
+    };
+    const { tool, page, send, watched } = commander(listed, [], () =>
+      Promise.resolve(helper),
+    );
+    await tool.show(page, tab);
+    await send({ type: 'open', tab: '1', side: 'left', name: 'Config.Msi' });
+    await send({ type: 'elevate', tab: '1', side: 'left' });
+
+    assert.deepStrictEqual(
+      helperWatching.map((watch) => watch.folder),
+      [at('Config.Msi')],
+    );
+    assert.deepStrictEqual(watched(), [root]);
+
+    inside = [file('a.txt'), file('b.txt')];
+    helperWatching[0]?.changed();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.deepStrictEqual(
+      page.listings().at(-1),
+      `left ${at('Config.Msi')} ↑: a.txt b.txt`,
+    );
+
+    await send({ type: 'open', tab: '1', side: 'left', name: '..' });
+    assert.deepStrictEqual(helperWatching, []);
+    assert.deepStrictEqual(watched(), [root, root]);
   });
 
   test('stays where it was when the user says no to running as administrator, and offers it only where it can', async () => {

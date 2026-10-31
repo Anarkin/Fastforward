@@ -137,7 +137,11 @@ export class CommanderTool implements Tool<'commander'> {
   private readonly panes = new Map<string, Panes>();
   private readonly watching = new Map<
     Side,
-    { readonly folder: string; readonly stop: () => void }
+    {
+      readonly folder: string;
+      readonly elevated: boolean;
+      readonly stop: () => void;
+    }
   >();
   private fileSystem: Promise<FileSystem> | undefined;
   private readonly icons: Icons;
@@ -563,14 +567,21 @@ export class CommanderTool implements Tool<'commander'> {
     if (this.shown?.page !== page || this.shown.tab !== tab) {
       return;
     }
+    const elevated =
+      this.panes.get(tab)?.[side].elevated === true ? this.elevated : undefined;
     const current = this.watching.get(side);
-    if (current?.folder === folder) {
+    if (
+      current?.folder === folder &&
+      current.elevated === (elevated !== undefined)
+    ) {
       return;
     }
     current?.stop();
+    const watch = elevated?.watch ?? this.access.watch;
     this.watching.set(side, {
       folder,
-      stop: this.access.watch(folder, () => {
+      elevated: elevated !== undefined,
+      stop: watch(folder, () => {
         void this.list(page, tab, side, folder, 'refresh');
       }),
     });

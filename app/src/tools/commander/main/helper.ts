@@ -3,6 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { randomBytes } from 'node:crypto';
 import type { FileSystem } from './fileSystem';
+import { watchFolder, type WatchFolder } from './watch';
 
 const pipeSwitch = '--commander-helper';
 const tokenSwitch = '--commander-token';
@@ -40,10 +41,9 @@ export function helperOf(argv: readonly string[]): HelperAddress | undefined {
   return pipe && token ? { pipe, token } : undefined;
 }
 
-interface Request {
-  readonly id: number;
-  readonly folder: string;
-}
+type Request =
+  | { readonly id: number; readonly folder: string; readonly watch?: true }
+  | { readonly id: number; readonly unwatch: true };
 
 export interface HelperError {
   readonly code?: string;
@@ -79,13 +79,20 @@ export function send(socket: net.Socket, value: unknown): void {
 }
 
 function isRequest(value: unknown): value is Request {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    typeof Reflect.get(value, 'id') === 'number' &&
-    typeof Reflect.get(value, 'folder') === 'string' &&
-    path.isAbsolute(String(Reflect.get(value, 'folder')))
-  );
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    typeof Reflect.get(value, 'id') !== 'number'
+  ) {
+    return false;
+  }
+  const folder: unknown = Reflect.get(value, 'folder');
+  const watch: unknown = Reflect.get(value, 'watch');
+  return Reflect.get(value, 'unwatch') === true
+    ? folder === undefined
+    : typeof folder === 'string' &&
+        path.isAbsolute(folder) &&
+        (watch === undefined || watch === true);
 }
 
 function errorOf(error: unknown): HelperError {
@@ -103,17 +110,40 @@ export function runHelper(
   { pipe, token }: HelperAddress,
   fileSystem: () => Promise<FileSystem>,
   exit: () => void,
+  watch: WatchFolder = watchFolder,
 ): void {
+  const watchers = new Map<number, () => void>();
+  const stop = () => {
+    for (const unwatch of watchers.values()) {
+      unwatch();
+    }
+    watchers.clear();
+    exit();
+  };
   const socket = net.connect(pipe);
-  socket.on('error', exit);
-  socket.on('close', exit);
+  socket.on('error', stop);
+  socket.on('close', stop);
   send(socket, { token });
   lines(socket, (value) => {
     if (!isRequest(value)) {
       socket.destroy();
       return;
     }
-    const { id, folder } = value;
+    const { id } = value;
+    if ('unwatch' in value) {
+      watchers.get(id)?.();
+      watchers.delete(id);
+      return;
+    }
+    const { folder } = value;
+    if (value.watch === true) {
+      watchers.get(id)?.();
+      watchers.set(
+        id,
+        watch(folder, () => send(socket, { id, changed: true })),
+      );
+      return;
+    }
     void fileSystem()
       .then((files) => files.list(folder))
       .then(

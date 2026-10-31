@@ -1,6 +1,7 @@
 import * as net from 'node:net';
 import type { Entry } from '../shared/protocol';
 import type { FileSystem } from './fileSystem';
+import type { WatchFolder } from './watch';
 import {
   lines,
   newHelperAddress,
@@ -12,6 +13,7 @@ import {
 export type LaunchHelper = (address: HelperAddress) => Promise<boolean>;
 
 export interface ElevatedFileSystem extends FileSystem {
+  readonly watch: WatchFolder;
   readonly closed: Promise<void>;
   close(): void;
 }
@@ -63,6 +65,7 @@ function overSocket(socket: net.Socket): ElevatedFileSystem {
       readonly reject: (error: Error) => void;
     }
   >();
+  const watchers = new Map<number, () => void>();
   const closed = new Promise<void>((resolve) => {
     socket.on('close', () => {
       for (const { reject } of waiting.values()) {
@@ -75,6 +78,10 @@ function overSocket(socket: net.Socket): ElevatedFileSystem {
   socket.on('error', () => socket.destroy());
   lines(socket, (value) => {
     if (!isObject(value) || typeof value.id !== 'number') {
+      return;
+    }
+    if (value.changed === true) {
+      watchers.get(value.id)?.();
       return;
     }
     const answer = waiting.get(value.id);
@@ -102,6 +109,17 @@ function overSocket(socket: net.Socket): ElevatedFileSystem {
         send(socket, { id, folder });
       }),
     drives: () => Promise.resolve([]),
+    watch: (folder, onChange) => {
+      const id = ++next;
+      watchers.set(id, onChange);
+      send(socket, { id, folder, watch: true });
+      return () => {
+        watchers.delete(id);
+        if (!socket.destroyed) {
+          send(socket, { id, unwatch: true });
+        }
+      };
+    },
   };
 }
 

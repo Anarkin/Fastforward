@@ -22,7 +22,7 @@ suite('The commander helper started from the app', () => {
 
   afterAll(() => removeFolder(folder));
 
-  test('starts as the app in helper mode, without a window, lists folders over its pipe and quits once the app goes', async () => {
+  test('starts as the app in helper mode, without a window, lists and watches folders over its pipe and quits once the app goes', async () => {
     let helper: ChildProcess | undefined;
     const elevated = await elevatedFileSystem(
       (address) => {
@@ -50,6 +50,15 @@ suite('The commander helper started from the app', () => {
     await assert.rejects(elevated.list(path.join(folder, 'missing')), {
       code: 'ENOENT',
     });
+
+    let changes = 0;
+    const stop = elevated.watch(folder, () => changes++);
+    let made = 0;
+    await waitFor(() => {
+      fs.writeFileSync(path.join(folder, `made${made++}.txt`), 'x');
+      return changes > 0;
+    }, 'the helper to tell of a change');
+    stop();
 
     elevated.close();
     let code: number | null | undefined;
