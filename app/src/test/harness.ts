@@ -330,6 +330,7 @@ export function newView(
         saveColumns: () => Promise.resolve(),
         saveSorts: () => Promise.resolve(),
         watch: () => () => {},
+        realPath: (link) => Promise.resolve(link),
         fileIcon: () => Promise.resolve(new Uint8Array()),
         platform: process.platform,
         root: os.tmpdir(),

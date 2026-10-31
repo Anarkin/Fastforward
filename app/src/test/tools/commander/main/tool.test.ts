@@ -118,6 +118,10 @@ function commander(
     },
     platform: 'linux',
     elevate,
+    realPath: (link) =>
+      link === at('Documents and Settings')
+        ? Promise.resolve(at('Users'))
+        : Promise.resolve(link),
     watch: (watched, changed) => {
       const watch = { folder: watched, changed };
       watching.push(watch);
@@ -543,8 +547,14 @@ suite('Commander tool', () => {
         type: 'noAccess',
         side: 'left',
         folder: at('System Volume Information'),
+        asAdministrator: false,
       },
-      { type: 'noAccess', side: 'right', folder: at('Config.Msi') },
+      {
+        type: 'noAccess',
+        side: 'right',
+        folder: at('Config.Msi'),
+        asAdministrator: false,
+      },
     ]);
     assert.deepStrictEqual(notices, []);
     assert.deepStrictEqual(page.listings().slice(2), [
@@ -604,6 +614,74 @@ suite('Commander tool', () => {
     await send({ type: 'open', tab: '1', side: 'left', name: '..' });
     await send({ type: 'open', tab: '1', side: 'left', name: 'Config.Msi' });
     assert.deepStrictEqual(page.of('noAccess').length, 2);
+  });
+
+  test('opens where a link points when the link itself can’t be listed, as Documents and Settings, which no one may list', async () => {
+    const { tool, page, send } = commander({
+      [root]: [{ ...folder('Documents and Settings'), link: true }],
+      [at('Documents and Settings')]: Object.assign(new Error('denied'), {
+        code: 'EPERM',
+      }),
+      [at('Users')]: [folder('me')],
+    });
+    await tool.show(page, tab);
+
+    await send({
+      type: 'open',
+      tab: '1',
+      side: 'left',
+      name: 'Documents and Settings',
+    });
+
+    assert.deepStrictEqual(page.of('noAccess'), []);
+    assert.deepStrictEqual(page.listings().slice(2), [
+      `left ${at('Users')} ↑: me`,
+    ]);
+  });
+
+  test('says there is no access even as administrator, offering nothing more, when the helper is refused too', async () => {
+    const denied = Object.assign(new Error('denied'), { code: 'EPERM' });
+    const helper: ElevatedFileSystem = {
+      list: () => Promise.reject(denied),
+      drives: () => Promise.resolve([]),
+      closed: new Promise(() => {}),
+      close: () => {},
+    };
+    const { tool, page, send } = commander(
+      {
+        [root]: [folder('Locked'), folder('Config.Msi')],
+        [at('Locked')]: denied,
+        [at('Config.Msi')]: denied,
+      },
+      [],
+      () => Promise.resolve(helper),
+    );
+    await tool.show(page, tab);
+
+    await send({ type: 'open', tab: '1', side: 'left', name: 'Config.Msi' });
+    await send({ type: 'elevate', tab: '1', side: 'left' });
+    await send({ type: 'open', tab: '1', side: 'left', name: 'Locked' });
+
+    assert.deepStrictEqual(page.of('noAccess'), [
+      {
+        type: 'noAccess',
+        side: 'left',
+        folder: at('Config.Msi'),
+        asAdministrator: true,
+      },
+      {
+        type: 'noAccess',
+        side: 'left',
+        folder: at('Config.Msi'),
+        asAdministrator: false,
+      },
+      {
+        type: 'noAccess',
+        side: 'left',
+        folder: at('Locked'),
+        asAdministrator: false,
+      },
+    ]);
   });
 
   test('stays where it was when the user says no to running as administrator, and offers it only where it can', async () => {

@@ -68,6 +68,7 @@ export type CommanderToWebview =
       readonly type: 'noAccess';
       readonly side: Side;
       readonly folder: string;
+      readonly asAdministrator: boolean;
     }
   | {
       readonly type: 'listing';

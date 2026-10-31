@@ -42,6 +42,7 @@ export interface CommanderAccess {
   readonly fileIcon: (file: string) => Promise<Uint8Array>;
   readonly platform: NodeJS.Platform;
   readonly elevate?: () => Promise<ElevatedFileSystem | undefined>;
+  readonly realPath: (link: string) => Promise<string>;
   readonly root: string;
 }
 
@@ -103,6 +104,15 @@ function isGone(error: unknown): boolean {
 function isDenied(error: unknown): boolean {
   const code = codeOf(error);
   return code === 'EACCES' || code === 'EPERM';
+}
+
+class RefusedAsAdministrator extends Error {
+  readonly code: unknown;
+
+  constructor(refused: unknown) {
+    super(refused instanceof Error ? refused.message : String(refused));
+    this.code = codeOf(refused);
+  }
 }
 
 function reasonOf(error: unknown): string {
@@ -322,7 +332,7 @@ export class CommanderTool implements Tool<'commander'> {
     return pane && { tab: this.shown.tab, side, pane };
   }
 
-  private openEntry(
+  private async openEntry(
     page: Page,
     tab: unknown,
     side: unknown,
@@ -330,25 +340,32 @@ export class CommanderTool implements Tool<'commander'> {
   ): Promise<void> {
     const shown = this.shownPane(page, tab, side);
     if (shown === undefined || typeof name !== 'string') {
-      return Promise.resolve();
+      return;
     }
     const { folder, entries } = shown.pane;
     if (name === parentFolder) {
       const parent = parentOf(folder);
-      return parent === undefined
-        ? Promise.resolve()
-        : this.list(page, shown.tab, shown.side, parent, 'visit');
+      if (parent !== undefined) {
+        await this.list(page, shown.tab, shown.side, parent, 'visit');
+      }
+      return;
     }
     const entry = entries?.find((each) => each.name === name);
-    return entry?.folder
-      ? this.list(
-          page,
-          shown.tab,
-          shown.side,
-          path.join(folder, entry.name),
-          'visit',
-        )
-      : Promise.resolve();
+    if (!entry?.folder) {
+      return;
+    }
+    const opened = path.join(folder, entry.name);
+    const target = entry.link
+      ? await this.access.realPath(opened).catch(() => undefined)
+      : undefined;
+    await this.list(
+      page,
+      shown.tab,
+      shown.side,
+      opened,
+      'visit',
+      target === opened ? undefined : target,
+    );
   }
 
   private async elevate(
@@ -384,10 +401,14 @@ export class CommanderTool implements Tool<'commander'> {
     try {
       return await files.list(folder);
     } catch (error) {
-      if (isDenied(error) && this.elevated !== undefined) {
-        return this.elevated.list(folder);
+      if (!isDenied(error) || this.elevated === undefined) {
+        throw error;
       }
-      throw error;
+    }
+    try {
+      return await this.elevated.list(folder);
+    } catch (error) {
+      throw isDenied(error) ? new RefusedAsAdministrator(error) : error;
     }
   }
 
@@ -454,6 +475,7 @@ export class CommanderTool implements Tool<'commander'> {
     side: Side,
     folder: string,
     how: Listing,
+    fallback?: string,
   ): Promise<void> {
     const pane = this.panes.get(tab)?.[side];
     if (pane === undefined) {
@@ -468,9 +490,20 @@ export class CommanderTool implements Tool<'commander'> {
         return;
       }
       if (how !== 'refresh') {
+        if (isDenied(error) && fallback !== undefined) {
+          await this.list(page, tab, side, fallback, how);
+          return;
+        }
         if (isDenied(error)) {
           pane.denied = folder;
-          this.post(page, { type: 'noAccess', side, folder });
+          this.post(page, {
+            type: 'noAccess',
+            side,
+            folder,
+            asAdministrator:
+              this.access.elevate !== undefined &&
+              !(error instanceof RefusedAsAdministrator),
+          });
         } else {
           this.shell.notice(page, {
             level: 'error',

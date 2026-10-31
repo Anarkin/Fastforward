@@ -50,6 +50,7 @@ export function CommanderTool({
   const [noAccess, setNoAccess] = useState<{
     readonly side: Side;
     readonly folder: string;
+    readonly asAdministrator: boolean;
   }>();
   const [share, setShare] = useState(0.5);
   const [resized, setResized] = useState<{
@@ -70,7 +71,11 @@ export function CommanderTool({
         if (message.type === 'drives') {
           setDrives(message.drives);
         } else if (message.type === 'noAccess') {
-          setNoAccess({ side: message.side, folder: message.folder });
+          setNoAccess({
+            side: message.side,
+            folder: message.folder,
+            asAdministrator: message.asAdministrator,
+          });
         } else {
           dispatch(message);
         }
@@ -231,7 +236,7 @@ export function CommanderTool({
           onConfirm={() => setNoAccess(undefined)}
           onCancel={() => setNoAccess(undefined)}
           extra={
-            view.canElevate && tab !== undefined
+            view.canElevate && noAccess.asAdministrator && tab !== undefined
               ? {
                   label: strings.commander.asAdministrator,
                   onClick: () => {

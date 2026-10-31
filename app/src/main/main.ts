@@ -443,6 +443,7 @@ async function start(asked: readonly string[]): Promise<void> {
         );
       },
     }),
+    realPath: (link) => fs.promises.realpath(link),
     root: rootFolder(process.platform, process.env),
   });
   const view = new Shell(

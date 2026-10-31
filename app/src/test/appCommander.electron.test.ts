@@ -336,6 +336,27 @@ suite('App commander', () => {
     await page.keyboard.press('Tab');
   });
 
+  test.skipIf(process.platform !== 'win32')(
+    'opens Users for Documents and Settings, a link no one may list, without saying there is no access',
+    async () => {
+      const drive = `${opened.charAt(0).toUpperCase()}:\\`;
+      await waitFor(
+        async () =>
+          (await right().locator('.column-name').textContent()) === drive,
+        'the right side to show the root of the drive',
+      );
+      await select('Documents and Settings');
+      await page.keyboard.press('Enter');
+      await waitFor(
+        async () =>
+          (await right().locator('.column-name').textContent()) ===
+          `${drive}Users`,
+        'the right side to open Users',
+      );
+      assert.strictEqual(await page.locator('.confirm-popup').count(), 0);
+    },
+  );
+
   test('draws rows as the diff draws lines, in the monospace font and its line height', async () => {
     const row = await right()
       .locator('.commander-row')
