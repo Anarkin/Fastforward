@@ -188,6 +188,8 @@ export class CommanderTool implements Tool<'commander'> {
         return this.postDrives(page);
       case 'step':
         return this.step(page, message.tab, message.side, message.step);
+      case 'openOnSide':
+        return this.openOnSide(page, message);
       case 'activate': {
         const shown = this.shownPane(page, message.tab, message.side);
         const panes = shown && this.panes.get(shown.tab);
@@ -339,6 +341,29 @@ export class CommanderTool implements Tool<'commander'> {
           'visit',
         )
       : Promise.resolve();
+  }
+
+  private openOnSide(
+    page: Page,
+    { tab, from, side, name }: Extract<CommanderToHost, { type: 'openOnSide' }>,
+  ): Promise<void> {
+    const source = this.shownPane(page, tab, from);
+    if (source === undefined || !isSide(side) || typeof name !== 'string') {
+      return Promise.resolve();
+    }
+    const { folder, entries } = source.pane;
+    const entry = entries?.find((each) => each.name === name);
+    const target =
+      name === parentFolder
+        ? parentOf(folder)
+        : entry === undefined
+          ? undefined
+          : entry.folder
+            ? path.join(folder, entry.name)
+            : folder;
+    return target === undefined
+      ? Promise.resolve()
+      : this.list(page, source.tab, side, target, 'visit');
   }
 
   private step(

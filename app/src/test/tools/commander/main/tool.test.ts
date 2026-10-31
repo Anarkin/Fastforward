@@ -381,6 +381,69 @@ suite('Commander tool', () => {
     assert.deepStrictEqual(last(), [root, 'Users', false, true]);
   });
 
+  test('opens on a side the folder selected on the other, its parent for .., or the folder the other is in for a file', async () => {
+    const { tool, page, send } = commander({
+      [root]: [folder('Users'), file('notes.txt')],
+      [at('Users')]: [folder('me')],
+      [at('Users', 'me')]: [],
+    });
+    await tool.show(page, tab);
+    await send({ type: 'open', tab: '1', side: 'right', name: 'Users' });
+    const onSide = (side: 'left' | 'right', name: string) =>
+      send({ type: 'openOnSide', tab: '1', from: 'right', side, name });
+
+    await onSide('left', 'me');
+    await onSide('left', '..');
+    await onSide('left', 'notes.txt');
+    await send({ type: 'open', tab: '1', side: 'right', name: '..' });
+    await onSide('left', 'notes.txt');
+    await onSide('right', 'Users');
+
+    assert.deepStrictEqual(page.listings().slice(3), [
+      `left ${at('Users', 'me')} ↑: `,
+      `left ${root}: Users notes.txt [Users]`,
+      `right ${root}: Users notes.txt [Users]`,
+      `left ${root}: Users notes.txt`,
+      `right ${at('Users')} ↑: me`,
+    ]);
+  });
+
+  test('opens on a side only what the other side lists, for the shown tab', async () => {
+    const { tool, page, send } = commander({
+      [root]: [folder('Users')],
+      [at('Users')]: [],
+      [at('Windows')]: [],
+    });
+    await tool.show(page, tab);
+
+    await send({
+      type: 'openOnSide',
+      tab: '1',
+      from: 'right',
+      side: 'left',
+      name: 'Windows',
+    });
+    await send({
+      type: 'openOnSide',
+      tab: '2',
+      from: 'right',
+      side: 'left',
+      name: 'Users',
+    });
+    await send(
+      forged(
+        '{ "type": "openOnSide", "tab": "1", "from": "right", "side": "middle", "name": "Users" }',
+      ),
+    );
+    await send(
+      forged(
+        '{ "type": "openOnSide", "tab": "1", "from": "middle", "side": "left", "name": "Users" }',
+      ),
+    );
+
+    assert.deepStrictEqual(page.listings().slice(2), []);
+  });
+
   test('opens only folders the side listed, and nothing above the root, for the shown tab', async () => {
     const { tool, page, send } = commander({
       [root]: [folder('Users'), file('notes.txt')],

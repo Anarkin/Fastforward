@@ -20,6 +20,10 @@ export const commanderKeymap = {
     'Alt+F2': 'right',
   }),
   sort: bind('Commander', strings.actions.sort, { Click: true }),
+  openOnSide: bind('Commander', strings.actions.openOnSide, {
+    'Mod+ArrowLeft': 'left',
+    'Mod+ArrowRight': 'right',
+  }),
   history: bind(
     'Commander',
     strings.actions.folderHistory,

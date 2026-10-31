@@ -48,6 +48,16 @@ suite('App commander', () => {
         }),
       );
 
+  const select = async (name: string) => {
+    await right().locator('.commander-row', { hasText: name }).click();
+    await waitFor(
+      async () =>
+        (
+          await right().locator('.commander-row.selected').textContent()
+        )?.includes(name) === true,
+      `${name} to be selected`,
+    );
+  };
   beforeAll(async () => {
     folder = tempFolder('app-commander');
     profile = path.join(folder, 'profile');
@@ -245,6 +255,24 @@ suite('App commander', () => {
       async () =>
         (await right().locator('.column-name').textContent()) === opened,
       'the folder after, the one opened',
+    );
+  });
+
+  test('opens the selected folder on the left side with Mod+Left, or the folder it is in when a file is selected', async () => {
+    const left = page.locator('.commander-pane').nth(0);
+    await select('src');
+    await page.keyboard.press('ControlOrMeta+ArrowLeft');
+    await waitFor(
+      async () =>
+        (await left.locator('.column-name').textContent()) ===
+        path.join(opened, 'src'),
+      'the left side to open src',
+    );
+    await select('notes');
+    await page.keyboard.press('ControlOrMeta+ArrowLeft');
+    await waitFor(
+      async () => (await left.locator('.column-name').textContent()) === opened,
+      'the left side to open the folder of the file',
     );
   });
 

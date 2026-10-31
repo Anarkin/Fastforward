@@ -75,6 +75,7 @@ export function Pane({
   onDrive,
   onDrivesOpening,
   onStep,
+  onOpenOnSide,
   onResize,
   onResized,
   onReset,
@@ -94,6 +95,7 @@ export function Pane({
   onDrive: (drive: string) => void;
   onDrivesOpening: () => void;
   onStep: (step: -1 | 1) => void;
+  onOpenOnSide: (target: Side, name: string) => void;
   onResize: (column: SizedColumn, width: number) => void;
   onResized: (column: SizedColumn, width: number) => void;
   onReset: (column: SizedColumn) => void;
@@ -220,6 +222,16 @@ export function Pane({
             if (keyPressed(commanderKeymap.side, event) !== undefined) {
               event.preventDefault();
               onSwitchSide();
+              return;
+            }
+            const onSide = keyPressed(commanderKeymap.openOnSide, event);
+            if (onSide !== undefined) {
+              event.preventDefault();
+              const row =
+                selectedIndex === -1 ? undefined : rows[selectedIndex];
+              if (row !== undefined) {
+                onOpenOnSide(onSide, row.key);
+              }
               return;
             }
             if (keyPressed(commanderKeymap.parentFolder, event) !== undefined) {

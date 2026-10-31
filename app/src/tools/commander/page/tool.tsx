@@ -198,6 +198,17 @@ export function CommanderTool({
               }
             }}
             onDrivesOpening={() => post({ type: 'listDrives' })}
+            onOpenOnSide={(target, name) => {
+              if (tab !== undefined) {
+                post({
+                  type: 'openOnSide',
+                  tab,
+                  from: side,
+                  side: target,
+                  name,
+                });
+              }
+            }}
             onStep={(step) => {
               if (tab !== undefined) {
                 post({ type: 'step', tab, side, step });

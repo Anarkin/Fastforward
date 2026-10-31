@@ -245,6 +245,8 @@ export const strings = {
     drive: 'Choose the drive of the left or right side',
     sort: 'Sort by a column, or reverse the order',
     folderHistory: 'Back or forward through the folders of the side',
+    openOnSide:
+      'Open the selected folder, or the one you are in, on the left or right side',
   },
   shortcuts: {
     title: 'Shortcuts',
