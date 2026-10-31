@@ -208,6 +208,12 @@ export class CommanderTool implements Tool<'commander'> {
         return this.postDrives(page);
       case 'step':
         return this.step(page, message.tab, message.side, message.step);
+      case 'reread': {
+        const shown = this.shownPane(page, message.tab, message.side);
+        return shown === undefined
+          ? undefined
+          : this.list(page, shown.tab, shown.side, shown.pane.folder, 'show');
+      }
       case 'openOnSide':
         return this.openOnSide(page, message);
       case 'elevate':

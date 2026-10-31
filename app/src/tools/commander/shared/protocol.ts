@@ -33,6 +33,7 @@ export type CommanderToHost =
       readonly drive: string;
     }
   | { readonly type: 'listDrives' }
+  | { readonly type: 'reread'; readonly tab: string; readonly side: Side }
   | { readonly type: 'elevate'; readonly tab: string; readonly side: Side }
   | {
       readonly type: 'openOnSide';

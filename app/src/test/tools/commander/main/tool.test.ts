@@ -490,6 +490,40 @@ suite('Commander tool', () => {
     assert.deepStrictEqual(page.listings().slice(2), []);
   });
 
+  test('reads a side again when asked, without going anywhere in its history, saying why when it can’t', async () => {
+    const listed: Record<string, Listed> = {
+      [root]: [folder('Users')],
+      [at('Users')]: [file('a.txt')],
+    };
+    const { tool, page, send, notices } = commander(listed);
+    await tool.show(page, tab);
+    await send({ type: 'open', tab: '1', side: 'left', name: 'Users' });
+
+    listed[at('Users')] = [file('a.txt'), file('b.txt')];
+    await send({ type: 'reread', tab: '1', side: 'left' });
+    const last = page.of('listing').at(-1);
+    assert.deepStrictEqual(
+      last && [last.folder, last.entries.map((entry) => entry.name), last.back],
+      [at('Users'), ['a.txt', 'b.txt'], true],
+    );
+
+    listed[at('Users')] = Object.assign(new Error('the disk is gone'), {
+      code: 'EIO',
+    });
+    await send({ type: 'reread', tab: '1', side: 'left' });
+    await send({ type: 'reread', tab: '2', side: 'left' });
+    await send(forged('{ "type": "reread", "tab": "1", "side": "middle" }'));
+    assert.deepStrictEqual(notices, [
+      {
+        level: 'error',
+        message: strings.commander.couldNotOpen(
+          at('Users'),
+          'the disk is gone',
+        ),
+      },
+    ]);
+  });
+
   test('opens only folders the side listed, and nothing above the root, for the shown tab', async () => {
     const { tool, page, send } = commander({
       [root]: [folder('Users'), file('notes.txt')],

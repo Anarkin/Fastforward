@@ -107,6 +107,15 @@ export function CommanderTool({
     }
   };
   useBinding(commanderKeymap.history, stepActive, shown);
+  useBinding(
+    commanderKeymap.reread,
+    () => {
+      if (view.tab !== undefined) {
+        post({ type: 'reread', tab: view.tab, side: view.active });
+      }
+    },
+    shown,
+  );
   useEffect(() => {
     const { tab, active: side } = view;
     if (!shown || tab === undefined) {
