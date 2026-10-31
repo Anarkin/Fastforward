@@ -241,6 +241,26 @@ suite('Commander tool', () => {
     });
   });
 
+  test('gives the folder of the active side as the folder of the tab, the right one until the page makes the left one active', async () => {
+    const { tool, page, send } = commander({
+      [root]: [folder('Users')],
+      [at('Users')]: [],
+    });
+    await tool.show(page, tab);
+    await send({ type: 'open', tab: '1', side: 'left', name: 'Users' });
+    assert.strictEqual(tool.folderOf(tab), root);
+
+    await send({ type: 'activate', tab: '1', side: 'left' });
+    assert.strictEqual(tool.folderOf(tab), at('Users'));
+
+    await send(forged('{ "type": "activate", "tab": "1", "side": "middle" }'));
+    await send({ type: 'activate', tab: '2', side: 'right' });
+    assert.strictEqual(tool.folderOf(tab), at('Users'));
+
+    await send({ type: 'activate', tab: '1', side: 'right' });
+    assert.strictEqual(tool.folderOf(tab), root);
+  });
+
   test('watches the folders of the tab shown, listing a side again when its folder changes', async () => {
     const listed: Record<string, Listed> = {
       [root]: [folder('Users')],

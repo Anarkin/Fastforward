@@ -81,6 +81,12 @@ export function CommanderTool({
     )?.focus();
   }, [shown, view.active]);
 
+  useEffect(() => {
+    if (view.tab !== undefined) {
+      post({ type: 'activate', tab: view.tab, side: view.active });
+    }
+  }, [post, view.tab, view.active]);
+
   useBinding(
     commanderKeymap.showHidden,
     () => post({ type: 'showHidden', shown: !view.showHidden }),

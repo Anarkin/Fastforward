@@ -159,6 +159,33 @@ suite('App commander', () => {
     }
   });
 
+  test('opens the folder of the active side in another tool, the left one once Tab makes it active', async () => {
+    const left = page.locator('.commander-pane').nth(0);
+    await right().locator('.virtual-rows').focus();
+    await page.keyboard.press('Tab');
+    await waitForFocus(
+      left.locator('.virtual-rows'),
+      'the list of the left side',
+    );
+    assert.notStrictEqual(
+      await left.locator('.column-name').textContent(),
+      await right().locator('.column-name').textContent(),
+    );
+    await page.keyboard.press('ControlOrMeta+Shift+O');
+    await page.locator('.open-with-folders').waitFor();
+    assert.strictEqual(
+      await page.locator('.open-with-folders').textContent(),
+      await left.locator('.column-name').textContent(),
+    );
+    await page.keyboard.press('Escape');
+    await page.locator('.open-with-folders').waitFor({ state: 'detached' });
+    await page.keyboard.press('Tab');
+    await waitForFocus(
+      right().locator('.virtual-rows'),
+      'the list of the right side',
+    );
+  });
+
   test.skipIf(process.platform !== 'win32')(
     'opens the drive menu of the right side with Alt+F2 and changes the drive by its letter',
     async () => {

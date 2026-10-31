@@ -49,7 +49,7 @@ interface Pane {
   asked: number;
 }
 
-type Panes = Record<Side, Pane>;
+type Panes = Record<Side, Pane> & { active: Side };
 
 interface ShownPane {
   readonly tab: string;
@@ -166,6 +166,14 @@ export class CommanderTool implements Tool<'commander'> {
         return this.drive(page, message.tab, message.side, message.drive);
       case 'listDrives':
         return this.postDrives(page);
+      case 'activate': {
+        const shown = this.shownPane(page, message.tab, message.side);
+        const panes = shown && this.panes.get(shown.tab);
+        if (shown !== undefined && panes !== undefined) {
+          panes.active = shown.side;
+        }
+        return undefined;
+      }
       case 'columns':
         if (isColumnWidths(message.columns)) {
           const { extension, size, date } = message.columns;
@@ -209,7 +217,8 @@ export class CommanderTool implements Tool<'commander'> {
   }
 
   folderOf(tab: Tab): string | undefined {
-    return this.panes.get(tab.id)?.right.folder ?? tab.root;
+    const panes = this.panes.get(tab.id);
+    return panes === undefined ? tab.root : panes[panes.active].folder;
   }
 
   visited(): void {}
@@ -265,6 +274,7 @@ export class CommanderTool implements Tool<'commander'> {
     return {
       left: { folder: root, entries: undefined, asked: 0 },
       right: { folder: right, entries: undefined, asked: 0 },
+      active: 'right',
     };
   }
 
