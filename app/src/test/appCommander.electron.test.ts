@@ -204,6 +204,37 @@ suite('App commander', () => {
     );
   });
 
+  test('shows where columns can be resized once the pointer is on the header, in the focus color on the one under it', async () => {
+    const lines = () =>
+      right()
+        .locator('.column-handle')
+        .evaluateAll((handles) =>
+          handles.map(
+            (handle) => getComputedStyle(handle, '::after').backgroundColor,
+          ),
+        );
+    const [border, focus] = await page.evaluate(() => {
+      const probe = document.createElement('div');
+      document.body.append(probe);
+      const colors = ['--color-border', '--color-focus'].map((name) => {
+        probe.style.backgroundColor = `var(${name})`;
+        return getComputedStyle(probe).backgroundColor;
+      });
+      probe.remove();
+      return colors;
+    });
+    await page.mouse.move(0, 0);
+    assert.deepStrictEqual(await lines(), [
+      'rgba(0, 0, 0, 0)',
+      'rgba(0, 0, 0, 0)',
+      'rgba(0, 0, 0, 0)',
+    ]);
+    await right().locator('.commander-sort').first().hover();
+    assert.deepStrictEqual(await lines(), [border, border, border]);
+    await right().locator('.column-handle').nth(1).hover({ force: true });
+    assert.deepStrictEqual(await lines(), [border, focus, border]);
+  });
+
   test('saves the width of a column dragged in the header to the user settings', async () => {
     const handle = right().locator('.column-handle').first();
     const box = await handle.boundingBox();

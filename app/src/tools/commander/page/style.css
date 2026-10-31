@@ -61,6 +61,7 @@
 .commander-heading {
   position: relative;
   display: flex;
+  overflow: visible;
 }
 
 .commander-heading > .commander-sort {
@@ -79,10 +80,28 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 0;
+  left: calc(var(--commander-advance) / -2 - 4px);
   z-index: 1;
-  width: 5px;
+  width: 8px;
   cursor: col-resize;
+}
+
+.column-handle::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3.5px;
+  width: 1px;
+}
+
+.commander-header:hover .column-handle::after {
+  background: var(--color-border);
+}
+
+.commander-header .column-handle:hover::after,
+.commander-header .column-handle.dragging::after {
+  background: var(--color-focus);
 }
 
 .commander-icon {

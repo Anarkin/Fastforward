@@ -68,8 +68,10 @@ export function ColumnHeader({
   ) => {
     event.preventDefault();
     event.stopPropagation();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    const cell = event.currentTarget.parentElement;
+    const handle = event.currentTarget;
+    handle.setPointerCapture(event.pointerId);
+    handle.classList.add('dragging');
+    const cell = handle.parentElement;
     const start = columns[column];
     const advance = (cell?.getBoundingClientRect().width ?? start) / start;
     const startX = event.clientX;
@@ -81,6 +83,7 @@ export function ColumnHeader({
         onResize(column, width);
       },
       () => {
+        handle.classList.remove('dragging');
         document.body.classList.remove('resizing');
         if (width !== start) {
           onResized(column, width);
