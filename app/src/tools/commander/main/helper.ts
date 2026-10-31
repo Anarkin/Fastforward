@@ -12,13 +12,16 @@ export interface HelperAddress {
   readonly token: string;
 }
 
-export function newHelperAddress(platform: NodeJS.Platform): HelperAddress {
-  const name = `fastforward-helper-${randomBytes(16).toString('hex')}`;
+export function newHelperAddress(
+  platform: NodeJS.Platform,
+  temp = os.tmpdir(),
+): HelperAddress {
+  const name = `ff-${randomBytes(8).toString('hex')}`;
   return {
     pipe:
       platform === 'win32'
-        ? `\\\\.\\pipe\\${name}`
-        : path.join(os.tmpdir(), `${name}.sock`),
+        ? `\\\\.\\pipe\\fastforward-helper-${name}`
+        : path.posix.join(temp, `${name}.sock`),
     token: randomBytes(32).toString('hex'),
   };
 }

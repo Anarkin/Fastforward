@@ -24,12 +24,19 @@ suite('The commander helper started from the app', () => {
 
   test('starts as the app in helper mode, without a window, lists folders over its pipe and quits once the app goes', async () => {
     let helper: ChildProcess | undefined;
-    const elevated = await elevatedFileSystem((address) => {
-      helper = spawn(electron, [appFolder, ...helperArguments(address)], {
-        stdio: 'ignore',
-      });
-      return Promise.resolve(true);
-    }, process.platform);
+    const elevated = await elevatedFileSystem(
+      (address) => {
+        const sandbox = process.platform === 'linux' ? ['--no-sandbox'] : [];
+        helper = spawn(
+          electron,
+          [...sandbox, appFolder, ...helperArguments(address)],
+          { stdio: 'ignore' },
+        );
+        return Promise.resolve(true);
+      },
+      process.platform,
+      30_000,
+    );
     assert.ok(elevated && helper);
     const exited = new Promise<number | null>((resolve) =>
       helper?.on('exit', resolve),
