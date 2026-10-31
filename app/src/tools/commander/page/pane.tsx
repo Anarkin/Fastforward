@@ -8,7 +8,13 @@ import { ColumnHeader } from './columnHeader';
 import type { ColumnWidths, SizedColumn, SortColumn } from '../shared/settings';
 import type { PaneView } from './view';
 import { DateFormat, formatDate } from '../../../ui/dates';
-import { BackIcon, FileIcon, FolderIcon, ForwardIcon } from '../../../ui/icons';
+import {
+  BackIcon,
+  FileIcon,
+  FolderIcon,
+  ForwardIcon,
+  ShieldIcon,
+} from '../../../ui/icons';
 import { listMoveOf, moveInList } from '../../../ui/listMoves';
 import { MenuButton } from '../../../ui/menu';
 import { keyPressed } from '../../../ui/shortcuts';
@@ -204,7 +210,17 @@ export function Pane({
             </div>
           )}
         </div>
-        <span className="column-name">{pane?.folder}</span>
+        <span className="column-name">
+          {pane?.elevated && (
+            <span
+              className="elevated-mark"
+              title={strings.commander.readAsAdministrator}
+            >
+              <ShieldIcon />
+            </span>
+          )}
+          {pane?.folder}
+        </span>
       </header>
       <ColumnHeader
         sort={pane?.sort}

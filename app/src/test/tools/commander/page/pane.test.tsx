@@ -1,9 +1,51 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { driveOf } from '../../../../tools/commander/page/pane';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { driveOf, Pane } from '../../../../tools/commander/page/pane';
+import type { PaneView } from '../../../../tools/commander/page/view';
+import { strings } from '../../../../shared/strings';
+import { noop } from '../../../fixtures';
 import { shareOf, sideToFocus } from '../../../../tools/commander/page/tool';
 import { JSDOM } from 'jsdom';
 
+const pane = (elevated: boolean): PaneView => ({
+  folder: 'C:\\Config.Msi',
+  entries: [],
+  parent: true,
+  back: false,
+  forward: false,
+  elevated,
+  sort: { column: 'extension', descending: false },
+  rows: [],
+  selected: undefined,
+});
+const header = (elevated: boolean) =>
+  /<span class="column-name">(.*?)C:\\Config\.Msi<\/span>/.exec(
+    renderToStaticMarkup(
+      <Pane
+        tab="1"
+        side="left"
+        active
+        pane={pane(elevated)}
+        columns={{ extension: 10, size: 15, date: 16 }}
+        drives={[]}
+        driveTrigger={null}
+        onSelect={noop}
+        onOpen={noop}
+        onSort={noop}
+        onActivate={noop}
+        onSwitchSide={noop}
+        onDrive={noop}
+        onDrivesOpening={noop}
+        onStep={noop}
+        onOpenOnSide={noop}
+        onResize={noop}
+        onResized={noop}
+        onReset={noop}
+        resizer={null}
+      />,
+    ),
+  )?.[1];
 suite('Commander pane', () => {
   test('shows the drive a folder is on, whatever the case of its letter', () => {
     const drives = ['C:\\', 'D:\\'];
@@ -29,6 +71,16 @@ suite('Commander pane', () => {
       undefined,
     );
     assert.strictEqual(sideToFocus(undefined, null), undefined);
+  });
+
+  test('marks a folder read as administrator before its path, and no other', () => {
+    assert.match(
+      header(true) ?? '',
+      new RegExp(
+        `class="elevated-mark" title="${strings.commander.readAsAdministrator}"`,
+      ),
+    );
+    assert.strictEqual(header(false), '');
   });
 
   test('splits the sides where the divider is dragged, leaving each some room, and evenly before it is laid out', () => {

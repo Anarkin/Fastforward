@@ -608,6 +608,13 @@ suite('Commander tool', () => {
       `left ${root}: Config.Msi System Volume Information [Config.Msi]`,
       `left ${at('System Volume Information')} ↑: System Volume Information as admin.txt`,
     ]);
+    assert.deepStrictEqual(
+      page
+        .of('listing')
+        .slice(3)
+        .map((listing) => listing.elevated),
+      [true, false, true],
+    );
 
     stopped.resolve();
     await new Promise((resolve) => setTimeout(resolve, 0));

@@ -101,6 +101,14 @@ const toolSigns: Record<ToolId, React.ReactNode> = {
   ),
 };
 
+export function ShieldIcon() {
+  return (
+    <Icon className="shield-icon">
+      <path d="M8 1.75 2.75 3.75v4c0 3.2 2.25 5.5 5.25 6.5 3-1 5.25-3.3 5.25-6.5v-4Z" />
+    </Icon>
+  );
+}
+
 export function FolderIcon() {
   return (
     <Icon className="folder-icon">

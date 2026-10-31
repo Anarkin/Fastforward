@@ -489,6 +489,7 @@ export const strings = {
     noAccessTitle: 'No Access',
     noAccess: (folder: string) => `You don't have access to ${folder}.`,
     asAdministrator: 'As Administrator',
+    readAsAdministrator: 'Read as administrator',
     gone: "It doesn't exist anymore.",
   },
   find: {

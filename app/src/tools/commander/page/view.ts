@@ -13,6 +13,7 @@ interface Listed {
   readonly parent: boolean;
   readonly back: boolean;
   readonly forward: boolean;
+  readonly elevated: boolean;
 }
 
 export interface PaneView extends Listed {
@@ -77,7 +78,7 @@ function sameSort(one: Sort, other: Sort): boolean {
 function relisted(
   pane: PaneView | undefined,
   sort: Sort,
-  { folder, entries, parent, back, forward }: Listed,
+  { folder, entries, parent, back, forward, elevated }: Listed,
   showHidden: boolean,
   selected: string | undefined,
 ): PaneView {
@@ -88,6 +89,7 @@ function relisted(
     parent,
     back,
     forward,
+    elevated,
     sort,
     rows,
     selected: selectionAfter(selectionIn(pane), folder, rows, selected),

@@ -79,6 +79,7 @@ export type CommanderToWebview =
       readonly parent: boolean;
       readonly back: boolean;
       readonly forward: boolean;
+      readonly elevated: boolean;
       readonly selected: string | undefined;
     };
 

@@ -10,6 +10,13 @@
   padding: 0 calc(4px + 3 * 26px + 2 * 2px + 8px);
 }
 
+.elevated-mark {
+  display: inline-flex;
+  margin-right: 4px;
+  vertical-align: -3px;
+  color: var(--color-warning-foreground);
+}
+
 .commander .column-start .menu-button {
   padding: 0;
 }

@@ -53,6 +53,7 @@ interface Pane {
   history: readonly string[];
   at: number;
   denied?: string;
+  elevated?: boolean;
 }
 
 type Listing = 'visit' | 'show' | 'refresh' | { readonly at: number };
@@ -396,17 +397,20 @@ export class CommanderTool implements Tool<'commander'> {
     }
   }
 
-  private async listed(folder: string): Promise<readonly Entry[]> {
+  private async listed(folder: string): Promise<{
+    readonly entries: readonly Entry[];
+    readonly elevated: boolean;
+  }> {
     const files = await this.files();
     try {
-      return await files.list(folder);
+      return { entries: await files.list(folder), elevated: false };
     } catch (error) {
       if (!isDenied(error) || this.elevated === undefined) {
         throw error;
       }
     }
     try {
-      return await this.elevated.list(folder);
+      return { entries: await this.elevated.list(folder), elevated: true };
     } catch (error) {
       throw isDenied(error) ? new RefusedAsAdministrator(error) : error;
     }
@@ -482,9 +486,9 @@ export class CommanderTool implements Tool<'commander'> {
       return;
     }
     const asked = how === 'refresh' ? pane.asked : ++pane.asked;
-    let entries: readonly Entry[];
+    let listing: Awaited<ReturnType<CommanderTool['listed']>>;
     try {
-      entries = await this.listed(folder);
+      listing = await this.listed(folder);
     } catch (error) {
       if (pane.asked !== asked) {
         return;
@@ -536,7 +540,8 @@ export class CommanderTool implements Tool<'commander'> {
       pane.at = history.length - 1;
     }
     pane.folder = folder;
-    pane.entries = entries;
+    pane.entries = listing.entries;
+    pane.elevated = listing.elevated;
     this.postListing(page, tab, side, pane, selected);
     this.watch(page, tab, side, folder);
   }
@@ -593,6 +598,7 @@ export class CommanderTool implements Tool<'commander'> {
         folder: pane.folder,
         entries: pane.entries ?? [],
         parent: parentOf(pane.folder) !== undefined,
+        elevated: pane.elevated === true,
         back: pane.at > 0,
         forward: pane.at < pane.history.length - 1,
         selected,
