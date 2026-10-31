@@ -114,14 +114,14 @@ export function CommanderTool({
   const viewing = shown && view.viewing !== undefined;
 
   useEffect(() => {
-    if (!shown) {
+    if (!shown || viewing) {
       return;
     }
     sideToFocus(
       columns.current?.children[sides.indexOf(view.active)],
       document.activeElement,
     )?.focus();
-  }, [shown, view.active]);
+  }, [shown, viewing, view.active]);
 
   useEffect(() => {
     if (view.tab !== undefined) {

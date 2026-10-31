@@ -282,7 +282,10 @@ export class CommanderTool implements Tool<'commander'> {
       tabs.map((tab): [string, TabName] => [
         tab.id,
         tab.view === true && tab.root !== undefined
-          ? { name: path.basename(tab.root), icon: viewerIconUrl(tab.id) }
+          ? {
+              name: path.basename(tab.root),
+              icon: viewerIconUrl(tab.id, tab.root),
+            }
           : { name: strings.tools.commander },
       ]),
     );
@@ -327,7 +330,12 @@ export class CommanderTool implements Tool<'commander'> {
     if (viewer !== undefined) {
       const tab = this.shell
         .tabs()
-        .find((each) => each.id === viewer && each.view === true);
+        .find(
+          (each) =>
+            each.id === viewer.tab &&
+            each.view === true &&
+            each.root === viewer.file,
+        );
       return tab?.root === undefined
         ? new Response(null, { status: 404 })
         : this.iconResponse(tab.root);

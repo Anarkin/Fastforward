@@ -12,6 +12,10 @@ import type {
 } from '../shared/protocol';
 import { listMoveOf } from '../../../ui/listMoves';
 import { followDrag } from '../../../ui/followDrag';
+import {
+  hideAfter,
+  overlayScrollbarClass,
+} from '../../../ui/overlayScrollbars';
 
 export interface Viewing {
   readonly tab: string;
@@ -85,6 +89,15 @@ export function Viewer({
   );
   const next = useRef(0);
   const wheel = useRef(0);
+  const [barShown, setBarShown] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const hiding = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const showBar = useCallback(() => {
+    clearTimeout(hiding.current);
+    setBarShown(true);
+    hiding.current = setTimeout(() => setBarShown(false), hideAfter);
+  }, []);
+  useEffect(() => () => clearTimeout(hiding.current), []);
   const current = useRef(loaded);
   useLayoutEffect(() => {
     current.current = loaded;
@@ -154,6 +167,7 @@ export function Viewer({
       if (from === undefined || by === 0) {
         return;
       }
+      showBar();
       ask({
         anchor: from.start,
         exact: true,
@@ -163,7 +177,7 @@ export function Viewer({
           topWithin(anchorIndex + by, count, screen),
       });
     },
-    [ask, screen],
+    [ask, screen, showBar],
   );
 
   const jump = useCallback(
@@ -205,6 +219,7 @@ export function Viewer({
         ref={body}
         tabIndex={0}
         data-column-focus=""
+        onPointerMove={showBar}
         onWheel={(event) => {
           wheel.current += event.deltaY;
           const height = probe.current?.getBoundingClientRect().height ?? 1;
@@ -271,15 +286,19 @@ export function Viewer({
                   ),
                 );
               at(event.clientY);
+              setDragging(true);
               followDrag(
                 window,
                 (moved: PointerEvent) => at(moved.clientY),
-                () => {},
+                () => {
+                  setDragging(false);
+                  showBar();
+                },
               );
             }}
           >
             <div
-              className="viewer-thumb"
+              className={`${overlayScrollbarClass} viewer-thumb${barShown || dragging ? ' shown' : ''}${dragging ? ' dragging' : ''}`}
               style={{ top: thumb.top, height: thumb.height }}
             />
           </div>

@@ -642,7 +642,7 @@ suite('Commander tool', () => {
     assert.deepStrictEqual(viewed, [at('notes.txt')]);
   });
 
-  test('gives a viewing tab the icon of its file, served for that tab only while it views a file', async () => {
+  test('gives a viewing tab the icon of its file, at an address naming the file, as a closed tab’s id comes back for another file, served for that tab and file only', async () => {
     const { tool, tabs, iconsLoaded } = commander({});
     const viewing: Tab = {
       id: '3',
@@ -652,13 +652,18 @@ suite('Commander tool', () => {
     };
     tabs.push(viewing, { id: '4', tool: 'commander', root });
     const icon = tool.names([viewing]).get('3')?.icon;
-    assert.strictEqual(icon, viewerIconUrl('3'));
+    assert.strictEqual(icon, viewerIconUrl('3', at('notes.txt')));
+    assert.notStrictEqual(
+      tool.names([{ ...viewing, root: at('other.md') }]).get('3')?.icon,
+      icon,
+    );
 
     const served = async (url: string) =>
       (await tool.icon(new URL(`fastforward://app${url}`))).status;
-    assert.strictEqual(await served(viewerIconUrl('3')), 200);
-    assert.strictEqual(await served(viewerIconUrl('4')), 404);
-    assert.strictEqual(await served(viewerIconUrl('5')), 404);
+    assert.strictEqual(await served(viewerIconUrl('3', at('notes.txt'))), 200);
+    assert.strictEqual(await served(viewerIconUrl('3', at('other.md'))), 404);
+    assert.strictEqual(await served(viewerIconUrl('4', root)), 404);
+    assert.strictEqual(await served(viewerIconUrl('5', at('notes.txt'))), 404);
     assert.deepStrictEqual(iconsLoaded, [at('notes.txt')]);
     assert.strictEqual(
       tool.names([{ id: '4', tool: 'commander', root }]).get('4')?.icon,

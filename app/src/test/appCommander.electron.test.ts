@@ -321,6 +321,14 @@ suite('App commander', () => {
       (await right().locator('.commander-row.selected').textContent()) ?? '',
       /^notes/,
     );
+    await page.keyboard.press('ArrowUp');
+    await waitFor(
+      async () =>
+        !(
+          (await right().locator('.commander-row.selected').textContent()) ?? ''
+        ).startsWith('notes'),
+      'the keys to move the selection again',
+    );
   });
 
   test('shows the rows of a file viewed, moving a page with PageDown, to its end with End and anywhere with its scrollbar', async () => {
@@ -335,6 +343,28 @@ suite('App commander', () => {
       page.locator('.viewer-rows .viewer-row').first().textContent();
     await waitFor(async () => (await first()) === 'row 0', 'the first row');
     await waitForFocus(page.locator('.viewer-body'), 'the viewer');
+
+    await page
+      .locator('.viewer-rows .viewer-row')
+      .nth(3)
+      .dblclick({ position: { x: 12, y: 4 } });
+    assert.strictEqual(
+      await page.evaluate(() => getSelection()?.toString().trim()),
+      'row',
+    );
+    const thumb = page.locator('.viewer-thumb');
+    assert.match(
+      (await thumb.getAttribute('class')) ?? '',
+      /overlay-scrollbar/,
+    );
+    assert.strictEqual(
+      await thumb.evaluate((element) => element.getBoundingClientRect().width),
+      await page.evaluate(() =>
+        parseFloat(
+          getComputedStyle(document.body).getPropertyValue('--scrollbar-size'),
+        ),
+      ),
+    );
 
     await page.keyboard.press('PageDown');
     await waitFor(

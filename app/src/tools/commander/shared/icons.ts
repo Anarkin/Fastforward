@@ -13,13 +13,16 @@ export function iconUrl({ tab, side, folder, name }: IconSource): string {
   return `${iconRoute}?${new URLSearchParams({ tab, side, folder, name })}`;
 }
 
-export function viewerIconUrl(tab: string): string {
-  return `${iconRoute}?${new URLSearchParams({ view: tab })}`;
+export function viewerIconUrl(tab: string, file: string): string {
+  return `${iconRoute}?${new URLSearchParams({ view: tab, file })}`;
 }
 
-export function viewerOfIcon(url: URL): string | undefined {
+export function viewerOfIcon(
+  url: URL,
+): { readonly tab: string; readonly file: string } | undefined {
   const tab = url.searchParams.get('view');
-  return url.pathname === iconRoute && tab ? tab : undefined;
+  const file = url.searchParams.get('file');
+  return url.pathname === iconRoute && tab && file ? { tab, file } : undefined;
 }
 
 export function iconSourceOf(url: URL): IconSource | undefined {
