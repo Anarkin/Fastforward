@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { clicked, keymap, released } from '../shell/shared/keymap';
 import { keyPressed } from './shortcuts';
 
@@ -24,7 +24,7 @@ function trapFocus(event: React.KeyboardEvent<HTMLElement>): void {
 }
 
 export function useModalDialog(dialog: React.RefObject<HTMLElement | null>) {
-  useEffect(() => {
+  useLayoutEffect(() => {
     const element = dialog.current;
     const previous = element?.ownerDocument.activeElement;
     element?.focus();
