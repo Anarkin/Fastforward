@@ -155,6 +155,7 @@ export function CommanderTool({
             key={side}
             tab={tab}
             side={side}
+            active={side === view.active}
             pane={view.panes[side]}
             columns={columnWidths}
             onResize={(column, width) =>

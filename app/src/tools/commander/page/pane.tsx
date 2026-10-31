@@ -63,6 +63,7 @@ function RowIcon({
 export function Pane({
   tab,
   side,
+  active,
   pane,
   columns,
   drives,
@@ -83,6 +84,7 @@ export function Pane({
 }: {
   tab: string | undefined;
   side: Side;
+  active: boolean;
   pane: PaneView | undefined;
   columns: ColumnWidths;
   drives: readonly string[];
@@ -154,7 +156,7 @@ export function Pane({
 
   return (
     <section
-      className="column commander-pane"
+      className={`column commander-pane${active ? '' : ' inactive'}`}
       aria-label={strings.commander.sides[side]}
       onPointerDown={onActivate}
       onFocus={onActivate}

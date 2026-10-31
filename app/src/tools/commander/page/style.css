@@ -144,3 +144,7 @@
 .row.commander-row.hidden {
   color: var(--muted-foreground);
 }
+
+.commander-pane.inactive .row.selected:not(:hover) {
+  background: none;
+}

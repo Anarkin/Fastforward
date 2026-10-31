@@ -302,6 +302,30 @@ suite('App commander', () => {
     },
   );
 
+  test('marks the selected row of the active side only', async () => {
+    const left = page.locator('.commander-pane').nth(0);
+    const backgrounds = () =>
+      Promise.all(
+        [left, right()].map((pane) =>
+          pane
+            .locator('.commander-row.selected')
+            .evaluate((row) => getComputedStyle(row).backgroundColor),
+        ),
+      );
+    await page.mouse.move(0, 0);
+    await right().locator('.virtual-rows').focus();
+    const [leftSelected, rightSelected] = await backgrounds();
+    assert.strictEqual(leftSelected, 'rgba(0, 0, 0, 0)');
+    assert.notStrictEqual(rightSelected, 'rgba(0, 0, 0, 0)');
+    await page.keyboard.press('Tab');
+    await waitFor(
+      async () => (await backgrounds())[0] === rightSelected,
+      'the left side to mark its selected row',
+    );
+    assert.strictEqual((await backgrounds())[1], 'rgba(0, 0, 0, 0)');
+    await page.keyboard.press('Tab');
+  });
+
   test('draws rows as the diff draws lines, in the monospace font and its line height', async () => {
     const row = await right()
       .locator('.commander-row')
