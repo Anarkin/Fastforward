@@ -224,6 +224,16 @@ suite('App commander', () => {
         strings.commander.noAccess(locked),
       );
       assert.strictEqual(await page.locator('.notice').count(), 0);
+      assert.deepStrictEqual(
+        await popup.locator('.confirm-button').allTextContents(),
+        process.platform === 'win32'
+          ? [strings.commander.asAdministrator, strings.confirm.ok]
+          : [strings.confirm.ok],
+      );
+      await waitForFocus(
+        popup.locator('.confirm-button.default'),
+        'the OK button of the window',
+      );
       await page.keyboard.press('Enter');
       await popup.waitFor({ state: 'detached' });
       assert.strictEqual(

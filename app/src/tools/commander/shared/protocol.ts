@@ -33,6 +33,7 @@ export type CommanderToHost =
       readonly drive: string;
     }
   | { readonly type: 'listDrives' }
+  | { readonly type: 'elevate'; readonly tab: string; readonly side: Side }
   | {
       readonly type: 'openOnSide';
       readonly tab: string;
@@ -58,11 +59,16 @@ export type CommanderToWebview =
       readonly sort: Sorts;
       readonly columns: ColumnWidths;
       readonly defaultColumns: ColumnWidths;
+      readonly canElevate: boolean;
     }
   | { readonly type: 'drives'; readonly drives: readonly string[] }
   | { readonly type: 'show'; readonly tab: string }
   | { readonly type: 'hide' }
-  | { readonly type: 'noAccess'; readonly folder: string }
+  | {
+      readonly type: 'noAccess';
+      readonly side: Side;
+      readonly folder: string;
+    }
   | {
       readonly type: 'listing';
       readonly tab: string;

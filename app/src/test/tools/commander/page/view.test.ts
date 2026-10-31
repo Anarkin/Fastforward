@@ -52,6 +52,7 @@ const sortedBy = (left: 'name' | 'size'): ViewAction => ({
   },
   columns: { extension: 10, size: 15, date: 16 },
   defaultColumns: { extension: 10, size: 15, date: 16 },
+  canElevate: false,
 });
 
 suite('Commander view', () => {
@@ -102,6 +103,7 @@ suite('Commander view', () => {
         },
         columns: { extension: 4, size: 15, date: 10 },
         defaultColumns: { extension: 10, size: 15, date: 16 },
+        canElevate: false,
       },
     );
 

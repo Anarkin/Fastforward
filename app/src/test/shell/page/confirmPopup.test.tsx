@@ -54,6 +54,29 @@ suite('Confirm popup', () => {
     );
   });
 
+  test('offers another way on, before its default button, running only its own action', () => {
+    const log: string[] = [];
+    const props = {
+      title: 'No Access',
+      message: 'No access.',
+      confirm: 'OK',
+      cancel: null,
+      onConfirm: () => log.push('ok'),
+      onCancel: () => log.push('cancel'),
+      extra: { label: 'As Administrator', onClick: () => log.push('admin') },
+    };
+    const html = renderToStaticMarkup(<ConfirmPopup {...props} />);
+    assert.deepStrictEqual(
+      [
+        ...html.matchAll(/<button class="confirm-button[^"]*"[^>]*>([^<]*)</g),
+      ].map((match) => match[1]),
+      ['As Administrator', 'OK'],
+    );
+    const buttons = buttonsIn(renderedBy(ConfirmPopup, props));
+    buttons.at(-2)?.onClick();
+    assert.deepStrictEqual(log, ['admin']);
+  });
+
   test('makes confirming its default, the button Enter presses, and no other', () => {
     const html = renderToStaticMarkup(
       <ConfirmPopup {...asked} onConfirm={noop} onCancel={noop} />,

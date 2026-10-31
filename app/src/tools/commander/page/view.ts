@@ -27,6 +27,7 @@ export interface CommanderView {
   readonly sorts: Sorts;
   readonly columns: ColumnWidths;
   readonly defaultColumns: ColumnWidths;
+  readonly canElevate: boolean;
   readonly active: Side;
   readonly panes: Readonly<Record<Side, PaneView | undefined>>;
 }
@@ -40,6 +41,7 @@ export const emptyView: CommanderView = {
   },
   columns: { extension: 10, size: 15, date: 16 },
   defaultColumns: { extension: 10, size: 15, date: 16 },
+  canElevate: false,
   active: 'right',
   panes: { left: undefined, right: undefined },
 };
@@ -123,6 +125,7 @@ export function reduceView(
         sorts: action.sort,
         columns: action.columns,
         defaultColumns: action.defaultColumns,
+        canElevate: action.canElevate,
       };
       return sides.reduce((next, side) => {
         const pane = view.panes[side];

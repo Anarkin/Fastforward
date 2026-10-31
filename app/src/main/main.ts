@@ -48,6 +48,8 @@ import { JsonFileStore, Storage, toolState } from '../shell/main/storage';
 import { themeCss } from '../shell/main/theme';
 import { fileSystemFor } from '../tools/commander/main/fileSystem';
 import { watchFolder } from '../tools/commander/main/watch';
+import { elevatedFileSystem } from '../tools/commander/main/elevated';
+import { helperOf, runHelper } from '../tools/commander/main/helper';
 import { CommanderTool, rootFolder } from '../tools/commander/main/tool';
 import { hostProcess } from '../tools/terminal/main/hostProcess';
 import { writeShellIntegration } from '../tools/terminal/main/shellIntegration';
@@ -103,24 +105,46 @@ protocol.registerSchemesAsPrivileged([
   },
 ]);
 
-const userDataDir = profileFolder(
-  development,
-  app.commandLine.getSwitchValue('user-data-dir'),
-  app.getPath('appData'),
-);
-if (userDataDir) {
-  app.setPath('userData', userDataDir);
-  app.setPath('logs', path.join(userDataDir, 'logs'));
+const helper = helperOf(process.argv);
+
+if (helper === undefined) {
+  startApp();
+} else {
+  app.setPath(
+    'userData',
+    path.join(app.getPath('temp'), 'fastforward-commander-helper'),
+  );
+  runHelper(
+    helper,
+    () => fileSystemFor(process.platform),
+    () => app.exit(0),
+  );
 }
 
-const askedFolders = foldersOf(process.argv, process.defaultApp, process.cwd());
-
-if (app.requestSingleInstanceLock(handOff(askedFolders))) {
-  void exitOnFailure(app, start(askedFolders), (error) =>
-    dialog.showErrorBox(brand, strings.app.couldNotStart(errorLine(error))),
+function startApp(): void {
+  const userDataDir = profileFolder(
+    development,
+    app.commandLine.getSwitchValue('user-data-dir'),
+    app.getPath('appData'),
   );
-} else {
-  app.quit();
+  if (userDataDir) {
+    app.setPath('userData', userDataDir);
+    app.setPath('logs', path.join(userDataDir, 'logs'));
+  }
+
+  const askedFolders = foldersOf(
+    process.argv,
+    process.defaultApp,
+    process.cwd(),
+  );
+
+  if (app.requestSingleInstanceLock(handOff(askedFolders))) {
+    void exitOnFailure(app, start(askedFolders), (error) =>
+      dialog.showErrorBox(brand, strings.app.couldNotStart(errorLine(error))),
+    );
+  } else {
+    app.quit();
+  }
 }
 
 async function start(asked: readonly string[]): Promise<void> {
@@ -406,6 +430,19 @@ async function start(asked: readonly string[]): Promise<void> {
     fileIcon: async (file) =>
       (await app.getFileIcon(file, { size: 'normal' })).toPNG(),
     platform: process.platform,
+    ...(process.platform === 'win32' && {
+      elevate: async () => {
+        const { windowsLauncher } =
+          await import('../tools/commander/main/windowsElevation.js');
+        return elevatedFileSystem(
+          windowsLauncher(
+            process.execPath,
+            process.defaultApp ? path.resolve(process.argv[1]) : undefined,
+          ),
+          process.platform,
+        );
+      },
+    }),
     root: rootFolder(process.platform, process.env),
   });
   const view = new Shell(

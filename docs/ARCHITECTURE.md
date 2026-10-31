@@ -22,6 +22,7 @@
 
 - Folders are listed on Windows with `NtQueryDirectoryFile` through `koffi`, a page of entries at a time off the main thread, as Node can't read the hidden attribute or the size of files the system holds open, such as `pagefile.sys`; elsewhere with Node's `readdir` and `lstat`
 - Native calls go through `koffi` while they are plain C functions; COM or Objective-C would go in an addon of our own
+- Folders that need an administrator are read by a helper, the app itself started elevated in a mode of its own, as Total Commander does, rather than by restarting the app elevated, which would elevate the shells and git too and cut off drag and drop with other windows; it connects back over a named pipe the app opens, proves itself with a secret given only to it, only lists folders, and quits when the app goes
 
 ### Terminal, `terminal`
 

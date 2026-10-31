@@ -27,6 +27,7 @@ import {
 } from '../shared/settings';
 import type { FileSystem } from './fileSystem';
 import type { WatchFolder } from './watch';
+import type { ElevatedFileSystem } from './elevated';
 import { Icons } from './icons';
 import { iconSourceOf } from '../shared/icons';
 
@@ -40,6 +41,7 @@ export interface CommanderAccess {
   readonly watch: WatchFolder;
   readonly fileIcon: (file: string) => Promise<Uint8Array>;
   readonly platform: NodeJS.Platform;
+  readonly elevate?: () => Promise<ElevatedFileSystem | undefined>;
   readonly root: string;
 }
 
@@ -49,6 +51,7 @@ interface Pane {
   asked: number;
   history: readonly string[];
   at: number;
+  denied?: string;
 }
 
 type Listing = 'visit' | 'show' | 'refresh' | { readonly at: number };
@@ -127,6 +130,8 @@ export class CommanderTool implements Tool<'commander'> {
   >();
   private fileSystem: Promise<FileSystem> | undefined;
   private readonly icons: Icons;
+  private elevated: ElevatedFileSystem | undefined;
+  private elevating: Promise<ElevatedFileSystem | undefined> | undefined;
 
   constructor(private readonly access: CommanderAccess) {
     this.icons = new Icons(access.fileIcon, access.platform);
@@ -190,6 +195,8 @@ export class CommanderTool implements Tool<'commander'> {
         return this.step(page, message.tab, message.side, message.step);
       case 'openOnSide':
         return this.openOnSide(page, message);
+      case 'elevate':
+        return this.elevate(page, message.tab, message.side);
       case 'activate': {
         const shown = this.shownPane(page, message.tab, message.side);
         const panes = shown && this.panes.get(shown.tab);
@@ -264,6 +271,7 @@ export class CommanderTool implements Tool<'commander'> {
 
   quit(): void {
     this.unwatch();
+    this.elevated?.close();
   }
 
   async icon(url: URL): Promise<Response> {
@@ -343,6 +351,46 @@ export class CommanderTool implements Tool<'commander'> {
       : Promise.resolve();
   }
 
+  private async elevate(
+    page: Page,
+    tab: unknown,
+    side: unknown,
+  ): Promise<void> {
+    const shown = this.shownPane(page, tab, side);
+    const folder = shown?.pane.denied;
+    const { elevate } = this.access;
+    if (shown === undefined || folder === undefined || elevate === undefined) {
+      return;
+    }
+    this.elevating ??= elevate().then((elevated) => {
+      this.elevating = undefined;
+      if (elevated !== undefined) {
+        this.elevated = elevated;
+        void elevated.closed.then(() => {
+          if (this.elevated === elevated) {
+            this.elevated = undefined;
+          }
+        });
+      }
+      return elevated;
+    });
+    if ((this.elevated ?? (await this.elevating)) !== undefined) {
+      await this.list(page, shown.tab, shown.side, folder, 'visit');
+    }
+  }
+
+  private async listed(folder: string): Promise<readonly Entry[]> {
+    const files = await this.files();
+    try {
+      return await files.list(folder);
+    } catch (error) {
+      if (isDenied(error) && this.elevated !== undefined) {
+        return this.elevated.list(folder);
+      }
+      throw error;
+    }
+  }
+
   private openOnSide(
     page: Page,
     { tab, from, side, name }: Extract<CommanderToHost, { type: 'openOnSide' }>,
@@ -411,17 +459,18 @@ export class CommanderTool implements Tool<'commander'> {
     if (pane === undefined) {
       return;
     }
-    const asked = ++pane.asked;
+    const asked = how === 'refresh' ? pane.asked : ++pane.asked;
     let entries: readonly Entry[];
     try {
-      entries = await (await this.files()).list(folder);
+      entries = await this.listed(folder);
     } catch (error) {
       if (pane.asked !== asked) {
         return;
       }
       if (how !== 'refresh') {
         if (isDenied(error)) {
-          this.post(page, { type: 'noAccess', folder });
+          pane.denied = folder;
+          this.post(page, { type: 'noAccess', side, folder });
         } else {
           this.shell.notice(page, {
             level: 'error',
@@ -440,7 +489,7 @@ export class CommanderTool implements Tool<'commander'> {
       }
       return;
     }
-    if (pane.asked !== asked) {
+    if (pane.asked !== asked || (how === 'refresh' && pane.folder !== folder)) {
       return;
     }
     const selected = childToward(folder, pane.folder);
@@ -538,6 +587,7 @@ export class CommanderTool implements Tool<'commander'> {
       sort,
       columns,
       defaultColumns: this.access.defaultColumns(),
+      canElevate: this.access.elevate !== undefined,
     });
   }
 

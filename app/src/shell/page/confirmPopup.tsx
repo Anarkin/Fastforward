@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import { strings } from '../../shared/strings';
 import { useDismiss } from '../../ui/contextMenu';
 import { CloseIcon } from '../../ui/icons';
@@ -11,6 +11,7 @@ export function ConfirmPopup({
   onConfirm,
   onCancel,
   cancel = strings.confirm.cancel,
+  extra,
 }: {
   title: string;
   message: string;
@@ -18,13 +19,14 @@ export function ConfirmPopup({
   onConfirm: () => void;
   onCancel: () => void;
   cancel?: string | null;
+  extra?: { readonly label: string; readonly onClick: () => void };
 }) {
   const popup = useRef<HTMLDivElement>(null);
   const confirming = useRef<HTMLButtonElement>(null);
   useDismiss(popup, onCancel, { byKeyOnly: true });
   const dialog = useModalDialog(popup);
   const drag = useDialogDrag(popup);
-  useEffect(() => confirming.current?.focus(), []);
+  useLayoutEffect(() => confirming.current?.focus(), []);
   return (
     <div
       className="backdrop"
@@ -55,6 +57,11 @@ export function ConfirmPopup({
             {cancel !== null && (
               <button className="confirm-button" onClick={onCancel}>
                 {cancel}
+              </button>
+            )}
+            {extra && (
+              <button className="confirm-button" onClick={extra.onClick}>
+                {extra.label}
               </button>
             )}
             <button

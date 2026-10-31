@@ -20,6 +20,7 @@ import type {
   Sorts,
 } from '../../../../tools/commander/shared/settings';
 import { iconUrl } from '../../../../tools/commander/shared/icons';
+import type { ElevatedFileSystem } from '../../../../tools/commander/main/elevated';
 import { strings } from '../../../../shared/strings';
 import { removeFolder, tempFolder } from '../../../repositories';
 import { waitFor } from '../../../fixtures';
@@ -77,6 +78,7 @@ type Listed = readonly Entry[] | Error | Promise<readonly Entry[]>;
 function commander(
   listed: Record<string, Listed>,
   drives: readonly string[] = [],
+  elevate?: () => Promise<ElevatedFileSystem | undefined>,
 ) {
   const notices: Notice[] = [];
   const saved: unknown[] = [];
@@ -115,6 +117,7 @@ function commander(
       return Promise.resolve(new TextEncoder().encode(`icon of ${iconOf}`));
     },
     platform: 'linux',
+    elevate,
     watch: (watched, changed) => {
       const watch = { folder: watched, changed };
       watching.push(watch);
@@ -287,6 +290,45 @@ suite('Commander tool', () => {
     assert.deepStrictEqual(watched(), [root, at('Users')].toSorted());
     tool.closed(page, tab);
     assert.deepStrictEqual(watched(), []);
+  });
+
+  test('goes on opening a folder when the folder it leaves changes meanwhile, and drops a listing of that folder begun before the opening', async () => {
+    const opening = Promise.withResolvers<readonly Entry[]>();
+    const listed: Record<string, Listed> = {
+      [root]: [folder('slow')],
+      [at('slow')]: opening.promise,
+    };
+    const { tool, page, send, change } = commander(listed);
+    await tool.show(page, tab);
+
+    const opened = send({ type: 'open', tab: '1', side: 'left', name: 'slow' });
+    listed[root] = [folder('slow'), file('new.txt')];
+    await change(root);
+    opening.resolve([file('inside.txt')]);
+    await opened;
+
+    assert.deepStrictEqual(
+      page
+        .listings()
+        .filter((listing) => listing.startsWith('left '))
+        .at(-1),
+      `left ${at('slow')} ↑: inside.txt`,
+    );
+
+    const refreshing = Promise.withResolvers<readonly Entry[]>();
+    listed[at('slow')] = refreshing.promise;
+    await change(at('slow'));
+    await send({ type: 'open', tab: '1', side: 'left', name: '..' });
+    refreshing.resolve([file('stale.txt')]);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.deepStrictEqual(
+      page
+        .listings()
+        .filter((listing) => listing.startsWith('left '))
+        .at(-1),
+      `left ${root}: slow new.txt [slow]`,
+    );
   });
 
   test('keeps a side as it was, saying nothing, when its folder changes but can no longer be read', async () => {
@@ -497,14 +539,94 @@ suite('Commander tool', () => {
     await send({ type: 'open', tab: '1', side: 'right', name: 'Config.Msi' });
 
     assert.deepStrictEqual(page.of('noAccess'), [
-      { type: 'noAccess', folder: at('System Volume Information') },
-      { type: 'noAccess', folder: at('Config.Msi') },
+      {
+        type: 'noAccess',
+        side: 'left',
+        folder: at('System Volume Information'),
+      },
+      { type: 'noAccess', side: 'right', folder: at('Config.Msi') },
     ]);
     assert.deepStrictEqual(notices, []);
     assert.deepStrictEqual(page.listings().slice(2), [
       `left ${root}: System Volume Information Config.Msi`,
       `right ${root}: System Volume Information Config.Msi`,
     ]);
+  });
+
+  test('lists a folder it has no access to as administrator once the page asks, the helper started once, and further folders through it at once', async () => {
+    const listed: Record<string, Listed> = {
+      [root]: [folder('Config.Msi'), folder('System Volume Information')],
+    };
+    const stopped = Promise.withResolvers<void>();
+    const helper: ElevatedFileSystem = {
+      list: (each) =>
+        Promise.resolve([file(`${path.basename(each)} as admin.txt`)]),
+      drives: () => Promise.resolve([]),
+      closed: stopped.promise,
+      close: () => stopped.resolve(),
+    };
+    let asked = 0;
+    const { tool, page, send } = commander(listed, [], () => {
+      asked++;
+      return Promise.resolve(helper);
+    });
+    for (const each of ['Config.Msi', 'System Volume Information']) {
+      listed[at(each)] = Object.assign(new Error('denied'), { code: 'EPERM' });
+    }
+    await tool.show(page, tab);
+    assert.strictEqual(page.of('settings').length, 0);
+    tool.ready(page);
+    assert.strictEqual(page.of('settings').at(-1)?.canElevate, true);
+
+    await send({ type: 'elevate', tab: '1', side: 'left' });
+    assert.strictEqual(asked, 0);
+
+    await send({ type: 'open', tab: '1', side: 'left', name: 'Config.Msi' });
+    await send({ type: 'elevate', tab: '1', side: 'left' });
+    await send({ type: 'open', tab: '1', side: 'left', name: '..' });
+    await send({
+      type: 'open',
+      tab: '1',
+      side: 'left',
+      name: 'System Volume Information',
+    });
+
+    assert.strictEqual(asked, 1);
+    assert.deepStrictEqual(page.of('noAccess').length, 1);
+    assert.deepStrictEqual(page.listings().slice(3), [
+      `left ${at('Config.Msi')} ↑: Config.Msi as admin.txt`,
+      `left ${root}: Config.Msi System Volume Information [Config.Msi]`,
+      `left ${at('System Volume Information')} ↑: System Volume Information as admin.txt`,
+    ]);
+
+    stopped.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await send({ type: 'open', tab: '1', side: 'left', name: '..' });
+    await send({ type: 'open', tab: '1', side: 'left', name: 'Config.Msi' });
+    assert.deepStrictEqual(page.of('noAccess').length, 2);
+  });
+
+  test('stays where it was when the user says no to running as administrator, and offers it only where it can', async () => {
+    const listed: Record<string, Listed> = {
+      [root]: [folder('Config.Msi')],
+      [at('Config.Msi')]: Object.assign(new Error('denied'), { code: 'EPERM' }),
+    };
+    const refused = commander(listed, [], () => Promise.resolve(undefined));
+    await refused.tool.show(refused.page, tab);
+    await refused.send({
+      type: 'open',
+      tab: '1',
+      side: 'left',
+      name: 'Config.Msi',
+    });
+    await refused.send({ type: 'elevate', tab: '1', side: 'left' });
+    assert.deepStrictEqual(refused.page.listings().slice(2), [
+      `left ${root}: Config.Msi`,
+    ]);
+
+    const unable = commander(listed);
+    unable.tool.ready(unable.page);
+    assert.strictEqual(unable.page.of('settings').at(-1)?.canElevate, false);
   });
 
   test('says why in a notice when a folder can’t be opened for another reason', async () => {
@@ -690,6 +812,7 @@ suite('Commander tool', () => {
       sort: defaultSorts,
       columns: { extension: 6, size: 12, date: 16 },
       defaultColumns,
+      canElevate: false,
     });
   });
 

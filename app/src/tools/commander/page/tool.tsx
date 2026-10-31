@@ -47,7 +47,10 @@ export function CommanderTool({
 }) {
   const [view, dispatch] = useReducer(reduceView, emptyView);
   const [drives, setDrives] = useState<readonly string[]>([]);
-  const [noAccess, setNoAccess] = useState<string>();
+  const [noAccess, setNoAccess] = useState<{
+    readonly side: Side;
+    readonly folder: string;
+  }>();
   const [share, setShare] = useState(0.5);
   const [resized, setResized] = useState<{
     readonly from: ColumnWidths;
@@ -67,7 +70,7 @@ export function CommanderTool({
         if (message.type === 'drives') {
           setDrives(message.drives);
         } else if (message.type === 'noAccess') {
-          setNoAccess(message.folder);
+          setNoAccess({ side: message.side, folder: message.folder });
         } else {
           dispatch(message);
         }
@@ -222,11 +225,22 @@ export function CommanderTool({
       {noAccess !== undefined && (
         <ConfirmPopup
           title={strings.commander.noAccessTitle}
-          message={strings.commander.noAccess(noAccess)}
+          message={strings.commander.noAccess(noAccess.folder)}
           confirm={strings.confirm.ok}
           cancel={null}
           onConfirm={() => setNoAccess(undefined)}
           onCancel={() => setNoAccess(undefined)}
+          extra={
+            view.canElevate && tab !== undefined
+              ? {
+                  label: strings.commander.asAdministrator,
+                  onClick: () => {
+                    setNoAccess(undefined);
+                    post({ type: 'elevate', tab, side: noAccess.side });
+                  },
+                }
+              : undefined
+          }
         />
       )}
     </div>
