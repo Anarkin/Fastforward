@@ -7,10 +7,15 @@ import {
 import type { ColumnWidths, Sort, Sorts } from '../shared/settings';
 import { rowsOf, selectionAfter, type Row, type Selection } from './listing';
 
-export interface PaneView {
+interface Listed {
   readonly folder: string;
   readonly entries: readonly Entry[];
   readonly parent: boolean;
+  readonly back: boolean;
+  readonly forward: boolean;
+}
+
+export interface PaneView extends Listed {
   readonly sort: Sort;
   readonly rows: readonly Row[];
   readonly selected: string | undefined;
@@ -70,9 +75,7 @@ function sameSort(one: Sort, other: Sort): boolean {
 function relisted(
   pane: PaneView | undefined,
   sort: Sort,
-  folder: string,
-  entries: readonly Entry[],
-  parent: boolean,
+  { folder, entries, parent, back, forward }: Listed,
   showHidden: boolean,
   selected: string | undefined,
 ): PaneView {
@@ -81,6 +84,8 @@ function relisted(
     folder,
     entries,
     parent,
+    back,
+    forward,
     sort,
     rows,
     selected: selectionAfter(selectionIn(pane), folder, rows, selected),
@@ -130,9 +135,7 @@ export function reduceView(
               relisted(
                 pane,
                 action.sort[side],
-                pane.folder,
-                pane.entries,
-                pane.parent,
+                pane,
                 action.showHidden,
                 undefined,
               ),
@@ -148,9 +151,7 @@ export function reduceView(
             relisted(
               view.panes[action.side],
               view.panes[action.side]?.sort ?? view.sorts[action.side],
-              action.folder,
-              action.entries,
-              action.parent,
+              action,
               view.showHidden,
               action.selected,
             ),

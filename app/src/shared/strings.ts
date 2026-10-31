@@ -244,6 +244,7 @@ export const strings = {
     showHidden: 'Show or hide the hidden files',
     drive: 'Choose the drive of the left or right side',
     sort: 'Sort by a column, or reverse the order',
+    folderHistory: 'Back or forward through the folders of the side',
   },
   shortcuts: {
     title: 'Shortcuts',
@@ -475,6 +476,8 @@ export const strings = {
     size: 'Size',
     date: 'Date',
     chooseDrive: 'Choose a drive',
+    back: 'Back to the folder before',
+    forward: 'Forward to the folder after',
     sides: {
       left: 'Left side',
       right: 'Right side',

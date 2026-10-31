@@ -47,6 +47,25 @@ interface Pane {
   folder: string;
   entries: readonly Entry[] | undefined;
   asked: number;
+  history: readonly string[];
+  at: number;
+}
+
+type Listing = 'visit' | 'show' | 'refresh' | { readonly at: number };
+
+const maxHistory = 100;
+
+function newPane(folder: string): Pane {
+  return { folder, entries: undefined, asked: 0, history: [folder], at: 0 };
+}
+
+export function childToward(folder: string, from: string): string | undefined {
+  const relative = path.relative(folder, from);
+  return relative === '' ||
+    relative.startsWith('..') ||
+    path.isAbsolute(relative)
+    ? undefined
+    : relative.split(path.sep)[0];
 }
 
 type Panes = Record<Side, Pane> & { active: Side };
@@ -129,7 +148,7 @@ export class CommanderTool implements Tool<'commander'> {
     this.panes.set(tab.id, panes);
     await Promise.all([
       ...sides.map((side) =>
-        this.list(page, tab.id, side, panes[side].folder, undefined),
+        this.list(page, tab.id, side, panes[side].folder, 'show'),
       ),
       this.postDrives(page),
     ]);
@@ -167,6 +186,8 @@ export class CommanderTool implements Tool<'commander'> {
         return this.drive(page, message.tab, message.side, message.drive);
       case 'listDrives':
         return this.postDrives(page);
+      case 'step':
+        return this.step(page, message.tab, message.side, message.step);
       case 'activate': {
         const shown = this.shownPane(page, message.tab, message.side);
         const panes = shown && this.panes.get(shown.tab);
@@ -273,8 +294,8 @@ export class CommanderTool implements Tool<'commander'> {
         ? path.resolve(tab.root)
         : root;
     return {
-      left: { folder: root, entries: undefined, asked: 0 },
-      right: { folder: right, entries: undefined, asked: 0 },
+      left: newPane(root),
+      right: newPane(right),
       active: 'right',
     };
   }
@@ -306,7 +327,7 @@ export class CommanderTool implements Tool<'commander'> {
       const parent = parentOf(folder);
       return parent === undefined
         ? Promise.resolve()
-        : this.list(page, shown.tab, shown.side, parent, path.basename(folder));
+        : this.list(page, shown.tab, shown.side, parent, 'visit');
     }
     const entry = entries?.find((each) => each.name === name);
     return entry?.folder
@@ -315,9 +336,26 @@ export class CommanderTool implements Tool<'commander'> {
           shown.tab,
           shown.side,
           path.join(folder, entry.name),
-          undefined,
+          'visit',
         )
       : Promise.resolve();
+  }
+
+  private step(
+    page: Page,
+    tab: unknown,
+    side: unknown,
+    step: unknown,
+  ): Promise<void> {
+    const shown = this.shownPane(page, tab, side);
+    if (shown === undefined || (step !== -1 && step !== 1)) {
+      return Promise.resolve();
+    }
+    const at = shown.pane.at + step;
+    const folder = shown.pane.history.at(at);
+    return at < 0 || folder === undefined
+      ? Promise.resolve()
+      : this.list(page, shown.tab, shown.side, folder, { at });
   }
 
   private async drive(
@@ -333,7 +371,7 @@ export class CommanderTool implements Tool<'commander'> {
     const drives = await (await this.files()).drives();
     const chosen = drives.find((each) => each === drive);
     if (chosen !== undefined) {
-      await this.list(page, shown.tab, shown.side, chosen, undefined);
+      await this.list(page, shown.tab, shown.side, chosen, 'visit');
     }
   }
 
@@ -342,8 +380,7 @@ export class CommanderTool implements Tool<'commander'> {
     tab: string,
     side: Side,
     folder: string,
-    selected: string | undefined,
-    refreshing = false,
+    how: Listing,
   ): Promise<void> {
     const pane = this.panes.get(tab)?.[side];
     if (pane === undefined) {
@@ -357,7 +394,7 @@ export class CommanderTool implements Tool<'commander'> {
       if (pane.asked !== asked) {
         return;
       }
-      if (!refreshing) {
+      if (how !== 'refresh') {
         if (isDenied(error)) {
           this.post(page, { type: 'noAccess', folder });
         } else {
@@ -373,13 +410,23 @@ export class CommanderTool implements Tool<'commander'> {
           tab,
           side,
           await this.nearestFolder(folder),
-          undefined,
+          'show',
         );
       }
       return;
     }
     if (pane.asked !== asked) {
       return;
+    }
+    const selected = childToward(folder, pane.folder);
+    if (typeof how === 'object') {
+      pane.at = how.at;
+    } else if (how === 'visit' && pane.history[pane.at] !== folder) {
+      const history = [...pane.history.slice(0, pane.at + 1), folder].slice(
+        -maxHistory,
+      );
+      pane.history = history;
+      pane.at = history.length - 1;
     }
     pane.folder = folder;
     pane.entries = entries;
@@ -412,7 +459,7 @@ export class CommanderTool implements Tool<'commander'> {
     this.watching.set(side, {
       folder,
       stop: this.access.watch(folder, () => {
-        void this.list(page, tab, side, folder, undefined, true);
+        void this.list(page, tab, side, folder, 'refresh');
       }),
     });
   }
@@ -439,6 +486,8 @@ export class CommanderTool implements Tool<'commander'> {
         folder: pane.folder,
         entries: pane.entries ?? [],
         parent: parentOf(pane.folder) !== undefined,
+        back: pane.at > 0,
+        forward: pane.at < pane.history.length - 1,
         selected,
       });
     }

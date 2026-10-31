@@ -6,6 +6,7 @@ import type { Notice, Page, Tab } from '../../../../shell/main/shell';
 import type { ToWebview } from '../../../../shell/shared/protocol';
 import type { FileSystem } from '../../../../tools/commander/main/fileSystem';
 import {
+  childToward,
   CommanderTool,
   rootFolder,
 } from '../../../../tools/commander/main/tool';
@@ -219,7 +220,7 @@ suite('Commander tool', () => {
 
       assert.deepStrictEqual(
         page.listings().at(-1),
-        `right ${opened} ↑: kept.txt`,
+        `right ${opened} ↑: kept.txt [gone]`,
       );
       assert.deepStrictEqual(notices, []);
       assert.deepStrictEqual(watched(), [opened, root].toSorted());
@@ -328,6 +329,56 @@ suite('Commander tool', () => {
       `right ${at('Users')} ↑: me`,
       `right ${root}: Users notes.txt [Users]`,
     ]);
+  });
+
+  test('goes back and forward through the folders a side was in, selecting the folder it came from, and forgets those ahead once another is opened', async () => {
+    const { tool, page, send } = commander({
+      [root]: [folder('Users'), folder('Windows')],
+      [at('Users')]: [folder('me')],
+      [at('Users', 'me')]: [],
+      [at('Windows')]: [],
+    });
+    await tool.show(page, tab);
+    const step = (value: -1 | 1) =>
+      send({ type: 'step', tab: '1', side: 'left', step: value });
+    const last = () => {
+      const listing = page.of('listing').at(-1);
+      return (
+        listing && [
+          listing.folder,
+          listing.selected,
+          listing.back,
+          listing.forward,
+        ]
+      );
+    };
+
+    await send({ type: 'open', tab: '1', side: 'left', name: 'Users' });
+    await send({ type: 'open', tab: '1', side: 'left', name: 'me' });
+    assert.deepStrictEqual(last(), [at('Users', 'me'), undefined, true, false]);
+
+    await step(-1);
+    assert.deepStrictEqual(last(), [at('Users'), 'me', true, true]);
+    await step(-1);
+    assert.deepStrictEqual(last(), [root, 'Users', false, true]);
+    const listed = page.of('listing').length;
+    await step(-1);
+    assert.strictEqual(page.of('listing').length, listed);
+
+    await step(1);
+    assert.deepStrictEqual(last(), [at('Users'), undefined, true, true]);
+    await send({ type: 'open', tab: '1', side: 'left', name: '..' });
+    await send({ type: 'open', tab: '1', side: 'left', name: 'Windows' });
+    assert.deepStrictEqual(last(), [at('Windows'), undefined, true, false]);
+    await step(-1);
+    await step(-1);
+    await step(-1);
+    assert.deepStrictEqual(last(), [root, 'Users', false, true]);
+
+    await send(
+      forged('{ "type": "step", "tab": "1", "side": "left", "step": 2 }'),
+    );
+    assert.deepStrictEqual(last(), [root, 'Users', false, true]);
   });
 
   test('opens only folders the side listed, and nothing above the root, for the shown tab', async () => {
@@ -594,6 +645,16 @@ suite('Commander tool', () => {
       `left ${root}: Users`,
       `right ${root}: Users`,
     ]);
+  });
+});
+
+suite('The folder to select', () => {
+  test('is the child of a folder on the way to the one left, and none for a folder elsewhere', () => {
+    assert.strictEqual(childToward(root, at('Users', 'me')), 'Users');
+    assert.strictEqual(childToward(at('Users'), at('Users', 'me')), 'me');
+    assert.strictEqual(childToward(at('Users'), at('Users')), undefined);
+    assert.strictEqual(childToward(at('Users', 'me'), at('Users')), undefined);
+    assert.strictEqual(childToward(at('Users'), at('Windows')), undefined);
   });
 });
 

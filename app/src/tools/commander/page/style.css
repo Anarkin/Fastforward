@@ -1,3 +1,24 @@
+.commander {
+  --commander-row-height: round(
+    var(--monospace-font-size) * var(--monospace-line-height),
+    var(--device-pixel, 1px)
+  );
+  --commander-advance: round(1ch, var(--device-pixel, 1px));
+}
+
+.commander .column-title {
+  padding: 0 calc(4px + 3 * 26px + 2 * 2px + 8px);
+}
+
+.commander .column-start .menu-button {
+  padding: 0;
+}
+
+.commander .column-start .menu {
+  left: 0;
+  right: auto;
+}
+
 .commander-columns[data-active-side='left'] > .column:nth-child(1)::after,
 .commander-columns[data-active-side='right'] > .column:nth-child(2)::after {
   box-shadow: inset 0 0 0 2px var(--color-focus);

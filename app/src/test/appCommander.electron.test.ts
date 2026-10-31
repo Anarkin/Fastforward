@@ -230,6 +230,24 @@ suite('App commander', () => {
     }
   });
 
+  test('goes back through the folders of the side with Alt+Left, and forward again with its button', async () => {
+    await right().locator('.virtual-rows').focus();
+    await page.keyboard.press('Alt+ArrowLeft');
+    await waitFor(
+      async () => (await rowNames()).join() === '..,main.ts',
+      'the folder before, src',
+    );
+    await right()
+      .locator('.nav-button', { has: page.locator('svg') })
+      .nth(1)
+      .click();
+    await waitFor(
+      async () =>
+        (await right().locator('.column-name').textContent()) === opened,
+      'the folder after, the one opened',
+    );
+  });
+
   test.skipIf(process.platform !== 'win32')(
     'opens the drive menu of the right side with Alt+F2 and changes the drive by its letter',
     async () => {

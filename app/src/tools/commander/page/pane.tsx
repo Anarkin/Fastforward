@@ -8,7 +8,7 @@ import { ColumnHeader } from './columnHeader';
 import type { ColumnWidths, SizedColumn, SortColumn } from '../shared/settings';
 import type { PaneView } from './view';
 import { DateFormat, formatDate } from '../../../ui/dates';
-import { FileIcon, FolderIcon } from '../../../ui/icons';
+import { BackIcon, FileIcon, FolderIcon, ForwardIcon } from '../../../ui/icons';
 import { listMoveOf, moveInList } from '../../../ui/listMoves';
 import { MenuButton } from '../../../ui/menu';
 import { keyPressed } from '../../../ui/shortcuts';
@@ -74,6 +74,7 @@ export function Pane({
   onSwitchSide,
   onDrive,
   onDrivesOpening,
+  onStep,
   onResize,
   onResized,
   onReset,
@@ -92,6 +93,7 @@ export function Pane({
   onSwitchSide: () => void;
   onDrive: (drive: string) => void;
   onDrivesOpening: () => void;
+  onStep: (step: -1 | 1) => void;
   onResize: (column: SizedColumn, width: number) => void;
   onResized: (column: SizedColumn, width: number) => void;
   onReset: (column: SizedColumn) => void;
@@ -161,25 +163,43 @@ export function Pane({
       }}
     >
       <header className="column-title">
-        {drives.length > 0 && (
-          <div className="column-start" onClickCapture={onDrivesOpening}>
-            <MenuButton
-              title={strings.commander.chooseDrive}
-              icon={
-                <span className="drive-label">
-                  {(current ?? '').replace(/\\$/, '')}
-                </span>
-              }
-              trigger={driveTrigger}
-              items={drives.map((drive) => ({
-                label: drive,
-                accessKey: drive.charAt(0),
-                checked: drive === current,
-                onClick: () => onDrive(drive),
-              }))}
-            />
-          </div>
-        )}
+        <div className="column-start nav-buttons">
+          <button
+            className="nav-button"
+            title={strings.commander.back}
+            disabled={pane?.back !== true}
+            onClick={() => onStep(-1)}
+          >
+            <BackIcon />
+          </button>
+          <button
+            className="nav-button"
+            title={strings.commander.forward}
+            disabled={pane?.forward !== true}
+            onClick={() => onStep(1)}
+          >
+            <ForwardIcon />
+          </button>
+          {drives.length > 0 && (
+            <div onClickCapture={onDrivesOpening}>
+              <MenuButton
+                title={strings.commander.chooseDrive}
+                icon={
+                  <span className="drive-label">
+                    {(current ?? '').replace(/\\$/, '')}
+                  </span>
+                }
+                trigger={driveTrigger}
+                items={drives.map((drive) => ({
+                  label: drive,
+                  accessKey: drive.charAt(0),
+                  checked: drive === current,
+                  onClick: () => onDrive(drive),
+                }))}
+              />
+            </div>
+          )}
+        </div>
         <span className="column-name">{pane?.folder}</span>
       </header>
       <ColumnHeader

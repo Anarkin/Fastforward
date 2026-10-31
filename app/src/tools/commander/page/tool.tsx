@@ -1,4 +1,5 @@
 import { useEffect, useReducer, useRef, useState } from 'react';
+import { clicked } from '../../../shell/shared/keymap';
 import './style.css';
 import { commanderKeymap } from '../shared/keymap';
 import {
@@ -92,6 +93,28 @@ export function CommanderTool({
     }
   }, [post, view.tab, view.active]);
 
+  const stepActive = (step: -1 | 1) => {
+    if (view.tab !== undefined) {
+      post({ type: 'step', tab: view.tab, side: view.active, step });
+    }
+  };
+  useBinding(commanderKeymap.history, stepActive, shown);
+  useEffect(() => {
+    const { tab, active: side } = view;
+    if (!shown || tab === undefined) {
+      return undefined;
+    }
+    const onMouseUp = (event: MouseEvent) => {
+      const step = clicked(commanderKeymap.history, event);
+      if (step !== undefined) {
+        event.preventDefault();
+        post({ type: 'step', tab, side, step });
+      }
+    };
+    window.addEventListener('mouseup', onMouseUp);
+    return () => window.removeEventListener('mouseup', onMouseUp);
+  }, [shown, view, post]);
+
   useBinding(
     commanderKeymap.showHidden,
     () => post({ type: 'showHidden', shown: !view.showHidden }),
@@ -175,6 +198,11 @@ export function CommanderTool({
               }
             }}
             onDrivesOpening={() => post({ type: 'listDrives' })}
+            onStep={(step) => {
+              if (tab !== undefined) {
+                post({ type: 'step', tab, side, step });
+              }
+            }}
             resizer={side === 'left' && resizer}
           />
         ))}

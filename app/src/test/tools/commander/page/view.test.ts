@@ -29,6 +29,8 @@ const listing = (
   folder,
   entries,
   parent: true,
+  back: false,
+  forward: false,
   selected: undefined,
   ...extra,
 });

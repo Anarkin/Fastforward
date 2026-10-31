@@ -20,4 +20,15 @@ export const commanderKeymap = {
     'Alt+F2': 'right',
   }),
   sort: bind('Commander', strings.actions.sort, { Click: true }),
+  history: bind(
+    'Commander',
+    strings.actions.folderHistory,
+    {
+      'Alt+ArrowLeft': -1,
+      'Alt+ArrowRight': 1,
+      BackButton: -1,
+      ForwardButton: 1,
+    },
+    { repeats: true },
+  ),
 };

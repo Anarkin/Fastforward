@@ -131,27 +131,6 @@ body {
   border-radius: var(--card-radius);
 }
 
-.commander {
-  --commander-row-height: round(
-    var(--monospace-font-size) * var(--monospace-line-height),
-    var(--device-pixel, 1px)
-  );
-  --commander-advance: round(1ch, var(--device-pixel, 1px));
-}
-
-.commander .column-title {
-  padding: 0 calc(4px + 26px + 8px);
-}
-
-.commander .column-start .menu-button {
-  padding: 0;
-}
-
-.commander .column-start .menu {
-  left: 0;
-  right: auto;
-}
-
 .title-bar {
   flex: none;
   background: var(--color-background);
