@@ -140,11 +140,16 @@ function commander(
     root,
   });
   const page = new CommanderPage();
+  const viewed: string[] = [];
   tool.attach({
     page: () => page,
     tabs: () => [],
     active: () => undefined,
     open: () => Promise.resolve(),
+    openView: (_page, _tool, viewedFile) => {
+      viewed.push(viewedFile);
+      return Promise.resolve();
+    },
     setRoot: () => {},
     visited: () => {},
     recentItems: () => 10,
@@ -162,7 +167,17 @@ function commander(
     }
     await new Promise((resolve) => setTimeout(resolve, 0));
   };
-  return { tool, page, send, notices, saved, watched, change, iconsLoaded };
+  return {
+    tool,
+    page,
+    send,
+    notices,
+    saved,
+    watched,
+    change,
+    iconsLoaded,
+    viewed,
+  };
 }
 
 const tab: Tab = { id: '1', tool: 'commander' };
@@ -522,6 +537,38 @@ suite('Commander tool', () => {
         ),
       },
     ]);
+  });
+
+  test('opens a tab viewing a file the side lists, and nothing for a folder, ..  or a name it doesn’t list', async () => {
+    const { tool, page, send, viewed } = commander({
+      [root]: [folder('Users'), file('notes.txt')],
+    });
+    await tool.show(page, tab);
+
+    for (const name of ['notes.txt', 'Users', '..', 'secret.txt']) {
+      await send({ type: 'view', tab: '1', side: 'left', name });
+    }
+    await send({ type: 'view', tab: '2', side: 'left', name: 'notes.txt' });
+
+    assert.deepStrictEqual(viewed, [at('notes.txt')]);
+  });
+
+  test('names a viewing tab after its file and gives its folder as the folder of the tab, showing it without sides', async () => {
+    const { tool, page } = commander({ [root]: [file('notes.txt')] });
+    const viewing: Tab = {
+      id: '3',
+      tool: 'commander',
+      root: at('notes.txt'),
+      view: true,
+    };
+
+    assert.strictEqual(tool.names([viewing]).get('3')?.name, 'notes.txt');
+    assert.strictEqual(tool.folderOf(viewing), root);
+    await tool.show(page, viewing);
+    assert.deepStrictEqual(page.of('show'), [
+      { type: 'show', tab: '3', file: at('notes.txt') },
+    ]);
+    assert.deepStrictEqual(page.listings(), []);
   });
 
   test('opens only folders the side listed, and nothing above the root, for the shown tab', async () => {

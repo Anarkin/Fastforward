@@ -60,8 +60,21 @@ suite('Storage', () => {
       { id: '2', tool: 'x' },
       { id: 3, tool: 'commander' },
       { id: '4', tool: 'commander', root: 4 },
+      { id: '5', tool: 'commander', root, view: 'yes' },
     ]);
     assert.deepStrictEqual(storageOf(store).savedTabs, [tab]);
+  });
+
+  test('keeps a tab that views a file as one, read and written', async () => {
+    const store = new FakeStore();
+    const file = path.resolve('notes.txt');
+    const tab = { id: '1', tool: 'commander', root: file, view: true } as const;
+    await store.update(tabsKey, [tab]);
+    assert.deepStrictEqual(storageOf(store).savedTabs, [tab]);
+
+    const written = new FakeStore();
+    await storageOf(written).setSavedTabs([tab], '1');
+    assert.deepStrictEqual(written.get(tabsKey), [tab]);
   });
 
   test("keeps each tool's state apart under tools, by the tool's id, forgetting a value set to nothing", async () => {

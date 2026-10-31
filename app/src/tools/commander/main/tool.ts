@@ -163,6 +163,10 @@ export class CommanderTool implements Tool<'commander'> {
   async show(page: Page, tab: Tab): Promise<void> {
     this.unwatch();
     this.shown = { page, tab: tab.id };
+    if (tab.view === true && tab.root !== undefined) {
+      this.post(page, { type: 'show', tab: tab.id, file: tab.root });
+      return;
+    }
     this.post(page, { type: 'show', tab: tab.id });
     const panes = this.panes.get(tab.id) ?? (await this.start(tab));
     this.panes.set(tab.id, panes);
@@ -208,6 +212,8 @@ export class CommanderTool implements Tool<'commander'> {
         return this.postDrives(page);
       case 'step':
         return this.step(page, message.tab, message.side, message.step);
+      case 'view':
+        return this.view(page, message.tab, message.side, message.name);
       case 'reread': {
         const shown = this.shownPane(page, message.tab, message.side);
         return shown === undefined
@@ -260,7 +266,15 @@ export class CommanderTool implements Tool<'commander'> {
 
   names(tabs: readonly Tab[]): ReadonlyMap<string, TabName> {
     return new Map(
-      tabs.map((tab) => [tab.id, { name: strings.tools.commander }]),
+      tabs.map((tab) => [
+        tab.id,
+        {
+          name:
+            tab.view === true && tab.root !== undefined
+              ? path.basename(tab.root)
+              : strings.tools.commander,
+        },
+      ]),
     );
   }
 
@@ -269,6 +283,9 @@ export class CommanderTool implements Tool<'commander'> {
   }
 
   folderOf(tab: Tab): string | undefined {
+    if (tab.view === true && tab.root !== undefined) {
+      return path.dirname(tab.root);
+    }
     const panes = this.panes.get(tab.id);
     return panes === undefined ? tab.root : panes[panes.active].folder;
   }
@@ -377,6 +394,26 @@ export class CommanderTool implements Tool<'commander'> {
       'visit',
       target === opened ? undefined : target,
     );
+  }
+
+  private view(
+    page: Page,
+    tab: unknown,
+    side: unknown,
+    name: unknown,
+  ): Promise<void> {
+    const shown = this.shownPane(page, tab, side);
+    const entry =
+      typeof name === 'string'
+        ? shown?.pane.entries?.find((each) => each.name === name)
+        : undefined;
+    return shown === undefined || entry === undefined || entry.folder
+      ? Promise.resolve()
+      : this.shell.openView(
+          page,
+          'commander',
+          path.join(shown.pane.folder, entry.name),
+        );
   }
 
   private async elevate(

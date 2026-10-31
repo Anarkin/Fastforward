@@ -159,6 +159,19 @@ suite('Commander view', () => {
     ]);
   });
 
+  test('views the file of a viewing tab instead of the sides, and stops once another tab or none is shown', () => {
+    const viewing = run({ type: 'show', tab: '3', file: '/work/notes.txt' });
+    assert.strictEqual(viewing.viewing, '/work/notes.txt');
+    assert.strictEqual(
+      reduceView(viewing, { type: 'show', tab: '1' }).viewing,
+      undefined,
+    );
+    assert.strictEqual(
+      reduceView(viewing, { type: 'hide' }).viewing,
+      undefined,
+    );
+  });
+
   test('selects only rows there are', () => {
     const view = run(
       { type: 'show', tab: '1' },

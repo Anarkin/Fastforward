@@ -24,6 +24,7 @@ export interface PaneView extends Listed {
 
 export interface CommanderView {
   readonly tab: string | undefined;
+  readonly viewing: string | undefined;
   readonly showHidden: boolean;
   readonly sorts: Sorts;
   readonly columns: ColumnWidths;
@@ -35,6 +36,7 @@ export interface CommanderView {
 
 export const emptyView: CommanderView = {
   tab: undefined,
+  viewing: undefined,
   showHidden: true,
   sorts: {
     left: { column: 'extension', descending: false },
@@ -48,7 +50,11 @@ export const emptyView: CommanderView = {
 };
 
 export type ViewAction =
-  | { readonly type: 'show'; readonly tab: string }
+  | {
+      readonly type: 'show';
+      readonly tab: string;
+      readonly file?: string;
+    }
   | { readonly type: 'hide' }
   | (Omit<CommanderToWebviewOf<'settings'>, 'type'> & {
       readonly type: 'settings';
@@ -115,11 +121,17 @@ export function reduceView(
         : {
             ...view,
             tab: action.tab,
+            viewing: action.file,
             active: emptyView.active,
             panes: emptyView.panes,
           };
     case 'hide':
-      return { ...view, tab: undefined, panes: emptyView.panes };
+      return {
+        ...view,
+        tab: undefined,
+        viewing: undefined,
+        panes: emptyView.panes,
+      };
     case 'settings': {
       const settled = {
         ...view,

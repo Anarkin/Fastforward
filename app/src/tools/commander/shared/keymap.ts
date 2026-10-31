@@ -20,6 +20,10 @@ export const commanderKeymap = {
     'Alt+F2': 'right',
   }),
   sort: bind('Commander', strings.actions.sort, { Click: true }),
+  view: bind('Commander', strings.actions.viewFile, { F3: true }),
+  closeViewer: bind('Commander', strings.actions.closeViewer, {
+    Escape: true,
+  }),
   reread: bind('Commander', strings.actions.reread, {
     F2: true,
     'Ctrl+R': true,

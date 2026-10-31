@@ -246,6 +246,8 @@ export const strings = {
     sort: 'Sort by a column, or reverse the order',
     folderHistory: 'Back or forward through the folders of the side',
     reread: 'Read the folder of the side again',
+    viewFile: 'View the selected file in a tab of its own',
+    closeViewer: 'Close the file being viewed',
     openOnSide:
       'Open the selected folder, or the one you are in, on the left or right side',
   },

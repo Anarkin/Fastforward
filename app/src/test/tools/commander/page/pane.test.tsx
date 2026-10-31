@@ -39,6 +39,7 @@ const header = (elevated: boolean) =>
         onDrivesOpening={noop}
         onStep={noop}
         onOpenOnSide={noop}
+        onView={noop}
         onResize={noop}
         onResized={noop}
         onReset={noop}

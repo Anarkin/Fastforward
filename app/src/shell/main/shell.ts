@@ -47,6 +47,7 @@ export interface ShellAccess {
     roots: readonly (string | undefined)[],
     reuse: boolean,
   ): Promise<void>;
+  openView(page: Page, tool: ToolId, file: string): Promise<void>;
   setRoot(tab: string, root: string): void;
   visited(folder: string): void;
   recentItems(): number;
@@ -109,6 +110,7 @@ export const unattachedShell: ShellAccess = {
   tabs: () => [],
   active: () => undefined,
   open: () => Promise.resolve(),
+  openView: () => Promise.resolve(),
   setRoot: () => undefined,
   visited: () => undefined,
   recentItems: () => 0,
@@ -185,6 +187,8 @@ export class Shell {
       tabs: () => this.storage.savedTabs,
       active: () => this.activeTab(),
       open: (page, tool, roots, reuse) => this.open(page, tool, roots, reuse),
+      openView: (page, tool, file) =>
+        this.open(page, tool, [file], false, true),
       setRoot: (tab, root) => this.setRoot(tab, root),
       visited: (folder) => {
         for (const tool of toolIds) {
@@ -504,6 +508,7 @@ export class Shell {
     tool: ToolId,
     roots: readonly (string | undefined)[],
     reuse: boolean,
+    view = false,
   ): Promise<void> {
     const { storage } = this;
     const tabs = storage.savedTabs;
@@ -528,6 +533,7 @@ export class Shell {
         id: String(next++),
         tool,
         ...(root !== undefined && { root }),
+        ...(view && { view }),
       };
       added.push(tab);
       opened.push(tab.id);

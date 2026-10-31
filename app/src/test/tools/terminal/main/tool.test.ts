@@ -126,6 +126,7 @@ function terminal(seen: readonly FolderVisits[] = []) {
       opened.push(roots);
       return Promise.resolve();
     },
+    openView: () => Promise.resolve(),
     setRoot: (tab, root) => moved.push([tab, root]),
     visited: () => {},
     recentItems: () => recent.items,

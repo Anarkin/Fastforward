@@ -9,6 +9,7 @@ import {
   type Side,
 } from '../shared/protocol';
 import { Pane } from './pane';
+import { Viewer } from './viewer';
 import { emptyView, reduceView } from './view';
 import { nextSort } from './listing';
 import type { ColumnWidths } from '../shared/settings';
@@ -40,8 +41,10 @@ export function CommanderTool({
   active,
   post,
   listen,
+  onClose,
 }: {
   active: boolean;
+  onClose: (tab: string) => void;
   post: (message: CommanderToHost) => void;
   listen: (handler: (message: CommanderToWebview) => void) => () => void;
 }) {
@@ -84,6 +87,7 @@ export function CommanderTool({
   );
 
   const shown = active && view.tab !== undefined;
+  const viewing = shown && view.viewing !== undefined;
 
   useEffect(() => {
     if (!shown) {
@@ -106,7 +110,16 @@ export function CommanderTool({
       post({ type: 'step', tab: view.tab, side: view.active, step });
     }
   };
-  useBinding(commanderKeymap.history, stepActive, shown);
+  useBinding(commanderKeymap.history, stepActive, shown && !viewing);
+  useBinding(
+    commanderKeymap.closeViewer,
+    () => {
+      if (view.tab !== undefined) {
+        onClose(view.tab);
+      }
+    },
+    viewing,
+  );
   useBinding(
     commanderKeymap.reread,
     () => {
@@ -114,7 +127,7 @@ export function CommanderTool({
         post({ type: 'reread', tab: view.tab, side: view.active });
       }
     },
-    shown,
+    shown && !viewing,
   );
   useEffect(() => {
     const { tab, active: side } = view;
@@ -135,7 +148,7 @@ export function CommanderTool({
   useBinding(
     commanderKeymap.showHidden,
     () => post({ type: 'showHidden', shown: !view.showHidden }),
-    shown,
+    shown && !viewing,
   );
   useBinding(
     commanderKeymap.drive,
@@ -143,7 +156,7 @@ export function CommanderTool({
       dispatch({ type: 'activate', side });
       triggers[side].current?.click();
     },
-    shown && drives.length > 0,
+    shown && !viewing && drives.length > 0,
   );
 
   if (!active) {
@@ -156,6 +169,16 @@ export function CommanderTool({
       post({ type: 'open', tab, side, name });
     }
   };
+
+  if (view.viewing !== undefined) {
+    return (
+      <div className="repository commander">
+        <div className="columns viewer-columns">
+          <Viewer file={view.viewing} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="repository commander">
@@ -216,6 +239,11 @@ export function CommanderTool({
               }
             }}
             onDrivesOpening={() => post({ type: 'listDrives' })}
+            onView={(name) => {
+              if (tab !== undefined) {
+                post({ type: 'view', tab, side, name });
+              }
+            }}
             onOpenOnSide={(target, name) => {
               if (tab !== undefined) {
                 post({

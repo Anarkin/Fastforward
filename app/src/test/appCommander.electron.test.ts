@@ -286,6 +286,27 @@ suite('App commander', () => {
     );
   });
 
+  test('views a file in a tab of its own with F3, saved as one, and goes back to the commander with Escape', async () => {
+    await select('notes');
+    await page.keyboard.press('F3');
+    await page.locator('.tabs .tab.active', { hasText: 'notes.txt' }).waitFor();
+    await page.locator('.viewer').waitFor();
+    await waitFor(() => {
+      const state: unknown = JSON.parse(
+        fs.readFileSync(path.join(profile, 'state.json'), 'utf8'),
+      );
+      return JSON.stringify(state).includes('"view":true');
+    }, 'the viewing tab to be saved');
+
+    await page.keyboard.press('Escape');
+    await page.locator('.viewer').waitFor({ state: 'detached' });
+    await page.locator('.tabs .tab.active', { hasText: 'Commander' }).waitFor();
+    assert.strictEqual(
+      await page.locator('.tabs .tab', { hasText: 'notes.txt' }).count(),
+      0,
+    );
+  });
+
   test.skipIf(process.platform !== 'win32')(
     'opens the drive menu of the right side with Alt+F2 and changes the drive by its letter',
     async () => {

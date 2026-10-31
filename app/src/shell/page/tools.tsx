@@ -111,6 +111,10 @@ export function ToolViews({
     },
     [listeners],
   );
+  const closeTab = useCallback(
+    (tab: string) => post({ type: 'closeTab', tab }),
+    [post],
+  );
   const copyText = useCallback(
     (text: string) => post({ type: 'copyText', text }),
     [post],
@@ -132,6 +136,7 @@ export function ToolViews({
         active={active === 'commander'}
         post={postCommander}
         listen={listenCommander}
+        onClose={closeTab}
       />
       <GitTool
         active={active === 'git'}

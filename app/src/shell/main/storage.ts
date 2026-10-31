@@ -203,10 +203,11 @@ export class Storage {
       tabsChanged
         ? this.state.update(
             tabsKey,
-            tabs.map(({ id, tool, root }) => ({
+            tabs.map(({ id, tool, root, view }) => ({
               id,
               tool,
               ...(root !== undefined && { root }),
+              ...(view === true && { view }),
             })),
           )
         : undefined,
@@ -252,6 +253,7 @@ export interface SavedTab {
   readonly id: string;
   readonly tool: ToolId;
   readonly root?: string;
+  readonly view?: true;
 }
 
 function isSavedTab(value: unknown): value is SavedTab {
@@ -259,13 +261,18 @@ function isSavedTab(value: unknown): value is SavedTab {
     isObject(value) &&
     typeof value.id === 'string' &&
     isTool(value.tool) &&
-    (value.root === undefined || typeof value.root === 'string')
+    (value.root === undefined || typeof value.root === 'string') &&
+    (value.view === undefined || value.view === true)
   );
 }
 
 function sameTab(a: SavedTab, b: SavedTab | undefined): boolean {
   return (
-    b !== undefined && a.id === b.id && a.tool === b.tool && a.root === b.root
+    b !== undefined &&
+    a.id === b.id &&
+    a.tool === b.tool &&
+    a.root === b.root &&
+    a.view === b.view
   );
 }
 
