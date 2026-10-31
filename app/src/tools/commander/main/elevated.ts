@@ -140,7 +140,10 @@ export async function elevatedFileSystem(
       return undefined;
     }
     const socket = await connecting;
-    return socket && overSocket(socket);
+    if (socket === undefined) {
+      throw new Error('The helper did not connect');
+    }
+    return overSocket(socket);
   } finally {
     server.close();
   }

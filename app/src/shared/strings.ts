@@ -490,6 +490,10 @@ export const strings = {
     noAccess: (folder: string) => `You don't have access to ${folder}.`,
     asAdministrator: 'As Administrator',
     readAsAdministrator: 'Read as administrator',
+    helperFailed:
+      "Couldn't start the helper that reads folders as administrator.",
+    helperStopped:
+      'The helper that read folders as administrator stopped, so they are no longer shown.',
     gone: "It doesn't exist anymore.",
   },
   find: {

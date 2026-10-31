@@ -384,20 +384,63 @@ export class CommanderTool implements Tool<'commander'> {
     if (shown === undefined || folder === undefined || elevate === undefined) {
       return;
     }
-    this.elevating ??= elevate().then((elevated) => {
-      this.elevating = undefined;
-      if (elevated !== undefined) {
-        this.elevated = elevated;
-        void elevated.closed.then(() => {
-          if (this.elevated === elevated) {
-            this.elevated = undefined;
-          }
+    this.elevating ??= elevate().then(
+      (elevated) => {
+        this.elevating = undefined;
+        if (elevated !== undefined) {
+          this.elevated = elevated;
+          void elevated.closed.then(() => {
+            if (this.elevated === elevated) {
+              this.elevated = undefined;
+              this.helperStopped();
+            }
+          });
+        }
+        return elevated;
+      },
+      () => {
+        this.elevating = undefined;
+        this.shell.notice(page, {
+          level: 'error',
+          message: strings.commander.helperFailed,
         });
-      }
-      return elevated;
-    });
+        return undefined;
+      },
+    );
     if ((this.elevated ?? (await this.elevating)) !== undefined) {
       await this.list(page, shown.tab, shown.side, folder, 'visit');
+    }
+  }
+
+  private helperStopped(): void {
+    const page = this.shell.page();
+    let readAsAdministrator = false;
+    for (const [tab, panes] of this.panes) {
+      for (const side of sides) {
+        const pane = panes[side];
+        if (pane.elevated !== true) {
+          continue;
+        }
+        readAsAdministrator = true;
+        pane.elevated = false;
+        pane.entries = undefined;
+        pane.denied = pane.folder;
+        if (page !== undefined && this.shown?.tab === tab) {
+          this.postListing(page, tab, side, pane, undefined);
+          this.post(page, {
+            type: 'noAccess',
+            side,
+            folder: pane.folder,
+            asAdministrator: true,
+          });
+        }
+      }
+    }
+    if (readAsAdministrator) {
+      this.shell.notice(page, {
+        level: 'error',
+        message: strings.commander.helperStopped,
+      });
     }
   }
 

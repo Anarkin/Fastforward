@@ -619,9 +619,10 @@ suite('Commander tool', () => {
 
     stopped.resolve();
     await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.deepStrictEqual(page.of('noAccess').length, 2);
     await send({ type: 'open', tab: '1', side: 'left', name: '..' });
     await send({ type: 'open', tab: '1', side: 'left', name: 'Config.Msi' });
-    assert.deepStrictEqual(page.of('noAccess').length, 2);
+    assert.deepStrictEqual(page.of('noAccess').length, 3);
   });
 
   test('opens where a link points when the link itself can’t be listed, as Documents and Settings, which no one may list', async () => {
@@ -735,6 +736,71 @@ suite('Commander tool', () => {
     await send({ type: 'open', tab: '1', side: 'left', name: '..' });
     assert.deepStrictEqual(helperWatching, []);
     assert.deepStrictEqual(watched(), [root, root]);
+  });
+
+  test('says when the helper couldn’t be started, staying where it was', async () => {
+    const { tool, page, send, notices } = commander(
+      {
+        [root]: [folder('Config.Msi')],
+        [at('Config.Msi')]: Object.assign(new Error('denied'), {
+          code: 'EPERM',
+        }),
+      },
+      [],
+      () => Promise.reject(new Error('The helper didn’t connect')),
+    );
+    await tool.show(page, tab);
+    await send({ type: 'open', tab: '1', side: 'left', name: 'Config.Msi' });
+    await send({ type: 'elevate', tab: '1', side: 'left' });
+
+    assert.deepStrictEqual(notices, [
+      { level: 'error', message: strings.commander.helperFailed },
+    ]);
+    assert.deepStrictEqual(page.listings().slice(2), [
+      `left ${root}: Config.Msi`,
+    ]);
+  });
+
+  test('drops what a side read as administrator once the helper stops, saying so and asking again rather than showing it as current', async () => {
+    const stopped = Promise.withResolvers<void>();
+    const helper: ElevatedFileSystem = {
+      list: () => Promise.resolve([file('secret.txt')]),
+      drives: () => Promise.resolve([]),
+      watch: () => () => {},
+      closed: stopped.promise,
+      close: () => stopped.resolve(),
+    };
+    const { tool, page, send, notices } = commander(
+      {
+        [root]: [folder('Config.Msi')],
+        [at('Config.Msi')]: Object.assign(new Error('denied'), {
+          code: 'EPERM',
+        }),
+      },
+      [],
+      () => Promise.resolve(helper),
+    );
+    await tool.show(page, tab);
+    await send({ type: 'open', tab: '1', side: 'left', name: 'Config.Msi' });
+    await send({ type: 'elevate', tab: '1', side: 'left' });
+
+    stopped.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const last = page.of('listing').at(-1);
+    assert.deepStrictEqual(
+      last && [last.side, last.folder, last.entries, last.elevated],
+      ['left', at('Config.Msi'), [], false],
+    );
+    assert.deepStrictEqual(page.of('noAccess').at(-1), {
+      type: 'noAccess',
+      side: 'left',
+      folder: at('Config.Msi'),
+      asAdministrator: true,
+    });
+    assert.deepStrictEqual(notices, [
+      { level: 'error', message: strings.commander.helperStopped },
+    ]);
   });
 
   test('stays where it was when the user says no to running as administrator, and offers it only where it can', async () => {

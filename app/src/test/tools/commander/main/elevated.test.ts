@@ -106,18 +106,13 @@ suite('The elevated helper of the commander', () => {
     }
   });
 
-  test('gives no file system when the user says no, or the helper never comes', async () => {
+  test('gives no file system when the user says no, and fails when the helper never comes', async () => {
     assert.strictEqual(
       await elevatedFileSystem(() => Promise.resolve(false), process.platform),
       undefined,
     );
-    assert.strictEqual(
-      await elevatedFileSystem(
-        () => Promise.resolve(true),
-        process.platform,
-        50,
-      ),
-      undefined,
+    await assert.rejects(
+      elevatedFileSystem(() => Promise.resolve(true), process.platform, 50),
     );
   });
 
