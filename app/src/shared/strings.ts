@@ -223,6 +223,7 @@ export const strings = {
     stopFinding: 'Close the search',
     mainMenu: 'Open the main menu',
     shortcuts: 'Show or hide these shortcuts',
+    dismissNotice: 'Close the newest notice',
     about: 'Show About',
     devTools: 'Developer tools',
     close: 'Close a menu or popup',

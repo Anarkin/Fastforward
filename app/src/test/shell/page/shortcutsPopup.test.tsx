@@ -65,7 +65,12 @@ suite('Shortcuts popup', () => {
         ],
         [
           'App',
-          ['Open the main menu', 'Show or hide these shortcuts', 'Show About'],
+          [
+            'Open the main menu',
+            'Close the newest notice',
+            'Show or hide these shortcuts',
+            'Show About',
+          ],
         ],
         ['Worktrees', ['Next or previous worktree']],
         [

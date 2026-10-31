@@ -65,6 +65,7 @@ export const keymap = {
     Delete: true,
   }),
   mainMenu: bind('App', strings.actions.mainMenu, { 'Alt+F': true }),
+  dismissNotice: bind('App', strings.actions.dismissNotice, { Escape: true }),
   shortcuts: bind(
     'App',
     strings.actions.shortcuts,

@@ -183,6 +183,86 @@ suite('Window', () => {
     }
   });
 
+  test('closes the newest notice with Escape once nothing else takes the key, as a popup open', async () => {
+    const dom = new JSDOM('<!doctype html><main></main>', {
+      pretendToBeVisual: true,
+    });
+    const globals = {
+      window: dom.window,
+      document: dom.window.document,
+      Element: dom.window.Element,
+      HTMLElement: dom.window.HTMLElement,
+      getComputedStyle: dom.window.getComputedStyle.bind(dom.window),
+      MutationObserver: dom.window.MutationObserver,
+      requestAnimationFrame: dom.window.requestAnimationFrame.bind(dom.window),
+      cancelAnimationFrame: dom.window.cancelAnimationFrame.bind(dom.window),
+      ResizeObserver: class {
+        observe() {}
+        disconnect() {}
+      },
+      IS_REACT_ACT_ENVIRONMENT: true,
+    };
+    const saved = Object.fromEntries(
+      Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
+    );
+    Object.assign(globalThis, globals);
+    try {
+      const { createRoot } = await import('react-dom/client');
+      const { document } = dom.window;
+      const main = document.querySelector('main');
+      assert.ok(main);
+      const root = createRoot(main);
+      let send: (message: ToWebview) => void = noop;
+      await act(async () => {
+        root.render(
+          <App
+            name="Fastforward"
+            post={noop}
+            listen={(handler) => {
+              send = handler;
+              return noop;
+            }}
+          />,
+        );
+      });
+      const press = (key: string) =>
+        act(async () => {
+          (document.activeElement ?? document.body).dispatchEvent(
+            new dom.window.KeyboardEvent('keydown', {
+              key,
+              bubbles: true,
+              cancelable: true,
+            }),
+          );
+        });
+      const shown = () =>
+        Array.from(
+          document.querySelectorAll('.notice-message'),
+          (message) => message.textContent,
+        );
+      await act(async () => {
+        send({ type: 'notice', level: 'error', message: 'first' });
+        send({ type: 'notice', level: 'error', message: 'second' });
+      });
+      assert.deepStrictEqual(shown(), ['second', 'first']);
+
+      await press('F1');
+      await press('Escape');
+      assert.strictEqual(document.querySelector('[role="dialog"]'), null);
+      assert.deepStrictEqual(shown(), ['second', 'first']);
+
+      await press('Escape');
+      assert.deepStrictEqual(shown(), ['first']);
+      await press('Escape');
+      assert.deepStrictEqual(shown(), []);
+      await act(async () => {
+        root.unmount();
+      });
+    } finally {
+      Object.assign(globalThis, saved);
+    }
+  });
+
   test('asks whether you are sure, naming the tool and, in quotes, the tab to close, as a tab named after a folder could pass for anything, or the app to quit', () => {
     assert.deepStrictEqual(
       confirmation({
