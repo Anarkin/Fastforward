@@ -155,3 +155,62 @@
 .commander-pane.inactive .row.selected:not(:hover) {
   background: none;
 }
+
+.viewer-columns {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.viewer-body {
+  position: relative;
+  overflow: hidden auto;
+  overflow-y: hidden;
+  outline: none;
+}
+
+.viewer-rows {
+  width: max-content;
+  min-width: 100%;
+  padding: 0 calc(var(--scrollbar-width, 12px) + 8px) 0 8px;
+  box-sizing: border-box;
+}
+
+.viewer-row {
+  height: var(--commander-row-height);
+  line-height: var(--commander-row-height);
+  font-family: var(--monospace-font-family);
+  font-size: var(--monospace-font-size);
+  letter-spacing: calc(var(--commander-advance) - 1ch);
+  white-space: pre;
+  tab-size: 4;
+}
+
+.commander-viewer-probe {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.viewer-error {
+  padding: 8px;
+  color: var(--color-error-foreground);
+}
+
+.viewer-scrollbar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 12px;
+}
+
+.viewer-thumb {
+  position: absolute;
+  right: 2px;
+  width: 8px;
+  border-radius: 4px;
+  background: var(--scrollbar-background);
+}
+
+.viewer-scrollbar:hover .viewer-thumb {
+  background: var(--scrollbar-hover-background);
+}

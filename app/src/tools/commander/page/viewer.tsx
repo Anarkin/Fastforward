@@ -1,10 +1,290 @@
-export function Viewer({ file }: { file: string }) {
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
+import type {
+  CommanderToHost,
+  CommanderToWebviewOf,
+  TextRow,
+} from '../shared/protocol';
+import { listMoveOf } from '../../../ui/listMoves';
+import { followDrag } from '../../../ui/followDrag';
+
+export interface Viewing {
+  readonly tab: string;
+  readonly size: number | undefined;
+  readonly error?: string;
+}
+
+type Rows = CommanderToWebviewOf<'rows'>;
+
+interface Loaded {
+  readonly rows: readonly TextRow[];
+  readonly top: number;
+}
+
+interface Ask {
+  readonly anchor: number;
+  readonly exact: boolean;
+  readonly before: number;
+  readonly after: number;
+  readonly topOf: (anchorIndex: number, count: number) => number;
+}
+
+const minThumb = 24;
+
+export function topWithin(top: number, count: number, screen: number): number {
+  return Math.max(0, Math.min(top, count - screen));
+}
+
+export function thumbOf(
+  loaded: Loaded,
+  screen: number,
+  size: number,
+  track: number,
+): { readonly top: number; readonly height: number } {
+  const first = loaded.rows[loaded.top];
+  const last =
+    loaded.rows[Math.min(loaded.rows.length, loaded.top + screen) - 1];
+  if (first === undefined || last === undefined || size <= 0) {
+    return { top: 0, height: track };
+  }
+  const height = Math.min(
+    track,
+    Math.max(minThumb, (track * (last.end - first.start)) / size),
+  );
+  return {
+    top:
+      ((track - height) * first.start) /
+      Math.max(1, size - (last.end - first.start)),
+    height,
+  };
+}
+
+export function Viewer({
+  file,
+  viewing,
+  post,
+  listen,
+}: {
+  file: string;
+  viewing: Viewing | undefined;
+  post: (message: CommanderToHost) => void;
+  listen: (handler: (rows: Rows) => void) => () => void;
+}) {
+  const body = useRef<HTMLDivElement>(null);
+  const probe = useRef<HTMLDivElement>(null);
+  const [loaded, setLoaded] = useState<Loaded>({ rows: [], top: 0 });
+  const [screen, setScreen] = useState(1);
+  const [track, setTrack] = useState(0);
+  const asked = useRef<{ readonly request: number; readonly ask: Ask }>(
+    undefined,
+  );
+  const next = useRef(0);
+  const wheel = useRef(0);
+  const current = useRef(loaded);
+  useLayoutEffect(() => {
+    current.current = loaded;
+  });
+  const tab = viewing?.tab;
+  const size = viewing?.size;
+
+  const ask = useCallback(
+    (wanted: Ask) => {
+      if (tab === undefined) {
+        return;
+      }
+      const request = ++next.current;
+      asked.current = { request, ask: wanted };
+      post({
+        type: 'readRows',
+        tab,
+        request,
+        anchor: wanted.anchor,
+        exact: wanted.exact,
+        before: wanted.before,
+        after: wanted.after,
+      });
+    },
+    [post, tab],
+  );
+
+  useEffect(
+    () =>
+      listen((rows) => {
+        const pending = asked.current;
+        if (rows.tab !== tab || pending?.request !== rows.request) {
+          return;
+        }
+        asked.current = undefined;
+        setLoaded({
+          rows: rows.rows,
+          top: pending.ask.topOf(rows.anchorIndex, rows.rows.length),
+        });
+      }),
+    [listen, tab],
+  );
+
+  useEffect(() => body.current?.focus(), []);
+
+  useEffect(() => {
+    const element = body.current;
+    const row = probe.current;
+    if (!element || !row) {
+      return undefined;
+    }
+    const measure = () => {
+      const height = row.getBoundingClientRect().height || 1;
+      setScreen(Math.max(1, Math.floor(element.clientHeight / height)));
+      setTrack(element.clientHeight);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  const move = useCallback(
+    (by: number) => {
+      const { rows, top } = current.current;
+      const from = rows[top];
+      if (from === undefined || by === 0) {
+        return;
+      }
+      ask({
+        anchor: from.start,
+        exact: true,
+        before: Math.max(0, -by) + screen,
+        after: Math.max(0, by) + screen * 2,
+        topOf: (anchorIndex, count) =>
+          topWithin(anchorIndex + by, count, screen),
+      });
+    },
+    [ask, screen],
+  );
+
+  const jump = useCallback(
+    (anchor: number) =>
+      ask({
+        anchor,
+        exact: false,
+        before: screen,
+        after: screen * 2,
+        topOf: (anchorIndex, count) => topWithin(anchorIndex, count, screen),
+      }),
+    [ask, screen],
+  );
+
+  useEffect(() => {
+    if (size === undefined) {
+      return;
+    }
+    const from = current.current.rows[current.current.top];
+    ask({
+      anchor: from?.start ?? 0,
+      exact: from !== undefined,
+      before: screen,
+      after: screen * 2,
+      topOf: (anchorIndex, count) => topWithin(anchorIndex, count, screen),
+    });
+  }, [ask, size, screen]);
+
+  const thumb = thumbOf(loaded, screen, size ?? 0, track);
+  const shown = loaded.rows.slice(loaded.top, loaded.top + screen + 1);
+
   return (
-    <section className="column viewer" tabIndex={-1}>
+    <section className="column viewer">
       <header className="column-title">
         <span className="column-name">{file}</span>
       </header>
-      <div className="column-body viewer-body" />
+      <div
+        className="column-body viewer-body"
+        ref={body}
+        tabIndex={0}
+        data-column-focus=""
+        onWheel={(event) => {
+          wheel.current += event.deltaY;
+          const height = probe.current?.getBoundingClientRect().height ?? 1;
+          const rows = Math.trunc(wheel.current / height);
+          if (rows !== 0) {
+            wheel.current -= rows * height;
+            move(rows);
+          }
+        }}
+        onKeyDown={(event) => {
+          const step = listMoveOf(event);
+          if (step === undefined) {
+            return;
+          }
+          event.preventDefault();
+          switch (step) {
+            case 'up':
+              move(-1);
+              return;
+            case 'down':
+              move(1);
+              return;
+            case 'pageUp':
+              move(-Math.max(1, screen - 1));
+              return;
+            case 'pageDown':
+              move(Math.max(1, screen - 1));
+              return;
+            case 'first':
+              jump(0);
+              return;
+            case 'last':
+              jump(size ?? 0);
+              return;
+            default:
+              step satisfies never;
+          }
+        }}
+      >
+        <div className="viewer-row commander-viewer-probe" ref={probe} />
+        {viewing?.error === undefined ? (
+          <div className="viewer-rows">
+            {shown.map((row) => (
+              <div className="viewer-row" key={row.start}>
+                {row.text}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="viewer-error">{viewing.error}</div>
+        )}
+        {size !== undefined && size > 0 && (
+          <div
+            className="viewer-scrollbar"
+            onPointerDown={(event) => {
+              event.preventDefault();
+              const box = event.currentTarget.getBoundingClientRect();
+              const at = (clientY: number) =>
+                jump(
+                  Math.round(
+                    (Math.min(Math.max(clientY - box.top, 0), box.height) /
+                      Math.max(1, box.height)) *
+                      size,
+                  ),
+                );
+              at(event.clientY);
+              followDrag(
+                window,
+                (moved: PointerEvent) => at(moved.clientY),
+                () => {},
+              );
+            }}
+          >
+            <div
+              className="viewer-thumb"
+              style={{ top: thumb.top, height: thumb.height }}
+            />
+          </div>
+        )}
+      </div>
     </section>
   );
 }

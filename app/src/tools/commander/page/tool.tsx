@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef, useState } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { clicked } from '../../../shell/shared/keymap';
 import './style.css';
 import { commanderKeymap } from '../shared/keymap';
@@ -6,10 +6,11 @@ import {
   sides,
   type CommanderToHost,
   type CommanderToWebview,
+  type CommanderToWebviewOf,
   type Side,
 } from '../shared/protocol';
 import { Pane } from './pane';
-import { Viewer } from './viewer';
+import { Viewer, type Viewing } from './viewer';
 import { emptyView, reduceView } from './view';
 import { nextSort } from './listing';
 import type { ColumnWidths } from '../shared/settings';
@@ -50,6 +51,19 @@ export function CommanderTool({
 }) {
   const [view, dispatch] = useReducer(reduceView, emptyView);
   const [drives, setDrives] = useState<readonly string[]>([]);
+  const [viewed, setViewed] = useState<Viewing>();
+  const rowListeners = useRef(
+    new Set<(rows: CommanderToWebviewOf<'rows'>) => void>(),
+  );
+  const listenRows = useCallback(
+    (handler: (rows: CommanderToWebviewOf<'rows'>) => void) => {
+      rowListeners.current.add(handler);
+      return () => {
+        rowListeners.current.delete(handler);
+      };
+    },
+    [],
+  );
   const [noAccess, setNoAccess] = useState<{
     readonly side: Side;
     readonly folder: string;
@@ -73,6 +87,16 @@ export function CommanderTool({
       listen((message) => {
         if (message.type === 'drives') {
           setDrives(message.drives);
+        } else if (message.type === 'viewing') {
+          setViewed({
+            tab: message.tab,
+            size: message.size,
+            ...(message.error !== undefined && { error: message.error }),
+          });
+        } else if (message.type === 'rows') {
+          for (const handler of rowListeners.current) {
+            handler(message);
+          }
         } else if (message.type === 'noAccess') {
           setNoAccess({
             side: message.side,
@@ -174,7 +198,13 @@ export function CommanderTool({
     return (
       <div className="repository commander">
         <div className="columns viewer-columns">
-          <Viewer file={view.viewing} />
+          <Viewer
+            key={view.tab}
+            file={view.viewing}
+            viewing={viewed?.tab === view.tab ? viewed : undefined}
+            post={post}
+            listen={listenRows}
+          />
         </div>
       </div>
     );

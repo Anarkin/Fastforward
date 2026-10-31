@@ -323,6 +323,47 @@ suite('App commander', () => {
     );
   });
 
+  test('shows the rows of a file viewed, moving a page with PageDown, to its end with End and anywhere with its scrollbar', async () => {
+    const lines = Array.from({ length: 200 }, (_, index) => `row ${index}`);
+    fs.writeFileSync(
+      path.join(opened, 'rows.txt'),
+      lines.join(String.fromCharCode(10)),
+    );
+    await select('rows');
+    await page.keyboard.press('F3');
+    const first = () =>
+      page.locator('.viewer-rows .viewer-row').first().textContent();
+    await waitFor(async () => (await first()) === 'row 0', 'the first row');
+    await waitForFocus(page.locator('.viewer-body'), 'the viewer');
+
+    await page.keyboard.press('PageDown');
+    await waitFor(
+      async () => /^row [1-9]/.test((await first()) ?? ''),
+      'a page further down',
+    );
+    await page.keyboard.press('End');
+    await waitFor(
+      async () =>
+        (await page
+          .locator('.viewer-rows .viewer-row')
+          .last()
+          .textContent()) === 'row 199',
+      'the last row',
+    );
+    const bar = await page.locator('.viewer-scrollbar').boundingBox();
+    assert.ok(bar);
+    await page.mouse.click(bar.x + bar.width / 2, bar.y + 1);
+    await waitFor(async () => (await first()) === 'row 0', 'the start again');
+
+    await page.keyboard.press('Escape');
+    await page.locator('.viewer').waitFor({ state: 'detached' });
+    fs.rmSync(path.join(opened, 'rows.txt'));
+    await waitFor(
+      async () => !(await rowNames()).includes('rows.txt'),
+      'the file to be gone from the list',
+    );
+  });
+
   test.skipIf(process.platform !== 'win32')(
     'opens the drive menu of the right side with Alt+F2 and changes the drive by its letter',
     async () => {

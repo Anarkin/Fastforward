@@ -498,6 +498,8 @@ export const strings = {
     helperStopped:
       'The helper that read folders as administrator stopped, so they are no longer shown.',
     gone: "It doesn't exist anymore.",
+    couldNotRead: (file: string, reason: string) =>
+      `Couldn't read ${file}. ${reason}`,
   },
   find: {
     title: 'Search the diff',

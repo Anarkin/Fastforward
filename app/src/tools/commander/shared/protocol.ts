@@ -1,5 +1,13 @@
 import type { ColumnWidths, Sort, Sorts } from './settings';
 
+export interface TextRow {
+  readonly start: number;
+  readonly end: number;
+  readonly text: string;
+}
+
+export const maxRowsAsked = 1000;
+
 export interface Entry {
   readonly name: string;
   readonly folder: boolean;
@@ -33,6 +41,15 @@ export type CommanderToHost =
       readonly drive: string;
     }
   | { readonly type: 'listDrives' }
+  | {
+      readonly type: 'readRows';
+      readonly tab: string;
+      readonly request: number;
+      readonly anchor: number;
+      readonly exact: boolean;
+      readonly before: number;
+      readonly after: number;
+    }
   | {
       readonly type: 'view';
       readonly tab: string;
@@ -71,6 +88,20 @@ export type CommanderToWebview =
   | { readonly type: 'drives'; readonly drives: readonly string[] }
   | { readonly type: 'show'; readonly tab: string; readonly file?: string }
   | { readonly type: 'hide' }
+  | {
+      readonly type: 'viewing';
+      readonly tab: string;
+      readonly size: number | undefined;
+      readonly error?: string;
+    }
+  | {
+      readonly type: 'rows';
+      readonly tab: string;
+      readonly request: number;
+      readonly size: number;
+      readonly rows: readonly TextRow[];
+      readonly anchorIndex: number;
+    }
   | {
       readonly type: 'noAccess';
       readonly side: Side;

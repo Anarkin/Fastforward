@@ -11,6 +11,7 @@ import {
 } from '../../../shell/main/shell';
 import {
   isSide,
+  maxRowsAsked,
   parentFolder,
   sides,
   type CommanderToHost,
@@ -27,6 +28,7 @@ import {
 } from '../shared/settings';
 import type { FileSystem } from './fileSystem';
 import type { WatchFolder } from './watch';
+import { fileReader, rowsBefore, rowsFrom, rowStartAt } from './textRows';
 import type { ElevatedFileSystem } from './elevated';
 import { Icons } from './icons';
 import { iconSourceOf, viewerIconUrl, viewerOfIcon } from '../shared/icons';
@@ -146,6 +148,14 @@ export class CommanderTool implements Tool<'commander'> {
   private fileSystem: Promise<FileSystem> | undefined;
   private readonly icons: Icons;
   private elevated: ElevatedFileSystem | undefined;
+  private viewing:
+    | {
+        readonly tab: string;
+        readonly file: string;
+        size: number;
+        readonly stop: () => void;
+      }
+    | undefined;
   private elevating: Promise<ElevatedFileSystem | undefined> | undefined;
 
   constructor(private readonly access: CommanderAccess) {
@@ -165,6 +175,7 @@ export class CommanderTool implements Tool<'commander'> {
     this.shown = { page, tab: tab.id };
     if (tab.view === true && tab.root !== undefined) {
       this.post(page, { type: 'show', tab: tab.id, file: tab.root });
+      await this.startViewing(page, tab.id, tab.root);
       return;
     }
     this.post(page, { type: 'show', tab: tab.id });
@@ -214,6 +225,8 @@ export class CommanderTool implements Tool<'commander'> {
         return this.step(page, message.tab, message.side, message.step);
       case 'view':
         return this.view(page, message.tab, message.side, message.name);
+      case 'readRows':
+        return this.readRows(page, message);
       case 'reread': {
         const shown = this.shownPane(page, message.tab, message.side);
         return shown === undefined
@@ -424,6 +437,95 @@ export class CommanderTool implements Tool<'commander'> {
           'commander',
           path.join(shown.pane.folder, entry.name),
         );
+  }
+
+  private async startViewing(
+    page: Page,
+    tab: string,
+    file: string,
+  ): Promise<void> {
+    let size: number;
+    try {
+      size = (await fs.promises.stat(file)).size;
+    } catch (error) {
+      this.post(page, {
+        type: 'viewing',
+        tab,
+        size: undefined,
+        error: strings.commander.couldNotRead(file, reasonOf(error)),
+      });
+      return;
+    }
+    if (this.shown?.tab !== tab) {
+      return;
+    }
+    const viewing = {
+      tab,
+      file,
+      size,
+      stop: this.access.watch(file, () => {
+        void fs.promises.stat(file).then(
+          (stats) => {
+            if (this.viewing === viewing && this.shown?.tab === tab) {
+              viewing.size = stats.size;
+              this.post(page, { type: 'viewing', tab, size: stats.size });
+            }
+          },
+          () => undefined,
+        );
+      }),
+    };
+    this.viewing = viewing;
+    this.post(page, { type: 'viewing', tab, size });
+  }
+
+  private async readRows(
+    page: Page,
+    message: Extract<CommanderToHost, { type: 'readRows' }>,
+  ): Promise<void> {
+    const { viewing } = this;
+    const { request, anchor, exact, before, after } = message;
+    const counts = [before, after].every(
+      (count) => Number.isInteger(count) && count >= 0 && count <= maxRowsAsked,
+    );
+    if (
+      viewing === undefined ||
+      this.shown?.page !== page ||
+      viewing.tab !== message.tab ||
+      !Number.isSafeInteger(request) ||
+      !Number.isSafeInteger(anchor) ||
+      anchor < 0 ||
+      typeof exact !== 'boolean' ||
+      !counts
+    ) {
+      return;
+    }
+    const read = fileReader(viewing.file);
+    const { size } = viewing;
+    try {
+      const start = exact
+        ? Math.min(anchor, size)
+        : await rowStartAt(read, Math.min(anchor, size));
+      const [earlier, later] = await Promise.all([
+        rowsBefore(read, size, start, before),
+        rowsFrom(read, size, start, after),
+      ]);
+      this.post(page, {
+        type: 'rows',
+        tab: viewing.tab,
+        request,
+        size,
+        rows: [...earlier, ...later],
+        anchorIndex: earlier.length,
+      });
+    } catch (error) {
+      this.post(page, {
+        type: 'viewing',
+        tab: viewing.tab,
+        size: undefined,
+        error: strings.commander.couldNotRead(viewing.file, reasonOf(error)),
+      });
+    }
   }
 
   private async elevate(
@@ -688,6 +790,8 @@ export class CommanderTool implements Tool<'commander'> {
       stop();
     }
     this.watching.clear();
+    this.viewing?.stop();
+    this.viewing = undefined;
   }
 
   private postListing(

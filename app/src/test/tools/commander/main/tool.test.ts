@@ -253,6 +253,90 @@ suite('Commander tool', () => {
       assert.deepStrictEqual(watched(), [opened, root].toSorted());
     });
 
+    test('tells the size of a file viewed and reads its rows around a place, answering each request by its number', async () => {
+      const notes = path.join(opened, 'notes.txt');
+      fs.writeFileSync(notes, 'one\ntwo\nthree\nfour\n');
+      const { tool, page, send } = commander({});
+      const viewing: Tab = {
+        id: '3',
+        tool: 'commander',
+        root: notes,
+        view: true,
+      };
+      await tool.show(page, viewing);
+      assert.deepStrictEqual(page.of('viewing'), [
+        { type: 'viewing', tab: '3', size: 19 },
+      ]);
+
+      await send({
+        type: 'readRows',
+        tab: '3',
+        request: 7,
+        anchor: 9,
+        exact: false,
+        before: 1,
+        after: 2,
+      });
+      const answer = page.of('rows').at(-1);
+      assert.deepStrictEqual(
+        answer && [
+          answer.request,
+          answer.anchorIndex,
+          answer.rows.map((row) => row.text),
+        ],
+        [7, 1, ['two', 'three', 'four']],
+      );
+
+      for (const bad of [
+        { tab: '4' },
+        { anchor: -1 },
+        { before: 100_000 },
+        { after: 1.5 },
+      ]) {
+        await send({
+          type: 'readRows',
+          tab: '3',
+          request: 8,
+          anchor: 0,
+          exact: true,
+          before: 0,
+          after: 1,
+          ...bad,
+        });
+      }
+      assert.strictEqual(page.of('rows').length, 1);
+    });
+
+    test('tells the page when the file viewed changes, with its new size, and that one gone can’t be read', async () => {
+      const grown = path.join(opened, 'grows.log');
+      fs.writeFileSync(grown, 'a\n');
+      const { tool, page, change } = commander({});
+      await tool.show(page, {
+        id: '3',
+        tool: 'commander',
+        root: grown,
+        view: true,
+      });
+
+      fs.appendFileSync(grown, 'b\n');
+      await change(grown);
+      await waitFor(
+        () => page.of('viewing').at(-1)?.size === 4,
+        'the new size to be told',
+      );
+
+      const gone = path.join(opened, 'gone.txt');
+      await tool.show(page, {
+        id: '4',
+        tool: 'commander',
+        root: gone,
+        view: true,
+      });
+      const told = page.of('viewing').at(-1);
+      assert.deepStrictEqual(told && [told.tab, told.size], ['4', undefined]);
+      assert.ok(told?.error);
+    });
+
     test('lists the folder the tab was opened with on the right, and the root on the left', async () => {
       const { tool, page } = commander({
         [root]: [folder('Users')],
