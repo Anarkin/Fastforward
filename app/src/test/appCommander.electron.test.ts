@@ -291,6 +291,18 @@ suite('App commander', () => {
     await page.keyboard.press('F3');
     await page.locator('.tabs .tab.active', { hasText: 'notes.txt' }).waitFor();
     await page.locator('.viewer').waitFor();
+    if (process.platform !== 'linux') {
+      await waitFor(
+        () =>
+          page
+            .locator('.tabs .tab.active img.tab-icon')
+            .evaluate(
+              (image: HTMLImageElement) =>
+                image.complete && image.naturalWidth > 0,
+            ),
+        'the tab to show the icon of the file',
+      );
+    }
     await waitFor(() => {
       const state: unknown = JSON.parse(
         fs.readFileSync(path.join(profile, 'state.json'), 'utf8'),

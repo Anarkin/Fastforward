@@ -13,6 +13,15 @@ export function iconUrl({ tab, side, folder, name }: IconSource): string {
   return `${iconRoute}?${new URLSearchParams({ tab, side, folder, name })}`;
 }
 
+export function viewerIconUrl(tab: string): string {
+  return `${iconRoute}?${new URLSearchParams({ view: tab })}`;
+}
+
+export function viewerOfIcon(url: URL): string | undefined {
+  const tab = url.searchParams.get('view');
+  return url.pathname === iconRoute && tab ? tab : undefined;
+}
+
 export function iconSourceOf(url: URL): IconSource | undefined {
   const query = url.searchParams;
   const tab = query.get('tab');

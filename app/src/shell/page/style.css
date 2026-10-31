@@ -662,6 +662,12 @@ body {
   width: 16px;
 }
 
+.tabs .tab-icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
 .tool-git {
   color: var(--color-git-icon);
 }

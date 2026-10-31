@@ -19,7 +19,10 @@ import type {
   ColumnWidths,
   Sorts,
 } from '../../../../tools/commander/shared/settings';
-import { iconUrl } from '../../../../tools/commander/shared/icons';
+import {
+  iconUrl,
+  viewerIconUrl,
+} from '../../../../tools/commander/shared/icons';
 import type { ElevatedFileSystem } from '../../../../tools/commander/main/elevated';
 import { strings } from '../../../../shared/strings';
 import { removeFolder, tempFolder } from '../../../repositories';
@@ -141,9 +144,10 @@ function commander(
   });
   const page = new CommanderPage();
   const viewed: string[] = [];
+  const tabs: Tab[] = [];
   tool.attach({
     page: () => page,
-    tabs: () => [],
+    tabs: () => tabs,
     active: () => undefined,
     open: () => Promise.resolve(),
     openView: (_page, _tool, viewedFile) => {
@@ -177,6 +181,7 @@ function commander(
     change,
     iconsLoaded,
     viewed,
+    tabs,
   };
 }
 
@@ -551,6 +556,30 @@ suite('Commander tool', () => {
     await send({ type: 'view', tab: '2', side: 'left', name: 'notes.txt' });
 
     assert.deepStrictEqual(viewed, [at('notes.txt')]);
+  });
+
+  test('gives a viewing tab the icon of its file, served for that tab only while it views a file', async () => {
+    const { tool, tabs, iconsLoaded } = commander({});
+    const viewing: Tab = {
+      id: '3',
+      tool: 'commander',
+      root: at('notes.txt'),
+      view: true,
+    };
+    tabs.push(viewing, { id: '4', tool: 'commander', root });
+    const icon = tool.names([viewing]).get('3')?.icon;
+    assert.strictEqual(icon, viewerIconUrl('3'));
+
+    const served = async (url: string) =>
+      (await tool.icon(new URL(`fastforward://app${url}`))).status;
+    assert.strictEqual(await served(viewerIconUrl('3')), 200);
+    assert.strictEqual(await served(viewerIconUrl('4')), 404);
+    assert.strictEqual(await served(viewerIconUrl('5')), 404);
+    assert.deepStrictEqual(iconsLoaded, [at('notes.txt')]);
+    assert.strictEqual(
+      tool.names([{ id: '4', tool: 'commander', root }]).get('4')?.icon,
+      undefined,
+    );
   });
 
   test('names a viewing tab after its file and gives its folder as the folder of the tab, showing it without sides', async () => {

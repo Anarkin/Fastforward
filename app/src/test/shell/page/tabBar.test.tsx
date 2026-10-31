@@ -57,6 +57,38 @@ suite('Tab bar', () => {
     name,
   }));
 
+  test('draws the icon a tab gives instead of its tool’s, as a viewer tab gives its file’s', () => {
+    const document = new JSDOM(
+      renderToStaticMarkup(
+        <TabBar
+          tabs={[
+            { id: '1', tool: 'commander', name: 'Commander' },
+            {
+              id: '2',
+              tool: 'commander',
+              name: 'notes.txt',
+              icon: '/commander-icon?view=2',
+            },
+          ]}
+          active="2"
+          onSelect={noop}
+          onPreload={noop}
+          onClose={noop}
+          onAdd={noop}
+          onLog={noop}
+          adding={false}
+        />,
+      ),
+    ).window.document;
+    const [plain, viewer] = document.querySelectorAll('.tabs .tab');
+    assert.ok(plain?.querySelector('.tool-icon'));
+    assert.strictEqual(plain.querySelector('img'), null);
+    assert.strictEqual(
+      viewer?.querySelector('img.tab-icon')?.getAttribute('src'),
+      '/commander-icon?view=2',
+    );
+  });
+
   test('wraps around at either end, and stays put with one tab', () => {
     assert.strictEqual(adjacentTab(tabs, '/a', 1), '/b');
     assert.strictEqual(adjacentTab(tabs, '/c', 1), '/a');

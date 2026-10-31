@@ -29,7 +29,7 @@ import type { FileSystem } from './fileSystem';
 import type { WatchFolder } from './watch';
 import type { ElevatedFileSystem } from './elevated';
 import { Icons } from './icons';
-import { iconSourceOf } from '../shared/icons';
+import { iconSourceOf, viewerIconUrl, viewerOfIcon } from '../shared/icons';
 
 export interface CommanderAccess {
   readonly fileSystem: () => Promise<FileSystem>;
@@ -266,14 +266,11 @@ export class CommanderTool implements Tool<'commander'> {
 
   names(tabs: readonly Tab[]): ReadonlyMap<string, TabName> {
     return new Map(
-      tabs.map((tab) => [
+      tabs.map((tab): [string, TabName] => [
         tab.id,
-        {
-          name:
-            tab.view === true && tab.root !== undefined
-              ? path.basename(tab.root)
-              : strings.tools.commander,
-        },
+        tab.view === true && tab.root !== undefined
+          ? { name: path.basename(tab.root), icon: viewerIconUrl(tab.id) }
+          : { name: strings.tools.commander },
       ]),
     );
   }
@@ -313,6 +310,15 @@ export class CommanderTool implements Tool<'commander'> {
   }
 
   async icon(url: URL): Promise<Response> {
+    const viewer = viewerOfIcon(url);
+    if (viewer !== undefined) {
+      const tab = this.shell
+        .tabs()
+        .find((each) => each.id === viewer && each.view === true);
+      return tab?.root === undefined
+        ? new Response(null, { status: 404 })
+        : this.iconResponse(tab.root);
+    }
     const source = iconSourceOf(url);
     const pane = source && this.panes.get(source.tab)?.[source.side];
     const entry = pane?.entries?.find((each) => each.name === source?.name);
@@ -325,8 +331,12 @@ export class CommanderTool implements Tool<'commander'> {
     ) {
       return new Response(null, { status: 404 });
     }
+    return this.iconResponse(path.join(pane.folder, entry.name));
+  }
+
+  private async iconResponse(file: string): Promise<Response> {
     try {
-      const png = await this.icons.of(path.join(pane.folder, entry.name));
+      const png = await this.icons.of(file);
       return new Response(Buffer.from(png), {
         headers: { 'content-type': 'image/png' },
       });

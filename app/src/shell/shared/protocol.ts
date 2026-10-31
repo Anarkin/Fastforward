@@ -7,6 +7,7 @@ export interface TabInfo {
   readonly tool: ToolId;
   readonly name: string;
   readonly folder?: string;
+  readonly icon?: string;
   readonly root?: string;
 }
 

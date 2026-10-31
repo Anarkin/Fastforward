@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { type TabInfo } from '../shared/protocol';
+import type { ToolId } from '../shared/tools';
 import { AddIcon, CloseIcon, ToolIcon } from '../../ui/icons';
 import { titleBarHeight } from '../shared/titleBar';
 import { clicked, keymap, released } from '../shared/keymap';
@@ -422,6 +423,21 @@ export function resting(delay: number): {
   };
 }
 
+function TabIcon({ url, tool }: { url: string; tool: ToolId }) {
+  const [failed, setFailed] = useState(false);
+  return failed ? (
+    <ToolIcon tool={tool} />
+  ) : (
+    <img
+      className="icon tab-icon"
+      src={url}
+      alt=""
+      draggable={false}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 export function TabBar({
   tabs,
   active,
@@ -531,7 +547,11 @@ export function TabBar({
               }
             >
               <span className="tab-divider" />
-              <ToolIcon tool={tab.tool} />
+              {tab.icon === undefined ? (
+                <ToolIcon tool={tab.tool} />
+              ) : (
+                <TabIcon url={tab.icon} tool={tab.tool} />
+              )}
               <span className="tab-name">{tab.name}</span>
               {tab.folder !== undefined && (
                 <span className="tab-folder">{tab.folder}</span>

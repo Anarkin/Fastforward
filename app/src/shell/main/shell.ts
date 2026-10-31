@@ -33,6 +33,7 @@ export type Tab = SavedTab;
 export interface TabName {
   readonly name: string;
   readonly folder?: string;
+  readonly icon?: string;
 }
 
 export type Notice = Omit<ToWebviewOf<'notice'>, 'type'>;
@@ -700,6 +701,7 @@ export class Shell {
         tool,
         name: name?.name ?? strings.tools[tool],
         ...(name?.folder !== undefined && { folder: name.folder }),
+        ...(name?.icon !== undefined && { icon: name.icon }),
         ...(root !== undefined && { root }),
       };
     });
