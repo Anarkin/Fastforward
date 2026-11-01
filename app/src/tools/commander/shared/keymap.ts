@@ -1,59 +1,24 @@
 import { bind } from '../../../shell/shared/keymap';
 import { strings } from '../../../shared/strings';
 
-export const commanderGroups = ['Commander'] as const;
+export const commanderGroups = [
+  'Folders',
+  'Sides',
+  'Marking',
+  'Viewing',
+] as const;
 
 export const viewerGroups = ['Viewer'] as const;
 
 export type ViewMode = 'text' | 'hex' | 'preview';
 
 export const commanderKeymap = {
-  side: bind('Commander', strings.actions.side, {
-    Tab: true,
-    'Shift+Tab': true,
-  }),
-  openFolder: bind('Commander', strings.actions.openFolder, { Enter: true }),
-  parentFolder: bind('Commander', strings.actions.parentFolder, {
+  openFolder: bind('Folders', strings.actions.openFolder, { Enter: true }),
+  parentFolder: bind('Folders', strings.actions.parentFolder, {
     Backspace: true,
   }),
-  showHidden: bind('Commander', strings.actions.showHidden, {
-    'Ctrl+H': true,
-  }),
-  drive: bind('Commander', strings.actions.drive, {
-    'Alt+F1': 'left',
-    'Alt+F2': 'right',
-  }),
-  sort: bind('Commander', strings.actions.sort, { Click: true }),
-  view: bind('Commander', strings.actions.viewFile, { F3: true }),
-  compare: bind('Commander', strings.actions.compareFiles, {
-    'Shift+F3': true,
-  }),
-  markMoving: bind('Commander', strings.actions.markMoving, {
-    'Shift+ArrowUp': 'up',
-    'Shift+ArrowDown': 'down',
-    'Shift+PageUp': 'pageUp',
-    'Shift+PageDown': 'pageDown',
-    'Shift+Home': 'first',
-    'Shift+End': 'last',
-  } as const),
-  toggleMark: bind('Commander', strings.actions.toggleMark, {
-    Space: true,
-    Insert: true,
-  }),
-  markClick: bind('Commander', strings.actions.markClick, {
-    'Mod+Click': 'toggle',
-    'Shift+Click': 'range',
-  } as const),
-  reread: bind('Commander', strings.actions.reread, {
-    F2: true,
-    'Ctrl+R': true,
-  }),
-  openOnSide: bind('Commander', strings.actions.openOnSide, {
-    'Mod+ArrowLeft': 'left',
-    'Mod+ArrowRight': 'right',
-  }),
   history: bind(
-    'Commander',
+    'Folders',
     strings.actions.folderHistory,
     {
       'Alt+ArrowLeft': -1,
@@ -63,6 +28,46 @@ export const commanderKeymap = {
     },
     { repeats: true },
   ),
+  reread: bind('Folders', strings.actions.reread, {
+    F2: true,
+    'Ctrl+R': true,
+  }),
+  showHidden: bind('Folders', strings.actions.showHidden, {
+    'Ctrl+H': true,
+  }),
+  sort: bind('Folders', strings.actions.sort, { Click: true }),
+  side: bind('Sides', strings.actions.side, {
+    Tab: true,
+    'Shift+Tab': true,
+  }),
+  drive: bind('Sides', strings.actions.drive, {
+    'Alt+F1': 'left',
+    'Alt+F2': 'right',
+  }),
+  openOnSide: bind('Sides', strings.actions.openOnSide, {
+    'Mod+ArrowLeft': 'left',
+    'Mod+ArrowRight': 'right',
+  }),
+  markMoving: bind('Marking', strings.actions.markMoving, {
+    'Shift+ArrowUp': 'up',
+    'Shift+ArrowDown': 'down',
+    'Shift+PageUp': 'pageUp',
+    'Shift+PageDown': 'pageDown',
+    'Shift+Home': 'first',
+    'Shift+End': 'last',
+  } as const),
+  toggleMark: bind('Marking', strings.actions.toggleMark, {
+    Space: true,
+    Insert: true,
+  }),
+  markClick: bind('Marking', strings.actions.markClick, {
+    'Mod+Click': 'toggle',
+    'Shift+Click': 'range',
+  } as const),
+  view: bind('Viewing', strings.actions.viewFile, { F3: true }),
+  compare: bind('Viewing', strings.actions.compareFiles, {
+    'Shift+F3': true,
+  }),
 };
 
 export const viewerKeymap = {

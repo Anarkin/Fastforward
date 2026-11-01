@@ -626,7 +626,7 @@ suite('App commander', () => {
     );
     assert.ok(
       !(await page.locator('.shortcuts-heading').allTextContents()).includes(
-        'Commander',
+        'Folders',
       ),
     );
     await page.keyboard.press('F1');
@@ -967,21 +967,21 @@ suite('App commander', () => {
     }, 'the files to be gone from the list');
   });
 
-  test('lines up the shortcuts of the commander that go on in the second column with those of the first, under its heading', async () => {
+  test('lines up the shortcuts of the viewer, its only group, that go on in the second column with those of the first, under its heading', async () => {
     const size = await app.evaluate(({ BrowserWindow }) => {
       const [window] = BrowserWindow.getAllWindows();
       const before = window?.getSize();
       window?.setSize(1290, 779);
       return before;
     });
-    await right().locator('.virtual-rows').focus();
+    await select('notes');
+    await page.keyboard.press('F3');
+    await waitForFocus(page.locator('.viewer-body'), 'the viewer');
     await page.keyboard.press('F1');
-    await page
-      .locator('.shortcuts-heading', { hasText: 'Commander' })
-      .waitFor();
+    await page.locator('.shortcuts-heading', { hasText: 'Viewer' }).waitFor();
     const tops = await page
       .locator('.shortcuts-group', {
-        has: page.locator('.shortcuts-heading', { hasText: 'Commander' }),
+        has: page.locator('.shortcuts-heading', { hasText: 'Viewer' }),
       })
       .locator('.shortcut-keys')
       .evaluateAll((cells) => {
@@ -1007,6 +1007,8 @@ suite('App commander', () => {
       },
       size ?? [1280, 800],
     );
+    await page.keyboard.press('Escape');
+    await page.locator('.viewer').waitFor({ state: 'detached' });
     assert.strictEqual(tops.length, 2);
     assert.ok(
       Math.abs((tops[0] ?? 0) - (tops[1] ?? 0)) < 2,

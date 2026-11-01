@@ -31,11 +31,11 @@ function pinnedRow(tool: 'git' | undefined): string | undefined {
   )[0];
 }
 
-const lists = (tool: 'commander' | 'git') =>
+const lists = (tool: 'commander' | 'git', kind?: { view: true }) =>
   tagsWith(
     renderToStaticMarkup(
       <ShortcutsPopup
-        groups={shortcutGroupsFor(tool)}
+        groups={shortcutGroupsFor(tool, kind)}
         mac={false}
         onClose={noop}
       />,
@@ -45,7 +45,8 @@ const lists = (tool: 'commander' | 'git') =>
 
 suite('Shortcuts popup', () => {
   test('splits the shortcuts of a single group below the pinned ones into two halves side by side under its heading, and leaves several groups to flow', () => {
-    assert.strictEqual(lists('commander'), 1);
+    assert.strictEqual(lists('commander', { view: true }), 1);
+    assert.strictEqual(lists('commander'), 0);
     assert.strictEqual(lists('git'), 0);
   });
 
@@ -83,11 +84,11 @@ suite('Shortcuts popup', () => {
         'Close the file being viewed',
       ],
     );
-    const commander = shortcutGroupsFor('commander').find(
-      (group) => group.title === 'Commander',
+    const commander = shortcutGroupsFor('commander').flatMap(
+      (group) => group.bindings,
     );
     assert.ok(
-      !commander?.bindings.some(
+      !commander.some(
         (binding) => binding.action === 'Close the file being viewed',
       ),
     );
@@ -191,7 +192,14 @@ suite('Shortcuts popup', () => {
 
   test("shows the tabs' and the app's shortcuts first, always in the same place, then those of the active tab's tool only", () => {
     assert.deepStrictEqual(titles(undefined), ['Tabs', 'App']);
-    assert.deepStrictEqual(titles('commander'), ['Tabs', 'App', 'Commander']);
+    assert.deepStrictEqual(titles('commander'), [
+      'Tabs',
+      'App',
+      'Folders',
+      'Sides',
+      'Marking files',
+      'Viewing and comparing',
+    ]);
     assert.deepStrictEqual(titles('commander', { view: true }), [
       'Tabs',
       'App',
