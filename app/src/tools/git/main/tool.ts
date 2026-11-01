@@ -223,6 +223,7 @@ interface Session {
 }
 
 interface Comparing {
+  readonly tab: string;
   readonly compared: Compared;
   readonly stop: () => void;
   entire: boolean;
@@ -385,7 +386,7 @@ export class GitTool implements Tool<'git'> {
   async show(page: Page, tab: Tab): Promise<void> {
     const session = this.sessionOf(page);
     if (tab.compare !== undefined) {
-      await this.showCompare(session, tab.compare);
+      await this.showCompare(session, tab.id, tab.compare);
       return;
     }
     this.stopComparing(session);
@@ -1693,11 +1694,13 @@ export class GitTool implements Tool<'git'> {
 
   private async showCompare(
     session: Session,
+    tab: string,
     compared: Compared,
   ): Promise<void> {
     this.stopWatching(session);
     session.comparing?.stop();
     const comparing: Comparing = {
+      tab,
       compared,
       entire: false,
       version: 0,
@@ -1752,6 +1755,7 @@ export class GitTool implements Tool<'git'> {
     session.post({
       type: 'compare',
       compare: {
+        tab: comparing.tab,
         old: compared.old,
         new: compared.new,
         patch,

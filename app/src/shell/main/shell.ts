@@ -703,7 +703,7 @@ export class Shell {
         ...this.tools[tool].names(tabs.filter((tab) => tab.tool === tool)),
       ]),
     );
-    return tabs.map(({ id, tool, root, view }) => {
+    return tabs.map(({ id, tool, root, view, compare }) => {
       const name = names.get(id);
       return {
         id,
@@ -713,6 +713,7 @@ export class Shell {
         ...(name?.icon !== undefined && { icon: name.icon }),
         ...(root !== undefined && { root }),
         ...(view === true && { view }),
+        ...(compare !== undefined && { compare: true as const }),
       };
     });
   }

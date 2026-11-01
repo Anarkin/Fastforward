@@ -322,6 +322,7 @@ export type TabMessage =
     };
 
 export interface CompareView {
+  readonly tab: string;
   readonly old: string;
   readonly new: string;
   readonly patch: string;

@@ -1,5 +1,10 @@
 import { useCallback } from 'react';
-import { gitGroups, gitKeymap } from '../../tools/git/shared/keymap';
+import {
+  compareGroups,
+  compareKeymap,
+  gitGroups,
+  gitKeymap,
+} from '../../tools/git/shared/keymap';
 import type { GitToHost, GitToWebview } from '../../tools/git/shared/protocol';
 import { shortcutGroupsOf, type ShortcutGroup } from '../shared/keymap';
 import type { ToHost } from '../shared/protocol';
@@ -46,6 +51,12 @@ export const toolShortcuts: Readonly<Record<ToolId, readonly ShortcutGroup[]>> =
     ),
     git: shortcutGroupsOf(gitGroups, strings.shortcuts.groups, gitKeymap),
   };
+
+export const compareShortcuts: readonly ShortcutGroup[] = shortcutGroupsOf(
+  compareGroups,
+  strings.shortcuts.groups,
+  compareKeymap,
+);
 
 export const viewerShortcuts: readonly ShortcutGroup[] = shortcutGroupsOf(
   viewerGroups,
@@ -154,6 +165,7 @@ export function ToolViews({
         closeMenu={closeMenu}
         onNewTabItems={gitItems}
         onTitle={gitTitle}
+        onClose={closeTab}
       />
     </>
   );

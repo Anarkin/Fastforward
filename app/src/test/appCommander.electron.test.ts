@@ -769,7 +769,35 @@ suite('App commander', () => {
       'the diff of the two files',
     );
 
-    await page.keyboard.press('ControlOrMeta+W');
+    await page.keyboard.press('F1');
+    await waitFor(
+      async () =>
+        (await page.locator('.shortcuts-heading').allTextContents()).join() ===
+        'Tabs,App,Diff',
+      'only the shortcuts of the diff',
+    );
+    await page.keyboard.press('F1');
+    await page
+      .locator('.shortcuts-heading')
+      .first()
+      .waitFor({ state: 'detached' });
+
+    await page.keyboard.press('ControlOrMeta+F');
+    await waitForFocus(
+      page.locator('.compare-view .diff-find-input'),
+      'the search of the diff',
+    );
+    await page.keyboard.press('Escape');
+    await waitFor(
+      async () =>
+        (await page.locator('.compare-view .diff-find-input').count()) === 0,
+      'the search to close',
+    );
+    assert.strictEqual(
+      await page.locator('.tabs .tab.active', { hasText: '↔' }).count(),
+      1,
+    );
+    await page.keyboard.press('Escape');
     await page.locator('.tabs .tab.active', { hasText: 'Commander' }).waitFor();
     for (const name of ['before.txt', 'after.txt']) {
       fs.rmSync(path.join(opened, name));

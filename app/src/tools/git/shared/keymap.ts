@@ -93,3 +93,17 @@ export const gitKeymap = {
     { repeats: true, fields: true },
   ),
 };
+
+export const compareGroups = ['Diff'] as const;
+
+export const compareKeymap = {
+  change: gitKeymap.change,
+  sideways: gitKeymap.sideways,
+  wheelSideways: gitKeymap.wheelSideways,
+  wrap: gitKeymap.wrap,
+  showWhitespace: gitKeymap.showWhitespace,
+  match: gitKeymap.match,
+  find: { ...gitKeymap.find, group: 'Diff' },
+  stopFinding: { ...gitKeymap.stopFinding, group: 'Diff' },
+  closeCompare: bind('Diff', strings.actions.closeCompare, { Escape: true }),
+};

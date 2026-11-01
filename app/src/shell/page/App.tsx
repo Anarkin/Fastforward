@@ -41,6 +41,7 @@ import { useWindowTitle, windowTitle } from './titleBar';
 import {
   toolShortcuts,
   viewerShortcuts,
+  compareShortcuts,
   ToolViews,
   type ToolListeners,
 } from './tools';
@@ -129,7 +130,7 @@ export function withPopup(
 
 export function shortcutGroupsFor(
   tool: ToolId | undefined,
-  viewing = false,
+  kind: Pick<TabInfo, 'view' | 'compare'> = {},
 ): ShortcutGroup[] {
   return [
     ...[
@@ -138,9 +139,11 @@ export function shortcutGroupsFor(
     ].map((group) => ({ ...group, pinned: true })),
     ...(tool === undefined
       ? []
-      : tool === 'commander' && viewing
+      : tool === 'commander' && kind.view === true
         ? viewerShortcuts
-        : toolShortcuts[tool]),
+        : tool === 'git' && kind.compare === true
+          ? compareShortcuts
+          : toolShortcuts[tool]),
   ];
 }
 
@@ -392,7 +395,7 @@ export function App({ name, post, listen }: Props) {
             return (
               <ShortcutsPopup
                 key={popup}
-                groups={shortcutGroupsFor(activeTool, activeTab?.view === true)}
+                groups={shortcutGroupsFor(activeTool, activeTab)}
                 mac={document.documentElement.dataset.platform === 'darwin'}
                 onClose={closeShortcuts}
               />

@@ -1,4 +1,4 @@
-import { gitKeymap } from '../shared/keymap';
+import { compareKeymap, gitKeymap } from '../shared/keymap';
 import { CompareView } from './compareView';
 import './style.css';
 import {
@@ -101,6 +101,7 @@ export interface GitToolProps {
   closeMenu: () => void;
   onNewTabItems: (items: readonly ContextMenuItem[]) => void;
   onTitle: (title: string | undefined) => void;
+  onClose: (tab: string) => void;
 }
 
 export function GitTool({
@@ -111,11 +112,22 @@ export function GitTool({
   closeMenu,
   onNewTabItems,
   onTitle,
+  onClose,
 }: GitToolProps) {
   const outbox = useMemo(() => settling(postToHost), [postToHost]);
   const post = outbox.send;
   const [worktrees, setWorktrees] = useState<readonly WorktreeInfo[]>();
   const [compare, setCompare] = useState<CompareViewOf>();
+  const repositoryShown = active && compare === undefined;
+  useBinding(
+    compareKeymap.closeCompare,
+    () => {
+      if (compare !== undefined) {
+        onClose(compare.tab);
+      }
+    },
+    active && compare !== undefined,
+  );
   const [recent, setRecent] = useState<readonly RepositoryInfo[]>([]);
   const [initAsked, setInitAsked] = useState<GitToWebviewOf<'confirmInit'>>();
   const [cloneView, setCloneView] = useState<CloneView>();
@@ -215,7 +227,7 @@ export function GitTool({
   useBinding(
     gitKeymap.commits,
     () => setCommitsShown((shown) => !shown),
-    active,
+    repositoryShown,
   );
   const commitColumnShown = commitsShown || searching;
   const hiddenColumns = useMemo(
@@ -256,6 +268,10 @@ export function GitTool({
   useBinding(
     gitKeymap.find,
     () => {
+      if (compare !== undefined) {
+        setSearchAsks((asks) => ({ ...asks, diff: asks.diff + 1 }));
+        return;
+      }
       setSearchAsks((asks) => ({
         ...asks,
         [activeColumn]: asks[activeColumn] + 1,
@@ -517,7 +533,7 @@ export function GitTool({
   );
 
   useEffect(() => {
-    if (!active) {
+    if (!repositoryShown) {
       return undefined;
     }
     const onMouseUp = (event: MouseEvent) => {
@@ -529,20 +545,32 @@ export function GitTool({
     };
     window.addEventListener('mouseup', onMouseUp);
     return () => window.removeEventListener('mouseup', onMouseUp);
-  }, [active, navigate]);
-  useBinding(gitKeymap.navigate, (direction) => navigate(direction, 1), active);
+  }, [repositoryShown, navigate]);
+  useBinding(
+    gitKeymap.navigate,
+    (direction) => navigate(direction, 1),
+    repositoryShown,
+  );
   const jump = (target: string | undefined) => {
     if (target) {
       postTab({ type: 'jump', hash: target });
     }
   };
-  useBinding(gitKeymap.head, () => jump(repository?.headCommit), active);
+  useBinding(
+    gitKeymap.head,
+    () => jump(repository?.headCommit),
+    repositoryShown,
+  );
   useBinding(
     gitKeymap.upstream,
     () => postTab({ type: 'showUpstream' }),
-    active,
+    repositoryShown,
   );
-  useBinding(gitKeymap.parent, () => postTab({ type: 'showParent' }), active);
+  useBinding(
+    gitKeymap.parent,
+    () => postTab({ type: 'showParent' }),
+    repositoryShown,
+  );
   const loadFileDiff = useCallback(
     (file: string) => {
       if (hash) {

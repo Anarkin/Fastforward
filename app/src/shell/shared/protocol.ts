@@ -10,6 +10,7 @@ export interface TabInfo {
   readonly icon?: string;
   readonly root?: string;
   readonly view?: true;
+  readonly compare?: true;
 }
 
 export interface ToolChoice {
