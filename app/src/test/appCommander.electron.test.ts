@@ -680,8 +680,8 @@ suite('App commander', () => {
   });
 
   test('keeps the thumb of a file viewed as tall wherever it is scrolled to, though its lines grow long further down, moves it down as the rows do, and ends it at the end of its track without a jump', async () => {
-    const lines = Array.from({ length: 600 }, (_, index) =>
-      index < 300
+    const lines = Array.from({ length: 300 }, (_, index) =>
+      index < 150
         ? `short ${index}`.padEnd(19, '.')
         : `long ${index}`.padEnd(59, '.'),
     );
@@ -710,7 +710,7 @@ suite('App commander', () => {
       }, 'the long rows');
       await page.keyboard.press('End');
       await waitFor(
-        async () => (await firstViewerRow()).startsWith('long 5'),
+        async () => (await firstViewerRow()).startsWith('long 2'),
         'the end',
       );
       seen.push(await viewerThumb());
