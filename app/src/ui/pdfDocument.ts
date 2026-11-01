@@ -30,6 +30,7 @@ export interface ShownPdf {
   readonly fingerprint: string;
   readonly find: (query: string, step: 0 | 1 | -1) => void;
   readonly zoomBy: (steps: number) => void;
+  readonly tellPlace: () => void;
   readonly close: () => void;
 }
 
@@ -190,6 +191,11 @@ export async function showPdf(
         matchDiacritics: false,
       }),
     zoomBy: (steps) => viewer.updateScale({ steps }),
+    tellPlace: () => {
+      if (restored) {
+        viewer.update();
+      }
+    },
     close,
   };
 }

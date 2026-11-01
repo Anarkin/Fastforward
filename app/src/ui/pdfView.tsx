@@ -1,4 +1,10 @@
-import { useEffect, useEffectEvent, useRef, useState } from 'react';
+import {
+  useEffect,
+  useEffectEvent,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { wheeled, type Binding } from '../shell/shared/keymap';
 import type { PdfPlace } from '../shared/pdf';
 import type { PdfFound, ShownPdf } from './pdfDocument';
@@ -29,6 +35,8 @@ export function PdfPane({
   const placeEvent = useEffectEvent(onPlace);
   const foundEvent = useEffectEvent(onFound);
   const shownEvent = useEffectEvent(onShown);
+
+  useLayoutEffect(() => () => shown.current?.tellPlace(), []);
 
   useEffect(() => {
     const element = container.current;
