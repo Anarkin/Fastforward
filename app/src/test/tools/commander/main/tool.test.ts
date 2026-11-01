@@ -128,6 +128,7 @@ function commander(
       return Promise.resolve(new TextEncoder().encode(`icon of ${iconOf}`));
     },
     platform: 'linux',
+    codePage: () => Promise.resolve('windows-1250'),
     elevate,
     realPath: (link) =>
       link === at('Documents and Settings')
@@ -370,6 +371,29 @@ suite('Commander tool', () => {
         request: 2,
       });
       assert.strictEqual(page.of('text').at(-1)?.text, 'one\ntwo\n');
+    });
+
+    test('reads a text file that is not UTF-8 in the code page of the system, and one that is as UTF-8', async () => {
+      const legacy = path.join(opened, 'legacy.txt');
+      const modern = path.join(opened, 'modern.txt');
+      fs.writeFileSync(legacy, Buffer.from([0xe1, 0x72, 0x76, 0xed, 0x7a]));
+      fs.writeFileSync(modern, 'árvíz');
+      const { tool, page } = commander({});
+
+      await tool.show(page, {
+        id: '3',
+        tool: 'commander',
+        root: legacy,
+        view: true,
+      });
+      assert.strictEqual(page.of('viewing').at(-1)?.detected, 'windows-1250');
+      await tool.show(page, {
+        id: '4',
+        tool: 'commander',
+        root: modern,
+        view: true,
+      });
+      assert.strictEqual(page.of('viewing').at(-1)?.detected, undefined);
     });
 
     test('tells whether a file viewed is binary and sends the bytes asked for, answering each request by its number', async () => {

@@ -48,6 +48,7 @@ import {
 import { JsonFileStore, Storage, toolState } from '../shell/main/storage';
 import { themeCss } from '../shell/main/theme';
 import { fileSystemFor } from '../tools/commander/main/fileSystem';
+import { systemCodePage } from '../tools/commander/main/codePages';
 import { watchFolder } from '../tools/commander/main/watch';
 import { elevatedFileSystem } from '../tools/commander/main/elevated';
 import { helperOf, runHelper } from '../tools/commander/main/helper';
@@ -423,6 +424,7 @@ async function start(asked: readonly string[]): Promise<void> {
   );
   const commanderTool = new CommanderTool({
     fileSystem: () => fileSystemFor(process.platform),
+    codePage: () => systemCodePage(process.platform),
     settings: () => userSettings.settings.tools.commander,
     defaultColumns: () => userSettings.defaults.tools.commander.columns,
     saveShowHidden: (shown) =>

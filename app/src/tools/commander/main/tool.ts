@@ -39,6 +39,7 @@ import {
   byteOrderMarkOf,
   codingOf,
   firstBytes,
+  isUtf8,
   looksBinary,
   readingFile,
   type BlockCache,
@@ -60,6 +61,7 @@ export interface CommanderAccess {
   readonly watch: WatchFolder;
   readonly fileIcon: (file: string) => Promise<Uint8Array>;
   readonly platform: NodeJS.Platform;
+  readonly codePage: () => Promise<TextEncoding>;
   readonly elevate?: () => Promise<ElevatedFileSystem | undefined>;
   readonly realPath: (link: string) => Promise<string>;
   readonly root: string;
@@ -537,7 +539,9 @@ export class CommanderTool implements Tool<'commander'> {
       size = (await fs.promises.stat(file)).size;
       const first = await firstBytes(file);
       binary = looksBinary(first);
-      detected = byteOrderMarkOf(first);
+      detected =
+        byteOrderMarkOf(first) ??
+        (binary || isUtf8(first) ? undefined : await this.access.codePage());
     } catch (error) {
       this.post(page, {
         type: 'viewing',

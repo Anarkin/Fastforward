@@ -938,6 +938,41 @@ suite('App commander', () => {
     );
   });
 
+  test('reads a text file that is not UTF-8 in the code page of the system', async () => {
+    fs.writeFileSync(
+      path.join(opened, 'legacy.txt'),
+      Buffer.from([0x63, 0x61, 0x66, 0xe9, 0x20, 0x6f, 0x6b]),
+    );
+    await select('legacy');
+    await page.keyboard.press('F3');
+    await waitFor(
+      async () =>
+        (
+          (await page
+            .locator('.viewer-rows .viewer-row')
+            .first()
+            .textContent()) ?? ''
+        ).startsWith('caf'),
+      'the text',
+    );
+    const row =
+      (await page.locator('.viewer-rows .viewer-row').first().textContent()) ??
+      '';
+    assert.ok(!row.includes(String.fromCharCode(0xfffd)), row);
+    assert.ok(
+      ['1250', '1251', '1252'].includes(
+        (await page.locator('.viewer-encoding-label').textContent()) ?? '',
+      ),
+    );
+    await page.keyboard.press('Escape');
+    await page.locator('.viewer').waitFor({ state: 'detached' });
+    fs.rmSync(path.join(opened, 'legacy.txt'));
+    await waitFor(
+      async () => !(await rowNames()).includes('legacy.txt'),
+      'the file to be gone from the list',
+    );
+  });
+
   test.skipIf(process.platform !== 'win32')(
     'opens the drive menu of the right side with Alt+F2 and changes the drive by its letter',
     async () => {

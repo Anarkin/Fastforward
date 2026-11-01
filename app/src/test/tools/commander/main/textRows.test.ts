@@ -5,6 +5,7 @@ import { suite, test } from 'vitest';
 import {
   blockCache,
   codingOf,
+  isUtf8,
   looksBinary,
   readingFile,
   rowBytes,
@@ -208,6 +209,13 @@ suite('Rows of text of a file', () => {
 
     assert.ok(row !== undefined && !row.text.includes('\n'));
     assert.strictEqual(row.end, long.length + 1);
+  });
+
+  test('tells UTF-8 from the bytes of other encodings, a character cut off at the end of what was read still UTF-8', () => {
+    assert.strictEqual(isUtf8(Buffer.from('árvíztűrő', 'utf8')), true);
+    assert.strictEqual(isUtf8(Buffer.from([0x61, 0xe1, 0x72, 0x76])), false);
+    assert.strictEqual(isUtf8(Buffer.from('a€', 'utf8').subarray(0, 3)), true);
+    assert.strictEqual(isUtf8(Buffer.from([0x61, 0xe2, 0x82, 0x41])), false);
   });
 
   test('reads a file on disk', async () => {

@@ -324,6 +324,7 @@ export function newView(
       ),
       commander: new CommanderTool({
         fileSystem: () => Promise.resolve(nodeFileSystem),
+        codePage: () => Promise.resolve('windows-1252'),
         settings: () => settings.settings.tools.commander,
         defaultColumns: () => settings.defaults.tools.commander.columns,
         saveShowHidden: () => Promise.resolve(),

@@ -293,8 +293,41 @@ export function looksBinary(bytes: Buffer): boolean {
   return bytes.subarray(0, binaryCheckBytes).includes(0);
 }
 
+const utf8CheckBytes = 64 * 1024;
+
 export async function firstBytes(file: string): Promise<Buffer> {
-  return readingFile(file, (read) => read(0, binaryCheckBytes));
+  return readingFile(file, (read) => read(0, utf8CheckBytes));
+}
+
+const fatalUtf8 = new TextDecoder('utf-8', { fatal: true });
+
+function lengthOfLead(byte: number): number {
+  if (byte >= 0xf0) {
+    return 4;
+  }
+  if (byte >= 0xe0) {
+    return 3;
+  }
+  return byte >= 0xc0 ? 2 : 1;
+}
+
+export function isUtf8(bytes: Buffer): boolean {
+  let end = bytes.length;
+  for (let back = 1; back <= Math.min(3, bytes.length); back++) {
+    const byte = bytes[bytes.length - back] ?? 0;
+    if (!continuation(byte)) {
+      if (lengthOfLead(byte) > back) {
+        end = bytes.length - back;
+      }
+      break;
+    }
+  }
+  try {
+    fatalUtf8.decode(bytes.subarray(0, end));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function readingFile<T>(
