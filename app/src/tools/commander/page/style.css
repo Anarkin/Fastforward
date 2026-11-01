@@ -263,3 +263,13 @@
   color: var(--color-error-foreground);
   font-weight: 600;
 }
+
+.viewer-encoding .menu-button-trigger {
+  width: auto;
+  padding: 0 8px;
+  border-radius: 13px;
+}
+
+.viewer-encoding-label {
+  font-size: calc(var(--font-size) * 0.85);
+}

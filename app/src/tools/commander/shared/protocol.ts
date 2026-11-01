@@ -11,6 +11,21 @@ export interface TextRow {
   readonly text: string;
 }
 
+export const textEncodings = [
+  'utf-8',
+  'utf-16le',
+  'utf-16be',
+  'windows-1252',
+  'windows-1250',
+  'windows-1251',
+] as const;
+
+export type TextEncoding = (typeof textEncodings)[number];
+
+export function isTextEncoding(value: unknown): value is TextEncoding {
+  return textEncodings.some((encoding) => encoding === value);
+}
+
 export const maxRowsAsked = 1000;
 
 export const maxColoredBytes = 1024 * 1024;
@@ -65,11 +80,13 @@ export type CommanderToHost =
   | {
       readonly type: 'readText';
       readonly tab: string;
+      readonly encoding: TextEncoding;
       readonly request: number;
     }
   | {
       readonly type: 'readRows';
       readonly tab: string;
+      readonly encoding: TextEncoding;
       readonly request: number;
       readonly anchor: number;
       readonly exact: boolean;
@@ -119,6 +136,7 @@ export type CommanderToWebview =
       readonly tab: string;
       readonly size: number | undefined;
       readonly binary?: boolean;
+      readonly detected?: TextEncoding;
       readonly error?: string;
     }
   | {

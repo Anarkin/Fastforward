@@ -19,7 +19,7 @@ function MarkdownPreview({
   post: (message: CommanderToHost) => void;
   listen: (handler: (message: ToViewer) => void) => () => void;
 }) {
-  const text = useWholeText(viewing, post, listen, true);
+  const text = useWholeText(viewing, post, listen, true, 'utf-8');
   const { tab, size } = viewing;
   const images = useMemo(() => {
     const document = file.replaceAll('\\', '/');

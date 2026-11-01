@@ -24,11 +24,15 @@ const minTextColumns = 16;
 export function ByteBody({
   layout,
   viewing,
+  place,
+  onPlace,
   post,
   listen,
 }: {
   layout: ByteLayout;
   viewing: Viewing;
+  place: React.RefObject<number>;
+  onPlace: (byte: number) => void;
   post: (message: CommanderToHost) => void;
   listen: (handler: (message: ToViewer) => void) => () => void;
 }) {
@@ -36,13 +40,14 @@ export function ByteBody({
   const size = viewing.size ?? 0;
   const [screen, setScreen] = useState(1);
   const [columns, setColumns] = useState(minTextColumns);
-  const [topByte, setTopByte] = useState(0);
+  const [topByte, setTopByte] = useState(() => place.current);
   const [bytes, setBytes] = useState<Bytes>();
   const rowBytes =
     layout === 'hex' ? hexRowBytes : Math.max(minTextColumns, columns);
   const rowCount = Math.ceil(size / rowBytes);
   const lastTop = Math.max(0, rowCount - screen);
   const top = Math.min(Math.floor(topByte / rowBytes), lastTop);
+  useEffect(() => onPlace(top * rowBytes), [top, rowBytes, onPlace]);
 
   const requests = useMemo(
     () =>

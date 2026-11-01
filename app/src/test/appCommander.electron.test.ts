@@ -891,6 +891,48 @@ suite('App commander', () => {
     );
   });
 
+  test('reads a file in the encoding its byte order mark names, and in the one chosen from the menu E opens, staying where it was', async () => {
+    const text = Array.from(
+      { length: 300 },
+      (_, index) => `ligne ${index} é`,
+    ).join(String.fromCharCode(10));
+    fs.writeFileSync(
+      path.join(opened, 'wide.txt'),
+      Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(text, 'utf16le')]),
+    );
+    await select('wide');
+    await page.keyboard.press('F3');
+    const rowTexts = () =>
+      page.locator('.viewer-rows .viewer-row').allTextContents();
+    await waitFor(
+      async () => (await rowTexts())[0] === 'ligne 0 é',
+      'the text read as UTF-16',
+    );
+    assert.strictEqual(
+      await page.locator('.viewer-encoding-label').textContent(),
+      'UTF-16 LE',
+    );
+
+    await page.keyboard.press('End');
+    await waitFor(
+      async () => (await rowTexts()).at(-1) === 'ligne 299 é',
+      'the end of the text',
+    );
+    await page.keyboard.press('e');
+    await page.getByText('Bytes, one to a character').click();
+    await waitFor(
+      async () => (await rowTexts()).join('').includes('2.9.9. .é.'),
+      'the end of the file as bytes',
+    );
+    await page.keyboard.press('Escape');
+    await page.locator('.viewer').waitFor({ state: 'detached' });
+    fs.rmSync(path.join(opened, 'wide.txt'));
+    await waitFor(
+      async () => !(await rowNames()).includes('wide.txt'),
+      'the file to be gone from the list',
+    );
+  });
+
   test.skipIf(process.platform !== 'win32')(
     'opens the drive menu of the right side with Alt+F2 and changes the drive by its letter',
     async () => {

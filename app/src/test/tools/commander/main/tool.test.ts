@@ -285,6 +285,7 @@ suite('Commander tool', () => {
       await send({
         type: 'readRows',
         tab: '3',
+        encoding: 'utf-8',
         request: 7,
         anchor: 9,
         exact: false,
@@ -310,6 +311,7 @@ suite('Commander tool', () => {
         await send({
           type: 'readRows',
           tab: '3',
+          encoding: 'utf-8',
           request: 8,
           anchor: 0,
           exact: true,
@@ -318,7 +320,56 @@ suite('Commander tool', () => {
           ...bad,
         });
       }
+      await send(
+        forged(
+          '{ "type": "readRows", "tab": "3", "encoding": "ebcdic", "request": 8, "anchor": 0, "exact": true, "before": 0, "after": 1 }',
+        ),
+      );
       assert.strictEqual(page.of('rows').length, 1);
+    });
+
+    test('reads the rows and the whole text of a file viewed in the encoding asked for, and tells of the encoding its byte order mark names', async () => {
+      const wide = path.join(opened, 'wide.txt');
+      fs.writeFileSync(
+        wide,
+        Buffer.concat([
+          Buffer.from([0xff, 0xfe]),
+          Buffer.from('one\ntwo\n', 'utf16le'),
+        ]),
+      );
+      const { tool, page, send } = commander({});
+      await tool.show(page, {
+        id: '3',
+        tool: 'commander',
+        root: wide,
+        view: true,
+      });
+      assert.strictEqual(page.of('viewing').at(-1)?.detected, 'utf-16le');
+
+      await send({
+        type: 'readRows',
+        tab: '3',
+        encoding: 'utf-16le',
+        request: 1,
+        anchor: 0,
+        exact: true,
+        before: 0,
+        after: 5,
+      });
+      assert.deepStrictEqual(
+        page
+          .of('rows')
+          .at(-1)
+          ?.rows.map((row) => row.text),
+        ['one', 'two'],
+      );
+      await send({
+        type: 'readText',
+        tab: '3',
+        encoding: 'utf-16le',
+        request: 2,
+      });
+      assert.strictEqual(page.of('text').at(-1)?.text, 'one\ntwo\n');
     });
 
     test('tells whether a file viewed is binary and sends the bytes asked for, answering each request by its number', async () => {
@@ -416,8 +467,8 @@ suite('Commander tool', () => {
         root: small,
         view: true,
       });
-      await send({ type: 'readText', tab: '3', request: 4 });
-      await send({ type: 'readText', tab: '5', request: 5 });
+      await send({ type: 'readText', tab: '3', encoding: 'utf-8', request: 4 });
+      await send({ type: 'readText', tab: '5', encoding: 'utf-8', request: 5 });
       assert.deepStrictEqual(page.of('text'), [
         { type: 'text', tab: '3', request: 4, text: 'const one = 1;' },
       ]);
@@ -428,7 +479,7 @@ suite('Commander tool', () => {
         root: large,
         view: true,
       });
-      await send({ type: 'readText', tab: '6', request: 6 });
+      await send({ type: 'readText', tab: '6', encoding: 'utf-8', request: 6 });
       assert.deepStrictEqual(page.of('text').at(-1), {
         type: 'text',
         tab: '6',

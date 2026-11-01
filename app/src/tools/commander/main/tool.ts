@@ -11,9 +11,11 @@ import {
 } from '../../../shell/main/shell';
 import {
   isSide,
+  isTextEncoding,
   maxBytesAsked,
   maxColoredBytes,
   maxRowsAsked,
+  type TextEncoding,
   parentFolder,
   sides,
   type CommanderToHost,
@@ -34,6 +36,8 @@ import { imageType, maxImageSize } from '../../../shared/images';
 import { viewedFileOf } from '../shared/files';
 import {
   blockCache,
+  byteOrderMarkOf,
+  codingOf,
   firstBytes,
   looksBinary,
   readingFile,
@@ -528,9 +532,12 @@ export class CommanderTool implements Tool<'commander'> {
   ): Promise<void> {
     let size: number;
     let binary: boolean;
+    let detected: TextEncoding | undefined;
     try {
       size = (await fs.promises.stat(file)).size;
-      binary = looksBinary(await firstBytes(file));
+      const first = await firstBytes(file);
+      binary = looksBinary(first);
+      detected = byteOrderMarkOf(first);
     } catch (error) {
       this.post(page, {
         type: 'viewing',
@@ -560,6 +567,7 @@ export class CommanderTool implements Tool<'commander'> {
                 tab,
                 size: stats.size,
                 binary,
+                ...(detected !== undefined && { detected }),
               });
             }
           },
@@ -568,7 +576,13 @@ export class CommanderTool implements Tool<'commander'> {
       }),
     };
     this.viewing = viewing;
-    this.post(page, { type: 'viewing', tab, size, binary });
+    this.post(page, {
+      type: 'viewing',
+      tab,
+      size,
+      binary,
+      ...(detected !== undefined && { detected }),
+    });
   }
 
   private async readBytes(
@@ -608,14 +622,15 @@ export class CommanderTool implements Tool<'commander'> {
 
   private async readText(
     page: Page,
-    { tab, request }: Extract<CommanderToHost, { type: 'readText' }>,
+    { tab, request, encoding }: Extract<CommanderToHost, { type: 'readText' }>,
   ): Promise<void> {
     const { viewing } = this;
     if (
       viewing === undefined ||
       this.shown?.page !== page ||
       viewing.tab !== tab ||
-      !Number.isSafeInteger(request)
+      !Number.isSafeInteger(request) ||
+      !isTextEncoding(encoding)
     ) {
       return;
     }
@@ -623,7 +638,8 @@ export class CommanderTool implements Tool<'commander'> {
       viewing.size > maxColoredBytes
         ? undefined
         : await fs.promises
-            .readFile(viewing.file, 'utf8')
+            .readFile(viewing.file)
+            .then((bytes) => new TextDecoder(encoding).decode(bytes))
             .catch(() => undefined);
     this.post(page, { type: 'text', tab, request, text });
   }
@@ -633,7 +649,7 @@ export class CommanderTool implements Tool<'commander'> {
     message: Extract<CommanderToHost, { type: 'readRows' }>,
   ): Promise<void> {
     const { viewing } = this;
-    const { request, anchor, exact, before, after } = message;
+    const { request, anchor, exact, before, after, encoding } = message;
     const counts = [before, after].every(
       (count) => Number.isInteger(count) && count >= 0 && count <= maxRowsAsked,
     );
@@ -645,6 +661,7 @@ export class CommanderTool implements Tool<'commander'> {
       !Number.isSafeInteger(anchor) ||
       anchor < 0 ||
       typeof exact !== 'boolean' ||
+      !isTextEncoding(encoding) ||
       !counts
     ) {
       return;
@@ -655,12 +672,13 @@ export class CommanderTool implements Tool<'commander'> {
         viewing.file,
         async (direct) => {
           const read = blocks.reader(direct);
+          const coding = codingOf(encoding);
           const start = exact
             ? Math.min(anchor, size)
-            : await rowStartAt(read, Math.min(anchor, size));
+            : await rowStartAt(read, Math.min(anchor, size), coding);
           return Promise.all([
-            rowsBefore(read, size, start, before),
-            rowsFrom(read, size, start, after),
+            rowsBefore(read, size, start, before, coding),
+            rowsFrom(read, size, start, after, coding),
           ]);
         },
       );

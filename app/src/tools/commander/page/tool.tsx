@@ -87,6 +87,9 @@ export function CommanderTool({
             tab: message.tab,
             size: message.size,
             ...(message.binary !== undefined && { binary: message.binary }),
+            ...(message.detected !== undefined && {
+              detected: message.detected,
+            }),
             ...(message.error !== undefined && { error: message.error }),
           });
         } else if (

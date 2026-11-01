@@ -1,18 +1,29 @@
-import { useState } from 'react';
-import type { CommanderToHost, CommanderToWebviewOf } from '../shared/protocol';
+import { useCallback, useRef, useState } from 'react';
+import type {
+  CommanderToHost,
+  CommanderToWebviewOf,
+  TextEncoding,
+} from '../shared/protocol';
 import { viewerKeymap, type ViewMode } from '../shared/keymap';
 import { pressed } from '../../../shell/shared/keymap';
 import { strings } from '../../../shared/strings';
 import { HexIcon, PreviewIcon, TextIcon } from '../../../ui/icons';
+import { MenuButton } from '../../../ui/menu';
 import { TextBody } from './textBody';
 import { ByteBody } from './hexBody';
 import { PreviewBody } from './previewBody';
 import { firstMode, previewOf } from './previews';
+import {
+  encodingChoices,
+  shownEncoding,
+  type EncodingChoice,
+} from './encodings';
 
 export interface Viewing {
   readonly tab: string;
   readonly size: number | undefined;
   readonly binary?: boolean;
+  readonly detected?: TextEncoding;
   readonly error?: string;
 }
 
@@ -44,11 +55,20 @@ export function Viewer({
   listen: (handler: (message: ToViewer) => void) => () => void;
 }) {
   const [chosen, setChosen] = useState<ViewMode>();
+  const [encoding, setEncoding] = useState<EncodingChoice>('auto');
+  const place = useRef(0);
+  const onPlace = useCallback((byte: number) => {
+    place.current = byte;
+  }, []);
+  const encodingTrigger = useRef<HTMLButtonElement>(null);
   const preview = previewOf(file);
   const shownModes = modes.filter(
     (each) => each.mode !== 'preview' || preview !== undefined,
   );
-  const mode = chosen ?? firstMode(file, viewing?.binary === true);
+  const mode =
+    chosen ??
+    firstMode(file, viewing?.binary === true && viewing.detected === undefined);
+  const shown = shownEncoding(encoding, viewing);
   const choose = (wanted: ViewMode) => {
     if (shownModes.some((each) => each.mode === wanted)) {
       setChosen(wanted);
@@ -63,12 +83,38 @@ export function Viewer({
         if (wanted !== undefined) {
           event.preventDefault();
           choose(wanted);
+          return;
+        }
+        if (
+          mode === 'text' &&
+          pressed(viewerKeymap.encoding, event, false) !== undefined
+        ) {
+          event.preventDefault();
+          encodingTrigger.current?.click();
         }
       }}
     >
       <header className="column-title">
         <span className="column-name">{file}</span>
         <div className="column-actions">
+          {mode === 'text' && (
+            <div className="viewer-encoding">
+              <MenuButton
+                title={strings.commander.encoding}
+                trigger={encodingTrigger}
+                icon={
+                  <span className="viewer-encoding-label">
+                    {strings.commander.encodingShort[shown]}
+                  </span>
+                }
+                items={encodingChoices.map((choice) => ({
+                  label: strings.commander.encodings[choice],
+                  checked: choice === encoding,
+                  onClick: () => setEncoding(choice),
+                }))}
+              />
+            </div>
+          )}
           <div
             className="segmented"
             role="group"
@@ -99,15 +145,26 @@ export function Viewer({
           post={post}
           listen={listen}
         />
-      ) : mode === 'hex' || viewing.binary === true ? (
+      ) : mode === 'hex' || shown === 'bytes' ? (
         <ByteBody
           layout={mode === 'hex' ? 'hex' : 'text'}
           viewing={viewing}
+          place={place}
+          onPlace={onPlace}
           post={post}
           listen={listen}
         />
       ) : (
-        <TextBody file={file} viewing={viewing} post={post} listen={listen} />
+        <TextBody
+          key={shown}
+          file={file}
+          encoding={shown}
+          viewing={viewing}
+          place={place}
+          onPlace={onPlace}
+          post={post}
+          listen={listen}
+        />
       )}
     </section>
   );

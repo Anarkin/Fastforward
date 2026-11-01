@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import {
   blockCache,
+  codingOf,
   looksBinary,
   readingFile,
   rowBytes,
@@ -148,6 +149,65 @@ suite('Rows of text of a file', () => {
     const late = Buffer.alloc(9000, 0x41);
     late[8500] = 0;
     assert.strictEqual(looksBinary(late), false);
+  });
+
+  test('reads UTF-16 of either byte order, a line ending only where a whole unit is one, and its carriage returns dropped', async () => {
+    for (const encoding of ['utf-16le', 'utf-16be'] as const) {
+      const little = Buffer.from('one\r\n਀two\né\n', 'utf16le');
+      const bytes = encoding === 'utf-16le' ? little : little.swap16();
+      const { read, size } = inMemory(bytes);
+      const coding = codingOf(encoding);
+
+      const rows = await rowsFrom(read, size, 0, 10, coding);
+
+      assert.deepStrictEqual(texts(rows), ['one', '਀two', 'é'], encoding);
+      assert.deepStrictEqual(
+        rows.map((row) => [row.start, row.end]),
+        [
+          [0, 10],
+          [10, 20],
+          [20, 24],
+        ],
+        encoding,
+      );
+      assert.deepStrictEqual(
+        texts(await rowsBefore(read, size, 20, 10, coding)),
+        ['one', '਀two'],
+        encoding,
+      );
+      assert.strictEqual(await rowStartAt(read, 15, coding), 10, encoding);
+    }
+  });
+
+  test('breaks a long line of UTF-16 between characters, never inside a pair of surrogates', async () => {
+    const line = `${'a'.repeat(rowBytes / 2 - 1)}\u{1f600}b`;
+    const { read, size } = inMemory(Buffer.from(line, 'utf16le'));
+
+    const rows = await rowsFrom(read, size, 0, 10, codingOf('utf-16le'));
+
+    assert.deepStrictEqual(texts(rows), [
+      'a'.repeat(rowBytes / 2 - 1),
+      '\u{1f600}b',
+    ]);
+  });
+
+  test('reads a single byte encoding, every byte a character', async () => {
+    const { read, size } = inMemory(Buffer.from([0x8a, 0x61, 0x0a, 0xe8]));
+
+    assert.deepStrictEqual(
+      texts(await rowsFrom(read, size, 0, 10, codingOf('windows-1250'))),
+      ['Ša', 'č'],
+    );
+  });
+
+  test('leaves the line end out of a row read backwards from the end of a line longer than it searches back', async () => {
+    const long = 'x'.repeat(2 * 1024 * 1024);
+    const { read, size } = inMemory(`${long}\nnext`);
+
+    const [row] = await rowsBefore(read, size, long.length + 1, 1);
+
+    assert.ok(row !== undefined && !row.text.includes('\n'));
+    assert.strictEqual(row.end, long.length + 1);
   });
 
   test('reads a file on disk', async () => {

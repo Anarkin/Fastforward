@@ -9,6 +9,7 @@ import {
 import {
   maxColoredBytes,
   type CommanderToHost,
+  type TextEncoding,
   type TextRow,
 } from '../shared/protocol';
 import { RowRequests } from './rowRequests';
@@ -110,6 +111,7 @@ export function useWholeText(
   post: (message: CommanderToHost) => void,
   listen: (handler: (message: ToViewer) => void) => () => void,
   wanted: boolean,
+  encoding: TextEncoding,
 ): string | undefined {
   const [text, setText] = useState<string>();
   const asked = useRef(0);
@@ -129,20 +131,27 @@ export function useWholeText(
         setText(message.text);
       }
     });
-    post({ type: 'readText', tab, request });
+    post({ type: 'readText', tab, encoding, request });
     return stop;
-  }, [wanted, viewing, listen, post]);
+  }, [wanted, viewing, listen, post, encoding]);
   return text;
 }
 
 function useColors(
   file: string,
+  encoding: TextEncoding,
   viewing: Viewing,
   post: (message: CommanderToHost) => void,
   listen: (handler: (message: ToViewer) => void) => () => void,
 ): ColoredText | undefined {
-  const language = languageOf(file);
-  const text = useWholeText(viewing, post, listen, language !== undefined);
+  const language = encoding === 'utf-8' ? languageOf(file) : undefined;
+  const text = useWholeText(
+    viewing,
+    post,
+    listen,
+    language !== undefined,
+    encoding,
+  );
   const [colored, setColored] = useState<ColoredText>();
   useEffect(() => {
     if (language === undefined || text === undefined) {
@@ -161,12 +170,18 @@ function useColors(
 
 export function TextBody({
   file,
+  encoding,
   viewing,
+  place,
+  onPlace,
   post,
   listen,
 }: {
   file: string;
+  encoding: TextEncoding;
   viewing: Viewing;
+  place: React.RefObject<number>;
+  onPlace: (byte: number) => void;
   post: (message: CommanderToHost) => void;
   listen: (handler: (message: ToViewer) => void) => () => void;
 }) {
@@ -176,6 +191,12 @@ export function TextBody({
   useLayoutEffect(() => {
     current.current = loaded;
   });
+  const topStart = loaded.rows[loaded.top]?.start;
+  useEffect(() => {
+    if (topStart !== undefined) {
+      onPlace(topStart);
+    }
+  }, [topStart, onPlace]);
   const { tab, size } = viewing;
 
   const requests = useMemo(
@@ -184,6 +205,7 @@ export function TextBody({
         post({
           type: 'readRows',
           tab,
+          encoding,
           request,
           anchor: wanted.anchor,
           exact: wanted.exact,
@@ -191,7 +213,7 @@ export function TextBody({
           after: wanted.after,
         }),
       ),
-    [post, tab],
+    [post, tab, encoding],
   );
 
   useEffect(
@@ -275,16 +297,16 @@ export function TextBody({
     const from = current.current.rows[current.current.top];
     requests.restart();
     requests.ask({
-      anchor: from?.start ?? 0,
+      anchor: from?.start ?? place.current,
       exact: from !== undefined,
       before: screen * 2,
       after: screen * 3,
       follow: true,
       topOf: (anchorIndex, count) => topWithin(anchorIndex, count, screen),
     });
-  }, [requests, viewing, screen]);
+  }, [requests, viewing, screen, place]);
 
-  const colored = useColors(file, viewing, post, listen);
+  const colored = useColors(file, encoding, viewing, post, listen);
   const shown = loaded.rows.slice(loaded.top, loaded.top + screen + 1);
 
   return (

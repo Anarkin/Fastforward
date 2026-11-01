@@ -84,5 +84,6 @@ export const viewerKeymap = {
     '2': 'hex',
     '3': 'preview',
   }),
+  encoding: bind('Viewer', strings.actions.chooseEncoding, { E: true }),
   closeViewer: bind('Viewer', strings.actions.closeViewer, { Escape: true }),
 };
