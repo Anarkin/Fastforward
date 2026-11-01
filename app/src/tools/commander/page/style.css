@@ -259,7 +259,7 @@
   flex: 1 1 auto;
 }
 
-.commander-row.marked {
+.row.commander-row.marked {
   color: var(--color-error-foreground);
   font-weight: 600;
 }
