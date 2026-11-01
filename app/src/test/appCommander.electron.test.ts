@@ -836,6 +836,53 @@ suite('App commander', () => {
     }, 'the files to be gone from the list');
   });
 
+  test('lines up the shortcuts of the commander that go on in the second column with those of the first, under its heading', async () => {
+    const size = await app.evaluate(({ BrowserWindow }) => {
+      const [window] = BrowserWindow.getAllWindows();
+      const before = window?.getSize();
+      window?.setSize(1290, 779);
+      return before;
+    });
+    await right().locator('.virtual-rows').focus();
+    await page.keyboard.press('F1');
+    await page
+      .locator('.shortcuts-heading', { hasText: 'Commander' })
+      .waitFor();
+    const tops = await page
+      .locator('.shortcuts-group', {
+        has: page.locator('.shortcuts-heading', { hasText: 'Commander' }),
+      })
+      .locator('.shortcut-keys')
+      .evaluateAll((cells) => {
+        const firstOfColumn = new Map<number, number>();
+        for (const cell of cells) {
+          const { left, top } = cell.getBoundingClientRect();
+          const column = Math.round(left);
+          firstOfColumn.set(
+            column,
+            Math.min(firstOfColumn.get(column) ?? Infinity, top),
+          );
+        }
+        return [...firstOfColumn.values()];
+      });
+    await page.keyboard.press('F1');
+    await page
+      .locator('.shortcuts-heading')
+      .first()
+      .waitFor({ state: 'detached' });
+    await app.evaluate(
+      ({ BrowserWindow }, [width, height]) => {
+        BrowserWindow.getAllWindows()[0]?.setSize(width, height);
+      },
+      size ?? [1280, 800],
+    );
+    assert.strictEqual(tops.length, 2);
+    assert.ok(
+      Math.abs((tops[0] ?? 0) - (tops[1] ?? 0)) < 2,
+      `The columns start at ${tops.join(' and ')}`,
+    );
+  });
+
   test.skipIf(process.platform !== 'win32')(
     'opens the drive menu of the right side with Alt+F2 and changes the drive by its letter',
     async () => {

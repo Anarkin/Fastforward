@@ -487,10 +487,16 @@ body {
 }
 
 .shortcuts-group {
+  --shortcuts-heading-height: calc(12px + 1lh + 6px);
+  position: relative;
+  padding-top: var(--shortcuts-heading-height);
   break-inside: avoid;
+  box-decoration-break: clone;
 }
 
 .shortcuts-heading {
+  position: absolute;
+  top: 0;
   padding: 12px 0 6px;
   font-weight: 700;
 }
