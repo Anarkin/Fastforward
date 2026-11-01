@@ -3,14 +3,16 @@ import { beforeAll, suite, test } from 'vitest';
 import { parsePatch, type LoadedText } from '../../../../tools/git/page/diff';
 import {
   carriedRanges,
-  codeSegments,
-  colorerOf,
   languageOf,
   syntaxSources,
   textsToLoad,
+} from '../../../../tools/git/page/syntax';
+import {
+  codeSegments,
+  colorerOf,
   workerPort,
   type SyntaxPort,
-} from '../../../../tools/git/page/syntax';
+} from '../../../../ui/syntax';
 import {
   colorCode,
   loadLanguages,
@@ -22,7 +24,7 @@ import {
   type FromSyntax,
   type SyntaxRange,
   type ToSyntax,
-} from '../../../../tools/git/page/syntaxEngine';
+} from '../../../../ui/syntaxEngine';
 import { onceMade } from '../../../../ui/onceMade';
 import { policyOfPage, waitFor } from '../../../fixtures';
 

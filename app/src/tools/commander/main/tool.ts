@@ -11,6 +11,7 @@ import {
 } from '../../../shell/main/shell';
 import {
   isSide,
+  maxColoredBytes,
   maxRowsAsked,
   parentFolder,
   sides,
@@ -235,6 +236,8 @@ export class CommanderTool implements Tool<'commander'> {
         return this.view(page, message.tab, message.side, message.name);
       case 'readRows':
         return this.readRows(page, message);
+      case 'readText':
+        return this.readText(page, message);
       case 'reread': {
         const shown = this.shownPane(page, message.tab, message.side);
         return shown === undefined
@@ -495,6 +498,28 @@ export class CommanderTool implements Tool<'commander'> {
     };
     this.viewing = viewing;
     this.post(page, { type: 'viewing', tab, size });
+  }
+
+  private async readText(
+    page: Page,
+    { tab, request }: Extract<CommanderToHost, { type: 'readText' }>,
+  ): Promise<void> {
+    const { viewing } = this;
+    if (
+      viewing === undefined ||
+      this.shown?.page !== page ||
+      viewing.tab !== tab ||
+      !Number.isSafeInteger(request)
+    ) {
+      return;
+    }
+    const text =
+      viewing.size > maxColoredBytes
+        ? undefined
+        : await fs.promises
+            .readFile(viewing.file, 'utf8')
+            .catch(() => undefined);
+    this.post(page, { type: 'text', tab, request, text });
   }
 
   private async readRows(

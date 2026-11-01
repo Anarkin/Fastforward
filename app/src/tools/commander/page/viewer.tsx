@@ -6,13 +6,17 @@ import {
   useRef,
   useState,
 } from 'react';
-import type {
-  CommanderToHost,
-  CommanderToWebviewOf,
-  TextRow,
+import {
+  maxColoredBytes,
+  type CommanderToHost,
+  type CommanderToWebviewOf,
+  type TextRow,
 } from '../shared/protocol';
 import { listMoveOf } from '../../../ui/listMoves';
 import { RowRequests } from './rowRequests';
+import { coloredText, rowSegments, type ColoredText } from './textColors';
+import { colorCode } from '../../../ui/syntax';
+import { languageOf } from '../../../ui/languages';
 import { followDrag } from '../../../ui/followDrag';
 import {
   hideAfter,
@@ -25,7 +29,7 @@ export interface Viewing {
   readonly error?: string;
 }
 
-type Rows = CommanderToWebviewOf<'rows'>;
+export type ToViewer = CommanderToWebviewOf<'rows' | 'text'>;
 
 interface Loaded {
   readonly rows: readonly TextRow[];
@@ -96,6 +100,32 @@ export function thumbOf(
   };
 }
 
+function RowText({
+  row,
+  colored,
+}: {
+  row: TextRow;
+  colored: ColoredText | undefined;
+}) {
+  const segments = colored && rowSegments(colored, row);
+  if (segments === undefined) {
+    return <>{row.text}</>;
+  }
+  return (
+    <>
+      {segments.map(({ text, kind }, index) =>
+        kind === undefined ? (
+          text
+        ) : (
+          <span key={index} className={`syntax-${kind}`}>
+            {text}
+          </span>
+        ),
+      )}
+    </>
+  );
+}
+
 export function Viewer({
   file,
   viewing,
@@ -105,7 +135,7 @@ export function Viewer({
   file: string;
   viewing: Viewing | undefined;
   post: (message: CommanderToHost) => void;
-  listen: (handler: (rows: Rows) => void) => () => void;
+  listen: (handler: (message: ToViewer) => void) => () => void;
 }) {
   const body = useRef<HTMLDivElement>(null);
   const probe = useRef<HTMLDivElement>(null);
@@ -159,7 +189,7 @@ export function Viewer({
   useEffect(
     () =>
       listen((rows) => {
-        if (rows.tab !== tab) {
+        if (rows.tab !== tab || rows.type !== 'rows') {
           return;
         }
         const pending = requests.answered(rows.request);
@@ -266,6 +296,43 @@ export function Viewer({
     });
   }, [ask, requests, viewing, screen]);
 
+  const language = languageOf(file);
+  const [colored, setColored] = useState<ColoredText>();
+  const textAsked = useRef(0);
+  useEffect(() => {
+    if (
+      tab === undefined ||
+      language === undefined ||
+      viewing?.size === undefined ||
+      viewing.size > maxColoredBytes
+    ) {
+      return undefined;
+    }
+    const request = ++textAsked.current;
+    const leaving = new AbortController();
+    const stop = listen((message) => {
+      if (
+        message.type !== 'text' ||
+        message.tab !== tab ||
+        message.request !== request ||
+        message.text === undefined
+      ) {
+        return;
+      }
+      const { text } = message;
+      void colorCode(language, text, leaving.signal).then((ranges) => {
+        if (ranges !== undefined && !leaving.signal.aborted) {
+          setColored(coloredText(text, ranges));
+        }
+      });
+    });
+    post({ type: 'readText', tab, request });
+    return () => {
+      leaving.abort();
+      stop();
+    };
+  }, [tab, language, viewing, listen, post]);
+
   const thumb = thumbOf(loaded, screen, size ?? 0, track);
   const shown = loaded.rows.slice(loaded.top, loaded.top + screen + 1);
 
@@ -324,7 +391,7 @@ export function Viewer({
           <div className="viewer-rows">
             {shown.map((row) => (
               <div className="viewer-row" key={row.start}>
-                {row.text}
+                <RowText row={row} colored={colored} />
               </div>
             ))}
           </div>

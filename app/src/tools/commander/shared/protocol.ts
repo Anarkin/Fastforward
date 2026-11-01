@@ -8,6 +8,8 @@ export interface TextRow {
 
 export const maxRowsAsked = 1000;
 
+export const maxColoredBytes = 1024 * 1024;
+
 export interface Entry {
   readonly name: string;
   readonly folder: boolean;
@@ -41,6 +43,11 @@ export type CommanderToHost =
       readonly drive: string;
     }
   | { readonly type: 'listDrives' }
+  | {
+      readonly type: 'readText';
+      readonly tab: string;
+      readonly request: number;
+    }
   | {
       readonly type: 'readRows';
       readonly tab: string;
@@ -93,6 +100,12 @@ export type CommanderToWebview =
       readonly tab: string;
       readonly size: number | undefined;
       readonly error?: string;
+    }
+  | {
+      readonly type: 'text';
+      readonly tab: string;
+      readonly request: number;
+      readonly text: string | undefined;
     }
   | {
       readonly type: 'rows';

@@ -7,10 +7,9 @@ import {
 } from 'shiki/core';
 import { createOnigurumaEngine } from 'shiki/engine/oniguruma';
 import { bundledLanguagesInfo } from 'shiki/langs';
-import { errorText } from '../../../ui/errors';
-import type { FindRange } from './find';
-import { languageIds } from '../../../ui/languages';
-import { onceMade } from '../../../ui/onceMade';
+import { errorText } from './errors';
+import { languageIds } from './languages';
+import { onceMade } from './onceMade';
 
 const kinds = [
   {
@@ -41,7 +40,9 @@ const kinds = [
   { kind: 'comment', scopes: ['comment', 'punctuation.definition.comment'] },
 ] as const;
 
-export interface SyntaxRange extends FindRange {
+export interface SyntaxRange {
+  readonly start: number;
+  readonly end: number;
   readonly kind: (typeof kinds)[number]['kind'];
 }
 

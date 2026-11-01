@@ -6,11 +6,10 @@ import {
   sides,
   type CommanderToHost,
   type CommanderToWebview,
-  type CommanderToWebviewOf,
   type Side,
 } from '../shared/protocol';
 import { Pane } from './pane';
-import { Viewer, type Viewing } from './viewer';
+import { Viewer, type ToViewer, type Viewing } from './viewer';
 import { emptyView, reduceView } from './view';
 import { nextSort } from './listing';
 import type { ColumnWidths } from '../shared/settings';
@@ -52,18 +51,13 @@ export function CommanderTool({
   const [view, dispatch] = useReducer(reduceView, emptyView);
   const [drives, setDrives] = useState<readonly string[]>([]);
   const [viewed, setViewed] = useState<Viewing>();
-  const rowListeners = useRef(
-    new Set<(rows: CommanderToWebviewOf<'rows'>) => void>(),
-  );
-  const listenRows = useCallback(
-    (handler: (rows: CommanderToWebviewOf<'rows'>) => void) => {
-      rowListeners.current.add(handler);
-      return () => {
-        rowListeners.current.delete(handler);
-      };
-    },
-    [],
-  );
+  const viewerListeners = useRef(new Set<(message: ToViewer) => void>());
+  const listenViewer = useCallback((handler: (message: ToViewer) => void) => {
+    viewerListeners.current.add(handler);
+    return () => {
+      viewerListeners.current.delete(handler);
+    };
+  }, []);
   const [noAccess, setNoAccess] = useState<{
     readonly side: Side;
     readonly folder: string;
@@ -93,8 +87,8 @@ export function CommanderTool({
             size: message.size,
             ...(message.error !== undefined && { error: message.error }),
           });
-        } else if (message.type === 'rows') {
-          for (const handler of rowListeners.current) {
+        } else if (message.type === 'rows' || message.type === 'text') {
+          for (const handler of viewerListeners.current) {
             handler(message);
           }
         } else if (message.type === 'noAccess') {
@@ -203,7 +197,7 @@ export function CommanderTool({
             file={view.viewing}
             viewing={viewed?.tab === view.tab ? viewed : undefined}
             post={post}
-            listen={listenRows}
+            listen={listenViewer}
           />
         </div>
       </div>

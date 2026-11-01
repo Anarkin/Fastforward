@@ -24,6 +24,7 @@ import {
   viewerIconUrl,
 } from '../../../../tools/commander/shared/icons';
 import type { ElevatedFileSystem } from '../../../../tools/commander/main/elevated';
+import { maxColoredBytes } from '../../../../tools/commander/shared/protocol';
 import { strings } from '../../../../shared/strings';
 import { removeFolder, tempFolder } from '../../../repositories';
 import { waitFor } from '../../../fixtures';
@@ -305,6 +306,40 @@ suite('Commander tool', () => {
         });
       }
       assert.strictEqual(page.of('rows').length, 1);
+    });
+
+    test('sends the whole text of a file viewed for its colors, only up to the size colored', async () => {
+      const small = path.join(opened, 'small.ts');
+      const large = path.join(opened, 'large.ts');
+      fs.writeFileSync(small, 'const one = 1;');
+      fs.writeFileSync(large, 'x'.repeat(maxColoredBytes + 1));
+      const { tool, page, send } = commander({});
+
+      await tool.show(page, {
+        id: '3',
+        tool: 'commander',
+        root: small,
+        view: true,
+      });
+      await send({ type: 'readText', tab: '3', request: 4 });
+      await send({ type: 'readText', tab: '5', request: 5 });
+      assert.deepStrictEqual(page.of('text'), [
+        { type: 'text', tab: '3', request: 4, text: 'const one = 1;' },
+      ]);
+
+      await tool.show(page, {
+        id: '6',
+        tool: 'commander',
+        root: large,
+        view: true,
+      });
+      await send({ type: 'readText', tab: '6', request: 6 });
+      assert.deepStrictEqual(page.of('text').at(-1), {
+        type: 'text',
+        tab: '6',
+        request: 6,
+        text: undefined,
+      });
     });
 
     test('tells the page when the file viewed changes, with its new size, and that one gone can’t be read', async () => {

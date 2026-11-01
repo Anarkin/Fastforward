@@ -28,7 +28,7 @@ export function webviewOptions(production: boolean): BuildOptions {
     ...sharedOptions(production),
     entryPoints: {
       webview: 'src/shell/page/main.tsx',
-      syntaxWorker: 'src/tools/git/page/syntaxWorker.ts',
+      syntaxWorker: 'src/ui/syntaxWorker.ts',
     },
     format: 'esm',
     splitting: true,

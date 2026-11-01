@@ -1,4 +1,4 @@
-import { errorText } from '../../../ui/errors';
+import { errorText } from './errors';
 import {
   sendUncaught,
   serveColoring,

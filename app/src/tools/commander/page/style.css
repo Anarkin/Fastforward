@@ -209,3 +209,27 @@
   right: 0;
   width: var(--scrollbar-size);
 }
+
+.viewer-row .syntax-keyword {
+  color: var(--color-syntax-keyword);
+}
+
+.viewer-row .syntax-type {
+  color: var(--color-syntax-type);
+}
+
+.viewer-row .syntax-function {
+  color: var(--color-syntax-function);
+}
+
+.viewer-row .syntax-string {
+  color: var(--color-syntax-string);
+}
+
+.viewer-row .syntax-number {
+  color: var(--color-syntax-number);
+}
+
+.viewer-row .syntax-comment {
+  color: var(--color-syntax-comment);
+}

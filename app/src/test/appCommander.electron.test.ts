@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { maxColoredBytes } from '../tools/commander/shared/protocol';
 import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -412,6 +413,56 @@ suite('App commander', () => {
       async () => !(await rowNames()).includes('rows.txt'),
       'the file to be gone from the list',
     );
+  });
+
+  test('colors the code of a file viewed as the diff colors it, leaving a file over the size colored plain', async () => {
+    fs.writeFileSync(path.join(opened, 'code.ts'), 'const answer = 42;');
+    await select('code');
+    await page.keyboard.press('F3');
+    await waitFor(
+      async () =>
+        (await page
+          .locator('.viewer-row .syntax-keyword')
+          .first()
+          .textContent()) === 'const',
+      'the keyword colored',
+    );
+    const colors = await page.evaluate(() => {
+      const keyword = document.querySelector('.viewer-row .syntax-keyword');
+      const plain = document.querySelector('.viewer-row');
+      return keyword && plain
+        ? [getComputedStyle(keyword).color, getComputedStyle(plain).color]
+        : [];
+    });
+    assert.notStrictEqual(colors[0], colors[1]);
+    await page.keyboard.press('Escape');
+    await page.locator('.viewer').waitFor({ state: 'detached' });
+
+    fs.writeFileSync(
+      path.join(opened, 'large.ts'),
+      `const big = 1;${' '.repeat(maxColoredBytes)}`,
+    );
+    await select('large');
+    await page.keyboard.press('F3');
+    await waitFor(
+      async () =>
+        (
+          (await page
+            .locator('.viewer-rows .viewer-row')
+            .first()
+            .textContent()) ?? ''
+        ).startsWith('const big'),
+      'the large file shown',
+    );
+    await page.waitForTimeout(300);
+    assert.strictEqual(
+      await page.locator('.viewer-row .syntax-keyword').count(),
+      0,
+    );
+    await page.keyboard.press('Escape');
+    await page.locator('.viewer').waitFor({ state: 'detached' });
+    fs.rmSync(path.join(opened, 'code.ts'));
+    fs.rmSync(path.join(opened, 'large.ts'));
   });
 
   test.skipIf(process.platform !== 'win32')(
