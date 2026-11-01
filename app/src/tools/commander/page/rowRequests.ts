@@ -1,5 +1,6 @@
+let lastRequest = 0;
+
 export class RowRequests<Ask> {
-  private last = 0;
   private answering: number | undefined;
   private waiting: Ask | undefined;
   private asked = new Map<number, Ask>();
@@ -35,7 +36,7 @@ export class RowRequests<Ask> {
   }
 
   private sendNow(wanted: Ask): void {
-    const request = ++this.last;
+    const request = ++lastRequest;
     this.answering = request;
     this.asked.set(request, wanted);
     this.send(request, wanted);

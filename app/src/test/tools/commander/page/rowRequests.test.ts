@@ -4,9 +4,19 @@ import { RowRequests } from '../../../../tools/commander/page/rowRequests';
 
 function requests() {
   const sent: [number, string][] = [];
+  let first: number | undefined;
+  const numbered = (request: number) => request - (first ?? request) + 1;
+  const rows = new RowRequests<string>((request, ask) => {
+    first ??= request;
+    sent.push([numbered(request), ask]);
+  });
   return {
     sent,
-    rows: new RowRequests<string>((request, ask) => sent.push([request, ask])),
+    rows: {
+      ask: (wanted: string) => rows.ask(wanted),
+      answered: (request: number) => rows.answered(request + (first ?? 1) - 1),
+      restart: () => rows.restart(),
+    },
   };
 }
 
@@ -41,5 +51,17 @@ suite('Rows asked of the viewer', () => {
     assert.strictEqual(rows.answered(1), undefined);
     assert.strictEqual(rows.answered(7), undefined);
     assert.strictEqual(rows.answered(2), 'new');
+  });
+
+  test('never numbers a request as one made before it by another, so a late answer to the rows of an encoding left is not taken for one in the encoding chosen', () => {
+    const asked: number[] = [];
+    const left = new RowRequests<string>((request) => asked.push(request));
+    left.ask('utf-16le');
+    const chosen = new RowRequests<string>((request) => asked.push(request));
+    chosen.ask('windows-1252');
+
+    const [lateAnswer = 0, answer = 0] = asked;
+    assert.strictEqual(chosen.answered(lateAnswer), undefined);
+    assert.strictEqual(chosen.answered(answer), 'windows-1252');
   });
 });
