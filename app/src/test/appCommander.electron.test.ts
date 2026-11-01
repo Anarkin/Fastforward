@@ -726,13 +726,13 @@ suite('App commander', () => {
       );
       const height = (await viewerThumb()).height;
       const short = await thumbSteps();
-      for (let pageStep = 0; pageStep < 8; pageStep++) {
+      await waitFor(async () => {
+        if ((await firstViewerRow()).startsWith('long')) {
+          return true;
+        }
         await page.keyboard.press('PageDown');
-      }
-      await waitFor(
-        async () => (await firstViewerRow()).startsWith('long'),
-        'the long rows',
-      );
+        return false;
+      }, 'the long rows');
       const long = await thumbSteps();
       const step = short[0] ?? 0;
       assert.ok(step > 0.5, JSON.stringify(short));
