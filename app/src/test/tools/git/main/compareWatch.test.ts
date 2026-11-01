@@ -22,11 +22,13 @@ suite('Watching the files compared', () => {
     removeFolder(folder);
   });
 
-  test('tells of a file compared written or replaced, but not of other files beside it', async () => {
+  test('tells of a file compared written or replaced, but not of other files beside it, once the events of its writing before the watching have come, as macOS sends them late', async () => {
     const watched = path.join(folder, 'watched.txt');
     fs.writeFileSync(watched, 'one');
     let changes = 0;
     stops.push(watchFiles([watched], () => changes++, 10));
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    changes = 0;
 
     fs.writeFileSync(path.join(folder, 'other.txt'), 'other');
     await new Promise((resolve) => setTimeout(resolve, 100));
