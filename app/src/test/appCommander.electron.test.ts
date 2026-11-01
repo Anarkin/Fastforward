@@ -779,6 +779,7 @@ suite('App commander', () => {
 
   test('marks the selected row of the active side only', async () => {
     const left = page.locator('.commander-pane').nth(0);
+    const transparent = 'rgba(0, 0, 0, 0)';
     const backgrounds = () =>
       Promise.all(
         [left, right()].map((pane) =>
@@ -787,22 +788,28 @@ suite('App commander', () => {
             .evaluate((row) => getComputedStyle(row).backgroundColor),
         ),
       );
+    const marked = async (expected: readonly [boolean, boolean]) => {
+      let seen: string[] = [];
+      try {
+        await waitFor(async () => {
+          seen = await backgrounds();
+          return seen.every(
+            (color, index) => (color !== transparent) === expected[index],
+          );
+        }, 'the selected rows');
+      } catch {
+        assert.fail(
+          `Expected the selected row marked on the left ${expected[0]} and on the right ${expected[1]}, but their backgrounds were ${seen.join(' and ')}`,
+        );
+      }
+    };
     await page.mouse.move(0, 0);
     await right().locator('.virtual-rows').focus();
     await waitForFocus(right().locator('.virtual-rows'), 'the right side');
-    const [leftSelected, rightSelected] = await backgrounds();
-    assert.strictEqual(leftSelected, 'rgba(0, 0, 0, 0)');
-    assert.notStrictEqual(rightSelected, 'rgba(0, 0, 0, 0)');
+    await marked([false, true]);
     await page.keyboard.press('Tab');
     await waitForFocus(left.locator('.virtual-rows'), 'the left side');
-    await waitFor(
-      async () => (await backgrounds())[0] === rightSelected,
-      'the left side to mark its selected row',
-    );
-    await waitFor(
-      async () => (await backgrounds())[1] === 'rgba(0, 0, 0, 0)',
-      'the right side to unmark its selected row',
-    );
+    await marked([true, false]);
     await page.keyboard.press('Tab');
   });
 
