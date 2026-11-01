@@ -1,5 +1,13 @@
 import { useVirtualizer, type Rect } from '@tanstack/react-virtual';
-import { useEffect, useEffectEvent, useId, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { columnFocusAttribute } from './columnFocus';
 import { fullyVisible, type VisibleRows } from './listMoves';
 import { rowPlace } from './rowPlace';
@@ -7,9 +15,7 @@ import { followRows, rowPadding } from './rowScroll';
 
 export const estimatedRowHeight = 22;
 
-const estimateSize = () => estimatedRowHeight;
-
-const measureElement = (element: Element) =>
+const exactHeight = (element: Element) =>
   element.getBoundingClientRect().height;
 
 export const rowId = (list: string, key: React.Key) =>
@@ -155,29 +161,53 @@ export function VirtualRows({
 }) {
   const list = useRef<HTMLDivElement>(null);
   const listId = useId();
+  const [fixedHeight, setFixedHeight] = useState<number>();
   const virtualizer = useVirtualizer({
     count: rows.count,
     getScrollElement: () => list.current,
-    estimateSize,
-    measureElement,
+    estimateSize: useCallback(
+      () => fixedHeight ?? estimatedRowHeight,
+      [fixedHeight],
+    ),
+    measureElement: useCallback(
+      (element: Element) => {
+        const height = exactHeight(element);
+        if (wholeRows && height > 0) {
+          setFixedHeight(height);
+        }
+        return height;
+      },
+      [wholeRows],
+    ),
     getItemKey: rows.keyOf,
     overscan: 20,
     initialRect,
   });
 
-  const rowHeight = useEffectEvent(
-    () => virtualizer.measurementsCache[0]?.size ?? estimatedRowHeight,
-  );
-  const [padding, setPadding] = useState(0);
+  useLayoutEffect(() => {
+    if (fixedHeight !== undefined) {
+      virtualizer.measure();
+    }
+  }, [fixedHeight, virtualizer]);
+  const rowHeight = useEffectEvent(() => fixedHeight ?? estimatedRowHeight);
+  const totalSize = useEffectEvent(() => virtualizer.getTotalSize());
+  const [viewportHeight, setViewportHeight] = useState(0);
+  const padding = wholeRows
+    ? rowPadding(viewportHeight, fixedHeight ?? estimatedRowHeight)
+    : 0;
   useEffect(() => {
     const element = list.current;
     if (!wholeRows || !element) {
       return undefined;
     }
-    const stop = followRows(element, rowHeight);
-    const pad = () => setPadding(rowPadding(element.clientHeight, rowHeight()));
-    pad();
-    const observer = new ResizeObserver(pad);
+    const viewport = () => exactHeight(element);
+    const stop = followRows(element, rowHeight, {
+      limit: () =>
+        totalSize() + rowPadding(viewport(), rowHeight()) - viewport(),
+    });
+    const measure = () => setViewportHeight(viewport());
+    measure();
+    const observer = new ResizeObserver(measure);
     observer.observe(element);
     return () => {
       stop();

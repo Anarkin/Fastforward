@@ -47,10 +47,13 @@ const moveSteps: Readonly<Record<ListMove, (page: number) => number>> = {
 export function followRows(
   element: HTMLElement,
   rowHeight: () => number,
-  { keys = false }: { readonly keys?: boolean } = {},
+  {
+    keys = false,
+    limit = () => element.scrollHeight - element.clientHeight,
+  }: { readonly keys?: boolean; readonly limit?: () => number } = {},
 ): () => void {
   let pending = 0;
-  const max = () => element.scrollHeight - element.clientHeight;
+  const max = () => Math.max(0, limit());
   const goTo = (top: number) => {
     element.scrollTop = Math.max(0, Math.min(max(), top));
   };

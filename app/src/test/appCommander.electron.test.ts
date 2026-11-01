@@ -1043,7 +1043,7 @@ suite('App commander', () => {
   test('scrolls the list by whole rows, with the wheel and the scrollbar alike', async () => {
     const many = path.join(opened, 'many');
     fs.mkdirSync(many);
-    for (let index = 0; index < 150; index++) {
+    for (let index = 0; index < 400; index++) {
       fs.writeFileSync(path.join(many, `file${index}.txt`), '');
     }
     await select('many');
@@ -1069,6 +1069,21 @@ suite('App commander', () => {
     await page.mouse.wheel(0, 30);
     await waitFor(async () => (await offRow()).top > 0, 'the list to scroll');
     assert.ok((await offRow()).off < 0.01, JSON.stringify(await offRow()));
+
+    await page.mouse.wheel(0, 3000);
+    await waitFor(async () => (await offRow()).top > 2000, 'a long way down');
+    const firstRowOffset = await list.evaluate((element) => {
+      const top = element.getBoundingClientRect().top;
+      const boxes = [...element.querySelectorAll('.virtual-row')]
+        .map((row) => row.getBoundingClientRect())
+        .filter((box) => box.bottom > top + 0.5)
+        .toSorted((one, other) => one.top - other.top);
+      return (boxes[0]?.top ?? top) - top;
+    });
+    assert.ok(
+      Math.abs(firstRowOffset) < 0.01,
+      `The first row shown starts ${firstRowOffset} from the top`,
+    );
 
     await list.evaluate((element) => {
       element.scrollTop = 25;
