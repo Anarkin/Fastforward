@@ -38,7 +38,12 @@ import { useBinding } from '../../ui/shortcuts';
 import { ShortcutsPopup } from './shortcutsPopup';
 import { movedTab, TabBar } from './tabBar';
 import { useWindowTitle, windowTitle } from './titleBar';
-import { toolShortcuts, ToolViews, type ToolListeners } from './tools';
+import {
+  toolShortcuts,
+  viewerShortcuts,
+  ToolViews,
+  type ToolListeners,
+} from './tools';
 
 const newTabTrigger = '.tab-add';
 
@@ -122,13 +127,20 @@ export function withPopup(
   return open ? [...shown, popup] : shown.filter((other) => other !== popup);
 }
 
-export function shortcutGroupsFor(tool: ToolId | undefined): ShortcutGroup[] {
+export function shortcutGroupsFor(
+  tool: ToolId | undefined,
+  viewing = false,
+): ShortcutGroup[] {
   return [
     ...[
       ...shortcutGroupsOf(tabGroups, strings.shortcuts.groups, keymap),
       ...shortcutGroupsOf(appGroups, strings.shortcuts.groups, keymap),
     ].map((group) => ({ ...group, pinned: true })),
-    ...(tool === undefined ? [] : toolShortcuts[tool]),
+    ...(tool === undefined
+      ? []
+      : tool === 'commander' && viewing
+        ? viewerShortcuts
+        : toolShortcuts[tool]),
   ];
 }
 
@@ -380,7 +392,7 @@ export function App({ name, post, listen }: Props) {
             return (
               <ShortcutsPopup
                 key={popup}
-                groups={shortcutGroupsFor(activeTool)}
+                groups={shortcutGroupsFor(activeTool, activeTab?.view === true)}
                 mac={document.documentElement.dataset.platform === 'darwin'}
                 onClose={closeShortcuts}
               />

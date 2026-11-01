@@ -703,7 +703,7 @@ export class Shell {
         ...this.tools[tool].names(tabs.filter((tab) => tab.tool === tool)),
       ]),
     );
-    return tabs.map(({ id, tool, root }) => {
+    return tabs.map(({ id, tool, root, view }) => {
       const name = names.get(id);
       return {
         id,
@@ -712,6 +712,7 @@ export class Shell {
         ...(name?.folder !== undefined && { folder: name.folder }),
         ...(name?.icon !== undefined && { icon: name.icon }),
         ...(root !== undefined && { root }),
+        ...(view === true && { view }),
       };
     });
   }

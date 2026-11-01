@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { listMoveOf } from '../../../ui/listMoves';
+import { keyPressed } from '../../../ui/shortcuts';
+import { viewerKeymap } from '../shared/keymap';
 import { followDrag } from '../../../ui/followDrag';
 import {
   hideAfter,
@@ -95,7 +96,7 @@ export function ScrollBody({
         }
       }}
       onKeyDown={(event) => {
-        const step = listMoveOf(event);
+        const step = keyPressed(viewerKeymap.scroll, event);
         if (step === undefined) {
           return;
         }

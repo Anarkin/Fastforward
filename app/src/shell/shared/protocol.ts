@@ -9,6 +9,7 @@ export interface TabInfo {
   readonly folder?: string;
   readonly icon?: string;
   readonly root?: string;
+  readonly view?: true;
 }
 
 export interface ToolChoice {

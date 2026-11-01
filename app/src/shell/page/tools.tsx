@@ -9,6 +9,8 @@ import type { ContextMenuItem, OpenMenu } from '../../ui/contextMenu';
 import { CommanderTool } from '../../tools/commander/page/tool';
 import {
   commanderGroups,
+  viewerGroups,
+  viewerKeymap,
   commanderKeymap,
 } from '../../tools/commander/shared/keymap';
 import type {
@@ -44,6 +46,12 @@ export const toolShortcuts: Readonly<Record<ToolId, readonly ShortcutGroup[]>> =
     ),
     git: shortcutGroupsOf(gitGroups, strings.shortcuts.groups, gitKeymap),
   };
+
+export const viewerShortcuts: readonly ShortcutGroup[] = shortcutGroupsOf(
+  viewerGroups,
+  strings.shortcuts.groups,
+  viewerKeymap,
+);
 
 export function ToolViews({
   active,

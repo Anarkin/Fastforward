@@ -511,6 +511,25 @@ suite('App commander', () => {
       'the last row',
     );
 
+    await page.keyboard.press('F1');
+    await waitFor(
+      async () =>
+        (await page.locator('.shortcuts-heading').allTextContents()).includes(
+          'Viewer',
+        ),
+      'the shortcuts of the viewer',
+    );
+    assert.ok(
+      !(await page.locator('.shortcuts-heading').allTextContents()).includes(
+        'Commander',
+      ),
+    );
+    await page.keyboard.press('F1');
+    await page
+      .locator('.shortcuts-heading')
+      .first()
+      .waitFor({ state: 'detached' });
+
     await page.keyboard.press('1');
     await waitFor(
       async () => (await pressedMode()) === 'Text',

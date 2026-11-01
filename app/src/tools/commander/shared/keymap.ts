@@ -3,6 +3,8 @@ import { strings } from '../../../shared/strings';
 
 export const commanderGroups = ['Commander'] as const;
 
+export const viewerGroups = ['Viewer'] as const;
+
 export type ViewMode = 'text' | 'hex' | 'preview';
 
 export const commanderKeymap = {
@@ -25,14 +27,6 @@ export const commanderKeymap = {
   view: bind('Commander', strings.actions.viewFile, { F3: true }),
   compare: bind('Commander', strings.actions.compareFiles, {
     'Shift+F3': true,
-  }),
-  closeViewer: bind('Commander', strings.actions.closeViewer, {
-    Escape: true,
-  }),
-  viewAs: bind<ViewMode>('Commander', strings.actions.viewAs, {
-    '1': 'text',
-    '2': 'hex',
-    '3': 'preview',
   }),
   markMoving: bind('Commander', strings.actions.markMoving, {
     'Shift+ArrowUp': 'up',
@@ -69,4 +63,26 @@ export const commanderKeymap = {
     },
     { repeats: true },
   ),
+};
+
+export const viewerKeymap = {
+  scroll: bind(
+    'Viewer',
+    strings.actions.scrollFile,
+    {
+      ArrowUp: 'up',
+      ArrowDown: 'down',
+      PageUp: 'pageUp',
+      PageDown: 'pageDown',
+      Home: 'first',
+      End: 'last',
+    } as const,
+    { repeats: true },
+  ),
+  viewAs: bind<ViewMode>('Viewer', strings.actions.viewAs, {
+    '1': 'text',
+    '2': 'hex',
+    '3': 'preview',
+  }),
+  closeViewer: bind('Viewer', strings.actions.closeViewer, { Escape: true }),
 };

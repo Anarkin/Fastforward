@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { CommanderToHost, CommanderToWebviewOf } from '../shared/protocol';
-import { commanderKeymap, type ViewMode } from '../shared/keymap';
+import { viewerKeymap, type ViewMode } from '../shared/keymap';
 import { pressed } from '../../../shell/shared/keymap';
 import { strings } from '../../../shared/strings';
 import { HexIcon, PreviewIcon, TextIcon } from '../../../ui/icons';
@@ -59,7 +59,7 @@ export function Viewer({
     <section
       className="column viewer"
       onKeyDown={(event) => {
-        const wanted = pressed(commanderKeymap.viewAs, event, false);
+        const wanted = pressed(viewerKeymap.viewAs, event, false);
         if (wanted !== undefined) {
           event.preventDefault();
           choose(wanted);

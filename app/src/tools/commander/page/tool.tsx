@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { clicked } from '../../../shell/shared/keymap';
 import './style.css';
-import { commanderKeymap } from '../shared/keymap';
+import { commanderKeymap, viewerKeymap } from '../shared/keymap';
 import {
   sides,
   type CommanderToHost,
@@ -136,7 +136,7 @@ export function CommanderTool({
   };
   useBinding(commanderKeymap.history, stepActive, shown && !viewing);
   useBinding(
-    commanderKeymap.closeViewer,
+    viewerKeymap.closeViewer,
     () => {
       if (view.tab !== undefined) {
         onClose(view.tab);

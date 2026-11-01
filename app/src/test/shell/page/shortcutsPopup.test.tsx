@@ -11,8 +11,11 @@ import { renderedBy, tagsWith } from '../../fixtures';
 const noop = () => undefined;
 const shortcutGroups = shortcutGroupsFor('git');
 
-function titles(tool: Parameters<typeof shortcutGroupsFor>[0]): string[] {
-  return shortcutGroupsFor(tool).map((group) => group.title);
+function titles(
+  tool: Parameters<typeof shortcutGroupsFor>[0],
+  viewing = false,
+): string[] {
+  return shortcutGroupsFor(tool, viewing).map((group) => group.title);
 }
 
 function pinnedRow(tool: 'git' | undefined): string | undefined {
@@ -29,6 +32,28 @@ function pinnedRow(tool: 'git' | undefined): string | undefined {
 }
 
 suite('Shortcuts popup', () => {
+  test('lists the keys of a file viewed in the commander apart from those of its sides, the view keys among them', () => {
+    const viewer = shortcutGroupsFor('commander', true).find(
+      (group) => group.title === 'Viewer',
+    );
+    assert.deepStrictEqual(
+      viewer?.bindings.map((binding) => binding.action),
+      [
+        'Scroll by a row, a page, or to the start or end',
+        'View the file as text, hex or a preview',
+        'Close the file being viewed',
+      ],
+    );
+    const commander = shortcutGroupsFor('commander').find(
+      (group) => group.title === 'Commander',
+    );
+    assert.ok(
+      !commander?.bindings.some(
+        (binding) => binding.action === 'Close the file being viewed',
+      ),
+    );
+  });
+
   test('lists every binding with a group under it, and none without one', () => {
     const listed = shortcutGroups.flatMap((group) =>
       group.bindings.map((binding) => binding.action),
@@ -128,6 +153,11 @@ suite('Shortcuts popup', () => {
   test("shows the tabs' and the app's shortcuts first, always in the same place, then those of the active tab's tool only", () => {
     assert.deepStrictEqual(titles(undefined), ['Tabs', 'App']);
     assert.deepStrictEqual(titles('commander'), ['Tabs', 'App', 'Commander']);
+    assert.deepStrictEqual(titles('commander', true), [
+      'Tabs',
+      'App',
+      'Viewer',
+    ]);
     assert.deepStrictEqual(titles('git').slice(0, 3), [
       'Tabs',
       'App',
