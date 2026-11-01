@@ -273,3 +273,12 @@
 .viewer-encoding-label {
   font-size: calc(var(--font-size) * 0.85);
 }
+
+.column-title:has(.viewer-actions) {
+  padding-left: calc(4px + 3 * 26px + 2px + 8px + 72px + 8px);
+  padding-right: calc(4px + 3 * 26px + 2px + 8px + 72px + 8px);
+}
+
+.viewer-actions {
+  gap: 8px;
+}

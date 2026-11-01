@@ -93,26 +93,7 @@ export function Viewer({
       }}
     >
       <header className="column-title">
-        <span className="column-name">{file}</span>
-        <div className="column-actions">
-          {mode === 'text' && (
-            <div className="viewer-encoding">
-              <MenuButton
-                title={strings.commander.encoding}
-                trigger={encodingTrigger}
-                icon={
-                  <span className="viewer-encoding-label">
-                    {strings.commander.encodingShort[shown]}
-                  </span>
-                }
-                items={encodingChoices.map((choice) => ({
-                  label: strings.commander.encodings[choice],
-                  checked: choice === encoding,
-                  onClick: () => setEncoding(choice),
-                }))}
-              />
-            </div>
-          )}
+        <div className="column-start nav-buttons viewer-actions">
           <div
             className="segmented"
             role="group"
@@ -131,7 +112,26 @@ export function Viewer({
               </button>
             ))}
           </div>
+          {mode === 'text' && (
+            <div className="viewer-encoding">
+              <MenuButton
+                title={strings.commander.encoding}
+                trigger={encodingTrigger}
+                icon={
+                  <span className="viewer-encoding-label">
+                    {strings.commander.encodingShort[shown]}
+                  </span>
+                }
+                items={encodingChoices.map((choice) => ({
+                  label: strings.commander.encodings[choice],
+                  checked: choice === encoding,
+                  onClick: () => setEncoding(choice),
+                }))}
+              />
+            </div>
+          )}
         </div>
+        <span className="column-name">{file}</span>
       </header>
       {viewing === undefined ? (
         <div className="column-body viewer-body" />
