@@ -8,6 +8,9 @@ export const estimatedRowHeight = 22;
 
 const estimateSize = () => estimatedRowHeight;
 
+const measureElement = (element: Element) =>
+  element.getBoundingClientRect().height;
+
 export const rowId = (list: string, key: React.Key) =>
   `${list}${encodeURIComponent(String(key))}`;
 
@@ -153,6 +156,7 @@ export function VirtualRows({
     count: rows.count,
     getScrollElement: () => list.current,
     estimateSize,
+    measureElement,
     getItemKey: rows.keyOf,
     overscan: 20,
     initialRect,

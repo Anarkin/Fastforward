@@ -1015,6 +1015,31 @@ suite('App commander', () => {
     }, 'the files to be gone from the list');
   });
 
+  test('starts each row where the one above it ends, leaving no seam between their backgrounds', async () => {
+    const gaps = await right()
+      .locator('.virtual-row')
+      .evaluateAll((rows) =>
+        rows
+          .map((row) => row.getBoundingClientRect())
+          .toSorted((one, other) => one.top - other.top)
+          .slice(1)
+          .map((box, index, boxes) => {
+            const above =
+              index === 0
+                ? rows
+                    .map((row) => row.getBoundingClientRect())
+                    .toSorted((one, other) => one.top - other.top)[0]
+                : boxes[index - 1];
+            return above === undefined ? 0 : box.top - above.bottom;
+          }),
+      );
+    assert.ok(gaps.length > 2);
+    assert.ok(
+      gaps.every((gap) => Math.abs(gap) < 0.01),
+      `The gaps between the rows are ${gaps.join(', ')}`,
+    );
+  });
+
   test.skipIf(process.platform !== 'win32')(
     'opens the drive menu of the right side with Alt+F2 and changes the drive by its letter',
     async () => {
