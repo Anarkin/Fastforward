@@ -72,6 +72,8 @@ suite('App commander', () => {
       );
   const findCount = () =>
     page.locator('.viewer .find-field-count').textContent();
+  const selected = async () =>
+    (await right().locator('.commander-row.selected').textContent()) ?? '';
   const select = async (name: string) => {
     await right().locator('.commander-row', { hasText: name }).click();
     await waitFor(
@@ -353,6 +355,130 @@ suite('App commander', () => {
         ).startsWith('notes'),
       'the keys to move the selection again',
     );
+  });
+
+  test('filters the files of a side on Ctrl+F or Alt and a letter by every word anywhere in their names, moving among them with the arrows as one types, and clears the filter on Esc or once a folder opens', async () => {
+    const names = ['alpha-report.txt', 'beta.txt', 'Report-gamma.md'];
+    for (const name of names) {
+      fs.writeFileSync(path.join(opened, name), name);
+    }
+    fs.mkdirSync(path.join(opened, 'reports-folder'));
+    try {
+      await waitFor(
+        async () => (await rowNames()).includes('reports-folder'),
+        'the files to be listed',
+      );
+      await select('beta');
+      await page.keyboard.press('ControlOrMeta+F');
+      await waitForFocus(
+        right().locator('.commander-filter-input'),
+        'the filter',
+      );
+      await page.keyboard.type('rep gam');
+      await waitFor(
+        async () =>
+          JSON.stringify((await rowNames()).filter((name) => name !== '..')) ===
+          JSON.stringify(['Report-gamma.md']),
+        'only the file with both words',
+      );
+      assert.ok((await selected()).includes('Report-gamma'));
+      await page.keyboard.press('Control+A');
+      await page.keyboard.type('report');
+      await waitFor(
+        async () =>
+          JSON.stringify(
+            (await rowNames()).filter((name) => name !== '..').toSorted(),
+          ) ===
+          JSON.stringify([
+            'Report-gamma.md',
+            'alpha-report.txt',
+            'reports-folder',
+          ]),
+        'the files and the folder with the word',
+      );
+      assert.match(
+        (await right().locator('.find-field-count').textContent()) ?? '',
+        /^3 of \d+$/,
+      );
+      assert.strictEqual(
+        await right().locator('.commander-row .match').first().textContent(),
+        'report',
+      );
+      await page.keyboard.press('ArrowDown');
+      await waitFor(
+        async () => (await selected()).includes('alpha-report'),
+        'the next match selected',
+      );
+
+      await page.keyboard.press('Enter');
+      await waitForFocus(right().locator('.virtual-rows'), 'the list');
+      assert.ok(await right().locator('.commander-filter-input').isVisible());
+      await page.keyboard.press('Escape');
+      await right()
+        .locator('.commander-filter-input')
+        .waitFor({ state: 'detached' });
+      await waitFor(
+        async () => (await rowNames()).includes('beta.txt'),
+        'every file again',
+      );
+      assert.ok((await selected()).includes('alpha-report'));
+
+      await page.keyboard.press('ControlOrMeta+F');
+      await page.keyboard.type('folder');
+      await waitFor(
+        async () => (await selected()).includes('reports-folder'),
+        'the folder selected',
+      );
+      await page.keyboard.press('Enter');
+      await waitFor(
+        async () =>
+          (await right().locator('.column-name').textContent())?.endsWith(
+            'reports-folder',
+          ) === true,
+        'the folder opened',
+      );
+      await waitForFocus(
+        right().locator('.virtual-rows'),
+        'the list in the folder',
+      );
+      assert.strictEqual(
+        await right().locator('.commander-filter-input').count(),
+        0,
+      );
+      await page.keyboard.press('Backspace');
+      await waitFor(
+        async () => (await rowNames()).includes('beta.txt'),
+        'the folder left',
+      );
+
+      await page.keyboard.press('Alt+b');
+      await waitForFocus(
+        right().locator('.commander-filter-input'),
+        'the filter from Alt and a letter',
+      );
+      await page.keyboard.press('Alt+e');
+      await waitFor(
+        async () =>
+          (await right().locator('.commander-filter-input').inputValue()) ===
+            'be' &&
+          JSON.stringify((await rowNames()).filter((name) => name !== '..')) ===
+            JSON.stringify(['beta.txt']),
+        'the files with the letters typed with Alt',
+      );
+      await page.keyboard.press('Escape');
+      await right()
+        .locator('.commander-filter-input')
+        .waitFor({ state: 'detached' });
+    } finally {
+      for (const name of names) {
+        fs.rmSync(path.join(opened, name));
+      }
+      fs.rmSync(path.join(opened, 'reports-folder'), { recursive: true });
+      await waitFor(
+        async () => !(await rowNames()).includes('beta.txt'),
+        'the files to be gone from the list',
+      );
+    }
   });
 
   test('searches a file viewed on Ctrl+F as the diff does, counting the matches, stepping to them with Enter and Shift+Enter, and closes the search on Esc, then the viewer', async () => {

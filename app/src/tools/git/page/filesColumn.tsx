@@ -25,7 +25,7 @@ import {
 } from './changesTree';
 import { columnFocusOf } from '../../../ui/columnFocus';
 import { Column } from './column';
-import { filterWords, matchesFilter } from './fileFilter';
+import { filterWords, matchesFilter } from '../../../shared/fileFilter';
 import { SearchButton, SearchRow } from '../../../ui/search';
 import { useSettled } from '../../../ui/settled';
 import {

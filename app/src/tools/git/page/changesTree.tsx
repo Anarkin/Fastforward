@@ -6,7 +6,7 @@ import {
   type ListMove,
   type VisibleRows,
 } from '../../../ui/listMoves';
-import { HighlightWords } from './highlight';
+import { HighlightWords } from '../../../ui/highlight';
 import { FileRow, fileRowKey, FolderRow } from './tree';
 import type { ListedRows, TreeItem } from '../../../ui/virtualRows';
 

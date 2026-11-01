@@ -10,7 +10,7 @@ import { columnFocusOf } from '../../../ui/columnFocus';
 import { Column } from './column';
 import { parsePatch, type DiffFile, type LoadedText } from './diff';
 import { DiffView, type WholeFile } from './diffView';
-import { filterWords, matchesFilter } from './fileFilter';
+import { filterWords, matchesFilter } from '../../../shared/fileFilter';
 import { findMatches, unsearchedFiles } from './find';
 import { matchCount, stepMatch } from '../../../shared/textMatches';
 import { withUnchangedObjects, type ImageOrigin } from './images';

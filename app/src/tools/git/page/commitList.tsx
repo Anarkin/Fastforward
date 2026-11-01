@@ -41,7 +41,7 @@ import { DateFormat, formatDate } from '../../../ui/dates';
 import { MenuButton } from '../../../ui/menu';
 import { MessageBody, MessagePeek } from './messagePeek';
 import { useSkeleton } from '../../../ui/skeleton';
-import { Highlight } from './highlight';
+import { Highlight } from '../../../ui/highlight';
 import {
   clicked,
   menuFromKeyboard,

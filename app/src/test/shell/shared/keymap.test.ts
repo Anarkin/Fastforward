@@ -6,7 +6,9 @@ import {
   clicked,
   hovered,
   keyLabels,
+  bind,
   keymap,
+  letterTyped,
   menuFromKeyboard,
   modifierKey,
   pressedAlone,
@@ -31,6 +33,9 @@ const worktreeStep = (extra: Partial<KeyPress>) =>
     keyPress('PageDown', { ctrlKey: true, ...extra }),
     false,
   );
+
+const altPress = (key: string, code?: string) =>
+  keyPress(key, { altKey: true, ...(code === undefined ? {} : { code }) });
 
 function shifted(key: string) {
   return keyPress(key, { shiftKey: true });
@@ -58,6 +63,23 @@ suite('Keymap', () => {
       pressed(keymap.mainMenu, keyPress('f', { altKey: true }), true),
       undefined,
     );
+  });
+
+  test('takes any letter for Letter, by the key pressed when Option types another character on macOS, but no digit nor sign, and tells which letter it was', () => {
+    const anyLetter = bind('Folders', 'Filter', { 'Alt+Letter': true });
+
+    assert.strictEqual(pressed(anyLetter, altPress('r'), false), true);
+    assert.strictEqual(pressed(anyLetter, altPress('´', 'KeyE'), false), true);
+    assert.strictEqual(
+      pressed(anyLetter, altPress('1', 'Digit1'), false),
+      undefined,
+    );
+    assert.strictEqual(pressed(anyLetter, keyPress('r'), false), undefined);
+    assert.strictEqual(pressed(anyLetter, altPress('r'), true), undefined);
+    assert.strictEqual(letterTyped(altPress('R')), 'r');
+    assert.strictEqual(letterTyped(altPress('´', 'KeyE')), 'e');
+    assert.strictEqual(letterTyped(altPress('1', 'Digit1')), undefined);
+    assert.strictEqual(keyLabels('Alt+Letter', false).at(-1), 'A–Z');
   });
 
   test('takes a letter typed, with Caps Lock on, or on the key of another layout', () => {

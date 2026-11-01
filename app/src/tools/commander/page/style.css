@@ -292,3 +292,9 @@
 .viewer-row .find-match.current {
   box-shadow: 0 0 0 1px var(--color-search-match-foreground);
 }
+
+.commander-row .match {
+  color: var(--color-search-match-foreground);
+  background: var(--color-search-match);
+  border-radius: 2px;
+}

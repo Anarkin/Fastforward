@@ -32,6 +32,41 @@ export const commanderKeymap = {
     F2: true,
     'Ctrl+R': true,
   }),
+  filter: bind(
+    'Folders',
+    strings.actions.filterFolder,
+    { 'Mod+F': true },
+    { fields: true },
+  ),
+  filterLetter: bind(
+    'Folders',
+    strings.actions.filterLetter,
+    { 'Alt+Letter': true },
+    { fields: true },
+  ),
+  stopFiltering: bind(
+    'Folders',
+    strings.actions.stopFiltering,
+    { Escape: true },
+    { fields: true },
+  ),
+  leaveFilter: bind(
+    undefined,
+    strings.actions.leaveFilter,
+    { Enter: true },
+    { fields: true },
+  ),
+  filterMove: bind(
+    undefined,
+    strings.actions.filterMove,
+    {
+      ArrowUp: 'up',
+      ArrowDown: 'down',
+      PageUp: 'pageUp',
+      PageDown: 'pageDown',
+    } as const,
+    { repeats: true, fields: true },
+  ),
   showHidden: bind('Folders', strings.actions.showHidden, {
     'Ctrl+H': true,
   }),

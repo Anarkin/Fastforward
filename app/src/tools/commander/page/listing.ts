@@ -1,3 +1,4 @@
+import { matchesFilter } from '../../../shared/fileFilter';
 import { parentFolder, type Entry } from '../shared/protocol';
 import type { Sort, SortColumn } from '../shared/settings';
 
@@ -144,4 +145,24 @@ export function rangeKeys(
   return rows
     .slice(Math.min(from, to), Math.max(from, to) + 1)
     .map((row) => row.key);
+}
+
+export function filteredRows(
+  rows: readonly Row[],
+  words: readonly string[],
+): readonly Row[] {
+  return words.length === 0
+    ? rows
+    : rows.filter(
+        (row) => row.entry === undefined || matchesFilter(words, row.key),
+      );
+}
+
+export function filteredSelection(
+  rows: readonly Row[],
+  selected: string | undefined,
+): string | undefined {
+  return rows.some((row) => row.key === selected && row.entry !== undefined)
+    ? selected
+    : (rows.find((row) => row.entry !== undefined) ?? rows[0])?.key;
 }

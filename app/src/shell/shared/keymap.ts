@@ -225,7 +225,17 @@ function modifiersMatch(combo: Combo, held: Modifiers): boolean {
   );
 }
 
+const anyLetter = 'Letter';
+
+export function letterTyped(press: KeyPress): string | undefined {
+  const letter = letterOf(press);
+  return isLetter(letter) ? letter.toLowerCase() : undefined;
+}
+
 function keyMatches(combo: Combo, press: KeyPress): boolean {
+  if (combo.key === anyLetter) {
+    return letterTyped(press) !== undefined;
+  }
   return isLetter(combo.key)
     ? letterOf(press) === combo.key
     : press.key === (named[combo.key] ?? combo.key);
@@ -237,6 +247,7 @@ function editsField(combo: Combo): boolean {
     (caretKeys.has(combo.key) ||
       (!combo.mod &&
         (isLetter(combo.key) ||
+          combo.key === anyLetter ||
           combo.key.length === 1 ||
           combo.key === 'Space')))
   );

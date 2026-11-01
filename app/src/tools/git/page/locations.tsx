@@ -33,7 +33,7 @@ import {
 import { useDismiss } from '../../../ui/contextMenu';
 import { OpenContextMenu, refMenuTarget } from './menus';
 import { CommitRow } from './commitList';
-import { Highlight } from './highlight';
+import { Highlight } from '../../../ui/highlight';
 import { FolderRow, treeIndent, twistyWidth } from './tree';
 import { keymap } from '../../../shell/shared/keymap';
 import { strings } from '../../../shared/strings';

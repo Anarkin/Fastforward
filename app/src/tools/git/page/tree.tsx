@@ -1,7 +1,7 @@
 import type { FileChange } from '../shared/protocol';
 import { strings } from '../../../shared/strings';
 import { changeTitle, changeClass, changeKind } from './fileStatus';
-import { HighlightWords } from './highlight';
+import { HighlightWords } from '../../../ui/highlight';
 import { ChangeIcon, LinkIcon } from '../../../ui/icons';
 
 const treePadding = 8;

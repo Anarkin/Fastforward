@@ -1,10 +1,22 @@
-import { useContext, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { iconUrl, type IconSource } from '../shared/icons';
 import { commanderKeymap } from '../shared/keymap';
-import { clicked } from '../../../shell/shared/keymap';
+import { clicked, keymap, letterTyped } from '../../../shell/shared/keymap';
 import { parentFolder, type Side } from '../shared/protocol';
 import { formatSize } from './format';
-import { opens, passedKeys, rangeKeys, type Row } from './listing';
+import {
+  filteredRows,
+  filteredSelection,
+  opens,
+  passedKeys,
+  rangeKeys,
+  type Row,
+} from './listing';
+import { filterStep, PaneFilter } from './paneFilter';
+import { filterWords } from '../../../shared/fileFilter';
+import { HighlightWords } from '../../../ui/highlight';
+import { SearchButton, SearchRow } from '../../../ui/search';
+import { columnFocusOf } from '../../../ui/columnFocus';
 import { ColumnHeader } from './columnHeader';
 import type { ColumnWidths, SizedColumn, SortColumn } from '../shared/settings';
 import type { PaneView } from './view';
@@ -116,7 +128,56 @@ export function Pane({
   onReset: (column: SizedColumn) => void;
   resizer: React.ReactNode;
 }) {
-  const rows = pane?.rows ?? noRows;
+  const allRows = pane?.rows ?? noRows;
+  const [filter, setFilter] = useState<{
+    readonly folder: string | undefined;
+    readonly query: string;
+  }>();
+  const [filteredFolder, setFilteredFolder] = useState(pane?.folder);
+  if (filteredFolder !== pane?.folder) {
+    setFilteredFolder(pane?.folder);
+    setFilter(undefined);
+  }
+  const filtering = filter !== undefined && filter.folder === pane?.folder;
+  const query = filtering ? filter.query : '';
+  const words = useMemo(() => filterWords(query), [query]);
+  const rows = useMemo(() => filteredRows(allRows, words), [allRows, words]);
+  const filterInput = useRef<HTMLInputElement>(null);
+  const body = useRef<HTMLDivElement>(null);
+  const [focusAsks, setFocusAsks] = useState({ count: 0, select: true });
+  useEffect(() => {
+    if (focusAsks.count > 0) {
+      filterInput.current?.focus();
+      if (focusAsks.select) {
+        filterInput.current?.select();
+      }
+    }
+  }, [focusAsks]);
+  const openFilter = () => {
+    if (!filtering) {
+      setFilter({ folder: pane?.folder, query: '' });
+    }
+    setFocusAsks(({ count }) => ({ count: count + 1, select: true }));
+  };
+  const focusList = () => columnFocusOf(body.current)?.focus();
+  const closeFilter = () => {
+    focusList();
+    setFilter(undefined);
+  };
+  const filterTo = (next: string) => {
+    setFilter({ folder: pane?.folder, query: next });
+    const selection = filteredSelection(
+      filteredRows(allRows, filterWords(next)),
+      pane?.selected,
+    );
+    if (
+      filterWords(next).length > 0 &&
+      selection !== undefined &&
+      selection !== pane?.selected
+    ) {
+      onSelect(selection);
+    }
+  };
   const dateFormat = useContext(DateFormat);
   const listed = useMemo(
     () => ({
@@ -164,8 +225,12 @@ export function Pane({
             }
           />
         </span>
-        <span className="commander-name">{row.base}</span>
-        <span className="commander-extension">{row.extension}</span>
+        <span className="commander-name">
+          <HighlightWords text={row.base} words={words} />
+        </span>
+        <span className="commander-extension">
+          <HighlightWords text={row.extension} words={words} />
+        </span>
         <span className="commander-size">{formatSize(entry?.size)}</span>
         <span className="commander-date">
           {entry?.modified === undefined
@@ -188,56 +253,105 @@ export function Pane({
         '--commander-date': String(columns.date),
       }}
     >
-      <header className="column-title">
-        <div className="column-start nav-buttons">
-          <button
-            className="nav-button"
-            title={strings.commander.back}
-            disabled={pane?.back !== true}
-            onClick={() => onStep(-1)}
-          >
-            <BackIcon />
-          </button>
-          <button
-            className="nav-button"
-            title={strings.commander.forward}
-            disabled={pane?.forward !== true}
-            onClick={() => onStep(1)}
-          >
-            <ForwardIcon />
-          </button>
-          {drives.length > 0 && (
-            <div onClickCapture={onDrivesOpening}>
-              <MenuButton
-                title={strings.commander.chooseDrive}
-                icon={
-                  <span className="drive-label">
-                    {(current ?? '').replace(/\\$/, '')}
-                  </span>
+      {filtering ? (
+        <header className="column-title searching">
+          <SearchRow onClose={closeFilter}>
+            <PaneFilter
+              query={query}
+              shown={rows.filter((row) => row.entry !== undefined).length}
+              total={allRows.filter((row) => row.entry !== undefined).length}
+              input={filterInput}
+              onQuery={filterTo}
+              onMove={(move) => {
+                if (rows.length === 0) {
+                  return;
                 }
-                trigger={driveTrigger}
-                items={drives.map((drive) => ({
-                  label: drive,
-                  accessKey: drive.charAt(0),
-                  checked: drive === current,
-                  onClick: () => onDrive(drive),
-                }))}
-              />
-            </div>
-          )}
-        </div>
-        <span className="column-name">
-          {pane?.elevated && (
-            <span
-              className="elevated-mark"
-              title={strings.commander.readAsAdministrator}
+                const rowHeight =
+                  body.current
+                    ?.querySelector('.commander-row')
+                    ?.getBoundingClientRect().height ?? 1;
+                const page = Math.max(
+                  1,
+                  Math.floor((body.current?.clientHeight ?? 0) / rowHeight) - 1,
+                );
+                const next = filterStep(
+                  move,
+                  Math.max(0, selectedIndex),
+                  rows.length,
+                  page,
+                );
+                onSelect(rows[next].key);
+              }}
+              onLeave={() => {
+                const row =
+                  selectedIndex === -1 ? undefined : rows[selectedIndex];
+                focusList();
+                if (row !== undefined && opens(row)) {
+                  onOpen(row.key);
+                }
+              }}
+              onClose={closeFilter}
+            />
+          </SearchRow>
+        </header>
+      ) : (
+        <header className="column-title">
+          <div className="column-start nav-buttons">
+            <button
+              className="nav-button"
+              title={strings.commander.back}
+              disabled={pane?.back !== true}
+              onClick={() => onStep(-1)}
             >
-              <ShieldIcon />
-            </span>
-          )}
-          {pane?.folder}
-        </span>
-      </header>
+              <BackIcon />
+            </button>
+            <button
+              className="nav-button"
+              title={strings.commander.forward}
+              disabled={pane?.forward !== true}
+              onClick={() => onStep(1)}
+            >
+              <ForwardIcon />
+            </button>
+            {drives.length > 0 && (
+              <div onClickCapture={onDrivesOpening}>
+                <MenuButton
+                  title={strings.commander.chooseDrive}
+                  icon={
+                    <span className="drive-label">
+                      {(current ?? '').replace(/\\$/, '')}
+                    </span>
+                  }
+                  trigger={driveTrigger}
+                  items={drives.map((drive) => ({
+                    label: drive,
+                    accessKey: drive.charAt(0),
+                    checked: drive === current,
+                    onClick: () => onDrive(drive),
+                  }))}
+                />
+              </div>
+            )}
+          </div>
+          <span className="column-name">
+            {pane?.elevated && (
+              <span
+                className="elevated-mark"
+                title={strings.commander.readAsAdministrator}
+              >
+                <ShieldIcon />
+              </span>
+            )}
+            {pane?.folder}
+          </span>
+          <div className="column-actions">
+            <SearchButton
+              title={strings.commander.filterFolder}
+              onClick={openFilter}
+            />
+          </div>
+        </header>
+      )}
       <ColumnHeader
         sort={pane?.sort}
         columns={columns}
@@ -246,7 +360,7 @@ export function Pane({
         onResized={onResized}
         onReset={onReset}
       />
-      <div className="column-body">
+      <div className="column-body" ref={body}>
         <VirtualRows
           rows={listed}
           renderRow={renderRow}
@@ -254,6 +368,33 @@ export function Pane({
           label={strings.commander.sides[side]}
           wholeRows
           onKeyDown={(event, visible) => {
+            const letter =
+              keyPressed(keymap.mainMenu, event) === undefined &&
+              keyPressed(commanderKeymap.filterLetter, event) !== undefined
+                ? letterTyped(event)
+                : undefined;
+            if (letter !== undefined) {
+              event.preventDefault();
+              filterTo(query + letter);
+              setFocusAsks(({ count }) => ({
+                count: count + 1,
+                select: false,
+              }));
+              return;
+            }
+            if (keyPressed(commanderKeymap.filter, event) !== undefined) {
+              event.preventDefault();
+              openFilter();
+              return;
+            }
+            if (
+              filtering &&
+              keyPressed(commanderKeymap.stopFiltering, event) !== undefined
+            ) {
+              event.preventDefault();
+              setFilter(undefined);
+              return;
+            }
             if (keyPressed(commanderKeymap.side, event) !== undefined) {
               event.preventDefault();
               onSwitchSide();

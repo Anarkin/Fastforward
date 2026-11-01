@@ -9,6 +9,8 @@ import {
   selectionAfter,
   passedKeys,
   rangeKeys,
+  filteredRows,
+  filteredSelection,
 } from '../../../../tools/commander/page/listing';
 import type { Sort } from '../../../../tools/commander/shared/settings';
 import type { Entry } from '../../../../tools/commander/shared/protocol';
@@ -225,5 +227,54 @@ suite('Commander listing', () => {
     }));
     assert.deepStrictEqual(rangeKeys(rows, 1, 3), ['b', 'c', 'd']);
     assert.deepStrictEqual(rangeKeys(rows, 2, 0), ['a', 'b', 'c']);
+  });
+});
+
+const filterRow = (key: string) => ({
+  key,
+  entry:
+    key === '..'
+      ? undefined
+      : {
+          name: key,
+          folder: false,
+          link: false,
+          hidden: false,
+          size: 1,
+          modified: 0,
+        },
+  base: key,
+  extension: '',
+});
+suite('Filtering the rows of a side', () => {
+  const rows = ['..', 'Report-Q3-2024.xlsx', 'notes.txt', 'report.md'].map(
+    filterRow,
+  );
+
+  test('keeps the parent row and the rows whose name holds every word, anywhere and ignoring case', () => {
+    assert.deepStrictEqual(
+      filteredRows(rows, ['rep', '2024']).map((each) => each.key),
+      ['..', 'Report-Q3-2024.xlsx'],
+    );
+    assert.deepStrictEqual(
+      filteredRows(rows, ['REPORT']).map((each) => each.key),
+      ['..', 'Report-Q3-2024.xlsx', 'report.md'],
+    );
+    assert.strictEqual(filteredRows(rows, []), rows);
+  });
+
+  test('keeps the selected row once filtered if it matches, else selects the first match, the parent row only when nothing matches', () => {
+    const shown = filteredRows(rows, ['report']);
+    assert.strictEqual(filteredSelection(shown, 'report.md'), 'report.md');
+    assert.strictEqual(filteredSelection(shown, '..'), 'Report-Q3-2024.xlsx');
+    assert.strictEqual(
+      filteredSelection(shown, 'notes.txt'),
+      'Report-Q3-2024.xlsx',
+    );
+    assert.strictEqual(
+      filteredSelection(filteredRows(rows, ['nothing']), 'notes.txt'),
+      '..',
+    );
+    assert.strictEqual(filteredSelection([], 'notes.txt'), undefined);
   });
 });

@@ -1,4 +1,4 @@
-import { matchesIn, type FindRange } from '../../../shared/textMatches';
+import { matchesIn, type FindRange } from './textMatches';
 
 export function filterWords(query: string): string[] {
   return query.trim().split(/\s+/).filter(Boolean);

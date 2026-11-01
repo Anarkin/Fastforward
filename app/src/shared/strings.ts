@@ -255,6 +255,11 @@ export const strings = {
     scrollFile: 'Scroll by a row, a page, or to the start or end',
     chooseEncoding: 'Choose the encoding of the text',
     findInFile: 'Search the file',
+    filterFolder: 'Filter the folder by name',
+    filterLetter: 'Filter the folder by the letters typed with Alt',
+    stopFiltering: 'Clear the filter',
+    leaveFilter: 'Open the selected folder, or go to the files',
+    filterMove: 'Move in the files filtered',
     markMoving: 'Mark the files passed while moving, or unmark them',
     toggleMark: 'Mark or unmark the selected file and move down',
     markClick: 'Mark or unmark a file, or mark the files up to it',
@@ -309,6 +314,7 @@ export const strings = {
     ForwardButton: 'Mouse Forward',
     Wheel: 'Wheel',
     Hover: 'Hover',
+    Letter: 'A–Z',
   },
   navigation: {
     history: {
@@ -521,6 +527,9 @@ export const strings = {
     viewHex: 'Hex',
     viewPreview: 'Preview',
     encoding: 'Encoding',
+    filterFolder: 'Filter the folder',
+    filterPlaceholder: 'Filter…',
+    filterCount: (shown: number, total: number) => `${shown} of ${total}`,
     findInFile: 'Search the file',
     encodings: {
       auto: 'Auto',
