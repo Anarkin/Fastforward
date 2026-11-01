@@ -28,7 +28,14 @@ import {
 } from '../shared/settings';
 import type { FileSystem } from './fileSystem';
 import type { WatchFolder } from './watch';
-import { fileReader, rowsBefore, rowsFrom, rowStartAt } from './textRows';
+import {
+  blockCache,
+  readingFile,
+  type BlockCache,
+  rowsBefore,
+  rowsFrom,
+  rowStartAt,
+} from './textRows';
 import type { ElevatedFileSystem } from './elevated';
 import { Icons } from './icons';
 import { iconSourceOf, viewerIconUrl, viewerOfIcon } from '../shared/icons';
@@ -153,6 +160,7 @@ export class CommanderTool implements Tool<'commander'> {
         readonly tab: string;
         readonly file: string;
         size: number;
+        readonly blocks: BlockCache;
         readonly stop: () => void;
       }
     | undefined;
@@ -471,10 +479,12 @@ export class CommanderTool implements Tool<'commander'> {
       tab,
       file,
       size,
+      blocks: blockCache(),
       stop: this.access.watch(file, () => {
         void fs.promises.stat(file).then(
           (stats) => {
             if (this.viewing === viewing && this.shown?.tab === tab) {
+              viewing.blocks.forget();
               viewing.size = stats.size;
               this.post(page, { type: 'viewing', tab, size: stats.size });
             }
@@ -508,16 +518,21 @@ export class CommanderTool implements Tool<'commander'> {
     ) {
       return;
     }
-    const read = fileReader(viewing.file);
-    const { size } = viewing;
+    const { size, blocks } = viewing;
     try {
-      const start = exact
-        ? Math.min(anchor, size)
-        : await rowStartAt(read, Math.min(anchor, size));
-      const [earlier, later] = await Promise.all([
-        rowsBefore(read, size, start, before),
-        rowsFrom(read, size, start, after),
-      ]);
+      const [earlier, later] = await readingFile(
+        viewing.file,
+        async (direct) => {
+          const read = blocks.reader(direct);
+          const start = exact
+            ? Math.min(anchor, size)
+            : await rowStartAt(read, Math.min(anchor, size));
+          return Promise.all([
+            rowsBefore(read, size, start, before),
+            rowsFrom(read, size, start, after),
+          ]);
+        },
+      );
       this.post(page, {
         type: 'rows',
         tab: viewing.tab,

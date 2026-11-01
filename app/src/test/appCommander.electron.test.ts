@@ -393,6 +393,18 @@ suite('App commander', () => {
     await page.mouse.click(bar.x + bar.width / 2, bar.y + 1);
     await waitFor(async () => (await first()) === 'row 0', 'the start again');
 
+    const middle = bar.y + bar.height / 2;
+    await page.mouse.move(bar.x + bar.width / 2, bar.y + 1);
+    await page.mouse.down();
+    await page.mouse.move(bar.x + bar.width / 2, middle, { steps: 10 });
+    await waitFor(async () => {
+      const row = Number((await first())?.split(' ')[1]);
+      return row > 60 && row < 140;
+    }, 'the middle rows while the thumb is still held');
+    const held = await thumb.boundingBox();
+    assert.ok(held && held.y <= middle && middle <= held.y + held.height);
+    await page.mouse.up();
+
     await page.keyboard.press('Escape');
     await page.locator('.viewer').waitFor({ state: 'detached' });
     fs.rmSync(path.join(opened, 'rows.txt'));

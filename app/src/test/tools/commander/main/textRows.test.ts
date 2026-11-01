@@ -3,7 +3,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import {
-  fileReader,
+  blockCache,
+  readingFile,
   rowBytes,
   rowStartAt,
   rowsBefore,
@@ -109,17 +110,43 @@ suite('Rows of text of a file', () => {
     assert.strictEqual(before.at(-1)?.end, rows[0]?.start);
   });
 
+  test('reads each block of the file once, however many rows are read from it, until told to forget them', async () => {
+    const lines = Array.from(
+      { length: 200_000 },
+      (_, index) => `line ${index}`,
+    ).join('\n');
+    const { read, size, reads } = inMemory(lines);
+    const cache = blockCache();
+    const cached = cache.reader(read);
+    const start = await rowStartAt(cached, Math.floor(size / 2));
+
+    const before = await rowsBefore(cached, size, start, 100);
+    const after = await rowsFrom(cached, size, start, 150);
+
+    assert.deepStrictEqual(
+      texts([...before, ...after]),
+      texts([
+        ...(await rowsBefore(read, size, start, 100)),
+        ...(await rowsFrom(read, size, start, 150)),
+      ]),
+    );
+    reads.length = 0;
+    await rowsBefore(cached, size, start, 100);
+    assert.strictEqual(reads.length, 0);
+    cache.forget();
+    await rowsBefore(cached, size, start, 100);
+    assert.ok(reads.length > 0 && reads.length <= 3, String(reads.length));
+  });
+
   test('reads a file on disk', async () => {
     const folder = tempFolder('text-rows');
     try {
       const file = path.join(folder, 'notes.txt');
       fs.writeFileSync(file, 'first\nsecond\n');
-      const read = fileReader(file);
-
-      assert.deepStrictEqual(texts(await rowsFrom(read, 13, 0, 5)), [
-        'first',
-        'second',
-      ]);
+      assert.deepStrictEqual(
+        texts(await readingFile(file, (read) => rowsFrom(read, 13, 0, 5))),
+        ['first', 'second'],
+      );
     } finally {
       removeFolder(folder);
     }

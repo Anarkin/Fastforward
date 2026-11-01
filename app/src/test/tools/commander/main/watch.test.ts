@@ -6,13 +6,8 @@ import { watchFolder } from '../../../../tools/commander/main/watch';
 import { waitFor } from '../../../fixtures';
 import { removeFolder, tempFolder } from '../../../repositories';
 
-const deaf =
-  (elsewhere: string) =>
-  (
-    _folder: string,
-    listener: (event: string, name: string | null) => void,
-  ): fs.FSWatcher =>
-    fs.watch(elsewhere, { persistent: false }, listener);
+const deaf = (elsewhere: string) => (): fs.FSWatcher =>
+  fs.watch(elsewhere, { persistent: false }, () => {});
 
 suite('Watching a folder of the commander', () => {
   let folder: string;

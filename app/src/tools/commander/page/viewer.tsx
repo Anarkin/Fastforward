@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -11,6 +12,7 @@ import type {
   TextRow,
 } from '../shared/protocol';
 import { listMoveOf } from '../../../ui/listMoves';
+import { RowRequests } from './rowRequests';
 import { followDrag } from '../../../ui/followDrag';
 import {
   hideAfter,
@@ -110,13 +112,10 @@ export function Viewer({
   const [loaded, setLoaded] = useState<Loaded>({ rows: [], top: 0 });
   const [screen, setScreen] = useState(1);
   const [track, setTrack] = useState(0);
-  const asked = useRef<{ readonly request: number; readonly ask: Ask }>(
-    undefined,
-  );
-  const next = useRef(0);
   const wheel = useRef(0);
   const [barShown, setBarShown] = useState(false);
-  const [dragging, setDragging] = useState(false);
+  const [heldAt, setHeldAt] = useState<number>();
+  const dragging = heldAt !== undefined;
   const hiding = useRef<ReturnType<typeof setTimeout>>(undefined);
   const showBar = useCallback(() => {
     clearTimeout(hiding.current);
@@ -131,47 +130,55 @@ export function Viewer({
   const tab = viewing?.tab;
   const size = viewing?.size;
 
+  const requests = useMemo(
+    () =>
+      new RowRequests<Ask>((request, wanted) => {
+        if (tab !== undefined) {
+          post({
+            type: 'readRows',
+            tab,
+            request,
+            anchor: wanted.anchor,
+            exact: wanted.exact,
+            before: wanted.before,
+            after: wanted.after,
+          });
+        }
+      }),
+    [post, tab],
+  );
   const ask = useCallback(
     (wanted: Ask) => {
-      if (tab === undefined) {
-        return;
+      if (tab !== undefined) {
+        requests.ask(wanted);
       }
-      const request = ++next.current;
-      asked.current = { request, ask: wanted };
-      post({
-        type: 'readRows',
-        tab,
-        request,
-        anchor: wanted.anchor,
-        exact: wanted.exact,
-        before: wanted.before,
-        after: wanted.after,
-      });
     },
-    [post, tab],
+    [requests, tab],
   );
 
   useEffect(
     () =>
       listen((rows) => {
-        const pending = asked.current;
-        if (rows.tab !== tab || pending?.request !== rows.request) {
+        if (rows.tab !== tab) {
           return;
         }
-        asked.current = undefined;
+        const pending = requests.answered(rows.request);
+        if (pending === undefined) {
+          return;
+        }
         const shownStart = current.current.rows[current.current.top]?.start;
-        const shown = pending.ask.follow
+        const shown = pending.follow
           ? rows.rows.findIndex((row) => row.start === shownStart)
           : -1;
         setLoaded({
           rows: rows.rows,
           top:
             shown === -1
-              ? pending.ask.topOf(rows.anchorIndex, rows.rows.length)
+              ? pending.topOf(rows.anchorIndex, rows.rows.length)
               : topWithin(shown, rows.rows.length, screen),
         });
       }),
-    [listen, tab, screen],
+    [listen, tab, screen, requests],
   );
 
   useEffect(() => body.current?.focus(), []);
@@ -244,10 +251,11 @@ export function Viewer({
   );
 
   useEffect(() => {
-    if (size === undefined) {
+    if (viewing?.size === undefined) {
       return;
     }
     const from = current.current.rows[current.current.top];
+    requests.restart();
     ask({
       anchor: from?.start ?? 0,
       exact: from !== undefined,
@@ -256,7 +264,7 @@ export function Viewer({
       follow: true,
       topOf: (anchorIndex, count) => topWithin(anchorIndex, count, screen),
     });
-  }, [ask, size, screen]);
+  }, [ask, requests, viewing, screen]);
 
   const thumb = thumbOf(loaded, screen, size ?? 0, track);
   const shown = loaded.rows.slice(loaded.top, loaded.top + screen + 1);
@@ -329,21 +337,19 @@ export function Viewer({
             onPointerDown={(event) => {
               event.preventDefault();
               const box = event.currentTarget.getBoundingClientRect();
-              const at = (clientY: number) =>
-                jump(
-                  Math.round(
-                    (Math.min(Math.max(clientY - box.top, 0), box.height) /
-                      Math.max(1, box.height)) *
-                      size,
-                  ),
-                );
+              const at = (clientY: number) => {
+                const share =
+                  Math.min(Math.max(clientY - box.top, 0), box.height) /
+                  Math.max(1, box.height);
+                setHeldAt(share);
+                jump(Math.round(share * size));
+              };
               at(event.clientY);
-              setDragging(true);
               followDrag(
                 window,
                 (moved: PointerEvent) => at(moved.clientY),
                 () => {
-                  setDragging(false);
+                  setHeldAt(undefined);
                   showBar();
                 },
               );
@@ -351,7 +357,13 @@ export function Viewer({
           >
             <div
               className={`${overlayScrollbarClass} viewer-thumb${barShown || dragging ? ' shown' : ''}${dragging ? ' dragging' : ''}`}
-              style={{ top: thumb.top, height: thumb.height }}
+              style={{
+                top:
+                  heldAt === undefined
+                    ? thumb.top
+                    : heldAt * (track - thumb.height),
+                height: thumb.height,
+              }}
             />
           </div>
         )}
