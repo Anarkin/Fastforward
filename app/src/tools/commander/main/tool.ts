@@ -240,6 +240,8 @@ export class CommanderTool implements Tool<'commander'> {
         return this.step(page, message.tab, message.side, message.step);
       case 'view':
         return this.view(page, message.tab, message.side, message.name);
+      case 'compare':
+        return this.compare(page, message.tab, message.files);
       case 'readRows':
         return this.readRows(page, message);
       case 'readText':
@@ -492,6 +494,31 @@ export class CommanderTool implements Tool<'commander'> {
           'commander',
           path.join(shown.pane.folder, entry.name),
         );
+  }
+
+  private compare(page: Page, tab: unknown, files: unknown): Promise<void> {
+    if (!Array.isArray(files) || files.length !== 2) {
+      return Promise.resolve();
+    }
+    const paths = files.map((file: unknown) => {
+      if (typeof file !== 'object' || file === null) {
+        return undefined;
+      }
+      const side = 'side' in file ? file.side : undefined;
+      const name = 'name' in file ? file.name : undefined;
+      const shown = this.shownPane(page, tab, side);
+      const entry =
+        typeof name === 'string'
+          ? shown?.pane.entries?.find((each) => each.name === name)
+          : undefined;
+      return shown === undefined || entry === undefined || entry.folder
+        ? undefined
+        : path.join(shown.pane.folder, entry.name);
+    });
+    const [old, changed] = paths;
+    return old === undefined || changed === undefined
+      ? Promise.resolve()
+      : this.shell.openCompare(page, 'git', { old, new: changed });
   }
 
   private async startViewing(

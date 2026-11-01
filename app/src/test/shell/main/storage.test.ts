@@ -77,6 +77,25 @@ suite('Storage', () => {
     assert.deepStrictEqual(written.get(tabsKey), [tab]);
   });
 
+  test('keeps a tab that compares two files as one, read and written, dropping a comparison not of two paths', async () => {
+    const store = new FakeStore();
+    const compare = {
+      old: path.resolve('old.txt'),
+      new: path.resolve('new.txt'),
+    };
+    const tab = { id: '1', tool: 'git', compare } as const;
+    await store.update(tabsKey, [
+      tab,
+      { id: '2', tool: 'git', compare: { old: 'a' } },
+      { id: '3', tool: 'git', compare: 'a' },
+    ]);
+    assert.deepStrictEqual(storageOf(store).savedTabs, [tab]);
+
+    const written = new FakeStore();
+    await storageOf(written).setSavedTabs([tab], '1');
+    assert.deepStrictEqual(written.get(tabsKey), [tab]);
+  });
+
   test("keeps each tool's state apart under tools, by the tool's id, forgetting a value set to nothing", async () => {
     const store = new FakeStore();
     const git = toolState(store, 'git');

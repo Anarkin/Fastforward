@@ -203,11 +203,14 @@ export class Storage {
       tabsChanged
         ? this.state.update(
             tabsKey,
-            tabs.map(({ id, tool, root, view }) => ({
+            tabs.map(({ id, tool, root, view, compare }) => ({
               id,
               tool,
               ...(root !== undefined && { root }),
               ...(view === true && { view }),
+              ...(compare !== undefined && {
+                compare: { old: compare.old, new: compare.new },
+              }),
             })),
           )
         : undefined,
@@ -249,11 +252,25 @@ export function sameRoot(a: string, b: string): boolean {
   return path.relative(a, b) === '';
 }
 
+export interface Compared {
+  readonly old: string;
+  readonly new: string;
+}
+
 export interface SavedTab {
   readonly id: string;
   readonly tool: ToolId;
   readonly root?: string;
   readonly view?: true;
+  readonly compare?: Compared;
+}
+
+function isCompared(value: unknown): value is Compared {
+  return (
+    isObject(value) &&
+    typeof value.old === 'string' &&
+    typeof value.new === 'string'
+  );
 }
 
 function isSavedTab(value: unknown): value is SavedTab {
@@ -262,7 +279,8 @@ function isSavedTab(value: unknown): value is SavedTab {
     typeof value.id === 'string' &&
     isTool(value.tool) &&
     (value.root === undefined || typeof value.root === 'string') &&
-    (value.view === undefined || value.view === true)
+    (value.view === undefined || value.view === true) &&
+    (value.compare === undefined || isCompared(value.compare))
   );
 }
 
@@ -272,7 +290,9 @@ function sameTab(a: SavedTab, b: SavedTab | undefined): boolean {
     a.id === b.id &&
     a.tool === b.tool &&
     a.root === b.root &&
-    a.view === b.view
+    a.view === b.view &&
+    a.compare?.old === b.compare?.old &&
+    a.compare?.new === b.compare?.new
   );
 }
 

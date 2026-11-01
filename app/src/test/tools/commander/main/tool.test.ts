@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
 import type { Notice, Page, Tab } from '../../../../shell/main/shell';
+import type { Compared } from '../../../../shell/main/storage';
 import type { ToWebview } from '../../../../shell/shared/protocol';
 import type { FileSystem } from '../../../../tools/commander/main/fileSystem';
 import {
@@ -14,6 +15,7 @@ import type {
   CommanderToHost,
   CommanderToWebview,
   Entry,
+  Side,
 } from '../../../../tools/commander/shared/protocol';
 import type {
   ColumnWidths,
@@ -150,6 +152,7 @@ function commander(
   });
   const page = new CommanderPage();
   const viewed: string[] = [];
+  const compared: (Compared & { readonly tool: string })[] = [];
   const tabs: Tab[] = [];
   tool.attach({
     page: () => page,
@@ -158,6 +161,10 @@ function commander(
     open: () => Promise.resolve(),
     openView: (_page, _tool, viewedFile) => {
       viewed.push(viewedFile);
+      return Promise.resolve();
+    },
+    openCompare: (_page, toolOpened, files) => {
+      compared.push({ ...files, tool: toolOpened });
       return Promise.resolve();
     },
     setRoot: () => {},
@@ -187,6 +194,7 @@ function commander(
     change,
     iconsLoaded,
     viewed,
+    compared,
     tabs,
   };
 }
@@ -762,6 +770,41 @@ suite('Commander tool', () => {
     await send({ type: 'view', tab: '2', side: 'left', name: 'notes.txt' });
 
     assert.deepStrictEqual(viewed, [at('notes.txt')]);
+  });
+
+  test('opens a git tab comparing two files the sides list, the first the old side, and nothing for a folder, ..  or a name it doesn’t list', async () => {
+    const { tool, page, send, compared } = commander({
+      [root]: [folder('Users'), file('notes.txt'), file('other.txt')],
+    });
+    await tool.show(page, tab);
+    const compare = (
+      one: readonly [Side, string],
+      other: readonly [Side, string],
+      on = '1',
+    ) =>
+      send({
+        type: 'compare',
+        tab: on,
+        files: [
+          { side: one[0], name: one[1] },
+          { side: other[0], name: other[1] },
+        ],
+      });
+
+    await compare(['left', 'notes.txt'], ['right', 'other.txt']);
+    await compare(['right', 'other.txt'], ['right', 'notes.txt']);
+    await compare(['left', 'Users'], ['right', 'other.txt']);
+    await compare(['left', '..'], ['right', 'other.txt']);
+    await compare(['left', 'secret.txt'], ['right', 'other.txt']);
+    await compare(['left', 'notes.txt'], ['right', 'other.txt'], '2');
+    await send(
+      forged('{ "type": "compare", "tab": "1", "files": "notes.txt" }'),
+    );
+
+    assert.deepStrictEqual(compared, [
+      { tool: 'git', old: at('notes.txt'), new: at('other.txt') },
+      { tool: 'git', old: at('other.txt'), new: at('notes.txt') },
+    ]);
   });
 
   test('gives a viewing tab the icon of its file, at an address naming the file, as a closed tab’s id comes back for another file, served for that tab and file only', async () => {

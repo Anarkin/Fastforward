@@ -10,6 +10,9 @@ import { waitFor } from './fixtures';
 import { closeOrKill, launchApp, waitForFocus } from './appFixtures';
 import { removeFolder, tempFolder } from './repositories';
 
+const threeLines = (changed: string) =>
+  ['one', changed, 'three', ''].join(String.fromCharCode(10));
+
 suite('App commander', () => {
   let folder: string;
   let opened: string;
@@ -711,6 +714,41 @@ suite('App commander', () => {
       async () => !(await rowNames()).includes('marking'),
       'the markingFolder to be gone from the list',
     );
+  });
+
+  test('compares the two files marked on a side with Shift+F3 in a git tab of their own, showing their diff', async () => {
+    fs.writeFileSync(path.join(opened, 'before.txt'), threeLines('two'));
+    fs.writeFileSync(path.join(opened, 'after.txt'), threeLines('2'));
+    await select('before');
+    await page.keyboard.press('Space');
+    await select('after');
+    await page.keyboard.press('Space');
+    await waitFor(
+      async () => (await markedNames()).toSorted().join() === 'after,before',
+      'both files to be marked',
+    );
+
+    await page.keyboard.press('Shift+F3');
+    await page
+      .locator('.tabs .tab.active', { hasText: 'after.txt ↔ before.txt' })
+      .waitFor();
+    await waitFor(
+      async () =>
+        (
+          await page.locator('.compare-view .diff-line.added').allTextContents()
+        ).some((line) => line.includes('two')),
+      'the diff of the two files',
+    );
+
+    await page.keyboard.press('ControlOrMeta+W');
+    await page.locator('.tabs .tab.active', { hasText: 'Commander' }).waitFor();
+    for (const name of ['before.txt', 'after.txt']) {
+      fs.rmSync(path.join(opened, name));
+    }
+    await waitFor(async () => {
+      const names = await rowNames();
+      return !names.includes('before.txt') && !names.includes('after.txt');
+    }, 'the files to be gone from the list');
   });
 
   test.skipIf(process.platform !== 'win32')(

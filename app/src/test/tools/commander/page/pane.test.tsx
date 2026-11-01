@@ -33,6 +33,7 @@ const header = (elevated: boolean) =>
         driveTrigger={null}
         onSelect={noop}
         onMark={noop}
+        onCompare={noop}
         onOpen={noop}
         onSort={noop}
         onActivate={noop}

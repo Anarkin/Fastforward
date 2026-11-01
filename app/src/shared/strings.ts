@@ -247,6 +247,8 @@ export const strings = {
     folderHistory: 'Back or forward through the folders of the side',
     reread: 'Read the folder of the side again',
     viewFile: 'View the selected file in a tab of its own',
+    compareFiles:
+      'Compare the marked files, or the selected file of each side, in a git tab',
     closeViewer: 'Close the file being viewed',
     viewAs: 'View the file as text, hex or a preview',
     markMoving: 'Mark the files passed while moving, or unmark them',
@@ -539,6 +541,11 @@ export const strings = {
     noToolOpens: (folder: string) => `${folder} can't be opened`,
     noFolder: (tool: string) => `${tool} doesn't know which folder it's in`,
     notRepository: (root: string) => `${root} is not a git repository`,
+    compareTab: (old: string, changed: string) => `${old} ↔ ${changed}`,
+    compareTooLarge: (megabytes: number) =>
+      `Files over ${megabytes} MB together are not compared.`,
+    couldNotCompare: (old: string, changed: string, reason: string) =>
+      `Couldn't compare ${old} with ${changed}. ${reason}`,
     couldNotWatch: (root: string) =>
       `Couldn't watch ${root}, so changes made outside ${brand} won't show until it is opened again`,
     couldNotCheckOut: (name: string, reason: string) =>

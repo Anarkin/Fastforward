@@ -20,7 +20,12 @@ import {
   type ToHostOf,
   type ToolId,
 } from '../shared/tools';
-import { sameRoot, type SavedTab, type Storage } from './storage';
+import {
+  type Compared,
+  sameRoot,
+  type SavedTab,
+  type Storage,
+} from './storage';
 import { TabHistory } from './tabHistory';
 
 export interface Page {
@@ -49,6 +54,7 @@ export interface ShellAccess {
     reuse: boolean,
   ): Promise<void>;
   openView(page: Page, tool: ToolId, file: string): Promise<void>;
+  openCompare(page: Page, tool: ToolId, compare: Compared): Promise<void>;
   setRoot(tab: string, root: string): void;
   visited(folder: string): void;
   recentItems(): number;
@@ -112,6 +118,7 @@ export const unattachedShell: ShellAccess = {
   active: () => undefined,
   open: () => Promise.resolve(),
   openView: () => Promise.resolve(),
+  openCompare: () => Promise.resolve(),
   setRoot: () => undefined,
   visited: () => undefined,
   recentItems: () => 0,
@@ -189,7 +196,9 @@ export class Shell {
       active: () => this.activeTab(),
       open: (page, tool, roots, reuse) => this.open(page, tool, roots, reuse),
       openView: (page, tool, file) =>
-        this.open(page, tool, [file], false, true),
+        this.open(page, tool, [file], false, { view: true }),
+      openCompare: (page, tool, compare) =>
+        this.open(page, tool, [undefined], false, { compare }),
       setRoot: (tab, root) => this.setRoot(tab, root),
       visited: (folder) => {
         for (const tool of toolIds) {
@@ -509,7 +518,7 @@ export class Shell {
     tool: ToolId,
     roots: readonly (string | undefined)[],
     reuse: boolean,
-    view = false,
+    kind: Pick<Tab, 'view' | 'compare'> = {},
   ): Promise<void> {
     const { storage } = this;
     const tabs = storage.savedTabs;
@@ -534,7 +543,7 @@ export class Shell {
         id: String(next++),
         tool,
         ...(root !== undefined && { root }),
-        ...(view && { view }),
+        ...kind,
       };
       added.push(tab);
       opened.push(tab.id);

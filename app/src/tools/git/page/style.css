@@ -1203,3 +1203,7 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
 .hash-suggestion.empty {
   color: var(--muted-foreground);
 }
+
+.columns.compare-columns {
+  grid-template-columns: minmax(0, 1fr);
+}

@@ -23,6 +23,9 @@ export const commanderKeymap = {
   }),
   sort: bind('Commander', strings.actions.sort, { Click: true }),
   view: bind('Commander', strings.actions.viewFile, { F3: true }),
+  compare: bind('Commander', strings.actions.compareFiles, {
+    'Shift+F3': true,
+  }),
   closeViewer: bind('Commander', strings.actions.closeViewer, {
     Escape: true,
   }),

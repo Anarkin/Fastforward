@@ -251,6 +251,7 @@ export type GitToHost =
   | { readonly type: 'pinEntireFile'; readonly pinned: boolean }
   | { readonly type: 'setIgnoreWhitespace'; readonly ignore: boolean }
   | { readonly type: 'setWordWrap'; readonly wrap: boolean }
+  | { readonly type: 'compareEntire'; readonly entire: boolean }
   | { readonly type: 'setShowWhitespace'; readonly show: boolean }
   | { readonly type: 'setDiffLayout'; readonly layout: DiffLayout }
   | { readonly type: 'setShowAllFiles'; readonly show: boolean }
@@ -320,7 +321,20 @@ export type TabMessage =
       readonly area?: ChangeArea;
     };
 
+export interface CompareView {
+  readonly old: string;
+  readonly new: string;
+  readonly patch: string;
+  readonly entire: boolean;
+  readonly version: number;
+  readonly error?: string;
+}
+
 export type GitToWebview =
+  | {
+      readonly type: 'compare';
+      readonly compare: CompareView | undefined;
+    }
   | {
       readonly type: 'layout';
       readonly columnWidths: readonly number[];

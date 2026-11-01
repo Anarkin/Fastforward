@@ -12,6 +12,7 @@ import { Pane } from './pane';
 import { Viewer, type ToViewer, type Viewing } from './viewer';
 import { emptyView, reduceView } from './view';
 import { nextSort } from './listing';
+import { filesToCompare } from './comparing';
 import type { ColumnWidths } from '../shared/settings';
 import { columnFocusAttribute } from '../../../ui/columnFocus';
 import { followDrag } from '../../../ui/followDrag';
@@ -271,6 +272,12 @@ export function CommanderTool({
               }
             }}
             onDrivesOpening={() => post({ type: 'listDrives' })}
+            onCompare={() => {
+              const files = filesToCompare(view.active, view.panes);
+              if (tab !== undefined && files !== undefined) {
+                post({ type: 'compare', tab, files });
+              }
+            }}
             onView={(name) => {
               if (tab !== undefined) {
                 post({ type: 'view', tab, side, name });

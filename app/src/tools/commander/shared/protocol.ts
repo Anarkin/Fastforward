@@ -1,5 +1,10 @@
 import type { ColumnWidths, Sort, Sorts } from './settings';
 
+export interface ComparedFile {
+  readonly side: Side;
+  readonly name: string;
+}
+
 export interface TextRow {
   readonly start: number;
   readonly end: number;
@@ -45,6 +50,11 @@ export type CommanderToHost =
       readonly drive: string;
     }
   | { readonly type: 'listDrives' }
+  | {
+      readonly type: 'compare';
+      readonly tab: string;
+      readonly files: readonly [ComparedFile, ComparedFile];
+    }
   | {
       readonly type: 'readBytes';
       readonly tab: string;

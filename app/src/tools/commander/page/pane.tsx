@@ -86,6 +86,7 @@ export function Pane({
   onStep,
   onOpenOnSide,
   onView,
+  onCompare,
   onResize,
   onResized,
   onReset,
@@ -109,6 +110,7 @@ export function Pane({
   onStep: (step: -1 | 1) => void;
   onOpenOnSide: (target: Side, name: string) => void;
   onView: (name: string) => void;
+  onCompare: () => void;
   onResize: (column: SizedColumn, width: number) => void;
   onResized: (column: SizedColumn, width: number) => void;
   onReset: (column: SizedColumn) => void;
@@ -254,6 +256,11 @@ export function Pane({
             if (keyPressed(commanderKeymap.side, event) !== undefined) {
               event.preventDefault();
               onSwitchSide();
+              return;
+            }
+            if (keyPressed(commanderKeymap.compare, event) !== undefined) {
+              event.preventDefault();
+              onCompare();
               return;
             }
             if (keyPressed(commanderKeymap.view, event) !== undefined) {
