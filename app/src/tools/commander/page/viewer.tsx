@@ -3,9 +3,11 @@ import type { CommanderToHost, CommanderToWebviewOf } from '../shared/protocol';
 import { commanderKeymap, type ViewMode } from '../shared/keymap';
 import { pressed } from '../../../shell/shared/keymap';
 import { strings } from '../../../shared/strings';
-import { HexIcon, TextIcon } from '../../../ui/icons';
+import { HexIcon, PreviewIcon, TextIcon } from '../../../ui/icons';
 import { TextBody } from './textBody';
 import { HexBody } from './hexBody';
+import { PreviewBody } from './previewBody';
+import { firstMode, previewOf } from './previews';
 
 export interface Viewing {
   readonly tab: string;
@@ -23,6 +25,11 @@ const modes: readonly {
 }[] = [
   { mode: 'text', title: strings.commander.viewText, icon: <TextIcon /> },
   { mode: 'hex', title: strings.commander.viewHex, icon: <HexIcon /> },
+  {
+    mode: 'preview',
+    title: strings.commander.viewPreview,
+    icon: <PreviewIcon />,
+  },
 ];
 
 export function Viewer({
@@ -37,7 +44,16 @@ export function Viewer({
   listen: (handler: (message: ToViewer) => void) => () => void;
 }) {
   const [chosen, setChosen] = useState<ViewMode>();
-  const mode = chosen ?? (viewing?.binary === true ? 'hex' : 'text');
+  const preview = previewOf(file);
+  const shownModes = modes.filter(
+    (each) => each.mode !== 'preview' || preview !== undefined,
+  );
+  const mode = chosen ?? firstMode(file, viewing?.binary === true);
+  const choose = (wanted: ViewMode) => {
+    if (shownModes.some((each) => each.mode === wanted)) {
+      setChosen(wanted);
+    }
+  };
 
   return (
     <section
@@ -46,7 +62,7 @@ export function Viewer({
         const wanted = pressed(commanderKeymap.viewAs, event, false);
         if (wanted !== undefined) {
           event.preventDefault();
-          setChosen(wanted);
+          choose(wanted);
         }
       }}
     >
@@ -58,14 +74,14 @@ export function Viewer({
             role="group"
             aria-label={strings.commander.viewAs}
           >
-            {modes.map(({ mode: each, title, icon }) => (
+            {shownModes.map(({ mode: each, title, icon }) => (
               <button
                 key={each}
                 className={`nav-button toggle ${mode === each ? 'active' : ''}`}
                 title={title}
                 aria-pressed={mode === each}
                 onMouseDown={(event) => event.preventDefault()}
-                onClick={() => setChosen(each)}
+                onClick={() => choose(each)}
               >
                 {icon}
               </button>
@@ -75,6 +91,14 @@ export function Viewer({
       </header>
       {viewing === undefined ? (
         <div className="column-body viewer-body" />
+      ) : mode === 'preview' && preview !== undefined ? (
+        <PreviewBody
+          file={file}
+          preview={preview}
+          viewing={viewing}
+          post={post}
+          listen={listen}
+        />
       ) : mode === 'hex' ? (
         <HexBody viewing={viewing} post={post} listen={listen} />
       ) : (

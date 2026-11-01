@@ -242,3 +242,17 @@
 .hex-text {
   margin-left: calc(var(--commander-advance) * 3);
 }
+
+.viewer-preview {
+  overflow: auto;
+  outline: none;
+}
+
+.viewer-image {
+  display: flex;
+  height: 100%;
+}
+
+.viewer-image .image-pane {
+  flex: 1 1 auto;
+}

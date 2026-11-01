@@ -105,6 +105,36 @@ function RowText({
   );
 }
 
+export function useWholeText(
+  viewing: Viewing,
+  post: (message: CommanderToHost) => void,
+  listen: (handler: (message: ToViewer) => void) => () => void,
+  wanted: boolean,
+): string | undefined {
+  const [text, setText] = useState<string>();
+  const asked = useRef(0);
+  useEffect(() => {
+    const { tab, size } = viewing;
+    if (!wanted || size === undefined || size > maxColoredBytes) {
+      return undefined;
+    }
+    const request = ++asked.current;
+    const stop = listen((message) => {
+      if (
+        message.type === 'text' &&
+        message.tab === tab &&
+        message.request === request &&
+        message.text !== undefined
+      ) {
+        setText(message.text);
+      }
+    });
+    post({ type: 'readText', tab, request });
+    return stop;
+  }, [wanted, viewing, listen, post]);
+  return text;
+}
+
 function useColors(
   file: string,
   viewing: Viewing,
@@ -112,41 +142,20 @@ function useColors(
   listen: (handler: (message: ToViewer) => void) => () => void,
 ): ColoredText | undefined {
   const language = languageOf(file);
+  const text = useWholeText(viewing, post, listen, language !== undefined);
   const [colored, setColored] = useState<ColoredText>();
-  const asked = useRef(0);
   useEffect(() => {
-    const { tab, size } = viewing;
-    if (
-      language === undefined ||
-      size === undefined ||
-      size > maxColoredBytes
-    ) {
+    if (language === undefined || text === undefined) {
       return undefined;
     }
-    const request = ++asked.current;
     const leaving = new AbortController();
-    const stop = listen((message) => {
-      if (
-        message.type !== 'text' ||
-        message.tab !== tab ||
-        message.request !== request ||
-        message.text === undefined
-      ) {
-        return;
+    void colorCode(language, text, leaving.signal).then((ranges) => {
+      if (ranges !== undefined && !leaving.signal.aborted) {
+        setColored(coloredText(text, ranges));
       }
-      const { text } = message;
-      void colorCode(language, text, leaving.signal).then((ranges) => {
-        if (ranges !== undefined && !leaving.signal.aborted) {
-          setColored(coloredText(text, ranges));
-        }
-      });
     });
-    post({ type: 'readText', tab, request });
-    return () => {
-      leaving.abort();
-      stop();
-    };
-  }, [language, viewing, listen, post]);
+    return () => leaving.abort();
+  }, [language, text]);
   return colored;
 }
 

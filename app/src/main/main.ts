@@ -28,6 +28,7 @@ import { stopRunningGit, writesEnded } from '../tools/git/main/cli/run';
 import { errorLine, fileLog, type Log } from '../shell/main/log';
 import { imageRoute } from '../tools/git/shared/images';
 import { iconRoute } from '../tools/commander/shared/icons';
+import { viewedFileRoute } from '../tools/commander/shared/files';
 import { appNameSwitch, titleBarHeight } from '../shell/shared/titleBar';
 import {
   keymap,
@@ -195,6 +196,9 @@ async function start(asked: readonly string[]): Promise<void> {
     }
     if (url.pathname === iconRoute) {
       return views.promise.then(({ commander }) => commander.icon(url));
+    }
+    if (url.pathname === viewedFileRoute) {
+      return views.promise.then(({ commander }) => commander.file(url));
     }
     const file = appFile(dist, request.url);
     return file

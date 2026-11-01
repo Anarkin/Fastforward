@@ -533,6 +533,109 @@ suite('App commander', () => {
     }, 'the files to be gone from the list');
   });
 
+  test('previews an image, an SVG and Markdown with its images, switching to the source with 1, and offers no preview for other files', async () => {
+    const dot = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+      'base64',
+    );
+    fs.writeFileSync(path.join(opened, 'dot.png'), dot);
+    fs.writeFileSync(
+      path.join(opened, 'logo.svg'),
+      '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10"/></svg>',
+    );
+    fs.mkdirSync(path.join(opened, 'pics'));
+    fs.writeFileSync(path.join(opened, 'pics', 'dot.png'), dot);
+    fs.writeFileSync(
+      path.join(opened, 'doc.md'),
+      ['# Title', '', '![dot](pics/dot.png)', ''].join(String.fromCharCode(10)),
+    );
+    fs.writeFileSync(path.join(opened, 'plain.txt'), 'plain');
+    const imageWidth = (selector: string) =>
+      page
+        .locator(selector)
+        .first()
+        .evaluate((image: HTMLImageElement) => image.naturalWidth)
+        .catch(() => 0);
+    const pressedMode = () =>
+      page
+        .locator('.viewer .segmented [aria-pressed="true"]')
+        .getAttribute('title');
+    const close = async () => {
+      await page.keyboard.press('Escape');
+      await page.locator('.viewer').waitFor({ state: 'detached' });
+    };
+
+    await select('dot');
+    await page.keyboard.press('F3');
+    await waitFor(
+      async () => (await imageWidth('.viewer-image img')) === 1,
+      'the image',
+    );
+    assert.strictEqual(await pressedMode(), 'Preview');
+    await close();
+
+    await select('logo');
+    await page.keyboard.press('F3');
+    await waitFor(
+      async () => (await imageWidth('.viewer-image img')) === 10,
+      'the SVG drawn',
+    );
+    await page.keyboard.press('1');
+    await waitFor(
+      async () =>
+        (
+          (await page
+            .locator('.viewer-rows .viewer-row')
+            .first()
+            .textContent()) ?? ''
+        ).startsWith('<svg'),
+      'the SVG source',
+    );
+    await close();
+
+    await select('doc');
+    await page.keyboard.press('F3');
+    await waitFor(
+      async () =>
+        (await page
+          .locator('.viewer .markdown h1')
+          .first()
+          .textContent()
+          .catch(() => '')) === 'Title',
+      'the heading',
+    );
+    await waitFor(
+      async () => (await imageWidth('.viewer .markdown img')) === 1,
+      'the image of the document',
+    );
+    await close();
+
+    await select('plain');
+    await page.keyboard.press('F3');
+    await waitFor(
+      async () => (await pressedMode()) === 'Text',
+      'the text view',
+    );
+    assert.strictEqual(
+      await page.locator('.viewer .segmented [title="Preview"]').count(),
+      0,
+    );
+    await page.keyboard.press('3');
+    assert.strictEqual(await pressedMode(), 'Text');
+    await close();
+
+    for (const name of ['dot.png', 'logo.svg', 'doc.md', 'plain.txt']) {
+      fs.rmSync(path.join(opened, name));
+    }
+    fs.rmSync(path.join(opened, 'pics'), { recursive: true });
+    await waitFor(async () => {
+      const names = await rowNames();
+      return !['dot.png', 'logo.svg', 'doc.md', 'plain.txt', 'pics'].some(
+        (name) => names.includes(name),
+      );
+    }, 'the files to be gone from the list');
+  });
+
   test.skipIf(process.platform !== 'win32')(
     'opens the drive menu of the right side with Alt+F2 and changes the drive by its letter',
     async () => {

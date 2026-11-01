@@ -248,7 +248,7 @@ export const strings = {
     reread: 'Read the folder of the side again',
     viewFile: 'View the selected file in a tab of its own',
     closeViewer: 'Close the file being viewed',
-    viewAs: 'View the file as text or hex',
+    viewAs: 'View the file as text, hex or a preview',
     openOnSide:
       'Open the selected folder, or the one you are in, on the left or right side',
   },
@@ -504,6 +504,9 @@ export const strings = {
     viewAs: 'View as',
     viewText: 'Text',
     viewHex: 'Hex',
+    viewPreview: 'Preview',
+    previewTooLarge: (megabytes: number) =>
+      `Documents over ${megabytes} MB are not previewed.`,
   },
   find: {
     title: 'Search the diff',

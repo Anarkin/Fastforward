@@ -1,0 +1,81 @@
+import { useEffect, useMemo, useRef } from 'react';
+import { maxColoredBytes, type CommanderToHost } from '../shared/protocol';
+import { viewedFileUrl } from '../shared/files';
+import { strings } from '../../../shared/strings';
+import { documentImagePath, ImagePane } from '../../../ui/images';
+import { MarkdownPane } from '../../../ui/markdownView';
+import { useWholeText } from './textBody';
+import type { Preview } from './previews';
+import type { ToViewer, Viewing } from './viewer';
+
+function MarkdownPreview({
+  file,
+  viewing,
+  post,
+  listen,
+}: {
+  file: string;
+  viewing: Viewing;
+  post: (message: CommanderToHost) => void;
+  listen: (handler: (message: ToViewer) => void) => () => void;
+}) {
+  const text = useWholeText(viewing, post, listen, true);
+  const { tab, size } = viewing;
+  const images = useMemo(() => {
+    const document = file.replaceAll('\\', '/');
+    return {
+      path: (src: string) => documentImagePath(document, src),
+      url: (path: string) => viewedFileUrl(tab, path, size),
+    };
+  }, [file, tab, size]);
+  if (viewing.size !== undefined && viewing.size > maxColoredBytes) {
+    return (
+      <div className="markdown-pane">
+        <div className="markdown-note">
+          {strings.commander.previewTooLarge(maxColoredBytes / 1024 / 1024)}
+        </div>
+      </div>
+    );
+  }
+  return <MarkdownPane text={text} images={images} />;
+}
+
+export function PreviewBody({
+  file,
+  preview,
+  viewing,
+  post,
+  listen,
+}: {
+  file: string;
+  preview: Preview;
+  viewing: Viewing;
+  post: (message: CommanderToHost) => void;
+  listen: (handler: (message: ToViewer) => void) => () => void;
+}) {
+  const body = useRef<HTMLDivElement>(null);
+  useEffect(() => body.current?.focus(), []);
+  return (
+    <div
+      className="column-body viewer-body viewer-preview"
+      ref={body}
+      tabIndex={0}
+      data-column-focus=""
+    >
+      {viewing.error !== undefined ? (
+        <div className="viewer-error">{viewing.error}</div>
+      ) : preview === 'image' ? (
+        <div className="viewer-image">
+          <ImagePane url={viewedFileUrl(viewing.tab, file, viewing.size)} />
+        </div>
+      ) : (
+        <MarkdownPreview
+          file={file}
+          viewing={viewing}
+          post={post}
+          listen={listen}
+        />
+      )}
+    </div>
+  );
+}

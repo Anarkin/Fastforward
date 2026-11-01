@@ -29,6 +29,8 @@ import {
   maxColoredBytes,
 } from '../../../../tools/commander/shared/protocol';
 import { strings } from '../../../../shared/strings';
+import { maxImageSize } from '../../../../shared/images';
+import { viewedFileUrl } from '../../../../tools/commander/shared/files';
 import { removeFolder, tempFolder } from '../../../repositories';
 import { waitFor } from '../../../fixtures';
 
@@ -350,6 +352,47 @@ suite('Commander tool', () => {
         });
       }
       assert.strictEqual(page.of('bytes').length, 1);
+    });
+
+    test('serves the images of a viewing tab, the file viewed and those a document shows, refusing other files, other tabs, relative paths and images too large', async () => {
+      const { tool, tabs } = commander({});
+      const picture = path.join(opened, 'picture.png');
+      fs.writeFileSync(picture, Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+      fs.writeFileSync(path.join(opened, 'notes.txt'), 'not an image');
+      const large = path.join(opened, 'large.png');
+      const handle = fs.openSync(large, 'w');
+      fs.ftruncateSync(handle, maxImageSize + 1);
+      fs.closeSync(handle);
+      tabs.push(
+        {
+          id: '3',
+          tool: 'commander',
+          root: path.join(opened, 'readme.md'),
+          view: true,
+        },
+        { id: '4', tool: 'commander', root },
+      );
+      const served = (viewer: string, image: string) =>
+        tool.file(new URL(`fastforward://app${viewedFileUrl(viewer, image)}`));
+
+      const image = await served('3', picture);
+      assert.strictEqual(image.status, 200);
+      assert.strictEqual(image.headers.get('content-type'), 'image/png');
+      assert.deepStrictEqual(
+        [...new Uint8Array(await image.arrayBuffer())],
+        [0x89, 0x50, 0x4e, 0x47],
+      );
+      assert.strictEqual(
+        (await served('3', path.join(opened, 'notes.txt'))).status,
+        404,
+      );
+      assert.strictEqual((await served('4', picture)).status, 404);
+      assert.strictEqual((await served('3', 'picture.png')).status, 404);
+      assert.strictEqual(
+        (await served('3', path.join(opened, 'missing.png'))).status,
+        404,
+      );
+      assert.strictEqual((await served('3', large)).status, 413);
     });
 
     test('sends the whole text of a file viewed for its colors, only up to the size colored', async () => {

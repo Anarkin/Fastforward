@@ -30,6 +30,8 @@ import {
 } from '../shared/settings';
 import type { FileSystem } from './fileSystem';
 import type { WatchFolder } from './watch';
+import { imageType, maxImageSize } from '../../../shared/images';
+import { viewedFileOf } from '../shared/files';
 import {
   blockCache,
   firstBytes,
@@ -340,6 +342,34 @@ export class CommanderTool implements Tool<'commander'> {
   quit(): void {
     this.unwatch();
     this.elevated?.close();
+  }
+
+  async file(url: URL): Promise<Response> {
+    const asked = viewedFileOf(url);
+    const viewing =
+      asked &&
+      this.shell
+        .tabs()
+        .some((tab) => tab.id === asked.tab && tab.view === true);
+    const type = asked && imageType(asked.file);
+    if (!asked || !viewing || !type || !path.isAbsolute(asked.file)) {
+      return new Response(null, { status: 404 });
+    }
+    try {
+      const stats = await fs.promises.stat(asked.file);
+      if (!stats.isFile()) {
+        return new Response(null, { status: 404 });
+      }
+      if (stats.size > maxImageSize) {
+        return new Response(null, { status: 413 });
+      }
+      const body = await fs.promises.readFile(asked.file);
+      return new Response(new Uint8Array(body), {
+        headers: { 'content-type': type, 'cache-control': 'no-store' },
+      });
+    } catch {
+      return new Response(null, { status: 404 });
+    }
   }
 
   async icon(url: URL): Promise<Response> {
