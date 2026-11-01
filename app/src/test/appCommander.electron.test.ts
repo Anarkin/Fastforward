@@ -463,6 +463,10 @@ suite('App commander', () => {
     await page.locator('.viewer').waitFor({ state: 'detached' });
     fs.rmSync(path.join(opened, 'code.ts'));
     fs.rmSync(path.join(opened, 'large.ts'));
+    await waitFor(async () => {
+      const names = await rowNames();
+      return !names.includes('code.ts') && !names.includes('large.ts');
+    }, 'the files to be gone from the list');
   });
 
   test.skipIf(process.platform !== 'win32')(
@@ -511,7 +515,10 @@ suite('App commander', () => {
       async () => (await backgrounds())[0] === rightSelected,
       'the left side to mark its selected row',
     );
-    assert.strictEqual((await backgrounds())[1], 'rgba(0, 0, 0, 0)');
+    await waitFor(
+      async () => (await backgrounds())[1] === 'rgba(0, 0, 0, 0)',
+      'the right side to unmark its selected row',
+    );
     await page.keyboard.press('Tab');
   });
 
