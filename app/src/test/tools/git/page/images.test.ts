@@ -6,9 +6,7 @@ import { workingTreeHash } from '../../../../tools/git/shared/protocol';
 import { parsePatch, type DiffFile } from '../../../../tools/git/page/diff';
 import {
   diffImageUrl,
-  documentImagePath,
   documentImageUrl,
-  ImageCache,
   previewsImage,
   previewsWholeImage,
   rendersImage,
@@ -19,6 +17,7 @@ import {
   withUnchangedObjects,
   type ImageOrigin,
 } from '../../../../tools/git/page/images';
+import { documentImagePath, ImageCache } from '../../../../ui/images';
 import { policyOfPage } from '../../../fixtures';
 
 const oldId = '1'.repeat(40);

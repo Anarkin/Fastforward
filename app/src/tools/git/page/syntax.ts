@@ -8,7 +8,6 @@ import type { SyntaxRange, SyntaxSource } from '../../../ui/syntaxEngine';
 import { colorer } from '../../../ui/syntax';
 
 export type { SyntaxRange } from '../../../ui/syntaxEngine';
-export { codeSegments, colorCode } from '../../../ui/syntax';
 export { languageOf } from '../../../ui/languages';
 
 type Side = 'old' | 'new';

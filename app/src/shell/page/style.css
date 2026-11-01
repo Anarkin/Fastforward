@@ -1219,6 +1219,49 @@ body.resizing {
   height: auto;
 }
 
+.image-pane {
+  display: flex;
+  flex: 0 0 50%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.image-frame {
+  display: flex;
+  flex: 1;
+  align-self: stretch;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  background: var(--color-border);
+}
+
+.image-frame img {
+  max-width: 100%;
+  max-height: 100%;
+  background: repeating-conic-gradient(
+      color-mix(in srgb, var(--muted-foreground) 22%, transparent) 0 25%,
+      transparent 0 50%
+    )
+    0 0 / 16px 16px;
+}
+
+.markdown-pane {
+  flex: 1 1 0;
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 16px 24px;
+  overflow-wrap: anywhere;
+}
+
+.image-note {
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+
 .markdown-note {
   color: var(--muted-foreground);
 }

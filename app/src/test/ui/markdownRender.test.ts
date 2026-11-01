@@ -4,11 +4,9 @@ import { JSDOM } from 'jsdom';
 import markdownIt from 'markdown-it';
 import { afterAll, suite, test } from 'vitest';
 import { imageSourceOf } from '../../tools/git/shared/images';
-import {
-  documentImagePath,
-  documentImageUrl,
-} from '../../tools/git/page/images';
-import { showBlocks, showImages } from '../../tools/git/page/markdownPreview';
+import { documentImageUrl } from '../../tools/git/page/images';
+import { documentImagePath } from '../../ui/images';
+import { showBlocks, showImages } from '../../ui/markdownView';
 import { markdownRenderer } from '../../ui/markdownRender';
 
 const { window } = new JSDOM('');

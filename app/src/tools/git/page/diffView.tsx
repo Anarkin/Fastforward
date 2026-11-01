@@ -65,7 +65,8 @@ import {
   wholePreviewOf,
   type Preview,
 } from './previews';
-import { ImageDiff, imagePanes, WholeImage } from './imagePreview';
+import { ImageDiff, imagePanes } from './imagePreview';
+import { WholeImage } from '../../../ui/images';
 import {
   previewsImage,
   previewsWholeImage,
