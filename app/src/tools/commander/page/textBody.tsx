@@ -27,10 +27,12 @@ const rowsAboveMatch = 2;
 interface Loaded {
   readonly rows: readonly TextRow[];
   readonly top: number;
+  readonly index?: number;
 }
 
 interface Ask {
   readonly anchor: number;
+  readonly row?: number;
   readonly exact: boolean;
   readonly before: number;
   readonly after: number;
@@ -67,21 +69,44 @@ export function scrolled(
   };
 }
 
+export function bytesPerRow(rows: readonly TextRow[]): number | undefined {
+  const first = rows[0];
+  const last = rows.at(-1);
+  return first === undefined || last === undefined
+    ? undefined
+    : Math.max(1, (last.end - first.start) / rows.length);
+}
+
 export function textThumb(
   loaded: Loaded,
   screen: number,
   size: number,
+  perRow: number | undefined,
+  total?: number,
 ): Thumb | undefined {
-  const first = loaded.rows[loaded.top];
-  const last =
-    loaded.rows[Math.min(loaded.rows.length, loaded.top + screen) - 1];
+  const { rows, top, index } = loaded;
+  const first = rows[top];
+  const last = rows[Math.min(rows.length, top + screen) - 1];
   if (first === undefined || last === undefined || size <= 0) {
     return undefined;
   }
-  const shown = last.end - first.start;
+  if (total !== undefined && index !== undefined) {
+    return {
+      start: total > screen ? Math.min(1, (index + top) / (total - screen)) : 0,
+      length: Math.min(1, screen / Math.max(1, total)),
+    };
+  }
+  if (rows[0]?.start === 0 && (rows.at(-1)?.end ?? 0) >= size) {
+    return {
+      start:
+        rows.length > screen ? Math.min(1, top / (rows.length - screen)) : 0,
+      length: Math.min(1, screen / rows.length),
+    };
+  }
+  const rowsInFile = size / (perRow ?? bytesPerRow(rows) ?? 1);
   return {
-    start: size > shown ? Math.min(1, first.start / (size - shown)) : 0,
-    length: Math.min(1, shown / size),
+    start: last.end >= size ? 1 : Math.min(1, first.start / size),
+    length: Math.min(1, screen / rowsInFile),
   };
 }
 
@@ -196,6 +221,38 @@ export function TextBody({
     }
   }, [topStart, onPlace]);
   const { tab, size } = viewing;
+  const [counted, setCounted] = useState<{
+    readonly size: number | undefined;
+    readonly rows: number;
+  }>();
+  const total = counted?.size === size ? counted?.rows : undefined;
+  useEffect(
+    () =>
+      listen((message) => {
+        if (
+          message.type === 'rowCount' &&
+          message.tab === tab &&
+          message.encoding === encoding
+        ) {
+          setCounted({ size, rows: message.rows });
+        }
+      }),
+    [listen, tab, encoding, size],
+  );
+  const [estimate, setEstimate] = useState<{
+    readonly size: number | undefined;
+    readonly screen: number;
+    readonly perRow: number;
+  }>();
+  const perRow = bytesPerRow(loaded.rows);
+  if (
+    perRow !== undefined &&
+    (estimate === undefined ||
+      estimate.size !== size ||
+      estimate.screen !== screen)
+  ) {
+    setEstimate({ size, screen, perRow });
+  }
 
   const requests = useMemo(
     () =>
@@ -206,6 +263,7 @@ export function TextBody({
           encoding,
           request,
           anchor: wanted.anchor,
+          ...(wanted.row !== undefined && { row: wanted.row }),
           exact: wanted.exact,
           before: wanted.before,
           after: wanted.after,
@@ -230,6 +288,7 @@ export function TextBody({
           : -1;
         setLoaded({
           rows: rows.rows,
+          ...(rows.index !== undefined && { index: rows.index }),
           top:
             shown === -1
               ? pending.topOf(rows.anchorIndex, rows.rows.length)
@@ -258,7 +317,7 @@ export function TextBody({
         });
         return;
       }
-      const moved = { rows, top: within.top };
+      const moved = { ...current.current, top: within.top };
       current.current = moved;
       setLoaded(moved);
       const shown = rows[within.top];
@@ -280,12 +339,15 @@ export function TextBody({
     (share: number) =>
       requests.ask({
         anchor: Math.round(share * (size ?? 0)),
+        ...(total !== undefined && {
+          row: Math.round(share * Math.max(0, total - screen)),
+        }),
         exact: false,
         before: screen * 2,
         after: screen * 3,
         topOf: (anchorIndex, count) => topWithin(anchorIndex, count, screen),
       }),
-    [requests, screen, size],
+    [requests, screen, size, total],
   );
 
   useEffect(() => {
@@ -303,6 +365,22 @@ export function TextBody({
       topOf: (anchorIndex, count) => topWithin(anchorIndex, count, screen),
     });
   }, [requests, viewing, screen, place]);
+
+  const numbered = loaded.index !== undefined;
+  useEffect(() => {
+    const from = current.current.rows[current.current.top];
+    if (total === undefined || numbered) {
+      return;
+    }
+    requests.ask({
+      anchor: from?.start ?? place.current,
+      exact: from !== undefined,
+      before: screen * 2,
+      after: screen * 3,
+      follow: true,
+      topOf: (anchorIndex, count) => topWithin(anchorIndex, count, screen),
+    });
+  }, [requests, screen, place, total, numbered]);
 
   const goToMatch = useEffectEvent(() => {
     const target = find?.current;
@@ -336,7 +414,7 @@ export function TextBody({
 
   return (
     <ScrollBody
-      thumb={textThumb(loaded, screen, size ?? 0)}
+      thumb={textThumb(loaded, screen, size ?? 0, estimate?.perRow, total)}
       onScreen={setScreen}
       move={move}
       jump={jump}

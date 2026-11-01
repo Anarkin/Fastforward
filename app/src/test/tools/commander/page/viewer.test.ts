@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
+  bytesPerRow,
   scrolled,
   textThumb,
   topWithin,
@@ -22,16 +23,80 @@ suite('Commander viewer', () => {
     assert.strictEqual(topWithin(4, 10, 20), 0);
   });
 
-  test('sizes the thumb by the share of the bytes on screen, and places it by the share of the bytes before them', () => {
-    assert.deepStrictEqual(textThumb({ rows: rows(100), top: 0 }, 10, 1000), {
-      start: 0,
-      length: 0.1,
+  test('sizes the thumb by the rows on screen among all the rows of a file read whole, and places it by the rows above', () => {
+    assert.deepStrictEqual(
+      textThumb({ rows: rows(100), top: 0 }, 10, 1000, 10),
+      {
+        start: 0,
+        length: 0.1,
+      },
+    );
+    assert.deepStrictEqual(
+      textThumb({ rows: rows(100), top: 45 }, 10, 1000, 10),
+      {
+        start: 0.5,
+        length: 0.1,
+      },
+    );
+    assert.deepStrictEqual(
+      textThumb({ rows: rows(100), top: 90 }, 10, 1000, 10),
+      {
+        start: 1,
+        length: 0.1,
+      },
+    );
+    assert.strictEqual(textThumb({ rows: [], top: 0 }, 10, 0, 10), undefined);
+  });
+
+  test('keeps the thumb of a file read in parts as long wherever it is, however long its rows there, and places it by the bytes above, at the end once the last row shows', () => {
+    const short = rows(30, 10).map((row) => ({
+      ...row,
+      start: row.start + 5000,
+      end: row.end + 5000,
+    }));
+    const long = rows(30, 300).map((row) => ({
+      ...row,
+      start: row.start + 50_000,
+      end: row.end + 50_000,
+    }));
+    const size = 100_000;
+    const atShort = textThumb({ rows: short, top: 0 }, 10, size, 20);
+    const atLong = textThumb({ rows: long, top: 0 }, 10, size, 20);
+    assert.strictEqual(atShort?.length, atLong?.length);
+    assert.strictEqual(atShort?.length, 10 / (size / 20));
+    assert.strictEqual(atShort?.start, 5000 / size);
+    assert.strictEqual(atLong?.start, 50_000 / size);
+    const end = rows(30, 10).map((row) => ({
+      ...row,
+      start: row.start + size - 300,
+      end: row.end + size - 300,
+    }));
+    assert.strictEqual(
+      textThumb({ rows: end, top: 20 }, 10, size, 20)?.start,
+      1,
+    );
+  });
+
+  test('sizes and places the thumb of a file counted by its rows, each row moving it as far, and ends it at the last row', () => {
+    const window = rows(30, 10).map((row) => ({
+      ...row,
+      start: row.start + 5000,
+      end: row.end + 5000,
+    }));
+    const counted = (top: number, index: number) =>
+      textThumb({ rows: window, top, index }, 10, 100_000, 20, 1010);
+    assert.deepStrictEqual(counted(0, 500), { start: 0.5, length: 10 / 1010 });
+    assert.deepStrictEqual(counted(1, 500), {
+      start: 0.501,
+      length: 10 / 1010,
     });
-    assert.deepStrictEqual(textThumb({ rows: rows(100), top: 90 }, 10, 1000), {
-      start: 1,
-      length: 0.1,
-    });
-    assert.strictEqual(textThumb({ rows: [], top: 0 }, 10, 0), undefined);
+    assert.deepStrictEqual(counted(20, 980), { start: 1, length: 10 / 1010 });
+    assert.deepStrictEqual(counted(0, 0), { start: 0, length: 10 / 1010 });
+  });
+
+  test('takes the bytes a row has for the rows first read, to size the thumb by', () => {
+    assert.strictEqual(bytesPerRow(rows(30, 10)), 10);
+    assert.strictEqual(bytesPerRow([]), undefined);
   });
 
   test('draws the thumb never smaller than it can be grabbed, in the room the track leaves it', () => {

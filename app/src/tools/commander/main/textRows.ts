@@ -4,6 +4,7 @@ import type { TextEncoding, TextRow } from '../shared/protocol';
 export const rowBytes = 4096;
 
 const blockBytes = 64 * 1024;
+const indexBlockBytes = 1024 * 1024;
 const longLineSearch = 1024 * 1024;
 const charLookahead = 4;
 
@@ -145,6 +146,32 @@ function lineText(bytes: Buffer, coding: TextCoding): string {
   return textOf(bytes, 0, end, coding);
 }
 
+interface RowEnd {
+  readonly end: number;
+  readonly textEnd: number | undefined;
+}
+
+function rowEndIn(
+  block: Buffer,
+  offset: number,
+  atEnd: boolean,
+  coding: TextCoding,
+): RowEnd | undefined {
+  const line = nextNewline(block, offset, coding);
+  const lineEnd = line === -1 ? block.length : line;
+  if (lineEnd - offset <= rowBytes && (line !== -1 || atEnd)) {
+    return {
+      end: line === -1 ? lineEnd : line + coding.unit,
+      textEnd: lineEnd,
+    };
+  }
+  if (block.length - offset > rowBytes) {
+    const cut = coding.boundaryBefore(block, offset + rowBytes);
+    return { end: cut > offset ? cut : offset + rowBytes, textEnd: undefined };
+  }
+  return undefined;
+}
+
 export async function rowsFrom(
   read: ReadBytes,
   size: number,
@@ -156,35 +183,22 @@ export async function rowsFrom(
   let position = aligned(start, coding);
   while (rows.length < count && position < size) {
     const block = await read(position, Math.min(blockBytes, size - position));
+    const atEnd = position + block.length >= size;
     let offset = 0;
-    while (rows.length < count) {
-      const rest = block.length - offset;
-      const atEnd = position + block.length >= size;
-      const line = nextNewline(block, offset, coding);
-      const lineEnd = line === -1 ? block.length : line;
-      if (lineEnd - offset <= rowBytes && (line !== -1 || atEnd)) {
-        const next = line === -1 ? lineEnd : line + coding.unit;
-        rows.push({
-          start: position + offset,
-          end: position + next,
-          text: textOf(block, offset, lineEnd, coding),
-        });
-        offset = next;
-      } else if (rest > rowBytes) {
-        const cut = coding.boundaryBefore(block, offset + rowBytes);
-        const end = cut > offset ? cut : offset + rowBytes;
-        rows.push({
-          start: position + offset,
-          end: position + end,
-          text: coding.decode(block.subarray(offset, end)),
-        });
-        offset = end;
-      } else {
+    while (rows.length < count && offset < block.length) {
+      const row = rowEndIn(block, offset, atEnd, coding);
+      if (row === undefined) {
         break;
       }
-      if (offset >= block.length) {
-        break;
-      }
+      rows.push({
+        start: position + offset,
+        end: position + row.end,
+        text:
+          row.textEnd === undefined
+            ? coding.decode(block.subarray(offset, row.end))
+            : textOf(block, offset, row.textEnd, coding),
+      });
+      offset = row.end;
     }
     if (offset === 0) {
       break;
@@ -192,6 +206,128 @@ export async function rowsFrom(
     position += offset;
   }
   return rows;
+}
+
+async function walkRows(
+  read: ReadBytes,
+  size: number,
+  from: number,
+  coding: TextCoding,
+  visit: (start: number) => boolean,
+  signal?: AbortSignal,
+): Promise<boolean> {
+  let position = from;
+  while (position < size) {
+    const block = await read(
+      position,
+      Math.min(indexBlockBytes, size - position),
+    );
+    if (signal?.aborted) {
+      return false;
+    }
+    const atEnd = position + block.length >= size;
+    let offset = 0;
+    while (offset < block.length) {
+      const row = rowEndIn(block, offset, atEnd, coding);
+      if (row === undefined) {
+        break;
+      }
+      if (!visit(position + offset)) {
+        return true;
+      }
+      offset = row.end;
+    }
+    if (offset === 0) {
+      break;
+    }
+    position += offset;
+  }
+  return true;
+}
+
+const rowsMarkedEvery = 256;
+
+export interface RowIndex {
+  readonly rows: number;
+  readonly marks: readonly number[];
+}
+
+export async function indexRows(
+  read: ReadBytes,
+  size: number,
+  coding: TextCoding,
+  signal?: AbortSignal,
+): Promise<RowIndex | undefined> {
+  const marks: number[] = [];
+  let rows = 0;
+  const done = await walkRows(
+    read,
+    size,
+    0,
+    coding,
+    (start) => {
+      if (rows % rowsMarkedEvery === 0) {
+        marks.push(start);
+      }
+      rows++;
+      return true;
+    },
+    signal,
+  );
+  return done ? { rows, marks } : undefined;
+}
+
+export async function rowStartOf(
+  read: ReadBytes,
+  size: number,
+  index: RowIndex,
+  row: number,
+  coding: TextCoding,
+): Promise<number> {
+  if (row >= index.rows) {
+    return size;
+  }
+  const target = Math.max(0, Math.floor(row));
+  const mark = Math.floor(target / rowsMarkedEvery);
+  let at = mark * rowsMarkedEvery;
+  let found = size;
+  await walkRows(read, size, index.marks[mark] ?? 0, coding, (start) => {
+    if (at === target) {
+      found = start;
+      return false;
+    }
+    at++;
+    return true;
+  });
+  return found;
+}
+
+export async function rowIndexAt(
+  read: ReadBytes,
+  size: number,
+  index: RowIndex,
+  byte: number,
+  coding: TextCoding,
+): Promise<number> {
+  let below = 0;
+  let above = index.marks.length - 1;
+  while (below < above) {
+    const middle = (below + above + 1) >> 1;
+    if ((index.marks[middle] ?? 0) <= byte) {
+      below = middle;
+    } else {
+      above = middle - 1;
+    }
+  }
+  let row = below * rowsMarkedEvery;
+  await walkRows(read, size, index.marks[below] ?? 0, coding, (start) => {
+    if (start >= byte) {
+      return false;
+    }
+    row++;
+    return true;
+  });
+  return Math.min(row, index.rows);
 }
 
 export async function rowStartAt(

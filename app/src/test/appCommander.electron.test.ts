@@ -75,6 +75,29 @@ suite('App commander', () => {
     page.locator('.viewer .find-field-count').textContent();
   const selected = async () =>
     (await right().locator('.commander-row.selected').textContent()) ?? '';
+  const viewerThumb = () =>
+    page.locator('.viewer-thumb').evaluate((element) => {
+      const box = element.getBoundingClientRect();
+      const track = element.parentElement?.getBoundingClientRect();
+      return {
+        top: box.top,
+        height: box.height,
+        fromEnd: (track?.bottom ?? 0) - box.bottom,
+      };
+    });
+  const thumbSteps = async () => {
+    const tops = [(await viewerThumb()).top];
+    for (let step = 0; step < 4; step++) {
+      const before = await firstViewerRow();
+      await page.keyboard.press('ArrowDown');
+      await waitFor(
+        async () => (await firstViewerRow()) !== before,
+        'the next row',
+      );
+      tops.push((await viewerThumb()).top);
+    }
+    return tops.slice(1).map((top, index) => top - (tops[index] ?? 0));
+  };
   const select = async (name: string) => {
     await right().locator('.commander-row', { hasText: name }).click();
     await waitFor(
@@ -664,6 +687,75 @@ suite('App commander', () => {
       fs.rmSync(path.join(opened, 'haystack.txt'));
       await waitFor(
         async () => !(await rowNames()).includes('haystack.txt'),
+        'the file to be gone from the list',
+      );
+    }
+  });
+
+  test('moves the thumb of a file viewed as far for each row, though its lines grow long further down, keeps it as tall, and ends it at the end of its track', async () => {
+    const lines = Array.from({ length: 600 }, (_, index) =>
+      index < 300
+        ? `short ${index}`.padEnd(19, '.')
+        : `long ${index}`.padEnd(59, '.'),
+    );
+    fs.writeFileSync(
+      path.join(opened, 'uneven.txt'),
+      lines.join(String.fromCharCode(10)),
+    );
+    try {
+      await select('uneven');
+      await page.keyboard.press('F3');
+      await waitFor(
+        async () => (await firstViewerRow()) === 'short 0............',
+        'the first row',
+      );
+      await waitForFocus(page.locator('.viewer-body'), 'the viewer');
+      const screen = await page.locator('.viewer-rows .viewer-row').count();
+      const track = await page
+        .locator('.viewer-thumb')
+        .evaluate(
+          (element) =>
+            element.parentElement?.getBoundingClientRect().height ?? 0,
+        );
+      await waitFor(
+        async () =>
+          Math.abs(
+            (await viewerThumb()).height - Math.max(24, (track * screen) / 600),
+          ) < 3,
+        'the thumb sized by the rows counted',
+      );
+      const height = (await viewerThumb()).height;
+      const short = await thumbSteps();
+      for (let pageStep = 0; pageStep < 8; pageStep++) {
+        await page.keyboard.press('PageDown');
+      }
+      await waitFor(
+        async () => (await firstViewerRow()).startsWith('long'),
+        'the long rows',
+      );
+      const long = await thumbSteps();
+      const step = short[0] ?? 0;
+      assert.ok(step > 0.5, JSON.stringify(short));
+      assert.ok(
+        [...short, ...long].every((each) => Math.abs(each - step) < 0.5),
+        JSON.stringify({ short, long }),
+      );
+      await page.keyboard.press('End');
+      await waitFor(
+        async () => (await firstViewerRow()).startsWith('long 5'),
+        'the end',
+      );
+      const end = await viewerThumb();
+      assert.ok(Math.abs(end.height - height) < 0.5, JSON.stringify(end));
+      assert.ok(Math.abs(end.fromEnd) < 0.5, JSON.stringify(end));
+    } finally {
+      if (await page.locator('.viewer').isVisible()) {
+        await page.keyboard.press('Escape');
+        await page.locator('.viewer').waitFor({ state: 'detached' });
+      }
+      fs.rmSync(path.join(opened, 'uneven.txt'));
+      await waitFor(
+        async () => !(await rowNames()).includes('uneven.txt'),
         'the file to be gone from the list',
       );
     }

@@ -97,7 +97,8 @@ export function CommanderTool({
           message.type === 'text' ||
           message.type === 'bytes' ||
           message.type === 'found' ||
-          message.type === 'pdfPlace'
+          message.type === 'pdfPlace' ||
+          message.type === 'rowCount'
         ) {
           for (const handler of viewerListeners.current) {
             handler(message);
