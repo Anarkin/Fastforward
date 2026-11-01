@@ -18,22 +18,50 @@ export function KeyCombo({ keys, mac }: { keys: string; mac?: boolean }) {
   );
 }
 
-function Group({ group, mac }: { group: ShortcutGroup; mac: boolean }) {
+function Bindings({
+  bindings,
+  mac,
+}: {
+  bindings: ShortcutGroup['bindings'];
+  mac: boolean;
+}) {
   return (
-    <section className="shortcuts-group">
+    <div className="shortcuts-list">
+      {bindings.map((binding) => (
+        <Fragment key={binding.action}>
+          <span className="shortcut-keys">
+            {Object.keys(binding.keys).map((keys) => (
+              <KeyCombo key={keys} keys={keys} mac={mac} />
+            ))}
+          </span>
+          <span>{binding.action}</span>
+        </Fragment>
+      ))}
+    </div>
+  );
+}
+
+function Group({
+  group,
+  mac,
+  halved = false,
+}: {
+  group: ShortcutGroup;
+  mac: boolean;
+  halved?: boolean;
+}) {
+  const half = Math.ceil(group.bindings.length / 2);
+  return (
+    <section className={halved ? 'shortcuts-group halved' : 'shortcuts-group'}>
       <div className="shortcuts-heading">{group.title}</div>
-      <div className="shortcuts-list">
-        {group.bindings.map((binding) => (
-          <Fragment key={binding.action}>
-            <span className="shortcut-keys">
-              {Object.keys(binding.keys).map((keys) => (
-                <KeyCombo key={keys} keys={keys} mac={mac} />
-              ))}
-            </span>
-            <span>{binding.action}</span>
-          </Fragment>
-        ))}
-      </div>
+      {halved ? (
+        <div className="shortcuts-halves">
+          <Bindings bindings={group.bindings.slice(0, half)} mac={mac} />
+          <Bindings bindings={group.bindings.slice(half)} mac={mac} />
+        </div>
+      ) : (
+        <Bindings bindings={group.bindings} mac={mac} />
+      )}
     </section>
   );
 }
@@ -51,6 +79,7 @@ export function ShortcutsPopup({
   useDismiss(popup, onClose, { byKeyOnly: true });
   const dialog = useModalDialog(popup);
   const drag = useDialogDrag(popup);
+  const unpinned = groups.filter((group) => !group.pinned);
   return (
     <div
       className="backdrop"
@@ -89,11 +118,14 @@ export function ShortcutsPopup({
                 <Group key={group.title} group={group} mac={mac} />
               ))}
           </div>
-          {groups
-            .filter((group) => !group.pinned)
-            .map((group) => (
-              <Group key={group.title} group={group} mac={mac} />
-            ))}
+          {unpinned.map((group) => (
+            <Group
+              key={group.title}
+              group={group}
+              mac={mac}
+              halved={unpinned.length === 1}
+            />
+          ))}
         </div>
         <div className="shortcuts-note">{strings.shortcuts.note}</div>
       </div>

@@ -31,7 +31,24 @@ function pinnedRow(tool: 'git' | undefined): string | undefined {
   )[0];
 }
 
+const lists = (tool: 'commander' | 'git') =>
+  tagsWith(
+    renderToStaticMarkup(
+      <ShortcutsPopup
+        groups={shortcutGroupsFor(tool)}
+        mac={false}
+        onClose={noop}
+      />,
+    ),
+    'shortcuts-halves',
+  ).length;
+
 suite('Shortcuts popup', () => {
+  test('splits the shortcuts of a single group below the pinned ones into two halves side by side under its heading, and leaves several groups to flow', () => {
+    assert.strictEqual(lists('commander'), 1);
+    assert.strictEqual(lists('git'), 0);
+  });
+
   test('lists only the keys of the diff for two files compared, its search among them', () => {
     const groups = shortcutGroupsFor('git', { compare: true });
     assert.deepStrictEqual(
