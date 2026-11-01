@@ -645,7 +645,7 @@ suite('App commander', () => {
     }, 'the files to be gone from the list');
   });
 
-  test('marks files moving with Shift, with Space and Insert, with Ctrl+click and Shift+click, never the parent row, and drops the marks in another markingFolder', async () => {
+  test('marks files moving with Shift, with Space and Insert, with Ctrl+click and Shift+click, never the parent row, and drops the marks in another folder', async () => {
     const markingFolder = path.join(opened, 'marking');
     fs.mkdirSync(markingFolder);
     for (const name of ['a', 'b', 'c', 'd']) {
@@ -690,6 +690,16 @@ suite('App commander', () => {
     await waitFor(
       async () => (await markedNames()).join() === 'a,b,c,d',
       'Shift+click to mark the range',
+    );
+    const colors = await right()
+      .locator('.commander-row.marked .commander-name')
+      .evaluateAll((names) =>
+        names.map((name) => getComputedStyle(name).color),
+      );
+    assert.strictEqual(
+      new Set(colors).size,
+      1,
+      `The marked rows, the selected one among them, have the colors ${colors.join(', ')}`,
     );
 
     await page.keyboard.press('Backspace');
