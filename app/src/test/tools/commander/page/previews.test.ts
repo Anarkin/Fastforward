@@ -14,10 +14,10 @@ suite('Previews of a file viewed', () => {
     assert.strictEqual(previewOf('/docs/notes.txt'), undefined);
   });
 
-  test('opens a file in its preview when it has one, in hex when binary, in text otherwise', () => {
-    assert.strictEqual(firstMode('/a/cat.png', true), 'preview');
-    assert.strictEqual(firstMode('/a/README.md', false), 'preview');
-    assert.strictEqual(firstMode('/a/app.exe', true), 'hex');
-    assert.strictEqual(firstMode('/a/notes.txt', false), 'text');
+  test('opens a file in its preview when it has one, and in text otherwise, binary or not', () => {
+    assert.strictEqual(firstMode('/a/cat.png'), 'preview');
+    assert.strictEqual(firstMode('/a/README.md'), 'preview');
+    assert.strictEqual(firstMode('/a/app.exe'), 'text');
+    assert.strictEqual(firstMode('/a/notes.txt'), 'text');
   });
 });

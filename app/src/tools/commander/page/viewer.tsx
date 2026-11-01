@@ -65,9 +65,7 @@ export function Viewer({
   const shownModes = modes.filter(
     (each) => each.mode !== 'preview' || preview !== undefined,
   );
-  const mode =
-    chosen ??
-    firstMode(file, viewing?.binary === true && viewing.detected === undefined);
+  const mode = chosen ?? firstMode(file);
   const shown = shownEncoding(encoding, viewing);
   const choose = (wanted: ViewMode) => {
     if (shownModes.some((each) => each.mode === wanted)) {

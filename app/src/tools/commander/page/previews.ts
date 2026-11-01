@@ -11,9 +11,6 @@ export function previewOf(file: string): Preview | undefined {
   return languageOf(file) === 'markdown' ? 'markdown' : undefined;
 }
 
-export function firstMode(file: string, binary: boolean): ViewMode {
-  if (previewOf(file) !== undefined) {
-    return 'preview';
-  }
-  return binary ? 'hex' : 'text';
+export function firstMode(file: string): ViewMode {
+  return previewOf(file) === undefined ? 'text' : 'preview';
 }

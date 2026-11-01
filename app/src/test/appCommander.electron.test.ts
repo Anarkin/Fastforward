@@ -485,6 +485,16 @@ suite('App commander', () => {
     );
     await select('data');
     await page.keyboard.press('F3');
+    const pressedMode = () =>
+      page
+        .locator('.viewer .segmented [aria-pressed="true"]')
+        .getAttribute('title');
+    await waitFor(
+      async () => (await pressedMode()) === 'Text',
+      'a binary file to open as text',
+    );
+    await waitForFocus(page.locator('.viewer-body'), 'the viewer');
+    await page.keyboard.press('2');
     const firstRow = () =>
       page.locator('.viewer-rows .viewer-row').first().textContent();
     await waitFor(
@@ -493,11 +503,6 @@ suite('App commander', () => {
         '0000000000 01 02 03 04 05 06 07  08 09 0A 0B 0C 0D 0E 0F................',
       'the first row in hex',
     );
-    const pressedMode = () =>
-      page
-        .locator('.viewer .segmented [aria-pressed="true"]')
-        .getAttribute('title');
-    assert.strictEqual(await pressedMode(), 'Hex');
 
     await page.keyboard.press('End');
     await waitFor(
