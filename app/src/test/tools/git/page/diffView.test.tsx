@@ -458,7 +458,7 @@ suite('Diff rows', () => {
         ['error', 'file', 'binary', 'file', 'image'],
       );
     }
-    assert.strictEqual(rowHeight({ kind: 'image', file: 0 }), 320);
+    assert.strictEqual(rowHeight({ kind: 'image', file: 0 }), 19 * 22);
   });
 
   test('previews an image on both sides when side by side, hatching the side it lacks, and only on the sides it has inline', () => {
@@ -1239,7 +1239,7 @@ suite('Diff row heights', () => {
     );
   });
 
-  test('makes the rows of code as tall as the lines of the diff, keeping the file headers, hunk dividers and notes as tall as a row of the other columns', () => {
+  test('makes the rows of code as tall as the lines of the diff, the file headers, hunk dividers and notes a line each, so every row is a whole number of lines', () => {
     const rows = diffRows(
       parsePatch(
         [
@@ -1257,11 +1257,11 @@ suite('Diff row heights', () => {
       rows.map((row) => [row.kind, rowHeight(row, false, 17)]),
       [
         ['error', undefined],
-        ['file', 22],
-        ['binary', 22],
-        ['file', 22],
+        ['file', 17],
+        ['binary', 17],
+        ['file', 17],
         ['line', 17],
-        ['hunk', 22],
+        ['hunk', 17],
         ['line', 17],
       ],
     );
@@ -1274,7 +1274,7 @@ suite('Diff row heights', () => {
     );
     assert.deepStrictEqual(
       split.map((row) => rowHeight(row, false, 17)),
-      [undefined, 22, 17],
+      [undefined, 17, 17],
     );
     const whole = diffRows([], new Map(), {
       path: 'a.ts',
@@ -1283,13 +1283,13 @@ suite('Diff row heights', () => {
     });
     assert.deepStrictEqual(
       whole.map((row) => rowHeight(row, false, 17)),
-      [undefined, 22, 17],
+      [undefined, 17, 17],
     );
     assert.deepStrictEqual(
       rows.map((_, index) =>
         rowMeasures(rows, undefined, 17).estimateSize(index),
       ),
-      [200, 22, 22, 22, 17, 22, 17],
+      [204, 17, 17, 17, 17, 17, 17],
     );
   });
 
@@ -1362,7 +1362,7 @@ suite('Diff row heights', () => {
         measures.getItemKey(index),
       ]),
       [
-        [200, '0:error'],
+        [220, '0:error'],
         [22, '1:file'],
         [22, '2:line'],
         [22, '3:line'],
@@ -1371,11 +1371,11 @@ suite('Diff row heights', () => {
     const loading = diffRows([], new Map(), undefined, true);
     assert.deepStrictEqual(
       loading.map((_, index) => rowMeasures(loading).estimateSize(index)),
-      [200, 240],
+      [220, 242],
     );
   });
 
-  test('measures a wrapped row to whole device pixels rather than CSS pixels, so rows of lines a fraction of a CSS pixel tall follow one another without gaps', () => {
+  test('measures a row to whole device pixels and whole lines, so rows of lines a fraction of a CSS pixel tall follow one another without gaps, and every row starts on a line', () => {
     const rows = diffRows(parsePatch(patch('a.ts', 2)), new Map(), undefined);
     const measure = (height: number, ratio: number) =>
       rowMeasures(rows, { left: 80, right: 80 }, 16.8, ratio).measureElement(
@@ -1388,7 +1388,7 @@ suite('Diff row heights', () => {
       );
     assert.strictEqual(measure(67.2, 1.25), 67.2);
     assert.strictEqual(measure(67.21, 1.25), 67.2);
-    assert.strictEqual(measure(51.4, 1.5), Math.round(51.4 * 1.5) / 1.5);
+    assert.strictEqual(measure(51.4, 1.5), 4 * 16.8);
     assert.notStrictEqual(
       rowMeasures(rows, undefined, 17, 1.25),
       rowMeasures(rows, undefined, 17, 1.5),
@@ -1440,18 +1440,18 @@ suite('Diff row heights', () => {
     const measures = rowMeasures(rows, { left: 7, right: 7 });
     assert.deepStrictEqual(
       rows.map((_, index) => measures.estimateSize(index)),
-      [200, 22, 22, 44, 88],
+      [220, 22, 22, 44, 88],
     );
     const split = diffRows(wrapping, new Map(), undefined, false, true);
     const sides = rowMeasures(split, { left: 13, right: 7 });
     assert.deepStrictEqual(
       split.map((_, index) => sides.estimateSize(index)),
-      [200, 22, 22, 88],
+      [220, 22, 22, 88],
     );
     const taller = rowMeasures(rows, { left: 7, right: 7 }, 17);
     assert.deepStrictEqual(
       rows.map((_, index) => taller.estimateSize(index)),
-      [200, 22, 17, 34, 68],
+      [204, 17, 17, 34, 68],
     );
   });
 
@@ -2096,9 +2096,9 @@ suite('Jumping between changes', () => {
     assert.strictEqual(changeScrollTop([30], 100, -1, 60), 0);
   });
 
-  test('leaves room above a change for the file header stuck atop the diff and two lines, however tall the lines', () => {
+  test('leaves room above a change for the file header stuck atop the diff, a line itself, and two lines, however tall the lines', () => {
     assert.strictEqual(changeMargin(22), 66);
-    assert.strictEqual(changeMargin(17), 56);
+    assert.strictEqual(changeMargin(17), 51);
   });
 });
 
@@ -2696,5 +2696,38 @@ suite('Renamed files', () => {
     );
     assert.strictEqual(tagsWith(inline, 'split-side').length, 0);
     assert.strictEqual(tagsWith(inline, 'skeleton-row').length, 9);
+  });
+
+  test('makes every row a whole number of code lines tall, so the diff scrolls by whole lines, an empty one none', () => {
+    const line = 16.8;
+    assert.strictEqual(rowHeight({ kind: 'hunk', file: 0 }, false, line), line);
+    assert.strictEqual(
+      rowHeight({ kind: 'binary', file: 0 }, false, line),
+      line,
+    );
+    assert.strictEqual(
+      rowHeight({ kind: 'image', file: 0 }, false, line),
+      19 * line,
+    );
+    const measured = rowMeasures(
+      [{ kind: 'markdown', file: 0 }],
+      undefined,
+      line,
+      1.25,
+    );
+    const preview = measured.measureElement(
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      {} as Element,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      { borderBoxSize: [{ blockSize: 400 }] } as unknown as ResizeObserverEntry,
+    );
+    assert.ok(Math.abs(preview - 24 * line) < 1e-6, String(preview));
+    const nothing = measured.measureElement(
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      {} as Element,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      { borderBoxSize: [{ blockSize: 0 }] } as unknown as ResizeObserverEntry,
+    );
+    assert.strictEqual(Math.abs(nothing), 0);
   });
 });

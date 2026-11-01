@@ -209,6 +209,55 @@ suite('App', () => {
     await page.locator('.commit.working-tree.empty').waitFor();
   });
 
+  test('scrolls the diff by whole lines, each line starting at the top of the view', async () => {
+    const file = path.join(repository.root, 'long.txt');
+    fs.writeFileSync(
+      file,
+      `${longLines.map((line, index) => (index % 10 === 0 ? `changed ${index}` : line)).join('\n')}\n`,
+    );
+    try {
+      await page.locator('.commit', { hasText: 'second' }).click();
+      await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
+      await page
+        .locator('.commit.working-tree', { hasText: '1 uncommitted change' })
+        .click();
+      await page.locator('.row.file', { hasText: 'long.txt' }).click();
+      await page.locator('.diff-line.added').first().waitFor();
+      const list = page.locator('.diff-view .virtual-rows');
+      const place = () =>
+        list.evaluate((element) => {
+          const top = element.getBoundingClientRect().top;
+          const line =
+            element.querySelector('.diff-line')?.getBoundingClientRect()
+              .height ?? 1;
+          const first = [...element.querySelectorAll('.virtual-row')]
+            .map((row) => row.getBoundingClientRect())
+            .filter((box) => box.height > 0 && box.bottom > top + 0.5)
+            .toSorted((one, other) => one.top - other.top)[0];
+          return {
+            scrolled: element.scrollTop,
+            lines: element.scrollTop / line,
+            offset: (first?.top ?? top) - top,
+          };
+        });
+      await list.hover();
+      await page.mouse.wheel(0, 50);
+      await waitFor(
+        async () => (await place()).scrolled > 0,
+        'the diff to scroll',
+      );
+      const scrolled = await place();
+      assert.ok(
+        Math.abs(scrolled.lines - Math.round(scrolled.lines)) < 0.01 &&
+          Math.abs(scrolled.offset) < 0.01,
+        JSON.stringify(scrolled),
+      );
+    } finally {
+      await repository.git('checkout', '-q', 'HEAD', '--', 'long.txt');
+    }
+    await page.locator('.commit.working-tree.empty').waitFor();
+  });
+
   test('jumps to the first change of a file once selected, and again once shown entire or not, landing where J would', async () => {
     const file = path.join(repository.root, 'long.txt');
     fs.writeFileSync(
@@ -243,7 +292,7 @@ suite('App', () => {
       await change.waitFor();
       const row = await codeRow();
       await waitFor(
-        async () => (await belowTop()) === Math.round(22 + 2 * row),
+        async () => (await belowTop()) === Math.round(3 * row),
         'the change to be shown at its place',
       );
       await page.getByRole('button', { name: 'Pin Entire Files' }).click();
@@ -253,7 +302,7 @@ suite('App', () => {
       await waitFor(
         async () =>
           (await page.locator('.diff-line').count()) < 20 &&
-          (await belowTop()) === Math.round(22 + 3 * row),
+          (await belowTop()) === Math.round(4 * row),
         'only the changes to be shown, too few to scroll',
       );
       await page.getByRole('button', { name: 'Show the Entire File' }).click();
@@ -261,7 +310,7 @@ suite('App', () => {
         .getByRole('button', { name: 'Show the Entire File', pressed: true })
         .waitFor();
       await waitFor(
-        async () => (await belowTop()) === Math.round(22 + 2 * row),
+        async () => (await belowTop()) === Math.round(3 * row),
         'the entire file to be shown at its change',
       );
       await waitFor(

@@ -3,6 +3,7 @@ import {
   memo,
   useCallback,
   useEffect,
+  useEffectEvent,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -90,6 +91,7 @@ import {
   type RowBreak,
 } from '../../../ui/wordWrap';
 import { snapOffset, watchDevicePixels } from '../../../ui/devicePixels';
+import { followRows, rowPadding } from '../../../ui/rowScroll';
 import {
   areaColumns,
   codePadding,
@@ -177,22 +179,28 @@ type MeasuredKind = 'error' | 'skeleton' | 'skeletonLines' | 'markdown';
 
 export const uniformHeight = 22;
 
-const rowHeights: Record<
+const rowLines: Record<
   Exclude<DiffRow['kind'], MeasuredKind | CodeRow['kind']>,
   number
 > = {
-  file: uniformHeight,
-  large: 36,
-  binary: uniformHeight,
-  empty: uniformHeight,
-  whitespace: uniformHeight,
-  sameContent: uniformHeight,
-  mode: uniformHeight,
-  link: uniformHeight,
-  noNewline: uniformHeight,
-  image: 320,
-  hunk: uniformHeight,
+  file: 1,
+  large: 2,
+  binary: 1,
+  empty: 1,
+  whitespace: 1,
+  sameContent: 1,
+  mode: 1,
+  link: 1,
+  noNewline: 1,
+  image: 19,
+  hunk: 1,
 };
+
+const onLine = 0.01;
+
+function inLines(height: number, lineHeight: number): number {
+  return Math.max(0, Math.ceil(height / lineHeight - onLine)) * lineHeight;
+}
 
 const measuredEstimates: Record<MeasuredKind, number> = {
   error: 200,
@@ -427,17 +435,22 @@ function measuresOf(
           : lineHeight;
       }
       const kind = row.kind;
-      return isMeasured(kind) ? measuredEstimates[kind] : rowHeights[kind];
+      return isMeasured(kind)
+        ? inLines(measuredEstimates[kind], lineHeight)
+        : rowLines[kind] * lineHeight;
     },
     getItemKey: (index) => {
       const key = diffRowKey(rows[index], index);
       return columns && isCode(rows[index]) ? `${key}:${generation}` : key;
     },
     measureElement: (element, entry) =>
-      Math.round(
-        (entry?.borderBoxSize[0]?.blockSize ??
-          element.getBoundingClientRect().height) * ratio,
-      ) / ratio,
+      inLines(
+        Math.round(
+          (entry?.borderBoxSize[0]?.blockSize ??
+            element.getBoundingClientRect().height) * ratio,
+        ) / ratio,
+        lineHeight,
+      ),
     columns,
     lineHeight,
     ratio,
@@ -590,7 +603,7 @@ export function rowHeight(
     return wrap ? undefined : lineHeight;
   }
   const kind = row.kind;
-  return isMeasured(kind) ? undefined : rowHeights[kind];
+  return isMeasured(kind) ? undefined : rowLines[kind] * lineHeight;
 }
 
 function changeOf(row: DiffRow): 'added' | 'removed' | undefined {
@@ -740,7 +753,7 @@ export function diffRowPlace(
 }
 
 export const layoutVariables: React.CSSProperties = {
-  '--diff-file-height': `${rowHeights.file}px`,
+  '--diff-file-height': 'var(--diff-line-height)',
   '--diff-tab-size': String(tabSize),
   '--diff-number-width': `${numberWidth}px`,
   '--diff-code-padding': `${codePadding}px`,
@@ -988,7 +1001,7 @@ export function changeStarts(rows: readonly DiffRow[]): number[] {
 }
 
 export function changeMargin(lineHeight: number): number {
-  return rowHeights.file + 2 * lineHeight;
+  return (rowLines.file + 2) * lineHeight;
 }
 
 export function changeScrollTop(
@@ -2114,6 +2127,29 @@ export function DiffView({
     overscan: 30,
   });
 
+  const [viewportHeight, setViewportHeight] = useState(0);
+  const endPadding = rowPadding(viewportHeight, lineHeight);
+  const lineOf = useEffectEvent(() => lineHeight);
+  const totalOf = useEffectEvent(() => virtualizer.getTotalSize());
+  useEffect(() => {
+    const element = list.current;
+    if (!element) {
+      return undefined;
+    }
+    const viewport = () => element.getBoundingClientRect().height;
+    const stop = followRows(element, lineOf, {
+      limit: () => totalOf() + rowPadding(viewport(), lineOf()) - viewport(),
+    });
+    const measure = () => setViewportHeight(viewport());
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => {
+      stop();
+      observer.disconnect();
+    };
+  }, []);
+
   const toggle = (path: string, open: boolean) =>
     setToggled((all) => new Map(all).set(path, !open));
 
@@ -2730,7 +2766,7 @@ export function DiffView({
         )}
         <div
           className="virtual-spacer"
-          style={{ height: virtualizer.getTotalSize() }}
+          style={{ height: virtualizer.getTotalSize() + endPadding }}
         >
           <TextProbe onMeasure={measureText} />
           {wordWrap && (

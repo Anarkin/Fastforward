@@ -444,7 +444,7 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
   box-sizing: border-box;
   height: var(--diff-file-height);
   gap: 8px;
-  padding: 4px calc(8px + var(--minimap-width)) 4px 8px;
+  padding: 0 calc(8px + var(--minimap-width)) 0 8px;
   --button-background: var(--color-panel-background);
   background: var(--color-border);
   border-bottom: 1px solid var(--color-border);
@@ -638,8 +638,8 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
 
 .file-header .file-header-button {
   width: 22px;
-  height: 18px;
-  margin: -2px 0;
+  height: calc(var(--diff-file-height) - 2px);
+  margin: 0;
   border-radius: 9px;
 }
 

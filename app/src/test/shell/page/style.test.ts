@@ -2594,17 +2594,9 @@ suite('Style', () => {
       `calc(${padding.left} + var(--minimap-width))`,
     );
     looks(header, { height: 'var(--diff-file-height)' });
-    assert.ok(
-      parseFloat(
-        cascaded(withClass(header, 'file-header-button'), 'height') ?? '',
-      ) <=
-        (rowHeight({
-          kind: 'file',
-          file: 0,
-          path: 'v.svg',
-          open: true,
-          collapsible: true,
-        }) ?? 0),
+    assert.strictEqual(
+      cascaded(withClass(header, 'file-header-button'), 'height'),
+      'calc(var(--diff-file-height) - 2px)',
     );
     const end = withClass(header, 'file-header-end');
     assert.ok(
