@@ -72,8 +72,10 @@ export function ToolViews({
   closeMenu,
   onNewTabItems,
   onTitle,
+  comparing,
 }: {
   active: ToolId | undefined;
+  comparing: string | undefined;
   post: (message: ToHost) => void;
   listeners: ToolListeners;
   showMenu: (menu: OpenMenu) => void;
@@ -166,6 +168,7 @@ export function ToolViews({
         onNewTabItems={gitItems}
         onTitle={gitTitle}
         onClose={closeTab}
+        comparing={comparing}
       />
     </>
   );

@@ -453,6 +453,7 @@ export function App({ name, post, listen }: Props) {
       <DateFormat value={dateFormat}>
         <ToolViews
           active={activeTool}
+          comparing={activeTab?.compare === true ? activeTab.id : undefined}
           post={post}
           listeners={listeners}
           showMenu={showMenu}

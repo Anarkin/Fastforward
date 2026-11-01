@@ -757,6 +757,25 @@ suite('App commander', () => {
       'both files to be marked',
     );
 
+    await page.evaluate(() => {
+      const watched = window as typeof window & { repositoryShown?: boolean };
+      watched.repositoryShown = false;
+      const check = () => {
+        const comparing = document
+          .querySelector('.tabs .tab.active')
+          ?.textContent?.includes('↔');
+        const repository = document.querySelector<HTMLElement>(
+          '.repository:not(.compare-view)',
+        );
+        if (comparing && repository && repository.offsetParent !== null) {
+          watched.repositoryShown = true;
+        }
+        if (document.querySelector('.compare-view .diff-line.added') === null) {
+          requestAnimationFrame(check);
+        }
+      };
+      requestAnimationFrame(check);
+    });
     await page.keyboard.press('Shift+F3');
     await page
       .locator('.tabs .tab.active', { hasText: 'after.txt ↔ before.txt' })
@@ -767,6 +786,15 @@ suite('App commander', () => {
           await page.locator('.compare-view .diff-line.added').allTextContents()
         ).some((line) => line.includes('two')),
       'the diff of the two files',
+    );
+    assert.strictEqual(
+      await page.evaluate(
+        () =>
+          (window as typeof window & { repositoryShown?: boolean })
+            .repositoryShown,
+      ),
+      false,
+      'The commit list showed before the comparison',
     );
 
     await page.keyboard.press('F1');

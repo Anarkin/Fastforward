@@ -102,6 +102,7 @@ export interface GitToolProps {
   onNewTabItems: (items: readonly ContextMenuItem[]) => void;
   onTitle: (title: string | undefined) => void;
   onClose: (tab: string) => void;
+  comparing: string | undefined;
 }
 
 export function GitTool({
@@ -113,20 +114,23 @@ export function GitTool({
   onNewTabItems,
   onTitle,
   onClose,
+  comparing,
 }: GitToolProps) {
   const outbox = useMemo(() => settling(postToHost), [postToHost]);
   const post = outbox.send;
   const [worktrees, setWorktrees] = useState<readonly WorktreeInfo[]>();
   const [compare, setCompare] = useState<CompareViewOf>();
-  const repositoryShown = active && compare === undefined;
+  const repositoryShown = active && comparing === undefined;
+  const shownCompare =
+    compare !== undefined && compare.tab === comparing ? compare : undefined;
   useBinding(
     compareKeymap.closeCompare,
     () => {
-      if (compare !== undefined) {
-        onClose(compare.tab);
+      if (comparing !== undefined) {
+        onClose(comparing);
       }
     },
-    active && compare !== undefined,
+    active && comparing !== undefined,
   );
   const [recent, setRecent] = useState<readonly RepositoryInfo[]>([]);
   const [initAsked, setInitAsked] = useState<GitToWebviewOf<'confirmInit'>>();
@@ -268,7 +272,7 @@ export function GitTool({
   useBinding(
     gitKeymap.find,
     () => {
-      if (compare !== undefined) {
+      if (comparing !== undefined) {
         setSearchAsks((asks) => ({ ...asks, diff: asks.diff + 1 }));
         return;
       }
@@ -803,9 +807,9 @@ export function GitTool({
               <HideDimmedButtons.Provider value={hideDimmed}>
                 <DetachedHead.Provider value={detached}>
                   <BookmarkedCommits.Provider value={bookmarked}>
-                    {compare !== undefined ? (
+                    {comparing !== undefined ? (
                       <CompareView
-                        compare={compare}
+                        compare={shownCompare}
                         pinned={entireFilePinned}
                         layout={diffLayout}
                         wordWrap={wordWrap}

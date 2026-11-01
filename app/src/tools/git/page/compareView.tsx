@@ -29,7 +29,7 @@ export function CompareView({
   onShowWhitespace,
   onIgnoreWhitespace,
 }: {
-  compare: Compared;
+  compare: Compared | undefined;
   pinned: boolean;
   layout: DiffLayout;
   wordWrap: boolean;
@@ -47,22 +47,22 @@ export function CompareView({
     <div className="repository compare-view">
       <div className="columns compare-columns">
         <Diff
-          selection={`${compare.old}\n${compare.new}`}
+          selection={`${compare?.old}\n${compare?.new}`}
           path={undefined}
-          loading={false}
+          loading={compare === undefined}
           files={noFiles}
-          patch={compare.patch}
+          patch={compare?.patch ?? ''}
           leftOut={noLeftOut}
           whitespaceOnly={noPaths}
-          diffs={compare.version}
+          diffs={compare?.version ?? 0}
           largeFiles={noLargeFiles}
           onLoadFile={ignored}
           texts={noTexts}
           onLoadTexts={ignored}
           fileContent={undefined}
-          error={compare.error}
-          changeMarks={compare.entire}
-          entire={compare.entire}
+          error={compare?.error}
+          changeMarks={compare?.entire ?? false}
+          entire={compare?.entire ?? false}
           sideBySide={layout === 'sideBySide'}
           wordWrap={wordWrap}
           showWhitespace={showWhitespace}
@@ -71,7 +71,7 @@ export function CompareView({
           filter={undefined}
           options={
             <DiffOptions
-              entire={compare.entire && !pinned}
+              entire={compare?.entire === true && !pinned}
               pinned={pinned}
               canShow
               onEntire={onEntire}
