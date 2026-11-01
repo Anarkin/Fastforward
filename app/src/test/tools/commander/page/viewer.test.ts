@@ -2,9 +2,10 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
   scrolled,
-  thumbOf,
+  textThumb,
   topWithin,
-} from '../../../../tools/commander/page/viewer';
+} from '../../../../tools/commander/page/textBody';
+import { thumbBox } from '../../../../tools/commander/page/scrollBody';
 
 const rows = (count: number, length = 10) =>
   Array.from({ length: count }, (_, index) => ({
@@ -21,26 +22,26 @@ suite('Commander viewer', () => {
     assert.strictEqual(topWithin(4, 10, 20), 0);
   });
 
-  test('sizes and places the thumb by the bytes on screen and before it, never smaller than it can be grabbed', () => {
-    const loaded = { rows: rows(100), top: 0 };
-    assert.deepStrictEqual(thumbOf(loaded, 10, 1000, 500), {
-      top: 0,
+  test('sizes the thumb by the share of the bytes on screen, and places it by the share of the bytes before them', () => {
+    assert.deepStrictEqual(textThumb({ rows: rows(100), top: 0 }, 10, 1000), {
+      start: 0,
+      length: 0.1,
+    });
+    assert.deepStrictEqual(textThumb({ rows: rows(100), top: 90 }, 10, 1000), {
+      start: 1,
+      length: 0.1,
+    });
+    assert.strictEqual(textThumb({ rows: [], top: 0 }, 10, 0), undefined);
+  });
+
+  test('draws the thumb never smaller than it can be grabbed, in the room the track leaves it', () => {
+    assert.deepStrictEqual(thumbBox({ start: 0.5, length: 0.1 }, 500), {
+      top: 225,
       height: 50,
     });
-    assert.deepStrictEqual(
-      thumbOf({ rows: rows(100), top: 90 }, 10, 1000, 500),
-      {
-        top: 450,
-        height: 50,
-      },
-    );
-    assert.strictEqual(
-      thumbOf({ rows: rows(10), top: 0 }, 10, 1_000_000_000, 500).height,
-      24,
-    );
-    assert.deepStrictEqual(thumbOf({ rows: [], top: 0 }, 10, 0, 500), {
-      top: 0,
-      height: 500,
+    assert.deepStrictEqual(thumbBox({ start: 1, length: 1e-9 }, 500), {
+      top: 476,
+      height: 24,
     });
   });
 

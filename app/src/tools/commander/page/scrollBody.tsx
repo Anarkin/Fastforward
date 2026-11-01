@@ -1,0 +1,169 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { listMoveOf } from '../../../ui/listMoves';
+import { followDrag } from '../../../ui/followDrag';
+import {
+  hideAfter,
+  overlayScrollbarClass,
+} from '../../../ui/overlayScrollbars';
+
+export interface Thumb {
+  readonly start: number;
+  readonly length: number;
+}
+
+const minThumb = 24;
+
+export function thumbBox(
+  thumb: Thumb,
+  track: number,
+): { readonly top: number; readonly height: number } {
+  const height = Math.min(track, Math.max(minThumb, thumb.length * track));
+  return { top: thumb.start * (track - height), height };
+}
+
+export function ScrollBody({
+  thumb,
+  onScreen,
+  move,
+  jump,
+  error,
+  children,
+}: {
+  thumb: Thumb | undefined;
+  onScreen: (screen: number) => void;
+  move: (by: number) => void;
+  jump: (share: number) => void;
+  error: string | undefined;
+  children: React.ReactNode;
+}) {
+  const body = useRef<HTMLDivElement>(null);
+  const probe = useRef<HTMLDivElement>(null);
+  const [track, setTrack] = useState(0);
+  const [screen, setScreen] = useState(1);
+  const wheel = useRef(0);
+  const [barShown, setBarShown] = useState(false);
+  const [heldAt, setHeldAt] = useState<number>();
+  const hiding = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const showBar = useCallback(() => {
+    clearTimeout(hiding.current);
+    setBarShown(true);
+    hiding.current = setTimeout(() => setBarShown(false), hideAfter);
+  }, []);
+  useEffect(() => () => clearTimeout(hiding.current), []);
+  useEffect(() => body.current?.focus(), []);
+
+  useEffect(() => {
+    const element = body.current;
+    const row = probe.current;
+    if (!element || !row) {
+      return undefined;
+    }
+    const measure = () => {
+      const height = row.getBoundingClientRect().height || 1;
+      const rows = Math.max(1, Math.floor(element.clientHeight / height));
+      setScreen(rows);
+      onScreen(rows);
+      setTrack(element.clientHeight);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [onScreen]);
+
+  const moved = (by: number) => {
+    showBar();
+    move(by);
+  };
+  const box = thumb && thumbBox(thumb, track);
+  const dragging = heldAt !== undefined;
+
+  return (
+    <div
+      className="column-body viewer-body"
+      ref={body}
+      tabIndex={0}
+      data-column-focus=""
+      onPointerMove={showBar}
+      onWheel={(event) => {
+        wheel.current += event.deltaY;
+        const height = probe.current?.getBoundingClientRect().height ?? 1;
+        const rows = Math.trunc(wheel.current / height);
+        if (rows !== 0) {
+          wheel.current -= rows * height;
+          moved(rows);
+        }
+      }}
+      onKeyDown={(event) => {
+        const step = listMoveOf(event);
+        if (step === undefined) {
+          return;
+        }
+        event.preventDefault();
+        switch (step) {
+          case 'up':
+            moved(-1);
+            return;
+          case 'down':
+            moved(1);
+            return;
+          case 'pageUp':
+            moved(-Math.max(1, screen - 1));
+            return;
+          case 'pageDown':
+            moved(Math.max(1, screen - 1));
+            return;
+          case 'first':
+            jump(0);
+            return;
+          case 'last':
+            jump(1);
+            return;
+          default:
+            step satisfies never;
+        }
+      }}
+    >
+      <div className="viewer-row commander-viewer-probe" ref={probe} />
+      {error === undefined ? (
+        <div className="viewer-rows">{children}</div>
+      ) : (
+        <div className="viewer-error">{error}</div>
+      )}
+      {box !== undefined && (
+        <div
+          className="viewer-scrollbar"
+          onPointerDown={(event) => {
+            event.preventDefault();
+            const bar = event.currentTarget.getBoundingClientRect();
+            const at = (clientY: number) => {
+              const share =
+                Math.min(Math.max(clientY - bar.top, 0), bar.height) /
+                Math.max(1, bar.height);
+              setHeldAt(share);
+              jump(share);
+            };
+            at(event.clientY);
+            followDrag(
+              window,
+              (pointer: PointerEvent) => at(pointer.clientY),
+              () => {
+                setHeldAt(undefined);
+                showBar();
+              },
+            );
+          }}
+        >
+          <div
+            className={`${overlayScrollbarClass} viewer-thumb${barShown || dragging ? ' shown' : ''}${dragging ? ' dragging' : ''}`}
+            style={{
+              top:
+                heldAt === undefined ? box.top : heldAt * (track - box.height),
+              height: box.height,
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}

@@ -1567,6 +1567,38 @@ body.resizing {
   opacity: var(--muted-opacity);
 }
 
+.segmented {
+  display: flex;
+  gap: 2px;
+  border-radius: 13px;
+  background: var(--button-background);
+}
+
+.column-actions {
+  position: absolute;
+  top: 0;
+  right: 4px;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  text-align: left;
+}
+
+.segmented > .nav-button {
+  background: none;
+}
+
+.segmented > .nav-button:hover:not(:disabled) {
+  background: var(--color-panel-background);
+}
+
+.segmented > .nav-button.toggle.active {
+  background:
+    linear-gradient(var(--toggle-on-background), var(--toggle-on-background)),
+    var(--color-panel-background);
+}
+
 .nav-button.running {
   opacity: 1;
 }

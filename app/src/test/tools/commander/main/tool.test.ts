@@ -24,7 +24,10 @@ import {
   viewerIconUrl,
 } from '../../../../tools/commander/shared/icons';
 import type { ElevatedFileSystem } from '../../../../tools/commander/main/elevated';
-import { maxColoredBytes } from '../../../../tools/commander/shared/protocol';
+import {
+  maxBytesAsked,
+  maxColoredBytes,
+} from '../../../../tools/commander/shared/protocol';
 import { strings } from '../../../../shared/strings';
 import { removeFolder, tempFolder } from '../../../repositories';
 import { waitFor } from '../../../fixtures';
@@ -266,7 +269,7 @@ suite('Commander tool', () => {
       };
       await tool.show(page, viewing);
       assert.deepStrictEqual(page.of('viewing'), [
-        { type: 'viewing', tab: '3', size: 19 },
+        { type: 'viewing', tab: '3', size: 19, binary: false },
       ]);
 
       await send({
@@ -306,6 +309,47 @@ suite('Commander tool', () => {
         });
       }
       assert.strictEqual(page.of('rows').length, 1);
+    });
+
+    test('tells whether a file viewed is binary and sends the bytes asked for, answering each request by its number', async () => {
+      const data = path.join(opened, 'data.bin');
+      fs.writeFileSync(data, Buffer.from([1, 0, 2, 3, 4, 5]));
+      const { tool, page, send } = commander({});
+      await tool.show(page, {
+        id: '3',
+        tool: 'commander',
+        root: data,
+        view: true,
+      });
+      assert.strictEqual(page.of('viewing').at(-1)?.binary, true);
+
+      await send({
+        type: 'readBytes',
+        tab: '3',
+        request: 9,
+        start: 2,
+        length: 16,
+      });
+      assert.deepStrictEqual(page.of('bytes'), [
+        { type: 'bytes', tab: '3', request: 9, start: 2, data: [2, 3, 4, 5] },
+      ]);
+
+      for (const bad of [
+        { tab: '4' },
+        { start: -1 },
+        { start: 0.5 },
+        { length: maxBytesAsked + 1 },
+      ]) {
+        await send({
+          type: 'readBytes',
+          tab: '3',
+          request: 10,
+          start: 0,
+          length: 16,
+          ...bad,
+        });
+      }
+      assert.strictEqual(page.of('bytes').length, 1);
     });
 
     test('sends the whole text of a file viewed for its colors, only up to the size colored', async () => {

@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import {
   blockCache,
+  looksBinary,
   readingFile,
   rowBytes,
   rowStartAt,
@@ -136,6 +137,17 @@ suite('Rows of text of a file', () => {
     cache.forget();
     await rowsBefore(cached, size, start, 100);
     assert.ok(reads.length > 0 && reads.length <= 3, String(reads.length));
+  });
+
+  test('takes a file for binary as git does, when its first 8000 bytes hold a NUL', () => {
+    assert.strictEqual(looksBinary(Buffer.from('text, é')), false);
+    assert.strictEqual(
+      looksBinary(Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x00])),
+      true,
+    );
+    const late = Buffer.alloc(9000, 0x41);
+    late[8500] = 0;
+    assert.strictEqual(looksBinary(late), false);
   });
 
   test('reads a file on disk', async () => {

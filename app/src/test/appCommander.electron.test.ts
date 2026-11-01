@@ -469,6 +469,70 @@ suite('App commander', () => {
     }, 'the files to be gone from the list');
   });
 
+  test('shows a binary file in hex, 16 bytes a row, to its last row with End, and switches to text and back with 1 and 2 or the buttons', async () => {
+    fs.writeFileSync(
+      path.join(opened, 'data.bin'),
+      Buffer.from(Array.from({ length: 65536 }, (_, index) => index % 256)),
+    );
+    await select('data');
+    await page.keyboard.press('F3');
+    const firstRow = () =>
+      page.locator('.viewer-rows .viewer-row').first().textContent();
+    await waitFor(
+      async () =>
+        (await firstRow()) ===
+        '0000000000 01 02 03 04 05 06 07  08 09 0A 0B 0C 0D 0E 0F................',
+      'the first row in hex',
+    );
+    const pressedMode = () =>
+      page
+        .locator('.viewer .segmented [aria-pressed="true"]')
+        .getAttribute('title');
+    assert.strictEqual(await pressedMode(), 'Hex');
+
+    await page.keyboard.press('End');
+    await waitFor(
+      async () =>
+        (
+          (await page
+            .locator('.viewer-rows .viewer-row')
+            .last()
+            .textContent()) ?? ''
+        ).startsWith('0000FFF0F0 F1'),
+      'the last row',
+    );
+
+    await page.keyboard.press('1');
+    await waitFor(
+      async () => (await pressedMode()) === 'Text',
+      'the text view',
+    );
+    await page.keyboard.press('2');
+    await waitFor(async () => (await pressedMode()) === 'Hex', 'the hex view');
+    await page.locator('.viewer .segmented [title="Text"]').click();
+    await waitFor(
+      async () => (await pressedMode()) === 'Text',
+      'the text view',
+    );
+    await waitForFocus(page.locator('.viewer-body'), 'the viewer');
+    await page.keyboard.press('Escape');
+    await page.locator('.viewer').waitFor({ state: 'detached' });
+
+    fs.writeFileSync(path.join(opened, 'plain.txt'), 'plain');
+    await select('plain');
+    await page.keyboard.press('F3');
+    await waitFor(async () => (await firstRow()) === 'plain', 'the text');
+    assert.strictEqual(await pressedMode(), 'Text');
+    await page.keyboard.press('Escape');
+    await page.locator('.viewer').waitFor({ state: 'detached' });
+    fs.rmSync(path.join(opened, 'data.bin'));
+    fs.rmSync(path.join(opened, 'plain.txt'));
+    await waitFor(async () => {
+      const names = await rowNames();
+      return !names.includes('data.bin') && !names.includes('plain.txt');
+    }, 'the files to be gone from the list');
+  });
+
   test.skipIf(process.platform !== 'win32')(
     'opens the drive menu of the right side with Alt+F2 and changes the drive by its letter',
     async () => {

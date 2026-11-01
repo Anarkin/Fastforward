@@ -306,6 +306,22 @@ export function PreviewIcon() {
   );
 }
 
+export function TextIcon() {
+  return (
+    <Icon>
+      <path d="M3 4h10M3 7h10M3 10h10M3 13h6" />
+    </Icon>
+  );
+}
+
+export function HexIcon() {
+  return (
+    <Icon>
+      <path d="M2.5 5.5h11M2.5 10.5h11M5.5 2.5v11M10.5 2.5v11" />
+    </Icon>
+  );
+}
+
 export function InlineIcon() {
   return (
     <Icon>

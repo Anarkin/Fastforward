@@ -85,9 +85,14 @@ export function CommanderTool({
           setViewed({
             tab: message.tab,
             size: message.size,
+            ...(message.binary !== undefined && { binary: message.binary }),
             ...(message.error !== undefined && { error: message.error }),
           });
-        } else if (message.type === 'rows' || message.type === 'text') {
+        } else if (
+          message.type === 'rows' ||
+          message.type === 'text' ||
+          message.type === 'bytes'
+        ) {
           for (const handler of viewerListeners.current) {
             handler(message);
           }

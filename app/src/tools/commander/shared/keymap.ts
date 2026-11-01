@@ -3,6 +3,8 @@ import { strings } from '../../../shared/strings';
 
 export const commanderGroups = ['Commander'] as const;
 
+export type ViewMode = 'text' | 'hex';
+
 export const commanderKeymap = {
   side: bind('Commander', strings.actions.side, {
     Tab: true,
@@ -23,6 +25,10 @@ export const commanderKeymap = {
   view: bind('Commander', strings.actions.viewFile, { F3: true }),
   closeViewer: bind('Commander', strings.actions.closeViewer, {
     Escape: true,
+  }),
+  viewAs: bind<ViewMode>('Commander', strings.actions.viewAs, {
+    '1': 'text',
+    '2': 'hex',
   }),
   reread: bind('Commander', strings.actions.reread, {
     F2: true,

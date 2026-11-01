@@ -158,6 +158,16 @@ export async function rowsBefore(
   return rows;
 }
 
+const binaryCheckBytes = 8000;
+
+export function looksBinary(bytes: Buffer): boolean {
+  return bytes.subarray(0, binaryCheckBytes).includes(0);
+}
+
+export async function firstBytes(file: string): Promise<Buffer> {
+  return readingFile(file, (read) => read(0, binaryCheckBytes));
+}
+
 export async function readingFile<T>(
   file: string,
   withRead: (read: ReadBytes) => Promise<T>,

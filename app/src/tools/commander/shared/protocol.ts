@@ -10,6 +10,8 @@ export const maxRowsAsked = 1000;
 
 export const maxColoredBytes = 1024 * 1024;
 
+export const maxBytesAsked = 64 * 1024;
+
 export interface Entry {
   readonly name: string;
   readonly folder: boolean;
@@ -43,6 +45,13 @@ export type CommanderToHost =
       readonly drive: string;
     }
   | { readonly type: 'listDrives' }
+  | {
+      readonly type: 'readBytes';
+      readonly tab: string;
+      readonly request: number;
+      readonly start: number;
+      readonly length: number;
+    }
   | {
       readonly type: 'readText';
       readonly tab: string;
@@ -99,7 +108,15 @@ export type CommanderToWebview =
       readonly type: 'viewing';
       readonly tab: string;
       readonly size: number | undefined;
+      readonly binary?: boolean;
       readonly error?: string;
+    }
+  | {
+      readonly type: 'bytes';
+      readonly tab: string;
+      readonly request: number;
+      readonly start: number;
+      readonly data: readonly number[];
     }
   | {
       readonly type: 'text';

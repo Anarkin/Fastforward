@@ -11,6 +11,7 @@ import {
 } from '../../../shell/main/shell';
 import {
   isSide,
+  maxBytesAsked,
   maxColoredBytes,
   maxRowsAsked,
   parentFolder,
@@ -31,6 +32,8 @@ import type { FileSystem } from './fileSystem';
 import type { WatchFolder } from './watch';
 import {
   blockCache,
+  firstBytes,
+  looksBinary,
   readingFile,
   type BlockCache,
   rowsBefore,
@@ -161,6 +164,7 @@ export class CommanderTool implements Tool<'commander'> {
         readonly tab: string;
         readonly file: string;
         size: number;
+        readonly binary: boolean;
         readonly blocks: BlockCache;
         readonly stop: () => void;
       }
@@ -238,6 +242,8 @@ export class CommanderTool implements Tool<'commander'> {
         return this.readRows(page, message);
       case 'readText':
         return this.readText(page, message);
+      case 'readBytes':
+        return this.readBytes(page, message);
       case 'reread': {
         const shown = this.shownPane(page, message.tab, message.side);
         return shown === undefined
@@ -464,8 +470,10 @@ export class CommanderTool implements Tool<'commander'> {
     file: string,
   ): Promise<void> {
     let size: number;
+    let binary: boolean;
     try {
       size = (await fs.promises.stat(file)).size;
+      binary = looksBinary(await firstBytes(file));
     } catch (error) {
       this.post(page, {
         type: 'viewing',
@@ -482,6 +490,7 @@ export class CommanderTool implements Tool<'commander'> {
       tab,
       file,
       size,
+      binary,
       blocks: blockCache(),
       stop: this.access.watch(file, () => {
         void fs.promises.stat(file).then(
@@ -489,7 +498,12 @@ export class CommanderTool implements Tool<'commander'> {
             if (this.viewing === viewing && this.shown?.tab === tab) {
               viewing.blocks.forget();
               viewing.size = stats.size;
-              this.post(page, { type: 'viewing', tab, size: stats.size });
+              this.post(page, {
+                type: 'viewing',
+                tab,
+                size: stats.size,
+                binary,
+              });
             }
           },
           () => undefined,
@@ -497,7 +511,42 @@ export class CommanderTool implements Tool<'commander'> {
       }),
     };
     this.viewing = viewing;
-    this.post(page, { type: 'viewing', tab, size });
+    this.post(page, { type: 'viewing', tab, size, binary });
+  }
+
+  private async readBytes(
+    page: Page,
+    message: Extract<CommanderToHost, { type: 'readBytes' }>,
+  ): Promise<void> {
+    const { viewing } = this;
+    const { tab, request, start, length } = message;
+    if (
+      viewing === undefined ||
+      this.shown?.page !== page ||
+      viewing.tab !== tab ||
+      !Number.isSafeInteger(request) ||
+      !Number.isSafeInteger(start) ||
+      start < 0 ||
+      !Number.isInteger(length) ||
+      length < 0 ||
+      length > maxBytesAsked
+    ) {
+      return;
+    }
+    const { blocks } = viewing;
+    try {
+      const data = await readingFile(viewing.file, (read) =>
+        blocks.reader(read)(start, length),
+      );
+      this.post(page, { type: 'bytes', tab, request, start, data: [...data] });
+    } catch (error) {
+      this.post(page, {
+        type: 'viewing',
+        tab,
+        size: undefined,
+        error: strings.commander.couldNotRead(viewing.file, reasonOf(error)),
+      });
+    }
   }
 
   private async readText(

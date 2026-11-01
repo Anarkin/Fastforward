@@ -233,3 +233,12 @@
 .viewer-row .syntax-comment {
   color: var(--color-syntax-comment);
 }
+
+.hex-offset {
+  color: var(--color-foreground-muted);
+}
+
+.hex-bytes,
+.hex-text {
+  margin-left: calc(var(--commander-advance) * 3);
+}
