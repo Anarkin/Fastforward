@@ -776,7 +776,7 @@ suite('App commander', () => {
       const check = () => {
         const comparing = document
           .querySelector('.tabs .tab.active')
-          ?.textContent?.includes('↔');
+          ?.textContent?.includes('→');
         const repository = document.querySelector<HTMLElement>(
           '.repository:not(.compare-view)',
         );
@@ -791,7 +791,7 @@ suite('App commander', () => {
     });
     await page.keyboard.press('Shift+F3');
     await page
-      .locator('.tabs .tab.active', { hasText: 'after.txt ↔ before.txt' })
+      .locator('.tabs .tab.active', { hasText: 'after.txt → before.txt' })
       .waitFor();
     await waitFor(
       async () =>
@@ -835,7 +835,7 @@ suite('App commander', () => {
       'the search to close',
     );
     assert.strictEqual(
-      await page.locator('.tabs .tab.active', { hasText: '↔' }).count(),
+      await page.locator('.tabs .tab.active', { hasText: '→' }).count(),
       1,
     );
     await page.keyboard.press('Escape');

@@ -565,7 +565,7 @@ export const strings = {
     noToolOpens: (folder: string) => `${folder} can't be opened`,
     noFolder: (tool: string) => `${tool} doesn't know which folder it's in`,
     notRepository: (root: string) => `${root} is not a git repository`,
-    compareTab: (old: string, changed: string) => `${old} ↔ ${changed}`,
+    compareTab: (old: string, changed: string) => `${old} → ${changed}`,
     compareTooLarge: (megabytes: number) =>
       `Files over ${megabytes} MB together are not compared.`,
     couldNotCompare: (old: string, changed: string, reason: string) =>
