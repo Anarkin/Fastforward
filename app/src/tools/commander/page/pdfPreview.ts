@@ -104,7 +104,11 @@ export function usePdfPreview(
       search: (next: string) => {
         setQuery(next);
         setFound(undefined);
-        shown.current?.find(next, 0);
+        if (next === '') {
+          shown.current?.closeFind();
+        } else {
+          shown.current?.find(next, 0);
+        }
       },
       step: (by: 1 | -1) => shown.current?.find(query, by),
     },

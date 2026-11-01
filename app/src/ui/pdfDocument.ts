@@ -29,6 +29,7 @@ export interface PdfFound {
 export interface ShownPdf {
   readonly fingerprint: string;
   readonly find: (query: string, step: 0 | 1 | -1) => void;
+  readonly closeFind: () => void;
   readonly zoomBy: (steps: number) => void;
   readonly tellPlace: () => void;
   readonly close: () => void;
@@ -190,6 +191,7 @@ export async function showPdf(
         findPrevious: step === -1,
         matchDiacritics: false,
       }),
+    closeFind: () => eventBus.dispatch('findbarclose', { source: null }),
     zoomBy: (steps) => viewer.updateScale({ steps }),
     tellPlace: () => {
       if (restored) {

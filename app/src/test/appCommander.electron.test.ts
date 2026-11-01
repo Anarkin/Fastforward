@@ -562,7 +562,22 @@ suite('App commander', () => {
           element.scrollTop = seventh.offsetTop + 20;
         }
       });
-      await waitFor(async () => (await shownPage()) === 7, 'page 7 shown');
+      const pdfState = () =>
+        scroller.evaluate((element) => ({
+          scrollTop: element.scrollTop,
+          seventh: [...element.querySelectorAll('.page')].map((each) =>
+            each instanceof HTMLElement ? each.offsetTop : -1,
+          )[6],
+          count: element.querySelectorAll('.page').length,
+        }));
+      await waitFor(
+        async () => (await shownPage()) === 7,
+        'page 7 shown',
+      ).catch(async (error: unknown) => {
+        throw new Error(
+          `${String(error)}: page ${await shownPage()} shown, ${JSON.stringify(await pdfState())}`,
+        );
+      });
       await scroller.focus();
       await page.keyboard.press('Escape');
       await page.locator('.viewer').waitFor({ state: 'detached' });
@@ -573,7 +588,11 @@ suite('App commander', () => {
       await waitFor(
         async () => (await shownPage()) === 7,
         'the PDF opened at page 7 again',
-      );
+      ).catch(async (error: unknown) => {
+        throw new Error(
+          `${String(error)}: page ${await shownPage()} shown, ${JSON.stringify(await pdfState())}, places ${fs.existsSync(path.join(profile, 'pdf-places.json')) ? fs.readFileSync(path.join(profile, 'pdf-places.json'), 'utf8') : 'none saved'}`,
+        );
+      });
     } finally {
       if (await page.locator('.viewer .find-field').isVisible()) {
         await page.keyboard.press('Escape');
