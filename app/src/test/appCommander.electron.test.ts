@@ -789,10 +789,12 @@ suite('App commander', () => {
       );
     await page.mouse.move(0, 0);
     await right().locator('.virtual-rows').focus();
+    await waitForFocus(right().locator('.virtual-rows'), 'the right side');
     const [leftSelected, rightSelected] = await backgrounds();
     assert.strictEqual(leftSelected, 'rgba(0, 0, 0, 0)');
     assert.notStrictEqual(rightSelected, 'rgba(0, 0, 0, 0)');
     await page.keyboard.press('Tab');
+    await waitForFocus(left.locator('.virtual-rows'), 'the left side');
     await waitFor(
       async () => (await backgrounds())[0] === rightSelected,
       'the left side to mark its selected row',
