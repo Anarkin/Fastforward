@@ -1040,6 +1040,63 @@ suite('App commander', () => {
     );
   });
 
+  test('scrolls the list by whole rows, with the wheel and the scrollbar alike', async () => {
+    const many = path.join(opened, 'many');
+    fs.mkdirSync(many);
+    for (let index = 0; index < 150; index++) {
+      fs.writeFileSync(path.join(many, `file${index}.txt`), '');
+    }
+    await select('many');
+    await page.keyboard.press('Enter');
+    await waitFor(
+      async () => (await rowNames()).includes('file10.txt'),
+      'the folder of many files',
+    );
+    const list = right().locator('.virtual-rows');
+    const offRow = () =>
+      list.evaluate((element) => {
+        const row =
+          element.querySelector('.commander-row')?.getBoundingClientRect()
+            .height ?? 1;
+        const rows = element.scrollTop / row;
+        return {
+          top: element.scrollTop,
+          off: Math.abs(rows - Math.round(rows)),
+        };
+      });
+
+    await list.hover();
+    await page.mouse.wheel(0, 30);
+    await waitFor(async () => (await offRow()).top > 0, 'the list to scroll');
+    assert.ok((await offRow()).off < 0.01, JSON.stringify(await offRow()));
+
+    await list.evaluate((element) => {
+      element.scrollTop = 25;
+    });
+    await waitFor(
+      async () => (await offRow()).off < 0.01,
+      'a place between rows to snap to a row',
+    );
+    await list.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
+    await waitFor(
+      async () => (await offRow()).top > 100 && (await offRow()).off < 0.01,
+      'the end of the list to start on a row',
+    );
+
+    await page.keyboard.press('Backspace');
+    await waitFor(
+      async () => (await rowNames()).includes('many'),
+      'the parent folder',
+    );
+    fs.rmSync(many, { recursive: true });
+    await waitFor(
+      async () => !(await rowNames()).includes('many'),
+      'the folder to be gone from the list',
+    );
+  });
+
   test.skipIf(process.platform !== 'win32')(
     'opens the drive menu of the right side with Alt+F2 and changes the drive by its letter',
     async () => {

@@ -1,8 +1,9 @@
 import { useVirtualizer, type Rect } from '@tanstack/react-virtual';
-import { useEffect, useEffectEvent, useId, useRef } from 'react';
+import { useEffect, useEffectEvent, useId, useRef, useState } from 'react';
 import { columnFocusAttribute } from './columnFocus';
 import { fullyVisible, type VisibleRows } from './listMoves';
 import { rowPlace } from './rowPlace';
+import { followRows, rowPadding } from './rowScroll';
 
 export const estimatedRowHeight = 22;
 
@@ -139,6 +140,7 @@ export function VirtualRows({
   initialRect,
   label,
   treeItemOf,
+  wholeRows = false,
 }: {
   rows: ListedRows;
   renderRow: (index: number) => React.ReactNode;
@@ -149,6 +151,7 @@ export function VirtualRows({
   initialRect?: Rect;
   label?: string;
   treeItemOf?: (index: number) => TreeItem;
+  wholeRows?: boolean;
 }) {
   const list = useRef<HTMLDivElement>(null);
   const listId = useId();
@@ -161,6 +164,26 @@ export function VirtualRows({
     overscan: 20,
     initialRect,
   });
+
+  const rowHeight = useEffectEvent(
+    () => virtualizer.measurementsCache[0]?.size ?? estimatedRowHeight,
+  );
+  const [padding, setPadding] = useState(0);
+  useEffect(() => {
+    const element = list.current;
+    if (!wholeRows || !element) {
+      return undefined;
+    }
+    const stop = followRows(element, rowHeight);
+    const pad = () => setPadding(rowPadding(element.clientHeight, rowHeight()));
+    pad();
+    const observer = new ResizeObserver(pad);
+    observer.observe(element);
+    return () => {
+      stop();
+      observer.disconnect();
+    };
+  }, [wholeRows]);
 
   const heightOf = (index: number) => {
     const row = virtualizer.measurementsCache[index];
@@ -241,7 +264,7 @@ export function VirtualRows({
     >
       <div
         className="virtual-spacer"
-        style={{ height: virtualizer.getTotalSize() }}
+        style={{ height: virtualizer.getTotalSize() + padding }}
       >
         {pinned.length > 0 && (
           <div className="pinned-rows">

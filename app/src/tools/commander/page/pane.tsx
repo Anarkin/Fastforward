@@ -252,6 +252,7 @@ export function Pane({
           renderRow={renderRow}
           selectedKey={pane?.selected}
           label={strings.commander.sides[side]}
+          wholeRows
           onKeyDown={(event, visible) => {
             if (keyPressed(commanderKeymap.side, event) !== undefined) {
               event.preventDefault();
