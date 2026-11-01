@@ -58,7 +58,7 @@ suite('Release build', { timeout: 30_000 }, () => {
     );
   });
 
-  test('loads the grammars, the WebAssembly of the Oniguruma engine, markdown-it, DOMPurify, Mermaid and xterm.js only once a file, preview or terminal needs them', async () => {
+  test('loads the grammars, the WebAssembly of the Oniguruma engine, markdown-it, DOMPurify, Mermaid, xterm.js and PDF.js only once a file, preview or terminal needs them', async () => {
     const { outputs } = (await releaseBuild('webviewOptions')).metafile;
     const loaded = new Set<string>();
     const load = (output: string) => {
@@ -83,6 +83,7 @@ suite('Release build', { timeout: 30_000 }, () => {
       '@xterm/addon-fit/',
       '@xterm/addon-webgl/',
       '@xterm/addon-unicode11/',
+      'pdfjs-dist/',
     ];
     const bundled = (files: Iterable<string>) =>
       lazy.filter((name) =>

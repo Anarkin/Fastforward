@@ -323,6 +323,10 @@ export function newView(
         },
       ),
       commander: new CommanderTool({
+        pdfPlaces: {
+          of: () => Promise.resolve(undefined),
+          save: () => Promise.resolve(),
+        },
         fileSystem: () => Promise.resolve(nodeFileSystem),
         codePage: () => Promise.resolve('windows-1252'),
         settings: () => settings.settings.tools.commander,

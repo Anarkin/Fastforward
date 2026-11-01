@@ -33,6 +33,7 @@ import {
 import { strings } from '../../../../shared/strings';
 import { maxImageSize } from '../../../../shared/images';
 import { viewedFileUrl } from '../../../../tools/commander/shared/files';
+import type { PdfPlace } from '../../../../shared/pdf';
 import { removeFolder, tempFolder } from '../../../repositories';
 import { waitFor } from '../../../fixtures';
 
@@ -114,7 +115,15 @@ function commander(
     },
     drives: () => Promise.resolve(drives),
   };
+  const places = new Map<string, { place: PdfPlace; file: string }>();
   const tool = new CommanderTool({
+    pdfPlaces: {
+      of: (fingerprint) => Promise.resolve(places.get(fingerprint)?.place),
+      save: (fingerprint, place, viewed) => {
+        places.set(fingerprint, { place, file: viewed });
+        return Promise.resolve();
+      },
+    },
     fileSystem: () => Promise.resolve(fileSystem),
     settings: () => settings,
     defaultColumns: () => defaultColumns,
@@ -523,7 +532,10 @@ suite('Commander tool', () => {
         { id: '4', tool: 'commander', root },
       );
       const served = (viewer: string, image: string) =>
-        tool.file(new URL(`fastforward://app${viewedFileUrl(viewer, image)}`));
+        tool.file(
+          new URL(`fastforward://app${viewedFileUrl(viewer, image)}`),
+          null,
+        );
 
       const image = await served('3', picture);
       assert.strictEqual(image.status, 200);
@@ -543,6 +555,171 @@ suite('Commander tool', () => {
         404,
       );
       assert.strictEqual((await served('3', large)).status, 413);
+    });
+
+    test('serves a PDF only to the tab viewing it, by the ranges of bytes asked for, whatever its size', async () => {
+      const { tool, tabs } = commander({});
+      const book = path.join(opened, 'book.pdf');
+      const other = path.join(opened, 'other.pdf');
+      fs.writeFileSync(book, '%PDF-1.7 book');
+      fs.writeFileSync(other, '%PDF-1.7 other');
+      tabs.push({ id: '3', tool: 'commander', root: book, view: true });
+      const served = (pdf: string, range?: string) =>
+        tool.file(
+          new URL(`fastforward://app${viewedFileUrl('3', pdf)}`),
+          range ?? null,
+        );
+
+      const whole = await served(book);
+      assert.strictEqual(whole.status, 200);
+      assert.strictEqual(whole.headers.get('content-type'), 'application/pdf');
+      assert.strictEqual(whole.headers.get('accept-ranges'), 'bytes');
+      assert.strictEqual(await whole.text(), '%PDF-1.7 book');
+      const part = await served(book, 'bytes=0-3');
+      assert.strictEqual(part.status, 206);
+      assert.strictEqual(await part.text(), '%PDF');
+      assert.strictEqual((await served(other)).status, 404);
+    });
+
+    test('remembers the place in a PDF viewed by its ID, and tells it again once asked, checking what the page sends', async () => {
+      const book = path.join(opened, 'book.pdf');
+      fs.writeFileSync(book, '%PDF-1.7');
+      const { tool, page, send } = commander({});
+      await tool.show(page, {
+        id: '3',
+        tool: 'commander',
+        root: book,
+        view: true,
+      });
+      const place = {
+        page: 12,
+        zoom: 'page-width',
+        left: 0,
+        top: 400,
+      } as const;
+
+      await send({
+        type: 'savePdfPlace',
+        tab: '3',
+        fingerprint: 'ab12',
+        place,
+      });
+      await send({
+        type: 'readPdfPlace',
+        tab: '3',
+        fingerprint: 'ab12',
+        request: 4,
+      });
+      await send({
+        type: 'readPdfPlace',
+        tab: '3',
+        fingerprint: 'cd34',
+        request: 5,
+      });
+
+      assert.deepStrictEqual(page.of('pdfPlace'), [
+        { type: 'pdfPlace', tab: '3', request: 4, place },
+        { type: 'pdfPlace', tab: '3', request: 5 },
+      ]);
+      for (const bad of [
+        { tab: '4' },
+        { fingerprint: '../places' },
+        { place: { ...place, page: 0 } },
+      ]) {
+        await send({
+          type: 'savePdfPlace',
+          tab: '3',
+          fingerprint: 'ab12',
+          place: { ...place, page: 99 },
+          ...bad,
+        });
+      }
+      await send(
+        forged(
+          '{ "type": "savePdfPlace", "tab": "3", "fingerprint": "ab12", "place": "page=99" }',
+        ),
+      );
+      await send({
+        type: 'readPdfPlace',
+        tab: '3',
+        fingerprint: 'ab12',
+        request: 6,
+      });
+      assert.deepStrictEqual(page.of('pdfPlace').at(-1), {
+        type: 'pdfPlace',
+        tab: '3',
+        request: 6,
+        place,
+      });
+    });
+
+    test('remembers the last place in a PDF the page sends as its viewer closes, for the file that tab viewed', async () => {
+      const book = path.join(opened, 'book.pdf');
+      fs.writeFileSync(book, '%PDF-1.7');
+      const { tool, page, send } = commander({});
+      const viewer: Tab = {
+        id: '3',
+        tool: 'commander',
+        root: book,
+        view: true,
+      };
+      await tool.show(page, viewer);
+      const place = { page: 40, zoom: 'auto', left: 0, top: 0 } as const;
+
+      tool.closed(page, viewer);
+      await send({
+        type: 'savePdfPlace',
+        tab: '3',
+        fingerprint: 'ab12',
+        place,
+      });
+      await send({
+        type: 'savePdfPlace',
+        tab: '9',
+        fingerprint: 'ab12',
+        place: { ...place, page: 2 },
+      });
+      await tool.show(page, { ...viewer, id: '4' });
+      await send({
+        type: 'readPdfPlace',
+        tab: '4',
+        fingerprint: 'ab12',
+        request: 5,
+      });
+
+      assert.deepStrictEqual(page.of('pdfPlace').at(-1), {
+        type: 'pdfPlace',
+        tab: '4',
+        request: 5,
+        place,
+      });
+    });
+
+    test('remembers no place for a file viewed that is not a PDF', async () => {
+      const notes = path.join(opened, 'notes.txt');
+      fs.writeFileSync(notes, 'text');
+      const { tool, page, send } = commander({});
+      await tool.show(page, {
+        id: '3',
+        tool: 'commander',
+        root: notes,
+        view: true,
+      });
+
+      await send({
+        type: 'savePdfPlace',
+        tab: '3',
+        fingerprint: 'ab12',
+        place: { page: 2, zoom: 'auto', left: 0, top: 0 },
+      });
+      await send({
+        type: 'readPdfPlace',
+        tab: '3',
+        fingerprint: 'ab12',
+        request: 4,
+      });
+
+      assert.deepStrictEqual(page.of('pdfPlace'), []);
     });
 
     test('sends the whole text of a file viewed for its colors, only up to the size colored', async () => {

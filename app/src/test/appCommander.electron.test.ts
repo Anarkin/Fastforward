@@ -7,6 +7,7 @@ import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { strings } from '../shared/strings';
 import { waitFor } from './fixtures';
+import { pdfOf } from './pdfs';
 import { closeOrKill, launchApp, waitForFocus } from './appFixtures';
 import { removeFolder, tempFolder } from './repositories';
 
@@ -483,6 +484,99 @@ suite('App commander', () => {
       await waitFor(
         async () => !(await rowNames()).includes('beta.txt'),
         'the files to be gone from the list',
+      );
+    }
+  });
+
+  test('previews a PDF, searching it on Ctrl+F without leaving the preview, and opens it again where it was left', async () => {
+    fs.writeFileSync(
+      path.join(opened, 'book.pdf'),
+      pdfOf(
+        Array.from({ length: 12 }, (_page, pageIndex) =>
+          Array.from({ length: 40 }, (_line, line) =>
+            line === 20 && (pageIndex === 2 || pageIndex === 8)
+              ? `Needle on page ${pageIndex + 1}`
+              : `Page ${pageIndex + 1}, line ${line + 1}`,
+          ),
+        ),
+      ),
+    );
+    const scroller = page.locator('.viewer .pdf-scroll');
+    const count = () => page.locator('.viewer .find-field-count').textContent();
+    const shownPage = () =>
+      scroller.evaluate((element) => {
+        const top = element.getBoundingClientRect().top;
+        const pages = [...element.querySelectorAll('.page')];
+        return (
+          pages.findIndex(
+            (each) => each.getBoundingClientRect().bottom > top + 40,
+          ) + 1
+        );
+      });
+    try {
+      await select('book');
+      await page.keyboard.press('F3');
+      await page
+        .locator('.viewer .textLayer', { hasText: 'Page 1, line 1' })
+        .waitFor();
+      await waitForFocus(scroller, 'the PDF');
+      assert.strictEqual(
+        await page.locator('.viewer .page').first().getAttribute('aria-label'),
+        'Page 1',
+      );
+
+      await page.keyboard.press('ControlOrMeta+F');
+      await waitForFocus(
+        page.locator('.viewer .find-field-input'),
+        'the search',
+      );
+      await page.keyboard.type('needle');
+      await waitFor(
+        async () => (await count()) === '1 of 2',
+        'the matches counted',
+      );
+      await page.locator('.viewer .textLayer .highlight.selected').waitFor();
+      await page.keyboard.press('Enter');
+      await waitFor(async () => (await count()) === '2 of 2', 'the next match');
+      await waitFor(
+        async () => (await shownPage()) === 9,
+        'the page of the match',
+      );
+      await page.keyboard.press('Escape');
+      await page.locator('.viewer .find-field').waitFor({ state: 'detached' });
+      assert.strictEqual(await page.locator('.viewer .pdf-pane').count(), 1);
+
+      await scroller.evaluate((element) => {
+        const seventh = element.querySelectorAll('.page')[6];
+        if (seventh instanceof HTMLElement) {
+          element.scrollTop = seventh.offsetTop + 20;
+        }
+      });
+      await waitFor(async () => (await shownPage()) === 7, 'page 7 shown');
+      await scroller.focus();
+      await page.keyboard.press('Escape');
+      await page.locator('.viewer').waitFor({ state: 'detached' });
+
+      await select('book');
+      await page.keyboard.press('F3');
+      await page.locator('.viewer .textLayer').first().waitFor();
+      await waitFor(
+        async () => (await shownPage()) === 7,
+        'the PDF opened at page 7 again',
+      );
+    } finally {
+      if (await page.locator('.viewer .find-field').isVisible()) {
+        await page.keyboard.press('Escape');
+      }
+      if (await page.locator('.viewer').isVisible()) {
+        await scroller.focus();
+        await page.keyboard.press('Escape');
+        await page.locator('.viewer').waitFor({ state: 'detached' });
+      }
+      fs.rmSync(path.join(opened, 'book.pdf'));
+      await waitFor(
+        async () => !(await rowNames()).includes('book.pdf'),
+        'the file to be gone from the list',
       );
     }
   });

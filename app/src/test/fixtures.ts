@@ -113,7 +113,8 @@ const stylesheets = [
 export function stylesheet(): string {
   return stylesheets
     .map((file) => readFileSync(join(__dirname, '../../src', file), 'utf8'))
-    .join('\n');
+    .join('\n')
+    .replaceAll(/^@import [^;]*;$/gm, '');
 }
 
 export function policyOfPage(): Map<string, string[]> {

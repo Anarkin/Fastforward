@@ -1,3 +1,5 @@
+@import 'pdfjs-dist/web/pdf_viewer.css' layer(pdfjs);
+
 html,
 body,
 #root {
@@ -1258,6 +1260,42 @@ body.resizing {
       transparent 0 50%
     )
     0 0 / 16px 16px;
+}
+
+.pdf-pane {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  background: var(--color-border);
+}
+
+.pdf-scroll {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  outline: none;
+}
+
+.pdf-pane .textLayer {
+  mix-blend-mode: multiply;
+}
+
+.pdf-pane .textLayer .highlight {
+  --highlight-bg-color: var(--color-search-match);
+  --highlight-selected-bg-color: var(--highlight-bg-color);
+  border-radius: 2px;
+}
+
+.pdf-pane .textLayer .highlight.selected {
+  box-shadow: 0 0 0 1px var(--color-search-match-foreground);
+}
+
+.pdf-failure {
+  position: absolute;
+  inset: 0;
+  padding: 16px 24px;
+  background: var(--color-panel-background);
 }
 
 .markdown-pane {

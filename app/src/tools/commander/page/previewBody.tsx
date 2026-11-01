@@ -4,8 +4,11 @@ import { viewedFileUrl } from '../shared/files';
 import { strings } from '../../../shared/strings';
 import { documentImagePath, ImagePane } from '../../../ui/images';
 import { MarkdownPane } from '../../../ui/markdownView';
+import { PdfPane } from '../../../ui/pdfView';
+import { viewerKeymap } from '../shared/keymap';
 import { useWholeText } from './textBody';
 import type { Preview } from './previews';
+import type { PdfControls } from './pdfPreview';
 import type { ToViewer, Viewing } from './viewer';
 
 function MarkdownPreview({
@@ -44,17 +47,38 @@ export function PreviewBody({
   file,
   preview,
   viewing,
+  pdf,
   post,
   listen,
 }: {
   file: string;
   preview: Preview;
   viewing: Viewing;
+  pdf: PdfControls;
   post: (message: CommanderToHost) => void;
   listen: (handler: (message: ToViewer) => void) => () => void;
 }) {
   const body = useRef<HTMLDivElement>(null);
   useEffect(() => body.current?.focus(), []);
+  if (
+    preview === 'pdf' &&
+    viewing.error === undefined &&
+    viewing.size !== undefined
+  ) {
+    return (
+      <div className="column-body viewer-body viewer-pdf">
+        <PdfPane
+          url={viewedFileUrl(viewing.tab, file, viewing.size)}
+          size={viewing.size}
+          zoomKeys={viewerKeymap.zoomPdf}
+          placeOf={pdf.placeOf}
+          onPlace={pdf.onPlace}
+          onFound={pdf.onFound}
+          onShown={pdf.onShown}
+        />
+      </div>
+    );
+  }
   return (
     <div
       className="column-body viewer-body viewer-preview"

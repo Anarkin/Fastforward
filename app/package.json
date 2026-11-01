@@ -61,6 +61,7 @@
     "mermaid": "^12.2.0",
     "oxlint": "^1.87.0",
     "oxlint-tsgolint": "^7.0.2004",
+    "pdfjs-dist": "^6.5.438",
     "playwright-core": "^1.64.0",
     "prettier": "^3.9.10",
     "react": "^19.3.0",

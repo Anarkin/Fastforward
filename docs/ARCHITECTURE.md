@@ -10,6 +10,7 @@
 - Image previews are fetched by the page from the app's own protocol rather than sent as messages, so the page can tell an image too large from one that failed
 - Markdown is rendered with `markdown-it`, which VS Code's preview uses too
 - Mermaid diagrams in Markdown are drawn with `mermaid` on the page's main thread, as VS Code's preview draws them, since it measures text in the DOM and can't run in a worker; each is shown as an image of its SVG, so the styles a document puts in a diagram can't reach the page
+- PDFs are drawn with the viewer components of `pdfjs-dist` inside the page, not in an iframe, with its worker a bundle of its own; the page reads a PDF by ranges through PDF.js's range transport, as PDF.js asks for ranges itself only over HTTP, and runs no scripts, forms or editors of a PDF; the place in each PDF is kept by the PDF's own ID, so it follows the file when moved
 
 ### Git, `git`
 

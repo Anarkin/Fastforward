@@ -49,6 +49,7 @@ import { JsonFileStore, Storage, toolState } from '../shell/main/storage';
 import { themeCss } from '../shell/main/theme';
 import { fileSystemFor } from '../tools/commander/main/fileSystem';
 import { systemCodePage } from '../tools/commander/main/codePages';
+import { PdfPlaces } from '../tools/commander/main/pdfPlaces';
 import { watchFolder } from '../tools/commander/main/watch';
 import { elevatedFileSystem } from '../tools/commander/main/elevated';
 import { helperOf, runHelper } from '../tools/commander/main/helper';
@@ -199,7 +200,9 @@ async function start(asked: readonly string[]): Promise<void> {
       return views.promise.then(({ commander }) => commander.icon(url));
     }
     if (url.pathname === viewedFileRoute) {
-      return views.promise.then(({ commander }) => commander.file(url));
+      return views.promise.then(({ commander }) =>
+        commander.file(url, request.headers.get('range')),
+      );
     }
     const file = appFile(dist, request.url);
     return file
@@ -423,6 +426,7 @@ async function start(asked: readonly string[]): Promise<void> {
     },
   );
   const commanderTool = new CommanderTool({
+    pdfPlaces: new PdfPlaces(path.join(profile, 'pdf-places.json')),
     fileSystem: () => fileSystemFor(process.platform),
     codePage: () => systemCodePage(process.platform),
     settings: () => userSettings.settings.tools.commander,

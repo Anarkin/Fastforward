@@ -14,6 +14,7 @@ import {
   SearchRow,
 } from '../../../ui/search';
 import { useViewerFind } from './viewerFind';
+import { usePdfPreview } from './pdfPreview';
 import { strings } from '../../../shared/strings';
 import { HexIcon, PreviewIcon, TextIcon } from '../../../ui/icons';
 import { MenuButton } from '../../../ui/menu';
@@ -36,7 +37,7 @@ export interface Viewing {
 }
 
 export type ToViewer = CommanderToWebviewOf<
-  'rows' | 'text' | 'bytes' | 'found'
+  'rows' | 'text' | 'bytes' | 'found' | 'pdfPlace'
 >;
 
 const modes: readonly {
@@ -88,11 +89,16 @@ export function Viewer({
     post,
     listen,
   );
+  const pdf = usePdfPreview(viewing?.tab, post, listen);
+  const searched =
+    mode === 'preview' && preview === 'pdf'
+      ? pdf.find
+      : { ...finder, matches: finder.matches.length };
   const [finding, setFinding] = useState(false);
   const [focusAsks, setFocusAsks] = useState(0);
   const findInput = useRef<HTMLInputElement>(null);
   const openFind = () => {
-    if (mode === 'preview') {
+    if (mode === 'preview' && preview !== 'pdf') {
       setChosen('text');
     }
     setFinding(true);
@@ -102,6 +108,7 @@ export function Viewer({
     columnFocusOf(findInput.current)?.focus();
     setFinding(false);
     finder.search('');
+    pdf.find.search('');
   };
   useEffect(() => {
     if (focusAsks > 0) {
@@ -138,15 +145,15 @@ export function Viewer({
         <header className="column-title searching">
           <SearchRow onClose={closeFind}>
             <FindField
-              query={finder.query}
-              count={finder.count}
+              query={searched.query}
+              count={searched.count}
               input={findInput}
               keys={viewerKeymap}
-              onQuery={finder.search}
-              onStep={finder.step}
+              onQuery={searched.search}
+              onStep={searched.step}
               onClose={closeFind}
             />
-            <FindActions matches={finder.matches.length} onStep={finder.step} />
+            <FindActions matches={searched.matches} onStep={searched.step} />
           </SearchRow>
         </header>
       ) : (
@@ -207,6 +214,7 @@ export function Viewer({
           viewing={viewing}
           post={post}
           listen={listen}
+          pdf={pdf.controls}
         />
       ) : mode === 'hex' || shown === 'bytes' ? (
         <ByteBody

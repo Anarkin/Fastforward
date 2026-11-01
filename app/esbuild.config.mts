@@ -29,12 +29,15 @@ export function webviewOptions(production: boolean): BuildOptions {
     entryPoints: {
       webview: 'src/shell/page/main.tsx',
       syntaxWorker: 'src/ui/syntaxWorker.ts',
+      pdfWorker: 'node_modules/pdfjs-dist/build/pdf.worker.mjs',
     },
     format: 'esm',
     splitting: true,
     platform: 'browser',
     outdir: 'dist',
     chunkNames: 'chunks/[name]-[hash]',
+    assetNames: 'assets/[name]-[hash]',
+    loader: { '.svg': 'file', '.gif': 'file' },
     jsx: 'automatic',
     define: {
       'process.env.NODE_ENV': production ? '"production"' : '"development"',

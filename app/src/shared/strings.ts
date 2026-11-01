@@ -255,6 +255,7 @@ export const strings = {
     scrollFile: 'Scroll by a row, a page, or to the start or end',
     chooseEncoding: 'Choose the encoding of the text',
     findInFile: 'Search the file',
+    zoomPdf: 'Zoom a PDF in or out',
     filterFolder: 'Filter the folder by name',
     filterLetter: 'Filter the folder by the letters typed with Alt',
     stopFiltering: 'Clear the filter',
@@ -552,6 +553,13 @@ export const strings = {
     },
     previewTooLarge: (megabytes: number) =>
       `Documents over ${megabytes} MB are not previewed.`,
+  },
+  pdf: {
+    page: (page: number) => `Page ${page}`,
+    couldNotOpen: (reason: string) => `Couldn't show the PDF. ${reason}`,
+    needsPassword:
+      "This PDF is locked with a password, which the app doesn't ask for yet.",
+    invalid: 'The file is not a PDF, or it is damaged.',
   },
   find: {
     title: 'Search the diff',

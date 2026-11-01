@@ -55,6 +55,12 @@ for (const entry of fs.readdirSync('dist')) {
 fs.copyFileSync('src/shell/page/index.html', 'dist/index.html');
 fs.copyFileSync('build/window-icon.png', 'dist/icon.png');
 fs.copyFileSync('src/shell/main/settings.json', 'dist/settings.json');
+for (const folder of ['cmaps', 'standard_fonts', 'iccs', 'wasm']) {
+  fs.cpSync(`node_modules/pdfjs-dist/${folder}`, `dist/pdfjs/${folder}`, {
+    recursive: true,
+    filter: (source) => !source.includes('quickjs'),
+  });
+}
 
 const contexts = await Promise.all([
   esbuild.context({

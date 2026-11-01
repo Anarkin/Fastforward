@@ -81,6 +81,7 @@ suite('Shortcuts popup', () => {
         'Search the file',
         'Next or previous match',
         'Close the search',
+        'Zoom a PDF in or out',
         'Close the file being viewed',
       ],
     );

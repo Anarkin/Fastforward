@@ -1,3 +1,4 @@
+import type { PdfPlace } from '../../../shared/pdf';
 import type { ColumnWidths, Sort, Sorts } from './settings';
 
 export interface ComparedFile {
@@ -84,6 +85,18 @@ export type CommanderToHost =
       readonly request: number;
     }
   | {
+      readonly type: 'readPdfPlace';
+      readonly tab: string;
+      readonly fingerprint: string;
+      readonly request: number;
+    }
+  | {
+      readonly type: 'savePdfPlace';
+      readonly tab: string;
+      readonly fingerprint: string;
+      readonly place: PdfPlace;
+    }
+  | {
       readonly type: 'findText';
       readonly tab: string;
       readonly encoding: TextEncoding;
@@ -163,6 +176,12 @@ export type CommanderToWebview =
       readonly tab: string;
       readonly request: number;
       readonly text: string | undefined;
+    }
+  | {
+      readonly type: 'pdfPlace';
+      readonly tab: string;
+      readonly request: number;
+      readonly place?: PdfPlace;
     }
   | {
       readonly type: 'found';

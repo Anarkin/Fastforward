@@ -49,11 +49,29 @@ import {
   rowStartAt,
 } from './textRows';
 import { findInFile } from './textFind';
+import { fileResponse } from './fileRanges';
+import {
+  isPdf,
+  isPdfFingerprint,
+  pdfPlaceOf,
+  pdfType,
+  type PdfPlace,
+} from '../../../shared/pdf';
 import type { ElevatedFileSystem } from './elevated';
 import { Icons } from './icons';
 import { iconSourceOf, viewerIconUrl, viewerOfIcon } from '../shared/icons';
 
+interface PdfPlaceStore {
+  readonly of: (fingerprint: string) => Promise<PdfPlace | undefined>;
+  readonly save: (
+    fingerprint: string,
+    place: PdfPlace,
+    file: string,
+  ) => Promise<void>;
+}
+
 export interface CommanderAccess {
+  readonly pdfPlaces: PdfPlaceStore;
   readonly fileSystem: () => Promise<FileSystem>;
   readonly settings: () => CommanderSettings;
   readonly defaultColumns: () => ColumnWidths;
@@ -183,6 +201,7 @@ export class CommanderTool implements Tool<'commander'> {
     | undefined;
   private elevating: Promise<ElevatedFileSystem | undefined> | undefined;
   private finding: AbortController | undefined;
+  private readonly pdfTabs = new Map<string, string>();
 
   constructor(private readonly access: CommanderAccess) {
     this.icons = new Icons(access.fileIcon, access.platform);
@@ -259,6 +278,10 @@ export class CommanderTool implements Tool<'commander'> {
         return this.readText(page, message);
       case 'findText':
         return this.findText(page, message);
+      case 'readPdfPlace':
+        return this.readPdfPlace(page, message);
+      case 'savePdfPlace':
+        return this.savePdfPlace(page, message);
       case 'readBytes':
         return this.readBytes(page, message);
       case 'reread': {
@@ -359,8 +382,23 @@ export class CommanderTool implements Tool<'commander'> {
     this.elevated?.close();
   }
 
-  async file(url: URL): Promise<Response> {
+  async file(url: URL, range: string | null): Promise<Response> {
     const asked = viewedFileOf(url);
+    if (asked !== undefined && isPdf(asked.file)) {
+      const viewer = this.shell
+        .tabs()
+        .some(
+          (tab) =>
+            tab.id === asked.tab &&
+            tab.view === true &&
+            tab.root === asked.file,
+        );
+      return viewer
+        ? fileResponse(asked.file, pdfType, range).catch(
+            () => new Response(null, { status: 404 }),
+          )
+        : new Response(null, { status: 404 });
+    }
     const viewing =
       asked &&
       this.shell
@@ -590,6 +628,9 @@ export class CommanderTool implements Tool<'commander'> {
     this.finding?.abort();
     this.finding = undefined;
     this.viewing = viewing;
+    if (isPdf(file)) {
+      this.pdfTabs.set(tab, file);
+    }
     this.post(page, {
       type: 'viewing',
       tab,
@@ -656,6 +697,62 @@ export class CommanderTool implements Tool<'commander'> {
             .then((bytes) => new TextDecoder(encoding).decode(bytes))
             .catch(() => undefined);
     this.post(page, { type: 'text', tab, request, text });
+  }
+
+  private viewedPdf(page: Page, tab: unknown, fingerprint: unknown) {
+    const { viewing } = this;
+    return viewing !== undefined &&
+      this.shown?.page === page &&
+      viewing.tab === tab &&
+      isPdf(viewing.file) &&
+      isPdfFingerprint(fingerprint)
+      ? { file: viewing.file, fingerprint }
+      : undefined;
+  }
+
+  private async readPdfPlace(
+    page: Page,
+    {
+      tab,
+      fingerprint,
+      request,
+    }: Extract<CommanderToHost, { type: 'readPdfPlace' }>,
+  ): Promise<void> {
+    const viewed = this.viewedPdf(page, tab, fingerprint);
+    if (viewed === undefined || !Number.isSafeInteger(request)) {
+      return;
+    }
+    const place = await this.access.pdfPlaces
+      .of(viewed.fingerprint)
+      .catch(() => undefined);
+    this.post(page, {
+      type: 'pdfPlace',
+      tab,
+      request,
+      ...(place !== undefined && { place }),
+    });
+  }
+
+  private async savePdfPlace(
+    _page: Page,
+    {
+      tab,
+      fingerprint,
+      place,
+    }: Extract<CommanderToHost, { type: 'savePdfPlace' }>,
+  ): Promise<void> {
+    const file = typeof tab === 'string' ? this.pdfTabs.get(tab) : undefined;
+    const checked = pdfPlaceOf(place);
+    if (
+      file === undefined ||
+      !isPdfFingerprint(fingerprint) ||
+      checked === undefined
+    ) {
+      return;
+    }
+    await this.access.pdfPlaces
+      .save(fingerprint, checked, file)
+      .catch(() => undefined);
   }
 
   private async findText(

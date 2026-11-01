@@ -250,6 +250,11 @@
   outline: none;
 }
 
+.viewer-pdf {
+  display: flex;
+  overflow: hidden;
+}
+
 .viewer-image {
   display: flex;
   height: 100%;
