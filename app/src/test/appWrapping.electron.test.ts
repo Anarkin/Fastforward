@@ -376,7 +376,7 @@ suite('App', () => {
     await waitFor(() => wrapsSaved(), 'the choice to be saved');
   });
 
-  test('makes each line of the diff as tall as the font size of code times the line height set, rounded to whole device pixels, placing the rows and the marks of wrapped ones that far apart, keeping the file header as tall', async () => {
+  test('makes each line of the diff as tall as the font size of code times the line height set, rounded to whole device pixels, placing the rows and the marks of wrapped ones that far apart, the file header a line tall too', async () => {
     const reloaded = page.waitForEvent('load');
     fs.writeFileSync(
       path.join(profile, 'settings.user.json'),
@@ -407,8 +407,8 @@ suite('App', () => {
     assert.deepStrictEqual(
       rows.map(({ kind, height, shown }) => [
         kind,
-        near(height, kind === 'file' ? 22 : tall),
-        near(shown, kind === 'file' ? 22 : tall),
+        near(height, tall),
+        near(shown, tall),
       ]),
       [
         ['file', true, true],
@@ -419,11 +419,7 @@ suite('App', () => {
       ],
     );
     assert.deepStrictEqual(
-      rows
-        .slice(1)
-        .map((row, index) =>
-          near(row.top - rows[index].top, index ? tall : 22),
-        ),
+      rows.slice(1).map((row, index) => near(row.top - rows[index].top, tall)),
       [true, true, true, true],
     );
 

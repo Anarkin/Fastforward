@@ -58,6 +58,9 @@ suite('App commander', () => {
         }),
       );
 
+  const firstViewerRow = async () =>
+    (await page.locator('.viewer-rows .viewer-row').first().textContent()) ??
+    '';
   const select = async (name: string) => {
     await right().locator('.commander-row', { hasText: name }).click();
     await waitFor(
@@ -495,11 +498,9 @@ suite('App commander', () => {
     );
     await waitForFocus(page.locator('.viewer-body'), 'the viewer');
     await page.keyboard.press('2');
-    const firstRow = () =>
-      page.locator('.viewer-rows .viewer-row').first().textContent();
     await waitFor(
       async () =>
-        (await firstRow()) ===
+        (await firstViewerRow()) ===
         '0000000000 01 02 03 04 05 06 07  08 09 0A 0B 0C 0D 0E 0F................',
       'the first row in hex',
     );
@@ -543,7 +544,7 @@ suite('App commander', () => {
     await page.keyboard.press('Home');
     await waitFor(
       async () =>
-        ((await firstRow()) ?? '').startsWith(
+        ((await firstViewerRow()) ?? '').startsWith(
           `${'.'.repeat(32)} !"#$%&'()*+,-./0123456789`,
         ),
       'the bytes as text, one to a character, a dot for each with no glyph',
@@ -562,7 +563,7 @@ suite('App commander', () => {
     fs.writeFileSync(path.join(opened, 'plain.txt'), 'plain');
     await select('plain');
     await page.keyboard.press('F3');
-    await waitFor(async () => (await firstRow()) === 'plain', 'the text');
+    await waitFor(async () => (await firstViewerRow()) === 'plain', 'the text');
     assert.strictEqual(await pressedMode(), 'Text');
     await page.keyboard.press('Escape');
     await page.locator('.viewer').waitFor({ state: 'detached' });
@@ -961,34 +962,36 @@ suite('App commander', () => {
       path.join(opened, 'legacy.txt'),
       Buffer.from([0x63, 0x61, 0x66, 0xe9, 0x20, 0x6f, 0x6b]),
     );
-    await select('legacy');
-    await page.keyboard.press('F3');
-    await waitFor(
-      async () =>
-        (
-          (await page
-            .locator('.viewer-rows .viewer-row')
-            .first()
-            .textContent()) ?? ''
-        ).startsWith('caf'),
-      'the text',
-    );
-    const row =
-      (await page.locator('.viewer-rows .viewer-row').first().textContent()) ??
-      '';
-    assert.ok(!row.includes(String.fromCharCode(0xfffd)), row);
-    assert.ok(
-      ['1250', '1251', '1252'].includes(
-        (await page.locator('.viewer-encoding-label').textContent()) ?? '',
-      ),
-    );
-    await page.keyboard.press('Escape');
-    await page.locator('.viewer').waitFor({ state: 'detached' });
-    fs.rmSync(path.join(opened, 'legacy.txt'));
-    await waitFor(
-      async () => !(await rowNames()).includes('legacy.txt'),
-      'the file to be gone from the list',
-    );
+    try {
+      await select('legacy');
+      await page.keyboard.press('F3');
+      await page.locator('.viewer').waitFor();
+      await waitFor(
+        async () => (await firstViewerRow()).startsWith('caf'),
+        'the text',
+      ).catch(async (error: unknown) => {
+        throw new Error(
+          `${String(error)}: the viewer of ${await page.locator('.viewer').getAttribute('data-file')} showed ${JSON.stringify(await page.locator('.viewer').innerText())}`,
+        );
+      });
+      const row = await firstViewerRow();
+      assert.ok(!row.includes(String.fromCharCode(0xfffd)), row);
+      assert.ok(
+        ['1250', '1251', '1252'].includes(
+          (await page.locator('.viewer-encoding-label').textContent()) ?? '',
+        ),
+      );
+    } finally {
+      if (await page.locator('.viewer').isVisible()) {
+        await page.keyboard.press('Escape');
+        await page.locator('.viewer').waitFor({ state: 'detached' });
+      }
+      fs.rmSync(path.join(opened, 'legacy.txt'));
+      await waitFor(
+        async () => !(await rowNames()).includes('legacy.txt'),
+        'the file to be gone from the list',
+      );
+    }
   });
 
   test('says two files compared are the same rather than showing nothing', async () => {
@@ -1016,6 +1019,14 @@ suite('App commander', () => {
   });
 
   test('starts each row where the one above it ends, leaving no seam between their backgrounds', async () => {
+    const names = ['seam1.txt', 'seam2.txt', 'seam3.txt', 'seam4.txt'];
+    for (const name of names) {
+      fs.writeFileSync(path.join(opened, name), name);
+    }
+    await waitFor(
+      async () => (await rowNames()).includes('seam4.txt'),
+      'the files to be listed',
+    );
     const gaps = await right()
       .locator('.virtual-row')
       .evaluateAll((rows) =>
@@ -1037,6 +1048,13 @@ suite('App commander', () => {
     assert.ok(
       gaps.every((gap) => Math.abs(gap) < 0.01),
       `The gaps between the rows are ${gaps.join(', ')}`,
+    );
+    for (const name of names) {
+      fs.rmSync(path.join(opened, name));
+    }
+    await waitFor(
+      async () => !(await rowNames()).includes('seam4.txt'),
+      'the files to be gone from the list',
     );
   });
 
