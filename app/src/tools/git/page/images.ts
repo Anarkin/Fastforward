@@ -1,4 +1,4 @@
-import { comparedOf, shownSide, workingTreeSide } from '../shared/comparisons';
+import { shownSide, workingTreeSide } from '../shared/comparisons';
 import { imageType, imageUrl, vectorType } from '../shared/images';
 import {
   workingTreeHash,
@@ -63,16 +63,6 @@ export function withUnchangedObjects(
   });
 }
 
-export function rendersImage(file: DiffFile): boolean {
-  return (
-    !file.binary &&
-    file.link === undefined &&
-    file.placeholder === undefined &&
-    isVector(file.path) &&
-    sides.some((side) => hasImage(file, side))
-  );
-}
-
 export function diffImageUrl(
   { root, hash, area }: ImageOrigin,
   file: DiffFile,
@@ -93,10 +83,6 @@ interface WholeFile {
   readonly id?: string;
 }
 
-export function rendersWholeImage(whole: WholeFile): boolean {
-  return !whole.binary && isVector(whole.path);
-}
-
 export function previewsWholeImage(whole: Omit<WholeFile, 'content'>): boolean {
   return (
     whole.binary &&
@@ -109,9 +95,6 @@ export function wholeImageUrl(
   { root, hash }: ImageOrigin,
   whole: WholeFile,
 ): string | undefined {
-  if (rendersWholeImage(whole)) {
-    return `data:${vectorType};charset=utf-8,${encodeURIComponent(whole.content)}`;
-  }
   return whole.id === undefined || !previewsWholeImage(whole)
     ? undefined
     : imageUrl({
@@ -122,47 +105,32 @@ export function wholeImageUrl(
       });
 }
 
-export function sideRevision(
+export interface ViewedSource {
+  readonly path: string;
+  readonly blob?: string;
+}
+
+export function viewedSource(
   { hash, area }: ImageOrigin,
-  side: Side,
-): string | undefined {
-  const compared = comparedOf(hash);
-  if (compared) {
-    const at = side === 'old' ? compared.from : compared.to;
-    return at === workingTreeHash ? undefined : at;
+  file: DiffFile,
+): ViewedSource | undefined {
+  const side: Side = file.blobs?.new === undefined ? 'old' : 'new';
+  const path = sidePath(file, side);
+  if (area !== 'staged' && side === workingTreeSide(hash)) {
+    return { path };
   }
-  if (hash === workingTreeHash) {
-    if (side === 'new') {
-      return area === 'staged' ? '' : undefined;
-    }
-    return area === 'unstaged' ? '' : 'HEAD';
+  const blob = file.blobs?.[side];
+  return blob === undefined ? undefined : { path, blob };
+}
+
+export function wholeViewedSource(
+  { hash }: ImageOrigin,
+  whole: Omit<WholeFile, 'content'>,
+): ViewedSource | undefined {
+  if (shownSide(hash) === workingTreeHash) {
+    return { path: whole.path };
   }
-  return side === 'old' ? `${hash}^` : hash;
-}
-
-export function wholeRevision({ hash }: ImageOrigin): string | undefined {
-  const shown = shownSide(hash);
-  return shown === workingTreeHash ? undefined : shown;
-}
-
-export interface DocumentImages {
-  readonly root: string;
-  readonly document: string;
-  readonly revision: string | undefined;
-  readonly version: string;
-}
-
-const fixedRevision = /^(?:[0-9a-f]{40}|[0-9a-f]{64})\^?$/;
-
-export function documentImageUrl(
-  { root, revision, version }: Omit<DocumentImages, 'document'>,
-  path: string,
-): string {
-  const id =
-    revision !== undefined && fixedRevision.test(revision) ? revision : version;
-  return imageUrl(
-    revision === undefined
-      ? { root, path, id, disk: true }
-      : { root, path, id, disk: false, revision },
-  );
+  return whole.id === undefined
+    ? undefined
+    : { path: whole.path, blob: whole.id };
 }

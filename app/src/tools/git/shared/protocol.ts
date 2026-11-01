@@ -284,6 +284,11 @@ export type TabMessage =
       readonly texts: readonly TextRequest[];
     }
   | { readonly type: 'jump'; readonly hash: string }
+  | {
+      readonly type: 'viewFile';
+      readonly path: string;
+      readonly blob?: string;
+    }
   | { readonly type: 'checkout'; readonly target: CheckoutTarget }
   | { readonly type: 'fetch' }
   | { readonly type: 'pull' }

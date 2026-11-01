@@ -12,6 +12,8 @@ import {
 import { maxFileSize } from '../../../../../tools/git/main/cli/files';
 import { imageUrl, maxImageSize } from '../../../../../tools/git/shared/images';
 import { soloKey } from '../../../../../tools/git/main/storage';
+import { tabsKey } from '../../../../../shell/main/storage';
+import { strings } from '../../../../../shared/strings';
 import { waitFor } from '../../../../fixtures';
 import {
   removeFolder,
@@ -22,6 +24,7 @@ import {
 import { recordingLog } from '../../../../stub';
 import {
   closeViews,
+  FakeHost,
   failOnErrorsLogged,
   fortyLines,
   gate,
@@ -123,6 +126,60 @@ suite('Git tool showing diffs', () => {
     } finally {
       replaceBuiltin(childProcess, 'spawn', spawn);
     }
+  });
+
+  test('opens a file of a diff in a viewer tab of its own, from the working tree where it is and from a commit as a copy of its blob, and says why not for a file it can not open', async () => {
+    const blob = (await long.git('rev-parse', 'HEAD~1:a.txt')).trim();
+    const viewing = async (file: string, fromBlob?: string) => {
+      let seen = { viewers: [] as string[], notices: [] as string[] };
+      await withView(log, [long.root, other], async (view) => {
+        await view.connection.receive({
+          type: 'viewFile',
+          root: long.root,
+          path: file,
+          ...(fromBlob === undefined ? {} : { blob: fromBlob }),
+        });
+        const tabs = view.store.get(tabsKey);
+        seen = {
+          viewers: Array.isArray(tabs)
+            ? tabs.flatMap((tab: unknown) =>
+                typeof tab === 'object' &&
+                tab !== null &&
+                'view' in tab &&
+                tab.view === true &&
+                'root' in tab &&
+                typeof tab.root === 'string'
+                  ? [tab.root]
+                  : [],
+              )
+            : [],
+          notices: view.page.messages.flatMap((message) =>
+            message.type === 'notice' ? [message.message] : [],
+          ),
+        };
+      });
+      return seen;
+    };
+
+    assert.deepStrictEqual((await viewing('a.txt')).viewers, [
+      path.join(long.root, 'a.txt'),
+    ]);
+    const copy = path.join(new FakeHost().viewedFiles, blob, 'a.txt');
+    assert.deepStrictEqual((await viewing('a.txt', blob)).viewers, [copy]);
+    assert.strictEqual(fs.readFileSync(copy, 'utf8'), fortyLines(-1));
+    assert.deepStrictEqual(await viewing('../outside.txt'), {
+      viewers: [],
+      notices: [
+        strings.diff.couldNotView(
+          '../outside.txt',
+          strings.errors.outsideRepository('../outside.txt'),
+        ),
+      ],
+    });
+    assert.deepStrictEqual(await viewing('gone.txt'), {
+      viewers: [],
+      notices: [strings.diff.viewMissing('gone.txt')],
+    });
   });
 
   test('shows a file entire until it is left, or always when pinned', async () => {
@@ -1124,33 +1181,6 @@ suite('Git tool showing diffs', () => {
         /^Reading the image pixel\.png failed$/,
         /ENOENT/,
       );
-    });
-
-    test('serves the images a stash keeps among its untracked files, as a document it keeps links them', async () => {
-      fs.writeFileSync(path.join(images.root, 'shot.png'), pixel);
-      fs.writeFileSync(path.join(images.root, 'doc.md'), '![](shot.png)\n');
-      await images.git('stash', '-u');
-      try {
-        const [stash] = await images.resolve('stash@{0}');
-        await withView(log, [images.root], async ({ view }) => {
-          const shown = await view.image(
-            new URL(
-              imageUrl({
-                root: images.root,
-                path: 'shot.png',
-                id: stash,
-                disk: false,
-                revision: stash,
-              }),
-              'fastforward://app',
-            ),
-          );
-          assert.strictEqual(shown.status, 200);
-          assert.deepStrictEqual(Buffer.from(await shown.arrayBuffer()), pixel);
-        });
-      } finally {
-        await images.git('stash', 'drop');
-      }
     });
 
     test('shows a binary file whole again once it changes, staged in full', async () => {

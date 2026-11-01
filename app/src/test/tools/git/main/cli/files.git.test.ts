@@ -10,6 +10,7 @@ import {
   readBlobs,
   readFile,
   readImage,
+  viewedFile,
 } from '../../../../../tools/git/main/cli/files';
 import { parsePatch } from '../../../../../tools/git/page/diff';
 import { submoduleRepository } from '../../../../gitFixtures';
@@ -159,38 +160,57 @@ suite('Repository files', () => {
     }
   });
 
-  test('reads an image in the index whose name looks like a stage, rather than the stage it names', async (context) => {
-    if (process.platform === 'win32') {
-      context.skip();
-    }
-    const staged = await tempRepository(tempFolder('stage-names'));
-    try {
-      fs.writeFileSync(path.join(staged.root, 'content'), 'image');
-      const [blob] = (await staged.git('hash-object', '-w', 'content')).split(
-        '\n',
-      );
-      await staged.git(
-        '-c',
-        'core.protectNTFS=false',
-        'update-index',
-        '--add',
-        '--cacheinfo',
-        `100644,${blob},1:x.png`,
-      );
-      const read = await readImage(gitPath, staged.root, {
-        path: '1:x.png',
-        id: '0'.repeat(40),
-        disk: false,
-        revision: '',
-      });
-      assert.strictEqual(read.kind, 'image');
-      assert.strictEqual(
-        read.kind === 'image' && read.bytes.toString(),
-        'image',
-      );
-    } finally {
-      removeFolder(staged.root);
-    }
+  test('gives a file to view from the working tree where it is, and from a commit as a copy kept by its blob, written once', async () => {
+    const copies = path.join(parent, 'viewed');
+    const blob = (
+      await repository.git('rev-parse', 'HEAD:src/tracked.txt')
+    ).trim();
+
+    assert.deepStrictEqual(
+      await viewedFile(gitPath, cwd, 'src/tracked.txt', undefined, copies),
+      { kind: 'file', file: path.join(cwd, 'src', 'tracked.txt') },
+    );
+    const committed = await viewedFile(
+      gitPath,
+      cwd,
+      'src/tracked.txt',
+      blob,
+      copies,
+    );
+    assert.deepStrictEqual(committed, {
+      kind: 'file',
+      file: path.join(copies, blob, 'tracked.txt'),
+    });
+    assert.strictEqual(
+      fs.readFileSync(path.join(copies, blob, 'tracked.txt'), 'utf8'),
+      'one\n',
+    );
+    fs.writeFileSync(path.join(copies, blob, 'tracked.txt'), 'kept');
+    await viewedFile(gitPath, cwd, 'src/tracked.txt', blob, copies);
+    assert.strictEqual(
+      fs.readFileSync(path.join(copies, blob, 'tracked.txt'), 'utf8'),
+      'kept',
+    );
+  });
+
+  test('gives no file to view outside the repository, missing from the working tree, or of a blob it does not have', async () => {
+    const copies = path.join(parent, 'viewed');
+    await assert.rejects(
+      viewedFile(gitPath, cwd, '../outside.txt', undefined, copies),
+    );
+    assert.deepStrictEqual(
+      await viewedFile(gitPath, cwd, 'src/missing.txt', undefined, copies),
+      { kind: 'missing' },
+    );
+    assert.deepStrictEqual(
+      await viewedFile(gitPath, cwd, 'src/tracked.txt', '1'.repeat(40), copies),
+      { kind: 'missing' },
+    );
+    assert.deepStrictEqual(
+      await viewedFile(gitPath, cwd, 'src/tracked.txt', 'not-a-hash', copies),
+      { kind: 'missing' },
+    );
+    assert.ok(!fs.existsSync(path.join(copies, '1'.repeat(40))));
   });
 
   test('reads a named pipe in the working tree as empty, rather than waiting on it', async (context) => {
@@ -506,52 +526,9 @@ suite('Images', () => {
     }
   });
 
-  test('reads an image at a revision: a commit, its parent or the index', async () => {
-    const at = (revision: string, file = 'pixel.png') =>
-      readImage(
-        gitPath,
-        cwd,
-        { path: file, id: '1', disk: false, revision },
-        pixel.length,
-      );
-    fs.writeFileSync(path.join(cwd, 'pixel.png'), Buffer.from([0, 7]));
-    await repository.git('commit', '-am', 'changed');
-    fs.writeFileSync(path.join(cwd, 'pixel.png'), Buffer.from([0, 8]));
-    await repository.git('add', 'pixel.png');
-    try {
-      const [head] = await repository.resolve('HEAD');
-      assert.deepStrictEqual(await at('HEAD'), {
-        kind: 'image',
-        bytes: Buffer.from([0, 7]),
-      });
-      assert.deepStrictEqual(await at(`${head}^`), {
-        kind: 'image',
-        bytes: pixel,
-      });
-      assert.deepStrictEqual(await at(''), {
-        kind: 'image',
-        bytes: Buffer.from([0, 8]),
-      });
-      assert.deepStrictEqual(await at('HEAD', 'huge.png'), {
-        kind: 'tooLarge',
-      });
-      for (const missing of ['gone.png', '']) {
-        assert.deepStrictEqual(await at('HEAD', missing || '.'), {
-          kind: 'missing',
-        });
-      }
-    } finally {
-      await repository.git('reset', '--hard', 'HEAD~1');
-    }
-  });
-
-  test('reads an image with one git, by its object id or at a revision', async () => {
+  test('reads an image with one git, by its object id', async () => {
     const [object] = await repository.resolve('HEAD:pixel.png');
-    for (const source of [
-      { path: 'pixel.png', id: object, disk: false },
-      { path: 'pixel.png', id: '1', disk: false, revision: 'HEAD' },
-      { path: 'huge.png', id: '1', disk: false, revision: 'HEAD' },
-    ]) {
+    for (const source of [{ path: 'pixel.png', id: object, disk: false }]) {
       const { gits } = await gitsStarted(() =>
         readImage(gitPath, cwd, source, pixel.length),
       );

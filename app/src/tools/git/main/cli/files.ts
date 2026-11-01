@@ -1,8 +1,9 @@
 import type { Stats } from 'node:fs';
 import * as fs from 'node:fs/promises';
-import { dirname, isAbsolute, join, relative, sep } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative, sep } from 'node:path';
 import { maxImageSize, type ImageSource } from '../../shared/images';
 import { linkMode } from '../../shared/protocol';
+import { isFullHash } from '../../shared/hashes';
 import { strings } from '../../../../shared/strings';
 import { headCommit } from './history';
 import { runGit, runGitBytes, splitNul } from './run';
@@ -347,13 +348,7 @@ export type ImageRead =
 export async function readImage(
   gitPath: string,
   cwd: string,
-  {
-    path,
-    id,
-    disk,
-    revision,
-    untracked,
-  }: Omit<ImageSource, 'root'> & { readonly untracked?: string },
+  { path, id, disk }: Omit<ImageSource, 'root'>,
   limit = maxImageSize,
 ): Promise<ImageRead> {
   if (disk) {
@@ -366,21 +361,53 @@ export async function readImage(
       ? { kind: 'tooLarge' }
       : { kind: 'image', bytes: await fs.readFile(file) };
   }
-  const blobNamed = async (name: string) =>
-    blobOf((await readObjects(gitPath, cwd, [name], limit))[0]);
-  const blob =
-    (await blobNamed(
-      revision === undefined
-        ? id
-        : `${revision === '' ? ':0' : revision}:${path}`,
-    )) ??
-    (untracked === undefined
-      ? undefined
-      : await blobNamed(`${untracked}:${path}`));
+  const blob = blobOf((await readObjects(gitPath, cwd, [id], limit))[0]);
   if (!blob) {
     return { kind: 'missing' };
   }
   return blob.kind === 'tooLarge'
     ? { kind: 'tooLarge' }
     : { kind: 'image', bytes: blob.content };
+}
+
+const maxViewedSize = 256 * 1024 * 1024;
+
+export type ViewedFile =
+  | { readonly kind: 'file'; readonly file: string }
+  | { readonly kind: 'missing' | 'tooLarge' };
+
+export async function viewedFile(
+  gitPath: string,
+  cwd: string,
+  path: string,
+  blob: string | undefined,
+  copies: string,
+): Promise<ViewedFile> {
+  const file = repositoryFile(cwd, path);
+  if (blob === undefined) {
+    return (await lstatFollowingNoLink(cwd, file))?.isFile()
+      ? { kind: 'file', file }
+      : { kind: 'missing' };
+  }
+  if (!isFullHash(blob)) {
+    return { kind: 'missing' };
+  }
+  const copy = join(copies, blob.toLowerCase(), basename(file));
+  if ((await lstatIfThere(copy))?.isFile()) {
+    return { kind: 'file', file: copy };
+  }
+  const read = blobOf(
+    (await readObjects(gitPath, cwd, [blob], maxViewedSize))[0],
+  );
+  if (read === undefined) {
+    return { kind: 'missing' };
+  }
+  if (read.kind === 'tooLarge') {
+    return { kind: 'tooLarge' };
+  }
+  await fs.mkdir(dirname(copy), { recursive: true });
+  const written = `${copy}.part`;
+  await fs.writeFile(written, read.content);
+  await fs.rename(written, copy);
+  return { kind: 'file', file: copy };
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import {
   type ChangeArea,
   type DiffLayout,
@@ -13,7 +13,13 @@ import { DiffView, type WholeFile } from './diffView';
 import { filterWords, matchesFilter } from '../../../shared/fileFilter';
 import { findMatches, unsearchedFiles } from './find';
 import { matchCount, stepMatch } from '../../../shared/textMatches';
-import { withUnchangedObjects, type ImageOrigin } from './images';
+import {
+  viewedSource,
+  wholeViewedSource,
+  withUnchangedObjects,
+  type ImageOrigin,
+  type ViewedSource,
+} from './images';
 import {
   EntireFileIcon,
   WhitespaceChangesIcon,
@@ -260,6 +266,8 @@ export function Diff({
   findAsked,
   filter,
   note,
+  onViewFile,
+  viewAsked = 0,
 }: {
   selection: string;
   path: string | undefined;
@@ -285,6 +293,8 @@ export function Diff({
   findAsked: number;
   filter: string | undefined;
   note?: string;
+  onViewFile?: (source: ViewedSource) => void;
+  viewAsked?: number;
 }) {
   const parsed = useMemo(() => parsePatch(patch), [patch]);
   const diffFiles = useMemo(
@@ -309,21 +319,32 @@ export function Diff({
   const [current, setCurrent] = useState(0);
   const [jump, setJump] = useState(0);
   const input = useRef<HTMLInputElement>(null);
-  const [rendered, setRendered] = useState<ReadonlySet<string>>(new Set());
-  const render = useCallback((file: string, shown: boolean) => {
-    setRendered((all) => {
-      const next = new Set(all);
-      if (shown) {
-        next.add(file);
-      } else {
-        next.delete(file);
-      }
-      return next;
-    });
-  }, []);
+  const viewOf = (index: number) => {
+    const view = onViewFile;
+    const file = diffFiles.at(index);
+    const source =
+      origin === undefined || view === undefined
+        ? undefined
+        : fileContent === undefined
+          ? file && viewedSource(origin, file)
+          : wholeViewedSource(origin, fileContent);
+    return source && view && (() => view(source));
+  };
+  const viewShown = useEffectEvent(() => {
+    if (path !== undefined) {
+      viewOf(0)?.();
+    }
+  });
+  const viewSeen = useRef(viewAsked);
+  useEffect(() => {
+    if (viewSeen.current !== viewAsked) {
+      viewSeen.current = viewAsked;
+      viewShown();
+    }
+  }, [viewAsked]);
   const matches = useMemo(
-    () => findMatches(diffFiles, fileContent, query, rendered),
-    [diffFiles, fileContent, query, rendered],
+    () => findMatches(diffFiles, fileContent, query),
+    [diffFiles, fileContent, query],
   );
   const shown = Math.min(current, Math.max(0, matches.length - 1));
   const goTo = (index: number) => {
@@ -337,7 +358,6 @@ export function Diff({
   const [seen, setSeen] = useState(selection);
   if (seen !== selection) {
     setSeen(selection);
-    setRendered(new Set());
     setCurrent(0);
     setJump((count) => count + 1);
     setEntireSeen(entire);
@@ -404,6 +424,7 @@ export function Diff({
       }
     >
       <DiffView
+        viewOf={viewOf}
         key={selection}
         error={errorRow}
         files={diffFiles}
@@ -422,8 +443,6 @@ export function Diff({
         current={shown}
         jump={jump}
         firstChange={path === undefined ? undefined : firstChange}
-        rendered={rendered}
-        onRender={render}
       />
     </Column>
   );

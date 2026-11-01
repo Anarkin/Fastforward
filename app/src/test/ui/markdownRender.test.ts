@@ -3,8 +3,6 @@ import createDOMPurify from 'dompurify';
 import { JSDOM } from 'jsdom';
 import markdownIt from 'markdown-it';
 import { afterAll, suite, test } from 'vitest';
-import { imageSourceOf } from '../../tools/git/shared/images';
-import { documentImageUrl } from '../../tools/git/page/images';
 import { documentImagePath } from '../../ui/images';
 import { showBlocks, showImages } from '../../ui/markdownView';
 import { markdownRenderer } from '../../ui/markdownRender';
@@ -168,24 +166,19 @@ suite('Markdown', () => {
     const [image] = page.querySelectorAll('img');
     const text = page.querySelector('pre');
     const show = (version: string) =>
-      showImages(page, (path) =>
-        documentImageUrl({ root: '/r', revision: undefined, version }, path),
-      );
-    const source = () =>
-      imageSourceOf(
-        new URL(image.getAttribute('src') ?? '', 'fastforward://app'),
-      );
+      showImages(page, (path) => `/files/${path}?version=${version}`);
     show('1.1');
-    assert.deepStrictEqual(source(), {
-      root: '/r',
-      path: 'shot.png',
-      id: '1.1',
-      disk: true,
-    });
+    assert.strictEqual(
+      image.getAttribute('src'),
+      '/files/shot.png?version=1.1',
+    );
     show('1.2');
     assert.strictEqual(page.querySelector('img'), image);
     assert.strictEqual(page.querySelector('pre'), text);
-    assert.strictEqual(source()?.id, '1.2');
+    assert.strictEqual(
+      image.getAttribute('src'),
+      '/files/shot.png?version=1.2',
+    );
   });
 
   test('shows a document anew keeping each block whose HTML is unchanged as it was drawn, with what was drawn before it, telling the blocks it added and dropped', () => {

@@ -115,8 +115,8 @@
 | Renames and copies | Pair a moved file's old and new path | `git diff -M`, `-C` | Core | 🟡 Partial | Renames only; notes the ones without changes |
 | Mode and type changes | Show changes of mode, and files that became links | — | Common | ✅ Yes | |
 | Binary files | Say a file is binary instead of showing a patch | — | Core | ✅ Yes | |
-| Image diff | Show the two sides of an image | — | Common | ✅ Yes | Side by side, with the size in a tooltip; SVG switches between source and image; no swipe or onion skin |
-| Rendered Markdown | Show Markdown rendered | — | Niche | ✅ Yes | `markdown-it`, with the HTML GitHub keeps, the relative images at that revision, and Mermaid diagrams drawn |
+| Image diff | Show the two sides of an image | — | Common | ✅ Yes | Binary images side by side, with the size in a tooltip; an SVG diffs as text, and is drawn in a viewer tab; no swipe or onion skin |
+| Rendered Markdown | Show Markdown rendered | — | Niche | ✅ Yes | In a viewer tab of its own, not in the diff: `markdown-it`, with the HTML GitHub keeps, the images next to the file, and Mermaid diagrams drawn |
 | Large diffs | Stay responsive on huge changes | — | Common | ✅ Yes | Large files load when asked for |
 | Diff algorithm | Choose Myers, patience or histogram | `git diff --diff-algorithm=<name>` | Advanced | 🟡 Partial | Always histogram |
 | External diff tool | Open a diff in another app | `git difftool` | Common | ❌ No | |
@@ -134,7 +134,7 @@
 | Line history | List the commits that changed some lines | `git log -L` | Advanced | ❌ No | |
 | Restore a file | Put back a file as a revision has it | `git restore --source=<rev> -- <path>` | Common | ❌ No | |
 | Save a file | Save a file as a revision has it | `git show <rev>:<path>` | Advanced | ❌ No | |
-| Open a file | Open a file in an editor, or show it in its folder | — | Common | ❌ No | |
+| Open a file | Open a file in an editor, or show it in its folder | — | Common | 🟡 Partial | In a viewer tab of its own, from the button on its header or F3: the working tree's from disk, a commit's or the index's from a copy of its blob; as text, hex, or a preview of images, Markdown and PDFs; not in an editor |
 
 ## Branches
 

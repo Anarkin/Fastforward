@@ -147,32 +147,6 @@ suite('Find in diff', () => {
     assert.deepStrictEqual(wholeLines({ ...whole, content: '' }), []);
   });
 
-  test('leaves out a file shown as a preview, whose lines are not shown', () => {
-    const files = parsePatch(
-      [
-        'diff --git a/a.md b/a.md',
-        'index 1111111..2222222 100644',
-        '--- a/a.md',
-        '+++ b/a.md',
-        '@@ -1 +1 @@',
-        '-find',
-        '+found',
-        patch,
-      ].join('\n'),
-    );
-    const previewed = new Set(['a.md']);
-    assert.deepStrictEqual(
-      findMatches(files, undefined, 'find', previewed).map(
-        (match) => match.file,
-      ),
-      [1, 1, 1, 1, 1, 2],
-    );
-    assert.deepStrictEqual(
-      findMatches([], { ...whole, path: 'a.md' }, 'find', previewed),
-      [],
-    );
-  });
-
   test('leaves out a symbolic link shown whole, whose target is noted rather than shown as a line', () => {
     assert.deepStrictEqual(
       findMatches([], { ...whole, content: 'find', link: true }, 'find'),

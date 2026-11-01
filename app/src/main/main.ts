@@ -347,11 +347,14 @@ async function start(asked: readonly string[]): Promise<void> {
     systemVersion: process.getSystemVersion(),
     distribution: process.platform === 'linux' ? distributionName() : undefined,
   });
+  const viewedFiles = path.join(profile, 'viewed-files');
+  void fs.promises.rm(viewedFiles, { recursive: true, force: true });
   const gitTool = new GitTool(
     log,
     git.path,
     new GitStorage(userSettings, toolState(state, 'git')),
     {
+      viewedFiles,
       chooseFolders: async () => {
         const chosen = await dialog.showOpenDialog(window, {
           title: strings.app.openRepositories,

@@ -62,6 +62,7 @@ import { useBinding } from '../../../ui/shortcuts';
 import { type ContextMenuItem, type OpenMenu } from '../../../ui/contextMenu';
 import { OpenContextMenu, type MenuEvent, type MenuTarget } from './menus';
 import { Diff, DiffOptions, diffSelection } from './diffColumn';
+import type { ViewedSource } from './images';
 import { Files, filesTitle, listsNothing, noChangesText } from './filesColumn';
 import { foldersOf } from './fileTree';
 import { compareWith } from '../shared/comparisons';
@@ -294,6 +295,12 @@ export function GitTool({
       }
     },
     active,
+  );
+  const [viewAsks, setViewAsks] = useState(0);
+  useBinding(
+    gitKeymap.viewFile,
+    () => setViewAsks((asks) => asks + 1),
+    active && comparing === undefined,
   );
   const focusColumn = useCallback(
     (column: ColumnName) => {
@@ -606,6 +613,10 @@ export function GitTool({
     [hash, diffs, postTab],
   );
 
+  const viewFile = useCallback(
+    (source: ViewedSource) => postTab({ type: 'viewFile', ...source }),
+    [postTab],
+  );
   const loadTexts = useCallback(
     (requests: TextRequest[]) => {
       if (hash) {
@@ -1031,6 +1042,8 @@ export function GitTool({
                                 onLoadFile={loadFileDiff}
                                 texts={texts}
                                 onLoadTexts={loadTexts}
+                                onViewFile={viewFile}
+                                viewAsked={viewAsks}
                                 files={changesShown(tab)}
                                 patch={patch}
                                 leftOut={leftOut}

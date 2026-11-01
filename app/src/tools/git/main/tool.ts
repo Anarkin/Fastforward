@@ -34,6 +34,7 @@ import {
   readBlobs,
   readFile,
   readImage,
+  viewedFile,
   uniquePaths,
 } from './cli/files';
 import { stashFiles, stashPatch } from './cli/stashes';
@@ -206,6 +207,7 @@ interface TabWork extends TabState {
 export type FolderPurpose = 'init' | 'clone';
 
 export interface GitHost {
+  readonly viewedFiles: string;
   chooseFolders(): Promise<readonly string[]>;
   chooseFolder(
     purpose: FolderPurpose,
@@ -586,6 +588,44 @@ export class GitTool implements Tool<'git'> {
     return this.repositoryTabs.some((open) => sameRoot(open, root));
   }
 
+  private async viewFile(
+    context: Context,
+    file: unknown,
+    blob: unknown,
+  ): Promise<void> {
+    const page = context.session?.page;
+    if (
+      page === undefined ||
+      typeof file !== 'string' ||
+      file.includes('\n') ||
+      (blob !== undefined && typeof blob !== 'string')
+    ) {
+      return;
+    }
+    const notify = this.notify(context);
+    try {
+      const viewed = await viewedFile(
+        this.gitPath,
+        context.root,
+        file,
+        blob,
+        this.host.viewedFiles,
+      );
+      if (viewed.kind === 'file') {
+        await this.shell.openView(page, 'commander', viewed.file);
+      } else {
+        notify(
+          'error',
+          viewed.kind === 'tooLarge'
+            ? strings.diff.viewTooLarge(file)
+            : strings.diff.viewMissing(file),
+        );
+      }
+    } catch (error) {
+      notify('error', strings.diff.couldNotView(file, gitErrorText(error)));
+    }
+  }
+
   image(url: URL): Promise<Response> {
     return this.shell.track(this.readImage(url));
   }
@@ -597,18 +637,9 @@ export class GitTool implements Tool<'git'> {
     if (!source || !type || tab?.isRepository !== true) {
       return new Response(null, { status: 404 });
     }
-    const stash =
-      source.revision === undefined
-        ? undefined
-        : tab.stashes.get(source.revision);
     try {
       const read = await this.imageReads.read(source, (limit) =>
-        readImage(
-          this.gitPath,
-          source.root,
-          { ...source, untracked: stash?.untracked },
-          limit,
-        ),
+        readImage(this.gitPath, source.root, source, limit),
       );
       if (read.kind !== 'image') {
         return new Response(null, {
@@ -1088,6 +1119,9 @@ export class GitTool implements Tool<'git'> {
         if (this.isSelected(context, message.hash)) {
           await this.sendTexts(context, message);
         }
+        break;
+      case 'viewFile':
+        await this.viewFile(context, message.path, message.blob);
         break;
       case 'loadFileDiff':
         if (this.isSelected(context, message.hash)) {
@@ -3676,6 +3710,7 @@ function needsNoWholeHistory(tab: TabState, message: TabMessage): boolean {
   switch (message.type) {
     case 'loadCommits':
     case 'showEntireFile':
+    case 'viewFile':
     case 'fetch':
     case 'pull':
     case 'push':

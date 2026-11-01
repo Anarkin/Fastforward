@@ -255,6 +255,7 @@ export const strings = {
     scrollFile: 'Scroll by a row, a page, or to the start or end',
     chooseEncoding: 'Choose the encoding of the text',
     findInFile: 'Search the file',
+    viewDiffFile: 'View the file shown in a tab of its own',
     zoomPdf: 'Zoom a PDF in or out',
     filterFolder: 'Filter the folder by name',
     filterLetter: 'Filter the folder by the letters typed with Alt',
@@ -424,6 +425,10 @@ export const strings = {
     change: (status: string, path: string) => `${status}: ${path}`,
   },
   diff: {
+    viewMissing: (file: string) => `${file} isn't there to view.`,
+    viewTooLarge: (file: string) => `${file} is too large to view.`,
+    couldNotView: (file: string, reason: string) =>
+      `Couldn't view ${file}. ${reason}`,
     showEntireFile: 'Show the Entire File',
     pinEntire: 'Pin Entire Files',
     showWhitespace: 'Show Whitespace',
@@ -454,8 +459,7 @@ export const strings = {
     imageTooLarge: (megabytes: number) =>
       `Images over ${megabytes} MB are not previewed`,
     imageFailed: "Couldn't show this image",
-    showImage: 'Show the Image',
-    showPreview: 'Show the Preview',
+    viewFile: 'View the File in a Tab of Its Own',
     largeFile: 'Large file',
     notLoaded: 'Not loaded',
     largeDiff: (lines: number) =>

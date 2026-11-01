@@ -491,8 +491,6 @@ export function diffView(
       firstChange={undefined}
       sideBySide={sideBySide}
       wordWrap={wordWrap}
-      rendered={new Set()}
-      onRender={noop}
     />,
   );
   const spacer = withClass(view, 'virtual-spacer');

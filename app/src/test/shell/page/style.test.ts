@@ -29,7 +29,6 @@ import {
   rowHeight,
 } from '../../../tools/git/page/diffView';
 import { ImageDiff } from '../../../tools/git/page/imagePreview';
-import { MarkdownDiff } from '../../../tools/git/page/markdownPreview';
 import { AboutPopup, CopyButton } from '../../../shell/page/aboutPopup';
 import { TabBar } from '../../../shell/page/tabBar';
 import { ContextMenu } from '../../../ui/contextMenu';
@@ -1179,70 +1178,6 @@ suite('Style', () => {
     );
   });
 
-  test('previews Markdown as wide as the diff, in halves side by side parted by the line that parts the sides of the diff, hatching the half a file lacks', () => {
-    const view = diffView(
-      { sideBySide: true },
-      createElement(
-        'div',
-        { className: diffRowClass('markdown') },
-        createElement(MarkdownDiff, {
-          sides: [
-            { side: 'old', text: undefined, present: false },
-            { side: 'new', text: undefined, present: true },
-          ],
-        }),
-      ),
-    );
-    looks(withClass(view, 'virtual-row', 'preview-row'), {
-      'min-width': '0',
-      width: '100%',
-    });
-    looks(withClass(view, 'markdown-diff'), {
-      display: 'flex',
-      width: '100%',
-      'margin-left': 'var(--visible-left, 0px)',
-    });
-    const [filler, pane] = allWithClass(view, 'markdown-pane');
-    for (const half of [filler, pane]) {
-      looks(half, { flex: '1 1 0', 'min-width': '0' });
-    }
-    assert.ok(filler.classes.includes('filler'));
-    assert.strictEqual(
-      cascaded(filler, 'background'),
-      cascaded(
-        withClass(
-          diffView({ sideBySide: true }, splitLine('filler', 'added')),
-          'filler',
-        ),
-        'background',
-      ),
-    );
-    looks(pane, {
-      'border-left': `${cascaded(view, 'width', after)} solid ${cascaded(view, 'background', after)}`,
-    });
-    const links = rendered(
-      createElement(
-        'div',
-        { className: 'markdown' },
-        createElement('a', { href: 'https://example.com' }, 'web'),
-        createElement('a', {}, 'relative'),
-      ),
-    ).children;
-    looks(links[0], { color: 'var(--color-focus)' });
-    looks(links[1], { color: undefined });
-    const keyword = rendered(
-      createElement(
-        'div',
-        { className: 'markdown' },
-        createElement('span', { className: 'syntax-keyword' }, 'const'),
-      ),
-    ).children[0];
-    assert.strictEqual(
-      cascaded(keyword, 'color'),
-      'var(--color-syntax-keyword)',
-    );
-  });
-
   test('keeps an image row as wide as the diff, its images in the part scrolled to, side by side and short of the minimap, hatching a side it lacks down to where an image could reach', () => {
     const view = diffView(
       {},
@@ -1631,8 +1566,7 @@ suite('Style', () => {
               whole: false,
               collapsible: true,
               onClick: noop,
-              preview: 'image',
-              onRender: noop,
+              onView: noop,
             }),
           ),
         ),
@@ -2581,8 +2515,7 @@ suite('Style', () => {
             whole: false,
             collapsible: true,
             onClick: noop,
-            preview: 'image',
-            onRender: noop,
+            onView: noop,
           }),
         ),
       ),

@@ -63,6 +63,7 @@ export const gitKeymap = {
     { fields: true },
   ),
   folder: bind('Files', strings.actions.folder, { Space: true }),
+  viewFile: bind('Files', strings.actions.viewDiffFile, { F3: true }),
   toFiles: bind(
     'Files',
     strings.actions.toFiles,

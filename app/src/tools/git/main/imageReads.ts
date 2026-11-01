@@ -6,14 +6,8 @@ export const smallImageSize = 8 * 1024 * 1024;
 export const smallImagesReadAtOnce = 8;
 const largeImagesReadAtOnce = 2;
 
-const readOf = ({ root, path, id, disk, revision }: ImageSource) =>
-  JSON.stringify([
-    root,
-    path,
-    disk,
-    revision,
-    disk || revision !== undefined ? '' : id,
-  ]);
+const readOf = ({ root, path, id, disk }: ImageSource) =>
+  JSON.stringify([root, path, disk, disk ? '' : id]);
 
 export class ImageReads {
   private readonly small = new Slots<ImageRead>(smallImagesReadAtOnce);

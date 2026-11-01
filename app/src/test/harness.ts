@@ -104,6 +104,7 @@ export interface OpenView {
 }
 
 export class FakeHost implements ShellHost, GitHost {
+  readonly viewedFiles = path.join(os.tmpdir(), 'fastforward-viewed-files');
   folders: readonly string[] = [];
   folder: string | undefined;
   readonly foldersAsked: [FolderPurpose, string | undefined][] = [];

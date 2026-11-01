@@ -57,22 +57,13 @@ import {
   sidewaysScroll,
   sidewaysScrollEvent,
 } from '../../../ui/overlayScrollbars';
-import { ImageIcon, PreviewIcon } from '../../../ui/icons';
-import { MarkdownDiff } from './markdownPreview';
-import {
-  markdownSides,
-  previewOf,
-  previewTexts,
-  wholePreviewOf,
-  type Preview,
-} from './previews';
+import { PreviewIcon } from '../../../ui/icons';
 import { ImageDiff, imagePanes } from './imagePreview';
 import { WholeImage } from '../../../ui/images';
 import {
   previewsImage,
   previewsWholeImage,
   wholeImageUrl,
-  wholeRevision,
   type ImageOrigin,
 } from './images';
 import { SkeletonRows, useSkeleton } from '../../../ui/skeleton';
@@ -155,7 +146,6 @@ export type DiffRow =
     }
   | { readonly kind: 'noNewline'; readonly file: number }
   | { readonly kind: 'image'; readonly file: number }
-  | { readonly kind: 'markdown'; readonly file: number }
   | { readonly kind: 'skeleton' }
   | { readonly kind: 'skeletonLines'; readonly file: number }
   | { readonly kind: 'hunk'; readonly file: number }
@@ -175,7 +165,7 @@ export type DiffRow =
 
 type FileHeaderRow = Extract<DiffRow, { kind: 'file' }>;
 
-type MeasuredKind = 'error' | 'skeleton' | 'skeletonLines' | 'markdown';
+type MeasuredKind = 'error' | 'skeleton' | 'skeletonLines';
 
 export const uniformHeight = 22;
 
@@ -206,7 +196,6 @@ const measuredEstimates: Record<MeasuredKind, number> = {
   error: 200,
   skeleton: 240,
   skeletonLines: 100,
-  markdown: 400,
 };
 
 function isMeasured(kind: DiffRow['kind']): kind is MeasuredKind {
@@ -472,9 +461,7 @@ export function FileHeader({
   whole,
   collapsible,
   onClick,
-  preview,
-  rendered = false,
-  onRender,
+  onView,
 }: {
   path: string;
   oldPath?: string;
@@ -482,9 +469,7 @@ export function FileHeader({
   whole: boolean;
   collapsible: boolean;
   onClick: () => void;
-  preview?: Preview;
-  rendered?: boolean;
-  onRender?: (rendered: boolean) => void;
+  onView?: () => void;
 }) {
   return (
     <div className="file-header" onClick={onClick}>
@@ -498,21 +483,16 @@ export function FileHeader({
       )}
       <span className="file-header-end">
         {whole && <span className="unchanged">{strings.diff.unchanged}</span>}
-        {preview && onRender && (
+        {onView && (
           <button
-            className={`nav-button toggle file-header-button ${rendered ? 'active' : ''}`}
-            title={
-              preview === 'image'
-                ? strings.diff.showImage
-                : strings.diff.showPreview
-            }
-            aria-pressed={rendered}
+            className="nav-button file-header-button"
+            title={strings.diff.viewFile}
             onClick={(event) => {
               event.stopPropagation();
-              onRender(!rendered);
+              onView();
             }}
           >
-            {preview === 'image' ? <ImageIcon /> : <PreviewIcon />}
+            <PreviewIcon />
           </button>
         )}
       </span>
@@ -586,7 +566,7 @@ export function diffRowClass(kind: DiffRow['kind']): string {
   const extra =
     kind === 'split'
       ? 'split-row'
-      : kind === 'image' || kind === 'markdown'
+      : kind === 'image'
         ? 'preview-row'
         : kind === 'error'
           ? 'error-row'
@@ -797,8 +777,6 @@ export function largeDiffText(lines: number | undefined): string {
     : strings.diff.notLoadedLines(lines);
 }
 
-const noneRendered: ReadonlySet<string> = new Set();
-
 const linkSides: readonly (keyof LinkTargets)[] = ['old', 'new'];
 
 const sideChanges: Record<keyof LinkTargets, Change> = {
@@ -812,8 +790,6 @@ export function diffRows(
   whole: WholeFile | undefined,
   loading = false,
   sideBySide = false,
-  rendered: ReadonlySet<string> = noneRendered,
-  images = true,
 ): DiffRow[] {
   const rows: DiffRow[] = [{ kind: 'error' }];
   const budget = pairingBudget();
@@ -839,11 +815,6 @@ export function diffRows(
         file: 0,
       });
     }
-    const preview = wholePreviewOf(whole);
-    if (preview && rendered.has(whole.path)) {
-      rows.push({ kind: preview, file: 0 });
-      return rows;
-    }
     wholeLines(whole).forEach((text, index) =>
       rows.push({ kind: 'wholeLine', file: 0, number: index + 1, text }),
     );
@@ -852,11 +823,8 @@ export function diffRows(
   const collapsible = files.length > 1;
   files.forEach((file, index) => {
     const lines = changedLines(file);
-    const preview = previewOf(file, images);
-    const previewed = preview !== undefined && rendered.has(file.path);
     const large =
-      !previewed &&
-      (file.placeholder !== undefined || (lines ?? 0) > collapseThreshold);
+      file.placeholder !== undefined || (lines ?? 0) > collapseThreshold;
     const chosen = collapsible
       ? toggled.get(file.path)
       : toggled.get(file.path) || undefined;
@@ -877,10 +845,6 @@ export function diffRows(
     }
     if (file.placeholder) {
       rows.push({ kind: 'skeletonLines', file: index });
-      return;
-    }
-    if (previewed) {
-      rows.push({ kind: preview, file: index });
       return;
     }
     if (file.link) {
@@ -1908,8 +1872,7 @@ export function DiffView({
   wordWrap,
   showWhitespace = false,
   origin,
-  rendered,
-  onRender,
+  viewOf,
 }: {
   error: React.ReactNode;
   files: readonly DiffFile[];
@@ -1928,8 +1891,7 @@ export function DiffView({
   sideBySide: boolean;
   wordWrap: boolean;
   showWhitespace?: boolean;
-  rendered: ReadonlySet<string>;
-  onRender: (path: string, render: boolean) => void;
+  viewOf?: (file: number) => (() => void) | undefined;
 }) {
   const list = useRef<HTMLDivElement>(null);
   const [sideways, setSideways] = useState(0);
@@ -2101,17 +2063,8 @@ export function DiffView({
   );
   const skeleton = useSkeleton(loading);
   const rows = useMemo(
-    () =>
-      diffRows(
-        files,
-        toggled,
-        whole,
-        skeleton,
-        sideBySide,
-        rendered,
-        origin !== undefined,
-      ),
-    [files, toggled, whole, skeleton, sideBySide, rendered, origin],
+    () => diffRows(files, toggled, whole, skeleton, sideBySide),
+    [files, toggled, whole, skeleton, sideBySide],
   );
 
   const wrapping = wordWrap ? columns : undefined;
@@ -2182,14 +2135,11 @@ export function DiffView({
   useEffect(() => {
     const load = whole
       ? []
-      : [
-          ...textsToLoad(files, diff, requestedTexts.current, open, texts),
-          ...previewTexts(files, rendered, diff, requestedTexts.current, texts),
-        ];
+      : textsToLoad(files, diff, requestedTexts.current, open, texts);
     if (load.length > 0) {
       onLoadTexts(load);
     }
-  }, [files, whole, diff, open, rendered, texts, onLoadTexts]);
+  }, [files, whole, diff, open, texts, onLoadTexts]);
   const rangesByLine = useMemo(() => findRangesByLine(matches), [matches]);
   const found = matches.at(current);
   const foundKey = found && lineKey(found.file, found.line);
@@ -2268,13 +2218,7 @@ export function DiffView({
       open={row.open}
       whole={whole !== undefined}
       collapsible={row.collapsible}
-      preview={
-        whole
-          ? wholePreviewOf(whole)
-          : previewOf(files[row.file], origin !== undefined)
-      }
-      rendered={rendered.has(row.path)}
-      onRender={(render) => onRender(row.path, render)}
+      onView={viewOf?.(row.file)}
       onClick={() => {
         if (!row.collapsible) {
           return;
@@ -2436,30 +2380,6 @@ export function DiffView({
         }
         return <ImageDiff panes={imagePanes(origin, files[row.file], split)} />;
       }
-      case 'markdown':
-        return (
-          <MarkdownDiff
-            sides={
-              whole
-                ? [
-                    {
-                      side: 'new',
-                      text: whole.content,
-                      present: true,
-                      ...(origin && {
-                        images: {
-                          root: origin.root,
-                          document: whole.path,
-                          revision: wholeRevision(origin),
-                          version: origin.version ?? '',
-                        },
-                      }),
-                    },
-                  ]
-                : markdownSides(files[row.file], texts, split, origin)
-            }
-          />
-        );
       case 'skeleton':
         return (
           <div className="diff-skeleton">

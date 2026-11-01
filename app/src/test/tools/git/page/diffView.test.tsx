@@ -70,7 +70,6 @@ import {
 } from '../../../../tools/git/page/wordDiff';
 import { lineKey } from '../../../../tools/git/page/find';
 import type { TextWidths } from '../../../../tools/git/page/overflow';
-import type { Preview } from '../../../../tools/git/page/previews';
 import { countingReads, fileChange, tagsWith } from '../../../fixtures';
 
 function sign(glyph: string, text: string): string {
@@ -2179,7 +2178,7 @@ suite('Hunk divider', () => {
   });
 });
 
-const previewHeader = (preview?: Preview, rendered?: boolean) =>
+const viewHeader = (onView?: () => void) =>
   renderToStaticMarkup(
     <FileHeader
       path="v.svg"
@@ -2187,13 +2186,11 @@ const previewHeader = (preview?: Preview, rendered?: boolean) =>
       whole={false}
       collapsible
       onClick={() => {}}
-      preview={preview}
-      rendered={rendered}
-      onRender={() => {}}
+      onView={onView}
     />,
   );
 
-suite('Rendered SVGs', () => {
+suite('Files to view', () => {
   const svg = parsePatch(
     [
       'diff --git a/v.svg b/v.svg',
@@ -2206,23 +2203,15 @@ suite('Rendered SVGs', () => {
     ].join('\n'),
   );
 
-  test('shows an SVG as an image in place of its lines only once asked to', () => {
+  test('shows an SVG by its lines as any text, to be seen drawn in a tab of its own', () => {
     for (const sideBySide of [false, true]) {
-      const rows = (rendered: ReadonlySet<string>) =>
-        kinds(diffRows(svg, new Map(), undefined, false, sideBySide, rendered));
-      assert.ok(rows(new Set()).includes(sideBySide ? 'split' : 'line'));
-      assert.deepStrictEqual(rows(new Set(['v.svg'])), [
-        'error',
-        'file',
-        'image',
-      ]);
-      assert.ok(rows(new Set(['other.svg'])).includes('file'));
+      const rows = kinds(
+        diffRows(svg, new Map(), undefined, false, sideBySide),
+      );
+      assert.ok(rows.includes(sideBySide ? 'split' : 'line'));
+      assert.ok(!rows.includes('image'));
     }
     const whole = { path: 'v.svg', content: '<svg/>\n', binary: false };
-    assert.deepStrictEqual(
-      kinds(diffRows([], new Map(), whole, false, false, new Set(['v.svg']))),
-      ['error', 'file', 'image'],
-    );
     assert.deepStrictEqual(kinds(diffRows([], new Map(), whole)), [
       'error',
       'file',
@@ -2230,19 +2219,11 @@ suite('Rendered SVGs', () => {
     ]);
   });
 
-  test('offers to switch between the source and its preview only for a file that has one', () => {
-    assert.doesNotMatch(previewHeader(), /<button/);
+  test('offers to view a file in a tab of its own only where the diff can tell where to read it from', () => {
+    assert.doesNotMatch(viewHeader(), /<button/);
     assert.match(
-      previewHeader('image'),
-      /title="Show the Image" aria-pressed="false"/,
-    );
-    assert.match(
-      previewHeader('markdown', false),
-      /title="Show the Preview" aria-pressed="false"/,
-    );
-    assert.match(
-      previewHeader('image', true),
-      /title="Show the Image" aria-pressed="true"/,
+      viewHeader(() => {}),
+      /<button class="nav-button file-header-button" title="View the File in a Tab of Its Own">/,
     );
   });
 });
@@ -2532,12 +2513,11 @@ suite('Symbolic links', () => {
       binary: false,
       link: true as const,
     };
-    for (const rendered of [new Set<string>(), new Set(['AGENTS.md'])]) {
-      assert.deepStrictEqual(
-        kinds(diffRows([], new Map(), whole, false, false, rendered)),
-        ['error', 'file', 'link'],
-      );
-    }
+    assert.deepStrictEqual(kinds(diffRows([], new Map(), whole)), [
+      'error',
+      'file',
+      'link',
+    ]);
   });
 });
 
@@ -2710,12 +2690,7 @@ suite('Renamed files', () => {
       rowHeight({ kind: 'image', file: 0 }, false, line),
       19 * line,
     );
-    const measured = rowMeasures(
-      [{ kind: 'markdown', file: 0 }],
-      undefined,
-      line,
-      1.25,
-    );
+    const measured = rowMeasures([{ kind: 'error' }], undefined, line, 1.25);
     const preview = measured.measureElement(
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion
       {} as Element,

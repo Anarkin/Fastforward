@@ -6,16 +6,13 @@ import { workingTreeHash } from '../../../../tools/git/shared/protocol';
 import { parsePatch, type DiffFile } from '../../../../tools/git/page/diff';
 import {
   diffImageUrl,
-  documentImageUrl,
   previewsImage,
   previewsWholeImage,
-  rendersImage,
-  rendersWholeImage,
-  sideRevision,
   wholeImageUrl,
-  wholeRevision,
   withUnchangedObjects,
   type ImageOrigin,
+  viewedSource,
+  wholeViewedSource,
 } from '../../../../tools/git/page/images';
 import { documentImagePath, ImageCache } from '../../../../ui/images';
 import { policyOfPage } from '../../../fixtures';
@@ -48,19 +45,6 @@ const source = (url: string | undefined) =>
   url === undefined
     ? undefined
     : imageSourceOf(new URL(url, 'fastforward://app'));
-
-function svgPatch(index: string, binary = false): DiffFile {
-  const [file] = parsePatch(
-    [
-      'diff --git a/v.svg b/v.svg',
-      `index ${index}`,
-      ...(binary
-        ? ['Binary files a/v.svg and b/v.svg differ']
-        : ['--- a/v.svg', '+++ b/v.svg', '@@ -1 +1 @@', '-<svg/>', '+<svg />']),
-    ].join('\n'),
-  );
-  return file;
-}
 
 const change = (file: string, id?: string) => ({
   path: file,
@@ -128,34 +112,6 @@ suite('Image previews', () => {
         { ...change('src/a.png', commit), link: true },
       ]),
       files,
-    );
-  });
-
-  test('renders an SVG from its source, in a diff with either side or whole', () => {
-    const svg = svgPatch(`${oldId}..${newId}`);
-    assert.strictEqual(rendersImage(svg), true);
-    assert.strictEqual(previewsImage(svg), false);
-    assert.strictEqual(source(diffImageUrl(at(commit), svg, 'new'))?.id, newId);
-    assert.strictEqual(
-      rendersImage(svgPatch(`${oldId}..${newId}`, true)),
-      false,
-    );
-    assert.strictEqual(rendersImage({ ...svg, blobs: undefined }), false);
-    assert.strictEqual(
-      rendersImage({ ...svg, placeholder: { lines: 1 } }),
-      false,
-    );
-    assert.strictEqual(rendersImage({ ...modified, binary: false }), false);
-
-    const whole = { path: 'v.svg', content: '<svg>#&</svg>', binary: false };
-    assert.strictEqual(rendersWholeImage(whole), true);
-    assert.strictEqual(rendersWholeImage({ ...whole, path: 'v.xml' }), false);
-    const url = wholeImageUrl(at(commit), whole) ?? '';
-    const prefix = 'data:image/svg+xml;charset=utf-8,';
-    assert.ok(url.startsWith(prefix));
-    assert.strictEqual(
-      decodeURIComponent(url.slice(prefix.length)),
-      whole.content,
     );
   });
 
@@ -282,33 +238,6 @@ const sized = (size: number) => () => {
 const from = (src: string) => documentImagePath('docs/guide/a.md', src);
 
 suite('Images in documents', () => {
-  test('reads each side at the revision it shows', () => {
-    const revisions = (hash: string, area?: ImageOrigin['area']) => [
-      sideRevision(at(hash, area), 'old'),
-      sideRevision(at(hash, area), 'new'),
-    ];
-    assert.deepStrictEqual(revisions(commit), [`${commit}^`, commit]);
-    assert.deepStrictEqual(revisions(comparisonOf(oldId, newId)), [
-      oldId,
-      newId,
-    ]);
-    assert.deepStrictEqual(revisions(comparisonOf(workingTreeHash, commit)), [
-      undefined,
-      commit,
-    ]);
-    assert.deepStrictEqual(revisions(workingTreeHash), ['HEAD', undefined]);
-    assert.deepStrictEqual(revisions(workingTreeHash, 'unstaged'), [
-      '',
-      undefined,
-    ]);
-    assert.deepStrictEqual(revisions(workingTreeHash, 'staged'), ['HEAD', '']);
-    assert.strictEqual(wholeRevision(at(commit)), commit);
-    assert.strictEqual(
-      wholeRevision(at(comparisonOf(commit, workingTreeHash))),
-      undefined,
-    );
-  });
-
   test('finds an image by its path from the document, or from the root as GitHub does, never outside the repository nor on a server, so opening a document tells no server, and only an image', () => {
     assert.strictEqual(from('shot.png'), 'docs/guide/shot.png');
     assert.strictEqual(
@@ -345,29 +274,6 @@ suite('Images in documents', () => {
     ]) {
       assert.strictEqual(from(outside), undefined, outside);
     }
-  });
-
-  test('reads an image in a document at its revision', () => {
-    const images = { root: '/repo', revision: 'HEAD', version: '7' };
-    assert.deepStrictEqual(source(documentImageUrl(images, 'docs/b.png')), {
-      root: '/repo',
-      path: 'docs/b.png',
-      id: '7',
-      disk: false,
-      revision: 'HEAD',
-    });
-    assert.strictEqual(
-      source(
-        documentImageUrl({ ...images, revision: `${commit}^` }, 'docs/b.png'),
-      )?.id,
-      `${commit}^`,
-    );
-    assert.deepStrictEqual(
-      source(
-        documentImageUrl({ ...images, revision: undefined }, 'docs/b.png'),
-      ),
-      { root: '/repo', path: 'docs/b.png', id: '7', disk: true },
-    );
   });
 });
 
@@ -474,5 +380,76 @@ suite('Image cache', () => {
     assert.strictEqual(cache.peek('a'), shown);
     again.release();
     b.release();
+  });
+});
+
+const textFile = (index: string) =>
+  parsePatch(
+    [
+      'diff --git a/docs/a.md b/docs/a.md',
+      `index ${index}`,
+      '--- a/docs/a.md',
+      '+++ b/docs/a.md',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n'),
+  )[0];
+suite('Files to view', () => {
+  const none = '0'.repeat(40);
+
+  test('views the new side of a file, from the working tree where it is on disk, and from a commit or the index by its blob', () => {
+    const changed = textFile(`${oldId}..${newId}`);
+    assert.deepStrictEqual(viewedSource(at(commit), changed), {
+      path: 'docs/a.md',
+      blob: newId,
+    });
+    assert.deepStrictEqual(
+      viewedSource(at(workingTreeHash, 'unstaged'), changed),
+      { path: 'docs/a.md' },
+    );
+    assert.deepStrictEqual(viewedSource(at(workingTreeHash), changed), {
+      path: 'docs/a.md',
+    });
+    assert.deepStrictEqual(
+      viewedSource(at(workingTreeHash, 'staged'), changed),
+      { path: 'docs/a.md', blob: newId },
+    );
+  });
+
+  test('views the old side of a file deleted, and the old path of one renamed', () => {
+    assert.deepStrictEqual(
+      viewedSource(at(commit), textFile(`${oldId}..${none}`)),
+      { path: 'docs/a.md', blob: oldId },
+    );
+    assert.deepStrictEqual(
+      viewedSource(
+        at(workingTreeHash),
+        binaryFile('old.png', 'new.png', `${oldId}..${none}`),
+      ),
+      { path: 'old.png', blob: oldId },
+    );
+  });
+
+  test('views a file shown entire by its blob, or where it is in the working tree, and nothing it can not tell where to read from', () => {
+    const whole = { path: 'a.md', content: '', binary: false, id: newId };
+    assert.deepStrictEqual(wholeViewedSource(at(commit), whole), {
+      path: 'a.md',
+      blob: newId,
+    });
+    assert.deepStrictEqual(wholeViewedSource(at(workingTreeHash), whole), {
+      path: 'a.md',
+    });
+    assert.strictEqual(
+      wholeViewedSource(at(commit), { ...whole, id: undefined }),
+      undefined,
+    );
+    assert.strictEqual(
+      viewedSource(at(commit), {
+        ...textFile(`${oldId}..${newId}`),
+        blobs: undefined,
+      }),
+      undefined,
+    );
   });
 });

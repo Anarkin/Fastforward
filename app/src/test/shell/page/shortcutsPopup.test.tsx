@@ -174,7 +174,11 @@ suite('Shortcuts popup', () => {
         ],
         [
           'Files',
-          ['Open or close a folder', 'Go from the file filter to the files'],
+          [
+            'Open or close a folder',
+            'View the file shown in a tab of its own',
+            'Go from the file filter to the files',
+          ],
         ],
         [
           'Diff',
