@@ -546,6 +546,29 @@ export function FileNote({
   );
 }
 
+const otherSideOffset = 3;
+
+export function DiffSkeleton({
+  split,
+  rows,
+}: {
+  split: boolean;
+  rows: number;
+}) {
+  if (!split) {
+    return <SkeletonRows count={rows} className="diff-line" />;
+  }
+  return (
+    <div className="split-line">
+      {[0, otherSideOffset].map((offset) => (
+        <div key={offset} className="split-side">
+          <SkeletonRows count={rows} className="diff-line" offset={offset} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function diffRowClass(kind: DiffRow['kind']): string {
   const extra =
     kind === 'split'
@@ -2393,11 +2416,11 @@ export function DiffView({
             <div className="file-header">
               <span className="bar" style={{ width: '40%' }} />
             </div>
-            <SkeletonRows count={9} className="diff-line" />
+            <DiffSkeleton split={split} rows={9} />
           </div>
         );
       case 'skeletonLines':
-        return <SkeletonRows count={4} className="diff-line" />;
+        return <DiffSkeleton split={split} rows={4} />;
       case 'hunk':
         return <HunkDivider />;
       case 'line':

@@ -60,6 +60,7 @@ import {
   widestColumns,
   splitPairs,
   type DiffRow,
+  DiffSkeleton,
 } from '../../../../tools/git/page/diffView';
 import { ImageDiff, imagePanes } from '../../../../tools/git/page/imagePreview';
 import { sideBySideWords } from '../../../../tools/git/page/pairing';
@@ -70,7 +71,7 @@ import {
 import { lineKey } from '../../../../tools/git/page/find';
 import type { TextWidths } from '../../../../tools/git/page/overflow';
 import type { Preview } from '../../../../tools/git/page/previews';
-import { countingReads, fileChange } from '../../../fixtures';
+import { countingReads, fileChange, tagsWith } from '../../../fixtures';
 
 function sign(glyph: string, text: string): string {
   return `<span class="blank" data-glyph="${glyph}">${text}</span>`;
@@ -2683,5 +2684,17 @@ suite('Renamed files', () => {
       ),
       ['error', 'file', 'line', 'line'],
     );
+  });
+
+  test('draws the placeholder of a diff loading side by side as two columns of bars, each its own, and inline as one', () => {
+    const split = renderToStaticMarkup(<DiffSkeleton split rows={9} />);
+    const sides = tagsWith(split, 'split-side');
+    assert.strictEqual(sides.length, 2);
+    assert.strictEqual(tagsWith(split, 'skeleton-row').length, 18);
+    const inline = renderToStaticMarkup(
+      <DiffSkeleton split={false} rows={9} />,
+    );
+    assert.strictEqual(tagsWith(inline, 'split-side').length, 0);
+    assert.strictEqual(tagsWith(inline, 'skeleton-row').length, 9);
   });
 });

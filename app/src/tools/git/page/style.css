@@ -1143,6 +1143,10 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
   padding-left: calc(2 * var(--diff-number-width) + var(--diff-code-padding));
 }
 
+.split-side .diff-line.skeleton-row {
+  padding-left: calc(var(--diff-number-width) + var(--diff-code-padding));
+}
+
 .diff-skeleton .file-header .bar {
   margin: 0.2em 0;
 }
