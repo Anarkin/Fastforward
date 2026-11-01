@@ -2014,9 +2014,10 @@ suite('Diff keys', () => {
     assert.strictEqual(diffScrollLeft(-1, 100, 100), 60);
   });
 
-  test('scrolls three lines with the arrows, a screen less a line with the page keys, and to either end', () => {
-    assert.strictEqual(diffScrollTop('down', 100, 400, 2000), 166);
-    assert.strictEqual(diffScrollTop('up', 40, 400, 2000), 0);
+  test('scrolls a line with the arrows, as the terminal, the viewer and the commander do, a screen less a line with the page keys, and to either end', () => {
+    assert.strictEqual(diffScrollTop('down', 100, 400, 2000), 122);
+    assert.strictEqual(diffScrollTop('up', 40, 400, 2000), 18);
+    assert.strictEqual(diffScrollTop('up', 10, 400, 2000), 0);
     assert.strictEqual(diffScrollTop('pageDown', 100, 400, 2000), 478);
     assert.strictEqual(diffScrollTop('pageUp', 500, 400, 2000), 122);
     assert.strictEqual(diffScrollTop('first', 500, 400, 2000), 0);
@@ -2025,8 +2026,8 @@ suite('Diff keys', () => {
   });
 
   test('scrolls by lines as tall as those of the diff', () => {
-    assert.strictEqual(diffScrollTop('down', 100, 400, 2000, 17), 151);
-    assert.strictEqual(diffScrollTop('up', 100, 400, 2000, 17), 49);
+    assert.strictEqual(diffScrollTop('down', 100, 400, 2000, 17), 117);
+    assert.strictEqual(diffScrollTop('up', 100, 400, 2000, 17), 83);
     assert.strictEqual(diffScrollTop('pageDown', 100, 400, 2000, 17), 483);
     assert.strictEqual(diffScrollTop('pageUp', 500, 400, 2000, 17), 117);
   });

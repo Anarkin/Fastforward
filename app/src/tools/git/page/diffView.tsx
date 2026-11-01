@@ -970,10 +970,10 @@ export function diffScrollTop(
   let target: number;
   switch (move) {
     case 'down':
-      target = scrollTop + 3 * line;
+      target = scrollTop + line;
       break;
     case 'up':
-      target = scrollTop - 3 * line;
+      target = scrollTop - line;
       break;
     case 'pageDown':
       target = scrollTop + Math.max(line, viewport - line);
