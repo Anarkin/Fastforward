@@ -382,7 +382,7 @@ suite('App commander', () => {
         'only the file with both words',
       );
       assert.ok((await selected()).includes('Report-gamma'));
-      await page.keyboard.press('Control+A');
+      await page.keyboard.press('ControlOrMeta+F');
       await page.keyboard.type('report');
       await waitFor(
         async () =>
@@ -470,6 +470,12 @@ suite('App commander', () => {
         .locator('.commander-filter-input')
         .waitFor({ state: 'detached' });
     } finally {
+      if (await right().locator('.commander-filter-input').isVisible()) {
+        await right().locator('.commander-filter-input').press('Escape');
+        await right()
+          .locator('.commander-filter-input')
+          .waitFor({ state: 'detached' });
+      }
       for (const name of names) {
         fs.rmSync(path.join(opened, name));
       }
