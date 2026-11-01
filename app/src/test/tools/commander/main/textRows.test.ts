@@ -5,10 +5,7 @@ import { suite, test } from 'vitest';
 import {
   blockCache,
   codingOf,
-  indexRows,
   isUtf8,
-  rowIndexAt,
-  rowStartOf,
   utf16Order,
   looksBinary,
   readingFile,
@@ -19,7 +16,6 @@ import {
   type ReadBytes,
 } from '../../../../tools/commander/main/textRows';
 import { removeFolder, tempFolder } from '../../../repositories';
-import type { TextEncoding } from '../../../../tools/commander/shared/protocol';
 
 function inMemory(text: string | Buffer): {
   readonly read: ReadBytes;
@@ -242,76 +238,6 @@ suite('Rows of text of a file', () => {
     assert.strictEqual(isUtf8(Buffer.from([0x61, 0xe1, 0x72, 0x76])), false);
     assert.strictEqual(isUtf8(Buffer.from('a€', 'utf8').subarray(0, 3)), true);
     assert.strictEqual(isUtf8(Buffer.from([0x61, 0xe2, 0x82, 0x41])), false);
-  });
-
-  test('counts the rows of a file as they are drawn, long lines broken into rows, and finds the start of any row and the row of any start from the rows it marks', async () => {
-    const newline = String.fromCharCode(10);
-    const carriage = String.fromCharCode(13);
-    const files: [string, Buffer, TextEncoding][] = [];
-    const lines = Array.from({ length: 1500 }, (_, index) =>
-      index % 97 === 3
-        ? 'é'.repeat(rowBytes + 7)
-        : index % 31 === 0
-          ? `row ${index}${carriage}`
-          : index % 7 === 0
-            ? ''
-            : `row ${index} ${'x'.repeat(index % 50)}`,
-    );
-    const text = lines.join(newline);
-    files.push(['UTF-8', Buffer.from(text, 'utf8'), 'utf-8']);
-    files.push([
-      'UTF-8 ending in a new line',
-      Buffer.from(`${text}${newline}`, 'utf8'),
-      'utf-8',
-    ]);
-    files.push(['UTF-16', Buffer.from(text, 'utf16le'), 'utf-16le']);
-    files.push([
-      'one long line',
-      Buffer.from('a'.repeat(rowBytes * 5 + 3)),
-      'utf-8',
-    ]);
-    files.push(['empty', Buffer.alloc(0), 'utf-8']);
-    for (const [name, bytes, encoding] of files) {
-      const { read, size } = inMemory(bytes);
-      const coding = codingOf(encoding);
-      const drawn = await rowsFrom(read, size, 0, Infinity, coding);
-      const index = await indexRows(read, size, coding);
-      assert.strictEqual(index?.rows, drawn.length, name);
-      if (index === undefined) {
-        continue;
-      }
-      for (const row of [0, 1, 255, 256, 257, 700, drawn.length - 1]) {
-        if (row < 0 || row >= drawn.length) {
-          continue;
-        }
-        assert.strictEqual(
-          await rowStartOf(read, size, index, row, coding),
-          drawn[row]?.start,
-          `${name}: start of row ${row}`,
-        );
-        assert.strictEqual(
-          await rowIndexAt(read, size, index, drawn[row]?.start ?? 0, coding),
-          row,
-          `${name}: row at ${drawn[row]?.start}`,
-        );
-      }
-      assert.strictEqual(
-        await rowStartOf(read, size, index, drawn.length + 10, coding),
-        size,
-        name,
-      );
-    }
-  });
-
-  test('stops counting the rows of a file once called off', async () => {
-    const { read, size } = inMemory(Buffer.from('a\n'.repeat(100_000)));
-    const leaving = new AbortController();
-    leaving.abort();
-
-    assert.strictEqual(
-      await indexRows(read, size, codingOf('utf-8'), leaving.signal),
-      undefined,
-    );
   });
 
   test('reads a file on disk', async () => {

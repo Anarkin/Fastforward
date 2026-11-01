@@ -338,50 +338,6 @@ suite('Commander tool', () => {
       assert.strictEqual(page.of('rows').length, 1);
     });
 
-    test('counts the rows of a file viewed in the encoding asked for, and reads rows by their number once counted, telling the number of the first', async () => {
-      const notes = path.join(opened, 'counted.txt');
-      const newline = String.fromCharCode(10);
-      fs.writeFileSync(
-        notes,
-        Array.from({ length: 1000 }, (_, index) => `row ${index}`).join(
-          newline,
-        ),
-      );
-      const { tool, page, send } = commander({});
-      await tool.show(page, {
-        id: '3',
-        tool: 'commander',
-        root: notes,
-        view: true,
-      });
-      const ask = (fields: { anchor?: number; row?: number }) =>
-        send({
-          type: 'readRows',
-          tab: '3',
-          encoding: 'utf-8',
-          request: 7,
-          anchor: 0,
-          exact: true,
-          before: 0,
-          after: 2,
-          ...fields,
-        });
-
-      await ask({});
-      await waitFor(() => page.of('rowCount').length > 0, 'the rows counted');
-      assert.deepStrictEqual(page.of('rowCount'), [
-        { type: 'rowCount', tab: '3', encoding: 'utf-8', rows: 1000 },
-      ]);
-      await ask({ row: 700 });
-      const answer = page.of('rows').at(-1);
-      assert.deepStrictEqual(
-        answer && [answer.index, answer.rows.map((row) => row.text)],
-        [700, ['row 700', 'row 701']],
-      );
-      await ask({ row: 1.5 });
-      assert.strictEqual(page.of('rows').at(-1), answer);
-    });
-
     test('finds text in a file viewed in the encoding asked for, answering with the bytes of each match, and checks what the page asks', async () => {
       const notes = path.join(opened, 'find.txt');
       fs.writeFileSync(notes, 'Árvíz\nnothing\nÁRVÍZ\n');

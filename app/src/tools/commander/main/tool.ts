@@ -47,10 +47,6 @@ import {
   rowsBefore,
   rowsFrom,
   rowStartAt,
-  indexRows,
-  rowIndexAt,
-  rowStartOf,
-  type RowIndex,
 } from './textRows';
 import { findInFile } from './textFind';
 import { fileResponse } from './fileRanges';
@@ -104,7 +100,6 @@ interface Pane {
 type Listing = 'visit' | 'show' | 'refresh' | { readonly at: number };
 
 const maxFindLength = 1000;
-const maxCountedSize = 64 * 1024 * 1024;
 const findProgressEvery = 150;
 const maxHistory = 100;
 
@@ -202,8 +197,6 @@ export class CommanderTool implements Tool<'commander'> {
         readonly binary: boolean;
         readonly blocks: BlockCache;
         readonly stop: () => void;
-        readonly counted: Map<TextEncoding, RowIndex | 'counting'>;
-        counting: AbortController;
       }
     | undefined;
   private elevating: Promise<ElevatedFileSystem | undefined> | undefined;
@@ -613,16 +606,11 @@ export class CommanderTool implements Tool<'commander'> {
       size,
       binary,
       blocks: blockCache(),
-      counted: new Map<TextEncoding, RowIndex | 'counting'>(),
-      counting: new AbortController(),
       stop: this.access.watch(file, () => {
         void fs.promises.stat(file).then(
           (stats) => {
             if (this.viewing === viewing && this.shown?.tab === tab) {
               viewing.blocks.forget();
-              viewing.counting.abort();
-              viewing.counting = new AbortController();
-              viewing.counted.clear();
               viewing.size = stats.size;
               this.post(page, {
                 type: 'viewing',
@@ -639,7 +627,6 @@ export class CommanderTool implements Tool<'commander'> {
     };
     this.finding?.abort();
     this.finding = undefined;
-    this.viewing?.counting.abort();
     this.viewing = viewing;
     if (isPdf(file)) {
       this.pdfTabs.set(tab, file);
@@ -825,47 +812,12 @@ export class CommanderTool implements Tool<'commander'> {
     });
   }
 
-  private rowIndexOf(
-    page: Page,
-    viewing: NonNullable<CommanderTool['viewing']>,
-    encoding: TextEncoding,
-  ): RowIndex | undefined {
-    const known = viewing.counted.get(encoding);
-    if (known !== undefined) {
-      return known === 'counting' ? undefined : known;
-    }
-    if (viewing.size > maxCountedSize) {
-      return undefined;
-    }
-    viewing.counted.set(encoding, 'counting');
-    const { signal } = viewing.counting;
-    const { size } = viewing;
-    void readingFile(viewing.file, (read) =>
-      indexRows(read, size, codingOf(encoding), signal),
-    ).then(
-      (index) => {
-        if (index === undefined || signal.aborted || this.viewing !== viewing) {
-          return;
-        }
-        viewing.counted.set(encoding, index);
-        this.post(page, {
-          type: 'rowCount',
-          tab: viewing.tab,
-          encoding,
-          rows: index.rows,
-        });
-      },
-      () => viewing.counted.delete(encoding),
-    );
-    return undefined;
-  }
-
   private async readRows(
     page: Page,
     message: Extract<CommanderToHost, { type: 'readRows' }>,
   ): Promise<void> {
     const { viewing } = this;
-    const { request, anchor, exact, before, after, encoding, row } = message;
+    const { request, anchor, exact, before, after, encoding } = message;
     const counts = [before, after].every(
       (count) => Number.isInteger(count) && count >= 0 && count <= maxRowsAsked,
     );
@@ -878,36 +830,24 @@ export class CommanderTool implements Tool<'commander'> {
       anchor < 0 ||
       typeof exact !== 'boolean' ||
       !isTextEncoding(encoding) ||
-      !counts ||
-      (row !== undefined && (!Number.isSafeInteger(row) || row < 0))
+      !counts
     ) {
       return;
     }
     const { size, blocks } = viewing;
-    const index = this.rowIndexOf(page, viewing, encoding);
     try {
-      const [earlier, later, firstIndex] = await readingFile(
+      const [earlier, later] = await readingFile(
         viewing.file,
         async (direct) => {
           const read = blocks.reader(direct);
           const coding = codingOf(encoding);
-          const start =
-            index !== undefined && row !== undefined
-              ? await rowStartOf(read, size, index, row, coding)
-              : exact
-                ? Math.min(anchor, size)
-                : await rowStartAt(read, Math.min(anchor, size), coding);
-          const found = await Promise.all([
+          const start = exact
+            ? Math.min(anchor, size)
+            : await rowStartAt(read, Math.min(anchor, size), coding);
+          return Promise.all([
             rowsBefore(read, size, start, before, coding),
             rowsFrom(read, size, start, after, coding),
           ]);
-          const first = found[0][0] ?? found[1][0];
-          return [
-            ...found,
-            index === undefined || first === undefined
-              ? undefined
-              : await rowIndexAt(read, size, index, first.start, coding),
-          ] as const;
         },
       );
       this.post(page, {
@@ -917,7 +857,6 @@ export class CommanderTool implements Tool<'commander'> {
         size,
         rows: [...earlier, ...later],
         anchorIndex: earlier.length,
-        ...(firstIndex !== undefined && { index: firstIndex }),
       });
     } catch (error) {
       this.post(page, {
@@ -1192,7 +1131,6 @@ export class CommanderTool implements Tool<'commander'> {
     }
     this.watching.clear();
     this.viewing?.stop();
-    this.viewing?.counting.abort();
     this.viewing = undefined;
     this.finding?.abort();
     this.finding = undefined;

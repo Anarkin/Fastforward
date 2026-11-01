@@ -27,12 +27,10 @@ const rowsAboveMatch = 2;
 interface Loaded {
   readonly rows: readonly TextRow[];
   readonly top: number;
-  readonly index?: number;
 }
 
 interface Ask {
   readonly anchor: number;
-  readonly row?: number;
   readonly exact: boolean;
   readonly before: number;
   readonly after: number;
@@ -77,36 +75,31 @@ export function bytesPerRow(rows: readonly TextRow[]): number | undefined {
     : Math.max(1, (last.end - first.start) / rows.length);
 }
 
+function lastScreenStart(
+  size: number,
+  screen: number,
+  perRow: number,
+  known: number | undefined,
+): number {
+  return known ?? Math.max(0, size - screen * perRow);
+}
+
 export function textThumb(
   loaded: Loaded,
   screen: number,
   size: number,
   perRow: number | undefined,
-  total?: number,
+  lastTop: number | undefined,
 ): Thumb | undefined {
-  const { rows, top, index } = loaded;
-  const first = rows[top];
-  const last = rows[Math.min(rows.length, top + screen) - 1];
-  if (first === undefined || last === undefined || size <= 0) {
+  const first = loaded.rows[loaded.top];
+  if (first === undefined || size <= 0) {
     return undefined;
   }
-  if (total !== undefined && index !== undefined) {
-    return {
-      start: total > screen ? Math.min(1, (index + top) / (total - screen)) : 0,
-      length: Math.min(1, screen / Math.max(1, total)),
-    };
-  }
-  if (rows[0]?.start === 0 && (rows.at(-1)?.end ?? 0) >= size) {
-    return {
-      start:
-        rows.length > screen ? Math.min(1, top / (rows.length - screen)) : 0,
-      length: Math.min(1, screen / rows.length),
-    };
-  }
-  const rowsInFile = size / (perRow ?? bytesPerRow(rows) ?? 1);
+  const bytes = perRow ?? bytesPerRow(loaded.rows) ?? 1;
+  const end = lastScreenStart(size, screen, bytes, lastTop);
   return {
-    start: last.end >= size ? 1 : Math.min(1, first.start / size),
-    length: Math.min(1, screen / rowsInFile),
+    start: end > 0 ? Math.min(1, first.start / end) : 0,
+    length: Math.min(1, screen / (size / bytes)),
   };
 }
 
@@ -221,24 +214,49 @@ export function TextBody({
     }
   }, [topStart, onPlace]);
   const { tab, size } = viewing;
-  const [counted, setCounted] = useState<{
+  const [lastScreen, setLastScreen] = useState<{
     readonly size: number | undefined;
-    readonly rows: number;
+    readonly screen: number;
+    readonly start: number;
   }>();
-  const total = counted?.size === size ? counted?.rows : undefined;
+  const lastTop =
+    lastScreen?.size === size && lastScreen?.screen === screen
+      ? lastScreen?.start
+      : undefined;
+  const ends = useMemo(
+    () =>
+      new RowRequests<true>((request) =>
+        post({
+          type: 'readRows',
+          tab,
+          encoding,
+          request,
+          anchor: size ?? 0,
+          exact: true,
+          before: screen,
+          after: 0,
+        }),
+      ),
+    [post, tab, encoding, size, screen],
+  );
   useEffect(
     () =>
       listen((message) => {
         if (
-          message.type === 'rowCount' &&
+          message.type === 'rows' &&
           message.tab === tab &&
-          message.encoding === encoding
+          ends.answered(message.request) !== undefined
         ) {
-          setCounted({ size, rows: message.rows });
+          setLastScreen({ size, screen, start: message.rows[0]?.start ?? 0 });
         }
       }),
-    [listen, tab, encoding, size],
+    [listen, tab, ends, size, screen],
   );
+  useEffect(() => {
+    if (size !== undefined) {
+      ends.ask(true);
+    }
+  }, [ends, size]);
   const [estimate, setEstimate] = useState<{
     readonly size: number | undefined;
     readonly screen: number;
@@ -263,7 +281,6 @@ export function TextBody({
           encoding,
           request,
           anchor: wanted.anchor,
-          ...(wanted.row !== undefined && { row: wanted.row }),
           exact: wanted.exact,
           before: wanted.before,
           after: wanted.after,
@@ -288,7 +305,6 @@ export function TextBody({
           : -1;
         setLoaded({
           rows: rows.rows,
-          ...(rows.index !== undefined && { index: rows.index }),
           top:
             shown === -1
               ? pending.topOf(rows.anchorIndex, rows.rows.length)
@@ -338,16 +354,16 @@ export function TextBody({
   const jump = useCallback(
     (share: number) =>
       requests.ask({
-        anchor: Math.round(share * (size ?? 0)),
-        ...(total !== undefined && {
-          row: Math.round(share * Math.max(0, total - screen)),
-        }),
+        anchor: Math.round(
+          share *
+            lastScreenStart(size ?? 0, screen, estimate?.perRow ?? 1, lastTop),
+        ),
         exact: false,
         before: screen * 2,
         after: screen * 3,
         topOf: (anchorIndex, count) => topWithin(anchorIndex, count, screen),
       }),
-    [requests, screen, size, total],
+    [requests, screen, size, estimate?.perRow, lastTop],
   );
 
   useEffect(() => {
@@ -365,22 +381,6 @@ export function TextBody({
       topOf: (anchorIndex, count) => topWithin(anchorIndex, count, screen),
     });
   }, [requests, viewing, screen, place]);
-
-  const numbered = loaded.index !== undefined;
-  useEffect(() => {
-    const from = current.current.rows[current.current.top];
-    if (total === undefined || numbered) {
-      return;
-    }
-    requests.ask({
-      anchor: from?.start ?? place.current,
-      exact: from !== undefined,
-      before: screen * 2,
-      after: screen * 3,
-      follow: true,
-      topOf: (anchorIndex, count) => topWithin(anchorIndex, count, screen),
-    });
-  }, [requests, screen, place, total, numbered]);
 
   const goToMatch = useEffectEvent(() => {
     const target = find?.current;
@@ -414,7 +414,7 @@ export function TextBody({
 
   return (
     <ScrollBody
-      thumb={textThumb(loaded, screen, size ?? 0, estimate?.perRow, total)}
+      thumb={textThumb(loaded, screen, size ?? 0, estimate?.perRow, lastTop)}
       onScreen={setScreen}
       move={move}
       jump={jump}

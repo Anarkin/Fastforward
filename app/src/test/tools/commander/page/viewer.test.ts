@@ -23,32 +23,30 @@ suite('Commander viewer', () => {
     assert.strictEqual(topWithin(4, 10, 20), 0);
   });
 
-  test('sizes the thumb by the rows on screen among all the rows of a file read whole, and places it by the rows above', () => {
+  test('places the thumb by the bytes above the top row among those above the last screen, so it ends where the last screen shows, and sizes it by the rows on screen among the rows the bytes of the file make', () => {
     assert.deepStrictEqual(
-      textThumb({ rows: rows(100), top: 0 }, 10, 1000, 10),
-      {
-        start: 0,
-        length: 0.1,
-      },
+      textThumb({ rows: rows(100), top: 0 }, 10, 1000, 10, 900),
+      { start: 0, length: 0.1 },
     );
     assert.deepStrictEqual(
-      textThumb({ rows: rows(100), top: 45 }, 10, 1000, 10),
-      {
-        start: 0.5,
-        length: 0.1,
-      },
+      textThumb({ rows: rows(100), top: 45 }, 10, 1000, 10, 900),
+      { start: 0.5, length: 0.1 },
     );
     assert.deepStrictEqual(
-      textThumb({ rows: rows(100), top: 90 }, 10, 1000, 10),
-      {
-        start: 1,
-        length: 0.1,
-      },
+      textThumb({ rows: rows(100), top: 90 }, 10, 1000, 10, 900),
+      { start: 1, length: 0.1 },
     );
-    assert.strictEqual(textThumb({ rows: [], top: 0 }, 10, 0, 10), undefined);
+    assert.deepStrictEqual(
+      textThumb({ rows: rows(5), top: 0 }, 10, 50, 10, 0),
+      { start: 0, length: 1 },
+    );
+    assert.strictEqual(
+      textThumb({ rows: [], top: 0 }, 10, 0, 10, undefined),
+      undefined,
+    );
   });
 
-  test('keeps the thumb of a file read in parts as long wherever it is, however long its rows there, and places it by the bytes above, at the end once the last row shows', () => {
+  test('keeps the thumb of a file read in parts as long wherever it is, however long its rows there, and reckons where the last screen starts until it is told', () => {
     const short = rows(30, 10).map((row) => ({
       ...row,
       start: row.start + 5000,
@@ -60,38 +58,16 @@ suite('Commander viewer', () => {
       end: row.end + 50_000,
     }));
     const size = 100_000;
-    const atShort = textThumb({ rows: short, top: 0 }, 10, size, 20);
-    const atLong = textThumb({ rows: long, top: 0 }, 10, size, 20);
+    const atShort = textThumb({ rows: short, top: 0 }, 10, size, 20, 98_000);
+    const atLong = textThumb({ rows: long, top: 0 }, 10, size, 20, 98_000);
     assert.strictEqual(atShort?.length, atLong?.length);
     assert.strictEqual(atShort?.length, 10 / (size / 20));
-    assert.strictEqual(atShort?.start, 5000 / size);
-    assert.strictEqual(atLong?.start, 50_000 / size);
-    const end = rows(30, 10).map((row) => ({
-      ...row,
-      start: row.start + size - 300,
-      end: row.end + size - 300,
-    }));
+    assert.strictEqual(atShort?.start, 5000 / 98_000);
+    assert.strictEqual(atLong?.start, 50_000 / 98_000);
     assert.strictEqual(
-      textThumb({ rows: end, top: 20 }, 10, size, 20)?.start,
-      1,
+      textThumb({ rows: short, top: 0 }, 10, size, 20, undefined)?.start,
+      5000 / (size - 10 * 20),
     );
-  });
-
-  test('sizes and places the thumb of a file counted by its rows, each row moving it as far, and ends it at the last row', () => {
-    const window = rows(30, 10).map((row) => ({
-      ...row,
-      start: row.start + 5000,
-      end: row.end + 5000,
-    }));
-    const counted = (top: number, index: number) =>
-      textThumb({ rows: window, top, index }, 10, 100_000, 20, 1010);
-    assert.deepStrictEqual(counted(0, 500), { start: 0.5, length: 10 / 1010 });
-    assert.deepStrictEqual(counted(1, 500), {
-      start: 0.501,
-      length: 10 / 1010,
-    });
-    assert.deepStrictEqual(counted(20, 980), { start: 1, length: 10 / 1010 });
-    assert.deepStrictEqual(counted(0, 0), { start: 0, length: 10 / 1010 });
   });
 
   test('takes the bytes a row has for the rows first read, to size the thumb by', () => {

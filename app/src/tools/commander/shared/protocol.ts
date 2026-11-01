@@ -109,7 +109,6 @@ export type CommanderToHost =
       readonly encoding: TextEncoding;
       readonly request: number;
       readonly anchor: number;
-      readonly row?: number;
       readonly exact: boolean;
       readonly before: number;
       readonly after: number;
@@ -199,13 +198,6 @@ export type CommanderToWebview =
       readonly size: number;
       readonly rows: readonly TextRow[];
       readonly anchorIndex: number;
-      readonly index?: number;
-    }
-  | {
-      readonly type: 'rowCount';
-      readonly tab: string;
-      readonly encoding: TextEncoding;
-      readonly rows: number;
     }
   | {
       readonly type: 'noAccess';

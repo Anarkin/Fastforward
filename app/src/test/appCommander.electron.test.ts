@@ -85,19 +85,6 @@ suite('App commander', () => {
         fromEnd: (track?.bottom ?? 0) - box.bottom,
       };
     });
-  const thumbSteps = async () => {
-    const tops = [(await viewerThumb()).top];
-    for (let step = 0; step < 4; step++) {
-      const before = await firstViewerRow();
-      await page.keyboard.press('ArrowDown');
-      await waitFor(
-        async () => (await firstViewerRow()) !== before,
-        'the next row',
-      );
-      tops.push((await viewerThumb()).top);
-    }
-    return tops.slice(1).map((top, index) => top - (tops[index] ?? 0));
-  };
   const select = async (name: string) => {
     await right().locator('.commander-row', { hasText: name }).click();
     await waitFor(
@@ -692,7 +679,7 @@ suite('App commander', () => {
     }
   });
 
-  test('moves the thumb of a file viewed as far for each row, though its lines grow long further down, keeps it as tall, and ends it at the end of its track', async () => {
+  test('keeps the thumb of a file viewed as tall wherever it is scrolled to, though its lines grow long further down, moves it down as the rows do, and ends it at the end of its track without a jump', async () => {
     const lines = Array.from({ length: 600 }, (_, index) =>
       index < 300
         ? `short ${index}`.padEnd(19, '.')
@@ -710,44 +697,55 @@ suite('App commander', () => {
         'the first row',
       );
       await waitForFocus(page.locator('.viewer-body'), 'the viewer');
-      const screen = await page.locator('.viewer-rows .viewer-row').count();
-      const track = await page
-        .locator('.viewer-thumb')
-        .evaluate(
-          (element) =>
-            element.parentElement?.getBoundingClientRect().height ?? 0,
-        );
-      await waitFor(
-        async () =>
-          Math.abs(
-            (await viewerThumb()).height - Math.max(24, (track * screen) / 600),
-          ) < 3,
-        'the thumb sized by the rows counted',
-      );
-      const height = (await viewerThumb()).height;
-      const short = await thumbSteps();
+      const first = await viewerThumb();
+      assert.ok(first.height > 30, JSON.stringify(first));
+      const seen = [first];
       await waitFor(async () => {
+        seen.push(await viewerThumb());
         if ((await firstViewerRow()).startsWith('long')) {
           return true;
         }
         await page.keyboard.press('PageDown');
         return false;
       }, 'the long rows');
-      const long = await thumbSteps();
-      const step = short[0] ?? 0;
-      assert.ok(step > 0.5, JSON.stringify(short));
-      assert.ok(
-        [...short, ...long].every((each) => Math.abs(each - step) < 0.5),
-        JSON.stringify({ short, long }),
-      );
       await page.keyboard.press('End');
       await waitFor(
         async () => (await firstViewerRow()).startsWith('long 5'),
         'the end',
       );
-      const end = await viewerThumb();
-      assert.ok(Math.abs(end.height - height) < 0.5, JSON.stringify(end));
-      assert.ok(Math.abs(end.fromEnd) < 0.5, JSON.stringify(end));
+      seen.push(await viewerThumb());
+      assert.ok(
+        seen.every((each) => Math.abs(each.height - first.height) < 0.5),
+        JSON.stringify(seen),
+      );
+      assert.ok(
+        seen.every(
+          (each, index) =>
+            index === 0 || each.top >= (seen[index - 1]?.top ?? 0),
+        ),
+        JSON.stringify(seen),
+      );
+      assert.ok(
+        Math.abs(seen.at(-1)?.fromEnd ?? 1) < 0.5,
+        JSON.stringify(seen),
+      );
+      const atEnd = seen.at(-1)?.top ?? 0;
+      const lastTop = await firstViewerRow();
+      await page.keyboard.press('ArrowUp');
+      await waitFor(
+        async () => (await firstViewerRow()) !== lastTop,
+        'a row up',
+      );
+      const track = await page
+        .locator('.viewer-thumb')
+        .evaluate(
+          (element) =>
+            element.parentElement?.getBoundingClientRect().height ?? 0,
+        );
+      assert.ok(
+        atEnd - (await viewerThumb()).top < track / 50,
+        JSON.stringify({ atEnd, up: await viewerThumb(), track }),
+      );
     } finally {
       if (await page.locator('.viewer').isVisible()) {
         await page.keyboard.press('Escape');

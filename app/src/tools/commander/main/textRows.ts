@@ -4,7 +4,6 @@ import type { TextEncoding, TextRow } from '../shared/protocol';
 export const rowBytes = 4096;
 
 const blockBytes = 64 * 1024;
-const indexBlockBytes = 1024 * 1024;
 const longLineSearch = 1024 * 1024;
 const charLookahead = 4;
 
@@ -206,128 +205,6 @@ export async function rowsFrom(
     position += offset;
   }
   return rows;
-}
-
-async function walkRows(
-  read: ReadBytes,
-  size: number,
-  from: number,
-  coding: TextCoding,
-  visit: (start: number) => boolean,
-  signal?: AbortSignal,
-): Promise<boolean> {
-  let position = from;
-  while (position < size) {
-    const block = await read(
-      position,
-      Math.min(indexBlockBytes, size - position),
-    );
-    if (signal?.aborted) {
-      return false;
-    }
-    const atEnd = position + block.length >= size;
-    let offset = 0;
-    while (offset < block.length) {
-      const row = rowEndIn(block, offset, atEnd, coding);
-      if (row === undefined) {
-        break;
-      }
-      if (!visit(position + offset)) {
-        return true;
-      }
-      offset = row.end;
-    }
-    if (offset === 0) {
-      break;
-    }
-    position += offset;
-  }
-  return true;
-}
-
-const rowsMarkedEvery = 256;
-
-export interface RowIndex {
-  readonly rows: number;
-  readonly marks: readonly number[];
-}
-
-export async function indexRows(
-  read: ReadBytes,
-  size: number,
-  coding: TextCoding,
-  signal?: AbortSignal,
-): Promise<RowIndex | undefined> {
-  const marks: number[] = [];
-  let rows = 0;
-  const done = await walkRows(
-    read,
-    size,
-    0,
-    coding,
-    (start) => {
-      if (rows % rowsMarkedEvery === 0) {
-        marks.push(start);
-      }
-      rows++;
-      return true;
-    },
-    signal,
-  );
-  return done ? { rows, marks } : undefined;
-}
-
-export async function rowStartOf(
-  read: ReadBytes,
-  size: number,
-  index: RowIndex,
-  row: number,
-  coding: TextCoding,
-): Promise<number> {
-  if (row >= index.rows) {
-    return size;
-  }
-  const target = Math.max(0, Math.floor(row));
-  const mark = Math.floor(target / rowsMarkedEvery);
-  let at = mark * rowsMarkedEvery;
-  let found = size;
-  await walkRows(read, size, index.marks[mark] ?? 0, coding, (start) => {
-    if (at === target) {
-      found = start;
-      return false;
-    }
-    at++;
-    return true;
-  });
-  return found;
-}
-
-export async function rowIndexAt(
-  read: ReadBytes,
-  size: number,
-  index: RowIndex,
-  byte: number,
-  coding: TextCoding,
-): Promise<number> {
-  let below = 0;
-  let above = index.marks.length - 1;
-  while (below < above) {
-    const middle = (below + above + 1) >> 1;
-    if ((index.marks[middle] ?? 0) <= byte) {
-      below = middle;
-    } else {
-      above = middle - 1;
-    }
-  }
-  let row = below * rowsMarkedEvery;
-  await walkRows(read, size, index.marks[below] ?? 0, coding, (start) => {
-    if (start >= byte) {
-      return false;
-    }
-    row++;
-    return true;
-  });
-  return Math.min(row, index.rows);
 }
 
 export async function rowStartAt(

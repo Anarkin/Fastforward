@@ -37,7 +37,7 @@ export interface Viewing {
 }
 
 export type ToViewer = CommanderToWebviewOf<
-  'rows' | 'text' | 'bytes' | 'found' | 'pdfPlace' | 'rowCount'
+  'rows' | 'text' | 'bytes' | 'found' | 'pdfPlace'
 >;
 
 const modes: readonly {
