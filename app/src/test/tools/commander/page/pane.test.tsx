@@ -18,6 +18,7 @@ const pane = (elevated: boolean): PaneView => ({
   sort: { column: 'extension', descending: false },
   rows: [],
   selected: undefined,
+  marked: new Set(),
 });
 const header = (elevated: boolean) =>
   /<span class="column-name">(.*?)C:\\Config\.Msi<\/span>/.exec(
@@ -31,6 +32,7 @@ const header = (elevated: boolean) =>
         drives={[]}
         driveTrigger={null}
         onSelect={noop}
+        onMark={noop}
         onOpen={noop}
         onSort={noop}
         onActivate={noop}

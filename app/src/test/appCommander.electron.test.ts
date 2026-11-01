@@ -32,6 +32,12 @@ suite('App commander', () => {
         ),
       );
 
+  const markedNames = () =>
+    right().locator('.commander-row.marked .commander-name').allTextContents();
+
+  const markingRow = (name: string) =>
+    right().locator('.commander-row', { hasText: `${name}txt` });
+
   const icons = () =>
     right()
       .locator('.commander-row')
@@ -634,6 +640,77 @@ suite('App commander', () => {
         (name) => names.includes(name),
       );
     }, 'the files to be gone from the list');
+  });
+
+  test('marks files moving with Shift, with Space and Insert, with Ctrl+click and Shift+click, never the parent row, and drops the marks in another markingFolder', async () => {
+    const markingFolder = path.join(opened, 'marking');
+    fs.mkdirSync(markingFolder);
+    for (const name of ['a', 'b', 'c', 'd']) {
+      fs.writeFileSync(path.join(markingFolder, `${name}.txt`), name);
+    }
+    await select('marking');
+    await page.keyboard.press('Enter');
+    await waitFor(
+      async () => (await rowNames()).join() === '..,a.txt,b.txt,c.txt,d.txt',
+      'the markingFolder to be listed',
+    );
+    await page.keyboard.press('Shift+ArrowDown');
+    await page.keyboard.press('Shift+ArrowDown');
+    await page.keyboard.press('Shift+ArrowDown');
+    await waitFor(
+      async () => (await markedNames()).join() === 'a,b',
+      'the files passed to be marked, the parent row not',
+    );
+    await page.keyboard.press('Shift+ArrowUp');
+    await waitFor(
+      async () => (await markedNames()).join() === 'a,b,c',
+      'moving up from a file not marked to mark it',
+    );
+    await page.keyboard.press('Shift+ArrowUp');
+    await waitFor(
+      async () => (await markedNames()).join() === 'a,c',
+      'moving from a marked file to unmark it',
+    );
+
+    await page.keyboard.press('Space');
+    await page.keyboard.press('Insert');
+    await waitFor(
+      async () => (await markedNames()).join() === 'b,c',
+      'Space and Insert to toggle and move down',
+    );
+    await markingRow('a').click({ modifiers: ['ControlOrMeta'] });
+    await waitFor(
+      async () => (await markedNames()).join() === 'a,b,c',
+      'Ctrl+click to toggle',
+    );
+    await markingRow('d').click({ modifiers: ['Shift'] });
+    await waitFor(
+      async () => (await markedNames()).join() === 'a,b,c,d',
+      'Shift+click to mark the range',
+    );
+
+    await page.keyboard.press('Backspace');
+    await waitFor(
+      async () => (await rowNames()).includes('marking'),
+      'the parent markingFolder',
+    );
+    await select('marking');
+    await page.keyboard.press('Enter');
+    await waitFor(
+      async () => (await rowNames()).join() === '..,a.txt,b.txt,c.txt,d.txt',
+      'the markingFolder to be listed again',
+    );
+    assert.deepStrictEqual(await markedNames(), []);
+    await page.keyboard.press('Backspace');
+    await waitFor(
+      async () => (await rowNames()).includes('marking'),
+      'the parent markingFolder',
+    );
+    fs.rmSync(markingFolder, { recursive: true });
+    await waitFor(
+      async () => !(await rowNames()).includes('marking'),
+      'the markingFolder to be gone from the list',
+    );
   });
 
   test.skipIf(process.platform !== 'win32')(

@@ -216,4 +216,54 @@ suite('Commander view', () => {
       'right',
     );
   });
+
+  test('marks files and folders, never the row of the parent folder, and unmarks them', () => {
+    const markedTwo = run(
+      { type: 'show', tab: '1' },
+      listing('/a', [
+        entry('one.txt'),
+        entry('two.txt'),
+        entry('sub', { folder: true }),
+      ]),
+      {
+        type: 'mark',
+        side: 'left',
+        keys: ['..', 'one.txt', 'sub'],
+        marked: true,
+      },
+    );
+    assert.deepStrictEqual(
+      [...(markedTwo.panes.left?.marked ?? [])].toSorted(),
+      ['one.txt', 'sub'],
+    );
+
+    const unmarked = reduceView(markedTwo, {
+      type: 'mark',
+      side: 'left',
+      keys: ['sub'],
+      marked: false,
+    });
+    assert.deepStrictEqual(
+      [...(unmarked.panes.left?.marked ?? [])],
+      ['one.txt'],
+    );
+  });
+
+  test('keeps the marks of the files still there when the folder is read again, and drops them all in another folder', () => {
+    const marked = run(
+      { type: 'show', tab: '1' },
+      listing('/a', [entry('one.txt'), entry('two.txt')]),
+      {
+        type: 'mark',
+        side: 'left',
+        keys: ['one.txt', 'two.txt'],
+        marked: true,
+      },
+    );
+    const again = reduceView(marked, listing('/a', [entry('two.txt')]));
+    assert.deepStrictEqual([...(again.panes.left?.marked ?? [])], ['two.txt']);
+
+    const elsewhere = reduceView(again, listing('/b', [entry('two.txt')]));
+    assert.strictEqual(elsewhere.panes.left?.marked.size, 0);
+  });
 });

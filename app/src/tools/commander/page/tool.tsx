@@ -251,6 +251,9 @@ export function CommanderTool({
             drives={drives}
             driveTrigger={triggers[side]}
             onSelect={(key) => dispatch({ type: 'select', side, key })}
+            onMark={(keys, marked) =>
+              dispatch({ type: 'mark', side, keys, marked })
+            }
             onOpen={openIn(side)}
             onSort={(column) => {
               const sort = nextSort(

@@ -249,6 +249,9 @@ export const strings = {
     viewFile: 'View the selected file in a tab of its own',
     closeViewer: 'Close the file being viewed',
     viewAs: 'View the file as text, hex or a preview',
+    markMoving: 'Mark the files passed while moving, or unmark them',
+    toggleMark: 'Mark or unmark the selected file and move down',
+    markClick: 'Mark or unmark a file, or mark the files up to it',
     openOnSide:
       'Open the selected folder, or the one you are in, on the left or right side',
   },

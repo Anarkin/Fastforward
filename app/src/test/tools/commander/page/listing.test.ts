@@ -7,6 +7,8 @@ import {
   opens,
   rowsOf,
   selectionAfter,
+  passedKeys,
+  rangeKeys,
 } from '../../../../tools/commander/page/listing';
 import type { Sort } from '../../../../tools/commander/shared/settings';
 import type { Entry } from '../../../../tools/commander/shared/protocol';
@@ -200,5 +202,28 @@ suite('Commander listing', () => {
     assert.strictEqual(formatSize(1_007_528), '1,007,528');
     assert.strictEqual(formatSize(0), '0');
     assert.strictEqual(formatSize(undefined), '');
+  });
+
+  test('takes the rows passed moving from one row to another, the row moved from among them, the one moved to not', () => {
+    const rows = ['a', 'b', 'c', 'd', 'e'].map((key) => ({
+      key,
+      entry: undefined,
+      base: key,
+      extension: '',
+    }));
+    assert.deepStrictEqual(passedKeys(rows, 1, 3), ['b', 'c']);
+    assert.deepStrictEqual(passedKeys(rows, 3, 1), ['d', 'c']);
+    assert.deepStrictEqual(passedKeys(rows, 4, 4), ['e']);
+  });
+
+  test('takes the rows from one row to another, both among them, either way', () => {
+    const rows = ['a', 'b', 'c', 'd'].map((key) => ({
+      key,
+      entry: undefined,
+      base: key,
+      extension: '',
+    }));
+    assert.deepStrictEqual(rangeKeys(rows, 1, 3), ['b', 'c', 'd']);
+    assert.deepStrictEqual(rangeKeys(rows, 2, 0), ['a', 'b', 'c']);
   });
 });

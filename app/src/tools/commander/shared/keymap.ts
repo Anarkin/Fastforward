@@ -31,6 +31,22 @@ export const commanderKeymap = {
     '2': 'hex',
     '3': 'preview',
   }),
+  markMoving: bind('Commander', strings.actions.markMoving, {
+    'Shift+ArrowUp': 'up',
+    'Shift+ArrowDown': 'down',
+    'Shift+PageUp': 'pageUp',
+    'Shift+PageDown': 'pageDown',
+    'Shift+Home': 'first',
+    'Shift+End': 'last',
+  } as const),
+  toggleMark: bind('Commander', strings.actions.toggleMark, {
+    Space: true,
+    Insert: true,
+  }),
+  markClick: bind('Commander', strings.actions.markClick, {
+    'Mod+Click': 'toggle',
+    'Shift+Click': 'range',
+  } as const),
   reread: bind('Commander', strings.actions.reread, {
     F2: true,
     'Ctrl+R': true,

@@ -1,9 +1,10 @@
 import { useContext, useMemo, useState } from 'react';
 import { iconUrl, type IconSource } from '../shared/icons';
 import { commanderKeymap } from '../shared/keymap';
+import { clicked } from '../../../shell/shared/keymap';
 import { parentFolder, type Side } from '../shared/protocol';
 import { formatSize } from './format';
-import { opens, type Row } from './listing';
+import { opens, passedKeys, rangeKeys, type Row } from './listing';
 import { ColumnHeader } from './columnHeader';
 import type { ColumnWidths, SizedColumn, SortColumn } from '../shared/settings';
 import type { PaneView } from './view';
@@ -75,6 +76,7 @@ export function Pane({
   drives,
   driveTrigger,
   onSelect,
+  onMark,
   onOpen,
   onSort,
   onActivate,
@@ -97,6 +99,7 @@ export function Pane({
   drives: readonly string[];
   driveTrigger: React.Ref<HTMLButtonElement>;
   onSelect: (key: string) => void;
+  onMark: (keys: readonly string[], marked: boolean) => void;
   onOpen: (name: string) => void;
   onSort: (column: SortColumn) => void;
   onActivate: () => void;
@@ -122,6 +125,7 @@ export function Pane({
     [rows],
   );
   const selectedIndex = listed.indexOf(pane?.selected ?? '');
+  const marked = pane?.marked;
   const current = pane && driveOf(pane.folder, drives);
 
   const renderRow = (index: number) => {
@@ -129,8 +133,16 @@ export function Pane({
     const { entry } = row;
     return (
       <div
-        className={`row commander-row commander-line${row.key === pane?.selected ? ' selected' : ''}${entry?.hidden ? ' hidden' : ''}`}
-        onClick={() => onSelect(row.key)}
+        className={`row commander-row commander-line${row.key === pane?.selected ? ' selected' : ''}${marked?.has(row.key) ? ' marked' : ''}${entry?.hidden ? ' hidden' : ''}`}
+        onClick={(event) => {
+          const marking = clicked(commanderKeymap.markClick, event);
+          if (marking === 'toggle') {
+            onMark([row.key], !marked?.has(row.key));
+          } else if (marking === 'range' && selectedIndex !== -1) {
+            onMark(rangeKeys(rows, selectedIndex, index), true);
+          }
+          onSelect(row.key);
+        }}
         onDoubleClick={() => {
           if (opens(row)) {
             onOpen(row.key);
@@ -277,6 +289,32 @@ export function Pane({
                 event.preventDefault();
                 onOpen(row.key);
               }
+              return;
+            }
+            const marking = keyPressed(commanderKeymap.markMoving, event);
+            if (marking !== undefined) {
+              event.preventDefault();
+              if (selectedIndex === -1) {
+                return;
+              }
+              const next =
+                moveInList(marking, selectedIndex, rows.length, visible) ??
+                selectedIndex;
+              onMark(
+                passedKeys(rows, selectedIndex, next),
+                !marked?.has(rows[selectedIndex].key),
+              );
+              onSelect(rows[next].key);
+              return;
+            }
+            if (keyPressed(commanderKeymap.toggleMark, event) !== undefined) {
+              event.preventDefault();
+              if (selectedIndex === -1) {
+                return;
+              }
+              const { key } = rows[selectedIndex];
+              onMark([key], !marked?.has(key));
+              onSelect(rows[Math.min(selectedIndex + 1, rows.length - 1)].key);
               return;
             }
             const move = listMoveOf(event);

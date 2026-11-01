@@ -20,6 +20,21 @@ export interface PaneView extends Listed {
   readonly sort: Sort;
   readonly rows: readonly Row[];
   readonly selected: string | undefined;
+  readonly marked: ReadonlySet<string>;
+}
+
+const noMarks: ReadonlySet<string> = new Set();
+
+function marksKept(
+  pane: PaneView | undefined,
+  folder: string,
+  rows: readonly Row[],
+): ReadonlySet<string> {
+  if (pane === undefined || pane.folder !== folder || pane.marked.size === 0) {
+    return noMarks;
+  }
+  const keys = new Set(rows.map((row) => row.key));
+  return new Set([...pane.marked].filter((key) => keys.has(key)));
 }
 
 export interface CommanderView {
@@ -80,6 +95,12 @@ export type ViewAction =
       readonly type: 'listing';
     })
   | { readonly type: 'select'; readonly side: Side; readonly key: string }
+  | {
+      readonly type: 'mark';
+      readonly side: Side;
+      readonly keys: readonly string[];
+      readonly marked: boolean;
+    }
   | { readonly type: 'sort'; readonly side: Side; readonly sort: Sort }
   | { readonly type: 'activate'; readonly side: Side }
   | { readonly type: 'switchSide' };
@@ -116,6 +137,7 @@ function relisted(
     sort,
     rows,
     selected: selectionAfter(selectionIn(pane), folder, rows, selected),
+    marked: marksKept(pane, folder, rows),
   };
 }
 
@@ -202,6 +224,29 @@ export function reduceView(
       return pane?.rows.some((row) => row.key === action.key)
         ? withPane(view, action.side, { ...pane, selected: action.key })
         : view;
+    }
+    case 'mark': {
+      const pane = view.panes[action.side];
+      if (pane === undefined) {
+        return view;
+      }
+      const markable = new Set(
+        pane.rows
+          .filter((row) => row.entry !== undefined)
+          .map((row) => row.key),
+      );
+      const marked = new Set(pane.marked);
+      for (const key of action.keys) {
+        if (!markable.has(key)) {
+          continue;
+        }
+        if (action.marked) {
+          marked.add(key);
+        } else {
+          marked.delete(key);
+        }
+      }
+      return withPane(view, action.side, { ...pane, marked });
     }
     case 'sort': {
       const pane = view.panes[action.side];

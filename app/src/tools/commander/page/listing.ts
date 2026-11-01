@@ -119,3 +119,29 @@ export function selectionAfter(
 export function opens(row: Row | undefined): boolean {
   return row !== undefined && (row.entry === undefined || row.entry.folder);
 }
+
+export function passedKeys(
+  rows: readonly Row[],
+  from: number,
+  to: number,
+): string[] {
+  if (from === to) {
+    return rows.slice(from, from + 1).map((row) => row.key);
+  }
+  return from < to
+    ? rows.slice(from, to).map((row) => row.key)
+    : rows
+        .slice(to + 1, from + 1)
+        .map((row) => row.key)
+        .toReversed();
+}
+
+export function rangeKeys(
+  rows: readonly Row[],
+  from: number,
+  to: number,
+): string[] {
+  return rows
+    .slice(Math.min(from, to), Math.max(from, to) + 1)
+    .map((row) => row.key);
+}

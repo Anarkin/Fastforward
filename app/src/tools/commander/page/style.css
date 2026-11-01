@@ -256,3 +256,12 @@
 .viewer-image .image-pane {
   flex: 1 1 auto;
 }
+
+.commander-row.marked {
+  color: var(--color-error-foreground);
+  font-weight: 600;
+}
+
+.commander-pane:not(.inactive) .commander-row.marked.selected {
+  color: var(--color-focus-foreground);
+}
