@@ -373,6 +373,21 @@ suite('Commander tool', () => {
       assert.strictEqual(page.of('text').at(-1)?.text, 'one\ntwo\n');
     });
 
+    test('reads a UTF-16 file without a byte order mark as UTF-16 rather than as a binary one', async () => {
+      const log = path.join(opened, 'pfro.log');
+      fs.writeFileSync(log, Buffer.from('3/17/2026 PFRO Error', 'utf16le'));
+      const { tool, page } = commander({});
+
+      await tool.show(page, {
+        id: '3',
+        tool: 'commander',
+        root: log,
+        view: true,
+      });
+
+      assert.strictEqual(page.of('viewing').at(-1)?.detected, 'utf-16le');
+    });
+
     test('reads a text file that is not UTF-8 in the code page of the system, and one that is as UTF-8', async () => {
       const legacy = path.join(opened, 'legacy.txt');
       const modern = path.join(opened, 'modern.txt');

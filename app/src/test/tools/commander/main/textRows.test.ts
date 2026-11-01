@@ -6,6 +6,7 @@ import {
   blockCache,
   codingOf,
   isUtf8,
+  utf16Order,
   looksBinary,
   readingFile,
   rowBytes,
@@ -209,6 +210,27 @@ suite('Rows of text of a file', () => {
 
     assert.ok(row !== undefined && !row.text.includes('\n'));
     assert.strictEqual(row.end, long.length + 1);
+  });
+
+  test('tells UTF-16 without a byte order mark by the zeros of one byte of each pair, as Windows writes its logs, and not a binary file', () => {
+    const log = Buffer.from(
+      '3/17/2026 23:45:41 - PFRO Error: 0x2\r\n',
+      'utf16le',
+    );
+    assert.strictEqual(utf16Order(log), 'utf-16le');
+    assert.strictEqual(utf16Order(Buffer.from(log).swap16()), 'utf-16be');
+    assert.strictEqual(
+      utf16Order(Buffer.from('Árvíztűrő tükörfúrógép', 'utf16le')),
+      'utf-16le',
+    );
+    assert.strictEqual(
+      utf16Order(Buffer.from('plain text', 'utf8')),
+      undefined,
+    );
+    assert.strictEqual(
+      utf16Order(Buffer.from([0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0x7f, 0x45])),
+      undefined,
+    );
   });
 
   test('tells UTF-8 from the bytes of other encodings, a character cut off at the end of what was read still UTF-8', () => {

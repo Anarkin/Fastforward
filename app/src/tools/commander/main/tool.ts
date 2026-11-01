@@ -41,6 +41,7 @@ import {
   firstBytes,
   isUtf8,
   looksBinary,
+  utf16Order,
   readingFile,
   type BlockCache,
   rowsBefore,
@@ -541,6 +542,7 @@ export class CommanderTool implements Tool<'commander'> {
       binary = looksBinary(first);
       detected =
         byteOrderMarkOf(first) ??
+        utf16Order(first) ??
         (binary || isUtf8(first) ? undefined : await this.access.codePage());
     } catch (error) {
       this.post(page, {
