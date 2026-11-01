@@ -46,6 +46,14 @@ const readme = textPatch('README.md', `${oldId}..${newId}`);
 const added = textPatch('docs/new.markdown', `${none}..${newId}`);
 
 suite('Previews', () => {
+  test('previews no image where it has nowhere to fetch it from, as two files compared, Markdown still', () => {
+    assert.strictEqual(
+      previewOf(textPatch('v.svg', `${oldId}..${newId}`), false),
+      undefined,
+    );
+    assert.strictEqual(previewOf(readme, false), 'markdown');
+  });
+
   test('previews Markdown by its extension, and an SVG as an image', () => {
     assert.strictEqual(previewOf(readme), 'markdown');
     assert.strictEqual(previewOf(added), 'markdown');

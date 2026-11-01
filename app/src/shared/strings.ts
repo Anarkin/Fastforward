@@ -430,6 +430,8 @@ export const strings = {
     diagram: 'Diagram',
     diagramFailed: 'This diagram could not be drawn.',
     onlyWhitespace: 'Only whitespace changed',
+    filesIdentical: 'The files are the same.',
+    filesDifferInWhitespace: 'The files differ only in whitespace.',
     noNewlineAtEnd: 'No newline at end of file',
     renamedWithoutChanges: 'Renamed without changes',
     copiedWithoutChanges: 'Copied without changes',
@@ -568,6 +570,8 @@ export const strings = {
     compareTab: (old: string, changed: string) => `${old} → ${changed}`,
     compareTooLarge: (megabytes: number) =>
       `Files over ${megabytes} MB together are not compared.`,
+    couldNotWatchCompared: (old: string, changed: string) =>
+      `Couldn't watch ${old} and ${changed}, so their changes won't show until they are compared again`,
     couldNotCompare: (old: string, changed: string, reason: string) =>
       `Couldn't compare ${old} with ${changed}. ${reason}`,
     couldNotWatch: (root: string) =>

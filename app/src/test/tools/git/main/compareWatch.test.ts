@@ -6,6 +6,8 @@ import { watchFiles } from '../../../../tools/git/main/compareWatch';
 import { waitFor } from '../../../fixtures';
 import { removeFolder, tempFolder } from '../../../repositories';
 
+const noFailure = () => undefined;
+
 suite('Watching the files compared', () => {
   let folder: string;
   let stops: (() => void)[];
@@ -26,7 +28,7 @@ suite('Watching the files compared', () => {
     const watched = path.join(folder, 'watched.txt');
     fs.writeFileSync(watched, 'one');
     let changes = 0;
-    stops.push(watchFiles([watched], () => changes++, 10));
+    stops.push(watchFiles([watched], () => changes++, noFailure, 10));
     await new Promise((resolve) => setTimeout(resolve, 200));
     changes = 0;
 
@@ -39,11 +41,23 @@ suite('Watching the files compared', () => {
     await waitFor(() => changes > 0, 'the replacement');
   });
 
+  test('tells of a folder it could not watch', () => {
+    const failures: unknown[] = [];
+    stops.push(
+      watchFiles(
+        [path.join(folder, 'missing', 'file.txt')],
+        () => undefined,
+        (error) => failures.push(error),
+      ),
+    );
+    assert.strictEqual(failures.length, 1);
+  });
+
   test('tells nothing once stopped', async () => {
     const watched = path.join(folder, 'watched.txt');
     fs.writeFileSync(watched, 'one');
     let changes = 0;
-    watchFiles([watched], () => changes++, 10)();
+    watchFiles([watched], () => changes++, noFailure, 10)();
 
     fs.writeFileSync(watched, 'two');
     await new Promise((resolve) => setTimeout(resolve, 100));

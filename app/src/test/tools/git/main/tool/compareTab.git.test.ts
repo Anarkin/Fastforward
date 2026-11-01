@@ -84,6 +84,8 @@ suite('Git tool comparing two files', () => {
     await opened.connection.receive({ type: 'compareEntire', entire: true });
     assert.strictEqual(lastCompare()?.entire, true);
     assert.ok(linesOf(lastCompare()).includes('line 0'));
+    await opened.connection.receive({ type: 'selectTab', tab: '9' });
+    assert.strictEqual(lastCompare()?.entire, true);
 
     fs.appendFileSync(compare.new, 'added at the end\n');
     await waitFor(
@@ -93,5 +95,47 @@ suite('Git tool comparing two files', () => {
 
     await opened.connection.receive({ type: 'selectTab', tab: '1' });
     assert.strictEqual(lastCompare(), undefined);
+  });
+
+  test('tells two files alike or alike but for whitespace, and names files of the same name by their folders', async () => {
+    const left = path.join(files, 'left');
+    const right = path.join(files, 'right');
+    fs.mkdirSync(left);
+    fs.mkdirSync(right);
+    fs.writeFileSync(path.join(left, 'same.txt'), 'same text');
+    fs.writeFileSync(path.join(right, 'same.txt'), 'same text');
+    const compare = {
+      old: path.join(left, 'same.txt'),
+      new: path.join(right, 'same.txt'),
+    };
+    const tab = { id: '10', tool: 'git', compare } as const;
+    assert.strictEqual(
+      opened.view.names([tab]).get('10')?.name,
+      strings.messages.compareTab('left/same.txt', 'right/same.txt'),
+    );
+
+    await opened.store.update(tabsKey, [
+      { id: '1', tool: 'git', root: repository.root },
+      tab,
+    ]);
+    await opened.connection.receive({ type: 'selectTab', tab: '10' });
+    assert.strictEqual(lastCompare()?.same, 'identical');
+    assert.strictEqual(lastCompare()?.name, 'right/same.txt');
+
+    await opened.connection.receive({
+      type: 'loadCompareTexts',
+      requests: [
+        { path: 'right/same.txt', side: 'old', blob: 'a' },
+        { path: 'right/same.txt', side: 'new', blob: 'b' },
+      ],
+    });
+    const texts = opened.page.messages.flatMap((message) =>
+      message.type === 'compareTexts' ? [message] : [],
+    );
+    assert.deepStrictEqual(texts.at(-1)?.texts, [
+      { path: 'right/same.txt', side: 'old', blob: 'a', text: 'same text' },
+      { path: 'right/same.txt', side: 'new', blob: 'b', text: 'same text' },
+    ]);
+    await opened.connection.receive({ type: 'selectTab', tab: '1' });
   });
 });

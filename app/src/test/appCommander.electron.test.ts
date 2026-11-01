@@ -733,6 +733,20 @@ suite('App commander', () => {
       1,
       `The marked rows, the selected one among them, have the colors ${colors.join(', ')}`,
     );
+    const hiddenColor = await right()
+      .locator('.commander-row.marked')
+      .first()
+      .evaluate((row) => {
+        row.classList.add('hidden');
+        const color = getComputedStyle(row).color;
+        row.classList.remove('hidden');
+        return color;
+      });
+    assert.strictEqual(
+      hiddenColor,
+      colors[0],
+      'A hidden file marked is red too',
+    );
 
     await page.keyboard.press('Backspace');
     await waitFor(
@@ -799,6 +813,10 @@ suite('App commander', () => {
           await page.locator('.compare-view .diff-line.added').allTextContents()
         ).some((line) => line.includes('two')),
       'the diff of the two files',
+    );
+    await waitForFocus(
+      page.locator('.compare-view [data-column-focus]').first(),
+      'the diff, to take the keys at once',
     );
     assert.strictEqual(
       await page.evaluate(
@@ -971,6 +989,30 @@ suite('App commander', () => {
       async () => !(await rowNames()).includes('legacy.txt'),
       'the file to be gone from the list',
     );
+  });
+
+  test('says two files compared are the same rather than showing nothing', async () => {
+    fs.writeFileSync(path.join(opened, 'twin1.txt'), 'twins');
+    fs.writeFileSync(path.join(opened, 'twin2.txt'), 'twins');
+    await select('twin1');
+    await page.keyboard.press('Space');
+    await select('twin2');
+    await page.keyboard.press('Space');
+    await page.keyboard.press('Shift+F3');
+    await page
+      .locator('.compare-view .diff-note', {
+        hasText: 'The files are the same.',
+      })
+      .waitFor();
+    await page.keyboard.press('Escape');
+    await page.locator('.tabs .tab.active', { hasText: 'Commander' }).waitFor();
+    for (const name of ['twin1.txt', 'twin2.txt']) {
+      fs.rmSync(path.join(opened, name));
+    }
+    await waitFor(async () => {
+      const names = await rowNames();
+      return !names.includes('twin1.txt') && !names.includes('twin2.txt');
+    }, 'the files to be gone from the list');
   });
 
   test.skipIf(process.platform !== 'win32')(

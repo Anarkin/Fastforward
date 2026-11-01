@@ -800,6 +800,7 @@ export function diffRows(
   loading = false,
   sideBySide = false,
   rendered: ReadonlySet<string> = noneRendered,
+  images = true,
 ): DiffRow[] {
   const rows: DiffRow[] = [{ kind: 'error' }];
   const budget = pairingBudget();
@@ -838,7 +839,7 @@ export function diffRows(
   const collapsible = files.length > 1;
   files.forEach((file, index) => {
     const lines = changedLines(file);
-    const preview = previewOf(file);
+    const preview = previewOf(file, images);
     const previewed = preview !== undefined && rendered.has(file.path);
     const large =
       !previewed &&
@@ -2087,8 +2088,17 @@ export function DiffView({
   );
   const skeleton = useSkeleton(loading);
   const rows = useMemo(
-    () => diffRows(files, toggled, whole, skeleton, sideBySide, rendered),
-    [files, toggled, whole, skeleton, sideBySide, rendered],
+    () =>
+      diffRows(
+        files,
+        toggled,
+        whole,
+        skeleton,
+        sideBySide,
+        rendered,
+        origin !== undefined,
+      ),
+    [files, toggled, whole, skeleton, sideBySide, rendered, origin],
   );
 
   const wrapping = wordWrap ? columns : undefined;
@@ -2222,7 +2232,11 @@ export function DiffView({
       open={row.open}
       whole={whole !== undefined}
       collapsible={row.collapsible}
-      preview={whole ? wholePreviewOf(whole) : previewOf(files[row.file])}
+      preview={
+        whole
+          ? wholePreviewOf(whole)
+          : previewOf(files[row.file], origin !== undefined)
+      }
       rendered={rendered.has(row.path)}
       onRender={(render) => onRender(row.path, render)}
       onClick={() => {

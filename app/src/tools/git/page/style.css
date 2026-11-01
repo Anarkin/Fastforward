@@ -1211,3 +1211,8 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
 .columns.compare-columns {
   grid-template-columns: minmax(0, 1fr);
 }
+
+.diff-note {
+  padding: 8px;
+  color: var(--muted-foreground);
+}

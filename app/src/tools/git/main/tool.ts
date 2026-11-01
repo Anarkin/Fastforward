@@ -22,6 +22,9 @@ import {
   CompareTooLarge,
   compareMaxBytes,
   comparedFilesPatch,
+  comparedNames,
+  comparedText,
+  filesAlike,
 } from './cli/compare';
 import { watchFiles } from './compareWatch';
 import { BlobTexts } from './cli/blobTexts';
@@ -225,6 +228,7 @@ interface Session {
 interface Comparing {
   readonly tab: string;
   readonly compared: Compared;
+  running: AbortController | undefined;
   readonly stop: () => void;
   entire: boolean;
   version: number;
@@ -470,8 +474,7 @@ export class GitTool implements Tool<'git'> {
               tab.id,
               {
                 name: strings.messages.compareTab(
-                  path.basename(tab.compare.old),
-                  path.basename(tab.compare.new),
+                  ...comparedNames(tab.compare),
                 ),
               },
             ],
@@ -831,6 +834,9 @@ export class GitTool implements Tool<'git'> {
         }
         return;
       }
+      case 'loadCompareTexts':
+        await this.sendCompareTexts(session, message.requests);
+        return;
       case 'compareEntire':
         if (session.comparing && typeof message.entire === 'boolean') {
           session.comparing.entire = message.entire;
@@ -1698,26 +1704,84 @@ export class GitTool implements Tool<'git'> {
     compared: Compared,
   ): Promise<void> {
     this.stopWatching(session);
-    session.comparing?.stop();
+    const shown = session.comparing;
+    if (
+      shown?.tab === tab &&
+      shown.compared.old === compared.old &&
+      shown.compared.new === compared.new
+    ) {
+      await this.sendCompare(session);
+      return;
+    }
+    shown?.stop();
     const comparing: Comparing = {
       tab,
       compared,
+      running: undefined,
       entire: false,
       version: 0,
-      stop: watchFiles([compared.old, compared.new], () => {
-        if (session.comparing === comparing) {
-          void this.sendCompare(session);
-        }
-      }),
+      stop: watchFiles(
+        [compared.old, compared.new],
+        () => {
+          if (session.comparing === comparing) {
+            void this.sendCompare(session);
+          }
+        },
+        (error) => {
+          this.log.error(strings.log.watchingFailed(compared.new));
+          this.log.error(error);
+          session.post({
+            type: 'notice',
+            level: 'error',
+            message: strings.messages.couldNotWatchCompared(
+              compared.old,
+              compared.new,
+            ),
+          });
+        },
+      ),
     };
     session.comparing = comparing;
     await this.sendCompare(session);
+  }
+
+  private async sendCompareTexts(
+    session: Session,
+    requests: unknown,
+  ): Promise<void> {
+    const { comparing } = session;
+    if (comparing === undefined || !Array.isArray(requests)) {
+      return;
+    }
+    const asked = requests.filter(
+      (request: unknown): request is TextRequest =>
+        typeof request === 'object' &&
+        request !== null &&
+        'path' in request &&
+        typeof request.path === 'string' &&
+        'blob' in request &&
+        typeof request.blob === 'string' &&
+        'side' in request &&
+        (request.side === 'old' || request.side === 'new'),
+    );
+    const texts = await Promise.all(
+      asked.map(async (request) => ({
+        path: request.path,
+        side: request.side,
+        blob: request.blob,
+        text: await comparedText(comparing.compared, request.side),
+      })),
+    );
+    if (session.comparing === comparing && texts.length > 0) {
+      session.post({ type: 'compareTexts', tab: comparing.tab, texts });
+    }
   }
 
   private stopComparing(session: Session): void {
     const { comparing } = session;
     if (comparing !== undefined) {
       comparing.stop();
+      comparing.running?.abort();
       session.comparing = undefined;
       session.post({ type: 'compare', compare: undefined });
     }
@@ -1732,14 +1796,26 @@ export class GitTool implements Tool<'git'> {
     const { entireFilePinned, ignoreWhitespace } = this.storage.layout;
     const entire = comparing.entire || entireFilePinned;
     const version = ++comparing.version;
+    comparing.running?.abort();
+    const running = new AbortController();
+    comparing.running = running;
     let patch = '';
+    let same: 'identical' | 'whitespace' | undefined;
     let error: string | undefined;
     try {
-      patch = await comparedFilesPatch(this.gitPath, compared, {
-        entireFile: entire,
-        ignoreWhitespace,
-      });
+      patch = await comparedFilesPatch(
+        this.gitPath,
+        compared,
+        { entireFile: entire, ignoreWhitespace },
+        running.signal,
+      );
+      if (patch === '') {
+        same = await filesAlike(compared);
+      }
     } catch (failure) {
+      if (running.signal.aborted) {
+        return;
+      }
       error =
         failure instanceof CompareTooLarge
           ? strings.messages.compareTooLarge(compareMaxBytes / 1024 / 1024)
@@ -1756,11 +1832,13 @@ export class GitTool implements Tool<'git'> {
       type: 'compare',
       compare: {
         tab: comparing.tab,
+        name: comparedNames(compared)[1],
         old: compared.old,
         new: compared.new,
         patch,
         entire,
         version,
+        ...(same !== undefined && { same }),
         ...(error !== undefined && { error }),
       },
     });

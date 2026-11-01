@@ -6,6 +6,7 @@ const changeDelay = 100;
 export function watchFiles(
   files: readonly string[],
   onChange: () => void,
+  onFailed: (error: unknown) => void,
   delay = changeDelay,
 ): () => void {
   let pending: NodeJS.Timeout | undefined;
@@ -31,9 +32,13 @@ export function watchFiles(
           }
         },
       );
-      watcher.on('error', changed);
+      watcher.on('error', (error) => {
+        onFailed(error);
+        changed();
+      });
       return [watcher];
-    } catch {
+    } catch (error) {
+      onFailed(error);
       return [];
     }
   });

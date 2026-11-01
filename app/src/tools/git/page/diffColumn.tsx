@@ -343,6 +343,7 @@ export function Diff({
   origin,
   findAsked,
   filter,
+  note,
 }: {
   selection: string;
   path: string | undefined;
@@ -367,6 +368,7 @@ export function Diff({
   origin: ImageOrigin | undefined;
   findAsked: number;
   filter: string | undefined;
+  note?: string;
 }) {
   const parsed = useMemo(() => parsePatch(patch), [patch]);
   const diffFiles = useMemo(
@@ -381,7 +383,11 @@ export function Diff({
       ),
     [parsed, path, files, leftOut, largeFiles, whitespaceOnly, filter],
   );
-  const errorRow = error && <div className="error-message">{error}</div>;
+  const errorRow = error ? (
+    <div className="error-message">{error}</div>
+  ) : (
+    note && <div className="diff-note">{note}</div>
+  );
 
   const [query, setQuery] = useState('');
   const [current, setCurrent] = useState(0);

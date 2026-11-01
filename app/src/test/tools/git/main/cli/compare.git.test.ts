@@ -3,9 +3,12 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import {
+  CompareNotFile,
   CompareTooLarge,
+  checkedPatch,
   compareMaxBytes,
   comparedFilesPatch,
+  filesAlike,
 } from '../../../../../tools/git/main/cli/compare';
 import { parsePatch } from '../../../../../tools/git/page/diff';
 import {
@@ -54,6 +57,97 @@ suite('Comparing two files outside any repository', () => {
     );
   });
 
+  test('shows the line ends that differ, whatever core.autocrlf says', async () => {
+    fs.writeFileSync(at('left', 'crlf.txt'), 'one\r\ntwo\r\n');
+    fs.writeFileSync(at('right side', 'crlf.txt'), 'one\ntwo\n');
+
+    const [file] = parsePatch(
+      await comparedFilesPatch(gitPath, {
+        old: at('left', 'crlf.txt'),
+        new: at('right side', 'crlf.txt'),
+      }),
+    );
+
+    assert.ok(
+      file?.hunks.some((hunk) =>
+        hunk.lines.some((line) => line.kind === 'removed'),
+      ),
+    );
+  });
+
+  test('names files of the same name by their folders too, so they can be told apart', async () => {
+    fs.writeFileSync(at('left', 'config.json'), '{ "a": 1 }\n');
+    fs.writeFileSync(at('right side', 'config.json'), '{ "a": 2 }\n');
+
+    const [file] = parsePatch(
+      await comparedFilesPatch(gitPath, {
+        old: at('left', 'config.json'),
+        new: at('right side', 'config.json'),
+      }),
+    );
+
+    assert.strictEqual(file?.path, 'right side/config.json');
+    assert.strictEqual(file?.oldPath, 'left/config.json');
+  });
+
+  test('compares the content a link leads to, not the link', async (context) => {
+    fs.writeFileSync(at('left', 'target.txt'), 'same\n');
+    fs.writeFileSync(at('right side', 'copy.txt'), 'same\n');
+    try {
+      fs.symlinkSync(at('left', 'target.txt'), at('left', 'link.txt'));
+    } catch {
+      context.skip();
+    }
+
+    assert.strictEqual(
+      await comparedFilesPatch(gitPath, {
+        old: at('left', 'link.txt'),
+        new: at('right side', 'copy.txt'),
+      }),
+      '',
+    );
+  });
+
+  test('refuses what is not a regular file, as a folder', async () => {
+    await assert.rejects(
+      comparedFilesPatch(gitPath, {
+        old: at('left', 'notes.txt'),
+        new: at('right side'),
+      }),
+      CompareNotFile,
+    );
+  });
+
+  test('takes git saying nothing but an error for the error it is, not for files alike', () => {
+    assert.throws(
+      () => checkedPatch('', "error: Could not access 'gone.txt'\n"),
+      /Could not access/,
+    );
+    assert.strictEqual(checkedPatch('', ''), '');
+    assert.strictEqual(checkedPatch('diff --git', 'warning'), 'diff --git');
+  });
+
+  test('tells files alike apart from files that differ only in whitespace', async () => {
+    fs.writeFileSync(at('left', 'alike.txt'), 'a b\n');
+    fs.writeFileSync(at('right side', 'alike.txt'), 'a b\n');
+    fs.writeFileSync(at('right side', 'spaced.txt'), 'a  b\n');
+
+    assert.strictEqual(
+      await filesAlike({
+        old: at('left', 'alike.txt'),
+        new: at('right side', 'alike.txt'),
+      }),
+      'identical',
+    );
+    assert.strictEqual(
+      await filesAlike({
+        old: at('left', 'alike.txt'),
+        new: at('right side', 'spaced.txt'),
+      }),
+      'whitespace',
+    );
+  });
+
   test('shows the whole file and leaves changes of whitespace out when asked', async () => {
     const lines = Array.from({ length: 20 }, (_, index) => `line ${index}`);
     fs.writeFileSync(at('left', 'long.txt'), lines.join('\n'));
@@ -70,7 +164,7 @@ suite('Comparing two files outside any repository', () => {
 
     assert.strictEqual(
       parsePatch(await comparedFilesPatch(gitPath, compared))[0]?.oldPath,
-      undefined,
+      'left/long.txt',
     );
     assert.strictEqual(
       await comparedFilesPatch(gitPath, compared, { ignoreWhitespace: true }),
@@ -100,7 +194,7 @@ suite('Comparing two files outside any repository', () => {
       }),
     );
     assert.strictEqual(binary?.binary, true);
-    assert.strictEqual(binary?.path, 'data.bin');
+    assert.strictEqual(binary?.path, 'right side/data.bin');
     assert.strictEqual(
       await comparedFilesPatch(gitPath, {
         old: at('left', 'same.txt'),

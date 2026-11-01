@@ -25,8 +25,8 @@ function rendersMarkdown(file: DiffFile): boolean {
   );
 }
 
-export function previewOf(file: DiffFile): Preview | undefined {
-  if (rendersImage(file)) {
+export function previewOf(file: DiffFile, images = true): Preview | undefined {
+  if (images && rendersImage(file)) {
     return 'image';
   }
   return rendersMarkdown(file) ? 'markdown' : undefined;

@@ -92,6 +92,7 @@ import { repositoryMenuItems } from './repositoryMenu';
 import { ConfirmPopup } from '../../../shell/page/confirmPopup';
 import { ClonePopup, type ChosenFolder, type CloneTarget } from './clonePopup';
 import type { CloneAsk, CloneView } from '../shared/clone';
+import { textKey, type LoadedText } from './diff';
 
 export interface GitToolProps {
   active: boolean;
@@ -104,6 +105,8 @@ export interface GitToolProps {
   onClose: (tab: string) => void;
   comparing: string | undefined;
 }
+
+const noCompareTexts: ReadonlyMap<string, LoadedText> = new Map();
 
 export function GitTool({
   active,
@@ -120,6 +123,10 @@ export function GitTool({
   const post = outbox.send;
   const [worktrees, setWorktrees] = useState<readonly WorktreeInfo[]>();
   const [compare, setCompare] = useState<CompareViewOf>();
+  const [compareTexts, setCompareTexts] = useState<{
+    readonly tab: string | undefined;
+    readonly texts: ReadonlyMap<string, LoadedText>;
+  }>({ tab: undefined, texts: new Map() });
   const repositoryShown = active && comparing === undefined;
   const shownCompare =
     compare !== undefined && compare.tab === comparing ? compare : undefined;
@@ -337,6 +344,18 @@ export function GitTool({
         case 'compare':
           setCompare(message.compare);
           break;
+        case 'compareTexts':
+          setCompareTexts((known) => {
+            const next = new Map(known.tab === message.tab ? known.texts : []);
+            for (const loaded of message.texts) {
+              next.set(textKey(loaded.path, loaded.side), {
+                blob: loaded.blob,
+                text: loaded.text,
+              });
+            }
+            return { tab: message.tab, texts: next };
+          });
+          break;
         case 'worktrees':
           setWorktrees(message.worktrees);
           dispatch(message);
@@ -373,7 +392,10 @@ export function GitTool({
     return listen(onMessage);
   }, [listen, loadColumnWidths]);
 
-  useEffect(() => onTitle(activeTab), [activeTab, onTitle]);
+  useEffect(
+    () => onTitle(comparing === undefined ? activeTab : undefined),
+    [activeTab, comparing, onTitle],
+  );
   const menuWorktree = useRef(activeTab);
   useEffect(() => {
     if (menuWorktree.current !== activeTab) {
@@ -810,6 +832,14 @@ export function GitTool({
                     {comparing !== undefined ? (
                       <CompareView
                         compare={shownCompare}
+                        texts={
+                          compareTexts.tab === comparing
+                            ? compareTexts.texts
+                            : noCompareTexts
+                        }
+                        onLoadTexts={(requests) =>
+                          post({ type: 'loadCompareTexts', requests })
+                        }
                         pinned={entireFilePinned}
                         layout={diffLayout}
                         wordWrap={wordWrap}
