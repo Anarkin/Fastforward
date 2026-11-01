@@ -535,6 +535,14 @@ suite('App commander', () => {
       async () => (await pressedMode()) === 'Text',
       'the text view',
     );
+    await page.keyboard.press('Home');
+    await waitFor(
+      async () =>
+        ((await firstRow()) ?? '').startsWith(
+          `${'.'.repeat(32)} !"#$%&'()*+,-./0123456789`,
+        ),
+      'the bytes as text, one to a character, a dot for each with no glyph',
+    );
     await page.keyboard.press('2');
     await waitFor(async () => (await pressedMode()) === 'Hex', 'the hex view');
     await page.locator('.viewer .segmented [title="Text"]').click();

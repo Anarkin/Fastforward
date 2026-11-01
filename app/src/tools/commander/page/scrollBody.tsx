@@ -14,6 +14,8 @@ export interface Thumb {
 
 const minThumb = 24;
 
+const probeText = '0'.repeat(100);
+
 export function thumbBox(
   thumb: Thumb,
   track: number,
@@ -25,6 +27,7 @@ export function thumbBox(
 export function ScrollBody({
   thumb,
   onScreen,
+  onColumns,
   move,
   jump,
   error,
@@ -32,6 +35,7 @@ export function ScrollBody({
 }: {
   thumb: Thumb | undefined;
   onScreen: (screen: number) => void;
+  onColumns?: (columns: number) => void;
   move: (by: number) => void;
   jump: (share: number) => void;
   error: string | undefined;
@@ -65,12 +69,20 @@ export function ScrollBody({
       setScreen(rows);
       onScreen(rows);
       setTrack(element.clientHeight);
+      const style = getComputedStyle(row);
+      const padding =
+        parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+      const advance =
+        (row.getBoundingClientRect().width - padding) / probeText.length || 1;
+      onColumns?.(
+        Math.max(1, Math.floor((element.clientWidth - padding) / advance)),
+      );
     };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(element);
     return () => observer.disconnect();
-  }, [onScreen]);
+  }, [onScreen, onColumns]);
 
   const moved = (by: number) => {
     showBar();
@@ -125,7 +137,9 @@ export function ScrollBody({
         }
       }}
     >
-      <div className="viewer-row commander-viewer-probe" ref={probe} />
+      <div className="viewer-row commander-viewer-probe" ref={probe}>
+        {probeText}
+      </div>
       {error === undefined ? (
         <div className="viewer-rows">{children}</div>
       ) : (

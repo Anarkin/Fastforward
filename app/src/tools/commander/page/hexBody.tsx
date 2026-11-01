@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { CommanderToHost } from '../shared/protocol';
+import { maxBytesAsked, type CommanderToHost } from '../shared/protocol';
 import { RowRequests } from './rowRequests';
 import { ScrollBody } from './scrollBody';
 import {
+  byteText,
   bytesToAsk,
   hexRow,
   hexRowBytes,
@@ -16,11 +17,17 @@ interface Bytes {
   readonly data: readonly number[];
 }
 
-export function HexBody({
+export type ByteLayout = 'hex' | 'text';
+
+const minTextColumns = 16;
+
+export function ByteBody({
+  layout,
   viewing,
   post,
   listen,
 }: {
+  layout: ByteLayout;
   viewing: Viewing;
   post: (message: CommanderToHost) => void;
   listen: (handler: (message: ToViewer) => void) => () => void;
@@ -28,11 +35,14 @@ export function HexBody({
   const { tab } = viewing;
   const size = viewing.size ?? 0;
   const [screen, setScreen] = useState(1);
-  const [topRow, setTopRow] = useState(0);
+  const [columns, setColumns] = useState(minTextColumns);
+  const [topByte, setTopByte] = useState(0);
   const [bytes, setBytes] = useState<Bytes>();
-  const rowCount = Math.ceil(size / hexRowBytes);
+  const rowBytes =
+    layout === 'hex' ? hexRowBytes : Math.max(minTextColumns, columns);
+  const rowCount = Math.ceil(size / rowBytes);
   const lastTop = Math.max(0, rowCount - screen);
-  const top = Math.min(topRow, lastTop);
+  const top = Math.min(Math.floor(topByte / rowBytes), lastTop);
 
   const requests = useMemo(
     () =>
@@ -69,40 +79,44 @@ export function HexBody({
       screen,
       size,
       bytes && { start: bytes.start, length: bytes.data.length },
+      rowBytes,
     );
     if (wanted !== undefined) {
-      requests.ask(wanted);
+      requests.ask(
+        wanted.length > maxBytesAsked
+          ? { start: top * rowBytes, length: maxBytesAsked }
+          : wanted,
+      );
     }
-  }, [requests, top, screen, size, bytes]);
+  }, [requests, top, screen, size, bytes, rowBytes]);
 
   const move = useCallback(
     (by: number) =>
-      setTopRow((row) => Math.max(0, Math.min(row + by, lastTop))),
-    [lastTop],
+      setTopByte(
+        (byte) =>
+          Math.max(0, Math.min(Math.floor(byte / rowBytes) + by, lastTop)) *
+          rowBytes,
+      ),
+    [lastTop, rowBytes],
   );
   const jump = useCallback(
-    (share: number) => setTopRow(Math.round(share * lastTop)),
-    [lastTop],
+    (share: number) => setTopByte(Math.round(share * lastTop) * rowBytes),
+    [lastTop, rowBytes],
   );
 
   const digits = offsetDigits(size);
   const rows = Array.from(
     { length: Math.max(0, Math.min(rowCount - top, screen + 1)) },
     (_, index) => {
-      const offset = (top + index) * hexRowBytes;
+      const offset = (top + index) * rowBytes;
       const from = bytes === undefined ? -1 : offset - bytes.start;
       const held =
         bytes !== undefined &&
         from >= 0 &&
-        from + Math.min(hexRowBytes, size - offset) <= bytes.data.length;
+        from + Math.min(rowBytes, size - offset) <= bytes.data.length;
       return {
         offset,
-        row: hexRow(
-          offset,
-          held ? bytes.data.slice(from, from + hexRowBytes) : [],
-          digits,
-        ),
-        held,
+        data: held ? bytes.data.slice(from, from + rowBytes) : undefined,
       };
     },
   );
@@ -118,17 +132,28 @@ export function HexBody({
             }
       }
       onScreen={setScreen}
+      onColumns={setColumns}
       move={move}
       jump={jump}
       error={viewing.error}
     >
-      {rows.map(({ offset, row, held }) => (
-        <div className="viewer-row hex-row" key={offset}>
-          <span className="hex-offset">{row.offset}</span>
-          {held && <span className="hex-bytes">{row.hex}</span>}
-          {held && <span className="hex-text">{row.text}</span>}
-        </div>
-      ))}
+      {rows.map(({ offset, data }) => {
+        if (layout === 'text') {
+          return (
+            <div className="viewer-row" key={offset}>
+              {data && byteText(data)}
+            </div>
+          );
+        }
+        const row = hexRow(offset, data ?? [], digits);
+        return (
+          <div className="viewer-row hex-row" key={offset}>
+            <span className="hex-offset">{row.offset}</span>
+            {data && <span className="hex-bytes">{row.hex}</span>}
+            {data && <span className="hex-text">{row.text}</span>}
+          </div>
+        );
+      })}
     </ScrollBody>
   );
 }

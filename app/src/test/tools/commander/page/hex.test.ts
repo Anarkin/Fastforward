@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
+  byteText,
   bytesToAsk,
   hexRow,
   offsetDigits,
@@ -49,5 +50,19 @@ suite('Hex rows of a file viewed', () => {
       bytesToAsk(122, 10, 1_000_000, { start: 80 * 16, length: 50 * 16 }),
       { start: 102 * 16, length: 50 * 16 },
     );
+  });
+
+  test('shows the bytes of a binary file as text one byte to a character, Latin-1 as it is, a dot for what has no glyph', () => {
+    assert.strictEqual(
+      byteText([0x41, 0x00, 0x0a, 0x7f, 0x85, 0xa0, 0xad, 0xe9, 0xff, 0x7e]),
+      'A......éÿ~',
+    );
+  });
+
+  test('asks for the bytes of rows as wide as asked', () => {
+    assert.deepStrictEqual(bytesToAsk(100, 10, 10_000_000, undefined, 120), {
+      start: 80 * 120,
+      length: 50 * 120,
+    });
   });
 });

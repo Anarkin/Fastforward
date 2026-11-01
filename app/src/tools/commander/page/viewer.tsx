@@ -5,7 +5,7 @@ import { pressed } from '../../../shell/shared/keymap';
 import { strings } from '../../../shared/strings';
 import { HexIcon, PreviewIcon, TextIcon } from '../../../ui/icons';
 import { TextBody } from './textBody';
-import { HexBody } from './hexBody';
+import { ByteBody } from './hexBody';
 import { PreviewBody } from './previewBody';
 import { firstMode, previewOf } from './previews';
 
@@ -99,8 +99,13 @@ export function Viewer({
           post={post}
           listen={listen}
         />
-      ) : mode === 'hex' ? (
-        <HexBody viewing={viewing} post={post} listen={listen} />
+      ) : mode === 'hex' || viewing.binary === true ? (
+        <ByteBody
+          layout={mode === 'hex' ? 'hex' : 'text'}
+          viewing={viewing}
+          post={post}
+          listen={listen}
+        />
       ) : (
         <TextBody file={file} viewing={viewing} post={post} listen={listen} />
       )}
