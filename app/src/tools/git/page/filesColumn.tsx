@@ -82,9 +82,7 @@ export function filesTitle(selection: string | undefined): string {
   if (compared) {
     return comparisonLabel(compared);
   }
-  return selection === workingTreeHash
-    ? strings.commits.uncommitted
-    : shortHash(selection);
+  return selection === workingTreeHash ? '' : shortHash(selection);
 }
 
 export function noChangesText(
