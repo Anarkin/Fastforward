@@ -1,5 +1,5 @@
 import { filterRanges } from './fileFilter';
-import { matchesIn } from './find';
+import { matchesIn } from '../../../shared/textMatches';
 
 export function HighlightWords({
   text,

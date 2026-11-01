@@ -1,11 +1,19 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   CommanderToHost,
   CommanderToWebviewOf,
   TextEncoding,
 } from '../shared/protocol';
 import { viewerKeymap, type ViewMode } from '../shared/keymap';
-import { pressed } from '../../../shell/shared/keymap';
+import { keyPressed } from '../../../ui/shortcuts';
+import { columnFocusOf } from '../../../ui/columnFocus';
+import {
+  FindActions,
+  FindField,
+  SearchButton,
+  SearchRow,
+} from '../../../ui/search';
+import { useViewerFind } from './viewerFind';
 import { strings } from '../../../shared/strings';
 import { HexIcon, PreviewIcon, TextIcon } from '../../../ui/icons';
 import { MenuButton } from '../../../ui/menu';
@@ -27,7 +35,9 @@ export interface Viewing {
   readonly error?: string;
 }
 
-export type ToViewer = CommanderToWebviewOf<'rows' | 'text' | 'bytes'>;
+export type ToViewer = CommanderToWebviewOf<
+  'rows' | 'text' | 'bytes' | 'found'
+>;
 
 const modes: readonly {
   readonly mode: ViewMode;
@@ -72,12 +82,44 @@ export function Viewer({
       setChosen(wanted);
     }
   };
+  const finder = useViewerFind(
+    viewing,
+    mode === 'hex' || shown === 'bytes' ? 'windows-1252' : shown,
+    post,
+    listen,
+  );
+  const [finding, setFinding] = useState(false);
+  const [focusAsks, setFocusAsks] = useState(0);
+  const findInput = useRef<HTMLInputElement>(null);
+  const openFind = () => {
+    if (mode === 'preview') {
+      setChosen('text');
+    }
+    setFinding(true);
+    setFocusAsks((count) => count + 1);
+  };
+  const closeFind = () => {
+    columnFocusOf(findInput.current)?.focus();
+    setFinding(false);
+    finder.search('');
+  };
+  useEffect(() => {
+    if (focusAsks > 0) {
+      findInput.current?.focus();
+      findInput.current?.select();
+    }
+  }, [focusAsks]);
 
   return (
     <section
       className="column viewer"
       onKeyDown={(event) => {
-        const wanted = pressed(viewerKeymap.viewAs, event, false);
+        if (keyPressed(viewerKeymap.find, event) !== undefined) {
+          event.preventDefault();
+          openFind();
+          return;
+        }
+        const wanted = keyPressed(viewerKeymap.viewAs, event);
         if (wanted !== undefined) {
           event.preventDefault();
           choose(wanted);
@@ -85,54 +127,77 @@ export function Viewer({
         }
         if (
           mode === 'text' &&
-          pressed(viewerKeymap.encoding, event, false) !== undefined
+          keyPressed(viewerKeymap.encoding, event) !== undefined
         ) {
           event.preventDefault();
           encodingTrigger.current?.click();
         }
       }}
     >
-      <header className="column-title">
-        <div className="column-start nav-buttons viewer-actions">
-          <div
-            className="segmented"
-            role="group"
-            aria-label={strings.commander.viewAs}
-          >
-            {shownModes.map(({ mode: each, title, icon }) => (
-              <button
-                key={each}
-                className={`nav-button toggle ${mode === each ? 'active' : ''}`}
-                title={title}
-                aria-pressed={mode === each}
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => choose(each)}
-              >
-                {icon}
-              </button>
-            ))}
-          </div>
-          {mode === 'text' && (
-            <div className="viewer-encoding">
-              <MenuButton
-                title={strings.commander.encoding}
-                trigger={encodingTrigger}
-                icon={
-                  <span className="viewer-encoding-label">
-                    {strings.commander.encodingShort[shown]}
-                  </span>
-                }
-                items={encodingChoices.map((choice) => ({
-                  label: strings.commander.encodings[choice],
-                  checked: choice === encoding,
-                  onClick: () => setEncoding(choice),
-                }))}
-              />
+      {finding ? (
+        <header className="column-title searching">
+          <SearchRow onClose={closeFind}>
+            <FindField
+              query={finder.query}
+              count={finder.count}
+              input={findInput}
+              keys={viewerKeymap}
+              onQuery={finder.search}
+              onStep={finder.step}
+              onClose={closeFind}
+            />
+            <FindActions matches={finder.matches.length} onStep={finder.step} />
+          </SearchRow>
+        </header>
+      ) : (
+        <header className="column-title">
+          <div className="column-start nav-buttons viewer-actions">
+            <div
+              className="segmented"
+              role="group"
+              aria-label={strings.commander.viewAs}
+            >
+              {shownModes.map(({ mode: each, title, icon }) => (
+                <button
+                  key={each}
+                  className={`nav-button toggle ${mode === each ? 'active' : ''}`}
+                  title={title}
+                  aria-pressed={mode === each}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => choose(each)}
+                >
+                  {icon}
+                </button>
+              ))}
             </div>
-          )}
-        </div>
-        <span className="column-name">{file}</span>
-      </header>
+            {mode === 'text' && (
+              <div className="viewer-encoding">
+                <MenuButton
+                  title={strings.commander.encoding}
+                  trigger={encodingTrigger}
+                  icon={
+                    <span className="viewer-encoding-label">
+                      {strings.commander.encodingShort[shown]}
+                    </span>
+                  }
+                  items={encodingChoices.map((choice) => ({
+                    label: strings.commander.encodings[choice],
+                    checked: choice === encoding,
+                    onClick: () => setEncoding(choice),
+                  }))}
+                />
+              </div>
+            )}
+          </div>
+          <span className="column-name">{file}</span>
+          <div className="column-actions">
+            <SearchButton
+              title={strings.commander.findInFile}
+              onClick={openFind}
+            />
+          </div>
+        </header>
+      )}
       {viewing === undefined ? (
         <div className="column-body viewer-body" />
       ) : mode === 'preview' && preview !== undefined ? (
@@ -147,6 +212,7 @@ export function Viewer({
         <ByteBody
           layout={mode === 'hex' ? 'hex' : 'text'}
           viewing={viewing}
+          find={finder.find}
           place={place}
           onPlace={onPlace}
           post={post}
@@ -158,6 +224,7 @@ export function Viewer({
           file={file}
           encoding={shown}
           viewing={viewing}
+          find={finder.find}
           place={place}
           onPlace={onPlace}
           post={post}

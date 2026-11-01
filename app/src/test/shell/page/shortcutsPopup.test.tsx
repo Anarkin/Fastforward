@@ -67,7 +67,7 @@ suite('Shortcuts popup', () => {
     );
   });
 
-  test('lists the keys of a file viewed in the commander apart from those of its sides, the view keys among them', () => {
+  test('lists the keys of a file viewed in the commander apart from those of its sides, the view and search keys among them', () => {
     const viewer = shortcutGroupsFor('commander', { view: true }).find(
       (group) => group.title === 'Viewer',
     );
@@ -77,6 +77,9 @@ suite('Shortcuts popup', () => {
         'Scroll by a row, a page, or to the start or end',
         'View the file as text, hex or a preview',
         'Choose the encoding of the text',
+        'Search the file',
+        'Next or previous match',
+        'Close the search',
         'Close the file being viewed',
       ],
     );

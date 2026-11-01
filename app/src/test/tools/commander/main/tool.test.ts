@@ -329,6 +329,58 @@ suite('Commander tool', () => {
       assert.strictEqual(page.of('rows').length, 1);
     });
 
+    test('finds text in a file viewed in the encoding asked for, answering with the bytes of each match, and checks what the page asks', async () => {
+      const notes = path.join(opened, 'find.txt');
+      fs.writeFileSync(notes, 'Árvíz\nnothing\nÁRVÍZ\n');
+      const { tool, page, send } = commander({});
+      await tool.show(page, {
+        id: '3',
+        tool: 'commander',
+        root: notes,
+        view: true,
+      });
+
+      await send({
+        type: 'findText',
+        tab: '3',
+        encoding: 'utf-8',
+        query: 'árvíz',
+        request: 4,
+      });
+
+      assert.deepStrictEqual(page.of('found').at(-1), {
+        type: 'found',
+        tab: '3',
+        request: 4,
+        matches: [
+          { start: 0, end: 7 },
+          { start: 16, end: 23 },
+        ],
+        capped: false,
+        done: true,
+      });
+      for (const bad of [
+        { tab: '4' },
+        { query: 'x'.repeat(1001) },
+        { request: 1.5 },
+      ]) {
+        await send({
+          type: 'findText',
+          tab: '3',
+          encoding: 'utf-8',
+          query: 'a',
+          request: 5,
+          ...bad,
+        });
+      }
+      await send(
+        forged(
+          '{ "type": "findText", "tab": "3", "encoding": "utf-8", "query": 7, "request": 5 }',
+        ),
+      );
+      assert.strictEqual(page.of('found').length, 1);
+    });
+
     test('reads the rows and the whole text of a file viewed in the encoding asked for, and tells of the encoding its byte order mark names', async () => {
       const wide = path.join(opened, 'wide.txt');
       fs.writeFileSync(

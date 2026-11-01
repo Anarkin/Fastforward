@@ -11,14 +11,16 @@ import { Column } from '../tools/git/page/column';
 import { ColumnResizingProvider } from '../tools/git/page/columns';
 import { CommitRow, WorkingTreeRow } from '../tools/git/page/commitList';
 import { ContextMenu } from '../ui/contextMenu';
-import { DiffFind, DiffOptions } from '../tools/git/page/diffColumn';
+import { DiffOptions } from '../tools/git/page/diffColumn';
+import { FindField } from '../ui/search';
+import { gitKeymap } from '../tools/git/shared/keymap';
 import {
   Code,
   diffRowClass,
   DiffView,
   marked,
 } from '../tools/git/page/diffView';
-import type { FindRange } from '../tools/git/page/find';
+import type { FindRange } from '../shared/textMatches';
 import { LocationsPopup } from '../tools/git/page/locations';
 import {
   MessageBody,
@@ -361,10 +363,10 @@ export const searchButton = memoized(() =>
 
 export const diffFind = memoized((query) =>
   rendered(
-    <DiffFind
+    <FindField
       query={query}
       count=""
-      unsearched={0}
+      keys={gitKeymap}
       onQuery={noop}
       onStep={noop}
       onClose={noop}

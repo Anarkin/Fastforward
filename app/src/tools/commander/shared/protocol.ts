@@ -84,6 +84,13 @@ export type CommanderToHost =
       readonly request: number;
     }
   | {
+      readonly type: 'findText';
+      readonly tab: string;
+      readonly encoding: TextEncoding;
+      readonly query: string;
+      readonly request: number;
+    }
+  | {
       readonly type: 'readRows';
       readonly tab: string;
       readonly encoding: TextEncoding;
@@ -119,6 +126,11 @@ export type CommanderToHost =
   | { readonly type: 'sort'; readonly side: Side; readonly sort: Sort }
   | { readonly type: 'showHidden'; readonly shown: boolean };
 
+export interface ByteRange {
+  readonly start: number;
+  readonly end: number;
+}
+
 export type CommanderToWebview =
   | {
       readonly type: 'settings';
@@ -151,6 +163,14 @@ export type CommanderToWebview =
       readonly tab: string;
       readonly request: number;
       readonly text: string | undefined;
+    }
+  | {
+      readonly type: 'found';
+      readonly tab: string;
+      readonly request: number;
+      readonly matches: readonly ByteRange[];
+      readonly capped: boolean;
+      readonly done: boolean;
     }
   | {
       readonly type: 'rows';

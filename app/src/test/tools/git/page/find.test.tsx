@@ -3,7 +3,9 @@ import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { parsePatch, type DiffFile } from '../../../../tools/git/page/diff';
-import { DiffFind, FindActions } from '../../../../tools/git/page/diffColumn';
+import { FindActions, FindField } from '../../../../ui/search';
+import { gitKeymap } from '../../../../tools/git/shared/keymap';
+import { strings } from '../../../../shared/strings';
 import {
   diffMinimapMarks,
   diffRows,
@@ -13,12 +15,14 @@ import {
 import {
   findMatches,
   jumpStep,
-  matchCount,
-  matchesIn,
-  stepMatch,
   unsearchedFiles,
   wholeLines,
 } from '../../../../tools/git/page/find';
+import {
+  matchCount,
+  matchesIn,
+  stepMatch,
+} from '../../../../shared/textMatches';
 import { keyPress } from '../../../fixtures';
 
 const patch = [
@@ -347,10 +351,11 @@ suite('Find in diff', () => {
     const queries: string[] = [];
     let closed = 0;
     const field = (query: string) => {
-      const element = DiffFind({
+      const element = FindField({
         query,
         count: matchCount(query, 3, 0),
-        unsearched: 2,
+        countTitle: strings.find.unsearched(2),
+        keys: gitKeymap,
         onQuery: (next) => queries.push(next),
         onStep: (step) => steps.push(step),
         onClose: () => closed++,
@@ -387,9 +392,9 @@ suite('Find in diff', () => {
     assert.match(html, /placeholder="Search…"/);
     assert.match(
       html,
-      /<span class="diff-find-count" title="Large files not shown yet are not searched: 2">1 of 3<\/span>/,
+      /<span class="find-field-count" title="Large files not shown yet are not searched: 2">1 of 3<\/span>/,
     );
-    assert.doesNotMatch(renderToStaticMarkup(field('')), /diff-find-count/);
+    assert.doesNotMatch(renderToStaticMarkup(field('')), /find-field-count/);
   });
 
   test('steps only while there are matches', () => {

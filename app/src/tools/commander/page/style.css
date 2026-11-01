@@ -6,7 +6,7 @@
   --commander-advance: round(1ch, var(--device-pixel, 1px));
 }
 
-.commander .column-title {
+.commander .column-title:not(.searching) {
   padding: 0 calc(4px + 3 * 26px + 2 * 2px + 8px);
 }
 
@@ -281,4 +281,14 @@
 
 .viewer-actions {
   gap: 8px;
+}
+
+.viewer-row .find-match {
+  color: var(--color-search-match-foreground);
+  background: var(--color-search-match);
+  border-radius: 2px;
+}
+
+.viewer-row .find-match.current {
+  box-shadow: 0 0 0 1px var(--color-search-match-foreground);
 }

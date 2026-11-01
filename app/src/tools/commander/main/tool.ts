@@ -48,6 +48,7 @@ import {
   rowsFrom,
   rowStartAt,
 } from './textRows';
+import { findInFile } from './textFind';
 import type { ElevatedFileSystem } from './elevated';
 import { Icons } from './icons';
 import { iconSourceOf, viewerIconUrl, viewerOfIcon } from '../shared/icons';
@@ -80,6 +81,8 @@ interface Pane {
 
 type Listing = 'visit' | 'show' | 'refresh' | { readonly at: number };
 
+const maxFindLength = 1000;
+const findProgressEvery = 150;
 const maxHistory = 100;
 
 function newPane(folder: string): Pane {
@@ -179,6 +182,7 @@ export class CommanderTool implements Tool<'commander'> {
       }
     | undefined;
   private elevating: Promise<ElevatedFileSystem | undefined> | undefined;
+  private finding: AbortController | undefined;
 
   constructor(private readonly access: CommanderAccess) {
     this.icons = new Icons(access.fileIcon, access.platform);
@@ -253,6 +257,8 @@ export class CommanderTool implements Tool<'commander'> {
         return this.readRows(page, message);
       case 'readText':
         return this.readText(page, message);
+      case 'findText':
+        return this.findText(page, message);
       case 'readBytes':
         return this.readBytes(page, message);
       case 'reread': {
@@ -581,6 +587,8 @@ export class CommanderTool implements Tool<'commander'> {
         );
       }),
     };
+    this.finding?.abort();
+    this.finding = undefined;
     this.viewing = viewing;
     this.post(page, {
       type: 'viewing',
@@ -648,6 +656,63 @@ export class CommanderTool implements Tool<'commander'> {
             .then((bytes) => new TextDecoder(encoding).decode(bytes))
             .catch(() => undefined);
     this.post(page, { type: 'text', tab, request, text });
+  }
+
+  private async findText(
+    page: Page,
+    {
+      tab,
+      request,
+      encoding,
+      query,
+    }: Extract<CommanderToHost, { type: 'findText' }>,
+  ): Promise<void> {
+    const { viewing } = this;
+    if (
+      viewing === undefined ||
+      this.shown?.page !== page ||
+      viewing.tab !== tab ||
+      !Number.isSafeInteger(request) ||
+      !isTextEncoding(encoding) ||
+      typeof query !== 'string' ||
+      query.length > maxFindLength
+    ) {
+      return;
+    }
+    this.finding?.abort();
+    const finding = new AbortController();
+    this.finding = finding;
+    let told = Date.now();
+    const found = await readingFile(viewing.file, (read) =>
+      findInFile(read, viewing.size, query, encoding, {
+        signal: finding.signal,
+        onChunk: (matches) => {
+          if (Date.now() - told >= findProgressEvery) {
+            told = Date.now();
+            this.post(page, {
+              type: 'found',
+              tab,
+              request,
+              matches: [...matches],
+              capped: false,
+              done: false,
+            });
+          }
+        },
+      }),
+    ).catch(() => ({ matches: [], capped: false }));
+    if (found === undefined || finding.signal.aborted) {
+      return;
+    }
+    this.finding = undefined;
+    this.post(page, {
+      type: 'found',
+      tab,
+      request,
+      matches: found.matches,
+      capped: found.capped,
+      done: true,
+    });
   }
 
   private async readRows(
@@ -970,6 +1035,8 @@ export class CommanderTool implements Tool<'commander'> {
     this.watching.clear();
     this.viewing?.stop();
     this.viewing = undefined;
+    this.finding?.abort();
+    this.finding = undefined;
   }
 
   private postListing(

@@ -1,11 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type RefObject,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   type ChangeArea,
   type DiffLayout,
@@ -18,23 +11,26 @@ import { Column } from './column';
 import { parsePatch, type DiffFile, type LoadedText } from './diff';
 import { DiffView, type WholeFile } from './diffView';
 import { filterWords, matchesFilter } from './fileFilter';
-import { findMatches, matchCount, stepMatch, unsearchedFiles } from './find';
+import { findMatches, unsearchedFiles } from './find';
+import { matchCount, stepMatch } from '../../../shared/textMatches';
 import { withUnchangedObjects, type ImageOrigin } from './images';
 import {
   EntireFileIcon,
   WhitespaceChangesIcon,
   ShowWhitespaceIcon,
   InlineIcon,
-  NextIcon,
   PinIcon,
-  PreviousIcon,
   SideBySideIcon,
   WordWrapIcon,
 } from '../../../ui/icons';
 import { gitKeymap } from '../shared/keymap';
 import { strings } from '../../../shared/strings';
-import { keyPressed } from '../../../ui/shortcuts';
-import { SearchButton, SearchRow } from '../../../ui/search';
+import {
+  FindActions,
+  FindField,
+  SearchButton,
+  SearchRow,
+} from '../../../ui/search';
 
 export function withLargeFiles(
   parsed: readonly DiffFile[],
@@ -230,86 +226,6 @@ export function DiffOptions({
   );
 }
 
-export function DiffFind({
-  query,
-  count,
-  unsearched,
-  input,
-  onQuery,
-  onStep,
-  onClose,
-}: {
-  query: string;
-  count: string;
-  unsearched: number;
-  input?: RefObject<HTMLInputElement | null>;
-  onQuery: (query: string) => void;
-  onStep: (step: 1 | -1) => void;
-  onClose: () => void;
-}) {
-  return (
-    <div className={`diff-find ${query ? 'active' : ''}`}>
-      <input
-        ref={input}
-        className="diff-find-input"
-        placeholder={strings.find.placeholder}
-        spellCheck={false}
-        value={query}
-        onChange={(event) => onQuery(event.target.value)}
-        onKeyDown={(event) => {
-          const step = keyPressed(gitKeymap.match, event);
-          if (step !== undefined) {
-            event.preventDefault();
-            onStep(step);
-          } else if (keyPressed(gitKeymap.stopFinding, event)) {
-            event.preventDefault();
-            onClose();
-          }
-        }}
-      />
-      {count && (
-        <span
-          className="diff-find-count"
-          title={
-            unsearched > 0 ? strings.find.unsearched(unsearched) : undefined
-          }
-        >
-          {count}
-        </span>
-      )}
-    </div>
-  );
-}
-
-export function FindActions({
-  matches,
-  onStep,
-}: {
-  matches: number;
-  onStep: (step: 1 | -1) => void;
-}) {
-  return (
-    <div className="nav-buttons">
-      <button
-        className="nav-button"
-        title={strings.find.previous}
-        disabled={matches === 0}
-        onClick={() => onStep(-1)}
-      >
-        <PreviousIcon />
-      </button>
-      <button
-        className="nav-button"
-        title={strings.find.next}
-        disabled={matches === 0}
-        onClick={() => onStep(1)}
-      >
-        <NextIcon />
-      </button>
-    </div>
-  );
-}
-
 export function diffSelection(
   root: string | undefined,
   hash: string | undefined,
@@ -463,10 +379,17 @@ export function Diff({
       searching={
         finding && (
           <SearchRow onClose={closeFind}>
-            <DiffFind
+            <FindField
               query={query}
               count={matchCount(query, matches.length, shown)}
-              unsearched={unsearchedFiles(diffFiles, fileContent)}
+              countTitle={
+                unsearchedFiles(diffFiles, fileContent) > 0
+                  ? strings.find.unsearched(
+                      unsearchedFiles(diffFiles, fileContent),
+                    )
+                  : undefined
+              }
+              keys={gitKeymap}
               input={input}
               onQuery={(next) => {
                 setQuery(next);

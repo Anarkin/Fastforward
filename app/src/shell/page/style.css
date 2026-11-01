@@ -1690,6 +1690,66 @@ body.resizing {
   gap: 4px;
 }
 
+.find-field,
+.search-field {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-sizing: border-box;
+  min-width: 100px;
+  height: var(--search-height);
+  padding: 0 12px;
+  background: var(--color-border);
+  border: 1px solid var(--color-border);
+  border-radius: calc(var(--search-height) / 2);
+}
+
+.find-field:hover,
+.search-field:hover {
+  background:
+    linear-gradient(var(--hover-background), var(--hover-background)),
+    var(--color-border);
+  border-color: transparent;
+}
+
+.find-field.active,
+.find-field:focus-within,
+.search-field.active,
+.search-field:focus-within {
+  background: var(--color-panel-background);
+  border-color: var(--color-border);
+}
+
+.find-field:focus-within,
+.search-field:focus-within {
+  border-color: var(--color-focus);
+}
+
+.find-field-input,
+.search-input {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  color: var(--color-foreground);
+  background: none;
+  border: none;
+  outline: none;
+}
+
+.find-field-input::placeholder,
+.search-input::placeholder {
+  color: var(--muted-foreground);
+  opacity: 1;
+}
+
+.find-field-count {
+  flex: none;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+
 .search-button {
   width: var(--search-height);
   height: var(--search-height);

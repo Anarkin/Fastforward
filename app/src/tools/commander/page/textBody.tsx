@@ -5,6 +5,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useEffectEvent,
 } from 'react';
 import {
   maxColoredBytes,
@@ -18,6 +19,10 @@ import { colorCode } from '../../../ui/syntax';
 import { languageOf } from '../../../ui/languages';
 import { ScrollBody, type Thumb } from './scrollBody';
 import type { ToViewer, Viewing } from './viewer';
+import type { ViewerFind } from './viewerFind';
+import { MarkedText, textMarks, type FindMark } from './findMarks';
+
+const rowsAboveMatch = 2;
 
 interface Loaded {
   readonly rows: readonly TextRow[];
@@ -83,26 +88,17 @@ export function textThumb(
 function RowText({
   row,
   colored,
+  marks,
 }: {
   row: TextRow;
   colored: ColoredText | undefined;
+  marks: readonly FindMark[];
 }) {
-  const segments = colored && rowSegments(colored, row);
-  if (segments === undefined) {
-    return <>{row.text}</>;
-  }
   return (
-    <>
-      {segments.map(({ text, kind }, index) =>
-        kind === undefined ? (
-          text
-        ) : (
-          <span key={index} className={`syntax-${kind}`}>
-            {text}
-          </span>
-        ),
-      )}
-    </>
+    <MarkedText
+      pieces={(colored && rowSegments(colored, row)) ?? [{ text: row.text }]}
+      marks={marks}
+    />
   );
 }
 
@@ -172,6 +168,7 @@ export function TextBody({
   file,
   encoding,
   viewing,
+  find,
   place,
   onPlace,
   post,
@@ -180,6 +177,7 @@ export function TextBody({
   file: string;
   encoding: TextEncoding;
   viewing: Viewing;
+  find?: ViewerFind;
   place: React.RefObject<number>;
   onPlace: (byte: number) => void;
   post: (message: CommanderToHost) => void;
@@ -306,6 +304,33 @@ export function TextBody({
     });
   }, [requests, viewing, screen, place]);
 
+  const goToMatch = useEffectEvent(() => {
+    const target = find?.current;
+    if (target === undefined) {
+      return;
+    }
+    const { rows, top } = current.current;
+    const onScreen = rows
+      .slice(top, top + screen)
+      .some((row) => target.start >= row.start && target.start < row.end);
+    if (!onScreen) {
+      requests.ask({
+        anchor: target.start,
+        exact: false,
+        before: screen * 2,
+        after: screen * 3,
+        topOf: (anchorIndex, count) =>
+          topWithin(anchorIndex - rowsAboveMatch, count, screen),
+      });
+    }
+  });
+  const jumps = find?.jump ?? 0;
+  useEffect(() => {
+    if (jumps > 0) {
+      goToMatch();
+    }
+  }, [jumps]);
+
   const colored = useColors(file, encoding, viewing, post, listen);
   const shown = loaded.rows.slice(loaded.top, loaded.top + screen + 1);
 
@@ -319,7 +344,15 @@ export function TextBody({
     >
       {shown.map((row) => (
         <div className="viewer-row" key={row.start}>
-          <RowText row={row} colored={colored} />
+          <RowText
+            row={row}
+            colored={colored}
+            marks={
+              find === undefined
+                ? []
+                : textMarks(row, find.query, find.matches, find.current)
+            }
+          />
         </div>
       ))}
     </ScrollBody>

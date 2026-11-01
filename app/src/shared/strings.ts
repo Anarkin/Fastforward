@@ -254,6 +254,7 @@ export const strings = {
     viewAs: 'View the file as text, hex or a preview',
     scrollFile: 'Scroll by a row, a page, or to the start or end',
     chooseEncoding: 'Choose the encoding of the text',
+    findInFile: 'Search the file',
     markMoving: 'Mark the files passed while moving, or unmark them',
     toggleMark: 'Mark or unmark the selected file and move down',
     markClick: 'Mark or unmark a file, or mark the files up to it',
@@ -517,6 +518,7 @@ export const strings = {
     viewHex: 'Hex',
     viewPreview: 'Preview',
     encoding: 'Encoding',
+    findInFile: 'Search the file',
     encodings: {
       auto: 'Auto',
       'utf-8': 'UTF-8',
@@ -547,6 +549,7 @@ export const strings = {
     previous: 'Previous Match',
     next: 'Next Match',
     noResults: 'No results',
+    searching: 'Searching…',
     count: (current: number, matches: number, capped: boolean) =>
       `${current} of ${matches}${capped ? '+' : ''}`,
   },

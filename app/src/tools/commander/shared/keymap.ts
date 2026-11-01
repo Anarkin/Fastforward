@@ -85,5 +85,23 @@ export const viewerKeymap = {
     '3': 'preview',
   }),
   encoding: bind('Viewer', strings.actions.chooseEncoding, { E: true }),
+  find: bind(
+    'Viewer',
+    strings.actions.findInFile,
+    { 'Mod+F': true },
+    { fields: true },
+  ),
+  match: bind(
+    'Viewer',
+    strings.actions.match,
+    { Enter: 1, 'Shift+Enter': -1 } as const,
+    { repeats: true, fields: true },
+  ),
+  stopFinding: bind(
+    'Viewer',
+    strings.actions.stopFinding,
+    { Escape: true },
+    { fields: true },
+  ),
   closeViewer: bind('Viewer', strings.actions.closeViewer, { Escape: true }),
 };

@@ -94,11 +94,11 @@ suite('App', () => {
     await openChangedFile();
     await page.locator('.diff-view .virtual-rows').focus();
     await page.keyboard.press('ControlOrMeta+F');
-    const field = page.locator('.diff-find-input');
+    const field = page.locator('.find-field-input');
     await waitForFocus(field, 'the find field');
     await field.fill('T');
-    const count = page.locator('.diff-find-count');
-    await page.locator('.diff-find-count', { hasText: '1 of 2' }).waitFor();
+    const count = page.locator('.find-field-count');
+    await page.locator('.find-field-count', { hasText: '1 of 2' }).waitFor();
     assert.deepStrictEqual(
       await page.locator('.diff-line .find-match').allTextContents(),
       ['t', 't'],
@@ -111,11 +111,11 @@ suite('App', () => {
       'two',
     );
     await field.press('Enter');
-    await page.locator('.diff-find-count', { hasText: '2 of 2' }).waitFor();
+    await page.locator('.find-field-count', { hasText: '2 of 2' }).waitFor();
     await waitForCount(page.locator('.minimap-mark.match'), 2, 'match marks');
     await page.locator('.minimap-mark.added').first().waitFor();
     await page.locator('.row.group', { hasText: 'All Changes' }).click();
-    await page.locator('.diff-find-count', { hasText: '1 of 2' }).waitFor();
+    await page.locator('.find-field-count', { hasText: '1 of 2' }).waitFor();
     await page.locator('.diff-minimap').waitFor();
     await waitForCount(page.locator('.minimap-mark.match'), 2, 'match marks');
     await waitForCount(page.locator('.minimap-mark.added'), 0, 'added marks');
@@ -128,7 +128,7 @@ suite('App', () => {
     await openChangedFile();
     const diff = page.locator('.columns > .column').nth(2);
     await diff.locator('.column-actions > .search-button').click();
-    const field = page.locator('.diff-find-input');
+    const field = page.locator('.find-field-input');
     await waitForFocus(field, 'the find field');
     assert.strictEqual(await diff.locator('.diff-options').count(), 0);
     assert.deepStrictEqual(
@@ -151,7 +151,7 @@ suite('App', () => {
     await openChangedFile();
     await page.locator('.diff-view .virtual-rows').focus();
     await page.keyboard.press('ControlOrMeta+F');
-    await waitForFocus(page.locator('.diff-find-input'), 'the find field');
+    await waitForFocus(page.locator('.find-field-input'), 'the find field');
     await page.keyboard.press('Escape');
     await waitForFocus(page.locator('.diff-view .virtual-rows'), 'the diff');
   });

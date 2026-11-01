@@ -95,7 +95,8 @@ export function CommanderTool({
         } else if (
           message.type === 'rows' ||
           message.type === 'text' ||
-          message.type === 'bytes'
+          message.type === 'bytes' ||
+          message.type === 'found'
         ) {
           for (const handler of viewerListeners.current) {
             handler(message);

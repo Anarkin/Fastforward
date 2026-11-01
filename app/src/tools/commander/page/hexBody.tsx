@@ -1,6 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useEffectEvent,
+} from 'react';
 import { maxBytesAsked, type CommanderToHost } from '../shared/protocol';
 import { RowRequests } from './rowRequests';
+import type { ViewerFind } from './viewerFind';
+import { MarkedText, byteMarks, hexMarks } from './findMarks';
+
+const rowsAboveMatch = 2;
 import { ScrollBody } from './scrollBody';
 import {
   byteText,
@@ -24,6 +34,7 @@ const minTextColumns = 16;
 export function ByteBody({
   layout,
   viewing,
+  find,
   place,
   onPlace,
   post,
@@ -31,6 +42,7 @@ export function ByteBody({
 }: {
   layout: ByteLayout;
   viewing: Viewing;
+  find?: ViewerFind;
   place: React.RefObject<number>;
   onPlace: (byte: number) => void;
   post: (message: CommanderToHost) => void;
@@ -109,6 +121,27 @@ export function ByteBody({
     [lastTop, rowBytes],
   );
 
+  const goToMatch = useEffectEvent(() => {
+    const target = find?.current;
+    if (target === undefined) {
+      return;
+    }
+    const row = Math.floor(target.start / rowBytes);
+    if (row < top || row >= top + screen) {
+      setTopByte(Math.max(0, row - rowsAboveMatch) * rowBytes);
+    }
+  });
+  const jumps = find?.jump ?? 0;
+  useEffect(() => {
+    if (jumps > 0) {
+      goToMatch();
+    }
+  }, [jumps]);
+  const marksOf = (offset: number, length: number) =>
+    find === undefined
+      ? []
+      : byteMarks(offset, length, find.matches, find.current);
+
   const digits = offsetDigits(size);
   const rows = Array.from(
     { length: Math.max(0, Math.min(rowCount - top, screen + 1)) },
@@ -146,7 +179,12 @@ export function ByteBody({
         if (layout === 'text') {
           return (
             <div className="viewer-row" key={offset}>
-              {data && byteText(data)}
+              {data && (
+                <MarkedText
+                  pieces={[{ text: byteText(data) }]}
+                  marks={marksOf(offset, data.length)}
+                />
+              )}
             </div>
           );
         }
@@ -154,8 +192,22 @@ export function ByteBody({
         return (
           <div className="viewer-row hex-row" key={offset}>
             <span className="hex-offset">{row.offset}</span>
-            {data && <span className="hex-bytes">{row.hex}</span>}
-            {data && <span className="hex-text">{row.text}</span>}
+            {data && (
+              <span className="hex-bytes">
+                <MarkedText
+                  pieces={[{ text: row.hex }]}
+                  marks={hexMarks(marksOf(offset, data.length))}
+                />
+              </span>
+            )}
+            {data && (
+              <span className="hex-text">
+                <MarkedText
+                  pieces={[{ text: row.text }]}
+                  marks={marksOf(offset, data.length)}
+                />
+              </span>
+            )}
           </div>
         );
       })}

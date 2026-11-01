@@ -139,66 +139,6 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
   width: calc(4px + 3 * 26px + 2 * 2px);
 }
 
-.diff-find,
-.search-field {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  box-sizing: border-box;
-  min-width: 100px;
-  height: var(--search-height);
-  padding: 0 12px;
-  background: var(--color-border);
-  border: 1px solid var(--color-border);
-  border-radius: calc(var(--search-height) / 2);
-}
-
-.diff-find:hover,
-.search-field:hover {
-  background:
-    linear-gradient(var(--hover-background), var(--hover-background)),
-    var(--color-border);
-  border-color: transparent;
-}
-
-.diff-find.active,
-.diff-find:focus-within,
-.search-field.active,
-.search-field:focus-within {
-  background: var(--color-panel-background);
-  border-color: var(--color-border);
-}
-
-.diff-find:focus-within,
-.search-field:focus-within {
-  border-color: var(--color-focus);
-}
-
-.diff-find-input,
-.search-input {
-  flex: 1;
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  color: var(--color-foreground);
-  background: none;
-  border: none;
-  outline: none;
-}
-
-.diff-find-input::placeholder,
-.search-input::placeholder {
-  color: var(--muted-foreground);
-  opacity: 1;
-}
-
-.diff-find-count {
-  flex: none;
-  color: var(--muted-foreground);
-  white-space: nowrap;
-}
-
 .diff-line .find-match {
   color: var(--color-search-match-foreground);
   background: var(--color-search-match);

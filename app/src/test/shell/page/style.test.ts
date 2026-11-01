@@ -3059,7 +3059,7 @@ suite('Style', () => {
       looks(
         field,
         { 'border-color': 'var(--color-focus)' },
-        { focus: withClass(field, 'diff-find-input') },
+        { focus: withClass(field, 'find-field-input') },
       );
     }
   });
@@ -3461,7 +3461,7 @@ suite('Style', () => {
     });
     for (const field of [
       withClass(locationsPopup(''), 'locations-search'),
-      withClass(diffFind(), 'diff-find-input'),
+      withClass(diffFind(), 'find-field-input'),
     ]) {
       looks(
         field,
