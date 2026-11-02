@@ -794,7 +794,7 @@ suite('App commander', () => {
     }
   });
 
-  test('shows the rows of a file viewed, moving a page with PageDown, to its end with End and anywhere with its scrollbar', async () => {
+  test('shows the rows of a file viewed, moving a page with PageDown, to its end with End and anywhere with its scrollbar, its thumb moving with the rows while dragged rather than under the pointer and then jumping to them once let go', async () => {
     const lines = Array.from({ length: 200 }, (_, index) => `row ${index}`);
     fs.writeFileSync(
       path.join(opened, 'rows.txt'),
@@ -867,6 +867,59 @@ suite('App commander', () => {
     const held = await thumb.boundingBox();
     assert.ok(held && held.y <= middle && middle <= held.y + held.height);
     await page.mouse.up();
+
+    await thumb.evaluate((element) => {
+      const frames: { top: number; row: string }[] = [];
+      Reflect.set(window, 'thumbFrames', frames);
+      const record = () => {
+        frames.push({
+          top: element.getBoundingClientRect().top,
+          row:
+            document.querySelector('.viewer-rows .viewer-row')?.textContent ??
+            '',
+        });
+        if (Reflect.get(window, 'thumbFrames') === frames) {
+          requestAnimationFrame(record);
+        }
+      };
+      requestAnimationFrame(record);
+    });
+    const x = bar.x + bar.width / 2;
+    const nextFrame = () =>
+      page.evaluate(
+        () => new Promise((resolve) => requestAnimationFrame(resolve)),
+      );
+    await page.mouse.move(x, middle);
+    await page.mouse.down();
+    for (let step = 1; step <= 30; step++) {
+      await page.mouse.move(x, middle + step);
+      await nextFrame();
+      await nextFrame();
+    }
+    await page.mouse.up();
+    for (let frame = 0; frame < 10; frame++) {
+      await nextFrame();
+    }
+    const frames = await page.evaluate(() => {
+      const recorded: unknown = Reflect.get(window, 'thumbFrames');
+      Reflect.set(window, 'thumbFrames', undefined);
+      return Array.isArray(recorded)
+        ? recorded.map((frame: unknown) => ({
+            top: Number(Reflect.get(Object(frame), 'top')),
+            row: String(Reflect.get(Object(frame), 'row')),
+          }))
+        : [];
+    });
+    assert.ok(new Set(frames.map((frame) => frame.row)).size > 1);
+    assert.deepStrictEqual(
+      frames.filter(
+        (frame, index) =>
+          index > 0 &&
+          frame.row === frames[index - 1]?.row &&
+          Math.abs(frame.top - (frames[index - 1]?.top ?? 0)) > 0.5,
+      ),
+      [],
+    );
 
     await page.keyboard.press('Escape');
     await page.locator('.viewer').waitFor({ state: 'detached' });
@@ -1878,7 +1931,7 @@ suite('App commander', () => {
     );
   });
 
-  test('scrolls the list by whole rows, with the wheel and the scrollbar alike', async () => {
+  test('scrolls the list by whole rows, with the wheel and the scrollbar alike, drawing it on a row at every frame while its scrollbar is dragged rather than between rows and then snapping', async () => {
     const many = path.join(opened, 'many');
     fs.mkdirSync(many);
     for (let index = 0; index < 400; index++) {
@@ -1936,6 +1989,51 @@ suite('App commander', () => {
     await waitFor(
       async () => (await offRow()).top > 100 && (await offRow()).off < 0.01,
       'the end of the list to start on a row',
+    );
+
+    await list.evaluate((element) => {
+      element.scrollTop = 0;
+    });
+    await list.hover();
+    const thumb = page.locator('.overlay-scrollbar.vertical.shown');
+    const grabbed = await thumb.boundingBox();
+    assert.ok(grabbed, 'the scrollbar of the list');
+    await list.evaluate((element) => {
+      const row =
+        element.querySelector('.commander-row')?.getBoundingClientRect()
+          .height ?? 1;
+      const offs: number[] = [];
+      Reflect.set(window, 'dragOffs', offs);
+      const record = () => {
+        const rows = element.scrollTop / row;
+        offs.push(Math.abs(rows - Math.round(rows)));
+        if (Reflect.get(window, 'dragOffs') === offs) {
+          requestAnimationFrame(record);
+        }
+      };
+      requestAnimationFrame(record);
+    });
+    const x = grabbed.x + grabbed.width / 2;
+    const y = grabbed.y + grabbed.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    for (let step = 1; step <= 40; step++) {
+      await page.mouse.move(x, y + step * 3);
+      await page.evaluate(
+        () => new Promise((resolve) => requestAnimationFrame(resolve)),
+      );
+    }
+    await page.mouse.up();
+    const offs = await page.evaluate(() => {
+      const recorded: unknown = Reflect.get(window, 'dragOffs');
+      Reflect.set(window, 'dragOffs', undefined);
+      return Array.isArray(recorded) ? recorded.map(Number) : [];
+    });
+    assert.ok((await offRow()).top > 0, 'the list to scroll on its scrollbar');
+    assert.ok(offs.length > 20, String(offs.length));
+    assert.deepStrictEqual(
+      offs.filter((off) => off >= 0.01),
+      [],
     );
 
     await page.keyboard.press('Backspace');

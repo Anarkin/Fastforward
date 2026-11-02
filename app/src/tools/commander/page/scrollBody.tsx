@@ -214,7 +214,7 @@ export function ScrollBody({
   const [screen, setScreen] = useState(1);
   const wheel = useRef(0);
   const [barShown, setBarShown] = useState(false);
-  const [heldAt, setHeldAt] = useState<number>();
+  const [dragging, setDragging] = useState(false);
   const hiding = useRef<ReturnType<typeof setTimeout>>(undefined);
   const showBar = useCallback(() => {
     clearTimeout(hiding.current);
@@ -275,7 +275,6 @@ export function ScrollBody({
     move(by);
   };
   const box = thumb && thumbBox(thumb, track);
-  const dragging = heldAt !== undefined;
 
   return (
     <div
@@ -384,7 +383,7 @@ export function ScrollBody({
               const share =
                 Math.min(Math.max(clientY - bar.top, 0), bar.height) /
                 Math.max(1, bar.height);
-              setHeldAt(share);
+              setDragging(true);
               jump(share);
             };
             at(event.clientY);
@@ -392,7 +391,7 @@ export function ScrollBody({
               window,
               (pointer: PointerEvent) => at(pointer.clientY),
               () => {
-                setHeldAt(undefined);
+                setDragging(false);
                 showBar();
               },
             );
@@ -402,8 +401,7 @@ export function ScrollBody({
           <div
             className={`${overlayScrollbarClass} viewer-thumb${barShown || dragging || barPinned ? ' shown' : ''}${dragging ? ' dragging' : ''}`}
             style={{
-              top:
-                heldAt === undefined ? box.top : heldAt * (track - box.height),
+              top: box.top,
               height: box.height,
             }}
           />
