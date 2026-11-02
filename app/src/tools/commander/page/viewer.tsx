@@ -20,6 +20,7 @@ import {
   HexIcon,
   PreviewIcon,
   ShowWhitespaceIcon,
+  SyntaxIcon,
   TextIcon,
   WordWrapIcon,
 } from '../../../ui/icons';
@@ -86,7 +87,7 @@ export function Viewer({
   const mode = chosen ?? firstMode(file);
   const shown = shownEncoding(encoding, viewing);
   const textView = useTextView();
-  const { wordWrap, showWhitespace } = textView.view;
+  const { wordWrap, showWhitespace, highlightSyntax } = textView.view;
   const readsText = mode === 'text' && shown !== 'bytes';
   const changeView = (changed: Partial<typeof textView.view>) =>
     textView.change({ ...textView.view, ...changed });
@@ -220,6 +221,7 @@ export function Viewer({
                 />
               </div>
             )}
+            {readsText && <span className="nav-button-space" />}
             {readsText && (
               <div className="viewer-toggles">
                 <button
@@ -241,6 +243,17 @@ export function Viewer({
                   onClick={() => changeView({ wordWrap: !wordWrap })}
                 >
                   <WordWrapIcon />
+                </button>
+                <button
+                  className={`nav-button toggle ${highlightSyntax ? 'active' : ''}`}
+                  title={strings.common.highlightSyntax}
+                  aria-pressed={highlightSyntax}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() =>
+                    changeView({ highlightSyntax: !highlightSyntax })
+                  }
+                >
+                  <SyntaxIcon />
                 </button>
               </div>
             )}

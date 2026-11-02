@@ -84,6 +84,7 @@ import {
 } from '../../../ui/wordWrap';
 import { snapOffset, watchDevicePixels } from '../../../ui/devicePixels';
 import { followRows, rowPadding } from '../../../ui/rowScroll';
+import { useTextView } from '../../../ui/textView';
 import {
   areaColumns,
   codePadding,
@@ -2100,7 +2101,13 @@ export function DiffView({
       ),
     [rows],
   );
-  const syntax = useSyntax(files, whole, texts, open);
+  const syntax = useSyntax(
+    files,
+    whole,
+    texts,
+    open,
+    useTextView().view.highlightSyntax,
+  );
   const requestedTexts = useRef(new Set<string>());
   useEffect(() => {
     const load = whole

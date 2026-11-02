@@ -62,7 +62,7 @@ function withChange(
   return result;
 }
 
-const textViewKeys = ['wordWrap', 'showWhitespace'] as const;
+const textViewKeys = ['wordWrap', 'showWhitespace', 'highlightSyntax'] as const;
 
 export class JsonFileStore implements Store {
   readonly problems: readonly string[];

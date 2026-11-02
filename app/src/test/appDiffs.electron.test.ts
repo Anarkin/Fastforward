@@ -30,11 +30,19 @@ suite('App', () => {
     'long.txt': `${longLines.join('\n')}\n`,
   });
 
-  test('colors code away from the page', async () => {
+  test('colors code away from the page, and none while syntax highlighting is off on its button', async () => {
     await page.locator('.commit', { hasText: 'first' }).click();
     await page.locator('.row.file', { hasText: 'code.ts' }).click();
     await page.locator('.syntax-keyword', { hasText: 'export' }).waitFor();
     await page.locator('.syntax-number', { hasText: '42' }).waitFor();
+    const highlight = page.getByRole('button', { name: 'Highlight Syntax' });
+    await highlight.click();
+    await page.locator('.diff-line .syntax-keyword').first().waitFor({
+      state: 'detached',
+    });
+    assert.strictEqual(await highlight.getAttribute('aria-pressed'), 'false');
+    await highlight.click();
+    await page.locator('.syntax-keyword', { hasText: 'export' }).waitFor();
   });
 
   test('keeps the lines of a diff colored as the whole text of their side has it while the working tree changes under it', async () => {

@@ -205,7 +205,9 @@ function useColors(
   post: (message: CommanderToHost) => void,
   listen: (handler: (message: ToViewer) => void) => () => void,
 ): ColoredText | undefined {
-  const language = encoding === 'utf-8' ? languageOf(file) : undefined;
+  const { highlightSyntax } = useTextView().view;
+  const language =
+    highlightSyntax && encoding === 'utf-8' ? languageOf(file) : undefined;
   const text = useWholeText(
     viewing,
     post,
@@ -227,7 +229,7 @@ function useColors(
       }
     });
   }, [language, text]);
-  return colored;
+  return language === undefined ? undefined : colored;
 }
 
 export function TextBody({

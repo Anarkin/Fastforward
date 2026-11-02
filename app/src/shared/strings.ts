@@ -103,6 +103,7 @@ export const strings = {
     close: 'Close',
     showWhitespace: 'Show Whitespace',
     wrap: 'Wrap Long Lines',
+    highlightSyntax: 'Highlight Syntax',
     gone: (name: string) => `${name} doesn't exist anymore`,
     fromTo: (from: string, to: string) => `${from} → ${to}`,
     fromToWithin: (start: string, from: string, to: string, end: string) =>

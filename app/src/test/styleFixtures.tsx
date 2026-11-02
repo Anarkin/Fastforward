@@ -116,6 +116,8 @@ export function diffOptions(
       onShowWhitespace={noop}
       onIgnoreWhitespace={noop}
       onWordWrap={noop}
+      highlightSyntax={false}
+      onHighlightSyntax={noop}
       layout="inline"
       onLayout={noop}
       {...props}

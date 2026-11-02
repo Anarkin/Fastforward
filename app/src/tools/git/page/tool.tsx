@@ -187,7 +187,7 @@ export function GitTool({
   const [entireFilePinned, setEntireFilePinned] = useState(false);
   const [ignoreWhitespace, setIgnoreWhitespace] = useState(false);
   const textView = useTextView();
-  const { wordWrap, showWhitespace } = textView.view;
+  const { wordWrap, showWhitespace, highlightSyntax } = textView.view;
   const [autoFetch, setAutoFetch] = useState(false);
   const [autoFetchMinutes, setAutoFetchMinutes] = useState(0);
   const [hideDimmed, setHideDimmed] = useState(false);
@@ -689,6 +689,8 @@ export function GitTool({
   };
   const changeWordWrap = (wrap: boolean) =>
     textView.change({ ...textView.view, wordWrap: wrap });
+  const changeHighlightSyntax = (highlight: boolean) =>
+    textView.change({ ...textView.view, highlightSyntax: highlight });
   useBinding(gitKeymap.wrap, () => changeWordWrap(!wordWrap), active);
   const changeShowWhitespace = (show: boolean) =>
     textView.change({ ...textView.view, showWhitespace: show });
@@ -1070,6 +1072,8 @@ export function GitTool({
                                     onIgnoreWhitespace={changeIgnoreWhitespace}
                                     wordWrap={wordWrap}
                                     onWordWrap={changeWordWrap}
+                                    highlightSyntax={highlightSyntax}
+                                    onHighlightSyntax={changeHighlightSyntax}
                                     layout={diffLayout}
                                     onLayout={changeDiffLayout}
                                   />

@@ -299,10 +299,12 @@
 
 .column-title:has(.viewer-actions) {
   padding-left: calc(
-    4px + 3 * 26px + 2px + 8px + 72px + 8px + 2 * 26px + 2px + 8px
+    4px + 3 * 26px + 2px + 8px + 72px + 8px + 26px + 8px + 3 * 26px + 2 * 2px +
+      8px
   );
   padding-right: calc(
-    4px + 3 * 26px + 2px + 8px + 72px + 8px + 2 * 26px + 2px + 8px
+    4px + 3 * 26px + 2px + 8px + 72px + 8px + 26px + 8px + 3 * 26px + 2 * 2px +
+      8px
   );
 }
 

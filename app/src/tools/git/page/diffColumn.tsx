@@ -27,6 +27,7 @@ import {
   InlineIcon,
   PinIcon,
   SideBySideIcon,
+  SyntaxIcon,
   WordWrapIcon,
 } from '../../../ui/icons';
 import { gitKeymap } from '../shared/keymap';
@@ -144,6 +145,8 @@ export function DiffOptions({
   onShowWhitespace,
   onIgnoreWhitespace,
   onWordWrap,
+  highlightSyntax,
+  onHighlightSyntax,
   layout,
   onLayout,
 }: {
@@ -158,6 +161,8 @@ export function DiffOptions({
   onShowWhitespace: (show: boolean) => void;
   onIgnoreWhitespace: (ignore: boolean) => void;
   onWordWrap: (wrap: boolean) => void;
+  highlightSyntax: boolean;
+  onHighlightSyntax: (highlight: boolean) => void;
   layout: DiffLayout;
   onLayout: (layout: DiffLayout) => void;
 }) {
@@ -208,6 +213,14 @@ export function DiffOptions({
         onClick={() => onWordWrap(!wordWrap)}
       >
         <WordWrapIcon />
+      </button>
+      <button
+        className={`nav-button toggle ${highlightSyntax ? 'active' : ''}`}
+        title={strings.common.highlightSyntax}
+        aria-pressed={highlightSyntax}
+        onClick={() => onHighlightSyntax(!highlightSyntax)}
+      >
+        <SyntaxIcon />
       </button>
       <span className="nav-button-space" />
       <div className="segmented" role="group" aria-label={strings.diff.layout}>

@@ -1023,7 +1023,7 @@ suite('App commander', () => {
     }
   });
 
-  test('colors the code of a file viewed as the diff colors it, a long one from the top as its lines are done, leaving a file over the size colored plain, and previews no Markdown over a size of its own', async () => {
+  test('colors the code of a file viewed as the diff colors it, a long one from the top as its lines are done, none while syntax highlighting is off on its button, leaving a file over the size colored plain, and previews no Markdown over a size of its own', async () => {
     fs.writeFileSync(path.join(opened, 'code.ts'), 'const answer = 42;');
     await select('code');
     await page.keyboard.press('F3');
@@ -1043,6 +1043,21 @@ suite('App commander', () => {
         : [];
     });
     assert.notStrictEqual(colors[0], colors[1]);
+    const highlight = page.getByRole('button', { name: 'Highlight Syntax' });
+    await highlight.click();
+    await page.locator('.viewer-row .syntax-keyword').first().waitFor({
+      state: 'detached',
+    });
+    await waitFor(
+      () => savedText(profile, 'highlightSyntax') === false,
+      'no syntax highlighting saved',
+    );
+    await highlight.click();
+    await page.locator('.viewer-row .syntax-keyword').first().waitFor();
+    await waitFor(
+      () => savedText(profile, 'highlightSyntax') === undefined,
+      'syntax highlighting left to the default',
+    );
     await page.keyboard.press('Escape');
     await page.locator('.viewer').waitFor({ state: 'detached' });
 

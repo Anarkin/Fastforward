@@ -28,6 +28,7 @@ export interface AboutInfo {
 export interface TextView {
   readonly wordWrap: boolean;
   readonly showWhitespace: boolean;
+  readonly highlightSyntax: boolean;
 }
 
 export function isTextView(value: unknown): value is TextView {
@@ -37,7 +38,9 @@ export function isTextView(value: unknown): value is TextView {
     'wordWrap' in value &&
     typeof value.wordWrap === 'boolean' &&
     'showWhitespace' in value &&
-    typeof value.showWhitespace === 'boolean'
+    typeof value.showWhitespace === 'boolean' &&
+    'highlightSyntax' in value &&
+    typeof value.highlightSyntax === 'boolean'
   );
 }
 

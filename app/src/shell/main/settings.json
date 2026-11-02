@@ -4,7 +4,8 @@
   "dateFormat": "YYYY-MM-DD HH:mm",
   "text": {
     "wordWrap": true,
-    "showWhitespace": false
+    "showWhitespace": false,
+    "highlightSyntax": true
   },
   "fonts": {
     "family": "-apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif",

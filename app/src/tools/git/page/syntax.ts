@@ -217,10 +217,11 @@ export function useSyntax(
   whole: WholeFile | undefined,
   texts: ReadonlyMap<string, LoadedText>,
   open: ReadonlySet<number>,
+  highlight = true,
 ): ReadonlyMap<string, readonly SyntaxRange[]> {
   const sources = useMemo(
-    () => syntaxSources(files, whole, texts, open),
-    [files, whole, texts, open],
+    () => (highlight ? syntaxSources(files, whole, texts, open) : []),
+    [highlight, files, whole, texts, open],
   );
   const [colored, setColored] = useState<Colored>();
   const shown = useRef<Colored>(undefined);
@@ -246,7 +247,7 @@ export function useSyntax(
           publish();
         });
   }, [sources, files, whole]);
-  return colored?.files === files && colored.whole === whole
+  return highlight && colored?.files === files && colored.whole === whole
     ? colored.ranges
     : noRanges;
 }
