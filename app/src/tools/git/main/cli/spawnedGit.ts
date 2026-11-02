@@ -36,18 +36,13 @@ export class GitChild extends EventEmitter {
     super();
     this.stdout = this.output('stdout');
     this.stderr = this.output('stderr');
-    const input: Buffer[] = [];
     this.stdin = new Writable({
       write: (chunk: Buffer, _encoding, done) => {
-        input.push(chunk);
+        send({ type: 'input', id, data: chunk, end: false });
         done();
       },
       final: (done) => {
-        send({
-          type: 'input',
-          id,
-          data: input.length === 0 ? undefined : Buffer.concat(input),
-        });
+        send({ type: 'input', id, data: undefined, end: true });
         done();
       },
     });

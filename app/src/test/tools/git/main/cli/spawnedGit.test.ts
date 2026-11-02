@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { build } from 'esbuild';
 import { suite, test } from 'vitest';
@@ -45,6 +46,31 @@ suite('Starting git', () => {
       code: 0,
     });
     assert.strictEqual(failed.code, 128);
+  });
+
+  test('hands git its input as it is written, before the input ends, so a git kept running answers each request as it comes', async () => {
+    const child = gitStarter(tempFolder('no-starter')).spawn(
+      'git',
+      ['hash-object', '--stdin-paths'],
+      { ...options, env: { ...process.env, GIT_FLUSH: '1' } },
+    );
+    const answered = new Promise<string>((resolve) =>
+      child.stdout.once('data', (chunk: Buffer) =>
+        resolve(chunk.toString('utf8')),
+      ),
+    );
+    const file = path.join(tempFolder('streamed'), 'hello.txt');
+    fs.writeFileSync(file, 'hello\n');
+
+    child.stdin.write(`${file}\n`);
+    const first = await answered;
+    child.stdin.end();
+    const code = await new Promise<number | null>((resolve) =>
+      child.on('close', resolve),
+    );
+
+    assert.strictEqual(first, 'ce013625030ba8dba906f756967f9e9ca394464a\n');
+    assert.strictEqual(code, 0);
   });
 
   test('says git could not be started, as for a command not found', async () => {

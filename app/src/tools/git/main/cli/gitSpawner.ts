@@ -17,6 +17,7 @@ export type ToSpawner =
       readonly type: 'input';
       readonly id: number;
       readonly data: Uint8Array | undefined;
+      readonly end: boolean;
     }
   | {
       readonly type: 'closeOutput';
@@ -164,13 +165,16 @@ export function serveGitSpawns(port: SpawnerPort): void {
       case 'spawn':
         started(message);
         return;
-      case 'input':
-        children
-          .get(message.id)
-          ?.stdin?.end(
-            message.data === undefined ? undefined : Buffer.from(message.data),
-          );
+      case 'input': {
+        const input = children.get(message.id)?.stdin;
+        if (message.data !== undefined) {
+          input?.write(Buffer.from(message.data));
+        }
+        if (message.end) {
+          input?.end();
+        }
         return;
+      }
       case 'closeOutput':
         children.get(message.id)?.[message.stream]?.destroy();
         return;
