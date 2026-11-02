@@ -297,6 +297,37 @@ suite('Repository files', () => {
     }
   });
 
+  test('reads a large file through a git started for it rather than the one kept, so the diffs and files of the folder do not wait behind it', async () => {
+    const folder = tempFolder('kept-large-blob');
+    keepGitRunningWhile(() => true);
+    try {
+      const kept = await tempRepository(folder);
+      const size = Math.floor(maxFileSize * 0.75);
+      await kept.commit('first', {
+        'small.txt': 'small\n',
+        'large.txt': 'x'.repeat(size),
+      });
+      const [small = '', large = ''] = await kept.resolve(
+        'HEAD:small.txt',
+        'HEAD:large.txt',
+      );
+      await readBlobs(kept.gitPath, kept.root, [small]);
+
+      const read = await gitsStarted(async () => ({
+        large: await readBlobs(kept.gitPath, kept.root, [large]),
+        small: await readBlobs(kept.gitPath, kept.root, [small]),
+      }));
+
+      assert.strictEqual(read.result.large.get(large)?.length, size);
+      assert.strictEqual(read.result.small.get(small), 'small\n');
+      assert.strictEqual(read.gits, 1);
+    } finally {
+      keepGitRunningWhile(() => false);
+      keptGits.stopAll();
+      removeFolder(folder);
+    }
+  });
+
   test('reads a file at a commit with one git', async () => {
     assert.deepStrictEqual(
       await gitsStarted(() =>

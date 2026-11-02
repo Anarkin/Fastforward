@@ -90,10 +90,6 @@ async function linkCheckedOutAsFile(
   ) {
     return false;
   }
-  const [kept] = (await keptInfo(gitPath, cwd, [`:0:${path}`])) ?? [];
-  if (kept !== undefined) {
-    return kept.kind === 'found' && kept.mode === linkMode;
-  }
   const mode = await runGit(
     gitPath,
     cwd,
@@ -147,36 +143,52 @@ function parsedInfo(header: string): ObjectInfo {
 
 const fixedName = /^[0-9a-f]{40}(?:[0-9a-f]{24})?(?:$|:|\^1$)/;
 
+const mostKeptRead = 1024 * 1024;
+
 async function keptInfo(
   gitPath: string,
   cwd: string,
   names: readonly string[],
+  signal?: AbortSignal,
 ): Promise<ObjectInfo[] | undefined> {
   if (!names.every((name) => fixedName.test(name))) {
     return undefined;
   }
+  signal?.throwIfAborted();
   const git = await keptGits.use(gitPath, cwd, keptCatFile);
   if (git === undefined) {
     return undefined;
   }
   return git
-    .request(names.map((name) => `info ${name}\0`).join(''), async (output) => {
-      const infos: ObjectInfo[] = [];
-      for (let index = 0; index < names.length; index++) {
-        infos.push(parsedInfo((await output.until(0)).toString('utf8')));
-      }
-      return infos;
-    })
-    .catch(() => undefined);
+    .request(
+      names.map((name) => `info ${name}\0`).join(''),
+      async (output) => {
+        const infos: ObjectInfo[] = [];
+        for (let index = 0; index < names.length; index++) {
+          infos.push(parsedInfo((await output.until(0)).toString('utf8')));
+        }
+        return infos;
+      },
+      { signal },
+    )
+    .catch(() => {
+      signal?.throwIfAborted();
+      return undefined;
+    });
 }
 
 export async function keptFirstParent(
   gitPath: string,
   cwd: string,
   hash: string,
+  signal?: AbortSignal,
 ): Promise<string | undefined> {
-  const [parent] = (await keptInfo(gitPath, cwd, [`${hash}^1`])) ?? [];
-  return parent?.kind === 'found' && parent.type === 'commit'
+  const [commit, parent] =
+    (await keptInfo(gitPath, cwd, [hash, `${hash}^1`], signal)) ?? [];
+  return commit?.kind === 'found' &&
+    commit.type === 'commit' &&
+    parent?.kind === 'found' &&
+    parent.type === 'commit'
     ? parent.id
     : undefined;
 }
@@ -217,10 +229,17 @@ async function keptObjects(
   }
   const wanted = infos.flatMap((info) =>
     info.kind === 'found' && (info.type !== 'blob' || info.size <= limit)
-      ? [info.id]
+      ? [info]
       : [],
   );
-  const contents = await keptContents(gitPath, cwd, wanted);
+  if (wanted.reduce((sum, info) => sum + info.size, 0) > mostKeptRead) {
+    return undefined;
+  }
+  const contents = await keptContents(
+    gitPath,
+    cwd,
+    wanted.map((info) => info.id),
+  );
   if (contents === undefined) {
     return undefined;
   }

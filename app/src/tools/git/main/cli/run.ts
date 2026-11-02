@@ -26,6 +26,12 @@ const gitConfigArgs = [
   '-c',
   'diff.autoRefreshIndex=false',
   '-c',
+  'diff.context=3',
+  '-c',
+  'diff.interHunkContext=0',
+  '-c',
+  'diff.indentHeuristic=true',
+  '-c',
   'core.disambiguate=none',
 ];
 

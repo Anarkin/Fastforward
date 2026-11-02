@@ -163,7 +163,9 @@ suite('A git kept running', () => {
       assert.ok(git);
 
       await assert.rejects(
-        git.request('info HEAD\0', (output) => output.take(1_000_000), 300),
+        git.request('info HEAD\0', (output) => output.take(1_000_000), {
+          timeout: 300,
+        }),
       );
       assert.strictEqual(git.running, false);
       assert.match(await headerOf(kept, gitPath), / commit /);
@@ -207,6 +209,99 @@ suite('A git kept running', () => {
 
       assert.match(header, / commit /);
       await waitFor(() => ended(started[0]), 'the git to stop once idle');
+    } finally {
+      kept.stopAll();
+    }
+  });
+
+  test('starts one git for requests that come at once, as selecting a commit asks for its files and its patch together, rather than a second one it then loses track of and never stops', async () => {
+    const gitPath = await installedGit();
+    const started: GitChild[] = [];
+    const kept = new KeptGits(counting(started));
+    const [first, second] = await Promise.all([
+      kept.use(gitPath, cwd, catFile),
+      kept.use(gitPath, cwd, catFile),
+    ]);
+
+    assert.ok(first);
+    assert.strictEqual(second, first);
+    assert.strictEqual(started.length, 1);
+    kept.stopAll();
+    await waitFor(() => started.every(ended), 'every git started to stop');
+  });
+
+  test('stops the git answering a request no longer wanted, as what it prints next would be read for the request after, and leaves a request not yet sent unsent', async () => {
+    const gitPath = await installedGit();
+    const started: GitChild[] = [];
+    const kept = new KeptGits(counting(started));
+    try {
+      const git = await kept.use(gitPath, cwd, catFile);
+      assert.ok(git);
+      const answering = new AbortController();
+      const reached = Promise.withResolvers<void>();
+      const reading = git.request(
+        'info HEAD\0',
+        (output) => {
+          reached.resolve();
+          return output.take(1_000_000);
+        },
+        { signal: answering.signal },
+      );
+      const waiting = new AbortController();
+      const queued = git.request('info HEAD\0', (output) => output.until(0), {
+        signal: waiting.signal,
+      });
+      await reached.promise;
+      waiting.abort(new Error('not wanted'));
+      answering.abort(new Error('moved on'));
+
+      await assert.rejects(reading, { message: 'moved on' });
+      await assert.rejects(queued, { message: 'not wanted' });
+      assert.strictEqual(git.running, false);
+      await assert.rejects(
+        git.request('info HEAD\0', (output) => output.until(0), {
+          signal: AbortSignal.abort(new Error('gone already')),
+        }),
+        { message: 'gone already' },
+      );
+    } finally {
+      kept.stopAll();
+    }
+  });
+
+  test('stops the gits it kept as soon as it is turned off, as settings apply as saved, rather than at the next request', async () => {
+    const gitPath = await installedGit();
+    const started: GitChild[] = [];
+    let on = true;
+    const kept = new KeptGits(counting(started), () => on);
+    await headerOf(kept, gitPath);
+
+    on = false;
+    kept.update();
+
+    await waitFor(() => ended(started[0]), 'the kept git to stop');
+    assert.strictEqual(kept.count, 0);
+  });
+
+  test('stops the idle git used longest ago when too many are kept, rather than one still answering, whose request would fail and be read again', async () => {
+    const gitPath = await installedGit();
+    const started: GitChild[] = [];
+    const kept = new KeptGits(counting(started), () => true, 60_000, 2);
+    try {
+      const busy = await kept.use(gitPath, cwd, catFile);
+      assert.ok(busy);
+      const answer = Promise.withResolvers<void>();
+      const answering = busy.request('info HEAD\0', async (output) => {
+        await answer.promise;
+        return output.until(0);
+      });
+      await kept.use(gitPath, cwd, [...catFile, '--follow-symlinks']);
+      await kept.use(gitPath, cwd, [...catFile, '--textconv']);
+
+      await waitFor(() => ended(started[1]), 'the idle git to stop');
+      assert.strictEqual(busy.running, true);
+      answer.resolve();
+      assert.match((await answering).toString('utf8'), / commit /);
     } finally {
       kept.stopAll();
     }

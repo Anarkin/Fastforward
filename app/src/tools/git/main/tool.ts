@@ -358,6 +358,7 @@ export class GitTool implements Tool<'git'> {
   }
 
   reloadSettings(): void {
+    keptGits.update();
     this.autoFetch.update();
     const collapseChanged = this.storage.collapseMerges !== this.collapseMerges;
     const soloChanged = this.storage.soloDefault !== this.soloDefault;

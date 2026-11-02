@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { lstat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
@@ -11,6 +12,7 @@ import {
 } from '../../shared/protocol';
 import { isFullHash } from '../../shared/hashes';
 import { blobSizes, keptFirstParent } from './files';
+import { strings } from '../../../../shared/strings';
 import { StoppedReading, type GitOutput } from './keptGit';
 import { keptGits, runGit, runGitBytes, splitNul } from './run';
 
@@ -22,6 +24,7 @@ export const diffArgs = [
   '--full-index',
   '--src-prefix=a/',
   '--dst-prefix=b/',
+  '-O/dev/null',
 ];
 
 const showArgs = [
@@ -38,7 +41,9 @@ export const listArgs = ['--raw', '-z', '--no-abbrev'];
 
 const compareArgs = ['diff', '-M', ...diffArgs];
 
-const keptMarker = Buffer.from('\u0001fastforward-diff-tree ', 'latin1');
+const keptMarkerText = `\u0001fastforward-diff-tree ${randomBytes(16).toString('hex')} `;
+
+const keptMarker = Buffer.from(keptMarkerText, 'latin1');
 
 const keptDiffArgs = [
   'diff-tree',
@@ -49,7 +54,7 @@ const keptDiffArgs = [
   '--diff-merges=first-parent',
   '-M',
   ...diffArgs,
-  '--format=%x01fastforward-diff-tree %H',
+  `--format=${keptMarkerText.replace('\u0001', '%x01')}%H`,
 ];
 
 const keptRequest = (hash: string, parent: string) =>
@@ -61,46 +66,74 @@ async function keptDiff<T>(
   hash: string,
   args: readonly string[],
   read: (output: GitOutput) => Promise<T>,
-): Promise<T | undefined> {
+  signal: AbortSignal | undefined,
+): Promise<T | 'stopped' | undefined> {
   if (!isFullHash(hash)) {
     return undefined;
   }
-  const parent = await keptFirstParent(gitPath, cwd, hash);
+  const parent = await keptFirstParent(gitPath, cwd, hash, signal);
   if (parent === undefined) {
     return undefined;
   }
+  signal?.throwIfAborted();
   const git = await keptGits.use(gitPath, cwd, [...keptDiffArgs, ...args]);
-  return git?.request(keptRequest(hash, parent), read).catch(() => undefined);
+  return git
+    ?.request(keptRequest(hash, parent), read, { signal, timeout: false })
+    .catch((error: unknown) => {
+      signal?.throwIfAborted();
+      return error instanceof StoppedReading ? 'stopped' : undefined;
+    });
 }
 
-async function answerFollows(output: GitOutput): Promise<boolean> {
+async function readKeptAnswer(
+  output: GitOutput,
+  hash: string,
+  end: number,
+  onPart: (part: Buffer) => boolean,
+): Promise<void> {
+  const header = (await output.until(end)).toString('latin1');
+  if (header !== `${keptMarkerText}${hash}`) {
+    throw new Error(strings.errors.keptGitOutOfStep);
+  }
   while ((await output.peek(1))[0] === 0x0a) {
     await output.take(1);
   }
-  return (await output.peek(1))[0] !== keptMarker[0];
+  const follows = (await output.peek(1))[0] !== keptMarker[0];
+  if (follows) {
+    await output.streamUntil(
+      Buffer.concat([Buffer.from([end]), keptMarker]),
+      onPart,
+    );
+    onPart(Buffer.from([end]));
+  }
+  const ending = (await output.until(end)).toString('latin1');
+  if (ending !== (follows ? hash : `${keptMarkerText}${hash}`)) {
+    throw new Error(strings.errors.keptGitOutOfStep);
+  }
 }
 
-function keptFiles(
+async function keptFiles(
   gitPath: string,
   cwd: string,
   hash: string,
+  signal: AbortSignal | undefined,
 ): Promise<FileChange[] | undefined> {
-  return keptDiff(gitPath, cwd, hash, listArgs, async (output) => {
-    await output.until(0);
-    const parts: Buffer[] = [];
-    if (await answerFollows(output)) {
-      await output.streamUntil(
-        Buffer.concat([Buffer.from([0]), keptMarker]),
-        (part) => {
-          parts.push(part);
-          return false;
-        },
-      );
-      parts.push(Buffer.from([0]));
-    }
-    await output.until(0);
-    return parseChanges(Buffer.concat(parts).toString('utf8'));
-  });
+  const read = await keptDiff(
+    gitPath,
+    cwd,
+    hash,
+    listArgs,
+    async (output) => {
+      const parts: Buffer[] = [];
+      await readKeptAnswer(output, hash, 0, (part) => {
+        parts.push(part);
+        return false;
+      });
+      return parseChanges(Buffer.concat(parts).toString('utf8'));
+    },
+    signal,
+  );
+  return read === 'stopped' ? undefined : read;
 }
 
 export async function showFiles(
@@ -110,7 +143,7 @@ export async function showFiles(
   signal?: AbortSignal,
 ): Promise<FileChange[]> {
   return (
-    (await keptFiles(gitPath, cwd, hash)) ??
+    (await keptFiles(gitPath, cwd, hash, signal)) ??
     changedFiles(gitPath, cwd, [...showArgs, ...listArgs, hash], signal)
   );
 }
@@ -120,6 +153,7 @@ async function keptPatch(
   cwd: string,
   hash: string,
   scope: PatchScope,
+  signal: AbortSignal | undefined,
 ): Promise<ReadPatch | undefined> {
   const budget = new PatchBudget();
   const read = await keptDiff(
@@ -128,34 +162,14 @@ async function keptPatch(
     hash,
     ['--patch', ...diffOptionArgs(scope)],
     async (output) => {
-      try {
-        await output.until(0x0a);
-        if (await answerFollows(output)) {
-          await output.streamUntil(
-            Buffer.concat([Buffer.from('\n'), keptMarker]),
-            (part) => budget.add(part),
-          );
-          budget.add(Buffer.from('\n'));
-        }
-        await output.until(0x0a);
-        return true;
-      } catch (error) {
-        if (error instanceof StoppedReading) {
-          return false;
-        }
-        throw error;
-      }
+      await readKeptAnswer(output, hash, 0x0a, (part) => budget.add(part));
+      return 'read';
     },
+    signal,
   );
-  if (read === undefined) {
-    return undefined;
-  }
-  if (!read) {
-    await keptGits
-      .use(gitPath, cwd, [...keptDiffArgs, '--patch', ...diffOptionArgs(scope)])
-      .then((git) => git?.stop());
-  }
-  return { ...budget.end(), exited: Promise.resolve() };
+  return read === undefined
+    ? undefined
+    : { ...budget.end(), exited: Promise.resolve() };
 }
 
 export async function commitPatch(
@@ -166,7 +180,7 @@ export async function commitPatch(
   signal?: AbortSignal,
 ): Promise<ReadPatch> {
   return (
-    (await keptPatch(gitPath, cwd, hash, scope)) ??
+    (await keptPatch(gitPath, cwd, hash, scope, signal)) ??
     readPatch(gitPath, cwd, [showPatchArgs(hash, scope)], signal)
   );
 }

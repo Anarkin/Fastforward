@@ -30,22 +30,6 @@ suite('Git storage', () => {
     assert.deepStrictEqual(storage.bookmarksOf('/r'), bookmarks);
   });
 
-  test('keeps git running between requests unless the settings turn it off, as starting git on Windows may take seconds', () => {
-    const off = new GitStorage(
-      new UserSettings({
-        ...defaultSettings(),
-        tools: {
-          ...defaultSettings().tools,
-          git: { ...defaultSettings().tools.git, keepGitRunning: false },
-        },
-      }),
-      new FakeStore(),
-    );
-
-    assert.strictEqual(storageOf().keepGitRunning, true);
-    assert.strictEqual(off.keepGitRunning, false);
-  });
-
   test('lays out a new view as the default settings say', () => {
     const defaults = defaultSettings();
     assert.deepStrictEqual(storageOf().layout, {

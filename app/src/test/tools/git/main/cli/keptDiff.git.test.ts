@@ -7,9 +7,11 @@ import {
   commitPatch,
   type PatchScope,
 } from '../../../../../tools/git/main/cli/diff';
+import { keptFirstParent } from '../../../../../tools/git/main/cli/files';
 import {
   keepGitRunningWhile,
   keptGits,
+  runGit,
 } from '../../../../../tools/git/main/cli/run';
 import { patchByteBudget } from '../../../../../tools/git/shared/protocol';
 import {
@@ -116,32 +118,147 @@ suite('Commit diffs read through a git kept running', () => {
     assert.strictEqual(again.gits, 1 + scopes.length);
   });
 
+  test('gives the patch git show gives whatever the diff config of the repository says, as diff-tree reads less of it than git show', async () => {
+    const { root } = repository;
+    const order = path.join(tempFolder('kept-order'), 'order');
+    fs.writeFileSync(order, 'tool.sh\n*\n');
+    const config = [
+      ['diff.context', '1'],
+      ['diff.interHunkContext', '5'],
+      ['diff.orderFile', order],
+      ['diff.indentHeuristic', 'false'],
+    ];
+    for (const [key = '', value = ''] of config) {
+      await repository.git('config', key, value);
+    }
+    try {
+      const started = await read(false);
+      const kept = await read(true);
+
+      assert.deepStrictEqual(kept, started);
+    } finally {
+      for (const [key = ''] of config) {
+        await repository.git('config', '--unset', key);
+      }
+      removeFolder(path.dirname(order));
+      keptGits.stopIn(root);
+    }
+  });
+
+  test('reads the files of a commit and of those after it right though a file is named as what ends an answer, rather than stopping at it', async () => {
+    const { gitPath, root } = repository;
+    const [blob = ''] = await repository.resolve('HEAD:a.txt');
+    const tree = async (...names: string[]) =>
+      (
+        await runGit(gitPath, root, ['mktree', '-z'], {
+          input: names.map((name) => `100644 blob ${blob}\t${name}\0`).join(''),
+        })
+      ).trim();
+    const commit = async (made: string, ...parents: string[]) =>
+      (
+        await repository.git(
+          'commit-tree',
+          made,
+          ...parents.flatMap((parent) => ['-p', parent]),
+          '-m',
+          'named',
+        )
+      ).trim();
+    const forged = '\u0001fastforward-diff-tree x';
+    const base = await commit(await tree('z.txt'));
+    const named = await commit(await tree(forged, 'z.txt'), base);
+    const after = await commit(await tree(forged, 'n.txt', 'z.txt'), named);
+    const files = async (kept: boolean) => {
+      keepGitRunningWhile(() => kept);
+      try {
+        return [
+          await showFiles(gitPath, root, named),
+          await showFiles(gitPath, root, after),
+        ].map((changes) => changes.map((change) => change.path));
+      } finally {
+        keepGitRunningWhile(() => false);
+      }
+    };
+
+    const started = await files(false);
+    assert.deepStrictEqual(started, [[forged], ['n.txt']]);
+    assert.deepStrictEqual(await files(true), started);
+  });
+
+  test('starts no git for a commit no longer wanted, as on closing its tab, rejecting as asked rather than reading it to the end', async () => {
+    const { gitPath, root } = repository;
+    const [hash = ''] = commits;
+    const reason = new Error('closed');
+    keptGits.stopIn(root);
+    keepGitRunningWhile(() => true);
+    try {
+      const { result, gits } = await gitsStarted(() =>
+        Promise.allSettled([
+          showFiles(gitPath, root, hash, AbortSignal.abort(reason)),
+          commitPatch(gitPath, root, hash, {}, AbortSignal.abort(reason)),
+        ]),
+      );
+
+      assert.deepStrictEqual(
+        result.map((settled) =>
+          settled.status === 'rejected' ? settled.reason : settled.value,
+        ),
+        [reason, reason],
+      );
+      assert.strictEqual(gits, 0);
+    } finally {
+      keepGitRunningWhile(() => false);
+    }
+  });
+
+  test('names no first parent for a tag, which diff-tree would not answer for, holding up the requests after it', async () => {
+    const { gitPath, root } = repository;
+    await repository.git('tag', '-a', '-m', 'tagged', 'tagged', 'HEAD');
+    keepGitRunningWhile(() => true);
+    try {
+      const [tag = ''] = await repository.resolve('refs/tags/tagged');
+      const [head = ''] = await repository.resolve('HEAD');
+
+      assert.notStrictEqual(tag, head);
+      assert.strictEqual(await keptFirstParent(gitPath, root, tag), undefined);
+      assert.ok(await keptFirstParent(gitPath, root, head));
+    } finally {
+      keepGitRunningWhile(() => false);
+      await repository.git('tag', '-d', 'tagged');
+    }
+  });
+
   test('stops reading a patch past its budget as a git started for it does, stopping the git kept so the rest it prints is not read', async () => {
     const large = tempFolder('kept-large');
     try {
       const big = await tempRepository(large);
+      await big.commit('small', { 'small.txt': 'small\n' });
       await big.commit('large', {
         'large.txt': `${'x'.repeat(200)}\n`.repeat(
           Math.ceil((patchByteBudget * 2) / 201),
         ),
       });
-      const [hash = ''] = await big.resolve('HEAD');
+      await big.commit('after', { 'small.txt': 'after\n' });
+      const [hash = '', next = ''] = await big.resolve('HEAD~1', 'HEAD');
+      const patch = async (of: string) => {
+        const { exited: _, ...patched } = await commitPatch(
+          big.gitPath,
+          big.root,
+          of,
+        );
+        return patched;
+      };
       keepGitRunningWhile(() => false);
-      const { exited: _started, ...started } = await commitPatch(
-        big.gitPath,
-        big.root,
-        hash,
-      );
+      const started = await patch(hash);
+      const startedNext = await patch(next);
       keepGitRunningWhile(() => true);
-      const { exited: _kept, ...kept } = await commitPatch(
-        big.gitPath,
-        big.root,
-        hash,
-      );
+      const kept = await patch(hash);
+      const again = [await patch(hash), await patch(next)];
       const after = await showFiles(big.gitPath, big.root, hash);
 
       assert.strictEqual(started.stopped, true);
       assert.deepStrictEqual(kept, started);
+      assert.deepStrictEqual(again, [started, startedNext]);
       assert.deepStrictEqual(
         after.map((file) => file.path),
         ['large.txt'],

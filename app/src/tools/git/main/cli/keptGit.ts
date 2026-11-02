@@ -132,6 +132,10 @@ export class KeptGit {
     return this.alive;
   }
 
+  get answering(): boolean {
+    return this.pending > 0;
+  }
+
   idleFor(now = Date.now()): number {
     return this.pending > 0 ? 0 : now - this.lastAnswered;
   }
@@ -139,28 +143,42 @@ export class KeptGit {
   request<T>(
     input: string,
     read: (output: GitOutput) => Promise<T>,
-    timeout = keptGitTimeout,
+    {
+      signal,
+      timeout = keptGitTimeout,
+    }: {
+      readonly signal?: AbortSignal;
+      readonly timeout?: number | false;
+    } = {},
   ): Promise<T> {
     this.pending += 1;
     const answered = this.queue.then(async () => {
+      signal?.throwIfAborted();
       if (!this.alive) {
         throw new Error(strings.errors.keptGitEnded);
       }
-      let timer: ReturnType<typeof setTimeout> | undefined;
-      const late = new Promise<never>((_, reject) => {
-        timer = setTimeout(() => {
-          this.stop();
-          reject(new Error(strings.errors.keptGitTimedOut));
-        }, timeout);
-      });
+      const { promise: late, reject } = Promise.withResolvers<never>();
+      const timer =
+        timeout === false
+          ? undefined
+          : setTimeout(() => {
+              this.stop();
+              reject(new Error(strings.errors.keptGitTimedOut));
+            }, timeout);
+      const stopped = () => {
+        this.stop();
+        reject(signal?.reason);
+      };
+      signal?.addEventListener('abort', stopped, { once: true });
       try {
         this.child.stdin.write(input);
         return await Promise.race([read(this.output), late]);
       } catch (error) {
         this.stop();
-        throw error;
+        throw signal?.aborted === true ? signal.reason : error;
       } finally {
         clearTimeout(timer);
+        signal?.removeEventListener('abort', stopped);
       }
     });
     this.queue = answered.catch(() => undefined);
@@ -183,12 +201,22 @@ export class KeptGit {
 }
 
 const keptGitIdle = 30_000;
-const mostKeptGits = 8;
+const mostKeptGits = 16;
 
 interface Kept {
   readonly cwd: string;
   readonly git: Promise<KeptGit | undefined>;
+  started: KeptGit | undefined;
+  failed: boolean;
   idle: ReturnType<typeof setTimeout> | undefined;
+}
+
+function gone(kept: Kept): boolean {
+  return kept.failed || kept.started?.running === false;
+}
+
+function busy(kept: Kept): boolean {
+  return !kept.failed && kept.started?.answering !== false;
 }
 
 export class KeptGits {
@@ -209,44 +237,67 @@ export class KeptGits {
     return this.kept.size;
   }
 
-  async use(
+  update(): void {
+    if (!this.enabled()) {
+      this.stopAll();
+    }
+  }
+
+  use(
     gitPath: string,
     cwd: string,
     args: readonly string[],
   ): Promise<KeptGit | undefined> {
     if (!this.enabled()) {
       this.stopAll();
-      return undefined;
+      return Promise.resolve(undefined);
     }
     const key = [gitPath, cwd, ...args].join('\0');
     let kept = this.kept.get(key);
-    const git = await kept?.git;
-    if (kept !== undefined && git?.running !== true) {
+    if (kept !== undefined && gone(kept)) {
       this.forget(key);
       kept = undefined;
     }
     if (kept === undefined) {
-      kept = {
-        cwd,
-        git: this.start(gitPath, cwd, args).then(
-          (child) => new KeptGit(child),
-          () => undefined,
-        ),
-        idle: undefined,
-      };
+      kept = this.started(gitPath, cwd, args);
     } else {
       this.kept.delete(key);
     }
     this.kept.set(key, kept);
     this.stopWhenIdle(key, kept, this.idle);
-    while (this.kept.size > this.most) {
-      const [oldest] = this.kept.keys();
-      if (oldest === undefined) {
-        break;
-      }
-      this.forget(oldest);
-    }
+    this.keepAtMost(key);
     return kept.git;
+  }
+
+  private started(gitPath: string, cwd: string, args: readonly string[]): Kept {
+    const kept: Kept = {
+      cwd,
+      git: this.start(gitPath, cwd, args).then(
+        (child) => {
+          kept.started = new KeptGit(child);
+          return kept.started;
+        },
+        () => {
+          kept.failed = true;
+          return undefined;
+        },
+      ),
+      started: undefined,
+      failed: false,
+      idle: undefined,
+    };
+    return kept;
+  }
+
+  private keepAtMost(used: string): void {
+    for (const [key, kept] of this.kept) {
+      if (this.kept.size <= this.most) {
+        return;
+      }
+      if (key !== used && !busy(kept)) {
+        this.forget(key);
+      }
+    }
   }
 
   private stopWhenIdle(key: string, kept: Kept, wait: number): void {
