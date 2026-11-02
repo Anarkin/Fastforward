@@ -2014,7 +2014,7 @@ suite('App commander', () => {
     await select('many');
     await page.keyboard.press('Enter');
     await waitFor(
-      async () => (await rowNames()).includes('p69.png'),
+      async () => (await rowNames()).includes('p10.png'),
       'the files of the folder',
     );
     await page.keyboard.press('ControlOrMeta+2');
