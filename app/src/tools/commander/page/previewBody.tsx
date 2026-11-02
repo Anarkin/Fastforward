@@ -80,6 +80,7 @@ export function PreviewBody({
       </div>
     );
   }
+  const imageUrl = viewedFileUrl(viewing.tab, file, viewing.size);
   return (
     <div
       className="column-body viewer-body viewer-preview"
@@ -91,7 +92,7 @@ export function PreviewBody({
         <div className="viewer-error">{viewing.error}</div>
       ) : preview === 'image' ? (
         <div className="viewer-image">
-          <ImagePane url={viewedFileUrl(viewing.tab, file, viewing.size)} />
+          <ImagePane key={imageUrl} url={imageUrl} />
         </div>
       ) : (
         <MarkdownPreview
