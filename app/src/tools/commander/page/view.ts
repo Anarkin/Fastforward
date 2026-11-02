@@ -4,7 +4,14 @@ import {
   type Entry,
   type Side,
 } from '../shared/protocol';
-import type { ColumnWidths, Sort, Sorts } from '../shared/settings';
+import {
+  defaultLayouts,
+  type ColumnWidths,
+  type Layout,
+  type Layouts,
+  type Sort,
+  type Sorts,
+} from '../shared/settings';
 import { rowsOf, selectionAfter, type Row, type Selection } from './listing';
 
 interface Listed {
@@ -45,6 +52,8 @@ export interface CommanderView {
   readonly columns: ColumnWidths;
   readonly defaultColumns: ColumnWidths;
   readonly canElevate: boolean;
+  readonly layouts: Layouts;
+  readonly thumbnailSize: number;
   readonly active: Side;
   readonly panes: Readonly<Record<Side, PaneView | undefined>>;
   readonly kept: ReadonlyMap<string, KeptTab>;
@@ -76,6 +85,8 @@ export const emptyView: CommanderView = {
   columns: { extension: 10, size: 15, date: 16 },
   defaultColumns: { extension: 10, size: 15, date: 16 },
   canElevate: false,
+  layouts: defaultLayouts,
+  thumbnailSize: 144,
   active: 'right',
   panes: { left: undefined, right: undefined },
   kept: new Map(),
@@ -102,6 +113,7 @@ export type ViewAction =
       readonly marked: boolean;
     }
   | { readonly type: 'sort'; readonly side: Side; readonly sort: Sort }
+  | { readonly type: 'layout'; readonly side: Side; readonly layout: Layout }
   | { readonly type: 'activate'; readonly side: Side }
   | { readonly type: 'switchSide' };
 
@@ -185,6 +197,8 @@ export function reduceView(
         columns: action.columns,
         defaultColumns: action.defaultColumns,
         canElevate: action.canElevate,
+        layouts: action.layouts,
+        thumbnailSize: action.thumbnailSize,
       };
       return sides.reduce((next, side) => {
         const pane = view.panes[side];
@@ -259,6 +273,13 @@ export function reduceView(
         rows: rowsOf(pane.entries, pane.parent, view.showHidden, action.sort),
       });
     }
+    case 'layout':
+      return view.layouts[action.side] === action.layout
+        ? view
+        : {
+            ...view,
+            layouts: { ...view.layouts, [action.side]: action.layout },
+          };
     case 'activate':
       return view.active === action.side
         ? view

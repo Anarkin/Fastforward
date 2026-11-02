@@ -224,11 +224,7 @@ export function Viewer({
                 <MenuButton
                   title={strings.commander.encoding}
                   trigger={encodingTrigger}
-                  icon={
-                    <span className="viewer-encoding-label">
-                      {strings.commander.encodingShort[shown]}
-                    </span>
-                  }
+                  label={strings.commander.encodingShort[shown]}
                   items={encodingChoices.map((choice) => ({
                     label: strings.commander.encodings[choice],
                     checked: choice === encoding,

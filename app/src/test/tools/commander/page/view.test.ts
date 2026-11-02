@@ -7,6 +7,7 @@ import {
   type ViewAction,
 } from '../../../../tools/commander/page/view';
 import type { Entry } from '../../../../tools/commander/shared/protocol';
+import { defaultLayouts } from '../../../../tools/commander/shared/settings';
 
 const entry = (name: string, extra: Partial<Entry> = {}): Entry => ({
   name,
@@ -54,6 +55,8 @@ const sortedBy = (left: 'name' | 'size'): ViewAction => ({
   columns: { extension: 10, size: 15, date: 16 },
   defaultColumns: { extension: 10, size: 15, date: 16 },
   canElevate: false,
+  layouts: defaultLayouts,
+  thumbnailSize: 144,
 });
 
 suite('Commander view', () => {
@@ -105,6 +108,8 @@ suite('Commander view', () => {
         columns: { extension: 4, size: 15, date: 10 },
         defaultColumns: { extension: 10, size: 15, date: 16 },
         canElevate: false,
+        layouts: defaultLayouts,
+        thumbnailSize: 144,
       },
     );
 

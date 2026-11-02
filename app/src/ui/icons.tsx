@@ -304,6 +304,14 @@ export function PreviewIcon() {
   );
 }
 
+export function DropdownIcon() {
+  return (
+    <Icon className="dropdown-icon">
+      <path d="M5 6.5 8 9.5 11 6.5" />
+    </Icon>
+  );
+}
+
 export function RealSizeIcon() {
   return (
     <Icon>

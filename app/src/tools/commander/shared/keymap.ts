@@ -70,6 +70,16 @@ export const commanderKeymap = {
   showHidden: bind('Folders', strings.actions.showHidden, {
     'Ctrl+H': true,
   }),
+  layout: bind('Folders', strings.actions.layout, {
+    'Mod+1': 'details',
+    'Mod+2': 'thumbnails',
+  } as const),
+  moveAcross: bind(
+    'Folders',
+    strings.actions.moveAcross,
+    { ArrowLeft: 'left', ArrowRight: 'right' } as const,
+    { repeats: true },
+  ),
   sort: bind('Folders', strings.actions.sort, { Click: true }),
   side: bind('Sides', strings.actions.side, {
     Tab: true,
@@ -90,6 +100,8 @@ export const commanderKeymap = {
     'Shift+PageDown': 'pageDown',
     'Shift+Home': 'first',
     'Shift+End': 'last',
+    'Shift+ArrowLeft': 'left',
+    'Shift+ArrowRight': 'right',
   } as const),
   toggleMark: bind('Marking', strings.actions.toggleMark, {
     Space: true,

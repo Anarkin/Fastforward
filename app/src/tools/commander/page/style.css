@@ -1,4 +1,6 @@
 .commander {
+  --widest-layout-button: 104px;
+  --widest-encoding-button: 88px;
   --commander-row-height: round(
     var(--monospace-font-size) * var(--monospace-line-height),
     var(--device-pixel, 1px)
@@ -8,7 +10,7 @@
 }
 
 .commander .column-title:not(.searching) {
-  padding: 0 calc(4px + 3 * 26px + 2 * 2px + 8px);
+  padding: 0 calc(4px + var(--widest-layout-button) + 2px + 26px + 8px);
 }
 
 .elevated-mark {
@@ -30,10 +32,6 @@
 .commander-columns[data-active-side='left'] > .column:nth-child(1)::after,
 .commander-columns[data-active-side='right'] > .column:nth-child(2)::after {
   box-shadow: inset 0 0 0 2px var(--color-focus);
-}
-
-.drive-label {
-  font-size: calc(var(--font-size) * 0.85);
 }
 
 .commander-line {
@@ -311,24 +309,14 @@
   font-weight: 600;
 }
 
-.viewer-encoding .menu-button-trigger {
-  width: auto;
-  padding: 0 8px;
-  border-radius: 13px;
-}
-
-.viewer-encoding-label {
-  font-size: calc(var(--font-size) * 0.85);
-}
-
 .column-title:has(.viewer-actions) {
   padding-left: calc(
-    4px + 3 * 26px + 2px + 8px + 72px + 8px + 26px + 8px + 3 * 26px + 2 * 2px +
-      8px
+    4px + 3 * 26px + 2px + 8px + var(--widest-encoding-button) + 8px + 26px +
+      8px + 3 * 26px + 2 * 2px + 8px
   );
   padding-right: calc(
-    4px + 3 * 26px + 2px + 8px + 72px + 8px + 26px + 8px + 3 * 26px + 2 * 2px +
-      8px
+    4px + 3 * 26px + 2px + 8px + var(--widest-encoding-button) + 8px + 26px +
+      8px + 3 * 26px + 2 * 2px + 8px
   );
 }
 
@@ -355,4 +343,60 @@
   color: var(--color-search-match-foreground);
   background: var(--color-search-match);
   border-radius: 2px;
+}
+
+.commander-tiles {
+  display: flex;
+}
+
+.row.commander-tile {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  height: auto;
+  padding: 8px;
+  font-family: var(--monospace-font-family);
+  font-size: var(--monospace-font-size);
+  letter-spacing: calc(var(--commander-advance) - 1ch);
+  text-align: center;
+}
+
+.commander-thumbnail {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.commander-thumbnail .commander-icon .system-icon {
+  width: 32px;
+  height: 32px;
+}
+
+.commander-thumbnail .commander-icon .icon {
+  width: 48px;
+  height: 48px;
+}
+
+.commander-tile-name,
+.commander-tile-size,
+.commander-tile-date {
+  height: var(--commander-row-height);
+  overflow: hidden;
+  line-height: var(--commander-row-height);
+  white-space: nowrap;
+}
+
+.commander-tile-name {
+  display: flex;
+  justify-content: center;
+}
+
+.commander-tile-base {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.commander-tile-extension {
+  flex: none;
 }

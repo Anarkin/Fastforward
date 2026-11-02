@@ -59,6 +59,17 @@ const savedSetting = (
     : undefined;
 };
 
+const savedRightLayout = (profile: string): unknown => {
+  const state: unknown = JSON.parse(
+    fs.readFileSync(path.join(profile, 'state.json'), 'utf8'),
+  );
+  const layouts: unknown = Reflect.get(
+    Reflect.get(Reflect.get(Object(state), 'tools') ?? {}, 'commander') ?? {},
+    'layouts',
+  );
+  return Reflect.get(Object(layouts), 'right');
+};
+
 const savedText = (profile: string, name: string): unknown =>
   savedSetting(profile, 'text', name);
 
@@ -1767,6 +1778,137 @@ suite('App commander', () => {
     );
   });
 
+  test('shows a side as thumbnails from the menu of its layout or on Mod+2, each file and folder a tile of its icon, name, size and date, moving among them as on a grid, and as details again on Mod+1, saving the layout in the state', async () => {
+    const tiles = path.join(opened, 'tiles');
+    fs.mkdirSync(tiles);
+    for (let index = 1; index <= 7; index++) {
+      fs.writeFileSync(path.join(tiles, `t${index}.txt`), 'x'.repeat(index));
+    }
+    const tileNames = () =>
+      right().locator('.commander-tile .commander-tile-name').allTextContents();
+    const selectedTile = async () =>
+      (await right()
+        .locator('.commander-tile.selected .commander-tile-name')
+        .textContent()) ?? '';
+    const across = () =>
+      right()
+        .locator('.commander-tile')
+        .evaluateAll((elements) => {
+          const tops = elements.map(
+            (element) => element.getBoundingClientRect().top,
+          );
+          return tops.filter((top) => top === tops[0]).length;
+        });
+    const layoutLabel = () =>
+      right().locator('.commander-layout .menu-button-label').textContent();
+
+    await select('tiles');
+    await page.keyboard.press('Enter');
+    await waitFor(
+      async () => (await rowNames()).includes('t7.txt'),
+      'the files of the folder',
+    );
+    assert.strictEqual(await layoutLabel(), strings.commander.layouts.details);
+    await right()
+      .locator(`button[title="${strings.commander.layout}"]`)
+      .click();
+    await page
+      .getByRole('menuitemcheckbox', {
+        name: strings.commander.layouts.thumbnails,
+      })
+      .click();
+    await waitFor(
+      async () => (await tileNames()).length === 8,
+      'a tile for each file and the parent folder',
+    );
+    assert.strictEqual(
+      await layoutLabel(),
+      strings.commander.layouts.thumbnails,
+    );
+    assert.strictEqual(await right().locator('.commander-line').count(), 0);
+    assert.strictEqual(await right().locator('.commander-header').count(), 0);
+    const third = right().locator('.commander-tile', { hasText: 't3.txt' });
+    assert.strictEqual(
+      await third.locator('.commander-tile-size').textContent(),
+      '3',
+    );
+    assert.match(
+      (await third.locator('.commander-tile-date').textContent()) ?? '',
+      /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/,
+    );
+    await third.locator('.commander-thumbnail .commander-icon').waitFor();
+    await waitFor(
+      () => savedRightLayout(profile) === 'thumbnails',
+      'the layout saved',
+    );
+
+    const names = await tileNames();
+    const columns = await across();
+    assert.ok(columns > 1 && columns < 8, String(columns));
+    await page.keyboard.press('Home');
+    await waitFor(
+      async () => (await selectedTile()) === names[0],
+      'the first tile, the keys going to the tiles once chosen from the menu',
+    );
+    await page.keyboard.press('ArrowRight');
+    await waitFor(
+      async () => (await selectedTile()) === names[1],
+      'the tile on the right',
+    );
+    await page.keyboard.press('ArrowDown');
+    await waitFor(
+      async () => (await selectedTile()) === names[1 + columns],
+      'the tile below',
+    );
+    await page.keyboard.press('ArrowLeft');
+    await waitFor(
+      async () => (await selectedTile()) === names[columns],
+      'the tile on the left',
+    );
+    await page.keyboard.press('ArrowUp');
+    await waitFor(
+      async () => (await selectedTile()) === names[0],
+      'the tile above',
+    );
+    await page.keyboard.press('End');
+    await waitFor(
+      async () => (await selectedTile()) === names.at(-1),
+      'the last tile',
+    );
+
+    await page.keyboard.press('ControlOrMeta+1');
+    await waitFor(
+      async () => (await right().locator('.commander-tile').count()) === 0,
+      'the details again',
+    );
+    assert.ok((await rowNames()).includes('t7.txt'));
+    await waitFor(
+      () => savedRightLayout(profile) === 'details',
+      'the details saved',
+    );
+    await page.keyboard.press('ControlOrMeta+2');
+    await waitFor(
+      async () => (await tileNames()).length === 8,
+      'the thumbnails again',
+    );
+    await page.keyboard.press('ControlOrMeta+1');
+    await waitFor(
+      async () => (await right().locator('.commander-tile').count()) === 0,
+      'the details once more',
+    );
+
+    await page.keyboard.press('Backspace');
+    await waitFor(
+      async () => (await rowNames()).includes('notes.txt'),
+      'the folder above',
+    );
+    fs.rmSync(tiles, { recursive: true });
+    await waitFor(
+      async () => !(await rowNames()).includes('tiles'),
+      'the folder to be gone from the list',
+    );
+  });
+
   test('compares the two files marked on a side with Shift+F3 in a git tab of their own, showing their diff', async () => {
     fs.writeFileSync(path.join(opened, 'before.txt'), threeLines('two'));
     fs.writeFileSync(path.join(opened, 'after.txt'), threeLines('2'));
@@ -1929,7 +2071,7 @@ suite('App commander', () => {
       'the text read as UTF-16',
     );
     assert.strictEqual(
-      await page.locator('.viewer-encoding-label').textContent(),
+      await page.locator('.viewer-encoding .menu-button-label').textContent(),
       'UTF-16 LE',
     );
 
@@ -1974,7 +2116,9 @@ suite('App commander', () => {
       assert.ok(!row.includes(String.fromCharCode(0xfffd)), row);
       assert.ok(
         ['1250', '1251', '1252'].includes(
-          (await page.locator('.viewer-encoding-label').textContent()) ?? '',
+          (await page
+            .locator('.viewer-encoding .menu-button-label')
+            .textContent()) ?? '',
         ),
       );
     } finally {

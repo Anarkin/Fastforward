@@ -1,5 +1,5 @@
 import type { PdfPlace } from '../../../shared/pdf';
-import type { ColumnWidths, Sort, Sorts } from './settings';
+import type { ColumnWidths, Layout, Layouts, Sort, Sorts } from './settings';
 
 export interface ComparedFile {
   readonly side: Side;
@@ -149,6 +149,7 @@ export type CommanderToHost =
   | { readonly type: 'activate'; readonly tab: string; readonly side: Side }
   | { readonly type: 'columns'; readonly columns: ColumnWidths }
   | { readonly type: 'sort'; readonly side: Side; readonly sort: Sort }
+  | { readonly type: 'layout'; readonly side: Side; readonly layout: Layout }
   | { readonly type: 'showHidden'; readonly shown: boolean };
 
 export interface ByteRange {
@@ -164,6 +165,8 @@ export type CommanderToWebview =
       readonly columns: ColumnWidths;
       readonly defaultColumns: ColumnWidths;
       readonly canElevate: boolean;
+      readonly layouts: Layouts;
+      readonly thumbnailSize: number;
     }
   | { readonly type: 'drives'; readonly drives: readonly string[] }
   | { readonly type: 'show'; readonly tab: string; readonly file?: string }

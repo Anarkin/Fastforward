@@ -1,4 +1,12 @@
-import { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { moveInGrid, tileColumns, tileWidthOf } from './tiles';
 import { iconUrl, type IconSource } from '../shared/icons';
 import { commanderKeymap } from '../shared/keymap';
 import { clicked, keymap, letterTyped } from '../../../shell/shared/keymap';
@@ -19,7 +27,13 @@ import { HighlightWords } from '../../../ui/highlight';
 import { SearchButton, SearchRow } from '../../../ui/search';
 import { columnFocusOf } from '../../../ui/columnFocus';
 import { ColumnHeader } from './columnHeader';
-import type { ColumnWidths, SizedColumn, SortColumn } from '../shared/settings';
+import {
+  layouts,
+  type ColumnWidths,
+  type Layout,
+  type SizedColumn,
+  type SortColumn,
+} from '../shared/settings';
 import type { PaneView } from './view';
 import { DateFormat, formatDate } from '../../../ui/dates';
 import {
@@ -85,6 +99,9 @@ export function Pane({
   side,
   active,
   pane,
+  layout,
+  thumbnailSize,
+  onLayout,
   columns,
   drives,
   driveTrigger,
@@ -110,6 +127,9 @@ export function Pane({
   side: Side;
   active: boolean;
   pane: PaneView | undefined;
+  layout: Layout;
+  thumbnailSize: number;
+  onLayout: (layout: Layout) => void;
   columns: ColumnWidths;
   drives: readonly string[];
   driveTrigger: React.Ref<HTMLButtonElement>;
@@ -198,50 +218,95 @@ export function Pane({
   const marked = pane?.marked;
   const current = pane && driveOf(pane.folder, drives);
 
+  const [bodyWidth, setBodyWidth] = useState(0);
+  useEffect(() => {
+    const element = body.current;
+    if (!element) {
+      return undefined;
+    }
+    const measure = () => setBodyWidth(element.clientWidth);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+  const tileWidth = tileWidthOf(thumbnailSize);
+  const across = tileColumns(bodyWidth, tileWidth);
+  const tiled = layout === 'thumbnails';
+  const laidOut = useRef(tiled);
+  useLayoutEffect(() => {
+    if (laidOut.current === tiled) {
+      return;
+    }
+    laidOut.current = tiled;
+    const focused = document.activeElement;
+    if (active && (focused === null || focused === document.body)) {
+      columnFocusOf(body.current)?.focus();
+    }
+  }, [tiled, active]);
+  const tileRows = useMemo(
+    () => ({
+      count: Math.ceil(rows.length / across),
+      keyOf: (index: number) => rows[index * across].key,
+      indexOf: (key: string) => {
+        const at = rows.findIndex((row) => row.key === key);
+        return at === -1 ? -1 : Math.floor(at / across);
+      },
+    }),
+    [rows, across],
+  );
+
+  const rowClass = (row: Row) =>
+    `row commander-row${row.key === pane?.selected ? ' selected' : ''}${marked?.has(row.key) ? ' marked' : ''}${row.entry?.hidden ? ' hidden' : ''}`;
+  const iconSource = (row: Row): IconSource | undefined =>
+    tab === undefined ||
+    pane === undefined ||
+    row.entry === undefined ||
+    row.entry.folder
+      ? undefined
+      : { tab, side, folder: pane.folder, name: row.key };
+  const dateOf = (row: Row) =>
+    row.entry?.modified === undefined
+      ? ''
+      : formatDate(row.entry.modified, dateFormat);
+  const itemEvents = (row: Row, index: number) => ({
+    onClick: (event: React.MouseEvent) => {
+      const marking = clicked(commanderKeymap.markClick, event);
+      if (marking === 'toggle') {
+        onMark([row.key], !marked?.has(row.key));
+      } else if (marking === 'range' && selectedIndex !== -1) {
+        onMark(rangeKeys(rows, selectedIndex, index), true);
+      }
+      onSelect(row.key);
+    },
+    onContextMenu: (event: React.MouseEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const extended = clicked(commanderKeymap.systemMenu, event);
+      const names = menuKeys(rows, row.key, marked);
+      if (extended === undefined || names.length === 0) {
+        return;
+      }
+      onSelect(row.key);
+      onShellMenu(names, { x: event.clientX, y: event.clientY }, extended);
+    },
+    onDoubleClick: () => {
+      if (opens(row)) {
+        onOpen(row.key);
+      }
+    },
+  });
+
   const renderRow = (index: number) => {
     const row = rows[index];
     const { entry } = row;
     return (
       <div
-        className={`row commander-row commander-line${row.key === pane?.selected ? ' selected' : ''}${marked?.has(row.key) ? ' marked' : ''}${entry?.hidden ? ' hidden' : ''}`}
-        onClick={(event) => {
-          const marking = clicked(commanderKeymap.markClick, event);
-          if (marking === 'toggle') {
-            onMark([row.key], !marked?.has(row.key));
-          } else if (marking === 'range' && selectedIndex !== -1) {
-            onMark(rangeKeys(rows, selectedIndex, index), true);
-          }
-          onSelect(row.key);
-        }}
-        onContextMenu={(event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          const extended = clicked(commanderKeymap.systemMenu, event);
-          const names = menuKeys(rows, row.key, marked);
-          if (extended === undefined || names.length === 0) {
-            return;
-          }
-          onSelect(row.key);
-          onShellMenu(names, { x: event.clientX, y: event.clientY }, extended);
-        }}
-        onDoubleClick={() => {
-          if (opens(row)) {
-            onOpen(row.key);
-          }
-        }}
+        className={`${rowClass(row)} commander-line`}
+        {...itemEvents(row, index)}
       >
         <span className="commander-icon">
-          <RowIcon
-            row={row}
-            source={
-              tab === undefined ||
-              pane === undefined ||
-              row.entry === undefined ||
-              row.entry.folder
-                ? undefined
-                : { tab, side, folder: pane.folder, name: row.key }
-            }
-          />
+          <RowIcon row={row} source={iconSource(row)} />
         </span>
         <span className="commander-name">
           <HighlightWords text={row.base} words={words} />
@@ -250,14 +315,45 @@ export function Pane({
           <HighlightWords text={row.extension} words={words} />
         </span>
         <span className="commander-size">{formatSize(entry?.size)}</span>
-        <span className="commander-date">
-          {entry?.modified === undefined
-            ? ''
-            : formatDate(entry.modified, dateFormat)}
-        </span>
+        <span className="commander-date">{dateOf(row)}</span>
       </div>
     );
   };
+
+  const renderTile = (row: Row, index: number) => (
+    <div
+      key={row.key}
+      className={`${rowClass(row)} commander-tile`}
+      style={{ width: tileWidth }}
+      {...itemEvents(row, index)}
+    >
+      <div className="commander-thumbnail" style={{ height: thumbnailSize }}>
+        <span className="commander-icon">
+          <RowIcon row={row} source={iconSource(row)} />
+        </span>
+      </div>
+      <div className="commander-tile-name">
+        <span className="commander-tile-base">
+          <HighlightWords text={row.base} words={words} />
+        </span>
+        {row.extension !== '' && (
+          <span className="commander-tile-extension">
+            <HighlightWords text={`.${row.extension}`} words={words} />
+          </span>
+        )}
+      </div>
+      <div className="commander-tile-size">{formatSize(row.entry?.size)}</div>
+      <div className="commander-tile-date">{dateOf(row)}</div>
+    </div>
+  );
+
+  const renderTiles = (gridRow: number) => (
+    <div className="commander-tiles">
+      {rows
+        .slice(gridRow * across, (gridRow + 1) * across)
+        .map((row, offset) => renderTile(row, gridRow * across + offset))}
+    </div>
+  );
 
   return (
     <section
@@ -335,11 +431,7 @@ export function Pane({
               <div onClickCapture={onDrivesOpening}>
                 <MenuButton
                   title={strings.commander.chooseDrive}
-                  icon={
-                    <span className="drive-label">
-                      {(current ?? '').replace(/\\$/, '')}
-                    </span>
-                  }
+                  label={(current ?? '').replace(/\\$/, '')}
                   trigger={driveTrigger}
                   items={drives.map((drive) => ({
                     label: drive,
@@ -363,6 +455,17 @@ export function Pane({
             {pane?.folder}
           </span>
           <div className="column-actions">
+            <div className="commander-layout">
+              <MenuButton
+                title={strings.commander.layout}
+                label={strings.commander.layouts[layout]}
+                items={layouts.map((each) => ({
+                  label: strings.commander.layouts[each],
+                  checked: each === layout,
+                  onClick: () => onLayout(each),
+                }))}
+              />
+            </div>
             <SearchButton
               title={strings.commander.filterFolder}
               onClick={openFilter}
@@ -370,22 +473,25 @@ export function Pane({
           </div>
         </header>
       )}
-      <ColumnHeader
-        sort={pane?.sort}
-        columns={columns}
-        onSort={onSort}
-        onResize={onResize}
-        onResized={onResized}
-        onReset={onReset}
-      />
+      {!tiled && (
+        <ColumnHeader
+          sort={pane?.sort}
+          columns={columns}
+          onSort={onSort}
+          onResize={onResize}
+          onResized={onResized}
+          onReset={onReset}
+        />
+      )}
       <div
         className="column-body"
         ref={body}
         onContextMenu={(event) => event.preventDefault()}
       >
         <VirtualRows
-          rows={listed}
-          renderRow={renderRow}
+          key={tiled ? `tiles ${thumbnailSize}` : 'details'}
+          rows={tiled ? tileRows : listed}
+          renderRow={tiled ? renderTiles : renderRow}
           selectedKey={pane?.selected}
           label={strings.commander.sides[side]}
           wholeRows
@@ -483,9 +589,18 @@ export function Pane({
               if (selectedIndex === -1) {
                 return;
               }
-              const next =
-                moveInList(marking, selectedIndex, rows.length, visible) ??
-                selectedIndex;
+              const moved = tiled
+                ? moveInGrid(
+                    marking,
+                    selectedIndex,
+                    rows.length,
+                    across,
+                    visible,
+                  )
+                : marking === 'left' || marking === 'right'
+                  ? undefined
+                  : moveInList(marking, selectedIndex, rows.length, visible);
+              const next = moved ?? selectedIndex;
               onMark(
                 passedKeys(rows, selectedIndex, next),
                 !marked?.has(rows[selectedIndex].key),
@@ -503,17 +618,23 @@ export function Pane({
               onSelect(rows[Math.min(selectedIndex + 1, rows.length - 1)].key);
               return;
             }
+            const sideways = tiled
+              ? keyPressed(commanderKeymap.moveAcross, event)
+              : undefined;
             const move = listMoveOf(event);
-            if (move === undefined) {
+            if (sideways === undefined && move === undefined) {
               return;
             }
             event.preventDefault();
-            const next = moveInList(
-              move,
-              selectedIndex === -1 ? undefined : selectedIndex,
-              rows.length,
-              visible,
-            );
+            const from = selectedIndex === -1 ? undefined : selectedIndex;
+            const next =
+              sideways !== undefined
+                ? moveInGrid(sideways, from, rows.length, across, visible)
+                : move === undefined
+                  ? undefined
+                  : tiled
+                    ? moveInGrid(move, from, rows.length, across, visible)
+                    : moveInList(move, from, rows.length, visible);
             if (next !== undefined) {
               onSelect(rows[next].key);
             }

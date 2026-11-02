@@ -13,7 +13,7 @@ import { Viewer, type ToViewer, type Viewing } from './viewer';
 import { emptyView, reduceView } from './view';
 import { nextSort } from './listing';
 import { filesToCompare } from './comparing';
-import type { ColumnWidths } from '../shared/settings';
+import type { ColumnWidths, Layout } from '../shared/settings';
 import { columnFocusAttribute } from '../../../ui/columnFocus';
 import { followDrag } from '../../../ui/followDrag';
 import { useBinding } from '../../../ui/shortcuts';
@@ -180,6 +180,15 @@ export function CommanderTool({
     () => post({ type: 'showHidden', shown: !view.showHidden }),
     shown && !viewing,
   );
+  const chooseLayout = (side: Side, layout: Layout) => {
+    dispatch({ type: 'layout', side, layout });
+    post({ type: 'layout', side, layout });
+  };
+  useBinding(
+    commanderKeymap.layout,
+    (layout) => chooseLayout(view.active, layout),
+    shown && !viewing,
+  );
   useBinding(
     commanderKeymap.drive,
     (side) => {
@@ -233,6 +242,9 @@ export function CommanderTool({
             side={side}
             active={side === view.active}
             pane={view.panes[side]}
+            layout={view.layouts[side]}
+            thumbnailSize={view.thumbnailSize}
+            onLayout={(layout) => chooseLayout(side, layout)}
             columns={columnWidths}
             onResize={(column, width) =>
               setResized({

@@ -21,6 +21,7 @@ import type {
 import type { Timer } from '../tools/git/main/autoFetch';
 import { nodeFileSystem } from '../tools/commander/main/nodeFileSystem';
 import { CommanderTool } from '../tools/commander/main/tool';
+import { defaultLayouts } from '../tools/commander/shared/settings';
 import { TerminalTool, type HostListener } from '../tools/terminal/main/tool';
 import {
   GitTool,
@@ -335,6 +336,8 @@ export function newView(
         saveShowHidden: () => Promise.resolve(),
         saveColumns: () => Promise.resolve(),
         saveSorts: () => Promise.resolve(),
+        layouts: () => defaultLayouts,
+        saveLayouts: () => Promise.resolve(),
         watch: () => () => {},
         realPath: (link) => Promise.resolve(link),
         fileIcon: () => Promise.resolve(new Uint8Array()),

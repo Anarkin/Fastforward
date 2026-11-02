@@ -86,6 +86,7 @@
         "right": { "column": "extension", "descending": false }
       },
       "columns": { "extension": 10, "size": 15, "date": 16 },
+      "thumbnailSize": 144,
       "colors": {
         "light": {
           "icon": "#1a5fb4"

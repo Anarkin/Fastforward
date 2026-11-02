@@ -245,6 +245,8 @@ export const strings = {
     openFolder: 'Open the selected folder',
     parentFolder: 'Go up to the parent folder',
     showHidden: 'Show or hide the hidden files',
+    layout: 'Show the side as details or as thumbnails',
+    moveAcross: 'Move to the thumbnail on the left or right',
     drive: 'Choose the drive of the left or right side',
     sort: 'Sort by a column, or reverse the order',
     folderHistory: 'Back or forward through the folders of the side',
@@ -534,6 +536,8 @@ export const strings = {
     gone: "It doesn't exist anymore.",
     couldNotRead: (file: string, reason: string) =>
       `Couldn't read ${file}. ${reason}`,
+    layout: 'Layout',
+    layouts: { details: 'Details', thumbnails: 'Thumbnails' },
     viewAs: 'View as',
     viewText: 'Text',
     viewHex: 'Hex',

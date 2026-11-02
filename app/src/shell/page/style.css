@@ -550,6 +550,25 @@ body {
   border-radius: 4px;
 }
 
+.menu-button-trigger.labelled {
+  width: auto;
+  gap: 2px;
+  padding: 0 6px 0 10px;
+}
+
+.menu-button-label {
+  overflow: hidden;
+  font-size: calc(var(--font-size) * 0.85);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.menu-button-trigger.labelled .dropdown-icon {
+  flex: none;
+  width: 12px;
+  height: 12px;
+}
+
 .menu-button-trigger.open,
 .tab-add.open {
   background:

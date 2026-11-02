@@ -5,6 +5,11 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { MenuButton } from '../../ui/menu';
 
+const triggerOf = (button: React.ReactElement) =>
+  new JSDOM(renderToStaticMarkup(button)).window.document.querySelector(
+    'button',
+  );
+
 suite('Menu button', () => {
   test('tells assistive technology it opens a menu, and that the menu is closed', () => {
     const trigger = new JSDOM(
@@ -12,6 +17,21 @@ suite('Menu button', () => {
     ).window.document.querySelector('button');
     assert.strictEqual(trigger?.getAttribute('aria-haspopup'), 'menu');
     assert.strictEqual(trigger.getAttribute('aria-expanded'), 'false');
+  });
+
+  test('marks a button showing the choice made with an arrow, as it opens a list of the others, but not a button showing an icon', () => {
+    const labelled = triggerOf(
+      <MenuButton title="Encoding" label="UTF-8" items={[]} />,
+    );
+    assert.strictEqual(
+      labelled?.querySelector('.menu-button-label')?.textContent,
+      'UTF-8',
+    );
+    assert.ok(labelled.querySelector('.dropdown-icon'));
+    assert.ok(labelled.classList.contains('labelled'));
+    const iconOnly = triggerOf(<MenuButton title="Settings" items={[]} />);
+    assert.strictEqual(iconOnly?.querySelector('.dropdown-icon'), null);
+    assert.ok(!iconOnly.classList.contains('labelled'));
   });
 
   test('closes its menu once the focus moves out of it, as to the menu of another button, but not while it moves within', async () => {

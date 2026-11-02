@@ -28,6 +28,9 @@ const header = (elevated: boolean) =>
         side="left"
         active
         pane={pane(elevated)}
+        layout="details"
+        thumbnailSize={144}
+        onLayout={noop}
         columns={{ extension: 10, size: 15, date: 16 }}
         drives={[]}
         driveTrigger={null}

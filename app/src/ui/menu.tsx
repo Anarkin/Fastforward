@@ -6,19 +6,21 @@ import {
   useMenuFocus,
   type ContextMenuItem,
 } from './contextMenu';
-import { MoreIcon } from './icons';
+import { DropdownIcon, MoreIcon } from './icons';
 
 export function MenuButton({
   title,
   items,
   marked = false,
   icon = <MoreIcon />,
+  label,
   trigger,
 }: {
   title: string;
   items: readonly ContextMenuItem[];
   marked?: boolean;
   icon?: React.ReactNode;
+  label?: string;
   trigger?: React.Ref<HTMLButtonElement>;
 }) {
   const [open, setOpen] = useState(false);
@@ -40,13 +42,20 @@ export function MenuButton({
     >
       <button
         ref={trigger}
-        className={`nav-button menu-button-trigger ${open ? 'open' : ''}`}
+        className={`nav-button menu-button-trigger${label === undefined ? '' : ' labelled'}${open ? ' open' : ''}`}
         title={title}
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen(!open)}
       >
-        {icon}
+        {label === undefined ? (
+          icon
+        ) : (
+          <>
+            <span className="menu-button-label">{label}</span>
+            <DropdownIcon />
+          </>
+        )}
         {marked && <span className="menu-mark" />}
       </button>
       {open && <Dropdown container={container} items={items} onClose={close} />}
