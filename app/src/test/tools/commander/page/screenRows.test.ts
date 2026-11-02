@@ -136,6 +136,16 @@ suite('Rows of a file viewed as the screen shows them', () => {
     );
   });
 
+  test('wraps the rows read once for as many as ask for them in the same columns and encoding, as rows of megabyte lines take long to wrap', () => {
+    const rows = [{ start: 0, end: 12, text: 'one two three' }];
+    const wrapped = screenRows(rows, 6, 'utf-8');
+
+    assert.strictEqual(screenRows(rows, 6, 'utf-8'), wrapped);
+    assert.notStrictEqual(screenRows(rows, 7, 'utf-8'), wrapped);
+    assert.notStrictEqual(screenRows(rows, 6, 'windows-1252'), wrapped);
+    assert.notStrictEqual(screenRows([...rows], 6, 'utf-8'), wrapped);
+  });
+
   test('finds the first row on screen of a row read, and the one that holds a character or a byte of it, never one of the next row read', () => {
     const rows = screenRows(
       [

@@ -92,13 +92,11 @@ export function rowSegments(
   const index = lineAt(colored.lineStarts, row.start);
   const line = colored.lines[index];
   const ranges = rangesOfLine(colored.parts, index);
-  const from =
-    line === undefined
-      ? undefined
-      : charAt(line, row.start - (colored.lineStarts[index] ?? 0));
+  if (line === undefined || ranges === undefined || ranges.length === 0) {
+    return undefined;
+  }
+  const from = charAt(line, row.start - (colored.lineStarts[index] ?? 0));
   if (
-    line === undefined ||
-    ranges === undefined ||
     from === undefined ||
     line.slice(from, from + row.text.length) !== row.text
   ) {

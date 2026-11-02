@@ -87,4 +87,27 @@ suite('Colors of the rows of a file viewed', () => {
       { text: ' a;' },
     ]);
   });
+
+  test('leaves the rows of a line too long to color plain at once, rather than counting the bytes of the line up to each, as a line of megabytes made every row shown take long', () => {
+    const line = '"x":1,'.repeat(400_000);
+    const text = colored(`let a;\n${line}\n`, [
+      [{ start: 0, end: 3, kind: 'keyword' }],
+      [],
+    ]);
+    const started = performance.now();
+
+    for (let index = 0; index < 100; index++) {
+      const start = 7 + 2_000_000 + index * 4096;
+      assert.strictEqual(
+        rowSegments(text, {
+          start,
+          end: start + 4096,
+          text: line.slice(start - 7, start - 7 + 4096),
+        }),
+        undefined,
+      );
+    }
+
+    assert.ok(performance.now() - started < 100);
+  });
 });

@@ -86,14 +86,33 @@ function rowsOf(
   });
 }
 
+const wrapped = new WeakMap<
+  readonly TextRow[],
+  {
+    readonly columns: number | undefined;
+    readonly encoding: TextEncoding;
+    readonly shown: ScreenRow[];
+  }
+>();
+
 export function screenRows(
   rows: readonly TextRow[],
   columns: number | undefined,
   encoding: TextEncoding,
 ): ScreenRow[] {
-  return rows.flatMap((row, index) =>
+  const known = wrapped.get(rows);
+  if (
+    known !== undefined &&
+    known.columns === columns &&
+    known.encoding === encoding
+  ) {
+    return known.shown;
+  }
+  const shown = rows.flatMap((row, index) =>
     rowsOf(row, index, columns, encoding, rows[index - 1]?.cut === true),
   );
+  wrapped.set(rows, { columns, encoding, shown });
+  return shown;
 }
 
 export function firstOf(rows: readonly ScreenRow[], index: number): number {
