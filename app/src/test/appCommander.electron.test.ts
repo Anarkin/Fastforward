@@ -994,7 +994,7 @@ suite('App commander', () => {
     }
   });
 
-  test('colors the code of a file viewed as the diff colors it, leaving a file over the size colored plain', async () => {
+  test('colors the code of a file viewed as the diff colors it, a long one from the top as its lines are done, leaving a file over the size colored plain, and previews no Markdown over a size of its own', async () => {
     fs.writeFileSync(path.join(opened, 'code.ts'), 'const answer = 42;');
     await select('code');
     await page.keyboard.press('F3');
@@ -1014,6 +1014,69 @@ suite('App commander', () => {
         : [];
     });
     assert.notStrictEqual(colors[0], colors[1]);
+    await page.keyboard.press('Escape');
+    await page.locator('.viewer').waitFor({ state: 'detached' });
+
+    const lastKeyword = () =>
+      page
+        .locator('.viewer-rows .viewer-row')
+        .last()
+        .locator('.syntax-keyword')
+        .count();
+    fs.writeFileSync(
+      path.join(opened, 'lines.ts'),
+      Array.from({ length: 6000 }, (_, index) => `let a${index} = 1;`).join(
+        String.fromCharCode(10),
+      ),
+    );
+    await select('lines');
+    await page.keyboard.press('F3');
+    await waitFor(
+      async () => (await lastKeyword()) > 0,
+      'the first lines colored',
+    );
+    await page.keyboard.press('End');
+    await waitFor(
+      async () =>
+        (await page
+          .locator('.viewer-rows .viewer-row')
+          .last()
+          .textContent()) === 'let a5999 = 1;' && (await lastKeyword()) > 0,
+      'the last line colored',
+    );
+    await page.keyboard.press('Escape');
+    await page.locator('.viewer').waitFor({ state: 'detached' });
+
+    fs.writeFileSync(
+      path.join(opened, 'over.ts'),
+      `let first = 1;${String.fromCharCode(10).repeat(1024 * 1024)}`,
+    );
+    await select('over');
+    await page.keyboard.press('F3');
+    await waitFor(
+      async () =>
+        (await page
+          .locator('.viewer-rows .viewer-row')
+          .first()
+          .textContent()) === 'let first = 1;' &&
+        (await page.locator('.viewer-row .syntax-keyword').count()) > 0,
+      'the first line of a file over a megabyte colored',
+    );
+    await page.keyboard.press('Escape');
+    await page.locator('.viewer').waitFor({ state: 'detached' });
+
+    fs.writeFileSync(
+      path.join(opened, 'over.md'),
+      `# Over${String.fromCharCode(10).repeat(1024 * 1024)}`,
+    );
+    await select('overmd');
+    await page.keyboard.press('F3');
+    await waitFor(
+      async () =>
+        (await page.locator('.viewer .markdown-note').textContent()) ===
+        'Documents over 1 MB are not previewed.',
+      'the document too large to preview',
+    );
     await page.keyboard.press('Escape');
     await page.locator('.viewer').waitFor({ state: 'detached' });
 
@@ -1040,11 +1103,13 @@ suite('App commander', () => {
     );
     await page.keyboard.press('Escape');
     await page.locator('.viewer').waitFor({ state: 'detached' });
-    fs.rmSync(path.join(opened, 'code.ts'));
-    fs.rmSync(path.join(opened, 'large.ts'));
+    const files = ['code.ts', 'lines.ts', 'over.ts', 'over.md', 'large.ts'];
+    for (const file of files) {
+      fs.rmSync(path.join(opened, file));
+    }
     await waitFor(async () => {
       const names = await rowNames();
-      return !names.includes('code.ts') && !names.includes('large.ts');
+      return files.every((file) => !names.includes(file));
     }, 'the files to be gone from the list');
   });
 

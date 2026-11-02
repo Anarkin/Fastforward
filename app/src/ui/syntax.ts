@@ -5,6 +5,7 @@ import type {
   SyntaxSource,
   ToSyntax,
 } from './syntaxEngine';
+import { partLines, type CodePart } from './syntaxParts';
 
 export interface CodeSegment {
   readonly text: string;
@@ -49,11 +50,34 @@ export interface Colorer {
     code: string,
     signal?: AbortSignal,
   ): Promise<LineRanges | undefined>;
+  colorParts(
+    language: string,
+    code: string,
+    colored: (part: CodePart | undefined) => void,
+  ): () => void;
 }
 
 export function colorerOf(port: SyntaxPort): Colorer {
   const waiting = new Map<number, (message: FromSyntax) => void>();
   let jobs = 0;
+  const colorParts: Colorer['colorParts'] = (language, code, colored) => {
+    const job = (jobs += 1);
+    waiting.set(job, (message) => {
+      if (message.type !== 'code') {
+        return;
+      }
+      if (message.part === undefined || message.part.done) {
+        waiting.delete(job);
+      }
+      colored(message.part);
+    });
+    port.post({ type: 'code', job, language, code });
+    return () => {
+      if (waiting.delete(job)) {
+        port.post({ type: 'stop', job });
+      }
+    };
+  };
   port.listen(
     (message) => {
       if (message.type === 'failed') {
@@ -78,26 +102,30 @@ export function colorerOf(port: SyntaxPort): Colorer {
         port.post({ type: 'stop', job });
       };
     },
+    colorParts,
     code(language, code, signal) {
       if (signal?.aborted) {
         return Promise.resolve(undefined);
       }
-      const job = (jobs += 1);
       return new Promise((resolve) => {
-        const stop = () => {
-          waiting.delete(job);
-          port.post({ type: 'stop', job });
-          resolve(undefined);
-        };
-        waiting.set(job, (message) => {
-          if (message.type === 'code') {
-            waiting.delete(job);
-            signal?.removeEventListener('abort', stop);
-            resolve(message.lines);
+        let lines: LineRanges = [];
+        const stop = colorParts(language, code, (part) => {
+          if (part !== undefined) {
+            lines =
+              part.from === 0
+                ? partLines(part)
+                : [...lines, ...partLines(part)];
+          }
+          if (part === undefined || part.done) {
+            signal?.removeEventListener('abort', stopped);
+            resolve(part === undefined ? undefined : lines);
           }
         });
-        signal?.addEventListener('abort', stop, { once: true });
-        port.post({ type: 'code', job, language, code });
+        const stopped = () => {
+          stop();
+          resolve(undefined);
+        };
+        signal?.addEventListener('abort', stopped, { once: true });
       });
     },
   };

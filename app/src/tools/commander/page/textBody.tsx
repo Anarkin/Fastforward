@@ -14,8 +14,13 @@ import {
   type TextRow,
 } from '../shared/protocol';
 import { RowRequests } from './rowRequests';
-import { coloredText, rowSegments, type ColoredText } from './textColors';
-import { colorCode } from '../../../ui/syntax';
+import {
+  coloredText,
+  rowSegments,
+  withPart,
+  type ColoredText,
+} from './textColors';
+import { colorer } from '../../../ui/syntax';
 import { languageOf } from '../../../ui/languages';
 import { ScrollBody, type Thumb } from './scrollBody';
 import type { ToViewer, Viewing } from './viewer';
@@ -213,13 +218,14 @@ function useColors(
     if (language === undefined || text === undefined) {
       return undefined;
     }
-    const leaving = new AbortController();
-    void colorCode(language, text, leaving.signal).then((ranges) => {
-      if (ranges !== undefined && !leaving.signal.aborted) {
-        setColored(coloredText(text, ranges));
+    const plain = coloredText(text);
+    return colorer().colorParts(language, text, (part) => {
+      if (part !== undefined) {
+        setColored((shown) =>
+          withPart(shown?.lines === plain.lines ? shown : plain, part),
+        );
       }
     });
-    return () => leaving.abort();
   }, [language, text]);
   return colored;
 }

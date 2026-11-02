@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { maxColoredBytes, type CommanderToHost } from '../shared/protocol';
+import { maxPreviewBytes, type CommanderToHost } from '../shared/protocol';
 import { viewedFileUrl } from '../shared/files';
 import { strings } from '../../../shared/strings';
 import { documentImagePath, ImagePane } from '../../../ui/images';
@@ -22,7 +22,8 @@ function MarkdownPreview({
   post: (message: CommanderToHost) => void;
   listen: (handler: (message: ToViewer) => void) => () => void;
 }) {
-  const text = useWholeText(viewing, post, listen, true, 'utf-8');
+  const tooLarge = viewing.size !== undefined && viewing.size > maxPreviewBytes;
+  const text = useWholeText(viewing, post, listen, !tooLarge, 'utf-8');
   const { tab, size } = viewing;
   const images = useMemo(() => {
     const document = file.replaceAll('\\', '/');
@@ -31,11 +32,11 @@ function MarkdownPreview({
       url: (path: string) => viewedFileUrl(tab, path, size),
     };
   }, [file, tab, size]);
-  if (viewing.size !== undefined && viewing.size > maxColoredBytes) {
+  if (tooLarge) {
     return (
       <div className="markdown-pane">
         <div className="markdown-note">
-          {strings.commander.previewTooLarge(maxColoredBytes / 1024 / 1024)}
+          {strings.commander.previewTooLarge(maxPreviewBytes / 1024 / 1024)}
         </div>
       </div>
     );

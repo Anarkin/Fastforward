@@ -10,6 +10,7 @@ import { bundledLanguagesInfo } from 'shiki/langs';
 import { errorText } from './errors';
 import { languageIds } from './languages';
 import { onceMade } from './onceMade';
+import { packedPart, type CodePart } from './syntaxParts';
 
 const kinds = [
   {
@@ -259,37 +260,107 @@ export async function loadLanguages(
   return highlighter;
 }
 
-const maxCodeLines = 5000;
-
-export async function colorCode(
-  language: string,
-  code: string,
-  stopped: () => boolean = () => false,
-): Promise<LineRanges | undefined> {
-  const id = languageIds.get(language.toLowerCase());
-  const lines = code.replace(/\n$/, '').split('\n');
-  if (id === undefined || lines.length > maxCodeLines) {
-    return undefined;
-  }
-  const highlighter = await loadLanguages([id]);
-  const key = `${id}\n${code}`;
-  const found = cached(key);
-  if (found !== undefined || stopped()) {
-    return found;
-  }
-  const ranges = highlighter
-    .codeToTokensBase(code, {
-      lang: id,
-      theme: theme.name,
-      tokenizeMaxLineLength: maxLineLength + 1,
-    })
-    .map(rangesOf);
-  store(key, ranges);
-  return ranges;
-}
-
 const sliceTime = 10;
 const publishTime = 50;
+
+export function colorCode(
+  language: string,
+  code: string,
+  publish: (part: CodePart | undefined) => void,
+  later: (run: () => void) => void = (run) => setTimeout(run),
+): () => void {
+  let stopped = false;
+  const stop = () => {
+    stopped = true;
+  };
+  const id = languageIds.get(language.toLowerCase());
+  if (id === undefined) {
+    publish(undefined);
+    return stop;
+  }
+  const key = `${id}\n${code}`;
+  const lines = code.split('\n');
+  const kept = textLength(key) <= maxCachedChars / 4;
+  const work = (highlighter: HighlighterCore) => {
+    const found = cached(key);
+    if (found !== undefined) {
+      publish(packedPart(found, 0, true));
+      return;
+    }
+    let generation = grammars;
+    let next = 0;
+    let sent = 0;
+    let state: GrammarState | undefined;
+    let waiting: SyntaxRange[][] = [];
+    let all: SyntaxRange[][] = [];
+    let published = performance.now();
+    const slice = () => {
+      if (stopped) {
+        return;
+      }
+      if (generation !== grammars) {
+        generation = grammars;
+        next = 0;
+        sent = 0;
+        state = undefined;
+        waiting = [];
+        all = [];
+      }
+      const deadline = performance.now() + sliceTime;
+      while (next < lines.length && performance.now() < deadline) {
+        const until = chunkEnd(lines, next);
+        const tokens = highlighter.codeToTokensBase(
+          lines
+            .slice(next, until)
+            .map((line) => line.replace(/\r$/, ''))
+            .join('\n'),
+          {
+            lang: id,
+            theme: theme.name,
+            tokenizeMaxLineLength: maxLineLength + 1,
+            grammarState: state,
+          },
+        );
+        state = highlighter.getLastGrammarState(tokens);
+        for (let line = next; line < until; line++) {
+          const ranges = rangesOf(tokens[line - next] ?? []);
+          waiting.push(ranges);
+          if (kept) {
+            all.push(ranges);
+          }
+        }
+        next = until;
+      }
+      const done = next >= lines.length;
+      if (done || performance.now() - published >= publishTime) {
+        publish(packedPart(waiting, sent, done));
+        sent = next;
+        waiting = [];
+        published = performance.now();
+      }
+      if (!done) {
+        later(slice);
+      } else if (kept) {
+        store(key, all);
+      }
+    };
+    later(slice);
+  };
+  void loadLanguages([id]).then(
+    (highlighter) => {
+      if (!stopped) {
+        work(highlighter);
+      }
+    },
+    (error: unknown) => {
+      if (!stopped) {
+        publish(undefined);
+      }
+      throw error;
+    },
+  );
+  return stop;
+}
 
 export function startColoring(
   sources: readonly SyntaxSource[],
@@ -370,7 +441,7 @@ export type FromSyntax =
   | {
       readonly type: 'code';
       readonly job: number;
-      readonly lines: LineRanges | undefined;
+      readonly part: CodePart | undefined;
     }
   | { readonly type: 'failed'; readonly message: string };
 
@@ -403,23 +474,22 @@ export function serveColoring(
       };
       jobs.set(job, startColoring(message.sources, ranges, publish, later));
     } else {
-      let stopped = false;
-      jobs.set(job, () => {
-        stopped = true;
-      });
-      void colorCode(message.language, message.code, () => stopped).then(
-        (lines) => {
-          jobs.delete(job);
-          if (!stopped) {
-            post({ type: 'code', job, lines });
+      let finished = false;
+      const stop = colorCode(
+        message.language,
+        message.code,
+        (part) => {
+          if (part === undefined || part.done) {
+            finished = true;
+            jobs.delete(job);
           }
+          post({ type: 'code', job, part });
         },
-        (error: unknown) => {
-          jobs.delete(job);
-          post({ type: 'code', job, lines: undefined });
-          throw error;
-        },
+        later,
       );
+      if (!finished) {
+        jobs.set(job, stop);
+      }
     }
   };
 }

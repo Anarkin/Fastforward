@@ -26,6 +26,7 @@ import {
   type ToSyntax,
 } from '../../../../ui/syntaxEngine';
 import { onceMade } from '../../../../ui/onceMade';
+import { partLines, type CodePart } from '../../../../ui/syntaxParts';
 import { policyOfPage, waitFor } from '../../../fixtures';
 
 type Highlighter = Awaited<ReturnType<typeof loadLanguages>>;
@@ -1025,25 +1026,74 @@ suite('Syntax', () => {
 const codeLines = (count: number) =>
   Array.from({ length: count }, () => 'let a = 1;\n').join('');
 
+function coloredCode(
+  language: string,
+  code: string,
+  later: (run: () => void) => void = (run) => setTimeout(run),
+): Promise<{
+  readonly lines: SyntaxRange[][] | undefined;
+  readonly parts: readonly CodePart[];
+}> {
+  return new Promise((resolve) => {
+    const parts: CodePart[] = [];
+    colorCode(
+      language,
+      code,
+      (part) => {
+        if (part === undefined) {
+          resolve({ lines: undefined, parts });
+          return;
+        }
+        parts.push(part);
+        if (part.done) {
+          resolve({ lines: parts.flatMap(partLines), parts });
+        }
+      },
+      later,
+    );
+  });
+}
+
 suite('Code in documents', () => {
   test('colors a code block by its language, named or aliased, and nothing in an unknown one', async () => {
-    const lines = await colorCode('TS', 'const a = 1;\n// done');
+    const { lines } = await coloredCode('TS', 'const a = 1;\n// done');
     assert.deepStrictEqual(lines?.[0]?.[0], {
       start: 0,
       end: 5,
       kind: 'keyword',
     });
     assert.deepStrictEqual(lines?.[1], [{ start: 0, end: 7, kind: 'comment' }]);
-    assert.strictEqual(await colorCode('no-such-language', 'a'), undefined);
+    assert.strictEqual(
+      (await coloredCode('no-such-language', 'a')).lines,
+      undefined,
+    );
   });
 
-  test('colors a code block of up to 5000 lines, not counting the line break Markdown ends it with, as tokenizing is sequential, so a late line costs every line before it', async () => {
-    assert.strictEqual((await colorCode('ts', codeLines(5000)))?.length, 5001);
-    assert.strictEqual(await colorCode('ts', codeLines(5001)), undefined);
+  test('colors code of any length a slice of time at a time, so other jobs go on between, sending its lines in parts as they are done, each part going on from the one before and the last done', async () => {
+    let slices = 0;
+    const { lines, parts } = await coloredCode('ts', codeLines(6000), (run) => {
+      slices += 1;
+      setTimeout(run);
+    });
+
+    assert.strictEqual(lines?.length, 6001);
+    assert.ok(slices > 1, String(slices));
+    assert.deepStrictEqual(
+      parts.map((part) => part.from),
+      parts.map((_, index) =>
+        parts
+          .slice(0, index)
+          .reduce((count, part) => count + part.ends.length, 0),
+      ),
+    );
+    assert.deepStrictEqual(
+      parts.map((part) => part.done),
+      parts.map((_, index) => index === parts.length - 1),
+    );
   });
 
   test('colors a line of a code block of 2000 characters, but not one over 2000, as minified lines take long to tokenize', async () => {
-    const lines = await colorCode(
+    const { lines } = await coloredCode(
       'ts',
       `a = ${'1'.repeat(1996)}\na = ${'1'.repeat(1997)}`,
     );
@@ -1051,11 +1101,21 @@ suite('Code in documents', () => {
     assert.deepStrictEqual(lines[1], []);
   });
 
-  test('keeps the colors of a code block, so a preview shown again colors none of its blocks again', async () => {
+  test('keeps the colors of a code block, so a preview shown again colors none of its blocks again, sending them in one part at once', async () => {
     const code = 'const kept = 1;';
-    const first = await colorCode('ts', code);
-    assert.ok(first);
-    assert.strictEqual(await colorCode('typescript', code), first);
+    let slices = 0;
+    const later = (run: () => void) => {
+      slices += 1;
+      setTimeout(run);
+    };
+    const first = await coloredCode('ts', code, later);
+    const tokenized = slices;
+    const again = await coloredCode('typescript', code, later);
+
+    assert.ok(tokenized > 0);
+    assert.strictEqual(slices, tokenized);
+    assert.deepStrictEqual(again.lines, first.lines);
+    assert.strictEqual(again.parts.length, 1);
   });
 
   test('cuts a code block into the parts each color covers, keeping its lines', () => {
@@ -1122,13 +1182,25 @@ suite('Coloring away from the page', () => {
   });
 
   test('colors a code block by its language, and nothing in one it does not know', async () => {
-    const { posted, serve } = served();
+    const { posted, serve, run } = served();
     serve({ type: 'code', job: 3, language: 'TS', code: 'const a = 1;' });
     serve({ type: 'code', job: 4, language: 'no-such-language', code: 'a' });
-    await waitFor(() => posted.length === 2, 'the code blocks');
+    await waitFor(() => {
+      run();
+      return posted.length === 2;
+    }, 'the code blocks');
     const lines = new Map(
       posted.flatMap((message) =>
-        message.type === 'code' ? [[message.job, message.lines] as const] : [],
+        message.type === 'code'
+          ? [
+              [
+                message.job,
+                message.part === undefined
+                  ? undefined
+                  : partLines(message.part),
+              ] as const,
+            ]
+          : [],
       ),
     );
     assert.deepStrictEqual(lines.get(3)?.[0]?.[0], {
@@ -1170,11 +1242,45 @@ suite('Coloring away from the page', () => {
       slices.shift()?.();
     }
     assert.deepStrictEqual([kept, dropped], [['0:0'], []]);
-    assert.deepStrictEqual((await colorer.code('ts', 'let a;'))?.[0]?.[0], {
+    const code = colorer.code('ts', 'let a;');
+    await waitFor(() => slices.length > 0, 'the code to be sliced');
+    while (slices.length > 0) {
+      slices.shift()?.();
+    }
+    assert.deepStrictEqual((await code)?.[0]?.[0], {
       start: 0,
       end: 3,
       kind: 'keyword',
     });
+  });
+
+  test('hands the page the colors of code in parts as they are done, and none once it asked to stop', async () => {
+    await loadLanguages(['typescript']);
+    let received: ((message: FromSyntax) => void) | undefined;
+    const colorer = colorerOf({
+      post: (message: ToSyntax) => serve(message),
+      listen: (listener) => {
+        received = listener;
+      },
+    });
+    const serve = serveColoring((message) => received?.(message));
+    const parts: CodePart[] = [];
+    colorer.colorParts('ts', codeLines(3000), (part) => {
+      if (part !== undefined) {
+        parts.push(part);
+      }
+    });
+    const stopped: (CodePart | undefined)[] = [];
+    const stop = colorer.colorParts('ts', 'let a = 1;', (part) =>
+      stopped.push(part),
+    );
+    stop();
+    await waitFor(() => parts.at(-1)?.done === true, 'the last part');
+    assert.strictEqual(
+      parts.reduce((count, part) => count + part.ends.length, 0),
+      3001,
+    );
+    assert.deepStrictEqual(stopped, []);
   });
 
   test('drops a code block stopped before it is colored, telling the page nothing of it, as a preview left would keep the worker from the diffs', async () => {
