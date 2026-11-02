@@ -9,8 +9,10 @@ import {
   type FileChange,
   type LeftOut,
 } from '../../shared/protocol';
-import { blobSizes } from './files';
-import { runGit, runGitBytes, splitNul } from './run';
+import { isFullHash } from '../../shared/hashes';
+import { blobSizes, keptFirstParent } from './files';
+import { StoppedReading, type GitOutput } from './keptGit';
+import { keptGits, runGit, runGitBytes, splitNul } from './run';
 
 export const diffArgs = [
   '--no-color',
@@ -36,13 +38,137 @@ export const listArgs = ['--raw', '-z', '--no-abbrev'];
 
 const compareArgs = ['diff', '-M', ...diffArgs];
 
-export function showFiles(
+const keptMarker = Buffer.from('\u0001fastforward-diff-tree ', 'latin1');
+
+const keptDiffArgs = [
+  'diff-tree',
+  '--stdin',
+  '--always',
+  '--root',
+  '-r',
+  '--diff-merges=first-parent',
+  '-M',
+  ...diffArgs,
+  '--format=%x01fastforward-diff-tree %H',
+];
+
+const keptRequest = (hash: string, parent: string) =>
+  `${hash} ${parent}\n${hash} ${hash}\n`;
+
+async function keptDiff<T>(
+  gitPath: string,
+  cwd: string,
+  hash: string,
+  args: readonly string[],
+  read: (output: GitOutput) => Promise<T>,
+): Promise<T | undefined> {
+  if (!isFullHash(hash)) {
+    return undefined;
+  }
+  const parent = await keptFirstParent(gitPath, cwd, hash);
+  if (parent === undefined) {
+    return undefined;
+  }
+  const git = await keptGits.use(gitPath, cwd, [...keptDiffArgs, ...args]);
+  return git?.request(keptRequest(hash, parent), read).catch(() => undefined);
+}
+
+async function answerFollows(output: GitOutput): Promise<boolean> {
+  while ((await output.peek(1))[0] === 0x0a) {
+    await output.take(1);
+  }
+  return (await output.peek(1))[0] !== keptMarker[0];
+}
+
+function keptFiles(
+  gitPath: string,
+  cwd: string,
+  hash: string,
+): Promise<FileChange[] | undefined> {
+  return keptDiff(gitPath, cwd, hash, listArgs, async (output) => {
+    await output.until(0);
+    const parts: Buffer[] = [];
+    if (await answerFollows(output)) {
+      await output.streamUntil(
+        Buffer.concat([Buffer.from([0]), keptMarker]),
+        (part) => {
+          parts.push(part);
+          return false;
+        },
+      );
+      parts.push(Buffer.from([0]));
+    }
+    await output.until(0);
+    return parseChanges(Buffer.concat(parts).toString('utf8'));
+  });
+}
+
+export async function showFiles(
   gitPath: string,
   cwd: string,
   hash: string,
   signal?: AbortSignal,
 ): Promise<FileChange[]> {
-  return changedFiles(gitPath, cwd, [...showArgs, ...listArgs, hash], signal);
+  return (
+    (await keptFiles(gitPath, cwd, hash)) ??
+    changedFiles(gitPath, cwd, [...showArgs, ...listArgs, hash], signal)
+  );
+}
+
+async function keptPatch(
+  gitPath: string,
+  cwd: string,
+  hash: string,
+  scope: PatchScope,
+): Promise<ReadPatch | undefined> {
+  const budget = new PatchBudget();
+  const read = await keptDiff(
+    gitPath,
+    cwd,
+    hash,
+    ['--patch', ...diffOptionArgs(scope)],
+    async (output) => {
+      try {
+        await output.until(0x0a);
+        if (await answerFollows(output)) {
+          await output.streamUntil(
+            Buffer.concat([Buffer.from('\n'), keptMarker]),
+            (part) => budget.add(part),
+          );
+          budget.add(Buffer.from('\n'));
+        }
+        await output.until(0x0a);
+        return true;
+      } catch (error) {
+        if (error instanceof StoppedReading) {
+          return false;
+        }
+        throw error;
+      }
+    },
+  );
+  if (read === undefined) {
+    return undefined;
+  }
+  if (!read) {
+    await keptGits
+      .use(gitPath, cwd, [...keptDiffArgs, '--patch', ...diffOptionArgs(scope)])
+      .then((git) => git?.stop());
+  }
+  return { ...budget.end(), exited: Promise.resolve() };
+}
+
+export async function commitPatch(
+  gitPath: string,
+  cwd: string,
+  hash: string,
+  scope: PatchScope = {},
+  signal?: AbortSignal,
+): Promise<ReadPatch> {
+  return (
+    (await keptPatch(gitPath, cwd, hash, scope)) ??
+    readPatch(gitPath, cwd, [showPatchArgs(hash, scope)], signal)
+  );
 }
 
 export function compareFiles(

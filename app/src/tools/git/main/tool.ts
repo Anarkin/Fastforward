@@ -12,6 +12,7 @@ import {
   showFiles,
   showPatch,
   showPatchArgs,
+  commitPatch,
   whitespaceOnlyChanges,
   withoutFilesInside,
   type PatchScope,
@@ -3265,6 +3266,13 @@ export class GitTool implements Tool<'git'> {
   ): Promise<ReadPatch> {
     const compared = comparedOf(hash);
     const stash = context.tab.stashes.get(hash);
+    if (
+      compared === undefined &&
+      stash === undefined &&
+      pathspecs(scope).length === 0
+    ) {
+      return commitPatch(context.gitPath, context.root, hash, scope, signal);
+    }
     const commands = compared
       ? [comparePatchArgs(compared.from, compared.to, scope)]
       : stash

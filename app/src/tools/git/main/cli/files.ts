@@ -145,11 +145,16 @@ function parsedInfo(header: string): ObjectInfo {
   return { kind: 'found', id, type, size: Number(size), mode };
 }
 
+const fixedName = /^[0-9a-f]{40}(?:[0-9a-f]{24})?(?:$|:|\^1$)/;
+
 async function keptInfo(
   gitPath: string,
   cwd: string,
   names: readonly string[],
 ): Promise<ObjectInfo[] | undefined> {
+  if (!names.every((name) => fixedName.test(name))) {
+    return undefined;
+  }
   const git = await keptGits.use(gitPath, cwd, keptCatFile);
   if (git === undefined) {
     return undefined;
@@ -163,6 +168,17 @@ async function keptInfo(
       return infos;
     })
     .catch(() => undefined);
+}
+
+export async function keptFirstParent(
+  gitPath: string,
+  cwd: string,
+  hash: string,
+): Promise<string | undefined> {
+  const [parent] = (await keptInfo(gitPath, cwd, [`${hash}^1`])) ?? [];
+  return parent?.kind === 'found' && parent.type === 'commit'
+    ? parent.id
+    : undefined;
 }
 
 async function keptContents(

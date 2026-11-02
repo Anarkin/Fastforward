@@ -246,12 +246,14 @@ suite('Repository files', () => {
         'large.txt': 'x'.repeat(maxFileSize + 1),
       });
       await kept.commit('second', { 'a.ts': 'two\n' });
-      const [oldA = '', newA = '', image = '', large = ''] = await kept.resolve(
-        'HEAD~1:a.ts',
-        'HEAD:a.ts',
-        'HEAD:image.png',
-        'HEAD:large.txt',
-      );
+      const [head = '', oldA = '', newA = '', image = '', large = ''] =
+        await kept.resolve(
+          'HEAD',
+          'HEAD~1:a.ts',
+          'HEAD:a.ts',
+          'HEAD:image.png',
+          'HEAD:large.txt',
+        );
       const ids = [oldA, newA, image, large, 'f'.repeat(40)];
 
       const first = await gitsStarted(() =>
@@ -259,7 +261,7 @@ suite('Repository files', () => {
       );
       const again = await gitsStarted(async () => ({
         texts: await readBlobs(kept.gitPath, kept.root, ids),
-        file: await readFile(kept.gitPath, kept.root, 'HEAD', 'a.ts'),
+        file: await readFile(kept.gitPath, kept.root, head, 'a.ts'),
         sizes: await blobSizes(kept.gitPath, kept.root, [
           newA,
           large,
