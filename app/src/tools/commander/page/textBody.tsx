@@ -532,6 +532,11 @@ export function TextBody({
         <div
           className="viewer-row"
           key={`${row.row.start}:${row.from}`}
+          data-continues={
+            row.to < row.row.text.length || row.row.cut === true
+              ? ''
+              : undefined
+          }
           style={
             row.indent > 0
               ? {

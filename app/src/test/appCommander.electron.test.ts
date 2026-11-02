@@ -875,7 +875,7 @@ suite('App commander', () => {
     );
   });
 
-  test('wraps the long lines of a file viewed as the diff wraps its lines, indenting the rows they wrap onto and marking where they wrap, stops on W or its button for the diff too, and shows whitespace on a dot', async () => {
+  test('wraps the long lines of a file viewed as the diff wraps its lines, indenting the rows they wrap onto and marking where they wrap, copies a wrapped line as one line, stops on W or its button for the diff too, and shows whitespace on a dot', async () => {
     const words = Array.from({ length: 80 }, (_, index) => `word${index}`).join(
       ' ',
     );
@@ -936,6 +936,31 @@ suite('App commander', () => {
         marks: wrapped.slice(2, -1).map(() => true),
         indented: true,
       });
+      await page.evaluate(() => {
+        const shown = [
+          ...document.querySelectorAll('.viewer-rows .viewer-row'),
+        ];
+        const range = document.createRange();
+        range.setStartBefore(shown[1] ?? document.body);
+        range.setEnd(shown.at(-1)?.firstChild ?? document.body, 3);
+        getSelection()?.removeAllRanges();
+        getSelection()?.addRange(range);
+        window.addEventListener(
+          'copy',
+          (event) =>
+            Reflect.set(
+              window,
+              'copied',
+              event.clipboardData?.getData('text/plain'),
+            ),
+          { once: true },
+        );
+      });
+      await page.keyboard.press('ControlOrMeta+C');
+      assert.strictEqual(
+        await page.evaluate((): unknown => Reflect.get(window, 'copied')),
+        `${line}${String.fromCharCode(10)}aft`,
+      );
 
       await page.keyboard.press('w');
       await waitFor(async () => (await rows.count()) === 3, 'the line whole');

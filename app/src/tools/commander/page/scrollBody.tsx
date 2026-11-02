@@ -24,6 +24,37 @@ export function thumbBox(
   return { top: thumb.start * (track - height), height };
 }
 
+function copiedRows(
+  selection: Selection | null,
+  shown: Element | null,
+): string | undefined {
+  if (selection === null || selection.rangeCount === 0 || shown === null) {
+    return undefined;
+  }
+  const range = selection.getRangeAt(0);
+  const rows = [...shown.children].filter((row) => range.intersectsNode(row));
+  if (!rows.slice(0, -1).some((row) => row.hasAttribute('data-continues'))) {
+    return undefined;
+  }
+  return rows
+    .map((row, index) => {
+      const part = document.createRange();
+      part.selectNodeContents(row);
+      if (row.contains(range.startContainer)) {
+        part.setStart(range.startContainer, range.startOffset);
+      }
+      if (row.contains(range.endContainer)) {
+        part.setEnd(range.endContainer, range.endOffset);
+      }
+      const ends =
+        index === rows.length - 1 || row.hasAttribute('data-continues')
+          ? ''
+          : '\n';
+      return `${part.toString()}${ends}`;
+    })
+    .join('');
+}
+
 export function ScrollBody({
   thumb,
   onScreen,
@@ -98,6 +129,16 @@ export function ScrollBody({
       tabIndex={0}
       data-column-focus=""
       onPointerMove={showBar}
+      onCopy={(event) => {
+        const copied = copiedRows(
+          getSelection(),
+          event.currentTarget.querySelector('.viewer-rows'),
+        );
+        if (copied !== undefined) {
+          event.preventDefault();
+          event.clipboardData.setData('text/plain', copied);
+        }
+      }}
       onWheel={(event) => {
         wheel.current += event.deltaY;
         const height = probe.current?.getBoundingClientRect().height ?? 1;
