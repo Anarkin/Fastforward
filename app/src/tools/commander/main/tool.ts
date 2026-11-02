@@ -84,6 +84,11 @@ export interface CommanderAccess {
   readonly codePage: () => Promise<TextEncoding>;
   readonly elevate?: () => Promise<ElevatedFileSystem | undefined>;
   readonly realPath: (link: string) => Promise<string>;
+  readonly shellMenu?: (
+    files: readonly string[],
+    at: { readonly x: number; readonly y: number },
+    extended: boolean,
+  ) => Promise<void>;
   readonly root: string;
 }
 
@@ -280,6 +285,8 @@ export class CommanderTool implements Tool<'commander'> {
         return this.step(page, message.tab, message.side, message.step);
       case 'view':
         return this.view(page, message.tab, message.side, message.name);
+      case 'shellMenu':
+        return this.shellMenu(page, message);
       case 'compare':
         return this.compare(page, message.tab, message.files);
       case 'readRows':
@@ -561,6 +568,39 @@ export class CommanderTool implements Tool<'commander'> {
           'commander',
           path.join(shown.pane.folder, entry.name),
         );
+  }
+
+  private async shellMenu(
+    page: Page,
+    {
+      tab,
+      side,
+      names,
+      x,
+      y,
+      extended,
+    }: Extract<CommanderToHost, { type: 'shellMenu' }>,
+  ): Promise<void> {
+    const shown = this.shownPane(page, tab, side);
+    const listed = new Set(shown?.pane.entries?.map((entry) => entry.name));
+    if (
+      shown === undefined ||
+      !Array.isArray(names) ||
+      names.length === 0 ||
+      !names.every(
+        (name: unknown) => typeof name === 'string' && listed.has(name),
+      ) ||
+      !Number.isFinite(x) ||
+      !Number.isFinite(y) ||
+      typeof extended !== 'boolean'
+    ) {
+      return;
+    }
+    await this.access.shellMenu?.(
+      names.map((name: string) => path.join(shown.pane.folder, name)),
+      { x, y },
+      extended,
+    );
   }
 
   private compare(page: Page, tab: unknown, files: unknown): Promise<void> {

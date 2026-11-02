@@ -250,6 +250,8 @@ export const strings = {
     folderHistory: 'Back or forward through the folders of the side',
     reread: 'Read the folder of the side again',
     viewFile: 'View the selected file in a tab of its own',
+    systemMenu:
+      'Show the menu of Windows for the marked files, or the one clicked or selected, the extended one with Shift',
     compareFiles:
       'Compare the marked files, or the selected file of each side, in a git tab',
     closeViewer: 'Close the file being viewed',
@@ -315,6 +317,8 @@ export const strings = {
     PageDown: 'PgDn',
     Click: 'Click',
     MiddleClick: 'Middle-click',
+    RightClick: 'Right-click',
+    ContextMenu: 'Menu key',
     Drag: 'Drag',
     BackButton: 'Mouse Back',
     ForwardButton: 'Mouse Forward',

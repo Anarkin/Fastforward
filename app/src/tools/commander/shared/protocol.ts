@@ -122,6 +122,15 @@ export type CommanderToHost =
       readonly side: Side;
       readonly name: string;
     }
+  | {
+      readonly type: 'shellMenu';
+      readonly tab: string;
+      readonly side: Side;
+      readonly names: readonly string[];
+      readonly x: number;
+      readonly y: number;
+      readonly extended: boolean;
+    }
   | { readonly type: 'reread'; readonly tab: string; readonly side: Side }
   | { readonly type: 'elevate'; readonly tab: string; readonly side: Side }
   | {

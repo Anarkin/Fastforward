@@ -289,6 +289,19 @@ export function CommanderTool({
                 post({ type: 'view', tab, side, name });
               }
             }}
+            onShellMenu={(names, at, extended) => {
+              if (tab !== undefined) {
+                post({
+                  type: 'shellMenu',
+                  tab,
+                  side,
+                  names,
+                  x: at.x,
+                  y: at.y,
+                  extended,
+                });
+              }
+            }}
             onOpenOnSide={(target, name) => {
               if (tab !== undefined) {
                 post({

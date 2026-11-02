@@ -1867,6 +1867,68 @@ suite('App commander', () => {
     }
   });
 
+  test.skipIf(process.platform !== 'win32')(
+    'shows the menu of Windows for a file right-clicked, selecting it, or selected on Shift+F10, with the commands Explorer shows, and goes on once the menu is closed',
+    async () => {
+      const file = path.join(opened, 'menu.txt');
+      fs.writeFileSync(file, 'menu\n');
+      await waitFor(
+        async () => (await rowNames()).includes('menu.txt'),
+        'the file to be listed',
+      );
+      const { default: koffi } = await import('koffi');
+      const user32 = koffi.load('user32.dll');
+      const findWindow = user32.func(
+        'void *FindWindowExW(void *parent, void *after, const char16_t *className, const char16_t *title)',
+      );
+      const visible = user32.func('bool IsWindowVisible(void *window)');
+      const sendMessage = user32.func(
+        'intptr_t SendMessageW(void *window, uint32_t message, uintptr_t w, intptr_t l)',
+      );
+      const postMessage = user32.func(
+        'bool PostMessageW(void *window, uint32_t message, uintptr_t w, intptr_t l)',
+      );
+      const itemCount = user32.func('int GetMenuItemCount(intptr_t menu)');
+      const shown = (): unknown => {
+        for (
+          let menu: unknown = findWindow(null, null, '#32768', null);
+          menu !== null;
+          menu = findWindow(null, menu, '#32768', null)
+        ) {
+          if (visible(menu) === true) {
+            return menu;
+          }
+        }
+        return null;
+      };
+      try {
+        const clicking = right()
+          .locator('.commander-row', { hasText: 'menutxt' })
+          .click({ button: 'right' });
+        await waitFor(() => shown() !== null, 'the menu of Windows');
+
+        assert.ok(Number(itemCount(sendMessage(shown(), 0x1e1, 0, 0))) > 3);
+        postMessage(shown(), 0x100, 0x1b, 0);
+        await waitFor(() => shown() === null, 'the menu to close');
+        await clicking;
+        assert.match(await selected(), /menu/);
+
+        const pressing = page.keyboard.press('Shift+F10');
+        await waitFor(() => shown() !== null, 'the menu again on Shift+F10');
+        postMessage(shown(), 0x100, 0x1b, 0);
+        await waitFor(() => shown() === null, 'the menu to close again');
+        await pressing;
+        assert.strictEqual(await app.evaluate(() => 'answering'), 'answering');
+      } finally {
+        const open = shown();
+        if (open !== null) {
+          postMessage(open, 0x10, 0, 0);
+        }
+        fs.rmSync(file);
+      }
+    },
+  );
+
   test('says two files compared are the same rather than showing nothing', async () => {
     fs.writeFileSync(path.join(opened, 'twin1.txt'), 'twins');
     fs.writeFileSync(path.join(opened, 'twin2.txt'), 'twins');

@@ -100,6 +100,12 @@ export const commanderKeymap = {
     'Shift+Click': 'range',
   } as const),
   view: bind('Viewing', strings.actions.viewFile, { F3: true }),
+  systemMenu: bind('Marking', strings.actions.systemMenu, {
+    RightClick: false,
+    'Shift+RightClick': true,
+    'Shift+F10': false,
+    ContextMenu: false,
+  }),
   compare: bind('Viewing', strings.actions.compareFiles, {
     'Shift+F3': true,
   }),

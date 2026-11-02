@@ -9,6 +9,7 @@ import {
   selectionAfter,
   passedKeys,
   rangeKeys,
+  menuKeys,
   filteredRows,
   filteredSelection,
 } from '../../../../tools/commander/page/listing';
@@ -227,6 +228,25 @@ suite('Commander listing', () => {
     }));
     assert.deepStrictEqual(rangeKeys(rows, 1, 3), ['b', 'c', 'd']);
     assert.deepStrictEqual(rangeKeys(rows, 2, 0), ['a', 'b', 'c']);
+  });
+
+  test('shows the menu of the system for every file marked when one marked is clicked, in the order listed, for the one clicked alone otherwise, and none for ..', () => {
+    const rows = [
+      { key: '..', entry: undefined, base: '..', extension: '' },
+      ...['a', 'b', 'c', 'd'].map((key) => ({
+        key,
+        entry: entry(key),
+        base: key,
+        extension: '',
+      })),
+    ];
+    const marked = new Set(['d', 'b']);
+
+    assert.deepStrictEqual(menuKeys(rows, 'd', marked), ['b', 'd']);
+    assert.deepStrictEqual(menuKeys(rows, 'c', marked), ['c']);
+    assert.deepStrictEqual(menuKeys(rows, 'a', undefined), ['a']);
+    assert.deepStrictEqual(menuKeys(rows, '..', marked), []);
+    assert.deepStrictEqual(menuKeys(rows, 'gone', marked), []);
   });
 });
 

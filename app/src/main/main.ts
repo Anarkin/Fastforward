@@ -459,6 +459,24 @@ async function start(asked: readonly string[]): Promise<void> {
           process.platform,
         );
       },
+      shellMenu: async (files, at, extended) => {
+        const { showShellMenu } =
+          await import('../tools/commander/main/windowsShellMenu.js');
+        if (window.isDestroyed()) {
+          return;
+        }
+        const content = window.getContentBounds();
+        const zoom = window.webContents.getZoomFactor();
+        showShellMenu(
+          window.getNativeWindowHandle(),
+          files,
+          screen.dipToScreenPoint({
+            x: content.x + at.x * zoom,
+            y: content.y + at.y * zoom,
+          }),
+          extended,
+        );
+      },
     }),
     realPath: (link) => fs.promises.realpath(link),
     root: rootFolder(process.platform, process.env),

@@ -147,6 +147,22 @@ export function rangeKeys(
     .map((row) => row.key);
 }
 
+export function menuKeys(
+  rows: readonly Row[],
+  key: string,
+  marked: ReadonlySet<string> | undefined,
+): string[] {
+  const clicked = rows.find((row) => row.key === key);
+  if (clicked?.entry === undefined) {
+    return [];
+  }
+  return marked?.has(key)
+    ? rows
+        .filter((row) => row.entry !== undefined && marked.has(row.key))
+        .map((row) => row.key)
+    : [key];
+}
+
 export function filteredRows(
   rows: readonly Row[],
   words: readonly string[],

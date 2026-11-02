@@ -99,6 +99,11 @@ function commander(
   const saved: unknown[] = [];
   const watching: { folder: string; changed: () => void }[] = [];
   const iconsLoaded: string[] = [];
+  const menus: {
+    readonly files: readonly string[];
+    readonly at: { readonly x: number; readonly y: number };
+    readonly extended: boolean;
+  }[] = [];
   const settings = {
     showHidden: true,
     sort: defaultSorts,
@@ -142,6 +147,10 @@ function commander(
     platform: 'linux',
     codePage: () => Promise.resolve('windows-1250'),
     elevate,
+    shellMenu: (files, point, extended) => {
+      menus.push({ files, at: point, extended });
+      return Promise.resolve();
+    },
     realPath: (link) =>
       link === at('Documents and Settings')
         ? Promise.resolve(at('Users'))
@@ -209,6 +218,7 @@ function commander(
     viewed,
     compared,
     tabs,
+    menus,
   };
 }
 
@@ -1223,6 +1233,68 @@ suite('Commander tool', () => {
     await send({ type: 'view', tab: '2', side: 'left', name: 'notes.txt' });
 
     assert.deepStrictEqual(viewed, [at('notes.txt')]);
+  });
+
+  test('shows the menu of the system for the files and folders a side lists, where the page says, the extended one with Shift, and none for ..  or a name it doesn’t list', async () => {
+    const { tool, page, send, menus } = commander({
+      [root]: [folder('Users'), file('notes.txt'), file('other.txt')],
+    });
+    await tool.show(page, tab);
+    const menu = (names: unknown, extended: unknown = false) =>
+      send(
+        forged(
+          JSON.stringify({
+            type: 'shellMenu',
+            tab: '1',
+            side: 'left',
+            names,
+            x: 10,
+            y: 20,
+            extended,
+          }),
+        ),
+      );
+
+    await menu(['notes.txt', 'Users']);
+    await menu(['other.txt'], true);
+    for (const names of [
+      [],
+      ['..'],
+      ['secret.txt'],
+      ['notes.txt', 'secret.txt'],
+      'notes.txt',
+      [1],
+    ]) {
+      await menu(names);
+    }
+    await menu(['notes.txt'], 'yes');
+    await send({
+      type: 'shellMenu',
+      tab: '2',
+      side: 'left',
+      names: ['notes.txt'],
+      x: 10,
+      y: 20,
+      extended: false,
+    });
+    await send({
+      type: 'shellMenu',
+      tab: '1',
+      side: 'left',
+      names: ['notes.txt'],
+      x: Number.NaN,
+      y: 20,
+      extended: false,
+    });
+
+    assert.deepStrictEqual(menus, [
+      {
+        files: [at('notes.txt'), at('Users')],
+        at: { x: 10, y: 20 },
+        extended: false,
+      },
+      { files: [at('other.txt')], at: { x: 10, y: 20 }, extended: true },
+    ]);
   });
 
   test('opens a git tab comparing two files the sides list, the first the old side, and nothing for a folder, ..  or a name it doesn’t list', async () => {

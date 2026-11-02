@@ -9,6 +9,7 @@ import {
   filteredSelection,
   opens,
   passedKeys,
+  menuKeys,
   rangeKeys,
   type Row,
 } from './listing';
@@ -98,6 +99,7 @@ export function Pane({
   onStep,
   onOpenOnSide,
   onView,
+  onShellMenu,
   onCompare,
   onResize,
   onResized,
@@ -122,6 +124,11 @@ export function Pane({
   onStep: (step: -1 | 1) => void;
   onOpenOnSide: (target: Side, name: string) => void;
   onView: (name: string) => void;
+  onShellMenu: (
+    names: readonly string[],
+    at: { readonly x: number; readonly y: number },
+    extended: boolean,
+  ) => void;
   onCompare: () => void;
   onResize: (column: SizedColumn, width: number) => void;
   onResized: (column: SizedColumn, width: number) => void;
@@ -205,6 +212,17 @@ export function Pane({
             onMark(rangeKeys(rows, selectedIndex, index), true);
           }
           onSelect(row.key);
+        }}
+        onContextMenu={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          const extended = clicked(commanderKeymap.systemMenu, event);
+          const names = menuKeys(rows, row.key, marked);
+          if (extended === undefined || names.length === 0) {
+            return;
+          }
+          onSelect(row.key);
+          onShellMenu(names, { x: event.clientX, y: event.clientY }, extended);
         }}
         onDoubleClick={() => {
           if (opens(row)) {
@@ -360,7 +378,11 @@ export function Pane({
         onResized={onResized}
         onReset={onReset}
       />
-      <div className="column-body" ref={body}>
+      <div
+        className="column-body"
+        ref={body}
+        onContextMenu={(event) => event.preventDefault()}
+      >
         <VirtualRows
           rows={listed}
           renderRow={renderRow}
@@ -368,6 +390,21 @@ export function Pane({
           label={strings.commander.sides[side]}
           wholeRows
           onKeyDown={(event, visible) => {
+            const menu = keyPressed(commanderKeymap.systemMenu, event);
+            if (menu !== undefined) {
+              event.preventDefault();
+              const names =
+                pane?.selected === undefined
+                  ? []
+                  : menuKeys(rows, pane.selected, marked);
+              const box = body.current
+                ?.querySelector('.commander-row.selected')
+                ?.getBoundingClientRect();
+              if (names.length > 0 && box !== undefined) {
+                onShellMenu(names, { x: box.left, y: box.bottom }, menu);
+              }
+              return;
+            }
             const letter =
               keyPressed(keymap.mainMenu, event) === undefined &&
               keyPressed(commanderKeymap.filterLetter, event) !== undefined

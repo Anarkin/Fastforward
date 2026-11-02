@@ -43,6 +43,7 @@ const header = (elevated: boolean) =>
         onStep={noop}
         onOpenOnSide={noop}
         onView={noop}
+        onShellMenu={noop}
         onResize={noop}
         onResized={noop}
         onReset={noop}
