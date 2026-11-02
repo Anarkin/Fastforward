@@ -36,7 +36,15 @@ const kinds = [
     ],
   },
   { kind: 'function', scopes: ['entity.name.function', 'support.function'] },
-  { kind: 'string', scopes: ['string'] },
+  {
+    kind: 'string',
+    scopes: [
+      'string',
+      'markup.inline.raw',
+      'punctuation.definition.raw',
+      'markup.raw.block',
+    ],
+  },
   { kind: 'number', scopes: ['constant.numeric'] },
   { kind: 'comment', scopes: ['comment', 'punctuation.definition.comment'] },
 ] as const;

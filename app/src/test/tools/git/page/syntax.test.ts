@@ -244,6 +244,28 @@ suite('Syntax', () => {
     );
   });
 
+  test('colors code in Markdown as a string, backticks and all, inline as VS Code does, and indented', async () => {
+    assert.deepStrictEqual(
+      await colored([], {
+        path: 'a.md',
+        binary: false,
+        content: '# Run `src/<path>` in a [link](x)\n\n    let a = 1;\n',
+      }),
+      {
+        '0:0': [
+          'keyword #',
+          'string `src/<path>`',
+          'keyword [',
+          'string link',
+          'keyword ](',
+          'keyword )',
+        ],
+        '0:1': [],
+        '0:2': ['string     let a = 1;'],
+      },
+    );
+  });
+
   test('colors each side of a diff on its own, a removed line in what came before it', async () => {
     const patch = [
       'diff --git a/a.ts b/a.ts',
