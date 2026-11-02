@@ -83,4 +83,22 @@ suite('Places in PDFs', () => {
       removeFolder(folder);
     }
   });
+
+  test('keeps saving places after a save failed, as a file held for a moment on Windows made every later save fail until restarted', async () => {
+    const folder = tempFolder('pdf-places');
+    try {
+      const file = path.join(folder, 'pdf-places.json');
+      const places = new PdfPlaces(file, () => 1000);
+      fs.mkdirSync(path.join(`${file}.tmp`, 'held'), { recursive: true });
+
+      await assert.rejects(places.save('aa11', third, 'C:/books/one.pdf'));
+      fs.rmSync(`${file}.tmp`, { recursive: true });
+      await places.save('bb22', tenth, 'C:/books/two.pdf');
+
+      assert.deepStrictEqual(await new PdfPlaces(file).of('aa11'), third);
+      assert.deepStrictEqual(await new PdfPlaces(file).of('bb22'), tenth);
+    } finally {
+      removeFolder(folder);
+    }
+  });
 });

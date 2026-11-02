@@ -1,4 +1,5 @@
 import * as fs from 'node:fs';
+import { writeAtomically } from '../../../shell/main/settings';
 import {
   isPdfFingerprint,
   pdfPlaceOf,
@@ -55,12 +56,9 @@ export class PdfPlaces {
       places.delete(forgotten);
     }
     const text = JSON.stringify(Object.fromEntries(places), null, 2);
-    this.writing = this.writing.then(async () => {
-      const temporary = `${this.file}.tmp`;
-      await fs.promises.writeFile(temporary, text);
-      await fs.promises.rename(temporary, this.file);
-    });
-    await this.writing;
+    const written = this.writing.then(() => writeAtomically(this.file, text));
+    this.writing = written.catch(() => undefined);
+    await written;
   }
 
   private loaded(): Promise<Map<string, Kept>> {
