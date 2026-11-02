@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { showPatch } from '../../../../../tools/git/main/cli/diff';
 import {
+  blobSizes,
   listIndex,
   listTree,
   maxFileSize,
@@ -12,6 +13,10 @@ import {
   readImage,
   viewedFile,
 } from '../../../../../tools/git/main/cli/files';
+import {
+  keepGitRunningWhile,
+  keptGits,
+} from '../../../../../tools/git/main/cli/run';
 import { parsePatch } from '../../../../../tools/git/page/diff';
 import { submoduleRepository } from '../../../../gitFixtures';
 import {
@@ -227,6 +232,66 @@ suite('Repository files', () => {
       });
     } finally {
       fs.rmSync(fifo);
+    }
+  });
+
+  test('reads files and objects through one git kept running once that is turned on, starting no other git for later reads, with what a git started for each read gives', async () => {
+    const folder = tempFolder('kept-blobs');
+    keepGitRunningWhile(() => true);
+    try {
+      const kept = await tempRepository(folder);
+      await kept.commit('first', {
+        'a.ts': 'one\n',
+        'image.png': Buffer.from([0, 1, 2]).toString('latin1'),
+        'large.txt': 'x'.repeat(maxFileSize + 1),
+      });
+      await kept.commit('second', { 'a.ts': 'two\n' });
+      const [oldA = '', newA = '', image = '', large = ''] = await kept.resolve(
+        'HEAD~1:a.ts',
+        'HEAD:a.ts',
+        'HEAD:image.png',
+        'HEAD:large.txt',
+      );
+      const ids = [oldA, newA, image, large, 'f'.repeat(40)];
+
+      const first = await gitsStarted(() =>
+        readBlobs(kept.gitPath, kept.root, ids),
+      );
+      const again = await gitsStarted(async () => ({
+        texts: await readBlobs(kept.gitPath, kept.root, ids),
+        file: await readFile(kept.gitPath, kept.root, 'HEAD', 'a.ts'),
+        sizes: await blobSizes(kept.gitPath, kept.root, [
+          newA,
+          large,
+          'f'.repeat(40),
+        ]),
+      }));
+
+      assert.deepStrictEqual(
+        [...first.result],
+        [
+          [oldA, 'one\n'],
+          [newA, 'two\n'],
+        ],
+      );
+      assert.ok(first.gits <= 2, String(first.gits));
+      assert.deepStrictEqual([...again.result.texts], [...first.result]);
+      assert.deepStrictEqual(again.result.file, {
+        content: 'two\n',
+        binary: false,
+      });
+      assert.deepStrictEqual(
+        [...again.result.sizes],
+        [
+          [newA, 4],
+          [large, maxFileSize + 1],
+        ],
+      );
+      assert.strictEqual(again.gits, 0);
+    } finally {
+      keepGitRunningWhile(() => false);
+      keptGits.stopAll();
+      removeFolder(folder);
     }
   });
 

@@ -18,6 +18,7 @@ import {
   type ReadPatch,
 } from './cli/diff';
 import { gitErrorText } from './cli/errorText';
+import { keptGits } from './cli/run';
 import {
   CompareTooLarge,
   compareMaxBytes,
@@ -1379,6 +1380,7 @@ export class GitTool implements Tool<'git'> {
 
   private forgetTab(root: string, tab: TabWork): void {
     this.tabStates.delete(root);
+    keptGits.stopIn(root);
     tab.closed.abort();
     tab.loadingFiles.abort();
     tab.loadingDiff.abort();

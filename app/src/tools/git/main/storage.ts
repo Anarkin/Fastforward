@@ -209,6 +209,10 @@ export class GitStorage {
     );
   }
 
+  get keepGitRunning(): boolean {
+    return this.settings.keepGitRunning;
+  }
+
   get autoFetchMinutes(): number {
     return this.settings.autoFetch ? this.fetchMinutes : 0;
   }

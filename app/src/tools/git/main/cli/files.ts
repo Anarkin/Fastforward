@@ -6,7 +6,7 @@ import { linkMode } from '../../shared/protocol';
 import { isFullHash } from '../../shared/hashes';
 import { strings } from '../../../../shared/strings';
 import { headCommit } from './history';
-import { runGit, runGitBytes, splitNul } from './run';
+import { keptGits, runGit, runGitBytes, splitNul } from './run';
 
 export async function listTree(
   gitPath: string,
@@ -90,6 +90,10 @@ async function linkCheckedOutAsFile(
   ) {
     return false;
   }
+  const [kept] = (await keptInfo(gitPath, cwd, [`:0:${path}`])) ?? [];
+  if (kept !== undefined) {
+    return kept.kind === 'found' && kept.mode === linkMode;
+  }
   const mode = await runGit(
     gitPath,
     cwd,
@@ -119,6 +123,111 @@ function submoduleContent(hash: string | undefined): FileContent {
 const batchInput = (list: readonly string[]) =>
   list.map((id) => `${id}\n`).join('');
 
+const objectFormat = '%(objectname) %(objecttype) %(objectsize) %(objectmode)';
+
+const keptCatFile = ['cat-file', `--batch-command=${objectFormat}`, '-Z'];
+
+type ObjectInfo =
+  | {
+      readonly kind: 'found';
+      readonly id: string;
+      readonly type: string;
+      readonly size: number;
+      readonly mode: string;
+    }
+  | { readonly kind: 'missing' };
+
+function parsedInfo(header: string): ObjectInfo {
+  if (header.endsWith(' missing') || header.endsWith(' ambiguous')) {
+    return { kind: 'missing' };
+  }
+  const [id = '', type = '', size = '', mode = ''] = header.split(' ');
+  return { kind: 'found', id, type, size: Number(size), mode };
+}
+
+async function keptInfo(
+  gitPath: string,
+  cwd: string,
+  names: readonly string[],
+): Promise<ObjectInfo[] | undefined> {
+  const git = await keptGits.use(gitPath, cwd, keptCatFile);
+  if (git === undefined) {
+    return undefined;
+  }
+  return git
+    .request(names.map((name) => `info ${name}\0`).join(''), async (output) => {
+      const infos: ObjectInfo[] = [];
+      for (let index = 0; index < names.length; index++) {
+        infos.push(parsedInfo((await output.until(0)).toString('utf8')));
+      }
+      return infos;
+    })
+    .catch(() => undefined);
+}
+
+async function keptContents(
+  gitPath: string,
+  cwd: string,
+  ids: readonly string[],
+): Promise<Map<string, Buffer> | undefined> {
+  const git = await keptGits.use(gitPath, cwd, keptCatFile);
+  if (git === undefined) {
+    return undefined;
+  }
+  return git
+    .request(ids.map((id) => `contents ${id}\0`).join(''), async (output) => {
+      const read = new Map<string, Buffer>();
+      for (const id of ids) {
+        const header = parsedInfo((await output.until(0)).toString('utf8'));
+        if (header.kind === 'found') {
+          read.set(id, await output.take(header.size));
+          await output.take(1);
+        }
+      }
+      return read;
+    })
+    .catch(() => undefined);
+}
+
+async function keptObjects(
+  gitPath: string,
+  cwd: string,
+  names: readonly string[],
+  limit: number,
+): Promise<ObjectRead[] | undefined> {
+  const infos = await keptInfo(gitPath, cwd, names);
+  if (infos === undefined) {
+    return undefined;
+  }
+  const wanted = infos.flatMap((info) =>
+    info.kind === 'found' && (info.type !== 'blob' || info.size <= limit)
+      ? [info.id]
+      : [],
+  );
+  const contents = await keptContents(gitPath, cwd, wanted);
+  if (contents === undefined) {
+    return undefined;
+  }
+  return infos.map((info): ObjectRead => {
+    if (info.kind === 'missing') {
+      return info;
+    }
+    const content = contents.get(info.id);
+    if (content !== undefined) {
+      return {
+        kind: 'object',
+        id: info.id,
+        type: info.type,
+        mode: info.mode,
+        content,
+      };
+    }
+    return info.type === 'blob' && info.size > limit
+      ? { kind: 'tooLarge' }
+      : { kind: 'missing' };
+  });
+}
+
 export async function blobSizes(
   gitPath: string,
   cwd: string,
@@ -126,6 +235,15 @@ export async function blobSizes(
 ): Promise<Map<string, number>> {
   const sizes = new Map<string, number>();
   if (ids.length === 0) {
+    return sizes;
+  }
+  const kept = await keptInfo(gitPath, cwd, ids);
+  if (kept !== undefined) {
+    for (const info of kept) {
+      if (info.kind === 'found' && info.type === 'blob') {
+        sizes.set(info.id, info.size);
+      }
+    }
     return sizes;
   }
   const checked = await runGit(gitPath, cwd, ['cat-file', '--batch-check'], {
@@ -159,6 +277,10 @@ async function readObjects(
 ): Promise<ObjectRead[]> {
   if (names.length === 0) {
     return [];
+  }
+  const kept = await keptObjects(gitPath, cwd, names, limit);
+  if (kept !== undefined) {
+    return kept;
   }
   const output = await runGitBytes(
     gitPath,

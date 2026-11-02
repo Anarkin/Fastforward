@@ -5,6 +5,7 @@ import { isAbsolute, join, win32 } from 'node:path';
 import type { Readable } from 'node:stream';
 import { strings } from '../../../../shared/strings';
 import { stopTree } from './gitSpawner';
+import { KeptGits } from './keptGit';
 import { GitChild, spawnGit } from './spawnedGit';
 
 const gitConfigArgs = [
@@ -219,6 +220,30 @@ export async function runGitBytes(
     }
   }
 }
+
+export async function startGit(
+  gitPath: string,
+  cwd: string,
+  args: readonly string[],
+): Promise<GitChild> {
+  const monitor = await monitorArgs(gitPath, cwd);
+  const started = gitCommand(gitPath);
+  return keptRunning(
+    spawnGit(started.command, [...gitConfigArgs, ...monitor, ...args], {
+      cwd,
+      env: { ...gitEnv(), ...started.env, GIT_FLUSH: '1' },
+      detached: gitProcessOptions().detached,
+    }),
+  );
+}
+
+let keepingGitRunning = () => false;
+
+export function keepGitRunningWhile(enabled: () => boolean): void {
+  keepingGitRunning = enabled;
+}
+
+export const keptGits = new KeptGits(startGit, () => keepingGitRunning());
 
 const processNotInitialized = 0xc0000142;
 const startAttempts = 3;
@@ -439,6 +464,7 @@ export async function writesEnded(waitTime = writeTime): Promise<void> {
 }
 
 export async function stopRunningGit(waitTime = writeTime): Promise<void> {
+  keptGits.stopAll();
   await Promise.all([
     writesEnded(waitTime),
     ...[...running.keys()]

@@ -24,7 +24,11 @@ import {
 } from '../tools/git/main/cli/locate';
 import { foldersHandedOff, foldersOf, handOff } from './commandLine';
 import { prettyName, systemOf } from './system';
-import { stopRunningGit, writesEnded } from '../tools/git/main/cli/run';
+import {
+  keepGitRunningWhile,
+  stopRunningGit,
+  writesEnded,
+} from '../tools/git/main/cli/run';
 import { errorLine, fileLog, type Log } from '../shell/main/log';
 import { imageRoute } from '../tools/git/shared/images';
 import { iconRoute } from '../tools/commander/shared/icons';
@@ -348,6 +352,7 @@ async function start(asked: readonly string[]): Promise<void> {
   });
   const viewedFiles = path.join(profile, 'viewed-files');
   void fs.promises.rm(viewedFiles, { recursive: true, force: true });
+  keepGitRunningWhile(() => userSettings.settings.tools.git.keepGitRunning);
   const gitTool = new GitTool(
     log,
     git.path,

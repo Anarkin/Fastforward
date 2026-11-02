@@ -15,6 +15,7 @@
 ### Git, `git`
 
 - Use the installed `git` CLI for everything, without bundling one; it needs git 2.52 or later on the PATH
+- Read objects through one `git cat-file --batch-command` kept running per folder, rather than a git started for each read, as each start costs a fraction of a second on Windows; it stops after 30 seconds idle, as an idle git holds pack files Windows then cannot delete, when its tab closes, and at most eight are kept in all; `keepGitRunning` in the settings turns it off, and any failure falls back to a git started for the read
 - Start git from a pool of up to four worker threads rather than the main process, each git on a thread not busy starting another, as starting a process on Windows can hold the thread starting it for hundreds of milliseconds, which held up every message of the app and every git started after it
 - The git tool checks every hash and path the page sends against the history and the repository
 - The commit list is read whole up front with `git rev-list` and kept by the main process per worktree, so the list knows its full size and locations can jump to any commit's position
