@@ -87,7 +87,7 @@ import {
   type RowBreak,
 } from '../../../ui/wordWrap';
 import { snapOffset, watchDevicePixels } from '../../../ui/devicePixels';
-import { followRows, rowPadding } from '../../../ui/rowScroll';
+import { followRows, rowPadding, snappedTop } from '../../../ui/rowScroll';
 import { useTextView } from '../../../ui/textView';
 import {
   areaColumns,
@@ -2194,7 +2194,7 @@ export function DiffView({
   const scrollFrame = useRef<number>(undefined);
   const scrollToTop = useCallback(
     (top: number) => {
-      scrollTarget.current = top;
+      scrollTarget.current = snappedTop(top, lineHeight, Infinity);
       scrollFrame.current ??= requestAnimationFrame(() => {
         scrollFrame.current = undefined;
         const target = scrollTarget.current;
@@ -2207,7 +2207,7 @@ export function DiffView({
         }
       });
     },
-    [virtualizer],
+    [virtualizer, lineHeight],
   );
   useEffect(
     () => () => {

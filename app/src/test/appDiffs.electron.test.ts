@@ -217,7 +217,7 @@ suite('App', () => {
     await page.locator('.commit.working-tree.empty').waitFor();
   });
 
-  test('scrolls the diff by whole lines, each line starting at the top of the view', async () => {
+  test('scrolls the diff by whole lines, each line starting at the top of the view, at every frame while its scrollbar is dragged too rather than between lines and then snapping', async () => {
     const file = path.join(repository.root, 'long.txt');
     fs.writeFileSync(
       file,
@@ -259,6 +259,49 @@ suite('App', () => {
         Math.abs(scrolled.lines - Math.round(scrolled.lines)) < 0.01 &&
           Math.abs(scrolled.offset) < 0.01,
         JSON.stringify(scrolled),
+      );
+
+      await list.hover();
+      const grabbed = await page.locator('.diff-minimap').boundingBox();
+      assert.ok(grabbed, 'the scrollbar of the diff');
+      await list.evaluate((element) => {
+        const offsets: number[] = [];
+        Reflect.set(window, 'lineOffsets', offsets);
+        const painted = new MessageChannel();
+        painted.port1.addEventListener('message', () => {
+          const top = element.getBoundingClientRect().top;
+          const first = [...element.querySelectorAll('.virtual-row')]
+            .map((row) => row.getBoundingClientRect())
+            .filter((box) => box.height > 0 && box.bottom > top + 0.5)
+            .toSorted((one, other) => one.top - other.top)[0];
+          offsets.push((first?.top ?? top) - top);
+          if (Reflect.get(window, 'lineOffsets') === offsets) {
+            requestAnimationFrame(() => painted.port2.postMessage(null));
+          }
+        });
+        painted.port1.start();
+        requestAnimationFrame(() => painted.port2.postMessage(null));
+      });
+      const x = grabbed.x + grabbed.width / 2;
+      const y = grabbed.y + grabbed.height / 2;
+      await page.mouse.move(x, y);
+      await page.mouse.down();
+      for (let step = 1; step <= 30; step++) {
+        await page.mouse.move(x, y + step);
+        await page.evaluate(
+          () => new Promise((resolve) => requestAnimationFrame(resolve)),
+        );
+      }
+      await page.mouse.up();
+      const offsets = await page.evaluate(() => {
+        const recorded: unknown = Reflect.get(window, 'lineOffsets');
+        Reflect.set(window, 'lineOffsets', undefined);
+        return Array.isArray(recorded) ? recorded.map(Number) : [];
+      });
+      assert.ok((await place()).scrolled > scrolled.scrolled);
+      assert.deepStrictEqual(
+        offsets.filter((offset) => Math.abs(offset) >= 0.01),
+        [],
       );
     } finally {
       await repository.git('checkout', '-q', 'HEAD', '--', 'long.txt');
