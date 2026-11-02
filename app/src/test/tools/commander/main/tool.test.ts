@@ -277,6 +277,39 @@ suite('Commander tool', () => {
       assert.deepStrictEqual(watched(), [opened, root].toSorted());
     });
 
+    test('moves a side whose folder went while its tab was hidden up to the nearest folder still there once shown again, without a word, as it said it could not open the folder and kept listing its files', async () => {
+      const gone = path.join(opened, 'gone');
+      fs.mkdirSync(gone, { recursive: true });
+      const listed: Record<string, Listed> = {
+        [root]: [],
+        [opened]: [file('kept.txt')],
+        [gone]: [file('a.txt')],
+      };
+      const { tool, page, notices, watched } = commander(listed);
+      const shown = { ...tab, root: gone };
+      await tool.show(page, shown);
+      tool.hide(page);
+
+      fs.rmSync(gone, { recursive: true });
+      delete listed[gone];
+      await tool.show(page, shown);
+
+      assert.deepStrictEqual(
+        page.listings().at(-1),
+        `right ${opened} ↑: kept.txt [gone]`,
+      );
+      assert.deepStrictEqual(notices, []);
+      assert.deepStrictEqual(watched(), [opened, root].toSorted());
+    });
+
+    test('says it could not open the root once even the root is gone, rather than moving up from it again and again', async () => {
+      const { tool, page, notices } = commander({});
+
+      await tool.show(page, { ...tab, root: path.join(opened, 'missing') });
+
+      assert.ok(notices.length > 0);
+    });
+
     test('tells the size of a file viewed and reads its rows around a place, answering each request by its number', async () => {
       const notes = path.join(opened, 'notes.txt');
       fs.writeFileSync(notes, 'one\ntwo\nthree\nfour\n');

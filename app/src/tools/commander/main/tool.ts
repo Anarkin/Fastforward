@@ -1060,6 +1060,14 @@ export class CommanderTool implements Tool<'commander'> {
       if (pane.asked !== asked) {
         return;
       }
+      const nearest =
+        (how === 'refresh' || how === 'show') && isGone(error)
+          ? await this.nearestFolder(folder)
+          : folder;
+      if (nearest !== folder) {
+        await this.list(page, tab, side, nearest, 'show');
+        return;
+      }
       if (how !== 'refresh') {
         if (isDenied(error) && fallback !== undefined) {
           await this.list(page, tab, side, fallback, how);
@@ -1082,14 +1090,6 @@ export class CommanderTool implements Tool<'commander'> {
           });
         }
         this.postListing(page, tab, side, pane, undefined);
-      } else if (isGone(error)) {
-        await this.list(
-          page,
-          tab,
-          side,
-          await this.nearestFolder(folder),
-          'show',
-        );
       }
       return;
     }
