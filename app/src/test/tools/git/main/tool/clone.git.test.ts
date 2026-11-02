@@ -275,6 +275,26 @@ suite('Git tool cloning repositories', () => {
     });
   });
 
+  test('clones once when asked twice at once, as a second git refused the folder and removed what the first was cloning into it', async () => {
+    const parent = into('twice');
+    const target = path.join(parent, 'app');
+    await withView(log, [], async (view) => {
+      await view.connection.receive({ type: 'openClone' });
+      const ask = { type: 'clone', url, folder: parent, name: 'app' } as const;
+      await Promise.all([
+        view.connection.receive(ask),
+        view.connection.receive(ask),
+      ]);
+      await view.view.idle();
+      assert.ok(fs.existsSync(path.join(target, 'readme.md')));
+      assert.strictEqual(
+        info.filter((line) => line === `Cloning ${url} into ${target}`).length,
+        1,
+      );
+      assert.strictEqual(lastView(view), undefined);
+    });
+  });
+
   test('stops a clone on asking, removing the folder it made and giving back the form as it was', async () => {
     const parent = into('stopped');
     await withView(log, [], async (view) => {

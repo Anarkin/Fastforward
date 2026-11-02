@@ -55,6 +55,7 @@ type Form = Extract<CloneView, { readonly kind: 'form' }>;
 export class Clones {
   private shown = false;
   private running: Running | undefined;
+  private starting = false;
   private form: Form | undefined;
 
   constructor(
@@ -120,9 +121,18 @@ export class Clones {
   }
 
   private async start(ask: CloneAsk): Promise<void> {
-    if (this.running !== undefined) {
+    if (this.running !== undefined || this.starting) {
       return;
     }
+    this.starting = true;
+    try {
+      await this.started(ask);
+    } finally {
+      this.starting = false;
+    }
+  }
+
+  private async started(ask: CloneAsk): Promise<void> {
     const problem =
       cloneProblem(ask) ?? (await cloneTargetProblem(ask.folder, ask.name));
     if (problem !== undefined) {
