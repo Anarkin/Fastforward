@@ -162,6 +162,7 @@ interface RunOptions {
   readonly signal?: AbortSignal;
   readonly env?: NodeJS.ProcessEnv;
   readonly runsUserCode?: boolean;
+  readonly readsNoRepository?: boolean;
   readonly writes?: boolean;
   readonly onOutput?: (chunk: Buffer) => void;
   readonly onErrorOutput?: (chunk: Buffer) => void;
@@ -201,7 +202,9 @@ export async function runGitBytes(
   options: RunOptions = {},
 ): Promise<Buffer> {
   options.signal?.throwIfAborted();
-  const monitor = await monitorArgs(gitPath, cwd);
+  const monitor = options.readsNoRepository
+    ? []
+    : await monitorArgs(gitPath, cwd);
   for (let attempt = 1; ; attempt++) {
     const ran = await runGitOnce(
       gitPath,

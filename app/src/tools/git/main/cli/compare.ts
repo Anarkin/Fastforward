@@ -132,6 +132,7 @@ export async function comparedFilesPatch(
     ],
     {
       okExitCodes: [0, 1],
+      readsNoRepository: true,
       signal,
       onErrorOutput: (chunk) => errors.push(chunk),
     },

@@ -11,6 +11,7 @@ import {
   filesAlike,
 } from '../../../../../tools/git/main/cli/compare';
 import { parsePatch } from '../../../../../tools/git/page/diff';
+import { replaceBuiltin } from '../../../../builtins';
 import {
   installedGit,
   removeFolder,
@@ -105,6 +106,39 @@ suite('Comparing two files outside any repository', () => {
         new: at('right side', 'copy.txt'),
       }),
       '',
+    );
+  });
+
+  test('starts git only for the diff, not first to read whether a file system monitor is on, as no repository is read and starting git on Windows may take seconds', async () => {
+    const fresh = at('fresh folder');
+    fs.mkdirSync(fresh);
+    fs.writeFileSync(path.join(fresh, 'one.txt'), 'one\n');
+    fs.writeFileSync(path.join(fresh, 'two.txt'), 'two\n');
+    const started: string[][] = [];
+    const childProcess = process.getBuiltinModule('node:child_process');
+    const { spawn } = childProcess;
+    replaceBuiltin(
+      childProcess,
+      'spawn',
+      (command: string, args: readonly string[], options: object) => {
+        started.push([...args]);
+        return spawn(command, args, options);
+      },
+    );
+    try {
+      await comparedFilesPatch(gitPath, {
+        old: path.join(fresh, 'one.txt'),
+        new: path.join(fresh, 'two.txt'),
+      });
+    } finally {
+      replaceBuiltin(childProcess, 'spawn', spawn);
+    }
+
+    assert.deepStrictEqual(
+      started.map((args) =>
+        args.find((arg) => !arg.startsWith('-') && !arg.includes('=')),
+      ),
+      ['diff'],
     );
   });
 
