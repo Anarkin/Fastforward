@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
+import { act } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { strings } from '../../../../shared/strings';
@@ -61,6 +62,7 @@ import {
   splitPairs,
   type DiffRow,
   DiffSkeleton,
+  TextProbe,
 } from '../../../../tools/git/page/diffView';
 import { ImageDiff, imagePanes } from '../../../../tools/git/page/imagePreview';
 import { sideBySideWords } from '../../../../tools/git/page/pairing';
@@ -2705,5 +2707,59 @@ suite('Renamed files', () => {
       { borderBoxSize: [{ blockSize: 0 }] } as unknown as ResizeObserverEntry,
     );
     assert.strictEqual(Math.abs(nothing), 0);
+  });
+
+  test('measures the height of a line of code as the diff is first drawn, not only once it is drawn again, so a diff shown anew, as on changing tabs, does not draw its rows first as tall as a guess', async () => {
+    const dom = new JSDOM('<!doctype html><main></main>');
+    const lineHeight = 17;
+    dom.window.matchMedia = () =>
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      ({
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      }) as unknown as MediaQueryList;
+    const globals = {
+      window: dom.window,
+      document: dom.window.document,
+      devicePixelRatio: 1,
+      getComputedStyle: (element: Element) =>
+        Object.assign(Object.create(null), {
+          lineHeight: element.classList.contains('diff-line')
+            ? `${lineHeight}px`
+            : 'normal',
+          letterSpacing: 'normal',
+        }),
+      ResizeObserver: class {
+        observe(): void {}
+        disconnect(): void {}
+      },
+      IS_REACT_ACT_ENVIRONMENT: true,
+    };
+    const saved = Object.fromEntries(
+      Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
+    );
+    Object.assign(globalThis, globals);
+    try {
+      const { createRoot } = await import('react-dom/client');
+      const main = dom.window.document.querySelector('main');
+      assert.ok(main);
+      const measured: number[] = [];
+      const root = createRoot(main);
+      await act(async () => {
+        root.render(
+          <TextProbe
+            onMeasure={(_width, _font, _padding, _scale, line) =>
+              measured.push(line)
+            }
+          />,
+        );
+      });
+      assert.deepStrictEqual(measured, [lineHeight]);
+      await act(async () => {
+        root.unmount();
+      });
+    } finally {
+      Object.assign(globalThis, saved);
+    }
   });
 });

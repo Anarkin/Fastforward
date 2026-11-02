@@ -1654,8 +1654,8 @@ function sameSnap(one: CodeSnap, other: CodeSnap): boolean {
   );
 }
 
-function lineHeightOf(line: HTMLElement | null): number {
-  const height = line ? parseFloat(getComputedStyle(line).lineHeight) : NaN;
+function lineHeightOf(line: HTMLElement): number {
+  const height = parseFloat(getComputedStyle(line).lineHeight);
   return height > 0 ? height : uniformHeight;
 }
 
@@ -1701,7 +1701,7 @@ export function textWidths(
   };
 }
 
-const TextProbe = memo(function TextProbe({
+export const TextProbe = memo(function TextProbe({
   onMeasure,
 }: {
   onMeasure: (
@@ -1713,29 +1713,32 @@ const TextProbe = memo(function TextProbe({
     spacing: number,
   ) => void;
 }) {
-  const line = useRef<HTMLDivElement>(null);
+  const sample = useRef<HTMLSpanElement>(null);
   const text = useRef<HTMLSpanElement>(null);
   const observe = useCallback(
-    (sample: HTMLSpanElement) => {
+    (line: HTMLDivElement) => {
+      const probe = sample.current;
+      const after = text.current;
+      if (!probe || !after) {
+        return undefined;
+      }
       const measure = () =>
         onMeasure(
-          sample.getBoundingClientRect().width / wrapSample.length,
-          fontOf(sample),
-          line.current && text.current
-            ? wordPadding(
-                line.current.getBoundingClientRect(),
-                text.current.getBoundingClientRect(),
-                devicePixelRatio,
-              )
-            : unpadded,
+          probe.getBoundingClientRect().width / wrapSample.length,
+          fontOf(probe),
+          wordPadding(
+            line.getBoundingClientRect(),
+            after.getBoundingClientRect(),
+            devicePixelRatio,
+          ),
           devicePixelRatio,
-          lineHeightOf(line.current),
-          spacingOf(sample),
+          lineHeightOf(line),
+          spacingOf(probe),
         );
       measure();
       const stopWatching = watchDevicePixels(measure);
       const observer = new ResizeObserver(measure);
-      observer.observe(sample);
+      observer.observe(probe);
       return () => {
         observer.disconnect();
         stopWatching();
@@ -1745,9 +1748,9 @@ const TextProbe = memo(function TextProbe({
   );
   return (
     <div className="wrap-probe" aria-hidden>
-      <div className="diff-line" ref={line}>
+      <div className="diff-line" ref={observe}>
         <span className="code">
-          <span className="wrap-sample" ref={observe}>
+          <span className="wrap-sample" ref={sample}>
             {wrapSample}
           </span>
           <span ref={text}>{wrapSample}</span>
