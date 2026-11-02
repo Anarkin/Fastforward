@@ -451,6 +451,7 @@ export function Diff({
         sideBySide={sideBySide}
         wordWrap={wordWrap}
         showWhitespace={showWhitespace}
+        finding={finding}
         origin={origin}
         matches={matches}
         current={shown}

@@ -35,6 +35,7 @@ export function ByteBody({
   layout,
   viewing,
   find,
+  finding = false,
   place,
   onPlace,
   post,
@@ -43,6 +44,7 @@ export function ByteBody({
   layout: ByteLayout;
   viewing: Viewing;
   find?: ViewerFind;
+  finding?: boolean;
   place: React.RefObject<number>;
   onPlace: (byte: number) => void;
   post: (message: CommanderToHost) => void;
@@ -161,6 +163,7 @@ export function ByteBody({
 
   return (
     <ScrollBody
+      barPinned={finding}
       thumb={
         rowCount === 0
           ? undefined

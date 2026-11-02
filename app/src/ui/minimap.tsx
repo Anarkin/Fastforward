@@ -143,12 +143,14 @@ export function Minimap({
   scroller,
   viewport,
   total,
+  pinned = false,
   onScroll,
 }: {
   marks: readonly MinimapMark[];
   scroller: RefObject<Scroller | null>;
   viewport: number;
   total: number;
+  pinned?: boolean;
   onScroll: (top: number) => void;
 }) {
   const subscribe = useCallback(
@@ -193,7 +195,7 @@ export function Minimap({
   return (
     <div
       ref={element}
-      className={`diff-minimap ${shown || dragging ? 'shown' : ''} ${dragging ? 'dragging' : ''}`}
+      className={`diff-minimap ${shown || dragging || pinned ? 'shown' : ''} ${dragging ? 'dragging' : ''}`}
       onPointerDown={(event) => {
         if (grabPointer(event)) {
           setDragging(true);

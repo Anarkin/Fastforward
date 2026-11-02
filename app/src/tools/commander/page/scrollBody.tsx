@@ -100,6 +100,7 @@ export function ScrollBody({
   onSideways,
   reveal,
   rowText,
+  barPinned = false,
   children,
 }: {
   thumb: Thumb | undefined;
@@ -112,6 +113,7 @@ export function ScrollBody({
   onSideways?: (column: number) => void;
   reveal?: { readonly column: number; readonly asked: number };
   rowText?: (row: Element) => RowText | undefined;
+  barPinned?: boolean;
   children: React.ReactNode;
 }) {
   const body = useRef<HTMLDivElement>(null);
@@ -333,7 +335,7 @@ export function ScrollBody({
           }}
         >
           <div
-            className={`${overlayScrollbarClass} viewer-thumb${barShown || dragging ? ' shown' : ''}${dragging ? ' dragging' : ''}`}
+            className={`${overlayScrollbarClass} viewer-thumb${barShown || dragging || barPinned ? ' shown' : ''}${dragging ? ' dragging' : ''}`}
             style={{
               top:
                 heldAt === undefined ? box.top : heldAt * (track - box.height),

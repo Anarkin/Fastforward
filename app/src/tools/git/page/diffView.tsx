@@ -1845,6 +1845,7 @@ export function DiffView({
   sideBySide,
   wordWrap,
   showWhitespace = false,
+  finding = false,
   origin,
   viewOf,
 }: {
@@ -1865,6 +1866,7 @@ export function DiffView({
   sideBySide: boolean;
   wordWrap: boolean;
   showWhitespace?: boolean;
+  finding?: boolean;
   viewOf?: (file: number) => (() => void) | undefined;
 }) {
   const list = useRef<HTMLDivElement>(null);
@@ -2607,6 +2609,7 @@ export function DiffView({
         scroller={list}
         viewport={virtualizer.scrollRect?.height ?? 0}
         total={virtualizer.getTotalSize()}
+        pinned={finding}
         onScroll={(top) => virtualizer.scrollToOffset(top)}
       />
       <div

@@ -22,7 +22,7 @@ const line = (kind: 'added' | 'removed' | 'context'): DiffRow => ({
   line: { kind, text: '', oldNumber: undefined, newNumber: undefined },
 });
 
-function minimap(viewport: number): string {
+function minimap(viewport: number, pinned = false): string {
   const scroller = {
     scrollTop: 100,
     addEventListener: () => {},
@@ -34,6 +34,7 @@ function minimap(viewport: number): string {
       scroller={{ current: scroller }}
       viewport={viewport}
       total={400}
+      pinned={pinned}
       onScroll={() => {}}
     />,
   );
@@ -156,6 +157,11 @@ suite('Minimap', () => {
     assert.match(html, /class="minimap-mark added" style="top:25%;height:50%"/);
     assert.match(html, /class="minimap-viewport" style="top:25%;height:50%"/);
     assert.doesNotMatch(minimap(400), /minimap-viewport/);
+  });
+
+  test('shows the part in view while pinned, as while finding, so jumping from match to match shows where in the diff it is, and hides it otherwise until scrolled or pointed at', () => {
+    assert.match(minimap(200, true), /class="diff-minimap shown/);
+    assert.doesNotMatch(minimap(200), /shown/);
   });
 
   test('ticks the minimap where the matched rows are, once for each run of them', () => {

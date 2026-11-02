@@ -246,6 +246,7 @@ export function TextBody({
   encoding,
   viewing,
   find,
+  finding = false,
   place,
   onPlace,
   post,
@@ -255,6 +256,7 @@ export function TextBody({
   encoding: TextEncoding;
   viewing: Viewing;
   find?: ViewerFind;
+  finding?: boolean;
   place: React.RefObject<number>;
   onPlace: (byte: number) => void;
   post: (message: CommanderToHost) => void;
@@ -592,6 +594,7 @@ export function TextBody({
 
   return (
     <ScrollBody
+      barPinned={finding}
       thumb={textThumb(loaded, screen, size ?? 0, estimate?.perRow, lastTop)}
       onScreen={setScreen}
       onColumns={setColumns}
