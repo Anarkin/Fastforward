@@ -7,7 +7,9 @@ import {
   useState,
 } from 'react';
 import { moveInGrid, tileColumns, tileWidthOf } from './tiles';
-import { iconUrl, type IconSource } from '../shared/icons';
+import { iconUrl, thumbnailUrl, type IconSource } from '../shared/icons';
+import { imageType, vectorType } from '../../../shared/images';
+import { ThumbnailImage } from '../../../ui/thumbnails';
 import { commanderKeymap } from '../shared/keymap';
 import { clicked, keymap, letterTyped } from '../../../shell/shared/keymap';
 import { parentFolder, type Side } from '../shared/protocol';
@@ -91,6 +93,37 @@ function RowIcon({
     <FolderIcon />
   ) : (
     <FileIcon />
+  );
+}
+
+function TileImage({
+  row,
+  source,
+  box,
+}: {
+  row: Row;
+  source: IconSource | undefined;
+  box: number;
+}) {
+  const icon = (
+    <span className="commander-icon">
+      <RowIcon row={row} source={source} />
+    </span>
+  );
+  const type = imageType(row.key);
+  if (source === undefined || row.entry === undefined || type === undefined) {
+    return icon;
+  }
+  return (
+    <ThumbnailImage
+      url={thumbnailUrl(
+        source,
+        `${row.entry.size ?? ''}:${row.entry.modified ?? ''}`,
+      )}
+      box={box}
+      vector={type === vectorType}
+      fallback={icon}
+    />
   );
 }
 
@@ -328,9 +361,7 @@ export function Pane({
       {...itemEvents(row, index)}
     >
       <div className="commander-thumbnail" style={{ height: thumbnailSize }}>
-        <span className="commander-icon">
-          <RowIcon row={row} source={iconSource(row)} />
-        </span>
+        <TileImage row={row} source={iconSource(row)} box={thumbnailSize} />
       </div>
       <div className="commander-tile-name">
         <span className="commander-tile-base">

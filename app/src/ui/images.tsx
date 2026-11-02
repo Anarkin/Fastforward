@@ -216,7 +216,7 @@ export function realSizeOf(
 const subscribeToPixelRatio = (onChange: () => void) =>
   watchDevicePixels(onChange);
 
-function usePixelRatio(): number {
+export function usePixelRatio(): number {
   return useSyncExternalStore(
     subscribeToPixelRatio,
     () => window.devicePixelRatio,

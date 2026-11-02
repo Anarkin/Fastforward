@@ -24,6 +24,7 @@ import type {
 } from '../../../../tools/commander/shared/settings';
 import {
   iconUrl,
+  thumbnailUrl,
   viewerIconUrl,
 } from '../../../../tools/commander/shared/icons';
 import type { ElevatedFileSystem } from '../../../../tools/commander/main/elevated';
@@ -268,6 +269,46 @@ suite('Commander tool', () => {
     });
 
     afterEach(() => removeFolder(opened));
+
+    test('serves an image a side lists for its thumbnail, and nothing else, nor an image over the size previewed', async () => {
+      const png = Buffer.from('not decoded here');
+      fs.writeFileSync(path.join(opened, 'dot.png'), png);
+      fs.writeFileSync(path.join(opened, 'notes.txt'), 'notes');
+      fs.writeFileSync(path.join(opened, 'huge.png'), png);
+      fs.mkdirSync(path.join(opened, 'pics.png'));
+      const { tool, page } = commander({
+        [root]: [],
+        [opened]: [
+          file('dot.png'),
+          file('notes.txt'),
+          folder('pics.png'),
+          { ...file('huge.png'), size: maxImageSize + 1 },
+        ],
+      });
+      await tool.show(page, { ...tab, root: opened });
+      const thumbnail = async (query: Record<string, string>) => {
+        const response = await tool.thumbnail(
+          new URL(
+            `fastforward://app${thumbnailUrl({ tab: '1', side: 'right', folder: opened, name: 'dot.png', ...query }, '1:0')}`,
+          ),
+        );
+        return response.ok
+          ? [response.headers.get('content-type'), await response.text()]
+          : response.status;
+      };
+
+      assert.deepStrictEqual(await thumbnail({}), [
+        'image/png',
+        'not decoded here',
+      ]);
+      assert.strictEqual(await thumbnail({ name: 'notes.txt' }), 404);
+      assert.strictEqual(await thumbnail({ name: 'pics.png' }), 404);
+      assert.strictEqual(await thumbnail({ name: 'secret.png' }), 404);
+      assert.strictEqual(await thumbnail({ name: 'huge.png' }), 413);
+      assert.strictEqual(await thumbnail({ folder: root }), 404);
+      assert.strictEqual(await thumbnail({ side: 'left' }), 404);
+      assert.strictEqual(await thumbnail({ tab: '2' }), 404);
+    });
 
     test('moves a side whose folder is gone up to the nearest folder still there, without a word', async () => {
       const gone = path.join(opened, 'gone', 'deeper');

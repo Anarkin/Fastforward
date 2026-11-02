@@ -61,7 +61,12 @@ import {
 } from '../../../shared/pdf';
 import type { ElevatedFileSystem } from './elevated';
 import { Icons } from './icons';
-import { iconSourceOf, viewerIconUrl, viewerOfIcon } from '../shared/icons';
+import {
+  iconSourceOf,
+  thumbnailSourceOf,
+  viewerIconUrl,
+  viewerOfIcon,
+} from '../shared/icons';
 
 interface PdfPlaceStore {
   readonly of: (fingerprint: string) => Promise<PdfPlace | undefined>;
@@ -489,6 +494,28 @@ export class CommanderTool implements Tool<'commander'> {
       return new Response(null, { status: 404 });
     }
     return this.iconResponse(path.join(pane.folder, entry.name));
+  }
+
+  async thumbnail(url: URL): Promise<Response> {
+    const source = thumbnailSourceOf(url);
+    const pane = source && this.panes.get(source.tab)?.[source.side];
+    const entry = pane?.entries?.find((each) => each.name === source?.name);
+    const type = entry && imageType(entry.name);
+    if (
+      pane === undefined ||
+      pane.folder !== source?.folder ||
+      entry === undefined ||
+      entry.folder ||
+      type === undefined
+    ) {
+      return new Response(null, { status: 404 });
+    }
+    if ((entry.size ?? 0) > maxImageSize) {
+      return new Response(null, { status: 413 });
+    }
+    return fileResponse(path.join(pane.folder, entry.name), type, null).catch(
+      () => new Response(null, { status: 404 }),
+    );
   }
 
   private async iconResponse(file: string): Promise<Response> {

@@ -95,6 +95,22 @@ suite('App commander', () => {
         ),
       );
 
+  const thumbnailed = () =>
+    right()
+      .locator('.virtual-rows')
+      .evaluate((list) => {
+        const shown = list.getBoundingClientRect();
+        return [...list.querySelectorAll('.commander-tile')]
+          .filter((tile) => tile.querySelector('img.thumbnail-image'))
+          .map((tile) => {
+            const box = tile.getBoundingClientRect();
+            return {
+              name: tile.querySelector('.commander-tile-name')?.textContent,
+              inView: box.bottom > shown.top && box.top < shown.bottom,
+            };
+          });
+      });
+
   const markedNames = () =>
     right().locator('.commander-row.marked .commander-name').allTextContents();
 
@@ -1905,6 +1921,133 @@ suite('App commander', () => {
     fs.rmSync(tiles, { recursive: true });
     await waitFor(
       async () => !(await rowNames()).includes('tiles'),
+      'the folder to be gone from the list',
+    );
+  });
+
+  test('shows an image as a thumbnail of it fitted to its tile in pixels of the screen, a small one at its own size, an SVG drawn as it is, and the icon for other files', async () => {
+    const pictures = path.join(opened, 'pictures');
+    fs.mkdirSync(pictures);
+    fs.writeFileSync(path.join(pictures, 'wide.png'), grayPng(600, 300));
+    fs.writeFileSync(path.join(pictures, 'small.png'), grayPng(20, 10));
+    fs.writeFileSync(
+      path.join(pictures, 'logo.svg'),
+      '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="400" height="200"/></svg>',
+    );
+    fs.writeFileSync(path.join(pictures, 'notes.txt'), 'notes');
+    const thumbnailOf = (name: string) =>
+      right()
+        .locator('.commander-tile', { hasText: name })
+        .locator('img.thumbnail-image')
+        .evaluate((image: HTMLImageElement) => ({
+          width: Math.round(image.getBoundingClientRect().width),
+          height: Math.round(image.getBoundingClientRect().height),
+          pixels: image.naturalWidth,
+          ratio: devicePixelRatio,
+          complete: image.complete && image.naturalWidth > 0,
+        }))
+        .catch(() => undefined);
+
+    await select('pictures');
+    await page.keyboard.press('Enter');
+    await waitFor(
+      async () => (await rowNames()).includes('wide.png'),
+      'the files of the folder',
+    );
+    await page.keyboard.press('ControlOrMeta+2');
+    await waitFor(
+      async () => (await thumbnailOf('wide.png'))?.complete === true,
+      'the thumbnail of the wide image',
+    );
+    const wide = await thumbnailOf('wide.png');
+    assert.deepStrictEqual(
+      { width: wide?.width, height: wide?.height },
+      { width: 144, height: 72 },
+    );
+    assert.strictEqual(wide?.pixels, Math.round(144 * (wide?.ratio ?? 1)));
+    await waitFor(
+      async () => (await thumbnailOf('small.png'))?.complete === true,
+      'the thumbnail of the small image',
+    );
+    const small = await thumbnailOf('small.png');
+    assert.deepStrictEqual(
+      { width: small?.width, height: small?.height },
+      { width: 20, height: 10 },
+    );
+    await waitFor(
+      async () => (await thumbnailOf('logo.svg'))?.complete === true,
+      'the SVG drawn',
+    );
+    const logo = await thumbnailOf('logo.svg');
+    assert.deepStrictEqual(
+      { width: logo?.width, height: logo?.height },
+      { width: 144, height: 72 },
+    );
+    const notes = right().locator('.commander-tile', { hasText: 'notes.txt' });
+    await notes.locator('.commander-icon').waitFor();
+    assert.strictEqual(await notes.locator('img.thumbnail-image').count(), 0);
+
+    await page.keyboard.press('ControlOrMeta+1');
+    await waitFor(
+      async () => (await right().locator('.commander-tile').count()) === 0,
+      'the details again',
+    );
+    await page.keyboard.press('Backspace');
+    await waitFor(
+      async () => (await rowNames()).includes('notes.txt'),
+      'the folder above',
+    );
+    fs.rmSync(pictures, { recursive: true });
+    await waitFor(
+      async () => !(await rowNames()).includes('pictures'),
+      'the folder to be gone from the list',
+    );
+  });
+
+  test('makes the thumbnails of the tiles in view only, so a folder of many images shows those on screen first, and those further down once scrolled to', async () => {
+    const many = path.join(opened, 'many');
+    fs.mkdirSync(many);
+    const image = grayPng(600, 300);
+    for (let index = 10; index < 70; index++) {
+      fs.writeFileSync(path.join(many, `p${index}.png`), image);
+    }
+    await select('many');
+    await page.keyboard.press('Enter');
+    await waitFor(
+      async () => (await rowNames()).includes('p69.png'),
+      'the files of the folder',
+    );
+    await page.keyboard.press('ControlOrMeta+2');
+    await waitFor(
+      async () => (await thumbnailed()).some((each) => each.name === 'p10.png'),
+      'the first thumbnails',
+    );
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const first = await thumbnailed();
+    assert.ok(first.length > 0 && first.length < 60, String(first.length));
+    assert.ok(
+      first.every((each) => each.inView),
+      JSON.stringify(first.filter((each) => !each.inView)),
+    );
+    await page.keyboard.press('End');
+    await waitFor(
+      async () => (await thumbnailed()).some((each) => each.name === 'p69.png'),
+      'the thumbnail of the last image once scrolled to',
+    );
+
+    await page.keyboard.press('ControlOrMeta+1');
+    await waitFor(
+      async () => (await right().locator('.commander-tile').count()) === 0,
+      'the details again',
+    );
+    await page.keyboard.press('Backspace');
+    await waitFor(
+      async () => (await rowNames()).includes('notes.txt'),
+      'the folder above',
+    );
+    fs.rmSync(many, { recursive: true });
+    await waitFor(
+      async () => !(await rowNames()).includes('many'),
       'the folder to be gone from the list',
     );
   });

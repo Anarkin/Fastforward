@@ -400,3 +400,14 @@
 .commander-tile-extension {
   flex: none;
 }
+
+.commander-thumbnail .thumbnail-slot {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.commander-thumbnail .thumbnail-image {
+  flex: none;
+}
