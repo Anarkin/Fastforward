@@ -45,6 +45,20 @@ suite('Finding text in a file viewed', () => {
     );
   });
 
+  test('gives the bytes of matches after bytes that are not UTF-8 by the bytes each replaced character stood for, as each was counted as the three bytes of the character replacing it', async () => {
+    const { read, size } = inMemory(
+      Buffer.concat([
+        Buffer.from('caf'),
+        Buffer.from([0xe9, 0xe9, 0xe9, 0xe9, 0xf0, 0x9f, 0x98]),
+        Buffer.from(' é needle', 'utf8'),
+      ]),
+    );
+
+    const found = await findInFile(read, size, 'needle', 'utf-8');
+
+    assert.deepStrictEqual(found?.matches, [{ start: 14, end: 20 }]);
+  });
+
   test('gives the bytes of matches in UTF-16 and in a code page of a byte a character', async () => {
     const little = inMemory(Buffer.from('ab Ő ab', 'utf16le'));
     assert.deepStrictEqual(
