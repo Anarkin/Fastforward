@@ -145,7 +145,7 @@ suite('Commit diffs read through a git kept running', () => {
     }
   });
 
-  test('reads the files of a commit and of those after it right though a file is named as what ends an answer, rather than stopping at it', async () => {
+  test('reads the files of a commit and of those after it right though a file is named as what ends an answer, as a file can be named as the marker', async () => {
     const { gitPath, root } = repository;
     const [blob = ''] = await repository.resolve('HEAD:a.txt');
     const tree = async (...names: string[]) =>

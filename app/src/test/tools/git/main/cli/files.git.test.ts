@@ -328,6 +328,29 @@ suite('Repository files', () => {
     }
   });
 
+  test('reads a name no object id fixes, such as a path in the index, through a git started for it rather than the one kept, as a git kept running reads the index once and would answer for it as it was', async () => {
+    const folder = tempFolder('kept-index');
+    keepGitRunningWhile(() => true);
+    try {
+      const kept = await tempRepository(folder);
+      await kept.commit('first', { 'a.txt': 'one\n' });
+      const [first = ''] = await kept.resolve(':0:a.txt');
+      const before = await blobSizes(kept.gitPath, kept.root, [':0:a.txt']);
+      fs.writeFileSync(path.join(kept.root, 'a.txt'), 'three\n');
+      await kept.git('add', 'a.txt');
+      const [staged = ''] = await kept.resolve(':0:a.txt');
+
+      const after = await blobSizes(kept.gitPath, kept.root, [':0:a.txt']);
+
+      assert.deepStrictEqual([...before], [[first, 4]]);
+      assert.deepStrictEqual([...after], [[staged, 6]]);
+    } finally {
+      keepGitRunningWhile(() => false);
+      keptGits.stopAll();
+      removeFolder(folder);
+    }
+  });
+
   test('reads a file at a commit with one git', async () => {
     assert.deepStrictEqual(
       await gitsStarted(() =>

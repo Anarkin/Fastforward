@@ -43,7 +43,7 @@ const imageOf = (src: string | null | undefined) =>
 suite('Diagrams', () => {
   afterAll(() => window.close());
 
-  test('draws each Mermaid code block as an image of its SVG, sized by its view box, hiding its code and leaving other code blocks', async () => {
+  test('draws each Mermaid code block as an image of its SVG sized by its view box, hiding its code and leaving other code blocks, so the styles a document puts in a diagram cannot reach the page', async () => {
     const element = preview(
       ['mermaid', 'graph TD\n  A --> B\n'],
       ['ts', 'const a = 1;\n'],

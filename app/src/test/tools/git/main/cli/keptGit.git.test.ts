@@ -78,7 +78,7 @@ suite('A git kept running', () => {
     );
   });
 
-  test('answers every request through the one git it keeps running for a repository and command', async () => {
+  test('answers every request through the one git it keeps running for a repository and command, as starting git costs a fraction of a second on Windows', async () => {
     const gitPath = await installedGit();
     const started: GitChild[] = [];
     const kept = new KeptGits(counting(started));

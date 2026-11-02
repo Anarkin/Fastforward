@@ -9,7 +9,7 @@ const third = { page: 3, zoom: 125, left: 0, top: 500 } as const;
 const tenth = { page: 10, zoom: 'page-width', left: -4, top: 80 } as const;
 
 suite('Places in PDFs', () => {
-  test('keeps the place in a PDF by its ID across restarts, with its path and when it was read', async () => {
+  test('keeps the place in a PDF by its ID across restarts, with its path and when it was read, so it follows the file when moved', async () => {
     const folder = tempFolder('pdf-places');
     try {
       const file = path.join(folder, 'pdf-places.json');

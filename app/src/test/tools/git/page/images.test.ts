@@ -297,7 +297,7 @@ suite('Image cache', () => {
     assert.deepStrictEqual(fetched, ['a']);
   });
 
-  test('tells an image too large to preview from one that failed, and tries the failed one again', async () => {
+  test('tells an image too large to preview from one that failed by how the app answers its fetch, rather than having it sent as a message, and tries the failed one again', async () => {
     const { cache, fetched } = fakeImages({
       large: () => Promise.resolve(new Response(null, { status: 413 })),
       missing: () => Promise.resolve(new Response(null, { status: 404 })),
