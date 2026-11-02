@@ -3,6 +3,7 @@ import { suite, test } from 'vitest';
 import {
   firstMode,
   previewOf,
+  previewUrl,
 } from '../../../../tools/commander/page/previews';
 
 suite('Previews of a file viewed', () => {
@@ -19,5 +20,22 @@ suite('Previews of a file viewed', () => {
     assert.strictEqual(firstMode('/a/README.md'), 'preview');
     assert.strictEqual(firstMode('/a/app.exe'), 'text');
     assert.strictEqual(firstMode('/a/notes.txt'), 'text');
+  });
+
+  test('asks for an image or PDF again once the file changes, though its size does not, rather than showing the one fetched before', () => {
+    const before = previewUrl(
+      { tab: '3', size: 4, version: '7:1000:4' },
+      '/a/cat.png',
+    );
+    const after = previewUrl(
+      { tab: '3', size: 4, version: '7:2000:4' },
+      '/a/cat.png',
+    );
+
+    assert.notStrictEqual(after, before);
+    assert.strictEqual(
+      previewUrl({ tab: '3', size: 4, version: '7:2000:4' }, '/a/cat.png'),
+      after,
+    );
   });
 });

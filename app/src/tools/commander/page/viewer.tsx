@@ -39,6 +39,7 @@ import {
 export interface Viewing {
   readonly tab: string;
   readonly size: number | undefined;
+  readonly version?: string;
   readonly binary?: boolean;
   readonly detected?: TextEncoding;
   readonly error?: string;

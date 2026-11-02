@@ -163,6 +163,7 @@ export type CommanderToWebview =
       readonly type: 'viewing';
       readonly tab: string;
       readonly size: number | undefined;
+      readonly version?: string;
       readonly binary?: boolean;
       readonly detected?: TextEncoding;
       readonly error?: string;

@@ -1,9 +1,17 @@
 export const viewedFileRoute = '/commander-file';
 
+export function fileVersion(stats: {
+  readonly ino: number;
+  readonly mtimeMs: number;
+  readonly size: number;
+}): string {
+  return `${stats.ino}:${stats.mtimeMs}:${stats.size}`;
+}
+
 export function viewedFileUrl(
   tab: string,
   file: string,
-  version?: number,
+  version?: number | string,
 ): string {
   const query = new URLSearchParams({ tab, file });
   if (version !== undefined) {

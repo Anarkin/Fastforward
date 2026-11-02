@@ -32,7 +32,10 @@ import {
 } from '../../../../tools/commander/shared/protocol';
 import { strings } from '../../../../shared/strings';
 import { maxImageSize } from '../../../../shared/images';
-import { viewedFileUrl } from '../../../../tools/commander/shared/files';
+import {
+  fileVersion,
+  viewedFileUrl,
+} from '../../../../tools/commander/shared/files';
 import type { PdfPlace } from '../../../../shared/pdf';
 import { removeFolder, tempFolder } from '../../../repositories';
 import { waitFor } from '../../../fixtures';
@@ -322,7 +325,13 @@ suite('Commander tool', () => {
       };
       await tool.show(page, viewing);
       assert.deepStrictEqual(page.of('viewing'), [
-        { type: 'viewing', tab: '3', size: 19, binary: false },
+        {
+          type: 'viewing',
+          tab: '3',
+          size: 19,
+          version: fileVersion(fs.statSync(notes)),
+          binary: false,
+        },
       ]);
 
       await send({
@@ -883,6 +892,32 @@ suite('Commander tool', () => {
       const told = page.of('viewing').at(-1);
       assert.deepStrictEqual(told && [told.tab, told.size], ['4', undefined]);
       assert.ok(told?.error);
+    });
+
+    test('tells the page a new version of the file viewed when it changes though its size does not, as an image or PDF of the same size kept showing the one before', async () => {
+      const picture = path.join(opened, 'same.png');
+      fs.writeFileSync(picture, 'one\n');
+      const { tool, page, change } = commander({});
+      await tool.show(page, {
+        id: '3',
+        tool: 'commander',
+        root: picture,
+        view: true,
+      });
+
+      fs.writeFileSync(picture, 'two\n');
+      const later = new Date(Date.now() + 10_000);
+      fs.utimesSync(picture, later, later);
+      await change(picture);
+      await waitFor(
+        () => page.of('viewing').length === 2,
+        'the change to be told',
+      );
+
+      const [first, second] = page.of('viewing');
+      assert.strictEqual(second?.size, first?.size);
+      assert.notStrictEqual(second?.version, first?.version);
+      assert.strictEqual(second?.version, fileVersion(fs.statSync(picture)));
     });
 
     test('lists the folder the tab was opened with on the right, and the root on the left', async () => {

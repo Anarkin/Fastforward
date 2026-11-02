@@ -33,7 +33,7 @@ import {
 import type { FileSystem } from './fileSystem';
 import type { WatchFolder } from './watch';
 import { imageType, maxImageSize } from '../../../shared/images';
-import { viewedFileOf } from '../shared/files';
+import { fileVersion, viewedFileOf } from '../shared/files';
 import {
   blockCache,
   byteOrderMarkOf,
@@ -597,10 +597,13 @@ export class CommanderTool implements Tool<'commander'> {
     const current = () =>
       this.viewingsAsked === asked && this.shown?.tab === tab;
     let size: number;
+    let version: string;
     let binary: boolean;
     let detected: TextEncoding | undefined;
     try {
-      size = (await fs.promises.stat(file)).size;
+      const stats = await fs.promises.stat(file);
+      size = stats.size;
+      version = fileVersion(stats);
       const first = await firstBytes(file);
       binary = looksBinary(first);
       detected =
@@ -637,6 +640,7 @@ export class CommanderTool implements Tool<'commander'> {
                 type: 'viewing',
                 tab,
                 size: stats.size,
+                version: fileVersion(stats),
                 binary,
                 ...(detected !== undefined && { detected }),
               });
@@ -656,6 +660,7 @@ export class CommanderTool implements Tool<'commander'> {
       type: 'viewing',
       tab,
       size,
+      version,
       binary,
       ...(detected !== undefined && { detected }),
     });

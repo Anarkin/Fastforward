@@ -7,7 +7,7 @@ import { MarkdownPane } from '../../../ui/markdownView';
 import { PdfPane } from '../../../ui/pdfView';
 import { viewerKeymap } from '../shared/keymap';
 import { useWholeText } from './textBody';
-import type { Preview } from './previews';
+import { previewUrl, type Preview } from './previews';
 import type { PdfControls } from './pdfPreview';
 import type { ToViewer, Viewing } from './viewer';
 
@@ -24,14 +24,14 @@ function MarkdownPreview({
 }) {
   const tooLarge = viewing.size !== undefined && viewing.size > maxPreviewBytes;
   const text = useWholeText(viewing, post, listen, !tooLarge, 'utf-8');
-  const { tab, size } = viewing;
+  const { tab, version } = viewing;
   const images = useMemo(() => {
     const document = file.replaceAll('\\', '/');
     return {
       path: (src: string) => documentImagePath(document, src),
-      url: (path: string) => viewedFileUrl(tab, path, size),
+      url: (path: string) => viewedFileUrl(tab, path, version),
     };
-  }, [file, tab, size]);
+  }, [file, tab, version]);
   if (tooLarge) {
     return (
       <div className="markdown-pane">
@@ -69,7 +69,7 @@ export function PreviewBody({
     return (
       <div className="column-body viewer-body viewer-pdf">
         <PdfPane
-          url={viewedFileUrl(viewing.tab, file, viewing.size)}
+          url={previewUrl(viewing, file)}
           size={viewing.size}
           zoomKeys={viewerKeymap.zoomPdf}
           placeOf={pdf.placeOf}
@@ -80,7 +80,7 @@ export function PreviewBody({
       </div>
     );
   }
-  const imageUrl = viewedFileUrl(viewing.tab, file, viewing.size);
+  const imageUrl = previewUrl(viewing, file);
   return (
     <div
       className="column-body viewer-body viewer-preview"

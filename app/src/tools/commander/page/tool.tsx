@@ -86,6 +86,7 @@ export function CommanderTool({
           setViewed({
             tab: message.tab,
             size: message.size,
+            ...(message.version !== undefined && { version: message.version }),
             ...(message.binary !== undefined && { binary: message.binary }),
             ...(message.detected !== undefined && {
               detected: message.detected,
