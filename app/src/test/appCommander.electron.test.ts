@@ -2052,6 +2052,68 @@ suite('App commander', () => {
     );
   });
 
+  test('keeps a side shown as thumbnails scrolled where it was once a file viewed from it is closed, rather than moving its tiles', async () => {
+    const scrolled = path.join(opened, 'scrolled');
+    fs.mkdirSync(scrolled);
+    const image = grayPng(600, 300);
+    for (let index = 10; index < 50; index++) {
+      fs.writeFileSync(path.join(scrolled, `s${index}.png`), image);
+    }
+    const place = () =>
+      right()
+        .locator('.virtual-rows')
+        .evaluate((list) => {
+          const top = list.getBoundingClientRect().top;
+          const first = [...list.querySelectorAll('.commander-tile')].find(
+            (tile) => tile.getBoundingClientRect().top >= top - 1,
+          );
+          return {
+            scrollTop: Math.round(list.scrollTop),
+            first: first?.querySelector('.commander-tile-name')?.textContent,
+          };
+        });
+
+    await select('scrolled');
+    await page.keyboard.press('Enter');
+    await waitFor(
+      async () => (await rowNames()).includes('s10.png'),
+      'the files of the folder',
+    );
+    await page.keyboard.press('ControlOrMeta+2');
+    await right().locator('.commander-tile').first().waitFor();
+    await page.keyboard.press('End');
+    await page.keyboard.press('ArrowUp');
+    await waitFor(
+      async () => (await place()).scrollTop > 0,
+      'the tiles scrolled down',
+    );
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const before = await place();
+    await page.keyboard.press('F3');
+    await page.locator('.viewer').waitFor();
+    await page.keyboard.press('Escape');
+    await page.locator('.viewer').waitFor({ state: 'detached' });
+    await right().locator('.commander-tile').first().waitFor();
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    assert.deepStrictEqual(await place(), before);
+
+    await page.keyboard.press('ControlOrMeta+1');
+    await waitFor(
+      async () => (await right().locator('.commander-tile').count()) === 0,
+      'the details again',
+    );
+    await page.keyboard.press('Backspace');
+    await waitFor(
+      async () => (await rowNames()).includes('notes.txt'),
+      'the folder above',
+    );
+    fs.rmSync(scrolled, { recursive: true });
+    await waitFor(
+      async () => !(await rowNames()).includes('scrolled'),
+      'the folder to be gone from the list',
+    );
+  });
+
   test('compares the two files marked on a side with Shift+F3 in a git tab of their own, showing their diff', async () => {
     fs.writeFileSync(path.join(opened, 'before.txt'), threeLines('two'));
     fs.writeFileSync(path.join(opened, 'after.txt'), threeLines('2'));

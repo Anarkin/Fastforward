@@ -147,6 +147,8 @@ export function VirtualRows({
   label,
   treeItemOf,
   wholeRows = false,
+  initialOffset = 0,
+  onScrolled,
 }: {
   rows: ListedRows;
   renderRow: (index: number) => React.ReactNode;
@@ -158,6 +160,8 @@ export function VirtualRows({
   label?: string;
   treeItemOf?: (index: number) => TreeItem;
   wholeRows?: boolean;
+  initialOffset?: number;
+  onScrolled?: (offset: number) => void;
 }) {
   const list = useRef<HTMLDivElement>(null);
   const listId = useId();
@@ -215,6 +219,20 @@ export function VirtualRows({
     };
   }, [wholeRows]);
 
+  const restored = useRef(initialOffset === 0);
+  useLayoutEffect(() => {
+    const element = list.current;
+    if (
+      restored.current ||
+      !element ||
+      (wholeRows && (fixedHeight === undefined || viewportHeight === 0))
+    ) {
+      return;
+    }
+    restored.current = true;
+    element.scrollTop = initialOffset;
+  });
+
   const heightOf = (index: number) => {
     const row = virtualizer.measurementsCache[index];
     return row ? row.end - row.start : 0;
@@ -270,6 +288,14 @@ export function VirtualRows({
       role={treeItemOf ? 'tree' : 'listbox'}
       aria-label={label}
       aria-activedescendant={activeDescendant(listId, selectedKey, drawn)}
+      onScroll={
+        onScrolled &&
+        ((event: React.UIEvent<HTMLElement>) => {
+          if (restored.current) {
+            onScrolled(event.currentTarget.scrollTop);
+          }
+        })
+      }
       {...(onKeyDown
         ? {
             tabIndex: 0,

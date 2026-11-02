@@ -7,6 +7,7 @@ import {
   useState,
 } from 'react';
 import { moveInGrid, tileColumns, tileWidthOf } from './tiles';
+import { ScrollPlaces } from './scrollPlaces';
 import { iconUrl, thumbnailUrl, type IconSource } from '../shared/icons';
 import { imageType, vectorType } from '../../../shared/images';
 import { ThumbnailImage } from '../../../ui/thumbnails';
@@ -60,6 +61,8 @@ declare module 'react' {
 }
 
 const noRows: readonly Row[] = [];
+
+const scrollPlaces = new ScrollPlaces();
 
 export function driveOf(
   folder: string,
@@ -252,7 +255,7 @@ export function Pane({
   const current = pane && driveOf(pane.folder, drives);
 
   const [bodyWidth, setBodyWidth] = useState(0);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const element = body.current;
     if (!element) {
       return undefined;
@@ -266,6 +269,7 @@ export function Pane({
   const tileWidth = tileWidthOf(thumbnailSize);
   const across = tileColumns(bodyWidth, tileWidth);
   const tiled = layout === 'thumbnails';
+  const scrollKey = `${tab ?? ''} ${side} ${pane?.folder ?? ''} ${layout}`;
   const laidOut = useRef(tiled);
   useLayoutEffect(() => {
     if (laidOut.current === tiled) {
@@ -519,158 +523,166 @@ export function Pane({
         ref={body}
         onContextMenu={(event) => event.preventDefault()}
       >
-        <VirtualRows
-          key={tiled ? `tiles ${thumbnailSize}` : 'details'}
-          rows={tiled ? tileRows : listed}
-          renderRow={tiled ? renderTiles : renderRow}
-          selectedKey={pane?.selected}
-          label={strings.commander.sides[side]}
-          wholeRows
-          onKeyDown={(event, visible) => {
-            const menu = keyPressed(commanderKeymap.systemMenu, event);
-            if (menu !== undefined) {
-              event.preventDefault();
-              const names =
-                pane?.selected === undefined
-                  ? []
-                  : menuKeys(rows, pane.selected, marked);
-              const box = body.current
-                ?.querySelector('.commander-row.selected')
-                ?.getBoundingClientRect();
-              if (names.length > 0 && box !== undefined) {
-                onShellMenu(names, { x: box.left, y: box.bottom }, menu);
-              }
-              return;
-            }
-            const letter =
-              keyPressed(keymap.mainMenu, event) === undefined &&
-              keyPressed(commanderKeymap.filterLetter, event) !== undefined
-                ? letterTyped(event)
-                : undefined;
-            if (letter !== undefined) {
-              event.preventDefault();
-              filterTo(query + letter);
-              setFocusAsks(({ count }) => ({
-                count: count + 1,
-                select: false,
-              }));
-              return;
-            }
-            if (keyPressed(commanderKeymap.filter, event) !== undefined) {
-              event.preventDefault();
-              openFilter();
-              return;
-            }
-            if (
-              filtering &&
-              keyPressed(commanderKeymap.stopFiltering, event) !== undefined
-            ) {
-              event.preventDefault();
-              setFilter(undefined);
-              return;
-            }
-            if (keyPressed(commanderKeymap.side, event) !== undefined) {
-              event.preventDefault();
-              onSwitchSide();
-              return;
-            }
-            if (keyPressed(commanderKeymap.compare, event) !== undefined) {
-              event.preventDefault();
-              onCompare();
-              return;
-            }
-            if (keyPressed(commanderKeymap.view, event) !== undefined) {
-              event.preventDefault();
-              const row =
-                selectedIndex === -1 ? undefined : rows[selectedIndex];
-              if (row?.entry !== undefined && !row.entry.folder) {
-                onView(row.key);
-              }
-              return;
-            }
-            const onSide = keyPressed(commanderKeymap.openOnSide, event);
-            if (onSide !== undefined) {
-              event.preventDefault();
-              const row =
-                selectedIndex === -1 ? undefined : rows[selectedIndex];
-              if (row !== undefined) {
-                onOpenOnSide(onSide, row.key);
-              }
-              return;
-            }
-            if (keyPressed(commanderKeymap.parentFolder, event) !== undefined) {
-              event.preventDefault();
-              if (pane?.parent) {
-                onOpen(parentFolder);
-              }
-              return;
-            }
-            if (keyPressed(commanderKeymap.openFolder, event) !== undefined) {
-              const row =
-                selectedIndex === -1 ? undefined : rows[selectedIndex];
-              if (row !== undefined && opens(row)) {
+        {(!tiled || bodyWidth > 0) && (
+          <VirtualRows
+            key={tiled ? `tiles ${thumbnailSize}` : 'details'}
+            initialOffset={scrollPlaces.of(scrollKey)}
+            onScrolled={(offset) => scrollPlaces.keep(scrollKey, offset)}
+            rows={tiled ? tileRows : listed}
+            renderRow={tiled ? renderTiles : renderRow}
+            selectedKey={pane?.selected}
+            label={strings.commander.sides[side]}
+            wholeRows
+            onKeyDown={(event, visible) => {
+              const menu = keyPressed(commanderKeymap.systemMenu, event);
+              if (menu !== undefined) {
                 event.preventDefault();
-                onOpen(row.key);
-              }
-              return;
-            }
-            const marking = keyPressed(commanderKeymap.markMoving, event);
-            if (marking !== undefined) {
-              event.preventDefault();
-              if (selectedIndex === -1) {
+                const names =
+                  pane?.selected === undefined
+                    ? []
+                    : menuKeys(rows, pane.selected, marked);
+                const box = body.current
+                  ?.querySelector('.commander-row.selected')
+                  ?.getBoundingClientRect();
+                if (names.length > 0 && box !== undefined) {
+                  onShellMenu(names, { x: box.left, y: box.bottom }, menu);
+                }
                 return;
               }
-              const moved = tiled
-                ? moveInGrid(
-                    marking,
-                    selectedIndex,
-                    rows.length,
-                    across,
-                    visible,
-                  )
-                : marking === 'left' || marking === 'right'
-                  ? undefined
-                  : moveInList(marking, selectedIndex, rows.length, visible);
-              const next = moved ?? selectedIndex;
-              onMark(
-                passedKeys(rows, selectedIndex, next),
-                !marked?.has(rows[selectedIndex].key),
-              );
-              onSelect(rows[next].key);
-              return;
-            }
-            if (keyPressed(commanderKeymap.toggleMark, event) !== undefined) {
-              event.preventDefault();
-              if (selectedIndex === -1) {
+              const letter =
+                keyPressed(keymap.mainMenu, event) === undefined &&
+                keyPressed(commanderKeymap.filterLetter, event) !== undefined
+                  ? letterTyped(event)
+                  : undefined;
+              if (letter !== undefined) {
+                event.preventDefault();
+                filterTo(query + letter);
+                setFocusAsks(({ count }) => ({
+                  count: count + 1,
+                  select: false,
+                }));
                 return;
               }
-              const { key } = rows[selectedIndex];
-              onMark([key], !marked?.has(key));
-              onSelect(rows[Math.min(selectedIndex + 1, rows.length - 1)].key);
-              return;
-            }
-            const sideways = tiled
-              ? keyPressed(commanderKeymap.moveAcross, event)
-              : undefined;
-            const move = listMoveOf(event);
-            if (sideways === undefined && move === undefined) {
-              return;
-            }
-            event.preventDefault();
-            const from = selectedIndex === -1 ? undefined : selectedIndex;
-            const next =
-              sideways !== undefined
-                ? moveInGrid(sideways, from, rows.length, across, visible)
-                : move === undefined
-                  ? undefined
-                  : tiled
-                    ? moveInGrid(move, from, rows.length, across, visible)
-                    : moveInList(move, from, rows.length, visible);
-            if (next !== undefined) {
-              onSelect(rows[next].key);
-            }
-          }}
-        />
+              if (keyPressed(commanderKeymap.filter, event) !== undefined) {
+                event.preventDefault();
+                openFilter();
+                return;
+              }
+              if (
+                filtering &&
+                keyPressed(commanderKeymap.stopFiltering, event) !== undefined
+              ) {
+                event.preventDefault();
+                setFilter(undefined);
+                return;
+              }
+              if (keyPressed(commanderKeymap.side, event) !== undefined) {
+                event.preventDefault();
+                onSwitchSide();
+                return;
+              }
+              if (keyPressed(commanderKeymap.compare, event) !== undefined) {
+                event.preventDefault();
+                onCompare();
+                return;
+              }
+              if (keyPressed(commanderKeymap.view, event) !== undefined) {
+                event.preventDefault();
+                const row =
+                  selectedIndex === -1 ? undefined : rows[selectedIndex];
+                if (row?.entry !== undefined && !row.entry.folder) {
+                  onView(row.key);
+                }
+                return;
+              }
+              const onSide = keyPressed(commanderKeymap.openOnSide, event);
+              if (onSide !== undefined) {
+                event.preventDefault();
+                const row =
+                  selectedIndex === -1 ? undefined : rows[selectedIndex];
+                if (row !== undefined) {
+                  onOpenOnSide(onSide, row.key);
+                }
+                return;
+              }
+              if (
+                keyPressed(commanderKeymap.parentFolder, event) !== undefined
+              ) {
+                event.preventDefault();
+                if (pane?.parent) {
+                  onOpen(parentFolder);
+                }
+                return;
+              }
+              if (keyPressed(commanderKeymap.openFolder, event) !== undefined) {
+                const row =
+                  selectedIndex === -1 ? undefined : rows[selectedIndex];
+                if (row !== undefined && opens(row)) {
+                  event.preventDefault();
+                  onOpen(row.key);
+                }
+                return;
+              }
+              const marking = keyPressed(commanderKeymap.markMoving, event);
+              if (marking !== undefined) {
+                event.preventDefault();
+                if (selectedIndex === -1) {
+                  return;
+                }
+                const moved = tiled
+                  ? moveInGrid(
+                      marking,
+                      selectedIndex,
+                      rows.length,
+                      across,
+                      visible,
+                    )
+                  : marking === 'left' || marking === 'right'
+                    ? undefined
+                    : moveInList(marking, selectedIndex, rows.length, visible);
+                const next = moved ?? selectedIndex;
+                onMark(
+                  passedKeys(rows, selectedIndex, next),
+                  !marked?.has(rows[selectedIndex].key),
+                );
+                onSelect(rows[next].key);
+                return;
+              }
+              if (keyPressed(commanderKeymap.toggleMark, event) !== undefined) {
+                event.preventDefault();
+                if (selectedIndex === -1) {
+                  return;
+                }
+                const { key } = rows[selectedIndex];
+                onMark([key], !marked?.has(key));
+                onSelect(
+                  rows[Math.min(selectedIndex + 1, rows.length - 1)].key,
+                );
+                return;
+              }
+              const sideways = tiled
+                ? keyPressed(commanderKeymap.moveAcross, event)
+                : undefined;
+              const move = listMoveOf(event);
+              if (sideways === undefined && move === undefined) {
+                return;
+              }
+              event.preventDefault();
+              const from = selectedIndex === -1 ? undefined : selectedIndex;
+              const next =
+                sideways !== undefined
+                  ? moveInGrid(sideways, from, rows.length, across, visible)
+                  : move === undefined
+                    ? undefined
+                    : tiled
+                      ? moveInGrid(move, from, rows.length, across, visible)
+                      : moveInList(move, from, rows.length, visible);
+              if (next !== undefined) {
+                onSelect(rows[next].key);
+              }
+            }}
+          />
+        )}
       </div>
       {resizer}
     </section>
