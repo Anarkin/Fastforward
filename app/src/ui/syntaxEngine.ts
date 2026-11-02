@@ -89,7 +89,7 @@ export interface SyntaxSource {
   readonly keys: readonly (string | undefined)[];
 }
 
-const maxLineLength = 2000;
+const maxLineLength = 20_000;
 
 export type LineRanges = readonly (readonly SyntaxRange[])[];
 

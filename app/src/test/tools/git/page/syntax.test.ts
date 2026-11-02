@@ -382,22 +382,22 @@ suite('Syntax', () => {
     assert.strictEqual(added.keys.length, 5000);
   });
 
-  test('colors a line of 2000 characters, but not one over 2000, as minified lines take long to tokenize', async () => {
+  test('colors a line of 20000 characters, but not one over 20000, as VS Code does, as minified lines take long to tokenize', async () => {
     assert.deepStrictEqual(
       await colored([], {
         path: 'a.ts',
         binary: false,
-        content: `a = ${'1'.repeat(1996)}\na = ${'1'.repeat(1997)}`,
+        content: `a = ${'1'.repeat(19996)}\na = ${'1'.repeat(19997)}`,
       }),
       {
-        '0:0': ['keyword =', `number ${'1'.repeat(1996)}`],
+        '0:0': ['keyword =', `number ${'1'.repeat(19996)}`],
         '0:1': [],
       },
     );
   });
 
-  test('colors a line of 2000 characters ending a CRLF text', async () => {
-    const line = `a = ${'1'.repeat(1996)}`;
+  test('colors a line of 20000 characters ending a CRLF text', async () => {
+    const line = `a = ${'1'.repeat(19996)}`;
     assert.deepStrictEqual(
       await colored([], {
         path: 'a.ts',
@@ -405,8 +405,8 @@ suite('Syntax', () => {
         content: `${line}\r\n${line}\r\n`,
       }),
       {
-        '0:0': ['keyword =', `number ${'1'.repeat(1996)}`],
-        '0:1': ['keyword =', `number ${'1'.repeat(1996)}`],
+        '0:0': ['keyword =', `number ${'1'.repeat(19996)}`],
+        '0:1': ['keyword =', `number ${'1'.repeat(19996)}`],
       },
     );
   });
@@ -1114,12 +1114,16 @@ suite('Code in documents', () => {
     );
   });
 
-  test('colors a line of a code block of 2000 characters, but not one over 2000, as minified lines take long to tokenize', async () => {
+  test('colors a line of a code block of 20000 characters, but not one over 20000, as VS Code does, as minified lines take long to tokenize', async () => {
     const { lines } = await coloredCode(
       'ts',
-      `a = ${'1'.repeat(1996)}\na = ${'1'.repeat(1997)}`,
+      `a =${' '.repeat(19995)}1;\na =${' '.repeat(19996)}1;`,
     );
-    assert.strictEqual(lines?.[0]?.length, 2);
+    assert.deepStrictEqual(lines?.[0], [
+      { start: 2, end: 3, kind: 'keyword' },
+      { start: 19998, end: 19999, kind: 'number' },
+      { start: 19999, end: 20000, kind: 'keyword' },
+    ]);
     assert.deepStrictEqual(lines[1], []);
   });
 

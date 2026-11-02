@@ -16,8 +16,15 @@ export interface CodePart {
   readonly done: boolean;
 }
 
-const columnBits = 12;
+const columnBits = 15;
+const lengthBits = 14;
+const kindShift = columnBits + lengthBits;
 const widestColumn = (1 << columnBits) - 1;
+const longestRange = (1 << lengthBits) - 1;
+
+function piecesOf(start: number, end: number): number {
+  return Math.ceil((end - start) / longestRange);
+}
 
 export function packedPart(
   lines: LineRanges,
@@ -26,16 +33,27 @@ export function packedPart(
 ): CodePart {
   const ends = new Uint32Array(lines.length);
   const ranges = new Uint32Array(
-    lines.reduce((count, line) => count + line.length, 0),
+    lines.reduce(
+      (count, line) =>
+        count +
+        line.reduce(
+          (pieces, { start, end }) => pieces + piecesOf(start, end),
+          0,
+        ),
+      0,
+    ),
   );
   let at = 0;
   lines.forEach((line, index) => {
     for (const { start, end, kind } of line) {
-      if (end <= widestColumn) {
-        ranges[at] =
-          start |
-          (end << columnBits) |
-          (syntaxKinds.indexOf(kind) << (columnBits * 2));
+      const kindBits = syntaxKinds.indexOf(kind) << kindShift;
+      for (
+        let piece = start;
+        piece < end && piece <= widestColumn;
+        piece += longestRange
+      ) {
+        const length = Math.min(longestRange, end - piece);
+        ranges[at] = piece | (length << columnBits) | kindBits;
         at += 1;
       }
     }
@@ -61,11 +79,12 @@ export function partLine(
   const end = part.ends[index] ?? 0;
   for (let at = part.ends[index - 1] ?? 0; at < end; at++) {
     const packed = part.ranges[at] ?? 0;
-    const kind = syntaxKinds[packed >>> (columnBits * 2)];
+    const kind = syntaxKinds[packed >>> kindShift];
     if (kind !== undefined) {
+      const start = packed & widestColumn;
       ranges.push({
-        start: packed & widestColumn,
-        end: (packed >>> columnBits) & widestColumn,
+        start,
+        end: start + ((packed >>> columnBits) & longestRange),
         kind,
       });
     }
