@@ -270,17 +270,21 @@ export function Pane({
   const across = tileColumns(bodyWidth, tileWidth);
   const tiled = layout === 'thumbnails';
   const scrollKey = `${tab ?? ''} ${side} ${pane?.folder ?? ''} ${layout}`;
-  const laidOut = useRef(tiled);
+  const shownList = tiled
+    ? bodyWidth > 0
+      ? `tiles ${thumbnailSize}`
+      : undefined
+    : 'details';
   useLayoutEffect(() => {
-    if (laidOut.current === tiled) {
-      return;
-    }
-    laidOut.current = tiled;
     const focused = document.activeElement;
-    if (active && (focused === null || focused === document.body)) {
+    if (
+      shownList !== undefined &&
+      active &&
+      (focused === null || focused === document.body)
+    ) {
       columnFocusOf(body.current)?.focus();
     }
-  }, [tiled, active]);
+  }, [shownList, active]);
   const tileRows = useMemo(
     () => ({
       count: Math.ceil(rows.length / across),
@@ -523,9 +527,9 @@ export function Pane({
         ref={body}
         onContextMenu={(event) => event.preventDefault()}
       >
-        {(!tiled || bodyWidth > 0) && (
+        {shownList !== undefined && (
           <VirtualRows
-            key={tiled ? `tiles ${thumbnailSize}` : 'details'}
+            key={shownList}
             initialOffset={scrollPlaces.of(scrollKey)}
             onScrolled={(offset) => scrollPlaces.keep(scrollKey, offset)}
             rows={tiled ? tileRows : listed}

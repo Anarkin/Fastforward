@@ -2096,6 +2096,16 @@ suite('App commander', () => {
     await right().locator('.commander-tile').first().waitFor();
     await new Promise((resolve) => setTimeout(resolve, 300));
     assert.deepStrictEqual(await place(), before);
+    const selectedName = () =>
+      right()
+        .locator('.commander-tile.selected .commander-tile-name')
+        .textContent();
+    const selectedBefore = await selectedName();
+    await page.keyboard.press('ArrowLeft');
+    await waitFor(
+      async () => (await selectedName()) !== selectedBefore,
+      'the keys to move among the tiles again',
+    );
 
     await page.keyboard.press('ControlOrMeta+1');
     await waitFor(
