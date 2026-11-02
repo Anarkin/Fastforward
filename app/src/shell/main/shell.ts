@@ -1,6 +1,6 @@
 import * as path from 'node:path';
 import type { Log } from './log';
-import { isTextView } from '../shared/protocol';
+import { isImageView, isTextView } from '../shared/protocol';
 import type { CommandInstall, CommandState } from '../../main/terminalCommand';
 import { InFlight } from '../../shared/inFlight';
 import { addNotice } from '../shared/notices';
@@ -399,6 +399,13 @@ export class Shell {
         this.save(storage.setTextView(message.view));
         this.page?.post({ type: 'textView', view: storage.textView });
         return;
+      case 'setImageView':
+        if (!isImageView(message.view)) {
+          return;
+        }
+        this.save(storage.setImageView(message.view));
+        this.page?.post({ type: 'imageView', view: storage.imageView });
+        return;
       case 'setAutoSortTabs':
         if (typeof message.on !== 'boolean') {
           return;
@@ -440,6 +447,7 @@ export class Shell {
     page.post({ type: 'autoSortTabs', on: storage.autoSortTabs });
     page.post({ type: 'dateFormat', format: storage.dateFormat });
     page.post({ type: 'textView', view: storage.textView });
+    page.post({ type: 'imageView', view: storage.imageView });
     page.post({ type: 'update', status: host.updateStatus() });
     page.post({ type: 'about', ...host.about() });
     page.post({

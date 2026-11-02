@@ -289,6 +289,23 @@
   flex: 1 1 auto;
 }
 
+.viewer-image.real-size {
+  width: max-content;
+  min-width: 100%;
+  height: auto;
+  min-height: 100%;
+}
+
+.viewer-image .image-frame img.real-size {
+  flex: none;
+  max-width: none;
+  max-height: none;
+}
+
+.viewer-image .image-frame img.device-pixels {
+  image-rendering: pixelated;
+}
+
 .row.commander-row.marked {
   color: var(--color-error-foreground);
   font-weight: 600;

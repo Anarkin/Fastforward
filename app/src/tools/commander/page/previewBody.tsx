@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { maxPreviewBytes, type CommanderToHost } from '../shared/protocol';
 import { viewedFileUrl } from '../shared/files';
 import { strings } from '../../../shared/strings';
 import { documentImagePath, ImagePane } from '../../../ui/images';
+import { imageType, vectorType } from '../../../shared/images';
 import { MarkdownPane } from '../../../ui/markdownView';
 import { PdfPane } from '../../../ui/pdfView';
 import { viewerKeymap } from '../shared/keymap';
@@ -48,6 +49,7 @@ export function PreviewBody({
   file,
   preview,
   viewing,
+  realSize,
   pdf,
   post,
   listen,
@@ -55,12 +57,25 @@ export function PreviewBody({
   file: string;
   preview: Preview;
   viewing: Viewing;
+  realSize: boolean;
   pdf: PdfControls;
   post: (message: CommanderToHost) => void;
   listen: (handler: (message: ToViewer) => void) => () => void;
 }) {
   const body = useRef<HTMLDivElement>(null);
   useEffect(() => body.current?.focus(), []);
+  const centerImage = useCallback(() => {
+    const scroller = body.current;
+    if (scroller) {
+      scroller.scrollLeft = (scroller.scrollWidth - scroller.clientWidth) / 2;
+      scroller.scrollTop = (scroller.scrollHeight - scroller.clientHeight) / 2;
+    }
+  }, []);
+  const vector = imageType(file) === vectorType;
+  const imageRealSize = useMemo(
+    () => (realSize ? { vector, onShown: centerImage } : undefined),
+    [realSize, vector, centerImage],
+  );
   if (
     preview === 'pdf' &&
     viewing.error === undefined &&
@@ -91,8 +106,8 @@ export function PreviewBody({
       {viewing.error !== undefined ? (
         <div className="viewer-error">{viewing.error}</div>
       ) : preview === 'image' ? (
-        <div className="viewer-image">
-          <ImagePane key={imageUrl} url={imageUrl} />
+        <div className={`viewer-image${realSize ? ' real-size' : ''}`}>
+          <ImagePane key={imageUrl} url={imageUrl} realSize={imageRealSize} />
         </div>
       ) : (
         <MarkdownPreview

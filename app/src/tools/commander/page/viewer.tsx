@@ -19,12 +19,14 @@ import { strings } from '../../../shared/strings';
 import {
   HexIcon,
   PreviewIcon,
+  RealSizeIcon,
   ShowWhitespaceIcon,
   SyntaxIcon,
   TextIcon,
   WordWrapIcon,
 } from '../../../ui/icons';
 import { useTextView } from '../../../ui/textView';
+import { useImageView } from '../../../ui/imageView';
 import { MenuButton } from '../../../ui/menu';
 import { TextBody } from './textBody';
 import { ByteBody } from './hexBody';
@@ -90,6 +92,11 @@ export function Viewer({
   const textView = useTextView();
   const { wordWrap, showWhitespace, highlightSyntax } = textView.view;
   const readsText = mode === 'text' && shown !== 'bytes';
+  const showsImage = mode === 'preview' && preview === 'image';
+  const imageView = useImageView();
+  const { realSize } = imageView.view;
+  const toggleRealSize = () =>
+    imageView.change({ ...imageView.view, realSize: !realSize });
   const changeView = (changed: Partial<typeof textView.view>) =>
     textView.change({ ...textView.view, ...changed });
   const choose = (wanted: ViewMode) => {
@@ -165,6 +172,14 @@ export function Viewer({
         ) {
           event.preventDefault();
           changeView({ showWhitespace: !showWhitespace });
+          return;
+        }
+        if (
+          showsImage &&
+          keyPressed(viewerKeymap.realSize, event) !== undefined
+        ) {
+          event.preventDefault();
+          toggleRealSize();
         }
       }}
     >
@@ -222,6 +237,20 @@ export function Viewer({
                 />
               </div>
             )}
+            {showsImage && <span className="nav-button-space" />}
+            {showsImage && (
+              <div className="viewer-toggles">
+                <button
+                  className={`nav-button toggle ${realSize ? 'active' : ''}`}
+                  title={strings.commander.realSize}
+                  aria-pressed={realSize}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={toggleRealSize}
+                >
+                  <RealSizeIcon />
+                </button>
+              </div>
+            )}
             {readsText && <span className="nav-button-space" />}
             {readsText && (
               <div className="viewer-toggles">
@@ -275,6 +304,7 @@ export function Viewer({
           file={file}
           preview={preview}
           viewing={viewing}
+          realSize={realSize}
           post={post}
           listen={listen}
           pdf={pdf.controls}

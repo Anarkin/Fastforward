@@ -304,6 +304,14 @@ export function PreviewIcon() {
   );
 }
 
+export function RealSizeIcon() {
+  return (
+    <Icon>
+      <path d="M3.5 5.5 5 4v8M11 5.5 12.5 4v8M8 6.5h.01M8 9.5h.01" />
+    </Icon>
+  );
+}
+
 export function TextIcon() {
   return (
     <Icon>

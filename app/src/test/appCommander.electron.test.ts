@@ -3,6 +3,7 @@ import { maxColoredBytes } from '../tools/commander/shared/protocol';
 import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { crc32, deflateSync } from 'node:zlib';
 import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { strings } from '../shared/strings';
@@ -11,22 +12,55 @@ import { pdfOf } from './pdfs';
 import { closeOrKill, launchApp, waitForFocus } from './appFixtures';
 import { removeFolder, tempFolder } from './repositories';
 
+const pngChunk = (type: string, body: Buffer) => {
+  const length = Buffer.alloc(4);
+  length.writeUInt32BE(body.length);
+  const typed = Buffer.concat([Buffer.from(type), body]);
+  const crc = Buffer.alloc(4);
+  crc.writeUInt32BE(crc32(typed));
+  return Buffer.concat([length, typed, crc]);
+};
+
+const grayPng = (width: number, height: number) => {
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(width, 0);
+  header.writeUInt32BE(height, 4);
+  header[8] = 8;
+  const rows = Buffer.alloc((width + 1) * height, 128);
+  for (let row = 0; row < height; row++) {
+    rows[row * (width + 1)] = 0;
+  }
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    pngChunk('IHDR', header),
+    pngChunk('IDAT', deflateSync(rows)),
+    pngChunk('IEND', Buffer.alloc(0)),
+  ]);
+};
+
 const threeLines = (changed: string) =>
   ['one', changed, 'three', ''].join(String.fromCharCode(10));
 
-const savedText = (profile: string, name: string): unknown => {
+const savedSetting = (
+  profile: string,
+  group: string,
+  name: string,
+): unknown => {
   const file = path.join(profile, 'settings.user.json');
   const settings: unknown = fs.existsSync(file)
     ? JSON.parse(fs.readFileSync(file, 'utf8'))
     : {};
-  const text: unknown =
+  const saved: unknown =
     typeof settings === 'object' && settings !== null
-      ? Reflect.get(settings, 'text')
+      ? Reflect.get(settings, group)
       : undefined;
-  return typeof text === 'object' && text !== null
-    ? Reflect.get(text, name)
+  return typeof saved === 'object' && saved !== null
+    ? Reflect.get(saved, name)
     : undefined;
 };
+
+const savedText = (profile: string, name: string): unknown =>
+  savedSetting(profile, 'text', name);
 
 suite('App commander', () => {
   let folder: string;
@@ -1547,6 +1581,95 @@ suite('App commander', () => {
         (name) => names.includes(name),
       );
     }, 'the files to be gone from the list');
+  });
+
+  test('shows an image previewed at its real size on F, a pixel of it on a pixel of the screen, from its middle, scrolled by the keys, saved for the next image, and fitted to the viewer again on its button', async () => {
+    fs.writeFileSync(path.join(opened, 'huge.png'), grayPng(3000, 2000));
+    const realSize = page.locator(
+      `.viewer button[title="${strings.commander.realSize}"]`,
+    );
+    const shown = () =>
+      page.locator('.viewer-preview').evaluate((body) => {
+        const image = body.querySelector('img');
+        const box = image?.getBoundingClientRect();
+        return {
+          width: (box?.width ?? 0) * devicePixelRatio,
+          height: (box?.height ?? 0) * devicePixelRatio,
+          natural: image?.naturalWidth ?? 0,
+          left: body.scrollLeft,
+          top: body.scrollTop,
+          widest: body.scrollWidth - body.clientWidth,
+          tallest: body.scrollHeight - body.clientHeight,
+        };
+      });
+    const openHuge = async () => {
+      await select('huge');
+      await page.keyboard.press('F3');
+      await waitFor(async () => (await shown()).natural === 3000, 'the image');
+    };
+    const close = async () => {
+      await page.keyboard.press('Escape');
+      await page.locator('.viewer').waitFor({ state: 'detached' });
+    };
+
+    await openHuge();
+    const fitted = await shown();
+    assert.ok(fitted.width < 3000, JSON.stringify(fitted));
+    assert.strictEqual(fitted.widest, 0);
+    assert.strictEqual(await realSize.getAttribute('aria-pressed'), 'false');
+
+    await page.keyboard.press('f');
+    await waitFor(
+      async () => Math.round((await shown()).width) === 3000,
+      'the image at its real size',
+    );
+    const real = await shown();
+    assert.strictEqual(Math.round(real.height), 2000);
+    assert.ok(real.widest > 0 && real.tallest > 0, JSON.stringify(real));
+    assert.ok(Math.abs(real.left - real.widest / 2) <= 1, JSON.stringify(real));
+    assert.ok(Math.abs(real.top - real.tallest / 2) <= 1, JSON.stringify(real));
+    assert.strictEqual(await realSize.getAttribute('aria-pressed'), 'true');
+    await waitFor(
+      () => savedSetting(profile, 'images', 'realSize') === true,
+      'real size to be saved',
+    );
+
+    await page.keyboard.press('Home');
+    await waitFor(async () => (await shown()).top === 0, 'the top');
+    await page.keyboard.press('ArrowDown');
+    await waitFor(async () => (await shown()).top > 0, 'a row down');
+    await page.keyboard.press('End');
+    await waitFor(async () => {
+      const { top, tallest } = await shown();
+      return Math.abs(top - tallest) <= 1;
+    }, 'the bottom');
+    const before = (await shown()).left;
+    await page.keyboard.press('ArrowRight');
+    await waitFor(async () => (await shown()).left > before, 'to the right');
+    await close();
+
+    await openHuge();
+    await waitFor(
+      async () => Math.round((await shown()).width) === 3000,
+      'the next image at its real size',
+    );
+    await realSize.click();
+    await waitFor(
+      async () => (await shown()).width < 3000,
+      'the image fitted again',
+    );
+    assert.strictEqual((await shown()).widest, 0);
+    await waitFor(
+      () => savedSetting(profile, 'images', 'realSize') === undefined,
+      'the default to be saved',
+    );
+    await close();
+
+    fs.rmSync(path.join(opened, 'huge.png'));
+    await waitFor(
+      async () => !(await rowNames()).includes('huge.png'),
+      'the image to be gone from the list',
+    );
   });
 
   test('marks files moving with Shift, with Space and Insert, with Ctrl+click and Shift+click, never the parent row, and drops the marks in another folder', async () => {

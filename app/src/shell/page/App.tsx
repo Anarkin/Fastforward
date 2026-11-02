@@ -1,6 +1,7 @@
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { DateFormat } from '../../ui/dates';
 import { defaultTextView, TextViewContext } from '../../ui/textView';
+import { defaultImageView, ImageViewContext } from '../../ui/imageView';
 import {
   appGroups,
   keymap,
@@ -180,6 +181,7 @@ export function App({ name, post, listen }: Props) {
   const [autoSortTabs, setAutoSortTabs] = useState(false);
   const [dateFormat, setDateFormat] = useState(useContext(DateFormat));
   const [textView, setTextView] = useState(defaultTextView);
+  const [imageView, setImageView] = useState(defaultImageView);
   const [choosing, setChoosing] = useState<ToWebviewOf<'chooseTool'>>();
   const [toolItems, setToolItems] = useState<
     Partial<Record<ToolId, readonly ContextMenuItem[]>>
@@ -226,6 +228,9 @@ export function App({ name, post, listen }: Props) {
           break;
         case 'textView':
           setTextView(message.view);
+          break;
+        case 'imageView':
+          setImageView(message.view);
           break;
         case 'notice': {
           const id = ++noticeCount.current;
@@ -465,16 +470,26 @@ export function App({ name, post, listen }: Props) {
             },
           }}
         >
-          <ToolViews
-            active={activeTool}
-            comparing={activeTab?.compare === true ? activeTab.id : undefined}
-            post={post}
-            listeners={listeners}
-            showMenu={showMenu}
-            closeMenu={closeMenu}
-            onNewTabItems={onNewTabItems}
-            onTitle={onTitle}
-          />
+          <ImageViewContext
+            value={{
+              view: imageView,
+              change: (view) => {
+                setImageView(view);
+                post({ type: 'setImageView', view });
+              },
+            }}
+          >
+            <ToolViews
+              active={activeTool}
+              comparing={activeTab?.compare === true ? activeTab.id : undefined}
+              post={post}
+              listeners={listeners}
+              showMenu={showMenu}
+              closeMenu={closeMenu}
+              onNewTabItems={onNewTabItems}
+              onTitle={onTitle}
+            />
+          </ImageViewContext>
         </TextViewContext>
       </DateFormat>
     </div>

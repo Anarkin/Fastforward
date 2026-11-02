@@ -7,6 +7,9 @@
     "showWhitespace": false,
     "highlightSyntax": true
   },
+  "images": {
+    "realSize": false
+  },
   "fonts": {
     "family": "-apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif",
     "size": "12px",

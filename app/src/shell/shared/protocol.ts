@@ -44,6 +44,19 @@ export function isTextView(value: unknown): value is TextView {
   );
 }
 
+export interface ImageView {
+  readonly realSize: boolean;
+}
+
+export function isImageView(value: unknown): value is ImageView {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'realSize' in value &&
+    typeof value.realSize === 'boolean'
+  );
+}
+
 export type UpdateStatus =
   | { readonly kind: 'idle' }
   | { readonly kind: 'checking' }
@@ -66,6 +79,7 @@ export type ToHost =
   | { readonly type: 'sortTabs' }
   | { readonly type: 'setAutoSortTabs'; readonly on: boolean }
   | { readonly type: 'setTextView'; readonly view: TextView }
+  | { readonly type: 'setImageView'; readonly view: ImageView }
   | { readonly type: 'newTab'; readonly tool: ToolId }
   | { readonly type: 'openWith'; readonly tool: ToolId | undefined }
   | { readonly type: 'openIn' }
@@ -92,6 +106,7 @@ export type ToWebview =
   | { readonly type: 'autoSortTabs'; readonly on: boolean }
   | { readonly type: 'dateFormat'; readonly format: string }
   | { readonly type: 'textView'; readonly view: TextView }
+  | { readonly type: 'imageView'; readonly view: ImageView }
   | { readonly type: 'update'; readonly status: UpdateStatus }
   | ({ readonly type: 'about' } & AboutInfo)
   | { readonly type: 'terminalCommand'; readonly installable: boolean }

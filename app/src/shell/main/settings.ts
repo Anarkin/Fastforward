@@ -6,13 +6,14 @@ import {
   type ToolSettings,
 } from '../shared/tools';
 import { strings } from '../../shared/strings';
-import type { TextView } from '../shared/protocol';
+import type { ImageView, TextView } from '../shared/protocol';
 
 export interface Settings {
   readonly autoSortTabs: boolean;
   readonly recentItems: number;
   readonly dateFormat: string;
   readonly text: TextView;
+  readonly images: ImageView;
   readonly tools: ToolSettings;
   readonly fonts: {
     readonly family: string;
@@ -272,6 +273,13 @@ export class UserSettings {
 
   setText<K extends keyof TextView>(key: K, value: TextView[K]): Promise<void> {
     return this.update(['text', key], value);
+  }
+
+  setImages<K extends keyof ImageView>(
+    key: K,
+    value: ImageView[K],
+  ): Promise<void> {
+    return this.update(['images', key], value);
   }
 
   private update(keys: readonly string[], value: unknown): Promise<void> {

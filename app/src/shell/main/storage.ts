@@ -6,7 +6,7 @@ import {
   type Settings,
   type UserSettings,
 } from './settings';
-import type { TextView } from '../shared/protocol';
+import type { ImageView, TextView } from '../shared/protocol';
 import * as path from 'node:path';
 import { strings } from '../../shared/strings';
 import { isTool, type ToolId } from '../shared/tools';
@@ -254,6 +254,16 @@ export class Storage {
         .filter((key) => view[key] !== textView[key])
         .map((key) => this.userSettings.setText(key, view[key])),
     );
+  }
+
+  get imageView(): ImageView {
+    return this.settings.images;
+  }
+
+  async setImageView(view: ImageView): Promise<void> {
+    if (view.realSize !== this.imageView.realSize) {
+      await this.userSettings.setImages('realSize', view.realSize);
+    }
   }
 
   get recentItems(): number {

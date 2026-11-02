@@ -603,6 +603,24 @@ suite('Git tool showing diffs', () => {
     });
   });
 
+  test('fits images to the viewer by default, and remembers when they are chosen at their real size, telling the page', async () => {
+    await withView(log, [], async (view) => {
+      assert.deepStrictEqual(view.page.last('imageView')?.view, {
+        realSize: false,
+      });
+      const chosen = { realSize: true };
+      await view.connection.receive({ type: 'setImageView', view: chosen });
+      assert.deepStrictEqual(view.settings.settings.images, chosen);
+      assert.deepStrictEqual(view.page.last('imageView')?.view, chosen);
+      await view.connection.receive({ type: 'ready' });
+      assert.deepStrictEqual(view.page.last('imageView')?.view, chosen);
+      await view.connection.receive(
+        forged('{ "type": "setImageView", "view": { "realSize": "yes" } }'),
+      );
+      assert.deepStrictEqual(view.settings.settings.images, chosen);
+    });
+  });
+
   test('shows the diffs of the other tabs with the whitespace and entire file choices made in another', async () => {
     const tabbed = await tempRepository(path.join(folder, 'spaced-tabs'));
     await tabbed.commit('first', { 'a.txt': fortyLines(-1) });

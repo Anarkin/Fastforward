@@ -134,7 +134,7 @@
 | Line history | List the commits that changed some lines | `git log -L` | Advanced | ❌ No | |
 | Restore a file | Put back a file as a revision has it | `git restore --source=<rev> -- <path>` | Common | ❌ No | |
 | Save a file | Save a file as a revision has it | `git show <rev>:<path>` | Advanced | ❌ No | |
-| Open a file | Open a file in an editor, or show it in its folder | — | Common | 🟡 Partial | In a viewer tab of its own, from the button on its header or F3: the working tree's from disk, a commit's or the index's from a copy of its blob; as text, wrapped and with its whitespace shown as the diff has them, hex, or a preview of images, Markdown and PDFs; not in an editor |
+| Open a file | Open a file in an editor, or show it in its folder | — | Common | 🟡 Partial | In a viewer tab of its own, from the button on its header or F3: the working tree's from disk, a commit's or the index's from a copy of its blob; as text, wrapped and with its whitespace shown as the diff has them, hex, or a preview of images, fitted or at their real size with F, Markdown and PDFs; not in an editor |
 
 ## Branches
 

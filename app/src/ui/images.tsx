@@ -1,6 +1,12 @@
-import { useEffect, useState } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { imageType, maxImageSize } from '../shared/images';
 import { strings } from '../shared/strings';
+import { watchDevicePixels } from './devicePixels';
 
 const scheme = /^[a-z][a-z\d+.-]*:/i;
 
@@ -189,15 +195,63 @@ export function WholeImage({ url }: { url: string }) {
   );
 }
 
-interface Size {
+export interface Size {
   readonly width: number;
   readonly height: number;
 }
 
-export function ImagePane({ url }: { url: string }) {
+export function realSizeOf(
+  natural: Size,
+  pixelRatio: number,
+  vector: boolean,
+): Size {
+  return vector
+    ? natural
+    : {
+        width: natural.width / pixelRatio,
+        height: natural.height / pixelRatio,
+      };
+}
+
+const subscribeToPixelRatio = (onChange: () => void) =>
+  watchDevicePixels(onChange);
+
+function usePixelRatio(): number {
+  return useSyncExternalStore(
+    subscribeToPixelRatio,
+    () => window.devicePixelRatio,
+    () => 1,
+  );
+}
+
+export interface RealSize {
+  readonly vector: boolean;
+  readonly onShown: () => void;
+}
+
+export function ImagePane({
+  url,
+  realSize,
+}: {
+  url: string;
+  realSize?: RealSize;
+}) {
   const image = useLoadedImage(url);
   const [size, setSize] = useState<Size>();
   const [broken, setBroken] = useState(false);
+  const pixelRatio = usePixelRatio();
+  const shown =
+    realSize === undefined || size === undefined || size.width === 0
+      ? undefined
+      : realSizeOf(size, pixelRatio, realSize.vector);
+  const shownWidth = shown?.width;
+  const shownHeight = shown?.height;
+  const onShown = realSize?.onShown;
+  useLayoutEffect(() => {
+    if (shownWidth !== undefined && shownHeight !== undefined) {
+      onShown?.();
+    }
+  }, [shownWidth, shownHeight, onShown]);
   const note =
     image?.kind === 'tooLarge'
       ? strings.diff.imageTooLarge(maxImageSize / 1024 / 1024)
@@ -214,6 +268,14 @@ export function ImagePane({ url }: { url: string }) {
             <img
               src={image.url}
               alt=""
+              className={
+                realSize === undefined
+                  ? undefined
+                  : realSize.vector
+                    ? 'real-size'
+                    : 'real-size device-pixels'
+              }
+              style={shown}
               title={
                 size &&
                 strings.diff.imageDetails(size.width, size.height, image.bytes)
