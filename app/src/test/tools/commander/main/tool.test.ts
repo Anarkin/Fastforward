@@ -191,7 +191,7 @@ function commander(
     },
     setRoot: () => {},
     visited: () => {},
-    recentItems: () => 10,
+    recentFolders: () => 10,
     postTabs: () => {},
     notice: (_page, notice) => notices.push(notice),
     track: (tracked) => tracked,

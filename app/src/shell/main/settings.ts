@@ -9,8 +9,10 @@ import { strings } from '../../shared/strings';
 import type { ImageView, TextView } from '../shared/protocol';
 
 export interface Settings {
-  readonly autoSortTabs: boolean;
-  readonly recentItems: number;
+  readonly tabs: {
+    readonly autoSort: boolean;
+    readonly recentFolders: number;
+  };
   readonly dateFormat: string;
   readonly text: TextView;
   readonly images: ImageView;
@@ -269,6 +271,13 @@ export class UserSettings {
     K extends keyof Settings['tools'][T] & string,
   >(tool: T, key: K, value: Settings['tools'][T][K]): Promise<void> {
     return this.update(['tools', tool, key], value);
+  }
+
+  setTabs<K extends keyof Settings['tabs']>(
+    key: K,
+    value: Settings['tabs'][K],
+  ): Promise<void> {
+    return this.update(['tabs', key], value);
   }
 
   setText<K extends keyof TextView>(key: K, value: TextView[K]): Promise<void> {

@@ -345,7 +345,7 @@ suite('Shell with no tab open', () => {
           view.page.tabs?.tabs.map((tab) => tab.tool),
           ['terminal', 'commander'],
         );
-        assert.strictEqual(view.settings.settings.autoSortTabs, false);
+        assert.strictEqual(view.settings.settings.tabs.autoSort, false);
         assert.deepStrictEqual(host.opened, []);
         assert.strictEqual(warned.length, warnings);
         assert.ok(
@@ -373,7 +373,7 @@ suite('Shell with no tab open', () => {
       async (view) => {
         await view.connection.receive({ type: 'newTab', tool: 'terminal' });
         await view.connection.receive({ type: 'newTab', tool: 'commander' });
-        await view.settings.set('autoSortTabs', true);
+        await view.settings.setTabs('autoSort', true);
         view.shell.reloadSettings();
         await view.connection.receive({ type: 'ready' });
         assert.deepStrictEqual(
@@ -516,7 +516,7 @@ suite('Shell with no tab open', () => {
       log,
       [],
       async (view) => {
-        await view.settings.set('autoSortTabs', true);
+        await view.settings.setTabs('autoSort', true);
         view.shell.reloadSettings();
         await view.connection.receive({ type: 'ready' });
         await view.connection.receive({ type: 'newTab', tool: 'commander' });

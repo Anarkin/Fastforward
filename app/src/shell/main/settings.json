@@ -1,6 +1,8 @@
 {
-  "autoSortTabs": false,
-  "recentItems": 15,
+  "tabs": {
+    "autoSort": false,
+    "recentFolders": 15
+  },
   "dateFormat": "YYYY-MM-DD HH:mm",
   "text": {
     "wordWrap": true,

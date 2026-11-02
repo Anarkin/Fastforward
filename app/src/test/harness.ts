@@ -218,7 +218,7 @@ export function settingsForViews(): UserSettings {
   const defaults = defaultSettings();
   return new UserSettings({
     ...defaults,
-    autoSortTabs: false,
+    tabs: { ...defaults.tabs, autoSort: false },
     tools: {
       ...defaults.tools,
       git: { ...defaults.tools.git, autoFetch: false },

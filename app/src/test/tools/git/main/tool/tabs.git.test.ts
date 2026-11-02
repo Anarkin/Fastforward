@@ -83,7 +83,7 @@ suite('Git tool with two tabs', () => {
         };
         await own.connection.receive({ type: 'setAutoSortTabs', on: true });
         assert.deepStrictEqual(names(), ['other', 'Zeta']);
-        assert.strictEqual(own.settings.settings.autoSortTabs, true);
+        assert.strictEqual(own.settings.settings.tabs.autoSort, true);
         await open(beta.root);
         assert.deepStrictEqual(names(), ['beta', 'other', 'Zeta']);
         await own.connection.receive({ type: 'setAutoSortTabs', on: false });

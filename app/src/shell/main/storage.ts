@@ -236,11 +236,11 @@ export class Storage {
   }
 
   get autoSortTabs(): boolean {
-    return this.settings.autoSortTabs;
+    return this.settings.tabs.autoSort;
   }
 
   async setAutoSortTabs(on: boolean): Promise<void> {
-    await this.userSettings.set('autoSortTabs', on);
+    await this.userSettings.setTabs('autoSort', on);
   }
 
   get textView(): TextView {
@@ -266,8 +266,8 @@ export class Storage {
     }
   }
 
-  get recentItems(): number {
-    const count = this.settings.recentItems;
+  get recentFolders(): number {
+    const count = this.settings.tabs.recentFolders;
     return Number.isFinite(count)
       ? Math.min(maxRecentItems, Math.max(0, Math.round(count)))
       : 0;

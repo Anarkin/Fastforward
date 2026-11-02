@@ -58,7 +58,7 @@ export interface ShellAccess {
   openCompare(page: Page, tool: ToolId, compare: Compared): Promise<void>;
   setRoot(tab: string, root: string): void;
   visited(folder: string): void;
-  recentItems(): number;
+  recentFolders(): number;
   postTabs(page: Page): void;
   notice(page: Page | undefined, notice: Notice): void;
   track<T>(work: Promise<T>): Promise<T>;
@@ -122,7 +122,7 @@ export const unattachedShell: ShellAccess = {
   openCompare: () => Promise.resolve(),
   setRoot: () => undefined,
   visited: () => undefined,
-  recentItems: () => 0,
+  recentFolders: () => 0,
   postTabs: () => undefined,
   notice: () => undefined,
   track: (work) => work,
@@ -206,7 +206,7 @@ export class Shell {
           this.tools[tool].visited(folder);
         }
       },
-      recentItems: () => this.storage.recentItems,
+      recentFolders: () => this.storage.recentFolders,
       postTabs: (page) => this.postTabs(page),
       notice: (page, notice) => this.notice(page, notice),
       track: (work) => this.inFlight.track(work),

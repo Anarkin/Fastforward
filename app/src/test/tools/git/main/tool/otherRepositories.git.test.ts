@@ -455,7 +455,7 @@ suite('Git tool of other repositories', () => {
         shownTabs(view.page)?.recent.map((recent) => recent.root),
         older.slice(0, 15),
       );
-      await view.settings.set('recentItems', 2);
+      await view.settings.setTabs('recentFolders', 2);
       view.shell.reloadSettings();
       assert.deepStrictEqual(
         shownTabs(view.page)?.recent.map((recent) => recent.root),

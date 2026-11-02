@@ -21,7 +21,7 @@ function storageOf(state = new FakeStore()): Storage {
 
 suite('Storage', () => {
   test('takes how many recent items the + menu lists for each tool from the settings, fifteen unless set, as a whole number from none to fifty', () => {
-    assert.strictEqual(storageOf().recentItems, 15);
+    assert.strictEqual(storageOf().recentFolders, 15);
     for (const [set, taken] of [
       [8, 8],
       [7.6, 8],
@@ -31,10 +31,10 @@ suite('Storage', () => {
     ]) {
       const settings = new UserSettings({
         ...defaultSettings(),
-        recentItems: set,
+        tabs: { ...defaultSettings().tabs, recentFolders: set },
       });
       assert.strictEqual(
-        new Storage(settings, new FakeStore()).recentItems,
+        new Storage(settings, new FakeStore()).recentFolders,
         taken,
         String(set),
       );

@@ -40,12 +40,12 @@ async function renameFailing(
 suite('Settings', () => {
   test('takes each setting the user changed over its default', () => {
     const { settings, problems } = mergeSettings(defaults, {
-      autoSortTabs: true,
+      tabs: { autoSort: true },
       tools: { git: { ignoreWhitespace: false, columnWidths: [300, 200] } },
     });
     assert.deepStrictEqual(settings, {
       ...defaults,
-      autoSortTabs: true,
+      tabs: { ...defaults.tabs, autoSort: true },
       tools: {
         ...defaults.tools,
         git: {
@@ -227,36 +227,36 @@ suite('User settings file', () => {
     const user = new UserSettings(defaults, file);
     await user.setIn('git', 'ignoreWhitespace', false);
     await user.setIn('git', 'showAllFiles', true);
-    await user.set('autoSortTabs', true);
+    await user.setTabs('autoSort', true);
     assert.deepStrictEqual(written(), {
       tools: { git: { ignoreWhitespace: false, showAllFiles: true } },
-      autoSortTabs: true,
+      tabs: { autoSort: true },
     });
     await user.setIn('git', 'ignoreWhitespace', true);
     assert.deepStrictEqual(written(), {
       tools: { git: { showAllFiles: true } },
-      autoSortTabs: true,
+      tabs: { autoSort: true },
     });
     assert.strictEqual(
       new UserSettings(defaults, file).settings.tools.git.showAllFiles,
       true,
     );
     await user.setIn('git', 'showAllFiles', false);
-    await user.set('autoSortTabs', false);
+    await user.setTabs('autoSort', false);
     assert.deepStrictEqual(written(), {});
   });
 
   test('neither saves nor takes a value the settings would not take as written, nor none at all, keeping the one in use, as the page asking for it is not trusted', async () => {
     const user = new UserSettings(defaults, file);
-    await user.set('autoSortTabs', true);
-    await user.set('autoSortTabs', JSON.parse('{ "evil": "x" }'));
-    await user.set('autoSortTabs', JSON.parse('{}').on);
+    await user.setTabs('autoSort', true);
+    await user.setTabs('autoSort', JSON.parse('{ "evil": "x" }'));
+    await user.setTabs('autoSort', JSON.parse('{}').on);
     await user.setIn('git', 'diffLayout', JSON.parse('"grid"'));
     await user.setIn('git', 'columnWidths', JSON.parse('["a", null]'));
     await user.setIn('git', 'columnWidths', [Number.NaN, 200]);
     await user.setIn('git', 'autoFetch', JSON.parse('"yes"'));
-    assert.deepStrictEqual(written(), { autoSortTabs: true });
-    assert.strictEqual(user.settings.autoSortTabs, true);
+    assert.deepStrictEqual(written(), { tabs: { autoSort: true } });
+    assert.strictEqual(user.settings.tabs.autoSort, true);
     assert.deepStrictEqual(user.settings.tools, defaults.tools);
     assert.strictEqual(user.reload(), false);
     assert.deepStrictEqual(user.problems, []);
@@ -274,13 +274,16 @@ suite('User settings file', () => {
   });
 
   test('reads and saves a file an editor wrote with a byte order mark', async () => {
-    fs.writeFileSync(file, `\uFEFF${JSON.stringify({ autoSortTabs: true })}`);
+    fs.writeFileSync(
+      file,
+      `\uFEFF${JSON.stringify({ tabs: { autoSort: true } })}`,
+    );
     const user = new UserSettings(defaults, file);
-    assert.strictEqual(user.settings.autoSortTabs, true);
+    assert.strictEqual(user.settings.tabs.autoSort, true);
     assert.deepStrictEqual(user.problems, []);
     await user.setIn('git', 'collapseMerges', false);
     assert.deepStrictEqual(written(), {
-      autoSortTabs: true,
+      tabs: { autoSort: true },
       tools: { git: { collapseMerges: false } },
     });
   });
@@ -290,8 +293,8 @@ suite('User settings file', () => {
     const user = new UserSettings(defaults, file);
     assert.deepStrictEqual(user.settings, defaults);
     assert.match(user.problems[0] ?? '', /not valid JSON/);
-    await user.set('autoSortTabs', true);
-    assert.strictEqual(user.settings.autoSortTabs, true);
+    await user.setTabs('autoSort', true);
+    assert.strictEqual(user.settings.tabs.autoSort, true);
     assert.strictEqual(fs.readFileSync(file, 'utf8'), '{ "solo": tru');
   });
 
@@ -302,8 +305,8 @@ suite('User settings file', () => {
     assert.deepStrictEqual(user.problems, [
       'The user settings are not a JSON object',
     ]);
-    await user.set('autoSortTabs', true);
-    assert.strictEqual(user.settings.autoSortTabs, true);
+    await user.setTabs('autoSort', true);
+    assert.strictEqual(user.settings.tabs.autoSort, true);
     assert.strictEqual(fs.readFileSync(file, 'utf8'), '[{ "solo": true }]');
   });
 
@@ -312,8 +315,8 @@ suite('User settings file', () => {
     const user = new UserSettings(defaults, file);
     assert.deepStrictEqual(user.settings, defaults);
     assert.match(user.problems[0] ?? '', /could not be read/);
-    await user.set('autoSortTabs', true);
-    assert.strictEqual(user.settings.autoSortTabs, true);
+    await user.setTabs('autoSort', true);
+    assert.strictEqual(user.settings.tabs.autoSort, true);
     assert.ok(fs.statSync(file).isDirectory());
     assert.ok(!fs.existsSync(`${file}.tmp`));
   });
@@ -323,10 +326,10 @@ suite('User settings file', () => {
     fs.writeFileSync(target, '{}');
     symlinkOrSkip(context, target, file);
     const user = new UserSettings(defaults, file);
-    await user.set('autoSortTabs', true);
+    await user.setTabs('autoSort', true);
     assert.ok(fs.lstatSync(file).isSymbolicLink());
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(target, 'utf8')), {
-      autoSortTabs: true,
+      tabs: { autoSort: true },
     });
   });
 
@@ -336,10 +339,10 @@ suite('User settings file', () => {
     symlinkOrSkip(context, path.join('dotfiles', 'settings.json'), file);
     const user = new UserSettings(defaults, file);
     assert.deepStrictEqual(user.problems, []);
-    await user.set('autoSortTabs', true);
+    await user.setTabs('autoSort', true);
     assert.ok(fs.lstatSync(file).isSymbolicLink());
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(target, 'utf8')), {
-      autoSortTabs: true,
+      tabs: { autoSort: true },
     });
   });
 
@@ -450,11 +453,11 @@ suite('User settings file', () => {
     for (const code of ['EPERM', 'EACCES', 'EBUSY']) {
       const user = new UserSettings(defaults, file);
       const renames = await renameFailing(2, code, () =>
-        user.set('autoSortTabs', code === 'EBUSY'),
+        user.setTabs('autoSort', code === 'EBUSY'),
       );
       assert.strictEqual(renames, 3);
       assert.strictEqual(
-        new UserSettings(defaults, file).settings.autoSortTabs,
+        new UserSettings(defaults, file).settings.tabs.autoSort,
         code === 'EBUSY',
       );
     }
@@ -488,18 +491,18 @@ suite('User settings file', () => {
   test('keeps a change still being saved when reading the file its earlier save wrote', async () => {
     const user = new UserSettings(defaults, file);
     await user.setIn('git', 'collapseMerges', false);
-    const saving = user.set('autoSortTabs', true);
+    const saving = user.setTabs('autoSort', true);
     assert.strictEqual(user.reload(), false);
-    assert.strictEqual(user.settings.autoSortTabs, true);
+    assert.strictEqual(user.settings.tabs.autoSort, true);
     await saving;
     assert.strictEqual(user.reload(), false);
-    assert.strictEqual(user.settings.autoSortTabs, true);
+    assert.strictEqual(user.settings.tabs.autoSort, true);
   });
 
   test('takes a change made to the file while its own change is still being saved', async () => {
     const user = new UserSettings(defaults, file);
     await user.setIn('git', 'collapseMerges', false);
-    const saving = user.set('autoSortTabs', true);
+    const saving = user.setTabs('autoSort', true);
     fs.writeFileSync(
       file,
       JSON.stringify({
@@ -511,26 +514,26 @@ suite('User settings file', () => {
       user.settings.tools.git.showAllFiles,
       !defaults.tools.git.showAllFiles,
     );
-    assert.strictEqual(user.settings.autoSortTabs, true);
+    assert.strictEqual(user.settings.tabs.autoSort, true);
     await saving;
     assert.strictEqual(user.reload(), false);
     assert.strictEqual(
       user.settings.tools.git.showAllFiles,
       !defaults.tools.git.showAllFiles,
     );
-    assert.strictEqual(user.settings.autoSortTabs, true);
+    assert.strictEqual(user.settings.tabs.autoSort, true);
   });
 
   test('keeps a change made to the file since it was read when saving its own', async () => {
     const user = new UserSettings(defaults, file);
-    fs.writeFileSync(file, JSON.stringify({ autoSortTabs: true }));
+    fs.writeFileSync(file, JSON.stringify({ tabs: { autoSort: true } }));
     await user.setIn('git', 'collapseMerges', false);
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(file, 'utf8')), {
-      autoSortTabs: true,
+      tabs: { autoSort: true },
       tools: { git: { collapseMerges: false } },
     });
     assert.strictEqual(user.reload(), true);
-    assert.strictEqual(user.settings.autoSortTabs, true);
+    assert.strictEqual(user.settings.tabs.autoSort, true);
     assert.strictEqual(user.settings.tools.git.collapseMerges, false);
   });
 
@@ -552,19 +555,19 @@ suite('User settings file', () => {
     const user = new UserSettings(defaults, file);
     await user.setIn('git', 'collapseMerges', false);
     assert.strictEqual(user.reload(), false);
-    fs.writeFileSync(file, JSON.stringify({ autoSortTabs: true }));
+    fs.writeFileSync(file, JSON.stringify({ tabs: { autoSort: true } }));
     assert.strictEqual(user.reload(), true);
-    assert.strictEqual(user.settings.autoSortTabs, true);
+    assert.strictEqual(user.settings.tabs.autoSort, true);
     assert.strictEqual(user.settings.tools.git.collapseMerges, true);
     assert.strictEqual(user.reload(), false);
   });
 
   test('takes new defaults, keeping the changes in the file over them', async () => {
     const user = new UserSettings(defaults, file);
-    await user.set('autoSortTabs', true);
+    await user.setTabs('autoSort', true);
     const changed = user.replaceDefaults({
       ...defaults,
-      autoSortTabs: false,
+      tabs: { ...defaults.tabs, autoSort: false },
       tools: {
         ...defaults.tools,
         git: { ...defaults.tools.git, collapseMerges: false },
@@ -572,7 +575,7 @@ suite('User settings file', () => {
     });
     assert.strictEqual(changed, true);
     assert.strictEqual(user.settings.tools.git.collapseMerges, false);
-    assert.strictEqual(user.settings.autoSortTabs, true);
+    assert.strictEqual(user.settings.tabs.autoSort, true);
     assert.strictEqual(user.replaceDefaults(user.defaults), false);
   });
 });
@@ -580,10 +583,10 @@ suite('User settings file', () => {
 suite('Default settings', () => {
   test('takes new defaults, keeping the user changes over them', async () => {
     const user = new UserSettings(defaults);
-    await user.set('autoSortTabs', true);
+    await user.setTabs('autoSort', true);
     const changed = user.replaceDefaults({
       ...defaults,
-      autoSortTabs: false,
+      tabs: { ...defaults.tabs, autoSort: false },
       tools: {
         ...defaults.tools,
         git: { ...defaults.tools.git, collapseMerges: false },
@@ -591,7 +594,7 @@ suite('Default settings', () => {
     });
     assert.strictEqual(changed, true);
     assert.strictEqual(user.settings.tools.git.collapseMerges, false);
-    assert.strictEqual(user.settings.autoSortTabs, true);
+    assert.strictEqual(user.settings.tabs.autoSort, true);
     assert.strictEqual(user.defaults.tools.git.collapseMerges, false);
     assert.strictEqual(user.replaceDefaults(user.defaults), false);
   });

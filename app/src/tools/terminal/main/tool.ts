@@ -427,7 +427,7 @@ export class TerminalTool implements Tool<'terminal'> {
 
   private listed(): string[] {
     const { home, isFolder, now } = this.folders;
-    const count = this.shell.recentItems();
+    const count = this.shell.recentFolders();
     const listed: string[] = [];
     for (const folder of rankedFolders(this.visits(), now())) {
       if (listed.length >= count) {

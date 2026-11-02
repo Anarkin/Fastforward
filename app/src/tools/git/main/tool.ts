@@ -1569,7 +1569,7 @@ export class GitTool implements Tool<'git'> {
               !this.hasRepository(root) &&
               !this.hasRepository(this.repositoryOf(root)),
           )
-          .slice(0, this.shell.recentItems()),
+          .slice(0, this.shell.recentFolders()),
       ),
     });
   }
