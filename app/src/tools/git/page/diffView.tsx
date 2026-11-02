@@ -1,4 +1,8 @@
-import { useVirtualizer } from '@tanstack/react-virtual';
+import {
+  observeElementOffset,
+  useVirtualizer,
+  type Virtualizer,
+} from '@tanstack/react-virtual';
 import {
   memo,
   useCallback,
@@ -298,6 +302,12 @@ const RowContent = memo(function RowContent({ row, index, render }: RowInput) {
   return render(row, index);
 }, sameRowInput);
 
+const overscan = 30;
+
+export function rowOverscan(dragged: boolean): number {
+  return dragged ? 1 : overscan;
+}
+
 const noBreaks: readonly RowBreak[] = [];
 
 const mostRememberedBreaks = 20_000;
@@ -386,11 +396,11 @@ export function WrapMarks({
       setBreaks(measured);
     };
     const known = knownBreaks(text, columns, lineHeight, columnsIn);
-    if (known === undefined) {
-      measure();
-    } else {
+    if (known !== undefined) {
       setBreaks(known);
+      return undefined;
     }
+    measure();
     let observed = false;
     const observer = new ResizeObserver(() => {
       if (observed) {
@@ -2156,6 +2166,18 @@ export function DiffView({
   );
 
   const wrapping = wordWrap ? columns : undefined;
+  const [dragged, setDragged] = useState(false);
+  const offsetSeen = useRef<(offset: number) => void>(undefined);
+  const observeOffset = useCallback(
+    (
+      instance: Virtualizer<HTMLDivElement, Element>,
+      seen: (offset: number, isScrolling: boolean) => void,
+    ) => {
+      offsetSeen.current = (offset) => seen(offset, true);
+      return observeElementOffset(instance, seen);
+    },
+    [],
+  );
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => list.current,
@@ -2165,8 +2187,36 @@ export function DiffView({
       lineHeight,
       scale,
     ),
-    overscan: 30,
+    overscan: rowOverscan(dragged),
+    observeElementOffset: observeOffset,
   });
+  const scrollTarget = useRef<number>(undefined);
+  const scrollFrame = useRef<number>(undefined);
+  const scrollToTop = useCallback(
+    (top: number) => {
+      scrollTarget.current = top;
+      scrollFrame.current ??= requestAnimationFrame(() => {
+        scrollFrame.current = undefined;
+        const target = scrollTarget.current;
+        if (target === undefined) {
+          return;
+        }
+        virtualizer.scrollToOffset(target);
+        if (list.current) {
+          offsetSeen.current?.(list.current.scrollTop);
+        }
+      });
+    },
+    [virtualizer],
+  );
+  useEffect(
+    () => () => {
+      if (scrollFrame.current !== undefined) {
+        cancelAnimationFrame(scrollFrame.current);
+      }
+    },
+    [],
+  );
 
   const [viewportHeight, setViewportHeight] = useState(0);
   const endPadding = rowPadding(viewportHeight, lineHeight);
@@ -2750,7 +2800,8 @@ export function DiffView({
         viewport={virtualizer.scrollRect?.height ?? 0}
         total={virtualizer.getTotalSize()}
         pinned={finding}
-        onScroll={(top) => virtualizer.scrollToOffset(top)}
+        onDrag={setDragged}
+        onScroll={scrollToTop}
       />
       <div
         className="virtual-rows"

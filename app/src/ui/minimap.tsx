@@ -144,6 +144,7 @@ export function Minimap({
   viewport,
   total,
   pinned = false,
+  onDrag,
   onScroll,
 }: {
   marks: readonly MinimapMark[];
@@ -151,6 +152,7 @@ export function Minimap({
   viewport: number;
   total: number;
   pinned?: boolean;
+  onDrag?: (dragging: boolean) => void;
   onScroll: (top: number) => void;
 }) {
   const subscribe = useCallback(
@@ -199,6 +201,7 @@ export function Minimap({
       onPointerDown={(event) => {
         if (grabPointer(event)) {
           setDragging(true);
+          onDrag?.(true);
           scrollTo(event);
         }
       }}
@@ -207,8 +210,14 @@ export function Minimap({
           scrollTo(event);
         }
       }}
-      onPointerUp={() => setDragging(false)}
-      onPointerCancel={() => setDragging(false)}
+      onPointerUp={() => {
+        setDragging(false);
+        onDrag?.(false);
+      }}
+      onPointerCancel={() => {
+        setDragging(false);
+        onDrag?.(false);
+      }}
     >
       <Marks
         marks={marks}

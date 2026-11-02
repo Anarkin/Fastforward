@@ -330,4 +330,57 @@ suite('App', () => {
     }
     await page.locator('.commit.working-tree.empty').waitFor();
   });
+
+  test('draws the rows of where its scrollbar is dragged to in the frame it scrolls there, rather than once the scroll event of the frame after comes, which left every other frame without new rows', async () => {
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await page.locator('.row.file', { hasText: 'long.txt' }).click();
+    await page.locator('.diff-line', { hasText: 'line0 ' }).first().waitFor();
+    await page.evaluate(() => {
+      const list = document.querySelector('.diff-view .virtual-rows');
+      const seen: boolean[] = [];
+      Reflect.set(window, 'coveredMoves', seen);
+      let last = list?.scrollTop;
+      const check = () => {
+        if (!list || list.scrollTop === last) {
+          return;
+        }
+        last = list.scrollTop;
+        const rows = [...list.querySelectorAll<HTMLElement>('.diff-row')];
+        const end = rows.find((row) => row.textContent?.includes('line199 '));
+        const top = Math.min(
+          list.scrollTop + list.clientHeight - 2,
+          end ? parseFloat(end.style.top) + end.offsetHeight - 2 : Infinity,
+        );
+        seen.push(
+          rows.some(
+            (row) =>
+              parseFloat(row.style.top) <= top &&
+              top < parseFloat(row.style.top) + row.offsetHeight,
+          ),
+        );
+      };
+      window.addEventListener('scroll', check, { capture: true });
+    });
+    const minimap = await page.locator('.diff-minimap').boundingBox();
+    assert.ok(minimap);
+    const x = minimap.x + minimap.width / 2;
+    await page.mouse.move(x, minimap.y + 2);
+    await page.mouse.down();
+    for (let step = 1; step <= 5; step++) {
+      await page.mouse.move(
+        x,
+        minimap.y + 2 + (minimap.height - 4) * (step / 5),
+      );
+    }
+    await page.mouse.up();
+
+    const covered = await page.evaluate(() =>
+      Reflect.get(window, 'coveredMoves'),
+    );
+    assert.ok(
+      Array.isArray(covered) && covered.length > 2,
+      JSON.stringify(covered),
+    );
+    assert.ok(covered.every(Boolean), JSON.stringify(covered));
+  });
 });
