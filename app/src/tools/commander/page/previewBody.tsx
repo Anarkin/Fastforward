@@ -8,7 +8,8 @@ import { MarkdownPane } from '../../../ui/markdownView';
 import { PdfPane } from '../../../ui/pdfView';
 import { viewerKeymap } from '../shared/keymap';
 import { useWholeText } from './textBody';
-import { previewUrl, type Preview } from './previews';
+import { keyPressed } from '../../../ui/shortcuts';
+import { imageScrolled, previewUrl, type Preview } from './previews';
 import type { PdfControls } from './pdfPreview';
 import type { ToViewer, Viewing } from './viewer';
 
@@ -102,6 +103,21 @@ export function PreviewBody({
       ref={body}
       tabIndex={0}
       data-column-focus=""
+      onKeyDown={(event) => {
+        const scroller = body.current;
+        if (preview !== 'image' || scroller === null) {
+          return;
+        }
+        const step =
+          keyPressed(viewerKeymap.scroll, event) ??
+          keyPressed(viewerKeymap.scrollSideways, event);
+        if (step === undefined) {
+          return;
+        }
+        event.preventDefault();
+        const { top, left } = imageScrolled(scroller, step);
+        scroller.scrollTo({ top, left });
+      }}
     >
       {viewing.error !== undefined ? (
         <div className="viewer-error">{viewing.error}</div>
