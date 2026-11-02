@@ -15,7 +15,7 @@ export interface RowBreak {
   readonly blanks: readonly Blank[];
 }
 
-const blank = 1;
+const blankKind = 1;
 const breaksAfter = 2;
 const breaksBefore = 4;
 const kinds = new Uint8Array(128);
@@ -24,7 +24,7 @@ const kindOf = (characters: string, kind: number) => {
     kinds[character.charCodeAt(0)] |= kind;
   }
 };
-kindOf(' \t', blank);
+kindOf(' \t', blankKind);
 kindOf('})]?|/&.,;', breaksAfter);
 kindOf('([{+', breaksBefore);
 const fullWidthColumns = 2;
@@ -39,12 +39,12 @@ const isBlank = (character: string | undefined) =>
   character === ' ' || character === '\t';
 
 const isBlankAt = (text: string, at: number) =>
-  (kindAt(text, at) & blank) !== 0;
+  (kindAt(text, at) & blankKind) !== 0;
 
 function breaksAt(text: string, at: number): boolean {
   const before = kindAt(text, at - 1);
   const after = kindAt(text, at);
-  if (((before | after) & blank) !== 0) {
+  if (((before | after) & blankKind) !== 0) {
     return false;
   }
   const endsAfter = (before & breaksAfter) !== 0;
