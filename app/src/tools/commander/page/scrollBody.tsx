@@ -157,6 +157,21 @@ export function ScrollBody({
   }, []);
   useEffect(() => () => clearTimeout(hiding.current), []);
   useEffect(() => body.current?.focus(), []);
+  useEffect(() => {
+    const element = body.current;
+    if (element === null) {
+      return undefined;
+    }
+    const onWheel = (event: WheelEvent) => {
+      if (wheeled(viewerKeymap.wheelSideways, event) === undefined) {
+        return;
+      }
+      event.preventDefault();
+      sideways.current?.scrollBy({ left: event.deltaX || event.deltaY });
+    };
+    element.addEventListener('wheel', onWheel, { passive: false });
+    return () => element.removeEventListener('wheel', onWheel);
+  }, []);
 
   useEffect(() => {
     const element = body.current;
