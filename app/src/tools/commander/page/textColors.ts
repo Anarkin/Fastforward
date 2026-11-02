@@ -1,11 +1,16 @@
 import type { TextRow } from '../shared/protocol';
 import type { CodeSegment } from '../../../ui/syntax';
 import type { SyntaxRange } from '../../../ui/syntaxEngine';
-import { partLine, type CodePart } from '../../../ui/syntaxParts';
+import {
+  partHasRanges,
+  partLine,
+  type CodePart,
+} from '../../../ui/syntaxParts';
 
 export interface ColoredText {
   readonly lines: readonly string[];
   readonly lineStarts: readonly number[];
+  readonly asciiLines: readonly boolean[];
   readonly parts: readonly CodePart[];
 }
 
@@ -25,12 +30,15 @@ function byteLength(text: string): number {
 export function coloredText(text: string): ColoredText {
   const lines = text.split('\n');
   const lineStarts: number[] = [];
+  const asciiLines: boolean[] = [];
   let at = 0;
   for (const line of lines) {
+    const bytes = byteLength(line);
     lineStarts.push(at);
-    at += byteLength(line) + 1;
+    asciiLines.push(bytes === line.length);
+    at += bytes + 1;
   }
-  return { lines, lineStarts, parts: [] };
+  return { lines, lineStarts, asciiLines, parts: [] };
 }
 
 export function withPart(colored: ColoredText, part: CodePart): ColoredText {
@@ -40,10 +48,10 @@ export function withPart(colored: ColoredText, part: CodePart): ColoredText {
   };
 }
 
-function rangesOfLine(
+function partOfLine(
   parts: readonly CodePart[],
   line: number,
-): readonly SyntaxRange[] | undefined {
+): CodePart | undefined {
   let low = 0;
   let high = parts.length - 1;
   while (low < high) {
@@ -54,8 +62,7 @@ function rangesOfLine(
       high = middle - 1;
     }
   }
-  const part = parts[low];
-  return part === undefined ? undefined : partLine(part, line);
+  return parts[low];
 }
 
 function lineAt(starts: readonly number[], position: number): number {
@@ -91,11 +98,12 @@ export function rowSegments(
 ): CodeSegment[] | undefined {
   const index = lineAt(colored.lineStarts, row.start);
   const line = colored.lines[index];
-  const ranges = rangesOfLine(colored.parts, index);
-  if (line === undefined || ranges === undefined || ranges.length === 0) {
+  const part = partOfLine(colored.parts, index);
+  if (line === undefined || part === undefined || !partHasRanges(part, index)) {
     return undefined;
   }
-  const from = charAt(line, row.start - (colored.lineStarts[index] ?? 0));
+  const bytes = row.start - (colored.lineStarts[index] ?? 0);
+  const from = colored.asciiLines[index] ? bytes : charAt(line, bytes);
   if (
     from === undefined ||
     line.slice(from, from + row.text.length) !== row.text
@@ -103,6 +111,7 @@ export function rowSegments(
     return undefined;
   }
   const to = from + row.text.length;
+  const ranges: readonly SyntaxRange[] = partLine(part, index, from, to) ?? [];
   const segments: CodeSegment[] = [];
   let at = from;
   for (const { start, end, kind } of ranges) {

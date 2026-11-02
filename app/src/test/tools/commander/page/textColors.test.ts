@@ -110,4 +110,34 @@ suite('Colors of the rows of a file viewed', () => {
 
     assert.ok(performance.now() - started < 100);
   });
+
+  test('colors the rows of a long line of many tokens from the ranges of each row, rather than the ranges and characters of the whole line for every row', () => {
+    const line = 'a+b;'.repeat(5000);
+    const ranges = Array.from({ length: 10_000 }, (_, index) => ({
+      start: index * 2,
+      end: index * 2 + 1,
+      kind: 'keyword' as const,
+    }));
+    const text = colored(`${line}\n`, [ranges]);
+    const rows = Array.from({ length: 200 }, (_, index) =>
+      row(
+        index * 100,
+        index * 100 + 100,
+        line.slice(index * 100, index * 100 + 100),
+      ),
+    );
+    const started = performance.now();
+
+    for (let pass = 0; pass < 10; pass++) {
+      for (const each of rows) {
+        assert.strictEqual(rowSegments(text, each)?.length, 100);
+      }
+    }
+
+    assert.ok(performance.now() - started < 100);
+    assert.deepStrictEqual(rowSegments(text, rows[199])?.slice(0, 2), [
+      { text: 'a', kind: 'keyword' },
+      { text: '+' },
+    ]);
+  });
 });

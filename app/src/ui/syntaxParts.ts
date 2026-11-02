@@ -67,26 +67,57 @@ export function packedPart(
   };
 }
 
-export function partLine(
+const startOf = (packed: number) => packed & widestColumn;
+
+const endOf = (packed: number) =>
+  startOf(packed) + ((packed >>> columnBits) & longestRange);
+
+function lineSpan(
   part: CodePart,
   line: number,
-): SyntaxRange[] | undefined {
+): readonly [number, number] | undefined {
   const index = line - part.from;
   if (index < 0 || index >= part.ends.length) {
     return undefined;
   }
+  return [part.ends[index - 1] ?? 0, part.ends[index] ?? 0];
+}
+
+export function partHasRanges(part: CodePart, line: number): boolean {
+  const span = lineSpan(part, line);
+  return span !== undefined && span[0] < span[1];
+}
+
+export function partLine(
+  part: CodePart,
+  line: number,
+  from = 0,
+  to = Number.POSITIVE_INFINITY,
+): SyntaxRange[] | undefined {
+  const span = lineSpan(part, line);
+  if (span === undefined) {
+    return undefined;
+  }
+  let [low, high] = span;
+  const end = high;
+  while (low < high) {
+    const middle = (low + high) >>> 1;
+    if (endOf(part.ranges[middle] ?? 0) <= from) {
+      low = middle + 1;
+    } else {
+      high = middle;
+    }
+  }
   const ranges: SyntaxRange[] = [];
-  const end = part.ends[index] ?? 0;
-  for (let at = part.ends[index - 1] ?? 0; at < end; at++) {
+  for (let at = low; at < end; at++) {
     const packed = part.ranges[at] ?? 0;
+    const start = startOf(packed);
+    if (start >= to) {
+      break;
+    }
     const kind = syntaxKinds[packed >>> kindShift];
     if (kind !== undefined) {
-      const start = packed & widestColumn;
-      ranges.push({
-        start,
-        end: start + ((packed >>> columnBits) & longestRange),
-        kind,
-      });
+      ranges.push({ start, end: endOf(packed), kind });
     }
   }
   return ranges;
