@@ -234,7 +234,7 @@ export function useSyntax(
           ? last.ranges
           : carriedRanges(last, files, whole);
     const publish = () => {
-      shown.current = { files, whole, ranges };
+      shown.current = { files, whole, ranges: new Map(ranges) };
       setColored(shown.current);
     };
     publish();

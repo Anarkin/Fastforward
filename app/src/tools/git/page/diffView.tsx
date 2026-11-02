@@ -278,7 +278,73 @@ function laidOutRowStarts(code: HTMLElement, lineHeight: number): number[] {
   return markedRowStarts(length, rows, rowOf);
 }
 
+interface RowInput {
+  readonly row: DiffRow;
+  readonly index: number;
+  readonly inputs: readonly unknown[];
+  readonly render: (row: DiffRow, index: number) => React.ReactNode;
+}
+
+export function sameRowInput(before: RowInput, after: RowInput): boolean {
+  return (
+    before.row === after.row &&
+    before.index === after.index &&
+    before.inputs.length === after.inputs.length &&
+    before.inputs.every((input, at) => Object.is(input, after.inputs[at]))
+  );
+}
+
+const RowContent = memo(function RowContent({ row, index, render }: RowInput) {
+  return render(row, index);
+}, sameRowInput);
+
 const noBreaks: readonly RowBreak[] = [];
+
+const mostRememberedBreaks = 20_000;
+
+const rememberedBreaks = new WeakMap<
+  ColumnsIn,
+  Map<string, readonly RowBreak[]>
+>();
+
+const breaksKey = (text: string, columns: number, lineHeight: number) =>
+  `${columns}\0${lineHeight}\0${text}`;
+
+export function knownBreaks(
+  text: string,
+  columns: number,
+  lineHeight: number,
+  columnsIn: ColumnsIn | undefined,
+): readonly RowBreak[] | undefined {
+  if (columnsIn === undefined) {
+    return undefined;
+  }
+  if (columnsIn(text)(text.length) < columns) {
+    return noBreaks;
+  }
+  return rememberedBreaks
+    .get(columnsIn)
+    ?.get(breaksKey(text, columns, lineHeight));
+}
+
+export function rememberBreaks(
+  text: string,
+  columns: number,
+  lineHeight: number,
+  columnsIn: ColumnsIn,
+  breaks: readonly RowBreak[],
+): void {
+  let remembered = rememberedBreaks.get(columnsIn);
+  if (remembered === undefined) {
+    remembered = new Map();
+    rememberedBreaks.set(columnsIn, remembered);
+  }
+  remembered.set(breaksKey(text, columns, lineHeight), breaks);
+  if (remembered.size > mostRememberedBreaks) {
+    const [oldest] = remembered.keys();
+    remembered.delete(oldest);
+  }
+}
 
 export function WrapMarks({
   text,
@@ -294,25 +360,44 @@ export function WrapMarks({
   columnsIn?: ColumnsIn;
 }) {
   const marks = useRef<HTMLSpanElement>(null);
-  const [breaks, setBreaks] = useState(noBreaks);
+  const [breaks, setBreaks] = useState(
+    () =>
+      (columns !== undefined &&
+        knownBreaks(text, columns, lineHeight, columnsIn)) ||
+      noBreaks,
+  );
   useLayoutEffect(() => {
     const code = marks.current?.parentElement?.querySelector('.code');
     if (columns === undefined || !(code instanceof HTMLElement)) {
       setBreaks(noBreaks);
       return undefined;
     }
-    const measure = () =>
-      setBreaks(
-        rowBreaksAt(
-          text,
-          laidOutRowStarts(code, lineHeight),
-          columns,
-          columnsIn,
-          wrapIndent(text, columns),
-        ),
+    const measure = () => {
+      const measured = rowBreaksAt(
+        text,
+        laidOutRowStarts(code, lineHeight),
+        columns,
+        columnsIn,
+        wrapIndent(text, columns),
       );
-    measure();
-    const observer = new ResizeObserver(measure);
+      if (columnsIn !== undefined) {
+        rememberBreaks(text, columns, lineHeight, columnsIn, measured);
+      }
+      setBreaks(measured);
+    };
+    const known = knownBreaks(text, columns, lineHeight, columnsIn);
+    if (known === undefined) {
+      measure();
+    } else {
+      setBreaks(known);
+    }
+    let observed = false;
+    const observer = new ResizeObserver(() => {
+      if (observed) {
+        measure();
+      }
+      observed = true;
+    });
     observer.observe(code);
     return () => observer.disconnect();
   }, [text, columns, columnsIn, lineHeight]);
@@ -576,13 +661,40 @@ export function diffRowClass(kind: DiffRow['kind']): string {
   return `virtual-row diff-row ${extra}`;
 }
 
+const plainText = /^[\x20-\x7e]*$/;
+
+function fitsOneLine(text: string, columns: number): boolean {
+  return text.length < columns && plainText.test(text);
+}
+
+function codeFits(row: CodeRow, columns: WrapColumns): boolean {
+  switch (row.kind) {
+    case 'split':
+      return (
+        (row.left === undefined ||
+          fitsOneLine(row.left.line.text, columns.left)) &&
+        (row.right === undefined ||
+          fitsOneLine(row.right.line.text, columns.right))
+      );
+    case 'line':
+      return fitsOneLine(row.line.text, columns.left);
+    case 'wholeLine':
+      return fitsOneLine(row.text, columns.left);
+    default:
+      return row satisfies never;
+  }
+}
+
 export function rowHeight(
   row: DiffRow,
   wrap = false,
   lineHeight = uniformHeight,
+  columns?: WrapColumns,
 ): number | undefined {
   if (isCode(row)) {
-    return wrap ? undefined : lineHeight;
+    return !wrap || (columns !== undefined && codeFits(row, columns))
+      ? lineHeight
+      : undefined;
   }
   const kind = row.kind;
   return isMeasured(kind) ? undefined : rowLines[kind] * lineHeight;
@@ -2476,6 +2588,34 @@ export function DiffView({
     }
   };
 
+  const rowInputs = [
+    error,
+    rows,
+    files,
+    whole,
+    origin,
+    split,
+    viewOf,
+    virtualizer,
+    keys,
+    syntax,
+    words,
+    rangesByLine,
+    foundKey,
+    found,
+    showWhitespace,
+    wrapping,
+    lineHeight,
+    columnsIn,
+    widths,
+    reveal,
+    view === undefined,
+    view?.scrolled,
+    view?.width,
+    view?.room,
+    view?.minimap,
+  ];
+
   const items = virtualizer.getVirtualItems();
   useLayoutEffect(() => {
     const element = list.current;
@@ -2682,7 +2822,7 @@ export function DiffView({
           )}
           {items.map((item) => {
             const row = rows[item.index];
-            const height = rowHeight(row, wordWrap, lineHeight);
+            const height = rowHeight(row, wordWrap, lineHeight, columns);
             return (
               <div
                 key={item.key}
@@ -2691,7 +2831,12 @@ export function DiffView({
                 ref={height === undefined ? virtualizer.measureElement : null}
                 style={diffRowPlace(item.start, height)}
               >
-                {renderRow(row, item.index)}
+                <RowContent
+                  row={row}
+                  index={item.index}
+                  inputs={rowInputs}
+                  render={renderRow}
+                />
               </div>
             );
           })}

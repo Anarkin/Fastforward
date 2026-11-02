@@ -48,6 +48,9 @@ import {
   marked,
   rowHeight,
   rowMeasures,
+  sameRowInput,
+  knownBreaks,
+  rememberBreaks,
   BreakMarks,
   WrapMarks,
   anchoredScrollTop,
@@ -73,6 +76,20 @@ import {
 import { lineKey } from '../../../../tools/git/page/find';
 import type { TextWidths } from '../../../../tools/git/page/overflow';
 import { countingReads, fileChange, tagsWith } from '../../../fixtures';
+
+const wideColumnsIn = (row: string) => (index: number) =>
+  row.slice(0, index).length + row.slice(0, index).split('界').length - 1;
+
+const narrowColumnsIn = (row: string) => (index: number) =>
+  Math.min(index, row.length);
+
+const otherFontColumnsIn = (row: string) => (index: number) =>
+  Math.min(index, row.length);
+
+const contextLine = (text: string) => ({
+  line: { kind: 'context' as const, oldNumber: 1, newNumber: 1, text },
+  index: 0,
+});
 
 function sign(glyph: string, text: string): string {
   return `<span class="blank" data-glyph="${glyph}">${text}</span>`;
@@ -1524,6 +1541,77 @@ suite('Diff row heights', () => {
     );
   });
 
+  test('knows a line that fits in the columns it wraps at has no breaks without laying it out, as laying out every line scrolled into view made dragging the scrollbar slow', () => {
+    assert.deepStrictEqual(knownBreaks('fits', 8, 22, wideColumnsIn), []);
+    assert.strictEqual(
+      knownBreaks('it may wrap', 8, 22, wideColumnsIn),
+      undefined,
+    );
+    assert.strictEqual(
+      knownBreaks('界界界界', 8, 22, wideColumnsIn),
+      undefined,
+    );
+    assert.strictEqual(knownBreaks('fits', 8, 22, undefined), undefined);
+  });
+
+  test('lays out a line that may wrap only once for its text, the columns it wraps at, its line height and font, so a line scrolled back into view is not laid out again', () => {
+    const columnsIn = narrowColumnsIn;
+    const otherFont = otherFontColumnsIn;
+    const text = 'a line long enough to wrap, remembered';
+    const breaks = [{ end: 9, blanks: [] }];
+
+    rememberBreaks(text, 10, 22, columnsIn, breaks);
+
+    assert.strictEqual(knownBreaks(text, 10, 22, columnsIn), breaks);
+    assert.strictEqual(knownBreaks(text, 11, 22, columnsIn), undefined);
+    assert.strictEqual(knownBreaks(text, 10, 23, columnsIn), undefined);
+    assert.strictEqual(knownBreaks(text, 10, 22, otherFont), undefined);
+  });
+
+  test('gives a wrapped row of plain text narrower than its columns the height of one line rather than measuring it, as measuring every row scrolled into view made dragging the scrollbar of a large diff slow, and its estimate is one line too', () => {
+    const line = contextLine;
+    const split = (left: string, right: string): DiffRow => ({
+      kind: 'split',
+      file: 0,
+      left: line(left),
+      right: line(right),
+    });
+    const columns = { left: 10, right: 12 };
+
+    assert.strictEqual(
+      rowHeight(split('fits', 'fits too'), true, 22, columns),
+      22,
+    );
+    assert.strictEqual(
+      rowHeight(
+        { kind: 'split', file: 0, left: undefined, right: line('fits') },
+        true,
+        22,
+        columns,
+      ),
+      22,
+    );
+    for (const row of [
+      split('far too long here', 'fits'),
+      split('fits', 'eleven char'.repeat(2)),
+      split('tab	here', 'fits'),
+      split('café', 'fits'),
+      split('0123456789', 'fits'),
+    ]) {
+      assert.strictEqual(rowHeight(row, true, 22, columns), undefined);
+    }
+    assert.strictEqual(rowHeight(split('fits', 'fits'), true, 22), undefined);
+    assert.strictEqual(
+      rowHeight(
+        { kind: 'wholeLine', file: 0, number: 1, text: 'fits' },
+        true,
+        22,
+        columns,
+      ),
+      22,
+    );
+  });
+
   test('keys the rows of code again when the rows or the width they wrap in change, so they are measured again, but no other row', () => {
     const rows = diffRows(wrapping, new Map(), undefined);
     const same = diffRows(wrapping, new Map(), undefined);
@@ -1644,6 +1732,25 @@ function layoutSteps(padding: number, scale: number): number[] {
 }
 
 suite('Drawing code', () => {
+  test('draws a row anew only once the row or what it is drawn from changed, not on every scroll of the diff, as drawing every row shown on every step of a drag made dragging the scrollbar of a large diff slow', () => {
+    const row: DiffRow = { kind: 'hunk', file: 0 };
+    const words = new Map();
+    const drawn = (inputs: readonly unknown[], index = 3, shown = row) => ({
+      row: shown,
+      index,
+      inputs,
+      render: () => null,
+    });
+
+    assert.ok(sameRowInput(drawn([words, 17]), drawn([words, 17])));
+    assert.ok(!sameRowInput(drawn([words, 17]), drawn([new Map(), 17])));
+    assert.ok(!sameRowInput(drawn([words, 17]), drawn([words, 18])));
+    assert.ok(!sameRowInput(drawn([words, 17]), drawn([words, 17], 4)));
+    assert.ok(
+      !sameRowInput(drawn([words, 17]), drawn([words, 17], 3, { ...row })),
+    );
+  });
+
   test('pads changed words up to the top and down to the bottom of their line, apart as the text sits off center at scales like 125%, and not before the text is measured', () => {
     const line = { top: 154, bottom: 176 };
     const even = wordPadding(line, { top: 157, bottom: 173 }, 1);
