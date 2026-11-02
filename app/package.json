@@ -36,6 +36,7 @@
     "knip": "knip",
     "dist": "npm run package && electron-builder --publish never",
     "release": "node scripts/release.mts",
+    "push": "node scripts/push.mts",
     "playground:git": "node scripts/playground/git.mts"
   },
   "devDependencies": {
