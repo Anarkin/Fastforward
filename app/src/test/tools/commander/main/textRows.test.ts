@@ -42,6 +42,9 @@ const texts = (rows: readonly { readonly text: string }[]) =>
 const cuts = (rows: readonly { readonly cut?: true }[]) =>
   rows.map((row) => row.cut === true);
 
+const spans = (rows: readonly { start: number; end: number }[]) =>
+  rows.map((row) => [row.start, row.end]);
+
 suite('Rows of text of a file', () => {
   test('splits at line ends, dropping the carriage return of Windows line ends, and gives each row its bytes', async () => {
     const { read, size } = inMemory('one\r\ntwo\n\nthree');
@@ -205,6 +208,47 @@ suite('Rows of text of a file', () => {
     );
   });
 
+  test('cuts a line longer than a row at the same places wherever it is read from, at each multiple of the bytes of a row in the file, so its rows stay as they are while more of them are read', async () => {
+    const long = 'x'.repeat(rowBytes * 3 + 100);
+    const { read, size } = inMemory(`one\n${long}\nlast`);
+    const forward = await rowsFrom(read, size, 0, 100);
+
+    assert.deepStrictEqual(spans(forward), [
+      [0, 4],
+      [4, rowBytes],
+      [rowBytes, rowBytes * 2],
+      [rowBytes * 2, rowBytes * 3],
+      [rowBytes * 3, long.length + 5],
+      [long.length + 5, size],
+    ]);
+    for (const byte of [5, rowBytes - 1, rowBytes + 7, rowBytes * 3 + 50]) {
+      const start = await rowStartAt(read, byte);
+      const index = forward.findIndex((row) => row.start === start);
+      assert.ok(
+        index !== -1 && (forward[index]?.end ?? 0) > byte,
+        String(byte),
+      );
+      assert.deepStrictEqual(
+        spans(await rowsFrom(read, size, start, 100)),
+        spans(forward.slice(index)),
+      );
+      assert.deepStrictEqual(
+        spans(await rowsBefore(read, size, start, 100)),
+        spans(forward.slice(0, index)),
+      );
+    }
+  });
+
+  test('keeps a line no longer than a row whole where it crosses a multiple of the bytes of a row', async () => {
+    const first = 'x'.repeat(rowBytes - 10);
+    const { read, size } = inMemory(`${first}\na line across the multiple\n`);
+
+    const rows = await rowsFrom(read, size, 0, 10);
+
+    assert.deepStrictEqual(texts(rows), [first, 'a line across the multiple']);
+    assert.strictEqual(await rowStartAt(read, rowBytes + 2), first.length + 1);
+  });
+
   test('marks each row a line longer than a row is cut into short of its end, read forwards or backwards, from a line start or within the line', async () => {
     const long = 'x'.repeat(rowBytes * 2 + 5);
     const { read, size } = inMemory(`one
@@ -220,7 +264,7 @@ last`);
     );
     assert.deepStrictEqual(
       cuts(await rowsBefore(read, size, 4 + rowBytes, 10)),
-      [false, true],
+      [false, true, true],
     );
     assert.deepStrictEqual(cuts(await rowsBefore(read, size, size, 1)), [
       false,
