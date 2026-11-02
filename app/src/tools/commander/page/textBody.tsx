@@ -595,6 +595,8 @@ export function TextBody({
   return (
     <ScrollBody
       barPinned={finding}
+      matches={find?.matches}
+      size={size}
       thumb={textThumb(loaded, screen, size ?? 0, estimate?.perRow, lastTop)}
       onScreen={setScreen}
       onColumns={setColumns}

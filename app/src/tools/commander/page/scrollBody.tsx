@@ -1,10 +1,13 @@
 import {
+  memo,
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
+import type { ByteRange } from '../shared/protocol';
 import { keyPressed } from '../../../ui/shortcuts';
 import { wheeled } from '../../../shell/shared/keymap';
 import { viewerKeymap } from '../shared/keymap';
@@ -20,6 +23,8 @@ export interface Thumb {
 }
 
 const minThumb = 24;
+
+const minTick = 2;
 
 const probeText = '0'.repeat(100);
 
@@ -39,6 +44,59 @@ export function thumbBox(
   const height = Math.min(track, Math.max(minThumb, thumb.length * track));
   return { top: thumb.start * (track - height), height };
 }
+
+export interface Tick {
+  readonly top: number;
+  readonly height: number;
+}
+
+export function matchTicks(
+  matches: readonly ByteRange[],
+  size: number,
+  least: number,
+): Tick[] {
+  if (size <= 0) {
+    return [];
+  }
+  const ticks: { top: number; bottom: number }[] = [];
+  for (const match of matches) {
+    const top = match.start / size;
+    const bottom = Math.max(match.end / size, top + least);
+    const last = ticks.at(-1);
+    if (last !== undefined && top <= last.bottom) {
+      last.bottom = Math.max(last.bottom, bottom);
+    } else {
+      ticks.push({ top, bottom });
+    }
+  }
+  return ticks.map(({ top, bottom }) => ({ top, height: bottom - top }));
+}
+
+function percent(share: number): string {
+  return `${share * 100}%`;
+}
+
+const MatchTicks = memo(function MatchTicks({
+  matches,
+  size,
+  track,
+}: {
+  matches: readonly ByteRange[];
+  size: number;
+  track: number;
+}) {
+  const ticks = useMemo(
+    () => matchTicks(matches, size, track > 0 ? minTick / track : 0),
+    [matches, size, track],
+  );
+  return ticks.map((tick) => (
+    <div
+      key={tick.top}
+      className="minimap-mark match"
+      style={{ top: percent(tick.top), height: percent(tick.height) }}
+    />
+  ));
+});
 
 function charsBefore(row: Element, container: Node, offset: number): number {
   const before = document.createRange();
@@ -89,6 +147,8 @@ function copiedRows(
     .join('');
 }
 
+const noMatches: readonly ByteRange[] = [];
+
 export function ScrollBody({
   thumb,
   onScreen,
@@ -101,6 +161,8 @@ export function ScrollBody({
   reveal,
   rowText,
   barPinned = false,
+  matches = noMatches,
+  size = 0,
   children,
 }: {
   thumb: Thumb | undefined;
@@ -114,6 +176,8 @@ export function ScrollBody({
   reveal?: { readonly column: number; readonly asked: number };
   rowText?: (row: Element) => RowText | undefined;
   barPinned?: boolean;
+  matches?: readonly ByteRange[];
+  size?: number;
   children: React.ReactNode;
 }) {
   const body = useRef<HTMLDivElement>(null);
@@ -334,6 +398,7 @@ export function ScrollBody({
             );
           }}
         >
+          <MatchTicks matches={matches} size={size} track={track} />
           <div
             className={`${overlayScrollbarClass} viewer-thumb${barShown || dragging || barPinned ? ' shown' : ''}${dragging ? ' dragging' : ''}`}
             style={{

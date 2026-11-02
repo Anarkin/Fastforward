@@ -1,9 +1,16 @@
 import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
-import { ScrollBody } from '../../../../tools/commander/page/scrollBody';
+import type { ByteRange } from '../../../../tools/commander/shared/protocol';
+import {
+  matchTicks,
+  ScrollBody,
+} from '../../../../tools/commander/page/scrollBody';
 
-function scrollBody(barPinned: boolean): string {
+function scrollBody(
+  barPinned: boolean,
+  matches: readonly ByteRange[] = [],
+): string {
   return renderToStaticMarkup(
     <ScrollBody
       thumb={{ start: 0.5, length: 0.1 }}
@@ -12,6 +19,8 @@ function scrollBody(barPinned: boolean): string {
       jump={() => {}}
       error={undefined}
       barPinned={barPinned}
+      matches={matches}
+      size={1024}
     >
       text
     </ScrollBody>,
@@ -25,5 +34,32 @@ suite('Commander scroll body', () => {
       /class="overlay-scrollbar viewer-thumb shown"/,
     );
     assert.match(scrollBody(false), /class="overlay-scrollbar viewer-thumb"/);
+  });
+
+  test('ticks the track where the matches are in the file by their bytes, as the minimap of a diff does', () => {
+    assert.match(
+      scrollBody(false, [{ start: 512, end: 544 }]),
+      /class="minimap-mark match" style="top:50%;height:3.125%"/,
+    );
+    assert.doesNotMatch(scrollBody(false), /minimap-mark/);
+  });
+
+  test('ticks matches too close to tell apart once, each at least the least tick tall, so a file of many matches draws a tick per few pixels at most', () => {
+    assert.deepStrictEqual(
+      matchTicks(
+        [
+          { start: 0, end: 8 },
+          { start: 12, end: 16 },
+          { start: 512, end: 544 },
+        ],
+        1024,
+        1 / 64,
+      ),
+      [
+        { top: 0, height: 0.02734375 },
+        { top: 0.5, height: 0.03125 },
+      ],
+    );
+    assert.deepStrictEqual(matchTicks([{ start: 0, end: 8 }], 0, 1 / 64), []);
   });
 });

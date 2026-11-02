@@ -164,6 +164,8 @@ export function ByteBody({
   return (
     <ScrollBody
       barPinned={finding}
+      matches={find?.matches}
+      size={size}
       thumb={
         rowCount === 0
           ? undefined
