@@ -144,8 +144,21 @@ suite('Rows of text of a file', () => {
     await rowsBefore(cached, size, start, 100);
     assert.strictEqual(reads.length, 0);
     cache.forget();
-    await rowsBefore(cached, size, start, 100);
+    await rowsBefore(cache.reader(read), size, start, 100);
     assert.ok(reads.length > 0 && reads.length <= 3, String(reads.length));
+  });
+
+  test('keeps the blocks a read through the file as it was finds once told to forget them out of those read since, as a read under way while the file was replaced mixed the old bytes into the new file', async () => {
+    const old = inMemory('old line\n'.repeat(20_000));
+    const replaced = inMemory('new line\n'.repeat(20_000));
+    const cache = blockCache();
+    const before = cache.reader(old.read);
+
+    cache.forget();
+    await before(100_000, 9);
+    const after = await cache.reader(replaced.read)(100_008, 9);
+
+    assert.strictEqual(after.toString(), 'new line\n');
   });
 
   test('hands out a read within one block as a view of the block it holds rather than a copy, as the rows of a screen read a few bytes at a time and copying the whole block each time made dragging the scrollbar of a file slow', async () => {
