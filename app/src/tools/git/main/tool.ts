@@ -891,12 +891,6 @@ export class GitTool implements Tool<'git'> {
       case 'setDiffLayout':
         this.save(storage.setDiffLayout(message.layout));
         return;
-      case 'setWordWrap':
-        this.save(storage.setWordWrap(message.wrap));
-        return;
-      case 'setShowWhitespace':
-        this.save(storage.setShowWhitespace(message.show));
-        return;
       case 'setIgnoreWhitespace': {
         this.save(storage.setIgnoreWhitespace(message.ignore));
         await this.sendCompare(session);

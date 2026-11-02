@@ -39,6 +39,9 @@ function inMemory(text: string | Buffer): {
 const texts = (rows: readonly { readonly text: string }[]) =>
   rows.map((row) => row.text);
 
+const cuts = (rows: readonly { readonly cut?: true }[]) =>
+  rows.map((row) => row.cut === true);
+
 suite('Rows of text of a file', () => {
   test('splits at line ends, dropping the carriage return of Windows line ends, and gives each row its bytes', async () => {
     const { read, size } = inMemory('one\r\ntwo\n\nthree');
@@ -200,6 +203,38 @@ suite('Rows of text of a file', () => {
       texts(await rowsFrom(read, size, 0, 10, codingOf('windows-1250'))),
       ['Ša', 'č'],
     );
+  });
+
+  test('marks each row a line longer than a row is cut into short of its end, read forwards or backwards, from a line start or within the line', async () => {
+    const long = 'x'.repeat(rowBytes * 2 + 5);
+    const { read, size } = inMemory(`one
+${long}
+last`);
+
+    const forward = await rowsFrom(read, size, 0, 10);
+
+    assert.deepStrictEqual(cuts(forward), [false, true, true, false, false]);
+    assert.deepStrictEqual(
+      cuts(await rowsBefore(read, size, forward.at(-1)?.start ?? 0, 10)),
+      [false, true, true, false],
+    );
+    assert.deepStrictEqual(
+      cuts(await rowsBefore(read, size, 4 + rowBytes, 10)),
+      [false, true],
+    );
+    assert.deepStrictEqual(cuts(await rowsBefore(read, size, size, 1)), [
+      false,
+    ]);
+  });
+
+  test('marks the row read backwards from within a line longer than it searches back as cut short of its end', async () => {
+    const long = 'x'.repeat(2 * 1024 * 1024);
+    const { read, size } = inMemory(`${long}
+next`);
+
+    const [row] = await rowsBefore(read, size, long.length - 100, 1);
+
+    assert.strictEqual(row?.cut, true);
   });
 
   test('leaves the line end out of a row read backwards from the end of a line longer than it searches back', async () => {

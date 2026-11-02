@@ -186,7 +186,7 @@ export function DiffOptions({
       <span className="nav-button-space" />
       <button
         className={`nav-button toggle ${showWhitespace ? 'active' : ''}`}
-        title={strings.diff.showWhitespace}
+        title={strings.common.showWhitespace}
         aria-pressed={showWhitespace}
         onClick={() => onShowWhitespace(!showWhitespace)}
       >
@@ -203,7 +203,7 @@ export function DiffOptions({
       <span className="nav-button-space" />
       <button
         className={`nav-button toggle ${wordWrap ? 'active' : ''}`}
-        title={strings.diff.wrap}
+        title={strings.common.wrap}
         aria-pressed={wordWrap}
         onClick={() => onWordWrap(!wordWrap)}
       >

@@ -60,13 +60,24 @@ export function wrapIndent(text: string, columns: number): number {
   return offStops || indent + fullWidthColumns > columns ? 0 : indent;
 }
 
-export function wrappedLines(text: string, columns: number): number {
-  if (text.length <= columns && !text.includes('\t')) {
-    return 1;
+function startRowAt(starts: number[], text: string, at: number): void {
+  const code = text.charCodeAt(at);
+  const start = code >= 0xdc00 && code <= 0xdfff ? at - 1 : at;
+  if (start > (starts.at(-1) ?? 0)) {
+    starts.push(start);
   }
-  const indent = wrapIndent(text, columns);
+}
+
+export function wrapStarts(
+  text: string,
+  columns: number,
+  indent = wrapIndent(text, columns),
+): number[] {
+  if (text.length <= columns && !text.includes('\t')) {
+    return [0];
+  }
   const breaks = new Set(breakOffsets(text));
-  let lines = 1;
+  const starts = [0];
   let column = 0;
   let rowStart = indent;
   let at = 0;
@@ -81,13 +92,13 @@ export function wrappedLines(text: string, columns: number): number {
     }
     let length = end - at;
     if (length > 0 && column > rowStart && column + length > columns) {
-      lines++;
+      starts.push(at);
       column = indent;
       rowStart = indent;
     }
     while (column + length > columns) {
       length -= columns - column;
-      lines++;
+      startRowAt(starts, text, end - length);
       column = indent;
       rowStart = indent;
     }
@@ -96,7 +107,11 @@ export function wrappedLines(text: string, columns: number): number {
       column = text[at] === '\t' ? tabStop(column) : column + 1;
     }
   }
-  return lines;
+  return starts;
+}
+
+export function wrappedLines(text: string, columns: number): number {
+  return wrapStarts(text, columns).length;
 }
 
 const maxMarkedRows = 200;

@@ -1,5 +1,6 @@
 import { compareKeymap, gitKeymap } from '../shared/keymap';
 import { CompareView } from './compareView';
+import { useTextView } from '../../../ui/textView';
 import './style.css';
 import {
   useCallback,
@@ -185,8 +186,8 @@ export function GitTool({
   } = tab;
   const [entireFilePinned, setEntireFilePinned] = useState(false);
   const [ignoreWhitespace, setIgnoreWhitespace] = useState(false);
-  const [wordWrap, setWordWrap] = useState(false);
-  const [showWhitespace, setShowWhitespace] = useState(false);
+  const textView = useTextView();
+  const { wordWrap, showWhitespace } = textView.view;
   const [autoFetch, setAutoFetch] = useState(false);
   const [autoFetchMinutes, setAutoFetchMinutes] = useState(0);
   const [hideDimmed, setHideDimmed] = useState(false);
@@ -337,8 +338,6 @@ export function GitTool({
           setCollapseMerges(message.collapseMerges);
           setEntireFilePinned(message.entireFilePinned);
           setIgnoreWhitespace(message.ignoreWhitespace);
-          setWordWrap(message.wordWrap);
-          setShowWhitespace(message.showWhitespace);
           setDiffLayout(message.diffLayout);
           setShowAllFiles(message.showAllFiles);
           setAutoFetch(message.autoFetch);
@@ -688,15 +687,11 @@ export function GitTool({
     setIgnoreWhitespace(ignore);
     post({ type: 'setIgnoreWhitespace', ignore });
   };
-  const changeWordWrap = (wrap: boolean) => {
-    setWordWrap(wrap);
-    post({ type: 'setWordWrap', wrap });
-  };
+  const changeWordWrap = (wrap: boolean) =>
+    textView.change({ ...textView.view, wordWrap: wrap });
   useBinding(gitKeymap.wrap, () => changeWordWrap(!wordWrap), active);
-  const changeShowWhitespace = (show: boolean) => {
-    setShowWhitespace(show);
-    post({ type: 'setShowWhitespace', show });
-  };
+  const changeShowWhitespace = (show: boolean) =>
+    textView.change({ ...textView.view, showWhitespace: show });
   useBinding(
     gitKeymap.showWhitespace,
     () => changeShowWhitespace(!showWhitespace),

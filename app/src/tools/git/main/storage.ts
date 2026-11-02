@@ -194,8 +194,6 @@ export class GitStorage {
       collapseMerges: settings.collapseMerges,
       entireFilePinned: settings.entireFilePinned,
       ignoreWhitespace: settings.ignoreWhitespace,
-      wordWrap: settings.wordWrap,
-      showWhitespace: settings.showWhitespace,
       diffLayout: settings.diffLayout,
       showAllFiles: settings.showAllFiles,
       autoFetch: settings.autoFetch,
@@ -245,14 +243,6 @@ export class GitStorage {
 
   async setIgnoreWhitespace(ignore: boolean): Promise<void> {
     await this.userSettings.setIn('git', 'ignoreWhitespace', ignore);
-  }
-
-  async setWordWrap(wrap: boolean): Promise<void> {
-    await this.userSettings.setIn('git', 'wordWrap', wrap);
-  }
-
-  async setShowWhitespace(show: boolean): Promise<void> {
-    await this.userSettings.setIn('git', 'showWhitespace', show);
   }
 
   async setDiffLayout(layout: DiffLayout): Promise<void> {

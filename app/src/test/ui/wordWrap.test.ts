@@ -8,6 +8,7 @@ import {
   wrapColumns,
   wrapIndent,
   wrappedLines,
+  wrapStarts,
 } from '../../ui/wordWrap';
 
 function space(column: number) {
@@ -77,6 +78,20 @@ suite('Word wrap', () => {
   test('estimates the rows a line wraps onto as indented as the line, keeping its indentation on the row with the code it indents', () => {
     assert.strictEqual(wrappedLines('  aaa bbb ccc', 7), 3);
     assert.strictEqual(wrappedLines('        abcdefgh', 10), 4);
+  });
+
+  test('finds where each row a line wraps onto starts: at the word that does not fit, past the spaces hanging before it, anywhere in a word longer than a row, and past the indentation', () => {
+    assert.deepStrictEqual(wrapStarts('', 10), [0]);
+    assert.deepStrictEqual(wrapStarts('one two three', 7), [0, 8]);
+    assert.deepStrictEqual(wrapStarts('abcdefghij', 4), [0, 4, 8]);
+    assert.deepStrictEqual(wrapStarts('a abcdefgh', 4), [0, 2, 6]);
+    assert.deepStrictEqual(wrapStarts('log.info(strings.log)', 12), [0, 8, 17]);
+    assert.deepStrictEqual(wrapStarts('        abcdefgh', 10), [0, 10, 12, 14]);
+    assert.deepStrictEqual(wrapStarts('    one two three', 9), [0, 8, 12]);
+  });
+
+  test('never starts a row between the halves of a character outside the basic plane', () => {
+    assert.deepStrictEqual(wrapStarts('a😀😀', 2), [0, 1, 3]);
   });
 
   test('draws a tab to the next stop of four columns', () => {

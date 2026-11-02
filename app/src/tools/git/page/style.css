@@ -742,6 +742,7 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
     var(--device-pixel, 1px)
   );
   --diff-advance: round(1ch, var(--device-pixel, 1px));
+  --blank-advance: var(--diff-advance);
   position: relative;
   height: 100%;
 }

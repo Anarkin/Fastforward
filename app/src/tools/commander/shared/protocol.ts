@@ -10,6 +10,7 @@ export interface TextRow {
   readonly start: number;
   readonly end: number;
   readonly text: string;
+  readonly cut?: true;
 }
 
 export const textEncodings = [

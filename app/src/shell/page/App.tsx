@@ -1,5 +1,6 @@
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { DateFormat } from '../../ui/dates';
+import { defaultTextView, TextViewContext } from '../../ui/textView';
 import {
   appGroups,
   keymap,
@@ -178,6 +179,7 @@ export function App({ name, post, listen }: Props) {
   const [installsCommand, setInstallsCommand] = useState(false);
   const [autoSortTabs, setAutoSortTabs] = useState(false);
   const [dateFormat, setDateFormat] = useState(useContext(DateFormat));
+  const [textView, setTextView] = useState(defaultTextView);
   const [choosing, setChoosing] = useState<ToWebviewOf<'chooseTool'>>();
   const [toolItems, setToolItems] = useState<
     Partial<Record<ToolId, readonly ContextMenuItem[]>>
@@ -221,6 +223,9 @@ export function App({ name, post, listen }: Props) {
           break;
         case 'dateFormat':
           setDateFormat(message.format);
+          break;
+        case 'textView':
+          setTextView(message.view);
           break;
         case 'notice': {
           const id = ++noticeCount.current;
@@ -451,16 +456,26 @@ export function App({ name, post, listen }: Props) {
       <Notices notices={notices} onDismiss={dismissNotice} />
       {emptyState(tabs)}
       <DateFormat value={dateFormat}>
-        <ToolViews
-          active={activeTool}
-          comparing={activeTab?.compare === true ? activeTab.id : undefined}
-          post={post}
-          listeners={listeners}
-          showMenu={showMenu}
-          closeMenu={closeMenu}
-          onNewTabItems={onNewTabItems}
-          onTitle={onTitle}
-        />
+        <TextViewContext
+          value={{
+            view: textView,
+            change: (view) => {
+              setTextView(view);
+              post({ type: 'setTextView', view });
+            },
+          }}
+        >
+          <ToolViews
+            active={activeTool}
+            comparing={activeTab?.compare === true ? activeTab.id : undefined}
+            post={post}
+            listeners={listeners}
+            showMenu={showMenu}
+            closeMenu={closeMenu}
+            onNewTabItems={onNewTabItems}
+            onTitle={onTitle}
+          />
+        </TextViewContext>
       </DateFormat>
     </div>
   );

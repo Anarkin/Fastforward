@@ -1476,7 +1476,7 @@ body.resizing {
 .blank::before {
   position: absolute;
   left: 0;
-  width: var(--diff-advance);
+  width: var(--blank-advance);
   text-align: center;
   text-indent: 0;
   pointer-events: none;

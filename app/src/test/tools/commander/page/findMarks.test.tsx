@@ -1,8 +1,10 @@
 import * as assert from 'node:assert';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import {
   byteMarks,
   hexMarks,
+  MarkedText,
   markPieces,
   textMarks,
 } from '../../../../tools/commander/page/findMarks';
@@ -82,5 +84,42 @@ suite('Matches marked in a file viewed', () => {
     assert.deepStrictEqual(markPieces([{ text: 'plain' }], []), [
       { text: 'plain', kind: undefined, mark: undefined },
     ]);
+  });
+
+  test('draws the spaces and tabs of a row as the diff does once whitespace is shown, in its pieces and marks alike, and leaves them plain otherwise', () => {
+    const tab = String.fromCharCode(9);
+    const pieces = [
+      { text: 'a b' },
+      { text: `${tab}c`, kind: 'keyword' as const },
+    ];
+    const marks = [{ start: 1, end: 2, current: false }];
+
+    assert.strictEqual(
+      renderToStaticMarkup(
+        <MarkedText pieces={[{ text: 'a b' }]} marks={[]} />,
+      ),
+      'a b',
+    );
+    const shown = renderToStaticMarkup(
+      <MarkedText pieces={pieces} marks={marks} blanks />,
+    );
+    assert.ok(
+      shown.includes(
+        '<mark class="find-match"><span class="blank" data-glyph="·"> </span></mark>',
+      ),
+      shown,
+    );
+    assert.ok(
+      shown.includes(
+        `<span class="syntax-keyword"><span class="blank" data-glyph="→">${tab}</span>c</span>`,
+      ),
+      shown,
+    );
+    assert.strictEqual(
+      renderToStaticMarkup(
+        <MarkedText pieces={[{ text: 'a b' }]} marks={[]} blanks />,
+      ),
+      'a<span class="blank" data-glyph="·"> </span>b',
+    );
   });
 });

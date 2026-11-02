@@ -2,6 +2,10 @@
   "autoSortTabs": false,
   "recentItems": 15,
   "dateFormat": "YYYY-MM-DD HH:mm",
+  "text": {
+    "wordWrap": true,
+    "showWhitespace": false
+  },
   "fonts": {
     "family": "-apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif",
     "size": "12px",
@@ -90,8 +94,6 @@
       "showAllFiles": false,
       "entireFilePinned": true,
       "ignoreWhitespace": true,
-      "wordWrap": true,
-      "showWhitespace": false,
       "diffLayout": "sideBySide",
       "solo": false,
       "autoFetch": true,

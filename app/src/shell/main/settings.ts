@@ -6,11 +6,13 @@ import {
   type ToolSettings,
 } from '../shared/tools';
 import { strings } from '../../shared/strings';
+import type { TextView } from '../shared/protocol';
 
 export interface Settings {
   readonly autoSortTabs: boolean;
   readonly recentItems: number;
   readonly dateFormat: string;
+  readonly text: TextView;
   readonly tools: ToolSettings;
   readonly fonts: {
     readonly family: string;
@@ -266,6 +268,10 @@ export class UserSettings {
     K extends keyof Settings['tools'][T] & string,
   >(tool: T, key: K, value: Settings['tools'][T][K]): Promise<void> {
     return this.update(['tools', tool, key], value);
+  }
+
+  setText<K extends keyof TextView>(key: K, value: TextView[K]): Promise<void> {
+    return this.update(['text', key], value);
   }
 
   private update(keys: readonly string[], value: unknown): Promise<void> {

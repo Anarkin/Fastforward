@@ -14,6 +14,7 @@ import { imageUrl, maxImageSize } from '../../../../../tools/git/shared/images';
 import { soloKey } from '../../../../../tools/git/main/storage';
 import { tabsKey } from '../../../../../shell/main/storage';
 import { strings } from '../../../../../shared/strings';
+import type { ToHost } from '../../../../../shell/shared/protocol';
 import { waitFor } from '../../../../fixtures';
 import {
   removeFolder,
@@ -42,6 +43,8 @@ const longLines = (text: string) =>
 
 const url = (root: string, file: string, id: string, disk = false) =>
   new URL(imageUrl({ root, path: file, id, disk }), 'fastforward://app');
+
+const forged = (json: string): ToHost => JSON.parse(json);
 
 suite('Git tool showing diffs', () => {
   let folder: string;
@@ -576,23 +579,22 @@ suite('Git tool showing diffs', () => {
     });
   });
 
-  test('wraps long lines by default, and stops once asked, remembering that', async () => {
+  test('wraps long lines and shows no whitespace by default, for the diff and the viewer alike, and remembers what is chosen in either, telling the page', async () => {
     await withView(log, [], async (view) => {
-      assert.strictEqual(view.page.last('layout')?.wordWrap, true);
-      await view.connection.receive({ type: 'setWordWrap', wrap: false });
-      assert.strictEqual(view.settings.settings.tools.git.wordWrap, false);
+      assert.deepStrictEqual(view.page.last('textView')?.view, {
+        wordWrap: true,
+        showWhitespace: false,
+      });
+      const chosen = { wordWrap: false, showWhitespace: true };
+      await view.connection.receive({ type: 'setTextView', view: chosen });
+      assert.deepStrictEqual(view.settings.settings.text, chosen);
+      assert.deepStrictEqual(view.page.last('textView')?.view, chosen);
       await view.connection.receive({ type: 'ready' });
-      assert.strictEqual(view.page.last('layout')?.wordWrap, false);
-    });
-  });
-
-  test('shows no whitespace by default, and shows it once asked, remembering that', async () => {
-    await withView(log, [], async (view) => {
-      assert.strictEqual(view.page.last('layout')?.showWhitespace, false);
-      await view.connection.receive({ type: 'setShowWhitespace', show: true });
-      assert.strictEqual(view.settings.settings.tools.git.showWhitespace, true);
-      await view.connection.receive({ type: 'ready' });
-      assert.strictEqual(view.page.last('layout')?.showWhitespace, true);
+      assert.deepStrictEqual(view.page.last('textView')?.view, chosen);
+      await view.connection.receive(
+        forged('{ "type": "setTextView", "view": { "wordWrap": "yes" } }'),
+      );
+      assert.deepStrictEqual(view.settings.settings.text, chosen);
     });
   });
 

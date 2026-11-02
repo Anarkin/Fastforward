@@ -6,6 +6,7 @@ import {
   type Settings,
   type UserSettings,
 } from './settings';
+import type { TextView } from '../shared/protocol';
 import * as path from 'node:path';
 import { strings } from '../../shared/strings';
 import { isTool, type ToolId } from '../shared/tools';
@@ -60,6 +61,8 @@ function withChange(
   }
   return result;
 }
+
+const textViewKeys = ['wordWrap', 'showWhitespace'] as const;
 
 export class JsonFileStore implements Store {
   readonly problems: readonly string[];
@@ -238,6 +241,19 @@ export class Storage {
 
   async setAutoSortTabs(on: boolean): Promise<void> {
     await this.userSettings.set('autoSortTabs', on);
+  }
+
+  get textView(): TextView {
+    return this.settings.text;
+  }
+
+  async setTextView(view: TextView): Promise<void> {
+    const { textView } = this;
+    await Promise.all(
+      textViewKeys
+        .filter((key) => view[key] !== textView[key])
+        .map((key) => this.userSettings.setText(key, view[key])),
+    );
   }
 
   get recentItems(): number {

@@ -101,6 +101,8 @@ export const strings = {
   },
   common: {
     close: 'Close',
+    showWhitespace: 'Show Whitespace',
+    wrap: 'Wrap Long Lines',
     gone: (name: string) => `${name} doesn't exist anymore`,
     fromTo: (from: string, to: string) => `${from} → ${to}`,
     fromToWithin: (start: string, from: string, to: string, end: string) =>
@@ -431,9 +433,7 @@ export const strings = {
       `Couldn't view ${file}. ${reason}`,
     showEntireFile: 'Show the Entire File',
     pinEntire: 'Pin Entire Files',
-    showWhitespace: 'Show Whitespace',
     showWhitespaceChanges: 'Show Whitespace Changes',
-    wrap: 'Wrap Long Lines',
     layout: 'Layout',
     inline: 'Inline',
     sideBySide: 'Side by Side',

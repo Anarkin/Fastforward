@@ -503,20 +503,20 @@ suite('User settings file', () => {
     fs.writeFileSync(
       file,
       JSON.stringify({
-        tools: { git: { wordWrap: !defaults.tools.git.wordWrap } },
+        tools: { git: { showAllFiles: !defaults.tools.git.showAllFiles } },
       }),
     );
     assert.strictEqual(user.reload(), true);
     assert.strictEqual(
-      user.settings.tools.git.wordWrap,
-      !defaults.tools.git.wordWrap,
+      user.settings.tools.git.showAllFiles,
+      !defaults.tools.git.showAllFiles,
     );
     assert.strictEqual(user.settings.autoSortTabs, true);
     await saving;
     assert.strictEqual(user.reload(), false);
     assert.strictEqual(
-      user.settings.tools.git.wordWrap,
-      !defaults.tools.git.wordWrap,
+      user.settings.tools.git.showAllFiles,
+      !defaults.tools.git.showAllFiles,
     );
     assert.strictEqual(user.settings.autoSortTabs, true);
   });

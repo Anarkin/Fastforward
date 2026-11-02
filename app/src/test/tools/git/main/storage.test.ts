@@ -39,8 +39,6 @@ suite('Git storage', () => {
       collapseMerges: defaults.tools.git.collapseMerges,
       entireFilePinned: defaults.tools.git.entireFilePinned,
       ignoreWhitespace: defaults.tools.git.ignoreWhitespace,
-      wordWrap: defaults.tools.git.wordWrap,
-      showWhitespace: defaults.tools.git.showWhitespace,
       diffLayout: defaults.tools.git.diffLayout,
       showAllFiles: defaults.tools.git.showAllFiles,
       autoFetch: defaults.tools.git.autoFetch,

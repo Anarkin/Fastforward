@@ -5,8 +5,6 @@ export interface GitSettings {
   readonly showAllFiles: boolean;
   readonly entireFilePinned: boolean;
   readonly ignoreWhitespace: boolean;
-  readonly wordWrap: boolean;
-  readonly showWhitespace: boolean;
   readonly diffLayout: DiffLayout;
   readonly solo: boolean;
   readonly autoFetch: boolean;

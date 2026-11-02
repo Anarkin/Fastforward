@@ -47,6 +47,7 @@ import { wheeled, type Modifiers } from '../../../shell/shared/keymap';
 import { gitKeymap } from '../shared/keymap';
 import { glideAt, glideBy, glideEnded, type Glide } from '../../../ui/glide';
 import { strings } from '../../../shared/strings';
+import { blanksShown } from '../../../ui/blanks';
 import { listMoveOf, type ListMove } from '../../../ui/listMoves';
 import { keyPressed } from '../../../ui/shortcuts';
 import {
@@ -1042,37 +1043,6 @@ function covering<T extends FindRange>(
       ? range
       : undefined;
   };
-}
-
-const blankSigns: Readonly<Record<string, string>> = {
-  ' ': strings.symbols.space,
-  '\t': strings.symbols.tab,
-  '\r': strings.symbols.carriageReturn,
-  ' ': strings.symbols.nonBreakingSpace,
-  ' ': strings.symbols.nonBreakingSpace,
-};
-
-const blank = /[ \t\r   -​  ⁠　﻿]/;
-
-const blanksAndText = /[ \t\r   -​  ⁠　﻿]|[^ \t\r   -​  ⁠　﻿]+/g;
-
-function blanksShown(text: string): React.ReactNode {
-  if (!blank.test(text)) {
-    return text;
-  }
-  return Array.from(text.matchAll(blanksAndText), ([part], index) =>
-    blank.test(part) ? (
-      <span
-        key={index}
-        className="blank"
-        data-glyph={blankSigns[part] ?? strings.symbols.invisible}
-      >
-        {part}
-      </span>
-    ) : (
-      part
-    ),
-  );
 }
 
 function firstFrom(offsets: readonly number[], at: number): number {

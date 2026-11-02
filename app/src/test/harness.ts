@@ -361,6 +361,7 @@ export function terminalHostOf(view: GitTool): HostListener {
 
 const shellMessages: Readonly<Record<ToHost['type'], true>> = {
   ready: true,
+  setTextView: true,
   selectTab: true,
   closeTab: true,
   moveTab: true,

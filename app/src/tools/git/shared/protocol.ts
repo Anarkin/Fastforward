@@ -250,13 +250,11 @@ export type GitToHost =
   | { readonly type: 'setCollapseMerges'; readonly collapse: boolean }
   | { readonly type: 'pinEntireFile'; readonly pinned: boolean }
   | { readonly type: 'setIgnoreWhitespace'; readonly ignore: boolean }
-  | { readonly type: 'setWordWrap'; readonly wrap: boolean }
   | { readonly type: 'compareEntire'; readonly entire: boolean }
   | {
       readonly type: 'loadCompareTexts';
       readonly requests: readonly TextRequest[];
     }
-  | { readonly type: 'setShowWhitespace'; readonly show: boolean }
   | { readonly type: 'setDiffLayout'; readonly layout: DiffLayout }
   | { readonly type: 'setShowAllFiles'; readonly show: boolean }
   | { readonly type: 'setAutoFetch'; readonly on: boolean }
@@ -361,8 +359,6 @@ export type GitToWebview =
       readonly collapseMerges: boolean;
       readonly entireFilePinned: boolean;
       readonly ignoreWhitespace: boolean;
-      readonly wordWrap: boolean;
-      readonly showWhitespace: boolean;
       readonly diffLayout: DiffLayout;
       readonly showAllFiles: boolean;
       readonly autoFetch: boolean;

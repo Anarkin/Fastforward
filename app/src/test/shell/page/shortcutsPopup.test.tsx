@@ -78,6 +78,8 @@ suite('Shortcuts popup', () => {
         'Scroll by a row, a page, or to the start or end',
         'View the file as text, hex or a preview',
         'Choose the encoding of the text',
+        'Turn line wrapping on or off',
+        'Show or hide whitespace',
         'Search the file',
         'Next or previous match',
         'Close the search',

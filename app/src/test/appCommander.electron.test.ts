@@ -14,6 +14,20 @@ import { removeFolder, tempFolder } from './repositories';
 const threeLines = (changed: string) =>
   ['one', changed, 'three', ''].join(String.fromCharCode(10));
 
+const savedText = (profile: string, name: string): unknown => {
+  const file = path.join(profile, 'settings.user.json');
+  const settings: unknown = fs.existsSync(file)
+    ? JSON.parse(fs.readFileSync(file, 'utf8'))
+    : {};
+  const text: unknown =
+    typeof settings === 'object' && settings !== null
+      ? Reflect.get(settings, 'text')
+      : undefined;
+  return typeof text === 'object' && text !== null
+    ? Reflect.get(text, name)
+    : undefined;
+};
+
 suite('App commander', () => {
   let folder: string;
   let opened: string;
@@ -859,6 +873,125 @@ suite('App commander', () => {
       async () => !(await rowNames()).includes('rows.txt'),
       'the file to be gone from the list',
     );
+  });
+
+  test('wraps the long lines of a file viewed as the diff wraps its lines, indenting the rows they wrap onto and marking where they wrap, stops on W or its button for the diff too, and shows whitespace on a dot', async () => {
+    const words = Array.from({ length: 80 }, (_, index) => `word${index}`).join(
+      ' ',
+    );
+    const line = `    ${words}`;
+    fs.writeFileSync(
+      path.join(opened, 'long.txt'),
+      ['short', line, 'after'].join(String.fromCharCode(10)),
+    );
+    const rows = page.locator('.viewer-rows .viewer-row');
+    const layout = () =>
+      page.locator('.viewer-body').evaluate((body) => {
+        const shown = body.querySelector('.viewer-rows');
+        const leftOf = (row: Element | undefined, offset: number) => {
+          const walker = document.createTreeWalker(
+            row ?? body,
+            NodeFilter.SHOW_TEXT,
+          );
+          let node = walker.nextNode();
+          let at = offset;
+          while (node instanceof Text && at >= node.length) {
+            at -= node.length;
+            node = walker.nextNode();
+          }
+          if (!(node instanceof Text)) {
+            return Number.NaN;
+          }
+          const range = document.createRange();
+          range.setStart(node, at);
+          range.setEnd(node, at + 1);
+          return range.getBoundingClientRect().left;
+        };
+        const each = [...body.querySelectorAll('.viewer-rows .viewer-row')];
+        const edge = body.getBoundingClientRect().right;
+        return {
+          fits:
+            (shown?.getBoundingClientRect().width ?? Infinity) <=
+            body.clientWidth + 0.5,
+          marks: [...body.querySelectorAll('.viewer-break')].map(
+            (mark) => mark.getBoundingClientRect().right <= edge,
+          ),
+          indented: Math.abs(leftOf(each[2], 0) - leftOf(each[1], 4)) < 0.5,
+        };
+      });
+    try {
+      await select('long');
+      await page.keyboard.press('F3');
+      await waitFor(
+        async () => (await firstViewerRow()) === 'short',
+        'the first row',
+      );
+      await waitForFocus(page.locator('.viewer-body'), 'the viewer');
+      await waitFor(async () => (await rows.count()) > 4, 'the line to wrap');
+      const wrapped = await rows.allTextContents();
+      assert.strictEqual(wrapped.slice(1, -1).join(''), line);
+      assert.strictEqual(wrapped.at(-1), 'after');
+      assert.deepStrictEqual(await layout(), {
+        fits: true,
+        marks: wrapped.slice(2, -1).map(() => true),
+        indented: true,
+      });
+
+      await page.keyboard.press('w');
+      await waitFor(async () => (await rows.count()) === 3, 'the line whole');
+      assert.deepStrictEqual(await rows.allTextContents(), [
+        'short',
+        line,
+        'after',
+      ]);
+      assert.strictEqual((await layout()).fits, false);
+      assert.strictEqual(await page.locator('.viewer-break').count(), 0);
+      await waitFor(
+        () => savedText(profile, 'wordWrap') === false,
+        'no wrapping saved',
+      );
+
+      await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
+      await waitFor(async () => (await rows.count()) > 4, 'the line wrapped');
+      await waitFor(
+        () => savedText(profile, 'wordWrap') === undefined,
+        'the wrapping left to the default',
+      );
+
+      assert.strictEqual(await page.locator('.viewer-rows .blank').count(), 0);
+      await page.keyboard.press('.');
+      await waitFor(
+        async () => (await page.locator('.viewer-rows .blank').count()) > 0,
+        'the spaces drawn',
+      );
+      assert.strictEqual(
+        await page
+          .locator('.viewer-rows .blank')
+          .first()
+          .getAttribute('data-glyph'),
+        '·',
+      );
+      await waitFor(
+        () => savedText(profile, 'showWhitespace') === true,
+        'whitespace shown saved',
+      );
+      assert.strictEqual(savedText(profile, 'wordWrap'), undefined);
+      await page.keyboard.press('.');
+      await waitFor(
+        async () => (await page.locator('.viewer-rows .blank').count()) === 0,
+        'the spaces plain again',
+      );
+    } finally {
+      if (await page.locator('.viewer').isVisible()) {
+        await page.keyboard.press('Escape');
+        await page.locator('.viewer').waitFor({ state: 'detached' });
+      }
+      fs.rmSync(path.join(opened, 'long.txt'));
+      await waitFor(
+        async () => !(await rowNames()).includes('long.txt'),
+        'the file to be gone from the list',
+      );
+    }
   });
 
   test('colors the code of a file viewed as the diff colors it, leaving a file over the size colored plain', async () => {

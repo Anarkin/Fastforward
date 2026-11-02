@@ -16,7 +16,14 @@ import {
 import { useViewerFind } from './viewerFind';
 import { usePdfPreview } from './pdfPreview';
 import { strings } from '../../../shared/strings';
-import { HexIcon, PreviewIcon, TextIcon } from '../../../ui/icons';
+import {
+  HexIcon,
+  PreviewIcon,
+  ShowWhitespaceIcon,
+  TextIcon,
+  WordWrapIcon,
+} from '../../../ui/icons';
+import { useTextView } from '../../../ui/textView';
 import { MenuButton } from '../../../ui/menu';
 import { TextBody } from './textBody';
 import { ByteBody } from './hexBody';
@@ -78,6 +85,11 @@ export function Viewer({
   );
   const mode = chosen ?? firstMode(file);
   const shown = shownEncoding(encoding, viewing);
+  const textView = useTextView();
+  const { wordWrap, showWhitespace } = textView.view;
+  const readsText = mode === 'text' && shown !== 'bytes';
+  const changeView = (changed: Partial<typeof textView.view>) =>
+    textView.change({ ...textView.view, ...changed });
   const choose = (wanted: ViewMode) => {
     if (shownModes.some((each) => each.mode === wanted)) {
       setChosen(wanted);
@@ -138,6 +150,19 @@ export function Viewer({
         ) {
           event.preventDefault();
           encodingTrigger.current?.click();
+          return;
+        }
+        if (readsText && keyPressed(viewerKeymap.wrap, event) !== undefined) {
+          event.preventDefault();
+          changeView({ wordWrap: !wordWrap });
+          return;
+        }
+        if (
+          readsText &&
+          keyPressed(viewerKeymap.showWhitespace, event) !== undefined
+        ) {
+          event.preventDefault();
+          changeView({ showWhitespace: !showWhitespace });
         }
       }}
     >
@@ -193,6 +218,30 @@ export function Viewer({
                     onClick: () => setEncoding(choice),
                   }))}
                 />
+              </div>
+            )}
+            {readsText && (
+              <div className="viewer-toggles">
+                <button
+                  className={`nav-button toggle ${showWhitespace ? 'active' : ''}`}
+                  title={strings.common.showWhitespace}
+                  aria-pressed={showWhitespace}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() =>
+                    changeView({ showWhitespace: !showWhitespace })
+                  }
+                >
+                  <ShowWhitespaceIcon />
+                </button>
+                <button
+                  className={`nav-button toggle ${wordWrap ? 'active' : ''}`}
+                  title={strings.common.wrap}
+                  aria-pressed={wordWrap}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => changeView({ wordWrap: !wordWrap })}
+                >
+                  <WordWrapIcon />
+                </button>
               </div>
             )}
           </div>

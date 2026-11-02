@@ -1,6 +1,7 @@
 import type { ByteRange, TextRow } from '../shared/protocol';
 import type { CodeSegment } from '../../../ui/syntax';
 import { matchesIn } from '../../../shared/textMatches';
+import { blanksShown } from '../../../ui/blanks';
 
 const groupBytes = 8;
 const hexPair = 2;
@@ -143,21 +144,24 @@ export function markPieces(
 export function MarkedText({
   pieces,
   marks,
+  blanks = false,
 }: {
   pieces: readonly CodeSegment[];
   marks: readonly FindMark[];
+  blanks?: boolean;
 }) {
+  const drawn = blanks ? blanksShown : (text: string) => text;
   if (marks.length === 0 && pieces.every((piece) => piece.kind === undefined)) {
-    return <>{pieces.map((piece) => piece.text).join('')}</>;
+    return <>{drawn(pieces.map((piece) => piece.text).join(''))}</>;
   }
   return (
     <>
       {markPieces(pieces, marks).map(({ text, kind, mark }, index) => {
         const colored =
           kind === undefined ? (
-            text
+            drawn(text)
           ) : (
-            <span className={`syntax-${kind}`}>{text}</span>
+            <span className={`syntax-${kind}`}>{drawn(text)}</span>
           );
         return mark === undefined ? (
           <span key={index}>{colored}</span>

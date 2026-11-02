@@ -145,6 +145,17 @@ function lineText(bytes: Buffer, coding: TextCoding): string {
   return textOf(bytes, 0, end, coding);
 }
 
+function endingAt(
+  row: TextRow,
+  bytes: Buffer,
+  size: number,
+  coding: TextCoding,
+): TextRow {
+  return row.end < size && !endsWith(bytes, bytes.length, coding.newline)
+    ? { ...row, cut: true }
+    : row;
+}
+
 interface RowEnd {
   readonly end: number;
   readonly textEnd: number | undefined;
@@ -189,14 +200,20 @@ export async function rowsFrom(
       if (row === undefined) {
         break;
       }
-      rows.push({
-        start: position + offset,
-        end: position + row.end,
-        text:
-          row.textEnd === undefined
-            ? coding.decode(block.subarray(offset, row.end))
-            : textOf(block, offset, row.textEnd, coding),
-      });
+      rows.push(
+        row.textEnd === undefined
+          ? {
+              start: position + offset,
+              end: position + row.end,
+              text: coding.decode(block.subarray(offset, row.end)),
+              cut: true,
+            }
+          : {
+              start: position + offset,
+              end: position + row.end,
+              text: textOf(block, offset, row.textEnd, coding),
+            },
+      );
       offset = row.end;
     }
     if (offset === 0) {
@@ -230,6 +247,7 @@ export async function rowStartAt(
 
 async function rowsOfLineBefore(
   read: ReadBytes,
+  size: number,
   end: number,
   count: number,
   coding: TextCoding,
@@ -239,16 +257,34 @@ async function rowsOfLineBefore(
   const line = lastNewlineIn(searched, coding);
   if (line !== -1 || from === 0) {
     const lineStart = line === -1 ? 0 : from + line + coding.unit;
-    return (await rowsFrom(read, end, lineStart, Infinity, coding)).slice(
+    const rows = (await rowsFrom(read, end, lineStart, Infinity, coding)).slice(
       -count,
     );
+    const last = rows.pop();
+    return last === undefined
+      ? rows
+      : [
+          ...rows,
+          endingAt(
+            last,
+            await read(end - coding.unit, coding.unit),
+            size,
+            coding,
+          ),
+        ];
   }
   const guess = end - rowBytes;
   const start =
     guess +
     coding.boundaryAfter(await read(guess, rowBytes + charLookahead), 0);
+  const bytes = await read(start, end - start);
   return [
-    { start, end, text: lineText(await read(start, end - start), coding) },
+    endingAt(
+      { start, end, text: lineText(bytes, coding) },
+      bytes,
+      size,
+      coding,
+    ),
   ];
 }
 
@@ -268,6 +304,7 @@ export async function rowsBefore(
     if (line === -1 && from > 0) {
       const earlier = await rowsOfLineBefore(
         read,
+        size,
         at,
         count - rows.length,
         coding,
@@ -277,11 +314,15 @@ export async function rowsBefore(
       continue;
     }
     const start = line === -1 ? 0 : from + line + coding.unit;
-    rows.unshift({
-      start,
-      end: at,
-      text: lineText(await read(start, at - start), coding),
-    });
+    const bytes = await read(start, at - start);
+    rows.unshift(
+      endingAt(
+        { start, end: at, text: lineText(bytes, coding) },
+        bytes,
+        size,
+        coding,
+      ),
+    );
     at = start;
   }
   return rows;

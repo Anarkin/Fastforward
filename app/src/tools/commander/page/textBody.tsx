@@ -21,11 +21,43 @@ import { ScrollBody, type Thumb } from './scrollBody';
 import type { ToViewer, Viewing } from './viewer';
 import type { ViewerFind } from './viewerFind';
 import { MarkedText, textMarks, type FindMark } from './findMarks';
+import {
+  firstOf,
+  marksWithin,
+  piecesWithin,
+  rowWithByte,
+  rowWithChar,
+  screenRows,
+  type ScreenRow,
+} from './screenRows';
+import { useTextView } from '../../../ui/textView';
+import { strings } from '../../../shared/strings';
 
 const rowsAboveMatch = 2;
 
+interface Span {
+  readonly start: number;
+  readonly end: number;
+}
+
 interface Loaded {
+  readonly rows: readonly Span[];
+  readonly top: number;
+}
+
+interface Place {
+  readonly index: number;
+  readonly from: number;
+}
+
+interface Read {
   readonly rows: readonly TextRow[];
+  readonly top: Place;
+}
+
+interface Shown {
+  readonly read: readonly TextRow[];
+  readonly rows: readonly ScreenRow[];
   readonly top: number;
 }
 
@@ -34,9 +66,14 @@ interface Ask {
   readonly exact: boolean;
   readonly before: number;
   readonly after: number;
-  readonly topOf: (anchorIndex: number, count: number) => number;
+  readonly topOf: (first: number, rows: readonly ScreenRow[]) => number;
   readonly follow?: boolean;
 }
+
+const placeOf = (row: ScreenRow | undefined): Place => ({
+  index: row?.index ?? 0,
+  from: row?.from ?? 0,
+});
 
 export function topWithin(top: number, count: number, screen: number): number {
   return Math.max(0, Math.min(top, count - screen));
@@ -67,7 +104,7 @@ export function scrolled(
   };
 }
 
-export function bytesPerRow(rows: readonly TextRow[]): number | undefined {
+export function bytesPerRow(rows: readonly Span[]): number | undefined {
   const first = rows[0];
   const last = rows.at(-1);
   return first === undefined || last === undefined
@@ -104,18 +141,23 @@ export function textThumb(
 }
 
 function RowText({
-  row,
+  shown,
   colored,
   marks,
+  blanks,
 }: {
-  row: TextRow;
+  shown: ScreenRow;
   colored: ColoredText | undefined;
   marks: readonly FindMark[];
+  blanks: boolean;
 }) {
+  const { row, from, to } = shown;
+  const pieces = (colored && rowSegments(colored, row)) ?? [{ text: row.text }];
   return (
     <MarkedText
-      pieces={(colored && rowSegments(colored, row)) ?? [{ text: row.text }]}
-      marks={marks}
+      pieces={piecesWithin(pieces, from, to)}
+      marks={marksWithin(marks, from, to)}
+      blanks={blanks}
     />
   );
 }
@@ -201,8 +243,28 @@ export function TextBody({
   post: (message: CommanderToHost) => void;
   listen: (handler: (message: ToViewer) => void) => () => void;
 }) {
-  const [loaded, setLoaded] = useState<Loaded>({ rows: [], top: 0 });
+  const [read, setRead] = useState<Read>({
+    rows: [],
+    top: { index: 0, from: 0 },
+  });
   const [screen, setScreen] = useState(1);
+  const [columns, setColumns] = useState<number>();
+  const { wordWrap, showWhitespace } = useTextView().view;
+  const wrapAt =
+    wordWrap && columns !== undefined && columns > 1 ? columns - 1 : undefined;
+  const rows = useMemo(
+    () => screenRows(read.rows, wrapAt, encoding),
+    [read.rows, wrapAt, encoding],
+  );
+  const loaded: Shown = {
+    read: read.rows,
+    rows,
+    top: topWithin(
+      rowWithChar(rows, firstOf(rows, read.top.index), read.top.from),
+      rows.length,
+      screen,
+    ),
+  };
   const current = useRef(loaded);
   useLayoutEffect(() => {
     current.current = loaded;
@@ -217,12 +279,19 @@ export function TextBody({
   const [lastScreen, setLastScreen] = useState<{
     readonly size: number | undefined;
     readonly screen: number;
-    readonly start: number;
+    readonly rows: readonly TextRow[];
   }>();
-  const lastTop =
+  const lastRows =
     lastScreen?.size === size && lastScreen?.screen === screen
-      ? lastScreen?.start
+      ? lastScreen?.rows
       : undefined;
+  const lastTop = useMemo(() => {
+    if (lastRows === undefined) {
+      return undefined;
+    }
+    const ending = screenRows(lastRows, wrapAt, encoding);
+    return ending[Math.max(0, ending.length - screen)]?.start ?? 0;
+  }, [lastRows, wrapAt, encoding, screen]);
   const ends = useMemo(
     () =>
       new RowRequests<true>((request) =>
@@ -247,7 +316,7 @@ export function TextBody({
           message.tab === tab &&
           ends.answered(message.request) !== undefined
         ) {
-          setLastScreen({ size, screen, start: message.rows[0]?.start ?? 0 });
+          setLastScreen({ size, screen, rows: message.rows });
         }
       }),
     [listen, tab, ends, size, screen],
@@ -260,6 +329,7 @@ export function TextBody({
   const [estimate, setEstimate] = useState<{
     readonly size: number | undefined;
     readonly screen: number;
+    readonly wrapAt: number | undefined;
     readonly perRow: number;
   }>();
   const perRow = bytesPerRow(loaded.rows);
@@ -267,9 +337,10 @@ export function TextBody({
     perRow !== undefined &&
     (estimate === undefined ||
       estimate.size !== size ||
-      estimate.screen !== screen)
+      estimate.screen !== screen ||
+      estimate.wrapAt !== wrapAt)
   ) {
-    setEstimate({ size, screen, perRow });
+    setEstimate({ size, screen, wrapAt, perRow });
   }
 
   const requests = useMemo(
@@ -291,60 +362,71 @@ export function TextBody({
 
   useEffect(
     () =>
-      listen((rows) => {
-        if (rows.tab !== tab || rows.type !== 'rows') {
+      listen((message) => {
+        if (message.tab !== tab || message.type !== 'rows') {
           return;
         }
-        const pending = requests.answered(rows.request);
+        const pending = requests.answered(message.request);
         if (pending === undefined) {
           return;
         }
-        const shownStart = current.current.rows[current.current.top]?.start;
-        const shown = pending.follow
-          ? rows.rows.findIndex((row) => row.start === shownStart)
+        const arrived = screenRows(message.rows, wrapAt, encoding);
+        const before = current.current.rows[current.current.top];
+        const index = pending.follow
+          ? message.rows.findIndex((row) => row.start === before?.row.start)
           : -1;
-        setLoaded({
-          rows: rows.rows,
-          top:
-            shown === -1
-              ? pending.topOf(rows.anchorIndex, rows.rows.length)
-              : topWithin(shown, rows.rows.length, screen),
-        });
+        const top =
+          index === -1 || before === undefined
+            ? pending.topOf(firstOf(arrived, message.anchorIndex), arrived)
+            : topWithin(
+                rowWithChar(arrived, firstOf(arrived, index), before.from),
+                arrived.length,
+                screen,
+              );
+        setRead({ rows: message.rows, top: placeOf(arrived[top]) });
       }),
-    [listen, tab, screen, requests],
+    [listen, tab, screen, requests, wrapAt, encoding],
   );
 
   const move = useCallback(
     (by: number) => {
-      const { rows, top } = current.current;
-      const from = rows[top];
+      const shown = current.current;
+      const from = shown.rows[shown.top];
       if (from === undefined || by === 0) {
         return;
       }
-      const within = scrolled(current.current, by, screen, size ?? 0);
+      const within = scrolled(shown, by, screen, size ?? 0);
       if (within === undefined) {
         requests.ask({
-          anchor: from.start,
+          anchor: from.row.start,
           exact: true,
           before: Math.max(0, -by) + screen * 2,
           after: Math.max(0, by) + screen * 3,
-          topOf: (anchorIndex, count) =>
-            topWithin(anchorIndex + by, count, screen),
+          topOf: (first, arrived) =>
+            topWithin(
+              rowWithChar(arrived, first, from.from) + by,
+              arrived.length,
+              screen,
+            ),
         });
         return;
       }
-      const moved = { ...current.current, top: within.top };
-      current.current = moved;
-      setLoaded(moved);
-      const shown = rows[within.top];
-      if (within.refill && shown !== undefined) {
+      current.current = { ...shown, top: within.top };
+      const top = shown.rows[within.top];
+      setRead({ rows: shown.read, top: placeOf(top) });
+      if (within.refill && top !== undefined) {
         requests.ask({
-          anchor: shown.start,
+          anchor: top.row.start,
           exact: true,
           before: screen * 2,
           after: screen * 3,
           follow: true,
-          topOf: (anchorIndex, count) => topWithin(anchorIndex, count, screen),
+          topOf: (first, arrived) =>
+            topWithin(
+              rowWithChar(arrived, first, top.from),
+              arrived.length,
+              screen,
+            ),
         });
       }
     },
@@ -352,17 +434,24 @@ export function TextBody({
   );
 
   const jump = useCallback(
-    (share: number) =>
+    (share: number) => {
+      const anchor = Math.round(
+        share *
+          lastScreenStart(size ?? 0, screen, estimate?.perRow ?? 1, lastTop),
+      );
       requests.ask({
-        anchor: Math.round(
-          share *
-            lastScreenStart(size ?? 0, screen, estimate?.perRow ?? 1, lastTop),
-        ),
+        anchor,
         exact: false,
         before: screen * 2,
         after: screen * 3,
-        topOf: (anchorIndex, count) => topWithin(anchorIndex, count, screen),
-      }),
+        topOf: (first, arrived) =>
+          topWithin(
+            rowWithByte(arrived, first, anchor),
+            arrived.length,
+            screen,
+          ),
+      });
+    },
     [requests, screen, size, estimate?.perRow, lastTop],
   );
 
@@ -371,14 +460,22 @@ export function TextBody({
       return;
     }
     const from = current.current.rows[current.current.top];
+    const placed = place.current;
     requests.restart();
     requests.ask({
-      anchor: from?.start ?? place.current,
+      anchor: from?.row.start ?? placed,
       exact: from !== undefined,
       before: screen * 2,
       after: screen * 3,
       follow: true,
-      topOf: (anchorIndex, count) => topWithin(anchorIndex, count, screen),
+      topOf: (first, arrived) =>
+        topWithin(
+          from === undefined
+            ? rowWithByte(arrived, first, placed)
+            : rowWithChar(arrived, first, from.from),
+          arrived.length,
+          screen,
+        ),
     });
   }, [requests, viewing, screen, place]);
 
@@ -387,8 +484,8 @@ export function TextBody({
     if (target === undefined) {
       return;
     }
-    const { rows, top } = current.current;
-    const onScreen = rows
+    const { rows: shownRows, top } = current.current;
+    const onScreen = shownRows
       .slice(top, top + screen)
       .some((row) => target.start >= row.start && target.start < row.end);
     if (!onScreen) {
@@ -397,8 +494,12 @@ export function TextBody({
         exact: false,
         before: screen * 2,
         after: screen * 3,
-        topOf: (anchorIndex, count) =>
-          topWithin(anchorIndex - rowsAboveMatch, count, screen),
+        topOf: (first, arrived) =>
+          topWithin(
+            rowWithByte(arrived, first, target.start) - rowsAboveMatch,
+            arrived.length,
+            screen,
+          ),
       });
     }
   });
@@ -416,21 +517,42 @@ export function TextBody({
     <ScrollBody
       thumb={textThumb(loaded, screen, size ?? 0, estimate?.perRow, lastTop)}
       onScreen={setScreen}
+      onColumns={setColumns}
       move={move}
       jump={jump}
       error={viewing.error}
     >
       {shown.map((row) => (
-        <div className="viewer-row" key={row.start}>
+        <div
+          className="viewer-row"
+          key={`${row.row.start}:${row.from}`}
+          style={
+            row.indent > 0
+              ? {
+                  paddingInlineStart: `calc(${row.indent} * var(--commander-advance))`,
+                }
+              : undefined
+          }
+        >
           <RowText
-            row={row}
+            shown={row}
             colored={colored}
             marks={
               find === undefined
                 ? []
-                : textMarks(row, find.query, find.matches, find.current)
+                : textMarks(row.row, find.query, find.matches, find.current)
             }
+            blanks={showWhitespace}
           />
+          {row.breakAt !== undefined && (
+            <span
+              className="viewer-break"
+              data-glyph={strings.symbols.breaks}
+              style={{
+                left: `calc(${row.breakAt} * var(--commander-advance))`,
+              }}
+            />
+          )}
         </div>
       ))}
     </ScrollBody>

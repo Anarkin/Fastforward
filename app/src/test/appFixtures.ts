@@ -82,7 +82,8 @@ export function waitForFocus(locator: Locator, what: string): Promise<void> {
 }
 
 export const baseSettings = {
-  tools: { git: { diffLayout: 'inline', wordWrap: false } },
+  text: { wordWrap: false },
+  tools: { git: { diffLayout: 'inline' } },
 };
 
 export function savedTabs(
@@ -229,16 +230,27 @@ export function savedSetting(name: string): unknown {
     : undefined;
 }
 
-export function wrapsSaved(): boolean {
-  return (
-    (savedSetting('wordWrap') ?? defaultSettings().tools.git.wordWrap) === true
+function savedWrap(): unknown {
+  const settings: unknown = JSON.parse(
+    fs.readFileSync(path.join(profile, 'settings.user.json'), 'utf8'),
   );
+  const text: unknown =
+    typeof settings === 'object' && settings !== null
+      ? Reflect.get(settings, 'text')
+      : undefined;
+  return typeof text === 'object' && text !== null
+    ? Reflect.get(text, 'wordWrap')
+    : undefined;
+}
+
+export function wrapsSaved(): boolean {
+  return (savedWrap() ?? defaultSettings().text.wordWrap) === true;
 }
 
 export function viewSaved(wordWrap: boolean, diffLayout: string): boolean {
   const defaults = defaultSettings();
   return (
-    (savedSetting('wordWrap') ?? defaults.tools.git.wordWrap) === wordWrap &&
+    (savedWrap() ?? defaults.text.wordWrap) === wordWrap &&
     (savedSetting('diffLayout') ?? defaults.tools.git.diffLayout) === diffLayout
   );
 }

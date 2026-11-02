@@ -25,6 +25,22 @@ export interface AboutInfo {
   readonly system: string;
 }
 
+export interface TextView {
+  readonly wordWrap: boolean;
+  readonly showWhitespace: boolean;
+}
+
+export function isTextView(value: unknown): value is TextView {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'wordWrap' in value &&
+    typeof value.wordWrap === 'boolean' &&
+    'showWhitespace' in value &&
+    typeof value.showWhitespace === 'boolean'
+  );
+}
+
 export type UpdateStatus =
   | { readonly kind: 'idle' }
   | { readonly kind: 'checking' }
@@ -46,6 +62,7 @@ export type ToHost =
   | { readonly type: 'preloadTab'; readonly tab: string }
   | { readonly type: 'sortTabs' }
   | { readonly type: 'setAutoSortTabs'; readonly on: boolean }
+  | { readonly type: 'setTextView'; readonly view: TextView }
   | { readonly type: 'newTab'; readonly tool: ToolId }
   | { readonly type: 'openWith'; readonly tool: ToolId | undefined }
   | { readonly type: 'openIn' }
@@ -71,6 +88,7 @@ export type ToWebview =
     }
   | { readonly type: 'autoSortTabs'; readonly on: boolean }
   | { readonly type: 'dateFormat'; readonly format: string }
+  | { readonly type: 'textView'; readonly view: TextView }
   | { readonly type: 'update'; readonly status: UpdateStatus }
   | ({ readonly type: 'about' } & AboutInfo)
   | { readonly type: 'terminalCommand'; readonly installable: boolean }

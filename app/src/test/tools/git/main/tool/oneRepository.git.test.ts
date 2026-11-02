@@ -409,7 +409,6 @@ suite('Git tool of one repository', () => {
         type: 'setDiffLayout',
         layout: 'sideBySide',
       });
-      await own.connection.receive({ type: 'setWordWrap', wrap: true });
       await own.connection.receive({
         type: 'setBookmarks',
         root: repository.root,
@@ -418,13 +417,8 @@ suite('Git tool of one repository', () => {
       assert.strictEqual(own.page.last('error'), undefined);
       const { layout } = new GitStorage(own.settings, gitState(own.store));
       assert.deepStrictEqual(
-        [
-          layout.columnWidths,
-          layout.showAllFiles,
-          layout.diffLayout,
-          layout.wordWrap,
-        ],
-        [[300, 400], true, 'sideBySide', true],
+        [layout.columnWidths, layout.showAllFiles, layout.diffLayout],
+        [[300, 400], true, 'sideBySide'],
       );
       assert.deepStrictEqual(savedBookmarks(own.store, repository.root), []);
       takeErrorsLogged(
