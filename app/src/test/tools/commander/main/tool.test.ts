@@ -557,6 +557,50 @@ suite('Commander tool', () => {
       assert.strictEqual((await served('3', large)).status, 413);
     });
 
+    test('watches a file viewed once when its tab is shown again while it was still starting to view it, as the first watcher was left open until quitting', async () => {
+      const twice = path.join(opened, 'twice.txt');
+      fs.writeFileSync(twice, 'text');
+      const { tool, page, watched } = commander({});
+      const viewer = {
+        id: '3',
+        tool: 'commander',
+        root: twice,
+        view: true,
+      } as const;
+
+      await Promise.all([tool.show(page, viewer), tool.show(page, viewer)]);
+
+      assert.deepStrictEqual(watched(), [twice]);
+      tool.hide(page);
+      assert.deepStrictEqual(watched(), []);
+    });
+
+    test('says nothing of a file that could not be read once another tab is shown, as the page took it for the tab shown and left it blank', async () => {
+      const shown = path.join(opened, 'shown.txt');
+      fs.writeFileSync(shown, 'text');
+      const { tool, page } = commander({});
+
+      await Promise.all([
+        tool.show(page, {
+          id: '3',
+          tool: 'commander',
+          root: path.join(opened, 'gone.txt'),
+          view: true,
+        }),
+        tool.show(page, {
+          id: '4',
+          tool: 'commander',
+          root: shown,
+          view: true,
+        }),
+      ]);
+
+      assert.deepStrictEqual(
+        page.of('viewing').map((message) => message.tab),
+        ['4'],
+      );
+    });
+
     test.skipIf(process.platform !== 'win32')(
       'refuses the images of a drive or share other than that of the file viewed, as a document on a share could name an image on a host of its own and have Windows sign in to it',
       async () => {

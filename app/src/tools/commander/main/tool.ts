@@ -198,6 +198,7 @@ export class CommanderTool implements Tool<'commander'> {
   private fileSystem: Promise<FileSystem> | undefined;
   private readonly icons: Icons;
   private elevated: ElevatedFileSystem | undefined;
+  private viewingsAsked = 0;
   private viewing:
     | {
         readonly tab: string;
@@ -592,6 +593,9 @@ export class CommanderTool implements Tool<'commander'> {
     tab: string,
     file: string,
   ): Promise<void> {
+    const asked = ++this.viewingsAsked;
+    const current = () =>
+      this.viewingsAsked === asked && this.shown?.tab === tab;
     let size: number;
     let binary: boolean;
     let detected: TextEncoding | undefined;
@@ -604,15 +608,17 @@ export class CommanderTool implements Tool<'commander'> {
         utf16Order(first) ??
         (binary || isUtf8(first) ? undefined : await this.access.codePage());
     } catch (error) {
-      this.post(page, {
-        type: 'viewing',
-        tab,
-        size: undefined,
-        error: strings.commander.couldNotRead(file, reasonOf(error)),
-      });
+      if (current()) {
+        this.post(page, {
+          type: 'viewing',
+          tab,
+          size: undefined,
+          error: strings.commander.couldNotRead(file, reasonOf(error)),
+        });
+      }
       return;
     }
-    if (this.shown?.tab !== tab) {
+    if (!current()) {
       return;
     }
     const viewing = {
@@ -681,12 +687,14 @@ export class CommanderTool implements Tool<'commander'> {
       );
       this.post(page, { type: 'bytes', tab, request, start, data: [...data] });
     } catch (error) {
-      this.post(page, {
-        type: 'viewing',
-        tab,
-        size: undefined,
-        error: strings.commander.couldNotRead(viewing.file, reasonOf(error)),
-      });
+      if (this.viewing === viewing) {
+        this.post(page, {
+          type: 'viewing',
+          tab,
+          size: undefined,
+          error: strings.commander.couldNotRead(viewing.file, reasonOf(error)),
+        });
+      }
     }
   }
 
@@ -874,12 +882,14 @@ export class CommanderTool implements Tool<'commander'> {
         anchorIndex: earlier.length,
       });
     } catch (error) {
-      this.post(page, {
-        type: 'viewing',
-        tab: viewing.tab,
-        size: undefined,
-        error: strings.commander.couldNotRead(viewing.file, reasonOf(error)),
-      });
+      if (this.viewing === viewing) {
+        this.post(page, {
+          type: 'viewing',
+          tab: viewing.tab,
+          size: undefined,
+          error: strings.commander.couldNotRead(viewing.file, reasonOf(error)),
+        });
+      }
     }
   }
 
