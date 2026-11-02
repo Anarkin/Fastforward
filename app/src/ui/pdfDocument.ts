@@ -122,6 +122,7 @@ export async function showPdf(
   };
   const text = pdfText();
   Reflect.set(options, 'l10n', text);
+  Reflect.set(options, 'abortSignal', signal);
   void text.translate(container);
   const viewer = new PDFViewer(options);
   linkService.setViewer(viewer);
@@ -138,6 +139,8 @@ export async function showPdf(
   const close = () => {
     void text.destroy();
     viewer.cleanup();
+    viewer.setDocument(null);
+    linkService.setDocument(null);
     void task.destroy();
   };
   signal.addEventListener('abort', close, { once: true });
