@@ -365,7 +365,9 @@ suite('App commander', () => {
     await page.locator('.viewer').waitFor({ state: 'detached' });
     await page.locator('.tabs .tab.active', { hasText: 'Commander' }).waitFor();
     assert.strictEqual(
-      await page.locator('.tabs .tab', { hasText: 'notes.txt' }).count(),
+      await page
+        .locator('.tabs [role="tab"]', { hasText: 'notes.txt' })
+        .count(),
       0,
     );
     assert.match(

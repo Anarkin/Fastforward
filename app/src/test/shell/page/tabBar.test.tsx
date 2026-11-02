@@ -114,6 +114,7 @@ async function inStrip(
       root.unmount();
     });
   } finally {
+    dom.window.close();
     Object.assign(globalThis, saved);
   }
 }
