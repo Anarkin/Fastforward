@@ -17,12 +17,14 @@ interface PageWindow {
 export function reloadWhenGone(
   window: PageWindow,
   log: Log,
+  stayedGone: () => void,
   now: () => number = Date.now,
 ): void {
   let reloaded = -Infinity;
   window.webContents.on('render-process-gone', (_event, details) => {
     if (now() - reloaded < 60_000) {
       log.error(strings.log.pageGoneAgain(details.reason, details.exitCode));
+      stayedGone();
       return;
     }
     log.error(strings.log.pageGone(details.reason, details.exitCode));

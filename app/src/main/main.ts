@@ -244,7 +244,9 @@ async function start(asked: readonly string[]): Promise<void> {
       connect();
     }
   });
-  reloadWhenGone(window, log);
+  const disconnect = () =>
+    void connection.then((current) => current?.dispose());
+  reloadWhenGone(window, log, disconnect);
   ipcMain.on('message', (event, message: ToHost) => {
     if (
       event.sender === window.webContents &&
@@ -273,10 +275,7 @@ async function start(asked: readonly string[]): Promise<void> {
       }
     }
   });
-  window.on(
-    'closed',
-    () => void connection.then((current) => current?.dispose()),
-  );
+  window.on('closed', disconnect);
   app.on(
     'second-instance',
     (_event, _argv, _workingDirectory, additionalData) => {

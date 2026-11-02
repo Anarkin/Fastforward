@@ -27,6 +27,7 @@ suite('Page gone', () => {
         },
       },
       log,
+      () => undefined,
       () => time,
     );
     gone?.({}, { reason: 'oom', exitCode: -536870904 });
@@ -42,5 +43,34 @@ suite('Page gone', () => {
       strings.log.pageGone('killed', 1),
       strings.log.pageGoneAgain('crashed', 2),
     ]);
+  });
+
+  test('lets go of the page once it stays gone, so that closing the window does not wait for it to confirm', () => {
+    let gone:
+      | ((
+          event: unknown,
+          details: { reason: string; exitCode: number },
+        ) => void)
+      | undefined;
+    let left = 0;
+    reloadWhenGone(
+      {
+        webContents: {
+          on: (_event, listener) => {
+            gone = listener;
+          },
+          reload: () => undefined,
+        },
+      },
+      recordingLog().log,
+      () => {
+        left += 1;
+      },
+      () => 1_000_000,
+    );
+    gone?.({}, { reason: 'oom', exitCode: 1 });
+    assert.strictEqual(left, 0);
+    gone?.({}, { reason: 'oom', exitCode: 1 });
+    assert.strictEqual(left, 1);
   });
 });
