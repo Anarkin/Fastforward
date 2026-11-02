@@ -556,11 +556,11 @@ export function TextBody({
             blanks={showWhitespace}
           />
           {!showWhitespace &&
-            row.hanging.map(({ column, tab }) => (
+            row.hanging.map(({ column, tab: isTab }) => (
               <span
                 key={column}
                 className="viewer-wrap-blank"
-                data-glyph={tab ? strings.symbols.tab : strings.symbols.space}
+                data-glyph={isTab ? strings.symbols.tab : strings.symbols.space}
                 style={{ left: `calc(${column} * var(--commander-advance))` }}
               />
             ))}
