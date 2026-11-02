@@ -21,6 +21,7 @@
     "build": "node scripts/esbuild.mts",
     "dev": "node scripts/esbuild.mts --dev",
     "dev:open": "electron . --",
+    "dev:production": "node scripts/esbuild.mts --dev --production",
     "package": "npm run check-types && node scripts/esbuild.mts --production",
     "check-types": "tsc --noEmit && tsc -p tsconfig.main.json && tsc -p tsconfig.webview.json && tsc -p tsconfig.scripts.json",
     "pretest": "npm run build",
