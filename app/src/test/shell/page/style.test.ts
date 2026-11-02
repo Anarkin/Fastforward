@@ -89,6 +89,12 @@ import {
 
 const css = stylesheet();
 
+function keyframe(name: string, at: string): string | undefined {
+  return new RegExp(
+    String.raw`@keyframes ${name} \{\s*${at} \{([^}]*)\}\s*\}`,
+  ).exec(css)?.[1];
+}
+
 const noop = () => undefined;
 
 function buttonsWidth(count: number, side: 'left' | 'right' = 'left'): number {
@@ -521,6 +527,41 @@ suite('Style', () => {
         'var(--color-terminal-icon)',
       ],
     );
+  });
+
+  test('grows an opened tab from nothing and shrinks a closed one to nothing, its gap with it, as Chrome does, clipping what does not fit yet', () => {
+    const bar = rendered(
+      createElement(
+        'nav',
+        { className: 'tabs' },
+        createElement('div', { className: 'tab active opening' }),
+        createElement('div', { className: 'tab closing' }),
+      ),
+    );
+    const [opening, closing] = allWithClass(bar, 'tab');
+    looks(opening, {
+      'overflow-x': 'clip',
+      animation: 'tab-open 0.2s ease-out',
+    });
+    looks(closing, {
+      'overflow-x': 'clip',
+      'pointer-events': 'none',
+      animation: 'tab-close 0.2s ease-out forwards',
+    });
+    const gone = keyframe('tab-open', 'from');
+    assert.ok(gone);
+    assert.strictEqual(keyframe('tab-close', 'to'), gone);
+    for (const declaration of [
+      'width: 0;',
+      'min-width: 0;',
+      'padding-right: 0;',
+      'padding-left: 0;',
+      'border-right-width: 0;',
+      'border-left-width: 0;',
+      'margin-right: calc(-1 * var(--card-radius));',
+    ]) {
+      assert.ok(gone.includes(declaration), declaration);
+    }
   });
 
   test('keeps the repository tabs on one row, shrinking them as Chrome does rather than wrapping them, down to a letter or two of the name beside the close button', () => {

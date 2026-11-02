@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { type TabInfo } from '../shared/protocol';
 import type { ToolId } from '../shared/tools';
@@ -61,6 +61,20 @@ export function stripOverflows(
     : scrollWidth > clientWidth + 1;
 }
 
+export function tabsWidth(
+  tabs: readonly {
+    readonly offsetLeft: number;
+    readonly offsetWidth: number;
+    readonly marginRight: number;
+  }[],
+): number {
+  const first = tabs.at(0);
+  const last = tabs.at(-1);
+  return first && last
+    ? last.offsetLeft + last.offsetWidth + last.marginRight - first.offsetLeft
+    : 0;
+}
+
 function useOverflowing(
   strip: React.RefObject<HTMLElement | null>,
   list: React.RefObject<HTMLElement | null>,
@@ -75,13 +89,19 @@ function useOverflowing(
       const tabs = [...element.children].filter(
         (child) => child instanceof HTMLElement,
       );
-      const first = tabs.at(0);
-      const last = tabs.at(-1);
+      const ends = [tabs.at(0), tabs.at(-1)].flatMap((tab) =>
+        tab
+          ? [
+              {
+                offsetLeft: tab.offsetLeft,
+                offsetWidth: tab.offsetWidth,
+                marginRight: parseFloat(getComputedStyle(tab).marginRight) || 0,
+              },
+            ]
+          : [],
+      );
       const padding = parseFloat(getComputedStyle(element).paddingLeft) || 0;
-      const laidOut =
-        first && last
-          ? last.offsetLeft + last.offsetWidth - first.offsetLeft
-          : 0;
+      const laidOut = tabsWidth(ends);
       setOverflowing((was) =>
         stripOverflows(
           was,
@@ -124,7 +144,7 @@ export function revealingScroll(
 }
 
 function revealTab(strip: HTMLElement | null, index: number): void {
-  const tab = strip?.children[index];
+  const tab = strip?.querySelectorAll(':scope > [role="tab"]')[index];
   if (!strip || !tab) {
     return;
   }
@@ -135,6 +155,86 @@ function revealTab(strip: HTMLElement | null, index: number): void {
     { start: left - origin, end: right - origin },
     parseFloat(getComputedStyle(strip).paddingLeft) || 0,
   );
+}
+
+type Motion = 'opening' | 'closing';
+
+interface Placed<T> {
+  readonly tab: T;
+  readonly motion?: Motion;
+}
+
+function placedTabs<T extends { readonly id: string }>(
+  before: readonly Placed<T>[],
+  tabs: readonly T[],
+): Placed<T>[] {
+  const staying = new Map(
+    before.flatMap((placed) =>
+      placed.motion === 'closing' ? [] : [[placed.tab.id, placed] as const],
+    ),
+  );
+  const placed: Placed<T>[] = tabs.map((tab) => {
+    const motion = staying.has(tab.id)
+      ? staying.get(tab.id)?.motion
+      : before.length > 0
+        ? 'opening'
+        : undefined;
+    return motion ? { tab, motion } : { tab };
+  });
+  const open = new Set(tabs.map((tab) => tab.id));
+  let at = 0;
+  for (const shown of before) {
+    if (open.has(shown.tab.id)) {
+      at = placed.findIndex((item) => item.tab.id === shown.tab.id) + 1;
+    } else {
+      placed.splice(at, 0, { tab: shown.tab, motion: 'closing' });
+      at += 1;
+    }
+  }
+  return placed;
+}
+
+function settledTab<T extends { readonly id: string }>(
+  placed: readonly Placed<T>[],
+  id: string,
+): Placed<T>[] {
+  return placed.flatMap((item) =>
+    item.tab.id !== id || item.motion === undefined
+      ? [item]
+      : item.motion === 'closing'
+        ? []
+        : [{ tab: item.tab }],
+  );
+}
+
+function sameList<T>(a: readonly T[], b: readonly T[]): boolean {
+  return a.length === b.length && a.every((tab, index) => tab === b[index]);
+}
+
+function usePlacedTabs<T extends { readonly id: string }>(
+  tabs: readonly T[],
+): {
+  placed: readonly Placed<T>[];
+  settled: (id: string) => void;
+} {
+  const [state, setState] = useState(() => ({
+    tabs,
+    placed: placedTabs([], tabs),
+  }));
+  let placed = state.placed;
+  if (!sameList(state.tabs, tabs)) {
+    placed = placedTabs(state.placed, tabs);
+    setState({ tabs, placed });
+  }
+  const settled = useCallback(
+    (id: string) =>
+      setState((current) => ({
+        ...current,
+        placed: settledTab(current.placed, id),
+      })),
+    [],
+  );
+  return { placed, settled };
 }
 
 export function slotLefts(
@@ -438,6 +538,37 @@ function TabIcon({ url, tool }: { url: string; tool: ToolId }) {
   );
 }
 
+function tabContent(tab: TabInfo, onClose?: () => void): React.ReactNode[] {
+  return [
+    <span key="divider" className="tab-divider" />,
+    tab.icon === undefined ? (
+      <ToolIcon key="icon" tool={tab.tool} />
+    ) : (
+      <TabIcon key="icon" url={tab.icon} tool={tab.tool} />
+    ),
+    <span key="name" className="tab-name">
+      {tab.name}
+    </span>,
+    tab.folder !== undefined && (
+      <span key="folder" className="tab-folder">
+        {tab.folder}
+      </span>
+    ),
+    <button
+      key="close"
+      className="tab-close"
+      title={strings.common.close}
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={(event) => {
+        event.stopPropagation();
+        onClose?.();
+      }}
+    >
+      <CloseIcon />
+    </button>,
+  ];
+}
+
 export function TabBar({
   tabs,
   active,
@@ -469,11 +600,24 @@ export function TabBar({
   const drag = useTabDrag(strip, tabs, active, onSelect, onMove);
   const dragging = drag.dragged !== undefined;
   const activeIndex = tabs.findIndex((tab) => tab.id === active);
+  const { placed, settled } = usePlacedTabs(drag.shown);
+  const activeOpening = placed.some(
+    ({ tab, motion }) => tab.id === active && motion === 'opening',
+  );
   useEffect(() => {
-    if (overflowing && !dragging) {
-      revealTab(strip.current, activeIndex);
+    if (!overflowing || dragging) {
+      return undefined;
     }
-  }, [overflowing, activeIndex, dragging]);
+    revealTab(strip.current, activeIndex);
+    if (!activeOpening) {
+      return undefined;
+    }
+    let frame = requestAnimationFrame(function follow() {
+      revealTab(strip.current, activeIndex);
+      frame = requestAnimationFrame(follow);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [overflowing, activeIndex, dragging, activeOpening]);
   const open = drag.dragged ?? active;
 
   useEffect(() => {
@@ -522,53 +666,50 @@ export function TabBar({
             );
           }}
         >
-          {drag.shown.map((tab) => (
-            <div
-              key={tab.id}
-              ref={drag.element(tab.id)}
-              role="tab"
-              aria-selected={tab.id === open}
-              className={`tab ${tab.id === open ? 'active' : ''} ${tab.id === drag.dragged ? 'dragging' : ''}`}
-              title={tab.root ?? tab.name}
-              {...drag.pressing(tab.id)}
-              onClick={() => {
-                rest.cancel();
-                onSelect(tab.id);
-              }}
-              onPointerEnter={() =>
-                tab.id !== active && rest.start(() => onPreload(tab.id))
-              }
-              onPointerLeave={rest.cancel}
-              onMouseDown={(event) =>
-                clicked(keymap.closeTab, event) && event.preventDefault()
-              }
-              onAuxClick={(event) =>
-                clicked(keymap.closeTab, event) && onClose(tab.id)
-              }
-            >
-              <span className="tab-divider" />
-              {tab.icon === undefined ? (
-                <ToolIcon tool={tab.tool} />
-              ) : (
-                <TabIcon url={tab.icon} tool={tab.tool} />
-              )}
-              <span className="tab-name">{tab.name}</span>
-              {tab.folder !== undefined && (
-                <span className="tab-folder">{tab.folder}</span>
-              )}
-              <button
-                className="tab-close"
-                title={strings.common.close}
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onClose(tab.id);
-                }}
+          {placed.map(({ tab, motion }) =>
+            motion === 'closing' ? (
+              <div
+                key={tab.id}
+                className="tab closing"
+                aria-hidden
+                inert
+                onAnimationEnd={(event) =>
+                  event.target === event.currentTarget && settled(tab.id)
+                }
               >
-                <CloseIcon />
-              </button>
-            </div>
-          ))}
+                {tabContent(tab)}
+              </div>
+            ) : (
+              <div
+                key={tab.id}
+                ref={drag.element(tab.id)}
+                role="tab"
+                aria-selected={tab.id === open}
+                className={`tab ${tab.id === open ? 'active' : ''} ${tab.id === drag.dragged ? 'dragging' : ''} ${motion ?? ''}`}
+                title={tab.root ?? tab.name}
+                {...drag.pressing(tab.id)}
+                onClick={() => {
+                  rest.cancel();
+                  onSelect(tab.id);
+                }}
+                onPointerEnter={() =>
+                  tab.id !== active && rest.start(() => onPreload(tab.id))
+                }
+                onPointerLeave={rest.cancel}
+                onMouseDown={(event) =>
+                  clicked(keymap.closeTab, event) && event.preventDefault()
+                }
+                onAuxClick={(event) =>
+                  clicked(keymap.closeTab, event) && onClose(tab.id)
+                }
+                onAnimationEnd={(event) =>
+                  event.target === event.currentTarget && settled(tab.id)
+                }
+              >
+                {tabContent(tab, () => onClose(tab.id))}
+              </div>
+            ),
+          )}
         </div>
         <button
           ref={add}

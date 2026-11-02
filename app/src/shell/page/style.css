@@ -623,6 +623,41 @@ body {
   transition: none;
 }
 
+.tabs .tab.opening {
+  overflow-x: clip;
+  animation: tab-open 0.2s ease-out;
+}
+
+.tabs .tab.closing {
+  overflow-x: clip;
+  pointer-events: none;
+  animation: tab-close 0.2s ease-out forwards;
+}
+
+@keyframes tab-open {
+  from {
+    width: 0;
+    min-width: 0;
+    padding-right: 0;
+    padding-left: 0;
+    border-right-width: 0;
+    border-left-width: 0;
+    margin-right: calc(-1 * var(--card-radius));
+  }
+}
+
+@keyframes tab-close {
+  to {
+    width: 0;
+    min-width: 0;
+    padding-right: 0;
+    padding-left: 0;
+    border-right-width: 0;
+    border-left-width: 0;
+    margin-right: calc(-1 * var(--card-radius));
+  }
+}
+
 .tabs .tab:first-child:last-child {
   -webkit-app-region: drag;
 }

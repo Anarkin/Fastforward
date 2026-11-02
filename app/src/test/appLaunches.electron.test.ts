@@ -199,6 +199,119 @@ suite('App with several tabs', () => {
   });
 });
 
+suite('App with a row of tabs', () => {
+  let folder: string;
+  let app: ElectronApplication;
+  let page: Page;
+
+  beforeAll(async () => {
+    folder = tempFolder('row-of-tabs');
+    const profile = path.join(folder, 'profile');
+    const roots = Array.from({ length: 12 }, (_, index) => {
+      const root = path.join(folder, `folder${index}`);
+      fs.mkdirSync(root, { recursive: true });
+      return root;
+    });
+    fs.mkdirSync(profile, { recursive: true });
+    fs.writeFileSync(
+      path.join(profile, 'state.json'),
+      JSON.stringify({
+        tabs: roots.map((root, index) => ({
+          id: String(index + 1),
+          tool: 'commander',
+          root,
+        })),
+        activeTab: '1',
+      }),
+    );
+    app = await launchApp(profile);
+    page = await app.firstWindow();
+    await page.locator('.tabs [role="tab"]').nth(11).waitFor();
+  });
+
+  afterAll(async () => {
+    if (app !== undefined) {
+      await closeOrKill(app);
+    }
+    removeFolder(folder);
+  });
+
+  async function openedTab(): Promise<{
+    strips: string[];
+    strip: { left: number; right: number };
+    tab: { left: number; right: number };
+  }> {
+    await page.evaluate(() => {
+      const strip = document.querySelector('.tab-strip');
+      const strips: string[] = [];
+      Reflect.set(window, 'strips', strips);
+      const record = () => {
+        strips.push(strip?.className ?? '');
+        if (strips.length < 60) {
+          requestAnimationFrame(record);
+        }
+      };
+      requestAnimationFrame(record);
+    });
+    await page.locator('.tab-add').click();
+    await page
+      .locator('.menu-item', { hasText: strings.tools.commander })
+      .click();
+    await waitFor(
+      () =>
+        page.evaluate(() => {
+          const strips: unknown = Reflect.get(window, 'strips');
+          return (
+            Array.isArray(strips) &&
+            strips.length >= 60 &&
+            document.querySelector('.tab.opening') === null
+          );
+        }),
+      'the opened tab to grow',
+    );
+    return page.evaluate(() => {
+      const strip = document.querySelector('.tab-strip');
+      const tab = document.querySelector('.tabs .tab.active');
+      const inside = strip?.getBoundingClientRect();
+      const padding = strip
+        ? parseFloat(getComputedStyle(strip).paddingLeft)
+        : 0;
+      const box = tab?.getBoundingClientRect();
+      const strips: unknown = Reflect.get(window, 'strips');
+      return {
+        strips: Array.isArray(strips) ? strips.map(String) : [],
+        strip: {
+          left: (inside?.left ?? 0) + padding,
+          right: (inside?.right ?? 0) - padding,
+        },
+        tab: { left: box?.left ?? 0, right: box?.right ?? 0 },
+      };
+    });
+  }
+
+  test('grows a tab opened into a full row without the row taking the tabs for too many and back, which shifted them all while it grew', async () => {
+    await app.evaluate(({ BrowserWindow }) => {
+      BrowserWindow.getAllWindows()[0]?.setContentSize(1000, 600);
+    });
+    const { strips } = await openedTab();
+    assert.deepStrictEqual([...new Set(strips)], ['tab-strip']);
+  });
+
+  test('keeps a tab opened into a row of too many in view as it grows, rather than only where it started, at no width', async () => {
+    const overflowing = page.locator('.tab-strip.overflowing');
+    for (let opened = 0; (await overflowing.count()) === 0; opened++) {
+      assert.ok(opened < 40, 'the row to take the tabs for too many');
+      await openedTab();
+    }
+    await page.locator('.tabs [role="tab"]').first().click();
+    const { strip, tab } = await openedTab();
+    assert.ok(
+      tab.left >= strip.left - 1 && tab.right <= strip.right + 1,
+      JSON.stringify({ strip, tab }),
+    );
+  });
+});
+
 suite('App started from a terminal', () => {
   test('asks which tool opens the folder it is started with, opening its repository on Enter, then that of a folder another start hands it, showing each rather than the tab left active', async () => {
     const folder = tempFolder('command-line');

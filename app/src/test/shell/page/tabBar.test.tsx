@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
-import { isValidElement } from 'react';
+import { act, isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, suite, test, vi } from 'vitest';
 import type { TabInfo } from '../../../shell/shared/protocol';
@@ -15,6 +15,7 @@ import {
   sidewaysDelta,
   slotLefts,
   stripOverflows,
+  tabsWidth,
   TabBar,
 } from '../../../shell/page/tabBar';
 import { AddIcon } from '../../../ui/icons';
@@ -47,6 +48,105 @@ function addButton(adding: boolean): Element | null {
   ).window.document.querySelector('.tab-add');
 }
 
+async function inStrip(
+  steps: (
+    show: (tabs: readonly TabInfo[]) => Promise<void>,
+    strip: () => Element,
+    ended: (tab: Element) => Promise<void>,
+  ) => Promise<void>,
+): Promise<void> {
+  const dom = new JSDOM('<!doctype html><main></main>', {
+    pretendToBeVisual: true,
+  });
+  Object.assign(dom.window, {
+    AnimationEvent: class extends dom.window.Event {},
+  });
+  const globals = {
+    window: dom.window,
+    document: dom.window.document,
+    Element: dom.window.Element,
+    HTMLElement: dom.window.HTMLElement,
+    getComputedStyle: dom.window.getComputedStyle.bind(dom.window),
+    MutationObserver: dom.window.MutationObserver,
+    requestAnimationFrame: dom.window.requestAnimationFrame.bind(dom.window),
+    cancelAnimationFrame: dom.window.cancelAnimationFrame.bind(dom.window),
+    ResizeObserver: class {
+      observe() {}
+      disconnect() {}
+    },
+    IS_REACT_ACT_ENVIRONMENT: true,
+  };
+  const saved = Object.fromEntries(
+    Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
+  );
+  Object.assign(globalThis, globals);
+  try {
+    const { createRoot } = await import('react-dom/client');
+    const main = dom.window.document.querySelector('main');
+    assert.ok(main);
+    const root = createRoot(main);
+    const show = (tabs: readonly TabInfo[]) =>
+      act(async () => {
+        root.render(
+          <TabBar
+            tabs={tabs}
+            active={tabs[0]?.id}
+            onSelect={noop}
+            onPreload={noop}
+            onClose={noop}
+            onAdd={noop}
+            onLog={noop}
+          />,
+        );
+      });
+    const strip = () => {
+      const found = main.querySelector('.tab-strip');
+      assert.ok(found);
+      return found;
+    };
+    const ended = (tab: Element) =>
+      act(async () => {
+        const event = new dom.window.Event('animationend', { bubbles: true });
+        tab.dispatchEvent(event);
+      });
+    await steps(show, strip, ended);
+    await act(async () => {
+      root.unmount();
+    });
+  } finally {
+    Object.assign(globalThis, saved);
+  }
+}
+
+const named = (...names: string[]): TabInfo[] =>
+  names.map((name) => ({
+    id: `/${name}`,
+    tool: 'git' as const,
+    root: `/${name}`,
+    name,
+  }));
+
+const drawn = (strip: Element) =>
+  Array.from(strip.children, (tab) => [
+    tab.querySelector('.tab-name')?.textContent,
+    tab.getAttribute('role'),
+    tab.classList.contains('opening')
+      ? 'opening'
+      : tab.classList.contains('closing')
+        ? 'closing'
+        : 'still',
+  ]);
+
+function nameOf(tab: Element): Element {
+  const found = tab.querySelector('.tab-name');
+  assert.ok(found);
+  return found;
+}
+
+function laidOutTab(left: number, width: number, marginRight = 0) {
+  return { offsetLeft: left, offsetWidth: width, marginRight };
+}
+
 suite('Tab bar', () => {
   afterEach(() => vi.useRealTimers());
 
@@ -56,6 +156,72 @@ suite('Tab bar', () => {
     root: `/${name}`,
     name,
   }));
+
+  test('shrinks a closed tab away in its place, as Chrome does, hidden from assistive technology and the pointer while it goes', async () => {
+    await inStrip(async (show, strip, ended) => {
+      await show(named('a', 'b', 'c'));
+      await show(named('a', 'c'));
+      assert.deepStrictEqual(drawn(strip()), [
+        ['a', 'tab', 'still'],
+        ['b', null, 'closing'],
+        ['c', 'tab', 'still'],
+      ]);
+      const closing = strip().children[1];
+      assert.strictEqual(closing.getAttribute('aria-hidden'), 'true');
+      assert.ok(closing.hasAttribute('inert'));
+      await ended(closing);
+      assert.deepStrictEqual(drawn(strip()), [
+        ['a', 'tab', 'still'],
+        ['c', 'tab', 'still'],
+      ]);
+    });
+  });
+
+  test('grows an opened tab from nothing, as Chrome does, but not the tabs shown first, which were open already', async () => {
+    await inStrip(async (show, strip, ended) => {
+      await show([]);
+      await show(named('a', 'b'));
+      assert.deepStrictEqual(drawn(strip()), [
+        ['a', 'tab', 'still'],
+        ['b', 'tab', 'still'],
+      ]);
+      await show(named('a', 'c', 'b'));
+      assert.deepStrictEqual(drawn(strip()), [
+        ['a', 'tab', 'still'],
+        ['c', 'tab', 'opening'],
+        ['b', 'tab', 'still'],
+      ]);
+      await ended(strip().children[1]);
+      assert.deepStrictEqual(drawn(strip())[1], ['c', 'tab', 'still']);
+    });
+  });
+
+  test('grows a tab opened again while it shrinks away back from where it got to, rather than drawing it twice', async () => {
+    await inStrip(async (show, strip) => {
+      await show(named('a', 'b'));
+      await show(named('a'));
+      await show(named('a', 'b'));
+      assert.deepStrictEqual(drawn(strip()), [
+        ['a', 'tab', 'still'],
+        ['b', 'tab', 'opening'],
+      ]);
+    });
+  });
+
+  test('keeps a tab growing or shrinking when something inside it ends an animation of its own', async () => {
+    await inStrip(async (show, strip, ended) => {
+      await show(named('a', 'b'));
+      await show(named('a', 'c'));
+      const [, closing, opening] = strip().children;
+      await ended(nameOf(closing));
+      await ended(nameOf(opening));
+      assert.deepStrictEqual(drawn(strip()), [
+        ['a', 'tab', 'still'],
+        ['b', null, 'closing'],
+        ['c', 'tab', 'opening'],
+      ]);
+    });
+  });
 
   test('draws the icon a tab gives instead of its tool’s, as a viewer tab gives its file’s', () => {
     const document = new JSDOM(
@@ -266,6 +432,23 @@ suite('Tabs too many for one row', () => {
     assert.strictEqual(sidewaysDelta(0, -120), -120);
     assert.strictEqual(sidewaysDelta(40, 0), 40);
     assert.strictEqual(sidewaysDelta(30, -10), 30);
+  });
+
+  test('measures the tabs to the end of the last one’s margin, which takes back the gap before it as it grows or shrinks, so a full row does not flicker between too many and few', () => {
+    assert.strictEqual(tabsWidth([]), 0);
+    assert.strictEqual(tabsWidth([laidOutTab(48, 80)]), 80);
+    assert.strictEqual(
+      tabsWidth([
+        laidOutTab(48, 80),
+        laidOutTab(134, 0, -6),
+        laidOutTab(134, 80),
+      ]),
+      166,
+    );
+    assert.strictEqual(
+      tabsWidth([laidOutTab(48, 80), laidOutTab(134, 12, -6)]),
+      92,
+    );
   });
 
   test('takes the tabs for too many once even their narrowest overflow the row, and for few again only once they fit without the room left inside its edges, so it does not flip back and forth', () => {
