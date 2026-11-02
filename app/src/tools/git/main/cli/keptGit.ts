@@ -2,6 +2,8 @@ import type { Readable } from 'node:stream';
 import { strings } from '../../../../shared/strings';
 import type { GitChild } from './spawnedGit';
 
+export class StoppedReading extends Error {}
+
 export class GitOutput {
   private chunks: Buffer[] = [];
   private length = 0;
@@ -44,6 +46,38 @@ export class GitOutput {
     const joined = this.joined();
     this.keep(joined.subarray(count));
     return joined.subarray(0, count);
+  }
+
+  async peek(count: number): Promise<Buffer> {
+    while (this.length < count) {
+      await this.more();
+    }
+    return this.joined().subarray(0, count);
+  }
+
+  async streamUntil(
+    sequence: Buffer,
+    onPart: (part: Buffer) => boolean,
+  ): Promise<void> {
+    for (;;) {
+      const joined = this.joined();
+      const at = joined.indexOf(sequence);
+      if (at !== -1) {
+        this.keep(joined.subarray(at + sequence.length));
+        if (at > 0 && onPart(joined.subarray(0, at))) {
+          throw new StoppedReading();
+        }
+        return;
+      }
+      const safe = joined.length - (sequence.length - 1);
+      if (safe > 0) {
+        this.keep(joined.subarray(safe));
+        if (onPart(joined.subarray(0, safe))) {
+          throw new StoppedReading();
+        }
+      }
+      await this.more();
+    }
   }
 
   private joined(): Buffer {

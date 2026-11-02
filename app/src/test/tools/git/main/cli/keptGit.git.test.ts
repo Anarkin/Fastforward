@@ -3,7 +3,11 @@ import * as path from 'node:path';
 import { PassThrough } from 'node:stream';
 import { suite, test } from 'vitest';
 import { waitFor } from '../../../../fixtures';
-import { GitOutput, KeptGits } from '../../../../../tools/git/main/cli/keptGit';
+import {
+  GitOutput,
+  KeptGits,
+  StoppedReading,
+} from '../../../../../tools/git/main/cli/keptGit';
 import { startGit } from '../../../../../tools/git/main/cli/run';
 import type { GitChild } from '../../../../../tools/git/main/cli/spawnedGit';
 import { installedGit } from '../../../../repositories';
@@ -15,6 +19,9 @@ const catFile = [
 ];
 
 const cwd = process.cwd();
+
+const ended = (child: GitChild | undefined) =>
+  child !== undefined && (child.exitCode !== null || child.signalCode !== null);
 
 async function headerOf(kept: KeptGits, gitPath: string): Promise<string> {
   const git = await kept.use(gitPath, cwd, catFile);
@@ -48,6 +55,29 @@ suite('A git kept running', () => {
     await assert.rejects(output.take(1));
   });
 
+  test('hands on what git prints before a marker in parts, though the marker is cut across chunks, and stops reading when told to', async () => {
+    const stream = new PassThrough();
+    const output = new GitOutput(stream);
+    const parts: string[] = [];
+    stream.write('first part, ');
+    stream.write('second part\n#MA');
+    stream.write('RK#rest');
+
+    assert.strictEqual((await output.peek(5)).toString(), 'first');
+    await output.streamUntil(Buffer.from('\n#MARK#'), (part) => {
+      parts.push(part.toString());
+      return false;
+    });
+    assert.strictEqual(parts.join(''), 'first part, second part');
+    assert.strictEqual((await output.take(4)).toString(), 'rest');
+
+    stream.write('too much');
+    await assert.rejects(
+      output.streamUntil(Buffer.from('#END#'), () => true),
+      StoppedReading,
+    );
+  });
+
   test('answers every request through the one git it keeps running for a repository and command', async () => {
     const gitPath = await installedGit();
     const started: GitChild[] = [];
@@ -71,7 +101,7 @@ suite('A git kept running', () => {
     try {
       await headerOf(kept, gitPath);
       (await kept.use(gitPath, cwd, catFile))?.stop();
-      await waitFor(() => started[0]?.exitCode !== null, 'git to stop');
+      await waitFor(() => ended(started[0]), 'git to stop');
 
       assert.match(await headerOf(kept, gitPath), / commit /);
       assert.strictEqual(started.length, 2);
@@ -86,7 +116,7 @@ suite('A git kept running', () => {
     const kept = new KeptGits(counting(started), () => true, 100);
     await headerOf(kept, gitPath);
 
-    await waitFor(() => started[0]?.exitCode !== null, 'the idle git to stop');
+    await waitFor(() => ended(started[0]), 'the idle git to stop');
     assert.strictEqual(kept.count, 0);
   });
 
@@ -103,12 +133,9 @@ suite('A git kept running', () => {
         await kept.use(gitPath, cwd, args);
       }
 
-      await waitFor(
-        () => started[0]?.exitCode !== null,
-        'the oldest git to stop',
-      );
+      await waitFor(() => ended(started[0]), 'the oldest git to stop');
       assert.strictEqual(kept.count, 2);
-      assert.strictEqual(started[2]?.exitCode, null);
+      assert.strictEqual(ended(started[2]), false);
     } finally {
       kept.stopAll();
     }
@@ -123,7 +150,7 @@ suite('A git kept running', () => {
 
     on = false;
     assert.strictEqual(await kept.use(gitPath, cwd, catFile), undefined);
-    await waitFor(() => started[0]?.exitCode !== null, 'the kept git to stop');
+    await waitFor(() => ended(started[0]), 'the kept git to stop');
     assert.strictEqual(kept.count, 0);
   });
 
@@ -157,11 +184,8 @@ suite('A git kept running', () => {
 
       kept.stopIn(cwd);
 
-      await waitFor(
-        () => started[0]?.exitCode !== null,
-        'the git of the folder to stop',
-      );
-      assert.strictEqual(started[1]?.exitCode, null);
+      await waitFor(() => ended(started[0]), 'the git of the folder to stop');
+      assert.strictEqual(ended(started[1]), false);
       assert.strictEqual(kept.count, 1);
     } finally {
       kept.stopAll();
@@ -182,10 +206,7 @@ suite('A git kept running', () => {
       });
 
       assert.match(header, / commit /);
-      await waitFor(
-        () => started[0]?.exitCode !== null,
-        'the git to stop once idle',
-      );
+      await waitFor(() => ended(started[0]), 'the git to stop once idle');
     } finally {
       kept.stopAll();
     }
