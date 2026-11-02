@@ -148,6 +148,20 @@ suite('Rows of text of a file', () => {
     assert.ok(reads.length > 0 && reads.length <= 3, String(reads.length));
   });
 
+  test('hands out a read within one block as a view of the block it holds rather than a copy, as the rows of a screen read a few bytes at a time and copying the whole block each time made dragging the scrollbar of a file slow', async () => {
+    const { read } = inMemory('x'.repeat(200_000));
+    const cached = blockCache().reader(read);
+
+    const first = await cached(10, 5);
+    const second = await cached(4000, 5);
+    const across = await cached(65_530, 12);
+
+    assert.strictEqual(first.toString(), 'xxxxx');
+    assert.strictEqual(first.buffer, second.buffer);
+    assert.strictEqual(second.byteOffset - first.byteOffset, 3990);
+    assert.strictEqual(across.toString(), 'x'.repeat(12));
+  });
+
   test('takes a file for binary as git does, when its first 8000 bytes hold a NUL', () => {
     assert.strictEqual(looksBinary(Buffer.from('text, é')), false);
     assert.strictEqual(

@@ -15,24 +15,50 @@ export interface RowBreak {
   readonly blanks: readonly Blank[];
 }
 
-const breaksAfter = new Set('})]?|/&.,;');
-const breaksBefore = new Set('([{+');
+const blank = 1;
+const breaksAfter = 2;
+const breaksBefore = 4;
+const kinds = new Uint8Array(128);
+const kindOf = (characters: string, kind: number) => {
+  for (const character of characters) {
+    kinds[character.charCodeAt(0)] |= kind;
+  }
+};
+kindOf(' \t', blank);
+kindOf('})]?|/&.,;', breaksAfter);
+kindOf('([{+', breaksBefore);
 const fullWidthColumns = 2;
+const tabCode = 9;
+
+function kindAt(text: string, at: number): number {
+  const code = text.charCodeAt(at);
+  return code < kinds.length ? (kinds[code] ?? 0) : 0;
+}
 
 const isBlank = (character: string | undefined) =>
   character === ' ' || character === '\t';
 
+const isBlankAt = (text: string, at: number) =>
+  (kindAt(text, at) & blank) !== 0;
+
+function breaksAt(text: string, at: number): boolean {
+  const before = kindAt(text, at - 1);
+  const after = kindAt(text, at);
+  if (((before | after) & blank) !== 0) {
+    return false;
+  }
+  const endsAfter = (before & breaksAfter) !== 0;
+  const startsBefore = (after & breaksBefore) !== 0;
+  return (
+    (endsAfter && (after & breaksAfter) === 0) ||
+    (startsBefore && (before & breaksBefore) === 0)
+  );
+}
+
 export function breakOffsets(text: string): number[] {
   const offsets: number[] = [];
   for (let at = 1; at < text.length; at++) {
-    const before = text[at - 1];
-    const after = text[at];
-    if (
-      !isBlank(before) &&
-      !isBlank(after) &&
-      ((breaksAfter.has(before) && !breaksAfter.has(after)) ||
-        (!breaksBefore.has(before) && breaksBefore.has(after)))
-    ) {
+    if (breaksAt(text, at)) {
       offsets.push(at);
     }
   }
@@ -76,7 +102,6 @@ export function wrapStarts(
   if (text.length <= columns && !text.includes('\t')) {
     return [0];
   }
-  const breaks = new Set(breakOffsets(text));
   const starts = [0];
   let column = 0;
   let rowStart = indent;
@@ -85,8 +110,8 @@ export function wrapStarts(
     let end = at;
     while (
       end < text.length &&
-      !isBlank(text[end]) &&
-      (end === at || !breaks.has(end))
+      !isBlankAt(text, end) &&
+      (end === at || !breaksAt(text, end))
     ) {
       end++;
     }
@@ -103,8 +128,8 @@ export function wrapStarts(
       rowStart = indent;
     }
     column += length;
-    for (at = end; isBlank(text[at]); at++) {
-      column = text[at] === '\t' ? tabStop(column) : column + 1;
+    for (at = end; isBlankAt(text, at); at++) {
+      column = text.charCodeAt(at) === tabCode ? tabStop(column) : column + 1;
     }
   }
   return starts;

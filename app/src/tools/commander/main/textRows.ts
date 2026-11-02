@@ -514,7 +514,10 @@ export function blockCache(): BlockCache {
         ),
       );
       const offset = position - first * blockBytes;
-      return Buffer.concat(parts).subarray(offset, offset + length);
+      const [only] = parts;
+      const joined =
+        parts.length === 1 && only !== undefined ? only : Buffer.concat(parts);
+      return joined.subarray(offset, offset + length);
     },
     forget: () => {
       blocks = new Map();

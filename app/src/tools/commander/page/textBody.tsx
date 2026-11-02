@@ -459,8 +459,8 @@ export function TextBody({
       requests.ask({
         anchor,
         exact: false,
-        before: screen * 2,
-        after: screen * 3,
+        before: screen,
+        after: screen + 1,
         topOf: (first, arrived) =>
           topWithin(
             rowWithByte(arrived, first, anchor),

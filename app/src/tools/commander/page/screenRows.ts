@@ -20,24 +20,41 @@ export interface ScreenRow {
   readonly hanging: RowBreak['blanks'];
 }
 
-function utf8Bytes(text: string): number {
+const isHigh = (code: number) => code >= 0xd800 && code <= 0xdbff;
+const isLow = (code: number) => code >= 0xdc00 && code <= 0xdfff;
+
+function utf8Bytes(text: string, from: number, to: number): number {
   let bytes = 0;
-  for (const char of text) {
-    const code = char.codePointAt(0) ?? 0;
-    bytes += code < 0x80 ? 1 : code < 0x800 ? 2 : code < 0x10000 ? 3 : 4;
+  for (let at = from; at < to; at++) {
+    const code = text.charCodeAt(at);
+    if (code < 0x80) {
+      bytes += 1;
+    } else if (code < 0x800) {
+      bytes += 2;
+    } else if (isHigh(code) && at + 1 < to && isLow(text.charCodeAt(at + 1))) {
+      bytes += 4;
+      at++;
+    } else {
+      bytes += 3;
+    }
   }
   return bytes;
 }
 
-function bytesOf(text: string, encoding: TextEncoding): number {
+function bytesOf(
+  text: string,
+  from: number,
+  to: number,
+  encoding: TextEncoding,
+): number {
   switch (encoding) {
     case 'utf-8':
-      return utf8Bytes(text);
+      return utf8Bytes(text, from, to);
     case 'utf-16le':
     case 'utf-16be':
-      return text.length * 2;
+      return (to - from) * 2;
     default:
-      return text.length;
+      return to - from;
   }
 }
 
@@ -69,7 +86,7 @@ function rowsOf(
     const last = part === starts.length - 1;
     const end = last
       ? row.end
-      : Math.min(row.end, start + bytesOf(text.slice(from, to), encoding));
+      : Math.min(row.end, start + bytesOf(text, from, to, encoding));
     const shown: ScreenRow = {
       start,
       end,
