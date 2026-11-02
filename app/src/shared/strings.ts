@@ -731,6 +731,7 @@ export const strings = {
       `git ${command} failed: it was stopped by ${signal}`,
     gitOutputTooLarge: (command: string, megabytes: number) =>
       `git ${command} failed: it printed over ${megabytes} MB`,
+    gitStarterStopped: 'the thread that starts git stopped',
     pushStalled: (seconds: number) =>
       `git push printed nothing for ${seconds} seconds, so it was stopped`,
     fetchStalled: (seconds: number) =>

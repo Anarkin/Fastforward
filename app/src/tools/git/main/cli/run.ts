@@ -1,14 +1,11 @@
-import {
-  type ChildProcess,
-  type ChildProcessWithoutNullStreams,
-  execFile,
-  spawn,
-} from 'node:child_process';
+import type { ChildProcess } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { lstat, readFile, rm } from 'node:fs/promises';
 import { isAbsolute, join, win32 } from 'node:path';
 import type { Readable } from 'node:stream';
 import { strings } from '../../../../shared/strings';
+import { stopTree } from './gitSpawner';
+import { GitChild, spawnGit } from './spawnedGit';
 
 const gitConfigArgs = [
   '-c',
@@ -133,20 +130,29 @@ function monitorArgs(gitPath: string, cwd: string): Promise<string[]> {
   let args = monitors.get(key);
   if (args === undefined) {
     const { command, env } = gitCommand(gitPath);
-    args = new Promise((resolve) => {
-      execFile(
-        command,
-        ['config', '--type=bool', '--get', 'core.fsmonitor'],
-        { cwd, env: { ...gitEnv(), ...env }, windowsHide: true },
-        (error, stdout) => {
-          const daemon = !error && stdout.trim() === 'true';
-          resolve(['-c', `core.fsmonitor=${daemon}`]);
-        },
-      );
-    });
+    args = printedBy(
+      spawnGit(command, ['config', '--type=bool', '--get', 'core.fsmonitor'], {
+        cwd,
+        env: { ...gitEnv(), ...env },
+        detached: gitProcessOptions().detached,
+      }),
+    ).then((printed) => ['-c', `core.fsmonitor=${printed?.trim() === 'true'}`]);
     monitors.set(key, args);
   }
   return args;
+}
+
+function printedBy(child: GitChild): Promise<string | undefined> {
+  const chunks: Buffer[] = [];
+  child.stdout.on('data', (chunk: Buffer) => chunks.push(chunk));
+  child.stderr.resume();
+  child.stdin.end();
+  return new Promise((resolve) => {
+    child.on('error', () => resolve(undefined));
+    child.on('close', (code) =>
+      resolve(code === 0 ? Buffer.concat(chunks).toString('utf8') : undefined),
+    );
+  });
 }
 
 interface RunOptions {
@@ -243,7 +249,7 @@ function runGitOnce(
     }
     const started = gitCommand(gitPath);
     const child = keptRunning(
-      spawn(
+      spawnGit(
         started.command,
         [...(runsUserCode ? [] : gitConfigArgs), ...monitor, ...args],
         {
@@ -253,7 +259,7 @@ function runGitOnce(
             ...started.env,
             ...env,
           },
-          ...gitProcessOptions(),
+          detached: gitProcessOptions().detached,
         },
       ),
       writes ? { cwd, since: Date.now() } : undefined,
@@ -343,7 +349,7 @@ function runGitOnce(
   });
 }
 
-function closeOutputHeldPastExit(child: ChildProcessWithoutNullStreams): void {
+function closeOutputHeldPastExit(child: GitChild): void {
   let closing: NodeJS.Timeout | undefined;
   const closeOnceQuiet = () => {
     clearTimeout(closing);
@@ -370,12 +376,12 @@ interface Write {
   readonly since: number;
 }
 
-const running = new Map<ChildProcess, Promise<void>>();
-const writing = new Map<ChildProcess, Write>();
+const running = new Map<GitChild, Promise<void>>();
+const writing = new Map<GitChild, Write>();
 const writeTime = 30_000;
 let writesDeadline: number | undefined;
 
-function keptRunning<T extends ChildProcess>(child: T, write?: Write): T {
+function keptRunning(child: GitChild, write?: Write): GitChild {
   running.set(
     child,
     new Promise((resolve) => {
@@ -465,10 +471,12 @@ async function removeIndexLock({ cwd, since }: Write): Promise<void> {
   }
 }
 
-type StoppableGit = Pick<
-  ChildProcess,
-  'pid' | 'exitCode' | 'signalCode' | 'stdout' | 'stderr' | 'kill'
->;
+type StoppableGit =
+  | GitChild
+  | Pick<
+      ChildProcess,
+      'pid' | 'exitCode' | 'signalCode' | 'stdout' | 'stderr' | 'kill'
+    >;
 
 const stopping = new Map<StoppableGit, Promise<void>>();
 
@@ -490,34 +498,7 @@ async function endGit(
 ): Promise<void> {
   child.stdout?.destroy();
   child.stderr?.destroy();
-  if (
-    child.exitCode !== null ||
-    child.signalCode !== null ||
-    child.pid === undefined
-  ) {
-    return;
-  }
-  const { pid } = child;
-  if (platform === 'win32') {
-    await new Promise((resolve) => {
-      execFile(
-        join(
-          process.env.SystemRoot ?? 'C:\\Windows',
-          'System32',
-          'taskkill.exe',
-        ),
-        ['/pid', String(pid), '/t', '/f'],
-        { windowsHide: true },
-        resolve,
-      );
-    });
-    return;
-  }
-  try {
-    process.kill(-pid, 'SIGTERM');
-  } catch {
-    child.kill();
-  }
+  await (child instanceof GitChild ? child.stop() : stopTree(child, platform));
 }
 
 export function exitedWith(

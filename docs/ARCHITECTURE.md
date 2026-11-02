@@ -15,6 +15,7 @@
 ### Git, `git`
 
 - Use the installed `git` CLI for everything, without bundling one; it needs git 2.52 or later on the PATH
+- Start git from a pool of up to four worker threads rather than the main process, each git on a thread not busy starting another, as starting a process on Windows can hold the thread starting it for hundreds of milliseconds, which held up every message of the app and every git started after it
 - The git tool checks every hash and path the page sends against the history and the repository
 - The commit list is read whole up front with `git rev-list` and kept by the main process per worktree, so the list knows its full size and locations can jump to any commit's position
 - The tags of each remote are listed with `git ls-remote --tags` after each fetch and kept in the app's state rather than as refs, as git keeps no remote-tracking refs for tags, and refs would show up in other tools; it costs one more connection per remote after each fetch
