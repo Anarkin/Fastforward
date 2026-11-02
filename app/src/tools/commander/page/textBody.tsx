@@ -555,6 +555,15 @@ export function TextBody({
             }
             blanks={showWhitespace}
           />
+          {!showWhitespace &&
+            row.hanging.map(({ column, tab }) => (
+              <span
+                key={column}
+                className="viewer-wrap-blank"
+                data-glyph={tab ? strings.symbols.tab : strings.symbols.space}
+                style={{ left: `calc(${column} * var(--commander-advance))` }}
+              />
+            ))}
           {row.breakAt !== undefined && (
             <span
               className="viewer-break"

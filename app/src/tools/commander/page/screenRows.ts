@@ -1,6 +1,11 @@
 import type { TextEncoding, TextRow } from '../shared/protocol';
 import type { CodeSegment } from '../../../ui/syntax';
-import { rowBreaksAt, wrapIndent, wrapStarts } from '../../../ui/wordWrap';
+import {
+  rowBreaksAt,
+  wrapIndent,
+  wrapStarts,
+  type RowBreak,
+} from '../../../ui/wordWrap';
 import type { FindMark } from './findMarks';
 
 export interface ScreenRow {
@@ -12,6 +17,7 @@ export interface ScreenRow {
   readonly to: number;
   readonly indent: number;
   readonly breakAt: number | undefined;
+  readonly hanging: RowBreak['blanks'];
 }
 
 function utf8Bytes(text: string): number {
@@ -73,6 +79,7 @@ function rowsOf(
       to,
       indent: part === 0 ? 0 : indent,
       breakAt: breaks[part]?.end,
+      hanging: breaks[part]?.blanks ?? [],
     };
     start = end;
     return shown;

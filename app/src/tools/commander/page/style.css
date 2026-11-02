@@ -187,7 +187,8 @@
   tab-size: 4;
 }
 
-.viewer-break {
+.viewer-break,
+.viewer-wrap-blank {
   position: absolute;
   top: 0;
   width: var(--commander-advance);
@@ -197,7 +198,8 @@
   user-select: none;
 }
 
-.viewer-break::before {
+.viewer-break::before,
+.viewer-wrap-blank::before {
   content: attr(data-glyph);
 }
 
