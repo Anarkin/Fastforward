@@ -174,6 +174,15 @@ async function isFolder(folder: string): Promise<boolean> {
   }
 }
 
+function volumeOf(file: string): string {
+  const { root } = path.parse(path.resolve(file));
+  return process.platform === 'win32' ? root.toLowerCase() : root;
+}
+
+function onSameVolume(file: string, other: string): boolean {
+  return volumeOf(file) === volumeOf(other);
+}
+
 export class CommanderTool implements Tool<'commander'> {
   private shell: ShellAccess = unattachedShell;
   private shown: { readonly page: Page; readonly tab: string } | undefined;
@@ -399,13 +408,19 @@ export class CommanderTool implements Tool<'commander'> {
           )
         : new Response(null, { status: 404 });
     }
-    const viewing =
+    const viewer =
       asked &&
       this.shell
         .tabs()
-        .some((tab) => tab.id === asked.tab && tab.view === true);
+        .find((tab) => tab.id === asked.tab && tab.view === true);
     const type = asked && imageType(asked.file);
-    if (!asked || !viewing || !type || !path.isAbsolute(asked.file)) {
+    if (
+      !asked ||
+      viewer?.root === undefined ||
+      !type ||
+      !path.isAbsolute(asked.file) ||
+      !onSameVolume(asked.file, viewer.root)
+    ) {
       return new Response(null, { status: 404 });
     }
     try {

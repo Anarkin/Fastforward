@@ -557,6 +557,28 @@ suite('Commander tool', () => {
       assert.strictEqual((await served('3', large)).status, 413);
     });
 
+    test.skipIf(process.platform !== 'win32')(
+      'refuses the images of a drive or share other than that of the file viewed, as a document on a share could name an image on a host of its own and have Windows sign in to it',
+      async () => {
+        const { tool, tabs } = commander({});
+        const picture = path.join(opened, 'picture.png');
+        fs.writeFileSync(picture, Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+        tabs.push({
+          id: '3',
+          tool: 'commander',
+          root: '\\\\fileserver\\team\\readme.md',
+          view: true,
+        });
+
+        const served = await tool.file(
+          new URL(`fastforward://app${viewedFileUrl('3', picture)}`),
+          null,
+        );
+
+        assert.strictEqual(served.status, 404);
+      },
+    );
+
     test('serves a PDF only to the tab viewing it, by the ranges of bytes asked for, whatever its size', async () => {
       const { tool, tabs } = commander({});
       const book = path.join(opened, 'book.pdf');
