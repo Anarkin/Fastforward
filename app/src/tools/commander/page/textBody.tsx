@@ -36,9 +36,14 @@ import {
   type ScreenRow,
 } from './screenRows';
 import { useTextView } from '../../../ui/textView';
+import { columnAt, columnsOf, shownWithin } from './columns';
 import { strings } from '../../../shared/strings';
 
 const rowsAboveMatch = 2;
+
+const sidewaysStep = 32;
+
+const sidewaysMargin = 64;
 
 interface Span {
   readonly start: number;
@@ -147,16 +152,20 @@ export function textThumb(
 
 function RowText({
   shown,
+  from,
+  to,
   colored,
   marks,
   blanks,
 }: {
   shown: ScreenRow;
+  from: number;
+  to: number;
   colored: ColoredText | undefined;
   marks: readonly FindMark[];
   blanks: boolean;
 }) {
-  const { row, from, to } = shown;
+  const { row } = shown;
   const pieces = (colored && rowSegments(colored, row)) ?? [{ text: row.text }];
   return (
     <MarkedText
@@ -520,6 +529,66 @@ export function TextBody({
 
   const colored = useColors(file, encoding, viewing, post, listen);
   const shown = loaded.rows.slice(loaded.top, loaded.top + screen + 1);
+  const whole = wrapAt === undefined;
+  const widest = useMemo(
+    () =>
+      whole
+        ? rows.reduce((most, row) => Math.max(most, columnsOf(row.row.text)), 0)
+        : undefined,
+    [rows, whole],
+  );
+  const widthKey = `${tab}:${encoding}`;
+  const [wide, setWide] = useState({ key: widthKey, columns: 0 });
+  if (
+    widest !== undefined &&
+    (wide.key !== widthKey || widest > wide.columns)
+  ) {
+    setWide({
+      key: widthKey,
+      columns: wide.key === widthKey ? Math.max(wide.columns, widest) : widest,
+    });
+  }
+  const [across, setAcross] = useState(0);
+  const onSideways = useCallback(
+    (column: number) =>
+      setAcross(Math.floor(column / sidewaysStep) * sidewaysStep),
+    [],
+  );
+  const shownColumns =
+    columns !== undefined && Number.isFinite(columns) ? columns : 0;
+  const parts = shown.map((row) =>
+    whole
+      ? shownWithin(
+          row.row.text,
+          row.from,
+          row.to,
+          Math.max(0, across - sidewaysMargin),
+          across + shownColumns + sidewaysMargin,
+        )
+      : { from: row.from, to: row.to, column: row.indent },
+  );
+  const texts = new Map(
+    shown.map((row, index) => [
+      `${row.row.start}:${row.from}`,
+      {
+        text: row.row.text.slice(row.from, row.to),
+        from: (parts[index]?.from ?? row.from) - row.from,
+      },
+    ]),
+  );
+  const rowText = (element: Element) =>
+    texts.get(element.getAttribute('data-key') ?? '');
+  const target = find?.current;
+  const matched =
+    whole && target !== undefined
+      ? shown.find((row) => target.start >= row.start && target.start < row.end)
+      : undefined;
+  const matchStart =
+    matched === undefined || find === undefined
+      ? undefined
+      : textMarks(matched.row, find.query, find.matches, target).find(
+          (mark) => mark.current,
+        )?.start;
 
   return (
     <ScrollBody
@@ -529,26 +598,40 @@ export function TextBody({
       move={move}
       jump={jump}
       error={viewing.error}
+      width={whole && wide.key === widthKey ? wide.columns : undefined}
+      onSideways={onSideways}
+      reveal={
+        matched === undefined || matchStart === undefined
+          ? undefined
+          : {
+              column: columnAt(matched.row.text, matchStart),
+              asked: jumps,
+            }
+      }
+      rowText={rowText}
     >
-      {shown.map((row) => (
+      {shown.map((row, index) => (
         <div
           className="viewer-row"
           key={`${row.row.start}:${row.from}`}
+          data-key={`${row.row.start}:${row.from}`}
           data-continues={
             row.to < row.row.text.length || row.row.cut === true
               ? ''
               : undefined
           }
           style={
-            row.indent > 0
+            (parts[index]?.column ?? 0) > 0
               ? {
-                  paddingInlineStart: `calc(${row.indent} * var(--commander-advance))`,
+                  paddingInlineStart: `calc(${parts[index]?.column ?? 0} * var(--commander-advance))`,
                 }
               : undefined
           }
         >
           <RowText
             shown={row}
+            from={parts[index]?.from ?? row.from}
+            to={parts[index]?.to ?? row.to}
             colored={colored}
             marks={
               find === undefined

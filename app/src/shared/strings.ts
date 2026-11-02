@@ -256,6 +256,7 @@ export const strings = {
     closeCompare: 'Close the files being compared',
     viewAs: 'View the file as text, hex or a preview',
     scrollFile: 'Scroll by a row, a page, or to the start or end',
+    scrollSideways: 'Scroll sideways',
     chooseEncoding: 'Choose the encoding of the text',
     findInFile: 'Search the file',
     viewDiffFile: 'View the file shown in a tab of its own',

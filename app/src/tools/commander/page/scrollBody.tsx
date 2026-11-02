@@ -1,5 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { keyPressed } from '../../../ui/shortcuts';
+import { wheeled } from '../../../shell/shared/keymap';
 import { viewerKeymap } from '../shared/keymap';
 import { followDrag } from '../../../ui/followDrag';
 import {
@@ -16,6 +23,15 @@ const minThumb = 24;
 
 const probeText = '0'.repeat(100);
 
+const sidewaysColumns = 4;
+
+const revealColumns = 8;
+
+export interface RowText {
+  readonly text: string;
+  readonly from: number;
+}
+
 export function thumbBox(
   thumb: Thumb,
   track: number,
@@ -24,33 +40,51 @@ export function thumbBox(
   return { top: thumb.start * (track - height), height };
 }
 
+function charsBefore(row: Element, container: Node, offset: number): number {
+  const before = document.createRange();
+  before.selectNodeContents(row);
+  before.setEnd(container, offset);
+  return before.toString().length;
+}
+
 function copiedRows(
   selection: Selection | null,
   shown: Element | null,
+  rowText: ((row: Element) => RowText | undefined) | undefined,
 ): string | undefined {
   if (selection === null || selection.rangeCount === 0 || shown === null) {
     return undefined;
   }
   const range = selection.getRangeAt(0);
   const rows = [...shown.children].filter((row) => range.intersectsNode(row));
-  if (!rows.slice(0, -1).some((row) => row.hasAttribute('data-continues'))) {
+  if (
+    rows.length < 2 ||
+    (rowText === undefined &&
+      !rows.slice(0, -1).some((row) => row.hasAttribute('data-continues')))
+  ) {
     return undefined;
   }
   return rows
     .map((row, index) => {
-      const part = document.createRange();
-      part.selectNodeContents(row);
-      if (row.contains(range.startContainer)) {
-        part.setStart(range.startContainer, range.startOffset);
-      }
-      if (row.contains(range.endContainer)) {
-        part.setEnd(range.endContainer, range.endOffset);
-      }
+      const start = row.contains(range.startContainer)
+        ? charsBefore(row, range.startContainer, range.startOffset)
+        : undefined;
+      const end = row.contains(range.endContainer)
+        ? charsBefore(row, range.endContainer, range.endOffset)
+        : undefined;
+      const whole = rowText?.(row);
+      const text =
+        whole === undefined
+          ? (row.textContent ?? '').slice(start ?? 0, end)
+          : whole.text.slice(
+              start === undefined ? 0 : whole.from + start,
+              end === undefined ? undefined : whole.from + end,
+            );
       const ends =
         index === rows.length - 1 || row.hasAttribute('data-continues')
           ? ''
           : '\n';
-      return `${part.toString()}${ends}`;
+      return `${text}${ends}`;
     })
     .join('');
 }
@@ -62,6 +96,10 @@ export function ScrollBody({
   move,
   jump,
   error,
+  width,
+  onSideways,
+  reveal,
+  rowText,
   children,
 }: {
   thumb: Thumb | undefined;
@@ -70,10 +108,42 @@ export function ScrollBody({
   move: (by: number) => void;
   jump: (share: number) => void;
   error: string | undefined;
+  width?: number;
+  onSideways?: (column: number) => void;
+  reveal?: { readonly column: number; readonly asked: number };
+  rowText?: (row: Element) => RowText | undefined;
   children: React.ReactNode;
 }) {
   const body = useRef<HTMLDivElement>(null);
   const probe = useRef<HTMLDivElement>(null);
+  const sideways = useRef<HTMLDivElement>(null);
+  const advance = useRef(1);
+  const inset = useRef(0);
+  const revealed = useRef(0);
+  useLayoutEffect(() => {
+    const area = sideways.current;
+    if (
+      area === null ||
+      reveal === undefined ||
+      reveal.asked === revealed.current
+    ) {
+      return;
+    }
+    const x = inset.current + reveal.column * advance.current;
+    const margin = revealColumns * advance.current;
+    if (
+      x < area.scrollLeft + margin ||
+      x > area.scrollLeft + area.clientWidth - margin * 2
+    ) {
+      area.scrollLeft = Math.max(0, x - margin);
+    }
+    if (
+      x >= area.scrollLeft &&
+      x + advance.current <= area.scrollLeft + area.clientWidth
+    ) {
+      revealed.current = reveal.asked;
+    }
+  });
   const [track, setTrack] = useState(0);
   const [screen, setScreen] = useState(1);
   const wheel = useRef(0);
@@ -103,10 +173,14 @@ export function ScrollBody({
       const style = getComputedStyle(row);
       const padding =
         parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
-      const advance =
+      inset.current = parseFloat(style.paddingLeft) || 0;
+      advance.current =
         (row.getBoundingClientRect().width - padding) / probeText.length || 1;
       onColumns?.(
-        Math.max(1, Math.floor((element.clientWidth - padding) / advance)),
+        Math.max(
+          1,
+          Math.floor((element.clientWidth - padding) / advance.current),
+        ),
       );
     };
     measure();
@@ -133,6 +207,7 @@ export function ScrollBody({
         const copied = copiedRows(
           getSelection(),
           event.currentTarget.querySelector('.viewer-rows'),
+          rowText,
         );
         if (copied !== undefined) {
           event.preventDefault();
@@ -140,6 +215,9 @@ export function ScrollBody({
         }
       }}
       onWheel={(event) => {
+        if (wheeled(viewerKeymap.wheelSideways, event) !== undefined) {
+          return;
+        }
         wheel.current += event.deltaY;
         const height = probe.current?.getBoundingClientRect().height ?? 1;
         const rows = Math.trunc(wheel.current / height);
@@ -149,6 +227,14 @@ export function ScrollBody({
         }
       }}
       onKeyDown={(event) => {
+        const across = keyPressed(viewerKeymap.scrollSideways, event);
+        if (across !== undefined) {
+          event.preventDefault();
+          sideways.current?.scrollBy({
+            left: across * sidewaysColumns * advance.current,
+          });
+          return;
+        }
         const step = keyPressed(viewerKeymap.scroll, event);
         if (step === undefined) {
           return;
@@ -182,7 +268,28 @@ export function ScrollBody({
         {probeText}
       </div>
       {error === undefined ? (
-        <div className="viewer-rows">{children}</div>
+        <div
+          className="viewer-sideways"
+          ref={sideways}
+          onScroll={(event) =>
+            onSideways?.(
+              Math.floor(event.currentTarget.scrollLeft / advance.current),
+            )
+          }
+        >
+          <div
+            className="viewer-rows"
+            style={
+              width === undefined
+                ? undefined
+                : {
+                    minWidth: `calc(${width} * var(--commander-advance) + 16px + var(--scrollbar-size))`,
+                  }
+            }
+          >
+            {children}
+          </div>
+        </div>
       ) : (
         <div className="viewer-error">{error}</div>
       )}

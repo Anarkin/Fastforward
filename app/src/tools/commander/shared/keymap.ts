@@ -119,6 +119,15 @@ export const viewerKeymap = {
     } as const,
     { repeats: true },
   ),
+  scrollSideways: bind(
+    'Viewer',
+    strings.actions.scrollSideways,
+    { ArrowLeft: -1, ArrowRight: 1 } as const,
+    { repeats: true },
+  ),
+  wheelSideways: bind('Viewer', strings.actions.wheelSideways, {
+    'Shift+Wheel': true,
+  }),
   viewAs: bind<ViewMode>('Viewer', strings.actions.viewAs, {
     '1': 'text',
     '2': 'hex',

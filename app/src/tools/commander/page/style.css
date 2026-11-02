@@ -168,6 +168,13 @@
   outline: none;
 }
 
+.viewer-sideways {
+  position: absolute;
+  inset: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
 .viewer-rows {
   user-select: text;
   width: max-content;

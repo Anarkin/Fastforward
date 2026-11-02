@@ -76,6 +76,8 @@ suite('Shortcuts popup', () => {
       viewer?.bindings.map((binding) => binding.action),
       [
         'Scroll by a row, a page, or to the start or end',
+        'Scroll sideways',
+        'Scroll sideways with the wheel',
         'View the file as text, hex or a preview',
         'Choose the encoding of the text',
         'Turn line wrapping on or off',

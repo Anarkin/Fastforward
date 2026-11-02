@@ -964,11 +964,11 @@ suite('App commander', () => {
 
       await page.keyboard.press('w');
       await waitFor(async () => (await rows.count()) === 3, 'the line whole');
-      assert.deepStrictEqual(await rows.allTextContents(), [
-        'short',
-        line,
-        'after',
-      ]);
+      const unwrapped = await rows.allTextContents();
+      assert.deepStrictEqual(
+        [unwrapped[0], line.startsWith(unwrapped[1] ?? '-'), unwrapped[2]],
+        ['short', true, 'after'],
+      );
       assert.strictEqual((await layout()).fits, false);
       assert.strictEqual(await page.locator('.viewer-break').count(), 0);
       await waitFor(
@@ -1018,6 +1018,146 @@ suite('App commander', () => {
       fs.rmSync(path.join(opened, 'long.txt'));
       await waitFor(
         async () => !(await rowNames()).includes('long.txt'),
+        'the file to be gone from the list',
+      );
+    }
+  });
+
+  test('scrolls a file viewed sideways while its lines are not wrapped, on its overlay scrollbar, Shift and the wheel, or Left and Right, keeping the width of the widest row seen as it scrolls away, drawing only the columns near the screen yet copying rows whole, and brings a match off to the side into view', async () => {
+    const long = `start ${'x'.repeat(600)} found`;
+    fs.writeFileSync(
+      path.join(opened, 'wide.txt'),
+      [long, ...Array.from({ length: 300 }, (_, index) => `row ${index}`)].join(
+        String.fromCharCode(10),
+      ),
+    );
+    const sideways = page.locator('.viewer-sideways');
+    const across = () =>
+      sideways.evaluate((element) => ({
+        left: element.scrollLeft,
+        width: element.scrollWidth,
+        shown: element.clientWidth,
+      }));
+    try {
+      await select('wide');
+      await page.keyboard.press('F3');
+      await waitFor(
+        async () => (await firstViewerRow()).startsWith('start'),
+        'the first row',
+      );
+      await waitForFocus(page.locator('.viewer-body'), 'the viewer');
+      await page.keyboard.press('w');
+      await waitFor(async () => {
+        const { width, shown } = await across();
+        return width > shown + 100;
+      }, 'the long line too wide to show');
+      const drawn =
+        (await page
+          .locator('.viewer-rows .viewer-row')
+          .first()
+          .textContent()) ?? '';
+      assert.ok(drawn.length < long.length, String(drawn.length));
+      await page.evaluate(() => {
+        const shown = [
+          ...document.querySelectorAll('.viewer-rows .viewer-row'),
+        ];
+        const range = document.createRange();
+        range.setStartBefore(shown[0] ?? document.body);
+        range.setEnd(shown[1]?.firstChild ?? document.body, 2);
+        getSelection()?.removeAllRanges();
+        getSelection()?.addRange(range);
+        window.addEventListener(
+          'copy',
+          (event) =>
+            Reflect.set(
+              window,
+              'copied',
+              event.clipboardData?.getData('text/plain'),
+            ),
+          { once: true },
+        );
+      });
+      await page.keyboard.press('ControlOrMeta+C');
+      assert.strictEqual(
+        await page.evaluate((): unknown => Reflect.get(window, 'copied')),
+        `${long}${String.fromCharCode(10)}ro`,
+      );
+      await page.evaluate(() => getSelection()?.removeAllRanges());
+
+      await page.locator('.viewer-rows').hover();
+      await page.locator('.overlay-scrollbar.horizontal.shown').waitFor();
+      await page.keyboard.press('ArrowRight');
+      await page.keyboard.press('ArrowRight');
+      await waitFor(async () => (await across()).left > 0, 'a step sideways');
+      await page.keyboard.press('ArrowLeft');
+      await page.keyboard.press('ArrowLeft');
+      await waitFor(async () => (await across()).left === 0, 'back again');
+      await page.keyboard.down('Shift');
+      await page.mouse.wheel(0, 300);
+      await page.keyboard.up('Shift');
+      await waitFor(
+        async () => (await across()).left > 0,
+        'the wheel sideways',
+      );
+      assert.ok((await firstViewerRow()).startsWith('start'));
+
+      const before = await across();
+      await page.keyboard.press('PageDown');
+      await waitFor(
+        async () => (await firstViewerRow()).startsWith('row'),
+        'the long line scrolled away',
+      );
+      const after = await across();
+      assert.deepStrictEqual(
+        [after.left, after.width],
+        [before.left, before.width],
+      );
+
+      await page.keyboard.press('Home');
+      await waitFor(
+        async () => (await firstViewerRow()).startsWith('start'),
+        'the start again',
+      );
+      await sideways.evaluate((element) => {
+        element.scrollLeft = 0;
+      });
+      await page.keyboard.press('ControlOrMeta+F');
+      await page.keyboard.type('found');
+      await page.keyboard.press('Enter');
+      await waitFor(
+        () =>
+          page.evaluate(() => {
+            const mark = document.querySelector('.find-match.current');
+            const area = document.querySelector('.viewer-sideways');
+            if (mark === null || area === null) {
+              return false;
+            }
+            const box = mark.getBoundingClientRect();
+            const shown = area.getBoundingClientRect();
+            return box.left >= shown.left && box.right <= shown.right;
+          }),
+        'the match brought into view',
+      );
+      await page.keyboard.press('Escape');
+
+      await page.keyboard.press('w');
+      await waitFor(async () => {
+        const { left, width, shown } = await across();
+        return left === 0 && width <= shown + 1;
+      }, 'the lines wrapped to the width again');
+    } finally {
+      for (
+        let presses = 0;
+        presses < 3 && (await page.locator('.viewer').isVisible());
+        presses++
+      ) {
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(200);
+      }
+      await page.locator('.viewer').waitFor({ state: 'detached' });
+      fs.rmSync(path.join(opened, 'wide.txt'));
+      await waitFor(
+        async () => !(await rowNames()).includes('wide.txt'),
         'the file to be gone from the list',
       );
     }
