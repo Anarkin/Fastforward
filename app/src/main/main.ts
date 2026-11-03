@@ -84,7 +84,8 @@ import {
 } from './files';
 import { tellMaximized } from './maximized';
 import { reloadWhenGone } from './pageGone';
-import { profileFolder } from './profile';
+import { profileFolder, thumbnailFolder } from './profile';
+import { ThumbnailStore } from '../tools/commander/main/thumbnailStore';
 import { QuitGuard } from './quitGuard';
 import { exitOnFailure, flushBeforeQuit, whileWindowOpen } from './quit';
 import { reloadOnRebuild } from './rebuild';
@@ -448,6 +449,15 @@ async function start(asked: readonly string[]): Promise<void> {
     saveColumns: (columns) =>
       userSettings.setIn('commander', 'columns', columns),
     saveSorts: (sorts) => userSettings.setIn('commander', 'sort', sorts),
+    thumbnails: new ThumbnailStore(
+      thumbnailFolder(
+        process.platform,
+        development,
+        app.commandLine.getSwitchValue('user-data-dir'),
+        os.homedir(),
+        process.env,
+      ),
+    ),
     layouts: () => layoutsOf(commanderState.get('layouts')),
     saveLayouts: (chosen) => commanderState.update('layouts', chosen),
     watch: watchFolder,

@@ -34,7 +34,16 @@ import {
 } from '../shared/settings';
 import type { FileSystem } from './fileSystem';
 import type { WatchFolder } from './watch';
-import { imageType, maxImageSize } from '../../../shared/images';
+import {
+  imageType,
+  isThumbnailBox,
+  isWebp,
+  madeThumbnailHeader,
+  maxImageSize,
+  maxThumbnailBytes,
+  thumbnailBoxOf,
+} from '../../../shared/images';
+import { thumbnailKey } from './thumbnailStore';
 import { fileVersion, viewedFileOf } from '../shared/files';
 import {
   blockCache,
@@ -85,6 +94,10 @@ export interface CommanderAccess {
   readonly saveShowHidden: (shown: boolean) => Promise<void>;
   readonly saveColumns: (columns: ColumnWidths) => Promise<void>;
   readonly saveSorts: (sorts: Sorts) => Promise<void>;
+  readonly thumbnails: {
+    readonly read: (key: string) => Promise<Uint8Array | undefined>;
+    readonly write: (key: string, bytes: Uint8Array) => Promise<void>;
+  };
   readonly layouts: () => Layouts;
   readonly saveLayouts: (layouts: Layouts) => Promise<void>;
   readonly watch: WatchFolder;
@@ -354,6 +367,27 @@ export class CommanderTool implements Tool<'commander'> {
           this.postSettings(page);
         }
         return undefined;
+      case 'saveThumbnail': {
+        const listed = this.listedImage(
+          message.tab,
+          message.side,
+          message.folder,
+          message.name,
+        );
+        if (
+          listed !== undefined &&
+          isThumbnailBox(message.box, message.pixelRatio) &&
+          message.bytes instanceof Uint8Array &&
+          message.bytes.length <= maxThumbnailBytes &&
+          isWebp(message.bytes)
+        ) {
+          await this.access.thumbnails.write(
+            this.thumbnailKeyOf(listed, message.box, message.pixelRatio),
+            message.bytes,
+          );
+        }
+        return undefined;
+      }
       case 'showHidden':
         if (typeof message.shown === 'boolean') {
           await this.access.saveShowHidden(message.shown);
@@ -496,24 +530,68 @@ export class CommanderTool implements Tool<'commander'> {
     return this.iconResponse(path.join(pane.folder, entry.name));
   }
 
-  async thumbnail(url: URL): Promise<Response> {
-    const source = thumbnailSourceOf(url);
-    const pane = source && this.panes.get(source.tab)?.[source.side];
-    const entry = pane?.entries?.find((each) => each.name === source?.name);
+  private listedImage(
+    tab: unknown,
+    side: unknown,
+    folder: unknown,
+    name: unknown,
+  ):
+    | { readonly file: string; readonly entry: Entry; readonly type: string }
+    | undefined {
+    const pane =
+      typeof tab === 'string' && isSide(side)
+        ? this.panes.get(tab)?.[side]
+        : undefined;
+    const entry =
+      pane !== undefined && pane.folder === folder
+        ? pane.entries?.find((each) => each.name === name)
+        : undefined;
     const type = entry && imageType(entry.name);
-    if (
-      pane === undefined ||
-      pane.folder !== source?.folder ||
+    return pane === undefined ||
       entry === undefined ||
       entry.folder ||
       type === undefined
-    ) {
+      ? undefined
+      : { file: path.join(pane.folder, entry.name), entry, type };
+  }
+
+  private thumbnailKeyOf(
+    { file, entry }: { readonly file: string; readonly entry: Entry },
+    box: number,
+    pixelRatio: number,
+  ): string {
+    return thumbnailKey(
+      file,
+      entry.size ?? 0,
+      entry.modified ?? 0,
+      box,
+      pixelRatio,
+    );
+  }
+
+  async thumbnail(url: URL): Promise<Response> {
+    const source = thumbnailSourceOf(url);
+    const listed =
+      source &&
+      this.listedImage(source.tab, source.side, source.folder, source.name);
+    if (listed === undefined) {
       return new Response(null, { status: 404 });
     }
-    if ((entry.size ?? 0) > maxImageSize) {
+    const boxed = thumbnailBoxOf(url);
+    const made =
+      boxed &&
+      (await this.access.thumbnails.read(
+        this.thumbnailKeyOf(listed, boxed.box, boxed.pixelRatio),
+      ));
+    if (made !== undefined) {
+      return new Response(new Uint8Array(made), {
+        headers: { 'content-type': 'image/webp', [madeThumbnailHeader]: '1' },
+      });
+    }
+    if ((listed.entry.size ?? 0) > maxImageSize) {
       return new Response(null, { status: 413 });
     }
-    return fileResponse(path.join(pane.folder, entry.name), type, null).catch(
+    return fileResponse(listed.file, listed.type, null).catch(
       () => new Response(null, { status: 404 }),
     );
   }

@@ -103,10 +103,12 @@ function TileImage({
   row,
   source,
   box,
+  onMade,
 }: {
   row: Row;
   source: IconSource | undefined;
   box: number;
+  onMade: (made: Blob, pixelRatio: number) => void;
 }) {
   const icon = (
     <span className="commander-icon">
@@ -126,6 +128,7 @@ function TileImage({
       box={box}
       vector={type === vectorType}
       fallback={icon}
+      onMade={onMade}
     />
   );
 }
@@ -138,6 +141,7 @@ export function Pane({
   layout,
   thumbnailSize,
   onLayout,
+  onThumbnail,
   columns,
   drives,
   driveTrigger,
@@ -166,6 +170,12 @@ export function Pane({
   layout: Layout;
   thumbnailSize: number;
   onLayout: (layout: Layout) => void;
+  onThumbnail: (
+    name: string,
+    box: number,
+    pixelRatio: number,
+    made: Blob,
+  ) => void;
   columns: ColumnWidths;
   drives: readonly string[];
   driveTrigger: React.Ref<HTMLButtonElement>;
@@ -369,7 +379,14 @@ export function Pane({
       {...itemEvents(row, index)}
     >
       <div className="commander-thumbnail" style={{ height: thumbnailSize }}>
-        <TileImage row={row} source={iconSource(row)} box={thumbnailSize} />
+        <TileImage
+          row={row}
+          source={iconSource(row)}
+          box={thumbnailSize}
+          onMade={(made, pixelRatio) =>
+            onThumbnail(row.key, thumbnailSize, pixelRatio, made)
+          }
+        />
       </div>
       <div className="commander-tile-name">
         <span className="commander-tile-base">

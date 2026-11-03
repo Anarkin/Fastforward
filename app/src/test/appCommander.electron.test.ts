@@ -111,6 +111,15 @@ suite('App commander', () => {
           });
       });
 
+  const shownThumbnailOf = (name: string) =>
+    right()
+      .locator('.commander-tile', { hasText: name })
+      .locator('img.thumbnail-image')
+      .evaluate((image: HTMLImageElement) =>
+        image.complete ? image.naturalWidth : 0,
+      )
+      .catch(() => 0);
+
   const markedNames = () =>
     right().locator('.commander-row.marked .commander-name').allTextContents();
 
@@ -2120,6 +2129,61 @@ suite('App commander', () => {
     fs.rmSync(scrolled, { recursive: true });
     await waitFor(
       async () => !(await rowNames()).includes('scrolled'),
+      'the folder to be gone from the list',
+    );
+  });
+
+  test('keeps the thumbnails it made in a folder of its own, showing one from there once the page starts again, without reading its image', async () => {
+    const cached = path.join(opened, 'cached');
+    fs.mkdirSync(cached);
+    const wide = path.join(cached, 'wide.png');
+    fs.writeFileSync(wide, grayPng(600, 300));
+    const stored = path.join(profile, 'Thumbnails');
+    const storedCount = () =>
+      fs.existsSync(stored)
+        ? fs.readdirSync(stored).filter((name) => name.endsWith('.webp')).length
+        : 0;
+    const storedBefore = storedCount();
+    await select('cached');
+    await page.keyboard.press('Enter');
+    await waitFor(
+      async () => (await rowNames()).includes('wide.png'),
+      'the files of the folder',
+    );
+    await page.keyboard.press('ControlOrMeta+2');
+    await waitFor(
+      async () => (await shownThumbnailOf('wide.png')) > 0,
+      'the thumbnail',
+    );
+    await waitFor(
+      () => storedCount() > storedBefore,
+      'the thumbnail of this image kept',
+    );
+
+    const { atimeMs, mtimeMs, size } = fs.statSync(wide);
+    const junk = path.join(opened, 'junk.tmp');
+    fs.writeFileSync(junk, Buffer.alloc(size, 7));
+    fs.utimesSync(junk, atimeMs / 1000, mtimeMs / 1000);
+    fs.renameSync(junk, wide);
+    await page.reload();
+    await waitFor(
+      async () => (await shownThumbnailOf('wide.png')) > 0,
+      'the thumbnail kept, as the image no longer decodes',
+    );
+
+    await page.keyboard.press('ControlOrMeta+1');
+    await waitFor(
+      async () => (await right().locator('.commander-tile').count()) === 0,
+      'the details again',
+    );
+    await page.keyboard.press('Backspace');
+    await waitFor(
+      async () => (await rowNames()).includes('notes.txt'),
+      'the folder above',
+    );
+    fs.rmSync(cached, { recursive: true });
+    await waitFor(
+      async () => !(await rowNames()).includes('cached'),
       'the folder to be gone from the list',
     );
   });

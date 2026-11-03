@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePixelRatio, type Size } from './images';
+import { boxedThumbnailUrl, madeThumbnailHeader } from '../shared/images';
 
 export interface Thumbnail extends Size {
   readonly url: string;
+  readonly made?: Blob;
 }
 
 type Make = (
@@ -146,11 +148,21 @@ async function madeThumbnail(
   box: number,
   pixelRatio: number,
 ): Promise<Thumbnail | undefined> {
-  const response = await fetch(url);
+  const response = await fetch(boxedThumbnailUrl(url, box, pixelRatio));
   if (!response.ok) {
     return undefined;
   }
-  const bitmap = await createImageBitmap(await response.blob());
+  const blob = await response.blob();
+  const bitmap = await createImageBitmap(blob);
+  if (response.headers.get(madeThumbnailHeader) !== null) {
+    const { width, height } = bitmap;
+    bitmap.close();
+    return {
+      url: URL.createObjectURL(blob),
+      width: width / pixelRatio,
+      height: height / pixelRatio,
+    };
+  }
   try {
     const shown = fittedSize(bitmap, box);
     const canvas = new OffscreenCanvas(
@@ -163,8 +175,8 @@ async function madeThumbnail(
     }
     context.imageSmoothingQuality = 'high';
     context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    const blob = await canvas.convertToBlob({ type: 'image/webp' });
-    return { url: URL.createObjectURL(blob), ...shown };
+    const made = await canvas.convertToBlob({ type: 'image/webp' });
+    return { url: URL.createObjectURL(made), ...shown, made };
   } finally {
     bitmap.close();
   }
@@ -222,17 +234,29 @@ function useThumbnail(
     : thumbnails.peek(url, box, pixelRatio);
 }
 
+const handedOver = new WeakSet<Blob>();
+
 function RasterThumbnail({
   url,
   box,
   fallback,
+  onMade,
 }: {
   url: string;
   box: number;
   fallback: React.ReactNode;
+  onMade?: (made: Blob, pixelRatio: number) => void;
 }) {
   const slot = useRef<HTMLSpanElement>(null);
+  const pixelRatio = usePixelRatio();
   const thumbnail = useThumbnail(url, box, useInView(slot));
+  const made = thumbnail?.made;
+  useEffect(() => {
+    if (made !== undefined && !handedOver.has(made)) {
+      handedOver.add(made);
+      onMade?.(made, pixelRatio);
+    }
+  }, [made, onMade, pixelRatio]);
   return (
     <span
       className="thumbnail-slot"
@@ -284,15 +308,17 @@ export function ThumbnailImage({
   box,
   vector,
   fallback,
+  onMade,
 }: {
   url: string;
   box: number;
   vector: boolean;
   fallback: React.ReactNode;
+  onMade?: (made: Blob, pixelRatio: number) => void;
 }) {
   return vector ? (
     <VectorThumbnail url={url} box={box} fallback={fallback} />
   ) : (
-    <RasterThumbnail url={url} box={box} fallback={fallback} />
+    <RasterThumbnail url={url} box={box} fallback={fallback} onMade={onMade} />
   );
 }

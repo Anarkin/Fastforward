@@ -33,7 +33,13 @@ import {
   maxColoredBytes,
 } from '../../../../tools/commander/shared/protocol';
 import { strings } from '../../../../shared/strings';
-import { maxImageSize } from '../../../../shared/images';
+import {
+  boxedThumbnailUrl,
+  madeThumbnailHeader,
+  maxImageSize,
+  maxThumbnailBytes,
+} from '../../../../shared/images';
+import { thumbnailKey } from '../../../../tools/commander/main/thumbnailStore';
 import {
   fileVersion,
   viewedFileUrl,
@@ -113,6 +119,7 @@ function commander(
     thumbnailSize: 144,
   };
   let layouts: Layouts = { left: 'details', right: 'details' };
+  const thumbnails = new Map<string, Uint8Array>();
   const fileSystem: FileSystem = {
     list: (each) => {
       const found = listed[each];
@@ -174,6 +181,13 @@ function commander(
       settings.columns = columns;
       return Promise.resolve();
     },
+    thumbnails: {
+      read: (key) => Promise.resolve(thumbnails.get(key)),
+      write: (key, made) => {
+        thumbnails.set(key, made);
+        return Promise.resolve();
+      },
+    },
     layouts: () => layouts,
     saveLayouts: (chosen) => {
       saved.push(chosen);
@@ -229,6 +243,7 @@ function commander(
     compared,
     tabs,
     menus,
+    thumbnails,
   };
 }
 
@@ -308,6 +323,75 @@ suite('Commander tool', () => {
       assert.strictEqual(await thumbnail({ folder: root }), 404);
       assert.strictEqual(await thumbnail({ side: 'left' }), 404);
       assert.strictEqual(await thumbnail({ tab: '2' }), 404);
+    });
+
+    test('keeps the thumbnail the page made of an image a side lists, serving it in place of the image for a box of the same size and pixels, but takes nothing else, as the page is not trusted', async () => {
+      fs.writeFileSync(path.join(opened, 'dot.png'), 'the image');
+      fs.writeFileSync(path.join(opened, 'notes.txt'), 'notes');
+      const { tool, page, send, thumbnails } = commander({
+        [root]: [],
+        [opened]: [file('dot.png'), file('notes.txt')],
+      });
+      await tool.show(page, { ...tab, root: opened });
+      const webp = new Uint8Array(Buffer.from('RIFF    WEBPVP8 made'));
+      const save = (changed: Record<string, unknown> = {}) =>
+        send(
+          Object.assign(
+            {
+              type: 'saveThumbnail',
+              tab: '1',
+              side: 'right',
+              folder: opened,
+              name: 'dot.png',
+              box: 144,
+              pixelRatio: 1.5,
+              bytes: webp,
+            } as const,
+            changed,
+          ),
+        );
+
+      await save();
+      await save({ bytes: new Uint8Array(Buffer.from('<svg></svg>')) });
+      await save({
+        bytes: new Uint8Array(maxThumbnailBytes + 1)
+          .fill(0)
+          .map((_, index) => webp[index] ?? 0),
+        box: 96,
+      });
+      await save({ name: 'notes.txt' });
+      await save({ name: 'secret.png' });
+      await save({ folder: root });
+      await save({ box: 4000 });
+      await save({ pixelRatio: 0 });
+      await save({ bytes: [...webp] });
+
+      assert.deepStrictEqual(
+        [...thumbnails.keys()],
+        [thumbnailKey(path.join(opened, 'dot.png'), 1, 0, 144, 1.5)],
+      );
+      const served = async (box: number) => {
+        const response = await tool.thumbnail(
+          new URL(
+            `fastforward://app${boxedThumbnailUrl(thumbnailUrl({ tab: '1', side: 'right', folder: opened, name: 'dot.png' }, '1:0'), box, 1.5)}`,
+          ),
+        );
+        return [
+          response.headers.get('content-type'),
+          response.headers.get(madeThumbnailHeader),
+          await response.text(),
+        ];
+      };
+      assert.deepStrictEqual(await served(144), [
+        'image/webp',
+        '1',
+        Buffer.from(webp).toString(),
+      ]);
+      assert.deepStrictEqual(await served(96), [
+        'image/png',
+        null,
+        'the image',
+      ]);
     });
 
     test('moves a side whose folder is gone up to the nearest folder still there, without a word', async () => {

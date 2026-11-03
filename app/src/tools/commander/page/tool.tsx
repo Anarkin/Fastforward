@@ -245,6 +245,24 @@ export function CommanderTool({
             layout={view.layouts[side]}
             thumbnailSize={view.thumbnailSize}
             onLayout={(layout) => chooseLayout(side, layout)}
+            onThumbnail={(name, box, pixelRatio, made) => {
+              const folder = view.panes[side]?.folder;
+              if (tab === undefined || folder === undefined) {
+                return;
+              }
+              void made.arrayBuffer().then((buffer) =>
+                post({
+                  type: 'saveThumbnail',
+                  tab,
+                  side,
+                  folder,
+                  name,
+                  box,
+                  pixelRatio,
+                  bytes: new Uint8Array(buffer),
+                }),
+              );
+            }}
             columns={columnWidths}
             onResize={(column, width) =>
               setResized({

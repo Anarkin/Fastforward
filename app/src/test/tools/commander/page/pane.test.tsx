@@ -31,6 +31,7 @@ const header = (elevated: boolean) =>
         layout="details"
         thumbnailSize={144}
         onLayout={noop}
+        onThumbnail={noop}
         columns={{ extension: 10, size: 15, date: 16 }}
         drives={[]}
         driveTrigger={null}

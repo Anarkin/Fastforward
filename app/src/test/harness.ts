@@ -336,6 +336,10 @@ export function newView(
         saveShowHidden: () => Promise.resolve(),
         saveColumns: () => Promise.resolve(),
         saveSorts: () => Promise.resolve(),
+        thumbnails: {
+          read: () => Promise.resolve(undefined),
+          write: () => Promise.resolve(),
+        },
         layouts: () => defaultLayouts,
         saveLayouts: () => Promise.resolve(),
         watch: () => () => {},

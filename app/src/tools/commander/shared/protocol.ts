@@ -150,6 +150,16 @@ export type CommanderToHost =
   | { readonly type: 'columns'; readonly columns: ColumnWidths }
   | { readonly type: 'sort'; readonly side: Side; readonly sort: Sort }
   | { readonly type: 'layout'; readonly side: Side; readonly layout: Layout }
+  | {
+      readonly type: 'saveThumbnail';
+      readonly tab: string;
+      readonly side: Side;
+      readonly folder: string;
+      readonly name: string;
+      readonly box: number;
+      readonly pixelRatio: number;
+      readonly bytes: Uint8Array;
+    }
   | { readonly type: 'showHidden'; readonly shown: boolean };
 
 export interface ByteRange {

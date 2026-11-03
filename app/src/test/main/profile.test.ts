@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
-import { profileFolder } from '../../main/profile';
+import { profileFolder, thumbnailFolder } from '../../main/profile';
 
 suite('Profile', () => {
   const appData = path.join('C:', 'Users', 'me', 'AppData', 'Roaming');
@@ -18,5 +18,36 @@ suite('Profile', () => {
   test('uses the folder it was given, however it runs', () => {
     assert.strictEqual(profileFolder(false, given, appData), given);
     assert.strictEqual(profileFolder(true, given, appData), given);
+  });
+
+  test('keeps the thumbnails in the cache folder of the system rather than the profile, which may roam, apart for a run from the source, and in the folder given when there is one', () => {
+    const home = path.join('C:', 'Users', 'me');
+    const local = path.join(home, 'AppData', 'Local');
+    assert.strictEqual(
+      thumbnailFolder('win32', false, '', home, { LOCALAPPDATA: local }),
+      path.join(local, 'Fastforward', 'Thumbnails'),
+    );
+    assert.strictEqual(
+      thumbnailFolder('win32', true, '', home, {}),
+      path.join(local, 'Fastforward Dev', 'Thumbnails'),
+    );
+    assert.strictEqual(
+      thumbnailFolder('darwin', false, '', home, {}),
+      path.join(home, 'Library', 'Caches', 'Fastforward', 'Thumbnails'),
+    );
+    assert.strictEqual(
+      thumbnailFolder('linux', false, '', home, {}),
+      path.join(home, '.cache', 'fastforward', 'thumbnails'),
+    );
+    assert.strictEqual(
+      thumbnailFolder('linux', true, '', home, {
+        XDG_CACHE_HOME: path.join(home, 'cache'),
+      }),
+      path.join(home, 'cache', 'fastforward-dev', 'thumbnails'),
+    );
+    assert.strictEqual(
+      thumbnailFolder('linux', false, given, home, {}),
+      path.join(given, 'Thumbnails'),
+    );
   });
 });
