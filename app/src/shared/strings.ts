@@ -257,6 +257,7 @@ export const strings = {
     folderHistory: 'Back or forward through the folders of the side',
     reread: 'Read the folder of the side again',
     viewFile: 'View the selected file in a tab of its own',
+    dialogButton: 'Move between the buttons of a dialog',
     deleteItems:
       'Move the marked items, or the selected one, to the Recycle Bin, or with Shift delete them permanently',
     systemMenu:

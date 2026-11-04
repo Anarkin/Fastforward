@@ -10,6 +10,7 @@ import {
 import { strings } from '../../../shared/strings';
 import { useDismiss } from '../../../ui/contextMenu';
 import { CloseIcon } from '../../../ui/icons';
+import { moveBetweenButtons } from '../../../ui/dialogButtons';
 import { useDialogDrag, useModalDialog } from '../../../ui/modalDialog';
 
 export interface ChosenFolder {
@@ -153,7 +154,7 @@ function CloneForm({
           {message}
         </div>
       )}
-      <div className="confirm-buttons">
+      <div className="confirm-buttons" onKeyDown={moveBetweenButtons}>
         <button type="button" className="confirm-button" onClick={onCancel}>
           {strings.confirm.cancel}
         </button>
@@ -206,7 +207,7 @@ function CloneRunning({
         </span>
       </div>
       <div className="clone-detail">{progress?.detail}</div>
-      <div className="confirm-buttons">
+      <div className="confirm-buttons" onKeyDown={moveBetweenButtons}>
         <button type="button" className="confirm-button" onClick={onStop}>
           {strings.clone.stop}
         </button>

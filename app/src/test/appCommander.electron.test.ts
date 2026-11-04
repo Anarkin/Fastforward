@@ -1839,7 +1839,7 @@ suite('App commander', () => {
     );
   });
 
-  test('deletes the marked files, or the selected one, for good on Shift+Delete and Shift+F8 once confirmed, keeping them when cancelled, and selects the file after the deleted ones', async () => {
+  test('deletes the marked files, or the selected one, for good on Shift+Delete and Shift+F8 once confirmed, keeping them when Cancel is picked with the arrow keys, and selects the file after the deleted ones', async () => {
     const deletingFolder = path.join(opened, 'deleting');
     fs.mkdirSync(deletingFolder);
     for (const name of ['a', 'b', 'c', 'd']) {
@@ -1859,7 +1859,14 @@ suite('App commander', () => {
       (await popup.textContent()) ?? '',
       /Delete "b\.txt" permanently\? This cannot be undone\./,
     );
-    await page.keyboard.press('Escape');
+    await page.keyboard.press('ArrowLeft');
+    await waitFor(
+      async () =>
+        (await page.evaluate(() => document.activeElement?.textContent)) ===
+        'Cancel',
+      'the arrow key to move to Cancel',
+    );
+    await page.keyboard.press('Enter');
     await popup.waitFor({ state: 'detached' });
     assert.ok(fs.existsSync(path.join(deletingFolder, 'b.txt')));
 

@@ -109,6 +109,19 @@ export const keymap = {
     { ArrowDown: 'next', ArrowUp: 'previous', Home: 'first', End: 'last' },
     { repeats: true },
   ),
+  dialogButton: bind(
+    undefined,
+    strings.actions.dialogButton,
+    {
+      ArrowLeft: 'previous',
+      ArrowUp: 'previous',
+      ArrowRight: 'next',
+      ArrowDown: 'next',
+      Home: 'first',
+      End: 'last',
+    },
+    { repeats: true, dialogs: true },
+  ),
   menuFilter: bind(
     undefined,
     strings.actions.menuFilter,

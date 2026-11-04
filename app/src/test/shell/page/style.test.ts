@@ -565,6 +565,31 @@ suite('Style', () => {
     assert.strictEqual(defaultSettings().tools.commander.columns.date, 16);
   });
 
+  test('moves the color of the default button of a dialog to the button the keyboard moved the focus to, as Enter presses that one', () => {
+    const row = rendered(
+      createElement(
+        'div',
+        { className: 'confirm-buttons' },
+        createElement('button', { className: 'confirm-button' }, 'Cancel'),
+        createElement('button', { className: 'confirm-button default' }, 'OK'),
+      ),
+    );
+    const [cancel, ok] = allWithClass(row, 'confirm-button');
+    const pressed = {
+      color: 'var(--color-focus-foreground)',
+      background: 'var(--color-focus)',
+    };
+    looks(ok, pressed);
+    looks(cancel, { background: 'var(--color-background)' });
+    looks(cancel, pressed, { focus: cancel });
+    looks(
+      ok,
+      { color: 'inherit', background: 'var(--color-background)' },
+      { focus: cancel },
+    );
+    looks(ok, pressed, { focus: ok });
+  });
+
   test('colors the files of the commander with the color of their group, the selected row too, leaving hidden rows muted and marked rows red', () => {
     assert.strictEqual(commanderRowColor('colored'), 'var(--file-color)');
     assert.strictEqual(

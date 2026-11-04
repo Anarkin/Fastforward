@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef } from 'react';
 import { strings } from '../../shared/strings';
 import { useDismiss } from '../../ui/contextMenu';
 import { CloseIcon } from '../../ui/icons';
+import { moveBetweenButtons } from '../../ui/dialogButtons';
 import { useDialogDrag, useModalDialog } from '../../ui/modalDialog';
 
 export function ConfirmPopup({
@@ -53,7 +54,7 @@ export function ConfirmPopup({
         </div>
         <div className="confirm-body">
           <span>{message}</span>
-          <div className="confirm-buttons">
+          <div className="confirm-buttons" onKeyDown={moveBetweenButtons}>
             {cancel !== null && (
               <button className="confirm-button" onClick={onCancel}>
                 {cancel}
