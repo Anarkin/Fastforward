@@ -2375,9 +2375,7 @@ suite('App commander', () => {
   });
 
   test('colors the code of a file in any encoding, from the first line of one with a byte order mark', async () => {
-    const code = ['const a = 1;', "let b = 'é';"].join(
-      String.fromCharCode(10),
-    );
+    const code = ['const a = 1;', "let b = 'é';"].join(String.fromCharCode(10));
     const files = {
       'wide.ts': Buffer.concat([
         Buffer.from([0xff, 0xfe]),

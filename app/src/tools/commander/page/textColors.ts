@@ -7,7 +7,7 @@ import {
   type CodePart,
 } from '../../../ui/syntaxParts';
 
-export const byteOrderMark = '﻿';
+const byteOrderMark = '﻿';
 
 export interface WholeText {
   readonly text: string;
@@ -56,9 +56,7 @@ export function coloredText(
 ): ColoredText {
   const unit = unitOf(encoding);
   const lengthOf =
-    encoding === 'utf-8'
-      ? utf8Length
-      : (line: string) => line.length * unit;
+    encoding === 'utf-8' ? utf8Length : (line: string) => line.length * unit;
   const lines = text.split('\n');
   const lineStarts: number[] = [];
   const unitLines: boolean[] = [];
