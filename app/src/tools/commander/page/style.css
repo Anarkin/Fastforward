@@ -7,6 +7,7 @@
     var(--device-pixel, 1px)
   );
   --commander-advance: round(1ch, var(--device-pixel, 1px));
+  --commander-gap: calc(2 * var(--commander-advance));
   --blank-advance: var(--commander-advance);
 }
 
@@ -34,11 +35,11 @@
     calc(var(--commander-extension) * var(--commander-advance))
     calc(var(--commander-size) * var(--commander-advance))
     calc(var(--commander-date) * var(--commander-advance));
-  column-gap: var(--commander-advance);
+  column-gap: var(--commander-gap);
   align-items: center;
   box-sizing: border-box;
   height: var(--commander-row-height);
-  padding: 0 8px;
+  padding: 0 calc(8px + var(--scrollbar-size)) 0 8px;
   line-height: var(--commander-row-height);
   font-family: var(--monospace-font-family);
   font-size: var(--monospace-font-size);
@@ -99,7 +100,7 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  left: calc(var(--commander-advance) / -2 - 4px);
+  left: calc(var(--commander-gap) / -2 - 4px);
   z-index: 1;
   width: 8px;
   cursor: col-resize;
@@ -136,7 +137,7 @@
 
 .row.commander-line {
   height: var(--commander-row-height);
-  padding: 0 8px;
+  padding: 0 calc(8px + var(--scrollbar-size)) 0 8px;
 }
 
 .row.commander-row.colored {

@@ -544,6 +544,27 @@ suite('Style', () => {
     );
   });
 
+  test('keeps the columns of the commander clear of the scrollbar drawn over its right edge, whatever its size and the font, two characters apart, the handle resizing a column in the middle of the gap before it', () => {
+    for (const className of [
+      'commander-line commander-header',
+      'row commander-row commander-line',
+      'row commander-row selected commander-line',
+    ]) {
+      looks(rendered(createElement('div', { className })), {
+        padding: '0 calc(8px + var(--scrollbar-size)) 0 8px',
+        'column-gap': 'var(--commander-gap)',
+      });
+    }
+    assert.match(
+      css,
+      /--commander-gap: calc\(2 \* var\(--commander-advance\)\);/,
+    );
+    looks(rendered(createElement('div', { className: 'column-handle' })), {
+      left: 'calc(var(--commander-gap) / -2 - 4px)',
+    });
+    assert.strictEqual(defaultSettings().tools.commander.columns.date, 16);
+  });
+
   test('colors the files of the commander with the color of their group, the selected row too, leaving hidden rows muted and marked rows red', () => {
     assert.strictEqual(commanderRowColor('colored'), 'var(--file-color)');
     assert.strictEqual(

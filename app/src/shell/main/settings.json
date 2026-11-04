@@ -86,7 +86,7 @@
         "left": { "column": "extension", "descending": false },
         "right": { "column": "extension", "descending": false }
       },
-      "columns": { "extension": 10, "size": 15, "date": 18 },
+      "columns": { "extension": 10, "size": 15, "date": 16 },
       "thumbnailSize": 144,
       "thumbnailCacheMegabytes": 8192,
       "fileColors": [
