@@ -590,6 +590,11 @@ body {
   box-shadow: var(--popup-shadow);
 }
 
+.column-start .menu {
+  left: 0;
+  right: auto;
+}
+
 .menu.filtered-menu {
   --menu-filter-height: 34px;
   box-sizing: border-box;

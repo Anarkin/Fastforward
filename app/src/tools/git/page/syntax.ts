@@ -47,10 +47,11 @@ interface SidePlan {
 function sidePlans(
   files: readonly DiffFile[],
   open: ReadonlySet<number> | undefined,
+  chosen: string | undefined,
 ): SidePlan[] {
   let used = 0;
   return files.flatMap((file, fileIndex) => {
-    const language = languageOf(file.path);
+    const language = chosen ?? languageOf(file.path);
     if (
       !language ||
       file.binary ||
@@ -109,15 +110,16 @@ export function syntaxSources(
   whole: WholeFile | undefined,
   texts: ReadonlyMap<string, LoadedText> = new Map(),
   open?: ReadonlySet<number>,
+  chosen?: string,
 ): SyntaxSource[] {
   if (whole) {
-    const language = languageOf(whole.path);
+    const language = chosen ?? languageOf(whole.path);
     const lines = wholeLines(whole).slice(0, maxSourceLines);
     return language
       ? [{ language, lines, keys: lines.map((_, index) => lineKey(0, index)) }]
       : [];
   }
-  return sidePlans(files, open).flatMap((plan) => {
+  return sidePlans(files, open, chosen).flatMap((plan) => {
     const loaded = texts.get(textKey(plan.file.path, plan.side));
     const awaited =
       plan.wholeText &&
@@ -133,8 +135,9 @@ export function textsToLoad(
   requested: Set<string>,
   open?: ReadonlySet<number>,
   texts: ReadonlyMap<string, LoadedText> = new Map(),
+  chosen?: string,
 ): TextRequest[] {
-  return sidePlans(files, open).flatMap(({ file, side, wholeText }) => {
+  return sidePlans(files, open, chosen).flatMap(({ file, side, wholeText }) => {
     const blob = file.blobs?.[side];
     const key = `${diff}:${textKey(file.path, side)}`;
     if (
@@ -218,10 +221,11 @@ export function useSyntax(
   texts: ReadonlyMap<string, LoadedText>,
   open: ReadonlySet<number>,
   highlight = true,
+  chosen?: string,
 ): ReadonlyMap<string, readonly SyntaxRange[]> {
   const sources = useMemo(
-    () => (highlight ? syntaxSources(files, whole, texts, open) : []),
-    [highlight, files, whole, texts, open],
+    () => (highlight ? syntaxSources(files, whole, texts, open, chosen) : []),
+    [highlight, files, whole, texts, open, chosen],
   );
   const [colored, setColored] = useState<Colored>();
   const shown = useRef<Colored>(undefined);

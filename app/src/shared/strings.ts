@@ -103,7 +103,11 @@ export const strings = {
     close: 'Close',
     showWhitespace: 'Show Whitespace',
     wrap: 'Wrap Long Lines',
-    highlightSyntax: 'Highlight Syntax',
+    language: 'Language',
+    findLanguage: 'Find a language',
+    auto: 'Auto',
+    autoChoice: (chosen: string) => `Auto: ${chosen}`,
+    plainText: 'Plain Text',
     gone: (name: string) => `${name} doesn't exist anymore`,
     fromTo: (from: string, to: string) => `${from} → ${to}`,
     fromToWithin: (start: string, from: string, to: string, end: string) =>
@@ -561,10 +565,6 @@ export const strings = {
       'windows-1251': 'Cyrillic (Windows-1251)',
       bytes: 'Bytes',
     },
-    autoChoice: (chosen: string) => `Auto: ${chosen}`,
-    plainText: 'Plain Text',
-    language: 'Language',
-    findLanguage: 'Find a language',
     encodingShort: {
       'utf-8': 'UTF-8',
       'utf-16le': 'UTF-16 LE',

@@ -279,14 +279,6 @@ export function WordWrapIcon() {
   );
 }
 
-export function SyntaxIcon() {
-  return (
-    <Icon>
-      <path d="M9.5 2.5 13.5 6.5 7.5 12.5H3.5V8.5ZM7.5 4.5l4 4M2.5 14.5h5" />
-    </Icon>
-  );
-}
-
 export function PinIcon() {
   return (
     <Icon>

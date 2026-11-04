@@ -657,6 +657,46 @@ suite('Syntax', () => {
     );
   });
 
+  test('colors a file in the language chosen for it, whatever its name tells, asking for the whole text of its sides as for any file it colors', () => {
+    const files = parsePatch(
+      [
+        'diff --git a/notes.unknown b/notes.unknown',
+        'index 1111111111111111111111111111111111111111..2222222222222222222222222222222222222222 100644',
+        '@@ -5 +5 @@',
+        '-{"a": 1}',
+        '+{"a": 2}',
+        '',
+      ].join(String.fromCharCode(10)),
+    );
+
+    assert.deepStrictEqual(
+      syntaxSources(files, undefined, new Map(), undefined, 'json').map(
+        (source) => [source.language, source.lines],
+      ),
+      [
+        ['json', ['{"a": 1}']],
+        ['json', ['{"a": 2}']],
+      ],
+    );
+    assert.deepStrictEqual(
+      syntaxSources(
+        [],
+        { path: 'a.ts', binary: false, content: 'x' },
+        new Map(),
+        undefined,
+        'json',
+      ).map((source) => source.language),
+      ['json'],
+    );
+    assert.deepStrictEqual(
+      textsToLoad(files, 1, new Set(), undefined, new Map(), 'json'),
+      [
+        { path: 'notes.unknown', side: 'old', blob: '1'.repeat(40) },
+        { path: 'notes.unknown', side: 'new', blob: '2'.repeat(40) },
+      ],
+    );
+  });
+
   test('tokenizes a text it has colored before only once, keying its lines anew', async () => {
     const highlighter = await loadLanguages(['typescript']);
     let tokenized = 0;

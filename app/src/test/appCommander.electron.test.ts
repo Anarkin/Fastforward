@@ -1288,7 +1288,7 @@ suite('App commander', () => {
     }
   });
 
-  test('colors the code of a file viewed as the diff colors it, a long one from the top as its lines are done, none while Plain Text is chosen from the menu L opens and a file in the language chosen there, found by what is typed, leaving a file over the size colored plain, and previews no Markdown over a size of its own', async () => {
+  test('colors the code of a file viewed as the diff colors it, a long one from the top as its lines are done, none while Plain Text is chosen from the menu L opens, which files viewed and diffs start in until Auto is, and a file in the language chosen there, found by what is typed, for as long as it is viewed, leaving a file over the size colored plain, and previews no Markdown over a size of its own', async () => {
     fs.writeFileSync(path.join(opened, 'code.ts'), 'const answer = 42;');
     await select('code');
     await page.keyboard.press('F3');
@@ -1309,17 +1309,17 @@ suite('App commander', () => {
     });
     assert.notStrictEqual(colors[0], colors[1]);
     const languageLabel = () =>
-      page.locator('.viewer-language .menu-button-label').textContent();
+      page.locator('.viewer .language-button .menu-button-label').textContent();
     const checkedLanguage = () =>
       page
-        .locator('.viewer-language .menu-item[aria-checked="true"]')
+        .locator('.viewer .language-button .menu-item[aria-checked="true"]')
         .textContent();
     const chooseLanguage = async (typed: string) => {
       await page.keyboard.press('l');
-      await page.locator('.viewer-language .menu-filter').waitFor();
+      await page.locator('.viewer .language-button .menu-filter').waitFor();
       await page.keyboard.type(typed);
       await page.keyboard.press('Enter');
-      await page.locator('.viewer-language .menu').waitFor({
+      await page.locator('.viewer .language-button .menu').waitFor({
         state: 'detached',
       });
     };
@@ -1332,10 +1332,30 @@ suite('App commander', () => {
       state: 'detached',
     });
     assert.strictEqual(await languageLabel(), 'Plain Text');
+    await waitFor(
+      () => savedText(profile, 'highlightSyntax') === false,
+      'Plain Text saved',
+    );
+    const reopen = async () => {
+      await page.keyboard.press('Escape');
+      await page.locator('.viewer').waitFor({ state: 'detached' });
+      await page.keyboard.press('F3');
+      await page.locator('.viewer-rows .viewer-row').first().waitFor();
+    };
+    await reopen();
+    assert.strictEqual(await languageLabel(), 'Plain Text');
+    await chooseLanguage('typescript');
+    await page.locator('.viewer-row .syntax-keyword').first().waitFor();
+    assert.strictEqual(savedText(profile, 'highlightSyntax'), false);
+    await reopen();
+    assert.strictEqual(await languageLabel(), 'Plain Text');
     await chooseLanguage('auto');
     await page.locator('.viewer-row .syntax-keyword').first().waitFor();
     assert.strictEqual(await languageLabel(), 'TypeScript');
-    assert.strictEqual(savedText(profile, 'highlightSyntax'), undefined);
+    await waitFor(
+      () => savedText(profile, 'highlightSyntax') === undefined,
+      'Auto saved, as the default',
+    );
     await page.keyboard.press('Escape');
     await page.locator('.viewer').waitFor({ state: 'detached' });
 
@@ -2232,7 +2252,7 @@ suite('App commander', () => {
     );
   });
 
-  test('compares the two files marked on a side with Shift+F3 in a git tab of their own, showing their diff', async () => {
+  test('compares the two files marked on a side with Shift+F3 in a git tab of their own, showing their diff, with every language in its menu on L, as it shows one file', async () => {
     fs.writeFileSync(path.join(opened, 'before.txt'), threeLines('two'));
     fs.writeFileSync(path.join(opened, 'after.txt'), threeLines('2'));
     await select('before');
@@ -2316,6 +2336,15 @@ suite('App commander', () => {
       await page.locator('.tabs .tab.active', { hasText: '→' }).count(),
       1,
     );
+    const language = page.locator('.compare-view .language-button');
+    assert.strictEqual(
+      await language.locator('.menu-button-label').textContent(),
+      'Plain Text',
+    );
+    await page.keyboard.press('l');
+    await language.locator('.menu-filter').waitFor();
+    await page.keyboard.press('Escape');
+    await language.locator('.menu').waitFor({ state: 'detached' });
     await page.keyboard.press('Escape');
     await page.locator('.tabs .tab.active', { hasText: 'Commander' }).waitFor();
     for (const name of ['before.txt', 'after.txt']) {
@@ -2431,14 +2460,14 @@ suite('App commander', () => {
     await page.keyboard.press('F3');
     await page.locator('.viewer-rows .viewer-row').first().waitFor();
     await page.keyboard.press('l');
-    const menu = page.locator('.viewer-language .menu');
+    const menu = page.locator('.viewer .language-button .menu');
     await menu.waitFor();
     const thumb = page.locator('.overlay-scrollbar.vertical.shown');
     const boxes = async () => {
       await thumb.waitFor();
       const [menuBox, filterBox, thumbBox] = await Promise.all([
         menu.boundingBox(),
-        page.locator('.viewer-language .menu-filter').boundingBox(),
+        page.locator('.viewer .language-button .menu-filter').boundingBox(),
         thumb.boundingBox(),
       ]);
       assert.ok(menuBox && filterBox && thumbBox);

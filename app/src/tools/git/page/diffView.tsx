@@ -6,6 +6,7 @@ import {
 import {
   memo,
   useCallback,
+  useContext,
   useEffect,
   useEffectEvent,
   useLayoutEffect,
@@ -15,6 +16,7 @@ import {
   Fragment,
 } from 'react';
 import { collapseThreshold, type TextRequest } from '../shared/protocol';
+import { ChosenLanguage } from '../../../ui/languageChoice';
 import {
   changeBlocks,
   type DiffFile,
@@ -2268,22 +2270,31 @@ export function DiffView({
       ),
     [rows],
   );
+  const chosenLanguage = useContext(ChosenLanguage);
   const syntax = useSyntax(
     files,
     whole,
     texts,
     open,
-    useTextView().view.highlightSyntax,
+    useTextView().view.highlightSyntax || chosenLanguage !== undefined,
+    chosenLanguage,
   );
   const requestedTexts = useRef(new Set<string>());
   useEffect(() => {
     const load = whole
       ? []
-      : textsToLoad(files, diff, requestedTexts.current, open, texts);
+      : textsToLoad(
+          files,
+          diff,
+          requestedTexts.current,
+          open,
+          texts,
+          chosenLanguage,
+        );
     if (load.length > 0) {
       onLoadTexts(load);
     }
-  }, [files, whole, diff, open, texts, onLoadTexts]);
+  }, [files, whole, diff, open, texts, onLoadTexts, chosenLanguage]);
   const rangesByLine = useMemo(() => findRangesByLine(matches), [matches]);
   const found = matches.at(current);
   const foundKey = found && lineKey(found.file, found.line);

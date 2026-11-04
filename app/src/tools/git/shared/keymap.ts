@@ -87,6 +87,7 @@ export const gitKeymap = {
   }),
   wrap: bind('Diff', strings.actions.wrap, { W: true }),
   showWhitespace: bind('Diff', strings.actions.showWhitespace, { '.': true }),
+  language: bind('Diff', strings.actions.chooseLanguage, { L: true }),
   match: bind(
     'Diff',
     strings.actions.match,
@@ -103,6 +104,7 @@ export const compareKeymap = {
   wheelSideways: gitKeymap.wheelSideways,
   wrap: gitKeymap.wrap,
   showWhitespace: gitKeymap.showWhitespace,
+  language: gitKeymap.language,
   match: gitKeymap.match,
   find: { ...gitKeymap.find, group: 'Diff' },
   stopFinding: { ...gitKeymap.stopFinding, group: 'Diff' },

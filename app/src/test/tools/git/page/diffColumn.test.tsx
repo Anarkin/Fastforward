@@ -22,8 +22,7 @@ function diffOptionsProps(
     onShowWhitespace: noop,
     onIgnoreWhitespace: noop,
     onWordWrap: noop,
-    highlightSyntax: true,
-    onHighlightSyntax: noop,
+    language: <span className="language-slot" />,
     layout: 'inline',
     onLayout: noop,
     ...overrides,
@@ -114,7 +113,7 @@ suite('Diff options', () => {
     ]);
   });
 
-  test('shows whitespace, shows whitespace changes and wraps long lines on their own toggles, pressed while on, the two for whitespace apart from wrapping, and all of them apart from the others on both sides', () => {
+  test('shows whitespace, shows whitespace changes and wraps long lines on their own toggles, pressed while on, the two for whitespace apart from wrapping, all of them apart from the others on both sides, and the language menu on its own after the pin, as the viewer has it before its toggles', () => {
     assert.deepStrictEqual(
       entireFileButtons(false, false, true, true, false, true),
       [
@@ -142,7 +141,7 @@ suite('Diff options', () => {
     const html = renderToStaticMarkup(<DiffOptions {...diffOptionsProps()} />);
     assert.match(
       html,
-      /<\/button><\/span><span class="nav-button-space"><\/span><button[^>]*title="Show Whitespace"[^>]*>.*?<\/button><button[^>]*title="Show Whitespace Changes"[^>]*>.*?<\/button><span class="nav-button-space"><\/span><button[^>]*title="Wrap Long Lines"[^>]*>.*?<\/button><button[^>]*title="Highlight Syntax"[^>]*>.*?<\/button><span class="nav-button-space"><\/span><div class="segmented"/,
+      /<\/button><\/span><span class="nav-button-space"><\/span><span class="language-slot"><\/span><span class="nav-button-space"><\/span><button[^>]*title="Show Whitespace"[^>]*>.*?<\/button><button[^>]*title="Show Whitespace Changes"[^>]*>.*?<\/button><span class="nav-button-space"><\/span><button[^>]*title="Wrap Long Lines"[^>]*>.*?<\/button><span class="nav-button-space"><\/span><div class="segmented"/,
     );
   });
 
@@ -161,13 +160,12 @@ suite('Diff options', () => {
   });
 
   test('names each toggle by what it does while pressed, keeping the name whether it is pressed or not', () => {
-    assert.deepStrictEqual(diffOptionTitles({}).slice(0, 6), [
+    assert.deepStrictEqual(diffOptionTitles({}).slice(0, 5), [
       'Show the Entire File',
       'Pin Entire Files',
       'Show Whitespace',
       'Show Whitespace Changes',
       'Wrap Long Lines',
-      'Highlight Syntax',
     ]);
     assert.deepStrictEqual(
       diffOptionTitles({
@@ -175,15 +173,13 @@ suite('Diff options', () => {
         showWhitespace: true,
         ignoreWhitespace: false,
         wordWrap: true,
-        highlightSyntax: false,
-      }).slice(0, 6),
+      }).slice(0, 5),
       [
         'Show the Entire File',
         'Pin Entire Files',
         'Show Whitespace',
         'Show Whitespace Changes',
         'Wrap Long Lines',
-        'Highlight Syntax',
       ],
     );
     assert.deepStrictEqual(diffOptionTitles({ pinned: true }).slice(0, 2), [
@@ -200,7 +196,7 @@ suite('Diff options', () => {
     );
   });
 
-  test('shows the entire file, pins it, shows whitespace, shows whitespace changes, wraps long lines and highlights syntax on their toggles, and stops on them again', () => {
+  test('shows the entire file, pins it, shows whitespace, shows whitespace changes, and wraps long lines on their toggles, and stops on them again', () => {
     for (const on of [false, true]) {
       const flipped: boolean[] = [];
       const flip = (value: boolean) => {
@@ -215,14 +211,13 @@ suite('Diff options', () => {
           onIgnoreWhitespace: (ignore: boolean) => flip(!ignore),
         },
         { wordWrap: on, onWordWrap: flip },
-        { highlightSyntax: on, onHighlightSyntax: flip },
       ];
       toggles.forEach((overrides, index) => {
         const button = diffOptionButtons(overrides)[index];
         assert.strictEqual(button.props['aria-pressed'], on);
         button.props.onClick?.();
       });
-      assert.deepStrictEqual(flipped, [!on, !on, !on, !on, !on, !on]);
+      assert.deepStrictEqual(flipped, [!on, !on, !on, !on, !on]);
     }
   });
 

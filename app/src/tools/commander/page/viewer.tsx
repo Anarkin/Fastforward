@@ -33,11 +33,11 @@ import { PreviewBody } from './previewBody';
 import { firstMode, previewOf } from './previews';
 import { encodingMenu, shownEncoding, type EncodingChoice } from './encodings';
 import {
-  languageLabel,
-  languageMenu,
+  LanguageButton,
   shownLanguage,
-  type LanguageChoice,
-} from './languageChoice';
+  useLanguageChoice,
+} from '../../../ui/languageChoice';
+import { languageOf } from '../../../ui/languages';
 
 export interface Viewing {
   readonly tab: string;
@@ -79,7 +79,8 @@ export function Viewer({
 }) {
   const [chosen, setChosen] = useState<ViewMode>();
   const [encoding, setEncoding] = useState<EncodingChoice>('auto');
-  const [languageChoice, setLanguageChoice] = useState<LanguageChoice>('auto');
+  const { choice: languageChoice, choose: chooseLanguage } =
+    useLanguageChoice(file);
   const place = useRef(0);
   const onPlace = useCallback((byte: number) => {
     place.current = byte;
@@ -95,7 +96,8 @@ export function Viewer({
   const textView = useTextView();
   const { wordWrap, showWhitespace } = textView.view;
   const readsText = mode === 'text' && shown !== 'bytes';
-  const language = shownLanguage(languageChoice, file);
+  const detectedLanguage = languageOf(file);
+  const language = shownLanguage(languageChoice, detectedLanguage);
   const showsImage = mode === 'preview' && preview === 'image';
   const imageView = useImageView();
   const { realSize } = imageView.view;
@@ -242,15 +244,13 @@ export function Viewer({
               </div>
             )}
             {readsText && (
-              <div className="viewer-language">
-                <MenuButton
-                  title={strings.commander.language}
-                  trigger={languageTrigger}
-                  label={languageLabel(language)}
-                  filter={strings.commander.findLanguage}
-                  items={languageMenu(languageChoice, file, setLanguageChoice)}
-                />
-              </div>
+              <LanguageButton
+                choice={languageChoice}
+                detected={detectedLanguage}
+                single
+                choose={chooseLanguage}
+                trigger={languageTrigger}
+              />
             )}
             {showsImage && <span className="nav-button-space" />}
             {showsImage && (

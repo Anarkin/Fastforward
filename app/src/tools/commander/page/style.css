@@ -25,11 +25,6 @@
   padding: 0;
 }
 
-.commander .column-start .menu {
-  left: 0;
-  right: auto;
-}
-
 .commander-columns[data-active-side='left'] > .column:nth-child(1)::after,
 .commander-columns[data-active-side='right'] > .column:nth-child(2)::after {
   box-shadow: inset 0 0 0 2px var(--color-focus);
@@ -321,7 +316,7 @@
   );
 }
 
-.viewer-language .menu-button-trigger {
+.viewer-actions .language-button .menu-button-trigger {
   max-width: var(--widest-language-button);
 }
 

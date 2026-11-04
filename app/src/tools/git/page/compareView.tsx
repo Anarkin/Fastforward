@@ -6,7 +6,6 @@ import type {
   LeftOut,
   TextRequest,
 } from '../shared/protocol';
-import { useTextView } from '../../../ui/textView';
 import { strings } from '../../../shared/strings';
 import type { DiffFile, LoadedText } from './diff';
 import { Diff, DiffOptions } from './diffColumn';
@@ -42,6 +41,7 @@ export function CompareView({
   onWordWrap,
   onShowWhitespace,
   onIgnoreWhitespace,
+  language,
 }: {
   compare: Compared | undefined;
   texts: ReadonlyMap<string, LoadedText>;
@@ -58,8 +58,8 @@ export function CompareView({
   onWordWrap: (wrap: boolean) => void;
   onShowWhitespace: (show: boolean) => void;
   onIgnoreWhitespace: (ignore: boolean) => void;
+  language: React.ReactNode;
 }) {
-  const textView = useTextView();
   const view = useRef<HTMLDivElement>(null);
   const tab = compare?.tab;
   useEffect(() => {
@@ -109,10 +109,7 @@ export function CompareView({
               onIgnoreWhitespace={onIgnoreWhitespace}
               wordWrap={wordWrap}
               onWordWrap={onWordWrap}
-              highlightSyntax={textView.view.highlightSyntax}
-              onHighlightSyntax={(highlightSyntax) =>
-                textView.change({ ...textView.view, highlightSyntax })
-              }
+              language={language}
               layout={layout}
               onLayout={onLayout}
             />

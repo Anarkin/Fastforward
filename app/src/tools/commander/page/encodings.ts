@@ -23,7 +23,8 @@ export function encodingMenu(
   shown: ShownEncoding,
   choose: (choice: EncodingChoice) => void,
 ): ContextMenuItem[] {
-  const { encodings, autoChoice } = strings.commander;
+  const { encodings } = strings.commander;
+  const { autoChoice } = strings.common;
   return [
     {
       label: choice === 'auto' ? autoChoice(encodings[shown]) : encodings.auto,

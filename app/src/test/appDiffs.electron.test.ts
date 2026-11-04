@@ -30,19 +30,60 @@ suite('App', () => {
     'long.txt': `${longLines.join('\n')}\n`,
   });
 
-  test('colors code away from the page, and none while syntax highlighting is off on its button', async () => {
+  test('colors code away from the page, offers every language for a file selected, opening rightwards from the button, as it starts the toolbar, but only Auto and Plain Text for many, leaves code plain on Plain Text until Auto, and colors a file in a language chosen for it until another is selected', async () => {
     await page.locator('.commit', { hasText: 'first' }).click();
     await page.locator('.row.file', { hasText: 'code.ts' }).click();
     await page.locator('.syntax-keyword', { hasText: 'export' }).waitFor();
     await page.locator('.syntax-number', { hasText: '42' }).waitFor();
-    const highlight = page.getByRole('button', { name: 'Highlight Syntax' });
-    await highlight.click();
-    await page.locator('.diff-line .syntax-keyword').first().waitFor({
-      state: 'detached',
-    });
-    assert.strictEqual(await highlight.getAttribute('aria-pressed'), 'false');
-    await highlight.click();
-    await page.locator('.syntax-keyword', { hasText: 'export' }).waitFor();
+    const button = page.locator('.diff-options .language-button');
+    const label = () => button.locator('.menu-button-label').textContent();
+    const keyword = page.locator('.diff-line .syntax-keyword').first();
+    const choose = async (item: string, typed?: string) => {
+      await button.locator('.menu-button-trigger').click();
+      if (typed !== undefined) {
+        await page.keyboard.type(typed);
+      }
+      await button
+        .locator('.menu-item', { hasText: new RegExp(`^${item}$`) })
+        .click();
+      await button.locator('.menu').waitFor({ state: 'detached' });
+    };
+    assert.strictEqual(await label(), 'TypeScript');
+    await page.keyboard.press('l');
+    await button.locator('.menu-filter').waitFor();
+    assert.ok((await button.locator('.menu-item').count()) > 200);
+    const [menuBox, buttonBox] = await Promise.all([
+      button.locator('.menu').boundingBox(),
+      button.locator('.menu-button').boundingBox(),
+    ]);
+    assert.strictEqual(menuBox?.x, buttonBox?.x);
+    await page.keyboard.press('Escape');
+    await button.locator('.menu').waitFor({ state: 'detached' });
+
+    await choose('Plain Text');
+    await keyword.waitFor({ state: 'detached' });
+    assert.strictEqual(await label(), 'Plain Text');
+    await choose('TypeScript', 'typescript');
+    await keyword.waitFor();
+    assert.strictEqual(await label(), 'TypeScript');
+
+    await page.locator('.row.group', { hasText: 'All Changes' }).click();
+    await page
+      .locator('.row.group.selected', { hasText: 'All Changes' })
+      .waitFor();
+    assert.strictEqual(await label(), 'Plain Text');
+    await keyword.waitFor({ state: 'detached' });
+    await button.locator('.menu-button-trigger').click();
+    assert.deepStrictEqual(
+      await button.locator('.menu-item').allTextContents(),
+      ['Auto', '✓Plain Text'],
+    );
+    assert.strictEqual(await button.locator('.menu-filter').count(), 0);
+    await button.locator('.menu-item', { hasText: /^Auto$/ }).click();
+    await keyword.waitFor();
+    assert.strictEqual(await label(), 'Auto');
+    await page.locator('.row.file', { hasText: 'code.ts' }).click();
+    await waitFor(async () => (await label()) === 'TypeScript', 'the language');
   });
 
   test('keeps the lines of a diff colored as the whole text of their side has it while the working tree changes under it', async () => {
