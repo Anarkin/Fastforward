@@ -15,7 +15,6 @@ import {
 
 export interface Settings {
   readonly tabs: {
-    readonly autoSort: boolean;
     readonly recentFolders: number;
   };
   readonly theme: Theme;

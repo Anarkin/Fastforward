@@ -183,30 +183,6 @@ suite('Shell with no tab open', () => {
     }
   });
 
-  test('tells the page the theme of the settings, dark by default, and saves and applies at once the one picked', async () => {
-    const host = new FakeHost();
-    await withView(
-      log,
-      [],
-      async (view) => {
-        assert.deepStrictEqual(view.page.last('theme'), {
-          type: 'theme',
-          theme: 'dark',
-        });
-        await view.connection.receive({ type: 'setTheme', theme: 'light' });
-        assert.strictEqual(view.settings.settings.theme, 'light');
-        assert.deepStrictEqual(host.themes, ['light']);
-        assert.deepStrictEqual(view.page.last('theme'), {
-          type: 'theme',
-          theme: 'light',
-        });
-      },
-      true,
-      host,
-      noGit,
-    );
-  });
-
   test('tells the page the date format of the settings, which every tool writes its dates in', async () => {
     await withView(
       log,
@@ -358,8 +334,6 @@ suite('Shell with no tab open', () => {
         const lines = info.length;
         const warnings = warned.length;
         for (const message of [
-          '{ "type": "setAutoSortTabs", "on": "yes" }',
-          '{ "type": "setTheme", "theme": "blue" }',
           '{ "type": "copyText", "text": 5 }',
           '{ "type": "log", "level": "warn", "message": "forged" }',
           '{ "type": "log", "level": "info", "message": { "forged": true } }',
@@ -370,9 +344,6 @@ suite('Shell with no tab open', () => {
           view.page.tabs?.tabs.map((tab) => tab.tool),
           ['terminal', 'commander'],
         );
-        assert.strictEqual(view.settings.settings.tabs.autoSort, false);
-        assert.strictEqual(view.settings.settings.theme, 'dark');
-        assert.deepStrictEqual(host.themes, []);
         assert.deepStrictEqual(host.opened, []);
         assert.strictEqual(warned.length, warnings);
         assert.ok(
@@ -389,27 +360,6 @@ suite('Shell with no tab open', () => {
       },
       true,
       host,
-      noGit,
-    );
-  });
-
-  test('sorts the tabs as the page loads once auto-sort is turned on in the settings file, as the page then offers neither sorting nor dragging them', async () => {
-    await withView(
-      log,
-      [],
-      async (view) => {
-        await view.connection.receive({ type: 'newTab', tool: 'terminal' });
-        await view.connection.receive({ type: 'newTab', tool: 'commander' });
-        await view.settings.setTabs('autoSort', true);
-        view.shell.reloadSettings();
-        await view.connection.receive({ type: 'ready' });
-        assert.deepStrictEqual(
-          view.page.tabs?.tabs.map((tab) => tab.tool),
-          ['commander', 'terminal'],
-        );
-      },
-      true,
-      undefined,
       noGit,
     );
   });
@@ -538,14 +488,11 @@ suite('Shell with no tab open', () => {
     }
   });
 
-  test('moves a terminal tab to the folder its shell goes to, naming it after that folder, but leaves the tabs where they are while they sort themselves, so a tab never jumps on a cd', async () => {
+  test('moves a terminal tab to the folder its shell goes to, naming it after that folder, but leaves it where it is in the row, so a tab never jumps on a cd', async () => {
     await withView(
       log,
       [],
       async (view) => {
-        await view.settings.setTabs('autoSort', true);
-        view.shell.reloadSettings();
-        await view.connection.receive({ type: 'ready' });
         await view.connection.receive({ type: 'newTab', tool: 'commander' });
         await view.connection.receive({ type: 'newTab', tool: 'terminal' });
         const terminal = view.page.tabs?.tabs.find(

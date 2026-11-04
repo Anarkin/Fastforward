@@ -192,14 +192,22 @@ suite('Git tool of worktrees', () => {
     try {
       const linkedRoot = worktreeRoot(opened, linked);
       await gitState(opened.store).update(recentKey, [linkedRoot]);
-      await opened.connection.receive({ type: 'sortTabs' });
+      await opened.connection.receive({
+        type: 'moveTab',
+        tab: 'nowhere',
+        index: 0,
+      });
       assert.deepStrictEqual(shownTabs(opened.page)?.recent, []);
       await own.git('worktree', 'remove', '--force', linked);
       await waitFor(
         () => worktreesOf(opened).length === 1,
         'the removed worktree to be left out',
       );
-      await opened.connection.receive({ type: 'sortTabs' });
+      await opened.connection.receive({
+        type: 'moveTab',
+        tab: 'nowhere',
+        index: 0,
+      });
       assert.deepStrictEqual(
         shownTabs(opened.page)?.recent.map((recent) => recent.root),
         [linkedRoot],

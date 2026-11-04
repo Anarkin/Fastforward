@@ -65,37 +65,7 @@ suite('Git tool with two tabs', () => {
     removeFolder(folder);
   });
 
-  test('sorts the tabs at once when sorting automatically is turned on, and keeps them sorted as repositories open, saving the setting', async () => {
-    const zeta = await tempRepository(path.join(folder, 'Zeta'));
-    await zeta.commit('zeta');
-    const beta = await tempRepository(path.join(folder, 'beta'));
-    await beta.commit('beta');
-    const host = new FakeHost();
-    await withView(
-      log,
-      [zeta.root, other],
-      async (own) => {
-        const names = () =>
-          (shownTabs(own.page)?.tabs ?? []).map((tab) => tab.name);
-        const open = async (root: string) => {
-          host.folders = [root];
-          await own.connection.receive({ type: 'browseRepositories' });
-        };
-        await own.connection.receive({ type: 'setAutoSortTabs', on: true });
-        assert.deepStrictEqual(names(), ['other', 'Zeta']);
-        assert.strictEqual(own.settings.settings.tabs.autoSort, true);
-        await open(beta.root);
-        assert.deepStrictEqual(names(), ['beta', 'other', 'Zeta']);
-        await own.connection.receive({ type: 'setAutoSortTabs', on: false });
-        await open(repository.root);
-        assert.deepStrictEqual(names(), ['beta', 'other', 'Zeta', 'main']);
-      },
-      true,
-      host,
-    );
-  });
-
-  test('sorts tabs by name and closes one, opening the next', async () => {
+  test('names tabs of folders with the same name after the folders they are in, and closes one, opening the next', async () => {
     const zeta = await tempRepository(path.join(folder, 'Zeta'));
     await zeta.commit('zeta');
     const twin = await tempRepository(path.join(folder, 'a', 'main'));
@@ -104,22 +74,21 @@ suite('Git tool with two tabs', () => {
     await withView(log, tabs, async (own) => {
       const names = () =>
         (shownTabs(own.page)?.tabs ?? []).map((tab) => tab.name);
-      await own.connection.receive({ type: 'sortTabs' });
       assert.deepStrictEqual(
         shownTabs(own.page)?.tabs.map((tab) => tab.folder),
-        ['a', path.basename(folder), undefined, undefined],
+        [undefined, undefined, path.basename(folder), 'a'],
       );
       await own.connection.receive({
         type: 'closeTab',
         tab: tabOf(own.page, twin.root),
       });
-      assert.deepStrictEqual(names(), ['main', 'other', 'Zeta']);
+      assert.deepStrictEqual(names(), ['other', 'Zeta', 'main']);
       await own.connection.receive({
         type: 'closeTab',
         tab: tabOf(own.page, other),
       });
       const left = shownTabs(own.page);
-      assert.deepStrictEqual(names(), ['main', 'Zeta']);
+      assert.deepStrictEqual(names(), ['Zeta', 'main']);
       assert.strictEqual(left?.active, zeta.root);
     });
   });
@@ -151,7 +120,7 @@ suite('Git tool with two tabs', () => {
     });
   });
 
-  test('moves no tab while sorting automatically, nor one not open, nor to a place not in the row, sending the order as it stands so the page drops the one it showed', async () => {
+  test('moves no tab not open, nor to a place not in the row, sending the order as it stands so the page drops the one it showed', async () => {
     await withView(log, [repository.root, other], async (own) => {
       const roots = () => shownTabs(own.page)?.tabs.map((tab) => tab.root);
       for (const [tab, index] of [
@@ -165,14 +134,6 @@ suite('Git tool with two tabs', () => {
         await own.connection.receive({ type: 'moveTab', tab, index });
         assert.deepStrictEqual(roots(), [repository.root, other]);
       }
-      await own.connection.receive({ type: 'setAutoSortTabs', on: true });
-      own.page.clear();
-      await own.connection.receive({
-        type: 'moveTab',
-        tab: tabOf(own.page, other),
-        index: 0,
-      });
-      assert.deepStrictEqual(roots(), [repository.root, other]);
       assert.deepStrictEqual(savedRoots(own), [repository.root, other]);
     });
   });
@@ -901,14 +862,12 @@ suite('Git tool with two tabs', () => {
       takeErrorsLogged(logged, /^Showing tab .* failed$/, /^next tab failed$/);
     });
 
-    test('sorts, solos, closes and opens tabs though the state fails to be written', async () => {
+    test('solos, closes and opens tabs though the state fails to be written', async () => {
       tabs.store.update = (key, value) => {
         tabs.store.values.set(key, value);
         return Promise.reject(new Error('state not written'));
       };
       tabs.page.clear();
-      await tabs.connection.receive({ type: 'sortTabs' });
-      assert.ok(shownTabs(tabs.page));
       await tabs.connection.receive({
         type: 'setSolo',
         root: repository.root,

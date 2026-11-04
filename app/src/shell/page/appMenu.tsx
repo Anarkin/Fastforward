@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { keymap } from '../shared/keymap';
-import { themes, type Theme, type UpdateStatus } from '../shared/protocol';
+import type { UpdateStatus } from '../shared/protocol';
 import { strings } from '../../shared/strings';
 import { MenuButton } from '../../ui/menu';
 import { useBinding } from '../../ui/shortcuts';
@@ -29,11 +29,6 @@ export function updateLabel(status: UpdateStatus): string {
 
 export function AppMenu({
   update,
-  autoSortTabs,
-  onAutoSortTabs,
-  theme,
-  onTheme,
-  onSort,
   onOpenSettings,
   onOpenDefaultSettings,
   onShowShortcuts,
@@ -43,11 +38,6 @@ export function AppMenu({
   onInstallCommand,
 }: {
   update: UpdateStatus;
-  autoSortTabs: boolean;
-  onAutoSortTabs: (on: boolean) => void;
-  theme: Theme;
-  onTheme: (theme: Theme) => void;
-  onSort: () => void;
   onOpenSettings: () => void;
   onOpenDefaultSettings: () => void;
   onShowShortcuts: () => void;
@@ -67,37 +57,19 @@ export function AppMenu({
       marked={installs}
       items={[
         {
-          label: strings.tabs.sortAutomatically,
-          checked: autoSortTabs,
-          onClick: () => onAutoSortTabs(!autoSortTabs),
-        },
-        ...(autoSortTabs
-          ? []
-          : [{ label: strings.tabs.sort, onClick: onSort }]),
-        {
-          label: strings.tabs.theme,
-          submenu: themes.map((each) => ({
-            label: strings.tabs.themes[each],
-            checked: each === theme,
-            onClick: () => onTheme(each),
-          })),
-        },
-        { separator: true },
-        {
           label: strings.tabs.openDefaultSettings,
           onClick: onOpenDefaultSettings,
         },
         { label: strings.tabs.openUserSettings, onClick: onOpenSettings },
         { separator: true },
-        { label: strings.shortcuts.title, onClick: onShowShortcuts },
-        ...(onInstallCommand
-          ? [{ label: strings.tabs.installCommand, onClick: onInstallCommand }]
-          : []),
-        { separator: true },
         {
           label: updateLabel(update),
           onClick: installs ? onInstallUpdate : onCheckForUpdates,
         },
+        ...(onInstallCommand
+          ? [{ label: strings.tabs.installCommand, onClick: onInstallCommand }]
+          : []),
+        { label: strings.shortcuts.title, onClick: onShowShortcuts },
         { label: strings.tabs.about, onClick: onShowAbout },
       ]}
     />

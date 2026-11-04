@@ -143,11 +143,6 @@ export const tabBar = memoized(() =>
       menu={
         <AppMenu
           update={{ kind: 'idle' }}
-          autoSortTabs
-          onAutoSortTabs={noop}
-          theme="dark"
-          onTheme={noop}
-          onSort={noop}
           onOpenSettings={noop}
           onOpenDefaultSettings={noop}
           onShowShortcuts={noop}

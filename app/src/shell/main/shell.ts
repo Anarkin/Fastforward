@@ -1,13 +1,12 @@
 import * as path from 'node:path';
 import type { Log } from './log';
-import { isImageView, isTextView, isTheme } from '../shared/protocol';
+import { isImageView, isTextView } from '../shared/protocol';
 import type { CommandInstall, CommandState } from '../../main/terminalCommand';
 import { InFlight } from '../../shared/inFlight';
 import { addNotice } from '../shared/notices';
 import type {
   AboutInfo,
   TabInfo,
-  Theme,
   ToHost,
   ToolChoice,
   ToWebview,
@@ -89,7 +88,6 @@ export interface Tool<K extends ToolId> {
 export type Tools = { readonly [K in ToolId]: Tool<K> };
 
 export interface ShellHost {
-  applyTheme(theme: Theme): void;
   openSettings(): Promise<void>;
   openDefaultSettings(): Promise<void>;
   settingsProblems(): readonly string[];
@@ -365,20 +363,10 @@ export class Shell {
         }
         return;
       }
-      case 'sortTabs':
-        this.save(
-          storage.setSavedTabs(
-            this.sorted(storage.savedTabs),
-            storage.activeTabId,
-          ),
-        );
-        this.postTabs(page);
-        return;
       case 'moveTab': {
         const tabs = storage.savedTabs;
         const from = tabs.findIndex((tab) => tab.id === message.tab);
         if (
-          !storage.autoSortTabs &&
           from !== -1 &&
           Number.isInteger(message.index) &&
           message.index >= 0 &&
@@ -408,29 +396,6 @@ export class Shell {
         this.save(storage.setImageView(message.view));
         this.page?.post({ type: 'imageView', view: storage.imageView });
         return;
-      case 'setTheme':
-        if (!isTheme(message.theme)) {
-          return;
-        }
-        this.host.applyTheme(message.theme);
-        this.save(storage.setTheme(message.theme));
-        this.page?.post({ type: 'theme', theme: storage.theme });
-        return;
-      case 'setAutoSortTabs':
-        if (typeof message.on !== 'boolean') {
-          return;
-        }
-        this.save(storage.setAutoSortTabs(message.on));
-        if (message.on) {
-          this.save(
-            storage.setSavedTabs(
-              this.sorted(storage.savedTabs),
-              storage.activeTabId,
-            ),
-          );
-          this.postTabs(page);
-        }
-        return;
       case 'newTab':
         if (isTool(message.tool)) {
           await this.tools[message.tool].newTab(page);
@@ -454,8 +419,6 @@ export class Shell {
 
   private async ready(page: Page): Promise<void> {
     const { storage, host } = this;
-    page.post({ type: 'autoSortTabs', on: storage.autoSortTabs });
-    page.post({ type: 'theme', theme: storage.theme });
     page.post({ type: 'dateFormat', format: storage.dateFormat });
     page.post({ type: 'textView', view: storage.textView });
     page.post({ type: 'imageView', view: storage.imageView });
@@ -480,12 +443,6 @@ export class Shell {
     }
     this.page = page;
     this.shownTool = undefined;
-    this.save(
-      storage.setSavedTabs(
-        this.ordered(storage.savedTabs),
-        storage.activeTabId,
-      ),
-    );
     await this.show(page, storage.activeTabId);
     await this.askFolders(page);
   }
@@ -576,12 +533,7 @@ export class Shell {
       added.push(tab);
       opened.push(tab.id);
     }
-    this.save(
-      storage.setSavedTabs(
-        this.ordered([...tabs, ...added]),
-        storage.activeTabId,
-      ),
-    );
+    this.save(storage.setSavedTabs([...tabs, ...added], storage.activeTabId));
     const live = page.disposed ? (this.page ?? page) : page;
     const last = opened.at(-1);
     if (last === undefined) {
@@ -744,28 +696,6 @@ export class Shell {
         ...(compare !== undefined && { compare: true as const }),
       };
     });
-  }
-
-  private ordered(tabs: readonly Tab[]): readonly Tab[] {
-    return this.storage.autoSortTabs ? this.sorted(tabs) : tabs;
-  }
-
-  private sorted(tabs: readonly Tab[]): Tab[] {
-    const labels = new Map(
-      this.infos(tabs).map((tab) => [
-        tab.id,
-        strings.tabs.label(tab.name, tab.folder),
-      ]),
-    );
-    return tabs.toSorted((a, b) =>
-      (labels.get(a.id) ?? a.id).localeCompare(
-        labels.get(b.id) ?? b.id,
-        undefined,
-        {
-          sensitivity: 'base',
-        },
-      ),
-    );
   }
 
   private notice(page: Page | undefined, notice: Notice): void {

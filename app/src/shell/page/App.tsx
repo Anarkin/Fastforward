@@ -13,7 +13,6 @@ import { addNotice } from '../shared/notices';
 import type {
   AboutInfo,
   TabInfo,
-  Theme,
   ToHost,
   ToWebview,
   ToWebviewOf,
@@ -179,8 +178,6 @@ export function App({ name, post, listen }: Props) {
   const [update, setUpdate] = useState<UpdateStatus>({ kind: 'idle' });
   const [about, setAbout] = useState<AboutInfo>();
   const [installsCommand, setInstallsCommand] = useState(false);
-  const [autoSortTabs, setAutoSortTabs] = useState(false);
-  const [theme, setTheme] = useState<Theme>('dark');
   const [dateFormat, setDateFormat] = useState(useContext(DateFormat));
   const [textView, setTextView] = useState(defaultTextView);
   const [imageView, setImageView] = useState(defaultImageView);
@@ -221,12 +218,6 @@ export function App({ name, post, listen }: Props) {
         case 'tabs':
           setTabs(message.tabs);
           setActive(message.active);
-          break;
-        case 'autoSortTabs':
-          setAutoSortTabs(message.on);
-          break;
-        case 'theme':
-          setTheme(message.theme);
           break;
         case 'dateFormat':
           setDateFormat(message.format);
@@ -367,31 +358,16 @@ export function App({ name, post, listen }: Props) {
         onSelect={(tab) => post({ type: 'selectTab', tab })}
         onPreload={(tab) => post({ type: 'preloadTab', tab })}
         onClose={closeTab}
-        onMove={
-          autoSortTabs
-            ? undefined
-            : (tab, index) => {
-                setTabs((shown) => shown && movedTab(shown, tab, index));
-                post({ type: 'moveTab', tab, index });
-              }
-        }
+        onMove={(tab, index) => {
+          setTabs((shown) => shown && movedTab(shown, tab, index));
+          post({ type: 'moveTab', tab, index });
+        }}
         onAdd={openNewTab}
         adding={menu?.trigger === newTabTrigger}
         onLog={log}
         menu={
           <AppMenu
             update={update}
-            autoSortTabs={autoSortTabs}
-            onAutoSortTabs={(on) => {
-              setAutoSortTabs(on);
-              post({ type: 'setAutoSortTabs', on });
-            }}
-            theme={theme}
-            onTheme={(picked) => {
-              setTheme(picked);
-              post({ type: 'setTheme', theme: picked });
-            }}
-            onSort={() => post({ type: 'sortTabs' })}
             onOpenSettings={() => post({ type: 'openSettings' })}
             onOpenDefaultSettings={() => post({ type: 'openDefaultSettings' })}
             onShowShortcuts={() => showPopup('shortcuts', true)}

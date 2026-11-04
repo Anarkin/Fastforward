@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
-import type { Theme, UpdateStatus } from '../../../shell/shared/protocol';
+import type { UpdateStatus } from '../../../shell/shared/protocol';
 import { AppMenu, updateLabel } from '../../../shell/page/appMenu';
 import type { ContextMenuItem } from '../../../ui/contextMenu';
 import { allWithClass, cascaded, rendered } from '../../cascade';
@@ -11,17 +11,10 @@ import { noop, renderedBy } from '../../fixtures';
 function menuOf(
   update: UpdateStatus,
   picked: string[],
-  autoSortTabs = true,
   installsCommand = false,
-  theme: Theme = 'dark',
 ): { items: readonly ContextMenuItem[]; marked: boolean } {
   const menu = renderedBy(AppMenu, {
     update,
-    autoSortTabs,
-    onAutoSortTabs: (on) => picked.push(`sort automatically ${on}`),
-    theme,
-    onTheme: (picking) => picked.push(`theme ${picking}`),
-    onSort: () => picked.push('sort'),
     onOpenSettings: () => picked.push('settings'),
     onOpenDefaultSettings: () => picked.push('defaults'),
     onShowShortcuts: () => picked.push('shortcuts'),
@@ -39,111 +32,46 @@ function menuOf(
 }
 
 suite('App menu', () => {
-  test('offers the themes in a submenu after sorting the tabs, checking the one in use and picking another', () => {
-    for (const theme of ['auto', 'light', 'dark'] as const) {
-      const picked: string[] = [];
-      const labels = menuOf(
-        { kind: 'idle' },
-        picked,
-        false,
-        false,
-        theme,
-      ).items.flatMap((item) => ('separator' in item ? [] : [item.label]));
-      assert.strictEqual(labels[labels.indexOf('Sort Tabs A-Z') + 1], 'Theme');
-      const submenu =
-        menuOf({ kind: 'idle' }, picked, false, false, theme).items.flatMap(
-          (item) =>
-            'separator' in item || item.label !== 'Theme' ? [] : [item.submenu],
-        )[0] ?? [];
-      const themes = submenu.flatMap((item) =>
-        'separator' in item ? [] : [item],
-      );
-      assert.deepStrictEqual(
-        themes.map((item) => [item.label, item.checked]),
-        [
-          ['Auto', theme === 'auto'],
-          ['Light', theme === 'light'],
-          ['Dark', theme === 'dark'],
-        ],
-      );
-      for (const item of themes) {
-        item.onClick?.();
-      }
-      assert.deepStrictEqual(picked, [
-        'theme auto',
-        'theme light',
-        'theme dark',
-      ]);
-    }
-  });
-
-  test('offers sorting the tabs, opening the settings files, showing the shortcuts, checking for updates and the About', () => {
+  test('offers opening the settings files, then checking for updates, the shortcuts and the About in a group of their own', () => {
     const picked: string[] = [];
-    const items = menuOf({ kind: 'idle' }, picked, false).items.flatMap(
-      (item) => ('separator' in item ? [] : [item]),
-    );
+    const { items } = menuOf({ kind: 'idle' }, picked);
     assert.deepStrictEqual(
-      items.map((item) => item.label),
+      items.map((item) => ('separator' in item ? '-' : item.label)),
       [
-        'Sort Tabs A-Z Automatically',
-        'Sort Tabs A-Z',
-        'Theme',
         'Open Default Settings',
         'Open User Settings',
-        'Shortcuts',
+        '-',
         'Check for Updates',
+        'Shortcuts',
         'About',
       ],
     );
     for (const item of items) {
-      item.onClick?.();
+      if (!('separator' in item)) {
+        item.onClick?.();
+      }
     }
     assert.deepStrictEqual(picked, [
-      'sort automatically true',
-      'sort',
       'defaults',
       'settings',
-      'shortcuts',
       'check',
+      'shortcuts',
       'about',
     ]);
   });
 
-  test('offers installing ff after the shortcuts where the app installs it itself, on macOS and from an AppImage', () => {
+  test('offers installing ff after checking for updates where the app installs it itself, on macOS and from an AppImage', () => {
     const picked: string[] = [];
-    const items = menuOf({ kind: 'idle' }, picked, true, true).items.flatMap(
+    const items = menuOf({ kind: 'idle' }, picked, true).items.flatMap(
       (item) => ('separator' in item ? [] : [item]),
     );
     const labels = items.map((item) => item.label);
     assert.strictEqual(
-      labels[labels.indexOf('Shortcuts') + 1],
+      labels[labels.indexOf('Check for Updates') + 1],
       'Install the ff Command',
     );
     items.find((item) => item.label === 'Install the ff Command')?.onClick?.();
     assert.deepStrictEqual(picked, ['ff']);
-  });
-
-  test('leaves out sorting the tabs once while they are sorted automatically', () => {
-    const labels = menuOf({ kind: 'idle' }, []).items.flatMap((item) =>
-      'separator' in item ? [] : [item.label],
-    );
-    assert.ok(labels.includes('Sort Tabs A-Z Automatically'));
-    assert.ok(!labels.includes('Sort Tabs A-Z'));
-  });
-
-  test('checks sorting the tabs automatically while it is on, turning it the other way when picked', () => {
-    for (const on of [true, false]) {
-      const picked: string[] = [];
-      const item = menuOf({ kind: 'idle' }, picked, on).items.find(
-        (entry) =>
-          !('separator' in entry) &&
-          entry.label === 'Sort Tabs A-Z Automatically',
-      );
-      assert.ok(item && !('separator' in item));
-      assert.strictEqual(item.checked, on);
-      item.onClick?.();
-      assert.deepStrictEqual(picked, [`sort automatically ${!on}`]);
-    }
   });
 
   test("opens from the app's icon, as the menu of the whole app", () => {
@@ -151,11 +79,6 @@ suite('App menu', () => {
       renderToStaticMarkup(
         <AppMenu
           update={{ kind: 'idle' }}
-          autoSortTabs
-          onAutoSortTabs={noop}
-          theme="dark"
-          onTheme={noop}
-          onSort={noop}
           onOpenSettings={noop}
           onOpenDefaultSettings={noop}
           onShowShortcuts={noop}
@@ -227,8 +150,9 @@ suite('App menu', () => {
       const picked: string[] = [];
       const menu = menuOf(update, picked);
       assert.strictEqual(menu.marked, marked);
-      const item = menu.items.findLast(
-        (entry) => !('separator' in entry) && entry.label !== 'About',
+      const item = menu.items.find(
+        (entry) =>
+          !('separator' in entry) && entry.label === updateLabel(update),
       );
       assert.ok(item && !('separator' in item));
       item.onClick?.();

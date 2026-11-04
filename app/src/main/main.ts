@@ -517,7 +517,6 @@ async function start(asked: readonly string[]): Promise<void> {
     log,
     storage,
     {
-      applyTheme,
       openSettings: async () => {
         if (!fs.existsSync(userSettingsFile)) {
           fs.writeFileSync(userSettingsFile, '{}\n');
