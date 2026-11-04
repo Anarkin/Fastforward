@@ -1839,6 +1839,61 @@ suite('App commander', () => {
     );
   });
 
+  test('deletes the marked files, or the selected one, for good on Shift+Delete and Shift+F8 once confirmed, keeping them when cancelled, and selects the file after the deleted ones', async () => {
+    const deletingFolder = path.join(opened, 'deleting');
+    fs.mkdirSync(deletingFolder);
+    for (const name of ['a', 'b', 'c', 'd']) {
+      fs.writeFileSync(path.join(deletingFolder, `${name}.txt`), name);
+    }
+    await select('deleting');
+    await page.keyboard.press('Enter');
+    await waitFor(
+      async () => (await rowNames()).join() === '..,a.txt,b.txt,c.txt,d.txt',
+      'the folder to be listed',
+    );
+    await select('b');
+    const popup = page.locator('.confirm-popup');
+    await page.keyboard.press('Shift+Delete');
+    await popup.waitFor();
+    assert.match(
+      (await popup.textContent()) ?? '',
+      /Delete "b\.txt" permanently\? This cannot be undone\./,
+    );
+    await page.keyboard.press('Escape');
+    await popup.waitFor({ state: 'detached' });
+    assert.ok(fs.existsSync(path.join(deletingFolder, 'b.txt')));
+
+    await page.keyboard.press('Space');
+    await page.keyboard.press('Space');
+    await page.keyboard.press('Shift+F8');
+    await popup.waitFor();
+    assert.match(
+      (await popup.textContent()) ?? '',
+      /Delete 2 items permanently\?/,
+    );
+    await page.keyboard.press('Enter');
+    await waitFor(
+      async () => (await rowNames()).join() === '..,a.txt,d.txt',
+      'the marked files to be gone from the list',
+    );
+    assert.deepStrictEqual(fs.readdirSync(deletingFolder).toSorted(), [
+      'a.txt',
+      'd.txt',
+    ]);
+    await waitFor(
+      async () =>
+        (
+          await right().locator('.commander-row.selected').textContent()
+        )?.startsWith('dtxt') === true,
+      'the file after the deleted ones to be selected',
+    );
+    await page.keyboard.press('Backspace');
+    await waitFor(
+      async () => (await rowNames()).includes('deleting'),
+      'the folder above to be listed again',
+    );
+  });
+
   test('marks files moving with Shift, with Space and Insert, with Ctrl+click and Shift+click, never the parent row, and drops the marks in another folder', async () => {
     const markingFolder = path.join(opened, 'marking');
     fs.mkdirSync(markingFolder);

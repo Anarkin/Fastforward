@@ -257,6 +257,8 @@ export const strings = {
     folderHistory: 'Back or forward through the folders of the side',
     reread: 'Read the folder of the side again',
     viewFile: 'View the selected file in a tab of its own',
+    deleteItems:
+      'Move the marked items, or the selected one, to the Recycle Bin, or with Shift delete them permanently',
     systemMenu:
       'Show the menu of Windows for the marked files, or the one clicked or selected, the extended one with Shift',
     compareFiles:
@@ -519,6 +521,20 @@ export const strings = {
   commander: {
     openFailed: (name: string, reason: string) =>
       `${name} could not be opened: ${reason}`,
+    deleteFailed: (name: string, reason: string) =>
+      `${name} could not be deleted: ${reason}`,
+    deleteAsAdministrator:
+      "Items can't be deleted yet in a folder read as administrator.",
+    deleteTitle: 'Delete',
+    deletePermanentlyTitle: 'Delete Permanently',
+    bin: (platform: string | undefined) =>
+      platform === 'win32' ? 'the Recycle Bin' : 'the Trash',
+    moveToBin: (bin: string) => `Move to ${bin}`,
+    trashQuestion: (what: string, bin: string) => `Move ${what} to ${bin}?`,
+    deleteQuestion: (what: string) =>
+      `Delete ${what} permanently? This cannot be undone.`,
+    oneItem: (name: string) => `"${name}"`,
+    items: (count: number) => `${count} items`,
     name: 'Name',
     extension: 'Ext',
     size: 'Size',

@@ -23,6 +23,7 @@ import { formatSize } from './format';
 import {
   filteredRows,
   filteredSelection,
+  deleteKeys,
   goesInto,
   opens,
   passedKeys,
@@ -169,6 +170,7 @@ export function Pane({
   onOpenOnSide,
   onView,
   onShellMenu,
+  onDelete,
   onCompare,
   onResize,
   onResized,
@@ -203,6 +205,7 @@ export function Pane({
   onStep: (step: -1 | 1) => void;
   onOpenOnSide: (target: Side, name: string) => void;
   onView: (name: string) => void;
+  onDelete: (names: readonly string[], permanently: boolean) => void;
   onShellMenu: (
     names: readonly string[],
     at: { readonly x: number; readonly y: number },
@@ -630,6 +633,18 @@ export function Pane({
             label={strings.commander.sides[side]}
             wholeRows
             onKeyDown={(event, visible) => {
+              const permanently = keyPressed(
+                commanderKeymap.deleteItems,
+                event,
+              );
+              if (permanently !== undefined) {
+                event.preventDefault();
+                const names = deleteKeys(rows, pane?.selected, marked);
+                if (names.length > 0) {
+                  onDelete(names, permanently);
+                }
+                return;
+              }
               const menu = keyPressed(commanderKeymap.systemMenu, event);
               if (menu !== undefined) {
                 event.preventDefault();

@@ -164,6 +164,13 @@ export type CommanderToHost =
       readonly y: number;
       readonly extended: boolean;
     }
+  | {
+      readonly type: 'delete';
+      readonly tab: string;
+      readonly side: Side;
+      readonly names: readonly string[];
+      readonly permanently: boolean;
+    }
   | { readonly type: 'reread'; readonly tab: string; readonly side: Side }
   | { readonly type: 'elevate'; readonly tab: string; readonly side: Side }
   | {

@@ -109,6 +109,8 @@ function commander(
   const watching: { folder: string; changed: () => void }[] = [];
   const iconsLoaded: string[] = [];
   const opened: string[] = [];
+  const trashed: string[] = [];
+  const removed: string[] = [];
   const menus: {
     readonly files: readonly string[];
     readonly at: { readonly x: number; readonly y: number };
@@ -167,6 +169,18 @@ function commander(
     shellMenu: (files, point, extended) => {
       menus.push({ files, at: point, extended });
       return Promise.resolve();
+    },
+    trash: (trashing) => {
+      trashed.push(trashing);
+      return trashing.endsWith('locked.txt')
+        ? Promise.reject(new Error('It is in use'))
+        : Promise.resolve();
+    },
+    remove: (removing) => {
+      removed.push(removing);
+      return removing.endsWith('locked.txt')
+        ? Promise.reject(new Error('It is in use'))
+        : Promise.resolve();
     },
     openFile: (opening) => {
       opened.push(opening);
@@ -259,6 +273,8 @@ function commander(
     tabs,
     menus,
     opened,
+    trashed,
+    removed,
     thumbnails,
     streamed,
     thumbnailsFull,
@@ -1169,6 +1185,42 @@ suite('Commander tool', () => {
       },
     ]);
     assert.strictEqual(tool.folderOf(tab), root);
+  });
+
+  test('moves the items asked for to the Recycle Bin, or deletes them for good, only when every one is listed in the folder and never its parent, saying which could not be deleted and why', async () => {
+    const { tool, page, send, notices, trashed, removed } = commander({
+      [root]: [
+        file('a.txt'),
+        folder('dir'),
+        file('b.txt'),
+        file('locked.txt'),
+        file('c.txt'),
+      ],
+    });
+    await tool.show(page, tab);
+    const remove = (names: string[], permanently: boolean) =>
+      send({ type: 'delete', tab: '1', side: 'right', names, permanently });
+    await remove(['a.txt', 'dir'], false);
+    await remove(['b.txt'], true);
+    await remove(['c.txt', '..'], false);
+    await remove(['c.txt', 'gone.txt'], true);
+    await remove([], false);
+    await send(
+      forged(
+        '{ "type": "delete", "tab": "1", "side": "right", "names": ["c.txt"], "permanently": "yes" }',
+      ),
+    );
+    assert.deepStrictEqual(trashed, [at('a.txt'), at('dir')]);
+    assert.deepStrictEqual(removed, [at('b.txt')]);
+    assert.deepStrictEqual(notices, []);
+    await remove(['locked.txt', 'c.txt'], false);
+    assert.deepStrictEqual(trashed.slice(2), [at('locked.txt'), at('c.txt')]);
+    assert.deepStrictEqual(notices, [
+      {
+        level: 'error',
+        message: strings.commander.deleteFailed('locked.txt', 'It is in use'),
+      },
+    ]);
   });
 
   test('gives the folder of the active side as the folder of the tab, the right one until the page makes the left one active', async () => {

@@ -10,6 +10,7 @@ import {
   selectionAfter,
   passedKeys,
   rangeKeys,
+  deleteKeys,
   menuKeys,
   filteredRows,
   filteredSelection,
@@ -252,6 +253,26 @@ suite('Commander listing', () => {
     assert.deepStrictEqual(menuKeys(rows, 'a', undefined), ['a']);
     assert.deepStrictEqual(menuKeys(rows, '..', marked), []);
     assert.deepStrictEqual(menuKeys(rows, 'gone', marked), []);
+  });
+
+  test('deletes every file marked, in the order listed, wherever the selection is, and the selected one alone when none is marked, never ..', () => {
+    const rows = [
+      { key: '..', entry: undefined, base: '..', extension: '' },
+      ...['a', 'b', 'c', 'd'].map((key) => ({
+        key,
+        entry: entry(key),
+        base: key,
+        extension: '',
+      })),
+    ];
+    const marked = new Set(['d', 'b']);
+
+    assert.deepStrictEqual(deleteKeys(rows, 'c', marked), ['b', 'd']);
+    assert.deepStrictEqual(deleteKeys(rows, '..', marked), ['b', 'd']);
+    assert.deepStrictEqual(deleteKeys(rows, 'a', new Set()), ['a']);
+    assert.deepStrictEqual(deleteKeys(rows, 'a', undefined), ['a']);
+    assert.deepStrictEqual(deleteKeys(rows, '..', undefined), []);
+    assert.deepStrictEqual(deleteKeys(rows, undefined, undefined), []);
   });
 });
 

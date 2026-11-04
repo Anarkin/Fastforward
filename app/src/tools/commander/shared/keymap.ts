@@ -112,6 +112,12 @@ export const commanderKeymap = {
     'Shift+Click': 'range',
   } as const),
   view: bind('Viewing', strings.actions.viewFile, { F3: true }),
+  deleteItems: bind('Marking', strings.actions.deleteItems, {
+    Delete: false,
+    F8: false,
+    'Shift+Delete': true,
+    'Shift+F8': true,
+  }),
   systemMenu: bind('Marking', strings.actions.systemMenu, {
     RightClick: false,
     'Shift+RightClick': true,

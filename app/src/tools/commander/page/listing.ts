@@ -151,6 +151,20 @@ export function rangeKeys(
     .map((row) => row.key);
 }
 
+export function deleteKeys(
+  rows: readonly Row[],
+  selected: string | undefined,
+  marked: ReadonlySet<string> | undefined,
+): string[] {
+  if (marked !== undefined && marked.size > 0) {
+    return rows
+      .filter((row) => row.entry !== undefined && marked.has(row.key))
+      .map((row) => row.key);
+  }
+  const row = rows.find((each) => each.key === selected);
+  return row?.entry === undefined ? [] : [row.key];
+}
+
 export function menuKeys(
   rows: readonly Row[],
   key: string,

@@ -512,6 +512,8 @@ async function start(asked: readonly string[]): Promise<void> {
     }),
     realPath: (link) => fs.promises.realpath(link),
     openFile: (file) => shell.openPath(file),
+    trash: (file) => shell.trashItem(file),
+    remove: (file) => fs.promises.rm(file, { recursive: true }),
     root: rootFolder(process.platform, process.env),
   });
   const view = new Shell(

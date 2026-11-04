@@ -18,6 +18,7 @@ import { columnFocusAttribute } from '../../../ui/columnFocus';
 import { followDrag } from '../../../ui/followDrag';
 import { useBinding } from '../../../ui/shortcuts';
 import { ConfirmPopup } from '../../../shell/page/confirmPopup';
+import { deleteQuestion } from './deleting';
 import { strings } from '../../../shared/strings';
 
 const minimumShare = 0.15;
@@ -59,6 +60,12 @@ export function CommanderTool({
       viewerListeners.current.delete(handler);
     };
   }, []);
+  const [deleting, setDeleting] = useState<{
+    readonly tab: string;
+    readonly side: Side;
+    readonly names: readonly string[];
+    readonly permanently: boolean;
+  }>();
   const [noAccess, setNoAccess] = useState<{
     readonly side: Side;
     readonly folder: string;
@@ -320,6 +327,11 @@ export function CommanderTool({
                 post({ type: 'view', tab, side, name });
               }
             }}
+            onDelete={(names, permanently) => {
+              if (tab !== undefined) {
+                setDeleting({ tab, side, names, permanently });
+              }
+            }}
             onShellMenu={(names, at, extended) => {
               if (tab !== undefined) {
                 post({
@@ -353,6 +365,20 @@ export function CommanderTool({
           />
         ))}
       </div>
+      {deleting !== undefined && (
+        <ConfirmPopup
+          {...deleteQuestion(
+            deleting.names,
+            deleting.permanently,
+            document.documentElement.dataset.platform,
+          )}
+          onConfirm={() => {
+            setDeleting(undefined);
+            post({ type: 'delete', ...deleting });
+          }}
+          onCancel={() => setDeleting(undefined)}
+        />
+      )}
       {noAccess !== undefined && (
         <ConfirmPopup
           title={strings.commander.noAccessTitle}

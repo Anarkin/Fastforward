@@ -112,6 +112,8 @@ export interface CommanderAccess {
   readonly elevate?: () => Promise<ElevatedFileSystem | undefined>;
   readonly realPath: (link: string) => Promise<string>;
   readonly openFile?: (file: string) => Promise<string>;
+  readonly trash?: (file: string) => Promise<void>;
+  readonly remove?: (file: string) => Promise<void>;
   readonly shellMenu?: (
     files: readonly string[],
     at: { readonly x: number; readonly y: number },
@@ -318,6 +320,8 @@ export class CommanderTool implements Tool<'commander'> {
         return this.view(page, message.tab, message.side, message.name);
       case 'shellMenu':
         return this.shellMenu(page, message);
+      case 'delete':
+        return this.delete(page, message);
       case 'compare':
         return this.compare(page, message.tab, message.files);
       case 'readRows':
@@ -731,6 +735,55 @@ export class CommanderTool implements Tool<'commander'> {
           'commander',
           path.join(shown.pane.folder, entry.name),
         );
+  }
+
+  private async delete(
+    page: Page,
+    {
+      tab,
+      side,
+      names,
+      permanently,
+    }: Extract<CommanderToHost, { type: 'delete' }>,
+  ): Promise<void> {
+    const shown = this.shownPane(page, tab, side);
+    const listed = new Set(shown?.pane.entries?.map((entry) => entry.name));
+    if (
+      shown === undefined ||
+      !Array.isArray(names) ||
+      names.length === 0 ||
+      !names.every(
+        (name: unknown) => typeof name === 'string' && listed.has(name),
+      ) ||
+      typeof permanently !== 'boolean'
+    ) {
+      return;
+    }
+    if (shown.pane.elevated === true) {
+      this.shell.notice(page, {
+        level: 'error',
+        message: strings.commander.deleteAsAdministrator,
+      });
+      return;
+    }
+    const deleting = permanently ? this.access.remove : this.access.trash;
+    if (deleting === undefined) {
+      return;
+    }
+    for (const name of names) {
+      try {
+        await deleting(path.join(shown.pane.folder, name));
+      } catch (error) {
+        this.shell.notice(page, {
+          level: 'error',
+          message: strings.commander.deleteFailed(
+            name,
+            error instanceof Error ? error.message : String(error),
+          ),
+        });
+      }
+    }
+    await this.list(page, shown.tab, shown.side, shown.pane.folder, 'show');
   }
 
   private async shellMenu(
