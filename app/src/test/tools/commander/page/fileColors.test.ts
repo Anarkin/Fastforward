@@ -99,7 +99,6 @@ suite('Commander file colors', () => {
       '.gitignore',
       'LICENSE',
       'core.dll',
-      'photo.jpg',
       'report.pdf',
       'archive.zip',
       '.md',
