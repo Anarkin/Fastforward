@@ -20,7 +20,10 @@ function pngSide(bytes: Uint8Array, view: DataView): number | undefined {
     : undefined;
 }
 
-function jpegSide(bytes: Uint8Array, view: DataView): number | undefined {
+function storedJpegSize(
+  bytes: Uint8Array,
+  view: DataView,
+): PixelSize | undefined {
   let at = 2;
   while (at + 4 <= bytes.length) {
     if (bytes[at] !== 0xff) {
@@ -40,7 +43,7 @@ function jpegSide(bytes: Uint8Array, view: DataView): number | undefined {
     }
     if (jpegFrames.has(marker)) {
       return at + 9 <= bytes.length
-        ? longer(view.getUint16(at + 7), view.getUint16(at + 5))
+        ? { width: view.getUint16(at + 7), height: view.getUint16(at + 5) }
         : undefined;
     }
     at += 2 + view.getUint16(at + 2);
@@ -80,7 +83,8 @@ export function longestSide(bytes: Uint8Array): number | undefined {
     return pngSide(bytes, view);
   }
   if (bytes[0] === 0xff && bytes[1] === 0xd8) {
-    return jpegSide(bytes, view);
+    const stored = storedJpegSize(bytes, view);
+    return stored && longer(stored.width, stored.height);
   }
   if (text(bytes, 0, 6) === 'GIF87a' || text(bytes, 0, 6) === 'GIF89a') {
     return bytes.length >= 10
@@ -118,4 +122,44 @@ export function thumbnailPixels(drawn: PixelSize, target: number): PixelSize {
     width: Math.max(1, Math.round(drawn.width * scale)),
     height: Math.max(1, Math.round(drawn.height * scale)),
   };
+}
+
+export function jpegSize(bytes: Uint8Array): PixelSize | undefined {
+  return bytes[0] === 0xff && bytes[1] === 0xd8
+    ? storedJpegSize(
+        bytes,
+        new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength),
+      )
+    : undefined;
+}
+
+const jpegFractions = [8, 4, 2];
+
+export function jpegScaling(
+  stored: PixelSize,
+  target: number,
+): PixelSize | undefined {
+  const longest = Math.max(stored.width, stored.height);
+  const divisor = jpegFractions.find(
+    (each) => Math.ceil(longest / each) >= target,
+  );
+  return divisor === undefined
+    ? undefined
+    : {
+        width: Math.ceil(stored.width / divisor),
+        height: Math.ceil(stored.height / divisor),
+      };
+}
+
+export function halvings(from: PixelSize, to: PixelSize): PixelSize[] {
+  const steps: PixelSize[] = [];
+  let current = from;
+  while (current.width / 2 >= to.width && current.height / 2 >= to.height) {
+    current = {
+      width: Math.round(current.width / 2),
+      height: Math.round(current.height / 2),
+    };
+    steps.push(current);
+  }
+  return steps;
 }

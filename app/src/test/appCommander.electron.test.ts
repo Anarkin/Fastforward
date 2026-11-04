@@ -38,6 +38,30 @@ const grayPng = (width: number, height: number) => {
   ]);
 };
 
+const withOrientation = (jpeg: Buffer, orientation: number) => {
+  const tiff = Buffer.alloc(26);
+  tiff.write('MM', 0, 'latin1');
+  tiff.writeUInt16BE(42, 2);
+  tiff.writeUInt32BE(8, 4);
+  tiff.writeUInt16BE(1, 8);
+  tiff.writeUInt16BE(0x0112, 10);
+  tiff.writeUInt16BE(3, 12);
+  tiff.writeUInt32BE(1, 14);
+  tiff.writeUInt16BE(orientation, 18);
+  tiff.writeUInt32BE(0, 22);
+  const exif = Buffer.concat([Buffer.from('Exif\0\0', 'latin1'), tiff]);
+  const segment = Buffer.alloc(4);
+  segment.writeUInt16BE(0xffe1, 0);
+  segment.writeUInt16BE(exif.length + 2, 2);
+  const afterApp0 = 4 + jpeg.readUInt16BE(4);
+  return Buffer.concat([
+    jpeg.subarray(0, afterApp0),
+    segment,
+    exif,
+    jpeg.subarray(afterApp0),
+  ]);
+};
+
 const threeLines = (changed: string) =>
   ['one', changed, 'three', ''].join(String.fromCharCode(10));
 
@@ -119,6 +143,35 @@ suite('App commander', () => {
         image.complete ? image.naturalWidth : 0,
       )
       .catch(() => 0);
+
+  const thumbnailLookOf = (name: string) =>
+    right()
+      .locator('.commander-tile', { hasText: name })
+      .locator('img.thumbnail-image')
+      .evaluate((image: HTMLImageElement) => {
+        if (!image.complete || image.naturalWidth === 0) {
+          return undefined;
+        }
+        const { naturalWidth: width, naturalHeight: height } = image;
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext('2d');
+        context?.drawImage(image, 0, 0);
+        const light = (x: number, y: number) =>
+          context?.getImageData(Math.floor(x), Math.floor(y), 1, 1).data[0] ??
+          0;
+        const box = image.getBoundingClientRect();
+        return {
+          width: Math.round(box.width),
+          height: Math.round(box.height),
+          left: light(width / 4, height / 2),
+          right: light((3 * width) / 4, height / 2),
+          top: light(width / 2, height / 4),
+          bottom: light(width / 2, (3 * height) / 4),
+        };
+      })
+      .catch(() => undefined);
 
   const markedNames = () =>
     right().locator('.commander-row.marked .commander-name').allTextContents();
@@ -2266,6 +2319,81 @@ suite('App commander', () => {
     fs.rmSync(cached, { recursive: true });
     await waitFor(
       async () => !(await rowNames()).includes('cached'),
+      'the folder to be gone from the list',
+    );
+  });
+
+  test('turns the thumbnail of a JPEG as its EXIF asks, decoding it at a fraction of its size', async () => {
+    const jpegs = path.join(opened, 'jpegs');
+    fs.mkdirSync(jpegs);
+    const darkLeft = Buffer.from(
+      await page.evaluate(async () => {
+        const canvas = new OffscreenCanvas(600, 300);
+        const context = canvas.getContext('2d');
+        if (context === null) {
+          return [];
+        }
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, 600, 300);
+        context.fillStyle = '#000000';
+        context.fillRect(0, 0, 300, 300);
+        const blob = await canvas.convertToBlob({
+          type: 'image/jpeg',
+          quality: 0.9,
+        });
+        return [...new Uint8Array(await blob.arrayBuffer())];
+      }),
+    );
+    fs.writeFileSync(path.join(jpegs, 'photo.jpg'), darkLeft);
+    fs.writeFileSync(
+      path.join(jpegs, 'turned.jpg'),
+      withOrientation(darkLeft, 6),
+    );
+    await select('jpegs');
+    await page.keyboard.press('Enter');
+    await waitFor(
+      async () => (await rowNames()).includes('turned.jpg'),
+      'the files of the folder',
+    );
+    await page.keyboard.press('ControlOrMeta+2');
+    await waitFor(
+      async () =>
+        (await thumbnailLookOf('photo.jpg')) !== undefined &&
+        (await thumbnailLookOf('turned.jpg')) !== undefined,
+      'the thumbnails of the JPEGs',
+    );
+    const photo = await thumbnailLookOf('photo.jpg');
+    assert.deepStrictEqual(
+      { width: photo?.width, height: photo?.height },
+      { width: 144, height: 72 },
+    );
+    assert.ok(
+      (photo?.left ?? 255) < 60 && (photo?.right ?? 0) > 200,
+      JSON.stringify(photo),
+    );
+    const turned = await thumbnailLookOf('turned.jpg');
+    assert.deepStrictEqual(
+      { width: turned?.width, height: turned?.height },
+      { width: 72, height: 144 },
+    );
+    assert.ok(
+      (turned?.top ?? 255) < 60 && (turned?.bottom ?? 0) > 200,
+      JSON.stringify(turned),
+    );
+
+    await page.keyboard.press('ControlOrMeta+1');
+    await waitFor(
+      async () => (await right().locator('.commander-tile').count()) === 0,
+      'the details again',
+    );
+    await page.keyboard.press('Backspace');
+    await waitFor(
+      async () => (await rowNames()).includes('notes.txt'),
+      'the folder above',
+    );
+    fs.rmSync(jpegs, { recursive: true });
+    await waitFor(
+      async () => !(await rowNames()).includes('jpegs'),
       'the folder to be gone from the list',
     );
   });
