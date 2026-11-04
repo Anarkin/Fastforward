@@ -880,7 +880,9 @@ export class CommanderTool implements Tool<'commander'> {
         ? undefined
         : await fs.promises
             .readFile(viewing.file)
-            .then((bytes) => new TextDecoder(encoding).decode(bytes))
+            .then((bytes) =>
+              new TextDecoder(encoding, { ignoreBOM: true }).decode(bytes),
+            )
             .catch(() => undefined);
     this.post(page, { type: 'text', tab, request, text });
   }

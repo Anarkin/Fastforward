@@ -2374,6 +2374,46 @@ suite('App commander', () => {
     );
   });
 
+  test('colors the code of a file in any encoding, from the first line of one with a byte order mark', async () => {
+    const code = ['const a = 1;', "let b = 'é';"].join(
+      String.fromCharCode(10),
+    );
+    const files = {
+      'wide.ts': Buffer.concat([
+        Buffer.from([0xff, 0xfe]),
+        Buffer.from(code, 'utf16le'),
+      ]),
+      'marked.ts': Buffer.concat([
+        Buffer.from([0xef, 0xbb, 0xbf]),
+        Buffer.from(code),
+      ]),
+    };
+    for (const [name, bytes] of Object.entries(files)) {
+      fs.writeFileSync(path.join(opened, name), bytes);
+      await select(name.replace('.ts', ''));
+      await page.keyboard.press('F3');
+      const firstKeywords = () =>
+        page
+          .locator('.viewer-rows .viewer-row')
+          .evaluateAll((rows) =>
+            rows.map(
+              (row) => row.querySelector('.syntax-keyword')?.textContent,
+            ),
+          );
+      await waitFor(
+        async () => (await firstKeywords()).join(' ') === 'const let',
+        `the keywords of both lines of ${name} colored`,
+      );
+      await page.keyboard.press('Escape');
+      await page.locator('.viewer').waitFor({ state: 'detached' });
+      fs.rmSync(path.join(opened, name));
+      await waitFor(
+        async () => !(await rowNames()).includes(name),
+        `${name} to be gone from the list`,
+      );
+    }
+  });
+
   test('reads a text file that is not UTF-8 in the code page of the system', async () => {
     fs.writeFileSync(
       path.join(opened, 'legacy.txt'),

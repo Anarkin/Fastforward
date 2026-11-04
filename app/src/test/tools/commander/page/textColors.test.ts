@@ -3,8 +3,10 @@ import { suite, test } from 'vitest';
 import {
   coloredText,
   rowSegments,
+  wholeText,
   withPart,
 } from '../../../../tools/commander/page/textColors';
+import type { TextEncoding } from '../../../../tools/commander/shared/protocol';
 import { packedPart } from '../../../../ui/syntaxParts';
 import type { LineRanges } from '../../../../ui/syntaxEngine';
 
@@ -14,8 +16,14 @@ const row = (start: number, end: number, text: string) => ({
   text,
 });
 
-const colored = (text: string, lines: LineRanges) =>
-  withPart(coloredText(text), packedPart(lines, 0, true));
+const colored = (
+  text: string,
+  lines: LineRanges,
+  encoding: TextEncoding = 'utf-8',
+  marked = false,
+) => withPart(coloredText(text, encoding, marked), packedPart(lines, 0, true));
+
+const keyword = [{ start: 0, end: 3, kind: 'keyword' as const }];
 
 suite('Colors of the rows of a file viewed', () => {
   test('colors a row by the ranges of its line, found by its byte position', () => {
@@ -50,6 +58,78 @@ suite('Colors of the rows of a file viewed', () => {
     ]);
   });
 
+  test('counts a byte a character in a code page of one byte a character', () => {
+    const text = colored(
+      '// é\r\nlet x;\r\n',
+      [[{ start: 0, end: 4, kind: 'comment' }], keyword],
+      'windows-1252',
+    );
+
+    assert.deepStrictEqual(rowSegments(text, row(6, 14, 'let x;')), [
+      { text: 'let', kind: 'keyword' },
+      { text: ' x;' },
+    ]);
+  });
+
+  test('counts two bytes a unit of UTF-16, for characters beyond ASCII and line ends too', () => {
+    const text = colored(
+      '// é\r\nlet x;\r\n',
+      [[{ start: 0, end: 4, kind: 'comment' }], keyword],
+      'utf-16le',
+    );
+
+    assert.deepStrictEqual(rowSegments(text, row(0, 12, '// é')), [
+      { text: '// é', kind: 'comment' },
+    ]);
+    assert.deepStrictEqual(rowSegments(text, row(12, 28, 'let x;')), [
+      { text: 'let', kind: 'keyword' },
+      { text: ' x;' },
+    ]);
+  });
+
+  test('counts the byte order mark of UTF-8 before the first line, leaving it plain on the first row, which has it', () => {
+    const text = colored('let a;\nlet b;\n', [keyword, keyword], 'utf-8', true);
+
+    assert.deepStrictEqual(rowSegments(text, row(0, 10, '﻿let a;')), [
+      { text: '﻿' },
+      { text: 'let', kind: 'keyword' },
+      { text: ' a;' },
+    ]);
+    assert.deepStrictEqual(rowSegments(text, row(10, 17, 'let b;')), [
+      { text: 'let', kind: 'keyword' },
+      { text: ' b;' },
+    ]);
+  });
+
+  test('counts the byte order mark of UTF-16 before the first line, which the first row leaves out though it starts at the start of the file', () => {
+    const text = colored(
+      'let a;\nlet b;\n',
+      [keyword, keyword],
+      'utf-16be',
+      true,
+    );
+
+    assert.deepStrictEqual(rowSegments(text, row(0, 16, 'let a;')), [
+      { text: 'let', kind: 'keyword' },
+      { text: ' a;' },
+    ]);
+    assert.deepStrictEqual(rowSegments(text, row(16, 30, 'let b;')), [
+      { text: 'let', kind: 'keyword' },
+      { text: ' b;' },
+    ]);
+  });
+
+  test('takes the byte order mark off the whole text, noting it was there, as the rows count its bytes', () => {
+    assert.deepStrictEqual(wholeText('﻿let a;'), {
+      text: 'let a;',
+      marked: true,
+    });
+    assert.deepStrictEqual(wholeText('let a;'), {
+      text: 'let a;',
+      marked: false,
+    });
+  });
+
   test('colors a row that is a later part of a long line from where it starts in the line', () => {
     const line = `${'é'.repeat(3)}"tail"`;
     const text = colored(line, [[{ start: 3, end: 9, kind: 'string' }]]);
@@ -67,9 +147,8 @@ suite('Colors of the rows of a file viewed', () => {
   });
 
   test('leaves the rows of lines not colored yet plain, coloring each once its part comes, and starts over on a part from the first line again', () => {
-    const keyword = [{ start: 0, end: 3, kind: 'keyword' as const }];
     const first = withPart(
-      coloredText('let a;\nlet b;\n'),
+      coloredText('let a;\nlet b;\n', 'utf-8', false),
       packedPart([keyword], 0, false),
     );
     const second = row(7, 14, 'let b;');

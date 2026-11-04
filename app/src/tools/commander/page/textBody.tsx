@@ -17,8 +17,10 @@ import { RowRequests } from './rowRequests';
 import {
   coloredText,
   rowSegments,
+  wholeText,
   withPart,
   type ColoredText,
+  type WholeText,
 } from './textColors';
 import { colorer } from '../../../ui/syntax';
 import { languageOf } from '../../../ui/languages';
@@ -182,8 +184,8 @@ export function useWholeText(
   listen: (handler: (message: ToViewer) => void) => () => void,
   wanted: boolean,
   encoding: TextEncoding,
-): string | undefined {
-  const [text, setText] = useState<string>();
+): WholeText | undefined {
+  const [text, setText] = useState<WholeText>();
   const asked = useRef(0);
   useEffect(() => {
     const { tab, size } = viewing;
@@ -198,7 +200,7 @@ export function useWholeText(
         message.request === request &&
         message.text !== undefined
       ) {
-        setText(message.text);
+        setText(wholeText(message.text));
       }
     });
     post({ type: 'readText', tab, encoding, request });
@@ -215,9 +217,8 @@ function useColors(
   listen: (handler: (message: ToViewer) => void) => () => void,
 ): ColoredText | undefined {
   const { highlightSyntax } = useTextView().view;
-  const language =
-    highlightSyntax && encoding === 'utf-8' ? languageOf(file) : undefined;
-  const text = useWholeText(
+  const language = highlightSyntax ? languageOf(file) : undefined;
+  const whole = useWholeText(
     viewing,
     post,
     listen,
@@ -226,18 +227,18 @@ function useColors(
   );
   const [colored, setColored] = useState<ColoredText>();
   useEffect(() => {
-    if (language === undefined || text === undefined) {
+    if (language === undefined || whole === undefined) {
       return undefined;
     }
-    const plain = coloredText(text);
-    return colorer().colorParts(language, text, (part) => {
+    const plain = coloredText(whole.text, encoding, whole.marked);
+    return colorer().colorParts(language, whole.text, (part) => {
       if (part !== undefined) {
         setColored((shown) =>
           withPart(shown?.lines === plain.lines ? shown : plain, part),
         );
       }
     });
-  }, [language, text]);
+  }, [language, whole, encoding]);
   return language === undefined ? undefined : colored;
 }
 

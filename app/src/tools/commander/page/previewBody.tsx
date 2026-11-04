@@ -25,7 +25,7 @@ function MarkdownPreview({
   listen: (handler: (message: ToViewer) => void) => () => void;
 }) {
   const tooLarge = viewing.size !== undefined && viewing.size > maxPreviewBytes;
-  const text = useWholeText(viewing, post, listen, !tooLarge, 'utf-8');
+  const text = useWholeText(viewing, post, listen, !tooLarge, 'utf-8')?.text;
   const { tab, version } = viewing;
   const images = useMemo(() => {
     const document = file.replaceAll('\\', '/');

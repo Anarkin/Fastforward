@@ -576,7 +576,7 @@ suite('Commander tool', () => {
       assert.strictEqual(page.of('found').length, 1);
     });
 
-    test('reads the rows and the whole text of a file viewed in the encoding asked for, and tells of the encoding its byte order mark names', async () => {
+    test('reads the rows and the whole text of a file viewed in the encoding asked for, the whole text with its byte order mark, from which the rows count their bytes, and tells of the encoding the mark names', async () => {
       const wide = path.join(opened, 'wide.txt');
       fs.writeFileSync(
         wide,
@@ -617,7 +617,7 @@ suite('Commander tool', () => {
         encoding: 'utf-16le',
         request: 2,
       });
-      assert.strictEqual(page.of('text').at(-1)?.text, 'one\ntwo\n');
+      assert.strictEqual(page.of('text').at(-1)?.text, '﻿one\ntwo\n');
     });
 
     test('reads a UTF-16 file without a byte order mark as UTF-16 rather than as a binary one', async () => {
