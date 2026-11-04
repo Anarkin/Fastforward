@@ -31,4 +31,55 @@ suite('Terminal screen copy', () => {
     assert.ok(mirror.serialize().includes('line 5'));
     mirror.dispose();
   });
+
+  test('sends the colors a program gave the palette with the screen, as Far Manager gives it the colors of the console', async () => {
+    const mirror = createMirror({ columns: 20, rows: 3, scrollback: 2 });
+    await written(
+      mirror,
+      '\x1b]4;4;rgb:00/00/80\x1b\\\x1b]4;1;rgb:80/00/00;6;rgb:00/80/80\x07\x1b]4;4;rgb:00/00/81\x1b\\text',
+    );
+    const screen = mirror.serialize();
+    assert.ok(
+      screen.startsWith(
+        '\x1b]4;4;rgb:00/00/81\x1b\\\x1b]4;1;rgb:80/00/00\x1b\\\x1b]4;6;rgb:00/80/80\x1b\\',
+      ),
+      JSON.stringify(screen),
+    );
+    assert.ok(screen.includes('text'));
+    mirror.dispose();
+  });
+
+  test('sends the default foreground, background and cursor colors a program set with the screen', async () => {
+    const mirror = createMirror({ columns: 20, rows: 3, scrollback: 2 });
+    await written(
+      mirror,
+      '\x1b]10;#ffffff;#000080\x1b\\\x1b]12;rgb:ff/ff/00\x07',
+    );
+    assert.ok(
+      mirror
+        .serialize()
+        .startsWith(
+          '\x1b]10;#ffffff\x1b\\\x1b]11;#000080\x1b\\\x1b]12;rgb:ff/ff/00\x1b\\',
+        ),
+      JSON.stringify(mirror.serialize()),
+    );
+    mirror.dispose();
+  });
+
+  test('forgets the colors a program asked for or restored', async () => {
+    const mirror = createMirror({ columns: 20, rows: 3, scrollback: 2 });
+    await written(
+      mirror,
+      '\x1b]4;1;rgb:80/00/00;2;rgb:00/80/00;3;rgb:80/80/00\x1b\\\x1b]4;5;?\x1b\\\x1b]104;2\x1b\\\x1b]10;#ffffff\x1b\\\x1b]11;?\x1b\\\x1b]110\x1b\\',
+    );
+    assert.ok(
+      mirror
+        .serialize()
+        .startsWith('\x1b]4;1;rgb:80/00/00\x1b\\\x1b]4;3;rgb:80/80/00\x1b\\'),
+      JSON.stringify(mirror.serialize()),
+    );
+    await written(mirror, '\x1b]104\x1b\\');
+    assert.ok(!mirror.serialize().includes('\x1b]'), mirror.serialize());
+    mirror.dispose();
+  });
 });
