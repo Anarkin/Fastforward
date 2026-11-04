@@ -23,6 +23,7 @@ const defaults = fileColorsByExtension(
 const executable = 'light-dark(#13692c, #5fd068)';
 const document = 'light-dark(#874c00, #f0a838)';
 const media = 'light-dark(#7a2f9e, #cf98ee)';
+const archive = 'light-dark(#00636f, #4fc8d6)';
 
 suite('Commander file colors', () => {
   test('colors green by default the programs, installers and scripts that run when opened, whatever the case of their extension', () => {
@@ -87,6 +88,28 @@ suite('Commander file colors', () => {
     }
   });
 
+  test('colors teal by default the archives and compressed files, the tar ones by their last extension, the disk images and the packages, leaving green the installers', () => {
+    for (const name of [
+      'backup.zip',
+      'tools.7z',
+      'old.RAR',
+      'project.tar',
+      'project.tar.gz',
+      'project.tgz',
+      'logs.tar.xz',
+      'source.tar.zst',
+      'server.log.gz',
+      'windows.iso',
+      'disk.vhdx',
+      'macos.dmg',
+      'tool.deb',
+      'app.jar',
+    ]) {
+      assert.strictEqual(fileColorOf(file(name), defaults), archive, name);
+    }
+    assert.strictEqual(fileColorOf(file('setup.msi'), defaults), executable);
+  });
+
   test('leaves plain by default the video extensions TypeScript uses, the subtitles, playlists, fonts and 3D models, the Keynote extension private keys use, data in CSV and the contacts and calendars', () => {
     for (const name of [
       'server.key',
@@ -115,7 +138,6 @@ suite('Commander file colors', () => {
       '.gitignore',
       'LICENSE',
       'core.dll',
-      'archive.zip',
       '.md',
     ]) {
       assert.strictEqual(fileColorOf(file(name), defaults), undefined, name);

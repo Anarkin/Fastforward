@@ -212,6 +212,42 @@
             "vob"
           ],
           "colors": { "light": "#7a2f9e", "dark": "#cf98ee" }
+        },
+        {
+          "extensions": [
+            "zip",
+            "7z",
+            "rar",
+            "tar",
+            "gz",
+            "tgz",
+            "bz2",
+            "tbz2",
+            "xz",
+            "txz",
+            "zst",
+            "tzst",
+            "lz",
+            "lzma",
+            "lz4",
+            "br",
+            "z",
+            "cab",
+            "cpio",
+            "arj",
+            "lzh",
+            "iso",
+            "img",
+            "vhd",
+            "vhdx",
+            "dmg",
+            "wim",
+            "deb",
+            "rpm",
+            "jar",
+            "apk"
+          ],
+          "colors": { "light": "#00636f", "dark": "#4fc8d6" }
         }
       ],
       "colors": {
