@@ -21,24 +21,72 @@ export function thumbOf(
   scrollSize: number,
   clientSize: number,
   scrolled: number,
+  track = clientSize,
 ): Thumb | undefined {
   if (scrollSize <= clientSize + 1) {
     return undefined;
   }
   const length = Math.min(
-    clientSize,
-    Math.max(minThumb, (clientSize * clientSize) / scrollSize),
+    track,
+    Math.max(minThumb, (track * clientSize) / scrollSize),
   );
   const range = scrollSize - clientSize;
   const offset =
-    ((clientSize - length) * Math.min(Math.max(scrolled, 0), range)) / range;
+    ((track - length) * Math.min(Math.max(scrolled, 0), range)) / range;
   return { offset, length };
 }
 
-export function scrollPerPixel(scrollSize: number, clientSize: number): number {
-  const thumb = thumbOf(scrollSize, clientSize, 0);
-  const room = thumb ? clientSize - thumb.length : 0;
+export function scrollPerPixel(
+  scrollSize: number,
+  clientSize: number,
+  track = clientSize,
+): number {
+  const thumb = thumbOf(scrollSize, clientSize, 0, track);
+  const room = thumb ? track - thumb.length : 0;
   return room > 0 ? (scrollSize - clientSize) / room : 0;
+}
+
+export interface Track {
+  readonly top: number;
+  readonly bottom: number;
+  readonly left: number;
+  readonly right: number;
+}
+
+const noTrackInsets: Track = { top: 0, bottom: 0, left: 0, right: 0 };
+
+const pixels = (value: string) => parseFloat(value) || 0;
+
+export function trackOf(
+  style: Pick<
+    CSSStyleDeclaration,
+    | 'scrollPaddingTop'
+    | 'scrollPaddingBottom'
+    | 'scrollPaddingLeft'
+    | 'scrollPaddingRight'
+    | 'borderTopRightRadius'
+    | 'borderBottomRightRadius'
+    | 'borderBottomLeftRadius'
+  >,
+): Track {
+  return {
+    top: Math.max(
+      pixels(style.scrollPaddingTop),
+      pixels(style.borderTopRightRadius),
+    ),
+    bottom: Math.max(
+      pixels(style.scrollPaddingBottom),
+      pixels(style.borderBottomRightRadius),
+    ),
+    left: Math.max(
+      pixels(style.scrollPaddingLeft),
+      pixels(style.borderBottomLeftRadius),
+    ),
+    right: Math.max(
+      pixels(style.scrollPaddingRight),
+      pixels(style.borderBottomRightRadius),
+    ),
+  };
 }
 
 export function followedScroller<T>(
@@ -145,6 +193,7 @@ export interface ScrollerMetrics {
   readonly scrollHeight: number;
   readonly scrollLeft: number;
   readonly scrollTop: number;
+  readonly track?: Track;
 }
 
 export interface ThumbBox {
@@ -161,16 +210,18 @@ export function thumbBox(
 ): ThumbBox | undefined {
   const left = scroller.left + scroller.clientLeft;
   const top = scroller.top + scroller.clientTop;
+  const track = scroller.track ?? noTrackInsets;
   if (axis === 'vertical') {
     const thumb = thumbOf(
       scroller.scrollHeight,
       scroller.clientHeight,
       scroller.scrollTop,
+      verticalTrack(scroller),
     );
     return (
       thumb && {
         left: left + scroller.clientWidth - size,
-        top: top + thumb.offset,
+        top: top + track.top + thumb.offset,
         width: size,
         height: thumb.length,
       }
@@ -180,15 +231,24 @@ export function thumbBox(
     scroller.scrollWidth,
     scroller.clientWidth,
     scroller.scrollLeft,
+    horizontalTrack(scroller),
   );
   return (
     thumb && {
-      left: left + thumb.offset,
+      left: left + track.left + thumb.offset,
       top: top + scroller.clientHeight - size,
       width: thumb.length,
       height: size,
     }
   );
+}
+
+function verticalTrack({ clientHeight, track }: ScrollerMetrics): number {
+  return Math.max(0, clientHeight - (track?.top ?? 0) - (track?.bottom ?? 0));
+}
+
+function horizontalTrack({ clientWidth, track }: ScrollerMetrics): number {
+  return Math.max(0, clientWidth - (track?.left ?? 0) - (track?.right ?? 0));
 }
 
 export interface Drag {
@@ -206,12 +266,20 @@ export function dragFrom(
     ? {
         pointer: pointer.clientY,
         scroll: scroller.scrollTop,
-        ratio: scrollPerPixel(scroller.scrollHeight, scroller.clientHeight),
+        ratio: scrollPerPixel(
+          scroller.scrollHeight,
+          scroller.clientHeight,
+          verticalTrack(scroller),
+        ),
       }
     : {
         pointer: pointer.clientX,
         scroll: scroller.scrollLeft,
-        ratio: scrollPerPixel(scroller.scrollWidth, scroller.clientWidth),
+        ratio: scrollPerPixel(
+          scroller.scrollWidth,
+          scroller.clientWidth,
+          horizontalTrack(scroller),
+        ),
       };
 }
 
@@ -242,6 +310,7 @@ export function elementMetrics(scroller: Element): ScrollerMetrics {
     scrollHeight: scroller.scrollHeight,
     scrollLeft: scroller.scrollLeft,
     scrollTop: scroller.scrollTop,
+    track: trackOf(getComputedStyle(scroller)),
   };
 }
 

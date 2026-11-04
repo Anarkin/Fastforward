@@ -2425,6 +2425,63 @@ suite('App commander', () => {
     );
   });
 
+  test('keeps the scrollbar of the language menu below its filter and off its rounded corners, from the first language to the last', async () => {
+    fs.writeFileSync(path.join(opened, 'menu.ts'), 'const a = 1;');
+    await select('menu');
+    await page.keyboard.press('F3');
+    await page.locator('.viewer-rows .viewer-row').first().waitFor();
+    await page.keyboard.press('l');
+    const menu = page.locator('.viewer-language .menu');
+    await menu.waitFor();
+    const thumb = page.locator('.overlay-scrollbar.vertical.shown');
+    const boxes = async () => {
+      await thumb.waitFor();
+      const [menuBox, filterBox, thumbBox] = await Promise.all([
+        menu.boundingBox(),
+        page.locator('.viewer-language .menu-filter').boundingBox(),
+        thumb.boundingBox(),
+      ]);
+      assert.ok(menuBox && filterBox && thumbBox);
+      return { menuBox, filterBox, thumbBox };
+    };
+
+    await menu.hover();
+    const top = await boxes();
+    assert.ok(
+      top.thumbBox.y >= top.filterBox.y + top.filterBox.height,
+      JSON.stringify(top),
+    );
+
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('End');
+    await waitFor(
+      async () =>
+        (await boxes()).thumbBox.y > top.thumbBox.y + top.thumbBox.height,
+      'the thumb at the end of its track',
+    );
+    const end = await boxes();
+    assert.ok(
+      end.thumbBox.y + end.thumbBox.height <=
+        end.menuBox.y + end.menuBox.height - 6,
+      JSON.stringify(end),
+    );
+
+    await page.keyboard.press('Home');
+    await waitFor(
+      async () => (await boxes()).thumbBox.y === top.thumbBox.y,
+      'the thumb back at the start of its track',
+    );
+    await page.keyboard.press('Escape');
+    await menu.waitFor({ state: 'detached' });
+    await page.keyboard.press('Escape');
+    await page.locator('.viewer').waitFor({ state: 'detached' });
+    fs.rmSync(path.join(opened, 'menu.ts'));
+    await waitFor(
+      async () => !(await rowNames()).includes('menu.ts'),
+      'menu.ts to be gone from the list',
+    );
+  });
+
   test('colors the code of a file in any encoding, from the first line of one with a byte order mark', async () => {
     const code = ['const a = 1;', "let b = 'é';"].join(String.fromCharCode(10));
     const files = {

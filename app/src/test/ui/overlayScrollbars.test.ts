@@ -10,6 +10,7 @@ import {
   overlayScrollbarClass,
   scrolledScroller,
   thumbBox,
+  trackOf,
   scrollPerPixel,
   sidewaysMetrics,
   sidewaysScroll,
@@ -155,6 +156,46 @@ suite('Overlay scrollbars', () => {
       width: 200,
       height: 25,
     });
+  });
+
+  test('keeps the thumb off the rounded corners of an area and off what covers an end of it, as the filter held atop a menu, sizing and dragging it along the track left', () => {
+    const inset = {
+      ...scroller,
+      track: { top: 40, bottom: 6, left: 6, right: 6 },
+    };
+
+    assert.deepStrictEqual(thumbBox('vertical', inset, 25), {
+      left: 101 + 400 - 25,
+      top: 51 + 40 + 113.5,
+      width: 25,
+      height: 227,
+    });
+    assert.deepStrictEqual(thumbBox('horizontal', inset, 25), {
+      left: 101 + 6 + 97,
+      top: 51 + 500 - 25,
+      width: 194,
+      height: 25,
+    });
+    const drag = dragFrom('vertical', inset, { clientX: 0, clientY: 200 });
+    assert.strictEqual(
+      draggedScroll('vertical', drag, { clientX: 0, clientY: 427 }),
+      250 + 500,
+    );
+  });
+
+  test('takes the track of an area from the corners its radius rounds and the ends its scroll padding covers, whichever reaches further', () => {
+    assert.deepStrictEqual(
+      trackOf({
+        scrollPaddingTop: '40px',
+        scrollPaddingBottom: 'auto',
+        scrollPaddingLeft: '0px',
+        scrollPaddingRight: '0px',
+        borderTopRightRadius: '6px',
+        borderBottomRightRadius: '6px',
+        borderBottomLeftRadius: '4px',
+      }),
+      { top: 40, bottom: 6, left: 4, right: 6 },
+    );
   });
 
   test('places no thumb along an axis that fits', () => {

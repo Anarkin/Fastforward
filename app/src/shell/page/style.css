@@ -591,10 +591,12 @@ body {
 }
 
 .menu.filtered-menu {
+  --menu-filter-height: 34px;
   box-sizing: border-box;
   max-height: min(480px, 70vh);
   padding-top: 0;
   overflow-y: auto;
+  scroll-padding-top: calc(var(--menu-filter-height) + 4px);
 }
 
 .menu-filter {
@@ -604,8 +606,9 @@ body {
   display: block;
   box-sizing: border-box;
   width: 100%;
+  height: var(--menu-filter-height);
   margin: 0 0 4px;
-  padding: 8px 10px 6px;
+  padding: 2px 10px 0;
   color: var(--color-foreground);
   background: var(--color-panel-background);
   border: none;
