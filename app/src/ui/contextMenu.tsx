@@ -180,11 +180,19 @@ function menuItems(menu: Element | null): HTMLElement[] {
 export function useMenuFocus(
   menu: React.RefObject<HTMLElement | null>,
   focusFirst = true,
+  focusOnOpen?: React.RefObject<HTMLElement | null>,
 ): void {
+  const before = useRef<Element | null>(null);
+  useLayoutEffect(() => {
+    if (focusOnOpen) {
+      before.current = document.activeElement;
+      focusOnOpen.current?.focus();
+    }
+  }, [focusOnOpen]);
   useEffect(() => {
     const element = menu.current;
-    const previous = document.activeElement;
-    if (focusFirst) {
+    const previous = focusOnOpen ? before.current : document.activeElement;
+    if (focusFirst && !focusOnOpen) {
       menuItems(element).at(0)?.focus();
     }
     return () => {
@@ -198,7 +206,7 @@ export function useMenuFocus(
         previous.focus();
       }
     };
-  }, [menu, focusFirst]);
+  }, [menu, focusFirst, focusOnOpen]);
 }
 
 export function accessKeyOf(press: KeyPress): string | undefined {
@@ -319,7 +327,11 @@ export function MenuItems({
               ref={(button) => {
                 entries.current[index] = button;
               }}
-              onMouseEnter={(event) => event.currentTarget.focus()}
+              onMouseMove={(event) => {
+                if (document.activeElement !== event.currentTarget) {
+                  event.currentTarget.focus();
+                }
+              }}
               className={`menu-item ${item.submenu ? 'has-submenu' : ''}`}
               role={
                 item.checked === undefined ? 'menuitem' : 'menuitemcheckbox'

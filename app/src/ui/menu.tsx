@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { keymap, letterTyped, pressedAlone } from '../shell/shared/keymap';
 import {
   MenuItems,
@@ -133,8 +133,7 @@ function FilteredDropdown({
   const input = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   useDismiss(container, onClose);
-  useMenuFocus(menu, false);
-  useEffect(() => input.current?.focus(), []);
+  useMenuFocus(menu, false, input);
   const firstItem = () =>
     menu.current?.querySelector<HTMLButtonElement>(
       ':scope > .menu-entry > .menu-item:not(:disabled)',

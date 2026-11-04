@@ -159,7 +159,7 @@ suite('Menu button', () => {
     assert.deepStrictEqual(labelsOf(filteredItems(items, 'java ts')), []);
   });
 
-  test('opens a menu with a filter with the focus in the filter, narrows the items as it is typed in, chooses the first left on Enter and moves into them on Down', async () => {
+  test('opens a menu with a filter with the focus in the filter, narrows the items as it is typed in, chooses the first left on Enter and moves into them on Down, an item taking the focus only once the pointer moves over it rather than once the list moves under the pointer', async () => {
     const chosen: string[] = [];
     const items = ['Plain Text', 'JavaScript', 'TypeScript'].map((label) => ({
       label,
@@ -203,6 +203,22 @@ suite('Menu button', () => {
           'JavaScript',
         );
 
+        const [first, second] =
+          main.querySelectorAll<HTMLButtonElement>('.menu .menu-item');
+        assert.ok(first && second);
+        await act(async () => filter.focus());
+        await act(async () =>
+          second.dispatchEvent(
+            new window.MouseEvent('mouseover', { bubbles: true }),
+          ),
+        );
+        assert.strictEqual(window.document.activeElement, filter);
+        await act(async () =>
+          second.dispatchEvent(
+            new window.MouseEvent('mousemove', { bubbles: true }),
+          ),
+        );
+        assert.strictEqual(window.document.activeElement, second);
         await act(async () => filter.focus());
         await act(async () =>
           filter.dispatchEvent(
@@ -214,6 +230,36 @@ suite('Menu button', () => {
         );
         assert.deepStrictEqual(chosen, ['JavaScript']);
         assert.strictEqual(main.querySelector('.menu'), null);
+      },
+    );
+  });
+  test('gives the focus back to its button once a menu with a filter closes, as it held it before the filter took it', async () => {
+    await rendered(
+      <MenuButton
+        title="Language"
+        label="Auto"
+        filter="Find"
+        items={[{ label: 'Plain Text', onClick: () => {} }]}
+      />,
+      async (main, window) => {
+        const trigger = main.querySelector<HTMLButtonElement>(
+          '.menu-button-trigger',
+        );
+        assert.ok(trigger);
+        await act(async () => trigger.focus());
+        await act(async () => trigger.click());
+        const filter = main.querySelector<HTMLInputElement>('.menu-filter');
+        assert.strictEqual(window.document.activeElement, filter);
+        await act(async () =>
+          filter?.dispatchEvent(
+            new window.KeyboardEvent('keydown', {
+              key: 'Escape',
+              bubbles: true,
+            }),
+          ),
+        );
+        assert.strictEqual(main.querySelector('.menu'), null);
+        assert.strictEqual(window.document.activeElement, trigger);
       },
     );
   });
