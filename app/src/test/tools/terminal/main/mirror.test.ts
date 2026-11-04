@@ -82,4 +82,20 @@ suite('Terminal screen copy', () => {
     assert.ok(!mirror.serialize().includes('\x1b]'), mirror.serialize());
     mirror.dispose();
   });
+
+  test('sends the encoding of the mouse with the screen, as ConPTY reads only SGR mouse reports, which Far Manager asks for', async () => {
+    const mirror = createMirror({ columns: 20, rows: 3, scrollback: 2 });
+    await written(mirror, '\x1b[?1003;1006h');
+    assert.ok(
+      mirror.serialize().endsWith('\x1b[?1003h\x1b[?1006h'),
+      JSON.stringify(mirror.serialize()),
+    );
+    await written(mirror, '\x1b[?1016h');
+    assert.ok(mirror.serialize().endsWith('\x1b[?1016h'));
+    await written(mirror, '\x1b[?1006l');
+    assert.ok(mirror.serialize().endsWith('\x1b[?1003h'));
+    await written(mirror, '\x1b[?1006h\x1bc');
+    assert.ok(!mirror.serialize().includes('\x1b[?10'));
+    mirror.dispose();
+  });
 });

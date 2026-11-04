@@ -72,6 +72,27 @@ function trackColors(terminal: Terminal): () => string {
     ].join('');
 }
 
+const mouseEncodings = [1006, 1016];
+
+function trackMouseEncoding(terminal: Terminal): () => string {
+  let encoding: number | undefined;
+  const modes = (set: boolean) => (params: (number | number[])[]) => {
+    for (const mode of params) {
+      if (typeof mode === 'number' && mouseEncodings.includes(mode)) {
+        encoding = set ? mode : undefined;
+      }
+    }
+    return false;
+  };
+  terminal.parser.registerCsiHandler({ prefix: '?', final: 'h' }, modes(true));
+  terminal.parser.registerCsiHandler({ prefix: '?', final: 'l' }, modes(false));
+  terminal.parser.registerEscHandler({ final: 'c' }, () => {
+    encoding = undefined;
+    return false;
+  });
+  return () => (encoding === undefined ? '' : `\x1b[?${encoding}h`);
+}
+
 export function createMirror({
   columns,
   rows,
@@ -95,9 +116,10 @@ export function createMirror({
   terminal.loadAddon(new Unicode11Addon());
   terminal.unicode.activeVersion = '11';
   const colors = trackColors(terminal);
+  const mouseEncoding = trackMouseEncoding(terminal);
   return {
     terminal,
-    serialize: () => colors() + serializer.serialize(),
+    serialize: () => colors() + serializer.serialize() + mouseEncoding(),
     scrollback: (lines) => {
       terminal.options.scrollback = lines;
     },
