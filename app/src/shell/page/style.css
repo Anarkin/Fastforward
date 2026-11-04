@@ -558,7 +558,6 @@ body {
 
 .menu-button-label {
   overflow: hidden;
-  font-size: calc(var(--font-size) * 0.85);
   white-space: nowrap;
   text-overflow: ellipsis;
 }

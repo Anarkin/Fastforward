@@ -32,6 +32,7 @@ import { ImageDiff } from '../../../tools/git/page/imagePreview';
 import { AboutPopup, CopyButton } from '../../../shell/page/aboutPopup';
 import { TabBar } from '../../../shell/page/tabBar';
 import { ContextMenu } from '../../../ui/contextMenu';
+import { MenuButton } from '../../../ui/menu';
 import { Crash } from '../../../shell/page/errorBoundary';
 import { overlayScrollbarClass } from '../../../ui/overlayScrollbars';
 import {
@@ -535,6 +536,24 @@ suite('Style', () => {
         'var(--color-commander-icon)',
         'var(--color-terminal-icon)',
       ],
+    );
+  });
+
+  test('writes the choice shown on a dropdown button in the font size of the settings, as the text around it', () => {
+    const button = withClass(
+      rendered(
+        createElement(MenuButton, {
+          title: 'Encoding',
+          label: 'UTF-8',
+          items: [],
+        }),
+      ),
+      'menu-button-trigger',
+    );
+    assert.strictEqual(cascaded(button, 'font'), 'inherit');
+    assert.strictEqual(
+      cascaded(withClass(button, 'menu-button-label'), 'font-size'),
+      undefined,
     );
   });
 
