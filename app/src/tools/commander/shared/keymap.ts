@@ -147,8 +147,8 @@ export const viewerKeymap = {
     'Shift+Wheel': true,
   }),
   viewAs: bind<ViewMode>('Viewer', strings.actions.viewAs, {
-    '1': 'text',
-    '2': 'hex',
+    '1': 'hex',
+    '2': 'text',
     '3': 'preview',
   }),
   encoding: bind('Viewer', strings.actions.chooseEncoding, { E: true }),

@@ -57,8 +57,8 @@ const modes: readonly {
   readonly title: string;
   readonly icon: React.ReactNode;
 }[] = [
-  { mode: 'text', title: strings.commander.viewText, icon: <TextIcon /> },
   { mode: 'hex', title: strings.commander.viewHex, icon: <HexIcon /> },
+  { mode: 'text', title: strings.commander.viewText, icon: <TextIcon /> },
   {
     mode: 'preview',
     title: strings.commander.viewPreview,

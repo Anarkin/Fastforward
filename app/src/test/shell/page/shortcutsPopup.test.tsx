@@ -78,7 +78,7 @@ suite('Shortcuts popup', () => {
         'Scroll by a row, a page, or to the start or end',
         'Scroll sideways',
         'Scroll sideways with the wheel',
-        'View the file as text, hex or a preview',
+        'View the file as hex, text or a preview',
         'Choose the encoding of the text',
         'Choose the language the text is colored in',
         'Turn line wrapping on or off',

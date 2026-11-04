@@ -260,7 +260,7 @@ export const strings = {
       'Compare the marked files, or the selected file of each side, in a git tab',
     closeViewer: 'Close the file being viewed',
     closeCompare: 'Close the files being compared',
-    viewAs: 'View the file as text, hex or a preview',
+    viewAs: 'View the file as hex, text or a preview',
     scrollFile: 'Scroll by a row, a page, or to the start or end',
     scrollSideways: 'Scroll sideways',
     chooseEncoding: 'Choose the encoding of the text',

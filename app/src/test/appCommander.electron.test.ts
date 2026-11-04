@@ -1458,7 +1458,7 @@ suite('App commander', () => {
     }, 'the files to be gone from the list');
   });
 
-  test('shows a binary file in hex, 16 bytes a row, to its last row with End, and switches to text and back with 1 and 2 or the buttons', async () => {
+  test('shows a binary file in hex, 16 bytes a row, to its last row with End, and switches to text and back with 2 and 1 or the buttons', async () => {
     fs.writeFileSync(
       path.join(opened, 'data.bin'),
       Buffer.from(Array.from({ length: 65536 }, (_, index) => index % 256)),
@@ -1474,7 +1474,7 @@ suite('App commander', () => {
       'a binary file to open as text',
     );
     await waitForFocus(page.locator('.viewer-body'), 'the viewer');
-    await page.keyboard.press('2');
+    await page.keyboard.press('1');
     await waitFor(
       async () =>
         (await firstViewerRow()) ===
@@ -1513,7 +1513,7 @@ suite('App commander', () => {
       .first()
       .waitFor({ state: 'detached' });
 
-    await page.keyboard.press('1');
+    await page.keyboard.press('2');
     await waitFor(
       async () => (await pressedMode()) === 'Text',
       'the text view',
@@ -1526,7 +1526,7 @@ suite('App commander', () => {
         ),
       'the bytes as text, one to a character, a dot for each with no glyph',
     );
-    await page.keyboard.press('2');
+    await page.keyboard.press('1');
     await waitFor(async () => (await pressedMode()) === 'Hex', 'the hex view');
     await page.locator('.viewer .segmented [title="Text"]').click();
     await waitFor(
@@ -1552,7 +1552,7 @@ suite('App commander', () => {
     }, 'the files to be gone from the list');
   });
 
-  test('previews an image, an SVG and Markdown with its images, switching to the source with 1, and offers no preview for other files', async () => {
+  test('previews an image, an SVG and Markdown with its images, offering hex, text and the preview from the least to the most particular, switching to the source with 2, and offers no preview for other files', async () => {
     const dot = Buffer.from(
       'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
       'base64',
@@ -1599,7 +1599,15 @@ suite('App commander', () => {
       async () => (await imageWidth('.viewer-image img')) === 10,
       'the SVG drawn',
     );
-    await page.keyboard.press('1');
+    assert.deepStrictEqual(
+      await page
+        .locator('.viewer .segmented button')
+        .evaluateAll((buttons) =>
+          buttons.map((button) => button.getAttribute('title')),
+        ),
+      ['Hex', 'Text', 'Preview'],
+    );
+    await page.keyboard.press('2');
     await waitFor(
       async () =>
         (
