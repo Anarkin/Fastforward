@@ -110,6 +110,51 @@ suite('Settings', () => {
     );
   });
 
+  test('takes a list of objects whose every item has the keys of the first default item, each of its kind', () => {
+    const fileColors = [
+      { extensions: ['png', 'jpg'], colors: { light: '#a0a', dark: '#f0f' } },
+    ];
+    assert.deepStrictEqual(
+      mergeSettings(defaults, { tools: { commander: { fileColors } } }),
+      {
+        settings: {
+          ...defaults,
+          tools: {
+            ...defaults.tools,
+            commander: { ...defaults.tools.commander, fileColors },
+          },
+        },
+        problems: [],
+      },
+    );
+  });
+
+  test('keeps the default of a list of objects with an item missing a key, having one it does not know or one of the wrong kind, and says why', () => {
+    const { settings, problems } = mergeSettings(defaults, {
+      tools: {
+        commander: {
+          fileColors: [
+            { extensions: ['png'], colors: { light: '#a0a' } },
+            { extensions: 'svg', colors: { light: '#a0a', dark: '#f0f' } },
+            {
+              extensions: ['gif'],
+              colors: { light: '#a0a', dark: '#f0f' },
+              bold: true,
+            },
+            'zip',
+          ],
+        },
+      },
+    });
+    assert.deepStrictEqual(settings, defaults);
+    assert.deepStrictEqual(problems, [
+      'Missing setting "tools.commander.fileColors[0].colors.dark"',
+      '"tools.commander.fileColors[1].extensions" should be a list of strings',
+      'Unknown setting "tools.commander.fileColors[2].bold"',
+      '"tools.commander.fileColors[3]" should be an object',
+    ]);
+  });
+
   test('knows no setting by a name every object has', () => {
     const { settings, problems } = mergeSettings(
       defaults,

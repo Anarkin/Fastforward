@@ -75,6 +75,40 @@ function sameKind(fallback: unknown, value: unknown): boolean {
 
 const choices: ReadonlyMap<string, readonly string[]> = toolSettingChoices;
 
+function itemProblems(template: Json, item: unknown, name: string): string[] {
+  if (!isObject(item)) {
+    return [strings.settings.shouldBe.object(name)];
+  }
+  const unknown = Object.keys(item)
+    .filter((key) => !Object.hasOwn(template, key))
+    .map((key) => strings.settings.unknown(`${name}.${key}`));
+  const known = Object.entries(template).flatMap(([key, fallback]) => {
+    const inner = `${name}.${key}`;
+    if (!Object.hasOwn(item, key)) {
+      return [strings.settings.missing(inner)];
+    }
+    const value = item[key];
+    if (!sameKind(fallback, value)) {
+      return [wrongKind(inner, fallback)];
+    }
+    return isObject(fallback) ? itemProblems(fallback, value, inner) : [];
+  });
+  return [...known, ...unknown];
+}
+
+function listProblems(
+  template: Json,
+  value: unknown,
+  name: string,
+  fallback: unknown,
+): string[] {
+  return Array.isArray(value)
+    ? value.flatMap((item, index) =>
+        itemProblems(template, item, `${name}[${index}]`),
+      )
+    : [wrongKind(name, fallback)];
+}
+
 function merge<T extends object>(
   defaults: T,
   overrides: Json,
@@ -91,7 +125,15 @@ function merge<T extends object>(
     }
     const fallback = fallbacks[key];
     const allowed = choices.get(name);
-    if (!sameKind(fallback, value)) {
+    const template: unknown = Array.isArray(fallback) ? fallback[0] : undefined;
+    if (isObject(template)) {
+      const issues = listProblems(template, value, name, fallback);
+      if (issues.length > 0) {
+        problems.push(...issues);
+      } else {
+        accepted[key] = value;
+      }
+    } else if (!sameKind(fallback, value)) {
       problems.push(wrongKind(name, fallback));
     } else if (allowed && !allowed.some((choice) => choice === value)) {
       problems.push(strings.settings.shouldBeOneOf(name, allowed));

@@ -139,6 +139,10 @@
   padding: 0 8px;
 }
 
+.row.commander-row.colored {
+  color: var(--file-color);
+}
+
 .row.commander-row.hidden {
   color: var(--muted-foreground);
 }

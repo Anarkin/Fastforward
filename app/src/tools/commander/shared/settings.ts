@@ -17,12 +17,18 @@ export const maxColumnWidth = 100;
 
 export type Sorts = Readonly<Record<'left' | 'right', Sort>>;
 
+export interface FileColor {
+  readonly extensions: readonly string[];
+  readonly colors: { readonly light: string; readonly dark: string };
+}
+
 export interface CommanderSettings {
   readonly showHidden: boolean;
   readonly sort: Sorts;
   readonly columns: ColumnWidths;
   readonly thumbnailSize: number;
   readonly thumbnailCacheMegabytes: number;
+  readonly fileColors: readonly FileColor[];
 }
 
 export const layouts = ['details', 'thumbnails'] as const;

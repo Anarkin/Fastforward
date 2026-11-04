@@ -30,6 +30,7 @@ const header = (elevated: boolean) =>
         pane={pane(elevated)}
         layout="details"
         thumbnailSize={144}
+        fileColors={new Map()}
         onLayout={noop}
         onThumbnail={noop}
         columns={{ extension: 10, size: 15, date: 16 }}

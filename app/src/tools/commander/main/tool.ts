@@ -1396,7 +1396,8 @@ export class CommanderTool implements Tool<'commander'> {
   }
 
   private postSettings(page: Page): void {
-    const { showHidden, sort, columns, thumbnailSize } = this.access.settings();
+    const { showHidden, sort, columns, thumbnailSize, fileColors } =
+      this.access.settings();
     this.post(page, {
       type: 'settings',
       showHidden,
@@ -1406,6 +1407,7 @@ export class CommanderTool implements Tool<'commander'> {
       canElevate: this.access.elevate !== undefined,
       layouts: this.access.layouts(),
       thumbnailSize,
+      fileColors,
     });
   }
 

@@ -13,6 +13,11 @@ import {
   type Sorts,
 } from '../shared/settings';
 import { rowsOf, selectionAfter, type Row, type Selection } from './listing';
+import {
+  fileColorsByExtension,
+  noFileColors,
+  type FileColorsByExtension,
+} from './fileColors';
 
 interface Listed {
   readonly folder: string;
@@ -54,6 +59,7 @@ export interface CommanderView {
   readonly canElevate: boolean;
   readonly layouts: Layouts;
   readonly thumbnailSize: number;
+  readonly fileColors: FileColorsByExtension;
   readonly active: Side;
   readonly panes: Readonly<Record<Side, PaneView | undefined>>;
   readonly kept: ReadonlyMap<string, KeptTab>;
@@ -87,6 +93,7 @@ export const emptyView: CommanderView = {
   canElevate: false,
   layouts: defaultLayouts,
   thumbnailSize: 144,
+  fileColors: noFileColors,
   active: 'right',
   panes: { left: undefined, right: undefined },
   kept: new Map(),
@@ -199,6 +206,7 @@ export function reduceView(
         canElevate: action.canElevate,
         layouts: action.layouts,
         thumbnailSize: action.thumbnailSize,
+        fileColors: fileColorsByExtension(action.fileColors),
       };
       return sides.reduce((next, side) => {
         const pane = view.panes[side];

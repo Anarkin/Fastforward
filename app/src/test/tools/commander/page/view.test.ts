@@ -57,6 +57,7 @@ const sortedBy = (left: 'name' | 'size'): ViewAction => ({
   canElevate: false,
   layouts: defaultLayouts,
   thumbnailSize: 144,
+  fileColors: [],
 });
 
 suite('Commander view', () => {
@@ -110,6 +111,7 @@ suite('Commander view', () => {
         canElevate: false,
         layouts: defaultLayouts,
         thumbnailSize: 144,
+        fileColors: [],
       },
     );
 

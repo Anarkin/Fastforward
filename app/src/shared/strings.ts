@@ -773,6 +773,7 @@ export const strings = {
     invalid: (reason: string) =>
       `The user settings are not valid JSON: ${reason}`,
     unknown: (name: string) => `Unknown setting "${name}"`,
+    missing: (name: string) => `Missing setting "${name}"`,
     shouldBe: {
       boolean: (name: string) => `"${name}" should be a boolean`,
       number: (name: string) => `"${name}" should be a number`,

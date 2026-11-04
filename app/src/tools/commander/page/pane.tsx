@@ -5,6 +5,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
 } from 'react';
 import { moveInGrid, tileColumns, tileWidthOf } from './tiles';
 import { ScrollPlaces } from './scrollPlaces';
@@ -55,12 +56,14 @@ import { MenuButton } from '../../../ui/menu';
 import { keyPressed } from '../../../ui/shortcuts';
 import { VirtualRows } from '../../../ui/virtualRows';
 import { strings } from '../../../shared/strings';
+import { fileColorOf, type FileColorsByExtension } from './fileColors';
 
 declare module 'react' {
   interface CSSProperties {
     readonly '--commander-extension'?: string;
     readonly '--commander-size'?: string;
     readonly '--commander-date'?: string;
+    readonly '--file-color'?: string;
   }
 }
 
@@ -147,6 +150,7 @@ export function Pane({
   pane,
   layout,
   thumbnailSize,
+  fileColors,
   onLayout,
   onThumbnail,
   columns,
@@ -176,6 +180,7 @@ export function Pane({
   pane: PaneView | undefined;
   layout: Layout;
   thumbnailSize: number;
+  fileColors: FileColorsByExtension;
   onLayout: (layout: Layout) => void;
   onThumbnail: (
     name: string,
@@ -369,8 +374,14 @@ export function Pane({
     [rows, across],
   );
 
+  const fileColor = (row: Row) =>
+    row.entry === undefined ? undefined : fileColorOf(row.entry, fileColors);
   const rowClass = (row: Row) =>
-    `row commander-row${row.key === pane?.selected ? ' selected' : ''}${marked?.has(row.key) ? ' marked' : ''}${row.entry?.hidden ? ' hidden' : ''}`;
+    `row commander-row${row.key === pane?.selected ? ' selected' : ''}${marked?.has(row.key) ? ' marked' : ''}${row.entry?.hidden ? ' hidden' : ''}${fileColor(row) === undefined ? '' : ' colored'}`;
+  const colorStyle = (row: Row): CSSProperties => {
+    const color = fileColor(row);
+    return color === undefined ? {} : { '--file-color': color };
+  };
   const iconSource = (row: Row): IconSource | undefined =>
     tab === undefined ||
     pane === undefined ||
@@ -416,6 +427,7 @@ export function Pane({
     return (
       <div
         className={`${rowClass(row)} commander-line`}
+        style={colorStyle(row)}
         {...itemEvents(row, index)}
       >
         <span className="commander-icon">
@@ -437,7 +449,7 @@ export function Pane({
     <div
       key={row.key}
       className={`${rowClass(row)} commander-tile`}
-      style={{ width: tileWidth }}
+      style={{ ...colorStyle(row), width: tileWidth }}
       {...itemEvents(row, index)}
     >
       <div className="commander-thumbnail" style={{ height: thumbnailSize }}>

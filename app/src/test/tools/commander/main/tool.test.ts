@@ -119,6 +119,7 @@ function commander(
     columns: defaultColumns,
     thumbnailSize: 144,
     thumbnailCacheMegabytes: 8192,
+    fileColors: [],
   };
   let layouts: Layouts = { left: 'details', right: 'details' };
   const thumbnails = new Map<string, Uint8Array>();
@@ -2114,6 +2115,7 @@ suite('Commander tool', () => {
       canElevate: false,
       layouts: { left: 'details', right: 'details' },
       thumbnailSize: 144,
+      fileColors: [],
     });
   });
 

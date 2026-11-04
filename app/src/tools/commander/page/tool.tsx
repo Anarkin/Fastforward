@@ -244,6 +244,7 @@ export function CommanderTool({
             pane={view.panes[side]}
             layout={view.layouts[side]}
             thumbnailSize={view.thumbnailSize}
+            fileColors={view.fileColors}
             onLayout={(layout) => chooseLayout(side, layout)}
             onThumbnail={(name, box, pixelRatio, made) => {
               const folder = view.panes[side]?.folder;

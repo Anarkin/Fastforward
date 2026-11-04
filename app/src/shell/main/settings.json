@@ -88,6 +88,39 @@
       "columns": { "extension": 10, "size": 15, "date": 18 },
       "thumbnailSize": 144,
       "thumbnailCacheMegabytes": 8192,
+      "fileColors": [
+        {
+          "extensions": [
+            "exe",
+            "com",
+            "msi",
+            "msix",
+            "msixbundle",
+            "appx",
+            "appxbundle",
+            "appimage",
+            "bat",
+            "cmd",
+            "ps1",
+            "sh",
+            "vbs",
+            "wsf"
+          ],
+          "colors": { "light": "#13692c", "dark": "#5fd068" }
+        },
+        {
+          "extensions": [
+            "md",
+            "markdown",
+            "rst",
+            "adoc",
+            "asciidoc",
+            "txt",
+            "org"
+          ],
+          "colors": { "light": "#874c00", "dark": "#f0a838" }
+        }
+      ],
       "colors": {
         "light": {
           "icon": "#1a5fb4"

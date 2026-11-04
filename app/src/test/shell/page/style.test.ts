@@ -486,6 +486,15 @@ function tagHoleReach(tag: MarkupElement): number {
   return Number(hole[1]) + Number(hole[2]);
 }
 
+function commanderRowColor(className: string): string | undefined {
+  return cascaded(
+    rendered(
+      createElement('div', { className: `row commander-row ${className}` }),
+    ),
+    'color',
+  );
+}
+
 suite('Style', () => {
   test("keeps the commit column's title clear of its buttons and the gaps between them", () => {
     const title = commitColumnTitle(0);
@@ -526,6 +535,22 @@ suite('Style', () => {
         'var(--color-commander-icon)',
         'var(--color-terminal-icon)',
       ],
+    );
+  });
+
+  test('colors the files of the commander with the color of their group, the selected row too, leaving hidden rows muted and marked rows red', () => {
+    assert.strictEqual(commanderRowColor('colored'), 'var(--file-color)');
+    assert.strictEqual(
+      commanderRowColor('selected colored'),
+      'var(--file-color)',
+    );
+    assert.strictEqual(
+      commanderRowColor('hidden colored'),
+      'var(--muted-foreground)',
+    );
+    assert.strictEqual(
+      commanderRowColor('marked colored'),
+      'var(--color-error-foreground)',
     );
   });
 
