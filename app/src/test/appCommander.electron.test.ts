@@ -2412,7 +2412,7 @@ suite('App commander', () => {
     );
   });
 
-  test('reads a file in the encoding its byte order mark names, and in the one chosen from the menu E opens, staying where it was', async () => {
+  test('reads a file in the encoding its byte order mark names, and in the one chosen from the menu E opens, found by what is typed, staying where it was', async () => {
     const text = Array.from(
       { length: 300 },
       (_, index) => `ligne ${index} é`,
@@ -2451,6 +2451,17 @@ suite('App commander', () => {
     await waitFor(
       async () => (await rowTexts()).join('').includes('2.9.9. .é.'),
       'the end of the file as bytes',
+    );
+    await page.keyboard.press('e');
+    await page.locator('.viewer-encoding .menu-filter').waitFor();
+    await page.keyboard.type('latin2');
+    await page.keyboard.press('Enter');
+    await waitFor(
+      async () =>
+        (await page
+          .locator('.viewer-encoding .menu-button-label')
+          .textContent()) === '8859-2',
+      'the encoding found by its other name chosen',
     );
     await page.keyboard.press('Escape');
     await page.locator('.viewer').waitFor({ state: 'detached' });

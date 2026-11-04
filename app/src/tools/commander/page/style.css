@@ -312,6 +312,10 @@
   );
 }
 
+.viewer-encoding .menu-button-trigger {
+  max-width: var(--widest-encoding-button);
+}
+
 .viewer-actions .language-button .menu-button-trigger {
   max-width: var(--widest-language-button);
 }

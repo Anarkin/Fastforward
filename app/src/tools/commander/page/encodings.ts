@@ -1,12 +1,86 @@
 import { strings } from '../../../shared/strings';
 import type { ContextMenuItem } from '../../../ui/contextMenu';
-import { textEncodings, type TextEncoding } from '../shared/protocol';
+import type { TextEncoding } from '../shared/protocol';
 
 export type ShownEncoding = TextEncoding | 'bytes';
 
 export type EncodingChoice = ShownEncoding | 'auto';
 
-const encodingsShown: readonly ShownEncoding[] = ['bytes', ...textEncodings];
+const encodingGroups: readonly (readonly ShownEncoding[])[] = [
+  ['bytes'],
+  ['utf-8', 'utf-16be', 'utf-16le'],
+  [
+    'windows-874',
+    'windows-1250',
+    'windows-1251',
+    'windows-1252',
+    'windows-1253',
+    'windows-1254',
+    'windows-1255',
+    'windows-1256',
+    'windows-1257',
+    'windows-1258',
+  ],
+  [
+    'iso-8859-2',
+    'iso-8859-3',
+    'iso-8859-4',
+    'iso-8859-5',
+    'iso-8859-6',
+    'iso-8859-7',
+    'iso-8859-8',
+    'iso-8859-8-i',
+    'iso-8859-10',
+    'iso-8859-13',
+    'iso-8859-14',
+    'iso-8859-15',
+    'iso-8859-16',
+  ],
+  ['ibm866', 'koi8-r', 'koi8-u'],
+  ['x-mac-cyrillic', 'macintosh'],
+];
+
+const codePages: Partial<Record<ShownEncoding, number>> = {
+  'utf-8': 65001,
+  'utf-16le': 1200,
+  'utf-16be': 1201,
+  'iso-8859-8-i': 38598,
+  'koi8-r': 20866,
+  'koi8-u': 21866,
+  ibm866: 866,
+  macintosh: 10000,
+  'x-mac-cyrillic': 10007,
+};
+
+const latinNumbers: Partial<Record<ShownEncoding, number>> = {
+  'iso-8859-2': 2,
+  'iso-8859-3': 3,
+  'iso-8859-4': 4,
+  'iso-8859-10': 6,
+  'iso-8859-13': 7,
+  'iso-8859-14': 8,
+  'iso-8859-15': 9,
+  'iso-8859-16': 10,
+};
+
+function codePageOf(encoding: ShownEncoding): number | undefined {
+  const windows = /^windows-(\d+)$/.exec(encoding);
+  const iso = /^iso-8859-(\d+)$/.exec(encoding);
+  if (windows) {
+    return Number(windows[1]);
+  }
+  return iso ? 28590 + Number(iso[1]) : codePages[encoding];
+}
+
+function keywordsOf(encoding: ShownEncoding): string {
+  const codePage = codePageOf(encoding);
+  const latin = latinNumbers[encoding];
+  return [
+    encoding,
+    ...(codePage === undefined ? [] : [`${codePage}`, `cp${codePage}`]),
+    ...(latin === undefined ? [] : [`latin${latin}`]),
+  ].join(' ');
+}
 
 export function shownEncoding(
   choice: EncodingChoice,
@@ -28,14 +102,18 @@ export function encodingMenu(
   return [
     {
       label: choice === 'auto' ? autoChoice(encodings[shown]) : encodings.auto,
+      keywords: choice === 'auto' ? keywordsOf(shown) : undefined,
       checked: choice === 'auto',
       onClick: () => choose('auto'),
     },
-    { separator: true },
-    ...encodingsShown.map((each) => ({
-      label: encodings[each],
-      checked: choice === each,
-      onClick: () => choose(each),
-    })),
+    ...encodingGroups.flatMap((group): ContextMenuItem[] => [
+      { separator: true },
+      ...group.map((each) => ({
+        label: encodings[each],
+        keywords: keywordsOf(each),
+        checked: choice === each,
+        onClick: () => choose(each),
+      })),
+    ]),
   ];
 }

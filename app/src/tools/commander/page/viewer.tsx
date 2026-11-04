@@ -239,6 +239,7 @@ export function Viewer({
                   title={strings.commander.encoding}
                   trigger={encodingTrigger}
                   label={strings.commander.encodingShort[shown]}
+                  filter={strings.common.findEncoding}
                   items={encodingMenu(encoding, shown, setEncoding)}
                 />
               </div>
