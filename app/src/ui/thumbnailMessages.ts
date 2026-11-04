@@ -3,6 +3,7 @@ export interface ToThumbnailWorker {
   readonly url: string;
   readonly box: number;
   readonly pixelRatio: number;
+  readonly filling: boolean;
 }
 
 export interface MadeThumbnail {
@@ -12,7 +13,10 @@ export interface MadeThumbnail {
   readonly fresh: boolean;
 }
 
+export type FillOutcome = 'stored' | 'online' | 'full';
+
 export interface FromThumbnailWorker {
   readonly id: number;
   readonly made?: MadeThumbnail;
+  readonly outcome?: FillOutcome;
 }

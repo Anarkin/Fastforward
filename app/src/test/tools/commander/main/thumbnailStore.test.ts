@@ -46,7 +46,7 @@ suite('Thumbnail store', () => {
   });
 
   test('deletes the thumbnails asked for least lately once they take more than its limit, keeping the newest', async () => {
-    const store = new ThumbnailStore(folder, 25);
+    const store = new ThumbnailStore(folder, () => 25);
     const old = Date.now() / 1000 - 1000;
     for (const [index, name] of ['a', 'b', 'c'].entries()) {
       await store.write(name.repeat(64), bytes(10));
@@ -76,5 +76,24 @@ suite('Thumbnail store', () => {
     assert.deepStrictEqual(fs.readdirSync(path.dirname(folder)), [
       'Thumbnails',
     ]);
+  });
+
+  test('knows which thumbnails it keeps without reading them, nothing for a name that is no key', async () => {
+    const store = new ThumbnailStore(folder);
+    await store.write('a'.repeat(64), bytes(10));
+    assert.strictEqual(await store.has('a'.repeat(64)), true);
+    assert.strictEqual(await store.has('b'.repeat(64)), false);
+    assert.strictEqual(await store.has('../secret'), false);
+  });
+
+  test('is full once its thumbnails take its limit, read anew each time as the settings may change it, so filling a folder can stop before it deletes what it made', async () => {
+    let limit = 100;
+    const store = new ThumbnailStore(folder, () => limit);
+    assert.strictEqual(await store.full(), false);
+    await store.write('a'.repeat(64), bytes(60));
+    assert.strictEqual(await store.full(), false);
+    limit = 50;
+    assert.strictEqual(await store.full(), true);
+    assert.strictEqual(await new ThumbnailStore(folder, () => 50).full(), true);
   });
 });

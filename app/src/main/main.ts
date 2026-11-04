@@ -104,6 +104,7 @@ import { runsAsAppImage, updateMode, Updates } from './updates';
 
 const dist = __dirname;
 const development = !app.isPackaged;
+const smallestThumbnailCache = 16;
 const boundsKey = 'windowBounds';
 const maximizedKey = 'windowMaximized';
 
@@ -457,7 +458,20 @@ async function start(asked: readonly string[]): Promise<void> {
         os.homedir(),
         process.env,
       ),
+      () =>
+        Math.max(
+          smallestThumbnailCache,
+          userSettings.settings.tools.commander.thumbnailCacheMegabytes,
+        ) *
+        1024 *
+        1024,
     ),
+    ...(process.platform === 'win32' && {
+      streamed: async (file: string) =>
+        (
+          await import('../tools/commander/main/windowsCloudFiles.js')
+        ).streamsFromGoogleDrive(file),
+    }),
     layouts: () => layoutsOf(commanderState.get('layouts')),
     saveLayouts: (chosen) => commanderState.update('layouts', chosen),
     watch: watchFolder,

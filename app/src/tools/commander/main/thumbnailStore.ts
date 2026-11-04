@@ -25,8 +25,25 @@ export class ThumbnailStore {
 
   constructor(
     private readonly folder: string,
-    private readonly limit = largestStore,
+    private readonly limit: () => number = () => largestStore,
   ) {}
+
+  async has(key: string): Promise<boolean> {
+    if (!keyPattern.test(key)) {
+      return false;
+    }
+    try {
+      await fs.promises.access(this.fileOf(key));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async full(): Promise<boolean> {
+    this.stored ??= await this.measured();
+    return this.stored >= this.limit();
+  }
 
   async read(key: string): Promise<Uint8Array | undefined> {
     if (!keyPattern.test(key)) {
@@ -53,7 +70,7 @@ export class ThumbnailStore {
     await fs.promises.writeFile(temporary, bytes);
     await fs.promises.rename(temporary, file);
     this.stored = (this.stored ?? (await this.measured())) + bytes.length;
-    if (this.stored > this.limit) {
+    if (this.stored > this.limit()) {
       await this.trim();
     }
   }
@@ -86,7 +103,7 @@ export class ThumbnailStore {
     const kept = (await this.kept()).toSorted((a, b) => a.used - b.used);
     let stored = kept.reduce((sum, each) => sum + each.size, 0);
     for (const each of kept) {
-      if (stored <= this.limit * keptShare) {
+      if (stored <= this.limit() * keptShare) {
         break;
       }
       await fs.promises.rm(each.file, { force: true });

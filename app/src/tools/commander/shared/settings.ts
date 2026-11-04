@@ -22,6 +22,7 @@ export interface CommanderSettings {
   readonly sort: Sorts;
   readonly columns: ColumnWidths;
   readonly thumbnailSize: number;
+  readonly thumbnailCacheMegabytes: number;
 }
 
 export const layouts = ['details', 'thumbnails'] as const;

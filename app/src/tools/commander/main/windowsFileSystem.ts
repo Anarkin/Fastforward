@@ -18,6 +18,7 @@ const pageSize = 64 * 1024;
 const hiddenAttribute = 0x2;
 const directoryAttribute = 0x10;
 const reparsePointAttribute = 0x400;
+const cloudAttributes = 0x1000 | 0x4_0000 | 0x40_0000;
 const linkTags: ReadonlySet<number> = new Set([
   0xa000_000c, 0xa000_0003, 0xa000_001d,
 ]);
@@ -90,6 +91,7 @@ async function entryOf(folder: string, found: Found): Promise<Entry> {
     (found.attributes & reparsePointAttribute) !== 0 &&
     linkTags.has(found.reparseTag);
   const hidden = (found.attributes & hiddenAttribute) !== 0;
+  const online = (found.attributes & cloudAttributes) !== 0;
   if (!link) {
     return {
       name: found.name,
@@ -98,6 +100,7 @@ async function entryOf(folder: string, found: Found): Promise<Entry> {
       hidden,
       size: isFolder ? undefined : found.size,
       modified: found.modified,
+      ...(online && !isFolder && { online: true }),
     };
   }
   const target = await targetOf(path.join(folder, found.name));

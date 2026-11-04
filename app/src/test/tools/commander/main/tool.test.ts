@@ -35,6 +35,7 @@ import {
 import { strings } from '../../../../shared/strings';
 import {
   boxedThumbnailUrl,
+  filledThumbnailUrl,
   madeThumbnailHeader,
   maxImageSize,
   maxThumbnailBytes,
@@ -117,9 +118,12 @@ function commander(
     sort: defaultSorts,
     columns: defaultColumns,
     thumbnailSize: 144,
+    thumbnailCacheMegabytes: 8192,
   };
   let layouts: Layouts = { left: 'details', right: 'details' };
   const thumbnails = new Map<string, Uint8Array>();
+  const streamed = new Set<string>();
+  const thumbnailsFull = { now: false };
   const fileSystem: FileSystem = {
     list: (each) => {
       const found = listed[each];
@@ -183,11 +187,14 @@ function commander(
     },
     thumbnails: {
       read: (key) => Promise.resolve(thumbnails.get(key)),
+      has: (key) => Promise.resolve(thumbnails.has(key)),
+      full: () => Promise.resolve(thumbnailsFull.now),
       write: (key, made) => {
         thumbnails.set(key, made);
         return Promise.resolve();
       },
     },
+    streamed: (checked) => streamed.has(checked),
     layouts: () => layouts,
     saveLayouts: (chosen) => {
       saved.push(chosen);
@@ -244,6 +251,8 @@ function commander(
     tabs,
     menus,
     thumbnails,
+    streamed,
+    thumbnailsFull,
   };
 }
 
@@ -392,6 +401,54 @@ suite('Commander tool', () => {
         null,
         'the image',
       ]);
+    });
+
+    test('tells a page filling a folder in the background what to make, sparing the images it keeps, those whose data is only online, which reading would download, and every image once its thumbnails are full, yet serves any image to a tile in view', async () => {
+      for (const name of ['kept.png', 'online.png', 'drive.png', 'new.png']) {
+        fs.writeFileSync(path.join(opened, name), name);
+      }
+      const { tool, page, thumbnails, streamed, thumbnailsFull } = commander({
+        [root]: [],
+        [opened]: [
+          file('kept.png'),
+          { ...file('online.png'), online: true },
+          file('drive.png'),
+          file('new.png'),
+        ],
+      });
+      await tool.show(page, { ...tab, root: opened });
+      thumbnails.set(
+        thumbnailKey(path.join(opened, 'kept.png'), 1, 0, 144, 1.5),
+        new Uint8Array(1),
+      );
+      streamed.add(path.join(opened, 'drive.png'));
+      const asked = async (name: string, filling: boolean) => {
+        const url = boxedThumbnailUrl(
+          thumbnailUrl(
+            { tab: '1', side: 'right', folder: opened, name },
+            '1:0',
+          ),
+          144,
+          1.5,
+        );
+        const response = await tool.thumbnail(
+          new URL(
+            `fastforward://app${filling ? filledThumbnailUrl(url) : url}`,
+          ),
+        );
+        await response.body?.cancel();
+        return response.status;
+      };
+
+      assert.strictEqual(await asked('kept.png', true), 204);
+      assert.strictEqual(await asked('online.png', true), 409);
+      assert.strictEqual(await asked('drive.png', true), 409);
+      assert.strictEqual(await asked('new.png', true), 200);
+      assert.strictEqual(await asked('online.png', false), 200);
+      assert.strictEqual(await asked('drive.png', false), 200);
+      thumbnailsFull.now = true;
+      assert.strictEqual(await asked('new.png', true), 507);
+      assert.strictEqual(await asked('new.png', false), 200);
     });
 
     test('moves a side whose folder is gone up to the nearest folder still there, without a word', async () => {

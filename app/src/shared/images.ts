@@ -65,3 +65,13 @@ export function isWebp(bytes: Uint8Array): boolean {
     String.fromCharCode(...bytes.subarray(from, to));
   return bytes.length >= 12 && text(0, 4) === 'RIFF' && text(8, 12) === 'WEBP';
 }
+
+const fillParameter = 'fill';
+
+export function filledThumbnailUrl(url: string): string {
+  return `${url}&${fillParameter}=1`;
+}
+
+export function fillsThumbnail(url: URL): boolean {
+  return url.searchParams.get(fillParameter) === '1';
+}

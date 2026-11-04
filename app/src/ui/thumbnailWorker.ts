@@ -1,4 +1,8 @@
-import { boxedThumbnailUrl, madeThumbnailHeader } from '../shared/images';
+import {
+  boxedThumbnailUrl,
+  filledThumbnailUrl,
+  madeThumbnailHeader,
+} from '../shared/images';
 import {
   halvings,
   jpegScaling,
@@ -9,6 +13,7 @@ import {
   type PixelSize,
 } from './imageSize';
 import type {
+  FillOutcome,
   FromThumbnailWorker,
   MadeThumbnail,
   ToThumbnailWorker,
@@ -138,35 +143,49 @@ async function fromBitmap(
   }
 }
 
+const fillOutcomes: Readonly<Record<number, FillOutcome>> = {
+  204: 'stored',
+  409: 'online',
+  507: 'full',
+};
+
 async function made(
   url: string,
   box: number,
   pixelRatio: number,
-): Promise<MadeThumbnail | undefined> {
-  const response = await fetch(boxedThumbnailUrl(url, box, pixelRatio));
+  filling: boolean,
+): Promise<Omit<FromThumbnailWorker, 'id'>> {
+  const boxed = boxedThumbnailUrl(url, box, pixelRatio);
+  const response = await fetch(filling ? filledThumbnailUrl(boxed) : boxed);
+  const outcome = fillOutcomes[response.status];
+  if (outcome !== undefined) {
+    return { outcome };
+  }
   if (!response.ok) {
-    return undefined;
+    return {};
   }
   const bytes = new Uint8Array(await response.arrayBuffer());
   const image = new Blob([bytes], {
     type: response.headers.get('content-type') ?? '',
   });
   if (response.headers.get(madeThumbnailHeader) !== null) {
-    return stored(image, pixelRatio);
+    return { made: await stored(image, pixelRatio) };
   }
   const jpeg = typeof ImageDecoder === 'function' ? jpegSize(bytes) : undefined;
   const decoded =
     jpeg &&
     (await fromJpeg(bytes, jpeg, box, pixelRatio).catch(() => undefined));
-  return decoded ?? fromBitmap(image, longestSide(bytes), box, pixelRatio);
+  return {
+    made:
+      decoded ?? (await fromBitmap(image, longestSide(bytes), box, pixelRatio)),
+  };
 }
 
-scope.addEventListener('message', ({ data: { id, url, box, pixelRatio } }) => {
-  void made(url, box, pixelRatio)
-    .catch(() => undefined)
-    .then((thumbnail) =>
-      scope.postMessage(
-        thumbnail === undefined ? { id } : { id, made: thumbnail },
-      ),
-    );
-});
+scope.addEventListener(
+  'message',
+  ({ data: { id, url, box, pixelRatio, filling } }) => {
+    void made(url, box, pixelRatio, filling)
+      .catch(() => ({}))
+      .then((answer) => scope.postMessage({ id, ...answer }));
+  },
+);

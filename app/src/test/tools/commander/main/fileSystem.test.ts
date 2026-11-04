@@ -92,6 +92,32 @@ suite.each(implementations)('The file system of %s', (name, make) => {
     );
   });
 
+  test.skipIf(name === 'Node' && windows)(
+    'marks a file whose data is only online, by its cloud attributes on Windows and by its having no blocks on disk elsewhere, as the cloud services keep them, and not a file on disk',
+    async () => {
+      const online = path.join(folder, 'online.jpg');
+      if (name === 'Windows') {
+        fs.writeFileSync(online, 'kept online');
+        execFileSync('attrib', ['+o', online]);
+      } else {
+        fs.writeFileSync(online, '');
+        fs.truncateSync(online, 1024 * 1024);
+      }
+      fs.writeFileSync(path.join(folder, 'local.jpg'), 'on disk');
+
+      assert.deepStrictEqual(
+        byName(await fileSystem.list(folder)).map((entry) => [
+          entry.name,
+          entry.online === true,
+        ]),
+        [
+          ['local.jpg', false],
+          ['online.jpg', true],
+        ],
+      );
+    },
+  );
+
   test('lists a link to a folder as a folder that is a link', async () => {
     fs.mkdirSync(path.join(folder, 'target'));
     fs.symlinkSync(

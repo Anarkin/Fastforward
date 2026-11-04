@@ -1,6 +1,17 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { ThumbnailCache, type Thumbnail } from '../../ui/thumbnails';
+import {
+  fillOrder,
+  ThumbnailCache,
+  ThumbnailFiller,
+  ThumbnailWorkers,
+  type Thumbnail,
+  type WorkerLike,
+} from '../../ui/thumbnails';
+import type {
+  FromThumbnailWorker,
+  ToThumbnailWorker,
+} from '../../ui/thumbnailMessages';
 
 const deferred = () => Promise.withResolvers<Thumbnail | undefined>();
 
@@ -99,4 +110,126 @@ suite('Thumbnails', () => {
       2,
     );
   });
+
+  test('fills a folder from the first tile in view down to its end, then the tiles above, as people jump somewhere and go on down from there', () => {
+    assert.deepStrictEqual(fillOrder(6, 2), [2, 3, 4, 5, 0, 1]);
+    assert.deepStrictEqual(fillOrder(3, 0), [0, 1, 2]);
+    assert.deepStrictEqual(fillOrder(3, 7), [0, 1, 2]);
+    assert.deepStrictEqual(fillOrder(0, 0), []);
+  });
+
+  test('gives a free worker to a tile in view before the background, starting no more workers than it has', async () => {
+    const started: FakeWorker[] = [];
+    const workers = new ThumbnailWorkers(() => {
+      const worker = new FakeWorker();
+      started.push(worker);
+      return worker;
+    }, 2);
+    const answered: string[] = [];
+    const ask = (url: string, filling: boolean) =>
+      void workers.make(url, 144, 1, filling).then(() => answered.push(url));
+    ask('fill-1', true);
+    ask('fill-2', true);
+    ask('fill-3', true);
+    ask('shown', false);
+    assert.strictEqual(started.length, 2);
+    started[0]?.answer();
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.deepStrictEqual(started[0]?.asked.at(-1)?.url, 'shown');
+    started[1]?.answer();
+    started[0]?.answer();
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.deepStrictEqual(
+      started.map((worker) => worker.asked.map((each) => each.url)),
+      [
+        ['fill-1', 'shown'],
+        ['fill-2', 'fill-3'],
+      ],
+    );
+  });
+
+  test('fills two at a time in its order, skipping what it filled before when asked again from elsewhere, and stops once the thumbnails are full or it is told', async () => {
+    const asked: string[] = [];
+    const pending = new Map<
+      string,
+      (outcome: 'made' | 'stored' | 'online' | 'full') => void
+    >();
+    const filler = new ThumbnailFiller((item: string) => {
+      asked.push(item);
+      const { promise, resolve } = Promise.withResolvers<
+        'made' | 'stored' | 'online' | 'full'
+      >();
+      pending.set(item, resolve);
+      return promise;
+    }, 2);
+    const settle = async (
+      item: string,
+      outcome: 'made' | 'stored' | 'online' | 'full',
+    ) => {
+      pending.get(item)?.(outcome);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    };
+
+    filler.start(['c', 'd', 'e', 'a', 'b']);
+    assert.deepStrictEqual(asked, ['c', 'd']);
+    await settle('c', 'made');
+    assert.deepStrictEqual(asked, ['c', 'd', 'e']);
+    filler.start(['a', 'b', 'c', 'd', 'e']);
+    await settle('d', 'stored');
+    await settle('e', 'online');
+    assert.deepStrictEqual(asked, ['c', 'd', 'e', 'a', 'b']);
+    await settle('a', 'full');
+    await settle('b', 'made');
+    filler.start(['f', 'g']);
+    assert.deepStrictEqual(asked, ['c', 'd', 'e', 'a', 'b', 'f', 'g']);
+    filler.stop();
+    await settle('f', 'made');
+    await settle('g', 'made');
+    filler.start(['h']);
+    assert.deepStrictEqual(asked.at(-1), 'h');
+  });
 });
+
+class FakeWorker implements WorkerLike {
+  readonly asked: ToThumbnailWorker[] = [];
+  private readonly listeners = new Set<
+    (event: MessageEvent<FromThumbnailWorker>) => void
+  >();
+
+  postMessage(message: ToThumbnailWorker): void {
+    this.asked.push(message);
+  }
+
+  addEventListener(
+    type: 'message' | 'error',
+    listener: (event: MessageEvent<FromThumbnailWorker>) => void,
+  ): void {
+    if (type === 'message') {
+      this.listeners.add(listener);
+    }
+  }
+
+  removeEventListener(
+    type: 'message' | 'error',
+    listener: (event: MessageEvent<FromThumbnailWorker>) => void,
+  ): void {
+    if (type === 'message') {
+      this.listeners.delete(listener);
+    }
+  }
+
+  answer(): void {
+    const last = this.asked.at(-1);
+    if (last === undefined) {
+      return;
+    }
+    const event = new MessageEvent<FromThumbnailWorker>('message', {
+      data: { id: last.id, outcome: 'stored' },
+    });
+    for (const listener of Array.from(this.listeners)) {
+      listener(event);
+    }
+  }
+}

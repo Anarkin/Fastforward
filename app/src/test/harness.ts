@@ -338,6 +338,8 @@ export function newView(
         saveSorts: () => Promise.resolve(),
         thumbnails: {
           read: () => Promise.resolve(undefined),
+          has: () => Promise.resolve(false),
+          full: () => Promise.resolve(false),
           write: () => Promise.resolve(),
         },
         layouts: () => defaultLayouts,

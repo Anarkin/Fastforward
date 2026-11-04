@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePixelRatio, type Size } from './images';
 import type {
+  FillOutcome,
   FromThumbnailWorker,
-  MadeThumbnail,
   ToThumbnailWorker,
 } from './thumbnailMessages';
 
@@ -141,45 +141,106 @@ export class ThumbnailCache {
   }
 }
 
-class ThumbnailWorkers {
-  private readonly idle: Worker[] = [];
+export interface WorkerLike {
+  postMessage(message: ToThumbnailWorker): void;
+  addEventListener(
+    type: 'message' | 'error',
+    listener: (event: MessageEvent<FromThumbnailWorker>) => void,
+  ): void;
+  removeEventListener(
+    type: 'message' | 'error',
+    listener: (event: MessageEvent<FromThumbnailWorker>) => void,
+  ): void;
+}
+
+interface Job {
+  readonly message: ToThumbnailWorker;
+  readonly answer: (answer: FromThumbnailWorker) => void;
+}
+
+const fillingWorkers = 2;
+
+export class ThumbnailWorkers {
+  private readonly idle: WorkerLike[] = [];
+  private readonly shown: Job[] = [];
+  private readonly filling: Job[] = [];
+  private started = 0;
+  private fillsRunning = 0;
   private asked = 0;
+
+  constructor(
+    private readonly create: () => WorkerLike = () =>
+      new Worker(new URL('thumbnailWorker.js', location.href), {
+        type: 'module',
+      }),
+    private readonly size = workerCount,
+    private readonly fillLimit = fillingWorkers,
+  ) {}
 
   make(
     url: string,
     box: number,
     pixelRatio: number,
-  ): Promise<MadeThumbnail | undefined> {
-    const worker =
-      this.idle.pop() ??
-      new Worker(new URL('thumbnailWorker.js', location.href), {
-        type: 'module',
-      });
+    filling: boolean,
+  ): Promise<FromThumbnailWorker> {
     const id = ++this.asked;
-    const { promise, resolve } = Promise.withResolvers<
-      MadeThumbnail | undefined
-    >();
-    const done = (made: MadeThumbnail | undefined) => {
+    const { promise, resolve } = Promise.withResolvers<FromThumbnailWorker>();
+    (filling ? this.filling : this.shown).push({
+      message: { id, url, box, pixelRatio, filling },
+      answer: resolve,
+    });
+    this.assign();
+    return promise;
+  }
+
+  private assign(): void {
+    for (;;) {
+      const job =
+        this.shown.shift() ??
+        (this.fillsRunning < this.fillLimit ? this.filling.shift() : undefined);
+      if (job === undefined) {
+        return;
+      }
+      const worker =
+        this.idle.pop() ??
+        (this.started < this.size ? this.newWorker() : undefined);
+      if (worker === undefined) {
+        (job.message.filling ? this.filling : this.shown).unshift(job);
+        return;
+      }
+      this.run(worker, job);
+    }
+  }
+
+  private newWorker(): WorkerLike {
+    this.started++;
+    return this.create();
+  }
+
+  private run(worker: WorkerLike, job: Job): void {
+    const { id, filling } = job.message;
+    if (filling) {
+      this.fillsRunning++;
+    }
+    const done = (answer: FromThumbnailWorker) => {
       worker.removeEventListener('message', answered);
       worker.removeEventListener('error', failed);
+      if (filling) {
+        this.fillsRunning--;
+      }
       this.idle.push(worker);
-      resolve(made);
+      job.answer(answer);
+      this.assign();
     };
     const answered = ({ data }: MessageEvent<FromThumbnailWorker>) => {
       if (data.id === id) {
-        done(data.made);
+        done(data);
       }
     };
-    const failed = () => done(undefined);
+    const failed = () => done({ id });
     worker.addEventListener('message', answered);
     worker.addEventListener('error', failed);
-    worker.postMessage({
-      id,
-      url,
-      box,
-      pixelRatio,
-    } satisfies ToThumbnailWorker);
-    return promise;
+    worker.postMessage(job.message);
   }
 }
 
@@ -190,7 +251,7 @@ async function madeThumbnail(
   box: number,
   pixelRatio: number,
 ): Promise<Thumbnail | undefined> {
-  const made = await workers.make(url, box, pixelRatio);
+  const { made } = await workers.make(url, box, pixelRatio, false);
   return (
     made && {
       url: URL.createObjectURL(made.image),
@@ -201,9 +262,114 @@ async function madeThumbnail(
   );
 }
 
+export function fillOrder(count: number, from: number): number[] {
+  const start = from >= 0 && from < count ? from : 0;
+  return Array.from({ length: count }, (_, index) => (start + index) % count);
+}
+
+type Filled = FillOutcome | 'made' | 'failed';
+
+export class ThumbnailFiller<T> {
+  private queue: T[] = [];
+  private readonly running = new Set<T>();
+  private readonly done = new Set<T>();
+
+  constructor(
+    private readonly make: (item: T) => Promise<Filled>,
+    private readonly parallel = fillingWorkers,
+  ) {}
+
+  start(items: readonly T[]): void {
+    this.queue = items.filter(
+      (item) => !this.done.has(item) && !this.running.has(item),
+    );
+    this.pump();
+  }
+
+  stop(): void {
+    this.queue = [];
+  }
+
+  private pump(): void {
+    while (this.running.size < this.parallel && this.queue.length > 0) {
+      const item = this.queue.shift();
+      if (item === undefined) {
+        return;
+      }
+      this.running.add(item);
+      void this.make(item)
+        .catch((): Filled => 'failed')
+        .then((outcome) => {
+          this.running.delete(item);
+          this.done.add(item);
+          if (outcome === 'full') {
+            this.queue = [];
+          }
+          this.pump();
+        });
+    }
+  }
+}
+
 const thumbnails = new ThumbnailCache(madeThumbnail, (url) =>
   URL.revokeObjectURL(url),
 );
+
+export interface FillItem {
+  readonly url: string;
+  readonly name: string;
+}
+
+interface Filling {
+  readonly items: readonly FillItem[];
+  readonly box: number;
+  readonly pixelRatio: number;
+  readonly filler: ThumbnailFiller<FillItem>;
+}
+
+export function useThumbnailFill(
+  items: readonly FillItem[],
+  from: number,
+  box: number,
+  filling: boolean,
+  onMade: (name: string, made: Blob, pixelRatio: number) => void,
+): void {
+  const pixelRatio = usePixelRatio();
+  const made = useRef(onMade);
+  const kept = useRef<Filling>(undefined);
+  useEffect(() => {
+    made.current = onMade;
+  }, [onMade]);
+  useEffect(() => {
+    if (!filling) {
+      return undefined;
+    }
+    const before = kept.current;
+    const { filler } =
+      before !== undefined &&
+      before.items === items &&
+      before.box === box &&
+      before.pixelRatio === pixelRatio
+        ? before
+        : (kept.current = {
+            items,
+            box,
+            pixelRatio,
+            filler: new ThumbnailFiller<FillItem>(async ({ url, name }) => {
+              if (thumbnails.peek(url, box, pixelRatio) !== undefined) {
+                return 'stored';
+              }
+              const answer = await workers.make(url, box, pixelRatio, true);
+              if (answer.made?.fresh === true) {
+                made.current(name, answer.made.image, pixelRatio);
+              }
+              return answer.outcome ?? (answer.made ? 'made' : 'failed');
+            }),
+          });
+    filler.start(fillOrder(items.length, from).map((index) => items[index]));
+    return () => filler.stop();
+  }, [items, box, pixelRatio, from, filling]);
+}
 
 function useInView(element: React.RefObject<Element | null>): boolean {
   const [inView, setInView] = useState(false);

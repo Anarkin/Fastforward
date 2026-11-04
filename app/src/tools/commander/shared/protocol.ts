@@ -68,6 +68,7 @@ export interface Entry {
   readonly hidden: boolean;
   readonly size: number | undefined;
   readonly modified: number | undefined;
+  readonly online?: true;
 }
 
 export const sides = ['left', 'right'] as const;

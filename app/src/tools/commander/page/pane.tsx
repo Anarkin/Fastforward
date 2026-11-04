@@ -9,11 +9,15 @@ import {
 import { moveInGrid, tileColumns, tileWidthOf } from './tiles';
 import { ScrollPlaces } from './scrollPlaces';
 import { iconUrl, thumbnailUrl, type IconSource } from '../shared/icons';
-import { imageType, vectorType } from '../../../shared/images';
-import { ThumbnailImage } from '../../../ui/thumbnails';
+import { imageType, maxImageSize, vectorType } from '../../../shared/images';
+import {
+  ThumbnailImage,
+  useThumbnailFill,
+  type FillItem,
+} from '../../../ui/thumbnails';
 import { commanderKeymap } from '../shared/keymap';
 import { clicked, keymap, letterTyped } from '../../../shell/shared/keymap';
-import { parentFolder, type Side } from '../shared/protocol';
+import { parentFolder, type Entry, type Side } from '../shared/protocol';
 import { formatSize } from './format';
 import {
   filteredRows,
@@ -99,6 +103,12 @@ function RowIcon({
   );
 }
 
+function tileThumbnailUrl(source: IconSource, entry: Entry): string {
+  return thumbnailUrl(source, `${entry.size ?? ''}:${entry.modified ?? ''}`);
+}
+
+const fillDelay = 250;
+
 function TileImage({
   row,
   source,
@@ -121,10 +131,7 @@ function TileImage({
   }
   return (
     <ThumbnailImage
-      url={thumbnailUrl(
-        source,
-        `${row.entry.size ?? ''}:${row.entry.modified ?? ''}`,
-      )}
+      url={tileThumbnailUrl(source, row.entry)}
       box={box}
       vector={type === vectorType}
       fallback={icon}
@@ -285,6 +292,61 @@ export function Pane({
       ? `tiles ${thumbnailSize}`
       : undefined
     : 'details';
+  const [fillFrom, setFillFrom] = useState(0);
+  const fillTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(fillTimer.current), []);
+  const scrolledTo = (offset: number) => {
+    scrollPlaces.keep(scrollKey, offset);
+    if (!tiled) {
+      return;
+    }
+    clearTimeout(fillTimer.current);
+    fillTimer.current = setTimeout(() => {
+      const height =
+        body.current?.querySelector('.virtual-row')?.getBoundingClientRect()
+          .height ?? 0;
+      setFillFrom(height > 0 ? Math.floor(offset / height + 0.01) * across : 0);
+    }, fillDelay);
+  };
+  const fillItems = useMemo(
+    () =>
+      rows.flatMap((row, index): (FillItem & { readonly index: number })[] => {
+        const type = imageType(row.key);
+        if (
+          tab === undefined ||
+          pane === undefined ||
+          row.entry === undefined ||
+          row.entry.folder ||
+          type === undefined ||
+          type === vectorType ||
+          (row.entry.size ?? 0) > maxImageSize
+        ) {
+          return [];
+        }
+        return [
+          {
+            url: tileThumbnailUrl(
+              { tab, side, folder: pane.folder, name: row.key },
+              row.entry,
+            ),
+            name: row.key,
+            index,
+          },
+        ];
+      }),
+    [rows, tab, side, pane],
+  );
+  useThumbnailFill(
+    fillItems,
+    Math.max(
+      0,
+      fillItems.findIndex((item) => item.index >= fillFrom),
+    ),
+    thumbnailSize,
+    tiled && shownList !== undefined,
+    (name, made, pixelRatio) =>
+      onThumbnail(name, thumbnailSize, pixelRatio, made),
+  );
   useLayoutEffect(() => {
     const focused = document.activeElement;
     if (
@@ -548,7 +610,7 @@ export function Pane({
           <VirtualRows
             key={shownList}
             initialOffset={scrollPlaces.of(scrollKey)}
-            onScrolled={(offset) => scrollPlaces.keep(scrollKey, offset)}
+            onScrolled={scrolledTo}
             rows={tiled ? tileRows : listed}
             renderRow={tiled ? renderTiles : renderRow}
             selectedKey={pane?.selected}

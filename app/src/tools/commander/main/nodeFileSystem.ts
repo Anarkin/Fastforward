@@ -25,6 +25,11 @@ async function entryOf(folder: string, found: fs.Dirent): Promise<Entry> {
     hidden: found.name.startsWith('.'),
     size: stats === undefined || isFolder ? undefined : stats.size,
     modified: stats?.mtimeMs,
+    ...(process.platform !== 'win32' &&
+      stats !== undefined &&
+      !isFolder &&
+      stats.size > 0 &&
+      stats.blocks === 0 && { online: true }),
   };
 }
 

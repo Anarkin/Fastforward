@@ -62,6 +62,13 @@ const withOrientation = (jpeg: Buffer, orientation: number) => {
   ]);
 };
 
+const storedThumbnails = (profile: string): number => {
+  const stored = path.join(profile, 'Thumbnails');
+  return fs.existsSync(stored)
+    ? fs.readdirSync(stored).filter((name) => name.endsWith('.webp')).length
+    : 0;
+};
+
 const threeLines = (changed: string) =>
   ['one', changed, 'three', ''].join(String.fromCharCode(10));
 
@@ -2394,6 +2401,88 @@ suite('App commander', () => {
     fs.rmSync(jpegs, { recursive: true });
     await waitFor(
       async () => !(await rowNames()).includes('jpegs'),
+      'the folder to be gone from the list',
+    );
+  });
+
+  test('makes the thumbnails of every image of a folder shown as thumbnails in the background, not only those in view, without a scroll', async () => {
+    const filled = path.join(opened, 'filled');
+    fs.mkdirSync(filled);
+    const image = grayPng(600, 300);
+    for (let index = 100; index < 180; index++) {
+      fs.writeFileSync(path.join(filled, `f${index}.png`), image);
+    }
+    const before = storedThumbnails(profile);
+
+    await select('filled');
+    await page.keyboard.press('Enter');
+    await waitFor(
+      async () => (await rowNames()).includes('f100.png'),
+      'the files of the folder',
+    );
+    await page.keyboard.press('ControlOrMeta+2');
+    await waitFor(
+      () => storedThumbnails(profile) >= before + 80,
+      'a thumbnail kept for every image of the folder',
+    );
+
+    await page.keyboard.press('ControlOrMeta+1');
+    await waitFor(
+      async () => (await right().locator('.commander-tile').count()) === 0,
+      'the details again',
+    );
+    await page.keyboard.press('Backspace');
+    await waitFor(
+      async () => (await rowNames()).includes('notes.txt'),
+      'the folder above',
+    );
+    fs.rmSync(filled, { recursive: true });
+    await waitFor(
+      async () => !(await rowNames()).includes('filled'),
+      'the folder to be gone from the list',
+    );
+  });
+
+  test('stops making the thumbnails of a folder in the background once the side shows its details', async () => {
+    const stopped = path.join(opened, 'stopped');
+    fs.mkdirSync(stopped);
+    const image = grayPng(1200, 900);
+    for (let index = 100; index < 500; index++) {
+      fs.writeFileSync(path.join(stopped, `s${index}.png`), image);
+    }
+    const before = storedThumbnails(profile);
+
+    await select('stopped');
+    await page.keyboard.press('Enter');
+    await waitFor(
+      async () => (await rowNames()).includes('s100.png'),
+      'the files of the folder',
+    );
+    await page.keyboard.press('ControlOrMeta+2');
+    await waitFor(
+      () => storedThumbnails(profile) >= before + 30,
+      'the background filling to be under way',
+    );
+    await page.keyboard.press('ControlOrMeta+1');
+    await waitFor(
+      async () => (await right().locator('.commander-tile').count()) === 0,
+      'the details again',
+    );
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const whenStopped = storedThumbnails(profile);
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    const later = storedThumbnails(profile);
+    assert.ok(later <= whenStopped + 2, `${whenStopped} then ${later}`);
+    assert.ok(later < before + 400, String(later - before));
+
+    await page.keyboard.press('Backspace');
+    await waitFor(
+      async () => (await rowNames()).includes('notes.txt'),
+      'the folder above',
+    );
+    fs.rmSync(stopped, { recursive: true });
+    await waitFor(
+      async () => !(await rowNames()).includes('stopped'),
       'the folder to be gone from the list',
     );
   });

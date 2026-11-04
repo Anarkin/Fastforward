@@ -87,6 +87,7 @@
       },
       "columns": { "extension": 10, "size": 15, "date": 18 },
       "thumbnailSize": 144,
+      "thumbnailCacheMegabytes": 8192,
       "colors": {
         "light": {
           "icon": "#1a5fb4"

@@ -35,8 +35,10 @@ import {
 import type { FileSystem } from './fileSystem';
 import type { WatchFolder } from './watch';
 import {
+  fillsThumbnail,
   imageType,
   isThumbnailBox,
+  type ThumbnailBox,
   isWebp,
   madeThumbnailHeader,
   maxImageSize,
@@ -96,8 +98,11 @@ export interface CommanderAccess {
   readonly saveSorts: (sorts: Sorts) => Promise<void>;
   readonly thumbnails: {
     readonly read: (key: string) => Promise<Uint8Array | undefined>;
+    readonly has: (key: string) => Promise<boolean>;
+    readonly full: () => Promise<boolean>;
     readonly write: (key: string, bytes: Uint8Array) => Promise<void>;
   };
+  readonly streamed?: (file: string) => boolean | Promise<boolean>;
   readonly layouts: () => Layouts;
   readonly saveLayouts: (layouts: Layouts) => Promise<void>;
   readonly watch: WatchFolder;
@@ -126,6 +131,9 @@ interface Pane {
 
 type Listing = 'visit' | 'show' | 'refresh' | { readonly at: number };
 
+const storedStatus = 204;
+const onlineStatus = 409;
+const fullStatus = 507;
 const maxFindLength = 1000;
 const findProgressEvery = 150;
 const maxHistory = 100;
@@ -578,6 +586,12 @@ export class CommanderTool implements Tool<'commander'> {
       return new Response(null, { status: 404 });
     }
     const boxed = thumbnailBoxOf(url);
+    if (fillsThumbnail(url)) {
+      const skipped = boxed && (await this.notFilled(listed, boxed));
+      if (boxed === undefined || skipped !== undefined) {
+        return new Response(null, { status: skipped ?? 404 });
+      }
+    }
     const made =
       boxed &&
       (await this.access.thumbnails.read(
@@ -594,6 +608,26 @@ export class CommanderTool implements Tool<'commander'> {
     return fileResponse(listed.file, listed.type, null).catch(
       () => new Response(null, { status: 404 }),
     );
+  }
+
+  private async notFilled(
+    listed: { readonly file: string; readonly entry: Entry },
+    { box, pixelRatio }: ThumbnailBox,
+  ): Promise<number | undefined> {
+    if (
+      await this.access.thumbnails.has(
+        this.thumbnailKeyOf(listed, box, pixelRatio),
+      )
+    ) {
+      return storedStatus;
+    }
+    if (
+      listed.entry.online === true ||
+      (await this.access.streamed?.(listed.file)) === true
+    ) {
+      return onlineStatus;
+    }
+    return (await this.access.thumbnails.full()) ? fullStatus : undefined;
   }
 
   private async iconResponse(file: string): Promise<Response> {
