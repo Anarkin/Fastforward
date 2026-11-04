@@ -22,6 +22,7 @@ const defaults = fileColorsByExtension(
 );
 const executable = 'light-dark(#13692c, #5fd068)';
 const document = 'light-dark(#874c00, #f0a838)';
+const media = 'light-dark(#7a2f9e, #cf98ee)';
 
 suite('Commander file colors', () => {
   test('colors green by default the programs, installers and scripts that run when opened, whatever the case of their extension', () => {
@@ -53,6 +54,38 @@ suite('Commander file colors', () => {
       'todo.org',
     ]) {
       assert.strictEqual(fileColorOf(file(name), defaults), document, name);
+    }
+  });
+
+  test('colors orchid by default the images, photos in camera raw and editor files, audio and video', () => {
+    for (const name of [
+      'logo.png',
+      'IMG_2041.JPG',
+      'photo.heic',
+      'icon.svg',
+      'shot.dng',
+      'cover.psd',
+      'song.mp3',
+      'album.flac',
+      'clip.mp4',
+      'movie.mkv',
+      'call.webm',
+    ]) {
+      assert.strictEqual(fileColorOf(file(name), defaults), media, name);
+    }
+  });
+
+  test('leaves plain by default the video extensions TypeScript uses, the subtitles, playlists, fonts and 3D models', () => {
+    for (const name of [
+      'recording.ts',
+      'clip.mts',
+      'movie.srt',
+      'captions.vtt',
+      'mix.m3u',
+      'font.woff2',
+      'model.glb',
+    ]) {
+      assert.strictEqual(fileColorOf(file(name), defaults), undefined, name);
     }
   });
 
