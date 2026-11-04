@@ -30,7 +30,7 @@ suite('App', () => {
     'long.txt': `${longLines.join('\n')}\n`,
   });
 
-  test('colors code away from the page, offers every language for a file selected, opening rightwards from the button, as it starts the toolbar, but only Auto and Plain Text for many, leaves code plain on Plain Text until Auto, and colors a file in a language chosen for it until another is selected', async () => {
+  test('colors code away from the page, offers every language for a file selected from a button in line with the others, opening rightwards from the button, as it starts the toolbar, but only Auto and Plain Text for many, leaves code plain on Plain Text until Auto, and colors a file in a language chosen for it until another is selected', async () => {
     await page.locator('.commit', { hasText: 'first' }).click();
     await page.locator('.row.file', { hasText: 'code.ts' }).click();
     await page.locator('.syntax-keyword', { hasText: 'export' }).waitFor();
@@ -49,6 +49,16 @@ suite('App', () => {
       await button.locator('.menu').waitFor({ state: 'detached' });
     };
     assert.strictEqual(await label(), 'TypeScript');
+    const middles = await Promise.all(
+      [
+        button.locator('.menu-button-trigger'),
+        page.locator('.diff-options [title="Show Whitespace"]'),
+      ].map(async (each) => {
+        const box = await each.boundingBox();
+        return box && box.y + box.height / 2;
+      }),
+    );
+    assert.strictEqual(middles[0], middles[1]);
     await page.keyboard.press('l');
     await button.locator('.menu-filter').waitFor();
     assert.ok((await button.locator('.menu-item').count()) > 200);

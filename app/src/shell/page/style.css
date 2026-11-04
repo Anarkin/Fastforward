@@ -590,6 +590,10 @@ body {
   box-shadow: var(--popup-shadow);
 }
 
+.column-start .menu-button {
+  padding: 0;
+}
+
 .column-start .menu {
   left: 0;
   right: auto;
