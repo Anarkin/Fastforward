@@ -62,6 +62,7 @@ suite('Commander file colors', () => {
       'book.epub',
       'plan.gdoc',
       'sheet.gsheet',
+      'trip.gmap',
       'notes.one',
       'reply.eml',
       'outlook.msg',
